@@ -1,5 +1,10 @@
 # seb-personas
 
+This is the Claude set up I've been using for work and personal projects.
+Seems to be pretty decent at not generating too much slop but is a token
+whore. Note this still very much in development so raise an issue you notice
+weird shit.
+
 A six-persona Claude Code system (orchestrator + explorer / planner /
 lead-programmer / repo-historian / reviewer, plus a researcher template) as a
 private, reusable plugin — built so a new project costs one short ADAPT run
