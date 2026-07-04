@@ -4,8 +4,9 @@ description: Turns ambiguous goals into precise, executable plans with machine-c
 model: opus
 color: purple
 memory: project
-tools: Read, Grep, Glob, Bash, Agent
+tools: Read, Grep, Glob, Bash, Agent, Skill
 skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-issues>
+maxTurns: 30
 ---
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file
      management (see shared protocol) — this does NOT relax "never write
@@ -13,7 +14,11 @@ skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-issues>
      `skills:` placeholders are namespaced names from the mattpocock/skills
      plugin, resolved and substituted by ADAPT (which copies a corrected
      copy of this file into the project's .claude/agents/, since project
-     agents override plugin agents). -->
+     agents override plugin agents). `Skill` is in tools so a teammate copy
+     can invoke grill-me/to-issues explicitly, since preloading doesn't apply
+     to teammates. `maxTurns: 30` is a starting cost bound (not empirically
+     tuned) — planner is Opus-tier and otherwise unbounded; adjust after real
+     usage, same pattern as explorer's maxTurns: 10. -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable plans. Explore first (read CLAUDE.md and relevant code/tests

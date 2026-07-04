@@ -5,11 +5,11 @@ Seems to be pretty decent at not generating too much slop but is a token
 whore. Note this still very much in development so raise an issue you notice
 weird shit.
 
-A six-persona Claude Code system (orchestrator + explorer / planner /
-lead-programmer / repo-historian / reviewer, plus a researcher template) as a
-private, reusable plugin — built so a new project costs one short ADAPT run
-instead of re-authoring ~500 lines of persona/hook prose from scratch every
-time.
+A modular, persona-based Claude Code system (orchestrator + explorer +
+lead-programmer are the core loop; planner / repo-historian / reviewer /
+researcher are selected per-project) as a private, reusable plugin — built so
+a new project costs one short ADAPT run instead of re-authoring ~500 lines of
+persona/hook prose from scratch every time.
 
 **Requires Claude Code v2.1.178+.** This is a hard pin, not a suggestion:
 nested subagent spawning needs v2.1.172+, and `TeamCreate`/`TeamDelete` were
@@ -23,12 +23,13 @@ fallback.
 ```
 claude --plugin-dir ~/seb_claude_setup
 ```
-Confirm the six agents appear. Note: plugin agents load as namespaced names
+Confirm the agents appear. Note: plugin agents load as namespaced names
 (`seb-personas:explorer`, confirmed on Claude Code 2.1.201) — bare-name spawns
 like `explorer` hard-error, they don't resolve. This is exactly why
-`setup-personas`'s first action is copying all 6 agent files into the
-project's `.claude/agents/`, which are never namespaced. Don't skip that step
-expecting it to work by cross-referencing bare names as shipped.
+`setup-personas`'s first substantive action is copying every selected agent
+file into the project's `.claude/agents/`, which are never namespaced. Don't
+skip that step expecting it to work by cross-referencing bare names as
+shipped.
 
 **Real install, once stable**, from this directory pushed to a private Git
 repo:
@@ -56,8 +57,8 @@ work:
   extraction as "nothing to do," so it silently no-ops rather than failing
   loudly. A missing `jq` looks like "nothing happens," not a clear error —
   install it first.
-- **Node.js / `npx`** — needed for the `mattpocock/skills` installer in step 1
-  of `setup-personas`.
+- **Node.js / `npx`** — needed for the `mattpocock/skills` installer, if any
+  selected persona uses one of those skills.
 - **`git`**, and **`gh`** if you pick GitHub issues as your tracker during
   `setup-personas`.
 
@@ -65,22 +66,73 @@ work:
 ```
 /seb-personas:setup-personas
 ```
-This is the only per-project step. It handles everything that can't be
-pre-baked: version check, third-party skill installs (mattpocock/skills), the
-Code Review Graph, the arXiv MCP for the researcher, repo-specific commands
-and protected paths, CLAUDE.md wiring, a settings.json merge, wiki seeding,
-and sandboxed hook verification. See `skills/setup-personas/SKILL.md` for the
-full flow.
+This asks which personas the project needs (`explorer`/`lead-programmer` are
+mandatory; `planner`/`repo-historian`/`reviewer`/`researcher` are opt-in —
+skipping `reviewer` needs an explicit confirmation, since it's the system's
+core safety property), then handles everything else that can't be pre-baked:
+version check, third-party skill installs, the Code Review Graph, the arXiv
+MCP for the researcher, repo-specific commands and protected paths, CLAUDE.md
+wiring, a settings.json merge, wiki seeding, and sandboxed hook verification.
+See `skills/setup-personas/SKILL.md` for the full flow.
+
+**When the plugin updates**, re-run adapted projects with:
+```
+/seb-personas:setup-personas --update
+```
+This re-syncs the project's copied agent files against the current plugin
+version — diffing before overwriting, never silently clobbering a local
+edit. A `SessionStart` hook warns automatically when a project's adapted
+version is behind the plugin's current version.
 
 ## What ships in the plugin vs. what ADAPT writes per-project
 
 | Ships once (plugin) | Written per-project (ADAPT) |
 |---|---|
-| 6 agents: orchestrator, explorer, planner, lead-programmer, repo-historian, reviewer | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) |
-| `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected paths, issue tracker) |
-| `setup-personas` skill (the ADAPT flow itself) | `.claude/persona-protocol.md` (copied verbatim from the plugin template) + one `@import` line in CLAUDE.md |
-| 5 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
+| Persona agents: orchestrator, explorer, lead-programmer (always); planner, repo-historian, reviewer (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
+| `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
+| `setup-personas` skill (the ADAPT flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md |
+| 6 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team` command | wiki / CONTEXT.md / docs/adr seeding |
+
+## Adding your own persona
+
+Drop a new `.md` file in `.claude/agents/` (project-scoped, so no plugin
+change needed) with a clear `description:` — auto-delegation picks it up.
+Three things to check depending on what it does:
+- If it writes code, add its agent-type name to `gatedAgents` in
+  `.claude/persona-config.json` so the stop-gate actually checks its work.
+- If it should be reviewed like everything else, no change needed — the
+  reviewer scopes review via the explorer's blast-radius answer, not a
+  hardcoded persona list.
+- If you want other personas to route to it by name, add one disambiguation
+  line to the project's copy of `orchestrator.md`'s routing table.
+
+## Removing seb-personas
+
+`setup-personas` writes to these locations; removing all of them uninstalls
+the system from a project:
+- `.claude/agents/*.md` (the copied persona files)
+- `.claude/persona-protocol.md`
+- `.claude/persona-config.json`
+- `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `repo-historian` was selected)
+- `.claude/settings.json`'s `"agent": "orchestrator"` key, the
+  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it
+  added
+- The `@.claude/persona-protocol.md` line in CLAUDE.md
+- `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`
+  (also in `.gitignore` — safe to delete)
+- `/plugin uninstall seb-personas` to remove the plugin itself
+
+## Cost
+
+`planner` and `reviewer` are Opus-tier and are the system's real spend
+drivers, not the haiku-tier `explorer`/`repo-historian`. Both are capped with
+`maxTurns: 30` and the FAIL→fix→re-review loop is capped at 2 iterations
+before escalating to you instead of looping — but there's no budget mode
+beyond that yet. Check `/cost`, and if it's high, look at how often the full
+Explore→Plan→Implement→Verify→Commit pipeline is running for work that
+didn't need it (the orchestrator's "scale effort to the task" rule is the
+lever, not a setting).
 
 ## Why this shape (design rationale, kept out of the agent bodies)
 
@@ -88,9 +140,10 @@ full flow.
   teammates automatically.** That's why the cross-cutting rules (explorer
   delegation, teams-mode behavior, the WIP sentinel, the retrieval contract,
   machine-checkable criteria, review ownership, the FAIL→fix continuation
-  protocol) live in one `templates/persona-protocol.md` imported via a single
-  CLAUDE.md line, instead of being pasted into all six persona bodies. Adding
-  a seventh persona means one new file — it inherits the protocol for free.
+  protocol and its 2-FAIL cap) live in one `templates/persona-protocol.md`
+  imported via a single CLAUDE.md line, instead of being pasted into every
+  persona body. Adding a new persona means one new file — it inherits the
+  protocol for free.
 - **Plugin agents ignore `mcpServers`, `hooks`, and `permissionMode`
   frontmatter, and plugins can't ship `settings.json` at all.** This is why
   researcher isn't a plugin agent (it's a template copied in project-scoped),
@@ -102,17 +155,18 @@ full flow.
   *teams*, not on ordinary subagent spawning. Earlier drafts had every
   persona fall back to Grep/Glob as a teammate out of this false belief;
   fixed in the shared protocol.
-- **The stop-gate is scoped to `SubagentStop` with `matcher: lead-programmer`
-  only** (plus a `Stop` registration for the main session). An unscoped
-  version would run a full test+lint suite after every explorer/historian
-  call and BLOCK an agent that has no ability to fix anything — the single
-  most consequential robustness bug found in the prior draft.
+- **The stop-gate's `SubagentStop` scoping is config-driven (`gatedAgents` in
+  `persona-config.json`), not hardcoded in `hooks.json`.** Confirmed
+  empirically that the `SubagentStop` payload carries `agent_type`, so the
+  hook itself decides who it applies to. An earlier, hardcoded-matcher
+  version was the single most consequential robustness bug found in v0.1.0 —
+  making it config-driven means a future code-writing persona is a config
+  edit, not a plugin file edit.
 - **The reviewer's PASS marker (`.claude/reviewed/<task-id>.pass`) is an
   explicit, named exception to "never edits."** It's Bash-written bookkeeping
-  for the `TaskCompleted` hook, not a change to reviewed code — worth stating
-  loudly because an earlier draft told the reviewer to write a marker it was
-  simultaneously forbidden from writing, which silently deadlocked agent-teams
-  mode.
+  for the `TaskCompleted` hook, not a change to reviewed code. `setup-personas`
+  pre-creates the directory so the first-ever marker write doesn't fail on a
+  missing path — a real bug found and fixed in v0.2.0.
 - **`memory: <scope>` auto-grants Read/Write/Edit for memory management,
   regardless of a persona's declared `tools:` list.** The planner's "never
   write production code" and researcher's restricted tool list are therefore
@@ -122,10 +176,31 @@ full flow.
   cleanup branch (pre-2.1.178) were deleted outright**, not kept as a
   fallback. Maintaining two wiring paths for versions this plugin doesn't
   support was pure complexity with no live use case.
+- **Persona opt-out is graceful by construction, not by a wizard alone.**
+  Every optional-persona cross-reference is phrased conditionally ("if this
+  project has a `researcher`... otherwise..."), so a plain file copy degrades
+  gracefully even without per-project text surgery — the wizard in
+  `setup-personas` only decides which files get copied, it doesn't need to
+  edit anyone's prose.
+- **The ADAPT-copy-vs-plugin-update tension is real, and has a mechanism
+  now.** Because bare-name persona resolution requires copying agent files
+  into every project, persona-body bug fixes don't propagate automatically
+  the way hooks/skills/commands do (those load via `${CLAUDE_PLUGIN_ROOT}`
+  and stay live). Version-stamp comments + `--update` mode + the
+  `SessionStart` drift check close that gap without needing every user to
+  remember to check manually.
 - **Known limitations, not silently papered over**: the graph-update and
   lint hooks only read `tool_input.file_path`, so `MultiEdit`'s array form
   and `NotebookEdit` aren't matched. The protected-paths hook only gates the
   `Write`/`Edit` tools — a persona running `sed -i` or a lockfile-rewriting
   package manager command via `Bash` bypasses it. Both are documented as
   advisory rather than airtight; tightening either is a good candidate for a
-  future version bump, not a blocker for v0.1.0.
+  future version bump.
+
+## Contributing / issues
+
+See `CONTRIBUTING.md`. The bug report template asks for your Claude Code
+version, the plugin version vs. your project's adapted version, and whether
+the bug is in a plugin-shipped file or an ADAPT-copied project file — version
+drift (see above) is the likely root cause of a lot of reports, so it's
+worth checking `--update` first.

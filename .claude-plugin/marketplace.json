@@ -7,7 +7,7 @@
     {
       "name": "seb-personas",
       "source": "./",
-      "description": "Six-persona Claude Code orchestrator system + coding-discipline skill + enforcement hooks."
+      "description": "Modular persona-based Claude Code orchestrator system + coding-discipline skill + enforcement hooks."
     }
   ]
 }

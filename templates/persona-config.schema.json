@@ -19,12 +19,27 @@
     "sourceGlobs": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Shell glob patterns identifying source files worth graph-indexing. If empty, every edited file is passed to graphUpdateCommand."
+      "description": "Shell glob patterns, PROJECT-ROOT-RELATIVE (not absolute), identifying source files worth graph-indexing. The hook normalizes the tool's absolute file_path against CLAUDE_PROJECT_DIR before matching. If empty, every edited file is passed to graphUpdateCommand."
     },
     "protectedPaths": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Shell glob patterns for paths requiring explicit human approval before Write/Edit, e.g. 'supabase/migrations/*', '*.lock', 'generated/*'"
+      "description": "Shell glob patterns, PROJECT-ROOT-RELATIVE (not absolute - e.g. 'supabase/migrations/*', not '/home/u/proj/supabase/migrations/*'), for paths requiring explicit human approval before Write/Edit. Examples: 'supabase/migrations/*', '*.lock', 'generated/*'"
+    },
+    "gatedAgents": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": ["lead-programmer"],
+      "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, repo-historian) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit."
+    },
+    "pluginVersion": {
+      "type": "string",
+      "description": "The seb-personas plugin version this project was last ADAPTed/updated at, stamped by setup-personas. Compared against the installed plugin's current version by the SessionStart drift-check hook."
+    },
+    "personaSelection": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Which optional personas (planner, repo-historian, reviewer, researcher) this project chose to include, recorded by setup-personas' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
     },
     "issueTracker": {
       "type": "string",

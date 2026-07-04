@@ -11,9 +11,13 @@
 ## Structural questions go to the explorer
 Any question about where something is defined, what calls it, blast radius of
 a change, inheritance chains, or test coverage: spawn `explorer`, don't invoke
-the code-review-graph skill directly (most personas can't — `Skill` is
-omitted from their `tools:` — but don't rely on that alone). If the explorer
-reports the graph index is missing or stale, treat its answer as
+the code-review-graph skill directly. Note this is instruction-enforced for
+most personas, not mechanically blocked: `Skill` is in their `tools:` list so
+a teammate copy can reach its OWN preloaded skills (which don't apply to
+teammates otherwise) — that same tool would technically let them invoke
+code-review-graph too. Only the orchestrator has no `Skill` tool at all,
+making its isolation mechanical; everyone else's is this rule. If the
+explorer reports the graph index is missing or stale, treat its answer as
 grep-derived, not authoritative.
 
 ## Answer shape
@@ -84,6 +88,12 @@ self-contained prompt with the original plan step, a one-line diff summary
 (from `git log`/`git diff` on the relevant commits), and the defect list
 verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
 is for durable conventions, not the live state of an in-progress fix.
+
+**Cap at 2 FAILs per unit.** If the same unit FAILs a second time, the
+orchestrator (or team lead) stops re-delegating — it surfaces the full defect
+history across both attempts to the user and asks how to proceed, rather than
+spawning a third fix attempt. A unit that fails twice usually means the plan
+itself has a gap, not that one more automated pass will close it.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,

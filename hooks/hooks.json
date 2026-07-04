@@ -26,9 +26,15 @@
     ],
     "SubagentStop": [
       {
-        "matcher": "lead-programmer",
         "hooks": [
           { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/session-start.sh" }
         ]
       }
     ],
