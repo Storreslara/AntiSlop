@@ -222,6 +222,30 @@ lever, not a setting).
   advisory rather than airtight; tightening either is a good candidate for a
   future version bump.
 
+## Credits — third-party skills & MCPs this plugin builds on
+
+This plugin doesn't invent everything itself — several personas lean on
+external skills/tools installed at ADAPT time:
+
+- **[mattpocock/skills](https://github.com/mattpocock/skills)** — installed
+  via the `skills.sh` installer (`npx skills@latest add mattpocock/skills`).
+  Provides `grill-me` and `to-issues` (used by `planner`), `tdd` and
+  `diagnose` (used by `lead-programmer`), and `improve-codebase-architecture`
+  (used by `repo-historian`).
+- **[code-review-graph](https://github.com/tirth8205/code-review-graph)** —
+  the tree-sitter/SQLite structural graph the `explorer` persona queries for
+  blast-radius and dependency answers. Installed as a project-scoped skill,
+  never a global MCP server (see "Why this shape" above for why that
+  distinction matters here).
+- **[andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)**
+  — the local `coding-discipline` skill (`skills/coding-discipline/SKILL.md`)
+  is adapted from Andrej Karpathy's public observations on common LLM coding
+  pitfalls, as packaged in this repo.
+- **arXiv MCP** — powers the `researcher` persona. Deliberately not pinned to
+  a specific server here; `setup-personas` step 5 has you find and wire in a
+  currently-maintained one at ADAPT time, since "currently maintained" is a
+  moving target this repo shouldn't hardcode.
+
 ## Contributing / issues
 
 See `CONTRIBUTING.md`. The bug report template asks for your Claude Code
