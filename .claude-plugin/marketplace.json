@@ -1,0 +1,13 @@
+{
+  "name": "seb-personas-marketplace",
+  "owner": {
+    "name": "Sebastian Torres Lara"
+  },
+  "plugins": [
+    {
+      "name": "seb-personas",
+      "source": "./",
+      "description": "Six-persona Claude Code orchestrator system + coding-discipline skill + enforcement hooks."
+    }
+  ]
+}

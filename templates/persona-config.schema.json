@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "persona-config",
+  "description": "Copied to .claude/persona-config.json by setup-personas. The hook scripts read this at runtime via ${CLAUDE_PLUGIN_ROOT}-relative scripts + a project-relative config path, so the plugin's hook scripts stay generic across every project.",
+  "type": "object",
+  "properties": {
+    "testAndLintCommand": {
+      "type": "string",
+      "description": "Single shell command the stop-gate runs; non-zero exit = BLOCK. e.g. 'npm test && npm run lint'"
+    },
+    "lintCommand": {
+      "type": "string",
+      "description": "Formatter/linter invoked on a single changed file, e.g. 'npx eslint --fix'. The file path is appended as the last argument."
+    },
+    "graphUpdateCommand": {
+      "type": "string",
+      "description": "Code Review Graph's incremental-update command, taking a file path argument, e.g. 'npx code-review-graph update'"
+    },
+    "sourceGlobs": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Shell glob patterns identifying source files worth graph-indexing. If empty, every edited file is passed to graphUpdateCommand."
+    },
+    "protectedPaths": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Shell glob patterns for paths requiring explicit human approval before Write/Edit, e.g. 'supabase/migrations/*', '*.lock', 'generated/*'"
+    },
+    "issueTracker": {
+      "type": "string",
+      "description": "Human-readable note on the tracker chosen during ADAPT, e.g. 'GitHub issues labeled plan/<slug>; fetch with gh issue list --label plan/<slug>' or 'local files in docs/plans/<slug>/issues/'"
+    }
+  },
+  "required": ["testAndLintCommand"]
+}

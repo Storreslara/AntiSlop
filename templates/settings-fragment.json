@@ -1,0 +1,13 @@
+{
+  "_comment": "Plugins cannot ship settings.json - this fragment is MERGED into the project's .claude/settings.json by setup-personas, never overwritten wholesale. The default teammate model has no reliable settings key as of this plugin's version pin (>=2.1.178) - set it by hand via /config after install. The agent-teams flag is experimental.",
+  "agent": "orchestrator",
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "__REPLACE_WITH_REAL_TEST_BUILD_LINT_GIT_COMMANDS__",
+      "__REPLACE_WITH_GRAPH_INCREMENTAL_UPDATE_COMMAND__"
+    ]
+  }
+}

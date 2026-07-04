@@ -1,0 +1,9 @@
+{
+  "name": "seb-personas",
+  "version": "0.1.0",
+  "description": "Six-persona Claude Code orchestrator system (explorer/planner/lead-programmer/repo-historian/researcher/reviewer) plus the coding-discipline skill and enforcement hooks. Requires Claude Code >=2.1.178 (nested subagent spawning + current teams-cleanup behavior).",
+  "author": {
+    "name": "Sebastian Torres Lara"
+  },
+  "keywords": ["multi-agent", "orchestrator", "code-review", "subagents"]
+}
