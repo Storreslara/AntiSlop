@@ -17,6 +17,24 @@ removed in v2.1.178 (team cleanup is automatic from that version on). Earlier
 versions are not supported by this plugin — there is no degraded-mode
 fallback.
 
+## Personas
+
+| Persona | Model | Required? | What it does |
+|---|---|---|---|
+| `orchestrator` | inherit | Always | Thin router/main agent. Never implements, never loads persona skills — routes requests to the right persona and synthesizes results briefly. |
+| `explorer` | haiku | Always | Stateless code cartographer. Answers structural questions (where's X defined, what calls Y, blast radius of a change) via the Code Review Graph, returning distilled answers, not raw dumps. The one persona every other persona defers to for structural facts. |
+| `lead-programmer` | sonnet | Always | Executes an approved plan step by step, TDD-first, with surgical diffs. Makes small conventional commits as it goes; reports "ready-for-review" when done, never grades its own work. |
+| `planner` | opus | Opt-in | Turns ambiguous goals into precise plans with machine-checkable acceptance criteria. Explores first, never writes production code, slices approved plans into issues. |
+| `repo-historian` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs — the curated "why" layer the graph can't derive. Never touches source code. |
+| `reviewer` | opus | Opt-in (see below) | Independent, adversarial verifier — the Writer/Reviewer split. Did not write the code under review, can't edit it, only returns PASS/FAIL with reasons. **This is the system's core safety property**; skipping it needs an explicit confirmation during setup. |
+| `researcher` | sonnet | Opt-in, project-scoped only | Bridges academic literature and engineering via an arXiv MCP (or WebSearch fallback) — paper discovery, deep-dive summaries, technique translation briefs for the planner. Not a plugin agent (see below) since plugin agents ignore `mcpServers`. |
+
+`explorer` and `lead-programmer` are the minimum viable loop; `orchestrator`
+is always the main agent. Everything else is selected per-project by
+`setup-personas` (see Install below). There's also an `start-feature-team`
+command for agent-teams mode (the same personas as concurrent teammates
+instead of sequential subagents) — off by default, a deliberate gear.
+
 ## Install
 
 **Local testing (do this first, on a scratch repo):**
