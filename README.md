@@ -207,6 +207,13 @@ lever, not a setting).
   and stay live). Version-stamp comments + `--update` mode + the
   `SessionStart` drift check close that gap without needing every user to
   remember to check manually.
+- **`AskUserQuestion` is unavailable to subagents, even if listed in their
+  `tools:`** — confirmed against the Claude Code docs, not assumed. This is
+  why the planner returns plain-text "Open Questions" instead of asking
+  interactively, and why the *orchestrator* (which runs as the main session,
+  not a subagent) is the one that has `AskUserQuestion` in its tools and
+  turns those open questions into a real structured prompt when they reduce
+  to discrete choices.
 - **Known limitations, not silently papered over**: the graph-update and
   lint hooks only read `tool_input.file_path`, so `MultiEdit`'s array form
   and `NotebookEdit` aren't matched. The protected-paths hook only gates the

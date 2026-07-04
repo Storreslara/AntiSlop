@@ -3,6 +3,25 @@
 All notable changes to the seb-personas plugin are recorded here. Dates are
 ISO (YYYY-MM-DD).
 
+## [0.2.1] - 2026-07-04
+
+### Fixed
+- The orchestrator relayed the planner's "Open Questions" as plain
+  conversational text with no structured mechanism, even though it runs as
+  the main session (not a subagent) and can actually use `AskUserQuestion`.
+  Confirmed via docs that subagents (including the planner itself) can never
+  use `AskUserQuestion` regardless of tools list — this was the correct
+  place to wire it in, and wasn't. Added `AskUserQuestion` to
+  `orchestrator.md`'s tools and updated its relay instruction to use it for
+  questions that reduce to discrete choices.
+
+### Confirmed unchanged (a deliberate choice, not an oversight)
+- `planner.md`'s grill-me trigger stays gated on "for any non-trivial task"
+  rather than becoming unconditional — the orchestrator's routing table
+  already filters out trivial work before it reaches the planner, so the
+  gate is mostly redundant in practice but intentionally left as a second
+  line of defense.
+
 ## [0.2.0] - 2026-07-04
 
 Bug fixes plus a modularity/update-mechanism rebuild, prompted by a

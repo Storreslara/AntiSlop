@@ -1,6 +1,6 @@
 {
   "name": "seb-personas",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Modular persona-based Claude Code orchestrator system (explorer/lead-programmer are core; planner/repo-historian/reviewer/researcher are optional, selected per-project) plus the coding-discipline skill and enforcement hooks. Requires Claude Code >=2.1.178 (nested subagent spawning + current teams-cleanup behavior).",
   "author": {
     "name": "Sebastian Torres Lara"
