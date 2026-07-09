@@ -108,7 +108,7 @@ version is behind the plugin's current version.
 |---|---|
 | Persona agents: orchestrator, explorer, lead-programmer (always); planner, repo-historian, reviewer (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
-| `setup-personas` skill (the ADAPT flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md |
+| `setup-personas` skill (the ADAPT flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, not imported into CLAUDE.md — only injected by `session-start.sh`) |
 | 6 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team` command | wiki / CONTEXT.md / docs/adr seeding |
 
@@ -131,14 +131,15 @@ Three things to check depending on what it does:
 the system from a project:
 - `.claude/agents/*.md` (the copied persona files)
 - `.claude/persona-protocol.md`
+- `.claude/protocol-digest.md`
 - `.claude/persona-config.json`
 - `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `repo-historian` was selected)
 - `.claude/settings.json`'s `"agent": "orchestrator"` key, the
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it
   added
 - The `@.claude/persona-protocol.md` line in CLAUDE.md
-- `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`
-  (also in `.gitignore` — safe to delete)
+- `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`,
+  `.claude/wip-audit.log` (also in `.gitignore` — safe to delete)
 - `/plugin uninstall seb-personas` to remove the plugin itself
 
 ## Cost
@@ -190,6 +191,23 @@ lever, not a setting).
   write production code" and researcher's restricted tool list are therefore
   instruction-enforced, not mechanically enforced, for personas with memory.
   Noted once in the shared protocol rather than caveated in every file.
+- **Behavioral drift — an agent quietly stops following its own
+  instructions as a session runs long — is fought with mechanism where
+  possible, not more prose to remember.** `maxTurns` caps (explorer=10,
+  planner=30, reviewer=30) already bound the highest-drift sessions by
+  length; the orchestrator's main session and the lead-programmer are
+  deliberately uncapped and are correspondingly the biggest open drift
+  surface. `session-start.sh` now re-injects a short
+  `.claude/protocol-digest.md` via `additionalContext`, but only on
+  `source: resume` and `source: compact` — never `startup`/`clear`, where
+  the full protocol is already fresh — because compaction/resume is exactly
+  when a long session is likely to have summarized the protocol away. This
+  is mechanical *timing* of when the rules reappear, not a bigger dose of
+  the same static context. The WIP sentinel got a matching hardening: a bare
+  `touch` no longer bypasses the stop-gate — the sentinel must contain a
+  reason, which `stop-gate.sh` logs to `.claude/wip-audit.log` before
+  honoring it, closing a silent, unauditable escape hatch from the one
+  mechanical gate that existed.
 - **FLAT MODE (pre-2.1.172 nesting) and the manual TeamCreate/TeamDelete
   cleanup branch (pre-2.1.178) were deleted outright**, not kept as a
   fallback. Maintaining two wiring paths for versions this plugin doesn't

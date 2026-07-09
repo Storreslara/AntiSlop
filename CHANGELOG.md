@@ -3,6 +3,82 @@
 All notable changes to the seb-personas plugin are recorded here. Dates are
 ISO (YYYY-MM-DD).
 
+## [0.3.0] - 2026-07-09
+
+Behavioral-drift hardening, prompted by an audit of which shared-protocol
+rules were mechanically enforced vs. instruction-only, reviewed and
+reprioritized by a second model pass.
+
+### Added
+- `templates/protocol-digest.md`: a short (~15-line) reminder of the
+  highest-drift-risk rules (explorer routing, review ownership, the 2-FAIL
+  cap, WIP sentinel legitimacy, the memory-grant caveat). `setup-personas`
+  copies it to `.claude/protocol-digest.md`, version-stamped like
+  `persona-protocol.md`, but does NOT import it into CLAUDE.md.
+- `session-start.sh` now re-injects that digest via `additionalContext`, but
+  only when the hook's `source` field is `resume` or `compact` — never
+  `startup`/`clear`, where the full protocol is already freshly in context.
+  This targets the exact moments a long-running session (the orchestrator's
+  uncapped main session especially) is most likely to have summarized the
+  protocol away. Mechanical timing of when the rules reappear, not more
+  static prose to hope survives compaction.
+- `hooks/scripts/reviewer-route-gate.sh`: a `PreToolUse` hook (matcher
+  `Agent`) mechanically blocking lead-programmer from spawning the reviewer
+  directly, closing the payload-attribution question this same section
+  previously deferred (see below). Confirmed empirically, not assumed: a
+  nested `Agent`-tool call's `PreToolUse` payload carries the calling
+  subagent's `agent_type`/`agent_id` alongside the call's own
+  `tool_input.subagent_type`, the same attribution `stop-gate.sh` already
+  relies on for `SubagentStop`. Registered in `hooks.json` alongside
+  `protected-paths.sh`. Only covers a direct `Agent`-tool spawn attempt, not
+  `SendMessage` to an existing reviewer teammate in agent-teams mode — a
+  different tool with a different payload shape, out of scope here.
+
+### Changed
+- `lead-programmer.md`: `tdd` and `diagnose` moved out of the `skills:`
+  frontmatter (which preloads a skill's full body into every spawn
+  regardless of whether the task needs it) and are now invoked on demand via
+  the `Skill` tool instead — the body's "TDD-first" bullet is the trigger.
+  `coding-discipline` stays preloaded (small, applies to every task). This
+  was the largest identified per-spawn token cost on the system's
+  highest-frequency persona; a one-line fix doesn't need the full TDD/diagnose
+  choreography resident before it's asked for. The review-ownership bullet is
+  now one sentence instead of six lines, since `reviewer-route-gate.sh` (see
+  Added) backs it mechanically instead of by instruction alone. A
+  maintainer-facing comment explaining the old `skills:`/`tools:` rationale
+  was cut from the body (see this entry instead) now that the rationale it
+  described no longer applies. Added a short "keep memory bounded" bullet
+  (index file + topic files + periodic pruning) since `memory: project` notes
+  otherwise accumulate with nothing pruning them.
+- `setup-personas` step 3's placeholder-substitution instructions updated:
+  `lead-programmer.md`'s `<MATTPOCOCK:tdd>`/`<MATTPOCOCK:diagnose>`
+  placeholders now live in its body prose instead of its `skills:`
+  frontmatter (per the change above); `planner.md`/`repo-historian.md` are
+  unaffected. Step 10's hook-verification list gained a
+  `reviewer-route-gate.sh` dry-run check matching the pattern used for the
+  other hooks.
+- The WIP sentinel (`.claude/wip-handoff.<agent-id>`) now requires non-empty
+  content. A bare `touch` used to bypass the stop-gate silently and
+  invisibly; `stop-gate.sh` now rejects empty sentinels (deletes but doesn't
+  honor them, falling through to the normal check) and logs the stated
+  reason plus a timestamp to `.claude/wip-audit.log` before honoring a valid
+  one. Closes a silent escape hatch from the system's one blocking gate.
+  `.claude/wip-audit.log` is gitignored by `setup-personas` like the other
+  runtime-only files.
+
+### Confirmed unchanged / deliberately deferred
+- The payload-attribution probe from this section's earlier draft is
+  resolved (see `reviewer-route-gate.sh` under Added) — `PreToolUse` does
+  carry caller `agent_type`. That unblocks a spawn-matrix hook for review
+  ownership (shipped) but a per-persona write-path allowlist is a separate,
+  larger follow-up not attempted here.
+- The 2-FAIL cap stays instruction-only in subagent-orchestrator mode for
+  now; the proposed fix (reviewer writes a `.fail` marker mirroring the
+  existing PASS-marker pattern) needs a stable per-unit key that
+  subagent-orchestrator mode doesn't currently have.
+- No `maxTurns` cap was added to `lead-programmer` yet, despite being the
+  other uncapped, long-running persona alongside the orchestrator.
+
 ## [0.2.1] - 2026-07-04
 
 ### Fixed

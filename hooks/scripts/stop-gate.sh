@@ -10,7 +10,13 @@
 #  0) stop_hook_active guard - never re-trigger ourselves in a loop.
 #  1) SubagentStop for an agent not in gatedAgents -> ALLOW immediately
 #     (cheap/high-frequency personas like explorer never pay this cost).
-#  2) per-agent WIP sentinel -> delete it, ALLOW.
+#  2) per-agent WIP sentinel -> if it holds a non-empty reason, log it to
+#     .claude/wip-audit.log, delete it, ALLOW. An empty sentinel (bare
+#     `touch`, no stated reason) is rejected: deleted but NOT honored, so it
+#     falls through to the normal check instead of silently bypassing it.
+#     This is a friction/audit-trail fix, not a guarantee against abuse - a
+#     determined agent can still write a bogus reason - but it closes the
+#     silent, invisible bare-touch bypass that existed before.
 #  3) tree clean AND no commits since this session's baseline -> ALLOW.
 #  4) otherwise run the configured test+lint command; non-zero exit -> BLOCK.
 # Step 3's baseline check closes a gap where a lead-programmer that commits
@@ -45,8 +51,15 @@ agent_id="${raw_agent_id//[^a-zA-Z0-9._-]/_}"
 sentinel="${project_dir}/.claude/wip-handoff.${agent_id}"
 
 if [ -f "$sentinel" ]; then
+  if [ -s "$sentinel" ]; then
+    reason="$(cat "$sentinel")"
+    printf '%s agent=%s reason=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$reason" \
+      >> "${project_dir}/.claude/wip-audit.log"
+    rm -f "$sentinel"
+    exit 0
+  fi
+  echo "WIP sentinel at ${sentinel} is empty - a reason is required (e.g. 'echo \"blocked on X\" > ${sentinel}'). Ignoring it and running the normal check instead." >&2
   rm -f "$sentinel"
-  exit 0
 fi
 
 dirty=false
@@ -75,7 +88,7 @@ check_cmd="$(jq -r '.testAndLintCommand // empty' "$config" 2>/dev/null || true)
 
 tmp_out="$(mktemp)"
 if ! (cd "$project_dir" && eval "$check_cmd") >"$tmp_out" 2>&1; then
-  echo "Test/lint check failed - fix before ending the turn, or 'touch ${sentinel}' with a stated reason if this is a legitimate mid-task pause (TDD red phase, blocked report, plan-is-wrong escalation)." >&2
+  echo "Test/lint check failed - fix before ending the turn, or 'echo \"<reason>\" > ${sentinel}' if this is a legitimate mid-task pause (TDD red phase, blocked report, plan-is-wrong escalation). The sentinel must contain a reason - an empty file is ignored." >&2
   cat "$tmp_out" >&2
   rm -f "$tmp_out"
   exit 2

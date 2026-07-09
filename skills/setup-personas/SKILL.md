@@ -96,10 +96,15 @@ gracefully without needing per-project text surgery. Same for
   it via the retrieval contract.
 - These install as a plugin, so their registered names are namespaced. Check
   the skill list and record the exact names.
-- **Substitute placeholders**: the copied `planner.md`, `lead-programmer.md`,
-  and `repo-historian.md` contain `<MATTPOCOCK:skill-name>` placeholders in
-  their `skills:` frontmatter — replace with the real namespaced names in the
-  project's copies (this is expected ADAPT substitution, not drift).
+- **Substitute placeholders**: the copied `planner.md` and `repo-historian.md`
+  contain `<MATTPOCOCK:skill-name>` placeholders in their `skills:`
+  frontmatter — replace with the real namespaced names in the project's
+  copies (this is expected ADAPT substitution, not drift). `lead-programmer.md`
+  is different: `tdd` and `diagnose` are deliberately NOT in its `skills:`
+  frontmatter (they're invoked on demand via the `Skill` tool instead of
+  preloaded every spawn, for token efficiency — see its body's "TDD-first"
+  bullet), so its `<MATTPOCOCK:tdd>`/`<MATTPOCOCK:diagnose>` placeholders live
+  in that body prose instead. Substitute them there the same way.
 
 ## 4. Code Review Graph (install as a PROJECT skill, never global MCP)
 
@@ -174,6 +179,10 @@ on — don't write it freehand and hope.
 - Copy `templates/persona-protocol.md` from the plugin into this project's
   `.claude/persona-protocol.md` verbatim (it's role-agnostic; nothing to
   fill in) and version-stamp it like step 2.
+- Copy `templates/protocol-digest.md` verbatim into this project's
+  `.claude/protocol-digest.md` and version-stamp it the same way. This is
+  what `session-start.sh` re-injects on `resume`/`compact` — don't skip it,
+  the hook silently no-ops without it (no error, just no re-anchor).
 - Add exactly one line to CLAUDE.md: `@.claude/persona-protocol.md` — this is
   the only channel that reaches both subagents and agent-teams teammates
   automatically, which is why the shared protocol lives here instead of being
@@ -201,8 +210,9 @@ Note in your report: the default teammate model has no reliable settings key
   selected — this is what makes the reviewer's PASS-marker `touch` succeed on
   the very first agent-teams run instead of erroring on a missing directory.
 - Append to this project's `.gitignore`: `.claude/reviewed/`,
-  `.claude/wip-handoff.*`, and `.claude/.session-baseline.*` — none of these
-  should be committed.
+  `.claude/wip-handoff.*`, `.claude/.session-baseline.*`, and
+  `.claude/wip-audit.log` — none of these should be committed (the audit log
+  is a growing local operational record, not project documentation).
 
 ## 10. Hook verification (sandboxed — do not leave the repo red or trap yourself)
 
@@ -214,8 +224,19 @@ On a throwaway branch:
   scoping (read from `persona-config.json`, not hardcoded in `hooks.json`) is
   working and won't strangle the cheap, high-frequency personas.
 - Introduce a failing check, end a lead-programmer-style turn, confirm
-  BLOCK; create `.claude/wip-handoff.<agent-id>`, confirm ALLOW and that the
-  sentinel is deleted.
+  BLOCK; `touch .claude/wip-handoff.<agent-id>` (empty, no reason), confirm
+  it is REJECTED (deleted, but the BLOCK still fires) — this proves the
+  empty-sentinel bypass is actually closed, not just documented as closed.
+  Then `echo "test reason" > .claude/wip-handoff.<agent-id>`, confirm ALLOW,
+  the sentinel is deleted, and the reason appears as a new line in
+  `.claude/wip-audit.log`.
+- Pipe a synthetic `{"session_id":"test","source":"resume"}` into
+  `session-start.sh` directly (real compaction/resume isn't reliably
+  triggerable inside a sandboxed verification run) and confirm the output
+  JSON's `additionalContext` contains `.claude/protocol-digest.md`'s content.
+  Repeat with `"source":"startup"` and confirm additionalContext is empty
+  (no version drift, no digest) — the digest must NOT appear on a fresh
+  start, only resume/compact.
 - Test the protected-paths hook with a dry write against one of the
   configured `protectedPaths` patterns; confirm BLOCK with the human-approval
   message (this specifically re-verifies the path-anchoring fix — a pattern
@@ -224,6 +245,11 @@ On a throwaway branch:
 - If `reviewer` was selected: run one task named `impl:*` through to a
   reviewer PASS in agent-teams mode and confirm the completion marker write
   succeeds (no "No such file or directory" error) thanks to step 9's `mkdir`.
+- Pipe a synthetic `{"agent_type":"lead-programmer","tool_input":{"subagent_type":"reviewer"}}`
+  into `reviewer-route-gate.sh` directly and confirm BLOCK; repeat with
+  `subagent_type":"explorer"` and with `"agent_type":"orchestrator"` (target
+  `reviewer`) and confirm both ALLOW — proves the gate only fires for the
+  specific lead-programmer→reviewer pair, not every Agent-tool call.
 - Revert the branch completely. Your final turn must end with the repo clean
   and all sentinels/markers removed.
 
@@ -239,12 +265,13 @@ automatically via `${CLAUDE_PLUGIN_ROOT}`, but the copied agent files and
 - Read this project's `persona-config.json` (`personaSelection`,
   `pluginVersion`) and the plugin's current `plugin.json` version. If they
   match, report "already current" and stop.
-- For each version-stamped file in `.claude/agents/` and
-  `.claude/persona-protocol.md`: re-derive what a fresh copy at the CURRENT
-  plugin version would look like, re-applying the same deterministic
-  substitutions recorded in `persona-config.json` (mattpocock skill names,
-  graph skill name, persona selection, any model-tier edit you can detect
-  was intentional vs. a stale stamp).
+- For each version-stamped file in `.claude/agents/`,
+  `.claude/persona-protocol.md`, and `.claude/protocol-digest.md`: re-derive
+  what a fresh copy at the CURRENT plugin version would look like,
+  re-applying the same deterministic substitutions recorded in
+  `persona-config.json` (mattpocock skill names, graph skill name, persona
+  selection, any model-tier edit you can detect was intentional vs. a stale
+  stamp).
 - If the project's actual file is byte-identical to that re-derivation,
   overwrite it and bump its stamp — safe, no local customization existed
   beyond the recorded substitutions.
