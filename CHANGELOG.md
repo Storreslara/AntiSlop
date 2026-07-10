@@ -3,21 +3,13 @@
 All notable changes to the seb-personas plugin are recorded here. Dates are
 ISO (YYYY-MM-DD).
 
-## [0.4.0] - 2026-07-09
+## [0.4.1] - 2026-07-10
+
+Prompted by walking a real project (`AWS_Learning_Sim`) through install and
+catching drift between this repo's design assumptions and how its two
+third-party dependencies actually behave today.
 
 ### Added
-- `milestone-auditor` persona: an adversarial auditor of the *plan*, not the
-  code — runs at milestone boundaries once every unit in it has already
-  reviewer-PASSed, hunting for premise gaps and goal drift the reviewer
-  structurally can't see. No PASS/FAIL, no override authority, no Write/Edit
-  — only a findings list relayed to the human. Wired into README, the
-  `persona-config` schema, and `setup-personas`'s selection/placeholder-
-  substitution/mattpocock-skill steps.
-- `orchestrator.md`: a Plan Mode gate. The harness's built-in Plan Mode ships
-  its own Explore/Plan workflow that silently overrides the persona routing
-  table and bypasses the Writer/Reviewer split for the whole turn; the
-  orchestrator now recognizes this, exits Plan Mode, and re-routes through
-  the normal pipeline instead.
 - `seb-personas-setup` runnable npm package (`package.json` + `bin/cli.js`,
   `"private": true` — not published to the npm registry, clone + run via
   `npx /path/to/clone`): scaffolds the mechanical half of ADAPT
@@ -38,15 +30,6 @@ ISO (YYYY-MM-DD).
   actually wrote, not a guessed schema.
 
 ### Fixed
-- `commands/start-feature-team.md`: closed several gaps found in review —
-  the `impl:<slug>` task-naming convention the `TaskCompleted` gate depends
-  on was never actually instructed; the no-reviewer/crashed-reviewer path
-  could deadlock the task list permanently; the reviewer was never told the
-  exact task id needed for its PASS marker to match; FAIL routing didn't
-  reference the shared protocol's 2-FAIL cap; the explorer-teammate
-  framing contradicted the file's own header comment about subagent
-  spawning; the native-plan-approval gate was unverifiable and is now
-  secondary to the always-available prose rule.
 - README's "real install" instructions used a generic `<owner>/<repo>`
   placeholder and a hardcoded local `~/seb_claude_setup` path in the
   `--plugin-dir` example; now names the actual GitHub slug
@@ -69,6 +52,33 @@ ISO (YYYY-MM-DD).
   scoped `mcpServers:` frontmatter (the same trick `researcher.md` uses for
   its arXiv MCP) and step 4 explicitly re-scopes the connection there
   instead of leaving the tool's project-wide registration in place.
+
+## [0.4.0] - 2026-07-09
+
+### Added
+- `milestone-auditor` persona: an adversarial auditor of the *plan*, not the
+  code — runs at milestone boundaries once every unit in it has already
+  reviewer-PASSed, hunting for premise gaps and goal drift the reviewer
+  structurally can't see. No PASS/FAIL, no override authority, no Write/Edit
+  — only a findings list relayed to the human. Wired into README, the
+  `persona-config` schema, and `setup-personas`'s selection/placeholder-
+  substitution/mattpocock-skill steps.
+- `orchestrator.md`: a Plan Mode gate. The harness's built-in Plan Mode ships
+  its own Explore/Plan workflow that silently overrides the persona routing
+  table and bypasses the Writer/Reviewer split for the whole turn; the
+  orchestrator now recognizes this, exits Plan Mode, and re-routes through
+  the normal pipeline instead.
+
+### Fixed
+- `commands/start-feature-team.md`: closed several gaps found in review —
+  the `impl:<slug>` task-naming convention the `TaskCompleted` gate depends
+  on was never actually instructed; the no-reviewer/crashed-reviewer path
+  could deadlock the task list permanently; the reviewer was never told the
+  exact task id needed for its PASS marker to match; FAIL routing didn't
+  reference the shared protocol's 2-FAIL cap; the explorer-teammate
+  framing contradicted the file's own header comment about subagent
+  spawning; the native-plan-approval gate was unverifiable and is now
+  secondary to the always-available prose rule.
 
 ### Changed
 - Trimmed redundant/restated prose in `orchestrator.md` and
