@@ -14,7 +14,7 @@
     },
     "graphUpdateCommand": {
       "type": "string",
-      "description": "Code Review Graph's incremental-update command, taking a file path argument, e.g. 'npx code-review-graph update'"
+      "description": "Code Review Graph's incremental-update command, taking a file path argument, e.g. 'code-review-graph update' (a pip/pipx-installed CLI, not npx - verify the current command at ADAPT time)"
     },
     "sourceGlobs": {
       "type": "array",

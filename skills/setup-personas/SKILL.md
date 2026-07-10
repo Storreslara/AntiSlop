@@ -125,24 +125,45 @@ gracefully without needing per-project text surgery. Same for
   bullet), so its `<MATTPOCOCK:tdd>`/`<MATTPOCOCK:diagnose>` placeholders live
   in that body prose instead. Substitute them there the same way.
 
-## 4. Code Review Graph (install as a PROJECT skill, never global MCP)
+## 4. Code Review Graph (MCP server, scoped to explorer alone — never project-wide)
 
-- Get the current install command from the code-review-graph marketplace
-  listing (don't guess) and install it as a bare-named project skill into
-  `.claude/skills/code-review-graph/` — NOT via `claude mcp add`, NOT with
-  `enableAllProjectMcpServers`, and do not reference it from root CLAUDE.md.
-  Any of those drifts every persona into exactly the context bloat the
-  Explorer-as-a-service design exists to prevent. `explorer.md` as shipped
-  assumes the bare name `code-review-graph`; if the real registered name
-  differs, correct that one field in the project's copy.
-- Build the index once. Identify the incremental-update command and its
+The Code Review Graph (github.com/tirth8205/code-review-graph) installs
+itself as a pip/pipx package whose own `install` command is NOT a plain
+skill installer — check its current docs before running anything (its
+integration has changed shape before; don't assume this section stays
+accurate forever):
+- `pipx install code-review-graph` (or `pip install`, per its current docs).
+- `code-review-graph install --platform claude-code` — this auto-writes a
+  PROJECT-WIDE `.mcp.json` MCP server entry (every persona would inherit it
+  by default) AND generates `.claude/skills/code-review-graph/` containing
+  build-graph/review-delta/review-pr WORKFLOW skills (slash commands, not an
+  ad-hoc query interface).
+- **Do not leave the project-wide `.mcp.json` entry in place.** Extract that
+  MCP server's launch command (`uv run`/`uvx`/`poetry run`, whatever the tool
+  emitted) and inline it into the project's copy of `explorer.md`'s
+  `mcpServers:` frontmatter instead (replacing the
+  `<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>` placeholder) — the same
+  scoping trick used for the researcher's arXiv MCP in step 5. Then remove
+  or empty out the tool's project-wide `.mcp.json` registration so only the
+  explorer (not every persona) connects to it. This is the whole point of
+  this section: skipping this step silently reintroduces the context-bloat
+  problem the Explorer-as-a-service design exists to prevent.
+- The generated `.claude/skills/code-review-graph/*` workflow skills
+  (build-graph/review-delta/review-pr) are legitimate and can stay — they're
+  just not what the explorer calls; leave them for the user/other personas to
+  invoke directly if wanted, and don't wire them into `explorer.md`.
+- Build the index once (`code-review-graph build` or equivalent — check the
+  tool's current CLI). Identify the incremental-update command and its
   file-argument syntax — this becomes `graphUpdateCommand` in
   `.claude/persona-config.json` (see step 6).
 - Add the persistent store (SQLite db / index dir) to `.gitignore` unless you
   deliberately want a shared prebuilt index (if so, commit it and say so in
   your report).
 - Confirm it works: spawn the explorer with one real query (e.g. "what calls
-  `<some real function in this repo>`") and paste its answer in your report.
+  `<some real function in this repo>`") and paste its answer in your report
+  — confirm in that same check that the MCP connection is scoped to the
+  explorer (e.g. another persona's spawn does NOT list the graph's MCP tools)
+  and not leaking project-wide.
 
 ## 5. arXiv MCP (powers the researcher — only if selected in step 1)
 

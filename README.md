@@ -123,14 +123,19 @@ verification) still needs an LLM in the loop, so it still runs through
 `/setup-personas` afterward — this just replaces `/plugin marketplace add` +
 `/plugin install` with one `npx` call for the file-scaffolding part.
 
+Already have this repo cloned somewhere (e.g. from "Local testing" above)?
+Reuse that path — you don't need to clone it twice. Otherwise:
 ```
-git clone https://github.com/Storreslara/My_Claude_Stuff.git
-cd your-project
-npx /path/to/My_Claude_Stuff
+git clone https://github.com/Storreslara/My_Claude_Stuff.git ~/seb_claude_setup
 ```
 Same private-repo/collaborator/git-auth prerequisites as the plugin flow
-apply to the `git clone` step — this doesn't remove that requirement, it
-just swaps the installer.
+apply to this step — this doesn't remove that requirement, it just swaps the
+installer. Then, from inside whatever project you're adding personas to:
+```
+cd ~/your-project
+npx ~/seb_claude_setup
+```
+(substitute wherever you actually cloned it for `~/seb_claude_setup`).
 
 Prompts for optional personas the same way `setup-personas` step 1 does
 (reviewer requires typed `skip reviewer` confirmation to decline). Non-
@@ -150,13 +155,39 @@ refuses to run over an existing install (checks for
 `.claude/persona-config.json`) rather than risk clobbering local edits —
 re-run `/setup-personas --update` for that case instead.
 
-After it finishes, run `/setup-personas` inside Claude Code in that project
+**It can also kick off the two third-party installers for you**, since
+you're already at a real terminal when you run this — it just inherits your
+stdio so their own interactive prompts show up normally:
+- Prompts (or `--with-mattpocock`) to run `npx skills@latest add
+  mattpocock/skills` right there — you still pick the skills yourself in its
+  interactive picker; the CLI just launches it.
+- Prompts (or `--with-graph`) to run `pipx install code-review-graph` +
+  `code-review-graph install --platform claude-code`. **This does NOT finish
+  the graph wiring** — that tool registers itself project-wide in `.mcp.json`
+  by default, which every persona would inherit (the context-bloat problem
+  this system avoids elsewhere). The CLI deliberately stops after the install
+  and leaves the `.mcp.json`→`explorer.md` rescoping to `/setup-personas` step
+  4, since that needs to inspect what actually got written, not a guessed
+  schema.
+- Both default to skipped under `--yes`/`--personas=` (scripted runs) unless
+  you also pass their `--with-*` flag explicitly — they're real installs
+  with real side effects, not pure file copies.
+
+After it finishes, start Claude Code in that project and run `/setup-personas`
 to fill in the parts that need a real repo scan (test/lint commands,
 protected paths), install third-party skills, build the Code Review Graph,
-and run hook verification. Nothing here changes how personas load at
-runtime — they're project-local `.claude/agents/*.md` files either way,
-which is exactly what the plugin flow ends up copying too (see "Real
-install" above on bare-name resolution).
+and run hook verification:
+```
+cd ~/your-project
+claude
+```
+then, at the prompt:
+```
+/setup-personas
+```
+Nothing here changes how personas load at runtime — they're project-local
+`.claude/agents/*.md` files either way, which is exactly what the plugin flow
+ends up copying too (see "Real install" above on bare-name resolution).
 
 ## What ships in the plugin vs. what ADAPT writes per-project
 
@@ -224,7 +255,13 @@ lever, not a setting).
   researcher isn't a plugin agent (it's a template copied in project-scoped),
   and why hooks/settings are bundled in the plugin but their *effective*
   config always comes from a project-local file the generic scripts read at
-  runtime.
+  runtime. `explorer.md` leans on the same fact for its Code Review Graph MCP
+  connection: it's shipped as a plugin agent, but step 2 of `setup-personas`
+  always ADAPT-copies it into `.claude/agents/` anyway (bare-name plugin
+  agents don't resolve — see Install above), so its `mcpServers:` frontmatter
+  takes effect on the project-scoped copy the same way researcher's does,
+  scoping the graph connection to the explorer alone instead of every
+  persona.
 - **"Teammates cannot spawn subagents" — an assumption in an earlier draft of
   this system — is false.** The real agent-teams restriction is on nested
   *teams*, not on ordinary subagent spawning. Earlier drafts had every
@@ -308,9 +345,15 @@ external skills/tools installed at ADAPT time:
   (used by `repo-historian`).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** —
   the tree-sitter/SQLite structural graph the `explorer` persona queries for
-  blast-radius and dependency answers. Installed as a project-scoped skill,
-  never a global MCP server (see "Why this shape" above for why that
-  distinction matters here).
+  blast-radius and dependency answers. It's an MCP server (pip/pipx-
+  installed); its own `install` command registers project-wide by default,
+  which `setup-personas` step 4 deliberately undoes, re-scoping the
+  connection to `explorer.md`'s own `mcpServers:` frontmatter instead so it
+  doesn't leak into every persona's context (see "Why this shape" above for
+  why that distinction matters here). The tool also generates
+  `.claude/skills/code-review-graph/` build-graph/review-delta/review-pr
+  workflow skills — those are separate slash commands, not what the explorer
+  itself calls.
 - **[andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)**
   — the local `coding-discipline` skill (`skills/coding-discipline/SKILL.md`)
   is adapted from Andrej Karpathy's public observations on common LLM coding

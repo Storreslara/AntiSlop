@@ -18,6 +18,24 @@ ISO (YYYY-MM-DD).
   table and bypasses the Writer/Reviewer split for the whole turn; the
   orchestrator now recognizes this, exits Plan Mode, and re-routes through
   the normal pipeline instead.
+- `seb-personas-setup` runnable npm package (`package.json` + `bin/cli.js`,
+  `"private": true` — not published to the npm registry, clone + run via
+  `npx /path/to/clone`): scaffolds the mechanical half of ADAPT
+  (`.claude/agents/`, hooks, settings.json merge, protocol/digest copy,
+  CLAUDE.md wiring, `.gitignore`), replacing `/plugin marketplace add` +
+  `/plugin install` with one `npx` call for the file-scaffolding part (same
+  clone/collaborator/git-auth prerequisites still apply). Deliberately stops
+  short of the judgment-driven half (repo-scan for test/lint commands,
+  graph/MCP wiring, hook verification) — copies `setup-personas`/
+  `coding-discipline` in project-scoped and tells the user to run
+  `/setup-personas` next to finish. Refuses to run over an existing
+  `persona-config.json` rather than risk clobbering local edits. Also
+  optionally launches the `mattpocock/skills` and `code-review-graph`
+  installers itself (`--with-mattpocock`/`--with-graph`, inherited stdio so
+  their own interactive prompts work normally) — it stops short of the
+  `.mcp.json`→`explorer.md` rescoping (see Fixed below), leaving that to
+  `/setup-personas` step 4 since it needs to inspect what the installer
+  actually wrote, not a guessed schema.
 
 ### Fixed
 - `commands/start-feature-team.md`: closed several gaps found in review —
@@ -29,22 +47,6 @@ ISO (YYYY-MM-DD).
   framing contradicted the file's own header comment about subagent
   spawning; the native-plan-approval gate was unverifiable and is now
   secondary to the always-available prose rule.
-
-- `seb-personas-setup` runnable npm package (`package.json` + `bin/cli.js`,
-  `"private": true` — not published to the npm registry, clone + run via
-  `npx /path/to/clone`): scaffolds the mechanical half of ADAPT
-  (`.claude/agents/`, hooks, settings.json merge, protocol/digest copy,
-  CLAUDE.md wiring, `.gitignore`), replacing `/plugin marketplace add` +
-  `/plugin install` with one `npx` call for the file-scaffolding part (same
-  clone/collaborator/git-auth prerequisites still apply). Deliberately stops
-  short of the judgment-driven half (repo-scan for test/lint commands,
-  third-party skill installs, graph/MCP wiring, hook verification) — copies
-  `setup-personas`/`coding-discipline` in project-scoped and tells the user
-  to run `/setup-personas` next to finish. Refuses to run over an existing
-  `persona-config.json` rather than risk
-  clobbering local edits.
-
-### Fixed
 - README's "real install" instructions used a generic `<owner>/<repo>`
   placeholder and a hardcoded local `~/seb_claude_setup` path in the
   `--plugin-dir` example; now names the actual GitHub slug
@@ -57,6 +59,16 @@ ISO (YYYY-MM-DD).
   shell and leave stale `<MATTPOCOCK:*>` placeholders with no error
   surfaced. Now the agent tells the human which skills to pick and asks
   them to run it, then verifies the installed skill list itself afterward.
+- `explorer.md` and `setup-personas/SKILL.md` step 4 assumed the Code Review
+  Graph installs as a bare-named project skill queried conversationally. Its
+  real current install (`code-review-graph install --platform claude-code`)
+  is an MCP server that registers itself PROJECT-WIDE in `.mcp.json` by
+  default (every persona would inherit it — the exact context-bloat problem
+  this system was designed to avoid) plus three unrelated build-graph/
+  review-delta/review-pr workflow skills. `explorer.md` now carries its own
+  scoped `mcpServers:` frontmatter (the same trick `researcher.md` uses for
+  its arXiv MCP) and step 4 explicitly re-scopes the connection there
+  instead of leaving the tool's project-wide registration in place.
 
 ### Changed
 - Trimmed redundant/restated prose in `orchestrator.md` and

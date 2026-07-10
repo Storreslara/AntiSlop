@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const { spawnSync } = require('child_process');
 
 const PKG_ROOT = path.resolve(__dirname, '..');
 const CWD = process.cwd();
@@ -101,6 +102,15 @@ async function askYesNo(rl, question, defaultYes) {
   const answer = (await prompt(rl, `${question} ${suffix}`)).trim().toLowerCase();
   if (answer === '') return defaultYes;
   return answer === 'y' || answer === 'yes';
+}
+
+// For standalone yes/no prompts after the main persona-selection readline
+// interface (if any) has already been closed.
+async function askYesNoStandalone(question) {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  const answer = await askYesNo(rl, question, false);
+  rl.close();
+  return answer;
 }
 
 async function main() {
@@ -280,6 +290,61 @@ async function main() {
   };
   fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(personaConfig, null, 2) + '\n');
   console.log('  .claude/persona-config.json written (skeleton — fields blank until /setup-personas fills them in from a real repo scan)');
+
+  const scriptedMode = yesToAll || Boolean(personasFlag);
+  const wantMattpocock = args.includes('--with-mattpocock')
+    ? true
+    : scriptedMode
+    ? false
+    : await askYesNoStandalone(
+        '\nRun the mattpocock/skills installer now (npx skills@latest add mattpocock/skills)? ' +
+          'It opens an interactive picker in this same terminal — you select the skills yourself.'
+      );
+  if (wantMattpocock) {
+    console.log('\nRunning: npx skills@latest add mattpocock/skills (interactive — follow the prompts)');
+    const result = spawnSync('npx', ['skills@latest', 'add', 'mattpocock/skills'], {
+      stdio: 'inherit',
+      cwd: CWD,
+    });
+    if (result.status !== 0) {
+      console.log('  mattpocock/skills installer exited non-zero — re-run it yourself if that was unintended.');
+    }
+    console.log(
+      '  Done. /setup-personas still needs to record which skills you picked and substitute the ' +
+        '<MATTPOCOCK:*> placeholders in the copied persona files — it cannot be inferred from here.'
+    );
+  } else if (!scriptedMode) {
+    console.log('  Skipped — run it yourself later, or re-run this CLI with --with-mattpocock.');
+  }
+
+  const wantGraph = args.includes('--with-graph')
+    ? true
+    : scriptedMode
+    ? false
+    : await askYesNoStandalone(
+        '\nInstall the Code Review Graph now (pipx install code-review-graph, then ' +
+          'code-review-graph install --platform claude-code)? Requires pipx/Python.'
+      );
+  if (wantGraph) {
+    console.log('\nRunning: pipx install code-review-graph');
+    const pipx = spawnSync('pipx', ['install', 'code-review-graph'], { stdio: 'inherit', cwd: CWD });
+    if (pipx.error || pipx.status !== 0) {
+      console.log('  pipx install failed or pipx is not installed — install pipx/Python first, then re-run with --with-graph.');
+    } else {
+      console.log('\nRunning: code-review-graph install --platform claude-code');
+      spawnSync('code-review-graph', ['install', '--platform', 'claude-code'], { stdio: 'inherit', cwd: CWD });
+      console.log(
+        '  Installed. IMPORTANT: this tool registers itself PROJECT-WIDE in .mcp.json by default — ' +
+          'every persona would inherit it, which is exactly the context-bloat problem this system ' +
+          'avoids elsewhere. This CLI deliberately does NOT edit .mcp.json or explorer.md\'s ' +
+          '`mcpServers:` placeholder for you (it would mean guessing at a schema this CLI hasn\'t ' +
+          'verified against what got written). /setup-personas step 4 does that rescoping for real — ' +
+          'run it next, don\'t skip straight past this.'
+      );
+    }
+  } else if (!scriptedMode) {
+    console.log('  Skipped — /setup-personas step 4 covers this if you want it done via the LLM-driven flow instead.');
+  }
 
   console.log(
     '\nDone with the mechanical scaffolding. This CLI intentionally stops here — ' +
