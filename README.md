@@ -70,10 +70,11 @@ work:
   permission/auth error, not a "not found" error — if that happens, that's
   what to check first.
 
-**Alternative: npm-based install, no GitHub collaborator access needed.** If
-you'd rather skip the private-repo/git-auth friction above entirely, see
-"npm install (no plugin, no GitHub auth)" below — it scaffolds the same files
-project-locally via a published npm package instead of the plugin mechanism.
+**Alternative: `npx`-based install**, if you'd rather scaffold files directly
+instead of going through `/plugin marketplace add` + `/plugin install` — same
+private-repo/collaborator/git-auth requirements as above (it still needs a
+clone), just a different tool doing the copying. See "npx install (clone +
+run, no marketplace)" below.
 
 ## Prerequisites (install before using this plugin)
 
@@ -110,22 +111,27 @@ version — diffing before overwriting, never silently clobbering a local
 edit. A `SessionStart` hook warns automatically when a project's adapted
 version is behind the plugin's current version.
 
-## npm install (no plugin, no GitHub auth)
+## npx install (clone + run, no marketplace)
 
-This repo doubles as an npm package (`seb-personas-setup`) so a project can
-skip the private-repo/collaborator/git-auth friction of the plugin flow
-entirely. It's a **hybrid**, not a replacement for `setup-personas` — the CLI
-only does the mechanical half of ADAPT (file copying, version-stamping,
-settings merge); the judgment-driven half (repo-specific test/lint commands,
-protected paths, third-party skill installs, graph/MCP wiring, CLAUDE.md
-pruning, hook verification) still needs an LLM in the loop, so it still runs
-through `/setup-personas` afterward — this just gets you there without
-`/plugin marketplace add`.
+This repo doubles as a runnable npm package — not published to the npm
+registry, just clone it and point `npx` at the local directory. It's a
+**hybrid**, not a replacement for `setup-personas` — the CLI only does the
+mechanical half of ADAPT (file copying, version-stamping, settings merge);
+the judgment-driven half (repo-specific test/lint commands, protected paths,
+third-party skill installs, graph/MCP wiring, CLAUDE.md pruning, hook
+verification) still needs an LLM in the loop, so it still runs through
+`/setup-personas` afterward — this just replaces `/plugin marketplace add` +
+`/plugin install` with one `npx` call for the file-scaffolding part.
 
 ```
+git clone https://github.com/Storreslara/My_Claude_Stuff.git
 cd your-project
-npx seb-personas-setup
+npx /path/to/My_Claude_Stuff
 ```
+Same private-repo/collaborator/git-auth prerequisites as the plugin flow
+apply to the `git clone` step — this doesn't remove that requirement, it
+just swaps the installer.
+
 Prompts for optional personas the same way `setup-personas` step 1 does
 (reviewer requires typed `skip reviewer` confirmation to decline). Non-
 interactive options: `--yes` (include every optional persona) or

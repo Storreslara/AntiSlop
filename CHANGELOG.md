@@ -30,16 +30,18 @@ ISO (YYYY-MM-DD).
   spawning; the native-plan-approval gate was unverifiable and is now
   secondary to the always-available prose rule.
 
-- `seb-personas-setup` npm package (`package.json` + `bin/cli.js`): scaffolds
-  the mechanical half of ADAPT (`.claude/agents/`, hooks, settings.json
-  merge, protocol/digest copy, CLAUDE.md wiring, `.gitignore`) via
-  `npx seb-personas-setup`, so a project can skip the private-repo/
-  collaborator/git-auth requirement of the `/plugin marketplace add` flow
-  entirely. Deliberately stops short of the judgment-driven half (repo-scan
-  for test/lint commands, third-party skill installs, graph/MCP wiring, hook
-  verification) — copies `setup-personas`/`coding-discipline` in
-  project-scoped and tells the user to run `/setup-personas` next to finish.
-  Refuses to run over an existing `persona-config.json` rather than risk
+- `seb-personas-setup` runnable npm package (`package.json` + `bin/cli.js`,
+  `"private": true` — not published to the npm registry, clone + run via
+  `npx /path/to/clone`): scaffolds the mechanical half of ADAPT
+  (`.claude/agents/`, hooks, settings.json merge, protocol/digest copy,
+  CLAUDE.md wiring, `.gitignore`), replacing `/plugin marketplace add` +
+  `/plugin install` with one `npx` call for the file-scaffolding part (same
+  clone/collaborator/git-auth prerequisites still apply). Deliberately stops
+  short of the judgment-driven half (repo-scan for test/lint commands,
+  third-party skill installs, graph/MCP wiring, hook verification) — copies
+  `setup-personas`/`coding-discipline` in project-scoped and tells the user
+  to run `/setup-personas` next to finish. Refuses to run over an existing
+  `persona-config.json` rather than risk
   clobbering local edits.
 
 ### Fixed
