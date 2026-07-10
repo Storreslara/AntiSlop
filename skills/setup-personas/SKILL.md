@@ -77,8 +77,13 @@ explorer, lead-programmer; plus whichever optional ones were selected in
 step 1). This is a plain file copy, not re-authoring, so it costs no
 meaningful tokens.
 
-**Version-stamp each copied file**: prepend one comment line before the
-frontmatter: `<!-- seb-personas vX.Y.Z | source: agents/<file> | ADAPT-substituted -->`,
+**Version-stamp each copied file**: insert one comment line immediately
+*after* the closing `---` of the frontmatter (never before the opening
+`---` — confirmed on a live probe that Claude Code's subagent discovery
+requires the file to start with the frontmatter delimiter as its very first
+bytes; a leading comment silently breaks discovery, the agent never
+registers as an invocable type, no error at copy time):
+`<!-- seb-personas vX.Y.Z | source: agents/<file> | ADAPT-substituted -->`,
 where X.Y.Z is this plugin's version (read from its `.claude-plugin/plugin.json`).
 This is what makes `--update` mode (section 11) possible later — don't skip
 it even though it looks like inert metadata.

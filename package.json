@@ -1,6 +1,6 @@
 {
   "name": "seb-personas-setup",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "private": true,
   "description": "Scaffolds the seb-personas multi-agent Claude Code persona system into a project's .claude/ directory. Not published to the npm registry - clone this repo and run `npx /path/to/clone` in your project, then finish setup with the /setup-personas skill it installs.",
   "author": {

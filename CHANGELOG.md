@@ -3,6 +3,23 @@
 All notable changes to the seb-personas plugin are recorded here. Dates are
 ISO (YYYY-MM-DD).
 
+## [0.4.2] - 2026-07-10
+
+### Fixed
+- `bin/cli.js`'s `copyStamped()` and `setup-personas/SKILL.md` step 2 both
+  prepended the `<!-- seb-personas vX.Y.Z ... -->` version-stamp comment
+  *before* the frontmatter's opening `---`. Confirmed via a live probe
+  (`AWS_Learning`) that Claude Code's subagent discovery requires the file
+  to start with `---` as its very first bytes — a leading comment silently
+  breaks discovery, so every copied persona (`orchestrator`, `planner`,
+  etc.) never registered as an invocable agent type, while a comment-free
+  probe file worked fine. The stamp now lands immediately after the closing
+  `---` in both the CLI and the skill instructions. Projects already
+  scaffolded before this fix have the broken layout in their existing
+  `.claude/agents/*.md` files and need those files' leading comment moved
+  after the frontmatter (or re-run `setup-personas`/the CLI) to pick up the
+  fix.
+
 ## [0.4.1] - 2026-07-10
 
 Prompted by walking a real project (`AWS_Learning_Sim`) through install and

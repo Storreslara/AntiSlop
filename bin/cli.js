@@ -38,7 +38,21 @@ function versionStamp(version, sourceRelPath) {
 
 function copyStamped(srcAbsPath, destAbsPath, version, sourceRelPath) {
   const body = fs.readFileSync(srcAbsPath, 'utf8');
-  fs.writeFileSync(destAbsPath, versionStamp(version, sourceRelPath) + body);
+  fs.writeFileSync(destAbsPath, insertStampAfterFrontmatter(body, versionStamp(version, sourceRelPath)));
+}
+
+// Claude Code's subagent discovery requires the file to start with the
+// frontmatter delimiter `---` as its very first bytes — a leading HTML
+// comment before it silently breaks discovery (confirmed: agents copied
+// with a leading stamp comment never register as invocable agent types,
+// even after the background-refresh lag that affects genuinely new files
+// clears). So the stamp must go right after the closing `---`, not before
+// the opening one.
+function insertStampAfterFrontmatter(body, stamp) {
+  const match = body.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+  if (!match) return stamp + body;
+  const end = match[0].length;
+  return body.slice(0, end) + stamp + body.slice(end);
 }
 
 function copyPlain(srcAbsPath, destAbsPath) {
