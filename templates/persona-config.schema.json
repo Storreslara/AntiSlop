@@ -39,7 +39,7 @@
     "personaSelection": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Which optional personas (planner, repo-historian, reviewer, researcher) this project chose to include, recorded by setup-personas' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
+      "description": "Which optional personas (planner, repo-historian, reviewer, researcher, milestone-auditor) this project chose to include, recorded by setup-personas' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
     },
     "issueTracker": {
       "type": "string",

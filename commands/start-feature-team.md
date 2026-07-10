@@ -3,8 +3,8 @@ description: Spin up the persona feature team for a task (agent-teams mode - off
 ---
 <!-- Corrected vs. the original spec: teammates CAN spawn ordinary foreground
      subagents (the restriction is on nested TEAMS, not on subagent spawning
-     in general) - so the explorer-teammate-or-grep-fallback framing below is
-     softer than the original "teammates cannot spawn subagents" claim. -->
+     in general) - so a teammate needing an ad-hoc lookup spawns its own
+     explorer subagent rather than needing explorer as a named teammate. -->
 
 Act as team lead (coordinate, do NOT implement). Create an agent team for
 "$ARGUMENTS". Check `.claude/agents/` for which personas this project
@@ -12,17 +12,22 @@ actually has (planner, repo-historian, reviewer, and researcher are optional
 — see the project's `persona-config.json` `personaSelection` field) and spawn
 named teammates only from what's present: lead-programmer is always a
 teammate; planner/repo-historian/reviewer join if they exist; researcher only
-if the task is novel and it exists; explorer as a teammate whenever the task
-involves heavy unfamiliar-code exploration. If `reviewer` doesn't exist for
-this project, say so up front and do the lightweight sanity-check fallback
-described in orchestrator.md's "if no reviewer persona exists" — don't
-silently skip the done-check.
+if the task is novel and it exists. Teammates spawn their own foreground
+explorer subagent for ad-hoc lookups; add explorer as a named teammate only
+when exploration is itself a standalone parallel workstream, not a one-off
+lookup. If `reviewer` doesn't exist for this project, say so up front and do
+the lightweight sanity-check fallback described in orchestrator.md's "if no
+reviewer persona exists" — don't silently skip the done-check.
 
-**GATE**: prefer Claude Code's native plan-approval (require plan approval
-before implementation) if this version exposes it as a prompt-level feature;
-otherwise fall back to the prose rule: require the planner's plan to name
-every affected file and give each step a machine-checkable acceptance
-criterion before any code is written.
+**GATE**: require the planner's plan to name every affected file and give
+each step a machine-checkable acceptance criterion before any code is
+written. If Claude Code's native plan-approval is available as a
+prompt-level feature, use it in addition — but the prose rule above is the
+one you can always rely on, so treat it as primary, not a fallback.
+
+**Task naming**: name every implementation task `impl:<slug>` — only tasks
+with that prefix are gated by the TaskCompleted hook; anything named
+otherwise gets no mechanical done-check at all.
 
 If a repo-historian teammate exists, the lead-programmer SendMessages it
 after each change and keeps working — delivery is asynchronous, so this
@@ -32,10 +37,20 @@ historian, skip this.
 **Writer/Reviewer split**: the reviewer (a fresh context that did not write
 the code) independently runs the checks and returns PASS/FAIL on each
 completed unit; on FAIL, the LEAD routes defects back to the lead-programmer
-(single review owner, same rule as the always-on orchestrator). "Done" is
-enforced mechanically here: the reviewer creates
-`.claude/reviewed/<task-id>.pass` via Bash on PASS, and the TaskCompleted hook
-blocks any task named `impl:*` from completing without that marker.
+(single review owner, same rule as the always-on orchestrator), following the
+shared protocol's "continuing after a FAIL verdict" section, including its
+2-FAIL cap: on a second FAIL for the same unit, stop re-delegating and
+surface the full defect history to the user instead. "Done" is enforced
+mechanically here: when routing a unit to the reviewer, include its exact
+task id — the reviewer creates `.claude/reviewed/<task-id>.pass` via Bash on
+PASS using that id, and the TaskCompleted hook blocks any task named
+`impl:*` from completing without a matching marker.
+
+If there's no reviewer (deselected, or a teammate that crashed mid-run): the
+lead's sanity-check fallback above must itself `touch` the `.pass` marker
+after checking, or avoid the `impl:` prefix for that task entirely — the hook
+fires whenever `persona-config.json` exists, regardless of reviewer
+selection, so skipping this step deadlocks the task list permanently.
 
 Use the shared task list, 5–6 tasks at a time. Don't let two teammates edit
 the same files (the reviewer never edits, so this is really about the

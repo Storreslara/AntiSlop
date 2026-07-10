@@ -57,6 +57,13 @@ about them). Ask individually about the rest:
   branch). Require an EXPLICIT typed confirmation before skipping this one,
   not just a yes/no — the risk is materially different from skipping the
   others.
+- `milestone-auditor` — skip for projects with no real milestone structure
+  (a single small unit of work) or where `planner` was also skipped, since
+  it audits a plan's premises and there's no plan to audit. Unlike
+  `reviewer`, this one checks the SPEC against reality, not code against the
+  spec — it's a second, orthogonal safety property, not a duplicate of the
+  reviewer, so don't let a "we already have reviewer" answer talk the user
+  out of it if the project has real milestones.
 
 Record the selection as `personaSelection` in `.claude/persona-config.json`
 (step 6) — `--update` mode (section 11) reads this to know which files to
@@ -88,18 +95,21 @@ gracefully without needing per-project text surgery. Same for
 - `npx skills@latest add mattpocock/skills` — select `grill-me`, `to-issues`,
   `tdd`, `diagnose`, `improve-codebase-architecture`, and
   `setup-matt-pocock-skills`, but only for skills the selected personas
-  actually use (e.g. skip `grill-me`/`to-issues` entirely if `planner` was
-  deselected).
+  actually use (e.g. skip `grill-me`/`to-issues` entirely if `planner` and
+  `milestone-auditor` were both deselected — `milestone-auditor` also
+  preloads `grill-me`, aimed at the plan's assumptions after the fact rather
+  than the request before planning).
 - Run `/setup-matt-pocock-skills` once (issue tracker, triage labels, doc
   layout). RECORD which issue tracker was chosen — it goes in
   `.claude/persona-config.json`'s `issueTracker` field and the planner reads
   it via the retrieval contract.
 - These install as a plugin, so their registered names are namespaced. Check
   the skill list and record the exact names.
-- **Substitute placeholders**: the copied `planner.md` and `repo-historian.md`
-  contain `<MATTPOCOCK:skill-name>` placeholders in their `skills:`
-  frontmatter — replace with the real namespaced names in the project's
-  copies (this is expected ADAPT substitution, not drift). `lead-programmer.md`
+- **Substitute placeholders**: the copied `planner.md`, `repo-historian.md`,
+  and `milestone-auditor.md` (if selected) contain `<MATTPOCOCK:skill-name>`
+  placeholders in their `skills:` frontmatter — replace with the real
+  namespaced names in the project's copies (this is expected ADAPT
+  substitution, not drift). `lead-programmer.md`
   is different: `tdd` and `diagnose` are deliberately NOT in its `skills:`
   frontmatter (they're invoked on demand via the `Skill` tool instead of
   preloaded every spawn, for token efficiency — see its body's "TDD-first"
@@ -216,6 +226,35 @@ Note in your report: the default teammate model has no reliable settings key
 
 ## 10. Hook verification (sandboxed — do not leave the repo red or trap yourself)
 
+**Run this section conditionally, and delegate the actual probing to a
+subagent — don't run it inline in your own context.**
+
+- **Fresh install** (no prior `persona-config.json`): always run the full
+  suite below.
+- **`--update` runs** (section 11): skip this section entirely UNLESS one of
+  the following is true, in which case run only the sub-bullets that test
+  the changed surface, not the whole suite:
+  - `gatedAgents` or `protectedPaths` changed in this run's
+    `persona-config.json` compared to the previous version → re-run the
+    stop-gate and protected-paths sub-bullets only.
+  - The plugin version bump's CHANGELOG (or a diff of the hook scripts
+    themselves, if accessible) indicates a hooks.json/hook-script fix →
+    re-run only the sub-bullets covering the changed hook.
+  - Neither is true → skip section 10 outright and report "hooks/gating
+    unchanged since last verified install, skipped re-verification."
+- **Scope even a fresh-install run to selected personas**: e.g. skip the
+  reviewer PASS-marker sub-bullet if `reviewer` wasn't selected (already
+  conditional below), and skip the repo-historian-turn sub-bullet if
+  `repo-historian` wasn't selected.
+- **Delegate whatever remains to a subagent**: spawn one general-purpose
+  subagent with the repo path, the throwaway-branch instruction, the exact
+  sub-bullets that apply (from the conditional scoping above), and the
+  instruction to end with the repo clean and all sentinels/markers removed.
+  Ask it to return ONLY a pass/fail line per sub-bullet plus confirmation the
+  branch was reverted — not the raw hook stderr, jq dumps, or intermediate
+  file contents. That raw output is what makes this section expensive; it
+  doesn't need to live in your context, only the verdict does.
+
 On a throwaway branch:
 - Make a trivial edit; confirm `graph-update.sh` and `lint-on-edit.sh` fired
   (check the graph index timestamp / lint output).
@@ -291,5 +330,6 @@ obtained); the exact mattpocock skill names and issue tracker chosen; the
 code-review-graph registered name and one real structural query + answer as
 proof; the arXiv MCP result (server name, or fallback mode, or "researcher
 not selected"); the one manual `/config` step required (default teammate
-model); each hook-verification result from step 10; confirmation the repo
+model); each hook-verification result from step 10 (or, if step 10 was
+skipped per its conditional rules, say so and why); confirmation the repo
 ended clean.
