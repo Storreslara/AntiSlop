@@ -1,0 +1,26 @@
+{
+  "name": "seb-personas-setup",
+  "version": "0.4.0",
+  "description": "Scaffolds the seb-personas multi-agent Claude Code persona system into a project's .claude/ directory, without needing GitHub collaborator access or the /plugin marketplace flow. Run `npx seb-personas-setup` in a project, then finish setup with the /setup-personas skill it installs.",
+  "author": {
+    "name": "Sebastian Torres Lara"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/Storreslara/My_Claude_Stuff",
+  "keywords": ["multi-agent", "orchestrator", "claude-code", "cli", "scaffold"],
+  "bin": {
+    "seb-personas-setup": "bin/cli.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "agents",
+    "hooks",
+    "templates",
+    "skills/coding-discipline",
+    "skills/setup-personas",
+    ".claude-plugin/plugin.json"
+  ]
+}

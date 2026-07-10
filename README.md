@@ -40,20 +40,22 @@ instead of sequential subagents) — off by default, a deliberate gear.
 
 **Local testing (do this first, on a scratch repo):**
 ```
-claude --plugin-dir ~/seb_claude_setup
+claude --plugin-dir /path/to/your/clone/of/this/repo
 ```
-Confirm the agents appear. Note: plugin agents load as namespaced names
-(`seb-personas:explorer`, confirmed on Claude Code 2.1.201) — bare-name spawns
-like `explorer` hard-error, they don't resolve. This is exactly why
-`setup-personas`'s first substantive action is copying every selected agent
-file into the project's `.claude/agents/`, which are never namespaced. Don't
-skip that step expecting it to work by cross-referencing bare names as
-shipped.
+(The directory you clone into can be named anything — `~/seb_claude_setup` is
+just this author's local path, not a requirement.) Confirm the agents appear.
+Note: plugin agents load as namespaced names (`seb-personas:explorer`,
+confirmed on Claude Code 2.1.201) — bare-name spawns like `explorer`
+hard-error, they don't resolve. This is exactly why `setup-personas`'s first
+substantive action is copying every selected agent file into the project's
+`.claude/agents/`, which are never namespaced. Don't skip that step expecting
+it to work by cross-referencing bare names as shipped.
 
-**Real install, once stable**, from this directory pushed to a private Git
-repo:
+**Real install, once stable**, from this repo (`Storreslara/My_Claude_Stuff`
+on GitHub — note the GitHub repo name doesn't match the local clone directory
+name `seb_claude_setup`; use the GitHub slug below, not the folder name):
 ```
-/plugin marketplace add <owner>/<repo>
+/plugin marketplace add Storreslara/My_Claude_Stuff
 /plugin install seb-personas@seb-personas-marketplace
 ```
 (`/plugin install <git-url>` directly is not a real command — installation is
@@ -67,6 +69,11 @@ work:
   one of these, `/plugin marketplace add` will fail to clone with a
   permission/auth error, not a "not found" error — if that happens, that's
   what to check first.
+
+**Alternative: npm-based install, no GitHub collaborator access needed.** If
+you'd rather skip the private-repo/git-auth friction above entirely, see
+"npm install (no plugin, no GitHub auth)" below — it scaffolds the same files
+project-locally via a published npm package instead of the plugin mechanism.
 
 ## Prerequisites (install before using this plugin)
 
@@ -102,6 +109,48 @@ This re-syncs the project's copied agent files against the current plugin
 version — diffing before overwriting, never silently clobbering a local
 edit. A `SessionStart` hook warns automatically when a project's adapted
 version is behind the plugin's current version.
+
+## npm install (no plugin, no GitHub auth)
+
+This repo doubles as an npm package (`seb-personas-setup`) so a project can
+skip the private-repo/collaborator/git-auth friction of the plugin flow
+entirely. It's a **hybrid**, not a replacement for `setup-personas` — the CLI
+only does the mechanical half of ADAPT (file copying, version-stamping,
+settings merge); the judgment-driven half (repo-specific test/lint commands,
+protected paths, third-party skill installs, graph/MCP wiring, CLAUDE.md
+pruning, hook verification) still needs an LLM in the loop, so it still runs
+through `/setup-personas` afterward — this just gets you there without
+`/plugin marketplace add`.
+
+```
+cd your-project
+npx seb-personas-setup
+```
+Prompts for optional personas the same way `setup-personas` step 1 does
+(reviewer requires typed `skip reviewer` confirmation to decline). Non-
+interactive options: `--yes` (include every optional persona) or
+`--personas=planner,reviewer,researcher` (include only the ones named).
+
+What it does, deterministically: copies core + selected persona `.md` files
+into `.claude/agents/` (version-stamped, same as ADAPT step 2); copies
+`persona-protocol.md`/`protocol-digest.md`; copies the hook scripts into
+`.claude/hooks/scripts/` and registers them in `.claude/settings.json` with
+`${CLAUDE_PROJECT_DIR}`-relative commands (merged in, never clobbering
+existing settings); copies the `setup-personas` and `coding-discipline`
+skills in project-scoped (so `/setup-personas` works with no plugin
+installed at all); adds the CLAUDE.md import line; appends the standard
+`.gitignore` entries; writes a skeleton `.claude/persona-config.json`. It
+refuses to run over an existing install (checks for
+`.claude/persona-config.json`) rather than risk clobbering local edits —
+re-run `/setup-personas --update` for that case instead.
+
+After it finishes, run `/setup-personas` inside Claude Code in that project
+to fill in the parts that need a real repo scan (test/lint commands,
+protected paths), install third-party skills, build the Code Review Graph,
+and run hook verification. Nothing here changes how personas load at
+runtime — they're project-local `.claude/agents/*.md` files either way,
+which is exactly what the plugin flow ends up copying too (see "Real
+install" above on bare-name resolution).
 
 ## What ships in the plugin vs. what ADAPT writes per-project
 

@@ -92,13 +92,22 @@ gracefully without needing per-project text surgery. Same for
 
 ## 3. Third-party skill installs
 
-- `npx skills@latest add mattpocock/skills` — select `grill-me`, `to-issues`,
-  `tdd`, `diagnose`, `improve-codebase-architecture`, and
-  `setup-matt-pocock-skills`, but only for skills the selected personas
+- **`npx skills@latest add mattpocock/skills` opens an interactive
+  terminal menu (pick skills, pick target agents) — it has no documented
+  non-interactive/flag-driven mode.** Do NOT run this yourself via Bash and
+  assume a selection; a non-interactive agent shell can't drive a TUI picker
+  and the command will hang or silently take defaults, leaving stale
+  `<MATTPOCOCK:*>` placeholders in copied persona files with no error
+  surfaced. Instead: tell the human which skills to select — `grill-me`,
+  `to-issues`, `tdd`, `diagnose`, `improve-codebase-architecture`, and
+  `setup-matt-pocock-skills`, but only the ones the selected personas
   actually use (e.g. skip `grill-me`/`to-issues` entirely if `planner` and
   `milestone-auditor` were both deselected — `milestone-auditor` also
   preloads `grill-me`, aimed at the plan's assumptions after the fact rather
-  than the request before planning).
+  than the request before planning) — and ask them to run the command
+  themselves in their own terminal. After they confirm it's done, verify by
+  listing the installed skill names yourself (don't take "done" on faith)
+  before moving on to placeholder substitution below.
 - Run `/setup-matt-pocock-skills` once (issue tracker, triage labels, doc
   layout). RECORD which issue tracker was chosen — it goes in
   `.claude/persona-config.json`'s `issueTracker` field and the planner reads

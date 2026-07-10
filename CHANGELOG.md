@@ -3,6 +3,63 @@
 All notable changes to the seb-personas plugin are recorded here. Dates are
 ISO (YYYY-MM-DD).
 
+## [0.4.0] - 2026-07-09
+
+### Added
+- `milestone-auditor` persona: an adversarial auditor of the *plan*, not the
+  code — runs at milestone boundaries once every unit in it has already
+  reviewer-PASSed, hunting for premise gaps and goal drift the reviewer
+  structurally can't see. No PASS/FAIL, no override authority, no Write/Edit
+  — only a findings list relayed to the human. Wired into README, the
+  `persona-config` schema, and `setup-personas`'s selection/placeholder-
+  substitution/mattpocock-skill steps.
+- `orchestrator.md`: a Plan Mode gate. The harness's built-in Plan Mode ships
+  its own Explore/Plan workflow that silently overrides the persona routing
+  table and bypasses the Writer/Reviewer split for the whole turn; the
+  orchestrator now recognizes this, exits Plan Mode, and re-routes through
+  the normal pipeline instead.
+
+### Fixed
+- `commands/start-feature-team.md`: closed several gaps found in review —
+  the `impl:<slug>` task-naming convention the `TaskCompleted` gate depends
+  on was never actually instructed; the no-reviewer/crashed-reviewer path
+  could deadlock the task list permanently; the reviewer was never told the
+  exact task id needed for its PASS marker to match; FAIL routing didn't
+  reference the shared protocol's 2-FAIL cap; the explorer-teammate
+  framing contradicted the file's own header comment about subagent
+  spawning; the native-plan-approval gate was unverifiable and is now
+  secondary to the always-available prose rule.
+
+- `seb-personas-setup` npm package (`package.json` + `bin/cli.js`): scaffolds
+  the mechanical half of ADAPT (`.claude/agents/`, hooks, settings.json
+  merge, protocol/digest copy, CLAUDE.md wiring, `.gitignore`) via
+  `npx seb-personas-setup`, so a project can skip the private-repo/
+  collaborator/git-auth requirement of the `/plugin marketplace add` flow
+  entirely. Deliberately stops short of the judgment-driven half (repo-scan
+  for test/lint commands, third-party skill installs, graph/MCP wiring, hook
+  verification) — copies `setup-personas`/`coding-discipline` in
+  project-scoped and tells the user to run `/setup-personas` next to finish.
+  Refuses to run over an existing `persona-config.json` rather than risk
+  clobbering local edits.
+
+### Fixed
+- README's "real install" instructions used a generic `<owner>/<repo>`
+  placeholder and a hardcoded local `~/seb_claude_setup` path in the
+  `--plugin-dir` example; now names the actual GitHub slug
+  (`Storreslara/My_Claude_Stuff`, which does not match the local clone
+  directory name) and generalizes the local path.
+- `setup-personas/SKILL.md` step 3: `npx skills@latest add mattpocock/skills`
+  opens an interactive terminal picker with no documented non-interactive
+  mode. The ADAPT skill previously had the agent attempt to drive this
+  itself, which can hang or silently take defaults in a non-interactive
+  shell and leave stale `<MATTPOCOCK:*>` placeholders with no error
+  surfaced. Now the agent tells the human which skills to pick and asks
+  them to run it, then verifies the installed skill list itself afterward.
+
+### Changed
+- Trimmed redundant/restated prose in `orchestrator.md` and
+  `lead-programmer.md` (behavior unchanged, token cost per spawn reduced).
+
 ## [0.3.0] - 2026-07-09
 
 Behavioral-drift hardening, prompted by an audit of which shared-protocol
