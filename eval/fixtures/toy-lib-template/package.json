@@ -1,0 +1,12 @@
+{
+  "name": "toy-lib",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Minimal fixture library for the antislop eval pilot. No external dependencies on purpose - keeps headless claude -p runs network-free.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
