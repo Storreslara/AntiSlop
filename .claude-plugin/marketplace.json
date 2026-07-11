@@ -1,11 +1,11 @@
 {
-  "name": "seb-personas-marketplace",
+  "name": "antislop-marketplace",
   "owner": {
     "name": "Sebastian Torres Lara"
   },
   "plugins": [
     {
-      "name": "seb-personas",
+      "name": "antislop",
       "source": "./",
       "description": "Modular persona-based Claude Code orchestrator system + coding-discipline skill + enforcement hooks."
     }

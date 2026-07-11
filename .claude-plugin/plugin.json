@@ -1,11 +1,11 @@
 {
-  "name": "seb-personas",
-  "version": "0.4.2",
+  "name": "antislop",
+  "version": "0.5.0",
   "description": "Modular persona-based Claude Code orchestrator system (explorer/lead-programmer are core; planner/repo-historian/reviewer/researcher/milestone-auditor are optional, selected per-project) plus the coding-discipline skill and enforcement hooks. Requires Claude Code >=2.1.178 (nested subagent spawning + current teams-cleanup behavior).",
   "author": {
     "name": "Sebastian Torres Lara"
   },
-  "repository": "https://github.com/Storreslara/My_Claude_Stuff",
+  "repository": "https://github.com/Storreslara/AntiSlop",
   "license": "MIT",
   "keywords": ["multi-agent", "orchestrator", "code-review", "subagents"]
 }

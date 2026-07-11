@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Validates the seb-personas plugin's own files. Run locally before pushing,
+# Validates the antislop plugin's own files. Run locally before pushing,
 # or via .github/workflows/validate.yml. Exits non-zero on any failure.
 # This is a best-effort sanity net for a plugin whose "code" is mostly
 # prose/config, not a substitute for the empirical smoke tests noted in

@@ -1,4 +1,4 @@
-# seb-personas
+# AntiSlop
 
 This is the Claude set up I've been using for work and personal projects.
 Seems to be pretty decent at not generating too much slop but is a token
@@ -44,19 +44,19 @@ claude --plugin-dir /path/to/your/clone/of/this/repo
 ```
 (The directory you clone into can be named anything — `~/seb_claude_setup` is
 just this author's local path, not a requirement.) Confirm the agents appear.
-Note: plugin agents load as namespaced names (`seb-personas:explorer`,
+Note: plugin agents load as namespaced names (`antislop:explorer`,
 confirmed on Claude Code 2.1.201) — bare-name spawns like `explorer`
 hard-error, they don't resolve. This is exactly why `setup-personas`'s first
 substantive action is copying every selected agent file into the project's
 `.claude/agents/`, which are never namespaced. Don't skip that step expecting
 it to work by cross-referencing bare names as shipped.
 
-**Real install, once stable**, from this repo (`Storreslara/My_Claude_Stuff`
+**Real install, once stable**, from this repo (`Storreslara/AntiSlop`
 on GitHub — note the GitHub repo name doesn't match the local clone directory
 name `seb_claude_setup`; use the GitHub slug below, not the folder name):
 ```
-/plugin marketplace add Storreslara/My_Claude_Stuff
-/plugin install seb-personas@seb-personas-marketplace
+/plugin marketplace add Storreslara/AntiSlop
+/plugin install antislop@antislop-marketplace
 ```
 (`/plugin install <git-url>` directly is not a real command — installation is
 always the two-step marketplace-add-then-install flow above.)
@@ -91,7 +91,7 @@ run, no marketplace)" below.
 
 **Then, once per new project**, run:
 ```
-/seb-personas:setup-personas
+/antislop:setup-personas
 ```
 This asks which personas the project needs (`explorer`/`lead-programmer` are
 mandatory; `planner`/`repo-historian`/`reviewer`/`researcher` are opt-in —
@@ -104,7 +104,7 @@ See `skills/setup-personas/SKILL.md` for the full flow.
 
 **When the plugin updates**, re-run adapted projects with:
 ```
-/seb-personas:setup-personas --update
+/antislop:setup-personas --update
 ```
 This re-syncs the project's copied agent files against the current plugin
 version — diffing before overwriting, never silently clobbering a local
@@ -126,7 +126,7 @@ verification) still needs an LLM in the loop, so it still runs through
 Already have this repo cloned somewhere (e.g. from "Local testing" above)?
 Reuse that path — you don't need to clone it twice. Otherwise:
 ```
-git clone https://github.com/Storreslara/My_Claude_Stuff.git ~/seb_claude_setup
+git clone https://github.com/Storreslara/AntiSlop.git ~/seb_claude_setup
 ```
 Same private-repo/collaborator/git-auth prerequisites as the plugin flow
 apply to this step — this doesn't remove that requirement, it just swaps the
@@ -212,7 +212,7 @@ Three things to check depending on what it does:
 - If you want other personas to route to it by name, add one disambiguation
   line to the project's copy of `orchestrator.md`'s routing table.
 
-## Removing seb-personas
+## Removing AntiSlop
 
 `setup-personas` writes to these locations; removing all of them uninstalls
 the system from a project:
@@ -227,7 +227,7 @@ the system from a project:
 - The `@.claude/persona-protocol.md` line in CLAUDE.md
 - `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`,
   `.claude/wip-audit.log` (also in `.gitignore` — safe to delete)
-- `/plugin uninstall seb-personas` to remove the plugin itself
+- `/plugin uninstall antislop` to remove the plugin itself
 
 ## Cost
 

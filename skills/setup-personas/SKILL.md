@@ -1,7 +1,7 @@
 ---
 name: setup-personas
 description: >
-  Adapt the seb-personas plugin (persona system + hooks + coding-discipline
+  Adapt the antislop plugin (persona system + hooks + coding-discipline
   skill) to THIS repository, or resync an already-adapted project against a
   newer plugin version with `--update`. Run once per new project after
   installing the plugin. Covers only what genuinely can't be pre-baked:
@@ -17,7 +17,7 @@ description: >
      do the work; inspect the actual project rather than guessing. When done,
      report what you did and flag anything incomplete.
 
-     If invoked as `/seb-personas:setup-personas --update`, skip straight to
+     If invoked as `/antislop:setup-personas --update`, skip straight to
      section 11 instead of running sections 0-10 fresh. -->
 
 ## 0. Version gate (no FLAT MODE fallback — this plugin targets one baseline)
@@ -27,7 +27,7 @@ description: >
   the `start-feature-team` command assumes automatic cleanup). If the
   installed version is older, STOP and tell the user to upgrade; do not
   attempt a degraded/flat wiring.
-- Plugin-provided agents are namespaced (`seb-personas:explorer`, not
+- Plugin-provided agents are namespaced (`antislop:explorer`, not
   `explorer`) — confirmed on Claude Code 2.1.201, a bare-name spawn
   hard-errors (`Agent type 'explorer' not found`), it does not fall back to
   fuzzy/description-based resolution. This is WHY step 2 below copies every
@@ -83,7 +83,7 @@ meaningful tokens.
 requires the file to start with the frontmatter delimiter as its very first
 bytes; a leading comment silently breaks discovery, the agent never
 registers as an invocable type, no error at copy time):
-`<!-- seb-personas vX.Y.Z | source: agents/<file> | ADAPT-substituted -->`,
+`<!-- antislop vX.Y.Z | source: agents/<file> | ADAPT-substituted -->`,
 where X.Y.Z is this plugin's version (read from its `.claude-plugin/plugin.json`).
 This is what makes `--update` mode (section 11) possible later — don't skip
 it even though it looks like inert metadata.
@@ -329,7 +329,7 @@ On a throwaway branch:
 
 ## 11. `--update` mode (re-run after a plugin version bump)
 
-Invoked as `/seb-personas:setup-personas --update`. Purpose: the copy in
+Invoked as `/antislop:setup-personas --update`. Purpose: the copy in
 section 2 is what makes bare-name persona references work, but it also means
 persona-body bug fixes in a newer plugin version never reach an
 already-adapted project on their own — hooks/skills/commands propagate

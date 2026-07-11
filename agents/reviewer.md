@@ -4,7 +4,7 @@ description: Independent, adversarial verifier - the Writer/Reviewer split. Did 
 model: opus
 color: red
 tools: Read, Grep, Glob, Bash, Agent, Skill
-skills: seb-personas:coding-discipline
+skills: antislop:coding-discipline
 maxTurns: 30
 ---
 <!-- Deliberately no Write/Edit — it can never fix what it's grading; the

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 
-// Mechanical half of the seb-personas ADAPT flow, packaged as a standalone
+// Mechanical half of the antislop ADAPT flow, packaged as a standalone
 // installer so a project doesn't need GitHub collaborator access or the
 // /plugin marketplace flow. This CLI only does deterministic file
 // scaffolding (copy, stamp, merge) — it deliberately does NOT do the
@@ -33,7 +33,7 @@ function mkdirp(p) {
 }
 
 function versionStamp(version, sourceRelPath) {
-  return `<!-- seb-personas v${version} | source: ${sourceRelPath} | ADAPT-substituted -->\n`;
+  return `<!-- antislop v${version} | source: ${sourceRelPath} | ADAPT-substituted -->\n`;
 }
 
 function copyStamped(srcAbsPath, destAbsPath, version, sourceRelPath) {
@@ -133,7 +133,7 @@ async function main() {
   const personasFlag = args.find((a) => a.startsWith('--personas='));
 
   const version = readPluginVersion();
-  console.log(`seb-personas-setup v${version} — scaffolding into ${CWD}\n`);
+  console.log(`antislop v${version} — scaffolding into ${CWD}\n`);
 
   const existingConfig = path.join(CWD, '.claude', 'persona-config.json');
   if (fs.existsSync(existingConfig)) {
@@ -375,6 +375,6 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error('seb-personas-setup failed:', err.message);
+  console.error('antislop failed:', err.message);
   process.exit(1);
 });

@@ -5,7 +5,7 @@ model: sonnet
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill
-skills: seb-personas:coding-discipline
+skills: antislop:coding-discipline
 ---
 
 You are a pragmatic senior engineer that executes the planner's plan.

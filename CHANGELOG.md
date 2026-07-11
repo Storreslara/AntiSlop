@@ -1,7 +1,22 @@
 # Changelog
 
-All notable changes to the seb-personas plugin are recorded here. Dates are
-ISO (YYYY-MM-DD).
+All notable changes to the antislop plugin (formerly seb-personas) are
+recorded here. Dates are ISO (YYYY-MM-DD).
+
+## [0.5.0] - 2026-07-11
+
+### Changed
+- Renamed the plugin from `seb-personas` to `antislop` — package name
+  (`package.json`), CLI bin name, plugin id (`.claude-plugin/plugin.json`,
+  `marketplace.json`), skill-namespace prefix
+  (`seb-personas:coding-discipline` → `antislop:coding-discipline`), and all
+  prose references across `README.md`, `CONTRIBUTING.md`, the bug report
+  template, `setup-personas/SKILL.md`, `session-start.sh`, `validate.sh`,
+  and `bin/cli.js`'s runtime strings and version-stamp comment format.
+  Directory path (`~/seb_claude_setup`) intentionally left unchanged — this
+  is an identity rename, not a relocation, so `~/claude_trace`'s
+  `persona-improver.md`/`protected-paths.sh` references to that path still
+  resolve.
 
 ## [0.4.2] - 2026-07-10
 

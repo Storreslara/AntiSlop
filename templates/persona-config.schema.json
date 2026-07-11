@@ -34,7 +34,7 @@
     },
     "pluginVersion": {
       "type": "string",
-      "description": "The seb-personas plugin version this project was last ADAPTed/updated at, stamped by setup-personas. Compared against the installed plugin's current version by the SessionStart drift-check hook."
+      "description": "The antislop plugin version this project was last ADAPTed/updated at, stamped by setup-personas. Compared against the installed plugin's current version by the SessionStart drift-check hook."
     },
     "personaSelection": {
       "type": "array",
