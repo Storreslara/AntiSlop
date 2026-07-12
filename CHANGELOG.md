@@ -3,6 +3,24 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.5.2] - 2026-07-12
+
+### Added
+- `templates/persona-protocol.md` gained two cross-cutting rules, both
+  proposed by `persona-improver` (`~/claude_trace`) from a real telemetry
+  review of production usage, not written on assumption:
+  - A name-collision warning: Claude Code's built-in `Explore` subagent can
+    silently shadow this project's own `explorer` persona via
+    description-based auto-delegation, since the built-in has no Code
+    Review Graph MCP access and falls back to weaker grep-derived answers.
+    Personas should spawn `explorer` by name, not rely on auto-delegation.
+  - A "scope Bash output before it enters context" rule — pipe verbose
+    commands through `head`/`tail`/`grep`/quiet flags before the output
+    lands in context, rather than after.
+  Both findings and patches are recorded in
+  `~/claude_trace/.scratch/telemetry-review/telemetry_review_20260712_052612.md`
+  and `~/otel/improvements.duckdb`.
+
 ## [0.5.1] - 2026-07-11
 
 ### Changed

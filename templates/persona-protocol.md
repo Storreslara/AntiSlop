@@ -20,12 +20,37 @@ making its isolation mechanical; everyone else's is this rule. If the
 explorer reports the graph index is missing or stale, treat its answer as
 grep-derived, not authoritative.
 
+**Name-collision warning — don't let auto-delegation pick the wrong one.**
+Claude Code ships a generic, built-in `Explore` subagent type whose name and
+description are close enough to this project's `explorer` persona that
+description-based auto-delegation (see the orchestrator's "routing is
+primarily description-based" note) can silently route to the built-in
+instead. The built-in has no MCP tools, so it has no Code Review Graph
+access — its answers are grep-derived, weaker, and it bypasses this project's
+`explorer` persona entirely. When you spawn for a structural question, name
+the persona explicitly (`explorer`, defined in `.claude/agents/explorer.md`)
+rather than only describing the task and trusting auto-delegation to route
+correctly. If a returned answer doesn't read as graph-derived (no symbol →
+file:line provenance, or it says outright it fell back to grep) and you
+didn't expect the fallback branch above, treat that as a signal the built-in
+ran instead of the project's `explorer`, and re-spawn explicitly by name.
+
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):
 lead with the direct answer, then compact supporting facts. Never dump raw
 tool output, full file contents, or whole diffs verbatim — distill it. This
 applies doubly to the explorer, whose entire purpose is keeping noisy
 traversal out of the caller's context.
+
+## Scope Bash output before it enters context
+Don't let a verbose command dump its full, untruncated output into your own
+context — that cost is paid whether or not you go on to distill it for
+someone else. Before running a command that can plausibly return more than a
+screenful (build logs, full-repo greps, directory listings, verbose test
+runs), pipe it through `head`/`tail`/`wc -l`/a targeted `grep` first, or pass
+the tool's own quiet/summary flag if it has one. If you need to inspect a
+large result in full after a summary looked interesting, fetch the narrower
+slice you actually need rather than re-running the same command unfiltered.
 
 ## Agent-teams mode (only relevant if you were spawned as a teammate)
 - Your `skills:` and `mcpServers:` frontmatter fields are NOT applied when
