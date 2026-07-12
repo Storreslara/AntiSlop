@@ -196,7 +196,7 @@ ends up copying too (see "Real install" above on bare-name resolution).
 | Persona agents: orchestrator, explorer, lead-programmer (always); planner, repo-historian, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
 | `setup-personas` skill (the ADAPT flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, not imported into CLAUDE.md — only injected by `session-start.sh`) |
-| 6 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
+| 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team` command | wiki / CONTEXT.md / docs/adr seeding |
 
 ## Adding your own persona
@@ -287,9 +287,9 @@ lever, not a setting).
 - **Behavioral drift — an agent quietly stops following its own
   instructions as a session runs long — is fought with mechanism where
   possible, not more prose to remember.** `maxTurns` caps (explorer=10,
-  planner=30, reviewer=30) already bound the highest-drift sessions by
-  length; the orchestrator's main session and the lead-programmer are
-  deliberately uncapped and are correspondingly the biggest open drift
+  milestone-auditor=20, planner/reviewer/lead-programmer=30) already bound
+  the highest-drift sessions by length; the orchestrator's main session is
+  deliberately uncapped and is correspondingly the biggest open drift
   surface. `session-start.sh` now re-injects a short
   `.claude/protocol-digest.md` via `additionalContext`, but only on
   `source: resume` and `source: compact` — never `startup`/`clear`, where
