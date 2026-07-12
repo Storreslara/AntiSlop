@@ -4,12 +4,26 @@
 # persona-config.json's gatedAgents list (default: ["lead-programmer"]),
 # not the hook registration. Adding a future code-writing persona is a
 # config edit, not a plugin file edit. Confirmed empirically that the
-# SubagentStop payload carries `agent_type`, so this filtering is reliable.
+# SubagentStop payload carries `agent_type`, so this filtering is reliable
+# for SubagentStop. The plain Stop payload (main session) carries NO
+# agent_type at all, so for Stop this filtering instead keys off the
+# configured main agent (settings.json's `.agent`, default "orchestrator",
+# per templates/settings-fragment.json) - a static, per-project value, not
+# a per-event field. With the default config (main agent = orchestrator,
+# gatedAgents = ["lead-programmer"]) this means the main-session check is
+# skipped entirely: the orchestrator has no Write/Edit tools (see its
+# `tools:` frontmatter) and cannot dirty the tree itself, so a dirty tree at
+# orchestrator-Stop time can only mean a dispatched subagent is mid-flight -
+# and that subagent is already gated independently at its own SubagentStop.
+# A project that makes a code-writing persona the main agent still gets
+# gated correctly, since gatedAgents is checked against that agent's name.
 #
 # Logic, in order:
 #  0) stop_hook_active guard - never re-trigger ourselves in a loop.
-#  1) SubagentStop for an agent not in gatedAgents -> ALLOW immediately
-#     (cheap/high-frequency personas like explorer never pay this cost).
+#  1) Stop for a non-gated main agent, or SubagentStop for a non-gated
+#     agent -> ALLOW immediately (cheap/high-frequency personas like
+#     explorer never pay this cost, and the default orchestrator-as-main
+#     case never pays it either).
 #  2) per-agent WIP sentinel -> if it holds a non-empty reason, log it to
 #     .claude/wip-audit.log, delete it, ALLOW. An empty sentinel (bare
 #     `touch`, no stated reason) is rejected: deleted but NOT honored, so it
@@ -35,13 +49,21 @@ stop_active="$(echo "$input" | jq -r '.stop_hook_active // false' 2>/dev/null ||
 hook_event="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
-if [ "$hook_event" = "SubagentStop" ]; then
+if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
   [ -f "$config" ] || exit 0
   gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
   [ -n "$gated" ] || gated="lead-programmer"
+
+  if [ "$hook_event" = "SubagentStop" ]; then
+    check_name="$agent_type"
+  else
+    settings="${project_dir}/.claude/settings.json"
+    check_name="$(jq -r '.agent // "orchestrator"' "$settings" 2>/dev/null || echo orchestrator)"
+  fi
+
   match=false
   while IFS= read -r name; do
-    [ -n "$name" ] && [ "$name" = "$agent_type" ] && match=true
+    [ -n "$name" ] && [ "$name" = "$check_name" ] && match=true
   done <<< "$gated"
   [ "$match" = true ] || exit 0
 fi

@@ -4,3 +4,4 @@
 node_modules/
 eval/.runs/
 eval/results.jsonl
+scratch/

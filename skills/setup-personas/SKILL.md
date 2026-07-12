@@ -37,6 +37,35 @@ description: >
   bare names against plugin agents automatically, re-test before skipping
   the copy — don't assume it without checking the installed version.)
 
+## 0.5 Existing-config detection (only when NOT invoked with --update)
+
+Skip this section entirely if invoked with `--update` (that path is already
+handled — go to section 11). Otherwise, before starting section 1:
+
+- Check whether `.claude/persona-config.json` already exists.
+- If it does NOT exist: this is a genuine fresh install — proceed to
+  section 1, nothing to do here.
+- If it DOES exist: read its `pluginVersion` and compare to this plugin's
+  current version (`.claude-plugin/plugin.json`).
+  - If `pluginVersion` is OLDER than the current version: this looks like a
+    stale install; `--update` (section 11) is the right flow, not a fresh
+    run. Tell the user and ask (AskUserQuestion, don't guess) before doing
+    anything — do not fall through into a fresh section 1.
+  - If `pluginVersion` MATCHES the current version: this is very likely a
+    leftover partial/uncommitted run, not a genuine fresh install. Ask the
+    user (AskUserQuestion — this is a first-class step now, not an ad hoc
+    disambiguation) which of these they want:
+    1. **Resume** — inspect which outputs already exist
+       (`.claude/agents/*.md`, `.claude/persona-protocol.md`,
+       `.claude/protocol-digest.md`, `.claude/settings.json`,
+       `.claude/persona-config.json`) to infer how far the prior run got,
+       and continue from the first incomplete section.
+    2. **Patch gaps only** — run the step 12 placeholder sweep now, then
+       re-run only the sections whose output is missing or still contains
+       unresolved placeholders.
+    3. **Full restart** — re-run sections 1-10 from scratch, overwriting.
+  - Never silently clobber or ignore an existing config; always ask first.
+
 ## 1. Persona selection
 
 Ask the user which personas this project needs. `orchestrator`, `explorer`,
@@ -103,32 +132,70 @@ gracefully without needing per-project text surgery. Same for
   assume a selection; a non-interactive agent shell can't drive a TUI picker
   and the command will hang or silently take defaults, leaving stale
   `<MATTPOCOCK:*>` placeholders in copied persona files with no error
-  surfaced. Instead: tell the human which skills to select — `grill-me`,
-  `to-issues`, `tdd`, `diagnose`, `improve-codebase-architecture`, and
-  `setup-matt-pocock-skills`, but only the ones the selected personas
-  actually use (e.g. skip `grill-me`/`to-issues` entirely if `planner` and
-  `milestone-auditor` were both deselected — `milestone-auditor` also
-  preloads `grill-me`, aimed at the plan's assumptions after the fact rather
-  than the request before planning) — and ask them to run the command
-  themselves in their own terminal. After they confirm it's done, verify by
-  listing the installed skill names yourself (don't take "done" on faith)
-  before moving on to placeholder substitution below.
+  surfaced. Instead: tell the human which skills to select, BY PURPOSE, and
+  let the package's own menu supply the exact registered names (they change
+  between package versions — do not treat any name written here as ground
+  truth):
+    - a "grill/challenge-the-plan" skill (registered as `grill-me` at the
+      time of writing — verify on disk),
+    - a "turn work into tracker tickets" skill (registered as `to-tickets`
+      at the time of writing — NOT `to-issues`; verify on disk),
+    - a "TDD / red-green-refactor" skill (registered as `tdd` at the time of
+      writing — verify on disk),
+    - a "diagnose a bug" skill (registered as `diagnosing-bugs` at the time
+      of writing — NOT `diagnose`; verify on disk),
+    - an "improve codebase architecture" skill (registered as
+      `improve-codebase-architecture` at the time of writing — verify on
+      disk),
+    - the `setup-matt-pocock-skills` setup command.
+  Select only the ones the selected personas actually use (e.g. skip the
+  grill and tickets skills entirely if `planner` and `milestone-auditor`
+  were both deselected — `milestone-auditor` also preloads the grill skill,
+  aimed at the plan's assumptions after the fact rather than the request
+  before planning) — and ask them to run the command themselves in their own
+  terminal. After they confirm it's done, verify by listing the installed
+  skill names yourself (don't take "done" on faith) — this discovered list,
+  not the names above, is the authoritative source for the substitution
+  below.
 - Run `/setup-matt-pocock-skills` once (issue tracker, triage labels, doc
   layout). RECORD which issue tracker was chosen — it goes in
   `.claude/persona-config.json`'s `issueTracker` field and the planner reads
   it via the retrieval contract.
-- These install as a plugin, so their registered names are namespaced. Check
-  the skill list and record the exact names.
+- These install as a plugin, so their registered names are namespaced. List
+  `.claude/skills/*/SKILL.md` (read each frontmatter `name:` field) and
+  record the exact discovered names. This recorded list is the ONLY source
+  for the substitution values below — resolve each `<MATTPOCOCK:*>` from a
+  discovered `name:`, never by copying a name written in this skill's prose
+  (those are illustrative and go stale). Match by PURPOSE: the placeholder
+  label after the colon (e.g. `<MATTPOCOCK:to-issues>`,
+  `<MATTPOCOCK:diagnose>`) is a slot marker in the shipped file, not
+  necessarily the current registered name — e.g. resolve the "tickets" slot
+  to the discovered `to-tickets`, and the "diagnose" slot to the discovered
+  `diagnosing-bugs`. If a purpose has no matching discovered skill, STOP and
+  surface it to the human — do not substitute a guessed name.
 - **Substitute placeholders**: the copied `planner.md`, `repo-historian.md`,
   and `milestone-auditor.md` (if selected) contain `<MATTPOCOCK:skill-name>`
-  placeholders in their `skills:` frontmatter — replace with the real
-  namespaced names in the project's copies (this is expected ADAPT
+  placeholders in their `skills:` frontmatter — replace each with the
+  discovered namespaced name for that purpose (this is expected ADAPT
   substitution, not drift). `lead-programmer.md`
   is different: `tdd` and `diagnose` are deliberately NOT in its `skills:`
   frontmatter (they're invoked on demand via the `Skill` tool instead of
   preloaded every spawn, for token efficiency — see its body's "TDD-first"
   bullet), so its `<MATTPOCOCK:tdd>`/`<MATTPOCOCK:diagnose>` placeholders live
   in that body prose instead. Substitute them there the same way.
+
+### 3b. Fail-fast placeholder check (mattpocock scope)
+
+Immediately after the substitution above, run the canonical placeholder
+sweep from step 12, scoped to the agents directory:
+
+    grep -rEn '<MATTPOCOCK(:[a-zA-Z0-9_-]+)?>' .claude/agents/
+
+Any match is a HARD FAILURE — a placeholder is still unresolved. Fix it (or
+surface an unresolvable one to the human) before doing any work in sections
+4-12; catching it here avoids paying for the rest of the flow on a broken
+substitution. (Step 12's full sweep is the final backstop across all
+placeholder kinds; this is the early, mattpocock-only tripwire.)
 
 ## 4. Code Review Graph (MCP server, scoped to explorer alone — never project-wide)
 
@@ -195,7 +262,20 @@ Copy `templates/persona-config.schema.json`'s shape and fill in from an
 actual scan of this repo (package.json / pyproject.toml / Makefile / etc.),
 don't guess:
 - `testAndLintCommand` — what the stop-gate hook runs; must be a single
-  command with a meaningful non-zero exit code.
+  command with a meaningful non-zero exit code. **Do not assume a documented
+  command currently passes — verify it before it becomes a gate.** After
+  composing it, run it once against the current clean tree:
+  - If it exits 0: write it as-is.
+  - If it exits non-zero: this command would permanently red-gate every
+    gated-agent turn end (the stop-gate can't distinguish pre-existing debt
+    from a new regression). Do NOT silently bake in a perpetually-red gate.
+    Surface the failing command and its output to the human and let THEM
+    choose (AskUserQuestion — don't decide unilaterally, it's a judgment
+    call about the project's tolerance for pre-existing debt):
+    (a) exclude the failing sub-command from the composed string, and
+        record the exclusion + reason in the step 12 report; or
+    (b) include it anyway, accepting the gate will BLOCK until the
+        pre-existing failure is fixed.
 - `lintCommand` — formatter/linter invoked per-file by the lint-on-edit hook.
 - `graphUpdateCommand` — from step 4.
 - `sourceGlobs` — project-root-relative patterns worth graph-indexing (empty
@@ -214,7 +294,10 @@ don't guess:
 
 Validate the file against `templates/persona-config.schema.json` (a `jq`
 check that every required key is present and typed correctly) before moving
-on — don't write it freehand and hope.
+on — don't write it freehand and hope. This validation checks shape, not
+behavior — it does NOT replace the "run testAndLintCommand once" check
+above; a schema-valid config can still contain a command that red-gates on
+turn one.
 
 ## 7. CLAUDE.md wiring
 
@@ -297,6 +380,11 @@ On a throwaway branch:
   repo-historian turn even with a dirty tree — proof that `gatedAgents`
   scoping (read from `persona-config.json`, not hardcoded in `hooks.json`) is
   working and won't strangle the cheap, high-frequency personas.
+  Additionally confirm the stop-gate does NOT block a trivial main-session
+  (orchestrator) Stop even with a dirty tree from an in-flight subagent —
+  this is the regression test for the main-session allowlist; pipe a
+  synthetic `{"hook_event_name":"Stop","session_id":"test"}` into the hook
+  with a dirty tree and a default config and confirm exit 0.
 - Introduce a failing check, end a lead-programmer-style turn, confirm
   BLOCK; `touch .claude/wip-handoff.<agent-id>` (empty, no reason), confirm
   it is REJECTED (deleted, but the BLOCK still fires) — this proves the
@@ -358,6 +446,21 @@ automatically via `${CLAUDE_PLUGIN_ROOT}`, but the copied agent files and
   substitution logic.
 
 ## 12. Report back
+
+**Before writing any of the report below, run the placeholder sweep and
+confirm zero matches.** This is mandatory on every run — fresh install AND
+`--update`:
+
+    grep -rEn '<[A-Z0-9_]+(:[a-zA-Z0-9_-]+)?>' .claude/agents/ .claude/persona-protocol.md .claude/protocol-digest.md
+
+(This is the canonical "placeholder sweep" referenced by step 3b and section
+0.5.) Any match is a HARD FAILURE: an unresolved `<MATTPOCOCK:*>`,
+`<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_*>`, or any other `<...>` slot
+means the adapt is not done. Do NOT report success until every match is
+either resolved by substituting the real value, or — if it genuinely can't
+be resolved — explicitly called out to the human as an unresolved gap (same
+"don't guess, surface it" rule used elsewhere in this skill). Never report
+"done" with a live placeholder still on disk.
 
 State: the Claude Code version confirmed; which personas were selected
 (and, if `reviewer` was skipped, that the explicit confirmation was
