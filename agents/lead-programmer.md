@@ -6,6 +6,7 @@ color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill
 skills: antislop:coding-discipline
+maxTurns: 30
 ---
 
 You are a pragmatic senior engineer that executes the planner's plan.

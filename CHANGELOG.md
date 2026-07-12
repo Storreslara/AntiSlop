@@ -3,6 +3,21 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.5.1] - 2026-07-11
+
+### Changed
+- `lead-programmer` gained `maxTurns: 30` (previously uncapped — the last
+  cost-bounding gap noted in 0.2.0's `maxTurns` rollout). `reviewer`'s
+  verdict output contract was rewritten to be strictly terse — verdict-only
+  final message, no restated context/summary. Both changes were validated
+  against a real, controlled pilot (N=5 reps each vs. a matching N=5
+  baseline) before shipping, not applied on assumption: maxTurns cap cut
+  cost -10.4%/turns -38.1%/wall -15.4%; the terse contract cut cost
+  -17.7%/turns -42.9%/wall -20.1%. Neither regressed the pilot's
+  independent defect-catch check (18/18 held across the full pilot,
+  including both these variants) — see `docs/experiments/pilot-2026-07-11.md`
+  for the full experiment log and the `eval/` harness that produced it.
+
 ## [0.5.0] - 2026-07-11
 
 ### Changed

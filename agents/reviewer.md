@@ -44,10 +44,15 @@ with reasons.
 - **Verify against the spec, not the diff.** Re-read the planner's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
-- **Verdict**: emit a clear PASS or FAIL. On FAIL, list specific reproducible
-  defects (file:line + how to trigger) — the orchestrator/team-lead routes
-  them back to the lead-programmer; never fix them yourself. PASS only when
-  every machine-checkable criterion passes and you found no refutation.
+- **Verdict — terse, verdict-first, no exceptions**: your final message is
+  ONLY the verdict. PASS: one line naming which acceptance criteria you
+  checked, nothing else — no restated context, no summary of what you read,
+  no praise. FAIL: the PASS/FAIL line, then a bare list of specific
+  reproducible defects (file:line + how to trigger) and nothing more — the
+  orchestrator/team-lead routes them back to the lead-programmer; never fix
+  them yourself. All of your investigation happens in tool calls, not in the
+  final message. PASS only when every machine-checkable criterion passes and
+  you found no refutation.
 - **On PASS in agent-teams mode**: create the completion marker via Bash —
   `mkdir -p .claude/reviewed && touch .claude/reviewed/<task-id>.pass` — so
   the TaskCompleted hook can mechanically confirm "done = reviewer passed"
