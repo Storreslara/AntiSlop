@@ -150,10 +150,19 @@ into `.claude/agents/` (version-stamped, same as ADAPT step 2); copies
 existing settings); copies the `setup-personas` and `coding-discipline`
 skills in project-scoped (so `/setup-personas` works with no plugin
 installed at all); adds the CLAUDE.md import line; appends the standard
-`.gitignore` entries; writes a skeleton `.claude/persona-config.json`. It
-refuses to run over an existing install (checks for
+`.gitignore` entries; writes a skeleton `.claude/persona-config.json`. By
+default it refuses to run over an existing install (checks for
 `.claude/persona-config.json`) rather than risk clobbering local edits —
 re-run `/setup-personas --update` for that case instead.
+
+**`--overwrite`** re-copies the mechanical files (agents, hooks, skills,
+protocol) unconditionally even over an existing install — useful for pulling
+in agent-prose fixes without the LLM-driven `--update` diff flow. It never
+touches `persona-config.json`'s judgment-driven fields (`testAndLintCommand`,
+`protectedPaths`, etc.) — only `personaSelection` and `pluginVersion` get
+refreshed. With no `--personas=`/`--yes` alongside it, it reuses the
+project's already-recorded persona selection rather than silently changing
+which personas are installed.
 
 **It can also kick off the two third-party installers for you**, since
 you're already at a real terminal when you run this — it just inherits your

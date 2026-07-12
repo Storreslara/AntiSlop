@@ -131,24 +131,49 @@ async function main() {
   const args = process.argv.slice(2);
   const yesToAll = args.includes('--yes') || args.includes('-y');
   const personasFlag = args.find((a) => a.startsWith('--personas='));
+  const overwrite = args.includes('--overwrite');
 
   const version = readPluginVersion();
   console.log(`antislop v${version} — scaffolding into ${CWD}\n`);
 
   const existingConfig = path.join(CWD, '.claude', 'persona-config.json');
-  if (fs.existsSync(existingConfig)) {
+  const existingConfigFound = fs.existsSync(existingConfig);
+  let existingPersonaConfig = null;
+  if (existingConfigFound) {
+    if (!overwrite) {
+      console.log(
+        'A .claude/persona-config.json already exists here — this looks like an ' +
+          'existing install, not a fresh one. This CLI only does fresh scaffolding; ' +
+          'for re-syncing an already-adapted project against a newer version, run ' +
+          'the /setup-personas skill with --update instead (it diffs before ' +
+          'overwriting, this CLI does not), or re-run this CLI with --overwrite to ' +
+          're-copy the mechanical files (agents, hooks, skills, protocol) unconditionally. ' +
+          'Exiting without changes.'
+      );
+      process.exit(1);
+    }
+    existingPersonaConfig = JSON.parse(fs.readFileSync(existingConfig, 'utf8'));
     console.log(
-      'A .claude/persona-config.json already exists here — this looks like an ' +
-        'existing install, not a fresh one. This CLI only does fresh scaffolding; ' +
-        'for re-syncing an already-adapted project against a newer version, run ' +
-        'the /setup-personas skill with --update instead (it diffs before ' +
-        'overwriting, this CLI does not). Exiting without changes.'
+      '--overwrite: existing install found — re-copying agents/hooks/skills/protocol ' +
+        'unconditionally. persona-config.json\'s judgment-driven fields ' +
+        '(testAndLintCommand, protectedPaths, etc.) are preserved as-is; only ' +
+        'personaSelection and pluginVersion are refreshed, unless --personas=/--yes ' +
+        'is also passed to change the selection.\n'
     );
-    process.exit(1);
   }
 
+  // --overwrite with no explicit selection flag reuses the existing project's
+  // recorded persona selection (least surprising: "refresh what's already
+  // here" shouldn't silently add personas nobody chose) — an explicit
+  // --personas=/--yes still wins, same precedence as a fresh install.
+  const reuseExistingSelection = overwrite && existingPersonaConfig && !personasFlag && !yesToAll;
+
   let selected;
-  if (personasFlag) {
+  if (reuseExistingSelection) {
+    const priorSelection = existingPersonaConfig.personaSelection || [];
+    selected = OPTIONAL_PERSONAS.filter((p) => priorSelection.includes(p));
+    selected._researcher = priorSelection.includes('researcher');
+  } else if (personasFlag) {
     const requested = personasFlag.slice('--personas='.length).split(',').map((s) => s.trim()).filter(Boolean);
     selected = OPTIONAL_PERSONAS.filter((p) => requested.includes(p));
     if (requested.includes('reviewer') === false && requested.length > 0) {
@@ -291,21 +316,36 @@ async function main() {
   ]);
   console.log('  .gitignore updated');
 
-  const personaConfig = {
-    testAndLintCommand: '',
-    lintCommand: '',
-    graphUpdateCommand: '',
-    sourceGlobs: [],
-    protectedPaths: [],
-    gatedAgents: ['lead-programmer'],
-    pluginVersion: version,
-    personaSelection: selected.filter((p) => OPTIONAL_PERSONAS.includes(p)).concat(includeResearcher ? ['researcher'] : []),
-    issueTracker: '',
-  };
-  fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(personaConfig, null, 2) + '\n');
-  console.log('  .claude/persona-config.json written (skeleton — fields blank until /setup-personas fills them in from a real repo scan)');
+  const personaSelection = selected.filter((p) => OPTIONAL_PERSONAS.includes(p)).concat(includeResearcher ? ['researcher'] : []);
 
-  const scriptedMode = yesToAll || Boolean(personasFlag);
+  if (existingPersonaConfig) {
+    // --overwrite over an existing install: preserve every judgment-driven
+    // field (testAndLintCommand, protectedPaths, etc.) exactly as recorded —
+    // this CLI has no way to re-derive those from a repo scan, only
+    // /setup-personas --update does. Only refresh what a plain re-copy of
+    // the mechanical files actually implies: the selection (if explicitly
+    // overridden) and the version stamp.
+    existingPersonaConfig.personaSelection = personaSelection;
+    existingPersonaConfig.pluginVersion = version;
+    fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(existingPersonaConfig, null, 2) + '\n');
+    console.log('  .claude/persona-config.json: personaSelection + pluginVersion refreshed, other fields preserved');
+  } else {
+    const personaConfig = {
+      testAndLintCommand: '',
+      lintCommand: '',
+      graphUpdateCommand: '',
+      sourceGlobs: [],
+      protectedPaths: [],
+      gatedAgents: ['lead-programmer'],
+      pluginVersion: version,
+      personaSelection,
+      issueTracker: '',
+    };
+    fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(personaConfig, null, 2) + '\n');
+    console.log('  .claude/persona-config.json written (skeleton — fields blank until /setup-personas fills them in from a real repo scan)');
+  }
+
+  const scriptedMode = yesToAll || Boolean(personasFlag) || overwrite;
   const wantMattpocock = args.includes('--with-mattpocock')
     ? true
     : scriptedMode

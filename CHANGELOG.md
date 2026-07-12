@@ -3,6 +3,19 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.5.3] - 2026-07-12
+
+### Added
+- `bin/cli.js` gained an `--overwrite` flag: re-copies agents/hooks/skills/
+  protocol unconditionally even over an existing install, instead of always
+  refusing (previously the only path forward was the LLM-driven
+  `/setup-personas --update` diff flow). Preserves `persona-config.json`'s
+  judgment-driven fields (`testAndLintCommand`, `protectedPaths`, etc.)
+  exactly as recorded — only `personaSelection` and `pluginVersion` refresh.
+  With no `--personas=`/`--yes` alongside it, reuses the project's
+  already-recorded persona selection rather than silently changing which
+  personas are installed.
+
 ## [0.5.2] - 2026-07-12
 
 ### Added
