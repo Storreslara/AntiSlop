@@ -380,16 +380,15 @@ async function main() {
           'It opens an interactive picker in this same terminal — you select the skills yourself.'
       );
   if (wantMattpocock) {
-    console.log('\nRunning: npx skills@latest add mattpocock/skills (interactive — follow the prompts)');
-    const result = spawnSync('npx', ['skills@latest', 'add', 'mattpocock/skills'], {
+    const result = spawnSync('bash', [path.join(PKG_ROOT, 'bin', 'install-deps.sh'), '--only-mattpocock'], {
       stdio: 'inherit',
       cwd: CWD,
     });
     if (result.status !== 0) {
-      console.log('  mattpocock/skills installer exited non-zero — re-run it yourself if that was unintended.');
+      console.log('  install-deps.sh reported a problem with the mattpocock/skills step — see output above.');
     }
     console.log(
-      '  Done. /setup-personas still needs to record which skills you picked and substitute the ' +
+      '  /setup-personas still needs to record which skills you picked and substitute the ' +
         '<MATTPOCOCK:*> placeholders in the copied persona files — it cannot be inferred from here.'
     );
   } else if (!scriptedMode) {
@@ -405,21 +404,21 @@ async function main() {
           'code-review-graph install --platform claude-code)? Requires pipx/Python.'
       );
   if (wantGraph) {
-    console.log('\nRunning: pipx install code-review-graph');
-    const pipx = spawnSync('pipx', ['install', 'code-review-graph'], { stdio: 'inherit', cwd: CWD });
-    if (pipx.error || pipx.status !== 0) {
-      console.log('  pipx install failed or pipx is not installed — install pipx/Python first, then re-run with --with-graph.');
-    } else {
-      console.log('\nRunning: code-review-graph install --platform claude-code');
-      spawnSync('code-review-graph', ['install', '--platform', 'claude-code'], { stdio: 'inherit', cwd: CWD });
+    const result = spawnSync('bash', [path.join(PKG_ROOT, 'bin', 'install-deps.sh'), '--only-graph'], {
+      stdio: 'inherit',
+      cwd: CWD,
+    });
+    if (result.status === 0) {
       console.log(
-        '  Installed. IMPORTANT: this tool registers itself PROJECT-WIDE in .mcp.json by default — ' +
-          'every persona would inherit it, which is exactly the context-bloat problem this system ' +
-          'avoids elsewhere. This CLI deliberately does NOT edit .mcp.json or explorer.md\'s ' +
-          '`mcpServers:` placeholder for you (it would mean guessing at a schema this CLI hasn\'t ' +
-          'verified against what got written). /setup-personas step 4 does that rescoping for real — ' +
-          'run it next, don\'t skip straight past this.'
+        '  IMPORTANT: this tool registers itself PROJECT-WIDE in .mcp.json by default — every ' +
+          'persona would inherit it, which is exactly the context-bloat problem this system avoids ' +
+          'elsewhere. This CLI deliberately does NOT edit .mcp.json or explorer.md\'s `mcpServers:` ' +
+          'placeholder for you (it would mean guessing at a schema this CLI hasn\'t verified against ' +
+          'what got written). /setup-personas step 4 does that rescoping for real — run it next, ' +
+          'don\'t skip straight past this.'
       );
+    } else {
+      console.log('  install-deps.sh reported a problem with the code-review-graph step — see output above.');
     }
   } else if (!scriptedMode) {
     console.log('  Skipped — /setup-personas step 4 covers this if you want it done via the LLM-driven flow instead.');

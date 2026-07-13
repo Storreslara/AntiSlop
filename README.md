@@ -109,6 +109,11 @@ Install these before using the plugin:
 You won't know which of the conditional ones you need until setup asks —
 that's expected, see [First-time setup](#first-time-setup) below.
 
+If you have a local clone, `bin/install-deps.sh` installs the two conditional
+dependencies (Code Review Graph, mattpocock/skills) idempotently — it skips
+whichever is already present, so it's safe to run any time, on either install
+path (marketplace or npx), not just once.
+
 ## Install
 
 AntiSlop lives in a **private** GitHub repo (`Storreslara/AntiSlop`). Before

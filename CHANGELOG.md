@@ -3,6 +3,24 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.6.2] - 2026-07-13
+
+### Added
+- **`bin/install-deps.sh`**: idempotent installer for the two conditional
+  third-party dependencies (Code Review Graph, mattpocock/skills). Skips
+  whichever is already present (checks `code-review-graph` on `PATH`, and
+  `~/.agents/.skill-lock.json` for a `mattpocock/skills` source entry), so
+  it's safe to run repeatedly and works from either install path
+  (marketplace or npx), not just the npx CLI. Supports `--only-graph` /
+  `--only-mattpocock` to run a single step. Referenced from the README
+  Requirements section.
+
+### Changed
+- `bin/cli.js`'s `--with-mattpocock` and `--with-graph` flags now delegate
+  to `install-deps.sh` instead of duplicating the pipx/npx install calls
+  inline, so re-running them no longer unconditionally reinstalls/reopens
+  the picker when the dependency is already satisfied.
+
 ## [0.6.1] - 2026-07-13
 
 ### Fixed
