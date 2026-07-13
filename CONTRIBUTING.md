@@ -13,8 +13,9 @@ usual for this repo:
    `.claude-plugin/plugin.json`'s `version` against
    `.claude/persona-config.json`'s `pluginVersion` in the project where the
    bug happened. A mismatch is the root cause of a large fraction of reports
-   — if you see one, run `/antislop:setup-personas --update` first and
-   see if the bug persists before filing.
+   — if you see one, run `/antislop:update-antislop` (or `/setup-personas
+   --update` on the npx path) first and see if the bug persists before
+   filing.
 3. **Whether the failure was in a plugin-shipped file or an ADAPT-copied
    project file.** Plugin files live wherever you cloned this repo (e.g.
    `~/antislop`, per the README's clone example — the directory name is

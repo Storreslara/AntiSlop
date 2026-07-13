@@ -53,7 +53,7 @@ debugging a surprising interaction.
   (and is still allowed to complete) instead of an immediate block, logged to
   `.claude/review-audit.log` as `legacy-marker-grace-period-warning`. On or
   after 2026-07-27, `task-gate.sh` blocks unconditionally — run
-  `/antislop:setup-personas --update` before then. (See the README's
+  `/antislop:update-antislop` before then. (See the README's
   First-time setup section for the user-facing version of this deadline.)
 - **`memory: <scope>` auto-grants Read/Write/Edit for memory management,
   regardless of a persona's declared `tools:` list.** hivemind's "never

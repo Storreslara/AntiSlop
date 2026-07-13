@@ -194,16 +194,19 @@ reading, but the ground truth if you want it): `skills/setup-personas/SKILL.md`.
 **Note a dated cutoff:** projects whose copied `reviewer.md` still writes the
 old (pre-v0.2.0) bare-`touch` PASS marker get a grace-period warning instead
 of a hard block — **only through 2026-07-27**. After that, `task-gate.sh`
-blocks unconditionally on the old format. Run `--update` (below) before then
-if your project predates v0.2.0.
+blocks unconditionally on the old format. Run `/antislop:update-antislop`
+(below) before then if your project predates v0.2.0.
 
 **When the plugin updates**, re-sync adapted projects:
 ```
-/antislop:setup-personas --update
+/antislop:update-antislop
 ```
-This diffs the project's copied agent files against the current plugin version
-before overwriting — it never silently clobbers a local edit. A `SessionStart`
-hook warns automatically when a project's adapted version is behind.
+(Equivalent to `/antislop:setup-personas --update`, which still works — this
+is just a dedicated entry point. npx-scaffolded projects don't get this
+command; run `/setup-personas --update`, bare, there instead.) This diffs the
+project's copied agent files against the current plugin version before
+overwriting — it never silently clobbers a local edit. A `SessionStart` hook
+warns automatically when a project's adapted version is behind.
 
 ## npx install (alternative)
 
@@ -298,7 +301,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
 | `setup-personas` skill (the setup flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
-| `start-feature-team` command | wiki / CONTEXT.md / docs/adr seeding |
+| `start-feature-team`, `update-antislop` commands (plugin-installed projects only) | wiki / CONTEXT.md / docs/adr seeding |
 
 ## Adding your own persona
 

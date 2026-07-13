@@ -3,6 +3,27 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.6.3] - 2026-07-13
+
+### Added
+- **`commands/update-antislop.md`**: dedicated `/antislop:update-antislop`
+  command for plugin-installed projects — a named entry point into
+  `skills/setup-personas/SKILL.md`'s section 11 (`--update` mode), instead of
+  only being reachable via the `--update` flag on `/antislop:setup-personas`.
+  `/antislop:setup-personas --update` still works identically; this is an
+  additive alias, not a replacement. npx-scaffolded projects (which don't get
+  project-local plugin commands) keep using bare `/setup-personas --update`.
+  README, CONTRIBUTING.md, docs/design.md, templates/persona-protocol.md, and
+  the bug report template now point at `/antislop:update-antislop` as the
+  primary plugin-path instruction. Hardened after an Opus critic pass found
+  two gaps: it now checks for `.claude/persona-config.json` first and stops
+  with a clear "run `/antislop:setup-personas` instead" message on a
+  never-adapted project, rather than delegating straight into section 11
+  against a missing file; and it invokes the `/antislop:setup-personas` skill
+  itself (letting Claude Code resolve the plugin-root path) instead of
+  telling the agent to read `skills/setup-personas/SKILL.md` by a
+  project-relative path, which doesn't resolve on a plugin install.
+
 ## [0.6.2] - 2026-07-13
 
 ### Added

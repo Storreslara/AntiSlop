@@ -10,7 +10,7 @@ labels: bug
 **Plugin version vs. adapted project version:**
 - `.claude-plugin/plugin.json` version:
 - Affected project's `.claude/persona-config.json` `pluginVersion`:
-- (If these differ, try `/antislop:setup-personas --update` first — does the bug persist?)
+- (If these differ, try `/antislop:update-antislop` first — does the bug persist?)
 
 **Where did the failure happen?**
 - [ ] A plugin-shipped file (in the plugin's own `agents/`, `hooks/`, `skills/`, `commands/`)

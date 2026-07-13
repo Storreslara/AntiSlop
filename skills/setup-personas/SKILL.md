@@ -17,8 +17,10 @@ description: >
      do the work; inspect the actual project rather than guessing. When done,
      report what you did and flag anything incomplete.
 
-     If invoked as `/antislop:setup-personas --update`, skip straight to
-     section 11 instead of running sections 0-10 fresh. -->
+     If invoked as `/antislop:setup-personas --update` — or via the
+     `/antislop:update-antislop` command, which is just a dedicated entry
+     point into this same section for plugin-installed projects — skip
+     straight to section 11 instead of running sections 0-10 fresh. -->
 
 ## 0. Version gate (no FLAT MODE fallback — this plugin targets one baseline)
 
@@ -467,7 +469,10 @@ On a throwaway branch:
 
 ## 11. `--update` mode (re-run after a plugin version bump)
 
-Invoked as `/antislop:setup-personas --update`. Purpose: the copy in
+Invoked as `/antislop:setup-personas --update`, or as `/antislop:update-antislop`
+(same flow, dedicated command — plugin-installed projects only; npx-scaffolded
+projects don't get project-local commands, so `--update` on the bare
+`/setup-personas` skill remains the only path there). Purpose: the copy in
 section 2 is what makes bare-name persona references work, but it also means
 persona-body bug fixes in a newer plugin version never reach an
 already-adapted project on their own — hooks/skills/commands propagate

@@ -1,6 +1,6 @@
 {
   "name": "antislop",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Modular persona-based Claude Code orchestrator system (explorer/lead-programmer are core; hivemind/repo-historian/reviewer/researcher/milestone-auditor are optional, selected per-project) plus the coding-discipline skill and enforcement hooks. Requires Claude Code >=2.1.178 (nested subagent spawning + current teams-cleanup behavior).",
   "author": {
     "name": "Sebastian Torres Lara"
