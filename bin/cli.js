@@ -3,15 +3,19 @@
 
 // Mechanical half of the antislop ADAPT flow, packaged as a standalone
 // installer so a project doesn't need GitHub collaborator access or the
-// /plugin marketplace flow. This CLI only does deterministic file
-// scaffolding (copy, stamp, merge) — it deliberately does NOT do the
+// /plugin marketplace flow. This CLI does deterministic file scaffolding
+// (copy, stamp, merge) plus, via --update/--wire-*-mcp, deterministic
+// resync and MCP rescoping — it deliberately does NOT do the
 // judgment-driven half (repo-specific test/lint commands, protected paths,
-// third-party skill installs, graph/MCP wiring, CLAUDE.md pruning, hook
-// verification). That half still lives in skills/setup-personas/SKILL.md,
-// which this CLI copies project-locally and tells you to run next.
+// third-party skill NAME selection, CLAUDE.md pruning, hook verification).
+// That half still lives in skills/setup-personas/SKILL.md, which this CLI
+// copies project-locally and tells you to run next. See --update and
+// --wire-graph-mcp/--wire-arxiv-mcp below for the zero-LLM resync path.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const crypto = require('crypto');
 const readline = require('readline');
 const { spawnSync } = require('child_process');
 
@@ -134,8 +138,411 @@ async function askYesNoStandalone(question) {
   return answer;
 }
 
+// ---------------------------------------------------------------------------
+// --update / --wire-graph-mcp / --wire-arxiv-mcp: the deterministic resync
+// path. Everything below regenerates a version-stamped file straight from
+// the plugin's own source + the substitution values persona-config.json
+// records at ADAPT time (see templates/persona-config.schema.json's
+// `substitutions`/`fileHashes` fields) — no LLM judgment involved. A file
+// only ever needs a human decision (not an LLM one) when it has genuinely
+// diverged from the last known-clean baseline; see --accept=/--keep= below.
+// ---------------------------------------------------------------------------
+
+function sha256Hex(content) {
+  return crypto.createHash('sha256').update(content, 'utf8').digest('hex');
+}
+
+const STAMP_LINE_RE = /<!-- antislop v[^\n]*ADAPT-substituted -->\r?\n/;
+
+function stripStamp(body) {
+  return body.replace(STAMP_LINE_RE, '');
+}
+
+function migrateLegacyPersonaTokens(selection, { logNote } = {}) {
+  if (!selection.includes('planner')) return selection;
+  if (logNote) {
+    console.log(
+      'Deprecation note: migrating the legacy "planner" token to "hivemind" ' +
+        '(the legacy "planner" token was renamed hivemind in plugin v0.6.0).'
+    );
+  }
+  return selection.map((p) => LEGACY_PERSONA_MAP[p] || p);
+}
+
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const MATTPOCOCK_RE = /<MATTPOCOCK:([a-zA-Z0-9_-]+)>/g;
+
+function applyMattpocockSubs(body, mattpocockSkills, fileLabel) {
+  const map = mattpocockSkills || {};
+  return body.replace(MATTPOCOCK_RE, (full, slot) => {
+    if (!(slot in map)) {
+      throw new Error(
+        `No recorded substitution for <MATTPOCOCK:${slot}> in ${fileLabel} — ` +
+          "persona-config.json's substitutions.mattpocockSkills is incomplete. Run " +
+          '/antislop:setup-personas --update once to re-derive and backfill it.'
+      );
+    }
+    return map[slot];
+  });
+}
+
+function renderMcpBlock(launch, indent) {
+  const lines = [`${indent}command: ${launch.command}`, `${indent}args:`];
+  for (const a of launch.args || []) lines.push(`${indent}  - ${a}`);
+  if (launch.env && Object.keys(launch.env).length > 0) {
+    lines.push(`${indent}env:`);
+    for (const k of Object.keys(launch.env)) lines.push(`${indent}  ${k}: ${launch.env[k]}`);
+  }
+  return lines.join('\n');
+}
+
+function applyMcpPlaceholder(body, placeholder, launch, fileLabel) {
+  if (!body.includes(placeholder)) return body;
+  if (!launch) {
+    throw new Error(
+      `${fileLabel} still has the ${placeholder} placeholder but no launch command is ` +
+        'recorded in persona-config.json\'s substitutions — run /antislop:setup-personas ' +
+        '--update once (or bin/cli.js --wire-graph-mcp / --wire-arxiv-mcp) to wire it.'
+    );
+  }
+  const lineRe = new RegExp(`^([ \\t]*)${escapeRegExp(placeholder)}\\r?\\n?`, 'm');
+  const match = body.match(lineRe);
+  const indent = match ? match[1] : '      ';
+  return body.replace(lineRe, renderMcpBlock(launch, indent) + '\n');
+}
+
+const ARXIV_FALLBACK_NOTE =
+  '<!-- No working arXiv MCP found at ADAPT time — operating in WebFetch/WebSearch fallback mode. -->\n';
+
+function applyArxivFallback(body) {
+  const stripped = body.replace(/\nmcpServers:\n(?:[ \t]+\S.*\n?)+/, '\n');
+  const fmMatch = stripped.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+  if (!fmMatch) return ARXIV_FALLBACK_NOTE + stripped;
+  const end = fmMatch[0].length;
+  return stripped.slice(0, end) + ARXIV_FALLBACK_NOTE + stripped.slice(end);
+}
+
+function copyStampedBody(destAbsPath, body, version, sourceRelPath) {
+  mkdirp(path.dirname(destAbsPath));
+  fs.writeFileSync(destAbsPath, insertStampAfterFrontmatter(body, versionStamp(version, sourceRelPath)));
+}
+
+function buildFileSpecs(personaSelection) {
+  const selectedOptional = OPTIONAL_PERSONAS.filter((p) => personaSelection.includes(p));
+  const specs = [];
+  for (const name of CORE_PERSONAS.concat(selectedOptional)) {
+    specs.push({
+      projectRelPath: `.claude/agents/${name}.md`,
+      sourceAbsPath: path.join(PKG_ROOT, 'agents', `${name}.md`),
+      sourceRelPath: `agents/${name}.md`,
+      kind: name === 'explorer' ? 'graph' : 'plain',
+    });
+  }
+  if (personaSelection.includes('researcher')) {
+    specs.push({
+      projectRelPath: '.claude/agents/researcher.md',
+      sourceAbsPath: path.join(PKG_ROOT, 'templates', 'researcher.md.tmpl'),
+      sourceRelPath: 'templates/researcher.md.tmpl',
+      kind: 'arxiv',
+    });
+  }
+  specs.push({
+    projectRelPath: '.claude/persona-protocol.md',
+    sourceAbsPath: path.join(PKG_ROOT, 'templates', 'persona-protocol.md'),
+    sourceRelPath: 'templates/persona-protocol.md',
+    kind: 'plain',
+  });
+  specs.push({
+    projectRelPath: '.claude/protocol-digest.md',
+    sourceAbsPath: path.join(PKG_ROOT, 'templates', 'protocol-digest.md'),
+    sourceRelPath: 'templates/protocol-digest.md',
+    kind: 'plain',
+  });
+  return specs;
+}
+
+function renderCleanBody(spec, config) {
+  let body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
+  body = applyMattpocockSubs(body, (config.substitutions || {}).mattpocockSkills, spec.projectRelPath);
+  if (spec.kind === 'graph') {
+    body = applyMcpPlaceholder(
+      body,
+      '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>',
+      (config.substitutions || {}).graphMcpLaunch,
+      spec.projectRelPath
+    );
+  } else if (spec.kind === 'arxiv') {
+    const launch = (config.substitutions || {}).arxivMcpLaunch;
+    if (launch === null || launch === undefined) {
+      body = applyArxivFallback(body);
+    } else {
+      body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>', launch, spec.projectRelPath);
+    }
+  }
+  return body;
+}
+
+function printUnifiedDiff(oldStr, newStr, label) {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-diff-'));
+  const oldPath = path.join(tmpDir, 'current');
+  const newPath = path.join(tmpDir, 'fresh');
+  fs.writeFileSync(oldPath, oldStr);
+  fs.writeFileSync(newPath, newStr);
+  const result = spawnSync(
+    'diff',
+    ['-u', '--label', `${label} (current)`, '--label', `${label} (fresh)`, oldPath, newPath],
+    { encoding: 'utf8' }
+  );
+  console.log(result.stdout || '(diff produced no textual output)');
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
+async function runUpdate(args) {
+  const version = readPluginVersion();
+  const configPath = path.join(CWD, '.claude', 'persona-config.json');
+  if (!fs.existsSync(configPath)) {
+    console.log(
+      'No .claude/persona-config.json found — this project was never adapted. Run ' +
+        '/antislop:setup-personas (a fresh install) instead of --update.'
+    );
+    process.exit(1);
+  }
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+  let personaSelection = config.personaSelection || [];
+  const hadLegacyToken = personaSelection.includes('planner');
+  personaSelection = migrateLegacyPersonaTokens(personaSelection, { logNote: true });
+  if (hadLegacyToken) {
+    config.personaSelection = personaSelection;
+    const legacyPath = path.join(CWD, '.claude', 'agents', 'planner.md');
+    if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
+  }
+
+  if (config.pluginVersion === version && !hadLegacyToken) {
+    console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
+    return;
+  }
+
+  if (!config.substitutions || !config.fileHashes) {
+    console.log(
+      'This project predates the deterministic --update path (persona-config.json is ' +
+        'missing `substitutions`/`fileHashes`). Falling back to the LLM-driven flow this ' +
+        'once: run `/antislop:setup-personas --update` (marketplace) or bare ' +
+        '`/setup-personas --update` (npx) — it will backfill these fields so future ' +
+        'updates can run through this CLI with zero token cost.'
+    );
+    process.exit(1);
+  }
+
+  const acceptFlag = args.find((a) => a.startsWith('--accept='));
+  const keepFlag = args.find((a) => a.startsWith('--keep='));
+  const acceptList = acceptFlag ? acceptFlag.slice('--accept='.length).split(',').map((s) => s.trim()) : [];
+  const keepList = keepFlag ? keepFlag.slice('--keep='.length).split(',').map((s) => s.trim()) : [];
+  const acceptAll = acceptList.includes('all');
+  const keepAll = keepList.includes('all');
+
+  const specs = buildFileSpecs(personaSelection);
+  const newFileHashes = Object.assign({}, config.fileHashes);
+  const pending = [];
+  const summary = [];
+
+  for (const spec of specs) {
+    let cleanBody;
+    try {
+      cleanBody = renderCleanBody(spec, config);
+    } catch (err) {
+      console.error(`antislop --update failed: ${err.message}`);
+      process.exit(1);
+    }
+    const cleanHash = sha256Hex(cleanBody);
+    const destAbsPath = path.join(CWD, spec.projectRelPath);
+    const relKey = spec.projectRelPath;
+
+    if (!fs.existsSync(destAbsPath)) {
+      copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+      newFileHashes[relKey] = cleanHash;
+      summary.push(`  ${relKey}: created`);
+      continue;
+    }
+
+    const currentBody = fs.readFileSync(destAbsPath, 'utf8');
+    const currentStripped = stripStamp(currentBody);
+    const recordedHash = config.fileHashes[relKey];
+    const noLocalEdits = Boolean(recordedHash) && sha256Hex(currentStripped) === recordedHash;
+
+    if (noLocalEdits && cleanHash === recordedHash) {
+      summary.push(`  ${relKey}: already current`);
+      continue;
+    }
+
+    if (noLocalEdits) {
+      copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+      newFileHashes[relKey] = cleanHash;
+      summary.push(`  ${relKey}: updated (no local edits detected)`);
+      continue;
+    }
+
+    if (acceptAll || acceptList.includes(relKey)) {
+      copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+      newFileHashes[relKey] = cleanHash;
+      summary.push(`  ${relKey}: overwritten (--accept)`);
+    } else if (keepAll || keepList.includes(relKey)) {
+      // Deliberately do NOT touch newFileHashes[relKey] here — it must stay
+      // pointed at the original no-local-edits baseline. Rebasing it to the
+      // current (customized) content would make a LATER version bump whose
+      // upstream content happens to stop changing look "no local edits
+      // detected" relative to that rebased hash, silently overwriting the
+      // very customization --keep was just asked to preserve. Leaving the
+      // baseline alone means this file keeps getting flagged (and asked
+      // about) on every future drift, which is the safe default — "never
+      // silently clobber a local edit" — even though it costs a repeat ask.
+      summary.push(`  ${relKey}: kept as-is (local edits preserved; will be re-flagged on future drift)`);
+    } else {
+      pending.push({ relKey, currentStripped, cleanBody });
+    }
+  }
+
+  if (pending.length > 0) {
+    console.log(`\n${pending.length} file(s) have diverged from a fresh copy and need a decision:\n`);
+    for (const p of pending) {
+      console.log(`--- ${p.relKey} ---`);
+      printUnifiedDiff(p.currentStripped, p.cleanBody, p.relKey);
+      console.log('');
+    }
+    config.fileHashes = newFileHashes;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    console.log(summary.join('\n'));
+    console.log(
+      `\n${pending.length} file(s) pending. Re-run with --accept=<path,path> (overwrite with the ` +
+        'regenerated version) or --keep=<path,path> (keep local edits for now — you will be asked ' +
+        'again on the next drift, by design) for each — or --accept=all / --keep=all. pluginVersion ' +
+        'stays unbumped until every file is resolved.'
+    );
+    process.exit(2);
+  }
+
+  config.fileHashes = newFileHashes;
+  config.pluginVersion = version;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+  console.log(`antislop v${version} — update complete in ${CWD}:\n`);
+  console.log(summary.join('\n'));
+
+  const placeholderRe = /<[A-Z0-9_]+(:[a-zA-Z0-9_-]+)?>/;
+  const leftover = specs
+    .map((s) => path.join(CWD, s.projectRelPath))
+    .filter((p) => fs.existsSync(p) && placeholderRe.test(fs.readFileSync(p, 'utf8')));
+  if (leftover.length > 0) {
+    console.log(
+      `\nWARNING: unresolved placeholder(s) remain in: ${leftover.join(', ')} — this should not ` +
+        "happen after a clean --update; inspect persona-config.json's substitutions field."
+    );
+  }
+}
+
+async function runWireMcp(kind, args) {
+  const mcpJsonPath = path.join(CWD, '.mcp.json');
+  if (!fs.existsSync(mcpJsonPath)) {
+    console.error(`antislop --wire-${kind}-mcp failed: no .mcp.json found at ${mcpJsonPath}.`);
+    process.exit(1);
+  }
+  const mcpJson = JSON.parse(fs.readFileSync(mcpJsonPath, 'utf8'));
+  const servers = mcpJson.mcpServers || {};
+
+  let serverKey;
+  let targetFile;
+  let placeholder;
+  let substitutionField;
+  if (kind === 'graph') {
+    serverKey = 'code-review-graph';
+    targetFile = path.join(CWD, '.claude', 'agents', 'explorer.md');
+    placeholder = '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>';
+    substitutionField = 'graphMcpLaunch';
+  } else {
+    const keyFlag = args.find((a) => a.startsWith('--wire-arxiv-mcp='));
+    serverKey = keyFlag ? keyFlag.slice('--wire-arxiv-mcp='.length) : null;
+    if (!serverKey) {
+      console.error(
+        'antislop --wire-arxiv-mcp requires =<server-key-in-.mcp.json>, e.g. ' +
+          '--wire-arxiv-mcp=arxiv-mcp-server'
+      );
+      process.exit(1);
+    }
+    targetFile = path.join(CWD, '.claude', 'agents', 'researcher.md');
+    placeholder = '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>';
+    substitutionField = 'arxivMcpLaunch';
+  }
+
+  const entry = servers[serverKey];
+  if (!entry) {
+    console.error(
+      `antislop --wire-${kind}-mcp failed: no "${serverKey}" entry in .mcp.json's mcpServers. ` +
+        `Found: ${Object.keys(servers).join(', ') || '(none)'}`
+    );
+    process.exit(1);
+  }
+  if (!fs.existsSync(targetFile)) {
+    console.error(`antislop --wire-${kind}-mcp failed: ${targetFile} does not exist yet — scaffold it first.`);
+    process.exit(1);
+  }
+
+  const launch = { command: entry.command, args: entry.args || [] };
+  if (entry.env && Object.keys(entry.env).length > 0) launch.env = entry.env;
+
+  let body = fs.readFileSync(targetFile, 'utf8');
+  if (!body.includes(placeholder)) {
+    console.log(`  ${targetFile} has no ${placeholder} placeholder left — already wired, nothing to do.`);
+  } else {
+    body = applyMcpPlaceholder(body, placeholder, launch, targetFile);
+    fs.writeFileSync(targetFile, body);
+    console.log(`  ${targetFile}: inlined ${serverKey}'s launch command from .mcp.json.`);
+  }
+
+  delete servers[serverKey];
+  mcpJson.mcpServers = servers;
+  fs.writeFileSync(mcpJsonPath, JSON.stringify(mcpJson, null, 2) + '\n');
+  console.log(
+    `  .mcp.json: removed the project-wide "${serverKey}" entry (rescoped to ` +
+      `${path.basename(targetFile)} alone).`
+  );
+
+  const configPath = path.join(CWD, '.claude', 'persona-config.json');
+  if (fs.existsSync(configPath)) {
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.substitutions = config.substitutions || {};
+    config.substitutions[substitutionField] = launch;
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    console.log(`  .claude/persona-config.json: substitutions.${substitutionField} recorded.`);
+  } else {
+    console.log(
+      '  Note: .claude/persona-config.json not found yet — run /setup-personas step 6 to ' +
+        'create it, then re-run this to record the substitution.'
+    );
+  }
+
+  console.log(
+    `\nDone. Verify the connection works: spawn the ${
+      kind === 'graph' ? 'explorer' : 'researcher'
+    } with one real query and confirm it self-reports the answer as MCP-derived, not a grep/WebFetch fallback.`
+  );
+}
+
 async function main() {
   const args = process.argv.slice(2);
+
+  if (args.includes('--update')) {
+    return runUpdate(args);
+  }
+  if (args.includes('--wire-graph-mcp')) {
+    return runWireMcp('graph', args);
+  }
+  if (args.some((a) => a === '--wire-arxiv-mcp' || a.startsWith('--wire-arxiv-mcp='))) {
+    return runWireMcp('arxiv', args);
+  }
+
   const yesToAll = args.includes('--yes') || args.includes('-y');
   const personasFlag = args.find((a) => a.startsWith('--personas='));
   const overwrite = args.includes('--overwrite');
@@ -438,7 +845,21 @@ async function main() {
   );
 }
 
-main().catch((err) => {
-  console.error('antislop failed:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('antislop failed:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = {
+  sha256Hex,
+  stripStamp,
+  applyMattpocockSubs,
+  renderMcpBlock,
+  applyMcpPlaceholder,
+  applyArxivFallback,
+  buildFileSpecs,
+  renderCleanBody,
+  migrateLegacyPersonaTokens,
+};

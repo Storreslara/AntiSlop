@@ -3,6 +3,46 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.6.4] - 2026-07-13
+
+### Changed
+- **`--update` is now a deterministic script, not an LLM skill invocation.**
+  `/antislop:update-antislop` and the npx bare route both now shell straight
+  out to `bin/cli.js --update`, which regenerates each version-stamped file
+  directly from the plugin's own source plus the substitution values
+  recorded in `persona-config.json` at ADAPT time, and only touches a file
+  once it's byte-identical to the last known-clean baseline. This was
+  previously implemented as `skills/setup-personas/SKILL.md` section 11,
+  which meant loading the entire ~530-line, multi-thousand-token skill file
+  to do work that section 11 itself only needed ~40 lines of — every
+  `--update` run paid for reading the whole fresh-install flow (persona
+  wizard, third-party installs, MCP wiring, CLAUDE.md pruning, hook
+  verification) it never executed. The common case (no local edits) now
+  costs no meaningful tokens; a file only escalates to a *human* decision
+  (never an LLM one) when it's genuinely diverged from a fresh copy, via new
+  `--accept=<paths>`/`--keep=<paths>` flags (`=all` for both). `--keep`
+  deliberately does not "rebase" a file's clean-baseline hash to the kept
+  content — doing so would let a later version bump that happens to leave
+  the upstream file unchanged silently overwrite the very customization
+  `--keep` was asked to preserve; instead the file is re-flagged for a
+  decision on every future drift, by design.
+- `persona-config.schema.json` gained two fields backing the above:
+  `substitutions` (the `mattpocockSkills` slot map, `graphMcpLaunch`,
+  `arxivMcpLaunch` — the values ADAPT resolved, so a script can re-derive a
+  byte-identical file without guessing at them) and `fileHashes` (the
+  known-clean baseline per stamped file). `setup-personas` steps 3-6 now
+  record both as they resolve each substitution. Projects adapted before
+  this field existed fall back once to the old LLM-driven flow (now section
+  11's sole remaining job), which backfills both fields so every later
+  update runs through the script.
+- Added `bin/cli.js --wire-graph-mcp` and `--wire-arxiv-mcp=<server-key>`:
+  read a tool-generated project-wide `.mcp.json` entry, inline its launch
+  command into `explorer.md`/`researcher.md`'s `mcpServers:` frontmatter,
+  remove the project-wide entry, and record it in `persona-config.json`'s
+  `substitutions` — mechanizing the copy/rescope half of `setup-personas`
+  steps 4-5 (verifying the connection actually works is still a judgment
+  call left to the LLM/human).
+
 ## [0.6.3] - 2026-07-13
 
 ### Added

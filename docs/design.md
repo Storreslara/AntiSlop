@@ -98,6 +98,15 @@ debugging a surprising interaction.
   hooks/skills/commands do (those load via `${CLAUDE_PLUGIN_ROOT}` and stay
   live). Version-stamp comments + `--update` mode + the `SessionStart` drift
   check close that gap without needing every user to remember to check manually.
+- **`--update` is a deterministic script, not an LLM skill invocation.**
+  `bin/cli.js --update` regenerates each version-stamped file directly from
+  the plugin's own source plus the `substitutions`/`fileHashes` recorded in
+  `persona-config.json` at ADAPT time, so re-syncing a project against a
+  newer plugin version costs no meaningful tokens in the common (no local
+  edits) case — it only escalates to a human decision (never an LLM one) for
+  a file that's genuinely diverged. `setup-personas --update`'s section 11 is
+  now that script's one-time fallback, for projects adapted before
+  `substitutions`/`fileHashes` existed.
 - **`AskUserQuestion` is unavailable to subagents, even if listed in their
   `tools:`** — confirmed against the Claude Code docs, not assumed. This is why
   hivemind returns plain-text "Open Questions" instead of asking

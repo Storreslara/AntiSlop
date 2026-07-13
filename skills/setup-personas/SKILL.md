@@ -2,13 +2,15 @@
 name: setup-personas
 description: >
   Adapt the antislop plugin (persona system + hooks + coding-discipline
-  skill) to THIS repository, or resync an already-adapted project against a
-  newer plugin version with `--update`. Run once per new project after
-  installing the plugin. Covers only what genuinely can't be pre-baked:
-  version check, persona selection, third-party skill installs, the Code
-  Review Graph, the arXiv MCP for researcher, repo-specific commands/paths,
-  CLAUDE.md wiring, settings merge, wiki seeding, and sandboxed hook
-  verification.
+  skill) to THIS repository. Run once per new project after installing the
+  plugin. Covers only what genuinely can't be pre-baked: version check,
+  persona selection, third-party skill installs, the Code Review Graph, the
+  arXiv MCP for researcher, repo-specific commands/paths, CLAUDE.md wiring,
+  settings merge, wiki seeding, and sandboxed hook verification. Resyncing an
+  already-adapted project against a newer plugin version (`--update`) is now
+  a deterministic script (`bin/cli.js --update`, zero LLM cost) — this skill
+  is invoked with `--update` only as that script's fallback, for projects
+  adapted before it existed.
 ---
 <!-- This skill is the entire "ADAPT-PROMPT" that replaces sections 0, 1, 7,
      and 8 of the original monolithic setup prompt. Everything else (the
@@ -17,10 +19,13 @@ description: >
      do the work; inspect the actual project rather than guessing. When done,
      report what you did and flag anything incomplete.
 
-     If invoked as `/antislop:setup-personas --update` — or via the
-     `/antislop:update-antislop` command, which is just a dedicated entry
-     point into this same section for plugin-installed projects — skip
-     straight to section 11 instead of running sections 0-10 fresh. -->
+     `--update` no longer means "run this skill" — it means "run `bin/cli.js
+     --update`" (see section 11). Both `/antislop:update-antislop` and the
+     npx bare route call the script directly, never this skill, unless the
+     script itself exits with the specific "predates the deterministic path"
+     message. Only THEN does `/antislop:setup-personas --update` (or bare
+     `/setup-personas --update`) land here, and even then it skips straight
+     to section 11 instead of running sections 0-10 fresh. -->
 
 ## 0. Version gate (no FLAT MODE fallback — this plugin targets one baseline)
 
@@ -50,9 +55,10 @@ handled — go to section 11). Otherwise, before starting section 1:
 - If it DOES exist: read its `pluginVersion` and compare to this plugin's
   current version (`.claude-plugin/plugin.json`).
   - If `pluginVersion` is OLDER than the current version: this looks like a
-    stale install; `--update` (section 11) is the right flow, not a fresh
-    run. Tell the user and ask (AskUserQuestion, don't guess) before doing
-    anything — do not fall through into a fresh section 1.
+    stale install; `bin/cli.js --update` (falling back to this skill's
+    section 11 only if the script itself says so) is the right flow, not a
+    fresh run. Tell the user and ask (AskUserQuestion, don't guess) before
+    doing anything — do not fall through into a fresh section 1.
   - If `pluginVersion` MATCHES the current version: this is very likely a
     leftover partial/uncommitted run, not a genuine fresh install. Ask the
     user (AskUserQuestion — this is a first-class step now, not an ad hoc
@@ -185,6 +191,13 @@ gracefully without needing per-project text surgery. Same for
   preloaded every spawn, for token efficiency — see its body's "TDD-first"
   bullet), so its `<MATTPOCOCK:tdd>`/`<MATTPOCOCK:diagnose>` placeholders live
   in that body prose instead. Substitute them there the same way.
+- **Record every substitution you just made**: as you resolve each
+  `<MATTPOCOCK:slot>` placeholder, add a `slot -> resolved name` entry to a
+  running map (e.g. `{"grill-me": "grill-me", "to-issues": "mattpocock-skills:to-tickets"}`)
+  — this becomes `substitutions.mattpocockSkills` in step 6. This is what lets
+  `bin/cli.js --update` regenerate these files later with zero LLM cost;
+  skipping it silently forces every future update for this project back onto
+  the slow LLM-driven path.
 
 ### 3b. Fail-fast placeholder check (mattpocock scope)
 
@@ -235,6 +248,12 @@ accurate forever):
   tool's current CLI). Identify the incremental-update command and its
   file-argument syntax — this becomes `graphUpdateCommand` in
   `.claude/persona-config.json` (see step 6).
+- **Record the launch command itself**, split into `command` + `args` (the
+  same `command:`/`args:` pair you just wrote into `explorer.md`'s
+  `mcpServers:` frontmatter) — this becomes `substitutions.graphMcpLaunch` in
+  step 6, e.g. `{"command": "uv", "args": ["run", "code-review-graph-mcp"]}`.
+  Without it, `bin/cli.js --update` has no way to regenerate `explorer.md`
+  deterministically on a future plugin version bump.
 - Add the persistent store (SQLite db / index dir) to `.gitignore` unless you
   deliberately want a shared prebuilt index (if so, commit it and say so in
   your report).
@@ -279,10 +298,18 @@ plugin agent at all — it only lives as a template.
   produces no visible failure and the researcher's `WebFetch`/`WebSearch`
   tools can silently cover for a disconnected MCP server. If it reports the
   fallback path, the connection is NOT working — fix it before moving on.
+- **Record the launch command**, split into `command` + `args`, as
+  `substitutions.arxivMcpLaunch` in step 6 (same shape as `graphMcpLaunch`
+  above) — this is what lets `bin/cli.js --update` regenerate `researcher.md`
+  without an LLM later.
 - If no working arXiv MCP can be found: remove the `mcpServers:` field, and
   its `tools:` list already includes `WebFetch`/`WebSearch` for a real
-  fallback — note in the file's body that it's operating in that fallback
-  mode, and say so in your report.
+  fallback — note in the file's body, immediately after the closing `---` of
+  the frontmatter, the exact line `<!-- No working arXiv MCP found at ADAPT
+  time — operating in WebFetch/WebSearch fallback mode. -->` (this fixed
+  wording, not a paraphrase, is what `bin/cli.js --update` looks for to
+  regenerate this file deterministically), and say so in your report. Record
+  `substitutions.arxivMcpLaunch` as `null` in this case.
 
 ## 6. Repo-specific config → `.claude/persona-config.json`
 
@@ -319,6 +346,22 @@ don't guess:
 - `personaSelection` — from step 1.
 - `pluginVersion` — this plugin's current version (same value used for the
   file stamps in step 2).
+- `substitutions` — the `mattpocockSkills` map (step 3), `graphMcpLaunch`
+  (step 4, `null` if the graph wasn't wired), and `arxivMcpLaunch` (step 5,
+  `null` if researcher wasn't selected or no working MCP was found). This is
+  what makes `bin/cli.js --update` possible — a fresh install without this
+  field forces every future update for the project onto the slow LLM path.
+- `fileHashes` — **compute this last, after every other file in steps 2-5 has
+  its final substituted content on disk.** For each version-stamped file
+  (every copied `.claude/agents/*.md`, plus `.claude/persona-protocol.md` and
+  `.claude/protocol-digest.md` from step 7 — so this sub-step actually can't
+  run until step 7's copies exist either; do it once at the very end of
+  ADAPT, not literally inside step 6's file write), compute the sha256 of its
+  content with the version-stamp comment line (`<!-- antislop vX.Y.Z | ...
+  -->`) stripped out, keyed by project-relative path (e.g.
+  `.claude/agents/hivemind.md`). This is the "known-clean" baseline
+  `bin/cli.js --update` diffs future runs against to detect local edits
+  without an LLM.
 
 Validate the file against `templates/persona-config.schema.json` (a `jq`
 check that every required key is present and typed correctly) before moving
@@ -467,44 +510,54 @@ On a throwaway branch:
 - Revert the branch completely. Your final turn must end with the repo clean
   and all sentinels/markers removed.
 
-## 11. `--update` mode (re-run after a plugin version bump)
+## 11. `--update` mode is a script now — this section is the LLM fallback only
 
-Invoked as `/antislop:setup-personas --update`, or as `/antislop:update-antislop`
-(same flow, dedicated command — plugin-installed projects only; npx-scaffolded
-projects don't get project-local commands, so `--update` on the bare
-`/setup-personas` skill remains the only path there). Purpose: the copy in
-section 2 is what makes bare-name persona references work, but it also means
-persona-body bug fixes in a newer plugin version never reach an
-already-adapted project on their own — hooks/skills/commands propagate
-automatically via `${CLAUDE_PLUGIN_ROOT}`, but the copied agent files and
-`persona-protocol.md` don't.
+**Do not run the update logic yourself by default.** `bin/cli.js --update`
+does this deterministically (re-derives every version-stamped file from the
+plugin's own source + the `substitutions` recorded in `persona-config.json`,
+diffs against a recorded `fileHashes` baseline to detect local edits, and
+only ever needs a human decision — not an LLM one — for a file that's
+genuinely diverged) at effectively zero token cost, versus loading this
+entire multi-hundred-line skill file to do the same work by hand. Both entry
+points route there first: `/antislop:update-antislop` (marketplace) shells
+out to `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update`; the npx route runs
+`node <clone>/bin/cli.js --update` directly, no skill invocation at all.
+
+**You only land in this section when the script itself says to**, which
+happens in exactly one case: `persona-config.json` predates this field (no
+`substitutions`/`fileHashes` recorded — the script exits 1 and says so
+explicitly). That means the ADAPT-time bookkeeping steps 3-6 add (recording
+`substitutions.mattpocockSkills`/`graphMcpLaunch`/`arxivMcpLaunch` and
+`fileHashes`) never ran for this project. Do the update the old way, ONE
+TIME, and backfill those fields so the script can take over from here on:
 
 - Read this project's `persona-config.json` (`personaSelection`,
   `pluginVersion`) and the plugin's current `plugin.json` version. If they
-  match, report "already current" and stop.
+  match, report "already current" and stop (this shouldn't happen — the
+  script already checks this before falling back here — but don't assume).
 - **Legacy `planner` → `hivemind` migration**: if the project's
   `personaSelection` contains the legacy token `planner` (the persona was
   renamed `hivemind` in plugin v0.6.0): rename/re-derive the legacy file
   `.claude/agents/planner.md` (legacy) as `.claude/agents/hivemind.md` at the
-  current version, delete the old legacy file, rewrite `personaSelection` replacing
-  the legacy `planner` token with `hivemind`, and say so in the report.
+  current version, delete the old legacy file, rewrite `personaSelection`
+  replacing the legacy `planner` token with `hivemind`, and say so in the
+  report.
 - For each version-stamped file in `.claude/agents/`,
   `.claude/persona-protocol.md`, and `.claude/protocol-digest.md`: re-derive
-  what a fresh copy at the CURRENT plugin version would look like,
-  re-applying the same deterministic substitutions recorded in
-  `persona-config.json` (mattpocock skill names, graph skill name, persona
-  selection, any model-tier edit you can detect was intentional vs. a stale
-  stamp).
+  what a fresh copy at the CURRENT plugin version would look like, working
+  out the same substitutions steps 3-5 describe (mattpocock skill names,
+  graph/arXiv MCP launch commands) from context and prior conversation/repo
+  state — this is exactly the judgment call the script can't make without
+  those values already recorded.
 - If the project's actual file is byte-identical to that re-derivation,
-  overwrite it and bump its stamp — safe, no local customization existed
-  beyond the recorded substitutions.
-- If it differs (real local edits — a model-tier downgrade, a hand-tuned
-  routing line, anything not explained by the recorded substitutions), show
-  the diff and ask before overwriting. Never silently clobber a local edit.
+  overwrite it and bump its stamp.
+- If it differs (real local edits), show the diff and ask before
+  overwriting. Never silently clobber a local edit.
 - Update `pluginVersion` in `persona-config.json` to the current version once
-  done. Does NOT re-run sections 3-9 (no re-installing mattpocock skills, no
-  rebuilding the graph index, no re-seeding the wiki) — only the copy/
-  substitution logic.
+  done. Does NOT re-run sections 3-9's install steps.
+- **Backfill `substitutions` and `fileHashes`** (see step 6) from what you
+  just derived, so every future update for this project runs through
+  `bin/cli.js --update` with zero LLM cost instead of landing here again.
 
 ## 12. Report back
 

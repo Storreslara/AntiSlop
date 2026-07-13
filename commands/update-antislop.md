@@ -1,30 +1,45 @@
 ---
-description: Resync this project's adapted persona files against the current antislop plugin version (equivalent to /antislop:setup-personas --update, exposed as its own entry point).
+description: Resync this project's adapted persona files against the current antislop plugin version. Runs a deterministic script (bin/cli.js --update) with zero LLM/token cost in the common case — only escalates to you when a file has genuinely diverged from a fresh copy.
 ---
 
 Plugin-installed projects only — this command ships via the plugin's
-`commands/` directory, which the npx CLI does not copy project-locally
-(unlike `skills/setup-personas`). If this project was set up via the npx
-route instead of the marketplace, run `/setup-personas --update` (bare, no
-`antislop:` prefix) instead; it's the same underlying flow.
+`commands/` directory, which the npx CLI does not copy project-locally. If
+this project was set up via the npx route instead, run `node
+<path-to-your-clone>/bin/cli.js --update` yourself from the project root
+instead (same script, no plugin/skill needed).
 
-**Precondition**: check whether `.claude/persona-config.json` exists in this
-project. If it does NOT, this project was never adapted — there is nothing to
-resync. Stop and tell the user to run `/antislop:setup-personas` (a fresh
-install) instead; do not improvise a setup here.
+1. Run, via Bash, from the project root:
 
-If it does exist: invoke the `/antislop:setup-personas` skill exactly as if
-it had been called with the `--update` argument (don't try to locate and read
-`skills/setup-personas/SKILL.md` by a project-relative path yourself — in a
-plugin install that file lives under the plugin's own root, not this
-project's working directory; invoking the skill is what resolves that
-correctly). That skill's own routing (see its opening comment) sends
-`--update` straight to **section 11 (`--update` mode)** followed by
-**section 12 (report back)** — skipping section 0.5 and sections 1-10
-entirely. Section 11 itself starts by comparing this project's
-`persona-config.json` `pluginVersion` against the plugin's current version
-and reports "already current" and stops if they match — don't skip past that
-check into re-derivation work. Do not re-run persona selection, third-party
-skill installs, the Code Review Graph build, the arXiv MCP wiring, CLAUDE.md
-pruning, or hook verification — section 11 is deliberately narrower than a
-fresh setup.
+   ```
+   node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update
+   ```
+
+   Check the exit code:
+
+   - **0** — done. Either "already current" or "update complete", with a
+     per-file summary already printed. Relay that summary to the user
+     verbatim and stop; don't re-derive or duplicate it in prose.
+   - **1** — hard stop, read the printed message; it's one of two cases:
+     - No `.claude/persona-config.json` found: tell the user to run
+       `/antislop:setup-personas` (a fresh install) instead — do not
+       improvise a setup here.
+     - `persona-config.json` predates the deterministic path (missing
+       `substitutions`/`fileHashes`): invoke the `/antislop:setup-personas`
+       skill exactly as if called with `--update`. Its own routing sends
+       `--update` to section 11, which handles this exact fallback case and
+       backfills `substitutions`/`fileHashes` — so every future update for
+       this project runs through the script above with zero tokens.
+   - **2** — N file(s) diverged from a fresh copy; their diffs are already
+     printed to stdout. For each one:
+     - Show the user its diff (already printed above — don't re-derive or
+       re-summarize it) and ask, via AskUserQuestion, whether to take the
+       plugin's fresh version or keep their local edit.
+     - Once you have a decision for every pending file, re-run once:
+       `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update --accept=<comma-separated paths to overwrite> --keep=<comma-separated paths to keep>`
+       (omit whichever flag has no paths). This may exit 2 again if new
+       drift shows up — loop until it exits 0.
+     - Never decide accept/keep yourself; only relay the human's choice —
+       that's the entire reason this step isn't fully automatic.
+
+2. Report back what the script did. Its own printed output (from step 1) is
+   the report — don't re-run anything to re-derive it.

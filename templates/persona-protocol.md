@@ -129,9 +129,10 @@ pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`): turn-end and
 the next implementation dispatch are blocked while a completed unit awaits
 review. This paragraph, unlike the hook scripts it describes, is copied into
 adapted projects and only reaches an already-adapted project via
-`/antislop:update-antislop` (or `/antislop:setup-personas --update`, the same
-flow) — a project whose copy still describes the bare-`touch` v1 format has
-simply not updated yet.
+`/antislop:update-antislop` (a deterministic script, zero LLM cost in the
+common case; `/antislop:setup-personas --update` is its fallback for
+projects adapted before that script existed) — a project whose copy still
+describes the bare-`touch` v1 format has simply not updated yet.
 
 **Two-week legacy-marker grace period (v0.6.0 rollout only, ends 2026-07-27):**
 until that date, `task-gate.sh` warns loudly and still ALLOWS a legacy/empty/

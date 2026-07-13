@@ -201,12 +201,18 @@ blocks unconditionally on the old format. Run `/antislop:update-antislop`
 ```
 /antislop:update-antislop
 ```
-(Equivalent to `/antislop:setup-personas --update`, which still works — this
-is just a dedicated entry point. npx-scaffolded projects don't get this
-command; run `/setup-personas --update`, bare, there instead.) This diffs the
-project's copied agent files against the current plugin version before
-overwriting — it never silently clobbers a local edit. A `SessionStart` hook
-warns automatically when a project's adapted version is behind.
+This runs a deterministic script (`bin/cli.js --update`), not an LLM flow —
+it regenerates each copied agent file straight from the plugin's current
+source plus the substitutions recorded at setup time, and only touches files
+that are byte-identical to what it already knows is "clean." That costs
+essentially no tokens. A file only ever needs a decision from *you* (never
+the model) when it's genuinely diverged from a fresh copy — it prints the
+diff and asks, it never silently clobbers a local edit. npx-scaffolded
+projects run the same script directly, no plugin needed: `node
+<your-clone>/bin/cli.js --update`. A `SessionStart` hook warns automatically
+when a project's adapted version is behind. (`/antislop:setup-personas
+--update` still works — it's now the script's own one-time fallback, for
+projects adapted before this existed.)
 
 ## npx install (alternative)
 
@@ -243,27 +249,34 @@ commands (merged in, never clobbering existing settings); copies the
 `/setup-personas` works with no plugin installed at all); adds the CLAUDE.md
 import line; appends the standard `.gitignore` entries; writes a skeleton
 `.claude/persona-config.json`. By default it refuses to run over an existing
-install rather than risk clobbering local edits — use `/setup-personas --update`
-or `--overwrite` for that case instead.
+install rather than risk clobbering local edits — use `--update` or
+`--overwrite` for that case instead.
 
 **`--overwrite`** re-copies the mechanical files (agents, hooks, skills,
-protocol) unconditionally, even over an existing install — useful for pulling
-in agent-prose fixes without the LLM-driven `--update` diff flow. It never
+protocol) unconditionally, even over an existing install, with no diff and no
+prompt — useful in a script/CI context where you want a hard reset. It never
 touches `persona-config.json`'s judgment-driven fields (`testAndLintCommand`,
 `protectedPaths`, etc.); only `personaSelection` and `pluginVersion` get
 refreshed. Without `--personas=`/`--yes`, it reuses the project's already-recorded
 persona selection rather than silently changing which personas are installed.
+Prefer `--update` (above) when you want to preserve local edits — it diffs
+first and only asks when something's actually diverged.
 
 **Two third-party installers** can run from the same terminal (the CLI inherits
 your stdio, so their interactive prompts show up normally):
 - `--with-mattpocock` runs `npx skills@latest add mattpocock/skills` (you still
   pick the skills yourself in its picker; the CLI just launches it).
 - `--with-graph` runs `pipx install code-review-graph` + `code-review-graph
-  install --platform claude-code`. This does **not** finish the graph wiring:
-  that tool registers itself project-wide in `.mcp.json` by default, which
-  every persona would inherit. The CLI deliberately stops after the install and
-  leaves the `.mcp.json`→`explorer.md` rescoping to `/setup-personas` step 4,
-  which needs to inspect what actually got written.
+  install --platform claude-code`. That tool registers itself project-wide in
+  `.mcp.json` by default, which every persona would inherit — finish the
+  rescoping deterministically with `node bin/cli.js --wire-graph-mcp`, which
+  reads the launch command straight out of `.mcp.json`, inlines it into
+  `explorer.md`'s `mcpServers:` frontmatter, removes the project-wide entry,
+  and records it in `persona-config.json` for future `--update` runs (same
+  idea for the researcher's arXiv MCP: `--wire-arxiv-mcp=<server-key>` once
+  you've installed one). `/setup-personas` steps 4-5 remain the fallback if
+  you'd rather have the LLM inspect what got written and verify the
+  connection itself.
 
 Both are skipped under `--yes`/`--personas=` unless you also pass their
 `--with-*` flag — they're real installs with side effects, not pure file copies.
@@ -299,7 +312,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 |---|---|
 | Persona agents: orchestrator, explorer, lead-programmer (always); hivemind, repo-historian, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
-| `setup-personas` skill (the setup flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
+| `setup-personas` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team`, `update-antislop` commands (plugin-installed projects only) | wiki / CONTEXT.md / docs/adr seeding |
 

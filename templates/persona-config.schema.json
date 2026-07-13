@@ -44,6 +44,40 @@
     "issueTracker": {
       "type": "string",
       "description": "Human-readable note on the tracker chosen during ADAPT, e.g. 'GitHub issues labeled plan/<slug>; fetch with gh issue list --label plan/<slug>' or 'local files in docs/plans/<slug>/issues/'"
+    },
+    "substitutions": {
+      "type": "object",
+      "description": "Deterministic substitution values recorded at ADAPT time so `bin/cli.js --update` can regenerate a byte-identical fresh copy of each version-stamped file directly from the plugin's own source, with no LLM involved. Absent (or missing sub-fields) on projects adapted before this field existed - `--update` falls back to the LLM-driven `/setup-personas --update` flow for those, which also backfills this field.",
+      "properties": {
+        "mattpocockSkills": {
+          "type": "object",
+          "additionalProperties": { "type": "string" },
+          "description": "Maps each <MATTPOCOCK:slot> placeholder slot literally found in plugin source files (e.g. 'grill-me', 'to-issues', 'tdd', 'diagnose', 'improve-codebase-architecture') to the discovered namespaced skill name it was resolved to at ADAPT time, e.g. {\"to-issues\": \"mattpocock-skills:to-tickets\"}. Only needs entries for slots that actually appear in the selected persona files."
+        },
+        "graphMcpLaunch": {
+          "type": ["object", "null"],
+          "properties": {
+            "command": { "type": "string" },
+            "args": { "type": "array", "items": { "type": "string" } },
+            "env": { "type": "object", "additionalProperties": { "type": "string" } }
+          },
+          "description": "The code-review-graph MCP launch command inlined into explorer.md's mcpServers frontmatter at ADAPT time (setup-personas step 4, or `bin/cli.js --wire-graph-mcp`, which extracts this straight from the tool-generated project-wide .mcp.json). `env` is optional and only present if the server's .mcp.json entry had one. Null if the graph was never wired."
+        },
+        "arxivMcpLaunch": {
+          "type": ["object", "null"],
+          "properties": {
+            "command": { "type": "string" },
+            "args": { "type": "array", "items": { "type": "string" } },
+            "env": { "type": "object", "additionalProperties": { "type": "string" } }
+          },
+          "description": "The arXiv MCP launch command inlined into researcher.md's mcpServers frontmatter (setup-personas step 5, or `bin/cli.js --wire-arxiv-mcp <server-key>` once a server is installed). Null if researcher wasn't selected, or was selected but no working MCP was found (WebFetch/WebSearch fallback mode)."
+        }
+      }
+    },
+    "fileHashes": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "sha256 hex digest of each version-stamped file's content with its stamp line stripped, recorded immediately after ADAPT/--update finishes writing it. `--update` compares this against the project's current file (stamp stripped) to detect local edits without an LLM: matching hash means safe to silently regenerate at the new version; a mismatch means a human is asked before overwriting. Keyed by project-relative path, e.g. '.claude/agents/hivemind.md'."
     }
   },
   "required": ["testAndLintCommand"]
