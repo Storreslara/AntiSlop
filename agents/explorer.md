@@ -5,8 +5,9 @@ model: haiku
 color: orange
 tools: Read, Grep, Glob, Bash, Skill
 mcpServers:
-  code-review-graph:
-    <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>
+  - code-review-graph:
+      type: stdio
+      <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>
 maxTurns: 10
 ---
 <!-- No `memory:` field — the explorer is stateless by design.
@@ -20,6 +21,13 @@ maxTurns: 10
      disconnects when it finishes. `mcpServers` frontmatter is ignored on
      PLUGIN agents, but this file is always ADAPT-copied into
      `.claude/agents/` (step 2), so as a project-scoped file it takes effect.
+     `mcpServers` must be a LIST of single-key dicts, each requiring an
+     explicit `type:` (stdio/http/sse/ws) — a flat map keyed straight by
+     server name is silently ignored (no error, the server just never
+     connects, and the explorer falls back to grep with no visible failure
+     signal since it never perceives an MCP server was supposed to exist).
+     Confirmed against the official subagents docs' "Scope MCP servers to a
+     subagent" example. Do not let a future substitution flatten this back.
      The tool's own `install` also generates `.claude/skills/code-review-graph/`
      containing build-graph/review-delta/review-pr WORKFLOW skills (slash
      commands for building the index or reviewing a diff/PR) - those aren't

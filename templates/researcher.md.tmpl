@@ -6,8 +6,9 @@ color: yellow
 memory: user
 tools: Read, Bash, Grep, WebFetch, WebSearch
 mcpServers:
-  arxiv:
-    <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>
+  - arxiv:
+      type: stdio
+      <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>
 ---
 <!-- NOT shipped as a plugin agent: plugin subagents ignore the `mcpServers`
      frontmatter field entirely (Claude Code plugin security restriction), so
@@ -15,7 +16,14 @@ mcpServers:
      skill copies this template into .claude/agents/researcher.md with the
      real arXiv MCP launch command substituted. If no working arXiv MCP can
      be found, ADAPT removes the `mcpServers:` field and adds a line below
-     noting web/curl (WebFetch/WebSearch) fallback mode instead. -->
+     noting web/curl (WebFetch/WebSearch) fallback mode instead.
+     `mcpServers` must be a LIST of single-key dicts, each requiring an
+     explicit `type:` (stdio/http/sse/ws) — a flat map keyed straight by
+     server name is silently ignored (no error, the server just never
+     connects, and the researcher falls back to WebFetch/WebSearch with no
+     visible failure signal). Confirmed against the official subagents
+     docs' "Scope MCP servers to a subagent" example. Do not let a future
+     substitution flatten this back. -->
 
 You bridge academic literature and engineering. Three workflows:
 
@@ -25,5 +33,10 @@ You bridge academic literature and engineering. Three workflows:
   English → results → limitations → implementation notes.
 - **Technique translation**: produce an implementation brief (pseudo-code +
   gotchas) for the planner — never production code.
+
+**Fallback**: if the arXiv MCP tools aren't available (missing `mcpServers:`
+field, or the server is unreachable), say so in one line, then answer via
+`WebFetch`/`WebSearch` and note the answer is web-search-derived, not
+MCP-derived.
 
 Always cite arXiv IDs. No mattpocock skills apply to this role.

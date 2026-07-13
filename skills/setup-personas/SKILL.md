@@ -214,12 +214,17 @@ accurate forever):
   MCP server's launch command (`uv run`/`uvx`/`poetry run`, whatever the tool
   emitted) and inline it into the project's copy of `explorer.md`'s
   `mcpServers:` frontmatter instead (replacing the
-  `<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>` placeholder) — the same
-  scoping trick used for the researcher's arXiv MCP in step 5. Then remove
-  or empty out the tool's project-wide `.mcp.json` registration so only the
-  explorer (not every persona) connects to it. This is the whole point of
-  this section: skipping this step silently reintroduces the context-bloat
-  problem the Explorer-as-a-service design exists to prevent.
+  `<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>` placeholder with
+  `command:`/`args:` lines at the SAME indentation as the placeholder,
+  nested under the existing `type: stdio` line — do not flatten
+  `mcpServers:` back into a bare map keyed by server name; Claude Code
+  requires a LIST of single-key dicts here, each with an explicit `type:`,
+  and the flattened form connects to nothing with no error at all) — the
+  same scoping trick used for the researcher's arXiv MCP in step 5. Then
+  remove or empty out the tool's project-wide `.mcp.json` registration so
+  only the explorer (not every persona) connects to it. This is the whole
+  point of this section: skipping this step silently reintroduces the
+  context-bloat problem the Explorer-as-a-service design exists to prevent.
 - The generated `.claude/skills/code-review-graph/*` workflow skills
   (build-graph/review-delta/review-pr) are legitimate and can stay — they're
   just not what the explorer calls; leave them for the user/other personas to
@@ -232,10 +237,20 @@ accurate forever):
   deliberately want a shared prebuilt index (if so, commit it and say so in
   your report).
 - Confirm it works: spawn the explorer with one real query (e.g. "what calls
-  `<some real function in this repo>`") and paste its answer in your report
-  — confirm in that same check that the MCP connection is scoped to the
-  explorer (e.g. another persona's spawn does NOT list the graph's MCP tools)
-  and not leaking project-wide.
+  `<some real function in this repo>`") and paste its answer in your report.
+  **A correct-looking answer is not sufficient proof** — grep alone can
+  answer a simple structural query on a small/medium repo even with the MCP
+  server completely disconnected, and a schema error in `mcpServers:`
+  produces no visible error anywhere (see `explorer.md`'s own comment on
+  this). Explicitly instruct the explorer to self-report provenance
+  (graph-derived vs. grep-derived — its body already has a fallback rule
+  that does this if asked) and require that self-report, not just a
+  plausible answer, in your report. If it reports grep-derived, the MCP
+  connection is NOT working — stop and fix the `mcpServers:` schema/launch
+  command before moving on, don't record this step as done. Also confirm in
+  that same check that the connection is scoped to the explorer (e.g.
+  another persona's spawn does NOT list the graph's MCP tools) and not
+  leaking project-wide.
 
 ## 5. arXiv MCP (powers the researcher — only if selected in step 1)
 
@@ -247,10 +262,21 @@ plugin agent at all — it only lives as a template.
 - Find a maintained arXiv MCP server's launch command (don't guess).
 - Copy `templates/researcher.md.tmpl` from the plugin into this project's
   `.claude/agents/researcher.md`, substituting the real launch command into
-  the inline `mcpServers:` field, and version-stamp it like step 2. Inline +
-  project-scoped means it connects only when the researcher starts and
-  disconnects when it finishes, and actually takes effect.
-- Verify it works by having the researcher use it once.
+  the inline `mcpServers:` field (the `command:`/`args:` lines nested under
+  the existing `type: stdio` line, at the placeholder's indentation — do
+  NOT flatten `mcpServers:` back into a bare map keyed by server name;
+  Claude Code requires a LIST of single-key dicts here, each with an
+  explicit `type:`, and the flattened form connects to nothing with no
+  error at all), and version-stamp it like step 2. Inline + project-scoped
+  means it connects only when the researcher starts and disconnects when it
+  finishes, and actually takes effect.
+- Verify it works by having the researcher use it once, and **explicitly
+  require it to self-report provenance** (arXiv-MCP-derived vs. a
+  WebFetch/WebSearch fallback) in its answer — a plausible-looking answer is
+  not sufficient proof the MCP connection is live; a schema error here
+  produces no visible failure and the researcher's `WebFetch`/`WebSearch`
+  tools can silently cover for a disconnected MCP server. If it reports the
+  fallback path, the connection is NOT working — fix it before moving on.
 - If no working arXiv MCP can be found: remove the `mcpServers:` field, and
   its `tools:` list already includes `WebFetch`/`WebSearch` for a real
   fallback — note in the file's body that it's operating in that fallback
