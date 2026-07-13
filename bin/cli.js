@@ -509,19 +509,22 @@ async function runWireMcp(kind, args) {
       `${path.basename(targetFile)} alone).`
   );
 
+  // Written regardless of whether persona-config.json exists yet: this
+  // command deletes the .mcp.json entry it just consumed, so it can't be
+  // re-run later to backfill the substitution once step 6 creates the full
+  // config — record it now, as a partial file if necessary, and step 6
+  // MERGES into it (preserving this key) rather than overwriting wholesale.
   const configPath = path.join(CWD, '.claude', 'persona-config.json');
+  let config = {};
   if (fs.existsSync(configPath)) {
-    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    config.substitutions = config.substitutions || {};
-    config.substitutions[substitutionField] = launch;
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
-    console.log(`  .claude/persona-config.json: substitutions.${substitutionField} recorded.`);
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
   } else {
-    console.log(
-      '  Note: .claude/persona-config.json not found yet — run /setup-personas step 6 to ' +
-        'create it, then re-run this to record the substitution.'
-    );
+    mkdirp(path.dirname(configPath));
   }
+  config.substitutions = config.substitutions || {};
+  config.substitutions[substitutionField] = launch;
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  console.log(`  .claude/persona-config.json: substitutions.${substitutionField} recorded.`);
 
   console.log(
     `\nDone. Verify the connection works: spawn the ${

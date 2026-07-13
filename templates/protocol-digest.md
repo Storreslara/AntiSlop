@@ -1,13 +1,8 @@
 <!-- Copied into the project as .claude/protocol-digest.md by setup-personas,
      version-stamped like persona-protocol.md. Re-injected verbatim by
-     session-start.sh's SessionStart hook, but ONLY on `source: resume` and
-     `source: compact` - never `startup`/`clear`, where CLAUDE.md (and thus
-     persona-protocol.md) is already freshly in context. This exists because
-     compaction and resume are exactly the moments a long-running session is
-     most likely to have summarized the full protocol away; this is a
-     recency boost for the highest-drift-risk rules, not a substitute for
-     persona-protocol.md. Keep this under ~15 lines - if it grows, the fix is
-     usually to mechanize the rule (a hook), not to make the digest longer. -->
+     session-start.sh's SessionStart hook, ONLY on `source: resume`/`compact`
+     - never `startup`/`clear`. Keep this under ~15 lines - if it grows,
+     mechanize the rule (a hook) instead of making the digest longer. -->
 
 # Protocol digest (post-compaction/resume reminder)
 

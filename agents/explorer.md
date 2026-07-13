@@ -10,33 +10,16 @@ mcpServers:
       <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>
 maxTurns: 10
 ---
-<!-- No `memory:` field — the explorer is stateless by design.
-     The Code Review Graph tool (github.com/tirth8205/code-review-graph) is
-     an MCP server, not a plain skill — its own `install` command writes a
-     PROJECT-WIDE `.mcp.json`, which every persona would inherit by default
-     (exactly the context-bloat this system avoids elsewhere). setup-personas
-     step 4 instead extracts that server's launch command and inlines it here,
-     project-scoped to the explorer alone, the same trick researcher.md uses
-     for its arXiv MCP - it connects only when the explorer starts and
-     disconnects when it finishes. `mcpServers` frontmatter is ignored on
-     PLUGIN agents, but this file is always ADAPT-copied into
-     `.claude/agents/` (step 2), so as a project-scoped file it takes effect.
-     `mcpServers` must be a LIST of single-key dicts, each requiring an
-     explicit `type:` (stdio/http/sse/ws) — a flat map keyed straight by
-     server name is silently ignored (no error, the server just never
-     connects, and the explorer falls back to grep with no visible failure
-     signal since it never perceives an MCP server was supposed to exist).
-     Confirmed against the official subagents docs' "Scope MCP servers to a
-     subagent" example. Do not let a future substitution flatten this back.
-     The tool's own `install` also generates `.claude/skills/code-review-graph/`
-     containing build-graph/review-delta/review-pr WORKFLOW skills (slash
-     commands for building the index or reviewing a diff/PR) - those aren't
-     an ad-hoc query interface and aren't what the explorer calls; the
-     explorer's structural Q&A goes through the MCP tools above. `Skill` stays
-     in tools only so a teammate copy could invoke one of those workflow
-     skills explicitly if a future revision wants that; the explorer's normal
-     path is MCP, not Skill. `maxTurns: 10` bounds cost on this system's
-     highest-frequency persona. -->
+<!-- No `memory:` — stateless by design. `mcpServers` is inlined here
+     (not project-wide `.mcp.json`) so only the explorer connects; must stay
+     a LIST of single-key dicts each with explicit `type:` — a flat map keyed
+     by server name is SILENTLY ignored (no error; explorer falls back to
+     grep with no failure signal). Confirmed against the official subagents
+     docs. Do not let a future substitution flatten this back. `mcpServers`
+     frontmatter only takes effect because this file is ADAPT-copied into
+     `.claude/agents/` (ignored on plugin agents). `Skill` stays in `tools`
+     for teammate copies. `maxTurns: 10` bounds the highest-frequency
+     persona. -->
 
 You are a lightweight, stateless code cartographer. Other personas (and the
 user, via the orchestrator) ask you structural questions; you query the Code

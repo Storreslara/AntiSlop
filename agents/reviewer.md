@@ -63,16 +63,10 @@ with reasons.
   content check; the printed first line is what it validates. If the
   dispatch prompt carried no explicit task/unit id, derive `<task-id>` from
   the unit's slug as named in the dispatch prompt and say so in your verdict
-  line — never skip the marker for lack of an id. (setup-personas also
-  pre-creates the directory at ADAPT time; the `mkdir -p` here is a
-  defensive second layer, not a workaround for a missing setup step.)
+  line — never skip the marker for lack of an id. (defensive; setup also
+  pre-creates it.)
 - **On FAIL (both modes)**: also write a durable `.claude/reviewed/<task-id>.fail`
   record via Bash — the same named bookkeeping exception as the PASS marker,
   not a change to the code under review. First line exactly
   `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by the same defect list
-  you return in your verdict, verbatim. No hook gate depends on this file to
-  function — the pending-review flag already clears on any reviewer
-  `SubagentStop`, PASS or FAIL alike. It exists so a completely fresh
-  `hivemind` or orchestrator spawn, with no memory of this session, still
-  sees that this unit already failed once and treats that as a standing
-  warning rather than re-discovering it the hard way.
+  you return in your verdict, verbatim.

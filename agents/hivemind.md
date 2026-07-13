@@ -16,12 +16,9 @@ maxTurns: 30
      copy of this file into the project's .claude/agents/, since project
      agents override plugin agents). `Skill` is in tools so a teammate copy
      can invoke grill-me/to-issues explicitly, since preloading doesn't apply
-     to teammates. `maxTurns: 30` is a starting cost bound (not empirically
-     tuned) — hivemind is Opus-tier and otherwise unbounded; adjust after real
-     usage, same pattern as explorer's maxTurns: 10. `model: opus` above is
-     the DEFAULT; the orchestrator may pass `model: fable` per-dispatch for
-     well-scoped work (see orchestrator.md's "Per-unit model routing"
-     subsection) — the standing tier here never changes. -->
+     to teammates. `maxTurns: 30` — starting bound, adjust after real usage.
+     `model: opus` is the default; orchestrator may override per-dispatch
+     (orchestrator.md). Never change the tier here. -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable plans. Explore first (read CLAUDE.md and relevant code/tests

@@ -20,20 +20,12 @@ making its isolation mechanical; everyone else's is this rule. If the
 explorer reports the graph index is missing or stale, treat its answer as
 grep-derived, not authoritative.
 
-**Name-collision warning — don't let auto-delegation pick the wrong one.**
-Claude Code ships a generic, built-in `Explore` subagent type whose name and
-description are close enough to this project's `explorer` persona that
-description-based auto-delegation (see the orchestrator's "routing is
-primarily description-based" note) can silently route to the built-in
-instead. The built-in has no MCP tools, so it has no Code Review Graph
-access — its answers are grep-derived, weaker, and it bypasses this project's
-`explorer` persona entirely. When you spawn for a structural question, name
-the persona explicitly (`explorer`, defined in `.claude/agents/explorer.md`)
-rather than only describing the task and trusting auto-delegation to route
-correctly. If a returned answer doesn't read as graph-derived (no symbol →
-file:line provenance, or it says outright it fell back to grep) and you
-didn't expect the fallback branch above, treat that as a signal the built-in
-ran instead of the project's `explorer`, and re-spawn explicitly by name.
+**Name-collision warning:** Claude Code's built-in `Explore` subagent shadows
+this project's `explorer` under description-based auto-delegation, and it has
+no graph MCP access. Always spawn by explicit name (`explorer`,
+`.claude/agents/explorer.md`). If an answer lacks graph provenance (symbol →
+file:line) and you didn't expect the grep fallback, assume the built-in ran
+and re-spawn by name.
 
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):
@@ -127,20 +119,11 @@ gated by it. In default (subagent-orchestrator) mode, where no
 `TaskCompleted` event exists, the equivalent mechanical enforcement is the
 pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`): turn-end and
 the next implementation dispatch are blocked while a completed unit awaits
-review. This paragraph, unlike the hook scripts it describes, is copied into
-adapted projects and only reaches an already-adapted project via
-`/antislop:update-antislop` (a deterministic script, zero LLM cost in the
-common case; `/antislop:setup-personas --update` is its fallback for
-projects adapted before that script existed) — a project whose copy still
-describes the bare-`touch` v1 format has simply not updated yet.
+review.
 
-**Two-week legacy-marker grace period (v0.6.0 rollout only, ends 2026-07-27):**
-until that date, `task-gate.sh` warns loudly and still ALLOWS a legacy/empty/
-malformed marker instead of blocking, logging
-`legacy-marker-grace-period-warning` to `.claude/review-audit.log`. On or
-after 2026-07-27 it reverts to unconditional rejection. This is a one-time
-softening of the v1→v2 cutover, not a standing feature — don't expect it on
-future marker-format changes unless a project explicitly re-adds one.
+**Until 2026-07-27** (legacy-marker grace period), `task-gate.sh` warns-and-
+allows a legacy/empty/malformed marker instead of blocking, logging
+`legacy-marker-grace-period-warning`; after that, unconditional rejection.
 
 ## Pending-review flag (default-mode review backstop)
 In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
@@ -157,9 +140,7 @@ blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
 content with `defer: <reason>` (logged, flag KEPT, that one Stop allowed —
 review still owed next turn) or `skip: <reason>` (logged, flag DELETED, unit
 explicitly abandoned); a reason-less overwrite is rejected the same way an
-empty WIP sentinel is. Honest limit: this cannot force the orchestrator's
-next action — `rm` via Bash remains possible, and the audit log is the
-deterrent, not a guarantee, same framing as the WIP sentinel.
+empty WIP sentinel is.
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
@@ -169,12 +150,7 @@ exception, same as the PASS marker — not a change to the code under review.
 No hook gate depends on it (the pending-review flag already clears on any
 reviewer `SubagentStop`, PASS or FAIL alike); it exists purely so a
 completely fresh `hivemind` or orchestrator spawn — one with no memory of
-this session at all — still sees that a unit already failed once. The
-orchestrator's per-unit and per-persona model routing (orchestrator.md's
-"Per-unit model routing" and "Opus|Fable routing" sections) both treat an
-existing `.fail` record for a unit as a hard disqualifier for haiku/fable,
-same as an in-session FAIL. `hivemind` checks for these records too before
-retagging or re-scoping a unit it's revising.
+this session at all — still sees that a unit already failed once.
 
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot — a fresh lead-programmer call has no

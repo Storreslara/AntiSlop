@@ -3,6 +3,25 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.6.5] - 2026-07-13
+
+### Changed
+- **Trimmed token bloat across every always-loaded prompt file** — the
+  persona bodies (`agents/*.md`), `templates/persona-protocol.md` (imported
+  into every persona's and the main session's context via CLAUDE.md, every
+  turn), `templates/protocol-digest.md` (re-injected on every resume/compact),
+  `skills/coding-discipline/SKILL.md` (preloaded on most lead-programmer/
+  reviewer turns), `skills/setup-personas/SKILL.md`, and
+  `commands/start-feature-team.md`. Found via a dedicated review pass: the
+  same rule or rationale was frequently stated 2-4 times (a comment, then
+  body prose, then again in `persona-protocol.md` which is already in every
+  persona's context) — cut the redundant restatements, kept the single
+  clearest instance. Net ~111 lines removed across 10 files. Did not touch
+  anything encoding an actual constraint, a non-obvious gotcha, or a
+  confirmed-bug fix (frontmatter-first-bytes, `mcpServers` list-vs-map,
+  empty-sentinel-bypass, SKILL.md section 10's regression tests, etc.) — those
+  earned their length and stay as-is.
+
 ## [0.6.4] - 2026-07-13
 
 ### Changed

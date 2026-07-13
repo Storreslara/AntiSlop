@@ -1,10 +1,6 @@
 ---
 description: Spin up the persona feature team for a task (agent-teams mode - off by default, a deliberate gear).
 ---
-<!-- Corrected vs. the original spec: teammates CAN spawn ordinary foreground
-     subagents (the restriction is on nested TEAMS, not on subagent spawning
-     in general) - so a teammate needing an ad-hoc lookup spawns its own
-     explorer subagent rather than needing explorer as a named teammate. -->
 
 Act as team lead (coordinate, do NOT implement). Create an agent team for
 "$ARGUMENTS". Check `.claude/agents/` for which personas this project

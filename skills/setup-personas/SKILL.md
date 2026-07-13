@@ -17,15 +17,8 @@ description: >
      personas, the coding-discipline skill, the hooks) ships once via the
      plugin and is never re-authored per project. Read this whole file, then
      do the work; inspect the actual project rather than guessing. When done,
-     report what you did and flag anything incomplete.
-
-     `--update` no longer means "run this skill" — it means "run `bin/cli.js
-     --update`" (see section 11). Both `/antislop:update-antislop` and the
-     npx bare route call the script directly, never this skill, unless the
-     script itself exits with the specific "predates the deterministic path"
-     message. Only THEN does `/antislop:setup-personas --update` (or bare
-     `/setup-personas --update`) land here, and even then it skips straight
-     to section 11 instead of running sections 0-10 fresh. -->
+     report what you did and flag anything incomplete. See section 11 for
+     when `--update` lands here at all. -->
 
 ## 0. Version gate (no FLAT MODE fallback — this plugin targets one baseline)
 
@@ -125,12 +118,10 @@ where X.Y.Z is this plugin's version (read from its `.claude-plugin/plugin.json`
 This is what makes `--update` mode (section 11) possible later — don't skip
 it even though it looks like inert metadata.
 
-Do NOT copy `agents/orchestrator.md`'s routing table verbatim if a persona
-was deselected — the shipped file already phrases each optional route as
-"if present, otherwise <fallback>" conditionally, so a plain copy degrades
-gracefully without needing per-project text surgery. Same for
-`lead-programmer.md`'s researcher/historian references and
-`commands/start-feature-team.md`'s teammate list.
+No per-persona text surgery on copied files: optional routes are already
+phrased conditionally ("if present, otherwise <fallback>") in
+`orchestrator.md`, `lead-programmer.md`, and `commands/start-feature-team.md`
+— a plain copy degrades gracefully even when a persona was deselected.
 
 ## 3. Third-party skill installs
 
@@ -144,17 +135,11 @@ gracefully without needing per-project text surgery. Same for
   let the package's own menu supply the exact registered names (they change
   between package versions — do not treat any name written here as ground
   truth):
-    - a "grill/challenge-the-plan" skill (registered as `grill-me` at the
-      time of writing — verify on disk),
-    - a "turn work into tracker tickets" skill (registered as `to-tickets`
-      at the time of writing — NOT `to-issues`; verify on disk),
-    - a "TDD / red-green-refactor" skill (registered as `tdd` at the time of
-      writing — verify on disk),
-    - a "diagnose a bug" skill (registered as `diagnosing-bugs` at the time
-      of writing — NOT `diagnose`; verify on disk),
-    - an "improve codebase architecture" skill (registered as
-      `improve-codebase-architecture` at the time of writing — verify on
-      disk),
+    - a "grill/challenge-the-plan" skill (`grill-me`),
+    - a "turn work into tracker tickets" skill (`to-tickets` — NOT `to-issues`),
+    - a "TDD / red-green-refactor" skill (`tdd`),
+    - a "diagnose a bug" skill (`diagnosing-bugs` — NOT `diagnose`),
+    - an "improve codebase architecture" skill (`improve-codebase-architecture`),
     - the `setup-matt-pocock-skills` setup command.
   Select only the ones the selected personas actually use (e.g. skip the
   grill and tickets skills entirely if `hivemind` and `milestone-auditor`
@@ -194,10 +179,7 @@ gracefully without needing per-project text surgery. Same for
 - **Record every substitution you just made**: as you resolve each
   `<MATTPOCOCK:slot>` placeholder, add a `slot -> resolved name` entry to a
   running map (e.g. `{"grill-me": "grill-me", "to-issues": "mattpocock-skills:to-tickets"}`)
-  — this becomes `substitutions.mattpocockSkills` in step 6. This is what lets
-  `bin/cli.js --update` regenerate these files later with zero LLM cost;
-  skipping it silently forces every future update for this project back onto
-  the slow LLM-driven path.
+  — record it, step 6's `substitutions` field depends on it.
 
 ### 3b. Fail-fast placeholder check (mattpocock scope)
 
@@ -225,21 +207,19 @@ accurate forever):
   by default) AND generates `.claude/skills/code-review-graph/` containing
   build-graph/review-delta/review-pr WORKFLOW skills (slash commands, not an
   ad-hoc query interface).
-- **Do not leave the project-wide `.mcp.json` entry in place.** Extract that
-  MCP server's launch command (`uv run`/`uvx`/`poetry run`, whatever the tool
-  emitted) and inline it into the project's copy of `explorer.md`'s
-  `mcpServers:` frontmatter instead (replacing the
-  `<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>` placeholder with
-  `command:`/`args:` lines at the SAME indentation as the placeholder,
-  nested under the existing `type: stdio` line — do not flatten
-  `mcpServers:` back into a bare map keyed by server name; Claude Code
-  requires a LIST of single-key dicts here, each with an explicit `type:`,
-  and the flattened form connects to nothing with no error at all) — the
-  same scoping trick used for the researcher's arXiv MCP in step 5. Then
-  remove or empty out the tool's project-wide `.mcp.json` registration so
-  only the explorer (not every persona) connects to it. This is the whole
-  point of this section: skipping this step silently reintroduces the
-  context-bloat problem the Explorer-as-a-service design exists to prevent.
+- **Rescope it to the explorer alone, mechanically — do not hand-edit this.**
+  Run `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --wire-graph-mcp` (npx-scaffolded
+  projects: `node <your-clone>/bin/cli.js --wire-graph-mcp`). This reads the
+  `code-review-graph` entry the installer just wrote into `.mcp.json`,
+  inlines its launch command into the project's copy of `explorer.md`'s
+  `mcpServers:` frontmatter, removes the project-wide `.mcp.json` entry so
+  only the explorer connects to it, and records `substitutions.graphMcpLaunch`
+  in `.claude/persona-config.json` (creating the file with just that field if
+  step 6 hasn't run yet — step 6 must MERGE into it, not overwrite it, so
+  this survives). Skipping this and doing it by hand risks the exact trap the
+  script exists to avoid: `mcpServers` must be a LIST of single-key dicts,
+  each with an explicit `type:` — a flattened bare map connects to nothing
+  with no error at all.
 - The generated `.claude/skills/code-review-graph/*` workflow skills
   (build-graph/review-delta/review-pr) are legitimate and can stay — they're
   just not what the explorer calls; leave them for the user/other personas to
@@ -248,12 +228,6 @@ accurate forever):
   tool's current CLI). Identify the incremental-update command and its
   file-argument syntax — this becomes `graphUpdateCommand` in
   `.claude/persona-config.json` (see step 6).
-- **Record the launch command itself**, split into `command` + `args` (the
-  same `command:`/`args:` pair you just wrote into `explorer.md`'s
-  `mcpServers:` frontmatter) — this becomes `substitutions.graphMcpLaunch` in
-  step 6, e.g. `{"command": "uv", "args": ["run", "code-review-graph-mcp"]}`.
-  Without it, `bin/cli.js --update` has no way to regenerate `explorer.md`
-  deterministically on a future plugin version bump.
 - Add the persistent store (SQLite db / index dir) to `.gitignore` unless you
   deliberately want a shared prebuilt index (if so, commit it and say so in
   your report).
@@ -267,11 +241,11 @@ accurate forever):
   (graph-derived vs. grep-derived — its body already has a fallback rule
   that does this if asked) and require that self-report, not just a
   plausible answer, in your report. If it reports grep-derived, the MCP
-  connection is NOT working — stop and fix the `mcpServers:` schema/launch
-  command before moving on, don't record this step as done. Also confirm in
-  that same check that the connection is scoped to the explorer (e.g.
-  another persona's spawn does NOT list the graph's MCP tools) and not
-  leaking project-wide.
+  connection is NOT working — stop and fix it (re-run `--wire-graph-mcp`, or
+  check the tool's own `.mcp.json` entry was correct before that) before
+  moving on, don't record this step as done. Also confirm in that same check
+  that the connection is scoped to the explorer (e.g. another persona's spawn
+  does NOT list the graph's MCP tools) and not leaking project-wide.
 
 ## 5. arXiv MCP (powers the researcher — only if selected in step 1)
 
@@ -280,38 +254,45 @@ agents ignore the `mcpServers` frontmatter field entirely (a Claude Code
 plugin security restriction), which is why `researcher.md` isn't shipped as a
 plugin agent at all — it only lives as a template.
 
-- Find a maintained arXiv MCP server's launch command (don't guess).
+- Find a maintained arXiv MCP server (don't guess) and register it in this
+  project's `.mcp.json` — via its own docs' recommended path (`claude mcp
+  add`, a manual entry, whatever it says) — so its launch command lives
+  there, discoverable the same way the graph's does in step 4.
 - Copy `templates/researcher.md.tmpl` from the plugin into this project's
-  `.claude/agents/researcher.md`, substituting the real launch command into
-  the inline `mcpServers:` field (the `command:`/`args:` lines nested under
-  the existing `type: stdio` line, at the placeholder's indentation — do
-  NOT flatten `mcpServers:` back into a bare map keyed by server name;
-  Claude Code requires a LIST of single-key dicts here, each with an
-  explicit `type:`, and the flattened form connects to nothing with no
-  error at all), and version-stamp it like step 2. Inline + project-scoped
-  means it connects only when the researcher starts and disconnects when it
-  finishes, and actually takes effect.
-- Verify it works by having the researcher use it once, and **explicitly
-  require it to self-report provenance** (arXiv-MCP-derived vs. a
-  WebFetch/WebSearch fallback) in its answer — a plausible-looking answer is
-  not sufficient proof the MCP connection is live; a schema error here
-  produces no visible failure and the researcher's `WebFetch`/`WebSearch`
-  tools can silently cover for a disconnected MCP server. If it reports the
-  fallback path, the connection is NOT working — fix it before moving on.
-- **Record the launch command**, split into `command` + `args`, as
-  `substitutions.arxivMcpLaunch` in step 6 (same shape as `graphMcpLaunch`
-  above) — this is what lets `bin/cli.js --update` regenerate `researcher.md`
-  without an LLM later.
-- If no working arXiv MCP can be found: remove the `mcpServers:` field, and
+  `.claude/agents/researcher.md`, version-stamped like step 2. Do this
+  BEFORE the wiring step below — it inlines into an existing file, it
+  doesn't create one.
+- **Wire the launch command in, mechanically — do not hand-edit this.** Run
+  `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --wire-arxiv-mcp=<server-key>`
+  (the key you registered it under in `.mcp.json`; npx-scaffolded projects:
+  `node <your-clone>/bin/cli.js --wire-arxiv-mcp=<server-key>`). Same
+  mechanics as step 4's `--wire-graph-mcp`: inlines the launch command into
+  `researcher.md`'s `mcpServers:` frontmatter, removes the project-wide
+  `.mcp.json` entry, and records `substitutions.arxivMcpLaunch` in
+  `persona-config.json` (creating it with just that field if step 6 hasn't
+  run yet — step 6 must merge into it, not overwrite it). Hand-editing risks
+  the same flattening trap step 4 warns about.
+- Verify with the same provenance-self-report requirement as step 4 (fallback
+  here = WebFetch/WebSearch); a fallback report means the MCP is NOT wired —
+  fix before moving on.
+- If no working arXiv MCP can be found: there's nothing to wire, so skip the
+  script above entirely. Remove the `mcpServers:` field by hand instead —
   its `tools:` list already includes `WebFetch`/`WebSearch` for a real
-  fallback — note in the file's body, immediately after the closing `---` of
-  the frontmatter, the exact line `<!-- No working arXiv MCP found at ADAPT
+  fallback — and add, immediately after the closing `---` of the
+  frontmatter, the exact line `<!-- No working arXiv MCP found at ADAPT
   time — operating in WebFetch/WebSearch fallback mode. -->` (this fixed
   wording, not a paraphrase, is what `bin/cli.js --update` looks for to
   regenerate this file deterministically), and say so in your report. Record
-  `substitutions.arxivMcpLaunch` as `null` in this case.
+  `substitutions.arxivMcpLaunch` as `null` in step 6.
 
 ## 6. Repo-specific config → `.claude/persona-config.json`
+
+**If `.claude/persona-config.json` already exists at this point**, it was
+created by step 4 and/or 5's `--wire-graph-mcp`/`--wire-arxiv-mcp` (they run
+before this step and record `substitutions` into whatever partial file is
+there). Read it and MERGE the fields below into it — do not overwrite the
+file wholesale, or you'll silently drop the `substitutions` those steps just
+recorded.
 
 Copy `templates/persona-config.schema.json`'s shape and fill in from an
 actual scan of this repo (package.json / pyproject.toml / Makefile / etc.),

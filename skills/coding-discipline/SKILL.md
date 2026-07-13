@@ -6,8 +6,7 @@ description: >
   and "make it work" goals with no verification. Bias toward caution over speed;
   use judgment on trivial tasks.
 ---
-Adapted from Andrej Karpathy's observations on LLM coding pitfalls
-(multica-ai/andrej-karpathy-skills). Five principles:
+Five principles:
 
 1. THINK BEFORE CODING — state assumptions explicitly; if uncertain, ask. If
    multiple interpretations exist, name them, don't silently pick. If a simpler
@@ -33,7 +32,3 @@ Adapted from Andrej Karpathy's observations on LLM coding pitfalls
    and param-by-param docstrings; be blunt and straightforward, a single
    one-line purpose comment at most, only if the filename doesn't already
    say it.
-
-Working if: fewer unrelated changes in diffs, fewer rewrites from
-over-engineering, clarifying questions arrive before implementation, and
-functions/diffs a reviewer can approve without asking "what does this do?".
