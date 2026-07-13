@@ -229,6 +229,54 @@ for this exact fix.
 
 ## C. Issue #5 — no cancel primitive / liveness signal for background Agent tasks
 
+**SUPERSEDED.** Everything below this line was the original assessment
+(harness gap, no in-repo fix, heartbeat-file convention proposed as the only
+available mitigation). A follow-up Opus root-cause investigation found that
+assessment was wrong on the central claim: the harness gap was **already
+closed** at the reported Claude Code version, and the actual root cause of
+the session failure was an in-repo config bug. See the amendment below the
+original text; the heartbeat-file proposal was NOT implemented.
+
+### Amendment (root-cause investigation, supersedes the below)
+
+`TaskStop(task_id)` (cancel) and `TaskOutput(task_id, block=false)`
+(non-blocking liveness poll) exist in the harness and work cross-agent —
+official changelog entry 2.1.187 fixed exactly this case ("TaskStop and
+TaskOutput failing to find background agents spawned by another agent"),
+twenty patch releases before the issue's reported version (2.1.207). The
+official subagents docs' tool-exclusion list (`AskUserQuestion`,
+`EnterPlanMode`, `ExitPlanMode`, `ScheduleWakeup`, `WaitForMcpServers`) does
+**not** withhold `TaskStop`/`TaskOutput` from subagents.
+
+The real cause of the reported failure: `agents/orchestrator.md`'s `tools:`
+field is an allowlist that **replaces** the inherited toolset, and it never
+included `TaskStop`/`TaskOutput` — so the orchestrator that hit this in a
+real session was cut off from the very primitives that would have solved
+it, regardless of what the harness supports.
+
+**Fix applied** (not part of the original A/B patch, landed separately):
+added `TaskStop, TaskOutput` to `agents/orchestrator.md`'s `tools:` line,
+plus a new "Managing a long-running background dispatch" body section
+instructing it to poll via `TaskOutput(block=false)` before ever reaching
+for `TaskStop`, and noting `TaskStop` is graceful (waits for the current
+tool call/step to finish) — not a hard kill, so a task wedged mid-tool-call
+may not stop instantly. `lead-programmer.md` was deliberately left
+unchanged: nothing in its current body dispatches its own background/async
+subagents (its `explorer`/`researcher`/`repo-historian` spawns are all
+synchronous, "pauses you until it returns"), so it doesn't have the same
+gap today — revisit if a future revision gives it async dispatches of its
+own.
+
+Residual, not fully closed: `TaskStop`'s graceful (not hard-kill) semantics
+mean a task stuck mid-tool-call, as opposed to merely slow, may still not
+stop promptly. There is also an open upstream reliability bug tail
+(`anthropics/claude-code#75314`, `#20236`) around background-agent
+cancellation. Neither is an antislop-side fix.
+
+---
+
+### Original assessment (superseded, kept for record)
+
 **Scope**: This is a Claude Code harness gap (the `Agent` tool itself has no
 cancel/kill primitive and no cheap liveness/heartbeat surface for a
 background task), not a defect in any antislop-shipped file. There is no
@@ -255,6 +303,7 @@ the file at natural checkpoints) and `agents/orchestrator.md` (how to
 interpret a stale heartbeat: still not a cancel primitive, but turns "is this
 dead or just slow" from a guess into a bounded wait-and-check).
 
-**Action**: file the cancel/liveness gap upstream against Claude Code
-separately; treat the heartbeat-file convention as an optional, low-priority
-antislop-side mitigation, not a fix for the reported issue.
+**Action** (superseded — no longer the plan): file the cancel/liveness gap
+upstream against Claude Code separately; treat the heartbeat-file convention
+as an optional, low-priority antislop-side mitigation, not a fix for the
+reported issue.
