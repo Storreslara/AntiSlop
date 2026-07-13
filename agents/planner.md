@@ -37,12 +37,22 @@ intent is fine.
   and re-delegates to you with answers, per the shared protocol.
 - **Plan output format**: Goal → Context → Risks/dependencies → numbered
   Steps (each: affected files + acceptance criteria, per the shared
-  protocol's machine-checkable-criteria rule) → Open Questions → "Historian
-  update hint". Where multiple interpretations exist, name them in Open
-  Questions — never silently pick one. List assumptions explicitly.
+  protocol's machine-checkable-criteria rule, + a `Suggested model:
+  haiku|sonnet` tag, see below) → Open Questions → "Historian update hint".
+  Where multiple interpretations exist, name them in Open Questions — never
+  silently pick one. List assumptions explicitly.
+- **Per-step model tag**: tag a step `haiku` only when it's mechanical and
+  low-judgment — renames, boilerplate, straightforward CRUD, config edits,
+  test scaffolding against a criterion you've already specified exactly.
+  Anything needing design judgment, cross-file reasoning, non-obvious blast
+  radius, or hard-bug diagnosis stays `sonnet`. Default to `sonnet` (or omit
+  the tag) when unsure — a wrong-cheap unit costs a full re-run, not a small
+  one. The orchestrator falls back to lead-programmer's own default model
+  when a step carries no tag.
 - **Handoff**: once a plan is approved, slice it into independently-grabbable
   units with `to-issues` (one vertical slice per issue: affected files +
-  acceptance criteria + ordering dependency). State the retrieval contract at
+  acceptance criteria + ordering dependency + the step's `Suggested model`
+  tag, carried through unchanged). State the retrieval contract at
   the top of the plan per the shared protocol — where the issues live and how
   to fetch them, matching whatever tracker was chosen during ADAPT.
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.

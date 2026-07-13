@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.5.5] - 2026-07-13
+
+### Added
+- `agents/planner.md`: plan steps now carry a `Suggested model:
+  haiku|sonnet` tag (mechanical/low-judgment work → haiku, anything needing
+  design judgment, cross-file reasoning, or hard-bug diagnosis → sonnet,
+  default to sonnet when unsure), carried unchanged through `to-issues` into
+  each unit.
+- `agents/orchestrator.md`: new "Per-unit model routing" section — reads a
+  unit's `Suggested model` tag and passes it as the dispatch's `model`
+  parameter when spawning `lead-programmer`, relying on Claude Code's
+  documented per-invocation model override (env var > per-call param >
+  frontmatter); omitted tags fall back to lead-programmer's own `model:
+  sonnet` default. Added an escalation rule: a haiku-run unit that FAILs
+  review re-dispatches on sonnet rather than haiku again, still counting
+  against the existing 2-FAIL cap.
+
 ## [0.5.4] - 2026-07-12
 
 ### Fixed

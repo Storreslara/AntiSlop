@@ -79,6 +79,24 @@ approach is novel) → planner → lead-programmer (which updates the historian
 itself) → reviewer via the routing above → unit done only on PASS. Fetch plan
 issues using the plan's retrieval-contract line (see shared protocol).
 
+## Per-unit model routing
+When dispatching a unit to `lead-programmer`, check the plan step's
+`Suggested model: haiku|sonnet` tag (planner's judgment on how mechanical the
+unit is) and pass it as the dispatch's `model` parameter; omit the parameter
+entirely when the tag is absent, so lead-programmer's own `model: sonnet`
+frontmatter applies as the default, not an absolute. This relies on Claude
+Code's documented per-invocation model override (env var > per-call param >
+frontmatter) — if `CLAUDE_CODE_SUBAGENT_MODEL` is set in the environment it
+silently wins over this routing, so check for it if per-unit routing ever
+appears to have no effect.
+
+**Haiku units escalate on first FAIL.** If the reviewer FAILs a unit that ran
+on `haiku`, re-dispatch it on `sonnet` (not haiku again) with the defect list
+— a FAIL on a haiku unit is evidence it needed more judgment than the planner
+estimated, so a second haiku attempt is the low-value path. This still counts
+against the 2-FAIL cap above; a sonnet re-run that also FAILs hits the cap and
+surfaces to the user as usual, same as any other unit.
+
 ## Relaying planner open questions
 If the planner returns "Open Questions" instead of a finished plan (this
 happens when a request needs interrogation it cannot do mid-subagent-run —
