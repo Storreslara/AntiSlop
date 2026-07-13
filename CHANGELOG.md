@@ -3,6 +3,129 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.6.0] - 2026-07-13
+
+**Upgrade caveat (read first if you have an adapted project):** the PASS
+marker format changed (v1 → v2, see below) and `task-gate.sh` now enforces
+it. A project whose copied `agents/reviewer.md` predates this version still
+writes the old bare `touch` marker. **A two-week grace period softens the
+cutover**, through 2026-07-27: until then, a legacy marker gets a loud
+warning (logged to `.claude/review-audit.log`) but is still allowed to
+complete; on or after 2026-07-27, `task-gate.sh` BLOCKS it unconditionally at
+`TaskCompleted`. Run `/antislop:setup-personas --update` before that date to
+refresh the copied persona files and avoid the block.
+
+### Added
+- **PASS marker format v2** (`hooks/scripts/task-gate.sh`,
+  `agents/reviewer.md`, `commands/start-feature-team.md`,
+  `templates/persona-protocol.md`): the reviewer (and the no-reviewer
+  fallback lead) now write `PASS <task-id> <UTC ISO-8601 timestamp> criteria:
+  <acceptance-criteria command(s) run>` as the marker's first line via
+  `printf`, instead of a bare `touch`. `task-gate.sh` validates the format
+  and content, not just existence, and logs accepted markers to the new
+  `.claude/review-audit.log`. A malformed/legacy marker is rejected with an
+  instructive block message naming the exact `printf` command and pointing
+  at `--update` as the likely remedy — see the upgrade caveat above.
+  **Two-week grace period:** before 2026-07-27, a legacy marker is warned
+  about (`legacy-marker-grace-period-warning` in `.claude/review-audit.log`)
+  but still allowed; on or after that date the rejection above is
+  unconditional. One-time softening of this v1→v2 cutover, not a standing
+  feature.
+- **Pending-review gate** (`hooks/scripts/stop-gate.sh`,
+  `hooks/scripts/reviewer-route-gate.sh`): the default (subagent-orchestrator)
+  mode gains its first mechanical backstop for "done = reviewer PASS,"
+  mirroring what `TaskCompleted` already enforced in agent-teams mode. A
+  gated agent's un-reviewed `SubagentStop` (not honoring a WIP sentinel)
+  writes `.claude/.pending-review.<agent_id>`; a reviewer's own stop clears
+  all such flags and logs to `.claude/review-audit.log`. While a flag stands,
+  `stop-gate.sh` blocks main-session turn-end and
+  `reviewer-route-gate.sh` blocks dispatching another gated-agent unit,
+  with a `defer:`/`skip:` escape hatch mirroring the existing WIP-sentinel
+  pattern. Honest limit: this cannot force the orchestrator's next action —
+  it blocks turn-end/dispatch and leaves an audit trail, same as the
+  sentinel; `rm` via Bash remains possible.
+- **`reviewed-path-gate.sh`** (new `PreToolUse`/`Bash` hook): gates Bash
+  writes to `.claude/reviewed/` by caller `agent_type` (reviewer allowed;
+  lead-programmer and other writer personas blocked; main session allowed
+  only under the documented no-reviewer fallback). Built and scoped against
+  an empirically-probed payload shape (`docs/experiments/2026-07-probe-hook-payloads.md`)
+  — its known attribution limits (a `cat`-of-a-marker is collateral-blocked;
+  a sufficiently obfuscated write can dodge the string match, in which case
+  `task-gate.sh`'s content validation is the second layer) are recorded in
+  README's "Known limitations."
+- **`hivemind` and `milestone-auditor` gain orchestrator-decided Opus|Fable
+  dispatch routing** (`agents/orchestrator.md`'s "Per-unit model routing"
+  section, new `### Opus|Fable routing for hivemind and milestone-auditor`
+  subsection): `hivemind` dispatches on `fable` only when scope is already
+  enumerated, the change rides existing seams, and no interrogation is
+  needed (all three, conjunctively); `milestone-auditor` dispatches on
+  `fable` only when the milestone was mechanical end-to-end (every unit
+  `haiku`-tagged, no first-pass FAIL, no human challenge at the pre-audit
+  checkpoint). Frontmatter `model: opus` stays the default for both —
+  fable is per-dispatch only, never the standing tier. **Cost framing,
+  honestly:** this is a routing heuristic, not a structural saving — worst
+  case is unchanged from today (both personas can still run on Opus every
+  time); the common case is cheaper only when the orchestrator's heuristic
+  actually routes well-scoped work to Fable. A wrong-cheap dispatch
+  escalates to `opus` on retry, mirroring the existing haiku-unit
+  escalation rule.
+- **Pre-audit human-grilling checkpoint** (`agents/orchestrator.md`'s
+  "Milestone audit gate" section): before every `milestone-auditor`
+  dispatch, the orchestrator now fetches the plan's Goal/assumptions/Open
+  Questions and surfaces them to the human via `AskUserQuestion` as a quick
+  confirm/challenge pass. A material human challenge routes back to
+  `hivemind` for a re-plan instead of spending an Opus audit run on an
+  already-invalidated plan; a clean checkpoint still requires the full
+  audit — it is not a substitute for it.
+- **Durable FAIL record** (`agents/reviewer.md`, `templates/persona-protocol.md`):
+  on a FAIL verdict the reviewer now also writes
+  `.claude/reviewed/<task-id>.fail` (defect list + timestamp, both modes) —
+  not for any hook gate (none needed changing), but as a standing warning
+  for a future `hivemind` or orchestrator spawn with no memory of this
+  session. `agents/orchestrator.md`'s per-unit and Opus|Fable routing rules
+  both treat an existing `.fail` record as a hard disqualifier for
+  haiku/fable dispatch on that unit; `agents/hivemind.md` checks for one
+  before retagging or re-scoping.
+
+### Changed
+- **`planner` renamed `hivemind` repo-wide** (display name "HiveMind" in
+  unbackticked README prose only; the machine-facing slug stays lowercase
+  everywhere else): `agents/planner.md` → `agents/hivemind.md`, every
+  routing-table/prose/eval-variant reference, `bin/cli.js`'s
+  `OPTIONAL_PERSONAS`/wizard labels, `templates/persona-config.schema.json`,
+  `templates/persona-protocol.md`, `templates/researcher.md.tmpl`,
+  `commands/start-feature-team.md`, `skills/setup-personas/SKILL.md`,
+  `tests/validate.sh`, `eval/harness/scaffold.sh`, and
+  `.claude-plugin/plugin.json`'s description. `bin/cli.js --personas=` and
+  the `--overwrite`-reuse-selection path both accept the legacy `planner`
+  token, map it forward to `hivemind`, and print a deprecation note instead
+  of silently dropping it (the pre-rename intersection filter would have
+  dropped an unrecognized token with no error). `skills/setup-personas/SKILL.md`
+  section 11 (`--update` mode) gained an explicit migration rule: a project
+  whose recorded `personaSelection` still says `planner` gets its copied
+  agent file renamed/re-derived, its `personaSelection` rewritten, and the
+  migration reported. `milestone-auditor` was NOT folded into `hivemind` —
+  it stays a separate, memory-less persona; its deliberate absence of a
+  `memory:` field (fresh-eyes isolation) is unchanged.
+- README's "Cost" section reworded for the dual-model routing above,
+  honestly: the smaller-standing-roster savings argument belonged to a fold
+  that was proposed and explicitly rejected (see Open Questions in the
+  source plan) and does not appear here in any form — `hivemind`,
+  `reviewer`, and `milestone-auditor` all still DEFAULT to the pricier tier
+  and remain the real spend drivers; the cheaper model is an
+  orchestrator-routed discount on top, not a lowered baseline.
+- README's orchestrator-drift-surface bullet updated: the main session is
+  still deliberately uncapped, but the pending-review gate above gives it
+  its first mechanical backstop — "biggest open drift surface" becomes
+  "partially closed," not fully closed.
+
+### Reviewed, not changed
+- lead-programmer's TDD-first mandate was reviewed for a conditional
+  (haiku-tagged-step / no-reviewer-project) carve-out and deliberately kept
+  **unconditional**, exactly as written before this release
+  (`agents/lead-programmer.md` and its eval-variant twin are untouched) —
+  recorded here so the question isn't re-litigated from silence.
+
 ## [0.5.5] - 2026-07-13
 
 ### Added

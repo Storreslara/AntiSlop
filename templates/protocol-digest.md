@@ -23,6 +23,9 @@
 - The WIP sentinel (`.claude/wip-handoff.<agent-id>`) is for a genuine
   mid-task pause only - never to dodge a red suite you could otherwise fix.
   It must contain a stated reason; an empty sentinel is ignored.
+- A gated agent's stop without review sets `.claude/.pending-review.<id>` -
+  it blocks turn-end and the next implementation dispatch until the reviewer
+  runs (clearing it) or you write `defer: <reason>`/`skip: <reason>` into it.
 - `memory: <scope>` auto-grants Read/Write/Edit for memory files regardless
   of your declared `tools:` - that is not license to edit source code (or
   any file outside your role's stated scope) if your role says you never do.

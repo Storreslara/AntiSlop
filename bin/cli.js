@@ -19,7 +19,14 @@ const PKG_ROOT = path.resolve(__dirname, '..');
 const CWD = process.cwd();
 
 const CORE_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer'];
-const OPTIONAL_PERSONAS = ['planner', 'repo-historian', 'reviewer', 'milestone-auditor'];
+const OPTIONAL_PERSONAS = ['hivemind', 'repo-historian', 'reviewer', 'milestone-auditor'];
+// Legacy-token migration: the persona formerly named `planner` was renamed
+// `hivemind` (repo-wide rename, plugin v0.6.0) — this is a deprecated,
+// legacy `--personas=planner` / legacy `personaSelection` entry of
+// `"planner"` concern only; both map forward via LEGACY_PERSONA_MAP below
+// rather than being silently dropped by the OPTIONAL_PERSONAS intersection
+// filter.
+const LEGACY_PERSONA_MAP = { planner: 'hivemind' }; // legacy token -> current token
 // researcher is handled separately: it's a template, not a plain agent copy.
 
 function readPluginVersion() {
@@ -170,11 +177,27 @@ async function main() {
 
   let selected;
   if (reuseExistingSelection) {
-    const priorSelection = existingPersonaConfig.personaSelection || [];
+    let priorSelection = existingPersonaConfig.personaSelection || [];
+    if (priorSelection.includes('planner')) { // legacy token check
+      console.log(
+        'Deprecation note: this project\'s recorded personaSelection contains the ' +
+          'legacy "planner" token — migrating the legacy "planner" token to "hivemind" ' +
+          '(the legacy "planner" token was renamed hivemind in plugin v0.6.0).'
+      );
+      priorSelection = priorSelection.map((p) => LEGACY_PERSONA_MAP[p] || p);
+    }
     selected = OPTIONAL_PERSONAS.filter((p) => priorSelection.includes(p));
     selected._researcher = priorSelection.includes('researcher');
   } else if (personasFlag) {
-    const requested = personasFlag.slice('--personas='.length).split(',').map((s) => s.trim()).filter(Boolean);
+    let requested = personasFlag.slice('--personas='.length).split(',').map((s) => s.trim()).filter(Boolean);
+    if (requested.includes('planner')) { // legacy token check
+      console.log(
+        'Deprecation note: "planner" is a legacy persona token — mapping the legacy ' +
+          '"planner" token to "hivemind" (the legacy "planner" token was renamed ' +
+          'hivemind in plugin v0.6.0). Use --personas=hivemind,... going forward.'
+      );
+      requested = requested.map((p) => LEGACY_PERSONA_MAP[p] || p);
+    }
     selected = OPTIONAL_PERSONAS.filter((p) => requested.includes(p));
     if (requested.includes('reviewer') === false && requested.length > 0) {
       console.log('Note: reviewer not in --personas list — skipping it (see README on what that gives up).');
@@ -209,9 +232,9 @@ async function main() {
         continue;
       }
       const label = {
-        planner: 'planner (turns ambiguous goals into precise plans; skip only for purely mechanical/small work)',
+        hivemind: 'hivemind (turns ambiguous goals into precise plans; skip only for purely mechanical/small work)',
         'repo-historian': 'repo-historian (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
-        'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or planner was also skipped)',
+        'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or hivemind was also skipped)',
       }[persona];
       const include = await askYesNo(rl, `\nInclude ${label}?`, true);
       if (include) selected.push(persona);
@@ -313,6 +336,8 @@ async function main() {
     '.claude/wip-handoff.*',
     '.claude/.session-baseline.*',
     '.claude/wip-audit.log',
+    '.claude/.pending-review.*',
+    '.claude/review-audit.log',
   ]);
   console.log('  .gitignore updated');
 

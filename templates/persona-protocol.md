@@ -82,7 +82,7 @@ consecutive Stop-hook blocks regardless; the sentinel is the designed exit,
 not a workaround for that cap.)
 
 ## Retrieval contract
-The planner's plan states, verbatim, where issues live and how to fetch them
+hivemind's plan states, verbatim, where issues live and how to fetch them
 (matching whatever issue tracker was chosen during setup). Follow that line
 exactly — never assume a tracker or fetch method.
 
@@ -101,13 +101,72 @@ work looks finished. On FAIL, defects route back to the lead-programmer,
 which fixes the specific items listed and reports ready-for-review again; it
 never re-plans and never grades its own work.
 
+The reviewer writes the v2 PASS marker at `.claude/reviewed/<task-id>.pass`
+in BOTH modes, not only where a `TaskCompleted` hook exists to check it — a
+marker that exists only in one mode would be an audit gap. Marker format v2:
+the file must be non-empty and its first line must read exactly `PASS
+<task-id> <UTC ISO-8601 timestamp> criteria: <acceptance-criteria
+command(s) run>`. The reviewer writes this via `Bash` (`printf`, not a bare
+`touch`) on a PASS verdict — this is bookkeeping, not fixing code, and does
+not conflict with "the reviewer never edits the code under review."
+Planning/research/documentation work is never gated by this marker.
+
 In agent-teams mode, "done" is additionally enforced mechanically: the
-`TaskCompleted` hook blocks a task from being marked complete unless a PASS
-marker exists at `.claude/reviewed/<task-id>.pass`. The reviewer creates this
-marker via `Bash` (`touch`) on a PASS verdict — this is bookkeeping, not
-fixing code, and does not conflict with "the reviewer never edits the code
-under review." Only tasks named with an `impl:` prefix require this marker;
-planning/research/documentation tasks are not gated by it.
+`TaskCompleted` hook blocks a task from being marked complete unless this
+*valid* marker exists at that task's `.pass` path — existence alone is not
+enough; an empty or malformed marker is rejected by `task-gate.sh`, and an
+accepted marker is additionally logged to `.claude/review-audit.log`
+(sibling of `wip-audit.log`). Only tasks named with an `impl:` prefix are
+gated by it. In default (subagent-orchestrator) mode, where no
+`TaskCompleted` event exists, the equivalent mechanical enforcement is the
+pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`): turn-end and
+the next implementation dispatch are blocked while a completed unit awaits
+review. This paragraph, unlike the hook scripts it describes, is copied into
+adapted projects and only reaches an already-adapted project via
+`/antislop:setup-personas --update` — a project whose copy still describes
+the bare-`touch` v1 format has simply not updated yet.
+
+**Two-week legacy-marker grace period (v0.6.0 rollout only, ends 2026-07-27):**
+until that date, `task-gate.sh` warns loudly and still ALLOWS a legacy/empty/
+malformed marker instead of blocking, logging
+`legacy-marker-grace-period-warning` to `.claude/review-audit.log`. On or
+after 2026-07-27 it reverts to unconditional rejection. This is a one-time
+softening of the v1→v2 cutover, not a standing feature — don't expect it on
+future marker-format changes unless a project explicitly re-adds one.
+
+## Pending-review flag (default-mode review backstop)
+In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
+`stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
+(default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
+sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
+no reviewer run yet. The reviewer's own `SubagentStop` clears every such flag
+(PASS or FAIL) and logs `cleared-by=reviewer` to `.claude/review-audit.log`.
+While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
+"a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
+dispatching the next gated-agent unit — the orchestrator's correct next move
+(spawn the reviewer, or spawn anything non-gated like `explorer`) is never
+blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
+content with `defer: <reason>` (logged, flag KEPT, that one Stop allowed —
+review still owed next turn) or `skip: <reason>` (logged, flag DELETED, unit
+explicitly abandoned); a reason-less overwrite is rejected the same way an
+empty WIP sentinel is. Honest limit: this cannot force the orchestrator's
+next action — `rm` via Bash remains possible, and the audit log is the
+deterrent, not a guarantee, same framing as the WIP sentinel.
+
+## FAIL record (durable warning for future spawns)
+On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
+(both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
+followed by the defect list from the verdict, verbatim. This is a bookkeeping
+exception, same as the PASS marker — not a change to the code under review.
+No hook gate depends on it (the pending-review flag already clears on any
+reviewer `SubagentStop`, PASS or FAIL alike); it exists purely so a
+completely fresh `hivemind` or orchestrator spawn — one with no memory of
+this session at all — still sees that a unit already failed once. The
+orchestrator's per-unit and per-persona model routing (orchestrator.md's
+"Per-unit model routing" and "Opus|Fable routing" sections) both treat an
+existing `.fail` record for a unit as a hard disqualifier for haiku/fable,
+same as an in-session FAIL. `hivemind` checks for these records too before
+retagging or re-scoping a unit it's revising.
 
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot — a fresh lead-programmer call has no
@@ -117,7 +176,8 @@ resume for the persona that reported ready-for-review; otherwise bundle a
 self-contained prompt with the original plan step, a one-line diff summary
 (from `git log`/`git diff` on the relevant commits), and the defect list
 verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
-is for durable conventions, not the live state of an in-progress fix.
+is for durable conventions, not the live state of an in-progress fix; the
+`.fail` record above is what bridges it for a session with no memory at all.
 
 **Cap at 2 FAILs per unit.** If the same unit FAILs a second time, the
 orchestrator (or team lead) stops re-delegating — it surfaces the full defect
@@ -129,6 +189,6 @@ itself has a gap, not that one more automated pass will close it.
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
 Write, and Edit so you can manage your memory files — this happens regardless
 of your declared `tools:` list. That is not license to edit source code if
-your role says you never do (e.g. the planner never writes production code,
+your role says you never do (e.g. hivemind never writes production code,
 pseudo-code aside). The restriction in that case is enforced by instruction,
 not by the tool allowlist — treat it as a hard rule anyway.

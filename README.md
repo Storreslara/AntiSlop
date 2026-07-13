@@ -7,7 +7,7 @@ development — if you hit weird behavior, please raise an issue.
 AntiSlop is a modular, persona-based Claude Code system packaged as a private,
 reusable plugin. The core loop is three always-on personas — **orchestrator**
 (routes requests), **explorer** (maps the code), and **lead-programmer**
-(writes it). Planner, repo-historian, reviewer, milestone-auditor, and
+(writes it). HiveMind, repo-historian, reviewer, milestone-auditor, and
 researcher are opt-in per project. Shipping it as a plugin means a new project
 costs one short setup run instead of re-authoring ~500 lines of persona and
 hook prose from scratch.
@@ -19,11 +19,11 @@ hook prose from scratch.
 | `orchestrator` | inherit | Always | Thin router/main agent. Never implements, never loads persona skills — routes requests to the right persona and synthesizes results briefly. |
 | `explorer` | haiku | Always | Stateless code cartographer. Answers structural questions (where's X defined, what calls Y, blast radius of a change) via the Code Review Graph, returning distilled answers, not raw dumps. The one persona every other persona defers to for structural facts. |
 | `lead-programmer` | sonnet | Always | Executes an approved plan step by step, TDD-first, with surgical diffs. Makes small conventional commits as it goes; reports "ready-for-review" when done, never grades its own work. |
-| `planner` | opus | Opt-in | Turns ambiguous goals into precise plans with machine-checkable acceptance criteria. Explores first, never writes production code, slices approved plans into issues. |
+| `hivemind` | opus (fable for well-scoped dispatches) | Opt-in | Turns ambiguous goals into precise plans with machine-checkable acceptance criteria. Explores first, never writes production code, slices approved plans into issues. |
 | `repo-historian` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs — the curated "why" layer the graph can't derive. Never touches source code. |
 | `reviewer` | opus | Opt-in (see below) | Independent, adversarial verifier — the Writer/Reviewer split. Did not write the code under review, can't edit it, only returns PASS/FAIL with reasons. **This is the system's core safety property**; skipping it needs an explicit confirmation during setup. |
-| `milestone-auditor` | opus | Opt-in | Adversarial auditor of the *plan*, not the code — runs at milestone boundaries after every unit has already reviewer-PASSed, hunting for premise gaps and goal drift the reviewer structurally can't see. No PASS/FAIL, no override authority, no Write/Edit — only a findings list relayed to the human. |
-| `researcher` | sonnet | Opt-in, project-scoped only | Bridges academic literature and engineering via an arXiv MCP (or WebSearch fallback) — paper discovery, deep-dive summaries, technique translation briefs for the planner. Not a plugin agent (see below) since plugin agents ignore `mcpServers`. |
+| `milestone-auditor` | opus (fable for well-scoped dispatches) | Opt-in | Adversarial auditor of the *plan*, not the code — runs at milestone boundaries after every unit has already reviewer-PASSed, hunting for premise gaps and goal drift the reviewer structurally can't see. No PASS/FAIL, no override authority, no Write/Edit — only a findings list relayed to the human. A human pre-audit checkpoint (via `AskUserQuestion`) precedes every dispatch. |
+| `researcher` | sonnet | Opt-in, project-scoped only | Bridges academic literature and engineering via an arXiv MCP (or WebSearch fallback) — paper discovery, deep-dive summaries, technique translation briefs for hivemind. Not a plugin agent (see below) since plugin agents ignore `mcpServers`. |
 
 `explorer` and `lead-programmer` are the minimum viable loop; `orchestrator`
 is always the main agent. Everything else is chosen per project during setup.
@@ -122,7 +122,7 @@ npx ~/antislop
 ```
 It prompts for optional personas the same way `setup-personas` step 1 does
 (declining `reviewer` requires typing `skip reviewer`). Non-interactive:
-`--yes` includes every optional persona; `--personas=planner,reviewer,researcher`
+`--yes` includes every optional persona; `--personas=hivemind,reviewer,researcher`
 includes only the named ones.
 
 **What it does, deterministically:** copies core + selected persona `.md` files
@@ -173,7 +173,7 @@ way — as project-local `.claude/agents/*.md` files.
 
 | Ships once (plugin) | Written per-project (setup) |
 |---|---|
-| Persona agents: orchestrator, explorer, lead-programmer (always); planner, repo-historian, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
+| Persona agents: orchestrator, explorer, lead-programmer (always); hivemind, repo-historian, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
 | `setup-personas` skill (the setup flow + `--update` resync) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
@@ -194,13 +194,20 @@ three things:
 
 ## Cost
 
-`planner` and `reviewer` are Opus-tier and are the system's real spend drivers,
-not the haiku-tier `explorer`/`repo-historian`. Both are capped with
-`maxTurns: 30`, and the FAIL→fix→re-review loop is capped at 2 iterations
-before escalating to you — but there's no budget mode beyond that yet. Check
-`/cost`; if it's high, look at how often the full Explore→Plan→Implement→Verify→Commit
-pipeline runs for work that didn't need it. The orchestrator's "scale effort to
-the task" rule is the lever there, not a setting.
+`hivemind`, `reviewer`, and `milestone-auditor` all DEFAULT to Opus and
+remain the system's real spend drivers, not the haiku-tier
+`explorer`/`repo-historian`. `hivemind` and `milestone-auditor` can be
+dispatched on Fable for well-scoped work, per the orchestrator's per-dispatch
+routing rule (see orchestrator.md's "Per-unit model routing" subsection) —
+honestly: worst case cost is unchanged from today (all three still run on
+Opus in the worst case), the common case is cheaper only when the
+orchestrator's heuristic actually routes well-scoped work to fable. All
+three are capped with `maxTurns: 30`/`20`, and the FAIL→fix→re-review loop is
+capped at 2 iterations before escalating to you — but there's no budget mode
+beyond that yet. Check `/cost`; if it's high, look at how often the full
+Explore→Plan→Implement→Verify→Commit pipeline runs for work that didn't need
+it. The orchestrator's "scale effort to the task" rule is the lever there,
+not a setting.
 
 ## Removing AntiSlop
 
@@ -215,7 +222,8 @@ from a project:
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it added
 - The `@.claude/persona-protocol.md` line in CLAUDE.md
 - `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`,
-  `.claude/wip-audit.log` (also in `.gitignore` — safe to delete)
+  `.claude/wip-audit.log`, `.claude/.pending-review.*`,
+  `.claude/review-audit.log` (also in `.gitignore` — safe to delete)
 - `/plugin uninstall antislop` to remove the plugin itself
 
 ## Why this shape (design rationale, kept out of the agent bodies)
@@ -253,29 +261,49 @@ from a project:
   plugin file edit.
 - **The reviewer's PASS marker (`.claude/reviewed/<task-id>.pass`) is an
   explicit, named exception to "never edits."** It's Bash-written bookkeeping
-  for the `TaskCompleted` hook, not a change to reviewed code. Setup pre-creates
-  the directory so the first-ever marker write doesn't fail on a missing path —
-  a real bug found and fixed in v0.2.0.
+  for the `TaskCompleted` hook (agent-teams mode) and the pending-review gate
+  (default mode), not a change to reviewed code. Marker format v2: a bare
+  `touch` no longer satisfies `task-gate.sh` — the file must be non-empty and
+  its first line must read exactly `PASS <task-id> <UTC ISO-8601 timestamp>
+  criteria: <acceptance-criteria command(s) run>`, written via `printf`; an
+  accepted marker is logged to `.claude/review-audit.log`. This closes the
+  bare-`touch`-is-anyone-with-Bash forgery gap the v1 format left open. Setup
+  pre-creates the directory so the first-ever marker write doesn't fail on a
+  missing path — a real bug found and fixed in v0.2.0. **v2 rollout has a
+  two-week legacy-marker grace period**, through 2026-07-27: a project whose
+  copied `reviewer.md` still writes the old bare `touch` gets a loud warning
+  (and is still allowed to complete) instead of an immediate block, logged to
+  `.claude/review-audit.log` as `legacy-marker-grace-period-warning`. On or
+  after 2026-07-27, `task-gate.sh` blocks unconditionally — run
+  `/antislop:setup-personas --update` before then.
 - **`memory: <scope>` auto-grants Read/Write/Edit for memory management,
-  regardless of a persona's declared `tools:` list.** The planner's "never
+  regardless of a persona's declared `tools:` list.** hivemind's "never
   write production code" and researcher's restricted tool list are therefore
   instruction-enforced, not mechanically enforced, for personas with memory.
   Noted once in the shared protocol rather than caveated in every file.
 - **Behavioral drift — an agent quietly stops following its own instructions as
   a session runs long — is fought with mechanism where possible, not more prose
   to remember.** `maxTurns` caps (explorer=10, milestone-auditor=20,
-  planner/reviewer/lead-programmer=30) already bound the highest-drift sessions
+  hivemind/reviewer/lead-programmer=30) already bound the highest-drift sessions
   by length; the orchestrator's main session is deliberately uncapped and is
-  correspondingly the biggest open drift surface. `session-start.sh` re-injects
-  a short `.claude/protocol-digest.md` via `additionalContext`, but only on
-  `source: resume` and `source: compact` — never `startup`/`clear`, where the
-  full protocol is already fresh — because compaction/resume is exactly when a
-  long session is likely to have summarized the protocol away. This is
-  mechanical *timing* of when the rules reappear, not a bigger dose of the same
-  static context. The WIP sentinel got a matching hardening: a bare `touch` no
-  longer bypasses the stop-gate — the sentinel must contain a reason, which
-  `stop-gate.sh` logs to `.claude/wip-audit.log` before honoring it, closing a
-  silent, unauditable escape hatch from the one mechanical gate that existed.
+  correspondingly the biggest open drift surface — now *partially* closed by
+  the pending-review gate (`stop-gate.sh` sets `.claude/.pending-review.<id>`
+  on a gated agent's un-reviewed stop; the reviewer's own stop clears it; while
+  it stands, `stop-gate.sh` blocks main-session turn-end and
+  `reviewer-route-gate.sh` blocks the next gated-agent dispatch). It is still
+  uncapped and can still `rm` the flag via Bash — friction and an audit trail
+  in `.claude/review-audit.log`, not a guarantee — so "biggest open drift
+  surface" stands, just with its first mechanical backstop. `session-start.sh`
+  re-injects a short `.claude/protocol-digest.md` via `additionalContext`, but
+  only on `source: resume` and `source: compact` — never `startup`/`clear`,
+  where the full protocol is already fresh — because compaction/resume is
+  exactly when a long session is likely to have summarized the protocol away.
+  This is mechanical *timing* of when the rules reappear, not a bigger dose of
+  the same static context. The WIP sentinel got a matching hardening: a bare
+  `touch` no longer bypasses the stop-gate — the sentinel must contain a
+  reason, which `stop-gate.sh` logs to `.claude/wip-audit.log` before honoring
+  it, closing a silent, unauditable escape hatch from the one mechanical gate
+  that existed.
 - **FLAT MODE (pre-2.1.172 nesting) and the manual TeamCreate/TeamDelete
   cleanup branch (pre-2.1.178) were deleted outright**, not kept as a fallback.
   Maintaining two wiring paths for versions this plugin doesn't support was pure
@@ -293,7 +321,7 @@ from a project:
   check close that gap without needing every user to remember to check manually.
 - **`AskUserQuestion` is unavailable to subagents, even if listed in their
   `tools:`** — confirmed against the Claude Code docs, not assumed. This is why
-  the planner returns plain-text "Open Questions" instead of asking
+  hivemind returns plain-text "Open Questions" instead of asking
   interactively, and why the *orchestrator* (which runs as the main session,
   not a subagent) is the one that has `AskUserQuestion` in its tools and turns
   those open questions into a real structured prompt when they reduce to
@@ -302,9 +330,15 @@ from a project:
   hooks only read `tool_input.file_path`, so `MultiEdit`'s array form and
   `NotebookEdit` aren't matched. The protected-paths hook only gates the
   `Write`/`Edit` tools — a persona running `sed -i` or a lockfile-rewriting
-  package manager command via `Bash` bypasses it. Both are documented as
-  advisory rather than airtight; tightening either is a good candidate for a
-  future version bump.
+  package manager command via `Bash` bypasses it. The `reviewed-path-gate.sh`
+  hook (PreToolUse/Bash) attributes the caller from the top-level
+  `agent_type` field on the payload — confirmed present empirically, see
+  `docs/experiments/2026-07-probe-hook-payloads.md` — and blocks any `Bash`
+  command whose text merely *contains* the substring `.claude/reviewed`;
+  read-only commands (a `cat` of a marker) are collateral, and a determined
+  agent can still obfuscate the path past the substring match. All three are
+  documented as advisory rather than airtight; tightening any of them is a
+  good candidate for a future version bump.
 
 ## Credits — third-party skills & MCPs this plugin builds on
 
@@ -312,7 +346,7 @@ Several personas lean on external skills and tools installed at setup time:
 
 - **[mattpocock/skills](https://github.com/mattpocock/skills)** — installed via
   the `skills.sh` installer (`npx skills@latest add mattpocock/skills`).
-  Provides `grill-me` and `to-issues` (used by `planner`), `tdd` and `diagnose`
+  Provides `grill-me` and `to-issues` (used by `hivemind`), `tdd` and `diagnose`
   (used by `lead-programmer`), and `improve-codebase-architecture` (used by
   `repo-historian`).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — the

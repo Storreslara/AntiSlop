@@ -72,7 +72,7 @@ Ask the user which personas this project needs. `orchestrator`, `explorer`,
 and `lead-programmer` are mandatory (the minimum viable loop — don't ask
 about them). Ask individually about the rest:
 
-- `planner` — skip only for projects doing purely mechanical/small work with
+- `hivemind` — skip only for projects doing purely mechanical/small work with
   no real planning step.
 - `repo-historian` — skip if the project doesn't want a maintained wiki/ADR
   system.
@@ -87,7 +87,7 @@ about them). Ask individually about the rest:
   not just a yes/no — the risk is materially different from skipping the
   others.
 - `milestone-auditor` — skip for projects with no real milestone structure
-  (a single small unit of work) or where `planner` was also skipped, since
+  (a single small unit of work) or where `hivemind` was also skipped, since
   it audits a plan's premises and there's no plan to audit. Unlike
   `reviewer`, this one checks the SPEC against reality, not code against the
   spec — it's a second, orthogonal safety property, not a duplicate of the
@@ -149,7 +149,7 @@ gracefully without needing per-project text surgery. Same for
       disk),
     - the `setup-matt-pocock-skills` setup command.
   Select only the ones the selected personas actually use (e.g. skip the
-  grill and tickets skills entirely if `planner` and `milestone-auditor`
+  grill and tickets skills entirely if `hivemind` and `milestone-auditor`
   were both deselected — `milestone-auditor` also preloads the grill skill,
   aimed at the plan's assumptions after the fact rather than the request
   before planning) — and ask them to run the command themselves in their own
@@ -159,7 +159,7 @@ gracefully without needing per-project text surgery. Same for
   below.
 - Run `/setup-matt-pocock-skills` once (issue tracker, triage labels, doc
   layout). RECORD which issue tracker was chosen — it goes in
-  `.claude/persona-config.json`'s `issueTracker` field and the planner reads
+  `.claude/persona-config.json`'s `issueTracker` field and hivemind reads
   it via the retrieval contract.
 - These install as a plugin, so their registered names are namespaced. List
   `.claude/skills/*/SKILL.md` (read each frontmatter `name:` field) and
@@ -173,7 +173,7 @@ gracefully without needing per-project text surgery. Same for
   to the discovered `to-tickets`, and the "diagnose" slot to the discovered
   `diagnosing-bugs`. If a purpose has no matching discovered skill, STOP and
   surface it to the human — do not substitute a guessed name.
-- **Substitute placeholders**: the copied `planner.md`, `repo-historian.md`,
+- **Substitute placeholders**: the copied `hivemind.md`, `repo-historian.md`,
   and `milestone-auditor.md` (if selected) contain `<MATTPOCOCK:skill-name>`
   placeholders in their `skills:` frontmatter — replace each with the
   discovered namespaced name for that purpose (this is expected ADAPT
@@ -361,12 +361,13 @@ Note in your report: the default teammate model has no reliable settings key
   actual scan of this repo — spawn the `explorer` for the structural facts
   rather than crawling yourself.
 - `mkdir -p .claude/reviewed` once now, regardless of whether `reviewer` was
-  selected — this is what makes the reviewer's PASS-marker `touch` succeed on
-  the very first agent-teams run instead of erroring on a missing directory.
+  selected — this is what makes the reviewer's v2 PASS-marker `printf`
+  succeed on the very first run instead of erroring on a missing directory.
 - Append to this project's `.gitignore`: `.claude/reviewed/`,
-  `.claude/wip-handoff.*`, `.claude/.session-baseline.*`, and
-  `.claude/wip-audit.log` — none of these should be committed (the audit log
-  is a growing local operational record, not project documentation).
+  `.claude/wip-handoff.*`, `.claude/.session-baseline.*`,
+  `.claude/wip-audit.log`, `.claude/.pending-review.*`, and
+  `.claude/review-audit.log` — none of these should be committed (the audit
+  logs are a growing local operational record, not project documentation).
 
 ## 10. Hook verification (sandboxed — do not leave the repo red or trap yourself)
 
@@ -438,6 +439,29 @@ On a throwaway branch:
   `subagent_type":"explorer"` and with `"agent_type":"orchestrator"` (target
   `reviewer`) and confirm both ALLOW — proves the gate only fires for the
   specific lead-programmer→reviewer pair, not every Agent-tool call.
+- **PASS marker v2 (`task-gate.sh`)**: `touch .claude/reviewed/test.pass`
+  (bare, empty) then pipe `{"task":{"subject":"impl:test","id":"test"}}` into
+  `task-gate.sh` and confirm BLOCK (exit 2) naming the required `printf`
+  format and the `--update` remedy; then write a valid first line —
+  `printf 'PASS test %s criteria: <cmd>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/reviewed/test.pass`
+  — and confirm ALLOW plus a new `marker-accepted` line in
+  `.claude/review-audit.log` — proves the existence-only check is gone.
+- **Pending-review flag (`stop-gate.sh`)**: pipe a synthetic
+  `{"hook_event_name":"SubagentStop","agent_type":"lead-programmer","agent_id":"test"}`
+  and confirm `.claude/.pending-review.test` is created; then pipe
+  `{"hook_event_name":"Stop","session_id":"test"}` and confirm BLOCK
+  ("awaiting review"); then pipe a reviewer `SubagentStop`
+  (`"agent_type":"reviewer"`) and confirm the flag is gone and
+  `cleared-by=reviewer` appears in `.claude/review-audit.log`. Also confirm
+  the `defer: <reason>`/`skip: <reason>` escape hatch: overwriting the flag
+  with `defer: ...` allows that one Stop and keeps the flag; `skip: ...`
+  allows it and deletes the flag; both log to `.claude/review-audit.log`.
+- **Pending-review dispatch block (`reviewer-route-gate.sh`)**: with a
+  `.claude/.pending-review.*` flag present, pipe
+  `{"agent_type":"","tool_input":{"subagent_type":"lead-programmer"}}` and
+  confirm BLOCK; repeat with `"subagent_type":"reviewer"` and confirm
+  ALLOW — proves the next gated-agent dispatch is blocked while a unit
+  awaits review, without blocking the reviewer dispatch itself.
 - Revert the branch completely. Your final turn must end with the repo clean
   and all sentinels/markers removed.
 
@@ -453,6 +477,12 @@ automatically via `${CLAUDE_PLUGIN_ROOT}`, but the copied agent files and
 - Read this project's `persona-config.json` (`personaSelection`,
   `pluginVersion`) and the plugin's current `plugin.json` version. If they
   match, report "already current" and stop.
+- **Legacy `planner` → `hivemind` migration**: if the project's
+  `personaSelection` contains the legacy token `planner` (the persona was
+  renamed `hivemind` in plugin v0.6.0): rename/re-derive the legacy file
+  `.claude/agents/planner.md` (legacy) as `.claude/agents/hivemind.md` at the
+  current version, delete the old legacy file, rewrite `personaSelection` replacing
+  the legacy `planner` token with `hivemind`, and say so in the report.
 - For each version-stamped file in `.claude/agents/`,
   `.claude/persona-protocol.md`, and `.claude/protocol-digest.md`: re-derive
   what a fresh copy at the CURRENT plugin version would look like,

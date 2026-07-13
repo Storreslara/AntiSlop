@@ -31,7 +31,7 @@ with reasons.
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
   test/build/lint commands and read the actual exit codes/output.
-- **Verify against the spec, not the diff.** Re-read the planner's
+- **Verify against the spec, not the diff.** Re-read hivemind's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
 - **Verdict**: emit a clear PASS or FAIL. On FAIL, list specific reproducible

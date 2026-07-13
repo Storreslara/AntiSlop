@@ -8,10 +8,10 @@ description: Spin up the persona feature team for a task (agent-teams mode - off
 
 Act as team lead (coordinate, do NOT implement). Create an agent team for
 "$ARGUMENTS". Check `.claude/agents/` for which personas this project
-actually has (planner, repo-historian, reviewer, and researcher are optional
+actually has (hivemind, repo-historian, reviewer, and researcher are optional
 — see the project's `persona-config.json` `personaSelection` field) and spawn
 named teammates only from what's present: lead-programmer is always a
-teammate; planner/repo-historian/reviewer join if they exist; researcher only
+teammate; hivemind/repo-historian/reviewer join if they exist; researcher only
 if the task is novel and it exists. Teammates spawn their own foreground
 explorer subagent for ad-hoc lookups; add explorer as a named teammate only
 when exploration is itself a standalone parallel workstream, not a one-off
@@ -19,7 +19,7 @@ lookup. If `reviewer` doesn't exist for this project, say so up front and do
 the lightweight sanity-check fallback described in orchestrator.md's "if no
 reviewer persona exists" — don't silently skip the done-check.
 
-**GATE**: require the planner's plan to name every affected file and give
+**GATE**: require hivemind's plan to name every affected file and give
 each step a machine-checkable acceptance criterion before any code is
 written. If Claude Code's native plan-approval is available as a
 prompt-level feature, use it in addition — but the prose rule above is the
@@ -47,15 +47,19 @@ PASS using that id, and the TaskCompleted hook blocks any task named
 `impl:*` from completing without a matching marker.
 
 If there's no reviewer (deselected, or a teammate that crashed mid-run): the
-lead's sanity-check fallback above must itself `touch` the `.pass` marker
-after checking, or avoid the `impl:` prefix for that task entirely — the hook
-fires whenever `persona-config.json` exists, regardless of reviewer
+lead's sanity-check fallback above must itself write the marker in v2
+format after checking — `mkdir -p .claude/reviewed && printf 'PASS <task-id>
+%s criteria: <sanity check(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >
+.claude/reviewed/<task-id>.pass` (a bare `touch` no longer satisfies
+`task-gate.sh`'s content check — a forged-looking empty marker must not work
+for the lead either) — or avoid the `impl:` prefix for that task entirely —
+the hook fires whenever `persona-config.json` exists, regardless of reviewer
 selection, so skipping this step deadlocks the task list permanently.
 
 Use the shared task list, 5–6 tasks at a time. Don't let two teammates edit
 the same files (the reviewer never edits, so this is really about the
 lead-programmer vs. any other file-touching teammate). If the lead-programmer
-says the plan is wrong, send it back to the planner. Wait for teammates to
+says the plan is wrong, send it back to hivemind. Wait for teammates to
 finish, then synthesize.
 
 **Cleanup**: on Claude Code v2.1.178+ (the version this plugin targets), team
