@@ -1,5 +1,38 @@
 # AntiSlop
 
+```
+######################
+######################
+          ##          
+        ######        
+      ####  ####      
+    ####      ###     
+  ####          ###   
+ ###             #### 
+##        ##       ###
+##        ##        ##
+##        ##        ##
+##        ##        ##
+##        ##        ##
+###       ###      ###
+ ####      ####  #### 
+   ###       ######   
+   #####       ###    
+ #### ####      ####  
+###     ####      ####
+##        ##        ##
+##        ##        ##
+##        ##        ##
+##        ##        ##
+##        ##       ###
+ ###             #### 
+  ####          ###   
+    ####      ###     
+      ####  ####      
+        ######        
+          ##          
+```
+
 This is the Claude Code setup I use for work and personal projects. It's
 pretty decent at not generating slop, but it's a token hog. Still very much in
 development — if you hit weird behavior, please raise an issue.
