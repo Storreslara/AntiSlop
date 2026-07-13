@@ -4,7 +4,7 @@ description: Turns ambiguous goals into precise, executable plans with machine-c
 model: opus
 color: purple
 memory: project
-tools: Read, Grep, Glob, Bash, Agent, Skill
+tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-issues>
 maxTurns: 30
 ---

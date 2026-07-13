@@ -65,6 +65,12 @@ slice you actually need rather than re-running the same command unfiltered.
 - Delivery to teammates via SendMessage is asynchronous; a spawned subagent
   call is synchronous and pauses you until it returns. Choose based on
   whether you need the answer before continuing.
+- On finishing a unit of work, push your report to the team lead via
+  `SendMessage` rather than relying on `idle_notification` or plain turn-text
+  output — the lead has no channel to receive either of those. Address it to
+  whichever name/identifier the lead used when it spawned you; don't assume a
+  fixed literal like `"main"` is always correct, since the right recipient
+  can differ between agent-teams mode and other modes.
 
 ## WIP sentinel (mid-task handoff, not a bypass)
 To end your turn with work genuinely in progress or a red suite you haven't

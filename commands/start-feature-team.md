@@ -59,8 +59,11 @@ selection, so skipping this step deadlocks the task list permanently.
 Use the shared task list, 5–6 tasks at a time. Don't let two teammates edit
 the same files (the reviewer never edits, so this is really about the
 lead-programmer vs. any other file-touching teammate). If the lead-programmer
-says the plan is wrong, send it back to hivemind. Wait for teammates to
-finish, then synthesize.
+says the plan is wrong, send it back to hivemind. To check on or retrieve a
+report from an idle teammate, `SendMessage` it by name — this resumes it
+from its own transcript. Do NOT re-invoke `Agent` with its name to do this;
+that spawns an unrelated sibling instead of resuming it. Wait for teammates
+to finish, then synthesize.
 
 **Cleanup**: on Claude Code v2.1.178+ (the version this plugin targets), team
 cleanup is automatic — do not call `TeamCreate`/`TeamDelete` (removed in that

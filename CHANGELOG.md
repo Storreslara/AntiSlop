@@ -3,6 +3,33 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.6.1] - 2026-07-13
+
+### Fixed
+- **No persona had `SendMessage` in its `tools:` list** (#9), so in
+  agent-teams mode a named teammate's `idle_notification` — a lifecycle
+  signal only, never a report payload — was the team lead's only signal that
+  a teammate was done, and its only lever to check further was re-invoking
+  `Agent` with the teammate's existing name. That doesn't resume the
+  teammate; it silently spawns an unrelated `<name>-2` sibling, so the
+  original teammate's actual report never reached the lead through any
+  channel its tools exposed. Added `SendMessage` to `orchestrator.md`,
+  `lead-programmer.md`, `hivemind.md`, `repo-historian.md`, `reviewer.md`,
+  `explorer.md`, and `researcher.md.tmpl`'s `tools:` lines, and documented
+  both directions of the fix: `orchestrator.md` and
+  `commands/start-feature-team.md` now tell the lead to `SendMessage` an
+  idle teammate by name to resume/retrieve its report instead of
+  re-invoking `Agent`; `lead-programmer.md`'s ready-for-review handoff and
+  `templates/persona-protocol.md`'s agent-teams section now tell a teammate
+  to push its report to the lead via `SendMessage` on finishing a unit,
+  since plain turn-text isn't visible to other agents. Not a duplicate of
+  #5 (`TaskStop`/`TaskOutput` for subagent-orchestrator-mode liveness) or #8
+  (same "fresh dispatch instead of resume" symptom, but scoped to
+  backgrounded-Bash races in subagent-orchestrator mode) — this is the
+  agent-teams-mode named-teammate resume path specifically.
+- `package.json`'s version had drifted behind `.claude-plugin/plugin.json`
+  since the 0.6.0 release (stuck at 0.5.5) — resynced both to 0.6.1.
+
 ## [0.6.0] - 2026-07-13
 
 **Upgrade caveat (read first if you have an adapted project):** the PASS

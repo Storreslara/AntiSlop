@@ -4,7 +4,7 @@ description: Keeper of institutional knowledge - maintains the wiki, CONTEXT.md,
 model: haiku
 color: cyan
 memory: project
-tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill
+tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: <MATTPOCOCK:improve-codebase-architecture>
 ---
 <!-- `Skill` is in tools so a teammate copy can invoke
