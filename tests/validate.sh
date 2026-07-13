@@ -83,6 +83,47 @@ for p in hivemind repo-historian reviewer researcher; do
 done
 
 echo
+echo "== Cursor adapter: bash syntax =="
+for f in adapters/cursor/hooks/scripts/*.sh; do
+  if bash -n "$f"; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f"
+    fail=1
+  fi
+done
+
+echo
+echo "== Cursor adapter: JSON validity =="
+for f in adapters/cursor/hooks/hooks.json \
+         adapters/cursor/.cursor-plugin/plugin.json \
+         adapters/cursor/.cursor-plugin/marketplace.json; do
+  if python3 -m json.tool "$f" >/dev/null 2>&1; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f"
+    fail=1
+  fi
+done
+
+echo
+echo "== Cursor adapter: agent/rule frontmatter has name/description or alwaysApply =="
+for f in adapters/cursor/agents/*.md; do
+  if grep -q '^name:' "$f" && grep -q '^description:' "$f"; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f (missing name: or description: in frontmatter)"
+    fail=1
+  fi
+done
+if grep -q '^alwaysApply:' adapters/cursor/rules/persona-protocol.mdc; then
+  echo "OK   adapters/cursor/rules/persona-protocol.mdc"
+else
+  echo "FAIL adapters/cursor/rules/persona-protocol.mdc (missing alwaysApply:)"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

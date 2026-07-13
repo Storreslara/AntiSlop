@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/protected-paths.sh" }
+    ],
+    "afterFileEdit": [
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/graph-update.sh" },
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/lint-on-edit.sh" }
+    ],
+    "subagentStart": [
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/reviewer-route-gate.sh" }
+    ],
+    "stop": [
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh" }
+    ],
+    "subagentStop": [
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh" }
+    ]
+  }
+}

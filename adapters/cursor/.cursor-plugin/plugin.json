@@ -1,0 +1,11 @@
+{
+  "name": "antislop-cursor",
+  "version": "0.7.0",
+  "description": "AntiSlop persona system ported to Cursor (MVP): the always-on subagent-orchestrator loop - orchestrator + explorer + lead-programmer + reviewer - plus protected-paths / edit / stop / reviewer-route enforcement hooks and the shared persona-protocol rule. Agent-teams mode, per-agent tool/turn/MCP/memory scoping, and structured user prompts are dropped or degraded on Cursor - see docs/cursor-port-notes.md.",
+  "author": {
+    "name": "Sebastian Torres Lara"
+  },
+  "repository": "https://github.com/Storreslara/AntiSlop",
+  "license": "MIT",
+  "keywords": ["multi-agent", "orchestrator", "code-review", "subagents", "cursor"]
+}

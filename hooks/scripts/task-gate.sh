@@ -67,14 +67,14 @@ reject() {
   echo "  mkdir -p \"$(dirname "$marker")\" && printf 'PASS ${task_id} %s criteria: <acceptance-criteria command(s) run>\\n' \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > ${marker}" >&2
   echo "A bare 'touch' or an empty/malformed marker is rejected - existence alone is not enough." >&2
   echo "The v0.6.0 legacy-marker grace period ended ${GRACE_PERIOD_END} - it no longer softens this block." >&2
-  echo "If your copied reviewer.md predates plugin v0.6.0 (still teaches a bare touch), run /antislop:setup-personas --update to pick up the v2 format." >&2
+  echo "If your copied reviewer.md predates plugin v0.6.0 (still teaches a bare touch), run /antislop:update-antislop to pick up the v2 format." >&2
   exit 2
 }
 
 warn_and_allow_legacy() {
   echo "WARNING: Task '${task_name}' has no valid v2 reviewer PASS marker at ${marker}." >&2
   echo "Allowed ONLY under the v0.6.0 legacy-marker grace period, which ends ${GRACE_PERIOD_END} (UTC) - after that date this will BLOCK." >&2
-  echo "Run /antislop:setup-personas --update now to pick up the v2 marker format before the grace period ends." >&2
+  echo "Run /antislop:update-antislop now to pick up the v2 marker format before the grace period ends." >&2
   printf '%s task=%s legacy-marker-grace-period-warning\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$task_id" \
     >> "${project_dir}/.claude/review-audit.log"
   exit 0

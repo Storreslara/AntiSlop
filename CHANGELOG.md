@@ -3,6 +3,64 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.7.0] - 2026-07-13
+
+### Added
+- **Cursor port (MVP): the always-on subagent-orchestrator loop now ships for
+  Cursor** alongside the existing Claude Code plugin, under a new self-contained
+  `adapters/cursor/` tree (kept separate so none of the Claude-only artifacts
+  change). Implements the spec's §5 MVP milestone from
+  `docs/specs/codex-cursor-plugin.md` — the Codex half is deliberately NOT
+  built here. Delivered:
+  - **Four persona definitions** in Cursor's native format
+    (`adapters/cursor/agents/{orchestrator,explorer,lead-programmer,reviewer}.md`)
+    — markdown + `name`/`description`/`model`/`readonly` frontmatter. The
+    persona *body* prose is ported faithfully from `agents/*.md`; only the
+    frontmatter and platform-specific mechanics changed.
+  - **Enforcement hooks** as `adapters/cursor/hooks/hooks.json` (`version: 1`,
+    camelCase events `preToolUse`/`afterFileEdit`/`subagentStart`/`stop`/
+    `subagentStop`) plus five scripts: protected-paths, graph-update,
+    lint-on-edit, stop-gate, and reviewer-route-gate. Each script keeps the
+    Claude version's decision logic and swaps in a thin Cursor payload-
+    extraction preamble (project dir from `.workspace_roots[0]`,
+    `subagent_type` for caller identity, `.loop_count` for the loop guard,
+    `.conversation_id` for the baseline).
+  - **The shared persona-protocol** as an `alwaysApply: true` Cursor rule
+    (`adapters/cursor/rules/persona-protocol.mdc`).
+  - **Plugin packaging** (`adapters/cursor/.cursor-plugin/{plugin.json,
+    marketplace.json}`).
+  - **Scaffolder support**: `bin/cli.js --target=cursor` scaffolds all of the
+    above into a project's `.cursor/`, reusing the existing "merge, never
+    clobber" discipline (hooks.json is deep-merged; `--overwrite` preserves the
+    judgment-driven persona-config fields).
+  - **`docs/cursor-port-notes.md`** documenting what ported cleanly, what
+    degraded (per spec §2A/§2D), which §6 open questions were resolved vs. left
+    as loud unverified assumptions, and what was explicitly dropped.
+- `tests/validate.sh` gained a Cursor-artifacts section (JSON parse of the
+  hooks/plugin/marketplace manifests, frontmatter check on the Cursor agents,
+  bash syntax check on the Cursor hook scripts).
+
+### Degraded / dropped on Cursor (loud, not silent — see cursor-port-notes.md)
+- **Rule cascade into subagents is UNVERIFIED** (spec §6 open q #1). Because
+  the protocol *is* the safety system, its load-bearing invariants (review
+  ownership, structural-questions-to-explorer, FAIL cap, WIP sentinel) are
+  inlined into each subagent body as a guaranteed-delivery backstop in addition
+  to the alwaysApply rule.
+- **reviewer-route-gate's "lead-programmer must not spawn the reviewer" half is
+  instruction-only** — Cursor's `subagentStart` payload carries the spawn
+  target but not the caller (spec §6 open q #5). The pending-review half (block
+  the next gated dispatch while a unit awaits review) is still mechanical.
+- Per-agent **tool allowlist** (beyond `readonly: true`), **maxTurns caps**,
+  **per-agent MCP scoping** (graph goes project-wide), and **`memory: project`**
+  all degrade to instruction-only / file-convention, matching spec §2A–§2E.
+  Agent-teams mode, the `TaskCompleted`/task-gate, and structured
+  user-question prompts are explicitly dropped (spec Tier 3).
+- This Cursor pass intentionally does NOT do the spec §4 shared-body refactor
+  (splitting `agents/*.md` into `*.body.md` + per-platform wrappers), so the
+  Cursor persona bodies and hook logic are hand-ported copies — a
+  duplication-drift risk that §4's architecture would remove once Codex also
+  exists.
+
 ## [0.6.5] - 2026-07-13
 
 ### Changed

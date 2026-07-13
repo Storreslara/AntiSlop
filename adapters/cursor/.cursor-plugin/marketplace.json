@@ -1,0 +1,13 @@
+{
+  "name": "antislop-cursor-marketplace",
+  "owner": {
+    "name": "Sebastian Torres Lara"
+  },
+  "plugins": [
+    {
+      "name": "antislop-cursor",
+      "source": "./",
+      "description": "AntiSlop persona system for Cursor (MVP): orchestrator + explorer + lead-programmer + reviewer, enforcement hooks, and the shared persona-protocol rule."
+    }
+  ]
+}

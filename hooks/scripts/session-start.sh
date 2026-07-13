@@ -45,7 +45,7 @@ if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/.claude-plugi
 fi
 
 if [ -n "$adapted_version" ] && [ -n "$current_version" ] && [ "$adapted_version" != "$current_version" ]; then
-  context_parts+=("antislop plugin is v${current_version} but this project was adapted at v${adapted_version} - run /antislop:setup-personas --update to resync.")
+  context_parts+=("antislop plugin is v${current_version} but this project was adapted at v${adapted_version} - run /antislop:update-antislop to resync (cheap, deterministic).")
 fi
 
 source_type="$(echo "$input" | jq -r '.source // empty' 2>/dev/null || true)"

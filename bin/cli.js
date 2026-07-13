@@ -533,6 +533,167 @@ async function runWireMcp(kind, args) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// --target=cursor: scaffold the Cursor adapter (adapters/cursor/) into a
+// project's .cursor/ directory. This is the Cursor-port sibling of the default
+// (implicit --target=claude) flow above. It ships only the MVP four personas
+// (orchestrator/explorer/lead-programmer/reviewer), the shared persona-protocol
+// rule, and the ported enforcement hooks - agent-teams mode, the optional
+// personas, and per-agent tool/turn/MCP/memory scoping are dropped or degraded
+// on Cursor (see docs/cursor-port-notes.md). It reuses the same "merge, never
+// clobber" discipline: hooks.json is deep-merged, and on --overwrite the
+// judgment-driven persona-config fields are preserved, exactly like the Claude
+// path.
+// ---------------------------------------------------------------------------
+
+const CURSOR_MVP_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer', 'reviewer'];
+
+async function scaffoldCursor(args) {
+  const version = readPluginVersion();
+  const overwrite = args.includes('--overwrite');
+  const cursorSrc = path.join(PKG_ROOT, 'adapters', 'cursor');
+  console.log(`antislop v${version} (Cursor target) — scaffolding into ${CWD}\n`);
+
+  const cursorDir = path.join(CWD, '.cursor');
+  const configPath = path.join(cursorDir, 'persona-config.json');
+  let existingConfig = null;
+  if (fs.existsSync(configPath)) {
+    if (!overwrite) {
+      console.log(
+        'A .cursor/persona-config.json already exists here — this looks like an ' +
+          'existing Cursor install, not a fresh one. This CLI only does fresh ' +
+          'scaffolding; re-run with --overwrite to re-copy the mechanical files ' +
+          '(agents, hooks, rule, protocol) unconditionally while preserving your ' +
+          'judgment-driven config fields. Exiting without changes.'
+      );
+      process.exit(1);
+    }
+    existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log(
+      '--overwrite: existing Cursor install found — re-copying agents/hooks/rule/' +
+        'protocol unconditionally. persona-config.json\'s judgment-driven fields ' +
+        '(testAndLintCommand, protectedPaths, etc.) are preserved; only ' +
+        'pluginVersion/personaSelection are refreshed.\n'
+    );
+  }
+
+  const agentsDir = path.join(cursorDir, 'agents');
+  const scriptsDir = path.join(cursorDir, 'hooks', 'scripts');
+  const rulesDir = path.join(cursorDir, 'rules');
+  mkdirp(agentsDir);
+  mkdirp(scriptsDir);
+  mkdirp(rulesDir);
+  mkdirp(path.join(cursorDir, 'reviewed'));
+  mkdirp(path.join(cursorDir, 'memory'));
+
+  for (const name of CURSOR_MVP_PERSONAS) {
+    copyStamped(
+      path.join(cursorSrc, 'agents', `${name}.md`),
+      path.join(agentsDir, `${name}.md`),
+      version,
+      `adapters/cursor/agents/${name}.md`
+    );
+    console.log(`  adapters/cursor/agents/${name}.md -> .cursor/agents/${name}.md`);
+  }
+
+  copyStamped(
+    path.join(cursorSrc, 'rules', 'persona-protocol.mdc'),
+    path.join(rulesDir, 'persona-protocol.mdc'),
+    version,
+    'adapters/cursor/rules/persona-protocol.mdc'
+  );
+  console.log('  adapters/cursor/rules/persona-protocol.mdc -> .cursor/rules/persona-protocol.mdc (alwaysApply rule)');
+
+  copyDirRecursive(path.join(cursorSrc, 'hooks', 'scripts'), scriptsDir);
+  console.log('  adapters/cursor/hooks/scripts/*.sh -> .cursor/hooks/scripts/');
+
+  // hooks.json: rewrite the plugin-root placeholder to a project-relative path,
+  // then deep-merge into any existing .cursor/hooks.json (merge, not clobber).
+  const rawHooks = fs.readFileSync(path.join(cursorSrc, 'hooks', 'hooks.json'), 'utf8');
+  const hooksConfig = JSON.parse(
+    rawHooks.replace(/\$\{CURSOR_PLUGIN_ROOT\}\/hooks\/scripts/g, '.cursor/hooks/scripts')
+  );
+  const hooksPath = path.join(cursorDir, 'hooks.json');
+  let hooks = { version: 1, hooks: {} };
+  if (fs.existsSync(hooksPath)) {
+    hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
+  }
+  // Idempotent, dedupe-aware merge: the generic deepMerge appends array items
+  // by reference equality, so identical `{command: ...}` objects would
+  // duplicate on every --overwrite re-run (each fires the same hook twice).
+  // Dedupe per-event by the entry's JSON so a re-run is a no-op while any
+  // user-added hook entries are preserved.
+  hooks.version = hooks.version || hooksConfig.version || 1;
+  hooks.hooks = hooks.hooks || {};
+  for (const [event, entries] of Object.entries(hooksConfig.hooks || {})) {
+    const existing = hooks.hooks[event] || [];
+    const seen = new Set(existing.map((e) => JSON.stringify(e)));
+    for (const entry of entries) {
+      const key = JSON.stringify(entry);
+      if (!seen.has(key)) {
+        existing.push(entry);
+        seen.add(key);
+      }
+    }
+    hooks.hooks[event] = existing;
+  }
+  fs.writeFileSync(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
+  console.log('  .cursor/hooks.json updated (version 1, camelCase events; merge, not overwrite)');
+
+  if (existingConfig) {
+    existingConfig.personaSelection = CURSOR_MVP_PERSONAS.slice();
+    existingConfig.pluginVersion = version;
+    if (!existingConfig.mainAgent) existingConfig.mainAgent = 'orchestrator';
+    if (!existingConfig.gatedAgents) existingConfig.gatedAgents = ['lead-programmer'];
+    fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2) + '\n');
+    console.log('  .cursor/persona-config.json: personaSelection + pluginVersion refreshed, other fields preserved');
+  } else {
+    const personaConfig = {
+      target: 'cursor',
+      testAndLintCommand: '',
+      lintCommand: '',
+      graphUpdateCommand: '',
+      sourceGlobs: [],
+      protectedPaths: [],
+      gatedAgents: ['lead-programmer'],
+      // Cursor has no settings.json "agent" key; stop-gate.sh reads this to
+      // know which name to treat as the (gated-or-not) main agent.
+      mainAgent: 'orchestrator',
+      pluginVersion: version,
+      personaSelection: CURSOR_MVP_PERSONAS.slice(),
+      issueTracker: '',
+    };
+    fs.writeFileSync(configPath, JSON.stringify(personaConfig, null, 2) + '\n');
+    console.log('  .cursor/persona-config.json written (skeleton — fill in test/lint/graph/protected fields against this repo)');
+  }
+
+  appendUnique(path.join(CWD, '.gitignore'), [
+    '.cursor/reviewed/',
+    '.cursor/wip-handoff.*',
+    '.cursor/.session-baseline.*',
+    '.cursor/wip-audit.log',
+    '.cursor/.pending-review.*',
+    '.cursor/review-audit.log',
+  ]);
+  console.log('  .gitignore updated');
+
+  console.log(
+    '\nDone with the mechanical Cursor scaffolding.\n\n' +
+      'Verify/finish by hand (Cursor-specific caveats, see docs/cursor-port-notes.md):\n' +
+      '  1. The persona-protocol rule reaching SUBAGENTS is UNVERIFIED on Cursor;\n' +
+      '     the load-bearing invariants are inlined into each subagent body as a\n' +
+      '     backstop, but confirm the rule loads for the main agent at least.\n' +
+      '  2. .cursor/hooks.json commands use project-relative paths — confirm Cursor\n' +
+      '     resolves hook commands relative to the workspace root on your setup.\n' +
+      '  3. Fill in .cursor/persona-config.json (testAndLintCommand, sourceGlobs,\n' +
+      '     protectedPaths, graphUpdateCommand) for THIS repo.\n' +
+      '  4. If you use the Code Review Graph, register it PROJECT-WIDE in\n' +
+      '     .cursor/mcp.json (Cursor has no per-agent MCP scoping).\n' +
+      '  5. Optionally set opus/cheap model ids in the reviewer/explorer frontmatter\n' +
+      '     (currently `inherit` — the tier mapping is a project decision).'
+  );
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -544,6 +705,16 @@ async function main() {
   }
   if (args.some((a) => a === '--wire-arxiv-mcp' || a.startsWith('--wire-arxiv-mcp='))) {
     return runWireMcp('arxiv', args);
+  }
+
+  const targetFlag = args.find((a) => a.startsWith('--target='));
+  const target = targetFlag ? targetFlag.slice('--target='.length).trim() : 'claude';
+  if (target === 'cursor') {
+    return scaffoldCursor(args);
+  }
+  if (target !== 'claude') {
+    console.error(`antislop: unknown --target=${target} (supported: claude, cursor).`);
+    process.exit(1);
   }
 
   const yesToAll = args.includes('--yes') || args.includes('-y');

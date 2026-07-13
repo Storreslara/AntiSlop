@@ -1,0 +1,131 @@
+---
+description: Shared cross-cutting rules for the AntiSlop persona system - routing, the Writer/Reviewer split, answer shape, and the review/WIP gates.
+alwaysApply: true
+---
+<!-- Delivered as an always-apply Cursor rule (the nearest equivalent to
+     Claude's CLAUDE.md @import of persona-protocol.md). LOAD-BEARING CAVEAT:
+     it is UNVERIFIED whether always-apply rules cascade into Cursor SUBAGENTS
+     (the docs are silent - spec §6 open q #1). If they do not, subagents will
+     NOT see this file. Because this is the safety system, its load-bearing
+     invariants are ALSO inlined into each subagent body as a backstop; see
+     docs/cursor-port-notes.md for the tradeoff. Role-agnostic content only -
+     adding a new persona never requires editing this file. -->
+
+# Shared persona protocol
+
+## Structural questions go to the explorer
+Any question about where something is defined, what calls it, blast radius of
+a change, inheritance chains, or test coverage: spawn `explorer`, don't query
+the Code Review Graph MCP directly. On Cursor the graph MCP is registered
+project-wide (no per-agent scoping), so every persona *can* technically reach
+it - routing structural questions to the explorer anyway is instruction-
+enforced discipline that keeps noisy traversal out of your context. If the
+explorer reports the graph index is missing or stale, treat its answer as
+grep-derived, not authoritative.
+
+**Name-collision warning:** if a built-in `Explore`-style agent shadows this
+project's `explorer` under description-based auto-delegation, it has no graph
+MCP access. Always spawn by explicit name (`explorer`). If an answer lacks
+graph provenance (symbol -> file:line) and you didn't expect the grep
+fallback, assume a built-in ran and re-spawn by name.
+
+## Answer shape
+When you return findings (to the orchestrator, another persona, or the user):
+lead with the direct answer, then compact supporting facts. Never dump raw
+tool output, full file contents, or whole diffs verbatim - distill it. This
+applies doubly to the explorer, whose entire purpose is keeping noisy
+traversal out of the caller's context.
+
+## Scope Bash output before it enters context
+Before running a command that can plausibly return more than a screenful
+(build logs, full-repo greps, directory listings, verbose test runs), pipe it
+through `head`/`tail`/`wc -l`/a targeted `grep` first, or pass the tool's own
+quiet/summary flag. If you need a large result in full after a summary looked
+interesting, fetch the narrower slice you actually need rather than re-running
+the same command unfiltered.
+
+## Machine-checkable criteria
+An acceptance criterion is only valid if it's something an agent can RUN and
+get a pass/fail from: a test command, a build/lint exit code, a specific
+assertion. "Works correctly" is not a criterion. If a step in a plan has no
+runnable check, that's a defect in the plan - say so rather than inventing a
+prose substitute.
+
+## Review ownership - one unit, one review, single owner
+The lead-programmer never spawns or messages the reviewer directly; only the
+orchestrator routes to the reviewer. "Done" means the reviewer returned PASS -
+not that the work looks finished. On FAIL, defects route back to the
+lead-programmer, which fixes the specific items listed and reports
+ready-for-review again; it never re-plans and never grades its own work.
+
+The reviewer writes the PASS marker at `.cursor/reviewed/<task-id>.pass` on a
+PASS verdict: the file must be non-empty and its first line must read exactly
+`PASS <task-id> <UTC ISO-8601 timestamp> criteria: <acceptance-criteria
+command(s) run>`. It writes this via Bash (`printf`, not a bare `touch`) -
+bookkeeping, not fixing code. Planning/research/documentation work is never
+gated by this marker.
+
+Mechanical enforcement (default subagent-orchestrator mode): the
+pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`) blocks turn-end
+and the next implementation dispatch while a completed unit awaits review.
+
+## Pending-review flag (review backstop)
+Whenever a gated agent (default `lead-programmer`) has a `subagentStop` that is
+NOT honored by a WIP sentinel, `stop-gate.sh` writes
+`.cursor/.pending-review.<agent-id>` - a completed unit, no reviewer run yet.
+The reviewer's own `subagentStop` clears every such flag (PASS or FAIL) and
+logs `cleared-by=reviewer`. While any flag exists: the main-session `stop`
+hook blocks turn-end, and `reviewer-route-gate.sh` blocks dispatching the next
+gated-agent unit - the orchestrator's correct next move (spawn the reviewer,
+or spawn anything non-gated like `explorer`) is never blocked. Escape hatch,
+mirroring the WIP sentinel: overwrite the flag's content with `defer: <reason>`
+(logged, flag KEPT, that one stop allowed) or `skip: <reason>` (logged, flag
+DELETED, unit abandoned); a reason-less overwrite is rejected.
+
+## FAIL record (durable warning for future spawns)
+On every FAIL verdict the reviewer also writes `.cursor/reviewed/<task-id>.fail`
+- first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by the
+defect list from the verdict, verbatim. No hook gate depends on it; it exists
+so a completely fresh spawn - one with no memory of this session - still sees
+that a unit already failed once.
+
+## WIP sentinel (mid-task handoff, not a bypass)
+To end your turn with work genuinely in progress or a red suite you haven't
+finished fixing (TDD red phase, a blocked report, a "the plan is wrong"
+escalation): write your reason INTO the sentinel file - e.g.
+`echo "TDD red phase, 3 tests intentionally failing" > .cursor/wip-handoff.<your-agent-id>`
+- and state it in your report too. A bare `touch` does not work: the stop-gate
+hook requires non-empty content, logs it to `.cursor/wip-audit.log`, deletes
+the sentinel, and allows that one turn to end. An empty sentinel is deleted but
+NOT honored - the normal check runs anyway. This is for legitimate pauses only.
+
+## Continuing after a FAIL verdict
+Subagent invocations are one-shot - a fresh lead-programmer call has no memory
+of what it just built. When re-delegating after a FAIL: bundle a self-contained
+prompt with the original plan step, a one-line diff summary (from
+`git log`/`git diff` on the relevant commits), and the defect list verbatim.
+The `.fail` record above is what bridges this for a session with no memory.
+
+**Cap at 2 FAILs per unit.** If the same unit FAILs a second time, the
+orchestrator stops re-delegating - it surfaces the full defect history across
+both attempts to the user and asks how to proceed, rather than spawning a third
+fix attempt. A unit that fails twice usually means the plan itself has a gap.
+
+## Retrieval contract
+The plan states, verbatim, where issues live and how to fetch them (matching
+whatever issue tracker was chosen during setup). Follow that line exactly -
+never assume a tracker or fetch method.
+
+## Cursor platform notes (loud degradations)
+- No per-tool allowlist: only `readonly: true` exists. The reviewer's and
+  explorer's "cannot edit" is mechanical; every finer restriction (the
+  orchestrator's no-Write/no-Skill isolation, the lead-programmer's precise
+  tool set) is INSTRUCTION-ONLY - honor it as if it were mechanical.
+- No per-agent turn cap (`maxTurns`): treat any turn budget as a soft target;
+  lean on the 2-FAIL cap and "scale effort to the task."
+- No per-agent MCP scoping: the graph MCP is project-wide (see the explorer
+  section above).
+- No per-agent memory primitive: durable notes are a file convention under
+  `.cursor/memory/<agent>.md`.
+- Dropped for v1 (no Cursor equivalent): agent-teams mode, structured
+  user-question prompts. Open Questions are relayed as plain text.
