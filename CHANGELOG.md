@@ -3,6 +3,56 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.5.4] - 2026-07-12
+
+### Fixed
+- `skills/setup-personas/SKILL.md` step 3: mattpocock skill substitution no
+  longer trusts hardcoded assumed names (`to-issues`, `diagnose`) — it now
+  resolves each `<MATTPOCOCK:*>` placeholder from the actually-installed
+  skill's discovered `name:` frontmatter (the real names are `to-tickets`
+  and `diagnosing-bugs`), with a new step 3b fail-fast check right after
+  substitution. (#1)
+- `skills/setup-personas/SKILL.md` step 12: added a mandatory placeholder
+  sweep (`grep -rEn '<[A-Z0-9_]+(:[a-zA-Z0-9_-]+)?>' ...`) that must return
+  zero matches before the skill can report an adapt run done. (#2)
+- `skills/setup-personas/SKILL.md` step 6: `testAndLintCommand` is now run
+  once against the clean tree before being written into
+  `persona-config.json`; a failing command is surfaced to the human as an
+  explicit choice instead of silently becoming a permanently-red stop-gate.
+  (#3)
+- `hooks/scripts/stop-gate.sh`: `gatedAgents` scoping now also applies to
+  the main-session `Stop` event (previously only `SubagentStop`), keyed off
+  `settings.json`'s configured main agent. Removes redundant WIP-sentinel
+  churn on every orchestrator turn-end while a gated subagent is mid-flight.
+  (#4)
+- `agents/explorer.md`, `templates/researcher.md.tmpl`: fixed `mcpServers`
+  frontmatter from an invalid flat map to the correct list-of-single-key-
+  dicts-with-`type:` schema — the flat form silently failed to connect,
+  falling back to grep/WebSearch with no visible error anywhere.
+  `setup-personas` steps 4-5 now require the verification query's answer to
+  self-report MCP-derived vs. fallback-derived provenance, since a
+  plausible-looking answer isn't proof the connection is live. (#7)
+- `agents/orchestrator.md`: granted `TaskStop`/`TaskOutput` (previously
+  missing from its `tools:` allowlist, which replaces rather than extends
+  the inherited toolset) plus a new "Managing a long-running background
+  dispatch" section instructing it to poll via `TaskOutput(block=false)`
+  before ever reaching for `TaskStop`. Root-cause investigation found the
+  originally-reported harness gap (no cancel/liveness primitive for a
+  background Agent task) was already closed upstream as of Claude Code
+  2.1.187; the actual cause of the reported session failure was this
+  missing tool grant. (#5)
+
+### Added
+- `skills/setup-personas/SKILL.md` new section 0.5: when
+  `.claude/persona-config.json` already exists and the invocation isn't
+  `--update`, the skill now runs an explicit `AskUserQuestion` decision
+  tree (resume / patch gaps only / full restart) instead of silently
+  falling through to a fresh 12-section run. (#6)
+- `templates/researcher.md.tmpl`: added a `Fallback` self-report bullet
+  mirroring `explorer.md`'s existing one, so a broken arXiv MCP connection
+  has a chance to be reported rather than silently absorbed by
+  `WebFetch`/`WebSearch`.
+
 ## [0.5.3] - 2026-07-12
 
 ### Added
