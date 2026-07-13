@@ -16,8 +16,10 @@ usual for this repo:
    — if you see one, run `/antislop:setup-personas --update` first and
    see if the bug persists before filing.
 3. **Whether the failure was in a plugin-shipped file or an ADAPT-copied
-   project file.** Plugin files live in `~/seb_claude_setup` (or wherever the
-   plugin cache put them); ADAPT-copied files live in the affected project's
+   project file.** Plugin files live wherever you cloned this repo (e.g.
+   `~/antislop`, per the README's clone example — the directory name is
+   arbitrary) or wherever Claude Code's plugin cache put it after a
+   marketplace install; ADAPT-copied files live in the affected project's
    `.claude/agents/`, `.claude/persona-protocol.md`, etc. This distinction
    determines whether the fix belongs in this repo or is a one-off local
    customization.

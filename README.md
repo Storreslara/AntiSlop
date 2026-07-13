@@ -42,10 +42,32 @@ development — if you hit weird behavior, please raise an issue.
 AntiSlop is a modular, persona-based Claude Code system packaged as a private,
 reusable plugin. The core loop is three always-on personas — **orchestrator**
 (routes requests), **explorer** (maps the code), and **lead-programmer**
-(writes it). HiveMind, repo-historian, reviewer, milestone-auditor, and
-researcher are opt-in per project. Shipping it as a plugin means a new project
+(writes it). `hivemind`, `repo-historian`, `reviewer`, `milestone-auditor`, and
+`researcher` are opt-in per project. Shipping it as a plugin means a new project
 costs one short setup run instead of re-authoring ~500 lines of persona and
 hook prose from scratch.
+
+## A few terms used below
+
+- **Persona** — a Claude Code subagent (`.claude/agents/*.md`) with a narrow
+  job and its own model tier. `orchestrator` is the one that runs as your
+  main session; every other persona is dispatched via the `Agent` tool.
+- **Code Review Graph** — an optional tree-sitter/SQLite structural index
+  the `explorer` persona can query instead of grepping (see
+  [Credits](#credits--third-party-skills--mcps-this-plugin-builds-on)); it's
+  a real dependency to install (setup step 4), not built-in.
+- **Teammates / agent-teams** — a Claude Code feature (concurrent, not
+  sequential, subagents) that `start-feature-team` uses; it's off by default.
+- **`fable`** — a Claude model tier (distinct from opus/sonnet/haiku) that
+  `hivemind` and `milestone-auditor` can be dispatched on for well-scoped
+  work, per the [Cost](#cost) section.
+- **Stop-gate** — the hook that blocks a gated persona's turn from ending
+  until the `reviewer` has passed its work; see the design notes below for
+  how it's enforced.
+- **ADAPT** — this repo's internal name for what `/setup-personas` does:
+  copying and substituting plugin templates into your project's `.claude/`.
+  You won't need to say this word to use the plugin; it shows up if you read
+  `skills/setup-personas/SKILL.md` or file an issue.
 
 ## Personas
 
@@ -80,6 +102,12 @@ Install these before using the plugin:
   persona uses one of those skills.
 - **`git`**, plus **`gh`** if you choose GitHub Issues as your tracker during
   setup.
+- **`pipx`** (or `pip`) — only if you want the Code Review Graph MCP the
+  `explorer` persona can query for blast-radius/dependency answers (setup
+  step 4); skip it if you don't set that up.
+
+You won't know which of the conditional ones you need until setup asks —
+that's expected, see [First-time setup](#first-time-setup) below.
 
 ## Install
 
@@ -96,15 +124,22 @@ Install is always a two-step marketplace flow:
 /plugin marketplace add Storreslara/AntiSlop
 /plugin install antislop@antislop-marketplace
 ```
-(`/plugin install <git-url>` directly is not a real command.)
+(`/plugin install <git-url>` directly is not a real command. `antislop-marketplace`
+is the marketplace's own name, from `.claude-plugin/marketplace.json`'s
+top-level `name` field — not something you choose.)
 
-**To test locally first** on a scratch repo, point Claude Code at your clone
-(the directory can be named anything):
+**If you don't have collaborator access yet** (or just want to try it before
+asking for access), you don't need the marketplace at all — both routes below
+work against a local clone and are first-class, not "test only":
 ```
 claude --plugin-dir /path/to/your/clone
 ```
-Confirm the agents appear, then run setup below. If you'd rather scaffold files
-directly instead of using the marketplace, see [npx install](#npx-install-alternative).
+Confirm it worked with `/agents` — you should see `antislop:explorer`,
+`antislop:lead-programmer`, etc. in the list (namespaced, because they're
+still loaded from the plugin at this point). Then run setup below. Or, if
+you'd rather scaffold plain files into your project instead of loading a
+plugin at all, see [npx install](#npx-install-alternative) — it needs the
+same clone but no marketplace/collaborator step.
 
 Note: plugin agents load under namespaced names (`antislop:explorer`). Bare-name
 spawns like `explorer` hard-error — they don't resolve. That's why setup's
@@ -117,14 +152,45 @@ Once per project, run:
 ```
 /antislop:setup-personas
 ```
+(If you scaffolded via `npx` instead of the plugin, the bare `/setup-personas`
+— no `antislop:` prefix — is what resolves, since it's then a project-local
+skill rather than a plugin one. Same command either way in spirit, just
+whichever name your setup actually registered.)
+
 It asks which personas the project needs. `explorer` and `lead-programmer` are
 mandatory; the rest are opt-in. **Skipping `reviewer` requires an explicit
-confirmation** — it's the system's core safety property. Setup then handles
-everything that can't be pre-baked: the version check, third-party skill
-installs, the Code Review Graph, the researcher's arXiv MCP, repo-specific
-commands and protected paths, CLAUDE.md wiring, a settings.json merge, wiki
-seeding, and sandboxed hook verification. Full flow:
-`skills/setup-personas/SKILL.md`.
+confirmation** — it's the system's core safety property. Expect it to also
+ask: your test/lint command (and what to do if that command doesn't currently
+pass — exclude it, or accept a red gate until it's fixed), which protected
+paths to lock, which issue tracker to use, and — if `researcher` is selected —
+where to find an arXiv MCP server.
+
+**Two things it does NOT do silently, that you should expect to do yourself:**
+- **Install third-party skills interactively.** If you select personas that
+  use `mattpocock/skills`, setup will tell you which skills to pick *by
+  purpose* and ask **you** to run `npx skills@latest add mattpocock/skills`
+  in your own terminal — it can't drive that tool's interactive picker
+  itself. Don't walk away expecting it to finish unattended.
+- **Modify your repo during hook verification.** On a fresh install, setup
+  creates a throwaway branch, makes trial edits (including one deliberately
+  failing check) to prove the safety hooks actually block/allow correctly,
+  then reverts everything and leaves the repo clean. This is expected and
+  self-cleaning, not a leftover mess.
+
+It also sets one environment entry, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, in
+`.claude/settings.json` — required for the optional `start-feature-team`
+command (see [Using AntiSlop](#using-antislop) below); harmless if you never
+use that command, and removed along with everything else if you
+[uninstall](#removing-antislop).
+
+Full step-by-step flow (written for the agent executing it, not light
+reading, but the ground truth if you want it): `skills/setup-personas/SKILL.md`.
+
+**Note a dated cutoff:** projects whose copied `reviewer.md` still writes the
+old (pre-v0.2.0) bare-`touch` PASS marker get a grace-period warning instead
+of a hard block — **only through 2026-07-27**. After that, `task-gate.sh`
+blocks unconditionally on the old format. Run `--update` (below) before then
+if your project predates v0.2.0.
 
 **When the plugin updates**, re-sync adapted projects:
 ```
@@ -199,10 +265,25 @@ Finally, finish setup inside the project:
 cd ~/your-project
 claude
 ```
-then run `/setup-personas` to fill in the parts that need a real repo scan
+then run `/setup-personas` (bare — no `antislop:` prefix, since this route
+never installed the plugin) to fill in the parts that need a real repo scan
 (test/lint commands, protected paths), install third-party skills, build the
 Code Review Graph, and run hook verification. Personas load identically either
 way — as project-local `.claude/agents/*.md` files.
+
+## Using AntiSlop
+
+Once setup finishes (either install path), there's nothing special to invoke
+for normal work: just prompt your main session as usual. It's running as
+`orchestrator`, which routes your request to the right persona (`explorer` to
+map code, `lead-programmer` to write it, etc.) and reports back — you don't
+address personas by name. If a `reviewer` was installed, expect a PASS/FAIL
+cycle after implementation work before it's reported done.
+
+To run the same personas as concurrent teammates instead of sequential
+subagents, use the `start-feature-team` command — this is the "deliberate
+gear" mentioned earlier; it's off by default and you opt in per task by
+invoking it explicitly rather than it ever kicking in on its own.
 
 ## What ships in the plugin vs. what setup writes per-project
 
@@ -229,19 +310,27 @@ three things:
 
 ## Cost
 
-`hivemind`, `reviewer`, and `milestone-auditor` all DEFAULT to Opus and
-remain the system's real spend drivers, not the haiku-tier
-`explorer`/`repo-historian`. `hivemind` and `milestone-auditor` can be
-dispatched on Fable for well-scoped work, per the orchestrator's per-dispatch
-routing rule (see orchestrator.md's "Per-unit model routing" subsection) —
-honestly: worst case cost is unchanged from today (all three still run on
-Opus in the worst case), the common case is cheaper only when the
-orchestrator's heuristic actually routes well-scoped work to fable. All
-three are capped with `maxTurns: 30`/`20`, and the FAIL→fix→re-review loop is
-capped at 2 iterations before escalating to you — but there's no budget mode
-beyond that yet. Check `/cost`; if it's high, look at how often the full
+| Persona | Default model | Can drop to `fable`? | `maxTurns` |
+|---|---|---|---|
+| `orchestrator` | inherit | — | uncapped (main session) |
+| `explorer` | haiku | — | 10 |
+| `lead-programmer` | sonnet | — | 30 |
+| `hivemind` | opus | yes, for well-scoped dispatches | 30 |
+| `reviewer` | opus | no | 30 |
+| `milestone-auditor` | opus | yes, for well-scoped dispatches | 20 |
+| `repo-historian` | haiku | — | (not capped separately) |
+
+`hivemind`, `reviewer`, and `milestone-auditor` are the real spend drivers,
+not the haiku-tier `explorer`/`repo-historian`. The orchestrator's per-dispatch
+routing rule (see orchestrator.md's "Per-unit model routing" subsection) can
+send well-scoped `hivemind`/`milestone-auditor` work to `fable` instead of
+opus — but worst case is unchanged (both still run on opus if the heuristic
+doesn't fire); it only ever makes the common case cheaper, never the worst
+case more expensive. The FAIL→fix→re-review loop is separately capped at 2
+iterations before escalating to you — there's no budget mode beyond these
+caps yet. Check `/cost`; if it's high, look at how often the full
 Explore→Plan→Implement→Verify→Commit pipeline runs for work that didn't need
-it. The orchestrator's "scale effort to the task" rule is the lever there,
+it — the orchestrator's "scale effort to the task" rule is the lever there,
 not a setting.
 
 ## Removing AntiSlop
@@ -261,128 +350,27 @@ from a project:
   `.claude/review-audit.log` (also in `.gitignore` — safe to delete)
 - `/plugin uninstall antislop` to remove the plugin itself
 
-## Why this shape (design rationale, kept out of the agent bodies)
+## Why this shape
 
-- **CLAUDE.md is the only channel that reaches both subagents and agent-teams
-  teammates automatically.** That's why the cross-cutting rules (explorer
-  delegation, teams-mode behavior, the WIP sentinel, the retrieval contract,
-  machine-checkable criteria, review ownership, the FAIL→fix continuation
-  protocol and its 2-FAIL cap) live in one `templates/persona-protocol.md`
-  imported via a single CLAUDE.md line, instead of being pasted into every
-  persona body. Adding a new persona means one new file — it inherits the
-  protocol for free.
-- **Plugin agents ignore `mcpServers`, `hooks`, and `permissionMode`
-  frontmatter, and plugins can't ship `settings.json` at all.** This is why
-  researcher isn't a plugin agent (it's a template copied in project-scoped),
-  and why hooks/settings are bundled in the plugin but their *effective*
-  config always comes from a project-local file the generic scripts read at
-  runtime. `explorer.md` leans on the same fact for its Code Review Graph MCP
-  connection: it's shipped as a plugin agent, but setup always copies it into
-  `.claude/agents/` anyway (bare-name plugin agents don't resolve — see Install
-  above), so its `mcpServers:` frontmatter takes effect on the project-scoped
-  copy the same way researcher's does, scoping the graph connection to the
-  explorer alone instead of every persona.
-- **"Teammates cannot spawn subagents" — an assumption in an earlier draft of
-  this system — is false.** The real agent-teams restriction is on nested
-  *teams*, not on ordinary subagent spawning. Earlier drafts had every persona
-  fall back to Grep/Glob as a teammate out of this false belief; fixed in the
-  shared protocol.
-- **The stop-gate's `SubagentStop` scoping is config-driven (`gatedAgents` in
-  `persona-config.json`), not hardcoded in `hooks.json`.** Confirmed
-  empirically that the `SubagentStop` payload carries `agent_type`, so the hook
-  itself decides who it applies to. An earlier, hardcoded-matcher version was
-  the single most consequential robustness bug found in v0.1.0 — making it
-  config-driven means a future code-writing persona is a config edit, not a
-  plugin file edit.
-- **The reviewer's PASS marker (`.claude/reviewed/<task-id>.pass`) is an
-  explicit, named exception to "never edits."** It's Bash-written bookkeeping
-  for the `TaskCompleted` hook (agent-teams mode) and the pending-review gate
-  (default mode), not a change to reviewed code. Marker format v2: a bare
-  `touch` no longer satisfies `task-gate.sh` — the file must be non-empty and
-  its first line must read exactly `PASS <task-id> <UTC ISO-8601 timestamp>
-  criteria: <acceptance-criteria command(s) run>`, written via `printf`; an
-  accepted marker is logged to `.claude/review-audit.log`. This closes the
-  bare-`touch`-is-anyone-with-Bash forgery gap the v1 format left open. Setup
-  pre-creates the directory so the first-ever marker write doesn't fail on a
-  missing path — a real bug found and fixed in v0.2.0. **v2 rollout has a
-  two-week legacy-marker grace period**, through 2026-07-27: a project whose
-  copied `reviewer.md` still writes the old bare `touch` gets a loud warning
-  (and is still allowed to complete) instead of an immediate block, logged to
-  `.claude/review-audit.log` as `legacy-marker-grace-period-warning`. On or
-  after 2026-07-27, `task-gate.sh` blocks unconditionally — run
-  `/antislop:setup-personas --update` before then.
-- **`memory: <scope>` auto-grants Read/Write/Edit for memory management,
-  regardless of a persona's declared `tools:` list.** hivemind's "never
-  write production code" and researcher's restricted tool list are therefore
-  instruction-enforced, not mechanically enforced, for personas with memory.
-  Noted once in the shared protocol rather than caveated in every file.
-- **Behavioral drift — an agent quietly stops following its own instructions as
-  a session runs long — is fought with mechanism where possible, not more prose
-  to remember.** `maxTurns` caps (explorer=10, milestone-auditor=20,
-  hivemind/reviewer/lead-programmer=30) already bound the highest-drift sessions
-  by length; the orchestrator's main session is deliberately uncapped and is
-  correspondingly the biggest open drift surface — now *partially* closed by
-  the pending-review gate (`stop-gate.sh` sets `.claude/.pending-review.<id>`
-  on a gated agent's un-reviewed stop; the reviewer's own stop clears it; while
-  it stands, `stop-gate.sh` blocks main-session turn-end and
-  `reviewer-route-gate.sh` blocks the next gated-agent dispatch). It is still
-  uncapped and can still `rm` the flag via Bash — friction and an audit trail
-  in `.claude/review-audit.log`, not a guarantee — so "biggest open drift
-  surface" stands, just with its first mechanical backstop. `session-start.sh`
-  re-injects a short `.claude/protocol-digest.md` via `additionalContext`, but
-  only on `source: resume` and `source: compact` — never `startup`/`clear`,
-  where the full protocol is already fresh — because compaction/resume is
-  exactly when a long session is likely to have summarized the protocol away.
-  This is mechanical *timing* of when the rules reappear, not a bigger dose of
-  the same static context. The WIP sentinel got a matching hardening: a bare
-  `touch` no longer bypasses the stop-gate — the sentinel must contain a
-  reason, which `stop-gate.sh` logs to `.claude/wip-audit.log` before honoring
-  it, closing a silent, unauditable escape hatch from the one mechanical gate
-  that existed.
-- **FLAT MODE (pre-2.1.172 nesting) and the manual TeamCreate/TeamDelete
-  cleanup branch (pre-2.1.178) were deleted outright**, not kept as a fallback.
-  Maintaining two wiring paths for versions this plugin doesn't support was pure
-  complexity with no live use case.
-- **Persona opt-out is graceful by construction, not by a wizard alone.** Every
-  optional-persona cross-reference is phrased conditionally ("if this project
-  has a `researcher`... otherwise..."), so a plain file copy degrades gracefully
-  even without per-project text surgery — the wizard in `setup-personas` only
-  decides which files get copied, it doesn't need to edit anyone's prose.
-- **The copy-vs-plugin-update tension is real, and has a mechanism now.**
-  Because bare-name persona resolution requires copying agent files into every
-  project, persona-body bug fixes don't propagate automatically the way
-  hooks/skills/commands do (those load via `${CLAUDE_PLUGIN_ROOT}` and stay
-  live). Version-stamp comments + `--update` mode + the `SessionStart` drift
-  check close that gap without needing every user to remember to check manually.
-- **`AskUserQuestion` is unavailable to subagents, even if listed in their
-  `tools:`** — confirmed against the Claude Code docs, not assumed. This is why
-  hivemind returns plain-text "Open Questions" instead of asking
-  interactively, and why the *orchestrator* (which runs as the main session,
-  not a subagent) is the one that has `AskUserQuestion` in its tools and turns
-  those open questions into a real structured prompt when they reduce to
-  discrete choices.
-- **Known limitations, not silently papered over:** the graph-update and lint
-  hooks only read `tool_input.file_path`, so `MultiEdit`'s array form and
-  `NotebookEdit` aren't matched. The protected-paths hook only gates the
-  `Write`/`Edit` tools — a persona running `sed -i` or a lockfile-rewriting
-  package manager command via `Bash` bypasses it. The `reviewed-path-gate.sh`
-  hook (PreToolUse/Bash) attributes the caller from the top-level
-  `agent_type` field on the payload — confirmed present empirically, see
-  `docs/experiments/2026-07-probe-hook-payloads.md` — and blocks any `Bash`
-  command whose text merely *contains* the substring `.claude/reviewed`;
-  read-only commands (a `cat` of a marker) are collateral, and a determined
-  agent can still obfuscate the path past the substring match. All three are
-  documented as advisory rather than airtight; tightening any of them is a
-  good candidate for a future version bump.
+The maintainer's design rationale — CLAUDE.md wiring, plugin frontmatter
+limits, the stop-gate's config-driven scoping, the PASS-marker format, drift
+mitigations, and known limitations — moved to
+[`docs/design.md`](docs/design.md) so it doesn't sit between setup
+instructions and Credits for a first-time reader. Nothing there is required
+to install or use the plugin.
 
 ## Credits — third-party skills & MCPs this plugin builds on
 
-Several personas lean on external skills and tools installed at setup time:
+Several personas lean on external skills and tools installed at setup time.
+Exact registered skill names drift between package versions — treat these as
+the purpose they serve, not a name to search for; `setup-personas` verifies
+the actual installed names on disk rather than trusting this list:
 
 - **[mattpocock/skills](https://github.com/mattpocock/skills)** — installed via
   the `skills.sh` installer (`npx skills@latest add mattpocock/skills`).
-  Provides `grill-me` and `to-issues` (used by `hivemind`), `tdd` and `diagnose`
-  (used by `lead-programmer`), and `improve-codebase-architecture` (used by
+  Provides a grill/challenge-the-plan skill and a work-to-tracker-tickets skill
+  (used by `hivemind`), a TDD skill and a diagnose-a-bug skill (used by
+  `lead-programmer`), and an improve-codebase-architecture skill (used by
   `repo-historian`).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — the
   tree-sitter/SQLite structural graph the `explorer` persona queries for
@@ -390,8 +378,9 @@ Several personas lean on external skills and tools installed at setup time:
   its own `install` command registers project-wide by default, which
   `setup-personas` step 4 deliberately undoes, re-scoping the connection to
   `explorer.md`'s own `mcpServers:` frontmatter so it doesn't leak into every
-  persona's context (see "Why this shape" for why that matters). The tool also
-  generates `.claude/skills/code-review-graph/` build-graph/review-delta/review-pr
+  persona's context (see [`docs/design.md`](docs/design.md) for why that
+  matters). The tool also generates
+  `.claude/skills/code-review-graph/` build-graph/review-delta/review-pr
   workflow skills — those are separate slash commands, not what the explorer
   itself calls.
 - **[andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)**
