@@ -23,6 +23,37 @@ recorded here. Dates are ISO (YYYY-MM-DD).
     `milestone-auditor`'s existing audit pass, with append-only follow-up
     steps routed back to `hivemind` (never actioned by the auditor itself).
 
+### Verification methodology
+- Grep-checked against the spec's own acceptance criteria (all pass), but
+  static text checks only confirm the prose is *present*, not that a real
+  dispatch *follows* it — so this round also ran three live-dispatch
+  simulations, each via a Fable-model "overseer" agent that built a fresh
+  dummy project and used the `Agent` tool to actually invoke the real,
+  freshly-edited `hivemind`/`reviewer`/`milestone-auditor` personas against
+  it (not a hypothetical read-through):
+  - **Round 1** (small dummy CLI project): found all four features
+    textually correct but behaviorally degraded under real dispatch — the
+    Clarifications scorecard and Self-check list collapsed into free prose,
+    and `reviewer`'s constitution citation dropped its version number.
+  - **Round 2** (harder multi-module dummy REST API, `fable`-tier dispatch):
+    confirmed the gap sharply — all four literal formats failed outright
+    under `fable`, and even `opus` reached only partial compliance on the
+    two hardest ones (Clarifications' two-part shape, Self-check's itemized
+    list). Isolated the cause: the prose described the required *shape* but
+    never *showed* it.
+  - **Round 3** (third dummy project, `fable`-only, no opus escalation):
+    after adding a concrete fenced-code worked example for each literal
+    format directly into `agents/hivemind.md`, `agents/reviewer.md`, and
+    `agents/milestone-auditor.md`, all four features reliably produced
+    their exact required shape under `fable` — closing the gap rounds 1-2
+    identified. Two remaining cosmetic blemishes (a dropped `Q ... →` clause
+    on one self-resolved line; a `P<n>` numeral folded into a principle-name
+    citation) were fixed with one wording tweak each and re-verified clean.
+  - Net effect: every literal-format requirement added this release ships
+    with a worked example, not just a structural instruction — empirically
+    necessary for reliable compliance at the `fable` tier, not a style
+    preference.
+
 ## [0.8.0] - 2026-07-14
 
 ### Added
