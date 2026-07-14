@@ -370,6 +370,54 @@ behavior — it does NOT replace the "run testAndLintCommand once" check
 above; a schema-valid config can still contain a command that red-gates on
 turn one.
 
+## 6.5 Project constitution (opt-in)
+
+Ask via `AskUserQuestion` whether this project wants a constitution — a
+short, versioned set of project-specific principles that `hivemind` checks
+plans against and `reviewer`/`milestone-auditor` cite when flagging
+violations. Skipping is a plain "no" (this is additive, not a safety
+property like step 1's reviewer confirmation).
+
+If yes:
+- Elicit 3-7 principles from the user, seeding suggestions from an actual
+  scan of this repo (existing test setup, docs, dependency posture) — never
+  from a canned list.
+- Write `.claude/constitution.md` at Version 1.0.0, in this exact shape:
+
+```
+# Project constitution
+Version: 1.0.0 | Ratified: YYYY-MM-DD | Last amended: YYYY-MM-DD
+
+## Principles
+### 1. <Short name> (MUST | SHOULD)
+<1-3 sentences: the rule and why this project holds it.>
+
+## Amendment log
+- 1.0.0 (YYYY-MM-DD): ratified.
+```
+
+- Ask whether to add `.claude/constitution.md` to `protectedPaths` in
+  `.claude/persona-config.json` (recommended — it makes constitution edits
+  require explicit human approval via the existing protected-paths hook, no
+  new hook needed).
+
+This file is project-authored content, NOT a plugin template copy: no
+version-stamp comment, no `fileHashes` entry, never touched by
+`bin/cli.js --update`, no schema change to `persona-config.schema.json`.
+Presence on disk is the only switch — the persona files' references to it
+are already conditional ("if `.claude/constitution.md` exists"), so a
+project that skips this section degrades gracefully. Step 12's report
+states "constitution created (vX)" or "constitution skipped".
+
+**Versioning** (amendments made later, outside ADAPT — deliberately lighter
+than propagating template changes): semver bumped by whoever edits the
+file — MAJOR for a principle removed/redefined incompatibly, MINOR for one
+added/materially expanded, PATCH for wording/typo clarification. Every
+amendment appends one Amendment-log line ending with a short "worth a
+look:" list of files a human might want to re-check (typically open plans
+in `docs/plans/` and in-flight tracker issues) — that list is surfaced to a
+human; nothing acts on it automatically.
+
 ## 7. CLAUDE.md wiring
 
 - Run `/init` first if no CLAUDE.md exists, then prune hard — apply "would

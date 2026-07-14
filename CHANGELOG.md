@@ -3,6 +3,26 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.9.0] - 2026-07-14
+
+### Added
+- **Four spec-kit-inspired additions** to the plan/review/audit loop, per
+  `docs/specs/2026-07-14-speckit-ports.md`:
+  - An opt-in, per-project `.claude/constitution.md` (versioned
+    project-specific principles), offered by a new `install-antislop`
+    section 6.5 and consulted by `hivemind` (Constitution check), `reviewer`
+    (MUST-violation FAIL reason), and `milestone-auditor` (premise grilling)
+    when present.
+  - A 9-category ambiguity taxonomy scorecard in `hivemind`, run before
+    `grill-me`, plus a dated `## Clarifications` log capped at 5 questions
+    per plan.
+  - A pre-handoff requirements self-check in `hivemind` — "unit tests for
+    the spec" — that revises the plan once before converting unresolved
+    failures to Open Questions.
+  - A named `unconverged-requirement` finding category in
+    `milestone-auditor`'s existing audit pass, with append-only follow-up
+    steps routed back to `hivemind` (never actioned by the auditor itself).
+
 ## [0.8.0] - 2026-07-14
 
 ### Added

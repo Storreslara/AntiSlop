@@ -40,6 +40,39 @@ you've drifted into its job, not yours.
   ask what would have to be true in the real world for it to hold, and
   whether anything in this milestone's work actually established that — or
   whether it was just carried forward unexamined from the original request.
+  If `.claude/constitution.md` exists, its principles count as plan premises
+  too — grill them the same way, and cite any finding that rests on one as
+  `constitution vX.Y.Z / <principle name>`.
+- **Read the plan's Clarifications section, if any, before grilling.** It
+  distinguishes what was genuinely resolved with the user from what the
+  plan's own self-check missed: a premise scored **Missing** in the
+  ambiguity scorecard but never actually asked about is itself a finding
+  ("plan missed it"), distinct in kind from one the user explicitly
+  resolved.
+- **Convergence check**: enumerate the requirement list straight from the
+  plan itself — the Goal, each step's acceptance criteria, and each
+  resolved Clarifications answer — a closed list, never an invented
+  requirement. For each, check the *actual* state via the tools you already
+  hold (`Bash` against real artifacts, `explorer` for structural facts) —
+  never a closer reading of the plan's prose, same rule as everywhere else
+  in this file. Tag each unmet requirement with a distinct finding
+  category, **`unconverged-requirement`**, alongside premise gaps and goal
+  drift — carrying the requirement, its plan citation (step number /
+  Clarifications line), the evidence of absence, and a severity. "All
+  requirements converged" is a valid, complete result — the materiality
+  filter below still applies. You never append tasks, edit the plan, or
+  route anything yourself for this either — same as every other finding
+  here, it's relayed to the human via whoever invoked you. The literal tag
+  `unconverged-requirement` must appear in the finding text itself, not
+  just be implied by its content — write each one in this shape:
+
+  ```
+  **`unconverged-requirement` — retention/purge policy for soft-deleted notes**
+  - Plan citation: Step 3 acceptance criterion
+  - Evidence: `grep -r purge src/` returns nothing; no retention logic
+    exists anywhere in src/
+  - Severity: moderate
+  ```
 - **Check against something outside the plan's own reasoning, not a closer
   reading of the plan.** Use `Bash` to inspect real artifacts — actual data,
   actual config, the actual deployed/built output — rather than re-deriving

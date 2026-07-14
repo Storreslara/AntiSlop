@@ -183,7 +183,12 @@ lead-programmer itself. Relay its findings list to the user the same way you
 relay hivemind's Open Questions — structured questions via `AskUserQuestion`
 where its findings reduce to discrete choices, plain-text otherwise. You
 decide next steps only after the human weighs in; do not act on a finding
-unilaterally. If there's no milestone-auditor, skip this entire gate —
+unilaterally. If the human accepts an `unconverged-requirement` finding,
+route it back to `hivemind` for append-only follow-up steps under its plan's
+`## Convergence follow-ups` heading — a re-plan-lite, distinct from the
+full re-plan in step 3 above on a challenged premise; the follow-up units
+then flow through the normal per-unit dispatch and review pipeline like any
+other step. If there's no milestone-auditor, skip this entire gate —
 nothing else depends on it.
 
 ## Graph freshness (backstop duty)

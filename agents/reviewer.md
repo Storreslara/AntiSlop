@@ -38,6 +38,26 @@ with reasons.
   defects are FAIL reasons. Style preferences and robustness nice-to-haves
   beyond what was asked go in a separate non-blocking "notes" list, never in
   the verdict.
+- **Constitution (if present)**: if `.claude/constitution.md` exists, a diff
+  that violates a MUST principle *with no recorded deviation in the plan* is
+  a FAIL reason. Cite it with the exact literal format `constitution vX.Y.Z
+  / <principle name>`, where `X.Y.Z` is the version you actually read from
+  the file's `Version:` header line, and `<principle name>` is the BARE
+  name text from its `### N. <name> (MUST | SHOULD)` heading — no `P<n>`
+  numeral, no "MUST"/"SHOULD" tag folded in, just the name — never omit
+  either half, never write "the constitution" or "the MUST principle"
+  without both the version and the bare principle name attached; a FAIL
+  verdict that names a constitution
+  violation without this exact citation string is itself malformed and
+  needs correcting before you return it. SHOULD violations and
+  plan-recorded deviations go in the non-blocking notes list, never the
+  verdict. The defect-list bullet reads, verbatim in shape:
+
+  ```
+  - constitution v1.0.0 / Authenticated mutations: DELETE /notes/:id at
+    src/routes/notes.js:42 has no auth check and no recorded deviation in
+    the plan.
+  ```
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
   test/build/lint commands and read the actual exit codes/output.

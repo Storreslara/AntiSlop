@@ -204,6 +204,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 | `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team`, `update-antislop` commands | wiki / CONTEXT.md / docs/adr seeding |
+| — | `.claude/constitution.md` (opt-in, project-authored principles doc — never touched by `--update`) |
 
 ## Adding your own persona
 
@@ -226,6 +227,7 @@ from a project:
 - `.claude/persona-protocol.md`
 - `.claude/protocol-digest.md`
 - `.claude/persona-config.json`
+- `.claude/constitution.md` (if created — opt-in, see "First-time setup")
 - `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `repo-historian` was selected)
 - `.claude/settings.json`'s `"agent": "orchestrator"` key, the
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it added
