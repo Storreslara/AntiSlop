@@ -1,0 +1,16 @@
+{
+  "name": "antislop-codex-marketplace",
+  "owner": {
+    "name": "Sebastian Torres Lara"
+  },
+  "plugins": [
+    {
+      "name": "antislop-codex",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "description": "AntiSlop persona system for Codex CLI (MVP): orchestrator + explorer + lead-programmer + reviewer, enforcement hooks, and the shared persona-protocol inlined into AGENTS.md."
+    }
+  ]
+}

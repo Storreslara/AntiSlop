@@ -3,6 +3,94 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.8.0] - 2026-07-14
+
+### Added
+- **Codex port (MVP): the always-on subagent-orchestrator loop now ships for
+  Codex CLI** alongside the existing Claude Code and Cursor plugins, under a
+  new self-contained `adapters/codex/` tree. Implements
+  `docs/specs/codex-plugin.md` in full (a design pass that itself supersedes
+  the Codex column of `docs/specs/codex-cursor-plugin.md`, re-verifying its
+  research live against `learn.chatgpt.com/docs/*`). Delivered:
+  - **Four persona definitions** in Codex's native TOML format
+    (`adapters/codex/agents/{orchestrator,explorer,lead-programmer,reviewer}.toml`)
+    — persona *body* prose ported verbatim into `developer_instructions` as a
+    literal (non-escape-processing) multi-line string, since the bodies'
+    shell/printf examples contain literal backslash sequences a TOML *basic*
+    multi-line string would have silently reinterpreted. `explorer.toml`
+    keeps **per-agent MCP scoping** for the Code Review Graph — the one
+    primitive Codex preserves that the Cursor port had to give up (Cursor's
+    subagents inherit all parent MCP tools; Codex's do not).
+  - **Enforcement hooks** as `adapters/codex/hooks/hooks.json` (confirmed
+    live to use the SAME nested `{matcher?, hooks:[{type,command}]}` shape as
+    Claude's, not Cursor's flatter list) plus five scripts: protected-paths,
+    graph-update, lint-on-edit, stop-gate, and reviewer-route-gate. Each
+    keeps the Claude/Cursor version's decision logic and swaps in a Codex
+    payload-extraction preamble (`.cwd` for the project dir, `.agent_id`/
+    `.agent_type` for identity, `.session_id` for the baseline). Protected-
+    paths/graph-update/lint-on-edit additionally parse OpenAI's documented
+    `apply_patch` patch-header format (`*** Add/Update/Delete File: <path>`)
+    as a fallback when no single-file `tool_input` key is present, since
+    Codex's canonical edit tool can touch multiple files in one call, unlike
+    Claude/Cursor's one-file-per-invocation tools. `stop-gate.sh` also
+    implements a self-tracked loop guard (no Codex-native
+    `stop_hook_active`/`loop_count` equivalent was found) and keys the
+    pending-review flag off `agent_id`, which — if that field is genuinely a
+    stable per-spawn-instance id — fixes the Cursor port's known
+    concurrent-same-type-subagent limitation outright.
+  - **The shared persona-protocol** inlined directly into the project's
+    `AGENTS.md` (`adapters/codex/agents-md-fragment.md`, upserted between
+    version-agnostic marker comments) since Codex's AGENTS.md has no
+    `@import`/include mechanism (confirmed) — unlike Cursor's separate
+    always-apply rule file. Also inlined as a backstop digest into every
+    persona's `developer_instructions`, since whether AGENTS.md content
+    empirically reaches spawned subagents is doc-stated but not yet
+    confirmed against a live build.
+  - **Plugin packaging** (`adapters/codex/.codex-plugin/{plugin.json,
+    marketplace.json}`) — deliberately does NOT bundle agent definitions via
+    the plugin manifest, since Codex's documented plugin components are
+    skills/mcpServers/apps/hooks only with no confirmed `agents` pointer;
+    the four persona TOMLs are instead delivered by the scaffolder copying
+    them straight into the project, same as the Claude/Cursor paths already
+    do.
+  - **Scaffolder support**: `bin/cli.js --target=codex` scaffolds all of the
+    above into a project's `.codex/`, plus a new `upsertMarkedBlock` helper
+    for the AGENTS.md inlining and a new `applyMcpTomlPlaceholder`/
+    `renderMcpTomlBlock` pair (used by `--wire-graph-mcp --target=codex`) for
+    rescoping the Code Review Graph into `explorer.toml`.
+  - **`docs/codex-port-notes.md`** documenting what ported cleanly, which
+    `docs/specs/codex-plugin.md` §12 open questions resolved vs. remain
+    unverified (no `codex` CLI was available to probe live against), what
+    was dropped, and two TOML-substitution bugs this port's own end-to-end
+    scaffold test caught and fixed before they shipped.
+- `tests/validate.sh` gained a Codex-artifacts section (bash syntax on hook
+  scripts, JSON parse on hooks/plugin/marketplace manifests, TOML parse +
+  required-field check on the four agent TOMLs, and a check that the
+  AGENTS.md fragment source never bakes in the scaffold-time-only markers).
+
+### Degraded / dropped on Codex (loud, not silent — see docs/codex-port-notes.md)
+- **AGENTS.md-reaches-subagents is doc-stated but empirically unverified** —
+  every persona TOML also inlines the load-bearing protocol digest as a
+  backstop, same mitigation the Cursor port used for its own (weaker) version
+  of this same open question.
+- **reviewer-route-gate's "lead-programmer must not spawn the reviewer
+  directly" half is instruction-only** — no confirmed field exposes the
+  *calling* agent's identity on `SubagentStart`, only the spawned agent's own
+  `agent_id`/`agent_type`. The pending-review dispatch-block half is
+  mechanical regardless.
+- Per-agent **tool allowlist** (beyond `sandbox_mode`), **`maxTurns` caps**,
+  and **`memory: project`** all degrade to instruction-only/file-convention,
+  matching the Cursor port's equivalents. Agent-teams mode, the
+  `TaskCompleted`/task-gate (Codex has no such event), and structured
+  user-question prompts are dropped, same as Cursor.
+- **No `--update` support for the Codex target** — matches the Cursor port's
+  own scope; only fresh-scaffold and `--overwrite` are implemented.
+- The reviewer ships `sandbox_mode = "workspace-write"`, not `read-only` —
+  a deliberate deviation from this port's own spec, decided rather than left
+  open: Codex's sandbox is a real OS-level filesystem restriction (unlike
+  Cursor's IDE-level tool gate), so `read-only` would almost certainly block
+  the reviewer's Bash-invoked PASS/FAIL marker write.
+
 ## [0.7.2] - 2026-07-14
 
 ### Changed

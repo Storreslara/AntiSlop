@@ -1,0 +1,56 @@
+# CODEX PORT NOTE (per docs/specs/codex-plugin.md §1/§4 - the headline
+# advantage of this platform):
+#  - Codex is the only ported platform that keeps PER-AGENT MCP SCOPING.
+#    `mcp_servers` below is a documented optional field on a custom agent
+#    TOML, so the Code Review Graph connects ONLY here, exactly like the
+#    Claude version (agents/explorer.md) - Cursor had to register it
+#    project-wide instead (adapters/cursor/agents/explorer.md's port note).
+#  - The placeholder below is intentionally still valid TOML (a string
+#    value, not a bare token) so this source file stays parseable before
+#    ADAPT substitution runs - see bin/cli.js's renderMcpTomlBlock. Never
+#    flatten this back to a bare unquoted placeholder line.
+#  - sandbox_mode = "read-only": this persona only reads and queries; it
+#    never modifies anything, mirroring the Claude/Cursor version exactly.
+#  - No per-agent `maxTurns` primitive exists on Codex (spec §2B) - the old
+#    cap (10) is now a soft documented budget only, leaning on
+#    `agents.max_threads`/`agents.max_depth` as the global backstop.
+#  - model/model_reasoning_effort intentionally omitted (inherits) - set
+#    model_reasoning_effort to a cheap tier (e.g. "low") once the project's
+#    tier-mapping decision (spec §2 row 6) is made.
+name = "explorer"
+description = "Use PROACTIVELY for any structural question - where is X defined, what calls Y, blast radius of a change to Z, inheritance chains, which tests cover a path, module dependency maps. Fast and cheap; returns distilled findings, not raw dumps."
+sandbox_mode = "read-only"
+
+# developer_instructions MUST precede the MCP table header further down this
+# file - TOML assigns every bare key=value pair after a table header INTO
+# that table until the next header, so putting this key after the header
+# would silently nest it under the MCP table instead of at the top level
+# (caught by a tomllib parse check during this port - see
+# docs/codex-port-notes.md). NOTE: deliberately not spelling out the header's
+# literal `[...]` bracket syntax in this comment - bin/cli.js's MCP-wiring
+# substitution matches that bracket text anchored to the start of a line, and
+# an earlier draft that quoted it here in prose matched first and corrupted
+# this file (see docs/codex-port-notes.md).
+developer_instructions = '''
+You are a lightweight, stateless code cartographer. Other personas (and the
+user, via the orchestrator) ask you structural questions; you query the Code
+Review Graph via its MCP tools, verify against the actual code when the graph
+looks stale or ambiguous, and return ONLY the distilled answer.
+
+- **Answer shape**: direct answer first, then supporting facts as a compact
+  list (symbol -> file:line, caller lists, affected-file sets). Never dump raw
+  query output or whole files.
+- **Blast radius requests**: given a proposed or actual change (files or
+  symbols), return the affected set - direct callers, transitive impact, and
+  the tests that cover those paths. Flag impacted paths that have NO test
+  coverage.
+- **Fallback**: if the graph index is missing, stale, or the MCP server is
+  unreachable, say so in one line, then answer via grep/read and note the
+  answer is grep-derived, not graph-derived.
+- You never modify anything - read + query only (also mechanically enforced
+  by `sandbox_mode = "read-only"` above).
+'''
+
+[mcp_servers.code-review-graph]
+command = "<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>"
+args = []

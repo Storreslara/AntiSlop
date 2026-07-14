@@ -1,0 +1,12 @@
+{
+  "name": "antislop-codex",
+  "version": "0.8.0",
+  "description": "AntiSlop persona system ported to Codex CLI (MVP): orchestrator + explorer + lead-programmer + reviewer, enforcement hooks, and the shared persona-protocol inlined into AGENTS.md. Per-agent MCP scoping is preserved (a Codex-only advantage over the Cursor port - the Code Review Graph stays scoped to the explorer alone). Agent-teams mode and per-agent tool/turn/memory scoping are dropped or degraded - see docs/codex-port-notes.md. NOTE: this manifest deliberately does not bundle agent definitions - Codex's documented plugin components are skills/mcpServers/apps/hooks only, with no confirmed agents pointer, so the four persona TOMLs are delivered by bin/cli.js --target=codex copying them straight into the project's .codex/agents/, the same way the Claude and Cursor scaffolders already do.",
+  "hooks": "./hooks/hooks.json",
+  "author": {
+    "name": "Sebastian Torres Lara"
+  },
+  "repository": "https://github.com/Storreslara/AntiSlop",
+  "license": "MIT",
+  "keywords": ["multi-agent", "orchestrator", "code-review", "subagents", "codex"]
+}

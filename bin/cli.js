@@ -640,6 +640,20 @@ async function runUpdate(args) {
 }
 
 async function runWireMcp(kind, args) {
+  const targetFlag = args.find((a) => a.startsWith('--target='));
+  const wireTarget = targetFlag ? targetFlag.slice('--target='.length).trim() : 'claude';
+  if (wireTarget !== 'claude' && wireTarget !== 'codex') {
+    console.error(`antislop --wire-${kind}-mcp failed: unknown --target=${wireTarget} (supported: claude, codex).`);
+    process.exit(1);
+  }
+  if (wireTarget === 'codex' && kind === 'arxiv') {
+    console.error(
+      'antislop --wire-arxiv-mcp --target=codex failed: the researcher persona is not part of ' +
+        "the Codex MVP port (see docs/specs/codex-plugin.md §11) - there's no researcher.toml to wire yet."
+    );
+    process.exit(1);
+  }
+
   const mcpJsonPath = path.join(CWD, '.mcp.json');
   if (!fs.existsSync(mcpJsonPath)) {
     console.error(`antislop --wire-${kind}-mcp failed: no .mcp.json found at ${mcpJsonPath}.`);
@@ -654,7 +668,10 @@ async function runWireMcp(kind, args) {
   let substitutionField;
   if (kind === 'graph') {
     serverKey = 'code-review-graph';
-    targetFile = path.join(CWD, '.claude', 'agents', 'explorer.md');
+    targetFile =
+      wireTarget === 'codex'
+        ? path.join(CWD, '.codex', 'agents', 'explorer.toml')
+        : path.join(CWD, '.claude', 'agents', 'explorer.md');
     placeholder = '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>';
     substitutionField = 'graphMcpLaunch';
   } else {
@@ -692,7 +709,10 @@ async function runWireMcp(kind, args) {
   if (!body.includes(placeholder)) {
     console.log(`  ${targetFile} has no ${placeholder} placeholder left — already wired, nothing to do.`);
   } else {
-    body = applyMcpPlaceholder(body, placeholder, launch, targetFile);
+    body =
+      wireTarget === 'codex'
+        ? applyMcpTomlPlaceholder(body, placeholder, launch, targetFile)
+        : applyMcpPlaceholder(body, placeholder, launch, targetFile);
     fs.writeFileSync(targetFile, body);
     console.log(`  ${targetFile}: inlined ${serverKey}'s launch command from .mcp.json.`);
   }
@@ -710,7 +730,10 @@ async function runWireMcp(kind, args) {
   // re-run later to backfill the substitution once step 6 creates the full
   // config — record it now, as a partial file if necessary, and step 6
   // MERGES into it (preserving this key) rather than overwriting wholesale.
-  const configPath = path.join(CWD, '.claude', 'persona-config.json');
+  const configPath =
+    wireTarget === 'codex'
+      ? path.join(CWD, '.codex', 'persona-config.json')
+      : path.join(CWD, '.claude', 'persona-config.json');
   let config = {};
   if (fs.existsSync(configPath)) {
     config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
@@ -720,7 +743,7 @@ async function runWireMcp(kind, args) {
   config.substitutions = config.substitutions || {};
   config.substitutions[substitutionField] = launch;
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
-  console.log(`  .claude/persona-config.json: substitutions.${substitutionField} recorded.`);
+  console.log(`  ${wireTarget === 'codex' ? '.codex' : '.claude'}/persona-config.json: substitutions.${substitutionField} recorded.`);
 
   console.log(
     `\nDone. Verify the connection works: spawn the ${
@@ -890,6 +913,273 @@ async function scaffoldCursor(args) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// --target=codex: scaffold the Codex adapter (adapters/codex/) into a
+// project's .codex/ directory, plus inline the shared persona-protocol into
+// AGENTS.md (Codex has no @import/include mechanism, unlike Claude's single
+// `@.claude/persona-protocol.md` line - the content must be physically
+// inlined). Same MVP four personas as the Cursor port. See
+// docs/specs/codex-plugin.md for the design this implements and
+// docs/codex-port-notes.md for what shipped degraded/unverified. Codex is
+// the one ported platform that keeps PER-AGENT MCP SCOPING (the Code Review
+// Graph stays scoped to the explorer alone, unlike Cursor's project-wide
+// fallback) - see explorer.toml.
+// ---------------------------------------------------------------------------
+
+const CODEX_MVP_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer', 'reviewer'];
+const ANTISLOP_BLOCK_PREFIX = '<!-- ANTISLOP:BEGIN persona-protocol';
+const ANTISLOP_BLOCK_END = '<!-- ANTISLOP:END persona-protocol -->';
+
+// Version-agnostic upsert: searches by the marker PREFIX (no version), not
+// the full begin line, so a later version's block finds and replaces an
+// earlier version's block rather than accumulating duplicates. Everything
+// outside the marked span is left untouched - "merge, never clobber" applied
+// to a single file's content instead of a JSON object.
+function upsertMarkedBlock(filePath, version, content) {
+  const beginLine = `${ANTISLOP_BLOCK_PREFIX} v${version} -->`;
+  const block = `${beginLine}\n${content}\n${ANTISLOP_BLOCK_END}`;
+  if (!fs.existsSync(filePath)) {
+    mkdirp(path.dirname(filePath));
+    fs.writeFileSync(filePath, block + '\n');
+    return 'created';
+  }
+  const existing = fs.readFileSync(filePath, 'utf8');
+  const beginIdx = existing.indexOf(ANTISLOP_BLOCK_PREFIX);
+  if (beginIdx === -1) {
+    const sep = existing.length > 0 && !existing.endsWith('\n') ? '\n\n' : '\n';
+    fs.writeFileSync(filePath, existing + sep + block + '\n');
+    return 'appended';
+  }
+  const endIdx = existing.indexOf(ANTISLOP_BLOCK_END, beginIdx);
+  if (endIdx === -1) {
+    throw new Error(
+      `${filePath} has a "${ANTISLOP_BLOCK_PREFIX}" marker with no matching ` +
+        `"${ANTISLOP_BLOCK_END}" - manual conflict, refusing to guess. Resolve by hand.`
+    );
+  }
+  const before = existing.slice(0, beginIdx);
+  const after = existing.slice(endIdx + ANTISLOP_BLOCK_END.length);
+  fs.writeFileSync(filePath, before + block + after);
+  return 'replaced';
+}
+
+// Codex's hooks.json uses the SAME nested {matcher?, hooks:[{type,command}]}
+// shape as Claude's (confirmed live against learn.chatgpt.com/docs/hooks -
+// NOT Cursor's flatter {command} list), so it needs its own dedupe-aware
+// merge rather than reusing scaffoldCursor's flat-shape merge loop: matches
+// an incoming matcher-group against an existing one by `matcher` value, then
+// dedupes individual {type,command} entries within it by content. Idempotent
+// across --overwrite reruns; preserves any user-added hook entries.
+function mergeNestedHooksJson(existing, incomingHooksConfig) {
+  existing.hooks = existing.hooks || {};
+  for (const [event, incomingGroups] of Object.entries(incomingHooksConfig.hooks || {})) {
+    const existingGroups = existing.hooks[event] || [];
+    for (const incomingGroup of incomingGroups) {
+      const matchIdx = existingGroups.findIndex(
+        (g) => (g.matcher || null) === (incomingGroup.matcher || null)
+      );
+      if (matchIdx === -1) {
+        existingGroups.push(JSON.parse(JSON.stringify(incomingGroup)));
+        continue;
+      }
+      const targetGroup = existingGroups[matchIdx];
+      targetGroup.hooks = targetGroup.hooks || [];
+      const seen = new Set(targetGroup.hooks.map((h) => JSON.stringify(h)));
+      for (const h of incomingGroup.hooks || []) {
+        const key = JSON.stringify(h);
+        if (!seen.has(key)) {
+          targetGroup.hooks.push(h);
+          seen.add(key);
+        }
+      }
+    }
+    existing.hooks[event] = existingGroups;
+  }
+  return existing;
+}
+
+// TOML analogue of renderMcpBlock/applyMcpPlaceholder: the explorer.toml
+// source ships a syntactically VALID placeholder table (a string value, not
+// a bare token - see explorer.toml's port note), so this replaces the whole
+// `[mcp_servers.code-review-graph]` table rather than a single line.
+function renderMcpTomlBlock(launch) {
+  const lines = ['[mcp_servers.code-review-graph]', `command = ${JSON.stringify(launch.command)}`];
+  const argsList = (launch.args || []).map((a) => JSON.stringify(a)).join(', ');
+  lines.push(`args = [${argsList}]`);
+  if (launch.env && Object.keys(launch.env).length > 0) {
+    lines.push('', '[mcp_servers.code-review-graph.env]');
+    for (const k of Object.keys(launch.env)) lines.push(`${k} = ${JSON.stringify(launch.env[k])}`);
+  }
+  return lines.join('\n');
+}
+
+function applyMcpTomlPlaceholder(body, placeholder, launch, fileLabel) {
+  if (!body.includes(placeholder)) return body;
+  if (!launch) {
+    throw new Error(
+      `${fileLabel} still has the ${placeholder} placeholder but no launch command is ` +
+        "recorded in persona-config.json's substitutions - run `bin/cli.js --wire-graph-mcp " +
+        '--target=codex` to wire it, then re-run --update.'
+    );
+  }
+  // `(^|\n)` (not the `m` flag) anchors the opening bracket to an ACTUAL line
+  // start, so a mere mention of the literal bracket text inside a prose
+  // comment (e.g. explaining TOML key ordering) can't match first and have
+  // the non-greedy span swallow everything up to the real header, deleting
+  // developer_instructions in the process (caught by this port's own
+  // end-to-end scaffold test - docs/codex-port-notes.md, attempt #1).
+  // Deliberately NOT using the `m` flag for this: with `m`, `$` matches
+  // end-of-LINE, not end-of-string, so the lazy quantifier below would
+  // satisfy `(?=\n\[|$)` immediately after the header line itself, leaving
+  // the placeholder's command/args lines behind to be silently swallowed
+  // into the newly-inserted `.env` sub-table by the TOML parser on the next
+  // read (attempt #2, also caught by that same test). Without `m`, `$` means
+  // true end-of-string, matching only once the whole table is consumed.
+  const tableRe = /(^|\n)\[mcp_servers\.code-review-graph\][\s\S]*?(?=\n\[|$)/;
+  const match = body.match(tableRe);
+  if (!match) {
+    throw new Error(`${fileLabel}: could not find the [mcp_servers.code-review-graph] table to replace.`);
+  }
+  // match[1] is the leading anchor ('' at string start, or the '\n' before
+  // the header) captured by `(^|\n)` above - match[0] includes it, so it
+  // must be preserved in front of the rendered block or the preceding line
+  // and the new table would merge onto one line.
+  return body.replace(match[0], match[1] + renderMcpTomlBlock(launch));
+}
+
+async function scaffoldCodex(args) {
+  const version = readPluginVersion();
+  const overwrite = args.includes('--overwrite');
+  const codexSrc = path.join(PKG_ROOT, 'adapters', 'codex');
+  console.log(`antislop v${version} (Codex target) — scaffolding into ${CWD}\n`);
+
+  const codexDir = path.join(CWD, '.codex');
+  const configPath = path.join(codexDir, 'persona-config.json');
+  let existingConfig = null;
+  if (fs.existsSync(configPath)) {
+    if (!overwrite) {
+      console.log(
+        'A .codex/persona-config.json already exists here — this looks like an ' +
+          'existing Codex install, not a fresh one. This CLI only does fresh ' +
+          'scaffolding; re-run with --overwrite to re-copy the mechanical files ' +
+          '(agents, hooks, AGENTS.md fragment) unconditionally while preserving ' +
+          'your judgment-driven config fields. Exiting without changes.'
+      );
+      process.exit(1);
+    }
+    existingConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    console.log(
+      '--overwrite: existing Codex install found — re-copying agents/hooks/AGENTS.md ' +
+        'fragment unconditionally. persona-config.json\'s judgment-driven fields ' +
+        '(testAndLintCommand, protectedPaths, etc.) are preserved; only ' +
+        'pluginVersion/personaSelection are refreshed.\n'
+    );
+  }
+
+  const agentsDir = path.join(codexDir, 'agents');
+  const scriptsDir = path.join(codexDir, 'hooks', 'scripts');
+  mkdirp(agentsDir);
+  mkdirp(scriptsDir);
+  mkdirp(path.join(codexDir, 'reviewed'));
+  mkdirp(path.join(codexDir, 'memory'));
+
+  for (const name of CODEX_MVP_PERSONAS) {
+    const srcPath = path.join(codexSrc, 'agents', `${name}.toml`);
+    const destPath = path.join(agentsDir, `${name}.toml`);
+    const body = fs.readFileSync(srcPath, 'utf8');
+    // TOML has no leading-delimiter discovery constraint like Claude's
+    // markdown frontmatter (docs/specs/codex-plugin.md §4), so a leading
+    // comment stamp is safe here - no insertStampAfterFrontmatter needed.
+    const stamp = `# antislop v${version} | source: adapters/codex/agents/${name}.toml | ADAPT-substituted\n`;
+    fs.writeFileSync(destPath, stamp + body);
+    console.log(`  adapters/codex/agents/${name}.toml -> .codex/agents/${name}.toml`);
+  }
+
+  copyDirRecursive(path.join(codexSrc, 'hooks', 'scripts'), scriptsDir);
+  console.log('  adapters/codex/hooks/scripts/*.sh -> .codex/hooks/scripts/');
+
+  const rawHooks = fs.readFileSync(path.join(codexSrc, 'hooks', 'hooks.json'), 'utf8');
+  const hooksConfig = JSON.parse(
+    rawHooks.replace(/\$\{PLUGIN_ROOT\}\/hooks\/scripts/g, '.codex/hooks/scripts')
+  );
+  const hooksPath = path.join(codexDir, 'hooks.json');
+  let hooks = { hooks: {} };
+  if (fs.existsSync(hooksPath)) {
+    hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
+  }
+  mergeNestedHooksJson(hooks, hooksConfig);
+  fs.writeFileSync(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
+  console.log('  .codex/hooks.json updated (nested matcher/hooks shape; merge, not overwrite)');
+
+  const fragmentContent = fs.readFileSync(path.join(codexSrc, 'agents-md-fragment.md'), 'utf8').trimEnd();
+  const agentsMdPath = path.join(CWD, 'AGENTS.md');
+  const blockResult = upsertMarkedBlock(agentsMdPath, version, fragmentContent);
+  console.log(`  AGENTS.md: persona-protocol block ${blockResult}`);
+
+  if (existingConfig) {
+    existingConfig.personaSelection = CODEX_MVP_PERSONAS.slice();
+    existingConfig.pluginVersion = version;
+    existingConfig.target = 'codex';
+    if (!existingConfig.mainAgent) existingConfig.mainAgent = 'orchestrator';
+    if (!existingConfig.gatedAgents) existingConfig.gatedAgents = ['lead-programmer'];
+    fs.writeFileSync(configPath, JSON.stringify(existingConfig, null, 2) + '\n');
+    console.log('  .codex/persona-config.json: personaSelection + pluginVersion refreshed, other fields preserved');
+  } else {
+    const personaConfig = {
+      target: 'codex',
+      testAndLintCommand: '',
+      lintCommand: '',
+      graphUpdateCommand: '',
+      sourceGlobs: [],
+      protectedPaths: [],
+      gatedAgents: ['lead-programmer'],
+      // Codex has no config.toml key equivalent to Claude's settings.json
+      // "agent" field; stop-gate.sh reads this to know which name to treat
+      // as the (gated-or-not) main session.
+      mainAgent: 'orchestrator',
+      pluginVersion: version,
+      personaSelection: CODEX_MVP_PERSONAS.slice(),
+      issueTracker: '',
+    };
+    fs.writeFileSync(configPath, JSON.stringify(personaConfig, null, 2) + '\n');
+    console.log('  .codex/persona-config.json written (skeleton — fill in test/lint/graph/protected fields against this repo)');
+  }
+
+  appendUnique(path.join(CWD, '.gitignore'), [
+    '.codex/reviewed/',
+    '.codex/wip-handoff.*',
+    '.codex/.session-baseline.*',
+    '.codex/wip-audit.log',
+    '.codex/.pending-review.*',
+    '.codex/review-audit.log',
+    '.codex/.stop-loop-guard.*',
+  ]);
+  console.log('  .gitignore updated');
+
+  console.log(
+    '\nDone with the mechanical Codex scaffolding.\n\n' +
+      'Verify/finish by hand (Codex-specific caveats, see docs/codex-port-notes.md):\n' +
+      '  1. HOOKS ARE SCAFFOLDED BUT NOT YET TRUSTED - Codex requires reviewing and\n' +
+      '     approving non-managed command hooks before they run (the confirmed\n' +
+      '     trust-approval flow on your installed version, e.g. a `/hooks` command) -\n' +
+      '     an untrusted hooks.json is silently INERT, not silently broken.\n' +
+      '  2. AGENTS.md reaching subagents is DOC-STATED by Codex but not yet\n' +
+      '     empirically confirmed by this project - the load-bearing protocol rules\n' +
+      '     are also inlined into each persona TOML as a backstop regardless.\n' +
+      '  3. Fill in .codex/persona-config.json (testAndLintCommand, sourceGlobs,\n' +
+      '     protectedPaths, graphUpdateCommand) for THIS repo.\n' +
+      '  4. If you use the Code Review Graph, wire its launch command into\n' +
+      '     .codex/agents/explorer.toml via `bin/cli.js --wire-graph-mcp --target=codex`\n' +
+      '     - Codex is the one ported platform that keeps this scoped to the explorer\n' +
+      '     alone, unlike the Cursor port which had to go project-wide.\n' +
+      '  5. Optionally set model/model_reasoning_effort per agent in each TOML\n' +
+      '     (currently omitted/inherited - the tier mapping is a project decision).\n' +
+      '  6. The exact hooks.json registration shape and the marketplace.json\n' +
+      '     placement were NOT verified against a live Codex build in this port -\n' +
+      '     see docs/codex-port-notes.md before relying on either.'
+  );
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -908,8 +1198,11 @@ async function main() {
   if (target === 'cursor') {
     return scaffoldCursor(args);
   }
+  if (target === 'codex') {
+    return scaffoldCodex(args);
+  }
   if (target !== 'claude') {
-    console.error(`antislop: unknown --target=${target} (supported: claude, cursor).`);
+    console.error(`antislop: unknown --target=${target} (supported: claude, cursor, codex).`);
     process.exit(1);
   }
 

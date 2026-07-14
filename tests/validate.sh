@@ -124,6 +124,66 @@ else
 fi
 
 echo
+echo "== Codex adapter: bash syntax =="
+for f in adapters/codex/hooks/scripts/*.sh; do
+  if bash -n "$f"; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f"
+    fail=1
+  fi
+done
+
+echo
+echo "== Codex adapter: JSON validity =="
+for f in adapters/codex/hooks/hooks.json \
+         adapters/codex/.codex-plugin/plugin.json \
+         adapters/codex/.codex-plugin/marketplace.json; do
+  if python3 -m json.tool "$f" >/dev/null 2>&1; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f"
+    fail=1
+  fi
+done
+
+echo
+echo "== Codex adapter: TOML validity + name/description present =="
+if python3 -c "import tomllib" >/dev/null 2>&1; then
+  for f in adapters/codex/agents/*.toml; do
+    if python3 -c "
+import sys, tomllib
+with open('$f', 'rb') as fh:
+    d = tomllib.load(fh)
+assert 'name' in d and d['name'], 'missing name'
+assert 'description' in d and d['description'], 'missing description'
+assert 'developer_instructions' in d and d['developer_instructions'].strip(), 'missing developer_instructions'
+" 2>/tmp/codex_toml_err; then
+      echo "OK   $f"
+    else
+      echo "FAIL $f ($(cat /tmp/codex_toml_err | tail -1))"
+      fail=1
+    fi
+  done
+  rm -f /tmp/codex_toml_err
+else
+  echo "SKIP (no python3 tomllib available - needs Python 3.11+; TOML validity not checked this run)"
+fi
+
+echo
+echo "== Codex adapter: agents-md-fragment.md is clean of scaffold-time markers =="
+# The ANTISLOP:BEGIN/END markers are added by bin/cli.js's upsertMarkedBlock
+# at scaffold time (with a version number baked in) - the SOURCE fragment
+# must never bake them in itself, or a scaffold run would nest one pair
+# inside another instead of doing a clean version-agnostic replace.
+if grep -q 'ANTISLOP:BEGIN\|ANTISLOP:END' adapters/codex/agents-md-fragment.md; then
+  echo "FAIL adapters/codex/agents-md-fragment.md contains a literal ANTISLOP:BEGIN/END marker - remove it, markers are scaffold-time-only"
+  fail=1
+else
+  echo "OK   adapters/codex/agents-md-fragment.md"
+fi
+
+echo
 echo "== bin/cli.js legacy-backfill logic (Node) =="
 if node tests/cli-backfill.test.js; then
   echo "OK   tests/cli-backfill.test.js"
