@@ -47,28 +47,6 @@ reusable plugin. The core loop is three always-on personas — **orchestrator**
 costs one short setup run instead of re-authoring ~500 lines of persona and
 hook prose from scratch.
 
-## A few terms used below
-
-- **Persona** — a Claude Code subagent (`.claude/agents/*.md`) with a narrow
-  job and its own model tier. `orchestrator` is the one that runs as your
-  main session; every other persona is dispatched via the `Agent` tool.
-- **Code Review Graph** — an optional tree-sitter/SQLite structural index
-  the `explorer` persona can query instead of grepping (see
-  [Credits](#credits--third-party-skills--mcps-this-plugin-builds-on)); it's
-  a real dependency to install (setup step 4), not built-in.
-- **Teammates / agent-teams** — a Claude Code feature (concurrent, not
-  sequential, subagents) that `start-feature-team` uses; it's off by default.
-- **`fable`** — a Claude model tier (distinct from opus/sonnet/haiku) that
-  `hivemind` and `milestone-auditor` can be dispatched on for well-scoped
-  work, per the [Cost](#cost) section.
-- **Stop-gate** — the hook that blocks a gated persona's turn from ending
-  until the `reviewer` has passed its work; see the design notes below for
-  how it's enforced.
-- **ADAPT** — this repo's internal name for what `/install-antislop` does:
-  copying and substituting plugin templates into your project's `.claude/`.
-  You won't need to say this word to use the plugin; it shows up if you read
-  `skills/install-antislop/SKILL.md` or file an issue.
-
 ## Personas
 
 | Persona | Model | Required? | What it does |
@@ -96,8 +74,7 @@ Install these before using the plugin:
   no degraded-mode fallback for older versions.
 - **`jq`** — every hook script depends on it. If it's missing, hooks don't
   fail loudly; each script treats the empty result as "nothing to do" and
-  silently no-ops. A missing `jq` looks like "nothing happens," not a clear
-  error — install it first.
+  silently no-ops. Install it first.
 - **Node.js / `npx`** — for the `mattpocock/skills` installer, if a selected
   persona uses one of those skills.
 - **`git`**, plus **`gh`** if you choose GitHub Issues as your tracker during
@@ -111,8 +88,7 @@ that's expected, see [First-time setup](#first-time-setup) below.
 
 If you have a local clone, `bin/install-deps.sh` installs the two conditional
 dependencies (Code Review Graph, mattpocock/skills) idempotently — it skips
-whichever is already present, so it's safe to run any time, on either install
-path (marketplace or npx), not just once.
+whichever is already present, so it's safe to run any time.
 
 ## Install
 
@@ -121,30 +97,24 @@ the install commands will work, each user needs:
 - to be added as a collaborator (repo Settings → Collaborators), and
 - working git auth on their own machine — an SSH key added to their GitHub
   account, or `gh auth login` run once locally. Without one of these, `/plugin
-  marketplace add` fails to clone with a permission/auth error (not a "not
-  found" error) — that's the first thing to check if it happens.
+  marketplace add` fails to clone with a permission/auth error, not a "not
+  found" error — that's the first thing to check if it happens.
 
-Install is always a two-step marketplace flow:
 ```
 /plugin marketplace add Storreslara/AntiSlop
 /plugin install antislop@antislop-marketplace
 ```
-(`/plugin install <git-url>` directly is not a real command. `antislop-marketplace`
-is the marketplace's own name, from `.claude-plugin/marketplace.json`'s
-top-level `name` field — not something you choose.)
 
-**If you don't have collaborator access yet** (or just want to try it before
-asking for access), you don't need the marketplace at all — both routes below
-work against a local clone and are first-class, not "test only":
+Confirm it worked with `/agents` — you should see `antislop:explorer`,
+`antislop:lead-programmer`, etc. in the list. Then run
+[first-time setup](#first-time-setup) below.
+
+**No collaborator access yet?** Point Claude Code straight at a local clone
+instead — no marketplace step needed:
 ```
 claude --plugin-dir /path/to/your/clone
 ```
-Confirm it worked with `/agents` — you should see `antislop:explorer`,
-`antislop:lead-programmer`, etc. in the list (namespaced, because they're
-still loaded from the plugin at this point). Then run setup below. Or, if
-you'd rather scaffold plain files into your project instead of loading a
-plugin at all, see [npx install](#npx-install-alternative) — it needs the
-same clone but no marketplace/collaborator step.
+This is a first-class path, not "test only." Confirm the same way, with `/agents`.
 
 Note: plugin agents load under namespaced names (`antislop:explorer`). Bare-name
 spawns like `explorer` hard-error — they don't resolve. That's why setup's
@@ -157,10 +127,6 @@ Once per project, run:
 ```
 /antislop:install-antislop
 ```
-(If you scaffolded via `npx` instead of the plugin, the bare `/install-antislop`
-— no `antislop:` prefix — is what resolves, since it's then a project-local
-skill rather than a plugin one. Same command either way in spirit, just
-whichever name your setup actually registered.)
 
 It asks which personas the project needs. `explorer` and `lead-programmer` are
 mandatory; the rest are opt-in. **Skipping `reviewer` requires an explicit
@@ -174,13 +140,11 @@ where to find an arXiv MCP server.
 - **Install third-party skills interactively.** If you select personas that
   use `mattpocock/skills`, setup will tell you which skills to pick *by
   purpose* and ask **you** to run `npx skills@latest add mattpocock/skills`
-  in your own terminal — it can't drive that tool's interactive picker
-  itself. Don't walk away expecting it to finish unattended.
+  in your own terminal — it can't drive that tool's interactive picker itself.
 - **Modify your repo during hook verification.** On a fresh install, setup
   creates a throwaway branch, makes trial edits (including one deliberately
   failing check) to prove the safety hooks actually block/allow correctly,
-  then reverts everything and leaves the repo clean. This is expected and
-  self-cleaning, not a leftover mess.
+  then reverts everything and leaves the repo clean.
 
 It also sets one environment entry, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, in
 `.claude/settings.json` — required for the optional `start-feature-team`
@@ -207,104 +171,24 @@ source plus the substitutions recorded at setup time, and only touches files
 that are byte-identical to what it already knows is "clean." That costs
 essentially no tokens. Projects adapted before this script existed (missing
 `substitutions`/`fileHashes`) are handled too: it auto-backfills what it can
-determine from the files already on disk, still at zero token cost — no
-"predates the deterministic path" fallback needed in the common case. A file
+determine from the files already on disk, still at zero token cost. A file
 only ever needs a decision from *you* (never the model) when it's genuinely
 diverged from a fresh copy — it prints the diff and asks, it never silently
-clobbers a local edit. npx-scaffolded projects run the same script directly,
-no plugin needed: `node <your-clone>/bin/cli.js --update`. A `SessionStart`
-hook warns automatically when a project's adapted version is behind.
+clobbers a local edit. A `SessionStart` hook warns automatically when a
+project's adapted version is behind.
 (`/antislop:install-antislop --update` still works, but should rarely be
 needed now — it's a narrow, per-item fallback for the specific gap the
 script names when it can't derive something automatically, not a full
 re-adapt.)
 
-## npx install (alternative)
-
-This repo doubles as a runnable npm package — not published to the registry,
-so clone it and point `npx` at the local directory. It's a **hybrid**, not a
-replacement for `install-antislop`: the CLI does only the mechanical half (file
-copying, version-stamping, settings merge). The judgment half — repo-specific
-test/lint commands, protected paths, third-party skill installs, graph/MCP
-wiring, CLAUDE.md pruning, hook verification — still needs `/install-antislop`
-afterward. The same private-repo, collaborator, and git-auth requirements as
-the plugin flow apply, since it still needs a clone.
-
-Reuse an existing clone if you have one, or:
-```
-git clone https://github.com/Storreslara/AntiSlop.git ~/antislop
-```
-Then, from the project you're adding personas to (substitute your actual clone
-path for `~/antislop`):
-```
-cd ~/your-project
-npx ~/antislop
-```
-It prompts for optional personas the same way `install-antislop` step 1 does
-(declining `reviewer` requires typing `skip reviewer`). Non-interactive:
-`--yes` includes every optional persona; `--personas=hivemind,reviewer,researcher`
-includes only the named ones.
-
-**What it does, deterministically:** copies core + selected persona `.md` files
-into `.claude/agents/` (version-stamped); copies `persona-protocol.md` and
-`protocol-digest.md`; copies the hook scripts into `.claude/hooks/scripts/` and
-registers them in `.claude/settings.json` with `${CLAUDE_PROJECT_DIR}`-relative
-commands (merged in, never clobbering existing settings); copies the
-`install-antislop` and `coding-discipline` skills project-scoped (so
-`/install-antislop` works with no plugin installed at all); adds the CLAUDE.md
-import line; appends the standard `.gitignore` entries; writes a skeleton
-`.claude/persona-config.json`. By default it refuses to run over an existing
-install rather than risk clobbering local edits — use `--update` or
-`--overwrite` for that case instead.
-
-**`--overwrite`** re-copies the mechanical files (agents, hooks, skills,
-protocol) unconditionally, even over an existing install, with no diff and no
-prompt — useful in a script/CI context where you want a hard reset. It never
-touches `persona-config.json`'s judgment-driven fields (`testAndLintCommand`,
-`protectedPaths`, etc.); only `personaSelection` and `pluginVersion` get
-refreshed. Without `--personas=`/`--yes`, it reuses the project's already-recorded
-persona selection rather than silently changing which personas are installed.
-Prefer `--update` (above) when you want to preserve local edits — it diffs
-first and only asks when something's actually diverged.
-
-**Two third-party installers** can run from the same terminal (the CLI inherits
-your stdio, so their interactive prompts show up normally):
-- `--with-mattpocock` runs `npx skills@latest add mattpocock/skills` (you still
-  pick the skills yourself in its picker; the CLI just launches it).
-- `--with-graph` runs `pipx install code-review-graph` + `code-review-graph
-  install --platform claude-code`. That tool registers itself project-wide in
-  `.mcp.json` by default, which every persona would inherit — finish the
-  rescoping deterministically with `node bin/cli.js --wire-graph-mcp`, which
-  reads the launch command straight out of `.mcp.json`, inlines it into
-  `explorer.md`'s `mcpServers:` frontmatter, removes the project-wide entry,
-  and records it in `persona-config.json` for future `--update` runs (same
-  idea for the researcher's arXiv MCP: `--wire-arxiv-mcp=<server-key>` once
-  you've installed one). `/install-antislop` steps 4-5 remain the fallback if
-  you'd rather have the LLM inspect what got written and verify the
-  connection itself.
-
-Both are skipped under `--yes`/`--personas=` unless you also pass their
-`--with-*` flag — they're real installs with side effects, not pure file copies.
-
-Finally, finish setup inside the project:
-```
-cd ~/your-project
-claude
-```
-then run `/install-antislop` (bare — no `antislop:` prefix, since this route
-never installed the plugin) to fill in the parts that need a real repo scan
-(test/lint commands, protected paths), install third-party skills, build the
-Code Review Graph, and run hook verification. Personas load identically either
-way — as project-local `.claude/agents/*.md` files.
-
 ## Using AntiSlop
 
-Once setup finishes (either install path), there's nothing special to invoke
-for normal work: just prompt your main session as usual. It's running as
-`orchestrator`, which routes your request to the right persona (`explorer` to
-map code, `lead-programmer` to write it, etc.) and reports back — you don't
-address personas by name. If a `reviewer` was installed, expect a PASS/FAIL
-cycle after implementation work before it's reported done.
+Once setup finishes, there's nothing special to invoke for normal work: just
+prompt your main session as usual. It's running as `orchestrator`, which
+routes your request to the right persona (`explorer` to map code,
+`lead-programmer` to write it, etc.) and reports back — you don't address
+personas by name. If a `reviewer` was installed, expect a PASS/FAIL cycle
+after implementation work before it's reported done.
 
 To run the same personas as concurrent teammates instead of sequential
 subagents, use the `start-feature-team` command — this is the "deliberate
@@ -319,7 +203,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
 | `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
-| `start-feature-team`, `update-antislop` commands (plugin-installed projects only) | wiki / CONTEXT.md / docs/adr seeding |
+| `start-feature-team`, `update-antislop` commands | wiki / CONTEXT.md / docs/adr seeding |
 
 ## Adding your own persona
 
@@ -333,31 +217,6 @@ three things:
   hardcoded persona list.
 - If you want other personas to route to it by name, add one disambiguation
   line to the project's copy of `orchestrator.md`'s routing table.
-
-## Cost
-
-| Persona | Default model | Can drop to `fable`? | `maxTurns` |
-|---|---|---|---|
-| `orchestrator` | inherit | — | uncapped (main session) |
-| `explorer` | haiku | — | 10 |
-| `lead-programmer` | sonnet | — | 30 |
-| `hivemind` | opus | yes, for well-scoped dispatches | 30 |
-| `reviewer` | opus | no | 30 |
-| `milestone-auditor` | opus | yes, for well-scoped dispatches | 20 |
-| `repo-historian` | haiku | — | (not capped separately) |
-
-`hivemind`, `reviewer`, and `milestone-auditor` are the real spend drivers,
-not the haiku-tier `explorer`/`repo-historian`. The orchestrator's per-dispatch
-routing rule (see orchestrator.md's "Per-unit model routing" subsection) can
-send well-scoped `hivemind`/`milestone-auditor` work to `fable` instead of
-opus — but worst case is unchanged (both still run on opus if the heuristic
-doesn't fire); it only ever makes the common case cheaper, never the worst
-case more expensive. The FAIL→fix→re-review loop is separately capped at 2
-iterations before escalating to you — there's no budget mode beyond these
-caps yet. Check `/cost`; if it's high, look at how often the full
-Explore→Plan→Implement→Verify→Commit pipeline runs for work that didn't need
-it — the orchestrator's "scale effort to the task" rule is the lever there,
-not a setting.
 
 ## Removing AntiSlop
 
@@ -375,15 +234,6 @@ from a project:
   `.claude/wip-audit.log`, `.claude/.pending-review.*`,
   `.claude/review-audit.log` (also in `.gitignore` — safe to delete)
 - `/plugin uninstall antislop` to remove the plugin itself
-
-## Why this shape
-
-The maintainer's design rationale — CLAUDE.md wiring, plugin frontmatter
-limits, the stop-gate's config-driven scoping, the PASS-marker format, drift
-mitigations, and known limitations — moved to
-[`docs/design.md`](docs/design.md) so it doesn't sit between setup
-instructions and Credits for a first-time reader. Nothing there is required
-to install or use the plugin.
 
 ## Credits — third-party skills & MCPs this plugin builds on
 
@@ -422,6 +272,6 @@ the actual installed names on disk rather than trusting this list:
 
 See `CONTRIBUTING.md`. The bug report template asks for your Claude Code
 version, the plugin version vs. your project's adapted version, and whether the
-bug is in a plugin-shipped file or a copied project file — version drift (see
-above) is the likely root cause of a lot of reports, so it's worth checking
-`--update` first.
+bug is in a plugin-shipped file or a copied project file — version drift is
+the likely root cause of a lot of reports, so it's worth checking `--update`
+first.
