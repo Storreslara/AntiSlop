@@ -21,7 +21,7 @@ install_graph() {
     echo "  Running: code-review-graph install --platform claude-code"
     code-review-graph install --platform claude-code
     echo "  Installed. Note: it registers PROJECT-WIDE in .mcp.json by default —"
-    echo "  /setup-personas step 4 rescopes it to explorer.md; don't skip that."
+    echo "  /install-antislop step 4 rescopes it to explorer.md; don't skip that."
   fi
 }
 
@@ -65,5 +65,5 @@ if [ "$failed" -ne 0 ]; then
   echo "Done, with failures above — fix those and re-run (already-satisfied steps are skipped)."
   exit 1
 fi
-echo "Done. Next: /setup-personas still records which skills you picked and"
+echo "Done. Next: /install-antislop still records which skills you picked and"
 echo "substitutes the <MATTPOCOCK:*> placeholders — run it in your project."

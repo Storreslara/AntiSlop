@@ -90,7 +90,7 @@ Mechanical facts the design leans on (all verified in-repo, not assumed):
   SubagentStop script — this is a load-bearing design constraint for step 5.
 - The no-reviewer fallback is a first-class supported configuration:
   orchestrator.md:69-74, start-feature-team.md:49-53 (the lead itself touches
-  the marker), setup-personas SKILL.md:81-88 (explicit typed confirmation to
+  the marker), install-antislop SKILL.md:81-88 (explicit typed confirmation to
   skip reviewer). Every new gate must degrade gracefully for it.
 - The eval harness (eval/harness/scaffold.sh + apply-variant.sh) scaffolds a
   toy fixture via `bin/cli.js --personas=planner,reviewer` (scaffold.sh:64,
@@ -134,7 +134,7 @@ Mechanical facts the design leans on (all verified in-repo, not assumed):
   `--personas=` example, :176, :197 Cost, :260, :267, :296, :315) — renamed
   to `hivemind` in step 8; the Cost paragraph (:197-203) is additionally
   reworded in step 10 for dual-model routing. The milestone-auditor row (:25)
-  and its "second, orthogonal safety property" framing (setup-personas
+  and its "second, orthogonal safety property" framing (install-antislop
   SKILL.md:89-95) survive UNCHANGED in substance — the fold is off.
 - (A fourth revision — README.md:21's "TDD-first" row — was planned and is
   withdrawn per Open Question 2; that row is not touched.)
@@ -254,7 +254,7 @@ Define marker format v2 — first line, exactly:
   same sanitization as :24). On violation: delete nothing, exit 2 with a
   message that (a) states the required format with the exact `printf`
   command, and (b) names version skew as a likely cause ("if your copied
-  reviewer.md predates plugin v0.6.0, run /antislop:setup-personas --update").
+  reviewer.md predates plugin v0.6.0, run /antislop:install-antislop --update").
   On acceptance: append `<UTC timestamp> task=<task-id> marker-accepted` to
   `.claude/review-audit.log` (new log file, sibling of wip-audit.log).
 - `start-feature-team.md`: the no-reviewer fallback lead now writes the same
@@ -354,7 +354,7 @@ other branch was taken):**
 live here for ordering with the WIP sentinel, per Risks),
 `templates/persona-protocol.md` (new short section documenting the flag),
 `templates/protocol-digest.md` (one added line), `bin/cli.js` (:311-315
-gitignore list), `skills/setup-personas/SKILL.md` (step 9 gitignore bullet,
+gitignore list), `skills/install-antislop/SKILL.md` (step 9 gitignore bullet,
 :366-369), `README.md` ("Removing AntiSlop" list :217-218; drift-surface
 bullet :264-278).
 
@@ -400,7 +400,7 @@ clean tree):**
 - `printf '{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rv1","session_id":"s"}' | hooks/scripts/stop-gate.sh; ls .claude/.pending-review.* 2>/dev/null` — hook exits 0, `ls` finds nothing, and `grep -q 'cleared-by=reviewer' .claude/review-audit.log` exits 0.
 - With a flag present: `printf '{"hook_event_name":"Stop","session_id":"s"}' | hooks/scripts/stop-gate.sh` exits 2; after `printf 'skip: user abandoned unit\n' > .claude/.pending-review.lp1` the same pipe exits 0, the flag is gone, and `grep -q 'skip: user abandoned unit' .claude/review-audit.log` exits 0.
 - `defer:` variant: exits 0, flag still exists afterwards.
-- With NO flag present the Stop pipe exits 0 (existing main-session behavior preserved — regression guard for setup-personas SKILL.md:409-413).
+- With NO flag present the Stop pipe exits 0 (existing main-session behavior preserved — regression guard for install-antislop SKILL.md:409-413).
 - `grep -q 'pending-review' templates/persona-protocol.md && grep -q 'pending-review' templates/protocol-digest.md` exits 0.
 - `grep -q '.claude/.pending-review' bin/cli.js && grep -q 'review-audit.log' bin/cli.js` exits 0 (gitignore list extended with both new paths).
 - `bash -n hooks/scripts/stop-gate.sh` exits 0; `tests/validate.sh` exits 0.
@@ -428,7 +428,7 @@ persona-config.json existing, like every other gate.
 - With `.claude/.pending-review.lp1` present: `printf '{"agent_type":"","tool_input":{"subagent_type":"lead-programmer"}}' | hooks/scripts/reviewer-route-gate.sh` exits 2.
 - Same setup, `"subagent_type":"reviewer"` exits 0; `"subagent_type":"explorer"` exits 0.
 - With no flag: the lead-programmer-target pipe exits 0.
-- The original pair still blocks: `printf '{"agent_type":"lead-programmer","tool_input":{"subagent_type":"reviewer"}}' | hooks/scripts/reviewer-route-gate.sh` exits 2 (regression guard, mirrors setup-personas SKILL.md:436-440).
+- The original pair still blocks: `printf '{"agent_type":"lead-programmer","tool_input":{"subagent_type":"reviewer"}}' | hooks/scripts/reviewer-route-gate.sh` exits 2 (regression guard, mirrors install-antislop SKILL.md:436-440).
 - `bash -n hooks/scripts/reviewer-route-gate.sh` exits 0.
 
 **Suggested model:** sonnet
@@ -440,7 +440,7 @@ pending-review mechanism as the new mechanical backstop and mark the
 orchestrator drift surface "partially closed"; PASS-marker bullet :254-258 —
 v2 format; "Removing AntiSlop" :217-218 — add `.claude/.pending-review.*`
 and `.claude/review-audit.log`; Known-limitations :301-307 per step 4),
-`skills/setup-personas/SKILL.md` (step 10 hook-verification: add sub-bullets
+`skills/install-antislop/SKILL.md` (step 10 hook-verification: add sub-bullets
 piping the step-2/5/6 synthetic payloads, mirroring the existing style at
 :409-440; step 9 gitignore list), `CONTRIBUTING.md` only if it enumerates
 hook scripts (verify with grep; expected no-op).
@@ -450,7 +450,7 @@ no new design decisions.
 
 **Acceptance criteria:**
 - `grep -q '.claude/.pending-review' README.md && grep -q 'review-audit.log' README.md` exits 0.
-- `grep -q 'pending-review' skills/setup-personas/SKILL.md` exits 0.
+- `grep -q 'pending-review' skills/install-antislop/SKILL.md` exits 0.
 - `grep -c 'touch .claude/reviewed' README.md commands/start-feature-team.md templates/persona-protocol.md` totals 0 (no doc still teaches the bare touch).
 - `tests/validate.sh` exits 0.
 
@@ -512,7 +512,7 @@ steps 1–7, re-grep them):
 - `templates/persona-protocol.md` (:85 retrieval contract, :149 memory note).
 - `templates/researcher.md.tmpl` (:3 description, :35).
 - `commands/start-feature-team.md` (:11, :14, :22, :62).
-- `skills/setup-personas/SKILL.md`: selection bullets (:75-76, :89-95 —
+- `skills/install-antislop/SKILL.md`: selection bullets (:75-76, :89-95 —
   keep the milestone-auditor bullet's "second, orthogonal safety property"
   argument intact, only the name changes), :152-153, :162, :176-177; and
   section 11 `--update` (:444-474) gets an explicit migration rule: "if the
@@ -543,7 +543,7 @@ skew possible).
 - `grep -rni 'planner' agents/ bin/ templates/ skills/ commands/ tests/ eval/harness/ eval/variants/ .claude-plugin/ README.md CONTRIBUTING.md | grep -viE 'deprecat|legacy|formerly|migrat'` produces zero lines (the only surviving mentions are the deprecation-mapping/migration ones).
 - `node -e "const c=require('fs').readFileSync('bin/cli.js','utf8'); process.exit(/OPTIONAL_PERSONAS = \['hivemind', 'repo-historian', 'reviewer', 'milestone-auditor'\]/.test(c)?0:1)"` exits 0.
 - In a scratch dir: `node bin/cli.js --personas=planner,reviewer` exits 0, prints a deprecation note (`grep -qi deprecat` on captured output), and results in `.claude/agents/hivemind.md` + `.claude/agents/reviewer.md` copied, NO `.claude/agents/planner.md`, and `node -e "const s=require('./.claude/persona-config.json').personaSelection; process.exit(s.includes('hivemind') && !s.includes('planner') ? 0 : 1)"` exits 0.
-- `sed -n '/## 11/,/## 12/p' skills/setup-personas/SKILL.md | grep -q 'planner'` exits 0 (the migration rule names the legacy token).
+- `sed -n '/## 11/,/## 12/p' skills/install-antislop/SKILL.md | grep -q 'planner'` exits 0 (the migration rule names the legacy token).
 - `tests/validate.sh` exits 0 (its conditional-phrasing loop now checks `hivemind`: `grep -q 'hivemind' tests/validate.sh` exits 0).
 
 **Suggested model:** sonnet

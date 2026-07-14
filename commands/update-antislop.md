@@ -21,14 +21,17 @@ instead (same script, no plugin/skill needed).
      verbatim and stop; don't re-derive or duplicate it in prose.
    - **1** — hard stop, read the printed message; it's one of two cases:
      - No `.claude/persona-config.json` found: tell the user to run
-       `/antislop:setup-personas` (a fresh install) instead — do not
+       `/antislop:install-antislop` (a fresh install) instead — do not
        improvise a setup here.
-     - `persona-config.json` predates the deterministic path (missing
-       `substitutions`/`fileHashes`): invoke the `/antislop:setup-personas`
-       skill exactly as if called with `--update`. Its own routing sends
-       `--update` to section 11, which handles this exact fallback case and
-       backfills `substitutions`/`fileHashes` — so every future update for
-       this project runs through the script above with zero tokens.
+     - A specific file or substitution slot named as unresolvable: the script
+       already auto-backfills legacy `substitutions`/`fileHashes` from disk on
+       its own (zero tokens) — this exit only happens for a genuinely narrow
+       remaining gap it couldn't derive (e.g. one `<MATTPOCOCK:slot>` mapping,
+       or an MCP launch command never wired). Invoke the
+       `/antislop:install-antislop` skill exactly as if called with `--update`;
+       its own routing runs the script again first, then reads
+       `skills/install-antislop/update-fallback.md` to resolve just that one
+       gap — not a full re-adapt.
    - **2** — N file(s) diverged from a fresh copy; their diffs are already
      printed to stdout. For each one:
      - Show the user its diff (already printed above — don't re-derive or

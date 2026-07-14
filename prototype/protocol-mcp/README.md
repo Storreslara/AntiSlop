@@ -64,5 +64,5 @@ a net loss in practice, not a win.
   layout, and it's a reasonable improvement to `persona-protocol.md`'s
   maintainability on its own, independent of the token question.
 - None of the shipped plugin files were touched — this lives entirely under
-  `prototype/` so it doesn't affect `setup-personas`, the real
+  `prototype/` so it doesn't affect `install-antislop`, the real
   `persona-protocol.md`, or any agent file.

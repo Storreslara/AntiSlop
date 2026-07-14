@@ -8,11 +8,11 @@ tools: Read, Bash, Grep, WebFetch, WebSearch, SendMessage
 mcpServers:
   - arxiv:
       type: stdio
-      <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>
+      <REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>
 ---
 <!-- NOT shipped as a plugin agent: plugin subagents ignore the `mcpServers`
      frontmatter field entirely (Claude Code plugin security restriction), so
-     this file only works as a PROJECT-scoped agent. The setup-personas
+     this file only works as a PROJECT-scoped agent. The install-antislop
      skill copies this template into .claude/agents/researcher.md with the
      real arXiv MCP launch command substituted. If no working arXiv MCP can
      be found, ADAPT removes the `mcpServers:` field and adds a line below

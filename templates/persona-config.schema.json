@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "persona-config",
-  "description": "Copied to .claude/persona-config.json by setup-personas. The hook scripts read this at runtime via ${CLAUDE_PLUGIN_ROOT}-relative scripts + a project-relative config path, so the plugin's hook scripts stay generic across every project.",
+  "description": "Copied to .claude/persona-config.json by install-antislop. The hook scripts read this at runtime via ${CLAUDE_PLUGIN_ROOT}-relative scripts + a project-relative config path, so the plugin's hook scripts stay generic across every project.",
   "type": "object",
   "properties": {
     "testAndLintCommand": {
@@ -34,12 +34,12 @@
     },
     "pluginVersion": {
       "type": "string",
-      "description": "The antislop plugin version this project was last ADAPTed/updated at, stamped by setup-personas. Compared against the installed plugin's current version by the SessionStart drift-check hook."
+      "description": "The antislop plugin version this project was last ADAPTed/updated at, stamped by install-antislop. Compared against the installed plugin's current version by the SessionStart drift-check hook."
     },
     "personaSelection": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Which optional personas (hivemind, repo-historian, reviewer, researcher, milestone-auditor) this project chose to include, recorded by setup-personas' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
+      "description": "Which optional personas (hivemind, repo-historian, reviewer, researcher, milestone-auditor) this project chose to include, recorded by install-antislop' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
     },
     "issueTracker": {
       "type": "string",
@@ -47,7 +47,7 @@
     },
     "substitutions": {
       "type": "object",
-      "description": "Deterministic substitution values recorded at ADAPT time so `bin/cli.js --update` can regenerate a byte-identical fresh copy of each version-stamped file directly from the plugin's own source, with no LLM involved. Absent (or missing sub-fields) on projects adapted before this field existed - `--update` falls back to the LLM-driven `/setup-personas --update` flow for those, which also backfills this field.",
+      "description": "Deterministic substitution values recorded at ADAPT time so `bin/cli.js --update` can regenerate a byte-identical fresh copy of each version-stamped file directly from the plugin's own source, with no LLM involved. Absent (or missing sub-fields) on projects adapted before this field existed - `--update` falls back to the LLM-driven `/install-antislop --update` flow for those, which also backfills this field.",
       "properties": {
         "mattpocockSkills": {
           "type": "object",
@@ -61,7 +61,7 @@
             "args": { "type": "array", "items": { "type": "string" } },
             "env": { "type": "object", "additionalProperties": { "type": "string" } }
           },
-          "description": "The code-review-graph MCP launch command inlined into explorer.md's mcpServers frontmatter at ADAPT time (setup-personas step 4, or `bin/cli.js --wire-graph-mcp`, which extracts this straight from the tool-generated project-wide .mcp.json). `env` is optional and only present if the server's .mcp.json entry had one. Null if the graph was never wired."
+          "description": "The code-review-graph MCP launch command inlined into explorer.md's mcpServers frontmatter at ADAPT time (install-antislop step 4, or `bin/cli.js --wire-graph-mcp`, which extracts this straight from the tool-generated project-wide .mcp.json). `env` is optional and only present if the server's .mcp.json entry had one. Null if the graph was never wired."
         },
         "arxivMcpLaunch": {
           "type": ["object", "null"],
@@ -70,7 +70,7 @@
             "args": { "type": "array", "items": { "type": "string" } },
             "env": { "type": "object", "additionalProperties": { "type": "string" } }
           },
-          "description": "The arXiv MCP launch command inlined into researcher.md's mcpServers frontmatter (setup-personas step 5, or `bin/cli.js --wire-arxiv-mcp <server-key>` once a server is installed). Null if researcher wasn't selected, or was selected but no working MCP was found (WebFetch/WebSearch fallback mode)."
+          "description": "The arXiv MCP launch command inlined into researcher.md's mcpServers frontmatter (install-antislop step 5, or `bin/cli.js --wire-arxiv-mcp <server-key>` once a server is installed). Null if researcher wasn't selected, or was selected but no working MCP was found (WebFetch/WebSearch fallback mode)."
         }
       }
     },

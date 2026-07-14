@@ -46,12 +46,18 @@
 #     determined agent can still write a bogus reason - but it closes the
 #     silent, invisible bare-touch bypass that existed before.
 #  2.5) a gated agent's SubagentStop that reaches this point (i.e. NOT
-#     honored by a WIP sentinel at step 2) -> SET
-#     .claude/.pending-review.<agent_id>, regardless of whether step 3/4
-#     below then allows or blocks this same stop. This is the default-mode
-#     "done = reviewer PASS" backstop: a hook cannot force the orchestrator's
-#     next action, but it can block turn-end (here) and the next
-#     implementation dispatch (reviewer-route-gate.sh) while the flag stands.
+#     honored by a WIP sentinel at step 2) -> CREATE
+#     .claude/.pending-review.<agent_id> if it doesn't already exist,
+#     regardless of whether step 3/4 below then allows or blocks this same
+#     stop. Idempotent by design: a unit with multiple check-in SubagentStops
+#     (e.g. a long-running lead-programmer resumed several times) must not
+#     have a later check-in's flag-creation clobber a defer:/skip: reason the
+#     main session already wrote into the flag at step 0.75 - only the first
+#     SubagentStop for a given agent_id creates the flag; subsequent ones are
+#     no-ops here. This is the default-mode "done = reviewer PASS" backstop:
+#     a hook cannot force the orchestrator's next action, but it can block
+#     turn-end (here) and the next implementation dispatch
+#     (reviewer-route-gate.sh) while the flag stands.
 #  3) tree clean AND no commits since this session's baseline -> ALLOW.
 #  4) otherwise run the configured test+lint command; non-zero exit -> BLOCK.
 # Step 3's baseline check closes a gap where a lead-programmer that commits
@@ -150,7 +156,7 @@ fi
 
 if [ "$hook_event" = "SubagentStop" ]; then
   pending_flag="${project_dir}/.claude/.pending-review.${agent_id}"
-  printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
+  [ -f "$pending_flag" ] || printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
 fi
 
 dirty=false

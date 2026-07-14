@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Skill, SendMessage
 mcpServers:
   - code-review-graph:
       type: stdio
-      <REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>
+      <REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>
 maxTurns: 10
 ---
 <!-- No `memory:` — stateless by design. `mcpServers` is inlined here

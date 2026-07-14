@@ -26,7 +26,8 @@
 #  0.75) main stop with any pending-review flag -> BLOCK (defer:/skip: escape).
 #  1) non-gated stop/subagentStop -> ALLOW immediately.
 #  2) per-agent WIP sentinel with a non-empty reason -> log, delete, ALLOW.
-#  2.5) a gated subagentStop reaching here -> SET the pending-review flag.
+#  2.5) a gated subagentStop reaching here -> CREATE the pending-review flag
+#     if absent (idempotent: does not clobber an existing defer:/skip:).
 #  3) tree clean AND no commits since baseline -> ALLOW.
 #  4) otherwise run the configured test+lint command; non-zero -> BLOCK.
 set -euo pipefail
@@ -116,7 +117,7 @@ fi
 
 if [ "$hook_event" = "subagentStop" ]; then
   pending_flag="${project_dir}/.cursor/.pending-review.${agent_id}"
-  printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
+  [ -f "$pending_flag" ] || printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
 fi
 
 dirty=false

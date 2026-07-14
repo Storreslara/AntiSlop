@@ -8,7 +8,7 @@
 // resync and MCP rescoping — it deliberately does NOT do the
 // judgment-driven half (repo-specific test/lint commands, protected paths,
 // third-party skill NAME selection, CLAUDE.md pruning, hook verification).
-// That half still lives in skills/setup-personas/SKILL.md, which this CLI
+// That half still lives in skills/install-antislop/SKILL.md, which this CLI
 // copies project-locally and tells you to run next. See --update and
 // --wire-graph-mcp/--wire-arxiv-mcp below for the zero-LLM resync path.
 
@@ -181,8 +181,10 @@ function applyMattpocockSubs(body, mattpocockSkills, fileLabel) {
     if (!(slot in map)) {
       throw new Error(
         `No recorded substitution for <MATTPOCOCK:${slot}> in ${fileLabel} — ` +
-          "persona-config.json's substitutions.mattpocockSkills is incomplete. Run " +
-          '/antislop:setup-personas --update once to re-derive and backfill it.'
+          "persona-config.json's substitutions.mattpocockSkills is incomplete and this " +
+          "plugin's --update couldn't auto-derive it from what's on disk. Add " +
+          `"${slot}": "<the mattpocock skill's registered name>" to that map yourself ` +
+          '(list installed skill names via `.claude/skills/*/SKILL.md` frontmatter), then re-run --update.'
       );
     }
     return map[slot];
@@ -204,8 +206,8 @@ function applyMcpPlaceholder(body, placeholder, launch, fileLabel) {
   if (!launch) {
     throw new Error(
       `${fileLabel} still has the ${placeholder} placeholder but no launch command is ` +
-        'recorded in persona-config.json\'s substitutions — run /antislop:setup-personas ' +
-        '--update once (or bin/cli.js --wire-graph-mcp / --wire-arxiv-mcp) to wire it.'
+        "recorded in persona-config.json's substitutions — run `bin/cli.js --wire-graph-mcp` " +
+        '(or `--wire-arxiv-mcp=<server-key>`) to wire it, then re-run --update.'
     );
   }
   const lineRe = new RegExp(`^([ \\t]*)${escapeRegExp(placeholder)}\\r?\\n?`, 'm');
@@ -223,6 +225,181 @@ function applyArxivFallback(body) {
   if (!fmMatch) return ARXIV_FALLBACK_NOTE + stripped;
   const end = fmMatch[0].length;
   return stripped.slice(0, end) + ARXIV_FALLBACK_NOTE + stripped.slice(end);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy backfill (projects adapted before v0.6.4, whose persona-config.json
+// has no `substitutions`/`fileHashes`): reverse-derive both, deterministically,
+// from whatever's already on disk, instead of forcing the whole project onto
+// the LLM-driven fallback. Best-effort — ADAPT substitution is a literal
+// `<MATTPOCOCK:slot>` -> resolved-name (or placeholder-line -> rendered MCP
+// block) text swap with no other prose changes (see install-antislop SKILL.md),
+// so a project adapted at the CURRENT plugin version's persona files can
+// always be derived this way; a project several versions behind may have
+// some individual slots whose surrounding prose has since been reworded —
+// those are left undetermined here and surfaced per-file, non-fatally, by
+// the (now resilient) render loop below rather than guessed at.
+// ---------------------------------------------------------------------------
+
+function normalizeEol(s) {
+  return s.replace(/\r\n/g, '\n');
+}
+
+// Diffs one plugin-source persona file (still containing <MATTPOCOCK:slot>
+// tokens) against the project's already-substituted copy, line by line: each
+// source line containing placeholder(s) becomes a regex (literal text
+// escaped, each placeholder -> a capture group), searched for across the
+// ENTIRE current file (not by line number — unrelated lines may have shifted
+// between the version this project was adapted at and the plugin's current
+// source). Ambiguous (0 or >1 matching lines) or conflicting (same slot
+// resolves to two different values across files) slots are left unresolved
+// rather than guessed.
+function deriveMattpocockSubsForFile(sourceBody, currentBody) {
+  const resolved = {};
+  const unresolvedSlots = new Set();
+  const normalizedCurrent = normalizeEol(currentBody);
+  const sourceLines = normalizeEol(sourceBody).split('\n');
+
+  for (const line of sourceLines) {
+    MATTPOCOCK_RE.lastIndex = 0;
+    if (!MATTPOCOCK_RE.test(line)) continue;
+
+    MATTPOCOCK_RE.lastIndex = 0;
+    let pattern = '';
+    let lastIndex = 0;
+    const slotsInLine = [];
+    let m;
+    while ((m = MATTPOCOCK_RE.exec(line)) !== null) {
+      pattern += escapeRegExp(line.slice(lastIndex, m.index)) + '(\\S+?)';
+      slotsInLine.push(m[1]);
+      lastIndex = m.index + m[0].length;
+    }
+    pattern += escapeRegExp(line.slice(lastIndex));
+
+    const matches = [...normalizedCurrent.matchAll(new RegExp('^' + pattern + '$', 'gm'))];
+    if (matches.length !== 1) {
+      for (const slot of slotsInLine) unresolvedSlots.add(slot);
+      continue;
+    }
+    slotsInLine.forEach((slot, i) => {
+      const value = matches[0][i + 1];
+      if (slot in resolved && resolved[slot] !== value) {
+        unresolvedSlots.add(slot);
+        delete resolved[slot];
+        return;
+      }
+      if (!unresolvedSlots.has(slot)) resolved[slot] = value;
+    });
+  }
+  return { resolved, unresolvedSlots: [...unresolvedSlots] };
+}
+
+// Reverse of renderMcpBlock: parses an already-rendered mcpServers: block
+// back into { command, args, env }. Reuses applyArxivFallback's block-capture
+// idiom (stop at the first line that returns to zero indent — mcpServers: is
+// not guaranteed to be the last frontmatter key, e.g. explorer.md's
+// `maxTurns:` follows it). Hand-rolled on purpose: this only ever needs to
+// parse the fixed, single-server shape this file's own renderMcpBlock writes,
+// not general YAML.
+function deriveMcpLaunchFromDisk(body) {
+  const blockMatch = normalizeEol(body).match(/\nmcpServers:\n((?:[ \t]+\S.*\n?)+)/);
+  if (!blockMatch) return undefined;
+
+  const lines = blockMatch[1].split('\n').filter((l) => l.trim().length > 0);
+  let command;
+  const args = [];
+  const env = {};
+  let mode = null; // null | 'args' | 'env'
+
+  for (const rawLine of lines) {
+    const t = rawLine.trim();
+    if (t.startsWith('command:')) {
+      command = t.slice('command:'.length).trim();
+      mode = null;
+    } else if (t === 'args:') {
+      mode = 'args';
+    } else if (t === 'env:') {
+      mode = 'env';
+    } else if (mode === 'args' && t.startsWith('- ')) {
+      args.push(t.slice(2).trim());
+    } else if (mode === 'env') {
+      const kv = t.match(/^([^:\s][^:]*):\s*(.*)$/);
+      if (kv) env[kv[1]] = kv[2];
+    }
+    // else: `- code-review-graph:` / `type: stdio` — expected, skip.
+  }
+
+  if (!command) return undefined;
+  const launch = { command, args };
+  if (Object.keys(env).length > 0) launch.env = env;
+  return launch;
+}
+
+// Fills in only whatever substitutions.* keys are currently ABSENT (never
+// overwrites an already-recorded value, including a deliberate `null` for
+// "researcher wasn't wired" — hasOwnProperty, not truthiness, so that `null`
+// isn't mistaken for "missing"). Returns whether anything changed.
+function backfillSubstitutionsFromDisk(config, specs) {
+  config.substitutions = config.substitutions || {};
+  config.substitutions.mattpocockSkills = config.substitutions.mattpocockSkills || {};
+  let changed = false;
+
+  for (const spec of specs) {
+    const destAbsPath = path.join(CWD, spec.projectRelPath);
+    if (!fs.existsSync(destAbsPath)) continue;
+    const sourceBody = fs.readFileSync(spec.sourceAbsPath, 'utf8');
+    if (!sourceBody.includes('<MATTPOCOCK:')) continue; // plain substring check — MATTPOCOCK_RE is a shared /g regex, unsafe to .test() without a lastIndex reset
+    const currentBody = stripStamp(fs.readFileSync(destAbsPath, 'utf8'));
+    const { resolved } = deriveMattpocockSubsForFile(sourceBody, currentBody);
+    for (const [slot, value] of Object.entries(resolved)) {
+      if (slot in config.substitutions.mattpocockSkills) continue;
+      config.substitutions.mattpocockSkills[slot] = value;
+      changed = true;
+    }
+  }
+
+  const mcpTargets = [
+    { relPath: '.claude/agents/explorer.md', field: 'graphMcpLaunch', placeholder: '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>' },
+    { relPath: '.claude/agents/researcher.md', field: 'arxivMcpLaunch', placeholder: '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>' },
+  ];
+  for (const t of mcpTargets) {
+    if (Object.prototype.hasOwnProperty.call(config.substitutions, t.field)) continue;
+    const destAbsPath = path.join(CWD, t.relPath);
+    if (!fs.existsSync(destAbsPath)) continue;
+    const body = fs.readFileSync(destAbsPath, 'utf8');
+    if (body.includes(t.placeholder)) continue; // never wired — nothing to reverse-engineer
+    if (t.field === 'arxivMcpLaunch' && body.includes(ARXIV_FALLBACK_NOTE)) {
+      config.substitutions[t.field] = null;
+      changed = true;
+      continue;
+    }
+    const launch = deriveMcpLaunchFromDisk(body);
+    if (launch) {
+      config.substitutions[t.field] = launch;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+// Bootstraps fileHashes for whatever files exist on disk but have no
+// recorded baseline yet: adopts current content as "known-clean" (there's no
+// earlier baseline to compare against). A one-time transitional gap — if this
+// project had genuine hand-edits predating fileHashes existing at all, this
+// run treats them as the new clean baseline rather than flagging them; the
+// caller logs this loudly rather than silently.
+function backfillFileHashesFromDisk(config, specs) {
+  config.fileHashes = config.fileHashes || {};
+  let changed = false;
+  for (const spec of specs) {
+    const relKey = spec.projectRelPath;
+    if (relKey in config.fileHashes) continue;
+    const destAbsPath = path.join(CWD, relKey);
+    if (!fs.existsSync(destAbsPath)) continue;
+    config.fileHashes[relKey] = sha256Hex(stripStamp(fs.readFileSync(destAbsPath, 'utf8')));
+    changed = true;
+  }
+  return changed;
 }
 
 function copyStampedBody(destAbsPath, body, version, sourceRelPath) {
@@ -270,7 +447,7 @@ function renderCleanBody(spec, config) {
   if (spec.kind === 'graph') {
     body = applyMcpPlaceholder(
       body,
-      '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>',
+      '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>',
       (config.substitutions || {}).graphMcpLaunch,
       spec.projectRelPath
     );
@@ -279,7 +456,7 @@ function renderCleanBody(spec, config) {
     if (launch === null || launch === undefined) {
       body = applyArxivFallback(body);
     } else {
-      body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>', launch, spec.projectRelPath);
+      body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>', launch, spec.projectRelPath);
     }
   }
   return body;
@@ -306,7 +483,7 @@ async function runUpdate(args) {
   if (!fs.existsSync(configPath)) {
     console.log(
       'No .claude/persona-config.json found — this project was never adapted. Run ' +
-        '/antislop:setup-personas (a fresh install) instead of --update.'
+        '/antislop:install-antislop (a fresh install) instead of --update.'
     );
     process.exit(1);
   }
@@ -321,20 +498,30 @@ async function runUpdate(args) {
     if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
   }
 
-  if (config.pluginVersion === version && !hadLegacyToken) {
-    console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
-    return;
+  const specs = buildFileSpecs(personaSelection);
+
+  // Legacy backfill: derive whatever substitutions/fileHashes entries are
+  // missing from what's already on disk — deterministic, zero LLM cost. Runs
+  // unconditionally (cheap, idempotent no-op once fully populated) rather
+  // than being gated behind an existence check, so it also fills gaps left
+  // by a prior partial run (e.g. --wire-graph-mcp ran but mattpocockSkills
+  // never got backfilled).
+  const backfilledSubs = backfillSubstitutionsFromDisk(config, specs);
+  const backfilledHashes = backfillFileHashesFromDisk(config, specs);
+  const backfilled = backfilledSubs || backfilledHashes;
+  if (backfilled) {
+    console.log(
+      'Note: persona-config.json was missing some substitutions/fileHashes entries ' +
+        '(this project predates plugin v0.6.4) — auto-backfilled what could be ' +
+        'determined from the files already on disk, continuing at zero LLM cost. If you ' +
+        'had hand-edited any persona files before now, diff against git history to confirm ' +
+        'nothing was silently treated as "clean baseline" incorrectly by this one-time bootstrap.\n'
+    );
   }
 
-  if (!config.substitutions || !config.fileHashes) {
-    console.log(
-      'This project predates the deterministic --update path (persona-config.json is ' +
-        'missing `substitutions`/`fileHashes`). Falling back to the LLM-driven flow this ' +
-        'once: run `/antislop:setup-personas --update` (marketplace) or bare ' +
-        '`/setup-personas --update` (npx) — it will backfill these fields so future ' +
-        'updates can run through this CLI with zero token cost.'
-    );
-    process.exit(1);
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled) {
+    console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
+    return;
   }
 
   const acceptFlag = args.find((a) => a.startsWith('--accept='));
@@ -344,9 +531,9 @@ async function runUpdate(args) {
   const acceptAll = acceptList.includes('all');
   const keepAll = keepList.includes('all');
 
-  const specs = buildFileSpecs(personaSelection);
   const newFileHashes = Object.assign({}, config.fileHashes);
   const pending = [];
+  const unresolvedRender = [];
   const summary = [];
 
   for (const spec of specs) {
@@ -354,8 +541,8 @@ async function runUpdate(args) {
     try {
       cleanBody = renderCleanBody(spec, config);
     } catch (err) {
-      console.error(`antislop --update failed: ${err.message}`);
-      process.exit(1);
+      unresolvedRender.push({ relKey: spec.projectRelPath, message: err.message });
+      continue;
     }
     const cleanHash = sha256Hex(cleanBody);
     const destAbsPath = path.join(CWD, spec.projectRelPath);
@@ -412,16 +599,25 @@ async function runUpdate(args) {
       printUnifiedDiff(p.currentStripped, p.cleanBody, p.relKey);
       console.log('');
     }
+  }
+
+  if (pending.length > 0 || unresolvedRender.length > 0) {
     config.fileHashes = newFileHashes;
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
     console.log(summary.join('\n'));
-    console.log(
-      `\n${pending.length} file(s) pending. Re-run with --accept=<path,path> (overwrite with the ` +
-        'regenerated version) or --keep=<path,path> (keep local edits for now — you will be asked ' +
-        'again on the next drift, by design) for each — or --accept=all / --keep=all. pluginVersion ' +
-        'stays unbumped until every file is resolved.'
-    );
-    process.exit(2);
+    if (pending.length > 0) {
+      console.log(
+        `\n${pending.length} file(s) pending. Re-run with --accept=<path,path> (overwrite with the ` +
+          'regenerated version) or --keep=<path,path> (keep local edits for now — you will be asked ' +
+          'again on the next drift, by design) for each — or --accept=all / --keep=all.'
+      );
+    }
+    if (unresolvedRender.length > 0) {
+      console.log(`\n${unresolvedRender.length} file(s) could not be rendered — missing substitution data:\n`);
+      for (const u of unresolvedRender) console.log(`  ${u.relKey}: ${u.message}`);
+    }
+    console.log('\npluginVersion stays unbumped until every file above is resolved.');
+    process.exit(unresolvedRender.length > 0 ? 1 : 2);
   }
 
   config.fileHashes = newFileHashes;
@@ -459,7 +655,7 @@ async function runWireMcp(kind, args) {
   if (kind === 'graph') {
     serverKey = 'code-review-graph';
     targetFile = path.join(CWD, '.claude', 'agents', 'explorer.md');
-    placeholder = '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>';
+    placeholder = '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>';
     substitutionField = 'graphMcpLaunch';
   } else {
     const keyFlag = args.find((a) => a.startsWith('--wire-arxiv-mcp='));
@@ -472,7 +668,7 @@ async function runWireMcp(kind, args) {
       process.exit(1);
     }
     targetFile = path.join(CWD, '.claude', 'agents', 'researcher.md');
-    placeholder = '<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_5>';
+    placeholder = '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>';
     substitutionField = 'arxivMcpLaunch';
   }
 
@@ -733,8 +929,8 @@ async function main() {
         'A .claude/persona-config.json already exists here — this looks like an ' +
           'existing install, not a fresh one. This CLI only does fresh scaffolding; ' +
           'for re-syncing an already-adapted project against a newer version, run ' +
-          'the /setup-personas skill with --update instead (it diffs before ' +
-          'overwriting, this CLI does not), or re-run this CLI with --overwrite to ' +
+          '`node bin/cli.js --update` instead (it diffs before overwriting, this ' +
+          'scaffolding path does not), or re-run this CLI with --overwrite to ' +
           're-copy the mechanical files (agents, hooks, skills, protocol) unconditionally. ' +
           'Exiting without changes.'
       );
@@ -823,7 +1019,7 @@ async function main() {
     let researcherSelected = await askYesNo(
       rl,
       '\nInclude researcher (bridges academic literature via an arXiv MCP; needs ' +
-        'a real MCP launch command wired in later via /setup-personas)?',
+        'a real MCP launch command wired in later via /install-antislop)?',
       false
     );
     selected._researcher = researcherSelected;
@@ -857,7 +1053,7 @@ async function main() {
     const src = path.join(PKG_ROOT, 'templates', 'researcher.md.tmpl');
     const dest = path.join(agentsDir, 'researcher.md');
     copyStamped(src, dest, version, 'templates/researcher.md.tmpl');
-    console.log('  templates/researcher.md.tmpl -> .claude/agents/researcher.md (mcpServers placeholder still needs a real launch command — /setup-personas step 5 handles this)');
+    console.log('  templates/researcher.md.tmpl -> .claude/agents/researcher.md (mcpServers placeholder still needs a real launch command — /install-antislop step 5 handles this)');
   }
 
   copyStamped(
@@ -878,9 +1074,9 @@ async function main() {
   copyDirRecursive(path.join(PKG_ROOT, 'hooks', 'scripts'), hooksScriptsDir);
   console.log('  hooks/scripts/*.sh -> .claude/hooks/scripts/');
 
-  copyDirRecursive(path.join(PKG_ROOT, 'skills', 'setup-personas'), path.join(skillsDir, 'setup-personas'));
+  copyDirRecursive(path.join(PKG_ROOT, 'skills', 'install-antislop'), path.join(skillsDir, 'install-antislop'));
   copyDirRecursive(path.join(PKG_ROOT, 'skills', 'coding-discipline'), path.join(skillsDir, 'coding-discipline'));
-  console.log('  skills/setup-personas, skills/coding-discipline -> .claude/skills/ (invoke /setup-personas next)');
+  console.log('  skills/install-antislop, skills/coding-discipline -> .claude/skills/ (invoke /install-antislop next)');
 
   const rawHooksJson = fs.readFileSync(path.join(PKG_ROOT, 'hooks', 'hooks.json'), 'utf8');
   const hooksConfig = JSON.parse(
@@ -928,7 +1124,7 @@ async function main() {
     // --overwrite over an existing install: preserve every judgment-driven
     // field (testAndLintCommand, protectedPaths, etc.) exactly as recorded —
     // this CLI has no way to re-derive those from a repo scan, only
-    // /setup-personas --update does. Only refresh what a plain re-copy of
+    // /install-antislop --update does. Only refresh what a plain re-copy of
     // the mechanical files actually implies: the selection (if explicitly
     // overridden) and the version stamp.
     existingPersonaConfig.personaSelection = personaSelection;
@@ -948,7 +1144,7 @@ async function main() {
       issueTracker: '',
     };
     fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(personaConfig, null, 2) + '\n');
-    console.log('  .claude/persona-config.json written (skeleton — fields blank until /setup-personas fills them in from a real repo scan)');
+    console.log('  .claude/persona-config.json written (skeleton — fields blank until /install-antislop fills them in from a real repo scan)');
   }
 
   const scriptedMode = yesToAll || Boolean(personasFlag) || overwrite;
@@ -969,7 +1165,7 @@ async function main() {
       console.log('  install-deps.sh reported a problem with the mattpocock/skills step — see output above.');
     }
     console.log(
-      '  /setup-personas still needs to record which skills you picked and substitute the ' +
+      '  /install-antislop still needs to record which skills you picked and substitute the ' +
         '<MATTPOCOCK:*> placeholders in the copied persona files — it cannot be inferred from here.'
     );
   } else if (!scriptedMode) {
@@ -995,14 +1191,14 @@ async function main() {
           'persona would inherit it, which is exactly the context-bloat problem this system avoids ' +
           'elsewhere. This CLI deliberately does NOT edit .mcp.json or explorer.md\'s `mcpServers:` ' +
           'placeholder for you (it would mean guessing at a schema this CLI hasn\'t verified against ' +
-          'what got written). /setup-personas step 4 does that rescoping for real — run it next, ' +
+          'what got written). /install-antislop step 4 does that rescoping for real — run it next, ' +
           'don\'t skip straight past this.'
       );
     } else {
       console.log('  install-deps.sh reported a problem with the code-review-graph step — see output above.');
     }
   } else if (!scriptedMode) {
-    console.log('  Skipped — /setup-personas step 4 covers this if you want it done via the LLM-driven flow instead.');
+    console.log('  Skipped — /install-antislop step 4 covers this if you want it done via the LLM-driven flow instead.');
   }
 
   console.log(
@@ -1012,7 +1208,7 @@ async function main() {
       'or run hook verification, because those all need real judgment against ' +
       'THIS repo\'s actual contents, not a deterministic copy.\n\n' +
       'Next step: open Claude Code in this project and run:\n\n' +
-      '  /setup-personas\n\n' +
+      '  /install-antislop\n\n' +
       '(it now exists as a project-local skill from the copy above) to finish ' +
       'the repo-specific config, verify hooks, and fill in persona-config.json ' +
       'for real.'
@@ -1036,4 +1232,8 @@ module.exports = {
   buildFileSpecs,
   renderCleanBody,
   migrateLegacyPersonaTokens,
+  deriveMattpocockSubsForFile,
+  deriveMcpLaunchFromDisk,
+  backfillSubstitutionsFromDisk,
+  backfillFileHashesFromDisk,
 };

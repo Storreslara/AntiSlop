@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # SessionStart. Three jobs, all no-ops if this project never ran
-# setup-personas (no persona-config.json):
+# install-antislop (no persona-config.json):
 #  1) Record this session's starting HEAD sha, so stop-gate.sh can tell
 #     whether commits happened this session even when the tree ends clean.
 #  2) Drift check: compare persona-config.json's stamped pluginVersion

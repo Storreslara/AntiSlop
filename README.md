@@ -64,10 +64,10 @@ hook prose from scratch.
 - **Stop-gate** — the hook that blocks a gated persona's turn from ending
   until the `reviewer` has passed its work; see the design notes below for
   how it's enforced.
-- **ADAPT** — this repo's internal name for what `/setup-personas` does:
+- **ADAPT** — this repo's internal name for what `/install-antislop` does:
   copying and substituting plugin templates into your project's `.claude/`.
   You won't need to say this word to use the plugin; it shows up if you read
-  `skills/setup-personas/SKILL.md` or file an issue.
+  `skills/install-antislop/SKILL.md` or file an issue.
 
 ## Personas
 
@@ -155,9 +155,9 @@ project's `.claude/agents/`, which are never namespaced.
 
 Once per project, run:
 ```
-/antislop:setup-personas
+/antislop:install-antislop
 ```
-(If you scaffolded via `npx` instead of the plugin, the bare `/setup-personas`
+(If you scaffolded via `npx` instead of the plugin, the bare `/install-antislop`
 — no `antislop:` prefix — is what resolves, since it's then a project-local
 skill rather than a plugin one. Same command either way in spirit, just
 whichever name your setup actually registered.)
@@ -189,7 +189,7 @@ use that command, and removed along with everything else if you
 [uninstall](#removing-antislop).
 
 Full step-by-step flow (written for the agent executing it, not light
-reading, but the ground truth if you want it): `skills/setup-personas/SKILL.md`.
+reading, but the ground truth if you want it): `skills/install-antislop/SKILL.md`.
 
 **Note a dated cutoff:** projects whose copied `reviewer.md` still writes the
 old (pre-v0.2.0) bare-`touch` PASS marker get a grace-period warning instead
@@ -205,23 +205,28 @@ This runs a deterministic script (`bin/cli.js --update`), not an LLM flow —
 it regenerates each copied agent file straight from the plugin's current
 source plus the substitutions recorded at setup time, and only touches files
 that are byte-identical to what it already knows is "clean." That costs
-essentially no tokens. A file only ever needs a decision from *you* (never
-the model) when it's genuinely diverged from a fresh copy — it prints the
-diff and asks, it never silently clobbers a local edit. npx-scaffolded
-projects run the same script directly, no plugin needed: `node
-<your-clone>/bin/cli.js --update`. A `SessionStart` hook warns automatically
-when a project's adapted version is behind. (`/antislop:setup-personas
---update` still works — it's now the script's own one-time fallback, for
-projects adapted before this existed.)
+essentially no tokens. Projects adapted before this script existed (missing
+`substitutions`/`fileHashes`) are handled too: it auto-backfills what it can
+determine from the files already on disk, still at zero token cost — no
+"predates the deterministic path" fallback needed in the common case. A file
+only ever needs a decision from *you* (never the model) when it's genuinely
+diverged from a fresh copy — it prints the diff and asks, it never silently
+clobbers a local edit. npx-scaffolded projects run the same script directly,
+no plugin needed: `node <your-clone>/bin/cli.js --update`. A `SessionStart`
+hook warns automatically when a project's adapted version is behind.
+(`/antislop:install-antislop --update` still works, but should rarely be
+needed now — it's a narrow, per-item fallback for the specific gap the
+script names when it can't derive something automatically, not a full
+re-adapt.)
 
 ## npx install (alternative)
 
 This repo doubles as a runnable npm package — not published to the registry,
 so clone it and point `npx` at the local directory. It's a **hybrid**, not a
-replacement for `setup-personas`: the CLI does only the mechanical half (file
+replacement for `install-antislop`: the CLI does only the mechanical half (file
 copying, version-stamping, settings merge). The judgment half — repo-specific
 test/lint commands, protected paths, third-party skill installs, graph/MCP
-wiring, CLAUDE.md pruning, hook verification — still needs `/setup-personas`
+wiring, CLAUDE.md pruning, hook verification — still needs `/install-antislop`
 afterward. The same private-repo, collaborator, and git-auth requirements as
 the plugin flow apply, since it still needs a clone.
 
@@ -235,7 +240,7 @@ path for `~/antislop`):
 cd ~/your-project
 npx ~/antislop
 ```
-It prompts for optional personas the same way `setup-personas` step 1 does
+It prompts for optional personas the same way `install-antislop` step 1 does
 (declining `reviewer` requires typing `skip reviewer`). Non-interactive:
 `--yes` includes every optional persona; `--personas=hivemind,reviewer,researcher`
 includes only the named ones.
@@ -245,8 +250,8 @@ into `.claude/agents/` (version-stamped); copies `persona-protocol.md` and
 `protocol-digest.md`; copies the hook scripts into `.claude/hooks/scripts/` and
 registers them in `.claude/settings.json` with `${CLAUDE_PROJECT_DIR}`-relative
 commands (merged in, never clobbering existing settings); copies the
-`setup-personas` and `coding-discipline` skills project-scoped (so
-`/setup-personas` works with no plugin installed at all); adds the CLAUDE.md
+`install-antislop` and `coding-discipline` skills project-scoped (so
+`/install-antislop` works with no plugin installed at all); adds the CLAUDE.md
 import line; appends the standard `.gitignore` entries; writes a skeleton
 `.claude/persona-config.json`. By default it refuses to run over an existing
 install rather than risk clobbering local edits — use `--update` or
@@ -274,7 +279,7 @@ your stdio, so their interactive prompts show up normally):
   `explorer.md`'s `mcpServers:` frontmatter, removes the project-wide entry,
   and records it in `persona-config.json` for future `--update` runs (same
   idea for the researcher's arXiv MCP: `--wire-arxiv-mcp=<server-key>` once
-  you've installed one). `/setup-personas` steps 4-5 remain the fallback if
+  you've installed one). `/install-antislop` steps 4-5 remain the fallback if
   you'd rather have the LLM inspect what got written and verify the
   connection itself.
 
@@ -286,7 +291,7 @@ Finally, finish setup inside the project:
 cd ~/your-project
 claude
 ```
-then run `/setup-personas` (bare — no `antislop:` prefix, since this route
+then run `/install-antislop` (bare — no `antislop:` prefix, since this route
 never installed the plugin) to fill in the parts that need a real repo scan
 (test/lint commands, protected paths), install third-party skills, build the
 Code Review Graph, and run hook verification. Personas load identically either
@@ -312,7 +317,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 |---|---|
 | Persona agents: orchestrator, explorer, lead-programmer (always); hivemind, repo-historian, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
-| `setup-personas` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
+| `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team`, `update-antislop` commands (plugin-installed projects only) | wiki / CONTEXT.md / docs/adr seeding |
 
@@ -384,7 +389,7 @@ to install or use the plugin.
 
 Several personas lean on external skills and tools installed at setup time.
 Exact registered skill names drift between package versions — treat these as
-the purpose they serve, not a name to search for; `setup-personas` verifies
+the purpose they serve, not a name to search for; `install-antislop` verifies
 the actual installed names on disk rather than trusting this list:
 
 - **[mattpocock/skills](https://github.com/mattpocock/skills)** — installed via
@@ -397,7 +402,7 @@ the actual installed names on disk rather than trusting this list:
   tree-sitter/SQLite structural graph the `explorer` persona queries for
   blast-radius and dependency answers. It's an MCP server (pip/pipx-installed);
   its own `install` command registers project-wide by default, which
-  `setup-personas` step 4 deliberately undoes, re-scoping the connection to
+  `install-antislop` step 4 deliberately undoes, re-scoping the connection to
   `explorer.md`'s own `mcpServers:` frontmatter so it doesn't leak into every
   persona's context (see [`docs/design.md`](docs/design.md) for why that
   matters). The tool also generates
@@ -409,7 +414,7 @@ the actual installed names on disk rather than trusting this list:
   adapted from Andrej Karpathy's public observations on common LLM coding
   pitfalls, as packaged in this repo.
 - **arXiv MCP** — powers the `researcher` persona. Deliberately not pinned to a
-  specific server here; `setup-personas` step 5 has you find and wire in a
+  specific server here; `install-antislop` step 5 has you find and wire in a
   currently-maintained one at setup time, since "currently maintained" is a
   moving target this repo shouldn't hardcode.
 

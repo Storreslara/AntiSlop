@@ -4,7 +4,7 @@
 # tasks prefixed "impl:" require a reviewer PASS marker before completion.
 # Planning/research/documentation tasks pass through ungated. Guards on
 # persona-config.json existing so it never fires in a project that hasn't
-# run setup-personas.
+# run install-antislop.
 #
 # Marker format v2 (agents/reviewer.md's printf, mirroring the WIP-sentinel
 # content-validation precedent at stop-gate.sh:75-85): the marker must be

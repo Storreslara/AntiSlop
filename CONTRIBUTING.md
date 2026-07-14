@@ -30,7 +30,7 @@ usual for this repo:
 - Run `bash tests/validate.sh` before committing — it checks bash syntax,
   JSON validity, agent/skill frontmatter, and that optional-persona
   references stay conditionally phrased.
-- If you touch a hook script, a persona body, or `setup-personas`, re-run the
+- If you touch a hook script, a persona body, or `install-antislop`, re-run the
   empirical smoke test described in README.md's Install section
   (`claude --plugin-dir`) — this plugin has already had real bugs that only
   showed up when actually run against Claude Code, not from reading the

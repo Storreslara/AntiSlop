@@ -1,4 +1,4 @@
-<!-- Copied into the project as .claude/protocol-digest.md by setup-personas,
+<!-- Copied into the project as .claude/protocol-digest.md by install-antislop,
      version-stamped like persona-protocol.md. Re-injected verbatim by
      session-start.sh's SessionStart hook, ONLY on `source: resume`/`compact`
      - never `startup`/`clear`. Keep this under ~15 lines - if it grows,

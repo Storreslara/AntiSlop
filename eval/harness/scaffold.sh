@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Scaffolds a fresh, disposable copy of eval/fixtures/toy-lib-template into
 # DEST, installs the antislop persona system into it non-interactively
-# via bin/cli.js, then fills in the repo-specific config that /setup-personas
+# via bin/cli.js, then fills in the repo-specific config that /install-antislop
 # would normally do interactively (this fixture's commands are already known,
 # so that interactive step is safely skippable here) and wires in the same
 # OTel telemetry env block ~/claude_trace uses, with a fresh project.name so
@@ -63,7 +63,7 @@ PROJECT_NAME="antislop-pilot-$(date +%s%N | sha256sum | head -c8)"
 # so it never touches stdin (bin/cli.js:132-133,150-208,308).
 ( cd "$DEST" && node "$REPO_ROOT/bin/cli.js" --personas=hivemind,reviewer )
 
-# The rest is the judgment-driven half normally done by /setup-personas
+# The rest is the judgment-driven half normally done by /install-antislop
 # interactively — safe to do mechanically here since this fixture's real
 # commands are already known by construction.
 cat > "$DEST/.claude/persona-config.json" <<EOF

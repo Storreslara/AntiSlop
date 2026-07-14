@@ -90,7 +90,7 @@ debugging a surprising interaction.
 - **Persona opt-out is graceful by construction, not by a wizard alone.** Every
   optional-persona cross-reference is phrased conditionally ("if this project
   has a `researcher`... otherwise..."), so a plain file copy degrades gracefully
-  even without per-project text surgery — the wizard in `setup-personas` only
+  even without per-project text surgery — the wizard in `install-antislop` only
   decides which files get copied, it doesn't need to edit anyone's prose.
 - **The copy-vs-plugin-update tension is real, and has a mechanism now.**
   Because bare-name persona resolution requires copying agent files into every
@@ -104,7 +104,7 @@ debugging a surprising interaction.
   `persona-config.json` at ADAPT time, so re-syncing a project against a
   newer plugin version costs no meaningful tokens in the common (no local
   edits) case — it only escalates to a human decision (never an LLM one) for
-  a file that's genuinely diverged. `setup-personas --update`'s section 11 is
+  a file that's genuinely diverged. `install-antislop --update`'s section 11 is
   now that script's one-time fallback, for projects adapted before
   `substitutions`/`fileHashes` existed.
 - **`AskUserQuestion` is unavailable to subagents, even if listed in their

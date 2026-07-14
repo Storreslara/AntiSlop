@@ -1,4 +1,4 @@
-<!-- Copied into the project as .claude/persona-protocol.md by the setup-personas
+<!-- Copied into the project as .claude/persona-protocol.md by the install-antislop
      skill, and pulled into every persona's context via a single
      `@.claude/persona-protocol.md` line in root CLAUDE.md. CLAUDE.md is the
      only channel that reaches both subagents AND agent-teams teammates

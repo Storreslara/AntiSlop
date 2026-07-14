@@ -124,6 +124,15 @@ else
 fi
 
 echo
+echo "== bin/cli.js legacy-backfill logic (Node) =="
+if node tests/cli-backfill.test.js; then
+  echo "OK   tests/cli-backfill.test.js"
+else
+  echo "FAIL tests/cli-backfill.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

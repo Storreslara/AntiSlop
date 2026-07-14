@@ -10,7 +10,7 @@ Source issues (all filed 2026-07-12, all against plugin v0.5.3): #1, #2, #3,
 
 ## Grouping
 
-- **A. `skills/setup-personas/SKILL.md`** — #1, #2, #3, #6 (all in the
+- **A. `skills/install-antislop/SKILL.md`** — #1, #2, #3, #6 (all in the
   judgment-driven ADAPT flow).
 - **B. `hooks/scripts/stop-gate.sh`** — #4 (main-session Stop gating).
 - **C. Harness-level gap, no in-repo fix possible** — #5. Documented
@@ -20,7 +20,7 @@ Source issues (all filed 2026-07-12, all against plugin v0.5.3): #1, #2, #3,
 
 ## A1. Issue #1 — MATTPOCOCK placeholder names don't match real package
 
-**File**: `skills/setup-personas/SKILL.md`, step 3 (lines ~100-131).
+**File**: `skills/install-antislop/SKILL.md`, step 3 (lines ~100-131).
 
 **Defect**: Step 3 tells the agent which mattpocock/skills names to have the
 human select (`grill-me`, `to-issues`, `tdd`, `diagnose`,
@@ -56,11 +56,11 @@ placeholder unresolved, with no error until a persona tries to invoke it.
 
 ## A2. Issue #2 — no automated placeholder sweep before reporting done
 
-**File**: `skills/setup-personas/SKILL.md`, step 12 (report, lines ~360-370),
+**File**: `skills/install-antislop/SKILL.md`, step 12 (report, lines ~360-370),
 plus section 10 (hook verification, lines ~262-329).
 
 **Defect**: Nothing in the flow greps for leftover `<PLACEHOLDER>` tokens
-(`<MATTPOCOCK:*>`, `<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_4>`, etc.)
+(`<MATTPOCOCK:*>`, `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`, etc.)
 before the agent reports success in step 12. Two real, independent defects in
 one adapt run (issue #1's stale mattpocock names, and a leftover MCP
 launch-command placeholder) went undetected until a human manually grepped.
@@ -81,7 +81,7 @@ skipped by an agent that jumps straight to summarizing.
 
 ## A3. Issue #3 — `testAndLintCommand` written without verifying it passes
 
-**File**: `skills/setup-personas/SKILL.md`, step 6 (lines ~192-217).
+**File**: `skills/install-antislop/SKILL.md`, step 6 (lines ~192-217).
 
 **Defect**: Step 6 composes `testAndLintCommand` from the repo's documented
 commands (package.json/Makefile/etc.) and writes it straight into
@@ -112,11 +112,11 @@ pre-existing debt from newly introduced breakage.
 
 ## A4. Issue #6 — no detection/resume guidance when config exists but not `--update`
 
-**File**: `skills/setup-personas/SKILL.md`, section 0 (lines ~23-38).
+**File**: `skills/install-antislop/SKILL.md`, section 0 (lines ~23-38).
 
 **Defect**: Section 0 only handles the Claude Code version gate. There's no
 branch for "a `.claude/persona-config.json` already exists at the *current*
-plugin version, and this invocation is plain `/antislop:setup-personas` (not
+plugin version, and this invocation is plain `/antislop:install-antislop` (not
 `--update`)." The skill falls straight through to the fresh 12-section flow,
 which silently ignores or clobbers a prior partial/uncommitted run, forcing
 the running agent to invent an ad hoc `AskUserQuestion` disambiguation that

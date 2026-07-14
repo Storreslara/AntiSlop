@@ -20,7 +20,7 @@ overlap — A2's regex `<[A-Z0-9_]+(:[a-zA-Z0-9_-]+)?>` already matches
 5. **B** — `stop-gate.sh` unified Stop/SubagentStop branch + header comment + step-10 verification bullet (independent of A).
 6. **C** (issue #5 heartbeat convention) — recommended to **defer** as a separate follow-up, not bundled into this patch (different files, different risk profile, and the spec itself scopes it as optional/low-priority).
 
-## A2 — `skills/setup-personas/SKILL.md` step 12
+## A2 — `skills/install-antislop/SKILL.md` step 12
 
 Insert as the new first bullet of `## 12. Report back`, before the existing
 "State: ..." paragraph:
@@ -42,7 +42,7 @@ legitimate content already in the shipped persona bodies (a quick grep
 against `agents/` and `templates/` during implementation should show only
 known placeholder tokens).
 
-## A1 — `skills/setup-personas/SKILL.md` step 3 (three edits)
+## A1 — `skills/install-antislop/SKILL.md` step 3 (three edits)
 
 **A1-a (lines ~106-115):** rewrite the human-facing skill list to name
 skills *by purpose*, not by an assumed literal name, and flag the two known
@@ -74,7 +74,7 @@ name."
 > Any match is a HARD FAILURE. Fix it (or surface an unresolvable one to the
 > human) before doing any work in sections 4-12.
 
-## A4 — `skills/setup-personas/SKILL.md` new section 0.5
+## A4 — `skills/install-antislop/SKILL.md` new section 0.5
 
 Insert between section 0 (ends line 38) and `## 1. Persona selection`
 (line 40):
@@ -103,7 +103,7 @@ Insert between section 0 (ends line 38) and `## 1. Persona selection`
 >     3. **Full restart** — re-run sections 1-10 from scratch, overwriting.
 >   - Never silently clobber or ignore an existing config; always ask first.
 
-## A3 — `skills/setup-personas/SKILL.md` step 6
+## A3 — `skills/install-antislop/SKILL.md` step 6
 
 Extend the `testAndLintCommand` bullet: after composing it, run it once
 against the current clean tree. Exit 0 → write as-is. Non-zero → do NOT

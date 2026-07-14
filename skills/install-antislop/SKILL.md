@@ -1,5 +1,5 @@
 ---
-name: setup-personas
+name: install-antislop
 description: >
   Adapt the antislop plugin (persona system + hooks + coding-discipline
   skill) to THIS repository. Run once per new project after installing the
@@ -8,9 +8,11 @@ description: >
   arXiv MCP for researcher, repo-specific commands/paths, CLAUDE.md wiring,
   settings merge, wiki seeding, and sandboxed hook verification. Resyncing an
   already-adapted project against a newer plugin version (`--update`) is now
-  a deterministic script (`bin/cli.js --update`, zero LLM cost) — this skill
-  is invoked with `--update` only as that script's fallback, for projects
-  adapted before it existed.
+  a deterministic script (`bin/cli.js --update`, zero LLM cost, including for
+  projects adapted before this existed — it auto-backfills what it needs from
+  disk) — this skill is invoked with `--update` only as that script's
+  fallback, and even then only for the one specific gap it names, not a full
+  re-adapt.
 ---
 <!-- This skill is the entire "ADAPT-PROMPT" that replaces sections 0, 1, 7,
      and 8 of the original monolithic setup prompt. Everything else (the
@@ -125,6 +127,19 @@ phrased conditionally ("if present, otherwise <fallback>") in
 
 ## 3. Third-party skill installs
 
+- **Check both scopes before asking the human to install anything.** Run
+  `npx skills@latest ls -g` (global/user-scope, `~/.claude/skills/` —
+  installed once, visible to the Skill tool in every project regardless of
+  cwd) and, if `.claude/skills/` already exists in this project,
+  `npx skills@latest ls` (project-scope) too. Match what's already listed
+  against the purposes below by name/description, not by assuming a fixed
+  name. Any purpose already covered in EITHER scope is done — record its
+  discovered name straight into the substitution map (step further down) and
+  skip the install instruction entirely for that purpose. A global install
+  satisfies every project; never tell the human to reinstall a purpose
+  that's already present at user scope just because this particular project
+  hasn't installed it locally. Only the genuinely missing purposes fall
+  through to the steps below.
 - **`npx skills@latest add mattpocock/skills` opens an interactive
   terminal menu (pick skills, pick target agents) — it has no documented
   non-interactive/flag-driven mode.** Do NOT run this yourself via Bash and
@@ -154,7 +169,11 @@ phrased conditionally ("if present, otherwise <fallback>") in
   layout). RECORD which issue tracker was chosen — it goes in
   `.claude/persona-config.json`'s `issueTracker` field and hivemind reads
   it via the retrieval contract.
-- These install as a plugin, so their registered names are namespaced. List
+- Registered names are bare (`tdd`, `diagnosing-bugs`, `to-tickets`, …), not
+  namespaced under a `mattpocock-skills:` prefix — confirmed against a live
+  `npx skills@latest ls -g` output and a working substitution
+  (`persona-config.json`'s `mattpocockSkills` map uses `"to-tickets"`, not
+  `"mattpocock-skills:to-tickets"`). List `~/.claude/skills/*/SKILL.md` and
   `.claude/skills/*/SKILL.md` (read each frontmatter `name:` field) and
   record the exact discovered names. This recorded list is the ONLY source
   for the substitution values below — resolve each `<MATTPOCOCK:*>` from a
@@ -178,7 +197,7 @@ phrased conditionally ("if present, otherwise <fallback>") in
   in that body prose instead. Substitute them there the same way.
 - **Record every substitution you just made**: as you resolve each
   `<MATTPOCOCK:slot>` placeholder, add a `slot -> resolved name` entry to a
-  running map (e.g. `{"grill-me": "grill-me", "to-issues": "mattpocock-skills:to-tickets"}`)
+  running map (e.g. `{"grill-me": "grill-me", "to-issues": "to-tickets"}`)
   — record it, step 6's `substitutions` field depends on it.
 
 ### 3b. Fail-fast placeholder check (mattpocock scope)
@@ -418,127 +437,48 @@ subagent — don't run it inline in your own context.**
   conditional below), and skip the repo-historian-turn sub-bullet if
   `repo-historian` wasn't selected.
 - **Delegate whatever remains to a subagent**: spawn one general-purpose
-  subagent with the repo path, the throwaway-branch instruction, the exact
-  sub-bullets that apply (from the conditional scoping above), and the
-  instruction to end with the repo clean and all sentinels/markers removed.
-  Ask it to return ONLY a pass/fail line per sub-bullet plus confirmation the
-  branch was reverted — not the raw hook stderr, jq dumps, or intermediate
-  file contents. That raw output is what makes this section expensive; it
-  doesn't need to live in your context, only the verdict does.
+  subagent with the repo path, the throwaway-branch instruction, a pointer to
+  read `skills/install-antislop/hook-verification.md` for the exact probe
+  script (moved out of this file so it's never loaded here — only the
+  delegated subagent needs it), the exact sub-bullets that apply (from the
+  conditional scoping above), and the instruction to end with the repo clean
+  and all sentinels/markers removed. Ask it to return ONLY a pass/fail line
+  per sub-bullet plus confirmation the branch was reverted — not the raw hook
+  stderr, jq dumps, or intermediate file contents. That raw output is what
+  makes this section expensive; it doesn't need to live in your context, only
+  the verdict does.
 
-On a throwaway branch:
-- Make a trivial edit; confirm `graph-update.sh` and `lint-on-edit.sh` fired
-  (check the graph index timestamp / lint output).
-- Confirm the stop-gate does **NOT** block a trivial explorer or
-  repo-historian turn even with a dirty tree — proof that `gatedAgents`
-  scoping (read from `persona-config.json`, not hardcoded in `hooks.json`) is
-  working and won't strangle the cheap, high-frequency personas.
-  Additionally confirm the stop-gate does NOT block a trivial main-session
-  (orchestrator) Stop even with a dirty tree from an in-flight subagent —
-  this is the regression test for the main-session allowlist; pipe a
-  synthetic `{"hook_event_name":"Stop","session_id":"test"}` into the hook
-  with a dirty tree and a default config and confirm exit 0.
-- Introduce a failing check, end a lead-programmer-style turn, confirm
-  BLOCK; `touch .claude/wip-handoff.<agent-id>` (empty, no reason), confirm
-  it is REJECTED (deleted, but the BLOCK still fires) — this proves the
-  empty-sentinel bypass is actually closed, not just documented as closed.
-  Then `echo "test reason" > .claude/wip-handoff.<agent-id>`, confirm ALLOW,
-  the sentinel is deleted, and the reason appears as a new line in
-  `.claude/wip-audit.log`.
-- Pipe a synthetic `{"session_id":"test","source":"resume"}` into
-  `session-start.sh` directly (real compaction/resume isn't reliably
-  triggerable inside a sandboxed verification run) and confirm the output
-  JSON's `additionalContext` contains `.claude/protocol-digest.md`'s content.
-  Repeat with `"source":"startup"` and confirm additionalContext is empty
-  (no version drift, no digest) — the digest must NOT appear on a fresh
-  start, only resume/compact.
-- Test the protected-paths hook with a dry write against one of the
-  configured `protectedPaths` patterns; confirm BLOCK with the human-approval
-  message (this specifically re-verifies the path-anchoring fix — a pattern
-  like `supabase/migrations/*` must now actually match the tool's absolute
-  file path).
-- If `reviewer` was selected: run one task named `impl:*` through to a
-  reviewer PASS in agent-teams mode and confirm the completion marker write
-  succeeds (no "No such file or directory" error) thanks to step 9's `mkdir`.
-- Pipe a synthetic `{"agent_type":"lead-programmer","tool_input":{"subagent_type":"reviewer"}}`
-  into `reviewer-route-gate.sh` directly and confirm BLOCK; repeat with
-  `subagent_type":"explorer"` and with `"agent_type":"orchestrator"` (target
-  `reviewer`) and confirm both ALLOW — proves the gate only fires for the
-  specific lead-programmer→reviewer pair, not every Agent-tool call.
-- **PASS marker v2 (`task-gate.sh`)**: `touch .claude/reviewed/test.pass`
-  (bare, empty) then pipe `{"task":{"subject":"impl:test","id":"test"}}` into
-  `task-gate.sh` and confirm BLOCK (exit 2) naming the required `printf`
-  format and the `--update` remedy; then write a valid first line —
-  `printf 'PASS test %s criteria: <cmd>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/reviewed/test.pass`
-  — and confirm ALLOW plus a new `marker-accepted` line in
-  `.claude/review-audit.log` — proves the existence-only check is gone.
-- **Pending-review flag (`stop-gate.sh`)**: pipe a synthetic
-  `{"hook_event_name":"SubagentStop","agent_type":"lead-programmer","agent_id":"test"}`
-  and confirm `.claude/.pending-review.test` is created; then pipe
-  `{"hook_event_name":"Stop","session_id":"test"}` and confirm BLOCK
-  ("awaiting review"); then pipe a reviewer `SubagentStop`
-  (`"agent_type":"reviewer"`) and confirm the flag is gone and
-  `cleared-by=reviewer` appears in `.claude/review-audit.log`. Also confirm
-  the `defer: <reason>`/`skip: <reason>` escape hatch: overwriting the flag
-  with `defer: ...` allows that one Stop and keeps the flag; `skip: ...`
-  allows it and deletes the flag; both log to `.claude/review-audit.log`.
-- **Pending-review dispatch block (`reviewer-route-gate.sh`)**: with a
-  `.claude/.pending-review.*` flag present, pipe
-  `{"agent_type":"","tool_input":{"subagent_type":"lead-programmer"}}` and
-  confirm BLOCK; repeat with `"subagent_type":"reviewer"` and confirm
-  ALLOW — proves the next gated-agent dispatch is blocked while a unit
-  awaits review, without blocking the reviewer dispatch itself.
-- Revert the branch completely. Your final turn must end with the repo clean
-  and all sentinels/markers removed.
+## 11. `--update` mode — run the script FIRST, always
 
-## 11. `--update` mode is a script now — this section is the LLM fallback only
+**Your first action, before reading or doing anything else described in this
+section, is to run:**
 
-**Do not run the update logic yourself by default.** `bin/cli.js --update`
-does this deterministically (re-derives every version-stamped file from the
-plugin's own source + the `substitutions` recorded in `persona-config.json`,
-diffs against a recorded `fileHashes` baseline to detect local edits, and
-only ever needs a human decision — not an LLM one — for a file that's
-genuinely diverged) at effectively zero token cost, versus loading this
-entire multi-hundred-line skill file to do the same work by hand. Both entry
-points route there first: `/antislop:update-antislop` (marketplace) shells
-out to `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update`; the npx route runs
-`node <clone>/bin/cli.js --update` directly, no skill invocation at all.
+    node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update
 
-**You only land in this section when the script itself says to**, which
-happens in exactly one case: `persona-config.json` predates this field (no
-`substitutions`/`fileHashes` recorded — the script exits 1 and says so
-explicitly). That means the ADAPT-time bookkeeping steps 3-6 add (recording
-`substitutions.mattpocockSkills`/`graphMcpLaunch`/`arxivMcpLaunch` and
-`fileHashes`) never ran for this project. Do the update the old way, ONE
-TIME, and backfill those fields so the script can take over from here on:
+(npx-scaffolded projects: `node <your-clone>/bin/cli.js --update`.) Do this
+even if you already believe you know why you were invoked with `--update` —
+`bin/cli.js` now auto-backfills legacy `substitutions`/`fileHashes` entries
+from whatever's already on disk (zero LLM cost) and only fails on a genuinely
+narrow, specific gap it prints by name. There is no longer a broad
+"this project predates the deterministic path" case that needs a human/LLM
+to re-derive every file by hand — do not attempt that re-derivation yourself
+under any circumstances; it is the exact expensive path this mechanism exists
+to eliminate.
 
-- Read this project's `persona-config.json` (`personaSelection`,
-  `pluginVersion`) and the plugin's current `plugin.json` version. If they
-  match, report "already current" and stop (this shouldn't happen — the
-  script already checks this before falling back here — but don't assume).
-- **Legacy `planner` → `hivemind` migration**: if the project's
-  `personaSelection` contains the legacy token `planner` (the persona was
-  renamed `hivemind` in plugin v0.6.0): rename/re-derive the legacy file
-  `.claude/agents/planner.md` (legacy) as `.claude/agents/hivemind.md` at the
-  current version, delete the old legacy file, rewrite `personaSelection`
-  replacing the legacy `planner` token with `hivemind`, and say so in the
-  report.
-- For each version-stamped file in `.claude/agents/`,
-  `.claude/persona-protocol.md`, and `.claude/protocol-digest.md`: re-derive
-  what a fresh copy at the CURRENT plugin version would look like, working
-  out the same substitutions steps 3-5 describe (mattpocock skill names,
-  graph/arXiv MCP launch commands) from context and prior conversation/repo
-  state — this is exactly the judgment call the script can't make without
-  those values already recorded.
-- If the project's actual file is byte-identical to that re-derivation,
-  overwrite it and bump its stamp.
-- If it differs (real local edits), show the diff and ask before
-  overwriting. Never silently clobber a local edit.
-- Update `pluginVersion` in `persona-config.json` to the current version once
-  done. Does NOT re-run sections 3-9's install steps.
-- **Backfill `substitutions` and `fileHashes`** (see step 6) from what you
-  just derived, so every future update for this project runs through
-  `bin/cli.js --update` with zero LLM cost instead of landing here again.
+Check the exit code, exactly as `commands/update-antislop.md` describes:
+
+- **0** — done (already current, or update complete, possibly after an
+  auto-backfill note). Relay its printed summary verbatim and STOP. Nothing
+  else in this section applies.
+- **2** — files diverged from a fresh copy; diffs are already printed. Ask
+  the user accept/keep per file (`commands/update-antislop.md` has the exact
+  re-run flags) and STOP once resolved.
+- **1**, "no persona-config.json found" — this project was never adapted;
+  tell the user to invoke this skill WITHOUT `--update` instead. STOP.
+- **1**, a specific file/slot named as unresolvable — read
+  `skills/install-antislop/update-fallback.md` now and follow it exactly. This
+  is the ONLY remaining case that needs judgment, and it's scoped to the
+  one or two items the script named, not a full re-derivation.
 
 ## 12. Report back
 
@@ -550,7 +490,7 @@ confirm zero matches.** This is mandatory on every run — fresh install AND
 
 (This is the canonical "placeholder sweep" referenced by step 3b and section
 0.5.) Any match is a HARD FAILURE: an unresolved `<MATTPOCOCK:*>`,
-`<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_*>`, or any other `<...>` slot
+`<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_*>`, or any other `<...>` slot
 means the adapt is not done. Do NOT report success until every match is
 either resolved by substituting the real value, or — if it genuinely can't
 be resolved — explicitly called out to the human as an unresolved gap (same

@@ -3,6 +3,88 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.7.2] - 2026-07-14
+
+### Changed
+- **Renamed the `setup-personas` skill to `install-antislop`** (directory
+  `skills/setup-personas/` -> `skills/install-antislop/`, frontmatter
+  `name:` field, and every source/doc/hook reference to it, including the
+  `<REAL_LAUNCH_COMMAND_FROM_SETUP_PERSONAS_STEP_*>` placeholder tokens,
+  which are now `..._INSTALL_ANTISLOP_...`). The command moves from
+  `/antislop:setup-personas` (bare `/setup-personas` on the no-plugin CLI
+  route) to `/antislop:install-antislop` (bare `/install-antislop`).
+  Pre-v0.7.2 CHANGELOG entries below still say `setup-personas` — that was
+  the name at the time and is left as-is rather than rewritten.
+
+### Fixed
+- **`stop-gate.sh`'s pending-review flag no longer clobbers a `defer:`/`skip:`
+  reason on a repeat `SubagentStop`.** A gated agent resumed multiple times
+  for check-ins on one long-running unit (not just its final, genuinely
+  finished stop) re-triggers `SubagentStop` each time, and the flag write at
+  step 2.5 was an unconditional overwrite — so a `defer: <reason>` the main
+  session had written into the flag (the documented escape hatch at step
+  0.75) got wiped back to a bare `agent=...` timestamp on the very next
+  check-in, forcing the same block/defer cycle to repeat on every resume of
+  that unit. The flag write is now idempotent: it only creates the flag if
+  one doesn't already exist, so a defer/skip reason survives later
+  `SubagentStop`s from the same `agent_id`, while a genuinely new unit (new
+  `agent_id`) still gets a fresh flag. Applied to both the Claude Code hook
+  (`hooks/scripts/stop-gate.sh`) and the Cursor port
+  (`adapters/cursor/hooks/scripts/stop-gate.sh`).
+
+## [0.7.1] - 2026-07-13
+
+### Fixed
+- **The v0.6.4 "`--update` is a deterministic script" fix didn't actually
+  reach every project.** Any project adapted before v0.6.4 (missing
+  `persona-config.json`'s `substitutions`/`fileHashes`) still hard-failed
+  `bin/cli.js --update` straight into the old LLM-driven full re-derivation —
+  the exact 100K-token, ~15-minute flow the script was supposed to replace,
+  and a broad condition (every pre-v0.6.4 project), not a rare edge case.
+  `bin/cli.js --update` now auto-backfills both fields deterministically from
+  whatever's already on disk (zero LLM cost): `substitutions.mattpocockSkills`
+  is reverse-derived by diffing the plugin's own source persona files against
+  the project's already-substituted copies (a generic per-line diff —
+  handles both the `skills:` frontmatter cases and `lead-programmer.md`'s
+  body-prose placeholders with one algorithm); `substitutions.graphMcpLaunch`/
+  `arxivMcpLaunch` are reverse-parsed from the already-rendered `mcpServers:`
+  block in `explorer.md`/`researcher.md`; `fileHashes` adopts current on-disk
+  content as the trusted baseline (logged loudly, since this is a one-time
+  transitional gap for anyone with genuine pre-existing hand-edits). A single
+  file/slot that still can't be determined (e.g. prose reworded across
+  several plugin versions) no longer aborts the whole run — it's now
+  collected and reported per-file, non-fatally, with a specific remediation,
+  while every other file still updates normally in the same run. New test
+  coverage: `tests/cli-backfill.test.js`, wired into `tests/validate.sh`,
+  round-trips the new derivation logic against the real shipped `agents/*.md`
+  content.
+- **Every product-facing nudge pointed at the expensive path anyway.**
+  `hooks/scripts/session-start.sh`'s version-drift warning and
+  `hooks/scripts/task-gate.sh`'s two legacy-marker messages all told users to
+  run `/antislop:setup-personas --update` (the 568-line LLM skill,
+  invoked directly, bypassing the script entirely) instead of
+  `/antislop:update-antislop` (the cheap command). Repointed all three.
+- `skills/setup-personas/SKILL.md`'s own `--update` handling (section 11) was
+  descriptive ("you only land here when the script says to") rather than
+  imperative, so a direct `/antislop:setup-personas --update` invocation had
+  nothing actually forcing it to run the script first. Section 11 now runs
+  `bin/cli.js --update` as its explicit first action and only proceeds
+  further based on the specific exit condition.
+- Split `SKILL.md`'s two largest, least-often-needed sections out of the
+  always-loaded file: the section 10 sandboxed hook-verification probe
+  script moved to `skills/setup-personas/hook-verification.md` (read only by
+  the delegated subagent that actually runs it); the old section 11 manual
+  re-derivation flow was replaced with a much shorter
+  `skills/setup-personas/update-fallback.md` scoped to resolving the one
+  specific gap `bin/cli.js --update` names, not a full re-adapt. `SKILL.md`
+  itself shrank from 568 to 491 lines.
+- Updated `commands/update-antislop.md` and `README.md`'s update section to
+  describe the narrower fallback surface, and fixed two stale in-code error
+  messages (`applyMattpocockSubs`/`applyMcpPlaceholder` in `bin/cli.js`) that
+  told users to re-run the very flow that had just failed to derive their
+  value, instead of pointing at manual resolution or `--wire-graph-mcp`/
+  `--wire-arxiv-mcp`.
+
 ## [0.7.0] - 2026-07-13
 
 ### Added

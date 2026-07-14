@@ -10,7 +10,7 @@ adapters, what has to degrade, and in what order to build it.
 
 Research cutoff: this reflects Codex and Cursor as documented in mid-2026. Both
 platforms move fast; re-verify every cited primitive before implementing
-against it (same discipline `setup-personas/SKILL.md` already applies to the
+against it (same discipline `install-antislop/SKILL.md` already applies to the
 code-review-graph install shape). Sources are linked inline and collected at the
 bottom.
 
@@ -49,7 +49,7 @@ equivalent" with the nearest workaround, or "n/a".
 |---|---|---|---|
 | 1 | **Subagent definition** — markdown + YAML frontmatter in `.claude/agents/*.md`, body = system prompt (`agents/explorer.md` etc.) | TOML in `.codex/agents/*.toml` (project) / `~/.codex/agents/` (user); fields `name`, `description`, `developer_instructions` (= body). Filename need not match `name`. [codex-subagents] | Markdown + YAML frontmatter in `.cursor/agents/*.md`; **also reads `.claude/agents/` and `.codex/agents/`**. Fields `name`, `description`, `model`, `readonly`, `is_background`. [cursor-subagents] |
 | 2 | **Subagent discovery / auto-delegation** by `description` | Same: description drives when Codex delegates; invoked by name. [codex-subagents] | Same: auto-delegation by description, explicit `/name`, or natural mention. [cursor-subagents] |
-| 3 | **Namespacing** — plugin agents load as `antislop:explorer`; bare name hard-errors, forcing the ADAPT copy into `.claude/agents/` (`skills/setup-personas/SKILL.md:33-38`) | Custom agents in `.codex/agents/` override built-ins of the same `name`; project overrides user. Plugin-provided-agent namespacing **not documented** — verify. Likely *no* hard-error-on-bare-name, so the mandatory-copy trick may be unnecessary here. | Precedence `.cursor/` > `.claude/` > `.codex/`, project > user. No documented bare-name hard-error. [cursor-subagents] Copy-into-project still the safe default but probably not *required*. |
+| 3 | **Namespacing** — plugin agents load as `antislop:explorer`; bare name hard-errors, forcing the ADAPT copy into `.claude/agents/` (`skills/install-antislop/SKILL.md:33-38`) | Custom agents in `.codex/agents/` override built-ins of the same `name`; project overrides user. Plugin-provided-agent namespacing **not documented** — verify. Likely *no* hard-error-on-bare-name, so the mandatory-copy trick may be unnecessary here. | Precedence `.cursor/` > `.claude/` > `.codex/`, project > user. No documented bare-name hard-error. [cursor-subagents] Copy-into-project still the safe default but probably not *required*. |
 | 4 | **Orchestrator-as-main-agent** — `"agent": "orchestrator"` in settings.json replaces the default system prompt (`templates/settings-fragment.json:3`, `agents/orchestrator.md:3`) | **No clean equivalent.** No documented key that swaps the root session's system prompt for a named agent. Nearest: put routing prose in `AGENTS.md` + `config.toml` global `model`/`sandbox_mode`, and/or switch into an orchestrator agent via `/agent`. Gap — see §2C. | **Custom Modes** (model + tuned system prompt + tool set) are the nearest equivalent; a "Router/Orchestrator" mode. Not identical (a mode is user-selected, not a hard default), and mode packaging inside plugins is unverified. Gap — see §2C. |
 | 5 | **Per-agent tool allowlist** — `tools:` (orchestrator has no Write/Edit/Skill; reviewer/milestone-auditor have no Write/Edit — `agents/reviewer.md:6`, `agents/orchestrator.md:5`) | **No per-tool allowlist.** Only `sandbox_mode` (`read-only` / `workspace-write`). Can express "reviewer can't write" (read-only) but **cannot** express "Bash yes, Edit no" or "no Skill/Agent tool." [codex-subagents] Biggest gap — §2A. | **No per-tool allowlist.** Only `readonly: true`. Same limitation as Codex. [cursor-subagents] §2A. |
 | 6 | **Per-agent MCP scoping** — `mcpServers:` frontmatter, e.g. explorer's Code Review Graph scoped to explorer alone (`agents/explorer.md:7-10`) | **Supported**: `mcp_servers` in the agent TOML. Direct equivalent — explorer-only graph connection ports cleanly. [codex-subagents] | **No per-agent MCP.** Subagents "inherit all tools from the parent, including MCP tools." [cursor-subagents] Can't scope the graph to explorer alone; it's project-wide or nothing. Gap — §2D. |
@@ -63,7 +63,7 @@ equivalent" with the nearest workaround, or "n/a".
 | 10d | ↳ `reviewer-route-gate.sh` (PreToolUse Agent-spawn block: lead-programmer→reviewer) | PreToolUse on the spawn/Task tool; needs both caller identity + spawn target in payload (Claude's `agent_type` + `tool_input.subagent_type` — `hooks/scripts/reviewer-route-gate.sh:17-18`). Verify Codex exposes both. | `subagentStart` "can allow or deny subagent creation" and filters by subagent type. [cursor-hooks] Maps well — verify caller identity is exposed. |
 | 10e | ↳ `session-start.sh` (baseline sha + version drift + digest re-inject on resume/compact) | SessionStart + PreCompact/PostCompact. `additionalContext` output supported. Ports. | sessionStart (`additional_context` + `env` output) + preCompact. Ports. [cursor-hooks] |
 | 10f | ↳ `task-gate.sh` (TaskCompleted; `impl:*` tasks need `.claude/reviewed/<id>.pass`) | **No `TaskCompleted` event.** Nearest: SubagentStop keyed on the subagent that did the impl work. But this whole gate is tied to agent-teams mode (row 14) which Codex lacks in the same shape. Degrade — §2F. | **No `TaskCompleted`.** `subagentStop` (status + summary, `followup_message`, `loop_limit`) is the nearest. Same teams-mode caveat. §2F. |
-| 11 | **Skills / slash-commands** (`skills/coding-discipline`, `skills/setup-personas`, invoked via `Skill` tool / `/antislop:setup-personas`) | **Skills**: `SKILL.md` + YAML frontmatter, `.agents/skills/` etc., on-demand by `description`. Plus **custom prompts** (`~/.codex/prompts/`) as user slash-commands. [codex-stack] `coding-discipline` and `setup-personas` port as skills. | **Skills** (since Cursor 2.4), `SKILL.md`, `/name` invocation. [cursor-subagents/changelog] Port as skills. |
+| 11 | **Skills / slash-commands** (`skills/coding-discipline`, `skills/install-antislop`, invoked via `Skill` tool / `/antislop:install-antislop`) | **Skills**: `SKILL.md` + YAML frontmatter, `.agents/skills/` etc., on-demand by `description`. Plus **custom prompts** (`~/.codex/prompts/`) as user slash-commands. [codex-stack] `coding-discipline` and `install-antislop` port as skills. | **Skills** (since Cursor 2.4), `SKILL.md`, `/name` invocation. [cursor-subagents/changelog] Port as skills. |
 | 12 | **`AGENTS.md`/`CLAUDE.md` — "the only channel that reaches both subagents AND teammates automatically"**; carries `@.claude/persona-protocol.md` (`templates/persona-protocol.md:1-7`) | `AGENTS.md` is the native equivalent, concatenated root→leaf at session start. [codex-agentsmd] **But: whether it auto-cascades into subagents is not documented** — the customization-stack writeup implies subagents inherit sandbox policy, not necessarily `AGENTS.md`. **Load-bearing open question — §5.** `@import` of an arbitrary file also unconfirmed; may need protocol inlined into `AGENTS.md`. | `AGENTS.md` + `.cursor/rules/*.mdc` (frontmatter, `alwaysApply`/`globs`). Rules are referenced by name+description into the prompt. Subagent inheritance of rules/`AGENTS.md` **not documented** — same open question. §5. |
 | 13 | **Plugin packaging + marketplace** — `.claude-plugin/plugin.json` + `marketplace.json`, `/plugin marketplace add` (`. claude-plugin/`) | `plugin.json` manifest; `codex marketplace add` (git/GitHub/local); bundles skills, MCP, agent defs; install policies `INSTALLED_BY_DEFAULT`/`AVAILABLE`/`NOT_AVAILABLE`. [codex-stack] Direct analogue. | `.cursor-plugin/plugin.json` + `.cursor-plugin/marketplace.json` (**nearly identical to Claude's layout**); Cursor Marketplace since 2.5 (Feb 2026); bundles rules, skills, agents, commands, MCP, hooks. [cursor-plugins] Direct analogue. |
 | 14 | **Agent-teams mode** — `start-feature-team`, named concurrent teammates, `SendMessage` async delivery, shared task list, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` (`commands/start-feature-team.md`) | Parallel subagent spawning + `[features] multi_agent = true`, but **no named-teammate `SendMessage` async messaging, no shared task list**. `agents.max_depth` default 1. Degrade to parallel-subagent fan-out — §2F. | Parallel subagents + `is_background: true` for non-blocking teammates, one-level nesting. **No `SendMessage`/shared task list.** Degrade — §2F. |
@@ -268,7 +268,7 @@ hooks/
   codex/*.sh
   cursor/*.sh
 templates/                   # SHARED persona-config schema/json, protocol prose, digest
-skills/                      # SHARED SKILL.md (coding-discipline, setup-personas)
+skills/                      # SHARED SKILL.md (coding-discipline, install-antislop)
 bin/
   cli.js                     # multi-target scaffolder: `npx antislop --target=codex`
 ```
@@ -298,7 +298,7 @@ Design decisions:
   *which* settings/hooks format they emit. One binary, three emit paths — much
   less duplication than three CLIs, and the interactive persona-selection UX
   (reviewer typed-confirmation etc., `bin/cli.js:163-184`) is written once.
-- **`setup-personas` skill** stays one skill but grows a target-detection step
+- **`install-antislop` skill** stays one skill but grows a target-detection step
   and per-target substitution notes (Codex TOML placeholder substitution vs.
   Cursor frontmatter; Codex keeps graph MCP scoped, Cursor can't — §2D).
 - **Plugin manifests** are small and diverge in format, so keep three
@@ -368,7 +368,7 @@ mostly add prose + one MCP (researcher/arXiv, which is Codex-easy, Cursor-leaky)
    versioned file or gets concatenated in.
 3. **Codex plugin-provided agent namespacing** — are they bare or namespaced,
    and does a bare-name spawn hard-error the way Claude's does
-   (`skills/setup-personas/SKILL.md:33-38`)? Determines whether the
+   (`skills/install-antislop/SKILL.md:33-38`)? Determines whether the
    mandatory-copy-into-project trick is still needed on Codex or is dead weight.
 4. **Can a Cursor custom *mode* be shipped inside a plugin** (`.cursor-plugin/`),
    or is it always user-configured? Determines whether the orchestrator is an
