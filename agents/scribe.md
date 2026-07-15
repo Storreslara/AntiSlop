@@ -1,5 +1,5 @@
 ---
-name: repo-historian
+name: scribe
 description: Keeper of institutional knowledge - maintains the wiki, CONTEXT.md, and ADRs. Invoke to answer "what does the repo do / why / what changed" or after the lead-programmer completes a plan step.
 model: haiku
 color: cyan

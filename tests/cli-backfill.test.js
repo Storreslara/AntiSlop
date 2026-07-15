@@ -37,7 +37,7 @@ const KNOWN_MAP = {
   diagnose: 'mattpocock-skills:diagnosing-bugs',
 };
 
-for (const name of ['hivemind', 'repo-historian', 'milestone-auditor', 'lead-programmer']) {
+for (const name of ['hivemind', 'scribe', 'milestone-auditor', 'lead-programmer']) {
   check(`deriveMattpocockSubsForFile round-trips agents/${name}.md`, () => {
     const sourcePath = path.join(REPO_ROOT, 'agents', `${name}.md`);
     const sourceBody = fs.readFileSync(sourcePath, 'utf8');
