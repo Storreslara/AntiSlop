@@ -12,7 +12,14 @@ drift apart.
 - **Persona** — a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
   personas (spec-master, task-master, scribe, reviewer, researcher,
-  milestone-auditor) are selected per-project during ADAPT.
+  milestone-auditor) are selected per-project during ADAPT. `spec-master`
+  turns ambiguous goals into precise specs via grilling and publishes via
+  `to-spec`; `task-master` reads finalized specs and writes dispatch
+  instructions for `lead-programmer`, owns `to-issues` slicing outright, tags
+  per-unit models. `scribe` maintains institutional knowledge (wiki, CONTEXT.md,
+  ADRs). `reviewer` is the independent verifier (the Writer/Reviewer split).
+  `researcher` bridges academic literature and spec authoring. `milestone-auditor`
+  hunts premise gaps at milestone boundaries after all units reach PASS.
 - **Version-stamped file** — any ADAPT-copied file carrying a
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,
   which lets `bin/cli.js --update` tell "plugin's current version" from
@@ -36,3 +43,38 @@ drift apart.
 - **This repo's own ADAPT state** — this repo self-hosts the plugin it
   ships (dogfooding). Its `.claude/persona-config.json` documents exactly
   which personas and substitutions this repo itself uses.
+- **`to-spec` skill** — published mattpocock/skills artifact, wired to
+  `spec-master` via `<MATTPOCOCK:to-spec>` slot. Turns a finalized spec
+  conversation into a single published spec (Problem Statement / Solution /
+  User Stories / Implementation Decisions / Testing Decisions / Out of Scope)
+  on the issue tracker, no further interview. Complements `grill-me`
+  sequentially: grill to resolve ambiguity, then to-spec to synthesize and
+  publish. The template LAYERS on top of the v0.9.0 spec-kit format (Goal →
+  Context → Clarifications → …), not replacing it.
+- **`pathfinder` skill** — first-party skill for `task-master`, derived from
+  mattpocock's `wayfinder` (adapted for dispatch, not a passthrough). Helps
+  `task-master` build reliable, detailed, unambiguous dispatch tasks: one
+  decision/one unit per ticket, refer-by-name, explicit blocking/ordering
+  edges, precise acceptance criteria (enforces the machine-checkable-criteria
+  rule). Ships via plugin-source `skills/pathfinder/SKILL.md` path.
+- **`roast-work` skill** — first-party skill for `reviewer`, a detail-driven
+  critique rubric (contradictions, missing parts, logic gaps, security
+  vulnerabilities, actionable feedback) written to the mattpocock quality bar.
+  Advisory and non-gating only — PASS/FAIL stays determined by the
+  acceptance-criteria command + the existing materiality filter; roast-work
+  never flips a verdict. Appended as a clearly-demarcated advisory section
+  after the verdict line.
+- **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
+  `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
+  `spec-master` to produce a debug spec (diagnosis over the two recorded
+  `.fail` records, revised steps) then `task-master` re-derives dispatch
+  instructions from the corrected spec. `task-master` is never a re-plan owner.
+  Mid-flight "spec gap" signals also route back to `spec-master`.
+- **Roast-work routing (fable heavy lifting)** — `reviewer` frontmatter defaults
+  to `model: opus` (the authoritative PASS/FAIL gate always opus). For heavy
+  units — ≥~8 impacted files OR ≥~400-line diff OR structural/cross-cutting
+  change OR security-sensitive surface — the orchestrator dispatches an
+  additional non-authoritative `roast-work` advisory pass on fable. The
+  judgment-critical gate (acceptance-criteria command) stays on opus; only the
+  non-gating bulk-context critique uses fable. Tagged `Roast pass: fable` by
+  `task-master` like the `Suggested model` per-unit pattern.
