@@ -9,18 +9,18 @@ pointing back to this file.
 
 | # | skill | upstream path |
 |---|---|---|
-| 1 | `grill-me` | `productivity/grill-me` |
-| 2 | `grilling` | `productivity/grilling` |
-| 3 | `handoff` | `productivity/handoff` |
-| 4 | `to-spec` | `engineering/to-spec` |
-| 5 | `to-tickets` | `engineering/to-tickets` |
-| 6 | `tdd` | `engineering/tdd` |
-| 7 | `diagnosing-bugs` | `engineering/diagnosing-bugs` |
-| 8 | `improve-codebase-architecture` | `engineering/improve-codebase-architecture` |
-| 9 | `codebase-design` | `engineering/codebase-design` |
-| 10 | `domain-modeling` | `engineering/domain-modeling` |
-| 11 | `implement` | `engineering/implement` |
-| 12 | `code-review` | `engineering/code-review` |
+| 1 | `grill-me` | `skills/productivity/grill-me` |
+| 2 | `grilling` | `skills/productivity/grilling` |
+| 3 | `handoff` | `skills/productivity/handoff` |
+| 4 | `to-spec` | `skills/engineering/to-spec` |
+| 5 | `to-tickets` | `skills/engineering/to-tickets` |
+| 6 | `tdd` | `skills/engineering/tdd` |
+| 7 | `diagnosing-bugs` | `skills/engineering/diagnosing-bugs` |
+| 8 | `improve-codebase-architecture` | `skills/engineering/improve-codebase-architecture` |
+| 9 | `codebase-design` | `skills/engineering/codebase-design` |
+| 10 | `domain-modeling` | `skills/engineering/domain-modeling` |
+| 11 | `implement` | `skills/engineering/implement` |
+| 12 | `code-review` | `skills/engineering/code-review` |
 
 `to-spec`, `to-tickets`, and `code-review` additionally have their
 `/setup-matt-pocock-skills` references repointed to antislop's native setup
