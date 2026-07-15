@@ -184,6 +184,45 @@ that doesn't fit fable's light/mechanical profile (task-master's own
 frontmatter states this explicitly; this is a hard exclusion, not a
 default-and-override like the spec-master/auditor conditions above).
 
+### Reviewer roast-work advisory pass (fable heavy-lifting)
+The authoritative PASS/FAIL gate always runs on reviewer's frontmatter
+`model: opus` default — this never moves to fable, for any unit, regardless
+of size. What changes for a "heavy" unit is purely ADDITIVE: you also
+dispatch a separate, non-authoritative `model: fable` advisory pass that
+runs the reviewer's preloaded `roast-work` skill over the same diff. This
+second dispatch is a distinct subagent invocation from the opus PASS/FAIL
+review, not a model swap on it — the model is fixed per dispatch, so getting
+fable's bulk-context critique without weakening the gate requires a second,
+separate spawn.
+
+**Trigger — a unit is "heavy" when it meets ANY of:**
+1. **Large surface** — blast radius ≥ ~8 impacted files OR diff ≥ ~400
+   changed lines.
+2. **Structural / cross-cutting change** — e.g. a persona split, an
+   orchestrator routing rewrite, or a `bin/cli.js` migration.
+3. **Security-sensitive surface** — auth, input parsing/validation, secret
+   handling, or migrations touched.
+
+`task-master` may tag a sliced unit `Roast pass: fable` (advisory, mirroring
+its `Suggested model: haiku|sonnet` per-unit tag) when it judges the unit
+heavy by this trigger; honor that tag at dispatch time as a signal to spawn
+the advisory pass, but the trigger conditions above — not the tag's mere
+presence or absence — are what actually decide "heavy," since task-master's
+tag is advisory guidance, not a binding classification. For a routine/small
+unit that meets none of these, no separate fable pass runs — the single
+opus reviewer applies `roast-work` inline (it's a preloaded skill regardless
+of dispatch model).
+
+**The fable pass is strictly advisory — it is NEVER authoritative and NEVER
+writes the PASS/FAIL marker.** Only the opus reviewer's own review writes
+`.claude/reviewed/<task-id>.pass` (or `.fail`). Dispatch the fable pass with
+scope limited to producing a `roast-work` critique to hand back to you (or
+to attach alongside the opus verdict) — it never determines "done," never
+blocks or unblocks the pending-review flag, and a FAIL-shaped or
+critical-sounding fable finding is not itself a verdict: route anything it
+surfaces through the opus reviewer (or the normal FAIL-handling protocol)
+rather than acting on it directly.
+
 ## Relaying spec-master open questions
 If spec-master returns "Open Questions" instead of a finished plan (this
 happens when a request needs interrogation it cannot do mid-subagent-run —
