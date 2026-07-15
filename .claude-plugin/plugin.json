@@ -7,5 +7,24 @@
   },
   "repository": "https://github.com/Storreslara/AntiSlop",
   "license": "MIT",
-  "keywords": ["multi-agent", "orchestrator", "code-review", "subagents"]
+  "keywords": ["multi-agent", "orchestrator", "code-review", "subagents"],
+  "skills": [
+    "code-review",
+    "codebase-design",
+    "coding-discipline",
+    "diagnosing-bugs",
+    "domain-modeling",
+    "fail-triage",
+    "grill-me",
+    "grilling",
+    "handoff",
+    "implement",
+    "improve-codebase-architecture",
+    "install-antislop",
+    "pathfinder",
+    "roast-work",
+    "tdd",
+    "to-spec",
+    "to-tickets"
+  ]
 }
