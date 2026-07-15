@@ -258,7 +258,27 @@ don't guess:
   correct, not a mistake).
 - `gatedAgents` — leave as the default `["lead-programmer"]` unless this
   project has another code-writing persona that should also be stop-gated.
-- `issueTracker` — the tracker/retrieval method chosen for this project.
+- `issueTracker` — the tracker/retrieval method for this project's plan
+  issues. **Capture this natively, right here — nothing else populates it.**
+  (It used to be seeded as a side-effect of the now-removed external skill-
+  selection flow; with that gone, skipping this leaves the field empty and
+  silently breaks the shared retrieval contract that every tracker-aware
+  persona/skill depends on — see `.claude/persona-protocol.md`'s "Retrieval
+  contract" section.) Ask the consumer (AskUserQuestion — don't guess) which
+  tracker they use: e.g. GitHub issues (`gh` CLI authenticated), a
+  GitLab/Jira project, or local files under `docs/plans/<slug>/issues/`.
+  Record ONE self-contained retrieval-contract line that concretely states:
+  the tracker and its location/auth, the command to FILE a unit, the command
+  to FETCH units, and the triage-label convention (or "tool default
+  applies"). Match the shape of this repo's own contract, e.g. for GitHub
+  issues:
+  `GitHub issues (repo: <owner/repo>, gh CLI authenticated). File with 'gh issue create'; fetch with 'gh issue list --label plan/<slug>'. Triage label: <convention, or the tool's default>.`
+  or for a files-based tracker:
+  `Local files under docs/plans/<slug>/issues/; file by adding a numbered .md, fetch by listing that dir.`
+  This is the exact line personas resolve "wherever issues live" against, and
+  the field the vendored `antislop:to-tickets` (task-master's ticket-slicing)
+  and `antislop:to-spec` (spec-master's publish step) read to know where
+  issues go — get it wrong and both break for this project.
 - `personaSelection` — from step 1.
 - `pluginVersion` — this plugin's current version (same value used for the
   file stamps in step 2).
