@@ -428,6 +428,18 @@ function backfillFileHashesFromDisk(config, specs) {
   return changed;
 }
 
+// True if any already-adapted file on disk still has an unresolved
+// `<MATTPOCOCK:slot>` placeholder — used to force runUpdate's render loop to
+// run even when pluginVersion already matches (see call site).
+function hasMattpocockResidue(specs, cwd) {
+  return specs.some((spec) => {
+    const destAbsPath = path.join(cwd, spec.projectRelPath);
+    // plain substring check — MATTPOCOCK_RE is a shared /g regex, unsafe to
+    // .test() without a lastIndex reset (see backfillSubstitutionsFromDisk).
+    return fs.existsSync(destAbsPath) && fs.readFileSync(destAbsPath, 'utf8').includes('<MATTPOCOCK:');
+  });
+}
+
 function copyStampedBody(destAbsPath, body, version, sourceRelPath) {
   mkdirp(path.dirname(destAbsPath));
   fs.writeFileSync(destAbsPath, insertStampAfterFrontmatter(body, versionStamp(version, sourceRelPath)));
@@ -554,12 +566,7 @@ async function runUpdate(args) {
   // plugin version bump. Detect leftover `<MATTPOCOCK:...>` residue up front
   // so that case still triggers the render loop below instead of a false
   // "already current".
-  const hasResidue = specs.some((spec) => {
-    const destAbsPath = path.join(CWD, spec.projectRelPath);
-    // plain substring check — MATTPOCOCK_RE is a shared /g regex, unsafe to
-    // .test() without a lastIndex reset (see backfillSubstitutionsFromDisk).
-    return fs.existsSync(destAbsPath) && fs.readFileSync(destAbsPath, 'utf8').includes('<MATTPOCOCK:');
-  });
+  const hasResidue = hasMattpocockResidue(specs, CWD);
 
   if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !hasResidue) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
@@ -1562,4 +1569,5 @@ module.exports = {
   deriveMcpLaunchFromDisk,
   backfillSubstitutionsFromDisk,
   backfillFileHashesFromDisk,
+  hasMattpocockResidue,
 };

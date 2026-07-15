@@ -114,6 +114,27 @@ check('deriveMattpocockSubsForFile flags a same-slot conflict across files inste
   assert.deepStrictEqual(unresolvedSlots, ['grill-me']);
 });
 
+check('hasMattpocockResidue detects a leftover placeholder in an already-adapted file', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-residue-test-'));
+  try {
+    const relPath = '.claude/agents/spec-master.md';
+    fs.mkdirSync(path.join(tmp, '.claude', 'agents'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, relPath), 'skills: grill-me, <MATTPOCOCK:to-spec>\n');
+    assert.strictEqual(cli.hasMattpocockResidue([{ projectRelPath: relPath }], tmp), true);
+
+    fs.writeFileSync(path.join(tmp, relPath), 'skills: grill-me, to-spec\n');
+    assert.strictEqual(cli.hasMattpocockResidue([{ projectRelPath: relPath }], tmp), false);
+
+    assert.strictEqual(
+      cli.hasMattpocockResidue([{ projectRelPath: '.claude/agents/missing.md' }], tmp),
+      false,
+      'a spec whose file does not exist on disk should not be treated as residue'
+    );
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 check('migrateLegacyPersonaTokens resolves repo-historian to scribe without a planner token present', () => {
   // Reproduces a real already-adapted project's personaSelection (no
   // "planner" present) to confirm the legacy-token guard isn't keyed to
