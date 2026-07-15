@@ -269,6 +269,9 @@ the actual installed names on disk rather than trusting this list:
   — the local `coding-discipline` skill (`skills/coding-discipline/SKILL.md`) is
   adapted from Andrej Karpathy's public observations on common LLM coding
   pitfalls, as packaged in this repo.
+- `skills/fail-triage/SKILL.md` is a first-party skill derived from
+  [mattpocock/skills](https://github.com/mattpocock/skills)' `triage` skill,
+  scoped to this project's post-FAIL debug-spec path (used by `spec-master`).
 - **arXiv MCP** — powers the `researcher` persona. Deliberately not pinned to a
   specific server here; `install-antislop` step 5 has you find and wire in a
   currently-maintained one at setup time, since "currently maintained" is a
