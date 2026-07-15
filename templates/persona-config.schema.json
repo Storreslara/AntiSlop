@@ -39,7 +39,7 @@
     "personaSelection": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Which optional personas (hivemind, scribe, reviewer, researcher, milestone-auditor) this project chose to include, recorded by install-antislop' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
+      "description": "Which optional personas (spec-master, task-master, scribe, reviewer, researcher, milestone-auditor) this project chose to include, recorded by install-antislop' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
     },
     "issueTracker": {
       "type": "string",
@@ -77,7 +77,7 @@
     "fileHashes": {
       "type": "object",
       "additionalProperties": { "type": "string" },
-      "description": "sha256 hex digest of each version-stamped file's content with its stamp line stripped, recorded immediately after ADAPT/--update finishes writing it. `--update` compares this against the project's current file (stamp stripped) to detect local edits without an LLM: matching hash means safe to silently regenerate at the new version; a mismatch means a human is asked before overwriting. Keyed by project-relative path, e.g. '.claude/agents/hivemind.md'."
+      "description": "sha256 hex digest of each version-stamped file's content with its stamp line stripped, recorded immediately after ADAPT/--update finishes writing it. `--update` compares this against the project's current file (stamp stripped) to detect local edits without an LLM: matching hash means safe to silently regenerate at the new version; a mismatch means a human is asked before overwriting. Keyed by project-relative path, e.g. '.claude/agents/spec-master.md'."
     }
   },
   "required": ["testAndLintCommand"]

@@ -12,7 +12,8 @@ project costs one setup run (`install-antislop`) instead of hand-authoring
    `orchestrator` (router, becomes the main agent via `settings.json`'s
    `"agent": "orchestrator"`), `explorer` (fast structural lookups, optional
    Code Review Graph MCP), `lead-programmer` (writes code, TDD-first).
-   Optional, selected per-project: `hivemind` (planning), `scribe`
+   Optional, selected per-project: `spec-master` (spec-writing),
+   `task-master` (issue-slicing + dispatch prompts), `scribe`
    (this wiki + CONTEXT.md + ADRs), `reviewer` (independent PASS/FAIL —
    the system's core safety property, the Writer/Reviewer split),
    `milestone-auditor` (audits the plan's premises, not the code),

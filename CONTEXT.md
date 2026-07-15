@@ -11,7 +11,7 @@ drift apart.
   (`skills/install-antislop/SKILL.md`).
 - **Persona** — a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
-  personas (hivemind, scribe, reviewer, researcher,
+  personas (spec-master, task-master, scribe, reviewer, researcher,
   milestone-auditor) are selected per-project during ADAPT.
 - **Version-stamped file** — any ADAPT-copied file carrying a
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,

@@ -4,20 +4,20 @@ description: Spin up the persona feature team for a task (agent-teams mode - off
 
 Act as team lead (coordinate, do NOT implement). Create an agent team for
 "$ARGUMENTS". Check `.claude/agents/` for which personas this project
-actually has (hivemind, scribe, reviewer, and researcher are optional
-— see the project's `persona-config.json` `personaSelection` field) and spawn
-named teammates only from what's present: lead-programmer is always a
-teammate; hivemind/scribe/reviewer join if they exist; researcher only
-if the task is novel and it exists. Teammates spawn their own foreground
+actually has (spec-master, task-master, scribe, reviewer, and researcher are
+optional — see the project's `persona-config.json` `personaSelection` field)
+and spawn named teammates only from what's present: lead-programmer is always
+a teammate; spec-master/task-master/scribe/reviewer join if they exist;
+researcher only if the task is novel and it exists. Teammates spawn their own foreground
 explorer subagent for ad-hoc lookups; add explorer as a named teammate only
 when exploration is itself a standalone parallel workstream, not a one-off
 lookup. If `reviewer` doesn't exist for this project, say so up front and do
 the lightweight sanity-check fallback described in orchestrator.md's "if no
 reviewer persona exists" — don't silently skip the done-check.
 
-**GATE**: require hivemind's plan to name every affected file and give
-each step a machine-checkable acceptance criterion before any code is
-written. If Claude Code's native plan-approval is available as a
+**GATE**: require spec-master's finalized spec, sliced by task-master into
+dispatch-ready units, to name every affected file and give each step a
+machine-checkable acceptance criterion before any code is written. If Claude Code's native plan-approval is available as a
 prompt-level feature, use it in addition — but the prose rule above is the
 one you can always rely on, so treat it as primary, not a fallback.
 
@@ -55,7 +55,7 @@ selection, so skipping this step deadlocks the task list permanently.
 Use the shared task list, 5–6 tasks at a time. Don't let two teammates edit
 the same files (the reviewer never edits, so this is really about the
 lead-programmer vs. any other file-touching teammate). If the lead-programmer
-says the plan is wrong, send it back to hivemind. To check on or retrieve a
+says the plan is wrong, send it back to spec-master. To check on or retrieve a
 report from an idle teammate, `SendMessage` it by name — this resumes it
 from its own transcript. Do NOT re-invoke `Agent` with its name to do this;
 that spawns an unrelated sibling instead of resuming it. Wait for teammates

@@ -8,8 +8,8 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   broken partial/manual setup (no `persona-config.json`; `explorer.md`'s
   frontmatter contained an unresolved placeholder in an invalid YAML
   position, silently breaking its agent registration entirely). Full
-  persona selection: all optional personas included (hivemind,
-  scribe, researcher, milestone-auditor, reviewer — explicit
+  persona selection: all optional personas included (spec-master,
+  task-master, scribe, researcher, milestone-auditor, reviewer — explicit
   confirmation given for reviewer, the system's core safety property).
 - Wired Code Review Graph MCP to `explorer` only and arXiv MCP
   (`arxiv-mcp-server` via `uvx`) to `researcher` only — both verified live

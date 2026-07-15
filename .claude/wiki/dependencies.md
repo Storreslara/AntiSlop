@@ -17,8 +17,8 @@ None. `package.json` has no `dependencies`/`devDependencies` field.
 - **mattpocock/skills** (`npx skills@latest add mattpocock/skills`) —
   third-party skills (`grill-me`, `to-tickets`, `tdd`, `diagnosing-bugs`,
   `improve-codebase-architecture`, `setup-matt-pocock-skills`) that
-  `hivemind`/`scribe`/`milestone-auditor`/`lead-programmer` invoke
-  by name once installed at user or project scope.
+  `spec-master`/`task-master`/`scribe`/`milestone-auditor`/`lead-programmer`
+  invoke by name once installed at user or project scope.
 
 ## This repo's own ADAPT state
 This repo self-hosts the plugin (see `.claude/persona-config.json`'s
