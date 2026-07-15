@@ -29,7 +29,8 @@
       "improve-codebase-architecture": "improve-codebase-architecture",
       "tdd": "tdd",
       "diagnose": "diagnosing-bugs",
-      "to-spec": "to-spec"
+      "to-spec": "to-spec",
+      "handoff": "handoff"
     },
     "graphMcpLaunch": {
       "command": "uvx",

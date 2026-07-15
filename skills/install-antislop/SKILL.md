@@ -160,6 +160,8 @@ phrased conditionally ("if present, otherwise <fallback>") in
     - a "diagnose a bug" skill (`diagnosing-bugs` — NOT `diagnose`),
     - an "improve codebase architecture" skill (`improve-codebase-architecture`),
     - a "turn conversation into a spec" skill (`to-spec`),
+    - a "compact the conversation into a handoff doc for a fresh session"
+      skill (`handoff`),
     - the `setup-matt-pocock-skills` setup command.
   Select only the ones the selected personas actually use (e.g. skip the
   grill skill entirely if `spec-master` and `milestone-auditor` were both

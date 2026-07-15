@@ -251,8 +251,9 @@ the actual installed names on disk rather than trusting this list:
   work-to-tracker-tickets skill (used by `task-master`), a TDD skill and a
   diagnose-a-bug skill (used by
   `lead-programmer`), an improve-codebase-architecture skill (used by
-  `scribe`), and a turn-conversation-into-a-spec (`to-spec`) skill (used by
-  `spec-master`).
+  `scribe`), a turn-conversation-into-a-spec (`to-spec`) skill (used by
+  `spec-master`), and a hand-off-to-a-fresh-session (`handoff`) skill (used
+  by `lead-programmer`).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — the
   tree-sitter/SQLite structural graph the `explorer` persona queries for
   blast-radius and dependency answers. It's an MCP server (pip/pipx-installed);
