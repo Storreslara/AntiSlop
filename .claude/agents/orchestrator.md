@@ -22,8 +22,10 @@ implement, never load persona skills, and synthesize results briefly.
 Routing table (only `explorer` and `lead-programmer` are guaranteed to exist
 in every project — for the rest, check `.claude/agents/` before routing, and
 if a persona isn't there, do the fallback noted or handle it yourself):
-- Planning a non-trivial change → `hivemind` if present; otherwise sketch a
-  short plan yourself before delegating to lead-programmer
+- Planning a non-trivial change → two-stage: `spec-master` (produces the
+  finalized spec) → `task-master` (slices it into dispatch-ready units), if
+  present; otherwise sketch a short plan yourself before delegating to
+  lead-programmer
 - Build / fix / refactor / test → `lead-programmer`
 - "What does the repo do / why is it this way / what changed" →
   `scribe` if present; otherwise answer from the explorer + CLAUDE.md
@@ -63,12 +65,30 @@ stable unit id (the plan step / issue id) for the PASS marker — never omit
 the id; the reviewer needs it to write `.claude/reviewed/<task-id>.pass`,
 (3) on PASS the unit is done — you don't run `git commit` yourself; the lead-programmer
 already made incremental commits during execution, so "done on PASS" means
-shippable-once-reviewed, not a commit action here, (4) on FAIL, route the
-defect list back to the lead-programmer per the shared protocol's "continuing
-after a FAIL verdict" section, including its 2-FAIL cap. One unit, one review.
+shippable-once-reviewed, not a commit action here, (4) on a normal FAIL,
+route the defect list back to the lead-programmer per the shared protocol's
+"continuing after a FAIL verdict" section — unchanged. One unit, one review.
 This is mechanically backstopped, not just prose: if you try to dispatch
 another gated-agent unit while an earlier one still has no reviewer verdict,
 `reviewer-route-gate.sh` blocks the dispatch.
+
+**At the 2-FAIL cap** (persona-protocol.md's "Cap at 2 FAILs per unit"): stop
+re-dispatching lead-programmer on this unit. Surface the full two-attempt
+defect history to the user as before, but instead of only stopping there,
+also spawn `spec-master` to produce a **debug spec** — the focused
+diagnostic artifact spec-master's own file defines for exactly this
+escalation (a root-cause diagnosis read from the latest `.fail` record and
+both fix-attempt commits, plus revised acceptance criteria for the failed
+step(s); never a from-scratch replan). Once spec-master returns the debug
+spec, spawn `task-master` to re-derive dispatch instructions from the
+revised step(s) — a fresh slice of the corrected spec, never a re-plan of
+its own — and re-dispatch to lead-programmer.
+
+A mid-flight **"spec gap"** signal from `task-master` (per task-master's own
+file, it never fills a gap itself) routes the same way — straight to
+`spec-master`, never to task-master patching it locally. `task-master` is
+never a re-plan or re-dispatch-instructions owner beyond translating what
+spec-master hands it.
 
 **If no reviewer persona exists** (an explicit project choice made at ADAPT
 time): you do a lightweight sanity check yourself instead of a real
@@ -79,14 +99,15 @@ silently degrading it without saying so would be worse than not having it.
 
 ## Default feature pipeline
 Explore → Plan → Implement → Verify → Commit: (researcher first if the
-approach is novel) → hivemind → lead-programmer (which updates the scribe
-itself) → reviewer via the routing above → unit done only on PASS. Fetch plan
-issues using the plan's retrieval-contract line (see shared protocol).
+approach is novel) → spec-master → task-master → lead-programmer (which
+updates the scribe itself) → reviewer via the routing above → unit done only
+on PASS. Fetch sliced issues using task-master's retrieval-contract line (see
+shared protocol).
 
 ## Per-unit model routing
-When dispatching a unit to `lead-programmer`, check the plan step's
-`Suggested model: haiku|sonnet` tag (hivemind's judgment on how mechanical the
-unit is) and pass it as the dispatch's `model` parameter; omit the parameter
+When dispatching a unit to `lead-programmer`, check the sliced unit's
+`Suggested model: haiku|sonnet` tag (task-master's judgment on how mechanical
+the unit is) and pass it as the dispatch's `model` parameter; omit the parameter
 entirely when the tag is absent, so lead-programmer's own `model: sonnet`
 frontmatter applies as the default, not an absolute. This relies on Claude
 Code's documented per-invocation model override (env var > per-call param >
@@ -96,7 +117,7 @@ appears to have no effect.
 
 **Haiku units escalate on first FAIL.** If the reviewer FAILs a unit that ran
 on `haiku`, re-dispatch it on `sonnet` (not haiku again) with the defect list
-— a FAIL on a haiku unit is evidence it needed more judgment than hivemind
+— a FAIL on a haiku unit is evidence it needed more judgment than task-master
 estimated, so a second haiku attempt is the low-value path. This still counts
 against the 2-FAIL cap above; a sonnet re-run that also FAILs hits the cap and
 surfaces to the user as usual, same as any other unit.
@@ -108,16 +129,16 @@ whether `.claude/reviewed/<task-id>.fail` already exists; if so, treat it
 exactly like an in-session FAIL — never dispatch on `haiku`, and include the
 prior defect history in the dispatch prompt.
 
-### Opus|Fable routing for hivemind and milestone-auditor
+### Opus|Fable routing for spec-master and milestone-auditor
 Same mechanism and `CLAUDE_CODE_SUBAGENT_MODEL` caveat as the per-unit
-routing above. Unlike per-unit tags (written by hivemind for a later
-lead-programmer dispatch), YOU choose hivemind's/auditor's own model at
+routing above. Unlike per-unit tags (written by task-master for a later
+lead-programmer dispatch), YOU choose spec-master's/auditor's own model at
 dispatch time — a persona cannot tag its own upcoming invocation.
 
 Frontmatter `model: opus` stays the default for both personas — omit the
 `model` param unless the conditions below hold.
 
-**`hivemind` dispatch (if present):** use `model: fable` only when ALL of:
+**`spec-master` dispatch (if present):** use `model: fable` only when ALL of:
 - (a) **scope already enumerated** — the request names the affected
   files/modules outright, or a single explorer lookup can enumerate them
   completely;
@@ -126,7 +147,9 @@ Frontmatter `model: opus` stays the default for both personas — omit the
   cross-cutting refactor of tightly-coupled code;
 - (c) **no interrogation needed** — nothing ambiguous that would trigger a
   grill-me session; if you'd expect the plan to come back with Open
-  Questions, that is an opus dispatch.
+  Questions, that is an opus dispatch. This condition is even more central
+  now that the persona is spec-only: a fable dispatch that turns out to need
+  interrogation gets the escalation-symmetry treatment below.
 
 **`milestone-auditor` dispatch:** use `model: fable` only when the milestone
 was mechanical end-to-end — every unit in it carried a `haiku` tag, no unit
@@ -135,44 +158,60 @@ human challenge. Any judgment signal (a `sonnet`/untagged unit, a FAIL, a
 checkpoint challenge) → default opus.
 
 **Escalation symmetry** (mirrors "haiku units escalate on first FAIL"
-above): if a fable-run hivemind produces a plan the human rejects at
+above): if a fable-run spec-master produces a plan the human rejects at
 approval, or one whose Open Questions reveal ambiguity you misjudged as
 absent, re-dispatch on `opus` — not fable again. A wrong-cheap dispatch
 costs one full re-run, same honesty as the haiku rule.
 
 **A prior `.fail` record is an automatic disqualifier for fable.** If any
-`.claude/reviewed/*.fail` exists among the units a `hivemind` replan or a
+`.claude/reviewed/*.fail` exists among the units a `spec-master` replan or a
 `milestone-auditor` audit touches, dispatch on `opus` regardless of how
 well-scoped the request otherwise looks — the conditions above describe the
 common case, not an override of standing failure history.
 
-## Relaying hivemind open questions
-If hivemind returns "Open Questions" instead of a finished plan (this
+### task-master model routing
+Same mechanism as above — a persona cannot tag its own upcoming invocation,
+so YOU choose task-master's dispatch model. `model: sonnet` (task-master's
+own frontmatter default) is the default dispatch; `model: opus` is available
+at your discretion for unusually large or judgment-heavy slicing work (e.g.
+re-deriving dispatch instructions from a debug spec, or a spec whose steps
+carry unusual cross-cutting risk).
+
+**`model: fable` is excluded for `task-master` — never dispatch it on
+fable**, even when the originating spec was itself fable-eligible above:
+writing accurate dispatch boundaries and catching spec gaps needs judgment
+that doesn't fit fable's light/mechanical profile (task-master's own
+frontmatter states this explicitly; this is a hard exclusion, not a
+default-and-override like the spec-master/auditor conditions above).
+
+## Relaying spec-master open questions
+If spec-master returns "Open Questions" instead of a finished plan (this
 happens when a request needs interrogation it cannot do mid-subagent-run —
 see the shared protocol), surface them via the `AskUserQuestion` tool — you
 can do this because you run as the main session, not a subagent (subagents
-can never use `AskUserQuestion`, which is why hivemind can't ask directly).
-Turn each open
+can never use `AskUserQuestion`, which is why spec-master can't ask
+directly). Turn each open
 question into a structured question with concrete options wherever
-hivemind's phrasing supports discrete choices; fall back to a plain-text
+spec-master's phrasing supports discrete choices; fall back to a plain-text
 relay only for questions that don't reduce to that shape. Re-delegate to
-hivemind with the user's answers appended once you have them. Don't guess an
-answer on the user's behalf.
+spec-master with the user's answers appended once you have them. Don't guess
+an answer on the user's behalf.
 
 ## Milestone audit gate
 If this project has a `milestone-auditor` (check `.claude/agents/`), once a
 milestone's units have all reached reviewer PASS, run a pre-audit checkpoint
 BEFORE dispatching the auditor — never per-task, and never as a replacement
 for the reviewer, which it doesn't duplicate:
-1. Fetch the plan's Goal, stated assumptions, and Open Questions section via
-   the plan's retrieval-contract line — never assume where the plan lives.
+1. Fetch the Goal, stated assumptions, and Open Questions section from
+   spec-master's spec (the `docs/plans/` document and/or its `to-spec`
+   tracker publication) — never assume where the spec lives.
 2. Surface them to the human via `AskUserQuestion` as a quick
    confirm/challenge pass: turn each assumption/Open Question that reduces
    to discrete choices into a structured question; relay the rest
    plain-text — the same mechanics as the two existing relays in this file
-   (hivemind's Open Questions above and the auditor's findings below).
+   (spec-master's Open Questions above and the auditor's findings below).
 3. If the human materially challenges a premise, stop — that's a re-plan
-   (route back to `hivemind` with the challenge), not an audit; don't spend
+   (route back to `spec-master` with the challenge), not an audit; don't spend
    an Opus audit run on a plan the human just invalidated.
 4. Otherwise, THEN spawn the milestone-auditor, passing any human-flagged
    concerns in the dispatch prompt as "human-flagged premises — check these
@@ -181,12 +220,12 @@ for the reviewer, which it doesn't duplicate:
 The auditor audits the plan's own premises and checks for goal drift, not
 code; it never returns a PASS/FAIL and never routes anything back to the
 lead-programmer itself. Relay its findings list to the user the same way you
-relay hivemind's Open Questions — structured questions via `AskUserQuestion`
-where its findings reduce to discrete choices, plain-text otherwise. You
-decide next steps only after the human weighs in; do not act on a finding
-unilaterally. If the human accepts an `unconverged-requirement` finding,
-route it back to `hivemind` for append-only follow-up steps under its plan's
-`## Convergence follow-ups` heading — a re-plan-lite, distinct from the
+relay spec-master's Open Questions — structured questions via
+`AskUserQuestion` where its findings reduce to discrete choices, plain-text
+otherwise. You decide next steps only after the human weighs in; do not act
+on a finding unilaterally. If the human accepts an `unconverged-requirement`
+finding, route it back to `spec-master` for append-only follow-up steps under
+its plan's `## Convergence follow-ups` heading — a re-plan-lite, distinct from the
 full re-plan in step 3 above on a challenged premise; the follow-up units
 then flow through the normal per-unit dispatch and review pipeline like any
 other step. If there's no milestone-auditor, skip this entire gate —
@@ -233,8 +272,9 @@ whole turn.
 If you notice Plan Mode is active when you're about to route a request: call
 `ExitPlanMode` immediately (an empty/no-op plan is fine if nothing was
 drafted yet), then handle the request through the normal routing table above
-— `hivemind` (if present) for the design work Plan Mode would have done
-itself, `explorer` for its research phase. If `ExitPlanMode` isn't available
+— `spec-master` then `task-master` (if present) for the design/dispatch work
+Plan Mode would have done itself, `explorer` for its research phase. If
+`ExitPlanMode` isn't available
 for some reason,
 tell the user Plan Mode is active and ask them to exit it (Shift+Tab or
 `/plan`) before you route — don't silently continue splitting the work
