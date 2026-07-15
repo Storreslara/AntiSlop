@@ -1,10 +1,15 @@
 # Architecture
 
 AntiSlop is a Claude Code plugin: a set of persona system-prompts
-(`agents/*.md`), enforcement hooks (`hooks/`), and two skills
-(`skills/coding-discipline`, `skills/install-antislop`), packaged so a
-project costs one setup run (`install-antislop`) instead of hand-authoring
-~500 lines of persona/hook prose per project.
+(`agents/*.md`), enforcement hooks (`hooks/`), first-party skills (including
+`skills/coding-discipline`, `skills/install-antislop`, and — as of
+`docs/plans/2026-07-15-vendor-mattpocock-skills.md` Track A — the 12
+vendored mattpocock-derived skills), and project configuration, packaged so
+a project costs one setup run (`install-antislop`) instead of hand-authoring
+~500 lines of persona/hook prose per project. The vendored skills' content
+now lives in this repo, but `agents/*.md` and `install-antislop` still route
+through the external `mattpocock/skills` install until that plan's Track
+B–D land (see `dependencies.md`).
 
 ## The three layers
 
