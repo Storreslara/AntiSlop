@@ -5,7 +5,7 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-spec>
+skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-spec>, antislop:fail-triage
 maxTurns: 30
 ---
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file
@@ -222,8 +222,9 @@ clarify intent is fine.
      PLAN, not the code — reasoned entirely from the latest `.fail` record,
      the commit history across both attempts, and the
      taxonomy/constitution/self-check machinery already defined above,
-     using your existing Read/Grep/Glob/Bash tools. No new skill is added
-     for this.
+     using your existing Read/Grep/Glob/Bash tools; invoke `antislop:fail-triage`
+     for the verify-then-categorize front-half before reasoning about the
+     deeper root cause. No new mattpocock slot is added for this.
   2. **Revised spec step(s)** — the specific failed step(s) rewritten with
      corrected acceptance criteria (or, if the diagnosis found the wrong
      approach entirely, a revised approach), re-checked against the
