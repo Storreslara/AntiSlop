@@ -130,6 +130,22 @@ check('migrateLegacyPersonaTokens resolves repo-historian to scribe without a pl
   assert.ok(!migrated.includes('repo-historian'), `"repo-historian" should have been migrated away`);
 });
 
+check('migrateLegacyPersonaTokens expands legacy hivemind into both spec-master and task-master', () => {
+  const selection = ['hivemind', 'researcher'];
+  const migrated = cli.migrateLegacyPersonaTokens(selection, { logNote: false });
+  assert.ok(migrated.includes('spec-master'), `expected "spec-master" in ${JSON.stringify(migrated)}`);
+  assert.ok(migrated.includes('task-master'), `expected "task-master" in ${JSON.stringify(migrated)}`);
+  assert.ok(!migrated.includes('hivemind'), `"hivemind" should have been migrated away`);
+});
+
+check('migrateLegacyPersonaTokens chains the even-older planner token through hivemind to both new personas', () => {
+  const selection = ['planner'];
+  const migrated = cli.migrateLegacyPersonaTokens(selection, { logNote: false });
+  assert.ok(migrated.includes('spec-master'), `expected "spec-master" in ${JSON.stringify(migrated)}`);
+  assert.ok(migrated.includes('task-master'), `expected "task-master" in ${JSON.stringify(migrated)}`);
+  assert.ok(!migrated.includes('planner') && !migrated.includes('hivemind'), `legacy tokens should be gone from ${JSON.stringify(migrated)}`);
+});
+
 // --- Integration: backfillSubstitutionsFromDisk / backfillFileHashesFromDisk
 // against a simulated legacy project on a real temp CWD (these two functions
 // read CWD-relative paths, so they need an actual directory, not just strings).

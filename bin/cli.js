@@ -23,15 +23,24 @@ const PKG_ROOT = path.resolve(__dirname, '..');
 const CWD = process.cwd();
 
 const CORE_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer'];
-const OPTIONAL_PERSONAS = ['hivemind', 'scribe', 'reviewer', 'milestone-auditor'];
+const OPTIONAL_PERSONAS = ['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor'];
 // Legacy-token migration: the persona formerly named `planner` was renamed
-// `hivemind` (repo-wide rename, plugin v0.6.0), and the persona formerly
-// named `repo-historian` was renamed `scribe` (repo-wide rename, plugin
-// v0.10.0) — these are deprecated, legacy `--personas=planner` /
-// `--personas=repo-historian` / legacy `personaSelection` entries only; both
-// map forward via LEGACY_PERSONA_MAP below rather than being silently
-// dropped by the OPTIONAL_PERSONAS intersection filter.
-const LEGACY_PERSONA_MAP = { planner: 'hivemind', 'repo-historian': 'scribe' }; // legacy token -> current token
+// `hivemind` (repo-wide rename, plugin v0.6.0); `hivemind` was later split
+// into `spec-master` and `task-master` (plugin v0.10.0); the persona
+// formerly named `repo-historian` was renamed `scribe` (repo-wide rename,
+// plugin v0.10.0) — these are deprecated, legacy `--personas=planner` /
+// `--personas=hivemind` / `--personas=repo-historian` / legacy
+// `personaSelection` entries only. Each value is an array of current
+// token(s) a legacy token maps forward to (a plain string map can't
+// represent the one-to-two hivemind split); entries chain (`planner` ->
+// `hivemind` -> `spec-master`+`task-master`) via resolveLegacyToken below
+// rather than being silently dropped by the OPTIONAL_PERSONAS intersection
+// filter.
+const LEGACY_PERSONA_MAP = {
+  planner: ['hivemind'],
+  hivemind: ['spec-master', 'task-master'],
+  'repo-historian': ['scribe'],
+}; // legacy token -> current token(s)
 // researcher is handled separately: it's a template, not a plain agent copy.
 
 function readPluginVersion() {
@@ -163,18 +172,27 @@ function legacyTokensIn(selection) {
   return selection.filter((p) => Object.prototype.hasOwnProperty.call(LEGACY_PERSONA_MAP, p));
 }
 
+// Resolves a single token through LEGACY_PERSONA_MAP to a flat list of
+// current tokens, chaining through intermediate legacy tokens (e.g.
+// `planner` -> `hivemind` -> `spec-master`+`task-master`).
+function resolveLegacyToken(token) {
+  if (!(token in LEGACY_PERSONA_MAP)) return [token];
+  return LEGACY_PERSONA_MAP[token].flatMap(resolveLegacyToken);
+}
+
 function migrateLegacyPersonaTokens(selection, { logNote } = {}) {
   const legacyTokens = legacyTokensIn(selection);
   if (legacyTokens.length === 0) return selection;
   if (logNote) {
     for (const token of legacyTokens) {
+      const resolved = resolveLegacyToken(token).join('+');
       console.log(
-        `Deprecation note: migrating the legacy "${token}" token to "${LEGACY_PERSONA_MAP[token]}" ` +
-          `(the legacy "${token}" token was renamed "${LEGACY_PERSONA_MAP[token]}" in a prior plugin version).`
+        `Deprecation note: migrating the legacy "${token}" token to "${resolved}" ` +
+          `(the legacy "${token}" token was renamed "${resolved}" in a prior plugin version).`
       );
     }
   }
-  return selection.map((p) => LEGACY_PERSONA_MAP[p] || p);
+  return [...new Set(selection.flatMap(resolveLegacyToken))];
 }
 
 function escapeRegExp(s) {
@@ -1303,9 +1321,10 @@ async function main() {
         continue;
       }
       const label = {
-        hivemind: 'hivemind (turns ambiguous goals into precise plans; skip only for purely mechanical/small work)',
+        'spec-master': 'spec-master (turns ambiguous goals into precise specs; skip only for purely mechanical/small work)',
+        'task-master': 'task-master (slices a finalized spec into dispatch-ready tasks; skip only for purely mechanical/small work)',
         scribe: 'scribe (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
-        'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or hivemind was also skipped)',
+        'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or spec-master was also skipped)',
       }[persona];
       const include = await askYesNo(rl, `\nInclude ${label}?`, true);
       if (include) selected.push(persona);
