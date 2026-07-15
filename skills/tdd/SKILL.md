@@ -1,9 +1,8 @@
-<!-- Vendored verbatim from mattpocock/skills skills/engineering/tdd/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
-
 ---
 name: tdd
 description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
 ---
+<!-- Vendored verbatim from mattpocock/skills skills/engineering/tdd/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
 
 # Test-Driven Development
 

@@ -1,10 +1,9 @@
-<!-- Vendored verbatim from mattpocock/skills skills/engineering/implement/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
-
 ---
 name: implement
 description: "Implement a piece of work based on a spec or set of tickets."
 disable-model-invocation: true
 ---
+<!-- Vendored verbatim from mattpocock/skills skills/engineering/implement/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
 
 Implement the work described by the user in the spec or tickets.
 

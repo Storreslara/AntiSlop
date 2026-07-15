@@ -1,10 +1,9 @@
-<!-- Vendored verbatim from mattpocock/skills skills/engineering/improve-codebase-architecture/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
-
 ---
 name: improve-codebase-architecture
 description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
 disable-model-invocation: true
 ---
+<!-- Vendored verbatim from mattpocock/skills skills/engineering/improve-codebase-architecture/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
 
 # Improve Codebase Architecture
 

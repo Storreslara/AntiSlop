@@ -2,8 +2,14 @@
 
 This directory vendors content from [mattpocock/skills](https://github.com/mattpocock/skills),
 pinned at upstream commit `e9fcdf95b402d360f90f1db8d776d5dd450f9234` (fetched
-2026-07-15). Each vendored `SKILL.md` carries its own provenance header
-pointing back to this file.
+2026-07-15). Each vendored `SKILL.md` and its markdown companions (e.g.
+`tests.md`, `mocking.md`, `HTML-REPORT.md`) carry their own provenance header
+pointing back to this file — placed immediately after the closing `---` of
+the YAML frontmatter block for files that have one (every `SKILL.md`), or at
+the top of the file for companions that don't. The one non-markdown
+companion, `skills/diagnosing-bugs/scripts/hitl-loop.template.sh`, carries no
+header at all, so its `#!/usr/bin/env bash` shebang stays on line 1 and the
+script remains directly runnable/copyable.
 
 ## Vendored skills
 

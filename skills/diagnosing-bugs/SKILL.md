@@ -1,9 +1,8 @@
-<!-- Vendored verbatim from mattpocock/skills skills/engineering/diagnosing-bugs/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
-
 ---
 name: diagnosing-bugs
 description: Diagnosis loop for hard bugs and performance regressions. Use when the user says "diagnose"/"debug this", or reports something broken/throwing/failing/slow.
 ---
+<!-- Vendored verbatim from mattpocock/skills skills/engineering/diagnosing-bugs/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
 
 # Diagnosing Bugs
 

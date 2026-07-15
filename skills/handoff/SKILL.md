@@ -1,11 +1,10 @@
-<!-- Vendored verbatim from mattpocock/skills skills/productivity/handoff/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
-
 ---
 name: handoff
 description: Compact the current conversation into a handoff document for another agent to pick up.
 argument-hint: "What will the next session be used for?"
 disable-model-invocation: true
 ---
+<!-- Vendored verbatim from mattpocock/skills skills/productivity/handoff/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
 
 Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
 
