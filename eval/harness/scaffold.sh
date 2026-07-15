@@ -61,7 +61,7 @@ PROJECT_NAME="antislop-pilot-$(date +%s%N | sha256sum | head -c8)"
 
 # Non-interactive scaffold: --personas= alone puts cli.js in scriptedMode,
 # so it never touches stdin (bin/cli.js:132-133,150-208,308).
-( cd "$DEST" && node "$REPO_ROOT/bin/cli.js" --personas=hivemind,reviewer )
+( cd "$DEST" && node "$REPO_ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer )
 
 # The rest is the judgment-driven half normally done by /install-antislop
 # interactively — safe to do mechanically here since this fixture's real
@@ -75,7 +75,7 @@ cat > "$DEST/.claude/persona-config.json" <<EOF
   "protectedPaths": [],
   "gatedAgents": ["lead-programmer"],
   "pluginVersion": "$(node -e "console.log(require('$REPO_ROOT/.claude-plugin/plugin.json').version)")",
-  "personaSelection": ["hivemind", "reviewer"],
+  "personaSelection": ["spec-master", "task-master", "reviewer"],
   "issueTracker": "None - single-task eval fixture, no tracker needed."
 }
 EOF

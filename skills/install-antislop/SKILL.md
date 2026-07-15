@@ -75,8 +75,12 @@ Ask the user which personas this project needs. `orchestrator`, `explorer`,
 and `lead-programmer` are mandatory (the minimum viable loop — don't ask
 about them). Ask individually about the rest:
 
-- `hivemind` — skip only for projects doing purely mechanical/small work with
-  no real planning step.
+- `spec-master` + `task-master` — the planning pipeline (spec-master turns an
+  ambiguous request into a finalized spec; task-master slices that spec into
+  dispatch-ready work for `lead-programmer`/`scribe`). Ask about them as a
+  pair — selecting one without the other breaks the handoff between them.
+  Skip both only for projects doing purely mechanical/small work with no real
+  planning step.
 - `scribe` — skip if the project doesn't want a maintained wiki/ADR
   system.
 - `researcher` — skip if the project won't need literature/technique
@@ -90,8 +94,8 @@ about them). Ask individually about the rest:
   not just a yes/no — the risk is materially different from skipping the
   others.
 - `milestone-auditor` — skip for projects with no real milestone structure
-  (a single small unit of work) or where `hivemind` was also skipped, since
-  it audits a plan's premises and there's no plan to audit. Unlike
+  (a single small unit of work) or where `spec-master` was also skipped,
+  since it audits a plan's premises and there's no plan to audit. Unlike
   `reviewer`, this one checks the SPEC against reality, not code against the
   spec — it's a second, orthogonal safety property, not a duplicate of the
   reviewer, so don't let a "we already have reviewer" answer talk the user
@@ -157,17 +161,17 @@ phrased conditionally ("if present, otherwise <fallback>") in
     - an "improve codebase architecture" skill (`improve-codebase-architecture`),
     - the `setup-matt-pocock-skills` setup command.
   Select only the ones the selected personas actually use (e.g. skip the
-  grill and tickets skills entirely if `hivemind` and `milestone-auditor`
-  were both deselected — `milestone-auditor` also preloads the grill skill,
-  aimed at the plan's assumptions after the fact rather than the request
-  before planning) — and ask them to run the command themselves in their own
-  terminal. After they confirm it's done, verify by listing the installed
+  grill skill entirely if `spec-master` and `milestone-auditor` were both
+  deselected — `milestone-auditor` also preloads the grill skill, aimed at
+  the plan's assumptions after the fact rather than the request before
+  planning; skip the tickets skill if `task-master` was deselected) — and ask
+  them to run the command themselves in their own terminal. After they confirm it's done, verify by listing the installed
   skill names yourself (don't take "done" on faith) — this discovered list,
   not the names above, is the authoritative source for the substitution
   below.
 - Run `/setup-matt-pocock-skills` once (issue tracker, triage labels, doc
   layout). RECORD which issue tracker was chosen — it goes in
-  `.claude/persona-config.json`'s `issueTracker` field and hivemind reads
+  `.claude/persona-config.json`'s `issueTracker` field and task-master reads
   it via the retrieval contract.
 - Registered names are bare (`tdd`, `diagnosing-bugs`, `to-tickets`, …), not
   namespaced under a `mattpocock-skills:` prefix — confirmed against a live
@@ -185,8 +189,9 @@ phrased conditionally ("if present, otherwise <fallback>") in
   to the discovered `to-tickets`, and the "diagnose" slot to the discovered
   `diagnosing-bugs`. If a purpose has no matching discovered skill, STOP and
   surface it to the human — do not substitute a guessed name.
-- **Substitute placeholders**: the copied `hivemind.md`, `scribe.md`,
-  and `milestone-auditor.md` (if selected) contain `<MATTPOCOCK:skill-name>`
+- **Substitute placeholders**: the copied `spec-master.md`, `task-master.md`,
+  `scribe.md`, and `milestone-auditor.md` (if selected) contain
+  `<MATTPOCOCK:skill-name>`
   placeholders in their `skills:` frontmatter — replace each with the
   discovered namespaced name for that purpose (this is expected ADAPT
   substitution, not drift). `lead-programmer.md`
@@ -359,7 +364,7 @@ don't guess:
   ADAPT, not literally inside step 6's file write), compute the sha256 of its
   content with the version-stamp comment line (`<!-- antislop vX.Y.Z | ...
   -->`) stripped out, keyed by project-relative path (e.g.
-  `.claude/agents/hivemind.md`). This is the "known-clean" baseline
+  `.claude/agents/spec-master.md`). This is the "known-clean" baseline
   `bin/cli.js --update` diffs future runs against to detect local edits
   without an LLM.
 
@@ -373,7 +378,7 @@ turn one.
 ## 6.5 Project constitution (opt-in)
 
 Ask via `AskUserQuestion` whether this project wants a constitution — a
-short, versioned set of project-specific principles that `hivemind` checks
+short, versioned set of project-specific principles that `spec-master` checks
 plans against and `reviewer`/`milestone-auditor` cite when flagging
 violations. Skipping is a plain "no" (this is additive, not a safety
 property like step 1's reviewer confirmation).

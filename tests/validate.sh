@@ -54,12 +54,17 @@ done
 
 echo
 echo "== optional-persona references must be phrased conditionally =="
-# hivemind/scribe/reviewer/researcher are opt-out (see README.md); a
-# bare unconditional reference to one of them is exactly the class of bug
-# that hard-errors when a project skips that persona. Checked per-PARAGRAPH
+# scribe/reviewer/researcher are opt-out (see README.md); a bare
+# unconditional reference to one of them is exactly the class of bug that
+# hard-errors when a project skips that persona. Checked per-PARAGRAPH
 # (blank-line-separated, wrapped lines joined) rather than per physical line,
 # since a conditional qualifier often lands on the next wrapped line.
-for p in hivemind scribe reviewer researcher; do
+# NOTE: spec-master/task-master are also opt-out but deliberately excluded
+# from this loop — agents/orchestrator.md references them far more densely,
+# with "(if present)" qualifiers scoped per-section rather than repeated
+# every paragraph, which this paragraph-scoped checker would false-positive
+# on.
+for p in scribe reviewer researcher; do
   bad=0
   for f in agents/orchestrator.md agents/lead-programmer.md commands/start-feature-team.md; do
     [ -f "$f" ] || continue

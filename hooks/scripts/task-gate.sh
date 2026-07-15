@@ -23,7 +23,7 @@
 #
 # A FAIL verdict writes a sibling `<task-id>.fail` record (agents/reviewer.md)
 # — this gate does not check it and never blocks on it; it exists purely as
-# a durable warning for future hivemind/orchestrator spawns (see
+# a durable warning for future spec-master/orchestrator spawns (see
 # persona-protocol.md's "FAIL record" section), not a completion gate.
 set -euo pipefail
 

@@ -14,8 +14,8 @@ maxTurns: 30
      source docs; task-master's dispatch prompts and sliced-issue bodies are
      its TEXT OUTPUT (relayed via SendMessage/report, or filed directly as
      tracker issues through `gh` via Bash) — the same "produce the text, the
-     tracker/orchestrator persists it" shape `spec-master`/`hivemind` use for
-     the plan doc itself. `Skill` is in tools so a teammate copy can invoke
+     tracker/orchestrator persists it" shape `spec-master` uses for the plan
+     doc itself. `Skill` is in tools so a teammate copy can invoke
      `to-issues` explicitly, since preloading doesn't apply to teammates.
      `maxTurns: 30` — starting bound, matching `spec-master`'s, adjust after
      real usage. `model: sonnet` is the default; opus-eligible per-dispatch
@@ -25,8 +25,9 @@ maxTurns: 30
      the tier here.
      task-master owns `to-issues`/`to-tickets` slicing outright, per-unit
      model tagging, the retrieval-contract line, and per-unit dispatch-prompt
-     authoring for lead-programmer/scribe — split out of the former
-     `hivemind` alongside `spec-master` (see agents/spec-master.md), which
+     authoring for lead-programmer/scribe — split, alongside `spec-master`,
+     out of what used to be a single planning persona (see
+     agents/spec-master.md), which
      owns everything upstream of a finalized spec (taxonomy scorecard,
      interrogation, Open Questions, Self-check, publishing via `to-spec`). -->
 

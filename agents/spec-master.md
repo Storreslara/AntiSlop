@@ -23,7 +23,8 @@ maxTurns: 30
      via `to-spec`; ticket-slicing (`to-issues`), per-unit model tagging,
      the retrieval-contract line, and per-unit dispatch-prompt authoring for
      lead-programmer/scribe belong to `task-master`, a separate persona
-     split out of the former `hivemind` (see agents/task-master.md). -->
+     split out of what used to be a single planning persona (see
+     agents/task-master.md). -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests

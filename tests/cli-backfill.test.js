@@ -27,12 +27,6 @@ function check(name, fn) {
   }
 }
 
-// No-op variant of check() for subtests temporarily neutralized pending a
-// redesign (see TODO(Step 3.6) below) — logs SKIP instead of running fn.
-function skip(name) {
-  console.log(`SKIP ${name}`);
-}
-
 const cli = require(path.join(REPO_ROOT, 'bin', 'cli.js'));
 
 const KNOWN_MAP = {
@@ -160,17 +154,18 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   delete require.cache[require.resolve(cliPath)];
   const cliInTemp = require(cliPath);
   try {
-    // TODO(Step 3.6): this subtest exercises the legacy hivemind -> (new
-    // personas) migration path via buildFileSpecs(['hivemind']) /
-    // fileHashes['.claude/agents/hivemind.md'], which Step 3.4 redesigns
-    // with LEGACY_PERSONA_MAP (a one-to-two split). Neutralized here (see
-    // Step 3.3b in docs/plans/2026-07-14-threefold-update.md) rather than
-    // substantively fixed, since fixing it now would either pull 3.4's
-    // design forward or be immediately broken by it. Step 3.6 owns
-    // un-skipping and rewriting this fixture once LEGACY_PERSONA_MAP exists.
-    skip('backfillSubstitutionsFromDisk + backfillFileHashesFromDisk backfill a simulated legacy project', () => {
+    // Exercises the legacy `hivemind` -> spec-master+task-master one-to-two
+    // migration (LEGACY_PERSONA_MAP, Step 3.4): a simulated legacy project
+    // already has the SPLIT files on disk (an early manual upgrade, or a
+    // project predating fileHashes/substitutions tracking) but its
+    // personaSelection still carries the deprecated "hivemind" token. Real
+    // runUpdate() deletes the legacy `.claude/agents/hivemind.md` before
+    // backfill ever runs (bin/cli.js's `hadLegacyToken` branch), so it's
+    // never present on disk by the time buildFileSpecs/backfill see it —
+    // only spec-master.md/task-master.md are.
+    check('backfillSubstitutionsFromDisk + backfillFileHashesFromDisk backfill a simulated legacy project through the hivemind one-to-two migration', () => {
       fs.mkdirSync(path.join(tmp, '.claude', 'agents'), { recursive: true });
-      for (const name of ['hivemind', 'lead-programmer']) {
+      for (const name of ['spec-master', 'task-master', 'lead-programmer']) {
         const sourceBody = fs.readFileSync(path.join(REPO_ROOT, 'agents', `${name}.md`), 'utf8');
         const substituted = cliInTemp.applyMattpocockSubs(sourceBody, KNOWN_MAP, name);
         fs.writeFileSync(path.join(tmp, '.claude', 'agents', `${name}.md`), substituted);
@@ -178,17 +173,24 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       // orchestrator/explorer/persona-protocol/protocol-digest are also in
       // buildFileSpecs but deliberately left absent from disk here — backfill
       // must skip missing files silently, not error.
-      const specs = cliInTemp.buildFileSpecs(['hivemind']);
+      const migrated = cliInTemp.migrateLegacyPersonaTokens(['hivemind'], { logNote: false });
+      assert.ok(
+        migrated.includes('spec-master') && migrated.includes('task-master') && !migrated.includes('hivemind'),
+        `expected the legacy "hivemind" token to expand to both new personas, got ${JSON.stringify(migrated)}`
+      );
+      const specs = cliInTemp.buildFileSpecs(migrated);
       const config = {};
       const changedSubs = cliInTemp.backfillSubstitutionsFromDisk(config, specs);
       const changedHashes = cliInTemp.backfillFileHashesFromDisk(config, specs);
       assert.strictEqual(changedSubs, true);
       assert.strictEqual(changedHashes, true);
-      for (const slot of ['grill-me', 'to-issues', 'tdd', 'diagnose']) {
+      for (const slot of ['grill-me', 'to-spec', 'to-issues', 'tdd', 'diagnose']) {
         assert.strictEqual(config.substitutions.mattpocockSkills[slot], KNOWN_MAP[slot], `slot ${slot}`);
       }
-      assert.ok(config.fileHashes['.claude/agents/hivemind.md']);
+      assert.ok(config.fileHashes['.claude/agents/spec-master.md']);
+      assert.ok(config.fileHashes['.claude/agents/task-master.md']);
       assert.ok(config.fileHashes['.claude/agents/lead-programmer.md']);
+      assert.strictEqual(config.fileHashes['.claude/agents/hivemind.md'], undefined);
       assert.strictEqual(config.fileHashes['.claude/agents/explorer.md'], undefined);
     });
   } finally {
