@@ -3,6 +3,43 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.12.0] - 2026-07-15
+
+### Added
+- **12 `mattpocock/skills` vendored first-party** into `skills/` (verbatim,
+  with provenance headers and a pinned upstream SHA): `grill-me`, `grilling`,
+  `handoff`, `to-spec`, `to-tickets`, `tdd`, `diagnosing-bugs`,
+  `improve-codebase-architecture`, `codebase-design`, `domain-modeling`,
+  `implement`, `code-review` — see `skills/THIRD-PARTY-NOTICES.md` for the
+  full MIT notice and per-skill upstream paths. `to-spec`/`to-tickets`/
+  `code-review` are documented repoints (their `/setup-matt-pocock-skills`
+  reference replaced with antislop's native `install-antislop` setup;
+  otherwise byte-verbatim).
+- `docs/maintenance/resync-vendored-skills.md` + `scripts/resync-vendored-
+  skills.sh --check`, an actionable periodic re-sync runbook/drift-check
+  against the pinned upstream SHA.
+
+### Removed
+- **The `<MATTPOCOCK:slot>` substitution machinery** in `bin/cli.js`
+  (`MATTPOCOCK_RE`, `applyMattpocockSubs`, `deriveMattpocockSubsForFile`,
+  `hasMattpocockResidue`, the `substitutions.mattpocockSkills` backfill/map,
+  the `--with-mattpocock`/`--only-mattpocock` install path) and the matching
+  `bin/install-deps.sh` branch. Every persona reference that used to resolve
+  through a slot (`spec-master`, `milestone-auditor`, `task-master`, `scribe`,
+  `lead-programmer`) now points directly at the vendored `antislop:<name>`
+  skill. `skills/install-antislop`'s mattpocock-selection step and
+  `update-fallback.md`'s unresolved-slot recovery path are dropped
+  accordingly; the issue-tracker capture the wizard used to seed is now a
+  native `install-antislop` step (`issueTracker` in `persona-config.json`).
+- **Capability loss (intentional, recorded per Constitution P4/OQ1):**
+  removing the machinery removes the extension point for wiring an
+  arbitrary *unported* mattpocock skill via a `<MATTPOCOCK:slot>` +
+  `persona-config.json` map entry — that indirection no longer exists. A
+  consumer who wants a new mattpocock (or any third-party) skill now adds it
+  as a first-party `skills/<name>/` entry instead, the same pattern already
+  used for `pathfinder`/`fail-triage`/the 12 skills above. See
+  `docs/adr/0005-vendor-mattpocock-skills.md`.
+
 ## [0.11.0] - 2026-07-15
 
 ### Added

@@ -7,7 +7,7 @@ memory: project
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:improve-codebase-architecture
 ---
-<!-- antislop v0.11.0 | source: agents/scribe.md | ADAPT-substituted -->
+<!-- antislop v0.12.0 | source: agents/scribe.md | ADAPT-substituted -->
 <!-- `Skill` is in tools so a teammate copy can invoke
      improve-codebase-architecture explicitly, since preloading doesn't
      apply to teammates. -->

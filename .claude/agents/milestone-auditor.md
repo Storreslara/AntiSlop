@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill
 skills: antislop:grill-me
 maxTurns: 20
 ---
-<!-- antislop v0.11.0 | source: agents/milestone-auditor.md | ADAPT-substituted -->
+<!-- antislop v0.12.0 | source: agents/milestone-auditor.md | ADAPT-substituted -->
 <!-- Deliberately no Write/Edit, same reasoning as reviewer.md — it can't fix
      what it's auditing, and fixing isn't its job anyway (this doesn't grade
      implementation, so there'd be nothing well-formed to fix). Deliberately

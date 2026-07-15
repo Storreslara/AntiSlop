@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
 maxTurns: 30
 ---
-<!-- antislop v0.11.0 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.12.0 | source: agents/spec-master.md | ADAPT-substituted -->
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file
      management (see shared protocol) — this does NOT relax "never write
      production code" below; that remains instruction-enforced.

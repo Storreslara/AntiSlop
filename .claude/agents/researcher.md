@@ -12,7 +12,7 @@ mcpServers:
       args:
         - arxiv-mcp-server
 ---
-<!-- antislop v0.10.0 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
+<!-- antislop v0.12.0 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
 <!-- NOT shipped as a plugin agent: plugin subagents ignore the `mcpServers`
      frontmatter field entirely (Claude Code plugin security restriction), so
      this file only works as a PROJECT-scoped agent. The install-antislop
@@ -42,4 +42,5 @@ field, or the server is unreachable), say so in one line, then answer via
 `WebFetch`/`WebSearch` and note the answer is web-search-derived, not
 MCP-derived.
 
-Always cite arXiv IDs. No mattpocock skills apply to this role.
+Always cite arXiv IDs. This role doesn't reference any of the vendored
+first-party skills.
