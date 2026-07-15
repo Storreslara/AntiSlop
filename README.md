@@ -245,15 +245,13 @@ Exact registered skill names drift between package versions — treat these as
 the purpose they serve, not a name to search for; `install-antislop` verifies
 the actual installed names on disk rather than trusting this list:
 
-- **[mattpocock/skills](https://github.com/mattpocock/skills)** — installed via
-  the `skills.sh` installer (`npx skills@latest add mattpocock/skills`).
-  Provides a grill/challenge-the-plan skill (used by `spec-master`) and a
-  work-to-tracker-tickets skill (used by `task-master`), a TDD skill and a
-  diagnose-a-bug skill (used by
-  `lead-programmer`), an improve-codebase-architecture skill (used by
-  `scribe`), a turn-conversation-into-a-spec (`to-spec`) skill (used by
-  `spec-master`), and a hand-off-to-a-fresh-session (`handoff`) skill (used
-  by `lead-programmer`).
+- **[mattpocock/skills](https://github.com/mattpocock/skills)** — 12 skills
+  (`grill-me`, `grilling`, `handoff`, `to-spec`, `to-tickets`, `tdd`,
+  `diagnosing-bugs`, `improve-codebase-architecture`, `codebase-design`,
+  `domain-modeling`, `implement`, `code-review`) are now vendored first-party
+  under `skills/` — no external install step required. MIT licensed; see
+  [`skills/THIRD-PARTY-NOTICES.md`](skills/THIRD-PARTY-NOTICES.md) for the
+  full license text and the pinned upstream commit.
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — the
   tree-sitter/SQLite structural graph the `explorer` persona queries for
   blast-radius and dependency answers. It's an MCP server (pip/pipx-installed);
