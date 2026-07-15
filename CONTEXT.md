@@ -25,9 +25,9 @@ drift apart.
   which lets `bin/cli.js --update` tell "plugin's current version" from
   "what's on disk" and detect local edits via `fileHashes` without an LLM.
 - **Substitution** — a placeholder in a shipped persona file (e.g.
-  `<MATTPOCOCK:grill-me>`, `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`)
-  resolved to a real value at ADAPT time and recorded in
-  `.claude/persona-config.json`'s `substitutions` field.
+  `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`) resolved to a real
+  value at ADAPT time and recorded in `.claude/persona-config.json`'s
+  `substitutions` field.
 - **The Writer/Reviewer split** — the system's core safety property: the
   `lead-programmer` writes code, but only the independent `reviewer`
   (which did not write the code) can mark a unit done (`.claude/reviewed/*.pass`).
@@ -43,8 +43,9 @@ drift apart.
 - **This repo's own ADAPT state** — this repo self-hosts the plugin it
   ships (dogfooding). Its `.claude/persona-config.json` documents exactly
   which personas and substitutions this repo itself uses.
-- **`to-spec` skill** — published mattpocock/skills artifact, wired to
-  `spec-master` via `<MATTPOCOCK:to-spec>` slot. Turns a finalized spec
+- **`to-spec` skill** — vendored first-party skill (originally from Matt
+  Pocock's `skills` repo, see `skills/THIRD-PARTY-NOTICES.md`), wired to
+  `spec-master` via `antislop:to-spec`. Turns a finalized spec
   conversation into a single published spec (Problem Statement / Solution /
   User Stories / Implementation Decisions / Testing Decisions / Out of Scope)
   on the issue tracker, no further interview. Complements `grill-me`
@@ -52,14 +53,14 @@ drift apart.
   publish. The template LAYERS on top of the v0.9.0 spec-kit format (Goal →
   Context → Clarifications → …), not replacing it.
 - **`pathfinder` skill** — first-party skill for `task-master`, derived from
-  mattpocock's `wayfinder` (adapted for dispatch, not a passthrough). Helps
+  Matt Pocock's `wayfinder` (adapted for dispatch, not a passthrough). Helps
   `task-master` build reliable, detailed, unambiguous dispatch tasks: one
   decision/one unit per ticket, refer-by-name, explicit blocking/ordering
   edges, precise acceptance criteria (enforces the machine-checkable-criteria
   rule). Ships via plugin-source `skills/pathfinder/SKILL.md` path.
 - **`roast-work` skill** — first-party skill for `reviewer`, a detail-driven
   critique rubric (contradictions, missing parts, logic gaps, security
-  vulnerabilities, actionable feedback) written to the mattpocock quality bar.
+  vulnerabilities, actionable feedback) written to Matt Pocock's quality bar.
   Advisory and non-gating only — PASS/FAIL stays determined by the
   acceptance-criteria command + the existing materiality filter; roast-work
   never flips a verdict. Appended as a clearly-demarcated advisory section

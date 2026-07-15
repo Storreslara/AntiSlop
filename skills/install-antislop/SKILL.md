@@ -129,98 +129,6 @@ phrased conditionally ("if present, otherwise <fallback>") in
 `orchestrator.md`, `lead-programmer.md`, and `commands/start-feature-team.md`
 — a plain copy degrades gracefully even when a persona was deselected.
 
-## 3. Third-party skill installs
-
-- **Check both scopes before asking the human to install anything.** Run
-  `npx skills@latest ls -g` (global/user-scope, `~/.claude/skills/` —
-  installed once, visible to the Skill tool in every project regardless of
-  cwd) and, if `.claude/skills/` already exists in this project,
-  `npx skills@latest ls` (project-scope) too. Match what's already listed
-  against the purposes below by name/description, not by assuming a fixed
-  name. Any purpose already covered in EITHER scope is done — record its
-  discovered name straight into the substitution map (step further down) and
-  skip the install instruction entirely for that purpose. A global install
-  satisfies every project; never tell the human to reinstall a purpose
-  that's already present at user scope just because this particular project
-  hasn't installed it locally. Only the genuinely missing purposes fall
-  through to the steps below.
-- **`npx skills@latest add mattpocock/skills` opens an interactive
-  terminal menu (pick skills, pick target agents) — it has no documented
-  non-interactive/flag-driven mode.** Do NOT run this yourself via Bash and
-  assume a selection; a non-interactive agent shell can't drive a TUI picker
-  and the command will hang or silently take defaults, leaving stale
-  `<MATTPOCOCK:*>` placeholders in copied persona files with no error
-  surfaced. Instead: tell the human which skills to select, BY PURPOSE, and
-  let the package's own menu supply the exact registered names (they change
-  between package versions — do not treat any name written here as ground
-  truth):
-    - a "grill/challenge-the-plan" skill (`grill-me`),
-    - a "turn work into tracker tickets" skill (`to-tickets` — NOT `to-issues`),
-    - a "TDD / red-green-refactor" skill (`tdd`),
-    - a "diagnose a bug" skill (`diagnosing-bugs` — NOT `diagnose`),
-    - an "improve codebase architecture" skill (`improve-codebase-architecture`),
-    - a "turn conversation into a spec" skill (`to-spec`),
-    - a "compact the conversation into a handoff doc for a fresh session"
-      skill (`handoff`),
-    - the `setup-matt-pocock-skills` setup command.
-  Select only the ones the selected personas actually use (e.g. skip the
-  grill skill entirely if `spec-master` and `milestone-auditor` were both
-  deselected — `milestone-auditor` also preloads the grill skill, aimed at
-  the plan's assumptions after the fact rather than the request before
-  planning; skip the tickets skill if `task-master` was deselected) — and ask
-  them to run the command themselves in their own terminal. After they confirm it's done, verify by listing the installed
-  skill names yourself (don't take "done" on faith) — this discovered list,
-  not the names above, is the authoritative source for the substitution
-  below.
-- Run `/setup-matt-pocock-skills` once (issue tracker, triage labels, doc
-  layout). RECORD which issue tracker was chosen — it goes in
-  `.claude/persona-config.json`'s `issueTracker` field and task-master reads
-  it via the retrieval contract.
-- Registered names are bare (`tdd`, `diagnosing-bugs`, `to-tickets`, …), not
-  namespaced under a `mattpocock-skills:` prefix — confirmed against a live
-  `npx skills@latest ls -g` output and a working substitution
-  (`persona-config.json`'s `mattpocockSkills` map uses `"to-tickets"`, not
-  `"mattpocock-skills:to-tickets"`). List `~/.claude/skills/*/SKILL.md` and
-  `.claude/skills/*/SKILL.md` (read each frontmatter `name:` field) and
-  record the exact discovered names. This recorded list is the ONLY source
-  for the substitution values below — resolve each `<MATTPOCOCK:*>` from a
-  discovered `name:`, never by copying a name written in this skill's prose
-  (those are illustrative and go stale). Match by PURPOSE: the placeholder
-  label after the colon (e.g. `<MATTPOCOCK:to-issues>`,
-  `<MATTPOCOCK:diagnose>`) is a slot marker in the shipped file, not
-  necessarily the current registered name — e.g. resolve the "tickets" slot
-  to the discovered `to-tickets`, and the "diagnose" slot to the discovered
-  `diagnosing-bugs`. If a purpose has no matching discovered skill, STOP and
-  surface it to the human — do not substitute a guessed name.
-- **Substitute placeholders**: the copied `spec-master.md`, `task-master.md`,
-  `scribe.md`, and `milestone-auditor.md` (if selected) contain
-  `<MATTPOCOCK:skill-name>`
-  placeholders in their `skills:` frontmatter — replace each with the
-  discovered namespaced name for that purpose (this is expected ADAPT
-  substitution, not drift). `lead-programmer.md`
-  is different: `tdd` and `diagnose` are deliberately NOT in its `skills:`
-  frontmatter (they're invoked on demand via the `Skill` tool instead of
-  preloaded every spawn, for token efficiency — see its body's "TDD-first"
-  bullet), so its `<MATTPOCOCK:tdd>`/`<MATTPOCOCK:diagnose>` placeholders live
-  in that body prose instead. Substitute them there the same way.
-- **Record every substitution you just made**: as you resolve each
-  `<MATTPOCOCK:slot>` placeholder, add a `slot -> resolved name` entry to a
-  running map (e.g. `{"grill-me": "grill-me", "to-issues": "to-tickets"}`)
-  — record it, step 6's `substitutions` field depends on it.
-
-### 3b. Fail-fast placeholder check (mattpocock scope)
-
-Immediately after the substitution above, run the canonical placeholder
-sweep from step 12, scoped to the agents directory:
-
-    grep -rEn '<MATTPOCOCK(:[a-zA-Z0-9_-]+)?>' .claude/agents/
-
-Any match is a HARD FAILURE — a placeholder is still unresolved. Fix it (or
-surface an unresolvable one to the human) before doing any work in sections
-4-12; catching it here avoids paying for the rest of the flow on a broken
-substitution. (Step 12's full sweep is the final backstop across all
-placeholder kinds; this is the early, mattpocock-only tripwire.)
-
 ## 4. Code Review Graph (MCP server, scoped to explorer alone — never project-wide)
 
 The Code Review Graph (github.com/tirth8205/code-review-graph) installs
@@ -350,13 +258,13 @@ don't guess:
   correct, not a mistake).
 - `gatedAgents` — leave as the default `["lead-programmer"]` unless this
   project has another code-writing persona that should also be stop-gated.
-- `issueTracker` — from step 3.
+- `issueTracker` — the tracker/retrieval method chosen for this project.
 - `personaSelection` — from step 1.
 - `pluginVersion` — this plugin's current version (same value used for the
   file stamps in step 2).
-- `substitutions` — the `mattpocockSkills` map (step 3), `graphMcpLaunch`
-  (step 4, `null` if the graph wasn't wired), and `arxivMcpLaunch` (step 5,
-  `null` if researcher wasn't selected or no working MCP was found). This is
+- `substitutions` — `graphMcpLaunch` (step 4, `null` if the graph wasn't
+  wired), and `arxivMcpLaunch` (step 5, `null` if researcher wasn't selected
+  or no working MCP was found). This is
   what makes `bin/cli.js --update` possible — a fresh install without this
   field forces every future update for the project onto the slow LLM path.
 - `fileHashes` — **compute this last, after every other file in steps 2-5 has
@@ -544,8 +452,8 @@ confirm zero matches.** This is mandatory on every run — fresh install AND
 
     grep -rEn '<[A-Z0-9_]+(:[a-zA-Z0-9_-]+)?>' .claude/agents/ .claude/persona-protocol.md .claude/protocol-digest.md
 
-(This is the canonical "placeholder sweep" referenced by step 3b and section
-0.5.) Any match is a HARD FAILURE: an unresolved `<MATTPOCOCK:*>`,
+(This is the canonical "placeholder sweep" referenced by section 0.5.) Any
+match is a HARD FAILURE: an unresolved
 `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_*>`, or any other `<...>` slot
 means the adapt is not done. Do NOT report success until every match is
 either resolved by substituting the real value, or — if it genuinely can't
@@ -555,7 +463,7 @@ be resolved — explicitly called out to the human as an unresolved gap (same
 
 State: the Claude Code version confirmed; which personas were selected
 (and, if `reviewer` was skipped, that the explicit confirmation was
-obtained); the exact mattpocock skill names and issue tracker chosen; the
+obtained); the issue tracker chosen; the
 code-review-graph registered name and one real structural query + answer as
 proof; the arXiv MCP result (server name, or fallback mode, or "researcher
 not selected"); the one manual `/config` step required (default teammate

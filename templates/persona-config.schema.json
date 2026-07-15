@@ -49,11 +49,6 @@
       "type": "object",
       "description": "Deterministic substitution values recorded at ADAPT time so `bin/cli.js --update` can regenerate a byte-identical fresh copy of each version-stamped file directly from the plugin's own source, with no LLM involved. Absent (or missing sub-fields) on projects adapted before this field existed - `--update` falls back to the LLM-driven `/install-antislop --update` flow for those, which also backfills this field.",
       "properties": {
-        "mattpocockSkills": {
-          "type": "object",
-          "additionalProperties": { "type": "string" },
-          "description": "Maps each <MATTPOCOCK:slot> placeholder slot literally found in plugin source files (e.g. 'grill-me', 'to-issues', 'tdd', 'diagnose', 'improve-codebase-architecture') to the discovered namespaced skill name it was resolved to at ADAPT time, e.g. {\"to-issues\": \"mattpocock-skills:to-tickets\"}. Only needs entries for slots that actually appear in the selected persona files."
-        },
         "graphMcpLaunch": {
           "type": ["object", "null"],
           "properties": {

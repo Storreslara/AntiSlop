@@ -26,8 +26,8 @@ instead (same script, no plugin/skill needed).
      - A specific file or substitution slot named as unresolvable: the script
        already auto-backfills legacy `substitutions`/`fileHashes` from disk on
        its own (zero tokens) — this exit only happens for a genuinely narrow
-       remaining gap it couldn't derive (e.g. one `<MATTPOCOCK:slot>` mapping,
-       or an MCP launch command never wired). Invoke the
+       remaining gap it couldn't derive (e.g. an MCP launch command never
+       wired). Invoke the
        `/antislop:install-antislop` skill exactly as if called with `--update`;
        its own routing runs the script again first, then reads
        `skills/install-antislop/update-fallback.md` to resolve just that one

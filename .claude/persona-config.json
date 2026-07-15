@@ -23,15 +23,6 @@
   ],
   "issueTracker": "GitHub issues (repo: Storreslara/AntiSlop, gh CLI authenticated). File with 'gh issue create'; fetch with 'gh issue list --label plan/<slug>'. Triage label: to-tickets' own default (ready-for-agent) applies, no custom vocabulary configured.",
   "substitutions": {
-    "mattpocockSkills": {
-      "grill-me": "grill-me",
-      "to-issues": "to-tickets",
-      "improve-codebase-architecture": "improve-codebase-architecture",
-      "tdd": "tdd",
-      "diagnose": "diagnosing-bugs",
-      "to-spec": "to-spec",
-      "handoff": "handoff"
-    },
     "graphMcpLaunch": {
       "command": "uvx",
       "args": [
