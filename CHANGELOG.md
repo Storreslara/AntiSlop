@@ -3,6 +3,27 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.11.0] - 2026-07-15
+
+### Added
+- **`handoff` skill** wired as the 7th `<MATTPOCOCK:slot>` passthrough
+  substitution, preloaded into `lead-programmer` only and available
+  project-wide as the `/handoff` slash command. Compacts a cut-off unit's
+  conversation into a resumption doc (OS temp dir) for a fresh session to
+  pick up. Complements, never replaces, the WIP sentinel — a resumption aid,
+  not a turn-end permission signal; changes no gate.
+- **`fail-triage` skill** (first-party, `skills/fail-triage`), a tailored
+  derivative of `mattpocock/skills`' `triage` scoped only to the post-FAIL
+  path (2-FAIL-cap / debug-spec escalation, not every FAIL). Wired into
+  `spec-master`'s existing debug-spec step to sharpen its root-cause
+  diagnosis with an explicit verify/reproduce + categorize front-half, before
+  the existing revised-step format. Drops `triage`'s issue/PR state machine,
+  label roles, external-PR request surface, `/grilling` +
+  `/domain-modeling` deps, and `AGENT-BRIEF.md`/`OUT-OF-SCOPE.md` companion
+  docs — same relocation pattern `pathfinder` used for `wayfinder`. The
+  reviewer PASS gate and normal first-FAIL→`lead-programmer` route are
+  unchanged; `orchestrator.md`/`persona-protocol.md` are not touched.
+
 ## [0.10.0] - 2026-07-15
 
 ### Changed
