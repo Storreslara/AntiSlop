@@ -5,7 +5,7 @@ model: sonnet
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline
+skills: antislop:coding-discipline, handoff
 maxTurns: 30
 ---
 <!-- antislop v0.10.0 | source: agents/lead-programmer.md | ADAPT-substituted -->
@@ -48,6 +48,11 @@ instructions.
   stays short. (In agent-teams mode, SendMessage the
   scribe teammate instead and keep working — delivery is asynchronous
   there.) If there's no scribe, skip this — nothing else depends on it.
+- **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
+  session to resume it, invoke the `handoff` skill to produce a
+  resumption doc. This **complements, never replaces** the WIP sentinel,
+  which remains the mechanical turn-end signal for ending a turn with work
+  in progress — `handoff` changes no gate.
 - Spawn `researcher` when you need to understand a technique rather than
   guessing, if this project has one; otherwise use WebSearch yourself.
 - **Don't grade your own work**: when a unit of work meets its

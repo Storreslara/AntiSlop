@@ -49,8 +49,7 @@
   "fileHashes": {
     ".claude/agents/orchestrator.md": "9f241dd6b0ec0ba9ae5b8f327ee98013334db044c2f409a1c342c67c4f6e0189",
     ".claude/agents/explorer.md": "36c4bfb9ef16628fcb51428804db47b7b339ba217e27e9e16d6fc45121c750fa",
-    ".claude/agents/lead-programmer.md": "e336c2092c710ed8c538ddf9168d780812facbfecc90234aabd1f968be394868",
-    ".claude/agents/hivemind.md": "04dd98ccc51bd884c54f29af1bd61c276788788851d73398f7bac911c0725efc",
+    ".claude/agents/lead-programmer.md": "9d0171073d188d409bfc8d6ea27c1475187be20fc9c86746db4b91451c70e115",
     ".claude/agents/milestone-auditor.md": "2c59c5e33d1c98e034a22e1ef0488612e184af6051cff1f9680c5e4b7ef0a46c",
     ".claude/agents/reviewer.md": "46e1c42400dd08fdaf7e25edc9819db7eadc193acaff1e15d0ff614022fcd921",
     ".claude/agents/researcher.md": "366cccb8049dc6521c9d4fcab757bc6bda12d7fa3cca3169c4dabdb2497dc852",

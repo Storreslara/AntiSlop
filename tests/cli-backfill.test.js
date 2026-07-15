@@ -37,6 +37,7 @@ const KNOWN_MAP = {
   'improve-codebase-architecture': 'mattpocock-skills:improve-codebase-architecture',
   tdd: 'mattpocock-skills:tdd',
   diagnose: 'mattpocock-skills:diagnosing-bugs',
+  handoff: 'mattpocock-skills:handoff',
 };
 
 for (const name of ['scribe', 'milestone-auditor', 'lead-programmer', 'spec-master', 'task-master']) {
