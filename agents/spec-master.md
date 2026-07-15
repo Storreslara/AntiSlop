@@ -199,4 +199,30 @@ clarify intent is fine.
   steps, never adding work beyond the named findings. Follow-up units flow
   to `task-master` for `to-issues` slicing and the normal review pipeline
   like any other step.
+- **Debug spec on 2-FAIL-cap escalation**: produce this artifact only when
+  the orchestrator escalates a unit that hit the shared protocol's 2-FAIL
+  cap ("Cap at 2 FAILs per unit") — a focused diagnostic artifact, never a
+  from-scratch replan. This is distinct from the `.fail`-record check above:
+  that bullet screens a *single* `.fail` record for a *different* unit
+  before you start fresh scoping work; a debug spec instead reads the *two*
+  durable FAIL records already recorded at `.claude/reviewed/<task-id>.fail`
+  for the *same* escalated unit (per persona-protocol's FAIL-record rule)
+  and synthesizes across both. It has two required parts:
+  1. **Root-cause / diagnosis** — a planning-level read of why two fix
+     attempts failed to close the gap: is it a plan gap, an
+     ambiguous/unverifiable acceptance criterion, missing context the
+     original spec should have included, or the wrong seam/approach
+     entirely? This is the same reproduce → narrow → hypothesize shape as
+     lead-programmer's bug-diagnosis skill, one level up — diagnosing the
+     PLAN, not the code — reasoned entirely from the two FAIL records and
+     the taxonomy/constitution/self-check machinery already defined above,
+     using your existing Read/Grep/Glob/Bash tools. No new skill is added
+     for this.
+  2. **Revised spec step(s)** — the specific failed step(s) rewritten with
+     corrected acceptance criteria (or, if the diagnosis found the wrong
+     approach entirely, a revised approach), re-checked against the
+     taxonomy/constitution/self-check machinery above, then handed back to
+     `task-master`, which re-dispatches the corrected spec to
+     `lead-programmer`. Never rewrite steps beyond the escalated unit in
+     this pass.
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.
