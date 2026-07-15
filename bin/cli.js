@@ -199,24 +199,6 @@ function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const MATTPOCOCK_RE = /<MATTPOCOCK:([a-zA-Z0-9_-]+)>/g;
-
-function applyMattpocockSubs(body, mattpocockSkills, fileLabel) {
-  const map = mattpocockSkills || {};
-  return body.replace(MATTPOCOCK_RE, (full, slot) => {
-    if (!(slot in map)) {
-      throw new Error(
-        `No recorded substitution for <MATTPOCOCK:${slot}> in ${fileLabel} — ` +
-          "persona-config.json's substitutions.mattpocockSkills is incomplete and this " +
-          "plugin's --update couldn't auto-derive it from what's on disk. Add " +
-          `"${slot}": "<the mattpocock skill's registered name>" to that map yourself ` +
-          '(list installed skill names via `.claude/skills/*/SKILL.md` frontmatter), then re-run --update.'
-      );
-    }
-    return map[slot];
-  });
-}
-
 function renderMcpBlock(launch, indent) {
   const lines = [`${indent}command: ${launch.command}`, `${indent}args:`];
   for (const a of launch.args || []) lines.push(`${indent}  - ${a}`);
@@ -258,9 +240,9 @@ function applyArxivFallback(body) {
 // has no `substitutions`/`fileHashes`): reverse-derive both, deterministically,
 // from whatever's already on disk, instead of forcing the whole project onto
 // the LLM-driven fallback. Best-effort — ADAPT substitution is a literal
-// `<MATTPOCOCK:slot>` -> resolved-name (or placeholder-line -> rendered MCP
-// block) text swap with no other prose changes (see install-antislop SKILL.md),
-// so a project adapted at the CURRENT plugin version's persona files can
+// placeholder-line -> rendered MCP block text swap with no other prose
+// changes (see install-antislop SKILL.md), so a project adapted at the
+// CURRENT plugin version's persona files can
 // always be derived this way; a project several versions behind may have
 // some individual slots whose surrounding prose has since been reworded —
 // those are left undetermined here and surfaced per-file, non-fatally, by
@@ -269,55 +251,6 @@ function applyArxivFallback(body) {
 
 function normalizeEol(s) {
   return s.replace(/\r\n/g, '\n');
-}
-
-// Diffs one plugin-source persona file (still containing <MATTPOCOCK:slot>
-// tokens) against the project's already-substituted copy, line by line: each
-// source line containing placeholder(s) becomes a regex (literal text
-// escaped, each placeholder -> a capture group), searched for across the
-// ENTIRE current file (not by line number — unrelated lines may have shifted
-// between the version this project was adapted at and the plugin's current
-// source). Ambiguous (0 or >1 matching lines) or conflicting (same slot
-// resolves to two different values across files) slots are left unresolved
-// rather than guessed.
-function deriveMattpocockSubsForFile(sourceBody, currentBody) {
-  const resolved = {};
-  const unresolvedSlots = new Set();
-  const normalizedCurrent = normalizeEol(currentBody);
-  const sourceLines = normalizeEol(sourceBody).split('\n');
-
-  for (const line of sourceLines) {
-    MATTPOCOCK_RE.lastIndex = 0;
-    if (!MATTPOCOCK_RE.test(line)) continue;
-
-    MATTPOCOCK_RE.lastIndex = 0;
-    let pattern = '';
-    let lastIndex = 0;
-    const slotsInLine = [];
-    let m;
-    while ((m = MATTPOCOCK_RE.exec(line)) !== null) {
-      pattern += escapeRegExp(line.slice(lastIndex, m.index)) + '(\\S+?)';
-      slotsInLine.push(m[1]);
-      lastIndex = m.index + m[0].length;
-    }
-    pattern += escapeRegExp(line.slice(lastIndex));
-
-    const matches = [...normalizedCurrent.matchAll(new RegExp('^' + pattern + '$', 'gm'))];
-    if (matches.length !== 1) {
-      for (const slot of slotsInLine) unresolvedSlots.add(slot);
-      continue;
-    }
-    slotsInLine.forEach((slot, i) => {
-      const value = matches[0][i + 1];
-      if (slot in resolved && resolved[slot] !== value) {
-        unresolvedSlots.add(slot);
-        delete resolved[slot];
-        return;
-      }
-      if (!unresolvedSlots.has(slot)) resolved[slot] = value;
-    });
-  }
-  return { resolved, unresolvedSlots: [...unresolvedSlots] };
 }
 
 // Reverse of renderMcpBlock: parses an already-rendered mcpServers: block
@@ -367,22 +300,7 @@ function deriveMcpLaunchFromDisk(body) {
 // isn't mistaken for "missing"). Returns whether anything changed.
 function backfillSubstitutionsFromDisk(config, specs) {
   config.substitutions = config.substitutions || {};
-  config.substitutions.mattpocockSkills = config.substitutions.mattpocockSkills || {};
   let changed = false;
-
-  for (const spec of specs) {
-    const destAbsPath = path.join(CWD, spec.projectRelPath);
-    if (!fs.existsSync(destAbsPath)) continue;
-    const sourceBody = fs.readFileSync(spec.sourceAbsPath, 'utf8');
-    if (!sourceBody.includes('<MATTPOCOCK:')) continue; // plain substring check — MATTPOCOCK_RE is a shared /g regex, unsafe to .test() without a lastIndex reset
-    const currentBody = stripStamp(fs.readFileSync(destAbsPath, 'utf8'));
-    const { resolved } = deriveMattpocockSubsForFile(sourceBody, currentBody);
-    for (const [slot, value] of Object.entries(resolved)) {
-      if (slot in config.substitutions.mattpocockSkills) continue;
-      config.substitutions.mattpocockSkills[slot] = value;
-      changed = true;
-    }
-  }
 
   const mcpTargets = [
     { relPath: '.claude/agents/explorer.md', field: 'graphMcpLaunch', placeholder: '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>' },
@@ -426,18 +344,6 @@ function backfillFileHashesFromDisk(config, specs) {
     changed = true;
   }
   return changed;
-}
-
-// True if any already-adapted file on disk still has an unresolved
-// `<MATTPOCOCK:slot>` placeholder — used to force runUpdate's render loop to
-// run even when pluginVersion already matches (see call site).
-function hasMattpocockResidue(specs, cwd) {
-  return specs.some((spec) => {
-    const destAbsPath = path.join(cwd, spec.projectRelPath);
-    // plain substring check — MATTPOCOCK_RE is a shared /g regex, unsafe to
-    // .test() without a lastIndex reset (see backfillSubstitutionsFromDisk).
-    return fs.existsSync(destAbsPath) && fs.readFileSync(destAbsPath, 'utf8').includes('<MATTPOCOCK:');
-  });
 }
 
 // Drops fileHashes keys that no longer correspond to any current spec (e.g.
@@ -494,7 +400,6 @@ function buildFileSpecs(personaSelection) {
 
 function renderCleanBody(spec, config) {
   let body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
-  body = applyMattpocockSubs(body, (config.substitutions || {}).mattpocockSkills, spec.projectRelPath);
   if (spec.kind === 'graph') {
     body = applyMcpPlaceholder(
       body,
@@ -558,8 +463,8 @@ async function runUpdate(args) {
   // missing from what's already on disk — deterministic, zero LLM cost. Runs
   // unconditionally (cheap, idempotent no-op once fully populated) rather
   // than being gated behind an existence check, so it also fills gaps left
-  // by a prior partial run (e.g. --wire-graph-mcp ran but mattpocockSkills
-  // never got backfilled).
+  // by a prior partial run (e.g. --wire-graph-mcp recorded graphMcpLaunch
+  // but the arxiv MCP launch never got backfilled).
   const backfilledSubs = backfillSubstitutionsFromDisk(config, specs);
   const backfilledHashes = backfillFileHashesFromDisk(config, specs);
   const backfilled = backfilledSubs || backfilledHashes;
@@ -573,20 +478,13 @@ async function runUpdate(args) {
     );
   }
 
-  // A version match doesn't guarantee the on-disk files are actually clean:
-  // `substitutions.mattpocockSkills` can be hand-corrected (e.g. a slot
-  // pointed at its own placeholder gets wired to a real value) without any
-  // plugin version bump. Detect leftover `<MATTPOCOCK:...>` residue up front
-  // so that case still triggers the render loop below instead of a false
-  // "already current".
-  const hasResidue = hasMattpocockResidue(specs, CWD);
   // Forces the render/diff loop to run even when nothing else above tripped
   // it — the version-match fast-path otherwise means a plain --update can
   // never detect per-file drift (hand-edits, corruption) once pluginVersion
   // already matches.
   const checkFlag = args.includes('--check');
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !hasResidue && !checkFlag) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
@@ -1499,30 +1397,6 @@ async function main() {
   }
 
   const scriptedMode = yesToAll || Boolean(personasFlag) || overwrite;
-  const wantMattpocock = args.includes('--with-mattpocock')
-    ? true
-    : scriptedMode
-    ? false
-    : await askYesNoStandalone(
-        '\nRun the mattpocock/skills installer now (npx skills@latest add mattpocock/skills)? ' +
-          'It opens an interactive picker in this same terminal — you select the skills yourself.'
-      );
-  if (wantMattpocock) {
-    const result = spawnSync('bash', [path.join(PKG_ROOT, 'bin', 'install-deps.sh'), '--only-mattpocock'], {
-      stdio: 'inherit',
-      cwd: CWD,
-    });
-    if (result.status !== 0) {
-      console.log('  install-deps.sh reported a problem with the mattpocock/skills step — see output above.');
-    }
-    console.log(
-      '  /install-antislop still needs to record which skills you picked and substitute the ' +
-        '<MATTPOCOCK:*> placeholders in the copied persona files — it cannot be inferred from here.'
-    );
-  } else if (!scriptedMode) {
-    console.log('  Skipped — run it yourself later, or re-run this CLI with --with-mattpocock.');
-  }
-
   const wantGraph = args.includes('--with-graph')
     ? true
     : scriptedMode
@@ -1576,17 +1450,14 @@ if (require.main === module) {
 module.exports = {
   sha256Hex,
   stripStamp,
-  applyMattpocockSubs,
   renderMcpBlock,
   applyMcpPlaceholder,
   applyArxivFallback,
   buildFileSpecs,
   renderCleanBody,
   migrateLegacyPersonaTokens,
-  deriveMattpocockSubsForFile,
   deriveMcpLaunchFromDisk,
   backfillSubstitutionsFromDisk,
   backfillFileHashesFromDisk,
-  hasMattpocockResidue,
   pruneStaleFileHashes,
 };

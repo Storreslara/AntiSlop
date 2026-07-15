@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Idempotent installer for AntiSlop's two optional third-party dependencies.
+# Idempotent installer for AntiSlop's optional third-party dependency.
 # Safe to re-run: each step no-ops if already satisfied.
-# Usage: install-deps.sh [--only-graph|--only-mattpocock]
+# Usage: install-deps.sh [--only-graph]
 set -euo pipefail
 
 mode="${1:-}"
@@ -25,37 +25,15 @@ install_graph() {
   fi
 }
 
-install_mattpocock() {
-  echo "== mattpocock/skills (grill/TDD/diagnose/tracker skills some personas use) =="
-  lockfile="$HOME/.agents/.skill-lock.json"
-  if [ -f "$lockfile" ] && grep -q '"source":[[:space:]]*"mattpocock/skills"' "$lockfile"; then
-    echo "  Already installed (found mattpocock/skills entries in $lockfile) — skipping."
-  elif ! command -v npx >/dev/null 2>&1; then
-    echo "  npx not found. Install Node.js >= 18, then re-run this script." >&2
-    failed=1
-  else
-    echo "  Running: npx skills@latest add mattpocock/skills (interactive — you pick the skills)"
-    if ! npx skills@latest add mattpocock/skills; then
-      echo "  skills installer exited non-zero — re-run this script if that was unintended." >&2
-      failed=1
-    fi
-  fi
-}
-
 case "$mode" in
   --only-graph)
     install_graph
     ;;
-  --only-mattpocock)
-    install_mattpocock
-    ;;
   "")
     install_graph
-    echo ""
-    install_mattpocock
     ;;
   *)
-    echo "Unknown argument: $mode (expected --only-graph, --only-mattpocock, or nothing)" >&2
+    echo "Unknown argument: $mode (expected --only-graph or nothing)" >&2
     exit 1
     ;;
 esac
@@ -65,5 +43,4 @@ if [ "$failed" -ne 0 ]; then
   echo "Done, with failures above — fix those and re-run (already-satisfied steps are skipped)."
   exit 1
 fi
-echo "Done. Next: /install-antislop still records which skills you picked and"
-echo "substitutes the <MATTPOCOCK:*> placeholders — run it in your project."
+echo "Done."
