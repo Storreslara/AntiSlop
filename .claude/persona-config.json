@@ -29,7 +29,7 @@
       "improve-codebase-architecture": "improve-codebase-architecture",
       "tdd": "tdd",
       "diagnose": "diagnosing-bugs",
-      "to-spec": "<MATTPOCOCK:to-spec>"
+      "to-spec": "to-spec"
     },
     "graphMcpLaunch": {
       "command": "uvx",
@@ -56,7 +56,7 @@
     ".claude/persona-protocol.md": "102d9fd26a20a5ec6aa3406558a8abb1f60ab585701102817b16b3ecc72b4770",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "12a7ffbbe1d99b9ece33c2463b67fd93e1e382dc13347060c5a606519f7c9838",
-    ".claude/agents/spec-master.md": "66103399851118660823bfe5d6ddb38bd34cecc58469fffb1027de8386a67b16",
+    ".claude/agents/spec-master.md": "4edf9dbe206becb6321e06d59cb1f4b3cf9b18ff2b11fc695a4295df177f5cf4",
     ".claude/agents/task-master.md": "be2534095a96ad1b6d1e5a359645ecfa99a3e431e513c0c2b27d3004ec62b519"
   }
 }

@@ -5,7 +5,7 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: grill-me, <MATTPOCOCK:to-spec>
+skills: grill-me, to-spec
 maxTurns: 30
 ---
 <!-- antislop v0.9.0 | source: agents/spec-master.md | ADAPT-substituted -->

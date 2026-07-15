@@ -548,7 +548,20 @@ async function runUpdate(args) {
     );
   }
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled) {
+  // A version match doesn't guarantee the on-disk files are actually clean:
+  // `substitutions.mattpocockSkills` can be hand-corrected (e.g. a slot
+  // pointed at its own placeholder gets wired to a real value) without any
+  // plugin version bump. Detect leftover `<MATTPOCOCK:...>` residue up front
+  // so that case still triggers the render loop below instead of a false
+  // "already current".
+  const hasResidue = specs.some((spec) => {
+    const destAbsPath = path.join(CWD, spec.projectRelPath);
+    // plain substring check — MATTPOCOCK_RE is a shared /g regex, unsafe to
+    // .test() without a lastIndex reset (see backfillSubstitutionsFromDisk).
+    return fs.existsSync(destAbsPath) && fs.readFileSync(destAbsPath, 'utf8').includes('<MATTPOCOCK:');
+  });
+
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !hasResidue) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
