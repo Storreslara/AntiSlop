@@ -74,7 +74,7 @@ if [ "$hook_event" = "stop" ]; then
       esac
     done
     if [ "$blocked" = true ]; then
-      echo "A completed unit is awaiting review - spawn the reviewer (persona-protocol's Review ownership section) before ending the turn. Escape hatch: overwrite the flag's content with a reason, e.g. 'printf \"defer: <reason>\\n\" > .cursor/.pending-review.<agent-id>' (kept, review still owed next turn) or 'printf \"skip: <reason>\\n\" > .cursor/.pending-review.<agent-id>' (deleted, unit abandoned) - a reason-less overwrite is rejected the same way an empty WIP sentinel is." >&2
+      echo "Unit awaiting review - spawn the reviewer (persona-protocol's Review ownership section). Escape hatch: 'printf \"defer: <reason>\\n\" > .cursor/.pending-review.<agent-id>' keeps flag, still owed; swap defer->skip to delete it, abandoned. Empty reason rejected." >&2
       exit 2
     fi
     exit 0
