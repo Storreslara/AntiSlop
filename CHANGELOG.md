@@ -3,6 +3,53 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.10.0] - 2026-07-15
+
+### Changed
+- **`repo-historian` renamed to `scribe`** throughout the plugin source,
+  adapted copies, adapters (cursor/codex), install-antislop, and living docs
+  (Track 1). `agents/repo-historian.md` → `agents/scribe.md`; frontmatter
+  `name: repo-historian` → `name: scribe`; "Historian updates"/"Historian
+  update hint" → "Scribe updates"/"Scribe update hint" in prose.
+- **`hivemind` split into `spec-master` + `task-master`** (Track 3).
+  `spec-master` keeps the 9-category ambiguity taxonomy, grill-me
+  interrogation, Clarifications log, Constitution check, and Goal/Context/
+  Steps spec authoring (now published via `to-spec`, see below), plus the
+  debug-spec artifact for the 2-FAIL-cap escalation. `task-master` owns
+  ticket-slicing (`to-issues`/`to-tickets`), per-unit `Suggested model`
+  tagging (including advisory `Roast pass: fable` markers on heavy units),
+  retrieval-contract statements, and per-unit dispatch prompts for
+  `lead-programmer`/`scribe`. Neither persona re-plans on its own: a
+  mid-flight spec gap discovered by `task-master` routes back up to
+  `spec-master`, mirroring `lead-programmer`'s existing "report up" rule.
+  `hivemind.md` is retired (both plugin-source and adapted copies).
+
+### Added
+- **`to-spec` wired into `spec-master`** via the existing
+  `<MATTPOCOCK:slot>` substitution mechanism (Track 2) — the published
+  `mattpocock/skills` skill that synthesizes the current conversation into a
+  spec and publishes it to the project issue tracker. Its own PRD template
+  (Problem Statement / Solution / User Stories / Implementation Decisions /
+  Testing Decisions / Out of Scope) is layered on top of the existing
+  spec-kit format rather than replacing it; `spec-master` still saves the
+  full spec to `docs/plans/` in addition to `to-spec`'s tracker publish.
+- **`pathfinder` skill** (first-party, `skills/pathfinder`), wired into
+  `task-master` for slicing a finalized spec into dispatch-ready units —
+  sizing, naming, and ordering guardrails adapted from
+  `mattpocock/skills`' `wayfinder` for reliable, unambiguous
+  lead-programmer/scribe dispatch.
+- **`roast-work` skill** (first-party, `skills/roast-work`), wired into
+  `reviewer` as a supplementary, advisory critique pass — never a PASS/FAIL
+  gate. Surfaces contradictions, missing parts, logic gaps, and security
+  vulnerabilities beyond the reviewer's existing materiality filter, and
+  routes heavy review units to a `fable`-tier model for the extra pass.
+- **`LEGACY_PERSONA_MAP` migration entries** in `bin/cli.js` for both
+  renames above: `planner` → `hivemind` → `spec-master` + `task-master`
+  (a two-hop chain — `resolveLegacyToken` now recurses through intermediate
+  legacy tokens) and `repo-historian` → `scribe`. A project adapted at an
+  older plugin version that still selects a legacy token gets migrated
+  automatically on `--update`, with a logged note explaining the rename.
+
 ## [0.9.0] - 2026-07-14
 
 ### Added

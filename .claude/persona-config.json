@@ -12,7 +12,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.9.0",
+  "pluginVersion": "0.10.0",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -46,17 +46,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "8bb2afe5dccd672d85d30fb9d13fc663148c026a86901ed6d8cb08d2e28d1f86",
+    ".claude/agents/orchestrator.md": "9f241dd6b0ec0ba9ae5b8f327ee98013334db044c2f409a1c342c67c4f6e0189",
     ".claude/agents/explorer.md": "36c4bfb9ef16628fcb51428804db47b7b339ba217e27e9e16d6fc45121c750fa",
-    ".claude/agents/lead-programmer.md": "cfd6c37cfc63dc6b051035931615fb9b2139aaaed2a5ce7deafd50f60af3994a",
+    ".claude/agents/lead-programmer.md": "e336c2092c710ed8c538ddf9168d780812facbfecc90234aabd1f968be394868",
     ".claude/agents/hivemind.md": "04dd98ccc51bd884c54f29af1bd61c276788788851d73398f7bac911c0725efc",
-    ".claude/agents/milestone-auditor.md": "7cb4cfda4c62bd68aee57b3464eba01a5d6466ec2a352a8a7664759c461bd043",
-    ".claude/agents/reviewer.md": "7174f99a4884e5c52520d64d5fdca029438bfb209d11aef1c3b96eb473048d38",
-    ".claude/agents/researcher.md": "992d740701f33b3acd211b7ee47c06f04ceb0924737825cc0ffbb057610f3d0f",
-    ".claude/persona-protocol.md": "102d9fd26a20a5ec6aa3406558a8abb1f60ab585701102817b16b3ecc72b4770",
+    ".claude/agents/milestone-auditor.md": "2c59c5e33d1c98e034a22e1ef0488612e184af6051cff1f9680c5e4b7ef0a46c",
+    ".claude/agents/reviewer.md": "46e1c42400dd08fdaf7e25edc9819db7eadc193acaff1e15d0ff614022fcd921",
+    ".claude/agents/researcher.md": "366cccb8049dc6521c9d4fcab757bc6bda12d7fa3cca3169c4dabdb2497dc852",
+    ".claude/persona-protocol.md": "6d956d0a08fadfb55d1ddc67b7152c34a596b7ae83e60ebbce8cf6aa262da536",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "12a7ffbbe1d99b9ece33c2463b67fd93e1e382dc13347060c5a606519f7c9838",
     ".claude/agents/spec-master.md": "4edf9dbe206becb6321e06d59cb1f4b3cf9b18ff2b11fc695a4295df177f5cf4",
-    ".claude/agents/task-master.md": "be2534095a96ad1b6d1e5a359645ecfa99a3e431e513c0c2b27d3004ec62b519"
+    ".claude/agents/task-master.md": "8e3e23310fd8d6a3c62fb9b36f78df7b04bc952fc9dc44763a0a0f46bb6f09cb"
   }
 }

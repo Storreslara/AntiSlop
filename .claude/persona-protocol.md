@@ -1,4 +1,4 @@
-<!-- antislop v0.9.0 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.10.0 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/persona-protocol.md by the install-antislop
      skill, and pulled into every persona's context via a single
      `@.claude/persona-protocol.md` line in root CLAUDE.md. CLAUDE.md is the
