@@ -4,10 +4,10 @@ description: Spin up the persona feature team for a task (agent-teams mode - off
 
 Act as team lead (coordinate, do NOT implement). Create an agent team for
 "$ARGUMENTS". Check `.claude/agents/` for which personas this project
-actually has (hivemind, repo-historian, reviewer, and researcher are optional
+actually has (hivemind, scribe, reviewer, and researcher are optional
 — see the project's `persona-config.json` `personaSelection` field) and spawn
 named teammates only from what's present: lead-programmer is always a
-teammate; hivemind/repo-historian/reviewer join if they exist; researcher only
+teammate; hivemind/scribe/reviewer join if they exist; researcher only
 if the task is novel and it exists. Teammates spawn their own foreground
 explorer subagent for ad-hoc lookups; add explorer as a named teammate only
 when exploration is itself a standalone parallel workstream, not a one-off
@@ -25,10 +25,10 @@ one you can always rely on, so treat it as primary, not a fallback.
 with that prefix are gated by the TaskCompleted hook; anything named
 otherwise gets no mechanical done-check at all.
 
-If a repo-historian teammate exists, the lead-programmer SendMessages it
+If a scribe teammate exists, the lead-programmer SendMessages it
 after each change and keeps working — delivery is asynchronous, so this
 doesn't pause it the way a synchronous subagent spawn would. If there's no
-historian, skip this.
+scribe, skip this.
 
 **Writer/Reviewer split**: the reviewer (a fresh context that did not write
 the code) independently runs the checks and returns PASS/FAIL on each

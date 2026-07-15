@@ -30,7 +30,7 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["lead-programmer"],
-      "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, repo-historian) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit."
+      "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, scribe) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit."
     },
     "pluginVersion": {
       "type": "string",
@@ -39,7 +39,7 @@
     "personaSelection": {
       "type": "array",
       "items": { "type": "string" },
-      "description": "Which optional personas (hivemind, repo-historian, reviewer, researcher, milestone-auditor) this project chose to include, recorded by install-antislop' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
+      "description": "Which optional personas (hivemind, scribe, reviewer, researcher, milestone-auditor) this project chose to include, recorded by install-antislop' persona-selection wizard so --update mode knows which files to re-derive. orchestrator/explorer/lead-programmer are always included and not listed here."
     },
     "issueTracker": {
       "type": "string",
