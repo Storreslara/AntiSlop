@@ -202,20 +202,25 @@ clarify intent is fine.
 - **Debug spec on 2-FAIL-cap escalation**: produce this artifact only when
   the orchestrator escalates a unit that hit the shared protocol's 2-FAIL
   cap ("Cap at 2 FAILs per unit") — a focused diagnostic artifact, never a
-  from-scratch replan. This is distinct from the `.fail`-record check above:
-  that bullet screens a *single* `.fail` record for a *different* unit
-  before you start fresh scoping work; a debug spec instead reads the *two*
-  durable FAIL records already recorded at `.claude/reviewed/<task-id>.fail`
-  for the *same* escalated unit (per persona-protocol's FAIL-record rule)
-  and synthesizes across both. It has two required parts:
+  from-scratch replan. Like the `.fail`-record check above, there is only
+  ever a single, most-recent `.fail` record per task-id at
+  `.claude/reviewed/<task-id>.fail` (a second FAIL overwrites the first at
+  that same path — no append/rotation mechanism exists); the difference is
+  purpose, not record count: that bullet screens one unit's latest record
+  before you start fresh scoping work on a *different* unit, while a debug
+  spec reads the *same* escalated unit's latest record together with
+  `git log`/`git diff` over that unit's fix-attempt commits (one commit per
+  lead-programmer attempt, per the shared protocol) to reconstruct what
+  changed between the first and second tries. It has two required parts:
   1. **Root-cause / diagnosis** — a planning-level read of why two fix
      attempts failed to close the gap: is it a plan gap, an
      ambiguous/unverifiable acceptance criterion, missing context the
      original spec should have included, or the wrong seam/approach
      entirely? This is the same reproduce → narrow → hypothesize shape as
      lead-programmer's bug-diagnosis skill, one level up — diagnosing the
-     PLAN, not the code — reasoned entirely from the two FAIL records and
-     the taxonomy/constitution/self-check machinery already defined above,
+     PLAN, not the code — reasoned entirely from the latest `.fail` record,
+     the commit history across both attempts, and the
+     taxonomy/constitution/self-check machinery already defined above,
      using your existing Read/Grep/Glob/Bash tools. No new skill is added
      for this.
   2. **Revised spec step(s)** — the specific failed step(s) rewritten with
