@@ -42,7 +42,7 @@ development — if you hit weird behavior, please raise an issue.
 AntiSlop is a modular, persona-based Claude Code system packaged as a private,
 reusable plugin. The core loop is three always-on personas — **orchestrator**
 (routes requests), **explorer** (maps the code), and **lead-programmer**
-(writes it). `hivemind`, `repo-historian`, `reviewer`, `milestone-auditor`, and
+(writes it). `hivemind`, `scribe`, `reviewer`, `milestone-auditor`, and
 `researcher` are opt-in per project. Shipping it as a plugin means a new project
 costs one short setup run instead of re-authoring ~500 lines of persona and
 hook prose from scratch.
@@ -55,7 +55,7 @@ hook prose from scratch.
 | `explorer` | haiku | Always | Stateless code cartographer. Answers structural questions (where's X defined, what calls Y, blast radius of a change) via the Code Review Graph, returning distilled answers, not raw dumps. The one persona every other persona defers to for structural facts. |
 | `lead-programmer` | sonnet | Always | Executes an approved plan step by step, TDD-first, with surgical diffs. Makes small conventional commits as it goes; reports "ready-for-review" when done, never grades its own work. |
 | `hivemind` | opus (fable for well-scoped dispatches) | Opt-in | Turns ambiguous goals into precise plans with machine-checkable acceptance criteria. Explores first, never writes production code, slices approved plans into issues. |
-| `repo-historian` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs — the curated "why" layer the graph can't derive. Never touches source code. |
+| `scribe` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs — the curated "why" layer the graph can't derive. Never touches source code. |
 | `reviewer` | opus | Opt-in (see below) | Independent, adversarial verifier — the Writer/Reviewer split. Did not write the code under review, can't edit it, only returns PASS/FAIL with reasons. **This is the system's core safety property**; skipping it needs an explicit confirmation during setup. |
 | `milestone-auditor` | opus (fable for well-scoped dispatches) | Opt-in | Adversarial auditor of the *plan*, not the code — runs at milestone boundaries after every unit has already reviewer-PASSed, hunting for premise gaps and goal drift the reviewer structurally can't see. No PASS/FAIL, no override authority, no Write/Edit — only a findings list relayed to the human. A human pre-audit checkpoint (via `AskUserQuestion`) precedes every dispatch. |
 | `researcher` | sonnet | Opt-in, project-scoped only | Bridges academic literature and engineering via an arXiv MCP (or WebSearch fallback) — paper discovery, deep-dive summaries, technique translation briefs for hivemind. Not a plugin agent (see below) since plugin agents ignore `mcpServers`. |
@@ -199,7 +199,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 
 | Ships once (plugin) | Written per-project (setup) |
 |---|---|
-| Persona agents: orchestrator, explorer, lead-programmer (always); hivemind, repo-historian, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
+| Persona agents: orchestrator, explorer, lead-programmer (always); hivemind, scribe, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
 | `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
@@ -228,7 +228,7 @@ from a project:
 - `.claude/protocol-digest.md`
 - `.claude/persona-config.json`
 - `.claude/constitution.md` (if created — opt-in, see "First-time setup")
-- `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `repo-historian` was selected)
+- `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `scribe` was selected)
 - `.claude/settings.json`'s `"agent": "orchestrator"` key, the
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it added
 - The `@.claude/persona-protocol.md` line in CLAUDE.md
@@ -249,7 +249,7 @@ the actual installed names on disk rather than trusting this list:
   Provides a grill/challenge-the-plan skill and a work-to-tracker-tickets skill
   (used by `hivemind`), a TDD skill and a diagnose-a-bug skill (used by
   `lead-programmer`), and an improve-codebase-architecture skill (used by
-  `repo-historian`).
+  `scribe`).
 - **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — the
   tree-sitter/SQLite structural graph the `explorer` persona queries for
   blast-radius and dependency answers. It's an MCP server (pip/pipx-installed);
