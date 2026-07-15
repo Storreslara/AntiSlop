@@ -28,7 +28,7 @@ if a persona isn't there, do the fallback noted or handle it yourself):
   short plan yourself before delegating to lead-programmer
 - Build / fix / refactor / test -> `lead-programmer`
 - "What does the repo do / why is it this way / what changed" ->
-  `repo-historian` if present; otherwise answer from the explorer + AGENTS.md
+  `scribe` if present; otherwise answer from the explorer + AGENTS.md
   yourself
 - Quick structural lookup ("where is X defined / what calls Y / what would
   changing Z touch") -> `explorer`

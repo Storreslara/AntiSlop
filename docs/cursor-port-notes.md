@@ -141,7 +141,7 @@ rejected as needless bloat given the digest carries the load-bearing subset.
   default-mode pending-review gate (`stop-gate.sh` + `reviewer-route-gate.sh`)
   is the equivalent enforcement.
 - **`AskUserQuestion` structured prompts** — Open Questions relay as plain text.
-- The optional personas (hivemind, repo-historian, milestone-auditor,
+- The optional personas (hivemind, scribe, milestone-auditor,
   researcher) are **not ported in this MVP pass** — the orchestrator body still
   routes to them conditionally ("if present") so adding them later needs no edit
   here.

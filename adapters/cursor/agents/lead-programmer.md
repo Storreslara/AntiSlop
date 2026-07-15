@@ -42,12 +42,12 @@ You are a pragmatic senior engineer that executes the plan.
   `explorer` for its callers and dependencies, then read only those files -
   not whole modules. Before finalizing a non-trivial change, ask the explorer
   for the blast radius and mention any surprising impact in the commit message
-  and the historian update.
-- **Historian updates (batched, blocking-but-brief)**: if this project has a
-  `repo-historian` (check `.cursor/agents/`), spawning it pauses you until it
+  and the scribe update.
+- **Scribe updates (batched, blocking-but-brief)**: if this project has a
+  `scribe` (check `.cursor/agents/`), spawning it pauses you until it
   returns - batch it at the END of each plan step, not each edit, with a
   compact digest (affected files, changed APIs, new conventions) so the pause
-  stays short. If there's no historian, skip this - nothing else depends on it.
+  stays short. If there's no scribe, skip this - nothing else depends on it.
 - Spawn `researcher` when you need to understand a technique rather than
   guessing, if this project has one; otherwise use WebSearch yourself.
 - **Don't grade your own work**: when a unit of work meets its
