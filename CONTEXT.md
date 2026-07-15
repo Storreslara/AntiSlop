@@ -66,10 +66,11 @@ drift apart.
   after the verdict line.
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
-  `spec-master` to produce a debug spec (diagnosis over the two recorded
-  `.fail` records, revised steps) then `task-master` re-derives dispatch
-  instructions from the corrected spec. `task-master` is never a re-plan owner.
-  Mid-flight "spec gap" signals also route back to `spec-master`.
+  `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
+  record plus git log/git diff over fix-attempt commits, revised steps) then
+  `task-master` re-derives dispatch instructions from the corrected spec.
+  `task-master` is never a re-plan owner. Mid-flight "spec gap" signals also
+  route back to `spec-master`.
 - **Roast-work routing (fable heavy lifting)** — `reviewer` frontmatter defaults
   to `model: opus` (the authoritative PASS/FAIL gate always opus). For heavy
   units — ≥~8 impacted files OR ≥~400-line diff OR structural/cross-cutting

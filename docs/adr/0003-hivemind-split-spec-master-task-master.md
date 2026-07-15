@@ -17,7 +17,7 @@ Split `hivemind` into two personas with clear handoff:
 1. **`spec-master`** (model: opus, memory: project)
    - Owns spec authoring: grilling via `grill-me`, taxonomy scorecard, Clarifications, `.fail` check, Constitution check
    - Carries every v0.9.0 worked fenced-code example verbatim (empirically required for fable/opus compliance)
-   - On 2-FAIL cap escalation: produces a debug spec (diagnosis over the two recorded `.fail` records, revised steps)
+   - On 2-FAIL cap escalation: produces a debug spec (diagnosis of the plan using the latest `.fail` record plus git log/git diff over fix-attempt commits, revised steps)
    - Publishes via `to-spec` skill (existing mattpocock skill, wired as `<MATTPOCOCK:to-spec>` slot)
    - Does NOT carry `<MATTPOCOCK:to-issues>` — task-master owns slicing outright
 
@@ -39,4 +39,4 @@ Split `hivemind` into two personas with clear handoff:
 
 ## Related decisions
 - **OQ5a (final):** `to-issues` slicing is task-master's sole responsibility — spec-master does NOT carry the `to-issues` slot. Distinct and non-overlapping from `to-spec`'s single-spec publish.
-- **OQ3/OQ4 (final):** 2-FAIL cap routes to spec-master's debug spec (diagnosed from `.fail` records) plus task-master re-derives dispatch. No new mattpocock diagnostic skill added (spec-master already has Read/Grep/Bash; diagnosis is prose reasoning, not code repro).
+- **OQ3/OQ4 (final):** 2-FAIL cap routes to spec-master's debug spec (diagnosed from the latest `.fail` record plus git history of fix-attempt commits) plus task-master re-derives dispatch. No new mattpocock diagnostic skill added (spec-master already has Read/Grep/Bash; diagnosis is prose reasoning, not code repro).
