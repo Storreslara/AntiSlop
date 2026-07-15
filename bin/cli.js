@@ -159,13 +159,20 @@ function stripStamp(body) {
   return body.replace(STAMP_LINE_RE, '');
 }
 
+function legacyTokensIn(selection) {
+  return selection.filter((p) => Object.prototype.hasOwnProperty.call(LEGACY_PERSONA_MAP, p));
+}
+
 function migrateLegacyPersonaTokens(selection, { logNote } = {}) {
-  if (!selection.includes('planner')) return selection;
+  const legacyTokens = legacyTokensIn(selection);
+  if (legacyTokens.length === 0) return selection;
   if (logNote) {
-    console.log(
-      'Deprecation note: migrating the legacy "planner" token to "hivemind" ' +
-        '(the legacy "planner" token was renamed hivemind in plugin v0.6.0).'
-    );
+    for (const token of legacyTokens) {
+      console.log(
+        `Deprecation note: migrating the legacy "${token}" token to "${LEGACY_PERSONA_MAP[token]}" ` +
+          `(the legacy "${token}" token was renamed "${LEGACY_PERSONA_MAP[token]}" in a prior plugin version).`
+      );
+    }
   }
   return selection.map((p) => LEGACY_PERSONA_MAP[p] || p);
 }
@@ -491,12 +498,15 @@ async function runUpdate(args) {
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
   let personaSelection = config.personaSelection || [];
-  const hadLegacyToken = personaSelection.includes('planner');
+  const legacyTokens = legacyTokensIn(personaSelection);
+  const hadLegacyToken = legacyTokens.length > 0;
   personaSelection = migrateLegacyPersonaTokens(personaSelection, { logNote: true });
   if (hadLegacyToken) {
     config.personaSelection = personaSelection;
-    const legacyPath = path.join(CWD, '.claude', 'agents', 'planner.md');
-    if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
+    for (const token of legacyTokens) {
+      const legacyPath = path.join(CWD, '.claude', 'agents', `${token}.md`);
+      if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
+    }
   }
 
   const specs = buildFileSpecs(personaSelection);
@@ -1249,25 +1259,15 @@ async function main() {
   let selected;
   if (reuseExistingSelection) {
     let priorSelection = existingPersonaConfig.personaSelection || [];
-    if (priorSelection.includes('planner')) { // legacy token check
-      console.log(
-        'Deprecation note: this project\'s recorded personaSelection contains the ' +
-          'legacy "planner" token — migrating the legacy "planner" token to "hivemind" ' +
-          '(the legacy "planner" token was renamed hivemind in plugin v0.6.0).'
-      );
-      priorSelection = priorSelection.map((p) => LEGACY_PERSONA_MAP[p] || p);
+    if (legacyTokensIn(priorSelection).length > 0) { // legacy token check
+      priorSelection = migrateLegacyPersonaTokens(priorSelection, { logNote: true });
     }
     selected = OPTIONAL_PERSONAS.filter((p) => priorSelection.includes(p));
     selected._researcher = priorSelection.includes('researcher');
   } else if (personasFlag) {
     let requested = personasFlag.slice('--personas='.length).split(',').map((s) => s.trim()).filter(Boolean);
-    if (requested.includes('planner')) { // legacy token check
-      console.log(
-        'Deprecation note: "planner" is a legacy persona token — mapping the legacy ' +
-          '"planner" token to "hivemind" (the legacy "planner" token was renamed ' +
-          'hivemind in plugin v0.6.0). Use --personas=hivemind,... going forward.'
-      );
-      requested = requested.map((p) => LEGACY_PERSONA_MAP[p] || p);
+    if (legacyTokensIn(requested).length > 0) { // legacy token check
+      requested = migrateLegacyPersonaTokens(requested, { logNote: true });
     }
     selected = OPTIONAL_PERSONAS.filter((p) => requested.includes(p));
     if (requested.includes('reviewer') === false && requested.length > 0) {

@@ -113,6 +113,16 @@ check('deriveMattpocockSubsForFile flags a same-slot conflict across files inste
   assert.deepStrictEqual(unresolvedSlots, ['grill-me']);
 });
 
+check('migrateLegacyPersonaTokens resolves repo-historian to scribe without a planner token present', () => {
+  // Reproduces a real already-adapted project's personaSelection (no
+  // "planner" present) to confirm the legacy-token guard isn't keyed to
+  // "planner" specifically.
+  const selection = ['hivemind', 'repo-historian', 'researcher', 'milestone-auditor', 'reviewer'];
+  const migrated = cli.migrateLegacyPersonaTokens(selection, { logNote: false });
+  assert.ok(migrated.includes('scribe'), `expected "scribe" in ${JSON.stringify(migrated)}`);
+  assert.ok(!migrated.includes('repo-historian'), `"repo-historian" should have been migrated away`);
+});
+
 // --- Integration: backfillSubstitutionsFromDisk / backfillFileHashesFromDisk
 // against a simulated legacy project on a real temp CWD (these two functions
 // read CWD-relative paths, so they need an actual directory, not just strings).
