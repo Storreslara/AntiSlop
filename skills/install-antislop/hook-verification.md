@@ -10,7 +10,7 @@ On a throwaway branch:
 - Make a trivial edit; confirm `graph-update.sh` and `lint-on-edit.sh` fired
   (check the graph index timestamp / lint output).
 - Confirm the stop-gate does **NOT** block a trivial explorer or
-  repo-historian turn even with a dirty tree — proof that `gatedAgents`
+  scribe turn even with a dirty tree — proof that `gatedAgents`
   scoping (read from `persona-config.json`, not hardcoded in `hooks.json`) is
   working and won't strangle the cheap, high-frequency personas.
   Additionally confirm the stop-gate does NOT block a trivial main-session

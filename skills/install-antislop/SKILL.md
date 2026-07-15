@@ -77,7 +77,7 @@ about them). Ask individually about the rest:
 
 - `hivemind` — skip only for projects doing purely mechanical/small work with
   no real planning step.
-- `repo-historian` — skip if the project doesn't want a maintained wiki/ADR
+- `scribe` — skip if the project doesn't want a maintained wiki/ADR
   system.
 - `researcher` — skip if the project won't need literature/technique
   research (this one's a template, not a plugin agent — see step 4).
@@ -185,7 +185,7 @@ phrased conditionally ("if present, otherwise <fallback>") in
   to the discovered `to-tickets`, and the "diagnose" slot to the discovered
   `diagnosing-bugs`. If a purpose has no matching discovered skill, STOP and
   surface it to the human — do not substitute a guessed name.
-- **Substitute placeholders**: the copied `hivemind.md`, `repo-historian.md`,
+- **Substitute placeholders**: the copied `hivemind.md`, `scribe.md`,
   and `milestone-auditor.md` (if selected) contain `<MATTPOCOCK:skill-name>`
   placeholders in their `skills:` frontmatter — replace each with the
   discovered namespaced name for that purpose (this is expected ADAPT
@@ -449,7 +449,7 @@ Note in your report: the default teammate model has no reliable settings key
 
 ## 9. Wiki / CONTEXT / ADR seeding, directory scaffolding, and .gitignore
 
-- If `repo-historian` was selected: populate its starter wiki
+- If `scribe` was selected: populate its starter wiki
   (`.claude/wiki/`), a starter `CONTEXT.md`, and a `docs/adr/` layout from an
   actual scan of this repo — spawn the `explorer` for the structural facts
   rather than crawling yourself.
@@ -482,8 +482,8 @@ subagent — don't run it inline in your own context.**
     unchanged since last verified install, skipped re-verification."
 - **Scope even a fresh-install run to selected personas**: e.g. skip the
   reviewer PASS-marker sub-bullet if `reviewer` wasn't selected (already
-  conditional below), and skip the repo-historian-turn sub-bullet if
-  `repo-historian` wasn't selected.
+  conditional below), and skip the scribe-turn sub-bullet if
+  `scribe` wasn't selected.
 - **Delegate whatever remains to a subagent**: spawn one general-purpose
   subagent with the repo path, the throwaway-branch instruction, a pointer to
   read `skills/install-antislop/hook-verification.md` for the exact probe
