@@ -13,6 +13,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 let failures = 0;
@@ -219,6 +220,99 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     delete require.cache[require.resolve(cliPath)];
     fs.rmSync(tmp, { recursive: true, force: true });
   }
+}
+
+// --- Integration: fileHashes pruning + --check, exercised via the real
+// `node bin/cli.js --update` CLI process (runUpdate() calls process.exit()
+// on several paths, so it must run out-of-process rather than in the same
+// test runner). PKG_ROOT is derived from cli.js's own __dirname, not CWD, so
+// buildFileSpecs/renderCleanBody/sha256Hex can be used directly from the
+// top-level `cli` require without the chdir/require-cache dance above.
+{
+  const cliPath = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const pluginVersion = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8')
+  ).version;
+  const graphMcpLaunch = { command: 'npx', args: ['code-review-graph-mcp'] };
+
+  // Builds a fresh, fully-baselined project in `tmp`: every current spec
+  // (personaSelection: [] -> CORE_PERSONAS + persona-protocol.md +
+  // protocol-digest.md) rendered clean and written UNSTAMPED, with
+  // fileHashes recorded against that same unstamped content — this makes
+  // stripStamp() a no-op, so every file is trivially "no local edits,
+  // already current" without reproducing the real stamp-insertion logic.
+  function buildBaselineProject(tmp, extraFileHashes) {
+    const specs = cli.buildFileSpecs([]);
+    const config = {
+      pluginVersion,
+      personaSelection: [],
+      substitutions: { mattpocockSkills: KNOWN_MAP, graphMcpLaunch },
+      fileHashes: Object.assign({}, extraFileHashes),
+    };
+    for (const spec of specs) {
+      const cleanBody = cli.renderCleanBody(spec, config);
+      const destAbsPath = path.join(tmp, spec.projectRelPath);
+      fs.mkdirSync(path.dirname(destAbsPath), { recursive: true });
+      fs.writeFileSync(destAbsPath, cleanBody);
+      config.fileHashes[spec.projectRelPath] = cli.sha256Hex(cleanBody);
+    }
+    fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
+    return config;
+  }
+
+  check('--update prunes a stale fileHashes entry for a persona no longer in the current selection', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-prune-test-'));
+    try {
+      buildBaselineProject(tmp, { '.claude/agents/hivemind.md': 'a'.repeat(64) });
+      // Force the render loop to actually run (a plain version-match
+      // fast-path would otherwise skip it entirely) the same way a real
+      // version bump would — mirrors the real hivemind-retirement incident,
+      // which shipped alongside a plugin version bump.
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.pluginVersion = '0.0.1';
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+      const after = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      assert.strictEqual(
+        after.fileHashes['.claude/agents/hivemind.md'],
+        undefined,
+        'stale hivemind.md fileHashes entry should have been pruned'
+      );
+      assert.ok(after.fileHashes['.claude/agents/orchestrator.md'], 'current specs should still have fileHashes entries');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --check catches drift past the version-match fast-path that a plain --update misses', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-check-test-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const digestPath = path.join(tmp, '.claude', 'protocol-digest.md');
+      fs.appendFileSync(digestPath, '\nhand-corrupted content\n');
+
+      const plain = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(plain.status, 0, `expected exit 0, got ${plain.status}: ${plain.stdout}${plain.stderr}`);
+      assert.ok(
+        /already current/.test(plain.stdout),
+        `plain --update should hit the version-match fast-path and not detect drift, got: ${plain.stdout}`
+      );
+
+      const checked = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(checked.status, 2, `expected exit 2 (pending), got ${checked.status}: ${checked.stdout}${checked.stderr}`);
+      assert.ok(
+        checked.stdout.includes('.claude/protocol-digest.md'),
+        `--check should have flagged the corrupted file as pending, got: ${checked.stdout}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 }
 
 if (failures > 0) {

@@ -440,6 +440,19 @@ function hasMattpocockResidue(specs, cwd) {
   });
 }
 
+// Drops fileHashes keys that no longer correspond to any current spec (e.g.
+// a persona retired from OPTIONAL_PERSONAS) — otherwise they accumulate in
+// persona-config.json forever, since the render loop below only ever writes
+// keys for specs it iterates and never reads orphaned ones.
+function pruneStaleFileHashes(fileHashes, specs) {
+  const validKeys = new Set(specs.map((spec) => spec.projectRelPath));
+  const pruned = {};
+  for (const key of Object.keys(fileHashes)) {
+    if (validKeys.has(key)) pruned[key] = fileHashes[key];
+  }
+  return pruned;
+}
+
 function copyStampedBody(destAbsPath, body, version, sourceRelPath) {
   mkdirp(path.dirname(destAbsPath));
   fs.writeFileSync(destAbsPath, insertStampAfterFrontmatter(body, versionStamp(version, sourceRelPath)));
@@ -567,8 +580,13 @@ async function runUpdate(args) {
   // so that case still triggers the render loop below instead of a false
   // "already current".
   const hasResidue = hasMattpocockResidue(specs, CWD);
+  // Forces the render/diff loop to run even when nothing else above tripped
+  // it — the version-match fast-path otherwise means a plain --update can
+  // never detect per-file drift (hand-edits, corruption) once pluginVersion
+  // already matches.
+  const checkFlag = args.includes('--check');
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !hasResidue) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !hasResidue && !checkFlag) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
@@ -651,7 +669,7 @@ async function runUpdate(args) {
   }
 
   if (pending.length > 0 || unresolvedRender.length > 0) {
-    config.fileHashes = newFileHashes;
+    config.fileHashes = pruneStaleFileHashes(newFileHashes, specs);
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
     console.log(summary.join('\n'));
     if (pending.length > 0) {
@@ -669,7 +687,7 @@ async function runUpdate(args) {
     process.exit(unresolvedRender.length > 0 ? 1 : 2);
   }
 
-  config.fileHashes = newFileHashes;
+  config.fileHashes = pruneStaleFileHashes(newFileHashes, specs);
   config.pluginVersion = version;
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
@@ -1570,4 +1588,5 @@ module.exports = {
   backfillSubstitutionsFromDisk,
   backfillFileHashesFromDisk,
   hasMattpocockResidue,
+  pruneStaleFileHashes,
 };
