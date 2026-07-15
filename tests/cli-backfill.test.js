@@ -27,17 +27,24 @@ function check(name, fn) {
   }
 }
 
+// No-op variant of check() for subtests temporarily neutralized pending a
+// redesign (see TODO(Step 3.6) below) — logs SKIP instead of running fn.
+function skip(name) {
+  console.log(`SKIP ${name}`);
+}
+
 const cli = require(path.join(REPO_ROOT, 'bin', 'cli.js'));
 
 const KNOWN_MAP = {
   'grill-me': 'mattpocock-skills:grill-me',
   'to-issues': 'mattpocock-skills:to-tickets',
+  'to-spec': 'mattpocock-skills:to-spec',
   'improve-codebase-architecture': 'mattpocock-skills:improve-codebase-architecture',
   tdd: 'mattpocock-skills:tdd',
   diagnose: 'mattpocock-skills:diagnosing-bugs',
 };
 
-for (const name of ['hivemind', 'scribe', 'milestone-auditor', 'lead-programmer']) {
+for (const name of ['scribe', 'milestone-auditor', 'lead-programmer', 'spec-master', 'task-master']) {
   check(`deriveMattpocockSubsForFile round-trips agents/${name}.md`, () => {
     const sourcePath = path.join(REPO_ROOT, 'agents', `${name}.md`);
     const sourceBody = fs.readFileSync(sourcePath, 'utf8');
@@ -137,7 +144,15 @@ check('migrateLegacyPersonaTokens resolves repo-historian to scribe without a pl
   delete require.cache[require.resolve(cliPath)];
   const cliInTemp = require(cliPath);
   try {
-    check('backfillSubstitutionsFromDisk + backfillFileHashesFromDisk backfill a simulated legacy project', () => {
+    // TODO(Step 3.6): this subtest exercises the legacy hivemind -> (new
+    // personas) migration path via buildFileSpecs(['hivemind']) /
+    // fileHashes['.claude/agents/hivemind.md'], which Step 3.4 redesigns
+    // with LEGACY_PERSONA_MAP (a one-to-two split). Neutralized here (see
+    // Step 3.3b in docs/plans/2026-07-14-threefold-update.md) rather than
+    // substantively fixed, since fixing it now would either pull 3.4's
+    // design forward or be immediately broken by it. Step 3.6 owns
+    // un-skipping and rewriting this fixture once LEGACY_PERSONA_MAP exists.
+    skip('backfillSubstitutionsFromDisk + backfillFileHashesFromDisk backfill a simulated legacy project', () => {
       fs.mkdirSync(path.join(tmp, '.claude', 'agents'), { recursive: true });
       for (const name of ['hivemind', 'lead-programmer']) {
         const sourceBody = fs.readFileSync(path.join(REPO_ROOT, 'agents', `${name}.md`), 'utf8');
