@@ -5,10 +5,10 @@ model: sonnet
 color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: <MATTPOCOCK:to-issues>
+skills: to-tickets
 maxTurns: 30
 ---
-<!-- antislop v0.10.0 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.9.0 | source: agents/task-master.md | ADAPT-substituted -->
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file
      management (see shared protocol) — this does NOT grant Write/Edit for
      source docs; task-master's dispatch prompts and sliced-issue bodies are
