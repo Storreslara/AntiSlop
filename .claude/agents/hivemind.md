@@ -5,9 +5,10 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-issues>
+skills: grill-me, to-tickets
 maxTurns: 30
 ---
+<!-- antislop v0.9.0 | source: agents/hivemind.md | ADAPT-substituted -->
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file
      management (see shared protocol) — this does NOT relax "never write
      production code" below; that remains instruction-enforced.

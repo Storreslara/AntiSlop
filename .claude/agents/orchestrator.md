@@ -4,6 +4,7 @@ description: Thin router for the persona system. Set as the main agent via setti
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
+<!-- antislop v0.9.0 | source: agents/orchestrator.md | ADAPT-substituted -->
 <!-- Deliberately no `skills:` field — persona skills never load into the
      orchestrator. Deliberately no `memory:` field — a router that
      accumulates state contradicts "you keep only routing rules." Bash is
