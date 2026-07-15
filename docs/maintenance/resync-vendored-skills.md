@@ -71,9 +71,8 @@ less error-prone than guessing how many lines to strip backward.
 
 ```bash
 bash scripts/resync-vendored-skills.sh          # prints a per-skill report
-bash scripts/resync-vendored-skills.sh --check   # same report; exits non-zero
-                                                  # if any of the 9 verbatim
-                                                  # skills has drifted
+bash scripts/resync-vendored-skills.sh --check   # same report; see exit
+                                                  # codes below
 ```
 
 The script fetches each vendored file's upstream counterpart at the pinned
@@ -84,6 +83,25 @@ checked into `skills/`. The 3 repointed skills are listed for awareness
 their repoint edits mean a byte diff against raw upstream is expected to
 show a difference, so they need a human read of the diff around the
 `/setup-matt-pocock-skills` reference rather than a mechanical check.
+
+### Per-skill status and `--check` exit codes
+
+| status | meaning |
+|---|---|
+| `[OK]` | local content byte-matches the pinned upstream SHA |
+| `[DRIFTED]` | local content differs from upstream (genuine content drift) |
+| `[MISSING]` | a file the `FILES` table expects doesn't exist locally |
+| `[ERROR]` | the upstream fetch for this skill failed (network/curl error) |
+
+| `--check` exit code | meaning |
+|---|---|
+| `0` | all 9 verbatim skills `[OK]` |
+| `1` | `DRIFT DETECTED` — genuine content drift or a missing file, and all fetches succeeded |
+| `2` | `FETCH ERRORS` (drift status unknown because an upstream fetch failed), an unrecognized argument, or another script error (e.g. missing pinned SHA) |
+
+Exit 2 is deliberately distinct from exit 1: a transient network blip
+fetching upstream must never be mistaken for genuine drift in already-
+vendored content.
 
 If `--check` reports drift on one of the 9 verbatim skills where nobody
 has edited `skills/` locally, that means the previously-vendored content

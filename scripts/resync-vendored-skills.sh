@@ -5,14 +5,26 @@
 #
 # Usage:
 #   scripts/resync-vendored-skills.sh          # print a per-skill drift report
-#   scripts/resync-vendored-skills.sh --check  # same report; exit non-zero if
-#                                               # any of the 9 verbatim skills
-#                                               # (Step A.2) has drifted
+#   scripts/resync-vendored-skills.sh --check  # same report; exit 1 if any of
+#                                               # the 9 verbatim skills (Step
+#                                               # A.2) has genuine content
+#                                               # drift (all fetches ok); exit
+#                                               # 2 if any upstream fetch
+#                                               # errored (drift status
+#                                               # unknown) or on any other
+#                                               # script error, incl. an
+#                                               # unrecognized argument
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-CHECK=0
-[ "${1:-}" = "--check" ] && CHECK=1
+case "${1:-}" in
+  "") CHECK=0 ;;
+  --check) CHECK=1 ;;
+  *)
+    echo "ERROR: unrecognized argument '$1' (expected no argument, or --check)" >&2
+    exit 2
+    ;;
+esac
 
 NOTICES="skills/THIRD-PARTY-NOTICES.md"
 SHA="$(grep -oE '`[0-9a-f]{40}`' "$NOTICES" | head -1 | tr -d '\`')"
@@ -84,6 +96,7 @@ check_one_file() {
 
 declare -A skill_status
 declare -A skill_detail
+fetch_error=0
 
 echo "Pinned upstream SHA: $SHA"
 echo
@@ -94,10 +107,14 @@ while IFS=: read -r skill type local_path upstream_path; do
   if ! curl -sS -f -m 20 "$RAW_BASE/$upstream_path" -o "$upstream_file" 2>"$TMPDIR/curl.err"; then
     skill_status[$skill]="ERROR"
     skill_detail[$skill]="${skill_detail[$skill]:-}  fetch failed: $upstream_path ($(cat "$TMPDIR/curl.err"))\n"
+    fetch_error=1
     continue
   fi
-  if ! check_one_file "$type" "$local_path" "$upstream_path" "$upstream_file"; then
-    skill_status[$skill]="DRIFTED"
+  if [ ! -f "$local_path" ]; then
+    [ "${skill_status[$skill]:-}" = "ERROR" ] || skill_status[$skill]="MISSING"
+    skill_detail[$skill]="${skill_detail[$skill]:-}  missing: $local_path\n"
+  elif ! check_one_file "$type" "$local_path" "$upstream_path" "$upstream_file"; then
+    [ "${skill_status[$skill]:-}" = "ERROR" ] || skill_status[$skill]="DRIFTED"
     skill_detail[$skill]="${skill_detail[$skill]:-}  drift: $local_path\n"
   fi
   : "${skill_status[$skill]:=OK}"
@@ -105,13 +122,26 @@ done <<EOF
 $FILES
 EOF
 
+# Safety net for the FILES/SKILL_ORDER parallel-list desync risk: a skill
+# added to FILES but not SKILL_ORDER would otherwise have its drift computed
+# above but never reported or gated below.
+for skill in "${!skill_status[@]}"; do
+  case " $SKILL_ORDER " in
+    *" $skill "*) ;;
+    *)
+      echo "ERROR: skill '$skill' appears in FILES but not in SKILL_ORDER" >&2
+      exit 2
+      ;;
+  esac
+done
+
 drifted=0
 for skill in $SKILL_ORDER; do
   status="${skill_status[$skill]:-OK}"
   echo "[$status] $skill"
   if [ "$status" != "OK" ]; then
     printf '%b' "${skill_detail[$skill]:-}"
-    drifted=1
+    [ "$status" = "ERROR" ] || drifted=1
   fi
 done
 
@@ -125,9 +155,16 @@ for skill in $REPOINT_SKILLS; do
   fi
 done
 
-if [ "$CHECK" -eq 1 ] && [ "$drifted" -eq 1 ]; then
-  echo
-  echo "DRIFT DETECTED among the 9 verbatim vendored skills." >&2
-  exit 1
+if [ "$CHECK" -eq 1 ]; then
+  if [ "$fetch_error" -eq 1 ]; then
+    echo
+    echo "FETCH ERRORS — drift status unknown." >&2
+    exit 2
+  fi
+  if [ "$drifted" -eq 1 ]; then
+    echo
+    echo "DRIFT DETECTED among the 9 verbatim vendored skills." >&2
+    exit 1
+  fi
 fi
 exit 0
