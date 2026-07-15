@@ -23,14 +23,15 @@ const PKG_ROOT = path.resolve(__dirname, '..');
 const CWD = process.cwd();
 
 const CORE_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer'];
-const OPTIONAL_PERSONAS = ['hivemind', 'repo-historian', 'reviewer', 'milestone-auditor'];
+const OPTIONAL_PERSONAS = ['hivemind', 'scribe', 'reviewer', 'milestone-auditor'];
 // Legacy-token migration: the persona formerly named `planner` was renamed
-// `hivemind` (repo-wide rename, plugin v0.6.0) — this is a deprecated,
-// legacy `--personas=planner` / legacy `personaSelection` entry of
-// `"planner"` concern only; both map forward via LEGACY_PERSONA_MAP below
-// rather than being silently dropped by the OPTIONAL_PERSONAS intersection
-// filter.
-const LEGACY_PERSONA_MAP = { planner: 'hivemind' }; // legacy token -> current token
+// `hivemind` (repo-wide rename, plugin v0.6.0), and the persona formerly
+// named `repo-historian` was renamed `scribe` (repo-wide rename, plugin
+// v0.10.0) — these are deprecated, legacy `--personas=planner` /
+// `--personas=repo-historian` / legacy `personaSelection` entries only; both
+// map forward via LEGACY_PERSONA_MAP below rather than being silently
+// dropped by the OPTIONAL_PERSONAS intersection filter.
+const LEGACY_PERSONA_MAP = { planner: 'hivemind', 'repo-historian': 'scribe' }; // legacy token -> current token
 // researcher is handled separately: it's a template, not a plain agent copy.
 
 function readPluginVersion() {
@@ -1303,7 +1304,7 @@ async function main() {
       }
       const label = {
         hivemind: 'hivemind (turns ambiguous goals into precise plans; skip only for purely mechanical/small work)',
-        'repo-historian': 'repo-historian (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
+        scribe: 'scribe (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
         'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or hivemind was also skipped)',
       }[persona];
       const include = await askYesNo(rl, `\nInclude ${label}?`, true);
