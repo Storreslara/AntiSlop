@@ -1,0 +1,58 @@
+{
+  "testAndLintCommand": "bash tests/validate.sh",
+  "graphUpdateCommand": "code-review-graph update --skip-flows",
+  "sourceGlobs": [],
+  "protectedPaths": [
+    ".claude-plugin/*",
+    "templates/persona-config.schema.json",
+    "hooks/hooks.json",
+    ".github/workflows/*",
+    ".claude/constitution.md"
+  ],
+  "gatedAgents": [
+    "lead-programmer"
+  ],
+  "pluginVersion": "0.9.0",
+  "personaSelection": [
+    "hivemind",
+    "scribe",
+    "researcher",
+    "milestone-auditor",
+    "reviewer"
+  ],
+  "issueTracker": "GitHub issues (repo: Storreslara/AntiSlop, gh CLI authenticated). File with 'gh issue create'; fetch with 'gh issue list --label plan/<slug>'. Triage label: to-tickets' own default (ready-for-agent) applies, no custom vocabulary configured.",
+  "substitutions": {
+    "mattpocockSkills": {
+      "grill-me": "grill-me",
+      "to-issues": "to-tickets",
+      "improve-codebase-architecture": "improve-codebase-architecture",
+      "tdd": "tdd",
+      "diagnose": "diagnosing-bugs"
+    },
+    "graphMcpLaunch": {
+      "command": "uvx",
+      "args": [
+        "code-review-graph",
+        "serve"
+      ]
+    },
+    "arxivMcpLaunch": {
+      "command": "uvx",
+      "args": [
+        "arxiv-mcp-server"
+      ]
+    }
+  },
+  "fileHashes": {
+    ".claude/agents/orchestrator.md": "c87aaae70a2be2b40836825caf2d5dfff3d767a35df9f10864a8a54e18f4ce18",
+    ".claude/agents/explorer.md": "36c4bfb9ef16628fcb51428804db47b7b339ba217e27e9e16d6fc45121c750fa",
+    ".claude/agents/lead-programmer.md": "aa5a12382be709ac97aa1f683e2c651bb8f4da206c93bea042e4866f0859e877",
+    ".claude/agents/hivemind.md": "7ebfc2eb81346a8233cb40920473df3ce8a8ad00b56c57b81b7b64b6ff440db1",
+    ".claude/agents/milestone-auditor.md": "7cb4cfda4c62bd68aee57b3464eba01a5d6466ec2a352a8a7664759c461bd043",
+    ".claude/agents/reviewer.md": "7174f99a4884e5c52520d64d5fdca029438bfb209d11aef1c3b96eb473048d38",
+    ".claude/agents/researcher.md": "992d740701f33b3acd211b7ee47c06f04ceb0924737825cc0ffbb057610f3d0f",
+    ".claude/persona-protocol.md": "102d9fd26a20a5ec6aa3406558a8abb1f60ab585701102817b16b3ecc72b4770",
+    ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
+    ".claude/agents/scribe.md": "12a7ffbbe1d99b9ece33c2463b67fd93e1e382dc13347060c5a606519f7c9838"
+  }
+}
