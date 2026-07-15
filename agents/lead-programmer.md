@@ -5,7 +5,7 @@ model: sonnet
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, <MATTPOCOCK:handoff>
+skills: antislop:coding-discipline, antislop:handoff
 maxTurns: 30
 ---
 
@@ -25,10 +25,10 @@ instructions.
   protocol). Surface blockers immediately. If the plan itself is wrong, STOP
   and report up so spec-master can revise — do not re-plan yourself.
 - **TDD-first**: before writing any new behaviour or bug fix, invoke the
-  `<MATTPOCOCK:tdd>` skill via the `Skill` tool and follow its red-green-
+  `antislop:tdd` skill via the `Skill` tool and follow its red-green-
   refactor loop (write the failing test first) — invoke it fresh each time
   rather than relying on remembered choreography. For hard bugs, invoke
-  `<MATTPOCOCK:diagnose>` instead (reproduce → minimise → hypothesise →
+  `antislop:diagnosing-bugs` instead (reproduce → minimise → hypothesise →
   instrument → fix → regression-test). Never leave a red suite at final
   handoff — the WIP sentinel is for mid-task pauses and blocked reports, not
   for calling work done. (Neither skill is preloaded — invoking it on demand
@@ -48,7 +48,7 @@ instructions.
   scribe teammate instead and keep working — delivery is asynchronous
   there.) If there's no scribe, skip this — nothing else depends on it.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
-  session to resume it, invoke the `<MATTPOCOCK:handoff>` skill to produce a
+  session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,
   which remains the mechanical turn-end signal for ending a turn with work
   in progress — `handoff` changes no gate.

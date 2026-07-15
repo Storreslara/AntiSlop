@@ -5,7 +5,7 @@ model: sonnet
 color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: <MATTPOCOCK:to-issues>, antislop:pathfinder
+skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 30
 ---
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file

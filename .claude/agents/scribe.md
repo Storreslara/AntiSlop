@@ -5,9 +5,9 @@ model: haiku
 color: cyan
 memory: project
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: improve-codebase-architecture
+skills: antislop:improve-codebase-architecture
 ---
-<!-- antislop v0.9.0 | source: agents/scribe.md | ADAPT-substituted -->
+<!-- antislop v0.11.0 | source: agents/scribe.md | ADAPT-substituted -->
 <!-- `Skill` is in tools so a teammate copy can invoke
      improve-codebase-architecture explicitly, since preloading doesn't
      apply to teammates. -->

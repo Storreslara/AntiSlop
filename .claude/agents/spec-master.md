@@ -5,7 +5,7 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: grill-me, to-spec, antislop:fail-triage
+skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
 maxTurns: 30
 ---
 <!-- antislop v0.11.0 | source: agents/spec-master.md | ADAPT-substituted -->

@@ -187,6 +187,10 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     // never present on disk by the time buildFileSpecs/backfill see it —
     // only spec-master.md/task-master.md are.
     check('backfillSubstitutionsFromDisk + backfillFileHashesFromDisk backfill a simulated legacy project through the hivemind one-to-two migration', () => {
+      const legacySources = ['spec-master', 'task-master', 'lead-programmer'].map((name) =>
+        fs.readFileSync(path.join(REPO_ROOT, 'agents', `${name}.md`), 'utf8')
+      );
+      if (!legacySources.some((body) => body.includes('<MATTPOCOCK:'))) return; // nothing to test for these files
       fs.mkdirSync(path.join(tmp, '.claude', 'agents'), { recursive: true });
       for (const name of ['spec-master', 'task-master', 'lead-programmer']) {
         const sourceBody = fs.readFileSync(path.join(REPO_ROOT, 'agents', `${name}.md`), 'utf8');

@@ -5,7 +5,7 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: <MATTPOCOCK:grill-me>, <MATTPOCOCK:to-spec>, antislop:fail-triage
+skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
 maxTurns: 30
 ---
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file

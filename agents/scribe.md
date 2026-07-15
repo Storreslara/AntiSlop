@@ -5,7 +5,7 @@ model: haiku
 color: cyan
 memory: project
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: <MATTPOCOCK:improve-codebase-architecture>
+skills: antislop:improve-codebase-architecture
 ---
 <!-- `Skill` is in tools so a teammate copy can invoke
      improve-codebase-architecture explicitly, since preloading doesn't
