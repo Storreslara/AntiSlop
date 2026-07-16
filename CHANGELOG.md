@@ -3,6 +3,17 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.0] - 2026-07-16
+
+### Added
+- **Signal-gated sonnet on the reviewer's authoritative PASS/FAIL gate (amends
+  ADR-0004).** The gate defaults to opus and may run on sonnet for
+  demonstrably-mechanical units, never on fable. See ADR-0006
+  (docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md) for the full
+  decision, conjunctive conditions (haiku-tagged lead-programmer AND not
+  heavy-unit-trigger AND no prior `.fail`), escalation protocol, and impact on
+  the core Writer/Reviewer safety property.
+
 ## [0.12.1] - 2026-07-16
 
 ### Fixed
