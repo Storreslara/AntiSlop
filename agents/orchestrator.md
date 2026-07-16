@@ -184,11 +184,12 @@ frontmatter states this explicitly; this is a hard exclusion, not a
 default-and-override like the spec-master/auditor conditions above).
 
 ### Reviewer roast-work advisory pass (fable heavy-lifting)
-The authoritative PASS/FAIL gate always runs on reviewer's frontmatter
-`model: opus` default — this never moves to fable, for any unit, regardless
-of size. What changes for a "heavy" unit is purely ADDITIVE: you also
-dispatch a separate, non-authoritative `model: fable` advisory pass that
-runs the reviewer's preloaded `roast-work` skill over the same diff. This
+The authoritative PASS/FAIL gate defaults to reviewer's frontmatter
+`model: opus` and may run on sonnet for demonstrably-mechanical units per the
+"Reviewer gate model selection" subsection below, but never on fable, for any
+unit, regardless of size. What changes for a "heavy" unit is purely ADDITIVE:
+you also dispatch a separate, non-authoritative `model: fable` advisory pass
+that runs the reviewer's preloaded `roast-work` skill over the same diff. This
 second dispatch is a distinct subagent invocation from the opus PASS/FAIL
 review, not a model swap on it — the model is fixed per dispatch, so getting
 fable's bulk-context critique without weakening the gate requires a second,
@@ -221,6 +222,32 @@ blocks or unblocks the pending-review flag, and a FAIL-shaped or
 critical-sounding fable finding is not itself a verdict: route anything it
 surfaces through the opus reviewer (or the normal FAIL-handling protocol)
 rather than acting on it directly.
+
+### Reviewer gate model selection (sonnet for mechanical units)
+Read the sliced unit's `Suggested reviewer model: sonnet` tag (task-master's
+judgment that the unit is mechanical enough to gate on sonnet) and pass it as
+the reviewer dispatch's `model` parameter; omit the parameter when the tag is
+absent, so reviewer's `model: opus` frontmatter applies as the default. Same
+`CLAUDE_CODE_SUBAGENT_MODEL` caveat as the other per-unit-model-routing
+subsections in this file.
+
+**Fable is never valid on this tag / the gate.** Fable stays confined to the
+separate advisory `Roast pass: fable` dispatch above — unchanged.
+
+**`.fail` disqualifier.** Before dispatching the reviewer, check
+`.claude/reviewed/<task-id>.fail`; if it exists, ignore any sonnet tag and
+dispatch the reviewer on opus — extending the existing "check for a prior
+`.fail` record before ANY per-unit dispatch" rule above to the reviewer
+dispatch specifically.
+
+**Escalation.** If a unit that received a sonnet-gated PASS is later found to
+have missed a defect (a human catch, a `milestone-auditor` finding, or a
+downstream FAIL on that unit), re-dispatch that unit's review on `opus`,
+never sonnet. The opus re-review, on confirming the miss, returns FAIL and
+writes the standard `.claude/reviewed/<task-id>.fail` record — which, via the
+`.fail` disqualifier above, permanently forces opus for that unit id
+thereafter. Mirrors "Haiku units escalate on first FAIL … never haiku again"
+above.
 
 ## Relaying spec-master open questions
 If spec-master returns "Open Questions" instead of a finished plan (this
