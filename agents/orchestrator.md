@@ -210,15 +210,16 @@ the advisory pass, but the trigger conditions above — not the tag's mere
 presence or absence — are what actually decide "heavy," since task-master's
 tag is advisory guidance, not a binding classification. For a routine/small
 unit that meets none of these, no separate fable pass runs — the single
-opus reviewer applies `roast-work` inline (it's a preloaded skill regardless
+reviewer applies `roast-work` inline (it's a preloaded skill regardless
 of dispatch model).
 
 **The fable pass is strictly advisory — it is NEVER authoritative and NEVER
-writes the PASS/FAIL marker.** Only the opus reviewer's own review writes
-`.claude/reviewed/<task-id>.pass` (or `.fail`). Dispatch the fable pass with
-scope limited to producing a `roast-work` critique to hand back to you (or
-to attach alongside the opus verdict) — it never determines "done," never
-blocks or unblocks the pending-review flag, and a FAIL-shaped or
+writes the PASS/FAIL marker.** Only the authoritative reviewer's own review
+(opus or sonnet-gated) writes `.claude/reviewed/<task-id>.pass` (or `.fail`).
+Dispatch the fable pass with scope limited to producing a `roast-work`
+critique to hand back to you (or to attach alongside the opus verdict) — it
+never determines "done," never blocks or unblocks the pending-review flag,
+and a FAIL-shaped or
 critical-sounding fable finding is not itself a verdict: route anything it
 surfaces through the opus reviewer (or the normal FAIL-handling protocol)
 rather than acting on it directly.
