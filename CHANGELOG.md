@@ -3,6 +3,18 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.12.1] - 2026-07-16
+
+### Fixed
+- **`.claude-plugin/plugin.json`'s marketplace/install description still
+  named the old `hivemind` persona.** `hivemind` was split into
+  `spec-master` + `task-master` back in v0.10.0 (see
+  `docs/adr/0003-hivemind-split-spec-master-task-master.md`), but the
+  plugin manifest's `description` field — shown in the Claude Code plugin
+  marketplace/install UI — was never updated to match. The optional-personas
+  list now reads `spec-master/task-master/scribe/reviewer/researcher/
+  milestone-auditor`.
+
 ## [0.12.0] - 2026-07-15
 
 ### Added
