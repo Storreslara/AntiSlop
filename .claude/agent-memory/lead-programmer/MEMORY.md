@@ -1,0 +1,3 @@
+- [Threefold-update plan tracking](project_threefold_update.md) — plan doc, issue tracker, per-step commit convention
+- [cli.js --update testing patterns](project_cli_update_testing.md) — spawnSync for process.exit branches, unstamped-baseline fixture trick, graph false-negative gotcha
+- [Vendor mattpocock/skills convention](project_vendor_mattpocock_skills.md) — pinned SHA, header AFTER `---` for SKILL.md, at top for companions (no frontmatter), never on .sh; A.3 done, header/grep tension noted

@@ -1,0 +1,1 @@
+- [Cross-plan version coordination](cross_plan_version_coordination.md) — slice version-bump steps with explicit cross-plan deps, never a hardcoded target version.

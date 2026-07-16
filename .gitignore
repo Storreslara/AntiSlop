@@ -5,3 +5,13 @@ node_modules/
 eval/.runs/
 eval/results.jsonl
 scratch/
+# Added by code-review-graph
+.code-review-graph/
+
+# antislop persona-system operational logs (local only, not project docs)
+.claude/reviewed/
+.claude/wip-handoff.*
+.claude/.session-baseline.*
+.claude/wip-audit.log
+.claude/.pending-review.*
+.claude/review-audit.log
