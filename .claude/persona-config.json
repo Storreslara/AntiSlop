@@ -3,9 +3,6 @@
   "graphUpdateCommand": "code-review-graph update --skip-flows",
   "sourceGlobs": [],
   "protectedPaths": [
-    ".claude-plugin/*",
-    "templates/persona-config.schema.json",
-    "hooks/hooks.json",
     ".github/workflows/*",
     ".claude/constitution.md"
   ],
