@@ -32,3 +32,24 @@ plan's version-bump issue to be *merged*, not just filed or in progress; (4)
 tag the unit `Roast pass: fable` if it also touches many other shared files —
 this coordination risk alone makes it a "heavy" unit per the pathfinder
 criteria even when the diff itself is small.
+
+**Tracker "open" state can lag actual git state — verify against git, not just
+`gh issue state`.** Observed concrete case (2026-07-16): issue #56 (the
+vendor-mattpocock-skills plan's own Step F.1 version-bump, target 0.12.0) was
+still `OPEN` on GitHub while slicing the reviewer-gate-model-selection plan,
+but `git log -- .claude-plugin/plugin.json` showed its work had already
+landed (plus a later, separate patch commit bumping further to 0.12.1) — the
+issue was simply never closed, not an active race. Before treating an open
+version-bump issue as a live blocker, cross-check `git log --oneline -- 
+.claude-plugin/plugin.json` (or the project's equivalent version-stamped
+file) for whether its work is already merged; if so, note in the dispatch
+prompt that the "open" state is a tracker-hygiene gap, not a real dependency,
+rather than wiring a `Depends on` line against a phantom blocker. Conversely,
+when the finalized spec you're slicing already hardcodes a specific "from X to
+Y" bump matching the CURRENT real value of the version file (verified by
+reading it, not assumed), it is fine to keep the spec's own literal
+acceptance criteria as-is (don't unilaterally rewrite spec substance to a
+relative-diff form) — instead add a precondition-check note instructing the
+executing persona to re-verify the pre-edit value at execution time and treat
+a mismatch as a spec gap to report upward, rather than forcing the literal
+target over a changed actual value.
