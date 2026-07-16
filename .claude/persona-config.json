@@ -12,7 +12,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.12.0",
+  "pluginVersion": "0.13.0",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -38,16 +38,16 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "9f241dd6b0ec0ba9ae5b8f327ee98013334db044c2f409a1c342c67c4f6e0189",
+    ".claude/agents/orchestrator.md": "77f2284de696bfe2c0bc20b10cafac38f7d7ad415b244a1c910679dc769529fe",
     ".claude/agents/explorer.md": "36c4bfb9ef16628fcb51428804db47b7b339ba217e27e9e16d6fc45121c750fa",
     ".claude/agents/lead-programmer.md": "617078b2a43307501b2ea69919865062477c23a9438a21f37f352405fee79dde",
     ".claude/agents/milestone-auditor.md": "07fcd56d984acd68ac0e9e3440163a49471fe433d38b5a80bb603bb186d1fe8c",
-    ".claude/agents/reviewer.md": "46e1c42400dd08fdaf7e25edc9819db7eadc193acaff1e15d0ff614022fcd921",
+    ".claude/agents/reviewer.md": "d9282857a8d1fc2e4c8608009e8549c1383774253f2777cbd9566a9519691ba6",
     ".claude/agents/researcher.md": "7ed2e62e5c020c95a378d3e3c2a78c35b211b0e54bb17c11203a00049c4c1119",
     ".claude/persona-protocol.md": "6d956d0a08fadfb55d1ddc67b7152c34a596b7ae83e60ebbce8cf6aa262da536",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "c21de6023d856b7f04b772b9a1ca6bc979342452c99b18bbf87b89fd12b6382d",
     ".claude/agents/spec-master.md": "d89688c65dadaaa4e7245e2a1ec2bb15b6bf4f908f5c2650282f44a426b8544c",
-    ".claude/agents/task-master.md": "232bb10df5e8f806be2ed724f246326224a220a96e37f5d832f1dcda92f18d40"
+    ".claude/agents/task-master.md": "ec8dab54a1c8fcd385ee5406d91e9f3b4eed29660828da84b4850d58dfb8ad4e"
   }
 }
