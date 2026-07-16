@@ -3,6 +3,22 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.1] - 2026-07-16
+
+### Fixed
+- **`.claude-plugin/plugin.json`'s `skills` field was an invalid shape,
+  breaking `/plugin install`.** Claude Code's plugin manifest schema expects
+  `skills` to be a directory path/glob (`"./skills/"`) used only to remap
+  the default skill-discovery location — not a list of skill names. The
+  manifest had a flat array of 17 skill names (`code-review`,
+  `codebase-design`, etc.), which Claude Code's installer rejected with
+  `Validation errors: skills: Invalid input`, breaking installation via
+  `/plugin install antislop@antislop-marketplace` for every user. The field
+  is also redundant: Claude Code auto-discovers skills from the plugin's
+  `skills/` directory without needing them declared in the manifest at all.
+  Removed the field entirely; confirmed nothing else in this repo's own
+  tooling (`bin/cli.js`, `tests/validate.sh`, CI) reads or depends on it.
+
 ## [0.13.0] - 2026-07-16
 
 ### Added
