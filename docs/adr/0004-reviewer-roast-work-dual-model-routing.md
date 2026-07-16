@@ -47,5 +47,6 @@ How to reconcile without weakening the gate?
 - **Inversion flagged:** this approach inverts the existing pattern (fable for light, opus for heavy) but only for a non-gating use, and the inversion is documented and reconciled rather than silently normalized.
 
 ## Related
+- **Amended by ADR-0006:** Signal-gated sonnet on the reviewer's authoritative PASS/FAIL gate — amends the "gate is always opus" statement to permit sonnet for demonstrably-mechanical units per a conjunctive condition.
 - **Roast-work skill:** a new first-party skill (not derived from any single packaged skill) that provides a detail-driven critique rubric: contradictions, missing parts, logic gaps, security vulnerabilities, actionable feedback. Written to the mattpocock/skills quality bar. Ships via the plugin-source `skills/roast-work/SKILL.md` path.
 - **Core safety property (The Writer/Reviewer split):** unchanged. Reviewer is independent (did not write the code); only reviewer can mark a unit done (`.claude/reviewed/*.pass`). This remains the system's load-bearing safety property, now explicitly reinforced by roast-work being advisory-only and never gating.
