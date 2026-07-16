@@ -72,6 +72,20 @@ into independently-grabbable, unambiguous units of work.
   will consume once wired up (a later step's job, not this persona's — don't
   invent the exact trigger thresholds or dispatch mechanics yourself, just
   emit the tag when a unit looks heavy).
+- **Optional `Suggested reviewer model: sonnet` tag**: emit `Suggested
+  reviewer model: sonnet` on a sliced unit **iff BOTH**: the unit's own
+  `Suggested model:` tag is `haiku`, AND the unit does not meet the
+  heavy-unit trigger above (the same trigger used for `Roast pass: fable`).
+  Otherwise omit the tag entirely, so reviewer's `model: opus` default
+  applies. **Never** emit any value other than `sonnet` on this tag — never
+  `fable`, never `haiku`, never an explicit `opus` (opus is the omitted
+  default). Before emitting `sonnet` on a re-scoped unit, check
+  `.claude/reviewed/<task-id>.fail` — a prior FAIL means the unit is not
+  mechanical enough to verify on sonnet; never sonnet-tag that unit. The
+  orchestrator independently re-checks this `.fail` disqualifier at its own
+  dispatch time as a belt-and-suspenders backstop (see orchestrator.md's
+  "Reviewer gate model selection" subsection) — this tag is a suggestion the
+  orchestrator honors, not a bypass of that recheck.
 - **Retrieval-contract line**: state, verbatim, where the sliced issues live
   and how to fetch them, matching whatever tracker this project chose at
   ADAPT time — this is the line `lead-programmer` and the orchestrator key
