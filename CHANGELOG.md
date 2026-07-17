@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.2] - 2026-07-17
+
+### Fixed
+- **Standalone installer now detects and guards against duplicate hook
+  registration when `antislop@antislop-marketplace` is already enabled.**
+  `bin/cli.js` scaffolds now detect if the marketplace plugin is already
+  active for a project by checking for `enabledPlugins["antislop@antislop-marketplace"]`
+  across project `.claude/settings.json`, project `.claude/settings.local.json`,
+  and `~/.claude/settings.json`. When detected, the installer skips the
+  duplicate `${CLAUDE_PROJECT_DIR}` hook registration for the `claude` target,
+  preventing Stop/SubagentStop/PreToolUse/etc hooks from being registered
+  twice. A new `--force-hooks` flag is available to override this detection
+  and register the hooks anyway. The same guard is present on the `cursor`
+  and `codex` targets as a documented no-op (no marketplace/plugin-enable
+  distribution exists for those ecosystems, so it can never fire there).
+  Fixes #67, #68, #69.
+
 ## [0.13.1] - 2026-07-16
 
 ### Fixed
