@@ -79,3 +79,12 @@ SOURCE path (`agents/<x>.md`) instead of the ADAPTED copy
 that literal check can never pass; run it as literally written and report
 the (expected) failure honestly rather than silently substituting the
 correct path.
+
+**Gotcha 5 (issue #72):** the pre-commit graph hook flagged `detectMarketplacePlugin`
+"untested" even though the commit added ~10 direct in-process unit tests
+(`cli.detectMarketplacePlugin(...)`, no subprocess) plus a spawnSync
+integration case for it — so Gotcha 1's false-negative isn't limited to
+subprocess-only coverage; it can also miss ordinary direct-call unit tests.
+Commit still succeeded (advisory, non-blocking). Don't treat this hook's
+"untested"/"test gap" note as authoritative for any function without
+independently checking `tests/cli-backfill.test.js` for existing calls to it.
