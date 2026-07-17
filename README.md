@@ -39,7 +39,7 @@ This is the Claude Code setup I use for work and personal projects. It's
 pretty decent at not generating slop, but it's a token hog. Still very much in
 development — if you hit weird behavior, please raise an issue.
 
-AntiSlop is a modular, persona-based Claude Code system packaged as a private,
+AntiSlop is a modular, persona-based Claude Code system packaged as a
 reusable plugin. The core loop is three always-on personas — **orchestrator**
 (routes requests), **explorer** (maps the code), and **lead-programmer**
 (writes it). `spec-master`, `task-master`, `scribe`, `reviewer`,
@@ -100,7 +100,7 @@ Marketplace (recommended):
 /plugin marketplace add Storreslara/AntiSlop
 /plugin install antislop@antislop-marketplace
 ```
-It's a **public** repo — no collaborator access or git auth needed. Confirm
+It's a **public** repo — no special access or git auth needed. Confirm
 it worked with `/agents` — you should see `antislop:explorer`,
 `antislop:lead-programmer`, etc. in the list.
 
