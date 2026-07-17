@@ -3,6 +3,21 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.3] - 2026-07-17
+
+### Fixed
+- **Standalone installer now respects Claude Code settings precedence when
+  detecting the marketplace plugin.** `bin/cli.js`'s `detectMarketplacePlugin()`
+  previously used a flat OR across settings files (any file saying
+  `enabledPlugins["antislop@antislop-marketplace"] === true` meant "enabled"),
+  which silently left projects with ZERO hook registrations if they explicitly
+  opted OUT at the project level while the plugin was enabled globally. The
+  detector now resolves `enabledPlugins["antislop@antislop-marketplace"]` using
+  Claude Code's documented settings precedence — Local (`.claude/settings.local.json`)
+  > Project (`.claude/settings.json`) > User (`~/.claude/settings.json`) — so
+  an explicit project-level false correctly overrides a global true. This
+  refines the 0.13.2 coexistence guard. Fixes #71.
+
 ## [0.13.2] - 2026-07-17
 
 ### Fixed
