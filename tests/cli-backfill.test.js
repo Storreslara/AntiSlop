@@ -94,6 +94,124 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   assert.ok(!migrated.includes('planner') && !migrated.includes('hivemind'), `legacy tokens should be gone from ${JSON.stringify(migrated)}`);
 });
 
+// --- detectMarketplacePlugin: pure function, no module-level CWD
+// dependency, so it's exercised directly against mkdtempSync fixture dirs
+// without the chdir/require-cache dance the --update tests below need.
+{
+  function writeSettings(dir, relPath, json) {
+    const abs = path.join(dir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify(json));
+  }
+
+  function makeDirs() {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-detect-cwd-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-detect-home-'));
+    return { cwd, home };
+  }
+
+  const enabledJson = { enabledPlugins: { 'antislop@antislop-marketplace': true } };
+
+  [
+    ['.claude/settings.json', 'project settings.json'],
+    ['.claude/settings.local.json', 'project settings.local.json'],
+  ].forEach(([relPath, label]) => {
+    check(`detectMarketplacePlugin('claude', ...) detects the key set true in ${label}`, () => {
+      const { cwd, home } = makeDirs();
+      try {
+        writeSettings(cwd, relPath, enabledJson);
+        const result = cli.detectMarketplacePlugin('claude', cwd, home);
+        assert.strictEqual(result.enabled, true);
+        assert.strictEqual(result.source, path.join(cwd, relPath));
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
+  });
+
+  check("detectMarketplacePlugin('claude', ...) detects the key set true in the home settings.json", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(home, '.claude/settings.json', enabledJson);
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, true);
+      assert.strictEqual(result.source, path.join(home, '.claude', 'settings.json'));
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check("detectMarketplacePlugin('claude', ...) returns enabled:false when the key is false", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(cwd, '.claude/settings.json', { enabledPlugins: { 'antislop@antislop-marketplace': false } });
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, false);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check("detectMarketplacePlugin('claude', ...) returns enabled:false when the key is absent", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(cwd, '.claude/settings.json', { enabledPlugins: { 'some-other-plugin': true } });
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, false);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check("detectMarketplacePlugin('claude', ...) returns enabled:false when enabledPlugins is absent entirely", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(cwd, '.claude/settings.json', {});
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, false);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check("detectMarketplacePlugin('claude', ...) returns enabled:false and does not throw on malformed JSON", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      const abs = path.join(cwd, '.claude', 'settings.json');
+      fs.mkdirSync(path.dirname(abs), { recursive: true });
+      fs.writeFileSync(abs, '{ not valid json');
+      assert.doesNotThrow(() => cli.detectMarketplacePlugin('claude', cwd, home));
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, false);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  ['cursor', 'codex'].forEach((target) => {
+    check(`detectMarketplacePlugin('${target}', ...) always returns enabled:false, even with the key true everywhere (no-op, never scans)`, () => {
+      const { cwd, home } = makeDirs();
+      try {
+        writeSettings(cwd, '.claude/settings.json', enabledJson);
+        writeSettings(cwd, '.claude/settings.local.json', enabledJson);
+        writeSettings(home, '.claude/settings.json', enabledJson);
+        const result = cli.detectMarketplacePlugin(target, cwd, home);
+        assert.strictEqual(result.enabled, false);
+        assert.ok(result.reason, 'expected an explanatory reason for the no-op target');
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
+  });
+}
+
 // --- Integration: fileHashes pruning + --check, exercised via the real
 // `node bin/cli.js --update` CLI process (runUpdate() calls process.exit()
 // on several paths, so it must run out-of-process rather than in the same

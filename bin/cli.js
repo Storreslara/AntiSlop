@@ -928,6 +928,42 @@ function upsertMarkedBlock(filePath, version, content) {
   return 'replaced';
 }
 
+const MARKETPLACE_PLUGIN_KEY = 'antislop@antislop-marketplace';
+
+// Detects whether antislop is already enabled via the Claude Code
+// marketplace plugin (enabledPlugins["antislop@antislop-marketplace"] ===
+// true, strict), which auto-loads hooks.json and would otherwise collide
+// with this CLI's own standalone hook registration for the same target.
+// Side-effect-free; best-effort — any absent/unreadable/malformed candidate
+// file counts as not-enabled rather than throwing.
+function detectMarketplacePlugin(target, cwd, homeDir) {
+  if (target !== 'claude') {
+    // No antislop marketplace/plugin-enable distribution exists for cursor
+    // or codex - the standalone CLI scaffold is the ONLY hook-registration
+    // path for those targets, so the double-registration collision this
+    // guard exists for is structurally impossible there. Kept as an
+    // explicit, always-false no-op (never scans) for uniformity across
+    // targets rather than silently omitted.
+    return { enabled: false, source: null,
+      reason: `no marketplace plugin-enable mechanism for target '${target}'` };
+  }
+  const candidates = [
+    path.join(cwd, '.claude', 'settings.json'),
+    path.join(cwd, '.claude', 'settings.local.json'),
+    path.join(homeDir, '.claude', 'settings.json'),
+  ];
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const json = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (json && json.enabledPlugins && json.enabledPlugins[MARKETPLACE_PLUGIN_KEY] === true) {
+        return { enabled: true, source: file, reason: null };
+      }
+    } catch (_) { /* malformed/unreadable -> not-enabled */ }
+  }
+  return { enabled: false, source: null, reason: null };
+}
+
 // Codex's hooks.json uses the SAME nested {matcher?, hooks:[{type,command}]}
 // shape as Claude's (confirmed live against learn.chatgpt.com/docs/hooks -
 // NOT Cursor's flatter {command} list), so it needs its own dedupe-aware
@@ -1457,6 +1493,7 @@ module.exports = {
   renderCleanBody,
   migrateLegacyPersonaTokens,
   deriveMcpLaunchFromDisk,
+  detectMarketplacePlugin,
   backfillSubstitutionsFromDisk,
   backfillFileHashesFromDisk,
   pruneStaleFileHashes,
