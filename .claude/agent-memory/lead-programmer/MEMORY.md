@@ -1,3 +1,5 @@
 - [Threefold-update plan tracking](project_threefold_update.md) — plan doc, issue tracker, per-step commit convention
 - [cli.js --update testing patterns](project_cli_update_testing.md) — spawnSync for process.exit branches, unstamped-baseline fixture trick, graph false-negative gotcha
 - [Vendor mattpocock/skills convention](project_vendor_mattpocock_skills.md) — pinned SHA, header AFTER `---` for SKILL.md, at top for companions (no frontmatter), never on .sh; A.3 done, header/grep tension noted
+- [Never scaffold the live repo](feedback_never_scaffold_live_repo.md) — always `(cd "$TMP" && node .../bin/cli.js ...)` in one subshell when verifying scaffold output; check `git status` after
+- [--force-hooks guard E2E testing](project_cli_force_hooks_guard.md) — spawnSync + tmp HOME pattern for pre-seeding settings.json before a fresh-install scaffold run
