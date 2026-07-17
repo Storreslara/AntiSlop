@@ -988,6 +988,60 @@ function detectMarketplacePlugin(target, cwd, homeDir) {
   return { enabled: false, source: null, reason: null };
 }
 
+// The exact prefix the standalone installer rewrites hook commands to
+// (bin/cli.js scaffold: ${CLAUDE_PLUGIN_ROOT}/hooks/scripts -> this). Already
+// the test harness's HOOK_MARKER (tests/cli-backfill.test.js:355).
+const STANDALONE_HOOK_PATH_MARKER = '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/';
+
+// Returns an array describing every standalone antislop hook registration
+// found in settings.hooks, e.g. [{ event, matcher, script }]. Pure,
+// best-effort: tolerates a missing/malformed/non-object hooks shape by
+// returning []. Never throws.
+function findStandaloneHookRegistrations(settings) {
+  const found = [];
+  const hooks = settings && settings.hooks;
+  if (!hooks || typeof hooks !== 'object') return found;
+  for (const event of Object.keys(hooks)) {
+    const groups = Array.isArray(hooks[event]) ? hooks[event] : [];
+    for (const group of groups) {
+      const entries = group && Array.isArray(group.hooks) ? group.hooks : [];
+      for (const entry of entries) {
+        if (entry && typeof entry.command === 'string' &&
+            entry.command.includes(STANDALONE_HOOK_PATH_MARKER)) {
+          found.push({ event, matcher: group.matcher || null,
+            script: entry.command.split('/').pop() });
+        }
+      }
+    }
+  }
+  return found;
+}
+
+// Returns a NEW (deep-cloned) settings object with every marker-matched
+// standalone antislop hook entry removed, plus now-empty matcher-groups and
+// now-empty event arrays pruned; the hooks key is deleted entirely if it
+// becomes empty. Every other key is preserved untouched. Pure - does not
+// mutate its input, does no I/O.
+function stripStandaloneHookRegistrations(settings) {
+  const clone = JSON.parse(JSON.stringify(settings));
+  const hooks = clone.hooks;
+  if (!hooks || typeof hooks !== 'object') return clone;
+  for (const event of Object.keys(hooks)) {
+    const groups = Array.isArray(hooks[event]) ? hooks[event] : [];
+    for (const group of groups) {
+      if (group && Array.isArray(group.hooks)) {
+        group.hooks = group.hooks.filter((e) =>
+          !(e && typeof e.command === 'string' &&
+            e.command.includes(STANDALONE_HOOK_PATH_MARKER)));
+      }
+    }
+    hooks[event] = groups.filter((g) => !(g && Array.isArray(g.hooks) && g.hooks.length === 0));
+    if (hooks[event].length === 0) delete hooks[event];
+  }
+  if (Object.keys(hooks).length === 0) delete clone.hooks;
+  return clone;
+}
+
 // Codex's hooks.json uses the SAME nested {matcher?, hooks:[{type,command}]}
 // shape as Claude's (confirmed live against learn.chatgpt.com/docs/hooks -
 // NOT Cursor's flatter {command} list), so it needs its own dedupe-aware
@@ -1554,6 +1608,8 @@ module.exports = {
   migrateLegacyPersonaTokens,
   deriveMcpLaunchFromDisk,
   detectMarketplacePlugin,
+  findStandaloneHookRegistrations,
+  stripStandaloneHookRegistrations,
   backfillSubstitutionsFromDisk,
   backfillFileHashesFromDisk,
   pruneStaleFileHashes,

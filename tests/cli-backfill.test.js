@@ -468,6 +468,85 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 }
 
+// --- Unit: findStandaloneHookRegistrations / stripStandaloneHookRegistrations
+// (issue #75, Step 1 of the update-dedupe-standalone-hooks plan). Pure
+// functions operating on an in-memory settings object, no file I/O — unit
+// tested directly like detectMarketplacePlugin, colocated near the other
+// HOOK_MARKER-using tests above for convention consistency.
+{
+  const standaloneCommand = '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/stop-gate.sh';
+  const pluginCommand = '${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh';
+
+  function settingsWith(hooks) {
+    return { agent: 'orchestrator', env: { FOO: 'bar' }, permissions: { allow: [] }, hooks };
+  }
+
+  check('findStandaloneHookRegistrations returns a non-empty list for a marker-matched command', () => {
+    const settings = settingsWith({
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }],
+    });
+    const found = cli.findStandaloneHookRegistrations(settings);
+    assert.strictEqual(found.length, 1);
+    assert.strictEqual(found[0].event, 'Stop');
+    assert.strictEqual(found[0].script, 'stop-gate.sh');
+  });
+
+  check('findStandaloneHookRegistrations returns [] for only CLAUDE_PLUGIN_ROOT-rooted commands', () => {
+    const settings = settingsWith({
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: pluginCommand }] }],
+    });
+    assert.deepStrictEqual(cli.findStandaloneHookRegistrations(settings), []);
+  });
+
+  check('findStandaloneHookRegistrations returns [] when settings has no hooks key', () => {
+    assert.deepStrictEqual(cli.findStandaloneHookRegistrations({ agent: 'orchestrator' }), []);
+  });
+
+  check('findStandaloneHookRegistrations returns [] when hooks is a non-object value', () => {
+    assert.deepStrictEqual(cli.findStandaloneHookRegistrations({ hooks: 'nope' }), []);
+  });
+
+  check('stripStandaloneHookRegistrations removes exactly the marker-matched entries and prunes empties', () => {
+    const settings = settingsWith({
+      Stop: [
+        { matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] },
+        { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo user-authored' }] },
+      ],
+    });
+    const result = cli.stripStandaloneHookRegistrations(settings);
+    assert.strictEqual(result.hooks.Stop.length, 1, 'expected the marker-matched group to be pruned');
+    assert.strictEqual(result.hooks.Stop[0].matcher, 'Bash');
+    assert.strictEqual(result.hooks.Stop[0].hooks[0].command, 'echo user-authored');
+  });
+
+  check('stripStandaloneHookRegistrations does not mutate its input', () => {
+    const settings = settingsWith({
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }],
+    });
+    const before = JSON.stringify(settings);
+    cli.stripStandaloneHookRegistrations(settings);
+    assert.strictEqual(JSON.stringify(settings), before);
+  });
+
+  check('stripStandaloneHookRegistrations deletes the hooks key entirely when every entry was standalone', () => {
+    const settings = settingsWith({
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }],
+    });
+    const result = cli.stripStandaloneHookRegistrations(settings);
+    assert.ok(!Object.prototype.hasOwnProperty.call(result, 'hooks'), 'expected hooks key to be deleted');
+  });
+
+  check('stripStandaloneHookRegistrations preserves non-hooks settings keys byte-for-byte', () => {
+    const settings = settingsWith({
+      Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }],
+    });
+    const result = cli.stripStandaloneHookRegistrations(settings);
+    assert.strictEqual(result.agent, 'orchestrator');
+    assert.deepStrictEqual(result.env, { FOO: 'bar' });
+    assert.deepStrictEqual(result.permissions, { allow: [] });
+  });
+}
+
 // --- Integration: the same guard, wired into the cursor/codex scaffolds for
 // uniformity (issue #69). detectMarketplacePlugin('cursor'/'codex', ...)
 // always returns enabled:false (see its own no-op comment, issue #67), so
