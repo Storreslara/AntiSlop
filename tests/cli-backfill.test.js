@@ -305,6 +305,109 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 }
 
+// --- Integration: --force-hooks guard on the claude-target hooks merge
+// (issue #68). Runs the real scaffold via spawnSync into a fresh tmp cwd
+// (no pre-existing persona-config.json, so the fresh-install path runs, not
+// --update). HOME is overridden per-spawn so os.homedir() in the child
+// process resolves to a throwaway dir instead of the real one.
+{
+  const cliPath = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const HOOK_MARKER = '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts';
+  const enabledJson = { enabledPlugins: { 'antislop@antislop-marketplace': true } };
+
+  function makeTmpCwdAndHome() {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-forcehooks-cwd-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-forcehooks-home-'));
+    return { cwd, home };
+  }
+
+  function writeSettings(dir, relPath, json) {
+    const abs = path.join(dir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify(json));
+  }
+
+  function runScaffold(cwd, home, extraArgs) {
+    return spawnSync('node', [cliPath, '--yes'].concat(extraArgs || []), {
+      cwd,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+  }
+
+  check('negative/regression: no plugin enabled anywhere -> hooks merge happens as today', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      const result = runScaffold(cwd, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
+      assert.ok(JSON.stringify(settings.hooks).includes(HOOK_MARKER), 'expected hooks merged in by default');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('guard fires when the plugin is enabled via project .claude/settings.json', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(cwd, '.claude/settings.json', enabledJson);
+      const result = runScaffold(cwd, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
+      assert.ok(!JSON.stringify(settings.hooks || {}).includes(HOOK_MARKER), 'expected hooks merge to be skipped');
+      assert.strictEqual(settings.agent, 'orchestrator', 'settingsFragment merge should still have happened');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('guard fires when the plugin is enabled via project .claude/settings.local.json', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(cwd, '.claude/settings.local.json', enabledJson);
+      const result = runScaffold(cwd, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
+      assert.ok(!JSON.stringify(settings.hooks || {}).includes(HOOK_MARKER), 'expected hooks merge to be skipped');
+      assert.strictEqual(settings.agent, 'orchestrator', 'settingsFragment merge should still have happened');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('guard fires when the plugin is enabled via ~/.claude/settings.json (tmp HOME)', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(home, '.claude/settings.json', enabledJson);
+      const result = runScaffold(cwd, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
+      assert.ok(!JSON.stringify(settings.hooks || {}).includes(HOOK_MARKER), 'expected hooks merge to be skipped');
+      assert.strictEqual(settings.agent, 'orchestrator', 'settingsFragment merge should still have happened');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('--force-hooks overrides the guard even when the plugin is detected', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(cwd, '.claude/settings.json', enabledJson);
+      const result = runScaffold(cwd, home, ['--force-hooks']);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
+      assert.ok(JSON.stringify(settings.hooks).includes(HOOK_MARKER), 'expected --force-hooks to restore the hooks merge');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+}
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed.`);
   process.exit(1);

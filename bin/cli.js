@@ -1210,6 +1210,7 @@ async function main() {
   const yesToAll = args.includes('--yes') || args.includes('-y');
   const personasFlag = args.find((a) => a.startsWith('--personas='));
   const overwrite = args.includes('--overwrite');
+  const forceHooks = args.includes('--force-hooks');
 
   const version = readPluginVersion();
   console.log(`antislop v${version} — scaffolding into ${CWD}\n`);
@@ -1379,9 +1380,30 @@ async function main() {
     settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
   }
   deepMerge(settings, settingsFragment);
-  deepMerge(settings, hooksConfig);
+
+  const pluginState = detectMarketplacePlugin('claude', CWD, os.homedir());
+  let hooksNote = 'hooks';
+  if (pluginState.enabled && !forceHooks) {
+    hooksNote = 'hooks NOT merged, see above';
+    console.log(
+      `  Hook registration SKIPPED — antislop is already enabled via the Claude Code ` +
+        `marketplace plugin (enabledPlugins["antislop@antislop-marketplace"] === true, ` +
+        `detected in ${pluginState.source}), which already auto-loads hooks.json via ` +
+        '${CLAUDE_PLUGIN_ROOT}. Merging this CLI\'s own hook registrations too would fire ' +
+        `every hook twice. Re-run with --force-hooks to merge them anyway.`
+    );
+  } else {
+    if (pluginState.enabled && forceHooks) {
+      console.log(
+        `  --force-hooks: antislop is already enabled via the marketplace plugin ` +
+          `(detected in ${pluginState.source}) AND hooks are being merged anyway — expect ` +
+          'every hook to fire twice until the plugin is disabled.'
+      );
+    }
+    deepMerge(settings, hooksConfig);
+  }
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
-  console.log('  .claude/settings.json updated (agent, hooks, env, permission placeholders merged in — merge, not overwrite)');
+  console.log(`  .claude/settings.json updated (agent, ${hooksNote}, env, permission placeholders merged in — merge, not overwrite)`);
 
   const claudeMdPath = path.join(CWD, 'CLAUDE.md');
   const importLine = '@.claude/persona-protocol.md';
