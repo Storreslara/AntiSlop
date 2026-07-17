@@ -105,10 +105,14 @@ shared protocol).
 
 ## Per-unit model routing
 When dispatching a unit to `lead-programmer`, check the sliced unit's
-`Suggested model: haiku|sonnet` tag (task-master's judgment on how mechanical
-the unit is) and pass it as the dispatch's `model` parameter; omit the parameter
-entirely when the tag is absent, so lead-programmer's own `model: sonnet`
-frontmatter applies as the default, not an absolute. This relies on Claude
+`Suggested model: haiku|sonnet|opus` tag (task-master's judgment on how
+mechanical the unit is) and pass it as the dispatch's `model` parameter; omit
+the parameter entirely when the tag is absent, so lead-programmer's own
+`model: sonnet` frontmatter applies as the default, not an absolute. An
+`opus` tag routes identically — pass it straight through as the `model`
+parameter — task-master reserves it for genuinely hard-judgment or
+high-stakes units, not for the mechanical default, so treat it as an
+expected, routable value rather than an anomaly. This relies on Claude
 Code's documented per-invocation model override (env var > per-call param >
 frontmatter) — if `CLAUDE_CODE_SUBAGENT_MODEL` is set in the environment it
 silently wins over this routing, so check for it if per-unit routing ever
@@ -204,7 +208,7 @@ separate spawn.
    handling, or migrations touched.
 
 `task-master` may tag a sliced unit `Roast pass: fable` (advisory, mirroring
-its `Suggested model: haiku|sonnet` per-unit tag) when it judges the unit
+its `Suggested model: haiku|sonnet|opus` per-unit tag) when it judges the unit
 heavy by this trigger; honor that tag at dispatch time as a signal to spawn
 the advisory pass, but the trigger conditions above — not the tag's mere
 presence or absence — are what actually decide "heavy," since task-master's

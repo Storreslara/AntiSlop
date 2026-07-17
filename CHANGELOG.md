@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.6] - 2026-07-17
+
+### Fixed
+- **`agents/orchestrator.md` per-unit model routing now documents all three
+  `Suggested model` tiers.** `agents/task-master.md` already tags sliced
+  units `Suggested model: haiku|sonnet|opus`, but the orchestrator's
+  consumer-side documentation (the "## Per-unit model routing" section and
+  the roast-work parenthetical) only enumerated `haiku|sonnet`, so a strict
+  reading of an `opus`-tagged unit would fall through to "omit the
+  parameter" and silently downgrade it to lead-programmer's sonnet default.
+  Corrected the enumeration to `haiku|sonnet|opus` and added a clause
+  stating an `opus` tag routes identically (passed straight through as the
+  `model` dispatch parameter), reserved for genuinely hard-judgment /
+  high-stakes units. The three-tier enumeration is now consistent across
+  `agents/task-master.md`, `agents/orchestrator.md`, and ADR-0003.
+  Documentation-only; `agents/task-master.md` was not modified. Fixes #87.
+
 ## [0.13.5] - 2026-07-17
 
 ### Changed
