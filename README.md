@@ -93,94 +93,71 @@ whichever is already present, so it's safe to run any time.
 
 ## Install
 
-AntiSlop lives in a **private** GitHub repo (`Storreslara/AntiSlop`). Before
-the install commands will work, each user needs:
-- to be added as a collaborator (repo Settings → Collaborators), and
-- working git auth on their own machine — an SSH key added to their GitHub
-  account, or `gh auth login` run once locally. Without one of these, `/plugin
-  marketplace add` fails to clone with a permission/auth error, not a "not
-  found" error — that's the first thing to check if it happens.
+### Claude Code
 
+Marketplace (recommended):
 ```
 /plugin marketplace add Storreslara/AntiSlop
 /plugin install antislop@antislop-marketplace
 ```
+It's a **public** repo — no collaborator access or git auth needed. Confirm
+it worked with `/agents` — you should see `antislop:explorer`,
+`antislop:lead-programmer`, etc. in the list.
 
-Confirm it worked with `/agents` — you should see `antislop:explorer`,
-`antislop:lead-programmer`, etc. in the list. Then run
-[first-time setup](#first-time-setup) below.
-
-**No collaborator access yet?** Point Claude Code straight at a local clone
-instead — no marketplace step needed:
+Local-clone alternative:
 ```
 claude --plugin-dir /path/to/your/clone
 ```
-This is a first-class path, not "test only." Confirm the same way, with `/agents`.
 
-Note: plugin agents load under namespaced names (`antislop:explorer`). Bare-name
-spawns like `explorer` hard-error — they don't resolve. That's why setup's
-first substantive action is copying every selected agent file into the
-project's `.claude/agents/`, which are never namespaced.
+Per-project setup: run `/antislop:install-antislop` — one line; full flow at
+`skills/install-antislop/SKILL.md`.
+
+Note: plugin agents load under namespaced names (`antislop:explorer`).
+Bare-name spawns like `explorer` hard-error — that's why setup's first
+substantive action is copying every selected agent file into the project's
+`.claude/agents/`, which are never namespaced.
+
+### Codex
+
+```
+git clone https://github.com/Storreslara/AntiSlop.git
+node AntiSlop/bin/cli.js --target=codex
+```
+Run from your project root (the clone becomes a subdirectory). Scaffolds
+`.codex/` with the MVP four personas (`orchestrator`, `explorer`,
+`lead-programmer`, `reviewer`).
+
+### Cursor
+
+```
+git clone https://github.com/Storreslara/AntiSlop.git
+node AntiSlop/bin/cli.js --target=cursor
+```
+Run from your project root. Scaffolds `.cursor/` with the same MVP four
+personas.
 
 ## First-time setup
 
-Once per project, run:
+Once per project (Claude Code target), run:
 ```
 /antislop:install-antislop
 ```
+It asks which personas the project needs — `explorer` and `lead-programmer`
+are mandatory, the rest opt-in. **Skipping `reviewer` requires an explicit
+confirmation** — it's the system's core safety property.
 
-It asks which personas the project needs. `explorer` and `lead-programmer` are
-mandatory; the rest are opt-in. **Skipping `reviewer` requires an explicit
-confirmation** — it's the system's core safety property. Expect it to also
-ask: your test/lint command (and what to do if that command doesn't currently
-pass — exclude it, or accept a red gate until it's fixed), which protected
-paths to lock, which issue tracker to use, and — if `researcher` is selected —
-where to find an arXiv MCP server.
+Two things it does NOT do silently:
+- **Install third-party skills interactively** — it tells you which skills
+  to pick by purpose and asks you to run `npx skills@latest add
+  mattpocock/skills` yourself.
+- **Modify your repo during hook verification** — trial edits on a
+  throwaway branch prove the safety hooks work, then everything is reverted.
 
-**Two things it does NOT do silently, that you should expect to do yourself:**
-- **Install third-party skills interactively.** If you select personas that
-  use `mattpocock/skills`, setup will tell you which skills to pick *by
-  purpose* and ask **you** to run `npx skills@latest add mattpocock/skills`
-  in your own terminal — it can't drive that tool's interactive picker itself.
-- **Modify your repo during hook verification.** On a fresh install, setup
-  creates a throwaway branch, makes trial edits (including one deliberately
-  failing check) to prove the safety hooks actually block/allow correctly,
-  then reverts everything and leaves the repo clean.
+Re-sync after plugin updates with `/antislop:update-antislop`
+(deterministic, near-zero token cost).
 
-It also sets one environment entry, `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`, in
-`.claude/settings.json` — required for the optional `start-feature-team`
-command (see [Using AntiSlop](#using-antislop) below); harmless if you never
-use that command, and removed along with everything else if you
-[uninstall](#removing-antislop).
-
-Full step-by-step flow (written for the agent executing it, not light
-reading, but the ground truth if you want it): `skills/install-antislop/SKILL.md`.
-
-**Note a dated cutoff:** projects whose copied `reviewer.md` still writes the
-old (pre-v0.2.0) bare-`touch` PASS marker get a grace-period warning instead
-of a hard block — **only through 2026-07-27**. After that, `task-gate.sh`
-blocks unconditionally on the old format. Run `/antislop:update-antislop`
-(below) before then if your project predates v0.2.0.
-
-**When the plugin updates**, re-sync adapted projects:
-```
-/antislop:update-antislop
-```
-This runs a deterministic script (`bin/cli.js --update`), not an LLM flow —
-it regenerates each copied agent file straight from the plugin's current
-source plus the substitutions recorded at setup time, and only touches files
-that are byte-identical to what it already knows is "clean." That costs
-essentially no tokens. Projects adapted before this script existed (missing
-`substitutions`/`fileHashes`) are handled too: it auto-backfills what it can
-determine from the files already on disk, still at zero token cost. A file
-only ever needs a decision from *you* (never the model) when it's genuinely
-diverged from a fresh copy — it prints the diff and asks, it never silently
-clobbers a local edit. A `SessionStart` hook warns automatically when a
-project's adapted version is behind.
-(`/antislop:install-antislop --update` still works, but should rarely be
-needed now — it's a narrow, per-item fallback for the specific gap the
-script names when it can't derive something automatically, not a full
-re-adapt.)
+Full step-by-step flow and deeper caveats (the agent-teams env var, the
+dated pre-v0.2.0 grace-period note): `skills/install-antislop/SKILL.md`.
 
 ## Using AntiSlop
 
