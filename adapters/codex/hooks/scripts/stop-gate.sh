@@ -112,7 +112,7 @@ if [ "$hook_event" = "Stop" ]; then
       esac
     done
     if [ "$blocked" = true ]; then
-      block "Unit awaiting review - spawn the reviewer (persona-protocol's Review ownership section). Escape hatch: 'printf \"defer: <reason>\\n\" > .codex/.pending-review.<agent-id>' keeps flag, still owed; swap defer->skip to delete it, abandoned. Empty reason rejected."
+      block "Unit awaiting review - spawn the reviewer (persona-protocol's Review ownership section). Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .codex/.pending-review.<agent-id>' - defer keeps the flag (still owed), skip deletes it (abandoned). Empty reason rejected."
     fi
     allow
   fi
