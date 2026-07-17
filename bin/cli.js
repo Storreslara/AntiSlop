@@ -735,6 +735,7 @@ const CURSOR_MVP_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer', 'rev
 async function scaffoldCursor(args) {
   const version = readPluginVersion();
   const overwrite = args.includes('--overwrite');
+  const forceHooks = args.includes('--force-hooks');
   const cursorSrc = path.join(PKG_ROOT, 'adapters', 'cursor');
   console.log(`antislop v${version} (Cursor target) — scaffolding into ${CWD}\n`);
 
@@ -802,27 +803,40 @@ async function scaffoldCursor(args) {
   if (fs.existsSync(hooksPath)) {
     hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
   }
-  // Idempotent, dedupe-aware merge: the generic deepMerge appends array items
-  // by reference equality, so identical `{command: ...}` objects would
-  // duplicate on every --overwrite re-run (each fires the same hook twice).
-  // Dedupe per-event by the entry's JSON so a re-run is a no-op while any
-  // user-added hook entries are preserved.
-  hooks.version = hooks.version || hooksConfig.version || 1;
-  hooks.hooks = hooks.hooks || {};
-  for (const [event, entries] of Object.entries(hooksConfig.hooks || {})) {
-    const existing = hooks.hooks[event] || [];
-    const seen = new Set(existing.map((e) => JSON.stringify(e)));
-    for (const entry of entries) {
-      const key = JSON.stringify(entry);
-      if (!seen.has(key)) {
-        existing.push(entry);
-        seen.add(key);
+  // Same coexistence guard as the claude target (issue #68), wired here for
+  // uniformity. detectMarketplacePlugin always returns enabled:false for
+  // 'cursor' (see its own no-op comment, issue #67 — no antislop marketplace
+  // plugin-enable distribution exists for cursor), so this is a documented
+  // no-op: the else branch below always runs today.
+  const pluginState = detectMarketplacePlugin('cursor', CWD, os.homedir());
+  if (pluginState.enabled && !forceHooks) {
+    console.log(
+      `  Hook registration SKIPPED — antislop is already enabled via the marketplace ` +
+        `plugin (detected in ${pluginState.source}). Re-run with --force-hooks to merge anyway.`
+    );
+  } else {
+    // Idempotent, dedupe-aware merge: the generic deepMerge appends array items
+    // by reference equality, so identical `{command: ...}` objects would
+    // duplicate on every --overwrite re-run (each fires the same hook twice).
+    // Dedupe per-event by the entry's JSON so a re-run is a no-op while any
+    // user-added hook entries are preserved.
+    hooks.version = hooks.version || hooksConfig.version || 1;
+    hooks.hooks = hooks.hooks || {};
+    for (const [event, entries] of Object.entries(hooksConfig.hooks || {})) {
+      const existing = hooks.hooks[event] || [];
+      const seen = new Set(existing.map((e) => JSON.stringify(e)));
+      for (const entry of entries) {
+        const key = JSON.stringify(entry);
+        if (!seen.has(key)) {
+          existing.push(entry);
+          seen.add(key);
+        }
       }
+      hooks.hooks[event] = existing;
     }
-    hooks.hooks[event] = existing;
+    fs.writeFileSync(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
+    console.log('  .cursor/hooks.json updated (version 1, camelCase events; merge, not overwrite)');
   }
-  fs.writeFileSync(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
-  console.log('  .cursor/hooks.json updated (version 1, camelCase events; merge, not overwrite)');
 
   if (existingConfig) {
     existingConfig.personaSelection = CURSOR_MVP_PERSONAS.slice();
@@ -1051,6 +1065,7 @@ function applyMcpTomlPlaceholder(body, placeholder, launch, fileLabel) {
 async function scaffoldCodex(args) {
   const version = readPluginVersion();
   const overwrite = args.includes('--overwrite');
+  const forceHooks = args.includes('--force-hooks');
   const codexSrc = path.join(PKG_ROOT, 'adapters', 'codex');
   console.log(`antislop v${version} (Codex target) — scaffolding into ${CWD}\n`);
 
@@ -1108,9 +1123,22 @@ async function scaffoldCodex(args) {
   if (fs.existsSync(hooksPath)) {
     hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
   }
-  mergeNestedHooksJson(hooks, hooksConfig);
-  fs.writeFileSync(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
-  console.log('  .codex/hooks.json updated (nested matcher/hooks shape; merge, not overwrite)');
+  // Same coexistence guard as the claude target (issue #68), wired here for
+  // uniformity. detectMarketplacePlugin always returns enabled:false for
+  // 'codex' (see its own no-op comment, issue #67 — no antislop marketplace
+  // plugin-enable distribution exists for codex), so this is a documented
+  // no-op: the else branch below always runs today.
+  const pluginState = detectMarketplacePlugin('codex', CWD, os.homedir());
+  if (pluginState.enabled && !forceHooks) {
+    console.log(
+      `  Hook registration SKIPPED — antislop is already enabled via the marketplace ` +
+        `plugin (detected in ${pluginState.source}). Re-run with --force-hooks to merge anyway.`
+    );
+  } else {
+    mergeNestedHooksJson(hooks, hooksConfig);
+    fs.writeFileSync(hooksPath, JSON.stringify(hooks, null, 2) + '\n');
+    console.log('  .codex/hooks.json updated (nested matcher/hooks shape; merge, not overwrite)');
+  }
 
   const fragmentContent = fs.readFileSync(path.join(codexSrc, 'agents-md-fragment.md'), 'utf8').trimEnd();
   const agentsMdPath = path.join(CWD, 'AGENTS.md');

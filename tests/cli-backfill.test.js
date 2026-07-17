@@ -408,6 +408,67 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 }
 
+// --- Integration: the same guard, wired into the cursor/codex scaffolds for
+// uniformity (issue #69). detectMarketplacePlugin('cursor'/'codex', ...)
+// always returns enabled:false (see its own no-op comment, issue #67), so
+// the guard structurally can never suppress these targets' hooks today —
+// these tests prove exactly that (the marketplace key does NOT suppress
+// cursor/codex hooks) while also exercising the guard's call site, so a
+// future change to detectMarketplacePlugin's cursor/codex branch would flip
+// one of these from green to red instead of silently doing nothing.
+{
+  const cliPath = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const enabledJson = { enabledPlugins: { 'antislop@antislop-marketplace': true } };
+
+  function makeTmpCwdAndHome() {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-cursorcodex-cwd-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-cursorcodex-home-'));
+    return { cwd, home };
+  }
+
+  function writeSettings(dir, relPath, json) {
+    const abs = path.join(dir, relPath);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify(json));
+  }
+
+  function runScaffold(cwd, home, target) {
+    return spawnSync('node', [cliPath, `--target=${target}`], {
+      cwd,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+  }
+
+  check('cursor not over-guarded: marketplace key set does not suppress .cursor/hooks.json registrations', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(cwd, '.claude/settings.json', enabledJson);
+      const result = runScaffold(cwd, home, 'cursor');
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const hooks = JSON.parse(fs.readFileSync(path.join(cwd, '.cursor', 'hooks.json'), 'utf8'));
+      assert.ok(JSON.stringify(hooks).includes('.cursor/hooks/scripts'), 'expected .cursor/hooks/scripts registrations to be present');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('codex not over-guarded: marketplace key set does not suppress .codex/hooks.json registrations', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(cwd, '.claude/settings.json', enabledJson);
+      const result = runScaffold(cwd, home, 'codex');
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const hooks = JSON.parse(fs.readFileSync(path.join(cwd, '.codex', 'hooks.json'), 'utf8'));
+      assert.ok(JSON.stringify(hooks).includes('.codex/hooks/scripts'), 'expected .codex/hooks/scripts registrations to be present');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+}
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed.`);
   process.exit(1);
