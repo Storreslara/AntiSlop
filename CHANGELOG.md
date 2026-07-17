@@ -3,6 +3,22 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.4] - 2026-07-17
+
+### Added
+- **`node bin/cli.js --update` now detects and deduplicates stale standalone
+  hook registrations when the marketplace plugin is enabled.** When `--update`
+  detects the marketplace plugin is active (via `detectMarketplacePlugin`) AND
+  stale standalone `${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/*.sh` registrations
+  remain in `.claude/settings.json` from a pre-guard install, it warns the user
+  of the duplicate collision. A new `--dedupe-hooks` flag surgically removes
+  just the standalone registrations (leaving the marketplace plugin to provide
+  the hooks); default behavior is warn-only and NEVER rewrites
+  `.claude/settings.json` without the flag. `--dedupe-hooks` is a no-op when
+  the plugin is not enabled (never disables all hooks). This extends the 0.13.2
+  fresh-install guard to the `--update` resync path, which the original guard
+  did not cover. Fixes #77.
+
 ## [0.13.3] - 2026-07-17
 
 ### Fixed
