@@ -43,6 +43,13 @@ const LEGACY_PERSONA_MAP = {
 }; // legacy token -> current token(s)
 // researcher is handled separately: it's a template, not a plain agent copy.
 
+// Matches unresolved substitution placeholders left in a stamped file after
+// --update (e.g. <REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>,
+// <MATTPOCOCK:slot>, bare <MATTPOCOCK>). Requires 2+ chars before an optional
+// colon-suffix so bare prose like "Open Question <N>" doesn't false-positive
+// — every real placeholder in this repo is multi-character.
+const PLACEHOLDER_RE = /<[A-Z0-9_]{2,}(:[a-zA-Z0-9_-]+)?>/;
+
 function readPluginVersion() {
   const pluginJsonPath = path.join(PKG_ROOT, '.claude-plugin', 'plugin.json');
   const pluginJson = JSON.parse(fs.readFileSync(pluginJsonPath, 'utf8'));
@@ -635,10 +642,9 @@ async function runUpdate(args) {
   console.log(`antislop v${version} — update complete in ${CWD}:\n`);
   console.log(summary.join('\n'));
 
-  const placeholderRe = /<[A-Z0-9_]+(:[a-zA-Z0-9_-]+)?>/;
   const leftover = specs
     .map((s) => path.join(CWD, s.projectRelPath))
-    .filter((p) => fs.existsSync(p) && placeholderRe.test(fs.readFileSync(p, 'utf8')));
+    .filter((p) => fs.existsSync(p) && PLACEHOLDER_RE.test(fs.readFileSync(p, 'utf8')));
   if (leftover.length > 0) {
     console.log(
       `\nWARNING: unresolved placeholder(s) remain in: ${leftover.join(', ')} — this should not ` +
@@ -1641,6 +1647,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  PLACEHOLDER_RE,
   sha256Hex,
   stripStamp,
   renderMcpBlock,

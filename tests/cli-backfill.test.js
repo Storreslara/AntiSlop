@@ -68,6 +68,16 @@ check('deriveMcpLaunchFromDisk does not swallow a frontmatter key that follows m
   assert.ok(rendered.includes('\nmaxTurns: 10\n'), 'maxTurns: 10 got swallowed into the parsed/replaced block');
 });
 
+check('PLACEHOLDER_RE still matches real unresolved-placeholder shapes', () => {
+  assert.ok(cli.PLACEHOLDER_RE.test('<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>'));
+  assert.ok(cli.PLACEHOLDER_RE.test('<MATTPOCOCK:slot>'));
+  assert.ok(cli.PLACEHOLDER_RE.test('<MATTPOCOCK>'));
+});
+
+check('PLACEHOLDER_RE does not false-positive on a bare single-letter prose token like "Open Question <N>"', () => {
+  assert.ok(!cli.PLACEHOLDER_RE.test('converted to Open Question <N> (citing the actual Open Questions list number)'));
+});
+
 check('migrateLegacyPersonaTokens resolves repo-historian to scribe without a planner token present', () => {
   // Reproduces a real already-adapted project's personaSelection (no
   // "planner" present) to confirm the legacy-token guard isn't keyed to
