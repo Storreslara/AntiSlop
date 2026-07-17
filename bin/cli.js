@@ -961,19 +961,29 @@ function detectMarketplacePlugin(target, cwd, homeDir) {
     return { enabled: false, source: null,
       reason: `no marketplace plugin-enable mechanism for target '${target}'` };
   }
+  // Claude Code precedence, HIGHEST scope first (settings.md "How Scopes
+  // Interact"): Local > Project > User. enabledPlugins deep-merges per-key
+  // with higher scope winning, so the first file that sets the key to an
+  // explicit true or false decides; an absent (or non-boolean) key falls
+  // through to the next-lower scope.
   const candidates = [
-    path.join(cwd, '.claude', 'settings.json'),
     path.join(cwd, '.claude', 'settings.local.json'),
+    path.join(cwd, '.claude', 'settings.json'),
     path.join(homeDir, '.claude', 'settings.json'),
   ];
   for (const file of candidates) {
+    let val;
     try {
       if (!fs.existsSync(file)) continue;
       const json = JSON.parse(fs.readFileSync(file, 'utf8'));
-      if (json && json.enabledPlugins && json.enabledPlugins[MARKETPLACE_PLUGIN_KEY] === true) {
-        return { enabled: true, source: file, reason: null };
+      if (json && json.enabledPlugins &&
+          Object.prototype.hasOwnProperty.call(json.enabledPlugins, MARKETPLACE_PLUGIN_KEY)) {
+        val = json.enabledPlugins[MARKETPLACE_PLUGIN_KEY];
       }
-    } catch (_) { /* malformed/unreadable -> not-enabled */ }
+    } catch (_) { continue; /* malformed/unreadable -> key not set here */ }
+    if (val === true) return { enabled: true, source: file, reason: null };
+    if (val === false) return { enabled: false, source: null,
+      reason: `explicitly disabled at ${file} (higher-precedence scope)` };
   }
   return { enabled: false, source: null, reason: null };
 }

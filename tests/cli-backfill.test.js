@@ -194,6 +194,46 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  check("detectMarketplacePlugin('claude', ...) reported-bug regression: home=true + project=false -> enabled:false (higher-precedence false wins)", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(home, '.claude/settings.json', enabledJson);
+      writeSettings(cwd, '.claude/settings.json', { enabledPlugins: { 'antislop@antislop-marketplace': false } });
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, false);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check("detectMarketplacePlugin('claude', ...) Local overrides Project: settings.local.json=false, settings.json=true -> enabled:false", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(cwd, '.claude/settings.local.json', { enabledPlugins: { 'antislop@antislop-marketplace': false } });
+      writeSettings(cwd, '.claude/settings.json', enabledJson);
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, false);
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check("detectMarketplacePlugin('claude', ...) a higher explicit true still wins over a lower false: project=true, home=false -> enabled:true, source=project settings.json", () => {
+    const { cwd, home } = makeDirs();
+    try {
+      writeSettings(cwd, '.claude/settings.json', enabledJson);
+      writeSettings(home, '.claude/settings.json', { enabledPlugins: { 'antislop@antislop-marketplace': false } });
+      const result = cli.detectMarketplacePlugin('claude', cwd, home);
+      assert.strictEqual(result.enabled, true);
+      assert.strictEqual(result.source, path.join(cwd, '.claude', 'settings.json'));
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
   ['cursor', 'codex'].forEach((target) => {
     check(`detectMarketplacePlugin('${target}', ...) always returns enabled:false, even with the key true everywhere (no-op, never scans)`, () => {
       const { cwd, home } = makeDirs();
@@ -387,6 +427,26 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
       assert.ok(!JSON.stringify(settings.hooks || {}).includes(HOOK_MARKER), 'expected hooks merge to be skipped');
       assert.strictEqual(settings.agent, 'orchestrator', 'settingsFragment merge should still have happened');
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('project-level opt-out overrides a global plugin enable: hooks merge fires, false key survives (issue #72 regression)', () => {
+    const { cwd, home } = makeTmpCwdAndHome();
+    try {
+      writeSettings(home, '.claude/settings.json', enabledJson);
+      writeSettings(cwd, '.claude/settings.json', { enabledPlugins: { 'antislop@antislop-marketplace': false } });
+      const result = runScaffold(cwd, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const settings = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'settings.json'), 'utf8'));
+      assert.ok(JSON.stringify(settings.hooks).includes(HOOK_MARKER), 'expected hooks merge to fire (guard must not suppress on a project-level opt-out)');
+      assert.strictEqual(
+        settings.enabledPlugins['antislop@antislop-marketplace'],
+        false,
+        'expected the pre-seeded project-level false to survive the merge unclobbered'
+      );
     } finally {
       fs.rmSync(cwd, { recursive: true, force: true });
       fs.rmSync(home, { recursive: true, force: true });
