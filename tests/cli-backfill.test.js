@@ -343,6 +343,147 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
+
+  // --- Integration: detect/warn/dedupe pass for stale standalone hook
+  // registrations (issue #76, Step 2 of the update-dedupe-standalone-hooks
+  // plan). Reuses buildBaselineProject above; seeds the plugin-enabled key
+  // directly in the project's own .claude/settings.json. HOME is still
+  // overridden to an empty tmp dir per spawn (mirroring the --force-hooks
+  // block below) so detectMarketplacePlugin's home-settings fallback can't
+  // pick up whatever the machine actually running these tests has at
+  // ~/.claude/settings.json (this repo dogfoods the plugin on itself, so a
+  // real dev box's real HOME may well have it enabled).
+  const HOOK_MARKER = '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts';
+  const standaloneCommand = `${HOOK_MARKER}/stop-gate.sh`;
+  const enabledJson = { enabledPlugins: { 'antislop@antislop-marketplace': true } };
+
+  function writeProjectSettings(tmp, json) {
+    const abs = path.join(tmp, '.claude', 'settings.json');
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify(json));
+  }
+
+  function readProjectSettings(tmp) {
+    return JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'settings.json'), 'utf8'));
+  }
+
+  function runUpdateCmd(tmp, home, extraArgs) {
+    return spawnSync('node', [cliPath, '--update'].concat(extraArgs || []), {
+      cwd: tmp,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+  }
+
+  check('--update --dedupe-hooks resolves the collision: standalone entry removed, enabledPlugins preserved', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-test-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-home-'));
+    try {
+      buildBaselineProject(tmp, {});
+      writeProjectSettings(tmp, Object.assign({}, enabledJson, {
+        hooks: { Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }] },
+      }));
+
+      const result = runUpdateCmd(tmp, home, ['--dedupe-hooks']);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+      const settings = readProjectSettings(tmp);
+      assert.ok(!JSON.stringify(settings.hooks || {}).includes(HOOK_MARKER), 'expected the standalone entry to be removed');
+      assert.strictEqual(settings.enabledPlugins['antislop@antislop-marketplace'], true, 'expected enabledPlugins to be preserved');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('--update (no flag) leaves the collision alone by default and warns', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-test-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-home-'));
+    try {
+      buildBaselineProject(tmp, {});
+      writeProjectSettings(tmp, Object.assign({}, enabledJson, {
+        hooks: { Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }] },
+      }));
+
+      const result = runUpdateCmd(tmp, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(result.stdout.includes('--dedupe-hooks'), `expected the NOTE to mention --dedupe-hooks, got: ${result.stdout}`);
+
+      const settings = readProjectSettings(tmp);
+      assert.ok(JSON.stringify(settings.hooks).includes(HOOK_MARKER), 'expected the standalone entry to survive a plain --update');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --dedupe-hooks is a no-op when the plugin is NOT enabled (never leaves zero hooks)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-test-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-home-'));
+    try {
+      buildBaselineProject(tmp, {});
+      writeProjectSettings(tmp, {
+        hooks: { Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }] },
+      });
+
+      const result = runUpdateCmd(tmp, home, ['--dedupe-hooks']);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+      const settings = readProjectSettings(tmp);
+      assert.ok(JSON.stringify(settings.hooks).includes(HOOK_MARKER), 'expected the only hooks present to survive when the plugin is not enabled');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --dedupe-hooks surgically preserves a user-authored hook entry', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-test-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-home-'));
+    try {
+      buildBaselineProject(tmp, {});
+      writeProjectSettings(tmp, Object.assign({}, enabledJson, {
+        hooks: {
+          Stop: [
+            { matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] },
+            { matcher: 'Bash', hooks: [{ type: 'command', command: 'echo user-authored' }] },
+          ],
+        },
+      }));
+
+      const result = runUpdateCmd(tmp, home, ['--dedupe-hooks']);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+      const settings = readProjectSettings(tmp);
+      assert.ok(!JSON.stringify(settings.hooks).includes(HOOK_MARKER), 'expected the standalone entry to be removed');
+      assert.strictEqual(settings.hooks.Stop.length, 1, 'expected only the user-authored group to remain');
+      assert.strictEqual(settings.hooks.Stop[0].hooks[0].command, 'echo user-authored', 'expected the user-authored hook to survive untouched');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('--update runs the dedupe pass before the version-match fast-path', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-test-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dedupe-home-'));
+    try {
+      buildBaselineProject(tmp, {}); // already at the current pluginVersion
+      writeProjectSettings(tmp, Object.assign({}, enabledJson, {
+        hooks: { Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }] },
+      }));
+
+      const result = runUpdateCmd(tmp, home);
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(
+        result.stdout.includes('--dedupe-hooks'),
+        `expected the collision NOTE even though the project is already current, got: ${result.stdout}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
 }
 
 // --- Integration: --force-hooks guard on the claude-target hooks merge

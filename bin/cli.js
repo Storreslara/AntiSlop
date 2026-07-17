@@ -478,6 +478,49 @@ async function runUpdate(args) {
     );
   }
 
+  // Detect/warn/dedupe pass for stale standalone hook registrations that
+  // collide with the marketplace plugin (issue #76). Runs on every --update,
+  // BEFORE the version-match fast-path below, so a project already current
+  // on persona files still gets warned/deduped about stale hooks. Separate
+  // from the fileHashes/pending/--accept/--keep machinery below — this pass
+  // operates on JSON settings, not stamped .md content.
+  const dedupeHooks = args.includes('--dedupe-hooks');
+  const settingsPath = path.join(CWD, '.claude', 'settings.json');
+  let settings = null;
+  try {
+    if (fs.existsSync(settingsPath)) settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+  } catch (_) {
+    settings = null; // malformed -> best-effort, treat as no standalone hooks
+  }
+  const pluginState = detectMarketplacePlugin('claude', CWD, os.homedir());
+  const standaloneHooks = settings ? findStandaloneHookRegistrations(settings) : [];
+  const hooksCollision = pluginState.enabled && standaloneHooks.length > 0;
+
+  if (hooksCollision && dedupeHooks) {
+    const cleaned = stripStandaloneHookRegistrations(settings);
+    fs.writeFileSync(settingsPath, JSON.stringify(cleaned, null, 2) + '\n');
+    console.log(
+      `  Removed ${standaloneHooks.length} standalone antislop hook registration(s) from ` +
+        `.claude/settings.json (the marketplace plugin, enabled per ${pluginState.source}, ` +
+        'already provides them via ${CLAUDE_PLUGIN_ROOT}). Duplicate hook firing ("Ran 2 stop ' +
+        'hooks") resolved.'
+    );
+  } else if (hooksCollision) {
+    console.log(
+      `  NOTE: antislop is enabled via the marketplace plugin (${pluginState.source}) AND ` +
+        `.claude/settings.json still carries ${standaloneHooks.length} standalone antislop hook ` +
+        'registration(s) from a pre-guard install — every hook fires twice ("Ran 2 stop hooks"). ' +
+        'Re-run with --dedupe-hooks to remove the standalone registrations (the plugin keeps ' +
+        'providing them). If you intentionally want BOTH active, do nothing.'
+    );
+  } else if (dedupeHooks && standaloneHooks.length > 0 && !pluginState.enabled) {
+    console.log(
+      '  --dedupe-hooks: the marketplace plugin is NOT enabled for this project, so the ' +
+        'standalone hook registrations are the ONLY ones present — leaving them in place ' +
+        '(removing them would disable all hooks). Nothing removed.'
+    );
+  }
+
   // Forces the render/diff loop to run even when nothing else above tripped
   // it — the version-match fast-path otherwise means a plain --update can
   // never detect per-file drift (hand-edits, corruption) once pluginVersion
