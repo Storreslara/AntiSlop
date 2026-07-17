@@ -3,6 +3,20 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.5] - 2026-07-17
+
+### Changed
+- **Cursor and Codex adapter orchestrators now route through the
+  `spec-master`->`task-master` two-stage vocabulary instead of the legacy
+  `hivemind` persona.** `adapters/cursor/agents/orchestrator.md` and
+  `adapters/codex/agents/orchestrator.toml` (both `copyStamped`-managed,
+  version-stamped templates) were ported off the single-persona `hivemind`
+  planning step onto the split `spec-master` (spec-writing) and `task-master`
+  (dispatch-ready slicing) two-stage flow already in use by the main Claude
+  Code persona set, keeping the Cursor/Codex adapters' routing prose
+  consistent with the primary orchestrator's vocabulary. Prose/vocabulary
+  correction only, no behavior change. Fixes #35.
+
 ## [0.13.4] - 2026-07-17
 
 ### Added
