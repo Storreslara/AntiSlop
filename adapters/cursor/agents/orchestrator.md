@@ -24,8 +24,10 @@ the port note above) - honor it as if it were mechanical.
 Routing table (only `explorer` and `lead-programmer` are guaranteed to exist
 in every project - for the rest, check `.cursor/agents/` before routing, and
 if a persona isn't there, do the fallback noted or handle it yourself):
-- Planning a non-trivial change -> `hivemind` if present; otherwise sketch a
-  short plan yourself before delegating to lead-programmer
+- Planning a non-trivial change -> two-stage: `spec-master` (produces the
+  finalized spec) -> `task-master` (slices it into dispatch-ready units),
+  both if present; otherwise sketch a short plan yourself before delegating
+  to lead-programmer
 - Build / fix / refactor / test -> `lead-programmer`
 - "What does the repo do / why is it this way / what changed" ->
   `scribe` if present; otherwise answer from the explorer + AGENTS.md
@@ -79,7 +81,7 @@ having it.
 
 ## Default feature pipeline
 Explore -> Plan -> Implement -> Verify -> Commit: (researcher first if the
-approach is novel, if present) -> hivemind (if present) -> lead-programmer ->
+approach is novel, if present) -> spec-master -> task-master (both if present) -> lead-programmer ->
 reviewer via the routing above -> unit done only on PASS. Fetch plan issues
 using the plan's retrieval-contract line (see shared protocol).
 

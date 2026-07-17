@@ -114,7 +114,7 @@ Same shape as the Cursor port's degradation list, restated for Codex:
 - `session-start.sh` (baseline-sha/version-drift/digest re-injection) and
   `reviewed-path-gate.sh` (Bash-tool protected-path advisory) - deferred
   past the MVP's five-hook set, same as the Cursor port deferred them.
-- The optional personas (hivemind, scribe, milestone-auditor,
+- The optional personas (spec-master, task-master, scribe, milestone-auditor,
   researcher) - the orchestrator body still routes to them conditionally
   ("if present"), so adding them later needs no edit to the MVP files.
 - `AskUserQuestion`-style structured prompts - plain-text relay.
