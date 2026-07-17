@@ -31,6 +31,17 @@ for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.
 done
 
 echo
+echo "== package.json / plugin.json version sync =="
+pkg_version=$(python3 -c "import json; print(json.load(open('package.json'))['version'])")
+plugin_version=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+if [ "$pkg_version" = "$plugin_version" ]; then
+  echo "OK   package.json version ($pkg_version) matches .claude-plugin/plugin.json version ($plugin_version)"
+else
+  echo "FAIL package.json version ($pkg_version) != .claude-plugin/plugin.json version ($plugin_version)"
+  fail=1
+fi
+
+echo
 echo "== agent/template frontmatter has name: and description: =="
 for f in agents/*.md templates/researcher.md.tmpl; do
   if grep -q '^name:' "$f" && grep -q '^description:' "$f"; then
