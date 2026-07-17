@@ -17,7 +17,7 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   `.claude/settings.json` without the flag. `--dedupe-hooks` is a no-op when
   the plugin is not enabled (never disables all hooks). This extends the 0.13.2
   fresh-install guard to the `--update` resync path, which the original guard
-  did not cover. Fixes #77.
+  did not cover. Fixes #75, #76.
 
 ## [0.13.3] - 2026-07-17
 
