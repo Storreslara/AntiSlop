@@ -204,7 +204,10 @@ separate spawn.
 1. **Large surface** — blast radius ≥ ~8 impacted files OR diff ≥ ~400
    changed lines.
 2. **Structural / cross-cutting change** — e.g. a persona split, an
-   orchestrator routing rewrite, or a `bin/cli.js` migration.
+   orchestrator routing rewrite, a `bin/cli.js` migration, or any other
+   change to shared/cross-persona surface that a reasonable reviewer would
+   call structurally cross-cutting. This list is illustrative, not
+   exhaustive — when in doubt, trigger; the pass is cheap.
 3. **Security-sensitive surface** — auth, input parsing/validation, secret
    handling, or migrations touched.
 
