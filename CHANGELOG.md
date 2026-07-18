@@ -3,6 +3,25 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.7] - 2026-07-17
+
+### Changed
+- **Tightened model-tiering wording in `agents/task-master.md` and
+  `agents/spec-master.md` so each is correct standalone.** The
+  `Roast pass: fable` heavy-unit trigger in `agents/task-master.md` now
+  copies the same three numbered criteria (large surface, structural/
+  cross-cutting change, security-sensitive surface) verbatim from
+  `agents/orchestrator.md`'s "Reviewer roast-work advisory pass" section,
+  with a citation keeping the two files in sync, and emission is now
+  mandatory (`MUST`, was `MAY`) when the trigger fires — the tag remains
+  advisory downstream. Both `.claude/reviewed/<task-id>.fail` checks in
+  `agents/task-master.md` are now unconditional on every unit, not only
+  re-scoped ones. `agents/spec-master.md`'s comment block now summarizes
+  the fable-eligibility conditions and `.fail` disqualifier for its own
+  dispatch, citing `agents/orchestrator.md`'s "Opus|Fable routing for
+  spec-master and milestone-auditor" section as authoritative. No
+  behavioral mechanism changes — documentation/wording tightening only.
+
 ## [0.13.6] - 2026-07-17
 
 ### Fixed

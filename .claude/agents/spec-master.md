@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
 maxTurns: 30
 ---
-<!-- antislop v0.12.0 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.13.7 | source: agents/spec-master.md | ADAPT-substituted -->
 <!-- `memory: project` auto-grants Read/Write/Edit for memory-file
      management (see shared protocol) — this does NOT relax "never write
      production code" below; that remains instruction-enforced.
@@ -20,6 +20,11 @@ maxTurns: 30
      to teammates. `maxTurns: 30` — starting bound, adjust after real usage.
      `model: opus` is the default; orchestrator may override per-dispatch
      (orchestrator.md). Never change the tier here.
+     Pointer only (orchestrator.md's "Opus|Fable routing for spec-master and
+     milestone-auditor" section is authoritative): fable is eligible only
+     when ALL hold: scope already enumerated, rides existing seams,
+     no interrogation needed; any relevant `.claude/reviewed/*.fail` record
+     forces `opus` regardless.
      spec-master owns the spec through Open Questions relay and publishing
      via `to-spec`; ticket-slicing (`to-issues`), per-unit model tagging,
      the retrieval-contract line, and per-unit dispatch-prompt authoring for
