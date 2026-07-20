@@ -3,6 +3,21 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.8] - 2026-07-20
+
+### Changed
+- **Clarified that the heavy-trigger "structural / cross-cutting change"
+  condition's examples are illustrative, not exhaustive.** Condition 2 of
+  the `Roast pass: fable` heavy-unit trigger (in `agents/orchestrator.md`'s
+  "Reviewer roast-work advisory pass" section and `agents/task-master.md`'s
+  mirrored copy, plus their ADAPT-substituted `.claude/agents/` copies) used
+  to list only a persona split, an orchestrator routing rewrite, or a
+  `bin/cli.js` migration as examples. Expanded the wording to state the list
+  is illustrative and that any other change to shared/cross-persona surface
+  a reasonable reviewer would call structurally cross-cutting should also
+  trigger heavy review, with guidance to trigger when in doubt since the
+  pass is cheap. Documentation-only; no mechanism changes.
+
 ## [0.13.7] - 2026-07-17
 
 ### Changed
