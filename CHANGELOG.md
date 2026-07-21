@@ -3,6 +3,29 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.9] - 2026-07-21
+
+### Fixed
+- **Corrected the subagent self-wake fallacy for backgrounded acceptance-
+  criteria commands.** A subagent that backgrounds a slow test/build/lint
+  run (`run_in_background: true`) and ends its turn believing it will be
+  autonomously notified when the command finishes was going dormant
+  indefinitely — only a *dispatching* session's own `Agent`-tool calls get
+  an autonomous wake-up; a subagent's own nested background `Bash` job has
+  no such mechanism. `templates/persona-protocol.md` (and its
+  `.claude/persona-protocol.md` mirror) now has a new "Running
+  acceptance-criteria commands (there is no self-wake)" section mandating
+  synchronous foreground execution (up to the 600000 ms `Bash` timeout
+  ceiling) and, for the rare command that genuinely exceeds it, the sole
+  legitimate escalation path: the existing WIP sentinel with wording that
+  plainly states no autonomous wake-up is available. `agents/orchestrator.md`
+  now distrusts a subagent's "background watcher" claim by default and
+  independently verifies real state before deciding whether to resume it.
+  `agents/reviewer.md` and `agents/lead-programmer.md` each gained a
+  one-line pointer to the shared rule at their existing acceptance-criteria
+  guidance. Documentation/protocol-only; no new hook or file format. Fixes
+  #89.
+
 ## [0.13.8] - 2026-07-20
 
 ### Changed
