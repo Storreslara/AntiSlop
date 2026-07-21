@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:roast-work
 maxTurns: 30
 ---
-<!-- antislop v0.13.0 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.13.8 | source: agents/reviewer.md | ADAPT-substituted -->
 <!-- Deliberately no Write/Edit — it can never fix what it's grading; the
      Agent tool is for spawning the explorer, not for delegating fixes.
      Deliberately no `memory:` field — fresh eyes every review is the point
@@ -71,6 +71,7 @@ with reasons.
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
   test/build/lint commands and read the actual exit codes/output.
+  (See persona-protocol.md's _Running acceptance-criteria commands_—run synchronously in foreground, no self-wake.)
 - **Verify against the spec, not the diff.** Re-read task-master's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
