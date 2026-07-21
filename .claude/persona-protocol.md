@@ -1,4 +1,4 @@
-<!-- antislop v0.10.0 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.13.8 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/persona-protocol.md by the install-antislop
      skill, and pulled into every persona's context via a single
      `@.claude/persona-protocol.md` line in root CLAUDE.md. CLAUDE.md is the
@@ -79,6 +79,26 @@ dodge a red suite you could otherwise fix; the audit log exists precisely so
 that use is reviewable after the fact. (Claude Code force-ends a turn after 8
 consecutive Stop-hook blocks regardless; the sentinel is the designed exit,
 not a workaround for that cap.)
+
+## Running acceptance-criteria commands (there is no self-wake)
+Run acceptance-criteria commands — test suites, build/lint checks, anything
+gating a verdict or a ready-for-review — synchronously in the foreground via
+the `Bash` tool's `timeout` parameter, set as high as needed up to its
+600000 ms (10 min) ceiling. Never hand one to `run_in_background: true` and
+end your turn assuming you'll be notified when it finishes; this ban is
+scoped specifically to acceptance-criteria commands, not backgrounding in
+general. Only a *dispatching* session's own `Agent`-tool calls get an
+autonomous wake-up when a subagent's turn ends. A subagent's own nested
+background `Bash` job has no such mechanism — it goes dormant at
+`SubagentStop` until the dispatcher explicitly resumes it, no matter how the
+job itself turns out.
+
+If a command genuinely cannot finish within the 600000 ms ceiling, the only
+legitimate way to end your turn is the WIP sentinel described above, with a
+reason string that plainly states there is "no autonomous wake-up available —
+requires the dispatcher to resume me later." Never phrase it as "I'll get
+notified" or "I'll poll again shortly" — that implies a self-wake mechanism
+that does not exist.
 
 ## Retrieval contract
 `task-master`'s dispatch instructions state, verbatim, where issues live and

@@ -9,7 +9,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.13.7",
+  "pluginVersion": "0.13.8",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -41,7 +41,7 @@
     ".claude/agents/milestone-auditor.md": "07fcd56d984acd68ac0e9e3440163a49471fe433d38b5a80bb603bb186d1fe8c",
     ".claude/agents/reviewer.md": "d9282857a8d1fc2e4c8608009e8549c1383774253f2777cbd9566a9519691ba6",
     ".claude/agents/researcher.md": "7ed2e62e5c020c95a378d3e3c2a78c35b211b0e54bb17c11203a00049c4c1119",
-    ".claude/persona-protocol.md": "6d956d0a08fadfb55d1ddc67b7152c34a596b7ae83e60ebbce8cf6aa262da536",
+    ".claude/persona-protocol.md": "1e5a377131f1e854491379442caffc5348f8396a043ffbeb7dbc2baaade30d18",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "c21de6023d856b7f04b772b9a1ca6bc979342452c99b18bbf87b89fd12b6382d",
     ".claude/agents/spec-master.md": "e1257eeba4148c05ee95b14c201da0d5cd0142e7334f67e7aa86edf8c37221a1",
