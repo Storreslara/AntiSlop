@@ -3,3 +3,5 @@
 - [Vendor mattpocock/skills convention](project_vendor_mattpocock_skills.md) — pinned SHA, header AFTER `---` for SKILL.md, at top for companions (no frontmatter), never on .sh; A.3 done, header/grep tension noted
 - [Never scaffold the live repo](feedback_never_scaffold_live_repo.md) — always `(cd "$TMP" && node .../bin/cli.js ...)` in one subshell when verifying scaffold output; check `git status` after
 - [--force-hooks guard E2E testing](project_cli_force_hooks_guard.md) — spawnSync + tmp HOME pattern for pre-seeding settings.json before a fresh-install scaffold run
+- [Check index before commit](feedback_check_index_before_commit.md) — verify `git diff --cached --stat` before committing; other units may leave unrelated staged files in the index
+- [grep acceptance anchors & line wraps](feedback_grep_acceptance_line_wrap.md) — multi-word grep -q anchors in wrapped prose must stay on one line and match literally (hyphen vs space)

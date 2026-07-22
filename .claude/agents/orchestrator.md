@@ -4,7 +4,7 @@ description: Thin router for the persona system. Set as the main agent via setti
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.13.8 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.13.9 | source: agents/orchestrator.md | ADAPT-substituted -->
 <!-- Deliberately no `skills:` field — persona skills never load into the
      orchestrator. Deliberately no `memory:` field — a router that
      accumulates state contradicts "you keep only routing rules." Bash is
@@ -326,18 +326,28 @@ it.
 
 **A distinct case: a subagent's own nested background Bash job.** The
 above `TaskOutput`/`TaskStop` polling is about YOUR dispatched Agent-tool
-task's liveness. It does not apply when a subagent ends its turn claiming
-it "set up a background watcher" for a `Bash` command it ran with
-`run_in_background: true` inside its own turn — that claim is false and
-must not be trusted at face value; the subagent has no mechanism to resume
+task's liveness. It does not apply when a subagent ran a `Bash` command with
+`run_in_background: true` (or one exceeding the 600000 ms per-call ceiling)
+inside its own turn, and its `SubagentStop` shows either of two trigger
+cases requiring the identical response: (a) the legacy false claim that it
+"set up a background watcher" — that claim is false and must not be trusted
+at face value; or (b) it correctly followed the WIP sentinel path with the
+mandated wording "no autonomous wake-up available — requires the dispatcher
+to resume me later." Either way, the subagent has no mechanism to resume
 itself and will stay dormant at `SubagentStop` regardless of what it
-believes it arranged. Don't just wait for a self-notification that will
-never come. Instead, independently verify the backgrounded command's real
-state yourself — `ps` for the process, or git/file state for its expected
-output — rather than passively waiting on the subagent's own claim. If the
-command has plausibly already finished, proactively resume the subagent via
-`SendMessage` by name (same resume mechanism as the feature-team case
-below) so it checks its own result and continues.
+claimed or how honestly it phrased the limitation. Don't just wait for a
+self-notification that will never come. Instead, independently verify the
+backgrounded command's real state yourself, rather than passively waiting
+on the subagent's own claim: `ps` for the process is a valid signal only
+when the dispatcher and the subagent share a process namespace (true for
+default local dispatch, not necessarily for `isolation: "worktree"`/
+`"remote"` Agent dispatch or other sandboxed execution) — git/file state
+for its expected output is the primary/fallback signal otherwise, not
+merely an alternative "or". If verification shows the command has plausibly
+already finished, proactively resume the subagent via `SendMessage` by name
+(same resume mechanism as the feature-team case below) so it checks its own
+result and continues; if instead it shows the command is still genuinely running,
+do not resume prematurely — re-check later.
 
 ## If a feature team is active
 If the `start-feature-team` command is running, its rules govern instead of
