@@ -3,7 +3,33 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
-## [Unreleased]
+## [0.13.13] - 2026-07-22
+
+### Added
+- **Review-pipeline hardening: third `INSUFFICIENT-CONTEXT` verdict, persisted
+  PASS-marker notes, and a structured advisory review packet.** The reviewer
+  can now return `INSUFFICIENT-CONTEXT` (alongside PASS/FAIL) when a required
+  constraint is neither in the review packet nor discoverable via its own
+  exploration; this writes a `.claude/reviewed/<task-id>.blocked` marker,
+  never consumes a 2-FAIL-cap slot, and does not re-dispatch
+  `lead-programmer`. `stop-gate.sh` now keeps the pending-review flag
+  standing (instead of clearing it) whenever a `.blocked` marker is active,
+  so turn-end and the next gated dispatch stay blocked until the unit
+  resolves to a real PASS/FAIL — mirrored to the codex and cursor adapter
+  copies. The orchestrator's review routing gained an `INSUFFICIENT-CONTEXT`
+  branch that dispatches explorer/scribe for the missing constraint and
+  re-dispatches the reviewer, and now forwards the sliced issue's
+  constraints/affected-files/rationale plus the lead-programmer's advisory
+  review packet into the reviewer dispatch as non-authoritative inputs. A
+  PASS marker may now carry the reviewer's non-blocking notes appended after
+  its required first line, so Minor findings persist instead of being
+  discarded. `task-master`'s slicing guidance now requires sliced issues to
+  carry the originating spec step's constraints, affected-files, and
+  rationale (not just the acceptance-criteria command), and
+  `lead-programmer`'s ready-for-review reports now require a structured
+  advisory packet (changed files, commit/diff range, acceptance command,
+  spec-step id), explicitly marked advisory/non-authoritative. Closes #113
+  (Steps 1-7; #114, #115, #116, #117, #118, #119, #120).
 
 ### Fixed
 - **Extended the downgrade-stamping guard to the three `--overwrite` scaffold
