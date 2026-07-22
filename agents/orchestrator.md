@@ -328,22 +328,22 @@ above `TaskOutput`/`TaskStop` polling is about YOUR dispatched Agent-tool
 task's liveness, not a subagent's own nested Bash call. This case covers
 two different mechanisms: a subagent's own `Bash` command run with
 `run_in_background: true`, and a foreground `Bash` command that hit the
-600000 ms per-call ceiling and was killed by the harness. Either way,
-its `SubagentStop` shows one of two trigger cases requiring the
-identical response: (a) the legacy false claim that it "set up a
-background watcher" — that claim is false and must not be trusted at
-face value; or (b) it correctly followed the WIP sentinel path with
+600000 ms per-call ceiling and was killed by the harness. Whichever
+ran, the subagent has no mechanism to resume itself and stays dormant
+at `SubagentStop` — regardless of what it claimed on the way out, or
+whether it said anything at all. Don't trust a self-wake claim at face
+value: it may have falsely asserted it "set up a background watcher"
+(that claim is false), honestly escalated via the WIP sentinel with
 the mandated wording "no autonomous wake-up available — requires the
-dispatcher to resume me later." Either way, the subagent has no
-mechanism to resume itself and will stay dormant at `SubagentStop`
-regardless of what it claimed or how honestly it phrased the
-limitation. Don't just wait for a self-notification that will never
-come — independently verify the real state yourself. `ps` for the
-process is a valid signal only when the dispatcher and the subagent
-share a process namespace (true for default local dispatch, not
-necessarily for `isolation: "worktree"`/`"remote"` Agent dispatch or
-other sandboxed execution); when it isn't, fall back to git/file
-state for the expected output as the primary signal instead.
+dispatcher to resume me later", or simply been killed mid-run with no
+parting message. The response is the same in every case — don't wait
+for a self-notification that will never come; independently verify
+the real state yourself. `ps` for the process is a valid signal only
+when the dispatcher and the subagent share a process namespace (true
+for default local dispatch, not necessarily for `isolation:
+"worktree"`/`"remote"` Agent dispatch or other sandboxed execution);
+when it isn't, fall back to git/file state for the expected output as
+the primary signal instead.
 
 Once you've checked, the real state is one of three:
 
