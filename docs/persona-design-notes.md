@@ -126,3 +126,45 @@ copies. `maxTurns: 10` bounds the highest-frequency persona.
 `Skill` is in tools so a teammate copy can invoke
 improve-codebase-architecture explicitly, since preloading doesn't apply to
 teammates.
+
+## Verification
+
+Step 1 of `docs/plans/2026-07-22-persona-system-audit-patch.md`: does a
+multi-line `<!-- ... -->` rationale comment in a persona body reach the
+dispatched subagent's actual system prompt, or does the harness strip it
+before dispatch? Answer, from a live probe (not inference): **not
+stripped** — the comment's contents are delivered to the model and are
+observable/reportable by the subagent. This makes U4's relocation a real
+token-cost reduction, not merely a human-readability change.
+
+Probe: a scratch project (`.claude/agents/probe-subagent.md`) with a body
+containing an HTML comment wrapping a unique token
+(`PROBE_MARKER_7f3a9c1e`), instructed to report `RESULT: PRESENT` if that
+literal token appears anywhere in its own instructions and `RESULT: ABSENT`
+otherwise. A parent headless session dispatched it via the real Task-tool
+subagent path and relayed its reply verbatim:
+
+```
+$ claude -p "Use the Task tool to dispatch the subagent_type \
+  'probe-subagent' with prompt 'run the check'. Then reply with ONLY \
+  the exact literal text the subagent returned, nothing else added." \
+  --dangerously-skip-permissions --allowedTools "Task" --model sonnet
+RESULT: PRESENT
+```
+
+Negative control — an otherwise-identical `probe-subagent-control.md` with
+no comment and no token, same dispatch, same relay instruction:
+
+```
+$ claude -p "Use the Task tool to dispatch the subagent_type \
+  'probe-subagent-control' with prompt 'run the check'. Then reply with \
+  ONLY the exact literal text the subagent returned, nothing else added." \
+  --dangerously-skip-permissions --allowedTools "Task" --model sonnet
+RESULT: ABSENT
+```
+
+The token only surfaces when it's actually present in the dispatched body,
+ruling out the subagent simply always answering `PRESENT`. Conclusion:
+persona-body HTML comments are part of the effective system prompt and
+therefore part of dispatch token cost — the same conclusion the
+relocation's design intent assumed, now confirmed rather than assumed.
