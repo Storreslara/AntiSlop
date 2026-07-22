@@ -28,8 +28,9 @@ usual for this repo:
 ## Making changes
 
 - Run `bash tests/validate.sh` before committing — it checks bash syntax,
-  JSON validity, agent/skill frontmatter, and that optional-persona
-  references stay conditionally phrased.
+  JSON validity, agent/skill frontmatter, optional-persona references stay
+  conditionally phrased, npm pack tarball composition, and marketplace.json/
+  plugin.json consistency.
 - If you touch a hook script, a persona body, or `install-antislop`, re-run the
   empirical smoke test described in README.md's Install section
   (`claude --plugin-dir`) — this plugin has already had real bugs that only
