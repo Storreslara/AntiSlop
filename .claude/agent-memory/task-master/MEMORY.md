@@ -1,1 +1,4 @@
 - [Cross-plan version coordination](cross_plan_version_coordination.md) — slice version-bump steps with explicit cross-plan deps, never a hardcoded target version.
+- [Scribe write scope](feedback_scribe_write_scope.md) — scribe only writes .claude/wiki/, CONTEXT.md, docs/adr/; README.md/CHANGELOG.md go to lead-programmer.
+- [GitHub label length cap](feedback_github_label_length_cap.md) — `plan/<date>-<slug>` labels cap at 50 chars; shorten slug, keep prefix+date.
+- [Content reference vs hard dependency](feedback_content_reference_vs_hard_dependency.md) — only hard-`Depends on` a step whose acceptance criteria actually read another step's output; a mere textual reference isn't a sequencing dependency.
