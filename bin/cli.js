@@ -56,6 +56,21 @@ function readPluginVersion() {
   return pluginJson.version;
 }
 
+// Compares two dotted semver strings by numeric components (missing
+// components padded with 0). Non-numeric pre-release suffixes (e.g. "-rc1")
+// are stripped conservatively before parsing. Returns <0, 0, or >0.
+function compareSemver(a, b) {
+  const parse = (v) => String(v).split('.').map((p) => parseInt(p, 10) || 0);
+  const pa = parse(a);
+  const pb = parse(b);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
 function mkdirp(p) {
   fs.mkdirSync(p, { recursive: true });
 }
@@ -451,6 +466,29 @@ async function runUpdate(args) {
     process.exit(1);
   }
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+
+  // Downgrade guard (issue #102): refuse to resolve an OLDER plugin version
+  // than the project's recorded pluginVersion — a stale scope registration
+  // could otherwise silently downgrade persona files and stamp the version
+  // backward. Must sit ahead of any file write (legacy-token migration,
+  // render loop) so the refusal path mutates nothing.
+  const isDowngrade = config.pluginVersion && compareSemver(version, config.pluginVersion) < 0;
+  if (isDowngrade && !args.includes('--allow-downgrade')) {
+    console.error(
+      `Refusing to downgrade: the resolved plugin version (v${version}) is OLDER than this ` +
+        `project's recorded pluginVersion (v${config.pluginVersion}). This --update would ` +
+        'stamp persona files backward, likely from a stale scope registration. Update the ' +
+        'plugin first with `claude plugin update antislop@antislop-marketplace --scope ' +
+        '<local|project|user>`, or pass --allow-downgrade to proceed intentionally.'
+    );
+    process.exit(1);
+  }
+  if (isDowngrade) {
+    console.log(
+      `Proceeding with intentional downgrade: resolved plugin version (v${version}) is older ` +
+        `than the recorded pluginVersion (v${config.pluginVersion}) and --allow-downgrade was passed.`
+    );
+  }
 
   let personaSelection = config.personaSelection || [];
   const legacyTokens = legacyTokensIn(personaSelection);
@@ -1648,6 +1686,7 @@ if (require.main === module) {
 
 module.exports = {
   PLACEHOLDER_RE,
+  compareSemver,
   sha256Hex,
   stripStamp,
   renderMcpBlock,

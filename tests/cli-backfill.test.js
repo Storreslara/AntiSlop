@@ -354,6 +354,57 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration: semver-ordering downgrade guard in runUpdate() (B1/M5,
+  // issue #102). A stale scope registration must not silently resolve an
+  // OLDER plugin version than the project's recorded pluginVersion and stamp
+  // it backward. Baseline pluginVersion is forced HIGHER than the real
+  // plugin (inverse of the '0.0.1' trick above) so the guard fires.
+  check('--update refuses to downgrade when resolved version is older than recorded pluginVersion', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-refuse-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.pluginVersion = '99.0.0';
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      const combined = result.stdout + result.stderr;
+      assert.strictEqual(result.status, 1, `expected exit 1 (downgrade refusal), got ${result.status}: ${combined}`);
+      assert.ok(combined.includes(pluginVersion), `refusal should name the real plugin version ${pluginVersion}, got: ${combined}`);
+      assert.ok(combined.includes('99.0.0'), `refusal should name the recorded version 99.0.0, got: ${combined}`);
+      assert.ok(
+        combined.includes('claude plugin update antislop@antislop-marketplace'),
+        `refusal should point at the recovery command, got: ${combined}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --allow-downgrade overrides the guard and proceeds', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-allow-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.pluginVersion = '99.0.0';
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const result = spawnSync('node', [cliPath, '--update', '--allow-downgrade'], { cwd: tmp, encoding: 'utf8' });
+      const combined = result.stdout + result.stderr;
+      assert.notStrictEqual(result.status, 1, `--allow-downgrade should not exit 1 on the guard, got ${result.status}: ${combined}`);
+      assert.ok(
+        !combined.includes('claude plugin update antislop@antislop-marketplace'),
+        `override run should not print the refusal recovery command, got: ${combined}`
+      );
+      assert.ok(combined.includes(pluginVersion) && combined.includes('99.0.0'),
+        `override warning should name both versions ${pluginVersion} and 99.0.0, got: ${combined}`);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration: detect/warn/dedupe pass for stale standalone hook
   // registrations (issue #76, Step 2 of the update-dedupe-standalone-hooks
   // plan). Reuses buildBaselineProject above; seeds the plugin-enabled key
