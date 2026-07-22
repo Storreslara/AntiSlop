@@ -2,3 +2,4 @@
 - [Scribe write scope](feedback_scribe_write_scope.md) — scribe only writes .claude/wiki/, CONTEXT.md, docs/adr/; README.md/CHANGELOG.md go to lead-programmer.
 - [GitHub label length cap](feedback_github_label_length_cap.md) — `plan/<date>-<slug>` labels cap at 50 chars; shorten slug, keep prefix+date.
 - [Content reference vs hard dependency](feedback_content_reference_vs_hard_dependency.md) — only hard-`Depends on` a step whose acceptance criteria actually read another step's output; a mere textual reference isn't a sequencing dependency.
+- [Reviewed-path Bash block](feedback_reviewed_path_bash_blocked.md) — task-master's Bash can't ls/cat `.claude/reviewed/`; trust the spec's own statement on prior `.fail` records, or use Read on a known filename.

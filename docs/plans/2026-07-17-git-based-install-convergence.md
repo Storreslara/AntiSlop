@@ -170,8 +170,11 @@ Acceptance criteria (machine-checkable):
   (exit 0).
 - AC3: `bash tests/validate.sh` exits 0.
 - AC4: conciseness — the combined "## Install" + "## First-time setup" region
-  is ≤ 70 lines (currently ~104). Check:
-  `test "$(awk '/^## Install/{f=1} /^## Using AntiSlop/{f=0} f' README.md | wc -l)" -le 70`.
+  is ≤ 85 lines (currently ~104). Check:
+  `test "$(awk '/^## Install/{f=1} /^## Using AntiSlop/{f=0} f' README.md | wc -l)" -le 85`.
+  (Ceiling raised from 70 to 85 on 2026-07-22 to accommodate the install-scope
+  subsection folded in as Step 4 below; the three quickstarts alone should
+  still land well under the original 70.)
 
 ### Step 2 — Purge stale "private / collaborator access" framing from README
 
@@ -210,6 +213,41 @@ Acceptance criteria:
   `/plugin marketplace add Storreslara/AntiSlop`.
 - AC3: no non-standard hybrid source introduced into marketplace.json —
   `! grep -q '"path"' .claude-plugin/marketplace.json` (exit 0).
+
+### Step 4 — Document install-scope precedence and stale-registration recovery
+
+> Folded in on 2026-07-22 from the publish-readiness remediation plan
+> (`docs/plans/2026-07-22-publish-readiness-audit-remediation.md`, finding
+> **M3**) per the user's OQ4 decision to merge the scope-precedence
+> documentation into THIS plan rather than land it as a standalone subsection
+> in the remediation plan. This step is the single owner of that requirement;
+> the remediation plan carries only a thin cross-reference, no duplicate
+> acceptance criteria.
+
+Affected files: `README.md` (a `### Install scope (local / project / user)`
+subsection inside the "## Install" section restructured in Step 1 — depends on
+Step 1 having established that section).
+
+Add a subsection documenting: (a) the three Claude Code plugin install scopes
+(`local`, `project`, `user`) and their precedence; (b) how to check which scope
+a project is currently pinned to; and (c) how to recover from a stale scope
+registration that has frozen a project at an old plugin version — via
+`claude plugin update antislop@antislop-marketplace --scope <local|project|user>`.
+This is the exact gap behind the real v0.7.1-vs-0.13.x drift incident (two
+projects pinned at a stale `local`/`project` scope). Keep the recovery command
+string identical to the one B1's `--update` downgrade guard points at, so the
+docs and the CLI error agree verbatim.
+
+Acceptance criteria (machine-checkable):
+- AC1: the scope subsection exists —
+  `grep -qiE '^### Install scope' README.md` exits 0.
+- AC2: all three scope names are documented in-context —
+  `grep -q 'local' README.md && grep -q 'project' README.md && grep -q 'user' README.md`
+  exits 0.
+- AC3: the recovery command is present and matches B1's guard pointer —
+  `grep -q 'claude plugin update antislop@antislop-marketplace' README.md`
+  exits 0.
+- AC4: `bash tests/validate.sh` exits 0.
 
 ## Open Questions
 
@@ -264,6 +302,12 @@ defaults (confirm-or-redirect, non-blocking).
 - CHK8: Is constitution P3 (version-stamp) correctly scoped? — PASS (no
   version-stamped file touched under the default; re-trigger noted if OQ1
   redirects to mechanics).
+- CHK9: Does the folded-in Step 4 (install-scope docs) carry its own
+  machine-checkable acceptance criteria, and is its README-region growth
+  reconciled with Step 1's conciseness ceiling? — PASS (Step 4 AC1–AC4 are
+  runnable grep/exit-code checks; Step 1 AC4 ceiling raised 70→85 on 2026-07-22
+  to absorb the subsection). NOTE: Step 4 depends on Step 1 having created the
+  "## Install" section, so it is NOT parallel with Step 1 within this plan.
 
 ## Scribe update hint
 
