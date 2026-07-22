@@ -373,26 +373,81 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // OLDER plugin version than the project's recorded pluginVersion and stamp
   // it backward. Baseline pluginVersion is forced HIGHER than the real
   // plugin (inverse of the '0.0.1' trick above) so the guard fires.
-  check('--update refuses to downgrade when resolved version is older than recorded pluginVersion', () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-refuse-'));
+  // Sets pluginVersion HIGHER than the real plugin so the guard fires, then
+  // captures the on-disk state of persona-config.json + a persona .md under
+  // .claude/agents/ so the caller can assert nothing was written before the
+  // refused exit-1 (issue #109 A4 / #102's never-actually-asserted claim). A
+  // clean HOME is passed per spawn so detectMarketplacePlugin can't pick up
+  // the dev box's real ~/.claude/settings.json (mirrors the dedupe tests).
+  function runDowngradeRefusal(tmp, home) {
+    const configPath = path.join(tmp, '.claude', 'persona-config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.pluginVersion = '99.0.0';
+    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+    const personaPath = path.join(tmp, '.claude', 'agents', 'orchestrator.md');
+    const beforeConfig = cli.sha256Hex(fs.readFileSync(configPath, 'utf8'));
+    const beforePersona = cli.sha256Hex(fs.readFileSync(personaPath, 'utf8'));
+
+    const result = spawnSync('node', [cliPath, '--update'], {
+      cwd: tmp,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+    const combined = result.stdout + result.stderr;
+
+    // A4: prove no file writes happened before the refusal.
+    assert.strictEqual(cli.sha256Hex(fs.readFileSync(configPath, 'utf8')), beforeConfig,
+      `persona-config.json must be byte-identical after the refusal, got mutation: ${combined}`);
+    assert.strictEqual(cli.sha256Hex(fs.readFileSync(personaPath, 'utf8')), beforePersona,
+      `.claude/agents/orchestrator.md must be byte-identical after the refusal, got mutation: ${combined}`);
+    return { result, combined };
+  }
+
+  function assertCommonRefusal(result, combined) {
+    assert.strictEqual(result.status, 1, `expected exit 1 (downgrade refusal), got ${result.status}: ${combined}`);
+    assert.ok(combined.includes(pluginVersion), `refusal should name the real plugin version ${pluginVersion}, got: ${combined}`);
+    assert.ok(combined.includes('99.0.0'), `refusal should name the recorded version 99.0.0, got: ${combined}`);
+  }
+
+  check('--update downgrade refusal (marketplace-enabled) points at the claude plugin update command', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-refuse-mkt-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-home-'));
     try {
       buildBaselineProject(tmp, {});
-      const configPath = path.join(tmp, '.claude', 'persona-config.json');
-      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-      config.pluginVersion = '99.0.0';
-      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+      writeProjectSettings(tmp, { enabledPlugins: { 'antislop@antislop-marketplace': true } });
 
-      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
-      const combined = result.stdout + result.stderr;
-      assert.strictEqual(result.status, 1, `expected exit 1 (downgrade refusal), got ${result.status}: ${combined}`);
-      assert.ok(combined.includes(pluginVersion), `refusal should name the real plugin version ${pluginVersion}, got: ${combined}`);
-      assert.ok(combined.includes('99.0.0'), `refusal should name the recorded version 99.0.0, got: ${combined}`);
+      const { result, combined } = runDowngradeRefusal(tmp, home);
+      assertCommonRefusal(result, combined);
       assert.ok(
         combined.includes('claude plugin update antislop@antislop-marketplace'),
-        `refusal should point at the recovery command, got: ${combined}`
+        `marketplace refusal should point at the marketplace recovery command, got: ${combined}`
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  check('--update downgrade refusal (non-marketplace) gives local-install guidance, not the marketplace command', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-refuse-local-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-downgrade-home-'));
+    try {
+      buildBaselineProject(tmp, {}); // no .claude/settings.json -> plugin not enabled
+
+      const { result, combined } = runDowngradeRefusal(tmp, home);
+      assertCommonRefusal(result, combined);
+      assert.ok(
+        !combined.includes('claude plugin update antislop@antislop-marketplace'),
+        `non-marketplace refusal must NOT suggest the marketplace command, got: ${combined}`
+      );
+      assert.ok(
+        /--plugin-dir|bin\/cli\.js/.test(combined),
+        `non-marketplace refusal should point at the local clone/scaffold update path, got: ${combined}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
     }
   });
 

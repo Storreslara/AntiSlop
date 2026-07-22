@@ -469,6 +469,11 @@ async function runUpdate(args) {
   }
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
+  // Resolve how antislop is installed BEFORE the downgrade guard so the
+  // refusal's recovery text can be tailored to it (issue #109 1b). Reused
+  // later by the hooks-collision pass — computed once here, not twice.
+  const pluginState = detectMarketplacePlugin('claude', CWD, os.homedir());
+
   // Downgrade guard (issue #102): refuse to resolve an OLDER plugin version
   // than the project's recorded pluginVersion — a stale scope registration
   // could otherwise silently downgrade persona files and stamp the version
@@ -476,12 +481,19 @@ async function runUpdate(args) {
   // render loop) so the refusal path mutates nothing.
   const isDowngrade = config.pluginVersion && compareSemver(version, config.pluginVersion) < 0;
   if (isDowngrade && !args.includes('--allow-downgrade')) {
+    const recovery = pluginState.enabled
+      ? 'Update the plugin first with `claude plugin update antislop@antislop-marketplace ' +
+        `--scope <local|project|user>` + '` (enabled via ' + pluginState.source + '), or pass ' +
+        '--allow-downgrade to proceed intentionally.'
+      : 'This project is not on the marketplace plugin, so re-run its local install to get a ' +
+        'current version first: re-run the `--plugin-dir <clone>` update against an up-to-date ' +
+        'clone, or re-run the standalone `bin/cli.js` scaffold. Or pass --allow-downgrade to ' +
+        'proceed intentionally.';
     console.error(
       `Refusing to downgrade: the resolved plugin version (v${version}) is OLDER than this ` +
         `project's recorded pluginVersion (v${config.pluginVersion}). This --update would ` +
-        'stamp persona files backward, likely from a stale scope registration. Update the ' +
-        'plugin first with `claude plugin update antislop@antislop-marketplace --scope ' +
-        '<local|project|user>`, or pass --allow-downgrade to proceed intentionally.'
+        'stamp persona files backward, likely from a stale scope registration. ' +
+        recovery
     );
     process.exit(1);
   }
@@ -539,7 +551,6 @@ async function runUpdate(args) {
   } catch (_) {
     settings = null; // malformed -> best-effort, treat as no standalone hooks
   }
-  const pluginState = detectMarketplacePlugin('claude', CWD, os.homedir());
   const standaloneHooks = settings ? findStandaloneHookRegistrations(settings) : [];
   const hooksCollision = pluginState.enabled && standaloneHooks.length > 0;
 
