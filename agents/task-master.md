@@ -52,7 +52,13 @@ into independently-grabbable, unambiguous units of work.
   the retrieval contract for it (see below) — mirror the level of detail
   this project's own tracked units already use (an existing plan issue shows
   the target shape: title, scope paragraph, an acceptance-criteria block,
-  a `Suggested model:` tag, and a `Depends on / blocked by:` line).
+  a `Suggested model:` tag, and a `Depends on / blocked by:` line). Each
+  sliced issue must also carry the originating spec step's constraints,
+  affected-files list, and rationale explicitly in the issue body — not
+  only the acceptance-criteria command — so the orchestrator can forward a
+  complete reviewer packet (`agents/orchestrator.md`'s review-routing
+  section) and the reviewer has the global constraints it needs to verify
+  the unit without guessing (see `templates/persona-protocol.md`).
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
   haiku|sonnet|opus`. `haiku` only for mechanical, low-judgment work —
   renames, boilerplate, straightforward CRUD, config edits, test scaffolding
