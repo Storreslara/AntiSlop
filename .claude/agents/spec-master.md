@@ -8,29 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
 maxTurns: 30
 ---
-<!-- antislop v0.13.7 | source: agents/spec-master.md | ADAPT-substituted -->
-<!-- `memory: project` auto-grants Read/Write/Edit for memory-file
-     management (see shared protocol) — this does NOT relax "never write
-     production code" below; that remains instruction-enforced.
-     `skills:` placeholders are namespaced names from the mattpocock/skills
-     plugin, resolved and substituted by ADAPT (which copies a corrected
-     copy of this file into the project's .claude/agents/, since project
-     agents override plugin agents). `Skill` is in tools so a teammate copy
-     can invoke grill-me/to-spec explicitly, since preloading doesn't apply
-     to teammates. `maxTurns: 30` — starting bound, adjust after real usage.
-     `model: opus` is the default; orchestrator may override per-dispatch
-     (orchestrator.md). Never change the tier here.
-     Pointer only (orchestrator.md's "Opus|Fable routing for spec-master and
-     milestone-auditor" section is authoritative): fable is eligible only
-     when ALL hold: scope already enumerated, rides existing seams,
-     no interrogation needed; any relevant `.claude/reviewed/*.fail` record
-     forces `opus` regardless.
-     spec-master owns the spec through Open Questions relay and publishing
-     via `to-spec`; ticket-slicing (`to-issues`), per-unit model tagging,
-     the retrieval-contract line, and per-unit dispatch-prompt authoring for
-     lead-programmer/scribe belong to `task-master`, a separate persona
-     split out of what used to be a single planning persona (see
-     agents/task-master.md). -->
+<!-- antislop v0.13.12 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests

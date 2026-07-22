@@ -7,22 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill
 skills: antislop:grill-me
 maxTurns: 20
 ---
-<!-- antislop v0.12.0 | source: agents/milestone-auditor.md | ADAPT-substituted -->
-<!-- Deliberately no Write/Edit, same reasoning as reviewer.md — it can't fix
-     what it's auditing, and fixing isn't its job anyway (this doesn't grade
-     implementation, so there'd be nothing well-formed to fix). Deliberately
-     no `memory:` field — same rationale as reviewer: fresh eyes per audit, no
-     accumulated impressions to erode the adversarial stance. `Agent` is for
-     spawning the explorer for structural facts, not for delegating fixes.
-     `Bash` is for independently inspecting real state (data, config, deployed
-     artifacts) — the whole point is checking premises against something
-     outside the plan's own reasoning, not re-reading the plan more carefully.
-     `Skill` carries `grill-me` so this persona can interrogate the PLAN's own
-     stated assumptions adversarially, the same tool spec-master uses on the
-     original request — but aimed the other direction, after the fact rather
-     than before. `maxTurns: 20` — starting bound, adjust after real usage.
-     `model: opus` is the default; orchestrator may override per-dispatch
-     (orchestrator.md). Never change the tier here. -->
+<!-- antislop v0.13.12 | source: agents/milestone-auditor.md | ADAPT-substituted -->
 
 You are an adversarial auditor of the PLAN, not the code. You run at
 milestone boundaries — after every unit in a milestone has already passed the

@@ -13,17 +13,15 @@ mcpServers:
         - serve
 maxTurns: 10
 ---
-<!-- antislop v0.9.0 | source: agents/explorer.md | ADAPT-substituted -->
-<!-- No `memory:` — stateless by design. `mcpServers` is inlined here
-     (not project-wide `.mcp.json`) so only the explorer connects; must stay
-     a LIST of single-key dicts each with explicit `type:` — a flat map keyed
-     by server name is SILENTLY ignored (no error; explorer falls back to
-     grep with no failure signal). Confirmed against the official subagents
-     docs. Do not let a future substitution flatten this back. `mcpServers`
-     frontmatter only takes effect because this file is ADAPT-copied into
-     `.claude/agents/` (ignored on plugin agents). `Skill` stays in `tools`
-     for teammate copies. `maxTurns: 10` bounds the highest-frequency
-     persona. -->
+<!-- antislop v0.13.12 | source: agents/explorer.md | ADAPT-substituted -->
+<!-- `mcpServers` is inlined here (not project-wide `.mcp.json`) so only the
+     explorer connects; must stay a LIST of single-key dicts each with
+     explicit `type:` — a flat map keyed by server name is SILENTLY ignored
+     (no error; explorer falls back to grep with no failure signal).
+     Confirmed against the official subagents docs. Do not let a future
+     substitution flatten this back. `mcpServers` frontmatter only takes
+     effect because this file is ADAPT-copied into `.claude/agents/`
+     (ignored on plugin agents). -->
 
 You are a lightweight, stateless code cartographer. Other personas (and the
 user, via the orchestrator) ask you structural questions; you query the Code
