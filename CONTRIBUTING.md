@@ -38,3 +38,8 @@ usual for this repo:
 - Bump `.claude-plugin/plugin.json`'s `version` and add a `CHANGELOG.md`
   entry for anything more than a typo fix — the version-stamp/`--update`
   mechanism depends on the version actually changing when the content does.
+- Before publishing a release, run `claude plugin tag` (if you have the
+  Claude Code CLI installed) to cross-validate `plugin.json` against its
+  marketplace entry and create the release tag. `tests/validate.sh` only
+  runs `claude plugin tag --dry-run` advisorily (it SKIPs, never fails,
+  when the CLI isn't on PATH) — this manual run is the authoritative check.

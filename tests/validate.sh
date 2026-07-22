@@ -42,6 +42,57 @@ else
 fi
 
 echo
+echo "== npm pack: dev-scratch dirs excluded, shipped dirs included =="
+if npm pack --dry-run --json 2>/dev/null | python3 -c "
+import json, sys
+files = [f['path'] for f in json.load(sys.stdin)[0]['files']]
+excluded = ['docs/', 'eval/', 'prototype/', 'specs/', '.claude/']
+included = ['agents/', 'hooks/', 'templates/', 'skills/']
+present = [d for d in excluded if any(f.startswith(d) for f in files)]
+missing = [d for d in included if not any(f.startswith(d) for f in files)]
+if present or missing:
+    sys.stderr.write('excluded-dirs-present=%s included-dirs-missing=%s\n' % (present, missing))
+    sys.exit(1)
+" 2>/tmp/npm_pack_err; then
+  echo "OK   npm pack tarball excludes dev-scratch dirs, includes shipped dirs"
+else
+  echo "FAIL npm pack tarball composition ($(cat /tmp/npm_pack_err))"
+  fail=1
+fi
+rm -f /tmp/npm_pack_err
+
+echo
+echo "== marketplace.json / plugin.json consistency =="
+if python3 -c "
+import json
+plugin = json.load(open('.claude-plugin/plugin.json'))
+marketplace = json.load(open('.claude-plugin/marketplace.json'))
+entries = [p for p in marketplace['plugins'] if p.get('name') == plugin['name']]
+assert entries, 'no marketplace entry named %r' % plugin['name']
+assert entries[0].get('source') == './', 'marketplace entry source is %r, expected \"./\"' % entries[0].get('source')
+" 2>/tmp/marketplace_err; then
+  echo "OK   marketplace.json plugin entry matches plugin.json name and source"
+else
+  echo "FAIL marketplace.json / plugin.json mismatch ($(cat /tmp/marketplace_err | tail -1))"
+  fail=1
+fi
+rm -f /tmp/marketplace_err
+
+echo
+echo "== claude plugin tag (advisory - cross-validates plugin.json vs marketplace entry; run manually before release) =="
+if command -v claude >/dev/null 2>&1; then
+  if claude plugin tag --dry-run >/tmp/claude_plugin_tag_out 2>&1; then
+    echo "OK   claude plugin tag --dry-run"
+  else
+    echo "WARN claude plugin tag --dry-run reported an issue (advisory only, not failing this run):"
+    sed 's/^/     /' /tmp/claude_plugin_tag_out
+  fi
+else
+  echo "SKIP (claude CLI not on PATH - run \`claude plugin tag --dry-run\` manually before release)"
+fi
+rm -f /tmp/claude_plugin_tag_out
+
+echo
 echo "== agent/template frontmatter has name: and description: =="
 for f in agents/*.md templates/researcher.md.tmpl; do
   if grep -q '^name:' "$f" && grep -q '^description:' "$f"; then
