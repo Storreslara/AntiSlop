@@ -210,3 +210,48 @@ persona body does not resolve the way it does in CLAUDE.md.
 
 **U6 should use `--update` body-inlining (OQ6=A fallback)**, not per-body
 `@import` lines.
+
+Step 3 of `docs/plans/2026-07-22-persona-system-audit-patch.md`: is a
+full-vs-slim differentiation inlined into a Cursor subagent *body* (the
+existing "Shared protocol essentials (inlined backstop)" section already
+present in `adapters/cursor/agents/lead-programmer.md` etc.) actually
+delivered to that subagent, independent of the separately-UNVERIFIED
+`persona-protocol.mdc` alwaysApply-rule-reaches-subagents question?
+Answer: **PASS**.
+
+Methodology note: this is not a live-probe result. Unlike Steps 1-2 (which
+nested a nested `claude -p` Claude Code session — valid because this
+project's own dispatch mechanism is what was under test, and we run
+inside it), there is no way to launch or drive a real Cursor session from
+this environment; Cursor is a separate product with no CLI reachable here.
+Per the plan's own methodology note for this step, a documented conclusion
+from Cursor's published subagent file-format spec is the applicable
+substitute, not an inapplicable forced live-probe.
+
+Evidence: `https://cursor.com/docs/subagents` was live-fetched
+(2026-07-22) and its "File format" section states plainly: **"Each
+subagent is a markdown file with YAML frontmatter"**, followed by an
+example file whose content after the closing `---` is free-form prose
+("You are a security expert auditing code for vulnerabilities. When
+invoked: 1. ... 2. ... Report findings by severity: ...") — i.e. the
+example treats the post-frontmatter body itself as the subagent's role
+instructions. The same page's quick-start section is more explicit still,
+instructing the user to create a subagent file "with YAML frontmatter
+(name, description) **followed by the prompt**" — naming the body content
+after frontmatter as "the prompt." There is no separate frontmatter field
+for instructions/prompt text in Cursor's documented schema (`name`,
+`description`, `model`, `readonly`, `is_background` per
+`docs/specs/codex-cursor-plugin.md` row 50) — the body is the only place
+a subagent's instructions can live, so delivery of the body (including
+any inlined backstop section within it) to the subagent is constitutive
+of the file format, not a separate propagation step subject to the same
+doubt as an *external* alwaysApply rule cascading into a spawned
+subagent's context. This matches the plan's own self-resolved reasoning
+(Clarifications, "Edge cases": "the full/slim split rides the body
+(verified-by-construction)").
+
+Conclusion carries forward to U10's Cursor portion: the full/slim split
+may safely ride the Cursor subagent body backstop. No degrade-to-full-
+everywhere fallback is needed on this axis; the pre-existing "rule reach
+UNVERIFIED" caveat is unaffected and still carries forward verbatim for
+the separate `.mdc` rule question.
