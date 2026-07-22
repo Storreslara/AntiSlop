@@ -42,4 +42,37 @@ else
   fail=1
 fi
 
+new_single_line_error="✘ Plugin validation failed for /home/example/project/agents/explorer.md: some new single-line error"
+filtered=$(printf '%s\n' "$new_single_line_error" | filter_known_claude_tag_noise)
+if [ "$filtered" = "$new_single_line_error" ]; then
+  echo "OK   a new single-line error on agents/explorer.md survives the filter"
+else
+  echo "FAIL a new single-line error on agents/explorer.md was swallowed (or altered), got: $filtered"
+  fail=1
+fi
+
+new_detail_block="✘ Plugin validation failed for /home/example/project/agents/explorer.md:
+  some other, unrelated validation error that isn't the known frontmatter issue."
+filtered=$(printf '%s\n' "$new_detail_block" | filter_known_claude_tag_noise)
+if [ "$filtered" = "$new_detail_block" ]; then
+  echo "OK   a header match with a mismatched detail line survives the filter intact"
+else
+  echo "FAIL a header match with a mismatched detail line was altered/swallowed, got: $filtered"
+  fail=1
+fi
+
+explorer_header_line="✘ Plugin validation failed for /home/example/project/agents/explorer.md:"
+explorer_detail_line="  frontmatter: YAML frontmatter failed to parse: YAML Parse error: Unexpected token. At runtime this agent loads with empty metadata (all frontmatter fields silently dropped)."
+block_with_blank_line="$explorer_header_line
+
+$explorer_detail_line"
+filtered=$(printf '%s\n' "$block_with_blank_line" | filter_known_claude_tag_noise)
+if [ -z "$filtered" ]; then
+  echo "OK   known-permanent block is still suppressed across a blank line"
+else
+  echo "FAIL known-permanent block leaked when a blank line was inserted, residual:"
+  echo "$filtered"
+  fail=1
+fi
+
 exit "$fail"

@@ -28,7 +28,13 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   filter is factored into `tests/lib/claude-tag-filter.sh` and covered by a
   fixture-driven `tests/claude-tag-filter.test.sh` (run from `validate.sh`)
   that proves both known-permanent lines suppress cleanly and an injected
-  new mismatch line is not swallowed. Fixes #111.
+  new mismatch line is not swallowed. The two-line header/detail match now
+  buffers the header until the detail line is confirmed (instead of
+  unconditionally dropping it), so a new/different single-line error or a
+  header with a mismatched detail line both survive the filter intact
+  rather than being swallowed; the buffer also tolerates a blank line
+  between header and detail without leaking the known-permanent detail line
+  as if it were new. Fixes #111.
 
 ## [0.13.12] - 2026-07-21
 
