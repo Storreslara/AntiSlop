@@ -19,6 +19,16 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   the refusal test to assert both recovery branches, and added a filesystem-
   state assertion proving nothing is written before the exit-1 refusal.
   Fixes #109.
+- **Allowlisted the two permanently-noisy `claude plugin tag --dry-run`
+  advisory lines in `tests/validate.sh`.** The CLAUDE.md-not-loaded-as-
+  project-context notice and the `agents/explorer.md` frontmatter-parse
+  failure (its ADAPT-time `<REAL_LAUNCH_COMMAND_...>` placeholder is by
+  design unresolved in this source repo) are now filtered out before the
+  advisory WARNs, so the block only surfaces genuinely new mismatches. The
+  filter is factored into `tests/lib/claude-tag-filter.sh` and covered by a
+  fixture-driven `tests/claude-tag-filter.test.sh` (run from `validate.sh`)
+  that proves both known-permanent lines suppress cleanly and an injected
+  new mismatch line is not swallowed. Fixes #111.
 
 ## [0.13.12] - 2026-07-21
 

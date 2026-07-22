@@ -80,17 +80,29 @@ rm -f /tmp/marketplace_err
 
 echo
 echo "== claude plugin tag (advisory - cross-validates plugin.json vs marketplace entry; run manually before release) =="
+source tests/lib/claude-tag-filter.sh
 if command -v claude >/dev/null 2>&1; then
-  if claude plugin tag --dry-run >/tmp/claude_plugin_tag_out 2>&1; then
-    echo "OK   claude plugin tag --dry-run"
+  claude plugin tag --dry-run >/tmp/claude_plugin_tag_out 2>&1
+  claude_tag_residual=$(filter_known_claude_tag_noise </tmp/claude_plugin_tag_out)
+  if [ -z "$claude_tag_residual" ]; then
+    echo "OK   claude plugin tag --dry-run (known-permanent notices suppressed)"
   else
     echo "WARN claude plugin tag --dry-run reported an issue (advisory only, not failing this run):"
-    sed 's/^/     /' /tmp/claude_plugin_tag_out
+    echo "$claude_tag_residual" | sed 's/^/     /'
   fi
 else
   echo "SKIP (claude CLI not on PATH - run \`claude plugin tag --dry-run\` manually before release)"
 fi
 rm -f /tmp/claude_plugin_tag_out
+
+echo
+echo "== claude plugin tag noise-filter fixture test (Bash) =="
+if bash tests/claude-tag-filter.test.sh; then
+  echo "OK   tests/claude-tag-filter.test.sh"
+else
+  echo "FAIL tests/claude-tag-filter.test.sh"
+  fail=1
+fi
 
 echo
 echo "== agent/template frontmatter has name: and description: =="
