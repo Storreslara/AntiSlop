@@ -168,3 +168,45 @@ ruling out the subagent simply always answering `PRESENT`. Conclusion:
 persona-body HTML comments are part of the effective system prompt and
 therefore part of dispatch token cost — the same conclusion the
 relocation's design intent assumed, now confirmed rather than assumed.
+
+Step 2 of `docs/plans/2026-07-22-persona-system-audit-patch.md`: does
+Claude Code resolve an `@path` import placed inside a persona `.md` body
+(not CLAUDE.md)? This is the hard prerequisite for OQ6=B. Answer, from a
+live probe: **does not resolve** — an `@path` import line in a persona
+body is not expanded into the dispatched subagent's effective context.
+Step 6 falls back to OQ6=A (`--update`-composed body-inlining, mirroring
+the Codex `upsertMarkedBlock` pattern), not per-body `@import` lines.
+
+Probe (scratch project, outside this repo): `.claude/agents/probe-import-
+subagent.md` with a body opening with `@import-marker.md` (a sibling file
+containing the unique token `IMPORT_MARKER_9d2e4b6f`), instructed to
+search its own effective instructions for that token and report the
+result. A negative control, `probe-import-control.md`, is byte-identical
+except it has no `@import` line and no token anywhere in its body.
+
+First pass used the same text-relay methodology as Step 1 (a parent
+headless session dispatches the subagent via the Task tool and relays its
+reply verbatim). That pass was **discarded as unreliable**: the positive
+probe returned `RESULT: PRESENT` on its first run, then `RESULT: ABSENT`
+on five immediate, unmodified re-runs — a same-input flip inconsistent
+with a real, mechanical import resolution, and consistent instead with
+the parent LLM occasionally paraphrasing/guessing rather than faithfully
+relaying the subagent's literal output (a confound Step 1's probe
+happened not to expose, since its HTML-comment result was directionally
+stable across the one positive/one control pair it ran).
+
+Corrected methodology removes that relay confound: the probe subagent
+itself uses the Write tool to record its own result to a file
+(`probe-import-subagent-result.txt` / `probe-import-control-result.txt`)
+in the scratch project, read back directly rather than through the
+parent's paraphrase. Four independent trials of the positive probe (fresh
+`claude -p ... --allowedTools "Task"` dispatch each time, result file
+cleared between runs) all returned `RESULT: ABSENT`; one trial of the
+negative control also returned `RESULT: ABSENT` (expected, confirming the
+harness isn't spuriously injecting the token some other way). 4/4 positive
+trials and 1/1 control trial agree: the token from the imported file never
+reaches the subagent's effective context, so the `@import` line in a
+persona body does not resolve the way it does in CLAUDE.md.
+
+**U6 should use `--update` body-inlining (OQ6=A fallback)**, not per-body
+`@import` lines.
