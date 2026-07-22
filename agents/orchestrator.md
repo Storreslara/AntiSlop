@@ -213,6 +213,14 @@ review, not a model swap on it — the model is fixed per dispatch, so getting
 fable's bulk-context critique without weakening the gate requires a second,
 separate spawn.
 
+**Context for the fable pass.** The fable dispatch's context is the same
+lead-programmer advisory review packet (see "Review routing" above) that you
+already assemble and forward to the opus reviewer — changed files, the
+`baseline..HEAD` diff range, the acceptance-criteria command(s), and the unit
+id. You, the orchestrator, assemble and forward this packet to the fable
+dispatch at dispatch time; the fresh fable subagent never re-derives it from
+scratch (re-diffing the repo, re-reading unit history) at fable prices.
+
 **Trigger — see `templates/persona-protocol.md`'s "Reviewer roast-work
 advisory pass trigger (fable heavy-lifting)" section** for the three-criteria
 "heavy" definition and the downgrade/expiry path; this is the single source,
