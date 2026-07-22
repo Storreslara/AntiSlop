@@ -8,5 +8,3 @@ directly in this session) — dispatch `explorer` for structural questions
 it uses the graph internally and self-reports whether an answer was
 graph-derived or grep-fallback. The graph auto-updates on file changes via
 hooks and a git pre-commit check regardless of which persona is active.
-
-@.claude/persona-protocol.md

@@ -35,16 +35,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "916b99a2d0d7c800375b63793f38c964df654138a8598e1106c2033639d6469c",
-    ".claude/agents/explorer.md": "c96dfbcbc191db3fbd3ad6db20b96890899de2ab03aa7aa99ab575ebe431276b",
-    ".claude/agents/lead-programmer.md": "30d2eb5dcb51bcbbffd65a462b4541d8db5e857fe3441bc448786fae59765620",
-    ".claude/agents/milestone-auditor.md": "c0034eb7b6f2e0262f11e6a3ee020aed0b6b35f24135d9dc6d9b26166b836948",
-    ".claude/agents/reviewer.md": "f86cadf84f11c2eaa4788a0f0554c4f8a70420cd53071727b44002646d978053",
-    ".claude/agents/researcher.md": "7ed2e62e5c020c95a378d3e3c2a78c35b211b0e54bb17c11203a00049c4c1119",
+    ".claude/agents/orchestrator.md": "dd59a836b7eb7817fd059fd802117f90dc4241bccef0eeccd5f22a025164618a",
+    ".claude/agents/explorer.md": "9cfd48cbc31bd627635c07f2651c16da400dc74977b38410bf3bc4be8ad9c1e8",
+    ".claude/agents/lead-programmer.md": "ecf3c0b85b5a8eed028cf9e1c6db5b796ce09ba3d416f68e445bdaf528e66a15",
+    ".claude/agents/milestone-auditor.md": "2e51817b25ebeb55327d4359819f8eee95043d733344a933d2d10da9316b7269",
+    ".claude/agents/reviewer.md": "5775e895bd52a1f79cf9ef2c62f12a3e1e7fc8b4ce3034de83e09848750a860d",
+    ".claude/agents/researcher.md": "ed3993b55506413a5a42297021ef4e8873699b5761d40735834cc29dca71c5db",
     ".claude/persona-protocol.md": "f3b0fac6932bed82703e011fd9bd3c6768af10e1d41103842e6a09d5362800c5",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
-    ".claude/agents/scribe.md": "624a7aab4f473b0099034c11813481364660b4e0a6c7c4e56a2a0321e026aa13",
-    ".claude/agents/spec-master.md": "e23d8419296a52f6fac5225cfb18a524d7638d09a6ee3c1cb50c666b2a4323d0",
-    ".claude/agents/task-master.md": "4efc20513c5f9106c9b042594b9d5bc263e444808391669a64919b91ccf41792"
+    ".claude/agents/scribe.md": "ef6588e7397d0da27e16ae8c89fa6a99a85d1892bc454b53e19476b5b2661d63",
+    ".claude/agents/spec-master.md": "f8c21efa40c0ddc777ce61cb0c42aacd206abf6eaa90e6b75243769f261f7c39",
+    ".claude/agents/task-master.md": "cee6bd7da6a16d5de4dd4139e7905d3dbf54917765028d351397c5ba4cc7657f",
+    ".claude/persona-protocol-slim.md": "8805d03747e20ac02d2bbf597e95d2cfc61a8fe8473cb348a322489bd89bbea0"
   }
 }
