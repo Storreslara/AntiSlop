@@ -37,6 +37,27 @@ check('buildFileSpecs registers the slim protocol digest for .claude/persona-pro
   assert.strictEqual(spec.sourceRelPath, 'templates/persona-protocol-slim.md');
 });
 
+check('renderCleanBody inlines the full protocol into full-tier bodies and the slim digest into slim-tier bodies', () => {
+  const specs = cli.buildFileSpecs(['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor', 'researcher']);
+  const config = { substitutions: { graphMcpLaunch: { command: 'npx', args: ['g'] }, arxivMcpLaunch: null } };
+  const render = (rel) => cli.renderCleanBody(specs.find((s) => s.projectRelPath === rel), config);
+  const FULL_ONLY = 'INSUFFICIENT-CONTEXT';
+  const SLIM_SHARED = 'lead with the direct answer';
+  for (const p of ['orchestrator', 'spec-master', 'task-master', 'lead-programmer', 'reviewer', 'milestone-auditor']) {
+    const body = render(`.claude/agents/${p}.md`);
+    assert.ok(body.includes(FULL_ONLY), `${p} (full-tier) should inline the full protocol`);
+    assert.ok(body.includes(SLIM_SHARED), `${p} should include the shared answer-shape rule`);
+  }
+  for (const p of ['explorer', 'researcher', 'scribe']) {
+    const body = render(`.claude/agents/${p}.md`);
+    assert.ok(!body.includes(FULL_ONLY), `${p} (slim-tier) must NOT inline the full protocol`);
+    assert.ok(body.includes(SLIM_SHARED), `${p} should include the slim answer-shape rule`);
+  }
+  // The standalone protocol docs themselves render raw, not tier-wrapped.
+  assert.ok(render('.claude/persona-protocol.md').includes(FULL_ONLY), 'the full protocol doc renders raw');
+  assert.ok(!render('.claude/persona-protocol-slim.md').includes(FULL_ONLY), 'the slim doc has no full-only phrase');
+});
+
 check('deriveMcpLaunchFromDisk round-trips a full command+args+env block', () => {
   const sourceBody = fs.readFileSync(path.join(REPO_ROOT, 'agents', 'explorer.md'), 'utf8');
   const launch = { command: 'node', args: ['/path/to/server.js', '--flag'], env: { API_KEY: 'xyz' } };
@@ -356,6 +377,69 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         checked.stdout.includes('.claude/protocol-digest.md'),
         `--check should have flagged the corrupted file as pending, got: ${checked.stdout}`
       );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  // --- Integration: OQ9=A auto-migration from the old global-import scheme to
+  // per-persona body-inlined protocol delivery (issue #121 Step 6). One
+  // --update deterministically strips CLAUDE.md's global import, inlines the
+  // full/slim protocol into every persona body, creates the slim doc, and
+  // backfills fileHashes — even at a matching pluginVersion. A second run is a
+  // no-op (git diff --quiet).
+  check('--update migrates an old global-import project to per-persona protocol delivery, idempotently', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-migrate-test-'));
+    const git = (...a) => spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: tmp, encoding: 'utf8' });
+    try {
+      const selection = ['reviewer', 'milestone-auditor', 'scribe', 'researcher'];
+      const specs = cli.buildFileSpecs(selection);
+      const config = { pluginVersion, personaSelection: selection, substitutions: { graphMcpLaunch, arxivMcpLaunch: null }, fileHashes: {} };
+      // Write OLD-scheme bodies: persona files with NO inlined protocol (tier
+      // stripped), no slim doc, and record their hashes as the clean baseline.
+      for (const spec of specs) {
+        if (spec.projectRelPath === '.claude/persona-protocol-slim.md') continue; // did not exist under the old scheme
+        const oldSpec = Object.assign({}, spec, { protocolTier: undefined });
+        const body = cli.renderCleanBody(oldSpec, config);
+        const dest = path.join(tmp, spec.projectRelPath);
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        fs.writeFileSync(dest, body);
+        config.fileHashes[spec.projectRelPath] = cli.sha256Hex(body);
+      }
+      fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true });
+      fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
+      fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), '# Project\n\nSome note.\n\n@.claude/persona-protocol.md\n');
+
+      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+
+      const claudeMd = fs.readFileSync(path.join(tmp, 'CLAUDE.md'), 'utf8');
+      assert.ok(!/^@\.claude\/persona-protocol\.md/m.test(claudeMd), 'global import should be stripped from CLAUDE.md');
+      assert.ok(/Some note\./.test(claudeMd), 'the rest of CLAUDE.md should be preserved');
+
+      const FULL_ONLY = 'INSUFFICIENT-CONTEXT';
+      const SLIM_SHARED = 'lead with the direct answer';
+      const read = (rel) => fs.readFileSync(path.join(tmp, rel), 'utf8');
+      for (const p of ['orchestrator', 'lead-programmer', 'reviewer', 'milestone-auditor']) {
+        const body = read(`.claude/agents/${p}.md`);
+        assert.ok(body.includes(FULL_ONLY) && body.includes(SLIM_SHARED), `${p} should now carry the full protocol`);
+      }
+      for (const p of ['explorer', 'scribe', 'researcher']) {
+        const body = read(`.claude/agents/${p}.md`);
+        assert.ok(!body.includes(FULL_ONLY) && body.includes(SLIM_SHARED), `${p} should now carry the slim digest`);
+      }
+      assert.ok(fs.existsSync(path.join(tmp, '.claude', 'persona-protocol-slim.md')), 'slim doc should be created');
+      const after = JSON.parse(read('.claude/persona-config.json'));
+      assert.ok(after.fileHashes['.claude/persona-protocol-slim.md'], 'slim doc fileHash should be backfilled');
+
+      // Idempotency: commit, run once more, assert a clean tree.
+      git('init', '-q');
+      git('add', '-A');
+      git('commit', '-qm', 'baseline');
+      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(second.status, 0, `second --update exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+      const status = git('status', '--porcelain').stdout;
+      assert.strictEqual(status, '', `second --update should be a no-op, git status shows:\n${status}`);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

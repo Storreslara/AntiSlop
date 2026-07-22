@@ -24,6 +24,18 @@ const CWD = process.cwd();
 
 const CORE_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer'];
 const OPTIONAL_PERSONAS = ['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor'];
+
+// Per-persona protocol delivery (OQ6=A body-inlining; @import does not resolve
+// inside a subagent body — proven in issue #121 Step 2). Full-tier personas
+// carry the whole persona-protocol.md inlined into their .claude/agents/*.md
+// body; slim-tier ones carry persona-protocol-slim.md. Everyone else (the raw
+// protocol docs themselves) carries neither. Replaces the single global
+// `@.claude/persona-protocol.md` CLAUDE.md import.
+const SLIM_TIER_PERSONAS = ['explorer', 'researcher', 'scribe'];
+function protocolTierFor(name) {
+  if (SLIM_TIER_PERSONAS.includes(name)) return 'slim';
+  return 'full';
+}
 // Legacy-token migration: the persona formerly named `planner` was renamed
 // `hivemind` (repo-wide rename, plugin v0.6.0); `hivemind` was later split
 // into `spec-master` and `task-master` (plugin v0.10.0); the persona
@@ -414,6 +426,7 @@ function buildFileSpecs(personaSelection) {
       sourceAbsPath: path.join(PKG_ROOT, 'agents', `${name}.md`),
       sourceRelPath: `agents/${name}.md`,
       kind: name === 'explorer' ? 'graph' : 'plain',
+      protocolTier: protocolTierFor(name),
     });
   }
   if (personaSelection.includes('researcher')) {
@@ -422,6 +435,7 @@ function buildFileSpecs(personaSelection) {
       sourceAbsPath: path.join(PKG_ROOT, 'templates', 'researcher.md.tmpl'),
       sourceRelPath: 'templates/researcher.md.tmpl',
       kind: 'arxiv',
+      protocolTier: protocolTierFor('researcher'),
     });
   }
   specs.push({
@@ -445,6 +459,18 @@ function buildFileSpecs(personaSelection) {
   return specs;
 }
 
+// Appends the tier-appropriate protocol as a version-agnostic marked block to
+// a persona body. Deterministic (source body carries no marker, the block is
+// always rebuilt from the template), so re-running --update is idempotent.
+// Mirrors the Codex `upsertMarkedBlock` inline mechanism (same marker names).
+function inlineProtocolBlock(body, tier) {
+  if (!tier) return body;
+  const src = tier === 'slim' ? 'persona-protocol-slim.md' : 'persona-protocol.md';
+  const protocol = fs.readFileSync(path.join(PKG_ROOT, 'templates', src), 'utf8').replace(/\s+$/, '');
+  const block = `${ANTISLOP_BLOCK_PREFIX} -->\n${protocol}\n${ANTISLOP_BLOCK_END}`;
+  return `${body.replace(/\s+$/, '')}\n\n${block}\n`;
+}
+
 function renderCleanBody(spec, config) {
   let body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
   if (spec.kind === 'graph') {
@@ -462,7 +488,7 @@ function renderCleanBody(spec, config) {
       body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>', launch, spec.projectRelPath);
     }
   }
-  return body;
+  return inlineProtocolBlock(body, spec.protocolTier);
 }
 
 function printUnifiedDiff(oldStr, newStr, label) {
@@ -478,6 +504,20 @@ function printUnifiedDiff(oldStr, newStr, label) {
   );
   console.log(result.stdout || '(diff produced no textual output)');
   fs.rmSync(tmpDir, { recursive: true, force: true });
+}
+
+// OQ9=A auto-migration: strip the old global `@.claude/persona-protocol.md`
+// import from CLAUDE.md (protocol is now inlined per-persona). Returns true if
+// it removed the line, which forces the render loop below to re-inline bodies
+// even at a matching pluginVersion.
+function migrateGlobalProtocolImport(cwd) {
+  const p = path.join(cwd, 'CLAUDE.md');
+  if (!fs.existsSync(p)) return false;
+  const lines = fs.readFileSync(p, 'utf8').split('\n');
+  const kept = lines.filter((l) => l.trim() !== '@.claude/persona-protocol.md');
+  if (kept.length === lines.length) return false;
+  fs.writeFileSync(p, kept.join('\n').replace(/\n+$/, '\n'));
+  return true;
 }
 
 async function runUpdate(args) {
@@ -537,6 +577,11 @@ async function runUpdate(args) {
       const legacyPath = path.join(CWD, '.claude', 'agents', `${token}.md`);
       if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
     }
+  }
+
+  const migratedClaudeMd = migrateGlobalProtocolImport(CWD);
+  if (migratedClaudeMd) {
+    console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (now delivered per-persona).');
   }
 
   const specs = buildFileSpecs(personaSelection);
@@ -608,7 +653,7 @@ async function runUpdate(args) {
   // already matches.
   const checkFlag = args.includes('--check');
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
@@ -1548,14 +1593,16 @@ async function main() {
   for (const name of allAgentNames) {
     const src = path.join(PKG_ROOT, 'agents', `${name}.md`);
     const dest = path.join(agentsDir, `${name}.md`);
-    copyStamped(src, dest, version, `agents/${name}.md`);
+    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor(name));
+    copyStampedBody(dest, body, version, `agents/${name}.md`);
     console.log(`  agents/${name}.md -> .claude/agents/${name}.md`);
   }
 
   if (includeResearcher) {
     const src = path.join(PKG_ROOT, 'templates', 'researcher.md.tmpl');
     const dest = path.join(agentsDir, 'researcher.md');
-    copyStamped(src, dest, version, 'templates/researcher.md.tmpl');
+    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor('researcher'));
+    copyStampedBody(dest, body, version, 'templates/researcher.md.tmpl');
     console.log('  templates/researcher.md.tmpl -> .claude/agents/researcher.md (mcpServers placeholder still needs a real launch command — /install-antislop step 5 handles this)');
   }
 
@@ -1622,14 +1669,11 @@ async function main() {
   fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
   console.log(`  .claude/settings.json updated (agent, ${hooksNote}, env, permission placeholders merged in — merge, not overwrite)`);
 
-  const claudeMdPath = path.join(CWD, 'CLAUDE.md');
-  const importLine = '@.claude/persona-protocol.md';
-  if (!fs.existsSync(claudeMdPath)) {
-    fs.writeFileSync(claudeMdPath, `${importLine}\n`);
-    console.log('  CLAUDE.md created with the persona-protocol import line');
-  } else {
-    appendUnique(claudeMdPath, [importLine]);
-    console.log('  CLAUDE.md: persona-protocol import line ensured present');
+  // Protocol is delivered per-persona (inlined into each .claude/agents/*.md
+  // body above), not via a global CLAUDE.md import. Strip any legacy global
+  // import left by a pre-v0.13.x install; never add one.
+  if (migrateGlobalProtocolImport(CWD)) {
+    console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (protocol is now per-persona).');
   }
 
   appendUnique(path.join(CWD, '.gitignore'), [
