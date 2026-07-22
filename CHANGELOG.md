@@ -3,6 +3,18 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.12] - 2026-07-21
+
+### Fixed
+- **Reconciled the "distinct case" dispatcher-supervision lead-in in
+  `agents/orchestrator.md`'s "Managing a long-running background dispatch"
+  section with the three real mechanisms.** Dropped the inaccurate "one of
+  two trigger cases" enumeration — a foreground command killed by the
+  600000 ms timeout fits neither the false-watcher case nor the
+  WIP-sentinel case — and reframed both as non-exhaustive examples plus the
+  killed-mid-run case. Also fixed the doubled "Either way." Documentation/
+  protocol-only. Fixes #89.
+
 ## [0.13.11] - 2026-07-21
 
 ### Fixed
