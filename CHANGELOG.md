@@ -3,6 +3,24 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.10] - 2026-07-21
+
+### Fixed
+- **Broadened the orchestrator's nested-background-Bash dispatcher
+  guidance in `agents/orchestrator.md`'s "Managing a long-running
+  background dispatch" section.** The guidance previously keyed only on a
+  subagent's legacy false claim of having "set up a background watcher."
+  It now also covers the Step-1-compliant case: a subagent that correctly
+  ends its turn via the WIP sentinel with the "no autonomous wake-up
+  available" wording still requires the same dispatcher verify-then-resume
+  response. Added the symmetric "still genuinely running" branch so the
+  dispatcher does not resume prematurely when independent verification
+  shows the command hasn't finished, and added a `ps` process-namespace
+  caveat noting `ps` is only a trustworthy signal when the dispatcher and
+  subagent share a process namespace (not guaranteed under `isolation:
+  "worktree"`/`"remote"` dispatch), with git/file state as the primary
+  fallback otherwise. Documentation/protocol-only. Fixes #89.
+
 ## [0.13.9] - 2026-07-21
 
 ### Fixed
