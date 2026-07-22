@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.11] - 2026-07-21
+
+### Fixed
+- **Added the third (foreground-timeout-kill) remediation branch to the
+  orchestrator's nested-background-Bash dispatcher guidance in
+  `agents/orchestrator.md`'s "Managing a long-running background
+  dispatch" section.** The dense "distinct case" paragraph is now a
+  lead-in plus a three-state sub-list (still running / finished / killed
+  with nothing left to finish). The new killed branch covers a foreground
+  `Bash` call cut off by the 600000 ms per-call ceiling: the dispatcher
+  should resume the subagent to retry the command, not to check a result
+  that will never arrive, since external inspection can't always tell a
+  finished background job apart from a killed foreground one. Also
+  applied the two #95 polish notes: rewrote the orphaned "not merely an
+  alternative 'or'" trailer sentence and rewrapped the section to its
+  prevailing width. Documentation/protocol-only. Fixes #89.
+
 ## [0.13.10] - 2026-07-21
 
 ### Fixed
