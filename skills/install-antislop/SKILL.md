@@ -487,6 +487,9 @@ obtained); the issue tracker chosen; the
 code-review-graph registered name and one real structural query + answer as
 proof; the arXiv MCP result (server name, or fallback mode, or "researcher
 not selected"); the one manual `/config` step required (default teammate
-model); each hook-verification result from step 10 (or, if step 10 was
-skipped per its conditional rules, say so and why); confirmation the repo
-ended clean.
+model); the install scope used (local/project/user), with caution that a
+stale scope registration can freeze the project at an old plugin version —
+see the README's install-scope subsection (from the convergence plan's Step 4)
+for details and the recovery command `claude plugin update antislop@antislop-marketplace --scope <local|project|user>`; each
+hook-verification result from step 10 (or, if step 10 was skipped per its
+conditional rules, say so and why); confirmation the repo ended clean.
