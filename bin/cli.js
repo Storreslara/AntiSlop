@@ -431,6 +431,12 @@ function buildFileSpecs(personaSelection) {
     kind: 'plain',
   });
   specs.push({
+    projectRelPath: '.claude/persona-protocol-slim.md',
+    sourceAbsPath: path.join(PKG_ROOT, 'templates', 'persona-protocol-slim.md'),
+    sourceRelPath: 'templates/persona-protocol-slim.md',
+    kind: 'plain',
+  });
+  specs.push({
     projectRelPath: '.claude/protocol-digest.md',
     sourceAbsPath: path.join(PKG_ROOT, 'templates', 'protocol-digest.md'),
     sourceRelPath: 'templates/protocol-digest.md',

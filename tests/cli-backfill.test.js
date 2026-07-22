@@ -30,6 +30,13 @@ function check(name, fn) {
 
 const cli = require(path.join(REPO_ROOT, 'bin', 'cli.js'));
 
+check('buildFileSpecs registers the slim protocol digest for .claude/persona-protocol-slim.md', () => {
+  const specs = cli.buildFileSpecs([]);
+  const spec = specs.find((s) => s.projectRelPath === '.claude/persona-protocol-slim.md');
+  assert.ok(spec, `expected a spec for .claude/persona-protocol-slim.md, got: ${JSON.stringify(specs.map((s) => s.projectRelPath))}`);
+  assert.strictEqual(spec.sourceRelPath, 'templates/persona-protocol-slim.md');
+});
+
 check('deriveMcpLaunchFromDisk round-trips a full command+args+env block', () => {
   const sourceBody = fs.readFileSync(path.join(REPO_ROOT, 'agents', 'explorer.md'), 'utf8');
   const launch = { command: 'node', args: ['/path/to/server.js', '--flag'], env: { API_KEY: 'xyz' } };
