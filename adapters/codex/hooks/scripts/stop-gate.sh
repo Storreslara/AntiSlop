@@ -38,7 +38,9 @@
 #
 # Ordered logic (identical to the Claude/Cursor versions):
 #  0) loop guard (self-tracked fallback, see above).
-#  0.5) reviewer's SubagentStop -> CLEAR every pending-review flag, log, ALLOW.
+#  0.5) reviewer's SubagentStop -> if any .codex/reviewed/*.blocked marker
+#     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
+#     ALLOW); otherwise CLEAR every pending-review flag, log, ALLOW.
 #  0.75) main Stop with any pending-review flag -> BLOCK (defer:/skip: escape).
 #  1) non-gated stop/SubagentStop -> ALLOW immediately.
 #  2) per-agent WIP sentinel with a non-empty reason -> log, delete, ALLOW.
@@ -84,6 +86,13 @@ allow() {
 
 if [ "$hook_event" = "SubagentStop" ] && [ "$agent_type" = "reviewer" ]; then
   [ -f "$config" ] || allow
+  shopt -s nullglob
+  blocked_markers=( "${project_dir}"/.codex/reviewed/*.blocked )
+  shopt -u nullglob
+  if [ "${#blocked_markers[@]}" -gt 0 ]; then
+    printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    allow
+  fi
   rm -f "${project_dir}"/.codex/.pending-review.* 2>/dev/null || true
   printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
   allow

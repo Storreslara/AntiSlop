@@ -22,7 +22,9 @@
 #
 # Ordered logic (identical to the Claude version):
 #  0) loop guard - never re-trigger ourselves into an infinite loop.
-#  0.5) reviewer's subagentStop -> CLEAR every pending-review flag, log, ALLOW.
+#  0.5) reviewer's subagentStop -> if any .cursor/reviewed/*.blocked marker
+#     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
+#     ALLOW); otherwise CLEAR every pending-review flag, log, ALLOW.
 #  0.75) main stop with any pending-review flag -> BLOCK (defer:/skip: escape).
 #  1) non-gated stop/subagentStop -> ALLOW immediately.
 #  2) per-agent WIP sentinel with a non-empty reason -> log, delete, ALLOW.
@@ -46,6 +48,13 @@ agent_type="$(echo "$input" | jq -r '.subagent_type // empty' 2>/dev/null || tru
 
 if [ "$hook_event" = "subagentStop" ] && [ "$agent_type" = "reviewer" ]; then
   [ -f "$config" ] || exit 0
+  shopt -s nullglob
+  blocked_markers=( "${project_dir}"/.cursor/reviewed/*.blocked )
+  shopt -u nullglob
+  if [ "${#blocked_markers[@]}" -gt 0 ]; then
+    printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    exit 0
+  fi
   rm -f "${project_dir}"/.cursor/.pending-review.* 2>/dev/null || true
   printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
   exit 0

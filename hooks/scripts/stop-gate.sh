@@ -20,11 +20,16 @@
 #
 # Logic, in order:
 #  0) stop_hook_active guard - never re-trigger ourselves in a loop.
-#  0.5) reviewer's own SubagentStop -> CLEAR every .claude/.pending-review.*
-#     flag (PASS or FAIL - a reviewer having run is what the flag tracks,
-#     not the verdict), log `cleared-by=reviewer`, ALLOW. Runs before the
-#     gatedAgents early-exit below, which would otherwise skip reviewer
-#     stops entirely since "reviewer" is not normally in gatedAgents.
+#  0.5) reviewer's own SubagentStop -> if any .claude/reviewed/*.blocked
+#     marker stands (an INSUFFICIENT-CONTEXT verdict), do NOT clear the
+#     pending-review flags: log `verdict=blocked flags-kept` and ALLOW, so
+#     turn-end/next-gated-dispatch stay blocked until a real PASS/FAIL
+#     resolves the unit (the reviewer deletes the .blocked marker then).
+#     Otherwise CLEAR every .claude/.pending-review.* flag (PASS or FAIL - a
+#     reviewer having run is what the flag tracks, not the verdict), log
+#     `cleared-by=reviewer`, ALLOW. Runs before the gatedAgents early-exit
+#     below, which would otherwise skip reviewer stops entirely since
+#     "reviewer" is not normally in gatedAgents.
 #  0.75) main-session Stop with any pending-review flag present -> BLOCK
 #     (exit 2), checked BEFORE the gatedAgents early-exit at step 1, since
 #     the default orchestrator is deliberately non-gated but must still be
@@ -84,6 +89,13 @@ agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
 if [ "$hook_event" = "SubagentStop" ] && [ "$agent_type" = "reviewer" ]; then
   [ -f "$config" ] || exit 0
+  shopt -s nullglob
+  blocked_markers=( "${project_dir}"/.claude/reviewed/*.blocked )
+  shopt -u nullglob
+  if [ "${#blocked_markers[@]}" -gt 0 ]; then
+    printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    exit 0
+  fi
   rm -f "${project_dir}"/.claude/.pending-review.* 2>/dev/null || true
   printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
   exit 0
