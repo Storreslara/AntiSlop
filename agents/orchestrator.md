@@ -213,16 +213,10 @@ review, not a model swap on it — the model is fixed per dispatch, so getting
 fable's bulk-context critique without weakening the gate requires a second,
 separate spawn.
 
-**Trigger — a unit is "heavy" when it meets ANY of:**
-1. **Large surface** — blast radius ≥ ~8 impacted files OR diff ≥ ~400
-   changed lines.
-2. **Structural / cross-cutting change** — e.g. a persona split, an
-   orchestrator routing rewrite, a `bin/cli.js` migration, or any other
-   change to shared/cross-persona surface that a reasonable reviewer would
-   call structurally cross-cutting. This list is illustrative, not
-   exhaustive — when in doubt, trigger; the pass is cheap.
-3. **Security-sensitive surface** — auth, input parsing/validation, secret
-   handling, or migrations touched.
+**Trigger — see `templates/persona-protocol.md`'s "Reviewer roast-work
+advisory pass trigger (fable heavy-lifting)" section** for the three-criteria
+"heavy" definition and the downgrade/expiry path; this is the single source,
+not restated here.
 
 `task-master` may tag a sliced unit `Roast pass: fable` (advisory, mirroring
 its `Suggested model: haiku|sonnet|opus` per-unit tag) when it judges the unit

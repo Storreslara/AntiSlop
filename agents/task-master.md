@@ -48,21 +48,13 @@ into independently-grabbable, unambiguous units of work.
   `.claude/reviewed/<task-id>.fail` before tagging any unit — a prior
   FAIL is durable evidence it needed more judgment than first estimated;
   never tag that unit `haiku`.
-- **`Roast pass: fable` tag**: on a unit that meets ANY of the following
-  criteria — copied verbatim from `agents/orchestrator.md`'s
-  "Reviewer roast-work advisory pass" section, the authoritative definition;
-  keep both files in sync:
-  1. **Large surface** — blast radius ≥ ~8 impacted files OR diff ≥ ~400
-     changed lines.
-  2. **Structural / cross-cutting change** — e.g. a persona split, an
-     orchestrator routing rewrite, a `bin/cli.js` migration, or any other
-     change to shared/cross-persona surface that a reasonable reviewer would
-     call structurally cross-cutting. This list is illustrative, not
-     exhaustive — when in doubt, trigger; the pass is cheap.
-  3. **Security-sensitive surface** — auth, input parsing/validation, secret
-     handling, or migrations touched.
-  you MUST additionally emit a `Roast pass: fable` marker alongside the
-  `Suggested model` tag. This is a forward-reference hook only: it flags the
+- **`Roast pass: fable` tag**: on a unit that meets the "heavy" trigger
+  defined once in `templates/persona-protocol.md`'s "Reviewer roast-work
+  advisory pass trigger (fable heavy-lifting)" section — the authoritative
+  definition, including the downgrade/expiry path for a unit class that no
+  longer needs the pass — you MUST additionally emit a `Roast pass: fable`
+  marker alongside the `Suggested model` tag. This is a forward-reference
+  hook only: it flags the
   unit for an additional advisory fable critique pass that the orchestrator
   and reviewer's `roast-work` skill will consume once wired up (dispatch
   mechanics are the orchestrator's job, not this persona's — just emit the
