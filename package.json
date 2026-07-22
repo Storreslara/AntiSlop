@@ -21,6 +21,7 @@
     "hooks",
     "adapters/cursor",
     "adapters/codex",
+    "commands",
     "templates",
     "skills/coding-discipline",
     "skills/install-antislop",
