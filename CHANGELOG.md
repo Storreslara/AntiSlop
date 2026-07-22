@@ -15,7 +15,9 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   #109) now emits a warning naming both versions before each stamp. This is
   warn-and-proceed, not refuse — `--overwrite` is already an explicit
   destructive opt-in, so the defect fixed is the silence, not the stamping.
-  Added per-path regression tests covering all three scaffold branches.
+  Added per-path regression tests covering all three scaffold branches,
+  including the equal-version boundary (recorded pluginVersion equal to the
+  current plugin version) that proves the guard's `< 0` predicate.
   Fixes #110.
 - **Hardened `compareSemver`'s dotted-suffix parsing and made the downgrade-
   refusal recovery message install-aware in `bin/cli.js`.** `compareSemver`

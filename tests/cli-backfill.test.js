@@ -956,6 +956,22 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         fs.rmSync(home, { recursive: true, force: true });
       }
     });
+
+    check(`${sp.name} --overwrite over a recorded pluginVersion EQUAL to the current plugin version emits NO downgrade warning and still refreshes the stamp`, () => {
+      const { cwd, home } = makeTmpCwdAndHome();
+      try {
+        const configAbs = seedConfig(cwd, sp.configRel, pluginVersion);
+        const result = runScaffold(cwd, home, sp.args);
+        const combined = result.stdout + result.stderr;
+        assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${combined}`);
+        assert.ok(!/downgrade/i.test(combined), `expected NO downgrade warning at the equal boundary, got: ${combined}`);
+        const written = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
+        assert.strictEqual(written.pluginVersion, pluginVersion, `expected pluginVersion refreshed to ${pluginVersion}, got ${written.pluginVersion}`);
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
   }
 }
 
