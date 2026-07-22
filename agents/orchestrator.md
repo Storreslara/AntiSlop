@@ -4,16 +4,6 @@ description: Thin router for the persona system. Set as the main agent via setti
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- Deliberately no `skills:` field — persona skills never load into the
-     orchestrator. Deliberately no `memory:` field — a router that
-     accumulates state contradicts "you keep only routing rules." Bash is
-     for the graph-freshness check only, by instruction (not tool-enforced).
-     TaskStop/TaskOutput: a dispatched lead-programmer can run for a long
-     time on a real multi-step task, and `tools:` is an allowlist that
-     REPLACES the inherited set — without these two explicitly listed here,
-     the orchestrator has no way to poll a background dispatch's liveness
-     (TaskOutput with block=false) or cancel one that's genuinely stuck
-     (TaskStop), and is left guessing from file mtimes instead. -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.

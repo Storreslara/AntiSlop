@@ -7,25 +7,6 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:roast-work
 maxTurns: 30
 ---
-<!-- Deliberately no Write/Edit — it can never fix what it's grading; the
-     Agent tool is for spawning the explorer, not for delegating fixes.
-     Deliberately no `memory:` field — fresh eyes every review is the point
-     of the Writer/Reviewer split; accumulated impressions of past code
-     erode it. Bash is permitted for running checks AND for the one
-     bookkeeping exception below (the PASS marker) — that marker is not code
-     under review, so writing it doesn't violate "never edits." `Skill` is in
-     tools so a teammate copy can invoke coding-discipline and roast-work
-     explicitly, since preloading doesn't apply to teammates. `maxTurns: 30`
-     bounds this Opus-tier persona the same way explorer's maxTurns: 10
-     bounds it.
-     
-     The `model: opus` frontmatter is the DEFAULT for this persona. The
-     orchestrator may override it to `sonnet` on the PASS/FAIL gate for
-     demonstrably-mechanical units (per its "Reviewer gate model selection"
-     section), but the gate NEVER runs on fable, for any unit, regardless of
-     complexity. Regardless of which model runs the dispatch, the materiality
-     filter, machine-checkable criteria, and PASS/FAIL marker format remain
-     unchanged. -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict

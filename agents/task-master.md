@@ -8,27 +8,6 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 30
 ---
-<!-- `memory: project` auto-grants Read/Write/Edit for memory-file
-     management (see shared protocol) — this does NOT grant Write/Edit for
-     source docs; task-master's dispatch prompts and sliced-issue bodies are
-     its TEXT OUTPUT (relayed via SendMessage/report, or filed directly as
-     tracker issues through `gh` via Bash) — the same "produce the text, the
-     tracker/orchestrator persists it" shape `spec-master` uses for the plan
-     doc itself. `Skill` is in tools so a teammate copy can invoke
-     `to-issues` explicitly, since preloading doesn't apply to teammates.
-     `maxTurns: 30` — starting bound, matching `spec-master`'s, adjust after
-     real usage. `model: sonnet` is the default; opus-eligible per-dispatch
-     at the orchestrator's discretion (orchestrator.md) — fable is EXCLUDED
-     for this persona, the judgment needed to write accurate dispatch
-     boundaries doesn't fit fable's light/mechanical profile. Never change
-     the tier here.
-     task-master owns `to-issues`/`to-tickets` slicing outright, per-unit
-     model tagging, the retrieval-contract line, and per-unit dispatch-prompt
-     authoring for lead-programmer/scribe — split, alongside `spec-master`,
-     out of what used to be a single planning persona (see
-     agents/spec-master.md), which
-     owns everything upstream of a finalized spec (taxonomy scorecard,
-     interrogation, Open Questions, Self-check, publishing via `to-spec`). -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
