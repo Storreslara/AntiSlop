@@ -57,10 +57,12 @@ function readPluginVersion() {
 }
 
 // Compares two dotted semver strings by numeric components (missing
-// components padded with 0). Non-numeric pre-release suffixes (e.g. "-rc1")
-// are stripped conservatively before parsing. Returns <0, 0, or >0.
+// components padded with 0). Any pre-release/build suffix (e.g. "-rc1" or a
+// dotted "-beta.3") is dropped by splitting on the first '-' or '+' BEFORE
+// splitting into dotted numeric segments, so a dotted suffix can't leak an
+// extra non-numeric segment into the comparison. Returns <0, 0, or >0.
 function compareSemver(a, b) {
-  const parse = (v) => String(v).split('.').map((p) => parseInt(p, 10) || 0);
+  const parse = (v) => String(v).split(/[-+]/)[0].split('.').map((p) => parseInt(p, 10) || 0);
   const pa = parse(a);
   const pb = parse(b);
   const len = Math.max(pa.length, pb.length);

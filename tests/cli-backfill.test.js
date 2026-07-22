@@ -354,6 +354,20 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  check('compareSemver strips dotted pre-release/build suffixes before numeric comparison (issue #109 A1)', () => {
+    // A dotted suffix like -beta.3 must not leak an extra non-numeric segment
+    // into the numeric comparison. All of these are equal to their release.
+    assert.strictEqual(cli.compareSemver('1.2.0-beta.3', '1.2.0'), 0, '1.2.0-beta.3 == 1.2.0');
+    assert.strictEqual(cli.compareSemver('1.2.0', '1.2.0-beta.3'), 0, '1.2.0 == 1.2.0-beta.3');
+    assert.strictEqual(cli.compareSemver('1.0.0-rc.1', '1.0.0'), 0, '1.0.0-rc.1 == 1.0.0');
+    assert.strictEqual(cli.compareSemver('1.0.0', '1.0.0-rc.1'), 0, '1.0.0 == 1.0.0-rc.1');
+    // Single-segment suffix must not regress.
+    assert.strictEqual(cli.compareSemver('1.2.0-beta', '1.2.0'), 0, '1.2.0-beta == 1.2.0');
+    // Real ordering intact.
+    assert.ok(cli.compareSemver('1.0.0', '2.0.0') < 0, '1.0.0 < 2.0.0');
+    assert.ok(cli.compareSemver('2.0.0-rc.1', '1.0.0') > 0, '2.0.0-rc.1 > 1.0.0');
+  });
+
   // --- Integration: semver-ordering downgrade guard in runUpdate() (B1/M5,
   // issue #102). A stale scope registration must not silently resolve an
   // OLDER plugin version than the project's recorded pluginVersion and stamp
