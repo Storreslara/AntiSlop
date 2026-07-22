@@ -1,2 +1,14 @@
 * text=auto eol=lf
 *.sh text eol=lf
+
+# Dev-only scratch dirs excluded from `git archive` output (e.g. npm/plugin
+# packaging). NOTE: export-ignore only filters `git archive` — it does NOT
+# filter a plain `git clone`, so a git-marketplace clone install still
+# receives the full tree until Claude Code adopts an archive-based fetch or
+# a plugin.json component allowlist. Known, accepted gap; not fixable here.
+docs/plans/ export-ignore
+docs/experiments/ export-ignore
+eval/ export-ignore
+prototype/ export-ignore
+specs/ export-ignore
+.claude/agent-memory/ export-ignore
