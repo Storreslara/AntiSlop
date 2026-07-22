@@ -73,6 +73,23 @@ function compareSemver(a, b) {
   return 0;
 }
 
+// Warn (but proceed) when an --overwrite scaffold is about to stamp an OLDER
+// plugin version over a newer recorded one (issue #110). Mirrors runUpdate's
+// downgrade guard but is deliberately warn-and-proceed, not refuse: --overwrite
+// is already an explicit destructive opt-in, so the defect being fixed is the
+// silence, not the stamping. Must be called BEFORE the pluginVersion = version
+// assignment so it reads the prior recorded value.
+function warnIfDowngradeStamp(recordedVersion, version, configLabel) {
+  if (recordedVersion && compareSemver(version, recordedVersion) < 0) {
+    console.warn(
+      `Warning: --overwrite is stamping a version downgrade into ${configLabel} — the resolved ` +
+        `plugin version (v${version}) is OLDER than the recorded pluginVersion (v${recordedVersion}). ` +
+        'Proceeding because --overwrite is an explicit opt-in; the stamp is being refreshed to ' +
+        `v${version}.`
+    );
+  }
+}
+
 function mkdirp(p) {
   fs.mkdirSync(p, { recursive: true });
 }
@@ -940,6 +957,7 @@ async function scaffoldCursor(args) {
 
   if (existingConfig) {
     existingConfig.personaSelection = CURSOR_MVP_PERSONAS.slice();
+    warnIfDowngradeStamp(existingConfig.pluginVersion, version, '.cursor/persona-config.json');
     existingConfig.pluginVersion = version;
     if (!existingConfig.mainAgent) existingConfig.mainAgent = 'orchestrator';
     if (!existingConfig.gatedAgents) existingConfig.gatedAgents = ['lead-programmer'];
@@ -1311,6 +1329,7 @@ async function scaffoldCodex(args) {
 
   if (existingConfig) {
     existingConfig.personaSelection = CODEX_MVP_PERSONAS.slice();
+    warnIfDowngradeStamp(existingConfig.pluginVersion, version, '.codex/persona-config.json');
     existingConfig.pluginVersion = version;
     existingConfig.target = 'codex';
     if (!existingConfig.mainAgent) existingConfig.mainAgent = 'orchestrator';
@@ -1627,6 +1646,7 @@ async function main() {
     // the mechanical files actually implies: the selection (if explicitly
     // overridden) and the version stamp.
     existingPersonaConfig.personaSelection = personaSelection;
+    warnIfDowngradeStamp(existingPersonaConfig.pluginVersion, version, '.claude/persona-config.json');
     existingPersonaConfig.pluginVersion = version;
     fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(existingPersonaConfig, null, 2) + '\n');
     console.log('  .claude/persona-config.json: personaSelection + pluginVersion refreshed, other fields preserved');

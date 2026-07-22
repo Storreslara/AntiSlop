@@ -879,6 +879,86 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 }
 
+// --- Integration: downgrade-stamping warning on the three --overwrite scaffold
+// paths (issue #110). scaffoldCursor, scaffoldCodex, and the claude-target
+// --overwrite branch each unconditionally stamp pluginVersion = version; when
+// the recorded pluginVersion is strictly NEWER than the resolving plugin, that
+// silently stamps backward. This proves each path now warns (naming both
+// versions) yet still completes, and stays quiet when there's no downgrade.
+// Reuses the hardened compareSemver from #109 in bin/cli.js — no second
+// comparison implementation here.
+{
+  const cliPath = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const pluginVersion = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8')
+  ).version;
+
+  const scaffoldPaths = [
+    { name: 'cursor', configRel: '.cursor/persona-config.json', args: ['--target=cursor', '--overwrite'] },
+    { name: 'codex', configRel: '.codex/persona-config.json', args: ['--target=codex', '--overwrite'] },
+    { name: 'claude-target', configRel: '.claude/persona-config.json', args: ['--yes', '--overwrite'] },
+  ];
+
+  function makeTmpCwdAndHome() {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-ow-stampguard-cwd-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-ow-stampguard-home-'));
+    return { cwd, home };
+  }
+
+  function seedConfig(cwd, configRel, recordedVersion) {
+    const abs = path.join(cwd, configRel);
+    fs.mkdirSync(path.dirname(abs), { recursive: true });
+    fs.writeFileSync(abs, JSON.stringify({ pluginVersion: recordedVersion, personaSelection: [] }, null, 2) + '\n');
+    return abs;
+  }
+
+  function runScaffold(cwd, home, extraArgs) {
+    return spawnSync('node', [cliPath].concat(extraArgs), {
+      cwd,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+  }
+
+  for (const sp of scaffoldPaths) {
+    check(`${sp.name} --overwrite over a NEWER recorded pluginVersion warns (naming both versions) and still refreshes the stamp`, () => {
+      const { cwd, home } = makeTmpCwdAndHome();
+      try {
+        const configAbs = seedConfig(cwd, sp.configRel, '99.0.0');
+        const result = runScaffold(cwd, home, sp.args);
+        const combined = result.stdout + result.stderr;
+        assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${combined}`);
+        assert.ok(/downgrade/i.test(combined), `expected a downgrade warning, got: ${combined}`);
+        assert.ok(
+          combined.includes('99.0.0') && combined.includes(pluginVersion),
+          `warning should name both the recorded 99.0.0 and the plugin ${pluginVersion}, got: ${combined}`
+        );
+        const written = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
+        assert.strictEqual(written.pluginVersion, pluginVersion, `expected pluginVersion refreshed to ${pluginVersion}, got ${written.pluginVersion}`);
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
+
+    check(`${sp.name} --overwrite over an equal-or-lower recorded pluginVersion emits NO downgrade warning`, () => {
+      const { cwd, home } = makeTmpCwdAndHome();
+      try {
+        const configAbs = seedConfig(cwd, sp.configRel, '0.0.1');
+        const result = runScaffold(cwd, home, sp.args);
+        const combined = result.stdout + result.stderr;
+        assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${combined}`);
+        assert.ok(!/downgrade/i.test(combined), `expected NO downgrade warning, got: ${combined}`);
+        const written = JSON.parse(fs.readFileSync(configAbs, 'utf8'));
+        assert.strictEqual(written.pluginVersion, pluginVersion, `expected pluginVersion refreshed to ${pluginVersion}, got ${written.pluginVersion}`);
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
+  }
+}
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed.`);
   process.exit(1);

@@ -6,6 +6,17 @@ recorded here. Dates are ISO (YYYY-MM-DD).
 ## [Unreleased]
 
 ### Fixed
+- **Extended the downgrade-stamping guard to the three `--overwrite` scaffold
+  paths in `bin/cli.js`.** `scaffoldCursor`, `scaffoldCodex`, and the main
+  claude-target `--overwrite` branch each unconditionally stamped
+  `pluginVersion = version`, so a stale/older plugin resolving over a newer
+  recorded version silently wrote the stamp backward. A new
+  `warnIfDowngradeStamp` helper (reusing the hardened `compareSemver` from
+  #109) now emits a warning naming both versions before each stamp. This is
+  warn-and-proceed, not refuse — `--overwrite` is already an explicit
+  destructive opt-in, so the defect fixed is the silence, not the stamping.
+  Added per-path regression tests covering all three scaffold branches.
+  Fixes #110.
 - **Hardened `compareSemver`'s dotted-suffix parsing and made the downgrade-
   refusal recovery message install-aware in `bin/cli.js`.** `compareSemver`
   now splits on the first `-`/`+` before dotted-segment parsing, so a
