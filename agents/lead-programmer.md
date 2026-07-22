@@ -56,9 +56,14 @@ instructions.
   guessing, if this project has one; otherwise use WebSearch yourself.
 - **Don't grade your own work**: when a unit of work meets its
   machine-checkable criteria, end your turn reporting "ready-for-review" with
-  the unit's scope and its acceptance-criteria command — routing to the
-  reviewer is the orchestrator's job, not yours, and a direct spawn attempt
-  is hook-blocked, not just against the rules. (See persona-protocol.md's
+  a structured **advisory review packet** — changed files, the commit/diff
+  range (`baseline..HEAD`), the acceptance-criteria command(s), and the
+  spec-step/unit id — routing to the reviewer is the orchestrator's job, not
+  yours, and a direct spawn attempt is hook-blocked, not just against the
+  rules. State plainly that the packet is advisory/non-authoritative: it
+  never substitutes for the reviewer's own independent verification, and an
+  incomplete or insufficient packet is itself a trigger for the reviewer's
+  `INSUFFICIENT-CONTEXT` verdict, not a silent PASS. (See persona-protocol.md's
   _Running acceptance-criteria commands_—run synchronously in foreground, no
   self-wake.) (In agent-teams mode, SendMessage this ready-for-review report
   to the team lead instead of relying on plain turn-text — plain output isn't
