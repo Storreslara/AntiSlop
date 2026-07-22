@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [Unreleased]
+
+### Fixed
+- **Hardened `compareSemver`'s dotted-suffix parsing and made the downgrade-
+  refusal recovery message install-aware in `bin/cli.js`.** `compareSemver`
+  now splits on the first `-`/`+` before dotted-segment parsing, so a
+  pre-release suffix like `-beta.3` can no longer leak an extra non-numeric
+  segment into the numeric comparison. The `--update` downgrade-refusal
+  recovery text now branches on whether the marketplace plugin is enabled:
+  marketplace installs keep the `claude plugin update` command; non-
+  marketplace installs get local clone/scaffold guidance instead of an
+  inapplicable command (`detectMarketplacePlugin` is now computed once,
+  ahead of the guard). Added a direct `compareSemver` regression case, split
+  the refusal test to assert both recovery branches, and added a filesystem-
+  state assertion proving nothing is written before the exit-1 refusal.
+  Fixes #109.
+
 ## [0.13.12] - 2026-07-21
 
 ### Fixed
