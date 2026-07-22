@@ -114,10 +114,16 @@ prose substitute.
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)
-routes to the reviewer. "Done" means the reviewer returned PASS — not that the
-work looks finished. On FAIL, defects route back to the lead-programmer,
-which fixes the specific items listed and reports ready-for-review again; it
-never re-plans and never grades its own work.
+routes to the reviewer. The reviewer returns one of three verdicts — PASS,
+FAIL, or INSUFFICIENT-CONTEXT (see "Third verdict" below) — and "done" means
+it returned PASS, not that the work looks finished. On FAIL, defects route
+back to the lead-programmer, which fixes the specific items listed and
+reports ready-for-review again; it never re-plans and never grades its own
+work. This ownership model relies on a one-unit-at-a-time invariant — only
+one unit is ever mid-review — which is also what the `.blocked` marker's
+flag-keeping heuristic (below) depends on: the route-gate already blocks the
+next gated dispatch while any pending-review flag stands, so there is never a
+second unit's flag to confuse with the blocked one.
 
 The reviewer writes the v2 PASS marker at `.claude/reviewed/<task-id>.pass`
 in BOTH modes, not only where a `TaskCompleted` hook exists to check it — a
@@ -127,7 +133,11 @@ the file must be non-empty and its first line must read exactly `PASS
 command(s) run>`. The reviewer writes this via `Bash` (`printf`, not a bare
 `touch`) on a PASS verdict — this is bookkeeping, not fixing code, and does
 not conflict with "the reviewer never edits the code under review."
-Planning/research/documentation work is never gated by this marker.
+Planning/research/documentation work is never gated by this marker. On PASS,
+the marker MAY carry the reviewer's non-blocking notes appended after this
+required first line, so Minor findings persist instead of being discarded;
+`task-gate.sh`'s `marker_valid()` checks only line 1 and non-emptiness, so
+appended notes don't change what's validated.
 
 In agent-teams mode, "done" is additionally enforced mechanically: the
 `TaskCompleted` hook blocks a task from being marked complete unless this
@@ -171,6 +181,29 @@ No hook gate depends on it (the pending-review flag already clears on any
 reviewer `SubagentStop`, PASS or FAIL alike); it exists purely so a
 completely fresh `spec-master` or orchestrator spawn — one with no memory of
 this session at all — still sees that a unit already failed once.
+
+## Third verdict: insufficient-context
+Beyond PASS and FAIL, the reviewer may return a third verdict,
+`INSUFFICIENT-CONTEXT`, when it cannot verify an acceptance criterion because
+a required constraint is neither in the review packet nor discoverable via
+its own exploration (Read/Grep/Glob, or the explorer, if present). This is a
+last resort after exhausting that exploration, never a substitute for it.
+
+On this verdict the reviewer writes a new marker,
+`.claude/reviewed/<task-id>.blocked` — NOT the `.pass`/`.fail` markers above —
+whose first line reads exactly `BLOCKED <task-id> <UTC ISO-8601 timestamp>
+missing: <one-line description>`, followed by specifics: which criterion
+could not be verified, what constraint or doc is missing, and where the
+reviewer looked for it. This marker **never consumes a 2-FAIL-cap slot** —
+the cap below counts `.fail` records only, unchanged. When the reviewer
+later resolves the same unit to PASS or FAIL, it deletes the `.blocked`
+marker as part of writing the new one.
+
+Mechanical consequence: on an insufficient-context verdict the pending-review
+flag (above) is kept standing rather than cleared, so turn-end and the next
+gated-unit dispatch stay blocked, while dispatching anything non-gated
+(explorer, scribe, or the reviewer itself, if present) is still allowed; the
+existing `defer:`/`skip:` escape hatch on the flag still applies unchanged.
 
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot — a fresh lead-programmer call has no
