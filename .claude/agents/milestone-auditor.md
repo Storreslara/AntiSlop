@@ -315,6 +315,38 @@ from-scratch replan), which flows back through `task-master` for
 re-dispatch. A unit that fails twice usually means the plan itself has a
 gap, not that one more automated pass will close it.
 
+## Reviewer roast-work advisory pass trigger (fable heavy-lifting)
+A unit is "heavy" — eligible for the additional, non-authoritative fable
+`roast-work` advisory pass alongside the authoritative opus/sonnet PASS/FAIL
+review — when it meets ANY of:
+1. **Large surface** — blast radius ≥ ~8 impacted files OR diff ≥ ~400
+   changed lines.
+2. **Structural / cross-cutting change** — e.g. a persona split, an
+   orchestrator routing rewrite, a `bin/cli.js` migration, or any other
+   change to shared/cross-persona surface that a reasonable reviewer would
+   call structurally cross-cutting. This list is illustrative, not
+   exhaustive.
+3. **Security-sensitive surface** — auth, input parsing/validation, secret
+   handling, or migrations touched.
+
+Fable is the single most expensive model tier available to this system —
+fire the pass only when a unit actually meets one of the three criteria
+above, never as a default-to-yes hedge. `task-master` and the orchestrator
+each independently re-derive "heavy" from this same trigger; the tag's
+presence or absence is a suggestion, not the deciding classification.
+
+**Downgrade/expiry path.** A recurring unit *class* (same trigger reason,
+same recurring surface — e.g. "test-fixture-only diffs under `tests/`") that
+has cleared 3 consecutive fable passes with zero Major/Critical findings for
+that class stops qualifying for the tag: `task-master` records the class and
+its clean-streak count in its own `memory: project` store and omits `Roast
+pass: fable` for units matching a downgraded class, noting the omission
+explicitly in the dispatch prompt. Any Major/Critical finding — from either
+pass — resets that class's streak to zero and immediately restores the
+trigger. The downgrade is always per-class, never global, and lapses
+automatically the moment risk reappears, so total system cost does not only
+ratchet up over the repo's lifetime.
+
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
 Write, and Edit so you can manage your memory files — this happens regardless

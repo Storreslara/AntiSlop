@@ -9,7 +9,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.13.13",
+  "pluginVersion": "0.13.14",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -35,17 +35,16 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "dd59a836b7eb7817fd059fd802117f90dc4241bccef0eeccd5f22a025164618a",
+    ".claude/agents/orchestrator.md": "aceecd53416349620d2e24cb8c60838c51b9ec010da0c85319764ef5186f7a57",
     ".claude/agents/explorer.md": "9cfd48cbc31bd627635c07f2651c16da400dc74977b38410bf3bc4be8ad9c1e8",
-    ".claude/agents/lead-programmer.md": "ecf3c0b85b5a8eed028cf9e1c6db5b796ce09ba3d416f68e445bdaf528e66a15",
-    ".claude/agents/milestone-auditor.md": "2e51817b25ebeb55327d4359819f8eee95043d733344a933d2d10da9316b7269",
-    ".claude/agents/reviewer.md": "5775e895bd52a1f79cf9ef2c62f12a3e1e7fc8b4ce3034de83e09848750a860d",
+    ".claude/agents/lead-programmer.md": "868a02993604a3c2aef1d2e5e386748aeb0a6bfcea6807fb42a1ced851c01d39",
+    ".claude/agents/milestone-auditor.md": "b85e741d0ce21f56b0e2575a77bb2770d33a91b1a7af162765b17975e8884941",
+    ".claude/agents/reviewer.md": "bcec1e1cba511f42f82a17bbefbc73176e1e3326c37e4b3afe0223df6311b8eb",
     ".claude/agents/researcher.md": "ed3993b55506413a5a42297021ef4e8873699b5761d40735834cc29dca71c5db",
-    ".claude/persona-protocol.md": "f3b0fac6932bed82703e011fd9bd3c6768af10e1d41103842e6a09d5362800c5",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "ef6588e7397d0da27e16ae8c89fa6a99a85d1892bc454b53e19476b5b2661d63",
-    ".claude/agents/spec-master.md": "f8c21efa40c0ddc777ce61cb0c42aacd206abf6eaa90e6b75243769f261f7c39",
-    ".claude/agents/task-master.md": "cee6bd7da6a16d5de4dd4139e7905d3dbf54917765028d351397c5ba4cc7657f",
+    ".claude/agents/spec-master.md": "a828b2b20442241aefb2d4988106885c8a18e5ce0c0eeb9b0354290d1007a0a7",
+    ".claude/agents/task-master.md": "70373017fafe71bb23249766efd3b6802ad3893aa0d0e110f229c66b5993e671",
     ".claude/persona-protocol-slim.md": "8805d03747e20ac02d2bbf597e95d2cfc61a8fe8473cb348a322489bd89bbea0"
   }
 }
