@@ -202,7 +202,6 @@ three things:
 Setup writes to these locations; removing all of them uninstalls the system
 from a project:
 - `.claude/agents/*.md` (the copied persona files)
-- `.claude/persona-protocol.md`
 - `.claude/protocol-digest.md`
 - `.claude/persona-config.json`
 - `.claude/constitution.md` (if created — opt-in, see "First-time setup")

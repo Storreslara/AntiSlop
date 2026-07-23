@@ -53,8 +53,8 @@ check('renderCleanBody inlines the full protocol into full-tier bodies and the s
     assert.ok(!body.includes(FULL_ONLY), `${p} (slim-tier) must NOT inline the full protocol`);
     assert.ok(body.includes(SLIM_SHARED), `${p} should include the slim answer-shape rule`);
   }
-  // The standalone protocol docs themselves render raw, not tier-wrapped.
-  assert.ok(render('.claude/persona-protocol.md').includes(FULL_ONLY), 'the full protocol doc renders raw');
+  // The standalone slim doc renders raw, not tier-wrapped. (The full protocol
+  // doc is no longer generated as a standalone project file — OQ11=DROP, U12.)
   assert.ok(!render('.claude/persona-protocol-slim.md').includes(FULL_ONLY), 'the slim doc has no full-only phrase');
 });
 
@@ -304,7 +304,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   const graphMcpLaunch = { command: 'npx', args: ['code-review-graph-mcp'] };
 
   // Builds a fresh, fully-baselined project in `tmp`: every current spec
-  // (personaSelection: [] -> CORE_PERSONAS + persona-protocol.md +
+  // (personaSelection: [] -> CORE_PERSONAS + persona-protocol-slim.md +
   // protocol-digest.md) rendered clean and written UNSTAMPED, with
   // fileHashes recorded against that same unstamped content — this makes
   // stripStamp() a no-op, so every file is trivially "no local edits,
@@ -352,6 +352,30 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         'stale hivemind.md fileHashes entry should have been pruned'
       );
       assert.ok(after.fileHashes['.claude/agents/orchestrator.md'], 'current specs should still have fileHashes entries');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  // --- Integration: U12 (OQ11=DROP) cleanup of a pre-existing
+  // `.claude/persona-protocol.md` copy from before the spec was dropped —
+  // nothing reads it at runtime post-U6, so --update deletes it outright
+  // rather than leaving it as an unmanaged orphan. Idempotent: a second run
+  // is a no-op.
+  check('--update deletes a stale pre-existing .claude/persona-protocol.md copy, idempotently', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-stale-protocol-test-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const stalePath = path.join(tmp, '.claude', 'persona-protocol.md');
+      fs.writeFileSync(stalePath, 'stale content predating OQ11=DROP\n');
+
+      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+      assert.ok(!fs.existsSync(stalePath), 'stale .claude/persona-protocol.md should be removed');
+
+      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+      assert.ok(!fs.existsSync(stalePath), 'stale file should stay absent on a second run (no-op)');
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

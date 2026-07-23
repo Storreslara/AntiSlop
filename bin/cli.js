@@ -439,12 +439,6 @@ function buildFileSpecs(personaSelection) {
     });
   }
   specs.push({
-    projectRelPath: '.claude/persona-protocol.md',
-    sourceAbsPath: path.join(PKG_ROOT, 'templates', 'persona-protocol.md'),
-    sourceRelPath: 'templates/persona-protocol.md',
-    kind: 'plain',
-  });
-  specs.push({
     projectRelPath: '.claude/persona-protocol-slim.md',
     sourceAbsPath: path.join(PKG_ROOT, 'templates', 'persona-protocol-slim.md'),
     sourceRelPath: 'templates/persona-protocol-slim.md',
@@ -525,6 +519,18 @@ function migrateGlobalProtocolImport(cwd) {
   return true;
 }
 
+// OQ11=DROP (U12): the full protocol doc is no longer generated as a
+// standalone `.claude/` copy (nothing reads it at runtime post-U6 — it's
+// inlined per-persona instead), so an already-ADAPTed project's pre-existing
+// copy is deleted outright on --update rather than left as an unmanaged
+// orphan. Idempotent: a no-op once the file is gone.
+function removeStaleProtocolCopy(cwd) {
+  const p = path.join(cwd, '.claude', 'persona-protocol.md');
+  if (!fs.existsSync(p)) return false;
+  fs.unlinkSync(p);
+  return true;
+}
+
 async function runUpdate(args) {
   const version = readPluginVersion();
   const configPath = path.join(CWD, '.claude', 'persona-config.json');
@@ -587,6 +593,11 @@ async function runUpdate(args) {
   const migratedClaudeMd = migrateGlobalProtocolImport(CWD);
   if (migratedClaudeMd) {
     console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (now delivered per-persona).');
+  }
+
+  const removedStaleProtocol = removeStaleProtocolCopy(CWD);
+  if (removedStaleProtocol) {
+    console.log('  .claude/persona-protocol.md: removed stale generated copy (protocol is now inlined per-persona).');
   }
 
   const specs = buildFileSpecs(personaSelection);
@@ -658,7 +669,7 @@ async function runUpdate(args) {
   // already matches.
   const checkFlag = args.includes('--check');
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd && !removedStaleProtocol) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
@@ -1612,18 +1623,11 @@ async function main() {
   }
 
   copyStamped(
-    path.join(PKG_ROOT, 'templates', 'persona-protocol.md'),
-    path.join(claudeDir, 'persona-protocol.md'),
-    version,
-    'templates/persona-protocol.md'
-  );
-  copyStamped(
     path.join(PKG_ROOT, 'templates', 'protocol-digest.md'),
     path.join(claudeDir, 'protocol-digest.md'),
     version,
     'templates/protocol-digest.md'
   );
-  console.log('  templates/persona-protocol.md -> .claude/persona-protocol.md');
   console.log('  templates/protocol-digest.md -> .claude/protocol-digest.md');
 
   copyDirRecursive(path.join(PKG_ROOT, 'hooks', 'scripts'), hooksScriptsDir);
