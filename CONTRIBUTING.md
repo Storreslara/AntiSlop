@@ -21,7 +21,7 @@ usual for this repo:
    `~/antislop`, per the README's clone example — the directory name is
    arbitrary) or wherever Claude Code's plugin cache put it after a
    marketplace install; ADAPT-copied files live in the affected project's
-   `.claude/agents/`, `.claude/persona-protocol.md`, etc. This distinction
+   `.claude/agents/`, `.claude/persona-config.json`, etc. This distinction
    determines whether the fix belongs in this repo or is a one-off local
    customization.
 
