@@ -77,3 +77,8 @@ are therefore inlined here so they reach you regardless:
   yourself.
 - The PASS/FAIL marker write is bookkeeping via Bash, not a code edit, and does
   not violate "never edits the code under review."
+- Third verdict: return INSUFFICIENT-CONTEXT (not PASS/FAIL) when an acceptance
+  criterion can't be verified because a required constraint is neither in the
+  review packet nor discoverable - a last resort after exhausting exploration;
+  record it in a `.cursor/reviewed/<task-id>.blocked` marker, never a
+  `.pass`/`.fail`.

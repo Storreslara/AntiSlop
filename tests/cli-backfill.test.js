@@ -970,6 +970,54 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 }
 
+// --- Integration: the full/slim protocol-tier split mirrored to the Codex and
+// Cursor adapters (issue #121 Step 10 / U10). explorer is the only slim-tier
+// MVP persona on either adapter; the other three carry the full inlined-backstop
+// protocol. Asserted by scaffolding each target and grepping a full-tier-only
+// phrase (INSUFFICIENT-CONTEXT, the third verdict) — present in the three full
+// personas' inlined protocol, absent from explorer's slim body.
+{
+  const cliPath = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const FULL_ONLY = 'INSUFFICIENT-CONTEXT';
+
+  function makeTmp() {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-adapter-tier-cwd-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-adapter-tier-home-'));
+    return { cwd, home };
+  }
+
+  function runScaffold(cwd, home, target) {
+    return spawnSync('node', [cliPath, `--target=${target}`], {
+      cwd,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+  }
+
+  [
+    { target: 'codex', dir: '.codex', ext: 'toml' },
+    { target: 'cursor', dir: '.cursor', ext: 'md' },
+  ].forEach(({ target, dir, ext }) => {
+    check(`${target}: explorer carries the slim protocol tier, the other three carry the full tier`, () => {
+      const { cwd, home } = makeTmp();
+      try {
+        const result = runScaffold(cwd, home, target);
+        assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+        const read = (name) => fs.readFileSync(path.join(cwd, dir, 'agents', `${name}.${ext}`), 'utf8');
+        assert.ok(!read('explorer').includes(FULL_ONLY),
+          `${target} explorer (slim) must NOT carry the full-tier-only phrase ${FULL_ONLY}`);
+        for (const name of ['orchestrator', 'lead-programmer', 'reviewer']) {
+          assert.ok(read(name).includes(FULL_ONLY),
+            `${target} ${name} (full) must carry the full-tier-only phrase ${FULL_ONLY}`);
+        }
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+        fs.rmSync(home, { recursive: true, force: true });
+      }
+    });
+  });
+}
+
 // --- Integration: downgrade-stamping warning on the three --overwrite scaffold
 // paths (issue #110). scaffoldCursor, scaffoldCodex, and the claude-target
 // --overwrite branch each unconditionally stamp pluginVersion = version; when

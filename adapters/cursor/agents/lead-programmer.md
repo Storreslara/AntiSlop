@@ -69,3 +69,7 @@ are therefore inlined here so they reach you regardless:
 - WIP sentinel: to end a turn mid-task or with an intentional red suite, write
   a stated reason into `.cursor/wip-handoff.<your-agent-id>` (an empty file is
   ignored). Never use it to dodge a red suite you could fix.
+- Advisory review packet: your ready-for-review report carries the changed
+  files, the baseline..HEAD diff range, the acceptance-criteria command(s), and
+  the unit id - an incomplete packet is itself grounds for the reviewer's
+  INSUFFICIENT-CONTEXT verdict, not a silent PASS.

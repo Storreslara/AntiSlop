@@ -103,3 +103,6 @@ are therefore inlined here so they reach you regardless:
   defect history to the user instead of a third pass.
 - Answer shape: lead with the direct answer, then compact supporting facts;
   never dump raw tool output or whole files.
+- Third verdict: on INSUFFICIENT-CONTEXT the reviewer couldn't verify a
+  criterion - its pending-review flag stays standing; forward the missing
+  constraint and re-dispatch, and never count it as a FAIL-cap slot.
