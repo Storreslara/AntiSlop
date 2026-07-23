@@ -88,3 +88,36 @@ subprocess-only coverage; it can also miss ordinary direct-call unit tests.
 Commit still succeeded (advisory, non-blocking). Don't treat this hook's
 "untested"/"test gap" note as authoritative for any function without
 independently checking `tests/cli-backfill.test.js` for existing calls to it.
+
+**Gotcha 6 (issue #120):** `--update`'s per-file drift check is genuinely
+per-file, not all-or-nothing — one file can sit "diverged, needs a decision"
+(printed as a `--- <path> (current) / (fresh)` diff block plus a trailing "N
+file(s) pending... Re-run with --accept/--keep") while every OTHER tracked
+mirror reports "already current" in the same run, and `pluginVersion` stays
+unbumped until every pending file is resolved. Two prior plain `--update`
+runs by someone else had left exactly one file (`.claude/agents/task-master.md`)
+in this pending state the whole time — its own "already current" per-file
+lines for the other 7-10 files can lull you into assuming the whole tree is
+synced; always read the full output (not just the tail) for a "file(s)
+pending" block. Resolve with `--accept=<path>` (take the fresh regenerated
+copy — the right call whenever the mirror is meant to be pure ADAPT output,
+never hand-edited) or `--keep=<path>` (defer, asked again next drift), or
+`--accept=all`/`--keep=all`. After bumping the plugin version, you MUST
+re-run `--update` (to re-stamp) and confirm a THIRD immediate run reports
+"already current... Nothing to update" with zero pending files before
+treating the mirrors as settled.
+
+**Gotcha 7 (issue #121, U12):** `buildFileSpecs()`/`renderCleanBody()` (used
+only by `runUpdate`) and `main()`'s fresh-scaffold path are two INDEPENDENT
+write sites for the same generated files — `main()` does its own manual
+`copyStamped(...)`/`inlineProtocolBlock(...)` calls rather than iterating
+`buildFileSpecs()`. Removing a generated-file spec from `buildFileSpecs`
+alone stops `--update` from touching it but does NOT stop a fresh
+(non-`--update`) scaffold from still writing it — grep the WHOLE file for
+the literal filename (not just `buildFileSpecs`) before declaring a
+generated file dropped. Also: running `node bin/cli.js --update` in THIS
+repo for verification can sweep in unrelated dogfood drift on
+`.claude/agents/*.md`/`persona-config.json` left by other already-merged
+units that never resynced their own `.claude/` copies — `git status` after
+and stage only your own scoped files (see
+[[feedback_check_index_before_commit]]), don't `git add -A`.

@@ -5,3 +5,4 @@
 - [--force-hooks guard E2E testing](project_cli_force_hooks_guard.md) — spawnSync + tmp HOME pattern for pre-seeding settings.json before a fresh-install scaffold run
 - [Check index before commit](feedback_check_index_before_commit.md) — verify `git diff --cached --stat` before committing; other units may leave unrelated staged files in the index
 - [grep acceptance anchors & line wraps](feedback_grep_acceptance_line_wrap.md) — multi-word grep -q anchors in wrapped prose must stay on one line and match literally (hyphen vs space)
+- [Persona-audit plan tracking (#121)](project_persona_audit_plan.md) — all 13 units done, plan closed at 0.13.14; stamp placement varies by frontmatter presence
