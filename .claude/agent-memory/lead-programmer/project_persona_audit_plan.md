@@ -1,13 +1,38 @@
 ---
 name: project_persona_audit_plan
-description: 13-unit persona-system-audit-patch plan tracking (issue #121) — version-stamp plan defect found in U4, OQ6=A selected in U2, U13 done, per-unit status
+description: persona-system-audit-patch plan tracking (issue #121) — version-stamp plan defect found in U4, OQ6=A selected in U2, U14 (follow-up) done at 0.13.15, per-unit status
 metadata:
   type: project
 ---
 
 Tracking `docs/plans/2026-07-22-persona-system-audit-patch.md` (issue
 #121), an 11-step plan remediating an external architecture audit of the
-persona system. Units are dispatched as `persona-audit-U<n>`.
+persona system. Units are dispatched as `persona-audit-U<n>`. Plan later
+gained a Step 14 (U14) as an appended follow-up after the original 0.13.14
+close, per OQ11's accepted trade-off (see below).
+
+**U14 (Step 14, follow-up, fix stale bare `persona-protocol.md`
+cross-refs) — done, commit `1356b31`, bumped 0.13.14 -> 0.13.15.**
+OQ11/U12's DROP decision orphaned 4 bare (unprefixed) `persona-
+protocol.md` prose pointers across `agents/{lead-programmer,reviewer,
+orchestrator}.md` — the file they named no longer exists standalone since
+U12. 3 were pure-redundant "see X" pointers to content already inlined
+verbatim further down the same body (removed outright); `reviewer.md`'s
+one was different in kind (named the file as a 3rd auto-injected sibling
+alongside CLAUDE.md/constitution.md) so it was reworded, not deleted, to
+avoid leaving a factually-wrong list. The 3 `templates/persona-
+protocol.md`-prefixed references (real file, Step 8's roast-pass dedup
+pointers included) were explicitly out of scope and left untouched — key
+lesson: always check the path PREFIX before assuming a `persona-
+protocol.md` grep hit is stale. Needed its own small version bump per
+Constitution P3 since it lands after 0.13.14 already shipped/closed —
+remember to bump BOTH `.claude-plugin/plugin.json` AND `package.json`
+(validate.sh checks both stay in sync; missed `package.json` on first
+pass, coordinator caught it). `--update`'s fast-path (`config.pluginVersion
+=== version`) means the version bump must happen BEFORE running
+`--update`, or it reports "already current" and skips propagating the
+just-edited source bodies into `.claude/agents/*.md` — do the bump first,
+then `--update`, in that order.
 
 **U11 (Step 11, final) — done, commits `f2383a7` (version bump +
 CHANGELOG) + `874bd07` (final `.claude/` resync).** Bumped both
