@@ -272,6 +272,15 @@ else
 fi
 
 echo
+echo "== adapter protocol-port parity vs canonical template (Node) =="
+if node tests/adapter-protocol-parity.test.js; then
+  echo "OK   tests/adapter-protocol-parity.test.js"
+else
+  echo "FAIL tests/adapter-protocol-parity.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

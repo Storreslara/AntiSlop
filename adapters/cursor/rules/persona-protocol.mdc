@@ -111,6 +111,29 @@ orchestrator stops re-delegating - it surfaces the full defect history across
 both attempts to the user and asks how to proceed, rather than spawning a third
 fix attempt. A unit that fails twice usually means the plan itself has a gap.
 
+## Reviewer roast-work advisory pass trigger (fable heavy-lifting)
+Some units are "heavy" and earn an extra, non-authoritative fable `roast-work`
+pass on top of the authoritative PASS/FAIL review. A unit qualifies when it
+meets ANY of:
+- **Large surface** - blast radius of ~8+ impacted files OR a ~400+ line diff.
+- **Structural / cross-cutting change** - a persona split, an orchestrator
+  routing rewrite, a `bin/cli.js` migration, or any other change to
+  shared/cross-persona surface a reasonable reviewer would call cross-cutting.
+- **Security-sensitive surface** - auth, input parsing/validation, secret
+  handling, or migrations touched.
+
+Fable is the single most expensive model tier available - fire the pass only
+when a unit actually hits one of these triggers, never as a default-to-yes
+hedge.
+
+**Downgrade/expiry path.** A recurring unit *class* (same trigger reason, same
+recurring surface) that clears 3 consecutive fable passes with zero
+Major/Critical findings stops qualifying for the tag: task-master records the
+class and its clean-streak count and omits the roast tag for matching units,
+noting the omission in the dispatch prompt. Any Major/Critical finding - from
+either pass - resets that class's streak to zero and restores the trigger. The
+downgrade is per-class, never global, and lapses the moment risk reappears.
+
 ## Retrieval contract
 The plan states, verbatim, where issues live and how to fetch them (matching
 whatever issue tracker was chosen during setup). Follow that line exactly -

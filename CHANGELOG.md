@@ -3,6 +3,34 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.16] - 2026-07-22
+
+### Fixed
+- **Roast-work advisory-pass trigger backfilled into the Codex and Cursor
+  protocol ports (Step-10 adapter-parity remediation, U15/OQ12).** U8's
+  reviewer roast-work trigger + downgrade/expiry path never reached
+  `adapters/codex/agents-md-fragment.md` or
+  `adapters/cursor/rules/persona-protocol.mdc` — both ports had zero
+  roast/downgrade content. The section is now backfilled into each port in its
+  own established condensed style (the three heavy-unit triggers — large
+  surface, structural/cross-cutting, security-sensitive — plus the per-class
+  clean-streak downgrade/expiry path), not a verbatim copy of the canonical
+  template. The ports are deliberately hand-adapted (reworded headers,
+  platform-specific degradation notes) and copied verbatim by `bin/cli.js`, so
+  construction-time injection was rejected in favor of a drift guard.
+
+### Added
+- **`tests/adapter-protocol-parity.test.js` — fail-closed section-level drift
+  guard.** Derives the canonical top-level section list from
+  `templates/persona-protocol.md` and requires each section to be either
+  present (probe) in each adapter port or on an explicit, documented deferred
+  allow-list. A new canonical section with no map entry throws (fail-closed),
+  and self-verifying negative cases prove the checker rejects unmapped/absent
+  sections. The pre-existing broader port drift ("Agent-teams mode", "Running
+  acceptance-criteria commands", "Third verdict: insufficient-context", "A note
+  on memory") is recorded as documented deferred gaps, not silently dropped.
+  Wired into `tests/validate.sh`.
+
 ## [0.13.15] - 2026-07-22
 
 ### Fixed
