@@ -85,8 +85,7 @@ The pending-review flag stays standing while the `.blocked` marker exists
 (stop-gate.sh keeps it), so turn-end and the next gated dispatch remain
 blocked until the reviewer resolves the unit to PASS/FAIL.
 
-**At the 2-FAIL cap** (persona-protocol.md's "Cap at 2 FAILs per unit"): stop
-re-dispatching lead-programmer on this unit. Surface the full two-attempt
+**At the 2-FAIL cap**: stop re-dispatching lead-programmer on this unit. Surface the full two-attempt
 defect history to the user as before, but instead of only stopping there,
 also spawn `spec-master` to produce a **debug spec** — the focused
 diagnostic artifact spec-master's own file defines for exactly this

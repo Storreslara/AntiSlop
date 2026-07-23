@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.15] - 2026-07-22
+
+### Fixed
+- **Stale bare `persona-protocol.md` prose cross-references corrected
+  (OQ11/U12 trade-off remediation).** `agents/lead-programmer.md`,
+  `agents/reviewer.md`, and `agents/orchestrator.md` each pointed readers at
+  a standalone `persona-protocol.md` file that no longer exists since U12
+  dropped the generated `.claude/persona-protocol.md` copy in favor of
+  per-persona inlining. Three redundant "see persona-protocol.md" pointers
+  (to content already inlined verbatim further down the same body) were
+  removed; `reviewer.md`'s listing of `persona-protocol.md` as a third
+  auto-injected sibling file (alongside `CLAUDE.md`/`constitution.md`) was
+  reworded to describe the protocol as inlined into the file itself. The
+  three genuine `templates/persona-protocol.md` references (the real,
+  still-existing canonical source, including Step 8's roast-pass dedup
+  pointers) are untouched. Closes #121 (U14).
+
 ## [0.13.14] - 2026-07-22
 
 ### Added

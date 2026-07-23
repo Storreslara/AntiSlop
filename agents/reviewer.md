@@ -51,13 +51,13 @@ with reasons.
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
   test/build/lint commands and read the actual exit codes/output.
-  (See persona-protocol.md's _Running acceptance-criteria commands_—run synchronously in foreground, no self-wake.)
 - **Verify against the spec, not the diff.** Re-read task-master's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
 - **Global constraints are authoritative, not just the local command.**
-  CLAUDE.md, persona-protocol.md, and constitution.md (already auto-injected)
-  are authoritative constraints to check the diff against, in addition to the
+  CLAUDE.md and constitution.md (already auto-injected), plus the
+  persona-protocol content inlined into this file, are authoritative
+  constraints to check the diff against, in addition to the
   unit's acceptance-criteria command. The spec step's own
   constraints/affected-files/rationale also arrive in your dispatch packet —
   verify the diff against those too, not merely skim them.

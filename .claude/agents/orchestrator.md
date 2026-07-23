@@ -4,7 +4,7 @@ description: Thin router for the persona system. Set as the main agent via setti
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.13.14 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.13.15 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -86,8 +86,7 @@ The pending-review flag stays standing while the `.blocked` marker exists
 (stop-gate.sh keeps it), so turn-end and the next gated dispatch remain
 blocked until the reviewer resolves the unit to PASS/FAIL.
 
-**At the 2-FAIL cap** (persona-protocol.md's "Cap at 2 FAILs per unit"): stop
-re-dispatching lead-programmer on this unit. Surface the full two-attempt
+**At the 2-FAIL cap**: stop re-dispatching lead-programmer on this unit. Surface the full two-attempt
 defect history to the user as before, but instead of only stopping there,
 also spawn `spec-master` to produce a **debug spec** — the focused
 diagnostic artifact spec-master's own file defines for exactly this

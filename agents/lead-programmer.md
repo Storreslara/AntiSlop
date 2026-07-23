@@ -63,9 +63,8 @@ instructions.
   rules. State plainly that the packet is advisory/non-authoritative: it
   never substitutes for the reviewer's own independent verification, and an
   incomplete or insufficient packet is itself a trigger for the reviewer's
-  `INSUFFICIENT-CONTEXT` verdict, not a silent PASS. (See persona-protocol.md's
-  _Running acceptance-criteria commands_—run synchronously in foreground, no
-  self-wake.) (In agent-teams mode, SendMessage this ready-for-review report
-  to the team lead instead of relying on plain turn-text — plain output isn't
-  visible to other agents in that mode.) On a FAIL verdict, fix the specific
-  defects listed and report ready-for-review again.
+  `INSUFFICIENT-CONTEXT` verdict, not a silent PASS. (In agent-teams mode,
+  SendMessage this ready-for-review report to the team lead instead of
+  relying on plain turn-text — plain output isn't visible to other agents in
+  that mode.) On a FAIL verdict, fix the specific defects listed and report
+  ready-for-review again.
