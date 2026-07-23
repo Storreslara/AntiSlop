@@ -7,8 +7,9 @@
 #     against the installed plugin's own current version, and surface one
 #     line of context on mismatch pointing at `--update`.
 #  3) Anti-drift re-anchor: on `source` == resume|compact ONLY (not
-#     startup/clear, where CLAUDE.md's persona-protocol.md import is already
-#     freshly in context), re-inject .claude/protocol-digest.md as
+#     startup/clear, where the main session's persona (orchestrator) already
+#     carries the protocol inlined in its own body, so it's freshly in
+#     context), re-inject .claude/protocol-digest.md as
 #     additionalContext. Compaction/resume is precisely when a long-running
 #     session (the orchestrator's main session most of all - it has no
 #     maxTurns cap) is likely to have summarized the shared protocol away;

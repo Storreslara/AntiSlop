@@ -462,7 +462,12 @@ function buildFileSpecs(personaSelection) {
 // Appends the tier-appropriate protocol as a version-agnostic marked block to
 // a persona body. Deterministic (source body carries no marker, the block is
 // always rebuilt from the template), so re-running --update is idempotent.
-// Mirrors the Codex `upsertMarkedBlock` inline mechanism (same marker names).
+// Mirrors the Codex `upsertMarkedBlock` inline mechanism (same marker names)
+// but intentionally emits a version-less begin marker, unlike that function's
+// `v${version}` one: this function always rebuilds the whole persona body
+// from pristine source and never searches for its own prior marker, so a
+// version number would serve no idempotency purpose here; the `.claude/`
+// copy already carries its own top-of-file `<!-- antislop vX -->` stamp.
 function inlineProtocolBlock(body, tier) {
   if (!tier) return body;
   const src = tier === 'slim' ? 'persona-protocol-slim.md' : 'persona-protocol.md';

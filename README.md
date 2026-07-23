@@ -179,7 +179,7 @@ invoking it explicitly rather than it ever kicking in on its own.
 |---|---|
 | Persona agents: orchestrator, explorer, lead-programmer (always); spec-master, task-master, scribe, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
-| `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + one `@import` line in CLAUDE.md + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
+| `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | `.claude/persona-protocol.md` (copied from the plugin template, version-stamped) + the protocol inlined per-persona into each `.claude/agents/*.md` body (setup strips any legacy `@import` line from CLAUDE.md rather than writing one) + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |
 | `start-feature-team`, `update-antislop` commands | wiki / CONTEXT.md / docs/adr seeding |
 | — | `.claude/constitution.md` (opt-in, project-authored principles doc — never touched by `--update`) |
@@ -209,7 +209,6 @@ from a project:
 - `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `scribe` was selected)
 - `.claude/settings.json`'s `"agent": "orchestrator"` key, the
   `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it added
-- The `@.claude/persona-protocol.md` line in CLAUDE.md
 - `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`,
   `.claude/wip-audit.log`, `.claude/.pending-review.*`,
   `.claude/review-audit.log` (also in `.gitignore` — safe to delete)
