@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:roast-work
 maxTurns: 30
 ---
-<!-- antislop v0.13.15 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.13.16 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
