@@ -42,3 +42,32 @@ ignoring whatever else is in the shared index — no staging step, no race
 window). Also note: `git reset --soft HEAD~1` is dangerous under parallel
 commits — if another agent's commit became the tip after yours, HEAD~1 is
 THEIRS, not yours; check `git reflog` to confirm you rewound your own commit.
+
+**The race runs in BOTH directions — and the reverse one is not fixable by
+`-o`.** On issue #145 (parallel with #141/#144) I staged my two files, and a
+parallel agent's `git add -A`-style commit landed in that window and swallowed
+them into ITS commit; my own `git commit` then reported "no changes added to
+commit". `-o`/`--only` protects other units from YOU, but nothing protects
+your staged content from another agent's broad `git add`. So: stage and commit
+in a single command, or use `git commit -o <paths>` with no prior `git add` at
+all, keeping the window at zero.
+
+**If your work does land inside another unit's commit, do NOT rewrite it.**
+The tempting fix (`reset --soft` + re-split) invalidates the SHA the other
+in-flight agent is very likely citing in its own review packet, converting
+their PASS into an unverifiable range through no fault of theirs. The content
+is already correct in the tree; report your unit with a path-scoped range
+instead (`git show <sha> -- <your paths>`) and flag the contaminated commit
+boundary explicitly so both reviewers know to scope their diffs.
+
+**RECURRED on #141** (2026-07-29, Step 2 of the namespace-gate plan) — the
+same mistake, with this note already written: I ran the verify-then-`git add`
+sequence anyway, and two `adapters/codex/**` files a parallel unit staged in
+the gap landed in my commit. So the pathspec form is not the "careful" option
+to reach for when things feel risky, it is the ONLY commit form to use in
+this repo: `git commit -F - -- <paths>` works identically to `-o <paths>`
+(both commit the named paths' working-tree content and leave the rest of the
+shared index untouched, so a sibling's staged work survives intact). Recovery
+was `git reset --soft HEAD~1` (reflog-checked: my commit was still the tip)
+then re-commit with `--`, which preserved the sibling's staged files exactly
+as they were.
