@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 fail=0
 
 echo "== bash syntax =="
-for f in hooks/scripts/*.sh; do
+for f in hooks/scripts/*.sh hooks/scripts/lib/*.sh; do
   if bash -n "$f"; then
     echo "OK   $f"
   else
@@ -163,7 +163,7 @@ done
 
 echo
 echo "== Cursor adapter: bash syntax =="
-for f in adapters/cursor/hooks/scripts/*.sh; do
+for f in adapters/cursor/hooks/scripts/*.sh adapters/cursor/hooks/scripts/lib/*.sh; do
   if bash -n "$f"; then
     echo "OK   $f"
   else
@@ -204,11 +204,26 @@ fi
 
 echo
 echo "== Codex adapter: bash syntax =="
-for f in adapters/codex/hooks/scripts/*.sh; do
+for f in adapters/codex/hooks/scripts/*.sh adapters/codex/hooks/scripts/lib/*.sh; do
   if bash -n "$f"; then
     echo "OK   $f"
   else
     echo "FAIL $f"
+    fail=1
+  fi
+done
+
+echo
+echo "== shared hook libs: three platform copies byte-identical =="
+# The agent-identity library is byte-identical by design (it derives its
+# recognized namespace from its own on-disk location rather than a per-platform
+# path), so any divergence between the copies is drift, not a port.
+for f in adapters/cursor/hooks/scripts/lib/agent-identity.sh \
+         adapters/codex/hooks/scripts/lib/agent-identity.sh; do
+  if diff -q hooks/scripts/lib/agent-identity.sh "$f" >/dev/null 2>&1; then
+    echo "OK   $f byte-identical to hooks/scripts/lib/agent-identity.sh"
+  else
+    echo "FAIL $f differs from hooks/scripts/lib/agent-identity.sh"
     fail=1
   fi
 done
