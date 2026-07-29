@@ -1,14 +1,24 @@
 #!/usr/bin/env bash
-# PreToolUse (Bash). Built against Probe A's confirmed result - agent_type IS
-# present on a subagent-issued Bash PreToolUse payload - see
-# docs/experiments/2026-07-probe-hook-payloads.md, Probe A. Attributes the
-# caller from the top-level `agent_type` field and blocks Bash commands whose
-# text touches `.claude/reviewed` (the PASS-marker directory) unless the
-# caller is the reviewer, or the main session/team lead in the documented
-# no-reviewer fallback (personaSelection does NOT contain "reviewer" -
-# start-feature-team.md:49-53, orchestrator.md's "if no reviewer persona
-# exists"). Any other agent_type (lead-programmer above all) is blocked.
-# Guards on persona-config.json existing, same as every other gate.
+# PreToolUse (Bash). Attributes the caller from the top-level `agent_type`
+# field and blocks Bash commands whose text touches `.claude/reviewed` (the
+# PASS-marker directory) unless the caller is the reviewer, or the main
+# session/team lead in the documented no-reviewer fallback (personaSelection
+# does NOT contain "reviewer" - start-feature-team.md:49-53, orchestrator.md's
+# "if no reviewer persona exists"). Any other caller (lead-programmer above
+# all) is blocked. Guards on persona-config.json existing, same as every other
+# gate.
+#
+# `agent_type` carries an AGENT IDENTITY - the possibly-namespaced wire value
+# "[<namespace>:]<persona-name>" - not a bare persona name. Probe A
+# (docs/experiments/2026-07-probe-hook-payloads.md) established that the field
+# is PRESENT on a subagent-issued Bash PreToolUse payload; it did not establish
+# its value space, and the field is in fact observed arriving namespaced
+# (`antislop:reviewer`). Both sides are therefore normalized through
+# lib/agent-identity.sh, with the two matchers failing in opposite directions
+# by design: the reviewer-may-write decision is a privilege GRANT and uses the
+# conservative matcher (a foreign namespace must never inherit authority over
+# the PASS markers), while the personaSelection test is a GATE and uses the
+# liberal one, since a miss there only makes the main session's write allowed.
 #
 # Collateral, accepted per the plan: any Bash command whose text merely
 # CONTAINS the substring ".claude/reviewed" is blocked, including read-only
@@ -18,6 +28,8 @@
 # README.md's "Known limitations", same framing as the existing `sed -i`
 # bypass caveat on protected-paths.sh.
 set -euo pipefail
+
+source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -32,12 +44,24 @@ esac
 
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
-if [ "$agent_type" = "reviewer" ]; then
+# Only past the substring early-exit above: this hook fires on EVERY Bash call
+# in the session, and the hot path must pay nothing for the audit log.
+review_audit="${project_dir}/.claude/review-audit.log"
+identity_drift_log "$agent_type" reviewed-path-gate "$review_audit"
+
+if persona_matches_grant "$agent_type" reviewer; then
   exit 0
 fi
 
 if [ -z "$agent_type" ]; then
-  has_reviewer="$(jq -r '.personaSelection[]? // empty' "$config" 2>/dev/null | grep -x reviewer || true)"
+  has_reviewer=""
+  personas="$(jq -r '.personaSelection[]? // empty' "$config" 2>/dev/null || true)"
+  while IFS= read -r persona; do
+    if persona_matches_gate "$persona" reviewer; then
+      has_reviewer=1
+      break
+    fi
+  done <<< "$personas"
   if [ -z "$has_reviewer" ]; then
     exit 0
   fi
