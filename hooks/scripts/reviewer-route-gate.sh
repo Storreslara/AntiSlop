@@ -7,24 +7,38 @@
 # backstop - stop-gate.sh sets/clears the flag this checks; see
 # templates/persona-protocol.md's "Pending-review flag" section).
 #
-# Confirmed empirically (not assumed) that a nested Agent-tool call carries
-# both the CALLING agent's identity and the call's own tool_input: when a
-# subagent invokes the Agent tool, PreToolUse's JSON payload includes a
-# top-level `agent_type` (the caller) alongside `tool_input.subagent_type`
-# (the spawn target) - the same attribution CHANGELOG 0.3.0 left unverified.
+# A nested Agent-tool call carries both the CALLING agent's identity and the
+# call's own tool_input: PreToolUse's JSON payload includes a top-level
+# `agent_type` (the caller) alongside `tool_input.subagent_type` (the spawn
+# target). Both fields carry an AGENT IDENTITY - a possibly-namespaced wire
+# value like `antislop:reviewer` - while a PERSONA NAME is always bare, so
+# neither may be compared as a bare string. Each side is normalized
+# independently via lib/agent-identity.sh; both sites here are GATE sites,
+# where a missed match fails OPEN, so both use the liberal matcher.
 # This only covers the `Agent` tool (a direct spawn attempt); it does not
 # cover SendMessage to an existing reviewer teammate in agent-teams mode -
 # that's a different tool with a different payload shape, out of scope here.
 set -euo pipefail
 
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
+
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
+review_audit="${project_dir}/.claude/review-audit.log"
 
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
 
-if [ "$agent_type" = "lead-programmer" ] && [ "$target_type" = "reviewer" ]; then
+# Only in an adapted project (the audit log is part of the review lifecycle
+# this config declares). Empty identities are a no-op inside the library.
+if [ -f "$config" ]; then
+  identity_drift_log "$agent_type" "reviewer-route-gate" "$review_audit"
+  identity_drift_log "$target_type" "reviewer-route-gate" "$review_audit"
+fi
+
+if persona_matches_gate "$agent_type" "lead-programmer" \
+   && persona_matches_gate "$target_type" "reviewer"; then
   echo "BLOCKED: lead-programmer may not spawn the reviewer directly. Report 'ready-for-review' and let the orchestrator (or team lead) route it, per persona-protocol.md's Review Ownership section." >&2
   exit 2
 fi
@@ -39,7 +53,7 @@ if [ -f "$config" ]; then
 
     match=false
     while IFS= read -r name; do
-      [ -n "$name" ] && [ "$name" = "$target_type" ] && match=true
+      persona_matches_gate "$name" "$target_type" && match=true
     done <<< "$gated"
 
     if [ "$match" = true ]; then
