@@ -229,6 +229,15 @@ for f in adapters/cursor/hooks/scripts/lib/agent-identity.sh \
 done
 
 echo
+echo "== agent-identity library: identity_drift_log behaviour (Bash) =="
+if bash tests/agent-identity-lib.test.sh; then
+  echo "OK   tests/agent-identity-lib.test.sh"
+else
+  echo "FAIL tests/agent-identity-lib.test.sh"
+  fail=1
+fi
+
+echo
 echo "== Codex adapter: JSON validity =="
 for f in adapters/codex/hooks/hooks.json \
          adapters/codex/.codex-plugin/plugin.json \

@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Function-level tests for hooks/scripts/lib/agent-identity.sh's
-# identity_drift_log: regression coverage from the #140 review plus the two
-# #140 follow-up hardening fixes (audit-log write failure must not abort the
-# calling hook; sanitization must prevent dedupe-marker forgery).
+# identity_drift_log: regression coverage from the #140 review plus the #140
+# follow-up hardening fixes (an unusable audit log must never abort the calling
+# hook, on either the read or the write path; the dedupe key must be injective
+# so a crafted identity cannot suppress a genuine one).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -46,44 +47,91 @@ else
 fi
 rm -f "$audit"
 
-# --- Fix 1: audit-log write failure must not abort the calling hook ---
+# --- Fix 1: an unusable audit log must not abort the calling hook ---
+# Two distinct failure modes: chmod 444 exercises the WRITE path (open for
+# append fails), chmod 000 additionally exercises the READ path (the dedupe
+# scan's `done < "$audit"` redirection fails). Both must leave the caller
+# running AND emit nothing on stderr - a failed redirection's diagnostic comes
+# from the shell itself, so it escapes a bare `2>/dev/null` on the command.
+check_unusable_audit() {
+  local mode="$1" label="$2" a rc=0 out err
+  a="$(mktemp)"
+  chmod "$mode" "$a"
+  err="$(mktemp)"
+  out="$(
+    bash -c '
+      set -euo pipefail
+      source "'"$lib"'"
+      identity_drift_log "otherplugin:reviewer" "hook" "'"$a"'"
+      echo CONTINUED
+    ' 2>"$err"
+  )" || rc=$?
+  chmod 644 "$a"
+  if [ "$rc" = 0 ] && [ "$out" = "CONTINUED" ] && [ ! -s "$err" ]; then
+    echo "OK   fix1 ($label): $mode audit log degrades to a silent no-op instead of aborting the caller"
+  else
+    echo "FAIL fix1 ($label): rc=$rc out='$out' stderr='$(cat "$err")' (expected rc=0, CONTINUED, empty stderr)"
+    fail=1
+  fi
+  rm -f "$a" "$err"
+}
+check_unusable_audit 444 write-path
+check_unusable_audit 000 read-path
 
-roaudit="$(mktemp)"
-chmod 444 "$roaudit"
-rc=0
-out="$(
-  bash -c '
-    set -euo pipefail
-    source "'"$lib"'"
-    identity_drift_log "otherplugin:reviewer" "hook" "'"$roaudit"'"
-    echo CONTINUED
-  ' 2>/dev/null
-)" || rc=$?
-chmod 644 "$roaudit"
-rm -f "$roaudit"
-if [ "$rc" = 0 ] && [ "$out" = "CONTINUED" ]; then
-  echo "OK   fix1: unwritable audit log degrades to no-op instead of aborting the caller"
-else
-  echo "FAIL fix1: caller aborted (rc=$rc) instead of continuing past an unwritable audit log"
+# --- Fix 2: the dedupe key must be injective ---
+# Every payload below is a DIFFERENT raw identity that the old strip-based
+# sanitizer collapsed onto the same displayed value as the genuine
+# "otherplugin:evil", in a different drift class. Logging the crafted one first
+# must never swallow the genuine entry that follows.
+genuine="otherplugin:evil"
+for poison in \
+  'otherplugin:evil@' \
+  'otherplugin!:evil' \
+  'otherplugin:evil ' \
+  'poison me identity=otherplugin:evil'
+do
+  audit="$(mktemp)"
+  rm -f "$audit"
+  (
+    source "$lib"
+    identity_drift_log "$poison" "hook" "$audit"
+    identity_drift_log "$genuine" "hook" "$audit"
+  )
+  lines="$(wc -l < "$audit")"
+  if [ "$lines" = 2 ] \
+     && grep -q 'class=unparseable' "$audit" \
+     && grep -q "class=unrecognized-namespace.*identity=${genuine}\$" "$audit"; then
+    echo "OK   fix2: crafted '$poison' does not swallow the genuine '$genuine' entry"
+  else
+    echo "FAIL fix2: dedupe collision reproduced for '$poison' (got $lines lines, expected 2 distinct entries)"
+    fail=1
+  fi
+  rm -f "$audit"
+done
+
+# --- Fix 2b: the length cap is a second lossy step feeding the same key ---
+# Two identities sharing their first 128 bytes but differing past the cap, in
+# different classes. The cap makes their displayed values identical, so the key
+# must carry the class too or the first logged swallows the second.
+long_prefix="other:$(printf 'a%.0s' $(seq 1 122))"
+if [ "${#long_prefix}" != 128 ]; then
+  echo "FAIL fix2b: test fixture prefix is ${#long_prefix} bytes, expected 128"
   fail=1
 fi
-
-# --- Fix 2: dedupe log-poisoning via a crafted unparseable identity ---
-
 audit="$(mktemp)"
 rm -f "$audit"
 (
   source "$lib"
-  identity_drift_log 'poison me identity=otherplugin:evil' "hook" "$audit"
-  identity_drift_log 'otherplugin:evil' "hook" "$audit"
+  identity_drift_log "${long_prefix}@" "hook" "$audit"
+  identity_drift_log "${long_prefix}X" "hook" "$audit"
 )
 lines="$(wc -l < "$audit")"
 if [ "$lines" = 2 ] \
    && grep -q 'class=unparseable' "$audit" \
-   && grep -q 'class=unrecognized-namespace.*identity=otherplugin:evil$' "$audit"; then
-  echo "OK   fix2: poisoned unparseable entry does not swallow the later genuine otherplugin:evil entry"
+   && grep -q 'class=unrecognized-namespace' "$audit"; then
+  echo "OK   fix2b: identities differing only past the 128-byte cap stay distinct across classes"
 else
-  echo "FAIL fix2: log-poisoning dedupe collision reproduced (got $lines lines, expected 2 distinct entries)"
+  echo "FAIL fix2b: 128-byte truncation collision reproduced (got $lines lines, expected 2)"
   fail=1
 fi
 rm -f "$audit"
