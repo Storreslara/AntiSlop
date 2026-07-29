@@ -110,6 +110,11 @@ _identity_sanitize() {
   local s="${1-}"
   s="${s//$'\n'/}"
   s="${s//$'\r'/}"
+  # Strip anything outside the identity token charset (alnum/:/-/_/.) so a
+  # sanitized value can never itself contain a space - which would otherwise
+  # let a crafted identity forge the " identity=" dedupe-marker boundary
+  # below and poison the dedupe check for a later, genuinely different id.
+  s="${s//[^A-Za-z0-9:_.-]/}"
   printf '%s' "${s:0:128}"
 }
 
@@ -145,6 +150,10 @@ identity_drift_log() {
       fi
     done < "$audit"
   fi
+  # A write failure here (disk full, unwritable audit path, ...) must degrade
+  # to "the drift wasn't logged" rather than aborting the calling hook under
+  # its `set -e` - this is a logging side-effect, never a gate decision.
   printf '%s identity-drift class=%s hook=%s identity=%s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$class" "$(_identity_sanitize "$hook")" "$safe" >> "$audit"
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$class" "$(_identity_sanitize "$hook")" "$safe" \
+    >> "$audit" 2>/dev/null || true
 }
