@@ -3,20 +3,32 @@
 # gating which agents this actually checks is config-driven via
 # persona-config.json's gatedAgents list (default: ["lead-programmer"]),
 # not the hook registration. Adding a future code-writing persona is a
-# config edit, not a plugin file edit. Confirmed empirically that the
-# SubagentStop payload carries `agent_type`, so this filtering is reliable
-# for SubagentStop. The plain Stop payload (main session) carries NO
-# agent_type at all, so for Stop this filtering instead keys off the
-# configured main agent (settings.json's `.agent`, default "orchestrator",
-# per templates/settings-fragment.json) - a static, per-project value, not
-# a per-event field. With the default config (main agent = orchestrator,
+# config edit, not a plugin file edit. The SubagentStop payload carries an
+# `agent_type`, so this filtering is reliable for SubagentStop. The plain
+# Stop payload (main session) carries NO agent_type at all, so for Stop this
+# filtering instead keys off the configured main agent (settings.json's
+# `.agent`, default "orchestrator", per templates/settings-fragment.json) -
+# a static, per-project value, not a per-event field. With the default config (main agent = orchestrator,
 # gatedAgents = ["lead-programmer"]) this means the main-session check is
 # skipped entirely: the orchestrator has no Write/Edit tools (see its
 # `tools:` frontmatter) and cannot dirty the tree itself, so a dirty tree at
 # orchestrator-Stop time can only mean a dispatched subagent is mid-flight -
 # and that subagent is already gated independently at its own SubagentStop.
 # A project that makes a code-writing persona the main agent still gets
-# gated correctly, since gatedAgents is checked against that agent's name.
+# gated correctly, since gatedAgents is checked against that agent's identity.
+#
+# Identity vocabulary (contract in hooks/scripts/lib/agent-identity.sh): a
+# PERSONA NAME is bare ("reviewer"); an AGENT IDENTITY is the possibly
+# namespaced wire value ("antislop:reviewer"); `agent_type`, `subagent_type`
+# and settings.json's `.agent` are the three FIELDS that carry an identity.
+# No field is assumed to arrive bare. Gate comparisons canonicalize BOTH
+# sides liberally (persona_matches_gate) because a miss there fails OPEN -
+# so gatedAgents entries and `.agent` may be written in either form. The
+# reviewer's privilege to clear pending-review flags is instead granted
+# conservatively (persona_matches_grant), only to an identity resolving to
+# this plugin's own namespace: a miss there fails CLOSED, which is loud and
+# recoverable. Identities whose form cannot be attributed are recorded in
+# .claude/review-audit.log as identity-drift lines.
 #
 # Logic, in order:
 #  0) stop_hook_active guard - never re-trigger ourselves in a loop.
@@ -75,6 +87,7 @@
 # remains possible; `.claude/review-audit.log` is the deterrent, not a
 # guarantee.
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -87,18 +100,27 @@ stop_active="$(echo "$input" | jq -r '.stop_hook_active // false' 2>/dev/null ||
 hook_event="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
-if [ "$hook_event" = "SubagentStop" ] && [ "$agent_type" = "reviewer" ]; then
-  [ -f "$config" ] || exit 0
-  shopt -s nullglob
-  blocked_markers=( "${project_dir}"/.claude/reviewed/*.blocked )
-  shopt -u nullglob
-  if [ "${#blocked_markers[@]}" -gt 0 ]; then
-    printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+identity_drift_log "$agent_type" "$hook_event" "$review_audit"
+
+if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
+  if persona_matches_grant "$agent_type" reviewer; then
+    [ -f "$config" ] || exit 0
+    shopt -s nullglob
+    blocked_markers=( "${project_dir}"/.claude/reviewed/*.blocked )
+    shopt -u nullglob
+    if [ "${#blocked_markers[@]}" -gt 0 ]; then
+      printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+      exit 0
+    fi
+    rm -f "${project_dir}"/.claude/.pending-review.* 2>/dev/null || true
+    printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
     exit 0
   fi
-  rm -f "${project_dir}"/.claude/.pending-review.* 2>/dev/null || true
-  printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  exit 0
+  # Clearing review flags is a privilege granted only to this project's own
+  # reviewer, so a foreign namespace falls through with the flags standing.
+  # That is a deadlock a human has to break, so say so here rather than
+  # leaving only the identity-drift audit line above.
+  echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or per flag: 'printf \"defer: <reason>\\n\" > .claude/.pending-review.<agent-id>' (keeps it, review still owed) or 'skip: <reason>' (deletes it, unit abandoned)." >&2
 fi
 
 if [ "$hook_event" = "Stop" ]; then
@@ -145,7 +167,7 @@ if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
 
   match=false
   while IFS= read -r name; do
-    [ -n "$name" ] && [ "$name" = "$check_name" ] && match=true
+    [ -n "$name" ] && persona_matches_gate "$name" "$check_name" && match=true
   done <<< "$gated"
   [ "$match" = true ] || exit 0
 fi
