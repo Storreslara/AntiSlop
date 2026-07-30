@@ -238,6 +238,24 @@ else
 fi
 
 echo
+echo "== stop-gate .blocked-marker behaviour (Bash) =="
+if bash tests/stop-gate-blocked.test.sh; then
+  echo "OK   tests/stop-gate-blocked.test.sh"
+else
+  echo "FAIL tests/stop-gate-blocked.test.sh"
+  fail=1
+fi
+
+echo
+echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
+if bash tests/agent-identity-namespace.test.sh; then
+  echo "OK   tests/agent-identity-namespace.test.sh"
+else
+  echo "FAIL tests/agent-identity-namespace.test.sh"
+  fail=1
+fi
+
+echo
 echo "== Codex adapter: JSON validity =="
 for f in adapters/codex/hooks/hooks.json \
          adapters/codex/.codex-plugin/plugin.json \
