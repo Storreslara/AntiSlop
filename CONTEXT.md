@@ -24,6 +24,15 @@ drift apart.
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,
   which lets `bin/cli.js --update` tell "plugin's current version" from
   "what's on disk" and detect local edits via `fileHashes` without an LLM.
+- **`--update` semantics** — `bin/cli.js --update` is the mechanism for
+  refreshing ADAPT-stamped files. Crucially, the `--check` flag is a
+  force-the-loop control, not a dry-run: `--check` still writes files via
+  `copyStampedBody` and still rewrites `persona-config.json`, unlike
+  `scripts/resync-vendored-skills.sh --check` which is genuinely read-only.
+  Stamps self-heal automatically: `--update` refreshes a mirror's
+  `<!-- antislop vX.Y.Z -->` stamp whenever the resolved plugin version
+  differs from the stamp on disk, even when the mirror's body content is
+  unchanged, retiring the prior hand-patch workaround.
 - **Substitution** — a placeholder in a shipped persona file (e.g.
   `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`) resolved to a real
   value at ADAPT time and recorded in `.claude/persona-config.json`'s
@@ -65,6 +74,16 @@ drift apart.
   acceptance-criteria command + the existing materiality filter; roast-work
   never flips a verdict. Appended as a clearly-demarcated advisory section
   after the verdict line.
+- **Agent identity** — the possibly-namespaced wire form of a persona name,
+  `[<namespace>:]<persona-name>`, appearing in hook payloads' `agent_type` and
+  `subagent_type` fields. The gate hooks normalize identities to handle both
+  bare dispatch (project-local copies) and namespaced dispatch (marketplace
+  plugin), using asymmetric matching: liberal matching (any namespace) at sites
+  where a miss fails open, conservative matching (recognized namespace only) at
+  privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
+  the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
+  identically across all three platform ports. [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
+  documents the audit-logging hardening applied post-Step-1.
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
