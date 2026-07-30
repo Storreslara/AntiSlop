@@ -112,3 +112,19 @@ into independently-grabbable, unambiguous units of work.
   dated `## Convergence follow-ups` heading, slice those the same way as any
   other step — `to-issues`, model tag, dispatch prompt — never treat them
   differently just because they arrived after the original plan closed.
+
+## Dispatch hygiene
+
+1. **Artifact, not argument.** Cite the finalized spec by `docs/plans/` path
+   or issue id (retrieval contract) — never paste the interrogation trail.
+2. **One brief, many siblings.** Sibling units from the same spec cite one
+   artifact path; never re-derive or re-paste shared source per unit.
+3. **`Unit: <id>` first line.** Every dispatch to a gated agent opens with
+   `Unit: <task-id>` as its literal first line — the id the reviewer uses for
+   `.claude/reviewed/<task-id>.pass`. `dispatch-hygiene.sh` reads only that
+   first line; elsewhere it's ignored, and quoting one in the body is
+   harmless. Grammar: alphanumeric first char, then `A-Za-z0-9._#-`, no `/`,
+   ≤64 chars.
+
+Gate: `dispatch-hygiene.sh`. Escape hatch:
+`printf 'override: <reason>\n' > .claude/.dispatch-override`.

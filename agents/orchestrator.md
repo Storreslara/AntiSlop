@@ -46,6 +46,21 @@ Every delegation prompt states: the objective, the expected output format, and
 explicit boundaries (what the persona should NOT do). Vague handoffs produce
 vague or over-scoped work.
 
+## Dispatch hygiene
+1. **Artifact, not argument.** Cite the finalized artifact by `docs/plans/`
+   path or issue id (retrieval contract) — never the interrogation trail.
+2. **One brief, many siblings.** Sibling units from the same spec cite one
+   artifact path; never re-derive or re-paste shared source per unit.
+3. **`Unit: <id>` first line.** Every dispatch to a gated agent opens with
+   `Unit: <task-id>` as its literal first line — the id the reviewer uses for
+   `.claude/reviewed/<task-id>.pass`. `dispatch-hygiene.sh` reads only that
+   first line; elsewhere it's ignored, and quoting one in the body is
+   harmless. Grammar: alphanumeric first char, then `A-Za-z0-9._#-`, no `/`,
+   ≤64 chars.
+
+Gate: `dispatch-hygiene.sh`. Escape hatch:
+`printf 'override: <reason>\n' > .claude/.dispatch-override`.
+
 ## Review routing — you are the single owner
 The lead-programmer never spawns the reviewer. When it reports
 "ready-for-review": (1) run the graph freshness check below, (2) spawn the
