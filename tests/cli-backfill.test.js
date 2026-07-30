@@ -381,6 +381,34 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration: Step 5 (token-hygiene-dispatch-gate) .gitignore backfill.
+  // `runUpdate` must reach already-adapted projects too, not just the
+  // scaffold-time lists — this is the specific gap Step 5 exists to close.
+  check('--update backfills .claude/dispatch-audit.log and .claude/.dispatch-override into .gitignore without touching other lines, idempotently', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gitignore-backfill-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const gitignorePath = path.join(tmp, '.gitignore');
+      const original = '*.log\nnode_modules/\n.claude/reviewed/\n.claude/wip-audit.log\n.claude/review-audit.log\n';
+      fs.writeFileSync(gitignorePath, original);
+
+      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+
+      const afterFirst = fs.readFileSync(gitignorePath, 'utf8');
+      assert.ok(afterFirst.includes('.claude/dispatch-audit.log'), 'expected .claude/dispatch-audit.log to be backfilled');
+      assert.ok(afterFirst.includes('.claude/.dispatch-override'), 'expected .claude/.dispatch-override to be backfilled');
+      assert.ok(afterFirst.startsWith(original), 'pre-existing .gitignore lines must survive unmodified and unreordered, as an exact prefix');
+
+      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+      const afterSecond = fs.readFileSync(gitignorePath, 'utf8');
+      assert.strictEqual(afterSecond, afterFirst, 'a second --update must leave .gitignore byte-identical (idempotence)');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   check('--update --check catches drift past the version-match fast-path that a plain --update misses', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-check-test-'));
     try {

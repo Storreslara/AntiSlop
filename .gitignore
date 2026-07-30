@@ -15,3 +15,5 @@ scratch/
 .claude/wip-audit.log
 .claude/.pending-review.*
 .claude/review-audit.log
+.claude/dispatch-audit.log
+.claude/.dispatch-override

@@ -600,6 +600,14 @@ async function runUpdate(args) {
     console.log('  .claude/persona-protocol.md: removed stale generated copy (protocol is now inlined per-persona).');
   }
 
+  // Backfill .gitignore reach for the two dispatch-hygiene state files
+  // (Step 5, token-hygiene-dispatch-gate) into already-adapted projects,
+  // which a scaffold-list-only change would never reach.
+  appendUnique(path.join(CWD, '.gitignore'), [
+    '.claude/dispatch-audit.log',
+    '.claude/.dispatch-override',
+  ]);
+
   const specs = buildFileSpecs(personaSelection);
 
   // Legacy backfill: derive whatever substitutions/fileHashes entries are
@@ -1057,6 +1065,8 @@ async function scaffoldCursor(args) {
     '.cursor/wip-audit.log',
     '.cursor/.pending-review.*',
     '.cursor/review-audit.log',
+    '.cursor/dispatch-audit.log',
+    '.cursor/.dispatch-override',
   ]);
   console.log('  .gitignore updated');
 
@@ -1431,6 +1441,8 @@ async function scaffoldCodex(args) {
     '.codex/wip-audit.log',
     '.codex/.pending-review.*',
     '.codex/review-audit.log',
+    '.codex/dispatch-audit.log',
+    '.codex/.dispatch-override',
     '.codex/.stop-loop-guard.*',
   ]);
   console.log('  .gitignore updated');
@@ -1692,6 +1704,8 @@ async function main() {
     '.claude/wip-audit.log',
     '.claude/.pending-review.*',
     '.claude/review-audit.log',
+    '.claude/dispatch-audit.log',
+    '.claude/.dispatch-override',
   ]);
   console.log('  .gitignore updated');
 
