@@ -8,6 +8,7 @@ Start here, then branch out:
 - [conventions.md](conventions.md) — house rules for this repo specifically
 - [dependencies.md](dependencies.md) — what this repo depends on (spoiler: almost nothing)
 - [changelog.md](changelog.md) — dated log of lead-programmer work, distinct from the project's own `CHANGELOG.md`
+- [probe-methodology.md](probe-methodology.md) — lessons on empirical probe design (from #139)
 - `modules/` — deeper notes on the meatier pieces (`cli.md`, `hooks.md`, `adapters.md`, `eval-harness.md`)
 
 For "what does this repo do and why," also read the root `README.md` — it's
