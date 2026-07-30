@@ -12,7 +12,7 @@ mcpServers:
       args:
         - arxiv-mcp-server
 ---
-<!-- antislop v0.13.16 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
+<!-- antislop v0.13.18 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
 <!-- NOT shipped as a plugin agent: plugin subagents ignore the `mcpServers`
      frontmatter field entirely (Claude Code plugin security restriction), so
      this file only works as a PROJECT-scoped agent. The install-antislop
@@ -112,6 +112,16 @@ slice you actually need rather than re-running the same command unfiltered.
   whichever name/identifier the lead used when it spawned you; don't assume a
   fixed literal like `"main"` is always correct, since the right recipient
   can differ between agent-teams mode and other modes.
+
+## Terminal status line (every dispatched turn)
+End the message you return to your caller with a status line — the last
+non-empty line, nothing after it: `STATUS: complete`, or
+`STATUS: incomplete — <one-line, non-empty reason>` (an ASCII hyphen is an
+accepted substitute for the em dash). You cannot see your own turn count or
+your own cap being hit, and the `max_turns_reached` cutoff marker renders as
+zero content blocks — the truncated turn's own partial output still renders
+normally, so it reads exactly like a finished one unless the finished one is
+signed. A missing line is a prompt to resume, not a defect and not a FAIL.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,

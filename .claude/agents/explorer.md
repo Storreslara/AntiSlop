@@ -7,13 +7,14 @@ tools: Read, Grep, Glob, Bash, Skill, SendMessage
 mcpServers:
   - code-review-graph:
       type: stdio
-      command: uvx
+      command: /home/sebas/.local/share/pipx/venvs/code-review-graph/bin/python
       args:
-        - code-review-graph
+        - -m
+        - code_review_graph
         - serve
 maxTurns: 10
 ---
-<!-- antislop v0.13.16 | source: agents/explorer.md | ADAPT-substituted -->
+<!-- antislop v0.13.18 | source: agents/explorer.md | ADAPT-substituted -->
 <!-- `mcpServers` is inlined here (not project-wide `.mcp.json`) so only the
      explorer connects; must stay a LIST of single-key dicts each with
      explicit `type:` — a flat map keyed by server name is SILENTLY ignored
@@ -107,6 +108,16 @@ slice you actually need rather than re-running the same command unfiltered.
   whichever name/identifier the lead used when it spawned you; don't assume a
   fixed literal like `"main"` is always correct, since the right recipient
   can differ between agent-teams mode and other modes.
+
+## Terminal status line (every dispatched turn)
+End the message you return to your caller with a status line — the last
+non-empty line, nothing after it: `STATUS: complete`, or
+`STATUS: incomplete — <one-line, non-empty reason>` (an ASCII hyphen is an
+accepted substitute for the em dash). You cannot see your own turn count or
+your own cap being hit, and the `max_turns_reached` cutoff marker renders as
+zero content blocks — the truncated turn's own partial output still renders
+normally, so it reads exactly like a finished one unless the finished one is
+signed. A missing line is a prompt to resume, not a defect and not a FAIL.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
