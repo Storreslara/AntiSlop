@@ -65,6 +65,15 @@ slice you actually need rather than re-running the same command unfiltered.
   fixed literal like `"main"` is always correct, since the right recipient
   can differ between agent-teams mode and other modes.
 
+## Terminal status line (every dispatched turn)
+End the message you return to your caller with a status line — the last
+non-empty line, nothing after it: `STATUS: complete`, or
+`STATUS: incomplete — <one-line, non-empty reason>` (an ASCII hyphen is an
+accepted substitute for the em dash). You cannot see your own turn count or
+your own cap being hit, and a truncated turn renders as zero content blocks —
+so it is indistinguishable from a finished one unless the finished one is
+signed. A missing line is a prompt to resume, not a defect and not a FAIL.
+
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
 Write, and Edit so you can manage your memory files — this happens regardless

@@ -131,6 +131,17 @@ The plan states, verbatim, where issues live and how to fetch them (matching
 whatever issue tracker was chosen during setup). Follow that line exactly -
 never assume a tracker or fetch method.
 
+## Terminal status line (every dispatched turn)
+End the message you return to your caller with a status line - the last
+non-empty line, nothing after it: `STATUS: complete`, or
+`STATUS: incomplete - <one-line, non-empty reason>`. This port has no `maxTurns`
+primitive (platform note below), only a soft turn budget, so a turn that stops
+early stops for some other reason - an error, a lost thread, a budget you were
+told to respect - and looks exactly like a finished one unless the finished one
+is signed. The line is that signature: it tells a caller the turn ended cleanly
+regardless of why it ended. A missing line is a prompt to resume, not a defect
+and not a FAIL.
+
 ## Codex platform notes (loud degradations - see docs/codex-port-notes.md)
 - **AGENTS.md reaching subagents is doc-stated but NOT empirically confirmed
   by this project.** Codex's own docs state custom agents "automatically

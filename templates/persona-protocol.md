@@ -79,6 +79,40 @@ that use is reviewable after the fact. (Claude Code force-ends a turn after 8
 consecutive Stop-hook blocks regardless; the sentinel is the designed exit,
 not a workaround for that cap.)
 
+## Terminal status line (every dispatched turn)
+End the message you return to your caller with a status line — the last
+non-empty line of that message, with nothing after it, exactly one of:
+
+- `STATUS: complete`
+- `STATUS: incomplete — <one-line, non-empty reason>`
+
+An ASCII hyphen is an accepted substitute for the em dash, so anything checking
+this line is encoding-robust. Reference regex:
+`^STATUS: (complete|incomplete [—-] .+)$`
+
+**When it applies:** every turn-end where control returns to a caller — a
+dispatched subagent's returned result, and a teammate's `SendMessage` report to
+the lead in agent-teams mode. The main session answering its user directly has
+no caller, so there is nothing to sign. That is a trigger condition, **not an
+exemption** — the rule lives in the one shared section every persona carries,
+so a persona that gains a turn cap later is covered automatically.
+
+**Why it exists** (stated as fact, so nobody later "fixes" it with a hook): you
+cannot see your own turn count, you cannot see your own cap being hit, and the
+harness renders the `max_turns_reached` attachment as **zero content blocks**.
+A turn truncated mid-work is therefore indistinguishable from a finished one —
+unless a finished one carries a signature. This line is that signature, and its
+absence is the only available evidence of a cutoff.
+
+**Not an alternative to the WIP sentinel above** — the two are different
+mechanisms and they co-occur. The sentinel is a *file* written before a
+voluntary pause; the status line is a *report line* emitted at every turn-end.
+A sentinel turn-end therefore ends with `STATUS: incomplete — <the same reason
+you wrote into the sentinel>`.
+
+A missing line is a **prompt to resume**, not a defect and not a FAIL. Nothing
+is gated on it; it costs one cheap resume, which is the whole point.
+
 ## Running acceptance-criteria commands (there is no self-wake)
 Run acceptance-criteria commands — test suites, build/lint checks, anything
 gating a verdict or a ready-for-review — synchronously in the foreground via

@@ -21,6 +21,7 @@ const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 const CANONICAL = path.join(REPO_ROOT, 'templates/persona-protocol.md');
+const SLIM = path.join(REPO_ROOT, 'templates/persona-protocol-slim.md');
 const CODEX_PORT = path.join(REPO_ROOT, 'adapters/codex/agents-md-fragment.md');
 const CURSOR_PORT = path.join(REPO_ROOT, 'adapters/cursor/rules/persona-protocol.mdc');
 
@@ -57,6 +58,7 @@ const codexMap = {
   'Scope Bash output before it enters context': { probe: 'Scope Bash output before it enters context' },
   'Agent-teams mode (only relevant if you were spawned as a teammate)': { deferred: 'agent-teams mode dropped for Codex v1 (no SendMessage/TaskCompleted) — see platform notes' },
   'WIP sentinel (mid-task handoff, not a bypass)': { probe: 'WIP sentinel' },
+  'Terminal status line (every dispatched turn)': { probe: 'STATUS: complete' },
   'Running acceptance-criteria commands (there is no self-wake)': { deferred: 'pre-existing broader drift, out of scope for U15 (roast backfill only) — candidate future port sweep' },
   'Retrieval contract': { probe: 'Retrieval contract' },
   'Machine-checkable criteria': { probe: 'Machine-checkable criteria' },
@@ -75,6 +77,7 @@ const cursorMap = {
   'Scope Bash output before it enters context': { probe: 'Scope Bash output before it enters context' },
   'Agent-teams mode (only relevant if you were spawned as a teammate)': { deferred: 'agent-teams mode dropped for Cursor v1 — see platform notes' },
   'WIP sentinel (mid-task handoff, not a bypass)': { probe: 'WIP sentinel' },
+  'Terminal status line (every dispatched turn)': { probe: 'STATUS: complete' },
   'Running acceptance-criteria commands (there is no self-wake)': { deferred: 'pre-existing broader drift, out of scope for U15 (roast backfill only) — candidate future port sweep' },
   'Retrieval contract': { probe: 'Retrieval contract' },
   'Machine-checkable criteria': { probe: 'Machine-checkable criteria' },
@@ -122,6 +125,18 @@ check('roast section is asserted PRESENT (not deferred) and actually appears in 
   }
   assert.ok(fs.readFileSync(CODEX_PORT, 'utf8').toLowerCase().includes('roast-work'), 'codex port missing roast-work content');
   assert.ok(fs.readFileSync(CURSOR_PORT, 'utf8').toLowerCase().includes('roast-work'), 'cursor port missing roast-work content');
+});
+
+// The slim tier is not a port, but it IS the other half of the fan-out: three
+// personas receive persona-protocol-slim.md instead of the canonical file, so a
+// section that lands only in the canonical one silently exempts them. Nothing
+// else in the repo reads the slim file's section list.
+check('slim tier carries the terminal status line section', () => {
+  const slim = fs.readFileSync(SLIM, 'utf8');
+  assert.ok(slim.includes('\n## Terminal status line (every dispatched turn)\n'),
+    'templates/persona-protocol-slim.md is missing the exact terminal status line heading');
+  assert.ok(slim.includes('STATUS: complete'),
+    'templates/persona-protocol-slim.md is missing the STATUS: complete grammar');
 });
 
 check('negative case: an UNMAPPED new canonical section is REJECTED (fail-closed on drift)', () => {
