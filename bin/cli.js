@@ -216,9 +216,17 @@ function sha256Hex(content) {
 }
 
 const STAMP_LINE_RE = /<!-- antislop v[^\n]*ADAPT-substituted -->\r?\n/;
+const STAMP_VERSION_RE = /<!-- antislop v([^\s]+)[^\n]*ADAPT-substituted -->\r?\n/;
 
 function stripStamp(body) {
   return body.replace(STAMP_LINE_RE, '');
+}
+
+// Returns the version string from the first stamp-line occurrence, or null
+// when no stamp is present (frontmatter-tolerant: the regex is unanchored).
+function stampVersionOf(body) {
+  const match = body.match(STAMP_VERSION_RE);
+  return match ? match[1] : null;
 }
 
 function legacyTokensIn(selection) {
@@ -1795,6 +1803,7 @@ module.exports = {
   compareSemver,
   sha256Hex,
   stripStamp,
+  stampVersionOf,
   renderMcpBlock,
   applyMcpPlaceholder,
   applyArxivFallback,
