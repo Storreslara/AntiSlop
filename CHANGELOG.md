@@ -7,8 +7,14 @@ recorded here. Dates are ISO (YYYY-MM-DD).
 
 ### Changed
 - **`Agent` dispatch is now BLOCKED by default in every already-adapted
-  project when it exceeds configured token-hygiene limits.** After running
-  `--update`, an oversized prompt (`maxPromptBytes`, default 30000) or an
+  project when it exceeds configured token-hygiene limits.** Delivery of the
+  gate depends on install type: **plugin-enabled** projects get it from the
+  marketplace plugin cache refresh (`hooks.json` resolves
+  `dispatch-hygiene.sh` via `${CLAUDE_PLUGIN_ROOT}`), potentially without
+  ever running `--update`; **standalone-installed** projects do not get it
+  from `--update` at all (`runUpdate` has no copy step for
+  `hooks/scripts`/`hooks.json`) and need a fresh re-scaffold to activate it.
+  Once live, an oversized prompt (`maxPromptBytes`, default 30000) or an
   oversized inlined fenced block (`maxInlineBlockLines`, default 80) exits
   the dispatching hook non-zero and the `Agent` call never reaches the
   subagent — a behaviour change, not an opt-in feature, since `block` is the
