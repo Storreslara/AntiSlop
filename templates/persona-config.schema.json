@@ -73,6 +73,28 @@
       "type": "object",
       "additionalProperties": { "type": "string" },
       "description": "sha256 hex digest of each version-stamped file's content with its stamp line stripped, recorded immediately after ADAPT/--update finishes writing it. `--update` compares this against the project's current file (stamp stripped) to detect local edits without an LLM: matching hash means safe to silently regenerate at the new version; a mismatch means a human is asked before overwriting. Keyed by project-relative path, e.g. '.claude/agents/spec-master.md'."
+    },
+    "dispatchHygiene": {
+      "type": "object",
+      "description": "Configuration for dispatch hygiene gates that prevent problematic Agent spawns. Absent object ⇒ defaults apply (mode: \"block\"). Set mode to \"off\" to disable all checks.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["block", "warn", "off"],
+          "default": "block",
+          "description": "Gate posture: \"block\" (exit 2), \"warn\" (exit 0), or \"off\" (disable all checks)"
+        },
+        "maxPromptBytes": {
+          "type": "number",
+          "default": 30000,
+          "description": "Maximum dispatch prompt size in bytes. Calibrated to 2× the observed maximum (14898) as of 2026-07-30 from a measured corpus of 26 task-master unit prompts."
+        },
+        "maxInlineBlockLines": {
+          "type": "number",
+          "default": 80,
+          "description": "Maximum interior lines of a fenced code block in a dispatch prompt. Calibrated to 2× the observed maximum (41) as of 2026-07-30 from a measured corpus of 26 task-master unit prompts."
+        }
+      }
     }
   },
   "required": ["testAndLintCommand"]
