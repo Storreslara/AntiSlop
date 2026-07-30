@@ -49,6 +49,7 @@
 #  3) tree clean AND no commits since baseline -> ALLOW.
 #  4) otherwise run the configured test+lint command; non-zero -> BLOCK.
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.cwd // "."' 2>/dev/null || echo .)"
@@ -84,18 +85,28 @@ allow() {
   exit 0
 }
 
-if [ "$hook_event" = "SubagentStop" ] && [ "$agent_type" = "reviewer" ]; then
-  [ -f "$config" ] || allow
-  shopt -s nullglob
-  blocked_markers=( "${project_dir}"/.codex/reviewed/*.blocked )
-  shopt -u nullglob
-  if [ "${#blocked_markers[@]}" -gt 0 ]; then
-    printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+identity_drift_log "$agent_type" "$hook_event" "$review_audit"
+
+if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
+  if persona_matches_grant "$agent_type" reviewer; then
+    [ -f "$config" ] || allow
+    shopt -s nullglob
+    blocked_markers=( "${project_dir}"/.codex/reviewed/*.blocked )
+    shopt -u nullglob
+    if [ "${#blocked_markers[@]}" -gt 0 ]; then
+      printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+      allow
+    fi
+    rm -f "${project_dir}"/.codex/.pending-review.* 2>/dev/null || true
+    printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
     allow
   fi
-  rm -f "${project_dir}"/.codex/.pending-review.* 2>/dev/null || true
-  printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  allow
+  # A reviewer from an UNRECOGNIZED namespace: clearing review flags is a
+  # privilege granted only to this project's own reviewer, so the match is
+  # conservative and this one fails CLOSED. That is deliberate, but it can
+  # strand a flag the same namespace's gated agent created (the gate side is
+  # liberal), so say out loud how to recover instead of silently doing nothing.
+  echo "Pending-review flags NOT cleared: '${agent_type}' is not this project's reviewer (unrecognized namespace; see the identity-drift line in .codex/review-audit.log). Recover by dispatching this project's own reviewer, or write 'defer: <reason>' / 'skip: <reason>' into .codex/.pending-review.<agent-id>." >&2
 fi
 
 if [ "$hook_event" = "Stop" ]; then
@@ -138,9 +149,12 @@ if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
     check_name="$(jq -r '.mainAgent // "orchestrator"' "$config" 2>/dev/null || echo orchestrator)"
   fi
 
+  # Liberal on BOTH sides: a miss here fails OPEN (an unattributed gated agent
+  # ends its turn ungated), so a gatedAgents entry and a payload identity match
+  # whichever form either is written in.
   match=false
   while IFS= read -r name; do
-    [ -n "$name" ] && [ "$name" = "$check_name" ] && match=true
+    [ -n "$name" ] && persona_matches_gate "$name" "$check_name" && match=true
   done <<< "$gated"
   [ "$match" = true ] || allow
 fi

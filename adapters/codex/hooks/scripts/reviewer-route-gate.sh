@@ -20,14 +20,17 @@
 # backstop. stop-gate.sh sets/clears the `.codex/.pending-review.*` flag this
 # checks.
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.cwd // "."' 2>/dev/null || echo .)"
 config="${project_dir}/.codex/persona-config.json"
+review_audit="${project_dir}/.codex/review-audit.log"
 
 target_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
 if [ -f "$config" ] && [ -n "$target_type" ]; then
+  identity_drift_log "$target_type" SubagentStart "$review_audit"
   shopt -s nullglob
   pending_flags=( "${project_dir}"/.codex/.pending-review.* )
   shopt -u nullglob
@@ -35,9 +38,11 @@ if [ -f "$config" ] && [ -n "$target_type" ]; then
     gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
     [ -n "$gated" ] || gated="lead-programmer"
 
+    # Liberal on both sides, as at the stop-gate's gatedAgents check: a miss
+    # here fails OPEN (the next gated unit dispatches while review is owed).
     match=false
     while IFS= read -r name; do
-      [ -n "$name" ] && [ "$name" = "$target_type" ] && match=true
+      [ -n "$name" ] && persona_matches_gate "$name" "$target_type" && match=true
     done <<< "$gated"
 
     if [ "$match" = true ]; then
