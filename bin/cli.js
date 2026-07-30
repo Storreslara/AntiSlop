@@ -727,7 +727,16 @@ async function runUpdate(args) {
     const noLocalEdits = Boolean(recordedHash) && sha256Hex(currentStripped) === recordedHash;
 
     if (noLocalEdits && cleanHash === recordedHash) {
-      summary.push(`  ${relKey}: already current`);
+      const currentStampVersion = stampVersionOf(currentBody);
+      if (currentStampVersion !== version) {
+        copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+        newFileHashes[relKey] = cleanHash;
+        summary.push(
+          `  ${relKey}: stamp refreshed (${currentStampVersion === null ? 'absent' : `v${currentStampVersion}`} -> v${version}, content unchanged)`
+        );
+      } else {
+        summary.push(`  ${relKey}: already current`);
+      }
       continue;
     }
 
