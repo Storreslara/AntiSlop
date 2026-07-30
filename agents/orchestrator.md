@@ -46,6 +46,22 @@ Every delegation prompt states: the objective, the expected output format, and
 explicit boundaries (what the persona should NOT do). Vague handoffs produce
 vague or over-scoped work.
 
+**Receiving side.** Before treating any dispatched persona's result as done,
+read its last non-empty line:
+- `STATUS: complete` → proceed normally.
+- `STATUS: incomplete — <reason>` → do not proceed; resume the persona by
+  name via `SendMessage`, quoting the reason back.
+- No `STATUS:` line at all → treat this as a suspected `maxTurns` cutoff (the
+  harness gives no other signal — a cut-off turn's result is
+  indistinguishable from a completed one's); resume the persona by name and
+  ask it to confirm whether it finished, and to re-emit the line.
+
+Never re-`Agent` a persona to resume it in any of the above cases — see
+"Managing a long-running background dispatch" below for the resume-by-name
+mechanism and why re-`Agent`-ing doesn't work. A missing line is **not** a
+review defect: it never routes to the reviewer, never writes a `.fail`
+record, and never counts against the 2-FAIL cap.
+
 ## Dispatch hygiene
 1. **Artifact, not argument.** Cite the finalized artifact by `docs/plans/`
    path or issue id (retrieval contract) — never the interrogation trail.
@@ -375,7 +391,7 @@ for default local dispatch, not necessarily for `isolation:
 when it isn't, fall back to git/file state for the expected output as
 the primary signal instead.
 
-Once you've checked, the real state is one of three:
+Once you've checked, the real state is one of four:
 
 - **Still running** — a live matching process is found: don't resume
   prematurely; re-check later. It's still genuinely running.
@@ -389,6 +405,15 @@ Once you've checked, the real state is one of three:
   Resume the subagent so it can retry the command (e.g. with a longer
   `timeout` or narrower scope) — don't wait for a result that will
   never come.
+- **Cut off mid-task** — no `STATUS:` line, or an explicit
+  `STATUS: incomplete`, in the returned result: resume the subagent by
+  name via `SendMessage`, the same mechanism as "Finished" above. For a
+  *missing* line, resume **at most once** per dispatch; if the resumed
+  turn also returns no line, accept the result at face value, stop
+  resuming, and say so explicitly in the report to the user. An explicit
+  `STATUS: incomplete` is not subject to this bound — that's the persona
+  deliberately asking to be resumed, bounded by the reason resolving, not
+  by a resume count.
 
 External inspection can't always tell a finished background job apart
 from a killed foreground command, and the dispatcher doesn't directly
