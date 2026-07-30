@@ -32,7 +32,17 @@
 #     if absent (idempotent: does not clobber an existing defer:/skip:).
 #  3) tree clean AND no commits since baseline -> ALLOW.
 #  4) otherwise run the configured test+lint command; non-zero -> BLOCK.
+#
+# Agent identities may arrive namespaced ("<plugin>:<persona>"), so every
+# comparison below goes through lib/agent-identity.sh - liberal at the GATE
+# site (0.5's gated-agent check), conservative at the GRANT site (0.5's
+# reviewer-clears-flags). The EXTRACTION is unchanged, so a namespaced
+# subagent's flag is keyed by the namespaced form; every consumer globs
+# `.pending-review.*`, so that only affects the filename, not the lifecycle.
 set -euo pipefail
+
+# shellcheck source=lib/agent-identity.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.workspace_roots[0] // .cwd // "."' 2>/dev/null || echo .)"
@@ -46,7 +56,9 @@ case "$loop_count" in ''|*[!0-9]*) loop_count=0 ;; esac
 hook_event="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
 agent_type="$(echo "$input" | jq -r '.subagent_type // empty' 2>/dev/null || true)"
 
-if [ "$hook_event" = "subagentStop" ] && [ "$agent_type" = "reviewer" ]; then
+identity_drift_log "$agent_type" "$hook_event" "$review_audit"
+
+if [ "$hook_event" = "subagentStop" ] && persona_matches_grant "$agent_type" reviewer; then
   [ -f "$config" ] || exit 0
   shopt -s nullglob
   blocked_markers=( "${project_dir}"/.cursor/reviewed/*.blocked )
@@ -58,6 +70,13 @@ if [ "$hook_event" = "subagentStop" ] && [ "$agent_type" = "reviewer" ]; then
   rm -f "${project_dir}"/.cursor/.pending-review.* 2>/dev/null || true
   printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
   exit 0
+fi
+
+# R7: reached only when the GRANT match above failed. A reviewer from an
+# unrecognized namespace cannot clear the flags the liberal gate below creates,
+# so say so out loud rather than deadlocking silently.
+if [ "$hook_event" = "subagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
+  echo "Reviewer identity '${agent_type}' is outside this project's recognized plugin namespace - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or write 'defer: <reason>' (keeps the flag, review still owed) or 'skip: <reason>' (deletes it, unit abandoned) into .cursor/.pending-review.<agent-id>." >&2
 fi
 
 if [ "$hook_event" = "stop" ]; then
@@ -103,7 +122,7 @@ if [ "$hook_event" = "stop" ] || [ "$hook_event" = "subagentStop" ]; then
 
   match=false
   while IFS= read -r name; do
-    [ -n "$name" ] && [ "$name" = "$check_name" ] && match=true
+    persona_matches_gate "$name" "$check_name" && match=true
   done <<< "$gated"
   [ "$match" = true ] || exit 0
 fi
