@@ -52,10 +52,12 @@
 # Agent identities may arrive namespaced ("<plugin>:<persona>"), so every
 # comparison below goes through lib/agent-identity.sh - liberal at the GATE
 # site (the gatedAgents check, where a miss fails OPEN), conservative at the
-# GRANT site (the reviewer-clears-flags check, where a miss fails CLOSED and
-# is logged as identity-drift). A PERSONA NAME (e.g. "reviewer") is always
-# bare; an AGENT IDENTITY (`.agent_type`/`.agent_id`) is the possibly-
-# namespaced wire value - no field here is assumed to arrive bare.
+# GRANT site (the reviewer-clears-flags check, where a miss fails CLOSED).
+# Any identity that drifts (an unrecognized namespace or an unparseable
+# value) is logged to identity-drift, at either site, not just the GRANT
+# one. A PERSONA NAME (e.g. "reviewer") is always bare; an AGENT IDENTITY
+# (`.agent_type`/`.agent_id`) is the possibly-namespaced wire value - no
+# field here is assumed to arrive bare.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 

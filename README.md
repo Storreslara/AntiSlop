@@ -181,10 +181,11 @@ The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
 from the agent-identity namespace-gate fix: an agent identity from an
 unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at
 gate checks, so enforcement doesn't silently stop working, but conservatively
-at privilege grants, so only this plugin's own reviewer can clear
-pending-review flags. If you see an `identity-drift` line in
-`.claude/review-audit.log` (or the Cursor/Codex equivalents), it means an
-identity's namespace couldn't be attributed to a recognized plugin install —
+at privilege grants, so only this plugin's own reviewer — bare or
+`antislop:`-prefixed — can clear pending-review flags. If you see an
+`identity-drift` line in `.claude/review-audit.log` (or the Cursor/Codex
+equivalents), it means an identity's namespace couldn't be attributed to a
+recognized plugin install, or the identity itself was malformed/unparseable —
 check the dispatch form used before assuming it's a spoof attempt.
 
 ## What ships in the plugin vs. what setup writes per-project
