@@ -102,6 +102,12 @@ with reasons.
   the first-line format or the materiality filter above. If a
   `.claude/reviewed/<task-id>.blocked` marker exists from a prior review of
   this unit, `rm -f` it as part of writing the `.pass` marker.
+  Precedence for `<task-id>`: (1) if the dispatch prompt's first non-blank line
+  matches `Unit: <id>`, that id is the marker filename verbatim; (2) otherwise
+  the unit id you were otherwise given; (3) otherwise the fallback above.
+  `dispatch-hygiene.sh`'s H3 check reads that same first line, so a marker
+  written under a different id leaves the unit re-dispatchable; same precedence
+  covers the `.fail`/`.blocked` writes below (one `<task-id>`).
 - **On FAIL (both modes)**: also write a durable `.claude/reviewed/<task-id>.fail`
   record via Bash — the same named bookkeeping exception as the PASS marker,
   not a change to the code under review. First line exactly
