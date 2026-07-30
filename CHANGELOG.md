@@ -3,6 +3,48 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.15.0] - 2026-07-30
+
+### Changed
+- **`Agent` dispatch is now BLOCKED by default in every already-adapted
+  project when it exceeds configured token-hygiene limits.** After running
+  `--update`, an oversized prompt (`maxPromptBytes`, default 30000) or an
+  oversized inlined fenced block (`maxInlineBlockLines`, default 80) exits
+  the dispatching hook non-zero and the `Agent` call never reaches the
+  subagent — a behaviour change, not an opt-in feature, since `block` is the
+  shipped default posture. Two outs exist for a project that needs to
+  disable this: set `dispatchHygiene.mode: "off"` in `persona-config.json`
+  (per-project, permanent), or drop the single-use, audited
+  `.claude/.dispatch-override` sentinel (per-dispatch, logged). A third
+  check, H3 (re-dispatch of an already-PASSed unit), is REDUCED PROTECTION
+  on arrival: it only fires when the reviewer's marker id actually matches
+  the dispatch's `Unit:` line, a convention that issue #153 documents as not
+  yet reliably followed — so H3 should be read as best-effort until that
+  discipline is in place, not as a guaranteed catch.
+
+### Added
+- `dispatchHygiene` config surface (`persona-config.json`): `mode`
+  (`block`/`warn`/`off`), `maxPromptBytes`, `maxInlineBlockLines`.
+- `hooks/scripts/dispatch-hygiene.sh`, registered on `PreToolUse` for the
+  `Agent` tool, implementing the oversized-prompt, oversized-inline-block,
+  and re-dispatch-of-a-PASSed-unit (H3) checks above.
+
+### Fixed
+- **`bin/cli.js --update` no longer strands a mirror's version-stamp
+  comment when its rendered content is byte-identical across a version
+  bump.** The per-file "already current" fast path compared only the
+  content hash (which never included the stamp line), so a mirror whose
+  source hadn't changed kept whatever stamp it was last rendered under,
+  silently drifting behind `persona-config.json`'s `pluginVersion` release
+  after release (`.claude/agents/task-master.md`/`orchestrator.md`/
+  `reviewer.md`/six others were all still stamped `v0.13.18` going into this
+  release, despite two version bumps having passed). `--update` now
+  re-stamps a content-unchanged mirror to the resolved version instead of
+  leaving it untouched, and this repo's own 11 stranded mirrors were trued
+  up to `v0.15.0` using the fixed tool (issues #168-174), replacing the two
+  prior ad-hoc hand-patch commits (`dc46914`, `e184e7d`) that had worked
+  around the same gap manually.
+
 ## [0.14.0] - 2026-07-30
 
 ### Changed
