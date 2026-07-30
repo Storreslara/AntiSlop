@@ -303,12 +303,24 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   ).version;
   const graphMcpLaunch = { command: 'npx', args: ['code-review-graph-mcp'] };
 
+  // Mirrors bin/cli.js's insertStampAfterFrontmatter/versionStamp shape
+  // (stamp right after frontmatter when present, else at the top) without
+  // reaching into cli.js internals — those two helpers aren't exported.
+  function stampBody(body, sourceRelPath) {
+    const stamp = `<!-- antislop v${pluginVersion} | source: ${sourceRelPath} | ADAPT-substituted -->\n`;
+    const fmMatch = body.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+    if (!fmMatch) return stamp + body;
+    const end = fmMatch[0].length;
+    return body.slice(0, end) + stamp + body.slice(end);
+  }
+
   // Builds a fresh, fully-baselined project in `tmp`: every current spec
   // (personaSelection: [] -> CORE_PERSONAS + persona-protocol-slim.md +
-  // protocol-digest.md) rendered clean and written UNSTAMPED, with
-  // fileHashes recorded against that same unstamped content — this makes
-  // stripStamp() a no-op, so every file is trivially "no local edits,
-  // already current" without reproducing the real stamp-insertion logic.
+  // protocol-digest.md) rendered clean and written STAMPED at the fixture's
+  // own pluginVersion — a genuinely current, correctly-stamped project, not
+  // the impossible unstamped state a real project can never be in.
+  // fileHashes are still recorded against the UNSTAMPED cleanBody (what
+  // stripStamp() recovers), matching the real render loop's hash basis.
   function buildBaselineProject(tmp, extraFileHashes) {
     const specs = cli.buildFileSpecs([]);
     const config = {
@@ -321,13 +333,45 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       const cleanBody = cli.renderCleanBody(spec, config);
       const destAbsPath = path.join(tmp, spec.projectRelPath);
       fs.mkdirSync(path.dirname(destAbsPath), { recursive: true });
-      fs.writeFileSync(destAbsPath, cleanBody);
+      fs.writeFileSync(destAbsPath, stampBody(cleanBody, spec.sourceRelPath));
       config.fileHashes[spec.projectRelPath] = cli.sha256Hex(cleanBody);
     }
     fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true });
     fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
     return config;
   }
+
+  check("buildBaselineProject stamps each mirror at the fixture's own pluginVersion (after frontmatter when present, else at the top), while fileHashes stay pinned to the unstamped body", () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-baseline-stamp-test-'));
+    try {
+      const config = buildBaselineProject(tmp, {});
+      for (const spec of cli.buildFileSpecs([])) {
+        const onDisk = fs.readFileSync(path.join(tmp, spec.projectRelPath), 'utf8');
+        assert.strictEqual(
+          cli.stampVersionOf(onDisk), pluginVersion,
+          `${spec.projectRelPath} should be stamped at ${pluginVersion}, got: ${cli.stampVersionOf(onDisk)}`
+        );
+        assert.strictEqual(
+          cli.sha256Hex(cli.stripStamp(onDisk)), config.fileHashes[spec.projectRelPath],
+          `${spec.projectRelPath}'s fileHashes entry must match its unstamped body`
+        );
+        const fmMatch = onDisk.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+        if (fmMatch) {
+          assert.ok(
+            onDisk.slice(fmMatch[0].length).startsWith('<!-- antislop v'),
+            `${spec.projectRelPath} has frontmatter, so the stamp must sit immediately after it`
+          );
+        } else {
+          assert.ok(
+            onDisk.startsWith('<!-- antislop v'),
+            `${spec.projectRelPath} has no frontmatter, so the stamp must sit at the top of the file`
+          );
+        }
+      }
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 
   check('--update prunes a stale fileHashes entry for a persona no longer in the current selection', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-prune-test-'));
