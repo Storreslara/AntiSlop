@@ -139,8 +139,11 @@ primitive (platform note below), only a soft turn budget, so a turn that stops
 early stops for some other reason - an error, a lost thread, a budget you were
 told to respect - and looks exactly like a finished one unless the finished one
 is signed. The line is that signature: it tells a caller the turn ended cleanly
-regardless of why it ended. A missing line is a prompt to resume, not a defect
-and not a FAIL.
+regardless of why it ended. Not an alternative to the WIP sentinel above - the
+sentinel is a file written before a voluntary pause, this is a report line on
+every turn-end, so a sentinel turn-end still ends with
+`STATUS: incomplete - <the same reason you wrote into the sentinel>`. A missing
+line is a prompt to resume, not a defect and not a FAIL.
 
 ## Codex platform notes (loud degradations - see docs/codex-port-notes.md)
 - **AGENTS.md reaching subagents is doc-stated but NOT empirically confirmed

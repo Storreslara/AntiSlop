@@ -70,8 +70,9 @@ End the message you return to your caller with a status line — the last
 non-empty line, nothing after it: `STATUS: complete`, or
 `STATUS: incomplete — <one-line, non-empty reason>` (an ASCII hyphen is an
 accepted substitute for the em dash). You cannot see your own turn count or
-your own cap being hit, and a truncated turn renders as zero content blocks —
-so it is indistinguishable from a finished one unless the finished one is
+your own cap being hit, and the `max_turns_reached` cutoff marker renders as
+zero content blocks — the truncated turn's own partial output still renders
+normally, so it reads exactly like a finished one unless the finished one is
 signed. A missing line is a prompt to resume, not a defect and not a FAIL.
 
 ## A note on `memory`

@@ -147,8 +147,11 @@ primitive (platform note below), only a soft turn budget, so a turn that stops
 early stops for some other reason - an error, a lost thread, a budget you were
 told to respect - and looks exactly like a finished one unless the finished one
 is signed. The line is that signature: it tells a caller the turn ended cleanly
-regardless of why it ended. A missing line is a prompt to resume, not a defect
-and not a FAIL.
+regardless of why it ended. It does not replace the WIP sentinel above - that
+is a file written before a voluntary pause, this is a report line on every
+turn-end, so a sentinel turn-end still ends with
+`STATUS: incomplete - <the same reason you wrote into the sentinel>`. A missing
+line is a prompt to resume, not a defect and not a FAIL.
 
 ## Cursor platform notes (loud degradations)
 - No per-tool allowlist: only `readonly: true` exists. The reviewer's and
