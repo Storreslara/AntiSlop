@@ -173,6 +173,20 @@ subagents, use the `start-feature-team` command — this is the "deliberate
 gear" mentioned earlier; it's off by default and you opt in per task by
 invoking it explicitly rather than it ever kicking in on its own.
 
+## Known limitations
+
+The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
+`reviewed-path-gate.sh`'s substring-match bypass, and the `sed -i` caveat on
+`protected-paths.sh`) lives in [`docs/design.md`](docs/design.md). Two more,
+from the agent-identity namespace-gate fix: an agent identity from an
+unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at
+gate checks, so enforcement doesn't silently stop working, but conservatively
+at privilege grants, so only this plugin's own reviewer can clear
+pending-review flags. If you see an `identity-drift` line in
+`.claude/review-audit.log` (or the Cursor/Codex equivalents), it means an
+identity's namespace couldn't be attributed to a recognized plugin install —
+check the dispatch form used before assuming it's a spoof attempt.
+
 ## What ships in the plugin vs. what setup writes per-project
 
 | Ships once (plugin) | Written per-project (setup) |

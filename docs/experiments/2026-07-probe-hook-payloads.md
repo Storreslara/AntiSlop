@@ -46,6 +46,20 @@ substring match on `.claude/reviewed`.
 
 Probe A verdict: agent_type present
 
+**Scope caveat (added post-hoc, see the 2026-07-28 agent-identity namespace
+plan):** Probe A establishes only that the `agent_type` field is *present* on
+a subagent-issued `Bash` PreToolUse payload. It does not establish what
+*values* that field can take. The fixture that captured `probe-a-payload` was
+built by `eval/harness/scaffold.sh`, which installs personas as project-local
+`.claude/agents/*.md` copies only — a bare-name-only dispatch path — so the
+single observed value, `"lead-programmer"`, is a bare persona name by
+construction of the fixture, not by anything the field itself guarantees.
+Treating that one observed form as the field's only possible shape was the
+actual defect the namespace-gate-fix plan corrected: a marketplace-installed
+plugin's own dispatch surface can produce a namespaced value instead (e.g.
+`antislop:lead-programmer`), which this probe never exercised. See Probe C
+below.
+
 Branch decision for step 4: build `reviewed-path-gate.sh` on the
 `agent_type`-present branch — attribute the caller from the top-level
 `agent_type` field and apply the allow/block rules keyed on it (reviewer →
@@ -82,6 +96,25 @@ its final message to dodge a substring check), step 5 as implemented in this
 pass does NOT add the suppression refinement — the flag is set for every
 gated-agent stop not exempted by a WIP sentinel, exactly as the
 no-refinement fallback the plan describes.
+
+## Probe C — what identity form does namespaced dispatch actually produce? (placeholder)
+
+**Status: not yet run.** This section is a placeholder added by Step 8 of the
+2026-07-28 agent-identity namespace-gate-fix plan. It will be filled in by
+that plan's Step 9, which is a **blocking acceptance gate** and must be
+completed with real captured evidence, following the method and acceptance
+criteria (P-C1 through P-C6) specified there — not narrated or assumed here.
+
+**The question Probe A never asked:** when a persona is dispatched via its
+`antislop:`-prefixed marketplace form rather than a bare project-local copy,
+what literal values do `agent_type`, `subagent_type`, and settings.json's
+`.agent` actually carry on the resulting hook payloads? Probe A's fixture
+could not answer this — see the scope caveat on Probe A's verdict above.
+
+Step 9 fills this section in with the raw captured payloads and a verdict,
+using a fixture that provisions namespaced dispatch (not `scaffold.sh`'s
+bare-name-only install), exactly as Probe A and B did for their questions.
+No findings are recorded here yet.
 
 ## Cleanup
 

@@ -19,6 +19,12 @@
 # still awaits review - the other half of the "done = reviewer PASS"
 # backstop. stop-gate.sh sets/clears the `.codex/.pending-review.*` flag this
 # checks.
+#
+# The spawn target's `.agent_type` may arrive namespaced ("<plugin>:<persona>"),
+# so the gatedAgents comparison goes through lib/agent-identity.sh's LIBERAL
+# matcher - this is a GATE, where a miss fails open and silently stops
+# enforcing. A PERSONA NAME is always bare; an AGENT IDENTITY is the
+# possibly-namespaced wire value the payload actually carries.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 

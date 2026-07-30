@@ -3,6 +3,46 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.13.18] - 2026-07-30
+
+### Fixed
+- **Empirical record repaired for the agent-identity namespace-gate defect
+  (2026-07-28 plan, Step 8).** Probe A's fixture (`eval/harness/scaffold.sh`)
+  installed personas as bare-name project-local copies only, so its captured
+  `agent_type` payload was necessarily bare — but its verdict generalized
+  that single observed form as if it were the field's only possible shape,
+  which the fixed gate scripts (Steps 2–5b, 0.13.14–0.13.17) had to correct.
+  `docs/experiments/2026-07-probe-hook-payloads.md` now carries a scope
+  caveat on Probe A's verdict (the captured payload itself is untouched) and
+  a Probe C placeholder for the still-outstanding namespaced-dispatch
+  re-probe (Step 9, blocking acceptance gate).
+
+### Documented
+- `README.md` "Known limitations" now covers the cross-namespace identity
+  behavior (liberal matching at gate checks, conservative at privilege
+  grants) and what an `identity-drift` audit-log line means for a reader.
+- Header comment blocks of `hooks/scripts/stop-gate.sh`,
+  `reviewed-path-gate.sh`, `reviewer-route-gate.sh`, and their Cursor/Codex
+  adapter mirrors now state the normalization contract (persona name = bare;
+  agent identity = possibly-namespaced wire value) instead of assuming
+  `agent_type` always equals a bare persona name. No executable logic
+  changed — comments only.
+
+## [0.13.17] - 2026-07-28
+
+### Changed
+- `spec-master.md`: `antislop:fail-triage` moved out of the `skills:`
+  frontmatter (which preloads a skill's full body into every spawn
+  regardless of whether the task needs it) and is now invoked on demand via
+  the `Skill` tool instead, same fix as `lead-programmer`'s `tdd`/`diagnose`
+  precedent (0.13.x) — the body's existing debug-spec 2-FAIL-cap bullet
+  already instructs invoking it there, so no new instruction text was
+  needed. `grill-me`/`to-spec` stay preloaded (both set
+  `disable-model-invocation: true` in their own SKILL.md, so on-demand
+  invocation is blocked for them). Fail-triage only applies on the rare
+  2-FAIL-cap debug-spec escalation path, so most spec-master spawns no
+  longer pay its ~2.3KB preload cost.
+
 ## [0.13.16] - 2026-07-22
 
 ### Fixed
