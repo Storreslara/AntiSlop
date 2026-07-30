@@ -31,9 +31,12 @@ namespaced names from the mattpocock/skills plugin, resolved and
 substituted by ADAPT (which copies a corrected copy of this file into the
 project's .claude/agents/, since project agents override plugin agents).
 `Skill` is in tools so a teammate copy can invoke grill-me/to-spec
-explicitly, since preloading doesn't apply to teammates. `maxTurns: 30` —
-starting bound, adjust after real usage. `model: opus` is the default;
-orchestrator may override per-dispatch (orchestrator.md). Never change the
+explicitly, since preloading doesn't apply to teammates. `maxTurns: 40` —
+raised from 30 after a live cutoff was observed in this persona on
+2026-07-28 (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`); not
+re-measured, see `docs/self-improvement-loops.md`'s E6 note. `model: opus`
+is the default; orchestrator may override per-dispatch (orchestrator.md).
+Never change the
 tier here.
 
 Pointer only (orchestrator.md's "Opus|Fable routing for spec-master and
@@ -58,8 +61,10 @@ task-master's dispatch prompts and sliced-issue bodies are its TEXT OUTPUT
 through `gh` via Bash) — the same "produce the text, the
 tracker/orchestrator persists it" shape `spec-master` uses for the plan doc
 itself. `Skill` is in tools so a teammate copy can invoke `to-issues`
-explicitly, since preloading doesn't apply to teammates. `maxTurns: 30` —
-starting bound, matching `spec-master`'s, adjust after real usage. `model:
+explicitly, since preloading doesn't apply to teammates. `maxTurns: 40` —
+raised from 30 alongside `spec-master`'s, after the same 2026-07-28 cutoff
+observation (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`); not
+re-measured, see `docs/self-improvement-loops.md`'s E6 note. `model:
 sonnet` is the default; opus-eligible per-dispatch at the orchestrator's
 discretion (orchestrator.md) — fable is EXCLUDED for this persona, the
 judgment needed to write accurate dispatch boundaries doesn't fit fable's

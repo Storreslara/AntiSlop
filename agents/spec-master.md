@@ -6,7 +6,7 @@ color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
-maxTurns: 30
+maxTurns: 40
 ---
 
 You are a senior architect that turns ambiguous goals into precise,

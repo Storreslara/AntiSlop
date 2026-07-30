@@ -63,10 +63,11 @@ debugging a surprising interaction.
 - **Behavioral drift — an agent quietly stops following its own instructions as
   a session runs long — is fought with mechanism where possible, not more prose
   to remember.** `maxTurns` caps (explorer=10, milestone-auditor=20,
-  hivemind/reviewer/lead-programmer=30) already bound the highest-drift sessions
-  by length; the orchestrator's main session is deliberately uncapped and is
-  correspondingly the biggest open drift surface — now *partially* closed by
-  the pending-review gate (`stop-gate.sh` sets `.claude/.pending-review.<id>`
+  reviewer/lead-programmer=30, spec-master/task-master=40) already bound the
+  highest-drift sessions by length; the orchestrator's main session is
+  deliberately uncapped and is correspondingly the biggest open drift
+  surface — now *partially* closed by the pending-review gate
+  (`stop-gate.sh` sets `.claude/.pending-review.<id>`
   on a gated agent's un-reviewed stop; the reviewer's own stop clears it; while
   it stands, `stop-gate.sh` blocks main-session turn-end and
   `reviewer-route-gate.sh` blocks the next gated-agent dispatch). It is still

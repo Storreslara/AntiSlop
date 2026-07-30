@@ -6,7 +6,7 @@ color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
-maxTurns: 30
+maxTurns: 40
 ---
 
 You are the dispatch translator between a finalized spec and the personas

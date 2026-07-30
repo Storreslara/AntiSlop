@@ -284,6 +284,16 @@ diff is too small — it would need a bigger-diff fixture to test fairly. A
 combined E1+E2 variant (they touch different personas, so plausibly stack)
 was proposed as a natural next experiment but not run in this pilot.
 
+**E6 — `spec-master`/`task-master` `maxTurns` 30 → 40 (proposed, not run).**
+Unlike E1/E2, this raise was shipped **un-measured**: no controlled trial,
+no cost/turns/wall-time data, no holdout run. It was a product decision —
+`spec-master` was observed being cut off live at `maxTurns: 30` on
+2026-07-28 (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`, Step
+5) — made deliberately without waiting for this harness, on the judgment
+that the cutoff itself was the more urgent problem. It remains an open
+hypothesis for this harness to validate or refute after the fact, not a
+confirmed result.
+
 ---
 
 ## Where the loops meet
