@@ -247,6 +247,15 @@ else
 fi
 
 echo
+echo "== dispatch-hygiene token gate: H1/H2/H3 behaviour (Bash) =="
+if bash tests/dispatch-hygiene.test.sh; then
+  echo "OK   tests/dispatch-hygiene.test.sh"
+else
+  echo "FAIL tests/dispatch-hygiene.test.sh"
+  fail=1
+fi
+
+echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"
