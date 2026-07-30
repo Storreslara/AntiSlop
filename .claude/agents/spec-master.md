@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
 maxTurns: 40
 ---
-<!-- antislop v0.13.18 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.15.0 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
