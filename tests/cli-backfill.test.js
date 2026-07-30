@@ -478,6 +478,81 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Regression (issue #172, Steps 2+3): a mirror whose STAMP is stale but
+  // whose BODY and fileHashes are untouched, with pluginVersion already equal
+  // to the resolved version — the exact live drift this repo was in. Both
+  // layers must be fixed for this to pass: the top-level fast-path (Step 3)
+  // must not skip the loop, and the per-file "already current" branch
+  // (Step 2) must actually call copyStampedBody.
+  check('a plain --update re-stamps every mirror whose stamp alone is stale, leaving bodies and fileHashes untouched, then no-ops on a second run', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-stale-stamp-test-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      const specs = cli.buildFileSpecs([]);
+      const staleVersion = '0.13.18';
+
+      // Rewrite every mirror's stamp (only) to an older version, leaving the
+      // rest of the body untouched.
+      const beforeStripped = {};
+      for (const spec of specs) {
+        const destAbsPath = path.join(tmp, spec.projectRelPath);
+        const onDisk = fs.readFileSync(destAbsPath, 'utf8');
+        beforeStripped[spec.projectRelPath] = cli.stripStamp(onDisk);
+        const restamped = onDisk.replace(
+          /<!-- antislop v[^\n]*ADAPT-substituted -->/,
+          `<!-- antislop v${staleVersion} | source: ${spec.sourceRelPath} | ADAPT-substituted -->`
+        );
+        assert.notStrictEqual(restamped, onDisk, `${spec.projectRelPath} should have had a stamp line to rewrite`);
+        fs.writeFileSync(destAbsPath, restamped);
+      }
+      const beforeFileHashes = JSON.parse(fs.readFileSync(configPath, 'utf8')).fileHashes;
+
+      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+
+      for (const spec of specs) {
+        assert.ok(
+          first.stdout.includes(`${spec.projectRelPath}: stamp refreshed`),
+          `expected a distinct "stamp refreshed" line for ${spec.projectRelPath}, got: ${first.stdout}`
+        );
+        const onDisk = fs.readFileSync(path.join(tmp, spec.projectRelPath), 'utf8');
+        assert.strictEqual(
+          cli.stampVersionOf(onDisk), pluginVersion,
+          `${spec.projectRelPath} should be re-stamped to ${pluginVersion}`
+        );
+        assert.strictEqual(
+          cli.stripStamp(onDisk), beforeStripped[spec.projectRelPath],
+          `${spec.projectRelPath}'s stripped body must be byte-identical to before the refresh`
+        );
+      }
+
+      const afterFileHashes = JSON.parse(fs.readFileSync(configPath, 'utf8')).fileHashes;
+      assert.deepStrictEqual(afterFileHashes, beforeFileHashes, 'fileHashes must be unchanged by a stamp-only refresh');
+
+      const afterFirstBytes = {};
+      for (const spec of specs) {
+        afterFirstBytes[spec.projectRelPath] = fs.readFileSync(path.join(tmp, spec.projectRelPath), 'utf8');
+      }
+
+      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+      assert.ok(
+        /already current/.test(second.stdout),
+        `second --update should hit the version-match fast-path (no stamps stale, no content drift), got: ${second.stdout}`
+      );
+      for (const spec of specs) {
+        const onDisk = fs.readFileSync(path.join(tmp, spec.projectRelPath), 'utf8');
+        assert.strictEqual(
+          onDisk, afterFirstBytes[spec.projectRelPath],
+          `${spec.projectRelPath} must be byte-identical after a no-op second run`
+        );
+      }
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration: OQ9=A auto-migration from the old global-import scheme to
   // per-persona body-inlined protocol delivery (issue #121 Step 6). One
   // --update deterministically strips CLAUDE.md's global import, inlines the
