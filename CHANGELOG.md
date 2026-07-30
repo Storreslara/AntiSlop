@@ -3,6 +3,40 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.14.0] - 2026-07-30
+
+### Changed
+- **`spec-master`/`task-master` `maxTurns` raised 30 → 40 — shipped
+  unmeasured, a deliberate product decision, not a trialled result.** Unlike
+  the E1/E2 cap changes in `docs/self-improvement-loops.md` (both measured
+  through the self-improvement harness before shipping), this raise carries
+  no cost/turns/wall-time data and no holdout run: `spec-master` was observed
+  being cut off live at `maxTurns: 30` on 2026-07-28, mid-edit of a spec doc
+  and mid-republish of a GitHub issue, and the call was that closing the
+  cutoff-detection gap below mattered more right now than precisely pricing a
+  higher cap first. Recorded in `docs/self-improvement-loops.md` as an open,
+  unvalidated hypothesis ("E6"), not a confirmed result.
+
+### Added
+- **Terminal status line — a machine-checkable completion signature on every
+  dispatched turn, covering all personas in both protocol tiers.** The last
+  non-empty line of a dispatched persona's final message must now read
+  `STATUS: complete` or `STATUS: incomplete — <reason>`. This exists because,
+  verified directly against Claude Code v2.1.220 (binary and session-payload
+  inspection — revisit this workaround if a future release adds a real
+  termination-reason field to the Agent-tool result or to `SubagentStop`), a
+  capped subagent cannot see its own turn count or its own cap being hit, and
+  the harness renders the `max_turns_reached` attachment as zero content
+  blocks — so a mid-task cutoff reads identically to a clean finish unless the
+  finish carries a signature. Added to both `templates/persona-protocol.md`
+  (full tier) and `templates/persona-protocol-slim.md` (slim tier —
+  `explorer`, `researcher`, `scribe`), and enforced fail-closed against the
+  Codex and Cursor adapter ports by `tests/adapter-protocol-parity.test.js`.
+  The orchestrator now reads this line on the receiving side of every
+  dispatch before treating it as done, resuming the persona by name (never
+  re-`Agent`) on `STATUS: incomplete` or a missing line, bounded to at most
+  one resume for a missing line so it cannot loop forever.
+
 ## [0.13.18] - 2026-07-30
 
 ### Fixed
