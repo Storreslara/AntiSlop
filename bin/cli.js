@@ -685,7 +685,30 @@ async function runUpdate(args) {
   // already matches.
   const checkFlag = args.includes('--check');
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd && !removedStaleProtocol) {
+  // Pre-scan (Step 3, cli-stale-version-stamp-fix, Layer 1 of the two-layer
+  // bug): detect a stale version stamp BEFORE the fast-path below, so a
+  // project whose persona files are already content-clean but still carry
+  // an outdated stamp doesn't bail out before ever reaching the per-file
+  // loop that refreshes it (Layer 2, #170, `:730` above). Read-only — never
+  // writes, and skips any destination file that doesn't exist yet or can't
+  // be read (the loop's own !fs.existsSync branch handles creation).
+  let stampStale = false;
+  for (const spec of specs) {
+    const destAbsPath = path.join(CWD, spec.projectRelPath);
+    if (!fs.existsSync(destAbsPath)) continue;
+    let body;
+    try {
+      body = fs.readFileSync(destAbsPath, 'utf8');
+    } catch (_) {
+      continue;
+    }
+    if (stampVersionOf(body) !== version) {
+      stampStale = true;
+      break;
+    }
+  }
+
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd && !removedStaleProtocol && !stampStale) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
