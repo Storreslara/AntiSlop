@@ -30,7 +30,7 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["lead-programmer"],
-      "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, scribe) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit."
+      "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, scribe) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit. Matching is namespace-insensitive: both this config's entries and the incoming agent-identity payload are canonicalized to their bare persona name before comparing, so an entry written as 'lead-programmer' also matches a namespaced payload like 'antislop:lead-programmer', and an entry written as 'antislop:lead-programmer' also matches a bare 'lead-programmer' payload. You never need to list both forms."
     },
     "pluginVersion": {
       "type": "string",
