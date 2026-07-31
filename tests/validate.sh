@@ -256,6 +256,15 @@ else
 fi
 
 echo
+echo "== reviewed-path gate: write-intent allowlist + Write/Edit path (Bash) =="
+if bash tests/reviewed-path-gate.test.sh; then
+  echo "OK   tests/reviewed-path-gate.test.sh"
+else
+  echo "FAIL tests/reviewed-path-gate.test.sh"
+  fail=1
+fi
+
+echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"
