@@ -233,6 +233,15 @@ for c in "cat \"$marker/9.fail" \
   n=$((n + 1))
   bash_case "case 24.$n ${c%% *} form" blocked lead-programmer "$c"
 done
+# Case 24.6b pins the `fd` branch's trailing anchor, mirroring what 24.6 does for
+# the `devnull` branch: without an anchor, `>&1` would be exempted out of a
+# command that goes on to name a path, and the `>` would vanish with it. This is
+# a REGRESSION PIN, not a bug fix - it was already blocked before 6R-1 touched
+# the anchors (verified exit 2 at 5836d99); the gap was that nothing pinned it
+# while line 121 was being edited. Distinct from 24.3, which is the no-digits
+# `>&<path>` form and fails the `&[0-9]+` test instead of the anchor.
+bash_case "case 24.6b fd-branch trailing anchor (>&N followed by a path)" \
+  blocked lead-programmer "ls $marker >&1$marker/9.pass"
 
 echo
 echo "-- '#' comments are inert, and only where bash says one starts --"
@@ -247,11 +256,20 @@ bash_case "case 25.2 same, hiding a redirection instead of a program" \
   blocked lead-programmer "ls $marker  # don't peek
 printf HACKED > $marker/9.pass  # it's fine"
 # The converse over-correction is a fail-open of its own: masking from a '#' that
-# bash does NOT read as a comment hides every operator after it on that line. So
-# 25.3 and 25.4 are the probes that pin WHERE a comment may start - mid-word and
-# inside quotes are the two places it may not, and bash really does redirect in
-# both. Asserting the read-only forms (25.5, 25.6) allowed is not enough on its
-# own: masking to end of line erases a quote PAIR, so nothing goes unbalanced and
+# bash does NOT read as a comment hides every operator after it on that line.
+# 25.3 pins the mid-word case, where bash really does redirect, and it is killed
+# by dropping the word-start test.
+#
+# 25.4 is deliberately weaker, and is labelled here so no later reader overrates
+# it: it documents a design invariant, and is NOT a mutation-proven assertion.
+# The quote branch consumes "a # b" before the '#' can ever reach the logic,
+# because quoted spans and comments are resolved in the SAME left-to-right pass -
+# so no natural mutant of this implementation kills it. It is kept as
+# documentation of that ordering. A contrived fixture that merely looked stronger
+# would be a test that lies, so the fixture and the verdict are left alone.
+#
+# Asserting the read-only forms (25.5, 25.6) allowed is not enough on its own:
+# masking to end of line erases a quote PAIR, so nothing goes unbalanced and
 # the verdict does not move.
 bash_case "case 25.3 mid-word '#' must not hide a same-line redirection" \
   blocked lead-programmer "cat $marker/issue#9.fail > $marker/9.pass"
@@ -301,6 +319,34 @@ for b in '\011' '\040'; do
   bash_case "case 25.$((8 + n)) '#' after $b (tab/space) IS a word start (no over-block)" \
     allowed lead-programmer "ls $marker$byte#x; rm $marker/9.pass"
 done
+
+echo
+echo "-- ratified residuals: known over-blocks, pinned so they are not re-litigated --"
+# Both cases below are over-blocks the gate keeps ON PURPOSE (issue #183,
+# docs/plans/2026-07-31-debug-182-step6-word-boundary.md step 6R-4). They are
+# pinned so a later pass reads them as decided, not as an oversight to "fix" -
+# and so that if someone does decide to narrow them, it is a deliberate change to
+# a named assertion rather than a silent drift.
+#
+# 27.1/27.2: ANY backslash makes the command unresolvable to the skeletonizer, so
+# it fails closed - an escaped space defeats the word-start test exactly as an
+# escaped quote defeats quote pairing. Narrowing this to "only the interesting
+# backslashes" is the same species of clever, narrowly-scoped lexer rule that
+# produced both prior fail-opens, so the broad rule stays. Documented workaround:
+# quote the path instead of escaping it, which 27.2 pins as allowed.
+bash_case "case 27.1 escaped space fails closed (ratified residual)" \
+  blocked lead-programmer "cat $marker/a\ b"
+bash_case "case 27.2 the documented workaround - quote it instead - is allowed" \
+  allowed lead-programmer "cat \"$marker/a b\""
+# 27.3: a trailing segment that is entirely a comment is blocked, because after
+# the comment is masked the segment's first word is the '#' itself, which is not
+# allowlisted. Ratified as blocked (OQ1, resolved 2026-07-31): the alternative is
+# new masking logic in a function that has now failed twice, and "model one more
+# construct" is precisely the move that produced those failures. Documented
+# workaround: put the comment above the command, or omit it.
+bash_case "case 27.3 comment-only trailing segment stays blocked (ratified residual, OQ1)" \
+  blocked lead-programmer "ls $marker
+# note"
 
 echo
 exit "$fail"
