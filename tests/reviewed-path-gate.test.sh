@@ -277,4 +277,30 @@ ls \"
 ls"
 
 echo
+echo "-- where a comment may start: bash's metacharacters, not POSIX [[:space:]] --"
+# The predecessor set for a comment's '#' is bash's metacharacter set, which is
+# NOT the POSIX space class: they differ by exactly VT/FF/CR, which bash treats
+# as ordinary word characters. Reading those three as word boundaries masked the
+# rest of the line - including the ';' before a second command - so only the
+# first, allowlisted command was ever checked (the fail-open found reviewing
+# #182's second attempt; see docs/plans/2026-07-31-debug-182-step6-word-boundary.md).
+# 25.9-25.11 pin the three excluded bytes blocked; 25.12-25.13 pin that the
+# narrowing did not overshoot onto tab and space, which ARE boundaries. A naive
+# textual substitution of the class rejects those two, and none of the 67
+# assertions above notices.
+n=0
+for b in '\013' '\014' '\015'; do
+  n=$((n + 1))
+  byte="$(printf "$b")"
+  bash_case "case 25.$((8 + n)) '#' after $b (VT/FF/CR) is not a word start" \
+    blocked lead-programmer "ls $marker$byte#x; rm $marker/9.pass"
+done
+for b in '\011' '\040'; do
+  n=$((n + 1))
+  byte="$(printf "$b")"
+  bash_case "case 25.$((8 + n)) '#' after $b (tab/space) IS a word start (no over-block)" \
+    allowed lead-programmer "ls $marker$byte#x; rm $marker/9.pass"
+done
+
+echo
 exit "$fail"

@@ -73,11 +73,24 @@ program_allowed() {
 # space defeats the word-start test below just as an escaped quote defeats the
 # pairing), and an unbalanced quote.
 #
-# A `#` opens a comment only at the start of a word - preceded by nothing,
-# whitespace, or a metacharacter - and only outside quotes, which is why the two
-# are resolved in one left-to-right pass rather than in separate ones. `a#b`,
-# `FOO=#b` and `"a"#b` are all ordinary words to bash, and masking those would
-# hide a real `>` after them.
+# A `#` opens a comment only at the start of a word and only outside quotes,
+# which is why the two are resolved in one left-to-right pass rather than in
+# separate ones. `a#b`, `FOO=#b` and `"a"#b` are all ordinary words to bash, and
+# masking those would hide a real `>` after them. A word starts at the start of
+# the command, or after one of bash's METACHARACTERS - space 0x20, tab 0x09,
+# newline 0x0A, and `;` `&` `|` `(` `)` `<` `>`. That set is deliberately NOT the
+# POSIX space class (C-locale `isspace`), which also adds VT 0x0B, FF 0x0C and
+# CR 0x0D - three bytes bash treats as ordinary word characters. Accepting those
+# as word starts masked the remainder of the line, the `;` included, so a second
+# command hid behind the first (issue #182, attempt 2). The same enumeration
+# anchors both redirection exemptions below, for the same reason.
+#
+# Two over-blocks here are RATIFIED residuals, not oversights (issue #183,
+# docs/plans/2026-07-31-debug-182-step6-word-boundary.md, step 6R-4): ANY
+# backslash fails closed, so `cat <dir>/a\ b` is blocked - quote the path
+# instead; and a trailing segment that is entirely a comment fails closed,
+# because the masked `#` is then the word segment_allowed reads - put the comment
+# above the command, or omit it.
 command_skeleton() {
   local cmd="$1" out="" pre q body pad
   case "$cmd" in *\\*|*'<<'*) return 1 ;; esac
@@ -92,7 +105,7 @@ command_skeleton() {
     out="$out$pre"
     if [ "$q" = '#' ]; then
       case "${out: -1}" in
-        ''|[[:space:]]|[\;\&\|\(\)\<\>]) ;;
+        ''|[$' \t\n']|[\;\&\|\(\)\<\>]) ;;
         *) out="$out#"; continue ;;
       esac
       body="${cmd%%$'\n'*}"          # to end of line; the newline itself stays
@@ -112,13 +125,16 @@ command_skeleton() {
 # Blank out, length-preservingly, every occurrence of the two closed redirection
 # forms that carry no write intent: file-descriptor duplication (`N>&M`, `>&N`)
 # and a redirection whose target is literally /dev/null - each of which must end
-# at whitespace or end of command. Every other `>` is left in place for the
+# at a metacharacter (the same enumeration as above, NOT the POSIX space class)
+# or at the end of the command. Every other `>` is left in place for the
 # caller's write test, so `>>`, `>&file`, `>/dev/null.txt` and the spaced
 # `> /dev/null` all still disqualify. Masking rather than merely exempting is
 # what also keeps the `&` of `2>&1` from splitting a segment.
 mask_inert_redirections() {
-  local rest="$1" out="" pre tail pad \
-    fd='^(&[0-9]+)([[:space:]]|$)' devnull='^(/dev/null)([[:space:]]|$)'
+  local rest="$1" out="" pre tail pad meta=$' \t\n;&|()<>'
+  # Separate statement, not another `local` operand: every operand of a `local`
+  # is expanded before the builtin runs, so `$meta` would still be empty there.
+  local fd="^(&[0-9]+)([$meta]|$)" devnull="^(/dev/null)([$meta]|$)"
   while :; do
     pre="${rest%%>*}"
     if [ "$pre" = "$rest" ]; then
