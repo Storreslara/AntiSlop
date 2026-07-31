@@ -14,8 +14,8 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   letting any persona fabricate a review marker. The same script is now also
   registered on the `Write|Edit` `PreToolUse` matcher and applies the same
   reviewer-GRANT / no-reviewer-fallback identity rules to `tool_input.file_path`
-  that the Bash path already applied to `tool_input.command` — state this
-  plainly as an **intentional increase in enforcement**, not a bug fix. This
+  that the Bash path already applied to `tool_input.command`. This is an
+  **intentional increase in enforcement**, not a bug fix. This
   reaches every already-adapted project on `--update`, since `bin/cli.js`
   copies `hooks/scripts/*.sh` wholesale — **except** that `runUpdate` does
   **not** re-copy `hooks/scripts/` or re-merge `hooks.json` into
@@ -60,7 +60,7 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   Bisected as present unchanged since the allowlist's original commit; not
   introduced by the later quote-awareness work, and not yet closed by it
   either. **This word-boundary/matching-hardening effort is not fully closed**
-  — a fast-follow fix is tracked in a separate issue.
+  — a fast-follow fix is planned but not yet filed as a tracked issue.
 
 ## [0.15.0] - 2026-07-30
 
