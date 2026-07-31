@@ -176,7 +176,9 @@ invoking it explicitly rather than it ever kicking in on its own.
 ## Known limitations
 
 The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
-`reviewed-path-gate.sh`'s substring-match bypass, and the `sed -i` caveat on
+`reviewed-path-gate.sh`'s residual obfuscation bypass (splitting the marker
+path across a shell variable defeats the write-intent allowlist), and the
+`sed -i` caveat on
 `protected-paths.sh`) lives in [`docs/design.md`](docs/design.md). Two more,
 from the agent-identity namespace-gate fix: an agent identity from an
 unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at

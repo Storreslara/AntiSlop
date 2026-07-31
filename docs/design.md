@@ -120,11 +120,17 @@ debugging a surprising interaction.
   `NotebookEdit` aren't matched. The protected-paths hook only gates the
   `Write`/`Edit` tools — a persona running `sed -i` or a lockfile-rewriting
   package manager command via `Bash` bypasses it. The `reviewed-path-gate.sh`
-  hook (PreToolUse/Bash) attributes the caller from the top-level
+  hook (PreToolUse/Bash and, as of Step 2 of the write-intent plan,
+  PreToolUse/Write|Edit too) attributes the caller from the top-level
   `agent_type` field on the payload — confirmed present empirically, see
-  `docs/experiments/2026-07-probe-hook-payloads.md` — and blocks any `Bash`
-  command whose text merely *contains* the substring `.claude/reviewed`;
-  read-only commands (a `cat` of a marker) are collateral, and a determined
-  agent can still obfuscate the path past the substring match. All three are
-  documented as advisory rather than airtight; tightening any of them is a
-  good candidate for a future version bump.
+  `docs/experiments/2026-07-probe-hook-payloads.md` — and now applies a
+  write-intent allowlist on the Bash path: a command mentioning
+  `.claude/reviewed` is allowed only if it is provably read-only or
+  text-only, and blocked otherwise, so a `cat` of a marker or a `git commit
+  -m` mentioning the path is no longer collateral. A determined agent can
+  still obfuscate the path past that allowlist (e.g. splitting it across a
+  shell variable), and the Write/Edit path blocks any write to the marker
+  directory outright, with the same reviewer/no-reviewer-fallback identity
+  rules as the Bash path. All are documented as advisory rather than
+  airtight; tightening the residual obfuscation gap is a good candidate for
+  a future version bump.

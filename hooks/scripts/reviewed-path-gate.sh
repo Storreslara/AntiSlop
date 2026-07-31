@@ -20,13 +20,15 @@
 # the PASS markers), while the personaSelection test is a GATE and uses the
 # liberal one, since a miss there only makes the main session's write allowed.
 #
-# Collateral, accepted per the plan: any Bash command whose text merely
-# CONTAINS the substring ".claude/reviewed" is blocked, including read-only
-# ones (e.g. `cat .claude/reviewed/foo.pass`) - personas have the Read tool
-# for that, and the block message says so. This is advisory, not airtight -
-# a determined agent could obfuscate the path past the substring match; see
-# README.md's "Known limitations", same framing as the existing `sed -i`
-# bypass caveat on protected-paths.sh.
+# Write-intent allowlist (docs/plans/2026-07-31-reviewed-path-gate-write-intent.md):
+# past the substring early-exit, a Bash command mentioning ".claude/reviewed"
+# is allowed if command_is_provably_benign() below finds it read-only or
+# text-only (ls, cat, grep, gh, git commit -m, ...) and blocked otherwise, so
+# read-only inspection and prose mentions of the path are no longer collateral.
+# This is advisory, not airtight - a determined agent can still obfuscate the
+# path past both the substring early-exit and the allowlist (e.g. splitting it
+# across a shell variable); see README.md's "Known limitations", same framing
+# as the existing `sed -i` bypass caveat on protected-paths.sh.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"

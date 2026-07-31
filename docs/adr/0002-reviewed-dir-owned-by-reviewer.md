@@ -38,3 +38,15 @@ main session to touch the path directly in that case).
   treat step 9's `.claude/reviewed/` creation as conditional on
   `personaSelection` NOT containing `reviewer`, matching the gate's actual
   fallback logic, rather than "regardless."
+
+## Superseded in part (2026-07-31)
+
+`docs/plans/2026-07-31-reviewed-path-gate-write-intent.md` replaced the
+gate's substring match with a write-intent allowlist on the Bash path (and
+added a matching check on Write/Edit). The Decision and the first
+Consequences bullet above still stand under the new matcher — `mkdir -p
+.claude/reviewed` is still blocked for non-reviewers — only the *reason* the
+gate is "stricter than the ADAPT skill's literal step 9 wording" changed:
+it's no longer that any mention of the path is blocked, it's that `mkdir -p`
+is a write-intent command and write-intent commands are what the gate now
+blocks by design.
