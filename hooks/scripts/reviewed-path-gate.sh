@@ -31,15 +31,27 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
-# $1 first word of a segment, $2 its second word (only consulted for `git`).
+# $1 the whole segment, $2 its first word, $3 its second word (subcommand).
 # Allowlist-shaped on purpose: anything unrecognized is NOT allowed, so the
 # gate keeps failing closed for command forms nobody enumerated.
 program_allowed() {
-  case "$1" in
-    ls|cat|head|tail|wc|stat|file|test|'['|grep|rg|diff|cmp) return 0 ;;
+  case "$2" in
+    ls|cat|head|tail|wc|stat|file|test|'['|grep|diff|cmp) return 0 ;;
+    # rg is allowlisted, but --pre/--hostname-bin run a command of their own.
+    rg) case " $1 " in *' --pre '*|*' --pre='*|*' --hostname-bin'*) return 1 ;; esac
+        return 0 ;;
     sha256sum|md5sum|basename|dirname|readlink|realpath) return 0 ;;
-    echo|printf|gh) return 0 ;;
-    git) case "$2" in commit|log|show|diff|status|tag|blame) return 0 ;; esac ;;
+    echo|printf) return 0 ;;
+    # `gh` needs a subcommand allowlist of its own: `run`/`release download`
+    # write into a directory of their choosing, with no redirection involved.
+    gh) case "$3" in issue|pr|api|search) return 0 ;; esac ;;
+    git)
+      case "$3" in
+        commit|log|show|diff|status|tag|blame)
+          # -o/--output let a read-only git subcommand write an arbitrary file.
+          case "$1" in *' -o'*|*' --output'*) return 1 ;; esac
+          return 0 ;;
+      esac ;;
   esac
   return 1
 }
@@ -49,17 +61,17 @@ program_allowed() {
 command_is_provably_benign() {
   local cmd="$1" normalized seg first sub
   case "$cmd" in
-    *'>'*|*'`'*|*'$('*) return 1 ;;
+    *'>'*|*'`'*|*'$('*|*'<('*) return 1 ;;
   esac
   if printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_])(eval|exec|source)([^[:alnum:]_]|$)'; then
     return 1
   fi
-  normalized="${cmd//&&/;}"
+  normalized="${cmd//&/;}"
   normalized="${normalized//|/;}"
   while IFS= read -r seg; do
     read -r first sub _ <<< "$seg"
     [ -n "$first" ] || continue
-    program_allowed "$first" "$sub" || return 1
+    program_allowed "$seg" "$first" "$sub" || return 1
   done < <(printf '%s\n' "$normalized" | tr ';' '\n')
   return 0
 }
