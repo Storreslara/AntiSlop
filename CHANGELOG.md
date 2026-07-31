@@ -3,6 +3,65 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.16.0] - 2026-07-31
+
+### Changed
+- **The Write/Edit tool path to the marker directory (`.claude/reviewed/`) is
+  now BLOCKED for non-reviewer personas, where it was previously entirely
+  ungated.** `hooks/scripts/reviewed-path-gate.sh` previously only ran on the
+  Bash `PreToolUse` path; a direct `Write` or `Edit` tool call to
+  `.claude/reviewed/*.pass`/`.fail`/`.blocked` was not checked by any hook,
+  letting any persona fabricate a review marker. The same script is now also
+  registered on the `Write|Edit` `PreToolUse` matcher and applies the same
+  reviewer-GRANT / no-reviewer-fallback identity rules to `tool_input.file_path`
+  that the Bash path already applied to `tool_input.command` — state this
+  plainly as an **intentional increase in enforcement**, not a bug fix. This
+  reaches every already-adapted project on `--update`, since `bin/cli.js`
+  copies `hooks/scripts/*.sh` wholesale — **except** that `runUpdate` does
+  **not** re-copy `hooks/scripts/` or re-merge `hooks.json` into
+  `settings.json` for an already-adapted **standalone** (non-marketplace)
+  project; only marketplace-plugin installs pick up the new gate automatically
+  on `--update`. A standalone project needs a fresh re-scaffold (or a manual
+  `hooks.json` merge) to activate it.
+- **The Bash path's write-intent matcher was narrowed from a substring block
+  to an allowlist of provably-benign commands**, so read-only inspection
+  (`ls`, `cat`, `git log`, …) and benign text mentions (a `gh` issue body or
+  `git commit -m` message naming the marker directory) are now allowed, while
+  actual writes stay blocked. The matcher's operator scan and segment split
+  were subsequently made quote-, comment-, heredoc- and word-boundary-aware,
+  so quoted `>`/`;`/`|`/`&&` characters and fd-redirection/`/dev/null` forms
+  (`2>&1`, `2>/dev/null`) inside an otherwise-benign command no longer cause a
+  false block. The previous block message's incorrect "use the Read tool for
+  that" advice (the Read tool cannot list a directory) has been removed and
+  replaced with an accurate description of what is checked.
+
+### Known limitations
+- **The variable-split obfuscation bypass remains open.** A command such as
+  `d=.claude/re; printf x > ${d}viewed/9.pass` still defeats the Bash matcher,
+  because resolving shell variable expansion would require executing the
+  command, which no hook can do. This is unchanged from before this effort
+  and is documented, not fixed, by design.
+- **Two narrow over-blocks in the quote/comment-aware matcher are ratified,
+  intentional residuals, not defects.** (1) Any backslash anywhere in the
+  command fails closed — e.g. `cat .claude/reviewed/a\ b` is blocked even
+  though it only reads — because an escaped space defeats the word-start test
+  the same way an escaped quote defeats quote pairing; workaround: quote the
+  path instead of escaping it (`cat ".claude/reviewed/a b"`). (2) A trailing
+  segment that is entirely a comment fails closed — e.g. `ls .claude/reviewed`
+  followed by a newline and `# note` is blocked, because the comment's masked
+  first word (`#`) is not allowlisted; workaround: put the comment above the
+  command, or omit it.
+- **A separate, still-open gap in the same matcher family, found during this
+  effort's final review and NOT yet fixed here.** `program_allowed()`'s
+  flag-scans for `rg --pre` and `git --output`/`-o` (the exact guards the
+  Bash-path allowlist added) use a literal-space boundary check rather than a
+  true word-boundary predicate, and are bypassable with a tab or a
+  quote-adjacent form — e.g. `git diff<TAB>--output=.claude/reviewed/9.pass`.
+  Bisected as present unchanged since the allowlist's original commit; not
+  introduced by the later quote-awareness work, and not yet closed by it
+  either. **This word-boundary/matching-hardening effort is not fully closed**
+  — a fast-follow fix is tracked in a separate issue.
+
 ## [0.15.0] - 2026-07-30
 
 ### Changed
