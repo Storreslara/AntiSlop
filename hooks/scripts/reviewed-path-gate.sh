@@ -31,6 +31,39 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
+# $1 first word of a segment, $2 its second word (only consulted for `git`).
+# Allowlist-shaped on purpose: anything unrecognized is NOT allowed, so the
+# gate keeps failing closed for command forms nobody enumerated.
+program_allowed() {
+  case "$1" in
+    ls|cat|head|tail|wc|stat|file|test|'['|grep|rg|diff|cmp) return 0 ;;
+    sha256sum|md5sum|basename|dirname|readlink|realpath) return 0 ;;
+    echo|printf|gh) return 0 ;;
+    git) case "$2" in commit|log|show|diff|status|tag|blame) return 0 ;; esac ;;
+  esac
+  return 1
+}
+
+# A command is provably benign only if it can neither redirect nor run text as
+# code, AND every segment of it invokes an allowlisted program.
+command_is_provably_benign() {
+  local cmd="$1" normalized seg first sub
+  case "$cmd" in
+    *'>'*|*'`'*|*'$('*) return 1 ;;
+  esac
+  if printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_])(eval|exec|source)([^[:alnum:]_]|$)'; then
+    return 1
+  fi
+  normalized="${cmd//&&/;}"
+  normalized="${normalized//|/;}"
+  while IFS= read -r seg; do
+    read -r first sub _ <<< "$seg"
+    [ -n "$first" ] || continue
+    program_allowed "$first" "$sub" || return 1
+  done < <(printf '%s\n' "$normalized" | tr ';' '\n')
+  return 0
+}
+
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
@@ -53,6 +86,10 @@ if persona_matches_grant "$agent_type" reviewer; then
   exit 0
 fi
 
+if command_is_provably_benign "$command"; then
+  exit 0
+fi
+
 if [ -z "$agent_type" ]; then
   has_reviewer=""
   personas="$(jq -r '.personaSelection[]? // empty' "$config" 2>/dev/null || true)"
@@ -69,5 +106,5 @@ if [ -z "$agent_type" ]; then
   exit 2
 fi
 
-echo "BLOCKED: '${agent_type}' may not write or otherwise touch .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. (Read-only commands are blocked too - use the Read tool for that.)" >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path (gh, git commit -m) ARE allowed; this command was recognized as neither, because it redirects, substitutes, or runs a program that could write." >&2
 exit 2
