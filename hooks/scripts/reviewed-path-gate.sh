@@ -59,29 +59,53 @@ program_allowed() {
 }
 
 # Length-preserving skeleton of $1: the CONTENTS of every single- and
-# double-quoted span become `X`, the quote characters themselves stay. Operator
-# detection runs on this, because a `>` or `;` inside a string literal is
-# argument text, not an operator. Prints nothing and returns non-zero for
-# anything it cannot fully resolve - an unbalanced quote, or a backslash-escaped
-# quote character anywhere in the command - so the unparseable stays NOT benign
-# instead of being guessed at. Length is preserved so that offsets into the
-# skeleton index the real command.
+# double-quoted span and of every `#` comment become `X`, the quote and `#`
+# characters themselves stay. Operator detection runs on this, because a `>` or
+# `;` inside a string literal - or inside a comment - is not an operator.
+# Length is preserved so that offsets into the skeleton index the real command.
+#
+# Only constructs modelled here may be skeletonized; every OTHER construct that
+# changes bash's own lexing has to fail closed, or its unmodelled text pairs up
+# with real quotes and masks the separators between commands (issue #182: both a
+# comment's apostrophe and a heredoc body's quote could swallow a newline and
+# hide the second line of a two-line command entirely). So this returns non-zero,
+# printing nothing, for a heredoc operator, ANY backslash escape (an escaped
+# space defeats the word-start test below just as an escaped quote defeats the
+# pairing), and an unbalanced quote.
+#
+# A `#` opens a comment only at the start of a word - preceded by nothing,
+# whitespace, or a metacharacter - and only outside quotes, which is why the two
+# are resolved in one left-to-right pass rather than in separate ones. `a#b`,
+# `FOO=#b` and `"a"#b` are all ordinary words to bash, and masking those would
+# hide a real `>` after them.
 command_skeleton() {
   local cmd="$1" out="" pre q body pad
-  case "$cmd" in *\\\'*|*\\\"*) return 1 ;; esac
+  case "$cmd" in *\\*|*'<<'*) return 1 ;; esac
   while :; do
-    pre="${cmd%%[\"\']*}"
+    pre="${cmd%%[\"\'#]*}"
     if [ "$pre" = "$cmd" ]; then
       printf '%s' "$out$cmd"
       return 0
     fi
     q="${cmd:${#pre}:1}"
     cmd="${cmd:${#pre}+1}"
-    body="${cmd%%"$q"*}"
-    [ "$body" != "$cmd" ] || return 1
-    cmd="${cmd:${#body}+1}"
-    printf -v pad '%*s' "${#body}" ''
-    out="$out$pre$q${pad// /X}$q"
+    out="$out$pre"
+    if [ "$q" = '#' ]; then
+      case "${out: -1}" in
+        ''|[[:space:]]|[\;\&\|\(\)\<\>]) ;;
+        *) out="$out#"; continue ;;
+      esac
+      body="${cmd%%$'\n'*}"          # to end of line; the newline itself stays
+      cmd="${cmd:${#body}}"
+      printf -v pad '%*s' "${#body}" ''
+      out="$out#${pad// /X}"
+    else
+      body="${cmd%%"$q"*}"
+      [ "$body" != "$cmd" ] || return 1
+      cmd="${cmd:${#body}+1}"
+      printf -v pad '%*s' "${#body}" ''
+      out="$out$q${pad// /X}$q"
+    fi
   done
 }
 
@@ -257,5 +281,5 @@ if [ -n "$write_tool" ]; then
   exit 2
 fi
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path (gh, git commit -m) ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced or backslash-escaped quote is never assumed benign)." >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path (gh, git commit -m) ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign)." >&2
 exit 2

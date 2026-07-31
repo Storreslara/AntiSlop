@@ -203,24 +203,78 @@ for c in "cat $marker/9.fail 2>&1" \
          "gh issue close 9 --comment \"$marker/9.pass\" --body \"a; b -> c\""; do
   bash_case "case 23 quote/fd form still read-only: ${c%% *} form" allowed task-master "$c"
 done
+# Case 23b pins a deliberate consequence of moving the eval/exec/source scan onto
+# the skeleton: those words inside quotes are argument text, so they no longer
+# disqualify. Cases 11a-11c pin the unquoted forms, which still do.
+bash_case "case 23b quoted eval/exec/source are argument text, not code" \
+  allowed scribe "gh issue close 9 --comment \"$marker/9.pass: do not eval, exec or source it\""
 
 echo
 echo "-- Step 6's fail-closed edges: unparseable, or only shaped like an exemption --"
-# The skeletonizer refuses to guess: an unbalanced quote or a backslash-escaped
-# quote makes the command unresolvable, and unresolvable is never benign. The
-# rest are near-misses of the two exempt redirection forms, plus the reason the
-# substitution scan deliberately keeps reading RAW text - double quotes do not
-# inhibit '$(', so a skeleton would hide a live substitution.
+# The skeletonizer refuses to guess: an unbalanced quote, ANY backslash escape,
+# or a heredoc operator makes the command unresolvable, and unresolvable is never
+# benign. The rest are near-misses of the two exempt redirection forms - 24.4
+# isolates the spacing rule and 24.5 the target rule (conflated before), and 24.6
+# pins the trailing anchor, without which '/dev/null/../..' would traverse back
+# into the marker directory. Plus the reason the substitution scan deliberately
+# keeps reading RAW text - double quotes do not inhibit '$(', so a skeleton would
+# hide a live substitution.
 n=0
 for c in "cat \"$marker/9.fail" \
          "echo \"a\\\"b\\\"c\" $marker" \
          "ls $marker >&$marker/9.pass" \
-         "ls $marker > /dev/null.txt" \
+         "ls $marker > /dev/null" \
+         "ls $marker >/dev/null.txt" \
+         "ls $marker >/dev/null/../../$marker/9.pass" \
          "echo \"\$(rm $marker/9.pass)\"" \
-         "ls \"$marker/a; ls b\"; rm $marker/9.pass"; do
+         "ls \"$marker/a; ls b\"; rm $marker/9.pass" \
+         "echo a\\ # x > $marker/9.pass" \
+         "ls $marker <<EOF"; do
   n=$((n + 1))
   bash_case "case 24.$n ${c%% *} form" blocked lead-programmer "$c"
 done
+
+echo
+echo "-- '#' comments are inert, and only where bash says one starts --"
+# A '#' comment runs to end of line and the quote characters inside it do NOT
+# quote anything. Reading them as quoting made the skeleton mask the NEWLINE
+# between two lines, so the segment split never saw the separator and only the
+# first, allowlisted line was ever checked - the fail-open found reviewing #182.
+bash_case "case 25.1 quote in a comment must not swallow the newline before rm" \
+  blocked lead-programmer "ls $marker  # don't peek
+rm $marker/9.pass  # it's fine"
+bash_case "case 25.2 same, hiding a redirection instead of a program" \
+  blocked lead-programmer "ls $marker  # don't peek
+printf HACKED > $marker/9.pass  # it's fine"
+# The converse over-correction is a fail-open of its own: masking from a '#' that
+# bash does NOT read as a comment hides every operator after it on that line. So
+# 25.3 and 25.4 are the probes that pin WHERE a comment may start - mid-word and
+# inside quotes are the two places it may not, and bash really does redirect in
+# both. Asserting the read-only forms (25.5, 25.6) allowed is not enough on its
+# own: masking to end of line erases a quote PAIR, so nothing goes unbalanced and
+# the verdict does not move.
+bash_case "case 25.3 mid-word '#' must not hide a same-line redirection" \
+  blocked lead-programmer "cat $marker/issue#9.fail > $marker/9.pass"
+bash_case "case 25.4 '#' inside quotes must not hide a same-line redirection" \
+  blocked lead-programmer "echo \"a # b\" > $marker/9.pass"
+bash_case "case 25.5 mid-word '#' in a read-only command is no over-block" \
+  allowed lead-programmer "cat $marker/issue#9.fail \"$marker/9.pass\""
+bash_case "case 25.6 '#' inside a quoted string is no over-block" \
+  allowed scribe "gh issue close 9 --comment \"$marker/9.pass # not a comment\""
+bash_case "case 25.7 a real comment's '#', '>' and stray quote are all inert" \
+  allowed task-master "ls $marker  # see issue #9 -> merged, don't peek"
+# Case 25.8: the same root cause through a heredoc instead of a comment - the
+# quote characters in a heredoc BODY are not quoting either, so they used to pair
+# up across the newlines and hide the rm in the middle. Heredocs are not modelled
+# at all; the '<<' operator itself is what disqualifies.
+bash_case "case 25.8 quotes in a heredoc body must not swallow the newlines" \
+  blocked lead-programmer "ls $marker <<ls
+ls \"
+ls
+rm $marker/9.pass
+cat <<ls
+ls \"
+ls"
 
 echo
 exit "$fail"
