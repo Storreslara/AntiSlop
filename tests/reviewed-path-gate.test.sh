@@ -21,7 +21,9 @@ unset CLAUDE_PLUGIN_ROOT || true
 fail=0
 
 marker=".claude/reviewed"
-gate=hooks/scripts/reviewed-path-gate.sh
+# Overridable so the case 26 mutation control can point the whole suite at a
+# mutated scratch copy without editing the gate in place. Defaults to the real one.
+gate="${GATE_UNDER_TEST:-hooks/scripts/reviewed-path-gate.sh}"
 
 tmproot="$(mktemp -d)"
 trap 'rm -rf "$tmproot"' EXIT
@@ -319,6 +321,99 @@ for b in '\011' '\040'; do
   bash_case "case 25.$((8 + n)) '#' after $b (tab/space) IS a word start (no over-block)" \
     allowed lead-programmer "ls $marker$byte#x; rm $marker/9.pass"
 done
+
+echo
+echo "-- case 26: differential boundary-byte sweep (T1-T5 x 0x01-0x7F) --"
+# Everything above this line is example-based, and example-based criteria let two
+# consecutive fail-opens land on command_skeleton(): its contract is universally
+# quantified over bash's input space, but the suite only ever quantified over the
+# constructs somebody thought of. Both review rounds ran a byte sweep against
+# real bash by hand, found the bug, and then threw the sweep away. This is that
+# sweep, kept.
+#
+# Five templates, one per lexing decision point, crossed with every byte 0x01 to
+# 0x7F with no exclusions. Per probe: run the gate FIRST; if it blocks, the probe
+# passes and we stop, because blocking is always safe. Only if the gate ALLOWS do
+# we execute the identical payload with real bash, in a throwaway sandbox seeded
+# with a sentinel. The probe fails only when the gate said yes and real bash then
+# touched the marker directory. The sweep is one-directional by construction: it
+# never asserts that a probe is allowed, because doing so would freeze today's
+# over-blocks in as required behaviour and contradict Step 6's own goal.
+#
+# MUTATION CONTROL (reviewer-run, 6R-2.7). Reintroduce attempt 2's bug in a
+# scratch copy and point the suite at it. Copy lib/ alongside it: the gate
+# sources lib/agent-identity.sh relative to its OWN path, so a bare copy into an
+# empty directory dies at startup and every case "fails" with rc=1 - which looks
+# like a kill but proves nothing.
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   sed "s/''|\[\$' .t.n'\]|/''|[[:space:]]|/" \
+#     hooks/scripts/reviewed-path-gate.sh > "$d/mutant.sh"
+#   GATE_UNDER_TEST="$d/mutant.sh" bash tests/reviewed-path-gate.test.sh; echo $?
+#
+# That restores the POSIX space class as the comment word-start predecessor.
+# Expected: exit 1 with exactly 6 FAIL lines - cases 25.9, 25.10 and 25.11 (the
+# literal VT/FF/CR probes) plus three case 26 T1 lines, at bytes 0x0B, 0x0C and
+# 0x0D. The floor required by 6R-2.7 is >= 4. Check the rc on those FAIL lines:
+# rc=0 means the gate allowed a payload it should have blocked, which is the
+# kill; rc=1 means the mutant crashed and the run is void.
+sweep_allowed=0
+sweep_probes=0
+
+# Sets $rc for one payload and asserts nothing - the sweep decides what to do
+# with the verdict. Deliberately not bash_case, which always asserts.
+bash_run() {
+  run "$(jq -n --arg a lead-programmer --arg c "$1" \
+    '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$proj"
+}
+
+# $1 template id, $2 byte in hex, $3 payload. Only ever called for payloads the
+# gate ALLOWED, so any effect on the marker directory is a fail-open by
+# definition. Runs in its own sandbox, cd'd into, and removed afterwards.
+sweep_differential() {
+  local box entries
+  box="$(mktemp -d "$tmproot/sweep.XXXXXX")"
+  mkdir -p "$box/$marker"
+  printf 'SENTINEL' > "$box/$marker/9.pass"
+  ( cd "$box" && bash -c "$3" ) >/dev/null 2>&1 </dev/null || true
+  entries="$( (cd "$box/$marker" && ls -A) 2>/dev/null || true )"
+  if [ "$(cat "$box/$marker/9.pass" 2>/dev/null || true)" != SENTINEL ]; then
+    bad "case 26 $1 byte $2: gate ALLOWED it, real bash altered or removed the sentinel"
+  elif [ "$entries" != "9.pass" ]; then
+    bad "case 26 $1 byte $2: gate ALLOWED it, real bash added an entry under the marker dir"
+  fi
+  rm -rf "$box"
+}
+
+for ((b = 1; b <= 127; b++)); do
+  byte="$(printf "\\$(printf '%03o' "$b")"; printf .)"
+  byte="${byte%.}"
+  hex="$(printf '0x%02X' "$b")"
+  for t in T1 T2 T3 T4 T5; do
+    case "$t" in
+      T1) payload="ls $marker$byte#x; rm -f $marker/9.pass" ;;        # comment word-start predecessor
+      T2) payload="ls $marker #x${byte}rm -f $marker/9.pass" ;;       # comment terminator
+      T3) payload="ls $marker >&1$byte$marker/9.pass" ;;              # fd-exemption trailing anchor
+      T4) payload="ls $marker >/dev/null$byte$marker/9.pass" ;;       # /dev/null-exemption trailing anchor
+      T5) payload="ls $marker${byte}rm -f $marker/9.pass" ;;          # segment separator set
+    esac
+    sweep_probes=$((sweep_probes + 1))
+    bash_run "$payload"
+    [ "$rc" = 0 ] || continue
+    sweep_allowed=$((sweep_allowed + 1))
+    sweep_differential "$t" "$hex" "$payload"
+  done
+done
+
+echo "     case 26 sweep: $sweep_probes probes, gate ALLOWED $sweep_allowed of them"
+# Non-vacuity floor. A future change that simply blocked everything would drive
+# the fail-open count to 0 and make the sweep pass for the wrong reason; this is
+# the assertion that fails instead. Measured on the fixed gate: 255 of 635.
+if [ "$sweep_allowed" -ge 200 ]; then
+  pass "case 26 non-vacuity floor ($sweep_allowed gate-allowed probes >= 200)"
+else
+  bad "case 26 non-vacuity floor: only $sweep_allowed gate-allowed probes (< 200) - the sweep is passing vacuously"
+fi
 
 echo
 echo "-- ratified residuals: known over-blocks, pinned so they are not re-litigated --"
