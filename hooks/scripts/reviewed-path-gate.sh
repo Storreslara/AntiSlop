@@ -36,11 +36,55 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 # $1 the whole segment, $2 its first word, $3 its second word (subcommand).
 # Allowlist-shaped on purpose: anything unrecognized is NOT allowed, so the
 # gate keeps failing closed for command forms nobody enumerated.
+# Fail-closed over-approximation of bash word splitting, for the flag scans in
+# program_allowed() only. Every METACHARACTER - space 0x20, tab 0x09, newline
+# 0x0A, and `;` `&` `|` `(` `)` `<` `>` - becomes one space, and the result is
+# padded, so a `*' -flag'*` glob tests a real word start instead of a literal
+# space. Deliberately NOT the POSIX space class: VT 0x0B, FF 0x0C and CR 0x0D
+# are ordinary word characters to bash, so treating them as boundaries would be
+# the mirror-image over-block (the same enumeration command_skeleton() uses).
+# Quote characters are dropped outright, because bash removes them during word
+# splitting: `""--output=F`, `-"-output=F"` and `--out"put"=F` are all the one
+# word `--output=F`, and a scan over raw text sees none of them. That shortcut is
+# sound HERE ONLY because command_skeleton() has already failed the command
+# closed on any backslash, any heredoc and any unbalanced quote before
+# program_allowed() is reached, which makes naive quote deletion total at this
+# site. Relaxing any of those three refusals lapses this argument.
+#
+# Returns NON-ZERO - refusing the segment outright, without consulting any flag
+# pattern - if it carries one of bash's EXPANSION characters `$` `` ` `` `{` `*`
+# `?` `[` `~`. Expansion FORGES a flag token out of text that spells no flag at
+# all: with E unset, `${E}--output=F` and `--outpu${E}t=F` both expand to a live
+# `--output`, and `--out{p,p}ut=F` builds one out of a brace list that contains
+# no such substring anywhere. All three were measured overwriting a seeded
+# target under real bash. Resolving expansion is not something a PreToolUse hook
+# can do without running the command, so this refuses rather than models - the
+# same fail-closed choice command_skeleton() makes for backslashes and heredocs.
+#
+# `}` is deliberately NOT in the set: `{` alone already catches brace expansion,
+# and `'`/`"` are not in it either, because the quote transparency above handles
+# them and refusing them would over-block ordinary `git commit -m "..."`.
+#
+# Only a NEGATIVE scan needs this treatment. The POSITIVE matches in
+# program_allowed() - the program name and gh's subcommand allowlist - already
+# fail closed under obfuscation, because an obfuscated name simply misses the
+# allowlist and falls through to the final `return 1`.
+flag_scan_form() {
+  case "$1" in *[\$\`{*?\[~]*) return 1 ;; esac
+  local s="${1//[\'\"]/}"
+  s="${s//[$' \t\n;&|()<>']/ }"
+  printf ' %s ' "$s"
+}
+
 program_allowed() {
+  # Declared bare, NOT `local form="$(...)"`: `local` is itself a command, so
+  # its own exit status would mask flag_scan_form's refusal signal entirely.
+  local form
   case "$2" in
     ls|cat|head|tail|wc|stat|file|test|'['|grep|diff|cmp) return 0 ;;
     # rg is allowlisted, but --pre/--hostname-bin run a command of their own.
-    rg) case " $1 " in *' --pre '*|*' --pre='*|*' --hostname-bin'*) return 1 ;; esac
+    rg) form="$(flag_scan_form "$1")" || return 1
+        case "$form" in *' --pre '*|*' --pre='*|*' --hostname-bin'*) return 1 ;; esac
         return 0 ;;
     sha256sum|md5sum|basename|dirname|readlink|realpath) return 0 ;;
     echo|printf) return 0 ;;
@@ -51,7 +95,8 @@ program_allowed() {
       case "$3" in
         commit|log|show|diff|status|tag|blame)
           # -o/--output let a read-only git subcommand write an arbitrary file.
-          case "$1" in *' -o'*|*' --output'*) return 1 ;; esac
+          form="$(flag_scan_form "$1")" || return 1
+          case "$form" in *' -o'*|*' --output'*) return 1 ;; esac
           return 0 ;;
       esac ;;
   esac

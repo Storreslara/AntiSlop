@@ -378,9 +378,9 @@ sweep_differential() {
   ( cd "$box" && bash -c "$3" ) >/dev/null 2>&1 </dev/null || true
   entries="$( (cd "$box/$marker" && ls -A) 2>/dev/null || true )"
   if [ "$(cat "$box/$marker/9.pass" 2>/dev/null || true)" != SENTINEL ]; then
-    bad "case 26 $1 byte $2: gate ALLOWED it, real bash altered or removed the sentinel"
+    bad "case $1 byte $2: gate ALLOWED it, real bash altered or removed the sentinel"
   elif [ "$entries" != "9.pass" ]; then
-    bad "case 26 $1 byte $2: gate ALLOWED it, real bash added an entry under the marker dir"
+    bad "case $1 byte $2: gate ALLOWED it, real bash added an entry under the marker dir"
   fi
   rm -rf "$box"
 }
@@ -401,7 +401,7 @@ for ((b = 1; b <= 127; b++)); do
     bash_run "$payload"
     [ "$rc" = 0 ] || continue
     sweep_allowed=$((sweep_allowed + 1))
-    sweep_differential "$t" "$hex" "$payload"
+    sweep_differential "26 $t" "$hex" "$payload"
   done
 done
 
@@ -442,6 +442,181 @@ bash_case "case 27.2 the documented workaround - quote it instead - is allowed" 
 bash_case "case 27.3 comment-only trailing segment stays blocked (ratified residual, OQ1)" \
   blocked lead-programmer "ls $marker
 # note"
+
+echo
+echo "-- case 28: exhaustive flag-boundary byte sweep (G,R x 0x01-0x7F) --"
+# The flag scans in program_allowed() modelled a bash word boundary as one
+# literal space, which is narrower than bash's own rule - the third bug of that
+# class in this file (#177, #182, and this one). Cases 29.a-29.o below pin the
+# named forms, but example-based fixtures are exactly what let the first two
+# land, so this pins the boundary predicate ITSELF: every byte 0x01-0x7F, no
+# exclusions, crossed with the two templates, asserted as a SET EQUALITY. A byte
+# blocked that is not on the expected list fails just as loudly as one on the
+# list that is allowed, so the fix cannot be over-corrected into an over-block
+# either.
+#
+# REAL-BASH DIFFERENTIAL HALF, on template G. An earlier draft of this case had
+# none, on the stated ground that `git diff --output=F` outside a git repository
+# "writes nothing (measured: rc 128/129)". The rc was right and the conclusion
+# was wrong: git parses --output and OPENS the target before it ever discovers
+# there is no repository, so the file is TRUNCATED TO 0 BYTES and then the run
+# exits 129. Measured directly (git 2.43.0), which is why the sentinel here is
+# checked for content and not merely for existence. Had that claim gone in
+# unverified, this case would have been exactly the vacuous differential it was
+# written to avoid. (`git log --output=F` really does write nothing - rc 128,
+# file untouched - so the distinction is per-subcommand, not per-flag.)
+#
+# MUTATION CONTROL (reviewer-run, AC1.9). Revert the scan to matching the RAW
+# segment - i.e. strip quote deletion and metacharacter normalization out of
+# flag_scan_form(), leaving it a bare padder, which is precisely the pre-fix
+# literal-space check. Copy lib/ alongside the mutant: the gate sources
+# lib/agent-identity.sh relative to its OWN path, so a bare copy dies at startup
+# and every case "fails" with rc=1, which looks like a kill but proves nothing.
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   sed -e 's/^  local s=.*/  local s="$1"/' -e '/^  s="/d' \
+#     hooks/scripts/reviewed-path-gate.sh > "$d/mutant.sh"
+#   GATE_UNDER_TEST="$d/mutant.sh" bash tests/reviewed-path-gate.test.sh; echo $?
+#
+# Measured: exit 1, 18 FAIL lines - case 28 G and R each at bytes 0x09, 0x28,
+# 0x29 and 0x3C, all nine of 29.a-29.i, and one DIFFERENTIAL line ("real bash
+# altered or removed the sentinel") at G byte 0x09, which is the half below
+# catching a live filesystem effect rather than a predicate disagreement. The
+# floor required by AC1.9 is >= 6, with >= 1 from G, >= 1 from R and >= 4 from
+# case 29. Read the rc on those FAIL lines: rc=0 means the gate ALLOWED a payload
+# it should have blocked, which is the kill; rc=1 means the mutant crashed and
+# the run is void.
+#
+# MUTATION CONTROL 2 (reviewer-run, AC1.9-R), for the EXPANSION refusal, which
+# mutant 1 above does not touch at all. Drop the refusal line only:
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   sed '/^  case "\$1" in \*\[/d' \
+#     hooks/scripts/reviewed-path-gate.sh > "$d/mutant2.sh"
+#   GATE_UNDER_TEST="$d/mutant2.sh" bash tests/reviewed-path-gate.test.sh; echo $?
+#
+# Measured: exit 1, 18 FAIL lines - case 28 G and R each at the six expansion
+# bytes (0x24 0x2A 0x3F 0x5B 0x7B 0x7E), cases 29.j-29.n, and 29.o flipping to
+# allowed. Every one reads rc=0, not rc=1. Note the two mutants are disjoint:
+# neither one's kill set overlaps the other's, which is what shows the expansion
+# refusal is an independent third mechanism and not a restatement of the first two.
+#
+# THE EXPECTED SET. Ten bash metacharacters; four bytes the pre-existing
+# skeletonizer and substitution scan reject on their own (0x22 " 0x27 ' 0x5C \
+# 0x60 `); and six EXPANSION characters refused by flag_scan_form (0x24 $
+# 0x2A * 0x3F ? 0x5B [ 0x7B { 0x7E ~) - 0x60 ` belongs to both groups. VT 0x0B,
+# FF 0x0C and CR 0x0D are deliberately NOT here (ordinary word characters to
+# bash), and neither is 0x7D } - `{` alone already catches brace expansion, so
+# blocking its partner would be an over-block with nothing to show for it.
+expect_blocked=" 0x09 0x0A 0x20 0x22 0x24 0x26 0x27 0x28 0x29 0x2A 0x3B 0x3C 0x3E 0x3F 0x5B 0x5C 0x60 0x7B 0x7C 0x7E "
+sweep_g_executed=0
+for t in G R; do
+  diverged=0
+  for ((b = 1; b <= 127; b++)); do
+    byte="$(printf "\\$(printf '%03o' "$b")"; printf .)"
+    byte="${byte%.}"
+    hex="$(printf '0x%02X' "$b")"
+    case "$t" in
+      G) payload="git diff HEAD$byte--output=$marker/9.pass" ;;
+      R) payload="rg pat $marker$byte--pre=/bin/sh" ;;
+    esac
+    bash_run "$payload"
+    # Exact codes, so a crashing gate (rc=1 under set -e) can never be counted
+    # as a block and silently satisfy the expected set.
+    if [ "$rc" = 2 ] && [ -s "$errf" ]; then verdict=blocked
+    elif [ "$rc" = 0 ]; then verdict=allowed
+    else verdict="rc=$rc"
+    fi
+    case "$expect_blocked" in
+      *" $hex "*) want=blocked ;;
+      *)          want=allowed ;;
+    esac
+    if [ "$verdict" != "$want" ]; then
+      diverged=$((diverged + 1))
+      bad "case 28 $t byte $hex: $verdict, expected $want"
+    fi
+    # Differential half: only ever for a payload the gate ALLOWED, so any effect
+    # on the marker directory is a fail-open by definition. G only - template R
+    # invokes rg, whose --pre runs a command but writes nothing under the marker
+    # directory, so an R differential would be inert by construction and would
+    # assert coverage it does not have (case 26's T3/T4 mistake). Stated rather
+    # than quietly omitted.
+    if [ "$t" = G ] && [ "$verdict" = allowed ]; then
+      sweep_g_executed=$((sweep_g_executed + 1))
+      sweep_differential "28 G" "$hex" "$payload"
+    fi
+  done
+  [ "$diverged" -ne 0 ] || pass "case 28 $t: blocked-byte set is exactly the expected 20 of 127"
+done
+# Non-vacuity floor for the differential half, mirroring case 26's: if a future
+# change blocked everything, nothing would ever be executed and the differential
+# would pass for the wrong reason.
+if [ "$sweep_g_executed" -ge 100 ]; then
+  pass "case 28 differential non-vacuity ($sweep_g_executed allowed G payloads executed against real bash >= 100)"
+else
+  bad "case 28 differential non-vacuity: only $sweep_g_executed G payloads reached real bash (< 100)"
+fi
+
+echo
+echo "-- case 29: flag tokens at a word boundary, quote-transparently --"
+tab="$(printf '\011')"
+bash_case "case 29.a git --output preceded by an empty double-quoted string" blocked lead-programmer \
+  "git diff \"\"--output=$marker/9.pass HEAD"
+bash_case "case 29.b git --output preceded by an empty single-quoted string" blocked lead-programmer \
+  "git diff ''--output=$marker/9.pass HEAD"
+bash_case "case 29.c git --output split across a quote after the first dash" blocked lead-programmer \
+  "git diff -\"-output=$marker/9.pass\" HEAD"
+bash_case "case 29.d quote INSIDE the git flag name" blocked lead-programmer \
+  "git diff --out\"put\"=$marker/9.pass HEAD"
+bash_case "case 29.e git --output after a TAB boundary" blocked lead-programmer \
+  "git diff$tab--output=$marker/9.pass HEAD"
+bash_case "case 29.f rg --pre preceded by an empty double-quoted string" blocked lead-programmer \
+  "rg pat $marker \"\"--pre=/bin/sh"
+bash_case "case 29.g rg --pre split across a quote after the first dash" blocked lead-programmer \
+  "rg pat $marker -\"-pre\" /bin/sh"
+bash_case "case 29.h rg --pre TERMINATED by a TAB, not a space" blocked lead-programmer \
+  "rg --pre$tab/bin/sh pat $marker"
+bash_case "case 29.i quote INSIDE the rg flag name" blocked lead-programmer \
+  "rg --p\"re\"=/bin/sh pat $marker"
+# 29.j-29.n: EXPANSION forges a flag token out of text that spells no flag at
+# all, so neither a wider boundary set nor quote transparency can see it - only
+# refusing the construct can. With E unset, ${E} expands to nothing, and the
+# brace forms build `--output`/`--pre` out of a list containing no such
+# substring. All five were measured overwriting a seeded target (or, for rg,
+# invoking a command) under real bash in a throwaway sandbox.
+bash_case "case 29.j empty expansion forges the git flag boundary" blocked lead-programmer \
+  "git diff \${E}--output=$marker/9.pass HEAD"
+bash_case "case 29.k empty expansion INSIDE the git flag name" blocked lead-programmer \
+  "git diff --outpu\${E}t=$marker/9.pass HEAD"
+bash_case "case 29.l brace expansion builds the git flag name" blocked lead-programmer \
+  "git diff --out{p,p}ut=$marker/9.pass HEAD"
+bash_case "case 29.m empty expansion forges the rg flag boundary" blocked lead-programmer \
+  "rg pat $marker \${E}--pre=/bin/sh"
+bash_case "case 29.n brace expansion builds the rg flag name" blocked lead-programmer \
+  "rg pat $marker --p{r,r}e=/bin/sh"
+# The over-approximation's upper bound. Quote deletion and metacharacter
+# flattening can only ADD word starts, so the risk they carry is over-blocking
+# ordinary read-only work; these eight pin that it did not happen. --pretty and
+# --pre-glob are the near-misses that must stay allowed, and `git log --oneline`
+# is the one that a widened `-o` scan would swallow.
+for c in "rg --pretty pat $marker" \
+         "git log --oneline -- $marker" \
+         "git commit -m \"fix: record the verdict under $marker\"" \
+         "git diff --stat HEAD -- $marker" \
+         "gh issue close 9 --comment \"see $marker/9.pass\"" \
+         "cat $marker/9.pass" \
+         "ls -la $marker"; do
+  bash_case "case 29 allow-control: $c" allowed lead-programmer "$c"
+done
+# RATIFIED RESIDUAL (AC1.16). `rg --pre-glob *.md` was an allow-control until the
+# expansion refusal landed; the glob `*` now fails the segment closed. Pinned as
+# BLOCKED rather than carved out, because a carve-out would have to decide which
+# `*` is a glob and which is a forged flag - the same "model one more construct"
+# move that produced all three bugs of this class. Documented workaround: quote
+# the glob (`rg --pre-glob '*.md'`) - which 29.o pins as still blocked too, since
+# quotes are transparent here - or scope the search with a path instead.
+bash_case "case 29.o rg --pre-glob's glob fails closed (ratified residual, AC1.16)" \
+  blocked lead-programmer "rg --pre-glob *.md pat $marker"
 
 echo
 exit "$fail"
