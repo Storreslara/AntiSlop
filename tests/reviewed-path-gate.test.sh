@@ -186,18 +186,41 @@ case "$obfuscated" in
 esac
 
 echo
-echo "-- pinned quote-unaware residue: fail-closed over-blocks, not bypasses (R8) --"
-# Cases 20-22 are OVER-blocks. The operator scan and the segment split inspect
-# raw text, so a '>' or ';' inside a quoted string is read as an operator. The
-# imprecision can only ever find MORE operators than a real shell, so it fails
-# closed - a delivery gap against Goal items 1 and 2, never a security hole.
-# Step 6 makes all three allowed; until it lands this pins the current state.
-bash_case "case 20 gh comment containing '->' as scribe (over-block, Step 6 fixes)" \
-  blocked scribe "gh issue close 9 --comment \"$marker/9.pass -> merged\""
-bash_case "case 21 fd redirection on a read-only command as task-master (over-block, Step 6 fixes)" \
-  blocked task-master "ls $marker 2>/dev/null"
-bash_case "case 22 gh comment containing ';' as scribe (over-block, Step 6 fixes)" \
-  blocked scribe "gh issue close 9 --comment \"$marker/9.pass; then merge\""
+echo "-- quote-aware operator detection (R8's residue, closed by Step 6) --"
+# Cases 20-22 were OVER-blocks until Step 6 landed: the operator scan and the
+# segment split inspected raw text, so a '>' or ';' inside a quoted string was
+# read as an operator and '2>/dev/null' as a write. Step 6 runs both conditions
+# on a quote-aware skeleton and exempts exactly two redirection forms, so all
+# three are now allowed. They stay pinned as the fixtures that prove it.
+bash_case "case 20 gh comment containing '->' as scribe (Step 6 landed)" \
+  allowed scribe "gh issue close 9 --comment \"$marker/9.pass -> merged\""
+bash_case "case 21 fd redirection on a read-only command as task-master (Step 6 landed)" \
+  allowed task-master "ls $marker 2>/dev/null"
+bash_case "case 22 gh comment containing ';' as scribe (Step 6 landed)" \
+  allowed scribe "gh issue close 9 --comment \"$marker/9.pass; then merge\""
+for c in "cat $marker/9.fail 2>&1" \
+         "echo $marker >&2" \
+         "gh issue close 9 --comment \"$marker/9.pass\" --body \"a; b -> c\""; do
+  bash_case "case 23 quote/fd form still read-only: ${c%% *} form" allowed task-master "$c"
+done
+
+echo
+echo "-- Step 6's fail-closed edges: unparseable, or only shaped like an exemption --"
+# The skeletonizer refuses to guess: an unbalanced quote or a backslash-escaped
+# quote makes the command unresolvable, and unresolvable is never benign. The
+# rest are near-misses of the two exempt redirection forms, plus the reason the
+# substitution scan deliberately keeps reading RAW text - double quotes do not
+# inhibit '$(', so a skeleton would hide a live substitution.
+n=0
+for c in "cat \"$marker/9.fail" \
+         "echo \"a\\\"b\\\"c\" $marker" \
+         "ls $marker >&$marker/9.pass" \
+         "ls $marker > /dev/null.txt" \
+         "echo \"\$(rm $marker/9.pass)\"" \
+         "ls \"$marker/a; ls b\"; rm $marker/9.pass"; do
+  n=$((n + 1))
+  bash_case "case 24.$n ${c%% *} form" blocked lead-programmer "$c"
+done
 
 echo
 exit "$fail"

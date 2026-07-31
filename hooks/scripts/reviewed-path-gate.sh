@@ -58,24 +58,94 @@ program_allowed() {
   return 1
 }
 
+# Length-preserving skeleton of $1: the CONTENTS of every single- and
+# double-quoted span become `X`, the quote characters themselves stay. Operator
+# detection runs on this, because a `>` or `;` inside a string literal is
+# argument text, not an operator. Prints nothing and returns non-zero for
+# anything it cannot fully resolve - an unbalanced quote, or a backslash-escaped
+# quote character anywhere in the command - so the unparseable stays NOT benign
+# instead of being guessed at. Length is preserved so that offsets into the
+# skeleton index the real command.
+command_skeleton() {
+  local cmd="$1" out="" pre q body pad
+  case "$cmd" in *\\\'*|*\\\"*) return 1 ;; esac
+  while :; do
+    pre="${cmd%%[\"\']*}"
+    if [ "$pre" = "$cmd" ]; then
+      printf '%s' "$out$cmd"
+      return 0
+    fi
+    q="${cmd:${#pre}:1}"
+    cmd="${cmd:${#pre}+1}"
+    body="${cmd%%"$q"*}"
+    [ "$body" != "$cmd" ] || return 1
+    cmd="${cmd:${#body}+1}"
+    printf -v pad '%*s' "${#body}" ''
+    out="$out$pre$q${pad// /X}$q"
+  done
+}
+
+# Blank out, length-preservingly, every occurrence of the two closed redirection
+# forms that carry no write intent: file-descriptor duplication (`N>&M`, `>&N`)
+# and a redirection whose target is literally /dev/null - each of which must end
+# at whitespace or end of command. Every other `>` is left in place for the
+# caller's write test, so `>>`, `>&file`, `>/dev/null.txt` and the spaced
+# `> /dev/null` all still disqualify. Masking rather than merely exempting is
+# what also keeps the `&` of `2>&1` from splitting a segment.
+mask_inert_redirections() {
+  local rest="$1" out="" pre tail pad \
+    fd='^(&[0-9]+)([[:space:]]|$)' devnull='^(/dev/null)([[:space:]]|$)'
+  while :; do
+    pre="${rest%%>*}"
+    if [ "$pre" = "$rest" ]; then
+      printf '%s' "$out$rest"
+      return 0
+    fi
+    tail="${rest:${#pre}+1}"
+    if [[ $tail =~ $fd ]] || [[ $tail =~ $devnull ]]; then
+      printf -v pad '%*s' "$(( 1 + ${#BASH_REMATCH[1]} ))" ''
+      out="$out$pre${pad// /X}"
+      rest="${tail:${#BASH_REMATCH[1]}}"
+    else
+      out="$out$pre>"
+      rest="$tail"
+    fi
+  done
+}
+
+# $1 is one REAL (un-skeletonized) segment: the allowlist reads real text, since
+# only operator detection is quote-aware.
+segment_allowed() {
+  local first sub
+  read -r first sub _ <<< "$1"
+  [ -n "$first" ] || return 0
+  program_allowed "$1" "$first" "$sub"
+}
+
 # A command is provably benign only if it can neither redirect nor run text as
-# code, AND every segment of it invokes an allowlisted program.
+# code, AND every segment of it invokes an allowlisted program. The `>` scan and
+# the segment split read the quote-aware skeleton; the substitution scan does
+# NOT, because double quotes do not inhibit `$(` or backticks, so skeletonizing
+# there would hide a live substitution.
 command_is_provably_benign() {
-  local cmd="$1" normalized seg first sub
+  local cmd="$1" skel rest head start=0 seps=$';&|\n'
   case "$cmd" in
-    *'>'*|*'`'*|*'$('*|*'<('*) return 1 ;;
+    *'`'*|*'$('*|*'<('*) return 1 ;;
   esac
-  if printf '%s' "$cmd" | grep -Eq '(^|[^[:alnum:]_])(eval|exec|source)([^[:alnum:]_]|$)'; then
+  skel="$(command_skeleton "$cmd")" || return 1
+  skel="$(mask_inert_redirections "$skel")"
+  case "$skel" in *'>'*) return 1 ;; esac
+  if printf '%s' "$skel" | grep -Eq '(^|[^[:alnum:]_])(eval|exec|source)([^[:alnum:]_]|$)'; then
     return 1
   fi
-  normalized="${cmd//&/;}"
-  normalized="${normalized//|/;}"
-  while IFS= read -r seg; do
-    read -r first sub _ <<< "$seg"
-    [ -n "$first" ] || continue
-    program_allowed "$seg" "$first" "$sub" || return 1
-  done < <(printf '%s\n' "$normalized" | tr ';' '\n')
-  return 0
+  rest="$skel"
+  while :; do
+    head="${rest%%[$seps]*}"
+    segment_allowed "${cmd:start:${#head}}" || return 1
+    [ "$head" != "$rest" ] || return 0
+    start=$((start + ${#head} + 1))
+    rest="${rest:${#head}+1}"
+  done
 }
 
 # Resolve `.`, `..` and repeated slashes lexically, so that `.claude//reviewed`,
@@ -187,5 +257,5 @@ if [ -n "$write_tool" ]; then
   exit 2
 fi
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path (gh, git commit -m) ARE allowed; this command was recognized as neither, because it redirects, substitutes, or runs a program that could write." >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path (gh, git commit -m) ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced or backslash-escaped quote is never assumed benign)." >&2
 exit 2
