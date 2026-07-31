@@ -173,6 +173,7 @@ identity_drift_log() {
       fi
     done < "$audit"
   fi
+  # Dedupe is best-effort, not a hard guarantee: a concurrent writer can append between this scan and the write below (TOCTOU), producing a duplicate rather than corrupting the log.
   # A write failure here (disk full, unwritable audit path, ...) must degrade
   # to "the drift wasn't logged" rather than aborting the calling hook under
   # its `set -e` - this is a logging side-effect, never a gate decision. The

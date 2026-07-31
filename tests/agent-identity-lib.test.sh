@@ -55,6 +55,13 @@ rm -f "$audit"
 # from the shell itself, so it escapes a bare `2>/dev/null` on the command.
 check_unusable_audit() {
   local mode="$1" label="$2" a rc=0 out err
+  # root ignores file-mode permission bits, so chmod 444/000 would not
+  # actually block access and this check would report OK without ever
+  # exercising the degrade-to-no-op path it exists to guard.
+  if [ "$(id -u)" = "0" ]; then
+    echo "SKIP fix1 ($label): running as root, chmod $mode cannot block access - unable to exercise this guard"
+    return 0
+  fi
   a="$(mktemp)"
   chmod "$mode" "$a"
   err="$(mktemp)"
@@ -77,6 +84,24 @@ check_unusable_audit() {
 }
 check_unusable_audit 444 write-path
 check_unusable_audit 000 read-path
+
+# --- Fix 3: the root-detection guard above must actually take its branch ---
+# We can't literally re-run this suite as root in this environment, so prove
+# the guard's logic works by stubbing `id` to report uid 0 and confirming
+# check_unusable_audit takes the SKIP path instead of running the (broken
+# under root) chmod assertions.
+id() { echo 0; }
+stub_out="$(check_unusable_audit 444 stubbed-root)"
+unset -f id
+case "$stub_out" in
+  SKIP*)
+    echo "OK   fix3: id -u=0 correctly routes to the SKIP branch instead of asserting a chmod-blocked log"
+    ;;
+  *)
+    echo "FAIL fix3: expected SKIP output under stubbed root, got: $stub_out"
+    fail=1
+    ;;
+esac
 
 # --- Fix 2: the dedupe key must be injective ---
 # Every payload below is a DIFFERENT raw identity that the old strip-based
