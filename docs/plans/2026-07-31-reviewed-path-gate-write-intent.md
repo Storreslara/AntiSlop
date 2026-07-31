@@ -829,3 +829,62 @@ standing guard against a third fail-open of the same class is the differential
 boundary-byte sweep (case 26 of `tests/reviewed-path-gate.test.sh`), which checks
 the matcher against real bash across every byte `0x01`-`0x7F` rather than against
 a fixture list.
+
+---
+
+## Amendment A5 — narrowing A4's completeness claim about case 26
+
+Nothing above this line is modified. A5 supersedes one sentence of A4 rather
+than editing it, preserving this document's append-only invariant (#182's
+criterion 6R-4.4) and the historical record of what was believed on 2026-07-31.
+
+**Superseded sentence, quoted verbatim from A4:**
+
+> The standing guard against a third fail-open of the same class is the
+> differential boundary-byte sweep (case 26 of
+> `tests/reviewed-path-gate.test.sh`), which checks the matcher against real
+> bash across every byte `0x01`-`0x7F` rather than against a fixture list.
+
+**What is actually true.** Case 26 checks **filesystem effects under five fixed
+payload shapes** (templates T1-T5, one per lexing decision point), for every byte
+`0x01`-`0x7F`. It is therefore exhaustive in the **byte** dimension and
+example-based in the **construct** dimension. It is not a check of "the matcher"
+in general: it covers `command_skeleton()`'s comment word-start and terminator,
+the two redirection-exemption trailing anchors, and the segment separator set —
+and nothing else.
+
+**Why the distinction is load-bearing, not pedantry.** Issue #184 found a third
+fail-open of this same class — an ad-hoc word-boundary predicate — at a site case
+26 does not cover at all: the flag scans inside `program_allowed()`. Every one of
+case 26's five templates invokes `ls`, which carries no flag scan, so the sweep
+was structurally incapable of ever reaching that code path. Its gate-allowed
+count is identical (257 of 635) before and after #184's fix, which is the
+measurement that demonstrates the non-coverage rather than merely asserting it.
+A reader who took A4's sentence at face value would reasonably conclude the class
+was already closed. It was not.
+
+**What replaced it.** #184 added **case 28**, an exhaustive flag-boundary
+assertion for `program_allowed()`. The two techniques are deliberately different
+shapes, and the distinction is the reusable lesson:
+
+- A **differential** sweep (case 26) needs the reference implementation to
+  produce an observable effect in the sandbox. Where it cannot, a differential
+  template is green forever regardless of the gate's behaviour — which is the
+  defect a reviewer separately found in case 26's own T3/T4 templates, now
+  tracked as issue #185.
+- Where the effect *is* observable, the differential half is kept. Case 28 has
+  one, on its `git` template. This corrects a measurement error made while
+  specifying #184: `git diff --output=F` outside a git repository was recorded as
+  writing nothing on the strength of its exit code (rc 128/129). The exit code is
+  right and the inference was wrong — git parses `--output` and **opens, hence
+  truncates,** the target before it discovers there is no repository. `git log
+  --output=F` genuinely does not write, so the behaviour is per-subcommand.
+- Where the effect is genuinely unobservable, the honest form is a
+  **one-directional block assertion with an explicit mutation control**, not a
+  differential test that can never fail.
+
+**Standing guard, restated correctly.** There are now **two** regression
+techniques on this file, not one, and neither subsumes the other: case 26 for
+`command_skeleton()`'s lexing decisions, case 28 for `program_allowed()`'s flag
+scans. This file has now produced three bugs of one class (#177, #182, #184), and
+the enumerated ten-metacharacter set is the project's single answer to it.

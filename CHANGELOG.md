@@ -3,6 +3,38 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.16.1] - 2026-07-31
+
+### Fixed
+- **The flag-scan boundary check in `hooks/scripts/reviewed-path-gate.sh`'s
+  `program_allowed()` was less strict than intended, and is now a fail-closed
+  over-approximation of bash word splitting.** The scans that keep an
+  allowlisted-but-option-dangerous program (`rg --pre`/`--hostname-bin`,
+  `git --output`/`-o`) from being used as a writer treated a word boundary as a
+  single literal space. Bash's own rule differs in three independent ways, each
+  separately sufficient to slip a flag past the scan: a word also begins after
+  any of bash's ten **metacharacters**; **quote characters** are removed during
+  word splitting, so they are not part of a word at all and may be sprinkled
+  anywhere inside a flag name; and **expansion** can forge a flag token out of
+  text that spells no flag anywhere. The first two are now normalized away
+  before matching; the third cannot be resolved without running the command, so
+  a segment carrying one of bash's expansion characters is refused outright at
+  that scan — the same fail-closed choice already made for backslashes and
+  heredocs. The flag inventory is unchanged: this changes which *text* counts as
+  a flag, not which flags are listed. This **closes the still-open gap recorded
+  in the 0.16.0 entry below**, which is tracked as issue #184.
+- Because `bin/cli.js --update` copies `hooks/scripts/*.sh` wholesale, this fix
+  reaches every already-adapted **marketplace-plugin** project on `--update`.
+  The standalone-install caveat noted under 0.16.0 still applies unchanged.
+- **Known over-block introduced by the above, accepted deliberately:**
+  `rg --pre-glob '<glob>'` is now blocked when its glob contains `*`, `?`, `[`
+  or `{`, because those are exactly the characters an expansion-forged flag
+  hides behind. Quoting the glob does not help (quotes are transparent to this
+  scan by design). Workaround: scope the search with a path instead. Pinned as a
+  ratified residual rather than carved out, since deciding which `*` is a glob
+  and which is a forged flag is the kind of extra-construct modelling that
+  produced this bug class in the first place.
+
 ## [0.16.0] - 2026-07-31
 
 ### Changed
