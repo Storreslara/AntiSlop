@@ -53,8 +53,17 @@ read its last non-empty line:
   name via `SendMessage`, quoting the reason back.
 - No `STATUS:` line at all → treat this as a suspected `maxTurns` cutoff (the
   harness gives no other signal — a cut-off turn's result is
-  indistinguishable from a completed one's); resume the persona by name and
-  ask it to confirm whether it finished, and to re-emit the line.
+  indistinguishable from a completed one's). Before resuming, check
+  independently-verifiable repo state yourself first (`git log`, `git
+  status`, re-running the reported test command) when the report already
+  reads as complete and cites verifiable evidence (a commit hash, specific
+  test output) — this is cheaper than a resume and can confirm completion
+  without one. Only resume the persona (asking it to confirm whether it
+  finished, and to re-emit the line) if that check is inconclusive,
+  contradicts the report, or the report itself reads as a genuine mid-work
+  fragment rather than a finished result. This doesn't relax the "resume at
+  most once per dispatch for a missing line" bound below — it's a cheaper
+  first step that can sometimes avoid needing that resume at all.
 
 Never re-`Agent` a persona to resume it in any of the above cases — see
 "Managing a long-running background dispatch" below for the resume-by-name

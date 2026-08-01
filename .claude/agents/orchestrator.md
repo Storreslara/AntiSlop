@@ -54,8 +54,17 @@ read its last non-empty line:
   name via `SendMessage`, quoting the reason back.
 - No `STATUS:` line at all → treat this as a suspected `maxTurns` cutoff (the
   harness gives no other signal — a cut-off turn's result is
-  indistinguishable from a completed one's); resume the persona by name and
-  ask it to confirm whether it finished, and to re-emit the line.
+  indistinguishable from a completed one's). Before resuming, check
+  independently-verifiable repo state yourself first (`git log`, `git
+  status`, re-running the reported test command) when the report already
+  reads as complete and cites verifiable evidence (a commit hash, specific
+  test output) — this is cheaper than a resume and can confirm completion
+  without one. Only resume the persona (asking it to confirm whether it
+  finished, and to re-emit the line) if that check is inconclusive,
+  contradicts the report, or the report itself reads as a genuine mid-work
+  fragment rather than a finished result. This doesn't relax the "resume at
+  most once per dispatch for a missing line" bound below — it's a cheaper
+  first step that can sometimes avoid needing that resume at all.
 
 Never re-`Agent` a persona to resume it in any of the above cases — see
 "Managing a long-running background dispatch" below for the resume-by-name
@@ -603,6 +612,15 @@ you wrote into the sentinel>`.
 
 A missing line is a **prompt to resume**, not a defect and not a FAIL. Nothing
 is gated on it; it costs one cheap resume, which is the whole point.
+
+**Keep that resume cheap.** If the message resuming you asks ONLY whether you
+finished — not to continue unfinished work, not to check something new — reply
+with a brief one-or-two-sentence confirmation and the status line; do not
+re-run tests, tools, or verification you already reported in your prior turn.
+Re-verify only if the resume message explicitly asks you to continue work or
+check something new, or you genuinely doubt your prior turn's report was
+accurate. A confirmation resume that turns into a full re-run defeats the
+whole point of it being cheap.
 
 ## Running acceptance-criteria commands (there is no self-wake)
 Run acceptance-criteria commands — test suites, build/lint checks, anything

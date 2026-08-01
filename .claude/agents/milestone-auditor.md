@@ -186,6 +186,15 @@ you wrote into the sentinel>`.
 A missing line is a **prompt to resume**, not a defect and not a FAIL. Nothing
 is gated on it; it costs one cheap resume, which is the whole point.
 
+**Keep that resume cheap.** If the message resuming you asks ONLY whether you
+finished — not to continue unfinished work, not to check something new — reply
+with a brief one-or-two-sentence confirmation and the status line; do not
+re-run tests, tools, or verification you already reported in your prior turn.
+Re-verify only if the resume message explicitly asks you to continue work or
+check something new, or you genuinely doubt your prior turn's report was
+accurate. A confirmation resume that turns into a full re-run defeats the
+whole point of it being cheap.
+
 ## Machine-checkable criteria
 An acceptance criterion is only valid if it's something an agent can RUN and
 get a pass/fail from: a test command, a build/lint exit code, a specific

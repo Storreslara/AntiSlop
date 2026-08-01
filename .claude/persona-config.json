@@ -41,17 +41,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "cd48d2fff3ac3b57e1e15de02271d9945d630c30049c37ecb44622aeca63915d",
+    ".claude/agents/orchestrator.md": "aabeb748c70e0b251857f58f0eb7baf44c4f72a49ad198a76fd6d241693d08e7",
     ".claude/agents/explorer.md": "200bc1773b487c788c6a8ff93ad94e22a631555651d8f0d7d026df512e2165ba",
-    ".claude/agents/lead-programmer.md": "f7ff6b0b6ba14f632dfe5dee1c86ac03f4e19a813be87b9ea06b3eb6a6e5f410",
-    ".claude/agents/milestone-auditor.md": "26eef3b12ff5d235839c9021288f9e73e28086763b16c92faf41113afaf789de",
-    ".claude/agents/reviewer.md": "77d7e3d6358706e8548887e9aa631d3b138f1e95b11ccda2e0e2b92a2424a8c6",
+    ".claude/agents/lead-programmer.md": "395c1c9e8cd8598801f64da296cdb19ecc97f30ccacee411f9ab5b403c48d74a",
+    ".claude/agents/milestone-auditor.md": "6d71c83dceafd2295891617c7e553aa2d670bab2ada2e357618127ca5bc447ba",
+    ".claude/agents/reviewer.md": "02134551d0cd0f949748b5f60587cc12cbd24557c18a3c82baa1686dc5d239a0",
     ".claude/agents/researcher.md": "bdf3eb9b6275a2ccab6df00f060790f984fb8d443b5489aa4dfc480349ecf050",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "a3c57a975e11a3828ed1dcf007b6b23f72ea8305957aa3534c54d20385041c2b",
-    ".claude/agents/spec-master.md": "8b6c04a77209b20ac0692085692b273c06c77db08880a65d8dac3c1816cda3c1",
-    ".claude/agents/task-master.md": "2d6244ac9b099e386a7e30de7fb071eac1f60bceadc5eea549b9792a26ccdbba",
+    ".claude/agents/spec-master.md": "dd0249fae2b3e7ab16342ef7b904a47f2ffbc282ddbcf070b9f01110b80a93b2",
+    ".claude/agents/task-master.md": "c00716066051b0c4fec6185ed8729a938226cdade36ddf469fe953407ef8c1a6",
     ".claude/persona-protocol-slim.md": "5c9912fdb5d3eee3c491d96403cb6f626ad010aea505f15900bf8cecc3d0369c",
-    ".claude/persona-protocol.md": "dccc8e18d115c9df57eeec7e7a19e02036fc75dd0f2c84c384d37f3cc6ef3aed"
+    ".claude/persona-protocol.md": "7e8e5c044400833fe1fda90b254565de76caa5c6cd0a8290a2b4aff2fd0700f1"
   }
 }
