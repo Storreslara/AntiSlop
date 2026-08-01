@@ -366,10 +366,6 @@ human; nothing acts on it automatically.
   `.claude/protocol-digest.md` and version-stamp it the same way. This is
   what `session-start.sh` re-injects on `resume`/`compact` — don't skip it,
   the hook silently no-ops without it (no error, just no re-anchor).
-- Add exactly one line to CLAUDE.md: `@.claude/persona-protocol.md` — this is
-  the only channel that reaches both subagents and agent-teams teammates
-  automatically, which is why the shared protocol lives here instead of being
-  duplicated into every persona body.
 - Do NOT duplicate the orchestrator's routing table here — `settings.json`
   already makes it the main agent (step 8), so a routing table in CLAUDE.md
   would just ship dead weight into every persona's context.

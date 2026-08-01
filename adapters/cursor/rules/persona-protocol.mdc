@@ -3,7 +3,8 @@ description: Shared cross-cutting rules for the AntiSlop persona system - routin
 alwaysApply: true
 ---
 <!-- Delivered as an always-apply Cursor rule (the nearest equivalent to
-     Claude's CLAUDE.md @import of persona-protocol.md). LOAD-BEARING CAVEAT:
+     Claude Code, where this content is physically inlined per persona into
+     each .claude/agents/*.md body rather than @imported). LOAD-BEARING CAVEAT:
      it is UNVERIFIED whether always-apply rules cascade into Cursor SUBAGENTS
      (the docs are silent - spec §6 open q #1). If they do not, subagents will
      NOT see this file. Because this is the safety system, its load-bearing

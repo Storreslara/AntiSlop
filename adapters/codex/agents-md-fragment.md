@@ -1,11 +1,11 @@
 <!-- Inlined directly into the project's AGENTS.md by bin/cli.js --target=codex
      (wrapped in a matching pair of begin/end marker comments at scaffold
-     time - see docs/specs/codex-plugin.md §5, §9). This is the Codex equivalent of
-     Claude's `@.claude/persona-protocol.md` import line: Codex's AGENTS.md
-     has NO @import/include mechanism (confirmed - see docs/codex-port-notes.md),
-     so the protocol content must be physically inlined rather than
-     referenced. Role-agnostic content only - adding a new persona never
-     requires editing this file. -->
+     time - see docs/specs/codex-plugin.md §5, §9). This mirrors how Claude
+     Code delivers the protocol: physically inlined per persona rather than
+     via an @import, since Codex's AGENTS.md has NO @import/include mechanism
+     either (confirmed - see docs/codex-port-notes.md), so the protocol
+     content must be physically inlined rather than referenced. Role-agnostic
+     content only - adding a new persona never requires editing this file. -->
 
 # AntiSlop persona protocol
 

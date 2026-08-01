@@ -1130,9 +1130,9 @@ async function scaffoldCursor(args) {
 // ---------------------------------------------------------------------------
 // --target=codex: scaffold the Codex adapter (adapters/codex/) into a
 // project's .codex/ directory, plus inline the shared persona-protocol into
-// AGENTS.md (Codex has no @import/include mechanism, unlike Claude's single
-// `@.claude/persona-protocol.md` line - the content must be physically
-// inlined). Same MVP four personas as the Cursor port. See
+// AGENTS.md (Codex has no @import/include mechanism, so - like Claude, which
+// physically inlines the protocol per persona - the content must be
+// physically inlined). Same MVP four personas as the Cursor port. See
 // docs/specs/codex-plugin.md for the design this implements and
 // docs/codex-port-notes.md for what shipped degraded/unverified. Codex is
 // the one ported platform that keeps PER-AGENT MCP SCOPING (the Code Review
