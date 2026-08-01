@@ -12,7 +12,7 @@ mcpServers:
       args:
         - arxiv-mcp-server
 ---
-<!-- antislop v0.17.0 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
+<!-- antislop v0.18.0 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
 <!-- NOT shipped as a plugin agent: plugin subagents ignore the `mcpServers`
      frontmatter field entirely (Claude Code plugin security restriction), so
      this file only works as a PROJECT-scoped agent. The install-antislop

@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:handoff
 maxTurns: 50
 ---
-<!-- antislop v0.17.0 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.18.0 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.
@@ -272,10 +272,14 @@ While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 dispatching the next gated-agent unit — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
 blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
-content with `defer: <reason>` (logged, flag KEPT, that one Stop allowed —
-review still owed next turn) or `skip: <reason>` (logged, flag DELETED, unit
+content with `defer: <reason>` (logged, flag KEPT — this is **sticky**, not
+one-shot: it permits turn-end on every subsequent `Stop` until the reviewer's
+`SubagentStop` clears the flag or a `skip:` deletes it; the review is still
+owed the whole time) or `skip: <reason>` (logged, flag DELETED, unit
 explicitly abandoned); a reason-less overwrite is rejected the same way an
-empty WIP sentinel is.
+empty WIP sentinel is. Sticky or not, `reviewer-route-gate.sh` continues to
+block the next gated-agent dispatch regardless of the defer — it blocks on
+the flag's existence, never its content.
 
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot — a fresh lead-programmer call has no
