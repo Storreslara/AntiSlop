@@ -461,6 +461,55 @@ function buildFileSpecs(personaSelection) {
   return specs;
 }
 
+// Splits the canonical protocol into its leading header comment (which is NOT
+// a section) plus one entry per `## ` heading, in template order. Joining the
+// preamble and every section text with '\n' reproduces the file byte-for-byte.
+function parseProtocolSections(text) {
+  const preamble = [];
+  const sections = [];
+  for (const line of text.split('\n')) {
+    if (line.startsWith('## ')) {
+      sections.push({ header: line.slice(3).trim(), lines: [line] });
+    } else if (sections.length) {
+      sections[sections.length - 1].lines.push(line);
+    } else {
+      preamble.push(line);
+    }
+  }
+  return { preamble: preamble.join('\n'), sections: sections.map((s) => ({ header: s.header, text: s.lines.join('\n') })) };
+}
+
+function canonicalProtocolText() {
+  return fs.readFileSync(path.join(PKG_ROOT, 'templates', 'persona-protocol.md'), 'utf8');
+}
+
+// Which protocol sections each full-tier persona carries, keyed by the EXACT
+// canonical header. At this step every full-tier persona maps to every
+// section, so selection is an exact no-op; the trimming matrix lands
+// separately so the risky half stays independently revertible.
+const PROTOCOL_SECTIONS_BY_PERSONA = {};
+for (const name of CORE_PERSONAS.concat(OPTIONAL_PERSONAS)) {
+  if (protocolTierFor(name) === 'full') {
+    PROTOCOL_SECTIONS_BY_PERSONA[name] = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
+  }
+}
+
+// Fail-closed three ways: a non-full tier is never trimmed; a persona with no
+// matrix row gets every section; a row naming a header the template does not
+// define throws, so renaming a canonical heading can never silently drop
+// content from a persona. Returns headers in template order.
+function selectProtocolSections(name, tier) {
+  const all = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
+  const wanted = PROTOCOL_SECTIONS_BY_PERSONA[name];
+  if (tier !== 'full' || !wanted) return all;
+  for (const header of wanted) {
+    if (!all.includes(header)) {
+      throw new Error(`PROTOCOL_SECTIONS_BY_PERSONA['${name}'] names a section absent from templates/persona-protocol.md: "${header}"`);
+    }
+  }
+  return all.filter((h) => wanted.includes(h));
+}
+
 // Appends the tier-appropriate protocol as a version-agnostic marked block to
 // a persona body. Deterministic (source body carries no marker, the block is
 // always rebuilt from the template), so re-running --update is idempotent.
@@ -470,10 +519,17 @@ function buildFileSpecs(personaSelection) {
 // from pristine source and never searches for its own prior marker, so a
 // version number would serve no idempotency purpose here; the `.claude/`
 // copy already carries its own top-of-file `<!-- antislop vX -->` stamp.
-function inlineProtocolBlock(body, tier) {
+function inlineProtocolBlock(body, tier, name) {
   if (!tier) return body;
-  const src = tier === 'slim' ? 'persona-protocol-slim.md' : 'persona-protocol.md';
-  const protocol = fs.readFileSync(path.join(PKG_ROOT, 'templates', src), 'utf8').replace(/\s+$/, '');
+  let protocol;
+  if (tier === 'slim') {
+    protocol = fs.readFileSync(path.join(PKG_ROOT, 'templates', 'persona-protocol-slim.md'), 'utf8');
+  } else {
+    const { preamble, sections } = parseProtocolSections(canonicalProtocolText());
+    const keep = selectProtocolSections(name, tier);
+    protocol = [preamble, ...sections.filter((s) => keep.includes(s.header)).map((s) => s.text)].join('\n');
+  }
+  protocol = protocol.replace(/\s+$/, '');
   const block = `${ANTISLOP_BLOCK_PREFIX} -->\n${protocol}\n${ANTISLOP_BLOCK_END}`;
   return `${body.replace(/\s+$/, '')}\n\n${block}\n`;
 }
@@ -495,7 +551,7 @@ function renderCleanBody(spec, config) {
       body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>', launch, spec.projectRelPath);
     }
   }
-  return inlineProtocolBlock(body, spec.protocolTier);
+  return inlineProtocolBlock(body, spec.protocolTier, path.basename(spec.projectRelPath, '.md'));
 }
 
 function printUnifiedDiff(oldStr, newStr, label) {
@@ -1661,7 +1717,7 @@ async function main() {
   for (const name of allAgentNames) {
     const src = path.join(PKG_ROOT, 'agents', `${name}.md`);
     const dest = path.join(agentsDir, `${name}.md`);
-    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor(name));
+    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor(name), name);
     copyStampedBody(dest, body, version, `agents/${name}.md`);
     console.log(`  agents/${name}.md -> .claude/agents/${name}.md`);
   }
@@ -1669,7 +1725,7 @@ async function main() {
   if (includeResearcher) {
     const src = path.join(PKG_ROOT, 'templates', 'researcher.md.tmpl');
     const dest = path.join(agentsDir, 'researcher.md');
-    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor('researcher'));
+    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor('researcher'), 'researcher');
     copyStampedBody(dest, body, version, 'templates/researcher.md.tmpl');
     console.log('  templates/researcher.md.tmpl -> .claude/agents/researcher.md (mcpServers placeholder still needs a real launch command — /install-antislop step 5 handles this)');
   }
@@ -1841,6 +1897,9 @@ module.exports = {
   applyArxivFallback,
   buildFileSpecs,
   renderCleanBody,
+  protocolTierFor,
+  selectProtocolSections,
+  PROTOCOL_SECTIONS_BY_PERSONA,
   migrateLegacyPersonaTokens,
   deriveMcpLaunchFromDisk,
   detectMarketplacePlugin,

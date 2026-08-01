@@ -58,6 +58,56 @@ check('renderCleanBody inlines the full protocol into full-tier bodies and the s
   assert.ok(!render('.claude/persona-protocol-slim.md').includes(FULL_ONLY), 'the slim doc has no full-only phrase');
 });
 
+// Canonical section list is DERIVED from the template, never hard-coded, so a
+// section legitimately added to templates/persona-protocol.md keeps being
+// tested (same fail-closed style as tests/adapter-protocol-parity.test.js).
+function canonicalProtocolHeaders() {
+  return fs.readFileSync(path.join(REPO_ROOT, 'templates', 'persona-protocol.md'), 'utf8')
+    .split('\n')
+    .filter((l) => l.startsWith('## '))
+    .map((l) => l.slice(3).trim());
+}
+
+check('selectProtocolSections returns every canonical section for a full-tier persona', () => {
+  const all = canonicalProtocolHeaders();
+  assert.ok(all.length > 0, 'the canonical template must define at least one ## section');
+  assert.deepStrictEqual(cli.selectProtocolSections('lead-programmer', 'full'), all);
+});
+
+check('selectProtocolSections throws when a matrix row names a section the template does not define', () => {
+  const matrix = cli.PROTOCOL_SECTIONS_BY_PERSONA;
+  matrix['fixture-persona'] = [canonicalProtocolHeaders()[0], 'No Such Section'];
+  try {
+    assert.throws(() => cli.selectProtocolSections('fixture-persona', 'full'), /No Such Section/);
+  } finally {
+    delete matrix['fixture-persona'];
+  }
+});
+
+check('selectProtocolSections returns every canonical section for an unknown persona name', () => {
+  assert.deepStrictEqual(cli.selectProtocolSections('no-such-persona', 'full'), canonicalProtocolHeaders());
+});
+
+// Proves the selector is actually wired into the inlining path: the Step-2
+// matrix is an all-sections no-op, so nothing else here can tell a live
+// selector from dead code.
+check('renderCleanBody inlines only the sections the selector returns for the persona', () => {
+  const matrix = cli.PROTOCOL_SECTIONS_BY_PERSONA;
+  const all = canonicalProtocolHeaders();
+  const original = matrix['lead-programmer'];
+  matrix['lead-programmer'] = [all[0]];
+  try {
+    const spec = cli.buildFileSpecs([]).find((s) => s.projectRelPath === '.claude/agents/lead-programmer.md');
+    const block = cli.renderCleanBody(spec, {}).split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
+    assert.ok(block.includes(`## ${all[0]}`), `expected the selected section "${all[0]}" to survive`);
+    for (const header of all.slice(1)) {
+      assert.ok(!block.includes(`## ${header}`), `expected "${header}" to be trimmed out`);
+    }
+  } finally {
+    matrix['lead-programmer'] = original;
+  }
+});
+
 check('deriveMcpLaunchFromDisk round-trips a full command+args+env block', () => {
   const sourceBody = fs.readFileSync(path.join(REPO_ROOT, 'agents', 'explorer.md'), 'utf8');
   const launch = { command: 'node', args: ['/path/to/server.js', '--flag'], env: { API_KEY: 'xyz' } };
