@@ -132,6 +132,12 @@ printf 'x\n' > "$repo/docs/café.md"
 r_utf8_ok=$(snap utf8-path-benign)
 run_case "(af) a non-ASCII path outside the sensitive set" sonnet unit-1 "$r_utf8_ok"
 
+# The header claims anything unmeasurable prints opus; a range that resolves
+# but measures nothing, and a missing task id, are both unmeasurable.
+echo "-- fail-closed edges --"
+run_case "(ag) a valid range with zero changed files" opus unit-1 "HEAD..HEAD"
+run_case "(ah) an empty task id"                      opus ""     "$r_small"
+
 # --- Mutation controls (acceptance criterion 4) ---------------------------
 # reviewer-tier.sh sources nothing, so a plain copy is a complete runnable
 # mutant - no lib/ sibling to carry along. Each control asserts the named case
@@ -176,6 +182,14 @@ fi
 if mutate quote-guard-off "/in '\"'/d"; then
   run_case "(mc6) C-quoted-path guard removed: case (ae) flips to" \
     sonnet unit-1 "$r_quoted" "$MUTANT"
+fi
+if mutate empty-range-ok '/\[ "\$files" -gt 0 \]/d'; then
+  run_case "(mc7) zero-file guard removed: case (ag) flips to" \
+    sonnet unit-1 "HEAD..HEAD" "$MUTANT"
+fi
+if mutate empty-id-ok '/\[ -n "\$task_id" \]/d'; then
+  run_case "(mc8) empty-task-id guard removed: case (ah) flips to" \
+    sonnet "" "$r_small" "$MUTANT"
 fi
 
 exit "$fail"

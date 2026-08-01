@@ -52,9 +52,11 @@ range="${2:-}"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 
 # 1 - a durable FAIL record for this unit disqualifies it (same id sanitizing
-# and same marker directory as task-gate.sh).
+# and same marker directory as task-gate.sh). Without an id there is no record
+# to consult, so the disqualifier cannot be evaluated at all.
+[ -n "$task_id" ] || opus
 safe_id="${task_id//[^a-zA-Z0-9._-]/_}"
-if [ -n "$safe_id" ] && [ -f "${project_dir}/.claude/reviewed/${safe_id}.fail" ]; then
+if [ -f "${project_dir}/.claude/reviewed/${safe_id}.fail" ]; then
   opus
 fi
 
@@ -83,6 +85,10 @@ while IFS=$'\t' read -r added deleted path; do
   case "${added}${deleted}" in *[!0-9]*) opus ;; esac
   lines=$((lines + added + deleted))
 done <<< "$numstat"
+
+# A range that resolves but measures nothing (no changed files) tells us
+# nothing about the work under review, so it is unmeasurable too.
+[ "$files" -gt 0 ] || opus
 
 # 4 - size, strictly greater-than: exactly 40 lines and exactly 3 files are
 # both still eligible.
