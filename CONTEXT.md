@@ -45,6 +45,40 @@ drift apart.
 - **Gate** — a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
+- **Protocol excerpt** — the subset of `templates/persona-protocol.md`'s 16
+  `## `-delimited canonical sections that a given full-tier persona's
+  `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
+  `PROTOCOL_SECTIONS_BY_PERSONA` matrix (issue #190, 2026-08-01 efficiency
+  pass, finding F1). Distinct from the full/slim **tier** (which file a
+  persona gets): the excerpt is which sections *within* the full tier. Three
+  fail-closed rules govern it: an unknown persona name gets every section;
+  a matrix row naming a non-existent heading throws at load; any persona in
+  `gatedAgents` force-includes "WIP sentinel" and "Pending-review flag"
+  regardless of its row. Claude-Code-only by construction — the Cursor and
+  Codex adapter ports have no per-persona seam and keep carrying the union.
+  `.claude/persona-protocol.md` exists on disk as the full, untrimmed
+  reference copy a trimmed persona can read on demand (reversing the
+  earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
+  were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
+- **Measured reviewer tier** — the reviewer's `sonnet`/`opus` model is
+  decided at reviewer-*dispatch* time (not pre-implementation) by
+  `hooks/scripts/reviewer-tier.sh <task-id> <git-range>`, a deterministic,
+  fail-closed script (not a registered hook — deliberately absent from
+  `hooks/hooks.json`; it's an orchestrator-invoked helper). It prints
+  `sonnet` only when the diff is ≤40 changed lines AND ≤3 changed files AND
+  touches no sensitive path class; otherwise `opus`. Replaces the earlier
+  ADR-0006 scheme where `task-master` guessed reviewer tier from its own
+  pre-implementation `Suggested model: haiku` tag — a prediction that was
+  reachable roughly 0% of the time in practice, since no unit in this repo
+  is tagged `haiku` (issue #190, finding F2). The orchestrator's judgment
+  may **downgrade** `sonnet` → `opus` but may **never upgrade** `opus` →
+  `sonnet`; `fable` stays permanently excluded from the gate (ADR-0004) and
+  a prior `.fail` record still forces `opus`. "Measured reviewer tier" is
+  deliberately distinct from **"heavy"** (the roast-work/fable-advisory
+  trigger, ≥~8 files OR ≥~400-line diff OR structural/security-sensitive) —
+  conflating the two was the literal cause of finding F2; see
+  [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
+  amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
 - **The graph** — Code Review Graph, a third-party MCP server providing
   structural code queries (callers/callees, blast radius, architecture
   overview). Scoped to `explorer` alone, never project-wide — see

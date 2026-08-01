@@ -44,8 +44,9 @@ recorded here. Dates are ISO (YYYY-MM-DD).
 - Each full-tier persona's `.claude/agents/*.md` mirror now physically
   inlines only the protocol sections that mechanically apply to that
   persona, instead of the full 2,806-word protocol regardless of role —
-  13-41% smaller bodies across the five trimmed personas (`lead-programmer`
-  saves 597 words/17%; `milestone-auditor` saves the most at 41%).
+  16-41% smaller bodies across the five trimmed personas (`reviewer` saves
+  450 words/16%; `lead-programmer` saves 597 words/17%; `milestone-auditor`
+  saves the most, 1,157 words/41%).
   `orchestrator` keeps the untrimmed protocol, since it is the one persona
   that routes and acts on every mechanism. Any persona listed in
   `persona-config.json`'s `gatedAgents` always force-includes the "WIP

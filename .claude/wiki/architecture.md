@@ -44,13 +44,25 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
 
 ## Cross-cutting: the shared protocol
 
-`templates/persona-protocol.md` is copied into every ADAPTed project as
-`.claude/persona-protocol.md` and pulled into every persona's context via
-one `@.claude/persona-protocol.md` line in root `CLAUDE.md` — this is the
-only channel that reaches both subagents and agent-teams teammates
-automatically, so protocol-level rules (Review Ownership, memory
-conventions, structural-facts-from-explorer) live there instead of being
-duplicated into every persona body.
+`templates/persona-protocol.md` is **physically inlined** into each
+full-tier persona's `.claude/agents/*.md` body at generation time by
+`bin/cli.js` — not pulled via a root-`CLAUDE.md` `@import` of the protocol
+file. That include was migrated away from deliberately (issue #121 Step
+2 proved `@import` does not resolve inside a subagent body); this repo's
+own `CLAUDE.md` has carried no such line since. Since the 2026-08-01
+efficiency-remediation pass (issue #190), inlining is a **tier plus a
+per-persona section selection**: every full-tier persona carries only the
+protocol sections that mechanically apply to its role (a config-driven
+matrix in `bin/cli.js`, fail-closed on any gap), so protocol-level rules
+(Review Ownership, memory conventions, structural-facts-from-explorer)
+still live in one shared source without every persona body paying for
+every section regardless of role. A full, untrimmed reference copy is
+also restored on disk at `.claude/persona-protocol.md` — nothing
+auto-loads it (zero tokens per dispatch), but a persona whose excerpt
+dropped a rule can read it on demand. See
+[protocol-delivery-tiers.md](protocol-delivery-tiers.md) for the full
+mechanism, its three fail-closed guarantees, and why this trimming is
+Claude-Code-only by construction.
 
 ## MCP scoping (a recurring gotcha)
 
