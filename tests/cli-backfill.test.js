@@ -514,6 +514,45 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration (S3-A2d): a project adapted before the file became a
+  // managed spec may still carry an unmanaged, stale copy with no fileHashes
+  // entry (removeStaleProtocolCopy, which used to delete it, is gone). That
+  // orphan must migrate silently — landing in `pending` would turn a routine
+  // --update into an interactive `diverged` prompt on every such project.
+  check('--update adopts a legacy unmanaged .claude/persona-protocol.md without prompting about divergence', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-legacy-protocol-test-'));
+    try {
+      const config = buildBaselineProject(tmp, {});
+      delete config.fileHashes['.claude/persona-protocol.md'];
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const destPath = path.join(tmp, '.claude', 'persona-protocol.md');
+      fs.writeFileSync(
+        destPath,
+        '<!-- antislop v0.0.1 | source: templates/persona-protocol.md | ADAPT-substituted -->\nstale content predating the managed spec\n'
+      );
+
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(
+        result.stdout.includes('.claude/persona-protocol.md: updated (no local edits detected)'),
+        `expected the orphan to be adopted and updated, got: ${result.stdout}`
+      );
+      assert.ok(
+        !result.stdout.includes('diverged from a fresh copy'),
+        `a legacy orphan must not be reported as diverged, got: ${result.stdout}`
+      );
+      assert.strictEqual(
+        fs.readFileSync(destPath, 'utf8').split('\n').slice(1).join('\n'),
+        fs.readFileSync(path.join(REPO_ROOT, 'templates', 'persona-protocol.md'), 'utf8'),
+        'the adopted file must be refreshed to the template past the stamp line'
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration: Step 5 (token-hygiene-dispatch-gate) .gitignore backfill.
   // `runUpdate` must reach already-adapted projects too, not just the
   // scaffold-time lists — this is the specific gap Step 5 exists to close.
