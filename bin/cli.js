@@ -666,6 +666,23 @@ const GATED_AGENT_SECTIONS = [
   'Pending-review flag (default-mode review backstop)',
 ];
 
+// Renaming a canonical heading would leave these naming nothing, turning the
+// force-include into a silent no-op — the one failure mode the matrix guard
+// above cannot see, since these headers appear in no row's include list.
+function assertGatedSectionsCanonical(canonicalHeaders, gatedSections) {
+  const unknown = gatedSections.filter((h) => !canonicalHeaders.includes(h));
+  if (unknown.length) {
+    throw new Error(`GATED_AGENT_SECTIONS names sections absent from templates/persona-protocol.md: ${unknown.map((h) => `"${h}"`).join(', ')}. Update it to the current canonical heading, or the gatedAgents force-include silently stops applying.`);
+  }
+}
+
+assertGatedSectionsCanonical(CANONICAL_PROTOCOL_HEADERS, GATED_AGENT_SECTIONS);
+
+// What a project starts life with: lead-programmer's turns are gated by the
+// stop hook. Shared by the scaffold's render loop and the config it writes, so
+// the two cannot disagree.
+const DEFAULT_GATED_AGENTS = ['lead-programmer'];
+
 // Fail-closed three ways: a non-full tier is never trimmed; a persona with no
 // matrix row gets every section; a row naming a header the template does not
 // define throws, so renaming a canonical heading can never silently drop
@@ -1875,11 +1892,18 @@ async function main() {
   mkdirp(skillsDir);
   mkdirp(path.join(claudeDir, 'reviewed'));
 
+  // The same gatedAgents this run is about to persist below (preserved as-is
+  // when --overwrite reuses an existing config), so the bodies written here are
+  // what the project's first --update would render, not a divergent variant.
+  const gatedAgents = existingPersonaConfig
+    ? existingPersonaConfig.gatedAgents
+    : DEFAULT_GATED_AGENTS;
+
   const allAgentNames = CORE_PERSONAS.concat(selected.filter((p) => OPTIONAL_PERSONAS.includes(p)));
   for (const name of allAgentNames) {
     const src = path.join(PKG_ROOT, 'agents', `${name}.md`);
     const dest = path.join(agentsDir, `${name}.md`);
-    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor(name), name);
+    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor(name), name, gatedAgents);
     copyStampedBody(dest, body, version, `agents/${name}.md`);
     console.log(`  agents/${name}.md -> .claude/agents/${name}.md`);
   }
@@ -1887,7 +1911,7 @@ async function main() {
   if (includeResearcher) {
     const src = path.join(PKG_ROOT, 'templates', 'researcher.md.tmpl');
     const dest = path.join(agentsDir, 'researcher.md');
-    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor('researcher'), 'researcher');
+    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor('researcher'), 'researcher', gatedAgents);
     copyStampedBody(dest, body, version, 'templates/researcher.md.tmpl');
     console.log('  templates/researcher.md.tmpl -> .claude/agents/researcher.md (mcpServers placeholder still needs a real launch command — /install-antislop step 5 handles this)');
   }
@@ -1999,7 +2023,7 @@ async function main() {
       graphUpdateCommand: '',
       sourceGlobs: [],
       protectedPaths: [],
-      gatedAgents: ['lead-programmer'],
+      gatedAgents: DEFAULT_GATED_AGENTS,
       pluginVersion: version,
       personaSelection,
       issueTracker: '',
@@ -2073,6 +2097,8 @@ module.exports = {
   protocolTierFor,
   selectProtocolSections,
   assertProtocolMatrixComplete,
+  assertGatedSectionsCanonical,
+  GATED_AGENT_SECTIONS,
   PROTOCOL_SECTIONS_BY_PERSONA,
   migrateLegacyPersonaTokens,
   deriveMcpLaunchFromDisk,

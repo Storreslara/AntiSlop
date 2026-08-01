@@ -149,22 +149,51 @@ check('renderCleanBody inlines only the sections the selector returns for the pe
 // 16 sections, memory note included, and its mirror must stay byte-identical).
 const TRIMMED_PERSONAS = ['lead-programmer', 'reviewer', 'spec-master', 'task-master', 'milestone-auditor'];
 
-// Criterion 1: positive AND negative, per persona. The negative half is the
-// one that can actually regress silently.
-check('each trimmed persona renders every header in its row include list and none of the headers in its drop list', () => {
+// Criterion 1 (as corrected by A4.1): positive AND negative, per persona,
+// rendered with the config this repo actually SHIPS — an empty config leaves
+// `gatedAgents` undefined, so the force-include never runs and the render
+// corresponds to no real project. Expectation = row.include plus the gate
+// sections forced back in for a gated persona (`lead-programmer` here, per the
+// A4.1 ruling that force-include wins over its drop of the pending-review
+// flag). Asserted on the fresh render AND on the shipped mirror, so the two
+// cannot drift apart silently.
+check('each trimmed persona carries its row include list plus any force-included gate sections, and none of the rest of its drop list, under the shipped persona-config', () => {
+  const config = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, '.claude', 'persona-config.json'), 'utf8'));
+  assert.ok(
+    (config.gatedAgents || []).includes('lead-programmer'),
+    `this repo gates lead-programmer — without it the force-include half of this test is dead: ${JSON.stringify(config.gatedAgents)}`
+  );
   const specs = cli.buildFileSpecs(TRIMMED_PERSONAS.filter((p) => p !== 'lead-programmer'));
   for (const persona of TRIMMED_PERSONAS) {
     const row = cli.PROTOCOL_SECTIONS_BY_PERSONA[persona];
     assert.ok(row && row.drop.length > 0, `${persona} must have a row that actually drops sections`);
+    const forced = config.gatedAgents.includes(persona) ? cli.GATED_AGENT_SECTIONS : [];
     const spec = specs.find((s) => s.projectRelPath === `.claude/agents/${persona}.md`);
-    const block = cli.renderCleanBody(spec, {}).split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
-    for (const header of row.include) {
-      assert.ok(block.includes(`## ${header}`), `${persona} must carry its included section "${header}"`);
-    }
-    for (const header of row.drop) {
-      assert.ok(!block.includes(`## ${header}`), `${persona} must NOT carry its dropped section "${header}"`);
+    const sources = {
+      render: cli.renderCleanBody(spec, config),
+      mirror: fs.readFileSync(path.join(REPO_ROOT, '.claude', 'agents', `${persona}.md`), 'utf8'),
+    };
+    for (const [label, body] of Object.entries(sources)) {
+      const block = body.split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
+      assert.ok(block, `${persona} (${label}) must carry an inlined protocol block`);
+      for (const header of row.include.concat(forced)) {
+        assert.ok(block.includes(`## ${header}`), `${persona} (${label}) must carry "${header}"`);
+      }
+      for (const header of row.drop.filter((h) => !forced.includes(h))) {
+        assert.ok(!block.includes(`## ${header}`), `${persona} (${label}) must NOT carry its dropped section "${header}"`);
+      }
     }
   }
+});
+
+// A4.1's logic gap: a renamed canonical heading would leave GATED_AGENT_SECTIONS
+// naming a section the template no longer defines, silently turning the
+// force-include into a no-op. Pure, so it is exercised on synthetic headers.
+check('assertGatedSectionsCanonical throws naming a gate section the canonical header list does not define', () => {
+  const err = captureThrow(() => cli.assertGatedSectionsCanonical(['A', 'B'], ['A', 'Renamed section']));
+  assert.ok(err, 'a gate section absent from the canonical headers must throw');
+  assert.ok(err.message.includes('"Renamed section"'), `message must name the offending section verbatim: ${err.message}`);
+  assert.doesNotThrow(() => cli.assertGatedSectionsCanonical(['A', 'B'], ['A', 'B']));
 });
 
 // Criterion 2: the orchestrator mirror on disk is untrimmed — all 16 canonical
@@ -633,6 +662,48 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       assert.ok(
         !gated.includes('## Continuing after a FAIL verdict'),
         'force-include covers exactly the two gate sections — the rest of the row\'s drop list must still be dropped'
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  // --- The fresh-scaffold path renders persona bodies too, and it renders them
+  // from the same matrix — so it must pass the same gatedAgents it is about to
+  // write into persona-config.json, or a brand-new project ships bodies that
+  // differ from what its very first `--update` would produce.
+  check('a fresh scaffold renders each persona body identically to --update, force-include included', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-scaffold-render-'));
+    try {
+      const scaffold = spawnSync('node', [cliPath, '--yes'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(scaffold.status, 0, `scaffold must exit 0, got ${scaffold.status}: ${scaffold.stdout}${scaffold.stderr}`);
+      const config = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
+      assert.ok(
+        (config.gatedAgents || []).includes('lead-programmer'),
+        `a fresh scaffold must record gatedAgents, got: ${JSON.stringify(config.gatedAgents)}`
+      );
+
+      const specs = cli.buildFileSpecs(TRIMMED_PERSONAS.filter((p) => p !== 'lead-programmer'));
+      for (const persona of TRIMMED_PERSONAS.concat('orchestrator')) {
+        const spec = specs.find((s) => s.projectRelPath === `.claude/agents/${persona}.md`);
+        const onDisk = cli.stripStamp(fs.readFileSync(path.join(tmp, '.claude', 'agents', `${persona}.md`), 'utf8'));
+        assert.strictEqual(
+          onDisk, cli.renderCleanBody(spec, config),
+          `the scaffolded ${persona}.md must be byte-identical to what --update renders from the config the scaffold just wrote`
+        );
+      }
+      // Control: the equality above would also hold if BOTH paths stopped
+      // trimming, so pin the two ends of the force-include directly — the
+      // gated persona keeps a section its own row drops, the ungated one does
+      // not get its dropped section back.
+      const scaffolded = (p) => fs.readFileSync(path.join(tmp, '.claude', 'agents', `${p}.md`), 'utf8');
+      assert.ok(
+        scaffolded('lead-programmer').includes('## Pending-review flag'),
+        'lead-programmer is in gatedAgents, so the scaffold must force-include the pending-review flag its row drops'
+      );
+      assert.ok(
+        !scaffolded('reviewer').includes('## WIP sentinel'),
+        'control: reviewer is not gated, so its dropped WIP sentinel must stay dropped on scaffold'
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
