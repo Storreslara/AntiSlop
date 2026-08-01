@@ -3,6 +3,28 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.19.0] - 2026-08-01
+
+### Changed
+- **A resumed persona asked only to confirm completion now replies briefly
+  instead of re-running the tests/tools it already reported.** Across the
+  #188-197 batch, a resume that only asked "did you finish?" was observed
+  costing 53k-108k tokens and up to 45 tool calls as the resumed persona
+  re-verified work it had already reported done — defeating the point of a
+  cheap resume. The "Terminal status line" section (unchanged canonical
+  heading, so the protocol-tier matrix and completeness validator need no
+  changes) now tells every gated persona to answer a confirm-only resume with
+  a one-or-two-sentence reply plus the status line, and to re-verify only when
+  the resume explicitly asks it to continue work, check something new, or it
+  genuinely doubts its own prior report. The orchestrator itself now checks
+  independently-verifiable repo state (`git log`/`git status`, re-running the
+  reported test command) before resuming solely for a missing `STATUS:` line,
+  when the report already reads complete with verifiable evidence — cheaper
+  than a resume, and sometimes avoids needing one at all. This does not relax
+  the existing "resume at most once per dispatch" bound. Ad hoc
+  operator-requested unit, same precedent as the `maxturns-bump-lp-reviewer`
+  unit recorded under 0.14.0.
+
 ## [0.18.0] - 2026-08-01
 
 ### Changed
