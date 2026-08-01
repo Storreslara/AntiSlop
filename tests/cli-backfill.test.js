@@ -549,6 +549,59 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration (S4-A3b): a canonical section that no matrix row
+  // classifies must make bin/cli.js unloadable, so `--update` dies at its own
+  // require with ZERO mirrors rewritten — an error raised after a partial
+  // rewrite would be a worse outcome than no guard at all. Runs against a
+  // `cp -r` copy of the WORKING TREE (not a git worktree: the copy has to
+  // carry uncommitted changes), and never touches the tracked template.
+  check('--update fails at load and rewrites no mirror when the template gains a section no matrix row classifies', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-unclassified-section-'));
+    try {
+      for (const entry of fs.readdirSync(REPO_ROOT)) {
+        if (entry === '.git' || entry === 'node_modules') continue;
+        const copied = spawnSync('cp', ['-r', path.join(REPO_ROOT, entry), path.join(tmp, entry)], { encoding: 'utf8' });
+        assert.strictEqual(copied.status, 0, `cp -r ${entry} failed: ${copied.stderr}`);
+      }
+      const tmpCli = path.join(tmp, 'bin', 'cli.js');
+      const agentsDir = path.join(tmp, '.claude', 'agents');
+      const mirrorHashes = () => {
+        const out = {};
+        for (const f of fs.readdirSync(agentsDir)) out[f] = cli.sha256Hex(fs.readFileSync(path.join(agentsDir, f), 'utf8'));
+        return out;
+      };
+
+      // Force a real render in both halves: without this the version-match
+      // fast-path could make the negative control exit 0 without rendering.
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.pluginVersion = '0.0.1';
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      // Negative control (mandatory): the identical sequence WITHOUT the
+      // fabricated section exits 0, so the failure below is the section's
+      // doing and not the copy's.
+      const clean = spawnSync('node', [tmpCli, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(clean.status, 0, `the unmutated copy must update cleanly, got ${clean.status}: ${clean.stdout}${clean.stderr}`);
+
+      const before = mirrorHashes();
+      fs.appendFileSync(
+        path.join(tmp, 'templates', 'persona-protocol.md'),
+        '\n## Fabricated canonical section\n\nA rule that must reach gated personas.\n'
+      );
+
+      const mutated = spawnSync('node', [tmpCli, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.notStrictEqual(mutated.status, 0, `an unclassified canonical section must exit non-zero, got: ${mutated.stdout}${mutated.stderr}`);
+      assert.ok(
+        mutated.stderr.includes('Fabricated canonical section'),
+        `stderr must name the unclassified header verbatim, got: ${mutated.stderr}`
+      );
+      assert.deepStrictEqual(mirrorHashes(), before, 'no mirror may be rewritten by a run that fails the matrix guard');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration (Step 4, criterion 3): .claude/persona-config.json's
   // gatedAgents beats the matrix, so the trimming can never leave a gated
   // persona without the two sections that describe its own gate. Asserted on
