@@ -274,6 +274,15 @@ else
 fi
 
 echo
+echo "== reviewer-tier: fail-closed tier selection + boundary sweep (Bash) =="
+if bash tests/reviewer-tier.test.sh; then
+  echo "OK   tests/reviewer-tier.test.sh"
+else
+  echo "FAIL tests/reviewer-tier.test.sh"
+  fail=1
+fi
+
+echo
 echo "== Codex adapter: JSON validity =="
 for f in adapters/codex/hooks/hooks.json \
          adapters/codex/.codex-plugin/plugin.json \
