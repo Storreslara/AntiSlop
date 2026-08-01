@@ -23,8 +23,8 @@
 # Write-intent allowlist (docs/plans/2026-07-31-reviewed-path-gate-write-intent.md):
 # past the substring early-exit, a Bash command mentioning ".claude/reviewed"
 # is allowed if command_is_provably_benign() below finds it read-only or
-# text-only (ls, cat, grep, gh, git commit -m, ...) and blocked otherwise, so
-# read-only inspection and prose mentions of the path are no longer collateral.
+# text-only (ls, cat, grep, gh ...) and blocked otherwise, so read-only
+# inspection and prose mentions of the path are no longer collateral.
 # This is advisory, not airtight - a determined agent can still obfuscate the
 # path past both the substring early-exit and the allowlist (e.g. splitting it
 # across a shell variable); see README.md's "Known limitations", same framing
@@ -36,69 +36,36 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 # $1 the whole segment, $2 its first word, $3 its second word (subcommand).
 # Allowlist-shaped on purpose: anything unrecognized is NOT allowed, so the
 # gate keeps failing closed for command forms nobody enumerated.
-# Fail-closed over-approximation of bash word splitting, for the flag scans in
-# program_allowed() only. Every METACHARACTER - space 0x20, tab 0x09, newline
-# 0x0A, and `;` `&` `|` `(` `)` `<` `>` - becomes one space, and the result is
-# padded, so a `*' -flag'*` glob tests a real word start instead of a literal
-# space. Deliberately NOT the POSIX space class: VT 0x0B, FF 0x0C and CR 0x0D
-# are ordinary word characters to bash, so treating them as boundaries would be
-# the mirror-image over-block (the same enumeration command_skeleton() uses).
-# Quote characters are dropped outright, because bash removes them during word
-# splitting: `""--output=F`, `-"-output=F"` and `--out"put"=F` are all the one
-# word `--output=F`, and a scan over raw text sees none of them. That shortcut is
-# sound HERE ONLY because command_skeleton() has already failed the command
-# closed on any backslash, any heredoc and any unbalanced quote before
-# program_allowed() is reached, which makes naive quote deletion total at this
-# site. Relaxing any of those three refusals lapses this argument.
 #
-# Returns NON-ZERO - refusing the segment outright, without consulting any flag
-# pattern - if it carries one of bash's EXPANSION characters `$` `` ` `` `{` `*`
-# `?` `[` `~`. Expansion FORGES a flag token out of text that spells no flag at
-# all: with E unset, `${E}--output=F` and `--outpu${E}t=F` both expand to a live
-# `--output`, and `--out{p,p}ut=F` builds one out of a brace list that contains
-# no such substring anywhere. All three were measured overwriting a seeded
-# target under real bash. Resolving expansion is not something a PreToolUse hook
-# can do without running the command, so this refuses rather than models - the
-# same fail-closed choice command_skeleton() makes for backslashes and heredocs.
+# `git` and `rg` were on this list until issue #186 and their absence is
+# DELIBERATE - do not re-add either one, and in particular do not re-add
+# `git log`/`git diff` as a read-only convenience. Both programs consult
+# OUT-OF-BAND CONFIGURATION: configuration read at run time from disk or from
+# the process environment, which appears nowhere in the command line this gate
+# inspects, and which can name a program of the caller's choosing. The flag scan
+# they used to carry was deleted with them (recover it from git history or from
+# docs/plans/2026-07-31-program-allowed-flag-boundary.md) because it could not
+# help: the decisive input was never in the command's text, and the earlier
+# command that arms it need never mention the marker directory, so the
+# substring early-exit below returns before any of this runs. Validating ambient
+# state would mean enumerating a third-party program's entire configuration
+# surface - a denylist, which fails open on every key the enumeration missed -
+# so the surface was removed instead of inspected. `git commit` is unsound here
+# on a second, independent ground: a repository's own `.git/hooks/pre-commit`
+# executes by design, with no configuration involved at all.
 #
-# `}` is deliberately NOT in the set: `{` alone already catches brace expansion,
-# and `'`/`"` are not in it either, because the quote transparency above handles
-# them and refusing them would over-block ordinary `git commit -m "..."`.
-#
-# Only a NEGATIVE scan needs this treatment. The POSITIVE matches in
-# program_allowed() - the program name and gh's subcommand allowlist - already
-# fail closed under obfuscation, because an obfuscated name simply misses the
-# allowlist and falls through to the final `return 1`.
-flag_scan_form() {
-  case "$1" in *[\$\`{*?\[~]*) return 1 ;; esac
-  local s="${1//[\'\"]/}"
-  s="${s//[$' \t\n;&|()<>']/ }"
-  printf ' %s ' "$s"
-}
-
+# Documented workarounds for what this costs: `git commit -F <file>` for a
+# commit message that discusses the marker directory (the command text then
+# never spells the path, so the early-exit fires first), and `grep -r`, which
+# stays allowlisted, for searching it.
 program_allowed() {
-  # Declared bare, NOT `local form="$(...)"`: `local` is itself a command, so
-  # its own exit status would mask flag_scan_form's refusal signal entirely.
-  local form
   case "$2" in
     ls|cat|head|tail|wc|stat|file|test|'['|grep|diff|cmp) return 0 ;;
-    # rg is allowlisted, but --pre/--hostname-bin run a command of their own.
-    rg) form="$(flag_scan_form "$1")" || return 1
-        case "$form" in *' --pre '*|*' --pre='*|*' --hostname-bin'*) return 1 ;; esac
-        return 0 ;;
     sha256sum|md5sum|basename|dirname|readlink|realpath) return 0 ;;
     echo|printf) return 0 ;;
     # `gh` needs a subcommand allowlist of its own: `run`/`release download`
     # write into a directory of their choosing, with no redirection involved.
     gh) case "$3" in issue|pr|api|search) return 0 ;; esac ;;
-    git)
-      case "$3" in
-        commit|log|show|diff|status|tag|blame)
-          # -o/--output let a read-only git subcommand write an arbitrary file.
-          form="$(flag_scan_form "$1")" || return 1
-          case "$form" in *' -o'*|*' --output'*) return 1 ;; esac
-          return 0 ;;
-      esac ;;
   esac
   return 1
 }
@@ -342,5 +309,5 @@ if [ -n "$write_tool" ]; then
   exit 2
 fi
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path (gh, git commit -m) ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign)." >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>', whose command text then never spells the path; to search the directory, use 'grep -r'." >&2
 exit 2
