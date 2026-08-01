@@ -62,13 +62,19 @@ fi
 # rather than a revision, so it is rejected before git ever sees it.
 [ -n "$range" ] || opus
 case "$range" in -*) opus ;; esac
-numstat="$(git diff --numstat "$range" -- 2>/dev/null)" || opus
+# `--no-renames` keeps a moved file from being printed in compacted
+# `{old => new}` form, and `core.quotepath=false` keeps a non-ASCII path from
+# being C-quoted; either shape would slip a sensitive path past every anchor.
+numstat="$(git -c core.quotepath=false diff --no-renames --numstat "$range" -- 2>/dev/null)" || opus
 
 files=0
 lines=0
 while IFS=$'\t' read -r added deleted path; do
   [ -n "$path" ] || continue
   files=$((files + 1))
+  # quotepath=false unquotes non-ASCII, but git still C-quotes a path holding a
+  # quote or newline; such a path cannot be matched, so it is unmeasurable.
+  case "$path" in '"'*) opus ;; esac
   # 3 - sensitive path class.
   if touches_sensitive_path "$path"; then
     opus

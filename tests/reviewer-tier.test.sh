@@ -22,6 +22,13 @@ git -C "$repo" config commit.gpgsign false
 git -C "$repo" add -A
 git -C "$repo" commit -qm base
 
+snap() {
+  # <label> -> commits the current worktree, echoes the range it spans
+  git -C "$repo" add -A
+  git -C "$repo" commit -qm "$1"
+  echo "$(git -C "$repo" rev-parse HEAD~1)..$(git -C "$repo" rev-parse HEAD)"
+}
+
 add_commit() {
   # <label> <path:lines>... -> echoes the sha..sha range that commit spans
   local label="$1"; shift
@@ -32,9 +39,7 @@ add_commit() {
     mkdir -p "$repo/$(dirname "$path")"
     seq 1 "$lines" > "$repo/$path"
   done
-  git -C "$repo" add -A
-  git -C "$repo" commit -qm "$label"
-  echo "$(git -C "$repo" rev-parse HEAD~1)..$(git -C "$repo" rev-parse HEAD)"
+  snap "$label"
 }
 
 run_case() {
@@ -105,6 +110,28 @@ run_case "(z) bin/cli.js.bak is not ^bin/cli\.js\$" sonnet unit-1 "$(add_commit 
 run_case "(aa) tests/validate.sh.orig is not ^tests/validate\.sh\$" sonnet unit-1 "$(add_commit n3 tests/validate.sh.orig:1)"
 run_case "(ab) a persona-protocol .md.txt does not end in .md" sonnet unit-1 "$(add_commit n4 templates/persona-protocol.md.txt:1)"
 
+# The anchors are matched against whatever `git diff --numstat` prints, so any
+# path shape git rewrites (rename compaction, C-quoting) can slip a sensitive
+# path past them. These assert the anchors do not UNDER-match.
+echo "-- numstat path shapes --"
+git -C "$repo" mv docs/small.md hooks/scripts/moved.md
+r_rename=$(snap rename-into-hooks)
+run_case "(ac) a file renamed into hooks/"    opus   unit-1 "$r_rename"
+
+printf 'x\n' > "$repo/hooks/scripts/café.sh"
+r_utf8=$(snap utf8-path)
+run_case "(ad) a non-ASCII path under hooks/" opus   unit-1 "$r_utf8"
+
+printf 'x\n' > "$repo/hooks/scripts/we\"ird.sh"
+r_quoted=$(snap quoted-path)
+run_case "(ae) a path git C-quotes anyway"    opus   unit-1 "$r_quoted"
+
+# The mirror of (ad): quotepath=false is what makes a non-ASCII path readable
+# at all, so a benign one stays measurable instead of tripping the quote guard.
+printf 'x\n' > "$repo/docs/café.md"
+r_utf8_ok=$(snap utf8-path-benign)
+run_case "(af) a non-ASCII path outside the sensitive set" sonnet unit-1 "$r_utf8_ok"
+
 # --- Mutation controls (acceptance criterion 4) ---------------------------
 # reviewer-tier.sh sources nothing, so a plain copy is a complete runnable
 # mutant - no lib/ sibling to carry along. Each control asserts the named case
@@ -137,6 +164,18 @@ fi
 if mutate files-4 's/^MAX_CHANGED_FILES=3$/MAX_CHANGED_FILES=4/'; then
   run_case "(mc3) MAX_CHANGED_FILES 3->4: case (o) flips to" \
     sonnet unit-1 "$r_f4" "$MUTANT"
+fi
+if mutate renames-on 's/ --no-renames//'; then
+  run_case "(mc4) rename detection re-enabled: case (ac) flips to" \
+    sonnet unit-1 "$r_rename" "$MUTANT"
+fi
+if mutate quotepath-on 's/-c core\.quotepath=false //'; then
+  run_case "(mc5) path quoting re-enabled: case (af) flips to" \
+    opus unit-1 "$r_utf8_ok" "$MUTANT"
+fi
+if mutate quote-guard-off "/in '\"'/d"; then
+  run_case "(mc6) C-quoted-path guard removed: case (ae) flips to" \
+    sonnet unit-1 "$r_quoted" "$MUTANT"
 fi
 
 exit "$fail"
