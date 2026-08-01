@@ -78,4 +78,23 @@ else
   fail=1
 fi
 
+# (e) sticky defer: one write permits every subsequent Stop, content unchanged
+dir="$(make_project sticky)"
+printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-1"
+before="$(cat "$dir/.claude/.pending-review.lp-1")"
+ok=true
+for i in 1 2 3; do
+  rc=0
+  printf '%s' '{"hook_event_name":"Stop","session_id":"main"}' \
+    | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+  [ "$rc" = 0 ] || ok=false
+done
+after="$(cat "$dir/.claude/.pending-review.lp-1" 2>/dev/null || true)"
+if [ "$ok" = true ] && [ -f "$dir/.claude/.pending-review.lp-1" ] && [ "$before" = "$after" ]; then
+  echo "OK   (e) one defer: write permits three consecutive Stop events, flag content unchanged (sticky semantics)"
+else
+  echo "FAIL (e) sticky defer semantics broken (ok=$ok before=[$before] after=[$after])"
+  fail=1
+fi
+
 exit "$fail"

@@ -60,8 +60,10 @@ On a throwaway branch:
   (`"agent_type":"reviewer"`) and confirm the flag is gone and
   `cleared-by=reviewer` appears in `.claude/review-audit.log`. Also confirm
   the `defer: <reason>`/`skip: <reason>` escape hatch: overwriting the flag
-  with `defer: ...` allows that one Stop and keeps the flag; `skip: ...`
-  allows it and deletes the flag; both log to `.claude/review-audit.log`.
+  with `defer: ...` keeps the flag and is sticky - it allows that Stop AND
+  every subsequent one, until the reviewer clears the flag or a `skip:`
+  deletes it; `skip: ...` allows it and deletes the flag; both log to
+  `.claude/review-audit.log`.
 - **Pending-review dispatch block (`reviewer-route-gate.sh`)**: with a
   `.claude/.pending-review.*` flag present, pipe
   `{"agent_type":"","tool_input":{"subagent_type":"lead-programmer"}}` and

@@ -199,10 +199,14 @@ While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 dispatching the next gated-agent unit — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
 blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
-content with `defer: <reason>` (logged, flag KEPT, that one Stop allowed —
-review still owed next turn) or `skip: <reason>` (logged, flag DELETED, unit
+content with `defer: <reason>` (logged, flag KEPT — this is **sticky**, not
+one-shot: it permits turn-end on every subsequent `Stop` until the reviewer's
+`SubagentStop` clears the flag or a `skip:` deletes it; the review is still
+owed the whole time) or `skip: <reason>` (logged, flag DELETED, unit
 explicitly abandoned); a reason-less overwrite is rejected the same way an
-empty WIP sentinel is.
+empty WIP sentinel is. Sticky or not, `reviewer-route-gate.sh` continues to
+block the next gated-agent dispatch regardless of the defer — it blocks on
+the flag's existence, never its content.
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`

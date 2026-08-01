@@ -83,6 +83,13 @@ The lead-programmer never spawns the reviewer. When it reports
 reviewer with the unit's scope, its acceptance-criteria command, AND a
 stable unit id (the plan step / issue id) for the PASS marker — never omit
 the id; the reviewer needs it to write `.claude/reviewed/<task-id>.pass`.
+When you dispatch the reviewer as a background task, write
+`defer: reviewer dispatched (agent <id>), awaiting verdict` into the pending-
+review flag in that same turn. The pending-review flag's `defer:` is sticky
+(persists across every subsequent turn-end until the reviewer's own
+`SubagentStop` clears it), so this is a **one-time** write per unit, not
+something to repeat next turn — that repetition is exactly the churn this
+convention exists to eliminate.
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
 sliced issue's constraints / affected-files / rationale (the spec-step text

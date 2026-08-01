@@ -47,10 +47,11 @@
 #     the default orchestrator is deliberately non-gated but must still be
 #     stopped from ending the turn while a unit awaits review. Escape hatch
 #     mirrors the WIP sentinel: overwrite the flag's content with
-#     "defer: <reason>" (logged, flag KEPT, this one Stop allowed) or
-#     "skip: <reason>" (logged, flag DELETED, unit abandoned) - a
-#     reason-less overwrite is rejected the same way an empty WIP sentinel
-#     is at step 2.
+#     "defer: <reason>" (logged, flag KEPT - sticky: every subsequent Stop
+#     is allowed too, until the reviewer's SubagentStop clears the flag or
+#     a skip: deletes it; review is still owed) or "skip: <reason>" (logged,
+#     flag DELETED, unit abandoned) - a reason-less overwrite is rejected the
+#     same way an empty WIP sentinel is at step 2.
 #  1) Stop for a non-gated main agent, or SubagentStop for a non-gated
 #     agent -> ALLOW immediately (cheap/high-frequency personas like
 #     explorer never pay this cost, and the default orchestrator-as-main
@@ -146,7 +147,7 @@ if [ "$hook_event" = "Stop" ]; then
       esac
     done
     if [ "$blocked" = true ]; then
-      echo "Unit awaiting review - spawn the reviewer (persona-protocol.md's Review Ownership section). Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .claude/.pending-review.<agent-id>' - defer keeps the flag (still owed), skip deletes it (abandoned). Empty reason rejected." >&2
+      echo "Unit awaiting review - confirm the reviewer is dispatched for it, or dispatch it now if not (persona-protocol.md's Review Ownership section); this hook cannot tell which. Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .claude/.pending-review.<agent-id>' - defer keeps the flag (sticky: allows every subsequent Stop too, still owed), skip deletes it (abandoned). Empty reason rejected." >&2
       exit 2
     fi
     exit 0

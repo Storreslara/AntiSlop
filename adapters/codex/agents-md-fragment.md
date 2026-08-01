@@ -74,8 +74,10 @@ hook blocks turn-end, and `reviewer-route-gate.sh` blocks dispatching the next
 gated-agent unit - the orchestrator's correct next move (spawn the reviewer,
 or spawn anything non-gated like `explorer`) is never blocked. Escape hatch,
 mirroring the WIP sentinel: overwrite the flag's content with `defer: <reason>`
-(logged, flag KEPT, that one Stop allowed) or `skip: <reason>` (logged, flag
-DELETED, unit abandoned); a reason-less overwrite is rejected.
+(logged, flag KEPT - sticky, not one-shot: every subsequent `Stop` is allowed
+too, until the reviewer's `SubagentStop` clears the flag or a `skip:` deletes
+it; the review is still owed) or `skip: <reason>` (logged, flag DELETED, unit
+abandoned); a reason-less overwrite is rejected.
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict the reviewer also writes `.codex/reviewed/<task-id>.fail`
