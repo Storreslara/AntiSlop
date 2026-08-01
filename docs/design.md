@@ -124,13 +124,24 @@ debugging a surprising interaction.
   PreToolUse/Write|Edit too) attributes the caller from the top-level
   `agent_type` field on the payload — confirmed present empirically, see
   `docs/experiments/2026-07-probe-hook-payloads.md` — and now applies a
-  write-intent allowlist on the Bash path: a command mentioning
-  `.claude/reviewed` is allowed only if it is provably read-only or
-  text-only, and blocked otherwise, so a `cat` of a marker or a `git commit
-  -m` mentioning the path is no longer collateral. A determined agent can
-  still obfuscate the path past that allowlist (e.g. splitting it across a
+  write-intent allowlist on the Bash path: a command mentioning the marker
+  directory is allowed only if it is provably read-only or text-only, and
+  blocked otherwise, so a `cat` of a marker or a `gh issue` comment
+  mentioning the path is no longer collateral. `git` and `rg` were on that
+  allowlist until v0.17.0 and are not any more, which is the clearest case of
+  the limit below: an allowlisted program can be steered by configuration it
+  reads at run time that appears nowhere in the command line, established by
+  an earlier command that never names the marker directory, and no
+  text-scanning improvement can detect this. Workarounds for what that costs:
+  `git commit -F <file>` for a commit message that discusses the path, and
+  `grep -r` for searching it. More generally, the allowlist matches a program
+  *name*, while what actually executes is decided by name resolution and by
+  that program's own ambient configuration — neither of which this hook can
+  see. **The Bash write-intent allowlist is a guardrail against careless or
+  accidental writes by a cooperating agent; it is not a security boundary
+  against a caller that controls its own environment.** A determined agent can
+  also still obfuscate the path past the allowlist (e.g. splitting it across a
   shell variable), and the Write/Edit path blocks any write to the marker
   directory outright, with the same reviewer/no-reviewer-fallback identity
   rules as the Bash path. All are documented as advisory rather than
-  airtight; tightening the residual obfuscation gap is a good candidate for
-  a future version bump.
+  airtight.

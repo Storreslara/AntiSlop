@@ -179,8 +179,23 @@ The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
 `reviewed-path-gate.sh`'s residual obfuscation bypass (splitting the marker
 path across a shell variable defeats the write-intent allowlist), and the
 `sed -i` caveat on
-`protected-paths.sh`) lives in [`docs/design.md`](docs/design.md). Two more,
-from the agent-identity namespace-gate fix: an agent identity from an
+`protected-paths.sh`) lives in [`docs/design.md`](docs/design.md).
+
+One limitation is worth stating here rather than only in the fuller list,
+because it bounds what the gate can be trusted for at all. An allowlisted
+program can be steered by configuration it reads at run time that appears
+nowhere in the command line, established by an earlier command that never names
+the marker directory — no text-scanning improvement can detect this. More
+generally, the allowlist matches a program *name*, while what actually executes
+is decided by name resolution and by that program's own ambient configuration,
+neither of which this hook can see. **The Bash write-intent allowlist is a
+guardrail against careless or accidental writes by a cooperating agent; it is
+not a security boundary against a caller that controls its own environment.**
+As of v0.17.0 `git` and `rg` are no longer allowlisted for that reason; use
+`git commit -F <file>` for a commit message that discusses the marker
+directory, and `grep -r` to search it.
+
+Two more, from the agent-identity namespace-gate fix: an agent identity from an
 unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at
 gate checks, so enforcement doesn't silently stop working, but conservatively
 at privilege grants, so only this plugin's own reviewer — bare or

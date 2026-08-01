@@ -50,3 +50,18 @@ gate is "stricter than the ADAPT skill's literal step 9 wording" changed:
 it's no longer that any mention of the path is blocked, it's that `mkdir -p`
 is a write-intent command and write-intent commands are what the gate now
 blocks by design.
+
+## Note on enforcement (2026-07-31, v0.17.0)
+
+The Decision above **stands unchanged**: it is a policy about who *should*
+write PASS markers. `reviewed-path-gate.sh` is one imperfect enforcement of
+that policy and must not be read as the boundary itself. An allowlisted
+program can be steered by configuration it reads at run time that appears
+nowhere in the command line, established by an earlier command that never
+names the marker directory; and more generally the allowlist matches a program
+*name*, while what actually executes is decided by name resolution and by that
+program's own ambient configuration. The gate is a guardrail against careless
+or accidental writes by a cooperating agent, not a security boundary against a
+caller that controls its own environment. Two allowlist entries were removed in
+v0.17.0 on that ground; the residual is described in `README.md`'s "Known
+limitations" and in `docs/design.md`.
