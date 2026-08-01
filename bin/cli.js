@@ -495,16 +495,49 @@ function canonicalProtocolText() {
   return fs.readFileSync(path.join(PKG_ROOT, 'templates', 'persona-protocol.md'), 'utf8');
 }
 
+const CANONICAL_PROTOCOL_HEADERS = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
+
 // Which protocol sections each full-tier persona carries, keyed by the EXACT
-// canonical header. At this step every full-tier persona maps to every
-// section, so selection is an exact no-op; the trimming matrix lands
-// separately so the risky half stays independently revertible.
+// canonical header. Every row is an EXHAUSTIVE classification of the canonical
+// section list into `include` (what that persona's body carries) and `drop` —
+// checked at load by assertProtocolMatrixComplete below. At this step every row
+// is still all-sections, so selection remains an exact no-op; the trimming
+// matrix lands separately so the risky half stays independently revertible.
 const PROTOCOL_SECTIONS_BY_PERSONA = {};
 for (const name of CORE_PERSONAS.concat(OPTIONAL_PERSONAS)) {
   if (protocolTierFor(name) === 'full') {
-    PROTOCOL_SECTIONS_BY_PERSONA[name] = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
+    PROTOCOL_SECTIONS_BY_PERSONA[name] = { include: CANONICAL_PROTOCOL_HEADERS.slice(), drop: [] };
   }
 }
+
+// Per-row, not per-union: a union check is vacuous the moment one row carries
+// every section, and would pass a header quietly deleted from one persona's
+// row while another row still witnesses it. Pure — reads no module state — so
+// it can be exercised on synthetic headers.
+function assertProtocolMatrixComplete(canonicalHeaders, matrix) {
+  const quote = (headers) => headers.map((h) => `"${h}"`).join(', ');
+  for (const name of Object.keys(matrix)) {
+    const row = `PROTOCOL_SECTIONS_BY_PERSONA['${name}']`;
+    const include = matrix[name].include || [];
+    const drop = matrix[name].drop || [];
+    const unknown = include.concat(drop).filter((h) => !canonicalHeaders.includes(h));
+    if (unknown.length) {
+      throw new Error(`${row} names sections absent from templates/persona-protocol.md: ${quote(unknown)}. Remove each from that row's include/drop lists, or restore the canonical heading.`);
+    }
+    const both = include.filter((h) => drop.includes(h));
+    if (both.length) {
+      throw new Error(`${row} lists the same section in both include and drop: ${quote(both)}. Keep each in exactly one of the two lists.`);
+    }
+    const uncovered = canonicalHeaders.filter((h) => !include.includes(h) && !drop.includes(h));
+    if (uncovered.length) {
+      throw new Error(`${row} does not classify every canonical section of templates/persona-protocol.md: ${quote(uncovered)}. Add each to that row's include or drop list.`);
+    }
+  }
+}
+
+// At load, so a matrix that no longer partitions the template makes bin/cli.js
+// unloadable — no command can render a single mirror from a stale matrix.
+assertProtocolMatrixComplete(CANONICAL_PROTOCOL_HEADERS, PROTOCOL_SECTIONS_BY_PERSONA);
 
 // Fail-closed three ways: a non-full tier is never trimmed; a persona with no
 // matrix row gets every section; a row naming a header the template does not
@@ -512,8 +545,9 @@ for (const name of CORE_PERSONAS.concat(OPTIONAL_PERSONAS)) {
 // content from a persona. Returns headers in template order.
 function selectProtocolSections(name, tier) {
   const all = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
-  const wanted = PROTOCOL_SECTIONS_BY_PERSONA[name];
-  if (tier !== 'full' || !wanted) return all;
+  const row = PROTOCOL_SECTIONS_BY_PERSONA[name];
+  if (tier !== 'full' || !row) return all;
+  const wanted = row.include;
   for (const header of wanted) {
     if (!all.includes(header)) {
       throw new Error(`PROTOCOL_SECTIONS_BY_PERSONA['${name}'] names a section absent from templates/persona-protocol.md: "${header}"`);
@@ -1910,6 +1944,7 @@ module.exports = {
   renderCleanBody,
   protocolTierFor,
   selectProtocolSections,
+  assertProtocolMatrixComplete,
   PROTOCOL_SECTIONS_BY_PERSONA,
   migrateLegacyPersonaTokens,
   deriveMcpLaunchFromDisk,

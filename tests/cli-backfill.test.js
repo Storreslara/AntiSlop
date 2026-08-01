@@ -28,6 +28,15 @@ function check(name, fn) {
   }
 }
 
+function captureThrow(fn) {
+  try {
+    fn();
+    return null;
+  } catch (err) {
+    return err;
+  }
+}
+
 const cli = require(path.join(REPO_ROOT, 'bin', 'cli.js'));
 
 check('buildFileSpecs registers the slim protocol digest for .claude/persona-protocol-slim.md', () => {
@@ -76,12 +85,39 @@ check('selectProtocolSections returns every canonical section for a full-tier pe
 
 check('selectProtocolSections throws when a matrix row names a section the template does not define', () => {
   const matrix = cli.PROTOCOL_SECTIONS_BY_PERSONA;
-  matrix['fixture-persona'] = [canonicalProtocolHeaders()[0], 'No Such Section'];
+  const all = canonicalProtocolHeaders();
+  // Runtime mutation, deliberately AFTER load: this asserts the per-call
+  // existence check inside selectProtocolSections is still live, which the
+  // load-time completeness guard cannot cover (S4-A3e).
+  matrix['fixture-persona'] = { include: [all[0], 'No Such Section'], drop: all.slice(1) };
   try {
     assert.throws(() => cli.selectProtocolSections('fixture-persona', 'full'), /No Such Section/);
   } finally {
     delete matrix['fixture-persona'];
   }
+});
+
+// --- S4-A3a: the load-time completeness validator, exercised as a pure
+// function on synthetic headers — no template mutation, no module state. The
+// positive control is load-bearing: without it a validator that threw
+// unconditionally would satisfy both negative cases. These three cases are the
+// in-process form of the criterion's three `node -e` invocations.
+check('assertProtocolMatrixComplete throws when a row leaves a canonical section unclassified, naming the row and the header', () => {
+  const err = captureThrow(() => cli.assertProtocolMatrixComplete(['A', 'B', 'C'], { p: { include: ['A'], drop: ['B'] } }));
+  assert.ok(err, 'an incomplete row must throw');
+  assert.ok(/\bp\b/.test(err.message), `message must name the row key: ${err.message}`);
+  assert.ok(err.message.includes('"C"'), `message must name the uncovered header verbatim: ${err.message}`);
+});
+
+check('assertProtocolMatrixComplete positive control: an exhaustive row does not throw', () => {
+  assert.doesNotThrow(() => cli.assertProtocolMatrixComplete(['A', 'B', 'C'], { p: { include: ['A'], drop: ['B', 'C'] } }));
+});
+
+check('assertProtocolMatrixComplete throws when a header is in both include and drop, naming that header', () => {
+  const err = captureThrow(() => cli.assertProtocolMatrixComplete(['A', 'B', 'C'], { p: { include: ['A', 'B'], drop: ['B', 'C'] } }));
+  assert.ok(err, 'an overlapping row must throw');
+  assert.ok(/\bp\b/.test(err.message), `message must name the row key: ${err.message}`);
+  assert.ok(err.message.includes('"B"'), `message must name the doubly-listed header verbatim: ${err.message}`);
 });
 
 check('selectProtocolSections returns every canonical section for an unknown persona name', () => {
@@ -95,7 +131,7 @@ check('renderCleanBody inlines only the sections the selector returns for the pe
   const matrix = cli.PROTOCOL_SECTIONS_BY_PERSONA;
   const all = canonicalProtocolHeaders();
   const original = matrix['lead-programmer'];
-  matrix['lead-programmer'] = [all[0]];
+  matrix['lead-programmer'] = { include: [all[0]], drop: all.slice(1) };
   try {
     const spec = cli.buildFileSpecs([]).find((s) => s.projectRelPath === '.claude/agents/lead-programmer.md');
     const block = cli.renderCleanBody(spec, {}).split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
