@@ -514,6 +514,62 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration (S3-A2c): idempotence measured against a FORCED render.
+  // A plain second --update takes the version-match fast-path and never
+  // renders anything, so "run it twice and diff the file" passes on *never
+  // re-rendered* as readily as on *rendered and identical*. `--update --check`
+  // defeats that fast-path, and the per-file "already current" line is emitted
+  // only after renderCleanBody ran and its hash was compared — that line, not
+  // the sha, is the render-invocation evidence. mtime is useless here: the
+  // correct branch performs no write.
+  check('a forced --update --check re-renders .claude/persona-protocol.md, reports it already current, and leaves it byte-identical', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-protocol-idempotence-test-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const destPath = path.join(tmp, '.claude', 'persona-protocol.md');
+      fs.rmSync(destPath, { force: true });
+
+      const created = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(created.status, 0, `expected exit 0, got ${created.status}: ${created.stdout}${created.stderr}`);
+      const shaAfterCreate = cli.sha256Hex(fs.readFileSync(destPath, 'utf8'));
+
+      const forced = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(forced.status, 0, `expected exit 0, got ${forced.status}: ${forced.stdout}${forced.stderr}`);
+      assert.ok(
+        forced.stdout.split('\n').includes('  .claude/persona-protocol.md: already current'),
+        `expected the exact render-invocation line, got: ${forced.stdout}`
+      );
+      assert.strictEqual(
+        cli.sha256Hex(fs.readFileSync(destPath, 'utf8')), shaAfterCreate,
+        'the forced render must leave the file byte-identical to the creating run'
+      );
+
+      // Negative control: the same second run WITHOUT --check fast-paths out
+      // and never names the file — this is what proves the assertions above
+      // measure something a plain double --update structurally cannot.
+      const plain = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(plain.status, 0, `expected exit 0, got ${plain.status}: ${plain.stdout}${plain.stderr}`);
+      assert.ok(plain.stdout.includes('Nothing to update'), `a plain second --update must take the fast path, got: ${plain.stdout}`);
+      assert.ok(
+        !plain.stdout.includes('persona-protocol.md'),
+        `a fast-pathed --update must not mention the file at all, got: ${plain.stdout}`
+      );
+
+      // Mutation control: the forced render must really compare content, not
+      // just announce the spec. Exit code is asserted non-zero only — no code
+      // path documents 2 as a contract.
+      fs.appendFileSync(destPath, 'x\n');
+      const mutated = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      assert.notStrictEqual(mutated.status, 0, `a diverged file must exit non-zero, got: ${mutated.stdout}${mutated.stderr}`);
+      assert.ok(
+        mutated.stdout.includes('diverged from a fresh copy'),
+        `expected the divergence report, got: ${mutated.stdout}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration (S3-A2d): a project adapted before the file became a
   // managed spec may still carry an unmanaged, stale copy with no fileHashes
   // entry (removeStaleProtocolCopy, which used to delete it, is gone). That
