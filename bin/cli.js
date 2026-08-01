@@ -1738,6 +1738,17 @@ async function main() {
   );
   console.log('  templates/protocol-digest.md -> .claude/protocol-digest.md');
 
+  // This path hand-lists its copies and never calls buildFileSpecs, so
+  // registering the spec there alone would leave a fresh install without the
+  // full protocol until its first --update.
+  copyStamped(
+    path.join(PKG_ROOT, 'templates', 'persona-protocol.md'),
+    path.join(claudeDir, 'persona-protocol.md'),
+    version,
+    'templates/persona-protocol.md'
+  );
+  console.log('  templates/persona-protocol.md -> .claude/persona-protocol.md');
+
   copyDirRecursive(path.join(PKG_ROOT, 'hooks', 'scripts'), hooksScriptsDir);
   console.log('  hooks/scripts/*.sh -> .claude/hooks/scripts/');
 
