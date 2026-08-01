@@ -64,13 +64,15 @@ r_f2=$(add_commit f2 docs/f2a.md:1 docs/f2b.md:1)
 r_f3=$(add_commit f3 docs/f3a.md:1 docs/f3b.md:1 docs/f3c.md:1)
 r_f4=$(add_commit f4 docs/f4a.md:1 docs/f4b.md:1 docs/f4c.md:1 docs/f4d.md:1)
 
-# Markers are seeded only after every commit, so they stay untracked and
-# cannot perturb any range's numstat.
+# Markers are committed in a range of their own the moment they are seeded:
+# later fixtures use `git add -A`, which would otherwise sweep them into the
+# next commit and inflate its file count.
 mkdir -p "$repo/.claude/reviewed"
 printf 'FAIL unit-fail 2026-08-01T00:00:00Z missing: constraint X\n' \
   > "$repo/.claude/reviewed/unit-fail.fail"
 printf 'PASS unit-pass 2026-08-01T00:00:00Z criteria: true\n' \
   > "$repo/.claude/reviewed/unit-pass.pass"
+snap markers > /dev/null
 
 echo "-- required cases --"
 run_case "(a) under-threshold non-sensitive diff"      sonnet unit-1     "$r_small"
@@ -138,6 +140,23 @@ echo "-- fail-closed edges --"
 run_case "(ag) a valid range with zero changed files" opus unit-1 "HEAD..HEAD"
 run_case "(ah) an empty task id"                      opus ""     "$r_small"
 
+# Every other fixture is a pure addition, so the `deleted` term of the sum is
+# unexercised. These replace a file's contents with disjoint lines, making the
+# deletions the only thing that can carry the total past the limit.
+echo "-- the deleted term of the line sum --"
+seq 1 21 > "$repo/docs/churn41.md"; snap churn41-base > /dev/null
+seq 100 119 > "$repo/docs/churn41.md"; r_churn41=$(snap churn41)
+run_case "(ai) 20 added + 21 deleted (41, above the limit)" opus   unit-1 "$r_churn41"
+
+seq 1 20 > "$repo/docs/churn40.md"; snap churn40-base > /dev/null
+seq 100 119 > "$repo/docs/churn40.md"; r_churn40=$(snap churn40)
+run_case "(aj) 20 added + 20 deleted (40, at the limit)"    sonnet unit-1 "$r_churn40"
+
+echo "-- unmeasurable content --"
+printf '\000\001\002\377' > "$repo/docs/blob.bin"
+r_binary=$(snap binary-blob)
+run_case "(ak) a binary file reports no line counts" opus unit-1 "$r_binary"
+
 # --- Mutation controls (acceptance criterion 4) ---------------------------
 # reviewer-tier.sh sources nothing, so a plain copy is a complete runnable
 # mutant - no lib/ sibling to carry along. Each control asserts the named case
@@ -190,6 +209,14 @@ fi
 if mutate empty-id-ok '/\[ -n "\$task_id" \]/d'; then
   run_case "(mc8) empty-task-id guard removed: case (ah) flips to" \
     sonnet "" "$r_small" "$MUTANT"
+fi
+if mutate added-only 's/lines + added + deleted/lines + added/'; then
+  run_case "(mc9) deleted lines dropped from the sum: case (ai) flips to" \
+    sonnet unit-1 "$r_churn41" "$MUTANT"
+fi
+if mutate binary-ok 's/case "${added}${deleted}" in \*\[!0-9\]\*) opus ;; esac//'; then
+  run_case "(mc10) binary guard removed: case (ak) flips to" \
+    sonnet unit-1 "$r_binary" "$MUTANT"
 fi
 
 exit "$fail"
