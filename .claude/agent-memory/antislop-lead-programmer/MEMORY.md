@@ -1,0 +1,7 @@
+- [Live plugin probe & stale-cache trap](project_live_plugin_probe.md) — how to make `${CLAUDE_PLUGIN_ROOT}` serve the working tree's hook scripts, and prove it did
+- [WIP sentinel agent id](project_wip_sentinel_agent_id.md) — don't hunt for your agent id; let the stop-gate's block message name the sentinel path
+- [agent-identity lib gotchas](../lead-programmer/project_agent_identity_lib.md) — earlier persona-dir note on the shared identity contract (S1–S13 sites)
+- [Marker gate blocks your own commits](project_marker_gate_blocks_own_commits.md) — commit with `-F scratchpad/msg.txt` when the message discusses `.claude/reviewed`
+- [`--check` is a write](project_cli_check_is_a_write.md) — measure cli.js no-op properties differentially between two throwaway worktrees, with a mutation control
+- [Bash lexer/gate traps](project_bash_lexer_gate_traps.md) — empty-class `local` chaining, mutant copies needing `lib/`, and a stale prompt HEAD faking a broken suite
+- [persona-protocol.md 2nd-run fast-path](project_persona_protocol_second_run_fastpath.md) — FIXED in #190; keeps the trap: "--update twice + diff" measures nothing, force renders with `--check`
