@@ -479,6 +479,41 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration (S3-A2b): `.claude/persona-protocol.md` is a managed spec
+  // again (reverses OQ11=DROP/U12, which deleted it) — see the buildFileSpecs
+  // registration for why. Replaces the old "--update deletes a stale
+  // pre-existing copy" test, which asserted the behaviour now reversed.
+  check('--update creates .claude/persona-protocol.md, stamped at line 1 and byte-identical to the template past the stamp', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-full-protocol-test-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const destPath = path.join(tmp, '.claude', 'persona-protocol.md');
+      fs.rmSync(destPath, { force: true });
+
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(
+        result.stdout.includes('.claude/persona-protocol.md: created'),
+        `expected the full protocol doc to be created, got: ${result.stdout}`
+      );
+
+      const onDisk = fs.readFileSync(destPath, 'utf8');
+      const lines = onDisk.split('\n');
+      assert.strictEqual(
+        lines[0],
+        `<!-- antislop v${pluginVersion} | source: templates/persona-protocol.md | ADAPT-substituted -->`,
+        'the template has no frontmatter, so the stamp must be line 1 exactly'
+      );
+      assert.strictEqual(
+        lines.slice(1).join('\n'),
+        fs.readFileSync(path.join(REPO_ROOT, 'templates', 'persona-protocol.md'), 'utf8'),
+        'past the stamp line the copy must be byte-identical to templates/persona-protocol.md'
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration: Step 5 (token-hygiene-dispatch-gate) .gitignore backfill.
   // `runUpdate` must reach already-adapted projects too, not just the
   // scaffold-time lists — this is the specific gap Step 5 exists to close.

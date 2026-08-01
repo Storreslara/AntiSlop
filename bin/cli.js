@@ -446,6 +446,18 @@ function buildFileSpecs(personaSelection) {
       protocolTier: protocolTierFor('researcher'),
     });
   }
+  // Reverses OQ11=DROP (U12), which stopped generating this file on the
+  // premise that "nothing reads it at runtime" — true while every full-tier
+  // persona carried the whole protocol inlined. Once per-persona excerpts are
+  // TRIMMED, a persona whose body no longer contains a rule needs somewhere to
+  // read it, so the full doc is a managed on-disk reference again. Nothing
+  // auto-loads it: zero tokens per dispatch, read only on demand.
+  specs.push({
+    projectRelPath: '.claude/persona-protocol.md',
+    sourceAbsPath: path.join(PKG_ROOT, 'templates', 'persona-protocol.md'),
+    sourceRelPath: 'templates/persona-protocol.md',
+    kind: 'plain',
+  });
   specs.push({
     projectRelPath: '.claude/persona-protocol-slim.md',
     sourceAbsPath: path.join(PKG_ROOT, 'templates', 'persona-protocol-slim.md'),
