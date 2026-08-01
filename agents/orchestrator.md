@@ -277,22 +277,53 @@ critical-sounding fable finding is not itself a verdict: route anything it
 surfaces through the opus reviewer (or the normal FAIL-handling protocol)
 rather than acting on it directly.
 
-### Reviewer gate model selection (sonnet for mechanical units)
-Read the sliced unit's `Suggested reviewer model: sonnet` tag (task-master's
-judgment that the unit is mechanical enough to gate on sonnet) and pass it as
-the reviewer dispatch's `model` parameter; omit the parameter when the tag is
-absent, so reviewer's `model: opus` frontmatter applies as the default. Same
+### Reviewer gate model selection (measured at dispatch time)
+`task-master` no longer tags a reviewer tier — it slices before the diff
+exists, so it could only predict one. You decide the tier at reviewer-dispatch
+time, when the diff is measurable, by running the deterministic helper **from
+the repo root**:
+
+```
+bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..<HEAD>
+```
+
+It prints exactly `sonnet` or `opus` (exit 0 either way). Pass that word as
+the reviewer dispatch's `model` parameter. Use the same unit id you already
+pass the reviewer for its PASS marker, and the same `baseline..HEAD` range you
+already carry in the advisory review packet (see "Review routing" above). Run
+it from the repo root: its sensitive-path patterns are anchored at the repo
+root, and it resolves the reviewed-marker directory under `CLAUDE_PROJECT_DIR`
+(defaulting to the working directory). The script is fail-closed — anything
+unmeasurable, sensitive or oversized prints `opus`. Same
 `CLAUDE_CODE_SUBAGENT_MODEL` caveat as the other per-unit-model-routing
 subsections in this file.
 
-**Fable is never valid on this tag / the gate.** Fable stays confined to the
-separate advisory `Roast pass: fable` dispatch above — unchanged.
+**Downgrade-only asymmetry — the script is a NECESSARY condition, never a
+sufficient one.** Your own judgment may **downgrade** its verdict (`sonnet` →
+`opus`) whenever anything about the unit makes you doubt a sonnet review; say
+so in your report when you do. You may **never upgrade** it: an `opus` verdict
+is final, and you never turn it into `sonnet` however mechanical the unit
+looks to you. This one-way rule is what keeps a measured tier from being a
+weakening of the gate.
+
+**"Sonnet-eligible" and "heavy" are different concepts — never substitute one
+for the other.** Sonnet-eligibility is decided only by the script above. The
+heavy-unit trigger's own three criteria keep their existing definition and
+continue to govern the fable advisory pass only (see the subsection above).
+Do not read a heavy classification as an opus gate verdict, or a `sonnet`
+verdict as evidence a unit is not heavy.
+
+**Fable is never valid on the gate.** The script never prints `fable`, and you
+never substitute it. Fable stays confined to the separate advisory
+`Roast pass: fable` dispatch above — unchanged.
 
 **`.fail` disqualifier.** Before dispatching the reviewer, check
-`.claude/reviewed/<task-id>.fail`; if it exists, ignore any sonnet tag and
-dispatch the reviewer on opus — extending the existing "check for a prior
-`.fail` record before ANY per-unit dispatch" rule above to the reviewer
-dispatch specifically.
+`.claude/reviewed/<task-id>.fail`; if it exists, dispatch the reviewer on opus
+— extending the existing "check for a prior `.fail` record before ANY per-unit
+dispatch" rule above to the reviewer dispatch specifically. The script checks
+this too, but you check it yourself as a belt-and-suspenders backstop: a
+`.fail` is a permitted downgrade reason, and downgrades are always yours to
+make.
 
 **Escalation.** If a unit that received a sonnet-gated PASS is later found to
 have missed a defect (a human catch, a `milestone-auditor` finding, or a

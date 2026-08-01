@@ -62,20 +62,16 @@ into independently-grabbable, unambiguous units of work.
   orchestrator independently re-derives "heavy" from the same trigger
   conditions, and the tag's presence or absence is never itself the deciding
   classification (per orchestrator.md).
-- **Optional `Suggested reviewer model: sonnet` tag**: emit `Suggested
-  reviewer model: sonnet` on a sliced unit **iff BOTH**: the unit's own
-  `Suggested model:` tag is `haiku`, AND the unit does not meet the
-  heavy-unit trigger above (the same trigger used for `Roast pass: fable`).
-  Otherwise omit the tag entirely, so reviewer's `model: opus` default
-  applies. **Never** emit any value other than `sonnet` on this tag — never
-  `fable`, never `haiku`, never an explicit `opus` (opus is the omitted
-  default). Before emitting `sonnet` on any unit, check
-  `.claude/reviewed/<task-id>.fail` — a prior FAIL means the unit is not
-  mechanical enough to verify on sonnet; never sonnet-tag that unit. The
-  orchestrator independently re-checks this `.fail` disqualifier at its own
-  dispatch time as a belt-and-suspenders backstop (see orchestrator.md's
-  "Reviewer gate model selection" subsection) — this tag is a suggestion the
-  orchestrator honors, not a bypass of that recheck.
+- **No reviewer-tier tag — never predict the reviewer's model**: emit no tag
+  of any kind proposing which model gates a unit's review. You slice
+  *before* implementation, when the unit's diff does not exist yet, so any
+  such tag would be a prediction standing in for "mechanical and low-risk"
+  rather than a measurement of it. Instead, state in each dispatch prompt
+  that **the reviewer tier is decided at dispatch time** by the orchestrator
+  running `hooks/scripts/reviewer-tier.sh` over the unit's actual diff (see
+  orchestrator.md's "Reviewer gate model selection" subsection). Your
+  `Suggested model:` tag above is for the *implementer* and is unaffected —
+  it stays, and it no longer implies anything about the reviewer's tier.
 - **Retrieval-contract line**: state, verbatim, where the sliced issues live
   and how to fetch them, matching whatever tracker this project chose at
   ADAPT time — this is the line `lead-programmer` and the orchestrator key
