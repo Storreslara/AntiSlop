@@ -135,7 +135,14 @@ if [ "$hook_event" = "Stop" ]; then
       flag_content="$(cat "$flag" 2>/dev/null || true)"
       case "$flag_content" in
         "defer: "*)
-          printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
+          # A defer: is sticky, so an unchanged reason would otherwise log one
+          # identical line per turn forever. Append only when it differs from
+          # the last line's content (i.e. after the timestamp field) - distinct
+          # events, including a defer: repeated after some other line, still log.
+          last_logged="$(tail -n 1 "$review_audit" 2>/dev/null | cut -d' ' -f2- || true)"
+          if [ "$last_logged" != "$flag_content" ]; then
+            printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
+          fi
           ;;
         "skip: "*)
           printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"

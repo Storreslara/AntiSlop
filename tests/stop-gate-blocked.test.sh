@@ -20,6 +20,14 @@ make_project() {
   echo "$dir"
 }
 
+run_stop() {
+  # $1 = project dir -> one main-session Stop against $2 (default: the real script)
+  local rc=0
+  printf '%s' '{"hook_event_name":"Stop","session_id":"main"}' \
+    | CLAUDE_PROJECT_DIR="$1" bash "${2:-hooks/scripts/stop-gate.sh}" || rc=$?
+  return "$rc"
+}
+
 reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
 
 # (a) reviewer SubagentStop WITH an active .blocked marker -> flag kept + audit
@@ -94,6 +102,78 @@ if [ "$ok" = true ] && [ -f "$dir/.claude/.pending-review.lp-1" ] && [ "$before"
   echo "OK   (e) one defer: write permits three consecutive Stop events, flag content unchanged (sticky semantics)"
 else
   echo "FAIL (e) sticky defer semantics broken (ok=$ok before=[$before] after=[$after])"
+  fail=1
+fi
+
+# (f) consecutive duplicate defer: lines are suppressed - one write, three Stops, one line
+dir="$(make_project dedupe)"
+printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-1"
+ok=true
+for i in 1 2 3; do
+  run_stop "$dir" || ok=false
+done
+n="$(grep -c 'defer: ' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+if [ "$ok" = true ] && [ "$n" = 1 ]; then
+  echo "OK   (f) three Stop events with an unchanged defer: reason log exactly one line"
+else
+  echo "FAIL (f) expected one defer: audit line from three exit-0 Stops (ok=$ok lines=$n)"
+  fail=1
+fi
+
+# (g) a CHANGED defer: reason is still recorded, in order
+dir="$(make_project changed)"
+flag="$dir/.claude/.pending-review.lp-1"
+ok=true
+printf 'defer: reason A\n' > "$flag"; run_stop "$dir" || ok=false
+printf 'defer: reason B\n' > "$flag"; run_stop "$dir" || ok=false
+got="$(cut -d' ' -f2- < "$dir/.claude/review-audit.log" | tr '\n' '|')"
+if [ "$ok" = true ] && [ "$got" = 'defer: reason A|defer: reason B|' ]; then
+  echo "OK   (g) defer: A -> Stop -> defer: B -> Stop logs both reasons, in order"
+else
+  echo "FAIL (g) expected 'defer: reason A|defer: reason B|' (ok=$ok got=[$got])"
+  fail=1
+fi
+
+# (h) only CONSECUTIVE duplicates are suppressed: an identical defer: separated
+#     from the earlier one by a cleared-by=reviewer line IS still appended
+dir="$(make_project nonconsecutive)"
+flag="$dir/.claude/.pending-review.lp-1"
+ok=true
+printf 'defer: reviewer already dispatched\n' > "$flag"; run_stop "$dir" || ok=false
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || ok=false
+printf 'defer: reviewer already dispatched\n' > "$flag"; run_stop "$dir" || ok=false
+got="$(cut -d' ' -f2- < "$dir/.claude/review-audit.log" | tr '\n' '|')"
+want='defer: reviewer already dispatched|cleared-by=reviewer|defer: reviewer already dispatched|'
+if [ "$ok" = true ] && [ "$got" = "$want" ]; then
+  echo "OK   (h) an identical defer: after an intervening log line is still appended"
+else
+  echo "FAIL (h) expected [$want] (ok=$ok got=[$got])"
+  fail=1
+fi
+
+# (i) MUTATION CONTROL for (f): a copy of the script with the dedupe guard
+#     neutralized must log all three lines, proving (f) binds to the guard and
+#     not to something that was already true.
+mutant="$tmproot/mutant"
+mkdir -p "$mutant"
+cp hooks/scripts/stop-gate.sh "$mutant/stop-gate.sh"
+cp -R hooks/scripts/lib "$mutant/lib"
+guard='if [ "$last_logged" != "$flag_content" ]; then'
+before_n="$(grep -cF "$guard" "$mutant/stop-gate.sh" || true)"
+sed -i "s/$(printf '%s' "$guard" | sed 's/[][\\.*^$\/]/\\&/g')/if true; then/" "$mutant/stop-gate.sh"
+after_n="$(grep -cF "$guard" "$mutant/stop-gate.sh" || true)"
+
+dir="$(make_project mutation)"
+printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-1"
+ok=true
+for i in 1 2 3; do
+  run_stop "$dir" "$mutant/stop-gate.sh" || ok=false
+done
+n="$(grep -c 'defer: ' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+if [ "$before_n" = 1 ] && [ "$after_n" = 0 ] && [ "$ok" = true ] && [ "$n" = 3 ]; then
+  echo "OK   (i) mutation control: without the dedupe guard the same run logs 3 lines, so (f) is binding"
+else
+  echo "FAIL (i) mutation not applied or did not change behavior (guard before=$before_n after=$after_n ok=$ok lines=$n)"
   fail=1
 fi
 
