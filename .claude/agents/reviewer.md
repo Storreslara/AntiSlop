@@ -5,7 +5,7 @@ model: opus
 color: red
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:roast-work
-maxTurns: 30
+maxTurns: 50
 ---
 <!-- antislop v0.17.0 | source: agents/reviewer.md | ADAPT-substituted -->
 

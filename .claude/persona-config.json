@@ -43,9 +43,9 @@
   "fileHashes": {
     ".claude/agents/orchestrator.md": "f7df6f75283441a781aebb84662ef19ecbd703b12f1a28870f9593d675e8e82d",
     ".claude/agents/explorer.md": "200bc1773b487c788c6a8ff93ad94e22a631555651d8f0d7d026df512e2165ba",
-    ".claude/agents/lead-programmer.md": "dadf61137b9ec34c13e6f0c338ef477c791cbb7c06b7f073ff97fc5118ce034b",
+    ".claude/agents/lead-programmer.md": "49b773f44f09f4b4ff265a335d9e473d5692c3f928e395cf11e92b47e32e3402",
     ".claude/agents/milestone-auditor.md": "26eef3b12ff5d235839c9021288f9e73e28086763b16c92faf41113afaf789de",
-    ".claude/agents/reviewer.md": "4916940b27fae28a0ad4a9a2c1e86bcaed59109b6799c936417cf18602414997",
+    ".claude/agents/reviewer.md": "14cf900547d599c9c69fb426b5313ed8a2cf474875743869984581e4b6e0620d",
     ".claude/agents/researcher.md": "bdf3eb9b6275a2ccab6df00f060790f984fb8d443b5489aa4dfc480349ecf050",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "a3c57a975e11a3828ed1dcf007b6b23f72ea8305957aa3534c54d20385041c2b",

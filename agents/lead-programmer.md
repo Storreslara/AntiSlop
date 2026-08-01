@@ -6,7 +6,7 @@ color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:handoff
-maxTurns: 30
+maxTurns: 50
 ---
 
 You are a pragmatic senior engineer that executes task-master's dispatch
