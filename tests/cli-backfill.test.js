@@ -451,25 +451,29 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
-  // --- Integration: U12 (OQ11=DROP) cleanup of a pre-existing
-  // `.claude/persona-protocol.md` copy from before the spec was dropped —
-  // nothing reads it at runtime post-U6, so --update deletes it outright
-  // rather than leaving it as an unmanaged orphan. Idempotent: a second run
-  // is a no-op.
-  check('--update deletes a stale pre-existing .claude/persona-protocol.md copy, idempotently', () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-stale-protocol-test-'));
+  // --- Integration (S3-A2a): the version-match fast-path must not skip past a
+  // managed destination that is MISSING. Asserted on protocol-digest.md
+  // rather than persona-protocol.md deliberately: the defeater has to be
+  // general over `specs`, not a per-path special case.
+  check('--update restores a deleted managed file instead of reporting "Nothing to update"', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-absent-dest-test-'));
     try {
       buildBaselineProject(tmp, {});
-      const stalePath = path.join(tmp, '.claude', 'persona-protocol.md');
-      fs.writeFileSync(stalePath, 'stale content predating OQ11=DROP\n');
 
-      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
-      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
-      assert.ok(!fs.existsSync(stalePath), 'stale .claude/persona-protocol.md should be removed');
+      const control = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(control.status, 0, `expected exit 0, got ${control.status}: ${control.stdout}${control.stderr}`);
+      assert.ok(control.stdout.includes('Nothing to update'), `an untouched baseline must still take the fast path, got: ${control.stdout}`);
 
-      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
-      assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
-      assert.ok(!fs.existsSync(stalePath), 'stale file should stay absent on a second run (no-op)');
+      const digestPath = path.join(tmp, '.claude', 'protocol-digest.md');
+      fs.unlinkSync(digestPath);
+
+      const healed = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(healed.status, 0, `expected exit 0, got ${healed.status}: ${healed.stdout}${healed.stderr}`);
+      assert.ok(fs.existsSync(digestPath), 'the deleted managed file should have been recreated');
+      assert.ok(
+        healed.stdout.includes('.claude/protocol-digest.md: created'),
+        `expected the deleted file to be reported as created, got: ${healed.stdout}`
+      );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

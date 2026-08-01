@@ -583,18 +583,6 @@ function migrateGlobalProtocolImport(cwd) {
   return true;
 }
 
-// OQ11=DROP (U12): the full protocol doc is no longer generated as a
-// standalone `.claude/` copy (nothing reads it at runtime post-U6 — it's
-// inlined per-persona instead), so an already-ADAPTed project's pre-existing
-// copy is deleted outright on --update rather than left as an unmanaged
-// orphan. Idempotent: a no-op once the file is gone.
-function removeStaleProtocolCopy(cwd) {
-  const p = path.join(cwd, '.claude', 'persona-protocol.md');
-  if (!fs.existsSync(p)) return false;
-  fs.unlinkSync(p);
-  return true;
-}
-
 async function runUpdate(args) {
   const version = readPluginVersion();
   const configPath = path.join(CWD, '.claude', 'persona-config.json');
@@ -657,11 +645,6 @@ async function runUpdate(args) {
   const migratedClaudeMd = migrateGlobalProtocolImport(CWD);
   if (migratedClaudeMd) {
     console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (now delivered per-persona).');
-  }
-
-  const removedStaleProtocol = removeStaleProtocolCopy(CWD);
-  if (removedStaleProtocol) {
-    console.log('  .claude/persona-protocol.md: removed stale generated copy (protocol is now inlined per-persona).');
   }
 
   // Backfill .gitignore reach for the two dispatch-hygiene state files
@@ -742,16 +725,21 @@ async function runUpdate(args) {
   const checkFlag = args.includes('--check');
 
   // Pre-scan (Step 3, cli-stale-version-stamp-fix, Layer 1 of the two-layer
-  // bug): detect a stale version stamp BEFORE the fast-path below, so a
-  // project whose persona files are already content-clean but still carry
-  // an outdated stamp doesn't bail out before ever reaching the per-file
-  // loop that refreshes it (Layer 2, #170, `:730` above). Read-only — never
-  // writes, and skips any destination file that doesn't exist yet or can't
-  // be read (the loop's own !fs.existsSync branch handles creation).
-  let stampStale = false;
+  // bug): detect a MISSING or stale-stamped managed destination BEFORE the
+  // fast-path below, so a project whose persona files are already
+  // content-clean but still carry an outdated stamp — or whose mirror was
+  // deleted outright — doesn't bail out before ever reaching the per-file
+  // loop that recreates/refreshes it (Layer 2, #170, `:730` above). Absence
+  // used to be skipped here, which meant --update reported "already current"
+  // for a deleted managed file and never self-healed it. Read-only — never
+  // writes; the render loop's own !fs.existsSync branch does the creating.
+  let needsRender = false;
   for (const spec of specs) {
     const destAbsPath = path.join(CWD, spec.projectRelPath);
-    if (!fs.existsSync(destAbsPath)) continue;
+    if (!fs.existsSync(destAbsPath)) {
+      needsRender = true;
+      break;
+    }
     let body;
     try {
       body = fs.readFileSync(destAbsPath, 'utf8');
@@ -759,12 +747,12 @@ async function runUpdate(args) {
       continue;
     }
     if (stampVersionOf(body) !== version) {
-      stampStale = true;
+      needsRender = true;
       break;
     }
   }
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd && !removedStaleProtocol && !stampStale) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd && !needsRender) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
