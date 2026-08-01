@@ -131,13 +131,11 @@ Gate: `dispatch-hygiene.sh`. Escape hatch:
 `printf 'override: <reason>\n' > .claude/.dispatch-override`.
 
 <!-- ANTISLOP:BEGIN persona-protocol -->
-<!-- Copied into the project as .claude/persona-protocol.md by the install-antislop
-     skill, and pulled into every persona's context via a single
-     `@.claude/persona-protocol.md` line in root CLAUDE.md. CLAUDE.md is the
-     only channel that reaches both subagents AND agent-teams teammates
-     automatically, so this is where cross-cutting rules live instead of
-     being re-pasted into every persona body. Role-agnostic content only —
-     adding a new persona never requires editing this file. -->
+<!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
+     by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
+     does not resolve inside a subagent body, so this is delivered per
+     persona rather than via a CLAUDE.md include. Role-agnostic content
+     only — adding a new persona never requires editing this file. -->
 
 # Shared persona protocol
 
@@ -196,21 +194,6 @@ slice you actually need rather than re-running the same command unfiltered.
   whichever name/identifier the lead used when it spawned you; don't assume a
   fixed literal like `"main"` is always correct, since the right recipient
   can differ between agent-teams mode and other modes.
-
-## WIP sentinel (mid-task handoff, not a bypass)
-To end your turn with work genuinely in progress or a red suite you haven't
-finished fixing (TDD red phase, a blocked report, a "the plan is wrong"
-escalation): write your reason INTO the sentinel file — e.g.
-`echo "TDD red phase, 3 tests intentionally failing" > .claude/wip-handoff.<your-agent-id>`
-— and state it in your report too. A bare `touch` no longer works: the
-stop-gate hook now requires non-empty content, logs it (with a timestamp) to
-`.claude/wip-audit.log`, deletes your sentinel, and allows that one turn to
-end. An empty sentinel is deleted but NOT honored — the normal check runs
-anyway. This is for legitimate pauses only — never write a reason just to
-dodge a red suite you could otherwise fix; the audit log exists precisely so
-that use is reviewable after the fact. (Claude Code force-ends a turn after 8
-consecutive Stop-hook blocks regardless; the sentinel is the designed exit,
-not a workaround for that cap.)
 
 ## Terminal status line (every dispatched turn)
 End the message you return to your caller with a status line — the last
@@ -322,23 +305,6 @@ review.
 allows a legacy/empty/malformed marker instead of blocking, logging
 `legacy-marker-grace-period-warning`; after that, unconditional rejection.
 
-## Pending-review flag (default-mode review backstop)
-In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
-`stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
-(default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
-sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
-no reviewer run yet. The reviewer's own `SubagentStop` clears every such flag
-(PASS or FAIL) and logs `cleared-by=reviewer` to `.claude/review-audit.log`.
-While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
-"a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
-dispatching the next gated-agent unit — the orchestrator's correct next move
-(spawn the reviewer, or spawn anything non-gated like `explorer`) is never
-blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
-content with `defer: <reason>` (logged, flag KEPT, that one Stop allowed —
-review still owed next turn) or `skip: <reason>` (logged, flag DELETED, unit
-explicitly abandoned); a reason-less overwrite is rejected the same way an
-empty WIP sentinel is.
-
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
 (both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
@@ -348,49 +314,6 @@ No hook gate depends on it (the pending-review flag already clears on any
 reviewer `SubagentStop`, PASS or FAIL alike); it exists purely so a
 completely fresh `spec-master` or orchestrator spawn — one with no memory of
 this session at all — still sees that a unit already failed once.
-
-## Third verdict: insufficient-context
-Beyond PASS and FAIL, the reviewer may return a third verdict,
-`INSUFFICIENT-CONTEXT`, when it cannot verify an acceptance criterion because
-a required constraint is neither in the review packet nor discoverable via
-its own exploration (Read/Grep/Glob, or the explorer, if present). This is a
-last resort after exhausting that exploration, never a substitute for it.
-
-On this verdict the reviewer writes a new marker,
-`.claude/reviewed/<task-id>.blocked` — NOT the `.pass`/`.fail` markers above —
-whose first line reads exactly `BLOCKED <task-id> <UTC ISO-8601 timestamp>
-missing: <one-line description>`, followed by specifics: which criterion
-could not be verified, what constraint or doc is missing, and where the
-reviewer looked for it. This marker **never consumes a 2-FAIL-cap slot** —
-the cap below counts `.fail` records only, unchanged. When the reviewer
-later resolves the same unit to PASS or FAIL, it deletes the `.blocked`
-marker as part of writing the new one.
-
-Mechanical consequence: on an insufficient-context verdict the pending-review
-flag (above) is kept standing rather than cleared, so turn-end and the next
-gated-unit dispatch stay blocked, while dispatching anything non-gated
-(explorer, scribe, or the reviewer itself, if present) is still allowed; the
-existing `defer:`/`skip:` escape hatch on the flag still applies unchanged.
-
-## Continuing after a FAIL verdict
-Subagent invocations are one-shot — a fresh lead-programmer call has no
-memory of what it just built. When re-delegating after a FAIL: prefer
-resuming the same lead-programmer session if the harness supports session
-resume for the persona that reported ready-for-review; otherwise bundle a
-self-contained prompt with the original plan step, a one-line diff summary
-(from `git log`/`git diff` on the relevant commits), and the defect list
-verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
-is for durable conventions, not the live state of an in-progress fix; the
-`.fail` record above is what bridges it for a session with no memory at all.
-
-**Cap at 2 FAILs per unit.** If the same unit FAILs a second time, the
-orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
-surfaces the full defect history across both attempts to the user, then
-spawns `spec-master` to produce a debug spec (a focused root-cause diagnosis
-plus revised acceptance criteria for the failed step(s), never a
-from-scratch replan), which flows back through `task-master` for
-re-dispatch. A unit that fails twice usually means the plan itself has a
-gap, not that one more automated pass will close it.
 
 ## Reviewer roast-work advisory pass trigger (fable heavy-lifting)
 A unit is "heavy" — eligible for the additional, non-authoritative fable

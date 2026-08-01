@@ -41,16 +41,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "c6480b674bb440164d3c75df231c561440c384b9fea9b53758fe5e20afa2f76d",
+    ".claude/agents/orchestrator.md": "f7df6f75283441a781aebb84662ef19ecbd703b12f1a28870f9593d675e8e82d",
     ".claude/agents/explorer.md": "200bc1773b487c788c6a8ff93ad94e22a631555651d8f0d7d026df512e2165ba",
-    ".claude/agents/lead-programmer.md": "db43e4b02cc5b61b737874a1fae53743900b34edd87c3fddc488b789ae41dee6",
-    ".claude/agents/milestone-auditor.md": "f8fcaed6bb97a38b4bcf65646394b54c8b07cac23a6af81f51dfd5b1f0118a1b",
-    ".claude/agents/reviewer.md": "ca2bc06fadf2544a025bf6169cd87d2a72a3af0fcb6d4f6b0582deb3a8356218",
+    ".claude/agents/lead-programmer.md": "dadf61137b9ec34c13e6f0c338ef477c791cbb7c06b7f073ff97fc5118ce034b",
+    ".claude/agents/milestone-auditor.md": "26eef3b12ff5d235839c9021288f9e73e28086763b16c92faf41113afaf789de",
+    ".claude/agents/reviewer.md": "4916940b27fae28a0ad4a9a2c1e86bcaed59109b6799c936417cf18602414997",
     ".claude/agents/researcher.md": "bdf3eb9b6275a2ccab6df00f060790f984fb8d443b5489aa4dfc480349ecf050",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "a3c57a975e11a3828ed1dcf007b6b23f72ea8305957aa3534c54d20385041c2b",
-    ".claude/agents/spec-master.md": "cd74026c0e84408dc03fc1b9424a7dce4e2cb6693520bf6a92618d835c107fb2",
-    ".claude/agents/task-master.md": "0b35d4b7ae73b7121068500e4c67d0ddfe1e7392ed994293e92028d9eef5325b",
-    ".claude/persona-protocol-slim.md": "5c9912fdb5d3eee3c491d96403cb6f626ad010aea505f15900bf8cecc3d0369c"
+    ".claude/agents/spec-master.md": "8b6c04a77209b20ac0692085692b273c06c77db08880a65d8dac3c1816cda3c1",
+    ".claude/agents/task-master.md": "779c4ef25d7795e9c899cd268cfa39196446bd02426826cb7176df383bc144c6",
+    ".claude/persona-protocol-slim.md": "5c9912fdb5d3eee3c491d96403cb6f626ad010aea505f15900bf8cecc3d0369c",
+    ".claude/persona-protocol.md": "86ef5bd70084f176a2daef92b9a02ebeeb98157768a4adf3dbcc645e3efb859c"
   }
 }

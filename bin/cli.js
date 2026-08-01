@@ -497,18 +497,137 @@ function canonicalProtocolText() {
 
 const CANONICAL_PROTOCOL_HEADERS = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
 
+// Carried by every full-tier persona regardless of role.
+const UNIVERSAL_PROTOCOL_CORE = [
+  'Structural questions go to the explorer',
+  'Answer shape',
+  'Scope Bash output before it enters context',
+  'Agent-teams mode (only relevant if you were spawned as a teammate)',
+  'Terminal status line (every dispatched turn)',
+];
+
 // Which protocol sections each full-tier persona carries, keyed by the EXACT
 // canonical header. Every row is an EXHAUSTIVE classification of the canonical
 // section list into `include` (what that persona's body carries) and `drop` —
-// checked at load by assertProtocolMatrixComplete below. At this step every row
-// is still all-sections, so selection remains an exact no-op; the trimming
-// matrix lands separately so the risky half stays independently revertible.
-const PROTOCOL_SECTIONS_BY_PERSONA = {};
-for (const name of CORE_PERSONAS.concat(OPTIONAL_PERSONAS)) {
-  if (protocolTierFor(name) === 'full') {
-    PROTOCOL_SECTIONS_BY_PERSONA[name] = { include: CANONICAL_PROTOCOL_HEADERS.slice(), drop: [] };
-  }
-}
+// checked at load by assertProtocolMatrixComplete below, so a section added to
+// the template forces a per-persona decision instead of silently reaching
+// everyone (cost) or no one (a lost rule). Both lists are literal on purpose:
+// deriving either one from the other would remove that forcing function.
+//
+// `orchestrator` is deliberately untrimmed — it routes every one of these
+// mechanisms and is the one persona that executes on all of them, including
+// the memory note (it has no `memory:` frontmatter, but the table wins over
+// the iff-frontmatter rule here). The memory note is otherwise carried exactly
+// by the personas whose agents/*.md declares `memory:` frontmatter.
+const PROTOCOL_SECTIONS_BY_PERSONA = {
+  orchestrator: {
+    include: [
+      ...UNIVERSAL_PROTOCOL_CORE,
+      'WIP sentinel (mid-task handoff, not a bypass)',
+      'Running acceptance-criteria commands (there is no self-wake)',
+      'Retrieval contract',
+      'Machine-checkable criteria',
+      'Review ownership — one unit, one review, single owner',
+      'Pending-review flag (default-mode review backstop)',
+      'FAIL record (durable warning for future spawns)',
+      'Third verdict: insufficient-context',
+      'Continuing after a FAIL verdict',
+      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
+      'A note on `memory`',
+    ],
+    drop: [],
+  },
+  'lead-programmer': {
+    include: [
+      ...UNIVERSAL_PROTOCOL_CORE,
+      'WIP sentinel (mid-task handoff, not a bypass)',
+      'Running acceptance-criteria commands (there is no self-wake)',
+      'Retrieval contract',
+      'Machine-checkable criteria',
+      'Review ownership — one unit, one review, single owner',
+      'Continuing after a FAIL verdict',
+      'A note on `memory`',
+    ],
+    drop: [
+      'Pending-review flag (default-mode review backstop)',
+      'FAIL record (durable warning for future spawns)',
+      'Third verdict: insufficient-context',
+      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
+    ],
+  },
+  reviewer: {
+    include: [
+      ...UNIVERSAL_PROTOCOL_CORE,
+      'Running acceptance-criteria commands (there is no self-wake)',
+      'Retrieval contract',
+      'Machine-checkable criteria',
+      'Review ownership — one unit, one review, single owner',
+      'Pending-review flag (default-mode review backstop)',
+      'FAIL record (durable warning for future spawns)',
+      'Third verdict: insufficient-context',
+      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
+    ],
+    drop: [
+      'WIP sentinel (mid-task handoff, not a bypass)',
+      'Continuing after a FAIL verdict',
+      'A note on `memory`',
+    ],
+  },
+  'spec-master': {
+    include: [
+      ...UNIVERSAL_PROTOCOL_CORE,
+      'Running acceptance-criteria commands (there is no self-wake)',
+      'Retrieval contract',
+      'Machine-checkable criteria',
+      'Review ownership — one unit, one review, single owner',
+      'FAIL record (durable warning for future spawns)',
+      'Continuing after a FAIL verdict',
+      'A note on `memory`',
+    ],
+    drop: [
+      'WIP sentinel (mid-task handoff, not a bypass)',
+      'Pending-review flag (default-mode review backstop)',
+      'Third verdict: insufficient-context',
+      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
+    ],
+  },
+  'task-master': {
+    include: [
+      ...UNIVERSAL_PROTOCOL_CORE,
+      'Running acceptance-criteria commands (there is no self-wake)',
+      'Retrieval contract',
+      'Machine-checkable criteria',
+      'Review ownership — one unit, one review, single owner',
+      'FAIL record (durable warning for future spawns)',
+      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
+      'A note on `memory`',
+    ],
+    drop: [
+      'WIP sentinel (mid-task handoff, not a bypass)',
+      'Pending-review flag (default-mode review backstop)',
+      'Third verdict: insufficient-context',
+      'Continuing after a FAIL verdict',
+    ],
+  },
+  'milestone-auditor': {
+    include: [
+      ...UNIVERSAL_PROTOCOL_CORE,
+      'Machine-checkable criteria',
+      'Review ownership — one unit, one review, single owner',
+      'FAIL record (durable warning for future spawns)',
+      'Continuing after a FAIL verdict',
+    ],
+    drop: [
+      'WIP sentinel (mid-task handoff, not a bypass)',
+      'Running acceptance-criteria commands (there is no self-wake)',
+      'Retrieval contract',
+      'Pending-review flag (default-mode review backstop)',
+      'Third verdict: insufficient-context',
+      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
+      'A note on `memory`',
+    ],
+  },
+};
 
 // Per-row, not per-union: a union check is vacuous the moment one row carries
 // every section, and would pass a header quietly deleted from one persona's
@@ -539,11 +658,19 @@ function assertProtocolMatrixComplete(canonicalHeaders, matrix) {
 // unloadable — no command can render a single mirror from a stale matrix.
 assertProtocolMatrixComplete(CANONICAL_PROTOCOL_HEADERS, PROTOCOL_SECTIONS_BY_PERSONA);
 
+// A persona whose turns are gated always gets the two sections describing that
+// gate, whatever its matrix row says — config wins, so the matrix cannot go
+// stale against .claude/persona-config.json's gatedAgents.
+const GATED_AGENT_SECTIONS = [
+  'WIP sentinel (mid-task handoff, not a bypass)',
+  'Pending-review flag (default-mode review backstop)',
+];
+
 // Fail-closed three ways: a non-full tier is never trimmed; a persona with no
 // matrix row gets every section; a row naming a header the template does not
 // define throws, so renaming a canonical heading can never silently drop
 // content from a persona. Returns headers in template order.
-function selectProtocolSections(name, tier) {
+function selectProtocolSections(name, tier, gatedAgents) {
   const all = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
   const row = PROTOCOL_SECTIONS_BY_PERSONA[name];
   if (tier !== 'full' || !row) return all;
@@ -553,7 +680,8 @@ function selectProtocolSections(name, tier) {
       throw new Error(`PROTOCOL_SECTIONS_BY_PERSONA['${name}'] names a section absent from templates/persona-protocol.md: "${header}"`);
     }
   }
-  return all.filter((h) => wanted.includes(h));
+  const forced = (gatedAgents || []).includes(name) ? GATED_AGENT_SECTIONS : [];
+  return all.filter((h) => wanted.includes(h) || forced.includes(h));
 }
 
 // Appends the tier-appropriate protocol as a version-agnostic marked block to
@@ -565,14 +693,14 @@ function selectProtocolSections(name, tier) {
 // from pristine source and never searches for its own prior marker, so a
 // version number would serve no idempotency purpose here; the `.claude/`
 // copy already carries its own top-of-file `<!-- antislop vX -->` stamp.
-function inlineProtocolBlock(body, tier, name) {
+function inlineProtocolBlock(body, tier, name, gatedAgents) {
   if (!tier) return body;
   let protocol;
   if (tier === 'slim') {
     protocol = fs.readFileSync(path.join(PKG_ROOT, 'templates', 'persona-protocol-slim.md'), 'utf8');
   } else {
     const { preamble, sections } = parseProtocolSections(canonicalProtocolText());
-    const keep = selectProtocolSections(name, tier);
+    const keep = selectProtocolSections(name, tier, gatedAgents);
     protocol = [preamble, ...sections.filter((s) => keep.includes(s.header)).map((s) => s.text)].join('\n');
   }
   protocol = protocol.replace(/\s+$/, '');
@@ -597,7 +725,7 @@ function renderCleanBody(spec, config) {
       body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>', launch, spec.projectRelPath);
     }
   }
-  return inlineProtocolBlock(body, spec.protocolTier, path.basename(spec.projectRelPath, '.md'));
+  return inlineProtocolBlock(body, spec.protocolTier, path.basename(spec.projectRelPath, '.md'), config.gatedAgents);
 }
 
 function printUnifiedDiff(oldStr, newStr, label) {

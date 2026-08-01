@@ -77,10 +77,10 @@ function canonicalProtocolHeaders() {
     .map((l) => l.slice(3).trim());
 }
 
-check('selectProtocolSections returns every canonical section for a full-tier persona', () => {
+check('selectProtocolSections returns every canonical section for the deliberately untrimmed orchestrator row', () => {
   const all = canonicalProtocolHeaders();
   assert.ok(all.length > 0, 'the canonical template must define at least one ## section');
-  assert.deepStrictEqual(cli.selectProtocolSections('lead-programmer', 'full'), all);
+  assert.deepStrictEqual(cli.selectProtocolSections('orchestrator', 'full'), all);
 });
 
 check('selectProtocolSections throws when a matrix row names a section the template does not define', () => {
@@ -141,6 +141,96 @@ check('renderCleanBody inlines only the sections the selector returns for the pe
     }
   } finally {
     matrix['lead-programmer'] = original;
+  }
+});
+
+// --- Step 4 trimming matrix. TRIMMED_PERSONAS is every full-tier row except
+// the deliberately untrimmed orchestrator (see the A3 ruling: its row is all
+// 16 sections, memory note included, and its mirror must stay byte-identical).
+const TRIMMED_PERSONAS = ['lead-programmer', 'reviewer', 'spec-master', 'task-master', 'milestone-auditor'];
+
+// Criterion 1: positive AND negative, per persona. The negative half is the
+// one that can actually regress silently.
+check('each trimmed persona renders every header in its row include list and none of the headers in its drop list', () => {
+  const specs = cli.buildFileSpecs(TRIMMED_PERSONAS.filter((p) => p !== 'lead-programmer'));
+  for (const persona of TRIMMED_PERSONAS) {
+    const row = cli.PROTOCOL_SECTIONS_BY_PERSONA[persona];
+    assert.ok(row && row.drop.length > 0, `${persona} must have a row that actually drops sections`);
+    const spec = specs.find((s) => s.projectRelPath === `.claude/agents/${persona}.md`);
+    const block = cli.renderCleanBody(spec, {}).split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
+    for (const header of row.include) {
+      assert.ok(block.includes(`## ${header}`), `${persona} must carry its included section "${header}"`);
+    }
+    for (const header of row.drop) {
+      assert.ok(!block.includes(`## ${header}`), `${persona} must NOT carry its dropped section "${header}"`);
+    }
+  }
+});
+
+// Criterion 2: the orchestrator mirror on disk is untrimmed — all 16 canonical
+// sections, derived from the template rather than hard-coded.
+check('the .claude/agents/orchestrator.md mirror still carries every canonical protocol section', () => {
+  assert.deepStrictEqual(cli.PROTOCOL_SECTIONS_BY_PERSONA['orchestrator'].drop, [], 'the orchestrator row must drop nothing');
+  const body = fs.readFileSync(path.join(REPO_ROOT, '.claude', 'agents', 'orchestrator.md'), 'utf8');
+  const block = body.split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
+  assert.ok(block, 'the orchestrator mirror must carry an inlined protocol block');
+  for (const header of canonicalProtocolHeaders()) {
+    assert.ok(block.includes(`## ${header}`), `the orchestrator mirror must still carry "${header}"`);
+  }
+});
+
+// --- S4-A3c: the guard is per-ROW. Deleting a header from one row's include
+// AND drop must throw naming that row and that header, even while every other
+// row still covers it — which is exactly the case a union-over-rows check
+// cannot see. unionBlindCases counts the mutations that leave the union
+// complete; asserting it is non-zero is what proves the shape difference
+// rather than merely assuming it.
+check('assertProtocolMatrixComplete rejects a header deleted from any single real row, including ones other rows still cover', () => {
+  const all = canonicalProtocolHeaders();
+  const rows = Object.keys(cli.PROTOCOL_SECTIONS_BY_PERSONA);
+  assert.ok(rows.length >= 5, `expected the full-tier rows, got: ${JSON.stringify(rows)}`);
+  let unionBlindCases = 0;
+  for (const persona of rows) {
+    for (const header of all) {
+      const clone = {};
+      for (const name of rows) {
+        const row = cli.PROTOCOL_SECTIONS_BY_PERSONA[name];
+        clone[name] = { include: row.include.slice(), drop: row.drop.slice() };
+      }
+      clone[persona].include = clone[persona].include.filter((h) => h !== header);
+      clone[persona].drop = clone[persona].drop.filter((h) => h !== header);
+
+      const err = captureThrow(() => cli.assertProtocolMatrixComplete(all, clone));
+      assert.ok(err, `deleting "${header}" from ${persona} must throw`);
+      assert.ok(err.message.includes(`'${persona}'`), `message must name the row ${persona}: ${err.message}`);
+      assert.ok(err.message.includes(`"${header}"`), `message must name the header verbatim: ${err.message}`);
+
+      const union = new Set();
+      for (const name of rows) clone[name].include.concat(clone[name].drop).forEach((h) => union.add(h));
+      if (all.every((h) => union.has(h))) unionBlindCases++;
+    }
+  }
+  assert.ok(unionBlindCases > 0, 'at least one mutation must leave the union over rows complete — otherwise this proves nothing a union check could not do');
+});
+
+// --- S4-A3d: the memory section is carried iff the persona's SOURCE file has
+// `memory:` frontmatter. Swept over all five trimmed rows, both directions, so
+// adding `memory:` to a persona without editing the matrix fails loudly.
+check('the memory section is included exactly for the trimmed personas whose agents/*.md carries memory: frontmatter', () => {
+  const memoryHeader = canonicalProtocolHeaders().find((h) => h.startsWith('A note on'));
+  assert.ok(memoryHeader, 'the canonical template must still define the memory section');
+  for (const persona of TRIMMED_PERSONAS) {
+    const source = fs.readFileSync(path.join(REPO_ROOT, 'agents', `${persona}.md`), 'utf8');
+    const hasMemory = /^memory:/m.test(source);
+    const row = cli.PROTOCOL_SECTIONS_BY_PERSONA[persona];
+    assert.strictEqual(
+      row.include.includes(memoryHeader), hasMemory,
+      `agents/${persona}.md ${hasMemory ? 'has' : 'has no'} memory: frontmatter, so "${memoryHeader}" must ${hasMemory ? 'be in' : 'be out of'} its include list`
+    );
+    assert.strictEqual(
+      row.drop.includes(memoryHeader), !hasMemory,
+      `agents/${persona}.md ${hasMemory ? 'has' : 'has no'} memory: frontmatter, so "${memoryHeader}" must ${hasMemory ? 'be out of' : 'be in'} its drop list`
+    );
   }
 });
 
@@ -407,11 +497,11 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // the impossible unstamped state a real project can never be in.
   // fileHashes are still recorded against the UNSTAMPED cleanBody (what
   // stripStamp() recovers), matching the real render loop's hash basis.
-  function buildBaselineProject(tmp, extraFileHashes) {
-    const specs = cli.buildFileSpecs([]);
+  function buildBaselineProject(tmp, extraFileHashes, selection) {
+    const specs = cli.buildFileSpecs(selection || []);
     const config = {
       pluginVersion,
-      personaSelection: [],
+      personaSelection: selection || [],
       substitutions: { graphMcpLaunch },
       fileHashes: Object.assign({}, extraFileHashes),
     };
@@ -454,6 +544,43 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
           );
         }
       }
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  // --- Integration (Step 4, criterion 3): .claude/persona-config.json's
+  // gatedAgents beats the matrix, so the trimming can never leave a gated
+  // persona without the two sections that describe its own gate. Asserted on
+  // `reviewer` precisely because its matrix row DROPS both — the ungated
+  // baseline read first is the control that makes the second half meaningful.
+  check('--update force-includes the WIP sentinel and Pending-review flag sections for a persona listed in gatedAgents', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gated-force-include-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      const reviewerPath = path.join(tmp, '.claude', 'agents', 'reviewer.md');
+      // Control: of the two forced sections, only the WIP sentinel is absent
+      // from reviewer's row (the pending-review flag is in its include list
+      // already), so the WIP sentinel is what carries the proof here.
+      const ungated = fs.readFileSync(reviewerPath, 'utf8');
+      assert.ok(!ungated.includes('## WIP sentinel'), 'control: an ungated reviewer must not carry the WIP sentinel section');
+
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      config.gatedAgents = ['lead-programmer', 'reviewer'];
+      config.pluginVersion = '0.0.1'; // force the render loop past the version-match fast path
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+      const gated = fs.readFileSync(reviewerPath, 'utf8');
+      assert.ok(gated.includes('## WIP sentinel'), `gatedAgents must win over the matrix row, got: ${result.stdout}`);
+      assert.ok(gated.includes('## Pending-review flag'), `gatedAgents must win over the matrix row, got: ${result.stdout}`);
+      assert.ok(
+        !gated.includes('## Continuing after a FAIL verdict'),
+        'force-include covers exactly the two gate sections — the rest of the row\'s drop list must still be dropped'
+      );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

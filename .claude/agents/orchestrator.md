@@ -453,13 +453,11 @@ tell the user Plan Mode is active and ask them to exit it (Shift+Tab or
 across the harness's generic subagent types.
 
 <!-- ANTISLOP:BEGIN persona-protocol -->
-<!-- Copied into the project as .claude/persona-protocol.md by the install-antislop
-     skill, and pulled into every persona's context via a single
-     `@.claude/persona-protocol.md` line in root CLAUDE.md. CLAUDE.md is the
-     only channel that reaches both subagents AND agent-teams teammates
-     automatically, so this is where cross-cutting rules live instead of
-     being re-pasted into every persona body. Role-agnostic content only —
-     adding a new persona never requires editing this file. -->
+<!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
+     by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
+     does not resolve inside a subagent body, so this is delivered per
+     persona rather than via a CLAUDE.md include. Role-agnostic content
+     only — adding a new persona never requires editing this file. -->
 
 # Shared persona protocol
 
