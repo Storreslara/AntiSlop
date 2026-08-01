@@ -3,6 +3,48 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.17.0] - 2026-07-31
+
+### Removed
+- **`git` and `rg` are no longer on `reviewed-path-gate.sh`'s Bash write-intent
+  allowlist, so seven command forms that 0.16.0 deliberately unblocked are
+  blocked again for non-reviewer personas** on every already-adapted
+  marketplace-plugin project after `--update` (`bin/cli.js` copies
+  `hooks/scripts/*.sh` wholesale; the standalone-install caveat under 0.16.0
+  still applies). Specifically: a `git commit -m` message naming the marker
+  directory, `git log`/`git diff`/`git show`/`git status`/`git blame` scoped to
+  it, and `rg` searching it. **Workarounds**, both stated in the block message
+  itself: put the message in a file and use `git commit -F <file>` — the command
+  text then never names the path, so the gate returns before any matcher runs —
+  and use `grep -r`, which stays allowlisted, to search the directory. There is
+  **no** workaround for `git log -- <marker directory>`; that capability is
+  simply withdrawn from non-reviewer personas. This is an intentional reduction
+  in delivered function, which is why it is a minor bump rather than a patch.
+- **Why they were removed rather than guarded better:** an allowlisted program
+  can be steered by configuration it reads at run time that appears nowhere in
+  the command line, established by an earlier command that never names the
+  marker directory. No text-scanning improvement can detect that, because the
+  decisive input is never in the text the hook inspects, and validating that
+  ambient state would mean enumerating a third-party program's entire
+  configuration surface — a denylist, which fails open on everything the
+  enumeration missed. The surface was removed instead of inspected. More
+  generally, the allowlist matches a program *name*, while what actually
+  executes is decided by name resolution and by that program's own ambient
+  configuration, neither of which this hook can see. **The Bash write-intent
+  allowlist is a guardrail against careless or accidental writes by a
+  cooperating agent; it is not a security boundary against a caller that
+  controls its own environment.** `README.md`'s "Known limitations",
+  `docs/design.md` and an appended note on ADR 0002 now say so; ADR 0002's own
+  decision is unchanged.
+- **The flag-scan machinery added in 0.16.1 is removed with its subject**, so a
+  reader of the 0.16.1 entry below is not left believing it is still in force:
+  the flag scans it fixed guarded exactly the two programs that are now off the
+  allowlist, and the exhaustive flag-boundary regression sweep that pinned them
+  went with them. The technique lesson it established survives in the wiki and
+  in `docs/plans/2026-07-31-program-allowed-flag-boundary.md`. The regression
+  suite now pins the removal itself, with a mutation control against the
+  pre-removal gate so the reconciled suite cannot pass vacuously.
+
 ## [0.16.1] - 2026-07-31
 
 ### Fixed

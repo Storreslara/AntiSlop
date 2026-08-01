@@ -789,3 +789,48 @@ under-blocking is the bug (RD4). The refusal only ever *adds* blocks.
 The three deferred items (case 26's T3/T4 vacuity and whether that divergence is
 reachable at all; `gh`'s missing flag scan; `rg`'s unaudited flag inventory) are
 filed as **https://github.com/Storreslara/AntiSlop/issues/185**, satisfying AC2.4.
+
+---
+
+## Amendment C — superseded by the removal of its subject (issue #186)
+
+Appended 2026-07-31 after this plan shipped as v0.16.1. Nothing above this line
+is modified.
+
+**What was superseded.** Step 1's fix hardened the flag scans that guarded the
+two allowlist entries which are option-dangerous rather than program-dangerous.
+Issue #186 removed both entries from `program_allowed()` outright, on a ground
+this plan never addressed and could not have: those programs consult
+configuration read at run time, from disk or from the process environment, that
+appears nowhere in the command line the gate inspects. The command that arms it
+need never name the marker directory, so the gate's substring early-exit returns
+before any matcher runs. No correctness improvement inside a scan of the
+command's own text can reach that — which is why the response was to remove the
+surface rather than to scan it better. The scans this plan fixed, the helper it
+added, and cases 28 and 29.a-o that pinned them are therefore all gone as of
+v0.17.0. They are recoverable from git history (the removal is the commit after
+`aff5b35`) and from this document.
+
+**What survives, and is the reason this amendment exists rather than a silent
+deletion.** The *technique* distinction this plan established is general and
+outlived its subject by one day:
+
+- A **differential** sweep — gate verdict crossed with real-bash execution
+  against a seeded sentinel — is the strongest form, but only where the
+  reference implementation produces an **observable effect** in the sandbox.
+  Case 26 still demonstrates this live.
+- Where it cannot (template R had no effect to observe under the marker
+  directory), the honest form is a **one-directional block assertion with an
+  explicit mutation control**, and the vacuity has to be *stated* rather than
+  papered over with a differential that asserts coverage it does not have.
+- A mutation control must be read for the **rc on its FAIL lines**: `rc=0` is a
+  real fail-open and a genuine kill; `rc=1` means the mutant crashed and the run
+  is void; `rc=127` means the path to it was wrong. Two of the three were hit
+  for real during this plan's work and #186's.
+- Amendment A5's lesson generalizes past this file: an assertion that still
+  passes after its subject is deleted is not coverage. #186's suite
+  reconciliation deleted every fixture whose subject it removed, rather than
+  re-expecting it to a new verdict, for exactly that reason.
+
+That distinction is carried into `.claude/wiki/modules/hooks.md`; it is no
+longer demonstrated by live code except by case 26.
