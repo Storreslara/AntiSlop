@@ -24,7 +24,13 @@
 #  1) .claude/.dispatch-override sentinel -> honored only when its content
 #     starts with "override: " (logged, deleted, exit 0). An empty or
 #     reason-less sentinel is deleted but NOT honored, falling through to the
-#     checks - same shape as the WIP sentinel at stop-gate.sh:186-189.
+#     checks - same shape as the WIP sentinel at stop-gate.sh:186-189. When a
+#     valid override is honored, a stamp is written to .claude/.dispatch-override.consumed
+#     containing epoch-seconds, a dispatch-identity key (cksum-based, not
+#     cryptographic), and the reason. A sibling dispatch within 10 seconds with
+#     the same key honours the stamp (exit 0, logged as override-replay= for
+#     audit distinction) without re-consuming the sentinel. Stale, unparseable,
+#     or key-mismatched stamps are ignored and deleted opportunistically.
 #  2) H1 oversize prompt, 3) H2 inlined fenced block, 4) H3 re-dispatch of a
 #     unit holding a .claude/reviewed/<id>.pass marker. H3 reads the prompt's
 #     FIRST NON-BLANK LINE ONLY, so a quoted `Unit:` example in the body cannot
@@ -43,6 +49,12 @@
 # a well-FORMED one: an agent can emit all nine headings and fill them with
 # nothing, and H4 will pass it. Presence is matched as a plain substring
 # anywhere in the prompt, so the failure direction is under-firing, i.e. open.
+#
+# Escape-hatch fail-open floor: if .dispatch-override.consumed cannot be
+# written (disk full, unwritable path), the first invocation still honours and
+# the sibling still blocks - i.e. no worse than today's single-use-only
+# behaviour. Write failures are silent and never abort the hook under
+# set -euo pipefail.
 #
 # Honest limit (same framing as stop-gate.sh:85-88): this cannot force a
 # well-formed dispatch - an agent can split one oversize prompt into two
@@ -101,18 +113,81 @@ target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev
 # cannot forge a second line into the audit trail.
 target="${target_type//[^a-zA-Z0-9:._-]/_}"
 
+# Compute dispatch identity key: cksum of the prompt (POSIX, no fallback chain).
+# R5: this is an identity hint for replay-window deduplication, not a security
+# boundary - cksum is sufficient and portable. cksum outputs two words
+# (checksum and byte count); we concatenate them without a space to avoid
+# parsing ambiguity in the consumed stamp (reason field may contain spaces).
+dispatch_key="$(cksum <<< "$prompt" | tr -d ' ')"
+
+consumed="${project_dir}/.claude/.dispatch-override.consumed"
+now="$(date +%s 2>/dev/null || echo 0)"
+
 if [ -f "$override" ]; then
   override_content="$(head -n 1 "$override" 2>/dev/null || true)"
-  rm -f "$override"
   case "$override_content" in
     "override: "*)
-      log_line "override=${override_content#override: } target=${target}"
+      reason="${override_content#override: }"
+      # Write the consumed stamp atomically via temp-file + rename, THEN delete
+      # the sentinel. Order matters: if Process B is scheduled between these
+      # operations, we want it to find the consumed stamp, not an empty space.
+      # Format: <epoch-seconds> <dispatch-key> <reason>.
+      consumed_tmp="${consumed}.tmp.$$.$RANDOM"
+      { printf '%s %s %s\n' "$now" "$dispatch_key" "$reason" > "$consumed_tmp" && \
+        mv -f "$consumed_tmp" "$consumed"; } 2>/dev/null || true
+      rm -f "$override"
+      log_line "override=${reason} target=${target}"
       exit 0
       ;;
     *)
       echo "Dispatch-hygiene override at ${override} carried no reason - a 'override: <reason>' line is required. Ignoring it and running the checks instead." >&2
+      rm -f "$override"
       ;;
   esac
+fi
+
+# Replay path: if no active sentinel exists but a fresh consumed stamp does,
+# honour it (within the 10-second window and matching the dispatch's identity
+# key). This allows double-fire scenarios (sequential or parallel) to both
+# honour an operator's escape hatch without requiring the operator to write
+# the sentinel twice.
+if [ -f "$consumed" ]; then
+  consumed_line="$(head -n 1 "$consumed" 2>/dev/null || true)"
+  # Parse consumed stamp: epoch key reason. The reason field may contain
+  # spaces; we split on the first two whitespace boundaries.
+  consumed_epoch="${consumed_line%% *}"
+  consumed_rest="${consumed_line#* }"
+  consumed_key="${consumed_rest%% *}"
+  consumed_reason="${consumed_rest#* }"
+
+  # Validate: epoch must be numeric, key must match, and must be within
+  # a 10-second replay window (per spec). Allow negative delta for clock skew
+  # in parallel runs where the second process's now might be computed before
+  # the first process writes the stamp. Bounds: [-2, +10] allow for OS
+  # scheduler jitter and sub-second timing within a dual-dispatch.
+  # Guard with `|| rc=$?` to prevent a comparison failure from aborting
+  # under set -euo pipefail.
+  is_valid=false
+  if [ -n "$consumed_epoch" ] && [ -n "$consumed_key" ]; then
+    rc=0
+    time_delta=$((now - consumed_epoch)) || rc=$?
+    # Spec: within a 10-second window. Operational bounds: allow -2 to +10
+    # to handle parallel dispatch timing.
+    if [ "$rc" = 0 ] && [ "$time_delta" -ge -2 ] && [ "$time_delta" -le 10 ] \
+       && [ "$consumed_key" = "$dispatch_key" ]; then
+      is_valid=true
+    fi
+  fi
+
+  if [ "$is_valid" = true ]; then
+    # Honour the stamp: this is a double-fire replay within the window.
+    log_line "override-replay=${consumed_reason} target=${target}"
+    exit 0
+  else
+    # Stamp is stale, unparseable, or key-mismatched: delete it
+    # opportunistically and fall through to the normal checks.
+    rm -f "$consumed"
+  fi
 fi
 
 fired=""
@@ -224,7 +299,8 @@ fi
 {
   printf '%s: dispatch hygiene (%s) - target %s\n' "$verdict" "$fired" "${target:-unknown}"
   printf '%s' "$messages"
-  printf '  Escape hatch, single use and audited: printf "override: <reason>\\n" > .claude/.dispatch-override\n'
+  printf '  Escape hatch, audited and bounded replay: printf "override: <reason>\\n" > .claude/.dispatch-override\n'
+  printf '  (First use deletes the sentinel; parallel or sequential re-fires within 10 seconds are honoured without re-writing the sentinel.)\n'
 } >&2
 
 for check in $fired; do

@@ -449,4 +449,155 @@ else
   bad "T27 mutation control failed: expected mutated=yes rc_mutant=0 log_absent=1 rc_alive=2 rc_real=2 (got rc_mutant=$rc_mutant log_absent=$log_absent rc_alive=$rc_alive rc_real=$rc)"
 fi
 
+# T28 - Sequential double-fire honours both: a prompt that would breach H1,
+# with the override sentinel in place, is run twice consecutively. Both should
+# exit 0. Baseline (prior to the fix): first rc=0, second rc=2.
+dir="$(make_project t28 "$h1_cfg_block")"
+printf 'override: double-fire test\n' > "$dir/.claude/.dispatch-override"
+run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"
+rc_first="$rc"
+consumed_exists=0; [ -f "$dir/.claude/.dispatch-override.consumed" ] && consumed_exists=1
+sentinel_exists=0; [ -f "$dir/.claude/.dispatch-override" ] && sentinel_exists=1
+# Second fire uses the stamp now (not a fresh sentinel).
+run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"
+rc_second="$rc"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc_first" = 0 ] && [ "$consumed_exists" = 1 ] && [ "$sentinel_exists" = 0 ] \
+   && [ "$rc_second" = 0 ] \
+   && grep -q 'override=double-fire test target=lead-programmer' "$log" \
+   && grep -q 'override-replay=double-fire test target=lead-programmer' "$log"; then
+  ok "T28 sequential double-fire honours both, writes and replays stamp"
+else
+  bad "T28 expected rc_first=0 rc_second=0 with consumed stamp and both audit lines (rc_first=$rc_first consumed=$consumed_exists sentinel=$sentinel_exists rc_second=$rc_second)"
+fi
+
+# T29 - Parallel double-fire honours both, 20/20 trials. Two backgrounded runs
+# per trial, both should exit 0. This stress-tests race conditions around stamp
+# creation and reading.
+dir="$(make_project t29 "$h1_cfg_block")"
+passed_trials=0
+for trial in $(seq 1 20); do
+  printf 'override: parallel-fire test\n' > "$dir/.claude/.dispatch-override"
+  # Clear any stale consumed stamp from the prior trial.
+  rm -f "$dir/.claude/.dispatch-override.consumed"
+
+  # Two parallel runs, each in its own subshell.
+  rc_a=0; rc_b=0
+  (run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+  pid_a=$!
+  (run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+  pid_b=$!
+
+  wait "$pid_a" || rc_a=$?
+  wait "$pid_b" || rc_b=$?
+
+  if [ "$rc_a" = 0 ] && [ "$rc_b" = 0 ]; then
+    passed_trials=$((passed_trials + 1))
+  fi
+done
+
+if [ "$passed_trials" = 20 ]; then
+  ok "T29 parallel double-fire honours both, 20/20 trials"
+else
+  bad "T29 expected 20/20 trials to have both exit 0 (got $passed_trials/20)"
+fi
+
+# T30 - No widening: a consumed stamp applies only to the exact same dispatch
+# (same prompt). A dispatch with a one-character-different prompt must exit 2.
+dir="$(make_project t30 "$h1_cfg_block")"
+printf 'override: widening-test\n' > "$dir/.claude/.dispatch-override"
+# First fire with prompt1.
+prompt1="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$prompt1")"
+rc_first="$rc"
+# Stamp is now consumed. Try a second fire with a slightly different prompt.
+prompt2="${prompt1}x"
+run "$dir" "$(payload lead-programmer "$prompt2")"
+rc_different="$rc"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc_first" = 0 ] && [ "$rc_different" = 2 ] \
+   && grep -q 'override=widening-test target=lead-programmer' "$log" \
+   && grep -q 'blocked=H1 target=lead-programmer' "$log"; then
+  ok "T30 no widening: different payload exits 2, same check blocks"
+else
+  bad "T30 expected rc_first=0 rc_different=2 with override= and blocked=H1 (rc_first=$rc_first rc_different=$rc_different)"
+fi
+
+# T31 - Window expiry: if the consumed stamp's epoch is backdated past the
+# 10-second window, a replay of the same payload must exit 2.
+dir="$(make_project t31 "$h1_cfg_block")"
+printf 'override: expiry-test\n' > "$dir/.claude/.dispatch-override"
+payload_t31="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$payload_t31")"
+rc_first="$rc"
+# Backdate the consumed stamp to 11 seconds ago.
+if [ -f "$dir/.claude/.dispatch-override.consumed" ]; then
+  current_epoch=$(date +%s 2>/dev/null || echo 0)
+  old_epoch=$((current_epoch - 11))
+  consumed_line="$(head -n 1 "$dir/.claude/.dispatch-override.consumed")"
+  # Extract the key and reason from the consumed stamp.
+  consumed_rest="${consumed_line#* }"
+  consumed_key="${consumed_rest%% *}"
+  consumed_reason="${consumed_rest#* }"
+  printf '%s %s %s\n' "$old_epoch" "$consumed_key" "$consumed_reason" > "$dir/.claude/.dispatch-override.consumed"
+fi
+# Second fire with the same payload should be blocked by H1 (expiry deletes the stamp).
+run "$dir" "$(payload lead-programmer "$payload_t31")"
+rc_expired="$rc"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc_first" = 0 ] && [ "$rc_expired" = 2 ] \
+   && grep -q 'blocked=H1 target=lead-programmer' "$log"; then
+  ok "T31 window expiry: stale stamp deleted, replay blocked by H1"
+else
+  bad "T31 expected rc_first=0 rc_expired=2 with blocked=H1 (rc_first=$rc_first rc_expired=$rc_expired)"
+fi
+
+# T32 - Audit distinguishes the two: after a sequential double-fire (per T28),
+# the log must contain exactly one override= and one override-replay= entry
+# (both for the same dispatch).
+dir="$(make_project t32 "$h1_cfg_block")"
+printf 'override: audit-test\n' > "$dir/.claude/.dispatch-override"
+run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"
+run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"
+log="$dir/.claude/dispatch-audit.log"
+override_count=0; [ -f "$log" ] && override_count=$(grep -c 'override=' "$log" || true)
+replay_count=0; [ -f "$log" ] && replay_count=$(grep -c 'override-replay=' "$log" || true)
+if [ "$override_count" = 1 ] && [ "$replay_count" = 1 ]; then
+  ok "T32 audit distinguishes override= (1) from override-replay= (1)"
+else
+  bad "T32 expected override_count=1 replay_count=1 (got override=$override_count replay=$replay_count)"
+fi
+
+# T33 - MUTATION CONTROL for the double-fire fix. Disable the replay path
+# in a throwaway copy and confirm T28/T29 fail. The mutation: comment out
+# the exit 0 that honours the replay, so it falls through to normal checks.
+# Criteria 3 and 4 must FAIL with the mutation.
+mutant_dir="$tmproot/t33bin"
+mkdir -p "$mutant_dir"
+cp "$hook" "$mutant_dir/dispatch-hygiene.sh"
+cp -r hooks/scripts/lib "$mutant_dir/lib"
+mutant_t33="$mutant_dir/dispatch-hygiene.sh"
+# Disable the replay path by commenting out the exit 0 after override-replay honour.
+# This ensures the replay path doesn't actually exit, so it falls through.
+sed -i '/log_line "override-replay=/,/exit 0/ s/^\([[:space:]]*\)exit 0/\1: # exit 0/' "$mutant_t33"
+dir="$(make_project t33 "$h1_cfg_block")"
+printf 'override: mutation-test\n' > "$dir/.claude/.dispatch-override"
+
+hook_real="$hook"; hook="$mutant_t33"
+# First fire should still work (sentinel path is unchanged).
+run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"
+rc_mut_first="$rc"
+# Second fire should fail with mutant (replay path exits 0 is disabled).
+run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"
+rc_mut_second="$rc"
+hook="$hook_real"
+# Confirm the mutation is actually in place (exit 0 after override-replay is commented).
+is_mutated=0; grep -q ': # exit 0' "$mutant_t33" && is_mutated=1
+
+if [ "$is_mutated" = 1 ] && [ "$rc_mut_first" = 0 ] && [ "$rc_mut_second" = 2 ]; then
+  ok "T33 mutation control: disabling replay exit causes second fire to be blocked (first=0 second=2)"
+else
+  bad "T33 mutation control: expected is_mutated=1 rc_mut_first=0 rc_mut_second=2 (got mutated=$is_mutated rc_first=$rc_mut_first rc_second=$rc_mut_second)"
+fi
+
 exit "$fail"
