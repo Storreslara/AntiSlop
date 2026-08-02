@@ -141,7 +141,7 @@ if [ "$hook_event" = "Stop" ]; then
       case "$flag_content" in
         "defer: "|"skip: ")
           # Nothing after the colon is not a reason - the block messages have
-          # always said so, and the WIP sentinel enforces it at :188/:195.
+          # always said so, and the WIP sentinel below enforces the same rule.
           # Must precede the two arms below, whose trailing * matches empty.
           blocked=true
           ;;
