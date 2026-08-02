@@ -71,4 +71,8 @@ respected.
   advisory pass and its heavy-unit trigger are unchanged; only the "gate is
   always opus" blanket is narrowed to "opus by default, sonnet for
   demonstrably-mechanical units, never fable."
+- **Amended by ADR-0009:** Reviewer-tier eligibility is measured at dispatch
+  time — retires the prediction-time `Suggested model: haiku` coupling in
+  favor of a deterministic script run against the actual diff at
+  reviewer-dispatch time.
 - Plan: docs/plans/2026-07-16-reviewer-gate-model-selection.md

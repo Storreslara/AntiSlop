@@ -303,8 +303,10 @@ the repo root**:
 bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..<HEAD>
 ```
 
-It prints exactly `sonnet` or `opus` (exit 0 either way). Pass that word as
-the reviewer dispatch's `model` parameter. Use the same unit id you already
+It prints exactly `sonnet` or `opus` (exit 0 either way). If the script is
+missing, exits non-zero, or prints anything other than exactly `sonnet` or
+`opus`, treat the result as `opus`. Pass that word as the reviewer dispatch's
+`model` parameter. Use the same unit id you already
 pass the reviewer for its PASS marker, and the same `baseline..HEAD` range you
 already carry in the advisory review packet (see "Review routing" above). Run
 it from the repo root: its sensitive-path patterns are anchored at the repo
