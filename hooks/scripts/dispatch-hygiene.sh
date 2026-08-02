@@ -27,10 +27,17 @@
 #     checks - same shape as the WIP sentinel at stop-gate.sh:186-189. When a
 #     valid override is honored, a stamp is written to .claude/.dispatch-override.consumed
 #     containing epoch-seconds, a dispatch-identity key (cksum-based, not
-#     cryptographic), and the reason. A sibling dispatch within 10 seconds with
-#     the same key honours the stamp (exit 0, logged as override-replay= for
-#     audit distinction) without re-consuming the sentinel. Stale, unparseable,
-#     or key-mismatched stamps are ignored and deleted opportunistically.
+#     cryptographic, and bound to subagent_type as well as the prompt so the
+#     same prompt to a different target is never treated as a replay of it),
+#     and the reason. A sibling dispatch within the window with the same key
+#     honours the stamp (exit 0, logged as override-replay= for audit
+#     distinction) without re-consuming the sentinel. The window is a
+#     10-second forward bound plus 2 seconds of backward slack for clock/
+#     scheduler skew between parallel dispatches (effective span [-2, +10]).
+#     A stamp is deleted only once it is genuinely PAST that window; an
+#     unparseable or key-mismatched-but-fresh stamp is left alone and simply
+#     not honoured, so an unrelated in-window dispatch can never destroy a
+#     live sibling's stamp.
 #  2) H1 oversize prompt, 3) H2 inlined fenced block, 4) H3 re-dispatch of a
 #     unit holding a .claude/reviewed/<id>.pass marker. H3 reads the prompt's
 #     FIRST NON-BLANK LINE ONLY, so a quoted `Unit:` example in the body cannot
@@ -113,12 +120,15 @@ target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev
 # cannot forge a second line into the audit trail.
 target="${target_type//[^a-zA-Z0-9:._-]/_}"
 
-# Compute dispatch identity key: cksum of the prompt (POSIX, no fallback chain).
-# R5: this is an identity hint for replay-window deduplication, not a security
-# boundary - cksum is sufficient and portable. cksum outputs two words
-# (checksum and byte count); we concatenate them without a space to avoid
-# parsing ambiguity in the consumed stamp (reason field may contain spaces).
-dispatch_key="$(cksum <<< "$prompt" | tr -d ' ')"
+# Compute dispatch identity key: cksum of subagent_type+prompt (POSIX, no
+# fallback chain). R5: this is an identity hint for replay-window
+# deduplication, not a security boundary - cksum is sufficient and portable.
+# subagent_type is folded in so the same prompt text sent to a DIFFERENT
+# target is never honoured as a replay of a different dispatch. cksum
+# outputs two words (checksum and byte count); we concatenate them without a
+# space to avoid parsing ambiguity in the consumed stamp (reason field may
+# contain spaces).
+dispatch_key="$(cksum <<< "${target_type} ${prompt}" | tr -d ' ')"
 
 consumed="${project_dir}/.claude/.dispatch-override.consumed"
 now="$(date +%s 2>/dev/null || echo 0)"
@@ -133,8 +143,12 @@ if [ -f "$override" ]; then
       # operations, we want it to find the consumed stamp, not an empty space.
       # Format: <epoch-seconds> <dispatch-key> <reason>.
       consumed_tmp="${consumed}.tmp.$$.$RANDOM"
-      { printf '%s %s %s\n' "$now" "$dispatch_key" "$reason" > "$consumed_tmp" && \
-        mv -f "$consumed_tmp" "$consumed"; } 2>/dev/null || true
+      if ! { printf '%s %s %s\n' "$now" "$dispatch_key" "$reason" > "$consumed_tmp" && \
+             mv -f "$consumed_tmp" "$consumed"; } 2>/dev/null; then
+        # printf succeeded but the rename failed (or printf itself failed and
+        # left a partial tempfile): never orphan the tempfile in .claude/.
+        rm -f "$consumed_tmp" 2>/dev/null || true
+      fi
       rm -f "$override"
       log_line "override=${reason} target=${target}"
       exit 0
@@ -153,28 +167,29 @@ fi
 # the sentinel twice.
 if [ -f "$consumed" ]; then
   consumed_line="$(head -n 1 "$consumed" 2>/dev/null || true)"
-  # Parse consumed stamp: epoch key reason. The reason field may contain
-  # spaces; we split on the first two whitespace boundaries.
-  consumed_epoch="${consumed_line%% *}"
-  consumed_rest="${consumed_line#* }"
-  consumed_key="${consumed_rest%% *}"
-  consumed_reason="${consumed_rest#* }"
 
-  # Validate: epoch must be numeric, key must match, and must be within
-  # a 10-second replay window (per spec). Allow negative delta for clock skew
-  # in parallel runs where the second process's now might be computed before
-  # the first process writes the stamp. Bounds: [-2, +10] allow for OS
-  # scheduler jitter and sub-second timing within a dual-dispatch.
-  # Guard with `|| rc=$?` to prevent a comparison failure from aborting
-  # under set -euo pipefail.
+  # Parse consumed stamp AS A WHOLE: it must structurally match
+  # "<digits> <non-space> <rest>" or it is rejected outright - no field is
+  # bound on a partial match, so a line with fewer than two whitespace
+  # boundaries can never collapse epoch/key/reason onto the same token (the
+  # old `${line%% *}`/`${line#* }` parameter-expansion split was a silent
+  # no-op on a malformed line). This also guarantees consumed_epoch is
+  # purely numeric BEFORE it ever reaches `$(( ))` below: an unset-looking
+  # or non-numeric epoch is a hard `set -u` arithmetic-expansion abort that
+  # `|| rc=$?` cannot catch, so it must never reach that point unvalidated.
   is_valid=false
-  if [ -n "$consumed_epoch" ] && [ -n "$consumed_key" ]; then
-    rc=0
-    time_delta=$((now - consumed_epoch)) || rc=$?
-    # Spec: within a 10-second window. Operational bounds: allow -2 to +10
-    # to handle parallel dispatch timing.
-    if [ "$rc" = 0 ] && [ "$time_delta" -ge -2 ] && [ "$time_delta" -le 10 ] \
-       && [ "$consumed_key" = "$dispatch_key" ]; then
+  is_stale=false
+  if [[ $consumed_line =~ ^([0-9]+)[[:space:]]+([^[:space:]]+)[[:space:]]+(.*)$ ]]; then
+    consumed_epoch="${BASH_REMATCH[1]}"
+    consumed_key="${BASH_REMATCH[2]}"
+    consumed_reason="${BASH_REMATCH[3]}"
+    time_delta=$((now - consumed_epoch))
+    # Window: [-2, +10]. The -2 allows for OS scheduler jitter and clock skew
+    # between parallel dispatches; a delta outside the window means the
+    # stamp is genuinely expired, regardless of key.
+    if [ "$time_delta" -gt 10 ] || [ "$time_delta" -lt -2 ]; then
+      is_stale=true
+    elif [ "$consumed_key" = "$dispatch_key" ]; then
       is_valid=true
     fi
   fi
@@ -183,11 +198,15 @@ if [ -f "$consumed" ]; then
     # Honour the stamp: this is a double-fire replay within the window.
     log_line "override-replay=${consumed_reason} target=${target}"
     exit 0
-  else
-    # Stamp is stale, unparseable, or key-mismatched: delete it
-    # opportunistically and fall through to the normal checks.
+  elif [ "$is_stale" = true ]; then
+    # Genuinely past the window: safe to delete regardless of key.
     rm -f "$consumed"
   fi
+  # Else (unparseable, or key-mismatched but still fresh): leave the stamp
+  # alone. It is not honoured for THIS dispatch, but it must survive so an
+  # unrelated in-window dispatch can never destroy a live sibling's replay
+  # window - deleting here reproduces the exact double-fire bug this file
+  # exists to fix, triggered by any unrelated concurrent Agent spawn.
 fi
 
 fired=""

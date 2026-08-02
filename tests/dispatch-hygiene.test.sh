@@ -600,4 +600,179 @@ else
   bad "T33 mutation control: expected is_mutated=1 rc_mut_first=0 rc_mut_second=2 (got mutated=$is_mutated rc_first=$rc_mut_first rc_second=$rc_mut_second)"
 fi
 
+# T34 - #220 defect 1 regression: a malformed consumed stamp whose first
+# token is a bare non-numeric identifier must never abort the hook under
+# set -u arithmetic expansion. Baseline (pre-fix): rc=1 (aborted, gate
+# disarmed, H1-H4 skipped, nothing logged). Fixed: rc=2 (blocked normally,
+# stamp ignored).
+dir="$(make_project t34 "$h4_cfg")"
+printf 'x k r\n' > "$dir/.claude/.dispatch-override.consumed"
+run "$dir" "$(payload lead-programmer "$naked")"
+if [ "$rc" = 2 ]; then
+  ok "T34 malformed consumed stamp (non-numeric epoch) -> exit 2, not an unbound-variable abort"
+else
+  bad "T34 expected exit 2 for a malformed stamp, not an abort (rc=$rc)"
+fi
+
+# T35 - #220 defect 2 regression: an unrelated dispatch inside the replay
+# window must not destroy a live sibling's stamp. P (oversize, honoured) ->
+# Q (unrelated prompt, any rc) -> re-dispatch of P inside the window must
+# still be honoured as a replay (rc=0), not blocked (rc=2).
+dir="$(make_project t35 "$h1_cfg_block")"
+printf 'override: key-mismatch test\n' > "$dir/.claude/.dispatch-override"
+prompt_p="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$prompt_p")"
+rc_p_first="$rc"
+run "$dir" "$(payload lead-programmer "unrelated dispatch prompt")"
+run "$dir" "$(payload lead-programmer "$prompt_p")"
+rc_p_replay="$rc"
+if [ "$rc_p_first" = 0 ] && [ "$rc_p_replay" = 0 ]; then
+  ok "T35 unrelated in-window dispatch does not destroy a live sibling's replay stamp"
+else
+  bad "T35 expected rc_p_first=0 rc_p_replay=0 (got rc_p_first=$rc_p_first rc_p_replay=$rc_p_replay)"
+fi
+
+# T36 - the identity key now binds subagent_type: the SAME prompt sent to a
+# DIFFERENT gated-or-not target is never honoured as a replay of the first.
+dir="$(make_project t36 "$h1_cfg_block")"
+printf 'override: target-binding test\n' > "$dir/.claude/.dispatch-override"
+prompt_shared="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$prompt_shared")"
+rc_first_target="$rc"
+run "$dir" "$(payload scribe "$prompt_shared")"
+rc_other_target="$rc"
+if [ "$rc_first_target" = 0 ] && [ "$rc_other_target" = 2 ]; then
+  ok "T36 same prompt to a different subagent_type is not a valid replay"
+else
+  bad "T36 expected rc_first_target=0 rc_other_target=2 (got first=$rc_first_target other=$rc_other_target)"
+fi
+
+# T37 - near-boundary: a stamp backdated close to (but safely inside) the
+# 10-second edge is still honoured (pairs with T31's 11-second expiry case,
+# which fails from the other flank, to pin the documented [-2, +10] span
+# rather than leaving it merely asserted in prose). Backdating by exactly 10
+# is NOT used here: `date +%s` has 1-second granularity, and the second
+# `run` call itself costs real wall-clock time, so an exact-10 backdate is a
+# coin flip against a second boundary ticking over mid-test (observed
+# directly: this failed intermittently at rc=2 when written that way).
+# Backdating by 8 (computed from the STAMP's own epoch, not a fresh `date`
+# call, to avoid compounding drift on the write side too) leaves 2 full
+# seconds of slack against that same source of flakiness while still
+# demonstrating the window extends meaningfully past a single-digit
+# same-second window.
+dir="$(make_project t37 "$h1_cfg_block")"
+printf 'override: boundary-test\n' > "$dir/.claude/.dispatch-override"
+prompt_t37="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$prompt_t37")"
+rc_boundary_first="$rc"
+if [ -f "$dir/.claude/.dispatch-override.consumed" ]; then
+  consumed_line="$(head -n 1 "$dir/.claude/.dispatch-override.consumed")"
+  stamp_epoch="${consumed_line%% *}"
+  consumed_rest="${consumed_line#* }"
+  old_epoch=$((stamp_epoch - 8))
+  printf '%s %s\n' "$old_epoch" "$consumed_rest" > "$dir/.claude/.dispatch-override.consumed"
+fi
+run "$dir" "$(payload lead-programmer "$prompt_t37")"
+rc_boundary_replay="$rc"
+if [ "$rc_boundary_first" = 0 ] && [ "$rc_boundary_replay" = 0 ]; then
+  ok "T37 a stamp backdated 8 seconds (near the window's upper edge) is still honoured"
+else
+  bad "T37 expected rc_boundary_first=0 rc_boundary_replay=0 (got first=$rc_boundary_first replay=$rc_boundary_replay)"
+fi
+
+# T38 - MUTATION CONTROL for the reorder root cause itself: revert the
+# write-stamp-before-delete-sentinel ordering back to delete-then-write (the
+# pre-fix shape) in a throwaway copy, and confirm the parallel race
+# reproduces. T29 alone cannot see this regression (both processes there
+# take the sentinel-consumption path, never the replay path); this mutant
+# targets the ordering directly.
+#
+# The NATURAL race window between the reordered rm and the write is a few
+# microseconds, so measuring it via unstaggered concurrent trials (as an
+# earlier version of this test did) is a coin flip: at the ~5-6% per-trial
+# failure rate independently measured against the true pre-fix hook (19/20,
+# 47/50), 20 unstaggered trials land on a false all-honoured 20/20 roughly
+# 1 time in 3 (0.94^20). Instead, widen the mutant's window with an
+# artificial `sleep` between the delete and the write - this cannot mask a
+# real bug (a correctly-ordered hook has no such gap to widen) and turns the
+# same race into a 100%-reproducible one, at the cost of also needing a
+# staggered dispatch (mirroring T39) to land inside it. Verified directly:
+# 20/20 trials of this staggered pair against the mutant show B blocked,
+# and 20/20 of the identical staggered pair against the REAL hook show both
+# honoured (the control below), so the assertion isolates the reorder, not
+# an artifact of staggered timing.
+mutant_dir="$tmproot/t38bin"
+mkdir -p "$mutant_dir"
+cp "$hook" "$mutant_dir/dispatch-hygiene.sh"
+cp -r hooks/scripts/lib "$mutant_dir/lib"
+mutant_t38="$mutant_dir/dispatch-hygiene.sh"
+sed -i -e '/^[[:space:]]*rm -f "\$override"$/d' \
+       -e '/^[[:space:]]*consumed_tmp="\${consumed}\.tmp/i\
+rm -f "$override"\
+sleep 0.3' \
+  "$mutant_t38"
+rm_line="$(grep -n '^[[:space:]]*rm -f "\$override"$' "$mutant_t38" | head -1 | cut -d: -f1)"
+tmp_line="$(grep -n '^[[:space:]]*consumed_tmp="\${consumed}\.tmp' "$mutant_t38" | head -1 | cut -d: -f1)"
+order_ok=0
+[ -n "$rm_line" ] && [ -n "$tmp_line" ] && [ "$rm_line" -lt "$tmp_line" ] && order_ok=1
+
+dir="$(make_project t38 "$h1_cfg_block")"
+printf 'override: reorder-mutant test\n' > "$dir/.claude/.dispatch-override"
+hook_real="$hook"; hook="$mutant_t38"
+rc_a=0; rc_b=0
+(run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+pid_a=$!
+(sleep 0.1; run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+pid_b=$!
+wait "$pid_a" || rc_a=$?
+wait "$pid_b" || rc_b=$?
+hook="$hook_real"
+
+# Control: the SAME staggered pair against the REAL hook, proving the
+# blocked outcome above is attributable to the reorder, not the staggering.
+dir_ctl="$(make_project t38ctl "$h1_cfg_block")"
+printf 'override: reorder-control test\n' > "$dir_ctl/.claude/.dispatch-override"
+rc_ctl_a=0; rc_ctl_b=0
+(run "$dir_ctl" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+pid_ctl_a=$!
+(sleep 0.1; run "$dir_ctl" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+pid_ctl_b=$!
+wait "$pid_ctl_a" || rc_ctl_a=$?
+wait "$pid_ctl_b" || rc_ctl_b=$?
+
+if [ "$order_ok" = 1 ] && [ "$rc_a" = 0 ] && [ "$rc_b" = 2 ] \
+   && [ "$rc_ctl_a" = 0 ] && [ "$rc_ctl_b" = 0 ]; then
+  ok "T38 mutation control: widened delete-before-write reorder deterministically blocks the staggered sibling (control: real hook honours both)"
+else
+  bad "T38 mutation control failed: expected order_ok=1 rc_a=0 rc_b=2 rc_ctl_a=0 rc_ctl_b=0 (got order_ok=$order_ok rc_a=$rc_a rc_b=$rc_b rc_ctl_a=$rc_ctl_a rc_ctl_b=$rc_ctl_b)"
+fi
+
+# T39 - forces the REPLAY branch itself to fire in a genuinely concurrent
+# (backgrounded) dispatch, which T29 does not: T29's two processes both
+# measure at the sentinel-consumption branch (10/10 override=, 0/10
+# override-replay= per the #220 review), so the replay path stays
+# unexercised by a parallel case. Here B's own hook invocation is staggered
+# by a sleep well inside its own backgrounded subshell (a shorter delay than
+# the write+delete sequence needs is not enough; 0.3s is ample and still far
+# under the 10s window) so A deterministically finishes writing the stamp
+# and deleting the sentinel first, and B is forced onto the .consumed stamp.
+# Both are still dispatched via `&`, not sequentially.
+dir="$(make_project t39 "$h1_cfg_block")"
+printf 'override: staggered-parallel test\n' > "$dir/.claude/.dispatch-override"
+rc_a=0; rc_b=0
+(run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+pid_a=$!
+(sleep 0.3; run "$dir" "$(payload lead-programmer "$(xbytes 2048)")"; exit "$rc") &
+pid_b=$!
+wait "$pid_a" || rc_a=$?
+wait "$pid_b" || rc_b=$?
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc_a" = 0 ] && [ "$rc_b" = 0 ] \
+   && grep -q 'override=staggered-parallel test target=lead-programmer' "$log" \
+   && grep -q 'override-replay=staggered-parallel test target=lead-programmer' "$log"; then
+  ok "T39 staggered parallel dispatch forces the replay branch to actually fire"
+else
+  bad "T39 expected rc_a=0 rc_b=0 with both override= and override-replay= logged (rc_a=$rc_a rc_b=$rc_b)"
+fi
+
 exit "$fail"
