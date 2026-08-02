@@ -196,6 +196,54 @@ check('assertGatedSectionsCanonical throws naming a gate section the canonical h
   assert.doesNotThrow(() => cli.assertGatedSectionsCanonical(['A', 'B'], ['A', 'B']));
 });
 
+// --- Step 5. The slim template carries neither gate section, so a slim-tier
+// persona in gatedAgents can never be honoured — it must throw, not silently
+// render a gated persona without the sections describing its own gate. Read
+// from the REAL .claude/persona-config.json rather than a synthetic `{}` (#191
+// finding (c): an empty config leaves gatedAgents undefined, so the test could
+// not see the defect it was written for).
+function shippedPersonaConfig() {
+  return JSON.parse(fs.readFileSync(path.join(REPO_ROOT, '.claude', 'persona-config.json'), 'utf8'));
+}
+
+check('renderCleanBody throws, naming the persona, when gatedAgents contains a slim-tier persona', () => {
+  const config = shippedPersonaConfig();
+  assert.ok(
+    cli.protocolTierFor('scribe') === 'slim',
+    'this case needs a genuinely slim-tier persona to be meaningful'
+  );
+  config.gatedAgents = (config.gatedAgents || []).concat('scribe');
+  const spec = cli.buildFileSpecs([]).find((s) => s.projectRelPath === '.claude/agents/lead-programmer.md');
+  const err = captureThrow(() => cli.renderCleanBody(spec, config));
+  assert.ok(err, 'a slim-tier persona in gatedAgents must throw');
+  assert.ok(err.message.includes('"scribe"'), `message must name the offending persona verbatim: ${err.message}`);
+});
+
+// The renderer never consults the selector for a slim persona (it inlines the
+// slim template wholesale), so a selector that reported the full section list
+// for one would contradict both the renderer and the throw above — the same
+// disagreement, told two different ways.
+check('selectProtocolSections refuses to report a section list for the slim tier', () => {
+  const err = captureThrow(() => cli.selectProtocolSections('scribe', 'slim'));
+  assert.ok(err, 'the selector must not answer for a slim-tier persona');
+  assert.ok(/scribe/.test(err.message), `message must name the persona: ${err.message}`);
+  assert.ok(/slim/.test(err.message), `message must name the tier: ${err.message}`);
+});
+
+// Positive control for the case above: without it, an assertion that threw for
+// every gatedAgents list would satisfy it. Pins A4.1's force-include ruling as
+// the thing that must survive — lead-programmer's row drops the pending-review
+// flag, so both sections being present is the force-include still working.
+check('positive control: the shipped gatedAgents renders lead-programmer without throwing, gate sections intact', () => {
+  const config = shippedPersonaConfig();
+  assert.deepStrictEqual(config.gatedAgents, ['lead-programmer'], 'this repo ships exactly this gatedAgents list');
+  const spec = cli.buildFileSpecs([]).find((s) => s.projectRelPath === '.claude/agents/lead-programmer.md');
+  let body;
+  assert.doesNotThrow(() => { body = cli.renderCleanBody(spec, config); });
+  assert.ok(body.includes('## WIP sentinel'), 'the force-include must still deliver the WIP sentinel section');
+  assert.ok(body.includes('## Pending-review flag'), 'the force-include must still deliver the pending-review flag section');
+});
+
 // Criterion 2: the orchestrator mirror on disk is untrimmed — all 16 canonical
 // sections, derived from the template rather than hard-coded.
 check('the .claude/agents/orchestrator.md mirror still carries every canonical protocol section', () => {

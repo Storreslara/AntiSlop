@@ -683,11 +683,29 @@ assertGatedSectionsCanonical(CANONICAL_PROTOCOL_HEADERS, GATED_AGENT_SECTIONS);
 // the two cannot disagree.
 const DEFAULT_GATED_AGENTS = ['lead-programmer'];
 
-// Fail-closed three ways: a non-full tier is never trimmed; a persona with no
-// matrix row gets every section; a row naming a header the template does not
-// define throws, so renaming a canonical heading can never silently drop
-// content from a persona. Returns headers in template order.
+// A slim-tier persona's body is persona-protocol-slim.md wholesale, which
+// carries neither gate section — so gating one would make the force-include
+// above a silent no-op, the same fail-open shape the guards above exist to
+// prevent. Checked at load for the scaffold default, and on every render for
+// the project's own config (the only place a real gatedAgents list is known).
+function assertGatedAgentsFullTier(gatedAgents) {
+  const nonFull = (gatedAgents || []).filter((name) => protocolTierFor(name) !== 'full');
+  if (nonFull.length) {
+    throw new Error(`gatedAgents names non-full-tier persona(s) ${nonFull.map((n) => `"${n}"`).join(', ')}: their body is templates/persona-protocol-slim.md, which carries neither ${GATED_AGENT_SECTIONS.map((h) => `"${h}"`).join(' nor ')}, so the force-include cannot be honoured. Drop each from gatedAgents, or move that persona to the full protocol tier.`);
+  }
+}
+
+assertGatedAgentsFullTier(DEFAULT_GATED_AGENTS);
+
+// Fail-closed four ways: the slim tier throws rather than answer for a persona
+// the renderer never consults it about; any other non-full tier is never
+// trimmed; a persona with no matrix row gets every section; a row naming a
+// header the template does not define throws, so renaming a canonical heading
+// can never silently drop content from a persona. Headers in template order.
 function selectProtocolSections(name, tier, gatedAgents) {
+  if (tier === 'slim') {
+    throw new Error(`selectProtocolSections('${name}') is undefined for the slim tier: a slim persona's protocol block is templates/persona-protocol-slim.md wholesale, so it carries none of templates/persona-protocol.md's sections and this function is never consulted for one.`);
+  }
   const all = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
   const row = PROTOCOL_SECTIONS_BY_PERSONA[name];
   if (tier !== 'full' || !row) return all;
@@ -711,6 +729,7 @@ function selectProtocolSections(name, tier, gatedAgents) {
 // version number would serve no idempotency purpose here; the `.claude/`
 // copy already carries its own top-of-file `<!-- antislop vX -->` stamp.
 function inlineProtocolBlock(body, tier, name, gatedAgents) {
+  assertGatedAgentsFullTier(gatedAgents);
   if (!tier) return body;
   let protocol;
   if (tier === 'slim') {
