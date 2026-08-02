@@ -133,6 +133,11 @@ if [ "$hook_event" = "Stop" ]; then
     for flag in "${pending_flags[@]}"; do
       [ -f "$flag" ] || continue
       flag_content="$(cat "$flag" 2>/dev/null || true)"
+      # The audit log is one record per line, so a multi-line reason could
+      # never compare equal to the log's last line and dedupe never fired for
+      # it. Flatten to a single logical line before BOTH the comparison and
+      # the write - do not widen the log record to multiple lines instead.
+      flag_content="$(printf '%s' "$flag_content" | tr '\n\r' '  ')"
       case "$flag_content" in
         "defer: "*)
           # A defer: is sticky, so an unchanged reason would otherwise log one

@@ -177,4 +177,23 @@ else
   fail=1
 fi
 
+# (j) a MULTI-LINE defer: reason dedupes exactly like a single-line one - the
+#     flag content is flattened to one logical line, so it can compare equal to
+#     the log's (single-line) last record.
+dir="$(make_project multiline)"
+printf 'defer: reviewer dispatched\nsee issue 201 for the reason\n' \
+  > "$dir/.claude/.pending-review.lp-1"
+ok=true
+for i in 1 2 3; do
+  run_stop "$dir" || ok=false
+done
+n="$(grep -c 'defer: ' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+lines="$(wc -l < "$dir/.claude/review-audit.log" 2>/dev/null || echo 0)"
+if [ "$ok" = true ] && [ "$n" = 1 ] && [ "$lines" = 1 ]; then
+  echo "OK   (j) three Stops with an unchanged multi-line defer: reason log exactly one one-line record"
+else
+  echo "FAIL (j) expected one single-line defer: record from three exit-0 Stops (ok=$ok records=$n log-lines=$lines)"
+  fail=1
+fi
+
 exit "$fail"
