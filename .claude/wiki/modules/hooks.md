@@ -243,11 +243,14 @@ hook fires multiple times for the same dispatch.
 - A stale, unparseable, or key-mismatched stamp is ignored and deleted
   opportunistically.
 
-**Payload identity key:** `cksum` of the prompt plus the prompt's byte length
-(POSIX, no fallback chain). Treated as an identity hint, not a security
-boundary, in code comments: an attacker capable of crafting a colliding
-prompt inside a 10-second window has sufficient capability to write a second
-override file.
+**Payload identity key:** `cksum` of `subagent_type` plus the prompt (which
+also folds in the prompt's byte length via `cksum`'s own output), POSIX, no
+fallback chain — `dispatch_key="$(cksum <<< "${target_type} ${prompt}" | tr
+-d ' ')"`. `subagent_type` is folded in so the same prompt text sent to a
+DIFFERENT target is never honoured as a replay of a different dispatch.
+Treated as an identity hint, not a security boundary, in code comments: an
+attacker capable of crafting a colliding prompt inside a 10-second window has
+sufficient capability to write a second override file.
 
 **Window duration:** 10 seconds. Two sequential fires of one tool call are
 microseconds apart; 10s is generous slack under load and far below any

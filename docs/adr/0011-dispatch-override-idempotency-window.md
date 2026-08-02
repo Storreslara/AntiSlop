@@ -34,12 +34,16 @@ stamp exists, its epoch is within a 10-second window, and its `key` equals
 this dispatch's `key`), honour a *replay* (log under `override-replay=`,
 do not delete the stamp).
 
-**Payload identity key:** `cksum` of the prompt plus the prompt's byte length.
-POSIX, no fallback chain. Deterministic and collision-resistant for practical
-purposes, but treated as an identity hint rather than a security boundary in
-code comments — an attacker with sufficient capability to craft a colliding
-prompt inside a 10-second window could equally just write a second override
-file. See `hooks/scripts/dispatch-hygiene.sh` comments for the full rationale.
+**Payload identity key:** `cksum` of `subagent_type` plus the prompt (which
+also folds in the prompt's byte length via `cksum`'s own output), POSIX, no
+fallback chain — `dispatch_key="$(cksum <<< "${target_type} ${prompt}" | tr
+-d ' ')"`. `subagent_type` is folded in so the same prompt text sent to a
+DIFFERENT target is never honoured as a replay of a different dispatch.
+Deterministic and collision-resistant for practical purposes, but treated as
+an identity hint rather than a security boundary in code comments — an
+attacker with sufficient capability to craft a colliding prompt inside a
+10-second window could equally just write a second override file. See
+`hooks/scripts/dispatch-hygiene.sh` comments for the full rationale.
 
 **Window duration:** 10 seconds. The two sequential fires of one tool call are
 microseconds apart; 10s is generous slack under load and far below any
