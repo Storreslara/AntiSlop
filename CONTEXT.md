@@ -65,6 +65,17 @@ drift apart.
   presence, not runtime behaviour). See
   [modules/adapters.md](.claude/wiki/modules/adapters.md) and
   [modules/hooks.md](.claude/wiki/modules/hooks.md).
+- **Clear-watermark** — `.claude/.last-review-clear`, a zero-byte file whose
+  mtime records when the reviewer's flag-clear path (via `stop-gate.sh`'s
+  SubagentStop grant branch) last succeeded, as the reference point for
+  detecting whether a marker has been written since the previous review.
+  Used in issue #153's implementation (Step 2) to couple the reviewer's
+  flag-clear to a marker-write requirement: `marker_since_last_clear` returns
+  2 when the watermark is absent (fail-open bootstrap), 0 when a PASS or FAIL
+  marker is newer than the watermark, and 1 otherwise (triggering a block on
+  the reviewer's stop with an exit-2 flag-clear refusal). Defer-immune by
+  design (immune to the dispatch-time `defer:` convention that defeats a
+  naive mtime-of-flag approach); see issue #153 Probe case 6.
 - **Protocol excerpt** — the subset of `templates/persona-protocol.md`'s 16
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
@@ -137,8 +148,9 @@ drift apart.
   where a miss fails open, conservative matching (recognized namespace only) at
   privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
   the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
-  identically across all three platform ports. [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
-  documents the audit-logging hardening applied post-Step-1.
+  identically across all three platform ports. [ADR 0008](docs/adr/0008-agent-identity-gate-grant-asymmetry.md)
+  documents the GATE/GRANT asymmetry design; [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
+  documents audit-logging hardening applied post-Step-1.
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
