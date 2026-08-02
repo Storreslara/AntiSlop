@@ -196,4 +196,40 @@ else
   fail=1
 fi
 
+# (k) a reason that is empty after the colon is NOT a valid escape hatch: both
+#     'defer: ' and 'skip: ' block (exit 2) and write no record, and the
+#     'skip: ' form must additionally leave the flag in place.
+for kind in defer skip; do
+  dir="$(make_project "empty-$kind")"
+  flag="$dir/.claude/.pending-review.lp-1"
+  printf '%s: \n' "$kind" > "$flag"
+  rc=0
+  run_stop "$dir" 2>/dev/null || rc=$?
+  # no log file at all is also "no record", so default the count to 0
+  n="$(grep -c "$kind: " "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+  n="${n:-0}"
+  if [ "$rc" = 2 ] && [ "$n" = 0 ] && [ -f "$flag" ]; then
+    echo "OK   (k) an empty-after-colon '$kind: ' reason blocks, logs nothing, and keeps the flag"
+  else
+    echo "FAIL (k) expected rc=2, no '$kind: ' record and the flag kept (rc=$rc records=$n flag-exists=$([ -f "$flag" ] && echo yes || echo no))"
+    fail=1
+  fi
+done
+
+# (l) KEEP-UNCHANGED guard for the arm (k) now sits in front of: a NON-empty
+#     skip: reason still allows the Stop, is logged, and still deletes the flag.
+dir="$(make_project skip-nonempty)"
+flag="$dir/.claude/.pending-review.lp-1"
+printf 'skip: unit abandoned, superseded by issue 202\n' > "$flag"
+rc=0
+run_stop "$dir" || rc=$?
+got="$(cut -d' ' -f2- < "$dir/.claude/review-audit.log" 2>/dev/null | tr '\n' '|' || true)"
+if [ "$rc" = 0 ] && [ ! -e "$flag" ] \
+   && [ "$got" = 'skip: unit abandoned, superseded by issue 202|' ]; then
+  echo "OK   (l) a non-empty skip: reason still allows, logs, and deletes the flag"
+else
+  echo "FAIL (l) skip: deletion behaviour changed (rc=$rc flag-exists=$([ -e "$flag" ] && echo yes || echo no) got=[$got])"
+  fail=1
+fi
+
 exit "$fail"

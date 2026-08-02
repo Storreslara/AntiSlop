@@ -139,6 +139,12 @@ if [ "$hook_event" = "Stop" ]; then
       # the write - do not widen the log record to multiple lines instead.
       flag_content="$(printf '%s' "$flag_content" | tr '\n\r' '  ')"
       case "$flag_content" in
+        "defer: "|"skip: ")
+          # Nothing after the colon is not a reason - the block messages have
+          # always said so, and the WIP sentinel enforces it at :188/:195.
+          # Must precede the two arms below, whose trailing * matches empty.
+          blocked=true
+          ;;
         "defer: "*)
           # A defer: is sticky, so an unchanged reason would otherwise log one
           # identical line per turn forever. Append only when it differs from
