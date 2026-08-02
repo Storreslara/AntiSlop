@@ -115,8 +115,8 @@ gated, whether a reviewer even exists) comes entirely from that file.
 `dispatch-hygiene.sh` is a PreToolUse gate applied at the Agent/orchestrator
 seam, checking dispatch prompts before spawn. Configured via
 `.claude/persona-config.json`'s `dispatchHygiene` field (`mode`:
-`block`/`warn`/`off`, plus optional overrides `maxPromptBytes`/`maxInlineBlockLines`;
-defaults: `block`/30000/80). Single-use escape hatch: `.claude/.dispatch-override`
+`block`/`warn`/`off`, plus optional overrides `maxPromptBytes`/`maxInlineBlockLines`/`requireContract`;
+defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-override`
 (content must start with `override: <reason>`). Checks run in sequence:
 
 - **H1 — Oversize prompt** (default 30000 bytes): blocks dispatches where the
@@ -134,12 +134,17 @@ defaults: `block`/30000/80). Single-use escape hatch: `.claude/.dispatch-overrid
   reliably followed; read as best-effort protection, not a guaranteed catch,
   until that discipline hardens (documented in issue #153).
 - **H4 — Dispatch contract audit** (checks labels, not substance): fires when
-  `dispatchHygiene.requireContract` is `true` (default `false`) and the
-  dispatch prompt lacks the expected `## Summary` / `## Test plan` / `## STATUS`
-  headings recorded in the unit's dispatch template. H4 checks *structure*,
-  not content — an agent can emit all headings and fill them with empty
-  strings, and H4 passes. The purpose is to detect accidental omissions of
-  required framing; it does not validate that the content is complete or
-  sensible. When fired, H4 routes to `.claude/.dispatch-override` on first
-  failure (allowing a manual override if the structure is intentionally
-  nonstandard), then blocks on repeat without override.
+  `dispatchHygiene.requireContract` is `true` (default `true`) and the
+  dispatch prompt lacks the required nine contract elements: `Unit: <id>` as the
+  first line, plus eight markdown headings — `## Objective`, `## Retrieval`,
+  `## Affected files`, `## Ordered edits`, `## Do NOT touch`,
+  `## Acceptance criteria`, `## Pre-resolved context`, and `## Escalation`.
+  H4 checks *structure*, not content — an agent can emit all headings and fill
+  them with empty strings, and H4 passes. The purpose is to detect accidental
+  omissions of required framing; it does not validate that the content is
+  complete or sensible. The override sentinel `.claude/.dispatch-override`
+  (checked before any H-check runs) exempts a single dispatch from all
+  constraints; it is consumed once and not reusable. Caveat: the sentinel is
+  `rm -f`'d *before* its reason line is validated
+  (`hooks/scripts/dispatch-hygiene.sh:105-107`), so a malformed `override:`
+  line burns the sentinel and the checks still run.

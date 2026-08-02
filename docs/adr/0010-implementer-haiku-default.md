@@ -1,7 +1,7 @@
 # ADR 0010: Implementer tier defaults to `haiku`; judgment moved to dispatch contract
 
 Date: 2026-08-02
-Status: Accepted (amends ADR-0006, works alongside ADR-0009)
+Status: Accepted (works alongside ADR-0009)
 
 ## Context
 
@@ -35,12 +35,14 @@ actually needs a larger model.
    post-implementation, reactive escalation via FAIL records.
 
 3. **Escalation now happens only after a FAIL.** When a unit fails on `haiku`,
-   the orchestrator re-dispatches to `lead-programmer` with a `.fail` record on
-   disk. This record is read by `hooks/scripts/reviewer-tier.sh` (ADR-0009's
-   dispatch-time script), forcing the reviewer to `opus`, and also prevents
-   further pre-emptive haiku re-runs of that unit. If the second run (on `sonnet`
-   per the roast-work skill) also fails, the orchestrator routes to `spec-master`
-   for a debug spec, hitting the 2-FAIL cap.
+   the orchestrator (per `agents/orchestrator.md:184-189`'s first-FAIL escalation
+   rule) re-dispatches to `lead-programmer` with a `.fail` record on disk. This
+   record is read by `hooks/scripts/reviewer-tier.sh` (ADR-0009's dispatch-time
+   script), forcing the reviewer to `opus`. The `sonnet` tier for that re-run is
+   selected by that same `agents/orchestrator.md:184-189` rule — which says to
+   re-dispatch on `sonnet`, not haiku again — and by no skill. If the second run
+   on `sonnet` also fails, the orchestrator routes to `spec-master` for a debug
+   spec, hitting the 2-FAIL cap.
 
 4. **The tradeoff is explicit and not softened.** A wrong-cheap unit (one that
    appears simple but becomes costly on discovery) now costs:
@@ -49,10 +51,8 @@ actually needs a larger model.
    - Two reviews (one on the haiku attempt, one on the sonnet re-run)
 
    This is more expensive than the prior sonnet default for such units. The bet
-   is that such units are rare — roughly 15% of units in the last 50 commits
-   would have been sonnet-eligible under ADR-0009's measurement (the reviewgate
-   threshold), so the expected value of defaulting the remaining 85% to haiku
-   justifies the cost of occasionally mis-calling the cheap ones.
+   is that such units are rare enough that the expected value of defaulting all
+   units to haiku justifies the cost of occasional escalation on discovery.
 
 5. **Implementer tier and reviewer tier are two different mechanisms with
    different decision criteria.** This is essential to avoid a repeat of finding
@@ -74,11 +74,10 @@ actually needs a larger model.
 
 ## Consequences
 
-- **Expected FAIL rate increase on haiku units.** Units that were previously
-  sonnet-gated but are not sonnet-eligible under ADR-0009 (roughly 85% of units)
-  now start on haiku. Some will FAIL and escalate; the efficiency gain of
-  skipping sonnet for the majority is expected to exceed the cost of re-runs on
-  the minority.
+- **Expected FAIL rate increase on haiku units.** All units now start on haiku
+  by default; those that fail escalate to sonnet via the `.fail` record. The
+  efficiency gain of defaulting the entire population to haiku is expected to
+  exceed the cost of escalation on units that cannot be completed on haiku.
 
 - **The success criterion is not measurable forward.** The `.claude/reviewed/`
   directory is `.gitignore`d, so there is no recoverable baseline of
