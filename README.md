@@ -53,7 +53,7 @@ hook prose from scratch.
 |---|---|---|---|
 | `orchestrator` | inherit | Always | Thin router/main agent. Never implements, never loads persona skills — routes requests to the right persona and synthesizes results briefly. |
 | `explorer` | haiku | Always | Stateless code cartographer. Answers structural questions (where's X defined, what calls Y, blast radius of a change) via the Code Review Graph, returning distilled answers, not raw dumps. The one persona every other persona defers to for structural facts. |
-| `lead-programmer` | sonnet | Always | Executes an approved plan step by step, TDD-first, with surgical diffs. Makes small conventional commits as it goes; reports "ready-for-review" when done, never grades its own work. |
+| `lead-programmer` | haiku | Always | Executes an approved plan step by step, TDD-first, with surgical diffs. Makes small conventional commits as it goes; reports "ready-for-review" when done, never grades its own work. |
 | `spec-master` | opus | Opt-in | Turns ambiguous goals into precise specs with machine-checkable acceptance criteria — grills the request against a 9-category ambiguity taxonomy, then publishes a finalized spec. Never writes production code. |
 | `task-master` | sonnet | Opt-in | Reads a spec-master finalized spec and slices it into dispatch-ready issues, tagging each unit's model and writing detailed per-unit dispatch prompts for `lead-programmer` and `scribe`. |
 | `scribe` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs — the curated "why" layer the graph can't derive. Never touches source code. |
