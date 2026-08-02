@@ -45,6 +45,25 @@ drift apart.
 - **Gate** — a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
+- **Adapter behavioural parity** (issue #202, 2026-08-01 efficiency pass 2,
+  Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
+  same observable behaviour as the main Claude Code hook, not merely that
+  the same *text* is present. `tests/adapter-stop-gate-parity.test.sh`
+  drives `hooks/scripts/stop-gate.sh` and both adapter ports
+  (`adapters/{codex,cursor}/hooks/scripts/stop-gate.sh`) through the same
+  `defer:`-dedupe scenarios and asserts the same audit-log record count and
+  exit code from each, scoped to that one scenario — not a general
+  behavioural-parity guarantee for every hook. Do not conflate with the
+  other two parity mechanisms in this repo: **byte-parity**
+  (`tests/validate.sh`'s check that the three copies of
+  `hooks/scripts/lib/agent-identity.sh` are byte-identical, since that file
+  derives its behaviour from its own on-disk location rather than any
+  per-platform input) and **document/section-presence parity**
+  (`tests/adapter-protocol-parity.test.js`, which checks that canonical
+  protocol *sections* are accounted for in the Codex/Cursor doc ports —
+  presence, not runtime behaviour). See
+  [modules/adapters.md](.claude/wiki/modules/adapters.md) and
+  [modules/hooks.md](.claude/wiki/modules/hooks.md).
 - **Protocol excerpt** — the subset of `templates/persona-protocol.md`'s 16
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s

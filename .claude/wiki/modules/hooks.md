@@ -57,6 +57,29 @@ separated from an identical earlier line by any other line (e.g. a
 `cleared-by=reviewer` in between), is still logged — only *consecutive
 identical* `defer:` lines are suppressed.
 
+## stop-gate.sh: adapter-port behavioural parity (issue #202)
+
+The two adapter ports (`adapters/codex/hooks/scripts/stop-gate.sh`,
+`adapters/cursor/hooks/scripts/stop-gate.sh`) had silently diverged from
+the main hook above: neither ported the `defer:`-dedupe fix, so a sticky
+`defer:` produced a duplicate audit-log line on every `Stop` in those two
+ports even after the main hook was fixed. Nothing in the merge gate could
+see this — the existing document-parity check
+(`tests/adapter-protocol-parity.test.js`) only verifies that canonical
+protocol *sections* are present in the doc ports, not that a script
+*behaves* correctly.
+
+`tests/adapter-stop-gate-parity.test.sh` closes that gap and is now
+registered in `tests/validate.sh` as its own merge-gate check, alongside
+the byte-parity check on `lib/agent-identity.sh` and the document-parity
+check above — three distinct parity mechanisms, not one generalized past
+what it verifies. It drives all three stop-gate scripts (claude, codex,
+cursor) through the same defer-dedupe scenario via each port's own event
+name and payload shape, asserting the same audit-log record count and exit
+code from each. See [modules/adapters.md](adapters.md)'s "Behavioural
+parity guard" section for what the guard covers and what it deliberately
+does not.
+
 ## Measured reviewer tier: `reviewer-tier.sh` is not a hook
 
 `hooks/scripts/reviewer-tier.sh` lives alongside the registered hook

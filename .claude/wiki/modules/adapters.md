@@ -36,3 +36,46 @@ per-platform gaps and decisions (e.g. which personas didn't port, which
 Claude-Code-specific mechanisms have no equivalent). Read those before
 assuming an adapter has full parity with the Claude Code plugin — it
 doesn't, by design; see each notes file for the specific deltas.
+
+## Behavioural parity guard: `tests/adapter-stop-gate-parity.test.sh` (issue #202)
+
+The `stop-gate.sh` ports (`adapters/codex/hooks/scripts/stop-gate.sh`,
+`adapters/cursor/hooks/scripts/stop-gate.sh`) each carry a header claiming
+their ordered decision logic is identical to the main hook
+(`hooks/scripts/stop-gate.sh`), differing only in payload field extraction
+and the loop guard. Until this test existed, nothing checked that claim —
+the ports diverged silently (the `defer:` dedupe was ported to neither),
+and no merge-gate test could see it. This is a third, distinct kind of
+parity check in this repo, alongside:
+
+- **Byte-parity** (`tests/validate.sh`'s "shared hook libs" section) — the
+  three copies of `hooks/scripts/lib/agent-identity.sh` must be
+  byte-identical, because that file derives its behaviour from its own
+  on-disk location rather than any per-platform input.
+- **Document/section-presence parity** (`tests/adapter-protocol-parity.test.js`,
+  see [protocol-delivery-tiers.md](../protocol-delivery-tiers.md)) — checks
+  that every canonical protocol *section* is accounted for in the Codex and
+  Cursor doc ports, not that any script *behaves* a particular way.
+- **Behavioural parity** (this section) — drives all three stop-gate
+  scripts through the same `defer:`-dedupe scenarios (via each port's own
+  payload shape: `Stop`/`CLAUDE_PROJECT_DIR` for claude,
+  `Stop`/`.cwd` for codex, `stop`/`.workspace_roots[0] // .cwd` for cursor)
+  and asserts the same observable outcome from each — audit-log record
+  count and exit code, not source text.
+
+**What the guard covers:** exactly the defer-dedupe scenario, parameterized
+across all three stop-gate scripts — a single-line `defer:` write surviving
+three `Stop` events as one audit record, the same for a multi-line reason,
+and a changed reason (`defer: A` → Stop → `defer: B` → Stop) yielding two
+records. A mutation control (reverting the dedupe in one port only) proves
+the guard actually fails when a port drifts, rather than passing vacuously
+against an unported script.
+
+**What it does not cover:** this is not a general behavioural-parity
+guarantee for every hook or every code path in `stop-gate.sh` — only the
+one scenario the fixture drives. A divergence in, say, the WIP-sentinel
+handling or the loop-guard threshold in a port would not be caught by this
+test. Registered in `tests/validate.sh` (the merge gate) alongside the
+byte-parity and document-parity checks above — see [hooks.md](hooks.md)'s
+"stop-gate.sh: adapter-port behavioural parity" section for the
+merge-gate framing.
