@@ -1804,6 +1804,93 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   }
 }
 
+// --- Step 5, criterion 4: BOTH render paths. #191's first finding was that
+// gatedAgents reached renderCleanBody but not the fresh-scaffold path, so
+// asserting the throw in-process alone would leave the same half-covered shape
+// this unit is a sequel to. Each path gets the offending config AND the shipped
+// one, so neither half can pass by throwing (or not throwing) unconditionally.
+{
+  const cliPath = path.join(REPO_ROOT, 'bin', 'cli.js');
+  const pluginVersion = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8')
+  ).version;
+
+  // Seeds an install the scaffold's --overwrite branch will reuse the gatedAgents
+  // of, and that --update will render from. pluginVersion 0.0.1 defeats the
+  // version-match fast path so --update really re-renders.
+  function seedProject(cwd, gatedAgents) {
+    fs.mkdirSync(path.join(cwd, '.claude'), { recursive: true });
+    fs.writeFileSync(
+      path.join(cwd, '.claude', 'persona-config.json'),
+      JSON.stringify(
+        {
+          pluginVersion: '0.0.1',
+          personaSelection: [],
+          gatedAgents,
+          // explorer.md's MCP placeholder is unrenderable without this, and
+          // --update exits 1 on any unrendered file — which would make the
+          // positive controls below fail for a reason unrelated to gating.
+          substitutions: { graphMcpLaunch: { command: 'npx', args: ['code-review-graph-mcp'] } },
+        },
+        null,
+        2
+      ) + '\n'
+    );
+  }
+
+  function runIn(cwd, args) {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gated-tier-home-'));
+    try {
+      return spawnSync('node', [cliPath].concat(args), {
+        cwd,
+        env: Object.assign({}, process.env, { HOME: home }),
+        encoding: 'utf8',
+      });
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  }
+
+  for (const p of [
+    { name: '--update', args: ['--update'] },
+    { name: 'fresh-scaffold', args: ['--yes', '--overwrite'] },
+  ]) {
+    check(`the ${p.name} path exits non-zero, naming the persona, when gatedAgents contains a slim-tier one`, () => {
+      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gated-slim-tier-'));
+      try {
+        seedProject(cwd, ['lead-programmer', 'scribe']);
+        const result = runIn(cwd, p.args);
+        const combined = result.stdout + result.stderr;
+        assert.notStrictEqual(result.status, 0, `expected a non-zero exit, got ${result.status}: ${combined}`);
+        assert.ok(combined.includes('"scribe"'), `output must name the offending persona verbatim: ${combined}`);
+        assert.ok(
+          !fs.existsSync(path.join(cwd, '.claude', 'agents', 'lead-programmer.md')),
+          'the run must die before rewriting any persona body, not half-render one'
+        );
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+
+    check(`positive control: the ${p.name} path renders the shipped gatedAgents cleanly, gate sections intact`, () => {
+      const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gated-full-tier-'));
+      try {
+        seedProject(cwd, ['lead-programmer']);
+        const result = runIn(cwd, p.args);
+        const combined = result.stdout + result.stderr;
+        assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${combined}`);
+        const body = fs.readFileSync(path.join(cwd, '.claude', 'agents', 'lead-programmer.md'), 'utf8');
+        assert.ok(body.includes('## WIP sentinel'), `the force-include must still deliver the WIP sentinel section: ${combined}`);
+        assert.ok(body.includes('## Pending-review flag'), `the force-include must still deliver the pending-review flag section: ${combined}`);
+        const written = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'persona-config.json'), 'utf8'));
+        assert.strictEqual(written.pluginVersion, pluginVersion, `the run must have really re-rendered at ${pluginVersion}, got ${written.pluginVersion}`);
+      } finally {
+        fs.rmSync(cwd, { recursive: true, force: true });
+      }
+    });
+  }
+}
+
 if (failures > 0) {
   console.error(`\n${failures} test(s) failed.`);
   process.exit(1);
