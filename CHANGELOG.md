@@ -3,6 +3,22 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.21.0] - 2026-08-02
+
+### Changed
+- **`lead-programmer` now defaults to `haiku`, and `task-master` can no longer
+  pre-emptively tag a unit above it — tagging is reactive-only, so a
+  large-surface, structural, or security-sensitive unit still starts on
+  `haiku` and only escalates after a measured signal (e.g. a FAIL or a
+  reviewer-tier bump) calls for it.** Every already-adapted downstream
+  project inherits this default on its next `--update`.
+- **A new blocking `H4` dispatch-contract check in `dispatch-hygiene.sh`, on
+  by default, refuses any gated dispatch missing a required contract
+  section.** Escape hatches: `.claude/.dispatch-override`,
+  `dispatchHygiene.mode: warn|off`, or the new
+  `dispatchHygiene.requireContract: false`. Every already-adapted downstream
+  project inherits this gate on its next `--update`.
+
 ## [0.20.0] - 2026-08-01
 
 ### Changed
