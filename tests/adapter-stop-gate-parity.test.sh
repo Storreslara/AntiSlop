@@ -64,6 +64,51 @@ run_stop() {
   return "$rc"
 }
 
+run_gated_stop() {
+  # $1 = port, $2 = project dir, $3 = script (default: that port's real script), $4 = agent (default: lead-programmer).
+  # Runs a gated SubagentStop event to create a pending-review flag.
+  local port="$1" dir="$2" script agent rc=0
+  script="${3:-$(script_for "$port")}"
+  agent="${4:-lead-programmer}"
+  case "$port" in
+    claude)
+      printf '%s' "{\"hook_event_name\":\"SubagentStop\",\"agent_type\":\"$agent\",\"session_id\":\"main\"}" \
+        | CLAUDE_PROJECT_DIR="$dir" bash "$script" || rc=$?
+      ;;
+    codex)
+      printf '{\"hook_event_name\":\"SubagentStop\",\"agent_type\":\"%s\",\"agent_id\":\"agent-1\",\"session_id\":\"main\",\"cwd\":\"%s\"}' "$agent" "$dir" \
+        | bash "$script" || rc=$?
+      ;;
+    cursor)
+      printf '{\"hook_event_name\":\"subagentStop\",\"subagent_type\":\"%s\",\"conversation_id\":\"main\",\"workspace_roots\":[\"%s\"]}' "$agent" "$dir" \
+        | bash "$script" || rc=$?
+      ;;
+  esac
+  return "$rc"
+}
+
+run_reviewer_stop() {
+  # $1 = port, $2 = project dir, $3 = script (default: that port's real script).
+  # Runs a reviewer SubagentStop event to test the marker-coupling check.
+  local port="$1" dir="$2" script rc=0
+  script="${3:-$(script_for "$port")}"
+  case "$port" in
+    claude)
+      printf '%s' '{"hook_event_name":"SubagentStop","agent_type":"reviewer","session_id":"main"}' \
+        | CLAUDE_PROJECT_DIR="$dir" bash "$script" || rc=$?
+      ;;
+    codex)
+      printf '{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"reviewer-1","session_id":"main","cwd":"%s"}' "$dir" \
+        | bash "$script" || rc=$?
+      ;;
+    cursor)
+      printf '{"hook_event_name":"subagentStop","subagent_type":"reviewer","conversation_id":"main","workspace_roots":["%s"]}' "$dir" \
+        | bash "$script" || rc=$?
+      ;;
+  esac
+  return "$rc"
+}
+
 records() {
   # $1 = project dir, $2 = port, $3 = pattern. A missing log file means zero.
   local n
@@ -143,6 +188,73 @@ for port in $PORTS; do
       fail=1
     fi
   done
+done
+
+# (f) clear-watermark marker-coupling check: drives all three ports through
+#     missing-marker block, marker-present clear, and stale-marker block cases.
+#     Each port uses its own dot-dir and payload shape. First, a gated agent
+#     SubagentStop creates the pending-review flag; then, a reviewer SubagentStop
+#     tests the marker check with various watermark/marker states.
+for port in $PORTS; do
+  dot="$(dotdir_for "$port")"
+
+  # Case f1: missing-marker block (watermark exists, no marker -> blocks with marker=MISSING)
+  dir="$(make_project "$port" "f1-missing")"
+  # First, create the pending-review flag via a gated agent SubagentStop
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  touch "$dir/$dot/.last-review-clear"  # Create watermark with no marker
+  rc=0
+  run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
+  has_missing=0
+  [ -f "$dir/$dot/review-audit.log" ] && has_missing="$(grep -c 'marker=MISSING' "$dir/$dot/review-audit.log")"
+  # Check if any pending-review flag exists (name depends on agent_id extraction)
+  flag_exists=false
+  [ -f "$dir/$dot"/.pending-review.* 2>/dev/null ] && flag_exists=true
+  if [ "$rc" = 2 ] && [ "$has_missing" = 1 ] && [ "$flag_exists" = true ]; then
+    echo "OK   (f1) $port: missing-marker blocks with marker=MISSING exit code, keeps flag"
+  else
+    echo "FAIL (f1) $port: expected rc=2, marker=MISSING record, flag kept (rc=$rc has_missing=$has_missing flag_exists=$flag_exists)"
+    fail=1
+  fi
+
+  # Case f2: marker-present clear (marker exists after watermark -> clears and proceeds)
+  dir="$(make_project "$port" "f2-present")"
+  # First, create the pending-review flag via a gated agent SubagentStop
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  touch "$dir/$dot/.last-review-clear"  # Create watermark
+  sleep 0.01  # Ensure marker is newer than watermark
+  touch "$dir/$dot/reviewed/task-123.pass"  # Create marker after watermark
+  rc=0
+  run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
+  has_cleared=0
+  [ -f "$dir/$dot/review-audit.log" ] && has_cleared="$(grep -c 'cleared-by=reviewer' "$dir/$dot/review-audit.log")"
+  flag_exists=false
+  [ -f "$dir/$dot"/.pending-review.* 2>/dev/null ] && flag_exists=true
+  if [ "$rc" = 0 ] && [ "$has_cleared" = 1 ] && [ "$flag_exists" = false ]; then
+    echo "OK   (f2) $port: marker-present clears and proceeds, deletes flag"
+  else
+    echo "FAIL (f2) $port: expected rc=0, cleared-by=reviewer record, flag deleted (rc=$rc has_cleared=$has_cleared flag_exists=$flag_exists)"
+    fail=1
+  fi
+
+  # Case f3: stale-marker block (marker exists but watermark is newer -> blocks with marker=MISSING)
+  dir="$(make_project "$port" "f3-stale")"
+  # First, create the pending-review flag via a gated agent SubagentStop
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  touch "$dir/$dot/reviewed/task-456.pass"  # Create marker
+  sleep 0.01  # Ensure watermark is newer than marker
+  touch "$dir/$dot/.last-review-clear"  # Create watermark after marker
+  rc=0
+  run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
+  has_missing="$(grep -c 'marker=MISSING' "$dir/$dot/review-audit.log" 2>/dev/null || echo 0)"
+  flag_exists=false
+  [ -f "$dir/$dot"/.pending-review.* 2>/dev/null ] && flag_exists=true
+  if [ "$rc" = 2 ] && [ "$has_missing" = 1 ] && [ "$flag_exists" = true ]; then
+    echo "OK   (f3) $port: stale-marker blocks with marker=MISSING, keeps flag"
+  else
+    echo "FAIL (f3) $port: expected rc=2, marker=MISSING record, flag kept (rc=$rc has_missing=$has_missing flag_exists=$flag_exists)"
+    fail=1
+  fi
 done
 
 # (e) MUTATION CONTROL for the step (issue #202 criterion 4): revert the dedupe
