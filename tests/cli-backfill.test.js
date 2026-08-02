@@ -1825,7 +1825,9 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       JSON.stringify(
         {
           pluginVersion: '0.0.1',
-          personaSelection: [],
+          // scribe so the slim-tier persona the cases below gate is actually
+          // among the bodies being rendered, not merely named in the config.
+          personaSelection: ['scribe'],
           gatedAgents,
           // explorer.md's MCP placeholder is unrenderable without this, and
           // --update exits 1 on any unrendered file — which would make the
@@ -1889,6 +1891,45 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       }
     });
   }
+
+  // Criterion 5, the step's one mutation control, committed rather than run
+  // once by hand: with the per-render assertion deleted from a throwaway copy
+  // of the WORKING TREE, the criterion-1 case must go back to succeeding
+  // silently. Without this, every case above would also pass against a CLI
+  // that threw for some unrelated reason.
+  check('mutation control: with the per-render assertion removed, the slim-tier gatedAgents case silently succeeds again', () => {
+    const pkg = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gated-mutant-pkg-'));
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-gated-mutant-cwd-'));
+    try {
+      for (const entry of fs.readdirSync(REPO_ROOT)) {
+        if (entry === '.git' || entry === 'node_modules') continue;
+        const copied = spawnSync('cp', ['-r', path.join(REPO_ROOT, entry), path.join(pkg, entry)], { encoding: 'utf8' });
+        assert.strictEqual(copied.status, 0, `cp -r ${entry} failed: ${copied.stderr}`);
+      }
+      const mutantCli = path.join(pkg, 'bin', 'cli.js');
+      const source = fs.readFileSync(mutantCli, 'utf8');
+      const call = '  assertGatedAgentsFullTier(gatedAgents);\n';
+      assert.strictEqual(
+        source.split(call).length - 1, 1,
+        'the mutation must match exactly one per-render call site — otherwise this control removes something else, or nothing'
+      );
+      fs.writeFileSync(mutantCli, source.replace(call, ''));
+
+      seedProject(cwd, ['lead-programmer', 'scribe']);
+      const result = spawnSync('node', [mutantCli, '--update'], { cwd, encoding: 'utf8' });
+      const combined = result.stdout + result.stderr;
+      assert.strictEqual(result.status, 0, `the mutant is expected to swallow the misconfiguration, got ${result.status}: ${combined}`);
+      assert.ok(!combined.includes('"scribe"'), `the mutant must not name the persona at all: ${combined}`);
+      const scribe = fs.readFileSync(path.join(cwd, '.claude', 'agents', 'scribe.md'), 'utf8');
+      assert.ok(
+        !scribe.includes('## WIP sentinel') && !scribe.includes('## Pending-review flag'),
+        'and the force-include really was a no-op: the gated scribe body carries neither gate section'
+      );
+    } finally {
+      fs.rmSync(pkg, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
 }
 
 if (failures > 0) {
