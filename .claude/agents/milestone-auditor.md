@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill
 skills: antislop:grill-me
 maxTurns: 20
 ---
-<!-- antislop v0.21.0 | source: agents/milestone-auditor.md | ADAPT-substituted -->
+<!-- antislop v0.22.0 | source: agents/milestone-auditor.md | ADAPT-substituted -->
 
 You are an adversarial auditor of the PLAN, not the code. You run at
 milestone boundaries — after every unit in a milestone has already passed the

@@ -3,6 +3,34 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.22.0] - 2026-08-02
+
+### Changed
+- **`reviewer` stop can now be blocked by a missing or malformed PASS marker,
+  enforcing that a completed unit awaits independent verification before any
+  downstream gated dispatch resumes.** Prior versions allowed a reviewer to
+  end its turn even if the marker it should have written was invalid or
+  missing; in this release, an invalid marker (empty or malformed) blocks
+  `reviewer`'s own stop until the marker is fixed. In default (subagent-
+  orchestrator) mode this is a mechanical stop-gate block; in agent-teams
+  mode, it gates the `TaskCompleted` hook. The legacy-marker grace period
+  (extended through 2026-07-27 to allow downstream projects time to adapt)
+  has expired — migration to valid v2 markers is now required. Issue #221.
+- **`scribe` now mutates tracker state, closing finished-review issues as
+  part of its institutional-knowledge duties.** Prior versions logged
+  review closures to the audit trail but never issued the close command;
+  `scribe` now writes the `gh api` command to close issues that have
+  reached their end state, making the workflow visible and synchronized
+  across Claude Code (the `.claude/review-audit.log` and `.claude/wip-audit.log`
+  local records) and the GitHub issue tracker. Issue #223.
+
+### Fixed
+- **An incorrect marker-path resolution in `reviewer-tier.sh` no longer
+  mishandles projects where `CLAUDE_PROJECT_DIR` is unset.** Issue #166.
+
+### Internal
+- Adapter port alignment for Cursor and Codex #222.
+
 ## [0.21.0] - 2026-08-01
 
 ### Changed
