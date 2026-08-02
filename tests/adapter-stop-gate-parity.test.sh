@@ -198,6 +198,21 @@ done
 for port in $PORTS; do
   dot="$(dotdir_for "$port")"
 
+  # Case f0: bootstrap (no watermark file at all -> fail OPEN, one marker-check=bootstrap record)
+  dir="$(make_project "$port" "f0-bootstrap")"
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  rc=0
+  run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
+  has_bootstrap="$(grep -c 'marker-check=bootstrap' "$dir/$dot/review-audit.log" 2>/dev/null || echo 0)"
+  flag_exists=false
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
+  if [ "$rc" = 0 ] && [ "$has_bootstrap" = 1 ] && [ "$flag_exists" = false ]; then
+    echo "OK   (f0) $port: no watermark yet fails open with marker-check=bootstrap, clears flag"
+  else
+    echo "FAIL (f0) $port: expected rc=0, marker-check=bootstrap record, flag cleared (rc=$rc has_bootstrap=$has_bootstrap flag_exists=$flag_exists)"
+    fail=1
+  fi
+
   # Case f1: missing-marker block (watermark exists, no marker -> blocks with marker=MISSING)
   dir="$(make_project "$port" "f1-missing")"
   # First, create the pending-review flag via a gated agent SubagentStop
@@ -205,11 +220,10 @@ for port in $PORTS; do
   touch "$dir/$dot/.last-review-clear"  # Create watermark with no marker
   rc=0
   run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
-  has_missing=0
-  [ -f "$dir/$dot/review-audit.log" ] && has_missing="$(grep -c 'marker=MISSING' "$dir/$dot/review-audit.log")"
+  has_missing="$(grep -c 'marker=MISSING' "$dir/$dot/review-audit.log" 2>/dev/null || echo 0)"
   # Check if any pending-review flag exists (name depends on agent_id extraction)
   flag_exists=false
-  [ -f "$dir/$dot"/.pending-review.* 2>/dev/null ] && flag_exists=true
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
   if [ "$rc" = 2 ] && [ "$has_missing" = 1 ] && [ "$flag_exists" = true ]; then
     echo "OK   (f1) $port: missing-marker blocks with marker=MISSING exit code, keeps flag"
   else
@@ -226,10 +240,9 @@ for port in $PORTS; do
   touch "$dir/$dot/reviewed/task-123.pass"  # Create marker after watermark
   rc=0
   run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
-  has_cleared=0
-  [ -f "$dir/$dot/review-audit.log" ] && has_cleared="$(grep -c 'cleared-by=reviewer' "$dir/$dot/review-audit.log")"
+  has_cleared="$(grep -c 'cleared-by=reviewer' "$dir/$dot/review-audit.log" 2>/dev/null || echo 0)"
   flag_exists=false
-  [ -f "$dir/$dot"/.pending-review.* 2>/dev/null ] && flag_exists=true
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
   if [ "$rc" = 0 ] && [ "$has_cleared" = 1 ] && [ "$flag_exists" = false ]; then
     echo "OK   (f2) $port: marker-present clears and proceeds, deletes flag"
   else
@@ -248,11 +261,32 @@ for port in $PORTS; do
   run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
   has_missing="$(grep -c 'marker=MISSING' "$dir/$dot/review-audit.log" 2>/dev/null || echo 0)"
   flag_exists=false
-  [ -f "$dir/$dot"/.pending-review.* 2>/dev/null ] && flag_exists=true
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
   if [ "$rc" = 2 ] && [ "$has_missing" = 1 ] && [ "$flag_exists" = true ]; then
     echo "OK   (f3) $port: stale-marker blocks with marker=MISSING, keeps flag"
   else
     echo "FAIL (f3) $port: expected rc=2, marker=MISSING record, flag kept (rc=$rc has_missing=$has_missing flag_exists=$flag_exists)"
+    fail=1
+  fi
+
+  # Case f4: .blocked marker precedence (a .blocked marker must short-circuit to
+  #     allow even when the watermark is otherwise stale - guards the same
+  #     insertion-point failure mode issue #221's own criterion 9 exists for)
+  dir="$(make_project "$port" "f4-blocked-precedence")"
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  touch "$dir/$dot/reviewed/task-789.pass"  # Create marker
+  sleep 0.01  # Ensure watermark is newer than marker (would be stale on its own)
+  touch "$dir/$dot/.last-review-clear"
+  touch "$dir/$dot/reviewed/task-789.blocked"  # A .blocked marker also stands
+  rc=0
+  run_reviewer_stop "$port" "$dir" 2>/dev/null || rc=$?
+  has_blocked="$(grep -c 'verdict=blocked flags-kept' "$dir/$dot/review-audit.log" 2>/dev/null || echo 0)"
+  flag_exists=false
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
+  if [ "$rc" = 0 ] && [ "$has_blocked" = 1 ] && [ "$flag_exists" = true ]; then
+    echo "OK   (f4) $port: a .blocked marker short-circuits to allow despite a stale watermark, keeps flag"
+  else
+    echo "FAIL (f4) $port: expected rc=0, verdict=blocked flags-kept record, flag kept (rc=$rc has_blocked=$has_blocked flag_exists=$flag_exists)"
     fail=1
   fi
 done
@@ -260,7 +294,8 @@ done
 # (e) MUTATION CONTROL for the step (issue #202 criterion 4): revert the dedupe
 #     in a throwaway copy of ONE adapter script - CODEX - and confirm case (a)
 #     fails there. A parity test that still passes against an unported script
-#     would be worthless.
+#     would be worthless. (See case (g) below for the analogous mutation
+#     control on the clear-watermark check added by issue #222.)
 mutant="$tmproot/mutant-codex"
 mkdir -p "$mutant"
 cp adapters/codex/hooks/scripts/stop-gate.sh "$mutant/stop-gate.sh"
@@ -284,6 +319,60 @@ if [ "${before_n:-0}" = 1 ] && [ "${after_n:-0}" = 0 ] && [ "$parses" = yes ] \
   echo "OK   (e) mutation control: with the dedupe reverted in the CODEX port the same run logs 3 records, so (a) is binding"
 else
   echo "FAIL (e) mutation not applied or did not change behavior in the CODEX port (guard before=$before_n after=$after_n parses=$parses ok=$ok records=$n)"
+  fail=1
+fi
+
+# (g) MUTATION CONTROL for the clear-watermark check (issue #222 criterion 4):
+#     stub marker_since_last_clear() in a throwaway copy of the CODEX port so
+#     it always returns 0 (i.e. "no check"), then re-run scenario (f)'s
+#     missing-marker (f1) and stale-marker (f3) codex cases against that
+#     mutant via the $3 script override. Both must FAIL to block (rc=0, no
+#     marker=MISSING record) - if they still correctly block, the mutation
+#     did not take and scenario (f) would be worthless for the codex port.
+watermark_mutant="$tmproot/mutant-codex-watermark"
+mkdir -p "$watermark_mutant"
+cp adapters/codex/hooks/scripts/stop-gate.sh "$watermark_mutant/stop-gate.sh"
+cp -R adapters/codex/hooks/scripts/lib "$watermark_mutant/lib"
+wm_before_n="$(grep -c 'return 2' "$watermark_mutant/stop-gate.sh" || true)"
+sed -i '/^marker_since_last_clear() {$/,/^}$/c\
+marker_since_last_clear() { return 0; }' "$watermark_mutant/stop-gate.sh"
+wm_after_n="$(grep -c 'return 2' "$watermark_mutant/stop-gate.sh" || true)"
+wm_parses=yes
+bash -n "$watermark_mutant/stop-gate.sh" 2>/dev/null || wm_parses=no
+
+mutant_binding=true
+
+# f1 against the mutant: missing-marker must no longer block
+dir="$(make_project codex mutant-f1-missing)"
+run_gated_stop codex "$dir" "$watermark_mutant/stop-gate.sh" 2>/dev/null || true
+touch "$dir/.codex/.last-review-clear"
+rc=0
+run_reviewer_stop codex "$dir" "$watermark_mutant/stop-gate.sh" 2>/dev/null || rc=$?
+has_missing="$(grep -c 'marker=MISSING' "$dir/.codex/review-audit.log" 2>/dev/null || echo 0)"
+if [ "$rc" = 2 ] && [ "$has_missing" = 1 ]; then
+  echo "FAIL (g) codex f1 still blocks against the mutant - mutation not binding"
+  mutant_binding=false
+fi
+
+# f3 against the mutant: stale-marker must no longer block
+dir="$(make_project codex mutant-f3-stale)"
+run_gated_stop codex "$dir" "$watermark_mutant/stop-gate.sh" 2>/dev/null || true
+touch "$dir/.codex/reviewed/task-456.pass"
+sleep 0.01
+touch "$dir/.codex/.last-review-clear"
+rc=0
+run_reviewer_stop codex "$dir" "$watermark_mutant/stop-gate.sh" 2>/dev/null || rc=$?
+has_missing="$(grep -c 'marker=MISSING' "$dir/.codex/review-audit.log" 2>/dev/null || echo 0)"
+if [ "$rc" = 2 ] && [ "$has_missing" = 1 ]; then
+  echo "FAIL (g) codex f3 still blocks against the mutant - mutation not binding"
+  mutant_binding=false
+fi
+
+if [ "${wm_before_n:-0}" = 1 ] && [ "${wm_after_n:-0}" = 0 ] && [ "$wm_parses" = yes ] \
+   && [ "$mutant_binding" = true ]; then
+  echo "OK   (g) mutation control: with the clear-watermark check reverted in the CODEX port, f1 and f3 no longer block, so scenario (f) is binding on codex"
+else
+  echo "FAIL (g) clear-watermark mutation not applied or did not change behavior in the CODEX port (guard before=$wm_before_n after=$wm_after_n parses=$wm_parses binding=$mutant_binding)"
   fail=1
 fi
 

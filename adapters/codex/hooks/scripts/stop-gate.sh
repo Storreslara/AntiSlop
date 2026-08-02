@@ -144,11 +144,12 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
         printf '%s marker-check=bootstrap\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
         ;;
       *)
-        # rc=1: watermark exists but no marker after it - block and report
+        # rc=1: watermark exists but no marker after it - block and report.
+        # Must go through block() (not a bare exit 2) so this check
+        # participates in the loop guard like every other block site here.
         printf '%s cleared-by=reviewer marker=MISSING\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-        echo "A v2 PASS or FAIL marker must be written. Example for a PASS verdict:" >&2
-        echo "  printf 'PASS <task-id> %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' > .codex/reviewed/<task-id>.pass" >&2
-        exit 2
+        block "A v2 PASS or FAIL marker must be written. Example for a PASS verdict:
+  printf 'PASS <task-id> %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' > .codex/reviewed/<task-id>.pass"
         ;;
     esac
 
