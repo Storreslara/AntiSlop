@@ -50,12 +50,24 @@ duplicate log line per turn (this is what misled the original efficiency
 audit — "5 identical defers in 21 minutes" was one write plus five
 turn-ends, not five separate decisions). `stop-gate.sh` now appends a
 `defer:` line only when it differs from the immediately preceding log
-line (compared after the timestamp field). **Not deduped** — these remain
-one line per event, always: the `skip:` branch, `cleared-by=reviewer`, and
-`verdict=blocked flags-kept`. A `defer:` that changes reason, or one
-separated from an identical earlier line by any other line (e.g. a
-`cleared-by=reviewer` in between), is still logged — only *consecutive
-identical* `defer:` lines are suppressed.
+line (compared after the timestamp field). The fix (2026-08-01) handles
+multi-line reasons correctly: flag content is flattened to a single logical
+line (newlines and CRs become spaces) before both the comparison and the
+write, ensuring the dedupe works for reasons containing `\n`. **Not
+deduped** — these remain one line per event, always: the `skip:` branch,
+`cleared-by=reviewer`, and `verdict=blocked flags-kept`. A `defer:` that
+changes reason, or one separated from an identical earlier line by any
+other line (e.g. a `cleared-by=reviewer` in between), is still logged —
+only *consecutive identical* `defer:` lines are suppressed.
+
+**Empty-reason rejection (2026-08-01):** Flag content of exactly `defer: `
+or `skip: ` (with no text after the colon) is now rejected — `stop-gate.sh`
+exits 2, writes no audit record, and for `skip: ` does not delete the flag.
+This operationalizes an Amendment A1 ruling after the WIP sentinel was
+observed accepting such content despite prose claims of rejection. The
+rejection applies only to empty content after the colon; whitespace-only
+reasons (e.g. `defer:  ` with two spaces) remain accepted per WIP-sentinel
+precedent (non-empty file is sufficient).
 
 ## stop-gate.sh: adapter-port behavioural parity (issue #202)
 

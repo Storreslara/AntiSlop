@@ -51,8 +51,9 @@ drift apart.
   the same *text* is present. `tests/adapter-stop-gate-parity.test.sh`
   drives `hooks/scripts/stop-gate.sh` and both adapter ports
   (`adapters/{codex,cursor}/hooks/scripts/stop-gate.sh`) through the same
-  `defer:`-dedupe scenarios and asserts the same audit-log record count and
-  exit code from each, scoped to that one scenario — not a general
+  `defer:`-dedupe scenarios *and* the empty-after-colon `defer:`/`skip:`
+  rejection scenario, asserting the same audit-log record count and exit
+  code from each, scoped to those two scenarios — not a general
   behavioural-parity guarantee for every hook. Do not conflate with the
   other two parity mechanisms in this repo: **byte-parity**
   (`tests/validate.sh`'s check that the three copies of

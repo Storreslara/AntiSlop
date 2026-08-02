@@ -63,13 +63,17 @@ parity check in this repo, alongside:
   and asserts the same observable outcome from each — audit-log record
   count and exit code, not source text.
 
-**What the guard covers:** exactly the defer-dedupe scenario, parameterized
-across all three stop-gate scripts — a single-line `defer:` write surviving
-three `Stop` events as one audit record, the same for a multi-line reason,
-and a changed reason (`defer: A` → Stop → `defer: B` → Stop) yielding two
-records. A mutation control (reverting the dedupe in one port only) proves
-the guard actually fails when a port drifts, rather than passing vacuously
-against an unported script.
+**What the guard covers:** two ported mechanisms, parameterized across all
+three stop-gate scripts. The defer-dedupe scenario — a single-line `defer:`
+write surviving three `Stop` events as one audit record, the same for a
+multi-line reason, and a changed reason (`defer: A` → Stop → `defer: B` →
+Stop) yielding two records — and, separately, the empty-after-colon
+rejection: a `defer: ` or `skip: ` reason with nothing after the colon
+blocks (exit 2), logs nothing, and leaves the flag in place on every port
+(`tests/adapter-stop-gate-parity.test.sh:129-146`, scenario (d)). A mutation
+control (reverting the dedupe in one port only) proves the guard actually
+fails when a port drifts, rather than passing vacuously against an
+unported script.
 
 **What it does not cover:** this is not a general behavioural-parity
 guarantee for every hook or every code path in `stop-gate.sh` — only the
