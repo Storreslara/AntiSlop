@@ -13,20 +13,23 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   missing; in this release, an invalid marker (empty or malformed) blocks
   `reviewer`'s own stop until the marker is fixed. In default (subagent-
   orchestrator) mode this is a mechanical stop-gate block; in agent-teams
-  mode, it gates the `TaskCompleted` hook. The legacy-marker grace period
-  (extended through 2026-07-27 to allow downstream projects time to adapt)
-  has expired — migration to valid v2 markers is now required. Issue #221.
+  mode, it gates the `TaskCompleted` hook. Issue #221.
 - **`scribe` now mutates tracker state, closing finished-review issues as
   part of its institutional-knowledge duties.** Prior versions logged
   review closures to the audit trail but never issued the close command;
-  `scribe` now writes the `gh api` command to close issues that have
+  `scribe` now writes the `gh issue close` command to close issues that have
   reached their end state, making the workflow visible and synchronized
   across Claude Code (the `.claude/review-audit.log` and `.claude/wip-audit.log`
   local records) and the GitHub issue tracker. Issue #223.
 
 ### Fixed
-- **An incorrect marker-path resolution in `reviewer-tier.sh` no longer
-  mishandles projects where `CLAUDE_PROJECT_DIR` is unset.** Issue #166.
+- **`dispatch-hygiene.sh`'s `.dispatch-override` escape hatch no longer fails
+  a legitimate double-fire of the same dispatch.** A bounded 10-second replay
+  window now honors both runs of a sequential or parallel double-fire (same
+  dispatch key, matched via a content hash of the prompt) instead of only
+  the first, writing an atomic `.dispatch-override.consumed` stamp and
+  logging the replayed run as `override-replay=` (distinct from `override=`)
+  for audit traceability. Issue #166 Finding 2.
 
 ### Internal
 - Adapter port alignment for Cursor and Codex #222.
