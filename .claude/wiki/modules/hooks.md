@@ -63,8 +63,9 @@ only *consecutive identical* `defer:` lines are suppressed.
 **Empty-reason rejection (2026-08-01):** Flag content of exactly `defer: `
 or `skip: ` (with no text after the colon) is now rejected — `stop-gate.sh`
 exits 2, writes no audit record, and for `skip: ` does not delete the flag.
-This operationalizes an Amendment A1 ruling after the WIP sentinel was
-observed accepting such content despite prose claims of rejection. The
+This operationalizes an Amendment A1 ruling after the pending-review
+flag's `defer: `/`skip: ` branch was observed accepting such content
+despite the hook's own "Empty reason rejected." block message. The
 rejection applies only to empty content after the colon; whitespace-only
 reasons (e.g. `defer:  ` with two spaces) remain accepted per WIP-sentinel
 precedent (non-empty file is sufficient).
