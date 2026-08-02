@@ -62,6 +62,16 @@ fenced() {
   printf '%s' "$out"
 }
 
+contract() {
+  # $1 = unit id -> a fully compliant nine-element dispatch prompt (Step 3's
+  # contract). Deliberately terse: H4 checks labels, not substance, so the
+  # thinnest possible body that carries all nine markers is the honest fixture.
+  printf 'Unit: %s\n\n## Objective\nLand the thing.\n\n## Retrieval\nGitHub issues, gh CLI.\n\n## Affected files\n- lib/foo.sh (anchor: main())\n\n## Ordered edits\n1. Edit lib/foo.sh at main().\n\n## Do NOT touch\n- every other path.\n\n## Acceptance criteria\n- bash -n lib/foo.sh -> exit 0\n\n## Pre-resolved context\nTDD applies; extend tests/foo.test.sh.\n\n## Escalation\nIf any instruction cannot be followed exactly as written, STOP.\n' "$1"
+}
+
+# A prompt carrying none of the nine markers. Reused by T24/T25/T26.
+naked=$'Please go and implement the thing we discussed.\n'
+
 # T1 - non-Agent tool is not our business.
 dir="$(make_project t1 '{"maxPromptBytes":1000,"maxInlineBlockLines":20}')"
 run "$dir" "$(jq -n --arg p "$(xbytes 2000)" '{tool_name:"Bash",tool_input:{prompt:$p}}')"
@@ -99,8 +109,13 @@ else
   bad "T4 expected exit 0 and no audit log (rc=$rc)"
 fi
 
-h1_cfg_block='{"mode":"block","maxPromptBytes":1000,"maxInlineBlockLines":200}'
-h1_cfg_warn='{"mode":"warn","maxPromptBytes":1000,"maxInlineBlockLines":200}'
+# requireContract is pinned false throughout T5-T21 for the same reason the
+# thresholds are pinned: these cases exist to measure H1/H2/H3, and every one of
+# them dispatches a deliberately non-contract prompt to the gated target, so a
+# default-on H4 would fire alongside the check under test and decide the exit
+# code for it. Their assertions are unchanged.
+h1_cfg_block='{"mode":"block","maxPromptBytes":1000,"maxInlineBlockLines":200,"requireContract":false}'
+h1_cfg_warn='{"mode":"warn","maxPromptBytes":1000,"maxInlineBlockLines":200,"requireContract":false}'
 
 # T5 - H1 blocks, names its own limit, and logs.
 dir="$(make_project t5 "$h1_cfg_block")"
@@ -122,7 +137,7 @@ else
   bad "T6 expected exit 0 + non-empty stderr + warned=H1 (rc=$rc)"
 fi
 
-h2_cfg='{"maxPromptBytes":30000,"maxInlineBlockLines":20}'
+h2_cfg='{"maxPromptBytes":30000,"maxInlineBlockLines":20,"requireContract":false}'
 
 # T7 - H2 fires on an over-wide fenced block, and it is H2 that fires, not H1.
 dir="$(make_project t7 "$h2_cfg")"
@@ -144,7 +159,7 @@ else
   bad "T8 expected exit 0 and no audit log (rc=$rc)"
 fi
 
-h3_cfg='{"maxPromptBytes":30000,"maxInlineBlockLines":200}'
+h3_cfg='{"maxPromptBytes":30000,"maxInlineBlockLines":200,"requireContract":false}'
 unit148=$'Unit: 148\nPlease finish the remaining acceptance criteria.\n'
 
 # T9 - H3 refuses to re-dispatch a unit that already holds a PASS marker.
@@ -310,11 +325,16 @@ fi
 
 # T20 - the shipped defaults are live. dispatchHygiene is absent entirely, so
 # this pins maxPromptBytes 30000 AND the on-by-default block posture (OQ1).
+# Being the one case that pins defaults, it is also the one case that cannot pin
+# requireContract false; instead both prompts are padded-out CONTRACT-COMPLIANT
+# ones, so default-on H4 stays silent and the exit codes below are decided by
+# H1's threshold alone. (requireContract's own default is pinned by T25.)
 dir="$(make_project t20 '')"
-run "$dir" "$(payload lead-programmer "$(xbytes 29000)")"
+t20_base="$(contract 900)"
+run "$dir" "$(payload lead-programmer "${t20_base}$(xbytes $((29000 - ${#t20_base})))")"
 rc_under="$rc"
 log_absent=0; [ -f "$dir/.claude/dispatch-audit.log" ] || log_absent=1
-run "$dir" "$(payload lead-programmer "$(xbytes 31000)")"
+run "$dir" "$(payload lead-programmer "${t20_base}$(xbytes $((31000 - ${#t20_base})))")"
 if [ "$rc_under" = 0 ] && [ "$log_absent" = 1 ] && [ "$rc" = 2 ] \
    && grep -q 'blocked=H1 target=lead-programmer' "$dir/.claude/dispatch-audit.log"; then
   ok "T20 defaults live: 29000 bytes -> exit 0, 31000 bytes -> exit 2 + blocked=H1"
@@ -330,6 +350,103 @@ if [ "$rc" = 2 ] && grep -q 'blocked=H3 target=lead-programmer' "$dir/.claude/di
   ok "T21 two leading newlines before Unit: 148 -> exit 2, blocked=H3 logged"
 else
   bad "T21 expected exit 2 + blocked=H3 despite the leading blank lines (rc=$rc)"
+fi
+
+h4_cfg='{"mode":"block","maxPromptBytes":30000,"maxInlineBlockLines":200,"requireContract":true}'
+
+# T22 - H4 blocks a gated dispatch missing ONE marker, and names it. The
+# excluded checks matter: H4 must be the sole reason this exits 2.
+dir="$(make_project t22 "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(contract 300 | grep -v '^## Escalation$')")"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
+   && ! grep -qE 'blocked=H[123]' "$log" && grep -q '## Escalation' <<< "$err"; then
+  ok "T22 gated dispatch missing '## Escalation' -> exit 2, blocked=H4, stderr names it"
+else
+  bad "T22 expected exit 2 + blocked=H4 alone + '## Escalation' on stderr (rc=$rc)"
+fi
+
+# T23 - the positive half of the pair: all nine markers present -> silence. Same
+# config as T22, so the only difference between the two is the contract itself.
+dir="$(make_project t23 "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(contract 301)")"
+if [ "$rc" = 0 ] && [ ! -f "$dir/.claude/dispatch-audit.log" ]; then
+  ok "T23 gated dispatch carrying all nine markers -> exit 0, nothing logged"
+else
+  bad "T23 expected exit 0 and no audit log (rc=$rc err=$err)"
+fi
+
+# T24 - a non-gated spawn is never inspected. The control run sends the SAME
+# naked prompt to the gated target: without it this case is green even if H4
+# never fires at all.
+dir="$(make_project t24 "$h4_cfg")"
+run "$dir" "$(payload scribe "$naked")"
+rc_scribe="$rc"
+log_absent=0; [ -f "$dir/.claude/dispatch-audit.log" ] || log_absent=1
+run "$dir" "$(payload lead-programmer "$naked")"
+if [ "$rc_scribe" = 0 ] && [ "$log_absent" = 1 ] && [ "$rc" = 2 ] \
+   && grep -q 'blocked=H4 target=lead-programmer' "$dir/.claude/dispatch-audit.log"; then
+  ok "T24 naked prompt to scribe -> exit 0 (control: same prompt to lead-programmer -> exit 2)"
+else
+  bad "T24 expected exit 0 + no log for scribe, exit 2 + blocked=H4 for the control (rc_scribe=$rc_scribe log_absent=$log_absent rc_ctl=$rc)"
+fi
+
+# T25 - the opt-out genuinely disarms H4. The control omits dispatchHygiene
+# entirely, which pins requireContract's ON-BY-DEFAULT posture and simultaneously
+# proves the opt-out run above was not just an accidentally-compliant prompt.
+dir="$(make_project t25 '{"maxPromptBytes":30000,"maxInlineBlockLines":200,"requireContract":false}')"
+run "$dir" "$(payload lead-programmer "$naked")"
+rc_off="$rc"
+log_absent=0; [ -f "$dir/.claude/dispatch-audit.log" ] || log_absent=1
+dir="$(make_project t25ctl '')"
+run "$dir" "$(payload lead-programmer "$naked")"
+if [ "$rc_off" = 0 ] && [ "$log_absent" = 1 ] && [ "$rc" = 2 ] \
+   && grep -q 'blocked=H4 target=lead-programmer' "$dir/.claude/dispatch-audit.log"; then
+  ok "T25 requireContract=false -> exit 0 (control: key absent defaults ON -> exit 2)"
+else
+  bad "T25 expected exit 0 + no log when opted out, exit 2 + blocked=H4 by default (rc_off=$rc_off log_absent=$log_absent rc_ctl=$rc)"
+fi
+
+# T26 - H4 honours mode=warn like every other check.
+dir="$(make_project t26 '{"mode":"warn","maxPromptBytes":30000,"maxInlineBlockLines":200,"requireContract":true}')"
+run "$dir" "$(payload lead-programmer "$naked")"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc" = 0 ] && [ -n "$err" ] && grep -q 'warned=H4 target=lead-programmer' "$log" \
+   && ! grep -q 'blocked=' "$log"; then
+  ok "T26 H4 under mode=warn -> exit 0, stderr non-empty, warned=H4 logged"
+else
+  bad "T26 expected exit 0 + non-empty stderr + warned=H4 and no blocked= (rc=$rc)"
+fi
+
+# T27 - MUTATION CONTROL for the whole H4 group. T22's exit 2 is only evidence
+# if H4's fire call is what produced it; a mis-wired check that blocked for some
+# other reason would leave T22 green forever. Neuter `fire H4` in a throwaway
+# copy and confirm T22's scenario flips to exit 0. The copy takes lib/ with it -
+# a mutant that dies at startup exits non-zero on EVERY case and would otherwise
+# read as a successful kill.
+mutant_dir="$tmproot/t27bin"
+mkdir -p "$mutant_dir"
+cp "$hook" "$mutant_dir/dispatch-hygiene.sh"
+cp -r hooks/scripts/lib "$mutant_dir/lib"
+mutant="$mutant_dir/dispatch-hygiene.sh"
+sed -i 's/^\([[:space:]]*\)fire H4 /\1: /' "$mutant"
+dir="$(make_project t27 "$h4_cfg")"
+t27_prompt="$(contract 300 | grep -v '^## Escalation$')"
+hook_real="$hook"; hook="$mutant"
+run "$dir" "$(payload lead-programmer "$t27_prompt")"
+rc_mutant="$rc"
+log_absent=0; [ -f "$dir/.claude/dispatch-audit.log" ] || log_absent=1
+# ...and the mutant must still be a working script, or the exit 0 above is just
+# a broken file. H1 is untouched by the mutation, so it still blocks.
+run "$dir" "$(payload lead-programmer "$(xbytes 31000)")"
+rc_alive="$rc"
+hook="$hook_real"
+run "$dir" "$(payload lead-programmer "$t27_prompt")"
+if ! grep -q 'fire H4 ' "$mutant" && [ "$rc_mutant" = 0 ] && [ "$log_absent" = 1 ] \
+   && [ "$rc_alive" = 2 ] && [ "$rc" = 2 ]; then
+  ok "T27 mutation control: neutered fire H4 -> the missing-marker prompt passes (mutant still alive; real hook still blocks)"
+else
+  bad "T27 mutation control failed: expected mutated=yes rc_mutant=0 log_absent=1 rc_alive=2 rc_real=2 (got rc_mutant=$rc_mutant log_absent=$log_absent rc_alive=$rc_alive rc_real=$rc)"
 fi
 
 exit "$fail"

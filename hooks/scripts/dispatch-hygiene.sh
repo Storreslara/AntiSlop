@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # PreToolUse (Agent). Token-hygiene gate on dispatch prompts: refuses a spawn
-# whose prompt inlines an artifact that already exists on disk, or that
-# re-dispatches a unit the reviewer has already PASSed. Config lives in
-# persona-config.json's `dispatchHygiene` (mode block|warn|off, maxPromptBytes,
-# maxInlineBlockLines); every key is optional and defaults to block/30000/80.
+# whose prompt inlines an artifact that already exists on disk, that
+# re-dispatches a unit the reviewer has already PASSed, or that sends a gated
+# target something other than the nine-element dispatch contract. Config lives
+# in persona-config.json's `dispatchHygiene` (mode block|warn|off,
+# maxPromptBytes, maxInlineBlockLines, requireContract); every key is optional
+# and defaults to block/30000/80/true.
 #
 # Payload fields used: `.tool_name`, `.tool_input.subagent_type` (spawn target
 # identity), `.tool_input.prompt`. The caller's own `.agent_type` is
@@ -27,17 +29,25 @@
 #     unit holding a .claude/reviewed/<id>.pass marker. H3 reads the prompt's
 #     FIRST NON-BLANK LINE ONLY, so a quoted `Unit:` example in the body cannot
 #     false-positive (the #155 defect shape).
-#  5) every check that fired is reported; mode "block" logs blocked= and exits
+#  5) H4 a gated dispatch missing any of the nine dispatch-contract markers
+#     agents/task-master.md defines. Gated targets only, and disarmed by
+#     `requireContract: false`.
+#  6) every check that fired is reported; mode "block" logs blocked= and exits
 #     2, mode "warn" logs warned= and exits 0.
 #
 # H3 is reduced protection by construction: it is correct only when the
 # reviewer wrote its marker under the same id the dispatch's `Unit:` line
 # names, and a missing or differently-named marker makes it fail open.
 #
+# H4 checks LABELS, NOT SUBSTANCE. It can force a well-LABELLED dispatch, never
+# a well-FORMED one: an agent can emit all nine headings and fill them with
+# nothing, and H4 will pass it. Presence is matched as a plain substring
+# anywhere in the prompt, so the failure direction is under-firing, i.e. open.
+#
 # Honest limit (same framing as stop-gate.sh:85-88): this cannot force a
 # well-formed dispatch - an agent can split one oversize prompt into two
-# under-threshold ones, or drop the `Unit:` line. `.claude/dispatch-audit.log`
-# is the deterrent, not a guarantee.
+# under-threshold ones, drop the `Unit:` line, or emit empty contract headings.
+# `.claude/dispatch-audit.log` is the deterrent, not a guarantee.
 set -euo pipefail
 # Byte semantics: the thresholds are calibrated in bytes, and ${#prompt} counts
 # characters in the ambient locale, so pin the locale rather than the units.
@@ -78,6 +88,12 @@ max_lines="$(jq -r '.dispatchHygiene.maxInlineBlockLines // 80' "$config" 2>/dev
 # project. Fall back to the default instead - a config typo must fail OPEN (R1).
 case "$max_bytes" in ''|*[!0-9]*) max_bytes=30000 ;; esac
 case "$max_lines" in ''|*[!0-9]*) max_lines=80 ;; esac
+# NOT `// true`: jq's alternative operator treats a literal `false` the same as
+# absent, so `.requireContract // true` would silently ignore the opt-out. Read
+# the raw value and let the case below supply the default - which also gives a
+# hand-edited non-boolean the same fail-to-the-default treatment as above.
+require_contract="$(jq -r '.dispatchHygiene.requireContract' "$config" 2>/dev/null || echo true)"
+case "$require_contract" in false) ;; *) require_contract=true ;; esac
 [ "$mode" = "off" ] && exit 0
 
 target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
@@ -171,6 +187,27 @@ if [ "$is_gated" = true ]; then
         fi
         ;;
     esac
+  fi
+
+  # H4 - dispatch contract. The nine markers agents/task-master.md enumerates;
+  # the eight heading strings are byte-for-byte copies of that list, because a
+  # paraphrase here would enforce something task-master never emits.
+  if [ "$require_contract" = true ]; then
+    missing=""
+    if [[ ! $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
+      missing="a 'Unit: <id>' first line"
+    fi
+    for heading in '## Objective' '## Retrieval' '## Affected files' \
+                   '## Ordered edits' '## Do NOT touch' '## Acceptance criteria' \
+                   '## Pre-resolved context' '## Escalation'; do
+      case "$prompt" in
+        *"$heading"*) ;;
+        *) missing="${missing}${missing:+, }${heading}" ;;
+      esac
+    done
+    if [ -n "$missing" ]; then
+      fire H4 "H4: dispatch to a gated target is missing ${missing}. A gated dispatch must carry all nine contract elements (see agents/task-master.md); set dispatchHygiene.requireContract to false to disarm this check."
+    fi
   fi
 fi
 
