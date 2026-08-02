@@ -247,6 +247,15 @@ else
 fi
 
 echo
+echo "== adapter stop-gate behavioural parity: claude/codex/cursor (Bash) =="
+if bash tests/adapter-stop-gate-parity.test.sh; then
+  echo "OK   tests/adapter-stop-gate-parity.test.sh"
+else
+  echo "FAIL tests/adapter-stop-gate-parity.test.sh"
+  fail=1
+fi
+
+echo
 echo "== dispatch-hygiene token gate: H1/H2/H3 behaviour (Bash) =="
 if bash tests/dispatch-hygiene.test.sh; then
   echo "OK   tests/dispatch-hygiene.test.sh"

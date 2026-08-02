@@ -128,9 +128,27 @@ if [ "$hook_event" = "Stop" ]; then
     for flag in "${pending_flags[@]}"; do
       [ -f "$flag" ] || continue
       flag_content="$(cat "$flag" 2>/dev/null || true)"
+      # The audit log is one record per line, so a multi-line reason could
+      # never compare equal to the log's last line and dedupe never fired for
+      # it. Flatten to a single logical line before BOTH the comparison and
+      # the write - do not widen the log record to multiple lines instead.
+      flag_content="$(printf '%s' "$flag_content" | tr '\n\r' '  ')"
       case "$flag_content" in
+        "defer: "|"skip: ")
+          # Nothing after the colon is not a reason - the block message has
+          # always said so, and the WIP sentinel below enforces the same rule.
+          # Must precede the two arms below, whose trailing * matches empty.
+          blocked=true
+          ;;
         "defer: "*)
-          printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
+          # A defer: is sticky, so an unchanged reason would otherwise log one
+          # identical line per turn forever. Append only when it differs from
+          # the last line's content (i.e. after the timestamp field) - distinct
+          # events, including a defer: repeated after some other line, still log.
+          last_logged="$(tail -n 1 "$review_audit" 2>/dev/null | cut -d' ' -f2- || true)"
+          if [ "$last_logged" != "$flag_content" ]; then
+            printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
+          fi
           ;;
         "skip: "*)
           printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
@@ -142,7 +160,7 @@ if [ "$hook_event" = "Stop" ]; then
       esac
     done
     if [ "$blocked" = true ]; then
-      block "Unit awaiting review - spawn the reviewer (persona-protocol's Review ownership section). Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .codex/.pending-review.<agent-id>' - defer keeps the flag (still owed), skip deletes it (abandoned). Empty reason rejected."
+      block "Unit awaiting review - confirm the reviewer is dispatched for it, or dispatch it now if not (persona-protocol's Review ownership section); this hook cannot tell which. Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .codex/.pending-review.<agent-id>' - defer keeps the flag (sticky: allows every subsequent Stop too, still owed), skip deletes it (abandoned). Empty reason rejected."
     fi
     allow
   fi
