@@ -109,3 +109,37 @@ Every gate reads `.claude/persona-config.json` at runtime (via `jq`) — the
 same hook scripts are generic across every ADAPTed project;
 project-specific behavior (which paths are protected, which agents are
 gated, whether a reviewer even exists) comes entirely from that file.
+
+## dispatch-hygiene checks: H1–H4
+
+`dispatch-hygiene.sh` is a PreToolUse gate applied at the Agent/orchestrator
+seam, checking dispatch prompts before spawn. Configured via
+`.claude/persona-config.json`'s `dispatchHygiene` field (`mode`:
+`block`/`warn`/`off`, plus optional overrides `maxPromptBytes`/`maxInlineBlockLines`;
+defaults: `block`/30000/80). Single-use escape hatch: `.claude/.dispatch-override`
+(content must start with `override: <reason>`). Checks run in sequence:
+
+- **H1 — Oversize prompt** (default 30000 bytes): blocks dispatches where the
+  prompt body exceeds the configured byte limit. Fail-closed; a persona
+  cannot self-recover from prompt overflow via retries.
+- **H2 — Inlined artifact as fenced block** (default 80 interior lines):
+  detects markdown fenced code blocks in the dispatch body and blocks if they
+  exceed the interior line limit. Intended to catch artifact inlining; a
+  fenced block larger than the threshold is presumed an artifact that should
+  have been an external artifact instead.
+- **H3 — Re-dispatch gate** (best-effort, convention-dependent): fires when
+  the dispatch prompt's `Unit:` line (if present) matches a reviewer's marker
+  id in `.claude/reviewed/<task-id>.pass`, i.e. when a unit already marked
+  done is being re-dispatched. Only fires if the convention `Unit: <id>` is
+  reliably followed; read as best-effort protection, not a guaranteed catch,
+  until that discipline hardens (documented in issue #153).
+- **H4 — Dispatch contract audit** (checks labels, not substance): fires when
+  `dispatchHygiene.requireContract` is `true` (default `false`) and the
+  dispatch prompt lacks the expected `## Summary` / `## Test plan` / `## STATUS`
+  headings recorded in the unit's dispatch template. H4 checks *structure*,
+  not content — an agent can emit all headings and fill them with empty
+  strings, and H4 passes. The purpose is to detect accidental omissions of
+  required framing; it does not validate that the content is complete or
+  sensible. When fired, H4 routes to `.claude/.dispatch-override` on first
+  failure (allowing a manual override if the structure is intentionally
+  nonstandard), then blocks on repeat without override.

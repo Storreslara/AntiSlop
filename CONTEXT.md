@@ -89,8 +89,9 @@ drift apart.
   touches no sensitive path class; otherwise `opus`. Replaces the earlier
   ADR-0006 scheme where `task-master` guessed reviewer tier from its own
   pre-implementation `Suggested model: haiku` tag — a prediction that was
-  reachable roughly 0% of the time in practice, since no unit in this repo
-  is tagged `haiku` (issue #190, finding F2). The orchestrator's judgment
+  reachable roughly 0% of the time in practice. This was ADR-0009's historical
+  rationale, measured at issue #190 (finding F2): no unit in this repo was
+  tagged `haiku`. The orchestrator's judgment
   may **downgrade** `sonnet` → `opus` but may **never upgrade** `opus` →
   `sonnet`; `fable` stays permanently excluded from the gate (ADR-0004) and
   a prior `.fail` record still forces `opus`. "Measured reviewer tier" is
