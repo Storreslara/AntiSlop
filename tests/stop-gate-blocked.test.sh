@@ -232,4 +232,59 @@ else
   fail=1
 fi
 
+# (m) shape sweep on the dedupe, ONE-DIRECTIONAL: each shape must yield exactly
+#     one record over three consecutive Stops. Only the deduped count is
+#     asserted - no shape is asserted to produce two.
+sweep() {
+  local name="$1"
+  local content="$2"
+  local dir ok=true n
+  dir="$(make_project "sweep-$name")"
+  printf '%s' "$content" > "$dir/.claude/.pending-review.lp-1"
+  for _ in 1 2 3; do
+    run_stop "$dir" || ok=false
+  done
+  n="$(grep -c 'defer: ' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+  if [ "$ok" = true ] && [ "${n:-0}" = 1 ]; then
+    echo "OK   (m) $name defer: reason -> exactly one record over three Stops"
+  else
+    echo "FAIL (m) $name defer: reason -> ${n:-0} records over three Stops (ok=$ok)"
+    fail=1
+  fi
+}
+sweep multi-line          "$(printf 'defer: sweep line one\nsweep line two\nsweep line three\n')"
+sweep trailing-whitespace "$(printf 'defer: sweep trailing   \n')"
+sweep cr-terminated       "$(printf 'defer: sweep carriage return\r\n')"
+sweep over-1kb            "defer: $(printf 'x%.0s' {1..1100})"
+
+# (n) MUTATION CONTROL for the step: strip the flattening from a throwaway copy
+#     and confirm (j) - the multi-line dedupe - fails there, proving (j)/(m)
+#     bind to the flattening and not to something already true. Reverting
+#     baseline for reference: git show c770cb9:hooks/scripts/stop-gate.sh.
+mutant_flat="$tmproot/mutant-flatten"
+mkdir -p "$mutant_flat"
+cp hooks/scripts/stop-gate.sh "$mutant_flat/stop-gate.sh"
+cp -R hooks/scripts/lib "$mutant_flat/lib"
+flat_before="$(grep -c '| tr ' "$mutant_flat/stop-gate.sh" || true)"
+sed -i '/| tr /d' "$mutant_flat/stop-gate.sh"
+flat_after="$(grep -c '| tr ' "$mutant_flat/stop-gate.sh" || true)"
+parses=yes
+bash -n "$mutant_flat/stop-gate.sh" 2>/dev/null || parses=no
+
+dir="$(make_project mutation-flatten)"
+printf 'defer: reviewer dispatched\nsee issue 201 for the reason\n' \
+  > "$dir/.claude/.pending-review.lp-1"
+ok=true
+for i in 1 2 3; do
+  run_stop "$dir" "$mutant_flat/stop-gate.sh" || ok=false
+done
+n="$(grep -c 'defer: ' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+if [ "${flat_before:-0}" = 1 ] && [ "${flat_after:-0}" = 0 ] && [ "$parses" = yes ] \
+   && [ "$ok" = true ] && [ "${n:-0}" = 3 ]; then
+  echo "OK   (n) mutation control: without the flattening the same run logs 3 records, so (j) is binding"
+else
+  echo "FAIL (n) mutation not applied or did not change behavior (flatten before=$flat_before after=$flat_after parses=$parses ok=$ok records=${n:-0})"
+  fail=1
+fi
+
 exit "$fail"
