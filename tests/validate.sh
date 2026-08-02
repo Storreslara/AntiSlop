@@ -292,6 +292,15 @@ else
 fi
 
 echo
+echo "== scribe issue-closing duty: trigger/never-close conditions (Bash) =="
+if bash tests/scribe-issue-closing.test.sh; then
+  echo "OK   tests/scribe-issue-closing.test.sh"
+else
+  echo "FAIL tests/scribe-issue-closing.test.sh"
+  fail=1
+fi
+
+echo
 echo "== Codex adapter: JSON validity =="
 for f in adapters/codex/hooks/hooks.json \
          adapters/codex/.codex-plugin/plugin.json \
