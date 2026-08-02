@@ -29,10 +29,15 @@ actually needs a larger model.
 1. **Implementer tier now defaults to `haiku`.** `agents/lead-programmer.md`
    frontmatter sets `model: haiku` (was `sonnet`).
 
-2. **Task-master's pre-emptive escalation is removed entirely.** No unit is
-   tagged `Suggested model: haiku`, and no other pre-implementation tagging
-   attempts to predict implementer tier. Judgment is deferred entirely to
-   post-implementation, reactive escalation via FAIL records.
+2. **Task-master's pre-emptive escalation is removed entirely.** Every unit is
+   tagged `Suggested model: haiku` by default, and no unit is tagged *above*
+   `haiku` pre-emptively: no pre-implementation tagging attempts to predict
+   that a unit needs a larger implementer tier, however risky it looks (see
+   `agents/task-master.md`, "Per-unit model tag"). `sonnet`/`opus` are
+   reachable only reactively, from something already on record — a prior
+   `.claude/reviewed/<task-id>.fail`, or the orchestrator's first-FAIL rule.
+   Judgment is deferred entirely to post-implementation, reactive escalation
+   via FAIL records.
 
 3. **Escalation now happens only after a FAIL.** When a unit fails on `haiku`,
    the orchestrator (per `agents/orchestrator.md:184-189`'s first-FAIL escalation
@@ -71,6 +76,24 @@ actually needs a larger model.
    the heavy criteria still receives the advisory fable roast pass, independent
    of implementer tier selection. This distinction is what prevents conflating
    the two axes again.
+
+7. **The judgment `task-master` no longer exercises has moved into an enforced
+   dispatch contract.** Dropping pre-emptive tier prediction only works if the
+   dispatch itself leaves nothing for a haiku-tier executor to infer. So the
+   dispatch instructions from `task-master` to `lead-programmer` are now a
+   nine-element checkable contract (issue #209): a `Unit: <task-id>` literal
+   first line, plus the eight headings `## Objective`, `## Retrieval`,
+   `## Affected files`, `## Ordered edits`, `## Do NOT touch`,
+   `## Acceptance criteria`, `## Pre-resolved context`, and `## Escalation`,
+   enumerated in `agents/task-master.md`. The contract is mechanically
+   enforced, not advisory: the `H4` check in
+   `hooks/scripts/dispatch-hygiene.sh` (issue #214) blocks a dispatch to a
+   gated target — `lead-programmer` by default — that is missing any of the
+   nine elements. The judgment did not disappear; it moved from a per-unit
+   tier guess into a per-dispatch completeness requirement a hook can check.
+   Scope limit, stated deliberately: H4 audits heading *labels*, not their
+   substance — it can force a well-labelled dispatch, never a well-formed one
+   — and it is disarmable via `dispatchHygiene.requireContract: false`.
 
 ## Consequences
 
