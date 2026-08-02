@@ -143,9 +143,10 @@ printf 'defer: reviewer already dispatched\n' > "$flag"; run_stop "$dir" || ok=f
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || ok=false
 printf 'defer: reviewer already dispatched\n' > "$flag"; run_stop "$dir" || ok=false
 got="$(cut -d' ' -f2- < "$dir/.claude/review-audit.log" | tr '\n' '|')"
-want='defer: reviewer already dispatched|cleared-by=reviewer|defer: reviewer already dispatched|'
+# Expect: defer: | marker-check=bootstrap | cleared-by=reviewer | defer: (bootstrap line added by clear-watermark check)
+want='defer: reviewer already dispatched|marker-check=bootstrap|cleared-by=reviewer|defer: reviewer already dispatched|'
 if [ "$ok" = true ] && [ "$got" = "$want" ]; then
-  echo "OK   (h) an identical defer: after an intervening log line is still appended"
+  echo "OK   (h) an identical defer: after an intervening log line is still appended (with bootstrap marker check)"
 else
   echo "FAIL (h) expected [$want] (ok=$ok got=[$got])"
   fail=1
@@ -284,6 +285,170 @@ if [ "${flat_before:-0}" = 1 ] && [ "${flat_after:-0}" = 0 ] && [ "$parses" = ye
   echo "OK   (n) mutation control: without the flattening the same run logs 3 records, so (j) is binding"
 else
   echo "FAIL (n) mutation not applied or did not change behavior (flatten before=$flat_before after=$flat_after parses=$parses ok=$ok records=${n:-0})"
+  fail=1
+fi
+
+# ============================================================================
+# CLEAR-WATERMARK TEST CASES (criteria 3-11 from unit 221)
+# ============================================================================
+
+# (o) Bootstrap fails open: no watermark, no markers, reviewer stop -> exit 0, flags cleared
+dir="$(make_project bootstrap)"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'marker-check=bootstrap' "$dir/.claude/review-audit.log"; then
+  echo "OK   (o) bootstrap fails open: no watermark -> exit 0, flags cleared, log has 'marker-check=bootstrap'"
+else
+  echo "FAIL (o) bootstrap behavior broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) log-bootstrap=$(grep -c 'marker-check=bootstrap' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  fail=1
+fi
+
+# (p) Missing marker blocks: watermark present, no marker newer than it -> exit 2, flags kept
+dir="$(make_project missing)"
+touch "$dir/.claude/.last-review-clear"
+sleep 0.1
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'marker=MISSING' "$dir/.claude/review-audit.log"; then
+  echo "OK   (p) missing marker blocks: watermark exists, no new marker -> exit 2, flags kept, log has 'marker=MISSING'"
+else
+  echo "FAIL (p) missing marker detection broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) log=$(grep -c 'marker=MISSING' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  fail=1
+fi
+
+# (q) Marker after watermark clears: write .pass after watermark -> exit 0, flags cleared, watermark file updated
+dir="$(make_project marker-clears)"
+touch "$dir/.claude/.last-review-clear"
+watermark="$dir/.claude/.last-review-clear"
+watermark_mtime_before=$(stat -L --format=%Y "$watermark" 2>/dev/null || date +%s)
+# Wait to cross into next second to ensure mtime will be different
+sleep 1.1
+printf 'PASS task-1 2026-08-02T12:00:00Z criteria: bash tests/validate.sh\n' > "$dir/.claude/reviewed/task-1.pass"
+sleep 0.1
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+# Wait to ensure touch completed and stat can read new mtime
+sleep 0.1
+watermark_mtime_after=$(stat -L --format=%Y "$watermark" 2>/dev/null || date +%s)
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'cleared-by=reviewer' "$dir/.claude/review-audit.log" \
+   && [ "$watermark_mtime_after" -gt "$watermark_mtime_before" ]; then
+  echo "OK   (q) .pass after watermark: exit 0, flags cleared, watermark mtime advanced"
+else
+  echo "FAIL (q) marker clear broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) mtime-advanced=$([ "$watermark_mtime_after" -gt "$watermark_mtime_before" ] && echo yes || echo no) before=$watermark_mtime_before after=$watermark_mtime_after)"
+  fail=1
+fi
+
+# (r) .fail also counts: write .fail after watermark -> exit 0, flags cleared
+dir="$(make_project fail-counts)"
+touch "$dir/.claude/.last-review-clear"
+sleep 0.1
+printf 'FAIL task-2 2026-08-02T12:00:00Z reason: insufficient context\n' > "$dir/.claude/reviewed/task-2.fail"
+sleep 0.1
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ]; then
+  echo "OK   (r) .fail also counts as a marker: exit 0, flags cleared"
+else
+  echo "FAIL (r) .fail handling broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  fail=1
+fi
+
+# (s) Stale markers: after a successful clear (q), a second stop with no new marker -> exit 2
+dir="$(make_project stale)"
+touch "$dir/.claude/.last-review-clear"
+sleep 0.1
+printf 'PASS task-3 2026-08-02T12:00:00Z criteria: bash tests/validate.sh\n' > "$dir/.claude/reviewed/task-3.pass"
+sleep 0.1
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+# First clear should succeed (marker is newer than watermark)
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ]; then
+  # Now the watermark is advanced. Add a flag again and try to clear without a new marker
+  printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+  rc=0
+  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+  if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ]; then
+    echo "OK   (s) stale markers: second stop without new marker -> exit 2, flags kept"
+  else
+    echo "FAIL (s) stale marker detection broken (second-rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+    fail=1
+  fi
+else
+  echo "FAIL (s) first clear failed (first-rc=$rc)"
+  fail=1
+fi
+
+# (t) Defer-immunity: defer: written after marker -> exit 0 (mtime-of-flag design rejected)
+dir="$(make_project defer-immune)"
+touch "$dir/.claude/.last-review-clear"
+sleep 0.1
+printf 'PASS task-4 2026-08-02T12:00:00Z criteria: bash tests/validate.sh\n' > "$dir/.claude/reviewed/task-4.pass"
+sleep 0.1
+printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ]; then
+  echo "OK   (t) defer-immunity: defer: after marker -> exit 0, flags cleared (watermark design is defer-immune)"
+else
+  echo "FAIL (t) defer-immunity broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  fail=1
+fi
+
+# (u) .blocked short-circuits: .blocked marker present, no .pass/.fail -> exit 0, flags kept
+dir="$(make_project blocked-shortcircuit)"
+touch "$dir/.claude/.last-review-clear"
+printf 'BLOCKED task-5 2026-08-02T00:00:00Z missing: constraint Z\n' > "$dir/.claude/reviewed/task-5.blocked"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log"; then
+  echo "OK   (u) .blocked short-circuits: present with no new .pass/.fail -> exit 0, flags kept, log 'verdict=blocked flags-kept'"
+else
+  echo "FAIL (u) .blocked short-circuit broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) blocked-line=$(grep -c 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  fail=1
+fi
+
+# (v) MUTATION CONTROL: without the clear-watermark check, criteria (p) and (s) must FAIL
+mutant_cw="$tmproot/mutant-clearwm"
+mkdir -p "$mutant_cw"
+cp hooks/scripts/stop-gate.sh "$mutant_cw/stop-gate.sh"
+cp -R hooks/scripts/lib "$mutant_cw/lib"
+# Remove the marker_since_last_clear helper and the check that calls it
+# Delete helper function
+sed -i '/^marker_since_last_clear()/,/^}/d' "$mutant_cw/stop-gate.sh"
+# Delete the marker check (from the comment to the esac)
+sed -i '/# Check for a marker written since the last successful clear/,/^    esac$/d' "$mutant_cw/stop-gate.sh"
+# Delete the touch call
+sed -i '/touch "\$watermark"/d' "$mutant_cw/stop-gate.sh"
+
+# Test (p) equivalent with mutant - should NOT block (mutation control)
+dir="$(make_project mutation-cw)"
+touch "$dir/.claude/.last-review-clear"
+sleep 0.1
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash "$mutant_cw/stop-gate.sh" 2>/dev/null || rc=$?
+if [ "$rc" = 0 ]; then
+  echo "OK   (v) mutation control: without the clear-watermark check, missing-marker case exits 0 (the gap is real)"
+else
+  echo "FAIL (v) mutation control: mutant still blocks when it should pass (rc=$rc)"
+  fail=1
+fi
+
+# (w) Baseline check: grep for marker=MISSING in the hook script is GREEN
+if tr '\n' ' ' < hooks/scripts/stop-gate.sh | tr -s ' ' | grep -qF -e 'marker=MISSING'; then
+  echo "OK   (w) baseline: 'marker=MISSING' string is present in hooks/scripts/stop-gate.sh"
+else
+  echo "FAIL (w) baseline: 'marker=MISSING' string NOT found in the script"
   fail=1
 fi
 

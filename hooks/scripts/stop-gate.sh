@@ -90,6 +90,26 @@
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
+# clear-watermark: helper to detect if a marker has been written since the last
+# successful reviewer flag-clear. Returns 0 if a marker exists newer than the
+# watermark, 2 if no watermark exists yet (bootstrap), 1 otherwise.
+marker_since_last_clear() {
+  local dot="$1"
+  local watermark="$dot/.last-review-clear"
+
+  if [ ! -f "$watermark" ]; then
+    return 2
+  fi
+
+  # Guard find with 2>/dev/null || true to prevent abort under set -euo pipefail.
+  # Wrap in parentheses to ensure grep is always run regardless of find's exit.
+  if (find "$dot/reviewed" -maxdepth 1 \( -name '*.pass' -o -name '*.fail' \) -newer "$watermark" 2>/dev/null || true) | grep -q .; then
+    return 0
+  fi
+
+  return 1
+}
+
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
@@ -113,8 +133,34 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
       exit 0
     fi
+
+    # Check for a marker written since the last successful clear (clear-watermark).
+    # Fail OPEN on bootstrap (no watermark yet), but block if a marker is missing.
+    dot="${project_dir}/.claude"
+    watermark="$dot/.last-review-clear"
+    rc=0
+    marker_since_last_clear "$dot" || rc=$?
+
+    case "$rc" in
+      0)
+        # A .pass or .fail newer than the watermark exists - proceed to clear
+        ;;
+      2)
+        # Bootstrap: no watermark yet - fail OPEN and proceed to clear
+        printf '%s marker-check=bootstrap\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+        ;;
+      *)
+        # rc=1: watermark exists but no marker after it - block and report
+        printf '%s cleared-by=reviewer marker=MISSING\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+        echo "A v2 PASS or FAIL marker must be written. Example for a PASS verdict:" >&2
+        echo "  printf 'PASS <task-id> %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' > .claude/reviewed/<task-id>.pass" >&2
+        exit 2
+        ;;
+    esac
+
     rm -f "${project_dir}"/.claude/.pending-review.* 2>/dev/null || true
     printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    touch "$watermark"
     exit 0
   fi
   # Clearing review flags is a privilege granted only to this project's own
