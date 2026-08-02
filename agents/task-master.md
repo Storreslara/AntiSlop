@@ -39,15 +39,18 @@ into independently-grabbable, unambiguous units of work.
   section) and the reviewer has the global constraints it needs to verify
   the unit without guessing (see `templates/persona-protocol.md`).
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
-  haiku|sonnet|opus`. `haiku` only for mechanical, low-judgment work —
-  renames, boilerplate, straightforward CRUD, config edits, test scaffolding
-  against an already-exact criterion. `opus` for genuinely hard-judgment or
-  high-stakes units (security-sensitive surfaces, structural/cross-cutting
-  changes, a unit re-scoped after a prior FAIL). Default to `sonnet` when
-  unsure — a wrong-cheap unit costs a full re-run, not a small one. Check
-  `.claude/reviewed/<task-id>.fail` before tagging any unit — a prior
-  FAIL is durable evidence it needed more judgment than first estimated;
-  never tag that unit `haiku`.
+  haiku|sonnet|opus`. Tagging is **reactive**, not predictive: `haiku` is
+  the default for every unit, and a unit you judge security-sensitive,
+  structural, or otherwise hard-judgment still starts on haiku — you never
+  pre-emptively tag a unit `sonnet` or `opus`, no matter how risky it looks.
+  `sonnet`/`opus` are reachable only two ways, both reactive to something
+  already on record, never to your own risk judgment: (a) check
+  `.claude/reviewed/<task-id>.fail` before tagging any unit — a prior FAIL is
+  durable evidence it needed more judgment than first estimated;
+  never tag that unit `haiku`; or (b) the orchestrator's own first-FAIL
+  escalation (a haiku unit's first FAIL routes its retry to sonnet) — that
+  mechanism lives in `agents/orchestrator.md`, not here, and is unchanged by
+  this rule.
 - **`Roast pass: fable` tag**: on a unit that meets the "heavy" trigger
   defined once in `templates/persona-protocol.md`'s "Reviewer roast-work
   advisory pass trigger (fable heavy-lifting)" section — the authoritative
