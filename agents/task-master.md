@@ -77,14 +77,36 @@ into independently-grabbable, unambiguous units of work.
   ADAPT time — this is the line `lead-programmer` and the orchestrator key
   off of per the shared protocol; never assume a tracker or fetch method
   other than what the project actually configured.
-- **Per-unit dispatch prompts**: for each sliced unit, write a detailed
-  dispatch prompt for `lead-programmer` (and `scribe`, when the unit needs an
-  institutional-knowledge update) — objective, scope boundaries, explicit
-  "do NOT touch X" boundaries, the exact acceptance-criteria command(s), and
-  the retrieval-contract line so the dispatched persona can fetch its own
-  issue. Match the orchestrator's delegation-contract shape (objective +
-  expected output + explicit boundaries) — vague handoffs produce vague or
-  over-scoped work.
+- **Per-unit dispatch prompts**: for each sliced unit, write a dispatch prompt
+  for `lead-programmer` (and `scribe`, when the unit needs an
+  institutional-knowledge update) as a checkable **dispatch contract** of nine
+  literal, greppable elements — a haiku-tier executor can only follow an
+  order mechanically if the order leaves nothing to infer:
+  1. `Unit: <task-id>` as the literal first line — the id the reviewer writes
+     markers under.
+  2. `## Objective` — 1-3 sentences: what done looks like.
+  3. `## Retrieval` — the verbatim retrieval-contract line.
+  4. `## Affected files` — exact repo-relative paths, each with an
+     **anchor** (a heading, a symbol name, or a line range qualified by a
+     named commit SHA). A bare path is not sufficient.
+  5. `## Ordered edits` — numbered instructions, one file + one anchor each,
+     imperative.
+  6. `## Do NOT touch` — explicit paths/surfaces held out of scope.
+  7. `## Acceptance criteria` — verbatim copy-pasteable commands, one per
+     line, each with its expected exit code or output.
+  8. `## Pre-resolved context` — the judgment calls you answer *for* the
+     executor: whether TDD applies and which test file to extend, and
+     whether an `explorer` lookup is needed — with its answer already
+     fetched.
+  9. `## Escalation` — "if any instruction cannot be followed exactly as
+     written, STOP and report a spec gap; do not improvise."
+
+  Keep the whole prompt under `dispatchHygiene.maxPromptBytes` (default
+  **30000**) and every fenced block under `maxInlineBlockLines` (default
+  **80**) interior lines — precision comes from anchors and enumeration,
+  never from pasting artifact bodies, mirroring H1's and H2's own
+  remediation text ("Reference the artifact by path … instead of inlining
+  it").
 - **Spec gaps surface upward, never get filled here**: if writing a dispatch
   prompt exposes an ambiguity the spec should have resolved but didn't
   (missing acceptance criterion, contradictory affected-files lists, a step
