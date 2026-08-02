@@ -3,6 +3,50 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.20.0] - 2026-08-01
+
+### Changed
+- **`reviewer-tier.sh` now fails closed on an unresolvable marker directory
+  and treats `agents/*.md` / `.claude/agents/*.md` as sensitive, so some
+  units that previously measured `sonnet` will now measure `opus`.** Three
+  fail-open gaps closed together, all the same failure mode (a measurement
+  the script could not make was treated as "safe" rather than
+  "unmeasurable"): `diff.relative=true` could drop a sensitive file from the
+  `numstat` output entirely rather than merely mis-anchor its path, silently
+  shrinking both the file and line counts; the marker directory defaulted to
+  `.` instead of `git rev-parse --show-toplevel` when
+  `CLAUDE_PROJECT_DIR` was unset, and an id given with no locatable marker
+  directory now fails closed to `opus` instead of measuring around it; and
+  `agents/` / `.claude/agents/` were absent from `SENSITIVE_PATHS`, so the
+  prose that governs how deeply every other persona source is reviewed could
+  itself measure `sonnet` on a 1-file/1-line edit. Issue #199.
+- **An empty `defer: ` / `skip: ` reason now blocks turn-end where it
+  previously allowed it (operator ruling, 2026-08-01).** This is a
+  correction, not a new restriction: the `'defer: '*` / `'skip: '*` glob
+  matched a reason that was empty after the colon (`*` matches the empty
+  string), so a content-free escape hatch exited 0 — and for `skip:`, even
+  deleted the pending-review flag — while all three block messages already
+  claimed "Empty reason rejected." and the WIP sentinel genuinely enforces
+  the same rule. The stop-gate now blocks (exit 2) instead, matching the
+  contract it already advertised; non-empty `skip:` deletion is unchanged.
+  A related fix in the same batch flattens a multi-line `defer:` reason to
+  one logical line before comparison and write, so the consecutive-duplicate
+  audit-log dedupe fires for multi-line reasons the same way it always did
+  for single-line ones (previously: three `Stop`s with an unchanged
+  multi-line reason wrote three identical audit records instead of one).
+  Issue #201.
+
+Secondarily: the `defer:`/empty-reason fixes above were ported verbatim to
+both the Cursor and Codex stop-gate adapters, which had drifted out of the
+parity their own headers claimed with `hooks/scripts/stop-gate.sh` — a new
+merge-gate test (`tests/adapter-stop-gate-parity.test.sh`) now checks that
+claim instead of trusting it (issue #202). `bin/cli.js` also now fails
+loudly, at both scaffold-default load time and on every project-config
+render, when `gatedAgents` names a slim-tier persona — the slim protocol
+template carries neither gate section, so the force-include was previously
+a silent no-op (issue #203; currently latent/unreachable under this
+project's own shipped `gatedAgents` config).
+
 ## [0.19.0] - 2026-08-01
 
 ### Changed
