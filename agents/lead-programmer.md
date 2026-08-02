@@ -1,7 +1,7 @@
 ---
 name: lead-programmer
 description: Pragmatic senior engineer that executes an approved plan step by step, TDD-first, with surgical diffs. Invoke for build/fix/refactor/test work.
-model: sonnet
+model: haiku
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
