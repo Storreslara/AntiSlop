@@ -157,6 +157,95 @@ printf '\000\001\002\377' > "$repo/docs/blob.bin"
 r_binary=$(snap binary-blob)
 run_case "(ak) a binary file reports no line counts" opus unit-1 "$r_binary"
 
+# --- Pass-2 Step 1: the three fail-open gaps ------------------------------
+# These probes vary the cwd and CLAUDE_PROJECT_DIR, both of which run_case
+# pins, so they need their own runner.
+sweep=0
+run_at() {
+  # <label> <expected> <task-id> <range> <cwd> <project-dir|-> [script]
+  # `-` leaves CLAUDE_PROJECT_DIR unexported for that probe.
+  local label="$1" expected="$2" tid="$3" range="$4" dir="$5" pd="$6"
+  local script="${7:-$SCRIPT}"
+  local got rc=0
+  sweep=$((sweep + 1))
+  if [ "$pd" = - ]; then
+    got="$(cd "$dir" && env -u CLAUDE_PROJECT_DIR bash "$script" "$tid" "$range" 2>/dev/null)" || rc=$?
+  else
+    got="$(cd "$dir" && CLAUDE_PROJECT_DIR="$pd" bash "$script" "$tid" "$range" 2>/dev/null)" || rc=$?
+  fi
+  if [ "$rc" = 0 ] && [ "$got" = "$expected" ]; then
+    echo "OK   $label -> $expected"
+  else
+    echo "FAIL $label expected '$expected', got '$got' (rc=$rc)"
+    fail=1
+  fi
+}
+
+# Every probe here asserts `opus`. Asserting `sonnet` for a path shape would
+# freeze today's over-matches in as required behaviour, so the sweep is
+# one-directional by construction; `sonnet` appears below only as a mutant's
+# flipped value, never as this script's contract.
+echo "-- under-match sweep: one-directional, opus only --"
+mkdir -p "$repo/sub"
+r_rel=$(add_commit rel-fixture hooks/scripts/thing.sh:1 sub/other.txt:1)
+sweep_start=$sweep
+
+# diff.relative does not merely mis-anchor the path: from a subdirectory it
+# drops the sensitive file out of the numstat entirely, so the file count and
+# the line count are wrong too.
+git -C "$repo" config diff.relative true
+run_at "(al) diff.relative=true from a subdirectory" opus unit-1 "$r_rel" "$repo/sub" "$repo"
+run_at "(am) diff.relative=true from the repo root"  opus unit-1 "$r_rel" "$repo"     "$repo"
+git -C "$repo" config diff.relative false
+run_at "(an) diff.relative=false"                    opus unit-1 "$r_rel" "$repo/sub" "$repo"
+git -C "$repo" config --unset diff.relative
+
+add_commit rename2-base docs/torename.md:1 > /dev/null
+git -C "$repo" mv docs/torename.md hooks/scripts/moved2.sh
+r_rel_rename=$(snap rename-into-hooks-2)
+run_at "(ao) a renamed sensitive path" opus unit-1 "$r_rel_rename" "$repo" "$repo"
+
+printf 'x\n' > "$repo/hooks/scripts/naïve.sh"
+r_rel_utf8=$(snap utf8-sensitive-2)
+run_at "(ap) a C-quoted (non-ASCII) sensitive path" opus unit-1 "$r_rel_utf8" "$repo" "$repo"
+
+r_agents=$(add_commit agents-source agents/reviewer.md:1)
+run_at "(aq) agents/reviewer.md"          opus unit-1 "$r_agents" "$repo" "$repo"
+r_agents_mirror=$(add_commit agents-mirror .claude/agents/reviewer.md:1)
+run_at "(ar) .claude/agents/reviewer.md"  opus unit-1 "$r_agents_mirror" "$repo" "$repo"
+
+# Non-vacuity floor: a sweep that silently stopped running probes would
+# otherwise report all-green.
+if [ "$((sweep - sweep_start))" = 7 ]; then
+  echo "OK   (as) the under-match sweep executed 7 probes"
+else
+  echo "FAIL (as) the under-match sweep executed $((sweep - sweep_start)) probes, expected 7"
+  fail=1
+fi
+
+echo "-- fail-closed marker-directory resolution --"
+r_one=$(add_commit one-line docs/one.md:1)
+run_at "(at) FAIL record + repo root, CLAUDE_PROJECT_DIR unset"   opus unit-fail "$r_one" "$repo"     -
+run_at "(au) FAIL record + subdirectory, CLAUDE_PROJECT_DIR unset" opus unit-fail "$r_one" "$repo/sub" -
+run_at "(av) FAIL record + subdirectory, CLAUDE_PROJECT_DIR set"   opus unit-fail "$r_one" "$repo/sub" "$repo"
+
+# An id was given but the record store is nowhere to be found: the
+# disqualifier cannot be evaluated, which is an unmeasurable input.
+repo2="$tmproot/repo2"
+mkdir -p "$repo2"
+git -C "$repo2" init -q
+git -C "$repo2" config user.email tester@example.com
+git -C "$repo2" config user.name tester
+git -C "$repo2" config commit.gpgsign false
+: > "$repo2/README"
+git -C "$repo2" add -A
+git -C "$repo2" commit -qm base
+seq 1 5 > "$repo2/notes.md"
+git -C "$repo2" add -A
+git -C "$repo2" commit -qm small
+r_nomarkers="$(git -C "$repo2" rev-parse HEAD~1)..$(git -C "$repo2" rev-parse HEAD)"
+run_at "(aw) no reviewed-marker directory at all" opus unit-1 "$r_nomarkers" "$repo2" -
+
 # --- Mutation controls (acceptance criterion 4) ---------------------------
 # reviewer-tier.sh sources nothing, so a plain copy is a complete runnable
 # mutant - no lib/ sibling to carry along. Each control asserts the named case
@@ -217,6 +306,31 @@ fi
 if mutate binary-ok 's/case "${added}${deleted}" in \*\[!0-9\]\*) opus ;; esac//'; then
   run_case "(mc10) binary guard removed: case (ak) flips to" \
     sonnet unit-1 "$r_binary" "$MUTANT"
+fi
+
+# One control per NEW mechanism (not per criterion). Each asserts the mutant
+# flips - a mutant value, never a contract assertion, so the one-directional
+# rule above is untouched.
+if mutate relative-on 's/ -c diff\.relative=false//'; then
+  git -C "$repo" config diff.relative true
+  run_at "(mc11) diff.relative no longer forced off: case (al) flips to" \
+    sonnet unit-1 "$r_rel" "$repo/sub" "$repo" "$MUTANT"
+  git -C "$repo" config --unset diff.relative
+fi
+if mutate projectdir-dot 's|^  project_dir="\$(git rev-parse --show-toplevel.*|  project_dir=.|; /-d "\$marker_dir"/d'; then
+  # `mutate` only proves the copy differs; both halves of this two-part
+  # mutation must land, or the flip is decided by the half that survived.
+  if grep -q 'show-toplevel' "$MUTANT" || grep -q -- '-d "\$marker_dir"' "$MUTANT"; then
+    echo "FAIL (mc12) the two-part mutation did not fully apply"
+    fail=1
+  else
+    run_at "(mc12) project-dir resolution reverted to '.': case (au) flips to" \
+      sonnet unit-fail "$r_one" "$repo/sub" - "$MUTANT"
+  fi
+fi
+if mutate no-agents-anchor "/^  '\^agents\/'\$/d"; then
+  run_at "(mc13) ^agents/ anchor removed: case (aq) flips to" \
+    sonnet unit-1 "$r_agents" "$repo" "$repo" "$MUTANT"
 fi
 
 exit "$fail"

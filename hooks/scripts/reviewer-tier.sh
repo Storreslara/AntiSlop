@@ -31,6 +31,8 @@ SENSITIVE_PATHS=(
   '^templates/settings-fragment\.json$'
   '^\.claude/settings.*\.json$'
   '^\.claude-plugin/'
+  '^agents/'
+  '^\.claude/agents/'
 )
 
 opus() { echo opus; exit 0; }
@@ -49,14 +51,26 @@ touches_sensitive_path() {
 
 task_id="${1:-}"
 range="${2:-}"
-project_dir="${CLAUDE_PROJECT_DIR:-.}"
+
+# The marker directory is resolved from the enclosing repo, not from the cwd:
+# defaulting to `.` loses the record silently when this is invoked from a
+# subdirectory, printing a normal `sonnet` while a live FAIL record exists.
+if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
+  project_dir="$CLAUDE_PROJECT_DIR"
+else
+  project_dir="$(git rev-parse --show-toplevel 2>/dev/null)" || project_dir=.
+fi
 
 # 1 - a durable FAIL record for this unit disqualifies it (same id sanitizing
 # and same marker directory as task-gate.sh). Without an id there is no record
-# to consult, so the disqualifier cannot be evaluated at all.
+# to consult, so the disqualifier cannot be evaluated at all; with an id but no
+# marker directory anywhere, it cannot be evaluated either - unmeasurable, so
+# it fails closed like every other unmeasurable input.
 [ -n "$task_id" ] || opus
 safe_id="${task_id//[^a-zA-Z0-9._-]/_}"
-if [ -f "${project_dir}/.claude/reviewed/${safe_id}.fail" ]; then
+marker_dir="${project_dir}/.claude/reviewed"
+[ -d "$marker_dir" ] || opus
+if [ -f "${marker_dir}/${safe_id}.fail" ]; then
   opus
 fi
 
@@ -67,7 +81,11 @@ case "$range" in -*) opus ;; esac
 # `--no-renames` keeps a moved file from being printed in compacted
 # `{old => new}` form, and `core.quotepath=false` keeps a non-ASCII path from
 # being C-quoted; either shape would slip a sensitive path past every anchor.
-numstat="$(git -c core.quotepath=false diff --no-renames --numstat "$range" -- 2>/dev/null)" || opus
+# `diff.relative=false` is stronger than an anchoring concern: a repo config of
+# `diff.relative=true` drops every path outside the cwd out of the numstat
+# entirely, so a sensitive file becomes invisible and the line count shrinks.
+# The header's "run from the repo root" is advice, not enforcement.
+numstat="$(git -c core.quotepath=false -c diff.relative=false diff --no-renames --numstat "$range" -- 2>/dev/null)" || opus
 
 files=0
 lines=0
