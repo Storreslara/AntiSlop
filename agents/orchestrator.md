@@ -267,52 +267,6 @@ that doesn't fit fable's light/mechanical profile (task-master's own
 frontmatter states this explicitly; this is a hard exclusion, not a
 default-and-override like the spec-master/auditor conditions above).
 
-### Reviewer roast-work advisory pass (fable heavy-lifting)
-The authoritative PASS/FAIL gate defaults to reviewer's frontmatter
-`model: opus` and may run on sonnet for demonstrably-mechanical units per the
-"Reviewer gate model selection" subsection below, but never on fable, for any
-unit, regardless of size. What changes for a "heavy" unit is purely ADDITIVE:
-you also dispatch a separate, non-authoritative `model: fable` advisory pass
-that runs the reviewer's preloaded `roast-work` skill over the same diff. This
-second dispatch is a distinct subagent invocation from the opus PASS/FAIL
-review, not a model swap on it — the model is fixed per dispatch, so getting
-fable's bulk-context critique without weakening the gate requires a second,
-separate spawn.
-
-**Context for the fable pass.** The fable dispatch's context is the same
-lead-programmer advisory review packet (see "Review routing" above) that you
-already assemble and forward to the opus reviewer — changed files, the
-`baseline..HEAD` diff range, the acceptance-criteria command(s), and the unit
-id. You, the orchestrator, assemble and forward this packet to the fable
-dispatch at dispatch time; the fresh fable subagent never re-derives it from
-scratch (re-diffing the repo, re-reading unit history) at fable prices.
-
-**Trigger — see `templates/persona-protocol.md`'s "Reviewer roast-work
-advisory pass trigger (fable heavy-lifting)" section** for the three-criteria
-"heavy" definition and the downgrade/expiry path; this is the single source,
-not restated here.
-
-`task-master` may tag a sliced unit `Roast pass: fable` (advisory, mirroring
-its `Suggested model: haiku|sonnet|opus` per-unit tag) when it judges the unit
-heavy by this trigger; honor that tag at dispatch time as a signal to spawn
-the advisory pass, but the trigger conditions above — not the tag's mere
-presence or absence — are what actually decide "heavy," since task-master's
-tag is advisory guidance, not a binding classification. For a routine/small
-unit that meets none of these, no separate fable pass runs — the single
-reviewer applies `roast-work` inline (it's a preloaded skill regardless
-of dispatch model).
-
-**The fable pass is strictly advisory — it is NEVER authoritative and NEVER
-writes the PASS/FAIL marker.** Only the authoritative reviewer's own review
-(opus or sonnet-gated) writes `.claude/reviewed/<task-id>.pass` (or `.fail`).
-Dispatch the fable pass with scope limited to producing a `roast-work`
-critique to hand back to you (or to attach alongside the opus verdict) — it
-never determines "done," never blocks or unblocks the pending-review flag,
-and a FAIL-shaped or
-critical-sounding fable finding is not itself a verdict: route anything it
-surfaces through the opus reviewer (or the normal FAIL-handling protocol)
-rather than acting on it directly.
-
 ### Reviewer gate model selection (measured at dispatch time)
 `task-master` no longer tags a reviewer tier — it slices before the diff
 exists, so it could only predict one. You decide the tier at reviewer-dispatch
@@ -344,16 +298,8 @@ is final, and you never turn it into `sonnet` however mechanical the unit
 looks to you. This one-way rule is what keeps a measured tier from being a
 weakening of the gate.
 
-**"Sonnet-eligible" and "heavy" are different concepts — never substitute one
-for the other.** Sonnet-eligibility is decided only by the script above. The
-heavy-unit trigger's own three criteria keep their existing definition and
-continue to govern the fable advisory pass only (see the subsection above).
-Do not read a heavy classification as an opus gate verdict, or a `sonnet`
-verdict as evidence a unit is not heavy.
-
 **Fable is never valid on the gate.** The script never prints `fable`, and you
-never substitute it. Fable stays confined to the separate advisory
-`Roast pass: fable` dispatch above — unchanged.
+never substitute it.
 
 **`.fail` disqualifier.** Before dispatching the reviewer, check
 `.claude/reviewed/<task-id>.fail`; if it exists, dispatch the reviewer on opus

@@ -532,7 +532,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
       'Continuing after a FAIL verdict',
-      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
       'A note on `memory`',
     ],
     drop: [],
@@ -552,7 +551,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
-      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
     ],
   },
   reviewer: {
@@ -565,7 +563,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
-      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
@@ -588,7 +585,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
-      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
     ],
   },
   'task-master': {
@@ -599,7 +595,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
       'FAIL record (durable warning for future spawns)',
-      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
       'A note on `memory`',
     ],
     drop: [
@@ -623,7 +618,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Retrieval contract',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
-      'Reviewer roast-work advisory pass trigger (fable heavy-lifting)',
       'A note on `memory`',
     ],
   },

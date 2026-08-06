@@ -25,7 +25,6 @@ const SLIM = path.join(REPO_ROOT, 'templates/persona-protocol-slim.md');
 const CODEX_PORT = path.join(REPO_ROOT, 'adapters/codex/agents-md-fragment.md');
 const CURSOR_PORT = path.join(REPO_ROOT, 'adapters/cursor/rules/persona-protocol.mdc');
 
-const ROAST = 'Reviewer roast-work advisory pass trigger (fable heavy-lifting)';
 let failures = 0;
 
 function check(name, fn) {
@@ -67,7 +66,6 @@ const codexMap = {
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
-  'Reviewer roast-work advisory pass trigger (fable heavy-lifting)': { probe: 'roast-work' },
   'A note on `memory`': { deferred: 'Codex has no per-agent memory primitive (file convention only) — see platform notes' },
 };
 
@@ -86,7 +84,6 @@ const cursorMap = {
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
-  'Reviewer roast-work advisory pass trigger (fable heavy-lifting)': { probe: 'roast-work' },
   'A note on `memory`': { deferred: 'Cursor has no per-agent memory primitive (file convention only) — see platform notes' },
 };
 
@@ -117,14 +114,6 @@ check('Codex port: every canonical section is present or explicitly deferred', (
 
 check('Cursor port: every canonical section is present or explicitly deferred', () => {
   checkPort(canonicalHeaders(), fs.readFileSync(CURSOR_PORT, 'utf8'), cursorMap, 'cursor');
-});
-
-check('roast section is asserted PRESENT (not deferred) and actually appears in both ports', () => {
-  for (const [name, map] of [['codex', codexMap], ['cursor', cursorMap]]) {
-    assert.ok(map[ROAST] && map[ROAST].probe, `${name}: roast section must be a present-probe, not deferred`);
-  }
-  assert.ok(fs.readFileSync(CODEX_PORT, 'utf8').toLowerCase().includes('roast-work'), 'codex port missing roast-work content');
-  assert.ok(fs.readFileSync(CURSOR_PORT, 'utf8').toLowerCase().includes('roast-work'), 'cursor port missing roast-work content');
 });
 
 // The slim tier is not a port, but it IS the other half of the fan-out: three

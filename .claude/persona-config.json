@@ -41,17 +41,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "dd3c20b00432dd33aa87f8906962fc2e2aea7247c12798c1c6a9a7a4205384bc",
+    ".claude/agents/orchestrator.md": "9bf13bb6c64b7a32f2bacf017806fe34c4555b96481460fe5124f1d1dfa9ea1c",
     ".claude/agents/explorer.md": "200bc1773b487c788c6a8ff93ad94e22a631555651d8f0d7d026df512e2165ba",
     ".claude/agents/lead-programmer.md": "6dabc52e14041e3da9f1631b5a812ac4dbf6a92c967b49445abe42cb5e2bc4a7",
     ".claude/agents/milestone-auditor.md": "6d71c83dceafd2295891617c7e553aa2d670bab2ada2e357618127ca5bc447ba",
-    ".claude/agents/reviewer.md": "02134551d0cd0f949748b5f60587cc12cbd24557c18a3c82baa1686dc5d239a0",
+    ".claude/agents/reviewer.md": "16966c954acd91237ffd5a74b1f0cd66397ace415f7a49e581826818ff923055",
     ".claude/agents/researcher.md": "bdf3eb9b6275a2ccab6df00f060790f984fb8d443b5489aa4dfc480349ecf050",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "eb10262850e0376c2fe7f4bef3711a5cd5dc90b801d18a1b55cbd45178ee32c6",
     ".claude/agents/spec-master.md": "dd0249fae2b3e7ab16342ef7b904a47f2ffbc282ddbcf070b9f01110b80a93b2",
-    ".claude/agents/task-master.md": "d8e3fa97c345a517e3e7936e94142f8ef25d3bd9f5461015c9927b3b20bb604f",
+    ".claude/agents/task-master.md": "14465439abfbfaecb8cb2ca879c2dc30c885a6c7ec6f8b8217df46f7b8cfbbb5",
     ".claude/persona-protocol-slim.md": "5c9912fdb5d3eee3c491d96403cb6f626ad010aea505f15900bf8cecc3d0369c",
-    ".claude/persona-protocol.md": "7e8e5c044400833fe1fda90b254565de76caa5c6cd0a8290a2b4aff2fd0700f1"
+    ".claude/persona-protocol.md": "a69164892ab7e624fca28a2fad106bd95ed7259f04d5ac2d5beca7befee3604c"
   }
 }

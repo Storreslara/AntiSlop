@@ -105,10 +105,7 @@ drift apart.
   tagged `haiku`. The orchestrator's judgment
   may **downgrade** `sonnet` → `opus` but may **never upgrade** `opus` →
   `sonnet`; `fable` stays permanently excluded from the gate (ADR-0004) and
-  a prior `.fail` record still forces `opus`. "Measured reviewer tier" is
-  deliberately distinct from **"heavy"** (the roast-work/fable-advisory
-  trigger, ≥~8 files OR ≥~400-line diff OR structural/security-sensitive) —
-  conflating the two was the literal cause of finding F2; see
+  a prior `.fail` record still forces `opus`. See
   [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
 - **The graph** — Code Review Graph, a third-party MCP server providing
@@ -139,7 +136,8 @@ drift apart.
   Advisory and non-gating only — PASS/FAIL stays determined by the
   acceptance-criteria command + the existing materiality filter; roast-work
   never flips a verdict. Appended as a clearly-demarcated advisory section
-  after the verdict line.
+  after the verdict line. Runs inline, as part of the single reviewer
+  dispatch, only — there is no separate fable advisory pass.
 - **Agent identity** — the possibly-namespaced wire form of a persona name,
   `[<namespace>:]<persona-name>`, appearing in hook payloads' `agent_type` and
   `subagent_type` fields. The gate hooks normalize identities to handle both
@@ -148,8 +146,9 @@ drift apart.
   where a miss fails open, conservative matching (recognized namespace only) at
   privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
   the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
-  identically across all three platform ports. [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
-  documents the audit-logging hardening applied post-Step-1.
+  identically across all three platform ports. [ADR 0008](docs/adr/0008-agent-identity-gate-grant-asymmetry.md)
+  documents the GATE/GRANT asymmetry design; [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
+  documents audit-logging hardening applied post-Step-1.
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
@@ -157,11 +156,3 @@ drift apart.
   `task-master` re-derives dispatch instructions from the corrected spec.
   `task-master` is never a re-plan owner. Mid-flight "spec gap" signals also
   route back to `spec-master`.
-- **Roast-work routing (fable heavy lifting)** — `reviewer` frontmatter defaults
-  to `model: opus` (the authoritative PASS/FAIL gate always opus). For heavy
-  units — ≥~8 impacted files OR ≥~400-line diff OR structural/cross-cutting
-  change OR security-sensitive surface — the orchestrator dispatches an
-  additional non-authoritative `roast-work` advisory pass on fable. The
-  judgment-critical gate (acceptance-criteria command) stays on opus; only the
-  non-gating bulk-context critique uses fable. Tagged `Roast pass: fable` by
-  `task-master` like the `Suggested model` per-unit pattern.

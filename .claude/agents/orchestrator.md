@@ -208,7 +208,7 @@ whether `.claude/reviewed/<task-id>.fail` already exists; if so, treat it
 exactly like an in-session FAIL — never dispatch on `haiku`, and include the
 prior defect history in the dispatch prompt.
 
-### Opus|Fable routing for spec-master and milestone-auditor
+### Dispatch-model routing for spec-master and milestone-auditor
 Same mechanism and `CLAUDE_CODE_SUBAGENT_MODEL` caveat as the per-unit
 routing above. Unlike per-unit tags (written by task-master for a later
 lead-programmer dispatch), YOU choose spec-master's/auditor's own model at
@@ -217,7 +217,7 @@ dispatch time — a persona cannot tag its own upcoming invocation.
 Frontmatter `model: opus` stays the default for both personas — omit the
 `model` param unless the conditions below hold.
 
-**`spec-master` dispatch (if present):** use `model: fable` only when ALL of:
+**`spec-master` dispatch (if present):** use `model: sonnet` only when ALL of:
 - (a) **scope already enumerated** — the request names the affected
   files/modules outright, or a single explorer lookup can enumerate them
   completely;
@@ -227,20 +227,25 @@ Frontmatter `model: opus` stays the default for both personas — omit the
 - (c) **no interrogation needed** — nothing ambiguous that would trigger a
   grill-me session; if you'd expect the plan to come back with Open
   Questions, that is an opus dispatch. This condition is even more central
-  now that the persona is spec-only: a fable dispatch that turns out to need
+  now that the persona is spec-only: a sonnet dispatch that turns out to need
   interrogation gets the escalation-symmetry treatment below.
 
-**`milestone-auditor` dispatch:** use `model: fable` only when the milestone
-was mechanical end-to-end — every unit in it carried a `haiku` tag, no unit
-FAILed review on first pass, and the step-9 pre-audit checkpoint surfaced no
-human challenge. Any judgment signal (a `sonnet`/untagged unit, a FAIL, a
-checkpoint challenge) → default opus.
+**`milestone-auditor` dispatch:** evaluate the following tiers in order,
+top-down, first match wins:
+1. **`opus`** — any judgment signal: a `.fail` record for any unit in the
+   milestone, a human challenge at the step-9 pre-audit checkpoint, or a
+   carried-in `unconverged-requirement` follow-up.
+2. **`model: fable`** — no judgment signal AND the milestone is large: 8
+   units or more.
+3. **`model: sonnet`** — everything else.
 
 **Escalation symmetry** (mirrors "haiku units escalate on first FAIL"
-above): if a fable-run spec-master produces a plan the human rejects at
-approval, or one whose Open Questions reveal ambiguity you misjudged as
-absent, re-dispatch on `opus` — not fable again. A wrong-cheap dispatch
-costs one full re-run, same honesty as the haiku rule.
+above): a `spec-master` **sonnet** dispatch that produces a plan the human
+rejects at approval, or whose Open Questions reveal ambiguity you misjudged
+as absent, re-dispatches on `opus` — not sonnet again; a `milestone-auditor`
+**fable *or* sonnet** dispatch that misses a premise gap a human then
+catches re-dispatches on `opus` — never the same cheap tier twice. A
+wrong-cheap dispatch costs one full re-run, same honesty as the haiku rule.
 
 **A prior `.fail` record is an automatic disqualifier for fable.** If any
 `.claude/reviewed/*.fail` exists among the units a `spec-master` replan or a
@@ -262,52 +267,6 @@ writing accurate dispatch boundaries and catching spec gaps needs judgment
 that doesn't fit fable's light/mechanical profile (task-master's own
 frontmatter states this explicitly; this is a hard exclusion, not a
 default-and-override like the spec-master/auditor conditions above).
-
-### Reviewer roast-work advisory pass (fable heavy-lifting)
-The authoritative PASS/FAIL gate defaults to reviewer's frontmatter
-`model: opus` and may run on sonnet for demonstrably-mechanical units per the
-"Reviewer gate model selection" subsection below, but never on fable, for any
-unit, regardless of size. What changes for a "heavy" unit is purely ADDITIVE:
-you also dispatch a separate, non-authoritative `model: fable` advisory pass
-that runs the reviewer's preloaded `roast-work` skill over the same diff. This
-second dispatch is a distinct subagent invocation from the opus PASS/FAIL
-review, not a model swap on it — the model is fixed per dispatch, so getting
-fable's bulk-context critique without weakening the gate requires a second,
-separate spawn.
-
-**Context for the fable pass.** The fable dispatch's context is the same
-lead-programmer advisory review packet (see "Review routing" above) that you
-already assemble and forward to the opus reviewer — changed files, the
-`baseline..HEAD` diff range, the acceptance-criteria command(s), and the unit
-id. You, the orchestrator, assemble and forward this packet to the fable
-dispatch at dispatch time; the fresh fable subagent never re-derives it from
-scratch (re-diffing the repo, re-reading unit history) at fable prices.
-
-**Trigger — see `templates/persona-protocol.md`'s "Reviewer roast-work
-advisory pass trigger (fable heavy-lifting)" section** for the three-criteria
-"heavy" definition and the downgrade/expiry path; this is the single source,
-not restated here.
-
-`task-master` may tag a sliced unit `Roast pass: fable` (advisory, mirroring
-its `Suggested model: haiku|sonnet|opus` per-unit tag) when it judges the unit
-heavy by this trigger; honor that tag at dispatch time as a signal to spawn
-the advisory pass, but the trigger conditions above — not the tag's mere
-presence or absence — are what actually decide "heavy," since task-master's
-tag is advisory guidance, not a binding classification. For a routine/small
-unit that meets none of these, no separate fable pass runs — the single
-reviewer applies `roast-work` inline (it's a preloaded skill regardless
-of dispatch model).
-
-**The fable pass is strictly advisory — it is NEVER authoritative and NEVER
-writes the PASS/FAIL marker.** Only the authoritative reviewer's own review
-(opus or sonnet-gated) writes `.claude/reviewed/<task-id>.pass` (or `.fail`).
-Dispatch the fable pass with scope limited to producing a `roast-work`
-critique to hand back to you (or to attach alongside the opus verdict) — it
-never determines "done," never blocks or unblocks the pending-review flag,
-and a FAIL-shaped or
-critical-sounding fable finding is not itself a verdict: route anything it
-surfaces through the opus reviewer (or the normal FAIL-handling protocol)
-rather than acting on it directly.
 
 ### Reviewer gate model selection (measured at dispatch time)
 `task-master` no longer tags a reviewer tier — it slices before the diff
@@ -340,16 +299,8 @@ is final, and you never turn it into `sonnet` however mechanical the unit
 looks to you. This one-way rule is what keeps a measured tier from being a
 weakening of the gate.
 
-**"Sonnet-eligible" and "heavy" are different concepts — never substitute one
-for the other.** Sonnet-eligibility is decided only by the script above. The
-heavy-unit trigger's own three criteria keep their existing definition and
-continue to govern the fable advisory pass only (see the subsection above).
-Do not read a heavy classification as an opus gate verdict, or a `sonnet`
-verdict as evidence a unit is not heavy.
-
 **Fable is never valid on the gate.** The script never prints `fable`, and you
-never substitute it. Fable stays confined to the separate advisory
-`Roast pass: fable` dispatch above — unchanged.
+never substitute it.
 
 **`.fail` disqualifier.** Before dispatching the reviewer, check
 `.claude/reviewed/<task-id>.fail`; if it exists, dispatch the reviewer on opus
@@ -788,38 +739,6 @@ plus revised acceptance criteria for the failed step(s), never a
 from-scratch replan), which flows back through `task-master` for
 re-dispatch. A unit that fails twice usually means the plan itself has a
 gap, not that one more automated pass will close it.
-
-## Reviewer roast-work advisory pass trigger (fable heavy-lifting)
-A unit is "heavy" — eligible for the additional, non-authoritative fable
-`roast-work` advisory pass alongside the authoritative opus/sonnet PASS/FAIL
-review — when it meets ANY of:
-1. **Large surface** — blast radius ≥ ~8 impacted files OR diff ≥ ~400
-   changed lines.
-2. **Structural / cross-cutting change** — e.g. a persona split, an
-   orchestrator routing rewrite, a `bin/cli.js` migration, or any other
-   change to shared/cross-persona surface that a reasonable reviewer would
-   call structurally cross-cutting. This list is illustrative, not
-   exhaustive.
-3. **Security-sensitive surface** — auth, input parsing/validation, secret
-   handling, or migrations touched.
-
-Fable is the single most expensive model tier available to this system —
-fire the pass only when a unit actually meets one of the three criteria
-above, never as a default-to-yes hedge. `task-master` and the orchestrator
-each independently re-derive "heavy" from this same trigger; the tag's
-presence or absence is a suggestion, not the deciding classification.
-
-**Downgrade/expiry path.** A recurring unit *class* (same trigger reason,
-same recurring surface — e.g. "test-fixture-only diffs under `tests/`") that
-has cleared 3 consecutive fable passes with zero Major/Critical findings for
-that class stops qualifying for the tag: `task-master` records the class and
-its clean-streak count in its own `memory: project` store and omits `Roast
-pass: fable` for units matching a downgraded class, noting the omission
-explicitly in the dispatch prompt. Any Major/Critical finding — from either
-pass — resets that class's streak to zero and immediately restores the
-trigger. The downgrade is always per-class, never global, and lapses
-automatically the moment risk reappears, so total system cost does not only
-ratchet up over the repo's lifetime.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
