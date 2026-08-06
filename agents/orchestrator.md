@@ -207,7 +207,7 @@ whether `.claude/reviewed/<task-id>.fail` already exists; if so, treat it
 exactly like an in-session FAIL — never dispatch on `haiku`, and include the
 prior defect history in the dispatch prompt.
 
-### Opus|Fable routing for spec-master and milestone-auditor
+### Dispatch-model routing for spec-master and milestone-auditor
 Same mechanism and `CLAUDE_CODE_SUBAGENT_MODEL` caveat as the per-unit
 routing above. Unlike per-unit tags (written by task-master for a later
 lead-programmer dispatch), YOU choose spec-master's/auditor's own model at
@@ -216,7 +216,7 @@ dispatch time — a persona cannot tag its own upcoming invocation.
 Frontmatter `model: opus` stays the default for both personas — omit the
 `model` param unless the conditions below hold.
 
-**`spec-master` dispatch (if present):** use `model: fable` only when ALL of:
+**`spec-master` dispatch (if present):** use `model: sonnet` only when ALL of:
 - (a) **scope already enumerated** — the request names the affected
   files/modules outright, or a single explorer lookup can enumerate them
   completely;
@@ -226,20 +226,25 @@ Frontmatter `model: opus` stays the default for both personas — omit the
 - (c) **no interrogation needed** — nothing ambiguous that would trigger a
   grill-me session; if you'd expect the plan to come back with Open
   Questions, that is an opus dispatch. This condition is even more central
-  now that the persona is spec-only: a fable dispatch that turns out to need
+  now that the persona is spec-only: a sonnet dispatch that turns out to need
   interrogation gets the escalation-symmetry treatment below.
 
-**`milestone-auditor` dispatch:** use `model: fable` only when the milestone
-was mechanical end-to-end — every unit in it carried a `haiku` tag, no unit
-FAILed review on first pass, and the step-9 pre-audit checkpoint surfaced no
-human challenge. Any judgment signal (a `sonnet`/untagged unit, a FAIL, a
-checkpoint challenge) → default opus.
+**`milestone-auditor` dispatch:** evaluate the following tiers in order,
+top-down, first match wins:
+1. **`opus`** — any judgment signal: a `.fail` record for any unit in the
+   milestone, a human challenge at the step-9 pre-audit checkpoint, or a
+   carried-in `unconverged-requirement` follow-up.
+2. **`model: fable`** — no judgment signal AND the milestone is large: 8
+   units or more.
+3. **`model: sonnet`** — everything else.
 
 **Escalation symmetry** (mirrors "haiku units escalate on first FAIL"
-above): if a fable-run spec-master produces a plan the human rejects at
-approval, or one whose Open Questions reveal ambiguity you misjudged as
-absent, re-dispatch on `opus` — not fable again. A wrong-cheap dispatch
-costs one full re-run, same honesty as the haiku rule.
+above): a `spec-master` **sonnet** dispatch that produces a plan the human
+rejects at approval, or whose Open Questions reveal ambiguity you misjudged
+as absent, re-dispatches on `opus` — not sonnet again; a `milestone-auditor`
+**fable *or* sonnet** dispatch that misses a premise gap a human then
+catches re-dispatches on `opus` — never the same cheap tier twice. A
+wrong-cheap dispatch costs one full re-run, same honesty as the haiku rule.
 
 **A prior `.fail` record is an automatic disqualifier for fable.** If any
 `.claude/reviewed/*.fail` exists among the units a `spec-master` replan or a
