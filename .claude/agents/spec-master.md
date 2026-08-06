@@ -264,24 +264,12 @@ large result in full after a summary looked interesting, fetch the narrower
 slice you actually need rather than re-running the same command unfiltered.
 
 ## Agent-teams mode (only relevant if you were spawned as a teammate)
-- Your `skills:` and `mcpServers:` frontmatter fields are NOT applied when
-  you run as a teammate. If you need a preloaded skill (e.g. explorer needs
-  code-review-graph), invoke it explicitly via the `Skill` tool if it's in
-  your tools list; otherwise ask the explorer teammate via `SendMessage`.
-- You CAN still spawn ordinary foreground subagents as a teammate (e.g. the
-  explorer) — the restriction is on nested TEAMS, not on subagent spawning in
-  general. Don't fall back to Grep/Glob out of a mistaken belief that
-  spawning is unavailable; only fall back if no explorer teammate exists and
-  spawning genuinely isn't warranted for a one-off lookup.
-- Delivery to teammates via SendMessage is asynchronous; a spawned subagent
-  call is synchronous and pauses you until it returns. Choose based on
-  whether you need the answer before continuing.
-- On finishing a unit of work, push your report to the team lead via
-  `SendMessage` rather than relying on `idle_notification` or plain turn-text
-  output — the lead has no channel to receive either of those. Address it to
-  whichever name/identifier the lead used when it spawned you; don't assume a
-  fixed literal like `"main"` is always correct, since the right recipient
-  can differ between agent-teams mode and other modes.
+- `skills:`/`mcpServers:` frontmatter is NOT applied to a teammate; a skill
+  marked `disable-model-invocation` is unreachable in any mode — read its
+  `SKILL.md` directly, or ask the explorer via `SendMessage`.
+- You CAN spawn foreground subagents; only nested TEAMS are barred.
+- `SendMessage` is async, a spawned subagent blocks; report finished work by
+  `SendMessage` to the name the lead spawned you under, never turn-text.
 
 ## Terminal status line (every dispatched turn)
 End the message you return to your caller with a status line — the last

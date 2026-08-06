@@ -41,13 +41,6 @@ instructions.
   not whole modules. Before finalizing a non-trivial change, ask the explorer
   for the blast radius and mention any surprising impact in the commit
   message and the scribe update.
-- **Scribe updates (batched, blocking-but-brief)**: if this project has a
-  `scribe` (check `.claude/agents/`), spawning it pauses you until it
-  returns — batch it at the END of each plan step, not each edit, with a
-  compact digest (affected files, changed APIs, new conventions) so the pause
-  stays short. (In agent-teams mode, SendMessage the
-  scribe teammate instead and keep working — delivery is asynchronous
-  there.) If there's no scribe, skip this — nothing else depends on it.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,
@@ -58,8 +51,9 @@ instructions.
 - **Don't grade your own work**: when a unit of work meets its
   machine-checkable criteria, end your turn reporting "ready-for-review" with
   a structured **advisory review packet** — changed files, the commit/diff
-  range (`baseline..HEAD`), the acceptance-criteria command(s), and the
-  spec-step/unit id — routing to the reviewer is the orchestrator's job, not
+  range (`baseline..HEAD`), the acceptance-criteria command(s), the
+  spec-step/unit id, and a **scribe digest** (affected files, changed APIs,
+  new conventions) — routing to the reviewer is the orchestrator's job, not
   yours, and a direct spawn attempt is hook-blocked, not just against the
   rules. State plainly that the packet is advisory/non-authoritative: it
   never substitutes for the reviewer's own independent verification, and an
@@ -116,24 +110,12 @@ large result in full after a summary looked interesting, fetch the narrower
 slice you actually need rather than re-running the same command unfiltered.
 
 ## Agent-teams mode (only relevant if you were spawned as a teammate)
-- Your `skills:` and `mcpServers:` frontmatter fields are NOT applied when
-  you run as a teammate. If you need a preloaded skill (e.g. explorer needs
-  code-review-graph), invoke it explicitly via the `Skill` tool if it's in
-  your tools list; otherwise ask the explorer teammate via `SendMessage`.
-- You CAN still spawn ordinary foreground subagents as a teammate (e.g. the
-  explorer) — the restriction is on nested TEAMS, not on subagent spawning in
-  general. Don't fall back to Grep/Glob out of a mistaken belief that
-  spawning is unavailable; only fall back if no explorer teammate exists and
-  spawning genuinely isn't warranted for a one-off lookup.
-- Delivery to teammates via SendMessage is asynchronous; a spawned subagent
-  call is synchronous and pauses you until it returns. Choose based on
-  whether you need the answer before continuing.
-- On finishing a unit of work, push your report to the team lead via
-  `SendMessage` rather than relying on `idle_notification` or plain turn-text
-  output — the lead has no channel to receive either of those. Address it to
-  whichever name/identifier the lead used when it spawned you; don't assume a
-  fixed literal like `"main"` is always correct, since the right recipient
-  can differ between agent-teams mode and other modes.
+- `skills:`/`mcpServers:` frontmatter is NOT applied to a teammate; a skill
+  marked `disable-model-invocation` is unreachable in any mode — read its
+  `SKILL.md` directly, or ask the explorer via `SendMessage`.
+- You CAN spawn foreground subagents; only nested TEAMS are barred.
+- `SendMessage` is async, a spawned subagent blocks; report finished work by
+  `SendMessage` to the name the lead spawned you under, never turn-text.
 
 ## WIP sentinel (mid-task handoff, not a bypass)
 To end your turn with work genuinely in progress or a red suite you haven't
