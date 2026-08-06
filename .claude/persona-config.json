@@ -41,7 +41,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "6628ba288d9f12a82bf3cf6def0b711125545261ce67568b29f42429994ab950",
+    ".claude/agents/orchestrator.md": "42aaff00332e8d3d9c8fab4c5ca12d9f10875589509460d38a928feefaeddb33",
     ".claude/agents/explorer.md": "91fb280cef5211ef656b3fa925fe983c5b1a256d985478ed6294d6c525c45072",
     ".claude/agents/lead-programmer.md": "0c089a74102fc6796185e998897371a421768084488a17917e097b18ebc55f7b",
     ".claude/agents/milestone-auditor.md": "da27cf5578652a3584e21ea290a2c198be9907cd19847d4d18cbd4877ac3903b",
