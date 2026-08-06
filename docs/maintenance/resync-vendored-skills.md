@@ -19,12 +19,11 @@ deciding whether/how to re-pin.
 | `improve-codebase-architecture` (+ `HTML-REPORT.md`) | `skills/engineering/improve-codebase-architecture` | verbatim |
 | `codebase-design` (+ `DEEPENING.md`, `DESIGN-IT-TWICE.md`) | `skills/engineering/codebase-design` | verbatim |
 | `domain-modeling` (+ `ADR-FORMAT.md`, `CONTEXT-FORMAT.md`) | `skills/engineering/domain-modeling` | verbatim |
-| `implement` | `skills/engineering/implement` | verbatim |
 | `to-spec` | `skills/engineering/to-spec` | **repointed** (see below) |
 | `to-tickets` | `skills/engineering/to-tickets` | **repointed** (see below) |
 | `code-review` | `skills/engineering/code-review` | **repointed** (see below) |
 
-The first 9 are byte-verbatim aside from their provenance header. The last
+The first 8 are byte-verbatim aside from their provenance header (with two intentional deviations: `handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` flag stripped, tracked as `fm-noflag` reconstruction type). The last
 3 (`to-spec`, `to-tickets`, `code-review`) have their
 `/setup-matt-pocock-skills` references repointed to antislop's native setup
 flow (`install-antislop` + `persona-config.json` `issueTracker` + the
@@ -62,7 +61,7 @@ wrong and a diff against upstream reports spurious drift on every file:
    unchanged.
 
 `scripts/resync-vendored-skills.sh` implements exactly this per-shape
-reconstruction (`fm` / `doc` / `raw` in its `FILES` table) and diffs the
+reconstruction (`fm` / `fm-noflag` / `doc` / `raw` in its `FILES` table) and diffs the
 reconstruction against the actual local file, rather than trying to strip
 the local file down to a "body" — reconstructing forward from upstream is
 less error-prone than guessing how many lines to strip backward.
@@ -95,7 +94,7 @@ show a difference, so they need a human read of the diff around the
 
 | `--check` exit code | meaning |
 |---|---|
-| `0` | all 9 verbatim skills `[OK]` |
+| `0` | all 8 verbatim skills `[OK]` |
 | `1` | `DRIFT DETECTED` — genuine content drift or a missing file, and all fetches succeeded |
 | `2` | `FETCH ERRORS` (drift status unknown because an upstream fetch failed), an unrecognized argument, or another script error (e.g. missing pinned SHA) |
 
@@ -103,7 +102,7 @@ Exit 2 is deliberately distinct from exit 1: a transient network blip
 fetching upstream must never be mistaken for genuine drift in already-
 vendored content.
 
-If `--check` reports drift on one of the 9 verbatim skills where nobody
+If `--check` reports drift on one of the 8 verbatim skills where nobody
 has edited `skills/` locally, that means the previously-vendored content
 does not actually match what's claimed at the pinned SHA — a content
 defect in whichever step vendored it, not something to silence in the
@@ -129,10 +128,10 @@ script.
    commit SHA for `main`
    (`git ls-remote https://github.com/mattpocock/skills main`) and update
    the SHA in `skills/THIRD-PARTY-NOTICES.md` (both the prose sentence and
-   every per-file provenance header comment across all 12 skills — a
+   every per-file provenance header comment across all 11 skills — a
    project-wide find/replace of the old SHA for the new one).
 5. Run `bash scripts/resync-vendored-skills.sh --check` again — it should
-   report `[OK]` for all 9 verbatim skills against the new pin.
+   report `[OK]` for all 8 verbatim skills against the new pin.
 6. Run `bash tests/validate.sh` and commit the update with a message
    noting the old and new SHA.
 

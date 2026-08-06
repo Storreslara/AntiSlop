@@ -25,10 +25,9 @@ script remains directly runnable/copyable.
 | 8 | `improve-codebase-architecture` | `skills/engineering/improve-codebase-architecture` |
 | 9 | `codebase-design` | `skills/engineering/codebase-design` |
 | 10 | `domain-modeling` | `skills/engineering/domain-modeling` |
-| 11 | `implement` | `skills/engineering/implement` |
-| 12 | `code-review` | `skills/engineering/code-review` |
+| 11 | `code-review` | `skills/engineering/code-review` |
 
-`to-spec`, `to-tickets`, and `code-review` additionally have their
+`handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). Additionally, `to-spec`, `to-tickets`, and `code-review` have their
 `/setup-matt-pocock-skills` references repointed to antislop's native setup
 flow (`install-antislop` + `persona-config.json` `issueTracker` + the
 retrieval contract); this is noted in each of those skills' own provenance

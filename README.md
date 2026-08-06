@@ -252,10 +252,10 @@ Exact registered skill names drift between package versions — treat these as
 the purpose they serve, not a name to search for; `install-antislop` verifies
 the actual installed names on disk rather than trusting this list:
 
-- **[mattpocock/skills](https://github.com/mattpocock/skills)** — 12 skills
+- **[mattpocock/skills](https://github.com/mattpocock/skills)** — 11 skills
   (`grill-me`, `grilling`, `handoff`, `to-spec`, `to-tickets`, `tdd`,
   `diagnosing-bugs`, `improve-codebase-architecture`, `codebase-design`,
-  `domain-modeling`, `implement`, `code-review`) are now vendored first-party
+  `domain-modeling`, `code-review`) are now vendored first-party
   under `skills/` — no external install step required. MIT licensed; see
   [`skills/THIRD-PARTY-NOTICES.md`](skills/THIRD-PARTY-NOTICES.md) for the
   full license text and the pinned upstream commit.

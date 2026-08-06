@@ -6,7 +6,7 @@
 # Usage:
 #   scripts/resync-vendored-skills.sh          # print a per-skill drift report
 #   scripts/resync-vendored-skills.sh --check  # same report; exit 1 if any of
-#                                               # the 9 verbatim skills (Step
+#                                               # the 8 verbatim skills (Step
 #                                               # A.2) has genuine content
 #                                               # drift (all fetches ok); exit
 #                                               # 2 if any upstream fetch
@@ -41,13 +41,13 @@ RAW_BASE="https://raw.githubusercontent.com/mattpocock/skills/$SHA"
 FILES="
 grill-me:fm:skills/grill-me/SKILL.md:skills/productivity/grill-me/SKILL.md
 grilling:fm:skills/grilling/SKILL.md:skills/productivity/grilling/SKILL.md
-handoff:fm:skills/handoff/SKILL.md:skills/productivity/handoff/SKILL.md
+handoff:fm-noflag:skills/handoff/SKILL.md:skills/productivity/handoff/SKILL.md
 tdd:fm:skills/tdd/SKILL.md:skills/engineering/tdd/SKILL.md
 tdd:doc:skills/tdd/tests.md:skills/engineering/tdd/tests.md
 tdd:doc:skills/tdd/mocking.md:skills/engineering/tdd/mocking.md
 diagnosing-bugs:fm:skills/diagnosing-bugs/SKILL.md:skills/engineering/diagnosing-bugs/SKILL.md
 diagnosing-bugs:raw:skills/diagnosing-bugs/scripts/hitl-loop.template.sh:skills/engineering/diagnosing-bugs/scripts/hitl-loop.template.sh
-improve-codebase-architecture:fm:skills/improve-codebase-architecture/SKILL.md:skills/engineering/improve-codebase-architecture/SKILL.md
+improve-codebase-architecture:fm-noflag:skills/improve-codebase-architecture/SKILL.md:skills/engineering/improve-codebase-architecture/SKILL.md
 improve-codebase-architecture:doc:skills/improve-codebase-architecture/HTML-REPORT.md:skills/engineering/improve-codebase-architecture/HTML-REPORT.md
 codebase-design:fm:skills/codebase-design/SKILL.md:skills/engineering/codebase-design/SKILL.md
 codebase-design:doc:skills/codebase-design/DEEPENING.md:skills/engineering/codebase-design/DEEPENING.md
@@ -55,9 +55,8 @@ codebase-design:doc:skills/codebase-design/DESIGN-IT-TWICE.md:skills/engineering
 domain-modeling:fm:skills/domain-modeling/SKILL.md:skills/engineering/domain-modeling/SKILL.md
 domain-modeling:doc:skills/domain-modeling/ADR-FORMAT.md:skills/engineering/domain-modeling/ADR-FORMAT.md
 domain-modeling:doc:skills/domain-modeling/CONTEXT-FORMAT.md:skills/engineering/domain-modeling/CONTEXT-FORMAT.md
-implement:fm:skills/implement/SKILL.md:skills/engineering/implement/SKILL.md
 "
-SKILL_ORDER="grill-me grilling handoff tdd diagnosing-bugs improve-codebase-architecture codebase-design domain-modeling implement"
+SKILL_ORDER="grill-me grilling handoff tdd diagnosing-bugs improve-codebase-architecture codebase-design domain-modeling"
 
 # to-spec/to-tickets/code-review are the 3 repoint skills Step A.3 lands.
 # Report-only: not gated by --check since they don't exist until A.3 lands.
@@ -75,14 +74,18 @@ check_one_file() {
   local expected="$TMPDIR/expected"
 
   case "$type" in
-    fm)
+    fm|fm-noflag)
       # insert header immediately after the closing frontmatter '---' line,
       # leaving the blank line + body that already follow it untouched.
+      if [ "$type" = "fm-noflag" ]; then
+        header="<!-- Vendored from mattpocock/skills $upstream_path @ $SHA, with the upstream model-invocation block removed so antislop personas can load it (see docs/maintenance/resync-vendored-skills.md). MIT (c) 2026 Matt Pocock - see skills/THIRD-PARTY-NOTICES.md. -->"
+      fi
       awk -v header="$header" '
         NR==1 { print; next }
         !closed && $0=="---" { print; print header; closed=1; next }
         { print }
       ' "$upstream_file" >"$expected"
+      [ "$type" = "fm-noflag" ] && sed -i '/^disable-model-invocation: true$/d' "$expected"
       ;;
     doc)
       { printf '%s\n\n' "$header"; cat "$upstream_file"; } >"$expected"
@@ -163,7 +166,7 @@ if [ "$CHECK" -eq 1 ]; then
   fi
   if [ "$drifted" -eq 1 ]; then
     echo
-    echo "DRIFT DETECTED among the 9 verbatim vendored skills." >&2
+    echo "DRIFT DETECTED among the 8 verbatim vendored skills." >&2
     exit 1
   fi
 fi
