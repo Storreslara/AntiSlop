@@ -31,7 +31,7 @@ recorded here. Dates are ISO (YYYY-MM-DD).
     with overlapping payloads. Consolidated to a single post-landing dispatch.
   - **F8 — persona-protocol.md prose compression:** The "Per-unit model
     routing" section consumed 36 % of orchestrator.md and was reproduced
-    across six personas. Compressed via Steps 1, 4, 9 (fable removal, ratchet
+    across six personas. Compressed via Steps 1, 4, 5 (fable removal, ratchet
     expiry, scribe consolidation); further prose cleanups in subsequent
     releases.
 
