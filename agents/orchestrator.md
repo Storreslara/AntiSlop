@@ -193,12 +193,21 @@ frontmatter) — if `CLAUDE_CODE_SUBAGENT_MODEL` is set in the environment it
 silently wins over this routing, so check for it if per-unit routing ever
 appears to have no effect.
 
+**Implementer-tier fail ratchet expiry.** A fail record for unit `X`
+stops disqualifying `X` from a cheaper implementer tier once a pass marker
+for `X` exists and is newer than the fail record — i.e., the unit was
+subsequently fixed and independently verified. Until then it disqualifies
+unchanged. While a unit is mid-retry and has not yet reached PASS, nothing
+expires.
+
 **Haiku units escalate on first FAIL.** If the reviewer FAILs a unit that ran
 on `haiku`, re-dispatch it on `sonnet` (not haiku again) with the defect list
 — a FAIL on a haiku unit is evidence it needed more judgment than task-master
 estimated, so a second haiku attempt is the low-value path. This still counts
 against the 2-FAIL cap above; a sonnet re-run that also FAILs hits the cap and
 surfaces to the user as usual, same as any other unit.
+ See the implementer-tier fail ratchet expiry rule above for when prior
+ FAILs stop disqualifying from cheaper tiers.
 
 **Check for a prior `.fail` record before ANY per-unit dispatch, not only
 right after an in-session FAIL.** A fresh orchestrator session has no memory
@@ -206,6 +215,8 @@ of a previous session's FAIL otherwise. Before dispatching a unit, check
 whether `.claude/reviewed/<task-id>.fail` already exists; if so, treat it
 exactly like an in-session FAIL — never dispatch on `haiku`, and include the
 prior defect history in the dispatch prompt.
+ See the implementer-tier fail ratchet expiry rule above: a prior `.fail`
+ stops disqualifying once a newer `.pass` marker exists for that unit.
 
 ### Dispatch-model routing for spec-master and milestone-auditor
 Same mechanism and `CLAUDE_CODE_SUBAGENT_MODEL` caveat as the per-unit
@@ -246,11 +257,14 @@ as absent, re-dispatches on `opus` — not sonnet again; a `milestone-auditor`
 catches re-dispatches on `opus` — never the same cheap tier twice. A
 wrong-cheap dispatch costs one full re-run, same honesty as the haiku rule.
 
-**A prior `.fail` record is an automatic disqualifier for fable.** If any
-`.claude/reviewed/*.fail` exists among the units a `spec-master` replan or a
-`milestone-auditor` audit touches, dispatch on `opus` regardless of how
-well-scoped the request otherwise looks — the conditions above describe the
-common case, not an override of standing failure history.
+**A prior `.fail` record disqualifies for fable.** A unit X with a `.fail`
+record disqualifies from spec-master/milestone-auditor fable dispatch,
+unless a pass marker for X exists and is newer than the fail record
+(indicating the unit was subsequently fixed and independently verified).
+This disqualifier applies to unit X alone; sibling units that a
+`spec-master` replan or `milestone-auditor` audit merely touches are not
+affected by X's `.fail` history. See the implementer-tier fail ratchet
+expiry rule above for the detailed expiry condition.
 
 ### task-master model routing
 Same mechanism as above — a persona cannot tag its own upcoming invocation,

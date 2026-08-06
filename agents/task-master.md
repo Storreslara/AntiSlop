@@ -47,10 +47,12 @@ into independently-grabbable, unambiguous units of work.
   already on record, never to your own risk judgment: (a) check
   `.claude/reviewed/<task-id>.fail` before tagging any unit — a prior FAIL is
   durable evidence it needed more judgment than first estimated;
-  never tag that unit `haiku`; or (b) the orchestrator's own first-FAIL
-  escalation (a haiku unit's first FAIL routes its retry to sonnet) — that
-  mechanism lives in `agents/orchestrator.md`, not here, and is unchanged by
-  this rule.
+  never tag that unit `haiku`
+  (unless a `.pass` marker newer than the `.fail` record exists for that unit,
+  indicating it was subsequently fixed and independently verified); or (b) the
+  orchestrator's own first-FAIL escalation (a haiku unit's first FAIL routes its
+  retry to sonnet) — that mechanism lives in `agents/orchestrator.md`, not here,
+  and is unchanged by this rule.
 - **No reviewer-tier tag — never predict the reviewer's model**: emit no tag
   of any kind proposing which model gates a unit's review. You slice
   *before* implementation, when the unit's diff does not exist yet, so any
