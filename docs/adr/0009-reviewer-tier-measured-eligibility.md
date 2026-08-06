@@ -90,6 +90,17 @@ are not merged, aliased, or cross-referenced as one rule.
   `hooks/hooks.json`; it lives under `hooks/scripts/` only so
   `tests/validate.sh`'s bash-syntax sweep covers it.
 
+### 2026-08-03 re-measurement
+
+A follow-up validation (issue #232) on 2026-08-03 re-measured the gate against the last 60 real commits with fresh task-ids and no prior FAIL records. Result: `8 of the last 60` commits (13.3%) eligible for sonnet; opus 52/60. The measurement lands inside the predicted band: this section's prediction ("roughly 6–8 of the last 50 commits, ~15%") maps to 8 of 60 = 13.3% — confirming initial tuning was sound.
+
+Attribution of the 52 opus verdicts:
+- 9 blocked by sensitive-path constraints only (all ≤3 files, ≤38 lines)
+- 16 blocked by size constraints only
+- 27 blocked by both sensitive-path and size constraints
+
+`MAX_CHANGED_LINES=40` and `MAX_CHANGED_FILES=3` were deliberately left unchanged (operator ruling 2026-08-03, decision option (a) per issue #232). The ~0% figure cited in prior efficiency-pass discussions belonged to the predecessor ADR-0006 scheme that this ADR already retired; no Pass 4 re-files it.
+
 ## Related
 - Amends ADR-0006 (signal-gated sonnet on the reviewer gate) — its conjunctive
   structure survives; only condition (1)'s prediction-time proxy is replaced by

@@ -105,7 +105,8 @@ drift apart.
   tagged `haiku`. The orchestrator's judgment
   may **downgrade** `sonnet` → `opus` but may **never upgrade** `opus` →
   `sonnet`; `fable` stays permanently excluded from the gate (ADR-0004) and
-  a prior `.fail` record still forces `opus`. See
+  a prior `.fail` record still forces `opus`. Measured on 2026-08-03 at 8/60
+  commits (13.3%), inside the predicted band. See
   [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
 - **The graph** — Code Review Graph, a third-party MCP server providing
