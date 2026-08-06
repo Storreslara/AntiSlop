@@ -46,9 +46,8 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   re-introduction into `task-master`. This is a deliberate cost reduction,
   not an oversight. ADR-0004 § Decision Tension 2 (fable's bulk-context
   critique on large surfaces) is explicitly superseded by the review-centric
-  approach for `spec-master` and the reviewer's advisory pass, but survives
-  for `milestone-auditor`'s tier-2 dispatch; ADR-0004's Tension 1
-  (roast-work as advisory, never gating) survives unchanged.
+  approach; ADR-0004's Tension 1 (roast-work as advisory, never gating)
+  survives unchanged.
 
 ### Internal
 - Milestone 1 release (version bump + mirror regeneration + CHANGELOG).
