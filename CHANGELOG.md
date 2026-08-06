@@ -3,6 +3,50 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.23.0] - 2026-08-06
+
+### Changed
+- **Efficiency audit remediation, Milestone 1 (F1, F2, F4, F5, F8).** Five
+  distinct cost drivers in the persona system and orchestrator prose were
+  identified and remediated:
+  - **F1 — fable's inverted cost-benefit in spec-master:** The most expensive
+    model tier was routed to the easiest spec work (already-enumerated scope,
+    existing seams, no interrogation needed). Rerouted `spec-master` to
+    `opus` or `sonnet` only. `milestone-auditor` was amended to route fable
+    to size-measured bulk-context work (≥8 units) rather than the previous
+    inverted condition.
+  - **F2 — removing the fable roast-work advisory pass:** The pass duplicated
+    the reviewer's own inline `roast-work` (same rubric, same diff), but was
+    gated on triggers that fired on 2-line diffs (no size floor). Decision:
+    removed the pass outright, accepting a capability reduction against
+    ADR-0004 in exchange for simplicity. This removes the final dispatch of
+    `fable` anywhere in the system — see R-I decision below.
+  - **F4 — expire implementer-side `.fail` ratchets on PASS:** A `.fail`
+    record permanently disqualified a unit from cheaper tiers; now expires
+    once a `.pass` marker for that unit exists and postdates the `.fail`.
+    The reviewer gate (`.fail` disqualifier) remains permanent, preserving
+    ADR-0006 and ADR-0009 safety invariants.
+  - **F5 — scribe double-dispatch:** The scribe was called twice per unit
+    (once blocking from lead-programmer, once from orchestrator post-landing)
+    with overlapping payloads. Consolidated to a single post-landing dispatch.
+  - **F8 — persona-protocol.md prose compression:** The "Per-unit model
+    routing" section consumed 36 % of orchestrator.md and was reproduced
+    across six personas. Compressed via Steps 1, 4, 9 (fable removal, ratchet
+    expiry, scribe consolidation); further prose cleanups in subsequent
+    releases.
+
+  **R-I decision (F2 consequence): `fable` is dispatched by no persona and no
+  pass anywhere in the system after F1 and F2 land.** The standing exclusion
+  guard in `agents/orchestrator.md` (line 258, task-master model routing) was
+  deliberately retained to prevent accidental re-introduction; only the
+  dispatch paths are removed. This is a deliberate cost reduction, not an
+  oversight. ADR-0004 § Decision Tension 2 (fable's bulk-context critique on
+  large surfaces) is explicitly superseded by the review-centric approach; its
+  Tension 1 (roast-work as advisory, never gating) survives unchanged.
+
+### Internal
+- Milestone 1 release (version bump + mirror regeneration + CHANGELOG).
+
 ## [0.22.0] - 2026-08-02
 
 ### Changed
