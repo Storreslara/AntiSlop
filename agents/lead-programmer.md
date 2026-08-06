@@ -40,13 +40,6 @@ instructions.
   not whole modules. Before finalizing a non-trivial change, ask the explorer
   for the blast radius and mention any surprising impact in the commit
   message and the scribe update.
-- **Scribe updates (batched, blocking-but-brief)**: if this project has a
-  `scribe` (check `.claude/agents/`), spawning it pauses you until it
-  returns — batch it at the END of each plan step, not each edit, with a
-  compact digest (affected files, changed APIs, new conventions) so the pause
-  stays short. (In agent-teams mode, SendMessage the
-  scribe teammate instead and keep working — delivery is asynchronous
-  there.) If there's no scribe, skip this — nothing else depends on it.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,
@@ -57,8 +50,9 @@ instructions.
 - **Don't grade your own work**: when a unit of work meets its
   machine-checkable criteria, end your turn reporting "ready-for-review" with
   a structured **advisory review packet** — changed files, the commit/diff
-  range (`baseline..HEAD`), the acceptance-criteria command(s), and the
-  spec-step/unit id — routing to the reviewer is the orchestrator's job, not
+  range (`baseline..HEAD`), the acceptance-criteria command(s), the
+  spec-step/unit id, and a **scribe digest** (affected files, changed APIs,
+  new conventions) — routing to the reviewer is the orchestrator's job, not
   yours, and a direct spawn attempt is hook-blocked, not just against the
   rules. State plainly that the packet is advisory/non-authoritative: it
   never substitutes for the reviewer's own independent verification, and an

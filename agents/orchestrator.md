@@ -34,10 +34,11 @@ this table is a fallback for ambiguous requests, not the only path.
 
 ## Scribe dispatch convention
 
-When dispatching `scribe` if present, for a landed unit (one that has passed
-review and is ready for wiki/documentation updates), the dispatch must carry
-BOTH the issue number and the task-id as explicit inputs. These are not
-interchangeable — the scribe's issue-closing logic uses both (markers live at
+After the reviewer's PASS, the orchestrator dispatches the scribe once per unit,
+carrying
+three things from the lead-programmer's ready-for-review packet: the scribe
+digest (affected files, changed APIs, new conventions), plus the issue number
+and the task-id as explicit inputs. These inputs are not interchangeable — the scribe's issue-closing logic uses both (markers live at
 `.claude/reviewed/<task-id>.pass` but the tracker issue is a separate number),
 so the task-id cannot be derived from the issue number.
 
@@ -170,8 +171,7 @@ silently degrading it without saying so would be worse than not having it.
 
 ## Default feature pipeline
 Explore → Plan → Implement → Verify → Commit: (researcher first if the
-approach is novel) → spec-master → task-master → lead-programmer (which
-updates the scribe itself) → reviewer via the routing above → unit done only
+approach is novel) → spec-master → task-master → lead-programmer → reviewer via the routing above → unit done only
 on PASS. Fetch sliced issues using task-master's retrieval-contract line (see
 shared protocol).
 
