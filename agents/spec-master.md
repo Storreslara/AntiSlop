@@ -5,7 +5,7 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: antislop:grill-me, antislop:to-spec, antislop:fail-triage
+skills: antislop:grilling, antislop:to-spec, antislop:fail-triage
 maxTurns: 40
 ---
 
@@ -33,7 +33,7 @@ clarify intent is fine.
 
   Carry Partial/Missing categories into `grill-me` as coverage
   targets — grill-me itself is unchanged; this is a coverage/audit layer on
-  top, never a replacement. For any non-trivial task, run the `grill-me`
+  top, never a replacement. For any non-trivial task, run the `grill-me` (the skill invoked is grilling)
   session next — interrogate the request until every branch of the decision
   tree is resolved, asking **at most 5 questions total**, prioritized by
   impact × uncertainty, each carrying a recommended default (and
@@ -176,12 +176,12 @@ clarify intent is fine.
   `## Retrieval`, `## Affected files`, `## Ordered edits`, `## Do NOT touch`,
   `## Acceptance criteria`, `## Pre-resolved context`, `## Escalation`), and
   the orchestrator dispatches from the `docs/plans/` document. You never run
-  `to-issues` on any path (ADR-0003 preserved); on the fast path no tracker
+  `to-tickets` on any path (ADR-0003 preserved); on the fast path no tracker
   issue exists, the retrieval contract points at the `docs/plans/` path, and
   `scribe`'s issue-closing duty correctly does not fire (it requires an issue
   number in its dispatch). **Standard path (≥3 units, debug spec, Convergence
   follow-ups)**: `task-master` slices the plan into independently-grabbable
-  units with `to-issues`, assigns each unit's `Suggested model` tag, states
+  units with `to-tickets`, assigns each unit's `Suggested model` tag, states
   the retrieval contract, and writes the detailed per-unit dispatch prompts
   for `lead-programmer`/`scribe`. You never slice the plan or write dispatch
   prompts yourself.
@@ -190,7 +190,7 @@ clarify intent is fine.
   numbered steps under a dated **## Convergence follow-ups** heading in the
   existing plan doc — append-only, never rewriting or renumbering existing
   steps, never adding work beyond the named findings. Follow-up units flow
-  to `task-master` for `to-issues` slicing and the normal review pipeline
+  to `task-master` for `to-tickets` slicing and the normal review pipeline
   like any other step.
 - **Debug spec on 2-FAIL-cap escalation**: produce this artifact only when
   the orchestrator escalates a unit that hit the shared protocol's 2-FAIL
