@@ -169,11 +169,21 @@ clarify intent is fine.
   document (below) remains the canonical artifact — `to-spec`'s publish is
   additive, not a substitute for it.
 - **Hand off to `task-master`**: once Self-check passes (and, where used,
-  the plan is published via `to-spec`), your side of the work is done —
-  `task-master` slices the plan into independently-grabbable units with
-  `to-issues`, assigns each unit's `Suggested model` tag, states the
-  retrieval contract, and writes the detailed per-unit dispatch prompts for
-  `lead-programmer`/`scribe`. You never slice the plan or write dispatch
+  the plan is published via `to-spec`), your side of the work is done.
+  **Fast path (≤2 dispatchable units)**: when a finalized spec resolves to
+  two or fewer independently-grabbable units, emit the nine-element dispatch
+  contract for each unit directly (`Unit: <task-id>`, `## Objective`,
+  `## Retrieval`, `## Affected files`, `## Ordered edits`, `## Do NOT touch`,
+  `## Acceptance criteria`, `## Pre-resolved context`, `## Escalation`), and
+  the orchestrator dispatches from the `docs/plans/` document. You never run
+  `to-issues` on any path (ADR-0003 preserved); on the fast path no tracker
+  issue exists, the retrieval contract points at the `docs/plans/` path, and
+  `scribe`'s issue-closing duty correctly does not fire (it requires an issue
+  number in its dispatch). **Standard path (≥3 units, debug spec, Convergence
+  follow-ups)**: `task-master` slices the plan into independently-grabbable
+  units with `to-issues`, assigns each unit's `Suggested model` tag, states
+  the retrieval contract, and writes the detailed per-unit dispatch prompts
+  for `lead-programmer`/`scribe`. You never slice the plan or write dispatch
   prompts yourself.
 - **Convergence follow-ups**: when re-invoked to close an accepted
   `unconverged-requirement` finding from `milestone-auditor`, append new
