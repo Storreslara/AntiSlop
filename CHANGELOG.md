@@ -19,8 +19,8 @@ recorded here. Dates are ISO (YYYY-MM-DD).
     the reviewer's own inline `roast-work` (same rubric, same diff), but was
     gated on triggers that fired on 2-line diffs (no size floor). Decision:
     removed the pass outright, accepting a capability reduction against
-    ADR-0004 in exchange for simplicity. This removes the final dispatch of
-    `fable` anywhere in the system — see R-I decision below.
+    ADR-0004 in exchange for simplicity. This removes the reviewer's
+    advisory fable pass — see R-I decision below.
   - **F4 — expire implementer-side `.fail` ratchets on PASS:** A `.fail`
     record permanently disqualified a unit from cheaper tiers; now expires
     once a `.pass` marker for that unit exists and postdates the `.fail`.
@@ -35,14 +35,20 @@ recorded here. Dates are ISO (YYYY-MM-DD).
     expiry, scribe consolidation); further prose cleanups in subsequent
     releases.
 
-  **R-I decision (F2 consequence): `fable` is dispatched by no persona and no
-  pass anywhere in the system after F1 and F2 land.** The standing exclusion
-  guard in `agents/orchestrator.md` (line 258, task-master model routing) was
-  deliberately retained to prevent accidental re-introduction; only the
-  dispatch paths are removed. This is a deliberate cost reduction, not an
-  oversight. ADR-0004 § Decision Tension 2 (fable's bulk-context critique on
-  large surfaces) is explicitly superseded by the review-centric approach; its
-  Tension 1 (roast-work as advisory, never gating) survives unchanged.
+  **R-I decision (F2 consequence): Steps 1 + 2 remove `fable` from
+  `spec-master`'s dispatch and from the reviewer's advisory `roast-work`
+  pass — they do not retire `fable` outright.** `milestone-auditor`'s
+  **tier-2** fable dispatch survives: it is a live dispatch path on a ≥8-unit
+  judgment-signal-free milestone (see `agents/orchestrator.md` § Dispatch-
+  model routing for spec-master and milestone-auditor). The standing
+  exclusion guard in `agents/orchestrator.md` (§ task-master model routing)
+  is a non-dispatch guard, deliberately retained to prevent accidental
+  re-introduction into `task-master`. This is a deliberate cost reduction,
+  not an oversight. ADR-0004 § Decision Tension 2 (fable's bulk-context
+  critique on large surfaces) is explicitly superseded by the review-centric
+  approach for `spec-master` and the reviewer's advisory pass, but survives
+  for `milestone-auditor`'s tier-2 dispatch; ADR-0004's Tension 1
+  (roast-work as advisory, never gating) survives unchanged.
 
 ### Internal
 - Milestone 1 release (version bump + mirror regeneration + CHANGELOG).
