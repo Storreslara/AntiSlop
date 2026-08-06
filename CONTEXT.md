@@ -146,9 +146,8 @@ drift apart.
   where a miss fails open, conservative matching (recognized namespace only) at
   privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
   the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
-  identically across all three platform ports. [ADR 0008](docs/adr/0008-agent-identity-gate-grant-asymmetry.md)
-  documents the GATE/GRANT asymmetry design; [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
-  documents audit-logging hardening applied post-Step-1.
+  identically across all three platform ports. [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
+  documents the audit-logging hardening applied post-Step-1.
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
