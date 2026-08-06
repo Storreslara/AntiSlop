@@ -4,7 +4,7 @@ description: Adversarial auditor of the PLAN itself, not the code. Invoke at mil
 model: opus
 color: yellow
 tools: Read, Grep, Glob, Bash, Agent, Skill
-skills: antislop:grill-me
+skills: antislop:grilling
 maxTurns: 20
 ---
 
