@@ -176,161 +176,114 @@ on PASS. Fetch sliced issues using task-master's retrieval-contract line (see
 shared protocol).
 
 ## Per-unit model routing
-When dispatching a unit to `lead-programmer`, check the sliced unit's
-`Suggested model: haiku|sonnet|opus` tag (task-master's judgment on how
-mechanical the unit is) and pass it as the dispatch's `model` parameter; omit
-the parameter entirely when the tag is absent, so
-lead-programmer's own `model: haiku` frontmatter applies as the default, not an
-absolute. An `opus` tag routes identically —
-pass it straight through as the `model` parameter — `opus` now appears only on
-a unit re-scoped after a prior FAIL (reachable only once a unit has actually
-failed twice — haiku → FAIL → sonnet → FAIL hits the 2-FAIL cap, routes to a
-`spec-master` debug spec, and task-master re-derives dispatch with a `.fail`
-record now on disk), so treat it as an expected, routable value rather than an
-anomaly. This relies on Claude
-Code's documented per-invocation model override (env var > per-call param >
-frontmatter) — if `CLAUDE_CODE_SUBAGENT_MODEL` is set in the environment it
-silently wins over this routing, so check for it if per-unit routing ever
-appears to have no effect.
+When dispatching a unit to `lead-programmer`, check its `Suggested model:
+haiku|sonnet|opus` tag and pass it as the dispatch's `model` parameter; omit
+it when absent, so lead-programmer's `model: haiku` frontmatter is the
+default, not an absolute. An `opus` tag passes through identically — it
+normally appears only after a unit hits the 2-FAIL cap (haiku → FAIL →
+sonnet → FAIL) and gets a `spec-master` debug spec and re-derived dispatch;
+treat it as expected. Per Claude Code's per-invocation model override (env
+var > per-call param > frontmatter), if `CLAUDE_CODE_SUBAGENT_MODEL` is set
+it silently wins over any model routing in this section — check for it if
+routing ever appears to have no effect.
 
-**Implementer-tier fail ratchet expiry.** A fail record for unit `X`
-stops disqualifying `X` from a cheaper implementer tier once a pass marker
-for `X` exists and is newer than the fail record — i.e., the unit was
-subsequently fixed and independently verified. Until then it disqualifies
-unchanged. While a unit is mid-retry and has not yet reached PASS, nothing
-expires.
+**Implementer-tier fail ratchet expiry.** A fail record for unit `X` stops
+disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
+exists and is newer than the fail record. Until then it disqualifies
+unchanged; while a unit is mid-retry with no PASS yet, nothing expires.
 
-**Haiku units escalate on first FAIL.** If the reviewer FAILs a unit that ran
-on `haiku`, re-dispatch it on `sonnet` (not haiku again) with the defect list
-— a FAIL on a haiku unit is evidence it needed more judgment than task-master
-estimated, so a second haiku attempt is the low-value path. This still counts
-against the 2-FAIL cap above; a sonnet re-run that also FAILs hits the cap and
-surfaces to the user as usual, same as any other unit.
- See the implementer-tier fail ratchet expiry rule above for when prior
- FAILs stop disqualifying from cheaper tiers.
+**Haiku units escalate on first FAIL.** A FAIL on a `haiku` unit
+re-dispatches on `sonnet` (not haiku again) with the defect list; this still
+counts against the 2-FAIL cap. See the ratchet-expiry rule above for when a
+prior FAIL stops disqualifying.
 
-**Check for a prior `.fail` record before ANY per-unit dispatch, not only
-right after an in-session FAIL.** A fresh orchestrator session has no memory
-of a previous session's FAIL otherwise. Before dispatching a unit, check
-whether `.claude/reviewed/<task-id>.fail` already exists; if so, treat it
-exactly like an in-session FAIL — never dispatch on `haiku`, and include the
-prior defect history in the dispatch prompt.
- See the implementer-tier fail ratchet expiry rule above: a prior `.fail`
- stops disqualifying once a newer `.pass` marker exists for that unit.
+**Check for a prior `.fail` record before ANY per-unit dispatch**, not only
+right after an in-session FAIL — a fresh session has no memory of a prior
+one's FAIL. If `.claude/reviewed/<task-id>.fail` exists, treat it like an
+in-session FAIL: never dispatch on `haiku`, and include the prior defect
+history in the dispatch prompt. Ratchet expiry above still applies.
 
 ### Dispatch-model routing for spec-master and milestone-auditor
-Same mechanism and `CLAUDE_CODE_SUBAGENT_MODEL` caveat as the per-unit
-routing above. Unlike per-unit tags (written by task-master for a later
-lead-programmer dispatch), YOU choose spec-master's/auditor's own model at
-dispatch time — a persona cannot tag its own upcoming invocation.
+Same mechanism as per-unit routing above — YOU choose the model at dispatch
+time (a persona can't tag its own invocation). Frontmatter `model: opus` is
+default for both; omit unless the conditions below hold.
 
-Frontmatter `model: opus` stays the default for both personas — omit the
-`model` param unless the conditions below hold.
+**`spec-master`: `model: sonnet`** only when scope is already enumerated
+(files/modules named outright, or one explorer lookup enumerates them
+completely), it rides existing seams (no greenfield component, new module
+boundary, or cross-cutting refactor of tightly-coupled code), and no
+interrogation is needed (nothing that would trigger a grill-me session;
+expecting Open Questions back means an opus dispatch).
 
-**`spec-master` dispatch (if present):** use `model: sonnet` only when ALL of:
-- (a) **scope already enumerated** — the request names the affected
-  files/modules outright, or a single explorer lookup can enumerate them
-  completely;
-- (b) **rides existing seams** — a change to existing code along existing
-  boundaries; no greenfield component, no new module boundary, no
-  cross-cutting refactor of tightly-coupled code;
-- (c) **no interrogation needed** — nothing ambiguous that would trigger a
-  grill-me session; if you'd expect the plan to come back with Open
-  Questions, that is an opus dispatch. This condition is even more central
-  now that the persona is spec-only: a sonnet dispatch that turns out to need
-  interrogation gets the escalation-symmetry treatment below.
+**`milestone-auditor`:** first match wins, top-down: `opus` on any judgment
+signal (a `.fail` record for any unit in the milestone, a human challenge at
+the step-9 pre-audit checkpoint, or a carried-in `unconverged-requirement`
+follow-up); `fable` if no judgment signal AND the milestone is 8+ units;
+`sonnet` otherwise.
 
-**`milestone-auditor` dispatch:** evaluate the following tiers in order,
-top-down, first match wins:
-1. **`opus`** — any judgment signal: a `.fail` record for any unit in the
-   milestone, a human challenge at the step-9 pre-audit checkpoint, or a
-   carried-in `unconverged-requirement` follow-up.
-2. **`model: fable`** — no judgment signal AND the milestone is large: 8
-   units or more.
-3. **`model: sonnet`** — everything else.
+**Escalation symmetry** (mirrors the haiku rule above): a `spec-master`
+**sonnet** dispatch whose plan is rejected or whose Open Questions reveal
+misjudged ambiguity, or a `milestone-auditor` **fable or sonnet** dispatch
+that misses a premise gap a human catches, re-dispatches on `opus` — never
+the same cheap tier twice.
 
-**Escalation symmetry** (mirrors "haiku units escalate on first FAIL"
-above): a `spec-master` **sonnet** dispatch that produces a plan the human
-rejects at approval, or whose Open Questions reveal ambiguity you misjudged
-as absent, re-dispatches on `opus` — not sonnet again; a `milestone-auditor`
-**fable *or* sonnet** dispatch that misses a premise gap a human then
-catches re-dispatches on `opus` — never the same cheap tier twice. A
-wrong-cheap dispatch costs one full re-run, same honesty as the haiku rule.
-
-**A prior `.fail` record disqualifies for fable.** A unit X with a `.fail`
-record disqualifies from spec-master/milestone-auditor fable dispatch,
-unless a pass marker for X exists and is newer than the fail record
-(indicating the unit was subsequently fixed and independently verified).
-This disqualifier applies to unit X alone; sibling units that a
-`spec-master` replan or `milestone-auditor` audit merely touches are not
-affected by X's `.fail` history. See the implementer-tier fail ratchet
-expiry rule above for the detailed expiry condition.
+**A prior `.fail` record disqualifies from fable** for spec-master/
+milestone-auditor, unless a newer pass marker exists for that unit. Applies
+to unit X alone — sibling units a replan/audit merely touches aren't
+affected.
 
 ### task-master model routing
-Same mechanism as above — a persona cannot tag its own upcoming invocation,
-so YOU choose task-master's dispatch model. `model: sonnet` (task-master's
-own frontmatter default) is the default dispatch; `model: opus` is available
-at your discretion for unusually large or judgment-heavy slicing work (e.g.
-re-deriving dispatch instructions from a debug spec, or a spec whose steps
-carry unusual cross-cutting risk).
+Same mechanism — YOU choose the model. `model: sonnet` (task-master's own
+frontmatter default) is the default dispatch; `model: opus` is available at
+your discretion for unusually large or judgment-heavy slicing work.
 
-**`model: fable` is excluded for `task-master` — never dispatch it on
-fable**, even when the originating spec was itself fable-eligible above:
-writing accurate dispatch boundaries and catching spec gaps needs judgment
-that doesn't fit fable's light/mechanical profile (task-master's own
-frontmatter states this explicitly; this is a hard exclusion, not a
-default-and-override like the spec-master/auditor conditions above).
+**`fable` is excluded for `task-master`** — never dispatch it on fable, even
+when the originating spec was fable-eligible: writing accurate dispatch
+boundaries and catching spec gaps needs judgment fable's profile doesn't
+fit. Hard exclusion, not a default-and-override.
 
 ### Reviewer gate model selection (measured at dispatch time)
-`task-master` no longer tags a reviewer tier — it slices before the diff
-exists, so it could only predict one. You decide the tier at reviewer-dispatch
-time, when the diff is measurable, by running the deterministic helper **from
+`task-master` doesn't tag a reviewer tier — it slices before the diff
+exists. You decide the tier at reviewer-dispatch time by running, **from
 the repo root**:
 
 ```
 bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..<HEAD>
 ```
 
-It prints exactly `sonnet` or `opus` (exit 0 either way). If the script is
-missing, exits non-zero, or prints anything other than exactly `sonnet` or
-`opus`, treat the result as `opus`. Pass that word as the reviewer dispatch's
-`model` parameter. Use the same unit id you already
-pass the reviewer for its PASS marker, and the same `baseline..HEAD` range you
-already carry in the advisory review packet (see "Review routing" above). Run
-it from the repo root: its sensitive-path patterns are anchored at the repo
-root, and it resolves the reviewed-marker directory under `CLAUDE_PROJECT_DIR`
-(defaulting to the working directory). The script is fail-closed — anything
-unmeasurable, sensitive or oversized prints `opus`. Same
-`CLAUDE_CODE_SUBAGENT_MODEL` caveat as the other per-unit-model-routing
-subsections in this file.
+It prints exactly `sonnet` or `opus` (exit 0 either way); if missing,
+non-zero exit, or anything else printed, treat the result as `opus`. Pass
+that word as the reviewer dispatch's `model` parameter. Use the same unit id
+and `baseline..HEAD` range already carried in the advisory review packet
+(see "Review routing" above). Running from the repo root matters: the
+script's sensitive-path patterns are anchored there, and it resolves the
+reviewed-marker directory under `CLAUDE_PROJECT_DIR` (default: cwd). It's
+fail-closed — anything unmeasurable, sensitive, or oversized prints `opus`.
 
 **Downgrade-only asymmetry — the script is a NECESSARY condition, never a
 sufficient one.** Your own judgment may **downgrade** its verdict (`sonnet` →
 `opus`) whenever anything about the unit makes you doubt a sonnet review; say
-so in your report when you do. You may **never upgrade** it: an `opus` verdict
-is final, and you never turn it into `sonnet` however mechanical the unit
-looks to you. This one-way rule is what keeps a measured tier from being a
-weakening of the gate.
+so in your report when you do. You may **never upgrade** it: an `opus`
+verdict is final, and you never turn it into `sonnet` however mechanical the
+unit looks to you. This one-way rule is what keeps a measured tier from
+being a weakening of the gate.
 
-**Fable is never valid on the gate.** The script never prints `fable`, and you
+**Fable is never valid on the gate** — the script never prints it, and you
 never substitute it.
 
 **`.fail` disqualifier.** Before dispatching the reviewer, check
-`.claude/reviewed/<task-id>.fail`; if it exists, dispatch the reviewer on opus
-— extending the existing "check for a prior `.fail` record before ANY per-unit
-dispatch" rule above to the reviewer dispatch specifically. The script checks
-this too, but you check it yourself as a belt-and-suspenders backstop: a
-`.fail` is a permitted downgrade reason, and downgrades are always yours to
-make.
+`.claude/reviewed/<task-id>.fail`; if it exists, dispatch on opus —
+extending the "check for a prior `.fail` record" rule above to the reviewer
+specifically. The script checks this too, but you check it as a
+belt-and-suspenders backstop: a `.fail` is a permitted downgrade reason, and
+downgrades are always yours to make.
 
-**Escalation.** If a unit that received a sonnet-gated PASS is later found to
-have missed a defect (a human catch, a `milestone-auditor` finding, or a
+**Escalation.** If a unit that received a sonnet-gated PASS is later found
+to have missed a defect (human catch, milestone-auditor finding, or
 downstream FAIL on that unit), re-dispatch that unit's review on `opus`,
 never sonnet. The opus re-review, on confirming the miss, returns FAIL and
-writes the standard `.claude/reviewed/<task-id>.fail` record — which, via the
-`.fail` disqualifier above, permanently forces opus for that unit id
-thereafter. Mirrors "Haiku units escalate on first FAIL … never haiku again"
-above.
+writes the standard `.fail` record, which via the `.fail` disqualifier above
+permanently forces opus for that unit id thereafter.
 
 ## Relaying spec-master open questions
 If spec-master returns "Open Questions" instead of a finished plan (this
