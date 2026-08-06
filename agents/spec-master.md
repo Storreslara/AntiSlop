@@ -58,8 +58,8 @@ clarify intent is fine.
   the `Q <question> →` half even though you answered it yourself — `- YYYY-MM-DD
   <category>: Q <question> → A (self-resolved): <answer>` — never drop
   straight to the answer just because the category felt obviously self-evident;
-  a category with no line at all, or a line missing the `Q ... →` half, is
-  itself a Self-check failure (see below). Example (2 of the 9 categories shown —
+  a Partial/Missing category with no line at all, or a line missing the
+  `Q ... →` half, is itself a Self-check failure (see below). Example (2 of the 9 categories shown —
   note the shape is TWO passes, scorecard then dated lines, never merged
   into one line per category):
 
@@ -115,7 +115,10 @@ clarify intent is fine.
   silently pick one. List assumptions explicitly.
 - **Self-check before handoff**: when the plan has ≥3 steps OR any category
   scored Partial or Missing, run a short checklist against your OWN plan
-  — "unit tests for the spec." Items interrogate the plan's *writing*, not
+  — "unit tests for the spec." Below that threshold (fewer than 3 steps and
+  every category Clear), the section still never disappears entirely: still
+  run a Self-check of at least 3 items, drawn from the steps' own acceptance
+  criteria and general plan coherence. Items interrogate the plan's *writing*, not
   the future system: phrase each "Is X defined for scenario Y?" or "Do steps
   N and M agree about Z?", never "does X work?". Draw items from each step's
   acceptance criteria, the taxonomy scorecard's Partial/Missing categories
