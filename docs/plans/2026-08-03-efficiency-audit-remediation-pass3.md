@@ -54,6 +54,20 @@ incidental coverage Revision 5 had. Added paragraph-scoped **criterion 7**,
 confirmed RED at baseline. Also recorded **R-M**, the measured 387-byte margin
 on the template ceiling. Recorded as CHK36–CHK37. **Only #230 changes.**
 
+**Revision 8 — 2026-08-06 (correction, not a defect in this spec's own logic).**
+Skills-library spec #245's unit #246 renamed the placeholder skill name
+`to-issues` to the real name `to-tickets` throughout `agents/spec-master.md`,
+including inside the ADR-0003 disclaimer sentence this spec's Step 9 added
+(now reads "You never run `to-tickets` on any path (ADR-0003 preserved)").
+This left Step 9's criterion 3 (and its own descriptive prose) asserting a
+now-stale literal against current `agents/spec-master.md`. Corrected in place
+at Step 9's operative prose and criterion 3's regex (the "F7" finding's
+self-resolution prose and the CHK11 checkpoint are left untouched as
+historical record of the reasoning at spec-authoring time; ADR-0003's own
+quoted text is likewise untouched — it is historical per this repo's
+convention). No units re-slice; this is a criteria-text-only correction to an
+already-PASSed step (#239).
+
 Status: **FINALIZED — no steps blocked.** All five Open Questions were ruled on
 by the operator on 2026-08-03 (see § Open Questions, retained as an audit
 trail). Ready for `task-master` to slice.
@@ -293,7 +307,7 @@ no tracker issue is filed for a fast-pathed unit, then `agents/scribe.md`
 were named in your dispatch"), and the retrieval contract has no tracker to
 point at. Self-resolved: the fast path has spec-master emit the **nine-element
 dispatch contract** directly (which `dispatch-hygiene.sh`'s H4 already
-mechanically validates) **without** running `to-issues` or filing tracker
+mechanically validates) **without** running `to-tickets` or filing tracker
 issues; retrieval points at the `docs/plans/` path, and the scribe's
 issue-closing duty correctly does not apply. ADR-0003 gains a back-pointer
 rather than being contradicted.
@@ -1420,7 +1434,7 @@ spec resolves to **≤2 dispatchable units**, spec-master emits the nine-element
 dispatch contract for each unit directly and the orchestrator dispatches from
 the `docs/plans/` document. **task-master remains mandatory** for: ≥3 units,
 any debug-spec re-derivation, and any `## Convergence follow-ups` slice.
-spec-master still does **not** run `to-issues` and does **not** file tracker
+spec-master still does **not** run `to-tickets` and does **not** file tracker
 issues (ADR-0003 preserved); on the fast path no tracker issue exists, the
 retrieval contract points at the `docs/plans/` path, and `scribe`'s
 issue-closing duty correctly does not fire (it requires an issue number in its
@@ -1431,8 +1445,8 @@ dispatch).
    `for f in agents/orchestrator.md agents/task-master.md agents/spec-master.md; do s=$(tr '\n' ' ' < "$f" | tr -s ' '); printf '%s' "$s" | grep -Eq '≤ ?2 (dispatchable )?units' || exit 1; printf '%s' "$s" | grep -q 'debug spec' || exit 1; printf '%s' "$s" | grep -q 'Convergence follow-ups' || exit 1; done` → exit 0. *(baseline: exits 1 on the first file)*
 2. spec-master is required to emit all nine elements, named:
    `s=$(tr '\n' ' ' < agents/spec-master.md | tr -s ' '); for k in 'Objective' 'Retrieval' 'Affected files' 'Ordered edits' 'Do NOT touch' 'Acceptance criteria' 'Pre-resolved context' 'Escalation'; do printf '%s' "$s" | grep -q "$k" || exit 1; done; printf '%s' "$s" | grep -q 'Unit: <task-id>'` → exit 0.
-3. ADR-0003 is not contradicted — spec-master still disclaims `to-issues`:
-   `tr '\n' ' ' < agents/spec-master.md | tr -s ' ' | grep -Eq 'never run.{0,40}to-issues|do(es)? not (run|carry).{0,40}to-issues'` → exit 0.
+3. ADR-0003 is not contradicted — spec-master still disclaims `to-tickets`:
+   `tr '\n' ' ' < agents/spec-master.md | tr -s ' ' | grep -Eq 'never run.{0,40}to-tickets|do(es)? not (run|carry).{0,40}to-tickets'` → exit 0.
    And: `diff <(git show e5b908f:docs/adr/0003-hivemind-split-spec-master-task-master.md | sed -n '/^## Decision/,/^## /p') <(sed -n '/^## Decision/,/^## /p' docs/adr/0003-hivemind-split-spec-master-task-master.md)` → exit 0.
 4. The emitted contract still satisfies the mechanical gate:
    `bash tests/dispatch-hygiene.test.sh` → exit 0 (H4 validates the nine-element contract regardless of which persona wrote it).
