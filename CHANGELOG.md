@@ -9,12 +9,18 @@ recorded here. Dates are ISO (YYYY-MM-DD).
 - **Efficiency audit remediation, Milestone 2 (F6, F7).** Two findings from the
   efficiency audit remediated:
   - **F6 — spec-master's ceremony becomes conditional on measured ambiguity:**
-    Grilling is now optional when scope is already enumerated, enabling faster
-    paths on tightly-specified work while preserving full interrogation where
-    needed. Stays mandatory unconditionally: machine-checkable acceptance
-    criteria per step, the finalized spec / `docs/plans/` document as the
-    canonical artifact, the 9-line taxonomy scorecard, Open Questions (never
-    resolved silently), and the Constitution check.
+    Three ceremony elements become conditional: the dated `Q … → A …`
+    clarification lines, now required only for categories scored Partial or
+    Missing (previously required for every category); the itemized `CHKn`
+    self-check, required only when the plan has ≥3 steps or any category
+    scored Partial/Missing (a 3-item floor still applies below that
+    threshold); and `to-spec` tracker publication, opt-in below the
+    multi-milestone / ≥3-unit threshold. Grilling/interrogation itself is
+    unchanged and remains unconditional for any non-trivial task. Stays
+    mandatory unconditionally: machine-checkable acceptance criteria per
+    step, the finalized spec / `docs/plans/` document as the canonical
+    artifact, the 9-line taxonomy scorecard, Open Questions (never resolved
+    silently), and the Constitution check.
   - **F7 — ≤2-unit fast path: spec-master emits dispatch contracts directly:**
     For specs that task-master would slice into ≤2 units, spec-master now emits
     the nine-element dispatch contract directly without running `to-tickets` or
