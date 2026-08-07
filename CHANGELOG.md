@@ -18,10 +18,13 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   - **F10 — milestone-audit gate: assessed and rejected, not reversed.** The
     milestone-audit gate remains unconditional and mandatory; "a clean
     checkpoint is not a reason to skip the audit" is unchanged. F10's saving
-    is already captured by F1 (unit #230), which drops a clean, FAIL-free,
-    all-mechanical milestone's audit from `fable` to `sonnet` — that
-    existing saving was the basis for rejecting F10 outright rather than
-    implementing it. The audit itself was never made optional.
+    is partly captured by F1 (unit #230), which drops a clean, FAIL-free,
+    all-mechanical milestone's audit from `fable` to `sonnet` — but only for
+    milestones **under 8 units**. A clean milestone of **8 or more units**
+    still audits on `fable` (3 of this repo's 12 milestones, 25 %). That
+    partial saving was the narrower of two supports for the rejection; the
+    load-bearing one is that the principle is deliberate and reasoned. The
+    audit itself was never made optional.
   - **F11 — reuse a forwarded blast-radius answer instead of re-deriving
     it:** When a dispatch packet already contains a `## Pre-resolved
     context` blast-radius / structural answer, personas now verify the
