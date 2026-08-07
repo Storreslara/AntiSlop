@@ -3,6 +3,11 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.27.0] - 2026-08-07
+
+### Changed
+- **Marker format v3 (commit-anchored PASS markers).** The reviewer now verifies that the reviewed state is actually committed before writing a PASS marker. This changes the required marker format from v2 (empty or freeform content) to v3 (first line must read `PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria command(s) run>`). The `dispatch-hygiene.sh` H3 validator now declines to fire when a marker's attested commit is unreachable from `HEAD`.
+
 ## [0.26.0] - 2026-08-07
 
 ### Changed
