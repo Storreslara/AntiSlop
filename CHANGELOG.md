@@ -11,12 +11,17 @@ recorded here. Dates are ISO (YYYY-MM-DD).
   - **F6 — spec-master's ceremony becomes conditional on measured ambiguity:**
     Grilling is now optional when scope is already enumerated, enabling faster
     paths on tightly-specified work while preserving full interrogation where
-    needed. Keeps load-bearing parts (spec R-A, R-B, R-D) mandatory.
+    needed. Stays mandatory unconditionally: machine-checkable acceptance
+    criteria per step, the finalized spec / `docs/plans/` document as the
+    canonical artifact, the 9-line taxonomy scorecard, Open Questions (never
+    resolved silently), and the Constitution check.
   - **F7 — ≤2-unit fast path: spec-master emits dispatch contracts directly:**
     For specs that task-master would slice into ≤2 units, spec-master now emits
     the nine-element dispatch contract directly without running `to-tickets` or
     filing tracker issues; retrieval points at the `docs/plans/` path. Resolves
-    an ADR-0003 collision discovered during exploration.
+    an ADR-0003 collision discovered during exploration. task-master remains
+    mandatory for: specs resolving to ≥3 units, any debug-spec re-derivation,
+    and any `## Convergence follow-ups` slice.
 
 ## [0.24.0] - 2026-08-06
 
