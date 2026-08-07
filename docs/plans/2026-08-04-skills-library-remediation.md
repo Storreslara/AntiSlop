@@ -4,6 +4,12 @@ Status: **REVISION 5 — finalized.** All 5 Open Questions resolved by the human
 2026-08-04; eight defects found during slicing/execution are fixed here.
 Author: spec-master | Date: 2026-08-04 | Source: Opus-tier read-only skills audit
 
+> **Steps 1–10 are complete** (units #246–#255, all reviewer PASS). One
+> `unconverged-requirement` finding from the 2026-08-07 post-milestone audit is
+> appended as **Step 11 / unit `245-CF1`** — see
+> [Convergence follow-ups](#convergence-follow-ups) at the end of this document.
+> Steps 1–10 and their criteria are unchanged.
+
 ## Revision log
 
 **Revision 5 (2026-08-06)** — one **mid-flight** gap, found by `lead-programmer`
@@ -1448,3 +1454,416 @@ note the two intentional `fm-noflag` deviations. `CONTEXT.md:126`'s `grill-me`
 mention needs updating to `grilling`. **A new ADR is warranted** — Step 5
 changes what "vendored verbatim" means by introducing a declared-deviation
 class, which supersedes part of ADR-0005.
+
+---
+
+## Convergence follow-ups
+
+### 2026-08-07 — post-milestone audit (`milestone-auditor`, spec #245, units #246–#255 all PASS)
+
+**Append-only.** Steps 1–10 above and their acceptance criteria are unchanged
+and un-renumbered. This section adds exactly one new step (**Step 11**) closing
+exactly one accepted finding. No work beyond that finding is added here.
+
+**The finding, verbatim in substance:** `unconverged-requirement` — *missing ADR
+for the `fm-noflag` declared-deviation class.* `docs/adr/` ends at ADR-0011 and
+none of the eleven concerns vendoring deviations, while
+`docs/adr/0005-vendor-mattpocock-skills.md` still reads `Status: Accepted` with
+no amendment note. Unit **#248** (Step 5) shipped a declared-deviation class
+that changes what Decision 1's word "verbatim" means. The *operational* record
+(`scripts/resync-vendored-skills.sh`, the runbook, NOTICES, README, wiki) was
+updated per Step 5 criterion 7; the *architectural* record was not. Accepted by
+the human operator 2026-08-07 and routed back here rather than to a new spec.
+
+**This plan's own Scribe update hint (above) already called for it** — the
+finding is therefore a delivery gap, not a discovery, which is why it resolves
+as an append rather than a replan.
+
+#### What I re-verified on disk before writing Step 11 (2026-08-07, live)
+
+The auditor's finding is accurate but under-specifies the *scope* of the
+deviation, and Step 11's value is mostly in getting that scope right. Measured
+directly, `grep -c '^disable-model-invocation: true$'` and `grep -c
+'model-invocation block removed'` per vendored `SKILL.md`:
+
+| skill | upstream flag stripped? | drift-tracked as | in the script's `FILES`? |
+|---|---|---|---|
+| `handoff` | yes | **`fm-noflag`** | yes, byte-diffed |
+| `improve-codebase-architecture` | yes | **`fm-noflag`** | yes, byte-diffed |
+| `to-spec` | yes | *nothing* | no — `REPOINT_SKILLS`, report-only |
+| `to-tickets` | yes | *nothing* | no — `REPOINT_SKILLS`, report-only |
+| `code-review` | n/a (never flagged upstream) | *nothing* | no — `REPOINT_SKILLS` |
+| `grill-me` | **no — still flagged** | `fm` (byte-verbatim) | yes, byte-diffed |
+
+So: **four** skills carry the deviation, but only **two** are machine-enforced
+by it. `to-spec`/`to-tickets` were un-flagged by Step 4 and sit in the
+never-diffed repoint set, so nothing would detect the flag silently returning
+there on a re-pin. `grill-me` is the control — vendored, still flagged, still
+byte-verbatim, deliberately left alone per CHK7. An ADR that says only
+"`fm-noflag` applies to `handoff` and `improve-codebase-architecture`" would be
+true-but-misleading; Step 11's criteria force the asymmetry to be recorded.
+
+Also re-measured, and unchanged by this follow-up: `bash
+scripts/resync-vendored-skills.sh --check` → exit 0, **8** `[OK]`, 3
+`[VENDORED]`; highest existing ADR → `0011`; `.claude-plugin/plugin.json`
+version → `0.25.0`; no `.claude/reviewed/248.fail` exists (Step 5 passed first
+try, so no prior-defect history constrains the model tier here).
+
+**Numbering note:** `docs/adr/` has no `0007` — an earlier plan reserved that
+number and the ADR ultimately shipped as `0009`. Per
+`skills/domain-modeling/ADR-FORMAT.md` ("scan for the highest existing number
+and increment"), the next number is **0012**; the `0007` gap is left alone.
+
+#### Clarifications (this follow-up only)
+
+1. Functional scope & success criteria: Clear
+2. Domain entities / data model: Clear
+3. User interaction flow: Clear
+4. Non-functional attributes (perf, security, scale): Clear
+5. External dependencies & integrations: Clear
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Partial
+9. Completion / acceptance signals: Partial
+
+- 2026-08-07 Edge cases / failure handling: Q ADR-0005 lines 82–84 assert "this
+  repo has no established `Superseded by ADR-000X` marker convention (checked
+  0001–0004)" — does adding an in-place note to ADR-0005 contradict its own
+  recorded reasoning? → A (self-resolved): no, because the claim is now stale.
+  The convention **has** since been established twice — ADR-0004's `## Related`
+  carries `- **Amended by ADR-0006:**` and ADR-0006's carries `- **Amended by
+  ADR-0009:**`. Step 11 therefore records the note in place *and* requires the
+  new bullet to say so explicitly, so the two statements resolve against each
+  other instead of contradicting. The 2026-07-15 prose itself is **not**
+  rewritten — it was accurate when written, and rewriting shipped ADR reasoning
+  is a worse defect than leaving a dated claim dated.
+- 2026-08-07 Technical constraints & tradeoffs: Q Which of this repo's two
+  in-place amendment patterns applies — ADR-0002's dedicated `## Superseded in
+  part (YYYY-MM-DD)` section, or ADR-0004/0006's `## Related` bullet? →
+  A (self-resolved): the `## Related` bullet. ADR-0002 used a dedicated section
+  precisely because it has no `## Related` section; ADR-0005 does have one, so
+  the bullet is the closer precedent. Reinforced with a `Status:`-line
+  reference, which is `ADR-FORMAT.md`'s own named mechanism for revisited
+  decisions and matches ADR-0006/0009's `Status: Accepted (amends ADR-NNNN…)`
+  shape. Two touchpoints, both precedented, both greppable.
+- 2026-08-07 Terminology consistency: Q Is this a "declared-deviation class"
+  (the auditor's and this plan's word) or a "reconstruction type" (the script's
+  and the registry files' word)? → A (self-resolved): both, at different
+  layers, and the ADR must say so once rather than pick a winner —
+  `fm-noflag` is the *mechanical* reconstruction type in
+  `scripts/resync-vendored-skills.sh`'s `FILES` table; "declared deviation" is
+  the *architectural* class it implements. Pinning only one would leave the
+  other five on-disk usages looking like a different concept.
+- 2026-08-07 Completion / acceptance signals: Q Does an architectural-record
+  change need a CHANGELOG entry and a version bump? → A (self-resolved):
+  a CHANGELOG pointer **yes**, a version bump **no**. Constitution P3 triggers
+  only on version-stamped files (`agents/*.md`, templates) and Step 11 touches
+  none; but ADR-0005's own Consequences set the precedent ("Recorded in
+  `CHANGELOG.md` [0.12.0] alongside this ADR"). The pointer is appended to the
+  existing `[0.25.0]` "Skills library remediation" entry, which is where the
+  work this ADR documents already shipped. **Reversible** — if the operator
+  prefers a fresh version section, that is a one-line change to Step 11's
+  criterion 8 and does not disturb the ADR itself.
+
+#### Constitution check (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied — every fact Step 11 requires the ADR to
+  state was measured live above, and criterion 4 makes the implementer re-derive
+  the same facts from disk rather than copying this table on trust.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied — no
+  script-driven path is hand-edited. `scripts/resync-vendored-skills.sh` is
+  read-only input to this unit and is on the Do-NOT-touch list.
+- P3 "Version-stamp discipline": satisfied by non-trigger, and the non-trigger
+  is asserted rather than assumed — criterion 9 proves no version-stamped file
+  was touched, and criterion 8 pins the version at `0.25.0`.
+- P4 "Optional personas degrade gracefully" (SHOULD): satisfied — the ADR
+  describes vendored-skill files and a drift script, naming no persona as a
+  precondition.
+- P5 "`tests/validate.sh` is the merge gate": satisfied — criterion 7.
+
+#### Risks / dependencies (this follow-up only)
+
+- **R8 — documentation-only unit, so most guards are freeze assertions.** The
+  real risk is not breakage but an ADR that is vague enough to pass a loose
+  grep while still failing to record the asymmetry. Criteria 3 and 4 exist
+  specifically to make vagueness fail: 3 requires a per-skill table row, 4
+  re-derives every row from disk.
+- **R9 — CHK28 standing rule applied.** Every literal string Step 11 prescribes
+  for insertion (`Amended by ADR-0012`, `has since been established`, the ADR
+  slug) was measured against this step's own criteria at baseline: all return
+  `0` before the change and none is driven to `0` by any criterion in this step
+  or in Steps 1–10. Step 5's criterion 2 (`disable-model-invocation` → `0`) is
+  scoped to two `SKILL.md` files and is not endangered by the ADR text.
+- **R10 — out of scope, recorded not fixed.**
+  `docs/maintenance/resync-vendored-skills.md:3` still reads "vendors 12 skills"
+  while the same file's line 131 reads "all 11 skills", `README.md:255` reads
+  11, and `skills/THIRD-PARTY-NOTICES.md`'s table has 11 rows. Line 3 is a
+  residual stale count from Step 5's 12→11 change that criterion 7 of that step
+  did not cover (it asserted only that `implement` had left the list). This is a
+  real defect but **not** part of the accepted finding, so Step 11 does not fix
+  it and lists that file under Do-NOT-touch. Surfaced here for the operator to
+  route separately.
+
+---
+
+## Step 11 — ADR for the `fm-noflag` declared-deviation class; amend ADR-0005 (Convergence follow-up, 2026-08-07)
+
+**Affected files:** `docs/adr/0012-vendored-skill-declared-deviations.md`
+(new), `docs/adr/0005-vendor-mattpocock-skills.md` (additive + one `Status:`
+line), `CHANGELOG.md` (one pointer under the existing `[0.25.0]` entry).
+Exactly three files, no more.
+
+**11a — Write `docs/adr/0012-vendored-skill-declared-deviations.md`.** Follow
+the house shape used by ADR-0003/0004/0005/0006/0009/0010: a `# ADR 0012: …`
+title line, a single-line `Date:`, a single-line `Status:`, then `## Context`,
+`## Decision`, `## Consequences`, `## Related`. It must record:
+
+- **What the class is** — that antislop vendors mattpocock/skills content
+  byte-verbatim by default, and that a *declared deviation* is a documented,
+  machine-reconstructed departure from that default; `fm-noflag` is the
+  reconstruction type in `scripts/resync-vendored-skills.sh`'s `FILES` table
+  that implements it for the one deviation that currently exists (removing
+  upstream's model-invocation block).
+- **Why Step 5 introduced it** — un-flagging the two drift-checked skills was
+  required to make them reachable at all (the flag removes a skill from a
+  persona's context in every mode), but an undeclared edit would have turned
+  `--check` red and the alternative, dropping them from the diffed set, would
+  have lost drift coverage entirely. Declaring the deviation keeps both.
+  Cite spec **#245** and unit **#248**.
+- **Which skills it applies to, including the asymmetry** — a table with one
+  row per skill covering `handoff`, `improve-codebase-architecture`, `to-spec`,
+  `to-tickets` and `grill-me`, distinguishing the two that are drift-tracked as
+  `fm-noflag` from the two that carry the same deviation *untracked* (they live
+  in `REPOINT_SKILLS`, which the script reports but never diffs) and from
+  `grill-me`, which is still flagged and still byte-verbatim.
+- **The consequence that follows from that asymmetry** — on a re-pin, the flag
+  silently returning to `to-spec` or `to-tickets` would not be detected by
+  `--check`; that gap is stated, not fixed, by this ADR.
+- **`## Related`** — links to ADR-0005, the runbook, NOTICES, and this plan.
+
+**11b — Amend ADR-0005.** Two additive touchpoints, both matching existing
+repo precedent:
+
+1. Extend its single-line `Status:` to reference ADR-0012 (the shape ADR-0006
+   and ADR-0009 use). **Keep `Status:` on one physical line** — criterion 5
+   greps it line-wise, and ADR-0005's is single-line today.
+2. Add one bullet to `## Related`, led `- **Amended by ADR-0012:**`, matching
+   ADR-0004's `- **Amended by ADR-0006:**` form. The bullet must (a) state that
+   Decision 1's "verbatim" is qualified, not withdrawn — the vendoring decision
+   itself stands — and (b) contain the phrase **`has since been established`**,
+   noting that the "no established `Superseded by ADR-000X` marker convention"
+   observation recorded in this ADR's own Consequences was true in 2026-07-15
+   but no longer is, which is why this note is recorded in place.
+
+**Do not rewrite ADR-0005's Context, Decision or Consequences prose.** The
+2026-07-15 text stays as written; criterion 6 enforces this with a deletion
+ceiling.
+
+**11c — CHANGELOG pointer.** Append a reference to the new ADR inside the
+existing `[0.25.0]` "Skills library remediation" bullet. Do **not** open a new
+version section and do **not** bump `.claude-plugin/plugin.json`.
+
+**Acceptance criteria** (baselines below were measured live 2026-08-07; per
+CHK29 they are measurements with an expiry — re-measure before starting, and
+if any baseline no longer holds, escalate rather than proceeding):
+
+1. **Numbering, discriminating.** Baseline:
+   `ls docs/adr/*.md | sed 's#.*/##' | cut -c1-4 | sort -n | tail -1` → `0011`.
+   Post-change → `0012`, and
+   `test -f docs/adr/0012-vendored-skill-declared-deviations.md` exit 0.
+2. **House shape.** In the new file: line 1 matches `^# ADR 0012: `
+   (`head -1 … | grep -c '^# ADR 0012: '` → `1`); `grep -c '^Date: '` → `1`;
+   `grep -c '^Status: '` → `1`; and each of `^## Context$`, `^## Decision$`,
+   `^## Consequences$`, `^## Related$` → `1`.
+3. **Per-skill table rows, discriminating.** In the new file, each of these
+   returns `1`:
+   `grep -cE '^\| *`handoff` *\|'`,
+   `grep -cE '^\| *`improve-codebase-architecture` *\|'`,
+   `grep -cE '^\| *`to-spec` *\|'`,
+   `grep -cE '^\| *`to-tickets` *\|'`,
+   `grep -cE '^\| *`grill-me` *\|'`.
+   Additionally the asymmetry must be visible *in the rows themselves*: the
+   `handoff` and `improve-codebase-architecture` rows each contain `fm-noflag`
+   (`grep -E '^\| *`handoff` *\|' … | grep -c 'fm-noflag'` → `1`, same for the
+   other), while the `to-spec`, `to-tickets` and `grill-me` rows each contain
+   it `0` times. A row-shape-only check would pass on a table that flattened
+   the asymmetry, which is the exact failure this criterion exists to catch.
+4. **Table cross-checks disk, not this plan.** Re-derive and confirm the rows
+   are true, all measured against the live tree:
+   `grep -c '^disable-model-invocation: true$' skills/<s>/SKILL.md` → `0` for
+   each of `handoff`, `improve-codebase-architecture`, `to-spec`, `to-tickets`,
+   and → `1` for `grill-me`;
+   `grep -c 'model-invocation block removed' skills/<s>/SKILL.md` → `1` for the
+   first four and `0` for `grill-me`;
+   `grep -o 'fm-noflag' scripts/resync-vendored-skills.sh | wc -l` → `5`.
+   If any of these disagrees with the ADR's table, the ADR is wrong — fix the
+   ADR, never the measured file.
+5. **ADR-0005 `Status:` amended, wrap-safe by construction.**
+   `grep -c '^Status:' docs/adr/0005-vendor-mattpocock-skills.md` → `1` (still
+   exactly one, on one line) and
+   `grep -c '^Status:.*ADR-0012' docs/adr/0005-vendor-mattpocock-skills.md`
+   → `1`. Baseline for the second: `0`.
+6. **ADR-0005 `## Related` bullet, additive only.** Using the wrap-safe form
+   `tr '\n' ' ' < docs/adr/0005-vendor-mattpocock-skills.md | tr -s ' ' |
+   grep -o '<phrase>' | wc -l`: `Amended by ADR-0012` → `1` (baseline `0`) and
+   `has since been established` → `1` (baseline `0`). **Deletion ceiling:**
+   `git diff --numstat <base> -- docs/adr/0005-vendor-mattpocock-skills.md`
+   shows deletions ≤ `1` (the single rewritten `Status:` line), proving the
+   2026-07-15 prose was not rewritten.
+7. **Merge gate (invariant/regression guard, not discriminating).**
+   `bash tests/validate.sh` exit 0, and
+   `bash scripts/resync-vendored-skills.sh --check` exit 0 with
+   `… | grep -c '^\[OK\]'` → `8` — unchanged from baseline, proving the ADR
+   work did not disturb the drift contract.
+8. **CHANGELOG pointer, no version churn.**
+   `grep -c '0012-vendored-skill-declared-deviations' CHANGELOG.md` → `1`
+   (baseline `0`); `grep -m1 '^## \[' CHANGELOG.md` still returns
+   `## [0.25.0] - 2026-08-06` (no new version section);
+   `git diff --numstat <base> -- .claude-plugin/plugin.json` → no output
+   (version stays `0.25.0`).
+9. **P3 non-trigger, asserted.**
+   `git diff --name-only <base> -- agents/ templates/ | wc -l` → `0`.
+10. **Diff ceiling (surgical-diff control).**
+    `git diff --name-only <base> | sort` lists **exactly** these three paths and
+    nothing else: `CHANGELOG.md`,
+    `docs/adr/0005-vendor-mattpocock-skills.md`,
+    `docs/adr/0012-vendored-skill-declared-deviations.md`. `<base>` is the
+    commit recorded with `git rev-parse HEAD` **before** the first edit.
+
+---
+
+### Dispatch contract — unit `245-CF1` (fast path)
+
+This follow-up resolves to a single dispatchable unit, so per the ≤2-unit fast
+path it is **not** sliced by `task-master` and **no tracker issue is filed**;
+the contract below is dispatched directly from this document.
+
+**Unit: `245-CF1`**
+
+#### Objective
+Close the accepted `unconverged-requirement` finding from the 2026-08-07
+`milestone-auditor` audit of spec #245 by writing ADR-0012 for the `fm-noflag`
+declared-deviation class and amending ADR-0005 to point at it. Documentation
+only — no code, no script, no skill file changes.
+
+#### Retrieval
+No tracker issue exists for this unit. The authoritative source is this
+document: `/home/sebas/AntiSlop/docs/plans/2026-08-04-skills-library-remediation.md`,
+section **"Convergence follow-ups → Step 11"** plus this contract. Read Step 5
+(same file) for the change ADR-0012 documents, and
+`skills/domain-modeling/ADR-FORMAT.md` for the numbering rule.
+
+#### Affected files
+- `docs/adr/0012-vendored-skill-declared-deviations.md` — new.
+- `docs/adr/0005-vendor-mattpocock-skills.md` — `Status:` line + one
+  `## Related` bullet. Additive apart from that one line.
+- `CHANGELOG.md` — one pointer inside the existing `[0.25.0]` "Skills library
+  remediation" bullet.
+
+#### Ordered edits
+1. `git rev-parse HEAD` → record as `<base>` for criteria 6, 8, 9, 10.
+2. Re-measure every baseline named in the criteria. Any mismatch → escalate,
+   do not proceed (CHK29).
+3. Write ADR-0012 per 11a. Verify criteria 1–4 before touching anything else.
+4. Amend ADR-0005 per 11b. Verify criteria 5–6.
+5. Add the CHANGELOG pointer per 11c. Verify criterion 8.
+6. Run criteria 7, 9, 10 as the closing sweep.
+
+#### Do NOT touch
+- `scripts/resync-vendored-skills.sh`, `docs/maintenance/resync-vendored-skills.md`,
+  `skills/THIRD-PARTY-NOTICES.md`, `README.md`, `.claude/wiki/*`, `CONTEXT.md`
+  — the operational record was already updated by Step 5 and this unit only
+  adds the architectural one. **Specifically including R10's stale "vendors 12
+  skills" line at `docs/maintenance/resync-vendored-skills.md:3`** — it is a
+  real defect, it is not this finding, and fixing it here would breach both the
+  append-only convergence rule and criterion 10.
+- Any file under `skills/`, `agents/`, `templates/`, `.claude-plugin/`.
+- ADR-0005's `## Context`, `## Decision`, `## Consequences` prose, and ADRs
+  0001–0004 and 0006–0011 in their entirety.
+
+#### Acceptance criteria
+Step 11's criteria 1–10 above, in full. All ten must pass literally; per the
+#255 review note, a criterion whose literal form fails must not be reported as
+passing "in intent."
+
+#### Pre-resolved context
+- Next ADR number is **0012**; the missing `0007` is a deliberate historical
+  gap, not an available slot.
+- ADR-0005's claim that no supersession-marker convention exists is **stale** —
+  ADR-0004 and ADR-0006 both carry `- **Amended by ADR-NNNN:**` bullets in
+  `## Related`. That is the pattern to follow, and criterion 6 requires the new
+  bullet to say the convention has since been established.
+- The deviation covers **four** skills but is machine-enforced for **two**;
+  the verified table is in "What I re-verified on disk" above. Do not copy it on
+  trust — criterion 4 requires re-deriving it.
+- Constitution P3 does not trigger (no version-stamped file); do not bump the
+  plugin version.
+- No `.claude/reviewed/248.fail` exists — Step 5 passed first attempt, so there
+  is no prior-defect history on this material. Model tiering is the
+  orchestrator's call, but note for that call that this unit is judgment-bearing
+  prose work with a scope subtlety (the 2-vs-4 asymmetry) that a purely
+  mechanical pass would flatten.
+
+#### Escalation
+Escalate to the orchestrator rather than improvising if: any baseline in
+criterion 1, 5, 6 or 8 no longer holds; criterion 4's disk re-derivation
+disagrees with the table above (that means the tree changed since 2026-08-07
+and the finding needs re-scoping); or satisfying any criterion appears to
+require editing a Do-NOT-touch file.
+
+### Self-check (this follow-up only)
+
+- CHK31: Does the plan say which ADR number to use, and is that number derived
+  from a stated rule rather than from counting files? — PASS (`0012`, via
+  `ADR-FORMAT.md`'s "highest existing + 1"; the `0007` gap is explicitly
+  addressed so the next reader doesn't re-litigate it).
+- CHK32: Does the plan resolve the contradiction between amending ADR-0005 in
+  place and ADR-0005's own statement that no such convention exists? — FAIL
+  (conflicting, in the first draft: the follow-up simply prescribed an in-place
+  note and left the 2026-07-15 claim standing beside it) — revised in place
+  (11b requires the new bullet to carry `has since been established`, and
+  criterion 6 asserts it; the original prose is preserved under a deletion
+  ceiling).
+- CHK33: Is "which skills it currently applies to" defined precisely enough to
+  write a criterion against? — FAIL (ambiguous, in the first draft: the finding
+  names two skills, but four carry the deviation and only two are drift-tracked)
+  — revised in place (the verified table plus criteria 3 and 4, which require
+  five rows and require the asymmetry to be visible in the row contents).
+- CHK34: Is every discriminating criterion actually discriminating — does it
+  measure differently before and after? — PASS (criteria 1, 3, 5, 6, 8 were all
+  measured at baseline on 2026-08-07 and return `0011`/`0`/`0`/`0`/`0`;
+  criterion 7 is labelled an invariant guard rather than passed off as
+  discriminating, per CHK30's distinction).
+- CHK35: Does any text this follow-up prescribes for insertion trip one of its
+  own criteria, or one of Steps 1–10's? — PASS (R9: the three prescribed
+  literals were each measured at `0` baseline and none is driven to `0` by any
+  criterion in this plan; Step 5's `disable-model-invocation` → `0` assertion is
+  scoped to two `SKILL.md` files, which this unit does not touch).
+- CHK36: Do Step 11 and the dispatch contract agree on the file set? — PASS
+  (both name exactly the same three paths, and criterion 10 asserts the set
+  programmatically rather than by inspection).
+- CHK37: Does the follow-up add work beyond the accepted finding? — FAIL
+  (missing, in the first draft: the stale "vendors 12 skills" count was
+  discovered during verification and there was no stated home for it) — revised
+  in place (recorded as R10 and named on the Do-NOT-touch list explicitly, so it
+  is surfaced to the operator without being smuggled into this unit's scope).
+- CHK38: Is the CHANGELOG/version decision defensible from the constitution
+  rather than from habit, and is it reversible if the operator disagrees? —
+  PASS (Clarifications item 9 derives it from P3's version-stamped-file trigger
+  and ADR-0005's own precedent; criteria 8 and 9 assert the non-trigger rather
+  than assuming it; the reversal is named as a one-line criterion change).
+
+### Open Questions
+
+**None.** All four Partial categories resolved against verified on-disk fact or
+an explicitly precedented repo convention; the one genuine judgment call
+(CHANGELOG placement, Clarifications item 9) is recorded as reversible with its
+reversal cost stated, not left silent.
+
+### Scribe update hint (follow-up)
+
+Once `245-CF1` passes review: `CONTEXT.md`'s "Skills-library remediation
+completed" entry should gain a pointer to ADR-0012, and
+`.claude/wiki/dependencies.md`'s `fm-noflag` sentence should cite it as the
+architectural record. Neither is part of `245-CF1` — both are ordinary scribe
+work after the fact.
