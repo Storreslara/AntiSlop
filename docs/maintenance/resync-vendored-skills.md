@@ -1,6 +1,6 @@
 # Re-syncing vendored mattpocock/skills content
 
-`skills/` vendors 12 skills from
+`skills/` vendors 11 skills from
 [mattpocock/skills](https://github.com/mattpocock/skills) (MIT licensed —
 see `skills/THIRD-PARTY-NOTICES.md`), pinned at a single upstream commit
 SHA recorded in that same NOTICES file. This doc is the runbook for
