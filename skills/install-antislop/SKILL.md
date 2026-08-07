@@ -129,13 +129,13 @@ phrased conditionally ("if present, otherwise <fallback>") in
 `orchestrator.md`, `lead-programmer.md`, and `commands/start-feature-team.md`
 — a plain copy degrades gracefully even when a persona was deselected.
 
-**Numbering note.** The section numbers in this document are stable labels,
-not a contiguous sequence — the fractional headings above exist precisely so
-that inserting material never shifts an existing number. The number three is
-unused: the material it once carried covered installing skills sourced from
-outside this repository, which became unnecessary once those skills were
-vendored first-party under `skills/`. The gap is deliberate — do not renumber
-to close it.
+> **Numbering note.** The section numbers in this document are stable labels,
+> not a contiguous sequence — the fractional headings above exist precisely so
+> that inserting material never shifts an existing number. The number three is
+> unused: the material it once carried covered installing skills sourced from
+> outside this repository, which became unnecessary once those skills were
+> vendored first-party under `skills/`. The gap is deliberate — do not renumber
+> to close it.
 
 ## 4. Code Review Graph (MCP server, scoped to explorer alone — never project-wide)
 
