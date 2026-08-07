@@ -5,8 +5,8 @@ recorded here. Dates are ISO (YYYY-MM-DD).
 
 ## [0.27.0] - 2026-08-07
 
-### Changed
-- **Marker format v3 (commit-anchored PASS markers).** The reviewer now verifies that the reviewed state is actually committed before writing a PASS marker. This changes the required marker format from v2 (empty or freeform content) to v3 (first line must read `PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria command(s) run>`). The `dispatch-hygiene.sh` H3 validator now declines to fire when a marker's attested commit is unreachable from `HEAD`.
+### Added
+- **Marker format v3 (commit-anchored PASS markers).** The reviewer now verifies that the reviewed state is actually committed before writing a PASS marker. This is the marker format v3 delta over v2: a `commit: <sha|none>` field is inserted into the marker's first line, between the timestamp and `criteria:` (`PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria command(s) run>`), so the `dispatch-hygiene.sh` H3 validator can decline to fire when a marker's attested commit is unreachable from `HEAD` — i.e. the marker's own work has since vanished from history. This is additive, not a breaking format change: `task-gate.sh`'s `marker_valid()` checks only line 1's `PASS <task-id> ` prefix and non-emptiness, so v2 markers remain valid and are never retroactively rejected.
 
 ## [0.26.0] - 2026-08-07
 
