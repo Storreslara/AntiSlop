@@ -48,10 +48,13 @@ drift apart.
 - **Dispatch hygiene** — the **Gate** applied at the `PreToolUse`/`Agent`
   seam by `hooks/scripts/dispatch-hygiene.sh`: it checks a dispatch prompt
   *before* the spawn happens, rather than a turn's output at its end like
-  `stop-gate.sh` does. Three checks: H1 an oversize prompt, H2 an inlined
-  artifact as a large fenced code block, and H3 re-dispatch of a unit (gated
+  `stop-gate.sh` does. Four checks: H1 an oversize prompt, H2 an inlined
+  artifact as a large fenced code block, H3 re-dispatch of a unit (gated
   **Persona**s only, default `lead-programmer`) whose `Unit:` line names an id
-  that already holds a `.claude/reviewed/<id>.pass` marker. Configured via
+  that already holds a `.claude/reviewed/<id>.pass` marker, and H4 a gated
+  dispatch missing any of the nine dispatch-contract elements (the `Unit:
+  <id>` first line plus eight `## `-headings `agents/task-master.md` defines)
+  — checked by presence only, not content. Configured via
   `persona-config.json`'s `dispatchHygiene` (default mode `block`); single-use
   escape hatch `.claude/.dispatch-override`. H3 is only as good as the
   reviewer's marker id matching the dispatch's `Unit:` line, and issue #153
