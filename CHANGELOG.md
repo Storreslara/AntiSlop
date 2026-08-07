@@ -3,6 +3,11 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.24.0] - 2026-08-06
+
+### Changed
+- **Skills library remediation (unit #251).** Capability change: skills marked with `disable-model-invocation` are now unreachable to agents in all modes (previously only in agent-teams mode). Skill rewiring: `implement` skill deleted; `handoff`, `improve-codebase-architecture`, `to-spec`, and `to-tickets` un-flagged for availability; `grill-me` superseded by `grilling` in persona frontmatter definitions.
+
 ## [0.23.0] - 2026-08-06
 
 ### Changed
