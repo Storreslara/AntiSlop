@@ -119,8 +119,11 @@ drift apart.
   `improve-codebase-architecture`; `grill-me` repointed to `grilling`; `implement`
   deleted; `domain-modeling` wired into `scribe`. Plugin cache refreshed to
   v0.25.0 and reachability verified live post-restart. **All reachability claims
-  (Steps 4/5) are now verified live, not just by file-content grep.** See
-  `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
+  (Steps 4/5) are now verified live, not just by file-content grep.** The `fm-noflag`
+  declared-deviation class (stripping the model-invocation flag from `handoff` and
+  `improve-codebase-architecture`) is now formally documented in [ADR 0012](docs/adr/0012-vendored-skill-declared-deviations.md);
+  [ADR 0005](docs/adr/0005-vendor-mattpocock-skills.md) amended to reference it.
+  See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
 - **Upstream MCP tool naming gap** (recorded 2026-08-06) — code-review-graph
   installer templates contain five MCP tool names lacking the `_tool` suffix
   that the live MCP server actually exposes: `get_flow`, `list_graph_stats`,

@@ -26,7 +26,7 @@ None. `package.json` has no `dependencies`/`devDependencies` field.
   (Tracks B–C of plan 2026-07-15-vendor-mattpocock-skills completed). The
   external `npx skills@latest add mattpocock/skills` install step is gone.
   These skills are now shipped first-party as `antislop:<name>` references in
-  every persona, with content versioned in this repo. Two of these vendored skills (`handoff` and `improve-codebase-architecture`) have an intentional deviation: the upstream `disable-model-invocation: true` flag is stripped to enable autonomous agent invocation, tracked as `fm-noflag` reconstruction type. A periodic re-sync
+  every persona, with content versioned in this repo. Two of these vendored skills (`handoff` and `improve-codebase-architecture`) have an intentional deviation: the upstream `disable-model-invocation: true` flag is stripped to enable autonomous agent invocation, tracked as `fm-noflag` reconstruction type (architectural record: [ADR 0012](../../docs/adr/0012-vendored-skill-declared-deviations.md)). A periodic re-sync
   process (`bash scripts/resync-vendored-skills.sh`) manages drift against
   upstream `main` — see `docs/maintenance/resync-vendored-skills.md`.
 
