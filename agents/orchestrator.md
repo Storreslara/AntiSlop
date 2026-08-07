@@ -385,13 +385,17 @@ no self-wake either once its own turn has ended.
 
 Do NOT repeatedly resume the intermediate persona just to ask "are you done yet" —
 each resume costs a full turn and cannot detect completion any faster than
-waiting; two or more such rounds is the passive-waiting failure mode, not a
+waiting; two or more such rounds are the passive-waiting failure mode, not a
 diagnostic. Ask **at most once** for the grandchild's assigned `name` (never its
-internal agentId — that must stay undisclosed per the metadata-secrecy rule); a
+internal agentId — internal agentIds are never surfaced in a user-facing reply,
+so don't ask an intermediate persona to break that by pasting one to you); a
 persona that named its own nested dispatch (rather than leaving it anonymous) makes
 the grandchild directly `SendMessage`-able by that name from anywhere in the
 session, same as a top-level teammate. Once you have the name, address the
-grandchild directly going forward and stop relaying through the intermediate.
+grandchild directly going forward and stop relaying through the intermediate. If
+the grandchild turns out to be unnamed or unreachable, don't ask again — wait for
+the intermediate persona's own natural completion or resume instead of further
+polling.
 
 When dispatching a persona for 2-FAIL-cap or debug-spec work that may itself
 spawn a nested `Agent` call, say so explicitly in the dispatch and require it
