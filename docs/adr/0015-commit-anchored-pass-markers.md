@@ -26,7 +26,7 @@ The v3 commit anchor solves this via two halves:
 
 **Half A (Marker Writers):** The reviewer and lead-programmer (in the no-reviewer-fallback case) write the `commit: <sha|none>` field when creating or updating a marker. This is mechanical bookkeeping, requires no new policy, and is orthogonal to the verdict itself (PASS or FAIL).
 
-**Half B (Dispatch Hygiene):** The `dispatch-hygiene.sh:H3` gate checks whether a marker's commit is reachable from `HEAD`. If the commit is reachable, the unit is marked done and re-dispatch is blocked (existing behaviour). If the commit is unreachable, the marker is treated as void and re-dispatch is allowed (new behaviour).
+**Half B (Dispatch Hygiene):** The `dispatch-hygiene.sh:H3` gate checks whether a marker's commit is positively verifiable as unreachable from `HEAD`. If the commit is reachable, the unit is marked done and re-dispatch is blocked (existing behaviour). Only when the commit resolves and is confirmed NOT an ancestor of `HEAD` is re-dispatch allowed (new behaviour) — every unverifiable case (no `commit:` field, `commit: none`, a malformed SHA, or no git repo) still blocks, preserving H3's pre-v3 behaviour.
 
 **Critical caveat:** Half B alone would **not** have caught issue #165 (false PASS verdict on a CONTEXT.md edit). That incident was a reviewer error: the reviewer checked criteria that should not have passed, not a lost-work scenario. The commit-anchor approach prevents a *different* failure mode (work loss), not reviewer errors. Both halves are required for the design to make sense.
 
@@ -43,15 +43,15 @@ PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance
 
 ## Fail-Direction Rule
 
-**Unverifiable commits are treated as void, allowing re-dispatch.** This is a fail-open principle: if the marker's commit cannot be determined (missing, malformed SHA, or unreachable), the gate allows re-dispatch rather than deadlocking.
+**An unverifiable commit preserves today's behaviour and fires.** Only a positively-proven-unreachable commit (branch 6 below) allows re-dispatch. Everything else — no `commit:` field, `commit: none`, a malformed SHA token, no git repo, or a positively-verified-still-reachable commit — fires, exactly as H3 behaved before this plan. This is a fail-safe (not fail-open) principle: an unverifiable marker keeps protecting the unit rather than silently allowing a possibly-still-live unit to be re-dispatched.
 
-The `dispatch-hygiene.sh:H3` gate has six branches:
-1. No marker file exists → allow
-2. Marker is empty/malformed → allow (fail-open)
-3. Marker lacks a `commit:` field (v2 format) → allow (backward-compatible)
-4. Marker has `commit: none` → allow (unit marked before any commit)
-5. Marker's commit sha is reachable from `HEAD` → block (unit work is live)
-6. Marker's commit is unreachable from `HEAD` → allow (unit may be re-dispatched)
+The `dispatch-hygiene.sh:H3` gate has six branches, all conditioned on a marker file existing in the first place (if no marker file exists at all there is nothing to check, and H3 never fires on that unit — a separate, prior condition, not one of the six):
+1. Marker lacks a `commit:` field (legacy v2 format) → fires (preserves pre-v3 behaviour)
+2. Marker has `commit: none` → fires
+3. Marker's `commit:` token is not a well-formed SHA → fires
+4. Marker's commit is well-formed but the project directory is not a git work tree (unverifiable) → fires
+5. Marker's commit sha resolves and is reachable from `HEAD` → fires (unit's work is confirmed still live)
+6. Marker's commit sha resolves and is confirmed NOT reachable from `HEAD` → does not fire (unit may be re-dispatched; its attested work is confirmed gone)
 
 ## Backward Compatibility
 
@@ -70,7 +70,7 @@ The v0.6.0 legacy-marker grace period (through 2026-07-27) already handles v1 fo
 
 3. **No bulk audit/backfill of existing markers.** The 128+ existing v2 markers in this repo remain untouched. v3 adoption applies only to newly written markers.
 
-4. **No adapter port.** The adapter ports (`adapters/codex/hooks/scripts/dispatch-hygiene.sh`, `adapters/cursor/hooks/scripts/dispatch-hygiene.sh`) are not updated in this unit. The commit-anchor logic in H3 is scoped to the main Claude Code hook. See Open Question 2 below.
+4. **No adapter port — there is nothing to port.** Neither adapter ships a `dispatch-hygiene.sh` at all (confirmed via `ls adapters/*/hooks/scripts/`: Codex and Cursor each ship only `graph-update.sh`, `lint-on-edit.sh`, `protected-paths.sh`, `reviewer-route-gate.sh`, `stop-gate.sh`, and `lib/`). Half B (H3 re-validation) is a main-hook-only feature and simply does not exist for Codex/Cursor projects. See Open Question 2 below.
 
 5. **No general marker-expiry/TTL mechanism.** The marker's `commit:` field enables history-loss detection, not time-based expiry. A marker remains valid indefinitely as long as its commit is reachable.
 
@@ -80,7 +80,7 @@ The v0.6.0 legacy-marker grace period (through 2026-07-27) already handles v1 fo
 
 - `task-gate.sh`: Header comment and help line updated to describe v3 format. `marker_valid()` function (lines 57–64) unchanged, byte-identical to baseline `e2bcc6a`.
 - `stop-gate.sh`: Help line (line 156) updated to show v3 printf format.
-- `dispatch-hygiene.sh`: H3 gate logic updated to check commit reachability. Not in scope for this ADR; see issue #260 acceptance criteria.
+- `dispatch-hygiene.sh`: H3 gate logic updated to check commit reachability — landed in unit #256 (commit `1b884fa`, spec Step 1), not unit #260. This ADR documents that shipped behaviour; unit #260 itself only updated marker-writer templates and documentation (`git diff --stat 9959b19..HEAD` touches 9 files, none of them `dispatch-hygiene.sh`).
 
 ### Marker Writers
 
@@ -102,20 +102,20 @@ Git's `rev-parse HEAD` can return a short or full SHA depending on configuration
 
 ### Open Question 2: Adapter Port (Deferred)
 
-The adapter ports (Cursor, Codex) ship their own `dispatch-hygiene.sh` copies but do not yet implement the commit-anchor logic in H3. Porting the logic requires:
-- Mirroring the six-branch logic from the main hook's H3
+Neither adapter ships a `dispatch-hygiene.sh` at all — Codex and Cursor each ship only `graph-update.sh`, `lint-on-edit.sh`, `protected-paths.sh`, `reviewer-route-gate.sh`, `stop-gate.sh`, and `lib/` (confirmed via `ls adapters/*/hooks/scripts/` and `find adapters -name '*dispatch*'`, both turning up no dispatch-hygiene match). Half B (H3 re-validation) is therefore entirely absent for Codex/Cursor projects today, independent of this ADR — there is no warning, no error, no degraded behaviour; the feature simply is not present there. Porting it (a future unit, post 2026-08-07) would require:
+- Writing a `dispatch-hygiene.sh` for each adapter from scratch, or folding the main hook's H3 logic into whatever re-dispatch gating each adapter already has
 - Ensuring `git merge-base --is-ancestor` works in the adapter's execution environment
-- Re-measuring behavioural parity between main and adapter ports
+- Measuring behavioural parity against the main hook's H3
 
-This is deferred to a later unit (post 2026-08-07). The main Claude Code hook is updated; adapter users will receive a warning or error if they re-dispatch a unit whose work was lost, directing them to the plugin update or a workaround.
+Adapter users are unaffected by this ADR; nothing regresses and nothing new is exposed to them.
 
 ## Rationale
 
 **Undetectable work loss is a silent failure mode.** A marker exists; the gate sees it; the gate blocks. The developer sees "unit awaiting review" but the work is gone. Without the commit anchor, this deadlock has no obvious fix. With the anchor, the gate can detect the condition and allow re-dispatch.
 
-**Fail-open principle.** Any marker we cannot verify (missing, malformed, v2 without commit anchor) is treated as void, allowing re-dispatch. This errs on the side of unblocking rather than deadlocking.
+**Fail-safe principle.** Any marker we cannot positively verify as pointing to a now-unreachable commit (missing, malformed, v2 without commit anchor, no git repo) still fires and blocks, exactly as before this plan. This errs on the side of protecting a marker over silently allowing a possibly-still-live unit to be re-dispatched; only a confirmed-unreachable commit stands the gate down.
 
-**Backward compatibility without grace period.** v2 markers are accepted and allow re-dispatch (branch 3). There is no new grace period; v2 markers coexist with v3 indefinitely, limited only by the existing legacy-marker grace period (through 2026-07-27).
+**Backward compatibility without grace period.** v2 markers are accepted by `marker_valid()` (branch 1: no `commit:` field still fires/blocks re-dispatch, same as before v3 existed). There is no new grace period governing v2 markers themselves; they coexist with v3 indefinitely. (The existing v0.6.0 legacy-marker grace period, through 2026-07-27, is a separate mechanism governing v1 bare-`touch` markers, not v2.)
 
 **Simplicity.** The commit anchor is a single field; the check is a single `git merge-base --is-ancestor` call. No expiry TTLs, no automatic pruning, no versioning machinery.
 

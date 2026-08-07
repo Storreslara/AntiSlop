@@ -167,13 +167,18 @@ defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-
 - **H3 — Re-dispatch gate** (best-effort, convention-dependent): fires when
   the dispatch prompt's `Unit:` line (if present) matches a reviewer's marker
   id in `.claude/reviewed/<task-id>.pass`, i.e. when a unit already marked
-  done is being re-dispatched. The check has six branches: (1) no marker
-  file exists — allow; (2) marker is empty/malformed — allow (fail-open); (3)
-  marker lacks a `commit:` field (v2 format) — allow (backward-compatible); (4)
-  marker has `commit: none` — allow (unit marked before any commit); (5)
-  marker's commit sha is reachable from `HEAD` — block (unit work is live); (6)
-  marker's commit is unreachable from `HEAD` (work was lost to history) —
-  allow (unit may be re-dispatched). Only fires if the convention `Unit: <id>`
+  done is being re-dispatched. If no marker file exists at all there is
+  nothing to check and H3 never fires on that unit (a separate, prior
+  condition). Given a marker file exists, the check has six branches, and an
+  unverifiable commit preserves pre-v3 behaviour by firing, not by allowing
+  re-dispatch: (1) marker lacks a `commit:` field (legacy v2 format) —
+  fires; (2) marker has `commit: none` — fires; (3) marker's `commit:` token
+  is not a well-formed SHA — fires; (4) marker's commit is well-formed but
+  the project directory is not a git work tree (unverifiable) — fires; (5)
+  marker's commit sha resolves and is reachable from `HEAD` — fires (unit's
+  work is confirmed still live); (6) marker's commit sha resolves and is
+  confirmed unreachable from `HEAD` (work was lost to history) — does not
+  fire (unit may be re-dispatched). Only fires if the convention `Unit: <id>`
   is reliably followed; read as best-effort protection, not a guaranteed catch.
   Issue #153 originally flagged this as unreliable in a specific way: a
   reviewer could clear pending-review flags without writing *any* marker at
