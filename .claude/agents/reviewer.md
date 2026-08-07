@@ -51,7 +51,9 @@ with reasons.
   ```
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
-  test/build/lint commands and read the actual exit codes/output.
+  test/build/lint commands and read the actual exit codes/output. Verify the
+  reviewed state is committed before writing a marker — no tracked file carries
+  an uncommitted change.
 - **Verify against the spec, not the diff.** Re-read task-master's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
@@ -86,10 +88,21 @@ with reasons.
   substitutes for running the command, and never adds a new FAIL ground —
   its findings live exclusively in the advisory section appended after the
   verdict.
-- **On PASS (both modes)**: write the v2 marker for the unit id you were
-  given via Bash — `mkdir -p .claude/reviewed` then a `printf` of the
-  marker's required first line,
-  `printf 'PASS <task-id> %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/reviewed/<task-id>.pass`
+- **On PASS (marker format v3)**: before writing the marker, verify the
+  reviewed state is committed. Run `git diff --quiet HEAD` — it must exit 0, so
+  no tracked file carries an uncommitted change. For each file the reviewer
+  inspected to satisfy a criterion, run `git ls-files --error-unmatch <path>` —
+  it must exit 0, so the file is tracked and not a never-added new file that
+  `git diff HEAD` cannot see. Capture the commit SHA via `sha="$(git rev-parse HEAD)"`.
+  If (1) or (2) fails, the verdict is **FAIL**, not PASS, with the defect
+  stated as "the unit's changes are not committed; the criteria were satisfied
+  against an uncommitted working tree" plus the offending paths. This is not
+  INSUFFICIENT-CONTEXT — nothing is unreachable, the state is simply wrong.
+  If the project is not a git repository (`git rev-parse --git-dir` fails),
+  write `commit: none` instead of the SHA and note this in the verdict line.
+  Write the v3 marker via Bash — `mkdir -p .claude/reviewed` then a `printf` of
+  the marker's required first line:
+  `printf 'PASS <task-id> %s commit: %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(git rev-parse HEAD)" > .claude/reviewed/<task-id>.pass`
   — so both the TaskCompleted hook (agent-teams mode) and the pending-review
   gate (default mode) can mechanically confirm "done = reviewer passed" per
   the shared protocol. A bare `touch` no longer satisfies `task-gate.sh`'s
@@ -280,19 +293,18 @@ flag-keeping heuristic (below) depends on: the route-gate already blocks the
 next gated dispatch while any pending-review flag stands, so there is never a
 second unit's flag to confuse with the blocked one.
 
-The reviewer writes the v2 PASS marker at `.claude/reviewed/<task-id>.pass`
+The reviewer writes the v3 PASS marker at `.claude/reviewed/<task-id>.pass`
 in BOTH modes, not only where a `TaskCompleted` hook exists to check it — a
-marker that exists only in one mode would be an audit gap. Marker format v2:
+marker that exists only in one mode would be an audit gap. Marker format v3:
 the file must be non-empty and its first line must read exactly `PASS
-<task-id> <UTC ISO-8601 timestamp> criteria: <acceptance-criteria
+<task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria
 command(s) run>`. The reviewer writes this via `Bash` (`printf`, not a bare
 `touch`) on a PASS verdict — this is bookkeeping, not fixing code, and does
 not conflict with "the reviewer never edits the code under review."
 Planning/research/documentation work is never gated by this marker. On PASS,
 the marker MAY carry the reviewer's non-blocking notes appended after this
 required first line, so Minor findings persist instead of being discarded;
-`task-gate.sh`'s `marker_valid()` checks only line 1 and non-emptiness, so
-appended notes don't change what's validated.
+`task-gate.sh`'s `marker_valid()` checks only line 1's `PASS <task-id> ` prefix and non-emptiness, so v2 markers remain valid and are never retroactively rejected, and `dispatch-hygiene.sh`'s H3 reads the `commit:` field and declines to fire when the named commit is unreachable from `HEAD`, so a marker whose work was lost no longer blocks its own correction.
 
 In agent-teams mode, "done" is additionally enforced mechanically: the
 `TaskCompleted` hook blocks a task from being marked complete unless this
