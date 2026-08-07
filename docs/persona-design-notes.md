@@ -30,8 +30,8 @@ below; that remains instruction-enforced. `skills:` placeholders are
 namespaced names from the mattpocock/skills plugin, resolved and
 substituted by ADAPT (which copies a corrected copy of this file into the
 project's .claude/agents/, since project agents override plugin agents).
-`Skill` is in tools so a teammate copy can invoke grill-me/to-spec
-explicitly, since preloading doesn't apply to teammates. `maxTurns: 40` —
+`Skill` is in tools; however, when a skill carries `disable-model-invocation:
+true`, it is removed from context entirely and cannot be invoked. `maxTurns: 40` —
 raised from 30 after a live cutoff was observed in this persona on
 2026-07-28 (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`); not
 re-measured, see `docs/self-improvement-loops.md`'s E6 note. `model: opus`
@@ -60,8 +60,8 @@ task-master's dispatch prompts and sliced-issue bodies are its TEXT OUTPUT
 (relayed via SendMessage/report, or filed directly as tracker issues
 through `gh` via Bash) — the same "produce the text, the
 tracker/orchestrator persists it" shape `spec-master` uses for the plan doc
-itself. `Skill` is in tools so a teammate copy can invoke `to-issues`
-explicitly, since preloading doesn't apply to teammates. `maxTurns: 40` —
+itself. `Skill` is in tools; however, when a skill carries `disable-model-invocation:
+true`, it is removed from context entirely and cannot be invoked. `maxTurns: 40` —
 raised from 30 alongside `spec-master`'s, after the same 2026-07-28 cutoff
 observation (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`); not
 re-measured, see `docs/self-improvement-loops.md`'s E6 note. `model:
@@ -114,7 +114,7 @@ spawning the explorer for structural facts, not for delegating fixes.
 `Bash` is for independently inspecting real state (data, config, deployed
 artifacts) — the whole point is checking premises against something
 outside the plan's own reasoning, not re-reading the plan more carefully.
-`Skill` carries `grill-me` so this persona can interrogate the PLAN's own
+`Skill` carries `grilling` so this persona can interrogate the PLAN's own
 stated assumptions adversarially, the same tool spec-master uses on the
 original request — but aimed the other direction, after the fact rather
 than before. `maxTurns: 20` — starting bound, adjust after real usage.
@@ -128,9 +128,8 @@ copies. `maxTurns: 10` bounds the highest-frequency persona.
 
 ## scribe
 
-`Skill` is in tools so a teammate copy can invoke
-improve-codebase-architecture explicitly, since preloading doesn't apply to
-teammates.
+`Skill` is in tools; however, when a skill carries `disable-model-invocation:
+true`, it is removed from context entirely and cannot be invoked.
 
 ## Verification
 
