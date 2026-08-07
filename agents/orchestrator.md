@@ -138,15 +138,16 @@ exploration, so it wrote `.claude/reviewed/<task-id>.blocked` (not
 `.pass`/`.fail`): dispatch the `explorer` (for a missing structural /
 blast-radius invariant) or the `scribe` (for a missing institutional /
 documented constraint), if present, to fetch exactly the named missing
-constraint, then re-dispatch the reviewer with that constraint added to the
-packet. If neither explorer nor scribe persona exists, fetch the constraint
-yourself, then re-dispatch the reviewer. This path
-does not count against the 2-FAIL cap (which counts `.fail` records only) and
-does **NOT** re-dispatch lead-programmer — the code isn't known-wrong; the
-reviewer merely couldn't confirm it, so re-running the writer would be wrong.
-The pending-review flag stays standing while the `.blocked` marker exists
-(stop-gate.sh keeps it), so turn-end and the next gated dispatch remain
-blocked until the reviewer resolves the unit to PASS/FAIL.
+constraint. If neither persona exists, fetch the constraint yourself. Then
+resume the same reviewer session by name via `SendMessage` (see
+"Delegation contract" for the resume-by-name mechanics), quoting the
+constraint. This path does not count against the 2-FAIL cap (which counts
+`.fail` records only) and does **NOT** re-dispatch lead-programmer — the
+code isn't known-wrong; the reviewer merely couldn't confirm it, so re-
+running the writer would be wrong. The pending-review flag stays standing
+while the `.blocked` marker exists (stop-gate.sh keeps it), so turn-end and
+the next gated dispatch remain blocked until the reviewer resolves the unit
+to PASS/FAIL.
 
 **At the 2-FAIL cap**: stop re-dispatching lead-programmer on this unit. Surface the full two-attempt
 defect history to the user as before, but instead of only stopping there,
