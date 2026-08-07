@@ -57,7 +57,7 @@ drift apart.
   — checked by presence only, not content. Configured via
   `persona-config.json`'s `dispatchHygiene` (default mode `block`); single-use
   escape hatch `.claude/.dispatch-override`. H3 is anchored by a `commit:`
-  field in the PASS marker (v3 format, see [ADR 0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
+  field in the PASS marker (v3 format, see [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
   records the commit at which the unit was marked done: a marker from an
   unreachable commit is treated as void, allowing re-dispatch of units whose
   work was lost to history. H3 is only as good as the reviewer's marker id
