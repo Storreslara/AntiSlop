@@ -3,6 +3,21 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.25.0] - 2026-08-06
+
+### Changed
+- **Efficiency audit remediation, Milestone 2 (F6, F7).** Two findings from the
+  efficiency audit remediated:
+  - **F6 — spec-master's ceremony becomes conditional on measured ambiguity:**
+    Grilling is now optional when scope is already enumerated, enabling faster
+    paths on tightly-specified work while preserving full interrogation where
+    needed. Keeps load-bearing parts (spec R-A, R-B, R-D) mandatory.
+  - **F7 — ≤2-unit fast path: spec-master emits dispatch contracts directly:**
+    For specs that task-master would slice into ≤2 units, spec-master now emits
+    the nine-element dispatch contract directly without running `to-tickets` or
+    filing tracker issues; retrieval points at the `docs/plans/` path. Resolves
+    an ADR-0003 collision discovered during exploration.
+
 ## [0.24.0] - 2026-08-06
 
 ### Changed
