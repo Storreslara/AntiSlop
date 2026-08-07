@@ -3,6 +3,33 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.26.0] - 2026-08-07
+
+### Changed
+- **Efficiency audit remediation, Milestone 3 (F9, F11; F10 assessed and
+  rejected).** Two findings from the efficiency audit remediated, one
+  finding assessed and rejected:
+  - **F9 — resume the same reviewer on `INSUFFICIENT-CONTEXT`:** After
+    fetching the named missing constraint, the orchestrator now resumes the
+    same reviewer session by name via `SendMessage`, quoting the constraint,
+    instead of spawning a fresh reviewer dispatch. Unchanged: this does not
+    count against the 2-FAIL cap, does not re-dispatch lead-programmer, and
+    the standing pending-review flag stays in place.
+  - **F10 — milestone-audit gate: assessed and rejected, not reversed.** The
+    milestone-audit gate remains unconditional and mandatory; "a clean
+    checkpoint is not a reason to skip the audit" is unchanged. F10's saving
+    is already captured by F1 (unit #230), which drops a clean, FAIL-free,
+    all-mechanical milestone's audit from `fable` to `sonnet` — that
+    existing saving was the basis for rejecting F10 outright rather than
+    implementing it. The audit itself was never made optional.
+  - **F11 — reuse a forwarded blast-radius answer instead of re-deriving
+    it:** When a dispatch packet already contains a `## Pre-resolved
+    context` blast-radius / structural answer, personas now verify the
+    specific doubted claim via `explorer` rather than re-deriving from
+    scratch. Applies to lead-programmer, spec-master, and milestone-auditor
+    only — the reviewer is explicitly exempt and always re-derives blast
+    radius independently.
+
 ## [0.25.0] - 2026-08-06
 
 ### Changed
