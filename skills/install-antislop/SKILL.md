@@ -4,7 +4,7 @@ description: >
   Adapt the antislop plugin (persona system + hooks + coding-discipline
   skill) to THIS repository. Run once per new project after installing the
   plugin. Covers only what genuinely can't be pre-baked: version check,
-  persona selection, third-party skill installs, the Code Review Graph, the
+  persona selection, the Code Review Graph, the
   arXiv MCP for researcher, repo-specific commands/paths, CLAUDE.md wiring,
   settings merge, wiki seeding, and sandboxed hook verification. Resyncing an
   already-adapted project against a newer plugin version (`--update`) is now
@@ -129,6 +129,14 @@ phrased conditionally ("if present, otherwise <fallback>") in
 `orchestrator.md`, `lead-programmer.md`, and `commands/start-feature-team.md`
 — a plain copy degrades gracefully even when a persona was deselected.
 
+**Numbering note.** The section numbers in this document are stable labels,
+not a contiguous sequence — the fractional headings above exist precisely so
+that inserting material never shifts an existing number. The number three is
+unused: the material it once carried covered installing skills sourced from
+outside this repository, which became unnecessary once those skills were
+vendored first-party under `skills/`. The gap is deliberate — do not renumber
+to close it.
+
 ## 4. Code Review Graph (MCP server, scoped to explorer alone — never project-wide)
 
 The Code Review Graph (github.com/tirth8205/code-review-graph) installs
@@ -139,9 +147,9 @@ accurate forever):
 - `pipx install code-review-graph` (or `pip install`, per its current docs).
 - `code-review-graph install --platform claude-code` — this auto-writes a
   PROJECT-WIDE `.mcp.json` MCP server entry (every persona would inherit it
-  by default) AND generates `.claude/skills/code-review-graph/` containing
-  build-graph/review-delta/review-pr WORKFLOW skills (slash commands, not an
-  ad-hoc query interface).
+  by default) AND generates four skill directories at `.claude/skills/debug-issue/`,
+  `.claude/skills/explore-codebase/`, `.claude/skills/refactor-safely/`, and
+  `.claude/skills/review-changes/` (all query interfaces, not workflow commands).
 - **Rescope it to the explorer alone, mechanically — do not hand-edit this.**
   Run `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --wire-graph-mcp` (npx-scaffolded
   projects: `node <your-clone>/bin/cli.js --wire-graph-mcp`). This reads the
@@ -155,10 +163,11 @@ accurate forever):
   script exists to avoid: `mcpServers` must be a LIST of single-key dicts,
   each with an explicit `type:` — a flattened bare map connects to nothing
   with no error at all.
-- The generated `.claude/skills/code-review-graph/*` workflow skills
-  (build-graph/review-delta/review-pr) are legitimate and can stay — they're
-  just not what the explorer calls; leave them for the user/other personas to
-  invoke directly if wanted, and don't wire them into `explorer.md`.
+- The generated `.claude/skills/debug-issue/`, `.claude/skills/explore-codebase/`,
+  `.claude/skills/refactor-safely/`, and `.claude/skills/review-changes/` skill
+  directories are legitimate and can stay — they're just not what the explorer
+  calls; leave them for the user/other personas to invoke directly if wanted, and
+  don't wire them into `explorer.md`.
 - Build the index once (`code-review-graph build` or equivalent — check the
   tool's current CLI). Identify the incremental-update command and its
   file-argument syntax — this becomes `graphUpdateCommand` in
