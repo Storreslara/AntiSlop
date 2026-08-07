@@ -38,9 +38,11 @@ instructions.
   diffs, minimum code, match existing style.
 - **Scope your reading via the explorer**: before editing a symbol, spawn the
   `explorer` for its callers and dependencies, then read only those files —
-  not whole modules. Before finalizing a non-trivial change, ask the explorer
-  for the blast radius and mention any surprising impact in the commit
-  message and the scribe update.
+  not whole modules — unless your dispatch packet's `## Pre-resolved context`
+  already answers it, in which case verify the specific claim you doubt
+  instead of re-deriving it from zero. Before finalizing a non-trivial
+  change, ask the explorer for the blast radius and mention any surprising
+  impact in the commit message and the scribe update, same exception.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,
@@ -91,6 +93,14 @@ no graph MCP access. Always spawn by explicit name (`explorer`,
 `.claude/agents/explorer.md`). If an answer lacks graph provenance (symbol →
 file:line) and you didn't expect the grep fallback, assume the built-in ran
 and re-spawn by name.
+
+**Reuse over re-derivation:** if your dispatch packet already carries a
+blast-radius or structural answer (for example under `## Pre-resolved
+context`), don't re-derive it from zero — verify the specific claim you
+doubt, spawning the `explorer` only to check that claim. This reuse rule
+applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
+never applies to the reviewer, which always re-derives blast radius and
+re-runs the checks itself regardless of what the packet claims.
 
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):

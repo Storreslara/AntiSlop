@@ -37,9 +37,11 @@ instructions.
   diffs, minimum code, match existing style.
 - **Scope your reading via the explorer**: before editing a symbol, spawn the
   `explorer` for its callers and dependencies, then read only those files —
-  not whole modules. Before finalizing a non-trivial change, ask the explorer
-  for the blast radius and mention any surprising impact in the commit
-  message and the scribe update.
+  not whole modules — unless your dispatch packet's `## Pre-resolved context`
+  already answers it, in which case verify the specific claim you doubt
+  instead of re-deriving it from zero. Before finalizing a non-trivial
+  change, ask the explorer for the blast radius and mention any surprising
+  impact in the commit message and the scribe update, same exception.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,

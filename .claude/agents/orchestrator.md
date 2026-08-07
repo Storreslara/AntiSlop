@@ -139,15 +139,16 @@ exploration, so it wrote `.claude/reviewed/<task-id>.blocked` (not
 `.pass`/`.fail`): dispatch the `explorer` (for a missing structural /
 blast-radius invariant) or the `scribe` (for a missing institutional /
 documented constraint), if present, to fetch exactly the named missing
-constraint, then re-dispatch the reviewer with that constraint added to the
-packet. If neither explorer nor scribe persona exists, fetch the constraint
-yourself, then re-dispatch the reviewer. This path
-does not count against the 2-FAIL cap (which counts `.fail` records only) and
-does **NOT** re-dispatch lead-programmer — the code isn't known-wrong; the
-reviewer merely couldn't confirm it, so re-running the writer would be wrong.
-The pending-review flag stays standing while the `.blocked` marker exists
-(stop-gate.sh keeps it), so turn-end and the next gated dispatch remain
-blocked until the reviewer resolves the unit to PASS/FAIL.
+constraint. If neither persona exists, fetch the constraint yourself. Then
+resume the same reviewer session by name via `SendMessage` (see
+"Delegation contract" for the resume-by-name mechanics), quoting the
+constraint. This path does not count against the 2-FAIL cap (which counts
+`.fail` records only) and does **NOT** re-dispatch lead-programmer — the
+code isn't known-wrong; the reviewer merely couldn't confirm it, so re-
+running the writer would be wrong. The pending-review flag stays standing
+while the `.blocked` marker exists (stop-gate.sh keeps it), so turn-end and
+the next gated dispatch remain blocked until the reviewer resolves the unit
+to PASS/FAIL.
 
 **At the 2-FAIL cap**: stop re-dispatching lead-programmer on this unit. Surface the full two-attempt
 defect history to the user as before, but instead of only stopping there,
@@ -377,6 +378,32 @@ unless noted:
 When it's unclear whether a job finished or was killed, resume anyway and
 let the subagent decide from its own transcript.
 
+### Nested dispatches (a persona spawning its own subagent)
+A dispatched persona can itself spawn a background `Agent` call (e.g. `spec-master`
+dispatching `task-master` directly during a 2-FAIL-cap debug-spec handoff). You have
+no task-id for that grandchild and cannot `TaskOutput` it — the completion
+notification goes to the persona that spawned it, not to you, and that persona has
+no self-wake either once its own turn has ended.
+
+Do NOT repeatedly resume the intermediate persona just to ask "are you done yet" —
+each resume costs a full turn and cannot detect completion any faster than
+waiting; two or more such rounds are the passive-waiting failure mode, not a
+diagnostic. Ask **at most once** for the grandchild's assigned `name` (never its
+internal agentId — internal agentIds are never surfaced in a user-facing reply,
+so don't ask an intermediate persona to break that by pasting one to you); a
+persona that named its own nested dispatch (rather than leaving it anonymous) makes
+the grandchild directly `SendMessage`-able by that name from anywhere in the
+session, same as a top-level teammate. Once you have the name, address the
+grandchild directly going forward and stop relaying through the intermediate. If
+the grandchild turns out to be unnamed or unreachable, don't ask again — wait for
+the intermediate persona's own natural completion or resume instead of further
+polling.
+
+When dispatching a persona for 2-FAIL-cap or debug-spec work that may itself
+spawn a nested `Agent` call, say so explicitly in the dispatch and require it
+to assign that nested call an explicit `name` up front — this is what makes
+direct addressing possible instead of a multi-hop relay.
+
 ## If a feature team is active
 If the `start-feature-team` command is running, its rules govern instead of
 the routing/review-ownership rules above for the life of that team — the two
@@ -434,6 +461,14 @@ no graph MCP access. Always spawn by explicit name (`explorer`,
 `.claude/agents/explorer.md`). If an answer lacks graph provenance (symbol →
 file:line) and you didn't expect the grep fallback, assume the built-in ran
 and re-spawn by name.
+
+**Reuse over re-derivation:** if your dispatch packet already carries a
+blast-radius or structural answer (for example under `## Pre-resolved
+context`), don't re-derive it from zero — verify the specific claim you
+doubt, spawning the `explorer` only to check that claim. This reuse rule
+applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
+never applies to the reviewer, which always re-derives blast radius and
+re-runs the checks itself regardless of what the packet claims.
 
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):

@@ -41,17 +41,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "228164f3897e424a7989f107d895f0369c62ffd51724d6ec59b69f8b905b3368",
+    ".claude/agents/orchestrator.md": "647c43d30589746cac33db59e40fff600751a3b3d97bbc2d3ad255afaa2ac658",
     ".claude/agents/explorer.md": "91fb280cef5211ef656b3fa925fe983c5b1a256d985478ed6294d6c525c45072",
-    ".claude/agents/lead-programmer.md": "0c089a74102fc6796185e998897371a421768084488a17917e097b18ebc55f7b",
-    ".claude/agents/milestone-auditor.md": "c0f1d5c3f80f8c4857aa79c71c086c3d1a162cb66719bba99ac1d72d3a60392c",
-    ".claude/agents/reviewer.md": "d6eccd4de7a6923055122584b29f0b59053144ae51fa12f9406bcbf7ed00114b",
+    ".claude/agents/lead-programmer.md": "0a0cf7b6331a690cd5f65484ab8c2a057ed65d3aad97edd27ed6c63bd95f3859",
+    ".claude/agents/milestone-auditor.md": "d77fd4a66aada8a0e98acaf91214f4b5021bb40762e3890c1aad1a0bbab24413",
+    ".claude/agents/reviewer.md": "d515d9d3502b55170a7bae638142d1e84b5bb3c829491d794428623bc86ff599",
     ".claude/agents/researcher.md": "0c337823fca225e6347262fea83e99f44bdbb53a3089fec3fd8f59f953924f52",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "fdeb5366ae4f249a37b0fba3a51ae859e522d832124acfc448ab23e97941db4d",
-    ".claude/agents/spec-master.md": "92049a79100891af520506b5ea860fcfd4ef7ee6494a7bcbe1cb6d6904e1375d",
-    ".claude/agents/task-master.md": "cb12823f08ecca89932f9dc70884eedfb5691fae2a4b8f8caa50756ee38d175a",
+    ".claude/agents/spec-master.md": "481719f524ab3da7c0f703ae290325c6e9d547986aa335ca1459044f31e966ce",
+    ".claude/agents/task-master.md": "6e38cf53a9b1d038ef780b4e64502fd93232716777af90b4757c920dc2caa4bc",
     ".claude/persona-protocol-slim.md": "c28e445d407b5028a27c8db7ecd6df048c1c979624d5e8a46f94d8c782ae3f8d",
-    ".claude/persona-protocol.md": "f6e105064c4f2d6b8f07bbd346d910484e1ca4c40f391689c0d84063d8b70d1b"
+    ".claude/persona-protocol.md": "9d0d49095519ba595840a6445bc43e7c7658a54064c859846da0426c62140c28"
   }
 }

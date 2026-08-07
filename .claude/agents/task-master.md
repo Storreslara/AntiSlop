@@ -178,6 +178,14 @@ no graph MCP access. Always spawn by explicit name (`explorer`,
 file:line) and you didn't expect the grep fallback, assume the built-in ran
 and re-spawn by name.
 
+**Reuse over re-derivation:** if your dispatch packet already carries a
+blast-radius or structural answer (for example under `## Pre-resolved
+context`), don't re-derive it from zero — verify the specific claim you
+doubt, spawning the `explorer` only to check that claim. This reuse rule
+applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
+never applies to the reviewer, which always re-derives blast radius and
+re-runs the checks itself regardless of what the packet claims.
+
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):
 lead with the direct answer, then compact supporting facts. Never dump raw
