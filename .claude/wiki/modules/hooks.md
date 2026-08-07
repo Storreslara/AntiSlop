@@ -150,12 +150,34 @@ defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-
   exceed the interior line limit. Intended to catch artifact inlining; a
   fenced block larger than the threshold is presumed an artifact that should
   have been an external artifact instead.
+
+  **Threshold calibration corpus (H1/H2, recorded 2026-08-07, unit #165):**
+  the 30000-byte / 80-line defaults were derived, not invented, from a
+  corpus of n=26 real dispatch prompts, measured as: p50 9,341 bytes, max
+  14,898 bytes, largest fenced block 41 interior lines. Both thresholds sit
+  well above the observed max, leaving headroom for legitimately larger
+  dispatches while still catching genuine outliers. The originating plan
+  doc (`docs/plans/2026-07-30-token-hygiene-dispatch-gate.md`, which held
+  the exact re-runnable `gh issue list … | wc -c` measurement command) no
+  longer exists in this repo — confirmed absent via `ls docs/plans/` as of
+  this recording, not a mistake in this note. If the thresholds are ever
+  retuned, re-derive the command rather than assuming one exists on disk;
+  this paragraph preserves only the corpus size and summary statistics, not
+  the exact command.
 - **H3 — Re-dispatch gate** (best-effort, convention-dependent): fires when
   the dispatch prompt's `Unit:` line (if present) matches a reviewer's marker
   id in `.claude/reviewed/<task-id>.pass`, i.e. when a unit already marked
   done is being re-dispatched. Only fires if the convention `Unit: <id>` is
-  reliably followed; read as best-effort protection, not a guaranteed catch,
-  until that discipline hardens (documented in issue #153).
+  reliably followed; read as best-effort protection, not a guaranteed catch.
+  Issue #153 originally flagged this as unreliable in a specific way: a
+  reviewer could clear pending-review flags without writing *any* marker at
+  all, so H3 would have nothing to check against. That specific gap is now
+  mechanically closed — see "stop-gate.sh: marker coupling via
+  clear-watermark" below, which blocks a reviewer's flag-clear when no
+  `.pass`/`.fail` marker is newer than the clear-watermark. That coupling
+  does not itself verify a written marker's id matches the *dispatched* unit,
+  so H3 remains best-effort, not provably airtight — it just no longer faces
+  silent marker omission.
 - **H4 — Dispatch contract audit** (checks labels, not substance): fires when
   `dispatchHygiene.requireContract` is `true` (default `true`) and the
   dispatch prompt lacks the required nine contract elements: `Unit: <id>` as the

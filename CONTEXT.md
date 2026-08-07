@@ -45,6 +45,26 @@ drift apart.
 - **Gate** — a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
+- **Dispatch hygiene** — the **Gate** applied at the `PreToolUse`/`Agent`
+  seam by `hooks/scripts/dispatch-hygiene.sh`: it checks a dispatch prompt
+  *before* the spawn happens, rather than a turn's output at its end like
+  `stop-gate.sh` does. Three checks: H1 an oversize prompt, H2 an inlined
+  artifact as a large fenced code block, and H3 re-dispatch of a unit (gated
+  **Persona**s only, default `lead-programmer`) whose `Unit:` line names an id
+  that already holds a `.claude/reviewed/<id>.pass` marker. Configured via
+  `persona-config.json`'s `dispatchHygiene` (default mode `block`); single-use
+  escape hatch `.claude/.dispatch-override`. H3 is only as good as the
+  reviewer's marker id matching the dispatch's `Unit:` line, and issue #153
+  originally flagged that discipline as unreliable; the specific gap #153
+  named — a reviewer clearing pending-review flags with no marker written at
+  all — is now mechanically closed by `stop-gate.sh`'s clear-watermark
+  coupling (`marker_since_last_clear`, `hooks/scripts/stop-gate.sh:96`),
+  which blocks a reviewer's flag-clear when no `.pass`/`.fail` marker is newer
+  than the watermark (`cleared-by=reviewer marker=MISSING`,
+  `hooks/scripts/stop-gate.sh:153-162`). That does not itself prove every
+  written marker's id matches the unit being dispatched, so H3 is still
+  best-effort rather than provably airtight — but the silent no-marker-at-all
+  failure mode #153 documented is now closed, not merely aspirational.
 - **Adapter behavioural parity** (issue #202, 2026-08-01 efficiency pass 2,
   Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
   same observable behaviour as the main Claude Code hook, not merely that
