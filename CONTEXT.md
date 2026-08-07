@@ -109,6 +109,32 @@ drift apart.
   commits (13.3%), inside the predicted band. See
   [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
+- **Implementer-tier ratchet** — the `.fail` disqualifier on lead-programmer
+  tier scaling. A unit's `[.claude/reviewed/<task-id>.fail` record (from a
+  prior FAIL verdict) permanently removes access to cheaper tiers, forcing
+  `sonnet`→`opus` or `haiku`→`sonnet` on re-attempt. This ratchet expires on a
+  subsequent verified PASS marker for that unit (unit #233). Distinct from the
+  reviewer-gate ratchet.
+- **Reviewer-gate ratchet** — the `.fail` disqualifier on the reviewer's own
+  model eligibility. A unit's `.claude/reviewed/<task-id>.fail` record from the
+  reviewer permanently forces `opus` on that unit's reviewer gate, regardless of
+  whether a subsequent PASS marker exists. This ratchet never expires
+  (unit #233, OQ3 ruling). The asymmetry (implementer tier expires, reviewer gate
+  does not) preserves the core safety property: if a reviewer has once missed
+  something on a cheaper tier, all future reviews run on the full-strength tier.
+  Distinct from the implementer-tier ratchet.
+- **F9 convention (unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`:** When
+  a reviewer dispatch encounters a missing constraint and signals
+  `INSUFFICIENT-CONTEXT`, the orchestrator resumes the same reviewer session by
+  name via `SendMessage`, quoting the constraint, instead of spawning a fresh
+  dispatch. This does not count against the 2-FAIL cap, does not re-dispatch
+  lead-programmer, and the standing pending-review flag stays in place.
+- **F11 convention (unit #242) — reuse-over-re-derivation by role:** When a
+  dispatch packet already contains a `## Pre-resolved context` blast-radius or
+  structural answer, personas verify the specific doubted claim via `explorer`
+  rather than re-deriving from scratch. Applies to lead-programmer,
+  spec-master, and milestone-auditor only — the reviewer is explicitly exempt
+  and always re-derives blast radius independently.
 - **The graph** — Code Review Graph, a third-party MCP server providing
   structural code queries (callers/callees, blast radius, architecture
   overview). Scoped to `explorer` alone, never project-wide — see
@@ -156,8 +182,8 @@ drift apart.
   Advisory and non-gating only — PASS/FAIL stays determined by the
   acceptance-criteria command + the existing materiality filter; roast-work
   never flips a verdict. Appended as a clearly-demarcated advisory section
-  after the verdict line. Runs inline, as part of the single reviewer
-  dispatch, only — there is no separate fable advisory pass.
+  after the verdict line. Runs inline-only, as part of the single reviewer
+  dispatch — there is no separate fable advisory pass.
 - **`disable-model-invocation` flag** — a hard, mode-independent skill
   configuration flag that removes a skill from context in every mode
   (direct invocation, teams mode, subagent context). A skill carrying
@@ -175,8 +201,8 @@ drift apart.
   where a miss fails open, conservative matching (recognized namespace only) at
   privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
   the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
-  identically across all three platform ports. [ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)
-  documents the audit-logging hardening applied post-Step-1.
+  identically across all three platform ports. Further audit-logging
+  hardening is a planned future item (ADR number not yet assigned).
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
