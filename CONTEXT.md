@@ -148,6 +148,15 @@ drift apart.
   never flips a verdict. Appended as a clearly-demarcated advisory section
   after the verdict line. Runs inline, as part of the single reviewer
   dispatch, only — there is no separate fable advisory pass.
+- **`disable-model-invocation` flag** — a hard, mode-independent skill
+  configuration flag that removes a skill from context in every mode
+  (direct invocation, teams mode, subagent context). A skill carrying
+  `disable-model-invocation: true` in its frontmatter is entirely
+  unreachable — not just in teams mode, but in all modes. This is distinct
+  from skill *licensing*, which gates based on permission levels or
+  operational mode; this flag is a blanket removal. See unit #254 (2026-08-07)
+  for the correction to this repo's prior documentation, which had stated
+  the weaker (false) version: "not in teams mode only."
 - **Agent identity** — the possibly-namespaced wire form of a persona name,
   `[<namespace>:]<persona-name>`, appearing in hook payloads' `agent_type` and
   `subagent_type` fields. The gate hooks normalize identities to handle both
