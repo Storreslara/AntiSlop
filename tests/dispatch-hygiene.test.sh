@@ -775,4 +775,90 @@ else
   bad "T39 expected rc_a=0 rc_b=0 with both override= and override-replay= logged (rc_a=$rc_a rc_b=$rc_b)"
 fi
 
+# H3 commit-anchored verdict table (marker format v3, spec Step 1). All six
+# reuse h3_cfg (requireContract:false) so H4 never decides the exit code.
+
+# h3-legacy-no-commit-field - branch 1: a legacy v2 marker with no commit:
+# field at all -> H3 still fires (protects all pre-existing legacy markers).
+dir="$(make_project h3-legacy-no-commit-field "$h3_cfg")"
+printf 'PASS 210 2026-01-01T00:00:00Z criteria: true\n' > "$dir/.claude/reviewed/210.pass"
+run "$dir" "$(payload lead-programmer $'Unit: 210\nDo the thing.\n')"
+if [ "$rc" = 2 ] && grep -q 'H3' <<< "$err"; then
+  ok "h3-legacy-no-commit-field: marker has no commit: field -> exit 2, H3 fires"
+else
+  bad "h3-legacy-no-commit-field expected exit 2 with H3 in stderr (rc=$rc err=$err)"
+fi
+
+# h3-commit-none - branch 2: the reviewer explicitly recorded no commit ->
+# H3 fires.
+dir="$(make_project h3-commit-none "$h3_cfg")"
+printf 'PASS 211 2026-01-01T00:00:00Z commit: none criteria: true\n' > "$dir/.claude/reviewed/211.pass"
+run "$dir" "$(payload lead-programmer $'Unit: 211\nDo the thing.\n')"
+if [ "$rc" = 2 ] && grep -q 'H3' <<< "$err"; then
+  ok "h3-commit-none: marker has commit: none -> exit 2, H3 fires"
+else
+  bad "h3-commit-none expected exit 2 with H3 in stderr (rc=$rc err=$err)"
+fi
+
+# h3-commit-malformed-sha - branch 3: the commit: token is not a valid SHA
+# shape -> H3 fires.
+dir="$(make_project h3-commit-malformed-sha "$h3_cfg")"
+printf 'PASS 212 2026-01-01T00:00:00Z commit: zz11223 criteria: true\n' > "$dir/.claude/reviewed/212.pass"
+run "$dir" "$(payload lead-programmer $'Unit: 212\nDo the thing.\n')"
+if [ "$rc" = 2 ] && grep -q 'H3' <<< "$err"; then
+  ok "h3-commit-malformed-sha: marker's commit: token is not a valid SHA -> exit 2, H3 fires"
+else
+  bad "h3-commit-malformed-sha expected exit 2 with H3 in stderr (rc=$rc err=$err)"
+fi
+
+# h3-not-a-git-repo - branch 4: a well-formed SHA, but the project dir is not
+# a git work tree (make_project never git inits) -> unverifiable, H3 fires.
+dir="$(make_project h3-not-a-git-repo "$h3_cfg")"
+printf 'PASS 213 2026-01-01T00:00:00Z commit: 1234567 criteria: true\n' > "$dir/.claude/reviewed/213.pass"
+run "$dir" "$(payload lead-programmer $'Unit: 213\nDo the thing.\n')"
+if [ "$rc" = 2 ] && grep -q 'H3' <<< "$err"; then
+  ok "h3-not-a-git-repo: project dir is not a git work tree -> exit 2, H3 fires"
+else
+  bad "h3-not-a-git-repo expected exit 2 with H3 in stderr (rc=$rc err=$err)"
+fi
+
+# h3-commit-reachable - branch 5: the marker's commit: SHA resolves and IS an
+# ancestor of HEAD -> H3 fires. A deliberate, scoped exception to "make_project
+# never git inits" (Do NOT touch): its own mktemp -d project dir, real commits.
+dir="$tmproot/h3-commit-reachable"
+mkdir -p "$dir/.claude/reviewed"
+printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true","dispatchHygiene":%s}\n' \
+  "$h3_cfg" > "$dir/.claude/persona-config.json"
+git -C "$dir" init -q
+git -C "$dir" -c user.email=t@example.com -c user.name=t commit --allow-empty -q -m init
+reachable_sha="$(git -C "$dir" rev-parse HEAD)"
+printf 'PASS 214 2026-01-01T00:00:00Z commit: %s criteria: true\n' "$reachable_sha" > "$dir/.claude/reviewed/214.pass"
+run "$dir" "$(payload lead-programmer $'Unit: 214\nDo the thing.\n')"
+if [ "$rc" = 2 ] && grep -q 'H3' <<< "$err"; then
+  ok "h3-commit-reachable: marker's commit resolves and is an ancestor of HEAD -> exit 2, H3 fires"
+else
+  bad "h3-commit-reachable expected exit 2 with H3 in stderr (rc=$rc err=$err)"
+fi
+
+# h3-commit-unreachable - branch 6: the marker's commit: SHA resolves but is
+# NOT an ancestor of HEAD (a commit orphaned by reset --hard) -> H3 does NOT
+# fire, and the stale-marker audit line is written.
+dir="$tmproot/h3-commit-unreachable"
+mkdir -p "$dir/.claude/reviewed"
+printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true","dispatchHygiene":%s}\n' \
+  "$h3_cfg" > "$dir/.claude/persona-config.json"
+git -C "$dir" init -q
+git -C "$dir" -c user.email=t@example.com -c user.name=t commit --allow-empty -q -m init
+git -C "$dir" -c user.email=t@example.com -c user.name=t commit --allow-empty -q -m stale
+unreachable_sha="$(git -C "$dir" rev-parse HEAD)"
+git -C "$dir" reset -q --hard HEAD~1
+printf 'PASS 215 2026-01-01T00:00:00Z commit: %s criteria: true\n' "$unreachable_sha" > "$dir/.claude/reviewed/215.pass"
+run "$dir" "$(payload lead-programmer $'Unit: 215\nDo the thing.\n')"
+if [ "$rc" = 0 ] && ! grep -q 'H3' <<< "$err" \
+   && grep -q "h3-stale-marker=215 commit=${unreachable_sha}" "$dir/.claude/dispatch-audit.log"; then
+  ok "h3-commit-unreachable: marker's commit is not an ancestor of HEAD -> exit 0, no H3, stale-marker logged"
+else
+  bad "h3-commit-unreachable expected exit 0, no H3 in stderr, h3-stale-marker= logged (rc=$rc err=$err)"
+fi
+
 exit "$fail"

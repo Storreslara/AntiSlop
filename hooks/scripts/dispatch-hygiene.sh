@@ -41,7 +41,11 @@
 #  2) H1 oversize prompt, 3) H2 inlined fenced block, 4) H3 re-dispatch of a
 #     unit holding a .claude/reviewed/<id>.pass marker. H3 reads the prompt's
 #     FIRST NON-BLANK LINE ONLY, so a quoted `Unit:` example in the body cannot
-#     false-positive (the #155 defect shape).
+#     false-positive (the #155 defect shape). H3 also reads the MARKER's first
+#     line for a `commit: <sha>` field: only a marker whose SHA git can
+#     positively prove is unreachable from HEAD declines to fire; every other
+#     case - no field, `commit: none`, a malformed token, no git repo, or a
+#     reachable SHA - still fires.
 #  5) H4 a gated dispatch missing any of the nine dispatch-contract markers
 #     agents/task-master.md defines. Gated targets only, and disarmed by
 #     `requireContract: false`.
@@ -50,7 +54,11 @@
 #
 # H3 is reduced protection by construction: it is correct only when the
 # reviewer wrote its marker under the same id the dispatch's `Unit:` line
-# names, and a missing or differently-named marker makes it fail open.
+# names, and a missing or differently-named marker makes it fail open. The
+# commit-anchored check narrows this only in the provably-safe direction: it
+# can decline to fire when a marker's `commit:` SHA is positively proven
+# unreachable from HEAD, never the reverse - anything it cannot verify (no
+# field, a malformed token, no git repo) still fires.
 #
 # H4 checks LABELS, NOT SUBSTANCE. It can force a well-LABELLED dispatch, never
 # a well-FORMED one: an agent can emit all nine headings and fill them with
@@ -276,8 +284,34 @@ if [ "$is_gated" = true ]; then
     case "$unit_id" in
       */*|*..*) ;;
       *)
-        if [ -f "${reviewed_dir}/${unit_id}.pass" ]; then
-          fire H3 "H3: unit ${unit_id} already passed review (.claude/reviewed/${unit_id}.pass exists) - it is done, do not re-dispatch it."
+        marker="${reviewed_dir}/${unit_id}.pass"
+        if [ -f "$marker" ]; then
+          # Commit-anchored verdict (marker format v3, six-branch table): a
+          # bare marker fires by default; only a positively-proven-unreachable
+          # commit (branch 6) suppresses H3. Everything unverifiable - no
+          # commit: field, `commit: none`, a malformed token, no git repo -
+          # keeps today's behaviour and fires (R4/governing rule).
+          h3_fire=true
+          sha=""
+          marker_first="$(head -n 1 "$marker" 2>/dev/null || true)"
+          if [[ $marker_first =~ commit:[[:space:]]+([0-9a-f]{7,40}|none)([[:space:]]|$) ]]; then
+            sha="${BASH_REMATCH[1]}"
+            if [ "$sha" != none ] \
+               && git -C "$project_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+              if git -C "$project_dir" cat-file -e "${sha}^{commit}" 2>/dev/null \
+                 && git -C "$project_dir" merge-base --is-ancestor "$sha" HEAD 2>/dev/null; then
+                h3_fire=true
+              else
+                h3_fire=false
+              fi
+            fi
+          fi
+          if [ "$h3_fire" = true ]; then
+            fire H3 "H3: unit ${unit_id} already passed review (.claude/reviewed/${unit_id}.pass exists) - it is done, do not re-dispatch it."
+          else
+            echo "unit ${unit_id}'s .pass marker names commit ${sha}, which is not reachable from HEAD - the unit is re-dispatchable because its attested commit is gone." >&2
+            log_line "h3-stale-marker=${unit_id} commit=${sha} target=${target}"
+          fi
         fi
         ;;
     esac
