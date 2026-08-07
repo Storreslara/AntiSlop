@@ -32,7 +32,7 @@ recorded here. Dates are ISO (YYYY-MM-DD).
 ## [0.24.0] - 2026-08-06
 
 ### Changed
-- **Skills library remediation (unit #251).** Capability change: skills marked with `disable-model-invocation` are now unreachable to agents in all modes (previously only in agent-teams mode). Skill rewiring: `implement` skill deleted; `handoff`, `improve-codebase-architecture`, `to-spec`, and `to-tickets` un-flagged for availability; `grill-me` superseded by `grilling` in persona frontmatter definitions.
+- **Skills library remediation (spec #245, units #246–#255, completed 2026-08-07).** Comprehensive reachability fix: skills marked with `disable-model-invocation` are now unreachable to agents in all modes (previously only in agent-teams mode). Skill rewiring: `implement` skill deleted; `handoff`, `improve-codebase-architecture`, `to-spec`, and `to-tickets` un-flagged for availability; `grill-me` superseded by `grilling` in persona frontmatter definitions; `domain-modeling` wired into `scribe`; all persona-declared skills verified live post-cache-refresh (not just by file-content grep, per unit #255's acceptance test).
 
 ## [0.23.0] - 2026-08-06
 
