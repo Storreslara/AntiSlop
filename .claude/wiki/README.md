@@ -16,7 +16,7 @@ the user-facing pitch and is kept current independently of this wiki, which
 exists for agent/contributor orientation instead.
 
 **Key recent decisions:**
-- [ADR 0013](../docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md) — Efficiency audit remediation (Pass 3): fable removed from roast-work advisory pass, reviewer-gate ratchet made permanent, F9/F11/F10-rejection findings recorded (2026-08-07).
+- [ADR 0013](../../docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md) — Efficiency audit remediation (Pass 3): fable removed from roast-work advisory pass, ADR-0006's reviewer-gate ratchet preserved unchanged, F9/F11/F10-rejection findings recorded (2026-08-07).
 
 No `api.md`: this repo ships a CLI (`bin/cli.js`) and Claude Code
 plugin surface (agents/skills/hooks/commands), not a library with a

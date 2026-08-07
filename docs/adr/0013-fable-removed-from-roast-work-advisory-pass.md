@@ -1,4 +1,4 @@
-# ADR 0013: Fable removed from the roast-work advisory pass; reviewer-gate ratchet made permanent (amends ADR-0004 and ADR-0009)
+# ADR 0013: Fable removed from the roast-work advisory pass (amends ADR-0004 and ADR-0009)
 
 Date: 2026-08-03 (operator ruling)
 Status: Accepted
@@ -7,7 +7,7 @@ Status: Accepted
 
 ADR-0004 established that the reviewer's authoritative PASS/FAIL gate runs on `opus`, and that for heavy units (≥8 files, ≥400 lines, structural, or security-sensitive), an **additional** separate advisory `roast-work` pass runs on `fable` to provide bulk-context critique without gating the verdict.
 
-The efficiency audit (2026-08-03, issue #232) identified that the heavy-unit trigger fires too frequently and the separate fable advisory pass duplicates the reviewer's own inline `roast-work` skill (same rubric, same diff), delivering low value at high cost. The audit recommended removal (option b in issue #232 OQ1), accepting a capability reduction against ADR-0004's rationale.
+The efficiency audit (2026-08-03) measured the heavy-unit trigger (roast-work criteria 2 and 3) as firing on ~85% of this repo's commits (52 of 60), with no size floor on either criterion — an over-broad trigger, not the genuinely rare exception ADR-0004 intended. spec-master's own recommendation was to **narrow** the trigger (add a conjunctive size floor to criteria 2 and 3) rather than remove the pass, which would have kept ADR-0004 intact. **The operator ruled otherwise on 2026-08-03 (OQ1): remove the separate fable dispatch entirely, against spec-master's recommendation**, accepting the resulting capability reduction against ADR-0004's rationale as a deliberate tradeoff.
 
 ## Decision
 
@@ -15,7 +15,7 @@ The efficiency audit (2026-08-03, issue #232) identified that the heavy-unit tri
 
 **ADR-0004 § Decision Tension 1 survives unchanged:** roast-work remains advisory-only, appended after the verdict line, never gating the PASS/FAIL verdict. The core safety property (PASS/FAIL determined by acceptance criteria + materiality filter, roast-work never flips it) is untouched.
 
-**Capability knowingly given up:** fable's bulk-context critique strength on large surfaces is no longer available as a separate dispatch. The replacement is the reviewer's inline `roast-work` skill (opus or sonnet per the measured tier), which provides detailed critique within a single dispatch.
+**Capability knowingly given up:** per the operator's 2026-08-03 ruling on OQ1 — against spec-master's own recommendation to narrow the trigger rather than remove the pass — fable's bulk-context critique strength on large surfaces is no longer available as a separate dispatch. The replacement is the reviewer's inline `roast-work` skill (opus or sonnet per the measured tier), which provides detailed critique within a single dispatch.
 
 **Fable is now dispatched by no persona and no pass for roast-work specifically.** The standing exclusion guard in `agents/orchestrator.md` (§ task-master model routing) is retained deliberately to prevent accidental re-introduction into `task-master`. This is a deliberate cost reduction, not an oversight.
 
@@ -38,11 +38,12 @@ The efficiency audit (2026-08-03, issue #232) identified that the heavy-unit tri
 - **Simpler review flow:** A single reviewer dispatch runs on opus or sonnet (measured at dispatch time); no separate fable advisory pass. Removes the cognitive overhead of tracking two parallel verdict streams.
 - **Capability traded for simplicity:** Fable's bulk-context strength on large surfaces is no longer available as a separate dispatch. Roast-work critique is inline only, at the reviewer's measured tier. This is a real reduction in coverage for structurally large changes.
 - **Fable's niche narrowed:** Fable is now dispatched only by `milestone-auditor` on a size-measured condition (≥8-unit milestones), never by `spec-master`, never by `reviewer`, and guarded against in `task-master`. This is intentional — the model's cost/benefit ratio is poor for most unit-level work.
-- **Implementer tier ratchet vs. reviewer-gate ratchet:** Distinguishes two separate `.fail` disqualifier mechanics. The implementer-side ratchet (R2/R3 in orchestrator routing) expires on a subsequent verified PASS. The reviewer-gate ratchet (preventing sonnet eligibility) is permanent — unit-level `.fail` records from reviewers never age out. Both use the same `.[claude/reviewed/<task-id>.fail` marker type; the difference is which tier's routing it guards.
-- **Cost reduction measured:** Efficiency audit finding F2 measured the separate fable advisory pass as unreachable in practice for ~85% of commits (no size floor on the heavy-unit trigger), and documented a Consequences section for reviewers accepting the fable-removal tradeoff.
+- **Implementer-tier ratchet vs. reviewer-gate ratchet:** Distinguishes two separate `.fail` disqualifier mechanics, per the F4 ratchet table (`docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md` ~line 131-139). The implementer-tier ratchets — R3 (a unit's own prior `.fail`, scoped to that unit) and R4 (haiku→sonnet on first FAIL, "never haiku again") — expire on a subsequent verified PASS newer than the `.fail` record. **R2, the reviewer-gate ratchet, stays permanent**: a `.fail` record permanently forces `opus` on that unit's review, and ADR-0006 § Consequences depends on this never expiring. Both use the same `.claude/reviewed/<task-id>.fail` marker type; the difference is which tier's routing it guards.
+- **Cost reduction measured:** Efficiency audit finding F2 measured the separate fable advisory pass's trigger (criteria 2 and 3, which carried no size floor) as firing on roughly 85% of this repo's commits (52 of 60 measured) — the over-broad-trigger problem this removal addresses. Only 8 of 60 measured commits did not trigger it.
+- **Dead-state note:** `.claude/agent-memory/antislop-task-master/roast-pass-class-ledger.md` (which would have tracked clean-pass streaks for the now-removed fable trigger) has never existed in this repo's git history. There is nothing to delete or mark retired; recorded here so a future pass does not go looking for it.
 
 ## Related
 - Supersedes ADR-0004 (reviewer roast-work / dual-model routing) § Decision Tension 2 — the fable advisory pass is removed; the roast-work advisory-only property (Tension 1) survives.
-- Amends ADR-0006 (signal-gated sonnet on the reviewer gate) — indirectly, by confirming fable stays permanently excluded from the gate.
+- Preserves ADR-0006 (signal-gated sonnet on the reviewer gate) — the `.fail` expiry added by Step 4 applies to implementer tiers only; the reviewer-gate `.fail` disqualifier (R2) remains permanent and untouched, exactly as ADR-0006 requires.
 - Amends ADR-0009 (reviewer-tier measured eligibility) with the 2026-08-03 re-measurement and affirms thresholds unchanged.
 - Plan: `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md` (Step 15, Step 16 Contract B).

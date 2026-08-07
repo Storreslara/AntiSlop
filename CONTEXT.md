@@ -110,7 +110,7 @@ drift apart.
   [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
 - **Implementer-tier ratchet** — the `.fail` disqualifier on lead-programmer
-  tier scaling. A unit's `[.claude/reviewed/<task-id>.fail` record (from a
+  tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from a
   prior FAIL verdict) permanently removes access to cheaper tiers, forcing
   `sonnet`→`opus` or `haiku`→`sonnet` on re-attempt. This ratchet expires on a
   subsequent verified PASS marker for that unit (unit #233). Distinct from the
@@ -201,8 +201,13 @@ drift apart.
   where a miss fails open, conservative matching (recognized namespace only) at
   privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
   the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
-  identically across all three platform ports. Further audit-logging
-  hardening is a planned future item (ADR number not yet assigned).
+  identically across all three platform ports. The audit-logging hardening
+  for identity drift (percent-encoding, injective sanitize/dedupe key,
+  append-only log, degrade-on-write-failure) is already shipped, not a
+  future item — see `hooks/scripts/lib/agent-identity.sh:107-184`. The
+  `ADR-0007` number itself is unused/retired: no such document exists or is
+  planned (OQ-CF1, `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md:2908-2917`,
+  explicitly deferred out of scope for unit #244).
 - **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
