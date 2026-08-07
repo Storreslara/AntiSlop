@@ -1,16 +1,26 @@
 ---
 name: to-spec-slash-only
-description: The to-spec skill is disable-model-invocation, so a spec-master subagent cannot fire it via the Skill tool — apply its template/process manually.
+description: to-spec WAS slash-only but unit #252 un-flagged it (2026-08-06); verify against your live skills list before assuming either state.
 metadata:
   type: project
 ---
 
-`to-spec`'s SKILL.md has `disable-model-invocation: true`. Calling it via the
-`Skill` tool fails with "cannot be used with Skill tool due to
-disable-model-invocation" — it is a slash-command-only skill.
+**CORRECTED 2026-08-06 — this memory was written before unit #252 landed.**
+`to-spec` and `to-tickets` were un-flagged by commit `1eb4627` ("fix: un-flag
+to-spec and to-tickets, remove /implement reference (unit #252)"), and
+`antislop:to-spec` now appears in a dispatched spec-master's available-skills
+list. Treat the "slash-only" claim below as **historical**.
 
-**Why:** It is meant to be user-triggered (`/to-spec`); a dispatched subagent
-has no slash-command channel.
+**Check before relying on either state:** look for `antislop:to-spec` in your
+own available-skills listing. Per the skills-library spec's R7, skills resolve
+from the versioned *plugin cache*, not the working tree — so a repo-side
+un-flagging does not take effect until the cache is refreshed and the session
+restarts. The two can legitimately disagree.
+
+Historical detail, still accurate about what the flag does: a skill carrying
+`disable-model-invocation: true` is not merely blocked from the `Skill` tool —
+it is removed from the agent entirely (absent from the skills list, body not
+preloaded), in every mode, not just agent-teams.
 
 **How to apply:** When spec-master runs as a subagent and the task says
 "publish via to-spec," read the skill's SKILL.md for its PRD template + process

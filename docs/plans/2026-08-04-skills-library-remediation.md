@@ -1,10 +1,42 @@
 # Skills-library remediation (audit findings C1, C2, M3–M11)
 
-Status: **REVISION 4 — finalized.** All 5 Open Questions resolved by the human
-2026-08-04; seven defects found by `task-master` during slicing are fixed here.
+Status: **REVISION 5 — finalized.** All 5 Open Questions resolved by the human
+2026-08-04; eight defects found during slicing/execution are fixed here.
 Author: spec-master | Date: 2026-08-04 | Source: Opus-tier read-only skills audit
 
 ## Revision log
+
+**Revision 5 (2026-08-06)** — one **mid-flight** gap, found by `lead-programmer`
+while executing Step 7 as unit **#249**. Blocking for that unit only:
+
+- **G7 (Step 7, whole premise)** — **confirmed, and the cause is identified.**
+  Step 7 assumes each of the four `.claude/skills/*/` directories holds **two**
+  files: a tracked lowercase `skill.md` and an untracked uppercase `SKILL.md`.
+  As of 2026-08-06 only the **four lowercase** files exist; the uppercase copies
+  are absent from the working tree entirely. The implementer correctly invoked
+  the unit's Escalation clause instead of fabricating them.
+
+  **Root cause: `git stash --include-untracked`, not a deletion.** Stash
+  `stash@{0}` (`bf561cd0`, created 2026-08-06 16:36:50) is a **three-parent**
+  commit — the third parent `a0d90e59` is the untracked-files tree, and it
+  contains all four uppercase `SKILL.md` files plus 115 other untracked files.
+  The `.claude/skills/*/` directory mtimes are `Aug 6 16:36`, matching the stash
+  timestamp exactly. `git stash -u` *removes* untracked files from the working
+  tree; the stash was never popped, so they are still there and still recoverable.
+
+  **The files' content is unchanged and still authoritative** — re-verified
+  byte-for-byte against `a0d90e59`: 27/28/28/29 lines, `_tool` counts 4/4/7/4,
+  kebab-case `name:` matching each directory, zero non-suffixed occurrences of
+  the four core tool names. They satisfy the existing criteria 4 and 5 exactly.
+  **Fixed** by making Step 7 restore from the stash's untracked parent before
+  relocating tracking — not by regenerating, and emphatically not by authoring.
+
+  Two further defects were found while fixing G7 and are also fixed here:
+  **criteria 1 and 3's `-iname`/`ls-files` counts are now green at baseline as
+  well as post-change** (both measure `4` before *and* after), making them
+  vacuous; and **nothing in the step protected the stash**, whose accidental
+  `pop` would dump 119 unrelated files into the tree. New criteria 2b, 3c and 7
+  close all three. Self-check CHK29 and CHK30 make both a standing check.
 
 **Revision 4 (2026-08-06)** — one further gap, non-blocking:
 
@@ -44,9 +76,6 @@ Author: spec-master | Date: 2026-08-04 | Source: Opus-tier read-only skills audi
   assertions — heading set and cross-reference multiset byte-identical
   before/after — which cover all 33 references and protect line 488's external
   reference by construction.
-
-**Revision 2 (2026-08-04)** — four gaps `task-master` correctly declined to
-patch itself, all independently re-verified before fixing:
 
 **Revision 2 (2026-08-04)** — four gaps `task-master` correctly declined to
 patch itself, all independently re-verified before fixing:
@@ -190,8 +219,23 @@ copies are outdated.** This settles OQ5 on verified fact.
   `adapters/cursor/rules/persona-protocol.mdc:171` state agent-teams mode is
   *dropped for v1*. The dead Skill-tool advice exists only in
   `templates/persona-protocol.md:45` and `templates/persona-protocol-slim.md:48`.
-- `.claude/skills/*/SKILL.md` (uppercase) is **untracked but not gitignored**;
-  `skill.md` (lowercase) is tracked.
+- `.claude/skills/*/SKILL.md` (uppercase) is **not gitignored** (`git check-ignore`
+  exits 1), and `skill.md` (lowercase) is tracked. **Corrected in Revision 5
+  (G7):** as of 2026-08-06 the uppercase copies are no longer *in the working
+  tree at all* — being untracked is exactly what made them vulnerable, and
+  `git stash --include-untracked` swallowed them. They live in `stash@{0}`'s
+  untracked parent `a0d90e59`. Step 7 restores them from there; once tracked,
+  this class of loss cannot recur, which is a second, previously unstated
+  reason the step is worth doing.
+- The **live installer is `code-review-graph` 2.3.7** (pipx). Its
+  `skills.py` writes `.claude/skills/<name>/SKILL.md` — **uppercase**, with the
+  inline comment "Claude Code expects skills at `.claude/skills/<name>/SKILL.md`"
+  — and its templates use the `_tool` suffix (6 matches for
+  `semantic_search_nodes_tool`, zero for the backticked non-suffixed form). The
+  tracked lowercase files are therefore legacy output from an **older installer
+  version**, committed once in `cf182d0` and never refreshed. This is
+  independent corroboration of OQ5, arrived at without touching the disputed
+  files.
 
 ## Clarifications
 
@@ -258,6 +302,30 @@ copies are outdated.** This settles OQ5 on verified fact.
   names first, then keep the matching copy. **Done** — the `_tool` suffix is
   correct, so the uppercase `SKILL.md` copies are kept and the lowercase
   `skill.md` copies deleted.
+- 2026-08-06 Edge cases / failure handling (G7): Q Step 7's premise says two
+  files per directory; only the four lowercase ones exist. Were the uppercase
+  copies deleted, never generated, or is the premise simply wrong? →
+  A (self-resolved): none of those — they were **swallowed by
+  `git stash --include-untracked`** on 2026-08-06 16:36:50 and are intact in
+  that stash's untracked parent `a0d90e59`. Proven by the stash being a
+  three-parent commit whose third parent lists exactly those four paths, and by
+  the directory mtimes matching the stash timestamp to the minute. Step 7 now
+  restores rather than regenerates.
+- 2026-08-06 Domain entities / data model (OQ5 re-verification): Q Is the
+  `_tool`-suffix finding still true two days on, given that the step's *other*
+  premise just went stale? → A (self-resolved): yes — re-confirmed by a second
+  live `explorer` MCP roster query (2026-08-06 14:45 UTC, graph-derived, not
+  grep fallback). All **28** tools carry the suffix and **no non-suffixed form
+  exists**. Corroborated independently by installer 2.3.7's own templates. The
+  "keep uppercase" decision stands unchanged.
+- 2026-08-06 Technical constraints & tradeoffs (G7): Q Restore from the stash,
+  re-run the installer, or copy from a sibling checkout? →
+  A (self-resolved): **restore from the stash.** It is the only option with
+  in-repo provenance and byte-exact fidelity to what OQ5 verified; re-running
+  the installer mutates unrelated project files and pins content to whatever
+  version happens to be installed later; a sibling checkout is machine-specific
+  and unreproducible for anyone else. Installer regeneration is retained as a
+  documented fallback for the case where the stash is gone.
 
 ## Decisions made while finalizing (reversible; flagged for the checkpoint)
 
@@ -308,6 +376,30 @@ copies are outdated.** This settles OQ5 on verified fact.
   agent-teams mode is *dropped for v1*. There is nothing to compress, so
   criterion 9 is unsatisfiable without a cosmetic edit. Route this back to the
   cost-cutting track's owner; this spec does not modify another spec's units.
+
+- **R8 — The surviving uppercase copies are *more* accurate, not fully accurate
+  (Revision 5, G7). Explicitly out of scope; do not "fix" it inside Step 7.**
+  The live roster shows all 28 tools carry the `_tool` suffix, but the installer's
+  own templates still write five names without it — `get_flow`,
+  `list_graph_stats`, `get_community`, `list_flows`, `find_large_functions`
+  (in `debug-issue`, `explore-codebase` and `refactor-safely`). That is an
+  **upstream installer content bug**, inherited identically by every project the
+  installer touches. Step 7's job is relocating tracking of already-verified
+  content, and its Do-NOT-touch list forbids editing `SKILL.md` bodies — so
+  correcting these belongs in a separate unit filed against the installer's
+  output, not here. Recorded so a future audit does not re-flag it as a Step 7
+  miss, and so criterion 4 is not misread as certifying whole-file accuracy.
+  Note `callers_of`, `callees_of`, `imports_of` and `children_of` are **query
+  patterns, not tool names**, and are correct unsuffixed — a plausible
+  false-positive trap for anyone who does pick this up later.
+
+- **R9 — `stash@{0}` is load-bearing until Step 7 lands, and holds 119 untracked
+  files plus tracked modifications across `.claude/agent-memory/` and
+  `.claude/wiki/`.** Step 7 must extract **four paths** from it and nothing
+  else. `git stash pop`/`apply`/`drop` are forbidden in that unit — a pop would
+  dump 115 unrelated files into the tree and silently widen the diff far beyond
+  the step's ceiling. Step 7 criterion 7 asserts the stash is byte-identical
+  afterwards, so a violation fails the unit rather than being discovered later.
 
 - **R7 — Skills resolve from the installed plugin cache, not this repo
   (Revision 2, G1b).** `~/.claude/plugins/cache/antislop-marketplace/antislop/0.13.18/`
@@ -362,6 +454,29 @@ written to constrain. No other unit is touched; **no re-file, no new unit**, and
 #253 remains dispatchable as currently written (the prohibitions alone were
 sufficient to keep an implementer safe; this just removes the guesswork).
 
+### Revision 5 impact on the filed units
+
+**#249 (Step 7) only, and it is blocking for that unit** — unlike Revisions 3
+and 4, this one changes what the implementer actually does, not just how it is
+checked. The unit gains a recovery sub-step (7a), a mandatory operation order,
+two forbidden git operations, and three new criteria (1c, 7, 8); criteria 1, 2
+and 3 are corrected for baselines that no longer hold.
+
+| unit | change |
+|---|---|
+| **#249** (Step 7) | **body + criteria updated in place.** Re-dispatch required — the version already dispatched is unexecutable, since its criterion 1 baseline of `8` can never be met. No re-file and no new unit: the step's goal, scope and affected files are unchanged. |
+| #246–#248, #250–#255 | **unchanged.** |
+
+#249 gets **larger and more delicate**, not smaller: restoring from a specific
+stash parent without disturbing the stash is a narrower operation than the
+straightforward `git rm` + `git add` it replaces. If its `Suggested model` tag
+was set low on the assumption that Step 7 was mechanical file bookkeeping,
+`task-master` should re-read it — the failure mode here (an errant
+`git stash pop`) is destructive and wide, and **R5's "no prior `.fail` record"
+note no longer tells the whole story for this unit**: #249 has no `.fail` record
+(it never reached review), but it *has* already been escalated once for a
+premise defect, which is evidence about the step, not about the implementer.
+
 ## Constitution check (.claude/constitution.md v1.0.0)
 
 - P1 "Verify, don't assume" (MUST): satisfied — both central claims re-probed
@@ -369,7 +484,14 @@ sufficient to keep an implementer safe; this just removes the guesswork).
   preload behaviour established by a within-persona differential; the `--check`
   baseline measured (exit 0); OQ5 settled by a live MCP roster query rather than
   by choosing a convention. Step 5 additionally carries a mutation control so
-  the new drift-check path cannot pass vacuously.
+  the new drift-check path cannot pass vacuously. **Revision 5 strengthens this
+  principle rather than deviating from it**: Step 7's stale premise was caught
+  because the implementer measured instead of assuming, and the fix was adopted
+  only after (a) locating the files' actual cause of absence in the stash's
+  untracked parent, (b) re-running the OQ5 roster query live rather than reusing
+  the two-day-old answer, and (c) mutation-testing the revised criteria in a
+  throwaway worktree — where two of the pre-existing criteria were found to be
+  green at baseline and were replaced.
 - P2 "Prefer deterministic scripts over LLM re-derivation" (MUST): satisfied —
   mirror regeneration goes through `bin/cli.js --update` in Step 9; no step
   hand-edits `.claude/agents/*.md`.
@@ -820,35 +942,115 @@ already stated.
 
 ## Step 7 — Resolve the `.claude/skills/` duplicates (M3, OQ5)
 
+**REVISED in Revision 5 (G7). The premise changed under the unit: there are no
+longer two files per directory to choose between — there is one, and the copy
+this step must keep has to be recovered from a stash first.** The *decision* is
+untouched (uppercase wins, on the re-verified `_tool` roster); only the
+mechanics change. Read the recovery sub-step below before touching anything.
+
 **Affected files:** in each of
 `.claude/skills/{debug-issue,explore-codebase,refactor-safely,review-changes}/`:
-delete `skill.md` (tracked, lowercase), keep and **git-add** `SKILL.md`
-(currently untracked, uppercase).
+delete `skill.md` (tracked, lowercase), and restore-then-**git-add** `SKILL.md`
+(uppercase) from `stash@{0}`'s untracked parent.
 
-Grounded in the explorer's live MCP roster (see Context): the server's tools all
-carry the `_tool` suffix, which is the uppercase copies' convention. The
-lowercase copies' non-suffixed names are outdated and would not resolve. Keeping
-one file per directory also removes the cross-platform hazard where the two
-names collide into one file on case-insensitive filesystems.
+Grounded in the explorer's live MCP roster, re-verified 2026-08-06 (see
+Context): the server's 28 tools all carry the `_tool` suffix and no non-suffixed
+form exists, which is the uppercase copies' convention. The lowercase copies'
+non-suffixed names are legacy output from an older installer and would not
+resolve. Keeping one file per directory also removes the cross-platform hazard
+where the two names collide into one file on case-insensitive filesystems.
 
-**Acceptance criteria:**
-1. Pre-change baselines: `find .claude/skills -maxdepth 2 -iname 'skill.md' | wc -l`
-   → `8`; `git ls-files .claude/skills/ | wc -l` → `4` (only lowercase tracked).
+**7a — Recover the uppercase copies (new in Revision 5).** They are **not**
+missing-and-must-be-recreated; they are parked in a stash. Restore exactly four
+paths from the stash's untracked-files parent:
+
+```
+git checkout a0d90e5969982168b323b58d876fdd4c636cd81c -- .claude/skills/
+```
+
+That commit's tree contains **only** those four `SKILL.md` files under
+`.claude/skills/`, so the pathspec cannot over-restore; the command both writes
+and stages them. Use the **full SHA**, not `stash@{0}^3` — a stash index shifts
+if anything else is stashed in the meantime.
+
+**Do NOT `git stash pop`, `apply`, or `drop`.** That stash holds 119 untracked
+files plus tracked edits across `.claude/agent-memory/` and `.claude/wiki/`;
+popping it dumps 115 unrelated files into the tree (see **R9**). Criterion 7
+fails the unit if the stash is disturbed.
+
+**Ordering is mandatory: delete the lowercase files FIRST, then restore.** On a
+case-insensitive filesystem the two names are the same file, so restoring first
+would write `SKILL.md` onto `skill.md`'s inode and the subsequent `git rm` would
+delete the very content being kept. Delete-first is correct on both filesystem
+kinds.
+
+**Do NOT author, regenerate, or hand-edit `SKILL.md` content.** The content is
+already verified correct — this step relocates tracking, nothing else. It is
+also *incompletely* accurate in a way that is deliberately out of scope; see
+**R8** before "improving" anything.
+
+**Fallback if the stash no longer exists** (it does as of 2026-08-06; verify with
+criterion 1c before assuming otherwise): regenerate with `code-review-graph`
+**2.3.7+** into a *scratch* directory and copy only the four `SKILL.md` files
+across — never run the installer against this repo root, which would rewrite
+unrelated project files. Whichever source is used, criteria 4 and 5 are the
+acceptance gate on content, so a wrong-version regeneration fails rather than
+silently landing.
+
+**Acceptance criteria** (all re-measured and mutation-tested in a throwaway
+worktree 2026-08-06; the *pre-fix* column is the negative control proving each
+one can actually fail):
+
+1. Pre-change baselines, **corrected in Revision 5** — the old baseline of `8`
+   for criterion 1 described a working tree that no longer exists:
+   `find .claude/skills -maxdepth 2 -name 'skill.md' | wc -l` → `4` (lowercase,
+   case-**sensitive**); `find .claude/skills -maxdepth 2 -name 'SKILL.md' | wc -l`
+   → `0`; `git ls-files .claude/skills/ | grep -c 'SKILL.md'` → `0`.
+   1c. The recovery source is present before starting:
+   `git rev-parse --verify a0d90e5969982168b323b58d876fdd4c636cd81c^{tree}` exit 0
+   **and** `git ls-tree -r --name-only a0d90e5969982168b323b58d876fdd4c636cd81c | grep -c '^\.claude/skills/.*/SKILL\.md$'` → `4`.
+   If this fails, use the regeneration fallback above — do not improvise.
 2. Post-change: exactly one file per directory —
-   `find .claude/skills -maxdepth 2 -iname 'skill.md' | wc -l` → `4`, all named
-   exactly `SKILL.md`:
-   `find .claude/skills -maxdepth 2 -name 'SKILL.md' | wc -l` → `4`.
-3. All four are now tracked: `git ls-files .claude/skills/ | wc -l` → `4` and
-   `git ls-files .claude/skills/ | grep -c 'SKILL.md'` → `4`.
+   `find .claude/skills -maxdepth 2 -iname 'skill.md' | wc -l` → `4`.
+   **Vacuity warning (Revision 5):** this `-iname` form now measures `4` at
+   baseline **and** `4` post-change, so it proves only the "one file per
+   directory" invariant and is **not** evidence the change happened. The
+   discriminating assertions are 2b and 3b/3c.
+   2b. Case-**sensitive**, and therefore discriminating:
+   `find .claude/skills -maxdepth 2 -name 'SKILL.md' | wc -l` → `4` (was `0`)
+   **and** `find .claude/skills -maxdepth 2 -name 'skill.md' | wc -l` → `0`
+   (was `4`).
+3. All four are tracked: `git ls-files .claude/skills/ | wc -l` → `4`.
+   **Also non-discriminating** — it measures `4` before and after, since four
+   lowercase files were already tracked. The weight sits in 3b and 3c:
+   3b. `git ls-files .claude/skills/ | grep -c 'SKILL.md'` → `4` (was `0`).
+   3c. `git ls-files .claude/skills/ | grep -c '/skill\.md$'` → `0` (was `4`) —
+   asserts on the count, never on a negated exit status.
 4. The surviving copies use the verified convention:
-   `grep -c '_tool' .claude/skills/debug-issue/SKILL.md` → `4`, and no
+   `grep -c '_tool' .claude/skills/debug-issue/SKILL.md` → `4` (was `0`), and no
    non-suffixed form of the four core names remains anywhere:
    ``grep -cE '`(semantic_search_nodes|query_graph|detect_changes|get_impact_radius)`' .claude/skills/*/SKILL.md`` → `0` for every file.
+   Expected `_tool` totals per file, as a transcription guard: `debug-issue` 4,
+   `explore-codebase` 4, `refactor-safely` 7, `review-changes` 4.
+   **Scope note:** this certifies the four core names only, not the whole file —
+   see **R8**.
 5. `name:` fields are kebab-case and match their directory: for each dir,
-   `grep -c "^name: <dirname>$" .claude/skills/<dirname>/SKILL.md` → `1`.
+   `grep -c "^name: <dirname>$" .claude/skills/<dirname>/SKILL.md` → `1` (was
+   `0` — the lowercase copies carried Title Case names such as `Debug Issue`).
 6. `bash tests/validate.sh` exit 0. **Note:** its skill-frontmatter check globs
    `skills/*/SKILL.md` only and does **not** cover `.claude/skills/`, so this is
    a non-regression check — criteria 4 and 5 carry the actual weight.
+7. **Stash integrity (new in Revision 5, per R9).** The stash is untouched:
+   `git rev-parse stash@{0}` equals its pre-change value
+   (`bf561cd07d8389b7661abd41feef171fb4d1afeb` as of 2026-08-06) **and**
+   `git stash list | wc -l` equals its pre-change value (`1`). Capture both
+   before starting.
+8. **Blast-radius ceiling (new in Revision 5).** Nothing outside the four
+   directories is staged:
+   `git diff --cached --name-only | grep -v '^\.claude/skills/' | wc -l` → `0`.
+   Piping to `wc -l` rather than using `grep -vc` keeps the exit status clean,
+   per CHK13. Expect exactly four staged entries; git will likely report them as
+   renames (`R070`-ish similarity), which is normal and not a defect.
 
 ---
 
@@ -1153,6 +1355,31 @@ recorded as **R6**; neither blocks slicing.
   criteria, and keep the rejected wording as a negative control proving those
   criteria actually detect the violation. Asserting compatibility by reading is
   what failed all three times.
+- CHK29: Does every step's stated **pre-change baseline still describe the
+  working tree as it is now**, rather than as it was when the baseline was
+  measured? — FAIL (missing: Step 7's criterion 1 asserted a baseline of `8`
+  files that had dropped to `4` before the unit was dispatched, making the unit
+  unexecutable as written) — revised in place (Revision 5, G7). **Standing rule:
+  a baseline is a measurement with an expiry, not a fact.** Any criterion whose
+  baseline depends on *untracked* files is especially perishable — untracked
+  state is invisible to `git log`, so nothing in the history records its loss,
+  and routine commands (`git stash -u`, `git clean`) remove it silently. Where a
+  step depends on untracked content, the step must name a recovery source and
+  carry a criterion asserting that source exists **before** the work starts
+  (Step 7's criterion 1c), so a stale baseline surfaces as a clean precondition
+  failure rather than as a mid-flight escalation.
+- CHK30: Is every criterion **discriminating** — does it measure differently
+  before and after the change, rather than merely being true afterwards? — FAIL
+  (missing: Step 7's criteria 1 and 3 both measure `4` at baseline *and* `4`
+  post-change once the premise shifted, so they could not distinguish a
+  completed unit from an untouched one) — revised in place (Revision 5: 2b, 3b
+  and 3c added as the case-sensitive, discriminating forms, with the vacuous
+  originals retained and explicitly labelled as invariant checks). This is the
+  same defect class as CHK26's anti-vacuity floor, arrived at from the opposite
+  direction: CHK26 guards a criterion that matches *nothing*, CHK30 guards one
+  that was *already green*. **Standing rule: every criterion in this spec must
+  be mutation-tested against a negative control** — apply it to the pre-change
+  tree and confirm it fails there — which is how both defects were caught.
 - CHK24: Does every criterion that greps a **multi-word phrase** use the
   wrap-safe `tr '\n' ' ' | tr -s ' ' | grep -o | wc -l` form rather than a
   line-oriented `grep -c`? — FAIL (missing: Step 8's criterion 4 greped

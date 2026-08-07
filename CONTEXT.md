@@ -113,6 +113,15 @@ drift apart.
   structural code queries (callers/callees, blast radius, architecture
   overview). Scoped to `explorer` alone, never project-wide — see
   [ADR 0001](docs/adr/0001-mcp-scoped-to-single-persona.md).
+- **Upstream MCP tool naming gap** (recorded 2026-08-06) — code-review-graph
+  installer templates contain five MCP tool names lacking the `_tool` suffix
+  that the live MCP server actually exposes: `get_flow`, `list_graph_stats`,
+  `get_community`, `list_flows`, `find_large_functions`. Seven occurrences in
+  shipped SKILL.md files (`debug-issue`, `explore-codebase`, `refactor-safely`).
+  Root cause is upstream installer content bug, not antislop defect. Now that
+  these SKILL.md files are tracked/shipped (unit #249), the gap is more visible
+  and should be fixed in the installer itself. File a follow-up against
+  code-review-graph if not already done.
 - **This repo's own ADAPT state** — this repo self-hosts the plugin it
   ships (dogfooding). Its `.claude/persona-config.json` documents exactly
   which personas and substitutions this repo itself uses.
