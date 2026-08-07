@@ -376,6 +376,28 @@ unless noted:
 When it's unclear whether a job finished or was killed, resume anyway and
 let the subagent decide from its own transcript.
 
+### Nested dispatches (a persona spawning its own subagent)
+A dispatched persona can itself spawn a background `Agent` call (e.g. `spec-master`
+dispatching `task-master` directly during a 2-FAIL-cap debug-spec handoff). You have
+no task-id for that grandchild and cannot `TaskOutput` it — the completion
+notification goes to the persona that spawned it, not to you, and that persona has
+no self-wake either once its own turn has ended.
+
+Do NOT repeatedly resume the intermediate persona just to ask "are you done yet" —
+each resume costs a full turn and cannot detect completion any faster than
+waiting; two or more such rounds is the passive-waiting failure mode, not a
+diagnostic. Ask **at most once** for the grandchild's assigned `name` (never its
+internal agentId — that must stay undisclosed per the metadata-secrecy rule); a
+persona that named its own nested dispatch (rather than leaving it anonymous) makes
+the grandchild directly `SendMessage`-able by that name from anywhere in the
+session, same as a top-level teammate. Once you have the name, address the
+grandchild directly going forward and stop relaying through the intermediate.
+
+When dispatching a persona for 2-FAIL-cap or debug-spec work that may itself
+spawn a nested `Agent` call, say so explicitly in the dispatch and require it
+to assign that nested call an explicit `name` up front — this is what makes
+direct addressing possible instead of a multi-hop relay.
+
 ## If a feature team is active
 If the `start-feature-team` command is running, its rules govern instead of
 the routing/review-ownership rules above for the life of that team — the two
