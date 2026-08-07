@@ -2461,3 +2461,550 @@ per-persona qualifier**; `milestone-auditor`'s tier-2 fable slot reuses a
 *documented property* of fable, not Tension 2 itself. `.claude/wiki/changelog.md:58`
 already states the `spec-master` half correctly ("fable was never valid for that
 persona per ADR-0004") and needs no change.
+
+---
+
+# Convergence follow-ups — Milestone 3 boundary (2026-08-07)
+
+**Append-only. Scope: exactly the two `unconverged-requirement` findings the
+human operator accepted at the Milestone 3 pre-audit checkpoint on 2026-08-07**
+(units **#241, #242, #243** all reviewer-PASS; markers `241.pass`, `242.pass`,
+`243.pass`, no `.fail` for any of them). Nothing above this heading is
+rewritten, renumbered, or reworded — **including Step 15**, whose superseded
+lines are *quoted* below rather than edited in place. No work beyond the two
+named findings is added here.
+
+Two new numbered steps: **Step 16** (Follow-up 1 — ADR renumber) and **Step 17**
+(Follow-up 2 — CHANGELOG accuracy).
+
+**Dispatchable-unit count: 1**, so this resolves on the **≤2-unit fast path**
+that this spec's own Step 9 (F7) put in place — `task-master` is not invoked and
+no `to-tickets` run happens. Step 16 is *not* a new unit: it is a correction to
+the already-sliced, not-yet-dispatched unit **#244**, delivered as a re-issued
+dispatch contract. Step 17 is the one new unit, **`229-CF2`** (named for
+Follow-up 2 so the unit id and the finding number line up; there is deliberately
+**no `229-CF1` unit**, because Follow-up 1 folds into #244).
+
+## What I verified on disk before writing (2026-08-07, live, HEAD `c9e8f5b`)
+
+| Claim | Verified | Result |
+|---|---|---|
+| Highest ADR on disk | `ls docs/adr/` | `0012-vendored-skill-declared-deviations.md` — landed by spec #245 at `e1dcab3`, pointers at `37abf72` |
+| **`0013` is free** | `ls docs/adr/0013-*.md` | exit **2**, `wc -l` = **0**. No competing claim: `grep -rn "0013" --include=*.md .` returns **nothing** repo-wide |
+| **`0007` is a hole, not a free slot** | `ls docs/adr/0007*`; `git log --all --diff-filter=AD -- 'docs/adr/0007*'` | File never existed in history. But `CONTEXT.md:178` links `[ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)` — a **dangling reference to a different title**. Reusing 0007 would silently redirect that link. See OQ-CF1. |
+| Numbering rule is explicit | `skills/domain-modeling/ADR-FORMAT.md:27-29` | *"Scan `docs/adr/` for the highest existing number and increment by one."* Highest = 0012 → **0013**. The rule says increment, **not** backfill gaps. |
+| Every `0012` site in this spec | `grep -n "0012" <this file>` | **8 hits**: lines 864, 1572, 1577, 1602, 1603, 1638, 1956, 2151. Classified in Step 16. |
+| Follow-up 2's premise | `agents/orchestrator.md:228-232` | Landed table: *"`opus` on any judgment signal …; `fable` if no judgment signal AND the milestone is 8+ units; `sonnet` otherwise."* A clean **≥8-unit** milestone audits on `fable`. **Finding confirmed.** |
+| The defect is a *transcription* regression | This file, lines 861-863 and 1494-1518 | **The spec was already right.** Step 12 leg (ii) states the drop *"is now true only for milestones under 8 units"*, with the 3/12 = 25 % measurement. Unit #243 dropped the qualifier when transcribing Step 12 into the CHANGELOG. |
+| Blast radius of the bad claim | `grep -rn "captured by F1\|F10's saving" --include=*.md .` | **One shipped site only**: `CHANGELOG.md:20-22`. `.claude/wiki/changelog.md` has **no** F10 entry. Nothing else to fix. |
+| Version-stamp obligation | `.claude/constitution.md:18-22`; `.claude-plugin/plugin.json:3` | Neither follow-up touches `agents/*.md` or a template, so **no version bump** — `0.26.0` stands. |
+| Gate applicability | `.claude/persona-config.json` `gatedAgents` | `["lead-programmer"]`. `229-CF2` is gated (nine-element contract required); #244 (scribe) is not, but is emitted in the same form anyway. |
+| Baseline green | `bash tests/validate.sh` | exit **0** |
+
+## Clarifications
+
+1. Functional scope & success criteria: Clear
+2. Domain entities / data model: Partial
+3. User interaction flow: Clear
+4. Non-functional attributes (perf, security, scale): Clear
+5. External dependencies & integrations: Partial
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Clear
+8. Terminology consistency: Partial
+9. Completion / acceptance signals: Partial
+
+- 2026-08-07 Domain entities / data model: Q Which number does this spec's new
+  ADR take — the next-highest (`0013`), or the unfilled `0007` gap? → A
+  (self-resolved): **`0013`**. `skills/domain-modeling/ADR-FORMAT.md:29` states
+  the rule as "highest existing number, increment by one" — it does not
+  backfill. Independently decisive: `CONTEXT.md:178` already links ADR-0007 to
+  a *different* title, so reusing 0007 would repoint a live cross-reference at
+  the wrong document — the exact false-institutional-record failure class
+  Step 15 was written to avoid. Verified free, not assumed.
+- 2026-08-07 External dependencies & integrations: Q Does closing these two
+  findings require `task-master` and a `to-tickets` run? → A (self-resolved):
+  **No.** One new dispatchable unit (`229-CF2`); Step 16 corrects an
+  already-sliced unit rather than creating one. That is ≤2, so Step 9's fast
+  path applies: spec-master emits the nine-element contracts directly,
+  retrieval points at this `docs/plans/` path, and `scribe`'s issue-closing
+  duty does not fire (no issue number in the dispatch). ADR-0003 is not
+  contradicted — `to-tickets` is still never run by this persona.
+- 2026-08-07 Edge cases / failure handling: Q What happens if #244 is
+  dispatched from Step 15's own text, which this append is forbidden to edit?
+  → A (self-resolved): the re-issued contract below is authoritative and says
+  so in its first element; the orchestrator is told in the handoff to dispatch
+  #244 **only** from it. The residual risk — that someone reads Step 15 in
+  isolation — is raised as **OQ-CF2** rather than silently accepted, because
+  the fix for it (a pointer line at the top of the document) is an edit above
+  this heading and therefore not mine to make under an append-only instruction.
+- 2026-08-07 Terminology consistency: Q The CHANGELOG's F10 sentence also says
+  "all-mechanical", which is **not** a condition in the landed tier table
+  (`agents/orchestrator.md:228-232` conditions on *judgment signal* and *unit
+  count* only). Correct that too? → A (self-resolved): **No — out of scope,
+  reported not patched.** The accepted finding is the missing size qualifier.
+  "all-mechanical" is inherited verbatim from this spec's own Step 12 leg (ii),
+  so changing it in the CHANGELOG alone would make the release note diverge
+  from its source. It also errs *narrow* (understating which milestones
+  qualify), the opposite direction from the size omission, so it is not a
+  saving-overstatement. A Convergence follow-up must add no work beyond the
+  named findings; recorded as **OBS-1** below for a Pass 4.
+- 2026-08-07 Completion / acceptance signals: Q What machine-checkable
+  criteria replace Step 14's presence-only checks, which is why the reviewer
+  missed this? → A (self-resolved): Step 17's criteria assert the corrected
+  *content* (both the "under 8 units" and "8 or more units" halves plus the
+  25 % figure) **and** pin the untouched regions byte-for-byte against
+  `c9e8f5b`, so the unit cannot pass by editing the right words in the wrong
+  place. All five were executed against the live tree; baselines are recorded
+  per criterion.
+
+## Constitution check (.claude/constitution.md v1.0.0)
+- P1 "Verify, don't assume": satisfied — `0013`'s availability, `0007`'s
+  status, the tier table's wording, the single-site blast radius of the bad
+  claim, and every criterion's baseline were each measured on disk at
+  `c9e8f5b`, not inferred. The instruction explicitly said not to assume 0013;
+  it was checked, and the check also surfaced the 0007 trap.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied — the ADR
+  number is derived by the documented `ls`-and-increment rule rather than by
+  judgment, and criterion 1 of the re-issued #244 contract re-runs that same
+  check at execution time.
+- P3 "Version-stamp discipline": satisfied — neither follow-up modifies
+  `agents/*.md` or a template, so no `plugin.json` bump is owed. `0.26.0`
+  remains correct; Step 17 corrects the *text* of an existing entry under that
+  version rather than adding a new change to a version-stamped file.
+- P5 "`tests/validate.sh` is the merge gate": satisfied — the final criterion
+  of both units. Measured green at baseline (exit 0), so neither unit can pass
+  by leaving it red.
+
+## Step 16 (Follow-up 1) — this spec's new ADR is **`0013`**, not `0012`
+
+**Supersedes only the ADR-number-bearing text of Step 15. Step 15's required
+ADR *content*, its non-ADR affected files, and criteria 3, 4, 5 and 6 are
+unchanged and are not restated here.** No new unit; this re-issues **#244**.
+
+**Why:** Step 15 hardcodes `docs/adr/0012-<slug>.md`. Sibling spec #245 landed
+`docs/adr/0012-vendored-skill-declared-deviations.md` at `e1dcab3` on
+2026-08-07, before Milestone 3's units. Step 15's criterion 1
+(`ls docs/adr/0012-*.md` → exactly one match) is therefore **already green at
+baseline against a document this spec did not write** — vacuous, and worse,
+executing #244 as written risks overwriting #245's ADR. This spec's own
+§ "Coordination with issue #245" predates the landing and resolves only the
+`persona-protocol.md` overlap; it never addressed ADR numbering.
+
+**The corrected number is `0013`**, per `skills/domain-modeling/ADR-FORMAT.md:29`.
+`0007` was considered and **rejected**: no `0007-*.md` has ever existed, but
+`CONTEXT.md:178` links `[ADR 0007]` to `0007-agent-identity-audit-logging-hardening.md`,
+so filling the gap would repoint a live cross-reference at an unrelated
+document.
+
+**All eight `0012` occurrences in this document, classified** (`grep -n "0012"`):
+
+| Line | Text | Disposition |
+|---|---|---|
+| 864 | "Step 15 / ADR-0012: the required line … is rewritten" | **Historical** — a Revision-6 ripple note. Left as-is; renumbering a past revision note would falsify the audit trail. |
+| 1572 | Affected files: `a new docs/adr/0012-*.md` | **Superseded → `docs/adr/0013-*.md`** |
+| 1577 | "**ADR-0012 must record, precisely:**" | **Superseded → ADR-0013.** The bulleted content beneath is unchanged. |
+| 1602 | Criterion 1: `ls docs/adr/0012-*.md` | **Superseded** (see below) |
+| 1603 | Criterion 2: `tr … < docs/adr/0012-*.md` | **Superseded** (see below) |
+| 1638 | "Step 15's ADR-0012 attributes the decision" | **Historical** — inside the OQ1 ruling block. Left as-is. |
+| 1956 | CHK35's five conflict sites | **Historical** — a Self-check record. Left as-is. |
+| 2022 | Revision-6 table row | **Historical.** Left as-is. |
+| 2151 | Scribe update hint: "`docs/adr/0012-*` is the new decision record" | **Superseded → `docs/adr/0013-*`** (restated in the delta hint below) |
+
+**Confirmed: no *other* step or unit in this spec hardcodes `0012`.** The five
+superseded sites all sit inside Step 15 / #244 or its scribe hint; the four
+historical sites are revision notes and self-check records that describe past
+state and must not be rewritten.
+
+**Superseding acceptance criteria for Step 15** (replace criteria 1 and 2 only;
+3–6 stand verbatim):
+
+1. `n=$(ls docs/adr/0013-*.md 2>/dev/null | wc -l); test "$n" -eq 1` → exit 0.
+   *(baseline: `n` = 0.)*
+2. Every required element is present:
+   ```
+   s=$(tr '\n' ' ' < docs/adr/0013-*.md | tr -s ' ')
+   for k in 'ADR-0004' 'Tension 1' 'Tension 2' 'ADR-0006' 'ADR-0009' \
+            'reviewer gate' 'implementer' '13.3' 'F10'; do
+     printf '%s' "$s" | grep -q "$k" || exit 1
+   done
+   ```
+   → exit 0. *(Unchanged from Step 15 except the path.)*
+2b. **New — collision guard.** Spec #245's ADR is untouched and no `0012` is
+   created by this unit:
+   ```
+   git diff --numstat c9e8f5b -- docs/adr/0012-vendored-skill-declared-deviations.md
+   ```
+   → **no output**, AND `n=$(ls docs/adr/0012-*.md | wc -l); test "$n" -eq 1`
+   → exit 0. *(baseline: no output; `n` = 1.)* This criterion exists because
+   the defect being corrected is precisely a collision risk; without it the
+   unit could pass while having clobbered #245's record.
+
+## Step 17 (Follow-up 2) — correct `CHANGELOG.md` `[0.26.0]`'s F10 entry
+
+**New unit `229-CF2`.** Release-unit-owned content, so it cannot fold into #244
+— unit #244's own "Do NOT touch" list already excludes `CHANGELOG.md`.
+
+**The defect, precisely.** `CHANGELOG.md:20-22` (landed by #243 at `c9e8f5b`)
+reads *"F10's saving is already captured by F1 (unit #230), which drops a
+clean, FAIL-free, all-mechanical milestone's audit from `fable` to `sonnet`"* —
+with no size qualifier. The landed tier table (`agents/orchestrator.md:228-232`)
+drops to `sonnet` only when the milestone is **under 8 units**; a clean
+milestone of **8 or more** still audits on `fable` (3 of this repo's 12
+milestones, **25 %**). This is a **transcription regression, not a design
+error**: this spec's Step 12 leg (ii) already carries the qualifier and the
+measurement (lines 1501-1507). Step 14 reused Step 7's criteria, which check
+only CHANGELOG *heading* and *finding-name* presence — never content
+accuracy — which is why the reviewer PASSed it.
+
+**One consequential clause travels with the qualifier, and is in scope.** Once
+the saving is qualified, the sentence's own conclusion — *"that existing saving
+was the basis for rejecting F10 outright"* — becomes false on its face: a
+saving that lands on only ~75 % of milestones cannot be the basis for an
+outright rejection. Step 12 is explicit that **leg (i) alone sustains the
+rejection** and leg (ii) is the narrowed support. Correcting the qualifier
+without correcting that clause would ship a *differently* inaccurate sentence,
+so both move together. This is the minimum edit that makes the bullet true, not
+an expansion of the finding.
+
+**Model tag: `Suggested model: haiku`.** Per ADR-0010, every unit defaults to
+`haiku` and nothing is pre-emptively escalated however delicate it looks. The
+R-H / `.fail`-record exception does **not** apply: `.claude/reviewed/` holds no
+`243.fail` and no `229-CF2.fail`. The replacement prose is given verbatim below,
+so the unit is a mechanical substitution, and criteria 2-4 pin the untouched
+regions byte-for-byte. Escalation, if needed, is reactive per the standard
+first-FAIL rule.
+
+## Dependency ordering: `229-CF2` **must land before** #244
+
+Not independent, and not "after". Two reasons, both structural:
+
+1. **#244 writes the institutional record for F10.** Step 15 requires ADR-0013
+   to state *"F10 was assessed and rejected"* with its provenance. The scribe
+   executing #244 will read the shipped `CHANGELOG.md` as the current record of
+   that rejection. If the unqualified claim is still standing, the ADR is
+   likely to reproduce it — and Step 15's criterion 2 checks only that the key
+   `F10` is *present*, never that the surrounding claim is accurate. That is
+   the identical presence-only gap that let the defect ship in the first place;
+   ordering CF2 first closes it without adding a criterion to #244.
+2. **ADRs are the harder record to correct.** This spec treats ADRs as
+   historical and forbids rewriting them (Step 15 criterion 3 enforces exactly
+   that for ADR-0004). A CHANGELOG line corrected *after* ADR-0013 has already
+   cited it leaves the error frozen in the document that is by convention not
+   rewritten. Cheap to sequence, expensive to undo.
+
+**Dispatch order: `229-CF2` → reviewer PASS → #244 (re-issued).** #244 must not
+be dispatched while `229-CF2` is pending review; the pending-review gate
+enforces this mechanically in any case.
+
+---
+
+# Dispatch contracts (fast path — Step 9 / F7)
+
+> **Retrieval for both**: this file,
+> `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md`, § "Convergence
+> follow-ups — Milestone 3 boundary (2026-08-07)". No tracker issue is filed
+> for `229-CF2`; #244's tracker issue exists but its criteria are superseded
+> here. Paste each contract **starting at its `Unit:` line** — `dispatch-hygiene.sh`
+> H3 reads the first non-blank line only.
+
+## Contract A — `229-CF2` (dispatch first)
+
+Unit: 229-CF2
+
+#### Objective
+Correct the `[0.26.0]` F10 bullet in `CHANGELOG.md` so it states the size
+qualifier the landed milestone-auditor tier table actually implements. One
+bullet, one file. Do not re-litigate F10 — it stays **rejected on assessment**.
+
+#### Retrieval
+`docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md`, § "Convergence
+follow-ups — Milestone 3 boundary (2026-08-07)" → **Step 17**. Read Step 12
+(same file, lines 1485-1518) for the authoritative wording this bullet
+transcribes. Suggested model: **haiku**.
+
+#### Affected files
+- `CHANGELOG.md` — the F10 bullet only (currently lines 18-24). **Nothing else.**
+
+#### Ordered edits
+1. In `CHANGELOG.md`, replace the F10 bullet exactly:
+
+   **From:**
+   ```
+     - **F10 — milestone-audit gate: assessed and rejected, not reversed.** The
+       milestone-audit gate remains unconditional and mandatory; "a clean
+       checkpoint is not a reason to skip the audit" is unchanged. F10's saving
+       is already captured by F1 (unit #230), which drops a clean, FAIL-free,
+       all-mechanical milestone's audit from `fable` to `sonnet` — that
+       existing saving was the basis for rejecting F10 outright rather than
+       implementing it. The audit itself was never made optional.
+   ```
+
+   **To:**
+   ```
+     - **F10 — milestone-audit gate: assessed and rejected, not reversed.** The
+       milestone-audit gate remains unconditional and mandatory; "a clean
+       checkpoint is not a reason to skip the audit" is unchanged. F10's saving
+       is partly captured by F1 (unit #230), which drops a clean, FAIL-free,
+       all-mechanical milestone's audit from `fable` to `sonnet` — but only for
+       milestones **under 8 units**. A clean milestone of **8 or more units**
+       still audits on `fable` (3 of this repo's 12 milestones, 25 %). That
+       partial saving was the narrower of two supports for the rejection; the
+       load-bearing one is that the principle is deliberate and reasoned. The
+       audit itself was never made optional.
+   ```
+2. Nothing else. Do not add a new version heading, do not bump
+   `.claude-plugin/plugin.json` (no version-stamped file is touched — see the
+   Constitution check above), do not reflow neighbouring bullets.
+
+#### Do NOT touch
+- The F9 and F11 bullets, and every heading in `CHANGELOG.md`.
+- `[0.25.0]` and every earlier entry.
+- `.claude-plugin/plugin.json` (version stays `0.26.0`).
+- `agents/orchestrator.md` — the tier table is **correct**; the CHANGELOG is
+  what is wrong. Do not "fix" the table to match the old prose.
+- The words "all-mechanical" — see OBS-1; deliberately retained.
+- `docs/plans/*` — this spec is append-only and already correct.
+- Any ADR, `CONTEXT.md`, or `.claude/wiki/*` — those are #244's surface.
+
+#### Acceptance criteria
+All five executed against the live tree at `c9e8f5b`; baselines recorded.
+
+1. The qualifier and its measurement are present in the `[0.26.0]` section:
+   ```
+   s=$(sed -n '/^## \[0\.26\.0\]/,/^## \[0\.25/p' CHANGELOG.md | tr '\n' ' ' | tr -s ' ')
+   printf '%s' "$s" | grep -q 'under 8 units' || exit 1
+   printf '%s' "$s" | grep -q '8 or more units' || exit 1
+   printf '%s' "$s" | grep -q '25 %' || exit 1
+   ```
+   → exit 0. *(baseline: exits 1 on the first check — all three absent.)*
+2. The unqualified claim is gone:
+   ```
+   s=$(sed -n '/^## \[0\.26\.0\]/,/^## \[0\.25/p' CHANGELOG.md | tr '\n' ' ' | tr -s ' ')
+   printf '%s' "$s" | grep -q "saving is already captured by F1" && exit 1
+   printf '%s' "$s" | grep -q "was the basis for rejecting F10 outright" && exit 1
+   exit 0
+   ```
+   → exit 0. *(baseline: exits 1 — both phrases present.)*
+3. Everything from `[0.25.0]` down is byte-identical:
+   `diff <(git show c9e8f5b:CHANGELOG.md | sed -n '/^## \[0\.25/,$p') <(sed -n '/^## \[0\.25/,$p' CHANGELOG.md)`
+   → exit 0. *(baseline: exit 0 — this is a regression guard, green by design.)*
+4. The F9 and F11 bullets are byte-identical:
+   ```
+   a=$(git show c9e8f5b:CHANGELOG.md | sed -n '/F9 — resume the same reviewer/,/F10 — milestone-audit/p' | head -n -1)
+   b=$(sed -n '/F9 — resume the same reviewer/,/F10 — milestone-audit/p' CHANGELOG.md | head -n -1)
+   [ "$a" = "$b" ] || exit 1
+   c=$(git show c9e8f5b:CHANGELOG.md | sed -n '/F11 — reuse a forwarded/,/^## \[0\.25/p')
+   d=$(sed -n '/F11 — reuse a forwarded/,/^## \[0\.25/p' CHANGELOG.md)
+   [ "$c" = "$d" ]
+   ```
+   → exit 0. *(baseline: exit 0 — regression guard.)*
+5. No file other than `CHANGELOG.md` is modified:
+   `git diff --name-only -- . ':!CHANGELOG.md' ':!.claude/agent-memory'` → **no
+   output**, AND `bash tests/validate.sh` → exit 0. *(baseline: no output;
+   validate.sh exit 0.)*
+
+> **Dispatch precondition for criterion 5.** This Convergence-follow-ups append
+> must be **committed before `229-CF2` is dispatched**. It is deliberately kept
+> strict (no `':!docs/plans'` exclusion) so that a stray plan edit by the
+> implementer is caught — which means an *uncommitted* plan append would fail
+> the criterion through no fault of the implementer. Verified 2026-08-07: with
+> the append uncommitted, criterion 5 reports
+> `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md`; with it
+> committed, no output. Same precondition applies to Contract B.
+
+#### Pre-resolved context
+Do **not** re-derive these; verify only a specific claim you actively doubt
+(per F11 / Step 13).
+- **The landed rule**, `agents/orchestrator.md:228-232`, verbatim: *"`opus` on
+  any judgment signal (a `.fail` record for any unit in the milestone, a human
+  challenge at the step-9 pre-audit checkpoint, or a carried-in
+  `unconverged-requirement` follow-up); `fable` if no judgment signal AND the
+  milestone is 8+ units; `sonnet` otherwise."*
+- **The authoritative source wording** is Step 12 leg (ii), lines 1501-1507 of
+  this file, including the 3/12 = 25 % measurement. The replacement prose above
+  is derived from it — you do not need to re-measure the 12 milestones.
+- **Blast radius is one site.** `grep -rn "captured by F1\|F10's saving"
+  --include=*.md .` returns `CHANGELOG.md:20-21` and this spec's line 1502
+  (which is the correct source and must not change).
+  `.claude/wiki/changelog.md` has **no** F10 entry.
+- **No version bump is owed** — `.claude/constitution.md:18-22` scopes P3 to
+  `agents/*.md` and templates.
+
+#### Escalation
+Stop and report rather than improvising if: the F10 bullet does not match the
+"From" block byte-for-byte (someone edited it after `c9e8f5b`); criterion 3 or 4
+is red *before* you start (the baseline moved); or you conclude the tier table
+rather than the CHANGELOG is what is wrong — that is a spec-level reversal and
+routes back to `spec-master`, not a code fix.
+
+## Contract B — #244 (dispatch **after** `229-CF2` PASSes)
+
+Unit: 244
+
+#### Objective
+Execute **Step 15 — Institutional record** as written, with **one correction**:
+the new ADR is **`docs/adr/0013-<slug>.md`**, not `0012`. **This contract
+supersedes Step 15's criteria 1 and 2 and its ADR-path references. Do not
+dispatch or execute #244 from Step 15's own text alone.** Everything else in
+Step 15 — the required ADR content, the other affected files, criteria 3-6 —
+stands verbatim.
+
+#### Retrieval
+`docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md`: read **Step 15**
+(lines 1569-1609) for the full unit, then § "Convergence follow-ups — Milestone
+3 boundary (2026-08-07)" → **Step 16** for the corrections that override it.
+`skills/domain-modeling/ADR-FORMAT.md` for the ADR template.
+
+#### Affected files
+- `docs/adr/0013-<slug>.md` — **new** (was `0012-<slug>.md`).
+- `.claude/wiki/changelog.md`, `.claude/wiki/README.md`, `CONTEXT.md` — as
+  Step 15.
+- `.claude/agent-memory/antislop-task-master/roast-pass-class-ledger.md` — as
+  Step 15 (delete or mark retired).
+
+#### Ordered edits
+As Step 15, with every `0012` reference read as `0013`. Create the ADR at
+`docs/adr/0013-<slug>.md`; its required content is Step 15's bullet list,
+unchanged.
+
+#### Do NOT touch
+Step 15's own exclusions, **plus** these four, all landed by spec #245 and none
+of them this unit's business:
+- `docs/adr/0012-vendored-skill-declared-deviations.md` — another spec's ADR.
+- `CONTEXT.md:124`'s `[ADR 0012]` pointer.
+- `.claude/wiki/dependencies.md:29`'s `[ADR 0012]` pointer.
+- `CHANGELOG.md` — release-unit-owned; `229-CF2` owns the F10 correction.
+
+Also: do **not** create, rename, or backfill `docs/adr/0007-*`. The gap is
+deliberate for this unit's purposes — see OBS-2.
+
+#### Acceptance criteria
+Step 15 criteria **3, 4, 5, 6 verbatim**, plus superseding **1, 2** and new
+**2b** exactly as written in Step 16 above.
+
+#### Pre-resolved context
+- **`0013` is the correct number and is free**, measured 2026-08-07 at
+  `c9e8f5b`: `ls docs/adr/` ends at `0012`; `ls docs/adr/0013-*.md` → exit 2;
+  `grep -rn "0013" --include=*.md .` → no hits repo-wide. Rule:
+  `skills/domain-modeling/ADR-FORMAT.md:29`.
+- **`0012` is taken by spec #245** (`e1dcab3`, pointers at `37abf72`) — this is
+  the whole reason for the renumber.
+- **Do not use `0007`** even though no file occupies it: `CONTEXT.md:178` links
+  ADR-0007 to a different, never-written title.
+- The `229-CF2` correction has already landed by the time you run, so
+  `CHANGELOG.md`'s F10 bullet is the accurate source for the ADR's "F10 was
+  assessed and rejected" line.
+
+#### Escalation
+Stop and report if `ls docs/adr/0013-*.md` is **non-empty** when you start
+(something else claimed the number — re-derive with the ADR-FORMAT rule and
+report, do not guess), or if `229-CF2` has not yet reached PASS.
+
+## Open Questions
+
+1. **OQ-CF1 — should the `docs/adr/0007` gap be backfilled or formally
+   retired?** `CONTEXT.md:178` links `[ADR 0007](docs/adr/0007-agent-identity-audit-logging-hardening.md)`,
+   a file that has never existed in git history. Nothing in either follow-up
+   depends on this and neither unit touches it.
+   - **(a) RECOMMENDED — leave the gap, fix nothing now.** Out of scope for a
+     Convergence follow-up; file it for a Pass 4. `0013` is unaffected either
+     way.
+   - (b) Fix the dangling link in `CONTEXT.md` as part of #244.
+   - (c) Write the missing ADR-0007.
+2. **OQ-CF2 — add a one-line "see Convergence follow-ups" pointer at the top of
+   this document?** #245's plan carries exactly such a pointer at its line 10.
+   It would remove the residual risk that someone dispatches #244 from Step 15
+   in isolation and creates `0012` again. I did not add it because it is an
+   edit *above* the append-only boundary I was given.
+   - **(a) RECOMMENDED — yes, add it**, as a navigational line that changes no
+     step, criterion, or revision note. Cheapest durable guard.
+   - (b) No — rely on the re-issued contract plus the orchestrator's handoff.
+
+## Observations (reported, not patched)
+
+- **OBS-1 — "all-mechanical" is not a condition in the landed tier table.**
+  `agents/orchestrator.md:228-232` conditions only on *judgment signal* and
+  *unit count*. The phrase survives in both the CHANGELOG and this spec's
+  Step 12 leg (ii) as a leftover of the pre-F1 trigger. It errs narrow
+  (understates which milestones qualify), so it is not a saving-overstatement
+  and is not part of the accepted finding. Correcting it means correcting Step 12
+  too — a Pass 4 item.
+- **OBS-2 — the ADR-0007 gap.** See OQ-CF1.
+- **OBS-3 — the criteria gap that let this ship.** Step 14 reused Step 7's
+  release criteria, which assert CHANGELOG *heading* and *finding-name*
+  presence only. Any future release step that transcribes a narrowed or
+  qualified claim needs a content assertion, not a presence assertion. Step 17
+  criteria 1-2 are the pattern.
+
+## Self-check
+
+- CHK-C1: Is the corrected ADR number stated as a *verified* fact rather than
+  an assumption, with the verification method recorded? — PASS (measured
+  `ls docs/adr/`, `ls docs/adr/0013-*.md` → exit 2, repo-wide `grep "0013"` →
+  no hits; rule cited at `ADR-FORMAT.md:29`).
+- CHK-C2: Does the plan account for the possibility that the gap number `0007`
+  is the "next free" one? — FAIL (missing on first pass) — **revised in place**:
+  the `0007` case is now classified explicitly, rejected with a reason
+  (`CONTEXT.md:178`'s dangling link), and carried into both the Clarifications
+  log and #244's Pre-resolved context and Do-NOT-touch list.
+- CHK-C3: Does the plan state, for every `0012` occurrence in this document,
+  whether it is superseded or historical? — PASS (all 8 classified in Step 16's
+  table; 5 superseded, 4 historical, 1 line — 2151 — restated in the delta
+  scribe hint).
+- CHK-C4: Do Step 16 and Contract B agree on which of Step 15's criteria
+  survive? — PASS (both name criteria 3-6 as verbatim survivors and 1-2 as
+  superseded, plus new 2b).
+- CHK-C5: Is there a criterion that fails if #244 clobbers spec #245's ADR? —
+  FAIL (missing on first pass; the renumber alone makes criterion 1 pass while
+  saying nothing about `0012`) — **revised in place**: criterion 2b added, with
+  a measured baseline.
+- CHK-C6: Is the dependency direction between `229-CF2` and #244 stated with a
+  reason, not merely asserted? — PASS (two reasons: the presence-only gap in
+  Step 15 criterion 2, and ADR immutability under Step 15 criterion 3).
+- CHK-C7: Does Step 17 define what happens to the clause "that existing saving
+  was the basis for rejecting F10 outright", which the size qualifier
+  falsifies? — FAIL (ambiguous on first pass — the finding named only the
+  qualifier) — **revised in place**: the clause is now explicitly in scope, with
+  the reason it must move, and the replacement prose is given verbatim so the
+  unit stays mechanical.
+- CHK-C8: Is "all-mechanical" resolved one way or the other, rather than left
+  hanging? — PASS (resolved as out-of-scope with a stated reason, recorded in
+  Clarifications, in Contract A's Do-NOT-touch list, and as OBS-1).
+- CHK-C9: Is every acceptance criterion machine-checkable and baselined? —
+  PASS (all five of Contract A and all three superseding criteria of Contract B
+  were executed live at `c9e8f5b`; each carries its measured baseline, and the
+  composite blocks are `bash -n` clean).
+- CHK-C10: Do the criteria distinguish a genuine correction from an edit in the
+  wrong place? — PASS (criteria 3-5 pin `[0.25.0]`-and-earlier, the F9/F11
+  bullets, and the file set byte-for-byte, so a right-words-wrong-place edit
+  fails).
+- CHK-C11: Is the `haiku` tag defensible against the `.fail`-record rule? —
+  PASS (`.claude/reviewed/` holds no `243.fail` and no `229-CF2.fail`;
+  verbatim replacement prose supplied, so the unit is mechanical per ADR-0010's
+  no-pre-emptive-escalation decision).
+- CHK-C12: Does the append add any work beyond the two accepted findings? —
+  PASS (OBS-1/2/3 are reported, not scheduled; no unit touches them).
+- CHK-C13: Is the residual risk of dispatching #244 from Step 15's un-edited
+  text represented somewhere actionable? — FAIL (missing on first pass) —
+  **converted to Open Question 2 (OQ-CF2)**, with the interim guard stated in
+  Contract B's Objective.
+
+One revision pass was taken; CHK-C2, CHK-C5 and CHK-C7 were re-checked after
+revision and now pass. CHK-C13 remains open by design and is represented in
+Open Questions.
+
+## Scribe update hint (delta only)
+
+Two corrections to the Step 15 hint above, no new vocabulary:
+
+1. **"`docs/adr/0012-*` is the new decision record" now reads `docs/adr/0013-*`.**
+   `0012` belongs to spec #245 (`0012-vendored-skill-declared-deviations.md`)
+   and is not this spec's record. The rest of that paragraph — ADR-0004
+   § Tension 2 superseded while § Tension 1 survives, ADR-0006 and ADR-0009
+   gaining back-pointers, none of the three rewritten — is unchanged.
+2. **The F10 release note is corrected, not reversed.** F10 remains *rejected
+   on assessment*. If `CONTEXT.md` or the wiki records the F1 saving, it must
+   carry the size qualifier: the `fable` → `sonnet` drop applies to clean
+   milestones **under 8 units**; clean milestones of **8 or more** still audit
+   on `fable` (25 % of this repo's history). The load-bearing support for
+   rejecting F10 is that the principle is deliberate, not the saving.

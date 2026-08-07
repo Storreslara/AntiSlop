@@ -121,3 +121,15 @@ repo for verification can sweep in unrelated dogfood drift on
 units that never resynced their own `.claude/` copies — `git status` after
 and stage only your own scoped files (see
 [[feedback_check_index_before_commit]]), don't `git add -A`.
+
+**Gotcha 8 (unit #243, release step):** `--update --check` can print a
+`WARNING: unresolved placeholder(s) remain in: .../orchestrator.md` line
+even on a clean, exit-0 run. `PLACEHOLDER_RE` (`/<[A-Z0-9_]{2,}(:[a-zA-Z0-9_-]+)?>/`)
+false-positives on literal example text in prose, not just real
+`<MATTPOCOCK:slot>` tokens — in this case `<baseline>..<HEAD>` inside a
+`bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..<HEAD>` code
+example in `agents/orchestrator.md`'s "Reviewer gate model selection"
+section. This warning is non-fatal (doesn't change the exit code) and
+pre-existing in the SOURCE file — confirm with `grep '<HEAD>'
+agents/orchestrator.md` before assuming your own edit caused it. Do not
+"fix" it inside a release unit that's scoped to version bumps only.
