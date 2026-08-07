@@ -37,7 +37,7 @@ After the lead-programmer lands code for a dispatched unit (both issue number
 and task-id named in your dispatch), you close the tracker issue only when ALL
 four conditions hold:
 
-- A valid v2 PASS marker exists at `.claude/reviewed/<task-id>.pass` (non-empty, first line beginning `PASS <task-id> `).
+- A valid PASS marker (v2 or v3; `task-gate.sh`'s `marker_valid()` check is prefix-only and accepts either) exists at `.claude/reviewed/<task-id>.pass` (non-empty, first line beginning `PASS <task-id> `).
 - At least one commit reachable from `HEAD` references the issue number.
 - The issue is currently `OPEN`.
 - Both the issue number and task-id were named in your dispatch.

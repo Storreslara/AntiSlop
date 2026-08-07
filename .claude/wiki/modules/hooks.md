@@ -167,8 +167,14 @@ defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-
 - **H3 — Re-dispatch gate** (best-effort, convention-dependent): fires when
   the dispatch prompt's `Unit:` line (if present) matches a reviewer's marker
   id in `.claude/reviewed/<task-id>.pass`, i.e. when a unit already marked
-  done is being re-dispatched. Only fires if the convention `Unit: <id>` is
-  reliably followed; read as best-effort protection, not a guaranteed catch.
+  done is being re-dispatched. The check has six branches: (1) no marker
+  file exists — allow; (2) marker is empty/malformed — allow (fail-open); (3)
+  marker lacks a `commit:` field (v2 format) — allow (backward-compatible); (4)
+  marker has `commit: none` — allow (unit marked before any commit); (5)
+  marker's commit sha is reachable from `HEAD` — block (unit work is live); (6)
+  marker's commit is unreachable from `HEAD` (work was lost to history) —
+  allow (unit may be re-dispatched). Only fires if the convention `Unit: <id>`
+  is reliably followed; read as best-effort protection, not a guaranteed catch.
   Issue #153 originally flagged this as unreliable in a specific way: a
   reviewer could clear pending-review flags without writing *any* marker at
   all, so H3 would have nothing to check against. That specific gap is now

@@ -43,9 +43,9 @@ PASS using that id, and the TaskCompleted hook blocks any task named
 `impl:*` from completing without a matching marker.
 
 If there's no reviewer (deselected, or a teammate that crashed mid-run): the
-lead's sanity-check fallback above must itself write the marker in v2
+lead's sanity-check fallback above must itself write the marker in v3
 format after checking — `mkdir -p .claude/reviewed && printf 'PASS <task-id>
-%s criteria: <sanity check(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >
+%s commit: %s criteria: <sanity check(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(git rev-parse HEAD)" >
 .claude/reviewed/<task-id>.pass` (a bare `touch` no longer satisfies
 `task-gate.sh`'s content check — a forged-looking empty marker must not work
 for the lead either) — or avoid the `impl:` prefix for that task entirely —

@@ -45,11 +45,11 @@ On a throwaway branch:
   `subagent_type":"explorer"` and with `"agent_type":"orchestrator"` (target
   `reviewer`) and confirm both ALLOW — proves the gate only fires for the
   specific lead-programmer→reviewer pair, not every Agent-tool call.
-- **PASS marker v2 (`task-gate.sh`)**: `touch .claude/reviewed/test.pass`
+- **PASS marker v3 (`task-gate.sh`)**: `touch .claude/reviewed/test.pass`
   (bare, empty) then pipe `{"task":{"subject":"impl:test","id":"test"}}` into
   `task-gate.sh` and confirm BLOCK (exit 2) naming the required `printf`
   format and the `--update` remedy; then write a valid first line —
-  `printf 'PASS test %s criteria: <cmd>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/reviewed/test.pass`
+  `printf 'PASS test %s commit: %s criteria: <cmd>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(git rev-parse HEAD)" > .claude/reviewed/test.pass`
   — and confirm ALLOW plus a new `marker-accepted` line in
   `.claude/review-audit.log` — proves the existence-only check is gone.
 - **Pending-review flag (`stop-gate.sh`)**: pipe a synthetic

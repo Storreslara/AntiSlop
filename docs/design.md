@@ -40,14 +40,14 @@ debugging a surprising interaction.
 - **The reviewer's PASS marker (`.claude/reviewed/<task-id>.pass`) is an
   explicit, named exception to "never edits."** It's Bash-written bookkeeping
   for the `TaskCompleted` hook (agent-teams mode) and the pending-review gate
-  (default mode), not a change to reviewed code. Marker format v2: a bare
+  (default mode), not a change to reviewed code. Marker format v3: a bare
   `touch` no longer satisfies `task-gate.sh` — the file must be non-empty and
   its first line must read exactly `PASS <task-id> <UTC ISO-8601 timestamp>
-  criteria: <acceptance-criteria command(s) run>`, written via `printf`; an
+  commit: <sha|none> criteria: <acceptance-criteria command(s) run>`, written via `printf`; an
   accepted marker is logged to `.claude/review-audit.log`. This closes the
   bare-`touch`-is-anyone-with-Bash forgery gap the v1 format left open. Setup
   pre-creates the directory so the first-ever marker write doesn't fail on a
-  missing path — a real bug found and fixed in v0.2.0. **v2 rollout has a
+  missing path — a real bug found and fixed in v0.2.0. **v2 rollout had a
   two-week legacy-marker grace period**, through 2026-07-27: a project whose
   copied `reviewer.md` still writes the old bare `touch` gets a loud warning
   (and is still allowed to complete) instead of an immediate block, logged to

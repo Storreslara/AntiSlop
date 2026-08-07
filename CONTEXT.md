@@ -56,14 +56,18 @@ drift apart.
   <id>` first line plus eight `## `-headings `agents/task-master.md` defines)
   — checked by presence only, not content. Configured via
   `persona-config.json`'s `dispatchHygiene` (default mode `block`); single-use
-  escape hatch `.claude/.dispatch-override`. H3 is only as good as the
-  reviewer's marker id matching the dispatch's `Unit:` line, and issue #153
-  originally flagged that discipline as unreliable; the specific gap #153
-  named — a reviewer clearing pending-review flags with no marker written at
-  all — is now mechanically closed by `stop-gate.sh`'s clear-watermark
-  coupling (`marker_since_last_clear`, `hooks/scripts/stop-gate.sh:96`),
-  which blocks a reviewer's flag-clear when no `.pass`/`.fail` marker is newer
-  than the watermark (`cleared-by=reviewer marker=MISSING`,
+  escape hatch `.claude/.dispatch-override`. H3 is anchored by a `commit:`
+  field in the PASS marker (v3 format, see [ADR 0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
+  records the commit at which the unit was marked done: a marker from an
+  unreachable commit is treated as void, allowing re-dispatch of units whose
+  work was lost to history. H3 is only as good as the reviewer's marker id
+  matching the dispatch's `Unit:` line, and issue #153 originally flagged
+  that discipline as unreliable; the specific gap #153 named — a reviewer
+  clearing pending-review flags with no marker written at all — is now
+  mechanically closed by `stop-gate.sh`'s clear-watermark coupling
+  (`marker_since_last_clear`, `hooks/scripts/stop-gate.sh:96`), which blocks
+  a reviewer's flag-clear when no `.pass`/`.fail` marker is newer than the
+  watermark (`cleared-by=reviewer marker=MISSING`,
   `hooks/scripts/stop-gate.sh:153-162`). That does not itself prove every
   written marker's id matches the unit being dispatched, so H3 is still
   best-effort rather than provably airtight — but the silent no-marker-at-all

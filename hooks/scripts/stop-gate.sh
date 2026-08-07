@@ -152,8 +152,8 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       *)
         # rc=1: watermark exists but no marker after it - block and report
         printf '%s cleared-by=reviewer marker=MISSING\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-        echo "A v2 PASS or FAIL marker must be written. Example for a PASS verdict:" >&2
-        echo "  printf 'PASS <task-id> %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' > .claude/reviewed/<task-id>.pass" >&2
+        echo "A v3 PASS or FAIL marker must be written. Example for a PASS verdict:" >&2
+        echo "  printf 'PASS <task-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '$(git rev-parse HEAD)' > .claude/reviewed/<task-id>.pass" >&2
         exit 2
         ;;
     esac

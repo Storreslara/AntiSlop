@@ -6,10 +6,10 @@
 # persona-config.json existing so it never fires in a project that hasn't
 # run install-antislop.
 #
-# Marker format v2 (agents/reviewer.md's printf, mirroring the WIP-sentinel
+# Marker format v3 (agents/reviewer.md's printf, mirroring the WIP-sentinel
 # content-validation precedent at stop-gate.sh:75-85): the marker must be
 # non-empty AND its first line must read exactly
-#   PASS <task-id> <UTC ISO-8601 timestamp> criteria: <acceptance-criteria command(s) run>
+#   PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria command(s) run>
 # A bare `touch` (empty file) or a first line not matching that shape used to
 # be rejected outright as of v0.6.0's release (2026-07-13). Per Open Question
 # 4 (human decision, 2026-07-13): a two-week legacy-marker GRACE PERIOD softens
@@ -63,11 +63,11 @@ marker_valid() {
 
 reject() {
   echo "Task '${task_name}' has no valid reviewer PASS marker at ${marker}." >&2
-  echo "The reviewer (or the no-reviewer fallback lead) must write it in v2 format, first line exactly:" >&2
-  echo "  mkdir -p \"$(dirname "$marker")\" && printf 'PASS ${task_id} %s criteria: <acceptance-criteria command(s) run>\\n' \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" > ${marker}" >&2
+  echo "The reviewer (or the no-reviewer fallback lead) must write it in v3 format, first line exactly:" >&2
+  echo "  mkdir -p \"$(dirname "$marker")\" && printf 'PASS ${task_id} %s commit: %s criteria: <acceptance-criteria command(s) run>\\n' \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" \"\$(git rev-parse HEAD)\" > ${marker}" >&2
   echo "A bare 'touch' or an empty/malformed marker is rejected - existence alone is not enough." >&2
   echo "The v0.6.0 legacy-marker grace period ended ${GRACE_PERIOD_END} - it no longer softens this block." >&2
-  echo "If your copied reviewer.md predates plugin v0.6.0 (still teaches a bare touch), run /antislop:update-antislop to pick up the v2 format." >&2
+  echo "If your copied reviewer.md predates plugin v0.6.0 (still teaches a bare touch), run /antislop:update-antislop to pick up the v3 format." >&2
   exit 2
 }
 
