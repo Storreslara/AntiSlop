@@ -4,6 +4,11 @@ Author: `spec-master` | Date: 2026-08-03 | Baseline sha: `e5b908f`
 Published spec issue: **#229** (`ready-for-agent`). This document is canonical;
 the issue is its published view.
 
+> **Step 15 is superseded — see [Convergence follow-ups](#convergence-follow-ups--milestone-3-boundary-2026-08-07)
+> at the end of this document.** Unit #244 now dispatches as **Contract B**
+> (ADR renumbered `0012`→`0013`), and unit `229-CF2` corrects unit #243's
+> CHANGELOG entry. Do not dispatch Step 15 in isolation.
+
 **Revision 2 — 2026-08-04.** `task-master` sliced this spec into units
 #230–#244 and returned four defects in the spec's own acceptance criteria
 (affecting #231, #233, #234, #238), correctly declining to patch them itself.
