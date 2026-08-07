@@ -1560,7 +1560,7 @@ and increment"), the next number is **0012**; the `0007` gap is left alone.
   only on version-stamped files (`agents/*.md`, templates) and Step 11 touches
   none; but ADR-0005's own Consequences set the precedent ("Recorded in
   `CHANGELOG.md` [0.12.0] alongside this ADR"). The pointer is appended to the
-  existing `[0.25.0]` "Skills library remediation" entry, which is where the
+  existing `[0.24.0]` "Skills library remediation" entry, which is where the
   work this ADR documents already shipped. **Reversible** — if the operator
   prefers a fresh version section, that is a one-line change to Step 11's
   criterion 8 and does not disturb the ADR itself.
@@ -1610,7 +1610,7 @@ and increment"), the next number is **0012**; the `0007` gap is left alone.
 
 **Affected files:** `docs/adr/0012-vendored-skill-declared-deviations.md`
 (new), `docs/adr/0005-vendor-mattpocock-skills.md` (additive + one `Status:`
-line), `CHANGELOG.md` (one pointer under the existing `[0.25.0]` entry).
+line), `CHANGELOG.md` (one pointer under the existing `[0.24.0]` entry).
 Exactly three files, no more.
 
 **11a — Write `docs/adr/0012-vendored-skill-declared-deviations.md`.** Follow
@@ -1660,7 +1660,7 @@ repo precedent:
 ceiling.
 
 **11c — CHANGELOG pointer.** Append a reference to the new ADR inside the
-existing `[0.25.0]` "Skills library remediation" bullet. Do **not** open a new
+existing `[0.24.0]` "Skills library remediation" bullet. Do **not** open a new
 version section and do **not** bump `.claude-plugin/plugin.json`.
 
 **Acceptance criteria** (baselines below were measured live 2026-08-07; per
@@ -1757,7 +1757,7 @@ section **"Convergence follow-ups → Step 11"** plus this contract. Read Step 5
 - `docs/adr/0012-vendored-skill-declared-deviations.md` — new.
 - `docs/adr/0005-vendor-mattpocock-skills.md` — `Status:` line + one
   `## Related` bullet. Additive apart from that one line.
-- `CHANGELOG.md` — one pointer inside the existing `[0.25.0]` "Skills library
+- `CHANGELOG.md` — one pointer inside the existing `[0.24.0]` "Skills library
   remediation" bullet.
 
 #### Ordered edits

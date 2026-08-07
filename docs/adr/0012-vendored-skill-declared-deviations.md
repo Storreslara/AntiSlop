@@ -41,6 +41,8 @@ this decision. The asymmetry is deliberate, not an oversight:
 | `to-tickets` | yes | untracked | no — `REPOINT_SKILLS`, reported only |
 | `grill-me` | no — still flagged | `fm` (byte-verbatim) | yes |
 
+Note: `REPOINT_SKILLS` has a third entry, `code-review`, which is omitted from the table above because it carries no deviation from upstream (never flagged).
+
 Only `handoff` and `improve-codebase-architecture` are drift-tracked as
 `fm-noflag`: they are the two skills that needed the un-flag to become
 reachable, and they sit in the script's byte-diffed `FILES` set. `to-spec` and
