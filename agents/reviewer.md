@@ -50,7 +50,9 @@ with reasons.
   ```
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
-  test/build/lint commands and read the actual exit codes/output.
+  test/build/lint commands and read the actual exit codes/output. Verify the
+  reviewed state is committed before writing a marker — no tracked file carries
+  an uncommitted change.
 - **Verify against the spec, not the diff.** Re-read task-master's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
@@ -85,10 +87,21 @@ with reasons.
   substitutes for running the command, and never adds a new FAIL ground —
   its findings live exclusively in the advisory section appended after the
   verdict.
-- **On PASS (both modes)**: write the v2 marker for the unit id you were
-  given via Bash — `mkdir -p .claude/reviewed` then a `printf` of the
-  marker's required first line,
-  `printf 'PASS <task-id> %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/reviewed/<task-id>.pass`
+- **On PASS (marker format v3)**: before writing the marker, verify the
+  reviewed state is committed. Run `git diff --quiet HEAD` — it must exit 0, so
+  no tracked file carries an uncommitted change. For each file the reviewer
+  inspected to satisfy a criterion, run `git ls-files --error-unmatch <path>` —
+  it must exit 0, so the file is tracked and not a never-added new file that
+  `git diff HEAD` cannot see. Capture the commit SHA via `sha="$(git rev-parse HEAD)"`.
+  If (1) or (2) fails, the verdict is **FAIL**, not PASS, with the defect
+  stated as "the unit's changes are not committed; the criteria were satisfied
+  against an uncommitted working tree" plus the offending paths. This is not
+  INSUFFICIENT-CONTEXT — nothing is unreachable, the state is simply wrong.
+  If the project is not a git repository (`git rev-parse --git-dir` fails),
+  write `commit: none` instead of the SHA and note this in the verdict line.
+  Write the v3 marker via Bash — `mkdir -p .claude/reviewed` then a `printf` of
+  the marker's required first line:
+  `printf 'PASS <task-id> %s commit: %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(git rev-parse HEAD)" > .claude/reviewed/<task-id>.pass`
   — so both the TaskCompleted hook (agent-teams mode) and the pending-review
   gate (default mode) can mechanically confirm "done = reviewer passed" per
   the shared protocol. A bare `touch` no longer satisfies `task-gate.sh`'s
