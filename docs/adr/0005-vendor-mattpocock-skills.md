@@ -1,7 +1,7 @@
 # ADR 0005: Vendor the mattpocock/skills dependency closure; delete the `<MATTPOCOCK:slot>` substitution mechanism
 
 Date: 2026-07-15
-Status: Accepted (completed plan 2026-07-15-vendor-mattpocock-skills, all tracks)
+Status: Accepted (completed plan 2026-07-15-vendor-mattpocock-skills, all tracks; amended by ADR-0012)
 
 ## Context
 Two mechanisms shipped mattpocock-derived skill content to consumers:
@@ -88,3 +88,13 @@ supersedes).
 - `skills/THIRD-PARTY-NOTICES.md`: full MIT text + per-skill upstream paths
   + pinned SHA.
 - `docs/maintenance/resync-vendored-skills.md`: the re-sync runbook.
+- **Amended by ADR-0012:** Decision 1's "verbatim" is qualified, not
+  withdrawn — the vendoring decision itself stands. ADR-0012 records a
+  declared-deviation class (`fm-noflag`) for the one intentional departure
+  from byte-verbatim vendoring (upstream's model-invocation flag stripped
+  from `handoff` and `improve-codebase-architecture`). Also: the
+  "no established `Superseded by ADR-000X` marker convention" observation in
+  this ADR's own Consequences (above) was true when written (2026-07-15) but
+  has since been established — twice, by ADR-0004's and ADR-0006's own
+  `## Related` `Amended by ADR-NNNN` bullets — which is why this note is
+  recorded in place rather than by editing the Consequences text.
