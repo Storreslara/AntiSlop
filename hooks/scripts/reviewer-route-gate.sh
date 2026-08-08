@@ -63,4 +63,49 @@ if [ -f "$config" ]; then
   fi
 fi
 
+
+if persona_matches_gate "$target_type" "reviewer"; then
+  prompt="$(echo "$input" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)"
+  first_line=""
+  while IFS= read -r line; do
+    if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
+  done <<< "$prompt"
+
+  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
+    unit_id="${BASH_REMATCH[1]}"
+    case "$unit_id" in
+      */*|*..*) ;;
+      *)
+        if [ -f "$config" ]; then
+          reviewed_dir="${project_dir}/.claude/reviewed"
+          pass_marker="${reviewed_dir}/${unit_id}.pass"
+          pass_valid=false
+          if [ -f "$pass_marker" ] && [ -s "$pass_marker" ]; then
+            first="$(head -n 1 "$pass_marker")"
+            case "$first" in
+              "PASS ${unit_id} "*) pass_valid=true ;;
+            esac
+          fi
+          if [ "$pass_valid" = false ]; then
+            prior=none
+            prior_mtime=-
+            fail_marker="${reviewed_dir}/${unit_id}.fail"
+            blocked_marker="${reviewed_dir}/${unit_id}.blocked"
+            if [ -f "$fail_marker" ]; then
+              prior=fail
+              prior_mtime="$(stat -L --format=%Y "$fail_marker" 2>/dev/null || echo -)"
+            elif [ -f "$blocked_marker" ]; then
+              prior=blocked
+              prior_mtime="$(stat -L --format=%Y "$blocked_marker" 2>/dev/null || echo -)"
+            fi
+            stamp="${project_dir}/.claude/.review-join.${unit_id}"
+            printf '%s unit=%s prior=%s prior_mtime=%s\n' \
+              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp"
+            printf 'review-join=%s\n' "$unit_id" >> "$review_audit"
+          fi
+        fi
+        ;;
+    esac
+  fi
+fi
 exit 0

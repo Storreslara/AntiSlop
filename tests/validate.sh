@@ -247,6 +247,15 @@ else
 fi
 
 echo
+echo "== reviewer-route-gate review-join stamps (Bash) =="
+if bash tests/review-join.test.sh; then
+  echo "OK   tests/review-join.test.sh"
+else
+  echo "FAIL tests/review-join.test.sh"
+  fail=1
+fi
+
+echo
 echo "== adapter stop-gate behavioural parity: claude/codex/cursor (Bash) =="
 if bash tests/adapter-stop-gate-parity.test.sh; then
   echo "OK   tests/adapter-stop-gate-parity.test.sh"
