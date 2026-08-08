@@ -863,6 +863,23 @@ else
   bad "T42 mutation control failed: expected is_mutated=1 rc_mut_first=0 rc_mut_replay=2 (got mutated=$is_mutated first=$rc_mut_first replay=$rc_mut_replay)"
 fi
 
+# T43 - H4 isolates the missing-'Unit: <id>'-line case specifically. T22
+# covers a missing HEADING with a valid Unit: line present; T43 is the mirror:
+# all eight headings present verbatim, only the Unit: line is absent. Neither
+# T22/T23 (a valid Unit: line in both) nor T24-T26 (a naked prompt missing
+# everything, so H4 fires for many reasons at once) nor T27 (kills `fire H4`
+# wholesale) isolates this one specific missing-piece branch.
+dir="$(make_project t43 "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(contract 302 | sed '1d')")"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
+   && ! grep -qE 'blocked=H[123]' "$log" \
+   && grep -q "a 'Unit: <id>' first line" <<< "$err"; then
+  ok "T43 gated dispatch missing 'Unit: <id>' first line (all eight headings present) -> exit 2, blocked=H4, stderr names the missing-Unit-line specifically"
+else
+  bad "T43 expected exit 2 + blocked=H4 alone + \"a 'Unit: <id>' first line\" on stderr (rc=$rc err=$err)"
+fi
+
 # H3 commit-anchored verdict table (marker format v3, spec Step 1). All six
 # reuse h3_cfg (requireContract:false) so H4 never decides the exit code.
 

@@ -142,6 +142,8 @@ seam, checking dispatch prompts before spawn. Configured via
 defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-override`
 (content must start with `override: <reason>`). Checks run in sequence:
 
+H3 and H4 only inspect dispatches to *gated* targets (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) — a non-gated spawn such as scribe or explorer is never inspected by either check.
+
 - **H1 — Oversize prompt** (default 30000 bytes): blocks dispatches where the
   prompt body exceeds the configured byte limit. Fail-closed; a persona
   cannot self-recover from prompt overflow via retries.
