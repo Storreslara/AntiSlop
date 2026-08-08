@@ -12,3 +12,4 @@
 - [Survey ALL .fail records, not a sample](feedback_survey_all_fail_records.md) — enumerate the whole directory before concluding "no prior FAIL"; a 6-of-22 sample inverted a plan's risk section.
 - [Deferred issues decay](feedback_verify_deferred_issue_premises.md) — re-verify a deferred issue's premises against the tree; #185 had two stale ones, mooting a whole item.
 - [Don't gate a source edit apart from its shipped copy](feedback_dont_slice_units_across_a_parity_test.md) — validate.sh asserts the shipped copies; merge the pair, and sweep ALL such pairs, not just the one that escalated.
+- [maxTurns-cutoff spec (#123)](project_maxturns_cutoff_spec.md) — settled decisions + two-tier protocol fan-out finding; recovered 2026-08-08 from a lost stash, verified shipped intact.
