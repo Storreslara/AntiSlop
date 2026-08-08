@@ -775,6 +775,94 @@ else
   bad "T39 expected rc_a=0 rc_b=0 with both override= and override-replay= logged (rc_a=$rc_a rc_b=$rc_b)"
 fi
 
+# T40 - future-dated stamp, matching key: a stamp observed as future-dated
+# relative to the reader (clock skew / read latency, not staleness) must
+# still be honoured as a replay when the key matches (#227). Forward-dating
+# by 6 seconds is comfortably past the old -2 bound this defect deleted on.
+dir="$(make_project t40 "$h1_cfg_block")"
+printf 'override: future-test
+' > "$dir/.claude/.dispatch-override"
+prompt_t40="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$prompt_t40")"
+rc_t40_first="$rc"
+if [ -f "$dir/.claude/.dispatch-override.consumed" ]; then
+  consumed_line="$(head -n 1 "$dir/.claude/.dispatch-override.consumed")"
+  stamp_epoch="${consumed_line%% *}"
+  consumed_rest="${consumed_line#* }"
+  new_epoch=$((stamp_epoch + 6))
+  printf '%s %s\n' "$new_epoch" "$consumed_rest" > "$dir/.claude/.dispatch-override.consumed"
+fi
+run "$dir" "$(payload lead-programmer "$prompt_t40")"
+rc_t40_replay="$rc"
+if [ "$rc_t40_first" = 0 ] && [ "$rc_t40_replay" = 0 ]; then
+  ok "T40 future-dated stamp (delta -6) with a matching key is honoured, not deleted"
+else
+  bad "T40 expected rc_t40_first=0 rc_t40_replay=0 (got first=$rc_t40_first replay=$rc_t40_replay)"
+fi
+
+# T41 - future-dated stamp, MISMATCHED key: the stamp must survive untouched
+# (neither honoured for the mismatched dispatch nor deleted as stale), so its
+# rightful owner can still replay it afterward - the same "leave it alone"
+# treatment already given to an unparseable stamp.
+dir="$(make_project t41 "$h1_cfg_block")"
+printf 'override: future-mismatch-test
+' > "$dir/.claude/.dispatch-override"
+prompt_t41="$(xbytes 2048)"
+run "$dir" "$(payload lead-programmer "$prompt_t41")"
+rc_t41_first="$rc"
+if [ -f "$dir/.claude/.dispatch-override.consumed" ]; then
+  consumed_line="$(head -n 1 "$dir/.claude/.dispatch-override.consumed")"
+  stamp_epoch="${consumed_line%% *}"
+  consumed_rest="${consumed_line#* }"
+  new_epoch=$((stamp_epoch + 6))
+  printf '%s %s\n' "$new_epoch" "$consumed_rest" > "$dir/.claude/.dispatch-override.consumed"
+fi
+run "$dir" "$(payload lead-programmer "unrelated prompt, different key entirely")"
+stamp_survives=0; [ -f "$dir/.claude/.dispatch-override.consumed" ] && stamp_survives=1
+run "$dir" "$(payload lead-programmer "$prompt_t41")"
+rc_t41_owner_replay="$rc"
+if [ "$rc_t41_first" = 0 ] && [ "$stamp_survives" = 1 ] && [ "$rc_t41_owner_replay" = 0 ]; then
+  ok "T41 future-dated stamp with a mismatched key is left untouched, not destroyed"
+else
+  bad "T41 expected rc_t41_first=0 stamp_survives=1 rc_t41_owner_replay=0 (got first=$rc_t41_first survives=$stamp_survives owner_replay=$rc_t41_owner_replay)"
+fi
+
+# T42 - MUTATION CONTROL for the #227 fix. Restore the old two-sided window
+# (`|| [ "$time_delta" -lt -2 ]`) in a throwaway copy and confirm a
+# future-dated stamp's own matching-key replay (T40's case) is wrongly
+# deleted-then-blocked, proving the one-sided fix is load-bearing.
+mutant_dir="$tmproot/t42bin"
+mkdir -p "$mutant_dir"
+cp "$hook" "$mutant_dir/dispatch-hygiene.sh"
+cp -r hooks/scripts/lib "$mutant_dir/lib"
+mutant_t42="$mutant_dir/dispatch-hygiene.sh"
+sed -i 's/if \[ "\$time_delta" -gt 10 \]; then/if [ "$time_delta" -gt 10 ] || [ "$time_delta" -lt -2 ]; then/' "$mutant_t42"
+is_mutated=0; grep -q 'time_delta" -lt -2' "$mutant_t42" && is_mutated=1
+
+dir="$(make_project t42 "$h1_cfg_block")"
+printf 'override: mutation-future-test
+' > "$dir/.claude/.dispatch-override"
+prompt_t42="$(xbytes 2048)"
+hook_real="$hook"; hook="$mutant_t42"
+run "$dir" "$(payload lead-programmer "$prompt_t42")"
+rc_mut_first="$rc"
+if [ -f "$dir/.claude/.dispatch-override.consumed" ]; then
+  consumed_line="$(head -n 1 "$dir/.claude/.dispatch-override.consumed")"
+  stamp_epoch="${consumed_line%% *}"
+  consumed_rest="${consumed_line#* }"
+  new_epoch=$((stamp_epoch + 6))
+  printf '%s %s\n' "$new_epoch" "$consumed_rest" > "$dir/.claude/.dispatch-override.consumed"
+fi
+run "$dir" "$(payload lead-programmer "$prompt_t42")"
+rc_mut_replay="$rc"
+hook="$hook_real"
+
+if [ "$is_mutated" = 1 ] && [ "$rc_mut_first" = 0 ] && [ "$rc_mut_replay" = 2 ]; then
+  ok "T42 mutation control: restoring the old -2 stale bound wrongly deletes a future-dated live stamp and blocks its own replay"
+else
+  bad "T42 mutation control failed: expected is_mutated=1 rc_mut_first=0 rc_mut_replay=2 (got mutated=$is_mutated first=$rc_mut_first replay=$rc_mut_replay)"
+fi
+
 # H3 commit-anchored verdict table (marker format v3, spec Step 1). All six
 # reuse h3_cfg (requireContract:false) so H4 never decides the exit code.
 

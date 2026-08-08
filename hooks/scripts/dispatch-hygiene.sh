@@ -29,15 +29,16 @@
 #     containing epoch-seconds, a dispatch-identity key (cksum-based, not
 #     cryptographic, and bound to subagent_type as well as the prompt so the
 #     same prompt to a different target is never treated as a replay of it),
-#     and the reason. A sibling dispatch within the window with the same key
-#     honours the stamp (exit 0, logged as override-replay= for audit
-#     distinction) without re-consuming the sentinel. The window is a
-#     10-second forward bound plus 2 seconds of backward slack for clock/
-#     scheduler skew between parallel dispatches (effective span [-2, +10]).
-#     A stamp is deleted only once it is genuinely PAST that window; an
-#     unparseable or key-mismatched-but-fresh stamp is left alone and simply
-#     not honoured, so an unrelated in-window dispatch can never destroy a
-#     live sibling's stamp.
+#     and the reason. A sibling dispatch with the same key honours the stamp
+#     (exit 0, logged as override-replay= for audit distinction) without
+#     re-consuming the sentinel, as long as the stamp is not more than 10
+#     seconds in the past. Only a delta greater than +10 seconds is treated
+#     as genuine expiry and deletes the stamp; a future-dated (negative-delta)
+#     stamp - observed under clock skew or reader latency, not actual
+#     staleness - is NEVER treated as expiry, so it is honoured if the key
+#     matches (a clock-skew-tolerant replay) or left untouched if it doesn't,
+#     the same treatment already given to an unparseable stamp, so an
+#     unrelated in-window dispatch can never destroy a live sibling's stamp.
 #  2) H1 oversize prompt, 3) H2 inlined fenced block, 4) H3 re-dispatch of a
 #     unit holding a .claude/reviewed/<id>.pass marker. H3 reads the prompt's
 #     FIRST NON-BLANK LINE ONLY, so a quoted `Unit:` example in the body cannot
@@ -181,21 +182,29 @@ if [ -f "$consumed" ]; then
   # bound on a partial match, so a line with fewer than two whitespace
   # boundaries can never collapse epoch/key/reason onto the same token (the
   # old `${line%% *}`/`${line#* }` parameter-expansion split was a silent
-  # no-op on a malformed line). This also guarantees consumed_epoch is
-  # purely numeric BEFORE it ever reaches `$(( ))` below: an unset-looking
-  # or non-numeric epoch is a hard `set -u` arithmetic-expansion abort that
-  # `|| rc=$?` cannot catch, so it must never reach that point unvalidated.
+  # no-op on a malformed line). This also keeps an unset-looking or
+  # non-numeric epoch from ever reaching `$(( ))` below, which would be a
+  # hard `set -u` arithmetic-expansion abort that `|| rc=$?` cannot catch -
+  # but the regex alone is not a complete arithmetic-safety guarantee: a
+  # leading-zero value like "008" passes it as "purely numeric" while still
+  # being an invalid octal literal for `$(( ))`. It is the explicit base-10
+  # cast below (`10#`) that makes the value safe for arithmetic, not the
+  # regex by itself.
   is_valid=false
   is_stale=false
   if [[ $consumed_line =~ ^([0-9]+)[[:space:]]+([^[:space:]]+)[[:space:]]+(.*)$ ]]; then
-    consumed_epoch="${BASH_REMATCH[1]}"
+    consumed_epoch=$((10#${BASH_REMATCH[1]}))
     consumed_key="${BASH_REMATCH[2]}"
     consumed_reason="${BASH_REMATCH[3]}"
     time_delta=$((now - consumed_epoch))
-    # Window: [-2, +10]. The -2 allows for OS scheduler jitter and clock skew
-    # between parallel dispatches; a delta outside the window means the
-    # stamp is genuinely expired, regardless of key.
-    if [ "$time_delta" -gt 10 ] || [ "$time_delta" -lt -2 ]; then
+    # Only a delta more than 10 seconds in the FUTURE-of-the-stamp (i.e. the
+    # stamp is more than 10 seconds old) is genuine expiry, regardless of
+    # key. A negative delta means the stamp is future-dated relative to this
+    # reader - clock skew or read latency, not staleness - and is never
+    # treated as expiry: it falls through to the key check below like any
+    # other non-expired delta, so it is honoured on a matching key and left
+    # untouched (not deleted) on a mismatched one.
+    if [ "$time_delta" -gt 10 ]; then
       is_stale=true
     elif [ "$consumed_key" = "$dispatch_key" ]; then
       is_valid=true
