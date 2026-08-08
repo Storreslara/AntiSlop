@@ -45,6 +45,20 @@ drift apart.
 - **Gate** — a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
+- **Removed rather than inspected** (unit #272, 2026-08-08, three-instance
+  pattern named) — a standing principle for `reviewed-path-gate.sh`'s
+  program-allowlist design: any external program whose write/mutation surface
+  cannot be fully characterized by text-based scanning of its command-line
+  arguments (due to implicit default behaviors, sub-protocols carrying mutations
+  outside the route name, environment-dependent effects, or runtime token
+  expansion) is removed from the allowlist entirely rather than partially
+  inspected with a flag-scan or allowlist of sub-commands. Three instances now
+  embody this rule: `git` (implicit remotes/detach), `rg` (implicit cwd-relative
+  effects on certain flags), and `gh api` (default GET→POST, GraphQL mutations
+  in the body, token-substitution). A text-based gate that misses any of these
+  forms creates a false sense of security without actually bounding the surface;
+  removal is the sound choice. See `docs/plans/2026-08-07-gate-audit-t34-vacuity-and-gh-inventory.md`
+  for specifics per program (not repeated here to avoid exploit-adjacent detail).
 - **Dispatch hygiene** — the **Gate** applied at the `PreToolUse`/`Agent`
   seam by `hooks/scripts/dispatch-hygiene.sh`: it checks a dispatch prompt
   *before* the spawn happens, rather than a turn's output at its end like
