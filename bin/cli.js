@@ -159,6 +159,27 @@ function appendUnique(filePath, lines) {
   fs.writeFileSync(filePath, existing + sep + missing.join('\n') + '\n');
 }
 
+function canonicalizeForComparison(obj) {
+  if (obj === null || obj === undefined) {
+    return JSON.stringify(obj);
+  }
+  if (typeof obj !== 'object') {
+    return JSON.stringify(obj);
+  }
+  if (Array.isArray(obj)) {
+    return JSON.stringify(obj.map(canonicalizeForComparison));
+  }
+  const sorted = {};
+  Object.keys(obj).sort().forEach(key => {
+    sorted[key] = canonicalizeForComparison(obj[key]);
+  });
+  return JSON.stringify(sorted);
+}
+
+function structuralEquals(a, b) {
+  return canonicalizeForComparison(a) === canonicalizeForComparison(b);
+}
+
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {
     if (
@@ -172,7 +193,10 @@ function deepMerge(target, source) {
       deepMerge(target[key], source[key]);
     } else if (Array.isArray(source[key]) && Array.isArray(target[key])) {
       for (const item of source[key]) {
-        if (!target[key].includes(item)) target[key].push(item);
+        const isDuplicate = typeof item === 'object' && item !== null
+          ? target[key].some(existing => structuralEquals(existing, item))
+          : target[key].includes(item);
+        if (!isDuplicate) target[key].push(item);
       }
     } else if (!(key in target)) {
       target[key] = source[key];
@@ -2121,4 +2145,5 @@ module.exports = {
   backfillSubstitutionsFromDisk,
   backfillFileHashesFromDisk,
   pruneStaleFileHashes,
+  deepMerge,
 };

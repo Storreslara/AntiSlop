@@ -1937,3 +1937,36 @@ if (failures > 0) {
   process.exit(1);
 }
 console.log('\nAll cli-backfill tests passed.');
+
+// --- deepMerge structural equality tests (issue #228)
+check('deepMerge dedupes structurally-identical array items (different instances, same content)', () => {
+  const target = { items: [{ a: 1, b: 2 }, { x: 10 }] };
+  const source = { items: [{ b: 2, a: 1 }] }; // Same content as target[0], different key order
+  cli.deepMerge(target, source);
+  assert.strictEqual(target.items.length, 2, `expected 2 items (no duplicate), got ${target.items.length}`);
+  assert.deepStrictEqual(target.items[0], { a: 1, b: 2 });
+  assert.deepStrictEqual(target.items[1], { x: 10 });
+});
+
+check('deepMerge still appends genuinely distinct array items', () => {
+  const target = { items: [{ a: 1 }, { b: 2 }] };
+  const source = { items: [{ c: 3 }] };
+  cli.deepMerge(target, source);
+  assert.strictEqual(target.items.length, 3, `expected 3 items, got ${target.items.length}`);
+  assert.deepStrictEqual(target.items[2], { c: 3 });
+});
+
+check('deepMerge handles nested object key ordering in structural comparison', () => {
+  const target = { config: [{ name: 'test', version: '1.0' }] };
+  const source = { config: [{ version: '1.0', name: 'test' }] }; // Same content, different key order
+  cli.deepMerge(target, source);
+  assert.strictEqual(target.config.length, 1, `expected 1 item (deduplicated), got ${target.config.length}`);
+});
+
+check('deepMerge dedupes with primitives in arrays (reference equality still works for primitives)', () => {
+  const target = { nums: [1, 2, 3] };
+  const source = { nums: [2, 4] }; // 2 is duplicate, 4 is new
+  cli.deepMerge(target, source);
+  assert.strictEqual(target.nums.length, 4, `expected 4 items (1,2,3,4), got ${target.nums.length}`);
+  assert.deepStrictEqual(target.nums, [1, 2, 3, 4]);
+});
