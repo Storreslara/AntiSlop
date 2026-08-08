@@ -7,3 +7,4 @@
 - [grep acceptance anchors & line wraps](feedback_grep_acceptance_line_wrap.md) — multi-word grep -q anchors in wrapped prose must stay on one line and match literally (hyphen vs space)
 - [agent-identity lib gotchas (#140)](project_agent_identity_lib.md) — dedupe key must match (class, identity) and stay injective; `identity=` is percent-encoded; two `set -e` redirection traps; adapter copies resolve `antislop-cursor`/`antislop-codex`; use `git commit -F` near the marker dir
 - [Persona-audit plan tracking (#121)](project_persona_audit_plan.md) — all 13 units done, plan closed at 0.13.14; stamp placement varies by frontmatter presence
+- [Edit tool unavailable fallback](feedback_edit_tool_unavailable_fallback.md) — Edit/Write can error 'not enabled'; use Bash+python3 str-replace, watch backslash-newline escaping in the replacement string
