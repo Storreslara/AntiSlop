@@ -44,8 +44,8 @@ Adopt a per-unit **review-join stamp**, written by `reviewer-route-gate.sh` at r
 
 **Lifecycle**:
 - Written by `reviewer-route-gate.sh:PreToolUse (Agent)` when a reviewer is dispatched with a valid `Unit:` line and no prior `.pass` marker exists for that unit
-- Deleted by `stop-gate.sh:SubagentStop` when a format-valid marker for that unit is found with mtime greater than `prior_mtime` (case 3 below)
-- Left untouched on stop-gate fail-open (case 1), fail-closed blocks (cases 4–6), or on bootstrap when unverifiable (case 7)
+- Deleted by `stop-gate.sh:SubagentStop` when a verdict is satisfied (first review with any marker, cases 2; re-review with marker mtime exceeding `prior_mtime`, case 3; or when the stamp itself is malformed, case 7)
+- Left untouched on fail-closed blocks (cases 4–6): when a marker exists but fails the format check, when no marker exists, or when the marker is stale
 
 ### Governing Rule
 
