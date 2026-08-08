@@ -416,6 +416,28 @@ blocked forms and an allow-control set, modelled on case 30.
   one). It must also record item 3's conclusion — that `rg`'s flag inventory is
   moot because #186 removed `rg` outright — so the audit result survives without
   a diff of its own.
+
+  **Revised 2026-08-08 — landed value is 0.29.0, not 0.28.0 (both AC3.1 and
+  AC3.2).** Read both criteria above as parameterized on `<version>` = "the
+  next MINOR above whatever version is actually current at execution time,"
+  not a hardcoded `0.28.0` — this doc never carried that parameterization
+  itself, but issue #271's own dispatch text did, under an explicit
+  "CROSS-PLAN VERSION RACE" note: sibling spec `plan/2026-08-07-per-unit-
+  review-join`, Step 8 (issue #269) bumped the same two files to `0.28.0`
+  first, from the same `0.27.0` baseline this doc was written against, and
+  #271's rule was always "bump to the next MINOR above whatever's actually
+  current," with an explicit instruction to "treat this mismatch as expected,
+  not a spec gap." `0.29.0` is therefore the correct and expected landed
+  value, not a deviation: `package.json` and `.claude-plugin/plugin.json` both
+  read `"version": "0.29.0"`, and `CHANGELOG.md` carries a `## [0.29.0]`
+  section satisfying AC3.2's content requirements (`gh api` removal and the
+  `rg`-is-moot conclusion are both present). This is a documentation-accuracy
+  correction to the historical record only — Step 3 already PASSed review and
+  shipped correctly under the parameterized rule; no re-execution or
+  re-review is needed. (Left unparameterized here at authoring time because
+  this doc predates confirmation that #269 would race it for the same version
+  number; a future spec touching version bumps should parameterize
+  `<version>` in the doc itself, not only in the dispatch issue.)
 - AC3.3 `README.md`'s "Known limitations" records the `gh pr checkout` residual
   from Context: a command that materialises a forged marker without its own text
   ever naming the marker directory is outside this gate's inspection scope by
@@ -448,6 +470,25 @@ blocked forms and an allow-control set, modelled on case 30.
    out of scope for #185**; record it as an observation in Step 3's CHANGELOG
    entry rather than opening it here. Raised because a reviewer will notice the
    granularity while reading Step 2 and should find it already answered.
+
+   **Acknowledged gap, recorded 2026-08-08, non-blocking.** The "no" conclusion
+   was reached and is not in question — but the shipped `CHANGELOG.md`
+   `## [0.29.0]` entry does not actually record it: it covers the `gh api`
+   removal and item 3's `rg`-is-moot conclusion, not this question. Issue
+   #271's own dispatch text carried this instruction only as a "record it only
+   as an observation ... if you judge it adds clarity, not as new work" option,
+   which the implementer judged not to exercise — a legitimate reading of a
+   soft instruction, not a criterion miss (AC3.2 never required this
+   question's answer, only the `gh api` and `rg` content, both present). So
+   this doc's own stated purpose for the instruction ("a reviewer should find
+   it already answered" by reading the CHANGELOG) went unmet in the published
+   record, even though no acceptance criterion was violated. Left as-is
+   rather than routed to a new implementation unit: fixing it would mean
+   re-touching an already-shipped CHANGELOG entry for a non-blocking
+   documentation nicety, out of scope for this docs-only correction. A future
+   reader who wants the answer to "is leaf-subcommand granularity out of
+   scope for `gh`" should consult this Open Question directly rather than the
+   CHANGELOG.
 
 ---
 
