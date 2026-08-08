@@ -3,7 +3,7 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
-## [0.28.0] - 2026-08-08
+## [0.28.0] - 2026-08-07
 
 ### Changed
 - **Per-unit review-join stamp replaces the global clear-watermark (issue #226).** When multiple reviewers run concurrently, the check coupling a reviewer's stop to a marker-write now asks the right question — "did *this dispatched unit* get a verdict?" — instead of the wrong one ("has *any* marker been written since *anyone's* last clear?"). Each reviewer dispatch now opens with `Unit: <task-id>` as its literal first non-blank line; `reviewer-route-gate.sh` reads that line to stamp a per-unit join at `.claude/.review-join.<unit-id>`, and `stop-gate.sh` consumes it when that unit's verdict marker is found. This closes the liveness failure (concurrent-reviewer deadlock) completely and the under-inclusive failure (unit A's marker satisfying unit B's check) substantially.

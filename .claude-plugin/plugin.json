@@ -7,10 +7,5 @@
   },
   "repository": "https://github.com/Storreslara/AntiSlop",
   "license": "MIT",
-  "keywords": [
-    "multi-agent",
-    "orchestrator",
-    "code-review",
-    "subagents"
-  ]
+  "keywords": ["multi-agent", "orchestrator", "code-review", "subagents"]
 }

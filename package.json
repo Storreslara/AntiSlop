@@ -8,13 +8,7 @@
   },
   "license": "MIT",
   "repository": "https://github.com/Storreslara/AntiSlop",
-  "keywords": [
-    "multi-agent",
-    "orchestrator",
-    "claude-code",
-    "cli",
-    "scaffold"
-  ],
+  "keywords": ["multi-agent", "orchestrator", "claude-code", "cli", "scaffold"],
   "bin": {
     "antislop": "bin/cli.js"
   },
