@@ -65,7 +65,13 @@ program_allowed() {
     echo|printf) return 0 ;;
     # `gh` needs a subcommand allowlist of its own: `run`/`release download`
     # write into a directory of their choosing, with no redirection involved.
-    gh) case "$3" in issue|pr|api|search) return 0 ;; esac ;;
+    # `api` is excluded on the same denylist-fails-open ground as `git`/`rg`
+    # above: it is a general-purpose authenticated HTTP client whose method is
+    # IMPLICIT (POST as soon as any -f/-F/--field/--raw-field is present, no -X
+    # required) and which also reaches GraphQL mutations naming no REST route
+    # at all - no scan of the command's text can bound what it writes, so the
+    # surface is removed rather than inspected, same as `git`/`rg`.
+    gh) case "$3" in issue|pr|search) return 0 ;; esac ;;
   esac
   return 1
 }

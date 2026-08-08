@@ -554,4 +554,53 @@ for ab in $allow_bytes_31; do
   done
 done
 echo
+
+echo "-- case 32: gh api is off the allowlist, issue/pr/search stay (#185 item 2) --"
+# gh api was allowlisted whole, with no further check. It is a general-purpose
+# authenticated HTTP client whose HTTP method is IMPLICIT - GET normally, POST
+# as soon as any -f/-F/--field/--raw-field is present, with no -X required -
+# and it also reaches GraphQL mutations via `gh api graphql -f query=...`,
+# naming no REST route at all. No scan of the command's own text can bound
+# what a call like this writes, which is the same denylist-fails-open ground
+# already ratified for `git`/`rg` in case 30 above: the surface is removed
+# rather than inspected. `issue`, `pr` and `search` are unaffected - none of
+# them takes a flag that writes a caller-named local path (audited in
+# docs/plans/2026-08-07-gate-audit-t34-vacuity-and-gh-inventory.md, Step 2).
+#
+# ANTI-VACUITY / MUTATION CONTROL (reviewer-run, AC2.5). Point the reconciled
+# suite at the pre-removal gate (HEAD = the commit before this step landed):
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   git show HEAD:hooks/scripts/reviewed-path-gate.sh > "$d/unfixed.sh"
+#   GATE_UNDER_TEST="$d/unfixed.sh" bash tests/reviewed-path-gate.test.sh; echo $?
+#
+# Expected: exit 1 with FAIL lines covering EVERY case 32 blocked form below
+# and no case 32 allow-control, each reading rc=0 - the pre-removal gate really
+# did allow them. Same two traps as case 30/31's controls: GATE_UNDER_TEST must
+# be an ABSOLUTE path or every case reads rc=127, and lib/ must sit beside the
+# copy or the gate dies sourcing lib/agent-identity.sh and every case reads
+# rc=1.
+#
+# The bare read (last form below) is included on purpose: it is the cost of
+# the removal, ratified here rather than left to look like an oversight.
+# Nothing in this case is executed against the network - the suite only ever
+# feeds command strings to the gate.
+for c in "gh api -X PUT repos/O/R/contents/$marker/9.pass -f message=x -f content=UEFTUwo=" \
+         "gh api --method PUT repos/O/R/contents/$marker/9.pass --input body.json" \
+         "gh api -X DELETE repos/O/R/contents/$marker/9.pass -f message=x -f sha=abc" \
+         "gh api repos/O/R/contents/$marker/9.pass -f content=x" \
+         "gh api graphql -f query=$marker" \
+         "gh api repos/O/R/contents/$marker/9.pass"; do
+  bash_case "case 32 gh api off the allowlist: $c" blocked lead-programmer "$c"
+done
+# The over-block bound: removing `api` must leave `issue`/`pr`/`search` text
+# mentions and read-only inspection untouched.
+for c in "gh issue close 9 --comment \"see $marker/9.pass\"" \
+         "gh pr comment 9 --body \"see $marker/9.pass\"" \
+         "gh search code --filename 9.pass $marker" \
+         "cat $marker/9.pass" \
+         "grep -r pat $marker"; do
+  bash_case "case 32 allow-control: $c" allowed lead-programmer "$c"
+done
+echo
 exit "$fail"
