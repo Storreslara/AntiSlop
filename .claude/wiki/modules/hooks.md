@@ -183,12 +183,11 @@ defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-
   Issue #153 originally flagged this as unreliable in a specific way: a
   reviewer could clear pending-review flags without writing *any* marker at
   all, so H3 would have nothing to check against. That specific gap is now
-  mechanically closed — see "stop-gate.sh: marker coupling via
-  clear-watermark" below, which blocks a reviewer's flag-clear when no
-  `.pass`/`.fail` marker is newer than the clear-watermark. That coupling
-  does not itself verify a written marker's id matches the *dispatched* unit,
-  so H3 remains best-effort, not provably airtight — it just no longer faces
-  silent marker omission.
+  mechanically closed — see "stop-gate.sh: marker coupling via review-join stamp"
+  below, which blocks a reviewer's flag-clear when no verdict marker exists for
+  the dispatched unit. That coupling does not itself verify a written marker's id
+  matches the *dispatched* unit, so H3 remains best-effort, not provably airtight
+  — it just no longer faces silent marker omission.
 - **H4 — Dispatch contract audit** (checks labels, not substance): fires when
   `dispatchHygiene.requireContract` is `true` (default `true`) and the
   dispatch prompt lacks the required nine contract elements: `Unit: <id>` as the
@@ -205,55 +204,55 @@ defaults: `block`/30000/80/`true`). Single-use escape hatch: `.claude/.dispatch-
   (`hooks/scripts/dispatch-hygiene.sh:105-107`), so a malformed `override:`
   line burns the sentinel and the checks still run.
 
-## stop-gate.sh: marker coupling via clear-watermark (issue #153)
+## stop-gate.sh: marker coupling via review-join stamp (issue #153, resolved by #226)
 
 The reviewer's flag-clear path (in `stop-gate.sh`'s `SubagentStop` grant
-branch) now couples the removal of pending-review flags to a marker-write
-requirement, enforced via a **clear-watermark** — `.claude/.last-review-clear`,
-a zero-byte file whose mtime marks when the reviewer's last successful clear
-occurred. The mechanism is defer-immune (see "Sticky `defer:` semantics" above
-for why the alternative mtime-of-flag approach fails).
+branch) couples the removal of pending-review flags to a verdict-marker check,
+enforced via per-unit **review-join stamps** — `.claude/.review-join.<unit-id>`,
+one file per unit currently under review. Each stamp is written by
+`reviewer-route-gate.sh` when a reviewer is dispatched, and deleted by
+`stop-gate.sh` when a format-valid verdict marker is found for that unit. This
+per-unit design replaces the prior global clear-watermark, closing concurrency
+defects where concurrent reviewers could interfere with each other's verdicts.
 
-**Detection logic:**
-- `marker_since_last_clear` returns 2 when the watermark is absent (fail-open
-  bootstrap for projects without prior review history), 0 when a PASS or FAIL
-  marker is newer than the watermark, and 1 otherwise (no marker since last
-  clear).
-- On exit code 1 (missing marker since last clear), `stop-gate.sh` exits 2
-  from the reviewer's `SubagentStop`, writes an audit-log line matching
-  `marker=MISSING`, and prints the exact `printf` command to write a v2
-  marker. The flags are **not** cleared; the reviewer can write the marker
-  and stop again.
-- On exit code 2 (watermark absent, bootstrap), the audit-log line matches
-  `marker-check=bootstrap`, and the clear proceeds (fail-open).
-- On exit code 0 (marker present and newer), the clear proceeds normally,
-  watermark mtime is advanced via `touch`, and the audit-log line matches
-  `cleared-by=reviewer`.
+**State table for reviewer's SubagentStop**
+
+Evaluated after the `.blocked` early-exit and before flag deletion:
+
+| # | Condition | Classification | Exit | Action |
+|---|-----------|----------------|------|--------|
+| 1 | No stamps exist at all | **allow**, bootstrap | 0 | Clear flags |
+| 2 | Stamp for U; format-valid `.pass` or `.fail` exists; no `prior_mtime` recorded | Satisfied | 0 | Delete stamp, clear flags |
+| 3 | Stamp for U; format-valid marker exists; marker mtime **greater than** recorded `prior_mtime` | Satisfied | 0 | Delete stamp, clear flags |
+| 4 | Stamp for U; format-valid marker exists; marker mtime **not greater than** recorded `prior_mtime` | Unsatisfied | 2 | Keep flags, block |
+| 5 | Stamp for U; marker exists but fails format check (e.g., zero-byte) | Unsatisfied | 2 | Keep flags, block |
+| 6 | Stamp for U; no marker at all | Unsatisfied | 2 | Keep flags, block |
+| 7 | Stamp unreadable/malformed | Satisfied, fail-open | 0 | Delete stamp, clear flags |
+
+**Governing rule:** A reviewer's stop is allowed iff no stamps exist, or at least one stamp is satisfied.
+
+**Format validation:** Marker must exist, be non-empty, and its first line must
+begin `PASS <unit-id> ` or `FAIL <unit-id> ` (matching `task-gate.sh`'s
+`marker_valid()` check). A zero-byte `touch` now fails the check.
 
 **Audit vocabulary:**
-- `marker-check=bootstrap` — first clear in a project (no watermark yet)
-- `marker=MISSING` — marker required but not written since previous clear
-- `cleared-by=reviewer` — successful clear with a valid marker on record
+- `marker-check=bootstrap` — first clear in a project (no stamps yet)
+- `marker=MISSING unit=<U>` — marker required for unit U but not found
+- `join-consumed=<U>` — satisfied stamp for unit U was deleted
+- `cleared-by=reviewer` — successful clear with valid verdict marker on record
 
 **Implementation details:**
-- The new check runs **after** the existing `.blocked` early-exit (an
+- The check runs **after** the existing `.blocked` early-exit (an
   INSUFFICIENT-CONTEXT verdict keeps flags and is not a missing-marker event)
   and **before** the flag deletion.
-- `find` is guarded with `2>/dev/null || true` to prevent abortion under
-  `set -euo pipefail` (see plan #153, Step 2, Risk R1).
+- Stamp files are enumerated and read once; no subprocess fan-out. Marker format
+  is validated using the same `marker_format_valid()` helper as `task-gate.sh`.
 - Ports to `adapters/codex/hooks/scripts/stop-gate.sh` and
   `adapters/cursor/hooks/scripts/stop-gate.sh` are verified by
   `tests/adapter-stop-gate-parity.test.sh` (see "Adapter behavioural parity"
   under [CONTEXT.md](../../CONTEXT.md)).
-
-**Known issues:**
-- **Issue #226** — clear-watermark concurrency/liveness bug: the single global
-  watermark is shared across concurrent reviewers, so one reviewer's clear can
-  invalidate a different reviewer's already-valid marker. A reviewer blocked by
-  a gate it doesn't own the verdict for must report-and-wait, never
-  self-authorize a workaround (touching the marker's mtime to force past the
-  block is the anti-pattern observed in production; the correct pattern is to
-  refuse and escalate via message).
+- In codex, the block path routes through `block()`, preserving the loop-guard
+  escape; claude and cursor keep bare `exit 2`. See [ADR-0016](../../docs/adr/0016-per-unit-review-join.md).
 
 ## dispatch-hygiene.sh: idempotency window for escape-hatch replay (issue #166)
 

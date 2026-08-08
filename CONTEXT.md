@@ -78,12 +78,11 @@ drift apart.
   matching the dispatch's `Unit:` line, and issue #153 originally flagged
   that discipline as unreliable; the specific gap #153 named — a reviewer
   clearing pending-review flags with no marker written at all — is now
-  mechanically closed by `stop-gate.sh`'s clear-watermark coupling
-  (`marker_since_last_clear`, `hooks/scripts/stop-gate.sh:96`), which blocks
-  a reviewer's flag-clear when no `.pass`/`.fail` marker is newer than the
-  watermark (`cleared-by=reviewer marker=MISSING`,
-  `hooks/scripts/stop-gate.sh:153-162`). That does not itself prove every
-  written marker's id matches the unit being dispatched, so H3 is still
+  mechanically closed by the review-join stamp mechanism
+  ([ADR-0016](docs/adr/0016-per-unit-review-join.md), `hooks/scripts/stop-gate.sh`),
+  which blocks a reviewer's flag-clear when no verdict marker is found for that
+  unit (`marker=MISSING`, `hooks/scripts/stop-gate.sh`). That does not itself
+  prove every written marker's id matches the unit being dispatched, so H3 is still
   best-effort rather than provably airtight — but the silent no-marker-at-all
   failure mode #153 documented is now closed, not merely aspirational.
 - **Adapter behavioural parity** (issue #202, 2026-08-01 efficiency pass 2,
@@ -106,17 +105,26 @@ drift apart.
   presence, not runtime behaviour). See
   [modules/adapters.md](.claude/wiki/modules/adapters.md) and
   [modules/hooks.md](.claude/wiki/modules/hooks.md).
-- **clear-watermark** — `.claude/.last-review-clear`, a zero-byte file whose
-  mtime records when the reviewer's flag-clear path (via `stop-gate.sh`'s
-  SubagentStop grant branch) last succeeded, as the reference point for
-  detecting whether a marker has been written since the previous review.
-  Used in issue #153's implementation (Step 2) to couple the reviewer's
-  flag-clear to a marker-write requirement: `marker_since_last_clear` returns
-  2 when the watermark is absent (fail-open bootstrap), 0 when a PASS or FAIL
-  marker is newer than the watermark, and 1 otherwise (triggering a block on
-  the reviewer's stop with an exit-2 flag-clear refusal). Defer-immune by
-  design (immune to the dispatch-time `defer:` convention that defeats a
-  naive mtime-of-flag approach); see issue #153 Probe case 6.
+- **clear-watermark** — **[Retired in 0.28.0; see review-join stamp below.]**
+  Historically, `.claude/.last-review-clear` was a zero-byte file whose mtime
+  marked when the reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop
+  grant branch) last succeeded, used as the reference point for detecting whether
+  a marker had been written since the previous review. It coupled the reviewer's
+  flag-clear to a marker-write requirement via `marker_since_last_clear`, which
+  returned 2 on bootstrap (no watermark), 0 when a PASS or FAIL marker was newer
+  than the watermark, and 1 otherwise. The mechanism was defer-immune by design
+  (immune to the dispatch-time `defer:` convention). In 0.28.0, it was replaced
+  by the **review-join stamp** (see below, and [ADR-0016](docs/adr/0016-per-unit-review-join.md))
+  to close concurrency defects and unify marker validation. The old file becomes
+  inert once nothing reads it and requires no migration.
+- **review-join stamp** — (0.28.0+) `.claude/.review-join.<unit-id>`, one per
+  unit currently under review, written by `reviewer-route-gate.sh` when a
+  reviewer is dispatched and consumed by `stop-gate.sh` when that unit's verdict
+  marker is found. Contains a single line with timestamp, unit id, and optional
+  prior marker metadata for concurrency detection. Replaces the global
+  clear-watermark; enables per-unit verdict coupling without cross-dispatch
+  interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md) for design
+  and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
 - **Protocol excerpt** — the subset of `templates/persona-protocol.md`'s 16
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
