@@ -108,6 +108,18 @@ The lead-programmer never spawns the reviewer. When it reports
 reviewer with the unit's scope, its acceptance-criteria command, AND a
 stable unit id (the plan step / issue id) for the PASS marker — never omit
 the id; the reviewer needs it to write `.claude/reviewed/<task-id>.pass`.
+That dispatch opens with `Unit: <task-id>` as its
+**literal first non-blank line**, the same shape rule 3 above imposes on a
+gated dispatch — not merely somewhere in the body.
+`reviewer-route-gate.sh` reads exactly that line to write the per-unit
+review-join stamp (`.claude/.review-join.<task-id>`) that `stop-gate.sh`
+later consumes as proof a verdict was actually produced, so a dispatch that
+omits the line leaves the marker-coupling check inert for that unit — the
+stop fails open rather than erroring, and nothing announces that the
+coupling was lost. One deliberate exception, not an omission to fix: a
+second, advisory reviewer dispatch on a unit that already holds a
+format-valid PASS marker is not stamped at all, because that dispatch owns
+no verdict; it is expected to end its turn without writing any marker.
 When you dispatch the reviewer as a background task, write
 `defer: reviewer dispatched (agent <id>), awaiting verdict` into the pending-
 review flag in that same turn. The pending-review flag's `defer:` is sticky

@@ -141,3 +141,17 @@ with reasons.
   2-FAIL-cap slot. When a later review of the same unit resolves to PASS or
   FAIL, delete this `.blocked` marker as part of writing that new marker (see
   above).
+- **If a stop-gate block demands a marker you believe you already wrote, or a
+  verdict for a unit you do not own**: do not satisfy it by touching,
+  re-`touch`ing, mtime-bumping, renaming or overwriting any marker, and do not
+  delete or edit a review-join stamp. Those are metadata-only bypasses, and the
+  shared protocol's
+  "Blocked by a gate you do not own (never self-authorize a bypass)"
+  section forbids them outright — including when you are confident the
+  underlying state is fine, and including when you would disclose it
+  afterwards. Report the block and your reasoning to the orchestrator and
+  wait. Two cases are ordinary rather than exceptional, and neither justifies
+  a bypass: an advisory second pass on a unit that already holds a
+  format-valid `.pass` owns no verdict and is expected to end its turn without
+  writing a marker, and a block naming a unit you were never dispatched for is
+  evidence of a defect in the coupling — reporting it is what gets it fixed.
