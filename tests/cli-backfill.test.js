@@ -1932,12 +1932,6 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 }
 
-if (failures > 0) {
-  console.error(`\n${failures} test(s) failed.`);
-  process.exit(1);
-}
-console.log('\nAll cli-backfill tests passed.');
-
 // --- deepMerge structural equality tests (issue #228)
 check('deepMerge dedupes structurally-identical array items (different instances, same content)', () => {
   const target = { items: [{ a: 1, b: 2 }, { x: 10 }] };
@@ -1963,10 +1957,16 @@ check('deepMerge handles nested object key ordering in structural comparison', (
   assert.strictEqual(target.config.length, 1, `expected 1 item (deduplicated), got ${target.config.length}`);
 });
 
-check('deepMerge dedupes with primitives in arrays (reference equality still works for primitives)', () => {
+check('deepMerge dedupes with primitives in arrays (SameValueZero equality applies to primitives)', () => {
   const target = { nums: [1, 2, 3] };
   const source = { nums: [2, 4] }; // 2 is duplicate, 4 is new
   cli.deepMerge(target, source);
   assert.strictEqual(target.nums.length, 4, `expected 4 items (1,2,3,4), got ${target.nums.length}`);
   assert.deepStrictEqual(target.nums, [1, 2, 3, 4]);
 });
+
+if (failures > 0) {
+  console.error(`\n${failures} test(s) failed.`);
+  process.exit(1);
+}
+console.log('\nAll cli-backfill tests passed.');
