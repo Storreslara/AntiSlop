@@ -289,158 +289,220 @@ else
 fi
 
 # ============================================================================
-# CLEAR-WATERMARK TEST CASES (criteria 3-11 from unit 221)
+# PER-UNIT REVIEW-JOIN TEST CASES (unit 263; replaces the clear-watermark set)
+#
+# The stamp reviewer-route-gate.sh writes at dispatch time is a single line:
+#   <UTC ISO-8601> unit=<unit-id> prior=<none|fail|blocked> prior_mtime=<epoch|->
+# stop-gate.sh consumes it: a marker counts only for the unit its stamp names.
 # ============================================================================
 
-# (o) Bootstrap fails open: no watermark, no markers, reviewer stop -> exit 0, flags cleared
-dir="$(make_project bootstrap)"
+seed_stamp() {
+  # $1 = project dir, $2 = unit id, $3 = prior, $4 = prior_mtime
+  printf '2026-08-07T12:00:00Z unit=%s prior=%s prior_mtime=%s\n' "$2" "$3" "$4" \
+    > "$1/.claude/.review-join.$2"
+}
+
+# (o) join-absent-fails-open: no stamp at all -> exit 0, flags cleared, bootstrap
+dir="$(make_project join-absent)"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
 if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
    && grep -q 'marker-check=bootstrap' "$dir/.claude/review-audit.log"; then
-  echo "OK   (o) bootstrap fails open: no watermark -> exit 0, flags cleared, log has 'marker-check=bootstrap'"
+  echo "OK   (o) join-absent-fails-open: no review-join stamp -> exit 0, flags cleared, 'marker-check=bootstrap' logged"
 else
-  echo "FAIL (o) bootstrap behavior broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) log-bootstrap=$(grep -c 'marker-check=bootstrap' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  echo "FAIL (o) join-absent-fails-open broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) bootstrap=$(grep -c 'marker-check=bootstrap' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
   fail=1
 fi
 
-# (p) Missing marker blocks: watermark present, no marker newer than it -> exit 2, flags kept
-dir="$(make_project missing)"
-touch "$dir/.claude/.last-review-clear"
-sleep 0.1
+# (p) join-unsatisfied-blocks: a stamp with no marker at all -> exit 2, flags and
+#     stamp both kept, one marker=MISSING line naming that unit
+dir="$(make_project join-unsatisfied)"
+seed_stamp "$dir" unit-p none -
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
 if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
-   && grep -q 'marker=MISSING' "$dir/.claude/review-audit.log"; then
-  echo "OK   (p) missing marker blocks: watermark exists, no new marker -> exit 2, flags kept, log has 'marker=MISSING'"
+   && [ -f "$dir/.claude/.review-join.unit-p" ] \
+   && grep -q 'marker=MISSING unit=unit-p' "$dir/.claude/review-audit.log"; then
+  echo "OK   (p) join-unsatisfied-blocks: stamp with no marker -> exit 2, flags kept, stamp kept, 'marker=MISSING unit=unit-p' logged"
 else
-  echo "FAIL (p) missing marker detection broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) log=$(grep -c 'marker=MISSING' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  echo "FAIL (p) join-unsatisfied-blocks broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) stamp-exists=$([ -f "$dir/.claude/.review-join.unit-p" ] && echo yes || echo no) missing-line=$(grep -c 'marker=MISSING unit=unit-p' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
   fail=1
 fi
 
-# (q) Marker after watermark clears: write .pass after watermark -> exit 0, flags cleared, watermark file updated
-dir="$(make_project marker-clears)"
-touch "$dir/.claude/.last-review-clear"
-watermark="$dir/.claude/.last-review-clear"
-watermark_mtime_before=$(stat -L --format=%Y "$watermark" 2>/dev/null || date +%s)
-# Wait to cross into next second to ensure mtime will be different
-sleep 1.1
-printf 'PASS task-1 2026-08-02T12:00:00Z criteria: bash tests/validate.sh\n' > "$dir/.claude/reviewed/task-1.pass"
-sleep 0.1
+# (q) join-satisfied-clears: a stamp whose unit holds a format-valid .pass ->
+#     exit 0, that stamp consumed, flags cleared, join-consumed logged
+dir="$(make_project join-satisfied)"
+seed_stamp "$dir" unit-q none -
+printf 'PASS unit-q 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/unit-q.pass"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
-# Wait to ensure touch completed and stat can read new mtime
-sleep 0.1
-watermark_mtime_after=$(stat -L --format=%Y "$watermark" 2>/dev/null || date +%s)
 if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
-   && grep -q 'cleared-by=reviewer' "$dir/.claude/review-audit.log" \
-   && [ "$watermark_mtime_after" -gt "$watermark_mtime_before" ]; then
-  echo "OK   (q) .pass after watermark: exit 0, flags cleared, watermark mtime advanced"
+   && [ ! -e "$dir/.claude/.review-join.unit-q" ] \
+   && grep -q 'join-consumed=unit-q' "$dir/.claude/review-audit.log" \
+   && grep -q 'cleared-by=reviewer' "$dir/.claude/review-audit.log"; then
+  echo "OK   (q) join-satisfied-clears: format-valid .pass for the stamped unit -> exit 0, stamp consumed, flags cleared"
 else
-  echo "FAIL (q) marker clear broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) mtime-advanced=$([ "$watermark_mtime_after" -gt "$watermark_mtime_before" ] && echo yes || echo no) before=$watermark_mtime_before after=$watermark_mtime_after)"
+  echo "FAIL (q) join-satisfied-clears broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) stamp-exists=$([ -e "$dir/.claude/.review-join.unit-q" ] && echo yes || echo no) consumed=$(grep -c 'join-consumed=unit-q' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
   fail=1
 fi
 
-# (r) .fail also counts: write .fail after watermark -> exit 0, flags cleared
-dir="$(make_project fail-counts)"
-touch "$dir/.claude/.last-review-clear"
-sleep 0.1
-printf 'FAIL task-2 2026-08-02T12:00:00Z reason: insufficient context\n' > "$dir/.claude/reviewed/task-2.fail"
-sleep 0.1
+# (r) join-fail-marker-satisfies: a FAIL verdict is still a verdict
+dir="$(make_project join-fail-marker)"
+seed_stamp "$dir" unit-r none -
+printf 'FAIL unit-r 2026-08-07T12:00:00Z defects: 1) criterion 3 not met\n' \
+  > "$dir/.claude/reviewed/unit-r.fail"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
-if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ]; then
-  echo "OK   (r) .fail also counts as a marker: exit 0, flags cleared"
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
+   && [ ! -e "$dir/.claude/.review-join.unit-r" ] \
+   && grep -q 'join-consumed=unit-r' "$dir/.claude/review-audit.log"; then
+  echo "OK   (r) join-fail-marker-satisfies: a format-valid .fail satisfies the stamp -> exit 0, stamp consumed, flags cleared"
 else
-  echo "FAIL (r) .fail handling broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  echo "FAIL (r) join-fail-marker-satisfies broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) stamp-exists=$([ -e "$dir/.claude/.review-join.unit-r" ] && echo yes || echo no))"
   fail=1
 fi
 
-# (s) Stale markers: after a successful clear (q), a second stop with no new marker -> exit 2
-dir="$(make_project stale)"
-touch "$dir/.claude/.last-review-clear"
-sleep 0.1
-printf 'PASS task-3 2026-08-02T12:00:00Z criteria: bash tests/validate.sh\n' > "$dir/.claude/reviewed/task-3.pass"
-sleep 0.1
+# (s) join-zero-byte-marker-rejected: a bare `touch` is not a verdict (the format
+#     check mirrors task-gate.sh's marker_valid())
+dir="$(make_project join-zero-byte)"
+seed_stamp "$dir" unit-s none -
+: > "$dir/.claude/reviewed/unit-s.pass"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
-# First clear should succeed (marker is newer than watermark)
 rc=0
-printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
-if [ "$rc" = 0 ]; then
-  # Now the watermark is advanced. Add a flag again and try to clear without a new marker
-  printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
-  rc=0
-  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
-  if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ]; then
-    echo "OK   (s) stale markers: second stop without new marker -> exit 2, flags kept"
-  else
-    echo "FAIL (s) stale marker detection broken (second-rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
-    fail=1
-  fi
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && [ -f "$dir/.claude/.review-join.unit-s" ] \
+   && grep -q 'marker=MISSING unit=unit-s' "$dir/.claude/review-audit.log"; then
+  echo "OK   (s) join-zero-byte-marker-rejected: zero-byte marker fails the format check -> exit 2, flags kept"
 else
-  echo "FAIL (s) first clear failed (first-rc=$rc)"
+  echo "FAIL (s) join-zero-byte-marker-rejected broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) stamp-exists=$([ -f "$dir/.claude/.review-join.unit-s" ] && echo yes || echo no))"
   fail=1
 fi
 
-# (t) Defer-immunity: defer: written after marker -> exit 0 (mtime-of-flag design rejected)
-dir="$(make_project defer-immune)"
-touch "$dir/.claude/.last-review-clear"
-sleep 0.1
-printf 'PASS task-4 2026-08-02T12:00:00Z criteria: bash tests/validate.sh\n' > "$dir/.claude/reviewed/task-4.pass"
-sleep 0.1
-printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-1"
+# (t) join-restale-marker-blocks: a re-review after FAIL must produce a NEW
+#     verdict - the pre-existing .fail the stamp recorded does not satisfy it
+dir="$(make_project join-restale)"
+printf 'FAIL unit-t 2026-08-07T12:00:00Z defects: 1) criterion 3 not met\n' \
+  > "$dir/.claude/reviewed/unit-t.fail"
+prior_mtime="$(stat -L --format=%Y "$dir/.claude/reviewed/unit-t.fail")"
+seed_stamp "$dir" unit-t fail "$prior_mtime"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
-printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
-if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ]; then
-  echo "OK   (t) defer-immunity: defer: after marker -> exit 0, flags cleared (watermark design is defer-immune)"
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && [ -f "$dir/.claude/.review-join.unit-t" ] \
+   && grep -q 'marker=MISSING unit=unit-t' "$dir/.claude/review-audit.log"; then
+  echo "OK   (t) join-restale-marker-blocks: marker mtime not newer than the recorded prior_mtime -> exit 2, flags kept"
 else
-  echo "FAIL (t) defer-immunity broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  echo "FAIL (t) join-restale-marker-blocks broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) prior_mtime=$prior_mtime)"
   fail=1
 fi
 
-# (u) .blocked short-circuits: .blocked marker present, no .pass/.fail -> exit 0, flags kept
-dir="$(make_project blocked-shortcircuit)"
-touch "$dir/.claude/.last-review-clear"
-printf 'BLOCKED task-5 2026-08-02T00:00:00Z missing: constraint Z\n' > "$dir/.claude/reviewed/task-5.blocked"
+# (u) join-concurrent-liveness (REGRESSION for the bug this unit fixes): two
+#     stamps stand, only unit-a holds a verdict. The stop must proceed on the
+#     verdict it does have and consume ONLY that stamp - unit-b's review is
+#     still owed and its stamp must survive. The old global watermark could not
+#     express this: one clear satisfied every concurrent reviewer at once.
+dir="$(make_project join-concurrent)"
+seed_stamp "$dir" unit-a none -
+seed_stamp "$dir" unit-b none -
+printf 'PASS unit-a 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/unit-a.pass"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.review-join.unit-a" ] \
+   && [ -f "$dir/.claude/.review-join.unit-b" ] \
+   && grep -q 'join-consumed=unit-a' "$dir/.claude/review-audit.log" \
+   && ! grep -q 'join-consumed=unit-b' "$dir/.claude/review-audit.log"; then
+  echo "OK   (u) join-concurrent-liveness: a verdict for unit-a consumes only unit-a's stamp; unit-b's stamp still stands"
+else
+  echo "FAIL (u) join-concurrent-liveness broken (rc=$rc a-stamp=$([ -e "$dir/.claude/.review-join.unit-a" ] && echo yes || echo no) b-stamp=$([ -f "$dir/.claude/.review-join.unit-b" ] && echo yes || echo no) consumed-a=$(grep -c 'join-consumed=unit-a' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0) consumed-b=$(grep -c 'join-consumed=unit-b' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  fail=1
+fi
+
+# (u2) join-repeat-stop-allowed (REGRESSION for the bug this unit fixes): after a
+#      satisfied stop consumed the stamp, a SECOND stop by the same reviewer with
+#      no new marker must still be allowed - no stamp remains, so nothing is
+#      owed. The global watermark blocked exactly this, stranding a reviewer that
+#      legitimately stopped twice.
+dir="$(make_project join-repeat-stop)"
+seed_stamp "$dir" unit-u none -
+printf 'PASS unit-u 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/unit-u.pass"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+first_rc="$rc"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+if [ "$first_rc" = 0 ] && [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ]; then
+  echo "OK   (u2) join-repeat-stop-allowed: a second stop with the stamp already consumed -> exit 0 (no unit is owed a verdict)"
+else
+  echo "FAIL (u2) join-repeat-stop-allowed broken (first-rc=$first_rc second-rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  fail=1
+fi
+
+# (u3) a .blocked marker still short-circuits ahead of the review-join check, so
+#      an INSUFFICIENT-CONTEXT verdict keeps the flags standing rather than
+#      blocking the reviewer's own stop (preserved from the old case (u))
+dir="$(make_project join-blocked-shortcircuit)"
+seed_stamp "$dir" unit-x none -
+printf 'BLOCKED unit-x 2026-08-07T12:00:00Z missing: constraint Z\n' \
+  > "$dir/.claude/reviewed/unit-x.blocked"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
 if [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && [ -f "$dir/.claude/.review-join.unit-x" ] \
    && grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log"; then
-  echo "OK   (u) .blocked short-circuits: present with no new .pass/.fail -> exit 0, flags kept, log 'verdict=blocked flags-kept'"
+  echo "OK   (u3) .blocked short-circuits ahead of the review-join check: exit 0, flags kept, stamp untouched"
 else
-  echo "FAIL (u) .blocked short-circuit broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) blocked-line=$(grep -c 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0))"
+  echo "FAIL (u3) .blocked short-circuit broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) stamp-exists=$([ -f "$dir/.claude/.review-join.unit-x" ] && echo yes || echo no))"
   fail=1
 fi
 
-# (v) MUTATION CONTROL: without the clear-watermark check, criteria (p) and (s) must FAIL
-mutant_cw="$tmproot/mutant-clearwm"
-mkdir -p "$mutant_cw"
-cp hooks/scripts/stop-gate.sh "$mutant_cw/stop-gate.sh"
-cp -R hooks/scripts/lib "$mutant_cw/lib"
-# Remove the marker_since_last_clear helper and the check that calls it
-# Delete helper function
-sed -i '/^marker_since_last_clear()/,/^}/d' "$mutant_cw/stop-gate.sh"
-# Delete the marker check (from the comment to the esac)
-sed -i '/# Check for a marker written since the last successful clear/,/^    esac$/d' "$mutant_cw/stop-gate.sh"
-# Delete the touch call
-sed -i '/touch "\$watermark"/d' "$mutant_cw/stop-gate.sh"
+# (v) MUTATION CONTROL: stub the review-join check in a throwaway copy so it
+#     always sees zero stamps. Both blocking fixtures - join-unsatisfied-blocks
+#     and join-zero-byte-marker-rejected - must then stop blocking, or they were
+#     never binding on the check in the first place.
+mutant_join="$tmproot/mutant-join"
+mkdir -p "$mutant_join"
+cp hooks/scripts/stop-gate.sh "$mutant_join/stop-gate.sh"
+cp -R hooks/scripts/lib "$mutant_join/lib"
+join_call='    review_join_state "$dot"'
+join_before="$(grep -cxF "$join_call" "$mutant_join/stop-gate.sh" || true)"
+sed -i 's/^    review_join_state "\$dot"$/    review_join_state "$dot"; JOIN_STAMP_COUNT=0/' \
+  "$mutant_join/stop-gate.sh"
+join_after="$(grep -cF 'JOIN_STAMP_COUNT=0' "$mutant_join/stop-gate.sh" || true)"
+join_parses=yes
+bash -n "$mutant_join/stop-gate.sh" 2>/dev/null || join_parses=no
 
-# Test (p) equivalent with mutant - should NOT block (mutation control)
-dir="$(make_project mutation-cw)"
-touch "$dir/.claude/.last-review-clear"
-sleep 0.1
+# join-unsatisfied-blocks against the mutant - must NOT block
+dir="$(make_project mutation-join-unsat)"
+seed_stamp "$dir" unit-p none -
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
-rc=0
-printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash "$mutant_cw/stop-gate.sh" 2>/dev/null || rc=$?
-if [ "$rc" = 0 ]; then
-  echo "OK   (v) mutation control: without the clear-watermark check, missing-marker case exits 0 (the gap is real)"
+mut_unsat=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash "$mutant_join/stop-gate.sh" 2>/dev/null || mut_unsat=$?
+# join-zero-byte-marker-rejected against the mutant - must NOT block
+dir="$(make_project mutation-join-zero)"
+seed_stamp "$dir" unit-s none -
+: > "$dir/.claude/reviewed/unit-s.pass"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+mut_zero=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash "$mutant_join/stop-gate.sh" 2>/dev/null || mut_zero=$?
+
+if [ "${join_before:-0}" = 1 ] && [ "${join_after:-0}" = 1 ] && [ "$join_parses" = yes ] \
+   && [ "$mut_unsat" = 0 ] && [ "$mut_zero" = 0 ]; then
+  echo "OK   (v) mutation control: with the review-join check stubbed, join-unsatisfied-blocks and join-zero-byte-marker-rejected both stop blocking, so (p) and (s) are binding"
 else
-  echo "FAIL (v) mutation control: mutant still blocks when it should pass (rc=$rc)"
+  echo "FAIL (v) mutation control: not applied or mutant still blocks (call before=$join_before stub after=$join_after parses=$join_parses unsat-rc=$mut_unsat zero-rc=$mut_zero)"
   fail=1
 fi
 
