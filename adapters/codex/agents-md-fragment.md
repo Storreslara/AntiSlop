@@ -105,6 +105,20 @@ deletes the sentinel, and allows that one turn to end. An empty sentinel is
 deleted but NOT honored - the normal check runs anyway. This is for
 legitimate pauses only.
 
+## Blocked by a gate you do not own (never self-authorize a bypass)
+When a hook or gate blocks you and the thing it asks for is not yours to give,
+there are exactly two legal responses: do what it actually asks, if that is
+genuinely your call, or report it and wait. Metadata-only workarounds are
+bypasses, not fixes - bumping a file's mtime, `touch`ing a file to satisfy an
+existence check, deleting or editing a gate's own state file, and re-running
+with a flag that disarms the check are each a violation, and good intent, a
+correct underlying state and full disclosure redeem none of them. If the
+block's premise looks false, that is evidence of a defect in the gate and
+reporting it is the useful action - routing around it leaves the defect in
+place for the next agent. The WIP sentinel above and a pending-review flag's
+`defer:`/`skip:` escape are sanctioned exits with their own audit trail; using
+either as documented is not a bypass.
+
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot - a fresh lead-programmer call has no memory
 of what it just built. When re-delegating after a FAIL: bundle a self-contained

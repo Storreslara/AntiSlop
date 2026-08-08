@@ -528,6 +528,7 @@ const UNIVERSAL_PROTOCOL_CORE = [
   'Scope Bash output before it enters context',
   'Agent-teams mode (only relevant if you were spawned as a teammate)',
   'Terminal status line (every dispatched turn)',
+  'Blocked by a gate you do not own (never self-authorize a bypass)',
 ];
 
 // Which protocol sections each full-tier persona carries, keyed by the EXACT
