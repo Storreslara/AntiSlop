@@ -130,4 +130,140 @@ else
   fail=1
 fi
 
+# ============================================================================
+# ADAPTER PORTS (spec Step 3). The Claude route-gate reads the dispatch prompt
+# from `.tool_input.prompt` on a PreToolUse(Agent) payload. Neither adapter
+# platform documents a prompt field on its subagent-start event, so both ports
+# read a FALLBACK CHAIN (.prompt // .instructions // .task) and simply write no
+# stamp when none of them carries a "Unit:" line - see each port's header. These
+# fixtures drive that code path with the prompt present, which is what the chain
+# would see IF a platform supplies it, plus the absent case and the never-blocks
+# invariant that must hold either way.
+# ============================================================================
+
+adapter_dot()    { case "$1" in codex) echo .codex ;; cursor) echo .cursor ;; esac; }
+adapter_script() { echo "adapters/$1/hooks/scripts/reviewer-route-gate.sh"; }
+
+adapter_project() {
+  # $1 = port, $2 = case name -> fresh project dir with that port's config
+  local dot dir
+  dot="$(adapter_dot "$1")"
+  dir="$tmproot/$1-$2"
+  mkdir -p "$dir/$dot/reviewed"
+  printf '{"gatedAgents":["lead-programmer"]}\n' > "$dir/$dot/persona-config.json"
+  echo "$dir"
+}
+
+adapter_payload() {
+  # $1 = port, $2 = project dir, $3 = target type, $4 = prompt text
+  case "$1" in
+    codex)
+      jq -n --arg d "$2" --arg t "$3" --arg p "$4" \
+        '{hook_event_name:"SubagentStart",agent_type:$t,agent_id:"rev-1",cwd:$d,prompt:$p}' ;;
+    cursor)
+      jq -n --arg d "$2" --arg t "$3" --arg p "$4" \
+        '{hook_event_name:"subagentStart",subagent_type:$t,workspace_roots:[$d],prompt:$p}' ;;
+  esac
+}
+
+adapter_stamp_count() {
+  # $1 = project dir, $2 = port
+  local dot stamps
+  dot="$(adapter_dot "$2")"
+  shopt -s nullglob
+  stamps=( "$1/$dot"/.review-join.* )
+  shopt -u nullglob
+  echo "${#stamps[@]}"
+}
+
+adapter_never_blocked=true
+
+for port in codex cursor; do
+  dot="$(adapter_dot "$port")"
+
+  # --- adapter-route-gate-stamps-unit: Unit line + reviewer target -> stamp written ---
+  dir="$(adapter_project "$port" stamps-unit)"
+  payload="$(adapter_payload "$port" "$dir" reviewer $'Unit: 300\n\nReview this commit.')"
+  rc=0
+  printf '%s' "$payload" | bash "$(adapter_script "$port")" || rc=$?
+  [ "$rc" = 0 ] || adapter_never_blocked=false
+  stamp="$dir/$dot/.review-join.300"
+  if [ "$rc" = 0 ] && [ -f "$stamp" ] \
+     && grep -qE '^[0-9TZ:-]+ unit=300 prior=none prior_mtime=-$' "$stamp" \
+     && grep -q '^review-join=300$' "$dir/$dot/review-audit.log"; then
+    echo "OK   (adapter-route-gate-stamps-unit) $port: Unit line + reviewer target -> stamp written + audit logged"
+  else
+    echo "FAIL (adapter-route-gate-stamps-unit) $port: stamp/audit content wrong or missing (rc=$rc)"
+    fail=1
+  fi
+
+  # --- adapter-route-gate-existing-pass-no-stamp: a format-valid PASS already exists -> no stamp ---
+  dir="$(adapter_project "$port" existing-pass)"
+  printf 'PASS 301 2026-08-07T12:00:00Z commit: abc criteria: bash tests/validate.sh\n' \
+    > "$dir/$dot/reviewed/301.pass"
+  payload="$(adapter_payload "$port" "$dir" reviewer $'Unit: 301\n\nRe-review.')"
+  rc=0
+  printf '%s' "$payload" | bash "$(adapter_script "$port")" || rc=$?
+  [ "$rc" = 0 ] || adapter_never_blocked=false
+  if [ "$rc" = 0 ] && [ "$(adapter_stamp_count "$dir" "$port")" = 0 ]; then
+    echo "OK   (adapter-route-gate-existing-pass-no-stamp) $port: unit already holds a valid PASS -> no stamp"
+  else
+    echo "FAIL (adapter-route-gate-existing-pass-no-stamp) $port: unexpected stamp or nonzero exit (rc=$rc)"
+    fail=1
+  fi
+
+  # --- adapter-route-gate-no-unit-line-no-stamp: no Unit line (also the shape a
+  #     platform that supplies no prompt at all produces) -> no stamp, exit 0 ---
+  dir="$(adapter_project "$port" no-unit-line)"
+  payload="$(adapter_payload "$port" "$dir" reviewer $'Please review the latest commit.\n')"
+  rc=0
+  printf '%s' "$payload" | bash "$(adapter_script "$port")" || rc=$?
+  [ "$rc" = 0 ] || adapter_never_blocked=false
+  if [ "$rc" = 0 ] && [ "$(adapter_stamp_count "$dir" "$port")" = 0 ]; then
+    echo "OK   (adapter-route-gate-no-unit-line-no-stamp) $port: no Unit line -> no stamp, exit 0"
+  else
+    echo "FAIL (adapter-route-gate-no-unit-line-no-stamp) $port: unexpected stamp or nonzero exit (rc=$rc)"
+    fail=1
+  fi
+
+  # --- adapter-route-gate-absent-prompt-no-stamp: the degraded case this port
+  #     actually expects on an unprobed platform - NO prompt field at all ---
+  dir="$(adapter_project "$port" absent-prompt)"
+  case "$port" in
+    codex)  payload="$(jq -n --arg d "$dir" '{hook_event_name:"SubagentStart",agent_type:"reviewer",agent_id:"rev-1",cwd:$d}')" ;;
+    cursor) payload="$(jq -n --arg d "$dir" '{hook_event_name:"subagentStart",subagent_type:"reviewer",workspace_roots:[$d]}')" ;;
+  esac
+  rc=0
+  printf '%s' "$payload" | bash "$(adapter_script "$port")" || rc=$?
+  [ "$rc" = 0 ] || adapter_never_blocked=false
+  if [ "$rc" = 0 ] && [ "$(adapter_stamp_count "$dir" "$port")" = 0 ]; then
+    echo "OK   (adapter-route-gate-absent-prompt-no-stamp) $port: no prompt field at all -> no stamp, exit 0 (degrades quietly)"
+  else
+    echo "FAIL (adapter-route-gate-absent-prompt-no-stamp) $port: unexpected stamp or nonzero exit (rc=$rc)"
+    fail=1
+  fi
+
+  # --- adapter-route-gate-non-reviewer-target-no-stamp: valid Unit line, wrong target -> no stamp ---
+  dir="$(adapter_project "$port" non-reviewer)"
+  payload="$(adapter_payload "$port" "$dir" lead-programmer $'Unit: 302\n\nBuild it.')"
+  rc=0
+  printf '%s' "$payload" | bash "$(adapter_script "$port")" || rc=$?
+  [ "$rc" = 0 ] || adapter_never_blocked=false
+  if [ "$rc" = 0 ] && [ "$(adapter_stamp_count "$dir" "$port")" = 0 ]; then
+    echo "OK   (adapter-route-gate-non-reviewer-target-no-stamp) $port: non-reviewer target -> no stamp, exit 0"
+  else
+    echo "FAIL (adapter-route-gate-non-reviewer-target-no-stamp) $port: unexpected stamp or nonzero exit (rc=$rc)"
+    fail=1
+  fi
+done
+
+# --- adapter-route-gate-never-blocks: writing a stamp must never change this
+#     hook's exit status, on either port, on any of the payloads above ---
+if [ "$adapter_never_blocked" = true ]; then
+  echo "OK   (adapter-route-gate-never-blocks) every codex/cursor payload above exited 0 - the stamp block never blocks"
+else
+  echo "FAIL (adapter-route-gate-never-blocks) at least one codex/cursor payload exited nonzero"
+  fail=1
+fi
+
 exit "$fail"
