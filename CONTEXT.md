@@ -242,3 +242,45 @@ drift apart.
   `task-master` re-derives dispatch instructions from the corrected spec.
   `task-master` is never a re-plan owner. Mid-flight "spec gap" signals also
   route back to `spec-master`.
+- **Blocked by a gate you do not own** (unit #265, 2026-08-08, protocol section
+  added) — When a hook or gate blocks you and the resolution is not yours to give,
+  there are exactly two legal responses: do what the gate asks (if that is your
+  call) or report and wait. Metadata-only workarounds — `touch` to satisfy an
+  existence check, mtime bumps, deleting/editing a gate's own state file,
+  re-running with a disarming flag — are violations regardless of intent or
+  disclosure. Exceptions are sanctioned: the WIP sentinel (`touch .claude/.wip`)
+  and `defer:`/`skip:` escapes in pending-review flags have their own audit
+  trail and are documented exits, not bypasses. If a gate's premise looks false,
+  that is evidence of a gate defect and reporting it is the fix, not routing
+  around it.
+- **Reviewer dispatch opening line** (unit #266, 2026-08-08, enforcement added)
+  — Every reviewer dispatch must open with `Unit: <task-id>` as its literal
+  first non-blank line. `reviewer-route-gate.sh` reads exactly that line for
+  task-id extraction; omitting it causes silent open-fail (the gate accepts the
+  dispatch but router routing breaks). Disciplined by lead-programmer dispatch
+  instruction template, checked by `dispatch-hygiene.sh` H4.
+- **Review-join stamp condition** (unit #266, 2026-08-08, prose corrected) —
+  The reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop branch on
+  `clear: true`) is now conditional on the dispatched unit holding a verdict.
+  The `.claude/.review-join.<task-id>` stamp from the review-join sequence (issues
+  #262-264) marks when a unit has received independent reviewer scrutiny; only
+  when this stamp exists is flag-clear permitted. This binds flag-clearing to a
+  measurement of review completeness rather than just a SubagentStop event,
+  closing the gap where a reviewer could auto-clear flags between re-runs of a
+  fresh dispatch without having rendered a verdict. Enforced by
+  `stop-gate.sh:188-198` when `$verdict_gate_mode` is `on` (the default).
+- **Source-artifact + render-step gating rule** (unit #265-267, 2026-08-08,
+  institutional lesson recorded) — A spec plan step that edits a source artifact
+  (e.g., `templates/persona-protocol.md`) and a separate step that regenerates
+  or ports its shipped copy (e.g., `.claude/agents/*.md` mirrors) **can never be
+  gated independently** under this repo's `tests/validate.sh`. The mirror
+  assertions cannot tolerate intermediate non-render commits between the two
+  steps: they enforce bijection across all declared sections, so an edit-only
+  commit fails the suite and a render-only commit fails differently (it rewrites
+  the mirrors). When planning specs that touch source + render pairs, either (1)
+  merge them into a single unit up-front, or (2) pin the intermediate failure
+  set in the spec (as `docs/plans/2026-08-07-per-unit-review-join.md` did at
+  lines 442-469) and audit that all mirror-vs-shipped checks sweep **every**
+  such pair, not just the first. This is a standing rule for all future specs,
+  not specific to the review-join feature. See `docs/plans/2026-08-07-per-unit-review-join.md`
+  CHK18 (line 1249) for the generalization.
