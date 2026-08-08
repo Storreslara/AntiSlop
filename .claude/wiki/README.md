@@ -11,6 +11,7 @@ Start here, then branch out:
 - [probe-methodology.md](probe-methodology.md) — lessons on empirical probe design (from #139)
 - [protocol-delivery-tiers.md](protocol-delivery-tiers.md) — how the shared persona protocol is inlined into persona bodies (full vs. slim tier, per-persona section selection)
 - [persona-handoff-mechanisms.md](persona-handoff-mechanisms.md) — the WIP sentinel, pending-review flag, and terminal status line that let a dispatched persona hand control back cleanly, including the `maxTurns`-cutoff detection problem (`max_turns_reached`, harness version v2.1.220) they exist to solve
+- [experiment-ledger.md](experiment-ledger.md) — mirror of `docs/self-improvement-loops.md`'s E1-E6 hypothesis ledger, marking which persona/hook changes were measured via the controlled eval harness vs. shipped un-measured by decision (e.g. E6, the `spec-master`/`task-master` `maxTurns` 30→40 raise)
 - `modules/` — deeper notes on the meatier pieces (`cli.md`, `hooks.md`, `adapters.md`, `eval-harness.md`)
 
 For "what does this repo do and why," also read the root `README.md` — it's

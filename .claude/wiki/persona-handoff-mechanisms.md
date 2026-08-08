@@ -109,6 +109,15 @@ STATUS: incomplete — <the same reason written into the sentinel>
 
 The facts above (F1–F9) were verified against **Claude Code v2.1.220**. If a future Claude Code release exposes a real termination-reason field on the Agent-tool result or on `SubagentStop`, this design should be revisited rather than kept forever. The mechanism is coupled to this specific version and that coupling should be documented in any CHANGELOG entry describing it.
 
+The same live cutoff event that motivated this whole page (a `spec-master`
+dispatch force-ended mid-task at `maxTurns: 30` on 2026-07-28) also carried a
+bundled, **un-measured** change: raising `spec-master`/`task-master`'s
+`maxTurns` from 30 to 40, shipped by product decision with no controlled
+trial — no cost/turns/wall-time data, no holdout run. That's tracked as
+entry **E6** in the self-improvement-loops experiment ledger; see
+[experiment-ledger.md](experiment-ledger.md) for the full measured-vs-un-measured
+breakdown (canonical source: `docs/self-improvement-loops.md`).
+
 ---
 
 ## Deferred probe (not abandoned)
