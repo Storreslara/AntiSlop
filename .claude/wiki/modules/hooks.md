@@ -309,12 +309,19 @@ in exchange for replayability within a bounded window.
 structurally unable to fix the named state (two different files, one the CLI
 never writes).
 
-**Known issues:**
-- **Issue #227** — a narrower follow-up specific to the replay-stamp staleness
-  check: a future-dated or negative-delta stamp (from clock skew or a failed
-  `date` call) can still trigger the same "unrelated dispatch destroys a live
-  replay stamp" defect class on a narrow flank. Non-blocking for #166 itself,
-  but rated Major priority by the reviewer who found it.
+**Issue #227 — closed** (2026-08-08): a narrower follow-up specific to the
+replay-stamp staleness check: a future-dated or negative-delta stamp (from clock
+skew or a failed `date` call) was triggering the same "unrelated dispatch
+destroys a live replay stamp" defect class on a narrow flank. Fixed by
+narrowing the staleness window to one-sided deletion (only genuine forward
+expiry > 10 seconds, never on negative delta) and hardening base-10 parsing of
+epochs. Institutional note: this is the **second fix** to this exact
+staleness-window logic (first: issue #220's original double-fire bug, 2026-07-28).
+Both fixes were discovered by the "roast-work advisory pass → authoritative
+reviewer materiality ruling → tracked follow-up issue" pipeline rather than
+caught at the original review time. The pattern's value as a mechanism for
+surface-level findings is now confirmed by two independent instances on the
+same hook.
 
 ## reviewed-path-gate write-intent matching
 

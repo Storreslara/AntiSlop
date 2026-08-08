@@ -3,6 +3,16 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-08-08
+- **Closed issue #227** (scribe dispatch) — replay-stamp staleness check fix.
+  Unit #227 PASSed review and was closed with commit bf6f41c. Institutional
+  note recorded: this is the **second fix** to this exact staleness-window
+  logic (first: issue #220). Both fixes discovered via the "roast-work advisory
+  pass → authoritative reviewer materiality ruling → tracked follow-up issue"
+  pipeline, neither caught at original review time. Pattern's discovery
+  mechanism is now confirmed by two independent instances. Updated
+  `.claude/wiki/modules/hooks.md` to document this finding.
+
 ## 2026-07-14
 - Ran `install-antislop` (fresh ADAPT) on this repo — previously had a
   broken partial/manual setup (no `persona-config.json`; `explorer.md`'s
