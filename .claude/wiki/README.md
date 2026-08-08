@@ -9,6 +9,8 @@ Start here, then branch out:
 - [dependencies.md](dependencies.md) — what this repo depends on (spoiler: almost nothing)
 - [changelog.md](changelog.md) — dated log of lead-programmer work, distinct from the project's own `CHANGELOG.md`
 - [probe-methodology.md](probe-methodology.md) — lessons on empirical probe design (from #139)
+- [protocol-delivery-tiers.md](protocol-delivery-tiers.md) — how the shared persona protocol is inlined into persona bodies (full vs. slim tier, per-persona section selection)
+- [persona-handoff-mechanisms.md](persona-handoff-mechanisms.md) — the WIP sentinel, pending-review flag, and terminal status line that let a dispatched persona hand control back cleanly, including the `maxTurns`-cutoff detection problem (`max_turns_reached`, harness version v2.1.220) they exist to solve
 - `modules/` — deeper notes on the meatier pieces (`cli.md`, `hooks.md`, `adapters.md`, `eval-harness.md`)
 
 For "what does this repo do and why," also read the root `README.md` — it's

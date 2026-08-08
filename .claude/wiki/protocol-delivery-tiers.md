@@ -23,6 +23,11 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 - Target personas: `orchestrator`, `lead-programmer`, `spec-master`, `task-master`, `reviewer`, `milestone-auditor`
 - 16 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, WIP sentinel, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Pending-review flag, FAIL record, Third verdict (insufficient-context), Continuing after a FAIL verdict, Reviewer roast-work advisory pass trigger, A note on `memory`
 
+  For what the WIP sentinel, pending-review flag, and terminal status line
+  sections actually say and enforce (this page only tracks which persona
+  *receives* them, not their substance), see
+  [persona-handoff-mechanisms.md](persona-handoff-mechanisms.md).
+
 **Slim tier** (`templates/persona-protocol-slim.md`): 83 lines
 - Target personas: `explorer`, `researcher`, `scribe`
 - 6 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Terminal status line, A note on `memory`
