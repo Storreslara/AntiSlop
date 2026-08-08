@@ -260,6 +260,23 @@ and keep a bare `exit 2`.
   in Step 2 instead — merely reddens the other two ports. Steps 2 and 3 are
   therefore **merged into a single dispatchable unit**; see "Unit boundary"
   under Step 2 and the revised D2.
+- 2026-08-08 Completion / acceptance signals (second mid-flight revision, raised
+  by the implementer during Step 4): Q The same defect class recurs at the
+  Step 4/5/6 seam — Step 4 carries `bash tests/validate.sh` but cannot satisfy it
+  alone. Is the fix the same merge, and does Step 5 belong in it? -> A
+  (self-resolved): **yes to the merge, and yes Step 5 belongs in it — but for a
+  different structural reason than Steps 2+3, and the difference is worth stating
+  rather than assuming symmetry.** Steps 2 and 3 were merged because the parity
+  test is *symmetric*: whichever port moved first, some commit was red. Steps 4,
+  5 and 6 are merged because they form a *strict prerequisite chain* with exactly
+  one green terminal. `tests/cli-backfill.test.js` asserts the shipped
+  `.claude/agents/` mirrors against a template-derived section list (`:172-175`
+  render-vs-mirror, `:249-257` orchestrator-vs-canonical), so Step 4's template
+  edit reddens it and only Step 6's render re-greens it (R8). Step 5 does not
+  *cause* any redness — it only *inherits* it, because Step 4 already landed at
+  `5fcbbf8` and every Step 5 run is now downstream of it — and Step 5 cannot be
+  deferred past Step 6 either, because D3 requires the render to carry its
+  persona wording. See "Unit boundary" under Step 4, R8, and the revised D3.
 
 ## Risks / dependencies
 
@@ -333,6 +350,22 @@ and keep a bare `exit 2`.
   ends with a working-tree review of exactly what the render touched, and
   `224.fail`'s lesson applies directly: commit **all** of the render's output, or
   the next `--update` reports divergence.
+- **R8 — the shipped mirrors are asserted on disk, so a template change is red
+  until the render lands.** This is R6's counterpart for the Step 4/5/6 chain,
+  and it is why D3 is a merge. `tests/cli-backfill.test.js` reads
+  `.claude/agents/*.md` out of the working tree in two independent checks: a
+  per-persona comparison that runs the *same* assertions over both a fresh
+  `render` and the on-disk `mirror` (`:172-175`), and a direct read of
+  `.claude/agents/orchestrator.md` against `canonicalProtocolHeaders()`
+  (`:249-257`). Both derive the expected section list from the template rather
+  than hard-coding it, which is precisely what makes **adding** a canonical
+  section redden the mirror half of both while leaving the render half green.
+  Measured at `5fcbbf8` on 2026-08-08: exactly two assertion failures, both
+  naming the mirror half, plus the suite-level `FAIL tests/cli-backfill.test.js`
+  line — three `^FAIL` lines in `tests/validate.sh` output and no others.
+  Regenerating the mirrors is Step 6's entire job, and constitution P2 forbids
+  Step 4 from doing it by hand, so no edit inside Step 4's scope can close the
+  window.
 - **D1** — Step 2 depends on Step 1 (the stop-side check reads the stamp Step 1
   writes). Ship them adjacent; a tree with Step 1 but not Step 2 is inert-safe (a
   stamp nothing reads), a tree with Step 2 but not Step 1 fails open always.
@@ -351,6 +384,37 @@ and keep a bare `exit 2`.
   single verdict, since two issue numbers are in play.
 - **D3** — Step 6 depends on Steps 4 and 5 (the render must carry the finished
   template and persona wording).
+  **Revised 2026-08-08: strengthened from an ordering dependency to a merge.**
+  Steps 4, 5 and 6 are **one dispatchable unit** (issues #265, #266 and #267
+  taken together), implemented in one working tree with no review and no
+  `tests/validate.sh` gate between them, because `tests/cli-backfill.test.js`
+  asserts the shipped mirrors against a template-derived section list and only
+  the render re-greens it (R8). The reason differs from D2's, and the difference
+  matters to anyone generalizing from it: D2 is a *symmetric* parity constraint
+  (either order is red), while D3 is a *strict prerequisite chain* whose only
+  green state is after Step 6. No step's edit scope changed — Step 4 still owns
+  the two templates, `bin/cli.js`, both parity maps and both adapter fragments;
+  Step 5 still owns only `agents/orchestrator.md` and `agents/reviewer.md`;
+  Step 6 still owns only the render's output and touches no source file. One
+  review at the unit boundary covers all three steps' acceptance criteria, and
+  the reviewer writes a PASS marker for **all three** task-ids on that single
+  verdict, since three issue numbers are in play.
+
+  **Why Step 5 is inside the merge rather than beside it.** Step 5 introduces no
+  redness of its own, and this was checked rather than assumed: both
+  `tests/cli-backfill.test.js` mirror checks read only the inlined protocol block
+  (everything after the `ANTISLOP:BEGIN persona-protocol` marker), which is
+  rendered from the templates and not from `agents/*.md`, so Step 5's
+  persona-body prose is invisible to them. Step 5 was genuinely parallel-safe
+  **before** Step 4 landed, exactly as D5 and issue #266 say. It is not any more:
+  Step 4 is committed at `5fcbbf8`, so any Step 5 run is now downstream of an
+  already-red tree and inherits a `bash tests/validate.sh` it cannot green
+  through any edit of its own. Deferring Step 5 to *after* Step 6 is not
+  available either — the render would then carry stale persona bodies for
+  `orchestrator` and `reviewer` and need a second render, which is the
+  partially-rendered state `224.fail` records and what D3 existed to prevent in
+  the first place. The window Step 5 could have occupied has closed, so it lands
+  inside the merged unit.
 - **D4** — Steps 7 and 8 depend on Steps 1-6 (docs and CHANGELOG describe landed
   behaviour).
 - **D5** — Steps 4 and 5 are independent of Steps 1-3 and may run in parallel.
@@ -384,12 +448,25 @@ and keep a bare `exit 2`.
   split. The deviation is bounded and declared rather than discovered: the red
   set is pinned to three named `^FAIL` lines by Step 2's checkpoint criterion,
   Step 3's `bash tests/validate.sh` is the unit's terminal gate, and D2 forbids
-  a review between the two. Every other step still carries
-  `bash tests/validate.sh`, and Step 1 additionally carries a criterion that the
-  new suite is *registered* in it, since registration is explicit rather than
-  discovered. Squashing `ddb8ac0` into the Step 3 commit would erase the
-  deviation entirely, but that rewrites already-published `master` history and
-  is the team lead's call, not this plan's.
+  a review between the two. Steps 1, 6, 7 and 8 still carry
+  `bash tests/validate.sh` outright, and Step 1 additionally carries a criterion
+  that the new suite is *registered* in it, since registration is explicit rather
+  than discovered.
+
+  **Second deviation, same principle, different file (added 2026-08-08).** The
+  merged Steps 4+5+6 unit reopens an identically-shaped window: Step 4's template
+  edit reddens `tests/cli-backfill.test.js`, which asserts the *shipped* mirrors
+  against a template-derived section list (R8), and only Step 6's render
+  re-greens it. Constitution P2 forbids closing it any other way, so this is not
+  a choice between a red commit and a green one — it is P2 and P5 pulling in
+  opposite directions across a source/render boundary, resolved in P2's favour.
+  Bounded and declared identically to the first: the red set is pinned to three
+  named `^FAIL` lines by Step 4's and Step 5's checkpoint criteria, Step 6's
+  `bash tests/validate.sh` is the unit's terminal gate, and D3 forbids a review
+  inside the window. Both windows are now on `master` (`ddb8ac0` and `5fcbbf8`);
+  squashing either into its unit's terminal commit would erase the declared
+  deviation and rewrite already-published history, which remains the team lead's
+  call, not this plan's.
 
 ## Deliberate non-changes
 
@@ -706,6 +783,45 @@ cases driven across all three ports via each port's own payload shape and dot-di
 
 ## Step 4 — protocol codifies "never self-authorize a bypass"
 
+**Unit boundary (revised 2026-08-08 — read before running the criteria)**
+
+**Steps 4, 5 and 6 are one dispatchable unit, not three.** They keep separate
+step sections and separate issues (#265, #266, #267) for the granular record, but
+they are implemented in a single working tree, with no review and no
+`tests/validate.sh` gate between them. The reason is structural, not stylistic:
+`tests/cli-backfill.test.js` asserts the *shipped* `.claude/agents/` mirrors
+against a section list derived from the template, so the moment the template
+gains a section the mirrors are stale, and regenerating them is Step 6's job
+(R8, D3). No step's edit scope changed — Step 4 still touches only
+`templates/persona-protocol.md`, `templates/persona-protocol-slim.md`,
+`bin/cli.js`, `tests/adapter-protocol-parity.test.js`,
+`adapters/codex/agents-md-fragment.md` and
+`adapters/cursor/rules/persona-protocol.mdc`, and must still not touch
+`agents/*.md` (Step 5's) or anything under `.claude/agents/` (Step 6's — and
+hand-editing a mirror violates constitution P2 outright, so it is never the way
+out of this window).
+
+**Expected-red window — this is by design, not a regression.** From the Step 4
+commit until the Step 6 commit, `bash tests/validate.sh` exits 1 with exactly
+three `^FAIL` lines and no others:
+
+```
+FAIL each trimmed persona carries its row include list ...: lead-programmer (mirror) must carry "Blocked by a gate you do not own (never self-authorize a bypass)"
+FAIL the .claude/agents/orchestrator.md mirror still carries every canonical protocol section: the orchestrator mirror must still carry "Blocked by a gate you do not own (never self-authorize a bypass)"
+FAIL tests/cli-backfill.test.js
+```
+
+Measured at commit `5fcbbf8` on 2026-08-08; every other registered suite is
+green, including `node tests/adapter-protocol-parity.test.js` (5/5) and the
+`bin/cli.js` matrix-completeness load check that `224.fail` records — the
+`UNIVERSAL_PROTOCOL_CORE` entry landed in the same commit as the template edit,
+exactly as R2 requires. **Both failing assertions name the `mirror` half, never
+the `render` half**, and that asymmetry is the diagnostic: it is what
+distinguishes "the template edit is correct and only the shipped copies are
+stale" from "the template edit is wrong". A `git bisect`, a reviewer, or
+`milestone-auditor` landing inside this window should read it against this
+paragraph rather than opening a defect.
+
 **Affected files**
 
 - `templates/persona-protocol.md` — one **new** `## ` section, placed immediately
@@ -767,8 +883,22 @@ grep -qF 'review-join' templates/persona-protocol.md                            
 ! grep -qF 'clear-watermark' templates/persona-protocol.md                                                     # exit 0
 node -e "require('./bin/cli.js')" 2>&1 | grep -q 'does not classify every canonical section' && exit 1 || exit 0  # exit 0
 node tests/adapter-protocol-parity.test.js                                                                     # exit 0
-bash tests/validate.sh                                                                                         # exit 0
+bash tests/validate.sh > /tmp/step4-validate.out 2>&1 || true; \
+  grep -qxF 'FAIL tests/cli-backfill.test.js' /tmp/step4-validate.out && \
+  [ "$(grep -c '^FAIL' /tmp/step4-validate.out)" -eq 3 ]                                                       # exit 0
 ```
+
+**On the last criterion (revised 2026-08-08).** It replaces a plain
+`bash tests/validate.sh # exit 0`, which Step 4 alone cannot satisfy — see "Unit
+boundary" above. It is an **implementer checkpoint, not a review criterion**: it
+asserts that Step 4 reddened `tests/cli-backfill.test.js` and *nothing else*,
+pinning the failure set to exactly the two stale-mirror assertions Step 6 is
+already scoped to fix. It is deliberately expected to stop passing once Step 6
+lands (the count drops to 0), so the reviewer does **not** re-run it at the unit
+boundary; the reviewer evaluates the combined diff against Step 4's other eleven
+criteria plus Steps 5 and 6's blocks in full, and Step 6's
+`bash tests/validate.sh` is the unit's single terminal gate. Verified exiting 0
+at `5fcbbf8` on 2026-08-08.
 
 Non-vacuity was measured on the current tree: `Blocked by a gate you do not own`,
 `review-join` and `marker_format_valid` return **zero** matches across
@@ -779,6 +909,18 @@ explicitly rather than presented as proof of work: it is a **regression guard**
 against the retired term being introduced during the Pending-review-flag rewrite.
 
 ## Step 5 — reviewer and orchestrator carry the two new obligations
+
+**Unit boundary (revised 2026-08-08 — read before running the criteria)**
+
+Step 5 is part of the merged **Steps 4+5+6** unit. See Step 4's "Unit boundary"
+and the revised D3 for why — including why a step that introduces no redness of
+its own is inside the merge anyway, which is the one part of this seam that does
+*not* mirror the Steps 2+3 precedent. Its edit scope is unchanged and still
+excludes the templates, `bin/cli.js`, both parity maps, the adapter fragments and
+everything under `.claude/agents/`. Its content reference to Step 4's
+protocol-section heading is unchanged too: use the exact string
+`## Blocked by a gate you do not own (never self-authorize a bypass)` regardless
+of landing order.
 
 **Affected files**
 
@@ -813,8 +955,26 @@ grep -qF 'review-join' agents/orchestrator.md                              # exi
 grep -qF 'Blocked by a gate you do not own' agents/reviewer.md             # exit 0
 grep -qiF 'mtime' agents/reviewer.md                                       # exit 0
 [ "$(grep -cF 'Unit: <task-id>' agents/orchestrator.md)" -ge 2 ]           # exit 0
-bash tests/validate.sh                                                     # exit 0
+bash tests/validate.sh > /tmp/step5-validate.out 2>&1 || true; \
+  grep -qxF 'FAIL tests/cli-backfill.test.js' /tmp/step5-validate.out && \
+  [ "$(grep -c '^FAIL' /tmp/step5-validate.out)" -eq 3 ]                   # exit 0
 ```
+
+**On the last criterion (revised 2026-08-08).** Same shape as Step 4's and the
+same immediate reason — Step 5 now runs inside the expected-red window and cannot
+green `bash tests/validate.sh` through any edit of its own. It is **not** merely
+inherited bookkeeping, though, and that is why it is a criterion rather than a
+waiver: the `-eq 3` count is a live guard on a lint Step 5 can genuinely trip.
+`tests/validate.sh:141-152` scans `agents/orchestrator.md` — one of exactly three
+files it checks (`:143`) — paragraph by paragraph, and emits
+`FAIL: unconditional reference to optional persona 'reviewer' in ...` for any
+paragraph naming `` `reviewer` `` in backticks without a conditional qualifier.
+Step 5's entire job is adding reviewer-dispatch prose to that file, so a
+**fourth** `^FAIL` line means Step 5 introduced a new defect rather than
+inheriting an old one, and the criterion catches it where it was introduced
+instead of at Step 6's terminal gate. Like Step 4's, this is an implementer
+checkpoint the reviewer does not re-run; Step 6's `bash tests/validate.sh` is the
+unit's terminal gate.
 
 The `-ge 2` count is measured: `agents/orchestrator.md` carries exactly **one**
 `Unit: <task-id>` occurrence today (the gated-dispatch rule at `:96`), so the
@@ -856,6 +1016,19 @@ node bin/cli.js --update                                                        
 node tests/cli-backfill.test.js                                                        # exit 0
 bash tests/validate.sh                                                                 # exit 0
 ```
+
+**`bash tests/validate.sh` here is the terminal gate for the merged Steps 4+5+6
+unit (revised 2026-08-08)**, not just for Step 6's own render. Reaching it
+requires that the render actually re-green `tests/cli-backfill.test.js`'s two
+mirror assertions, which Step 4 knowingly left red (see Step 4's "Unit
+boundary"). That is not optional cleanup and not out of scope: it is the only
+thing that closes the expected-red window, and a `validate.sh` run that still
+reports `FAIL tests/cli-backfill.test.js` means the unit is not done regardless
+of how clean the render's diff looks. Two ways of greening it are forbidden
+outright rather than merely discouraged: hand-editing a mirror violates
+constitution P2, and narrowing either assertion's expected section list disables
+the drift check the file exists to assert — the same failure mode as narrowing
+`PORTS` in Step 3. Either is a defect, not a fix.
 
 The count `9` is measured, not assumed: nine mirrors currently carry a protocol
 block (six full-tier, three slim-tier), and Step 4 puts the new section in both
@@ -1055,7 +1228,12 @@ different answer amends one step; neither blocks Steps 1-3.
   original parenthetical "carried on every step" no longer holds: Step 2 now
   carries a scoped checkpoint instead, and the plan says so in three places
   (Step 2's "Unit boundary", Step 2's criteria note, and the P5 deviation)
-  rather than leaving the exception implicit.
+  rather than leaving the exception implicit. **Further revised 2026-08-08**:
+  Steps 4 and 5 now carry the same scoped checkpoint for the second seam,
+  documented in the same three places (Step 4's "Unit boundary", each step's own
+  criteria note, and the second P5 deviation). Three of the eight steps
+  (2, 4, 5) now carry a checkpoint instead of the terminal gate; the gate itself
+  is unchanged and is reached at Steps 1, 3, 6, 7 and 8.
 - CHK17: Is every step's acceptance-criteria block satisfiable by that step's
   own declared edit scope? — FAIL (conflicting: Step 2's `Do NOT touch` list
   assigned the adapters and `tests/adapter-stop-gate-parity.test.sh` to Step 3,
@@ -1068,14 +1246,34 @@ different answer amends one step; neither blocks Steps 1-3.
   implementer stopped and escalated rather than improvising, which is the
   intended behaviour; recorded here so a later reader sees the original slice
   was wrong rather than inferring the merge was always planned.
+- CHK18: Does CHK17's answer generalize to *every* seam of that shape in this
+  plan, or was it applied only to the one seam an implementer happened to hit
+  first? — FAIL (missing: the 2026-08-07 revision documented the Steps 2+3 seam
+  thoroughly but re-checked only that seam, leaving the structurally identical
+  Steps 4/5/6 seam undocumented — so the second one had to be found by an
+  implementer as well) — revised in place on 2026-08-08: Steps 4, 5 and 6 merged
+  into one dispatchable unit (D3, R8), Step 4's and Step 5's final criteria
+  narrowed to a pinned three-line failure set, Step 6's `validate.sh` named as
+  the unit's terminal gate, and a second bounded deviation recorded against P5.
+  **Found at implementation time for the second time**, which makes the general
+  rule worth stating so it is not learned a third: on this repo, a step that
+  edits a *source* artifact (a template, a persona file, an adapter script) and a
+  step that regenerates or ports the *shipped* copy of it can never be gated
+  independently, because `tests/validate.sh` asserts the shipped copies. Any
+  future plan that puts a source edit and its render in different units must
+  either merge them or pin the intermediate failure set up front — and the
+  re-check must sweep every such pair in the plan, not only the one that
+  escalated.
 
 Three FAILs (CHK2, CHK9, CHK11) plus one found by running rather than reading
 (CHK13) were resolved in the single permitted revision pass at authoring time
 and re-checked. A fifth (CHK17) surfaced during implementation of Step 2 and was
 resolved by the targeted 2026-08-07 revision recorded above, which also amended
-CHK16. No unresolved failure remains, so nothing here was converted to an Open
-Question; Open Questions 1 and 2 are pre-existing scope decisions, not
-Self-check escalations.
+CHK16. A sixth (CHK18) surfaced during implementation of Step 4 and is the
+generalization CHK17's revision should itself have swept for; it was resolved by
+the 2026-08-08 revision, which amended CHK16 again. No unresolved failure
+remains, so nothing here was converted to an Open Question; Open Questions 1 and
+2 are pre-existing scope decisions, not Self-check escalations.
 
 ## Scribe update hint
 
@@ -1093,9 +1291,18 @@ issue-closing duty once Step 8 lands.
 
 ## Handoff
 
-Eight steps but **seven dispatchable units** (Steps 2 and 3 are one unit per
-D2, revised 2026-08-07), so this is the **standard path**: `task-master` slices
-these steps with `to-tickets`, assigns each unit's `Suggested model` tag (heeding
-R1's `haiku` exclusions for Steps 2, 3, 4 and 6), states the retrieval contract,
-and writes the per-unit dispatch prompts. `spec-master` emits no dispatch
-contract for this plan.
+Eight steps but **five dispatchable units** (Steps 2 and 3 are one unit per D2,
+revised 2026-08-07; Steps 4, 5 and 6 are one unit per D3, revised 2026-08-08), so
+this is the **standard path**: `task-master` slices these steps with
+`to-tickets`, assigns each unit's `Suggested model` tag (heeding R1's `haiku`
+exclusions for Steps 2, 3, 4 and 6), states the retrieval contract, and writes
+the per-unit dispatch prompts. `spec-master` emits no dispatch contract for this
+plan.
+
+**Tagging consequence of the 2026-08-08 merge.** Step 5 was tagged `haiku` as a
+standalone unit, correctly — R1 finds no prior-FAIL history on `agents/*.md`
+prose. Merged into a unit that also contains Steps 4 and 6, which R1 excludes
+from `haiku` on eleven `.fail` records, it inherits the **strictest** tag in the
+unit. A merged unit always takes the strictest tag of its members; this is a
+dispatch consequence of the merge, not a re-tagging of Step 5 or a revision of
+R1.

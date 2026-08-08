@@ -11,4 +11,4 @@
 - [Specs publish as per-step issues](project_specs_publish_as_per_step_issues.md) — one issue per step under `plan/<slug>`, filed by task-master; never publish an umbrella to-spec PRD issue here.
 - [Survey ALL .fail records, not a sample](feedback_survey_all_fail_records.md) — enumerate the whole directory before concluding "no prior FAIL"; a 6-of-22 sample inverted a plan's risk section.
 - [Deferred issues decay](feedback_verify_deferred_issue_premises.md) — re-verify a deferred issue's premises against the tree; #185 had two stale ones, mooting a whole item.
-- [Don't slice units across a parity test](feedback_dont_slice_units_across_a_parity_test.md) — a shared-loop parity suite can't be green for a subset; merge the units or the gate is unsatisfiable.
+- [Don't gate a source edit apart from its shipped copy](feedback_dont_slice_units_across_a_parity_test.md) — validate.sh asserts the shipped copies; merge the pair, and sweep ALL such pairs, not just the one that escalated.
