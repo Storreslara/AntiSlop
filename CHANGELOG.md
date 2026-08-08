@@ -3,6 +3,27 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.29.0] - 2026-08-08
+
+### Removed
+- **`gh api` is no longer on `reviewed-path-gate.sh`'s Bash write-intent
+  allowlist, so it is blocked for non-reviewer personas** in any command whose
+  text spells the marker directory (issue #272). `gh api` is a general-purpose
+  authenticated HTTP client whose method is implicit (POST as soon as any
+  `-f`/`-F` flag is present) and which reaches GraphQL mutations naming no REST
+  route, so no scan of the command's text can bound what it writes — the same
+  denylist-fails-open reasoning already recorded for `git` and `rg` (0.17.0).
+  The `gh` arm now admits `issue`/`pr`/`search` only. **Workarounds**: `cat` to
+  read a marker file, and `gh issue`/`gh pr` comments to discuss one. This is
+  an intentional reduction in delivered function, which is why it is a minor
+  bump rather than a patch, mirroring #186's 0.16.x -> 0.17.0 precedent for the
+  same kind of allowlist narrowing.
+- **`rg`'s flag-inventory audit is moot, not merely skipped.** #186 (0.17.0)
+  already removed `rg` from the allowlist outright, so there is no `rg` entry
+  left to guard and no flag inventory to complete — a repeat audit would find
+  nothing to diff. Recorded here so this conclusion does not have to be
+  re-derived by a future audit.
+
 ## [0.28.0] - 2026-08-07
 
 ### Changed

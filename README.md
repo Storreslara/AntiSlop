@@ -195,6 +195,13 @@ As of v0.17.0 `git` and `rg` are no longer allowlisted for that reason; use
 `git commit -F <file>` for a commit message that discusses the marker
 directory, and `grep -r` to search it.
 
+A related residual applies to `gh pr checkout`, which stays allowlisted: it
+materialises whatever files a branch carries, including a forged marker, and
+its own command text need not spell the marker path — so it never reaches this
+gate's `program_allowed()` check at all. Removing `pr` from the allowlist would
+not change this, since the write happens through the checked-out files, not
+through the command the gate inspects.
+
 Two more, from the agent-identity namespace-gate fix: an agent identity from an
 unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at
 gate checks, so enforcement doesn't silently stop working, but conservatively
