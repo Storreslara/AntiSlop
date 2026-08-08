@@ -381,12 +381,10 @@ for ((b = 1; b <= 127; b++)); do
   byte="$(printf "\\$(printf '%03o' "$b")"; printf .)"
   byte="${byte%.}"
   hex="$(printf '0x%02X' "$b")"
-  for t in T1 T2 T3 T4 T5; do
+  for t in T1 T2 T5; do
     case "$t" in
       T1) payload="ls $marker$byte#x; rm -f $marker/9.pass" ;;        # comment word-start predecessor
       T2) payload="ls $marker #x${byte}rm -f $marker/9.pass" ;;       # comment terminator
-      T3) payload="ls $marker >&1$byte$marker/9.pass" ;;              # fd-exemption trailing anchor
-      T4) payload="ls $marker >/dev/null$byte$marker/9.pass" ;;       # /dev/null-exemption trailing anchor
       T5) payload="ls $marker${byte}rm -f $marker/9.pass" ;;          # segment separator set
     esac
     sweep_probes=$((sweep_probes + 1))
@@ -400,7 +398,7 @@ done
 echo "     case 26 sweep: $sweep_probes probes, gate ALLOWED $sweep_allowed of them"
 # Non-vacuity floor. A future change that simply blocked everything would drive
 # the fail-open count to 0 and make the sweep pass for the wrong reason; this is
-# the assertion that fails instead. Measured on the fixed gate: 255 of 635.
+# the assertion that fails instead. Measured on the fixed gate: 247 of 381.
 if [ "$sweep_allowed" -ge 200 ]; then
   pass "case 26 non-vacuity floor ($sweep_allowed gate-allowed probes >= 200)"
 else
@@ -482,6 +480,78 @@ for c in "grep -r pat $marker" \
          "sha256sum $marker/9.pass" \
          "gh issue close 9 --comment \"see $marker/9.pass\""; do
   bash_case "case 30 allow-control: $c" allowed lead-programmer "$c"
+done
+echo
+
+echo "-- case 31: block-direction, redirection-exemption trailing anchors (A5, promoted from case 26 T3/T4) --"
+# Case 26's differential sweep above is vacuous for these two templates and was
+# narrowed to drop them (T3: fd-exemption trailing anchor "ls $marker >&1<byte>...";
+# T4: /dev/null-exemption trailing anchor "ls $marker >/dev/null<byte>..."). Three
+# independent measurements (docs/plans/2026-08-07-gate-audit-t34-vacuity-and-gh-inventory.md,
+# Step 1, Context item 1) establish there is no byte at which the gate believes
+# these are inert and real bash actually writes into the marker directory: the
+# masked prefix is glued to the tail in both templates, so the filename bash
+# would open is never the bare marker path. A5 prescribes this block-direction
+# case in place of re-measuring a differential that has no effect to observe -
+# not "to be re-measured later", the effect is structurally unobservable for
+# this template family.
+#
+# This does NOT contradict case 26's own "a differential sweep never asserts
+# allowed" principle - that principle is scoped to the sweep above, whose
+# allowed set is incidental to what real bash does with it. Case 31 is a
+# block-direction case instead, and like case 30 it needs an explicit
+# allow-control or it could pass by blocking everything.
+#
+# ANTI-VACUITY / MUTATION CONTROL (reviewer-run, not part of the loops below).
+# Same mutant as case 26's own control: widen the comment word-start
+# predecessor set back to the POSIX space class, which is the anchor set
+# these two templates' trailing bytes key off of.
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   sed "s/pad meta=\$' \\\\t\\\\n;&|()<>'/pad meta=\$' \\\\t\\\\n\\\\v\\\\f\\\\r;\&|()<>'/" \
+#     hooks/scripts/reviewed-path-gate.sh > "$d/mutant.sh"
+#   grep -n "meta=" "$d/mutant.sh" | head -1
+#   GATE_UNDER_TEST="$d/mutant.sh" bash tests/reviewed-path-gate.test.sh; echo $?
+#
+# Expected: exit 1 with exactly 6 FAIL lines, all case 31, at bytes 0x0B, 0x0C
+# and 0x0D on both templates, every one reading rc=0. rc=1 means the mutant
+# crashed sourcing lib/agent-identity.sh (lib/ not copied beside it) and the
+# run is void - GATE_UNDER_TEST must be an ABSOLUTE path or every case reads
+# rc=127.
+allow_bytes_31="09 20 28 29 3C"
+is_allow_byte_31() {
+  local hb="$1" ab
+  for ab in $allow_bytes_31; do
+    [ "$hb" = "$ab" ] && return 0
+  done
+  return 1
+}
+for ((b = 1; b <= 127; b++)); do
+  byte="$(printf "\\$(printf '%03o' "$b")"; printf .)"
+  byte="${byte%.}"
+  hexb="$(printf '%02X' "$b")"
+  hex="0x$hexb"
+  is_allow_byte_31 "$hexb" && continue
+  for t in T3 T4; do
+    case "$t" in
+      T3) c="ls $marker >&1$byte$marker/9.pass" ;;
+      T4) c="ls $marker >/dev/null$byte$marker/9.pass" ;;
+    esac
+    bash_case "case 31 $t byte $hex" blocked lead-programmer "$c"
+  done
+done
+for ab in $allow_bytes_31; do
+  b=$((16#$ab))
+  byte="$(printf "\\$(printf '%03o' "$b")"; printf .)"
+  byte="${byte%.}"
+  hex="0x$ab"
+  for t in T3 T4; do
+    case "$t" in
+      T3) c="ls $marker >&1$byte$marker/9.pass" ;;
+      T4) c="ls $marker >/dev/null$byte$marker/9.pass" ;;
+    esac
+    bash_case "case 31 $t byte $hex allow-control" allowed lead-programmer "$c"
+  done
 done
 echo
 exit "$fail"
