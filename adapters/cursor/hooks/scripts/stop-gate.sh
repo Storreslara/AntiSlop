@@ -24,7 +24,15 @@
 #  0) loop guard - never re-trigger ourselves into an infinite loop.
 #  0.5) reviewer's subagentStop -> if any .cursor/reviewed/*.blocked marker
 #     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
-#     ALLOW); otherwise CLEAR every pending-review flag, log, ALLOW.
+#     ALLOW); otherwise consume the PER-UNIT review-join stamps
+#     (.cursor/.review-join.<unit-id>) that reviewer-route-gate.sh wrote at
+#     dispatch time: no stamps at all -> fail OPEN (`marker-check=bootstrap`);
+#     at least one stamp satisfied by a format-valid PASS/FAIL marker for its
+#     unit -> delete those stamps, log `join-consumed=<id>` per deletion,
+#     CLEAR every pending-review flag, log, ALLOW; stamps present but none
+#     satisfied -> keep the flags, log `marker=MISSING unit=<id>` per stamp,
+#     BLOCK. Keying per UNIT is what lets concurrent reviewers each make
+#     progress, which the global watermark this replaced could not.
 #  0.75) main stop with any pending-review flag -> BLOCK (defer:/skip: escape).
 #  1) non-gated stop/subagentStop -> ALLOW immediately.
 #  2) per-agent WIP sentinel with a non-empty reason -> log, delete, ALLOW.
@@ -44,24 +52,111 @@ set -euo pipefail
 # shellcheck source=lib/agent-identity.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
-# clear-watermark: helper to detect if a marker has been written since the last
-# successful reviewer flag-clear. Returns 0 if a marker exists newer than the
-# watermark, 2 if no watermark exists yet (bootstrap), 1 otherwise.
-marker_since_last_clear() {
-  local dot="$1"
-  local watermark="$dot/.last-review-clear"
+# review-join: a marker counts only for the unit whose stamp names it. The
+# stamps are written at dispatch time by reviewer-route-gate.sh because the
+# SubagentStop payload carries no unit id and no prompt - the join cannot be
+# established here, only consumed.
 
-  if [ ! -f "$watermark" ]; then
-    return 2
-  fi
+# marker_format_valid <path> <unit-id> <verb> - mirrors task-gate.sh's
+# marker_valid(), so both mechanisms share one definition of "a marker was
+# written": the file must exist, be non-empty, and its first line must begin
+# "<verb> <unit-id> ". Prefix-only, so no pre-existing marker is retroactively
+# rejected; a zero-byte `touch` is.
+marker_format_valid() {
+  local path="$1" unit="$2" verb="$3" first_line
+  [ -f "$path" ] && [ -s "$path" ] || return 1
+  first_line="$(head -n 1 "$path" 2>/dev/null || true)"
+  case "$first_line" in
+    "${verb} ${unit} "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
 
-  # Guard find with 2>/dev/null || true to prevent abort under set -euo pipefail.
-  # Wrap in parentheses to ensure grep is always run regardless of find's exit.
-  if (find "$dot/reviewed" -maxdepth 1 \( -name '*.pass' -o -name '*.fail' \) -newer "$watermark" 2>/dev/null || true) | grep -q .; then
-    return 0
-  fi
+# review_join_state <dot-dir> - classifies every .review-join.* stamp into the
+# JOIN_* globals below. A stamp that is unreadable, or whose `unit=` field is
+# absent or malformed, is deleted here and counted as satisfied (fail OPEN): it
+# names no unit, so it could never be satisfied later and would deadlock the
+# reviewer permanently instead.
+review_join_state() {
+  local dot="$1" stamp line unit prior_mtime pair ext verb mpath mtime satisfied
+  local -a stamps
+  JOIN_SATISFIED_STAMPS=()
+  JOIN_SATISFIED_UNITS=()
+  JOIN_UNSATISFIED_UNITS=()
+  JOIN_FAILOPEN=false
 
-  return 1
+  shopt -s nullglob
+  stamps=( "$dot"/.review-join.* )
+  shopt -u nullglob
+  JOIN_STAMP_COUNT="${#stamps[@]}"
+  [ "$JOIN_STAMP_COUNT" -gt 0 ] || return 0
+
+  for stamp in "${stamps[@]}"; do
+    line=""
+    if [ -r "$stamp" ]; then
+      line="$(head -n 1 "$stamp" 2>/dev/null || true)"
+    fi
+
+    unit=""
+    if [[ $line =~ (^|[[:space:]])unit=([A-Za-z0-9][A-Za-z0-9._#-]{0,63})([[:space:]]|$) ]]; then
+      unit="${BASH_REMATCH[2]}"
+    fi
+    # Same traversal guard reviewer-route-gate.sh applies before it writes the
+    # id, re-applied on read: the stamp file is not a trusted channel.
+    case "$unit" in
+      ''|*/*|*..*)
+        rm -f "$stamp" 2>/dev/null || true
+        JOIN_FAILOPEN=true
+        continue
+        ;;
+    esac
+
+    prior_mtime=""
+    if [[ $line =~ (^|[[:space:]])prior_mtime=([^[:space:]]+) ]]; then
+      prior_mtime="${BASH_REMATCH[2]}"
+    fi
+
+    satisfied=false
+    for pair in pass:PASS fail:FAIL; do
+      ext="${pair%%:*}"
+      verb="${pair##*:}"
+      mpath="${dot}/reviewed/${unit}.${ext}"
+      if ! marker_format_valid "$mpath" "$unit" "$verb"; then
+        continue
+      fi
+      case "$prior_mtime" in
+        ''|*[!0-9]*)
+          # No usable prior_mtime recorded (a first review writes `-`): any
+          # format-valid marker satisfies the stamp.
+          satisfied=true
+          ;;
+        *)
+          mtime="$(stat -L --format=%Y "$mpath" 2>/dev/null || true)"
+          case "$mtime" in
+            ''|*[!0-9]*) ;;
+            *)
+              # Never run `[ a -gt b ]` on unvalidated text: a non-numeric
+              # operand is a `test` syntax error, and under set -e that aborts
+              # the hook silently rather than failing the check.
+              if [ "$mtime" -gt "$prior_mtime" ]; then
+                satisfied=true
+              fi
+              ;;
+          esac
+          ;;
+      esac
+      if [ "$satisfied" = true ]; then
+        break
+      fi
+    done
+
+    if [ "$satisfied" = true ]; then
+      JOIN_SATISFIED_STAMPS+=( "$stamp" )
+      JOIN_SATISFIED_UNITS+=( "$unit" )
+    else
+      JOIN_UNSATISFIED_UNITS+=( "$unit" )
+    fi
+  done
 }
 
 input="$(cat)"
@@ -88,33 +183,42 @@ if [ "$hook_event" = "subagentStop" ] && persona_matches_grant "$agent_type" rev
     exit 0
   fi
 
-  # Check for a marker written since the last successful clear (clear-watermark).
-  # Fail OPEN on bootstrap (no watermark yet), but block if a marker is missing.
+  # Per-unit review-join, evaluated after the .blocked early-exit above and
+  # before the flag rm -f below, so a blocked verdict still short-circuits.
   dot="${project_dir}/.cursor"
-  watermark="$dot/.last-review-clear"
-  rc=0
-  marker_since_last_clear "$dot" || rc=$?
+  review_join_state "$dot"
 
-  case "$rc" in
-    0)
-      # A .pass or .fail newer than the watermark exists - proceed to clear
-      ;;
-    2)
-      # Bootstrap: no watermark yet - fail OPEN and proceed to clear
-      printf '%s marker-check=bootstrap\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-      ;;
-    *)
-      # rc=1: watermark exists but no marker after it - block and report
-      printf '%s cleared-by=reviewer marker=MISSING\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-      echo "A v2 PASS or FAIL marker must be written. Example for a PASS verdict:" >&2
-      echo "  printf 'PASS <task-id> %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' > .cursor/reviewed/<task-id>.pass" >&2
-      exit 2
-      ;;
-  esac
+  if [ "${JOIN_STAMP_COUNT:-0}" -eq 0 ]; then
+    # Nothing joined this reviewer to a unit - an un-stamped dispatch, or a
+    # unit that already held a valid PASS. Fail OPEN, as bootstrap did.
+    printf '%s marker-check=bootstrap\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+  elif [ "${#JOIN_SATISFIED_STAMPS[@]}" -gt 0 ] || [ "${JOIN_FAILOPEN:-false}" = true ]; then
+    idx=0
+    while [ "$idx" -lt "${#JOIN_SATISFIED_STAMPS[@]}" ]; do
+      rm -f "${JOIN_SATISFIED_STAMPS[$idx]}" 2>/dev/null || true
+      printf '%s join-consumed=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        "${JOIN_SATISFIED_UNITS[$idx]}" >> "$review_audit"
+      idx=$(( idx + 1 ))
+    done
+  else
+    missing=""
+    idx=0
+    while [ "$idx" -lt "${#JOIN_UNSATISFIED_UNITS[@]}" ]; do
+      printf '%s cleared-by=reviewer marker=MISSING unit=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${JOIN_UNSATISFIED_UNITS[$idx]}" >> "$review_audit"
+      missing="${missing:+$missing, }${JOIN_UNSATISFIED_UNITS[$idx]}"
+      idx=$(( idx + 1 ))
+    done
+    # Cursor has no loop guard (its .loop_count is read at the top instead), so
+    # this stays a bare exit 2, matching the Claude port.
+    echo "No verdict is recorded for the unit(s) you were dispatched for: ${missing}. A v3 PASS or FAIL marker must be written for each, first line exactly:" >&2
+    echo "  printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '$(git rev-parse HEAD 2>/dev/null || echo none)' > .cursor/reviewed/<unit-id>.pass" >&2
+    echo "The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround." >&2
+    exit 2
+  fi
 
   rm -f "${project_dir}"/.cursor/.pending-review.* 2>/dev/null || true
   printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  touch "$watermark"
   exit 0
 fi
 
