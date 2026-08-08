@@ -247,6 +247,19 @@ and keep a bare `exit 2`.
   own greppable criteria. `tests/validate.sh` is the declared merge gate
   (constitution P5); registration is explicit, so an unregistered new suite runs
   nowhere and is a Step 1 defect.
+- 2026-08-07 Completion / acceptance signals (mid-flight revision, raised by the
+  implementer during Step 2): Q Steps 2 and 3 were sliced as separate units, but
+  Step 2 carries `bash tests/validate.sh` as a criterion and Step 2 alone cannot
+  satisfy it — can the two be gated independently at all? -> A (self-resolved):
+  **no.** `tests/adapter-stop-gate-parity.test.sh`'s scenario (f) is a single
+  `for port in $PORTS` loop (`:198-292`) whose case bodies, fixture setup and
+  assertions are *shared source lines* across all three ports, and the claude
+  port it drives IS `hooks/scripts/stop-gate.sh` (`script_for()`, `:17-19`).
+  There is no edit that greens the claude port without simultaneously moving the
+  codex and cursor scripts, and the mirror-image split — rewriting the fixtures
+  in Step 2 instead — merely reddens the other two ports. Steps 2 and 3 are
+  therefore **merged into a single dispatchable unit**; see "Unit boundary"
+  under Step 2 and the revised D2.
 
 ## Risks / dependencies
 
@@ -301,6 +314,18 @@ and keep a bare `exit 2`.
   are rewrites, not additions, and the rewrite is expected — but the mutation
   controls (v) and (g) must remain *binding* after it, i.e. still fail against a
   mutant with the check reverted.
+
+  **Revised 2026-08-07 — this file is why Steps 2 and 3 are one unit.**
+  Scenario (f) is not per-port source: `tests/adapter-stop-gate-parity.test.sh`
+  drives it from one `for port in $PORTS` loop (`:198-292`) over
+  `PORTS="claude codex cursor"` (`:15`), with the fixture setup and the
+  assertions written once and shared by all three ports. Its *claude* port is
+  `hooks/scripts/stop-gate.sh` itself (`script_for()`, `:17-19`) — the exact
+  file Step 2 rewrites. So the (f) cases cannot be re-pointed at the new
+  mechanism one port at a time in either direction: rewriting the scripts first
+  reddens claude, rewriting the fixtures first reddens codex and cursor. The
+  file asserts parity, and parity is only true once all three ports move
+  together.
 - **R7 — regenerating mirrors is a live-repo write.** This repo dogfoods its own
   plugin. `node bin/cli.js --update --check` from the repo root is the intended
   command and also rewrites `.claude/persona-config.json`. Every *other*
@@ -312,6 +337,18 @@ and keep a bare `exit 2`.
   writes). Ship them adjacent; a tree with Step 1 but not Step 2 is inert-safe (a
   stamp nothing reads), a tree with Step 2 but not Step 1 fails open always.
 - **D2** — Step 3 depends on Steps 1 and 2 (it ports finished logic).
+  **Revised 2026-08-07: strengthened from an ordering dependency to a merge.**
+  Steps 2 and 3 are **one dispatchable unit** (issues #263 and #264 taken
+  together), implemented in one working tree with no review and no
+  `tests/validate.sh` gate between them, because
+  `tests/adapter-stop-gate-parity.test.sh` cannot be green for a subset of its
+  three ports (R6). They keep separate step sections and separate issues for the
+  granular record; what changed is the *gate*, not the scope of either step's
+  edits — Step 2 still touches only `hooks/scripts/stop-gate.sh` and
+  `tests/stop-gate-blocked.test.sh`, and Step 3 still owns the adapters and the
+  parity test. One review at the unit boundary covers both steps' acceptance
+  criteria, and the reviewer writes a PASS marker for **both** task-ids on that
+  single verdict, since two issue numbers are in play.
 - **D3** — Step 6 depends on Steps 4 and 5 (the render must carry the finished
   template and persona wording).
 - **D4** — Steps 7 and 8 depend on Steps 1-6 (docs and CHANGELOG describe landed
@@ -338,10 +375,21 @@ and keep a bare `exit 2`.
   section is written persona-agnostically ("a control whose verdict you do not
   own"), naming no persona unconditionally; Step 5's reviewer/orchestrator prose
   sits inside already-reviewer-conditional text.
-- P5 "`tests/validate.sh` is the merge gate" (MUST): satisfied — every step
-  carries `bash tests/validate.sh` as a criterion, and Steps 1-3 extend the
-  suites it runs. Step 1 additionally carries a criterion that the new suite is
-  *registered* in it, since registration is explicit rather than discovered.
+- P5 "`tests/validate.sh` is the merge gate" (MUST): **deviation (revised
+  2026-08-07)** — the principle reads "must pass before committing", and the
+  merged Steps 2+3 unit cannot honour that at its internal commit boundary.
+  `tests/adapter-stop-gate-parity.test.sh` asserts behavioural parity across
+  three ports from shared source lines (R6), so no commit that moves one port
+  can be green; some intermediate commit must be red whichever way the work is
+  split. The deviation is bounded and declared rather than discovered: the red
+  set is pinned to three named `^FAIL` lines by Step 2's checkpoint criterion,
+  Step 3's `bash tests/validate.sh` is the unit's terminal gate, and D2 forbids
+  a review between the two. Every other step still carries
+  `bash tests/validate.sh`, and Step 1 additionally carries a criterion that the
+  new suite is *registered* in it, since registration is explicit rather than
+  discovered. Squashing `ddb8ac0` into the Step 3 commit would erase the
+  deviation entirely, but that rewrites already-published `master` history and
+  is the team lead's call, not this plan's.
 
 ## Deliberate non-changes
 
@@ -457,6 +505,36 @@ this repo's tree or its reviewer-owned marker directory.
 
 ## Step 2 — stop-gate consumes the stamp instead of the global watermark
 
+**Unit boundary (revised 2026-08-07 — read before running the criteria)**
+
+**Steps 2 and 3 are one dispatchable unit, not two.** They keep separate step
+sections and separate issues (#263, #264) for the granular record, but they are
+implemented in a single working tree, with no review and no `tests/validate.sh`
+gate between them. The reason is structural, not stylistic: the parity test
+cannot be green for a subset of its three ports (R6, D2). Neither step's *edit
+scope* changed — Step 2 still touches only `hooks/scripts/stop-gate.sh` and
+`tests/stop-gate-blocked.test.sh`, and must still not touch the adapters or
+`tests/adapter-stop-gate-parity.test.sh`, which remain Step 3's.
+
+**Expected-red window — this is by design, not a regression.** Between the
+Step 2 commit and the Step 3 commit, `bash tests/validate.sh` exits 1 with
+exactly three `^FAIL` lines and no others:
+
+```
+FAIL (f1) claude: expected rc=2, marker=MISSING record, flag kept ...
+FAIL (f3) claude: expected rc=2, marker=MISSING record, flag kept ...
+FAIL tests/adapter-stop-gate-parity.test.sh
+```
+
+Measured at commit `ddb8ac0` on 2026-08-07; every other registered suite,
+including the rewritten `tests/stop-gate-blocked.test.sh`, is green. Cases (f1)
+(`:216-232`) and (f3) (`:253-270`) seed `.last-review-clear` and assert the
+retired global-watermark semantics, so once the watermark is gone those two
+fixtures carry no stamp and the new hook correctly fails open. Step 3 rewrites
+them and restores green. A `git bisect`, a reviewer, or `milestone-auditor`
+landing inside this window should read it against this paragraph rather than
+opening a defect.
+
 **Affected files**
 
 - `hooks/scripts/stop-gate.sh` — replace `marker_since_last_clear()` (`:96-111`)
@@ -530,8 +608,21 @@ for n in join-absent-fails-open join-unsatisfied-blocks join-satisfied-clears \
          join-repeat-stop-allowed; do \
   grep -qF "$n" tests/stop-gate-blocked.test.sh || { echo "MISSING $n"; exit 1; }; \
 done                                                                           # exit 0
-bash tests/validate.sh                                                         # exit 0
+bash tests/validate.sh > /tmp/step2-validate.out 2>&1 || true; \
+  grep -qxF 'FAIL tests/adapter-stop-gate-parity.test.sh' /tmp/step2-validate.out && \
+  [ "$(grep -c '^FAIL' /tmp/step2-validate.out)" -eq 3 ]                       # exit 0
 ```
+
+**On the last criterion (revised 2026-08-07).** It replaces a plain
+`bash tests/validate.sh # exit 0`, which Step 2 alone cannot satisfy — see
+"Unit boundary" above. It is an **implementer checkpoint, not a review
+criterion**: it asserts that Step 2 broke the parity test and *nothing else*,
+pinning the failure set to exactly the two claude-port cases Step 3 is already
+scoped to fix. It is deliberately expected to stop passing once Step 3 lands
+(the count drops to 0), so the reviewer does **not** re-run it at the unit
+boundary; the reviewer evaluates the combined diff against Step 2's other nine
+criteria plus Step 3's block in full, and Step 3's `bash tests/validate.sh` is
+the unit's single terminal gate. Verified exiting 0 at `ddb8ac0` on 2026-08-07.
 
 The eight fixture names are mandatory literal strings. Two encode the bug this
 plan exists to fix and must be written as *regression* tests, i.e. they must fail
@@ -593,6 +684,18 @@ grep -qF 'block "' adapters/codex/hooks/scripts/stop-gate.sh                   #
 bash tests/adapter-stop-gate-parity.test.sh                                    # exit 0
 bash tests/validate.sh                                                         # exit 0
 ```
+
+**`bash tests/validate.sh` here is the terminal gate for the merged Steps 2+3
+unit (revised 2026-08-07)**, not just for Step 3's own edits. Reaching it
+requires that Step 3's rewrite of scenario (f) also re-greens the *claude*
+port's (f1) and (f3) cases, which Step 2 knowingly left red (see Step 2's
+"Unit boundary"). Restoring them is not optional cleanup and not out of scope:
+it is the only thing that closes the expected-red window, and a `validate.sh`
+run that still reports `FAIL tests/adapter-stop-gate-parity.test.sh` means the
+unit is not done regardless of how the adapter scripts look. `PORTS` at
+`tests/adapter-stop-gate-parity.test.sh:15` must still be
+`"claude codex cursor"` afterwards — narrowing it to green the suite would
+disable the parity claim the file exists to assert.
 
 Both counts are measured from the current tree, not assumed: three `stop-gate.sh`
 copies carry `last-review-clear` today (`hooks/scripts` plus both adapters), and
@@ -947,14 +1050,32 @@ different answer amends one step; neither blocks Steps 1-3.
   the `0007` hole? — PASS (Step 7 states `0015` is the highest present and that
   `0007` must never be backfilled; a criterion asserts the hole survives).
 - CHK16: Does the plan define a single acceptance signal for the change as a
-  whole? — PASS (`bash tests/validate.sh` exits 0, carried on every step;
-  recorded in Clarifications item 9).
+  whole? — PASS, **as revised 2026-08-07**. The signal is unchanged
+  (`bash tests/validate.sh` exits 0, recorded in Clarifications item 9), but the
+  original parenthetical "carried on every step" no longer holds: Step 2 now
+  carries a scoped checkpoint instead, and the plan says so in three places
+  (Step 2's "Unit boundary", Step 2's criteria note, and the P5 deviation)
+  rather than leaving the exception implicit.
+- CHK17: Is every step's acceptance-criteria block satisfiable by that step's
+  own declared edit scope? — FAIL (conflicting: Step 2's `Do NOT touch` list
+  assigned the adapters and `tests/adapter-stop-gate-parity.test.sh` to Step 3,
+  while Step 2's criteria demanded a fully green `bash tests/validate.sh`, which
+  that suite makes unreachable until Step 3 lands) — revised in place on
+  2026-08-07: Steps 2 and 3 merged into one dispatchable unit (D2, R6), Step 2's
+  final criterion narrowed to a pinned three-line failure set, Step 3's
+  `validate.sh` named as the unit's terminal gate, and the deviation recorded
+  against P5. **Found at implementation time, not at authoring time** — the
+  implementer stopped and escalated rather than improvising, which is the
+  intended behaviour; recorded here so a later reader sees the original slice
+  was wrong rather than inferring the merge was always planned.
 
 Three FAILs (CHK2, CHK9, CHK11) plus one found by running rather than reading
-(CHK13), all resolved in the single permitted revision pass and re-checked. No
-unresolved failure remains, so nothing here was converted to an Open Question;
-Open Questions 1 and 2 are pre-existing scope decisions, not Self-check
-escalations.
+(CHK13) were resolved in the single permitted revision pass at authoring time
+and re-checked. A fifth (CHK17) surfaced during implementation of Step 2 and was
+resolved by the targeted 2026-08-07 revision recorded above, which also amended
+CHK16. No unresolved failure remains, so nothing here was converted to an Open
+Question; Open Questions 1 and 2 are pre-existing scope decisions, not
+Self-check escalations.
 
 ## Scribe update hint
 
@@ -972,7 +1093,8 @@ issue-closing duty once Step 8 lands.
 
 ## Handoff
 
-Eight dispatchable units, so this is the **standard path**: `task-master` slices
+Eight steps but **seven dispatchable units** (Steps 2 and 3 are one unit per
+D2, revised 2026-08-07), so this is the **standard path**: `task-master` slices
 these steps with `to-tickets`, assigns each unit's `Suggested model` tag (heeding
 R1's `haiku` exclusions for Steps 2, 3, 4 and 6), states the retrieval contract,
 and writes the per-unit dispatch prompts. `spec-master` emits no dispatch
