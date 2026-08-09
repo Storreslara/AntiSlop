@@ -47,7 +47,7 @@ check('buildFileSpecs registers the slim protocol digest for .claude/persona-pro
 });
 
 check('renderCleanBody inlines the full protocol into full-tier bodies and the slim digest into slim-tier bodies', () => {
-  const specs = cli.buildFileSpecs(['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor', 'researcher']);
+  const specs = cli.buildFileSpecs(['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor', 'researcher', 'agent-auditor']);
   const config = { substitutions: { graphMcpLaunch: { command: 'npx', args: ['g'] }, arxivMcpLaunch: null } };
   const render = (rel) => cli.renderCleanBody(specs.find((s) => s.projectRelPath === rel), config);
   const FULL_ONLY = 'INSUFFICIENT-CONTEXT';
@@ -57,7 +57,7 @@ check('renderCleanBody inlines the full protocol into full-tier bodies and the s
     assert.ok(body.includes(FULL_ONLY), `${p} (full-tier) should inline the full protocol`);
     assert.ok(body.includes(SLIM_SHARED), `${p} should include the shared answer-shape rule`);
   }
-  for (const p of ['explorer', 'researcher', 'scribe']) {
+  for (const p of ['explorer', 'researcher', 'scribe', 'agent-auditor']) {
     const body = render(`.claude/agents/${p}.md`);
     assert.ok(!body.includes(FULL_ONLY), `${p} (slim-tier) must NOT inline the full protocol`);
     assert.ok(body.includes(SLIM_SHARED), `${p} should include the slim answer-shape rule`);
@@ -1082,7 +1082,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-migrate-test-'));
     const git = (...a) => spawnSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: tmp, encoding: 'utf8' });
     try {
-      const selection = ['reviewer', 'milestone-auditor', 'scribe', 'researcher'];
+      const selection = ['reviewer', 'milestone-auditor', 'scribe', 'researcher', 'agent-auditor'];
       const specs = cli.buildFileSpecs(selection);
       const config = { pluginVersion, personaSelection: selection, substitutions: { graphMcpLaunch, arxivMcpLaunch: null }, fileHashes: {} };
       // Write OLD-scheme bodies: persona files with NO inlined protocol (tier
@@ -1114,7 +1114,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         const body = read(`.claude/agents/${p}.md`);
         assert.ok(body.includes(FULL_ONLY) && body.includes(SLIM_SHARED), `${p} should now carry the full protocol`);
       }
-      for (const p of ['explorer', 'scribe', 'researcher']) {
+      for (const p of ['explorer', 'scribe', 'researcher', 'agent-auditor']) {
         const body = read(`.claude/agents/${p}.md`);
         assert.ok(!body.includes(FULL_ONLY) && body.includes(SLIM_SHARED), `${p} should now carry the slim digest`);
       }

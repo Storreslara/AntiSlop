@@ -23,7 +23,7 @@ const PKG_ROOT = path.resolve(__dirname, '..');
 const CWD = process.cwd();
 
 const CORE_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer'];
-const OPTIONAL_PERSONAS = ['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor'];
+const OPTIONAL_PERSONAS = ['spec-master', 'task-master', 'scribe', 'reviewer', 'milestone-auditor', 'agent-auditor'];
 
 // Per-persona protocol delivery (OQ6=A body-inlining; @import does not resolve
 // inside a subagent body — proven in issue #121 Step 2). Full-tier personas
@@ -31,7 +31,7 @@ const OPTIONAL_PERSONAS = ['spec-master', 'task-master', 'scribe', 'reviewer', '
 // body; slim-tier ones carry persona-protocol-slim.md. Everyone else (the raw
 // protocol docs themselves) carries neither. Replaces the single global
 // `@.claude/persona-protocol.md` CLAUDE.md import.
-const SLIM_TIER_PERSONAS = ['explorer', 'researcher', 'scribe'];
+const SLIM_TIER_PERSONAS = ['explorer', 'researcher', 'scribe', 'agent-auditor'];
 function protocolTierFor(name) {
   if (SLIM_TIER_PERSONAS.includes(name)) return 'slim';
   return 'full';
@@ -1901,6 +1901,7 @@ async function main() {
         'task-master': 'task-master (slices a finalized spec into dispatch-ready tasks; skip only for purely mechanical/small work)',
         scribe: 'scribe (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
         'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or spec-master was also skipped)',
+        'agent-auditor': 'agent-auditor (read-only report on agent dispatches, tool/skill use, and gate anomalies; skip if you don\'t want this observability report)',
       }[persona];
       const include = await askYesNo(rl, `\nInclude ${label}?`, true);
       if (include) selected.push(persona);

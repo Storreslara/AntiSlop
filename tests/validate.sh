@@ -138,7 +138,7 @@ echo "== optional-persona references must be phrased conditionally =="
 # with "(if present)" qualifiers scoped per-section rather than repeated
 # every paragraph, which this paragraph-scoped checker would false-positive
 # on.
-for p in scribe reviewer researcher; do
+for p in scribe reviewer researcher agent-auditor; do
   bad=0
   for f in agents/orchestrator.md agents/lead-programmer.md commands/start-feature-team.md; do
     [ -f "$f" ] || continue
