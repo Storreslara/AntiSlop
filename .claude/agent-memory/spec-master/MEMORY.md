@@ -14,3 +14,4 @@
 - [Don't gate a source edit apart from its shipped copy](feedback_dont_slice_units_across_a_parity_test.md) — validate.sh asserts the shipped copies; merge the pair, and sweep ALL such pairs, not just the one that escalated.
 - [maxTurns-cutoff spec (#123)](project_maxturns_cutoff_spec.md) — settled decisions + two-tier protocol fan-out finding; recovered 2026-08-08 from a lost stash, verified shipped intact.
 - [Claude transcript store](reference_claude_transcript_store.md) — agent dispatches/tools/skills are ALREADY on disk under ~/.claude/projects/; check before speccing new hook instrumentation.
+- [Goal prose vs step table drift](feedback_goal_prose_vs_step_table_drift.md) — map every Goal clause to a step criterion; unmapped clauses ship silently, reviewers cannot see them.

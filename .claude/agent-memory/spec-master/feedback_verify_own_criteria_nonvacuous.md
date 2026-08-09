@@ -26,4 +26,21 @@ a directory. For each, run both halves — the negative (`! grep old`) and the
 positive (`grep new`) — and assert the positive currently returns 0 matches.
 Multi-line/wrapped source strings are the specific trap: grep is line-oriented,
 prose files wrap, so never grep a token longer than a plausible line.
+**Second trap - self-reference (2026-08-09, agent-auditor round-2 follow-up):**
+when the artifact under test IS the plan document, a whole-file `grep` in a
+criterion *counts the criterion's own text*. Writing "the broken pattern is gone:
+`! grep -qF '<pattern>' plan.md`" is unsatisfiable the moment the plan quotes
+that pattern to explain the defect - and the mirror-image "`grep -c '<marker>'
+>= 2`" is already green for the same reason. I hit both, then hit them AGAIN on
+the first repair attempt (predicted 3 and 0, measured 4 and 3). The fix is to
+scope the grep to the target section, not the file:
+`sed -n "/^### <heading>/,/^### /p" plan.md | grep -qF ...`, which structurally
+excludes the section the criterion lives in. Also check the marker string is not
+already present in the target range for unrelated reasons - `vacuous` was.
+
+**How to apply (self-reference):** any criterion whose target file is the spec
+itself must be section-scoped or it is broken by construction. Predict the
+expected count, then RUN it; if the measurement disagrees with the prediction,
+the criterion is counting itself.
+
 See [[feedback-no-forced-changes]] and [[feedback-baselines-expire]].
