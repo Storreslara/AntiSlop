@@ -49,6 +49,6 @@ frozen 2026-08-09 measurements. Relevant to anyone extending that script
   independent of the agent-auditor work itself.
 
 See also [[bash-jq-tsv-pitfalls]] for the parsing bugs hit while building
-the detector, and [[reviewed-path-gate-heredoc-workaround]] for the
+the detector, and [[reviewed-path-gate-false-positive-report-and-wait]] for the
 unrelated gate issue hit while WRITING the script file itself (needing to
 reference the marker directory in source code, not read it).

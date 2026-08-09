@@ -10,4 +10,4 @@
 - [Edit tool unavailable fallback](feedback_edit_tool_unavailable_fallback.md) — Edit/Write can error 'not enabled'; use Bash+python3 str-replace, watch backslash-newline escaping in the replacement string
 - [Bash/jq TSV pitfalls](project_bash_jq_tsv_pitfalls.md) — IFS=$'\t' read collapses consecutive tabs; jq `X // empty` in if/as silently zero-outputs instead of falling through
 - [Transcript store quirks](project_transcript_store_quirks.md) — thin sessions, orphaned meta.json, agent-teams SendMessage auto-grant + customAgentType field (#281)
-- [reviewed-path-gate heredoc workaround](feedback_reviewed_path_gate_heredoc_workaround.md) — gate scans whole Bash command text incl. heredoc bodies; split literal via string concat when writing new files that must mention the path
+- [reviewed-path-gate false positive: report and wait](feedback_reviewed_path_gate_false_positive_report_and_wait.md) — gate can false-positive on unrelated heredocs; never route around a gate block, report and wait
