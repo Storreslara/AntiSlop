@@ -1002,54 +1002,96 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // `! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'`
   // is vacuous -- it discards the exit code and can only ever match
   // `: created`, so drift that surfaces as "updated (no local edits
-  // detected)" reports GREEN even though the file changed. Shape A (source
-  // edited, mirror left stale -- the #291 shape) is the dangerous case:
-  // `--check` is not a dry run, so it silently self-heals the drift it was
-  // asked to report and exits 0. Only the corrected form -- exit code AND
-  // post-run `git status --porcelain -uno` emptiness -- catches it. This
-  // test pins that discrimination against a real git-tracked copy of the
-  // repo (not `buildBaselineProject`'s synthetic fixture, since the
-  // corrected form's post-run assertion needs real git state to read).
-  check('F2 regression: the corrected drift-check form (exit code + post-run git-clean) catches shape-A source-edited/mirror-stale drift that the old broken grep form misses', () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-f2-shape-a-'));
+  // detected)" reports GREEN even though the file changed. The corrected
+  // form -- exit code AND post-run `git status --porcelain -uno` emptiness
+  // -- fixes this, but only if BOTH halves are load-bearing: this test
+  // builds two drift shapes from a clean, committed starting state (the
+  // fixture must be clean going in, or the pre-run precondition the
+  // criterion itself asserts is never actually represented) and proves
+  // neither half alone would discriminate both shapes.
+  //
+  // Runs against a real git-tracked copy of the repo, not
+  // `buildBaselineProject`'s synthetic fixture, since the corrected form's
+  // post-run assertion needs real git state to read.
+  function buildF2GitFixture(label) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `antislop-f2-${label}-`));
+    for (const entry of fs.readdirSync(REPO_ROOT)) {
+      if (entry === '.git' || entry === 'node_modules') continue;
+      const copied = spawnSync('cp', ['-r', path.join(REPO_ROOT, entry), path.join(tmp, entry)], { encoding: 'utf8' });
+      assert.strictEqual(copied.status, 0, `cp -r ${entry} failed: ${copied.stderr}`);
+    }
+    const git = (gitArgs) => spawnSync('git', gitArgs, { cwd: tmp, encoding: 'utf8' });
+    const porcelain = () => git(['status', '--porcelain', '-uno']).stdout;
+    assert.strictEqual(git(['init', '-q']).status, 0, 'git init failed');
+    git(['config', 'user.email', 'f2-regression@example.com']);
+    git(['config', 'user.name', 'F2 Regression']);
+    assert.strictEqual(git(['add', '-A']).status, 0, 'git add failed');
+    const commit = git(['commit', '-q', '-m', 'baseline']);
+    assert.strictEqual(commit.status, 0, `git commit failed: ${commit.stderr}`);
+    assert.strictEqual(porcelain(), '', 'precondition: the baseline commit must leave the tree clean');
+    return { tmp, git, porcelain, cli: path.join(tmp, 'bin', 'cli.js') };
+  }
+
+  function oldFormFooled(stdout) {
+    // Reproduced here (not left live in the codebase) to prove it stays
+    // GREEN on both fixtures below.
+    return !/: (updated|created|pending)$/m.test(stdout);
+  }
+
+  check('F2 regression: shape A (source committed-edited, mirror stale) is caught ONLY by the post-run git-clean assertion — the exit code alone (0) reports fine', () => {
+    const { tmp, git, porcelain, cli: tmpCli } = buildF2GitFixture('shape-a');
     try {
-      for (const entry of fs.readdirSync(REPO_ROOT)) {
-        if (entry === '.git' || entry === 'node_modules') continue;
-        const copied = spawnSync('cp', ['-r', path.join(REPO_ROOT, entry), path.join(tmp, entry)], { encoding: 'utf8' });
-        assert.strictEqual(copied.status, 0, `cp -r ${entry} failed: ${copied.stderr}`);
-      }
-      const tmpCli = path.join(tmp, 'bin', 'cli.js');
-      const git = (gitArgs) => spawnSync('git', gitArgs, { cwd: tmp, encoding: 'utf8' });
-      const porcelain = () => git(['status', '--porcelain', '-uno']).stdout;
-
-      assert.strictEqual(git(['init', '-q']).status, 0, 'git init failed');
-      git(['config', 'user.email', 'f2-regression@example.com']);
-      git(['config', 'user.name', 'F2 Regression']);
-      assert.strictEqual(git(['add', '-A']).status, 0, 'git add failed');
-      const commit = git(['commit', '-q', '-m', 'baseline']);
-      assert.strictEqual(commit.status, 0, `git commit failed: ${commit.stderr}`);
-      assert.strictEqual(porcelain(), '', 'precondition: the baseline commit must leave the tree clean');
-
-      // Shape A: source edited, mirror left stale.
+      // Mutation must be COMMITTED, not left uncommitted — an uncommitted
+      // mutation would make the tree dirty before the CLI ever runs, which
+      // both defeats the criterion's own pre-run precondition and makes the
+      // post-run dirtiness assertion pass even if the CLI does nothing at all.
       fs.appendFileSync(path.join(tmp, 'agents', 'orchestrator.md'), '\nhand-edited source line\n');
+      assert.strictEqual(git(['add', '-A']).status, 0, 'git add failed');
+      assert.strictEqual(git(['commit', '-q', '-m', 'shape A: commit the source edit']).status, 0, 'git commit failed');
+      assert.strictEqual(porcelain(), '', 'precondition: shape A must start from a clean tree, same as the criterion\'s own pre-run assertion');
 
       const checked = spawnSync('node', [tmpCli, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      assert.ok(oldFormFooled(checked.stdout), `expected the old broken grep form to be fooled (GREEN) on shape A, got stdout: ${checked.stdout}`);
 
-      // Old broken form, reproduced here (not left live in the codebase) to
-      // prove it stays GREEN on this exact fixture.
-      const oldFormDetectedDrift = /: (updated|created|pending)$/m.test(checked.stdout);
-      assert.ok(
-        !oldFormDetectedDrift,
-        `expected the old broken grep form to be fooled (GREEN, i.e. no match) on shape A, got stdout: ${checked.stdout}`
-      );
+      // The dangerous part of shape A: --check self-heals and exits 0, so a
+      // bare exit-code check reports "fine" even though drift occurred.
+      assert.strictEqual(checked.status, 0, 'shape A must exit 0 — the self-heal write succeeds, which is what an exit-code-only remedy misses');
 
-      // Corrected form: exit code AND post-run tree cleanliness, both load-bearing.
-      const rc = checked.status;
-      assert.strictEqual(rc, 0, 'shape A must exit 0 -- the self-heal write succeeds, which is what an exit-code-only remedy misses');
+      // Only the post-run porcelain check catches it, and it must name the
+      // mirror the CLI silently rewrote — not just "something changed".
       const dirtyAfter = porcelain();
-      assert.notStrictEqual(
+      assert.notStrictEqual(dirtyAfter, '', 'shape A must leave the working tree dirty (the silent self-heal write)');
+      assert.ok(
+        dirtyAfter.includes('.claude/agents/orchestrator.md'),
+        `expected the post-run diff to name the stale mirror the CLI rewrote, got: ${dirtyAfter}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('F2 regression: shape B (mirror locally edited+committed) is caught ONLY by the exit-code assertion — the post-run tree comes back clean', () => {
+    const { tmp, git, porcelain, cli: tmpCli } = buildF2GitFixture('shape-b');
+    try {
+      // Committed hand-edit to the MIRROR (not the source), so it diverges
+      // from what a fresh render would produce.
+      fs.appendFileSync(path.join(tmp, '.claude', 'agents', 'orchestrator.md'), '\nhand-edited mirror line\n');
+      assert.strictEqual(git(['add', '-A']).status, 0, 'git add failed');
+      assert.strictEqual(git(['commit', '-q', '-m', 'shape B: commit the mirror edit']).status, 0, 'git commit failed');
+      assert.strictEqual(porcelain(), '', 'precondition: shape B must start from a clean tree, same as the criterion\'s own pre-run assertion');
+
+      const checked = spawnSync('node', [tmpCli, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      assert.ok(oldFormFooled(checked.stdout), `expected the old broken grep form to be fooled (GREEN) on shape B, got stdout: ${checked.stdout}`);
+
+      // The CLI refuses to silently overwrite a locally-edited mirror — it
+      // reports the file pending and exits 2, writing nothing else back that
+      // changes tree content.
+      assert.strictEqual(checked.status, 2, 'shape B must exit 2 (pending decision) — this is what the post-run-porcelain-only remedy misses');
+
+      const dirtyAfter = porcelain();
+      assert.strictEqual(
         dirtyAfter, '',
-        "shape A must leave the working tree dirty (the silent self-heal write), which is what the corrected form's post-run assertion catches"
+        `shape B must leave the working tree clean post-run (no self-heal write for a pending file), got: ${dirtyAfter}`
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
