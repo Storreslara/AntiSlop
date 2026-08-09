@@ -1141,3 +1141,277 @@ name them explicitly:
 revision pass. No new Open Questions: the one genuine decision - bumping
 `package.json` - is settled by measurement rather than preference, since
 criterion 4 is otherwise unsatisfiable.
+
+---
+
+## Convergence follow-ups - 2026-08-09
+
+**Origin.** Raised by the pre-audit checkpoint after all 8 units (Step 0 plus
+Steps 1-7) reached reviewer PASS at `d50b8f2`, and confirmed by the requester
+as a real but **non-blocking** drift. This section is **append-only**: Steps
+0-7 are merged, PASSed, and untouched. Nothing here invalidates them, and
+nothing here is urgent.
+
+### F1 - Goal criterion (a) is only half delivered
+
+The Goal states success as a report that "(a) enumerates every agent dispatch
+in a chosen window **with its tool and skill inventory**, and (b) flags a
+fixed, calibrated set of anomaly classes". Criterion (b) shipped in full
+(A1-A6, a good/bad fixture pair per class, mutation-proven for A1 and A5).
+Criterion (a) did not:
+
+| Goal clause | Shipped? | Evidence |
+|---|---|---|
+| enumerate every dispatch | **no** | no per-dispatch record in either output mode |
+| ...its tool inventory | **no, at any granularity** | nothing anywhere reports tool names or counts |
+| ...its skill inventory | yes, aggregate only | I2, grouped by `(persona, skill)` |
+
+Re-verified in the current tree on 2026-08-09: the `--json` payload is exactly
+`{findings, distribution, skills}` (`scripts/agent-audit.sh:490`), and text
+mode renders exactly eight section headers - `A1`-`A6`, `I1`, `I2`. No
+per-dispatch record reaches either.
+
+The tool-inventory half is the sharper miss: I1 covers models, I2 covers
+skills, and **nothing reports tools at all**. This was found independently
+twice by the reviewer - during the gh-286-docs FAIL/fix cycle and again at the
+gh-287 final review - which is why Amendment A2's CHANGELOG accuracy
+constraint forbids claiming either. The shipped documentation is therefore
+**honest about the gap**; no user is currently misled. The drift is between
+the Goal prose and Step 1's table, not between the docs and the code.
+
+**Where the drift entered: at spec time, not implementation time.** Steps 1-7
+were faithful to Step 1's table, which enumerates exactly six checks and two
+inventories with no ninth section, and OQ3 signed that eight-section shape off
+explicitly. The Goal sentence was simply never reconciled with the table it
+was decomposed into. **That is a spec-authoring defect, not a
+`lead-programmer` or `reviewer` miss** - worth recording, because this failure
+mode is invisible to a reviewer by construction: the reviewer checks code
+against steps, and the steps were internally consistent.
+
+### Is it worth building? Yes - but at low priority, and for one specific reason
+
+**The argument against, which is real.** The requester approved the
+eight-section shape at OQ3. The aggregates largely serve the diagnostic
+purpose: I1 answers "who ran at what model", I2 answers "which skills fired".
+Reading criterion (a) as "the report accounts for every dispatch in the
+window" rather than "the report prints a line per dispatch" is a defensible
+reading in hindsight, and on that reading the only thing genuinely missing is
+a tool inventory.
+
+**The argument for, which is stronger but narrow.** Two things the aggregates
+cannot do:
+
+1. **No tool inventory exists at any granularity.** This is not a granularity
+   mismatch - one of the two named inventories was never built. Adding it
+   aggregate-only costs the same as adding it per-dispatch, so per-dispatch
+   strictly dominates.
+2. **Anomaly findings are not self-contained.** Every A1-A5 finding prints
+   `session=<sid> agent=<aid> persona=<p>` and nothing more. Answering "what
+   else did that dispatch do?" currently means hand-grepping the transcript
+   store. A per-dispatch line makes the report answer its own immediate
+   follow-up question - which is a better reason to build this than
+   criterion-(a) compliance is.
+
+**It is cheap where the logic lives.** The enumeration already exists
+internally: `$DISPATCHES` is a per-dispatch TSV (`session, agent, persona,
+timestamp, depth, model, teammate, description, transcript-path`) that all six
+checks already iterate, and the A1 loop already extracts each dispatch's
+`tool_use` names. I3 is **render-only** - no new parsing and no new
+transcript-format coupling, so R1's exposure does not widen.
+
+**But the ceremony tail is the larger half, and must not be underestimated.**
+`agents/agent-auditor.md` names the inventory count in its body (`:10`, `:59`),
+so adding I3 edits a **version-stamped** file and thereby drags in constitution
+P3 and the whole Amendment A2 mechanism: a version bump in both
+`.claude-plugin/plugin.json` and `package.json`, a CHANGELOG entry, and
+`node bin/cli.js --update` to regenerate the mirrors. The ~20 lines of render
+logic are the small part of this unit.
+
+### Step 8 - I3, a bounded per-dispatch tool-and-skill inventory
+
+**One unit, deliberately.** Splitting the script edit from the persona-doc edit
+would recreate Amendment A2's exact defect - a source edit landing after the
+regen window, leaving `.claude/agents/agent-auditor.md` silently stale.
+
+**Affected files**: `scripts/agent-audit.sh`, `tests/agent-auditor.test.sh`,
+`agents/agent-auditor.md`, `commands/audit-agents.md`, `CHANGELOG.md`,
+`.claude-plugin/plugin.json`, `package.json`, plus the generated files
+`--update` rewrites (`.claude/persona-config.json` and the stamped `.claude/**`
+mirror set). As in A2, the generated files are listed because they appear in
+the diff, never because anything in them may be hand-edited.
+
+**Output shape** - one line per dispatch, counts only:
+
+    I3 Per-dispatch inventory (showing 200 of 1254)
+      session=<sid> agent=<aid> persona=<p> model=<m> tools=Bash:41,Read:12 skills=antislop:tdd
+
+**Three scoping decisions, each with its reason:**
+
+- **Bounded in text mode, uncapped in JSON.** Cap the text render at 200
+  dispatch lines, with the header always stating `showing <shown> of <total>`;
+  emit the full `dispatches` array under `--json`. Measured 2026-08-09:
+  **1254** dispatches corpus-wide, but a single session's window is **11 at the
+  median and 68 at the observed maximum** (across 34 sessions with subagents in
+  this project), so the default window never truncates and only `--all` ever
+  does. JSON stays uncapped because its consumer is `jq`, which filters for
+  itself.
+- **No `description` field (R5).** A dispatch `description` is author-written
+  free text, and R5 confines the report to metadata, names, paths and counts.
+  `agent=<aid>` already correlates a line with its anomaly finding, which is
+  the entire point of the section. Reinstating `description` later is a
+  decision that requires re-reading R5, not a formatting tweak.
+- **Informational, never a flag.** I3 is an `I`-series section: it never fires,
+  never counts as a finding, and never affects an exit code. The persona's "an
+  observation for a human, not a verdict" boundary is unchanged.
+
+**Acceptance criteria.** Criteria 1 and 8 were executed against the current
+tree on 2026-08-09 and confirmed **RED**, so the section cannot pass vacuously
+(R9's lesson).
+
+1. The section exists in both modes. Confirmed RED - the JSON payload has no
+   `dispatches` key and no `^I3` header renders:
+
+        bash scripts/agent-audit.sh --all | grep -qE '^I3 '
+        bash scripts/agent-audit.sh --all --json | jq -e '.dispatches | length > 0'
+
+2. **Enumeration is complete, not a sample** - against the test fixture, the
+   array holds exactly one entry per `*.meta.json`:
+
+        n=$(find "$FIXTURE_ROOT" -name 'agent-*.meta.json' | wc -l)
+        test "$(AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq '.dispatches|length')" -eq "$n"
+
+3. **Tool counts are real, not placeholders** - the existing `a1bad` fixture's
+   transcript contains exactly one `Write`:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json |
+          jq -e '.dispatches[] | select(.agent=="a1bad") | .tools == [{"name":"Write","count":1}]'
+
+4. **Every anomaly finding is correlatable** - this is the diagnostic value,
+   asserted rather than hoped for. No A1-A5 finding may name a dispatch that is
+   absent from the enumeration:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json | jq -e '
+          ([.findings[] | select(.id | test("^A[1-5]$")) | {s:.session, a:.agent}] -
+           [.dispatches[] | {s:.session, a:.agent}]) | length == 0'
+
+5. **The bound holds and truncation is stated honestly.** Generate a fixture of
+   201 minimal dispatches - deterministic on purpose, because a criterion
+   pinned to the live corpus staying above 200 is a baseline that expires:
+
+        out=$(AGENT_AUDIT_ROOT=$BIG_ROOT bash scripts/agent-audit.sh --all)
+        test "$(printf '%s\n' "$out" | sed -n '/^I3 /,$p' | grep -c '^  session=')" -eq 200
+        printf '%s\n' "$out" | grep -qE '^I3 .*showing 200 of 201'
+        test "$(AGENT_AUDIT_ROOT=$BIG_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq '.dispatches|length')" -eq 201
+
+6. **R5 privacy extends to I3** - the same canary pattern Step 1 criterion 7
+   established, applied to the new field that carries free text. A fixture whose
+   `.meta.json` `description` is `CANARY-DISPATCH-DESC` must not leak it:
+
+        ! AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all | grep -q CANARY-DISPATCH-DESC
+        ! AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json | grep -q CANARY-DISPATCH-DESC
+
+7. **No regression in the eight shipped sections** (Step 1 criterion 1,
+   re-run with I3 added):
+
+        for id in A1 A2 A3 A4 A5 A6 I1 I2 I3; do
+          bash scripts/agent-audit.sh --all | grep -q "^$id" || exit 1
+        done
+        bash tests/agent-auditor.test.sh    # exits 0
+
+8. **Docs and mirror agree** - closes A2's stale-mirror class. Confirmed RED:
+   `grep -c 'I3' agents/agent-auditor.md` returns 0 today, and both docs still
+   advertise two inventories:
+
+        grep -q 'I3' agents/agent-auditor.md
+        ! grep -q 'two informational inventories I1-I2' agents/agent-auditor.md
+        ! grep -q 'two informational summaries' commands/audit-agents.md
+        test "$(grep -c 'I3' .claude/agents/agent-auditor.md)" \
+           = "$(grep -c 'I3' agents/agent-auditor.md)"
+
+9. **Version discipline (P3)**, binding because `agents/agent-auditor.md` is
+   version-stamped. Read the pre-edit version at execution time rather than
+   assuming today's value (measured `0.30.0` on 2026-08-09):
+
+        pj=$(jq -r .version .claude-plugin/plugin.json)
+        test "$pj" = "$(jq -r .version package.json)"   # and strictly greater than the pre-edit value
+        head -40 CHANGELOG.md | grep -q "$pj"
+        ! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'
+
+10. `bash tests/validate.sh` exits 0 **and prints zero `^FAIL` lines**;
+    `node tests/cli-backfill.test.js` exits 0; and after the commit
+    `git status --porcelain -uno` is empty (`-uno` per A1/A2 - the untracked
+    `.claude/.review-join.*` stamp is open issue #277).
+
+**CHANGELOG accuracy constraint** carries forward from Amendment A2, with one
+amendment of its own: the entry may now claim a per-dispatch tool-and-skill
+inventory, because I3 delivers one. It must still not imply the render is
+unbounded - `--all` truncates the text output at 200 dispatches.
+
+**Model floor: not `haiku`.** Two reasons. The unit ends in a version bump plus
+mirror regen, the surface carrying FAIL records `gh-212-version-bump` and
+`224`; and the R5 call about `description` is exactly the kind of omission a
+cheap pass "helpfully" adds back.
+
+### Clarifications addendum
+
+The 9-category scorecard is not re-run - this section adds no work beyond the
+named finding, and the relevant category was already scored. One dated line,
+appended per the incremental rule:
+
+- 2026-08-09 Functional scope & success criteria: Q Does Goal criterion (a)'s
+  "enumerates every agent dispatch ... with its tool and skill inventory"
+  require a per-dispatch render, or is an aggregate accounting sufficient? -> A
+  it required a per-dispatch render and one was not delivered; the category was
+  scored **Partial** at drafting and this residual ambiguity was never closed
+  before Step 1's table fixed the scope at eight sections. Resolved
+  retroactively by Step 8, filed as a non-blocking follow-up per the
+  requester's 2026-08-09 decision to file rather than re-plan.
+
+### Self-check (Convergence follow-ups)
+
+- CHK25: Does the finding cite evidence from the shipped artifact rather than
+  from the plan's own prose? - PASS (the `{findings, distribution, skills}`
+  payload shape at `scripts/agent-audit.sh:490` and the eight rendered headers
+  were both re-read in the tree on 2026-08-09)
+- CHK26: Is every Step 8 criterion confirmed RED before handoff, so none can
+  pass vacuously? - PASS (criteria 1 and 8 executed against the current tree:
+  no `dispatches` key, no `^I3` header, no `I3` in `agents/agent-auditor.md`)
+- CHK27: Do the Affected files and the stated model floor agree about whether
+  this unit touches version-stamped surfaces? - FAIL (conflicting, on first
+  draft: the unit was scoped as a script-and-test change with no floor, while
+  `agents/agent-auditor.md:10,59` names the inventory count and must therefore
+  change) - revised in place: the P3 tail now appears in Affected files, in
+  criterion 9, and in the floor's justification.
+- CHK28: Is the truncation bound machine-checkable without depending on a live
+  corpus whose size changes? - FAIL (ambiguous, on first draft: the bound was
+  to be proven against the live store, measured at 1254 today but not stable) -
+  revised in place: criterion 5 generates a deterministic 201-dispatch fixture.
+- CHK29: Does this section avoid reopening Steps 0-7? - PASS (append-only; no
+  existing step, criterion or amendment is edited or renumbered, and Step 8
+  continues the existing numbering rather than displacing it)
+
+**No FAILs remain.** Two were revised in place during the single permitted
+revision pass. **No new Open Questions**: whether to build Step 8 at all is a
+prioritization call for the requester, not missing information - the
+recommendation and its counter-argument are both stated above.
+
+### Incidental observation - not part of Step 8
+
+`--json` on an empty window prints the plain-text string `no data for window`
+rather than valid JSON (reproduced 2026-08-09 against an empty
+`AGENT_AUDIT_ROOT`). Harmless today, since no shipped criterion parses an empty
+window - but Step 8's criteria 2-4 pipe JSON mode into `jq`, so whoever
+implements it should use non-empty fixtures rather than "fix" this in passing.
+If it is ever worth fixing, it is its own unit.
+
+### Routing
+
+Convergence follow-ups take the **standard path**. When someone picks this up,
+`task-master` slices it with `to-tickets` - one issue, labelled
+`ready-for-agent` + `plan/2026-08-09-agent-auditor-persona` per this plan's
+Handoff retrieval contract - assigns the model tag, and writes the dispatch
+prompt; it then flows through the normal `lead-programmer` -> `reviewer`
+pipeline like any other step. **Not urgent, and not a prerequisite for the
+milestone audit.**
