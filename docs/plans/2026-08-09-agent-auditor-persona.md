@@ -1415,3 +1415,476 @@ Handoff retrieval contract - assigns the model tag, and writes the dispatch
 prompt; it then flows through the normal `lead-programmer` -> `reviewer`
 pipeline like any other step. **Not urgent, and not a prerequisite for the
 milestone audit.**
+
+---
+
+## Convergence follow-ups, round 2 - 2026-08-09 (post-ship audit, CRITICAL)
+
+Source: the `milestone-auditor` post-ship audit of this plan at commit
+`d50b8f2` (all 8 units merged and PASSed, version 0.30.0). Two findings were
+accepted as CRITICAL by the requester with an explicit instruction to fix now,
+not to track. Append-only: Steps 0-8 and the F1 section above are not edited,
+renumbered, or reopened. Numbering continues at Step 9.
+
+**These two are independent units** - different files, different failure
+classes - and are scoped as such. They are ordered only by criterion reuse:
+Step 9 defines the corrected drift-check form that Step 10's criterion 9 then
+uses.
+
+### F2 - the `--update --check` acceptance-criterion form is structurally broken
+
+**The finding.** The criterion
+
+    ! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'
+
+appears twice in this plan: in the **already-merged Step 7 criterion 7**
+(`:1077`) and, carried verbatim, in the **not-yet-built Step 8 criterion 9**
+(`:1340`). It cannot detect what it claims to detect.
+
+`bin/cli.js` emits six per-file summary shapes (`bin/cli.js:1016`, `:1031`,
+`:1034`, `:1042`, `:1049`, `:1060`). Anchored at `$`, the regex matches exactly
+one of them, `: created`. `: updated (no local edits detected)` can never match
+because of the parenthetical, and no line of the form `: pending$` is emitted
+anywhere. The pipe additionally discards `bin/cli.js`'s own exit code, which is
+the only signal that actually carries the divergence verdict.
+
+**The requirement itself converged.** The auditor's independent clean-room
+reconstruction confirmed `d50b8f2`'s shipped mirror set has no residual drift.
+Nothing currently shipped needs re-touching. The defect is in the verification
+wording alone.
+
+**Correction to the audit's own proposed remedy.** The audit concluded that "a
+bare exit-code check would have discriminated correctly." Measured on a
+throwaway clone at `d50b8f2` on 2026-08-09, **it would not** - it discriminates
+one of the two drift shapes and misses the other, which is the #291 shape:
+
+| Drift shape | real exit code | broken grep form | bare exit-code check | exit code **and** post-run tree clean |
+|---|---|---|---|---|
+| none (baseline, genuinely current) | 0 | GREEN | GREEN | **GREEN** (correct) |
+| A - source edited, mirror stale (**the #291 shape**) | **0** | GREEN | **GREEN** | **RED** (correct) |
+| B - mirror carries local edits | **2** | GREEN | RED | **RED** (correct) |
+
+Shape A is the dangerous one and is the shape the auditor reproduced: `--check`
+is not a dry run (`checkFlag` is consulted only at `bin/cli.js:984`, to bypass
+the fast-path, and gates no write), so it **silently self-heals the drift it
+was asked to report** and then exits 0. In the measured run it wrote
+`.claude/agents/orchestrator.md` and `.claude/persona-config.json`. Only a
+post-run working-tree assertion catches it.
+
+**The corrected form.** Both assertions are load-bearing - neither alone covers
+both shapes:
+
+    # Precondition: everything committed. The run below WRITES; a dirty tree
+    # makes the post-run assertion unreadable.
+    test -z "$(git status --porcelain -uno)"
+
+    node bin/cli.js --update --check >/dev/null 2>&1; rc=$?
+    test "$rc" -eq 0                          # catches shape B (exit 2)
+    test -z "$(git status --porcelain -uno)"  # catches shape A (silent self-heal)
+
+`-uno` throughout, for the same reason Amendment A2 gives: the untracked
+`.claude/.review-join.*` stamp is **open issue #277** and out of scope.
+
+**Relationship to issue #291** (`--check` is misleadingly named; it writes).
+**A corrected criterion is sufficient on its own; #291 stays separate and is
+not a blocker.** The form above is proven against `--check`'s *current*
+semantics, so it does not wait on #291; and #291's own suggested fixes (add a
+real dry-run, or rename the flag) are an interface change whose blast radius is
+~40 references across nine plan docs, two test files, and three agent-memory
+files - bundling it would make a CRITICAL fix wait on a much larger change.
+
+#### Step 9 - correct the drift-check criterion form
+
+**Affected files**: `docs/plans/2026-08-09-agent-auditor-persona.md` (this
+file), `tests/cli-backfill.test.js`.
+
+**Explicitly NOT touched**: `bin/cli.js` (its behaviour is #291's business),
+and any shipped mirror or version-stamped file - this unit changes no rendered
+output, so P3 does not fire.
+
+**Ordered edits**
+
+1. Rewrite **Step 8 criterion 9**'s drift line (`:1340`) to the corrected form
+   above, before that step is ever built.
+2. Append a **retroactive correction note** to Step 7 criterion 7 (`:1073-1079`)
+   - as a note, not a rewrite of the merged step's history - recording that the
+   criterion as run was vacuous, that the requirement nonetheless converged per
+   the auditor's clean-room reconstruction, and that the corrected form is the
+   one above.
+3. Add one regression test to `tests/cli-backfill.test.js`, alongside the
+   existing `--update --check` drift tests (`:860`, `:975`), that pins the
+   discrimination property: in a throwaway tree, shape A must be detectable.
+   This is what makes F2 an executable guard rather than a prose edit.
+
+**Acceptance criteria**
+
+1. **Both criterion sites carry the corrected form and no longer carry the
+   broken one.** The check is *section-scoped* rather than whole-file, and this
+   is load-bearing: the broken pattern legitimately survives elsewhere in this
+   file - F2's narrative quotes it as the defect under discussion, and so does
+   this criterion - so any whole-file `grep` counts itself and can never pass.
+   Confirmed **RED** today: in both sections the corrected form is absent and
+   the broken one present.
+
+        P=docs/plans/2026-08-09-agent-auditor-persona.md
+        for h in '### Step 7 - corrected Acceptance Criteria' '### Step 8 - I3'; do
+          sec="$(sed -n "/^$h/,/^### /p" "$P")"
+          printf '%s\n' "$sec" | grep -qF 'test "$rc" -eq 0'             || exit 1
+          printf '%s\n' "$sec" | grep -qF ': (updated|created|pending)$' && exit 1
+        done
+
+2. **Each corrected site points back at F2**, so a reader landing on the merged
+   Step 7 finds the rationale rather than an unexplained change of form.
+   Confirmed **RED** today - 0 matches in each section:
+
+        for h in '### Step 7 - corrected Acceptance Criteria' '### Step 8 - I3'; do
+          sed -n "/^$h/,/^### /p" "$P" | grep -qF 'F2' || exit 1
+        done
+
+   Note for the implementer: do **not** substitute a whole-file `grep -c` for
+   either check. `vacuous` is already present in the Step 7 section, and a
+   whole-file count of any phrase in this section is satisfied by this section
+   itself - both traps were hit and measured while drafting.
+
+3. The new regression test exists and passes:
+
+        node tests/cli-backfill.test.js    # exits 0
+
+4. **The new test is non-vacuous, proven by mutation** - the property it pins
+   must actually be able to fail. In a throwaway copy of the tree, introduce
+   shape A (append a line to `agents/orchestrator.md`, leave the mirror alone)
+   and confirm the test's assertion goes RED there while the old grep form
+   stays GREEN. Measured on a clone at `d50b8f2`: grep form GREEN, corrected
+   form RED, per the table above.
+5. **Scope is respected** - `bin/cli.js` is not modified by this unit:
+
+        git diff --name-only <base>..HEAD | grep -qx 'bin/cli.js' && exit 1
+
+6. `bash tests/validate.sh` exits 0 **and prints zero `^FAIL` lines**; after
+   the commit `git status --porcelain -uno` is empty.
+
+**Model floor: not `haiku`.** Not because of R2 (this unit does not touch
+`bin/cli.js`) but because the subtlety is the whole unit: the milestone-auditor
+itself proposed a remedy that measurement showed to be insufficient. A cheap
+pass will reproduce that same plausible-but-wrong fix.
+
+### F3 - R1's own most-dangerous-failure-mode mitigation does not work
+
+**The finding.** R1 (`:220-227`), this plan's self-declared most dangerous
+failure mode, requires that "'No anomalies' and 'could not read' must never
+render alike." The shipped `--format-probe` does not separate them. Step 1
+criterion 5 (`:463-467`) tests only *live vs malformed* and never *empty vs
+malformed*, so it passed while the stated requirement went unmet.
+
+**This is a real functional gap in shipped code**, not a wording defect.
+
+**Scope is larger than the audit stated.** Measured against
+`scripts/agent-audit.sh` on 2026-08-09, `run_format_probe` (`:156-206`) returns
+`FORMAT-UNRECOGNIZED` for **four** distinct operator conditions, and the
+`--all` render collapses them further:
+
+| Store condition | `--format-probe` today | `--all` today | should mean |
+|---|---|---|---|
+| live, with dispatches | `FORMAT-OK` | full report | data is readable |
+| valid sessions, **zero dispatches** | `FORMAT-UNRECOGNIZED` | `no data for window` | readable, nothing dispatched yet |
+| root exists, empty | `FORMAT-UNRECOGNIZED` | `no data for window` | no data yet |
+| root does not exist | `FORMAT-UNRECOGNIZED` | `no data for window` | misconfigured root |
+| records exist, none parse | `FORMAT-UNRECOGNIZED` | `no data for window` | **format broke; report untrustworthy** |
+
+The second row is a **false alarm in the opposite direction**, not reported by
+the audit and found while scoping this: a perfectly readable store that simply
+has no subagent dispatches yet reports the format as unreadable, because `ok=0`
+is set when `found_subagent=0` (`:199`). That is the normal first-session case.
+A banner that fires on the normal case is a banner operators learn to ignore,
+which defeats R1 by a second route.
+
+**Prior defect history on this exact surface.** The reviewed-records directory
+holds a FAIL record for `gh-281-detection` (Step 1, `scripts/agent-audit.sh`).
+Its **non-blocking note 6 raised this very class and mis-cleared it**,
+asserting that "the probe does distinguish them (FORMAT-OK /
+FORMAT-UNRECOGNIZED, verified against both an empty dir and a dir with
+malformed JSONL)." That verification established live-vs-{empty, malformed}; it
+never compared empty against malformed, which are identical. Note 6's proposed
+mitigation - "Step 2's persona should always run `--format-probe` before
+presenting a report" - was also never implemented: `agents/agent-auditor.md:26`
+still lists the probe as optional "debugging". Both halves of note 6 are closed
+by this step.
+
+#### Step 10 - make the probe's states genuinely distinguishable
+
+**Affected files**: `scripts/agent-audit.sh`, `tests/agent-auditor.test.sh`,
+`agents/agent-auditor.md` **and** its shipped mirror
+`.claude/agents/agent-auditor.md`, plus the P3 tail
+(`.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`, the stamped
+mirror set and `.claude/persona-config.json`).
+
+The source doc and its mirror are **one unit, never two**: `tests/validate.sh`
+asserts parity between them, so a unit that lands only the source fails the
+merge gate.
+
+**Proposed state set** - five conditions, five renders:
+
+| State | Fires when |
+|---|---|
+| `FORMAT-OK` | session records and dispatch records both parse with the expected keys |
+| `FORMAT-OK-NO-DISPATCHES` | session records parse; the window holds zero dispatch records (normal, not a format problem) |
+| `FORMAT-EMPTY` | root exists, zero candidate files |
+| `FORMAT-NO-STORE` | the root path does not exist (see Open Question 1) |
+| `FORMAT-UNRECOGNIZED` | candidate files exist but none parse with the expected keys |
+
+The discriminator is *did a candidate file exist* versus *did it parse* - the
+current code conflates the two by testing only the latter.
+
+**Two hard constraints on the implementation**, stated so they are not
+rediscovered by trial:
+
+- **Exit codes stay 0 in every mode.** The persona is explicitly non-gating
+  (`agents/agent-auditor.md:68-77`), and Step 1 criteria 5-6 pin exit 0. The
+  distinction R1 asks for is in the rendered *text*, never in an exit code.
+- **The empty-store render stays byte-identical.** `--all` and `--all --json`
+  on an empty store must still print exactly `no data for window`. Step 8's
+  criteria and the "Incidental observation" at `:1400-1407` both depend on it.
+  Only the **malformed** path gains a loud banner.
+
+**Acceptance criteria** (each run in a clean checkout; fixtures built per the
+existing pattern in `tests/agent-auditor.test.sh`)
+
+Let `LIVE`, `NODISP`, `EMPTY`, `NOSTORE`, `MALFORMED` be the five roots.
+
+1. **Five conditions render five distinct probe outputs.** Confirmed **RED**
+   today - measured 2 distinct values, not 5:
+
+        n=$(for r in "$LIVE" "$NODISP" "$EMPTY" "$NOSTORE" "$MALFORMED"; do
+              AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --format-probe
+            done | sort -u | wc -l)
+        test "$n" -eq 5
+
+2. **The specific R1 pair, named explicitly** so it cannot pass vacuously the
+   way Step 1 criterion 5 did. Confirmed **RED** today - both sides print
+   `FORMAT-UNRECOGNIZED`:
+
+        test "$(AGENT_AUDIT_ROOT="$EMPTY" bash scripts/agent-audit.sh --format-probe)" \
+          != "$(AGENT_AUDIT_ROOT="$MALFORMED" bash scripts/agent-audit.sh --format-probe)"
+
+3. **No false alarm on a readable store with no dispatches.** Confirmed **RED**
+   today:
+
+        ! AGENT_AUDIT_ROOT="$NODISP" bash scripts/agent-audit.sh --format-probe | grep -q FORMAT-UNRECOGNIZED
+
+4. **The primary render is loud on a malformed store**, so R1 holds for a
+   consumer who reads `--all` alone. Confirmed **RED** today - prints
+   `no data for window`:
+
+        AGENT_AUDIT_ROOT="$MALFORMED" bash scripts/agent-audit.sh --all | grep -q FORMAT-UNRECOGNIZED
+
+5. **Guard - the empty render is unchanged.** GREEN today and must stay GREEN:
+
+        test "$(AGENT_AUDIT_ROOT="$EMPTY" bash scripts/agent-audit.sh --all)" = "no data for window"
+        test "$(AGENT_AUDIT_ROOT="$EMPTY" bash scripts/agent-audit.sh --all --json)" = "no data for window"
+
+6. **Guard - exit codes stay 0 everywhere:**
+
+        for r in "$LIVE" "$NODISP" "$EMPTY" "$NOSTORE" "$MALFORMED"; do
+          AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --format-probe >/dev/null || exit 1
+          AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --all          >/dev/null || exit 1
+        done
+
+7. **The criteria live in the suite, and are non-vacuous by mutation** -
+   following the existing mutation-proof section at
+   `tests/agent-auditor.test.sh:255`. `bash tests/agent-auditor.test.sh` exits
+   0; and in a `MUTANT_DIR` copy whose probe collapses `FORMAT-EMPTY` back into
+   `FORMAT-UNRECOGNIZED`, the suite exits **non-zero**.
+8. **Docs and mirror agree, and the probe is no longer optional** - closes both
+   halves of `gh-281-detection` note 6. Confirmed **RED** today: `grep -c
+   'FORMAT-EMPTY' agents/agent-auditor.md` is 0, and the "debugging" label is
+   present at `:26`:
+
+        grep -q 'FORMAT-EMPTY' agents/agent-auditor.md
+        ! grep -q 'Format probe (debugging)' agents/agent-auditor.md
+        test "$(grep -c 'FORMAT-' .claude/agents/agent-auditor.md)" \
+           = "$(grep -c 'FORMAT-' agents/agent-auditor.md)"
+
+   The persona doc must additionally state that the probe is run **first**, and
+   that a `FORMAT-UNRECOGNIZED` result means the report is untrustworthy and
+   must not be presented as "no anomalies".
+9. **P3 version discipline**, binding because `agents/agent-auditor.md` is
+   version-stamped. Read the pre-edit version at execution time rather than
+   assuming today's value (measured `0.30.0` on 2026-08-09). **Uses Step 9's
+   corrected drift-check form** - this is the dependency between the two units:
+
+        pj=$(jq -r .version .claude-plugin/plugin.json)
+        test "$pj" = "$(jq -r .version package.json)"   # and strictly greater than the pre-edit value
+        head -40 CHANGELOG.md | grep -q "$pj"
+        node bin/cli.js --update --check >/dev/null 2>&1; rc=$?
+        test "$rc" -eq 0
+        test -z "$(git status --porcelain -uno)"
+
+10. `bash tests/validate.sh` exits 0 **and prints zero `^FAIL` lines**; and
+    after the commit `git status --porcelain -uno` is empty.
+
+**Model floor: not `haiku`**, on two independent grounds. `scripts/agent-audit.sh`
+carries a FAIL record (`gh-281-detection`) whose note 6 mis-cleared this exact
+class - the surface has already defeated one reviewer's judgment. And the unit
+ends in a version bump plus mirror regen, the surface carrying FAIL records
+`gh-212-version-bump` and `224`.
+
+### Sequencing
+
+1. **Step 9 before Step 10** - Step 10's criterion 9 uses Step 9's corrected
+   drift-check form.
+2. **Step 8 (F1) after Step 10, if it is built at all.** Step 8 and Step 10
+   both edit `agents/agent-auditor.md` and both end in a version bump; built
+   concurrently they collide. Step 8 remains low-priority per its own section;
+   Steps 9 and 10 are CRITICAL and take precedence.
+
+### Clarifications (round 2)
+
+1. Functional scope & success criteria: Partial
+2. Domain entities / data model: Partial
+3. User interaction flow: Partial
+4. Non-functional attributes (perf, security, scale): Clear
+5. External dependencies & integrations: Partial
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Clear
+9. Completion / acceptance signals: Partial
+
+- 2026-08-09 Functional scope & success criteria: Q Does "genuinely
+  distinguishable output" mean only that empty and malformed differ, or that
+  every operator-visible store condition gets its own render? -> A
+  (self-resolved): every condition, expressed as a five-distinct-outputs count
+  in Step 10 criterion 1. Fixing only the named pair leaves the no-dispatch
+  false alarm in place and would need a third follow-up.
+- 2026-08-09 Domain entities / data model: Q What is the probe's output
+  vocabulary after the fix? -> A (self-resolved): the five-state table above.
+  Whether `FORMAT-NO-STORE` is separate from `FORMAT-EMPTY` is the one part
+  left to the requester - Open Question 1.
+- 2026-08-09 User interaction flow: Q Must the persona run the probe before
+  presenting a report, and must `--all` also be loud on a malformed store? -> A
+  (self-resolved): yes to both. `gh-281-detection` note 6 proposed the first
+  and it was never implemented; the second is required because R1 constrains
+  what the operator *sees*, and the operator reads `--all`.
+- 2026-08-09 External dependencies & integrations: Q Does F2 depend on issue
+  #291 being fixed first? -> A (self-resolved): no. The corrected form is
+  proven against `--check`'s current semantics, and #291's interface change has
+  a far larger blast radius; they stay separate.
+- 2026-08-09 Edge cases / failure handling: Q Which store conditions must the
+  probe separate? -> A (self-resolved): the five in the table, including the
+  zero-dispatch case found during scoping and not present in the audit.
+- 2026-08-09 Technical constraints & tradeoffs: Q May the fix change exit codes
+  or the empty-store render? -> A (self-resolved): neither. Exit 0 everywhere
+  (the persona is non-gating and Step 1 criteria 5-6 pin it), and the empty
+  render stays byte-identical so Step 8 and the incidental observation at
+  `:1400` are not disturbed. Both are pinned as guard criteria.
+- 2026-08-09 Completion / acceptance signals: Q What is the correct
+  drift-detection criterion, given the broken one? -> A (self-resolved): exit
+  code **and** post-run working-tree cleanliness, both load-bearing. The
+  audit's own proposed remedy (a bare exit-code check) was measured
+  insufficient for the #291 drift shape; see the table in F2.
+
+### Constitution check (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied - every RED claim in both steps was
+  executed against the tree or a throwaway clone on 2026-08-09, and the audit's
+  own proposed remedy was measured rather than accepted.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied - the fix
+  keeps all detection in `scripts/agent-audit.sh` and adds assertions to
+  `tests/agent-auditor.test.sh`; no judgment moves into the model.
+- P3 "Version-stamp discipline": satisfied - Step 10 touches
+  `agents/agent-auditor.md` and carries the full bump-plus-regen tail as
+  criterion 9. Step 9 touches no version-stamped file, so P3 does not apply to
+  it.
+- P5 "`tests/validate.sh` is the merge gate": satisfied - both steps assert
+  exit 0 with zero `^FAIL` lines, and Step 10 keeps the source/mirror pair in
+  one unit precisely because `validate.sh` gates their parity.
+
+### Open Questions (round 2)
+
+1. **Is `FORMAT-NO-STORE` worth its own state, or should a missing root render
+   as `FORMAT-EMPTY`?** *Recommended: keep it separate.* A typo'd
+   `AGENT_AUDIT_ROOT` silently reading as "no activity yet" is the same
+   absence-of-data-looks-like-absence-of-findings failure R1 exists to prevent.
+   Cost is one branch. **If the requester prefers four states**, the only
+   change is Step 10 criterion 1's count, `-eq 5` becoming `-eq 4`, and
+   dropping the `FORMAT-NO-STORE` row; nothing else moves.
+2. **Confirm Step 8 (F1) is deferred behind these two.** *Recommended: yes,
+   defer.* It is low-priority by its own section, and it collides with Step 10
+   on `agents/agent-auditor.md` and the version bump. This needs a decision
+   only if someone wants F1 built in the same pass.
+
+### Self-check (Convergence follow-ups, round 2)
+
+- CHK30: Does the plan state a corrected drift-check form verified against
+  **both** drift shapes? - FAIL (missing, on first draft: the audit's "a bare
+  exit-code check would have discriminated correctly" was adopted verbatim,
+  and it does not catch the #291 shape) - revised in place: the form now pairs
+  the exit code with a post-run tree assertion, and the measured table in F2
+  shows each half catching a shape the other misses.
+- CHK31: Does the plan say what must **not** change, so Step 10 cannot regress
+  Step 8's JSON criteria or the incidental observation at `:1400`? - FAIL
+  (missing, on first draft) - revised in place: Step 10 criteria 5 and 6 pin
+  the empty render byte-identical and the exit codes at 0, and both are
+  labelled guards rather than new behaviour.
+- CHK32: Is "genuinely distinguishable" backed by a machine-checkable
+  criterion rather than prose? - PASS (criterion 1 counts five distinct probe
+  outputs; criterion 2 asserts the specific R1 pair by name, which is the
+  assertion Step 1 criterion 5 omitted).
+- CHK33: Do Steps 9 and 10 agree about which unit owns the version bump? -
+  PASS (Step 9's Affected files exclude every stamped surface and say so
+  explicitly; Step 10 carries the whole P3 tail).
+- CHK34: Is the `FORMAT-NO-STORE` decision represented in Open Questions
+  rather than silently chosen? - PASS (Open Question 1, with the exact
+  downgrade path spelled out so either answer leaves the criteria
+  machine-checkable).
+- CHK35: Is every RED claim in both steps one that was actually executed, not
+  inferred? - PASS (all seven RED claims were run on 2026-08-09; the two GREEN
+  guard claims in criterion 5 were run as well).
+- CHK36: Do both model floors cite concrete FAIL-record evidence rather than
+  a general caution? - PASS (Step 10 names `gh-281-detection`,
+  `gh-212-version-bump` and `224`; Step 9 explicitly declines to invoke R2 and
+  gives its own reason instead).
+- CHK37: Does this section avoid reopening Steps 0-8? - PASS (append-only; no
+  existing step, criterion, amendment or the F1 section is edited or
+  renumbered. Step 9's ordered edit 2 appends a *note* to Step 7's criterion 7
+  and rewrites Step 8's criterion 9 - Step 8 is unbuilt and unshipped, so this
+  corrects a proposal rather than reopening merged work.)
+
+- CHK38: Are Step 9's own criteria satisfiable and non-vacuous **after** this
+  section is appended, given that the section quotes the broken pattern it is
+  removing? - FAIL (conflicting: a criterion that greps the file it lives in
+  counts itself. Executed against the file post-append, criterion 1's absence
+  test could never pass - F2's narrative and the criterion line both carry the
+  pattern - and criterion 2's whole-file count was already satisfied by this
+  section's own prose. A first repair attempt using an exact count and a
+  `[F2-corrected]` marker reproduced the same trap, measuring 4 and 3 where 3
+  and 0 were predicted) - revised in place: both criteria are now section-scoped
+  via `sed -n "/^<heading>/,/^### /p"`, which structurally excludes this
+  section, and both were re-executed against the two target sections to confirm
+  RED.
+
+**No FAILs remain.** Three were revised in place. CHK38 is the reason every
+criterion here was executed against the file rather than reasoned about: two
+of them were wrong in a way only running them exposes. Two Open Questions carry
+recommended defaults; neither blocks dispatch, since the criteria are written
+against the recommended answers.
+
+### Scribe update hint (round 2)
+
+Once Step 10 lands, `scripts/agent-audit.sh`'s probe contract has changed from
+two states to five, and `agents/agent-auditor.md` now mandates running it
+first. Worth a CONTEXT.md line. The durable lesson from F2 is worth recording
+somewhere a future implementer reads: **asserting on `--update --check` means
+asserting on its exit code *and* on the working tree afterwards, because it
+writes.** Existing records state only half of this
+(`docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md` R-A says exit
+code; the lead-programmer agent-memory note `project_cli_check_is_a_write.md`
+says it writes) and neither says both halves are needed.
+
+### Routing (round 2)
+
+**Standard path, and CRITICAL rather than deferred.** `task-master` slices this
+into **two** issues - one per step, since they touch disjoint files and have
+different model rationales - each labelled `ready-for-agent` +
+`plan/2026-08-09-agent-auditor-persona` per this plan's Handoff retrieval
+contract, with Step 9 sequenced first. Both are `lead-programmer` -> `reviewer`
+like any other step. Neither may be tagged `haiku`.
