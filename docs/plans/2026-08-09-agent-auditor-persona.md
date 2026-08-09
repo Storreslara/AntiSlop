@@ -556,6 +556,12 @@ dispatch and one known-bad dispatch per anomaly class.
 
 ## Step 5 - regenerate the mirrors
 
+> **SUPERSEDED 2026-08-09 by Amendment A1** (end of document). The Ordered
+> Edit and criteria below are retained for the record but are **not
+> executable as written** - `node bin/cli.js --update` alone cannot create
+> `.claude/agents/agent-auditor.md` in this already-adapted repo. Execute
+> Amendment A1's version instead.
+
 **Affected files**: `.claude/agents/agent-auditor.md` (new, generated),
 `.claude/persona-config.json`, `.claude/persona-protocol.md`,
 `.claude/persona-protocol-slim.md`, `.claude/protocol-digest.md`.
@@ -724,6 +730,148 @@ revision pass; three (CHK8-CHK10) were converted to OQ1-OQ3 and have since
 been answered by the requester.
 
 ---
+
+## Amendment A1 - 2026-08-09 - Step 5 cannot add an opt-in persona via `--update` alone
+
+Raised mid-flight by `lead-programmer` while executing Step 5 (gh-285) and
+correctly escalated rather than routed around. Steps 0-4 are merged and
+PASSed. **This amendment supersedes Step 5's Ordered Edits and Acceptance
+Criteria; every other step is unaffected.**
+
+### Confirmed diagnosis
+
+The report is accurate and I reproduced it in a throwaway copy of this repo:
+`node bin/cli.js --update` exits 0 with "already current... Nothing to
+update" and creates no mirror.
+
+`runUpdate()` derives its work list from **this project's own recorded
+selection** - `config.personaSelection || []` at `bin/cli.js:862` - and never
+parses `--personas=`. That flag is read only in the scaffold path
+(`bin/cli.js:1814`), so appending it to an `--update` invocation is silently
+ignored. This repo's `personaSelection` does not contain `agent-auditor`, so
+there is nothing for `--update` to do.
+
+**This is a recurrence of the `191` defect class**, and worth naming as such:
+two code paths that must agree about persona rendering, verified through only
+one of them. Step 4's criterion 3 exercised `--personas=agent-auditor` against
+a **fresh temp-dir scaffold**, which is precisely the path that *does* honour
+the flag - so it passed while the already-adapted path stayed broken. R2 warned
+that `bin/cli.js` has two render paths; the criterion still only covered one.
+Amendment criterion 6 below closes that specific hole. Step 4 is merged and
+PASSed and is **not** reopened.
+
+### Decision: dogfood, via an explicit config edit. No `bin/cli.js` change.
+
+Direction **(a), narrowed** - this repo self-selects `agent-auditor` by adding
+it to `.claude/persona-config.json`'s `personaSelection`, which is a
+spec-sanctioned edit authorised *here* rather than a `lead-programmer`
+judgment call. Direction (b) is rejected: without the mirror the persona is
+registered but unusable in the one repo whose own transcripts the entire spec
+was derived from, and it would hollow Step 5 out to nothing.
+
+Two alternatives were considered and rejected:
+
+- **`node bin/cli.js --overwrite --personas=<full list>`** is a real sanctioned
+  path, but wrong here. Its own console message states it re-copies
+  agents/hooks/skills/protocol **unconditionally**, without the diffing that
+  `--update` does, so it discards the divergence protection this plan relies
+  on. Worse, `--personas=` is **replacement**, not additive
+  (`OPTIONAL_PERSONAS.filter((p) => requested.includes(p))`, `:1863`) - omit a
+  persona already selected and it is silently dropped.
+- **Teaching `runUpdate` an additive `--personas=` flag** is the
+  product-correct fix, but it is a genuine feature affecting every AntiSlop
+  user who adopts any newly-registered optional persona - not this plan's job.
+  Doing it mid-flight reopens R2's `bin/cli.js` exposure and widens scope.
+  **Recommend filing it as its own issue** (see Follow-up below).
+
+`personaSelection` is *input* to the generator, not generated content, so
+editing it and letting the script derive everything else is exactly what
+constitution P2 prescribes. P2's named hazards (`fileHashes`, the
+`substitutions` slots) stay script-written: the new `fileHashes` entry is
+added by `--update` itself, never by hand.
+
+### Step 5 - corrected Ordered Edits
+
+1. Add `"agent-auditor"` to the **end** of `personaSelection` in
+   `.claude/persona-config.json`. Append only - do not reorder or drop any
+   existing entry. This one-line data edit is authorised by this amendment.
+2. Run `node bin/cli.js --update` from the repo root.
+3. Commit **both** changed files in a single commit (see criterion 3 for the
+   exact expected set).
+
+**Expected output**, verified in a throwaway copy on 2026-08-09: exit 0, one
+line reading `.claude/agents/agent-auditor.md: created`, and every other
+mirror reporting `already current`.
+
+**One expected warning, which is NOT a regression.** The run prints
+`WARNING: unresolved placeholder(s) remain in: .../.claude/agents/orchestrator.md`.
+It names `orchestrator.md` only - never `agent-auditor.md` - and is the known
+false positive tracked as **open issue #275** (`PLACEHOLDER_RE` matching the
+literal `<HEAD>` in that file's body). Exit code is still 0. Do not chase it,
+and do not "fix" `orchestrator.md` in this unit.
+
+### Step 5 - corrected Acceptance Criteria
+
+All verified against a throwaway copy of this repo on 2026-08-09, so each is
+known reachable rather than hoped-for.
+
+1. `node bin/cli.js --update` exits 0 and its output contains
+   `.claude/agents/agent-auditor.md: created`.
+2. The mirror exists, is slim-tier, and carries the current stamp:
+
+        test -f .claude/agents/agent-auditor.md
+        v=$(jq -r .version .claude-plugin/plugin.json)
+        grep -q "antislop v$v" .claude/agents/agent-auditor.md
+
+3. **The change set is exactly two files** - no other mirror is touched
+   (measured: the only diffs are the new persona file, plus
+   `personaSelection` gaining one entry and `fileHashes` gaining one key):
+
+        test "$(git status --porcelain -uno | wc -l)" -eq 1   # persona-config.json
+        git status --porcelain | grep -q '^?? .claude/agents/agent-auditor.md'
+
+4. `.claude/persona-config.json` records both halves:
+
+        jq -e '.personaSelection | index("agent-auditor")' .claude/persona-config.json
+        jq -e '.fileHashes | has(".claude/agents/agent-auditor.md")' .claude/persona-config.json
+
+5. **Idempotent** - a second `node bin/cli.js --update` exits 0, reports
+   `already current`, and creates or updates nothing.
+6. **Both persona-render paths are covered** (closes the Step 4 gap, and the
+   `191` recurrence). After committing, a fresh scaffold into a temp dir must
+   also produce the persona, proving the two paths agree:
+
+        d=$(mktemp -d)
+        (cd "$d" && node /home/sebas/AntiSlop/bin/cli.js --yes)
+        test -f "$d/.claude/agents/agent-auditor.md"
+
+7. `bash tests/validate.sh` exits 0 and `node tests/cli-backfill.test.js`
+   exits 0.
+8. After the commit, `git status --porcelain -uno` is empty. Note the
+   untracked `.claude/.review-join.*` stamp is **not** in scope - it is the
+   review mechanism's own artifact and a known gitignore gap (**open issue
+   #277**), which is why this criterion uses `-uno`.
+
+**Model floor unchanged**: still **not `haiku`** (R2).
+
+### Follow-up recommended, not in this plan
+
+`--update` has no way to add a newly-registered optional persona to an
+already-adapted project. Every project that has already run ADAPT hits this
+the moment any new optional persona ships - so it is a product gap, not a
+quirk of this repo. Suggested shape: make `--update --personas=` **additive**
+(union with the recorded selection, never replacement, so it cannot silently
+drop a persona the way the scaffold path's semantics would). Worth filing as
+its own issue; it must not be tagged `haiku` (R2).
+
+### Routing
+
+**No `task-master` round-trip needed.** This changes one step's edits and
+criteria - no new units, no re-slicing, no changed dependencies, and Steps 6-7
+are untouched. Hand it straight back for a corrected `lead-programmer`
+dispatch on the existing gh-285 issue. The dispatch prompt must state that
+Amendment A1 **supersedes** the issue body's Ordered Edits, since gh-285 still
+carries the stale "run `--update`" instruction.
 
 ## Scribe update hint
 
