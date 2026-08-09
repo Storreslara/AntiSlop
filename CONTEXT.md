@@ -12,14 +12,18 @@ drift apart.
 - **Persona** — a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
   personas (spec-master, task-master, scribe, reviewer, researcher,
-  milestone-auditor) are selected per-project during ADAPT. `spec-master`
+  milestone-auditor, agent-auditor) are selected per-project during ADAPT. `spec-master`
   turns ambiguous goals into precise specs via grilling and publishes via
   `to-spec`; `task-master` reads finalized specs and writes dispatch
   instructions for `lead-programmer`, owns `to-issues` slicing outright, tags
   per-unit models. `scribe` maintains institutional knowledge (wiki, CONTEXT.md,
   ADRs). `reviewer` is the independent verifier (the Writer/Reviewer split).
   `researcher` bridges academic literature and spec authoring. `milestone-auditor`
-  hunts premise gaps at milestone boundaries after all units reach PASS.
+  hunts premise gaps at milestone boundaries after all units reach PASS. `agent-auditor`
+  observes agent activity (tool calls, skills invoked) via `scripts/agent-audit.sh` and
+  surfaces observations; read-only and non-gating, it issues no verdict unlike `reviewer`
+  and never audits the plan itself unlike `milestone-auditor`.
+
 - **Version-stamped file** — any ADAPT-copied file carrying a
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,
   which lets `bin/cli.js --update` tell "plugin's current version" from
