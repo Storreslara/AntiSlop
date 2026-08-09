@@ -16,7 +16,8 @@
     "scribe",
     "researcher",
     "milestone-auditor",
-    "reviewer"
+    "reviewer",
+    "agent-auditor"
   ],
   "issueTracker": "GitHub issues (repo: Storreslara/AntiSlop, gh CLI authenticated). File with 'gh issue create'; fetch with 'gh issue list --label plan/<slug>'. Triage label: to-tickets' own default (ready-for-agent) applies, no custom vocabulary configured.",
   "dispatchHygiene": {
@@ -52,6 +53,7 @@
     ".claude/agents/spec-master.md": "52e39745da4c18aaa1ebe1e55fea3be92b03fbf5f78f21fdb1d74383a8d00251",
     ".claude/agents/task-master.md": "6db54588aa4c2fe144b56097a5613262f389c1670ae797e68f845a00abdc41b4",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
-    ".claude/persona-protocol.md": "36c860e44d8b1e5b47f9d2d76eb36542c0b6d67fa623195a2ab849a2b8eaf4ea"
+    ".claude/persona-protocol.md": "36c860e44d8b1e5b47f9d2d76eb36542c0b6d67fa623195a2ab849a2b8eaf4ea",
+    ".claude/agents/agent-auditor.md": "a76c103370d82dcdb48d77d029fc2ea3cacca2b5a4b80045229fdada47d6d6c9"
   }
 }
