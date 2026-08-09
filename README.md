@@ -43,7 +43,7 @@ AntiSlop is a modular, persona-based Claude Code system packaged as a
 reusable plugin. The core loop is three always-on personas — **orchestrator**
 (routes requests), **explorer** (maps the code), and **lead-programmer**
 (writes it). `spec-master`, `task-master`, `scribe`, `reviewer`,
-`milestone-auditor`, and `researcher` are opt-in per project. Shipping it as a plugin means a new project
+`milestone-auditor`, `agent-auditor`, and `researcher` are opt-in per project. Shipping it as a plugin means a new project
 costs one short setup run instead of re-authoring ~500 lines of persona and
 hook prose from scratch.
 
@@ -60,6 +60,7 @@ hook prose from scratch.
 | `reviewer` | opus | Opt-in (see below) | Independent, adversarial verifier — the Writer/Reviewer split. Did not write the code under review, can't edit it, only returns PASS/FAIL with reasons. **This is the system's core safety property**; skipping it needs an explicit confirmation during setup. |
 | `milestone-auditor` | opus (fable for well-scoped dispatches) | Opt-in | Adversarial auditor of the *plan*, not the code — runs at milestone boundaries after every unit has already reviewer-PASSed, hunting for premise gaps and goal drift the reviewer structurally can't see. No PASS/FAIL, no override authority, no Write/Edit — only a findings list relayed to the human. A human pre-audit checkpoint (via `AskUserQuestion`) precedes every dispatch. |
 | `researcher` | sonnet | Opt-in, project-scoped only | Bridges academic literature and engineering via an arXiv MCP (or WebSearch fallback) — paper discovery, deep-dive summaries, technique translation briefs for spec-master. Not a plugin agent (see below) since plugin agents ignore `mcpServers`. |
+| `agent-auditor` | haiku | Opt-in | Read-only observability for agent activity — enumerates dispatches, inventories tools and skills, flags anomalies (undeclared tool use, nested spawning, gated dispatch without review, missing status lines, orphan markers). Never gates, blocks, or fixes findings. |
 
 `explorer` and `lead-programmer` are the minimum viable loop; `orchestrator`
 is always the main agent. Everything else is chosen per project during setup.
@@ -216,7 +217,7 @@ check the dispatch form used before assuming it's a spoof attempt.
 
 | Ships once (plugin) | Written per-project (setup) |
 |---|---|
-| Persona agents: orchestrator, explorer, lead-programmer (always); spec-master, task-master, scribe, reviewer, milestone-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
+| Persona agents: orchestrator, explorer, lead-programmer (always); spec-master, task-master, scribe, reviewer, milestone-auditor, agent-auditor (opt-in) | `researcher.md` (needs `mcpServers`, which plugin agents ignore entirely) + persona selection |
 | `coding-discipline` skill | `.claude/persona-config.json` (test/lint/build commands, protected/gated paths, issue tracker, plugin version stamp) |
 | `install-antislop` skill (the fresh-install flow; also the `--update` fallback for pre-migration projects) + `bin/cli.js --update` (the normal, deterministic resync path) | the protocol inlined per-persona into each `.claude/agents/*.md` body (setup strips any legacy `@import` line from CLAUDE.md rather than writing one) + `.claude/protocol-digest.md` (short resume/compact re-anchor, injected only by `session-start.sh`, not imported into CLAUDE.md) |
 | 7 hooks (generic scripts reading runtime config) | `.claude/settings.json` merge (plugins can't ship settings at all) |

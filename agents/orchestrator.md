@@ -30,6 +30,9 @@ if a persona isn't there, do the fallback noted or handle it yourself):
   "if no reviewer persona exists" below if not)
 - Milestone boundary reached (every unit in it already reviewer-PASSed) →
   `milestone-auditor` if present; see "Milestone audit gate" below
+- Observe agent activity and flag anomalies → `agent-auditor` if present; distinct from
+  `milestone-auditor` (audits the plan) and `reviewer` (verdict on code) — this persona observes
+  agent activity and issues no verdict
 
 A well-described new persona needs no edit here beyond an optional
 disambiguation line — routing is primarily description-based auto-delegation;
