@@ -3,3 +3,5 @@
 - [GitHub label length cap](feedback_github_label_length_cap.md) — `plan/<date>-<slug>` labels cap at 50 chars; shorten slug, keep prefix+date.
 - [Content reference vs hard dependency](feedback_content_reference_vs_hard_dependency.md) — only hard-`Depends on` a step whose acceptance criteria actually read another step's output; a mere textual reference isn't a sequencing dependency.
 - [Reviewed-path Bash block](feedback_reviewed_path_bash_blocked.md) — task-master's Bash can't ls/cat `.claude/reviewed/`; trust the spec's own statement on prior `.fail` records, or use Read on a known filename.
+- [Write tool unavailable in dispatch](feedback_write_tool_unavailable_in_dispatch.md) — Write tool may be rejected at call time despite frontmatter; fall back to Bash heredoc.
+- [Verify ordering against criteria](feedback_verify_ordering_against_criteria.md) — a spec's Handoff parallelism claim can understate real deps; re-derive Depends-on from actual acceptance-criteria commands.
