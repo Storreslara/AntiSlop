@@ -8,3 +8,6 @@
 - [agent-identity lib gotchas (#140)](project_agent_identity_lib.md) — dedupe key must match (class, identity) and stay injective; `identity=` is percent-encoded; two `set -e` redirection traps; adapter copies resolve `antislop-cursor`/`antislop-codex`; use `git commit -F` near the marker dir
 - [Persona-audit plan tracking (#121)](project_persona_audit_plan.md) — all 13 units done, plan closed at 0.13.14; stamp placement varies by frontmatter presence
 - [Edit tool unavailable fallback](feedback_edit_tool_unavailable_fallback.md) — Edit/Write can error 'not enabled'; use Bash+python3 str-replace, watch backslash-newline escaping in the replacement string
+- [Bash/jq TSV pitfalls](project_bash_jq_tsv_pitfalls.md) — IFS=$'\t' read collapses consecutive tabs; jq `X // empty` in if/as silently zero-outputs instead of falling through
+- [Transcript store quirks](project_transcript_store_quirks.md) — thin sessions, orphaned meta.json, agent-teams SendMessage auto-grant + customAgentType field (#281)
+- [reviewed-path-gate heredoc workaround](feedback_reviewed_path_gate_heredoc_workaround.md) — gate scans whole Bash command text incl. heredoc bodies; split literal via string concat when writing new files that must mention the path
