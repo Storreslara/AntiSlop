@@ -997,6 +997,65 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Regression (F2, docs/plans/2026-08-09-agent-auditor-persona.md,
+  // "Convergence follow-ups, round 2"): the acceptance-criterion form
+  // `! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'`
+  // is vacuous -- it discards the exit code and can only ever match
+  // `: created`, so drift that surfaces as "updated (no local edits
+  // detected)" reports GREEN even though the file changed. Shape A (source
+  // edited, mirror left stale -- the #291 shape) is the dangerous case:
+  // `--check` is not a dry run, so it silently self-heals the drift it was
+  // asked to report and exits 0. Only the corrected form -- exit code AND
+  // post-run `git status --porcelain -uno` emptiness -- catches it. This
+  // test pins that discrimination against a real git-tracked copy of the
+  // repo (not `buildBaselineProject`'s synthetic fixture, since the
+  // corrected form's post-run assertion needs real git state to read).
+  check('F2 regression: the corrected drift-check form (exit code + post-run git-clean) catches shape-A source-edited/mirror-stale drift that the old broken grep form misses', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-f2-shape-a-'));
+    try {
+      for (const entry of fs.readdirSync(REPO_ROOT)) {
+        if (entry === '.git' || entry === 'node_modules') continue;
+        const copied = spawnSync('cp', ['-r', path.join(REPO_ROOT, entry), path.join(tmp, entry)], { encoding: 'utf8' });
+        assert.strictEqual(copied.status, 0, `cp -r ${entry} failed: ${copied.stderr}`);
+      }
+      const tmpCli = path.join(tmp, 'bin', 'cli.js');
+      const git = (gitArgs) => spawnSync('git', gitArgs, { cwd: tmp, encoding: 'utf8' });
+      const porcelain = () => git(['status', '--porcelain', '-uno']).stdout;
+
+      assert.strictEqual(git(['init', '-q']).status, 0, 'git init failed');
+      git(['config', 'user.email', 'f2-regression@example.com']);
+      git(['config', 'user.name', 'F2 Regression']);
+      assert.strictEqual(git(['add', '-A']).status, 0, 'git add failed');
+      const commit = git(['commit', '-q', '-m', 'baseline']);
+      assert.strictEqual(commit.status, 0, `git commit failed: ${commit.stderr}`);
+      assert.strictEqual(porcelain(), '', 'precondition: the baseline commit must leave the tree clean');
+
+      // Shape A: source edited, mirror left stale.
+      fs.appendFileSync(path.join(tmp, 'agents', 'orchestrator.md'), '\nhand-edited source line\n');
+
+      const checked = spawnSync('node', [tmpCli, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+
+      // Old broken form, reproduced here (not left live in the codebase) to
+      // prove it stays GREEN on this exact fixture.
+      const oldFormDetectedDrift = /: (updated|created|pending)$/m.test(checked.stdout);
+      assert.ok(
+        !oldFormDetectedDrift,
+        `expected the old broken grep form to be fooled (GREEN, i.e. no match) on shape A, got stdout: ${checked.stdout}`
+      );
+
+      // Corrected form: exit code AND post-run tree cleanliness, both load-bearing.
+      const rc = checked.status;
+      assert.strictEqual(rc, 0, 'shape A must exit 0 -- the self-heal write succeeds, which is what an exit-code-only remedy misses');
+      const dirtyAfter = porcelain();
+      assert.notStrictEqual(
+        dirtyAfter, '',
+        "shape A must leave the working tree dirty (the silent self-heal write), which is what the corrected form's post-run assertion catches"
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Regression (issue #172, Steps 2+3): a mirror whose STAMP is stale but
   // whose BODY and fileHashes are untouched, with pluginVersion already equal
   // to the resolved version — the exact live drift this repo was in. Both

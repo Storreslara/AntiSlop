@@ -1074,9 +1074,21 @@ and GREEN after the corrected edits**, so none is vacuous (R9).
    the render loop past the fast-path, making this the general form of the bug
    this amendment fixes rather than a one-file spot check:
 
-        ! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'
+        test -z "$(git status --porcelain -uno)"
+        node bin/cli.js --update --check >/dev/null 2>&1; rc=$?
+        test "$rc" -eq 0
+        test -z "$(git status --porcelain -uno)"
 
    Measured post-fix: every managed file reports `already current`.
+
+   **Retroactive correction (F2, 2026-08-09).** As originally run, this
+   criterion used the single-line grep-based form quoted and analyzed in F2
+   below, which is vacuous: it discards the exit code and can match only one
+   of the six per-file summary shapes `bin/cli.js` emits. The underlying
+   requirement nonetheless converged - the milestone-auditor's independent
+   clean-room reconstruction at `d50b8f2` confirmed no residual drift in the
+   shipped mirror set. The two-assertion form above is the corrected
+   criterion; see F2 for the full drift-shape analysis.
 8. `bash tests/validate.sh` exits 0 **and prints zero `^FAIL` lines**, and
    `node tests/cli-backfill.test.js` exits 0.
 9. **Idempotent**: a second `node bin/cli.js --update` exits 0, reports
@@ -1337,7 +1349,15 @@ tree on 2026-08-09 and confirmed **RED**, so the section cannot pass vacuously
         pj=$(jq -r .version .claude-plugin/plugin.json)
         test "$pj" = "$(jq -r .version package.json)"   # and strictly greater than the pre-edit value
         head -40 CHANGELOG.md | grep -q "$pj"
-        ! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'
+        test -z "$(git status --porcelain -uno)"
+        node bin/cli.js --update --check >/dev/null 2>&1; rc=$?
+        test "$rc" -eq 0
+        test -z "$(git status --porcelain -uno)"
+
+   **Corrected per F2** (2026-08-09): the drift-check line above replaces the
+   single-line grep-based form this criterion originally carried, which is
+   vacuous for the reasons F2 analyzes. The two assertions are load-bearing
+   together - neither alone discriminates both drift shapes in F2's table.
 
 10. `bash tests/validate.sh` exits 0 **and prints zero `^FAIL` lines**;
     `node tests/cli-backfill.test.js` exits 0; and after the commit
