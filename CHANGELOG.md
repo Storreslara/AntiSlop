@@ -3,6 +3,23 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.30.0] - 2026-08-09
+
+### Added
+- **New optional `agent-auditor` persona: read-only observability over agent
+  activity and dispatch history.** Runs `scripts/agent-audit.sh` against the
+  transcript store and reports six anomaly checks — undeclared tool use (A1),
+  unregistered agent type (A2), nested spawn (A3), gated dispatch without a
+  later reviewer dispatch in the same session (A4), missing terminal status
+  line (A5), and an orphan PASS marker with no reviewer dispatch in the
+  window (A6) — plus two informational summaries: model distribution
+  (dispatched vs. declared, I1) and skill-invocation inventory grouped by
+  persona (I2). It never gates, blocks, fixes, or re-dispatches anything; a
+  finding is an observation for a human, not a verdict. Selected per-project
+  like the other optional personas; the orchestrator routes to it when
+  present, distinct from `milestone-auditor` (audits the plan) and `reviewer`
+  (issues a verdict on code).
+
 ## [0.29.0] - 2026-08-08
 
 ### Removed
