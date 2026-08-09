@@ -344,8 +344,18 @@ exposure and no judgment content.**
   mirrors via `node bin/cli.js --update` rather than hand-editing
   `fileHashes`.
 - P3 "Version-stamp discipline": satisfied - Step 7 bumps
-  `.claude-plugin/plugin.json` and adds a CHANGELOG entry, required because
-  Step 2 adds a versioned `agents/*.md` file.
+  `.claude-plugin/plugin.json` and adds a CHANGELOG entry, required for **two
+  independent reasons** (reason 2 added 2026-08-09 by Amendment A2; it did not
+  exist when this note was first written):
+  1. Step 2 adds a versioned `agents/*.md` file.
+  2. **Step 6 modifies an existing versioned source, `agents/orchestrator.md`,
+     after Step 5's mirror regen had already run.** `--update`'s fast-path is
+     gated on the version stamp and on file absence, never on source-content
+     drift (`bin/cli.js:984`), so that edit cannot reach
+     `.claude/agents/orchestrator.md` until the version moves. Step 7 is
+     therefore load-bearing for **functional** correctness rather than
+     bookkeeping: `.claude/agents/*.md`, not `agents/*.md`, is what a deployed
+     project actually loads. See Amendment A2 at the end of this document.
 - P4 "Optional personas degrade gracefully": satisfied - the persona is
   optional, its orchestrator reference is conditionally phrased, and Step 4
   adds it to the `tests/validate.sh:141` enforcement loop so the phrasing is
@@ -615,6 +625,14 @@ and issues no verdict.
 4. `grep -q 'agent-auditor' README.md CONTEXT.md commands/audit-agents.md`
 
 ## Step 7 - version bump and CHANGELOG
+
+> **SUPERSEDED 2026-08-09 by Amendment A2** (end of document). The Affected
+> files, Ordered Edits and criteria below are retained for the record but are
+> **not executable as written** - they omit both the `package.json` bump
+> (without which criterion 4, `tests/validate.sh`, cannot pass) and the
+> `node bin/cli.js --update` mirror regen (without which the live
+> `.claude/agents/orchestrator.md` never gains Step 6's routing line). Execute
+> Amendment A2's version instead.
 
 **Affected files**: `.claude-plugin/plugin.json`, `CHANGELOG.md`.
 
@@ -919,3 +937,207 @@ actual tag is task-master's call):
 | Step 4 | **not `haiku`** | R2 - 12 prior FAILs on `bin/cli.js`, incl. 191 (dual render paths) and 224 |
 | Step 5 | **not `haiku`** | R2 - 224 is a partial commit of exactly this file set |
 | Steps 2, 3, 6, 7 | no floor stated | no prior-FAIL record on these surfaces |
+
+---
+
+## Amendment A2 - 2026-08-09 - Step 7 must regenerate the stamped mirrors, and must bump `package.json`
+
+Raised mid-flight by `reviewer` in the gh-286 (Step 6) verdict and recorded as
+non-blocking note 1 of its FAIL record. Steps 0-6 are merged and PASSed.
+**This amendment supersedes Step 7's Affected files, Ordered Edits and
+Acceptance Criteria; every other step is unaffected.** No new units, no
+re-slice, no changed dependencies.
+
+### Confirmed diagnosis
+
+Every claim below was re-verified independently on 2026-08-09 in a throwaway
+`git clone` of this repo at HEAD - measured, not read off the source.
+
+**1. The orchestrator mirror is stale, and silently so.**
+
+        grep -c 'agent-auditor' agents/orchestrator.md          -> 1
+        grep -c 'agent-auditor' .claude/agents/orchestrator.md  -> 0
+
+**2. `--update` at the current version is a no-op.** Measured: `node
+bin/cli.js --update` prints `antislop v0.29.0 - already current ... Nothing to
+update.` and exits 0, creating nothing.
+
+The mechanism is the version-match fast-path at `bin/cli.js:984`. Its
+`needsRender` guard (`:965-983`) is computed from **file absence or a stale
+stamp only** - it never compares a mirror against its re-rendered source. So a
+source edit landing while `pluginVersion === version` is structurally
+invisible to a plain `--update`. Step 5 ran `--update` at `e6cb79a`; Step 6
+edited `agents/orchestrator.md` afterwards (`502fdd8`), missing the regen
+window entirely.
+
+**3. Bumping the version does fix it, and the content change is confined to
+that one file.** Measured after setting `version` to `0.30.0` and re-running:
+
+        .claude/agents/orchestrator.md: updated (no local edits detected)
+        <12 others>: stamp refreshed (v0.29.0 -> v0.30.0, content unchanged)
+
+`grep -c 'agent-auditor' .claude/agents/orchestrator.md` then returns 1, and
+the rendered text is Step 6's routing bullet verbatim. `--update` also rewrites
+`.claude/persona-config.json`'s `pluginVersion` and its `fileHashes` entries
+itself, so **nothing here is hand-edited** - constitution P2 holds exactly as
+it did for Step 5.
+
+**4. Independent second gap, not in the reviewer's report: Step 7's criterion
+4 is unsatisfiable as written.** `tests/validate.sh:38-40` asserts that
+`package.json`'s version equals `.claude-plugin/plugin.json`'s. Bumping only
+the latter yields:
+
+        FAIL package.json version (0.29.0) != .claude-plugin/plugin.json version (0.30.0)
+
+and exit 1. Step 7's Affected files omit `package.json`, and issue #287's
+"Do NOT touch" section forbids touching it while instructing the implementer to
+"treat that as a spec gap rather than adding it unilaterally". That escape
+hatch was correctly designed and has now fired: **this amendment is the spec
+resolving it.** With both files bumped, `bash tests/validate.sh` exits 0 with
+zero `FAIL` lines (measured).
+
+### Step 7 - corrected Affected files
+
+`.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`,
+`.claude/persona-config.json`, and the 13 stamped mirrors (ten
+`.claude/agents/*.md`, plus `.claude/persona-protocol.md`,
+`.claude/persona-protocol-slim.md`, `.claude/protocol-digest.md`).
+
+**17 files.** The mirrors are *generated*: they are listed because they will
+appear in the diff, not because anything in them may be hand-edited.
+
+### Step 7 - corrected Ordered Edits
+
+1. Bump `version` in `.claude-plugin/plugin.json` (minor bump above whatever
+   the live pre-edit value is; measured 2026-08-09 as `0.29.0 -> 0.30.0`).
+2. Bump `version` in `package.json` to **the identical string**. Authorised
+   here, superseding #287's "Do NOT touch `package.json`".
+3. Update `.claude-plugin/plugin.json`'s `description` to name `agent-auditor`.
+4. Run `node bin/cli.js --update` from the repo root. Pass no other flag -
+   `--personas=`, `--overwrite`, `--accept=` and `--keep=` are all unnecessary
+   here and A1's reasoning against them applies unchanged.
+5. Add the dated `CHANGELOG.md` entry under the new version (see the accuracy
+   constraint below).
+6. Commit all of it as the single final commit of the feature.
+
+**Hand-edit nothing under `.claude/`** - edit 4 generates all of it.
+
+**One expected warning, which is NOT a regression**, identical to A1's:
+`WARNING: unresolved placeholder(s) remain in: .../.claude/agents/orchestrator.md`.
+Exit code is still 0. This is the known false positive tracked as **open issue
+#275** (`PLACEHOLDER_RE` matching the literal `<HEAD>` in that file's body). Do
+not chase it, and do not "fix" `orchestrator.md`.
+
+**CHANGELOG accuracy constraint.** Two prior FAILs of exactly this shape make
+this non-optional. `gh-212-version-bump` FAILed with all six of its criteria
+green, because the CHANGELOG entry described a mechanism that did not exist;
+`gh-286-docs` FAILed because, in its reviewer's words, "every one of them is a
+membership grep ... the criteria set cannot distinguish accurate documentation
+from confident fiction". The entry must therefore describe only what ships, as
+measured in the gh-286 verdict: six anomaly checks (A1-A6) plus two
+informational sections (I1 model distribution, I2 skill inventory). It must
+**not** claim a tool inventory or a per-dispatch enumeration - neither is
+emitted in either output mode.
+
+### Step 7 - corrected Acceptance Criteria
+
+Each was executed on 2026-08-09 and confirmed **RED against the pre-edit tree
+and GREEN after the corrected edits**, so none is vacuous (R9).
+
+1. Both version files agree, and the version moved:
+
+        pj=$(jq -r .version .claude-plugin/plugin.json)
+        test "$pj" = "$(jq -r .version package.json)"
+        # and "$pj" is strictly greater than the pre-edit value read at execution time
+
+2. `jq -r .description .claude-plugin/plugin.json | grep -q 'agent-auditor'`
+3. `head -40 CHANGELOG.md | grep -q "$pj"`, and the entry names the persona.
+4. **The mirror actually gained the routing line.** This is the point of the
+   amendment, so it asserts content, never the stamp:
+
+        grep -q 'agent-auditor` if present' .claude/agents/orchestrator.md
+
+   Measured: 0 matches before, 1 after.
+5. **Source/mirror parity**, so the check cannot rot if Step 6's wording is
+   ever revised:
+
+        test "$(grep -c 'agent-auditor' .claude/agents/orchestrator.md)" \
+           = "$(grep -c 'agent-auditor' agents/orchestrator.md)"
+
+   Measured: `0 = 1` (RED) before, `1 = 1` (GREEN) after.
+6. The mirror carries the new stamp and the script updated the config itself:
+
+        grep -q "antislop v$pj" .claude/agents/orchestrator.md
+        test "$(jq -r .pluginVersion .claude/persona-config.json)" = "$pj"
+
+7. **No residual drift anywhere in the mirror set.** `--update --check` forces
+   the render loop past the fast-path, making this the general form of the bug
+   this amendment fixes rather than a one-file spot check:
+
+        ! node bin/cli.js --update --check 2>&1 | grep -qE ': (updated|created|pending)$'
+
+   Measured post-fix: every managed file reports `already current`.
+8. `bash tests/validate.sh` exits 0 **and prints zero `^FAIL` lines**, and
+   `node tests/cli-backfill.test.js` exits 0.
+9. **Idempotent**: a second `node bin/cli.js --update` exits 0, reports
+   `already current`, and changes nothing.
+10. After the commit, `git status --porcelain -uno` is empty. As in A1, the
+    untracked `.claude/.review-join.*` stamp is out of scope (**open issue
+    #277**), which is why this uses `-uno`.
+
+### Model floor - corrected
+
+The Handoff table's row `Steps 2, 3, 6, 7 | no floor stated | no prior-FAIL
+record on these surfaces` is **wrong for Step 7**, and is superseded here. A
+FAIL record exists for `gh-212-version-bump` - a version-bump-plus-CHANGELOG
+unit, i.e. precisely this surface - and another for `gh-286-docs`, the
+immediately preceding step whose carried-forward defect this amendment exists
+to close. Step 7 is therefore **not `haiku`**. The floor is mine; the tag
+remains `task-master`'s call.
+
+### Routing and the #287 ticket
+
+**No `task-master` round-trip needed**, exactly as for A1: one step's edits and
+criteria change, with no new units and no re-slicing. Following the A1
+precedent set earlier in this same plan, the issue body is **not patched** -
+the corrected `lead-programmer` dispatch prompt must state that **Amendment A2
+supersedes issue #287's Affected files, Ordered edits, Do NOT touch, and
+Acceptance criteria sections**, since #287 still carries all four in their
+stale form. Two of its lines are now actively misleading and the dispatch must
+name them explicitly:
+
+- "**Do NOT touch** `package.json`" - reversed by corrected Ordered Edit 2.
+- "**Do NOT touch** any stamped mirror under `.claude/` - already current from
+  Steps 0 and 5" - false; they are stale, and corrected Ordered Edit 4
+  regenerates them (via the script, still never by hand).
+
+### Self-check (Amendment A2)
+
+- CHK18: Does the amendment assert, machine-checkably, that the mirror gained
+  the routing line rather than merely that the stamp advanced? - PASS
+  (criteria 4 and 5, both confirmed RED pre-edit)
+- CHK19: Do the corrected Affected files and corrected Ordered Edits agree
+  about `package.json`? - FAIL (conflicting, on first draft: the edits bumped
+  it while the file list still omitted it) - revised in place; both now carry
+  it, and #287's contrary instruction is explicitly superseded.
+- CHK20: Is the pre-existing criterion "`tests/validate.sh` exits 0" reachable
+  given the repo's actual version-parity check? - FAIL (missing, in the
+  pre-amendment plan: `package.json` was never in scope, so the criterion was
+  unsatisfiable) - revised in place by corrected Ordered Edit 2 and criterion 1.
+- CHK21: Does the plan now state a reason for the mirror regen that matches
+  reality? - PASS (the P3 note lists Step 6's edit as reason 2 and names the
+  `bin/cli.js:984` mechanism)
+- CHK22: Do the P3 note and this amendment agree on whether Step 7 is
+  bookkeeping or functional? - PASS (both say functional; the P3 note points
+  here)
+- CHK23: Is the expected change-set size stated, so a reviewer can distinguish
+  a correct 17-file diff from an over-broad one? - PASS (corrected Affected
+  files, with the 13 mirrors marked generated)
+- CHK24: Is the CHANGELOG entry's content constrained, given two prior FAILs
+  where membership greps passed over inaccurate prose? - PASS (the accuracy
+  constraint names the shipped surface and the two forbidden claims)
+
+**No FAILs remain.** Two were revised in place during the single permitted
+revision pass. No new Open Questions: the one genuine decision - bumping
+`package.json` - is settled by measurement rather than preference, since
+criterion 4 is otherwise unsatisfiable.
