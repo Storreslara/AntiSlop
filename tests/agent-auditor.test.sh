@@ -299,6 +299,133 @@ mutation_proof A1 a1bad
 echo "== mutation proof: A5 =="
 mutation_proof A5 a5bad
 
+# --- format-probe state discrimination (Step 10, F3) ------------------------
+# Five fixture roots, five expected states. LIVE reuses FIXTURE_ROOT itself
+# (already has parseable sessions and dispatches from s1-s6 above); the other
+# four are purpose-built subdirectories of it so the existing top-level trap
+# cleans them up too. None of these subdirectories has its own "subagents"
+# child, so they cannot pollute FIXTURE_ROOT's own */subagents/* glob match
+# for the LIVE case.
+
+PROBE_LIVE="$FIXTURE_ROOT"
+PROBE_NODISP="$FIXTURE_ROOT/probe-nodisp"
+PROBE_EMPTY="$FIXTURE_ROOT/probe-empty"
+PROBE_NOSTORE="$FIXTURE_ROOT/probe-nostore"
+PROBE_MALFORMED="$FIXTURE_ROOT/probe-malformed"
+
+mkdir -p "$PROBE_NODISP" "$PROBE_EMPTY" "$PROBE_MALFORMED"
+# PROBE_NOSTORE is deliberately never created.
+# PROBE_EMPTY is deliberately left with zero files.
+
+echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
+  > "$PROBE_NODISP/s.jsonl"
+
+echo 'not valid json' > "$PROBE_MALFORMED/s.jsonl"
+
+echo "== format-probe: five conditions render five distinct outputs =="
+n="$(for r in "$PROBE_LIVE" "$PROBE_NODISP" "$PROBE_EMPTY" "$PROBE_NOSTORE" "$PROBE_MALFORMED"; do
+      AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --format-probe
+    done | sort -u | wc -l)"
+if [ "$n" -eq 5 ]; then
+  echo "OK   five distinct probe outputs across five store conditions"
+else
+  echo "FAIL expected 5 distinct probe outputs, got $n"
+  fail=1
+fi
+
+live_state="$(AGENT_AUDIT_ROOT="$PROBE_LIVE" bash scripts/agent-audit.sh --format-probe)"
+nodisp_state="$(AGENT_AUDIT_ROOT="$PROBE_NODISP" bash scripts/agent-audit.sh --format-probe)"
+empty_state="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash scripts/agent-audit.sh --format-probe)"
+nostore_state="$(AGENT_AUDIT_ROOT="$PROBE_NOSTORE" bash scripts/agent-audit.sh --format-probe)"
+malformed_state="$(AGENT_AUDIT_ROOT="$PROBE_MALFORMED" bash scripts/agent-audit.sh --format-probe)"
+
+assert_probe_state() {
+  # $1 = fixture label, $2 = actual state, $3 = expected state
+  local label="$1" got="$2" want="$3"
+  if [ "$got" = "$want" ]; then
+    echo "OK   $label reports $want"
+  else
+    echo "FAIL $label reports $got, expected $want"
+    fail=1
+  fi
+}
+
+echo "== format-probe: each fixture reports its named state =="
+assert_probe_state LIVE "$live_state" FORMAT-OK
+assert_probe_state NODISP "$nodisp_state" FORMAT-OK-NO-DISPATCHES
+assert_probe_state EMPTY "$empty_state" FORMAT-EMPTY
+assert_probe_state NOSTORE "$nostore_state" FORMAT-NO-STORE
+assert_probe_state MALFORMED "$malformed_state" FORMAT-UNRECOGNIZED
+
+echo "== format-probe: R1 pair - empty vs malformed must render differently =="
+if [ "$empty_state" != "$malformed_state" ]; then
+  echo "OK   FORMAT-EMPTY and FORMAT-UNRECOGNIZED render differently"
+else
+  echo "FAIL FORMAT-EMPTY and FORMAT-UNRECOGNIZED render identically"
+  fail=1
+fi
+
+echo "== format-probe: no false alarm on a readable store with zero dispatches =="
+if printf '%s' "$nodisp_state" | grep -q FORMAT-UNRECOGNIZED; then
+  echo "FAIL NODISP falsely reports FORMAT-UNRECOGNIZED"
+  fail=1
+else
+  echo "OK   NODISP does not report FORMAT-UNRECOGNIZED"
+fi
+
+echo "== format-probe: --all is loud on a malformed store =="
+malformed_all="$(AGENT_AUDIT_ROOT="$PROBE_MALFORMED" bash scripts/agent-audit.sh --all)"
+if printf '%s' "$malformed_all" | grep -q FORMAT-UNRECOGNIZED; then
+  echo "OK   --all surfaces FORMAT-UNRECOGNIZED for a malformed store"
+else
+  echo "FAIL --all did not surface FORMAT-UNRECOGNIZED for a malformed store"
+  fail=1
+fi
+
+echo "== format-probe: empty-store --all render is unchanged =="
+empty_all="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash scripts/agent-audit.sh --all)"
+empty_all_json="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash scripts/agent-audit.sh --all --json)"
+if [ "$empty_all" = "no data for window" ] && [ "$empty_all_json" = "no data for window" ]; then
+  echo "OK   empty-store --all/--all --json render exactly 'no data for window'"
+else
+  echo "FAIL empty-store render changed (plain=[$empty_all] json=[$empty_all_json])"
+  fail=1
+fi
+
+echo "== format-probe: exit codes stay 0 across all five conditions and both modes =="
+probe_exit_ok=1
+for r in "$PROBE_LIVE" "$PROBE_NODISP" "$PROBE_EMPTY" "$PROBE_NOSTORE" "$PROBE_MALFORMED"; do
+  AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --format-probe >/dev/null || probe_exit_ok=0
+  AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --all          >/dev/null || probe_exit_ok=0
+done
+if [ "$probe_exit_ok" -eq 1 ]; then
+  echo "OK   exit code 0 in every mode across all five store conditions"
+else
+  echo "FAIL a non-zero exit code was observed in some mode/condition"
+  fail=1
+fi
+
+# --- mutation proof (non-vacuity): FORMAT-EMPTY collapsed into
+# FORMAT-UNRECOGNIZED ---------------------------------------------------
+# Reuses the MUTANT_DIR scratch copy set up above for the A1/A5 mutation
+# proofs (never the tracked scripts/agent-audit.sh itself).
+
+echo "== mutation proof: FORMAT-EMPTY collapsed into FORMAT-UNRECOGNIZED =="
+before="$(grep -c 'echo "FORMAT-EMPTY"' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before" -eq 0 ]; then
+  echo "FAIL mutation proof for FORMAT-EMPTY: no echo \"FORMAT-EMPTY\" call site found to neutralize"
+  fail=1
+else
+  sed -i 's/echo "FORMAT-EMPTY"/echo "FORMAT-UNRECOGNIZED" # MUTATED-FORMAT-EMPTY/' "$MUTANT_DIR/scripts/agent-audit.sh"
+  mutant_empty_state="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash "$MUTANT_DIR/scripts/agent-audit.sh" --format-probe)"
+  if [ "$mutant_empty_state" = "FORMAT-UNRECOGNIZED" ]; then
+    echo "OK   mutation proof: collapsing FORMAT-EMPTY into FORMAT-UNRECOGNIZED is detected (mutant now reports $mutant_empty_state, colliding with the malformed state) - detection was load-bearing"
+  else
+    echo "FAIL mutation proof: mutant still reports $mutant_empty_state; suite would not catch this regression"
+    fail=1
+  fi
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."

@@ -154,10 +154,11 @@ is_gated_persona() {
 # --- format probe (R1) --------------------------------------------------
 
 run_format_probe() {
-  local ok=1 found_session=0 found_subagent=0 f sj m d mj tj tok
+  local found_session=0 found_subagent=0 f sj m d mj tj tok
+  local session_files_exist=0 dispatch_files_exist=0
 
   if [ ! -d "$ROOT" ]; then
-    echo "FORMAT-UNRECOGNIZED"
+    echo "FORMAT-NO-STORE"
     return 0
   fi
 
@@ -168,23 +169,23 @@ run_format_probe() {
   # representative file.
   for f in "$ROOT"/*.jsonl; do
     [ -e "$f" ] || continue
+    session_files_exist=1
     sj="$(head -n 20 "$f" 2>/dev/null | jq -rs 'if length==0 then empty else (if any(.[]; ((.type // "")|length)>0 and ((.timestamp // "")|length)>0) then "ok" else empty end) end' 2>/dev/null || true)"
     if [ "$sj" = "ok" ]; then
       found_session=1
       break
     fi
   done
-  [ "$found_session" = 1 ] || ok=0
 
   # A meta.json without a paired .jsonl is a normal, orphaned dispatch
   # record (e.g. a subagent that was created but never produced any
   # transcript output) - the main enumeration below skips these too, so the
   # probe searches across candidates rather than failing on the first one.
-  found_subagent=0
   for d in "$ROOT"/*/subagents; do
     [ -d "$d" ] || continue
     for m in "$d"/*.meta.json; do
       [ -e "$m" ] || continue
+      dispatch_files_exist=1
       mj="$(jq -r '(.agentType // empty)' "$m" 2>/dev/null || true)"
       [ -n "$mj" ] || continue
       tj="${m%.meta.json}.jsonl"
@@ -196,18 +197,46 @@ run_format_probe() {
       fi
     done
   done
-  [ "$found_subagent" = 1 ] || ok=0
 
-  if [ "$ok" = 1 ]; then
-    echo "FORMAT-OK"
-  else
-    echo "FORMAT-UNRECOGNIZED"
+  # Root exists but holds zero candidate files of either kind - the normal
+  # not-yet-any-activity case, not a format problem.
+  if [ "$session_files_exist" = 0 ] && [ "$dispatch_files_exist" = 0 ]; then
+    echo "FORMAT-EMPTY"
+    return 0
   fi
+
+  # The discriminator throughout is candidate-file-existence versus
+  # parse-success, checked independently per kind: a kind with zero
+  # candidates stays silent (normal - e.g. no dispatches yet), but a kind
+  # with candidates that all failed to parse makes the whole report
+  # untrustworthy.
+  if { [ "$session_files_exist" = 1 ] && [ "$found_session" = 0 ]; } || \
+     { [ "$dispatch_files_exist" = 1 ] && [ "$found_subagent" = 0 ]; }; then
+    echo "FORMAT-UNRECOGNIZED"
+    return 0
+  fi
+
+  if [ "$dispatch_files_exist" = 0 ]; then
+    echo "FORMAT-OK-NO-DISPATCHES"
+    return 0
+  fi
+
+  echo "FORMAT-OK"
 }
 
 if [ "$FORMAT_PROBE" = 1 ]; then
   run_format_probe
   exit 0
+fi
+
+# R1: the probe always runs before any report is assembled, so a malformed
+# store never renders indistinguishably from "no anomalies" - see
+# agents/agent-auditor.md. The banner is plain-text only (never mixed into
+# --json, which must stay valid JSON); the persona itself always runs
+# --format-probe first regardless of mode, per the same doc.
+PROBE_STATE="$(run_format_probe)"
+if [ "$JSON" != 1 ] && [ "$PROBE_STATE" = "FORMAT-UNRECOGNIZED" ]; then
+  echo "FORMAT-UNRECOGNIZED: transcript store has candidate files that did not parse - this report is untrustworthy and must not be read as \"no anomalies\""
 fi
 
 # --- session selection ---------------------------------------------------

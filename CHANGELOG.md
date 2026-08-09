@@ -3,6 +3,27 @@
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
+## [0.31.0] - 2026-08-09
+
+### Fixed
+- **`agent-auditor`'s `--format-probe` now genuinely distinguishes its
+  states (issue #297, F3).** R1, this feature's own most-dangerous-failure-
+  mode mitigation, requires that "'no anomalies' and 'could not read' must
+  never render alike" — the shipped probe collapsed four distinct operator
+  conditions (readable-but-no-dispatches, empty root, missing root, and
+  genuinely malformed records) into one `FORMAT-UNRECOGNIZED` output, and
+  additionally raised a false alarm on the normal empty/no-dispatch case.
+  The probe now reports five states: `FORMAT-OK`,
+  `FORMAT-OK-NO-DISPATCHES`, `FORMAT-EMPTY`, `FORMAT-NO-STORE`, and
+  `FORMAT-UNRECOGNIZED`. `--all` is now loud (prints a `FORMAT-UNRECOGNIZED`
+  banner) on a malformed store, while the empty-store render stays exactly
+  `no data for window` and exit codes stay 0 in every mode, matching the
+  persona's non-gating contract. The persona doc now states the probe runs
+  first and that `FORMAT-UNRECOGNIZED` means the report must not be
+  presented as "no anomalies" — closing both halves of a prior FAIL
+  record's non-blocking note that had raised and mis-cleared this exact
+  class.
+
 ## [0.30.0] - 2026-08-09
 
 ### Added
