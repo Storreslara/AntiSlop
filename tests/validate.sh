@@ -309,6 +309,13 @@ else
   fail=1
 fi
 
+echo "== agent-audit.sh test fixtures + mutation proof (Bash) =="
+if bash tests/agent-auditor.test.sh; then
+  echo "OK   tests/agent-auditor.test.sh"
+else
+  echo "FAIL tests/agent-auditor.test.sh"
+  fail=1
+fi
 echo
 echo "== Codex adapter: JSON validity =="
 for f in adapters/codex/hooks/hooks.json \
