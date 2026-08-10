@@ -342,21 +342,25 @@ a hard, mode-independent skill
   the weaker (false) version: "not in teams mode only."
 
 **Agent identity**:
-the possibly-namespaced wire form of a persona name,
-  `[<namespace>:]<persona-name>`, appearing in hook payloads' `agent_type` and
-  `subagent_type` fields. The gate hooks normalize identities to handle both
-  bare dispatch (project-local copies) and namespaced dispatch (marketplace
-  plugin), using asymmetric matching: liberal matching (any namespace) at sites
-  where a miss fails open, conservative matching (recognized namespace only) at
-  privilege-grant sites. See plan #139 / `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`;
-  the shared library is `hooks/scripts/lib/agent-identity.sh`, replicated
-  identically across all three platform ports. The audit-logging hardening
-  for identity drift (percent-encoding, injective sanitize/dedupe key,
-  append-only log, degrade-on-write-failure) is already shipped, not a
-  future item — see `hooks/scripts/lib/agent-identity.sh:107-184`. The
-  `ADR-0007` number itself is unused/retired: no such document exists or is
-  planned (OQ-CF1, `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md:2908-2917`,
+in hook payloads' `agent_type` and `subagent_type` fields,
+  this field can take two forms: for unnamed (default) dispatch, it is the
+  possibly-namespaced persona name `[<namespace>:]<persona-name>`; for named
+  dispatch, it is the raw dispatch name given in the dispatch prompt (which is
+  not a persona name). The gate hooks normalize identities to handle both forms,
+  using asymmetric matching: liberal matching (any namespace) at sites where a
+  miss fails open, conservative matching (recognized namespace only) at
+  privilege-grant sites. Notably, `persona_matches_grant` requires the first
+  form (persona-derived); a raw dispatch name does not match. See plan #139 /
+  `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`; the shared
+  library is `hooks/scripts/lib/agent-identity.sh`, replicated identically
+  across all three platform ports. The audit-logging hardening for identity
+  drift (percent-encoding, injective sanitize/dedupe key, append-only log,
+  degrade-on-write-failure) is already shipped, not a future item — see
+  `hooks/scripts/lib/agent-identity.sh:107-184`. The `ADR-0007` number itself
+  is unused/retired: no such document exists or is planned (OQ-CF1,
+  `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md:2908-2917`,
   explicitly deferred out of scope for unit #244).
+_Avoid_: persona name (only the persona-derived form is a persona name; named dispatch form is not)
 
 **FAIL routing (post-reviewer)**:
 normal FAIL routes the defect list to
