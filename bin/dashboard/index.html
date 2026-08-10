@@ -51,6 +51,17 @@
     .spinner { display: inline-block; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .no-functions { color: #999; font-style: italic; padding: 1rem; }
+    .excerpt-pane { border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; padding: 0.75rem; margin-bottom: 1.5rem; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; }
+    .excerpt-line { white-space: pre-wrap; word-break: break-all; }
+    .comment-section { margin-bottom: 1.5rem; }
+    .comment-section label { margin-bottom: 0.5rem; font-weight: 500; }
+    .comment-box { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: sans-serif; resize: vertical; min-height: 60px; }
+    .comment-box:focus { outline: none; border-color: #2196f3; }
+    .copy-btn { background: #4caf50; color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; margin-top: 0.5rem; width: 100%; }
+    .copy-btn:hover { background: #45a049; }
+    .copy-feedback { margin-bottom: 1rem; padding: 0.5rem; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; color: #2e7d32; display: none; }
+    .hidden-textarea { position: absolute; left: -9999px; width: 1px; height: 1px; }
+
   </style>
 </head>
 <body>
@@ -208,6 +219,27 @@
         html += `<h3>${escapeHtml(fn.label || fn.id)}</h3>`;
         html += `<p>${escapeHtml(fn.description || '')}</p>`;
 
+        // Excerpt pane (if location exists)
+        if (fn.location && fn.location.file) {
+          html += `<div id="excerptContainer" style="margin-bottom: 1.5rem;">`;
+          html += `<div style="font-weight: 500; margin-bottom: 0.5rem; color: #333;">Source Excerpt</div>`;
+          html += `<div class="excerpt-pane" id="excerptPane" style="display: none;">Loading excerpt...</div>`;
+          html += `</div>`;
+        }
+
+        // Comment section
+        html += `<div class="comment-section">`;
+        html += `<label for="commentBox">Comment</label>`;
+        html += `<textarea id="commentBox" class="comment-box" placeholder="Add your observation about this function..."></textarea>`;
+        html += `</div>`;
+
+        // Copy feedback button
+        html += `<button type="button" id="copyFeedbackBtn" class="copy-btn">Copy Feedback</button>`;
+        html += `<div id="copyFeedback" class="copy-feedback"></div>`;
+
+        // Hidden textarea for clipboard fallback
+        html += `<textarea id="clipboardFallback" class="hidden-textarea"></textarea>`;
+
         if (fn.disabled) {
           html += `<div style="color: #f44336; padding: 0.75rem; background: #ffebee; border-radius: 4px;">
             <strong>Disabled:</strong> ${escapeHtml(fn.disabledReason)}
@@ -277,6 +309,20 @@
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
           await invokeFunction();
+        });
+      }
+
+      // Load excerpt if function has location
+      if (selectedFunction && selectedFunction.location && selectedFunction.location.file) {
+        loadExcerpt(selectedFunction.location);
+      }
+
+      // Setup copy feedback button
+      const copyBtn = document.getElementById('copyFeedbackBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await copyFeedback();
         });
       }
 
@@ -551,6 +597,137 @@
           attachCellEventListeners();
         });
       });
+    }
+
+    async function loadExcerpt(location) {
+      const excerptPane = document.getElementById('excerptPane');
+      if (!excerptPane) return;
+
+      try {
+        const response = await fetch(
+          `/api/source?file=${encodeURIComponent(location.file)}&startLine=${location.startLine || 1}&endLine=${location.endLine || 100}`,
+          { headers: token ? { 'X-Antislop-Token': token } : {} }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          excerptPane.textContent = `Error: ${error.error || 'Cannot load excerpt'}`;
+          excerptPane.style.display = 'block';
+          return;
+        }
+
+        const data = await response.json();
+        const lines = data.lines || [];
+        const actualStartLine = data.startLine || location.startLine;
+
+        let html = '';
+        lines.forEach((line, idx) => {
+          const lineNum = actualStartLine + idx;
+          html += `<div class="excerpt-line"><span style="color: #999; margin-right: 0.5rem;">${lineNum}</span>${escapeHtml(line)}</div>`;
+        });
+
+        excerptPane.innerHTML = html;
+        excerptPane.style.display = 'block';
+      } catch (err) {
+        excerptPane.textContent = `Error loading excerpt: ${err.message}`;
+        excerptPane.style.display = 'block';
+      }
+    }
+
+    async function copyFeedback() {
+      if (!selectedBundle || !selectedFunction) return;
+
+      const commentBox = document.getElementById('commentBox');
+      const comment = commentBox ? commentBox.value : '';
+
+      try {
+        // Get git SHA from /api/context
+        const contextResponse = await fetch('/api/context', {
+          headers: token ? { 'X-Antislop-Token': token } : {},
+        });
+
+        if (!contextResponse.ok) {
+          throw new Error('Failed to get commit SHA');
+        }
+
+        const contextData = await contextResponse.json();
+        const sha = contextData.sha;
+
+        // Build the feedback block markdown
+        let feedback = `## Microworld feedback — ${selectedBundle.unit} / ${selectedFunction.label || selectedFunction.id}\n\n`;
+        feedback += `- function: \`${selectedFunction.id}\` (group: \`${selectedFunction.group}\`)\n`;
+
+        if (selectedFunction.location && selectedFunction.location.file) {
+          feedback += `- location: \`${selectedFunction.location.file}:${selectedFunction.location.startLine}-${selectedFunction.location.endLine}\`\n`;
+        } else {
+          feedback += `- location: not declared\n`;
+        }
+
+        feedback += `- commit: ${sha}\n`;
+        feedback += `- bundle: microworlds/${selectedBundle.unit}/\n`;
+        feedback += `\n### Comment\n${comment}\n`;
+
+        // Check if there's a cell with run data to include
+        const cells = cellsByFunctionId[selectedFunction.id];
+        if (cells && cells.length > 0) {
+          const lastCell = cells[cells.length - 1];
+          if (lastCell && lastCell.result) {
+            feedback += `\n### Last run\n`;
+            feedback += `- inputs: ${JSON.stringify(lastCell.inputs)}\n`;
+            feedback += `- exit: ${lastCell.result.exitCode}   duration: ${lastCell.result.durationMs}ms\n`;
+
+            if (lastCell.result.stdout) {
+              feedback += `\n\`\`\`\n${lastCell.result.stdout}\n\`\`\`\n`;
+            } else if (lastCell.result.stderr) {
+              feedback += `\n\`\`\`\n${lastCell.result.stderr}\n\`\`\`\n`;
+            }
+          }
+        }
+
+        // Try clipboard API first
+        try {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(feedback);
+            showCopyFeedback('Copied to clipboard!');
+            return;
+          }
+        } catch (err) {
+          console.warn('Clipboard API failed, using fallback:', err);
+        }
+
+        // Fallback: textarea + execCommand
+        const fallback = document.getElementById('clipboardFallback');
+        if (fallback) {
+          fallback.value = feedback;
+          fallback.select();
+          try {
+            const success = document.execCommand('copy');
+            if (success) {
+              showCopyFeedback('Copied to clipboard!');
+              return;
+            }
+          } catch (err) {
+            console.warn('execCommand fallback failed:', err);
+          }
+        }
+
+        // Last resort: show error
+        showCopyFeedback('Copy failed - please try again');
+      } catch (err) {
+        console.error('Error copying feedback:', err);
+        showCopyFeedback('Error: ' + err.message);
+      }
+    }
+
+    function showCopyFeedback(message) {
+      const feedbackDiv = document.getElementById('copyFeedback');
+      if (feedbackDiv) {
+        feedbackDiv.textContent = message;
+        feedbackDiv.style.display = 'block';
+        setTimeout(() => {
+          feedbackDiv.style.display = 'none';
+        }, 3000);
+      }
     }
 
     function render() {

@@ -12,8 +12,10 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { execSync } = require('child_process');
 const { discover } = require('./discover');
 const { invoke } = require('./invoke');
+const { readSourceExcerpt } = require('./source');
 
 function startServer(projectRoot, port = 0) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -76,6 +78,54 @@ function startServer(projectRoot, port = 0) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to discover bundles' }));
         }
+        return;
+      }
+
+      // GET /api/context (git HEAD sha)
+      if (pathname === '/api/context') {
+        try {
+          const sha = execSync('git rev-parse HEAD', { cwd: projectRoot, encoding: 'utf8' }).trim();
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ sha }));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to get git HEAD' }));
+        }
+        return;
+      }
+
+      // GET /api/source (bounded excerpt reader)
+      if (pathname === '/api/source') {
+        const file = urlObj.searchParams.get('file');
+        const startLineStr = urlObj.searchParams.get('startLine');
+        const endLineStr = urlObj.searchParams.get('endLine');
+
+        if (!file || !startLineStr || !endLineStr) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Missing file, startLine, or endLine parameter' }));
+          return;
+        }
+
+        const startLine = parseInt(startLineStr, 10);
+        const endLine = parseInt(endLineStr, 10);
+
+        if (isNaN(startLine) || isNaN(endLine)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid line numbers' }));
+          return;
+        }
+
+        const result = readSourceExcerpt(projectRoot, file, startLine, endLine);
+
+        if (!result.success) {
+          const statusCode = result.statusCode || 400;
+          res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: result.reason }));
+          return;
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(result));
         return;
       }
 
