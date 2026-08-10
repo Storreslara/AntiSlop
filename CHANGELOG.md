@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.12] - 2026-08-10
+
+### Added
+- **Microworld dashboard browser client (issue #318, Step D5).** Add `bin/dashboard/index.html` as a static HTML file with inline JavaScript (no framework, no CDN, no build step) that provides a full browser UI for the microworld dashboard. Features left-rail bundle list with live status indicators (pass/fail/timeout/unknown), nested tabs for function groups and individual functions, dynamic input form generation supporting text/number/json/file input types with defaults and descriptions, and an output pane displaying invocation results with banners for timeout and truncation states. Empty state messaging explains what microworld bundles are when no bundles exist. Token-based authentication enforced via `X-Antislop-Token` header or `?t=` query parameter (same contract as existing `/api/bundles` and `/api/invoke`). Add comprehensive test suite `tests/dashboard-client.test.js` with four test cases: (a) valid token returns 200 with text/html, (b) HTML contains required `/api/bundles` and `/api/invoke` references, (c) no external script src attributes pointing outside origin, (d) requests without token return 401. Register test in `tests/validate.sh`. No runtime npm dependencies (G4).
+
 ## [0.31.11] - 2026-08-10
 
 ### Added
