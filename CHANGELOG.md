@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.31.5] - 2026-08-10
+
+### Fixed
+- **Orchestration dispatch identity hardening (issues #306–#311).** A named `Agent` dispatch for a `reviewer` unit (specifying `name:` to enable mid-flight `SendMessage`) silently changes the agent's `agent_type` field to that name instead of the persona type, defeating privilege isolation — `reviewer-route-gate.sh` now refuses such a dispatch at spawn time (gh306), with centralized audit-log visibility added for all privilege denials (gh307). `Write` and `Edit` tools listed in a persona's frontmatter `tools:` can still be rejected at call time when dispatched as a named/teammate-style subagent due to a harness limitation; this is now mitigated via shared protocol documentation of the Bash-heredoc fallback (gh309). A named dispatch's turn-completion does not auto-notify the dispatcher; orchestration-aware guidance now defaults to unnamed `Agent` dispatch, naming only when genuine mid-flight addressability is needed (gh310). A bare-name `SendMessage` to `reviewer` can misroute to a stale session from an unrelated unit (risking the gh-304 dual-marker conflict); orchestration-aware guidance now requires a fresh `Agent` dispatch (never message-resume) for a different unit, and checking the active roster before reusing a name (gh311). All fixes are guidance-only (no code changes in the harness itself) and grounded in ADR-0016 (dispatch identity and privilege isolation).
+
+
 ## [0.31.4] - 2026-08-09
 
 ### Added

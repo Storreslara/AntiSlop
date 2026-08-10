@@ -1,4 +1,4 @@
-<!-- antislop v0.31.4 | source: templates/persona-protocol-slim.md | ADAPT-substituted -->
+<!-- antislop v0.31.5 | source: templates/persona-protocol-slim.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/persona-protocol-slim.md by
      install-antislop / `--update`, version-stamped like persona-protocol.md.
      Delivered to lightweight, stateless personas (explorer, researcher,
