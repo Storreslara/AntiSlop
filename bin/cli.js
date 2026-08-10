@@ -1796,6 +1796,9 @@ async function main() {
   if (args.includes('--update')) {
     return runUpdate(args);
   }
+  if (args.includes('--dashboard')) {
+    return runDashboard(args);
+  }
   if (args.includes('--wire-graph-mcp')) {
     return runWireMcp('graph', args);
   }
@@ -2119,6 +2122,21 @@ async function main() {
       'the repo-specific config, verify hooks, and fill in persona-config.json ' +
       'for real.'
   );
+}
+
+async function runDashboard(args) {
+  const portFlag = args.find((a) => a.startsWith('--dashboard-port='));
+  const port = portFlag ? parseInt(portFlag.slice('--dashboard-port='.length), 10) : 0;
+
+  const { startServer } = require('./dashboard/server');
+  const { server } = startServer(process.cwd(), port);
+
+  // Handle SIGINT gracefully
+  process.on('SIGINT', () => {
+    server.close(() => {
+      process.exit(0);
+    });
+  });
 }
 
 if (require.main === module) {
