@@ -65,6 +65,16 @@ a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
 
+**grant-denied**:
+an append-only audit-log record class written to
+  `.claude/review-audit.log` by `reviewed-path-gate.sh` and `stop-gate.sh`
+  (both main hooks and both adapter ports) whenever a privilege is denied to
+  a non-reviewer **Agent identity**. Unlike a **Gate** (which blocks an
+  action), `grant-denied` is a side-effect log line that makes a previously
+  invisible privilege denial visible in the audit trail — the gate still
+  fires, but the denial is now recorded. Completes Finding R3 from the
+  orchestration-dispatch-identity-defects spec (unit #307).
+
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
   pattern named) — a standing principle for `reviewed-path-gate.sh`'s

@@ -242,6 +242,7 @@ begin `PASS <unit-id> ` or `FAIL <unit-id> ` (matching `task-gate.sh`'s
 - `marker=MISSING unit=<U>` — marker required for unit U but not found
 - `join-consumed=<U>` — satisfied stamp for unit U was deleted
 - `cleared-by=reviewer` — successful clear with valid verdict marker on record
+- `grant-denied` — (unit #307) a non-reviewer **Agent identity** attempted a privileged action (write to `.claude/reviewed/`, clear flags, etc.); the gate still fires but the denial is now logged to make identity-drift visible
 
 **Implementation details:**
 - The check runs **after** the existing `.blocked` early-exit (an
