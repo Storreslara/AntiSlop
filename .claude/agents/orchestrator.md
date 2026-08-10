@@ -134,6 +134,11 @@ convention exists to eliminate.
 
 **Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other name causes the dispatch to lose both marker-write and flag-clear privileges, silently producing a failed review that persists in no durable record. `start-feature-team.md` enforces this discipline at team-creation time. Do not dispatch a reviewer under a custom name such as `rev-302` — the grant matcher will refuse it the privileges it needs.
 
+
+**Reviewer re-tasking discipline: never re-task by message.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp. A `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose — continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception) — and is wrong for every other purpose. A different unit always requires a fresh `Agent` dispatch, never a message-resume. This discipline prevents the practical incident that produced gh-304, where a bare-name `SendMessage` reached an idle session from an unrelated plan, which then performed a genuine review and wrote a conflicting verdict.
+
+**Check the roster before dispatching.** If an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to the most recent holder of that name — possibly a stale session from an unrelated plan. Before sending a message to resume a named agent, confirm which unit the addressee was dispatched for (check its review marker, or ask it by name). If the unit does not match the unit you are working on, dispatch a fresh `Agent` call instead of re-using the name.
+
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
 sliced issue's constraints / affected-files / rationale (the spec-step text
