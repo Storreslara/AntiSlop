@@ -226,6 +226,15 @@ fi
 # unrecognized namespace cannot clear the flags the liberal gate below creates,
 # so say so out loud rather than deadlocking silently.
 if [ "$hook_event" = "subagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
+  # Log grant-denied if pending-review flags are standing
+  shopt -s nullglob
+  pending_flags_check=( "${project_dir}"/.cursor/.pending-review.* )
+  shopt -u nullglob
+  if [ "${#pending_flags_check[@]}" -gt 0 ]; then
+    { printf '%s grant-denied hook=stop-gate identity=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
+        >> "$review_audit"; } 2>/dev/null || true
+  fi
   echo "Reviewer identity '${agent_type}' is outside this project's recognized plugin namespace - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or write 'defer: <reason>' (keeps the flag, review still owed) or 'skip: <reason>' (deletes it, unit abandoned) into .cursor/.pending-review.<agent-id>." >&2
 fi
 

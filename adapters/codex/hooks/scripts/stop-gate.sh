@@ -265,6 +265,15 @@ The only two legal responses to this block are writing the genuine verdict you a
   # conservative and this one fails CLOSED. That is deliberate, but it can
   # strand a flag the same namespace's gated agent created (the gate side is
   # liberal), so say out loud how to recover instead of silently doing nothing.
+  # Log grant-denied if pending-review flags are standing
+  shopt -s nullglob
+  pending_flags_check=( "${project_dir}"/.codex/.pending-review.* )
+  shopt -u nullglob
+  if [ "${#pending_flags_check[@]}" -gt 0 ]; then
+    { printf '%s grant-denied hook=stop-gate identity=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
+        >> "$review_audit"; } 2>/dev/null || true
+  fi
   echo "Pending-review flags NOT cleared: '${agent_type}' is not this project's reviewer (unrecognized namespace; see the identity-drift line in .codex/review-audit.log). Recover by dispatching this project's own reviewer, or write 'defer: <reason>' / 'skip: <reason>' into .codex/.pending-review.<agent-id>." >&2
 fi
 

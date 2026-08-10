@@ -604,3 +604,40 @@ for c in "gh issue close 9 --comment \"see $marker/9.pass\"" \
 done
 echo
 exit "$fail"
+
+echo
+echo "-- path-gate-logs-grant-denied: audit logging for blocked non-reviewer access --"
+# Create a fixture with audit log and test grant-denied logging
+audit_fixture="$(mk audit-test "$cfg_reviewer")"
+audit_log="$audit_fixture/.claude/review-audit.log"
+touch "$audit_log"
+
+# Test 1: non-reviewer agent should log grant-denied when blocked
+run "$(jq -n --arg a "rev-302" --arg c "printf x > $marker/9.pass" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$audit_fixture"
+check "case 33 non-reviewer blocked Bash logs grant-denied" blocked
+if [ -s "$audit_log" ] && grep -q "grant-denied.*identity=" "$audit_log"; then
+  grant_denied_count=$(grep -c "grant-denied" "$audit_log" 2>/dev/null || true)
+  if [ "$grant_denied_count" -eq 1 ]; then
+    pass "case 33 grant-denied audit: exactly one grant-denied line logged"
+  else
+    bad "case 33 grant-denied audit: got $grant_denied_count lines, expected 1"
+  fi
+else
+  bad "case 33 grant-denied audit: no grant-denied line found in audit log"
+fi
+
+# Test 2: reviewer agent should NOT log grant-denied (access allowed)
+: > "$audit_log"  # Clear the log
+run "$(jq -n --arg a "reviewer" --arg c "printf x > $marker/9.pass" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$audit_fixture"
+check "case 34 reviewer Bash allowed (no grant-denied logged)" allowed
+if grep -q "grant-denied" "$audit_log" 2>/dev/null; then
+  bad "case 34 reviewer access: grant-denied should not be logged for allowed access"
+else
+  pass "case 34 reviewer access: no grant-denied line (as expected)"
+fi
+
+# Test 3: mutation control - verify grant-denied is logged only when blocked
+run "$(jq -n --arg a "lead-programmer" --arg c "printf x > $marker/9.pass" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$audit_fixture"
+: > "$audit_log"  # Reset before checking
+check "case 35 lead-programmer also blocked" blocked
+

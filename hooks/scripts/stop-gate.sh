@@ -276,6 +276,15 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
   # reviewer, so a foreign namespace falls through with the flags standing.
   # That is a deadlock a human has to break, so say so here rather than
   # leaving only the identity-drift audit line above.
+  # Log grant-denied if pending-review flags are standing
+  shopt -s nullglob
+  pending_flags_check=( "${project_dir}"/.claude/.pending-review.* )
+  shopt -u nullglob
+  if [ "${#pending_flags_check[@]}" -gt 0 ]; then
+    { printf '%s grant-denied hook=stop-gate identity=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
+        >> "$review_audit"; } 2>/dev/null || true
+  fi
   echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or per flag: 'printf \"defer: <reason>\\n\" > .claude/.pending-review.<agent-id>' (keeps it, review still owed) or 'skip: <reason>' (deletes it, unit abandoned)." >&2
 fi
 
