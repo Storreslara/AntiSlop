@@ -43,17 +43,17 @@
   },
   "fileHashes": {
     ".claude/agents/orchestrator.md": "ada54e91d1d881f6c6a3abef08afc9f636c73c9bf9089681813c30da6dd20356",
-    ".claude/agents/explorer.md": "ac73fe09798feea2813b3d8bc124fa1a143dc3a779745ddf8b65930121ad382b",
+    ".claude/agents/explorer.md": "7e3ec998d30769cd8dcb7baf6aecd8633bf5fe5aa6a69a79acfc25caa8302b47",
     ".claude/agents/lead-programmer.md": "5b7c2c70b47a889496ffe6ef06db994caa5cc9d9dae426073704921bcd0fddba",
     ".claude/agents/spec-master.md": "10c5bb9752d724b2dda59f65b92437b36d61b7e168aa42fb9fa540e02f0897a7",
     ".claude/agents/task-master.md": "77205d1b9de011535a0b3f052b63095b08e59695ee5e098f471ff00855c1e6ab",
-    ".claude/agents/scribe.md": "38418acf269bea67286c6104dbb6a1585efb62a0d40d9d8fed2df34a8ed2e7bb",
+    ".claude/agents/scribe.md": "03c0c780829b5fbd0737d8003da510f4d47f0443b4436be4a4d675cb2d401d10",
     ".claude/agents/reviewer.md": "089243608662b1d38fd679d219acbcced2dac97d5a455a450aa2f4244c90328d",
     ".claude/agents/milestone-auditor.md": "6ad7811735a824a23d8d80aa017a559b29294604b8176f01960d91e0077e92f7",
-    ".claude/agents/agent-auditor.md": "9c3dfd13352da018bc352732ce999e7dd0135e011568871cf62d31c223f74758",
-    ".claude/agents/researcher.md": "99b77b83442b7d674f8c2099ca4eb46b5c4115f5c6301e6438861a505e5cfa09",
+    ".claude/agents/agent-auditor.md": "69f60edb863e502414de1075afac5c2a033e40d2c77c095359b1ae76071f4968",
+    ".claude/agents/researcher.md": "c4d334df8c2159934a3a41c9c2b803074a1fbf3dcad6d1b0450415f333d0a01a",
     ".claude/persona-protocol.md": "e3d53581881b9a7526cbb396a7e6312ff616c32f0987d717e1b92e07f5603cbc",
-    ".claude/persona-protocol-slim.md": "504688845c09a582e81b4aaf237d0f901b861b952a044b667378e38c8df6de15",
+    ".claude/persona-protocol-slim.md": "97660fdae16359e3778b17fd42e13f21f30e43ac50deb5b6aed5d758e650a63b",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91"
   }
 }
