@@ -281,6 +281,17 @@ async function runTests() {
       failures.push(`Test (f) FAILED: server1 should reject other server's token`);
     }
 
+    // Server 2 should accept token2 but not token1
+    const result3 = await httpRequest(`http://127.0.0.1:${addr2.port}/api/bundles?t=${token2}`);
+    if (result3.status !== 200) {
+      failures.push(`Test (f) FAILED: server2 should accept its own token`);
+    }
+
+    const result4 = await httpRequest(`http://127.0.0.1:${addr2.port}/api/bundles?t=${token1}`);
+    if (result4.status !== 401) {
+      failures.push(`Test (f) FAILED: server2 should reject other server's token`);
+    }
+
     if (failures.filter((f) => f.includes('Test (f)')).length === 0) {
       console.log('  ✓ Test (f) passed');
     }
@@ -290,6 +301,40 @@ async function runTests() {
     fs.rmSync(tmpDir, { recursive: true });
   } catch (err) {
     failures.push(`Test (f) ERROR: ${err.message}`);
+  }
+
+  // Test (g): malformed request-target must not crash the server
+  console.log('Test (g): malformed request-target survives...');
+  try {
+    const tmpDir = makeTestProject('g');
+    const { server, token } = startServer(tmpDir, 0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const net = require('net');
+    await new Promise((resolve, reject) => {
+      const socket = net.connect(addr.port, '127.0.0.1', () => {
+        socket.write('GET //[ HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n');
+      });
+      socket.on('data', () => {});
+      socket.on('end', resolve);
+      socket.on('error', resolve);
+    });
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Server must still be listening and serve subsequent requests
+    const url = `http://127.0.0.1:${addr.port}/api/bundles?t=${token}`;
+    const result = await httpRequest(url);
+    if (result.status !== 200) {
+      failures.push(`Test (g) FAILED: server did not survive malformed request-target, got ${result.status}`);
+    } else {
+      console.log('  ✓ Test (g) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (g) ERROR: ${err.message}`);
   }
 
   console.log();

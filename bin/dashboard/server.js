@@ -17,7 +17,14 @@ function startServer(projectRoot, port = 0) {
 
   const server = http.createServer(async (req, res) => {
     // Auth check: token must be present in ?t= query param or X-Antislop-Token header
-    const urlObj = new URL(req.url, 'http://127.0.0.1');
+    let urlObj;
+    try {
+      urlObj = new URL(req.url, 'http://127.0.0.1');
+    } catch (err) {
+      res.writeHead(400, { 'Content-Type': 'text/plain' });
+      res.end('Bad request\n');
+      return;
+    }
     const tokenParam = urlObj.searchParams.get('t');
     const tokenHeader = req.headers['x-antislop-token'];
     const providedToken = tokenParam || tokenHeader;

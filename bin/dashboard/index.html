@@ -20,7 +20,10 @@
   <script>
     async function loadBundles() {
       try {
-        const response = await fetch('/api/bundles');
+        const token = new URLSearchParams(location.search).get('t');
+        const response = await fetch('/api/bundles', {
+          headers: token ? { 'X-Antislop-Token': token } : {},
+        });
         if (!response.ok) {
           document.getElementById('app').innerHTML =
             '<div class="empty-state"><p>Error loading bundles (HTTP ' +

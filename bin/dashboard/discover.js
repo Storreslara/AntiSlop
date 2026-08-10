@@ -111,7 +111,7 @@ function discover(projectRoot) {
     const hasDisabledFunctions = functions.some((f) => f.disabled);
 
     bundles.push({
-      id: `working:${unit}`,
+      id: `working:${unitSlug}`,
       unit,
       source: 'working',
       description,
