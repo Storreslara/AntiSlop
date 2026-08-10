@@ -85,7 +85,7 @@ system where a human is *required* to hold a model of what was built.
 
 | Litt's technique | This plan |
 |---|---|
-| **Micro-worlds** — Papert's "Mathland": inhabit an environment and intuit the system by playing with it. His examples are a step-through Prolog debugger with time-scrubbing, and a "command center" UI where he ran a framework migration step by step with old and new sites side by side. | Ask #2, **deliberately narrowed** to a fixture bundle whose contract is `run.sh`'s exit code — see below. |
+| **Micro-worlds** — Papert's "Mathland": inhabit an environment and intuit the system by playing with it. His examples are a step-through Prolog debugger with time-scrubbing, and a "command center" UI where he ran a framework migration step by step with old and new sites side by side. | Ask #2, **deliberately narrowed** to a fixture bundle whose contract is `run.sh`'s exit code — see below. **SUPERSEDED 2026-08-10:** the user overrode this narrowing. "Microworld" now denotes an interactive dashboard a human explores; the exit-code contract survives as the layer beneath it. See `docs/plans/2026-08-10-microworld-dashboard.md`. |
 | **Shared spaces / shared vocabulary** — teams holding one mental model can "jam and riff" because the same word evokes the same image in both heads. | Ask #1, `antislop:ubiquitous-language`. Instantiated as a deterministic glossary-drift check against `CONTEXT.md` (constitution P2) rather than as a collaborative document surface, but it is the same idea and the same motive. **Not a gap.** |
 | **Explanations** (`/explain-diff`) — background before the change, intuition before details, and a "literate diff" ordered as prose by concept rather than alphabetically by filename. | **No counterpart.** Explicitly *not* covered by ask #1: `ubiquitous-language` checks whether names are used consistently and says nothing about whether a change is *explained* well. Recorded as a gap — Step 10 below. |
 | **Comprehension quizzes** — a handful of questions per explainer; his personal rule is not to ship code until he can pass them, framed as a "speed regulator" against the loop outrunning human understanding. | **No counterpart.** Recorded as a gap — Step 11 below. |
@@ -100,6 +100,18 @@ logged in Clarifications on 2026-07-28, and it is right for the two consumers
 that dominate a bundle's life: the `reviewer` and the `PostToolUse` rerun hook
 both want a binary result, not an environment. What the narrowing costs is
 confined to the one path where a *human* is the consumer — see Step 9 below.
+
+> **SUPERSEDED 2026-08-10 — this paragraph no longer describes what will be
+> built.** The user overrode the narrowing. "Microworld" now primarily denotes
+> a persistent, interactive dashboard (a long-running local process serving a
+> browser UI) in which a human navigates a unit's classes and functions, passes
+> their own inputs, and sees the output — Litt's sense, not the fixture-harness
+> sense. The two consumers named above are unaffected and the reasoning about
+> them still holds: the `reviewer` and the `PostToolUse` rerun hook keep the
+> binary `run.sh` contract, which is **demoted to a layer** beneath the
+> dashboard rather than removed. Step 9 below is superseded in full — the
+> dashboard subsumes it. See
+> `docs/plans/2026-08-10-microworld-dashboard.md`.
 
 **Not from the source, and not claimed to be.** Reactive re-running on edit
 (Step 3's `PostToolUse` hook), `ESCALATE-TO-HUMAN`, the marker state machine,
@@ -250,6 +262,16 @@ Steps 2 and 4 carry this explicitly.
   the synchronous `PostToolUse(Edit|Write)` hooks (`graph-update.sh`,
   `lint-on-edit.sh`), registered in `hooks/hooks.json`. Microworlds ride
   that seam. **No daemon is introduced** (constitution P2).
+  **RETRACTED AND CORRECTED 2026-08-10.** Two things are wrong with this
+  sentence. (1) It is no longer true: `docs/plans/2026-08-10-microworld-dashboard.md`
+  introduces a long-running local process. It is a **user-launched foreground
+  process**, not a daemon — nothing auto-starts it, nothing restarts it, no
+  hook registers it, and it holds no persistent state — but it is unambiguously
+  a standing process, which this repo had none of before. (2) It miscited P2:
+  constitution P2 governs preferring deterministic scripts over LLM
+  re-derivation, not process lifetime, so it never supported this conclusion.
+  Everything else in this bullet remains accurate — the rerun hook still rides
+  the synchronous `PostToolUse` seam and introduces no watcher.
 - **`CONTEXT.md` already exists and is the glossary.** Repo root, 82 lines,
   headed "Shared-language glossary for this repo… owned by `scribe`".
   `agents/scribe.md:16` names `CONTEXT.md` + `docs/adr/` as canonical and
@@ -1515,6 +1537,19 @@ Steps 2/4/7 instead), which is *not* the recommended route.
    it. Step 9 below does **not** touch that contract; it adds a strictly
    optional second entry point used only on the path where a human is the
    consumer.
+   **SUPERSEDED 2026-08-10 — this item is now wrong on its own terms.** The
+   narrowing *is* being rewritten: the user overrode it, and "microworld" now
+   primarily denotes an interactive dashboard. What this item got right is
+   preserved and is worth keeping in view — a binary `run.sh` exit code really
+   is the correct contract for the `reviewer` and the rerun hook, and a hook
+   really cannot wait for a human to play — so that contract survives unchanged
+   as the machine-facing layer underneath the dashboard. What it got wrong is
+   the conclusion that the interactive interpretation was therefore out of
+   scope. **Step 9 (F1, `explore.sh`) is superseded in full**, not extended: it
+   is escalation-only, one-shot, and whole-bundle, and the dashboard is
+   every-bundle, persistent, and per-function. Shipping both would leave two
+   competing human-facing exploration entry points in one bundle. See
+   `docs/plans/2026-08-10-microworld-dashboard.md`.
 2. **`antislop:ubiquitous-language` already is the source's "shared
    vocabulary" idea**, instantiated deterministically. No gap.
 3. **`ubiquitous-language` does not overlap with `explain-diff`** — checked
