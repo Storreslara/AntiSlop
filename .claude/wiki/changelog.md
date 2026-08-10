@@ -3,6 +3,31 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-08-10
+- **Closed issue #314** (scribe post-PASS duties) — microworld bundle terminology
+  rename and protocol section completion. Unit #314 (`feat(gh314)` commit `6d53eb1`,
+  PASS marker `.claude/reviewed/gh314.pass` at commit `7f3e5f5`) added the canonical
+  protocol section "Microworld bundles (format and the check contract)" to
+  `templates/persona-protocol.md`, defining the bundle format (`manifest.json` with
+  `functions[]`, `location`, `watch`, `timeoutSeconds`, `inputs/`, `expected/`,
+  `README.md`) and entry execution contract, plus hand-ported adapter sections and
+  updates to `agents/lead-programmer.md`/`agents/reviewer.md`. Terminology renamed:
+  "microworld" now means the dashboard entry a human explores (D2+ work); the
+  gitignored directory + its `run.sh` is now "microworld bundle." Added 4 glossary
+  entries to `CONTEXT.md`: **microworld bundle** (gitignored directory), **microworld**
+  (forward-looking dashboard entry), **function entry** (named executable in
+  bundle's `functions[]`), **the dashboard** (forward-looking UI). Reviewer advisory
+  items noted: (1) `agents/reviewer.md:62` garbled duplicated clause (prose only, not
+  blocking); (2) New section `drop`-classified for spec-master/task-master/milestone-auditor
+  (design question for future unit). `bin/cli.js` `PROTOCOL_SECTIONS_BY_PERSONA` matrix
+  updated; G1 version triple bumped to 0.31.6. Acceptance: all 24 grep/count criteria
+  from issue #314 pass; adapter-protocol-parity test, validate.sh, cli-backfill test,
+  ubiquitous-language test all pass; 3 mutation proofs verified. Issue #314 closed
+  with PASS marker and commit reference. Affected files: `CONTEXT.md`,
+  `templates/persona-protocol.md`, adapters (2 files), `agents/lead-programmer.md`,
+  `agents/reviewer.md`, `bin/cli.js`, `tests/adapter-protocol-parity.test.js`,
+  `tests/cli-backfill.test.js`, `tests/ubiquitous-language.test.js`.
+
 ## 2026-08-08
 - **Closed issue #227** (scribe dispatch) — replay-stamp staleness check fix.
   Unit #227 PASSed review and was closed with commit bf6f41c. Institutional

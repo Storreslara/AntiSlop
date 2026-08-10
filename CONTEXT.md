@@ -486,3 +486,45 @@ the collection of addressable **Agent** entities currently active in a
   dispatch (writing its own review-join stamp), never a message-resume. See
   `agents/orchestrator.md:137` and the history at commit `b9764de` (unit #311).
 
+**Microworld bundles (format and the check contract)**:
+(unit #314, 2026-08-10) — the canonical protocol section defining
+  microworld-bundle format, execution contract, and hand-ported adapter
+  sections. Terminology renamed: "microworld" now means the **dashboard entry**
+  a human explores; the gitignored directory + its `run.sh` is now called the
+  "**microworld bundle**". See `templates/persona-protocol.md` section
+  `## Microworld bundles` and related entries below.
+
+**Microworld bundle**:
+(unit #314, 2026-08-10) — the gitignored `microworlds/<unit-slug>/`
+  directory holding a check's canonical definition: `manifest.json` (with
+  `functions[]` array, `location`, `watch`, `timeoutSeconds`, `inputs/`,
+  `expected/` paths), `run.sh` (the entry-point executable), and `README.md`.
+  Ship-time output of a spec/lead-programmer unit; consumed at review time and
+  (in D2+) rendered into a dashboard entry for human exploration. Distinct from
+  the rendered **microworld** (the UI) and from **function entry** (an individual
+  named executable in the bundle's `functions[]`).
+
+**Microworld**:
+(unit #314, 2026-08-10, forward-looking) — the dashboard entry a human
+  explores, rendering the canonical definition from a **microworld bundle**.
+  The dashboard itself is a D2+ artifact not yet built; this term is normative
+  in protocol prose but the dashboard's own glossary entries may differ once
+  authored. Coordinate with the step owning the dashboard if clarification is
+  needed. Distinct from **microworld bundle** (the gitignored directory).
+
+**Function entry**:
+(unit #314, 2026-08-10) — a named, invocable executable declared in a
+  **microworld bundle**'s `functions[]` array in `manifest.json`. Each entry
+  defines the executable name, location (relative path), optional watch list,
+  timeout, and input/expected paths. One bundle may declare many function
+  entries; each corresponds to an executable the lead-programmer or reviewer
+  can invoke during development and validation.
+
+**The dashboard**:
+(unit #314, 2026-08-10, forward-looking) — the D2+ UI entry point for human
+  exploration of **microworld** bundles (defined normatively in protocol at
+  `templates/persona-protocol.md:338` but the dashboard itself and its own
+  glossary entries are not yet built). Use in protocol is forward-looking;
+  future protocol amendments may refine terminology once the dashboard design
+  is complete.
+
