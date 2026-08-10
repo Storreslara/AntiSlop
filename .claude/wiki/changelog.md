@@ -4,6 +4,73 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #319** (scribe post-PASS duties) — microworld dashboard D6 step.
+  Unit #319 (`feat(gh319)` commit `1b331b7`,
+  PASS marker `.claude/reviewed/gh319.pass`) implemented Step D6 of the
+  microworld dashboard plan, adding client-side in-memory **notebook** feature to track
+  execution history of `POST /api/invoke` invocations as **cells**. Each cell stores
+  `{ cellId, functionId, inputs, startedAt, result }`, appended (never overwritten)
+  on invocation; re-running appends a NEW cell. Each cell renders with three controls:
+  edit-and-re-run (prefills input form from cell's recorded `inputs`, no re-fetch of
+  manifest), collapse/expand of output, and remove. Cells persist in-memory across
+  tab switches but are NEVER persisted to disk, localStorage, sessionStorage, or
+  indexedDB — lost on refresh by design (guardrail 5, in-page-only state). UI displays
+  permanent text "each cell runs in a fresh process" to clarify cells share no state;
+  this is enforced purely client-side, since D1/D4 already spawn fresh process per
+  invoke. Zero server-side changes — no new HTTP route, `server.js`/`discover.js`/
+  `audit-log.js`/`invoke.js` are byte-identical to before D6. **New domain terms
+  introduced, added to CONTEXT.md glossary:** Cell (in-page record of one result,
+  never persisted); Notebook (per-function ordered list of cells rendered in output
+  pane). **Test suite:** `tests/dashboard-notebook.test.js` with 5 cases: (a) fresh-process
+  proof via differing PIDs across two invocations, (b) no-shared-state proof via counter
+  fixture (value never increases across invocations), (c) server route table byte-identical
+  (no new endpoints), (d) GET / regression (still 200, still references /api/invoke), (e)
+  real client-side test driving actual inline `<script type="module">` via `vm.createContext`
+  against stub DOM — asserts fetch called with /api/invoke + correct body, cell appended
+  per invoke, second invoke appends SECOND cell (not overwrite), post-invoke listener
+  rewiring occurs, collapse toggle works both directions.
+
+  **FAIL→fix→PASS arc (full fidelity, do not sanitize):** First review (`.claude/reviewed/gh319.fail`,
+  reviewer agentId `a01dd61d5c074097c`) FAILed original build (commit `e9f2143`) on 4 real
+  defects: (1) temporal-dead-zone `ReferenceError` on every "Run" click — duplicate/shadowing
+  `const inputs = {}` declared AFTER its own use inside `invokeFunction()`'s try block meant
+  `/api/invoke` was NEVER called and no cell was ever created — total regression of working
+  D4/D5 invoke feature; (2) collapse/expand was dead (`isCollapsed` ternary evaluated to
+  `false` for every input); (3) cells produced by invocation had no event listeners wired
+  (`attachCellEventListeners()` wasn't called after `invokeFunction()`'s re-render); (4)
+  original test suite exercised ZERO client-side JS (`makeFakeDOMEnv()` defined but never
+  called, `vm` imported but never used), which is exactly why defects 1-3 all passed the
+  4 original acceptance criteria. Per haiku-escalates-on-first-FAIL policy, re-dispatched on
+  sonnet (fresh session) with full defect list. Fix pass (commit `1b331b7`): collapsed the
+  duplicate input-collection into single pass reused by invoke call (removing shadowing
+  declaration entirely, not just renaming); fixed collapse boolean to `cell.collapsed === true`;
+  added missing `attachCellEventListeners()` call after `invokeFunction()`'s re-render; added
+  real client-side test (e) using same `vm.createContext` pattern already proven in
+  `tests/dashboard-client.test.js`. All 3 code fixes individually mutation-tested (reverting
+  each one, one at a time, turns Test (e) red) by both fix-pass lead-programmer and,
+  independently, second reviewer in its own throwaway worktree. Second review (`.claude/reviewed/gh319.pass`,
+  reviewer agentId `af38d3d3dbe554405`, commit `1b331b7`, 2026-08-10T22:53:11Z) PASSed.
+  FAIL-cap: 1-of-2, resolved on first fix attempt.
+
+  **Non-blocking advisory notes from second review, carried into institutional record:**
+  (1) CHANGELOG.md 0.31.13 entry still describes notebook suite as "four cases: (a)...(d)" —
+  there are now five, and entry records none of FAIL-fix-PASS arc (unlike 0.31.12 D5 entry
+  which has its own "### Fixed" subsection). Correct/extend CHANGELOG entry as part of this
+  documentation pass if within scope, or note as open documentation debt if not. (2)
+  `bin/dashboard/index.html:492` guard `if (!document.querySelectorAll) return;` lives in
+  shipped production code; can never fire in real browser but future stub-DOM test omitting
+  `querySelectorAll` could silently re-hide exact defect class (original defect 3) just fixed.
+  Flagged as design smell, not blocking. (3) Test (e) covers invoke→append→re-invoke→append→collapse
+  and post-invoke listener rewire, but NOT edit-and-re-run prefill, remove, or cell persistence
+  across tab switch — all three spec-required behaviors. Reviewer manually verified all three work
+  correctly against real inline script with richer DOM stub, so uncovered impact rather than defect,
+  but same coverage shape that let defects 1-3 ship green first time. (4) Two pre-existing
+  (not introduced by D6) minor issues carried forward from D5, confirmed still present: invoke
+  error paths wipe rendered cell history from visible pane until next `renderContent()` (cells
+  survive in `cellsByFunctionId`, no data loss, just rendering quirk); `isNaN('')` being `false`
+  means cleared number field silently posts `0` instead of `null`. Issue #319 closed with PASS
+  marker and commit reference.
+
 - **Closed issue #318** (scribe post-PASS duties) — microworld dashboard D5 step.
   Unit #318 (`feat(gh318)` commits `f0c7b46`/`f64c46c` original build,
   `15e4938`/`955a009` fix pass, PASS marker `.claude/reviewed/gh318.pass`)

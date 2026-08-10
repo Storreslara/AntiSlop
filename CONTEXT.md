@@ -635,3 +635,23 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   uses only D3/D4 endpoints. **Version:** 0.31.12 (original build), no version bump on
   fix pass.
 
+**Cell**:
+(unit #319, 2026-08-10) — an in-page record of one `POST /api/invoke` result,
+  storing `{ cellId, functionId, inputs, startedAt, result }`. Cells are appended
+  (never overwritten) when a function is invoked; re-running the same function appends
+  a new cell. Cells are never persisted to disk, localStorage, sessionStorage, or
+  indexedDB — they exist only in-memory and are lost on page refresh. Each cell
+  renders with controls to edit-and-re-run (prefilling the input form from the cell's
+  stored inputs), collapse/expand its output, and remove it. The UI displays a
+  permanent warning "each cell runs in a fresh process" to clarify that cell
+  executions share no state. Distinct from **Notebook** (the per-function ordered
+  list of cells).
+
+**Notebook**:
+(unit #319, 2026-08-10) — the per-function ordered list of **Cell** records rendered
+  in the output pane of the microworld dashboard. Each function entry maintains its
+  own notebook, keyed by `functionId` in the client-side state, and persists the list
+  in-memory across tab switches but loses it on page refresh. Notebooks are purely
+  client-side state; no server-side persistence or route. Distinct from **Cell**
+  (a single invocation record).
+
