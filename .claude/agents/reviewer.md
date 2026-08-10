@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.5 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.6 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -54,6 +54,16 @@ with reasons.
   test/build/lint commands and read the actual exit codes/output. Verify the
   reviewed state is committed before writing a marker — no tracked file carries
   an uncommitted change.
+- **Microworld bundles (if present):** a bundle is verified by filesystem check
+  only — confirm the directory exists under `microworlds/<unit-slug>/` and
+  contains a `manifest.json` and `run.sh`. **Never** invoke a `functions[]`
+  entry to adjudicate the unit, and never treat the bundle as part of the
+  reviewed diff (it is gitignored working-tree scratch). `run.sh` is the sole
+  execution contract; bundle presence is a filesystem check; the dashboard is
+  never an acceptance criterion and **never an acceptance criterion** for any
+  criterion-bearing statement in this or any future spec. The `functions[]`
+  array and `location` field exist for human exploration via the dashboard, not
+  for automated judgment.
 - **Verify against the spec, not the diff.** Re-read task-master's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
@@ -458,4 +468,46 @@ flag (above) is kept standing rather than cleared, so turn-end and the next
 gated-unit dispatch stay blocked, while dispatching anything non-gated
 (explorer, scribe, or the reviewer itself, if present) is still allowed; the
 existing `defer:`/`skip:` escape hatch on the flag still applies unchanged.
+
+## Microworld bundles (format and the check contract)
+A **microworld bundle** is a gitignored working-tree directory under `microworlds/<unit-slug>/` containing a `manifest.json` file and a `run.sh` check script. Bundles are discovered and executed by `lead-programmer` during implementation; bundles are discovered and verified by the reviewer as a filesystem presence check (not a diff check), never by executing their entries. The dashboard is a human-facing exploration surface and **never an acceptance criterion** — no hook registers it, no gate consults it, and no acceptance criterion in this or any future spec may name it.
+
+### Manifest format and `functions[]` array
+The `manifest.json` file declares the bundle's metadata and an optional `functions[]` array. Each function entry is a named, bundle-relative executable a human may invoke with their own inputs from the dashboard. The full manifest schema includes:
+- `unit` — the unit slug (string)
+- `watch` — array of project-relative globs (the files whose changes trigger the check)
+- `description` — one-line description (string)
+- `timeoutSeconds` — timeout for check execution (number, default 60)
+- `functions` — optional array of callable entries (see below)
+
+Each **function entry** in `functions[]` declares:
+- `id` — stable, unique-within-the-bundle slug (string)
+- `group` — grouping label (typically "the class" for object-oriented code, or a domain grouping)
+- `label` — human-readable name for the UI tab (string)
+- `entry` — path to an executable, relative to the bundle directory (string)
+- `description` — one-line description: what this does AND one concrete thing to try (string)
+- `location` — optional object naming where in the repo this code lives: `{ file: "<project-relative path>", startLine: <line>, endLine: <line> }`
+- `inputs` — optional array of named input parameters, each with `name`, `type` (string|number|json|file), optional `default`, and `description`
+
+When `location` is absent, the feedback block records the literal string `location: not declared` — nothing derives it by guessing.
+
+### The `entry` execution contract
+Each `entry` is an executable (any language; shell-relative paths survive packet copy via the `$(cd "$(dirname "$0")" && pwd)` idiom) with this contract:
+- Runs with **cwd = the project root** (same as the check) and receives the bundle's absolute path in the environment variable `MICROWORLD_BUNDLE_DIR`.
+- Receives **exactly one JSON object on stdin**: the input names from `inputs[]` mapped to human-supplied values. Nothing is passed as a shell string; nothing is interpolated into a command.
+- Prints its result to **stdout** in whatever form is legible to a human.
+- **Its exit code carries no verdict.** Non-zero is displayed as an error to the human and means nothing to any gate. `run.sh` remains the sole exit-code contract in the system.
+- Each invocation is a **fresh process** with no state carried between invocations.
+- `functions` is **optional**; a bundle without it is fully valid and appears in the dashboard with only its check status and nothing to invoke.
+
+### Storage, lifecycle, and the reviewer's role
+- Bundles are **gitignored working-tree scratch** — every `.gitignore` file covering `microworlds/` is at the discretion of the implementing project, and bundles never commit to version control.
+- A bundle's contents are **not part of the reviewed diff** — the reviewer's role is to verify bundle presence by filesystem check (does the directory exist?) not to evaluate its structure or contents.
+- The `run.sh` check is the **sole execution contract** respected by any gate or hook; the rerun hook never invokes a function entry (it would convert a synchronous check into a hang), and the reviewer never invokes one to adjudicate a unit.
+
+### `run.sh` contract and authority
+The `run.sh` script executes with cwd = the project root, reads from `inputs/` directory and writes expected outputs to `expected/` directory (locations determined by the bundle itself; no global registry). It must be **relocatable** — it inherits and re-affirms the `$(cd "$(dirname "$0")" && pwd)` pattern so the bundle can survive packet copies (an escalation archive, a handoff to a human). `watch` globs, `timeoutSeconds`, a human-facing `README.md` in the bundle, and input/output staging are all defined by the bundle and `run.sh` jointly. A check result is **advisory only** — its value is meaningful only when a spec step's acceptance criteria name it explicitly.
+
+### Authoring policy for `functions[]` and `location`
+`lead-programmer` SHOULD author `functions[]` (with `location` on each entry) for units meeting the existing heavy-unit trigger as described in `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger" (as amended by ADR-0013); `lead-programmer` MAY skip `functions[]` and `location` otherwise. This is a documented expectation, not a mandatory ceremony: a one-line stub that stops meaning anything is noise, not value.
 <!-- ANTISLOP:END persona-protocol -->

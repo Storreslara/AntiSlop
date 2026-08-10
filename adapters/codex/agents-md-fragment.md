@@ -150,6 +150,19 @@ every turn-end, so a sentinel turn-end still ends with
 `STATUS: incomplete - <the same reason you wrote into the sentinel>`. A missing
 line is a prompt to resume, not a defect and not a FAIL.
 
+## Microworld bundles (format and the check contract)
+A **microworld bundle** is a gitignored directory under `microworlds/<unit-slug>/` containing a `manifest.json` and a `run.sh` check. Bundles are discovered by `lead-programmer` during implementation and verified by the reviewer as a filesystem check only, never by executing entries. The dashboard is never an acceptance criterion - no gate or hook consults it.
+
+**Manifest structure** includes `unit`, `watch` (globs), `description`, `timeoutSeconds`, and an optional `functions[]` array. Each function entry in `functions[]` declares an invocable executable: `id`, `group`, `label`, `entry` (bundle-relative path), `description` (what it does + one concrete thing to try), optional `location` (object with `file`, `startLine`, `endLine`), and optional `inputs[]` array.
+
+**The `entry` execution contract:** executable, resolved relative to bundle directory (survives packet copies via `$(cd "$(dirname "$0")" && pwd)` idiom). Runs with cwd = project root, receives bundle path in `MICROWORLD_BUNDLE_DIR`. Receives exactly one JSON object on stdin mapping input names to values - nothing shell-interpolated. Prints result to stdout. Exit code carries no verdict; `run.sh` is the sole exit-code contract. Each invocation is a fresh process. `functions` is optional.
+
+**The `location` field** is optional: project-relative `file` and inclusive `startLine`/`endLine`. When absent, records the literal string `location: not declared`.
+
+**Storage and reviewer scope:** bundles are gitignored working-tree scratch, not part of the reviewed diff. The reviewer checks for bundle presence only (filesystem check), never executes entries. The rerun hook never invokes function entries (would convert sync check to hang), and neither does the reviewer for adjudication.
+
+**Authoring policy:** `lead-programmer` SHOULD author `functions[]` with `location` on each for units meeting the heavy-unit trigger (see `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger" as amended by ADR-0013); MAY skip otherwise. Microworld bundles (the check contract) are the only persistence surface - the dashboard entry itself (a **microworld**) is ephemeral and human-facing.
+
 ## Codex platform notes (loud degradations - see docs/codex-port-notes.md)
 - **AGENTS.md reaching subagents is doc-stated but NOT empirically confirmed
   by this project.** Codex's own docs state custom agents "automatically

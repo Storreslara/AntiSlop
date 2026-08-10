@@ -68,6 +68,7 @@ const codexMap = {
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Codex has no per-agent memory primitive (file convention only) — see platform notes' },
+  'Microworld bundles (format and the check contract)': { probe: 'Microworld bundles' },
 };
 
 const cursorMap = {
@@ -87,6 +88,7 @@ const cursorMap = {
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Cursor has no per-agent memory primitive (file convention only) — see platform notes' },
+  'Microworld bundles (format and the check contract)': { probe: 'Microworld bundles' },
 };
 
 // Throws on any drift: an unmapped canonical section, a stale map key, or a

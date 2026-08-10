@@ -35,6 +35,7 @@ instructions.
   costs nothing on tasks that don't need it, e.g. a one-line typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
+- **Microworld bundle `functions[]`**: for units meeting the heavy-unit trigger (as defined in `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger", amended by ADR-0013), author a `functions[]` array in the bundle's `manifest.json` with `location` on each entry, documenting the code's test entry points for human exploration. You may skip `functions[]` for lighter units; a one-line stub is noise, not value.
 - **Scope your reading via the explorer**: before editing a symbol, spawn the
   `explorer` for its callers and dependencies, then read only those files —
   not whole modules — unless your dispatch packet's `## Pre-resolved context`

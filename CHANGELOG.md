@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.6] - 2026-08-10
+
+### Added
+- **Microworld bundle format v2: canonical protocol section for `functions[]`, `location`, and terminology (issue #314, Step D1).** Add new canonical section `## Microworld bundles (format and the check contract)` to `templates/persona-protocol.md` defining the microworld bundle format (`manifest.json` with `functions[]`, the `entry` execution contract, the `location` field, `run.sh` check contract, storage rules, and authoring policy). Hand-port condensed equivalents to both `adapters/cursor/rules/persona-protocol.mdc` and `adapters/codex/agents-md-fragment.md` in their own established styles. Add required parity-map entries to both `codexMap` and `cursorMap` in `tests/adapter-protocol-parity.test.js`. Update `agents/lead-programmer.md` with authoring policy for `functions[]` on heavy units (referencing ADR-0004 trigger as amended by ADR-0013, not restating thresholds). Update `agents/reviewer.md` with microworld-specific verification guidance (filesystem check only, never execute entries, dashboard never an acceptance criterion, containing the sentinel phrase twice as required).
+
 ## [0.31.5] - 2026-08-10
 
 ### Fixed

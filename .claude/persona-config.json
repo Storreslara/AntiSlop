@@ -9,7 +9,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.5",
+  "pluginVersion": "0.31.6",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,17 +42,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "13dda00acee446816f2da24791dee3183b888fce3d408b0a84177158e284d7fe",
+    ".claude/agents/orchestrator.md": "58118b2457dd7d226344438de560dd7786ca748cbb30b717b3d583a6f0cdedf1",
     ".claude/agents/explorer.md": "7e3ec998d30769cd8dcb7baf6aecd8633bf5fe5aa6a69a79acfc25caa8302b47",
-    ".claude/agents/lead-programmer.md": "5b7c2c70b47a889496ffe6ef06db994caa5cc9d9dae426073704921bcd0fddba",
+    ".claude/agents/lead-programmer.md": "e4ec16d466dd33118083687fb75b6767cb34010d21734738d5b019715643b8ec",
     ".claude/agents/spec-master.md": "10c5bb9752d724b2dda59f65b92437b36d61b7e168aa42fb9fa540e02f0897a7",
     ".claude/agents/task-master.md": "77205d1b9de011535a0b3f052b63095b08e59695ee5e098f471ff00855c1e6ab",
     ".claude/agents/scribe.md": "03c0c780829b5fbd0737d8003da510f4d47f0443b4436be4a4d675cb2d401d10",
-    ".claude/agents/reviewer.md": "089243608662b1d38fd679d219acbcced2dac97d5a455a450aa2f4244c90328d",
+    ".claude/agents/reviewer.md": "1a212fe9afd57212d03c376430bad08272c8a4a4ef55fbaed2e0153b2d7d9511",
     ".claude/agents/milestone-auditor.md": "6ad7811735a824a23d8d80aa017a559b29294604b8176f01960d91e0077e92f7",
     ".claude/agents/agent-auditor.md": "69f60edb863e502414de1075afac5c2a033e40d2c77c095359b1ae76071f4968",
     ".claude/agents/researcher.md": "c4d334df8c2159934a3a41c9c2b803074a1fbf3dcad6d1b0450415f333d0a01a",
-    ".claude/persona-protocol.md": "e3d53581881b9a7526cbb396a7e6312ff616c32f0987d717e1b92e07f5603cbc",
+    ".claude/persona-protocol.md": "eb820d5169e83aef3f15c417efdd9a34316e6a7398a79b88c3849d120a3ef78a",
     ".claude/persona-protocol-slim.md": "97660fdae16359e3778b17fd42e13f21f30e43ac50deb5b6aed5d758e650a63b",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91"
   }

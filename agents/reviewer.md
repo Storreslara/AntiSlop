@@ -53,6 +53,16 @@ with reasons.
   test/build/lint commands and read the actual exit codes/output. Verify the
   reviewed state is committed before writing a marker — no tracked file carries
   an uncommitted change.
+- **Microworld bundles (if present):** a bundle is verified by filesystem check
+  only — confirm the directory exists under `microworlds/<unit-slug>/` and
+  contains a `manifest.json` and `run.sh`. **Never** invoke a `functions[]`
+  entry to adjudicate the unit, and never treat the bundle as part of the
+  reviewed diff (it is gitignored working-tree scratch). `run.sh` is the sole
+  execution contract; bundle presence is a filesystem check; the dashboard is
+  never an acceptance criterion and **never an acceptance criterion** for any
+  criterion-bearing statement in this or any future spec. The `functions[]`
+  array and `location` field exist for human exploration via the dashboard, not
+  for automated judgment.
 - **Verify against the spec, not the diff.** Re-read task-master's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
