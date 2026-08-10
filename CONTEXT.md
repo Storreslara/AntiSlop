@@ -374,6 +374,9 @@ in hook payloads' `agent_type` and `subagent_type` fields,
   explicitly deferred out of scope for unit #244).
 _Avoid_: persona name (only the persona-derived form is a persona name; named dispatch form is not)
 
+**default-unnamed dispatch rule**:
+the standing convention that `Agent` tool calls should dispatch without a `name:` parameter by default, causing their result to auto-return on completion. Named dispatch is reserved only for cases requiring **mid-flight addressability** — querying or re-tasking a long-running subagent mid-way through. The one exception is the 2-FAIL-cap / debug-spec scenario in "Nested dispatches", where explicit naming is mandatory. Deferred companion: a **mechanical report-loss backstop** to detect named agents completing without reporting (recorded in agents/orchestrator.md for future implementation when needed).
+
 **FAIL routing (post-reviewer)**:
 normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
