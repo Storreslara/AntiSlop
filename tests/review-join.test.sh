@@ -116,6 +116,57 @@ else
   fail=1
 fi
 
+# --- route-gate-blocks-named-reviewer: named dispatch with name != "reviewer" -> exit 2, no stamp ---
+dir="$(make_project blocks-named-reviewer)"
+payload_named_rev="$(jq -n --arg p $'Unit: 306\n\nReview this.' '{hook_event_name:"PreToolUse",tool_name:"Agent",agent_type:"orchestrator",tool_input:{subagent_type:"reviewer",name:"rev-302",prompt:$p}}')"
+rc=0
+run_route_gate "$dir" "$payload_named_rev" || rc=$?
+if [ "$rc" = 2 ] && [ "$(stamp_count "$dir")" = 0 ]; then
+  echo "OK   (route-gate-blocks-named-reviewer) name=rev-302 subagent_type=reviewer -> exit 2, no stamp"
+else
+  echo "FAIL (route-gate-blocks-named-reviewer) expected exit 2 and no stamp (rc=$rc, stamp_count=$(stamp_count "$dir"))"
+  fail=1
+fi
+
+# --- route-gate-allows-bare-reviewer-name: named dispatch with name == "reviewer" -> exit 0, stamp written ---
+dir="$(make_project allows-bare-reviewer-name)"
+payload_named_bare="$(jq -n --arg p $'Unit: 307\n\nReview this.' '{hook_event_name:"PreToolUse",tool_name:"Agent",agent_type:"orchestrator",tool_input:{subagent_type:"reviewer",name:"reviewer",prompt:$p}}')"
+rc=0
+run_route_gate "$dir" "$payload_named_bare" || rc=$?
+stamp="$dir/.claude/.review-join.307"
+if [ "$rc" = 0 ] && [ -f "$stamp" ] && [ "$(stamp_count "$dir")" = 1 ]; then
+  echo "OK   (route-gate-allows-bare-reviewer-name) name=reviewer -> exit 0, stamp written"
+else
+  echo "FAIL (route-gate-allows-bare-reviewer-name) expected exit 0 and stamp (rc=$rc)"
+  fail=1
+fi
+
+# --- route-gate-allows-unnamed-reviewer: no name key at all -> exit 0, stamp written ---
+dir="$(make_project allows-unnamed-reviewer)"
+payload_unnamed="$(jq -n --arg p $'Unit: 308\n\nReview this.' '{hook_event_name:"PreToolUse",tool_name:"Agent",agent_type:"orchestrator",tool_input:{subagent_type:"reviewer",prompt:$p}}')"
+rc=0
+run_route_gate "$dir" "$payload_unnamed" || rc=$?
+stamp="$dir/.claude/.review-join.308"
+if [ "$rc" = 0 ] && [ -f "$stamp" ] && [ "$(stamp_count "$dir")" = 1 ]; then
+  echo "OK   (route-gate-allows-unnamed-reviewer) no name key -> exit 0, stamp written"
+else
+  echo "FAIL (route-gate-allows-unnamed-reviewer) expected exit 0 and stamp (rc=$rc)"
+  fail=1
+fi
+
+# --- route-gate-named-non-reviewer-unaffected: non-reviewer target with name -> exit 0 ---
+dir="$(make_project named-non-reviewer-unaffected)"
+payload_named_lp="$(jq -n --arg p $'Unit: 309\n\nBuild this.' '{hook_event_name:"PreToolUse",tool_name:"Agent",agent_type:"orchestrator",tool_input:{subagent_type:"lead-programmer",name:"lp-302",prompt:$p}}')"
+rc=0
+run_route_gate "$dir" "$payload_named_lp" || rc=$?
+if [ "$rc" = 0 ] && [ "$(stamp_count "$dir")" = 0 ]; then
+  echo "OK   (route-gate-named-non-reviewer-unaffected) lead-programmer with name=lp-302 -> exit 0"
+else
+  echo "FAIL (route-gate-named-non-reviewer-unaffected) expected exit 0 (rc=$rc)"
+  fail=1
+fi
+
+
 # --- route-gate-never-blocks: re-run all five payloads above (fresh project dirs); assert exit 0 across the board ---
 never_blocks_fail=0
 d1="$(make_project nb-1)"; rc=0; run_route_gate "$d1" "$payload1" || rc=$?; [ "$rc" = 0 ] || never_blocks_fail=1
