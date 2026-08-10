@@ -70,5 +70,36 @@ derived-list drift guard (`canonicalHeaders()` in
 `tests/adapter-protocol-parity.test.js`), read the guard before asserting whether
 a map entry is needed — the guard, not the plan, decides.
 
+**Fourth trap - a criterion can be runnable, correct-shaped, and still evaluated
+at the WRONG MOMENT (2026-08-10, microworld dashboard R2/D1/D2/D9).** I wrote
+"asserts `git diff --name-only` includes `.claude/persona-config.json`" as the
+proof that `bin/cli.js --update` had been run. It can never pass. The reviewer
+may only write a PASS marker on a fully-committed tree (`git diff --quiet HEAD`
+exits 0), so by the time any criterion is evaluated the bare working-tree diff
+is **empty by construction**. Worse, it fails silently - `grep` just finds
+nothing - so the reviewer either hand-improvises a substitute or fails the unit
+on a technicality. Four occurrences shipped in one "finalized" plan.
+
+This is NOT the vacuous-criterion trap or the prose-premise trap. Each criterion
+was individually runnable and individually true-shaped; I authored them against
+a mental model of the working tree *mid-implementation* and they were executed
+*after the commit that empties it*. Running them at authoring time does not
+catch it either, because mid-authoring the tree is often dirty and they appear
+to work.
+
+**How to apply (lifecycle):** ask of every criterion "at what moment does the
+reviewer run this, and what is true of the tree then?" The tree is COMMITTED and
+CLEAN. So: never phrase a criterion against `git diff`, `git diff --name-only`,
+or `git diff --stat`. Instead:
+- to prove the unit CHANGED X - assert what X now **contains** (sentinel string,
+  parsed value, regenerated version stamp);
+- to prove the unit did NOT need to change Y - assert Y still contains its
+  **expected prior value**, quoted literally with `grep -F`.
+Content assertions also beat the range-relative form (`git diff <base>..HEAD`):
+a spec is authored before dispatch so no baseline SHA exists to hard-code, and
+range-relative breaks on multi-commit units, FAIL->fix cycles, and rebases.
+`git status --porcelain` compared before/after a command *within* the review is
+fine - that is a delta measured inside the review, not a claim about the commit.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]], and
 [[verify-deferred-issue-premises]].
