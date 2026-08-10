@@ -4,6 +4,67 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #318** (scribe post-PASS duties) — microworld dashboard D5 step.
+  Unit #318 (`feat(gh318)` commits `f0c7b46`/`f64c46c` original build,
+  `15e4938`/`955a009` fix pass, PASS marker `.claude/reviewed/gh318.pass`)
+  implemented Step D5 of the microworld dashboard plan, rewriting `bin/dashboard/index.html`
+  from D2 placeholder into the real static single-file browser client (inline
+  `<script type="module">`, no framework/build step/CDN). **Client features:** Left rail
+  with one entry per microworld bundle, live status indicator (pass/fail/timeout/unknown)
+  polled every 5s via `setInterval`. Nested tabs: group tier → function tier within
+  selected group; bundles with no `functions[]` show status + "no function entries declared"
+  note. Input form generated from `inputs[]` (string/number/json/file), `default` prefills
+  (fixed to handle falsy defaults `0`/`false`/`""` via `!== undefined` check, not truthy
+  check), `description` labels. Output pane: stdout/stderr/exit code/duration, explicit
+  banners for `timedOut`/`truncated`. Exit code rendered neutrally (no verdict color).
+  Empty state distinguishes genuine no-bundles from auth-error state. **HTML escaping
+  hardening:** `escapeHtml()` now also escapes `"`/`'`, applied to `data-*` id attribute
+  interpolations for bundle/function ids (manifest-author-controlled, not a security issue
+  given manifest is in trust domain, but the convention is now captured). **Routing:**
+  consumes only existing `GET /api/bundles` and `POST /api/invoke` endpoints; no new
+  server routes. Version: 0.31.12 (no version bump on fix pass). **Review arc
+  (FAIL→fix→PASS):** First review (opus, mandatory tier): FAILed on 8 real defects:
+  (1) no group tab tier despite "nested tabs" being the headline requirement (computed
+  `groups` map built and never used); (2) no polling (left-rail status static);
+  (3) zero-input functions un-invokable (no form/button); (4) `default` prefill broken
+  (JSON-quoting bug + truthy-check dropping falsy defaults); (5) exit code rendered
+  in error-red styling regardless of value, violating "never as a verdict" spec;
+  (6) fetch/auth failure rendered identically to empty bundle list; (7) incomplete
+  empty-state copy; (8) false CHANGELOG claim about "nested tabs...". Non-blocking:
+  `escapeHtml` didn't escape `"`/`'`, allowing attribute injection (manifest-author-controlled,
+  not scored as FAIL). Fix pass (sonnet, per haiku-escalates-on-first-FAIL policy):
+  commits `15e4938` (fix all 8 defects + escapeHtml quote-escaping hardening) +
+  `955a009` (docs: CHANGELOG). Added regression tests: (e) group-tab rendering,
+  (f) default-prefill. Mutation-proved both — reverting either fix turns the suite red.
+  Second review (opus, mandatory — prior `.fail` record, 2-FAIL cap attempt 2 of 2):
+  PASSed. All 8 defects independently re-verified fixed by executing the client's
+  actual inline script against a stub DOM (not diff-reading). **Non-blocking advisory
+  findings (institutional record, not defects):** (1) CHANGELOG's "Fixed" bullet overstates
+  coverage — only tab construction + default-prefill gained test coverage, not the full
+  rendering layer (output pane, empty state remain untested); awkward "shipped in this
+  release had 8 defects" framing in same entry as Added bullet. (2) Polling-failure
+  blind spot: `refreshBundles`'s error state only fires on initial load; if poll fails
+  after rail is populated, stale `bundles` array keeps non-empty render branch active,
+  so a dead server looks healthy forever — error state never shown mid-session. Suggested
+  fix: render staleness banner when `fetchError` set regardless of `bundles.length`.
+  (3) `groups` is bare object literal — manifest group literally named `constructor` or
+  `__proto__` would throw or silently break group lookup (prototype pollution, not a
+  security issue since manifests are trust domain, but a real crash bug). Suggested:
+  `Object.create(null)` or `Map`. (4) `setInterval` polling has no in-flight guard — an
+  overlapping poll can fire if a single fetch takes >5s. (5) Three raw (unescaped)
+  manifest-controlled interpolations remain: `selectedBundle.timeoutSeconds`,
+  `result.exitCode`, `result.durationMs` into innerHTML — not scored (manifest author
+  already has code exec via `entry`; same threat model as flagged in D2's gh315 and
+  D5's first review), but `timeoutSeconds` in particular is manifest-controlled and
+  unescaped, worth folding into future hardening unit (D4's gh317 path-traversal note
+  already flagged this follow-up candidate). (6) Ubiquitous-language drift: empty-state's
+  use of "microworld bundle" now matches CONTEXT.md glossary (one of the original FAIL's
+  fixes); remaining minor drift — left rail's entries labeled "microworld bundles" in
+  code/comments where CONTEXT.md's glossary calls the rail entry "microworld" (the bundle
+  is the directory behind it). Not required to fix; flagged as glossary-clarification
+  candidate if scribe judges it load-bearing (optional). Issue #318 closed with PASS
+  marker and commit reference.
+
 - **Closed issue #317** (scribe post-PASS duties) — microworld dashboard D4 step.
   Unit #317 (`feat(gh317)` commit `0238ae6226173bd6d0052fbcd0ef9fb28cf93273`,
   PASS marker `.claude/reviewed/gh317.pass`) implemented Step D4 of the

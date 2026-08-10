@@ -615,3 +615,23 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   D4 defect because manifest is agent-authored local input inside trust domain;
   flagged as follow-up candidate for hardening via `fs.realpathSync` guard).
 
+**D5 browser client**:
+(unit #318, 2026-08-10) — the static single-file HTML client (`bin/dashboard/index.html`)
+  for the microworld dashboard. Rewritten from D2 placeholder into the real client with
+  inline `<script type="module">` (no framework/build step/CDN). Consumes only existing
+  `GET /api/bundles` (D3/D4) and `POST /api/invoke` (D4) routes. **Left rail:** one entry
+  per microworld bundle, live status indicator (pass/fail/timeout/unknown) polled every 5s
+  via `setInterval`. **Nested tabs:** group tier → function tier within selected group;
+  bundles with no `functions[]` show status + "no function entries declared" note.
+  **Input form:** generated from `inputs[]` (string/number/json/file), `default` prefills
+  (handles falsy defaults `0`/`false`/`""` via `!== undefined` check, not truthy check),
+  `description` labels. **Output pane:** stdout/stderr/exit code/duration, explicit
+  banners for `timedOut`/`truncated`. Exit code rendered neutrally (no verdict color).
+  **Empty state:** names what a microworld bundle is, path/files, origin; distinct from
+  auth-error state. **HTML escaping:** `escapeHtml()` now escapes `"`/`'` in addition to
+  `&`/`<`/`>`, applied to `data-*` id attribute interpolations for bundle/function ids
+  (manifest-author-controlled, not scored as security issue given manifest is already in
+  trust domain, but hardening captures the convention). **No server-side route added:**
+  uses only D3/D4 endpoints. **Version:** 0.31.12 (original build), no version bump on
+  fix pass.
+
