@@ -5,55 +5,357 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Microworld Dashboard</title>
   <style>
-    body { font-family: system-ui; margin: 2rem; color: #333; }
-    .container { max-width: 900px; margin: 0 auto; }
-    h1 { color: #222; }
-    .empty-state { padding: 2rem; background: #f5f5f5; border-radius: 4px; }
+    * { box-sizing: border-box; }
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #333; background: #fafafa; }
+    .container { display: flex; height: 100vh; }
+    .left-rail { width: 280px; background: #f0f0f0; border-right: 1px solid #ddd; overflow-y: auto; }
+    .main-content { flex: 1; display: flex; flex-direction: column; }
+    .header { padding: 1rem; border-bottom: 1px solid #ddd; background: #fff; }
+    h1 { margin: 0; font-size: 1.5rem; }
+    .bundle-item { padding: 1rem; border-bottom: 1px solid #e0e0e0; cursor: pointer; }
+    .bundle-item:hover { background: #e8e8e8; }
+    .bundle-item.active { background: #e3f2fd; border-left: 3px solid #2196f3; }
+    .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 0.5rem; }
+    .status-pass { background: #4caf50; }
+    .status-fail { background: #f44336; }
+    .status-timeout { background: #ff9800; }
+    .status-unknown { background: #9e9e9e; }
+    .bundle-title { font-weight: 500; }
+    .bundle-desc { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+    .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; height: 100%; }
+    .empty-state-text { max-width: 500px; }
     .code { font-family: monospace; background: #eee; padding: 0.2rem 0.4rem; border-radius: 2px; }
+    .tabs-container { background: #fff; border-bottom: 1px solid #ddd; padding: 0; overflow-x: auto; display: flex; }
+    .tab-button { padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: #666; border-bottom: 2px solid transparent; }
+    .tab-button:hover { background: #f5f5f5; }
+    .tab-button.active { color: #2196f3; border-bottom-color: #2196f3; }
+    .form-and-output { flex: 1; display: flex; overflow: hidden; }
+    .form-pane { width: 400px; border-right: 1px solid #ddd; overflow-y: auto; padding: 1.5rem; background: #fff; }
+    .output-pane { flex: 1; overflow-y: auto; padding: 1.5rem; background: #f9f9f9; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; }
+    .form-group { margin-bottom: 1.5rem; }
+    label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
+    label .desc { display: block; font-size: 0.85rem; font-weight: normal; color: #666; margin-top: 0.25rem; }
+    input[type="text"], input[type="number"], textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; }
+    textarea { resize: vertical; min-height: 80px; }
+    input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: #2196f3; }
+    .submit-btn { background: #2196f3; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
+    .submit-btn:hover { background: #1976d2; }
+    .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .output-section { margin-bottom: 1rem; }
+    .output-label { color: #666; font-weight: 500; margin-bottom: 0.5rem; }
+    .banner { padding: 0.75rem; border-left: 3px solid; margin-bottom: 1rem; background: #f5f5f5; }
+    .banner-timeout { border-color: #ff9800; color: #e65100; }
+    .banner-truncated { border-color: #2196f3; color: #0d47a1; }
+    .exit-code { color: #f44336; font-weight: 500; }
+    .spinner { display: inline-block; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .no-functions { color: #999; font-style: italic; padding: 1rem; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Microworld Dashboard</h1>
-    <div id="app"></div>
+    <div class="left-rail" id="leftRail"></div>
+    <div class="main-content">
+      <div class="header">
+        <h1>Microworld Dashboard</h1>
+      </div>
+      <div class="content-area" id="contentArea"></div>
+    </div>
   </div>
-  <script>
-    async function loadBundles() {
+
+  <script type="module">
+    const token = new URLSearchParams(location.search).get('t');
+    let bundles = [];
+    let selectedBundle = null;
+    let selectedFunction = null;
+
+    async function fetchBundles() {
       try {
-        const token = new URLSearchParams(location.search).get('t');
         const response = await fetch('/api/bundles', {
           headers: token ? { 'X-Antislop-Token': token } : {},
         });
         if (!response.ok) {
-          document.getElementById('app').innerHTML =
-            '<div class="empty-state"><p>Error loading bundles (HTTP ' +
-            response.status + ')</p></div>';
-          return;
+          throw new Error(`HTTP ${response.status}`);
         }
-        const bundles = await response.json();
-        if (!bundles || bundles.length === 0) {
-          document.getElementById('app').innerHTML =
-            '<div class="empty-state">' +
-            '<p>No bundles found. Microworlds appear in ' +
-            '<span class="code">microworlds/&lt;unit-slug&gt;/manifest.json</span> ' +
-            'when agents author them.</p>' +
-            '</div>';
-          return;
-        }
-        const html = bundles.map(b =>
-          '<div style="margin: 1rem 0; padding: 1rem; border: 1px solid #ddd; border-radius: 4px;">' +
-          '<h3>' + (b.disabled ? '⚠ ' : '') + b.unit + '</h3>' +
-          '<p>' + b.description + '</p>' +
-          (b.disabledReason ? '<p style="color: #d32f2f;"><strong>Disabled:</strong> ' + b.disabledReason + '</p>' : '') +
-          '</div>'
-        ).join('');
-        document.getElementById('app').innerHTML = html;
+        return await response.json();
       } catch (err) {
-        document.getElementById('app').innerHTML =
-          '<div class="empty-state"><p>Error: ' + err.message + '</p></div>';
+        console.error('Error fetching bundles:', err);
+        return [];
       }
     }
-    loadBundles();
+
+    function getStatusClass(status) {
+      if (!status) return 'status-unknown';
+      if (status.result === 'pass') return 'status-pass';
+      if (status.result === 'fail') return 'status-fail';
+      if (status.result === 'timeout') return 'status-timeout';
+      return 'status-unknown';
+    }
+
+    function renderLeftRail() {
+      const rail = document.getElementById('leftRail');
+      if (bundles.length === 0) {
+        rail.innerHTML = '<div style="padding: 1rem; color: #999;">No bundles</div>';
+        return;
+      }
+      rail.innerHTML = bundles.map((b) => `
+        <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${b.id}">
+          <div>
+            <span class="status-indicator ${getStatusClass(b.status)}"></span>
+            <span class="bundle-title">${escapeHtml(b.unit)}</span>
+          </div>
+          <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
+        </div>
+      `).join('');
+
+      rail.querySelectorAll('.bundle-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const bundleId = item.getAttribute('data-bundle-id');
+          selectedBundle = bundles.find(b => b.id === bundleId);
+          selectedFunction = null;
+          render();
+        });
+      });
+    }
+
+    function renderContent() {
+      const content = document.getElementById('contentArea');
+
+      if (!selectedBundle) {
+        content.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-state-text">
+              <p>Select a microworld from the left panel to begin.</p>
+              <p style="font-size: 0.9rem; color: #999;">
+                Microworlds appear in <span class="code">microworlds/&lt;unit-slug&gt;/manifest.json</span>
+                when agents author them.
+              </p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      if (!selectedBundle.functions || selectedBundle.functions.length === 0) {
+        content.innerHTML = `
+          <div style="padding: 1.5rem; background: #fff;">
+            <h2>${escapeHtml(selectedBundle.unit)}</h2>
+            <p>${escapeHtml(selectedBundle.description)}</p>
+            <div class="no-functions">No function entries declared in this bundle's manifest.</div>
+          </div>
+        `;
+        return;
+      }
+
+      const groups = {};
+      for (const fn of selectedBundle.functions) {
+        const grp = fn.group || 'Ungrouped';
+        if (!groups[grp]) groups[grp] = [];
+        groups[grp].push(fn);
+      }
+
+      let html = `<div class="tabs-container">`;
+      for (const [groupName, functions] of Object.entries(groups)) {
+        for (const fn of functions) {
+          const isActive = selectedFunction?.id === fn.id;
+          html += `<button class="tab-button ${isActive ? 'active' : ''}" data-fn-id="${fn.id}">
+            ${escapeHtml(fn.label || fn.id)}
+          </button>`;
+        }
+      }
+      html += `</div>`;
+
+      if (selectedFunction) {
+        const fn = selectedFunction;
+        const inputs = fn.inputs || [];
+
+        html += `<div class="form-and-output">`;
+        html += `<div class="form-pane">`;
+        html += `<h3>${escapeHtml(fn.label || fn.id)}</h3>`;
+        html += `<p>${escapeHtml(fn.description || '')}</p>`;
+
+        if (fn.disabled) {
+          html += `<div style="color: #f44336; padding: 0.75rem; background: #ffebee; border-radius: 4px;">
+            <strong>Disabled:</strong> ${escapeHtml(fn.disabledReason)}
+          </div>`;
+        }
+
+        if (inputs.length === 0) {
+          html += `<p style="color: #999;">No inputs required.</p>`;
+        } else {
+          html += `<form id="inputForm">`;
+          for (const input of inputs) {
+            html += `<div class="form-group">`;
+            html += `<label>
+              ${escapeHtml(input.name)}
+              ${input.description ? `<span class="desc">${escapeHtml(input.description)}</span>` : ''}
+            </label>`;
+
+            const value = input.default ? JSON.stringify(input.default) : '';
+            if (input.type === 'string') {
+              html += `<input type="text" name="${escapeHtml(input.name)}" value="${escapeHtml(value)}" />`;
+            } else if (input.type === 'number') {
+              html += `<input type="number" name="${escapeHtml(input.name)}" value="${escapeHtml(value)}" />`;
+            } else if (input.type === 'json') {
+              html += `<textarea name="${escapeHtml(input.name)}">${escapeHtml(value)}</textarea>`;
+            } else if (input.type === 'file') {
+              html += `<input type="text" name="${escapeHtml(input.name)}" value="${escapeHtml(value)}" placeholder="file path" />`;
+            }
+            html += `</div>`;
+          }
+          html += `<button type="submit" class="submit-btn" ${fn.disabled ? 'disabled' : ''}>Invoke</button>`;
+          html += `</form>`;
+        }
+
+        html += `</div>`;
+        html += `<div class="output-pane" id="outputPane"></div>`;
+        html += `</div>`;
+      } else {
+        html += `<div class="empty-state"><p>Select a function to invoke.</p></div>`;
+      }
+
+      content.innerHTML = html;
+
+      content.querySelectorAll('.tab-button').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const fnId = btn.getAttribute('data-fn-id');
+          selectedFunction = selectedBundle.functions.find(f => f.id === fnId);
+          render();
+        });
+      });
+
+      const form = document.getElementById('inputForm');
+      if (form && !selectedFunction.disabled) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          await invokeFunction();
+        });
+      }
+    }
+
+    async function invokeFunction() {
+      if (!selectedBundle || !selectedFunction) return;
+
+      const form = document.getElementById('inputForm');
+      const inputs = {};
+
+      for (const input of (selectedFunction.inputs || [])) {
+        const elem = form.elements[input.name];
+        if (!elem) continue;
+
+        const val = elem.value;
+        if (input.type === 'number') {
+          inputs[input.name] = isNaN(val) ? null : Number(val);
+        } else if (input.type === 'json') {
+          try {
+            inputs[input.name] = JSON.parse(val);
+          } catch {
+            alert('Invalid JSON for ' + input.name);
+            return;
+          }
+        } else {
+          inputs[input.name] = val;
+        }
+      }
+
+      const btn = form.querySelector('button[type="submit"]');
+      const oldText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Running...';
+
+      try {
+        const response = await fetch('/api/invoke', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'X-Antislop-Token': token } : {}),
+          },
+          body: JSON.stringify({
+            id: selectedBundle.id,
+            functionId: selectedFunction.id,
+            inputs,
+          }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+          const output = document.getElementById('outputPane');
+          output.innerHTML = `<div style="color: #f44336;"><strong>Error:</strong> ${escapeHtml(result.error)}</div>`;
+          return;
+        }
+
+        const output = document.getElementById('outputPane');
+        let html = '';
+
+        if (result.timedOut) {
+          html += `<div class="banner banner-timeout">Timeout: execution exceeded ${selectedBundle.timeoutSeconds || 60}s</div>`;
+        }
+        if (result.truncated) {
+          html += `<div class="banner banner-truncated">Output truncated</div>`;
+        }
+
+        html += `<div class="output-section">
+          <div class="output-label">Exit code: <span class="exit-code">${result.exitCode}</span></div>
+        </div>`;
+
+        if (result.durationMs !== undefined) {
+          html += `<div class="output-section">
+            <div class="output-label">Duration: ${result.durationMs}ms</div>
+          </div>`;
+        }
+
+        if (result.stdout) {
+          html += `<div class="output-section">
+            <div class="output-label">stdout</div>
+            <div style="background: #fff; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">${escapeHtml(result.stdout)}</div>
+          </div>`;
+        }
+
+        if (result.stderr) {
+          html += `<div class="output-section">
+            <div class="output-label">stderr</div>
+            <div style="background: #fff; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; color: #f44336;">${escapeHtml(result.stderr)}</div>
+          </div>`;
+        }
+
+        if (!result.stdout && !result.stderr) {
+          html += `<div style="color: #999;">No output</div>`;
+        }
+
+        output.innerHTML = html;
+      } catch (err) {
+        const output = document.getElementById('outputPane');
+        output.innerHTML = `<div style="color: #f44336;"><strong>Error:</strong> ${escapeHtml(err.message)}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = oldText;
+      }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function init() {
+      bundles = await fetchBundles();
+      if (bundles.length > 0) {
+        selectedBundle = bundles[0];
+        if (selectedBundle.functions && selectedBundle.functions.length > 0) {
+          selectedFunction = selectedBundle.functions[0];
+        }
+      }
+      render();
+    }
+
+    function render() {
+      renderLeftRail();
+      renderContent();
+    }
+
+    init();
   </script>
 </body>
 </html>

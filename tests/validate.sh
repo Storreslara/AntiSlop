@@ -420,6 +420,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard client (Node) =="
+if node tests/dashboard-client.test.js; then
+  echo "OK   tests/dashboard-client.test.js"
+else
+  echo "FAIL tests/dashboard-client.test.js"
+  fail=1
+fi
+
+echo
 echo "== microworld dashboard invoke (Node) =="
 if node tests/dashboard-invoke.test.js; then
   echo "OK   tests/dashboard-invoke.test.js"
