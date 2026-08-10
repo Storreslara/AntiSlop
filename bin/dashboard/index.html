@@ -71,6 +71,8 @@
     let selectedFunction = null;
     let selectedGroup = null;
     let fetchError = null;
+    let cellsByFunctionId = {}; // Notebook: cells per function (persists across tab switches)
+    let nextCellId = 0; // Auto-incrementing cell ID for uniqueness
 
     async function fetchBundles() {
       const response = await fetch('/api/bundles', {
@@ -244,7 +246,9 @@
         html += `</form>`;
 
         html += `</div>`;
-        html += `<div class="output-pane" id="outputPane"></div>`;
+        html += `<div class="output-pane" id="outputPane">`;
+        html += renderNotebook(selectedFunction.id);
+        html += `</div>`;
         html += `</div>`;
       } else {
         html += `<div class="empty-state"><p>Select a function to invoke.</p></div>`;
@@ -275,6 +279,105 @@
           await invokeFunction();
         });
       }
+
+      // Attach event listeners to cell control buttons
+      attachCellEventListeners();
+    }
+
+    function renderNotebook(functionId) {
+      const cells = cellsByFunctionId[functionId] || [];
+      let html = '';
+
+      // Shared state warning
+      html += `<div style="padding: 1rem; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; margin-bottom: 1.5rem;">
+        <div style="font-weight: 500; color: #2e7d32; margin-bottom: 0.5rem;">each cell runs in a fresh process</div>
+        <div style="font-size: 0.9rem; color: #558b2f;">Cell executions are independent. Cell 2 cannot see variables or state from Cell 1.</div>
+      </div>`;
+
+      if (cells.length === 0) {
+        html += `<div style="color: #999; font-style: italic;">No cells yet. Invoke the function above to create one.</div>`;
+        return html;
+      }
+
+      html += `<div style="font-weight: 500; color: #333; margin-bottom: 1rem;">Execution History (${cells.length} ${cells.length === 1 ? 'cell' : 'cells'})</div>`;
+
+      for (let i = cells.length - 1; i >= 0; i--) {
+        const cell = cells[i];
+        const isCollapsed = cell.collapsed !== false ? false : cell.collapsed;
+        html += renderCell(cell, functionId, i, isCollapsed);
+      }
+
+      return html;
+    }
+
+    function renderCell(cell, functionId, index, isCollapsed) {
+      const startedTime = new Date(cell.startedAt).toLocaleTimeString();
+      let html = `<div style="margin-bottom: 1.5rem; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">`;
+
+      // Cell header with controls
+      html += `<div style="padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between;">`;
+      html += `<div style="flex: 1;">`;
+      html += `<div style="font-weight: 500; color: #333;">Cell ${index + 1}</div>`;
+      html += `<div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">Invoked at ${escapeHtml(startedTime)}</div>`;
+      html += `</div>`;
+
+      // Control buttons
+      html += `<div style="display: flex; gap: 0.5rem;">`;
+      html += `<button class="cell-edit-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #2196f3; color: #fff; border: none; padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">Edit</button>`;
+      html += `<button class="cell-toggle-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #666; color: #fff; border: none; padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">${isCollapsed ? 'Expand' : 'Collapse'}</button>`;
+      html += `<button class="cell-remove-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #f44336; color: #fff; border: none; padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">Remove</button>`;
+      html += `</div>`;
+      html += `</div>`;
+
+      // Cell content (output)
+      if (!isCollapsed) {
+        html += `<div style="padding: 1rem; background: #fff;">`;
+
+        // Exit code
+        html += `<div style="margin-bottom: 0.5rem;">`;
+        html += `<div class="output-label">Exit code: <span class="exit-code">${cell.result.exitCode}</span></div>`;
+        html += `</div>`;
+
+        // Duration
+        if (cell.result.durationMs !== undefined) {
+          html += `<div style="margin-bottom: 0.5rem;">`;
+          html += `<div class="output-label">Duration: ${cell.result.durationMs}ms</div>`;
+          html += `</div>`;
+        }
+
+        // Timeout and truncation banners
+        if (cell.result.timedOut) {
+          html += `<div class="banner banner-timeout">Timeout: execution exceeded 60s</div>`;
+        }
+        if (cell.result.truncated) {
+          html += `<div class="banner banner-truncated">Output truncated</div>`;
+        }
+
+        // Stdout
+        if (cell.result.stdout) {
+          html += `<div style="margin-bottom: 1rem;">`;
+          html += `<div class="output-label">stdout</div>`;
+          html += `<div style="background: #fafafa; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stdout)}</div>`;
+          html += `</div>`;
+        }
+
+        // Stderr
+        if (cell.result.stderr) {
+          html += `<div style="margin-bottom: 1rem;">`;
+          html += `<div class="output-label">stderr</div>`;
+          html += `<div style="background: #ffebee; padding: 0.75rem; border: 1px solid #ef5350; border-radius: 4px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; color: #c62828; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stderr)}</div>`;
+          html += `</div>`;
+        }
+
+        if (!cell.result.stdout && !cell.result.stderr) {
+          html += `<div style="color: #999;">No output</div>`;
+        }
+
+        html += `</div>`;
+      }
+
+      html += `</div>`;
+      return html;
     }
 
     async function invokeFunction() {
@@ -328,45 +431,43 @@
           return;
         }
 
+        // Create a new cell and add to notebook
+        const cellId = String(nextCellId++);
+        const inputs = {};
+        for (const input of (selectedFunction.inputs || [])) {
+          const elem = form.elements[input.name];
+          if (!elem) continue;
+          const val = elem.value;
+          if (input.type === 'number') {
+            inputs[input.name] = isNaN(val) ? null : Number(val);
+          } else if (input.type === 'json') {
+            try {
+              inputs[input.name] = JSON.parse(val);
+            } catch {
+              inputs[input.name] = val; // If parse failed before, keep as-is
+            }
+          } else {
+            inputs[input.name] = val;
+          }
+        }
+
+        const cell = {
+          cellId,
+          functionId: selectedFunction.id,
+          inputs,
+          startedAt: new Date().toISOString(),
+          result,
+          collapsed: false,
+        };
+
+        if (!cellsByFunctionId[selectedFunction.id]) {
+          cellsByFunctionId[selectedFunction.id] = [];
+        }
+        cellsByFunctionId[selectedFunction.id].push(cell);
+
+        // Re-render the notebook
         const output = document.getElementById('outputPane');
-        let html = '';
-
-        if (result.timedOut) {
-          html += `<div class="banner banner-timeout">Timeout: execution exceeded ${selectedBundle.timeoutSeconds || 60}s</div>`;
-        }
-        if (result.truncated) {
-          html += `<div class="banner banner-truncated">Output truncated</div>`;
-        }
-
-        html += `<div class="output-section">
-          <div class="output-label">Exit code: <span class="exit-code">${result.exitCode}</span></div>
-        </div>`;
-
-        if (result.durationMs !== undefined) {
-          html += `<div class="output-section">
-            <div class="output-label">Duration: ${result.durationMs}ms</div>
-          </div>`;
-        }
-
-        if (result.stdout) {
-          html += `<div class="output-section">
-            <div class="output-label">stdout</div>
-            <div style="background: #fff; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px;">${escapeHtml(result.stdout)}</div>
-          </div>`;
-        }
-
-        if (result.stderr) {
-          html += `<div class="output-section">
-            <div class="output-label">stderr</div>
-            <div style="background: #fff; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; color: #f44336;">${escapeHtml(result.stderr)}</div>
-          </div>`;
-        }
-
-        if (!result.stdout && !result.stderr) {
-          html += `<div style="color: #999;">No output</div>`;
-        }
-
-        output.innerHTML = html;
+        output.innerHTML = renderNotebook(selectedFunction.id);
       } catch (err) {
         const output = document.getElementById('outputPane');
         output.innerHTML = `<div style="color: #f44336;"><strong>Error:</strong> ${escapeHtml(err.message)}</div>`;
@@ -402,6 +503,70 @@
         selectedBundle = bundles.find(b => b.id === selectedBundle.id) || selectedBundle;
       }
       renderLeftRail();
+    }
+
+    function attachCellEventListeners() {
+      if (!document.querySelectorAll) return; // Skip in test environment without full DOM
+
+      // Edit and re-run button
+      document.querySelectorAll('.cell-edit-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cellId = btn.getAttribute('data-cell-id');
+          const fnId = btn.getAttribute('data-fn-id');
+          const cells = cellsByFunctionId[fnId] || [];
+          const cell = cells.find(c => c.cellId === cellId);
+          if (!cell) return;
+
+          // Prefill form from cell inputs
+          const form = document.getElementById('inputForm');
+          if (!form) return;
+
+          for (const input of (selectedFunction.inputs || [])) {
+            const elem = form.elements[input.name];
+            if (!elem) continue;
+
+            const val = cell.inputs[input.name];
+            if (input.type === 'json') {
+              elem.value = typeof val === 'string' ? val : JSON.stringify(val);
+            } else {
+              elem.value = val !== undefined ? String(val) : '';
+            }
+          }
+        });
+      });
+
+      // Collapse/expand button
+      document.querySelectorAll('.cell-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cellId = btn.getAttribute('data-cell-id');
+          const fnId = btn.getAttribute('data-fn-id');
+          const cells = cellsByFunctionId[fnId] || [];
+          const cell = cells.find(c => c.cellId === cellId);
+          if (!cell) return;
+
+          cell.collapsed = !cell.collapsed;
+          const output = document.getElementById('outputPane');
+          output.innerHTML = renderNotebook(fnId);
+          attachCellEventListeners();
+        });
+      });
+
+      // Remove button
+      document.querySelectorAll('.cell-remove-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const cellId = btn.getAttribute('data-cell-id');
+          const fnId = btn.getAttribute('data-fn-id');
+          const cells = cellsByFunctionId[fnId] || [];
+          const idx = cells.findIndex(c => c.cellId === cellId);
+          if (idx >= 0) {
+            cells.splice(idx, 1);
+          }
+
+          const output = document.getElementById('outputPane');
+          output.innerHTML = renderNotebook(fnId);
+          attachCellEventListeners();
+        });
+      });
     }
 
     function render() {
