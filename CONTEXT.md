@@ -64,6 +64,7 @@ the system's core safety property: the
 a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
+_Avoid_: marker-directory gate
 
 **grant-denied**:
 an append-only audit-log record class written to
