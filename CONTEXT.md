@@ -528,3 +528,25 @@ the collection of addressable **Agent** entities currently active in a
   future protocol amendments may refine terminology once the dashboard design
   is complete.
 
+**Bundle source**:
+(unit #315, 2026-08-10) — the `source` field in a microworld bundle object,
+  indicating the origin of the bundle. Currently defined value: `"working"` for
+  bundles enumerated from the local `microworlds/` directory. Forward-looking:
+  `"packet"` namespace is reserved for bundles sourced from external origins in
+  later steps (D8+). Trust boundary marker: `source: "working"` bundles are
+  subject to repo-own validation and live within the same trust domain as the
+  repository itself.
+_Avoid_: bundle origin (use "bundle source" for clarity)
+
+**Bundle id namespace**:
+(unit #315, 2026-08-10) — the prefix scheme for **microworld bundle** ids,
+  enabling forward-compatible routing of bundles from different sources without
+  collision. Defined values: `working:<unit-slug>` for bundles discovered from
+  local `microworlds/<unit-slug>/` directories; `packet:<task-id>` reserved for
+  bundles sourced from external origins in later steps (D8+). The directory
+  slug (not the manifest's `unit` field) is used for the working: namespace to
+  establish a stable, collision-resistant canonical id. Distinct from the
+  **source** field: a bundle's `id` is namespaced (machine routing), while
+  `source` is the semantic origin marker (human understanding / trust boundary).
+_Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "source namespace" to clarify)
+

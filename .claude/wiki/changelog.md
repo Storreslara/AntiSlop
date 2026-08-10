@@ -4,6 +4,34 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #315** (scribe post-PASS duties) — microworld dashboard D2 step.
+  Unit #315 (`feat(gh315)` commit `49296a7`, PASS marker `.claude/reviewed/gh315.pass`)
+  implemented Step D2 of the microworld dashboard plan (`docs/plans/2026-08-10-microworld-dashboard.md`),
+  adding HTTP API server, discovery of microworld bundles, loopback-only bind, and
+  per-launch crypto-token auth. New files: `bin/dashboard/server.js` (HTTP server,
+  `node:http` only, auth via `?t=` query or `X-Antislop-Token` header),
+  `bin/dashboard/discover.js` (enumerates `microworlds/*/manifest.json`, fail-soft on
+  malformed/missing entries), `bin/dashboard/index.html` (placeholder client).
+  New CLI surface: `node bin/cli.js --dashboard` / `--dashboard-port=<n>` dispatches early
+  in `main()` alongside `--update`, prints exactly one line (`http://127.0.0.1:<port>/?t=<token>`),
+  runs in foreground until SIGINT. New HTTP API: `GET /` (placeholder HTML), `GET /api/bundles`
+  → `[{ id, unit, source, description, disabled, disabledReason, functions: [...], status }]`.
+  Every route requires launch token; missing/wrong → 401 empty body. New id convention:
+  bundle ids namespaced `working:<unit-slug>` (directory slug, not manifest's declared `unit`
+  field — stored separately to avoid collision with forward-looking `packet:<task-id>` namespace).
+  Added 2 glossary entries to `CONTEXT.md`: **bundle source** (`source: "working"` origin value),
+  **bundle id namespace** (`working:` / `packet:` distinction). Went through one review cycle:
+  first attempt FAILed on 5 defects (stale `.claude/` mirror restamp regression, unauthenticated
+  crash-the-process bug on malformed request-target, client auth-token missing making empty-state
+  unreachable, half-asserted bidirectional test criterion, id-construction inconsistency) — all fixed
+  and re-verified by mutation testing in second pass. Reviewer non-blocking notes flagged: unescaped
+  innerHTML interpolation of bundle fields in `bin/dashboard/index.html:45-47` (safe at D2 with
+  `source: "working"` trust boundary, escape before D5 ships real client and D8 adds foreign sources).
+  Acceptance: all test criteria pass (dashboard-server.test.js, cli-backfill.test.js, validate.sh,
+  G4-no-deps check, dashboard hook absence, token regex, npm pack dry-run, SIGINT exit). Full
+  history: `.claude/reviewed/gh315.fail` and `.claude/reviewed/gh315.pass`. Issue #315 closed
+  with PASS marker and commit reference.
+
 - **Closed issue #314** (scribe post-PASS duties) — microworld bundle terminology
   rename and protocol section completion. Unit #314 (`feat(gh314)` commit `6d53eb1`,
   PASS marker `.claude/reviewed/gh314.pass` at commit `7f3e5f5`) added the canonical
