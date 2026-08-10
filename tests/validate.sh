@@ -384,6 +384,15 @@ else
 fi
 
 echo
+echo "== ubiquitous-language SKILL.md structural/distinguishability checks (Node) =="
+if node tests/ubiquitous-language.test.js; then
+  echo "OK   tests/ubiquitous-language.test.js"
+else
+  echo "FAIL tests/ubiquitous-language.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

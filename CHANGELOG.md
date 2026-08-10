@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.4] - 2026-08-09
+
+### Added
+- **Mutation-proved structural test for `skills/ubiquitous-language/SKILL.md` (issue #305, rewritten Step 4).** `tests/ubiquitous-language.test.js` asserts, against the real SKILL.md, that both mode headings are present, the no-glossary degradation text names `CONTEXT.md` and `scribe` in the same paragraph, the three lenses' descriptions are mutually distinguishing, and the two modes' anchor forms are mutually distinguishing. Since the skill is pure prose with no programmatic entry point, non-vacuity is proven by running the test against a mutated in-memory copy (`UL_TEST_MUTATE=1`) with the degradation paragraph and the three lenses' language collapsed to identical boilerplate — the real file passes, the mutated copy fails. Registered in `tests/validate.sh`. The lens's semantic correctness remains untested by design (P2).
+
 ## [0.31.3] - 2026-08-10
 
 ### Changed
