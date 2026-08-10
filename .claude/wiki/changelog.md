@@ -46,6 +46,40 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   PASS marker and commit reference. Updated CONTEXT.md with three new glossary
   entries and .claude/wiki/changelog.md with this digest.
 
+- **Closed issue #316** (scribe post-PASS duties) — microworld dashboard D3 step.
+  Unit #316 (`feat(gh316)` commit `4febc8ab`, PASS marker `.claude/reviewed/gh316.pass`)
+  implemented Step D3 of the microworld dashboard plan, adding live status tailing of the
+  audit log with cross-language contract test and mutation proof. **New API and files:**
+  `bin/dashboard/audit-log.js` (new, Node.js parser for `.claude/microworld-audit.log`,
+  returns `Promise<Map>` keyed by unit slug; handles both `result=pass|fail|timeout` and
+  `result=error ... file=<path> reason=<...>` variants). Modify `bin/dashboard/discover.js`
+  to load audit status and attach `status: {...} | null` to each bundle, plus add
+  `fs.watch` on `microworlds/` directory. Modify `bin/dashboard/server.js` to add
+  `GET /api/status` endpoint (same token-auth contract as `/api/bundles`). New test
+  suite `tests/microworld-audit-contract.test.js` (cross-language contract test exercising
+  the REAL hook, REAL audit log, and REAL parser against a fixture bundle failure, with
+  mutation proof: changing the hook's separator format breaks the test). **Status-tailing
+  mechanism:** cases (g)-(j) in dashboard-server.test.js verify that audit log tailing
+  works correctly — most-recent line per unit, missing log → null status, appended lines
+  reflected on next request, new bundle directories discovered without restart. The
+  `fs.watch` on `microworlds/` is inert (callback empty); structural liveness comes
+  from `discover()` re-reading the filesystem on every HTTP request, not from watcher
+  events. **Review outcome:** single-pass PASS on opus (commit `4febc8ab`). Reviewer
+  advisory findings (institutional record): (1) CHANGELOG.md:7 overclaims that case (j)
+  and fs.watch "prove" liveness — liveness actually comes from discover() re-reading per
+  request. (2) CHANGELOG.md:7 incorrectly cites fs.watch location as `discover.js` when
+  it is actually in `server.js:22`. (3) No `.on('error')` handler on FSWatcher (inotify
+  exhaustion under `recursive:true` could crash); watcher is never closed/unref'd (leaks
+  handle per `startServer()`, though production `process.exit(0)` masks this). (4) Space
+  in audit-log path silently dropped by regex `file=(\S+)`. (5) `parseAuditLog` returns
+  plain object not Map. (6) `GET /api/status` returns full bundle list rather than
+  status summary. **Ubiquitous-language findings:** (1) Fixed CONTEXT.md:96 to document
+  error-variant format with `reason` LAST, matching actual hook emission (pre-existing
+  drift from unit #132). (2) Added glossary entry **consumed interface** for the new
+  domain term (hooks/scripts/microworld-rerun.sh:10), defining bidirectional coupling
+  between emitter and parser with contract test as the proof mechanism. Issue #316 closed
+  with PASS marker and commit reference.
+
 - **Closed issue #315** (scribe post-PASS duties) — microworld dashboard D2 step.
   Unit #315 (`feat(gh315)` commit `49296a7`, PASS marker `.claude/reviewed/gh315.pass`)
   implemented Step D2 of the microworld dashboard plan (`docs/plans/2026-08-10-microworld-dashboard.md`),

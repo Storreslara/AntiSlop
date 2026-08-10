@@ -93,7 +93,19 @@ an append-only audit-log record class written to
   `.cursor/microworld-audit.log`, `.codex/microworld-audit.log`) recording
   execution results of **microworld bundle** invocations. Written by the
   `microworld-rerun.sh` **Reporter** hook on every `PostToolUse` for
-  `Edit|Write` operations. Line format: `<ts> unit=<slug> result=pass|fail|timeout file=<path>` for real bundle runs, and `<ts> unit=<slug> result=error ... reason=<...> file=<path>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
+  `Edit|Write` operations. Line format: `<ts> unit=<slug> result=pass|fail|timeout file=<path>` for real bundle runs, and `<ts> unit=<slug> result=error ... file=<path> reason=<...>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
+
+**Consumed interface**:
+(unit #316, 2026-08-10) — a formal label for a wire contract or data format
+  that is explicitly documented as being read/parsed by a downstream system.
+  Example: the microworld audit-log line format (emitted by `microworld-rerun.sh`)
+  is a consumed interface because `bin/dashboard/audit-log.js` is a dedicated
+  parser on the other side of that contract. Naming a format as "consumed"
+  surfaces the bidirectional coupling: changes to the emitter require coordinated
+  changes to the parser, and the test contract test (`tests/microworld-audit-contract.test.js`)
+  exercises both sides to prevent drift. This term appears in protocol prose
+  (e.g., `hooks/scripts/microworld-rerun.sh:10`) when a hook's header documents
+  its output as a consumed interface, clarifying that the format is not arbitrary.
 
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
