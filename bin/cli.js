@@ -608,12 +608,12 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'FAIL record (durable warning for future spawns)',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
+      'Microworld bundles (format and the check contract)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
-      'Microworld bundles (format and the check contract)',
     ],
   },
   'task-master': {
@@ -625,13 +625,13 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Review ownership — one unit, one review, single owner',
       'FAIL record (durable warning for future spawns)',
       'A note on `memory`',
+      'Microworld bundles (format and the check contract)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
       'Continuing after a FAIL verdict',
-      'Microworld bundles (format and the check contract)',
     ],
   },
   'milestone-auditor': {

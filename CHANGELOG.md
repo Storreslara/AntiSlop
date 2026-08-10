@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.31.7] - 2026-08-10
+
+### Fixed
+- **Extend Microworld bundles section reach to spec-master and task-master (issue #314 advisory followup).** Move the canonical `Microworld bundles (format and the check contract)` section from the `drop` arrays to the `include` arrays for both `spec-master` and `task-master` personas in `bin/cli.js` — ensuring the section's normative "never an acceptance criterion" sentinel reaches the two personas that actually author acceptance criteria. Regenerate all three affected persona files (`.claude/agents/spec-master.md`, `.claude/agents/task-master.md`, `.claude/agents/reviewer.md`) via `--update`.
+- **Remove garbled duplication in reviewer.md.** Remove redundant duplicate clause "never an acceptance criterion and **never an acceptance criterion**" in `agents/reviewer.md` so it reads once as intended.
+
 ## [0.31.6] - 2026-08-10
 
 ### Added
