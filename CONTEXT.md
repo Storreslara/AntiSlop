@@ -352,6 +352,16 @@ a hard, mode-independent skill
   for the correction to this repo's prior documentation, which had stated
   the weaker (false) version: "not in teams mode only."
 
+**Harness**:
+Claude Code the product — the IDE plugin and surrounding runtime
+  infrastructure that hosts all personas, hook scripts, and agent dispatches.
+  Distinct from "hook infrastructure" or "this repo's own gates" — the harness
+  is the shared platform, not this project's local adaptation of it. When hook
+  logic fails at the harness level (e.g., named dispatch defeating
+  `agent_type` privilege checks, or `Write`/`Edit` grant rejection at
+  tool-call time), mitigation is via protocol documentation or harness
+  upgrade, not repo-side code.
+
 **Agent identity**:
 in hook payloads' `agent_type` and `subagent_type` fields,
   this field can take two forms: for unnamed (default) dispatch, it is the
@@ -435,6 +445,22 @@ normal FAIL routes the defect list to
   such pair, not just the first. This is a standing rule for all future specs,
   not specific to the review-join feature. See `docs/plans/2026-08-07-per-unit-review-join.md`
   CHK18 (line 1249) for the generalization.
+
+**Guidance-only**:
+a change that improves documentation, protocol prose, or
+  instruction without altering any shipped code or hook enforcement logic. The
+  inverse of **enforcement code**. Guidance-only changes prevent future
+  mistakes (by making intent/boundaries explicit) but do not themselves block
+  or detect violations — only enforcement code does that.
+
+**Enforcement code**:
+a code change in hooks, gates, or validators that
+  mechanically blocks, detects, or prevents a specific failure mode at
+  runtime. The inverse of **guidance-only**. Examples: `stop-gate.sh` blocking
+  a non-reviewer from altering markers, `dispatch-hygiene.sh` rejecting an
+  oversized prompt, `reviewer-route-gate.sh` refusing a named reviewer
+  dispatch. An enforcement code change is the only mechanism that guarantees
+  compliance; guidance can be ignored or misunderstood.
 
 **message-resume**:
 compact synonym for "resume-by-name via `SendMessage`" — the mechanism for
