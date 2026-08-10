@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.13] - 2026-08-10
+
+### Added
+- **Microworld dashboard notebook feature (issue #319, Step D6).** Add client-side in-memory notebook to track execution history of `POST /api/invoke` invocations as cells, each storing `{ cellId, functionId, inputs, startedAt, result }`. Cells are appended on each invocation (re-running never overwrites). Each cell renders with three controls: edit-and-re-run (prefills input form from cell's recorded inputs without needing to re-fetch manifest), collapse/expand (inline), and remove. Cell state persists in-memory while switching tabs away and back but is lost on page refresh (guardrail 5, by design — no localStorage/sessionStorage/indexedDB). Add required UI text warning "each cell runs in a fresh process" to clarify that cell executions are independent (Cell 2 cannot see variables from Cell 1). Add comprehensive test suite `tests/dashboard-notebook.test.js` with four cases: (a) fresh-process proof via PID (two invocations get different PIDs), (b) no-shared-state proof via counter (value always same, never increases across cells), (c) route table unchanged from prior steps (no new server endpoints added), (d) GET / still returns 200 and references /api/invoke. Server implementation is zero-diff: no edits to `bin/dashboard/server.js`, `discover.js`, `audit-log.js`, or `invoke.js` — notebook feature is pure client-side. Register test in `tests/validate.sh`. No runtime npm dependencies (G4).
+
 ## [0.31.12] - 2026-08-10
 
 ### Added
