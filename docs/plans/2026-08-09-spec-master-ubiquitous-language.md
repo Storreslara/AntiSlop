@@ -281,6 +281,39 @@ Definitions are preserved verbatim; this is a reshaping, not a rewrite. The
 real near-synonym exists (the Microworlds doc itself names one such pair at
 lines 1214-1216: **microworld bundle vs escalation packet**).
 
+**2026-08-10 addendum — ratified `_Avoid_` pair (gh-303 spec-gap ruling).**
+`.claude/reviewed/gh-303.fail` established that "microworld bundle vs
+escalation packet" is structurally unaddable within this step's own scope:
+neither term exists anywhere in the pre-change `CONTEXT.md` (`git show
+1cd0f27:CONTEXT.md | grep -ni 'escalation packet\|microworld bundle'` — exit
+1, no output), and both are introduced only by unimplemented, explicitly
+out-of-scope issue #138. That made the step's own "Microworlds doc names one
+such pair" instruction and its `grep -c '_Avoid_' CONTEXT.md` >= 1 acceptance
+criterion mutually unsatisfiable as originally written — a genuine spec gap,
+not an implementer error.
+
+**Ruling:** `_Avoid_: clear-watermark` under the `review-join stamp` entry
+(CONTEXT.md:132-155) is ratified as this step's required minimum pair,
+replacing "microworld bundle vs escalation packet" as the named minimum.
+Rationale: `clear-watermark` already carries a full glossary entry
+documenting it as "[Retired in 0.28.0; see review-join stamp below.]" — a
+real, sourced predecessor/successor relationship (same operational role,
+current canonical term is `review-join stamp`), not a fabricated synonym.
+`_Avoid_`'s stated purpose per `skills/domain-modeling/CONTEXT-FORMAT.md`
+("pick the best one and list the others under `_Avoid_`") is satisfied: a
+reader is steered from the stale term to the current one. A legacy term also
+carrying its own historical entry (kept for record, marked retired) does not
+conflict with it also appearing as an `_Avoid_` target elsewhere — the two
+serve different readers (one wants "what was this," the other wants "what do
+I call this now").
+
+This is process ratification only, not a license going forward: per the
+Escalation clause below (unchanged), a future unit still must not invent an
+`_Avoid_` pair unilaterally without stopping to report the gap first, exactly
+as this one should have. "Microworlds Step 8 must add its six terms in
+canonical shape with `_Avoid_` lines" (see the ordering contract above)
+remains issue #138's obligation, unaffected by this ruling.
+
 **Affected files:** `CONTEXT.md`
 
 **Acceptance criteria**
