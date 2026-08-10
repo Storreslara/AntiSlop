@@ -303,7 +303,7 @@
 
       for (let i = cells.length - 1; i >= 0; i--) {
         const cell = cells[i];
-        const isCollapsed = cell.collapsed !== false ? false : cell.collapsed;
+        const isCollapsed = cell.collapsed === true;
         html += renderCell(cell, functionId, i, isCollapsed);
       }
 
@@ -433,23 +433,6 @@
 
         // Create a new cell and add to notebook
         const cellId = String(nextCellId++);
-        const inputs = {};
-        for (const input of (selectedFunction.inputs || [])) {
-          const elem = form.elements[input.name];
-          if (!elem) continue;
-          const val = elem.value;
-          if (input.type === 'number') {
-            inputs[input.name] = isNaN(val) ? null : Number(val);
-          } else if (input.type === 'json') {
-            try {
-              inputs[input.name] = JSON.parse(val);
-            } catch {
-              inputs[input.name] = val; // If parse failed before, keep as-is
-            }
-          } else {
-            inputs[input.name] = val;
-          }
-        }
 
         const cell = {
           cellId,
@@ -468,6 +451,7 @@
         // Re-render the notebook
         const output = document.getElementById('outputPane');
         output.innerHTML = renderNotebook(selectedFunction.id);
+        attachCellEventListeners();
       } catch (err) {
         const output = document.getElementById('outputPane');
         output.innerHTML = `<div style="color: #f44336;"><strong>Error:</strong> ${escapeHtml(err.message)}</div>`;
