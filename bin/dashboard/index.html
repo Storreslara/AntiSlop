@@ -47,7 +47,7 @@
     .banner { padding: 0.75rem; border-left: 3px solid; margin-bottom: 1rem; background: #f5f5f5; }
     .banner-timeout { border-color: #ff9800; color: #e65100; }
     .banner-truncated { border-color: #2196f3; color: #0d47a1; }
-    .exit-code { color: #f44336; font-weight: 500; }
+    .exit-code { font-weight: 500; }
     .spinner { display: inline-block; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .no-functions { color: #999; font-style: italic; padding: 1rem; }
@@ -69,19 +69,26 @@
     let bundles = [];
     let selectedBundle = null;
     let selectedFunction = null;
+    let selectedGroup = null;
+    let fetchError = null;
 
     async function fetchBundles() {
+      const response = await fetch('/api/bundles', {
+        headers: token ? { 'X-Antislop-Token': token } : {},
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    }
+
+    async function refreshBundles() {
       try {
-        const response = await fetch('/api/bundles', {
-          headers: token ? { 'X-Antislop-Token': token } : {},
-        });
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return await response.json();
+        bundles = await fetchBundles();
+        fetchError = null;
       } catch (err) {
         console.error('Error fetching bundles:', err);
-        return [];
+        fetchError = err.message;
       }
     }
 
@@ -96,11 +103,13 @@
     function renderLeftRail() {
       const rail = document.getElementById('leftRail');
       if (bundles.length === 0) {
-        rail.innerHTML = '<div style="padding: 1rem; color: #999;">No bundles</div>';
+        rail.innerHTML = fetchError
+          ? `<div style="padding: 1rem; color: #f44336;">Error loading microworld bundles: ${escapeHtml(fetchError)}</div>`
+          : '<div style="padding: 1rem; color: #999;">No microworld bundles</div>';
         return;
       }
       rail.innerHTML = bundles.map((b) => `
-        <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${b.id}">
+        <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
           <div>
             <span class="status-indicator ${getStatusClass(b.status)}"></span>
             <span class="bundle-title">${escapeHtml(b.unit)}</span>
@@ -114,6 +123,7 @@
           const bundleId = item.getAttribute('data-bundle-id');
           selectedBundle = bundles.find(b => b.id === bundleId);
           selectedFunction = null;
+          selectedGroup = null;
           render();
         });
       });
@@ -123,17 +133,29 @@
       const content = document.getElementById('contentArea');
 
       if (!selectedBundle) {
-        content.innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-text">
-              <p>Select a microworld from the left panel to begin.</p>
-              <p style="font-size: 0.9rem; color: #999;">
-                Microworlds appear in <span class="code">microworlds/&lt;unit-slug&gt;/manifest.json</span>
-                when agents author them.
-              </p>
+        if (bundles.length === 0) {
+          content.innerHTML = fetchError
+            ? `<div class="empty-state"><div class="empty-state-text">
+                <p style="color: #f44336;">Could not load microworld bundles: ${escapeHtml(fetchError)}</p>
+              </div></div>`
+            : `<div class="empty-state"><div class="empty-state-text">
+                <p>No microworld bundles yet.</p>
+                <p style="font-size: 0.9rem; color: #999;">
+                  A microworld bundle is a working-tree directory under
+                  <span class="code">microworlds/&lt;unit-slug&gt;/</span> with a
+                  <span class="code">manifest.json</span> and a <span class="code">run.sh</span> check,
+                  authored by an agent while implementing a unit.
+                </p>
+              </div></div>`;
+        } else {
+          content.innerHTML = `
+            <div class="empty-state">
+              <div class="empty-state-text">
+                <p>Select a microworld from the left panel to begin.</p>
+              </div>
             </div>
-          </div>
-        `;
+          `;
+        }
         return;
       }
 
@@ -154,15 +176,24 @@
         if (!groups[grp]) groups[grp] = [];
         groups[grp].push(fn);
       }
+      const groupNames = Object.keys(groups);
+      if (!selectedGroup || !groups[selectedGroup]) {
+        selectedGroup = groupNames[0];
+      }
 
       let html = `<div class="tabs-container">`;
-      for (const [groupName, functions] of Object.entries(groups)) {
-        for (const fn of functions) {
-          const isActive = selectedFunction?.id === fn.id;
-          html += `<button class="tab-button ${isActive ? 'active' : ''}" data-fn-id="${fn.id}">
-            ${escapeHtml(fn.label || fn.id)}
-          </button>`;
-        }
+      for (const groupName of groupNames) {
+        const isActive = groupName === selectedGroup;
+        html += `<button class="tab-button ${isActive ? 'active' : ''}" data-group-name="${escapeHtml(groupName)}">${escapeHtml(groupName)}</button>`;
+      }
+      html += `</div>`;
+
+      html += `<div class="tabs-container">`;
+      for (const fn of groups[selectedGroup]) {
+        const isActive = selectedFunction?.id === fn.id;
+        html += `<button class="tab-button ${isActive ? 'active' : ''}" data-fn-id="${escapeHtml(fn.id)}">
+          ${escapeHtml(fn.label || fn.id)}
+        </button>`;
       }
       html += `</div>`;
 
@@ -181,10 +212,10 @@
           </div>`;
         }
 
+        html += `<form id="inputForm">`;
         if (inputs.length === 0) {
           html += `<p style="color: #999;">No inputs required.</p>`;
         } else {
-          html += `<form id="inputForm">`;
           for (const input of inputs) {
             html += `<div class="form-group">`;
             html += `<label>
@@ -192,21 +223,25 @@
               ${input.description ? `<span class="desc">${escapeHtml(input.description)}</span>` : ''}
             </label>`;
 
-            const value = input.default ? JSON.stringify(input.default) : '';
+            const hasDefault = input.default !== undefined;
             if (input.type === 'string') {
+              const value = hasDefault ? String(input.default) : '';
               html += `<input type="text" name="${escapeHtml(input.name)}" value="${escapeHtml(value)}" />`;
             } else if (input.type === 'number') {
+              const value = hasDefault ? String(input.default) : '';
               html += `<input type="number" name="${escapeHtml(input.name)}" value="${escapeHtml(value)}" />`;
             } else if (input.type === 'json') {
+              const value = hasDefault ? JSON.stringify(input.default) : '';
               html += `<textarea name="${escapeHtml(input.name)}">${escapeHtml(value)}</textarea>`;
             } else if (input.type === 'file') {
+              const value = hasDefault ? String(input.default) : '';
               html += `<input type="text" name="${escapeHtml(input.name)}" value="${escapeHtml(value)}" placeholder="file path" />`;
             }
             html += `</div>`;
           }
-          html += `<button type="submit" class="submit-btn" ${fn.disabled ? 'disabled' : ''}>Invoke</button>`;
-          html += `</form>`;
         }
+        html += `<button type="submit" class="submit-btn" ${fn.disabled ? 'disabled' : ''}>Invoke</button>`;
+        html += `</form>`;
 
         html += `</div>`;
         html += `<div class="output-pane" id="outputPane"></div>`;
@@ -217,10 +252,18 @@
 
       content.innerHTML = html;
 
-      content.querySelectorAll('.tab-button').forEach(btn => {
+      content.querySelectorAll('.tab-button[data-group-name]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedGroup = btn.getAttribute('data-group-name');
+          selectedFunction = null;
+          render();
+        });
+      });
+
+      content.querySelectorAll('.tab-button[data-fn-id]').forEach(btn => {
         btn.addEventListener('click', () => {
           const fnId = btn.getAttribute('data-fn-id');
-          selectedFunction = selectedBundle.functions.find(f => f.id === fnId);
+          selectedFunction = groups[selectedGroup].find(f => f.id === fnId);
           render();
         });
       });
@@ -336,11 +379,13 @@
     function escapeHtml(text) {
       const div = document.createElement('div');
       div.textContent = text;
-      return div.innerHTML;
+      return div.innerHTML
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
     async function init() {
-      bundles = await fetchBundles();
+      await refreshBundles();
       if (bundles.length > 0) {
         selectedBundle = bundles[0];
         if (selectedBundle.functions && selectedBundle.functions.length > 0) {
@@ -348,6 +393,15 @@
         }
       }
       render();
+      setInterval(pollBundles, 5000);
+    }
+
+    async function pollBundles() {
+      await refreshBundles();
+      if (selectedBundle) {
+        selectedBundle = bundles.find(b => b.id === selectedBundle.id) || selectedBundle;
+      }
+      renderLeftRail();
     }
 
     function render() {

@@ -8,9 +8,60 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
+const vm = require('vm');
 const { startServer } = require('../bin/dashboard/server');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
+
+// Executes the client's inline module script (extracted from index.html)
+// against a minimal stub DOM, with a stubbed /api/bundles response — proves
+// actual rendered output, not just source-text presence.
+function makeFakeDiv() {
+  return {
+    _text: '',
+    set textContent(v) { this._text = String(v); },
+    get textContent() { return this._text; },
+    get innerHTML() {
+      return this._text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+  };
+}
+
+function makeFakeElement() {
+  return {
+    _html: '',
+    set innerHTML(v) { this._html = v; },
+    get innerHTML() { return this._html; },
+    querySelectorAll() { return []; },
+  };
+}
+
+async function renderClient(bundlesData) {
+  const html = fs.readFileSync(path.join(REPO_ROOT, 'bin/dashboard/index.html'), 'utf8');
+  const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+  if (!match) throw new Error('could not find inline module script in index.html');
+
+  const leftRail = makeFakeElement();
+  const contentArea = makeFakeElement();
+  const elementsById = { leftRail, contentArea };
+  const sandbox = {
+    document: {
+      getElementById: (id) => elementsById[id] || null,
+      createElement: () => makeFakeDiv(),
+    },
+    location: { search: '' },
+    URLSearchParams,
+    console,
+    fetch: async () => ({ ok: true, status: 200, json: async () => bundlesData }),
+    alert: () => {},
+    setInterval: () => {},
+    clearInterval: () => {},
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(match[1], sandbox);
+  await new Promise((r) => setTimeout(r, 50));
+  return { leftRailHtml: leftRail.innerHTML, contentHtml: contentArea.innerHTML };
+}
 
 function httpRequest(url, { token, method = 'GET' } = {}) {
   return new Promise((resolve, reject) => {
@@ -141,6 +192,51 @@ async function runTests() {
     fs.rmSync(tmpDir, { recursive: true });
   } catch (err) {
     failures.push(`Test (d) ERROR: ${err.message}`);
+  }
+
+  // Test (e): a manifest with 2+ groups renders one tab per group
+  console.log('Test (e): group tabs render distinguishable group names...');
+  try {
+    const bundlesData = [{
+      id: 'test-bundle',
+      unit: 'test-bundle',
+      description: 'test',
+      status: null,
+      functions: [
+        { id: 'fn1', group: 'Parser', label: 'Parse' },
+        { id: 'fn2', group: 'Validator', label: 'Validate' },
+      ],
+    }];
+    const { contentHtml } = await renderClient(bundlesData);
+    if (!contentHtml.includes('data-group-name="Parser"') || !contentHtml.includes('data-group-name="Validator"')) {
+      failures.push(`Test (e) FAILED: distinct group tabs not found: ${contentHtml.slice(0, 400)}`);
+    } else {
+      console.log('  ✓ Test (e) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (e) ERROR: ${err.message}`);
+  }
+
+  // Test (f): `default` prefills a string input's value
+  console.log('Test (f): default prefill for a string input...');
+  try {
+    const bundlesData = [{
+      id: 'test-bundle-2',
+      unit: 'test-bundle-2',
+      description: 'test',
+      status: null,
+      functions: [
+        { id: 'fn1', group: 'Group', label: 'Fn', inputs: [{ name: 'greeting', type: 'string', default: 'world' }] },
+      ],
+    }];
+    const { contentHtml } = await renderClient(bundlesData);
+    if (!contentHtml.includes('value="world"')) {
+      failures.push(`Test (f) FAILED: string default not prefilled: ${contentHtml.slice(0, 500)}`);
+    } else {
+      console.log('  ✓ Test (f) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (f) ERROR: ${err.message}`);
   }
 
   console.log();
