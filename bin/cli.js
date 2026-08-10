@@ -558,9 +558,8 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Third verdict: insufficient-context',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
-      'Microworld bundles (format and the check contract)',
     ],
-    drop: [],
+    drop: ['Microworld bundles (format and the check contract)'],
   },
   'lead-programmer': {
     include: [
