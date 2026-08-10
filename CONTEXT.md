@@ -193,6 +193,16 @@ the reviewer's `sonnet`/`opus` model is
   [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
 
+**Mutation-proved**:
+(unit #305, 2026-08-09) — a test or acceptance
+  criterion whose non-vacuity has been verified by running it against a
+  deliberately corrupted ("mutated") copy of the artifact. The mutated copy's
+  test failures prove the check detects real problems, preventing acceptance
+  criteria from passing while detecting nothing. Traces back to a defect
+  lineage (commits `028bc23`, `8cedabd`, `22f5bb2`) where prior tests passed
+  without catching actual failures.
+_Avoid_: vacuous test, untested criterion
+
 **Implementer-tier ratchet**:
 the `.fail` disqualifier on lead-programmer
   tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from a
