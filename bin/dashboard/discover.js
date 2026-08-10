@@ -54,6 +54,7 @@ async function discover(projectRoot) {
     // Extract unit and description from manifest
     const unit = manifest.unit || unitSlug;
     const description = manifest.description || '';
+    const timeoutSeconds = manifest.timeoutSeconds || 60;
 
     // Validate and process functions[]
     const functions = [];
@@ -122,6 +123,7 @@ async function discover(projectRoot) {
       unit,
       source: 'working',
       description,
+      timeoutSeconds,
       disabled: hasDisabledFunctions,
       disabledReason: hasDisabledFunctions ? 'some functions cannot be invoked' : '',
       functions,

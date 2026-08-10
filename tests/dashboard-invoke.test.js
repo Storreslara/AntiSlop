@@ -200,7 +200,28 @@ exec cat`;
     const tmpDir = makeTestProject('c');
     const sleepScript = `#!/bin/bash
 sleep 10`;
-    makeBundle(tmpDir, 'sleep-unit', { sleep: sleepScript });
+    const bundleDir = path.join(tmpDir, 'microworlds', 'sleep-unit');
+    fs.mkdirSync(bundleDir, { recursive: true });
+    const entryPath = path.join(bundleDir, 'sleep.sh');
+    fs.writeFileSync(entryPath, sleepScript);
+    fs.chmodSync(entryPath, 0o755);
+
+    const manifest = {
+      unit: 'sleep-unit',
+      description: 'Sleep test bundle',
+      timeoutSeconds: 1,
+      functions: [
+        {
+          id: 'sleep',
+          group: 'TestGroup',
+          label: 'Sleep',
+          entry: 'sleep.sh',
+          description: 'Sleep function',
+          inputs: [],
+        },
+      ],
+    };
+    fs.writeFileSync(path.join(bundleDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
 
     const { server, token } = startServer(tmpDir, 0);
     await new Promise((r) => setTimeout(r, 100));
@@ -224,11 +245,6 @@ sleep 10`;
       const resp = JSON.parse(result.body);
       if (!resp.timedOut) {
         failures.push(`Test (c) FAILED: expected timedOut:true, got ${resp.timedOut}`);
-      } else if (resp.durationMs < 200) {
-        // Should have timed out at ~60s but our test uses a 1s default
-        // Actually looking at the manifest, we need to set timeoutSeconds
-        console.log(`  ℹ Test (c) ran for ${resp.durationMs}ms (timing test)`);
-        console.log('  ✓ Test (c) passed');
       } else {
         console.log('  ✓ Test (c) passed');
       }
