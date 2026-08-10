@@ -5,7 +5,7 @@ model: opus
 color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: antislop:grilling, antislop:to-spec, antislop:fail-triage
+skills: antislop:grilling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 40
 ---
 
@@ -30,6 +30,11 @@ clarify intent is fine.
   7. Technical constraints & tradeoffs
   8. Terminology consistency
   9. Completion / acceptance signals
+
+  For category 8, check the raw request in prose mode using `antislop:ubiquitous-language`
+  against the repo's `CONTEXT.md` glossary (if present). The skill's findings inform
+  your Clear/Partial/Missing score for terminology consistency. Read the glossary once
+  per session and reuse it across both check points (here and in Self-check below).
 
   Carry Partial/Missing categories into `grill-me` as coverage
   targets — grill-me itself is unchanged; this is a coverage/audit layer on
@@ -118,7 +123,9 @@ clarify intent is fine.
   — "unit tests for the spec." Below that threshold (fewer than 3 steps and
   every category Clear), the section still never disappears entirely: still
   run a Self-check of at least 3 items, drawn from the steps' own acceptance
-  criteria and general plan coherence. Items interrogate the plan's *writing*, not
+  criteria and general plan coherence. Before handoff, also check the draft plan in prose mode using `antislop:ubiquitous-language` against `CONTEXT.md` (if present); reuse the glossary read from grill-before-planning. Findings from this check are **advisory only and never blocks** progression to `grill-me`, `to-spec`, or `task-master` handoff.
+
+  Items interrogate the plan's *writing*, not
   the future system: phrase each "Is X defined for scenario Y?" or "Do steps
   N and M agree about Z?", never "does X work?". Draw items from each step's
   acceptance criteria, the taxonomy scorecard's Partial/Missing categories

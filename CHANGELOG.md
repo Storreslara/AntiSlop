@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.3] - 2026-08-10
+
+### Changed
+- **Wire `spec-master`'s consumption of ubiquitous-language skill (issue #304).** Amend `agents/spec-master.md` to check the raw request during grill-before-planning and the draft plan during Self-check in prose mode against `CONTEXT.md` glossary, grounding category 8 (Terminology consistency) in actual glossary definitions. Findings are advisory-only and never block progression. Read glossary once per session and reuse across both check points.
+
 ## [0.31.2] - 2026-08-09
 
 ### Changed

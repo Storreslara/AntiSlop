@@ -9,7 +9,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.2",
+  "pluginVersion": "0.31.3",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -50,7 +50,7 @@
     ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
     ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
     ".claude/agents/scribe.md": "52abf7cddd4e8046989d07419d4fde6291189a5d981af006be2bddc90f9693bf",
-    ".claude/agents/spec-master.md": "52e39745da4c18aaa1ebe1e55fea3be92b03fbf5f78f21fdb1d74383a8d00251",
+    ".claude/agents/spec-master.md": "0e32c62c28a1bed6bf5dc55a423841dc1a3bc7bb65c6edb9ba585ced0ec87cdc",
     ".claude/agents/task-master.md": "6db54588aa4c2fe144b56097a5613262f389c1670ae797e68f845a00abdc41b4",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/persona-protocol.md": "36c860e44d8b1e5b47f9d2d76eb36542c0b6d67fa623195a2ab849a2b8eaf4ea",
