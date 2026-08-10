@@ -444,20 +444,20 @@ direct addressing possible instead of a multi-hop relay.
 
 By default, dispatch the `Agent` tool with no `name:` parameter. An unnamed dispatch from the main session returns its full result to you automatically on completion. A **named** dispatch does not — completion surfaces only as a content-free idle notification, and the report exists only if the subagent itself called `SendMessage`. This is a key asymmetry: one dispatch style auto-returns, the other requires explicit collection.
 
-The auto-notification is **not** a property to rely on when a persona dispatches its own subagent. Measured while authoring this spec: three unnamed subagents dispatched by a teammate all completed without notifying their dispatcher, each returning "had no active task" when later resumed. A persona that spawns its own subagent must therefore collect the result explicitly rather than waiting to be told, which is the same conclusion the shared protocol's "there is no self-wake" section already reaches for background `Bash`.
+The auto-notification is **not** a property to rely on when a persona dispatches its own subagent. This project has observed: three unnamed subagents dispatched by a teammate all completed without notifying their dispatcher, each returning "had no active task" when later resumed. A persona that spawns its own subagent must therefore collect the result explicitly rather than waiting to be told, which is the same conclusion the shared protocol's "there is no self-wake" section already reaches for background `Bash`.
 
 **Therefore, name a dispatch only when genuine mid-flight addressability is needed** — a long-running teammate you must query or re-task mid-way through — and leave it unnamed otherwise. When you do name one, say so explicitly in the dispatch prompt and require the `SendMessage` report explicitly, rather than relying on the persona remembering on its own.
 
-A named dispatch that ends with no report is recovered by `SendMessage`-ing it by name, never by re-`Agent`-ing that name (which spawns an unrelated sibling). This recovery path is already stated in the "If a feature team is active" section (the `SendMessage` resume-by-name mechanics) and must not be duplicated, only cross-referenced.
+A named dispatch that ends with no report is recovered the same way as any named teammate — see "If a feature team is active" below for the resume-by-name mechanics.
 
-**Standing exception:** the 2-FAIL-cap / debug-spec nested-dispatch scenario at lines 437-440 above, which requires explicit naming for mid-flight addressability. That case is the only exception to the default-unnamed rule.
+**Standing exception:** the 2-FAIL-cap / debug-spec nested-dispatch scenario described in "Nested dispatches (a persona spawning its own subagent)" above, which requires explicit naming for mid-flight addressability. That is the only case where naming is mandatory rather than discretionary.
 
 ### Deferred: mechanical report-loss backstop
 
-The briefing asked whether a hook could detect a named agent's `SubagentStop` with no prior `SendMessage` and warn. Findings:
+Investigated: whether a hook could detect a named agent's `SubagentStop` with no prior `SendMessage` and warn. Findings:
 
 - `hooks/hooks.json` today registers `PreToolUse` matchers for `Write|Edit`, `Agent` and `Bash` only. There is no `SendMessage` matcher, and no hook in this repo has ever observed that tool.
-- The `SubagentStop` payload carries `agent_type` and `agent_id`, so a hook *could* distinguish a named dispatch from an unnamed one: by design, `agent_type` for a named dispatch is a string that resolves to no persona in `personaSelection`, while for an unnamed one it resolves to a known persona.
+- The `SubagentStop` payload carries `agent_type` and `agent_id`, so a hook *could* distinguish a named dispatch from an unnamed one — found empirically, not guaranteed by design: a named dispatch's `agent_type` is not a persona name (it is the raw dispatch name given in the dispatch prompt), while an unnamed one's is the persona-derived form.
 - A backstop would therefore need: a new `PreToolUse` matcher on `SendMessage` writing a per-identity "reported" marker, plus a new `stop-gate.sh` branch that warns when a non-persona `agent_type` stops with no such marker.
 
 **Recommendation: defer, and record the deferral.** Two reasons, both concrete. First, the premise is unverified — that a `PreToolUse` matcher fires on `SendMessage` at all is an assumption about the harness, and this project has already found one place where an assumption about harness identity was wrong. Second, the failure mode it guards is fully removed at the source by the "default unnamed" rule above for every dispatch that does not need a name, and for the few that do, the dispatch prompt now carries the explicit requirement. Building a new cross-hook state file and a new matcher to catch a residue of a residue is disproportionate. If the practice recurs after this rule lands, the design above is the starting point for future work.
