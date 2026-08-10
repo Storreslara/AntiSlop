@@ -436,3 +436,27 @@ normal FAIL routes the defect list to
   not specific to the review-join feature. See `docs/plans/2026-08-07-per-unit-review-join.md`
   CHK18 (line 1249) for the generalization.
 
+**message-resume**:
+compact synonym for "resume-by-name via `SendMessage`" — the mechanism for
+  continuing work with an existing agent by sending it a message instead of
+  spawning a fresh `Agent` dispatch. Disciplined by unit-dispatch rules (see
+  [[F9 convention]] and "Reviewer re-tasking discipline" in `agents/orchestrator.md`).
+_Avoid_: resume-by-name via SendMessage (use the compact form in the glossary context)
+
+**roster**:
+the collection of addressable **Agent** entities currently active in a
+  session, identified by name. A bare-name `SendMessage` resolves to the most
+  recent holder of that name. Before re-using a name to message an existing
+  agent, confirm its dispatch unit via direct query rather than via a disk
+  lookup (review markers are keyed by unit id, not agent name). See
+  "Check the roster before dispatching" in `agents/orchestrator.md:139`.
+
+**gh-304 dual-marker incident**:
+(unit #307, 2026-08-09) — a defect case
+  where a bare-name `SendMessage` reached an idle reviewer session from an
+  unrelated spec/plan, causing that session to perform a genuine review and
+  write a conflicting marker for a different unit. Motivated the "Reviewer
+  re-tasking discipline" rule: a different unit always requires a fresh `Agent`
+  dispatch (writing its own review-join stamp), never a message-resume. See
+  `agents/orchestrator.md:137` and the history at commit `b9764de` (unit #311).
+
