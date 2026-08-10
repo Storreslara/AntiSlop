@@ -290,6 +290,36 @@ first-party skill for `reviewer`, a detail-driven
   after the verdict line. Runs inline-only, as part of the single reviewer
   dispatch — there is no separate fable advisory pass.
 
+**`ubiquitous-language` skill**:
+a registered skill that detects
+  terminology drift against the canonical glossary (`CONTEXT.md`) using three
+  lenses: (a) a glossary term used with a different meaning, (b) a new
+  synonym for an already-defined term, (c) a load-bearing new domain term
+  with no glossary entry. Advisory only; never gates. Available in two input
+  modes: `diff mode` (for `reviewer`) and `prose mode` (for `spec-master`).
+  Replaces the spec-only definition at
+  `docs/plans/2026-07-28-microworlds-ubiquitous-language-human-review.md` lines
+  568-629 (issue #129) by adding `prose mode` and wiring both modes into
+  `spec-master`'s workflow (issues #130-131).
+
+**Prose mode**:
+input mode for the `ubiquitous-language` skill,
+  operating on natural-language requests or draft specs. Consumes the input,
+  applies the three drift lenses, and reports findings anchored on quoted
+  spans or step/heading references. Advisory only; never blocks progression
+  through `grill-me`, `to-spec`, or handoff to `task-master`. Used by
+  `spec-master` at two pipeline points: category-8 ("Terminology
+  consistency") grilling and Self-check on the draft plan. Complementary to
+  **Diff mode**.
+
+**Diff mode**:
+input mode for the `ubiquitous-language` skill,
+  operating on a git diff (file changes). Consumes changed code/docs, applies
+  the three drift lenses, and reports findings anchored on `file:line`
+  references. Advisory only; never flips PASS/FAIL and never adds a new FAIL
+  ground. Used by `reviewer` as a post-verdict advisory section, appended
+  after the verdict line. Complementary to **Prose mode**.
+
 **`disable-model-invocation` flag**:
 a hard, mode-independent skill
   configuration flag that removes a skill from context in every mode
