@@ -11,9 +11,7 @@ a teammate; spec-master/task-master/scribe/reviewer join if they exist;
 researcher only if the task is novel and it exists. Teammates spawn their own foreground
 explorer subagent for ad-hoc lookups; add explorer as a named teammate only
 when exploration is itself a standalone parallel workstream, not a one-off
-lookup. If `reviewer` doesn't exist for this project, say so up front and do
-the lightweight sanity-check fallback described in orchestrator.md's "if no
-reviewer persona exists" — don't silently skip the done-check.
+lookup. If a `reviewer` teammate exists, spawn it under exactly the name `reviewer` and no variant — any other name silently costs the dispatch its marker write, which this command already requires at `:40-43`. If there is no reviewer teammate for this project, say so up front and do the lightweight sanity-check fallback described in orchestrator.md's "if no reviewer persona exists" — don't silently skip the done-check.
 
 **GATE**: require spec-master's finalized spec, sliced by task-master into
 dispatch-ready units, to name every affected file and give each step a

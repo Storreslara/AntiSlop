@@ -131,6 +131,9 @@ review flag in that same turn. The pending-review flag's `defer:` is sticky
 `SubagentStop` clears it), so this is a **one-time** write per unit, not
 something to repeat next turn — that repetition is exactly the churn this
 convention exists to eliminate.
+
+**Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other name causes the dispatch to lose both marker-write and flag-clear privileges, silently producing a failed review that persists in no durable record. `start-feature-team.md` enforces this discipline at team-creation time. Do not dispatch a reviewer under a custom name such as `rev-302` — the grant matcher will refuse it the privileges it needs.
+
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
 sliced issue's constraints / affected-files / rationale (the spec-step text
