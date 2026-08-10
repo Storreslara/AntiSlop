@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.31.2] - 2026-08-09
+
+### Changed
+- **Normalize `CONTEXT.md` to canonical `CONTEXT-FORMAT.md` shape (issue #303).** Convert flat `- **Term** — definition` list to structured format: `## Language` heading, `**Term**:` entries with definition on next line, and `_Avoid_:` synonym lines for near-synonym pairs. Preserves all 32 existing definitions verbatim. Adds `_Avoid_: clear-watermark` to `review-join stamp` entry (the retired predecessor mechanism). Scribe-owned unit; complements issue #302 (ubiquitous-language skill) and prepares glossary for issue #138 (Microworlds Step 8).
+
+
 ## [0.31.1] - 2026-08-09
 
 ### Added

@@ -4,12 +4,18 @@ Shared-language glossary for this repo. Canonical alongside `docs/adr/`;
 owned by `scribe` — keep current, don't let the wiki and this
 drift apart.
 
-- **ADAPT** — the one-time per-project setup process that turns the
+
+## Language
+
+**ADAPT**:
+the one-time per-project setup process that turns the
   plugin's generic personas/hooks/templates into a project-specific
   `.claude/` config. Split into a mechanical half (`bin/cli.js`, zero LLM
   cost in the common case) and a judgment half
   (`skills/install-antislop/SKILL.md`).
-- **Persona** — a subagent system prompt in `agents/*.md`. "Core" personas
+
+**Persona**:
+a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
   personas (spec-master, task-master, scribe, reviewer, researcher,
   milestone-auditor, agent-auditor) are selected per-project during ADAPT. `spec-master`
@@ -24,11 +30,14 @@ drift apart.
   surfaces observations; read-only and non-gating, it issues no verdict unlike `reviewer`
   and never audits the plan itself unlike `milestone-auditor`.
 
-- **Version-stamped file** — any ADAPT-copied file carrying a
+**Version-stamped file**:
+any ADAPT-copied file carrying a
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,
   which lets `bin/cli.js --update` tell "plugin's current version" from
   "what's on disk" and detect local edits via `fileHashes` without an LLM.
-- **`--update` semantics** — `bin/cli.js --update` is the mechanism for
+
+**`--update` semantics**:
+`bin/cli.js --update` is the mechanism for
   refreshing ADAPT-stamped files. Crucially, the `--check` flag is a
   force-the-loop control, not a dry-run: `--check` still writes files via
   `copyStampedBody` and still rewrites `persona-config.json`, unlike
@@ -37,20 +46,27 @@ drift apart.
   `<!-- antislop vX.Y.Z -->` stamp whenever the resolved plugin version
   differs from the stamp on disk, even when the mirror's body content is
   unchanged, retiring the prior hand-patch workaround.
-- **Substitution** — a placeholder in a shipped persona file (e.g.
+
+**Substitution**:
+a placeholder in a shipped persona file (e.g.
   `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`) resolved to a real
   value at ADAPT time and recorded in `.claude/persona-config.json`'s
   `substitutions` field.
-- **The Writer/Reviewer split** — the system's core safety property: the
+
+**The Writer/Reviewer split**:
+the system's core safety property: the
   `lead-programmer` writes code, but only the independent `reviewer`
   (which did not write the code) can mark a unit done (`.claude/reviewed/*.pass`).
   Enforced mechanically by `stop-gate.sh` and `reviewer-route-gate.sh`, not
   just by persona instruction.
-- **Gate** — a hook script that mechanically blocks an action rather than
+
+**Gate**:
+a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
-- **Removed rather than inspected** (unit #272, 2026-08-08, three-instance
-  pattern named) — a standing principle for `reviewed-path-gate.sh`'s
+
+**Removed rather than inspected**:
+pattern named) — a standing principle for `reviewed-path-gate.sh`'s
   program-allowlist design: any external program whose write/mutation surface
   cannot be fully characterized by text-based scanning of its command-line
   arguments (due to implicit default behaviors, sub-protocols carrying mutations
@@ -63,7 +79,9 @@ drift apart.
   forms creates a false sense of security without actually bounding the surface;
   removal is the sound choice. See `docs/plans/2026-08-07-gate-audit-t34-vacuity-and-gh-inventory.md`
   for specifics per program (not repeated here to avoid exploit-adjacent detail).
-- **Dispatch hygiene** — the **Gate** applied at the `PreToolUse`/`Agent`
+
+**Dispatch hygiene**:
+the **Gate** applied at the `PreToolUse`/`Agent`
   seam by `hooks/scripts/dispatch-hygiene.sh`: it checks a dispatch prompt
   *before* the spawn happens, rather than a turn's output at its end like
   `stop-gate.sh` does. Four checks: H1 an oversize prompt, H2 an inlined
@@ -89,8 +107,9 @@ drift apart.
   prove every written marker's id matches the unit being dispatched, so H3 is still
   best-effort rather than provably airtight — but the silent no-marker-at-all
   failure mode #153 documented is now closed, not merely aspirational.
-- **Adapter behavioural parity** (issue #202, 2026-08-01 efficiency pass 2,
-  Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
+
+**Adapter behavioural parity**:
+Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
   same observable behaviour as the main Claude Code hook, not merely that
   the same *text* is present. `tests/adapter-stop-gate-parity.test.sh`
   drives `hooks/scripts/stop-gate.sh` and both adapter ports
@@ -109,7 +128,9 @@ drift apart.
   presence, not runtime behaviour). See
   [modules/adapters.md](.claude/wiki/modules/adapters.md) and
   [modules/hooks.md](.claude/wiki/modules/hooks.md).
-- **clear-watermark** — **[Retired in 0.28.0; see review-join stamp below.]**
+
+**clear-watermark**:
+**[Retired in 0.28.0; see review-join stamp below.]**
   Historically, `.claude/.last-review-clear` was a zero-byte file whose mtime
   marked when the reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop
   grant branch) last succeeded, used as the reference point for detecting whether
@@ -121,7 +142,9 @@ drift apart.
   by the **review-join stamp** (see below, and [ADR-0016](docs/adr/0016-per-unit-review-join.md))
   to close concurrency defects and unify marker validation. The old file becomes
   inert once nothing reads it and requires no migration.
-- **review-join stamp** — (0.28.0+) `.claude/.review-join.<unit-id>`, one per
+
+**review-join stamp**:
+(0.28.0+) `.claude/.review-join.<unit-id>`, one per
   unit currently under review, written by `reviewer-route-gate.sh` when a
   reviewer is dispatched and consumed by `stop-gate.sh` when that unit's verdict
   marker is found. Contains a single line with timestamp, unit id, and optional
@@ -129,7 +152,10 @@ drift apart.
   clear-watermark; enables per-unit verdict coupling without cross-dispatch
   interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md) for design
   and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
-- **Protocol excerpt** — the subset of `templates/persona-protocol.md`'s 16
+_Avoid_: clear-watermark
+
+**Protocol excerpt**:
+the subset of `templates/persona-protocol.md`'s 16
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
   `PROTOCOL_SECTIONS_BY_PERSONA` matrix (issue #190, 2026-08-01 efficiency
@@ -144,7 +170,9 @@ drift apart.
   reference copy a trimmed persona can read on demand (reversing the
   earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
   were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
-- **Measured reviewer tier** — the reviewer's `sonnet`/`opus` model is
+
+**Measured reviewer tier**:
+the reviewer's `sonnet`/`opus` model is
   decided at reviewer-*dispatch* time (not pre-implementation) by
   `hooks/scripts/reviewer-tier.sh <task-id> <git-range>`, a deterministic,
   fail-closed script (not a registered hook — deliberately absent from
@@ -162,13 +190,17 @@ drift apart.
   commits (13.3%), inside the predicted band. See
   [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
   amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
-- **Implementer-tier ratchet** — the `.fail` disqualifier on lead-programmer
+
+**Implementer-tier ratchet**:
+the `.fail` disqualifier on lead-programmer
   tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from a
   prior FAIL verdict) permanently removes access to cheaper tiers, forcing
   `sonnet`→`opus` or `haiku`→`sonnet` on re-attempt. This ratchet expires on a
   subsequent verified PASS marker for that unit (unit #233). Distinct from the
   reviewer-gate ratchet.
-- **Reviewer-gate ratchet** — the `.fail` disqualifier on the reviewer's own
+
+**Reviewer-gate ratchet**:
+the `.fail` disqualifier on the reviewer's own
   model eligibility. A unit's `.claude/reviewed/<task-id>.fail` record from the
   reviewer permanently forces `opus` on that unit's reviewer gate, regardless of
   whether a subsequent PASS marker exists. This ratchet never expires
@@ -176,24 +208,31 @@ drift apart.
   does not) preserves the core safety property: if a reviewer has once missed
   something on a cheaper tier, all future reviews run on the full-strength tier.
   Distinct from the implementer-tier ratchet.
-- **F9 convention (unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`:** When
+
+**F9 convention (unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`:**:
+When
   a reviewer dispatch encounters a missing constraint and signals
   `INSUFFICIENT-CONTEXT`, the orchestrator resumes the same reviewer session by
   name via `SendMessage`, quoting the constraint, instead of spawning a fresh
   dispatch. This does not count against the 2-FAIL cap, does not re-dispatch
   lead-programmer, and the standing pending-review flag stays in place.
-- **F11 convention (unit #242) — reuse-over-re-derivation by role:** When a
+
+**F11 convention (unit #242) — reuse-over-re-derivation by role:**:
+When a
   dispatch packet already contains a `## Pre-resolved context` blast-radius or
   structural answer, personas verify the specific doubted claim via `explorer`
   rather than re-deriving from scratch. Applies to lead-programmer,
   spec-master, and milestone-auditor only — the reviewer is explicitly exempt
   and always re-derives blast radius independently.
-- **The graph** — Code Review Graph, a third-party MCP server providing
+
+**The graph**:
+Code Review Graph, a third-party MCP server providing
   structural code queries (callers/callees, blast radius, architecture
   overview). Scoped to `explorer` alone, never project-wide — see
   [ADR 0001](docs/adr/0001-mcp-scoped-to-single-persona.md).
-- **Skills-library remediation completed** (2026-08-07, spec #245 / unit #255) —
-  all persona-declared skills are now reachable in every mode. The `disable-model-invocation`
+
+**Skills-library remediation completed**:
+all persona-declared skills are now reachable in every mode. The `disable-model-invocation`
   flag was stripped from `to-spec`, `to-tickets`, `handoff`, and
   `improve-codebase-architecture`; `grill-me` repointed to `grilling`; `implement`
   deleted; `domain-modeling` wired into `scribe`. Plugin cache refreshed to
@@ -203,18 +242,23 @@ drift apart.
   `improve-codebase-architecture`) is now formally documented in [ADR 0012](docs/adr/0012-vendored-skill-declared-deviations.md);
   [ADR 0005](docs/adr/0005-vendor-mattpocock-skills.md) amended to reference it.
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
-- **Upstream MCP tool naming gap** (recorded 2026-08-06) — code-review-graph
-  installer templates contain five MCP tool names lacking the `_tool` suffix
+
+**Upstream MCP tool naming gap**:
+installer templates contain five MCP tool names lacking the `_tool` suffix
   that the live MCP server actually exposes: `get_flow`, `list_graph_stats`,
   `get_community`, `list_flows`, `find_large_functions`. Seven occurrences in
   shipped SKILL.md files (`debug-issue`, `explore-codebase`, `refactor-safely`).
   Root cause is upstream installer content bug, not antislop defect. Now that
   these SKILL.md files are tracked/shipped, the gap is more visible and should
   be fixed in the installer itself.
-- **This repo's own ADAPT state** — this repo self-hosts the plugin it
+
+**This repo's own ADAPT state**:
+this repo self-hosts the plugin it
   ships (dogfooding). Its `.claude/persona-config.json` documents exactly
   which personas and substitutions this repo itself uses.
-- **`to-spec` skill** — vendored first-party skill (originally from Matt
+
+**`to-spec` skill**:
+vendored first-party skill (originally from Matt
   Pocock's `skills` repo, see `skills/THIRD-PARTY-NOTICES.md`), wired to
   `spec-master` via `antislop:to-spec`. Turns a finalized spec
   conversation into a single published spec (Problem Statement / Solution /
@@ -223,13 +267,17 @@ drift apart.
   sequentially: grill to resolve ambiguity, then to-spec to synthesize and
   publish. The template LAYERS on top of the v0.9.0 spec-kit format (Goal →
   Context → Clarifications → …), not replacing it.
-- **`pathfinder` skill** — first-party skill for `task-master`, derived from
+
+**`pathfinder` skill**:
+first-party skill for `task-master`, derived from
   Matt Pocock's `wayfinder` (adapted for dispatch, not a passthrough). Helps
   `task-master` build reliable, detailed, unambiguous dispatch tasks: one
   decision/one unit per ticket, refer-by-name, explicit blocking/ordering
   edges, precise acceptance criteria (enforces the machine-checkable-criteria
   rule). Ships via plugin-source `skills/pathfinder/SKILL.md` path.
-- **`roast-work` skill** — first-party skill for `reviewer`, a detail-driven
+
+**`roast-work` skill**:
+first-party skill for `reviewer`, a detail-driven
   critique rubric (contradictions, missing parts, logic gaps, security
   vulnerabilities, actionable feedback) written to Matt Pocock's quality bar.
   Advisory and non-gating only — PASS/FAIL stays determined by the
@@ -237,7 +285,9 @@ drift apart.
   never flips a verdict. Appended as a clearly-demarcated advisory section
   after the verdict line. Runs inline-only, as part of the single reviewer
   dispatch — there is no separate fable advisory pass.
-- **`disable-model-invocation` flag** — a hard, mode-independent skill
+
+**`disable-model-invocation` flag**:
+a hard, mode-independent skill
   configuration flag that removes a skill from context in every mode
   (direct invocation, teams mode, subagent context). A skill carrying
   `disable-model-invocation: true` in its frontmatter is entirely
@@ -246,7 +296,9 @@ drift apart.
   operational mode; this flag is a blanket removal. See unit #254 (2026-08-07)
   for the correction to this repo's prior documentation, which had stated
   the weaker (false) version: "not in teams mode only."
-- **Agent identity** — the possibly-namespaced wire form of a persona name,
+
+**Agent identity**:
+the possibly-namespaced wire form of a persona name,
   `[<namespace>:]<persona-name>`, appearing in hook payloads' `agent_type` and
   `subagent_type` fields. The gate hooks normalize identities to handle both
   bare dispatch (project-local copies) and namespaced dispatch (marketplace
@@ -261,15 +313,18 @@ drift apart.
   `ADR-0007` number itself is unused/retired: no such document exists or is
   planned (OQ-CF1, `docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md:2908-2917`,
   explicitly deferred out of scope for unit #244).
-- **FAIL routing (post-reviewer)** — normal FAIL routes the defect list to
+
+**FAIL routing (post-reviewer)**:
+normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
   record plus git log/git diff over fix-attempt commits, revised steps) then
   `task-master` re-derives dispatch instructions from the corrected spec.
   `task-master` is never a re-plan owner. Mid-flight "spec gap" signals also
   route back to `spec-master`.
-- **Blocked by a gate you do not own** (unit #265, 2026-08-08, protocol section
-  added) — When a hook or gate blocks you and the resolution is not yours to give,
+
+**Blocked by a gate you do not own**:
+added) — When a hook or gate blocks you and the resolution is not yours to give,
   there are exactly two legal responses: do what the gate asks (if that is your
   call) or report and wait. Metadata-only workarounds — `touch` to satisfy an
   existence check, mtime bumps, deleting/editing a gate's own state file,
@@ -279,14 +334,16 @@ drift apart.
   trail and are documented exits, not bypasses. If a gate's premise looks false,
   that is evidence of a gate defect and reporting it is the fix, not routing
   around it.
-- **Reviewer dispatch opening line** (unit #266, 2026-08-08, enforcement added)
-  — Every reviewer dispatch must open with `Unit: <task-id>` as its literal
+
+**Reviewer dispatch opening line**:
+— Every reviewer dispatch must open with `Unit: <task-id>` as its literal
   first non-blank line. `reviewer-route-gate.sh` reads exactly that line for
   task-id extraction; omitting it causes silent open-fail (the gate accepts the
   dispatch but router routing breaks). Disciplined by lead-programmer dispatch
   instruction template, checked by `dispatch-hygiene.sh` H4.
-- **Review-join stamp condition** (unit #266, 2026-08-08, prose corrected) —
-  The reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop branch on
+
+**Review-join stamp condition**:
+The reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop branch on
   `clear: true`) is now conditional on the dispatched unit holding a verdict.
   The `.claude/.review-join.<task-id>` stamp from the review-join sequence (issues
   #262-264) marks when a unit has received independent reviewer scrutiny; only
@@ -295,8 +352,9 @@ drift apart.
   closing the gap where a reviewer could auto-clear flags between re-runs of a
   fresh dispatch without having rendered a verdict. Enforced by
   `stop-gate.sh:188-198` when `$verdict_gate_mode` is `on` (the default).
-- **Source-artifact + render-step gating rule** (unit #265-267, 2026-08-08,
-  institutional lesson recorded) — A spec plan step that edits a source artifact
+
+**Source-artifact + render-step gating rule**:
+institutional lesson recorded) — A spec plan step that edits a source artifact
   (e.g., `templates/persona-protocol.md`) and a separate step that regenerates
   or ports its shipped copy (e.g., `.claude/agents/*.md` mirrors) **can never be
   gated independently** under this repo's `tests/validate.sh`. The mirror
@@ -310,3 +368,4 @@ drift apart.
   such pair, not just the first. This is a standing rule for all future specs,
   not specific to the review-join feature. See `docs/plans/2026-08-07-per-unit-review-join.md`
   CHK18 (line 1249) for the generalization.
+
