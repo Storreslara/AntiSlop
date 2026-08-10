@@ -398,7 +398,7 @@ this step.
 - `tests/ubiquitous-language.test.js` (new, name at implementer's discretion)
 - `tests/validate.sh` (registration)
 
-**Acceptance criteria**
+**Acceptance criteria (superseded — see 2026-08-09 addendum below)**
 - `bash tests/validate.sh` exits 0 with the new test registered, and its output
   names the new test (proving registration, not mere presence).
 - **Non-vacuity demonstration (required, recorded in the unit's commit
@@ -408,6 +408,85 @@ this step.
   A unit that cannot show the second output has not met this criterion.
 - The clean-input assertion is present and distinct from the drift assertion —
   the test file contains both a positive and a negative case, not one only.
+
+**2026-08-09 addendum — spec-gap ruling on gh-305 (Step 4 rewritten, not
+descoped-and-dropped).**
+
+`lead-programmer` escalated rather than build the original criteria above,
+with reasoning independently verified: `skills/ubiquitous-language/SKILL.md`
+is pure prose (an LLM persona reads and reasons over it) with **no
+programmatic entry point** — nothing to "stub" to make it "return no
+findings." The original criteria's premise — a callable check that can be
+swapped for a no-op — presupposes a scripted component this unit's actual
+deliverable does not have. This is not the same shape as `028bc23`
+(cited as R2's precedent): that commit's vacuous criterion was over a
+**scripted** mirror-drift check (`tests/cli-backfill.test.js`,
+regex-matching mirror-file staleness), a fully deterministic component. The
+ubiquitous-language *lens* is, by this plan's own Constitution check (P2),
+"irreducibly an LLM judgment" — P2's stated boundary already says P2
+"governs the plumbing, not the lens." Step 4 as originally written violated
+that boundary by demanding the lens itself be mechanically stubbed.
+
+Two routes were offered: (a) descope to test only the already-covered
+plumbing (skill file exists, both mode headings present — largely redundant
+with Step 1's own criteria, adding little), or (b) spec a new deterministic
+surrogate lens as a first-class component. (b) is rejected: a hand-rolled
+synonym matcher would not exercise the real LLM-driven check and could
+silently diverge from it — the exact vacuous-test failure mode this unit
+exists to prevent (Context, "Defect history"). Building real LLM-invoking
+test infrastructure (SDK, API key, network access in CI) is also rejected:
+`package.json` has `dependencies: null` / `devDependencies: null` (no such
+infra exists anywhere in this repo's tests), and adding it is a
+repo-infrastructure decision far outside one test-writing unit, not
+something an implementer — or this ruling — should introduce unilaterally.
+
+**Ruling: neither (a) nor (b) as offered. Step 4 is rewritten, not merely
+descoped**, to test something real and previously *uncovered* by Steps 1/3:
+the **structural completeness and mutual distinguishability** of
+`SKILL.md`'s documentation text, mutation-proved by corrupting a *copy* of
+the file (the only "stub" available for a prose artifact is the prose
+itself) — same spirit as `22f5bb2`'s "make ... states genuinely
+distinguishable," applied here to the three lenses' and two modes'
+descriptions. The lens's semantic correctness (does an LLM reading it
+actually catch drift) remains permanently untested by design, per P2 — this
+is not deferred to a future unit; it is the same standing boundary that
+already leaves `skills/fail-triage/` and `skills/roast-work/` with zero test
+coverage (Context, "Precedent check").
+
+**Revised affected files:** unchanged (`tests/ubiquitous-language.test.js`
+new, `tests/validate.sh` registration).
+
+**Revised acceptance criteria (replaces the three bullets struck above):**
+- `bash tests/validate.sh` exits 0 with the new test registered, and its
+  output names the new test (proving registration, not mere presence).
+- The test asserts, against the real `skills/ubiquitous-language/SKILL.md`:
+  1. Both mode headings are present (`diff`, `prose`) — consolidates Step 1's
+     ad hoc `validate.sh` greps into one regression-tested assertion.
+  2. The absent-glossary degradation text is present **and** names both
+     `CONTEXT.md` and `scribe` in the same paragraph (not merely present
+     somewhere in the file, per Step 1's unchanged-from-#129 requirement).
+  3. Each of the three lenses' descriptions is **mutually distinguishing**:
+     lens (b)'s paragraph contains "synonym" and lens (a)'s and (c)'s
+     paragraphs do not (and symmetric checks for each lens's own
+     identifying term), proving the three are not copy-pasted boilerplate.
+  4. The two modes' anchor forms are mutually distinguishing: diff mode's
+     section contains `file:line` and prose mode's section does not (and
+     prose mode's section contains "quoted span" or step/heading-number
+     language that diff mode's section does not).
+- **Non-vacuity demonstration (required, recorded in the unit's commit
+  message, replaces the stub-based form):** run the test twice — once
+  against the real `SKILL.md` (must exit 0), once against a **mutated
+  copy** with the degradation paragraph and the three lenses' distinguishing
+  language collapsed to identical boilerplate text (must exit non-zero).
+  Record both outputs. A unit that cannot show the second (failing) output
+  has not met this criterion. The banned `! … | grep -qE …` form (R2)
+  remains banned in both the new test and its registration.
+- The clean/drift-style positive-and-negative shape is preserved as
+  "real file passes / mutated file fails," not dropped.
+
+This ruling narrows only Step 4. Steps 1-3 (all merged and PASSed) are
+unaffected; no `.fail` cap counted against this escalation (no code was
+written).
 
 ## Open Questions
 
@@ -445,8 +524,13 @@ recorded in Clarifications above:
 - CHK9: Is the claim that line 1530's "own spec candidate" refers to
   `/explain-diff` rather than `ubiquitous-language` supported by cited text? —
   PASS (Context cites lines 1518-1531, items 2 and 4).
-- CHK10: Is it defined how a prose persona-body change is verified as effective?
-  — PASS (Step 4; OQ5).
+- CHK10: Is it defined how a prose persona-body change is verified as
+  effective? — PASS after revision (2026-08-09 gh-305 addendum) — revised in
+  place; the original stub-based framing presupposed a scripted check that
+  doesn't exist for this irreducibly-LLM-judgment lens (P2). Step 4 now
+  verifies structural completeness/distinguishability of the documentation
+  only; semantic effectiveness of the lens is permanently out of scope by
+  design, not deferred.
 - CHK11: Do Step 2 and Microworlds Step 8 agree on who writes `CONTEXT.md` and
   in what order? — PASS after revision — revised in place; the "Relationship to
   Microworlds Step 8" ordering contract plus R6, with a baseline-independent
