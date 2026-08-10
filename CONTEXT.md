@@ -66,7 +66,8 @@ a hook script that mechanically blocks an action rather than
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
 
 **Removed rather than inspected**:
-pattern named) — a standing principle for `reviewed-path-gate.sh`'s
+(unit #272, 2026-08-08, three-instance
+  pattern named) — a standing principle for `reviewed-path-gate.sh`'s
   program-allowlist design: any external program whose write/mutation surface
   cannot be fully characterized by text-based scanning of its command-line
   arguments (due to implicit default behaviors, sub-protocols carrying mutations
@@ -109,7 +110,8 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   failure mode #153 documented is now closed, not merely aspirational.
 
 **Adapter behavioural parity**:
-Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
+(issue #202, 2026-08-01 efficiency pass 2,
+  Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
   same observable behaviour as the main Claude Code hook, not merely that
   the same *text* is present. `tests/adapter-stop-gate-parity.test.sh`
   drives `hooks/scripts/stop-gate.sh` and both adapter ports
@@ -232,7 +234,8 @@ Code Review Graph, a third-party MCP server providing
   [ADR 0001](docs/adr/0001-mcp-scoped-to-single-persona.md).
 
 **Skills-library remediation completed**:
-all persona-declared skills are now reachable in every mode. The `disable-model-invocation`
+(2026-08-07, spec #245 / unit #255) —
+  all persona-declared skills are now reachable in every mode. The `disable-model-invocation`
   flag was stripped from `to-spec`, `to-tickets`, `handoff`, and
   `improve-codebase-architecture`; `grill-me` repointed to `grilling`; `implement`
   deleted; `domain-modeling` wired into `scribe`. Plugin cache refreshed to
@@ -244,7 +247,8 @@ all persona-declared skills are now reachable in every mode. The `disable-model-
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
 
 **Upstream MCP tool naming gap**:
-installer templates contain five MCP tool names lacking the `_tool` suffix
+(recorded 2026-08-06) — code-review-graph
+  installer templates contain five MCP tool names lacking the `_tool` suffix
   that the live MCP server actually exposes: `get_flow`, `list_graph_stats`,
   `get_community`, `list_flows`, `find_large_functions`. Seven occurrences in
   shipped SKILL.md files (`debug-issue`, `explore-codebase`, `refactor-safely`).
@@ -324,7 +328,8 @@ normal FAIL routes the defect list to
   route back to `spec-master`.
 
 **Blocked by a gate you do not own**:
-added) — When a hook or gate blocks you and the resolution is not yours to give,
+(unit #265, 2026-08-08, protocol section
+  added) — When a hook or gate blocks you and the resolution is not yours to give,
   there are exactly two legal responses: do what the gate asks (if that is your
   call) or report and wait. Metadata-only workarounds — `touch` to satisfy an
   existence check, mtime bumps, deleting/editing a gate's own state file,
@@ -336,14 +341,16 @@ added) — When a hook or gate blocks you and the resolution is not yours to giv
   around it.
 
 **Reviewer dispatch opening line**:
-— Every reviewer dispatch must open with `Unit: <task-id>` as its literal
+(unit #266, 2026-08-08, enforcement added)
+  — Every reviewer dispatch must open with `Unit: <task-id>` as its literal
   first non-blank line. `reviewer-route-gate.sh` reads exactly that line for
   task-id extraction; omitting it causes silent open-fail (the gate accepts the
   dispatch but router routing breaks). Disciplined by lead-programmer dispatch
   instruction template, checked by `dispatch-hygiene.sh` H4.
 
 **Review-join stamp condition**:
-The reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop branch on
+(unit #266, 2026-08-08, prose corrected) —
+  The reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop branch on
   `clear: true`) is now conditional on the dispatched unit holding a verdict.
   The `.claude/.review-join.<task-id>` stamp from the review-join sequence (issues
   #262-264) marks when a unit has received independent reviewer scrutiny; only
@@ -354,7 +361,8 @@ The reviewer's flag-clear path (via `stop-gate.sh`'s SubagentStop branch on
   `stop-gate.sh:188-198` when `$verdict_gate_mode` is `on` (the default).
 
 **Source-artifact + render-step gating rule**:
-institutional lesson recorded) — A spec plan step that edits a source artifact
+(unit #265-267, 2026-08-08,
+  institutional lesson recorded) — A spec plan step that edits a source artifact
   (e.g., `templates/persona-protocol.md`) and a separate step that regenerates
   or ports its shipped copy (e.g., `.claude/agents/*.md` mirrors) **can never be
   gated independently** under this repo's `tests/validate.sh`. The mirror
