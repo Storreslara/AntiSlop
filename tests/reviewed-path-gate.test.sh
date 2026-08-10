@@ -603,9 +603,6 @@ for c in "gh issue close 9 --comment \"see $marker/9.pass\"" \
   bash_case "case 32 allow-control: $c" allowed lead-programmer "$c"
 done
 echo
-exit "$fail"
-
-echo
 echo "-- path-gate-logs-grant-denied: audit logging for blocked non-reviewer access --"
 # Create a fixture with audit log and test grant-denied logging
 audit_fixture="$(mk audit-test "$cfg_reviewer")"
@@ -640,4 +637,5 @@ fi
 run "$(jq -n --arg a "lead-programmer" --arg c "printf x > $marker/9.pass" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$audit_fixture"
 : > "$audit_log"  # Reset before checking
 check "case 35 lead-programmer also blocked" blocked
-
+echo
+exit "$fail"

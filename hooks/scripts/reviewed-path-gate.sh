@@ -310,10 +310,10 @@ if [ -z "$agent_type" ]; then
   exit 2
 fi
 
+if [ -n "$write_tool" ]; then
   { printf '%s grant-denied hook=reviewed-path-gate identity=%s\n' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
       >> "$review_audit"; } 2>/dev/null || true
-if [ -n "$write_tool" ]; then
   echo "BLOCKED: '${agent_type}' may not write '${subject}' - only the reviewer creates .pass/.fail/.blocked records in .claude/reviewed/ (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Every Write/Edit into that directory is a write by definition, so the read-only exemption that applies to Bash commands does not apply here." >&2
   exit 2
 fi

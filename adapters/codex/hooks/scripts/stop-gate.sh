@@ -277,6 +277,22 @@ The only two legal responses to this block are writing the genuine verdict you a
   echo "Pending-review flags NOT cleared: '${agent_type}' is not this project's reviewer (unrecognized namespace; see the identity-drift line in .codex/review-audit.log). Recover by dispatching this project's own reviewer, or write 'defer: <reason>' / 'skip: <reason>' into .codex/.pending-review.<agent-id>." >&2
 fi
 
+# C2 also bites when the SubagentStop identity does not resolve to this
+# project's reviewer at all (a persona name other than "reviewer", not just
+# a foreign namespace of it) - that identity never enters the branch above,
+# so it needs its own, independent guard to leave a trace when flags are
+# left standing.
+if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" != "reviewer" ]; then
+  shopt -s nullglob
+  pending_flags_check=( "${project_dir}"/.codex/.pending-review.* )
+  shopt -u nullglob
+  if [ "${#pending_flags_check[@]}" -gt 0 ]; then
+    { printf '%s grant-denied hook=stop-gate identity=%s\n' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
+        >> "$review_audit"; } 2>/dev/null || true
+  fi
+fi
+
 if [ "$hook_event" = "Stop" ]; then
   shopt -s nullglob
   pending_flags=( "${project_dir}"/.codex/.pending-review.* )
