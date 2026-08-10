@@ -393,6 +393,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard server (Node) =="
+if node tests/dashboard-server.test.js; then
+  echo "OK   tests/dashboard-server.test.js"
+else
+  echo "FAIL tests/dashboard-server.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
