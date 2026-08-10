@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.8] - 2026-08-10
+
+### Added
+- **Microworld dashboard shell: CLI flag, HTTP server, discovery, token, empty state (issue #315, Step D2).** Add `--dashboard` and `--dashboard-port=<n>` CLI flags to `bin/cli.js` that start an HTTP server binding `127.0.0.1` only, printing the full URL with per-launch token on startup. Introduce `bin/dashboard/discover.js` to enumerate `microworlds/*/manifest.json`, reading `unit`, `description`, and `functions[]` from each; malformed JSON, missing manifests, missing/non-executable entries are marked `disabled: true` with a reason string (fail-soft always). Introduce `bin/dashboard/server.js` with routes `GET /` (placeholder HTML), `GET /api/bundles` (bundle list with auth); every request requires `?t=<token>` or `X-Antislop-Token` header (missing/wrong → `401`). Introduce `bin/dashboard/index.html` as a minimal placeholder showing an empty-state message when no bundles exist. Add comprehensive test suite `tests/dashboard-server.test.js` covering bundle discovery, authentication, error handling, concurrent servers, and feature graceful degradation. Register test in `tests/validate.sh`. No runtime npm dependencies (G4).
+
 ## [0.31.7] - 2026-08-10
 
 ### Fixed
