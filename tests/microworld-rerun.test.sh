@@ -209,4 +209,58 @@ else
   fail=1
 fi
 
+# (g) ADAPTER PARITY - both hand-adapted mirrors are EXECUTED with their own
+#     payload shapes and must reproduce the same exit-code asymmetry into their
+#     own dot-dir audit log. bash -n in validate.sh only proves they parse.
+adapter_payload() {
+  # $1 = adapter, $2 = project dir, $3 = absolute edited path
+  case "$1" in
+    cursor) printf '{"workspace_roots":["%s"],"file_path":"%s"}' "$2" "$3" ;;
+    codex)  printf '{"cwd":"%s","tool_input":{"file_path":"%s"}}' "$2" "$3" ;;
+  esac
+}
+
+for adapter in cursor codex; do
+  case "$adapter" in
+    cursor) dot=.cursor ;;
+    codex)  dot=.codex ;;
+  esac
+  script="adapters/$adapter/hooks/scripts/microworld-rerun.sh"
+  ok=true
+
+  dir="$(make_project "$adapter-pass")"
+  make_bundle "$dir" widget 'src/*.js' 0
+  rc=0
+  adapter_payload "$adapter" "$dir" "$dir/src/app.js" | bash "$script" >/dev/null 2>&1 || rc=$?
+  { [ "$rc" = 0 ] && grep -q 'unit=widget result=pass' "$dir/$dot/microworld-audit.log"; } || ok=false
+  pass_rc="$rc"
+
+  dir="$(make_project "$adapter-fail")"
+  make_bundle "$dir" widget 'src/*.js' 1
+  rc=0
+  adapter_payload "$adapter" "$dir" "$dir/src/app.js" | bash "$script" >/dev/null 2>&1 || rc=$?
+  { [ "$rc" = 2 ] && grep -q 'unit=widget result=fail' "$dir/$dot/microworld-audit.log"; } || ok=false
+
+  if [ "$ok" = true ]; then
+    echo "OK   (g) $adapter mirror: pass bundle -> exit 0, failing bundle -> exit 2, both logged to $dot/microworld-audit.log"
+  else
+    echo "FAIL (g) $adapter mirror parity broken (pass-rc=$pass_rc fail-rc=$rc)"
+    fail=1
+  fi
+done
+
+# (g2) the codex mirror's apply_patch fallback: no tool_input.file_path at all,
+#      paths parsed out of the patch headers instead
+dir="$(make_project codex-apply-patch)"
+make_bundle "$dir" widget 'src/*.js' 1
+rc=0
+printf '{"cwd":"%s","tool_name":"apply_patch","tool_input":{"input":"*** Update File: %s/src/app.js\\n"}}' \
+  "$dir" "$dir" | bash adapters/codex/hooks/scripts/microworld-rerun.sh >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 2 ] && grep -q 'unit=widget result=fail' "$dir/.codex/microworld-audit.log"; then
+  echo "OK   (g2) codex mirror resolves apply_patch header paths and still reports the failing bundle"
+else
+  echo "FAIL (g2) codex apply_patch path extraction broken (rc=$rc log=[$(cat "$dir/.codex/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
 exit "$fail"
