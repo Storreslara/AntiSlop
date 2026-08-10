@@ -285,6 +285,10 @@ the actual installed names on disk rather than trusting this list:
 - `skills/fail-triage/SKILL.md` is a first-party skill derived from
   [mattpocock/skills](https://github.com/mattpocock/skills)' `triage` skill,
   scoped to this project's post-FAIL debug-spec path (used by `spec-master`).
+- `skills/ubiquitous-language/SKILL.md` is a first-party skill that detects
+  terminology drift against a canonical glossary. Dual-mode: diff mode for
+  `reviewer` (file:line anchors), prose mode for `spec-master` (quoted-span
+  anchors). Advisory-only; never gates PASS/FAIL.
 - **arXiv MCP** — powers the `researcher` persona. Deliberately not pinned to a
   specific server here; `install-antislop` step 5 has you find and wire in a
   currently-maintained one at setup time, since "currently maintained" is a

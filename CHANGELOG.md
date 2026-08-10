@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.1] - 2026-08-09
+
+### Added
+- **New optional `ubiquitous-language` skill: detect terminology drift
+  against a canonical glossary (issue #302).** Dual-mode skill with shared
+  drift core (three lenses: term redefinition, new synonym, undeclared domain
+  term) and two input adapters — diff mode for `reviewer` (file:line anchors,
+  preserved from issue #129) and prose mode for `spec-master` (quoted-span
+  anchors, new). Advisory-only; never gates. Amends `reviewer.md` verdict
+  bullet to support plural advisory sections with fixed order (roast-work
+  first, then ubiquitous-language).
+
 All notable changes to the antislop plugin (formerly seb-personas) are
 recorded here. Dates are ISO (YYYY-MM-DD).
 
