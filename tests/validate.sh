@@ -247,6 +247,15 @@ else
 fi
 
 echo
+echo "== microworld reactive rerun hook + relocation proof (Bash) =="
+if bash tests/microworld-rerun.test.sh; then
+  echo "OK   tests/microworld-rerun.test.sh"
+else
+  echo "FAIL tests/microworld-rerun.test.sh"
+  fail=1
+fi
+
+echo
 echo "== reviewer-route-gate review-join stamps (Bash) =="
 if bash tests/review-join.test.sh; then
   echo "OK   tests/review-join.test.sh"

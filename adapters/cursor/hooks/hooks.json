@@ -6,7 +6,8 @@
     ],
     "afterFileEdit": [
       { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/graph-update.sh" },
-      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/lint-on-edit.sh" }
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/lint-on-edit.sh" },
+      { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/microworld-rerun.sh" }
     ],
     "subagentStart": [
       { "command": "${CURSOR_PLUGIN_ROOT}/hooks/scripts/reviewer-route-gate.sh" }
