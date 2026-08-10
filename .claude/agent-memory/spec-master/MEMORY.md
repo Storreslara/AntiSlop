@@ -15,3 +15,4 @@
 - [maxTurns-cutoff spec (#123)](project_maxturns_cutoff_spec.md) — settled decisions + two-tier protocol fan-out finding; recovered 2026-08-08 from a lost stash, verified shipped intact.
 - [Claude transcript store](reference_claude_transcript_store.md) — agent dispatches/tools/skills are ALREADY on disk under ~/.claude/projects/; check before speccing new hook instrumentation.
 - [Goal prose vs step table drift](feedback_goal_prose_vs_step_table_drift.md) — map every Goal clause to a step criterion; unmapped clauses ship silently, reviewers cannot see them.
+- [Heavy trigger is in ADR-0004, not the protocol](project_heavy_trigger_not_in_protocol.md) — the 2026-07-28 plan says otherwise and ships an unsatisfiable grep; fix #133 before dispatch.

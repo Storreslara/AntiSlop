@@ -43,4 +43,32 @@ itself must be section-scoped or it is broken by construction. Predict the
 expected count, then RUN it; if the measurement disagrees with the prediction,
 the criterion is counting itself.
 
-See [[feedback-no-forced-changes]] and [[feedback-baselines-expire]].
+**Third trap - criteria-only sweeps miss PROSE premises (2026-08-10, microworld
+dashboard D1).** I ran every criterion in a finalized plan against the tree and
+caught one defect (an inherited unsatisfiable grep) — then the orchestrator, doing
+a pre-dispatch check, found a *worse* one my sweep structurally could not reach.
+D1's prose said "**rewrite** the canonical `## Microworlds` section in place —
+same `## ` header, so no new parity-map entry". That section had never existed at
+any commit. The criteria were fine; the *narrative* was false, and it drove two
+wrong downstream decisions (an affected-file marked conditional that was actually
+required, and an acceptance criterion whose stated rationale was the opposite of
+what the test proves). Worst part: I already KNEW #130 was unbuilt — I'd noted
+"these don't exist yet, that's expected, they're post-conditions" while checking
+the very same step's sentinels. The contradiction sat between the prose and the
+criteria and I never compared them. Same error then repeated in D9 ("the existing
+bundle documentation is updated" — README had zero) and D10 ("those glossary
+entries stand" — CONTEXT.md had none).
+
+**How to apply (prose premises):** for every verb in a step that presupposes an
+artifact — *rewrite, update, extend, amend, in place, existing, still, preserve,
+stands* — run one command proving the artifact exists NOW. `git log -S'<token>'
+-- <file>` is the decisive check: empty output means it never existed at any
+commit, not merely that it is absent today. Do this especially when the step
+inherits language from a plan whose units were never built; a closed-in-favour-of
+issue is a *specification*, never an artifact. And when a step edits a file with a
+derived-list drift guard (`canonicalHeaders()` in
+`tests/adapter-protocol-parity.test.js`), read the guard before asserting whether
+a map entry is needed — the guard, not the plan, decides.
+
+See [[feedback-no-forced-changes]], [[feedback-baselines-expire]], and
+[[verify-deferred-issue-premises]].
