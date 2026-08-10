@@ -41,6 +41,7 @@ async function discover(projectRoot) {
       bundles.push({
         id: `working:${unitSlug}`,
         unit: unitSlug,
+        dirSlug: unitSlug,
         source: 'working',
         description: '(error reading manifest)',
         disabled: true,
@@ -121,6 +122,7 @@ async function discover(projectRoot) {
     bundles.push({
       id: `working:${unitSlug}`,
       unit,
+      dirSlug: unitSlug,
       source: 'working',
       description,
       timeoutSeconds,

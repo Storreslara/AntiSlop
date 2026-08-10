@@ -131,8 +131,9 @@ function startServer(projectRoot, port = 0) {
             return;
           }
 
-          // Resolve entry path
-          const bundlePath = path.join(projectRoot, 'microworlds', bundle.unit);
+          // Resolve entry path using the directory slug (canonical), not the
+          // manifest's self-declared `unit` field, which can diverge from it.
+          const bundlePath = path.join(projectRoot, 'microworlds', bundle.dirSlug);
           const entryPath = path.join(bundlePath, fn.entry);
 
           // Get timeout from manifest (default 60)

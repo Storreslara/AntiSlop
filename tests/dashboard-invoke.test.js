@@ -198,10 +198,13 @@ exec cat`;
   console.log('Test (c): timeout with process kill...');
   try {
     const tmpDir = makeTestProject('c');
-    const sleepScript = `#!/bin/bash
-sleep 10`;
     const bundleDir = path.join(tmpDir, 'microworlds', 'sleep-unit');
     fs.mkdirSync(bundleDir, { recursive: true });
+    const pidFile = path.join(bundleDir, 'child.pid');
+    const sleepScript = `#!/bin/bash
+sleep 10 &
+echo $! > ${pidFile}
+wait`;
     const entryPath = path.join(bundleDir, 'sleep.sh');
     fs.writeFileSync(entryPath, sleepScript);
     fs.chmodSync(entryPath, 0o755);
@@ -245,8 +248,24 @@ sleep 10`;
       const resp = JSON.parse(result.body);
       if (!resp.timedOut) {
         failures.push(`Test (c) FAILED: expected timedOut:true, got ${resp.timedOut}`);
+      } else if (resp.durationMs >= 3000) {
+        failures.push(`Test (c) FAILED: expected prompt response well under 10s, got durationMs ${resp.durationMs}`);
       } else {
-        console.log('  ✓ Test (c) passed');
+        const sleepPid = Number(fs.readFileSync(pidFile, 'utf8').trim());
+        let stillAlive = true;
+        for (let i = 0; i < 20 && stillAlive; i++) {
+          try {
+            process.kill(sleepPid, 0);
+            await new Promise((r) => setTimeout(r, 50));
+          } catch (err) {
+            stillAlive = false;
+          }
+        }
+        if (stillAlive) {
+          failures.push(`Test (c) FAILED: descendant sleep process (pid ${sleepPid}) still running after response`);
+        } else {
+          console.log('  ✓ Test (c) passed');
+        }
       }
     }
 
@@ -434,8 +453,7 @@ echo ok`;
   try {
     const tmpDir = makeTestProject('h');
     const slowScript = `#!/bin/bash
-read input
-echo "result1"`;
+exec cat`;
     makeBundle(tmpDir, 'slow-unit', { slow: slowScript });
 
     const { server, token } = startServer(tmpDir, 0);
@@ -472,10 +490,14 @@ echo "result1"`;
     } else {
       const resp1 = JSON.parse(result1.body);
       const resp2 = JSON.parse(result2.body);
+      const expected1 = JSON.stringify({ id: 1 });
+      const expected2 = JSON.stringify({ id: 2 });
 
-      // Both should complete
-      if (!resp1.stdout || !resp2.stdout) {
-        failures.push(`Test (h) FAILED: both invocations should complete`);
+      // Each response must contain only its own input, never the other's
+      if (resp1.stdout !== expected1) {
+        failures.push(`Test (h) FAILED: invocation 1 expected stdout ${expected1}, got ${resp1.stdout}`);
+      } else if (resp2.stdout !== expected2) {
+        failures.push(`Test (h) FAILED: invocation 2 expected stdout ${expected2}, got ${resp2.stdout}`);
       } else {
         console.log('  ✓ Test (h) passed');
       }
