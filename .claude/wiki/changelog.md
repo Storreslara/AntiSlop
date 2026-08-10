@@ -4,6 +4,48 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #132** (scribe post-PASS duties) — microworld-rerun hook Step 3b.
+  Unit #132 (`feat(gh132)` commit `ba8ebc84e906b23b41cf96c6d1043e1996a9665b`,
+  PASS marker `.claude/reviewed/gh132.pass`) implemented Step 3b of the
+  microworlds ubiquitous-language plan
+  (`docs/plans/2026-07-28-microworlds-ubiquitous-language-human-review.md`),
+  adding the reactive `PostToolUse(Edit|Write)` hook `hooks/scripts/microworld-rerun.sh`
+  + hand-adapted mirrors in `adapters/cursor/` and `adapters/codex/` +
+  registration in all three `hooks.json` files + fixture-driven test
+  `tests/microworld-rerun.test.sh`. **New conventions introduced:**
+  (1) **Reporter vs Gate distinction:** `microworld-rerun.sh` is a reporter
+  hook (observes/logs without blocking), not a gate — exit 2 for genuine bundle
+  failure (surfaces stderr, no block); exit 0 for no match or infrastructure
+  breaks (fail-open). Formal antonym of **Gate**; added to CONTEXT.md glossary.
+  (2) **Microworld audit log** (`.claude/microworld-audit.log` + adapters):
+  append-only fourth sibling of review/wip audit logs, line format
+  `<ts> unit=<slug> result=pass|fail|timeout file=<path>` for runs,
+  `<ts> unit=<slug> result=error ... reason=<...> file=<path>` for infrastructure
+  failures (malformed manifest, missing run.sh, absent jq, etc.). Added to
+  CONTEXT.md glossary. (3) **Relocatable run.sh proof:** microworld bundle's
+  `run.sh` must behave identically invoked from inside `microworlds/` or copied
+  elsewhere (future D8 escalation). File paths injected safely (single positional
+  param, never eval-interpolated). Proven executably by test cases (f)/(f2),
+  not assumed — dependency for D8 step. Added to CONTEXT.md glossary.
+  **Files changed:** `hooks/scripts/microworld-rerun.sh` (new), adapter mirrors
+  `adapters/cursor/hooks/scripts/microworld-rerun.sh` and
+  `adapters/codex/hooks/scripts/microworld-rerun.sh` (new), registration in
+  3 `hooks.json` files, `tests/microworld-rerun.test.sh` (new),
+  `tests/validate.sh` (edited — added test call), G1 quad version bumped
+  0.31.8 → 0.31.9, 13 `.claude/` mirrors restamped. **Review outcome:**
+  Single-pass PASS on opus review (commit `ba8ebc84`). Reviewer actively
+  probed injection guard with `;`, `$(...)`, backticks in filenames — no
+  injection. **Accepted non-blocking gaps:** (1) CHANGELOG:6 documents result
+  as `pass|fail|timeout` (accurate but incomplete re: `result=error` variant);
+  (2) Adapter mirrors exit 0 on absent jq without logging (canonical logs it —
+  asymmetry in audit trail only); (3) Bash syntax errors in run.sh take fail
+  branch not fail-open (defensible); (4) Newline in filename can forge audit
+  line (non-material, nothing gates on log). Terminology note: "microworld rerun
+  hook" / "microworld breakage" in test/CHANGELOG vs glossary's "microworld
+  bundle" — minor drift, worth future cross-reference. Issue #132 closed with
+  PASS marker and commit reference. Updated CONTEXT.md with three new glossary
+  entries and .claude/wiki/changelog.md with this digest.
+
 - **Closed issue #315** (scribe post-PASS duties) — microworld dashboard D2 step.
   Unit #315 (`feat(gh315)` commit `49296a7`, PASS marker `.claude/reviewed/gh315.pass`)
   implemented Step D2 of the microworld dashboard plan (`docs/plans/2026-08-10-microworld-dashboard.md`),

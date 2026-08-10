@@ -66,6 +66,17 @@ a hook script that mechanically blocks an action rather than
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
 _Avoid_: marker-directory gate
 
+**Reporter**:
+(unit #132, 2026-08-10) — a hook script that observes and logs an
+  action without blocking it; the formal antonym of **Gate**. Unlike a gate,
+  which refuses an action, a reporter permits it and records metadata in an
+  audit trail. Example: `microworld-rerun.sh` is a reporter that captures
+  microworld bundle execution results (pass/fail/timeout) and infrastructure
+  failures, logging to `.claude/microworld-audit.log`. Exit codes: 2 signals a
+  genuine bundle failure (surfaces stderr to the model, does not block); 0
+  covers both "nothing matched" and "infrastructure broke" (fail-open). The
+  reporter/gate distinction is a formal semantic pairing; never conflate them.
+
 **grant-denied**:
 an append-only audit-log record class written to
   `.claude/review-audit.log` by `reviewed-path-gate.sh` and `stop-gate.sh`
@@ -75,6 +86,14 @@ an append-only audit-log record class written to
   invisible privilege denial visible in the audit trail — the gate still
   fires, but the denial is now recorded. Completes Finding R3 from the
   orchestration-dispatch-identity-defects spec (unit #307).
+
+**Microworld audit log**:
+(unit #132, 2026-08-10) — an append-only log file at
+  `.claude/microworld-audit.log` (+ per-adapter equivalents
+  `.cursor/microworld-audit.log`, `.codex/microworld-audit.log`) recording
+  execution results of **microworld bundle** invocations. Written by the
+  `microworld-rerun.sh` **Reporter** hook on every `PostToolUse` for
+  `Edit|Write` operations. Line format: `<ts> unit=<slug> result=pass|fail|timeout file=<path>` for real bundle runs, and `<ts> unit=<slug> result=error ... reason=<...> file=<path>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
 
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
@@ -519,6 +538,16 @@ the collection of addressable **Agent** entities currently active in a
   timeout, and input/expected paths. One bundle may declare many function
   entries; each corresponds to an executable the lead-programmer or reviewer
   can invoke during development and validation.
+
+**Relocatable run.sh**:
+(unit #132, 2026-08-10) — a **microworld bundle** requirement and proven
+  property: the bundle's `run.sh` must behave identically whether invoked
+  from inside `microworlds/<unit-slug>/` or copied elsewhere (e.g. into a
+  future escalation packet). File paths reach `run.sh` as a single positional
+  parameter, never `eval`-interpolated, enforcing safe path injection. This
+  property is proven executably by test cases (gh132 `tests/microworld-rerun.test.sh`
+  cases (f)/(f2)), not merely assumed — a dependency for Step D8 (microworld escalation)
+  in the separate dashboard plan.
 
 **The dashboard**:
 (unit #314, 2026-08-10, forward-looking) — the D2+ UI entry point for human
