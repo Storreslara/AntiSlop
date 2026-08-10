@@ -13,6 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { discover } = require('./discover');
+const { invoke } = require('./invoke');
 
 function startServer(projectRoot, port = 0) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -81,6 +82,72 @@ function startServer(projectRoot, port = 0) {
       // 404
       res.writeHead(404, { 'Content-Type': 'text/plain' });
       res.end('Not found\n');
+      return;
+    }
+
+    // POST /api/invoke
+    if (req.method === 'POST' && new URL(req.url, 'http://127.0.0.1').pathname === '/api/invoke') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk.toString();
+      });
+      req.on('end', async () => {
+        try {
+          const data = JSON.parse(body);
+          const { id, functionId, inputs } = data;
+
+          if (!id || !functionId || !inputs) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'missing id, functionId, or inputs' }));
+            return;
+          }
+
+          // Look up bundle by id
+          const bundles = await discover(projectRoot);
+          const bundle = bundles.find((b) => b.id === id);
+          if (!bundle) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'unknown id' }));
+            return;
+          }
+
+          if (bundle.disabled) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'bundle is disabled', reason: bundle.disabledReason }));
+            return;
+          }
+
+          // Look up function by functionId
+          const fn = bundle.functions.find((f) => f.id === functionId);
+          if (!fn) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'unknown functionId' }));
+            return;
+          }
+
+          if (fn.disabled) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'function is disabled', reason: fn.disabledReason }));
+            return;
+          }
+
+          // Resolve entry path
+          const bundlePath = path.join(projectRoot, 'microworlds', bundle.unit);
+          const entryPath = path.join(bundlePath, fn.entry);
+
+          // Get timeout from manifest (default 60)
+          const timeoutSeconds = bundle.timeoutSeconds || 60;
+
+          // Invoke
+          const result = await invoke(entryPath, bundlePath, timeoutSeconds, inputs, projectRoot);
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(result));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'invalid request', message: err.message }));
+        }
+      });
       return;
     }
 

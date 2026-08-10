@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.11] - 2026-08-10
+
+### Added
+- **Function invocation endpoint `POST /api/invoke` with injection-proof guardrails (issue #317, Step D4).** Add `bin/dashboard/invoke.js` exporting an async `invoke()` function that spawns a function entry via `child_process.spawn` with argv array and NO shell, writes human-supplied inputs as one JSON object on stdin (never on command line), kills on timeout via manifest `timeoutSeconds` (default 60), caps stdout/stderr at 1 MiB each, and returns `{ ok, exitCode, stdout, stderr, durationMs, timedOut, truncated }`. Concurrent invocations are independent. Edit `bin/dashboard/server.js` to add `POST /api/invoke` route with same token-auth contract as GET routes; validate `id` and `functionId` against discovered bundles, return 400 for unknown/disabled functions (no spawn on error), return 200 with result for all completion states (including non-zero exit). Add comprehensive test suite `tests/dashboard-invoke.test.js` with mutation-proof injection case (shell metacharacters delivered verbatim, never executed), timeout kill proof (pid check post-kill), 1 MiB truncation proof, concurrent invocation proof, auth 401 proof, and unknown-id 400 proof. Register test in `tests/validate.sh`. Asserted structurally and behaviourally: no `shell: true`, no `execSync`, no bare `exec()`. No disk writes during invocation (git status byte-identical before/after). No runtime npm dependencies (G1, G4).
+
 ## [0.31.10] - 2026-08-10
 
 ### Added

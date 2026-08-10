@@ -420,6 +420,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard invoke (Node) =="
+if node tests/dashboard-invoke.test.js; then
+  echo "OK   tests/dashboard-invoke.test.js"
+else
+  echo "FAIL tests/dashboard-invoke.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
