@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.9] - 2026-08-10
+
+### Added
+- **Reactive microworld rerun hook (issue #132, Step 3b).** Add `hooks/scripts/microworld-rerun.sh`, a `PostToolUse(Edit|Write)` hook registered on the existing `Edit|Write` matcher after `graph-update.sh` and `lint-on-edit.sh`, so microworld breakage surfaces on the fly instead of only at review. It no-ops silently when the project has no `microworlds/` directory or when the edited path matches no bundle's `watch` globs, and otherwise re-runs each matching bundle's `run.sh` under its manifest `timeoutSeconds` (default 60), appending `<ts> unit=<slug> result=pass|fail|timeout file=<path>` to `.claude/microworld-audit.log`. It is a **reporter, not a gate**: exit 2 (stderr surfaced to the model) only when a matched bundle genuinely failed or timed out, while every infrastructure problem — absent `jq`, malformed `manifest.json`, missing `run.sh` — is logged and exits 0. The edited path is passed to `run.sh` as a positional parameter, never string-interpolated into an `eval`. Hand-adapted mirrors ship as `adapters/cursor/hooks/scripts/microworld-rerun.sh` (top-level `.file_path` off `afterFileEdit`, `.cursor/` audit log) and `adapters/codex/hooks/scripts/microworld-rerun.sh` (`.cwd`, sibling `tool_input` keys plus the `apply_patch` header fallback, `.codex/` audit log), both registered in their own hook manifests. Add `tests/microworld-rerun.test.sh`, which executes the hooks with canned hook-input JSON and carries the executable relocation proof — a bundle copied outside `microworlds/` exits with the same status as the original — that the escalation packet depends on. Register the test in `tests/validate.sh`.
+
 ## [0.31.8] - 2026-08-10
 
 ### Added
