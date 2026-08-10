@@ -359,8 +359,9 @@ in hook payloads' `agent_type` and `subagent_type` fields,
   not a persona name). The gate hooks normalize identities to handle both forms,
   using asymmetric matching: liberal matching (any namespace) at sites where a
   miss fails open, conservative matching (recognized namespace only) at
-  privilege-grant sites. Notably, `persona_matches_grant` requires the first
-  form (persona-derived); a raw dispatch name does not match. See plan #139 /
+  privilege-grant sites. Notably, `persona_matches_grant` (also called the
+  "grant matcher") requires the first form (persona-derived); a raw dispatch
+  name does not match. See plan #139 /
   `docs/plans/2026-07-28-agent-identity-namespace-gate-fix.md`; the shared
   library is `hooks/scripts/lib/agent-identity.sh`, replicated identically
   across all three platform ports. The audit-logging hardening for identity
