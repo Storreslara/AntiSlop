@@ -60,6 +60,14 @@ is already correct in the tree; report your unit with a path-scoped range
 instead (`git show <sha> -- <your paths>`) and flag the contaminated commit
 boundary explicitly so both reviewers know to scope their diffs.
 
+**NEW FILES need `git add -N` first.** `git commit -- <paths>` (and `-o`)
+errors with `pathspec '<f>' did not match any file(s) known to git` when a
+path is untracked — git resolves the pathspec against the index. Fix without
+reopening the race: `git add -N <exact paths>` (intent-to-add only, stages no
+content) and then the usual `git commit -- <paths>`, which still takes
+working-tree content for exactly those paths and leaves a sibling's staged
+work untouched. Hit on #132 (2026-08-10).
+
 **RECURRED on #141** (2026-07-29, Step 2 of the namespace-gate plan) — the
 same mistake, with this note already written: I ran the verify-then-`git add`
 sequence anyway, and two `adapters/codex/**` files a parallel unit staged in
