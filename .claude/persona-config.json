@@ -42,18 +42,18 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "994da67759125393584db15bdbbe58bec1f71d73da703145ad38c445ddd12781",
-    ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
-    ".claude/agents/lead-programmer.md": "a3352a8f1af567352979ed02f310417df4b2059646b2e9f0dcaeb4ba9d1b5e07",
-    ".claude/agents/milestone-auditor.md": "0695c8ddc0d5bd7918b1672d40fd3bd26889c1a36d20b96c825379d9508c8ba9",
-    ".claude/agents/reviewer.md": "41e001293fe0d305f2ab4680f260eae925c95316ef3610f95a7932072c943b8d",
-    ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
-    ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91",
-    ".claude/agents/scribe.md": "52abf7cddd4e8046989d07419d4fde6291189a5d981af006be2bddc90f9693bf",
-    ".claude/agents/spec-master.md": "0e32c62c28a1bed6bf5dc55a423841dc1a3bc7bb65c6edb9ba585ced0ec87cdc",
-    ".claude/agents/task-master.md": "6db54588aa4c2fe144b56097a5613262f389c1670ae797e68f845a00abdc41b4",
-    ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
-    ".claude/persona-protocol.md": "36c860e44d8b1e5b47f9d2d76eb36542c0b6d67fa623195a2ab849a2b8eaf4ea",
-    ".claude/agents/agent-auditor.md": "05d2bfee34b0f778e983bde46c37fd80fa1e89186913b7aedf87e4948acfbc07"
+    ".claude/agents/orchestrator.md": "ada54e91d1d881f6c6a3abef08afc9f636c73c9bf9089681813c30da6dd20356",
+    ".claude/agents/explorer.md": "ac73fe09798feea2813b3d8bc124fa1a143dc3a779745ddf8b65930121ad382b",
+    ".claude/agents/lead-programmer.md": "5b7c2c70b47a889496ffe6ef06db994caa5cc9d9dae426073704921bcd0fddba",
+    ".claude/agents/spec-master.md": "10c5bb9752d724b2dda59f65b92437b36d61b7e168aa42fb9fa540e02f0897a7",
+    ".claude/agents/task-master.md": "77205d1b9de011535a0b3f052b63095b08e59695ee5e098f471ff00855c1e6ab",
+    ".claude/agents/scribe.md": "38418acf269bea67286c6104dbb6a1585efb62a0d40d9d8fed2df34a8ed2e7bb",
+    ".claude/agents/reviewer.md": "089243608662b1d38fd679d219acbcced2dac97d5a455a450aa2f4244c90328d",
+    ".claude/agents/milestone-auditor.md": "6ad7811735a824a23d8d80aa017a559b29294604b8176f01960d91e0077e92f7",
+    ".claude/agents/agent-auditor.md": "9c3dfd13352da018bc352732ce999e7dd0135e011568871cf62d31c223f74758",
+    ".claude/agents/researcher.md": "99b77b83442b7d674f8c2099ca4eb46b5c4115f5c6301e6438861a505e5cfa09",
+    ".claude/persona-protocol.md": "e3d53581881b9a7526cbb396a7e6312ff616c32f0987d717e1b92e07f5603cbc",
+    ".claude/persona-protocol-slim.md": "504688845c09a582e81b4aaf237d0f901b861b952a044b667378e38c8df6de15",
+    ".claude/protocol-digest.md": "be72cdf6f96724df2b1b57dd0d5bc83e99e2fa6bd9d4e27830d3e6c0f8a94d91"
   }
 }
