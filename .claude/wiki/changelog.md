@@ -4,6 +4,73 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #317** (scribe post-PASS duties) — microworld dashboard D4 step.
+  Unit #317 (`feat(gh317)` commit `0238ae6226173bd6d0052fbcd0ef9fb28cf93273`,
+  PASS marker `.claude/reviewed/gh317.pass`) implemented Step D4 of the
+  microworld dashboard plan, adding the `POST /api/invoke` security-sensitive
+  endpoint spawning one **function entry** invocation with human-supplied inputs.
+  **New API and execution contract:** `POST /api/invoke` with request
+  `{ id, functionId, inputs: {<name>: <value>} }`, response
+  `{ ok, exitCode, stdout, stderr, durationMs, timedOut, truncated }`.
+  Same token-auth contract as other dashboard routes. Execution via
+  `child_process.spawn()` (argv array, no shell), inputs serialized to JSON on
+  stdin (never command-line), `MICROWORLD_BUNDLE_DIR` env var set to bundle
+  path, process-group kill with SIGKILL escalation on `timeoutSeconds` (manifest
+  value, default 60), stdout/stderr capped at 1 MiB each with `truncated` flag.
+  **Path-resolution fix:** `discover.js` now emits a `dirSlug` field (canonical
+  directory slug) used by `server.js` for path resolution, instead of the
+  manifest's self-declared `unit` field — closes a discovery/invocation
+  path-mismatch defect caught on first review. **Files changed:**
+  `bin/dashboard/invoke.js` (new), `bin/dashboard/server.js` (new route),
+  `bin/dashboard/discover.js` (added `dirSlug` field), `tests/dashboard-invoke.test.js`
+  (new, 8 cases a-h), `tests/validate.sh` (registered). G1 quad version bumped
+  0.31.10 → 0.31.11 (original build only; fix pass added no version bump).
+  **Review arc (FAIL→fix→PASS):** First review (opus): FAILed on three
+  real, reproducible defects: (1) timeout didn't bound the request or kill
+  descendant processes (sleep 10 grandchild survived, reparented to init, response
+  hung ~10s not returning promptly); (2) unhandled EPIPE on child stdin crashed
+  the entire server — human-input-triggerable DoS; (3) bundle path resolution
+  used manifest's `unit` field instead of canonical `dirSlug`, causing discovery
+  and invocation to resolve different directories. Plus two vacuous test
+  assertions: criterion (c)'s timeout case had no pid-liveness check; criterion
+  (h)'s concurrency case both fixtures printed the same literal string (no
+  cross-talk detection). Fix pass (sonnet): fixed all 5 defects — process-group
+  kill with SIGKILL escalation, `child.stdin.on('error', ...)` EPIPE handler,
+  added canonical `dirSlug` field used for path resolution, added real pid-liveness
+  check to test (c), changed test (h) fixture to echo its own stdin for
+  detectable cross-talk. Second review (opus, mandatory due to prior FAIL):
+  PASSed. Reviewer independently re-reproduced all three original defects and
+  confirmed each now behaves correctly (own `ps` check confirmed no leftover
+  processes; tried ~8MB multibyte payload as additional EPIPE probe; confirmed
+  `dirSlug` resolves correctly and is immune to hostile `manifest.unit`).
+  Confirmed cases (c) and (h) non-vacuous via mutation testing (removing stdin
+  error handler re-crashes server; removing pid-liveness check or changing
+  test-fixture stdin causes assertion failures). **Four advisory findings from
+  PASS review (institutional record, not defects requiring fix):** (1) **Shutdown
+  gap (non-blocking):** because child is now `detached: true`, terminal Ctrl-C
+  during invocation no longer kills it via SIGINT propagation — orphaned until
+  timeout fires or server exits. Cheap mitigation: track live child pids and
+  group-kill from `process.on('exit')`/SIGINT handler in `server.js`. (2) **SIGKILL
+  escalation race (non-blocking):** 500ms SIGKILL escalation doesn't guard against
+  direct child already exited and pid recycled — `process.kill(-pid)` lacks
+  `child.kill()`'s reaped-pid guard. Mitigation: `if (child.exitCode === null)`
+  guard before escalation. (3) **SECURITY — path traversal via `manifest.entry`
+  (non-blocking but explicit follow-up candidate, not merely cosmetic):** manifest
+  `{"entry": "../../../../tmp/x.sh"}` resolves and spawns OUTSIDE `microworlds/`
+  and project root (measured: stdout `OUTSIDE_PROJECT_ROOT`). Pre-existing at
+  pre-fix commit a794fe8 (not introduced by this unit). Judged a note not a FAIL:
+  manifest.json is agent-authored local input inside repo's trust domain, so
+  control of it implies ability to drop executable in bundle dir (no privilege
+  escalation over feature's intended capability). Spec guardrail 6 is worded for
+  reads and names `location.file` (D7 surface, not D4's). Flag prominently as
+  follow-up: `fs.realpathSync` the resolved entry and reject anything not under
+  bundle's directory. (4) **Ubiquitous-language note:** `discover.js` pre-existing
+  loop variable `unitSlug` actually holds directory slug (canonical per CONTEXT.md).
+  Now sits beside correctly-named new `dirSlug` field — mild misnomer. Optionally
+  rename in future pass; not required now. **Acceptance:** all test criteria pass
+  (dashboard-invoke.test.js, validate.sh, no shell, no execSync/exec, cli-backfill,
+  git status byte-identical). Issue #317 closed with PASS marker and commit
+  reference.
 - **Closed issue #132** (scribe post-PASS duties) — microworld-rerun hook Step 3b.
   Unit #132 (`feat(gh132)` commit `ba8ebc84e906b23b41cf96c6d1043e1996a9665b`,
   PASS marker `.claude/reviewed/gh132.pass`) implemented Step 3b of the

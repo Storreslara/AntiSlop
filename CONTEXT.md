@@ -589,5 +589,29 @@ _Avoid_: bundle origin (use "bundle source" for clarity)
   establish a stable, collision-resistant canonical id. Distinct from the
   **source** field: a bundle's `id` is namespaced (machine routing), while
   `source` is the semantic origin marker (human understanding / trust boundary).
+  Unit #317 adds a `dirSlug` field to discovered bundle objects, holding the
+  canonical directory slug used by `server.js` to resolve invocation paths,
+  eliminating the discovery/invocation path-mismatch defect.
 _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "source namespace" to clarify)
+
+**`POST /api/invoke` endpoint**:
+(unit #317, 2026-08-10) — the security-sensitive dashboard endpoint spawning
+  one **function entry** invocation with human-supplied inputs. Request body:
+  `{ id, functionId, inputs: {<name>: <value>} }` (all required). Response:
+  `{ ok, exitCode, stdout, stderr, durationMs, timedOut, truncated }`. Same
+  token-auth contract as other dashboard routes (`?t=` query or
+  `X-Antislop-Token` header; missing/wrong → 401). **Execution contract:**
+  `child_process.spawn()` with argv array, never shell (`shell: false`).
+  Inputs serialized to a single JSON object on child stdin (never command-line,
+  never shell-interpolated). Environment: `MICROWORLD_BUNDLE_DIR` set to the
+  bundle's absolute path. Timeout: `timeoutSeconds` from the manifest (default
+  60); enforced via process-group kill (`detached: true` + `process.kill(-pid)`)
+  with SIGKILL escalation at 500ms if SIGTERM doesn't land. Output: stdout/stderr
+  each capped at 1 MiB; `truncated: true` flag if either stream exceeds cap.
+  Non-blocking advisory notes: server-shutdown orphaning (long-running entries
+  survive terminal Ctrl-C because child runs in its own pgid; cheap fix: track
+  live pids and group-kill from `process.on('exit')`/SIGINT handler); path
+  traversal via `manifest.entry` (pre-existing, measured at pre-fix commit, not a
+  D4 defect because manifest is agent-authored local input inside trust domain;
+  flagged as follow-up candidate for hardening via `fs.realpathSync` guard).
 
