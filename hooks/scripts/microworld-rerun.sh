@@ -5,6 +5,11 @@
 # the model) means a matched bundle's run.sh actually failed or timed out; every
 # infrastructure problem - no jq, malformed manifest.json, missing run.sh - is
 # logged and exits 0. The edit has already happened either way.
+#
+# The audit log line format (<timestamp> unit=<slug> result=<pass|fail|timeout|error> file=<path>)
+# is a consumed interface with a Node.js parser (bin/dashboard/audit-log.js) on the other side.
+# Contract test: tests/microworld-audit-contract.test.js. Do not change the separator or format
+# without updating the parser and re-running the contract test.
 set -euo pipefail
 
 input="$(cat)"

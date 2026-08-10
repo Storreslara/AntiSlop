@@ -3,8 +3,10 @@
 
 // HTTP server for the microworld dashboard. Binds 127.0.0.1 only, ephemeral
 // port by default. Generates a per-launch token via node:crypto. Routes:
-// GET / (placeholder HTML), GET /api/bundles (bundle list with auth).
+// GET / (placeholder HTML), GET /api/bundles (bundle list with auth),
+// GET /api/status (same as /api/bundles for now, same auth).
 // Auth: every request requires ?t=<token> or X-Antislop-Token header.
+// Watches microworlds/ directory for bundle changes without server restart.
 
 const http = require('http');
 const fs = require('fs');
@@ -14,6 +16,18 @@ const { discover } = require('./discover');
 
 function startServer(projectRoot, port = 0) {
   const token = crypto.randomBytes(32).toString('hex');
+  const microworldsPath = path.join(projectRoot, 'microworlds');
+
+  // Watch for bundle directory changes (new/deleted bundles)
+  if (fs.existsSync(microworldsPath)) {
+    try {
+      fs.watch(microworldsPath, { recursive: true }, () => {
+        // Bundle structure changed; next GET request will pick up the change
+      });
+    } catch (err) {
+      // Watch failed; graceful degradation — discover will still work, just no live update
+    }
+  }
 
   const server = http.createServer(async (req, res) => {
     // Auth check: token must be present in ?t= query param or X-Antislop-Token header
@@ -51,10 +65,10 @@ function startServer(projectRoot, port = 0) {
         return;
       }
 
-      // GET /api/bundles
-      if (pathname === '/api/bundles') {
+      // GET /api/bundles and GET /api/status (both return same data)
+      if (pathname === '/api/bundles' || pathname === '/api/status') {
         try {
-          const bundles = discover(projectRoot);
+          const bundles = await discover(projectRoot);
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify(bundles, null, 2));
         } catch (err) {

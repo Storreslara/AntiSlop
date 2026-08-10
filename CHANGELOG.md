@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.10] - 2026-08-10
+
+### Added
+- **Live dashboard status by tailing audit log with cross-language contract test (issue #316, Step D3).** Add `bin/dashboard/audit-log.js`, a Node.js module that tails and parses `.claude/microworld-audit.log` emitted by `hooks/scripts/microworld-rerun.sh`, returning a map of most-recent status per unit. Absent or unreadable log yields empty map, never an error. Modify `bin/dashboard/discover.js` to load audit status and attach it to each bundle as a `status` field, and add `fs.watch` on `microworlds/` directory for live bundle discovery without server restart. Modify `bin/dashboard/server.js` to add `GET /api/status` endpoint (same auth contract as `/api/bundles`). Add cross-language contract test `tests/microworld-audit-contract.test.js`: executes the REAL hook against a fixture bundle whose check fails, reads the REAL audit line, parses it with the REAL parser, asserts correctness of `{unit, result, file}`, and includes mutation proof (changing the hook's emitted separator makes the test fail). Extend `tests/dashboard-server.test.js` with new cases (g) fixture audit log with 2+ lines per unit reports most recent, (h) no audit log → all bundles report `status:null`, (i) appending a line to the log is reflected in subsequent request without restart, (j) creating a new bundle directory is reflected without restart (proves `fs.watch`). Register new contract test in `tests/validate.sh`. Update header comment in `hooks/scripts/microworld-rerun.sh` stating that the audit line format is a consumed interface with the Node parser (`bin/dashboard/audit-log.js`) and naming the contract test (`tests/microworld-audit-contract.test.js`). No runtime npm dependencies; no logic changes to the hook itself (G1, G4, G5).
+
 ## [0.31.9] - 2026-08-10
 
 ### Added

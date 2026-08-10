@@ -2,14 +2,15 @@
 'use strict';
 
 // Discovers microworld bundles from microworlds/*/manifest.json.
-// Enumerates unit, description, and functions[]. Fails soft always — malformed
-// JSON, missing manifest, missing/non-executable entry never crash the server.
+// Enumerates unit, description, functions[], and live status from audit log.
+// Fails soft always — malformed JSON, missing manifest, missing/non-executable entry never crash the server.
 // Returns [ { id, unit, source, description, disabled, disabledReason, functions, status } ]
 
 const fs = require('fs');
 const path = require('path');
+const { parseAuditLog } = require('./audit-log');
 
-function discover(projectRoot) {
+async function discover(projectRoot) {
   const microworldsPath = path.join(projectRoot, 'microworlds');
   const bundles = [];
 
@@ -23,6 +24,9 @@ function discover(projectRoot) {
   } catch (err) {
     return bundles;
   }
+
+  // Load audit log status for all units
+  const auditStatus = await parseAuditLog(projectRoot);
 
   for (const unitSlug of entries) {
     const bundlePath = path.join(microworldsPath, unitSlug);
@@ -42,7 +46,7 @@ function discover(projectRoot) {
         disabled: true,
         disabledReason: err.code === 'ENOENT' ? 'manifest.json not found' : `malformed JSON: ${err.message}`,
         functions: [],
-        status: null,
+        status: auditStatus[unitSlug] || null,
       });
       continue;
     }
@@ -118,7 +122,7 @@ function discover(projectRoot) {
       disabled: hasDisabledFunctions,
       disabledReason: hasDisabledFunctions ? 'some functions cannot be invoked' : '',
       functions,
-      status: null,
+      status: auditStatus[unitSlug] || null,
     });
   }
 

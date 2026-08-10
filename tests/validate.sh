@@ -256,6 +256,15 @@ else
 fi
 
 echo
+echo "== microworld audit log contract test: bash hook ↔ Node parser (Node) =="
+if node tests/microworld-audit-contract.test.js; then
+  echo "OK   tests/microworld-audit-contract.test.js"
+else
+  echo "FAIL tests/microworld-audit-contract.test.js"
+  fail=1
+fi
+
+echo
 echo "== reviewer-route-gate review-join stamps (Bash) =="
 if bash tests/review-join.test.sh; then
   echo "OK   tests/review-join.test.sh"
