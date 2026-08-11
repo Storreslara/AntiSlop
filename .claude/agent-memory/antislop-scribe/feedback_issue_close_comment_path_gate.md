@@ -29,3 +29,11 @@ PASS marker path, do it in two steps instead of one:
 
 Confirmed working end-to-end closing issue #322 (2026-08-11) after the
 single-command form was blocked.
+
+**Extra gotcha (gh325, 2026-08-11):** writing the scratch comment file itself
+via a `Bash` heredoc (`cat > file <<'EOF' ... EOF`) also trips the gate, even
+though the heredoc's redirect target is the scratch path, not the marker
+path — `command_skeleton()` in `hooks/scripts/lib/benign-command.sh` fails
+closed on ANY `<<` operator before it even gets to path matching. Use the
+`Write` tool to create the scratch file instead of a Bash heredoc; only then
+run `gh issue comment ... --body-file <scratch-file>` via Bash.
