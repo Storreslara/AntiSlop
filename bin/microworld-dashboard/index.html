@@ -59,7 +59,7 @@
     .form-group { margin-bottom: var(--space-6); }
     label { display: block; font-weight: 500; margin-bottom: var(--space-2); }
     label .desc { display: block; font-size: 0.85rem; font-weight: normal; color: var(--gvx-gray); margin-top: var(--space-1); }
-    input[type="text"], input[type="number"], textarea { width: 100%; padding: var(--space-2); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); background: var(--gvx-bg); color: var(--gvx-fg); }
+    input[type="text"], input[type="number"], textarea { width: 100%; padding: var(--space-2); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); background: var(--gvx-bg); color: var(--gvx-fg); font: inherit; }
     textarea { resize: vertical; min-height: 80px; }
     input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: var(--gvx-blue); }
     :focus-visible { outline: 2px solid var(--gvx-yellow); outline-offset: 2px; }
@@ -462,7 +462,7 @@
         if (cell.result.stdout) {
           html += `<div style="margin-bottom: var(--space-4);">`;
           html += `<div class="output-label">stdout</div>`;
-          html += `<div style="background: var(--gvx-bg-dim); padding: var(--space-3); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stdout)}</div>`;
+          html += `<div style="background: var(--gvx-bg-dim); padding: var(--space-3); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stdout)}</div>`;
           html += `</div>`;
         }
 
@@ -470,7 +470,7 @@
         if (cell.result.stderr) {
           html += `<div style="margin-bottom: var(--space-4);">`;
           html += `<div class="output-label">stderr</div>`;
-          html += `<div style="background: var(--gvx-bg-dim); padding: var(--space-3); border: 1px solid var(--gvx-red); border-radius: var(--radius-chip); font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; color: var(--gvx-red); max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stderr)}</div>`;
+          html += `<div style="background: var(--gvx-bg-dim); padding: var(--space-3); border: 1px solid var(--gvx-red); border-radius: var(--radius-chip); font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; color: var(--gvx-red); max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stderr)}</div>`;
           html += `</div>`;
         }
 
