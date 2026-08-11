@@ -798,3 +798,34 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   included, by design. No adapter port exists, the same precedent already set by
   `reviewed-path-gate.sh`.
 
+**Escalation-laundering**:
+(unit #326, 2026-08-11, Step 2 of the human-decision-channel fix, issue #324) —
+  the specific attack this unit closes: deselecting the reviewer persona (removing
+  `reviewer` from `.claude/persona-config.json`'s `personaSelection`) to
+  unconditionally re-arm `reviewed-path-gate.sh`'s no-reviewer fallback for
+  `.claude/reviewed/`, even while a standing `.escalated` marker exists — letting
+  the main session/team lead silently discard a pending `ESCALATE-TO-HUMAN`
+  escalation with zero human artifact, since only the reviewer ever writes
+  `.escalated` and a standing one under a reviewer-less config proves the
+  deselection post-dates the escalation. Contrast with the legitimate no-reviewer
+  fallback (`reviewed-path-gate.sh:96-117`), which this unit preserves unchanged
+  when no `.escalated` marker stands. Closed by the branch at
+  `hooks/scripts/reviewed-path-gate.sh:105-116`: before the fallback's `exit 0`,
+  it globs `.claude/reviewed/*.escalated` and blocks (`exit 2`) if any marker is
+  found, naming the [[DECISION channel]] as the resolution route. Fixed at commit
+  `8803252`, tests at `a828742` (cases (j)-(n) in `tests/reviewed-path-gate.test.sh`),
+  PASSed at `13841aa`. See `.claude/reviewed/gh326.pass`.
+
+**DECISION channel**:
+(unit #326, 2026-08-11, named at Step 2 of #324) — compact name for the
+  resolution route [[DECISION file]] provides: `.claude/human-review/<task-id>/DECISION`,
+  guarded unwritable-by-any-agent by [[The human-decision gate]] (`human-decision-gate.sh`,
+  Step 1/#325). Named explicitly in `reviewed-path-gate.sh:113`'s block message
+  as "the only route that resolves an escalation" once the no-reviewer fallback is
+  suspended by a standing `.escalated` marker (see [[Escalation-laundering]]) — i.e.
+  the fallback's block message points a human at this channel rather than leaving
+  the escalation stuck with no legal way forward. As of unit #326, still nothing
+  *reads* the DECISION channel (the transcription/consumption mechanism is Step 3,
+  amended #136, not yet built) — this unit only makes the channel the sole named
+  route, it does not implement reading it.
+

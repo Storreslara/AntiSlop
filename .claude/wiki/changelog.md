@@ -542,6 +542,48 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   `tests/cli-backfill.test.js`, `tests/ubiquitous-language.test.js`.
 
 ## 2026-08-11
+- **Closed issue #326** (scribe post-PASS duties) — Step 2 of the human-decision-channel
+  fix (spec #324). Unit #326 (`fix(gh326)` commit `8803252`, `test(gh326)` commit `a828742`,
+  version-bump commit `13841aa7e1967ca6beec8a58ae013faca973a310`, PASS marker
+  `.claude/reviewed/gh326.pass`) closes the **escalation-laundering** hole in
+  `reviewed-path-gate.sh`'s no-reviewer fallback: previously, deselecting the reviewer
+  persona (removing `reviewer` from `personaSelection`) unconditionally re-armed the
+  main-session write fallback for `.claude/reviewed/`, even while a standing `.escalated`
+  marker existed — silently discarding a pending `ESCALATE-TO-HUMAN` escalation with zero
+  human artifact. The fix, at `reviewed-path-gate.sh:105-116`, globs
+  `.claude/reviewed/*.escalated` before the fallback's `exit 0` and blocks (`exit 2`) if any
+  marker stands, naming the **DECISION channel** (Step 1/#325's `.claude/human-review/<task-id>/DECISION`
+  mechanism) as the resolution route. With no `.escalated` marker standing, the fallback is
+  unchanged. New test cases (j)-(n) in `tests/reviewed-path-gate.test.sh`: (j) a Write into
+  the marker dir is blocked with a standing escalation, (k) an `rm` of the marker itself is
+  blocked, (l) the fallback still allows a write when no escalation stands, (m) reads of the
+  marker stay allowed, (n) the reviewer's grant is unaffected. **Unusual provenance:** the
+  core hook edit (commit `8803252`) was made directly by the human at their own terminal, not
+  by an agent, because Step 1/#325 added `reviewed-path-gate.sh` to `protectedPaths` — the
+  lead-programmer correctly declined to act on an agent-relayed "human approved this" claim
+  rather than treating the claim itself as consent, the same consent-channel principle
+  discovered via the gh134 incident earlier this session (an agent-relayed approval claim is
+  never a substitute for the human's own action). **Review outcome:** clean single-pass PASS,
+  zero regressions across all 35+ pre-existing test cases plus the 5 new ones.
+  **Flagged-but-not-fixed follow-ups (code-level, out of scribe's scope):** (a) **priority
+  item** — `reviewed-path-gate.sh`'s own top-of-file header comment (lines 1-9) is now stale:
+  it still describes the no-reviewer fallback as unconditional ("...or the main session/team
+  lead in the documented no-reviewer fallback...") with no mention that a standing `.escalated`
+  marker now suspends it (the actual behavior added at lines 106-113). This is a doc-vs-behavior
+  drift inside the very file this unit changed — the same defect class that previously failed
+  gh-286-docs in this project's history — worth flagging by name rather than folding into the
+  general note below. Spec-directed to Step 3/#136. (b) Other doc locations
+  (`agents/orchestrator.md`, `commands/start-feature-team.md`, `docs/adr/0002-reviewed-dir-owned-by-reviewer.md`)
+  also don't yet describe the escalation suspension — same Step 3/#136 destination, next in
+  this batch. **Domain terms added to CONTEXT.md:** **Escalation-laundering** (the attack this
+  unit closes, contrasted with the legitimate no-reviewer fallback this unit preserves) and
+  **DECISION channel** (cross-referenced to Step 1/#325's DECISION file mechanism). Affected
+  files: `CONTEXT.md`, `.claude/wiki/changelog.md` (this entry). Did not touch `hooks/`,
+  `tests/`, `agents/`, `commands/`, or `docs/adr/` (lead-programmer's/task-master's surfaces;
+  the header-comment fix and other stale-docs items belong to Step 3/#136, already queued).
+  Issue #326 closed with PASS marker and commit reference. Step 3 (amended #136) is next,
+  depending on both #325 and #326 landing plus #135 (unchanged, elsewhere).
+
 - **Closed issue #325** (scribe post-PASS duties) — Step 1 of the human-decision-channel
   fix (spec #324). Unit #325 (`feat(gh325)` commit `dab48f7`, `refactor(gh325)` commit
   `00ce4e5`, version-bump commit `4ba0e2b76aace8566cc95de643cd035d02fc318b`, PASS marker
