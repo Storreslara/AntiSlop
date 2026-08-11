@@ -28,4 +28,14 @@ in one worktree only; `diff -rq` must then flag all six full-tier mirrors and
 `git rev-parse HEAD` caution as
 [[bash-lexer-gate-traps]] item 4 when picking BASE.
 
+**Pre-existing WARNING, not yours:** a normal `node bin/cli.js --update` ends
+with `WARNING: unresolved placeholder(s) remain in: .claude/agents/orchestrator.md`.
+`PLACEHOLDER_RE` (`bin/cli.js:63`, `/<[A-Z0-9_]{2,}(:[a-zA-Z0-9_-]+)?>/`) matches
+the literal `<HEAD>` that occurs in the orchestrator's *prose*. It fires on every
+unit's G1 step; confirm with
+`git show HEAD:.claude/agents/orchestrator.md | grep -oE '<[A-Z0-9_]{2,}>'`
+rather than chasing `substitutions`. `tests/validate.sh` also emits a standing
+advisory `WARN claude plugin tag --dry-run` about that same file's frontmatter —
+also pre-existing, and validate still exits 0.
+
 Related: [[marker-gate-blocks-own-commits]].
