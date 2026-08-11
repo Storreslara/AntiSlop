@@ -26,3 +26,12 @@ plan/issue verbatim (not a paraphrase) before reporting ready-for-review,
 and re-check every multi-word anchor phrase stays on one line post-edit —
 don't trust that "the words are all in there somewhere" is equivalent to
 "the exact substring matches."
+
+**Corollary — a `grep -c ... -> N` criterion constrains YOUR OWN comments in
+the same file.** On issue #131 the criterion was `grep -c 'human-review'
+.gitignore` → exactly 1, and the explanatory comment I wrote directly above
+the `.claude/human-review/` entry ("...+ human-review escalation packets...")
+made it 2. The file's own prose/comments count toward a bare-substring
+`grep -c`, so when a criterion pins an exact count, word any nearby comment to
+avoid the anchor string entirely rather than assuming only the data lines are
+counted.
