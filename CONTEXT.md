@@ -605,12 +605,37 @@ the collection of addressable **Agent** entities currently active in a
   is correct. Consumed in Steps 5–7 when routing escalated units to human review.
 
 **humanReviewMode**:
-(unit #133, 2026-08-10, forward-looking) — configuration field referenced normatively
-  in protocol prose to control when `ESCALATE-TO-HUMAN` verdicts fire, but not yet
-  implemented as a real config surface (Step 6, unbuilt). Intended semantics: when set
-  to `all`, every unit escalates; when set to `critical` (or absent, defaulting to
-  `critical`), only units meeting the heavy-unit trigger escalate. Named in CHANGELOG
-  and protocol text only; no config field exists yet.
+(unit #133, 2026-08-10, forward-looking; shipped unit #135, 2026-08-11) —
+  configuration field in `.claude/persona-config.json` (or the adapted equivalent
+  path) controlling when `ESCALATE-TO-HUMAN` verdicts fire. Declared in
+  `templates/persona-config.schema.json` with `enum: ["off","critical","all"]` and
+  `default: "critical"` (on by default). Read by the reviewer persona
+  (`agents/reviewer.md`): an **absent key or any unrecognised value** both resolve
+  to `critical` (fail toward escalation, never toward silent auto-approval); only
+  `off`, spelled exactly, disables escalation entirely. `all` escalates every unit;
+  `critical` escalates only units meeting the heavy-unit trigger (ADR-0004 §
+  "Heavy unit trigger"). The on-by-default posture is encoded as this absent-key
+  fallback in the consumer, not in the `bin/cli.js` `--update` backfill path — the
+  backfill deliberately leaves an already-adapted project's existing config
+  untouched, so encoding the default there instead would have silently left every
+  existing user opted out. See also [[bootstrap window]] for why this repo's own
+  live value is temporarily `off`.
+
+**bootstrap window**:
+(unit #135, 2026-08-11) — a temporary, deliberate, and committed config override
+  held open to let a fix batch's own units land without recursively triggering a
+  resolution mechanism those same units are still building. Concrete instance:
+  this repo's own `.claude/persona-config.json` keeps `"humanReviewMode": "off"`
+  rather than `"critical"` (see [[humanReviewMode]]) because the human-decision
+  resolution channel (amended #136, Step 7) hasn't landed yet — with the default
+  `critical` mode live, the fix batch's own heavy-unit changes (hook code,
+  security-sensitive) would each escalate into a route that doesn't exist yet.
+  Defined and tracked in `docs/plans/2026-08-11-human-decision-channel.md` Step 4.1.
+  Closed (override reverted) once the batch that necessitated it fully lands —
+  ownership of that restoration is a plan/runbook tracking concern, not implied by
+  the term itself.
+_Avoid_: temporary override, escape hatch (use "bootstrap window" for this specific,
+  documented, plan-tracked pattern)
 
 **`.claude/human-review/` (human-review directory)**:
 (unit #131, 2026-08-10) — the gitignored directory path within the claude adapter

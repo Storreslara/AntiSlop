@@ -3,6 +3,47 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-08-11
+- **Closed issue #135** (scribe post-PASS duties) — Step 6, `humanReviewMode`
+  ships as a real config field. Unit #135 (commit `134b3962e0b7ac842bc62ccac6fef5eab13b3df3`,
+  PASS marker `.claude/reviewed/gh135.pass`) implemented Step 6 of the
+  human-decision-channel plan: `templates/persona-config.schema.json` gains
+  `humanReviewMode` (`enum: ["off","critical","all"]`, `default: "critical"`);
+  `bin/cli.js`'s fresh-install skeleton writes `humanReviewMode: "critical"`;
+  `agents/reviewer.md` documents reading the key from `.claude/persona-config.json`
+  (or the adapted equivalent). **R1 fix — where the default actually lives:**
+  the on-by-default posture is encoded as the reviewer-persona consumer's
+  absent-key fallback (absent key **or any unrecognised value** both resolve to
+  `critical`; only `off`, spelled exactly, disables it), *not* in the `--update`
+  backfill path — `runUpdate`'s `existingPersonaConfig` branch is deliberately
+  left untouched, so an already-adapted project never receives the key on
+  update. Encoding the default in the backfill instead would have been the
+  single most likely way to ship "on by default" that is silently off for every
+  existing user; two new `tests/cli-backfill.test.js` cases pin the pair (fresh
+  install carries the key with value `critical`; existing config without the
+  field stays without it across `--update`, with a mutation control on
+  `runUpdate` proving the test binds). `CHANGELOG.md`'s entry states this
+  behavior change without softening. **Review outcome:** clean single-pass
+  PASS on commit `134b3962e0b7ac842bc62ccac6fef5eab13b3df3`.
+  **Deliberate deviation, disclosed:** issue #135 originally specified adding
+  `"humanReviewMode": "critical"` to this repo's own live
+  `.claude/persona-config.json` (self-dogfooding). That step was deliberately
+  *not* performed — the live value stays `"off"` — per an active
+  [[bootstrap window]] recorded in `docs/plans/2026-08-11-human-decision-channel.md`
+  Step 4.1: the human-decision resolution channel (amended #136, Step 7) hasn't
+  landed yet, and with `critical` live, this fix batch's own heavy-unit changes
+  (hook code, security-sensitive) would each escalate into a route that doesn't
+  exist. This is a **known, intentional gap**: the plan's runbook Step 4.7
+  originally expected #135 itself to restore the `critical` posture, so with
+  this deviation the restoration currently has no code unit tracking it. The
+  **orchestrator** (not scribe, not a future dispatched code unit) is tracking
+  that restoration as part of finishing the human-decision-channel runbook —
+  recorded here for audit trail only, not an open action item for this wiki's
+  maintainer.
+  **Domain terms updated/added to CONTEXT.md:** `humanReviewMode` entry
+  corrected from forward-looking/unbuilt to shipped; new `bootstrap window`
+  entry added. Issue #135 closed with PASS marker and commit reference.
+
 ## 2026-08-10
 - **Closed issue #133** (scribe post-PASS duties) — Step 4, fourth verdict `ESCALATE-TO-HUMAN`.
   Unit #133 (`feat(gh133)` commit `bf36317`, PASS marker `.claude/reviewed/gh133.pass` at
