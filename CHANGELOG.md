@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.15] - 2026-08-10
+
+### Added
+- **`.gitignore` reach for microworld bundles and escalation packets (issue #131, Step 3a).** `microworlds/`, `<adapter-root>/human-review/` and `<adapter-root>/microworld-audit.log` are now ignored in four places, not one: this repo's own `.gitignore`, and all three `bin/cli.js` scaffold `appendUnique` lists (`.claude/`, `.cursor/`, `.codex/` — `microworlds/` is project-root and therefore identical across all three; only the two dotted paths carry the adapter prefix). Closing **R9**, `runUpdate` also gains its own idempotent `appendUnique` call for the claude-side lines, sited alongside the existing `migrateGlobalProtocolImport` fixup: previously `runUpdate` called none of the scaffold lists, so a rule added only at scaffold time would never have reached an already-adapted project, which would then have seen bundles and escalation packets as untracked noise in `git status` and plausibly committed them — silently reinstating the "committed bundles" outcome the user explicitly overrode on 2026-07-28. New `tests/cli-backfill.test.js` case drives the `runUpdate` path against a fixture project whose `.gitignore` lacks the rules: asserts each line lands as its own line, asserts every pre-existing line survives unmodified and unreordered (exact-prefix check), and asserts a second `--update` leaves the file byte-identical. Acceptance greps: `git check-ignore -q microworlds/x/run.sh` exits 0, `grep -c '^microworlds/$' .gitignore` is 1, `grep -c 'human-review' .gitignore` is 1, `grep -c "'microworlds/'" bin/cli.js` is exactly 4 (a value of 3 would mean `runUpdate` was skipped). Must land before Step 4, whose escalation-packet criterion `grep -q 'human-review' .gitignore` asserts exactly that ordering.
+
 ## [0.31.14] - 2026-08-10
 
 ### Added
