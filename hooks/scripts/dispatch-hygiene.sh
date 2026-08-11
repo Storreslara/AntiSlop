@@ -137,7 +137,12 @@ target="${target_type//[^a-zA-Z0-9:._-]/_}"
 # outputs two words (checksum and byte count); we concatenate them without a
 # space to avoid parsing ambiguity in the consumed stamp (reason field may
 # contain spaces).
-dispatch_key="$(cksum <<< "${target_type} ${prompt}" | tr -d ' ')"
+# R5: use a delimiter byte (ASCII Record Separator) that cannot appear in a
+# normal agent-identity string, so a space-adjacent target_type/prompt split
+# can never collide with a different split - identity-hint hygiene, not a
+# security boundary.
+_dispatch_key_sep=$'\x1e'
+dispatch_key="$(cksum <<< "${target_type}${_dispatch_key_sep}${prompt}" | tr -d ' ')"
 
 consumed="${project_dir}/.claude/.dispatch-override.consumed"
 now="$(date +%s 2>/dev/null || echo 0)"
@@ -209,6 +214,12 @@ if [ -f "$consumed" ]; then
     elif [ "$consumed_key" = "$dispatch_key" ]; then
       is_valid=true
     fi
+  else
+    # Structurally unparseable: this stamp can never encode a valid key for
+    # ANY dispatch, so - unlike a valid-but-key-mismatched stamp - it can
+    # never be protecting a live sibling's replay window. Safe to delete
+    # outright, distinct from the staleness-based deletion path above.
+    rm -f "$consumed"
   fi
 
   if [ "$is_valid" = true ]; then
@@ -219,11 +230,12 @@ if [ -f "$consumed" ]; then
     # Genuinely past the window: safe to delete regardless of key.
     rm -f "$consumed"
   fi
-  # Else (unparseable, or key-mismatched but still fresh): leave the stamp
-  # alone. It is not honoured for THIS dispatch, but it must survive so an
-  # unrelated in-window dispatch can never destroy a live sibling's replay
-  # window - deleting here reproduces the exact double-fire bug this file
-  # exists to fix, triggered by any unrelated concurrent Agent spawn.
+  # Else (key-mismatched but still fresh - the unparseable case is deleted
+  # above): leave the stamp alone. It is not honoured for THIS dispatch, but
+  # it must survive so an unrelated in-window dispatch can never destroy a
+  # live sibling's replay window - deleting here reproduces the exact
+  # double-fire bug this file exists to fix, triggered by any unrelated
+  # concurrent Agent spawn.
 fi
 
 fired=""
