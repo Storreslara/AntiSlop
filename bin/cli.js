@@ -1931,7 +1931,7 @@ async function main() {
         'task-master': 'task-master (slices a finalized spec into dispatch-ready tasks; skip only for purely mechanical/small work)',
         scribe: 'scribe (maintains wiki/CONTEXT.md/ADRs; skip if no maintained wiki wanted)',
         'milestone-auditor': 'milestone-auditor (audits plan premises at milestone boundaries; skip if no real milestone structure or spec-master was also skipped)',
-        'agent-auditor': 'agent-auditor (read-only report on agent dispatches, tool/skill use, and gate anomalies; skip if you don\'t want this observability report)',
+        'agent-auditor': 'agent-auditor (read-only report on dispatch anomalies and model/skill-usage summaries; skip if you don\'t want this observability report)',
       }[persona];
       const include = await askYesNo(rl, `\nInclude ${label}?`, true);
       if (include) selected.push(persona);
