@@ -5,63 +5,90 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Microworld Dashboard</title>
   <style>
+    :root {
+      --gvx-bg-dim: #1d2021;
+      --gvx-bg: #282828;
+      --gvx-bg-soft: #32302f;
+      --gvx-fg: #d4be98;
+      --gvx-fg-bright: #ddc7a1;
+      --gvx-gray: #928374;
+      --gvx-red: #ea6962;
+      --gvx-green: #a9b665;
+      --gvx-yellow: #d8a657;
+      --gvx-blue: #7daea3;
+      --gvx-purple: #d3869b;
+      --gvx-aqua: #89b482;
+      --gvx-orange: #e78a4e;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-6: 24px;
+      --radius-card: 8px;
+      --radius-chip: 6px;
+      --radius-pill: 22px;
+    }
     * { box-sizing: border-box; }
-    body { font-family: system-ui, -apple-system, sans-serif; margin: 0; color: #333; background: #fafafa; }
+    body { font-family: 'JetBrains Mono', 'Cascadia Code', ui-monospace, Consolas, monospace; letter-spacing: 0.01em; margin: 0; color: var(--gvx-fg); background: var(--gvx-bg-dim); color-scheme: dark; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
     .container { display: flex; height: 100vh; }
-    .left-rail { width: 280px; background: #f0f0f0; border-right: 1px solid #ddd; overflow-y: auto; }
+    .left-rail { width: 280px; background: var(--gvx-bg); border-right: 1px solid var(--gvx-bg-soft); overflow-y: auto; }
     .main-content { flex: 1; display: flex; flex-direction: column; }
-    .header { padding: 1rem; border-bottom: 1px solid #ddd; background: #fff; }
+    .header { padding: var(--space-4); border-bottom: 1px solid var(--gvx-bg-soft); background: var(--gvx-bg); }
     h1 { margin: 0; font-size: 1.5rem; }
-    .bundle-item { padding: 1rem; border-bottom: 1px solid #e0e0e0; cursor: pointer; }
-    .bundle-item:hover { background: #e8e8e8; }
-    .bundle-item.active { background: #e3f2fd; border-left: 3px solid #2196f3; }
-    .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 0.5rem; }
-    .status-pass { background: #4caf50; }
-    .status-fail { background: #f44336; }
-    .status-timeout { background: #ff9800; }
-    .status-unknown { background: #9e9e9e; }
+    .bundle-item { padding: var(--space-4); border-bottom: 1px solid var(--gvx-bg-soft); cursor: pointer; }
+    .bundle-item:hover { background: var(--gvx-bg-soft); }
+    .bundle-item.active { background: var(--gvx-bg-soft); border-left: 3px solid var(--gvx-blue); }
+    .status-indicator { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: var(--space-2); }
+    .status-pass { background: var(--gvx-green); }
+    .status-fail { background: var(--gvx-red); }
+    .status-timeout { background: var(--gvx-orange); }
+    .status-unknown { background: var(--gvx-gray); }
     .bundle-title { font-weight: 500; }
-    .bundle-desc { font-size: 0.85rem; color: #666; margin-top: 0.25rem; }
+    .bundle-desc { font-size: 0.85rem; color: var(--gvx-gray); margin-top: var(--space-1); }
     .content-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; text-align: center; height: 100%; }
     .empty-state-text { max-width: 500px; }
-    .code { font-family: monospace; background: #eee; padding: 0.2rem 0.4rem; border-radius: 2px; }
-    .tabs-container { background: #fff; border-bottom: 1px solid #ddd; padding: 0; overflow-x: auto; display: flex; }
-    .tab-button { padding: 0.75rem 1rem; border: none; background: none; cursor: pointer; font-size: 0.95rem; color: #666; border-bottom: 2px solid transparent; }
-    .tab-button:hover { background: #f5f5f5; }
-    .tab-button.active { color: #2196f3; border-bottom-color: #2196f3; }
+    .code { background: var(--gvx-bg-soft); padding: var(--space-1) var(--space-2); border-radius: var(--radius-chip); }
+    .tabs-container { background: var(--gvx-bg); border-bottom: 1px solid var(--gvx-bg-soft); padding: 0; overflow-x: auto; display: flex; }
+    .tab-button { padding: var(--space-3) var(--space-4); border: none; background: none; cursor: pointer; font-size: 0.95rem; color: var(--gvx-gray); border-bottom: 2px solid transparent; }
+    .tab-button:hover { background: var(--gvx-bg-soft); }
+    .tab-button.active { color: var(--gvx-blue); border-bottom-color: var(--gvx-blue); }
     .form-and-output { flex: 1; display: flex; overflow: hidden; }
-    .form-pane { width: 400px; border-right: 1px solid #ddd; overflow-y: auto; padding: 1.5rem; background: #fff; }
-    .output-pane { flex: 1; overflow-y: auto; padding: 1.5rem; background: #f9f9f9; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; }
-    .form-group { margin-bottom: 1.5rem; }
-    label { display: block; font-weight: 500; margin-bottom: 0.5rem; }
-    label .desc { display: block; font-size: 0.85rem; font-weight: normal; color: #666; margin-top: 0.25rem; }
-    input[type="text"], input[type="number"], textarea { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; }
+    .form-pane { width: 400px; border-right: 1px solid var(--gvx-bg-soft); overflow-y: auto; padding: var(--space-6); background: var(--gvx-bg); }
+    .output-pane { flex: 1; overflow-y: auto; padding: var(--space-6); background: var(--gvx-bg-dim); font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; }
+    .form-group { margin-bottom: var(--space-6); }
+    label { display: block; font-weight: 500; margin-bottom: var(--space-2); }
+    label .desc { display: block; font-size: 0.85rem; font-weight: normal; color: var(--gvx-gray); margin-top: var(--space-1); }
+    input[type="text"], input[type="number"], textarea { width: 100%; padding: var(--space-2); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); background: var(--gvx-bg); color: var(--gvx-fg); }
     textarea { resize: vertical; min-height: 80px; }
-    input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: #2196f3; }
-    .submit-btn { background: #2196f3; color: #fff; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer; font-weight: 500; }
-    .submit-btn:hover { background: #1976d2; }
-    .submit-btn:disabled { background: #ccc; cursor: not-allowed; }
-    .output-section { margin-bottom: 1rem; }
-    .output-label { color: #666; font-weight: 500; margin-bottom: 0.5rem; }
-    .banner { padding: 0.75rem; border-left: 3px solid; margin-bottom: 1rem; background: #f5f5f5; }
-    .banner-timeout { border-color: #ff9800; color: #e65100; }
-    .banner-truncated { border-color: #2196f3; color: #0d47a1; }
+    input[type="text"]:focus, input[type="number"]:focus, textarea:focus { outline: none; border-color: var(--gvx-blue); }
+    :focus-visible { outline: 2px solid var(--gvx-yellow); outline-offset: 2px; }
+    .submit-btn { background: var(--gvx-blue); color: var(--gvx-bg); border: none; padding: var(--space-3) var(--space-6); border-radius: var(--radius-pill); cursor: pointer; font-weight: 600; }
+    .submit-btn:hover { filter: brightness(1.08); }
+    .submit-btn:disabled { background: var(--gvx-gray); color: var(--gvx-bg); cursor: not-allowed; }
+    .output-section { margin-bottom: var(--space-4); }
+    .output-label { color: var(--gvx-gray); font-weight: 500; margin-bottom: var(--space-2); }
+    .banner { padding: var(--space-3); border-left: 3px solid; margin-bottom: var(--space-4); background: var(--gvx-bg); }
+    .banner-timeout { border-color: var(--gvx-orange); color: var(--gvx-orange); }
+    .banner-truncated { border-color: var(--gvx-blue); color: var(--gvx-blue); }
     .exit-code { font-weight: 500; }
-    .spinner { display: inline-block; animation: spin 1s linear infinite; }
+    .spinner { display: inline-block; }
+    @media (prefers-reduced-motion: no-preference) {
+      .spinner { animation: spin 1s linear infinite; }
+    }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .no-functions { color: #999; font-style: italic; padding: 1rem; }
-    .excerpt-pane { border: 1px solid #ddd; border-radius: 4px; background: #f5f5f5; padding: 0.75rem; margin-bottom: 1.5rem; max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.85rem; }
+    .no-functions { color: var(--gvx-gray); font-style: italic; padding: var(--space-4); }
+    .excerpt-pane { border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); background: var(--gvx-bg-dim); padding: var(--space-3); margin-bottom: var(--space-6); max-height: 200px; overflow-y: auto; font-size: 0.85rem; }
     .excerpt-line { white-space: pre-wrap; word-break: break-all; }
-    .comment-section { margin-bottom: 1.5rem; }
-    .comment-section label { margin-bottom: 0.5rem; font-weight: 500; }
-    .comment-box { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; font-family: sans-serif; resize: vertical; min-height: 60px; }
-    .comment-box:focus { outline: none; border-color: #2196f3; }
-    .copy-btn { background: #4caf50; color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; margin-top: 0.5rem; width: 100%; }
-    .copy-btn:hover { background: #45a049; }
-    .copy-feedback { margin-bottom: 1rem; padding: 0.5rem; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; color: #2e7d32; display: none; }
+    .comment-section { margin-bottom: var(--space-6); }
+    .comment-section label { margin-bottom: var(--space-2); font-weight: 500; }
+    .comment-box { width: 100%; padding: var(--space-2); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); font: inherit; resize: vertical; min-height: 60px; background: var(--gvx-bg); color: var(--gvx-fg); }
+    .comment-box:focus { outline: none; border-color: var(--gvx-blue); }
+    .copy-btn { background: var(--gvx-green); color: var(--gvx-bg); border: none; padding: var(--space-3) var(--space-4); border-radius: var(--radius-pill); cursor: pointer; font-weight: 500; margin-top: var(--space-2); width: 100%; }
+    .copy-btn:hover { filter: brightness(1.08); }
+    .copy-feedback { margin-bottom: var(--space-4); padding: var(--space-2); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip); color: var(--gvx-green); display: none; }
     .hidden-textarea { position: absolute; left: -9999px; width: 1px; height: 1px; }
-    .bundle-section-header { padding: 0.75rem 1rem; background: #e0e0e0; font-weight: 600; font-size: 0.85rem; color: #333; border-bottom: 1px solid #ddd; text-transform: uppercase; letter-spacing: 0.5px; }
+    .bundle-section-header { padding: var(--space-3) var(--space-4); background: var(--gvx-bg-dim); font-weight: 600; font-size: 0.85rem; color: var(--gvx-gray); border-bottom: 1px solid var(--gvx-bg-soft); text-transform: uppercase; letter-spacing: 0.5px; }
 
   </style>
 </head>
@@ -125,8 +152,8 @@
       const rail = document.getElementById('leftRail');
       if (bundles.length === 0) {
         rail.innerHTML = fetchError
-          ? `<div style="padding: 1rem; color: #f44336;">Error loading microworld bundles: ${escapeHtml(fetchError)}</div>`
-          : '<div style="padding: 1rem; color: #999;">No microworld bundles</div>';
+          ? `<div style="padding: var(--space-4); color: var(--gvx-red);">Error loading microworld bundles: ${escapeHtml(fetchError)}</div>`
+          : '<div style="padding: var(--space-4); color: var(--gvx-gray);">No microworld bundles</div>';
         return;
       }
 
@@ -181,11 +208,11 @@
         if (bundles.length === 0) {
           content.innerHTML = fetchError
             ? `<div class="empty-state"><div class="empty-state-text">
-                <p style="color: #f44336;">Could not load microworld bundles: ${escapeHtml(fetchError)}</p>
+                <p style="color: var(--gvx-red);">Could not load microworld bundles: ${escapeHtml(fetchError)}</p>
               </div></div>`
             : `<div class="empty-state"><div class="empty-state-text">
                 <p>No microworld bundles yet.</p>
-                <p style="font-size: 0.9rem; color: #999;">
+                <p style="font-size: 0.9rem; color: var(--gvx-gray);">
                   A microworld bundle is a working-tree directory under
                   <span class="code">microworlds/&lt;unit-slug&gt;/</span> with a
                   <span class="code">manifest.json</span> and a <span class="code">run.sh</span> check,
@@ -206,7 +233,7 @@
 
       if (!selectedBundle.functions || selectedBundle.functions.length === 0) {
         content.innerHTML = `
-          <div style="padding: 1.5rem; background: #fff;">
+          <div style="padding: var(--space-6); background: var(--gvx-bg);">
             <h2>${escapeHtml(selectedBundle.unit)}</h2>
             <p>${escapeHtml(selectedBundle.description)}</p>
             <div class="no-functions">No function entries declared in this bundle's manifest.</div>
@@ -253,8 +280,8 @@
 
         // Excerpt pane (if location exists)
         if (fn.location && fn.location.file) {
-          html += `<div id="excerptContainer" style="margin-bottom: 1.5rem;">`;
-          html += `<div style="font-weight: 500; margin-bottom: 0.5rem; color: #333;">Source Excerpt</div>`;
+          html += `<div id="excerptContainer" style="margin-bottom: var(--space-6);">`;
+          html += `<div style="font-weight: 500; margin-bottom: var(--space-2); color: var(--gvx-fg);">Source Excerpt</div>`;
           html += `<div class="excerpt-pane" id="excerptPane" style="display: none;">Loading excerpt...</div>`;
           html += `</div>`;
         }
@@ -273,14 +300,14 @@
         html += `<textarea id="clipboardFallback" class="hidden-textarea"></textarea>`;
 
         if (fn.disabled) {
-          html += `<div style="color: #f44336; padding: 0.75rem; background: #ffebee; border-radius: 4px;">
+          html += `<div style="color: var(--gvx-red); padding: var(--space-3); background: var(--gvx-bg); border: 1px solid var(--gvx-red); border-radius: var(--radius-chip);">
             <strong>Disabled:</strong> ${escapeHtml(fn.disabledReason)}
           </div>`;
         }
 
         html += `<form id="inputForm">`;
         if (inputs.length === 0) {
-          html += `<p style="color: #999;">No inputs required.</p>`;
+          html += `<p style="color: var(--gvx-gray);">No inputs required.</p>`;
         } else {
           for (const input of inputs) {
             html += `<div class="form-group">`;
@@ -367,17 +394,17 @@
       let html = '';
 
       // Shared state warning
-      html += `<div style="padding: 1rem; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; margin-bottom: 1.5rem;">
-        <div style="font-weight: 500; color: #2e7d32; margin-bottom: 0.5rem;">each cell runs in a fresh process</div>
-        <div style="font-size: 0.9rem; color: #558b2f;">Cell executions are independent. Cell 2 cannot see variables or state from Cell 1.</div>
+      html += `<div style="padding: var(--space-4); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip); margin-bottom: var(--space-6);">
+        <div style="font-weight: 500; color: var(--gvx-green); margin-bottom: var(--space-2);">each cell runs in a fresh process</div>
+        <div style="font-size: 0.9rem; color: var(--gvx-fg);">Cell executions are independent. Cell 2 cannot see variables or state from Cell 1.</div>
       </div>`;
 
       if (cells.length === 0) {
-        html += `<div style="color: #999; font-style: italic;">No cells yet. Invoke the function above to create one.</div>`;
+        html += `<div style="color: var(--gvx-gray); font-style: italic;">No cells yet. Invoke the function above to create one.</div>`;
         return html;
       }
 
-      html += `<div style="font-weight: 500; color: #333; margin-bottom: 1rem;">Execution History (${cells.length} ${cells.length === 1 ? 'cell' : 'cells'})</div>`;
+      html += `<div style="font-weight: 500; color: var(--gvx-fg); margin-bottom: var(--space-4);">Execution History (${cells.length} ${cells.length === 1 ? 'cell' : 'cells'})</div>`;
 
       for (let i = cells.length - 1; i >= 0; i--) {
         const cell = cells[i];
@@ -390,35 +417,35 @@
 
     function renderCell(cell, functionId, index, isCollapsed) {
       const startedTime = new Date(cell.startedAt).toLocaleTimeString();
-      let html = `<div style="margin-bottom: 1.5rem; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">`;
+      let html = `<div style="margin-bottom: var(--space-6); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-card); overflow: hidden; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);">`;
 
       // Cell header with controls
-      html += `<div style="padding: 0.75rem; background: #f5f5f5; border-bottom: 1px solid #ddd; display: flex; align-items: center; justify-content: space-between;">`;
+      html += `<div style="padding: var(--space-3); background: var(--gvx-bg-soft); border-bottom: 1px solid var(--gvx-bg-soft); display: flex; align-items: center; justify-content: space-between;">`;
       html += `<div style="flex: 1;">`;
-      html += `<div style="font-weight: 500; color: #333;">Cell ${index + 1}</div>`;
-      html += `<div style="font-size: 0.85rem; color: #666; margin-top: 0.25rem;">Invoked at ${escapeHtml(startedTime)}</div>`;
+      html += `<div style="font-weight: 500; color: var(--gvx-fg);">Cell ${index + 1}</div>`;
+      html += `<div style="font-size: 0.85rem; color: var(--gvx-gray); margin-top: var(--space-1);">Invoked at ${escapeHtml(startedTime)}</div>`;
       html += `</div>`;
 
       // Control buttons
-      html += `<div style="display: flex; gap: 0.5rem;">`;
-      html += `<button class="cell-edit-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #2196f3; color: #fff; border: none; padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">Edit</button>`;
-      html += `<button class="cell-toggle-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #666; color: #fff; border: none; padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">${isCollapsed ? 'Expand' : 'Collapse'}</button>`;
-      html += `<button class="cell-remove-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #f44336; color: #fff; border: none; padding: 0.5rem 0.75rem; border-radius: 3px; cursor: pointer; font-size: 0.85rem;">Remove</button>`;
+      html += `<div style="display: flex; gap: var(--space-2);">`;
+      html += `<button class="cell-edit-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: var(--gvx-blue); color: var(--gvx-bg); border: none; padding: var(--space-2) var(--space-3); border-radius: var(--radius-chip); cursor: pointer; font-size: 0.85rem;">Edit</button>`;
+      html += `<button class="cell-toggle-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: transparent; color: var(--gvx-fg); border: 1px solid var(--gvx-gray); padding: var(--space-2) var(--space-3); border-radius: var(--radius-chip); cursor: pointer; font-size: 0.85rem;">${isCollapsed ? 'Expand' : 'Collapse'}</button>`;
+      html += `<button class="cell-remove-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: var(--gvx-red); color: var(--gvx-bg); border: none; padding: var(--space-2) var(--space-3); border-radius: var(--radius-chip); cursor: pointer; font-size: 0.85rem;">Remove</button>`;
       html += `</div>`;
       html += `</div>`;
 
       // Cell content (output)
       if (!isCollapsed) {
-        html += `<div style="padding: 1rem; background: #fff;">`;
+        html += `<div style="padding: var(--space-4); background: var(--gvx-bg);">`;
 
         // Exit code
-        html += `<div style="margin-bottom: 0.5rem;">`;
+        html += `<div style="margin-bottom: var(--space-2);">`;
         html += `<div class="output-label">Exit code: <span class="exit-code">${cell.result.exitCode}</span></div>`;
         html += `</div>`;
 
         // Duration
         if (cell.result.durationMs !== undefined) {
-          html += `<div style="margin-bottom: 0.5rem;">`;
+          html += `<div style="margin-bottom: var(--space-2);">`;
           html += `<div class="output-label">Duration: ${cell.result.durationMs}ms</div>`;
           html += `</div>`;
         }
@@ -433,22 +460,22 @@
 
         // Stdout
         if (cell.result.stdout) {
-          html += `<div style="margin-bottom: 1rem;">`;
+          html += `<div style="margin-bottom: var(--space-4);">`;
           html += `<div class="output-label">stdout</div>`;
-          html += `<div style="background: #fafafa; padding: 0.75rem; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stdout)}</div>`;
+          html += `<div style="background: var(--gvx-bg-dim); padding: var(--space-3); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stdout)}</div>`;
           html += `</div>`;
         }
 
         // Stderr
         if (cell.result.stderr) {
-          html += `<div style="margin-bottom: 1rem;">`;
+          html += `<div style="margin-bottom: var(--space-4);">`;
           html += `<div class="output-label">stderr</div>`;
-          html += `<div style="background: #ffebee; padding: 0.75rem; border: 1px solid #ef5350; border-radius: 4px; font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; color: #c62828; max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stderr)}</div>`;
+          html += `<div style="background: var(--gvx-bg-dim); padding: var(--space-3); border: 1px solid var(--gvx-red); border-radius: var(--radius-chip); font-family: monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-all; color: var(--gvx-red); max-height: 300px; overflow-y: auto;">${escapeHtml(cell.result.stderr)}</div>`;
           html += `</div>`;
         }
 
         if (!cell.result.stdout && !cell.result.stderr) {
-          html += `<div style="color: #999;">No output</div>`;
+          html += `<div style="color: var(--gvx-gray);">No output</div>`;
         }
 
         // Per-cell comment box + copy feedback button. Ids are per-instance
@@ -458,7 +485,7 @@
         html += `<label for="cell-comment-${escapeHtml(cell.cellId)}">Comment</label>`;
         html += `<textarea id="cell-comment-${escapeHtml(cell.cellId)}" class="comment-box" placeholder="Add your observation about this run..."></textarea>`;
         html += `</div>`;
-        html += `<button type="button" class="cell-copy-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #4caf50; color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; width: 100%;">Copy Feedback</button>`;
+        html += `<button type="button" class="cell-copy-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: var(--gvx-green); color: var(--gvx-bg); border: none; padding: var(--space-3) var(--space-4); border-radius: var(--radius-pill); cursor: pointer; font-weight: 500; width: 100%;">Copy Feedback</button>`;
         html += `<div id="cell-copy-feedback-${escapeHtml(cell.cellId)}" class="copy-feedback"></div>`;
         html += `<textarea id="cell-clipboard-fallback-${escapeHtml(cell.cellId)}" class="hidden-textarea"></textarea>`;
 
@@ -516,7 +543,7 @@
         const result = await response.json();
         if (!response.ok) {
           const output = document.getElementById('outputPane');
-          output.innerHTML = `<div style="color: #f44336;"><strong>Error:</strong> ${escapeHtml(result.error)}</div>`;
+          output.innerHTML = `<div style="color: var(--gvx-red);"><strong>Error:</strong> ${escapeHtml(result.error)}</div>`;
           return;
         }
 
@@ -543,7 +570,7 @@
         attachCellEventListeners();
       } catch (err) {
         const output = document.getElementById('outputPane');
-        output.innerHTML = `<div style="color: #f44336;"><strong>Error:</strong> ${escapeHtml(err.message)}</div>`;
+        output.innerHTML = `<div style="color: var(--gvx-red);"><strong>Error:</strong> ${escapeHtml(err.message)}</div>`;
       } finally {
         btn.disabled = false;
         btn.textContent = oldText;
@@ -676,7 +703,7 @@
         let html = '';
         lines.forEach((line, idx) => {
           const lineNum = actualStartLine + idx;
-          html += `<div class="excerpt-line"><span style="color: #999; margin-right: 0.5rem;">${lineNum}</span>${escapeHtml(line)}</div>`;
+          html += `<div class="excerpt-line"><span style="color: var(--gvx-gray); margin-right: var(--space-2);">${lineNum}</span>${escapeHtml(line)}</div>`;
         });
 
         excerptPane.innerHTML = html;
