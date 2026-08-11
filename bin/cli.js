@@ -556,6 +556,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
       'Microworld bundles (format and the check contract)',
@@ -578,6 +579,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
     ],
   },
   reviewer: {
@@ -590,6 +592,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
     ],
     drop: [
@@ -614,6 +617,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
     ],
   },
   'task-master': {
@@ -631,6 +635,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
       'Continuing after a FAIL verdict',
     ],
   },
@@ -648,6 +653,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Retrieval contract',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
       'A note on `memory`',
       'Microworld bundles (format and the check contract)',
     ],

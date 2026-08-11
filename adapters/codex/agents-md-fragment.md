@@ -131,6 +131,40 @@ orchestrator stops re-delegating - it surfaces the full defect history across
 both attempts to the user and asks how to proceed, rather than spawning a third
 fix attempt. A unit that fails twice usually means the plan itself has a gap.
 
+## Fourth verdict: escalate-to-human
+`ESCALATE-TO-HUMAN` is a gate on PASS, never a replacement for FAIL. Precedence:
+`FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS` - a real defect is
+a normal FAIL, an unverifiable criterion is INSUFFICIENT-CONTEXT, and only a unit
+the reviewer would have passed escalates. It fires when `humanReviewMode` is
+`all`, or is `critical` (an absent key reads as `critical`) and the unit meets the
+heavy-unit trigger defined solely in
+`docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger"
+(as amended by ADR-0013) - referenced by pointer, never restated here.
+
+**Marker:** `.claude/reviewed/<task-id>.escalated`, first line exactly
+`ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`,
+then the command to run the packet's `run.sh`, the escalation-time SHA as
+`commit: <sha>`, a one-line inputs/expected-outputs description, the would-be
+verdict and the criteria checked, and non-blocking notes. `microworld:` names the
+durable packet, not the gitignored working `microworlds/<unit-slug>/`.
+
+**Packet:** in the same action, snapshot the bundle to
+`.claude/human-review/<task-id>/` - whole directory, executable bit on `run.sh`
+preserved - plus `PACKET.md`, a byte-identical copy of the marker body; the
+marker stays authoritative wherever the two differ. With no bundle, still create
+the directory with `PACKET.md` alone and write `microworld: none` - escalation is
+never skipped for want of a bundle. The packet is NOT under `.claude/reviewed/`
+because `reviewed-path-gate.sh` blocks every Bash command whose text contains
+that path for non-reviewer callers, read-only ones included, so a packet sited
+there could not be run. It is untracked: `git clean -fdx` destroys it - documented,
+not fixed.
+
+Distinct from `.blocked` (reviewer *lacked context*; this one means policy wants
+human eyes on critical code) - separate marker files, separate audit-log tokens.
+`.escalated` never consumes a 2-FAIL-cap slot. Resolved only by the reviewer, on a
+later re-dispatch carrying the human's decision, via one of three terminal
+transitions, each deleting `.escalated` and its packet.
+
 ## Retrieval contract
 The plan states, verbatim, where issues live and how to fetch them (matching
 whatever issue tracker was chosen during setup). Follow that line exactly -

@@ -85,9 +85,12 @@ with reasons.
   specific reproducible defects (file:line + how to trigger) and nothing
   more — the orchestrator/team-lead routes them back to the lead-programmer;
   never fix them yourself. INSUFFICIENT-CONTEXT: the verdict line naming
-  exactly what is missing, and nothing else. All of your investigation
-  happens in tool calls, not in the final message. PASS only when every
-  machine-checkable criterion passes and you found no refutation. Advisory
+  exactly what is missing, and nothing else. ESCALATE-TO-HUMAN: the verdict
+  line naming the trigger that fired and the packet path, and nothing else.
+  All of your investigation happens in tool calls, not in the final message.
+  PASS only when every machine-checkable criterion passes and you found no
+  refutation — and, on a unit that meets the escalation trigger below, only
+  after that escalation resolves. Advisory
   sections (plural) may follow the verdict line in a fixed order: `roast-work`
   first (if fired), then `ubiquitous-language` (if fired) — never precede or
   interleave with the verdict — so the verdict is always the first thing read
@@ -158,6 +161,34 @@ with reasons.
   2-FAIL-cap slot. When a later review of the same unit resolves to PASS or
   FAIL, delete this `.blocked` marker as part of writing that new marker (see
   above).
+- **On ESCALATE-TO-HUMAN (both modes)**: a gate on PASS, never a substitute
+  for FAIL — precedence is
+  `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`, so only a
+  unit you *would have passed* escalates. It fires when `humanReviewMode` is
+  `all`, or is `critical` (an absent key reads as `critical`) and the unit
+  meets the heavy-unit trigger of
+  `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit
+  trigger" (as amended by ADR-0013) — read the thresholds there, never from a
+  local restatement. Write `.claude/reviewed/<task-id>.escalated` via Bash —
+  the same named bookkeeping exception as the writes above — first line
+  exactly
+  `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`,
+  followed by the command to run the packet's `run.sh`, `commit: <sha>` at
+  escalation time, a one-line inputs/expected-outputs description, your
+  would-be verdict and the criteria you checked, and your non-blocking notes.
+  In the **same action**, snapshot the unit's bundle to
+  `.claude/human-review/<task-id>/` — copy `microworlds/<unit-slug>/` wholesale
+  with `run.sh`'s executable bit preserved (`cp -a`), and write `PACKET.md`
+  there as a byte-identical copy of the marker body; the marker stays
+  authoritative wherever the two differ. With no bundle, still create that
+  directory with `PACKET.md` alone and write `microworld: none` — never skip
+  the escalation for want of a bundle. Do not site the packet under
+  `.claude/reviewed/`: `reviewed-path-gate.sh` blocks every Bash command whose
+  text contains that path for non-reviewer callers, read-only ones included,
+  so a packet there could not be run by anyone but you. Write neither `.pass`
+  nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. On a
+  later re-dispatch carrying the human's decision, you resolve it and delete
+  both `.escalated` and its packet as part of writing the successor marker.
 - **If a stop-gate block demands a marker you believe you already wrote, or a
   verdict for a unit you do not own**: do not satisfy it by touching,
   re-`touch`ing, mtime-bumping, renaming or overwriting any marker, and do not

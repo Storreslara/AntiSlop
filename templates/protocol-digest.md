@@ -12,7 +12,8 @@
 - Review ownership: lead-programmer never spawns or messages the reviewer
   directly, and the reviewer never spawns or messages the lead-programmer.
   Only the orchestrator/team lead routes between them. "Done" means the
-  reviewer returned PASS, not "looks finished."
+  reviewer returned PASS, not "looks finished" - and on a critical unit PASS
+  may first route through ESCALATE-TO-HUMAN.
 - FAIL cap: 2 FAILs on the same unit -> stop re-delegating fixes; surface the
   full defect history to the user instead of attempting a third pass.
 - The WIP sentinel (`.claude/wip-handoff.<agent-id>`) is for a genuine
