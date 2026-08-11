@@ -6,3 +6,6 @@
 - [Write tool unavailable in dispatch](feedback_write_tool_unavailable_in_dispatch.md) — Write tool may be rejected at call time despite frontmatter; fall back to Bash heredoc.
 - [Verify ordering against criteria](feedback_verify_ordering_against_criteria.md) — a spec's Handoff parallelism claim can understate real deps; re-derive Depends-on from actual acceptance-criteria commands.
 - [Fable roast-pass removed](feedback_fable_roast_pass_removed.md) — ADR-0013 removed the separate fable dispatch; never tag `Roast pass: fable`, flag heavy surfaces to the reviewer's inline roast-work skill instead.
+- [Split unit across persona scopes](feedback_split_unit_across_persona_scopes.md) — when a unit's files span scribe + lead-programmer write scopes, write two dispatch prompts under one shared unit id, don't escalate a spec gap.
+- [Area-wide FAIL evidence for model tag](feedback_area_wide_fail_evidence_for_model_tag.md) — a plan-wide "no haiku" directive from spec-master is legitimate if spot-verified against sibling units' FAIL history and file overlap, not on faith.
+- [Recheck baseline counts live](feedback_recheck_baseline_counts_live.md) — a spec's stated grep/count baseline can be off; re-run the literal command live before dispatch and fold any real gap into Affected files.
