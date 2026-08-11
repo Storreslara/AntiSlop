@@ -536,12 +536,12 @@ the collection of addressable **Agent** entities currently active in a
   named executable in the bundle's `functions[]`).
 
 **Microworld**:
-(unit #314, 2026-08-10, forward-looking) — the dashboard entry a human
-  explores, rendering the canonical definition from a **microworld bundle**.
-  The dashboard itself is a D2+ artifact not yet built; this term is normative
-  in protocol prose but the dashboard's own glossary entries may differ once
-  authored. Coordinate with the step owning the dashboard if clarification is
-  needed. Distinct from **microworld bundle** (the gitignored directory).
+(unit #314, 2026-08-10, forward-looking; dashboard built unit #322, 2026-08-11)
+  — the dashboard entry a human explores, rendering the canonical definition
+  from a **microworld bundle**. Rendered by the **Microworld dashboard** (the
+  server/UI process as a whole — see that entry). Distinct from **microworld
+  bundle** (the gitignored directory) and from **Microworld dashboard** (the
+  process rendering this entry, not the entry itself).
 
 **Function entry**:
 (unit #314, 2026-08-10) — a named, invocable executable declared in a
@@ -623,13 +623,23 @@ the collection of addressable **Agent** entities currently active in a
 _Avoid_: review directory, human review folder (use "human-review directory" with the
   dot-path for clarity about adapter specificity)
 
-**The dashboard**:
-(unit #314, 2026-08-10, forward-looking) — the D2+ UI entry point for human
-  exploration of **microworld** bundles (defined normatively in protocol at
-  `templates/persona-protocol.md:338` but the dashboard itself and its own
-  glossary entries are not yet built). Use in protocol is forward-looking;
-  future protocol amendments may refine terminology once the dashboard design
-  is complete.
+**Microworld dashboard**:
+(unit #314, 2026-08-10, forward-looking; built and documented unit #322,
+  2026-08-11) — the loopback-only HTTP server/UI process itself, started via
+  `node bin/cli.js --dashboard` (nothing auto-starts it), that lets a human
+  browse and invoke **microworld bundles** without manual CLI invocation. Binds
+  to `127.0.0.1` on an ephemeral port; every request requires a per-launch
+  token via `?t=<token>` or `X-Antislop-Token` (see `server.js:21`/`:45-47`).
+  Writes nothing to disk — invocation results live only as ephemeral, in-page
+  **Cell**s. Documented in `README.md`'s "Microworld dashboard" section
+  (`README.md:177`). Distinct from **Microworld** (an individual bundle's
+  rendered dashboard entry a human explores) and **Microworld bundle** (the
+  gitignored `microworlds/<unit-slug>/` directory the dashboard renders) — this
+  entry is the process/UI as a whole, the other two are what it displays.
+_Avoid_: "the dashboard" alone in glossary cross-references now that this
+  entry exists — link explicitly to disambiguate from the individual
+  **Microworld** entry (dashboard *entries*) and **D5 browser client**
+  (the specific static-HTML implementation of this process's UI).
 
 **Bundle source**:
 (unit #315, 2026-08-10; `"packet"` value implemented unit #321, 2026-08-11) —

@@ -541,6 +541,54 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   `agents/reviewer.md`, `bin/cli.js`, `tests/adapter-protocol-parity.test.js`,
   `tests/cli-backfill.test.js`, `tests/ubiquitous-language.test.js`.
 
+## 2026-08-11
+- **Closed issue #322** (scribe post-PASS duties) — microworld dashboard D9 step
+  (README.md documentation + packaging verification). Unit #322 (`docs(gh322)`
+  commit `5ce1c5f7a2a94a6f15fd10babce394409f2a42ba`, PASS marker
+  `.claude/reviewed/gh322.pass`) authored README.md's "Microworld dashboard"
+  section from scratch: the `node bin/cli.js --dashboard` start command,
+  loopback-bind + per-launch-token security posture (`?t=` query or
+  `X-Antislop-Token` header), ephemeral in-page cells (never persisted, lost on
+  refresh, each running in a fresh process), the feedback-block shape, and a
+  "Dashboard-specific limitations" subsection (token visibility, bundle
+  verification, stale location line numbers). Packaging assertions (`npm pack
+  --dry-run --json` includes `bin/dashboard/`, `validate.sh`'s npm-pack
+  included/excluded lists unchanged) were verified, requiring no `validate.sh`
+  edit. **Review outcome:** single clean PASS this round — no FAIL, unlike the
+  gh321 FAIL→fix→PASS arc the round before. 6 of 7 acceptance criteria passed
+  literally; the 7th (an `awk` range over the "Known limitations" section
+  piped to `grep -qi token`) is structurally vacuous — the range's end pattern
+  matches its own start line and self-terminates after one line, so it can
+  never pass for any content. Reviewer verified the substantive intent instead
+  (token caveat genuinely present at README.md:211, correctly nested under
+  "Dashboard-specific limitations") and did not fault the unit for a
+  criterion-authoring defect. **Notable: this is the second consecutive unit**
+  (after gh320's N1) with a structurally vacuous awk-range acceptance
+  criterion — the same shape both times (a range whose end pattern
+  self-matches the start line). Worth flagging to task-master/spec-master as a
+  criterion-authoring pattern to lint against when future units generate
+  awk-range criteria over markdown section headers.
+  **Scribe follow-up (this entry, ubiquitous-language Lens 3):** README.md
+  made "microworld dashboard" a headline term (README.md:177/179) with no
+  dedicated CONTEXT.md entry for the server/UI process as a whole — only
+  **Microworld** (an individual bundle's rendered dashboard entry) and
+  **Microworld bundle** (the gitignored directory) existed. Renamed the
+  stale, forward-looking **The dashboard** entry (unit #314, "not yet built")
+  to **Microworld dashboard**, updated it to reflect that the dashboard is now
+  built and documented, and cross-linked it against **Microworld** and
+  **D5 browser client** to prevent the three terms blurring together. Also
+  refreshed the **Microworld** entry's stale "not yet built" language. Did not
+  touch README.md, `bin/dashboard/`, or `tests/` (lead-programmer's surface,
+  already landed and reviewed); did not add the missing `bundle:` line to
+  README.md's feedback-block enumeration (N2 in the PASS marker — a README
+  completeness gap, out of scribe's write scope for this unit; CONTEXT.md's
+  own **Feedback block** entry already lists "bundle path" correctly).
+  **Domain terms added/updated in CONTEXT.md:** **Microworld dashboard**
+  (renamed from **The dashboard**, updated from forward-looking to built),
+  **Microworld** (staleness fix only). Affected files: `CONTEXT.md`,
+  `.claude/wiki/changelog.md` (this entry). Issue #322 closed with PASS marker
+  and commit reference.
+
 ## 2026-08-08
 - **Closed issue #227** (scribe dispatch) — replay-stamp staleness check fix.
   Unit #227 PASSed review and was closed with commit bf6f41c. Institutional
