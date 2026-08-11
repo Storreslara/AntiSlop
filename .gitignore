@@ -14,6 +14,7 @@ scratch/
 .claude/.session-baseline.*
 .claude/wip-audit.log
 .claude/.pending-review.*
+.claude/.review-join.*
 .claude/review-audit.log
 .claude/dispatch-audit.log
 .claude/.dispatch-override
