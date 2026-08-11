@@ -4,6 +4,67 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-11
+- **Closed issue #136** (scribe post-PASS duties) — Step 7 (amended), the
+  human-decision-routing loop via the DECISION file. Unit #136 (commit
+  `54d1fc326da67c7ad405e605aeb4660a6d10ee2c`, PASS marker
+  `.claude/reviewed/gh136.pass`) built the reviewer-side mechanism that reads,
+  verifies, and **transcribes** (never re-reviews) a human's `DECISION` file
+  into a resolution — the final unit of the human-decision-channel-adjacent
+  chain, and the mechanism the orchestrator uses next to resolve the
+  long-standing gh134 escalation. **DECISION file, not chat relay:** the
+  human writes `.claude/human-review/<task-id>/DECISION` in their own
+  terminal; `human-decision-gate.sh` (Step 1/#325) blocks every agent
+  identity, reviewer included, from creating or modifying it, so a decision
+  relayed in a dispatch prompt or chat message is never a substitute for the
+  file — the orchestrator surfaces the command template but never writes it
+  and never offers to. **Staleness binding:** the DECISION file's
+  `escalation:` timestamp must exactly match the standing `.escalated`
+  marker's own first-line timestamp before the reviewer will transcribe it,
+  so a DECISION left over from an earlier escalation of a unit can't resolve
+  a later, different escalation of that same unit. **Three routes:** approve
+  → `.pass` with an appended `human: approved by <name> <ts>` attestation
+  line; reject with reason → `.fail` with the human's reason verbatim as the
+  defect list (consumes a 2-FAIL-cap slot); fixable a specific way → new
+  `.directed` marker (`DIRECTED <task-id> <ts> fix: <one-line human
+  directive>`, human's full prescribed fix verbatim), which does NOT consume
+  a cap slot (same logic as `INSUFFICIENT-CONTEXT`) and dispatches back to
+  `lead-programmer` for a normal re-review. In all three routes the packet is
+  deleted in the same reviewer action that deletes `.escalated`, via
+  `rm -rf .claude/human-review/<task-id>` — the decision gate's sanctioned
+  deletion path. **Review outcome:** clean single-pass PASS on commit
+  `54d1fc326da67c7ad405e605aeb4660a6d10ee2c`, thirteen criteria including
+  both adapter-protocol-parity and validate suites plus the pre-existing
+  `tests/stop-gate-escalated.test.sh`.
+  **Non-blocking notes carried forward from review (none fixed by this
+  scribe pass — outside CONTEXT.md/changelog scope):**
+  (a) `agents/reviewer.md:233-234`'s deletion instruction reads as if one
+  `rm -rf .claude/human-review/<task-id>` removes both `.escalated` and the
+  packet, but that command only removes the packet directory — `.escalated`
+  (`.claude/reviewed/<task-id>.escalated`) needs its own separate `rm -f`,
+  the same pattern already used for `.blocked` at reviewer.md:137/:150. Miss
+  is fail-safe (stop-gate keeps blocking) but worth a future precision fix.
+  (b) The new "Resolving an escalation" subsection's adapter-port content
+  (`adapters/codex/agents-md-fragment.md`, `adapters/cursor/rules/persona-protocol.mdc`)
+  is currently untested — a mutation deleting the whole subsection from both
+  ports still passes parity+validate; the spec's own accepted tradeoff for a
+  `###` subsection (no parity-map entry needed), but the ports can silently
+  rot without a probe on a distinctive substring.
+  (c) Approve-route provenance: at resolution time HEAD may have moved past
+  the commit the human actually approved (gh134's `.escalated` records
+  commit `fa5afeb`; HEAD is now `54d1fc3`), so the transcribed `.pass`
+  records the resolution-time commit rather than the approved one, and the
+  packet (which had the original commit) gets deleted, losing that
+  provenance. Spec is silent on this.
+  (d) `tests/stop-gate-escalated.test.sh:100` has a pre-existing `.directed`
+  fixture using `decision:` instead of the now-canonical `fix:` field name —
+  cosmetic (the stop-gate reads filenames only, never contents), no behavior
+  impact, worth a spelling fix later.
+  **Domain terms updated/added to CONTEXT.md:** `DECISION file` and
+  `DECISION channel` entries corrected from forward-looking/unbuilt to
+  shipped (the reviewer now reads and transcribes both); new `` `.directed`
+  marker `` and `Staleness binding` glossary entries added. Issue #136
+  closed with PASS marker and commit reference.
+
 - **Closed issue #135** (scribe post-PASS duties) — Step 6, `humanReviewMode`
   ships as a real config field. Unit #135 (commit `134b3962e0b7ac842bc62ccac6fef5eab13b3df3`,
   PASS marker `.claude/reviewed/gh135.pass`) implemented Step 6 of the

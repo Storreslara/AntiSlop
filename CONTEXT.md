@@ -596,6 +596,36 @@ the collection of addressable **Agent** entities currently active in a
   files, separate audit-log tokens. Authoritative over the paired [[PACKET.md]] on
   divergence. Deleted as part of a terminal transition in Steps 5–7.
 
+**`.directed` marker**:
+(unit #136, 2026-08-11, Step 7 of the human-decision-channel fix, issue #324) —
+  file written by the reviewer at `.claude/reviewed/<task-id>.directed` when
+  transcribing a human `route: direct` [[DECISION file]] resolution. First line
+  byte-exact: `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human
+  directive>`, followed by the human's full prescribed fix verbatim from the
+  DECISION body. Contrast with `.blocked` and `.escalated`: both of those keep
+  the unit's pending-review flag standing at the reviewer's SubagentStop, so
+  `stop-gate.sh` keeps blocking further progress until resolved — `.directed`
+  is DELIBERATELY absent from that same glob check, since its whole purpose is
+  the opposite: letting the human-directed fix actually get dispatched to
+  `lead-programmer` for a normal re-review, not freezing the unit. Does NOT
+  consume a 2-FAIL-cap slot — same logic as `INSUFFICIENT-CONTEXT`: it is a
+  human-directed correction, not lead-programmer failing on its own. Deleted
+  by the reviewer in the same action as the next resolution once re-review
+  completes.
+
+**Staleness binding**:
+(unit #136, 2026-08-11, Step 7 of the human-decision-channel fix, issue #324) —
+  the rule that a [[DECISION file]]'s `escalation:` timestamp field must
+  exactly equal the standing `.escalated` marker's own first-line timestamp
+  before the reviewer will transcribe the DECISION into a resolution. Defined
+  in `templates/persona-protocol.md`'s "Resolving an escalation" section: the
+  reviewer checks the task-id matches and this timestamp equality holds; on a
+  missing, malformed, or stale `DECISION`, it reports and waits rather than
+  transcribing. Ties a given human decision to the one specific escalation
+  event it was written in response to, so a DECISION file left over from an
+  earlier escalation of a unit cannot resolve a later, different escalation of
+  that same unit.
+
 **PACKET.md**:
 (unit #133, 2026-08-10) — file written by the reviewer inside the escalation packet
   directory (`.claude/human-review/<task-id>/PACKET.md`) as a byte-identical copy of
@@ -796,15 +826,18 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   (a single invocation record).
 
 **DECISION file**:
-(unit #325, 2026-08-11, Step 1 of the human-decision-channel fix, issue #324) —
+(unit #325, 2026-08-11, Step 1 of the human-decision-channel fix, issue #324;
+  read and transcribed by the reviewer, Step 3/amended #136, 2026-08-11) —
   the human-written file at `.claude/human-review/<task-id>/DECISION`, inside an
-  [[Escalation packet]] directory, that will carry the human's resolution of a
-  pending `ESCALATE-TO-HUMAN` escalation once the reading/transcription mechanism
-  (Step 3, amended #136) lands. As of this unit, the file is made agent-unwritable
-  by **the human-decision gate** (see below) but is not yet READ by anything — no
-  consumer exists. The DECISION file is the consent artifact: its unwritability by
-  any agent identity is what makes its eventual contents trustworthy as the
-  human's own word, not an agent's paraphrase.
+  [[Escalation packet]] directory, carrying the human's resolution of a pending
+  `ESCALATE-TO-HUMAN` escalation. The file is made agent-unwritable by **the
+  human-decision gate** (see below); on a later re-dispatch the reviewer
+  verifies it exists at the packet path, parses its first line, checks the
+  task-id matches and the [[Staleness binding]] holds, then **transcribes** it
+  — never re-reviews it — into one of three terminal routes (see [[DECISION
+  channel]]). The DECISION file is the consent artifact: its unwritability by
+  any agent identity is what makes its contents trustworthy as the human's own
+  word, not an agent's paraphrase.
 
 **The human-decision gate** (`human-decision-gate.sh`):
 (unit #325, 2026-08-11, Step 1 of #324) — the new `PreToolUse` hook (`Write|Edit`
@@ -842,15 +875,18 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   PASSed at `13841aa`. See `.claude/reviewed/gh326.pass`.
 
 **DECISION channel**:
-(unit #326, 2026-08-11, named at Step 2 of #324) — compact name for the
-  resolution route [[DECISION file]] provides: `.claude/human-review/<task-id>/DECISION`,
+(unit #326, 2026-08-11, named at Step 2 of #324; read and transcribed by the
+  reviewer, Step 3/amended #136, 2026-08-11) — compact name for the resolution
+  route [[DECISION file]] provides: `.claude/human-review/<task-id>/DECISION`,
   guarded unwritable-by-any-agent by [[The human-decision gate]] (`human-decision-gate.sh`,
   Step 1/#325). Named explicitly in `reviewed-path-gate.sh:113`'s block message
   as "the only route that resolves an escalation" once the no-reviewer fallback is
   suspended by a standing `.escalated` marker (see [[Escalation-laundering]]) — i.e.
   the fallback's block message points a human at this channel rather than leaving
-  the escalation stuck with no legal way forward. As of unit #326, still nothing
-  *reads* the DECISION channel (the transcription/consumption mechanism is Step 3,
-  amended #136, not yet built) — this unit only makes the channel the sole named
-  route, it does not implement reading it.
+  the escalation stuck with no legal way forward. The reviewer now reads and
+  transcribes the channel (never re-reviews) into three terminal routes: approve
+  → `.pass` with an appended human-attestation line, reject → `.fail` with the
+  human's reason verbatim as the defect list, direct → [[`.directed` marker]]
+  carrying the human's prescribed fix verbatim. Defined in
+  `templates/persona-protocol.md`'s "Resolving an escalation" section.
 
