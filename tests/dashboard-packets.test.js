@@ -173,13 +173,13 @@ async function runTests() {
 
   // Test (b): a working bundle and a packet for the SAME unit slug both appear
   //           with distinct ids (the collision case)
-  console.log('Test (b): collision case — working and packet coexist...');
+  console.log('Test (b): collision case — working and packet coexist for the same slug...');
   try {
     const tmpDir = makeTestProject('b');
-    const workingDir = makeBundle(tmpDir, 'collision-unit', {
+    const workingDir = makeBundle(tmpDir, 'same-unit', {
       run: '#!/bin/bash\necho "working"',
     });
-    const packetDir = makePacket(tmpDir, 'gh321-collision', {
+    const packetDir = makePacket(tmpDir, 'same-unit', {
       run: '#!/bin/bash\necho "packet"',
     });
 
@@ -190,8 +190,8 @@ async function runTests() {
     );
 
     const bundles = JSON.parse(response.body);
-    const workingBundle = bundles.find((b) => b.id === 'working:collision-unit');
-    const packetBundle = bundles.find((b) => b.id === 'packet:gh321-collision');
+    const workingBundle = bundles.find((b) => b.id === 'working:same-unit');
+    const packetBundle = bundles.find((b) => b.id === 'packet:same-unit');
 
     if (!workingBundle) {
       failures.push('Test (b): working bundle not found');
@@ -208,25 +208,26 @@ async function runTests() {
     failures.push(`Test (b): ${err.message}`);
   }
 
-  // Test (c): every source:"packet" entry has status:null, even with an audit
-  //           log present that names that unit
-  console.log('Test (c): packet status is always null...');
+  // Test (c): every source:"packet" entry has status:null, even with a real
+  //           audit log present that names that unit — and the co-located
+  //           working bundle for the SAME unit DOES pick up that status,
+  //           proving discoverPackets() never consults the audit log at all
+  console.log('Test (c): packet status is always null, even with an audit log present...');
   try {
     const tmpDir = makeTestProject('c');
-    const packetDir = makePacket(tmpDir, 'gh321-status-test', {
+    const workingDir = makeBundle(tmpDir, 'same-unit-status', {
+      run: '#!/bin/bash\necho "working"',
+    });
+    const packetDir = makePacket(tmpDir, 'same-unit-status', {
       run: '#!/bin/bash\necho "test"',
     });
 
-    // Create a fake audit log entry for this unit
-    const auditLogPath = path.join(tmpDir, '.claude', 'audit-log.jsonl');
+    // Write a real audit-log fixture, in the format audit-log.js actually parses.
+    const auditLogPath = path.join(tmpDir, '.claude', 'microworld-audit.log');
     fs.mkdirSync(path.dirname(auditLogPath), { recursive: true });
     fs.appendFileSync(
       auditLogPath,
-      JSON.stringify({
-        timestamp: new Date().toISOString(),
-        unit: 'gh321-status-test',
-        result: 'pass',
-      }) + '\n'
+      '2026-08-10T00:00:00Z unit=same-unit-status result=pass file=run.sh\n'
     );
 
     const { server, token } = startServer(tmpDir);
@@ -236,7 +237,14 @@ async function runTests() {
     );
 
     const bundles = JSON.parse(response.body);
-    const packetBundle = bundles.find((b) => b.id === 'packet:gh321-status-test');
+    const workingBundle = bundles.find((b) => b.id === 'working:same-unit-status');
+    const packetBundle = bundles.find((b) => b.id === 'packet:same-unit-status');
+
+    if (!workingBundle) {
+      failures.push('Test (c): working bundle not found');
+    } else if (!workingBundle.status || workingBundle.status.result !== 'pass') {
+      failures.push(`Test (c): working bundle status is ${JSON.stringify(workingBundle.status)}, expected result "pass"`);
+    }
 
     if (!packetBundle) {
       failures.push('Test (c): packet bundle not found');
