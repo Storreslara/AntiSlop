@@ -69,7 +69,8 @@ Claude-Code-only by construction.
 
 ## Marker state machine (`.escalated`, `.directed`)
 
-When a unit escalates under `humanReviewMode` (unit #138: defaults to `critical`, on-by-default), the
+When a unit escalates under `humanReviewMode` (defaults to `critical`, on-by-default,
+shipped by unit #135; unit #138 documented it), the
 reviewer writes `.escalated` marker at `.claude/reviewed/<task-id>.escalated` and
 snapshots the microworld bundle to `.claude/human-review/<task-id>/` (the escalation packet).
 The `.escalated` marker carries: the trigger criterion (heavy-unit trigger), commit
@@ -86,8 +87,9 @@ a human's `.claude/human-review/<task-id>/DECISION` file via three terminal rout
   defect list (consumes a 2-FAIL-cap slot), delete `.escalated` and packet.
 - **Direct a specific fix:** write `.directed` marker carrying the prescribed fix
   verbatim (does NOT consume a cap slot; same logic as `INSUFFICIENT-CONTEXT`),
-  dispatch `lead-programmer` for re-review, delete `.escalated` and packet on
-  subsequent re-review completion.
+  deleting `.escalated` and the packet in the **same action** that writes
+  `.directed` — `.directed` is the only thing left standing until the next
+  resolution — then dispatch `lead-programmer` for re-review.
 
 The `.directed` marker is **deliberately absent from `stop-gate.sh`'s marker glob**
 — that omission is load-bearing, since clearing the flags is what lets the

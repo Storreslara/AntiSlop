@@ -30,8 +30,10 @@
   `run.sh` (executable, relocatable — resolves its own internal paths relative
   to `$(dirname $0)`, not hard-coded `microworlds/<unit>/`);
   `inputs/` and `expected/` (test fixtures); `README.md` (human-facing
-  description for review). `lead-programmer` produces the bundle; `reviewer`
-  executes `run.sh`; the `PostToolUse` hook re-runs on every edit. Bundles are
+  description for review). `lead-programmer` executes `run.sh` during
+  implementation, producing the bundle; `reviewer` verifies bundle presence
+  by filesystem check (not a diff check) and never executes a bundle's
+  entries; the `PostToolUse` hook re-runs on every edit. Bundles are
   expected to be absent in CI and fresh clones (normal state). On escalation,
   the reviewer snapshots the bundle to `.claude/human-review/<task-id>/`
   (escalation packet, untracked but persistent until resolution).

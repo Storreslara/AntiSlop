@@ -5,9 +5,10 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-11
 - **Closed issue #138** (scribe post-PASS duties) — Step 8b, glossary + ADRs + wiki.
-  Unit #138 (scribe documentation + domain-modeling) added six glossary entries to
-  `CONTEXT.md` (Microworld, escalation packet, ESCALATE-TO-HUMAN, `.escalated` marker,
-  `.directed` marker, humanReviewMode) with two required explicit contrasts
+  Unit #138 (scribe documentation + domain-modeling) amended seven glossary entries
+  in place in `CONTEXT.md` (Microworld bundle, Microworld, escalation packet, ESCALATE-TO-HUMAN,
+  `.escalated` marker, `.directed` marker, humanReviewMode) — all seven already had canonical
+  entries before this unit; none were newly added — with two required explicit contrasts
   (`.escalated` vs `.blocked`: reviewer lacked context vs. policy wants human eyes;
   microworld bundle vs escalation packet: gitignored scratch vs. durable snapshot).
   Wrote two ADRs: `docs/adr/0018-human-in-the-loop-review-on-by-default.md` (why on-by-default
