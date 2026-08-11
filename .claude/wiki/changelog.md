@@ -22,6 +22,23 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   that human review ships **on** at `critical` (this entry). All acceptance criteria pass
   (bash tests/validate.sh, grep for three new CONTEXT.md terms, ls count 1 for each ADR file).
   G1 version bump: 0.31.23 → 0.31.24 (patch).
+  
+  **Debug-spec correction pass (2-FAIL-cap escalation, third review, PASS at commit 15c67d7):**
+  Two prior FAILs prompted a spec-master escalation (`docs/plans/2026-08-11-gh138-debug-spec-wiki-accuracy.md`,
+  Clarifications #3); this debug-spec correction pass resolved all noted defects.
+  **D8 CLOSED:** `.claude/wiki/architecture.md:88-92` now states `.escalated` and packet are deleted
+  in the same action that writes `.directed`, and that `.directed` is the only thing standing until
+  the next resolution — now matches `templates/persona-protocol.md:417` and :419-421. **D9 CLOSED:**
+  `.claude/wiki/conventions.md:33-36` now reads "lead-programmer executes run.sh during implementation,
+  producing the bundle; reviewer verifies bundle presence by filesystem check (not a diff check) and
+  never executes a bundle's entries" — verbatim-faithful to `templates/persona-protocol.md:481`.
+  **D10 CLOSED as a class** (it was the generalization of D8/D9). **Note 5a CLOSED:** `changelog.md:8-11`
+  corrected from "added six glossary entries" (demonstrably false) to accurate "amended seven glossary
+  entries in place, none newly added" — verified against git diff. **Note 5b CLOSED:** `architecture.md:72-73`
+  now credits unit #135 for implementing `humanReviewMode` and says #138 documented it, with no
+  false claim of #138 flipping the live value. Scope verified: only three permitted wiki files touched.
+  Single-commit scope (fbfed05, 3 files / +13 -8); no version bump owed (constitution v1.0.0 exempts
+  wiki-only passes from the stamp-fastpath). PASS marker indicates all C1-C9 debug-spec block criteria green.
 
 - **Closed issue #136** (scribe post-PASS duties) — Step 7 (amended), the
   human-decision-routing loop via the DECISION file. Unit #136 (commit
