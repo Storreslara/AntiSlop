@@ -1558,6 +1558,35 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
+
+  check('--update leaves an existing config WITHOUT humanReviewMode still without it (preserve-fields contract)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-hrm-preserve-'));
+    try {
+      const config = buildBaselineProject(tmp, {});
+      assert.ok(!('humanReviewMode' in config), 'the baseline fixture must start without the field');
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      // Stale the stamp so --update does real work and genuinely rewrites the
+      // config — without this the version-match fast-path would let the
+      // assertion below pass on "nothing ran".
+      config.pluginVersion = '0.13.18';
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+      const written = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      assert.strictEqual(
+        written.pluginVersion, pluginVersion,
+        `--update must have actually rewritten the config (anti-vacuity control), got pluginVersion ${written.pluginVersion}`
+      );
+      assert.ok(
+        !('humanReviewMode' in written),
+        `--update must not backfill humanReviewMode; the consumer's absent-key fallback carries the default instead, got ${JSON.stringify(written.humanReviewMode)}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 }
 
 // --- Integration: --force-hooks guard on the claude-target hooks merge
