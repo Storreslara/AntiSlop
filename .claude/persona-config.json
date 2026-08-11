@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.20",
+  "pluginVersion": "0.31.21",
   "personaSelection": [
     "spec-master",
     "task-master",

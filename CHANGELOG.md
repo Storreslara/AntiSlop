@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.21] - 2026-08-11
+
+### Fixed
+- **Escalation-laundering hole in `reviewed-path-gate.sh`'s no-reviewer fallback closed (issue #326, Step 2).** Previously, when `agent_type` was empty (main session) and `personaSelection` lacked `reviewer`, the fallback exited 0 unconditionally for any `.claude/reviewed/` write, including one that would resolve a standing `.escalated` marker with zero human artifact — deselecting the reviewer persona was enough to silently discard a pending escalation. The branch now globs `.claude/reviewed/*.escalated` before its `exit 0`; if any marker stands, it blocks (`exit 2`), naming the DECISION channel (`hooks/scripts/human-decision-gate.sh`, issue #325) as the route that resolves an escalation and a human's own terminal as the only other legitimate route. With no `.escalated` marker standing, the fallback is unchanged. New test cases (j)-(n) in `tests/reviewed-path-gate.test.sh`: (j) a Write into the marker dir is blocked with a standing escalation, (k) an `rm` of the marker itself is blocked, (l) the fallback still allows a write when no escalation stands, (m) reads of the marker stay allowed, (n) the reviewer's grant is unaffected. `bash tests/reviewed-path-gate.test.sh` and `bash tests/validate.sh` both pass.
+
 ## [0.31.20] - 2026-08-11
 
 ### Added
