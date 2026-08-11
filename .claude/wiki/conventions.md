@@ -38,23 +38,32 @@
   the reviewer snapshots the bundle to `.claude/human-review/<task-id>/`
   (escalation packet, untracked but persistent until resolution).
 - **Microworld bundle format v2 — `functions[]` and the entry contract:**
-  `manifest.json` gains an optional `functions[]` array, allowing the dashboard to
-  enumerate and invoke individual function entries separately from the bundle's
-  `run.sh` check. Each entry is a dict with: `name` (identifier), `entry` (bundle-relative
-  path to an executable), and optional `location` (author-declared pointer to where
-  the code lives in the repo). **Entry execution contract:** a function entry is an
-  executable that takes one JSON object on stdin and writes output to stdout; invoked
-  in a child process with `MICROWORLD_BUNDLE_DIR` set to the bundle's directory path
-  (so relative paths in the entry's inputs can be resolved). No shell invocation, no
-  argv processing — entries are direct child processes passed a JSON payload, allowing
-  language-agnostic, deterministic invocation by the dashboard's Node consumer. The
-  `location` field is optional, author-declared at authoring time, and carries a
-  staleness risk (it goes stale when code moves, with no auto-revalidation); see
-  **Function location** in CONTEXT.md. **Authoring policy:** `functions[]` are authored
-  by `lead-programmer` during implementation only when the unit meets the heavy-unit
-  trigger (see [ADR 0004](../../../docs/adr/0004-reviewer-roast-work-dual-model-routing.md),
-  as amended by [ADR 0013](../../../docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md)).
-  No bundle exists for light units; heavy units get both `run.sh` (the check) and
-  `functions[]` (human-explorable entries) in the same `manifest.json`.
+  `manifest.json` gains an optional `functions[]` array (alongside `timeoutSeconds`,
+  the check timeout), allowing the dashboard to enumerate and invoke individual
+  function entries separately from the bundle's `run.sh` check. Each entry is a dict
+  with: `id` (stable, unique-within-the-bundle slug), `group` (grouping label),
+  `label` (human-readable UI tab name), `entry` (bundle-relative path to an
+  executable), `description`, optional `location` (author-declared pointer to where
+  the code lives in the repo), and `inputs` (optional array of named input parameters
+  — `name`, `type`, optional `default`, `description` — that defines the JSON object
+  passed on stdin). **Entry execution contract:** a function entry is an executable
+  that takes one JSON object on stdin and writes output to stdout; invoked in a child
+  process with `cwd` set to the project root and `MICROWORLD_BUNDLE_DIR` set to the
+  bundle's directory path (so relative paths in the entry's inputs can be resolved).
+  An empty argv array, no shell (`shell: false`) — entries are direct child processes
+  passed a JSON payload, allowing language-agnostic, deterministic invocation by the
+  dashboard's Node consumer. The `location` field is optional, author-declared at
+  authoring time, and carries a staleness risk (it goes stale when code moves, with
+  no auto-revalidation); see **Function location** in CONTEXT.md. **Authoring
+  policy:** `functions[]` is optional in general — a bundle without it is fully valid
+  and appears in the dashboard with only its check status and nothing to invoke.
+  `lead-programmer` SHOULD author `functions[]` (with `location` on each entry) for
+  units meeting the heavy-unit trigger (see
+  [ADR 0004](../../docs/adr/0004-reviewer-roast-work-dual-model-routing.md), as
+  amended by
+  [ADR 0013](../../docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md)),
+  and MAY skip `functions[]` and `location` otherwise. Every microworld bundle still
+  gets `run.sh` (the check) regardless of trigger status; only `functions[]`
+  (human-explorable entries) is conditional on the heavy-unit trigger.
 - See also the [project constitution](../constitution.md) for the
   human-ratified version of several of these rules, with rationale.

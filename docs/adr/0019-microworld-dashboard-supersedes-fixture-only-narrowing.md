@@ -14,7 +14,7 @@ The 2026-07-28 plan deliberately narrowed "microworld" to a fixture bundle whose
 
 ## Decision
 
-- **Function contract is declarative and language-agnostic** (`functions[]`/`entry`, one JSON object on stdin, argv-only, no shell) — rejected per-language runtime introspection (breaks R8, imports agent-written code into the dashboard's own process) and a single `explore.sh` whose stdout is parsed (fragile, no home for per-function inputs).
+- **Function contract is declarative and language-agnostic** (`functions[]`/`entry`, one JSON object on stdin, argv array, no shell) — rejected per-language runtime introspection (breaks R8, imports agent-written code into the dashboard's own process) and a single `explore.sh` whose stdout is parsed (fragile, no home for per-function inputs).
 
 - **UI shape is a local `node:http` server plus a browser tab** — rejected a true in-terminal TUI (cannot deliver the Clipboard API portably) and a TUI-over-JSON-core hybrid (doubles the UI surface for no capability gain).
 
