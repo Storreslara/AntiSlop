@@ -4,7 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { startServer } = require('../bin/dashboard/server');
+const { startServer } = require('../bin/microworld-dashboard/server');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 

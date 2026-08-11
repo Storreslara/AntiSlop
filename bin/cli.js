@@ -2158,7 +2158,7 @@ async function runDashboard(args) {
   const portFlag = args.find((a) => a.startsWith('--dashboard-port='));
   const port = portFlag ? parseInt(portFlag.slice('--dashboard-port='.length), 10) : 0;
 
-  const { startServer } = require('./dashboard/server');
+  const { startServer } = require('./microworld-dashboard/server');
   const { server } = startServer(process.cwd(), port);
 
   // Handle SIGINT gracefully

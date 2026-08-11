@@ -9,7 +9,7 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const vm = require('vm');
-const { startServer } = require('../bin/dashboard/server');
+const { startServer } = require('../bin/microworld-dashboard/server');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
@@ -37,7 +37,7 @@ function makeFakeElement() {
 }
 
 async function renderClient(bundlesData) {
-  const html = fs.readFileSync(path.join(REPO_ROOT, 'bin/dashboard/index.html'), 'utf8');
+  const html = fs.readFileSync(path.join(REPO_ROOT, 'bin/microworld-dashboard/index.html'), 'utf8');
   const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
   if (!match) throw new Error('could not find inline module script in index.html');
 

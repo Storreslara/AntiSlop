@@ -6,7 +6,7 @@
 //
 // Dual-environment, single implementation: this file is loaded two ways.
 //   - Node (CommonJS): required directly by the test suite via `require()`.
-//   - Browser: bin/dashboard/server.js's `GET /` handler reads this file's
+//   - Browser: bin/microworld-dashboard/server.js's `GET /` handler reads this file's
 //     source verbatim and injects it into a classic (non-module) <script>
 //     tag ahead of index.html's own module script (see the
 //     `__FEEDBACK_BLOCK_SOURCE__` placeholder there). A top-level function
