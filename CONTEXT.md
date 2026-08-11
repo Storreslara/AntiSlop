@@ -440,6 +440,18 @@ normal FAIL routes the defect list to
   that is evidence of a gate defect and reporting it is the fix, not routing
   around it.
 
+**self-authorized bypass**:
+(unit #288, 2026-08-11) — a violation class where an agent identity routes
+  around a gate that blocked it, without waiting for or obtaining authorization
+  to bypass the gate. Examples include: using shell-variable substitution to split
+  a marker-path literal so the gate's substring scan never sees it contiguously,
+  or using string concatenation and `python3` to assemble a forbidden path at
+  runtime. Never self-authorize a bypass; the correct response to a gate block is
+  "report and wait" per the **Blocked by a gate you do not own** protocol
+  section. Named in [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md)
+  as the violation class that detection mechanisms (like A7 hook-block events)
+  exist to observe.
+
 **Reviewer dispatch opening line**:
 (unit #266, 2026-08-08, enforcement added)
   — Every reviewer dispatch must open with `Unit: <task-id>` as its literal

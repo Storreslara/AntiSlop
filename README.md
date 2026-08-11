@@ -230,8 +230,8 @@ The `location` field is authored by `lead-programmer` at bundle capture time (e.
 
 The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
 `reviewed-path-gate.sh`'s residual obfuscation bypass (splitting the marker
-path across a shell variable defeats the write-intent allowlist), and the
-`sed -i` caveat on
+path across a shell variable defeats the write-intent allowlist), the
+`Write`/`Edit` content asymmetry noted below, and the `sed -i` caveat on
 `protected-paths.sh`) lives in [`docs/design.md`](docs/design.md).
 
 ### Dashboard-specific limitations
@@ -255,6 +255,18 @@ not a security boundary against a caller that controls its own environment.**
 As of v0.17.0 `git` and `rg` are no longer allowlisted for that reason; use
 `git commit -F <file>` for a commit message that discusses the marker
 directory, and `grep -r` to search it.
+
+**Write/Edit content asymmetry**: `reviewed-path-gate.sh` checks the *destination
+file path* of `Write` and `Edit` calls, but does not scan their *content* for the
+marker-directory substring. This means a `Write` call to `docs/anything.md` whose
+content discusses `.claude/reviewed` is allowed, while an equivalent Bash heredoc
+spelling the substring is refused. This asymmetry is ratified in
+[ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) as a deliberate choice:
+content-based detection cannot catch obfuscation techniques (like `".claude" +
+"/reviewed"`), and attempting it would create substantial false-positive cost.
+The visibility gap it creates (agent-memory writes proceeding unobserved) is
+instead closed by audit observability (A7 hook-block events, A8 agent-memory
+writes), not by attempted technique-based detection.
 
 A related residual applies to `gh pr checkout`, which stays allowlisted: it
 materialises whatever files a branch carries, including a forged marker, and
