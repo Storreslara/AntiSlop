@@ -1,4 +1,4 @@
-<!-- antislop v0.31.15 | source: templates/protocol-digest.md | ADAPT-substituted -->
+<!-- antislop v0.31.16 | source: templates/protocol-digest.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/protocol-digest.md by install-antislop,
      version-stamped like persona-protocol.md. Re-injected verbatim by
      session-start.sh's SessionStart hook, ONLY on `source: resume`/`compact`
@@ -13,7 +13,8 @@
 - Review ownership: lead-programmer never spawns or messages the reviewer
   directly, and the reviewer never spawns or messages the lead-programmer.
   Only the orchestrator/team lead routes between them. "Done" means the
-  reviewer returned PASS, not "looks finished."
+  reviewer returned PASS, not "looks finished" - and on a critical unit PASS
+  may first route through ESCALATE-TO-HUMAN.
 - FAIL cap: 2 FAILs on the same unit -> stop re-delegating fixes; surface the
   full defect history to the user instead of attempting a third pass.
 - The WIP sentinel (`.claude/wip-handoff.<agent-id>`) is for a genuine

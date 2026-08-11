@@ -1,4 +1,4 @@
-<!-- antislop v0.31.15 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.16 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -202,9 +202,10 @@ prose substitute.
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)
-routes to the reviewer. The reviewer returns one of three verdicts — PASS,
-FAIL, or INSUFFICIENT-CONTEXT (see "Third verdict" below) — and "done" means
-it returned PASS, not that the work looks finished. On FAIL, defects route
+routes to the reviewer. The reviewer returns one of four verdicts — PASS,
+FAIL, INSUFFICIENT-CONTEXT, or ESCALATE-TO-HUMAN (see "Third verdict" and
+"Fourth verdict" below) — and "done" means it returned PASS, not that the work
+looks finished. On FAIL, defects route
 back to the lead-programmer, which fixes the specific items listed and
 reports ready-for-review again; it never re-plans and never grades its own
 work. This ownership model relies on a one-unit-at-a-time invariant — only
@@ -306,6 +307,79 @@ flag (above) is kept standing rather than cleared, so turn-end and the next
 gated-unit dispatch stay blocked, while dispatching anything non-gated
 (explorer, scribe, or the reviewer itself, if present) is still allowed; the
 existing `defer:`/`skip:` escape hatch on the flag still applies unchanged.
+
+## Fourth verdict: escalate-to-human
+A fourth verdict, `ESCALATE-TO-HUMAN`, is a **gate on PASS** — never a
+replacement for FAIL. Verdict precedence is
+`FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`: a real defect
+is a normal FAIL and no human is needed, and a criterion the reviewer cannot
+verify is INSUFFICIENT-CONTEXT. **Only a unit the reviewer *would have
+passed* escalates.**
+
+**Trigger.** Escalate when `humanReviewMode` is `all`, or is `critical` (an
+absent key reads as `critical`) **and** the unit meets the existing heavy-unit
+trigger. That trigger is defined in exactly one place —
+`docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit
+trigger", as amended by ADR-0013 — and is referenced here **by pointer on
+purpose**: restating its criteria would create a second copy that a later
+amendment could leave silently disagreeing with the first.
+
+**Marker.** The reviewer writes `.claude/reviewed/<task-id>.escalated` via
+Bash — the same named bookkeeping exception as the `.pass`/`.fail`/`.blocked`
+writes above, not a change to the code under review. Its first line reads
+exactly:
+
+`ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which heavy-trigger criterion> microworld: <packet path or "none">`
+
+`microworld:` names the **durable packet directory**, never the working
+`microworlds/<unit-slug>/` path — the working copy is gitignored scratch and
+may be gone by the time a human reads the marker. After that first line, in
+order: the exact command to run the microworld (a project-root-relative
+invocation of the **packet's** `run.sh`); the commit SHA at escalation time,
+as `commit: <sha>`, so a human arriving later can tell what the bundle was run
+against; a one-line description of the inputs and the expected outputs; the
+reviewer's own would-be verdict and the criteria it checked; and its
+non-blocking notes.
+
+**Durable escalation packet.** In the **same action** that writes the marker,
+the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
+
+- Copy `microworlds/<unit-slug>/` wholesale — `run.sh`, `manifest.json`,
+  `inputs/`, `expected/`, `README.md` — **preserving the executable bit on
+  `run.sh`**. The relocatability requirement on `run.sh` is what makes the
+  copy runnable at its new path.
+- Write `PACKET.md` into that directory: a **byte-identical verbatim copy of
+  the marker body**, not a re-summary, so the directory is self-contained for
+  a human working outside the session. The **marker remains authoritative**
+  wherever the two differ — `PACKET.md` is never an independent record.
+- If the unit has **no** bundle: write `microworld: none` in the marker,
+  create the packet directory anyway, and put `PACKET.md` in it alone. A human
+  still gets the would-be verdict and the criteria; they simply have nothing
+  to run. **Escalation is never skipped for want of a bundle.**
+- **The packet deliberately does NOT live under `.claude/reviewed/`.**
+  `hooks/scripts/reviewed-path-gate.sh` blocks every Bash command whose text
+  merely contains that path, for every non-reviewer caller, **read-only ones
+  included** — so a packet sited there could not be run by the orchestrator or
+  by a human working through the session. `.claude/human-review/` is ungated
+  by design. Do not "tidy" the packet under the marker directory; that quietly
+  breaks the whole feature.
+- Lifecycle: the packet is deleted by the reviewer at the same moment it
+  deletes `.escalated`. Both are untracked, so `git clean -fdx` or a fresh
+  clone destroys a pending escalation unrecoverably — documented, not fixed;
+  the reviewer must then re-review and re-escalate.
+
+**Distinct from `.blocked`.** `.blocked` means the reviewer *lacked context*
+to verify; `.escalated` means policy requires *human eyes on critical code*.
+Separate marker files, separate audit-log tokens.
+
+**Cap accounting.** `.escalated` **never** consumes a 2-FAIL-cap slot — the
+cap below counts `.fail` records only, unchanged.
+
+**Resolution.** Always resolved by the reviewer, on a later re-dispatch
+carrying the human's decision, into exactly one of three terminal transitions,
+each of which **deletes** `.escalated` and its packet as part of writing the
+successor marker — mirroring the existing rule that `.blocked` is deleted when
+the reviewer resolves the unit.
 
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot — a fresh lead-programmer call has no

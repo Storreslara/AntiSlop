@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 40
 ---
-<!-- antislop v0.31.15 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.16 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -339,9 +339,10 @@ prose substitute.
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)
-routes to the reviewer. The reviewer returns one of three verdicts — PASS,
-FAIL, or INSUFFICIENT-CONTEXT (see "Third verdict" below) — and "done" means
-it returned PASS, not that the work looks finished. On FAIL, defects route
+routes to the reviewer. The reviewer returns one of four verdicts — PASS,
+FAIL, INSUFFICIENT-CONTEXT, or ESCALATE-TO-HUMAN (see "Third verdict" and
+"Fourth verdict" below) — and "done" means it returned PASS, not that the work
+looks finished. On FAIL, defects route
 back to the lead-programmer, which fixes the specific items listed and
 reports ready-for-review again; it never re-plans and never grades its own
 work. This ownership model relies on a one-unit-at-a-time invariant — only
