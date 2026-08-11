@@ -4,6 +4,24 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-11
+- **Closed issue #138** (scribe post-PASS duties) — Step 8b, glossary + ADRs + wiki.
+  Unit #138 (scribe documentation + domain-modeling) added six glossary entries to
+  `CONTEXT.md` (Microworld, escalation packet, ESCALATE-TO-HUMAN, `.escalated` marker,
+  `.directed` marker, humanReviewMode) with two required explicit contrasts
+  (`.escalated` vs `.blocked`: reviewer lacked context vs. policy wants human eyes;
+  microworld bundle vs escalation packet: gitignored scratch vs. durable snapshot).
+  Wrote two ADRs: `docs/adr/0007-human-in-the-loop-review-on-by-default.md` (why on-by-default
+  over opt-in; the behaviour change and its rationale; accepted costs; why not "all" or "off")
+  and `docs/adr/0017-microworld-bundles-gitignored.md` (why bundles are working-tree scratch,
+  not committed; the user's 2026-07-28 override and its reasoning; the survivability gap closed
+  by escalation packets; R10 and R5 accepted limitations). Updated wiki: `.claude/wiki/architecture.md`
+  documents the `.escalated`/`.directed` marker state machine and the escalation packet
+  create/delete lifecycle; `.claude/wiki/conventions.md` documents microworld bundle layout,
+  gitignored-scratch status, and run.sh relocatability rule; `.claude/wiki/changelog.md` records
+  that human review ships **on** at `critical` (this entry). All acceptance criteria pass
+  (bash tests/validate.sh, grep for three new CONTEXT.md terms, ls count 1 for each ADR file).
+  G1 version bump: 0.31.23 → 0.31.24 (patch).
+
 - **Closed issue #136** (scribe post-PASS duties) — Step 7 (amended), the
   human-decision-routing loop via the DECISION file. Unit #136 (commit
   `54d1fc326da67c7ad405e605aeb4660a6d10ee2c`, PASS marker

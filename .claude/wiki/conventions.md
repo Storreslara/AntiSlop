@@ -24,5 +24,16 @@
   substitution discovery, hook-verification interpretation) lives in
   `skills/install-antislop/SKILL.md` instead. Don't blur this line by
   adding judgment calls into `cli.js`.
+- **Microworld bundle layout**: each bundle lives at `microworlds/<unit-slug>/`
+  and is **gitignored working-tree scratch**, never committed. Contents:
+  `manifest.json` (unit slug, watch globs, function entries, timeout);
+  `run.sh` (executable, relocatable — resolves its own internal paths relative
+  to `$(dirname $0)`, not hard-coded `microworlds/<unit>/`);
+  `inputs/` and `expected/` (test fixtures); `README.md` (human-facing
+  description for review). `lead-programmer` produces the bundle; `reviewer`
+  executes `run.sh`; the `PostToolUse` hook re-runs on every edit. Bundles are
+  expected to be absent in CI and fresh clones (normal state). On escalation,
+  the reviewer snapshots the bundle to `.claude/human-review/<task-id>/`
+  (escalation packet, untracked but persistent until resolution).
 - See also the [project constitution](../constitution.md) for the
   human-ratified version of several of these rules, with rationale.

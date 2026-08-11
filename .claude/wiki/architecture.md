@@ -67,6 +67,33 @@ dropped a rule can read it on demand. See
 mechanism, its three fail-closed guarantees, and why this trimming is
 Claude-Code-only by construction.
 
+## Marker state machine (`.escalated`, `.directed`)
+
+When a unit escalates under `humanReviewMode` (unit #138: defaults to `critical`, on-by-default), the
+reviewer writes `.escalated` marker at `.claude/reviewed/<task-id>.escalated` and
+snapshots the microworld bundle to `.claude/human-review/<task-id>/` (the escalation packet).
+The `.escalated` marker carries: the trigger criterion (heavy-unit trigger), commit
+SHA, the packet's `run.sh` invocation, inputs/expected-outputs description, and
+the reviewer's would-be verdict. The packet contains the bundle's `run.sh`,
+manifest, fixtures, and `PACKET.md` (byte-identical copy of marker body, marker
+authoritative on divergence).
+
+On a later re-dispatch, the reviewer reads and **transcribes** (never re-reviews)
+a human's `.claude/human-review/<task-id>/DECISION` file via three terminal routes:
+- **Approve:** write `.pass` with an appended human-attestation line, delete
+  `.escalated` and packet.
+- **Reject with reason:** write `.fail` with the human's reason verbatim as the
+  defect list (consumes a 2-FAIL-cap slot), delete `.escalated` and packet.
+- **Direct a specific fix:** write `.directed` marker carrying the prescribed fix
+  verbatim (does NOT consume a cap slot; same logic as `INSUFFICIENT-CONTEXT`),
+  dispatch `lead-programmer` for re-review, delete `.escalated` and packet on
+  subsequent re-review completion.
+
+The `.directed` marker is **deliberately absent from `stop-gate.sh`'s marker glob**
+— that omission is load-bearing, since clearing the flags is what lets the
+directed fix be dispatched. Once re-review completes, the reviewer deletes
+`.directed` in the same action as the next resolution.
+
 ## Agent-unwritable path as consent proof
 
 Every gate before `human-decision-gate.sh` (issue #325, 2026-08-11) followed
