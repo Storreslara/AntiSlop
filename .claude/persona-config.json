@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.23",
+  "pluginVersion": "0.31.24",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -58,5 +58,5 @@
     ".claude/persona-protocol-slim.md": "97660fdae16359e3778b17fd42e13f21f30e43ac50deb5b6aed5d758e650a63b",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9"
   },
-  "humanReviewMode": "off"
+  "humanReviewMode": "critical"
 }

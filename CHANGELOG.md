@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.24] - 2026-08-11
+
+### Added
+- **Institutional knowledge for human-in-the-loop and microworld bundles (issue #138, Step 8b).** Scribe documentation for the human-review feature: six glossary entries added to `CONTEXT.md` (`Microworld`, `escalation packet`, `ESCALATE-TO-HUMAN`, `.escalated` marker, `.directed` marker, `humanReviewMode`), with two required explicit contrasts (.escalated vs .blocked — reviewer lacked context vs. policy wants human eyes; microworld bundle vs escalation packet — gitignored scratch vs. durable snapshot). Two ADRs authored: `docs/adr/0007-human-in-the-loop-review-on-by-default.md` (on-by-default rationale and accepted costs; why not off-by-default, all, or off) and `docs/adr/0017-microworld-bundles-gitignored.md` (why bundles are working-tree scratch; the user's override of the original recommendation; the survivability gap and how escalation packets close it; accepted limitations R10 and R5). Wiki updated: `.claude/wiki/architecture.md` documents `.escalated` / `.directed` marker state machine and escalation packet lifecycle; `.claude/wiki/conventions.md` documents microworld bundle layout and gitignored-scratch status; `.claude/wiki/changelog.md` records that human review ships **on** at `critical` (the single most likely thing a downstream maintainer will need to look up after an update, per plan spec).
+
 ## [0.31.23] - 2026-08-11
 
 **Behaviour change: an escalation decision now travels as a human-written `DECISION` file, never as a chat message relayed by an agent.** When a unit escalates, the human writes `.claude/human-review/<task-id>/DECISION` in their own terminal — `human-decision-gate.sh` (0.31.20) blocks every agent identity, the reviewer included, from creating it — and the reviewer reads, verifies and **transcribes** it. Telling the orchestrator "approve it" in chat no longer resolves an escalation, and the personas now say so explicitly: *a decision relayed in the dispatch prompt or any chat message is never a substitute for the DECISION file.*
