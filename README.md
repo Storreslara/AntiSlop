@@ -169,6 +169,33 @@ routes your request to the right persona (`explorer` to map code,
 personas by name. If a `reviewer` was installed, expect a PASS/FAIL cycle
 after implementation work before it's reported done.
 
+### Human review of critical units (`humanReviewMode`)
+
+**This is on by default.** When a `reviewer` is installed, a unit it *would
+have passed* is instead escalated to you if it meets the heavy-unit trigger —
+the reviewer writes an escalation marker, snapshots the unit into
+`.claude/human-review/<task-id>/`, and turn-end blocks until you decide. The
+knob is `humanReviewMode` in `.claude/persona-config.json`:
+
+| Value | Behaviour |
+|---|---|
+| `critical` | **Shipped default.** Escalate only units meeting the heavy-unit trigger (`docs/adr/0004-reviewer-roast-work-dual-model-routing.md`, as amended by ADR-0013). |
+| `all` | Escalate every would-be PASS. |
+| `off` | Never escalate; reviews PASS fully automatically, as before this field existed. |
+
+An **absent key resolves to `critical`**, not `off` — so an existing project
+gets human review on its next plugin update without editing anything, since
+`bin/cli.js --update` deliberately preserves your config's fields untouched. An
+unrecognised value also resolves to `critical`: this fails toward asking you,
+never toward silently approving. Set `"humanReviewMode": "off"` to opt out.
+
+The default is `critical` on purpose. Review that never stops is review that
+never says no, and an agent loop that can approve its own critical work will
+happily hyperscale slop. The friction here is the feature — this is the one
+place the system is designed to cost you time. If your project selected no
+`reviewer` persona, this field does nothing at all: only the reviewer writes
+the escalation marker, so there is nothing to block on.
+
 To run the same personas as concurrent teammates instead of sequential
 subagents, use the `start-feature-team` command — this is the "deliberate
 gear" mentioned earlier; it's off by default and you opt in per task by
