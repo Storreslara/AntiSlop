@@ -101,5 +101,26 @@ range-relative breaks on multi-commit units, FAIL->fix cycles, and rebases.
 `git status --porcelain` compared before/after a command *within* the review is
 fine - that is a delta measured inside the review, not a claim about the commit.
 
-See [[feedback-no-forced-changes]], [[feedback-baselines-expire]], and
-[[verify-deferred-issue-premises]].
+**Fifth trap - the criterion's own SHELL QUOTING can make it vacuous
+(2026-08-11, gh138 debug spec).** Verifying eight criteria, C4 flipped from RED
+to GREEN between two runs of what looked like the same command. Cause: I had
+written the pattern in **double quotes**, and this repo's prose is full of
+backticked identifiers — so bash read `` `lead-programmer` `` and `` `run.sh` ``
+as **command substitution**. Both expanded to empty, the regex silently
+collapsed from `` `lead-programmer`[^.;]*executes `run\.sh` `` to
+`[^.;]*executes `, and it matched the *unfixed* file. A criterion that passes on
+broken input is the exact thing this memory exists to prevent, and here the bug
+was in the quoting, not the logic. Always single-quote grep patterns; on a
+backtick-heavy repo, double quotes are a live landmine.
+
+**Related shipping trap, same session:** a markdown **table** is the wrong
+container for criteria. Table cells need `\|` escaping, and a code span
+containing literal backticks terminates early — so the *published* command
+stops being the *verified* one. Ship criteria as a fenced `sh` block, then
+extract the block back out of the finished document and run it verbatim. That
+last step is the only proof that what a dispatched agent will copy is what I
+actually tested.
+
+See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
+[[verify-deferred-issue-premises]], and
+[[docs-units-need-claim-anchored-criteria]].

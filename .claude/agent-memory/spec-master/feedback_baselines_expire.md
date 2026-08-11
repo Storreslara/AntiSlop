@@ -36,6 +36,27 @@ matches a stash's timestamp.
    of silent loss is gone, which is often an unstated second reason the work is
    worth doing.
 
+**Second instance — a spec's IMPERATIVES expire too, not just its baselines
+(2026-08-11, gh138).** Issue #138 was authored 2026-07-28 and executed
+2026-08-11. Two of its instructions were state assertions wearing an imperative's
+clothes, and both had gone false in the interval:
+- *"Next free numbers are `0007` and `0008` (`docs/adr/` currently holds
+  `0001`–`0006`)"* — by execution time `docs/adr/` held through `0016`, and
+  `0007` is a deliberately preserved hole (see
+  [[adr-numbering-increment-not-backfill]]). The agent backfilled it as told.
+- *"Add entries for Microworld, escalation packet, …"* — **all seven** terms
+  already had canonical `CONTEXT.md` entries. The agent appended seven
+  near-duplicates; a later pass merged all seven back in place.
+
+The agent was not careless; it trusted the packet over the filesystem, which is
+usually correct. The defect is mine: I wrote a countable fact into an imperative
+with no re-derivation instruction. **How to apply:** any spec verb carrying an
+embedded count, number, or "currently holds / next free / does not yet exist"
+must ship with a re-derive-at-execution-time instruction naming the command
+(`ls docs/adr/`, `grep -n '^\*\*' CONTEXT.md`), not the answer. Phrase it
+"ensure X is present and correct", never "add X" — the two differ exactly when
+the packet has aged.
+
 Pairs with [[criteria-must-be-shell-validated]] and the sibling rule that every
 criterion needs a **negative control**: run it against the pre-change tree and
 confirm it fails there. Two of Step 7's criteria (`find -iname 'skill.md'` and

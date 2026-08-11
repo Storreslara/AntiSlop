@@ -16,3 +16,4 @@
 - [Claude transcript store](reference_claude_transcript_store.md) — agent dispatches/tools/skills are ALREADY on disk under ~/.claude/projects/; check before speccing new hook instrumentation.
 - [Goal prose vs step table drift](feedback_goal_prose_vs_step_table_drift.md) — map every Goal clause to a step criterion; unmapped clauses ship silently, reviewers cannot see them.
 - [Heavy trigger is in ADR-0004, not the protocol](project_heavy_trigger_not_in_protocol.md) — the 2026-07-28 plan says otherwise and ships an unsatisfiable grep; fix #133 before dispatch.
+- [Docs units need claim-anchored criteria](feedback_docs_units_need_claim_anchored_criteria.md) — existence greps gate nothing when prose accuracy IS the deliverable; 3 units have FAILed this way.
