@@ -236,6 +236,17 @@ gate's `program_allowed()` check at all. Removing `pr` from the allowlist would
 not change this, since the write happens through the checked-out files, not
 through the command the gate inspects.
 
+A related residual applies to `hooks/scripts/human-decision-gate.sh`, the
+gate that blocks every agent identity from writing
+`.claude/human-review/<task-id>/DECISION` (the human's own resolution of a
+pending escalation): the Bash path's write-intent check is the same
+`command_is_provably_benign()` used by `reviewed-path-gate.sh`, so it carries
+the identical obfuscation residual — a determined agent can still split the
+path across a shell variable to defeat the substring early-exit. This gate
+has no grant branch at all (not even the reviewer may write `DECISION`), so
+the residual's blast radius is narrower than `reviewed-path-gate.sh`'s, but
+it is not closed here either.
+
 Two more, from the agent-identity namespace-gate fix: an agent identity from an
 unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at
 gate checks, so enforcement doesn't silently stop working, but conservatively

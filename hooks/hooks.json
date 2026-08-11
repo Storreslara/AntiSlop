@@ -15,7 +15,8 @@
         "matcher": "Write|Edit",
         "hooks": [
           { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/protected-paths.sh" },
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/reviewed-path-gate.sh" }
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/reviewed-path-gate.sh" },
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/human-decision-gate.sh" }
         ]
       },
       {
@@ -28,7 +29,8 @@
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/reviewed-path-gate.sh" }
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/reviewed-path-gate.sh" },
+          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/human-decision-gate.sh" }
         ]
       }
     ],
