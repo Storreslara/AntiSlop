@@ -770,3 +770,31 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   client-side state; no server-side persistence or route. Distinct from **Cell**
   (a single invocation record).
 
+**DECISION file**:
+(unit #325, 2026-08-11, Step 1 of the human-decision-channel fix, issue #324) —
+  the human-written file at `.claude/human-review/<task-id>/DECISION`, inside an
+  [[Escalation packet]] directory, that will carry the human's resolution of a
+  pending `ESCALATE-TO-HUMAN` escalation once the reading/transcription mechanism
+  (Step 3, amended #136) lands. As of this unit, the file is made agent-unwritable
+  by **the human-decision gate** (see below) but is not yet READ by anything — no
+  consumer exists. The DECISION file is the consent artifact: its unwritability by
+  any agent identity is what makes its eventual contents trustworthy as the
+  human's own word, not an agent's paraphrase.
+
+**The human-decision gate** (`human-decision-gate.sh`):
+(unit #325, 2026-08-11, Step 1 of #324) — the new `PreToolUse` hook (`Write|Edit`
+  and `Bash` matchers) that blocks **every** agent identity from writing a
+  [[DECISION file]] — reviewer included, empty/main-session `agent_type` included.
+  Contrast with `reviewed-path-gate.sh`: that gate has a grant branch (the reviewer
+  may write `.claude/reviewed/*.pass`, and a no-reviewer fallback exists for the
+  main session); this gate has no grant branch and no fallback — no identity may
+  ever write a DECISION file, full stop. Reads stay allowed for both gates. The
+  two gates share their read-only/text-only command classifier, extracted in this
+  same unit into `hooks/scripts/lib/benign-command.sh` (previously private to
+  `reviewed-path-gate.sh`). The sanctioned way to discard a resolved escalation
+  packet is `rm -rf .claude/human-review/<task-id>` (the whole directory) — its
+  command text never spells `DECISION`, so it clears the gate's substring
+  early-exit; a per-file `rm .../DECISION` is blocked for every identity, reviewer
+  included, by design. No adapter port exists, the same precedent already set by
+  `reviewed-path-gate.sh`.
+

@@ -542,6 +542,50 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   `tests/cli-backfill.test.js`, `tests/ubiquitous-language.test.js`.
 
 ## 2026-08-11
+- **Closed issue #325** (scribe post-PASS duties) — Step 1 of the human-decision-channel
+  fix (spec #324). Unit #325 (`feat(gh325)` commit `dab48f7`, `refactor(gh325)` commit
+  `00ce4e5`, version-bump commit `4ba0e2b76aace8566cc95de643cd035d02fc318b`, PASS marker
+  `.claude/reviewed/gh325.pass`) added `hooks/scripts/human-decision-gate.sh`, a new
+  `PreToolUse` hook (registered for both `Write|Edit` and `Bash` matchers) that blocks
+  **every** agent identity — reviewer included, empty/main-session `agent_type` included —
+  from writing `.claude/human-review/<task-id>/DECISION`, the not-yet-consumed file that
+  will carry a human's escalation resolution once Step 3 (amended #136) lands. No grant
+  branch, no no-reviewer fallback: unlike `reviewed-path-gate.sh`, no identity may ever
+  write this file. Reads stay allowed. The sanctioned way to discard a resolved packet is
+  `rm -rf .claude/human-review/<task-id>` (its command text never spells `DECISION`, so it
+  clears the substring early-exit); a per-file `rm .../DECISION` is blocked for everyone,
+  reviewer included, by design. **Mechanical lib extraction:** the six-function benign-command
+  lexer (`program_allowed`, `command_skeleton`, `mask_inert_redirections`, `segment_allowed`,
+  `command_is_provably_benign`, `normalize_path`) moved verbatim out of `reviewed-path-gate.sh`
+  into new `hooks/scripts/lib/benign-command.sh`, sourced by both gates now — `reviewed-path-gate.sh`'s
+  own behavior unchanged, its test suite passes with zero assertion changes. **Review outcome:**
+  clean PASS this round, no FAIL. Escalation declined (`humanReviewMode` reads `"off"`, the
+  deliberate temporary bootstrap value, so ADR-0004's heavy-unit trigger did not fire).
+  **Flagged-but-not-fixed follow-ups from the PASS marker (code-level, out of scribe's scope,
+  left for a future lead-programmer unit):** (a) `tests/human-decision-gate.test.sh` is not
+  registered in `tests/validate.sh`'s explicit suite list — every other hook suite is, so this
+  is a real coverage gap (marker suggests adding it beside line 305); (b) `human-decision-gate.sh:44-50`
+  anchors its match at the start of the normalized path, so an absolute `file_path` fails open
+  when the `CLAUDE_PROJECT_DIR` prefix strip doesn't fire (verified reproducible with the var
+  unset or trailing-slash) — not agent-reachable under Claude Code today since the harness always
+  sets the var, but untested, and `reviewed-path-gate.sh` uses an unanchored substring that stays
+  blocking in both cases by contrast; (c) `reviewed-path-gate.sh:27`'s header comment still says
+  `command_is_provably_benign()` is defined "below," stale since the function moved to
+  `lib/benign-command.sh` in `00ce4e5`. **Domain terms added to CONTEXT.md:** **DECISION file**
+  and **the human-decision gate** (`human-decision-gate.sh`), closing the gap the PASS marker's
+  ubiquitous-language note flagged (glossary had `Escalation packet`/`ESCALATE-TO-HUMAN`/
+  `.escalated marker`/`PACKET.md` but no entry for the new consent artifact or the now-shared
+  lexer). Also added a short "Agent-unwritable path as consent proof" note to
+  `.claude/wiki/architecture.md`'s Hooks section, naming the pattern this gate introduces (no
+  grant branch at all, contrasted with every prior gate's grant-one-identity-through shape) as
+  novel and repo-defining. Affected files: `CONTEXT.md`, `.claude/wiki/architecture.md`,
+  `.claude/wiki/changelog.md` (this entry). Did not touch `hooks/`, `tests/`, `README.md`, or
+  `.claude/persona-config.json` (lead-programmer's surface, already landed and reviewed; the
+  `humanReviewMode: "off"` bootstrap key is a deliberate temporary value, out of scope). Issue
+  #325 closed with PASS marker and commit reference. Step 2 (#326, suspend the no-reviewer
+  fallback while an escalation stands) is next and depends on this unit's lib extraction, which
+  has landed.
+
 - **Closed issue #322** (scribe post-PASS duties) — microworld dashboard D9 step
   (README.md documentation + packaging verification). Unit #322 (`docs(gh322)`
   commit `5ce1c5f7a2a94a6f15fd10babce394409f2a42ba`, PASS marker

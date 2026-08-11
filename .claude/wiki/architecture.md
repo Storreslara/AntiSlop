@@ -29,11 +29,14 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
    `stop-gate.sh` (done = reviewer PASS, not "I think I'm done"),
    `reviewer-route-gate.sh` (lead-programmer can't route around the
    reviewer), `reviewed-path-gate.sh` (only the reviewer writes
-   `.claude/reviewed/*.pass`), `protected-paths.sh` (migrations/lockfiles
-   need human approval), `graph-update.sh` + `lint-on-edit.sh` (keep the
-   graph and formatting current on every edit), `session-start.sh` (version
-   drift check + protocol re-injection), `task-gate.sh` (agent-teams mode
-   equivalent of stop-gate). See [modules/hooks.md](modules/hooks.md).
+   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (no agent identity,
+   reviewer included, may ever write a human's `DECISION` file — see
+   "Agent-unwritable path as consent proof" below), `protected-paths.sh`
+   (migrations/lockfiles need human approval), `graph-update.sh` +
+   `lint-on-edit.sh` (keep the graph and formatting current on every edit),
+   `session-start.sh` (version drift check + protocol re-injection),
+   `task-gate.sh` (agent-teams mode equivalent of stop-gate). See
+   [modules/hooks.md](modules/hooks.md).
 
 3. **ADAPT** (`bin/cli.js` + `skills/install-antislop`) — the one-time
    per-project setup. `bin/cli.js` does the mechanical half (deterministic
@@ -63,6 +66,21 @@ dropped a rule can read it on demand. See
 [protocol-delivery-tiers.md](protocol-delivery-tiers.md) for the full
 mechanism, its three fail-closed guarantees, and why this trimming is
 Claude-Code-only by construction.
+
+## Agent-unwritable path as consent proof
+
+Every gate before `human-decision-gate.sh` (issue #325, 2026-08-11) followed
+the same shape: block most callers, **grant** one privileged identity through
+(`reviewed-path-gate.sh` grants the reviewer; `stop-gate.sh`'s SubagentStop
+branch grants a reviewer-with-verdict). `human-decision-gate.sh` breaks that
+shape on purpose — it blocks every agent identity, including the reviewer,
+from writing `.claude/human-review/<task-id>/DECISION`, and has no grant
+branch at all. The point isn't access control between agents; it's that a
+file no agent can write is a file whose eventual contents can only be the
+human's own word, never an agent's paraphrase of it. This is Step 1 of a
+3-unit fix (#324): the DECISION file isn't read by anything yet (that lands
+in Step 3, amended #136) — this unit only makes the consent boundary real
+before anything downstream can rely on it.
 
 ## MCP scoping (a recurring gotcha)
 
