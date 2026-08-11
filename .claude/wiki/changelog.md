@@ -4,6 +4,41 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-11
+- **Closed issue #323** (scribe post-PASS duties) — Step D10 reconciliation, dashboard polling clause.
+  Unit #323 (commit `a1c4220`, PASS marker `.claude/reviewed/gh323.pass`) completed Step D10 of the
+  microworld dashboard plan: reconciliation and documentation handoff. **D10 scope:** two new
+  `CONTEXT.md` glossary entries (`[[The check]]` — the audit-log per-bundle exit-code verdict;
+  `[[Function location]]` — file:line anchor convention for specs and docs, with staleness binding);
+  one amendment to the existing `[[Microworld dashboard]]` entry (clarified "live status indicator
+  polled every 5s via setInterval" matching implementation); one new ADR (docs/adr/0019-microworld-dashboard-supersedes-fixture-only-narrowing.md,
+  renumbered from a stale 0017 during pre-dispatch reconciliation, explaining why dashboard's
+  audit-log-derived status makes the older "narrowed fixture" pattern obsolete). Wiki updates:
+  `.claude/wiki/architecture.md:67-85` documents the audit-log contract (producer, path, key=value
+  format, "invoked per request never on startup", contract test); `.claude/wiki/architecture.md:100-105`
+  documents the bundle-format-v2 conventions (zip structure, entry recipe keys). All acceptance criteria
+  pass (grep for two new CONTEXT.md terms, ls count 1 for ADR file, bash tests/validate.sh).
+  
+  **Debug-spec correction pass (2-FAIL-cap escalation, third review, PASS at commit a1c4220):**
+  Two prior FAILs prompted a spec-master escalation (`docs/plans/2026-08-11-gh323-debug-spec-dashboard-polling-clause.md`).
+  **First FAIL** (commit `9fe3021`) — audit-log and manifest-schema descriptions had three independent
+  errors: (1) audit-log path wrong; (2) key=value format claimed one value type but code uses another;
+  (3) ADR cross-reference stale. Specification: D10 required wiki reconciliation to the existing running
+  code, not aspirational rewrite. Fix: corrected all three; commit `9fe3021` amended seven wiki lines
+  in `.claude/wiki/architecture.md`, verified against `bin/dashboard/discover.js:49-60`, `CHANGELOG.md`,
+  and docs/adr/0008 (the stale reference). **Second FAIL** (commit `9fe3021`) — a single false claim
+  about "live re-rendering on every poll": the client does **not** call `render()` (which would re-render
+  the entire page); it calls only `renderLeftRail()` (a targeted update to the status-indicator `<span>`
+  at index.html:143,156). Specification: Step 2 of the debug spec required the clause rewrite to state
+  the polling interval, endpoint, render target, and trigger condition, all file:line-anchored. Fix:
+  single-line replacement at `.claude/wiki/architecture.md:105`, replacing the overstated "live
+  re-render" claim with precise "re-renders the left rail's audit-log-derived status indicator
+  (renderLeftRail, index.html:124)" + two file:line anchors + the polling interval (5s) and endpoint
+  (GET /api/bundles) + condition ("with no user action"). All six claim anchors verified source-first
+  against bin/dashboard/index.html (lines 570, 124) and bin/dashboard/server.js (line 77). Deviation
+  from debug spec (disclosed in PASS marker): spec's suggested closing fragment contained the literal
+  substring "pull-on-request" which would collide with C-N1; rewording necessary and permitted under
+  Step 2's "for scribe to adapt" license. FAIL-cap: 2-of-2, resolved.
+
 - **Closed issue #138** (scribe post-PASS duties) — Step 8b, glossary + ADRs + wiki.
   Unit #138 (scribe documentation + domain-modeling) amended seven glossary entries
   in place in `CONTEXT.md` (Microworld bundle, Microworld, escalation packet, ESCALATE-TO-HUMAN,
