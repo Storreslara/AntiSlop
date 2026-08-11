@@ -4,6 +4,31 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #131** (scribe post-PASS duties) — Step 3a, `.gitignore` reach fix.
+  Unit #131 (`feat(gh131)` commit `24154f5`, PASS marker `.claude/reviewed/gh131.pass`)
+  implemented Step 3a of the install-antislop plan, extending `.gitignore` reach to four sites
+  (this repo's `.gitignore`, plus three `bin/cli.js` scaffold `appendUnique` lists for adapters
+  `.claude/`, `.cursor/`, `.codex/`), ensuring `microworlds/`, `<adapter-root>/human-review/`,
+  and `<adapter-root>/microworld-audit.log` are consistently ignored across all three adapter
+  variants. **R9 fix — the actual payload:** `runUpdate()` (line 821, claude-side only) gains
+  its own idempotent `appendUnique` call for the claude-side lines, sited alongside existing
+  `migrateGlobalProtocolImport` fixup. Previously a line added only at scaffold time would
+  never reach an already-adapted project on `--update`, causing users to see bundles and
+  escalation packets as untracked noise in `git status`. **Files changed:** `.gitignore`
+  (4 new lines), `bin/cli.js` (four site edits: :2065 claude scaffold, :1398 cursor scaffold,
+  :1778 codex scaffold, :897 runUpdate), `tests/cli-backfill.test.js` (new, proving the
+  `runUpdate` path idempotent).
+
+  **Advisory notes from second review (non-blocking):** (1) `appendUnique` substring-match
+  semantics (line 156) would silently skip append if project has `!microworlds/` or
+  `# microworlds/` pre-existing — pre-existing behavior, not new. (2) `runUpdate` is
+  claude-only; already-adapted cursor/codex projects get no `--update` reach for adapter-side
+  lines — per-spec for this unit, but a residual gap if adapter-side `--update` path ever exists.
+  (3) **Ubiquitous-language gap:** "escalation packet" and `.claude/human-review/` are now
+  load-bearing terms (appear in `.gitignore` and CHANGELOG) with no dedicated `CONTEXT.md`
+  glossary entry beyond a parenthetical; scribe added entry in this same session. Issue #131 closed
+  with PASS marker and commit reference.
+
 - **Closed issue #320** (scribe post-PASS duties) — microworld dashboard D7 step.
   Unit #320 (`feat(gh320)` commit `26a0191`,
   PASS marker `.claude/reviewed/gh320.pass`) implemented Step D7 of the

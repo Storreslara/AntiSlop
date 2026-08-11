@@ -561,6 +561,27 @@ the collection of addressable **Agent** entities currently active in a
   cases (f)/(f2)), not merely assumed — a dependency for Step D8 (microworld escalation)
   in the separate dashboard plan.
 
+**Escalation packet**:
+(unit #131, 2026-08-10) — a directory structure created during a microworld escalation
+  workflow (planned in later steps D8+), containing bundled execution artifacts and
+  supporting metadata for external sharing or re-execution contexts. The packet structure
+  itself is not yet defined; this term is forward-looking. Currently, `escalation packet`
+  is a naming placeholder that appears in `.gitignore` patterns (`.claude/human-review/`,
+  `.cursor/human-review/`, `.codex/human-review/`) to preemptively prevent committed packet
+  artifacts, and in protocol prose where deferred features (microworld escalation) may
+  reference it.
+
+**`.claude/human-review/` (human-review directory)**:
+(unit #131, 2026-08-10) — the gitignored directory path within the claude adapter
+  reserved for escalation packets. Parallel directories exist for other adapters:
+  `.cursor/human-review/`, `.codex/human-review/`. The directory is preemptively
+  ignored in `.gitignore` (matching the pattern `**/human-review/` in the claude adapter
+  case, or adapter-specific equivalents) to prevent committed artifacts before the
+  escalation workflow is defined. Currently the directory serves no function (does not
+  exist in normal projects); it is a reserved namespace for future steps.
+_Avoid_: review directory, human review folder (use "human-review directory" with the
+  dot-path for clarity about adapter specificity)
+
 **The dashboard**:
 (unit #314, 2026-08-10, forward-looking) — the D2+ UI entry point for human
   exploration of **microworld** bundles (defined normatively in protocol at
