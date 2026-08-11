@@ -632,28 +632,50 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   is complete.
 
 **Bundle source**:
-(unit #315, 2026-08-10) — the `source` field in a microworld bundle object,
-  indicating the origin of the bundle. Currently defined value: `"working"` for
-  bundles enumerated from the local `microworlds/` directory. Forward-looking:
-  `"packet"` namespace is reserved for bundles sourced from external origins in
-  later steps (D8+). Trust boundary marker: `source: "working"` bundles are
-  subject to repo-own validation and live within the same trust domain as the
-  repository itself.
-_Avoid_: bundle origin (use "bundle source" for clarity)
+(unit #315, 2026-08-10; `"packet"` value implemented unit #321, 2026-08-11) —
+  the `source` field in a microworld bundle object, indicating the origin of
+  the bundle. Defined values: `"working"` for bundles enumerated from the
+  local `microworlds/` directory (trust boundary: subject to repo-own
+  validation, same trust domain as the repository itself); `"packet"` for
+  bundles enumerated from `.claude/human-review/` **escalation packets** (see
+  [[Escalation packet]]) — a distinct trust posture, since a packet is a
+  snapshot written at review time, not a live bundle. A `source: "packet"`
+  bundle's `status` is always `null` in `GET /api/bundles`: `discoverPackets()`
+  does not consult `bin/dashboard/audit-log.js`'s live rerun-status parsing,
+  so packets render as a static snapshot with no pass/fail/timeout indicator,
+  unlike `source: "working"` bundles.
+_Avoid_: bundle origin (use "bundle source" for clarity); "working bundle" as
+  a synonym for the gitignored `microworlds/<unit-slug>/` directory itself —
+  that directory is the canonical **microworld bundle** (see entry above);
+  "working" is only the `source` field's value when a bundle of that kind is
+  discovered. `tests/dashboard-packets.test.js`, `bin/dashboard/index.html`'s
+  "Working Bundles" section header, and `CHANGELOG.md` all use "working
+  bundle" informally as UI/test shorthand for "a microworld bundle with
+  `source: "working"`" — acceptable as a UI label, but do not treat it as a
+  second glossary term.
 
 **Bundle id namespace**:
-(unit #315, 2026-08-10) — the prefix scheme for **microworld bundle** ids,
-  enabling forward-compatible routing of bundles from different sources without
-  collision. Defined values: `working:<unit-slug>` for bundles discovered from
-  local `microworlds/<unit-slug>/` directories; `packet:<task-id>` reserved for
-  bundles sourced from external origins in later steps (D8+). The directory
-  slug (not the manifest's `unit` field) is used for the working: namespace to
-  establish a stable, collision-resistant canonical id. Distinct from the
-  **source** field: a bundle's `id` is namespaced (machine routing), while
-  `source` is the semantic origin marker (human understanding / trust boundary).
-  Unit #317 adds a `dirSlug` field to discovered bundle objects, holding the
-  canonical directory slug used by `server.js` to resolve invocation paths,
-  eliminating the discovery/invocation path-mismatch defect.
+(unit #315, 2026-08-10; `packet:` namespace implemented unit #321, 2026-08-11)
+  — the prefix scheme for **microworld bundle** ids, enabling collision-free
+  routing of bundles from different sources. Defined values: `working:<dirSlug>`
+  for bundles discovered from local `microworlds/<dirSlug>/` directories;
+  `packet:<task-id>` for bundles discovered from `.claude/human-review/<task-id>/`
+  **escalation packets**. The directory/task-id slug (not the manifest's
+  `unit` field) is used in both namespaces to establish a stable,
+  collision-resistant canonical id. Distinct from the **source** field: a
+  bundle's `id` is namespaced (machine routing), while `source` is the
+  semantic origin marker (human understanding / trust boundary). Unit #317
+  added a `dirSlug` field to discovered bundle objects, holding the canonical
+  directory slug `server.js` uses to resolve invocation paths; unit #321
+  extends the same field to packet bundles (holding the task-id there),
+  eliminating the discovery/invocation path-mismatch defect for both sources.
+  **Collision design:** a `working:<slug>` and a `packet:<slug>` sharing the
+  same slug (e.g. a unit that both has a local bundle AND was escalated) are
+  distinct ids and coexist in `GET /api/bundles` without merging or shadowing
+  each other — proven end-to-end at unit #321 review time with a live
+  same-slug fixture pair (`microworlds/rev-probe/` and
+  `.claude/human-review/rev-probe/`), both discovered and both independently
+  invocable via `POST /api/invoke`.
 _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "source namespace" to clarify)
 
 **`POST /api/invoke` endpoint**:

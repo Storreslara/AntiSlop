@@ -72,6 +72,96 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   glossary entry beyond a parenthetical; scribe added entry in this same session. Issue #131 closed
   with PASS marker and commit reference.
 
+- **Closed issue #321** (scribe post-PASS duties) — microworld dashboard D8 step.
+  Unit #321 (`feat(gh321)` commit `f6ab291`, fix commit `2c60fae`, PASS marker
+  `.claude/reviewed/gh321.pass` at commit `11d0576`) implemented Step D8 of the
+  microworld dashboard plan, adding **escalation packets** (see [[Escalation
+  packet]]) as a second read source for the dashboard alongside working
+  bundles. `GET /api/bundles` now enumerates `.claude/human-review/<task-id>/`
+  directories via a new `discoverPackets()` in `bin/dashboard/discover.js`,
+  yielding bundles with `source: "packet"`, `id: packet:<task-id>`, and
+  `status` always `null` (a snapshot, not a live rerun target — packets are
+  never re-watched or re-scored). Working bundles (`source: "working"`,
+  `id: working:<dirSlug>`) and packet bundles are concatenated, never merged,
+  and rendered in two separately labelled `bin/dashboard/index.html` sections
+  ("Working Bundles" / escalation packets). The `working:`/`packet:` id
+  namespacing (see [[Bundle id namespace]]) is what makes a unit that has
+  both a local bundle AND an escalation packet resolve to two distinct,
+  independently invocable entries rather than a collision. **Files changed:**
+  `bin/dashboard/discover.js` (`discoverPackets()` added), `bin/dashboard/server.js`
+  (`dirSlug`/`source` path resolution for packet invocation, lines 189-197),
+  `bin/dashboard/index.html` (second section + header), `tests/dashboard-packets.test.js`
+  (new, cases (a)-(e)), `tests/validate.sh` (registered), `CHANGELOG.md`, version
+  bump 0.31.16→0.31.17.
+
+  **Review arc (FAIL→fix→PASS):** First review (`.claude/reviewed/gh321.fail`)
+  FAILed the original build (commit `f6ab291`) because test cases (b) and (c)
+  didn't actually exercise their stated criteria: (b) claimed to prove
+  same-slug working-bundle + packet coexistence but used different slugs for
+  the two fixtures, so a defect that dropped the working bundle on a real
+  collision would have gone undetected; (c) claimed to prove a packet's
+  `status` stays `null` even when a matching audit-log entry exists, but
+  never actually wrote a matching audit-log fixture, so a defect that made
+  `discoverPackets()` consult the audit log would have gone undetected either
+  way. Fix pass (commit `2c60fae`, scope: `CHANGELOG.md` + `tests/dashboard-packets.test.js`
+  only, no implementation file touched) rewrote (b) to use one shared slug
+  (`same-unit`) for both a `makeBundle` and a `makePacket` fixture, asserting
+  both `working:same-unit` and `packet:same-unit` are present with distinct
+  ids; rewrote (c) to write a real `.claude/microworld-audit.log` entry
+  matching the co-located working bundle's slug, asserting the working bundle
+  reaches `status.result === 'pass'` while the packet stays `null` — proving
+  the fixture is genuinely parsed rather than trivially absent. Second review
+  mutation-tested both fixes (spliced the collision-handling line out /
+  made `discoverPackets()` audit-log-aware) and confirmed each fixed test
+  goes red under the reintroduced defect and the pre-fix test stayed green
+  under the same mutation. FAIL-cap: 1-of-2, resolved.
+
+  **ESCALATE-TO-HUMAN note (institutional record, not a defect):** the unit's
+  diff size (525 insertions in `f6ab291` alone) meets ADR-0004's heavy-unit
+  trigger criterion 1, and `humanReviewMode` (see [[humanReviewMode]]) is
+  still unimplemented everywhere, which literally read would escalate this
+  unit. The reviewer returned PASS instead, following the precedent set at
+  `.claude/reviewed/gh133.pass` and accepted by the operator one unit prior,
+  after independently re-verifying its mechanical premise (no hook consumes
+  `.escalated`; writing one would leave the unit's review-join stamp
+  unsatisfied and strand the session). Recorded here, not treated as
+  resolving the open `humanReviewMode` gap (Steps 6-7 remain unbuilt).
+
+  **Domain terms added/updated in CONTEXT.md:** `Bundle source` (added the
+  now-implemented `"packet"` value and its always-`null` status semantics);
+  `Bundle id namespace` (added the now-implemented `packet:<task-id>`
+  namespace and the same-slug collision-coexistence design, proven live at
+  review time with a `rev-probe` fixture pair in both `microworlds/` and
+  `.claude/human-review/`). **Ubiquitous-language note:** "working bundle"
+  (used informally in `tests/dashboard-packets.test.js`, `index.html`'s
+  "Working Bundles" header, and `CHANGELOG.md`) is UI/test shorthand for "a
+  microworld bundle with `source: working"`", not a second canonical term —
+  the canonical term for the underlying directory remains **microworld
+  bundle** (CONTEXT.md, unit #314). Pre-existing since D2's `source: "working"`
+  design; surfaced by gh321's ubiquitous-language pass, not introduced by it;
+  now flagged in the `Bundle source` entry's `_Avoid_` line.
+
+  **Carried-forward advisory notes (non-blocking, re-verified fresh, not new
+  defects):** (1) `bin/dashboard/discover.js:139-259` — `discoverPackets()` is
+  a ~120-line near-verbatim copy of `discover()`'s per-directory loop, over
+  the coding-discipline 60-line cap and a two-place maintenance hazard; a
+  shared `readBundleDir()` helper would collapse both. (2) No test asserts
+  `index.html:139,152` actually renders the two section headers or that
+  packets never interleave with working bundles in the DOM — verified by
+  reading the source (concatenated, never merged) but unexecuted;
+  `tests/dashboard-feedback.test.js` case (m) is the precedent for asserting
+  shipped-client markup, worth following for a future unit. (3) `discover.js:203`
+  / `server.js:198` — `fn.entry` from a manifest flows into `path.join()`
+  unvalidated (pre-existing, identical for working bundles, not introduced
+  here), but this diff does widen the executable surface: any directory
+  dropped into `.claude/human-review/` becomes invocable via the local HTTP
+  endpoint. (4) The untested combination: test (d) covers packet invoke
+  without a same-slug working bundle, test (b) covers same-slug discovery
+  without invoke; invoking `packet:<slug>` while `microworlds/<slug>` also
+  exists is untested (manually exercised and correct at review time; adding
+  it to (b) would be cheap insurance). Issue #321 closed with PASS marker and
+  commit reference.
+
 - **Closed issue #320** (scribe post-PASS duties) — microworld dashboard D7 step.
   Unit #320 (`feat(gh320)` commit `26a0191`,
   PASS marker `.claude/reviewed/gh320.pass`) implemented Step D7 of the
