@@ -103,6 +103,16 @@ if [ -z "$agent_type" ]; then
     fi
   done <<< "$personas"
   if [ -z "$has_reviewer" ]; then
+    # Only the reviewer writes .escalated, so a standing one under a
+    # reviewer-less config proves the reviewer was deselected AFTER the
+    # escalation was raised - exactly the laundering transition this closes.
+    shopt -s nullglob
+    escalated_markers=( "${project_dir}"/.claude/reviewed/*.escalated )
+    shopt -u nullglob
+    if [ "${#escalated_markers[@]}" -gt 0 ]; then
+      echo "BLOCKED: this project has a standing .escalated marker with no reviewer persona selected to resolve it. The only route that resolves an escalation is the DECISION channel (per Step 1/#325's gate); if this project has permanently deselected its reviewer with a stale escalation on file, that decision belongs to a human at their own terminal, not to this fallback." >&2
+      exit 2
+    fi
     exit 0
   fi
   echo "BLOCKED: this project has a reviewer persona selected, so the main session/team lead may not write to .claude/reviewed/ itself - route the unit to the reviewer instead, per persona-protocol.md's Review Ownership section." >&2
