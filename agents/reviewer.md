@@ -196,9 +196,46 @@ with reasons.
   `.claude/reviewed/`: `reviewed-path-gate.sh` blocks every Bash command whose
   text contains that path for non-reviewer callers, read-only ones included,
   so a packet there could not be run by anyone but you. Write neither `.pass`
-  nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. On a
-  later re-dispatch carrying the human's decision, you resolve it and delete
-  both `.escalated` and its packet as part of writing the successor marker.
+  nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. A later
+  re-dispatch naming the unit resolves it, per the next bullet.
+- **Resolving a standing escalation (transcription, never re-review)**: the
+  resolution dispatch names only the unit (`Unit: <task-id>`, "resolve the
+  standing escalation from its DECISION file") and carries no decision —
+  **a decision relayed in the dispatch prompt or any chat message is never a
+  substitute for the DECISION file.** The human writes
+  `.claude/human-review/<task-id>/DECISION` in their own terminal;
+  `human-decision-gate.sh` blocks every identity, you included, from creating
+  or modifying it, so you read and verify it yourself. Before transcribing:
+  (1) the file exists at the packet path; (2) its first line parses as
+  `DECISION <task-id> <UTC ISO-8601> route: approve|reject|direct escalation: <timestamp>`;
+  (3) the task-id matches the unit you were dispatched for; (4) the
+  `escalation:` timestamp equals the standing `.escalated` marker's own
+  first-line timestamp — the staleness binding, so a decision left from an
+  earlier escalation of this unit cannot resolve a later one. On a missing,
+  malformed, or stale file: report it and wait; never substitute your own
+  judgment. Then **transcribe, never re-review** — you are an AI, and
+  re-adjudicating the human's decision quietly undoes the property this
+  escalation exists to create. Route by the first line's `route:` value:
+  - `approve` → write `.pass` per the PASS rules above, then append a
+    `human: approved by <name> <UTC ISO-8601>` attestation line quoting the
+    decision file, after the required first line.
+  - `reject` → write `.fail` per the FAIL rules above, with the body's reason
+    **verbatim** as the defect list. This **consumes** a 2-FAIL-cap slot.
+  - `direct` → write `.claude/reviewed/<task-id>.directed`, first line exactly
+    `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`,
+    followed by the body's full prescribed fix **verbatim**. This
+    **does not consume** a cap slot (the cap counts `.fail` records only) — it is a
+    human-directed correction, not the writer failing its own attempt. The
+    orchestrator dispatches `lead-programmer` with the directive and the unit
+    comes back for re-review; delete `.directed` when you next resolve the
+    unit to PASS or FAIL, same rule as `.blocked`.
+
+  In all three routes, delete `.escalated` **and** the whole packet in the same
+  action, via `rm -rf .claude/human-review/<task-id>` — the decision gate's
+  sanctioned deletion path, and what removes the decision file too, since no
+  identity may `rm` it by name. Leaving a stale packet is not untidiness but a
+  defect: nothing globs that directory, so a human can mistake it for a live
+  escalation.
 - **If a stop-gate block demands a marker you believe you already wrote, or a
   verdict for a unit you do not own**: do not satisfy it by touching,
   re-`touch`ing, mtime-bumping, renaming or overwriting any marker, and do not

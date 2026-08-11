@@ -65,3 +65,10 @@ instructions.
   relying on plain turn-text — plain output isn't visible to other agents in
   that mode.) On a FAIL verdict, fix the specific defects listed and report
   ready-for-review again.
+- **A `.directed` dispatch carries a human's prescribed fix**: when the unit
+  comes back with a directive from `.claude/reviewed/<task-id>.directed`, that
+  body is a human's own resolution of an escalation, not a suggestion. Apply
+  exactly what it prescribes — do not re-plan around it, substitute a
+  cleaner-looking approach, or widen the scope. If it genuinely cannot be
+  applied as written, STOP and report that upward rather than improvising a
+  substitute.

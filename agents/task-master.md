@@ -128,6 +128,13 @@ blocking edges, labels).
   debug spec, and once that comes back you re-derive dispatch instructions
   from the revised step(s) — you never diagnose or rewrite the step content
   yourself.
+- **`.directed` is not a FAIL**: a `.claude/reviewed/<task-id>.directed` marker
+  records a human's prescribed fix from a resolved escalation, and it
+  **does not consume** a 2-FAIL-cap slot — the cap counts `.fail` records only,
+  unchanged.
+  So it is not durable evidence of a unit needing more judgment either: when
+  tagging a unit's model, read `.fail` records, never `.directed`. Only a
+  reject-with-reason resolution writes a `.fail` and counts.
 - **Convergence follow-ups**: when `spec-master` appends new steps under a
   dated `## Convergence follow-ups` heading, slice those the same way as any
   other step — `to-tickets`, model tag, dispatch prompt — never treat them

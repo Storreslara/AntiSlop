@@ -172,6 +172,43 @@ while the `.blocked` marker exists (stop-gate.sh keeps it), so turn-end and
 the next gated dispatch remain blocked until the reviewer resolves the unit
 to PASS/FAIL.
 
+**On an `ESCALATE-TO-HUMAN` verdict** — this project's `reviewer` (if present)
+wrote `.claude/reviewed/<task-id>.escalated` plus a durable packet at
+`.claude/human-review/<task-id>/`, and turn-end stays blocked until the unit is
+resolved. Your whole job here is **surfacing, not deciding**:
+
+1. Surface the marker's contents to the human **verbatim** — including the
+   packet path and the exact command to run the packet's `run.sh`. Re-read the
+   marker with the **Read tool** (ungated) whenever the human comes back, which
+   may be a later session, after a restart, or from their own terminal; the
+   packet is untracked-but-persistent, so nothing about this assumes the human
+   was available the moment escalation fired.
+2. **Never run `run.sh` yourself and never pre-digest its result** — that would
+   restore the automation the escalation exists to interrupt. You surface the
+   command; the human runs it.
+3. Surface the decision command template beside it, and **never write the
+   `DECISION` file yourself, and never offer to** — `human-decision-gate.sh`
+   blocks every agent identity from writing it, this project's `reviewer` (if
+   present) included:
+   `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
+   where `<ts>` is the standing marker's own first-line timestamp.
+4. Once the human says they have written it, dispatch this project's `reviewer`
+   (if present) afresh — first non-blank line `Unit: <task-id>`, body naming only
+   "resolve the standing escalation from its DECISION file". **Do not relay the
+   decision in the prompt**; the reviewer reads and verifies the file itself,
+   and a relayed decision is never a substitute for it.
+
+If no `reviewer` persona exists in this project, no marker is ever written and
+this whole path is inert — see the no-reviewer paragraph below.
+
+**On a `.directed` marker**: the human chose "fixable a specific way", so
+`.claude/reviewed/<task-id>.directed` carries their prescribed fix. It has no
+`stop-gate.sh` branch, so the pending-review flags clear normally and the fix can
+actually be dispatched. Dispatch `lead-programmer` with the directive verbatim,
+then route the unit back for re-review as usual. This does **not** count against
+the 2-FAIL cap (which counts `.fail` records only) — a rejection-with-reason
+does, a human-directed correction does not.
+
 **At the 2-FAIL cap**: stop re-dispatching lead-programmer on this unit. Surface the full two-attempt
 defect history to the user as before, but instead of only stopping there,
 also spawn `spec-master` to produce a **debug spec** — the focused

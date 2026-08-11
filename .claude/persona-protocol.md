@@ -1,4 +1,4 @@
-<!-- antislop v0.31.22 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.23 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -375,11 +375,80 @@ Separate marker files, separate audit-log tokens.
 **Cap accounting.** `.escalated` **never** consumes a 2-FAIL-cap slot — the
 cap below counts `.fail` records only, unchanged.
 
-**Resolution.** Always resolved by the reviewer, on a later re-dispatch
-carrying the human's decision, into exactly one of three terminal transitions,
-each of which **deletes** `.escalated` and its packet as part of writing the
-successor marker — mirroring the existing rule that `.blocked` is deleted when
-the reviewer resolves the unit.
+**Resolution.** Always resolved by the reviewer, on a later re-dispatch that
+names the unit and points it at the unit's `DECISION` file, into exactly one of
+three terminal transitions, each of which **deletes** `.escalated` and its
+packet as part of writing the successor marker — mirroring the existing rule
+that `.blocked` is deleted when the reviewer resolves the unit.
+
+### Resolving an escalation: the DECISION file and the three routes
+**The decision travels as a file, never as a chat message.** The human writes
+`.claude/human-review/<task-id>/DECISION` **in their own terminal**;
+`hooks/scripts/human-decision-gate.sh` blocks every agent identity — the
+reviewer included — from creating or modifying it, so a decision relayed in a
+dispatch prompt or any chat message is never a substitute for the file. The
+orchestrator surfaces the exact command template beside the packet's `run.sh`
+command — the same surface-don't-run rule, extended: it **never writes the file
+and never offers to**. Template shape:
+
+`printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
+
+**Format.** First line exactly
+`DECISION <task-id> <UTC ISO-8601> route: approve|reject|direct escalation: <timestamp>`,
+where `escalation:` carries the standing `.escalated` marker's own first-line
+timestamp — the staleness binding, so a decision left over from an earlier
+escalation of the same unit cannot resolve a later one. Second line `by: <name>`.
+Body: for `reject`, the human's reason verbatim; for `direct`, the full
+prescribed fix verbatim.
+
+**Reviewer resolution.** The resolution dispatch names only the unit
+(`Unit: <task-id>`, plus "resolve the standing escalation from its DECISION
+file") and carries no decision to relay. The reviewer verifies the file exists
+at the packet path, parses its first line, checks the task-id matches and the
+`escalation:` timestamp equals the standing marker's first-line timestamp, then
+**transcribes** it into the route below. It transcribes and **never
+re-reviews** — the reviewer is an AI, and re-adjudicating a human's decision
+quietly undoes the human-in-the-loop property the escalation exists to create.
+On a missing, malformed, or stale `DECISION`: report and wait.
+
+| Human decision | Reviewer writes | `.escalated` | Packet | Cap slot | Next move |
+|---|---|---|---|---|---|
+| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601>` attestation line quoting the `DECISION` file, after the required first line | deleted | deleted | — | unit done |
+| **Reject with reason** | `.fail`, with the human's reason **verbatim** from the body as the defect list | deleted | deleted | **consumes one** | back to `lead-programmer`, normal FAIL route |
+| **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the human's full prescribed fix **verbatim** from the body | deleted | deleted | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
+
+In all three routes the packet is deleted in the **same reviewer action** that
+deletes `.escalated`, via `rm -rf .claude/human-review/<task-id>` — the decision
+gate's sanctioned deletion path, and what removes the decision file too, since
+no identity may `rm` it by name. A later re-escalation of the same unit writes a
+fresh packet from the then-current bundle. Deleting it is **mandatory, not
+tidiness**: nothing globs the packet directory, so a stale one is silent clutter
+a human could mistake for a live escalation — R5's stale-marker hazard without
+R5's excuse.
+
+**Cap asymmetry.** Reject-with-reason is a genuine defect the human found, so it
+counts like any other FAIL. Fixable-a-specific-way is a **human-directed
+correction**, not the writer failing its own automated attempt — the same logic
+that keeps `INSUFFICIENT-CONTEXT` from consuming a slot. The counting rule is
+unchanged: it counts `.fail` records only, and `.directed` is not one.
+`.directed` intentionally gets **no** `stop-gate.sh` branch, so flags clear
+normally and the directed fix can actually be dispatched; the reviewer deletes
+it when it next resolves the unit to PASS or FAIL, same rule as `.blocked` and
+`.escalated`.
+
+**Unattended / CI.** With no human present, `.escalated` simply stands and
+turn-end stays blocked — there is **no** silent auto-fallback to the reviewer's
+own automated verdict. The only way through is the **existing** `defer:` /
+`skip:` escape hatch on the pending-review flag above, already-live machinery
+that logs to `.claude/review-audit.log`, so bypassing human review always leaves
+a trail. `skip:` abandons the unit **without** deleting the marker **or** the
+packet — both are left standing, the fail-safe direction (evidence retained,
+nothing silently approved), which means a `skip:`-ed unit leaves a
+`.claude/human-review/<task-id>/` directory that only a later reviewer
+resolution of that unit clears. "No human present" is a **timing** condition,
+not a terminal one: the packet outlives the session, so an unattended run that
+blocks at escalation can be picked up hours or days later without re-running
+anything.
 
 ## Continuing after a FAIL verdict
 Subagent invocations are one-shot — a fresh lead-programmer call has no

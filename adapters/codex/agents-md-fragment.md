@@ -162,8 +162,56 @@ not fixed.
 Distinct from `.blocked` (reviewer *lacked context*; this one means policy wants
 human eyes on critical code) - separate marker files, separate audit-log tokens.
 `.escalated` never consumes a 2-FAIL-cap slot. Resolved only by the reviewer, on a
-later re-dispatch carrying the human's decision, via one of three terminal
-transitions, each deleting `.escalated` and its packet.
+later re-dispatch naming the unit and pointing at its DECISION file, via one of
+three terminal transitions, each deleting `.escalated` and its packet.
+
+### Resolving an escalation: the DECISION file and the three routes
+**The decision travels as a file, never as a chat message.** The human writes
+`.claude/human-review/<task-id>/DECISION` in their own terminal;
+`human-decision-gate.sh` blocks every agent identity, reviewer included, from
+creating or modifying it, so a decision relayed in a dispatch prompt or any chat
+message is never a substitute for the file. The orchestrator surfaces the command
+template beside the packet's `run.sh` command and never writes the file itself:
+`printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
+
+First line exactly
+`DECISION <task-id> <UTC ISO-8601> route: approve|reject|direct escalation: <timestamp>`,
+where `escalation:` repeats the standing marker's own first-line timestamp - the
+staleness binding, so an older decision cannot resolve a later escalation. Second
+line `by: <name>`. Body: the reason verbatim for `reject`, the full prescribed fix
+verbatim for `direct`.
+
+The resolution dispatch names only the unit and carries no decision. The reviewer
+verifies the file exists, parses its first line, checks the task-id and the
+`escalation:` timestamp match the standing marker, then **transcribes** it into
+one route - never re-reviews, since re-adjudicating a human decision undoes the
+property the escalation exists to create. Missing, malformed, or stale: report and
+wait.
+
+| Human decision | Reviewer writes | Cap slot | Next move |
+|---|---|---|---|
+| **Approve** | `.pass` plus an appended `human: approved by <name> <UTC ISO-8601>` attestation quoting the file | - | unit done |
+| **Reject with reason** | `.fail` with the reason verbatim as the defect list | **consumes one** | back to `lead-programmer`, normal FAIL route |
+| **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the prescribed fix verbatim | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
+
+All three delete `.escalated` and the packet in the same action, via
+`rm -rf .claude/human-review/<task-id>` - the decision gate's sanctioned deletion
+path, which is also what removes the decision file, since no identity may `rm` it
+by name. Mandatory, not tidiness: nothing globs the packet directory, so a stale
+one is silent clutter a human could mistake for a live escalation. Cap asymmetry:
+a rejection is a genuine defect, a direction is a human-directed correction rather
+than the writer failing its own attempt - the same logic that spares
+`INSUFFICIENT-CONTEXT`. The counting rule is unchanged (`.fail` records only), and
+`.directed` deliberately has no stop-gate branch so flags clear and the directed
+fix can be dispatched.
+
+Unattended: `.escalated` simply stands and turn-end stays blocked - no silent
+auto-fallback to the reviewer's own verdict. The only way through is the existing
+`defer:`/`skip:` escape hatch on the pending-review flag, which logs to
+`.claude/review-audit.log`. `skip:` leaves BOTH the marker and the packet standing
+(fail-safe: evidence retained, nothing silently approved), so only a later reviewer
+resolution of that unit clears them. "No human present" is a timing condition, not
+a terminal one - the packet outlives the session.
 
 ## Retrieval contract
 The plan states, verbatim, where issues live and how to fetch them (matching
