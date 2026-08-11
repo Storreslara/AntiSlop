@@ -32,6 +32,12 @@
       "default": ["lead-programmer"],
       "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, scribe) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit. Matching is namespace-insensitive: both this config's entries and the incoming agent-identity payload are canonicalized to their bare persona name before comparing, so an entry written as 'lead-programmer' also matches a namespaced payload like 'antislop:lead-programmer', and an entry written as 'antislop:lead-programmer' also matches a bare 'lead-programmer' payload. You never need to list both forms."
     },
+    "humanReviewMode": {
+      "type": "string",
+      "enum": ["off", "critical", "all"],
+      "default": "critical",
+      "description": "How often a review that would have PASSed is instead escalated to a human (the reviewer's ESCALATE-TO-HUMAN verdict). The shipped default is \"critical\" - this is ON by default. \"critical\" escalates only units meeting the heavy-unit trigger of docs/adr/0004-reviewer-roast-work-dual-model-routing.md (as amended by ADR-0013); \"all\" escalates every would-be PASS; \"off\" is the explicit opt-out that restores fully automatic PASSing. An ABSENT key resolves to \"critical\", not \"off\" - already-adapted projects, whose configs `--update` preserves untouched, therefore get the default from the consumer (the reviewer persona) rather than from a backfill. An unrecognised value also resolves to \"critical\" (fail toward escalation, never toward silent auto-approval). If the reviewer persona is not in personaSelection this field has no effect at all: only the reviewer writes the escalation marker."
+    },
     "pluginVersion": {
       "type": "string",
       "description": "The antislop plugin version this project was last ADAPTed/updated at, stamped by install-antislop. Compared against the installed plugin's current version by the SessionStart drift-check hook."
