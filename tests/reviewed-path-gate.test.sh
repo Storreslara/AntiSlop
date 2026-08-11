@@ -43,6 +43,8 @@ mk() {
 }
 proj="$(mk with-reviewer "$cfg_reviewer")"
 proj_none="$(mk no-reviewer "$cfg_none")"
+proj_escalated="$(mk no-reviewer-escalated "$cfg_none")"
+touch "$proj_escalated/.claude/reviewed/u9.escalated"
 
 rc=0
 run() {
@@ -637,5 +639,18 @@ fi
 run "$(jq -n --arg a "lead-programmer" --arg c "printf x > $marker/9.pass" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$audit_fixture"
 : > "$audit_log"  # Reset before checking
 check "case 35 lead-programmer also blocked" blocked
+echo
+
+echo "-- gh326: no-reviewer fallback suspended while an escalation stands --"
+write_case "case j  empty agent_type Write, standing escalation" blocked "" \
+  "$marker/u9.pass" "$proj_escalated"
+bash_case "case k  empty agent_type Bash rm of the escalation marker itself" blocked "" \
+  "rm $marker/u9.escalated" "$proj_escalated"
+write_case "case l  empty agent_type Write, no escalation standing (fallback preserved)" allowed "" \
+  "$marker/u9.pass" "$proj_none"
+bash_case "case m  empty agent_type Bash cat of the escalation marker (reads stay allowed)" allowed "" \
+  "cat $marker/u9.escalated" "$proj_escalated"
+write_case "case n  antislop:reviewer Write, standing escalation (GRANT unaffected)" allowed \
+  "antislop:reviewer" "$marker/u9.pass" "$proj_escalated"
 echo
 exit "$fail"
