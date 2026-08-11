@@ -3,6 +3,17 @@
 // Pure formatter for microworld feedback blocks.
 // Takes a context object and produces the exact markdown shape for LLM parsing
 // and human grep-ability.
+//
+// Dual-environment, single implementation: this file is loaded two ways.
+//   - Node (CommonJS): required directly by the test suite via `require()`.
+//   - Browser: bin/dashboard/server.js's `GET /` handler reads this file's
+//     source verbatim and injects it into a classic (non-module) <script>
+//     tag ahead of index.html's own module script (see the
+//     `__FEEDBACK_BLOCK_SOURCE__` placeholder there). A top-level function
+//     declaration in a classic script becomes a page global, so index.html's
+//     module script calls `formatFeedbackBlock` by name with no import
+//     machinery required. There is exactly one implementation of this shape;
+//     nothing reimplements it.
 
 /**
  * Format a feedback block for clipboard export.
@@ -72,9 +83,21 @@ function formatFeedbackBlock(context) {
     } else if (cell.result.stderr) {
       output += `\n\`\`\`\n${cell.result.stderr}\n\`\`\`\n`;
     }
+
+    // Explicit truncation marker -- required by the plan's fixed block shape
+    // ("<output, fenced, truncated with an explicit marker>"), unambiguous
+    // and grep-able.
+    if (cell.result.truncated) {
+      output += `\n*(output truncated)*\n`;
+    }
   }
 
   return output;
 }
 
-module.exports = { formatFeedbackBlock };
+// CommonJS export, guarded so the same source is inert when embedded as a
+// classic browser <script> (where `module` is undefined and this branch is
+// simply skipped, leaving `formatFeedbackBlock` as a page global instead).
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = { formatFeedbackBlock };
+}

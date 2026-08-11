@@ -42,12 +42,15 @@ function readSourceExcerpt(projectRoot, file, startLine, endLine) {
     };
   }
 
-  // (2) Verify resolved path stays inside project root
-  const realProjectRoot = path.resolve(projectRoot);
+  // (2) Lexical containment check. Necessary but NOT sufficient: this only
+  // catches ../ and absolute-path escapes textually. A symlink living inside
+  // the root but pointing outside it passes this check untouched, which is
+  // exactly what step (3) below exists to catch.
+  const lexicalProjectRoot = path.resolve(projectRoot);
   const normalizedResolved = path.normalize(resolvedPath);
 
   // Use path.relative to detect escapes
-  const relative = path.relative(realProjectRoot, normalizedResolved);
+  const relative = path.relative(lexicalProjectRoot, normalizedResolved);
 
   // If relative starts with '..' or is absolute, it's outside the root
   if (relative.startsWith('..') || path.isAbsolute(relative)) {
@@ -59,7 +62,7 @@ function readSourceExcerpt(projectRoot, file, startLine, endLine) {
   }
 
   // Verify the normalized path actually starts with the root
-  if (!normalizedResolved.startsWith(realProjectRoot + path.sep) && normalizedResolved !== realProjectRoot) {
+  if (!normalizedResolved.startsWith(lexicalProjectRoot + path.sep) && normalizedResolved !== lexicalProjectRoot) {
     return {
       success: false,
       reason: 'Path is outside project root',
@@ -67,7 +70,54 @@ function readSourceExcerpt(projectRoot, file, startLine, endLine) {
     };
   }
 
-  // (3) Check file exists
+  // (3) Real (symlink-resolved) containment check -- this is the actual
+  // security gate (guardrail 6). Resolve BOTH the project root and the
+  // candidate path with realpath and compare those, not the lexical paths,
+  // so a symlink inside the root pointing outside it is caught rather than
+  // followed.
+  let realProjectRoot;
+  try {
+    realProjectRoot = fs.realpathSync.native(lexicalProjectRoot);
+  } catch (err) {
+    // The project root itself is expected to always exist; if it doesn't,
+    // nothing downstream can succeed either.
+    return {
+      success: false,
+      reason: `Project root could not be resolved: ${err.message}`,
+      statusCode: 404,
+    };
+  }
+
+  let realResolvedPath;
+  try {
+    realResolvedPath = fs.realpathSync.native(resolvedPath);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      // Doesn't exist -- can't be realpath'd. Fall through to the existing
+      // file-not-found handling below rather than treating this as a 400.
+      realResolvedPath = null;
+    } else {
+      return {
+        success: false,
+        reason: `Path resolution error: ${err.message}`,
+        statusCode: 400,
+      };
+    }
+  }
+
+  if (
+    realResolvedPath !== null &&
+    realResolvedPath !== realProjectRoot &&
+    !realResolvedPath.startsWith(realProjectRoot + path.sep)
+  ) {
+    return {
+      success: false,
+      reason: 'Path escapes project root',
+      statusCode: 400,
+    };
+  }
+
+  // (4) Check file exists
   if (!fs.existsSync(resolvedPath)) {
     return {
       success: false,
@@ -76,7 +126,7 @@ function readSourceExcerpt(projectRoot, file, startLine, endLine) {
     };
   }
 
-  // (4) Read file and check line range
+  // (5) Read file and check line range
   let content;
   try {
     content = fs.readFileSync(resolvedPath, 'utf8');
@@ -96,6 +146,14 @@ function readSourceExcerpt(projectRoot, file, startLine, endLine) {
     return {
       success: false,
       reason: `Start line ${startLine} is out of range (file has ${totalLines} lines)`,
+      statusCode: 404,
+    };
+  }
+
+  if (endLine < startLine) {
+    return {
+      success: false,
+      reason: `endLine (${endLine}) before startLine (${startLine})`,
       statusCode: 404,
     };
   }

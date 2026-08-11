@@ -8,6 +8,7 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const vm = require('vm');
 const { startServer } = require('../bin/dashboard/server');
 const { readSourceExcerpt } = require('../bin/dashboard/source');
 const { formatFeedbackBlock } = require('../bin/dashboard/feedback-block');
@@ -482,10 +483,368 @@ async function runTests() {
     failures.push('(i) Function vs cell "### Last run"');
   }
 
+  // ---- Fix-pass additions (gh320): one test per FAIL-verdict defect ----
+
+  // Test (j) SYMLINK ESCAPE PROOF (D1): a symlink living inside the project
+  // root but pointing outside it must be rejected with 400, not followed.
+  // Mutation check: reverting D1 (comparing only lexical, non-realpath'd
+  // paths) makes this go green with a 200 and leaked content -- i.e. this
+  // test is red without the fix.
+  console.log('Test (j): SYMLINK ESCAPE PROOF: symlink inside root pointing outside root returns 400...');
+  try {
+    const tmpDir = makeTestProject('j');
+    makeBundle(tmpDir, 'test-j');
+
+    const outsideDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-feedback-test-j-outside-'));
+    fs.writeFileSync(path.join(outsideDir, 'secret.txt'), 'SENTINEL_SECRET_LINE_ONE\nSENTINEL_SECRET_LINE_TWO\n');
+    fs.symlinkSync(path.join(outsideDir, 'secret.txt'), path.join(tmpDir, 'innocent.txt'));
+
+    const { server, token } = startServer(tmpDir, 0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    try {
+      const response = await httpRequest(
+        `http://127.0.0.1:${server.address().port}/api/source?file=innocent.txt&startLine=1&endLine=2&t=${token}`,
+        { token }
+      );
+
+      if (response.status !== 400) {
+        throw new Error(`Symlink escape: Expected 400, got ${response.status}: ${response.body}`);
+      }
+      if (response.body.includes('SENTINEL_SECRET')) {
+        throw new Error(`Symlink escape: secret content leaked into response: ${response.body}`);
+      }
+
+      console.log('  ✓ Symlink escaping project root rejected with 400, no content leaked');
+    } finally {
+      server.close();
+    }
+  } catch (err) {
+    console.log('  ✗ ' + err.message);
+    failures.push('(j) SYMLINK ESCAPE proof');
+  }
+
+  // Test (k) endLine < startLine (D2): must be a 404 with a stated reason,
+  // never a silent 200 with an empty lines array.
+  console.log('Test (k): endLine < startLine returns 404 with stated reason...');
+  try {
+    const tmpDir = makeTestProject('k');
+    makeBundle(tmpDir, 'test-k');
+
+    const srcDir = path.join(tmpDir, 'src');
+    fs.mkdirSync(srcDir);
+    fs.writeFileSync(path.join(srcDir, 'index.js'), 'line 1\nline 2\nline 3\nline 4\nline 5\n');
+
+    const { server, token } = startServer(tmpDir, 0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    try {
+      const response = await httpRequest(
+        `http://127.0.0.1:${server.address().port}/api/source?file=src/index.js&startLine=4&endLine=2&t=${token}`,
+        { token }
+      );
+
+      if (response.status !== 404) {
+        throw new Error(`endLine<startLine: Expected 404, got ${response.status}: ${response.body}`);
+      }
+
+      const data = JSON.parse(response.body);
+      if (!data.error || typeof data.error !== 'string') {
+        throw new Error(`endLine<startLine: no stated reason in response: ${response.body}`);
+      }
+      if (data.success === true) {
+        throw new Error(`endLine<startLine: response reports success:true: ${response.body}`);
+      }
+
+      console.log('  ✓ endLine < startLine returns 404 with a stated reason (never a silent empty 200)');
+    } finally {
+      server.close();
+    }
+  } catch (err) {
+    console.log('  ✗ ' + err.message);
+    failures.push('(k) endLine < startLine 404');
+  }
+
+  // Test (l) TRUNCATION MARKER (D5): the fixed block shape requires an
+  // explicit marker in the fenced output when cell.result.truncated is true.
+  console.log('Test (l): explicit truncation marker present only when cell.result.truncated is true...');
+  try {
+    const truncatedContext = {
+      unitSlug: 'test-unit',
+      functionId: 'test-fn',
+      functionGroup: 'TestClass',
+      functionLabel: 'Test Function',
+      comment: 'Test',
+      sha: 'abc123',
+      cell: {
+        inputs: { input1: 'value1' },
+        result: { exitCode: 0, durationMs: 100, stdout: 'partial output', truncated: true },
+      },
+    };
+    const notTruncatedContext = JSON.parse(JSON.stringify(truncatedContext));
+    notTruncatedContext.cell.result.truncated = false;
+
+    const blockTruncated = formatFeedbackBlock(truncatedContext);
+    const blockNotTruncated = formatFeedbackBlock(notTruncatedContext);
+
+    if (!blockTruncated.includes('output truncated')) {
+      throw new Error(`Expected an explicit truncation marker, got:\n${blockTruncated}`);
+    }
+    if (blockNotTruncated.includes('output truncated')) {
+      throw new Error(`Non-truncated block should not contain a truncation marker: ${blockNotTruncated}`);
+    }
+
+    console.log('  ✓ Explicit truncation marker present only when cell.result.truncated is true');
+  } catch (err) {
+    console.log('  ✗ ' + err.message);
+    failures.push('(l) Truncation marker');
+  }
+
+  // Test (m) SHIPPED CLIENT ACTUALLY USES THE REAL FORMATTER, THE PER-CELL
+  // BOX EXISTS, AND "### Last run" IS SCOPED CORRECTLY (D3 + D4, and the
+  // claim D6 rests on). Loads the ACTUAL served HTML via a real HTTP
+  // request -- so server.js's injection genuinely runs -- and evaluates
+  // BOTH the injected classic <script> (defines formatFeedbackBlock as a
+  // page global) and the <script type="module"> app code in the SAME vm
+  // context, exactly as a browser shares globals between two <script> tags.
+  // Then drives a real invoke plus two distinct "Copy Feedback" clicks
+  // (function-scoped, then cell-scoped) through the actual client code path.
+  console.log('Test (m): shipped client renders per-cell comment box, uses the real formatter, and scopes "### Last run" correctly...');
+  try {
+    const tmpDir = makeTestProject('m');
+    makeBundle(tmpDir, 'test-m');
+    const { server, token } = startServer(tmpDir, 0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    try {
+      const pageResponse = await httpRequest(
+        `http://127.0.0.1:${server.address().port}/?t=${token}`,
+        { token }
+      );
+      if (pageResponse.status !== 200) {
+        throw new Error(`GET / expected 200, got ${pageResponse.status}`);
+      }
+      const html = pageResponse.body;
+
+      const classicMatch = html.match(/<script>([\s\S]*?)<\/script>/);
+      const moduleMatch = html.match(/<script type="module">([\s\S]*?)<\/script>/);
+      if (!classicMatch) throw new Error('could not find injected classic <script> in served HTML');
+      if (!moduleMatch) throw new Error('could not find inline module <script> in served HTML');
+      if (!classicMatch[1].includes('function formatFeedbackBlock')) {
+        throw new Error('served HTML classic script does not contain the real formatFeedbackBlock source -- injection missing');
+      }
+
+      const fn = {
+        id: 'test-fn',
+        group: 'TestClass',
+        label: 'Test Function',
+        entry: 'test-entry.sh',
+        description: 'A test function entry',
+        location: { file: 'src/index.js', startLine: 10, endLine: 15 },
+        inputs: [{ name: 'input1', type: 'string' }],
+      };
+      const bundlesData = [{
+        id: 'test-m',
+        unit: 'test-m',
+        description: 'Test bundle for test-m',
+        status: null,
+        functions: [fn],
+      }];
+      const invokeResult = { exitCode: 0, stdout: 'invoked output', stderr: '', durationMs: 42, truncated: true };
+
+      function makeFakeDiv() {
+        return {
+          _text: '',
+          style: {},
+          set textContent(v) { this._text = String(v); },
+          get textContent() { return this._text; },
+          get innerHTML() { return this._text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); },
+        };
+      }
+      function makeFakeElement() {
+        return {
+          _html: '',
+          style: {},
+          set innerHTML(v) { this._html = v; },
+          get innerHTML() { return this._html; },
+          querySelectorAll: () => [],
+          addEventListener: () => {},
+        };
+      }
+      function makeFakeButton(attrs) {
+        const listeners = [];
+        return {
+          _listeners: listeners,
+          addEventListener: (type, cb) => { listeners.push({ type, cb }); },
+          getAttribute: (name) => (attrs && attrs[name] !== undefined ? attrs[name] : null),
+        };
+      }
+      function makeFakeForm(inputs) {
+        const elements = {};
+        for (const input of inputs) {
+          elements[input.name] = { value: input.default !== undefined ? String(input.default) : 'x' };
+        }
+        const submitBtn = { textContent: 'Invoke', disabled: false };
+        const listeners = [];
+        return {
+          elements,
+          _listeners: listeners,
+          querySelector: (sel) => (sel === 'button[type="submit"]' ? submitBtn : null),
+          addEventListener: (type, cb) => { listeners.push({ type, cb }); },
+        };
+      }
+
+      const leftRail = makeFakeElement();
+      const contentArea = makeFakeElement();
+      const outputPane = makeFakeElement();
+      const inputForm = makeFakeForm(fn.inputs);
+      const commentBox = { value: 'function-level comment' };
+      const copyFeedbackBtn = makeFakeButton();
+      const copyFeedbackDiv = makeFakeDiv();
+      const clipboardFallback = { value: '' };
+      const cellCommentBox = { value: 'cell-level comment' };
+      const cellCopyFeedbackDiv = makeFakeDiv();
+      const cellClipboardFallback = { value: '' };
+
+      const elementsById = {
+        leftRail, contentArea, outputPane, inputForm,
+        commentBox, copyFeedbackBtn, copyFeedback: copyFeedbackDiv, clipboardFallback,
+        'cell-comment-0': cellCommentBox,
+        'cell-copy-feedback-0': cellCopyFeedbackDiv,
+        'cell-clipboard-fallback-0': cellClipboardFallback,
+      };
+
+      let lastCellCopyBtn = null;
+      const clipboardWrites = [];
+
+      const sandbox = {
+        document: {
+          getElementById: (id) => elementsById[id] || null,
+          createElement: () => makeFakeDiv(),
+          querySelectorAll: (selector) => {
+            if (selector === '.cell-copy-btn') {
+              const b = makeFakeButton({ 'data-fn-id': fn.id, 'data-cell-id': '0' });
+              lastCellCopyBtn = b;
+              return [b];
+            }
+            if (['.cell-edit-btn', '.cell-toggle-btn', '.cell-remove-btn'].includes(selector)) {
+              return [makeFakeButton({ 'data-fn-id': fn.id, 'data-cell-id': '0' })];
+            }
+            return [];
+          },
+        },
+        location: { search: '' },
+        URLSearchParams,
+        console,
+        navigator: {
+          clipboard: {
+            writeText: async (text) => { clipboardWrites.push(text); },
+          },
+        },
+        fetch: async (url) => {
+          if (url === '/api/bundles') return { ok: true, status: 200, json: async () => bundlesData };
+          if (url === '/api/invoke') return { ok: true, status: 200, json: async () => invokeResult };
+          if (url === '/api/context') return { ok: true, status: 200, json: async () => ({ sha: 'deadbeefcafe' }) };
+          return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
+        },
+        alert: () => {},
+        setInterval: () => {},
+        clearInterval: () => {},
+        setTimeout: () => {},
+      };
+      vm.createContext(sandbox);
+      // Classic script first (defines formatFeedbackBlock as a page global),
+      // then the module script -- same order and same shared global object a
+      // browser gives two <script> tags on one page.
+      vm.runInContext(classicMatch[1], sandbox);
+      vm.runInContext(moduleMatch[1], sandbox);
+      await new Promise((r) => setTimeout(r, 50));
+
+      const submitListener = inputForm._listeners.find((l) => l.type === 'submit');
+      if (!submitListener) throw new Error('submit listener never attached to inputForm');
+      await submitListener.cb({ preventDefault: () => {} });
+
+      // STRUCTURAL PROOF (D3): the actually-rendered cell HTML must contain
+      // a per-cell comment textarea and copy button with per-instance ids --
+      // not just "attachCellEventListeners queried a selector that returned
+      // something", which the stubbed querySelectorAll above would satisfy
+      // even if renderCell emitted no such markup at all.
+      const renderedCellHtml = outputPane.innerHTML;
+      if (!renderedCellHtml.includes('id="cell-comment-0"')) {
+        throw new Error(`renderCell did not emit a per-cell comment textarea (id="cell-comment-0"): ${renderedCellHtml.slice(0, 500)}`);
+      }
+      if (!renderedCellHtml.includes('class="cell-copy-btn"')) {
+        throw new Error(`renderCell did not emit a per-cell "Copy Feedback" button (class="cell-copy-btn"): ${renderedCellHtml.slice(0, 500)}`);
+      }
+
+      // Function-scoped copy: click id="copyFeedbackBtn"'s listener.
+      const fnCopyListener = copyFeedbackBtn._listeners.find((l) => l.type === 'click');
+      if (!fnCopyListener) throw new Error('function-level copy button never wired a click listener');
+      await fnCopyListener.cb({ preventDefault: () => {} });
+
+      if (clipboardWrites.length !== 1) {
+        throw new Error(`expected 1 clipboard write after function-level copy, got ${clipboardWrites.length}`);
+      }
+      const fnBlock = clipboardWrites[0];
+      if (fnBlock.includes('### Last run')) {
+        throw new Error(`function-level copy must NOT include "### Last run" (D3 inversion): ${fnBlock}`);
+      }
+      if (!fnBlock.includes('function-level comment')) {
+        throw new Error(`function-level copy did not include the function comment box's text: ${fnBlock}`);
+      }
+
+      // Cell-scoped copy: click the wired .cell-copy-btn.
+      if (!lastCellCopyBtn) throw new Error('no .cell-copy-btn was ever queried/wired');
+      const cellCopyListener = lastCellCopyBtn._listeners.find((l) => l.type === 'click');
+      if (!cellCopyListener) throw new Error('.cell-copy-btn has no click listener wired');
+      await cellCopyListener.cb({ preventDefault: () => {} });
+
+      if (clipboardWrites.length !== 2) {
+        throw new Error(`expected 2 clipboard writes after cell-level copy, got ${clipboardWrites.length}`);
+      }
+      const cellBlock = clipboardWrites[1];
+      if (!cellBlock.includes('### Last run')) {
+        throw new Error(`cell-level copy must include "### Last run": ${cellBlock}`);
+      }
+      if (!cellBlock.includes('cell-level comment')) {
+        throw new Error(`cell-level copy did not include the per-cell comment box's own text: ${cellBlock}`);
+      }
+      if (!cellBlock.includes('output truncated')) {
+        throw new Error(`cell-level copy did not carry the D5 truncation marker through to the shipped path: ${cellBlock}`);
+      }
+
+      // No-duplicate-implementation proof: the cell-level block the shipped
+      // client actually produced must be byte-identical to calling
+      // formatFeedbackBlock() (the same function required via CommonJS by
+      // this test file) with the equivalent context -- proving the client
+      // calls the real formatter rather than a hand-reimplemented copy.
+      const expectedCellBlock = formatFeedbackBlock({
+        unitSlug: 'test-m',
+        functionId: 'test-fn',
+        functionGroup: 'TestClass',
+        functionLabel: 'Test Function',
+        comment: 'cell-level comment',
+        sha: 'deadbeefcafe',
+        location: fn.location,
+        cell: { inputs: { input1: 'x' }, result: invokeResult },
+      });
+      if (cellBlock !== expectedCellBlock) {
+        throw new Error(`shipped client's cell-level copy diverges from formatFeedbackBlock()'s own output -- duplicate implementation suspected.\nGot:\n${cellBlock}\nExpected:\n${expectedCellBlock}`);
+      }
+
+      console.log('  ✓ per-cell comment box + copy button wired, function-vs-cell "### Last run" scoping correct, shipped client uses the real formatter (no duplicate)');
+    } finally {
+      server.close();
+    }
+  } catch (err) {
+    console.log('  ✗ ' + err.message);
+    failures.push('(m) shipped client integration (D3/D4/D5 wiring)');
+  }
+
   // Summary
   console.log('\n' + '='.repeat(60));
   if (failures.length === 0) {
-    console.log('All 9 acceptance criteria passed!');
+    console.log('All 9 original acceptance criteria (a)-(i) plus 4 gh320 fix-pass tests (j)-(m) passed!');
     process.exit(0);
   } else {
     console.log(`${failures.length} test(s) failed:`);

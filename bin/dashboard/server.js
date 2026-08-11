@@ -58,7 +58,12 @@ function startServer(projectRoot, port = 0) {
       if (pathname === '/') {
         const htmlPath = path.join(__dirname, 'index.html');
         try {
-          const html = fs.readFileSync(htmlPath, 'utf8');
+          let html = fs.readFileSync(htmlPath, 'utf8');
+          // Inject the feedback-block formatter's actual source verbatim so
+          // the shipped client uses the same single implementation the test
+          // suite requires via CommonJS -- no separate hand-maintained copy.
+          const feedbackBlockSrc = fs.readFileSync(path.join(__dirname, 'feedback-block.js'), 'utf8');
+          html = html.replace('/* __FEEDBACK_BLOCK_SOURCE__ */', feedbackBlockSrc);
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(html);
         } catch (err) {

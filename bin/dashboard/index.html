@@ -75,6 +75,13 @@
     </div>
   </div>
 
+  <!-- Injected verbatim by server.js's GET / handler from feedback-block.js
+       (the pure formatter also required directly by tests/dashboard-feedback.test.js).
+       This is the ONE implementation of the feedback block shape; the module
+       script below calls the resulting page-global `formatFeedbackBlock` by
+       name rather than reimplementing the markdown shape inline. -->
+  <script>/* __FEEDBACK_BLOCK_SOURCE__ */</script>
+
   <script type="module">
     const token = new URLSearchParams(location.search).get('t');
     let bundles = [];
@@ -419,6 +426,17 @@
           html += `<div style="color: #999;">No output</div>`;
         }
 
+        // Per-cell comment box + copy feedback button. Ids are per-instance
+        // (keyed on this cell's own cellId, which is unique page-wide), not
+        // hardcoded singletons, so multiple cells never collide.
+        html += `<div class="comment-section">`;
+        html += `<label for="cell-comment-${escapeHtml(cell.cellId)}">Comment</label>`;
+        html += `<textarea id="cell-comment-${escapeHtml(cell.cellId)}" class="comment-box" placeholder="Add your observation about this run..."></textarea>`;
+        html += `</div>`;
+        html += `<button type="button" class="cell-copy-btn" data-fn-id="${escapeHtml(functionId)}" data-cell-id="${escapeHtml(cell.cellId)}" style="background: #4caf50; color: #fff; border: none; padding: 0.75rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 500; width: 100%;">Copy Feedback</button>`;
+        html += `<div id="cell-copy-feedback-${escapeHtml(cell.cellId)}" class="copy-feedback"></div>`;
+        html += `<textarea id="cell-clipboard-fallback-${escapeHtml(cell.cellId)}" class="hidden-textarea"></textarea>`;
+
         html += `</div>`;
       }
 
@@ -581,6 +599,16 @@
         });
       });
 
+      // Per-cell copy feedback button
+      document.querySelectorAll('.cell-copy-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const cellId = btn.getAttribute('data-cell-id');
+          const fnId = btn.getAttribute('data-fn-id');
+          await copyCellFeedback(fnId, cellId);
+        });
+      });
+
       // Remove button
       document.querySelectorAll('.cell-remove-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -634,12 +662,48 @@
       }
     }
 
+    // Function-scoped copy: no cell means no "### Last run" section (that
+    // section is reserved for a copy that came from a specific cell).
     async function copyFeedback() {
       if (!selectedBundle || !selectedFunction) return;
 
       const commentBox = document.getElementById('commentBox');
       const comment = commentBox ? commentBox.value : '';
 
+      await doCopyFeedback({
+        comment,
+        cell: null,
+        feedbackDivId: 'copyFeedback',
+        fallbackId: 'clipboardFallback',
+      });
+    }
+
+    // Cell-scoped copy: "### Last run" is sourced from THIS specific cell's
+    // own inputs/result -- not "the last cell for this function".
+    async function copyCellFeedback(functionId, cellId) {
+      if (!selectedBundle || !selectedFunction) return;
+
+      const cells = cellsByFunctionId[functionId] || [];
+      const cell = cells.find(c => c.cellId === cellId);
+      if (!cell) return;
+
+      const commentBox = document.getElementById(`cell-comment-${cellId}`);
+      const comment = commentBox ? commentBox.value : '';
+
+      await doCopyFeedback({
+        comment,
+        cell,
+        feedbackDivId: `cell-copy-feedback-${cellId}`,
+        fallbackId: `cell-clipboard-fallback-${cellId}`,
+      });
+    }
+
+    // Shared clipboard mechanics + feedback-block assembly for both the
+    // function-scoped and cell-scoped copy buttons. Delegates the actual
+    // markdown shape to formatFeedbackBlock (bin/dashboard/feedback-block.js,
+    // injected into this page by server.js) -- the single implementation of
+    // that shape, not a hand-maintained duplicate.
+    async function doCopyFeedback({ comment, cell, feedbackDivId, fallbackId }) {
       try {
         // Get git SHA from /api/context
         const contextResponse = await fetch('/api/context', {
@@ -653,42 +717,22 @@
         const contextData = await contextResponse.json();
         const sha = contextData.sha;
 
-        // Build the feedback block markdown
-        let feedback = `## Microworld feedback — ${selectedBundle.unit} / ${selectedFunction.label || selectedFunction.id}\n\n`;
-        feedback += `- function: \`${selectedFunction.id}\` (group: \`${selectedFunction.group}\`)\n`;
-
-        if (selectedFunction.location && selectedFunction.location.file) {
-          feedback += `- location: \`${selectedFunction.location.file}:${selectedFunction.location.startLine}-${selectedFunction.location.endLine}\`\n`;
-        } else {
-          feedback += `- location: not declared\n`;
-        }
-
-        feedback += `- commit: ${sha}\n`;
-        feedback += `- bundle: microworlds/${selectedBundle.unit}/\n`;
-        feedback += `\n### Comment\n${comment}\n`;
-
-        // Check if there's a cell with run data to include
-        const cells = cellsByFunctionId[selectedFunction.id];
-        if (cells && cells.length > 0) {
-          const lastCell = cells[cells.length - 1];
-          if (lastCell && lastCell.result) {
-            feedback += `\n### Last run\n`;
-            feedback += `- inputs: ${JSON.stringify(lastCell.inputs)}\n`;
-            feedback += `- exit: ${lastCell.result.exitCode}   duration: ${lastCell.result.durationMs}ms\n`;
-
-            if (lastCell.result.stdout) {
-              feedback += `\n\`\`\`\n${lastCell.result.stdout}\n\`\`\`\n`;
-            } else if (lastCell.result.stderr) {
-              feedback += `\n\`\`\`\n${lastCell.result.stderr}\n\`\`\`\n`;
-            }
-          }
-        }
+        const feedback = formatFeedbackBlock({
+          unitSlug: selectedBundle.unit,
+          functionId: selectedFunction.id,
+          functionGroup: selectedFunction.group,
+          functionLabel: selectedFunction.label || selectedFunction.id,
+          comment,
+          sha,
+          location: (selectedFunction.location && selectedFunction.location.file) ? selectedFunction.location : null,
+          cell: cell ? { inputs: cell.inputs, result: cell.result } : null,
+        });
 
         // Try clipboard API first
         try {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(feedback);
-            showCopyFeedback('Copied to clipboard!');
+            showCopyFeedback(feedbackDivId, 'Copied to clipboard!');
             return;
           }
         } catch (err) {
@@ -696,14 +740,14 @@
         }
 
         // Fallback: textarea + execCommand
-        const fallback = document.getElementById('clipboardFallback');
+        const fallback = document.getElementById(fallbackId);
         if (fallback) {
           fallback.value = feedback;
           fallback.select();
           try {
             const success = document.execCommand('copy');
             if (success) {
-              showCopyFeedback('Copied to clipboard!');
+              showCopyFeedback(feedbackDivId, 'Copied to clipboard!');
               return;
             }
           } catch (err) {
@@ -712,15 +756,15 @@
         }
 
         // Last resort: show error
-        showCopyFeedback('Copy failed - please try again');
+        showCopyFeedback(feedbackDivId, 'Copy failed - please try again');
       } catch (err) {
         console.error('Error copying feedback:', err);
-        showCopyFeedback('Error: ' + err.message);
+        showCopyFeedback(feedbackDivId, 'Error: ' + err.message);
       }
     }
 
-    function showCopyFeedback(message) {
-      const feedbackDiv = document.getElementById('copyFeedback');
+    function showCopyFeedback(feedbackDivId, message) {
+      const feedbackDiv = document.getElementById(feedbackDivId);
       if (feedbackDiv) {
         feedbackDiv.textContent = message;
         feedbackDiv.style.display = 'block';
