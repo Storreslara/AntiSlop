@@ -247,6 +247,15 @@ else
 fi
 
 echo
+echo "== stop-gate .escalated-marker behaviour (Bash) =="
+if bash tests/stop-gate-escalated.test.sh; then
+  echo "OK   tests/stop-gate-escalated.test.sh"
+else
+  echo "FAIL tests/stop-gate-escalated.test.sh"
+  fail=1
+fi
+
+echo
 echo "== microworld reactive rerun hook + relocation proof (Bash) =="
 if bash tests/microworld-rerun.test.sh; then
   echo "OK   tests/microworld-rerun.test.sh"

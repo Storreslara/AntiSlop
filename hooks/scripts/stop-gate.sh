@@ -36,8 +36,16 @@
 #     marker stands (an INSUFFICIENT-CONTEXT verdict), do NOT clear the
 #     pending-review flags: log `verdict=blocked flags-kept` and ALLOW, so
 #     turn-end/next-gated-dispatch stay blocked until a real PASS/FAIL
-#     resolves the unit (the reviewer deletes the .blocked marker then).
-#     Otherwise consult the PER-UNIT review-join stamps that
+#     resolves the unit (the reviewer deletes the .blocked marker then). A
+#     .claude/reviewed/*.escalated marker (an ESCALATE-TO-HUMAN verdict) does
+#     the same, logging `verdict=escalated flags-kept` instead - a DISTINCT
+#     token, so "the reviewer lacked context" and "policy wanted human eyes"
+#     stay apart in the audit log; both globs are checked and both log, so one
+#     never masks the other. `.directed` is DELIBERATELY absent from both
+#     globs: it records a human decision the fix still has to be dispatched
+#     for, and only the flags clearing lets that dispatch through - adding it
+#     here would deadlock the very route it exists to open. Otherwise consult
+#     the PER-UNIT review-join stamps that
 #     reviewer-route-gate.sh wrote at dispatch time (one
 #     .claude/.review-join.<unit-id> per unit this reviewer was dispatched
 #     for). A stamp is SATISFIED when a format-valid `PASS <id> ` / `FAIL <id> `
@@ -230,9 +238,18 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     [ -f "$config" ] || exit 0
     shopt -s nullglob
     blocked_markers=( "${project_dir}"/.claude/reviewed/*.blocked )
+    escalated_markers=( "${project_dir}"/.claude/reviewed/*.escalated )
     shopt -u nullglob
+    # Two independent logs, not an if/elif: a unit blocked and another escalated
+    # in the same reviewer turn must both appear, or the audit log cannot tell
+    # "the reviewer lacked context" from "policy wanted human eyes" afterwards.
     if [ "${#blocked_markers[@]}" -gt 0 ]; then
       printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    fi
+    if [ "${#escalated_markers[@]}" -gt 0 ]; then
+      printf '%s verdict=escalated flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    fi
+    if [ "${#blocked_markers[@]}" -gt 0 ] || [ "${#escalated_markers[@]}" -gt 0 ]; then
       exit 0
     fi
 

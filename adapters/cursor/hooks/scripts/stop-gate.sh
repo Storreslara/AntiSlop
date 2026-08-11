@@ -24,7 +24,11 @@
 #  0) loop guard - never re-trigger ourselves into an infinite loop.
 #  0.5) reviewer's subagentStop -> if any .cursor/reviewed/*.blocked marker
 #     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
-#     ALLOW); otherwise consume the PER-UNIT review-join stamps
+#     ALLOW); a .cursor/reviewed/*.escalated marker (ESCALATE-TO-HUMAN) does
+#     the same under its own token `verdict=escalated flags-kept`, and both
+#     globs log so neither masks the other. `.directed` is DELIBERATELY not
+#     globbed: the flags must clear for the human-directed fix to be
+#     dispatched at all. Otherwise consume the PER-UNIT review-join stamps
 #     (.cursor/.review-join.<unit-id>) that reviewer-route-gate.sh wrote at
 #     dispatch time: no stamps at all -> fail OPEN (`marker-check=bootstrap`);
 #     at least one stamp satisfied by a format-valid PASS/FAIL marker for its
@@ -177,9 +181,17 @@ if [ "$hook_event" = "subagentStop" ] && persona_matches_grant "$agent_type" rev
   [ -f "$config" ] || exit 0
   shopt -s nullglob
   blocked_markers=( "${project_dir}"/.cursor/reviewed/*.blocked )
+  escalated_markers=( "${project_dir}"/.cursor/reviewed/*.escalated )
   shopt -u nullglob
+  # Both globs log, so a blocked unit and an escalated one in the same turn stay
+  # distinguishable in the audit log. `.directed` is deliberately not globbed.
   if [ "${#blocked_markers[@]}" -gt 0 ]; then
     printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+  fi
+  if [ "${#escalated_markers[@]}" -gt 0 ]; then
+    printf '%s verdict=escalated flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+  fi
+  if [ "${#blocked_markers[@]}" -gt 0 ] || [ "${#escalated_markers[@]}" -gt 0 ]; then
     exit 0
   fi
 
