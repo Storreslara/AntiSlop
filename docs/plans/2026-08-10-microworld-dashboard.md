@@ -1542,82 +1542,309 @@ the working tree has moved on.
 
 #### Step D10 — `scribe`: glossary, ADR, wiki
 
-- `CONTEXT.md` (owned by `scribe`) gains eight entries, each **contrasted with
-  its nearest neighbour**, which is the specific thing
-  `antislop:ubiquitous-language` exists to make possible:
-  - **Microworld** — the dashboard entry a human explores. Contrast with
-    **microworld bundle**: the interactive surface versus the gitignored
-    directory backing it.
-  - **Microworld bundle** — the gitignored `microworlds/<unit-slug>/`
-    directory. Contrast with **escalation packet**: the working original versus
-    the durable per-escalation snapshot.
-  - **The check** — the bundle's `run.sh`, the sole exit-code contract.
-    Contrast with **function entry**: the asserting machine entry point versus
-    the non-asserting human one.
-  - **Function entry** — one element of `manifest.json`'s `functions[]`.
-  - **Function location** — a function entry's optional `location`. Contrast
-    with the **code-review graph**: an author-declared pointer versus a derived
-    index, and note it can go stale (R9).
-  - **Microworld dashboard** — the user-launched loopback process. Contrast
-    with the **microworld rerun hook**: the standing human-facing viewer versus
-    the synchronous per-edit machine reporter.
-  - **Notebook cell** — one recorded invocation in the dashboard. Must state
-    that cells share no state and are lost on refresh.
-  - **Feedback block** — the clipboard artifact. **Contrast explicitly with the
-    `handoff` skill and `.claude/wip-handoff.*`**: situated feedback on one
-    function versus a whole-conversation compaction. This pair is the exact
-    near-synonym hazard that renaming avoided, so the glossary must record why.
-  Each entry must state that the dashboard is never a gate and never an
-  acceptance criterion.
-- `docs/adr/0017-microworld-dashboard-supersedes-fixture-only-narrowing.md`
-  (new — **0017; do not backfill the 0007 hole**): record that "microworld" was
-  re-scoped from a fixture bundle to an interactive dashboard, that the
-  machine-checkable check layer survives underneath unchanged, the alternatives
-  rejected for the function contract and the UI shape, the decision that
-  "notebook" is a UI framing rather than a kernel (and what would have to change
-  if that is ever reversed), the retraction of "No daemon is introduced" and
-  the fact that it miscited P2, and the accepted costs (R1, R5, R7, R9).
-- `.claude/wiki/architecture.md` — the dashboard as the plugin's first
-  long-running component, its loopback/token posture, the audit-log contract
-  between a bash producer and a Node consumer, and the root-confined source
-  read.
-- `.claude/wiki/conventions.md` — bundle format v2, the `entry` execution
-  contract, `location`, and the authoring policy.
-- **Relationship to the 2026-07-28 plan's Step 8b (#138) — neither has been
-  built.** `grep -c '^\*\*Microworld' CONTEXT.md` is **0** today, so #138's six
-  glossary entries and two ADRs are still *specified and unwritten*, not
-  standing text this step extends. Two consequences, both of which
-  `task-master` must put in the dispatch: (1) the **Microworld** entry must be
-  written to *this* plan's definition, never the superseded one — whichever unit
-  writes it; (2) several contrasts required here name entries #138 owns
-  (**escalation packet** above all), so **if #138 has not run, this step must
-  author the neighbour it contrasts against, or state the contrast without
-  claiming the neighbour is defined.** A glossary entry contrasting a term that
-  does not exist is worse than no contrast. Simplest resolution, recommended:
-  run #138 first, or merge the two into one `scribe` unit.
+**Reconciled 2026-08-11 (revision 3), issue #323, both Open Questions
+answered on the recommended default.** This step was rewritten from scratch
+after a re-verification found that six of its eight originally-required
+`CONTEXT.md` terms, and the Cell/Notebook pair that stands in for "notebook
+cell", had *already shipped* under units #314/#315/#319/#320/#322/#138 by the
+time this step would have dispatched — the "eight entries" framing below and
+`ADR-0017`'s number are both now factually wrong (0017 and 0018 were taken by
+unrelated ADRs, `0017-microworld-bundles-gitignored.md` and
+`0018-human-in-the-loop-review-on-by-default.md`, landed 2026-08-11). This
+revision is a **reconciliation**, not a rewrite of intent: it re-verifies each
+of the original eight terms against current `CONTEXT.md`, authors only the
+terms still genuinely missing, and drops instructions to re-author anything
+that already stands verbatim. See "Reconciliation ledger" below for the term-
+by-term evidence, and `docs/plans/2026-08-11-gh138-debug-spec-wiki-accuracy.md`
+Step 6 for the verified-RED discipline this revision follows for its
+acceptance criteria.
+
+**Reconciliation ledger (re-verified 2026-08-11, live against HEAD, not
+assumed from the prior pass):**
+
+| Original term | Status in `CONTEXT.md` today | Action this step takes |
+|---|---|---|
+| Microworld | Shipped (unit #314, refreshed #138) | None — verify only |
+| Microworld bundle | Shipped (unit #314, refreshed #138) | None — verify only |
+| Function entry | Shipped (unit #314) | None — verify only |
+| Microworld dashboard | Shipped (unit #314/#322) | Append one contrast sentence (see below) |
+| Feedback block | Shipped (unit #320), already contrasts with `handoff` | None — verify only |
+| Notebook cell | **Not present under that name.** Shipped instead as the **Cell** + **Notebook** pair (unit #319) — see "Cell/Notebook resolution" below | None — this is a shipped-design win, not a gap; do not add a standalone "notebook cell" entry |
+| The check | **Genuinely missing.** `the check` appears only inside the section title `**Microworld bundles (format and the check contract)**:` (line 520) and once in unrelated prose (line 242, "test failures prove the check detects real problems") — no headword entry defines it | Author new entry |
+| Function location | **Genuinely missing.** Zero occurrences. `**Function entry**`'s own text mentions "location (relative path)" as one of its fields, but there is no standalone entry contrasting `location` with the code-review graph or noting staleness | Author new entry |
+| — (not an original term) | "never an acceptance criterion" — present in `templates/persona-protocol.md` and all four persona copies, **zero occurrences in `CONTEXT.md`** | Fold the literal phrase into the new **The check** entry and the existing **Microworld dashboard** entry |
+| — (not an original term) | "microworld rerun hook" — zero occurrences anywhere in the repo except this plan's own prose; the shipped name is `microworld-rerun.sh`, glossed generically as a **Reporter** (see **Reporter** and **Microworld audit log** entries) | **Decision: do not mint it.** See "Rerun-hook naming decision" below |
+
+**Cell/Notebook resolution (Open Question 2, answered 2026-08-10, recorded
+here per the user's instruction — not a re-litigation of #319's already-PASSed
+work).** The user's original prose ("turning MicroWorld's environment/
+dashboard into something similar to a Jupyter notebook... rather to have the
+interaction of it") used "notebook cell" informally. What shipped at unit
+#319 is more precise than that one phrase: **Cell** (one recorded invocation —
+function, input set, output, held in browser session state) and **Notebook**
+(the per-function ordered list of Cells, keyed by `functionId`, in-memory
+only, lost on refresh) as two distinct, already-contrasted glossary entries
+(`CONTEXT.md:848` and `:860`). This is a **strictly better outcome** than a
+single "notebook cell" entry would have been — it separately names the
+invocation-record noun and the ordering/collection noun, which the original
+plan's single term conflated. Nothing further is required of this step.
+
+**Rerun-hook naming decision.** The original draft asked the **Microworld
+dashboard** entry to contrast with "the microworld rerun hook" as if that
+were an established term. It is not: the shipped, glossary-established name is
+the `microworld-rerun.sh` **Reporter** hook (`CONTEXT.md`'s **Reporter** entry,
+line 69, and **Microworld audit log** entry, line 90). `templates/
+persona-protocol.md:514` and the superseded 2026-07-28 plan both already use
+the lowercase, informal phrase "the rerun hook" in running prose, but neither
+treats it as a defined term. **Decision: do not introduce "microworld rerun
+hook" as a new glossary headword.** Minting one now would create exactly the
+near-synonym hazard this plan's own **Feedback block**/`handoff` decision
+exists to avoid (see the Terminology section above) — a second name for a
+thing that already has one, discoverable only by `antislop:ubiquitous-
+language`'s Lens 2. Instead, the **Microworld dashboard** entry is amended to
+contrast against the shipped name directly: "the `microworld-rerun.sh`
+**Reporter** hook", not a new term.
+
+**What this step now builds, in full (replacing the original list):**
+
+- `CONTEXT.md` (owned by `scribe`) gains **two** new entries and **one**
+  amendment to an existing entry:
+  - **The check** (new) — the bundle's `run.sh`, the sole exit-code contract,
+    contrasted with **Function entry** (the asserting machine entry point
+    versus the non-asserting human one) and stating plainly that the
+    **Microworld dashboard** is a human-facing exploration surface and
+    **never an acceptance criterion**: no hook registers it, no gate consults
+    it, and no acceptance criterion in this or any future spec may name it.
+    Suggested text:
+    ```
+    **The check**:
+    (unit #323, 2026-08-11) — the prose noun for a **microworld bundle**'s
+      `run.sh`: the sole, machine-facing, exit-code contract consumed by the
+      `reviewer` (filesystem-presence check only, never executed) and the
+      `microworld-rerun.sh` **Reporter** hook (0 = pass, non-zero =
+      fail/timeout, logged to the **Microworld audit log**). Contrast with
+      **Function entry**: the check is the one asserting entry point a bundle
+      has, and the only thing any gate or hook may ever consult; a function
+      entry is a non-asserting, human-invoked probe whose exit code carries no
+      verdict (`POST /api/invoke` never inspects it). The **Microworld
+      dashboard** renders function entries for human exploration but never
+      runs or displays the check's own exit code as a verdict — the dashboard
+      is a human-facing exploration surface and **never an acceptance
+      criterion**: no hook registers it, no gate consults it, and no
+      acceptance criterion in this or any future spec may name it. `run.sh`
+      keeps its filename; only the prose noun "the check" is new (Open
+      Question 5, 2026-08-10) — there was never a file rename.
+    ```
+  - **Function location** (new) — a function entry's optional `location`,
+    contrasted with the **code-review graph** (an author-declared pointer
+    versus a derived, auto-updating index) and noting the accepted staleness
+    risk (R9). Suggested text:
+    ```
+    **Function location**:
+    (unit #323, 2026-08-11) — a **function entry**'s optional `location`
+      field in `manifest.json` (`{ file, startLine, endLine }`), naming where
+      in the repo the code that function entry exercises actually lives.
+      Author-declared by `lead-programmer` at bundle-authoring time; consumed
+      by the dashboard's **Source excerpt** pane (`GET /api/source`) and
+      copied verbatim into a **Feedback block**'s metadata lines, or the
+      literal string `location: not declared` when the field is absent.
+      Contrast with the **code-review graph** (`explorer`'s MCP-backed
+      structural index, which auto-updates on every file change via hooks and
+      a git pre-commit check): `location` is a static, hand-authored pointer
+      with no such refresh mechanism. This is an accepted staleness risk (R9,
+      `docs/plans/2026-08-10-microworld-dashboard.md`): a `location.file`/
+      `startLine`/`endLine` can silently go stale the moment the code it
+      points to moves, and nothing revalidates it automatically. Mitigation,
+      not a fix: a copied feedback block carries the commit SHA at copy time,
+      so a receiving agent can re-derive the real location instead of
+      trusting a stale line range.
+    ```
+  - **Microworld dashboard** (amend existing entry, `CONTEXT.md:721`) — append
+    the rerun-hook contrast decided above. Suggested addition, appended after
+    the entry's existing "Distinct from... the other two are what it
+    displays." sentence:
+    ```
+      Also distinct from the `microworld-rerun.sh` **Reporter** hook (see that
+      entry and **Microworld audit log**): the dashboard is the standing,
+      human-facing viewer a user starts and stops; the reporter is the
+      synchronous, per-edit machine process that never renders anything a
+      human sees, and never gates on the dashboard's behalf. (Naming note: a
+      new headword "microworld rerun hook" was considered and rejected for
+      this contrast — see this plan's D10 "Rerun-hook naming decision" — to
+      avoid minting an avoidable synonym for the already-named reporter.)
+    ```
+- `docs/adr/0019-microworld-dashboard-supersedes-fixture-only-narrowing.md`
+  (new — **0019, the re-verified next-free number**; `ls docs/adr/` runs
+  0001-0018 today with only the known, deliberate 0007 hole; do not backfill
+  it and do not reuse 0017/0018, both already taken by unrelated ADRs): record
+  that "microworld" was re-scoped from a fixture bundle to an interactive
+  dashboard, that the machine-checkable check layer survives underneath
+  unchanged, the alternatives rejected for the function contract and the UI
+  shape, the decision that "notebook" is a UI framing rather than a kernel
+  (and what would have to change if that is ever reversed), the Cell/Notebook
+  terminology realization (see above — a decision record, not a re-litigation
+  of #319), the retraction of "No daemon is introduced" and the fact that it
+  miscited constitution P2, and the accepted costs (R1, R5, R7, R9).
+- `.claude/wiki/architecture.md` — **currently zero occurrences of
+  "dashboard"** (re-verified 2026-08-11: `grep -qi dashboard
+  .claude/wiki/architecture.md` exits 1) — this half of D10 has not started.
+  Add: the dashboard as the plugin's first long-running component, its
+  loopback/token posture, the audit-log contract between a bash producer and
+  a Node consumer, and the root-confined source read.
+- `.claude/wiki/conventions.md` — **currently zero occurrences of
+  "MICROWORLD_BUNDLE_DIR"** (re-verified 2026-08-11: `grep -q
+  MICROWORLD_BUNDLE_DIR .claude/wiki/conventions.md` exits 1) — this half of
+  D10 has not started either. Add: bundle format v2 (`functions[]`), the
+  `entry` execution contract (argv array, one JSON object on stdin, no shell,
+  `MICROWORLD_BUNDLE_DIR` set in the invoked process's environment), the
+  `location` field, and the authoring policy (heavy-unit trigger reference,
+  ADR-0004 as amended by ADR-0013).
+- **Relationship to the 2026-07-28 plan's Step 8b (#138) — resolved, not
+  hypothetical.** #138 landed (`gh138`, PASS 2026-08-11T18:26:51Z, commit
+  `15c67d7`). Its **Microworld** entry already uses this plan's definition (the
+  dashboard entry a human explores), confirmed live in the reconciliation
+  ledger above. The sequencing hazard the original draft flagged ("if #138
+  has not run, this step must author the neighbour it contrasts against") is
+  moot — #138's terms exist and this step's contrasts (**Function entry**,
+  **code-review graph**, the `microworld-rerun.sh` **Reporter**) all resolve
+  against present text. No dependency ordering is needed for this revision.
 
 **Affected files**
 - `CONTEXT.md`
-- `docs/adr/0017-microworld-dashboard-supersedes-fixture-only-narrowing.md`
+- `docs/adr/0019-microworld-dashboard-supersedes-fixture-only-narrowing.md`
   (new)
 - `.claude/wiki/architecture.md`
 - `.claude/wiki/conventions.md`
 
-**Acceptance criteria**
-- `bash tests/validate.sh` exits 0.
-- Eight greps against `CONTEXT.md`, each exiting 0: `Microworld dashboard`,
-  `microworld bundle`, `the check`, `function entry`, `function location`,
-  `microworld rerun hook`, `notebook cell`, `feedback block`.
-- `grep -q 'never an acceptance criterion' CONTEXT.md` exits 0.
-- The feedback-block entry names its contrast:
-  `grep -A6 -i 'feedback block' CONTEXT.md | grep -q 'handoff'` exits 0.
-- `ls docs/adr/0017-*.md | wc -l` returns 1, and
-  `ls docs/adr/0007-*.md 2>/dev/null | wc -l` returns **0** — the hole was not
-  backfilled.
-- `grep -q 'No daemon is introduced' docs/adr/0017-*.md` exits 0 — the
-  retraction is recorded in the ADR, not only in a plan document.
-- `grep -q 'dashboard' .claude/wiki/architecture.md` exits 0 and
-  `grep -q 'MICROWORLD_BUNDLE_DIR' .claude/wiki/conventions.md` exits 0.
+**Acceptance criteria — verified against HEAD on 2026-08-11 (`spec-master` ran
+every command below before publishing). C1-C7 and C9-C13 were each confirmed
+RED (exit 1) today, so none is vacuous; C8 and C14 are stated exceptions,
+each an explicit non-regression guard already green today that must stay
+green — the same C9-as-regression-gate pattern
+`docs/plans/2026-08-11-gh138-debug-spec-wiki-accuracy.md` Step 6 uses, applied
+here to two guards instead of one. Anchored to specific new content, never to
+a bare ADR number — see "Reconciliation ledger" above for why that specific
+trap matters here.**
+
+```sh
+set -u; fail=0
+p(){ if [ "$2" -eq 0 ]; then echo "$1 PASS"; else echo "$1 FAIL"; fail=1; fi; }
+
+adr=docs/adr/0019-microworld-dashboard-supersedes-fixture-only-narrowing.md
+
+# C1  new entry headword: The check
+grep -q '\*\*The check\*\*' CONTEXT.md; p C1 $?
+# C2  The check's entry contrasts with Function entry
+grep -A 10 -i '\*\*The check\*\*' CONTEXT.md | grep -qi 'function entry'; p C2 $?
+# C3  new entry headword: Function location
+grep -q '\*\*Function location\*\*' CONTEXT.md; p C3 $?
+# C4  Function location contrasts with the code-review graph
+grep -A 10 -i '\*\*Function location\*\*' CONTEXT.md | grep -qi 'code.review graph'; p C4 $?
+# C5  Function location states the staleness risk
+grep -A 10 -i '\*\*Function location\*\*' CONTEXT.md | grep -qi 'stale'; p C5 $?
+# C6  the sentinel phrase now lands in CONTEXT.md (it already exists in the
+#     shared protocol; this is the first time it reaches the glossary)
+grep -q 'never an acceptance criterion' CONTEXT.md; p C6 $?
+# C7  ADR-0019 exists at the re-verified next-free number, content-anchored
+#     filename (not a bare number a coincidental future ADR could satisfy)
+test -f "$adr"; p C7 $?
+# C8  non-regression guard (green today, must stay green): the 0007 hole
+#     stays a hole — this is not new work, it is a standing invariant this
+#     step must not break
+test ! -e docs/adr/0007-*.md 2>/dev/null; p C8 $?
+# C9  the retraction is recorded in the ADR, not only in a plan document
+grep -q 'No daemon is introduced' "$adr" 2>/dev/null; p C9 $?
+# C10 the ADR names what the retracted claim miscited
+grep -qi 'miscited' "$adr" 2>/dev/null; p C10 $?
+# C11 the ADR records the Cell/Notebook terminology realization (both nouns,
+#     not just one — a single hit would allow an incomplete record)
+grep -q 'Cell' "$adr" 2>/dev/null && grep -q 'Notebook' "$adr" 2>/dev/null; p C11 $?
+# C12 wiki architecture.md documents the dashboard (currently absent)
+grep -qi 'dashboard' .claude/wiki/architecture.md; p C12 $?
+# C13 wiki conventions.md documents the env var contract (currently absent)
+grep -q 'MICROWORLD_BUNDLE_DIR' .claude/wiki/conventions.md; p C13 $?
+
+# C14 regression gate (constitution P5) — green today, must stay green
+bash tests/validate.sh >/dev/null 2>&1; p C14 $?
+exit $fail
+```
+
+Two notes on why these are shaped this way:
+- **C2/C4/C5 use `grep -A 10` scoped to the headword line, not a bare
+  full-file grep**, because "function entry", "code-review graph", and
+  "stale" all already occur elsewhere in `CONTEXT.md` in unrelated entries —
+  an unscoped grep would pass without the new entry containing the required
+  contrast at all.
+- **C7 names the ADR's full topic slug, not just `0019-*`**, and **C8/C9/C10/
+  C11 all target that same named file**, so a future, unrelated ADR that
+  happens to land at 0019 first cannot make these criteria pass by
+  coincidence — the exact failure mode that made the original `0017-*.md`
+  criterion silently point at the wrong (unrelated) ADR once 0017 was taken.
+
+**ADR-0019 draft content**, for `scribe` to adapt (matching the prose shape of
+ADR-0017/0018 — Context/Decision/Rationale/Consequences/Related decisions):
+
+- **Title:** "ADR 0019: Microworld dashboard supersedes the fixture-only
+  narrowing"
+- **Status:** Accepted (plan `2026-08-10-microworld-dashboard`, Step D10;
+  issue #323)
+- **Context:** the 2026-07-28 plan deliberately narrowed "microworld" to a
+  fixture bundle whose entire contract is `run.sh`'s exit code (a Papert-
+  microworlds name applied to a much narrower thing); the user overrode that
+  narrowing on 2026-08-10, restoring the primary sense to an interactive,
+  human-explored dashboard while keeping the machine-checkable layer intact
+  underneath as "the check". Cite the two-layer table from this plan's Goal
+  section (human-facing/primary vs machine-facing/underlying).
+- **Decision:**
+  - Function contract is declarative and language-agnostic
+    (`functions[]`/`entry`, one JSON object on stdin, argv-only, no shell) —
+    rejected per-language runtime introspection (breaks R8, imports
+    agent-written code into the dashboard's own process) and a single
+    `explore.sh` whose stdout is parsed (fragile, no home for per-function
+    inputs).
+  - UI shape is a local `node:http` server plus a browser tab — rejected a
+    true in-terminal TUI (cannot deliver the Clipboard API portably) and a
+    TUI-over-JSON-core hybrid (doubles the UI surface for no capability
+    gain).
+  - "Notebook" is a UI/UX framing only, never a kernel: cells are independent
+    fresh processes sharing no state, and the UI states this on screen. State
+    what would have to change if this is ever reversed — a bundle-provided
+    warm `session` process (an optional, additive manifest field), which
+    would also require redefining guardrail 4 (bounded execution).
+  - **Cell/Notebook terminology realization** (record verbatim, do not
+    re-litigate #319's already-PASSed work): the user's original phrase
+    "notebook cell" shipped as two distinct terms, **Cell** (one invocation
+    record) and **Notebook** (the per-function ordered list of Cells) — a
+    more precise outcome than the single original phrase, decided at unit
+    #319 and recorded here as an architectural decision, not reopened.
+- **Retraction:** "No daemon is introduced" (`docs/plans/2026-07-28-
+  microworlds-ubiquitous-language-human-review.md`, its architectural-facts
+  prose) is retracted. This plan introduces the plugin's first standing
+  long-running process — the dashboard, `node bin/cli.js --dashboard` — a
+  **foreground process the user starts and stops**, never a background
+  daemon; state plainly that "no daemon" remains true in the narrow sense
+  (nothing detaches or survives the terminal) but the original sentence's
+  framing ("no daemon is introduced") is misleading given a long-running
+  process now exists. Also record that the original citation **miscited
+  constitution P2** ("prefer deterministic scripts over LLM re-derivation") —
+  P2 has nothing to do with process lifecycle; the constraint actually in
+  tension is G4 (zero runtime dependencies, this plan's own global
+  constraint), which the dashboard satisfies by using only `node:http`,
+  `node:crypto`, `fs.watch`, and `child_process`.
+- **Accepted costs (R1, R5, R7, R9):** bundle-authorship unverifiability (no
+  commit/clone/CI ever sees a gitignored bundle, so nothing can assert
+  `functions[]`/`location` were actually authored); this repo being a poor
+  dogfooding target for its own "class and its functions" framing (antislop
+  is bash + a single-file Node CLI + markdown personas, with no classes);
+  token-in-scrollback exposure (the per-launch token appears in terminal
+  scrollback and the browser address bar, accepted as a per-launch,
+  non-persisted secret on a loopback-only endpoint); and `location` line
+  numbers going stale (R9, mitigated but not fixed by the commit-SHA-at-copy-
+  time device, per the new **Function location** glossary entry).
+- **Related decisions:** ADR-0004 (heavy-unit trigger, amended by ADR-0013),
+  ADR-0017 (microworld bundles gitignored — the storage layer this ADR's
+  dashboard renders), ADR-0018 (human-in-the-loop review default, the
+  escalation-packet consumer this ADR's dashboard also reads).
 
 ## Relationship to the 2026-07-28 plan
 
@@ -1665,7 +1892,7 @@ are filed as one issue per step under the existing
 | #135 Step 6 `humanReviewMode` | **Untouched** | " |
 | #136 Step 7 routing | **Untouched** | " |
 | #137 Step 8a README | **Amend** | Must also document the dashboard (D9 folds into it, or lands beside it) |
-| #138 Step 8b glossary/ADR/wiki | **Amend** | Its **Microworld** entry must use this plan's definition; D10 adds eight entries and ADR-0017 |
+| #138 Step 8b glossary/ADR/wiki | **Landed, no further action** | PASSed 2026-08-11 (`gh138`, commit `15c67d7`). Its **Microworld** entry already uses this plan's definition, re-verified live 2026-08-11. **Reconciled 2026-08-11 (D10 revision 3, issue #323): D10 no longer adds eight entries and ADR-0017 — six of the eight terms and the ADR-number slot both landed under other units before D10 was reconciled. D10 now adds two entries (**The check**, **Function location**) plus an amendment to the shipped **Microworld dashboard** entry, and files ADR-0019 (0017/0018 taken by unrelated ADRs)** |
 | #298 Step 9 `explore.sh` | **Close, superseded** | Subsumed by the dashboard; see Clarifications |
 | #299 Step 10 `CHANGES.md` | **Untouched** | Explains *the change*; the dashboard shows *behaviour*. Genuinely complementary |
 | #300 Step 11 `QUIZ.md` | **Untouched** | " |
@@ -1956,24 +2183,35 @@ time at dispatch.
 
 ## Scribe update hint
 
-After Step D10 lands, `scribe` should:
-- Add the eight `CONTEXT.md` entries from D10, confirming each contrast is
-  explicit: microworld vs microworld bundle; the check vs function entry;
-  microworld dashboard vs microworld rerun hook; microworld bundle vs
-  escalation packet; function location vs the code-review graph; notebook cell
-  vs a Jupyter cell (they share no state); and **feedback block vs the
-  `handoff` skill**, which is the pair a renaming decision already turned on.
-- Write `docs/adr/0017-microworld-dashboard-supersedes-fixture-only-narrowing.md`
-  — **0017, and do not backfill the 0007 hole**, which `CONTEXT.md` links. The
-  retraction of "No daemon is introduced", the fact that it miscited P2, and
-  the notebook-is-not-a-kernel decision all belong in this ADR, because those
-  are the lines a future maintainer will find and try to re-apply or
-  "strengthen".
+**Reconciled 2026-08-11 (D10 revision 3, issue #323) — six of the eight
+originally-listed `CONTEXT.md` entries and the ADR-number slot below are
+stale; see Step D10's "Reconciliation ledger" for the live, re-verified
+status of each term.** After Step D10 lands, `scribe` should:
+- Add the **two** new `CONTEXT.md` entries from D10 (**The check**,
+  **Function location**), each contrasted per D10's suggested text (**The
+  check** vs **Function entry**; **Function location** vs the **code-review
+  graph**, noting staleness), and append the rerun-hook contrast sentence to
+  the already-shipped **Microworld dashboard** entry. Do **not** re-author
+  **Microworld**, **Microworld bundle**, **Function entry**, **Feedback
+  block**, or a standalone "notebook cell" entry — all already stand (the
+  last as the shipped **Cell** + **Notebook** pair, unit #319), and
+  re-authoring them risks a duplicate or drifted second copy.
+- Write `docs/adr/0019-microworld-dashboard-supersedes-fixture-only-narrowing.md`
+  — **0019, the re-verified next-free number (0017 and 0018 are both already
+  taken by unrelated ADRs), and do not backfill the 0007 hole**, which
+  `CONTEXT.md` links. The retraction of "No daemon is introduced", the fact
+  that it miscited P2, the notebook-is-not-a-kernel decision, and the
+  Cell/Notebook terminology realization (a decision record, not a
+  re-litigation of #319's already-PASSed work) all belong in this ADR,
+  because those are the lines a future maintainer will find and try to
+  re-apply or "strengthen".
 - Update `.claude/wiki/architecture.md` with the plugin's first long-running
   component, the bash-producer/Node-consumer audit-log contract, and the
   root-confined source read; and `.claude/wiki/conventions.md` with bundle
-  format v2, `location`, and the `entry` execution contract.
+  format v2, `location`, and the `entry` execution contract. Both files
+  currently have zero mentions of "dashboard"/"MICROWORLD_BUNDLE_DIR"
+  (re-verified 2026-08-11) — this half of D10 has not started.
 - Record in `.claude/wiki/changelog.md` that "microworld" now means the
-  dashboard entry and that the check layer survives underneath, with a pointer
-  to ADR-0017 — the single most likely thing a downstream maintainer will need
-  to look up after an update.
+  dashboard entry and that the check layer survives underneath, with a
+  pointer to ADR-0019 (not 0017) — the single most likely thing a downstream
+  maintainer will need to look up after an update.
