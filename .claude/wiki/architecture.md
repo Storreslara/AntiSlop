@@ -96,6 +96,16 @@ The `.directed` marker is **deliberately absent from `stop-gate.sh`'s marker glo
 directed fix be dispatched. Once re-review completes, the reviewer deletes
 `.directed` in the same action as the next resolution.
 
+## Microworld dashboard
+
+The dashboard (`node bin/cli.js --dashboard`) is the plugin's first long-running component — a foreground HTTP server the user starts and stops explicitly (never auto-started, never a detached daemon).
+
+**Token posture (loopback-only):** Binds to `127.0.0.1` on an ephemeral port; every request requires a per-launch token via `?t=<token>` or the `X-Antislop-Token` header. The token is printed to the terminal on startup and is valid only for the lifetime of that process. Terminal scrollback and browser address bar may both hold the token; this per-launch, non-persisted secret on a loopback-only endpoint is an accepted design (no token storage, no persistence across restarts).
+
+**Audit-log contract (bash producer, Node consumer):** The dashboard reads the **Microworld audit log** (written by `bash bin/dashboard/audit-log.sh` on every `microworld-rerun.sh` invocation) to track which bundles have run most recently and whether they passed or failed. The log file (`logs/microworld-audit.log`, gitignored) is a line-oriented format: each line is a JSON object with fields `timestamp`, `unitSlug`, `status` (`"pass"`, `"fail"`, or `"timeout"`), and `errorOutput` (when status is not `"pass"`). The dashboard parses this log on startup and watches the file for changes via `fs.watch`, re-rendering live as the `PostToolUse` rerun hook executes bundles on every edit.
+
+**Root-confined source read:** The **Source excerpt** pane renders code snippets for function **Location** fields declared in `manifest.json`. The `location.file` path is validated (no `../` traversal, must be inside the repo root) before reading. File paths are author-declared in gitignored manifests; this is an accepted authorship-unverifiability cost (R1), mitigated by path-traversal validation at read time.
+
 ## Agent-unwritable path as consent proof
 
 Every gate before `human-decision-gate.sh` (issue #325, 2026-08-11) followed

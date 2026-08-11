@@ -558,6 +558,40 @@ the collection of addressable **Agent** entities currently active in a
   entries; each corresponds to an executable the lead-programmer or reviewer
   can invoke during development and validation.
 
+**The check**:
+(unit #323, 2026-08-11) — the prose noun for a **microworld bundle**'s
+  `run.sh`: the sole, machine-facing, exit-code contract consumed by the
+  `reviewer` (filesystem-presence check only, never executed) and the
+  `microworld-rerun.sh` **Reporter** hook (0 = pass, non-zero =
+  fail/timeout, logged to the **Microworld audit log**). Contrast with
+  **Function entry**: the check is the one asserting entry point a bundle
+  has, and the only thing any gate or hook may ever consult; a function
+  entry is a non-asserting, human-invoked probe whose exit code carries no
+  verdict (`POST /api/invoke` never inspects it). The **Microworld
+  dashboard** renders function entries for human exploration but never
+  runs or displays the check's own exit code as a verdict — the dashboard
+  is a human-facing exploration surface and **never an acceptance criterion**: 
+  no hook registers it, no gate consults it, and no acceptance criterion in 
+  this or any future spec may name it. `run.sh`
+  keeps its filename; only the prose noun "the check" is new (Open
+  Question 5, 2026-08-10) — there was never a file rename.
+
+**Function location**:
+(unit #323, 2026-08-11) — a **function entry**'s optional `location`
+  field in `manifest.json` (`{ file, startLine, endLine }`), naming where
+  in the repo the code that function entry exercises actually lives. Contrast
+  with the **code-review graph** (`explorer`'s MCP-backed structural index,
+  which auto-updates on every file change via hooks): `location` is a static,
+  hand-authored pointer with an accepted stale risk. Author-declared by
+  `lead-programmer` at bundle-authoring time; consumed by the dashboard's
+  **Source excerpt** pane (`GET /api/source`) and copied verbatim into a
+  **Feedback block**'s metadata lines, or the literal string `location: not
+  declared` when absent. A `location.file`/`startLine`/`endLine` can silently
+  go stale when code moves (R9, `docs/plans/2026-08-10-microworld-dashboard.md`),
+  and nothing revalidates it automatically. Mitigation, not a fix: a copied
+  feedback block carries the commit SHA at copy time, so a receiving agent can
+  re-derive the real location.
+
 **Relocatable run.sh**:
 (unit #132, 2026-08-10) — a **microworld bundle** requirement and proven
   property: the bundle's `run.sh` must behave identically whether invoked
@@ -731,6 +765,14 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   rendered dashboard entry a human explores) and **Microworld bundle** (the
   gitignored `microworlds/<unit-slug>/` directory the dashboard renders) — this
   entry is the process/UI as a whole, the other two are what it displays.
+  Also distinct from the `microworld-rerun.sh` **Reporter** hook (see that
+  entry and **Microworld audit log**): the dashboard is the standing,
+  human-facing viewer a user starts and stops; the reporter is the
+  synchronous, per-edit machine process that never renders anything a
+  human sees, and never gates on the dashboard's behalf. (Naming note: a
+  new headword "microworld rerun hook" was considered and rejected for
+  this contrast — see this plan's D10 "Rerun-hook naming decision" — to
+  avoid minting an avoidable synonym for the already-named reporter.)
 _Avoid_: "the dashboard" alone in glossary cross-references now that this
   entry exists — link explicitly to disambiguate from the individual
   **Microworld** entry (dashboard *entries*) and **D5 browser client**
