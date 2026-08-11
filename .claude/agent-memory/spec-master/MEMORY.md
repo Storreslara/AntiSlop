@@ -8,7 +8,8 @@
 - [ADR numbering: increment, never backfill](project_adr_numbering_increment_not_backfill.md) — the 0007 hole is not free (CONTEXT.md links it); re-derive ADR numbers at execution time, sibling specs collide.
 - [Baselines expire](feedback_baselines_expire.md) — a baseline is a measurement with an expiry; untracked-file baselines need a recovery-source precondition. `git stash -u` hides files in a 3rd parent.
 - [Verify own criteria are non-vacuous](feedback_verify_own_criteria_nonvacuous.md) — run every criterion you author before handoff; a recursive grep across 4 files matched only 1.
-- [Specs publish as per-step issues](project_specs_publish_as_per_step_issues.md) — one issue per step under `plan/<slug>`, filed by task-master; never publish an umbrella to-spec PRD issue here.
+- [Specs publish as per-step issues](project_specs_publish_as_per_step_issues.md) — step issues under `plan/<slug>` from task-master, PLUS an umbrella `[spec]` PRD-view issue (current again as of #324).
+- [ClaudeVoice design tokens](reference_claudevoice_design_tokens.md) — sibling repo's Gruvbox Material palette/scale/font stack and exactly which files hold them.
 - [Survey ALL .fail records, not a sample](feedback_survey_all_fail_records.md) — enumerate the whole directory before concluding "no prior FAIL"; a 6-of-22 sample inverted a plan's risk section.
 - [Deferred issues decay](feedback_verify_deferred_issue_premises.md) — re-verify a deferred issue's premises against the tree; #185 had two stale ones, mooting a whole item.
 - [Don't gate a source edit apart from its shipped copy](feedback_dont_slice_units_across_a_parity_test.md) — validate.sh asserts the shipped copies; merge the pair, and sweep ALL such pairs, not just the one that escalated.
