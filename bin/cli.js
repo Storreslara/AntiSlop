@@ -2096,6 +2096,12 @@ async function main() {
       sourceGlobs: [],
       protectedPaths: [],
       gatedAgents: DEFAULT_GATED_AGENTS,
+      // Shipped default is `critical` (on). Deliberately NOT backfilled into
+      // the existingPersonaConfig branch above — already-adapted projects get
+      // this default from the consumer's absent-key fallback instead (see
+      // agents/reviewer.md), which is what keeps that branch's
+      // preserve-every-field contract intact.
+      humanReviewMode: 'critical',
       pluginVersion: version,
       personaSelection,
       issueTracker: '',

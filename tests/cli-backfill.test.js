@@ -1529,6 +1529,35 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       fs.rmSync(home, { recursive: true, force: true });
     }
   });
+
+  // --- Integration: humanReviewMode (issue #135, Step 6). The pair below is
+  // the point: a FRESH install gets the field at `critical`, and an
+  // ALREADY-ADAPTED project WITHOUT the field keeps it absent across
+  // --update. The second is not an oversight being pinned — it is the
+  // preserve-fields contract of the existingPersonaConfig branch, which is
+  // exactly why the shipped default has to live in the CONSUMER's absent-key
+  // fallback (agents/reviewer.md) rather than in a backfill here. Backfilling
+  // it would make this case fail.
+  check('a fresh install writes humanReviewMode: "critical" into the skeleton persona-config.json', () => {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-hrm-fresh-cwd-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-hrm-fresh-home-'));
+    try {
+      const result = spawnSync('node', [cliPath, '--yes'], {
+        cwd,
+        env: Object.assign({}, process.env, { HOME: home }),
+        encoding: 'utf8',
+      });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const written = JSON.parse(fs.readFileSync(path.join(cwd, '.claude', 'persona-config.json'), 'utf8'));
+      assert.strictEqual(
+        written.humanReviewMode, 'critical',
+        `the fresh-install skeleton must ship humanReviewMode: "critical", got ${JSON.stringify(written.humanReviewMode)}`
+      );
+    } finally {
+      fs.rmSync(cwd, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
 }
 
 // --- Integration: --force-hooks guard on the claude-target hooks merge
