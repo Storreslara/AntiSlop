@@ -61,6 +61,7 @@
     .copy-btn:hover { background: #45a049; }
     .copy-feedback { margin-bottom: 1rem; padding: 0.5rem; background: #e8f5e9; border: 1px solid #4caf50; border-radius: 4px; color: #2e7d32; display: none; }
     .hidden-textarea { position: absolute; left: -9999px; width: 1px; height: 1px; }
+    .bundle-section-header { padding: 0.75rem 1rem; background: #e0e0e0; font-weight: 600; font-size: 0.85rem; color: #333; border-bottom: 1px solid #ddd; text-transform: uppercase; letter-spacing: 0.5px; }
 
   </style>
 </head>
@@ -128,15 +129,39 @@
           : '<div style="padding: 1rem; color: #999;">No microworld bundles</div>';
         return;
       }
-      rail.innerHTML = bundles.map((b) => `
-        <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
-          <div>
-            <span class="status-indicator ${getStatusClass(b.status)}"></span>
-            <span class="bundle-title">${escapeHtml(b.unit)}</span>
+
+      const workingBundles = bundles.filter(b => b.source === 'working');
+      const packetBundles = bundles.filter(b => b.source === 'packet');
+
+      let html = '';
+
+      if (workingBundles.length > 0) {
+        html += '<div class="bundle-section-header">Working Bundles</div>';
+        html += workingBundles.map((b) => `
+          <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
+            <div>
+              <span class="status-indicator ${getStatusClass(b.status)}"></span>
+              <span class="bundle-title">${escapeHtml(b.unit)}</span>
+            </div>
+            <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
           </div>
-          <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
-        </div>
-      `).join('');
+        `).join('');
+      }
+
+      if (packetBundles.length > 0) {
+        html += '<div class="bundle-section-header">Escalation Packets</div>';
+        html += packetBundles.map((b) => `
+          <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
+            <div>
+              <span class="status-indicator ${getStatusClass(b.status)}"></span>
+              <span class="bundle-title">${escapeHtml(b.unit)}</span>
+            </div>
+            <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
+          </div>
+        `).join('');
+      }
+
+      rail.innerHTML = html;
 
       rail.querySelectorAll('.bundle-item').forEach(item => {
         item.addEventListener('click', () => {

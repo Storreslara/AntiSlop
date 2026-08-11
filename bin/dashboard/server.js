@@ -188,7 +188,13 @@ function startServer(projectRoot, port = 0) {
 
           // Resolve entry path using the directory slug (canonical), not the
           // manifest's self-declared `unit` field, which can diverge from it.
-          const bundlePath = path.join(projectRoot, 'microworlds', bundle.dirSlug);
+          // For packets, resolve from .claude/human-review/, not microworlds/.
+          let bundlePath;
+          if (bundle.source === 'packet') {
+            bundlePath = path.join(projectRoot, '.claude', 'human-review', bundle.dirSlug);
+          } else {
+            bundlePath = path.join(projectRoot, 'microworlds', bundle.dirSlug);
+          }
           const entryPath = path.join(bundlePath, fn.entry);
 
           // Get timeout from manifest (default 60)

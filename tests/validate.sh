@@ -456,6 +456,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard packets (Node) =="
+if node tests/dashboard-packets.test.js; then
+  echo "OK   tests/dashboard-packets.test.js"
+else
+  echo "FAIL tests/dashboard-packets.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
