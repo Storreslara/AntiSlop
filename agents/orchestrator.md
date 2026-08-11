@@ -1,6 +1,6 @@
 ---
 name: orchestrator
-description: Thin router for the persona system. Set as the main agent via settings.json ("agent": "orchestrator") at ADAPT time — its body replaces the default Claude Code system prompt entirely when running as the main session, so it must be self-sufficient.
+description: "Thin router for the persona system. Set as the main agent via settings.json (\"agent\": \"orchestrator\") at ADAPT time — its body replaces the default Claude Code system prompt entirely when running as the main session, so it must be self-sufficient."
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
@@ -318,7 +318,7 @@ exists. You decide the tier at reviewer-dispatch time by running, **from
 the repo root**:
 
 ```
-bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..<HEAD>
+bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD
 ```
 
 It prints exactly `sonnet` or `opus` (exit 0 either way); if missing,

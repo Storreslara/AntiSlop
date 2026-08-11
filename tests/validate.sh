@@ -116,6 +116,32 @@ for f in agents/*.md templates/researcher.md.tmpl; do
 done
 
 echo
+echo "== agent frontmatter parses as valid YAML =="
+# Catches an unquoted plain scalar containing a ": " (colon-space) sequence,
+# which YAML's grammar treats as a nested mapping key and fails to parse -
+# e.g. an unescaped 'description: ... ("agent": "orchestrator") ...' (#276).
+# NOTE: explorer.md is deliberately excluded - its mcpServers block contains
+# an unresolved ADAPT-time placeholder (see CONTEXT.md's "Substitution"
+# entry) that is never valid standalone YAML until install-antislop fills
+# it in, which is a different situation from an accidental parse bug.
+for f in agents/*.md; do
+  [ "$(basename "$f")" = "explorer.md" ] && continue
+  if python3 -c "
+import re, sys, yaml
+c = open('$f').read()
+m = re.match(r'^---\n(.*?)\n---\n', c, re.S)
+assert m, 'no frontmatter block found'
+yaml.safe_load(m.group(1))
+" 2>/tmp/frontmatter_yaml_err; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f ($(cat /tmp/frontmatter_yaml_err | tail -1))"
+    fail=1
+  fi
+done
+rm -f /tmp/frontmatter_yaml_err
+
+echo
 echo "== skill frontmatter has name: and description: =="
 for f in skills/*/SKILL.md; do
   if grep -q '^name:' "$f" && grep -q '^description:' "$f"; then
