@@ -890,6 +890,15 @@ async function runUpdate(args) {
     '.claude/.dispatch-override',
   ]);
 
+  // Same reach problem for microworld bundles and human-review escalation
+  // packets (Step 3a): without this, an already-adapted project sees both as
+  // untracked noise and plausibly commits them.
+  appendUnique(path.join(CWD, '.gitignore'), [
+    'microworlds/',
+    '.claude/human-review/',
+    '.claude/microworld-audit.log',
+  ]);
+
   const specs = buildFileSpecs(personaSelection);
 
   // Legacy backfill: derive whatever substitutions/fileHashes entries are
@@ -1386,6 +1395,9 @@ async function scaffoldCursor(args) {
     '.cursor/review-audit.log',
     '.cursor/dispatch-audit.log',
     '.cursor/.dispatch-override',
+    'microworlds/',
+    '.cursor/human-review/',
+    '.cursor/microworld-audit.log',
   ]);
   console.log('  .gitignore updated');
 
@@ -1763,6 +1775,9 @@ async function scaffoldCodex(args) {
     '.codex/dispatch-audit.log',
     '.codex/.dispatch-override',
     '.codex/.stop-loop-guard.*',
+    'microworlds/',
+    '.codex/human-review/',
+    '.codex/microworld-audit.log',
   ]);
   console.log('  .gitignore updated');
 
@@ -2047,6 +2062,9 @@ async function main() {
     '.claude/review-audit.log',
     '.claude/dispatch-audit.log',
     '.claude/.dispatch-override',
+    'microworlds/',
+    '.claude/human-review/',
+    '.claude/microworld-audit.log',
   ]);
   console.log('  .gitignore updated');
 

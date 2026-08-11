@@ -972,6 +972,39 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration: Step 3a (microworlds/human-review) .gitignore backfill.
+  // R9 — a rule added only to the scaffold lists never reaches an
+  // already-adapted project, which would then see bundles and escalation
+  // packets as untracked noise and plausibly commit them.
+  check('--update backfills microworlds/ and .claude/human-review/ into .gitignore without touching other lines, idempotently', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-microworlds-gitignore-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const gitignorePath = path.join(tmp, '.gitignore');
+      const original = '*.log\nnode_modules/\n.claude/reviewed/\n.claude/wip-audit.log\n.claude/review-audit.log\n';
+      fs.writeFileSync(gitignorePath, original);
+
+      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+
+      const afterFirst = fs.readFileSync(gitignorePath, 'utf8');
+      for (const line of ['microworlds/', '.claude/human-review/', '.claude/microworld-audit.log']) {
+        assert.ok(
+          afterFirst.split('\n').includes(line),
+          `expected ${line} to be backfilled as its own line, got: ${afterFirst}`
+        );
+      }
+      assert.ok(afterFirst.startsWith(original), 'pre-existing .gitignore lines must survive unmodified and unreordered, as an exact prefix');
+
+      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+      const afterSecond = fs.readFileSync(gitignorePath, 'utf8');
+      assert.strictEqual(afterSecond, afterFirst, 'a second --update must leave .gitignore byte-identical (idempotence)');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   check('--update --check catches drift past the version-match fast-path that a plain --update misses', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-check-test-'));
     try {

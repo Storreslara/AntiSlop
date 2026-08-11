@@ -17,3 +17,8 @@ scratch/
 .claude/review-audit.log
 .claude/dispatch-audit.log
 .claude/.dispatch-override
+.claude/microworld-audit.log
+
+# antislop microworld bundles + escalation packets (local scratch, never committed)
+microworlds/
+.claude/human-review/
