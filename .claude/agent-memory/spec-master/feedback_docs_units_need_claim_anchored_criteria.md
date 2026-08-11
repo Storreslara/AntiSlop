@@ -43,5 +43,18 @@ pass never reopened the two files at all.
 4. Never let "not separately gated" appear without the clause that it de-gates
    *doneness*, never accuracy.
 
+5. For an **index/inventory** doc (one that mainly names paths), the strongest
+   claim-anchored criterion is a path-resolution loop: extract every backticked
+   token, keep the ones shaped like repo paths, assert each `-e`. Two traps,
+   both hit live on 2026-08-11 while authoring the microworld-silo spec — the
+   naive extraction reported 24 false MISSINGs against a correct document:
+   filter out glob/alternation metacharacters (`[*?{}|<>]`, so
+   `tests/foo-*.test.*` and `{a,b}` lists don't count as paths), and strip a
+   trailing `:<line>` / `:<start>-<end>` citation suffix. Then state the
+   authoring constraint the loop implies ("name plain complete paths"), and
+   exclude gitignored runtime artifacts by prefix into a "Not on disk" section
+   rather than letting them fail the loop. Run it in a pipeline-free form
+   (`while read … done < file`, not `| while`) or the exit code is lost.
+
 See [[baselines-expire]] for the sibling failure in the same unit (stale packet
 assertions) and [[feedback-no-forced-changes]].
