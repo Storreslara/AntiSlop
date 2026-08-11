@@ -562,23 +562,64 @@ the collection of addressable **Agent** entities currently active in a
   in the separate dashboard plan.
 
 **Escalation packet**:
-(unit #131, 2026-08-10) — a directory structure created during a microworld escalation
-  workflow (planned in later steps D8+), containing bundled execution artifacts and
-  supporting metadata for external sharing or re-execution contexts. The packet structure
-  itself is not yet defined; this term is forward-looking. Currently, `escalation packet`
-  is a naming placeholder that appears in `.gitignore` patterns (`.claude/human-review/`,
-  `.cursor/human-review/`, `.codex/human-review/`) to preemptively prevent committed packet
-  artifacts, and in protocol prose where deferred features (microworld escalation) may
-  reference it.
+(unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10) — a directory
+  structure created when a reviewer signals `ESCALATE-TO-HUMAN` on a unit, containing
+  a snapshot of the unit's microworld bundle (if any) plus a durable `PACKET.md` file.
+  Written by the reviewer in the same action as the `.escalated` marker, sited at
+  `.claude/human-review/<task-id>/` (distinct from the reviewed-markers directory).
+  The `PACKET.md` is a byte-identical copy of the `.escalated` marker body (marker
+  remains authoritative on divergence); a unit with no bundle still receives a packet
+  directory containing `PACKET.md` alone. Packets sit outside the reviewed-markers
+  directory by design: `hooks/scripts/reviewed-path-gate.sh` blocks execution of
+  anything under that path for non-reviewer callers, making a packet sited there
+  unrunnable by the orchestrator or a human. Untracked in `.gitignore`, so escalated
+  packets are destroyed unrecoverably by `git clean -fdx` or a fresh clone (documented,
+  not fixed). Consumed in Steps 5–7 (not yet built) to route units to human review.
+
+**ESCALATE-TO-HUMAN**:
+(unit #133, 2026-08-10) — the fourth reviewer verdict, signaling that a unit meets
+  the heavy-unit criterion and requires human review before a final decision. Verdict
+  precedence is: `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`.
+  Escalation gates PASS (only a unit the reviewer would have passed escalates), never
+  replaces FAIL. Marked via `.escalated` marker file under `.claude/reviewed/`. Always
+  paired with an escalation packet (see [[Escalation packet]]). Resolved in Steps 5–7
+  (not yet built) via one of three terminal transitions, each deleting the `.escalated`
+  marker and its packet. Never consumes a 2-FAIL-cap slot.
+
+**`.escalated` marker**:
+(unit #133, 2026-08-10) — file written by the reviewer in `.claude/reviewed/` when
+  issuing an `ESCALATE-TO-HUMAN` verdict, carrying the marker body as fixed-shape text.
+  First line: `ESCALATE-TO-HUMAN <task-id> <ts> trigger: <criterion> microworld: <packet path or "none">`.
+  Followed by `run.sh` invocation, `commit: <sha>`, inputs/expected-outputs line, the
+  would-be verdict and criteria checked, and non-blocking notes. Distinct from `.blocked`
+  (reviewer lacked context vs. policy wants human eyes on critical code): separate marker
+  files, separate audit-log tokens. Authoritative over the paired [[PACKET.md]] on
+  divergence. Deleted as part of a terminal transition in Steps 5–7.
+
+**PACKET.md**:
+(unit #133, 2026-08-10) — file written by the reviewer inside the escalation packet
+  directory (`.claude/human-review/<task-id>/PACKET.md`) as a byte-identical copy of
+  the `.escalated` marker body. Exists to allow the packet to be consulted outside the
+  reviewed-markers directory (which is blocked by `reviewed-path-gate.sh` for non-reviewer
+  callers). The `.escalated` marker remains authoritative; if the two diverge, the marker
+  is correct. Consumed in Steps 5–7 when routing escalated units to human review.
+
+**humanReviewMode**:
+(unit #133, 2026-08-10, forward-looking) — configuration field referenced normatively
+  in protocol prose to control when `ESCALATE-TO-HUMAN` verdicts fire, but not yet
+  implemented as a real config surface (Step 6, unbuilt). Intended semantics: when set
+  to `all`, every unit escalates; when set to `critical` (or absent, defaulting to
+  `critical`), only units meeting the heavy-unit trigger escalate. Named in CHANGELOG
+  and protocol text only; no config field exists yet.
 
 **`.claude/human-review/` (human-review directory)**:
 (unit #131, 2026-08-10) — the gitignored directory path within the claude adapter
   reserved for escalation packets. Parallel directories exist for other adapters:
   `.cursor/human-review/`, `.codex/human-review/`. The directory is preemptively
   ignored in `.gitignore` (matching the pattern `**/human-review/` in the claude adapter
-  case, or adapter-specific equivalents) to prevent committed artifacts before the
-  escalation workflow is defined. Currently the directory serves no function (does not
-  exist in normal projects); it is a reserved namespace for future steps.
+  case, or adapter-specific equivalents) to prevent committed artifacts. Packages created
+  at this location by the reviewer when issuing an `ESCALATE-TO-HUMAN` verdict (see
+  [[Escalation packet]]).
 _Avoid_: review directory, human review folder (use "human-review directory" with the
   dot-path for clarity about adapter specificity)
 

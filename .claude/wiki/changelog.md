@@ -4,6 +4,49 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #133** (scribe post-PASS duties) — Step 4, fourth verdict `ESCALATE-TO-HUMAN`.
+  Unit #133 (`feat(gh133)` commit `bf36317`, PASS marker `.claude/reviewed/gh133.pass` at
+  commit `54b81f8`) implemented Step 4 of the install-antislop plan, adding the fourth
+  reviewer verdict `ESCALATE-TO-HUMAN` and a durable escalation packet mechanism. **New
+  verdict:** `ESCALATE-TO-HUMAN` is a gate on PASS (only a unit the reviewer *would have
+  passed* escalates), never a replacement for FAIL. Verdict precedence is explicit:
+  `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`. Trigger: when `humanReviewMode`
+  is `all`, or is `critical` (default if absent) and the unit meets the heavy-unit trigger
+  (referenced by pointer to ADR-0004 § "Heavy unit trigger", deliberately not restated to
+  prevent future copy-divergence). **Marker and packet mechanism:** Reviewer writes `.escalated`
+  marker file under `.claude/reviewed/` with fixed-shape first line
+  `ESCALATE-TO-HUMAN <task-id> <ts> trigger: <criterion> microworld: <packet path or "none">`,
+  followed by would-be verdict and non-blocking notes. In the same action, snapshots the unit's
+  microworld bundle (if any) to `.claude/human-review/<task-id>/` plus a byte-identical
+  `PACKET.md` copy of the marker body (marker authoritative on divergence). Units with no
+  bundle still receive a packet directory with `PACKET.md` alone. **Why not under reviewed-markers:**
+  `hooks/scripts/reviewed-path-gate.sh` blocks execution of anything under that path for
+  non-reviewer callers, so a packet sited there would be unrunnable by the orchestrator or
+  human — documented to prevent future "tidying." Packets are untracked (destroyed by `git clean -fdx`),
+  documented but not fixed. Distinct from `.blocked` (lacked context vs. policy wants human
+  eyes): separate marker files, separate audit-log tokens. Never consumes a 2-FAIL-cap slot.
+  **Implementation scope:** new canonical section in `templates/persona-protocol.md` (Step 4
+  only; Steps 5-7 unbuilt: stop-gate wiring, `humanReviewMode` config field, human-decision
+  resolution routes). Hand-ports to adapter prose, parity-map entries, and `agents/reviewer.md`
+  update (verdict list grows 3→4). `bin/cli.js` matrix updated (new section classified in all
+  six full-tier rows, mirroring Third-verdict classification). G1 version bumped 0.31.15→0.31.16.
+  **Files changed:** `templates/persona-protocol.md`, `adapters/cursor/rules/persona-protocol.mdc`,
+  `adapters/codex/agents-md-fragment.md`, `agents/reviewer.md`, `templates/protocol-digest.md`,
+  `bin/cli.js`, `tests/adapter-protocol-parity.test.js`, `CHANGELOG.md`, `plugin.json`,
+  `package.json`, `.claude/persona-config.json`, and 13 mirrored agent files. **Review outcome:**
+  single-pass PASS on commit `54b81f8`. **Reviewer advisory notes (scribe follow-ups):** (N1,
+  non-blocking, prose-only) Five files repeat a now-stale claim that the reviewed-markers
+  path gate blocks "read-only ones included" — a 2026-07-31 write-intent allowlist change
+  made read-only inspection allowed; only execution is blocked. The directive ("don't site
+  the packet under reviewed-markers") remains correct; reword for accuracy in a future unit.
+  (N3, **scribe fixed immediately**, ubiquitous-language) CONTEXT.md "Escalation packet" entry
+  was forward-looking; now stale (mechanism defined). Updated entry to reflect actual packet
+  mechanism. Added four new glossary entries: `ESCALATE-TO-HUMAN` (the verdict), `.escalated`
+  (marker file), `PACKET.md`, `humanReviewMode` (forward-looking config field, not yet
+  implemented). **Domain terms added to CONTEXT.md:** ESCALATE-TO-HUMAN, .escalated marker,
+  PACKET.md, humanReviewMode (forward-looking). Issue #133 closed with PASS marker and
+  commit reference.
+
 - **Closed issue #131** (scribe post-PASS duties) — Step 3a, `.gitignore` reach fix.
   Unit #131 (`feat(gh131)` commit `24154f5`, PASS marker `.claude/reviewed/gh131.pass`)
   implemented Step 3a of the install-antislop plan, extending `.gitignore` reach to four sites
