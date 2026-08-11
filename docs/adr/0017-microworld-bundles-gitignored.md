@@ -1,6 +1,6 @@
 # ADR 0017: Microworld bundles are gitignored, not committed
 
-Date: 2026-07-28
+Date: 2026-08-11
 Status: Accepted (plan 2026-07-28-microworlds-ubiquitous-language-human-review, Step 8b)
 
 ## Context
@@ -27,7 +27,7 @@ This gap is **accepted, not fixed** by introducing durable escalation packets (`
 
 1. **The bundle is gitignored scratch** — no commit overhead, no review noise, no historical coupling.
 2. **At escalation, a packet snapshots the bundle** — an untracked but persistent copy, deleted only when the reviewer resolves the escalation.
-3. **The packet is marked in the `.escalated` marker** — commit SHA is recorded so a human arriving in a fresh clone can check out the commit and reproduce the state, even if the packet is gone.
+3. **The packet is marked in the `.escalated` marker** — the commit SHA at time of escalation is recorded there, for audit context while the escalation is pending. This is not a recovery mechanism: `.claude/reviewed/` is itself gitignored (`.gitignore:12`), so the marker never enters git history and is destroyed alongside the packet by the same `git clean -fdx`. If the packet is lost, the recorded SHA is lost with it — there is no commit to check out from `git log`.
 
 This two-part design avoids committing bundles while preserving human reviewability.
 
@@ -54,7 +54,7 @@ The reviewer must **never assume a bundle exists from looking at the diff**. Bun
 
 ### For a human reviewing an escalated unit in a later session
 
-The escalation packet (`.claude/human-review/<task-id>/`) is the runnable artifact. The working-tree bundle is long gone, but the packet survives as an untracked directory. If the packet is lost (e.g., `git clean -fdx` after a resolve), the packet and its marker are unrecoverable — the commit SHA in the `.escalated` marker lets a human check out that commit and re-review it.
+The escalation packet (`.claude/human-review/<task-id>/`) is the runnable artifact. The working-tree bundle is long gone, but the packet survives as an untracked directory while the escalation is pending. If the packet is lost (e.g., `git clean -fdx` after a resolve), the packet and its `.escalated` marker are destroyed together, unrecoverably: both live only in the gitignored working tree, never in git history, so there is no commit to check out and no SHA to recover them from.
 
 ### For CI and fresh clones
 
@@ -70,7 +70,7 @@ Fresh clones and CI runs never see bundles. The `PostToolUse` hook and all tests
 ## Limitations and open items
 
 **R10 — escalation packets are clone-fragile (accepted).**
-Packets are untracked, so `git clean -fdx`, a fresh clone, or a discarded worktree destroys a pending escalation unrecoverably, together with its evidence (the `.escalated` marker, also untracked). The only recovery is checking out the commit SHA recorded in the marker (if preserved in git log) and re-reviewing. This is accepted rather than fixed: the alternative is committing review scratch into project history, which is what the gitignore decision rules out.
+Packets are untracked, so `git clean -fdx`, a fresh clone, or a discarded worktree destroys a pending escalation unrecoverably, together with its evidence (the `.escalated` marker, also untracked). There is no recovery path: the commit SHA recorded in the marker is destroyed along with the marker itself, since `.claude/reviewed/` is gitignored and the marker never enters git history. This is accepted rather than fixed: the alternative is committing review scratch into project history, which is what the gitignore decision rules out.
 
 **R5 — stale `.escalated` after `skip:` (pre-existing shape, not new).**
 Writing `skip: <reason>` into a pending-review flag deletes the flag but not the marker file or packet. At the next reviewer `SubagentStop`, a stale `.escalated` glob would keep flags standing again. This hazard exists today, identically, for `.blocked` — the glob is by filename. It fails **safe** (over-blocks, never under-blocks) and clears when the reviewer next resolves that unit and deletes the marker. Documented as a known limitation, not fixed here.

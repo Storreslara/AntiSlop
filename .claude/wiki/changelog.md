@@ -10,7 +10,7 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   `.directed` marker, humanReviewMode) with two required explicit contrasts
   (`.escalated` vs `.blocked`: reviewer lacked context vs. policy wants human eyes;
   microworld bundle vs escalation packet: gitignored scratch vs. durable snapshot).
-  Wrote two ADRs: `docs/adr/0007-human-in-the-loop-review-on-by-default.md` (why on-by-default
+  Wrote two ADRs: `docs/adr/0018-human-in-the-loop-review-on-by-default.md` (why on-by-default
   over opt-in; the behaviour change and its rationale; accepted costs; why not "all" or "off")
   and `docs/adr/0017-microworld-bundles-gitignored.md` (why bundles are working-tree scratch,
   not committed; the user's 2026-07-28 override and its reasoning; the survivability gap closed

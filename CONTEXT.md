@@ -526,21 +526,28 @@ the collection of addressable **Agent** entities currently active in a
   `## Microworld bundles` and related entries below.
 
 **Microworld bundle**:
-(unit #314, 2026-08-10) — the gitignored `microworlds/<unit-slug>/`
-  directory holding a check's canonical definition: `manifest.json` (with
-  `functions[]` array, `location`, `watch`, `timeoutSeconds`, `inputs/`,
-  `expected/` paths), `run.sh` (the entry-point executable), and `README.md`.
-  Ship-time output of a spec/lead-programmer unit; consumed at review time and
-  (in D2+) rendered into a dashboard entry for human exploration. Distinct from
-  the rendered **microworld** (the UI) and from **function entry** (an individual
-  named executable in the bundle's `functions[]`).
+(unit #314, 2026-08-10; refreshed unit #138, 2026-08-11) — the gitignored
+  `microworlds/<unit-slug>/` directory holding a check's canonical definition:
+  `manifest.json` (with `functions[]` array, `location`, `watch`,
+  `timeoutSeconds`, `inputs/`, `expected/` paths), `run.sh` (the entry-point
+  executable), and `README.md`. Ship-time output of a spec/lead-programmer
+  unit; consumed at review time and rendered into a dashboard entry for human
+  exploration by the **Microworld dashboard** (built unit #322). **Gitignored
+  scratch**: never committed, destroyed by `git clean -fdx` or a fresh clone,
+  expected to be absent in CI and fresh checkouts. Distinct from the rendered
+  **Microworld** (the UI), **function entry** (an individual named executable
+  in the bundle's `functions[]`), and the **escalation packet** (a durable,
+  untracked snapshot of this bundle made at escalation time, since this bundle
+  itself is not durable).
 
 **Microworld**:
-(unit #314, 2026-08-10, forward-looking; dashboard built unit #322, 2026-08-11)
-  — the dashboard entry a human explores, rendering the canonical definition
-  from a **microworld bundle**. Rendered by the **Microworld dashboard** (the
-  server/UI process as a whole — see that entry). Distinct from **microworld
-  bundle** (the gitignored directory) and from **Microworld dashboard** (the
+(unit #314, 2026-08-10, forward-looking; dashboard built unit #322, 2026-08-11;
+  refreshed unit #138, 2026-08-11) — the rendered dashboard entry a human
+  explores, showing inputs/outputs and invocation history for a unit's work,
+  rendering the canonical definition from a **microworld bundle**. Rendered by
+  the **Microworld dashboard** (the server/UI process as a whole — see that
+  entry). Distinct from **microworld bundle** (the gitignored
+  `microworlds/<unit-slug>/` directory) and from **Microworld dashboard** (the
   process rendering this entry, not the entry itself).
 
 **Function entry**:
@@ -562,39 +569,63 @@ the collection of addressable **Agent** entities currently active in a
   in the separate dashboard plan.
 
 **Escalation packet**:
-(unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10) — a directory
-  structure created when a reviewer signals `ESCALATE-TO-HUMAN` on a unit, containing
-  a snapshot of the unit's microworld bundle (if any) plus a durable `PACKET.md` file.
-  Written by the reviewer in the same action as the `.escalated` marker, sited at
-  `.claude/human-review/<task-id>/` (distinct from the reviewed-markers directory).
-  The `PACKET.md` is a byte-identical copy of the `.escalated` marker body (marker
-  remains authoritative on divergence); a unit with no bundle still receives a packet
-  directory containing `PACKET.md` alone. Packets sit outside the reviewed-markers
-  directory by design: `hooks/scripts/reviewed-path-gate.sh` blocks execution of
-  anything under that path for non-reviewer callers, making a packet sited there
-  unrunnable by the orchestrator or a human. Untracked in `.gitignore`, so escalated
-  packets are destroyed unrecoverably by `git clean -fdx` or a fresh clone (documented,
-  not fixed). Consumed in Steps 5–7 (not yet built) to route units to human review.
+(unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10; refreshed
+  unit #138, 2026-08-11) — a directory structure created when a reviewer
+  signals `ESCALATE-TO-HUMAN` on a unit, containing a snapshot of the unit's
+  microworld bundle (if any) plus a durable `PACKET.md` file. Written by the
+  reviewer in the same action as the `.escalated` marker, sited at
+  `.claude/human-review/<task-id>/` (distinct from the reviewed-markers
+  directory). The `PACKET.md` is a byte-identical copy of the `.escalated`
+  marker body (marker remains authoritative on divergence); a unit with no
+  bundle still receives a packet directory containing `PACKET.md` alone.
+  Packets sit outside the reviewed-markers directory by design:
+  `hooks/scripts/reviewed-path-gate.sh` blocks execution of anything under
+  that path for non-reviewer callers, making a packet sited there unrunnable
+  by the orchestrator or a human. Distinct from the working **microworld
+  bundle** (gitignored, local, may be gone by the time a human reads it) — the
+  packet exists precisely because bundles are gitignored. Untracked in
+  `.gitignore`, so escalated packets are destroyed **unrecoverably** by
+  `git clean -fdx` or a fresh clone — the commit SHA recorded in the paired
+  `.escalated` marker does not help, since that marker is itself gitignored
+  and never enters git history (documented, not fixed; see ADR 0017 § R10).
+  Consumed by the **DECISION channel** (unit #325 human-decision gate, unit
+  #326 escalation-laundering close, unit #136/#324 reviewer transcription) to
+  route units to human review — landed, not a forward-looking mechanism.
+  Deleted by the reviewer in the same action that resolves the escalation.
 
 **ESCALATE-TO-HUMAN**:
-(unit #133, 2026-08-10) — the fourth reviewer verdict, signaling that a unit meets
-  the heavy-unit criterion and requires human review before a final decision. Verdict
-  precedence is: `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`.
-  Escalation gates PASS (only a unit the reviewer would have passed escalates), never
-  replaces FAIL. Marked via `.escalated` marker file under `.claude/reviewed/`. Always
-  paired with an escalation packet (see [[Escalation packet]]). Resolved in Steps 5–7
-  (not yet built) via one of three terminal transitions, each deleting the `.escalated`
+(unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — the fourth reviewer
+  verdict, signaling that a unit the reviewer would otherwise pass requires
+  human review before a final decision. Verdict precedence is: `FAIL` >
+  `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`. Escalation gates PASS
+  (only a unit the reviewer would have passed escalates), never replaces FAIL,
+  and is never a substitute for `INSUFFICIENT-CONTEXT` (unverifiable criteria
+  are that, not this). Marked via `.escalated` marker file under
+  `.claude/reviewed/`. Always paired with an escalation packet (see
+  [[Escalation packet]]). Triggers when `humanReviewMode` is `all`, or is
+  `critical` (the default when the key is absent) and the unit meets the
+  heavy-unit trigger — see [ADR 0004](docs/adr/0004-reviewer-roast-work-dual-model-routing.md)
+  § "Heavy unit trigger", as amended by [ADR 0013](docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md)
+  (not restated here). Resolved via the **DECISION channel** (landed at unit
+  #325/#326/#136) through one of three terminal transitions (approve, reject
+  with reason, direct with a prescribed fix), each deleting the `.escalated`
   marker and its packet. Never consumes a 2-FAIL-cap slot.
 
 **`.escalated` marker**:
-(unit #133, 2026-08-10) — file written by the reviewer in `.claude/reviewed/` when
-  issuing an `ESCALATE-TO-HUMAN` verdict, carrying the marker body as fixed-shape text.
-  First line: `ESCALATE-TO-HUMAN <task-id> <ts> trigger: <criterion> microworld: <packet path or "none">`.
-  Followed by `run.sh` invocation, `commit: <sha>`, inputs/expected-outputs line, the
-  would-be verdict and criteria checked, and non-blocking notes. Distinct from `.blocked`
-  (reviewer lacked context vs. policy wants human eyes on critical code): separate marker
-  files, separate audit-log tokens. Authoritative over the paired [[PACKET.md]] on
-  divergence. Deleted as part of a terminal transition in Steps 5–7.
+(unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
+  reviewer at `.claude/reviewed/<task-id>.escalated` when issuing an
+  `ESCALATE-TO-HUMAN` verdict, carrying the marker body as fixed-shape text.
+  First line: `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger:
+  <criterion> microworld: <packet path or "none">`. Followed by the packet's
+  `run.sh` invocation, `commit: <sha>`, inputs/expected-outputs description,
+  the would-be verdict and criteria checked, and non-blocking notes. Distinct
+  from `.blocked` (reviewer *lacked context* to verify a criterion) — this
+  marker means *policy requires human eyes* on critical code instead: separate
+  marker files, **distinct audit tokens** (`.blocked` logs `verdict=blocked
+  flags-kept`; `.escalated` logs `verdict=escalated flags-kept`). Authoritative
+  over the paired [[PACKET.md]] on divergence. Kept standing until a human
+  decision via the **DECISION channel** resolves the escalation, at which
+  point both marker and packet are deleted in the same reviewer action.
 
 **`.directed` marker**:
 (unit #136, 2026-08-11, Step 7 of the human-decision-channel fix, issue #324) —
@@ -627,43 +658,52 @@ the collection of addressable **Agent** entities currently active in a
   that same unit.
 
 **PACKET.md**:
-(unit #133, 2026-08-10) — file written by the reviewer inside the escalation packet
-  directory (`.claude/human-review/<task-id>/PACKET.md`) as a byte-identical copy of
+(unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
+  reviewer inside the escalation packet directory
+  (`.claude/human-review/<task-id>/PACKET.md`) as a byte-identical copy of
   the `.escalated` marker body. Exists to allow the packet to be consulted outside the
   reviewed-markers directory (which is blocked by `reviewed-path-gate.sh` for non-reviewer
   callers). The `.escalated` marker remains authoritative; if the two diverge, the marker
-  is correct. Consumed in Steps 5–7 when routing escalated units to human review.
+  is correct. Consumed by the **DECISION channel** (landed at unit #325/#326/#136)
+  when routing escalated units to human review.
 
 **humanReviewMode**:
-(unit #133, 2026-08-10, forward-looking; shipped unit #135, 2026-08-11) —
-  configuration field in `.claude/persona-config.json` (or the adapted equivalent
-  path) controlling when `ESCALATE-TO-HUMAN` verdicts fire. Declared in
-  `templates/persona-config.schema.json` with `enum: ["off","critical","all"]` and
-  `default: "critical"` (on by default). Read by the reviewer persona
-  (`agents/reviewer.md`): an **absent key or any unrecognised value** both resolve
-  to `critical` (fail toward escalation, never toward silent auto-approval); only
-  `off`, spelled exactly, disables escalation entirely. `all` escalates every unit;
-  `critical` escalates only units meeting the heavy-unit trigger (ADR-0004 §
-  "Heavy unit trigger"). The on-by-default posture is encoded as this absent-key
-  fallback in the consumer, not in the `bin/cli.js` `--update` backfill path — the
-  backfill deliberately leaves an already-adapted project's existing config
-  untouched, so encoding the default there instead would have silently left every
-  existing user opted out. See also [[bootstrap window]] for why this repo's own
-  live value is temporarily `off`.
+(unit #133, 2026-08-10, forward-looking; shipped unit #135, 2026-08-11;
+  refreshed unit #138, 2026-08-11) — configuration field in
+  `.claude/persona-config.json` (or the adapted equivalent path) controlling
+  when `ESCALATE-TO-HUMAN` verdicts fire. Declared in
+  `templates/persona-config.schema.json` with `enum: ["off","critical","all"]`
+  and `default: "critical"` (on by default). Read by the reviewer persona
+  (`agents/reviewer.md`): an **absent key or any unrecognised value** both
+  resolve to `critical` (fail toward escalation, never toward silent
+  auto-approval); only `off`, spelled exactly, disables escalation entirely.
+  `all` escalates every unit; `critical` escalates only units meeting the
+  heavy-unit trigger (ADR-0004 § "Heavy unit trigger", as amended by
+  ADR-0013). When `reviewer` is absent from `personaSelection`, the escalation
+  path is inert regardless of the mode. The on-by-default posture is encoded
+  as this absent-key fallback in the consumer, not in the `bin/cli.js`
+  `--update` backfill path — the backfill deliberately leaves an
+  already-adapted project's existing config untouched, so encoding the
+  default there instead would have silently left every existing user opted
+  out. This repo's own config ran the [[bootstrap window]] override
+  (`humanReviewMode: "off"`) only until the human-decision resolution channel
+  landed at unit #136; the live value is now `critical`, the same as any
+  other adapted project.
 
 **bootstrap window**:
-(unit #135, 2026-08-11) — a temporary, deliberate, and committed config override
-  held open to let a fix batch's own units land without recursively triggering a
-  resolution mechanism those same units are still building. Concrete instance:
-  this repo's own `.claude/persona-config.json` keeps `"humanReviewMode": "off"`
-  rather than `"critical"` (see [[humanReviewMode]]) because the human-decision
-  resolution channel (amended #136, Step 7) hasn't landed yet — with the default
+(unit #135, 2026-08-11; closed unit #136/#138, 2026-08-11) — a temporary,
+  deliberate, and committed config override held open to let a fix batch's own
+  units land without recursively triggering a resolution mechanism those same
+  units are still building. Concrete instance (now closed): this repo's own
+  `.claude/persona-config.json` held `"humanReviewMode": "off"` rather than
+  `"critical"` (see [[humanReviewMode]]) while the human-decision resolution
+  channel (amended #136, Step 7) had not yet landed — with the default
   `critical` mode live, the fix batch's own heavy-unit changes (hook code,
-  security-sensitive) would each escalate into a route that doesn't exist yet.
-  Defined and tracked in `docs/plans/2026-08-11-human-decision-channel.md` Step 4.1.
-  Closed (override reverted) once the batch that necessitated it fully lands —
-  ownership of that restoration is a plan/runbook tracking concern, not implied by
-  the term itself.
+  security-sensitive) would each have escalated into a route that did not yet
+  exist. Defined and tracked in `docs/plans/2026-08-11-human-decision-channel.md`
+  Step 4.1. Closed (override reverted to `critical`) once the decision channel
+  landed at unit #136 — restoration ownership was a plan/runbook tracking
+  concern, not implied by the term itself, and is recorded here as complete.
 _Avoid_: temporary override, escape hatch (use "bootstrap window" for this specific,
   documented, plan-tracked pattern)
 
@@ -677,87 +717,6 @@ _Avoid_: temporary override, escape hatch (use "bootstrap window" for this speci
   [[Escalation packet]]).
 _Avoid_: review directory, human review folder (use "human-review directory" with the
   dot-path for clarity about adapter specificity)
-
-**Microworld**:
-(unit #138, 2026-08-11, scribe documentation) — the rendered dashboard entry
-  a human explores, showing inputs/outputs and invocation history for a unit's
-  work. Rendered from a **microworld bundle** by the **Microworld dashboard**
-  server. Distinct from **microworld bundle** (the gitignored `microworlds/<unit-slug>/`
-  directory) and **Microworld dashboard** (the server/UI process itself).
-
-**Microworld bundle**:
-(unit #138, 2026-08-11, scribe documentation) — the gitignored directory
-  `microworlds/<unit-slug>/` holding a unit's canonical definition for human review:
-  `manifest.json` (metadata, watch globs, function entries), `run.sh` (executable entry point),
-  `inputs/` and `expected/` (fixtures), and `README.md` (human-facing description).
-  **Gitignored scratch**: never committed, destroyed by `git clean -fdx` or fresh clone,
-  expected to be absent in CI and fresh checkouts. Distinct from **Microworld**
-  (the rendered UI) and **escalation packet** (the durable snapshot copied at
-  escalation time).
-
-**Escalation packet**:
-(unit #138, 2026-08-11, scribe documentation) — a durable, untracked snapshot of a
-  unit's **microworld bundle** (if any) created by the reviewer when issuing
-  `ESCALATE-TO-HUMAN`. Stored at `.claude/human-review/<task-id>/`, containing
-  `run.sh`, manifest, fixtures, and `PACKET.md` (byte-identical copy of the
-  `.escalated` marker body). Distinct from the working **microworld bundle**
-  (gitignored, local, may be gone by the time a human reads it) — the packet
-  exists precisely because bundles are gitignored. Untracked like bundles, so
-  destroyed by `git clean -fdx` or fresh clone, but marked in the corresponding
-  `.escalated` marker for recovery via `git log`. Deleted by the reviewer in
-  the same action that resolves the escalation.
-
-**ESCALATE-TO-HUMAN**:
-(unit #138, 2026-08-11, scribe documentation) — the fourth reviewer verdict,
-  signaling that a unit the reviewer would otherwise pass requires human review
-  before a final decision. Never a replacement for FAIL (defects are plain FAIL)
-  or for INSUFFICIENT-CONTEXT (unverifiable criteria are that). Verdict precedence:
-  `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`. Marked via
-  `.escalated` marker file. Triggers when `humanReviewMode` is `all`, or is `critical`
-  (the default, if the key is absent) and the unit meets the heavy-unit trigger
-  (≥8 impacted files OR ≥400 changed lines; structural/cross-cutting change;
-  or security-sensitive). Never consumes a 2-FAIL-cap slot; routes to human
-  decision via the **DECISION channel**, which produces one of three terminal outcomes
-  (approve, reject with reason, direct with a prescribed fix).
-
-**`.escalated` marker**:
-(unit #138, 2026-08-11, scribe documentation) — file written by the reviewer at
-  `.claude/reviewed/<task-id>.escalated` when issuing an `ESCALATE-TO-HUMAN` verdict.
-  Contrasts with **`.blocked` marker** — the latter means the reviewer *lacked context*
-  to verify a criterion; the former means *policy requires human eyes on critical code*.
-  **Distinct audit tokens:** `.blocked` logs `verdict=blocked flags-kept`;
-  `.escalated` logs `verdict=escalated flags-kept`. First line format:
-  `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <criterion> microworld: <packet path or "none">`.
-  Followed by the packet's `run.sh` invocation, `commit: <sha>`, inputs/expected-outputs
-  description, would-be verdict and criteria checked, and non-blocking notes. Paired
-  with an **escalation packet** (a durable snapshot of the bundle, if present) sited
-  at `.claude/human-review/<task-id>/`. Marker kept standing until a human decision
-  resolves the escalation, at which point both marker and packet are deleted.
-
-**`.directed` marker**:
-(unit #138, 2026-08-11, scribe documentation) — file written by the reviewer at
-  `.claude/reviewed/<task-id>.directed` when transcribing a human `route: direct`
-  decision from a **DECISION file**. Means the human prescribed a specific fix;
-  reviewer did not re-review it. First line exactly: `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line directive>`,
-  followed by the human's full prescribed fix verbatim. **Does NOT consume a 2-FAIL-cap slot**
-  (same logic as `INSUFFICIENT-CONTEXT` — it is a human-directed correction, not the
-  implementer failing). Deliberately **absent from `stop-gate.sh`'s marker glob** — that
-  omission is load-bearing, since clearing the flags is how the directed fix gets
-  dispatched to `lead-programmer` for normal re-review. Deleted by the reviewer in
-  the same action that resolves the subsequent re-review.
-
-**humanReviewMode**:
-(unit #138, 2026-08-11, scribe documentation) — configuration field in `.claude/persona-config.json`
-  controlling when `ESCALATE-TO-HUMAN` verdicts fire. Declared in
-  `templates/persona-config.schema.json` with `enum: ["off","critical","all"]` and
-  `default: "critical"` (on by default). An absent key **or any unrecognised value**
-  resolves to `critical` (fail toward escalation, never toward silent auto-approval);
-  only `off`, spelled exactly, disables escalation. `all` escalates every unit;
-  `critical` escalates only units meeting the heavy-unit trigger. When `reviewer`
-  is absent from `personaSelection`, the escalation path is inert regardless of
-  the mode. This repo's own config deliberately keeps `humanReviewMode: "off"` during
-  a temporary **bootstrap window** (`docs/plans/2026-08-11-human-decision-channel.md`)
-  held open until the human-decision resolution channel fully lands.
 
 **Microworld dashboard**:
 (unit #314, 2026-08-10, forward-looking; built and documented unit #322,

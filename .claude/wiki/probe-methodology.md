@@ -56,7 +56,7 @@ For any future probe of a hook-payload field:
 
 ### Related
 
-- **ADR 0007** (agent-identity normalization) documents the specific design
+- **ADR 0008** (agent-identity normalization) documents the specific design
   rule that emerged: gates must normalize agent identities by extracting the
   persona-name suffix and comparing suffix-to-suffix (GATE sites) or
   suffix-to-literal (GRANT sites), so both bare and namespaced dispatch works.

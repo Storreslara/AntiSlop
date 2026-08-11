@@ -1,6 +1,6 @@
-# ADR 0007: Human-in-the-loop review enabled by default
+# ADR 0018: Human-in-the-loop review enabled by default
 
-Date: 2026-07-28
+Date: 2026-08-11
 Status: Accepted (plan 2026-07-28-microworlds-ubiquitous-language-human-review, Step 8b)
 
 ## Context
@@ -11,7 +11,7 @@ The question is not *whether* to offer human-in-the-loop escalation — that cap
 
 ## Decision
 
-**`humanReviewMode` defaults to `critical`, not `off`.** This is an opt-out, not an opt-in. Units meeting the heavy-unit trigger (≥8 impacted files OR ≥400 changed lines; structural/cross-cutting change; or security-sensitive surface) will now block turn-end until a human decides, on every already-adapted project on its next plugin update, without any edit to the project's config.
+**`humanReviewMode` defaults to `critical`, not `off`.** This is an opt-out, not an opt-in. Units meeting the heavy-unit trigger (see [ADR 0004](0004-reviewer-roast-work-dual-model-routing.md) § "Heavy unit trigger", as amended by [ADR 0013](0013-fable-removed-from-roast-work-advisory-pass.md) — not restated here, see "Related decisions" below) will now block turn-end until a human decides, on every already-adapted project on its next plugin update, without any edit to the project's config.
 
 This is a **deliberate, informed behaviour change**. Setting `"humanReviewMode": "off"` in `.claude/persona-config.json` restores the previous behaviour (fully automatic PASSing).
 
@@ -50,9 +50,9 @@ The `humanReviewMode: "all"` setting exists and is useful for teams that want ev
 
 The default `critical` mode balances human oversight with automation: small, mechanical units still auto-PASS; high-risk units wait for a human.
 
-### Why not "off" for this repo during the fix batch
+### Why this repo ran "off" during the fix batch (bootstrap window, now closed)
 
-This repo's own `.claude/persona-config.json` deliberately keeps `humanReviewMode: "off"` during a temporary **bootstrap window** (documented in `docs/plans/2026-08-11-human-decision-channel.md` Step 4). The human-decision resolution channel (the mechanism that *routes* escalations to humans) hasn't fully landed yet — with escalation on, this fix batch's own heavy-unit changes (hook code, security-sensitive) would escalate into a route that does not exist. Once the decision channel lands fully, this repo's own config will restore `humanReviewMode: "critical"`.
+This repo's own `.claude/persona-config.json` temporarily held `humanReviewMode: "off"` during a **bootstrap window** (documented in `docs/plans/2026-08-11-human-decision-channel.md` Step 4) while the human-decision resolution channel — the mechanism that *routes* escalations to humans — was still being built. With escalation on, the fix batch's own heavy-unit changes (hook code, security-sensitive) would have escalated into a route that did not yet exist. The decision channel landed at unit #136 (issue #324); this repo's own config now runs at the default `humanReviewMode: "critical"`, the same as any other adapted project.
 
 ## Consequences
 
