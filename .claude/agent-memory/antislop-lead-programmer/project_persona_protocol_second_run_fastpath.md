@@ -27,6 +27,16 @@ control (the same run *without* `--check` must print `Nothing to update` and
 name no file). **Do not use mtime**: the correct "already current" branch
 performs no write, so an mtime assertion fails on correct code.
 
+**Workflow consequence (hit again on gh136), not just a measurement issue:**
+once the G1 version bump has written the new `pluginVersion` into
+`.claude/persona-config.json`, the stamps match, so *any further source edit in
+the same session* leaves the `.claude/agents/*.md` mirrors stale while a plain
+`node bin/cli.js --update` prints `Nothing to update.` and silently changes
+nothing. Order the unit as: edit sources → bump G1 → `--update` → **if you touch
+a source again, `--update --check`**. Symptom if you miss it:
+`tests/cli-backfill.test.js` F2 fails with `M .claude/agents/<persona>.md` in
+the post-run tree — that is a stale mirror, not a cli.js bug.
+
 Root cause, for the record: absence was invisible to the pre-scan (it
 `continue`d past any destination that did not exist), and the only defeater
 that ever fired on a missing file was hard-coded to one path — so `--update`
