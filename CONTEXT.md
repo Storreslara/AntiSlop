@@ -635,6 +635,27 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   uses only D3/D4 endpoints. **Version:** 0.31.12 (original build), no version bump on
   fix pass.
 
+**Feedback block**:
+(unit #320, 2026-08-10) — the fixed-shape markdown artifact produced by the
+  "Copy feedback" button on the microworld dashboard (per-function or per-cell),
+  containing function id/group/location/commit/bundle/comment and, when copied
+  from a cell, a `### Last run` section with cell execution metadata. Markdown shape:
+  `## Microworld feedback — <unit-slug> / <function label>`, metadata lines (function id,
+  group, location or "location: not declared", git SHA, bundle path), `### Comment`
+  section (verbatim, user-entered text), optional `### Last run` section (cells only,
+  never emitted with empty fields). Deliberately not named "handoff" (that term is
+  reserved for an existing shipped skill/artifact). Distinct from **Source excerpt**
+  (the dashboard's pane for reading source code).
+
+**Source excerpt**:
+(unit #320, 2026-08-10) — the bounded, root-confined, symlink-safe read of
+  `location.file` lines `startLine..endLine` served by `GET /api/source`, rendered
+  read-only in the dashboard's excerpt pane. Implemented via `fs.realpathSync.native`
+  containment check (no symlinks escape the project root), returns 400 on path
+  traversal attempt (absolute or relative `../`), returns 404 with stated reason
+  on file/line errors. Distinct from **Feedback block** (the dashboard's copy button
+  output artifact).
+
 **Cell**:
 (unit #319, 2026-08-10) — an in-page record of one `POST /api/invoke` result,
   storing `{ cellId, functionId, inputs, startedAt, result }`. Cells are appended

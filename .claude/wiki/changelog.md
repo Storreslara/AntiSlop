@@ -4,6 +4,62 @@ Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
 ## 2026-08-10
+- **Closed issue #320** (scribe post-PASS duties) — microworld dashboard D7 step.
+  Unit #320 (`feat(gh320)` commit `26a0191`,
+  PASS marker `.claude/reviewed/gh320.pass`) implemented Step D7 of the
+  microworld dashboard plan, adding "Source excerpt" read primitive (`GET /api/source`,
+  bounded, root-confined, symlink-safe via `fs.realpathSync.native`), a `GET /api/context`
+  endpoint (returns git HEAD sha), free-text comment boxes per-function AND per-cell
+  (ephemeral, never persisted to disk), and a "Copy feedback" button per scope producing
+  a fixed markdown shape via a genuinely shared formatter (`bin/dashboard/feedback-block.js`,
+  injected server-side into the served page so client and test suite exercise identical
+  code path — not two divergent implementations). **Files changed:** `bin/dashboard/source.js`
+  (new), `bin/dashboard/feedback-block.js` (new), `bin/dashboard/server.js` (edited: `GET /api/source`,
+  `GET /api/context`, plus feedback-block source injection into `GET /`),
+  `bin/dashboard/index.html` (edited: excerpt pane, per-function AND per-cell comment boxes +
+  copy buttons, clipboard mechanics), `tests/dashboard-feedback.test.js` (new, 13 cases (a)-(m)),
+  `tests/validate.sh` (registered).
+
+  **Review arc (FAIL→fix→PASS):** First review (`.claude/reviewed/gh320.fail`, haiku) FAILed
+  original build (commit `9a07895`) on 6 blocking defects: (1) security — `/api/source`'s
+  path-containment check was purely lexical (no `fs.realpathSync`), so a symlink inside the
+  project root pointing outside it was followed and its contents leaked via HTTP 200, live
+  violation of plan guardrail 6; (2) `endLine < startLine` silently returned HTTP 200 with
+  empty result instead of stated-reason 404 (plan explicitly forbids "a silent empty one"),
+  reachable from shipped client's default endLine=100; (3) only one function-scoped comment
+  box existed (hardcoded singleton id); plan required "per function AND per cell" with
+  per-instance ids, and "`### Last run` appears only when copying from a cell" rule was
+  inverted; (4) `feedback-block.js` (the issue's named pure formatter) was dead code —
+  `index.html` re-implemented markdown shape inline instead, and two implementations had
+  already diverged; (5) no truncation marker emitted for truncated cell result, contradicting
+  plan's fixed block shape; (6) CHANGELOG/commit message falsely claimed working per-cell
+  comment box. Per haiku-escalates-on-first-FAIL policy, re-dispatched on sonnet
+  (fresh session). Fix pass (commit `26a0191`): real `fs.realpathSync.native` containment
+  check for (1); stated-reason 404 for (2); genuine per-cell comment boxes with per-instance
+  ids for (3), with corrected `### Last run` scoping (cell-copy only, sourced from that
+  specific cell); server-side injection of `feedback-block.js`'s real source into served page
+  for (4) (one implementation, not two); explicit `*(output truncated)*` marker for (5);
+  (6) became true once (3) was genuinely fixed. Added test cases (j)-(m), each mutation-tested
+  (revert → red with the original symptom → restore → green). Second review (`.claude/reviewed/gh320.pass`,
+  opus tier due to prior FAIL) PASSed independently re-verifying all 6 fixes, including
+  running reviewer's own broader symlink-escape sweep (6 vectors) and manually verifying
+  "THAT cell, not the last cell" per-cell isolation property with live 3-cell drive (not
+  just single-cell test suite coverage). FAIL-cap: 1-of-2, resolved.
+
+  **Domain terms added to CONTEXT.md:** Feedback block (fixed-shape markdown artifact from
+  Copy button, per-function or per-cell); Source excerpt (bounded, symlink-safe read of
+  location.file lines). **Advisory notes from second review (institutional record, not
+  defects):** (1) CHANGELOG.md 0.31.14 entry says "nine criteria (a)-(i))" but suite now
+  has 13 (a)-(m) — stale enumeration, not false claim (original nine still exist/pass);
+  consider updating if touching CHANGELOG for other reasons. (2) `server.js:117` uses
+  String.prototype.replace with string pattern, scans feedback-block.js source for
+  $-replacement sequences — currently harmless (none present), but fragile; future `replace(placeholder,
+  () => src)` callback would be structurally safer. (3) TOCTOU note: `source.js` realpath-checks
+  candidate but reads lexical path afterward — symlink swapped between check/read could
+  theoretically be followed, but exploiting it requires write-access to project root
+  (already implies arbitrary bundle-entry execution), so no real privilege escalation.
+  Issue #320 closed with PASS marker and commit reference.
+
 - **Closed issue #319** (scribe post-PASS duties) — microworld dashboard D6 step.
   Unit #319 (`feat(gh319)` commit `1b331b7`,
   PASS marker `.claude/reviewed/gh319.pass`) implemented Step D6 of the
