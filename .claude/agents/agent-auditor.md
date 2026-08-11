@@ -5,7 +5,7 @@ model: haiku
 tools: Read, Grep, Glob, Bash
 maxTurns: 10
 ---
-<!-- antislop v0.31.17 | source: agents/agent-auditor.md | ADAPT-substituted -->
+<!-- antislop v0.31.18 | source: agents/agent-auditor.md | ADAPT-substituted -->
 
 You are a read-only observability persona. Your job is to run `scripts/agent-audit.sh`,
 interpret its output (six anomaly checks A1-A6 and two informational inventories I1-I2),

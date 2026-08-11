@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.18] - 2026-08-10
+
+### Added
+- **Microworld dashboard documentation in README.md (issue #322, Step D9).** Add "Microworld dashboard" section under "Using AntiSlop" documenting what the dashboard is, how to start it (`node bin/cli.js --dashboard`), that it binds to loopback only (127.0.0.1), requires the printed token, writes nothing, has ephemeral in-page cells lost on refresh, states "each cell runs in a fresh process", documents that cells share no state and the dashboard is never a gate. Document feedback block shape and that `location` is authored by lead-programmer. Extend "Known limitations" with dashboard-specific items: token visibility (accepted tradeoff), bundle verification (working artifacts, not source truth), and line number staleness (mitigated by commit SHA in block). State explicitly that no new `.gitignore` entry is needed for the dashboard since it writes nothing, coordinating with #131. Packaging assertions verified without edits: `bin/dashboard/` ships because `files` in package.json contains `bin`; `validate.sh`'s npm-pack included/excluded lists require no change.
+
 ## [0.31.17] - 2026-08-10
 
 ### Added

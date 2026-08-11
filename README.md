@@ -174,6 +174,31 @@ subagents, use the `start-feature-team` command — this is the "deliberate
 gear" mentioned earlier; it's off by default and you opt in per task by
 invoking it explicitly rather than it ever kicking in on its own.
 
+## Microworld dashboard
+
+The **microworld dashboard** is an interactive browser-based workbench for testing and exploring microworld bundles — discoverable artifact collections that capture function entry points, batch test cases, and feedback from agent runs. It serves as a development tool for working with microworld bundles without requiring manual CLI invocation.
+
+### Starting the dashboard
+
+```
+node bin/cli.js --dashboard
+```
+
+Nothing auto-starts the dashboard. It binds to loopback only (`127.0.0.1`) on an ephemeral port, and prints the port and a per-launch token to stdout. Every HTTP request requires the token via `?t=<token>` query parameter or `X-Antislop-Token` header.
+
+The dashboard writes nothing to disk — cells are ephemeral, in-page, and lost on refresh. Note that **each cell runs in a fresh process**, with no shared state between cells; the dashboard is never a gate (failures in cell invocations do not block any workflow).
+
+### Feedback blocks
+
+When exploring a function in a microworld bundle via the dashboard, you can annotate it with feedback and copy a feedback block — a fixed-shape markdown block that captures:
+- function metadata (id, group, label)
+- `location`: file path and line range, or "not declared" if the bundle didn't declare it
+- `commit`: git HEAD sha at copy time (allows receiving agents to re-derive stale line numbers)
+- `### Comment`: verbatim human-authored text
+- `### Last run` (cells only): inputs, exit code, duration, and output (both cells and functions can have locations; only cells include last-run output)
+
+The `location` field is authored by `lead-programmer` at bundle capture time (e.g., in `microworlds/<unit-slug>/manifest.json`).
+
 ## Known limitations
 
 The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
@@ -181,6 +206,14 @@ The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
 path across a shell variable defeats the write-intent allowlist), and the
 `sed -i` caveat on
 `protected-paths.sh`) lives in [`docs/design.md`](docs/design.md).
+
+### Dashboard-specific limitations
+
+- **Token visibility**: The per-launch token appears in scrollback history and the browser's address bar. This is a non-persisted, per-launch secret on a loopback endpoint only, and is accepted as a reasonable tradeoff for interactive development.
+- **Bundle verification**: Microworld bundles are gitignored, so nothing verifies a bundle was authored via the documented authoring path (audit-log, commit hash, etc.) versus hand-written. This is by design — bundles are working artifacts, not source truth.
+- **Location line numbers**: The `location` field's start/end line numbers can go stale if the source file changes after bundle creation. The block carries the commit SHA, so a receiving agent can re-derive or re-verify line ranges against that commit.
+
+**No new `.gitignore` entry is needed for the dashboard**, because it writes nothing to disk (coordinating with #131). The existing `.gitignore` entry for `microworlds/` applies to bundles discovered and cached by the CLI, not by the dashboard itself.
 
 One limitation is worth stating here rather than only in the fuller list,
 because it bounds what the gate can be trusted for at all. An allowlisted
