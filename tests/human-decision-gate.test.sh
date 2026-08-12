@@ -111,6 +111,96 @@ DIRECTED u1 - fix per .claude/human-review/u1/DECISION
 EOF"
 
 echo
+echo "-- the invariant: DECISION-targeting shapes stay denied (N6-N20) --"
+bash_case "N6 P7 early terminator, second command writes the DECISION path" blocked \
+  antislop:reviewer "cat > .claude/reviewed/u1.pass <<'EOF'
+PASS u1 quoting .claude/human-review/u1/DECISION
+EOF
+printf approved > .claude/human-review/u1/DECISION"
+bash_case "N7 template whose target IS the DECISION path" blocked antislop:reviewer \
+  "cat > .claude/human-review/u1/DECISION <<'EOF'
+approved
+EOF"
+bash_case "N8 unquoted heredoc delimiter" blocked antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<EOF
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N9 double-quoted heredoc delimiter" blocked antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<\"EOF\"
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N10 command substitution in the target" blocked antislop:reviewer \
+  "cat > \$(echo .claude/reviewed)/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N11 shell variable in the target" blocked antislop:reviewer \
+  "cat > \$M/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N12 quoted target" blocked antislop:reviewer \
+  "cat > '.claude/reviewed/u1.pass' <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N13 target escapes the reviewed dir via .." blocked antislop:reviewer \
+  "cat > .claude/reviewed/../human-review/u1/DECISION <<'EOF'
+approved
+EOF"
+bash_case "N14 non-sanctioned suffix (.txt)" blocked antislop:reviewer \
+  "cat > .claude/reviewed/u1.txt <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N15 a command precedes cat" blocked antislop:reviewer \
+  "printf x; cat > .claude/reviewed/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N16 pipeline into the template" blocked antislop:reviewer \
+  "printf x | cat > .claude/reviewed/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N17 extra redirection on the command line" blocked antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<'EOF' 2> .claude/human-review/u1/DECISION
+PASS u1
+EOF"
+bash_case "N18 tee in place of cat" blocked antislop:reviewer \
+  "tee .claude/reviewed/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N19 unterminated heredoc" blocked antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION"
+bash_case "N20 terminator only as a substring of a longer line" blocked antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION
+EOF and then some"
+
+echo
+echo "-- pinned residual R-2: split-variable target stays ALLOWED, deliberately --"
+bash_case "N21 split-variable write to the DECISION path (documented residual)" allowed \
+  antislop:reviewer "d=human-rev; e=iew; printf x > .claude/\$d\$e/u1/DECISION"
+
+echo
+echo "-- the deny message is instructional (N22-N23) --"
+bash_case "N22/N23 setup: a denied DECISION-targeting write" blocked antislop:reviewer \
+  "cat > .claude/human-review/u1/DECISION <<'EOF'
+approved
+EOF"
+if grep -qF "cat > .claude/reviewed/<task-id>.pass <<'EOF'" "$errf"; then
+  pass "N22 deny message prints the sanctioned template literally"
+else
+  bad "N22 deny message does not print the sanctioned template line"
+fi
+if grep -qF 'self-authorized bypass' "$errf"; then
+  pass "N23 deny message names the self-authorized bypass class"
+else
+  bad "N23 deny message does not name 'self-authorized bypass'"
+fi
+if grep -qF 'rm -rf .claude/human-review/<task-id>' "$errf"; then
+  pass "N23b deny message keeps the rm -rf packet-discard guidance"
+else
+  bad "N23b deny message dropped the rm -rf guidance"
+fi
+
+echo
 echo "-- every block logs decision-gate-denied, reviewer included --"
 audit_log="$proj/.claude/review-audit.log"
 : > "$audit_log"
