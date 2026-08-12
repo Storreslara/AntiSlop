@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.31.25] - 2026-08-12
+
+### Fixed
+- **Mirror drift on `agents/agent-auditor.md` (issue #340, plan Step 11).** Commit `c6ac6e9` (gh290) edited the source persona file's "benign classes" and "full per-persona model-dispatch distribution" prose but did not regenerate `.claude/agents/agent-auditor.md` or bump the version — a Constitution P3 violation that left `tests/validate.sh` RED via `tests/cli-backfill.test.js`'s F2 regression check. This release's version bump forces `node bin/cli.js --update --check` to re-render the mirror under the new stamp (a same-version `--update` takes the fast "already current" path and would not have re-rendered it). No content decision was made — `agents/agent-auditor.md` itself is unchanged by this entry; only the mirror and `fileHashes` catch up to it.
+
 ## [0.31.24] - 2026-08-11
 
 ### Added
