@@ -182,7 +182,13 @@ consent); the DECISION file carries escalation consent.
 - **R-B — obfuscation residual.** A determined agent can split the path
   across shell variables past the lexer. Same accepted, documented residual
   class as `reviewed-path-gate.sh` (README Known limitations); the audit log
-  is the deterrent.
+  is the deterrent. **Partly superseded, 2026-08-12:** the split-variable half
+  above stands as an accepted residual, but this round's blanket
+  "accepted residual" posture is withdrawn for the *false-positive* half — the
+  gate also denied legitimate marker writes that merely quote the DECISION path
+  as data, which caused a live incident (an agent bypassed rather than
+  reported). That half is fixed by a sanctioned marker-write template; see
+  `docs/plans/2026-08-12-human-decision-gate-false-positive.md`.
 - **R-C — hooks are agent-editable source.** Mitigated by adding
   `hooks/scripts/human-decision-gate.sh` and
   `hooks/scripts/reviewed-path-gate.sh` to this repo's `protectedPaths`
@@ -237,8 +243,13 @@ consent); the DECISION file carries escalation consent.
 
 New PreToolUse hook blocking **every** agent identity — reviewer included,
 empty/main-session `agent_type` included, no grant branch, no fallback — from
-writing `.claude/human-review/<task-id>/DECISION`. Reads stay allowed so the
-orchestrator can surface it and the reviewer can transcribe it.
+writing `.claude/human-review/<task-id>/DECISION`. Reads are allowed so the
+orchestrator can surface it and the reviewer can transcribe it — **with one
+measured exception, corrected 2026-08-12:** a read whose command text contains
+any backslash is denied, because the shared lexer fails closed on every
+backslash (probe P13), including one inside single quotes where it is inert.
+This claim is superseded by
+`docs/plans/2026-08-12-human-decision-gate-false-positive.md`.
 
 Design:
 - Extract `command_skeleton()`, `mask_inert_redirections()`,
