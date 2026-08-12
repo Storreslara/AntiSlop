@@ -29,7 +29,10 @@
 # Documented workarounds for what this costs: `git commit -F <file>` for a
 # commit message that discusses the marker directory (the command text then
 # never spells the path, so the early-exit fires first), and `grep -r`, which
-# stays allowlisted, for searching it.
+# stays allowlisted, for searching it. Both are scoped to reviewed-path-gate.sh,
+# which grants the reviewer an identity, and never for human-decision-gate.sh,
+# which grants nobody: rephrasing a command so its text stops spelling that
+# gate's file is a self-authorized bypass, not a workaround.
 program_allowed() {
   case "$2" in
     ls|cat|head|tail|wc|stat|file|test|'['|grep|diff|cmp) return 0 ;;

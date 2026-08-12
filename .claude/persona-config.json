@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.26",
+  "pluginVersion": "0.31.27",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -44,18 +44,18 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "30fcf7e1d93165c3f21ffea26ab52c40e91c55e69db92c9aca600a4c6c181cb2",
-    ".claude/agents/explorer.md": "7e3ec998d30769cd8dcb7baf6aecd8633bf5fe5aa6a69a79acfc25caa8302b47",
-    ".claude/agents/lead-programmer.md": "529c52159e965a069af537740cb8cc0158b4ebc01ac16cd6ce4a2ee69aa146e2",
-    ".claude/agents/spec-master.md": "e6706f4c55bf4583c89d0cb7e9604a210ba94666b319ea22c71ccc0847049085",
-    ".claude/agents/task-master.md": "b8dea9367a590899a3ced476e8e60238d0d37918f71fdda83ddbe96760550e0a",
-    ".claude/agents/scribe.md": "03c0c780829b5fbd0737d8003da510f4d47f0443b4436be4a4d675cb2d401d10",
-    ".claude/agents/reviewer.md": "91b3d543e4a940eb4af776d7addca0d9ee0af46115f86323cbe3db4bd187fc3c",
-    ".claude/agents/milestone-auditor.md": "87eaff81cb59a93b71d5d9259af16bb3062d35aa054a816b3dcc89c4fe719a01",
-    ".claude/agents/agent-auditor.md": "ce6ef1b2dd30863a37b63bd20e254e690b3a23488bbdfd8775c1d9e9d251de67",
-    ".claude/agents/researcher.md": "c4d334df8c2159934a3a41c9c2b803074a1fbf3dcad6d1b0450415f333d0a01a",
-    ".claude/persona-protocol.md": "412e1f892ed8fa24ebe9f8d83b04db329617bfc235002037a4cd6a66be6a7147",
-    ".claude/persona-protocol-slim.md": "97660fdae16359e3778b17fd42e13f21f30e43ac50deb5b6aed5d758e650a63b",
+    ".claude/agents/orchestrator.md": "34d82543c96c023d96c87030f8df28b5f054de73027e098e0002c402437f14b2",
+    ".claude/agents/explorer.md": "ebaf968dbf15bcde8fb85100d5b67bdb62dfd07025805fa61a7be4928702553b",
+    ".claude/agents/lead-programmer.md": "f65c9cd8b1168465469af218f2a119772fbd29dd6e98eac32fb6147405d6d784",
+    ".claude/agents/spec-master.md": "fbbbf410a94968d010dd2103824dd47a5b6b7c40a8248ed42715dc8425b3ae15",
+    ".claude/agents/task-master.md": "888f0b1e9e1e8367e7919d369e92e9c71a80e1258fdb021b87a8312509159312",
+    ".claude/agents/scribe.md": "00a7ae2d978a4a7e9c1ea0f76767309a12d5eec3825d1b39ed345b5e2ac82ecb",
+    ".claude/agents/reviewer.md": "b406306b792b362fcbdb3f81a102f344f04ba01821a3ce7215267afdd62c2030",
+    ".claude/agents/milestone-auditor.md": "e89e60b0ec51d092baeeab515526e39ea1569ab05dd37070dcf4c1eb46f1dc82",
+    ".claude/agents/agent-auditor.md": "6bdc0aad3f7f9be99a85a9e1dfd983509a542937320f538adf5ac7e4a962a744",
+    ".claude/agents/researcher.md": "e2a38f8a7e2c21c83a6dbfecddccd30f688bab7115300179461b31a41b885987",
+    ".claude/persona-protocol.md": "09092641dceb7e778f250d1033ae4f2e39bf271c0eb4c4e51337d054ae18cfb4",
+    ".claude/persona-protocol-slim.md": "2bd85126e1fe5ff028737b98fae9f5de639b951ec2478a424a2b9c7d2d9cec5b",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9"
   },
   "humanReviewMode": "critical"

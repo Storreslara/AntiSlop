@@ -59,13 +59,17 @@ slice you actually need rather than re-running the same command unfiltered.
   diagnose mid-task: fall back immediately to `Bash` — a quoted heredoc
   (`cat > file << 'EOF'`) for whole-file authoring, or a `python3` heredoc that
   asserts `old` occurs exactly once before replacing, for surgical edits.
-- The fallback inherits the marker-directory gate's constraint: that gate
+- The fallback inherits `reviewed-path-gate.sh`'s constraint: that gate
   matches on **command text**, so a heredoc whose body merely spells the
   reviewer-owned marker directory is refused regardless of where it writes.
   Author such a document with a placeholder token and substitute the real value
   from its canonical definition, so the invoking command text never spells the
   path. (This is the same move the gate's own refusal text recommends for
-  `git commit -F <file>`.)
+  `git commit -F <file>`.) That rephrasing is sanctioned for that gate only —
+  never for human-decision-gate.sh, which grants nobody, where it is a
+  `self-authorized bypass`. To write a marker body that must quote a
+  `DECISION` path verbatim, use the sanctioned `cat > <marker-path> <<'EOF'`
+  template that gate prints in its refusal, or report and wait.
 - This applies **regardless of how the tools were granted**. A persona that
   lists `Write, Edit` in its own `tools:` frontmatter loses them exactly as a
   persona that receives them through the `memory:` auto-grant does — measured

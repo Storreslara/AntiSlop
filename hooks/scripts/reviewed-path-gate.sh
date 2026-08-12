@@ -58,7 +58,7 @@ if [ -z "$command" ]; then
     # A write whose target cannot be read is not provably outside the marker
     # directory, so it is blocked rather than guessed at - including for the
     # reviewer, whose GRANT has no path to apply to here.
-    echo "BLOCKED: this Write/Edit carries an empty file_path, so the marker-directory gate cannot establish where it writes. Blocked by design (this gate fails closed) - reissue the call with an explicit path." >&2
+    echo "BLOCKED: this Write/Edit carries an empty file_path, so reviewed-path-gate.sh cannot establish where it writes. Blocked by design (this gate fails closed) - reissue the call with an explicit path." >&2
     exit 2
   fi
   # Project-root-relative, the same normalization protected-paths.sh:22-25
@@ -130,5 +130,5 @@ fi
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
     >> "$review_audit"; } 2>/dev/null || true
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>', whose command text then never spells the path; to search the directory, use 'grep -r'." >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>', whose command text then never spells the path; to search the directory, use 'grep -r'. That rephrasing workaround is sanctioned for THIS gate only, which grants the reviewer an identity - it is never for human-decision-gate.sh, which grants no identity at all, and rewording a command so that gate's scan stops seeing the path it protects is a self-authorized bypass. Use the sanctioned marker-write template that gate prints in its own refusal instead." >&2
 exit 2
