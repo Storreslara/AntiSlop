@@ -86,6 +86,31 @@ bash_case "case i rm -rf the whole packet dir (sanctioned deletion path)" allowe
   antislop:reviewer "rm -rf .claude/human-review/u1"
 
 echo
+echo "-- sanctioned marker-write template: allowed (N1-N5) --"
+bash_case "N1 template writes .pass, body quotes the DECISION path" allowed antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<'EOF'
+PASS u1 2026-08-12T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: approved, quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+bash_case "N2 same via >> append" allowed antislop:reviewer \
+  "cat >> .claude/reviewed/u1.pass <<'EOF'
+human: approved, quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+bash_case "N3 body carries \$(), backticks, > and ; as inert data" allowed antislop:reviewer \
+  "cat > .claude/reviewed/u1.pass <<'EOF'
+quoting .claude/human-review/u1/DECISION verbatim:
+\$(id) \`id\` > /tmp/x ; rm -rf /
+EOF"
+bash_case "N4 .fail target" allowed antislop:reviewer \
+  "cat > .claude/reviewed/u1.fail <<'EOF'
+FAIL u1 - see .claude/human-review/u1/DECISION
+EOF"
+bash_case "N5 .directed target" allowed antislop:reviewer \
+  "cat > .claude/reviewed/u1.directed <<'EOF'
+DIRECTED u1 - fix per .claude/human-review/u1/DECISION
+EOF"
+
+echo
 echo "-- every block logs decision-gate-denied, reviewer included --"
 audit_log="$proj/.claude/review-audit.log"
 : > "$audit_log"
