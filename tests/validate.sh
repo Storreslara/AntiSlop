@@ -336,6 +336,15 @@ else
 fi
 
 echo
+echo "== human-decision gate: DECISION unwritable + sanctioned marker-write template (Bash) =="
+if bash tests/human-decision-gate.test.sh; then
+  echo "OK   tests/human-decision-gate.test.sh"
+else
+  echo "FAIL tests/human-decision-gate.test.sh"
+  fail=1
+fi
+
+echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"

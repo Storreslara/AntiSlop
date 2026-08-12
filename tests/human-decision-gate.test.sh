@@ -117,6 +117,18 @@ bash_case "N6 P7 early terminator, second command writes the DECISION path" bloc
 PASS u1 quoting .claude/human-review/u1/DECISION
 EOF
 printf approved > .claude/human-review/u1/DECISION"
+# N6 above is denied by the last-line rule alone (its final line is the second
+# command, not the delimiter), so it does NOT exercise the early-terminator
+# guard. N6b does: the delimiter is repeated at the end so the last line still
+# looks like a terminator, and only "the FIRST line equal to the delimiter must
+# be the last" rejects it. Deleting that guard flips N6b to allowed - verified
+# by mutation, which is the whole reason this case exists.
+bash_case "N6b early terminator WITH a trailing delimiter line (binds the guard)" \
+  blocked antislop:reviewer "cat > .claude/reviewed/u1.pass <<'EOF'
+PASS u1 quoting .claude/human-review/u1/DECISION
+EOF
+printf approved > .claude/human-review/u1/DECISION
+EOF"
 bash_case "N7 template whose target IS the DECISION path" blocked antislop:reviewer \
   "cat > .claude/human-review/u1/DECISION <<'EOF'
 approved

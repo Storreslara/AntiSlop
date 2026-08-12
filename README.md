@@ -286,6 +286,22 @@ has no grant branch at all (not even the reviewer may write `DECISION`), so
 the residual's blast radius is narrower than `reviewed-path-gate.sh`'s, but
 it is not closed here either.
 
+That gate's *opposite* failure — denying writes it should have allowed — **was**
+closed, in 0.31.26. It had refused any command merely quoting the `DECISION`
+path as data, including the protocol-mandated `human:` attestation that must
+quote it verbatim inside a `.claude/reviewed/<task-id>.pass` marker; an agent
+met that block by splitting the path across shell variables rather than
+reporting it, which is the bypass class the gate exists to discourage. The gate
+now recognises one **sanctioned marker-write template** — `cat > <marker-path>
+<<'DELIM'`, single-quoted delimiter, bare-literal target under
+`.claude/reviewed/`, terminator on the last line — and its refusal message
+prints that template. Two smaller false positives stay open deliberately: a
+read is denied if its command text contains any backslash (the shared lexer
+fails closed on backslashes, even inert ones inside single quotes), and so is a
+write to an unrelated file that mentions both tokens in a trailing comment.
+Neither risks the invariant and both have trivial legal rephrasings. See
+`docs/plans/2026-08-12-human-decision-gate-false-positive.md`.
+
 Two more, from the agent-identity namespace-gate fix: an agent identity from an
 unrecognized namespace (e.g. `otherplugin:reviewer`) is matched liberally at
 gate checks, so enforcement doesn't silently stop working, but conservatively
