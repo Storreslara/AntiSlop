@@ -121,6 +121,37 @@ extract the block back out of the finished document and run it verbatim. That
 last step is the only proof that what a dispatched agent will copy is what I
 actually tested.
 
+**Sixth trap - a DELETION check can destroy the very rule it claims to protect
+(2026-08-13, gh348 finalization).** I shipped `C9.7 ADR-0003's hivemind split is
+not violated: spec-master still never runs to-tickets. `grep -c "to-tickets"
+agents/spec-master.md` returns 0.` Both halves are individually sensible and the
+criterion is runnable — but the file's three occurrences are all *correct*
+statements, and one of them IS the prohibition ("You never run `to-tickets` on
+any path (ADR-0003 preserved)"). Satisfying it literally deletes the rule it
+names. Vacuity is not the only failure mode: a criterion can be aggressively
+non-vacuous and still be **backwards**.
+
+**How to apply (deletion vs survival):** when a criterion's prose says a rule
+*survives* but its command says a string is *absent*, they are in conflict —
+always. Ask which the rule's own text looks like. If the persona corpus states
+the rule using the token being greppped, the correct form is a **survival pin**
+(`grep -c '<the rule sentence>'` returns 1, RED-provable by mutation: deleting
+the rule makes it 0), not a deletion check. Reserve `== 0` for tokens that are
+purely the *defect* — an expired date, a superseded phrase, a false claim.
+
+**Seventh trap - `grep -c` on a line-joined file is a BOOLEAN, not a tally
+(same session).** The house line-join idiom `tr '\n' ' ' < f | tr -s ' ' | grep
+-c 'phrase'` collapses the file to ONE line, so it returns 0 or 1 forever. A
+plan recorded baselines of "2" for it; the real joined `grep -c` was 1 and the
+*occurrence* count (`grep -o ... | wc -l`) was 2. The criterion still gated
+correctly (it demands 0, and stays at 1 until every occurrence is gone — which
+is exactly why the join is load-bearing versus a naive line-grep that goes green
+after the first fix), but the recorded baseline was unreachable, so anyone
+re-deriving it would think the criterion was broken. State which command
+produces which number, and use `grep -o | wc -l` whenever the baseline is a
+count rather than a presence.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
-[[verify-deferred-issue-premises]], and
-[[docs-units-need-claim-anchored-criteria]].
+[[verify-deferred-issue-premises]],
+[[docs-units-need-claim-anchored-criteria]], and
+[[project-drift-check-idiom-broken]].
