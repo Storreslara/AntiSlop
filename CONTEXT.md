@@ -452,6 +452,25 @@ normal FAIL routes the defect list to
   as the violation class that detection mechanisms (like A7 hook-block events)
   exist to observe.
 
+**reviewer-dispatch caller allowlist**:
+(unit gh347, 2026-08-13) — the rule that only the main session (the
+  `orchestrator`) may spawn the `reviewer` via the `Agent` tool, enforced in
+  `reviewer-route-gate.sh`. The allowlist admits exactly two caller identities:
+  an empty `agent_type` (the main session with `settings.json`'s `.agent`
+  unset) and `orchestrator` (the same session with it set, which ADAPT always
+  does). Unlike every other gate site in that file, this one deliberately fails
+  **closed** — an unrecognized caller is refused rather than admitted — because
+  the invariant is positive ("only the orchestrator dispatches the reviewer")
+  and a blocklist would have to enumerate every generic identity forever. The
+  closed direction applies only when the dispatch target is `reviewer`.
+  Motivating failure: an `Agent` call omitting `subagent_type` defaults to
+  `general-purpose`, which can never receive an instruction-level rule, and
+  which twice answered the resulting marker-write block by spawning a nested
+  reviewer — the **self-authorized bypass** class. Distinct from the
+  **default-unnamed dispatch rule**, which governs the `name:` parameter rather
+  than the caller, and from the `name:`-mismatch refusal in the same hook.
+  Complements the mechanical half of **The Writer/Reviewer split**.
+
 **Reviewer dispatch opening line**:
 (unit #266, 2026-08-08, enforcement added)
   — Every reviewer dispatch must open with `Unit: <task-id>` as its literal
