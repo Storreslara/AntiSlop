@@ -102,15 +102,15 @@ if persona_matches_gate "$target_type" "reviewer"; then
             blocked_marker="${reviewed_dir}/${unit_id}.blocked"
             if [ -f "$fail_marker" ]; then
               prior=fail
-              prior_mtime="$(stat -L --format=%Y "$fail_marker" 2>/dev/null || echo -)"
+              prior_mtime="$(stat -L -c %Y "$fail_marker" 2>/dev/null || stat -L -f %m "$fail_marker" 2>/dev/null || echo -)"
             elif [ -f "$blocked_marker" ]; then
               prior=blocked
-              prior_mtime="$(stat -L --format=%Y "$blocked_marker" 2>/dev/null || echo -)"
+              prior_mtime="$(stat -L -c %Y "$blocked_marker" 2>/dev/null || stat -L -f %m "$blocked_marker" 2>/dev/null || echo -)"
             fi
             stamp="${project_dir}/.claude/.review-join.${unit_id}"
             printf '%s unit=%s prior=%s prior_mtime=%s\n' \
-              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp"
-            printf 'review-join=%s\n' "$unit_id" >> "$review_audit"
+              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp" || true
+            printf 'review-join=%s\n' "$unit_id" >> "$review_audit" || true
           fi
         fi
         ;;

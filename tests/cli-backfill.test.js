@@ -589,6 +589,18 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       fs.writeFileSync(destAbsPath, stampBody(cleanBody, spec.sourceRelPath));
       config.fileHashes[spec.projectRelPath] = cli.sha256Hex(cleanBody);
     }
+    // Hook scripts are part of a current project too, but carry no stamp —
+    // they're copied verbatim and tracked by content hash (see
+    // buildHookScriptSpecs). Without them the fixture looks like a project
+    // whose entire .claude/hooks/scripts/ was deleted, and every --update
+    // below would be busy recreating it.
+    for (const spec of cli.buildHookScriptSpecs()) {
+      const body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
+      const destAbsPath = path.join(tmp, spec.projectRelPath);
+      fs.mkdirSync(path.dirname(destAbsPath), { recursive: true });
+      fs.writeFileSync(destAbsPath, body);
+      config.fileHashes[spec.projectRelPath] = cli.sha256Hex(body);
+    }
     fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true });
     fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
     return config;

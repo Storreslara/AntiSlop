@@ -437,6 +437,15 @@ else
 fi
 
 echo
+echo "== bin/cli.js --update hook-script propagation (Node) =="
+if node tests/cli-hook-propagation.test.js; then
+  echo "OK   tests/cli-hook-propagation.test.js"
+else
+  echo "FAIL tests/cli-hook-propagation.test.js"
+  fail=1
+fi
+
+echo
 echo "== adapter protocol-port parity vs canonical template (Node) =="
 if node tests/adapter-protocol-parity.test.js; then
   echo "OK   tests/adapter-protocol-parity.test.js"

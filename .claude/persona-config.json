@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.27",
+  "pluginVersion": "0.31.28",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -56,7 +56,21 @@
     ".claude/agents/researcher.md": "e2a38f8a7e2c21c83a6dbfecddccd30f688bab7115300179461b31a41b885987",
     ".claude/persona-protocol.md": "09092641dceb7e778f250d1033ae4f2e39bf271c0eb4c4e51337d054ae18cfb4",
     ".claude/persona-protocol-slim.md": "2bd85126e1fe5ff028737b98fae9f5de639b951ec2478a424a2b9c7d2d9cec5b",
-    ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9"
+    ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
+    ".claude/hooks/scripts/dispatch-hygiene.sh": "1bf68b4f87d059438a74cda7dbeef5bfbaa415fc0cf04441d8e456627ed77d19",
+    ".claude/hooks/scripts/graph-update.sh": "1edd93fe2e4aa7d79dbb1eba3b8c4865e5f309762338518f55b9bf18edd2d174",
+    ".claude/hooks/scripts/lib/agent-identity.sh": "21c457832899bc96225acb13c8c07b359b4bcf45d4cd88f3701b1acf425c577c",
+    ".claude/hooks/scripts/lint-on-edit.sh": "0d06763e1e3ebcd7822b2f9287d49bf293fe9282d1346f9e27c1c9dce3648f6b",
+    ".claude/hooks/scripts/protected-paths.sh": "372a31b0ac543b6c1713f1e19b195b7a59c5e9e25fa620ae1d93abcbca30b69e",
+    ".claude/hooks/scripts/reviewed-path-gate.sh": "3e25692eb5c9ac6f579cf19b9758bbff5740169125898305f8049e353ae7eb45",
+    ".claude/hooks/scripts/reviewer-route-gate.sh": "2468b3c0412649f57efb36df56b040a8fa6808285b0509bc28917818ca409c1f",
+    ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
+    ".claude/hooks/scripts/session-start.sh": "75027910bbe85781dc5c382ed0400347a2ca42d31a59946adeb5c9d68eb0e993",
+    ".claude/hooks/scripts/stop-gate.sh": "412b38d3fdfa71378b9c525ab2611ff32e59c850814bc20904c4a00b36f695cf",
+    ".claude/hooks/scripts/task-gate.sh": "69c7dfa47ffc14368c817ee883ada7138e355ad3ec71a464d4f2601ab645d1e0",
+    ".claude/hooks/scripts/human-decision-gate.sh": "e2657478207ffe90a05af6dde932621197dcb0c0aa2a1d9c0b5add49442063c0",
+    ".claude/hooks/scripts/lib/benign-command.sh": "5b64d3f39e1a06607344ad98ef3331abb83a38d45229f8317e5baebe8e7da18c",
+    ".claude/hooks/scripts/microworld-rerun.sh": "7794ff67cb31c2fe9a53e3f7e6e2e1a783cfc613e66abe40f69b941dfb0cce4e"
   },
   "humanReviewMode": "critical"
 }

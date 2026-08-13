@@ -449,6 +449,29 @@ function copyStampedBody(destAbsPath, body, version, sourceRelPath) {
   fs.writeFileSync(destAbsPath, insertStampAfterFrontmatter(body, versionStamp(version, sourceRelPath)));
 }
 
+// Single write site for the update loop: 'raw' specs (hook scripts) go out
+// verbatim with the packaged file's mode, so a restored gate stays
+// executable; everything else keeps its version stamp.
+function writeSpecBody(spec, destAbsPath, body, version) {
+  if (spec.kind !== 'raw') {
+    copyStampedBody(destAbsPath, body, version, spec.sourceRelPath);
+    return;
+  }
+  mkdirp(path.dirname(destAbsPath));
+  fs.writeFileSync(destAbsPath, body);
+  fs.chmodSync(destAbsPath, fs.statSync(spec.sourceAbsPath).mode & 0o777);
+}
+
+function listFilesRecursive(dir, prefix) {
+  const out = [];
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (entry.isDirectory()) out.push(...listFilesRecursive(path.join(dir, entry.name), rel));
+    else out.push(rel);
+  }
+  return out.sort();
+}
+
 function buildFileSpecs(personaSelection) {
   const selectedOptional = OPTIONAL_PERSONAS.filter((p) => personaSelection.includes(p));
   const specs = [];
@@ -495,6 +518,23 @@ function buildFileSpecs(personaSelection) {
     kind: 'plain',
   });
   return specs;
+}
+
+// Hook scripts, enumerated from the packaged directory at runtime (never a
+// hardcoded list) so a gate added later reaches already-installed projects on
+// their next --update. kind 'raw': copied verbatim — no protocol inlining and
+// no version stamp (an HTML comment is not shell syntax), so they are tracked
+// by content hash alone. Deliberately NOT part of buildFileSpecs(), whose
+// callers treat every spec it returns as a stamped, ADAPT-rendered mirror;
+// runUpdate concatenates the two lists.
+function buildHookScriptSpecs() {
+  const hooksSrcDir = path.join(PKG_ROOT, 'hooks', 'scripts');
+  return listFilesRecursive(hooksSrcDir, '').map((rel) => ({
+    projectRelPath: `.claude/hooks/scripts/${rel}`,
+    sourceAbsPath: path.join(hooksSrcDir, rel),
+    sourceRelPath: `hooks/scripts/${rel}`,
+    kind: 'raw',
+  }));
 }
 
 // Splits the canonical protocol into its leading header comment (which is NOT
@@ -777,6 +817,7 @@ function inlineProtocolBlock(body, tier, name, gatedAgents) {
 
 function renderCleanBody(spec, config) {
   let body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
+  if (spec.kind === 'raw') return body;
   if (spec.kind === 'graph') {
     body = applyMcpPlaceholder(
       body,
@@ -905,7 +946,7 @@ async function runUpdate(args) {
     '.claude/microworld-audit.log',
   ]);
 
-  const specs = buildFileSpecs(personaSelection);
+  const specs = buildFileSpecs(personaSelection).concat(buildHookScriptSpecs());
 
   // Legacy backfill: derive whatever substitutions/fileHashes entries are
   // missing from what's already on disk — deterministic, zero LLM cost. Runs
@@ -913,6 +954,13 @@ async function runUpdate(args) {
   // than being gated behind an existence check, so it also fills gaps left
   // by a prior partial run (e.g. --wire-graph-mcp recorded graphMcpLaunch
   // but the arxiv MCP launch never got backfilled).
+  // Captured BEFORE the backfill adopts them, so the note below can name the
+  // hook scripts whose on-disk content is about to become their own baseline.
+  const unbaselinedHooks = specs
+    .filter((s) => s.kind === 'raw' && !((config.fileHashes || {})[s.projectRelPath]))
+    .map((s) => s.projectRelPath)
+    .filter((rel) => fs.existsSync(path.join(CWD, rel)));
+
   const backfilledSubs = backfillSubstitutionsFromDisk(config, specs);
   const backfilledHashes = backfillFileHashesFromDisk(config, specs);
   const backfilled = backfilledSubs || backfilledHashes;
@@ -923,6 +971,15 @@ async function runUpdate(args) {
         'determined from the files already on disk, continuing at zero LLM cost. If you ' +
         'had hand-edited any persona files before now, diff against git history to confirm ' +
         'nothing was silently treated as "clean baseline" incorrectly by this one-time bootstrap.\n'
+    );
+  }
+  if (unbaselinedHooks.length > 0) {
+    console.log(
+      `Note: ${unbaselinedHooks.length} hook script(s) had no recorded fileHashes baseline, so ` +
+        'this one-time bootstrap adopts their current on-disk content as clean. A hand-edit made ' +
+        'to any of them BEFORE this version is therefore refreshed to the packaged version ' +
+        'without a divergence prompt (there is no earlier hash to compare against). Affected: ' +
+        `${unbaselinedHooks.join(', ')}\n`
     );
   }
 
@@ -968,6 +1025,26 @@ async function runUpdate(args) {
     );
   }
 
+  // Registration backfill: a project adapted before a hook existed never got
+  // its hooks.json entry, so the script would sit inert even once the file
+  // above lands. Adds only what's missing (mergeNestedHooksJson dedupes by
+  // matcher then by entry). Skipped entirely when the marketplace plugin is
+  // enabled — it already provides every registration via ${CLAUDE_PLUGIN_ROOT},
+  // and merging on top is the "Ran 2 stop hooks" double-fire (issue #76).
+  if (settings && !pluginState.enabled) {
+    const merged = mergeNestedHooksJson(JSON.parse(JSON.stringify(settings)), readStandaloneHooksConfig());
+    if (JSON.stringify(merged.hooks) !== JSON.stringify(settings.hooks)) {
+      fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n');
+      const added = findStandaloneHookRegistrations(merged).length - standaloneHooks.length;
+      settings = merged;
+      console.log(
+        `  .claude/settings.json: added ${added} missing antislop hook registration(s) — a hook ` +
+          'script that ships with this version but was never registered by the original install ' +
+          'would otherwise sit on disk and never fire.'
+      );
+    }
+  }
+
   // Forces the render/diff loop to run even when nothing else above tripped
   // it — the version-match fast-path otherwise means a plain --update can
   // never detect per-file drift (hand-edits, corruption) once pluginVersion
@@ -994,6 +1071,15 @@ async function runUpdate(args) {
     try {
       body = fs.readFileSync(destAbsPath, 'utf8');
     } catch (_) {
+      continue;
+    }
+    // Hook scripts carry no stamp, so content drift against the packaged
+    // source is the only signal that a patched gate has yet to land.
+    if (spec.kind === 'raw') {
+      if (body !== fs.readFileSync(spec.sourceAbsPath, 'utf8')) {
+        needsRender = true;
+        break;
+      }
       continue;
     }
     if (stampVersionOf(body) !== version) {
@@ -1032,7 +1118,7 @@ async function runUpdate(args) {
     const relKey = spec.projectRelPath;
 
     if (!fs.existsSync(destAbsPath)) {
-      copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+      writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
       summary.push(`  ${relKey}: created`);
       continue;
@@ -1045,7 +1131,7 @@ async function runUpdate(args) {
 
     if (noLocalEdits && cleanHash === recordedHash) {
       const currentStampVersion = stampVersionOf(currentBody);
-      if (currentStampVersion !== version) {
+      if (spec.kind !== 'raw' && currentStampVersion !== version) {
         copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
         newFileHashes[relKey] = cleanHash;
         summary.push(
@@ -1058,14 +1144,14 @@ async function runUpdate(args) {
     }
 
     if (noLocalEdits) {
-      copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+      writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
       summary.push(`  ${relKey}: updated (no local edits detected)`);
       continue;
     }
 
     if (acceptAll || acceptList.includes(relKey)) {
-      copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+      writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
       summary.push(`  ${relKey}: overwritten (--accept)`);
     } else if (keepAll || keepList.includes(relKey)) {
@@ -1524,6 +1610,13 @@ function detectMarketplacePlugin(target, cwd, homeDir) {
 // (bin/cli.js scaffold: ${CLAUDE_PLUGIN_ROOT}/hooks/scripts -> this). Already
 // the test harness's HOOK_MARKER (tests/cli-backfill.test.js:355).
 const STANDALONE_HOOK_PATH_MARKER = '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts/';
+
+// The packaged hooks.json with plugin-root paths rewritten to the standalone
+// location — the exact registration set a non-plugin project should carry.
+function readStandaloneHooksConfig() {
+  const raw = fs.readFileSync(path.join(PKG_ROOT, 'hooks', 'hooks.json'), 'utf8');
+  return JSON.parse(raw.replace(/\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/scripts/g, '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts'));
+}
 
 // Returns an array describing every standalone antislop hook registration
 // found in settings.hooks, e.g. [{ event, matcher, script }]. Pure,
@@ -2011,10 +2104,7 @@ async function main() {
   copyDirRecursive(path.join(PKG_ROOT, 'skills', 'coding-discipline'), path.join(skillsDir, 'coding-discipline'));
   console.log('  skills/install-antislop, skills/coding-discipline -> .claude/skills/ (invoke /install-antislop next)');
 
-  const rawHooksJson = fs.readFileSync(path.join(PKG_ROOT, 'hooks', 'hooks.json'), 'utf8');
-  const hooksConfig = JSON.parse(
-    rawHooksJson.replace(/\$\{CLAUDE_PLUGIN_ROOT\}\/hooks\/scripts/g, '${CLAUDE_PROJECT_DIR}/.claude/hooks/scripts')
-  );
+  const hooksConfig = readStandaloneHooksConfig();
 
   const settingsFragment = JSON.parse(
     fs.readFileSync(path.join(PKG_ROOT, 'templates', 'settings-fragment.json'), 'utf8')
@@ -2186,6 +2276,7 @@ module.exports = {
   applyMcpPlaceholder,
   applyArxivFallback,
   buildFileSpecs,
+  buildHookScriptSpecs,
   renderCleanBody,
   protocolTierFor,
   selectProtocolSections,
