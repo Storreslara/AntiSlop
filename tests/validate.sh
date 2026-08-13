@@ -255,6 +255,18 @@ for f in adapters/cursor/hooks/scripts/lib/agent-identity.sh \
 done
 
 echo
+echo "== this repo's hook-script mirror is at parity with hooks/scripts/ =="
+# Since 0.31.28 `--update` manages `.claude/hooks/scripts/**` as content-hash-
+# tracked files. A mirror that drifts freezes this repo's own gates at an old
+# version, which is exactly the defect that made the standalone gap invisible.
+if diff -rq hooks/scripts .claude/hooks/scripts; then
+  echo "OK   .claude/hooks/scripts is byte-identical to hooks/scripts"
+else
+  echo "FAIL .claude/hooks/scripts diverged from hooks/scripts (run \`node bin/cli.js --update\`)"
+  fail=1
+fi
+
+echo
 echo "== agent-identity library: identity_drift_log behaviour (Bash) =="
 if bash tests/agent-identity-lib.test.sh; then
   echo "OK   tests/agent-identity-lib.test.sh"
