@@ -60,6 +60,16 @@ the same mechanism from the other direction.
   (2026-08-13). Note F2's message names neither the mirror nor the file — it
   reads as an unrelated broken test, which is why the direct check earns its
   place.
+- **Editing ANY `hooks/scripts/*.sh` now forces `node bin/cli.js --update` in
+  the same unit** — since gh346-2 (commit `b59d14e`) `validate.sh` runs
+  `diff -rq hooks/scripts .claude/hooks/scripts` and goes RED on a source-only
+  edit. The run is tightly scoped (one byte-copied mirror file + one
+  `fileHashes` line in `.claude/persona-config.json`), not the 13-file stamp
+  churn. Consequence for plans: any spec drafted before 0.31.28 whose scope
+  line says "`.claude/hooks/**` is out of scope / already drifted" rests on a
+  premise gh346 removed — the mirror is now gated at parity. Do it, and flag
+  it in the review packet as a stale-premise deviation. Hit on gh347-1
+  (2026-08-13).
 - The code-review-graph's post-commit "Untested: <fn>" line is a **false
   negative** for bash hooks: it cannot see coverage that runs the script as a
   subprocess from a `.test.sh`. Do not treat it as a real test gap.
