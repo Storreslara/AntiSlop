@@ -49,6 +49,17 @@ the same mechanism from the other direction.
   and concat it in `runUpdate`, and teach `buildBaselineProject` to write the
   new class too, or its fixtures look like a project with that directory
   deleted.
+- **Mutation-proofing a `.claude/hooks/scripts/` check is confounded by F2.**
+  Any *deletion or edit* of a mirror file also trips `cli-backfill.test.js`'s
+  two F2 cases (they copy the tree into a fixture, run `--update`, assert
+  clean — and `--update` repairs the mutation, dirtying it). So a delete/
+  restore proof can never show your check failing *alone*. For an isolated
+  proof, add an **orphan** file to `.claude/hooks/scripts/` with no
+  counterpart in `hooks/scripts/`: `--update` has no reason to delete it, so
+  F2 stays green while `diff -rq` reports "Only in". Measured on gh346-2
+  (2026-08-13). Note F2's message names neither the mirror nor the file — it
+  reads as an unrelated broken test, which is why the direct check earns its
+  place.
 - The code-review-graph's post-commit "Untested: <fn>" line is a **false
   negative** for bash hooks: it cannot see coverage that runs the script as a
   subprocess from a `.test.sh`. Do not treat it as a real test gap.
