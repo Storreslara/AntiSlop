@@ -1,6 +1,8 @@
 # spec-master memory index
 
-- [enabledPlugins format uncertainty](project_enabledplugins_format_uncertainty.md) — docs say array, shipped #66-71 guard assumes object-of-booleans; verify before building further on the object form.
+- [enabledPlugins format RESOLVED](project_enabledplugins_format_uncertainty.md) — object-of-booleans confirmed on disk 2026-08-11; the #66-71 guard is correct, docs' array form is wrong/stale.
+- [Drift-check idiom is broken](project_drift_check_idiom_broken.md) — `--update --check | grep -qE ': (updated|created|pending)$'` detects nothing; never copy it into a new criterion.
+- [cli.js --update flag surface spec (#335)](project_cli_update_flag_surface_spec.md) — settled #289/#291 decisions, 11 write sites, and the open question gating unit 2.
 - [--update dedupe-hooks spec (#74)](project_update_dedupe_hooks_spec.md) — extends #66-73 guard to --update; warn-only default + opt-in --dedupe-hooks, claude-only, no new marker.
 - [No forced changes](feedback_no_forced_changes.md) — "no change warranted" is a valid finalized answer; ground any change in a grep-verifiable gap, never manufacture a diff.
 - [to-spec flag state changed](project_to_spec_slash_only.md) — was slash-only; unit #252 un-flagged it 2026-08-06. Check your live skills list before assuming either state.
@@ -14,7 +16,7 @@
 - [Deferred issues decay](feedback_verify_deferred_issue_premises.md) — re-verify a deferred issue's premises against the tree; #185 had two stale ones, mooting a whole item.
 - [Don't gate a source edit apart from its shipped copy](feedback_dont_slice_units_across_a_parity_test.md) — validate.sh asserts the shipped copies; merge the pair, and sweep ALL such pairs, not just the one that escalated.
 - [maxTurns-cutoff spec (#123)](project_maxturns_cutoff_spec.md) — settled decisions + two-tier protocol fan-out finding; recovered 2026-08-08 from a lost stash, verified shipped intact.
-- [Claude transcript store](reference_claude_transcript_store.md) — agent dispatches/tools/skills are ALREADY on disk under ~/.claude/projects/; check before speccing new hook instrumentation.
+- [Claude transcript store](reference_claude_transcript_store.md) — agent activity is ALREADY on disk under ~/.claude/projects/; also: hook payloads carry caller `agent_type` but NOT spawnDepth/parentAgentId.
 - [Goal prose vs step table drift](feedback_goal_prose_vs_step_table_drift.md) — map every Goal clause to a step criterion; unmapped clauses ship silently, reviewers cannot see them.
 - [Heavy trigger is in ADR-0004, not the protocol](project_heavy_trigger_not_in_protocol.md) — the 2026-07-28 plan says otherwise and ships an unsatisfiable grep; fix #133 before dispatch.
 - [Measure unread files in a debug spec](technique_debug_spec_measure_unread_files.md) — count per-round tool calls naming the file the false claim is about; zero = retrieval gap, not capacity gap.

@@ -9,3 +9,4 @@
 - [Split unit across persona scopes](feedback_split_unit_across_persona_scopes.md) — when a unit's files span scribe + lead-programmer write scopes, write two dispatch prompts under one shared unit id, don't escalate a spec gap.
 - [Area-wide FAIL evidence for model tag](feedback_area_wide_fail_evidence_for_model_tag.md) — a plan-wide "no haiku" directive from spec-master is legitimate if spot-verified against sibling units' FAIL history and file overlap, not on faith.
 - [Recheck baseline counts live](feedback_recheck_baseline_counts_live.md) — a spec's stated grep/count baseline can be off; re-run the literal command live before dispatch and fold any real gap into Affected files.
+- [Gate unit on open question](feedback_gate_unit_on_open_question.md) — no ready-for-agent label + DO-NOT-DISPATCH banner + full contract underneath, when a step is gated on an unanswered spec Open Question.

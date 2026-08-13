@@ -14,7 +14,10 @@ subagent tool calls):
   carries `subagent_type`, `description`, and optionally `model`, `name`,
   `isolation`.
 - `~/.claude/projects/<project-slug>/<session-id>/subagents/agent-<id>.meta.json`
-  — `{agentType, description, toolUseId, spawnDepth, model}`.
+  — `{agentType, description, toolUseId, spawnDepth, model}`, **plus
+  `parentAgentId` whenever `spawnDepth >= 1`** (measured 2026-08-12 on a real
+  nested spawn: `{"agentType":"reviewer",...,"parentAgentId":"a69bee...","spawnDepth":2}`).
+  This pair is what makes a nested spawn reconstructable after the fact.
 - `~/.claude/projects/<project-slug>/<session-id>/subagents/agent-<id>.jsonl`
   — every `tool_use` that subagent made. Skill invocations appear as
   `name: "Skill"` with `input: {"skill":"antislop:tdd"}`.
@@ -44,6 +47,21 @@ theoretical):
 2. Dispatched-model != declared-model is **normal**, not an anomaly: 195 of
    636, because `task-master` assigns per-unit model tags. Report it as a
    distribution.
+
+**Do not confuse this store with the hook payload** (measured 2026-08-12,
+spec #347). A `PreToolUse:Agent` hook receives a *different, smaller* shape:
+top-level `agent_type` (the CALLER's identity) plus `tool_input.subagent_type`
+/ `.name` / `.prompt` (the spawn target). It carries **no `spawnDepth` and no
+`parentAgentId`** — those live only in the `meta.json` above, i.e. they are
+available for post-hoc audit (`scripts/agent-audit.sh` finding A3) but never
+for prevention at dispatch time. So when speccing a gate meant to stop a
+nested or wrongly-typed spawn, key it on the caller's `agent_type`, which is
+already parsed by `reviewer-route-gate.sh` and `reviewed-path-gate.sh`; a spec
+that proposes checking `spawnDepth` in a hook is proposing a field that is not
+there. Related measured fact: `agent_type` is **empty exactly when**
+`settings.json`'s `.agent` is unset, and antislop's ADAPT always sets
+`"agent": "orchestrator"` — so `{empty, orchestrator}` is the complete
+main-session identity set across all shipped configurations.
 
 Caveat: the format is undocumented and records carry a `version` field, so any
 tool reading it needs a format probe that distinguishes "no data" from

@@ -1,8 +1,34 @@
 ---
 name: enabledplugins-format-uncertainty
-description: Open uncertainty — Claude Code docs show enabledPlugins as an array, but antislop's shipped marketplace guard assumes an object-of-booleans. Affects the #66-71 hook-coexistence guard's real-world correctness.
+description: RESOLVED 2026-08-11 — enabledPlugins really is an object-of-booleans on disk, matching antislop's shipped guard. Docs showing an array were wrong/stale.
 metadata:
   type: project
+---
+
+## RESOLVED 2026-08-11 — object form confirmed, guard is correct
+
+Measured directly: `~/.homedir/.claude/settings.json` (the real user-scope
+file, with the plugin enabled) contains
+
+    "enabledPlugins": {"antislop@antislop-marketplace": true}
+
+— a Python `dict`, i.e. the **object-of-booleans** form. That is exactly what
+`detectMarketplacePlugin` looks up (`bin/cli.js:1511-1513`, re-verified the
+same day: `hasOwnProperty(MARKETPLACE_PLUGIN_KEY)`, then `val === true` /
+`val === false`). The #66–71 guard is therefore **not** a no-op and needs no
+rework; the feared larger rework is off the table.
+
+The doc-vs-reality discrepancy below was real but resolves in favour of the
+shipped code — treat `code.claude.com/docs/en/settings.md`'s array rendering
+as wrong or stale for this key, not as a spec to migrate toward.
+
+**How to apply now:** the object form is safe to build on. A temp-project
+fixture that needs to simulate "marketplace plugin enabled" writes
+`{"enabledPlugins": {"antislop@antislop-marketplace": true}}` into the
+project's `.claude/settings.local.json` (highest-precedence scope).
+
+The original open question is kept below for provenance.
+
 ---
 
 The antislop standalone installer's `detectMarketplacePlugin` (bin/cli.js) and

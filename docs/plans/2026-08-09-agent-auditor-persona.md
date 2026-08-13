@@ -1908,3 +1908,615 @@ different model rationales - each labelled `ready-for-agent` +
 `plan/2026-08-09-agent-auditor-persona` per this plan's Handoff retrieval
 contract, with Step 9 sequenced first. Both are `lead-programmer` -> `reviewer`
 like any other step. Neither may be tagged `haiku`.
+
+---
+
+## Convergence follow-ups, round 3 - 2026-08-11 (accuracy and calibration)
+
+Closes `milestone-auditor` findings #5, #6 and #7 from the post-Step-7 audit,
+filed as issues **#293** (A2/A3 uncalibrated), **#294** (Step 1 criterion 2
+asserts a live-corpus bound), and **#295** sub-items 1-4 (four concrete
+accuracy defects). Append-only: Steps 1-10 above are unchanged and
+un-renumbered.
+
+### Goal
+
+Make the auditor's own reports and its own plan document *accurate*: every
+anomaly count means what the persona doc says it means, every stated bound is
+reproducible, and the plan's description of the shipped formula matches the
+shipped formula.
+
+### Context - what was re-verified on 2026-08-11, and what had drifted
+
+Every finding below was re-measured against the live tree at commit `33c4960`,
+not taken from the issue text. Three had drifted materially since filing.
+
+| # | Finding as filed | State on 2026-08-11 |
+|---|---|---|
+| 293-A2 | 23 findings, all false positives | **45** findings, still 100% false positive |
+| 293-A3 | 62 findings, 53 `explorer` | **89** findings, **79** `explorer` |
+| 294 | `A1 <= 5` has zero headroom | **already RED - A1 = 6.** The predicted break has happened |
+| 295-1 | plan documents 2 union terms, code has 3 | confirmed; code correct, doc wrong |
+| 295-2 | 4 of 5 A1 hits are `is_error=true` | **5 of 6**; the 6th (`ToolSearch`) genuinely executed |
+| 295-3 | `MARKER_DIR`/`AGENT_AUDIT_ROOT` undocumented | **half-stale**: `AGENT_AUDIT_ROOT` *is* documented at `:429`; `MARKER_DIR` appears nowhere in this plan |
+| 295-4 | `--format-probe` labelled "debugging" | **ALREADY CLOSED by Step 10** (`22f5bb2`). No work remains |
+
+Five measurements below are load-bearing and were not available when the
+issues were filed:
+
+1. **`spawnDepth` never exceeds 2 anywhere in the corpus** (99 dispatches at
+   depth 0, 677 at depth 1, 102 at depth 2). Issue #293's suggestion to
+   "require a higher depth" would make A3 **identically zero** - a vacuous
+   check. Depth is not a usable dial; the dispatched persona is.
+2. **A2's false positives partition perfectly on a field the script already
+   reads.** Every unresolvable dispatch is either a Claude Code built-in
+   (`general-purpose` x18, `claude-code-guide` x4 - `taskKind` absent) or an
+   agent-teams named teammate (28 of them - `taskKind ==
+   "in_process_teammate"`). **Residual genuinely-unregistered personas: zero.**
+   No alias table and no maintained built-in name list is required.
+3. **`customAgentType` cannot be relied on to map a teammate back to its
+   persona.** Only 103 of 878 `meta.json` records carry it at all; `lp-238`
+   has `"lead-programmer"` but `lp-gh309` has `null`. Issue #293's "map a
+   named-teammate spawn back to its underlying persona" is therefore **not
+   implementable as stated** - the datum is absent. Sub-classification (below)
+   is what is achievable.
+4. **Excluding `is_error=true` from A1 would break this plan's own Step 1
+   criterion 3 and delete R3's own headline finding.** Of the 6 current A1
+   hits, 5 are refusals: 3x `explorer`/`bash` and 2x `reviewer`/`Write`
+   (`"No such tool available"`). The 3 lowercase-`bash` hits are precisely
+   what R3 (`:267-268`) calls "the one genuinely interesting residual hit" and
+   what criterion 3 asserts at `>= 1`. Excluding refusals drops A1 to 1 and
+   turns criterion 3 RED. **This decides #295 sub-item 2 by evidence:
+   label, never exclude.**
+5. **`tests/validate.sh` was RED on the committed tree** (exit 1) at `33c4960` -
+   see the blocker below. **Superseded 2026-08-12: the gate is GREEN again**
+   (exit 0, zero `^FAIL` lines) at `ba1ad48`; see the blocker section.
+
+### Blocker - the merge gate was RED, for an unrelated reason (CLOSED 2026-08-12)
+
+> **Status as of 2026-08-12 (pre-dispatch audit): CLOSED by commit `f2654dc`
+> (`fix(gh340)`), out-of-band, before this round was dispatched.** That commit
+> made exactly the call described below - bump first (`0.31.24` -> `0.31.25`),
+> then `node bin/cli.js --update --check` to re-render the mirror under the new
+> stamp, with `agents/agent-auditor.md` itself untouched. Re-measured at
+> `ba1ad48`: `bash tests/validate.sh` exits **0** with zero `^FAIL` lines, and
+> both mirror paragraphs are present. **Step 11 therefore has no work left**;
+> it is retained, un-renumbered, as a closed record - see its own status note.
+> The analysis below is preserved as the diagnosis of record.
+
+`bash tests/validate.sh` exited **1** at `33c4960`. The failing check was
+`tests/cli-backfill.test.js`'s F2 regression:
+
+    FAIL F2 regression: shape B (mirror locally edited+committed) ...
+    got:  M .claude/agents/agent-auditor.md
+
+Cause: commit `c6ac6e9` (`docs(gh290)`) edited `agents/agent-auditor.md` and
+committed **neither** the regenerated `.claude/agents/agent-auditor.md` mirror
+**nor** a version bump - a constitution principle 3 violation, and exactly the
+"Source-artifact + render-step gating rule" `CONTEXT.md` records. Because the
+mirror's stamp still equalled `plugin.json`'s version, a plain `--update` took
+the fast path and reported "already current"; only `--update --check` forced
+the render (`bin/cli.js:975`, `:1005`).
+
+This was **pre-existing and not caused by this round**, but every acceptance
+criterion in this repo asserts `tests/validate.sh` exits 0, so no unit here
+could pass until it was cleared. It was scoped as Step 11, sequenced first -
+the same call R9 made for the Step 0 resync, and for the same three reasons
+(hard blocker, own commit so it never contaminates a feature diff, in-spec so
+it is tracked). It was then cleared out-of-band by `f2654dc` before dispatch,
+which is Open Question 4's "land it out-of-band first" alternative resolving
+itself by event.
+
+### Explicitly out of scope
+
+**Issue #295's systemic recommendation is deferred and NOT addressed here.**
+That issue's "why this matters beyond the individual items" section proposes a
+lighter-weight channel for a reviewer's advisory notes on a *PASSing* review to
+reach `spec-master`. This round fixes the four concrete artifacts those lost
+notes describe; it builds **no** routing mechanism, adds **no** hook, and
+changes **no** persona's reporting duty. Nobody should read this round as
+having closed #295's systemic half - it remains open, alongside the already
+queued claim-anchored-criteria follow-up (gh260 / gh-286-docs / gh138).
+
+Also out of scope: A4, A5 and A6 calibration (unbounded, but not named by
+#293); `--sessions=N` validation ordering and A6's substring matching
+(`gh-281-detection` notes 7 and 8, both marked cosmetic); and any change to
+R5 privacy behaviour.
+
+### Clarifications
+
+1. Functional scope & success criteria: Partial
+2. Domain entities / data model: Partial
+3. User interaction flow: Clear
+4. Non-functional attributes (perf, security, scale): Partial
+5. External dependencies & integrations: Partial
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Clear
+9. Completion / acceptance signals: Missing
+
+- 2026-08-11 Functional scope & success criteria: Q What is A3's recalibrated
+  bar, given #293 suggests "a higher depth"? → A (self-resolved): not depth -
+  measurement shows depth caps at 2 corpus-wide, so any threshold raise is
+  vacuous. Recalibrate on the dispatched persona instead; carried to Open
+  Question 1 for the exact exclusion set.
+- 2026-08-11 Domain entities / data model: Q Which `meta.json` field maps a
+  named teammate (`lp-246`) back to its persona? → A (self-resolved): none
+  reliably - `customAgentType` is present on only 103 of 878 records. Use
+  `taskKind == "in_process_teammate"` to sub-classify rather than to resolve.
+- 2026-08-11 Non-functional attributes: Q Does joining `tool_result.is_error`
+  back to `tool_use` regress `--all` runtime? → A (self-resolved): baseline
+  measured 2026-08-11 at **28.73 s / 9.4 MB peak RSS** over 836 transcripts
+  (346 MB). Pinned as a Step 12 guard; **re-measure at execution time rather
+  than trusting this number** - the corpus grows every session.
+- 2026-08-11 External dependencies & integrations: Q Can this round's units
+  assume a green merge gate? → A (self-resolved): no - `tests/validate.sh` is
+  RED at `33c4960` from unrelated gh290 mirror drift. Pinned as Step 11,
+  sequenced first. **Updated 2026-08-12: yes, they now can** - `f2654dc`
+  cleared it out-of-band; re-measured GREEN at `ba1ad48`, and Step 11 is closed.
+- 2026-08-11 Edge cases / failure handling: Q For A1's refused calls, exclude
+  or label? → A (self-resolved): **label**. Excluding breaks this plan's own
+  Step 1 criterion 3 and deletes R3's named headline hit (measurement 4 above).
+- 2026-08-11 Technical constraints & tradeoffs: Q May the persona source doc
+  and its shipped mirror be separate units? → A (self-resolved): no - the
+  "Source-artifact + render-step gating rule" (`CONTEXT.md`) and this round's
+  own blocker both forbid it. Always one unit.
+- 2026-08-11 Completion / acceptance signals: Q What replaces a live-corpus
+  bound as a completion signal? → A: a fixture-pinned corpus of known size, per
+  #294; scope of the repointing carried to Open Question 3.
+
+### Constitution check (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied - all seven findings re-measured live;
+  three had drifted, one (295-4) is already closed and is dropped rather than
+  re-specified.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied -
+  Step 11 regenerates the mirror via `bin/cli.js --update --check`, never by
+  hand-editing `.claude/agents/agent-auditor.md`.
+- P3 "Version-stamp discipline": satisfied - Steps 11 and 15 each touch a
+  version-stamped file and each carries its own bump + CHANGELOG entry.
+  (Step 11's bump landed as `f2654dc`; Step 15's remains to be made.)
+- P4 "Optional personas degrade gracefully": satisfied - no shared prose
+  changes; `agent-auditor` prose is confined to its own file.
+- P5 "`tests/validate.sh` is the merge gate": satisfied. It was RED when this
+  round was drafted (see Blocker) and Step 11 was scoped to clear it;
+  `f2654dc` did so out-of-band, and it is **GREEN at `ba1ad48`**. Every
+  remaining step still asserts it exits 0.
+
+### Step 11 - clear the pre-existing merge-gate RED (mechanical, no judgment)
+
+**Affected files**: `.claude/agents/agent-auditor.md` (regenerated, never
+hand-edited), `.claude/persona-config.json`, `.claude-plugin/plugin.json`,
+`package.json`, `CHANGELOG.md`, plus any other file `--update --check`
+rewrites. **No content decisions** - `agents/agent-auditor.md` is NOT edited
+by this step.
+
+Ordered: bump the version first, then regenerate, so the mirror lands with the
+new stamp in one commit.
+
+**Acceptance criteria** (clean checkout):
+
+1. The gate is green, which is the whole point. Confirmed **RED** today:
+
+        bash tests/validate.sh   # exit 0, and zero '^FAIL' lines
+
+2. The mirror agrees with its source on the two paragraphs gh290 changed.
+   Confirmed **RED** today (mirror lacks both):
+
+        grep -q 'benign classes' .claude/agents/agent-auditor.md
+        grep -q 'full per-persona model-dispatch distribution' .claude/agents/agent-auditor.md
+
+3. The tree is clean afterwards, and stays clean under a re-run - this is the
+   F2 lesson from round 2 (`--update --check` **writes**; assert the exit code
+   *and* the tree):
+
+        node bin/cli.js --update --check >/dev/null 2>&1; test "$?" -eq 0
+        test -z "$(git status --porcelain -uno)"
+
+4. P3 discipline. Read the pre-edit version at execution time; do not assume
+   today's measured `0.31.24`:
+
+        pj=$(jq -r .version .claude-plugin/plugin.json)
+        test "$pj" = "$(jq -r .version package.json)"   # and strictly greater than pre-edit
+        head -40 CHANGELOG.md | grep -q "$pj"
+
+5. Scope: no behaviour file is touched.
+
+        git diff --name-only <base>..HEAD | grep -qE '^(scripts/agent-audit\.sh|tests/agent-auditor\.test\.sh|agents/)' && exit 1
+
+**Model note**: mechanical, but `bin/cli.js`-adjacent and R2 names 12 prior
+FAILs on that surface. **Not `haiku`.**
+
+### Step 12 - A1 distinguishes a refused tool call from an executed one
+
+**Affected files**: `scripts/agent-audit.sh`, `tests/agent-auditor.test.sh`.
+
+Closes #295 sub-item 2. **Label, never exclude** (Context measurement 4).
+
+A1's emitter currently reads only `tool_use` records. A `tool_result` carrying
+`is_error` lives in a *later* record of the same transcript, joined by
+`tool_use.id` == `tool_result.tool_use_id`; both sit under `.message.content[]`.
+Intent, as pseudo-code - the implementer picks the actual form:
+
+    # build id -> is_error from the tool_result records, then tag each tool_use
+    $err[.id] // false   ->  emitted as a new "status" field on the A1 finding
+
+Each A1 finding gains a status of `executed` or `refused`; the plain-text A1
+section prints a split count. R5 is unchanged: `is_error` is a boolean and
+`tool_use_id` is an identifier - **no `tool_result` body text may reach
+stdout**, since a refusal message can quote a file path or command.
+
+**Acceptance criteria** (clean checkout):
+
+1. Both statuses are emitted, proven against a fixture (not the live corpus):
+   the suite gains an `A1_refused` and an `A1_executed` fixture pair, and
+
+        for s in refused executed; do
+          grep -q "A1_${s}" tests/agent-auditor.test.sh || exit 1
+        done
+
+2. The JSON finding carries the status, and both values occur, against the
+   fixture root:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq -e '[.findings[]|select(.id=="A1")|.status]|(index("refused") and index("executed"))'
+
+3. The plain-text render states the split rather than one opaque total:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all \
+          | grep -qE '^A1 .*refused'
+
+4. **Non-vacuous by mutation**, following the existing pattern at
+   `tests/agent-auditor.test.sh:255`: in a `MUTANT_DIR` copy whose A1 branch
+   hard-codes `status` to `executed`, `bash tests/agent-auditor.test.sh` exits
+   **non-zero**.
+5. **R5 guard**: a fixture whose `tool_result.content` carries the sentinel
+   `CANARY-ERROR-BODY` must not leak it:
+
+        ! AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all | grep -q CANARY-ERROR-BODY
+        ! AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json | grep -q CANARY-ERROR-BODY
+
+6. **Runtime guard.** Baseline measured 2026-08-11: 28.73 s wall, 9.4 MB peak
+   RSS, 836 transcripts. **Re-measure the pre-change baseline at execution
+   time** (the corpus grows every session; this number is a reference, not a
+   constant), then show `--all` is within 1.5x of *that* freshly-measured
+   baseline. Rationale: a naive whole-file `jq -s` slurp per transcript is the
+   obvious implementation and the one most likely to regress here.
+7. `bash -n scripts/agent-audit.sh` exits 0; `bash tests/agent-auditor.test.sh`
+   exits 0; `bash tests/validate.sh` exits 0.
+
+**Model note**: not `haiku` - the join is where a plausible-looking wrong
+implementation (matching on array position rather than id) passes a weak test.
+
+### Step 13 - A2 and A3 recalibration
+
+**Affected files**: `scripts/agent-audit.sh`, `tests/agent-auditor.test.sh`.
+**Depends on Step 12** (same two files; sequence after it).
+
+Closes #293. Both checks currently fire at 100% and ~89% false-positive rates
+respectively, which is what makes them unreadable.
+
+**A2** sub-classifies rather than resolves (Context measurement 3 - the
+persona datum is simply absent from most records). Three classes, decided by
+data the script already has in `$DISPATCHES`:
+
+| Class | Test | Meaning |
+|---|---|---|
+| `teammate-name` | unresolvable **and** `taskKind == "in_process_teammate"` | an agent-teams spawn name, never a persona name |
+| `foreign-type` | unresolvable, not a teammate | a Claude Code built-in or other non-AntiSlop type; cannot have a source file by construction |
+| *(residual)* | unresolvable, neither of the above | a genuinely unregistered persona - the only real signal |
+
+**A3** excludes the one nested pattern the shared persona protocol explicitly
+prescribes - a nested `explorer` dispatch ("Structural questions go to the
+explorer": every persona is *instructed* to do this). 79 of the 89 current
+hits are exactly that. The suppression must be **visible**, not silent: the
+A3 section prints the suppressed count alongside the residual. Depth is
+deliberately **not** touched - see Context measurement 1.
+
+The residual A3 is then a genuinely useful signal rather than noise: a nested
+`reviewer` dispatch (1 in the corpus today) is a candidate **review-ownership
+violation**, since the protocol states only the orchestrator routes to the
+reviewer.
+
+**A fixture trap, stated so it is not rediscovered by trial**: the existing
+`A3_bad` fixture (`tests/agent-auditor.test.sh:67`) is an **`explorer` at
+`spawnDepth: 2`** - under this step it becomes a *good* fixture. `A3_bad` must
+be re-based onto a non-`explorer` persona, and a new fixture must assert the
+explorer case is suppressed. A step that edits the script without re-basing
+this fixture will fail its own suite.
+
+**Acceptance criteria** (clean checkout; all counts against `$FIXTURE_ROOT`,
+never the live corpus):
+
+1. A2 findings carry a class, and the fixture exercises all three:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq -e '[.findings[]|select(.id=="A2")|.class]|(index("teammate-name") and index("foreign-type"))'
+
+2. **A2 gains a real bound**: against a fixture holding one genuinely
+   unregistered persona plus one of each benign class, the residual is exactly
+   1 - proving both that benign classes are classified and that a real one is
+   still caught:
+
+        test "$(AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq '[.findings[]|select(.id=="A2" and (.class|not))]|length')" -eq 1
+
+3. A3 suppresses nested `explorer` and keeps the rest:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq -e '[.findings[]|select(.id=="A3")|.persona]|(index("explorer")|not)'
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all --json \
+          | jq -e '[.findings[]|select(.id=="A3")]|length >= 1'
+
+4. The A3 suppression is visible in the plain-text render, not silent:
+
+        AGENT_AUDIT_ROOT=$FIXTURE_ROOT bash scripts/agent-audit.sh --all \
+          | grep -qE '^A3 .*suppressed'
+
+5. Fixtures re-based, both directions present:
+
+        grep -q 'A3_sanctioned' tests/agent-auditor.test.sh
+        sed -n '/A3_bad/,/^$/p' tests/agent-auditor.test.sh | grep -q '"agentType":"explorer"' && exit 1
+
+6. **Non-vacuous by mutation**: in a `MUTANT_DIR` copy whose A3 branch drops
+   the explorer exclusion, `bash tests/agent-auditor.test.sh` exits non-zero;
+   likewise for a copy whose A2 branch emits no `class`.
+7. **Live-corpus sanity, reported not asserted.** The implementer runs
+   `bash scripts/agent-audit.sh --all` once and reports the new A2 residual and
+   A3 residual in the ready-for-review packet. Deliberately **not** an
+   acceptance criterion - that is the exact #294 mistake this round exists to
+   stop repeating.
+8. `bash -n scripts/agent-audit.sh` exits 0; `bash tests/agent-auditor.test.sh`
+   exits 0; `bash tests/validate.sh` exits 0.
+
+**Model note**: not `haiku` - this is calibration judgment, the same rationale
+Step 1 carried.
+
+### Step 14 - correct this plan document
+
+**Affected files**: `docs/plans/2026-08-09-agent-auditor-persona.md` only.
+Prose accuracy IS the deliverable, so every criterion is claim-anchored: a
+negative on the wrong phrasing plus a positive on the canonical one. Each was
+confirmed **RED** on 2026-08-11.
+
+Three edits, all in the pre-existing body (not this section):
+
+1. **R3's Effective-tools formula (`:269-272`) - closes #295 sub-item 1.**
+   The doc documents two union terms; `scripts/agent-audit.sh` implements
+   three. The **code is correct** - independently confirmed by
+   `gh-281-detection`'s own mutation test (removing the term yields 11
+   findings, 6 of them `milestone-auditor`/`SendMessage`), and the shared
+   protocol does grant a teammate `SendMessage` regardless of its declared
+   `tools:`. Bring the doc to the code, ratifying the third term.
+2. **Step 1 criteria 2-4 (`:456-462`) - closes #294.** Repoint from the live
+   corpus to the fixture corpus. Criterion 2 is a *ceiling* and is already RED
+   (A1 = 6 as of 2026-08-11). Criteria 3 and 4 are *floors*, safe only while
+   transcripts are never pruned - see Open Question 3 for whether both are in
+   this unit's scope. Leave a one-line note at the amended criteria recording
+   that they formerly asserted against `--all` and why that was wrong.
+3. **`MARKER_DIR` (#295 sub-item 3).** Step 1's inputs/outputs (`:427-430`)
+   documents `AGENT_AUDIT_ROOT` but never records that the same variable also
+   relocates the marker directory to `$AGENT_AUDIT_ROOT/reviewed`
+   (`scripts/agent-audit.sh:52-62`) - which is what makes A6 testable at all.
+   Record it where `AGENT_AUDIT_ROOT` is already described. **`AGENT_AUDIT_ROOT`
+   itself is already documented; do not re-add it.**
+
+**Acceptance criteria**:
+
+1. R3 names three terms including the teammate one (positive), and the
+   two-term phrasing is gone (negative). Scope both to the formula paragraph -
+   a whole-file `grep` is satisfied by this very section:
+
+        P=docs/plans/2026-08-09-agent-auditor-persona.md
+        sed -n '/^\*\*Effective-tools formula\*\*/,/^$/p' "$P" | grep -q 'in_process_teammate'
+        sed -n '/^\*\*Effective-tools formula\*\*/,/^$/p' "$P" | grep -q 'SendMessage'
+        sed -n '/^\*\*Effective-tools formula\*\*/,/^$/p' "$P" | grep -q 'declared UNION (has memory' && exit 1
+
+2. **No criterion in Step 1 invokes `--all --json` against the live store.**
+   Every such invocation must carry a fixture root. Confirmed **RED** today -
+   it names exactly criteria 2, 3 and 4, the three #294 points at:
+
+        sed -n '/^## Step 1 - the detection script/,/^## Step 2/p' "$P" \
+          | grep -F 'agent-audit.sh --all --json' \
+          | grep -vq 'AGENT_AUDIT_ROOT=' && exit 1
+
+   Note a bare `grep -q 'AGENT_AUDIT_ROOT'` over the Step 1 section is
+   **already GREEN today** (`:429` mentions the variable in prose) and was
+   measured vacuous while drafting - do not substitute it. This criterion
+   encodes Open Question 3's default (all three move); if the answer is
+   "criterion 2 only", narrow the `grep -F` to that one line.
+
+3. `MARKER_DIR` is documented in the Step 1 section specifically, not merely
+   somewhere in the file:
+
+        sed -n '/^## Step 1 - the detection script/,/^## Step 2/p' "$P" \
+          | grep -q 'MARKER_DIR'
+
+4. **Append-only respected** - Steps 1-10's headings survive unrenumbered:
+
+        for n in 1 2 3 4 5 6 7; do grep -q "^## Step $n - " "$P" || exit 1; done
+        for n in 9 10; do grep -q "^#### Step $n - " "$P" || exit 1; done
+
+5. Scope: only the plan document changes.
+
+        test "$(git diff --name-only <base>..HEAD)" = 'docs/plans/2026-08-09-agent-auditor-persona.md'
+
+6. `bash tests/validate.sh` exits 0.
+
+**Model note**: not `haiku`. Three units in this repo have already FAILed on
+docs work gated only by existence greps; the negative/positive pairing above is
+the correction, and judging whether an edit actually *says the right thing* is
+not a cheap-tier task.
+
+### Step 15 - the persona doc tells the truth about the new output
+
+**Affected files**: `agents/agent-auditor.md` **and** its mirror
+`.claude/agents/agent-auditor.md` (**one unit, never two** - the
+"Source-artifact + render-step gating rule"; the mirror is regenerated via
+`bin/cli.js --update --check`, never hand-edited), plus the P3 tail
+(`.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`,
+`.claude/persona-config.json`).
+
+**Depends on Steps 12 and 13** - this documents behaviour they introduce, so
+it must land after both, or it documents a report that does not exist.
+
+Three interpretation blocks change:
+
+- **A1** gains the executed/refused distinction, and states plainly that a
+  refused call means the tool was *attempted and blocked*, never invoked -
+  the exact misreading that produced `gh-281-detection`'s own note 1.
+- **A2** replaces the gh290 prose (which correctly names the two benign
+  classes but describes them as *unclassified noise*) with the shipped
+  three-class output, and states that the residual is the only real signal.
+- **A3** states that nested `explorer` is protocol-sanctioned and suppressed,
+  that the suppressed count is printed, and that a nested `reviewer` in the
+  residual is a candidate review-ownership violation.
+
+**Acceptance criteria** (each claim-anchored; all confirmed **RED** today):
+
+1. A1's block names both statuses:
+
+        sed -n '/^\*\*A1 —/,/^\*\*A2 —/p' agents/agent-auditor.md | grep -q 'refused'
+        sed -n '/^\*\*A1 —/,/^\*\*A2 —/p' agents/agent-auditor.md | grep -q 'executed'
+
+2. A2's block names the three classes and drops the stale "no calibration
+   bound" claim (negative), which Step 13 makes false:
+
+        sed -n '/^\*\*A2 —/,/^\*\*A3 —/p' agents/agent-auditor.md | grep -q 'teammate-name'
+        sed -n '/^\*\*A2 —/,/^\*\*A3 —/p' agents/agent-auditor.md | grep -q 'foreign-type'
+        sed -n '/^\*\*A2 —/,/^\*\*A3 —/p' agents/agent-auditor.md | grep -q 'carries no' && exit 1
+
+3. A3's block names the sanction and the visible suppression:
+
+        sed -n '/^\*\*A3 —/,/^\*\*A4 —/p' agents/agent-auditor.md | grep -q 'suppress'
+        sed -n '/^\*\*A3 —/,/^\*\*A4 —/p' agents/agent-auditor.md | grep -q 'explorer'
+
+4. **Mirror parity** on every claim above - the whole reason this is one unit:
+
+        for t in refused executed teammate-name foreign-type suppress; do
+          test "$(grep -c -- "$t" agents/agent-auditor.md)" \
+             = "$(grep -c -- "$t" .claude/agents/agent-auditor.md)" || exit 1
+        done
+
+5. The persona's read-only contract is untouched - no scope creep into its
+   frontmatter:
+
+        test "$(awk '/^tools:/{sub(/^tools: */,"");print;exit}' agents/agent-auditor.md)" = "Read, Grep, Glob, Bash"
+        grep -q '^model: haiku' agents/agent-auditor.md
+
+6. P3 discipline and a clean tree, both halves per the F2 lesson:
+
+        pj=$(jq -r .version .claude-plugin/plugin.json)
+        test "$pj" = "$(jq -r .version package.json)"   # and strictly greater than pre-edit
+        head -40 CHANGELOG.md | grep -q "$pj"
+        node bin/cli.js --update --check >/dev/null 2>&1; test "$?" -eq 0
+        test -z "$(git status --porcelain -uno)"
+
+7. `bash tests/validate.sh` exits 0 and prints zero `^FAIL` lines.
+
+**Model note**: not `haiku` - docs-accuracy work with a mirror-parity gate, the
+`gh-286-docs` FAIL profile exactly.
+
+### Sequencing
+
+    Step 11  (clears the RED gate)  ──▶ Step 12 ──▶ Step 13 ──▶ Step 15
+                                     └─▶ Step 14 (independent, doc-only)
+
+Step 11 is a hard prerequisite for all four - until it lands, every other
+step's `tests/validate.sh` criterion fails for a reason that has nothing to do
+with that step. Steps 12 and 13 share two files and are strictly ordered.
+Step 14 touches only the plan document and may run in parallel with 12/13,
+but still after 11.
+
+### Open Questions
+
+Each carries a recommended default; if unanswered, the default above is what
+the steps already encode.
+
+1. **A3's exclusion set.** Suppress only nested `explorer`, or all nested
+   foreground spawns (which the protocol's "you CAN spawn foreground
+   subagents" arguably sanctions wholesale)?
+   *Recommended: `explorer` only.* Suppressing everything makes A3 identically
+   zero and deletes the nested-`reviewer` signal, which is a real
+   review-ownership violation. Options: (a) `explorer` only [default];
+   (b) `explorer` + `scribe` (9 hits, arguably also routine); (c) all nested
+   foreground spawns, i.e. retire A3.
+2. **A2's benign classes - suppressed from the count, or counted with a
+   label?** *Recommended: classified and excluded from the headline residual,
+   with the per-class counts printed*, so A2 gains a meaningful bound (residual
+   should be 0 on a healthy corpus) without hiding anything. Alternative: keep
+   all 45 in the count and label them, which preserves the raw number but
+   leaves A2 as unreadable as it is today.
+3. **Scope of the #294 fixture repointing.** Criterion 2 is a ceiling and is
+   already RED - it must move. Criteria 3 and 4 are floors (`>= 1`), which only
+   break if transcripts are pruned. *Recommended: repoint all three*, since
+   #294's own wording says "any other criteria asserting fixed bounds against
+   `--all`'s live corpus output" and pruning is outside this repo's control.
+   Alternative: move only criterion 2, leaving 3 and 4 as live smoke tests.
+4. **Does Step 11's version bump belong to this round at all?** It carries
+   gh290's un-bumped change, not this round's. *Recommended: yes, in-scope as
+   its own unit* - exact R9 precedent, and the gate is RED until someone does
+   it. Alternative: land it out-of-band first and start this round at Step 12.
+
+### Self-check
+
+- CHK1: Is the exclude-vs-label decision for A1 (#295 sub-item 2) stated with
+  a reason a reviewer can check? — PASS (Context measurement 4 names the
+  criterion that would break).
+- CHK2: Do the Context table and Step 14 agree about which #295 sub-items are
+  still open? — PASS (both carry 295-4 as already closed by Step 10; Step 14
+  scopes only sub-items 1 and 3).
+- CHK3: Is A3's recalibrated bar defined, given #293 proposed a depth
+  threshold? — FAIL (ambiguous) — revised in place: depth is ruled out by
+  measurement and the bar is redefined on the dispatched persona; the residual
+  exclusion-set choice is converted to Open Question 1.
+- CHK4: Does every step have at least one criterion that is RED today, so none
+  can pass vacuously? — PASS (each was executed on 2026-08-11 and its RED state
+  recorded).
+- CHK5: Is it defined what happens to the existing `A3_bad` fixture, which this
+  round inverts? — FAIL (missing) — revised in place: the fixture trap is now
+  stated explicitly in Step 13 with its own criterion 5.
+- CHK6: Do Steps 12 and 13 agree about who owns `tests/agent-auditor.test.sh`?
+  — PASS (Step 13 declares the dependency and the strict ordering).
+- CHK7: Is the source/mirror pairing rule applied consistently to both files
+  that have a mirror? — PASS (Steps 11 and 15; Step 15 states "one unit, never
+  two" and criterion 4 gates parity).
+- CHK8: Is the runtime baseline stated as a measurement with an expiry rather
+  than a constant? — PASS (Step 12 criterion 6 requires re-measuring at
+  execution time).
+- CHK9: Is #295's systemic half unambiguously excluded, so this round is not
+  read as having closed it? — PASS (its own "Explicitly out of scope" section).
+- CHK10: Is the completion signal for #294 defined, given category 9 scored
+  Missing? — FAIL (missing) — converted to Open Question 3 (which criteria move
+  to the fixture).
+
+### Terminology (advisory, `ubiquitous-language` prose mode vs `CONTEXT.md`)
+
+Lens 1 (glossary term used with a different meaning): none found. Lens 2 (new
+synonym for a defined term): none found - "refused" is used throughout for a
+blocked tool call rather than minting a second word, and "block" stays reserved
+for **Gate** semantics. Lens 3 (load-bearing new terms with no glossary entry):
+**anomaly check (A1-A6)**, **informational inventory (I1-I2)**, **calibration
+bound**, and this round's **refused vs executed tool call** and **fixture-pinned
+criterion**. Suggested for `scribe` to consider adding to `CONTEXT.md`; advisory
+only, gates nothing.
+
+### Scribe update hint
+
+Once Steps 12-13 land, A1 carries an executed/refused split, A2 carries three
+classes, and A3 suppresses a sanctioned pattern - all three change what the
+persona's report *means*, which is a `CONTEXT.md` line. Also worth recording:
+`spawnDepth` is a 3-valued field (0/1/2) in this harness, which is why a
+depth-threshold dial does not exist. And the durable lesson behind this whole
+round: **an acceptance criterion asserting a ceiling against a live, growing
+corpus is a criterion with an expiry date** - `A1 <= 5` went RED on its own,
+with no code change, in under three days.
+
+### Routing
+
+**Standard path.** Five steps, five units, touching four distinct file sets -
+well past the two-unit fast path. `task-master` slices via `to-tickets`, each
+labelled `ready-for-agent` + `plan/2026-08-09-agent-auditor-persona` per this
+plan's Handoff retrieval contract, with **Step 11 sequenced first and blocking
+the other four**. All are `lead-programmer` -> `reviewer`. **None may be tagged
+`haiku`** - see each step's model note.
