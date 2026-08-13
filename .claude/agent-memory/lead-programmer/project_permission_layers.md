@@ -33,3 +33,6 @@ directly unblocked it.
   [[reviewed-path-gate-false-positive-report-and-wait]].
 - Restoring a protection afterwards was NOT blocked — the asymmetry is
   weakening-vs-strengthening, so a "human unlocks, agent re-locks" split works.
+  Re-confirmed on gh345-2 for `hooks/scripts/reviewed-path-gate.sh`: report the
+  `protected-paths.sh` block upward, the human removes the entry, you edit, you
+  restore the entry yourself. Two clean runs; treat it as the standard route.
