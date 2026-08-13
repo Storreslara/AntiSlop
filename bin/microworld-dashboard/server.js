@@ -16,6 +16,7 @@ const { execSync } = require('child_process');
 const { discover } = require('./discover');
 const { invoke } = require('./invoke');
 const { readSourceExcerpt } = require('./source');
+const { enumerateDecisions } = require('./decisions');
 
 function startServer(projectRoot, port = 0) {
   const token = crypto.randomBytes(32).toString('hex');
@@ -82,6 +83,19 @@ function startServer(projectRoot, port = 0) {
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to discover bundles' }));
+        }
+        return;
+      }
+
+      // GET /api/decisions (the four human-decision touchpoints, D-7)
+      if (pathname === '/api/decisions') {
+        try {
+          const decisions = enumerateDecisions(projectRoot);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify(decisions, null, 2));
+        } catch (err) {
+          res.writeHead(500, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Failed to enumerate decisions' }));
         }
         return;
       }
