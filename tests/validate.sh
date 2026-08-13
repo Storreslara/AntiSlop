@@ -321,6 +321,15 @@ else
 fi
 
 echo
+echo "== reviewer-route-gate caller allowlist (Bash) =="
+if bash tests/reviewer-route-gate-caller.test.sh; then
+  echo "OK   tests/reviewer-route-gate-caller.test.sh"
+else
+  echo "FAIL tests/reviewer-route-gate-caller.test.sh"
+  fail=1
+fi
+
+echo
 echo "== adapter stop-gate behavioural parity: claude/codex/cursor (Bash) =="
 if bash tests/adapter-stop-gate-parity.test.sh; then
   echo "OK   tests/adapter-stop-gate-parity.test.sh"
