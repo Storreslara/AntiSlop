@@ -33,7 +33,22 @@ the same mechanism from the other direction.
   [[cli-update-flag-surface]] territory.
 - Verify `.claude/persona-config.json` survives the run intact if you edited
   it by hand first (e.g. a `protectedPaths` change) — `--update` rewrites
-  that file.
+  that file. Measured on gh345-2 (2026-08-12): a hand-restored
+  `protectedPaths` entry and a hand-bumped `pluginVersion` both survive the
+  run untouched; `--update` only rewrites `fileHashes`. Still worth a `jq`
+  check after, since it is the file the run owns.
+- **Since 0.31.28 `--update` also manages `.claude/hooks/scripts/**`** (raw,
+  unstamped, content-hash-tracked). Two consequences: (a) any unit that makes
+  `--update` treat a new file class as managed CANNOT be green while this
+  repo's copy of that class is stale, because `cli-backfill.test.js`'s two F2
+  cases copy the whole working tree into a fixture and assert the post-run
+  tree is clean — so regeneration is forced into the same unit, no matter what
+  a plan's unit split says; (b) `buildFileSpecs()` is NOT the place to add a
+  new class — four existing tests treat every spec it returns as a stamped
+  ADAPT mirror (`buildBaselineProject` stamps them all). Add a sibling builder
+  and concat it in `runUpdate`, and teach `buildBaselineProject` to write the
+  new class too, or its fixtures look like a project with that directory
+  deleted.
 - The code-review-graph's post-commit "Untested: <fn>" line is a **false
   negative** for bash hooks: it cannot see coverage that runs the script as a
   subprocess from a `.test.sh`. Do not treat it as a real test gap.
