@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.31] - 2026-08-14
+
+**Documentation: remove expired legacy-marker grace-period paragraph from persona protocol.** The grace period ending on 2026-07-27 expired 18 days ago. This change removes the descriptive paragraph referencing the 2026-07-27 cutover from the canonical protocol template and regenerates all inline mirrors, leaving the hook script's actual expiry logic untouched. Addresses gh355 (Step 1 of #348 spec).
+
+### Changed
+- **`templates/persona-protocol.md` (before "Pending-review flag" section):** Deleted "Until 2026-07-27 (legacy-marker grace period)..." paragraph describing the warning-and-allow behavior that expired and was superseded by unconditional rejection.
+- All persona mirrors (`.claude/agents/*`, `.claude/persona-protocol.md`, `.claude/protocol-digest.md`) regenerated via `--update` to match.
+
+### Notes
+- `hooks/scripts/task-gate.sh` expiry logic is unchanged — only the prose describing it was deleted.
+- `GRACE_PERIOD_END` constant remains in place and continues to guard the expired behavior path for backward compatibility.
+
 ## [0.31.30] - 2026-08-13
 
 **Documentation update: annotate superseded fable-roast-pass policy in three ADRs (gh361, Step 8 of #348 spec).** ADR-0013 removes the separate fable advisory dispatch for roast-work. This change adds inline annotations to ADR-0004, ADR-0006, and ADR-0010 marking the affected passages as superseded by ADR-0013, following the precedent of ADR-0004's "Cost claim superseded" marker. Annotations are positioned adjacent to the dead text (not in footers) for immediate visibility to a reader following the pointer chain from `agents/reviewer.md` to ADR-0004's heavy-unit trigger.
