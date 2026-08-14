@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.31.40] - 2026-08-14
+
+**Correct the protocol-excerpt documentation drift and add a mechanical check for it (gh348-10, Step 10 of #348 spec, finding N1).** `CONTEXT.md`'s "Protocol excerpt" entry and `.claude/wiki/protocol-delivery-tiers.md` had fallen out of sync with the live templates after gh348 Steps 4, 11, and 17 added/renamed sections: both docs still said `templates/persona-protocol.md` carried 16 canonical sections (live: 19) and `templates/persona-protocol-slim.md` carried 6 (live: 7).
+
+### Changed
+- **`CONTEXT.md`, `.claude/wiki/protocol-delivery-tiers.md`** (scribe, `d41ebd7`): Re-measured live counts and corrected both docs — 16 -> 19 full-tier, 6 -> 7 slim-tier. Re-enumerated the wiki's full-tier section list in template order, dropping "Reviewer roast-work advisory pass trigger" (no longer exists) and adding "Teammate Write/Edit fallback and gate rephrasing doctrine", "Blocked by a gate you do not own", "Fourth verdict: escalate-to-human", and "Microworld bundles"; added "Blocked by a gate you do not own" to the slim-tier list; corrected the orchestrator description, which now carries a real 5-section drop list (14 of 19) rather than the full untrimmed set.
+- **`tests/protocol-doc-drift.test.js`** (new, this step): Extracts the documented section counts from both `CONTEXT.md` and the wiki and asserts they equal the live `grep -c "^## "` count of `templates/persona-protocol.md` and `templates/persona-protocol-slim.md`, so this drift class cannot silently recur. Registered in `tests/validate.sh`.
+
+### Notes
+- Out of scope, flagged for a future cleanup: the wiki's stale line counts (says 300/83 lines, actual 529/84) and a "Three fail-closed behaviours" heading that actually enumerates 4 items.
+
 ## [0.31.39] - 2026-08-14
 
 **Compress the two-gate rephrasing doctrine to a pointer (gh348-17, Step 17 of #348 spec).** `reviewed-path-gate.sh` and `human-decision-gate.sh` already print their complete remediation — the sanctioned heredoc template, its rules, and which gate a path-rephrasing workaround is (and isn't) sanctioned for — in their own refusal text, which is the only moment that doctrine is actionable. The full-tier `## Teammate Write/Edit fallback and gate rephrasing doctrine` section (added by Step 11, `ba1ad48`) reproduced that doctrine a second time across ten always-loaded persona copies; this step replaces the two rephrasing bullets with a single pointer sentence.
