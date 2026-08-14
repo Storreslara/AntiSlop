@@ -20,6 +20,7 @@ The efficiency audit (2026-08-03) measured the heavy-unit trigger (roast-work cr
 **Fable is now dispatched by no persona and no pass for roast-work specifically.** The standing exclusion guard in `agents/orchestrator.md` (§ task-master model routing) is retained deliberately to prevent accidental re-introduction into `task-master`. This is a deliberate cost reduction, not an oversight.
 
 **Caveat:** `milestone-auditor` **retains a `fable` tier** — but only on a different, size-measured condition: a judgment-signal-free milestone of ≥8 units (measured to fire on ~25% of this repo's milestones). This is per the operator's 2026-08-06 correction (Revision 6 of the efficiency audit plan). Do not overstate this decision as "fable is retired everywhere" — that is false.
+  - **Superseded by #348:** OQ-N1(a) removes this `milestone-auditor` `fable` tier entirely — `milestone-auditor` now always dispatches on its `opus` frontmatter default, same as `spec-master`. "Fable is retired everywhere" is now true for `milestone-auditor`.
 
 **Amends ADR-0009** with the 2026-08-03 re-measurement: 8 of the last 60 commits (13.3%) are sonnet-eligible for the reviewer gate. This lands inside ADR-0009's predicted band (roughly 6–8 of 50, ~15%); the thresholds (`MAX_CHANGED_LINES=40`, `MAX_CHANGED_FILES=3`) were deliberately left unchanged per operator ruling.
 

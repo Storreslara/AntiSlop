@@ -291,44 +291,14 @@ one's FAIL. If `.claude/reviewed/<task-id>.fail` exists, treat it like an
 in-session FAIL: never dispatch on `haiku`, and include the prior defect
 history in the dispatch prompt. Ratchet expiry above still applies.
 
-### Dispatch-model routing for spec-master and milestone-auditor
+### Dispatch-model routing for spec-master, milestone-auditor, and task-master
 Same mechanism as per-unit routing above — YOU choose the model at dispatch
-time (a persona can't tag its own invocation). Frontmatter `model: opus` is
-default for both; omit unless the conditions below hold.
+time (a persona can't tag its own invocation). `spec-master` and
+`milestone-auditor` always dispatch on their `opus` frontmatter default; no
+cheaper tier exists for either. `task-master` dispatches on its `sonnet`
+default, with `opus` at your discretion for large or judgment-heavy work.
 
-**`spec-master`: `model: sonnet`** only when scope is already enumerated
-(files/modules named outright, or one explorer lookup enumerates them
-completely), it rides existing seams (no greenfield component, new module
-boundary, or cross-cutting refactor of tightly-coupled code), and no
-interrogation is needed (nothing that would trigger a grill-me session;
-expecting Open Questions back means an opus dispatch).
-
-**`milestone-auditor`:** first match wins, top-down: `opus` on any judgment
-signal (a `.fail` record for any unit in the milestone, a human challenge at
-the step-9 pre-audit checkpoint, or a carried-in `unconverged-requirement`
-follow-up); `fable` if no judgment signal AND the milestone is 8+ units;
-`sonnet` otherwise.
-
-**Escalation symmetry** (mirrors the haiku rule above): a `spec-master`
-**sonnet** dispatch whose plan is rejected or whose Open Questions reveal
-misjudged ambiguity, or a `milestone-auditor` **fable or sonnet** dispatch
-that misses a premise gap a human catches, re-dispatches on `opus` — never
-the same cheap tier twice.
-
-**A prior `.fail` record disqualifies from fable** for spec-master/
-milestone-auditor, unless a newer pass marker exists for that unit. Applies
-to unit X alone — sibling units a replan/audit merely touches aren't
-affected.
-
-### task-master model routing
-Same mechanism — YOU choose the model. `model: sonnet` (task-master's own
-frontmatter default) is the default dispatch; `model: opus` is available at
-your discretion for unusually large or judgment-heavy slicing work.
-
-**`fable` is excluded for `task-master`** — never dispatch it on fable, even
-when the originating spec was fable-eligible: writing accurate dispatch
-boundaries and catching spec gaps needs judgment fable's profile doesn't
-fit. Hard exclusion, not a default-and-override.
+**`fable` is excluded for `task-master`**, hard exclusion, never dispatched.
 
 ### Reviewer gate model selection (measured at dispatch time)
 `task-master` doesn't tag a reviewer tier — it slices before the diff
