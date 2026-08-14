@@ -798,6 +798,75 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Regression: stale fileHashes for raw specs (issue gh360-1).
+  // Hand-edits to both source and mirror can bypass writeSpecBody (which
+  // recomputes fileHashes), leaving the stored hash stale. The fix ensures
+  // that if the current on-disk content already matches a fresh clean
+  // regeneration, the hash is silently healed without surfacing a
+  // "diverged, needs decision" prompt.
+  check('--update silently heals stale fileHashes for a raw spec when current content matches clean content', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-stale-hash-test-'));
+    try {
+      const config = buildBaselineProject(tmp, {});
+
+      // Use a real hook script from the plugin: human-decision-gate.sh
+      const relKey = '.claude/hooks/scripts/human-decision-gate.sh';
+      const hookMirror = path.join(tmp, relKey);
+      const realHookSource = path.join(REPO_ROOT, 'hooks', 'scripts', 'human-decision-gate.sh');
+
+      // Ensure the mirror directory exists and write the current hook content
+      fs.mkdirSync(path.dirname(hookMirror), { recursive: true });
+      const currentHookBody = fs.readFileSync(realHookSource, 'utf8');
+      fs.writeFileSync(hookMirror, currentHookBody);
+
+      // Set up config with a stale fileHashes entry (simulate prior
+      // hand-edit that didn't run writeSpecBody's hash recording)
+      const staleHash = 'e2657478207ffe90a05af6dde932621197dcb0c0aa2a1d9c0b5add49442063c0';
+      config.fileHashes[relKey] = staleHash;
+
+      const configPath = path.join(tmp, '.claude', 'persona-config.json');
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      // Run --update --check: should report hash healed, not diverged
+      const check = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(check.status, 0, `--update --check expected exit 0, got ${check.status}: ${check.stdout}${check.stderr}`);
+      assert.ok(
+        check.stdout.includes('hash healed'),
+        `expected "hash healed" in output, got: ${check.stdout}`
+      );
+      assert.ok(
+        !check.stdout.includes('have diverged'),
+        `should not report divergence, got: ${check.stdout}`
+      );
+
+      // Verify the hash was actually healed in config
+      const healedConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      const actualHash = cli.sha256Hex(currentHookBody);
+      assert.strictEqual(
+        healedConfig.fileHashes[relKey],
+        actualHash,
+        `fileHashes[${relKey}] should match actual content hash, got ${healedConfig.fileHashes[relKey]} (expected ${actualHash})`
+      );
+
+      // Also test plain --update (without --check) still heals the hash
+      // First restore the stale hash
+      config.fileHashes[relKey] = staleHash;
+      fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+      const plain = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(plain.status, 0, `--update expected exit 0, got ${plain.status}: ${plain.stdout}${plain.stderr}`);
+      // Plain --update with stale hash should now heal it (thanks to the pre-scan fix)
+      const plainConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      assert.strictEqual(
+        plainConfig.fileHashes[relKey],
+        actualHash,
+        `plain --update should also heal the hash`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   // --- Integration (S3-A2a): the version-match fast-path must not skip past a
   // managed destination that is MISSING. Asserted on protocol-digest.md
   // rather than persona-protocol.md deliberately: the defeater has to be

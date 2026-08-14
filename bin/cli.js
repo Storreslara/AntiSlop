@@ -1080,6 +1080,14 @@ async function runUpdate(args) {
         needsRender = true;
         break;
       }
+      // Also check if the stored hash is stale — mirror may match source but
+      // hash was never updated by writeSpecBody. Force a full loop run so it
+      // can be healed.
+      const recordedHash = config.fileHashes[spec.projectRelPath];
+      if (recordedHash && sha256Hex(body) !== recordedHash) {
+        needsRender = true;
+        break;
+      }
       continue;
     }
     if (stampVersionOf(body) !== version) {
@@ -1147,6 +1155,15 @@ async function runUpdate(args) {
       writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
       summary.push(`  ${relKey}: updated (no local edits detected)`);
+      continue;
+    }
+
+    // Even if recordedHash is stale, if the actual current content already
+    // matches a fresh clean regeneration, there's no real divergence — just
+    // silently heal the stale hash and move on.
+    if (currentStripped === cleanBody) {
+      newFileHashes[relKey] = cleanHash;
+      summary.push(`  ${relKey}: hash healed (content unchanged, hash was stale)`);
       continue;
     }
 
