@@ -24,6 +24,8 @@ mkdir -p \
   "$FIXTURE_ROOT/s4/subagents" \
   "$FIXTURE_ROOT/s5/subagents" \
   "$FIXTURE_ROOT/s6/subagents" \
+  "$FIXTURE_ROOT/s7/subagents" \
+  "$FIXTURE_ROOT/s8/subagents" \
   "$FIXTURE_ROOT/reviewed"
 
 # --- s1: A1 (undeclared tool use), A2 (unregistered agent), A3 (nested spawn) ---
@@ -145,6 +147,58 @@ echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth"
 echo '{"type":"user","timestamp":"2026-08-01T15:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
   > "$FIXTURE_ROOT/s6.jsonl"
 
+# --- s7: A7 (hook block events) ---
+# A7_bad: has tool_result errors matching the PreToolUse hook error pattern
+echo '{"agentType":"lead-programmer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s7/subagents/agent-a7bad.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T16:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}'
+  echo '{"type":"tool_result","id":"t1","name":"Bash","content":"error","is_error":true,"timestamp":"2026-08-01T16:00:02Z","text":"PreToolUse:Bash hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: A7CANARY-BASH-BLOCK extra text"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T16:00:03Z","message":{"content":[{"type":"tool_use","id":"t2","name":"Write","input":{"file_path":"/home/proj/.claude/reviewed/test.txt","content":"data"}}]}}'
+  echo '{"type":"tool_result","id":"t2","name":"Write","content":"error","is_error":true,"timestamp":"2026-08-01T16:00:04Z","text":"PreToolUse:Write hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: A7CANARY-WRITE-BLOCK"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T16:00:05Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s7/subagents/agent-a7bad.jsonl"
+
+# A7_good: no hook block errors
+echo '{"agentType":"lead-programmer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s7/subagents/agent-a7good.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T16:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{}}]}}'
+  echo '{"type":"tool_result","id":"t1","name":"Read","content":"success","timestamp":"2026-08-01T16:00:02Z","text":"file contents"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T16:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s7/subagents/agent-a7good.jsonl"
+
+echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
+  > "$FIXTURE_ROOT/s7.jsonl"
+
+# --- s8: A8 (agent-memory writes) ---
+# A8_bad: has Write/Edit tool_use entries under .claude/agent-memory/ or .claude/projects/*/memory/
+echo '{"agentType":"spec-master","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s8/subagents/agent-a8bad.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T17:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":".claude/agent-memory/spec-master/A8CANARY-DIR/feedback_test.md","content":"A8CANARY-CONTENT-BODY here"}}]}}'
+  echo '{"type":"tool_result","id":"t1","name":"Write","timestamp":"2026-08-01T17:00:02Z","text":"written"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:03Z","message":{"content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":".claude/projects/test/memory/feedback_other.md","content":"more data"}}]}}'
+  echo '{"type":"tool_result","id":"t2","name":"Edit","timestamp":"2026-08-01T17:00:04Z","text":"edited"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:05Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s8/subagents/agent-a8bad.jsonl"
+
+# A8_good: no agent-memory writes
+echo '{"agentType":"spec-master","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s8/subagents/agent-a8good.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T17:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":"docs/test.md","content":"some content"}}]}}'
+  echo '{"type":"tool_result","id":"t1","name":"Write","timestamp":"2026-08-01T17:00:02Z","text":"written"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s8/subagents/agent-a8good.jsonl"
+
+echo '{"type":"user","timestamp":"2026-08-01T17:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
+  > "$FIXTURE_ROOT/s8.jsonl"
+
 # --- run the real script against the fixture tree, for real ---
 
 JSON_OUTPUT="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash scripts/agent-audit.sh --all --json)"
@@ -213,6 +267,14 @@ echo "== A6: orphan PASS marker =="
 assert_task_finding A6 gh-999 present
 assert_task_finding A6 gh-888 absent
 
+echo "== A7: hook block events =="
+assert_agent_finding A7 a7bad present
+assert_agent_finding A7 a7good absent
+
+echo "== A8: agent-memory writes =="
+assert_agent_finding A8 a8bad present
+assert_agent_finding A8 a8good absent
+
 echo "== R5: privacy - prompt body must never appear in output =="
 if printf '%s' "$JSON_OUTPUT" | grep -q "CANARY-PROMPT-BODY"; then
   echo "FAIL --json output leaked the privacy canary string"
@@ -227,6 +289,85 @@ if printf '%s' "$PLAIN_OUTPUT" | grep -q "CANARY-PROMPT-BODY"; then
   fail=1
 else
   echo "OK   plain-text output does not contain the privacy canary string"
+fi
+
+echo "== C1.5: A7 row distinguishes Bash and Write blocks on same dispatch =="
+a7_bash_count="$(printf '%s' "$JSON_OUTPUT" | jq '[.findings[] | select(.id=="A7" and .agent=="a7bad" and .tool=="Bash")] | length')"
+a7_write_count="$(printf '%s' "$JSON_OUTPUT" | jq '[.findings[] | select(.id=="A7" and .agent=="a7bad" and .tool=="Write")] | length')"
+if [ "$a7_bash_count" -gt 0 ] && [ "$a7_write_count" -gt 0 ]; then
+  echo "OK   A7 produces distinct rows for Bash (n=$a7_bash_count) and Write (n=$a7_write_count) on same dispatch"
+else
+  echo "FAIL A7 did not distinguish tools: bash=$a7_bash_count write=$a7_write_count"
+  fail=1
+fi
+
+echo "== C1.5: A7 row has hook field equal to reviewed-path-gate =="
+a7_hook_count="$(printf '%s' "$JSON_OUTPUT" | jq '[.findings[] | select(.id=="A7" and .agent=="a7bad" and .hook=="reviewed-path-gate")] | length')"
+if [ "$a7_hook_count" -gt 0 ]; then
+  echo "OK   A7 row carries hook==reviewed-path-gate (n=$a7_hook_count)"
+else
+  echo "FAIL A7 row missing hook field or hook!=reviewed-path-gate"
+  fail=1
+fi
+
+echo "== C1.6: A8 bad produces no A1 row (A1 exclusion survived) =="
+a1_a8bad_count="$(printf '%s' "$JSON_OUTPUT" | jq '[.findings[] | select(.id=="A1" and .agent=="a8bad")] | length')"
+if [ "$a1_a8bad_count" -eq 0 ]; then
+  echo "OK   a8bad produces no A1 row (memory-write exclusion survived)"
+else
+  echo "FAIL a8bad produced an A1 row (A1 exclusion was broken, count=$a1_a8bad_count)"
+  fail=1
+fi
+
+echo "== C1.8: A7/A8 privacy - canaries not in --json output =="
+if printf '%s' "$JSON_OUTPUT" | grep -qE "A7CANARY|A8CANARY"; then
+  echo "FAIL --json output leaked A7/A8 privacy canaries"
+  fail=1
+else
+  echo "OK   --json output does not leak A7/A8 privacy canaries"
+fi
+
+echo "== C1.8: A7/A8 privacy - canaries not in --all output =="
+if printf '%s' "$PLAIN_OUTPUT" | grep -qE "A7CANARY|A8CANARY"; then
+  echo "FAIL --all output leaked A7/A8 privacy canaries"
+  fail=1
+else
+  echo "OK   --all output does not leak A7/A8 privacy canaries"
+fi
+
+echo "== C1.9: A7 and A8 lines are marked informational =="
+a7_plain_line="$(printf '%s' "$PLAIN_OUTPUT" | grep "^A7 ")"
+a8_plain_line="$(printf '%s' "$PLAIN_OUTPUT" | grep "^A8 ")"
+if printf '%s' "$a7_plain_line" | grep -qi informational && printf '%s' "$a8_plain_line" | grep -qi informational; then
+  echo "OK   A7 and A8 plain-output lines contain 'informational'"
+else
+  echo "FAIL A7 or A8 lines missing 'informational' marker"
+  echo "  A7 line: $a7_plain_line"
+  echo "  A8 line: $a8_plain_line"
+  fail=1
+fi
+
+echo "== C1.10: format-change tolerance - is_error true but no BLOCKED text =="
+tolerance_test_root="$FIXTURE_ROOT/tolerance-test"
+mkdir -p "$tolerance_test_root/tol/subagents"
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$tolerance_test_root/tol/subagents/agent-tol.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T18:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T18:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}'
+  echo '{"type":"tool_result","id":"t1","name":"Bash","content":"error","is_error":true,"timestamp":"2026-08-01T18:00:02Z","text":"Some other error message not matching the hook pattern"}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T18:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$tolerance_test_root/tol/subagents/agent-tol.jsonl"
+echo '{"type":"user","timestamp":"2026-08-01T18:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
+  > "$tolerance_test_root/tol.jsonl"
+
+tol_output="$(AGENT_AUDIT_ROOT="$tolerance_test_root" bash scripts/agent-audit.sh --all --json)"
+tol_a7_count="$(printf '%s' "$tol_output" | jq '[.findings[] | select(.id=="A7")] | length')"
+if [ "$tol_a7_count" -eq 0 ]; then
+  echo "OK   format-change tolerance: non-matching is_error=true produces no A7 row"
+else
+  echo "FAIL format-change tolerance: A7 emitted rows for non-matching format (count=$tol_a7_count)"
+  fail=1
 fi
 
 # --- mutation proof (non-vacuity): A1 -----------------------------------------------
@@ -272,6 +413,56 @@ mutation_proof() {
 
 echo "== mutation proof: A1 =="
 mutation_proof A1 a1bad
+
+echo "== mutation proof: A7 (hook block events) =="
+# For A7, neutralize the jq query that detects BLOCKED patterns by replacing
+# the test condition with false, so the query matches nothing.
+before_a7="$(grep -c 'test("PreToolUse:.*hook error:.*BLOCKED:")' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before_a7" -eq 0 ]; then
+  echo "FAIL mutation proof for A7: no BLOCKED pattern test found to neutralize"
+  fail=1
+else
+  # Replace the BLOCKED test with false to neutralize A7 detection. No trailing
+  # `#` comment here - this line lives inside a single-line jq program string,
+  # where `#` starts a jq comment and would swallow the rest of the pipeline.
+  sed -i 's/test("PreToolUse:\.\*hook error:\.\*BLOCKED:")/false/' "$MUTANT_DIR/scripts/agent-audit.sh"
+
+  mutant_a7_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+    jq '[.findings[] | select(.id=="A7" and .agent=="a7bad")] | length')"
+
+  if [ "$mutant_a7_count" -eq 0 ]; then
+    echo "OK   mutation proof for A7: neutralizing hook-block detection makes a7bad's A7 findings disappear (count=$mutant_a7_count) - detection was load-bearing"
+  else
+    echo "FAIL mutation proof for A7: still detected after attempted mutation (count=$mutant_a7_count) - suite may not catch a regression"
+    fail=1
+  fi
+fi
+
+echo "== mutation proof: A8 (agent-memory writes) =="
+# For A8, we neutralize the logic that detects writes under .claude/agent-memory/ and .claude/projects/*/memory/
+before_a8="$(grep -c 'claude/agent-memory\|claude/projects.*memory' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before_a8" -eq 0 ]; then
+  echo "FAIL mutation proof for A8: no memory path patterns found to neutralize"
+  fail=1
+else
+  # Neutralize the A8 detection by rewriting the case-pattern label so it can
+  # never match a real path. Targets only the case-label line itself (by its
+  # exact alternation text, ending in the pattern's closing paren) so the
+  # replacement stays valid `case` syntax and the surrounding comment line is
+  # left untouched.
+  sed -i 's/\.claude\/agent-memory\/\*|\*\/\.claude\/agent-memory\/\*|\.claude\/projects\/\*\/memory\/\*|\*\/\.claude\/projects\/\*\/memory\/\*)/NEVER-MATCHES-A8-MUTANT)/' \
+    "$MUTANT_DIR/scripts/agent-audit.sh"
+
+  mutant_a8_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+    jq '[.findings[] | select(.id=="A8" and .agent=="a8bad")] | length')"
+
+  if [ "$mutant_a8_count" -eq 0 ]; then
+    echo "OK   mutation proof for A8: neutralizing memory-path detection makes a8bad's A8 findings disappear (count=$mutant_a8_count) - detection was load-bearing"
+  else
+    echo "FAIL mutation proof for A8: still detected after attempted mutation (count=$mutant_a8_count) - suite may not catch a regression"
+    fail=1
+  fi
+fi
 
 # --- format-probe state discrimination (Step 10, F3) ------------------------
 # Five fixture roots, five expected states. LIVE reuses FIXTURE_ROOT itself

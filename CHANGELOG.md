@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.49] - 2026-08-14
+
+**Add A7 (hook-block events) and A8 (agent-memory writes) informational report sections to `agent-audit.sh` (gh288-1, Step 1 of #288 spec).** These sections surface two classes of events the audit currently misses entirely — hook blocks on gate refusals and agent-memory writes — as informational observations (never blocking or gating). A7 parses `is_error: true` tool_result entries matching the `PreToolUse:* hook error: * BLOCKED:` pattern, grouping by (hook, tool) to show which gates blocked which operations per dispatch. A8 counts `Write`/`Edit` tool_use entries under `.claude/agent-memory/` or `.claude/projects/*/memory/`, surfacing where institutional memory is being written without interpreting content. Both are read-only, diagnostic surfaces — no new enforcement, no new false-positive cost. This closes the detection gap reported in issue #288's direction (b): institutional memory hardening via observability rather than content scanning.
+
+### Added
+- **`scripts/agent-audit.sh`**: new `# --- A7 ---` and `# --- A8 ---` sections, parsing hook blocks and agent-memory writes per dispatch and emitting findings-shaped JSON for consumption by the auditor persona and plain-text output.
+- **`tests/agent-auditor.test.sh`**: new fixture sessions `s7` and `s8` (each with good/bad pair), privacy canary tests for both new sections, format-change tolerance test (C1.10), mutation proofs proving non-vacuity, detailed assertions on tool/hook distinction for A7 and A1-survivability check for A8.
+- **`agents/agent-auditor.md`**: updated anomaly-check count and descriptions; added explicit statement that A7 and A8 are informational, never defects, following the A5 precedent.
+
+### Changed
+- **`.claude-plugin/plugin.json`**: version bump 0.31.48 → 0.31.49 (constitution P3).
+
 ## [0.31.48] - 2026-08-14
 
 **Correct 6 stale doc/comment references left over from #348's protocol cleanup (adhoc-2026-08-14-fill-348-advisory-gaps).** #348's reviewers flagged these as out-of-scope-at-the-time advisory notes; this unit closes them out with no code-behavior changes.

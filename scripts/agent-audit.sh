@@ -452,6 +452,62 @@ if [ -d "$MARKER_DIR" ]; then
   done
 fi
 
+# --- A7: hook block events (informational) --------------------------------
+# Per dispatch, parse is_error: true tool_result entries whose text matches
+# the pattern PreToolUse:<Tool> hook error: [<path>/<hook>.sh]: BLOCKED:.
+# Emit one row per (dispatch, hook, tool) with a count. Informational only.
+while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
+  # Extract all tool_result errors with BLOCKED pattern (tool_result is a top-level message type)
+  jq -r 'select(.type=="tool_result" and .is_error==true and (.text // "" | test("PreToolUse:.*hook error:.*BLOCKED:"))) | [.name, .text] | @tsv' "$jf" 2>/dev/null |
+  while IFS=$'\t' read -r tool_name error_text; do
+    [ -n "$tool_name" ] || continue
+    [ -n "$error_text" ] || continue
+
+    # Parse tool name from error_text (PreToolUse:Tool format)
+    if [[ $error_text =~ PreToolUse:([A-Za-z]+) ]]; then
+      tool="${BASH_REMATCH[1]}"
+    else
+      continue
+    fi
+
+    # Parse hook name from error_text (hook error: [path/hookname.sh])
+    if [[ $error_text =~ hook\ error:\ \[.*\/([^/]+)\.sh\] ]]; then
+      hook="${BASH_REMATCH[1]}"
+    else
+      continue
+    fi
+
+    jq -nc --arg id "A7" --arg session "$sid" --arg agent "$aid" --arg persona "$persona" --arg tool "$tool" --arg hook "$hook" \
+      '{id:$id, session:$session, agent:$agent, persona:$persona, tool:$tool, hook:$hook}' >> "$FINDINGS"
+  done
+done < "$DISPATCHES"
+
+# --- A8: agent-memory writes (informational) ----------------------------
+# Per dispatch, count Write/Edit tool_use entries whose file_path resolves
+# under .claude/agent-memory/ or .claude/projects/*/memory/. Emit one row
+# per dispatch with the count and file basenames. Informational only.
+while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
+  # Extract Write/Edit tool_use entries under memory directories
+  memory_writes=()
+  while IFS= read -r fpath; do
+    [ -n "$fpath" ] || continue
+    case "$fpath" in
+      .claude/agent-memory/*|*/.claude/agent-memory/*|.claude/projects/*/memory/*|*/.claude/projects/*/memory/*)
+        # Extract basename only, not directory components
+        bn="$(basename "$fpath")"
+        memory_writes+=("$bn")
+        ;;
+    esac
+  done < <(jq -r '.message.content[]? | select(.type=="tool_use" and (.name=="Write" or .name=="Edit")) | .input.file_path // empty' "$jf" 2>/dev/null)
+
+  if [ "${#memory_writes[@]}" -gt 0 ]; then
+    # Emit one row per dispatch with count and basenames joined with commas
+    basenames="$(printf '%s,' "${memory_writes[@]}" | sed 's/,$//')"
+    jq -nc --arg id "A8" --arg session "$sid" --arg agent "$aid" --arg persona "$persona" --argjson count "${#memory_writes[@]}" --arg basenames "$basenames" \
+      '{id:$id, session:$session, agent:$agent, persona:$persona, count:$count, basenames:$basenames}' >> "$FINDINGS"
+  fi
+done < "$DISPATCHES"
+
 # --- I1: model distribution (informational, never a flag) ---------------
 while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
   [ "$model" != "-" ] || continue
@@ -515,6 +571,14 @@ print_section A4 "Gated dispatch without review"
 n6="$(jq -s '[.[] | select(.id=="A6")] | length' "$FINDINGS" 2>/dev/null)"
 echo "A6 Orphan PASS marker (n=$n6)"
 jq -r 'select(.id=="A6") | "  task=\(.task)"' "$FINDINGS" 2>/dev/null
+
+n7="$(jq -s '[.[] | select(.id=="A7")] | length' "$FINDINGS" 2>/dev/null)"
+echo "A7 Hook block events (informational - never a finding; n=$n7)"
+jq -r 'select(.id=="A7") | "  session=\(.session) agent=\(.agent) persona=\(.persona) hook=\(.hook) tool=\(.tool)"' "$FINDINGS" 2>/dev/null
+
+n8="$(jq -s '[.[] | select(.id=="A8")] | length' "$FINDINGS" 2>/dev/null)"
+echo "A8 Agent-memory writes (informational - never a finding; n=$n8)"
+jq -r 'select(.id=="A8") | "  session=\(.session) agent=\(.agent) persona=\(.persona) count=\(.count) basenames=\(.basenames)"' "$FINDINGS" 2>/dev/null
 
 echo "I1 Model distribution (informational - dispatched vs declared)"
 if [ -s "$DISTRIBUTION" ]; then
