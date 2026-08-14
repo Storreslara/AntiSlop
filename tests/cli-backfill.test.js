@@ -1658,6 +1658,208 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // Whole-tree snapshot helper (issue #289, gh336 / C1.5-C1.8): relPath ->
+  // sha256, plus the sorted path list, so a "writes nothing" claim can be
+  // proven by one deep-equal instead of enumerating write sites. Reusable by
+  // a later step (dry-run) — do not duplicate.
+  function snapshotTree(dir) {
+    const hashes = {};
+    const walk = (d) => {
+      for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
+        if (entry.name === '.git') continue;
+        const abs = path.join(d, entry.name);
+        if (entry.isDirectory()) {
+          walk(abs);
+          continue;
+        }
+        const rel = path.relative(dir, abs).split(path.sep).join('/');
+        hashes[rel] = cli.sha256Hex(fs.readFileSync(abs, 'utf8'));
+      }
+    };
+    walk(dir);
+    return { paths: Object.keys(hashes).sort(), hashes };
+  }
+
+  // --- Integration (issue #289, gh336): --update --personas=<a,b,c> unions
+  // additively with the recorded personaSelection instead of replacing it.
+  check('--update --personas=<name> unions additively without removing existing selection (C1.3)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-union-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer', 'scribe']);
+      const result = spawnSync('node', [cliPath, '--update', '--personas=agent-auditor'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const config = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
+      assert.deepStrictEqual(
+        config.personaSelection, ['reviewer', 'scribe', 'agent-auditor'],
+        `expected the recorded order preserved with the addition appended, got ${JSON.stringify(config.personaSelection)}`
+      );
+      assert.ok(
+        fs.existsSync(path.join(tmp, '.claude', 'agents', 'agent-auditor.md')),
+        'agent-auditor.md should have been created by the union'
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas=<already-selected> is a no-op with an informational note (C1.4)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-noop-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer', 'scribe']);
+      const before = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8')).personaSelection;
+      const result = spawnSync('node', [cliPath, '--update', '--personas=reviewer'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const after = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8')).personaSelection;
+      assert.deepStrictEqual(after, before, `personaSelection must be unchanged, got ${JSON.stringify(after)}`);
+      assert.ok(
+        /reviewer/.test(result.stdout) && /already selected/i.test(result.stdout),
+        `stdout must name reviewer as already selected, got: ${result.stdout}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas=<unknown token> exits 1, errors on the token, and writes nothing (C1.5)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-unknown-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      const before = snapshotTree(tmp);
+      const result = spawnSync('node', [cliPath, '--update', '--personas=not-a-persona'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 1, `expected exit 1, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(result.stderr.includes('not-a-persona'), `stderr must contain the offending token, got: ${result.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), before, 'an unknown-token run must write nothing to the project tree');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas=<valid,invalid> fails atomically: nothing written, valid token not added (C1.6)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-mixed-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      const before = snapshotTree(tmp);
+      const result = spawnSync('node', [cliPath, '--update', '--personas=agent-auditor,bogus'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 1, `expected exit 1, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), before, 'a mixed valid+invalid run must write nothing at all, atomically');
+      assert.ok(
+        !fs.existsSync(path.join(tmp, '.claude', 'agents', 'agent-auditor.md')),
+        'agent-auditor.md must NOT be created when the run fails atomically'
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas=hivemind migrates the legacy token then unions both resolved personas (C1.7)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-legacy-'));
+    try {
+      buildBaselineProject(tmp, {}, []);
+      const result = spawnSync('node', [cliPath, '--update', '--personas=hivemind'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const config = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
+      assert.ok(
+        config.personaSelection.includes('spec-master') && config.personaSelection.includes('task-master'),
+        `expected both spec-master and task-master, got ${JSON.stringify(config.personaSelection)}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas= (empty value) exits 1 and writes nothing (C1.8)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-empty-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      const before = snapshotTree(tmp);
+      const result = spawnSync('node', [cliPath, '--update', '--personas='], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 1, `expected exit 1, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), before, 'an empty --personas= value must write nothing');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas=<core persona> is a no-op with an informational note (C1.9)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-core-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      const before = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8')).personaSelection;
+      const result = spawnSync('node', [cliPath, '--update', '--personas=explorer'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const after = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8')).personaSelection;
+      assert.deepStrictEqual(after, before, `personaSelection must be unchanged (explorer not added), got ${JSON.stringify(after)}`);
+      assert.ok(
+        /explorer/.test(result.stdout) && /core persona/i.test(result.stdout),
+        `stdout must say explorer is a core persona, got: ${result.stdout}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('plain --update with no --personas= flag is still byte-identical: prints already current, exits 0 (C1.10)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-noflag-'));
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(result.stdout.includes('already current'), `expected "already current", got: ${result.stdout}`);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
+  check('a fresh scaffold with --yes --personas=reviewer keeps replacement (not union) semantics (C1.11, guards the 191.fail class)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-scaffold-'));
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-scaffold-home-'));
+    try {
+      const result = spawnSync('node', [cliPath, '--yes', '--personas=reviewer'], {
+        cwd: tmp,
+        env: Object.assign({}, process.env, { HOME: home }),
+        encoding: 'utf8',
+      });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      const config = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
+      assert.deepStrictEqual(
+        config.personaSelection, ['reviewer'],
+        `the scaffold path must REPLACE, not union, got ${JSON.stringify(config.personaSelection)}`
+      );
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  // Fixture deliberately records graphMcpLaunch (explorer.md's own dependency)
+  // but no arxivMcpLaunch key at all — with graphMcpLaunch absent, explorer.md
+  // fails to render for an unrelated reason and this would "pass" by
+  // accident (see the 2026-08-14 spec correction).
+  check('--update --personas=researcher with no arXiv launch command renders in fallback mode, not a refusal (C1.12)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-personas-researcher-'));
+    try {
+      buildBaselineProject(tmp, {}, []);
+      const result = spawnSync('node', [cliPath, '--update', '--personas=researcher'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+      assert.ok(
+        !/could not be rendered/.test(result.stdout),
+        `must not print a "could not be rendered" line, got: ${result.stdout}`
+      );
+      const researcherPath = path.join(tmp, '.claude', 'agents', 'researcher.md');
+      assert.ok(fs.existsSync(researcherPath), 'researcher.md should exist');
+      const body = fs.readFileSync(researcherPath, 'utf8');
+      assert.ok(
+        body.includes('No working arXiv MCP found at ADAPT time'),
+        `expected the arXiv fallback note, got: ${body.slice(0, 300)}`
+      );
+      assert.ok(!/^mcpServers:/m.test(body), 'fallback body must not contain an mcpServers: line');
+      const config = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
+      assert.ok(config.personaSelection.includes('researcher'), 'personaSelection must include researcher');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   check('--update leaves an existing config WITHOUT humanReviewMode still without it (preserve-fields contract)', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-hrm-preserve-'));
     try {

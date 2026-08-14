@@ -979,6 +979,45 @@ async function runUpdate(args) {
   const legacyTokens = legacyTokensIn(personaSelection);
   const hadLegacyToken = legacyTokens.length > 0;
   personaSelection = migrateLegacyPersonaTokens(personaSelection, { logNote: true });
+
+  // --personas=<a,b,c> (issue #289): UNIONS the named tokens with the
+  // recorded personaSelection, never replaces it — that replacement
+  // semantics stays exclusive to the fresh-scaffold path below `main()`'s
+  // `--update` early return. Note: --overwrite is never read on this path
+  // either; main() returns runUpdate(args) before the scaffold path ever
+  // parses --overwrite, so there is no interaction between the two flags to
+  // design. Validated and exited on (before any write below, e.g. the
+  // legacy-agent fs.unlinkSync just under this block) so an invalid token
+  // writes nothing.
+  const personasFlag = args.find((a) => a.startsWith('--personas='));
+  if (personasFlag) {
+    const requestedRaw = personasFlag.slice('--personas='.length).split(',').map((s) => s.trim()).filter(Boolean);
+    const validTokens = OPTIONAL_PERSONAS.concat(['researcher'], CORE_PERSONAS);
+    if (requestedRaw.length === 0) {
+      console.error(`--personas= was given an empty value. Valid tokens: ${validTokens.join(', ')}.`);
+      process.exit(1);
+    }
+    const requested = migrateLegacyPersonaTokens(requestedRaw, { logNote: true });
+    const unknown = requested.filter((t) => !validTokens.includes(t));
+    if (unknown.length > 0) {
+      console.error(`Unknown --personas= token(s): ${unknown.join(', ')}. Valid tokens: ${validTokens.join(', ')}.`);
+      process.exit(1);
+    }
+    for (const t of requested.filter((t) => CORE_PERSONAS.includes(t))) {
+      console.log(`  personaSelection: "${t}" is a core persona (always installed) — --personas= is a no-op for it.`);
+    }
+    const recordable = OPTIONAL_PERSONAS.concat(['researcher']).filter((t) => requested.includes(t));
+    for (const t of recordable.filter((t) => personaSelection.includes(t))) {
+      console.log(`  personaSelection: "${t}" is already selected — --personas= is a no-op for it.`);
+    }
+    const added = recordable.filter((t) => !personaSelection.includes(t));
+    if (added.length > 0) {
+      personaSelection = personaSelection.concat(added);
+      console.log(`  personaSelection: added ${added.join(', ')} (union with --personas=; nothing removed)`);
+    }
+    config.personaSelection = personaSelection;
+  }
+
   if (hadLegacyToken) {
     config.personaSelection = personaSelection;
     for (const token of legacyTokens) {
