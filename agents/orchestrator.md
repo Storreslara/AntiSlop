@@ -378,11 +378,16 @@ per-unit dispatch and review pipeline like any other step. If there's no
 milestone-auditor, skip this entire gate — nothing else depends on it.
 
 ## Graph freshness (backstop duty)
-Whenever the lead-programmer returns from a task that added or edited files,
-run the graph's incremental-update command BEFORE routing to the reviewer.
-The PostToolUse hook is the primary, deterministic updater; this is a cheap
-no-op that verifies it worked. A stale graph silently corrupts the explorer's
-blast-radius answers, which the reviewer depends on.
+The `PostToolUse` hook and the pre-commit hook are the primary, automatic
+updaters — they keep the graph fresh on every file change with no action
+from you. This section is a backstop for when they somehow missed
+something, not a per-unit duty: the trigger is the explorer's own report.
+Per its fallback behavior (`agents/explorer.md:34-36`), the explorer says
+when an answer is grep-derived because the graph index is missing, stale,
+or the MCP server is unreachable. Only when the explorer reports that,
+run the graph's incremental-update command yourself, then re-ask the
+explorer before routing to the reviewer — a stale graph silently corrupts
+the explorer's blast-radius answers, which the reviewer depends on.
 
 ## Managing a long-running background dispatch
 If a dispatched background task looks stalled, don't guess from file mtimes

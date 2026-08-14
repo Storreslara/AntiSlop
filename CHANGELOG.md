@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.31.47] - 2026-08-14
+
+**Make the graph-freshness backstop staleness-triggered (gh348-16, Step 16 of #348 spec).** Operator ruling accepts finding 3.6's second variant: the orchestrator's manual graph-update step is no longer an unconditional per-unit duty — it now runs only when the explorer's own report signals staleness (its existing fallback behavior at `agents/explorer.md:34-36`), which removes the per-unit cost while keeping the backstop reachable. The two automatic updaters (`PostToolUse` hook, pre-commit hook) remain the primary, always-on mechanism and are unchanged. This is the final unit of the 18-unit persona-efficiency-audit spec (#348), which is now complete.
+
+### Changed
+- **`agents/orchestrator.md`**: rewrote the `## Graph freshness (backstop duty)` section to gate the manual incremental-update command on the explorer's staleness report instead of running it unconditionally before every reviewer dispatch.
+- **`.claude/agents/orchestrator.md`**: mirror regenerated via `node bin/cli.js --update`.
+
 ## [0.31.46] - 2026-08-14
 
 **Drop the milestone pre-audit human-confirm checkpoint, reversing a thrice-affirmed prior rejection (gh348-15, Step 15 of #348 spec).** Operator ruling R9.5 accepts finding 3.3 and explicitly re-opens it after being shown the prior rejection verbatim: operator OQ4 originally said "keep it as-is"; Pass 3 Step 12 rejected the idea "on assessment, not deferred"; a 2026-08-06 re-affirmation said "recorded so a Pass 4 does not re-open it." This spec *is* that Pass 4, and the operator chose to override the anti-re-litigation marker. **What is NOT reversed**: Pass 3's F10 proposed making the milestone audit itself opt-in — this step does not do that. The milestone-auditor's dispatch remains completely unconditional and mandatory (`docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md:28`'s "the gate is not optional" claim survives unmodified).
