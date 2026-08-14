@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.31.39] - 2026-08-14
+
+**Compress the two-gate rephrasing doctrine to a pointer (gh348-17, Step 17 of #348 spec).** `reviewed-path-gate.sh` and `human-decision-gate.sh` already print their complete remediation — the sanctioned heredoc template, its rules, and which gate a path-rephrasing workaround is (and isn't) sanctioned for — in their own refusal text, which is the only moment that doctrine is actionable. The full-tier `## Teammate Write/Edit fallback and gate rephrasing doctrine` section (added by Step 11, `ba1ad48`) reproduced that doctrine a second time across ten always-loaded persona copies; this step replaces the two rephrasing bullets with a single pointer sentence.
+
+### Changed
+- **`templates/persona-protocol.md`:** Replaced the `reviewed-path-gate.sh` command-text-constraint bullet and the "That rephrasing move is sanctioned for `reviewed-path-gate.sh` only" bullet in `## Teammate Write/Edit fallback and gate rephrasing doctrine` with one sentence: both gates print their complete remediation in their own refusal text, and rewording a command to dodge `human-decision-gate.sh`'s scan is always a self-authorized bypass, never a sanctioned workaround. The call-time-rejection bullet, the Bash-heredoc fallback idiom, and the grant-independence note are untouched. Section count unchanged at 19; the section retains its own header (still carries the Write/Edit rejection, the heredoc idiom, and the grant-independence note, ~19 lines including header).
+- **`hooks/scripts/human-decision-gate.sh`, `hooks/scripts/reviewed-path-gate.sh`:** Untouched — this step's premise is that their refusal text already carries the full doctrine; confirmed unchanged (`git diff --exit-code` on both) and `tests/human-decision-gate.test.sh` still passes.
+- **`.claude/agents/*.md`, `.claude/persona-protocol.md`, `.claude/persona-config.json` (`fileHashes`):** Mirrors regenerated via `node bin/cli.js --update`.
+
+### Notes
+- `tests/adapter-protocol-parity.test.js` needed no change: the section header text is unchanged, only its body content was compressed.
+- Kept untouched per the step's scope: `templates/persona-protocol-slim.md` (Step 12 already removed the slim copy of this doctrine); `## Blocked by a gate you do not own` (the pointer's natural home, already stated the general rule).
+
 ## [0.31.38] - 2026-08-14
 
 **Re-home the slim-tier Write/Edit fallback doctrine to scribe only (gh348-12, Step 12 of #348 spec).** The slim protocol template has no per-persona trimming seam (`selectProtocolSections` throws for the slim tier by design), so the Write/Edit-fallback bullets in `## Agent-teams mode` were reaching all four slim personas (explorer, researcher, scribe, agent-auditor) even though only scribe genuinely holds `Write, Edit`. No trimming mechanism is built here (rejected as disproportionate); the doctrine is instead moved into scribe's own body as a short paragraph.

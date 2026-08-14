@@ -68,24 +68,13 @@ slice you actually need rather than re-running the same command unfiltered.
   diagnose mid-task: fall back immediately to `Bash` — a quoted heredoc
   (`cat > file << 'EOF'`) for whole-file authoring, or a `python3` heredoc that
   asserts `old` occurs exactly once before replacing, for surgical edits.
-- The fallback inherits `reviewed-path-gate.sh`'s constraint: that gate
-  matches on **command text**, so a heredoc whose body merely spells the
-  reviewer-owned marker directory is refused regardless of where it writes.
-  Author such a document with a placeholder token and substitute the real value
-  from its canonical definition, so the invoking command text never spells the
-  path. (This is the same move the gate's own refusal text recommends for
-  `git commit -F <file>`.)
-- **That rephrasing move is sanctioned for `reviewed-path-gate.sh` only —
-  never for human-decision-gate.sh.** The former grants the reviewer an
-  identity, so rewording a command merely avoids a text match on a path the
-  reviewer is entitled to write; `human-decision-gate.sh` grants nobody, so
-  splitting or rewording the path there is a `self-authorized bypass` (see
-  "Blocked by a gate you do not own" below) — that exact confusion caused a
-  real incident on 2026-08-12. When a marker body must quote a `DECISION` path
-  verbatim, use the sanctioned marker-write template that gate allows and
-  prints in its own refusal text: `cat > <marker-path> <<'EOF'`, single-quoted
-  delimiter, bare literal target in the marker directory, terminator on the
-  last line. If the template does not fit your write, report and wait.
+- If either `reviewed-path-gate.sh` or `human-decision-gate.sh` refuses a
+  heredoc, read its refusal text before doing anything else: both gates print
+  their complete remediation — the sanctioned heredoc template, when
+  rephrasing a path is allowed, and when it isn't — at the moment they
+  refuse. Rewording a command to dodge `human-decision-gate.sh`'s scan is
+  always a self-authorized bypass, never a sanctioned workaround (see
+  "Blocked by a gate you do not own" below).
 - This applies **regardless of how the tools were granted**. A persona that
   lists `Write, Edit` in its own `tools:` frontmatter loses them exactly as a
   persona that receives them through the `memory:` auto-grant does — measured

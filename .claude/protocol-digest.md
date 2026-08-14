@@ -1,4 +1,4 @@
-<!-- antislop v0.31.38 | source: templates/protocol-digest.md | ADAPT-substituted -->
+<!-- antislop v0.31.39 | source: templates/protocol-digest.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/protocol-digest.md by install-antislop,
      version-stamped like persona-protocol.md. Re-injected verbatim by
      session-start.sh's SessionStart hook, ONLY on `source: resume`/`compact`
