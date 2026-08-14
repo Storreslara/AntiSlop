@@ -65,14 +65,43 @@ the documented consequence.
 **Complete write-site inventory on the `--update` path** — a `--dry-run` that
 misses one of these is worse than no `--dry-run` at all:
 
-| Line (2026-08-11) | Write |
-|---|---|
-| `:882` | `fs.unlinkSync(legacyPath)` — deletes a legacy persona's agent file |
-| `:886` | `migrateGlobalProtocolImport(CWD)` — rewrites `CLAUDE.md` |
-| `:894`, `:902` | `appendUnique(.gitignore, …)` |
-| `:948` | `fs.writeFileSync(settingsPath, …)` — only under `--dedupe-hooks` |
-| `:1035`, `:1049`, `:1061`, `:1068` | `copyStampedBody(…)` — the four render-loop write branches |
-| `:1098`, `:1117` | `fs.writeFileSync(configPath, …)` — `persona-config.json` |
+> **Revised 2026-08-14 (gh338 escalation, finding F-A).** This table was
+> measured at 2026-08-11 and listed **eleven** sites. Commit `d1f232f`
+> (2026-08-13, "propagate hook scripts and registrations on --update") added a
+> **twelfth** — site 12 below — two days after the measurement. The
+> 2026-08-11 numbers had also drifted by ~+140 lines, so the live column is
+> re-measured against `bin/cli.js` at v0.31.49. Re-locate by the anchor text,
+> never by either number.
+
+| # | 2026-08-11 | Live 2026-08-14 | Anchor text | Write |
+|---|---|---|---|---|
+| 1 | `:882` | `:1025` | `if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath)` | deletes a legacy persona's agent file |
+| 2 | `:886` | `:1029` | `const migratedClaudeMd = migrateGlobalProtocolImport(CWD)` | rewrites `CLAUDE.md` |
+| 3 | `:894` | `:1037` | first `appendUnique(path.join(CWD, '.gitignore'), …)` | appends dispatch-hygiene entries |
+| 4 | `:902` | `:1045` | second `appendUnique(path.join(CWD, '.gitignore'), …)` | appends microworld/human-review entries |
+| 5 | `:948` | `:1107` | `fs.writeFileSync(settingsPath, JSON.stringify(cleaned, …))` | strips standalone hook registrations — only under `--dedupe-hooks` |
+| 6 | `:1035` | `:1231` | `writeSpecBody(…)` in the `!fs.existsSync` branch | render loop — `created` |
+| 7 | `:1049` | `:1245` | `copyStampedBody(…)` in the stamp branch | render loop — `stamp refreshed` |
+| 8 | `:1061` | `:1257` | `writeSpecBody(…)` in the `noLocalEdits` branch | render loop — `updated (no local edits detected)` |
+| 9 | `:1068` | `:1273` | `writeSpecBody(…)` in the `acceptAll \|\| acceptList` branch | render loop — `overwritten (--accept)` |
+| 10 | `:1098` | `:1303` | `fs.writeFileSync(configPath, …)` in the `pending \|\| unresolvedRender` branch | rewrites `persona-config.json` |
+| 11 | `:1117` | `:1322` | `fs.writeFileSync(configPath, …)` on the success path | rewrites `persona-config.json` (+ `pluginVersion`) |
+| **12** | *(did not exist)* | **`:1139`** | `fs.writeFileSync(settingsPath, JSON.stringify(merged, …))` inside `if (settings && !pluginState.enabled)` (`:1136-1148`) | **hook-registration backfill** — merges missing packaged hook registrations into `.claude/settings.json` |
+
+**Site 12 is not an edge case.** It fires on a **bare `--update`, no flags**,
+on any standalone project that has a `.claude/settings.json` and is missing a
+packaged hook registration. Measured 2026-08-14 on a throwaway fixture: it
+grew `.claude/settings.json` from 3 bytes (`{}`) to **2669 bytes**, printing
+`added 14 missing antislop hook registration(s)`, **and the run still exited
+`0`**. Two conditions skip it — `settings` being null (no
+`.claude/settings.json` on disk at all) and `pluginState.enabled` — and both
+are load-bearing for the fixture shape; see C2.13.
+
+Note also a render-loop summary shape the 2026-08-11 vocabulary list missed:
+`hash healed (content unchanged, hash was stale)` (`:1267`). It writes no
+file, but it *does* mutate `newFileHashes`, which sites 10/11 then persist —
+so it is a would-be mutation of `persona-config.json` and must be reported and
+counted like one.
 
 Two of these helpers *compute the answer as a side effect of writing it*:
 `appendUnique` (`:151`) returns early when nothing is missing, and
@@ -81,6 +110,39 @@ to strip — and its return value feeds `migratedClaudeMd` into the fast-path
 condition at `:1005`. A naive `if (!dryRun)` wrapped around either call
 silently drops both the write **and** the report line. Each needs a
 no-write variant that still returns what it *would* have done.
+
+**Every one of the twelve has a cheap no-write predicate** — this was checked
+site by site on 2026-08-14, because the exit-code rule below is only
+implementable if it is true. Sites 5 and 12 already compute their answer
+non-destructively before writing (`stripStandaloneHookRegistrations` and
+`mergeNestedHooksJson` both build a new object and compare, at `:1106` and
+`:1137-1138`), so only the `writeFileSync` needs suppressing. Site 1's
+predicate is the `fs.existsSync(legacyPath)` already guarding it. Sites 10/11
+reduce to `JSON.stringify(config, null, 2) + '\n' !== <current file bytes>`.
+Sites 2, 3 and 4 are the two helpers named above. Sites 6-9 are the render
+loop, which already computes `cleanHash` before deciding. No site requires a
+speculative write to learn its own answer.
+
+**The exit-code contract as first drafted is not honest — measured, not
+inferred (finding F-B, 2026-08-14).** Behaviour item 7 originally read "`0`
+nothing would change; `3` at least one file would be created/updated/
+stamp-refreshed or would be pending a decision". Those four outcomes are
+*render-loop* outcomes (sites 6-9 plus `pending`). **Eight of the twelve sites
+cannot produce any of them**, so a literal implementation exits `0` — "nothing
+would change" — while the live run writes. Two throwaway fixtures, measured
+2026-08-14 with `HOME` isolated:
+
+| Fixture | Live `--update` mutated | Non-`already current` summary lines | Live exit code |
+|---|---|---|---|
+| baseline with three `fileHashes` entries dropped, `.gitignore` pre-populated | `.claude/persona-config.json` **only** | 0 | **0** |
+| baseline with an empty `.claude/settings.json`, marketplace plugin disabled | `.claude/settings.json` (3 → 2669 bytes) | 0 in the render summary | **0** |
+
+A genuinely-current baseline (hashes intact, `.gitignore` present, no
+`.claude/settings.json`) was measured in the same session at exit `0` with a
+whole-tree snapshot **unchanged** — under both plain `--update` and `--check`
+— so tightening the rule does not cost the "genuinely current → 0" row that
+C2.12 pins. That is what makes the reformulation in behaviour item 7 safe as
+well as correct.
 
 **Blast radius of renaming `--check`** (measured repo-wide, 2026-08-11):
 `bin/cli.js:975`; six call sites in `tests/cli-backfill.test.js` (`:860`,
@@ -235,6 +297,51 @@ available review automatically.
   `explorer.md`; that constraint is now pinned in C2.5's fixture
   requirement. Step 2's behaviour item 7 and the Context line stating "`1` a
   file could not be rendered" are generically true and unchanged.
+- 2026-08-14 Functional scope & success criteria **(gh338 escalation, finding
+  F-B — the substantive semantic ruling of this revision)**: Q Should
+  `--dry-run` exit `3` on **any** would-be write, or only on the four
+  render-loop outcomes the original rule enumerated? → A (self-resolved):
+  **exit `3` on any of the twelve sites; exit `0` if and only if a live run
+  would leave the tree byte- and mode-identical.** Reasoning, recorded because
+  this is a real semantic decision and not a mechanical fix: (1) exit `0` is
+  the signal CI greps, so an exit `0` that coexists with a live write
+  reproduces `--check`'s exact dishonesty and defeats the unit's purpose;
+  (2) the Context section already promised a *single-signal* contract, which
+  is only sound as a biconditional; (3) the enumerated form contradicted C2.3,
+  which already asserts over the whole tree, three bullets above it; (4) an
+  enumerated rule makes every future write site invisible to exit `0` by
+  default — precisely how site 12 went unnoticed — whereas a site-agnostic
+  rule fails safe as `bin/cli.js` grows. Implementability was verified rather
+  than assumed (all twelve have a cheap non-destructive predicate), and the
+  "genuinely current → 0" row was measured to survive the tightening.
+- 2026-08-14 Edge cases / failure handling **(gh338 escalation, finding
+  F-A)**: Q How should the twelfth write site — the hook-registration backfill
+  added by `d1f232f` after this inventory was measured — be covered? → A
+  (self-resolved): as a first-class inventory entry with its own no-write
+  treatment (behaviour item 9) and its own criterion (C2.13), whose fixture
+  shape is **prescriptive**, because the obvious fixture is vacuous. Measured
+  2026-08-14: with an ambient `HOME` the marketplace plugin reads as enabled,
+  the branch is skipped, and the test passes without reaching site 12 at all.
+  C2.13 therefore mandates `HOME` isolation, an explicitly disabled plugin, a
+  present `.claude/settings.json`, **and** a live-run mutation control.
+- 2026-08-14 Non-functional attributes **(gh338 escalation, finding F-D)**:
+  Q Should the mode-aware snapshot helper be folded into this unit, deferred
+  to the #273 exec-bit spec, or ruled out of scope? → A (self-resolved):
+  **folded in, at C2.3.** The change is confined to a test helper this step
+  already owns and modifies — no production code, no new seam. #273 answers a
+  different question (*is the shipped mode correct?* versus *did the mode
+  change?*) and is still in flight, so deferring would block this step on
+  another spec or ship C2.3 blind to `writeSpecBody`'s `chmodSync` and to
+  `mkdirp`'s empty directories. C2.15 guards Step 1's three existing call
+  sites.
+- 2026-08-14 Technical constraints & tradeoffs **(gh338 escalation, finding
+  F-E)**: Q Should `printUnifiedDiff`'s two `os.tmpdir()` writes be suppressed
+  under `--dry-run`? → A (self-resolved): **no — keep as-is.** They are
+  outside the project root, are cleaned up by the function itself, and produce
+  the diff that *is* the pending report. Behaviour item 3 is rescoped from
+  "zero writes anywhere" to "zero writes under the project root" so this is a
+  stated scope boundary rather than an unstated exception to an absolute
+  claim.
 - 2026-08-11 Technical constraints & tradeoffs: Q Does adding a persona to
   `personaSelection` require any work beyond creating its agent file? → A
   (self-resolved): no — verified against the scaffold path at
@@ -288,11 +395,18 @@ and keep `--check` as a deprecated alias that warns.** Reasoning:
   exit code discriminates all three shapes on its own. A rename cannot do
   this; only a mode that does not write can.
 - *The dry-run is provable, which is why it is worth the extra risk.* A
-  whole-tree `path → sha256` snapshot compared before and after, **paired with
-  a mutation control** proving the same fixture genuinely mutates without
-  `--dry-run`, is a single assertion that covers all eleven write sites at once
-  without enumerating them — strictly stronger than eleven per-site assertions
-  that could each be quietly satisfied by a stale fixture.
+  whole-tree `path → (sha256, mode)` snapshot compared before and after,
+  **paired with a mutation control** proving the same fixture genuinely mutates
+  without `--dry-run`, is a single assertion that covers all **twelve** write
+  sites at once without enumerating them — strictly stronger than twelve
+  per-site assertions that could each be quietly satisfied by a stale fixture.
+
+  This site-agnostic property is exactly what made the 2026-08-14 gh338
+  escalation cheap to absorb: a twelfth site appearing two days after the
+  inventory was measured required **no change to C2.3's assertion**, only a
+  fixture that arms the new site. It is also the argument behaviour item 7 now
+  applies to the exit code, which had been written in the enumerating style
+  this bullet rejects.
 
 ## Risks and dependencies
 
@@ -479,12 +593,42 @@ is silent data loss. (`tests/reviewer-tier.test.sh:102` already forces an opus
 **Gated on Open Question 1.** Do not dispatch until OQ1 is answered. The
 behaviour below encodes OQ1's recommended default (deprecated alias + warning).
 
+> **Revised 2026-08-14 — gh338 escalation.** A `lead-programmer` dispatch on
+> this unit escalated before writing any code, having found two blocking gaps.
+> Both were independently re-verified against live `bin/cli.js` (v0.31.49)
+> before this revision was written:
+> - **F-A** — a **twelfth** `--update` write site (`:1136-1148`, the
+>   hook-registration backfill) landed in commit `d1f232f` on 2026-08-13, two
+>   days after this plan's write-site inventory was measured. Site 12 is now
+>   in the Context inventory; behaviour item 9 and **C2.13** cover it, with a
+>   prescriptive fixture shape because the obvious fixture passes vacuously.
+> - **F-B** — the exit-code rule was under-determined. The escalation named
+>   six uncovered sites; re-measurement found **eight** (sites 10/11, the
+>   `persona-config.json` rewrite, were also uncovered and were demonstrated
+>   mutating a tree on a live exit-`0` run). Behaviour item 7 is rewritten over
+>   *mutations* rather than report vocabulary, and **C2.14** pins it.
+> - **F-D** (advisory, accepted) — folded into **C2.3**: `snapshotTree` is
+>   widened to be mode- and directory-aware. **C2.15** guards Step 1.
+> - **F-E** (advisory, declined — keep as-is) — recorded as an explicit scope
+>   carve-out in behaviour item 3.
+>
+> The escalation was correct and cost nothing: no code was written against a
+> spec that would have shipped a `--dry-run` reporting "nothing would change"
+> for two separate real mutations.
+
 **Affected files**
-- `bin/cli.js` — `runUpdate` and its helpers `appendUnique` (`:151`) and
-  `migrateGlobalProtocolImport` (`:817`).
-- `tests/cli-backfill.test.js` — new cases; six existing `--check` call sites
-  migrated (`:860`, `:871`, `:882`, `:897`, `:1022`, `:1086`, `:1116`), with
-  at least one deliberately retained on `--check` to pin the alias.
+- `bin/cli.js` — `runUpdate` and its helpers `appendUnique` (`:159`),
+  `migrateGlobalProtocolImport`, and the twelve write sites in the Context
+  inventory. Site 12's branch (`:1136-1148`) and `writeSpecBody`
+  (`:455-463`) both post-date the 2026-08-11 measurement.
+- `tests/cli-backfill.test.js` — new cases (C2.13-C2.15); the **widened
+  `snapshotTree`** helper (`:1665-1681`, per C2.3's F-D ruling); and six
+  existing `--check` call sites migrated. **Line numbers re-measured
+  2026-08-14** — the six are `:849`, `:970`, `:996`, `:1121`, `:1185`,
+  `:1215`. (The superseded list gave seven stale numbers — `:860`, `:871`,
+  `:882`, `:897`, `:1022`, `:1086`, `:1116` — while correctly calling them
+  "six"; locate by `'--check'` content, not by number.) At least one is
+  deliberately retained on `--check` to pin the alias.
 
 **Behaviour**
 
@@ -494,42 +638,193 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
    and prints to **stderr**, as the first output of the run and before any
    write:
    `WARNING: --check is deprecated and is NOT a dry-run — it writes files (it renders mirrors and rewrites persona-config.json). Use --force-render for the same behaviour under an honest name, or --dry-run for a genuine no-write report.`
-3. `--dry-run` performs **zero** filesystem writes anywhere on the `--update`
-   path — all eleven sites in the Context inventory, re-located by content.
+3. `--dry-run` performs **zero** filesystem writes **anywhere under the
+   project root** on the `--update` path — all **twelve** sites in the Context
+   inventory, re-located by anchor text, not by line number.
+
+   *Scope carve-out (finding F-E, ruled 2026-08-14: keep as-is).*
+   `printUnifiedDiff` (`bin/cli.js:902-915`) writes two temp files under
+   `os.tmpdir()` and `fs.rmSync`s the directory afterwards. These are
+   **outside the project root**, are cleaned up by the function itself, and
+   exist to produce the pending-report diff, which is the entire point of the
+   dry-run report. They are deliberately **not** suppressed. Item 3 is scoped
+   to the project root precisely so this stays true rather than being an
+   unstated exception to an absolute claim — an earlier draft said "zero
+   filesystem writes anywhere", which contradicted this ruling. A reviewer
+   should not re-litigate this; it is a recorded decision.
 4. `--dry-run` implies the force: it bypasses the version-match fast path at
    `:1005` exactly as `--force-render` does. (Without this, a dry run on a
    current project reports nothing and is useless.)
-5. `--dry-run` reports the same per-file set a live run would act on, in the
-   conditional voice: `would be created`, `would be updated`, `stamp would be
-   refreshed`, `already current`, `would be kept as-is`, `would be
-   overwritten (--accept)`, `would be pending a decision`. No dry-run line may
-   end in `: created`, `: updated`, or `: pending`.
-6. `appendUnique` and `migrateGlobalProtocolImport` each gain a no-write mode
+5. `--dry-run` reports the same per-target set a live run would act on, in the
+   conditional voice. **The vocabulary must cover all twelve sites, not just
+   the render loop** — the 2026-08-11 list below the line covered only sites
+   6-9, which is the reporting half of the same gap finding F-B found in the
+   exit code.
+
+   | Sites | Conditional phrase |
+   |---|---|
+   | 6 | `would be created` |
+   | 7 | `stamp would be refreshed` |
+   | 8 | `would be updated` |
+   | 9 | `would be overwritten (--accept)` |
+   | 6-9, no change | `already current` |
+   | 6-9, `--keep` | `would be kept as-is` |
+   | 6-9, divergent | `would be pending a decision` |
+   | 6-9, stale hash | `hash would be healed` |
+   | 1 | `would be removed` (naming the legacy agent path) |
+   | 2 | `would remove the legacy global @.claude/persona-protocol.md import` (naming `CLAUDE.md`) |
+   | 3, 4 | `would be appended to` (naming `.gitignore`) |
+   | 5 | `would remove N standalone antislop hook registration(s)` (naming `.claude/settings.json`) |
+   | 10, 11 | `would be rewritten` (naming `.claude/persona-config.json`) |
+   | 12 | `would add N missing antislop hook registration(s)` (naming `.claude/settings.json`) |
+
+   The exact wording of each phrase is the implementer's to choose; what is
+   **required** is that (a) every site that would fire emits at least one line
+   naming its target path, (b) that line is in the conditional voice, and
+   (c) no dry-run line anywhere uses an indicative/past-tense write verb.
+   C2.4 pins (c) mechanically and C2.14 pins (a).
+6. `appendUnique` (sites 3, 4) and `migrateGlobalProtocolImport` (site 2)
+   each gain a no-write mode
    (or a sibling predicate) that still returns what it *would* have done, so
    the dry-run report is complete and `migratedClaudeMd` still computes
    correctly for the fast-path term at `:1005`.
-7. `--dry-run` exit codes: `0` nothing would change; `3` at least one file
-   would be created/updated/stamp-refreshed or would be pending a decision;
-   `1` one or more files could not be rendered.
+7. **`--dry-run` exit codes — defined over *mutations*, not over report
+   vocabulary** (rewritten 2026-08-14 per finding F-B; see the measured table
+   in Context):
+
+   - **`1`** — one or more files could not be rendered (`unresolvedRender`
+     non-empty). Unchanged.
+   - **`0`** — **if and only if** a live `--update` run, with the same
+     arguments on the same tree, would leave every path under the project
+     root byte-identical and mode-identical, and would create no new path.
+   - **`3`** — otherwise: **any** of the twelve sites would fire with an
+     effect (a file created, updated, deleted, stamp-refreshed, appended to,
+     rewritten, or left pending a decision).
+
+   **Why this formulation and not an enumeration of outcome names.** The rule
+   is stated over the *effect on the tree* rather than over a list of summary
+   phrases, for four reasons:
+
+   1. This unit exists to kill false reassurance. Exit `0` is the most
+      consumable signal there is — it is what a CI drift check greps. If exit
+      `0` can coexist with a live run that writes, `--dry-run` reproduces
+      `--check`'s exact dishonesty in a new place, and the unit fails at its
+      own purpose.
+   2. Context already commits to a single-signal contract: "`--dry-run`'s
+      exit-code contract collapses that back to one signal, because the tree
+      is guaranteed clean by construction." That is only sound if exit `0` ⟺
+      the tree would be untouched. The enumerated form breaks the
+      biconditional; this form *is* the biconditional.
+   3. It removes an internal contradiction inside this very step. C2.3's
+      no-write proof already asserts over the **whole tree** — `.gitignore`,
+      `.claude/settings.json` and `.claude/persona-config.json` included. An
+      exit-code rule covering only four render-loop outcomes contradicts the
+      criterion sitting three bullets above it.
+   4. **It fails safe as `bin/cli.js` grows.** An enumerated rule makes every
+      future write site invisible to exit `0` *by default* — which is exactly
+      how site 12 went unnoticed for two days. A site-agnostic rule makes the
+      default the other way round.
+
+   **Restated as one machine-checkable sentence:** exit `0` is a promise that
+   C2.3's snapshot predicate would hold across a **live** run. That is not a
+   loose paraphrase — it is the definition, and C2.14 tests it directly by
+   running the live run and comparing.
+
+   *Implementability was verified, not assumed:* see "Every one of the twelve
+   has a cheap no-write predicate" in Context. *Convergence:* a project that
+   exits `3` only because of the sites 10/11 config rewrite returns to `0`
+   after one live `--update`; it does not exit `3` forever.
 8. `--dry-run` and `--force-render` together are accepted (the dry run
    already forces); `--dry-run` wins on the write question.
+9. **Site 12 — the hook-registration backfill (`bin/cli.js:1136-1148`) — gets
+   its own no-write treatment** (added 2026-08-14 per finding F-A). This site
+   post-dates the original inventory and is the cheapest of the twelve to
+   handle correctly, because it *already* computes its answer without
+   writing:
+
+   ```
+   if (settings && !pluginState.enabled) {
+     const merged = mergeNestedHooksJson(deep-copy of settings, readStandaloneHooksConfig());
+     if (JSON.stringify(merged.hooks) !== JSON.stringify(settings.hooks)) {
+       fs.writeFileSync(settingsPath, …);   // <-- suppress ONLY this
+       const added = …;
+       settings = merged;                   // <-- KEEP (see below)
+       console.log('… added N missing …');  // <-- conditional voice
+     }
+   }
+   ```
+
+   Three requirements, in order of how easy they are to get wrong:
+   - Suppress **only** the `fs.writeFileSync`. The `mergeNestedHooksJson`
+     call is already non-destructive (it merges into a `JSON.parse(JSON.stringify(settings))`
+     deep copy), so the predicate is free.
+   - **Keep the in-memory `settings = merged` assignment.** Dropping it
+     alongside the write is the `appendUnique` trap in a new place: any later
+     code reading `settings` would then see a state neither the live run nor
+     the dry run ever has. Suppress the write, not the computation.
+   - The `added` count and the report line must still be produced, in the
+     conditional voice (behaviour 5), and the site must contribute to the
+     exit-`3` decision (behaviour 7). Site 12 firing alone is a measured
+     exit-`0` case today; that is precisely what must change.
 
 **Acceptance criteria** (run from the repo root)
 
 - **C2.1** `bash tests/validate.sh` exits 0.
 - **C2.2** The C1.2 placement check still passes.
 - **C2.3** No-write proof **with mutation control**, both assertions in one
-  test. Arm a temp project so a live run demonstrably mutates it: a stale
-  `pluginVersion`, one managed mirror deleted, one managed mirror's body
-  corrupted, a bare `@.claude/persona-protocol.md` line added to `CLAUDE.md`,
-  and `.gitignore` stripped of the managed entries. Then:
-  (a) `node bin/cli.js --update --dry-run` leaves a whole-tree snapshot
-  (`relPath → sha256`, plus the sorted path list) **deep-equal** to the
-  snapshot taken immediately before it; and
-  (b) on a byte-identical fresh copy of the same fixture,
-  `node bin/cli.js --update --force-render --accept=all` leaves the snapshot
-  **not** deep-equal.
+  test. Arm a temp project — call this the **all-twelve fixture**, reused by
+  C2.4, C2.13 and C2.14 — so that a live run demonstrably mutates it via
+  **every one of the twelve sites**: a legacy persona token recorded in
+  `personaSelection` with its agent file present (site 1), a bare
+  `@.claude/persona-protocol.md` line added to `CLAUDE.md` (site 2),
+  `.gitignore` stripped of the managed entries (sites 3, 4), a standalone
+  antislop hook registration in `.claude/settings.json` (site 5, exercised
+  under `--dedupe-hooks` by C2.11), one managed mirror deleted (site 6), a
+  stale `pluginVersion` (site 7), one managed mirror's body corrupted while
+  its recorded hash still matches the old body (site 8), one mirror locally
+  edited and named in `--accept` (site 9), three `fileHashes` entries dropped
+  (sites 10, 11), and the `HOME`-isolated/plugin-disabled shape from C2.13
+  (site 12). Then:
+  (a) `node bin/cli.js --update --dry-run --dedupe-hooks --accept=all` leaves
+  a whole-tree snapshot **deep-equal** to the snapshot taken immediately
+  before it; and
+  (b) on a byte-identical fresh copy of the same fixture, the same command
+  with `--force-render` in place of `--dry-run` leaves the snapshot **not**
+  deep-equal.
   Assertion (b) is what makes (a) non-vacuous and is not optional.
+
+  **The snapshot must be mode-aware and directory-aware** (finding F-D, ruled
+  2026-08-14: fold in here, do **not** defer to #273). `snapshotTree`
+  (`tests/cli-backfill.test.js:1665-1681`) currently records `relPath →
+  sha256` plus the sorted **file** path list. Two classes of write are
+  therefore invisible to it, both of which live inside `writeSpecBody`
+  (`bin/cli.js:455-463`), which three of the four render-loop branches call:
+  - `fs.chmodSync(destAbsPath, …)` (`:462`) — a dry run that suppressed the
+    `writeFileSync` but kept the chmod would still pass a content-only
+    deep-equal.
+  - `mkdirp(path.dirname(destAbsPath))` (`:460`, and `:448` in
+    `copyStampedBody`) — an empty directory left behind contributes **no**
+    entry to a file-only path list.
+
+  Widen the existing helper to record `mode & 0o777` alongside each content
+  hash, and to include directory paths in the sorted path list. Keep the
+  `.git` skip.
+
+  *Why fold in rather than defer:* C2.3 is this unit's central proof, and a
+  no-write proof blind to a class of writes is the vacuous-criterion trap this
+  plan is otherwise careful about. The fix is confined to a **test helper this
+  step already owns and already modifies** — no production code, no new seam,
+  no blast radius outside `tests/cli-backfill.test.js`. Issue #273's exec-bit
+  spec answers a different question (*is the shipped mode correct?*) from this
+  one (*did the mode change?*), and it is still in flight, so deferring would
+  either block this step on another spec's schedule or ship the hole. The
+  helper's own comment already anticipates this: "Reusable by a later step
+  (dry-run) — do not duplicate."
+
+  *Boundary note:* `snapshotTree` was introduced by Step 1, which has already
+  PASSed. Widening it is a Step 2 edit to a file Step 2 already lists as
+  affected; it does **not** reopen Step 1's plan text or its shipped
+  behaviour. C2.15 pins that Step 1's three call sites still pass.
 - **C2.4** Report vocabulary: on that armed fixture, `--update --dry-run`
   stdout contains `would be created` for the deleted mirror, and
   `node bin/cli.js --update --dry-run 2>&1 | grep -qE ': (updated|created|pending)$'`
@@ -573,7 +868,8 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
   matches and whose mirrors are all current except one corrupted body,
   `--update --dry-run` names that file (it did not take the `:1005` fast path).
 - **C2.7** `--force-render` is behaviourally identical to today's `--check`:
-  the existing case at `tests/cli-backfill.test.js:1008` ("`--update --check`
+  the existing case at `tests/cli-backfill.test.js:1107` (re-measured
+  2026-08-14; the superseded `:1008` is stale) ("`--update --check`
   catches drift past the version-match fast-path that a plain `--update`
   misses") passes verbatim with `--check` replaced by `--force-render`.
 - **C2.8** The alias still works and warns: on two byte-identical copies of
@@ -595,7 +891,15 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
   `node bin/cli.js --update --dry-run --dedupe-hooks` leaves
   `.claude/settings.json` byte-identical and reports what it would remove.
   If this fixture proves impossible to arm, escalate rather than dropping the
-  criterion — the `--dedupe-hooks` write at `:948` is one of the eleven sites.
+  criterion — the `--dedupe-hooks` write (site 5, `:948` at 2026-08-11, live
+  `:1107`) is one of the twelve sites.
+
+  **`HOME` must be isolated here too**, for the same reason as C2.13 but with
+  the opposite polarity: this fixture needs the marketplace plugin **enabled**
+  (that is what makes `hooksCollision` true), so it must not inherit an
+  ambient `HOME` that could disagree. Set `env.HOME` to the temp project
+  explicitly and write the `enabledPlugins` state into the fixture rather than
+  relying on the developer's own configuration.
 - **C2.12** Drift-shape discrimination, on exit code alone (closes finding
   F2). Build the three fixtures from F2's table and assert
   `node bin/cli.js --update --dry-run`:
@@ -607,6 +911,86 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
   Each of the three must additionally leave a whole-tree snapshot deep-equal
   across the run. Shape A is the load-bearing case: it is the #291 shape, and
   today's `--check` returns 0 on it *after silently repairing it*.
+
+- **C2.13** *(new 2026-08-14, finding F-A)* **Site 12 — the
+  hook-registration backfill — is suppressed, reported, and counted.** The
+  fixture shape is prescriptive because the obvious fixture passes
+  **vacuously**; all three conditions below were measured on 2026-08-14.
+
+  Fixture requirements:
+  1. **`HOME` must be isolated** — pass `env: { ...process.env, HOME: tmp }`
+     to `spawnSync`. Measured: with the ambient developer `HOME`, the
+     marketplace plugin is detected as **enabled**, `pluginState.enabled`
+     short-circuits the branch, `.claude/settings.json` stays at 3 bytes and
+     the test passes **without ever reaching site 12**. This is the single
+     easiest way to ship a green, meaningless test here.
+  2. **The marketplace plugin must be explicitly disabled** for the fixture —
+     the `if (settings && !pluginState.enabled)` guard is the branch
+     condition. Note this is the exact **inverse** of C2.11's fixture, which
+     sets `pluginState.enabled = true`; the two criteria cannot share one
+     fixture, and C2.11's cannot be reused here.
+  3. **`.claude/settings.json` must exist** — `buildBaselineProject`
+     (`tests/cli-backfill.test.js:595-625`) never writes it, leaving
+     `settings` null, which is the *other* condition that skips the branch.
+     An empty `{}` is sufficient and is what the 3 → 2669 byte measurement
+     used.
+
+  Assertions, on that fixture:
+  (a) `node bin/cli.js --update --dry-run` leaves `.claude/settings.json`
+  **byte-identical**;
+  (b) its stdout reports the backfill in the conditional voice, naming
+  `.claude/settings.json`;
+  (c) it exits **3** (not `0` — see C2.14);
+  (d) **mutation control, not optional:** on a byte-identical fresh copy, a
+  live `node bin/cli.js --update` leaves `.claude/settings.json` **not**
+  byte-identical and grows it past 2000 bytes. Without (d), all of (a)-(c)
+  are satisfiable by a fixture that never reached the branch at all — which
+  is exactly failure mode 1 above.
+
+- **C2.14** *(new 2026-08-14, finding F-B)* **Exit `0` means the live run
+  would be a no-op — tested against the live run itself.** This is behaviour
+  item 7's biconditional, stated as a runnable check rather than as prose.
+
+  For each fixture in the table below, build **two byte-identical copies**.
+  Run `node bin/cli.js --update --dry-run` on copy A and record its exit
+  code; run the corresponding **live** `node bin/cli.js --update` on copy B
+  and record whether its whole-tree snapshot (the widened, mode-aware one
+  from C2.3) changed. Assert the biconditional holds: dry-run exit `0` **iff**
+  the live snapshot is unchanged.
+
+  | Fixture | Live run mutates | Required `--dry-run` exit |
+  |---|---|---|
+  | genuinely current (hashes intact, `.gitignore` populated, no `.claude/settings.json`) | nothing | **0** |
+  | three `fileHashes` entries dropped, `.gitignore` populated | `.claude/persona-config.json` only | **3** |
+  | empty `.claude/settings.json`, plugin disabled, `HOME` isolated | `.claude/settings.json` only | **3** |
+  | `.gitignore` stripped of the managed entries | `.gitignore` only | **3** |
+  | legacy persona token recorded, its agent file present | that agent file deleted | **3** |
+  | bare `@.claude/persona-protocol.md` line in `CLAUDE.md` | `CLAUDE.md` only | **3** |
+
+  Rows 2 and 3 are the regression pins for finding F-B: **both were measured
+  at live exit `0` on 2026-08-14** with zero non-`already current` summary
+  lines, and both are the false-reassurance case this unit exists to prevent.
+  Row 1 is the non-vacuity control — without it, an implementation that simply
+  always exits `3` passes every other row. Row 1 was independently measured
+  clean (snapshot unchanged, exit `0`) on 2026-08-14 under both plain
+  `--update` and `--check`, so it is known to be satisfiable.
+
+- **C2.15** *(new 2026-08-14, finding F-D)* **Widening `snapshotTree` does not
+  weaken Step 1.** Its three existing call sites
+  (`tests/cli-backfill.test.js:1727/1731`, `:1741/1744`, `:1774/1777` — the
+  C1.5-C1.8 "writes nothing" assertions) still pass unmodified, with the
+  mode-and-directory-aware helper in place.
+
+  **Measured, not assumed (2026-08-14).** A scratch copy of
+  `tests/cli-backfill.test.js` with `snapshotTree` widened exactly as C2.3
+  requires — appending `mode & 0o777` to each entry and adding a `DIR:` entry
+  per directory — was run in full against the current tree: **the entire suite
+  passed**, not merely the three call sites. So the widening is known to be
+  compatible before the implementer starts, and a failure here is a signal
+  that something *else* in the unit went wrong, not that the helper change was
+  a bad idea. (The mechanism is as expected: those runs abort on invalid
+  `--personas=` tokens before any write, so they create no directories and
+  change no modes.)
 
 **Do NOT touch**
 - `scripts/resync-vendored-skills.sh` and its unrelated, genuinely read-only
@@ -785,6 +1169,61 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
   both carrying an explicit fixture requirement against the wrong-file trap.
   Both corrected criteria were run against the tree in the CHK12 sense and
   have the expected polarity today.
+- **CHK14** *(added 2026-08-14, gh338 escalation)*: Is the write-site
+  inventory complete against the **current** `bin/cli.js`, rather than against
+  the tree as it stood when the inventory was measured? — FAIL (missing: a
+  twelfth site, `:1136-1148`, landed in `d1f232f` on 2026-08-13, two days
+  after the 2026-08-11 measurement; the 2026-08-11 line numbers had also
+  drifted by roughly +140) — revised in place: the Context table is rebuilt
+  with a live column and anchor text, behaviour item 9 and C2.13 cover site
+  12, and the table now carries an explicit re-measurement banner. **Root
+  cause worth recording:** the inventory was pinned to a date, and the plan
+  told readers to "re-locate by content" without giving them the content to
+  re-locate by. The rebuilt table carries anchor text per row so the next
+  drift is cheap to absorb.
+- **CHK15** *(added 2026-08-14, gh338 escalation)*: Do behaviour item 7's
+  exit codes and C2.3's no-write proof agree about which writes count? —
+  FAIL (conflicting: C2.3 asserted over the whole tree while item 7 enumerated
+  four render-loop outcomes, leaving **eight** of twelve sites able to produce
+  exit `0` on a run that writes; two such cases were measured live) — revised
+  in place: item 7 is restated over mutations as a biconditional, and C2.14
+  tests it against an actual live run rather than against report vocabulary.
+- **CHK16** *(added 2026-08-14, gh338 escalation)*: Can C2.3's no-write proof
+  actually observe every class of write it claims to cover? — FAIL (missing:
+  `snapshotTree` records content hashes and a file-only path list, so
+  `writeSpecBody`'s `fs.chmodSync` and `mkdirp`'s empty directories are both
+  invisible to it) — revised in place: C2.3 now requires a mode- and
+  directory-aware snapshot, with C2.15 guarding Step 1's three existing call
+  sites against the widening.
+- **CHK17** *(added 2026-08-14, gh338 escalation)*: Is C2.13's site-12 fixture
+  specified tightly enough that it cannot pass without reaching site 12? —
+  PASS, but only after revision: the vacuity mode is real and was measured
+  (with an ambient `HOME` the branch is skipped entirely and the assertions
+  still hold), so C2.13 mandates `HOME` isolation, an explicitly disabled
+  plugin, a present `.claude/settings.json`, and a live-run mutation control.
+  C2.11 gained the inverse `HOME` requirement for the same reason.
+- **CHK18** *(added 2026-08-14, gh338 escalation)*: Does behaviour item 3's
+  "zero filesystem writes" claim survive the F-E ruling that
+  `printUnifiedDiff`'s tmpdir writes stay? — FAIL (conflicting: an absolute
+  "anywhere" claim alongside a decision to keep two writes) — revised in
+  place: item 3 is rescoped to the project root, with the carve-out stated and
+  marked as a recorded decision so a reviewer does not re-litigate it.
+- **CHK19** *(added 2026-08-14, gh338 escalation)*: Is the rewritten exit-code
+  rule actually implementable, or does it demand a predicate some site cannot
+  supply without writing? — PASS (checked site by site on 2026-08-14 and
+  recorded in Context: sites 5 and 12 already compute their answer into a deep
+  copy before writing, sites 10/11 reduce to a string comparison against the
+  file's current bytes, site 1's predicate is the `existsSync` already
+  guarding it, sites 2-4 are the two helpers behaviour item 6 already covers,
+  and sites 6-9 already compute `cleanHash` before deciding. No site needs a
+  speculative write to learn its own answer.)
+- **CHK20** *(added 2026-08-14, gh338 escalation)*: Does tightening exit `0`
+  break the "genuinely current → 0" row C2.12 already pins? — PASS (measured
+  2026-08-14: a baseline with hashes intact, `.gitignore` populated and no
+  `.claude/settings.json` exits `0` with a whole-tree snapshot unchanged,
+  under both plain `--update` and `--check`. C2.14 row 1 re-pins it as the
+  non-vacuity control, without which an implementation that always exits `3`
+  would pass every other row.)
 
 ## Scribe update hint
 
