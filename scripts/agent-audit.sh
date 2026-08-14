@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Reads Claude Code's existing per-session/per-subagent transcript store
-# (~/.claude/projects/<slug>/) and reports six anomaly checks (A1-A6) plus
+# (~/.claude/projects/<slug>/) and reports five anomaly checks (A1-A4, A6) plus
 # two informational inventories (I1-I2). Read-only: no new instrumentation,
 # no hook, no gitignore entry - the data already exists on disk.
 #
@@ -427,25 +427,6 @@ for sid in "${session_ids[@]}"; do
   done < "$DISPATCHES"
 done
 
-# --- A5: missing terminal status line ------------------------------------
-# Per the shared protocol, a missing STATUS line is "a prompt to resume, not
-# a defect" - reported as such, never as an error.
-while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
-  text="$(jq -rs '
-    [.[] | select(.type=="assistant" and (.message.content[]? | .type=="text"))] as $withtext
-    | if ($withtext|length)==0 then empty
-      else ($withtext[-1].message.content[] | select(.type=="text") | .text)
-      end
-  ' "$jf" 2>/dev/null || true)"
-  last_line=""
-  while IFS= read -r l; do
-    [ -n "$l" ] && last_line="$l"
-  done <<< "$text"
-  if [[ ! "$last_line" =~ ^STATUS:\ (complete|incomplete\ [-—]\ .+)$ ]]; then
-    emit_finding A5 "$sid" "$aid" "$persona" "" "prompt-to-resume"
-  fi
-done < "$DISPATCHES"
-
 # --- A6: orphan PASS marker -----------------------------------------------
 # A .pass marker whose task-id has no reviewer dispatch in the window. Task
 # id is the marker's filename stem; matched against reviewer dispatch
@@ -531,8 +512,6 @@ print_section A1 "Undeclared tool use"
 print_section A2 "Unregistered agent type"
 print_section A3 "Nested spawn"
 print_section A4 "Gated dispatch without review"
-echo "A5 Missing terminal status line (n=$(section_count A5)) - a prompt to resume, not a defect"
-jq -r 'select(.id=="A5") | "  session=\(.session) agent=\(.agent) persona=\(.persona)"' "$FINDINGS" 2>/dev/null
 n6="$(jq -s '[.[] | select(.id=="A6")] | length' "$FINDINGS" 2>/dev/null)"
 echo "A6 Orphan PASS marker (n=$n6)"
 jq -r 'select(.id=="A6") | "  task=\(.task)"' "$FINDINGS" 2>/dev/null

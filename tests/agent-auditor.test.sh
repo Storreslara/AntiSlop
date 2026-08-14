@@ -3,9 +3,9 @@
 # docs/plans/2026-08-09-agent-auditor-persona.md).
 #
 # Builds a synthetic AGENT_AUDIT_ROOT tree with one known-good and one
-# known-bad fixture per anomaly class (A1-A6), plus an R5 privacy fixture,
+# known-bad fixture per anomaly class (A1-A4, A6), plus an R5 privacy fixture,
 # then actually invokes scripts/agent-audit.sh against it and asserts on the
-# real --json output. Non-vacuity for A1 and A5 is proven by mutation
+# real --json output. Non-vacuity for A1 is proven by mutation
 # testing: the detection call is neutralized in a scratch COPY of the script
 # (never the tracked file itself - matching the mutation-control pattern
 # already used by tests/stop-gate-blocked.test.sh) and the same assertions
@@ -116,25 +116,6 @@ echo '{"agentType":"reviewer","description":"Unit: gh-a4good","model":"opus","sp
 echo '{"type":"user","timestamp":"2026-08-01T12:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
   > "$FIXTURE_ROOT/s3.jsonl"
 
-# --- s4: A5_bad (no terminal STATUS line), A5_good (has one) ---
-
-echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
-  "$FIXTURE_ROOT/s4/subagents/agent-a5bad.meta.json"
-{
-  echo '{"type":"user","timestamp":"2026-08-01T13:00:00Z","message":{"content":[{"type":"text","text":"explore"}]}}'
-  echo '{"type":"assistant","timestamp":"2026-08-01T13:00:01Z","message":{"content":[{"type":"text","text":"found something"}]}}'
-} > "$FIXTURE_ROOT/s4/subagents/agent-a5bad.jsonl"
-
-echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
-  "$FIXTURE_ROOT/s4/subagents/agent-a5good.meta.json"
-{
-  echo '{"type":"user","timestamp":"2026-08-01T13:00:00Z","message":{"content":[{"type":"text","text":"explore"}]}}'
-  echo '{"type":"assistant","timestamp":"2026-08-01T13:00:01Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
-} > "$FIXTURE_ROOT/s4/subagents/agent-a5good.jsonl"
-
-echo '{"type":"user","timestamp":"2026-08-01T13:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
-  > "$FIXTURE_ROOT/s4.jsonl"
-
 # --- s5: reviewer whose description matches the A6_good marker's task id ---
 
 echo '{"agentType":"reviewer","description":"Unit: gh-888","model":"opus","spawnDepth":0,"taskKind":"normal"}' > \
@@ -228,10 +209,6 @@ echo "== A4: gated dispatch without review =="
 assert_agent_finding A4 a4bad present
 assert_agent_finding A4 a4good absent
 
-echo "== A5: missing terminal status line =="
-assert_agent_finding A5 a5bad present
-assert_agent_finding A5 a5good absent
-
 echo "== A6: orphan PASS marker =="
 assert_task_finding A6 gh-999 present
 assert_task_finding A6 gh-888 absent
@@ -252,7 +229,7 @@ else
   echo "OK   plain-text output does not contain the privacy canary string"
 fi
 
-# --- mutation proof (non-vacuity): A1 and A5 -------------------------------
+# --- mutation proof (non-vacuity): A1 -----------------------------------------------
 # Neutralizes the anomaly's emit_finding call in a scratch COPY of the
 # script (never the tracked scripts/agent-audit.sh - matching the
 # mutation-control pattern in tests/stop-gate-blocked.test.sh), symlinking
@@ -295,9 +272,6 @@ mutation_proof() {
 
 echo "== mutation proof: A1 =="
 mutation_proof A1 a1bad
-
-echo "== mutation proof: A5 =="
-mutation_proof A5 a5bad
 
 # --- format-probe state discrimination (Step 10, F3) ------------------------
 # Five fixture roots, five expected states. LIVE reuses FIXTURE_ROOT itself
@@ -407,7 +381,7 @@ fi
 
 # --- mutation proof (non-vacuity): FORMAT-EMPTY collapsed into
 # FORMAT-UNRECOGNIZED ---------------------------------------------------
-# Reuses the MUTANT_DIR scratch copy set up above for the A1/A5 mutation
+# Reuses the MUTANT_DIR scratch copy set up above for the A1 mutation
 # proofs (never the tracked scripts/agent-audit.sh itself).
 
 echo "== mutation proof: FORMAT-EMPTY collapsed into FORMAT-UNRECOGNIZED =="

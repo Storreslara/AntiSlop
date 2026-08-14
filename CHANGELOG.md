@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.34] - 2026-08-14
+
+**Remove anomaly check A5 from the agent auditor (gh366, Step 18 of #348 spec).** A5 flagged a subagent whose final message lacked the `STATUS:` line, but `agents/agent-auditor.md` itself documents that finding as "a prompt to resume the subagent, not a defect" -- a check defined to be non-actionable. Ships onto contested ground by explicit operator choice: #334, #337, and #290 all touch these same three files and must re-baseline against an A5-free corpus after this lands (R10.2).
+
+### Changed
+- **`scripts/agent-audit.sh`:** Removed the A5 detection block, its plain-text summary line, and its `jq` detail line. Header comment updated from "six anomaly checks (A1-A6)" to "five anomaly checks (A1-A4, A6)" -- A6 was NOT renumbered.
+- **`tests/agent-auditor.test.sh`:** Removed the `a5bad`/`a5good` fixtures, the `assert_agent_finding A5` assertions, and the `mutation_proof A5 a5bad` invocation. Header comment updated to credit A1 alone for mutation-proof non-vacuity.
+- **`agents/agent-auditor.md`:** Removed the "A5 -- Missing terminal status line" entry and corrected the surrounding check count.
+
+### Notes
+- Mutation-proof coverage falls from two anomaly checks to one (A1 only) as a direct, acknowledged cost of this change (C18.4).
+- The `## Terminal status line` section of `templates/persona-protocol.md` is untouched -- the STATUS line itself is not being removed from the protocol, only the audit check that reported its absence.
+- `#334`, `#337`, `#290` all collide with this step on the same three files; left open, to be re-baselined against an A5-free corpus by whoever picks them up next (R10.2).
+
 ## [0.31.33] - 2026-08-14
 
 **Widen marker-filename charclass to match dispatch grammar (gh360, Step 7 of #348 spec).** The `is_sanctioned_marker_write()` function in human-decision-gate.sh now accepts dots and hashes in marker-file ids (e.g., `gh345.1.pass`, `gh#348.pass`), matching the id grammar used by other dispatch gates. Leading-dot and traversal rejection unchanged.
