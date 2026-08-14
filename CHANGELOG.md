@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.48] - 2026-08-14
+
+**Correct 6 stale doc/comment references left over from #348's protocol cleanup (adhoc-2026-08-14-fill-348-advisory-gaps).** #348's reviewers flagged these as out-of-scope-at-the-time advisory notes; this unit closes them out with no code-behavior changes.
+
+### Fixed
+- **`adapters/cursor/agents/orchestrator.md`**: ported the staleness-triggered `## Graph freshness (backstop duty)` wording (landed for the canonical persona in gh348-16) into the cursor adapter, which still had the old unconditional-per-unit rule.
+- **`docs/adr/0003-hivemind-split-spec-master-task-master.md`**: appended a dated correction noting the "task-master mandatory for any debug-spec re-derivation" claim is superseded by gh348-9's ≤2-unit fast path routing for debug specs.
+- **`docs/adr/0009-reviewer-tier-measured-eligibility.md`**: appended a dated correction noting the `.fail` disqualifier is no longer "enforced twice" — the orchestrator's separate pre-dispatch check was deleted in gh348-13.
+- **`CONTEXT.md`**: repointed the "default-unnamed dispatch rule" glossary entry's deferred-backstop pointer to `docs/adr/0021-mechanical-report-loss-backstop-deferred.md`; updated the "FAIL routing (post-reviewer)" glossary entry to describe the ≤2-unit fast path instead of unconditional `task-master` routing for debug specs.
+- **`docs/persona-design-notes.md`**: repointed the stale "Opus|Fable routing for spec-master and milestone-auditor" section citation to the current "Dispatch-model routing for spec-master, milestone-auditor, and task-master" section, and updated the fable-eligibility description to reflect fable's full removal (gh348-14).
+- **`bin/microworld-dashboard/index.html`**: reworded the `renderBriefingView` comment and heading, which framed the view as specifically the removed milestone pre-audit checkpoint (gh348-15); the view itself is unchanged and still works as a general plan-doc-excerpt browser.
+
 ## [0.31.47] - 2026-08-14
 
 **Make the graph-freshness backstop staleness-triggered (gh348-16, Step 16 of #348 spec).** Operator ruling accepts finding 3.6's second variant: the orchestrator's manual graph-update step is no longer an unconditional per-unit duty — it now runs only when the explorer's own report signals staleness (its existing fallback behavior at `agents/explorer.md:34-36`), which removes the per-unit cost while keeping the backstop reachable. The two automatic updaters (`PostToolUse` hook, pre-commit hook) remain the primary, always-on mechanism and are unchanged. This is the final unit of the 18-unit persona-efficiency-audit spec (#348), which is now complete.
