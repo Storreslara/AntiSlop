@@ -485,6 +485,15 @@ else
 fi
 
 echo
+echo "== protocol doc-drift: CONTEXT.md/wiki section counts vs live templates (Node) =="
+if node tests/protocol-doc-drift.test.js; then
+  echo "OK   tests/protocol-doc-drift.test.js"
+else
+  echo "FAIL tests/protocol-doc-drift.test.js"
+  fail=1
+fi
+
+echo
 echo "== ubiquitous-language SKILL.md structural/distinguishability checks (Node) =="
 if node tests/ubiquitous-language.test.js; then
   echo "OK   tests/ubiquitous-language.test.js"
