@@ -81,3 +81,27 @@ near, never as ground truth — match on the described BEHAVIOR (here: does
 the code inspect `tool_input.name` at dispatch time vs. the harness's
 post-spawn `agent_type`?), not the line number, and gate correctness on the
 text being true against the code as it stands now.
+
+**Step 9 (gh348-9, landed `c39c82d`, v0.31.43) found a fourth failure mode:
+your OWN edit can shift a line-based `grep -rc` survival-pin baseline
+without deleting anything.** C9.5 pinned `grep -rc "Convergence
+follow-ups" agents/ templates/` at 8 (pre-edit). One of the step's own
+edits (removing "any debug-spec re-derivation, or" from
+`orchestrator.md`'s "Default feature pipeline" paragraph) incidentally
+un-wrapped a pre-existing line break that had been hiding one
+`Convergence follow-ups` occurrence from that exact grep — post-edit the
+naive count read 9, which looks like a spurious addition but isn't.
+**How to apply:** when a survival-pin baseline uses a line-based
+`grep -c`/`grep -rc` (not the `tr '\n' ' '`-joined form), don't trust a
+post-edit delta at face value if your own edit rewrapped any paragraph
+containing the pinned phrase — recompute with the wrap-immune form
+(`tr '\n' ' ' | tr -s ' ' | grep -o '<phrase>' | wc -l`) before vs. after
+and compare THAT number; it stayed 3/4/3/0 across the four files here,
+confirming nothing was lost. Also: C9.3's paragraph-scoped criterion
+(`sed -n '/Cap at 2 FAILs per unit/,/^$/p' ... | grep -c "task-master"`
+must be exactly 0) is stricter than it first looks — it forbids naming
+`task-master` in that shared canonical paragraph at all, even to state
+the preserved ≥3-unit case, so the rewrite there says "the same ≤2-unit
+fast path spec-master already owns" instead of spelling out the
+≥3-unit branch; the ≥3-unit detail lives in `orchestrator.md` and
+`spec-master.md` instead, which own the actual routing logic.
