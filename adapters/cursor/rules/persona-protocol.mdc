@@ -162,9 +162,12 @@ intact, and writes `PACKET.md` - a byte-identical copy of the marker body, not a
 re-summary, with the marker authoritative wherever they diverge. No bundle still
 means a packet: create the directory with `PACKET.md` alone and write
 `microworld: none`. It sits outside `.claude/reviewed/` deliberately -
-`reviewed-path-gate.sh` blocks any Bash command whose text contains that path for
-every non-reviewer caller, read-only ones included, so a packet there would be
-unrunnable by the orchestrator or by a human. Untracked, so `git clean -fdx` or a
+`reviewed-path-gate.sh` only lets a non-reviewer caller's command through when
+`command_is_provably_benign()` accepts it, a narrow allowlist of inspection
+programs with no redirect, substitution, or unlexable construct tolerated,
+whether or not the command is conceptually read-only - and running a `run.sh`
+is never on that allowlist, so a packet sited there could not be run by the
+orchestrator or by a human. Untracked, so `git clean -fdx` or a
 fresh clone destroys a pending escalation - documented, not fixed.
 
 `.blocked` and `.escalated` stay distinct: the first means the reviewer lacked
