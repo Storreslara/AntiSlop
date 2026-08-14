@@ -110,6 +110,13 @@
        name rather than reimplementing the markdown shape inline. -->
   <script>/* __FEEDBACK_BLOCK_SOURCE__ */</script>
 
+  <!-- Injected verbatim by server.js's GET / handler from decision-block.js
+       (the pure composer also required directly by
+       tests/dashboard-decision-block.test.js). Composes command/block text
+       only; the module script below calls the resulting page-global
+       `composeDecisionBlock` by name. -->
+  <script>/* __DECISION_BLOCK_SOURCE__ */</script>
+
   <script type="module">
     const token = new URLSearchParams(location.search).get('t');
     let bundles = [];

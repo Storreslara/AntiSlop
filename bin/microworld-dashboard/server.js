@@ -65,6 +65,9 @@ function startServer(projectRoot, port = 0) {
           // suite requires via CommonJS -- no separate hand-maintained copy.
           const feedbackBlockSrc = fs.readFileSync(path.join(__dirname, 'feedback-block.js'), 'utf8');
           html = html.replace('/* __FEEDBACK_BLOCK_SOURCE__ */', feedbackBlockSrc);
+          // Same injection pattern for the decision-block composer (gh351).
+          const decisionBlockSrc = fs.readFileSync(path.join(__dirname, 'decision-block.js'), 'utf8');
+          html = html.replace('/* __DECISION_BLOCK_SOURCE__ */', decisionBlockSrc);
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(html);
         } catch (err) {
