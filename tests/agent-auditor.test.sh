@@ -148,15 +148,18 @@ echo '{"type":"user","timestamp":"2026-08-01T15:00:00Z","message":{"content":[{"
   > "$FIXTURE_ROOT/s6.jsonl"
 
 # --- s7: A7 (hook block events) ---
-# A7_bad: has tool_result errors matching the PreToolUse hook error pattern
+# A7_bad: has tool_result errors matching the PreToolUse hook error pattern.
+# tool_result nests under a user-role line's message.content[] in live
+# transcripts (see scripts/agent-audit.sh A7 comment) - not a top-level
+# "type":"tool_result" entry, and the payload field is "content", not "text".
 echo '{"agentType":"lead-programmer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
   "$FIXTURE_ROOT/s7/subagents/agent-a7bad.meta.json"
 {
   echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T16:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}'
-  echo '{"type":"tool_result","id":"t1","name":"Bash","content":"error","is_error":true,"timestamp":"2026-08-01T16:00:02Z","text":"PreToolUse:Bash hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: A7CANARY-BASH-BLOCK extra text"}'
+  echo '{"type":"user","timestamp":"2026-08-01T16:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":true,"content":"PreToolUse:Bash hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: A7CANARY-BASH-BLOCK extra text"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T16:00:03Z","message":{"content":[{"type":"tool_use","id":"t2","name":"Write","input":{"file_path":"/home/proj/.claude/reviewed/test.txt","content":"data"}}]}}'
-  echo '{"type":"tool_result","id":"t2","name":"Write","content":"error","is_error":true,"timestamp":"2026-08-01T16:00:04Z","text":"PreToolUse:Write hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: A7CANARY-WRITE-BLOCK"}'
+  echo '{"type":"user","timestamp":"2026-08-01T16:00:04Z","message":{"content":[{"type":"tool_result","tool_use_id":"t2","is_error":true,"content":"PreToolUse:Write hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: A7CANARY-WRITE-BLOCK"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T16:00:05Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
 } > "$FIXTURE_ROOT/s7/subagents/agent-a7bad.jsonl"
 
@@ -166,7 +169,7 @@ echo '{"agentType":"lead-programmer","description":"test","model":"sonnet","spaw
 {
   echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T16:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{}}]}}'
-  echo '{"type":"tool_result","id":"t1","name":"Read","content":"success","timestamp":"2026-08-01T16:00:02Z","text":"file contents"}'
+  echo '{"type":"user","timestamp":"2026-08-01T16:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":false,"content":"file contents"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T16:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
 } > "$FIXTURE_ROOT/s7/subagents/agent-a7good.jsonl"
 
@@ -175,13 +178,19 @@ echo '{"type":"user","timestamp":"2026-08-01T16:00:00Z","message":{"content":[{"
 
 # --- s8: A8 (agent-memory writes) ---
 # A8_bad: has Write/Edit tool_use entries under .claude/agent-memory/ or .claude/projects/*/memory/
-echo '{"agentType":"spec-master","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+# Persona is "explorer" (no memory: frontmatter, no Write/Edit in tools:),
+# and the file_path is absolute-shaped like a real transcript's - together
+# these make the A1 exclusion (agent-audit.sh's memory-path continue clause)
+# the ONLY thing suppressing A1 here, so C1.6 below genuinely exercises it
+# (spec-master's memory: frontmatter auto-grants Write/Edit regardless of
+# the exclusion, which is what made this fixture vacuous before).
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
   "$FIXTURE_ROOT/s8/subagents/agent-a8bad.meta.json"
 {
   echo '{"type":"user","timestamp":"2026-08-01T17:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
-  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":".claude/agent-memory/spec-master/A8CANARY-DIR/feedback_test.md","content":"A8CANARY-CONTENT-BODY here"}}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Write","input":{"file_path":"/home/proj/.claude/agent-memory/explorer/A8CANARY-DIR/feedback_test.md","content":"A8CANARY-CONTENT-BODY here"}}]}}'
   echo '{"type":"tool_result","id":"t1","name":"Write","timestamp":"2026-08-01T17:00:02Z","text":"written"}'
-  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:03Z","message":{"content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":".claude/projects/test/memory/feedback_other.md","content":"more data"}}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T17:00:03Z","message":{"content":[{"type":"tool_use","id":"t2","name":"Edit","input":{"file_path":"/home/proj/.claude/projects/test/memory/feedback_other.md","content":"more data"}}]}}'
   echo '{"type":"tool_result","id":"t2","name":"Edit","timestamp":"2026-08-01T17:00:04Z","text":"edited"}'
   echo '{"type":"assistant","timestamp":"2026-08-01T17:00:05Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
 } > "$FIXTURE_ROOT/s8/subagents/agent-a8bad.jsonl"
@@ -355,7 +364,7 @@ echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth"
 {
   echo '{"type":"user","timestamp":"2026-08-01T18:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T18:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}'
-  echo '{"type":"tool_result","id":"t1","name":"Bash","content":"error","is_error":true,"timestamp":"2026-08-01T18:00:02Z","text":"Some other error message not matching the hook pattern"}'
+  echo '{"type":"user","timestamp":"2026-08-01T18:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":true,"content":"Some other error message not matching the hook pattern"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T18:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
 } > "$tolerance_test_root/tol/subagents/agent-tol.jsonl"
 echo '{"type":"user","timestamp":"2026-08-01T18:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
@@ -367,6 +376,29 @@ if [ "$tol_a7_count" -eq 0 ]; then
   echo "OK   format-change tolerance: non-matching is_error=true produces no A7 row"
 else
   echo "FAIL format-change tolerance: A7 emitted rows for non-matching format (count=$tol_a7_count)"
+  fail=1
+fi
+
+echo "== C1.10: live-shaped BLOCKED tool_result produces a non-zero A7 count (regression guard) =="
+live_shape_root="$FIXTURE_ROOT/live-shape-test"
+mkdir -p "$live_shape_root/ls/subagents"
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$live_shape_root/ls/subagents/agent-ls.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T19:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T19:00:01Z","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"ls"}}]}}'
+  echo '{"type":"user","timestamp":"2026-08-01T19:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"t1","is_error":true,"content":"PreToolUse:Bash hook error: [hooks/scripts/reviewed-path-gate.sh]: BLOCKED: LIVECANARY-BLOCK"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T19:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$live_shape_root/ls/subagents/agent-ls.jsonl"
+echo '{"type":"user","timestamp":"2026-08-01T19:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
+  > "$live_shape_root/ls.jsonl"
+
+live_shape_output="$(AGENT_AUDIT_ROOT="$live_shape_root" bash scripts/agent-audit.sh --all --json)"
+live_shape_a7_count="$(printf '%s' "$live_shape_output" | jq '[.findings[] | select(.id=="A7")] | length')"
+if [ "$live_shape_a7_count" -gt 0 ]; then
+  echo "OK   live-shaped nesting: correctly-shaped BLOCKED tool_result produces non-zero A7 (count=$live_shape_a7_count)"
+else
+  echo "FAIL live-shaped nesting: correctly-shaped BLOCKED tool_result produced zero A7 rows"
   fail=1
 fi
 
@@ -413,6 +445,38 @@ mutation_proof() {
 
 echo "== mutation proof: A1 =="
 mutation_proof A1 a1bad
+
+echo "== mutation proof: A1 memory-path exclusion (C1.6, a8bad) =="
+# Proves C1.6's "a8bad produces no A1 row" assertion is genuinely exercising
+# the memory-path continue clause, not just riding on a persona's declared
+# tools. Uses its own fresh mutant copy (not $MUTANT_DIR, whose emit_finding
+# A1 call was already neutralized by mutation_proof above).
+MUTANT_A1EXCL_DIR="$FIXTURE_ROOT/mutant-a1excl"
+mkdir -p "$MUTANT_A1EXCL_DIR/scripts"
+cp scripts/agent-audit.sh "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh"
+ln -s "$(pwd)/hooks" "$MUTANT_A1EXCL_DIR/hooks"
+ln -s "$(pwd)/agents" "$MUTANT_A1EXCL_DIR/agents"
+ln -s "$(pwd)/.claude" "$MUTANT_A1EXCL_DIR/.claude"
+ln -s "$(pwd)/templates" "$MUTANT_A1EXCL_DIR/templates"
+
+before_a1excl="$(grep -c '\*/\.claude/agent-memory/\*) continue ;;' "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before_a1excl" -eq 0 ]; then
+  echo "FAIL mutation proof for A1 memory exclusion: no continue clause found to neutralize"
+  fail=1
+else
+  sed -i '/\*\/\.claude\/projects\/\*\/memory\/\*) continue ;;/d;/\*\/\.claude\/agent-memory\/\*) continue ;;/d' \
+    "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh"
+
+  mutant_a1excl_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+    jq '[.findings[] | select(.id=="A1" and .agent=="a8bad")] | length')"
+
+  if [ "$mutant_a1excl_count" -gt 0 ]; then
+    echo "OK   mutation proof for A1 memory exclusion: deleting the continue clauses makes a8bad's A1 finding appear (count=$mutant_a1excl_count) - C1.6 is load-bearing"
+  else
+    echo "FAIL mutation proof for A1 memory exclusion: a8bad still produces no A1 row after deleting the exclusion (count=$mutant_a1excl_count) - C1.6 is vacuous"
+    fail=1
+  fi
+fi
 
 echo "== mutation proof: A7 (hook block events) =="
 # For A7, neutralize the jq query that detects BLOCKED patterns by replacing

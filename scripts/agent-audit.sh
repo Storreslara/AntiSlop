@@ -456,11 +456,12 @@ fi
 # Per dispatch, parse is_error: true tool_result entries whose text matches
 # the pattern PreToolUse:<Tool> hook error: [<path>/<hook>.sh]: BLOCKED:.
 # Emit one row per (dispatch, hook, tool) with a count. Informational only.
+# tool_result nests under a user-role line's message.content[] (the A1/A8
+# precedent at :349/:481) - there is no top-level tool_result entry and no
+# .name field on one; the payload is .content, not .text.
 while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
-  # Extract all tool_result errors with BLOCKED pattern (tool_result is a top-level message type)
-  jq -r 'select(.type=="tool_result" and .is_error==true and (.text // "" | test("PreToolUse:.*hook error:.*BLOCKED:"))) | [.name, .text] | @tsv' "$jf" 2>/dev/null |
-  while IFS=$'\t' read -r tool_name error_text; do
-    [ -n "$tool_name" ] || continue
+  jq -r '.message.content[]? | select(.type=="tool_result" and .is_error==true and ((.content // "") | test("PreToolUse:.*hook error:.*BLOCKED:"))) | .content' "$jf" 2>/dev/null |
+  while IFS= read -r error_text; do
     [ -n "$error_text" ] || continue
 
     # Parse tool name from error_text (PreToolUse:Tool format)
