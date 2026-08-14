@@ -4,7 +4,7 @@ description: Independent, adversarial verifier - the Writer/Reviewer split. Did 
 model: opus
 color: red
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, antislop:roast-work, antislop:ubiquitous-language
+skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
 

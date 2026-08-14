@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.32] - 2026-08-14
+
+**Remove `antislop:coding-discipline` skill from reviewer persona (gh359, Step 6 of #348).** The reviewer persona never writes code, so the coding-discipline skill was dead weight. This change removes it from the reviewer's `skills:` frontmatter line, leaving only `antislop:roast-work` and `antislop:ubiquitous-language`.
+
+### Changed
+- **`agents/reviewer.md`:** Removed `antislop:coding-discipline` from frontmatter `skills:` line (C6.1).
+- All persona mirrors (`.claude/agents/reviewer.md`, etc.) regenerated via `--update` to match.
+
+### Notes
+- No body references to coding-discipline existed to remove (C6.2 verified).
+- Validation passes (C6.3 verified).
+
 ## [0.31.31] - 2026-08-14
 
 **Documentation: remove expired legacy-marker grace-period paragraph from persona protocol.** The grace period ending on 2026-07-27 expired 18 days ago. This change removes the descriptive paragraph referencing the 2026-07-27 cutover from the canonical protocol template and regenerates all inline mirrors, leaving the hook script's actual expiry logic untouched. Addresses gh355 (Step 1 of #348 spec).
