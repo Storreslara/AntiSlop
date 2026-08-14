@@ -1,9 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(gh issue *)",
-      "Bash(git commit *)",
-      "Edit(.claude/persona-config.json)"
-    ]
-  }
-}
