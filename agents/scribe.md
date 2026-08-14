@@ -31,6 +31,17 @@ can't derive: intent, decisions, domain language, history.
 - **Never modify source code** — only `.claude/wiki/`, `CONTEXT.md`,
   `docs/adr/`, your memory, and tracker issue state (closing issues via `gh issue close`). Keep every entry skimmable (under ~30s read).
 
+## Write/Edit fallback in a teammate dispatch
+
+In agent-teams mode, `Write`/`Edit` can be rejected at call time with
+`<tool> exists but is not enabled in this context`, regardless of your
+`tools:` frontmatter. Don't retry or treat it as a defect: fall back to
+`Bash` with a quoted heredoc (`cat > file << 'EOF'`) for whole-file writes,
+or a `python3` heredoc asserting `old` occurs exactly once before replacing,
+for surgical edits. If a heredoc body must quote a gate-owned path (e.g. a
+reviewer marker or `DECISION` file), follow that gate's own refusal text for
+the sanctioned rephrasing/template — don't improvise around it.
+
 ## Issue closing
 
 After the lead-programmer lands code for a dispatched unit (both issue number

@@ -124,7 +124,7 @@ check('Cursor port: every canonical section is present or explicitly deferred', 
   checkPort(canonicalHeaders(), fs.readFileSync(CURSOR_PORT, 'utf8'), cursorMap, 'cursor');
 });
 
-// The slim tier is not a port, but it IS the other half of the fan-out: three
+// The slim tier is not a port, but it IS the other half of the fan-out: four
 // personas receive persona-protocol-slim.md instead of the canonical file, so a
 // section that lands only in the canonical one silently exempts them. Nothing
 // else in the repo reads the slim file's section list.
