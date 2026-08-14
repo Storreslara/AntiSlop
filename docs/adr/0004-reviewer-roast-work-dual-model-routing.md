@@ -30,8 +30,8 @@ How to reconcile without weakening the gate?
   2. Structural / cross-cutting change (e.g. persona split, orchestrator routing rewrite, `bin/cli.js` migration)
   3. Security-sensitive surface (auth, input parsing/validation, secret handling, migrations)
 - **For routine/small units:** the single opus reviewer runs roast-work inline (it is a preloaded skill regardless of model), no separate fable pass.
+- **Fable roast-work dispatch superseded:** This separate fable advisory pass is superseded by ADR-0013, which removes the dispatching of fable for roast-work entirely. The roast-work advisory-only property (Tension 1) survives unchanged.
 - **Task-master tags heavy units** with an advisory `Roast pass: fable` marker (mirroring the `Suggested model` per-unit tag pattern), and the orchestrator honors it at dispatch.
-  - **Fable roast-work dispatch superseded:** This separate fable advisory pass is superseded by ADR-0013, which removes the dispatching of fable for roast-work entirely. The roast-work advisory-only property (Tension 1) survives unchanged.
 
 **Why separate advisory dispatch instead of "whole heavy review on fable":**
 - The model is fixed per dispatch invocation; there is no way to run the authoritative gate on opus while running the bulk critique on fable within a single dispatch.
