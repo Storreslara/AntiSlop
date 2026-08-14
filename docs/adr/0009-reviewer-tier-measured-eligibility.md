@@ -58,6 +58,15 @@ decided:
 - **The `.fail` disqualifier** — a prior `.claude/reviewed/<task-id>.fail`
   forces `opus`. Enforced twice: inside the script, and by the orchestrator's
   own pre-dispatch check.
+
+### Correction (2026-08-14)
+
+The "enforced twice" claim above is stale. The orchestrator's separate
+pre-dispatch `.fail`-check paragraph (formerly under "Reviewer gate model
+selection") was deleted during issue #348's protocol cleanup; enforcement is
+now solely via `hooks/scripts/reviewer-tier.sh` plus the marker's permanence.
+The original text is left unedited above per this project's
+additive-correction convention for ADRs.
 - **The escalation path** — a sonnet-gated PASS later found to have missed a
   defect re-reviews on `opus`; that re-review's `.fail` record then
   permanently forces `opus` for that unit id via the disqualifier above. No

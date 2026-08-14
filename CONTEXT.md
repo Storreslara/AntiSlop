@@ -416,16 +416,19 @@ in hook payloads' `agent_type` and `subagent_type` fields,
 _Avoid_: persona name (only the persona-derived form is a persona name; named dispatch form is not)
 
 **default-unnamed dispatch rule**:
-the standing convention that `Agent` tool calls should dispatch without a `name:` parameter by default, causing their result to auto-return on completion. Named dispatch is reserved only for cases requiring **mid-flight addressability** — querying or re-tasking a long-running subagent mid-way through. The one exception is the 2-FAIL-cap / debug-spec scenario in "Nested dispatches", where explicit naming is mandatory. Deferred companion: a **mechanical report-loss backstop** to detect named agents completing without reporting (recorded in agents/orchestrator.md for future implementation when needed).
+the standing convention that `Agent` tool calls should dispatch without a `name:` parameter by default, causing their result to auto-return on completion. Named dispatch is reserved only for cases requiring **mid-flight addressability** — querying or re-tasking a long-running subagent mid-way through. The one exception is the 2-FAIL-cap / debug-spec scenario in "Nested dispatches", where explicit naming is mandatory. Deferred companion: a **mechanical report-loss backstop** to detect named agents completing without reporting (see `docs/adr/0021-mechanical-report-loss-backstop-deferred.md`).
 
 **FAIL routing (post-reviewer)**:
 normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
-  record plus git log/git diff over fix-attempt commits, revised steps) then
-  `task-master` re-derives dispatch instructions from the corrected spec.
-  `task-master` is never a re-plan owner. Mid-flight "spec gap" signals also
-  route back to `spec-master`.
+  record plus git log/git diff over fix-attempt commits, revised steps), which
+  then routes through the same ≤2-unit fast path as any other spec: `task-master`
+  re-derives dispatch instructions only if the debug spec itself resolves to
+  ≥3 units; a debug spec resolving to ≤2 units skips `task-master` and
+  spec-master emits the dispatch contract directly. `task-master` is never a
+  re-plan owner. Mid-flight "spec gap" signals also route back to
+  `spec-master`.
 
 **Blocked by a gate you do not own**:
 (unit #265, 2026-08-08, protocol section

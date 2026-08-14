@@ -86,11 +86,16 @@ reviewer via the routing above -> unit done only on PASS. Fetch plan issues
 using the plan's retrieval-contract line (see shared protocol).
 
 ## Graph freshness (backstop duty)
-Whenever the lead-programmer returns from a task that added or edited files,
-run the graph's incremental-update command BEFORE routing to the reviewer.
-The afterFileEdit hook is the primary, deterministic updater; this is a cheap
-no-op that verifies it worked. A stale graph silently corrupts the explorer's
-blast-radius answers, which the reviewer depends on.
+The afterFileEdit hook is the primary, deterministic updater — it keeps the
+graph fresh on every file change with no action from you. This section is a
+backstop for when it somehow missed something, not a per-unit duty: the
+trigger is the explorer's own report. Per its fallback behavior
+(`adapters/cursor/agents/explorer.md:33-35`), the explorer says when an
+answer is grep-derived, not graph-derived, because the graph index is
+missing, stale, or the MCP server is unreachable. Only when the explorer
+reports that, run the graph's incremental-update command yourself, then
+re-ask the explorer before routing to the reviewer — a stale graph silently
+corrupts the explorer's blast-radius answers, which the reviewer depends on.
 
 ## Shared protocol essentials (inlined backstop)
 On Cursor it is UNVERIFIED whether the always-apply persona-protocol rule

@@ -39,11 +39,10 @@ is the default; orchestrator may override per-dispatch (orchestrator.md).
 Never change the
 tier here.
 
-Pointer only (orchestrator.md's "Opus|Fable routing for spec-master and
-milestone-auditor" section is authoritative): fable is eligible only when
-ALL hold: scope already enumerated, rides existing seams, no interrogation
-needed; any relevant `.claude/reviewed/*.fail` record forces `opus`
-regardless.
+Pointer only (orchestrator.md's "Dispatch-model routing for spec-master, milestone-auditor, and task-master"
+section is authoritative): spec-master and milestone-auditor always dispatch
+on their `opus` frontmatter default — fable was removed entirely as an
+eligible tier for either persona (issue #348).
 
 spec-master owns the spec through Open Questions relay and publishing via
 `to-spec`; ticket-slicing (`to-issues`), per-unit model tagging, the

@@ -618,14 +618,14 @@
       }
     }
 
-    // Touchpoint 2: milestone pre-audit briefing. Read-only (D-4) -- no
-    // control here ever submits an answer; the answer stays in
-    // AskUserQuestion. Renders the plan doc excerpt via GET /api/source and
-    // the currently known units' pass/fail markers (reusing the already-
-    // fetched /api/bundles data, since /api/decisions carries no unit list).
+    // Touchpoint 2: plan-doc excerpt browser. Read-only (D-4) -- no control
+    // here ever submits an answer; this view only renders the plan doc
+    // excerpt via GET /api/source and the currently known units' pass/fail
+    // markers (reusing the already-fetched /api/bundles data, since
+    // /api/decisions carries no unit list).
     function renderBriefingView(briefing) {
       let html = `<div style="padding: var(--space-6);">`;
-      html += `<h2>Milestone briefing: ${escapeHtml(briefing.heading || briefing.path)}</h2>`;
+      html += `<h2>Plan excerpt: ${escapeHtml(briefing.heading || briefing.path)}</h2>`;
       html += `<p style="color: var(--gvx-gray); font-size: 0.85rem;">${escapeHtml(briefing.path)}</p>`;
       html += `<div class="output-label">Goal / assumptions / Open Questions excerpt</div>`;
       html += `<div class="excerpt-pane" id="briefingExcerptPane">Loading excerpt...</div>`;
