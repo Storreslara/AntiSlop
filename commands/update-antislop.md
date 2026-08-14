@@ -14,6 +14,13 @@ instead (same script, no plugin/skill needed).
    node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update
    ```
 
+   To investigate what an update would do first, without writing anything,
+   run `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --update --dry-run` instead
+   — it performs zero filesystem writes and exits `0` (nothing would
+   change), `3` (something would change; the pending report is printed the
+   same way a live run's would be), or `1` (a file could not be rendered).
+   Once satisfied, re-run without `--dry-run` to apply.
+
    Check the exit code:
 
    - **0** — done. Either "already current" or "update complete", with a

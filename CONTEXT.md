@@ -38,14 +38,58 @@ any ADAPT-copied file carrying a
 
 **`--update` semantics**:
 `bin/cli.js --update` is the mechanism for
-  refreshing ADAPT-stamped files. Crucially, the `--check` flag is a
-  force-the-loop control, not a dry-run: `--check` still writes files via
-  `copyStampedBody` and still rewrites `persona-config.json`, unlike
-  `scripts/resync-vendored-skills.sh --check` which is genuinely read-only.
-  Stamps self-heal automatically: `--update` refreshes a mirror's
+  refreshing ADAPT-stamped files. `--force-render` is the canonical
+  force-the-loop control: it bypasses the version-match fast path and
+  re-renders every managed file regardless of whether the stamped version
+  already matches, writing via `copyStampedBody` and rewriting
+  `persona-config.json` exactly like a plain `--update` that found drift.
+  `--check` is a **deprecated alias** for `--force-render` — same
+  behaviour, kept only for backward compatibility with existing callers —
+  and prints a stderr warning naming itself non-read-only before any write
+  happens. Neither is a dry run. The genuine no-write mode is
+  **`--dry-run`** (see its own entry below); unlike either of the above, it
+  is unrelated to `scripts/resync-vendored-skills.sh --check`, which is a
+  different script's flag and genuinely read-only. Stamps self-heal
+  automatically: a live `--update` refreshes a mirror's
   `<!-- antislop vX.Y.Z -->` stamp whenever the resolved plugin version
   differs from the stamp on disk, even when the mirror's body content is
   unchanged, retiring the prior hand-patch workaround.
+
+**`--update --dry-run`**:
+the genuine no-write investigation mode for
+  `bin/cli.js --update`. It performs zero filesystem writes anywhere under
+  the project root across all twelve write sites on the `--update` path
+  (render-loop writes, `.gitignore` appends, `CLAUDE.md` migration, the
+  legacy-persona-file deletion, `persona-config.json` rewrites, and the
+  hook-registration backfill), reporting the same per-target summary a live
+  run would produce but in the conditional voice (`would be created`,
+  `would be updated`, …). It implies `--force-render` — without bypassing
+  the version-match fast path, a dry run on an already-current project
+  would report nothing and be useless. Exit codes are defined over the
+  *mutation a live run would cause*, not over report vocabulary: `0` if
+  and only if a live `--update` with the same arguments would leave the
+  whole tree byte- and mode-identical; `3` if any write site would fire
+  with an effect; `1` if one or more files could not be rendered. This is
+  what closes the verification gap `--check` could not: `--check` silently
+  self-heals drift and exits `0` while having written, whereas `--dry-run`'s
+  exit code is a direct promise about the tree, provable with a single
+  before/after snapshot.
+
+**`--update --personas=` additive-union**:
+the semantics of adding an
+  optional persona to an already-adapted project via
+  `bin/cli.js --update --personas=<a,b,c>`. The result is the recorded
+  `personaSelection` **unioned** with the requested tokens — recorded order
+  preserved, new tokens appended in declaration order — and nothing is ever
+  removed: an already-selected persona named again is a no-op, not an
+  error. This is deliberately the opposite of the fresh-scaffold path's
+  `--personas=` semantics (`node bin/cli.js --yes --personas=...` on a new
+  project), which is **replacement**: the scaffold path has no prior
+  selection to preserve, so it simply sets `personaSelection` to the
+  requested list. Conflating the two was the failure mode `--update`'s
+  additive union exists to close — a project owner reaching for
+  `--overwrite --personas=` on an existing project to add one persona would
+  silently drop every other already-selected one.
 
 **Substitution**:
 a placeholder in a shipped persona file (e.g.

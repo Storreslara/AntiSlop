@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.50] - 2026-08-14
+
+**Give `bin/cli.js --update` an additive `--personas=` flag and an honest write/no-write flag split (#289, #291).** Two defects in the `--update` CLI surface, closed together because they touch adjacent argument-parsing code. `--personas=<a,b,c>` (#289) adds newly-registered optional personas to an already-adapted project by unioning them into the recorded `personaSelection` — never replacing it, unlike the fresh-scaffold path's `--personas=`, which does replace. `--check` (#291) is renamed to `--force-render`, its honest name for a control that forces the render loop and still writes; `--check` remains a deprecated alias that prints a stderr warning before any write. A genuine no-write `--dry-run` is added, covering all twelve write sites on the `--update` path and exiting `0`/`3`/`1` based on whether a live run would actually mutate the tree, closing a verification gap `--check`'s self-healing behaviour could not: `--check` silently repairs drift and exits `0` after writing, while `--dry-run`'s exit code is a direct, provable promise about the tree.
+
+### Added
+- **`bin/cli.js`**: `--update --personas=<a,b,c>` additive-union persona selection; `--dry-run`, a genuine no-write investigation mode for `--update` covering all twelve write sites with a mutation-based exit-code contract (`0`/`3`/`1`); `--force-render` as the new canonical name for the old `--check` force-the-loop control.
+- **`tests/cli-backfill.test.js`**: coverage for the additive union (unknown/empty/legacy/core-persona tokens, atomicity), the `--dry-run` no-write proof with a mutation control, report-vocabulary and exit-code assertions, and a mode-/directory-aware `snapshotTree` helper.
+
+### Changed
+- **`bin/cli.js`**: `--check` is now a deprecated alias for `--force-render`; it still writes and now warns on stderr before doing so.
+- **`CONTEXT.md`**: rewrote the `--update` semantics glossary entry to name `--force-render`, `--dry-run`, and the deprecated `--check` alias; added glossary entries for `--update --dry-run` and `--update --personas=` additive-union semantics.
+- **`commands/update-antislop.md`**: documented `--dry-run` as the safe way to investigate an update before applying it.
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.49 → 0.31.50 (constitution P3).
+
 ## [0.31.49] - 2026-08-14
 
 **Add A7 (hook-block events) and A8 (agent-memory writes) informational report sections to `agent-audit.sh` (gh288-1, Step 1 of #288 spec).** These sections surface two classes of events the audit currently misses entirely — hook blocks on gate refusals and agent-memory writes — as informational observations (never blocking or gating). A7 parses `is_error: true` tool_result entries matching the `PreToolUse:* hook error: * BLOCKED:` pattern, grouping by (hook, tool) to show which gates blocked which operations per dispatch. A8 counts `Write`/`Edit` tool_use entries under `.claude/agent-memory/` or `.claude/projects/*/memory/`, surfacing where institutional memory is being written without interpreting content. Both are read-only, diagnostic surfaces — no new enforcement, no new false-positive cost. This closes the detection gap reported in issue #288's direction (b): institutional memory hardening via observability rather than content scanning.
