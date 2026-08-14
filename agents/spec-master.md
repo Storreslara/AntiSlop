@@ -186,7 +186,7 @@ clarify intent is fine.
   `to-tickets` on any path (ADR-0003 preserved); on the fast path no tracker
   issue exists, the retrieval contract points at the `docs/plans/` path, and
   `scribe`'s issue-closing duty correctly does not fire (it requires an issue
-  number in its dispatch). **Standard path (≥3 units, debug spec, Convergence
+  number in its dispatch). **Standard path (≥3 units, Convergence
   follow-ups)**: `task-master` slices the plan into independently-grabbable
   units with `to-tickets`, assigns each unit's `Suggested model` tag, states
   the retrieval contract, and writes the detailed per-unit dispatch prompts
@@ -227,8 +227,11 @@ clarify intent is fine.
   2. **Revised spec step(s)** — the specific failed step(s) rewritten with
      corrected acceptance criteria (or, if the diagnosis found the wrong
      approach entirely, a revised approach), re-checked against the
-     taxonomy/constitution/self-check machinery above, then handed back to
-     `task-master`, which re-dispatches the corrected spec to
+     taxonomy/constitution/self-check machinery above. Route the result
+     through the same ≤2-unit fast path as any other spec: a debug spec
+     resolving to ≤2 units emits the nine-element dispatch contract
+     directly and skips `task-master`; one resolving to ≥3 units still
+     goes to `task-master`, which re-dispatches the corrected spec to
      `lead-programmer`. Never rewrite steps beyond the escalated unit in
      this pass.
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.

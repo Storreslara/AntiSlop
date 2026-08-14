@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.31.43] - 2026-08-14
+
+**Route debug specs through the ≤2-unit fast path (gh348-9, Step 9 of #348 spec).** Reverses Pass 3 Step 9's carve-out (R9.3, operator ruling): a debug spec produced on 2-FAIL-cap escalation no longer mandatorily routes through `task-master` — it follows the same ≤2-unit fast-path rule as any other spec, saving a full `task-master` dispatch for the common case where the debug spec resolves to one or two units.
+
+### Changed
+- **`agents/orchestrator.md`**: removed the "any debug-spec re-derivation" carve-out from the opening routing bullet and the "Default feature pipeline" section (both previously mandated `task-master` for any debug spec regardless of unit count); rewrote the "At the 2-FAIL cap" escalation paragraph so a debug spec resolving to ≥3 units still goes to `task-master`, while one resolving to ≤2 units re-dispatches to `lead-programmer` directly.
+- **`agents/task-master.md`**: removed the same carve-out from both of its "you are mandatory when..." statements (frontmatter-adjacent intro paragraph and the `Input` bullet).
+- **`agents/spec-master.md`**: dropped "debug spec" from the `Standard path (≥3 units, ...)` parenthetical; rewrote the debug-spec section's "Revised spec step(s)" part to state explicitly that a debug spec resolving to ≤2 units emits the nine-element dispatch contract directly (skipping `task-master`), while one resolving to ≥3 units still routes through `task-master`.
+- **`templates/persona-protocol.md`**: rewrote the "Cap at 2 FAILs per unit" paragraph (canonical, `include`d by orchestrator/lead-programmer/spec-master/milestone-auditor) to say the debug spec "routes through the same ≤2-unit fast path spec-master already owns" instead of unconditionally naming `task-master`.
+- **`.claude/agents/orchestrator.md`, `.claude/agents/task-master.md`, `.claude/agents/spec-master.md`, `.claude/persona-protocol.md`, `.claude/agents/lead-programmer.md`, `.claude/agents/milestone-auditor.md`, `.claude/persona-config.json` (`fileHashes`)**: mirrors regenerated via `node bin/cli.js --update`.
+
+### Notes
+- `## Convergence follow-ups` routing is untouched and stays mandatory-through-`task-master` in all four locations — verified by occurrence count (line-join, wrap-immune), not raw `grep -c`: a plain line-based `grep -rc "Convergence follow-ups"` count shifts from 8 to 9 purely because one of this step's own edits (the orchestrator's "Default feature pipeline" paragraph) incidentally un-wrapped a pre-existing line break that had been hiding one occurrence from that naive count; the true occurrence count (`tr '\n' ' ' | grep -o ... | wc -l`) is unchanged at 3/4/3/0 across the four files before and after.
+- ADR-0003's "spec-master never runs `to-tickets`" prohibition (`agents/spec-master.md`) is untouched — confirmed present.
+- Neither `adapters/codex/agents-md-fragment.md` nor `adapters/cursor/rules/persona-protocol.mdc` carries the debug-spec carve-out or the "≥3 units, debug spec" phrase, so neither adapter port needed an edit.
+
 ## [0.31.42] - 2026-08-14
 
 **Orchestrator body corrections and deletions (gh348-5, Step 5 of #348 spec, findings 1.5, 1.9, 2.4, 2.7).** Four independent findings in `agents/orchestrator.md`'s body.

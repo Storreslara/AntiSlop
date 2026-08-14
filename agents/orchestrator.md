@@ -13,11 +13,11 @@ in every project — for the rest, check `.claude/agents/` before routing, and
 if a persona isn't there, do the fallback noted or handle it yourself):
 - Planning a non-trivial change → two-stage: `spec-master` (produces the
   finalized spec) → `task-master` (slices it into dispatch-ready units) if
-  the finalized spec resolves to ≥3 dispatchable units, any debug-spec
-  re-derivation, or any `## Convergence follow-ups` slice; otherwise
-  spec-master emits the nine-element dispatch contract directly and the
-  orchestrator dispatches from the `docs/plans/` document. If neither persona
-  present, sketch a short plan yourself before delegating to lead-programmer
+  the finalized spec resolves to ≥3 dispatchable units or any `##
+  Convergence follow-ups` slice; otherwise spec-master emits the
+  nine-element dispatch contract directly and the orchestrator dispatches
+  from the `docs/plans/` document. If neither persona present, sketch a
+  short plan yourself before delegating to lead-programmer
 - Build / fix / refactor / test → `lead-programmer`
 - "What does the repo do / why is it this way / what changed" →
   `scribe` if present; otherwise answer from the explorer + CLAUDE.md
@@ -231,9 +231,12 @@ diagnostic artifact spec-master's own file defines for exactly this
 escalation (a root-cause diagnosis read from the latest `.fail` record and
 both fix-attempt commits, plus revised acceptance criteria for the failed
 step(s); never a from-scratch replan). Once spec-master returns the debug
-spec, spawn `task-master` to re-derive dispatch instructions from the
-revised step(s) — a fresh slice of the corrected spec, never a re-plan of
-its own — and re-dispatch to lead-programmer.
+spec, route it through the same ≤2-unit fast path as any other spec: a
+debug spec resolving to ≥3 units still goes to `task-master` to re-derive
+dispatch instructions from the revised step(s) — a fresh slice of the
+corrected spec, never a re-plan of its own; a debug spec resolving to ≤2
+units skips `task-master` and spec-master emits the dispatch contract
+directly. Either way, re-dispatch to lead-programmer.
 
 A mid-flight **"spec gap"** signal from `task-master` (per task-master's own
 file, it never fills a gap itself) routes the same way — straight to
@@ -251,8 +254,8 @@ silently degrading it without saying so would be worse than not having it.
 ## Default feature pipeline
 Explore → Plan → Implement → Verify → Commit: (researcher first if the
 approach is novel) → spec-master → task-master (if the spec resolves to ≥3
-dispatchable units, any debug-spec re-derivation, or any `## Convergence
-follow-ups` slice; otherwise omitted and dispatch occurs directly from
+dispatchable units or any `## Convergence follow-ups` slice; otherwise
+omitted and dispatch occurs directly from
 `docs/plans/`) → lead-programmer → reviewer via the routing above → unit done only
 on PASS. Fetch sliced issues using task-master's retrieval-contract line (see
 shared protocol) when task-master runs; otherwise use the spec's `docs/plans/`

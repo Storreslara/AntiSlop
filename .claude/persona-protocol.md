@@ -1,4 +1,4 @@
-<!-- antislop v0.31.42 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.43 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -478,9 +478,10 @@ orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
 surfaces the full defect history across both attempts to the user, then
 spawns `spec-master` to produce a debug spec (a focused root-cause diagnosis
 plus revised acceptance criteria for the failed step(s), never a
-from-scratch replan), which flows back through `task-master` for
-re-dispatch. A unit that fails twice usually means the plan itself has a
-gap, not that one more automated pass will close it.
+from-scratch replan), which then routes through the same ≤2-unit fast path
+spec-master already owns for any other spec before re-dispatch. A unit that
+fails twice usually means the plan itself has a gap, not that one more
+automated pass will close it.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
