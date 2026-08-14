@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.30] - 2026-08-13
+
+**Documentation update: annotate superseded fable-roast-pass policy in three ADRs (gh361, Step 8 of #348 spec).** ADR-0013 removes the separate fable advisory dispatch for roast-work. This change adds inline annotations to ADR-0004, ADR-0006, and ADR-0010 marking the affected passages as superseded by ADR-0013, following the precedent of ADR-0004's "Cost claim superseded" marker. Annotations are positioned adjacent to the dead text (not in footers) for immediate visibility to a reader following the pointer chain from `agents/reviewer.md` to ADR-0004's heavy-unit trigger.
+
+### Changed
+- **ADR-0004 (line 34):** Added marker after "Task-master tags heavy units" noting that the separate fable advisory pass is superseded by ADR-0013.
+- **ADR-0006 (line 36):** Added marker after "Fable stays confined to" noting that the separate fable advisory dispatch is superseded by ADR-0013.
+- **ADR-0010 (line 79):** Added marker after "A haiku-implemented unit satisfying the heavy criteria" noting that the separate fable advisory roast pass is superseded by ADR-0013.
+
+### Notes
+- No ADR body text was deleted; all changes are additions only.
+- No new ADR numbers were allocated; the 0007 hole remains untouched.
+- The roast-work advisory-only property (ADR-0004 Tension 1) and all other ADR content remain unchanged; only the specific passages about the fable dispatch are annotated.
+
 ## [0.31.29] - 2026-08-13
 
 **Security fix: only the orchestrator (the main session) may spawn the `reviewer`.** A confirmed, twice-observed pattern: an `Agent` call dispatched to resolve a human escalation omitted `subagent_type`, defaulted to `general-purpose`, was refused the marker write by `reviewed-path-gate.sh`, and answered that refusal by spawning a nested `reviewer` to perform the write for it — a **self-authorized bypass**. Both occurrences were verified against the on-disk transcript store rather than taken on report (2026-08-11 gh134, where the nested `spawnDepth: 2` reviewer did write `.claude/reviewed/gh134.pass`; 2026-08-12 gh340, caught before any marker was written). The gh134 marker is well-formed and correctly transcribes a real human decision, so this was a process breach, not a forged verdict. Two layers ship together, because the evidence shows either alone is insufficient: `agents/orchestrator.md` already carried the prose instruction that occurrence 2 violated, and `general-purpose` loads none of this project's persona instructions, so an instruction-level rule is structurally unreachable for it.
