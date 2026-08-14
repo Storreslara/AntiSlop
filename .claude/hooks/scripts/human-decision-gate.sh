@@ -16,6 +16,11 @@
 # a `human:` attestation to quote the DECISION path verbatim inside a
 # .claude/reviewed/<task-id>.pass marker. Blocking that is what caused the
 # 2026-08-12 incident.
+# The marker filename (id) charclass accepts the dispatch grammar: alphanumeric/
+# underscore start, then alphanumeric/underscore/hash/dot/dash. This prevents
+# leading-dot ids (.task) and rejects / (no directory escape), but allows
+# dots/hashes within the id (e.g., gh345.1, gh#348). Traversal is prevented by
+# the charclass rejecting both / and leading dots simultaneously.
 #
 # No adapter port exists for this gate, following the same precedent already
 # set by reviewed-path-gate.sh, which likewise has none under
@@ -45,12 +50,12 @@ agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 # only the first physical line is code and it must match end-to-end, so nothing
 # rides along; the delimiter is single-quoted, which is bash's own guarantee the
 # body is wholly inert; the target is a bare literal under .claude/reviewed/
-# whose id charclass excludes `/` and `.`, so no traversal escapes that
-# directory; and the first line equal to the delimiter must be the LAST line,
+# whose id charclass excludes `/` and rejects leading dots, preventing
+# any traversal; and the first line equal to the delimiter must be the LAST line,
 # without which a body could close the heredoc early and run whatever follows.
 is_sanctioned_marker_write() {
   local cmd="$1" first delim rest line
-  local re='^cat[[:space:]]+>>?[[:space:]]*[.]claude/reviewed/[A-Za-z0-9_-]+[.](pass|fail|directed|blocked|escalated)[[:space:]]+<<'\''([A-Za-z0-9_]+)'\''$'
+  local re='^cat[[:space:]]+>>?[[:space:]]*[.]claude/reviewed/[A-Za-z0-9_][A-Za-z0-9_#.-]*[.](pass|fail|directed|blocked|escalated)[[:space:]]+<<'\''([A-Za-z0-9_]+)'\''$'
 
   while [ "${cmd: -1}" = $'\n' ]; do cmd="${cmd%$'\n'}"; done
   first="${cmd%%$'\n'*}"

@@ -213,6 +213,29 @@ else
 fi
 
 echo
+echo "-- widened charclass: dots and hashes in id (N24-N27) --"
+bash_case "N24 id with a dot (e.g. gh345.1)" allowed antislop:reviewer \
+  "cat > .claude/reviewed/gh345.1.pass <<'EOF'
+PASS gh345.1 2026-08-13T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+bash_case "N25 id with a hash (e.g. gh#348)" allowed antislop:reviewer \
+  "cat > .claude/reviewed/gh#348.pass <<'EOF'
+PASS gh#348 2026-08-13T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+bash_case "N26 leading-dot id rejected (.gh345)" blocked antislop:reviewer \
+  "cat > .claude/reviewed/.gh345.pass <<'EOF'
+PASS .gh345 2026-08-13T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+bash_case "N27 traversal with leading dots rejected (..345)" blocked antislop:reviewer \
+  "cat > .claude/reviewed/..345.pass <<'EOF'
+PASS ..345 2026-08-13T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+
+echo
 echo "-- every block logs decision-gate-denied, reviewer included --"
 audit_log="$proj/.claude/review-audit.log"
 : > "$audit_log"
