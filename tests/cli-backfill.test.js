@@ -1982,6 +1982,257 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     return tmp;
   }
 
+  // The "all-twelve" fixture: every write site on the --update path armed at
+  // once, so C2.3's whole-tree deep-equal is the proof rather than a per-site
+  // checklist. One deliberate exception, forced by the code and called out by
+  // the spec: site 5 (the --dedupe-hooks strip) needs the marketplace plugin
+  // ENABLED, and site 12 (the hook-registration backfill) needs it DISABLED —
+  // `pluginState.enabled` is one boolean per run, so no single fixture can
+  // fire both. This one arms site 12 (and carries site 5's standalone
+  // registration as data); site 5's own no-write proof is C2.11.
+  function buildArmedFixture(label) {
+    const tmp = dryRunTmp(label);
+    const config = buildBaselineProject(tmp, {}, ['spec-master', 'task-master']);
+    const agents = path.join(tmp, '.claude', 'agents');
+
+    // Site 1: a legacy persona token recorded, with its agent file on disk.
+    config.personaSelection = ['spec-master', 'task-master', 'hivemind'];
+    fs.writeFileSync(path.join(agents, 'hivemind.md'), 'legacy persona body\n');
+
+    // Site 2: the bare global protocol import the migration strips.
+    fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), '# Project\n\n@.claude/persona-protocol.md\n');
+
+    // Sites 3, 4: .gitignore left without the managed entries (never written).
+
+    // Site 5 (data) + site 12: settings.json present with one standalone
+    // antislop registration, marketplace plugin explicitly disabled.
+    setPluginEnabled(tmp, false);
+    fs.writeFileSync(
+      path.join(tmp, '.claude', 'settings.json'),
+      JSON.stringify({ hooks: { Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }] } })
+    );
+
+    // Site 6: a managed mirror deleted outright.
+    fs.rmSync(path.join(tmp, '.claude', 'protocol-digest.md'));
+
+    // Site 7: a mirror whose stamp is stale but whose body and hash are intact.
+    const slimPath = path.join(tmp, '.claude', 'persona-protocol-slim.md');
+    fs.writeFileSync(
+      slimPath,
+      fs.readFileSync(slimPath, 'utf8').replace(`<!-- antislop v${pluginVersion} |`, '<!-- antislop v0.0.1 |')
+    );
+
+    // Site 8: a mirror whose body diverges from a clean render while its
+    // recorded hash still matches what is on disk (no local edits detected).
+    const specMasterPath = path.join(agents, 'spec-master.md');
+    fs.appendFileSync(specMasterPath, '\nupstream-side drift\n');
+    config.fileHashes['.claude/agents/spec-master.md'] =
+      cli.sha256Hex(cli.stripStamp(fs.readFileSync(specMasterPath, 'utf8')));
+
+    // Site 9: a mirror locally edited away from its recorded hash, resolved by
+    // --accept=all.
+    fs.appendFileSync(path.join(agents, 'task-master.md'), '\nlocal hand-edit\n');
+
+    // Sites 10, 11: three fileHashes entries dropped.
+    for (const rel of ['.claude/agents/orchestrator.md', '.claude/agents/explorer.md', '.claude/agents/lead-programmer.md']) {
+      delete config.fileHashes[rel];
+    }
+
+    fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
+    return tmp;
+  }
+
+  const ARMED_ARGS = ['--dedupe-hooks', '--accept=all'];
+
+  check('--update --dry-run writes nothing on the all-twelve fixture, and the same run without it does (C2.3)', () => {
+    const tmp = buildArmedFixture('armed');
+    const home = dryRunTmp('armed-home');
+    const live = copyFixture(tmp, 'armed-live');
+    try {
+      const before = snapshotTree(tmp);
+      const dry = runUpdateIsolated(tmp, home, ['--dry-run'].concat(ARMED_ARGS));
+      assert.deepStrictEqual(
+        snapshotTree(tmp), before,
+        `--dry-run must leave the whole tree byte- and mode-identical, got: ${dry.stdout}${dry.stderr}`
+      );
+
+      // Mutation control: identical command, --force-render in place of
+      // --dry-run. Without this the deep-equal above is satisfiable by a
+      // fixture that arms nothing.
+      const liveBefore = snapshotTree(live);
+      runUpdateIsolated(live, home, ['--force-render'].concat(ARMED_ARGS));
+      assert.notDeepStrictEqual(snapshotTree(live), liveBefore, 'the same run without --dry-run must change the tree');
+    } finally {
+      for (const d of [tmp, home, live]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --dry-run reports in the conditional voice only (C2.4)', () => {
+    const tmp = buildArmedFixture('vocab');
+    const home = dryRunTmp('vocab-home');
+    try {
+      const dry = runUpdateIsolated(tmp, home, ['--dry-run']);
+      const out = dry.stdout + dry.stderr;
+      assert.ok(
+        out.includes('.claude/protocol-digest.md: would be created'),
+        `expected the deleted mirror reported as "would be created", got: ${out}`
+      );
+      // The `grep -qE ': (updated|created|pending)$'` idiom is known-broken
+      // (F2) and is NOT being preserved as a working contract: the point here
+      // is only that dry-run output can never be read as a record of writes
+      // that actually happened.
+      assert.ok(
+        !/: (updated|created|pending)$/m.test(out),
+        `no dry-run line may read as an indicative write verb, got: ${out}`
+      );
+    } finally {
+      for (const d of [tmp, home]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --dry-run exit codes: 3 armed, 0 current, 1 unrenderable (C2.5)', () => {
+    const home = dryRunTmp('exit-home');
+    const armed = buildArmedFixture('exit-armed');
+    const current = dryRunTmp('exit-current');
+    const unwired = dryRunTmp('exit-unwired');
+    try {
+      assert.strictEqual(runUpdateIsolated(armed, home, ['--dry-run'].concat(ARMED_ARGS)).status, 3, 'armed fixture must exit 3');
+
+      buildBaselineProject(current, {});
+      populateGitignore(current);
+      const brought = runUpdateIsolated(current, home);
+      assert.strictEqual(brought.status, 0, `the preceding live --update must succeed, got: ${brought.stdout}${brought.stderr}`);
+      const currentDry = runUpdateIsolated(current, home, ['--dry-run']);
+      assert.strictEqual(currentDry.status, 0, `a project brought current must exit 0, got: ${currentDry.stdout}${currentDry.stderr}`);
+
+      // A NEVER-WIRED project: explorer.md still carries the literal
+      // placeholder, so backfillSubstitutionsFromDisk declines to
+      // reverse-engineer graphMcpLaunch back out of it (merely deleting the
+      // key from an already-wired project exits 0 — the backfill restores it).
+      const unwiredConfig = buildBaselineProject(unwired, {});
+      delete unwiredConfig.substitutions.graphMcpLaunch;
+      fs.writeFileSync(path.join(unwired, '.claude', 'persona-config.json'), JSON.stringify(unwiredConfig, null, 2) + '\n');
+      fs.writeFileSync(
+        path.join(unwired, '.claude', 'agents', 'explorer.md'),
+        stampBody(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'explorer.md'), 'utf8'), 'agents/explorer.md')
+      );
+      const unwiredDry = runUpdateIsolated(unwired, home, ['--dry-run']);
+      assert.strictEqual(unwiredDry.status, 1, `a never-wired project must exit 1, got: ${unwiredDry.stdout}${unwiredDry.stderr}`);
+      assert.ok(
+        unwiredDry.stdout.includes('could not be rendered') && unwiredDry.stdout.includes('.claude/agents/explorer.md'),
+        `expected a "could not be rendered" report naming explorer.md, got: ${unwiredDry.stdout}`
+      );
+    } finally {
+      for (const d of [home, armed, current, unwired]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --dry-run implies the force and sees past the version-match fast path (C2.6)', () => {
+    const tmp = dryRunTmp('force');
+    const home = dryRunTmp('force-home');
+    try {
+      buildBaselineProject(tmp, {});
+      populateGitignore(tmp);
+      fs.appendFileSync(path.join(tmp, '.claude', 'protocol-digest.md'), '\nhand-corrupted content\n');
+      const before = snapshotTree(tmp);
+
+      const dry = runUpdateIsolated(tmp, home, ['--dry-run']);
+      assert.ok(
+        dry.stdout.includes('.claude/protocol-digest.md'),
+        `--dry-run must name the corrupted file rather than fast-pathing out, got: ${dry.stdout}`
+      );
+      assert.strictEqual(dry.status, 3, `expected exit 3, got ${dry.status}: ${dry.stdout}${dry.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), before, 'the forced dry run must still write nothing');
+
+      // Negative control: a plain --update on the same tree fast-paths out and
+      // never names the file, which is what makes the assertion above real.
+      const plain = runUpdateIsolated(tmp, home);
+      assert.ok(
+        plain.stdout.includes('Nothing to update') && !plain.stdout.includes('protocol-digest'),
+        `a plain --update must take the fast path, got: ${plain.stdout}`
+      );
+    } finally {
+      for (const d of [tmp, home]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  check('--check is a behaviour-identical alias for --force-render and warns on stderr (C2.8)', () => {
+    const aliased = buildArmedFixture('alias');
+    const renamed = copyFixture(aliased, 'alias-renamed');
+    const home = dryRunTmp('alias-home');
+    try {
+      const viaAlias = runUpdateIsolated(aliased, home, ['--check'].concat(ARMED_ARGS));
+      const viaCanonical = runUpdateIsolated(renamed, home, ['--force-render'].concat(ARMED_ARGS));
+      assert.strictEqual(viaAlias.status, viaCanonical.status, `exit codes must match, got ${viaAlias.status} vs ${viaCanonical.status}`);
+      assert.deepStrictEqual(snapshotTree(aliased), snapshotTree(renamed), 'both spellings must leave identical trees');
+      assert.ok(
+        viaAlias.stderr.includes('--check is deprecated') && viaAlias.stderr.includes('--dry-run'),
+        `the alias must warn on stderr and point at both replacements, got: ${viaAlias.stderr}`
+      );
+      assert.ok(!viaCanonical.stderr.includes('deprecated'), `--force-render must not warn, got: ${viaCanonical.stderr}`);
+    } finally {
+      for (const d of [aliased, renamed, home]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --personas=<new> --dry-run reports the addition and records nothing (C2.10)', () => {
+    const tmp = dryRunTmp('personas');
+    const home = dryRunTmp('personas-home');
+    try {
+      buildBaselineProject(tmp, {}, ['reviewer']);
+      populateGitignore(tmp);
+      const before = snapshotTree(tmp);
+
+      const dry = runUpdateIsolated(tmp, home, ['--personas=agent-auditor', '--dry-run']);
+      assert.strictEqual(dry.status, 3, `expected exit 3, got ${dry.status}: ${dry.stdout}${dry.stderr}`);
+      assert.ok(
+        dry.stdout.includes('.claude/agents/agent-auditor.md: would be created'),
+        `expected the new persona reported as "would be created", got: ${dry.stdout}`
+      );
+      assert.deepStrictEqual(snapshotTree(tmp), before, 'a dry run must not record the persona or create its file');
+      assert.deepStrictEqual(
+        JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8')).personaSelection,
+        ['reviewer'],
+        'personaSelection must be unchanged on disk'
+      );
+    } finally {
+      for (const d of [tmp, home]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  check('--update --dry-run --dedupe-hooks suppresses the standalone-registration strip (C2.11, site 5)', () => {
+    const tmp = dryRunTmp('dedupe');
+    const home = dryRunTmp('dedupe-home');
+    try {
+      buildBaselineProject(tmp, {});
+      populateGitignore(tmp);
+      // The exact INVERSE of C2.13's fixture: this one needs the marketplace
+      // plugin ENABLED, which is what makes hooksCollision true.
+      setPluginEnabled(tmp, true);
+      writeProjectSettings(tmp, {
+        hooks: { Stop: [{ matcher: '', hooks: [{ type: 'command', command: standaloneCommand }] }] },
+      });
+      const settingsPath = path.join(tmp, '.claude', 'settings.json');
+      const before = fs.readFileSync(settingsPath, 'utf8');
+
+      const dry = runUpdateIsolated(tmp, home, ['--dry-run', '--dedupe-hooks']);
+      assert.strictEqual(fs.readFileSync(settingsPath, 'utf8'), before, '--dry-run must leave .claude/settings.json byte-identical');
+      assert.ok(
+        /\.claude\/settings\.json: would remove \d+ standalone antislop hook registration\(s\)/.test(dry.stdout),
+        `expected the strip reported in the conditional voice, got: ${dry.stdout}`
+      );
+
+      // Mutation control: the same command without --dry-run really strips it.
+      const liveRun = runUpdateIsolated(tmp, home, ['--dedupe-hooks']);
+      assert.notStrictEqual(
+        fs.readFileSync(settingsPath, 'utf8'), before,
+        `the live run must actually strip the registration, got: ${liveRun.stdout}${liveRun.stderr}`
+      );
+    } finally {
+      for (const d of [tmp, home]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
   check('--dry-run suppresses, reports and counts the hook-registration backfill (C2.13, site 12)', () => {
     const tmp = buildSite12Fixture('site12');
     const home = dryRunTmp('site12-home');
@@ -2008,6 +2259,116 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       );
     } finally {
       for (const d of [tmp, home, live]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  // All three shapes share ONE repo copy: a dry run writes nothing, so the
+  // tree after each shape is exactly the tree before it, and the plugin SOURCE
+  // (which shape A edits) is only editable in a copy. HOME enables the
+  // marketplace plugin here so site 12's registration backfill — which fires
+  // on the real repo's own .claude/settings.json — does not drown out the
+  // drift signal this criterion is measuring.
+  check('--update --dry-run discriminates all three F2 drift shapes on exit code alone (C2.12)', () => {
+    const { tmp, cli: tmpCli } = buildF2GitFixture('dryrun-shapes');
+    const home = dryRunTmp('shapes-home');
+    const sourcePath = path.join(tmp, 'agents', 'orchestrator.md');
+    const mirrorPath = path.join(tmp, '.claude', 'agents', 'orchestrator.md');
+    const runDry = () => spawnSync('node', [tmpCli, '--update', '--dry-run'], {
+      cwd: tmp,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+    try {
+      fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+      fs.writeFileSync(
+        path.join(home, '.claude', 'settings.json'),
+        JSON.stringify({ enabledPlugins: { [MARKETPLACE_KEY]: true } })
+      );
+
+      const baseline = snapshotTree(tmp);
+      const clean = runDry();
+      assert.strictEqual(clean.status, 0, `a genuinely current tree must exit 0, got ${clean.status}: ${clean.stdout}${clean.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), baseline, 'the baseline dry run must write nothing');
+
+      // Shape A — the #291 shape: the plugin SOURCE moved on, so a clean
+      // render now differs, while the mirror itself carries no local edits.
+      // Today's --check silently self-heals this and exits 0.
+      const pristineSource = fs.readFileSync(sourcePath, 'utf8');
+      fs.appendFileSync(sourcePath, '\nhand-edited source line\n');
+      const shapeABefore = snapshotTree(tmp);
+      const shapeA = runDry();
+      assert.strictEqual(shapeA.status, 3, `shape A must exit 3, got ${shapeA.status}: ${shapeA.stdout}${shapeA.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), shapeABefore, 'shape A must not be silently self-healed');
+      fs.writeFileSync(sourcePath, pristineSource);
+
+      // Shape B: the mirror carries local edits away from its recorded hash.
+      fs.appendFileSync(mirrorPath, '\nhand-edited mirror line\n');
+      const shapeBBefore = snapshotTree(tmp);
+      const shapeB = runDry();
+      assert.strictEqual(shapeB.status, 3, `shape B must exit 3, got ${shapeB.status}: ${shapeB.stdout}${shapeB.stderr}`);
+      assert.deepStrictEqual(snapshotTree(tmp), shapeBBefore, 'shape B must write nothing either');
+    } finally {
+      for (const d of [tmp, home]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
+
+  // C2.14: exit 0 is a promise about the LIVE run, so it is tested against the
+  // live run. Each row builds two byte-identical copies — dry run on one, live
+  // run on the other — and asserts the biconditional. Rows 2 and 3 are the
+  // regression pins: both were measured at live exit 0 while mutating a file.
+  check('--update --dry-run exits 0 iff a live --update would leave the tree untouched (C2.14)', () => {
+    const home = dryRunTmp('bicond-home');
+    const built = [];
+    const withCurrentBase = (label, arm) => {
+      const tmp = dryRunTmp(label);
+      const config = buildBaselineProject(tmp, {}, ['spec-master', 'task-master']);
+      populateGitignore(tmp);
+      arm(tmp, config);
+      fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
+      built.push(tmp);
+      return tmp;
+    };
+    const rows = [
+      ['genuinely current', () => {}],
+      ['three fileHashes entries dropped', (tmp, config) => {
+        for (const rel of ['.claude/agents/orchestrator.md', '.claude/agents/explorer.md', '.claude/agents/lead-programmer.md']) {
+          delete config.fileHashes[rel];
+        }
+      }],
+      ['empty .claude/settings.json, plugin disabled', (tmp) => {
+        setPluginEnabled(tmp, false);
+        fs.writeFileSync(path.join(tmp, '.claude', 'settings.json'), '{}');
+      }],
+      ['.gitignore stripped of the managed entries', (tmp) => fs.rmSync(path.join(tmp, '.gitignore'))],
+      ['legacy persona token recorded, its agent file present', (tmp, config) => {
+        config.personaSelection = ['spec-master', 'task-master', 'hivemind'];
+        fs.writeFileSync(path.join(tmp, '.claude', 'agents', 'hivemind.md'), 'legacy persona body\n');
+      }],
+      ['bare @.claude/persona-protocol.md line in CLAUDE.md', (tmp) => {
+        fs.writeFileSync(path.join(tmp, 'CLAUDE.md'), '# Project\n\n@.claude/persona-protocol.md\n');
+      }],
+    ];
+    try {
+      for (const [label, arm] of rows) {
+        const dryCopy = withCurrentBase(`bicond-${built.length}`, arm);
+        const liveCopy = copyFixture(dryCopy, `bicond-${built.length}-live`);
+        built.push(liveCopy);
+
+        const dryBefore = snapshotTree(dryCopy);
+        const dry = runUpdateIsolated(dryCopy, home, ['--dry-run']);
+        assert.deepStrictEqual(snapshotTree(dryCopy), dryBefore, `${label}: the dry run itself must write nothing`);
+
+        const liveBefore = snapshotTree(liveCopy);
+        runUpdateIsolated(liveCopy, home);
+        const liveUnchanged = JSON.stringify(snapshotTree(liveCopy)) === JSON.stringify(liveBefore);
+
+        assert.strictEqual(
+          dry.status === 0, liveUnchanged,
+          `${label}: --dry-run exited ${dry.status} but the live run ${liveUnchanged ? 'changed nothing' : 'changed the tree'}\n${dry.stdout}${dry.stderr}`
+        );
+      }
+    } finally {
+      for (const d of built.concat([home])) fs.rmSync(d, { recursive: true, force: true });
     }
   });
 }
