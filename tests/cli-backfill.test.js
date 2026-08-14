@@ -77,10 +77,17 @@ function canonicalProtocolHeaders() {
     .map((l) => l.slice(3).trim());
 }
 
-check('selectProtocolSections returns every canonical section for the deliberately untrimmed orchestrator row', () => {
+// The A3 ruling ("orchestrator is deliberately untrimmed") was reversed for
+// three sections by gh348 Step 4 (Third verdict, Fourth verdict, Microworld
+// bundles — operator-approved 2026-08-13, see docs/plans/2026-08-13-persona-
+// efficiency-audit-gh348.md finding 1.1). This now asserts the row's actual
+// include list rather than the full canonical set.
+check('selectProtocolSections returns the orchestrator row\'s include list', () => {
   const all = canonicalProtocolHeaders();
   assert.ok(all.length > 0, 'the canonical template must define at least one ## section');
-  assert.deepStrictEqual(cli.selectProtocolSections('orchestrator', 'full'), all);
+  const row = cli.PROTOCOL_SECTIONS_BY_PERSONA['orchestrator'];
+  const expected = all.filter((h) => !row.drop.includes(h));
+  assert.deepStrictEqual(cli.selectProtocolSections('orchestrator', 'full'), expected);
 });
 
 check('selectProtocolSections throws when a matrix row names a section the template does not define', () => {
@@ -145,8 +152,12 @@ check('renderCleanBody inlines only the sections the selector returns for the pe
 });
 
 // --- Step 4 trimming matrix. TRIMMED_PERSONAS is every full-tier row except
-// the deliberately untrimmed orchestrator (see the A3 ruling: its row is all
-// 16 sections, memory note included, and its mirror must stay byte-identical).
+// the still-mostly-untrimmed orchestrator (see the A3 ruling). gh348 Step 4
+// reversed A3 for three of orchestrator's sections (operator-approved
+// 2026-08-13); orchestrator stays out of this list because a separate check
+// below still relies on it being an iff-frontmatter EXCEPTION for the memory
+// section, which the other rows here are not — orchestrator's new partial
+// trim is covered by its own check instead.
 const TRIMMED_PERSONAS = ['lead-programmer', 'reviewer', 'spec-master', 'task-master', 'milestone-auditor'];
 
 // Criterion 1 (as corrected by A4.1): positive AND negative, per persona,
@@ -244,15 +255,22 @@ check('positive control: the shipped gatedAgents renders lead-programmer without
   assert.ok(body.includes('## Pending-review flag'), 'the force-include must still deliver the pending-review flag section');
 });
 
-// Criterion 2: the orchestrator mirror on disk is untrimmed — all 16 canonical
-// sections, derived from the template rather than hard-coded.
-check('the .claude/agents/orchestrator.md mirror still carries every canonical protocol section', () => {
-  assert.deepStrictEqual(cli.PROTOCOL_SECTIONS_BY_PERSONA['orchestrator'].drop, [], 'the orchestrator row must drop nothing');
+// Criterion 2 (revised for gh348 Step 4): the orchestrator mirror on disk
+// carries every header in its row's include list and none of its (now
+// non-empty) drop list — the same shape as the generic TRIMMED_PERSONAS
+// check above, kept separate because orchestrator is not a member of that
+// list (see the iff-frontmatter exception noted there).
+check('the .claude/agents/orchestrator.md mirror carries its row include list and none of its drop list', () => {
+  const row = cli.PROTOCOL_SECTIONS_BY_PERSONA['orchestrator'];
+  assert.ok(row.drop.length > 0, 'gh348 Step 4 expects orchestrator to drop at least one section now');
   const body = fs.readFileSync(path.join(REPO_ROOT, '.claude', 'agents', 'orchestrator.md'), 'utf8');
   const block = body.split('<!-- ANTISLOP:BEGIN persona-protocol')[1];
   assert.ok(block, 'the orchestrator mirror must carry an inlined protocol block');
-  for (const header of canonicalProtocolHeaders()) {
-    assert.ok(block.includes(`## ${header}`), `the orchestrator mirror must still carry "${header}"`);
+  for (const header of row.include) {
+    assert.ok(block.includes(`## ${header}`), `the orchestrator mirror must carry "${header}"`);
+  }
+  for (const header of row.drop) {
+    assert.ok(!block.includes(`## ${header}`), `the orchestrator mirror must NOT carry its dropped section "${header}"`);
   }
 });
 

@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.31.36] - 2026-08-14
+
+**Trim duplicated protocol excerpt sections (gh348-4, Step 4 of #348 spec).** `PROTOCOL_SECTIONS_BY_PERSONA` drop-list edit only, no prose rewrite: reviewer drops `Fourth verdict: escalate-to-human` (full escalation procedure already at `agents/reviewer.md:165-254`) and `Microworld bundles` (its whole duty already stated at `agents/reviewer.md:57-66`); orchestrator drops `Third verdict`/`Fourth verdict` (already at `agents/orchestrator.md:176-235`) and `Microworld bundles` (neither authors nor verifies bundles) — a partial, operator-approved (2026-08-13) reversal of the Pass-1 A3 ruling that orchestrator's row is deliberately untrimmed; spec-master and task-master drop `Microworld bundles`. `lead-programmer` retains the full schema unchanged — it is the author.
+
+### Changed
+- **`bin/cli.js`:** Moved the four headers above from `include` to `drop` on the `reviewer`, `orchestrator`, `spec-master`, and `task-master` rows of `PROTOCOL_SECTIONS_BY_PERSONA`. `assertProtocolMatrixComplete` and `assertNoDanglingCrossReferences` both still pass at module load — no new dangling cross-reference introduced.
+- **`.claude/agents/*.md`, `.claude/persona-protocol*.md`, `.claude/protocol-digest.md`, `.claude/persona-config.json` (`fileHashes`):** Mirrors regenerated via `node bin/cli.js --update`.
+- **`tests/cli-backfill.test.js`:** Updated the two assertions that hard-coded the superseded A3 ruling ("orchestrator row must drop nothing") to check the row's actual include/drop lists instead; added a dedicated orchestrator include/drop check (orchestrator is kept out of `TRIMMED_PERSONAS` because that list also drives the memory-section iff-frontmatter check, which orchestrator is a documented exception to).
+
+### Notes
+- Measured word-count saving (`wc -w` on the shipped `.claude/agents/*.md` mirror, before this step's regeneration -> after): `reviewer.md` 7725 -> 5619; `orchestrator.md` 11137 -> 8817; `spec-master.md` 5697 -> 4946; `task-master.md` 4821 -> 4070; `lead-programmer.md` 4681 -> 4681 (unchanged, retains the full microworld schema as its author).
+- The stale `tests/cli-backfill.test.js` assertions were not in this step's originally stated Affected files list — found while running `tests/validate.sh`. Fixing them is a direct, documented consequence of the operator-approved A3 reversal this step implements (`docs/plans/2026-08-13-persona-efficiency-audit-gh348.md` finding 1.1), not new scope.
+
 ## [0.31.35] - 2026-08-14
 
 **Make cross-section protocol references self-contained (gh348-2, Step 2 of #348 spec).** `selectProtocolSections()` trims `templates/persona-protocol.md` per persona without checking whether the surviving rendered text still points at a dropped section — the root cause behind several dangling backward references (2.2/2.6).

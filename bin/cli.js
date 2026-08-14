@@ -596,13 +596,14 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Review ownership — one unit, one review, single owner',
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
-      'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
+    ],
+    drop: [
+      'Third verdict: insufficient-context',
+      'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
     ],
-    drop: [],
   },
   'lead-programmer': {
     include: [
@@ -633,13 +634,13 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
-      'Microworld bundles (format and the check contract)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
+      'Fourth verdict: escalate-to-human',
+      'Microworld bundles (format and the check contract)',
     ],
   },
   'spec-master': {
@@ -652,13 +653,13 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'FAIL record (durable warning for future spawns)',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
-      'Microworld bundles (format and the check contract)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
       'Fourth verdict: escalate-to-human',
+      'Microworld bundles (format and the check contract)',
     ],
   },
   'task-master': {
@@ -670,7 +671,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Review ownership — one unit, one review, single owner',
       'FAIL record (durable warning for future spawns)',
       'A note on `memory`',
-      'Microworld bundles (format and the check contract)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
@@ -678,6 +678,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Third verdict: insufficient-context',
       'Fourth verdict: escalate-to-human',
       'Continuing after a FAIL verdict',
+      'Microworld bundles (format and the check contract)',
     ],
   },
   'milestone-auditor': {
