@@ -199,7 +199,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
 _Avoid_: clear-watermark
 
 **Protocol excerpt**:
-the subset of `templates/persona-protocol.md`'s 16
+the subset of `templates/persona-protocol.md`'s 19
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
   `PROTOCOL_SECTIONS_BY_PERSONA` matrix (issue #190, 2026-08-01 efficiency

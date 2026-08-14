@@ -21,7 +21,7 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 
 **Full tier** (`templates/persona-protocol.md`): 300 lines
 - Target personas: `orchestrator`, `lead-programmer`, `spec-master`, `task-master`, `reviewer`, `milestone-auditor`
-- 16 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, WIP sentinel, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Pending-review flag, FAIL record, Third verdict (insufficient-context), Continuing after a FAIL verdict, Reviewer roast-work advisory pass trigger, A note on `memory`
+- 19 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
 
   For what the WIP sentinel, pending-review flag, and terminal status line
   sections actually say and enforce (this page only tracks which persona
@@ -30,7 +30,7 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 
 **Slim tier** (`templates/persona-protocol-slim.md`): 83 lines
 - Target personas: `explorer`, `researcher`, `scribe`
-- 6 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Terminal status line, A note on `memory`
+- 7 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Blocked by a gate you do not own, Terminal status line, A note on `memory`
 
 ## How inlining works
 
@@ -51,7 +51,7 @@ The full/slim split answers "which canonical file does this persona get";
 it does not answer "which sections of that file". Since issue #190 (the
 2026-08-01 efficiency-remediation pass, finding F1), `bin/cli.js` answers
 the second question too, for full-tier personas only: each one inlines
-just the subset of `templates/persona-protocol.md`'s 16 `## `-delimited
+just the subset of `templates/persona-protocol.md`'s 19 `## `-delimited
 sections that mechanically applies to its role, instead of the full
 document regardless of role.
 
@@ -67,11 +67,14 @@ document regardless of role.
 - `selectProtocolSections(name, tier, gatedAgents)` reads that map and
   returns the headers a given persona's mirror should carry, in template
   order.
-- `orchestrator` is deliberately left untrimmed (`include: [...all 16],
-  drop: []`) — it routes every one of these mechanisms and is the one
-  persona that genuinely executes on all of them.
+- `orchestrator` was originally left fully untrimmed; gh348 Steps 4 and 11
+  narrowed its row too, dropping the sections it never executes on (Third
+  verdict, Fourth verdict, Microworld bundles, the teammate Write/Edit
+  fallback doctrine, and the memory note — orchestrator carries no
+  `memory:` frontmatter). It still carries 14 of the 19 canonical sections,
+  the largest share of any full-tier persona.
 - Measured, currently-shipped savings (words dropped from the full
-  16-section total, measured directly from the generated
+  19-section total, measured directly from the generated
   `.claude/agents/*.md` mirrors against the current
   `templates/persona-protocol.md`): `reviewer` ~16% (450 words),
   `lead-programmer` 597 words/17%, `task-master` ~28%, `spec-master` ~30%,
