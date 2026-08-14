@@ -67,3 +67,17 @@ accurate for a prose/wording correction — grep the actual claim text across
 the whole repo (`grep -rnF '<exact phrase>' --include=*.md`) before editing,
 and remember `adapters/codex/*` source files are a blind spot for
 `--update`-based verification.
+
+**Step 5 (gh348-5, landed `17c9e53`/`eb72e15`, v0.31.42) found a third
+failure mode: a cited LINE NUMBER can be stale even when the file/claim is
+right.** Finding 2.4's dispatch said "read
+`hooks/scripts/reviewer-route-gate.sh:71-72`... the real failure mode is
+harness name-collision auto-suffixing." At execution time lines 71-72 were
+an unrelated pending-review-flag check; the actual naming-refusal block
+matching the described mechanism was at lines 88-96 (the plan was
+finalized before an earlier Step's commits shifted the script's line
+numbers). **How to apply:** treat a cited line range as a hint to search
+near, never as ground truth — match on the described BEHAVIOR (here: does
+the code inspect `tool_input.name` at dispatch time vs. the harness's
+post-spawn `agent_type`?), not the line number, and gate correctness on the
+text being true against the code as it stands now.
