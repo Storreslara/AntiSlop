@@ -63,3 +63,26 @@ confirm it fails there. Two of Step 7's criteria (`find -iname 'skill.md'` and
 `git ls-files | wc -l`) measured identically before and after, so they could not
 distinguish a finished unit from an untouched one — caught only by mutation
 testing in a throwaway worktree.
+
+**Third instance — an absolute byte-pin is a baseline too, and prose reflow
+expires it (2026-08-14, gh348-13, C13.2).** Pass 3 pinned three paragraphs of
+`agents/orchestrator.md` "byte-identical to `e5b908f`" as an anti-regression
+control; Step 13's C13.2 carried that exact absolute-commit pin forward
+verbatim. Four days after the pin, a wholly legitimate, unrelated commit
+(`697541e`, issue #236, "compress ... to <=110 lines") reflowed the pinned
+paragraph's line-wraps — word content unchanged, wrap points moved. Nothing
+re-checked the pin's validity between that commit landing and gh348-13's own
+dispatch 8 days later, so the criterion was unsatisfiable the whole time and
+nobody noticed until a lead-programmer tried to run it. **The fix pattern:**
+(1) switch the comparison from raw bytes to whitespace-normalized content
+(`tr -s ' \n' ' '` on the extracted paragraph) so wrap-only drift can't
+trip it, and (2) re-anchor from the stale absolute commit to a **relative**
+pin — "unchanged from the immediate pre-step commit" — which is what the
+same document's `C5.2`/`C14.3` already did correctly and is why neither of
+them shared this defect. **How to apply:** any criterion pinning prose (or
+any text) "byte-identical to `<commit>`" is exactly as perishable as an
+untracked-file baseline — treat an absolute-commit content pin as expiring
+the moment ANY future commit is allowed to touch that region for unrelated
+reasons (formatting passes, line-length compressions), and prefer a relative
+"unchanged since the immediately preceding step" pin over an absolute one
+whenever the plan spans more than one execution session.

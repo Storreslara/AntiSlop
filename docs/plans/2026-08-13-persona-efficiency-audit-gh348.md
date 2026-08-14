@@ -9,6 +9,11 @@ mid-edit. Re-ran every numeric baseline and every internal cross-reference
 against the tree; wrote the missing R13 and Self-check items CHK25-CHK32,
 both of which earlier text already pointed at; corrected five gaps
 (CHK33-CHK38). Substance of the operator's rulings is untouched.
+Execution-time correction: 2026-08-14, during gh348-13's own dispatch — the
+`e5b908f` byte-pin C13.2 relied on had been silently invalidated by an
+unrelated, legitimate reflow commit (`697541e`, 2026-08-06); re-anchored and
+switched to a content-equality check (CHK39). Scoped to C13.2 only — see
+Step 13.
 Source audit: GitHub issue #348 (fable critic, filed 2026-08-12 20:20)
 
 ## Goal
@@ -1234,6 +1239,37 @@ repointed at `reviewer-tier.sh` directly. **Note this is a licensed,
 minimal edit to a paragraph Step 5's C5.2 pins**; the pin is re-run here
 against everything except that one clause.
 
+**Correction (2026-08-14, discovered during gh348-13's own execution;
+scoped to C13.2 only — see the reasoning below):** C13.2 as originally
+drafted pinned the `Downgrade-only asymmetry` paragraph byte-identical to
+`e5b908f`, the historical commit Pass 3 criterion 6c extracted from. That
+pin was silently invalidated on 2026-08-06 by `697541e`
+("compress per-unit-model-routing section to <=110 lines", issue #236) — an
+unrelated, legitimate commit that reflowed this paragraph's line-wrap
+positions (word content unchanged; wrap points moved, e.g. "an `opus`
+verdict\nis final" vs "an `opus`\nverdict is final"). Confirmed independently:
+`diff` between `e5b908f`'s and the current tree's extracted paragraph
+(bold-lead extraction, same convention Pass 3 used) is non-empty (wrap-only),
+while the same extraction joined and whitespace-collapsed
+(`tr -s ' \n' ' '`) is identical. C13.2 has therefore been unsatisfiable as
+literally written since 2026-08-06 — independent of this step's own work.
+**Fix: re-anchor to a live baseline and switch to a content-equality check.**
+`697541e` through `22a3bef` (the commit immediately preceding this step) is
+byte-identical for this paragraph throughout (re-verified: no intervening
+commit touches it), so `22a3bef` is used as the new pin — it is also the
+step's own natural "pre-step state," matching the relative-pin idiom C13.2
+should have used from the start. C13.2 below is corrected in place.
+**Scope check — is this the same defect elsewhere?** No. `C5.2` (Step 5) and
+`C14.3` (Step 14) both already pin their paragraphs as "unchanged **by this
+step**" / "byte-identical to its **pre-step state**" — a relative,
+self-referential comparison that never cites `e5b908f` or any other stale
+absolute commit, so neither is affected by this reflow (confirmed: `gh348-5`
+already PASSed with this relative check, `.claude/reviewed/gh348-5.pass`).
+`C13.2` was the only live criterion in this document that copied the
+historical Pass-3 prose's absolute-commit wording instead of this document's
+own relative-pin convention — the defect is narrow and fully closed by the
+correction below; no other step needs a matching fix.
+
 Affected files: `agents/orchestrator.md` (§ "Reviewer gate model selection"),
 `.claude/agents/orchestrator.md` (regenerated), version, CHANGELOG.
 
@@ -1248,10 +1284,14 @@ different rule — do not conflate them).
 Acceptance criteria:
 - C13.1 `grep -c "belt-and-suspenders" agents/orchestrator.md` returns 0.
   *(Baseline: 1.)*
-- C13.2 Anti-regression control, re-run and narrowed: the
-  `Downgrade-only asymmetry` paragraph is byte-identical to `e5b908f` (same
-  bold-lead extraction Pass 3 used), and
-  `git diff --exit-code hooks/scripts/reviewer-tier.sh` exits 0.
+- C13.2 Anti-regression control, re-run, narrowed, and re-anchored (see the
+  2026-08-14 correction above — the original `e5b908f` byte-pin has been
+  unsatisfiable since `697541e` on 2026-08-06 and is retired): the
+  `Downgrade-only asymmetry` paragraph's content is unchanged from commit
+  `22a3bef` (the pre-step baseline), checked as whitespace-normalized text
+  rather than raw bytes, since only line-wrap position may drift:
+  `diff <(git show 22a3bef:agents/orchestrator.md | awk -v L='Downgrade-only asymmetry' 'index($0,"**"L)==1{f=1} f&&/^$/{exit} f' | tr -s ' \n' ' ') <(awk -v L='Downgrade-only asymmetry' 'index($0,"**"L)==1{f=1} f&&/^$/{exit} f' agents/orchestrator.md | tr -s ' \n' ' ')`
+  exits 0, and `git diff --exit-code hooks/scripts/reviewer-tier.sh` exits 0.
 - C13.3 No dangling reference survives:
   `grep -c "the \`.fail\` disqualifier above" agents/orchestrator.md`
   returns 0, and the surviving `Escalation.` paragraph instead names
@@ -1938,6 +1978,25 @@ five gaps the interrupted revision sessions had left behind.
   helper invoked independently for A1 and A5 (R10.1), the slim tier's
   `selectProtocolSections` throw is present (Context), and `eval/variants/`
   is absent with nothing referencing it (Step 15, CHK21).
+
+*Execution-time correction, 2026-08-14 — gap surfaced by gh348-13's own
+dispatch:*
+
+- CHK39: Is C13.2's `e5b908f` byte-pin still satisfiable at execution time,
+  given that a legitimate intervening commit could reflow — without
+  altering — the pinned prose? — FAIL (missing: the plan never accounted for
+  a byte-pin's baseline expiring) — revised in place: `697541e` (2026-08-06,
+  issue #236) reflowed the `Downgrade-only asymmetry` paragraph's line-wraps
+  four days after the `e5b908f` pin, making C13.2 unsatisfiable as literally
+  written since that date, independent of Step 13's own work. C13.2 is
+  re-anchored to `22a3bef` (the pre-Step-13 baseline, content-identical to
+  `697541e` throughout) and switched from a raw byte-diff to a
+  whitespace-normalized content diff — see Step 13's inline 2026-08-14
+  correction for the full command and verification. Checked for the same
+  defect elsewhere: `C5.2` and `C14.3` already use a relative "unchanged by
+  this step" / "pre-step state" pin rather than an absolute commit hash, so
+  neither is affected; `C13.2` was the only criterion using the vulnerable
+  absolute-pin phrasing, so no other step needs a matching correction.
 
 ## Scribe update hint
 
