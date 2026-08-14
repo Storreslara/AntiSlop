@@ -193,9 +193,12 @@ with reasons.
   authoritative wherever the two differ. With no bundle, still create that
   directory with `PACKET.md` alone and write `microworld: none` — never skip
   the escalation for want of a bundle. Do not site the packet under
-  `.claude/reviewed/`: `reviewed-path-gate.sh` blocks every Bash command whose
-  text contains that path for non-reviewer callers, read-only ones included,
-  so a packet there could not be run by anyone but you. Write neither `.pass`
+  `.claude/reviewed/`: `reviewed-path-gate.sh` only lets a non-reviewer
+  caller's command through when `command_is_provably_benign()` accepts it — a
+  narrow allowlist of inspection programs with no redirect, substitution, or
+  unlexable construct tolerated, regardless of whether the command is
+  conceptually read-only — and running a packet's `run.sh` is never on that
+  allowlist, so a packet there could not be run by anyone but you. Write neither `.pass`
   nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. A later
   re-dispatch naming the unit resolves it, per the next bullet.
 - **Resolving a standing escalation (transcription, never re-review)**: the

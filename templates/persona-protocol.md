@@ -362,12 +362,15 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   still gets the would-be verdict and the criteria; they simply have nothing
   to run. **Escalation is never skipped for want of a bundle.**
 - **The packet deliberately does NOT live under `.claude/reviewed/`.**
-  `hooks/scripts/reviewed-path-gate.sh` blocks every Bash command whose text
-  merely contains that path, for every non-reviewer caller, **read-only ones
-  included** — so a packet sited there could not be run by the orchestrator or
-  by a human working through the session. `.claude/human-review/` is ungated
-  by design. Do not "tidy" the packet under the marker directory; that quietly
-  breaks the whole feature.
+  `hooks/scripts/reviewed-path-gate.sh` only lets a non-reviewer caller's
+  command through when `command_is_provably_benign()` accepts it — a narrow
+  allowlist of inspection programs with no redirect, substitution, or
+  unlexable construct tolerated, **whether or not the command is conceptually
+  read-only** — and running a `run.sh` is never on that allowlist, so a packet
+  sited there could not be run by the orchestrator or by a human working
+  through the session. `.claude/human-review/` is ungated by design. Do not
+  "tidy" the packet under the marker directory; that quietly breaks the whole
+  feature.
 - Lifecycle: the packet is deleted by the reviewer at the same moment it
   deletes `.escalated`. Both are untracked, so `git clean -fdx` or a fresh
   clone destroys a pending escalation unrecoverably — documented, not fixed;
