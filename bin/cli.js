@@ -148,15 +148,21 @@ function copyDirRecursive(srcDir, destDir) {
   }
 }
 
-function appendUnique(filePath, lines) {
+// Returns how many lines were (or, under dryRun, would have been) appended —
+// the answer has to survive the write being suppressed, or --dry-run loses the
+// report line along with the write.
+function appendUnique(filePath, lines, dryRun) {
   let existing = '';
   if (fs.existsSync(filePath)) {
     existing = fs.readFileSync(filePath, 'utf8');
   }
   const missing = lines.filter((line) => !existing.includes(line));
-  if (missing.length === 0) return;
-  const sep = existing.length > 0 && !existing.endsWith('\n') ? '\n' : '';
-  fs.writeFileSync(filePath, existing + sep + missing.join('\n') + '\n');
+  if (missing.length === 0) return 0;
+  if (!dryRun) {
+    const sep = existing.length > 0 && !existing.endsWith('\n') ? '\n' : '';
+    fs.writeFileSync(filePath, existing + sep + missing.join('\n') + '\n');
+  }
+  return missing.length;
 }
 
 function canonicalizeForComparison(obj) {
@@ -918,13 +924,32 @@ function printUnifiedDiff(oldStr, newStr, label) {
 // import from CLAUDE.md (protocol is now inlined per-persona). Returns true if
 // it removed the line, which forces the render loop below to re-inline bodies
 // even at a matching pluginVersion.
-function migrateGlobalProtocolImport(cwd) {
+// Under dryRun the write is suppressed but the return value is unchanged —
+// it is both the report signal and the `migratedClaudeMd` term of the
+// fast-path condition below, so an `if (!dryRun)` around the CALL would
+// silently drop both.
+function migrateGlobalProtocolImport(cwd, dryRun) {
   const p = path.join(cwd, 'CLAUDE.md');
   if (!fs.existsSync(p)) return false;
   const lines = fs.readFileSync(p, 'utf8').split('\n');
   const kept = lines.filter((l) => l.trim() !== '@.claude/persona-protocol.md');
   if (kept.length === lines.length) return false;
-  fs.writeFileSync(p, kept.join('\n').replace(/\n+$/, '\n'));
+  if (!dryRun) fs.writeFileSync(p, kept.join('\n').replace(/\n+$/, '\n'));
+  return true;
+}
+
+// Sites 10/11, the persona-config.json rewrite. The no-write predicate is just
+// the serialized form compared against the bytes already on disk, so --dry-run
+// never needs a speculative write to learn its own answer. Returns whether the
+// file was (or would be) changed.
+function writeConfigOrReport(configPath, config, dryRun) {
+  const body = JSON.stringify(config, null, 2) + '\n';
+  if (!dryRun) {
+    fs.writeFileSync(configPath, body);
+    return true;
+  }
+  if (fs.readFileSync(configPath, 'utf8') === body) return false;
+  console.log('  .claude/persona-config.json: would be rewritten.');
   return true;
 }
 
@@ -932,6 +957,12 @@ async function runUpdate(args) {
   // Flag surface first, before any output or write, so the deprecation warning
   // for the `--check` alias is genuinely the first thing the run prints.
   const dryRun = args.includes('--dry-run');
+  // Set by every site that would change the tree. Under --dry-run this is the
+  // whole exit code: 0 iff a live run would leave every path under the project
+  // root byte- and mode-identical and create nothing, 3 otherwise. Stated over
+  // the effect on the tree, not over an enumeration of summary phrases, so a
+  // write site added later is visible to it by default rather than invisible.
+  let wouldMutate = false;
   if (args.includes('--check') && !args.includes('--force-render')) {
     console.error(
       'WARNING: --check is deprecated and is NOT a dry-run — it writes files (it renders ' +
@@ -1033,31 +1064,45 @@ async function runUpdate(args) {
     config.personaSelection = personaSelection;
     for (const token of legacyTokens) {
       const legacyPath = path.join(CWD, '.claude', 'agents', `${token}.md`);
-      if (fs.existsSync(legacyPath)) fs.unlinkSync(legacyPath);
+      if (!fs.existsSync(legacyPath)) continue;
+      if (dryRun) {
+        wouldMutate = true;
+        console.log(`  .claude/agents/${token}.md: would be removed (legacy persona token)`);
+      } else {
+        fs.unlinkSync(legacyPath);
+      }
     }
   }
 
-  const migratedClaudeMd = migrateGlobalProtocolImport(CWD);
-  if (migratedClaudeMd) {
+  const migratedClaudeMd = migrateGlobalProtocolImport(CWD, dryRun);
+  if (migratedClaudeMd && dryRun) {
+    wouldMutate = true;
+    console.log('  CLAUDE.md: would remove the legacy global @.claude/persona-protocol.md import (now delivered per-persona).');
+  } else if (migratedClaudeMd) {
     console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (now delivered per-persona).');
   }
 
   // Backfill .gitignore reach for the two dispatch-hygiene state files
   // (Step 5, token-hygiene-dispatch-gate) into already-adapted projects,
   // which a scaffold-list-only change would never reach.
-  appendUnique(path.join(CWD, '.gitignore'), [
+  let gitignoreAdds = appendUnique(path.join(CWD, '.gitignore'), [
     '.claude/dispatch-audit.log',
     '.claude/.dispatch-override',
-  ]);
+  ], dryRun);
 
   // Same reach problem for microworld bundles and human-review escalation
   // packets (Step 3a): without this, an already-adapted project sees both as
   // untracked noise and plausibly commits them.
-  appendUnique(path.join(CWD, '.gitignore'), [
+  gitignoreAdds += appendUnique(path.join(CWD, '.gitignore'), [
     'microworlds/',
     '.claude/human-review/',
     '.claude/microworld-audit.log',
-  ]);
+  ], dryRun);
+
+  if (dryRun && gitignoreAdds > 0) {
+    wouldMutate = true;
+    console.log(`  .gitignore: ${gitignoreAdds} managed entry(ies) would be appended to it.`);
+  }
 
   const specs = buildFileSpecs(personaSelection).concat(buildHookScriptSpecs());
 
@@ -1113,7 +1158,14 @@ async function runUpdate(args) {
   const standaloneHooks = settings ? findStandaloneHookRegistrations(settings) : [];
   const hooksCollision = pluginState.enabled && standaloneHooks.length > 0;
 
-  if (hooksCollision && dedupeHooks) {
+  if (hooksCollision && dedupeHooks && dryRun) {
+    wouldMutate = true;
+    console.log(
+      `  .claude/settings.json: would remove ${standaloneHooks.length} standalone antislop hook ` +
+        `registration(s) (the marketplace plugin, enabled per ${pluginState.source}, already ` +
+        'provides them via ${CLAUDE_PLUGIN_ROOT}).'
+    );
+  } else if (hooksCollision && dedupeHooks) {
     const cleaned = stripStandaloneHookRegistrations(settings);
     fs.writeFileSync(settingsPath, JSON.stringify(cleaned, null, 2) + '\n');
     console.log(
@@ -1147,13 +1199,16 @@ async function runUpdate(args) {
   if (settings && !pluginState.enabled) {
     const merged = mergeNestedHooksJson(JSON.parse(JSON.stringify(settings)), readStandaloneHooksConfig());
     if (JSON.stringify(merged.hooks) !== JSON.stringify(settings.hooks)) {
-      fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n');
+      if (!dryRun) fs.writeFileSync(settingsPath, JSON.stringify(merged, null, 2) + '\n');
       const added = findStandaloneHookRegistrations(merged).length - standaloneHooks.length;
+      // Kept even under --dry-run: suppress the write, not the computation, so
+      // anything reading `settings` below sees a state a real run also has.
       settings = merged;
+      if (dryRun) wouldMutate = true;
       console.log(
-        `  .claude/settings.json: added ${added} missing antislop hook registration(s) — a hook ` +
-          'script that ships with this version but was never registered by the original install ' +
-          'would otherwise sit on disk and never fire.'
+        `  .claude/settings.json: ${dryRun ? 'would add' : 'added'} ${added} missing antislop hook ` +
+          'registration(s) — a hook script that ships with this version but was never registered ' +
+          'by the original install would otherwise sit on disk and never fire.'
       );
     }
   }
@@ -1241,9 +1296,10 @@ async function runUpdate(args) {
     const relKey = spec.projectRelPath;
 
     if (!fs.existsSync(destAbsPath)) {
-      writeSpecBody(spec, destAbsPath, cleanBody, version);
+      if (dryRun) wouldMutate = true;
+      else writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
-      summary.push(`  ${relKey}: created`);
+      summary.push(`  ${relKey}: ${dryRun ? 'would be created' : 'created'}`);
       continue;
     }
 
@@ -1255,10 +1311,11 @@ async function runUpdate(args) {
     if (noLocalEdits && cleanHash === recordedHash) {
       const currentStampVersion = stampVersionOf(currentBody);
       if (spec.kind !== 'raw' && currentStampVersion !== version) {
-        copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
+        if (dryRun) wouldMutate = true;
+        else copyStampedBody(destAbsPath, cleanBody, version, spec.sourceRelPath);
         newFileHashes[relKey] = cleanHash;
         summary.push(
-          `  ${relKey}: stamp refreshed (${currentStampVersion === null ? 'absent' : `v${currentStampVersion}`} -> v${version}, content unchanged)`
+          `  ${relKey}: stamp ${dryRun ? 'would be refreshed' : 'refreshed'} (${currentStampVersion === null ? 'absent' : `v${currentStampVersion}`} -> v${version}, content unchanged)`
         );
       } else {
         summary.push(`  ${relKey}: already current`);
@@ -1267,9 +1324,10 @@ async function runUpdate(args) {
     }
 
     if (noLocalEdits) {
-      writeSpecBody(spec, destAbsPath, cleanBody, version);
+      if (dryRun) wouldMutate = true;
+      else writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
-      summary.push(`  ${relKey}: updated (no local edits detected)`);
+      summary.push(`  ${relKey}: ${dryRun ? 'would be updated' : 'updated'} (no local edits detected)`);
       continue;
     }
 
@@ -1278,14 +1336,15 @@ async function runUpdate(args) {
     // silently heal the stale hash and move on.
     if (currentStripped === cleanBody) {
       newFileHashes[relKey] = cleanHash;
-      summary.push(`  ${relKey}: hash healed (content unchanged, hash was stale)`);
+      summary.push(`  ${relKey}: hash ${dryRun ? 'would be healed' : 'healed'} (content unchanged, hash was stale)`);
       continue;
     }
 
     if (acceptAll || acceptList.includes(relKey)) {
-      writeSpecBody(spec, destAbsPath, cleanBody, version);
+      if (dryRun) wouldMutate = true;
+      else writeSpecBody(spec, destAbsPath, cleanBody, version);
       newFileHashes[relKey] = cleanHash;
-      summary.push(`  ${relKey}: overwritten (--accept)`);
+      summary.push(`  ${relKey}: ${dryRun ? 'would be overwritten' : 'overwritten'} (--accept)`);
     } else if (keepAll || keepList.includes(relKey)) {
       // Deliberately do NOT touch newFileHashes[relKey] here — it must stay
       // pointed at the original no-local-edits baseline. Rebasing it to the
@@ -1296,14 +1355,18 @@ async function runUpdate(args) {
       // baseline alone means this file keeps getting flagged (and asked
       // about) on every future drift, which is the safe default — "never
       // silently clobber a local edit" — even though it costs a repeat ask.
-      summary.push(`  ${relKey}: kept as-is (local edits preserved; will be re-flagged on future drift)`);
+      summary.push(`  ${relKey}: ${dryRun ? 'would be kept as-is' : 'kept as-is'} (local edits preserved; will be re-flagged on future drift)`);
     } else {
       pending.push({ relKey, currentStripped, cleanBody });
     }
   }
 
   if (pending.length > 0) {
-    console.log(`\n${pending.length} file(s) have diverged from a fresh copy and need a decision:\n`);
+    if (dryRun) wouldMutate = true;
+    console.log(
+      `\n${pending.length} file(s) ${dryRun ? 'would be pending a decision — they have' : 'have'} ` +
+        'diverged from a fresh copy:\n'
+    );
     for (const p of pending) {
       console.log(`--- ${p.relKey} ---`);
       printUnifiedDiff(p.currentStripped, p.cleanBody, p.relKey);
@@ -1313,7 +1376,7 @@ async function runUpdate(args) {
 
   if (pending.length > 0 || unresolvedRender.length > 0) {
     config.fileHashes = pruneStaleFileHashes(newFileHashes, specs);
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+    writeConfigOrReport(configPath, config, dryRun);
     console.log(summary.join('\n'));
     if (pending.length > 0) {
       console.log(
@@ -1327,14 +1390,19 @@ async function runUpdate(args) {
       for (const u of unresolvedRender) console.log(`  ${u.relKey}: ${u.message}`);
     }
     console.log('\npluginVersion stays unbumped until every file above is resolved.');
-    process.exit(unresolvedRender.length > 0 ? 1 : 2);
+    if (unresolvedRender.length > 0) process.exit(1);
+    process.exit(dryRun ? 3 : 2);
   }
 
   config.fileHashes = pruneStaleFileHashes(newFileHashes, specs);
   config.pluginVersion = version;
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+  if (writeConfigOrReport(configPath, config, dryRun)) wouldMutate = true;
 
-  console.log(`antislop v${version} — update complete in ${CWD}:\n`);
+  console.log(
+    dryRun
+      ? `antislop v${version} — dry run in ${CWD}, nothing written:\n`
+      : `antislop v${version} — update complete in ${CWD}:\n`
+  );
   console.log(summary.join('\n'));
 
   const leftover = specs
@@ -1346,6 +1414,8 @@ async function runUpdate(args) {
         "happen after a clean --update; inspect persona-config.json's substitutions field."
     );
   }
+
+  if (dryRun && wouldMutate) process.exit(3);
 }
 
 async function runWireMcp(kind, args) {

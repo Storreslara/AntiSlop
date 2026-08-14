@@ -1918,6 +1918,98 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
+
+  // --- Integration (issue #291, gh338): --update --dry-run is a genuine
+  // no-write report over every write site on the --update path, and its exit
+  // code is a promise about what a LIVE run would do to the tree.
+  //
+  // HOME is isolated on every spawn below, not as boilerplate: this repo
+  // dogfoods the marketplace plugin, so an ambient HOME makes
+  // detectMarketplacePlugin report "enabled" and silently skips the
+  // hook-registration backfill branch entirely (site 12) — the single
+  // easiest way to ship a green, meaningless test here.
+  const MARKETPLACE_KEY = 'antislop@antislop-marketplace';
+  const MANAGED_GITIGNORE = [
+    '.claude/dispatch-audit.log',
+    '.claude/.dispatch-override',
+    'microworlds/',
+    '.claude/human-review/',
+    '.claude/microworld-audit.log',
+  ];
+
+  function dryRunTmp(label) {
+    return fs.mkdtempSync(path.join(os.tmpdir(), `antislop-gh338-${label}-`));
+  }
+
+  function runUpdateIsolated(tmp, home, extraArgs) {
+    return spawnSync('node', [cliPath, '--update'].concat(extraArgs || []), {
+      cwd: tmp,
+      env: Object.assign({}, process.env, { HOME: home }),
+      encoding: 'utf8',
+    });
+  }
+
+  function setPluginEnabled(tmp, enabled) {
+    fs.writeFileSync(
+      path.join(tmp, '.claude', 'settings.local.json'),
+      JSON.stringify({ enabledPlugins: { [MARKETPLACE_KEY]: enabled } })
+    );
+  }
+
+  // Writes the entries sites 3 and 4 would append, so a fixture that is meant
+  // to be genuinely current does not trip the .gitignore backfill.
+  function populateGitignore(tmp) {
+    fs.writeFileSync(path.join(tmp, '.gitignore'), MANAGED_GITIGNORE.join('\n') + '\n');
+  }
+
+  function copyFixture(tmp, label) {
+    const copy = dryRunTmp(label);
+    const copied = spawnSync('cp', ['-a', `${tmp}/.`, copy], { encoding: 'utf8' });
+    assert.strictEqual(copied.status, 0, `cp -a failed: ${copied.stderr}`);
+    return copy;
+  }
+
+  // C2.13's prescriptive shape: plugin explicitly DISABLED (the branch guard
+  // is `!pluginState.enabled`) and .claude/settings.json present but empty
+  // (buildBaselineProject never writes it, and a null `settings` is the other
+  // condition that skips the branch).
+  function buildSite12Fixture(label) {
+    const tmp = dryRunTmp(label);
+    buildBaselineProject(tmp, {});
+    populateGitignore(tmp);
+    setPluginEnabled(tmp, false);
+    fs.writeFileSync(path.join(tmp, '.claude', 'settings.json'), '{}');
+    return tmp;
+  }
+
+  check('--dry-run suppresses, reports and counts the hook-registration backfill (C2.13, site 12)', () => {
+    const tmp = buildSite12Fixture('site12');
+    const home = dryRunTmp('site12-home');
+    const live = copyFixture(tmp, 'site12-live');
+    const settingsOf = (dir) => fs.readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8');
+    try {
+      const before = settingsOf(tmp);
+      const dry = runUpdateIsolated(tmp, home, ['--dry-run']);
+      assert.strictEqual(settingsOf(tmp), before, `--dry-run must leave .claude/settings.json byte-identical, got: ${settingsOf(tmp)}`);
+      assert.ok(
+        /\.claude\/settings\.json: would add \d+ missing antislop hook registration\(s\)/.test(dry.stdout),
+        `expected the backfill reported in the conditional voice, got: ${dry.stdout}`
+      );
+      assert.strictEqual(dry.status, 3, `expected exit 3, got ${dry.status}: ${dry.stdout}${dry.stderr}`);
+
+      // Mutation control: without this the three assertions above are all
+      // satisfiable by a fixture that never reached the branch at all.
+      const liveRun = runUpdateIsolated(live, home);
+      assert.strictEqual(liveRun.status, 0, `live --update expected exit 0, got ${liveRun.status}: ${liveRun.stdout}${liveRun.stderr}`);
+      assert.notStrictEqual(settingsOf(live), before, 'the live run must actually rewrite .claude/settings.json');
+      assert.ok(
+        settingsOf(live).length > 2000,
+        `the live run must grow .claude/settings.json past 2000 bytes, got ${settingsOf(live).length}`
+      );
+    } finally {
+      for (const d of [tmp, home, live]) fs.rmSync(d, { recursive: true, force: true });
+    }
+  });
 }
 
 // --- Integration: --force-hooks guard on the claude-target hooks merge
