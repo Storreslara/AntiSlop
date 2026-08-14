@@ -929,6 +929,17 @@ function migrateGlobalProtocolImport(cwd) {
 }
 
 async function runUpdate(args) {
+  // Flag surface first, before any output or write, so the deprecation warning
+  // for the `--check` alias is genuinely the first thing the run prints.
+  const dryRun = args.includes('--dry-run');
+  if (args.includes('--check') && !args.includes('--force-render')) {
+    console.error(
+      'WARNING: --check is deprecated and is NOT a dry-run — it writes files (it renders ' +
+        'mirrors and rewrites persona-config.json). Use --force-render for the same behaviour ' +
+        'under an honest name, or --dry-run for a genuine no-write report.'
+    );
+  }
+
   const version = readPluginVersion();
   const configPath = path.join(CWD, '.claude', 'persona-config.json');
   if (!fs.existsSync(configPath)) {
@@ -1150,8 +1161,10 @@ async function runUpdate(args) {
   // Forces the render/diff loop to run even when nothing else above tripped
   // it — the version-match fast-path otherwise means a plain --update can
   // never detect per-file drift (hand-edits, corruption) once pluginVersion
-  // already matches.
-  const checkFlag = args.includes('--check');
+  // already matches. `--check` is the deprecated alias for the same thing
+  // (warned about at the top of this function); `--dry-run` implies it, since
+  // a dry run that fast-paths out reports nothing.
+  const forceRender = args.includes('--force-render') || args.includes('--check') || dryRun;
 
   // Pre-scan (Step 3, cli-stale-version-stamp-fix, Layer 1 of the two-layer
   // bug): detect a MISSING or stale-stamped managed destination BEFORE the
@@ -1198,7 +1211,7 @@ async function runUpdate(args) {
     }
   }
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !checkFlag && !migratedClaudeMd && !needsRender) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !forceRender && !migratedClaudeMd && !needsRender) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }

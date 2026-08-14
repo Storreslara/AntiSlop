@@ -845,9 +845,9 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       const configPath = path.join(tmp, '.claude', 'persona-config.json');
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
 
-      // Run --update --check: should report hash healed, not diverged
-      const check = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
-      assert.strictEqual(check.status, 0, `--update --check expected exit 0, got ${check.status}: ${check.stdout}${check.stderr}`);
+      // Run --update --force-render: should report hash healed, not diverged
+      const check = spawnSync('node', [cliPath, '--update', '--force-render'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(check.status, 0, `--update --force-render expected exit 0, got ${check.status}: ${check.stdout}${check.stderr}`);
       assert.ok(
         check.stdout.includes('hash healed'),
         `expected "hash healed" in output, got: ${check.stdout}`
@@ -866,7 +866,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         `fileHashes[${relKey}] should match actual content hash, got ${healedConfig.fileHashes[relKey]} (expected ${actualHash})`
       );
 
-      // Also test plain --update (without --check) still heals the hash
+      // Also test plain --update (without --force-render) still heals the hash
       // First restore the stale hash
       config.fileHashes[relKey] = staleHash;
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
@@ -956,7 +956,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // only after renderCleanBody ran and its hash was compared — that line, not
   // the sha, is the render-invocation evidence. mtime is useless here: the
   // correct branch performs no write.
-  check('a forced --update --check re-renders .claude/persona-protocol.md, reports it already current, and leaves it byte-identical', () => {
+  check('a forced --update --force-render re-renders .claude/persona-protocol.md, reports it already current, and leaves it byte-identical', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-protocol-idempotence-test-'));
     try {
       buildBaselineProject(tmp, {});
@@ -967,7 +967,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       assert.strictEqual(created.status, 0, `expected exit 0, got ${created.status}: ${created.stdout}${created.stderr}`);
       const shaAfterCreate = cli.sha256Hex(fs.readFileSync(destPath, 'utf8'));
 
-      const forced = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      const forced = spawnSync('node', [cliPath, '--update', '--force-render'], { cwd: tmp, encoding: 'utf8' });
       assert.strictEqual(forced.status, 0, `expected exit 0, got ${forced.status}: ${forced.stdout}${forced.stderr}`);
       assert.ok(
         forced.stdout.split('\n').includes('  .claude/persona-protocol.md: already current'),
@@ -978,7 +978,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         'the forced render must leave the file byte-identical to the creating run'
       );
 
-      // Negative control: the same second run WITHOUT --check fast-paths out
+      // Negative control: the same second run WITHOUT --force-render fast-paths out
       // and never names the file — this is what proves the assertions above
       // measure something a plain double --update structurally cannot.
       const plain = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
@@ -993,7 +993,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       // just announce the spec. Exit code is asserted non-zero only — no code
       // path documents 2 as a contract.
       fs.appendFileSync(destPath, 'x\n');
-      const mutated = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      const mutated = spawnSync('node', [cliPath, '--update', '--force-render'], { cwd: tmp, encoding: 'utf8' });
       assert.notStrictEqual(mutated.status, 0, `a diverged file must exit non-zero, got: ${mutated.stdout}${mutated.stderr}`);
       assert.ok(
         mutated.stdout.includes('diverged from a fresh copy'),
@@ -1104,7 +1104,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
-  check('--update --check catches drift past the version-match fast-path that a plain --update misses', () => {
+  check('--update --force-render catches drift past the version-match fast-path that a plain --update misses (C2.7)', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-check-test-'));
     try {
       buildBaselineProject(tmp, {});
@@ -1118,11 +1118,11 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
         `plain --update should hit the version-match fast-path and not detect drift, got: ${plain.stdout}`
       );
 
-      const checked = spawnSync('node', [cliPath, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      const checked = spawnSync('node', [cliPath, '--update', '--force-render'], { cwd: tmp, encoding: 'utf8' });
       assert.strictEqual(checked.status, 2, `expected exit 2 (pending), got ${checked.status}: ${checked.stdout}${checked.stderr}`);
       assert.ok(
         checked.stdout.includes('.claude/protocol-digest.md'),
-        `--check should have flagged the corrupted file as pending, got: ${checked.stdout}`
+        `--force-render should have flagged the corrupted file as pending, got: ${checked.stdout}`
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
@@ -1145,6 +1145,12 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // Runs against a real git-tracked copy of the repo, not
   // `buildBaselineProject`'s synthetic fixture, since the corrected form's
   // post-run assertion needs real git state to read.
+  //
+  // These two cases deliberately stay on the `--check` SPELLING (gh338/C2.9):
+  // they reproduce a historical acceptance-criterion form verbatim, and they
+  // are the standing coverage that keeps the deprecated alias working, so a
+  // later hard removal cannot land silently. Everything else in this file has
+  // moved to `--force-render`.
   function buildF2GitFixture(label) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), `antislop-f2-${label}-`));
     for (const entry of fs.readdirSync(REPO_ROOT)) {
