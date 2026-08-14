@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.31.42] - 2026-08-14
+
+**Orchestrator body corrections and deletions (gh348-5, Step 5 of #348 spec, findings 1.5, 1.9, 2.4, 2.7).** Four independent findings in `agents/orchestrator.md`'s body.
+
+### Changed
+- **`agents/orchestrator.md`** (finding 1.5): relocated the "Deferred: mechanical report-loss backstop" section — including its investigation notes — to a new ADR, `docs/adr/0021-mechanical-report-loss-backstop-deferred.md`, and removed it from the persona body entirely.
+- **`agents/orchestrator.md`, `agents/reviewer.md`** (finding 2.4): the dispatch-naming warning falsely claimed a mis-named reviewer dispatch "persists in no durable record" — in fact `reviewer-route-gate.sh` refuses an explicitly bad name outright at dispatch time, with a message. Rewrote both the orchestrator's paragraph and the reviewer's mirror-image paragraph to name the actual, unobserved residual: `reviewer-route-gate.sh` only inspects the *requested* `tool_input.name`, never the harness's post-spawn `agent_type`, so a correctly-named `reviewer` dispatch can still run under a harness name-collision auto-suffix that the gate cannot see (verified against `hooks/scripts/reviewer-route-gate.sh`, both the naming-refusal block and the `agent_type`/`tool_input.name` distinction its own header comments document).
+- **`agents/orchestrator.md`, `agents/task-master.md`** (finding 1.9): the `## Dispatch hygiene` rules (including the `Unit: <id>` grammar) were stated verbatim in both files. Consolidated to `agents/orchestrator.md` as the canonical location; `agents/task-master.md` now points to it, noting that element 1 of its own nine-element dispatch contract already encodes rule 3.
+- **`agents/orchestrator.md`** (finding 2.7): rephrased "You have no Write/Edit tool — anything requiring a file change routes to the lead-programmer, however trivial it looks" (read as an absolute prohibition) to reconcile it with the orchestrator's two already-documented, narrow Bash-based sentinel writes (`.claude/.dispatch-override`, the `defer:`/`skip:` pending-review flag content) — no Write/Edit *tool*, but specific sanctioned bookkeeping writes remain fine.
+- **`agents/orchestrator.md`** (gh-304 consolidation, C5.6): merged the three-paragraph gh-304 restatement (naming rule, re-tasking discipline, roster check) into two paragraphs — the corrected naming-rule paragraph above, and a combined re-tasking-discipline-plus-roster-check paragraph — with all three rules still independently statable.
+- **`.claude/agents/orchestrator.md`, `.claude/agents/reviewer.md`, `.claude/agents/task-master.md`, `.claude/persona-config.json` (`fileHashes`)**: mirrors regenerated via `node bin/cli.js --update`.
+
+### Notes
+- Finding 1.6 (reversing a byte-pinned anti-regression control) is explicitly excluded from this step and lands separately.
+- Left untouched: the three byte-pinned "Reviewer gate model selection" safety paragraphs (`Downgrade-only asymmetry`, `` `.fail` disqualifier ``, `Escalation.`), `hooks/scripts/reviewer-tier.sh`, and the `## Milestone audit gate` / `## Graph freshness` / `## Per-unit model routing` sections (owned by not-yet-dispatched steps).
+
 ## [0.31.41] - 2026-08-14
 
 **Correct the false `reviewed-path-gate.sh` "blocks any non-read-only Bash command" description (gh348-3, Step 3 of #348 spec, finding 2.1).** The corpus claimed the gate blocks non-read-only commands and allows read-only ones; live verification during the spec's authoring showed this is false — a purely read-only `head -1 <marker> ... 2>&1` was blocked (a redirect disqualifies it) and `sed`/`awk`/`git`/`rg` are never allowlisted at any subcommand. The gate's actual predicate is `command_is_provably_benign()`, an allowlist of specific inspection programs with no redirect/substitution/unlexable-construct tolerance, independent of whether the command is conceptually read-only.
