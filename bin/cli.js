@@ -559,7 +559,8 @@ function canonicalProtocolText() {
   return fs.readFileSync(path.join(PKG_ROOT, 'templates', 'persona-protocol.md'), 'utf8');
 }
 
-const CANONICAL_PROTOCOL_HEADERS = parseProtocolSections(canonicalProtocolText()).sections.map((s) => s.header);
+const CANONICAL_PROTOCOL_SECTIONS = parseProtocolSections(canonicalProtocolText()).sections;
+const CANONICAL_PROTOCOL_HEADERS = CANONICAL_PROTOCOL_SECTIONS.map((s) => s.header);
 
 // Carried by every full-tier persona regardless of role.
 const UNIVERSAL_PROTOCOL_CORE = [
@@ -728,6 +729,61 @@ function assertProtocolMatrixComplete(canonicalHeaders, matrix) {
 // At load, so a matrix that no longer partitions the template makes bin/cli.js
 // unloadable — no command can render a single mirror from a stale matrix.
 assertProtocolMatrixComplete(CANONICAL_PROTOCOL_HEADERS, PROTOCOL_SECTIONS_BY_PERSONA);
+
+// The short form a cross-reference actually names: header text up to its
+// first ":", "(", or " — " separator, e.g. "WIP sentinel" for "WIP sentinel
+// (mid-task handoff, not a bypass)" or "Third verdict" for "Third verdict:
+// insufficient-context".
+function headerReferenceKey(header) {
+  const cut = header.search(/[:(]| — /);
+  return (cut === -1 ? header : header.slice(0, cut)).trim();
+}
+
+// True if `text` names `header` the way 2.2's dangling references did:
+// quoted (`"Third verdict"`), or the bare key phrase within ~50 characters of
+// a positional "above"/"below" (`WIP sentinel described above`). The
+// character window (rather than requiring the words to be adjacent) is what
+// lets this survive markdown decoration like `**WIP sentinel**` between the
+// key and the word that makes it a backward reference.
+function sectionReferencesHeader(text, header) {
+  const key = headerReferenceKey(header).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const joined = text.replace(/\s+/g, ' ');
+  const quoted = new RegExp(`"${key}"`);
+  const positional = new RegExp(`${key}.{0,50}?\\b(above|below)\\b`);
+  return quoted.test(joined) || positional.test(joined);
+}
+
+// Rejects a row whose `include` set keeps a section that names — by the
+// shape above — a header the SAME row `drop`s: "this persona keeps section
+// X, but X's text references header Y, and Y is dropped for this persona."
+// This is what turns 2.2's class of dangle into a load-time error instead of
+// something a reviewer has to notice by hand. Takes parsed sections rather
+// than reading canonicalProtocolText() itself, so it is pure and exercisable
+// against a synthetic matrix in tests. Not exhaustive — a reference that
+// names the DROPPED CONTENT without naming the header itself (e.g. "the cap
+// below" instead of "Continuing after a FAIL verdict") is outside what a
+// text-matching guard can see; those are caught by hand, same as today.
+function assertNoDanglingCrossReferences(sections, matrix) {
+  const textByHeader = new Map(sections.map((s) => [s.header, s.text]));
+  for (const name of Object.keys(matrix)) {
+    const include = matrix[name].include || [];
+    const drop = matrix[name].drop || [];
+    for (const kept of include) {
+      const text = textByHeader.get(kept);
+      if (text === undefined) continue;
+      for (const dropped of drop) {
+        if (sectionReferencesHeader(text, dropped)) {
+          throw new Error(`PROTOCOL_SECTIONS_BY_PERSONA['${name}'] keeps "${kept}", whose text references "${dropped}" — but that row drops "${dropped}". Make the reference self-contained at the point it appears, or stop dropping the header.`);
+        }
+      }
+    }
+  }
+}
+
+// At load, alongside assertProtocolMatrixComplete: a row that keeps a
+// section referencing a header it drops makes bin/cli.js unloadable, the
+// same fail-closed shape as that check.
+assertNoDanglingCrossReferences(CANONICAL_PROTOCOL_SECTIONS, PROTOCOL_SECTIONS_BY_PERSONA);
 
 // A persona whose turns are gated always gets the two sections describing that
 // gate, whatever its matrix row says — config wins, so the matrix cannot go
@@ -2298,6 +2354,7 @@ module.exports = {
   protocolTierFor,
   selectProtocolSections,
   assertProtocolMatrixComplete,
+  assertNoDanglingCrossReferences,
   assertGatedSectionsCanonical,
   GATED_AGENT_SECTIONS,
   PROTOCOL_SECTIONS_BY_PERSONA,

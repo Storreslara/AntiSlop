@@ -476,6 +476,15 @@ else
 fi
 
 echo
+echo "== protocol cross-references: no dangling section reference (Node) =="
+if node tests/protocol-cross-references.test.js; then
+  echo "OK   tests/protocol-cross-references.test.js"
+else
+  echo "FAIL tests/protocol-cross-references.test.js"
+  fail=1
+fi
+
+echo
 echo "== ubiquitous-language SKILL.md structural/distinguishability checks (Node) =="
 if node tests/ubiquitous-language.test.js; then
   echo "OK   tests/ubiquitous-language.test.js"

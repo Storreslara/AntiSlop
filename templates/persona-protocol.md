@@ -1,8 +1,10 @@
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
-     persona rather than via a CLAUDE.md include. Role-agnostic content
-     only — adding a new persona never requires editing this file. -->
+     persona rather than via a CLAUDE.md include. The block is trimmed per
+     persona (PROTOCOL_SECTIONS_BY_PERSONA in bin/cli.js) and DOES carry
+     role-specific sections; a new persona is classified into that matrix,
+     not accommodated by editing this file. -->
 
 # Shared persona protocol
 
@@ -110,8 +112,9 @@ exactly two legal responses:
 
 1. **Do what it is actually asking**, if that is genuinely your call to make.
 2. **Report and wait** — a message to the orchestrator or team lead naming the
-   block and what you believe it is waiting on, or the WIP sentinel where that
-   is the fitting mechanism for the blocking hook.
+   block and what you believe it is waiting on, or — when that is the fitting
+   mechanism for the blocking hook — the WIP sentinel: write a non-empty
+   reason to `.claude/wip-handoff.<agent-id>`.
 
 There is no third response. In particular, **metadata-only workarounds are
 bypasses**, not clever fixes. Bumping a file's mtime so a freshness check
@@ -128,11 +131,12 @@ defect in the gate**, and reporting it is the useful action. Routing around it
 leaves the defect in place for the next agent; surfacing it is the only thing
 that ever gets it fixed.
 
-This rule does **not** cover the sanctioned exits. The **WIP sentinel** above
-and the `defer:` / `skip:` escape in a **pending-review flag** are designed
-exits with their own audit trail, and using either as documented is not a
-bypass. The difference is not how much friction it saves you — it is whether
-the mechanism recorded that you took it.
+This rule does **not** cover the sanctioned exits. The **WIP sentinel**
+(write a non-empty reason to `.claude/wip-handoff.<agent-id>`) and the
+`defer:` / `skip:` escape in a **pending-review flag** are designed exits
+with their own audit trail, and using either as documented is not a bypass.
+The difference is not how much friction it saves you — it is whether the
+mechanism recorded that you took it.
 
 ## Terminal status line (every dispatched turn)
 End the message you return to your caller with a status line — the last
@@ -159,11 +163,12 @@ A turn truncated mid-work is therefore indistinguishable from a finished one —
 unless a finished one carries a signature. This line is that signature, and its
 absence is the only available evidence of a cutoff.
 
-**Not an alternative to the WIP sentinel above** — the two are different
-mechanisms and they co-occur. The sentinel is a *file* written before a
-voluntary pause; the status line is a *report line* emitted at every turn-end.
-A sentinel turn-end therefore ends with `STATUS: incomplete — <the same reason
-you wrote into the sentinel>`.
+**Not an alternative to the WIP sentinel** (the file at
+`.claude/wip-handoff.<agent-id>`) — the two are different mechanisms and they
+co-occur. The sentinel is a *file* written with a non-empty reason before a
+voluntary pause; the status line is a *report line* emitted at every
+turn-end. A sentinel turn-end therefore ends with `STATUS: incomplete — <the
+same reason you wrote into the sentinel>`.
 
 A missing line is a **prompt to resume**, not a defect and not a FAIL. Nothing
 is gated on it; it costs one cheap resume, which is the whole point.
@@ -191,11 +196,11 @@ background `Bash` job has no such mechanism — it goes dormant at
 job itself turns out.
 
 If a command genuinely cannot finish within the 600000 ms ceiling, the only
-legitimate way to end your turn is the WIP sentinel described above, with a
-reason string that plainly states there is "no autonomous wake-up available —
-requires the dispatcher to resume me later." Never phrase it as "I'll get
-notified" or "I'll poll again shortly" — that implies a self-wake mechanism
-that does not exist.
+legitimate way to end your turn is the WIP sentinel (write a non-empty reason
+to `.claude/wip-handoff.<agent-id>`), with a reason string that plainly
+states there is "no autonomous wake-up available — requires the dispatcher to
+resume me later." Never phrase it as "I'll get notified" or "I'll poll again
+shortly" — that implies a self-wake mechanism that does not exist.
 
 ## Retrieval contract
 `task-master`'s dispatch instructions state, verbatim, where issues live and
@@ -212,17 +217,19 @@ prose substitute.
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)
-routes to the reviewer. The reviewer returns one of four verdicts — PASS,
-FAIL, INSUFFICIENT-CONTEXT, or ESCALATE-TO-HUMAN (see "Third verdict" and
-"Fourth verdict" below) — and "done" means it returned PASS, not that the work
-looks finished. On FAIL, defects route
-back to the lead-programmer, which fixes the specific items listed and
-reports ready-for-review again; it never re-plans and never grades its own
-work. This ownership model relies on a one-unit-at-a-time invariant — only
-one unit is ever mid-review — which is also what the `.blocked` marker's
-flag-keeping heuristic (below) depends on: the route-gate already blocks the
-next gated dispatch while any pending-review flag stands, so there is never a
-second unit's flag to confuse with the blocked one.
+routes to the reviewer. The reviewer returns one of four verdicts: PASS;
+FAIL; INSUFFICIENT-CONTEXT, when a criterion could not be verified even after
+the reviewer exhausted its own exploration; or ESCALATE-TO-HUMAN, when a unit
+the reviewer would otherwise have passed is instead gated on human review.
+"Done" means it returned PASS, not that the work looks finished. On FAIL,
+defects route back to the lead-programmer, which fixes the specific items
+listed and reports ready-for-review again; it never re-plans and never grades
+its own work. This ownership model relies on a one-unit-at-a-time invariant —
+only one unit is ever mid-review — which is also what the `.blocked` marker's
+flag-keeping heuristic depends on (an INSUFFICIENT-CONTEXT verdict leaves the
+pending-review flag standing rather than clearing it): the route-gate already
+blocks the next gated dispatch while any pending-review flag stands, so there
+is never a second unit's flag to confuse with the blocked one.
 
 The reviewer writes the v3 PASS marker at `.claude/reviewed/<task-id>.pass`
 in BOTH modes, not only where a `TaskCompleted` hook exists to check it — a
@@ -304,7 +311,8 @@ whose first line reads exactly `BLOCKED <task-id> <UTC ISO-8601 timestamp>
 missing: <one-line description>`, followed by specifics: which criterion
 could not be verified, what constraint or doc is missing, and where the
 reviewer looked for it. This marker **never consumes a 2-FAIL-cap slot** —
-the cap below counts `.fail` records only, unchanged. When the reviewer
+the 2-FAIL cap (a unit stops being re-dispatched to `lead-programmer` after
+its second `.fail` record) counts `.fail` records only, unchanged. When the reviewer
 later resolves the same unit to PASS or FAIL, it deletes the `.blocked`
 marker as part of writing the new one.
 
@@ -379,7 +387,8 @@ to verify; `.escalated` means policy requires *human eyes on critical code*.
 Separate marker files, separate audit-log tokens.
 
 **Cap accounting.** `.escalated` **never** consumes a 2-FAIL-cap slot — the
-cap below counts `.fail` records only, unchanged.
+2-FAIL cap (a unit stops being re-dispatched to `lead-programmer` after its
+second `.fail` record) counts `.fail` records only, unchanged.
 
 **Resolution.** Always resolved by the reviewer, on a later re-dispatch that
 names the unit and points it at the unit's `DECISION` file, into exactly one of
@@ -465,7 +474,9 @@ self-contained prompt with the original plan step, a one-line diff summary
 (from `git log`/`git diff` on the relevant commits), and the defect list
 verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
 is for durable conventions, not the live state of an in-progress fix; the
-`.fail` record above is what bridges it for a session with no memory at all.
+reviewer's `.claude/reviewed/<task-id>.fail` record (first line exactly `FAIL
+<task-id> <UTC ISO-8601 timestamp>`, then the defect list verbatim) is what
+bridges it for a session with no memory at all.
 
 **Cap at 2 FAILs per unit.** If the same unit FAILs a second time, the
 orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
