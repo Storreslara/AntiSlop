@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.38] - 2026-08-14
+
+**Re-home the slim-tier Write/Edit fallback doctrine to scribe only (gh348-12, Step 12 of #348 spec).** The slim protocol template has no per-persona trimming seam (`selectProtocolSections` throws for the slim tier by design), so the Write/Edit-fallback bullets in `## Agent-teams mode` were reaching all four slim personas (explorer, researcher, scribe, agent-auditor) even though only scribe genuinely holds `Write, Edit`. No trimming mechanism is built here (rejected as disproportionate); the doctrine is instead moved into scribe's own body as a short paragraph.
+
+### Changed
+- **`templates/persona-protocol-slim.md`:** Cut the Write/Edit-fallback bullets (call-time rejection, Bash-heredoc fallback, `reviewed-path-gate.sh` two-gate rephrasing constraint, grant-independence note) from `## Agent-teams mode`. Kept the `skills:`/`mcpServers:` non-application, foreground-subagents-vs-nested-teams, and `SendMessage`-reporting bullets, which apply to all four slim personas. Section count unchanged at 7.
+- **`agents/scribe.md`:** Added a short `## Write/Edit fallback in a teammate dispatch` paragraph carrying the call-time rejection, the Bash-heredoc fallback idiom, and a pointer to the relevant gate's own refusal text for the rephrasing rules — scribe is the one slim persona that genuinely holds `Write, Edit` (`agents/scribe.md:7`).
+- **`tests/adapter-protocol-parity.test.js`:** Corrected a stale comment (~line 127) claiming "three" personas receive `persona-protocol-slim.md`; verified count is four (explorer, researcher, scribe, agent-auditor).
+- **`.claude/agents/*.md`, `.claude/persona-protocol*.md`, `.claude/protocol-digest.md`, `.claude/persona-config.json` (`fileHashes`):** Mirrors regenerated via `node bin/cli.js --update`.
+
+### Notes
+- Measured word-count saving (`wc -w` on the shipped `.claude/agents/explorer.md` mirror, before this step's regeneration -> after): 1409 -> 1145. This is the finding's headline win: explorer is meant to be fast and cheap, and it never needed this doctrine in the first place.
+- Kept untouched per the step's scope: `templates/persona-protocol.md` (Step 17 owns the full-tier copy of this doctrine); the slim template's `Blocked by a gate you do not own` and `Terminal status line` sections; `selectProtocolSections`'s slim-tier throw — no slim trimming mechanism is built here.
+
 ## [0.31.37] - 2026-08-14
 
 **Split the Agent-teams protocol section so its Write/Edit-fallback half can be trimmed for `orchestrator` (gh348-11, Step 11 of #348 spec).** Trim granularity is whole `## ` sections, but only the `SendMessage`/nested-teams bullets of `Agent-teams mode` apply to the orchestrator as team lead — the Write/Edit call-time-rejection doctrine does not, since the orchestrator's own tools list never includes them. Splitting the section is what makes that half independently droppable.

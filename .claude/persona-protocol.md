@@ -1,4 +1,4 @@
-<!-- antislop v0.31.37 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.38 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
