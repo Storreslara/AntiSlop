@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.31.44] - 2026-08-14
+
+**Delete the redundant reviewer-gate `.fail` disqualifier paragraph, overriding a Pass-3 byte pin (gh348-13, Step 13 of #348 spec).** Operator ruling R9.2 accepted finding 1.6: the `` `.fail` disqualifier `` paragraph in § "Reviewer gate model selection" is pure prose redundant with `hooks/scripts/reviewer-tier.sh:73-75`'s mechanical, fail-closed enforcement of the same rule ("The script checks this too, but you check it as a belt-and-suspenders backstop"). This explicitly overrides Pass 3 Step 4 criterion 6c's byte-pin of that paragraph (`docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md:1088-1100`) — the other two pinned paragraphs (`Downgrade-only asymmetry`, `Escalation.`) stay pinned, unmodified in content.
+
+### Changed
+- **`agents/orchestrator.md`**: deleted the `` `.fail` disqualifier. `` paragraph; repointed the surviving `Escalation.` paragraph's dangling "...via the `.fail` disqualifier above..." back-reference to name `hooks/scripts/reviewer-tier.sh` (the reviewer-gate ratchet) directly, since the paragraph it pointed to no longer exists.
+- **`.claude/agents/orchestrator.md`**: mirror regenerated via `node bin/cli.js --update`.
+
+### Fixed
+- **C13.2's anti-regression byte-pin baseline re-anchored** (discovered mid-implementation): the criterion's original `e5b908f` byte-pin on the `Downgrade-only asymmetry` paragraph had been silently invalidated by `697541e` (2026-08-06, issue #236) reflowing the paragraph's line wraps (content unchanged, wrap points moved) — making the literal byte-pin unsatisfiable since that date, independent of this step. Re-anchored to `22a3bef` (this step's own pre-step baseline, matching the relative-pin idiom the rest of this document already uses) and switched from raw byte-equality to a whitespace-normalized content diff, since only wrap position may legitimately drift.
+
 ## [0.31.43] - 2026-08-14
 
 **Route debug specs through the ≤2-unit fast path (gh348-9, Step 9 of #348 spec).** Reverses Pass 3 Step 9's carve-out (R9.3, operator ruling): a debug spec produced on 2-FAIL-cap escalation no longer mandatorily routes through `task-master` — it follows the same ≤2-unit fast-path rule as any other spec, saving a full `task-master` dispatch for the common case where the debug spec resolves to one or two units.

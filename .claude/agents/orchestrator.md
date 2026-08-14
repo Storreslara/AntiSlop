@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.43 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.44 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -360,19 +360,13 @@ being a weakening of the gate.
 **Fable is never valid on the gate** — the script never prints it, and you
 never substitute it.
 
-**`.fail` disqualifier.** Before dispatching the reviewer, check
-`.claude/reviewed/<task-id>.fail`; if it exists, dispatch on opus —
-extending the "check for a prior `.fail` record" rule above to the reviewer
-specifically. The script checks this too, but you check it as a
-belt-and-suspenders backstop: a `.fail` is a permitted downgrade reason, and
-downgrades are always yours to make.
-
 **Escalation.** If a unit that received a sonnet-gated PASS is later found
 to have missed a defect (human catch, milestone-auditor finding, or
 downstream FAIL on that unit), re-dispatch that unit's review on `opus`,
 never sonnet. The opus re-review, on confirming the miss, returns FAIL and
-writes the standard `.fail` record, which via the `.fail` disqualifier above
-permanently forces opus for that unit id thereafter.
+writes the standard `.fail` record, which via `hooks/scripts/reviewer-tier.sh`
+(the reviewer-gate ratchet) permanently forces opus for that unit id
+thereafter.
 
 ## Relaying spec-master open questions
 If spec-master returns "Open Questions" instead of a finished plan (this
