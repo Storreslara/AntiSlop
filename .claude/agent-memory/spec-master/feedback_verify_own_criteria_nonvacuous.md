@@ -151,6 +151,51 @@ re-deriving it would think the criterion was broken. State which command
 produces which number, and use `grep -o | wc -l` whenever the baseline is a
 count rather than a presence.
 
+**Eighth trap - a criterion can pass because a DIFFERENT FILE emits the same
+signal (2026-08-14, gh336/#289 Step 1).** C1.12 asserted that
+`--personas=researcher` with no `substitutions.arxivMcpLaunch` "exits 1 and
+stdout contains `could not be rendered`". The premise was false —
+`renderCleanBody`'s `arxiv` branch treats a `null` *or* `undefined` launch as
+**fallback mode** (`applyArxivFallback` strips `mcpServers:` and inserts a
+WebFetch/WebSearch note), so `researcher.md` renders fine and `--update`
+exits 0. Two existing tests (`tests/cli-backfill.test.js:51`, `:1320`) already
+depended on that success. The dangerous part: my first repro fixture deleted
+the whole `substitutions` object, and it DID exit 1 printing `could not be
+rendered` — for `explorer.md`, whose `graph` kind throws on a missing
+`graphMcpLaunch`. Had I stopped there I'd have "confirmed" a criterion that is
+false, because the exit code and the stdout token are both **file-agnostic
+aggregates** over a whole render loop.
+
+**How to apply (attribution):** when a criterion asserts a process-level signal
+(exit code, a summary line, a total count) as evidence about ONE named
+artifact, the criterion must also pin the *attribution* — assert the specific
+file's own state (exists / does not exist, contains sentinel), and build the
+fixture so no other input can emit the same signal. Here that means the
+fixture MUST record a `graphMcpLaunch` so `explorer.md` cannot fail for an
+unrelated reason. Sibling of the vacuity traps but distinct: the command runs,
+the assertion is true, and it is still **measuring the wrong thing**.
+
+**Ninth trap - the tool under test can SELF-REPAIR the fixture you armed
+(2026-08-14, gh338/#291 Step 2, the C2.5 sibling of trap eight).** Sweeping for
+the same stale premise elsewhere, I found C2.5 carried it too, and corrected it
+to require a missing `graphMcpLaunch` — the genuinely reachable exit-1 path.
+Building the fixture by *deleting* `substitutions.graphMcpLaunch` from an
+already-wired project exits **0**, not 1: `backfillSubstitutionsFromDisk`
+reverse-engineers the field straight back out of the already-rendered
+`explorer.md` (`deriveMcpLaunchFromDisk`), and the fixture ends with the key
+re-recorded. Only a *never-wired* project — the destination file still holding
+its literal `<REAL_LAUNCH_COMMAND_...>` placeholder, which is the one condition
+that makes backfill decline — actually reproduces the refusal.
+
+**How to apply (fixture durability):** an "absent config" fixture is only valid
+if the tool cannot re-derive that config from elsewhere. Before pinning one,
+grep for a backfill/migrate/derive-from-disk path over the same field, and arm
+the fixture at the source the backfill reads, not just the config file. Then
+run it and confirm the key is still absent AFTERWARDS — the giveaway here was
+diffing `persona-config.json` post-run. Generalizes past this repo: any
+idempotent/self-healing tool will quietly heal a negative fixture, so "I
+deleted X and it still passed" is evidence about the fixture, not the code.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
 [[verify-deferred-issue-premises]],
 [[docs-units-need-claim-anchored-criteria]], and

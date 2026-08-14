@@ -133,3 +133,18 @@ section. This warning is non-fatal (doesn't change the exit code) and
 pre-existing in the SOURCE file — confirm with `grep '<HEAD>'
 agents/orchestrator.md` before assuming your own edit caused it. Do not
 "fix" it inside a release unit that's scoped to version bumps only.
+
+**Gotcha 9 (gh338, `--update` fixture polarity):** `pluginState.enabled` is a
+single boolean per run, and two `--update` write sites depend on opposite
+values of it — the `--dedupe-hooks` strip needs the marketplace plugin
+ENABLED (`hooksCollision`), the hook-registration backfill at
+`if (settings && !pluginState.enabled)` needs it DISABLED. **No single fixture
+can fire both**, so a spec that says "arm every write site in one fixture" is
+literally unsatisfiable; give each its own inverse-polarity fixture. Related:
+an isolated `HOME` (which every fixture needs, since this repo dogfoods the
+plugin on itself) makes the plugin read as DISABLED by default, so the
+backfill branch fires on a *bare* `--update` and grows a 2-byte
+`.claude/settings.json` to ~2.7 kB — a test that forgets `env.HOME` passes
+without ever reaching the branch. The third skip condition is `settings`
+being null: `buildBaselineProject` never writes `.claude/settings.json`, so
+the file must be created explicitly (`{}` is enough).

@@ -1,5 +1,5 @@
 - [Threefold-update plan tracking](project_threefold_update.md) — plan doc, issue tracker, per-step commit convention
-- [cli.js --update testing patterns](project_cli_update_testing.md) — spawnSync for process.exit branches, unstamped-baseline fixture trick, graph false-negative gotcha, `<HEAD>`-in-prose placeholder false positive (Gotcha 8)
+- [cli.js --update testing patterns](project_cli_update_testing.md) — spawnSync for process.exit branches, unstamped-baseline fixture trick, graph false-negative gotcha, `<HEAD>`-in-prose placeholder false positive (Gotcha 8), fixture plugin-polarity + HOME isolation (Gotcha 9)
 - [Vendor mattpocock/skills convention](project_vendor_mattpocock_skills.md) — pinned SHA, header AFTER `---` for SKILL.md, at top for companions (no frontmatter), never on .sh; A.3 done, header/grep tension noted
 - [Never scaffold the live repo](feedback_never_scaffold_live_repo.md) — always `(cd "$TMP" && node .../bin/cli.js ...)` in one subshell when verifying scaffold output; check `git status` after
 - [--force-hooks guard E2E testing](project_cli_force_hooks_guard.md) — spawnSync + tmp HOME pattern for pre-seeding settings.json before a fresh-install scaffold run
@@ -17,3 +17,4 @@
 - [git-diff criterion on untracked doc](project_git_diff_criterion_untracked_doc.md) — `git status --short` first; `??` files make `git diff` vacuous, verify add-only-ness by inspection instead
 - [dashboard decision-block.js (gh351)](project_dashboard_decision_block_gh351.md) — body-line-1 vs command-line-1 grammar check, always-heredoc, no-`>`-in-block placeholder text
 - [gh348 protocol-trim plan tracking](project_gh348_protocol_trim_plan.md) — stale Affected-files (Step 3), stale line numbers (Step 5), own edit shifts a line-grep baseline (Step 9)
+- [sed mutant `#` comment in jq/case](feedback_sed_mutant_hash_comment_in_jq.md) — trailing `# MUTATED-X` in a mutation-proof sed can silently break a jq program or a case label; pick site by syntax, no comment inside jq strings
