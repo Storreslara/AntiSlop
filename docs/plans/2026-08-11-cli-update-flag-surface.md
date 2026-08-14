@@ -194,11 +194,47 @@ available review automatically.
   core-persona name → accepted, no-op, informational note, not recorded;
   legacy token → migrated first via `migrateLegacyPersonaTokens`, *then*
   validated, *then* unioned; `researcher` with no `substitutions.arxivMcpLaunch`
-  → the existing `unresolvedRender` path reports "could not be rendered —
-  missing substitution data" and exits 1 with no `researcher.md` written,
-  while `personaSelection` *does* record the addition (matching how
-  `hadLegacyToken` already mutates the config at `:879` and relies on the
-  same later write) so a re-run after wiring the MCP completes it.
+  → **superseded, see the 2026-08-14 correction below**; `personaSelection`
+  *does* record the addition (matching how `hadLegacyToken` already mutates
+  the config at `:879` and relies on the same later write).
+- 2026-08-14 Edge cases / failure handling **(correction — supersedes the
+  final clause of the 2026-08-11 entry above)**: Q What actually happens on
+  `--personas=researcher` with no `substitutions.arxivMcpLaunch` recorded?
+  → A (self-resolved, verified live against `bin/cli.js` and against two
+  already-passing tests): the 2026-08-11 answer was **wrong**. It assumed an
+  `unresolvedRender` refusal path that does not exist for the `arxiv` file
+  kind. `renderCleanBody`'s `arxiv` branch tests the launch command for
+  `null` *or* `undefined` and, in either case, delegates to
+  `applyArxivFallback`, which **succeeds**: it strips the `mcpServers:`
+  block and inserts the note `<!-- No working arXiv MCP found at ADAPT time
+  — operating in WebFetch/WebSearch fallback mode. -->`. `researcher.md` is
+  therefore **written**, and `--update` exits **0**. The refusal via
+  `applyMcpPlaceholder`'s throw is reachable only for the `graph` kind
+  (`explorer.md`, missing `graphMcpLaunch`) — never for `arxiv`, because the
+  fallback branch intercepts first. This is deliberate, not a bug: the arXiv
+  MCP is optional at ADAPT time, `researcher` degrades to its `WebFetch`/
+  `WebSearch` tools, and `tests/cli-backfill.test.js:51` and `:1320` both
+  pass `arxivMcpLaunch: null` and already require a successful render. The
+  spec is corrected to match the code; the code is **not** to be changed to
+  match the spec. Verified 2026-08-14 by direct `renderCleanBody` calls
+  (missing key, explicit `null`, and absent `substitutions` — all three
+  render) and by an end-to-end `--update` run on a temp project.
+- 2026-08-14 Edge cases / failure handling **(correction, second pass —
+  propagates the entry above into Step 2)**: Q Did the same wrong assumption
+  reach any other criterion, and what fixture *does* produce exit `1`?
+  → A (self-resolved, verified live): yes — **C2.5**'s third exit-code clause
+  carried the identical stale premise and is corrected in place to require a
+  missing `graphMcpLaunch`. Two temp projects measured end-to-end: one with
+  `graphMcpLaunch` recorded and `arxivMcpLaunch` absent exits **0** (first
+  pass and under `--check`), rendering `researcher.md` in fallback mode with
+  no `^mcpServers:` line; one freshly scaffolded with neither key exits **1**
+  naming `.claude/agents/explorer.md` as the single unrendered file. A third
+  measurement found a trap not previously recorded: deleting `graphMcpLaunch`
+  from an *already-wired* project does **not** reproduce exit `1`, because
+  `backfillSubstitutionsFromDisk` re-derives it from the rendered
+  `explorer.md`; that constraint is now pinned in C2.5's fixture
+  requirement. Step 2's behaviour item 7 and the Context line stating "`1` a
+  file could not be rendered" are generically true and unchanged.
 - 2026-08-11 Technical constraints & tradeoffs: Q Does adding a persona to
   `personaSelection` require any work beyond creating its agent file? → A
   (self-resolved): no — verified against the scaffold path at
@@ -396,10 +432,33 @@ issue #289's explicit instruction and the 21-record R2 history.)
   `node bin/cli.js --yes --personas=reviewer` in an empty temp dir still
   produces `personaSelection` deep-equal to `["reviewer"]` exactly —
   replacement semantics, **not** union.
-- **C1.12** Researcher without a launch command: on a project with no
-  `substitutions.arxivMcpLaunch`, `--personas=researcher` exits 1, stdout
-  contains `could not be rendered`, `.claude/agents/researcher.md` does not
-  exist, and `personaSelection` **does** contain `researcher`.
+- **C1.12** Researcher without an arXiv launch command renders in **fallback
+  mode** and does *not* refuse (corrected 2026-08-14 — the original criterion
+  described a refusal path that does not exist for the `arxiv` file kind; see
+  the dated correction in Clarifications). In a temp project whose
+  `substitutions` records a `graphMcpLaunch` but has **no** `arxivMcpLaunch`
+  key, `node bin/cli.js --update --personas=researcher`:
+  1. exits **0**;
+  2. prints **no** `could not be rendered` line;
+  3. leaves `.claude/agents/researcher.md` **existing**, containing
+     `No working arXiv MCP found at ADAPT time` and matching **no** line
+     `^mcpServers:`;
+  4. leaves `personaSelection` containing `researcher`.
+
+  **The fixture MUST record a `graphMcpLaunch`.** With `substitutions` absent
+  (or that key missing), `explorer.md` fails to render for an *unrelated*
+  reason — its own missing `graphMcpLaunch` — producing exit 1 and a `could
+  not be rendered` line for the **wrong file**. Verified 2026-08-14: that
+  mistake is exactly what makes the superseded version of this criterion look
+  satisfiable, so a fixture without `graphMcpLaunch` would have "passed" it
+  for a reason having nothing to do with `researcher`.
+
+  Do **not** implement a refusal to satisfy this. The fallback is deliberate
+  and load-bearing: `tests/cli-backfill.test.js:51` and `:1320` both pass
+  `arxivMcpLaunch: null` and require a successful `researcher.md` render.
+  Breaking either to manufacture a refusal is an automatic FAIL for this
+  unit; C1.1 (`bash tests/validate.sh`, which runs `cli-backfill.test.js`)
+  keeps them green.
 
 **Do NOT touch**
 - The scaffold `--personas=` handling at `bin/cli.js:1891-1899` or any code
@@ -479,10 +538,37 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
   being preserved as a working contract. The criterion exists so that dry-run
   output cannot be read — by a human or by one of the existing criteria still
   carrying that idiom — as a record of writes that happened.
-- **C2.5** Exit codes: `3` on the armed fixture; `0` on a project brought
-  current by a preceding live `--update`; `1` on a project whose
-  `personaSelection` includes `researcher` with no
-  `substitutions.arxivMcpLaunch` recorded.
+- **C2.5** Exit codes (all three under `--update --dry-run`): `3` on the armed
+  fixture; `0` on a project brought current by a preceding live `--update`;
+  `1` on a project with **no `substitutions.graphMcpLaunch`** recorded
+  (corrected 2026-08-14 — the superseded text named a missing
+  `substitutions.arxivMcpLaunch` on a project whose `personaSelection`
+  includes `researcher`; that project exits **0**, not `1`, because the
+  `arxiv` kind has no refusal path at all. See C1.12 and the dated correction
+  in Clarifications).
+
+  **The exit-1 fixture MUST be a never-wired project**: `.claude/agents/explorer.md`
+  still containing the literal `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`
+  placeholder, **and** `substitutions.graphMcpLaunch` absent. Both halves are
+  load-bearing; each was verified live 2026-08-14 against `bin/cli.js`:
+  1. Naming `arxivMcpLaunch` here is the same **wrong-file trap** C1.12
+     documents. A fixture missing *both* keys does exit `1` — but for
+     `explorer.md`'s missing `graphMcpLaunch`, nothing to do with
+     `researcher` — so the superseded text was satisfiable only by accident.
+  2. Deleting `graphMcpLaunch` from an *already-wired* project is **not**
+     enough. `backfillSubstitutionsFromDisk` (`bin/cli.js:386-409`)
+     reverse-engineers the field back out of the rendered `explorer.md` via
+     `deriveMcpLaunchFromDisk` and the run exits `0`; measured, that fixture
+     ends with `graphMcpLaunch` re-recorded in `persona-config.json`. Only an
+     intact placeholder makes the backfill decline (`bin/cli.js:399`).
+
+  Assert exit `1` **and** a `could not be rendered` line naming
+  `.claude/agents/explorer.md` — the exit code alone cannot distinguish this
+  from any other exit-1 cause. Baseline measured 2026-08-14 with today's
+  `--check` (the `--force-render`/`--dry-run` precursor), which already exits
+  `1` on this fixture and `0` on the `arxiv`-only one; `--dry-run` must not
+  change that, since both share `runUpdate`'s single `unresolvedRender` exit
+  at `bin/cli.js:1278`.
 - **C2.6** Dry-run implies the force: on a project whose `pluginVersion`
   matches and whose mirrors are all current except one corrupted body,
   `--update --dry-run` names that file (it did not take the `:1005` fast path).
@@ -689,6 +775,16 @@ behaviour below encodes OQ1's recommended default (deprecated alias + warning).
   glossary greps both fail; C3.4's release-metadata check exits 1; C3.6's
   grep fails; C2.9's alias count is 5. Every one of them therefore changes
   state when its step lands, and none is vacuously satisfied already.)
+- **CHK13** *(added 2026-08-14)*: Do C1.12 and C2.5 agree with each other, and
+  with the code, about which missing substitution key produces exit `1`? —
+  FAIL (conflicting: both were authored against an `arxiv` refusal path that
+  does not exist, and CHK12's 2026-08-11 sweep did not actually run either of
+  them — its enumeration lists neither, so the "every criterion" claim
+  overstated its own coverage) — revised in place, in two passes: C1.12 first,
+  then C2.5's third exit-code clause, both now naming `graphMcpLaunch` and
+  both carrying an explicit fixture requirement against the wrong-file trap.
+  Both corrected criteria were run against the tree in the CHK12 sense and
+  have the expected polarity today.
 
 ## Scribe update hint
 
