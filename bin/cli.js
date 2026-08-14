@@ -580,11 +580,11 @@ const UNIVERSAL_PROTOCOL_CORE = [
 // everyone (cost) or no one (a lost rule). Both lists are literal on purpose:
 // deriving either one from the other would remove that forcing function.
 //
-// `orchestrator` is deliberately untrimmed — it routes every one of these
-// mechanisms and is the one persona that executes on all of them, including
-// the memory note (it has no `memory:` frontmatter, but the table wins over
-// the iff-frontmatter rule here). The memory note is otherwise carried exactly
-// by the personas whose agents/*.md declares `memory:` frontmatter.
+// `orchestrator` was originally deliberately untrimmed; gh348 Steps 4 and 11
+// reversed that for the sections it never executes on (Third/Fourth verdict,
+// Microworld bundles, the teammate Write/Edit fallback, and the memory note —
+// it has no `memory:` frontmatter). The memory note is otherwise carried
+// exactly by the personas whose agents/*.md declares `memory:` frontmatter.
 const PROTOCOL_SECTIONS_BY_PERSONA = {
   orchestrator: {
     include: [
@@ -597,17 +597,19 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Continuing after a FAIL verdict',
-      'A note on `memory`',
     ],
     drop: [
       'Third verdict: insufficient-context',
       'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
+      'A note on `memory`',
     ],
   },
   'lead-programmer': {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Running acceptance-criteria commands (there is no self-wake)',
       'Retrieval contract',
@@ -627,6 +629,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
   reviewer: {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Running acceptance-criteria commands (there is no self-wake)',
       'Retrieval contract',
       'Machine-checkable criteria',
@@ -646,6 +649,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
   'spec-master': {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Running acceptance-criteria commands (there is no self-wake)',
       'Retrieval contract',
       'Machine-checkable criteria',
@@ -665,6 +669,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
   'task-master': {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Running acceptance-criteria commands (there is no self-wake)',
       'Retrieval contract',
       'Machine-checkable criteria',
@@ -684,6 +689,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
   'milestone-auditor': {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
       'FAIL record (durable warning for future spawns)',

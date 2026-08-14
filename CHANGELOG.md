@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.37] - 2026-08-14
+
+**Split the Agent-teams protocol section so its Write/Edit-fallback half can be trimmed for `orchestrator` (gh348-11, Step 11 of #348 spec).** Trim granularity is whole `## ` sections, but only the `SendMessage`/nested-teams bullets of `Agent-teams mode` apply to the orchestrator as team lead — the Write/Edit call-time-rejection doctrine does not, since the orchestrator's own tools list never includes them. Splitting the section is what makes that half independently droppable.
+
+### Changed
+- **`templates/persona-protocol.md`:** Split `## Agent-teams mode (only relevant if you were spawned as a teammate)` at its natural seam. The section now keeps only the `skills:`/`mcpServers:` non-application, foreground-subagents-vs-nested-teams, and `SendMessage`-reporting bullets. A new canonical section, `## Teammate Write/Edit fallback and gate rephrasing doctrine`, carries the rest: the `Write`/`Edit` call-time rejection, the Bash-heredoc fallback, the `reviewed-path-gate.sh` command-text constraint and two-gate rephrasing doctrine, and the grant-independence note. 18 -> 19 top-level sections.
+- **`bin/cli.js`:** The new header is NOT added to `UNIVERSAL_PROTOCOL_CORE` (which would reach every persona via its unconditional spread into every row's `include`); it is instead added explicitly to the `include` list of every full-tier row except `orchestrator`, whose row gains it in `drop` alongside `A note on \`memory\`` (`Microworld bundles` was already dropped for orchestrator by Step 4). `assertProtocolMatrixComplete` and `assertNoDanglingCrossReferences` both still pass at module load. Non-vacuity demonstrated by temporarily leaving the new header in both `UNIVERSAL_PROTOCOL_CORE` and orchestrator's `drop`: throws `PROTOCOL_SECTIONS_BY_PERSONA['orchestrator'] lists the same section in both include and drop`. The stale comment above the matrix claiming orchestrator is carried "including the memory note ... the table wins over the iff-frontmatter rule" no longer matches reality after this drop; corrected in place.
+- **`tests/adapter-protocol-parity.test.js`:** Added a `deferred` entry for the new header to both `codexMap` and `cursorMap`, alongside the existing `Agent-teams mode` deferral (both ports already drop agent-teams mode entirely for v1). Non-vacuity: removing either entry makes `checkPort()` throw `no parity-map entry`.
+- **`.claude/agents/*.md`, `.claude/persona-protocol.md`, `.claude/persona-config.json` (`fileHashes`):** Mirrors regenerated via `node bin/cli.js --update`.
+
+### Notes
+- Measured word-count saving (`wc -w` on the shipped `.claude/agents/orchestrator.md` mirror, before this step's regeneration -> after): 8817 -> 8394.
+- Kept untouched per the step's scope: `templates/persona-protocol-slim.md` (Step 12 owns the slim copy of this doctrine); the `Terminal status line` section, including its protected "Why it exists" rationale paragraph; `GATED_AGENT_SECTIONS`.
+
 ## [0.31.36] - 2026-08-14
 
 **Trim duplicated protocol excerpt sections (gh348-4, Step 4 of #348 spec).** `PROTOCOL_SECTIONS_BY_PERSONA` drop-list edit only, no prose rewrite: reviewer drops `Fourth verdict: escalate-to-human` (full escalation procedure already at `agents/reviewer.md:165-254`) and `Microworld bundles` (its whole duty already stated at `agents/reviewer.md:57-66`); orchestrator drops `Third verdict`/`Fourth verdict` (already at `agents/orchestrator.md:176-235`) and `Microworld bundles` (neither authors nor verifies bundles) — a partial, operator-approved (2026-08-13) reversal of the Pass-1 A3 ruling that orchestrator's row is deliberately untrimmed; spec-master and task-master drop `Microworld bundles`. `lead-programmer` retains the full schema unchanged — it is the author.

@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.36 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.37 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -315,6 +315,8 @@ slice you actually need rather than re-running the same command unfiltered.
 - You CAN spawn foreground subagents; only nested TEAMS are barred.
 - `SendMessage` is async, a spawned subagent blocks; report finished work by
   `SendMessage` to the name the lead spawned you under, never turn-text.
+
+## Teammate Write/Edit fallback and gate rephrasing doctrine
 - `Write` and `Edit` may be listed in your `tools:` frontmatter and still be
   rejected at call time in a teammate dispatch, with the runtime error
   `<tool> exists but is not enabled in this context`. Re-measured 2026-08-09.
