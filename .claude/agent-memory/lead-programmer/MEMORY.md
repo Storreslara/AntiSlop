@@ -14,3 +14,5 @@
 - [Permission layers](project_permission_layers.md) — the auto-mode classifier is independent of `permissions.allow`; "Blocked by classifier" is final, "Stage 2 classifier error" is transient (retry once)
 - [G1 bump invalidates mirrors](project_g1_bump_invalidates_mirrors.md) — a version bump alone turns validate.sh RED via cli-backfill F2; regenerate the 13 stamps in the same unit; `--update --check` writes
 - [Never unconditional stash pop](feedback_never_unconditional_stash_pop.md) — `git stash; ...; git stash pop` can pop ANOTHER agent's stash in this shared tree; prefer a detached worktree for investigation
+- [git-diff criterion on untracked doc](project_git_diff_criterion_untracked_doc.md) — `git status --short` first; `??` files make `git diff` vacuous, verify add-only-ness by inspection instead
+- [dashboard decision-block.js (gh351)](project_dashboard_decision_block_gh351.md) — body-line-1 vs command-line-1 grammar check, always-heredoc, no-`>`-in-block placeholder text

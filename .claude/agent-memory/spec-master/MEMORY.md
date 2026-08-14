@@ -23,4 +23,5 @@
 - [Measure unread files in a debug spec](technique_debug_spec_measure_unread_files.md) — count per-round tool calls naming the file the false claim is about; zero = retrieval gap, not capacity gap.
 - [Docs units need claim-anchored criteria](feedback_docs_units_need_claim_anchored_criteria.md) — existence greps gate nothing when prose accuracy IS the deliverable; 3 units have FAILed this way.
 - [D8 decoupling criterion is vacuous](project_d8_decoupling_criterion_vacuous.md) — it greps `bin/dashboard/`, which doesn't exist; reports 0 for any code. Real dir is `bin/microworld-dashboard/`.
-- [Dashboard decision surface spec (#349)](project_dashboard_decision_surface_spec.md) — 4 touchpoints, compose-only; only the auditor findings relay needs a new artifact; R6/R7 are the deliberate non-literal readings.
+- [Dashboard decision surface spec (#349)](project_dashboard_decision_surface_spec.md) — 4 touchpoints, compose-only; only the auditor findings relay needs a new artifact; R6/R7 are deliberate non-literal readings; see 2026-08-14 correction re: multi-stamp join.
+- [Review-join null only covered zero-stamp](feedback_review_join_null_only_covered_zero_stamp.md) — an R-item's "already specified" claim wasn't; verify the referenced criterion covers the NAMED scenario, not just the general shape.
