@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.35] - 2026-08-14
+
+**Make cross-section protocol references self-contained (gh348-2, Step 2 of #348 spec).** `selectProtocolSections()` trims `templates/persona-protocol.md` per persona without checking whether the surviving rendered text still points at a dropped section — the root cause behind several dangling backward references (2.2/2.6).
+
+### Changed
+- **`templates/persona-protocol.md`:** Rewrote every dangling `above`/`below`/quoted-header backward reference found by inspection to state the needed fact inline instead of pointing elsewhere — four "WIP sentinel ... above" mentions now carry the sentinel's file path (`.claude/wip-handoff.<agent-id>`); the Review-ownership paragraph's `"Third verdict"`/`"Fourth verdict"` pointers and the `.blocked` marker's `(below)` pointer are inlined; "the cap below" (Third- and Fourth-verdict sections) and "`.fail` record above" (Continuing-after-a-FAIL-verdict section) — two more instances of the identical root cause, found while auditing every above/below occurrence, not originally named in the spec step — are also inlined. The `<!-- ANTISLOP:BEGIN persona-protocol -->` header comment no longer claims the block is "Role-agnostic content only"; it now says the block is trimmed per persona and does carry role-specific sections.
+- **`bin/cli.js`:** Added `assertNoDanglingCrossReferences()`, a build-time guard next to `assertProtocolMatrixComplete` that rejects a `PROTOCOL_SECTIONS_BY_PERSONA` row whose `include` set keeps a section referencing (by quoted header name, or bare key phrase near "above"/"below") a header the same row `drop`s. Runs at module load against the real matrix.
+- **`tests/protocol-cross-references.test.js`** (new): C2.1 (five named full-tier mirrors carry the sentinel's file path wherever they mention it), C2.2 (no mirror carries a bare Third/Fourth-verdict backward reference), and C2.3 (the guard, against both a synthetic dangling row and the real matrix) — registered in `tests/validate.sh`.
+- **`.claude/agents/*.md`, `.claude/persona-protocol.md`, `.claude/persona-config.json` (`fileHashes`):** Mirrors regenerated via `node bin/cli.js --update`.
+
+### Notes
+- Found but explicitly out of scope: `templates/persona-protocol-slim.md` (used by slim-tier personas `agent-auditor`/`explorer`/`scribe`/`researcher`) has the identical "WIP sentinel ... above" dangle with no accompanying section at all — not in this step's Affected files list, left for a separate pass.
+- The guard is not exhaustive by design: a reference that names the dropped CONTENT without naming the header itself (the "cap below" / "`.fail` record above" shapes above) is outside what a text-matching guard can see — documented in its own comment.
+
 ## [0.31.34] - 2026-08-14
 
 **Remove anomaly check A5 from the agent auditor (gh366, Step 18 of #348 spec).** A5 flagged a subagent whose final message lacked the `STATUS:` line, but `agents/agent-auditor.md` itself documents that finding as "a prompt to resume the subagent, not a defect" -- a check defined to be non-actionable. Ships onto contested ground by explicit operator choice: #334, #337, and #290 all touch these same three files and must re-baseline against an A5-free corpus after this lands (R10.2).
