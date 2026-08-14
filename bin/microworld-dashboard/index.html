@@ -127,6 +127,16 @@
     let cellsByFunctionId = {}; // Notebook: cells per function (persists across tab switches)
     let nextCellId = 0; // Auto-incrementing cell ID for uniqueness
 
+    // Decisions section state (gh353). decisions is the /api/decisions
+    // payload: { escalations, briefings, findings, pendingReview }.
+    // selectedDecisionView is { kind, key } for one of the four touchpoints,
+    // mutually exclusive with selectedBundle.
+    let decisions = null;
+    let decisionsError = null;
+    let selectedDecisionView = null;
+    let escalationForm = { route: 'approve', reason: '', by: '' };
+    let pendingReviewForm = { reason: '' };
+
     async function fetchBundles() {
       const response = await fetch('/api/bundles', {
         headers: token ? { 'X-Antislop-Token': token } : {},
@@ -147,6 +157,43 @@
       }
     }
 
+    async function fetchDecisions() {
+      const response = await fetch('/api/decisions', {
+        headers: token ? { 'X-Antislop-Token': token } : {},
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return await response.json();
+    }
+
+    async function refreshDecisions() {
+      try {
+        const data = await fetchDecisions();
+        // Normalize defensively: a malformed or unexpectedly-shaped response
+        // (e.g. an older server, or a test fixture that doesn't model this
+        // endpoint) degrades to "nothing to show" rather than crashing render.
+        decisions = {
+          escalations: Array.isArray(data && data.escalations) ? data.escalations : [],
+          briefings: Array.isArray(data && data.briefings) ? data.briefings : [],
+          findings: Array.isArray(data && data.findings) ? data.findings : [],
+          pendingReview: Array.isArray(data && data.pendingReview) ? data.pendingReview : [],
+        };
+        decisionsError = null;
+      } catch (err) {
+        console.error('Error fetching decisions:', err);
+        decisionsError = err.message;
+      }
+    }
+
+    function decisionsHasAnyGroup() {
+      if (!decisions) return false;
+      return decisions.escalations.length > 0
+        || decisions.briefings.length > 0
+        || decisions.findings.length > 0
+        || decisions.pendingReview.length > 0;
+    }
+
     function getStatusClass(status) {
       if (!status) return 'status-unknown';
       if (status.result === 'pass') return 'status-pass';
@@ -157,7 +204,9 @@
 
     function renderLeftRail() {
       const rail = document.getElementById('leftRail');
-      if (bundles.length === 0) {
+      const hasDecisions = decisionsHasAnyGroup();
+
+      if (bundles.length === 0 && !hasDecisions) {
         rail.innerHTML = fetchError
           ? `<div style="padding: var(--space-4); color: var(--gvx-red);">Error loading microworld bundles: ${escapeHtml(fetchError)}</div>`
           : '<div style="padding: var(--space-4); color: var(--gvx-gray);">No microworld bundles</div>';
@@ -195,6 +244,10 @@
         `).join('');
       }
 
+      if (hasDecisions) {
+        html += renderDecisionsLeftRail();
+      }
+
       rail.innerHTML = html;
 
       rail.querySelectorAll('.bundle-item').forEach(item => {
@@ -203,13 +256,78 @@
           selectedBundle = bundles.find(b => b.id === bundleId);
           selectedFunction = null;
           selectedGroup = null;
+          selectedDecisionView = null;
           render();
+        });
+      });
+
+      rail.querySelectorAll('.decision-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const kind = item.getAttribute('data-decision-kind');
+          const key = item.getAttribute('data-decision-key');
+          selectDecisionView(kind, key);
         });
       });
     }
 
+    // Decisions section (D8: separately-labelled, never interleaved with
+    // Working Bundles or Escalation Packets). One row per touchpoint entry
+    // across all four groups.
+    function renderDecisionsLeftRail() {
+      let html = '<div class="bundle-section-header">Decisions</div>';
+
+      html += decisions.escalations.map((e) => `
+        <div class="bundle-item decision-item ${isSelectedDecision('escalation', e.taskId) ? 'active' : ''}" data-decision-kind="escalation" data-decision-key="${escapeHtml(e.taskId)}">
+          <div class="bundle-title">Escalation: ${escapeHtml(e.taskId)}</div>
+        </div>
+      `).join('');
+
+      html += decisions.briefings.map((b) => `
+        <div class="bundle-item decision-item ${isSelectedDecision('briefing', b.path) ? 'active' : ''}" data-decision-kind="briefing" data-decision-key="${escapeHtml(b.path)}">
+          <div class="bundle-title">${escapeHtml(b.heading || b.path)}</div>
+        </div>
+      `).join('');
+
+      html += decisions.findings.map((f) => `
+        <div class="bundle-item decision-item ${isSelectedDecision('findings', f.slug) ? 'active' : ''}" data-decision-kind="findings" data-decision-key="${escapeHtml(f.slug)}">
+          <div class="bundle-title">Findings: ${escapeHtml(f.slug)}</div>
+        </div>
+      `).join('');
+
+      html += decisions.pendingReview.map((p) => `
+        <div class="bundle-item decision-item ${isSelectedDecision('pending-review', p.agentId) ? 'active' : ''}" data-decision-kind="pending-review" data-decision-key="${escapeHtml(p.agentId)}">
+          <div class="bundle-title">Pending review: ${escapeHtml(p.unit || p.agentId)}</div>
+        </div>
+      `).join('');
+
+      return html;
+    }
+
+    function isSelectedDecision(kind, key) {
+      return !!selectedDecisionView && selectedDecisionView.kind === kind && selectedDecisionView.key === key;
+    }
+
+    function resetDecisionForms() {
+      escalationForm = { route: 'approve', reason: '', by: '' };
+      pendingReviewForm = { reason: '' };
+    }
+
+    function selectDecisionView(kind, key) {
+      selectedBundle = null;
+      selectedFunction = null;
+      selectedDecisionView = { kind, key };
+      resetDecisionForms();
+      render();
+    }
+
     function renderContent() {
       const content = document.getElementById('contentArea');
+
+      if (selectedDecisionView) {
+        content.innerHTML = renderDecisionViewHtml();
+        attachDecisionViewListeners();
+        return;
+      }
 
       if (!selectedBundle) {
         if (bundles.length === 0) {
@@ -394,6 +512,269 @@
 
       // Attach event listeners to cell control buttons
       attachCellEventListeners();
+    }
+
+    // Defensive wrapper around composeDecisionBlock (bin/microworld-dashboard/decision-block.js,
+    // injected into this page by server.js): a validation failure (bad id,
+    // missing timestamp, unknown kind) becomes a rendered warning instead of
+    // an unhandled exception.
+    function safeCompose(kind, context) {
+      try {
+        return composeDecisionBlock(kind, context);
+      } catch (err) {
+        return { kind: 'command', text: null, warnings: [err.message] };
+      }
+    }
+
+    function renderDecisionViewHtml() {
+      const { kind, key } = selectedDecisionView;
+      if (kind === 'escalation') {
+        const entry = decisions.escalations.find(e => e.taskId === key);
+        return entry ? renderEscalationView(entry) : `<div class="empty-state"><p>Escalation not found.</p></div>`;
+      }
+      if (kind === 'briefing') {
+        const entry = decisions.briefings.find(b => b.path === key);
+        return entry ? renderBriefingView(entry) : `<div class="empty-state"><p>Briefing not found.</p></div>`;
+      }
+      if (kind === 'findings') {
+        const entry = decisions.findings.find(f => f.slug === key);
+        return entry ? renderFindingsView(entry) : `<div class="empty-state"><p>Findings not found.</p></div>`;
+      }
+      if (kind === 'pending-review') {
+        const entry = decisions.pendingReview.find(p => p.agentId === key);
+        return entry ? renderPendingReviewView(entry) : `<div class="empty-state"><p>Pending review entry not found.</p></div>`;
+      }
+      return '';
+    }
+
+    function attachDecisionViewListeners() {
+      const { kind, key } = selectedDecisionView;
+      if (kind === 'escalation') attachEscalationListeners(key);
+      else if (kind === 'findings') attachFindingsListeners(key);
+      else if (kind === 'pending-review') attachPendingReviewListeners(key);
+      else if (kind === 'briefing') loadBriefingExcerpt(key);
+    }
+
+    // Touchpoint 1: ESCALATE-TO-HUMAN resolution. Reads the packet body,
+    // composes the DECISION command from the current route/reason/by fields.
+    function renderEscalationView(entry) {
+      const composed = safeCompose('escalation-decision', {
+        taskId: entry.taskId,
+        route: escalationForm.route,
+        escalationTimestamp: entry.timestamp,
+        by: escalationForm.by,
+        reason: escalationForm.reason,
+      });
+
+      let html = `<div style="padding: var(--space-6);">`;
+      html += `<h2>Escalation: ${escapeHtml(entry.taskId)}</h2>`;
+      html += entry.packetMissing
+        ? `<p style="color: var(--gvx-gray);">(no packet found for this escalation)</p>`
+        : `<div class="excerpt-pane">${escapeHtml(entry.packetBody || '')}</div>`;
+
+      html += `<div class="form-group"><label>Route</label>
+        <select id="escalationRoute">
+          <option value="approve" ${escalationForm.route === 'approve' ? 'selected' : ''}>approve</option>
+          <option value="reject" ${escalationForm.route === 'reject' ? 'selected' : ''}>reject</option>
+          <option value="direct" ${escalationForm.route === 'direct' ? 'selected' : ''}>direct</option>
+        </select></div>`;
+      html += `<div class="form-group"><label>Reason</label><textarea id="escalationReason">${escapeHtml(escalationForm.reason)}</textarea></div>`;
+      html += `<div class="form-group"><label>Name (by)</label><input type="text" id="escalationBy" value="${escapeHtml(escalationForm.by)}" /></div>`;
+
+      html += `<div class="output-label">Composed command</div>`;
+      html += composed.text
+        ? `<div class="excerpt-pane">${escapeHtml(composed.text)}</div><button type="button" id="decisionCopyBtn" class="copy-btn">Copy Command</button>`
+        : `<div style="color: var(--gvx-gray);">${escapeHtml((composed.warnings || []).join(' '))}</div>`;
+      html += `<div id="decisionCopyFeedback" class="copy-feedback"></div>`;
+      html += `<textarea id="decisionClipboardFallback" class="hidden-textarea"></textarea>`;
+      html += `</div>`;
+      return html;
+    }
+
+    function attachEscalationListeners(taskId) {
+      const entry = decisions.escalations.find(e => e.taskId === taskId);
+      if (!entry) return;
+
+      const routeSel = document.getElementById('escalationRoute');
+      if (routeSel) routeSel.addEventListener('change', () => { escalationForm.route = routeSel.value; renderContent(); });
+      const reasonTa = document.getElementById('escalationReason');
+      if (reasonTa) reasonTa.addEventListener('change', () => { escalationForm.reason = reasonTa.value; renderContent(); });
+      const byInput = document.getElementById('escalationBy');
+      if (byInput) byInput.addEventListener('change', () => { escalationForm.by = byInput.value; renderContent(); });
+
+      const copyBtn = document.getElementById('decisionCopyBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const composed = safeCompose('escalation-decision', {
+            taskId: entry.taskId,
+            route: escalationForm.route,
+            escalationTimestamp: entry.timestamp,
+            by: escalationForm.by,
+            reason: escalationForm.reason,
+          });
+          if (composed.text) await doCopyDecision(composed.text);
+        });
+      }
+    }
+
+    // Touchpoint 2: milestone pre-audit briefing. Read-only (D-4) -- no
+    // control here ever submits an answer; the answer stays in
+    // AskUserQuestion. Renders the plan doc excerpt via GET /api/source and
+    // the currently known units' pass/fail markers (reusing the already-
+    // fetched /api/bundles data, since /api/decisions carries no unit list).
+    function renderBriefingView(briefing) {
+      let html = `<div style="padding: var(--space-6);">`;
+      html += `<h2>Milestone briefing: ${escapeHtml(briefing.heading || briefing.path)}</h2>`;
+      html += `<p style="color: var(--gvx-gray); font-size: 0.85rem;">${escapeHtml(briefing.path)}</p>`;
+      html += `<div class="output-label">Goal / assumptions / Open Questions excerpt</div>`;
+      html += `<div class="excerpt-pane" id="briefingExcerptPane">Loading excerpt...</div>`;
+      html += renderMilestoneUnits();
+      html += `</div>`;
+      return html;
+    }
+
+    function renderMilestoneUnits() {
+      const workingBundles = bundles.filter(b => b.source === 'working');
+      if (workingBundles.length === 0) return '';
+      let html = `<div class="output-label" style="margin-top: var(--space-4);">Units</div>`;
+      html += workingBundles.map(b => `
+        <div><span class="status-indicator ${getStatusClass(b.status)}"></span>${escapeHtml(b.unit)}</div>
+      `).join('');
+      return html;
+    }
+
+    async function loadBriefingExcerpt(filePath) {
+      const pane = document.getElementById('briefingExcerptPane');
+      try {
+        const response = await fetch(
+          `/api/source?file=${encodeURIComponent(filePath)}&startLine=1&endLine=400`,
+          { headers: token ? { 'X-Antislop-Token': token } : {} }
+        );
+        if (!response.ok) {
+          const error = await response.json();
+          if (pane) pane.textContent = `Error: ${error.error || 'Cannot load excerpt'}`;
+          return;
+        }
+        const data = await response.json();
+        const lines = data.lines || [];
+        if (pane) pane.innerHTML = lines.map(line => `<div class="excerpt-line">${escapeHtml(line)}</div>`).join('');
+      } catch (err) {
+        if (pane) pane.textContent = `Error loading excerpt: ${err.message}`;
+      }
+    }
+
+    // Touchpoint 3: milestone-auditor findings relay. Composes a paste-back
+    // markdown block (D-3), not a command.
+    function renderFindingsView(finding) {
+      const composed = safeCompose('milestone-findings-response', {
+        planSlug: finding.slug,
+        findingsText: finding.body,
+      });
+
+      let html = `<div style="padding: var(--space-6);">`;
+      html += `<h2>Milestone findings: ${escapeHtml(finding.slug)}</h2>`;
+      html += finding.malformed
+        ? `<p style="color: var(--gvx-red);">Malformed findings record: ${escapeHtml(finding.malformedReason || '')}</p>`
+        : `<p style="color: var(--gvx-gray); font-size: 0.85rem;">count: ${escapeHtml(String(finding.count))} · ${escapeHtml(finding.timestamp || '')}</p>`;
+      html += `<div class="excerpt-pane">${escapeHtml(finding.body)}</div>`;
+
+      html += `<div class="output-label">Paste-back block</div>`;
+      html += composed.text
+        ? `<div class="excerpt-pane">${escapeHtml(composed.text)}</div><button type="button" id="decisionCopyBtn" class="copy-btn">Copy Block</button>`
+        : `<div style="color: var(--gvx-gray);">${escapeHtml((composed.warnings || []).join(' '))}</div>`;
+      html += `<div id="decisionCopyFeedback" class="copy-feedback"></div>`;
+      html += `<textarea id="decisionClipboardFallback" class="hidden-textarea"></textarea>`;
+      html += `</div>`;
+      return html;
+    }
+
+    function attachFindingsListeners(slug) {
+      const entry = decisions.findings.find(f => f.slug === slug);
+      if (!entry) return;
+
+      const copyBtn = document.getElementById('decisionCopyBtn');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const composed = safeCompose('milestone-findings-response', { planSlug: entry.slug, findingsText: entry.body });
+          if (composed.text) await doCopyDecision(composed.text);
+        });
+      }
+    }
+
+    // Touchpoint 4: pending-review defer/skip. D-5's guard is rendered
+    // unconditionally -- the skip consequence text is shown regardless of
+    // whether a reason has been typed yet, since it is a static warning
+    // about what the skip command does, not a preview of a composed value.
+    function renderPendingReviewView(entry) {
+      const deferComposed = safeCompose('pending-review-defer', { agentId: entry.agentId, reason: pendingReviewForm.reason });
+      const skipComposed = safeCompose('pending-review-skip', { agentId: entry.agentId, reason: pendingReviewForm.reason });
+      const skipConsequence = safeCompose('pending-review-skip', { agentId: entry.agentId, reason: 'placeholder' }).consequence || '';
+
+      let html = `<div style="padding: var(--space-6);">`;
+      html += `<h2>Pending review: ${escapeHtml(entry.unit || entry.agentId)}</h2>`;
+      html += `<p>agent: ${escapeHtml(entry.agentId)}</p>`;
+      html += `<p>state: ${escapeHtml(entry.state)}</p>`;
+      html += `<p>since: ${escapeHtml(entry.timestamp || '(unavailable)')}</p>`;
+      if (entry.reason) html += `<p>deferred reason: ${escapeHtml(entry.reason)}</p>`;
+
+      html += `<div class="form-group"><label>Reason (for defer/skip)</label><textarea id="pendingReviewReason">${escapeHtml(pendingReviewForm.reason)}</textarea></div>`;
+
+      html += `<div class="output-label">Defer command</div>`;
+      html += deferComposed.text
+        ? `<div class="excerpt-pane">${escapeHtml(deferComposed.text)}</div><button type="button" id="deferCopyBtn" class="copy-btn">Copy Defer Command</button>`
+        : `<div style="color: var(--gvx-gray);">${escapeHtml((deferComposed.warnings || []).join(' '))}</div>`;
+
+      html += `<div class="output-label" style="margin-top: var(--space-4);">Skip command</div>`;
+      html += `<div style="color: var(--gvx-red);">${escapeHtml(skipConsequence)}</div>`;
+      html += skipComposed.text
+        ? `<div class="excerpt-pane">${escapeHtml(skipComposed.text)}</div><button type="button" id="skipCopyBtn" class="copy-btn">Copy Skip Command</button>`
+        : `<div style="color: var(--gvx-gray);">${escapeHtml((skipComposed.warnings || []).join(' '))}</div>`;
+
+      html += `<div id="decisionCopyFeedback" class="copy-feedback"></div>`;
+      html += `<textarea id="decisionClipboardFallback" class="hidden-textarea"></textarea>`;
+      html += `</div>`;
+      return html;
+    }
+
+    function attachPendingReviewListeners(agentId) {
+      const entry = decisions.pendingReview.find(p => p.agentId === agentId);
+      if (!entry) return;
+
+      const reasonTa = document.getElementById('pendingReviewReason');
+      if (reasonTa) reasonTa.addEventListener('change', () => { pendingReviewForm.reason = reasonTa.value; renderContent(); });
+
+      const deferBtn = document.getElementById('deferCopyBtn');
+      if (deferBtn) {
+        deferBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const composed = safeCompose('pending-review-defer', { agentId: entry.agentId, reason: pendingReviewForm.reason });
+          if (composed.text) await doCopyDecision(composed.text);
+        });
+      }
+
+      const skipBtn = document.getElementById('skipCopyBtn');
+      if (skipBtn) {
+        skipBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const composed = safeCompose('pending-review-skip', { agentId: entry.agentId, reason: pendingReviewForm.reason });
+          if (composed.text) await doCopyDecision(composed.text);
+        });
+      }
+    }
+
+    // Copies pre-composed decision text to the clipboard. Unlike
+    // doCopyFeedback, this never fetches anything (a composed decision
+    // command/block needs no git SHA) -- purely local, so no decision-surface
+    // interaction can ever issue a network request (R1).
+    async function doCopyDecision(text, feedbackDivId = 'decisionCopyFeedback', fallbackId = 'decisionClipboardFallback') {
+      try {
+        await writeClipboardText(text, feedbackDivId, fallbackId);
+      } catch (err) {
+        console.error('Error copying decision text:', err);
+        showCopyFeedback(feedbackDivId, 'Error: ' + err.message);
+      }
     }
 
     function renderNotebook(functionId) {
@@ -593,19 +974,40 @@
     }
 
     async function init() {
-      await refreshBundles();
+      await Promise.all([refreshBundles(), refreshDecisions()]);
       if (bundles.length > 0) {
         selectedBundle = bundles[0];
         if (selectedBundle.functions && selectedBundle.functions.length > 0) {
           selectedFunction = selectedBundle.functions[0];
         }
+      } else {
+        autoSelectDecisionView();
       }
       render();
       setInterval(pollBundles, 5000);
     }
 
+    // With no microworld bundle to show by default, surface the first
+    // available decision touchpoint instead of an empty state. Priority
+    // order matches the touchpoint numbering in the parent spec.
+    function autoSelectDecisionView() {
+      if (!decisions) return;
+      if (decisions.escalations.length > 0) {
+        selectedDecisionView = { kind: 'escalation', key: decisions.escalations[0].taskId };
+      } else if (decisions.briefings.length > 0) {
+        selectedDecisionView = { kind: 'briefing', key: decisions.briefings[0].path };
+      } else if (decisions.findings.length > 0) {
+        selectedDecisionView = { kind: 'findings', key: decisions.findings[0].slug };
+      } else if (decisions.pendingReview.length > 0) {
+        selectedDecisionView = { kind: 'pending-review', key: decisions.pendingReview[0].agentId };
+      } else {
+        return;
+      }
+      resetDecisionForms();
+    }
+
     async function pollBundles() {
-      await refreshBundles();
+      await Promise.all([refreshBundles(), refreshDecisions()]);
       if (selectedBundle) {
         selectedBundle = bundles.find(b => b.id === selectedBundle.id) || selectedBundle;
       }
@@ -762,6 +1164,39 @@
     // markdown shape to formatFeedbackBlock (bin/microworld-dashboard/feedback-block.js,
     // injected into this page by server.js) -- the single implementation of
     // that shape, not a hand-maintained duplicate.
+    // Shared clipboard mechanics: clipboard API first, hidden-textarea +
+    // execCommand fallback second. Used by doCopyFeedback (function/cell
+    // feedback) and doCopyDecision (gh353's Decisions section) alike, so
+    // there is one implementation of the fallback path, not two.
+    async function writeClipboardText(text, feedbackDivId, fallbackId) {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(text);
+          showCopyFeedback(feedbackDivId, 'Copied to clipboard!');
+          return;
+        }
+      } catch (err) {
+        console.warn('Clipboard API failed, using fallback:', err);
+      }
+
+      const fallback = document.getElementById(fallbackId);
+      if (fallback) {
+        fallback.value = text;
+        fallback.select();
+        try {
+          const success = document.execCommand('copy');
+          if (success) {
+            showCopyFeedback(feedbackDivId, 'Copied to clipboard!');
+            return;
+          }
+        } catch (err) {
+          console.warn('execCommand fallback failed:', err);
+        }
+      }
+
+      showCopyFeedback(feedbackDivId, 'Copy failed - please try again');
+    }
+
     async function doCopyFeedback({ comment, cell, feedbackDivId, fallbackId }) {
       try {
         // Get git SHA from /api/context
@@ -787,35 +1222,7 @@
           cell: cell ? { inputs: cell.inputs, result: cell.result } : null,
         });
 
-        // Try clipboard API first
-        try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(feedback);
-            showCopyFeedback(feedbackDivId, 'Copied to clipboard!');
-            return;
-          }
-        } catch (err) {
-          console.warn('Clipboard API failed, using fallback:', err);
-        }
-
-        // Fallback: textarea + execCommand
-        const fallback = document.getElementById(fallbackId);
-        if (fallback) {
-          fallback.value = feedback;
-          fallback.select();
-          try {
-            const success = document.execCommand('copy');
-            if (success) {
-              showCopyFeedback(feedbackDivId, 'Copied to clipboard!');
-              return;
-            }
-          } catch (err) {
-            console.warn('execCommand fallback failed:', err);
-          }
-        }
-
-        // Last resort: show error
-        showCopyFeedback(feedbackDivId, 'Copy failed - please try again');
+        await writeClipboardText(feedback, feedbackDivId, fallbackId);
       } catch (err) {
         console.error('Error copying feedback:', err);
         showCopyFeedback(feedbackDivId, 'Error: ' + err.message);

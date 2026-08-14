@@ -557,6 +557,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard decisions client (Node) =="
+if node tests/dashboard-decisions-client.test.js; then
+  echo "OK   tests/dashboard-decisions-client.test.js"
+else
+  echo "FAIL tests/dashboard-decisions-client.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
