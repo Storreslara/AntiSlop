@@ -16,4 +16,4 @@
 - [Never unconditional stash pop](feedback_never_unconditional_stash_pop.md) — `git stash; ...; git stash pop` can pop ANOTHER agent's stash in this shared tree; prefer a detached worktree for investigation
 - [git-diff criterion on untracked doc](project_git_diff_criterion_untracked_doc.md) — `git status --short` first; `??` files make `git diff` vacuous, verify add-only-ness by inspection instead
 - [dashboard decision-block.js (gh351)](project_dashboard_decision_block_gh351.md) — body-line-1 vs command-line-1 grammar check, always-heredoc, no-`>`-in-block placeholder text
-- [gh348 protocol-trim plan tracking](project_gh348_protocol_trim_plan.md) — later steps may reverse prior-pass rulings with stale, unlisted tests; TRIMMED_PERSONAS reuse trap for orchestrator
+- [gh348 protocol-trim plan tracking](project_gh348_protocol_trim_plan.md) — stale-test conflicts on reversed rulings; Affected-files lists can be wrong, not just incomplete (Step 3); adapters/codex/* is a `--update` blind spot
