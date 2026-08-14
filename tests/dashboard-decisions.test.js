@@ -173,6 +173,33 @@ async function runTests() {
       failures.push(`Test (d) FAILED: expected unit:null after PASS written after stamp, got ${JSON.stringify(entry2)}`);
     }
 
+    // Invariant broken: two live review-join stamps, neither superseded by a
+    // .pass. Every pending-review entry must be unit:null, not a guess.
+    const tmpDir2 = makeTestProject('d-multi');
+    writeFixture(path.join(tmpDir2, '.claude', '.pending-review.agentD1'), '2026-08-01T00:00:00Z agent=agentD1\n');
+    writeFixture(path.join(tmpDir2, '.claude', '.pending-review.agentD2'), '2026-08-01T00:00:00Z agent=agentD2\n');
+    writeFixture(
+      path.join(tmpDir2, '.claude', '.review-join.gh501'),
+      '2026-08-01T00:00:00Z unit=gh501 prior=none prior_mtime=-\n',
+      stampTime
+    );
+    writeFixture(
+      path.join(tmpDir2, '.claude', '.review-join.gh502'),
+      '2026-08-01T00:00:10Z unit=gh502 prior=none prior_mtime=-\n',
+      new Date(stampTime.getTime() + 10000)
+    );
+
+    const { server: server2, fetchDecisions: fetchDecisions2 } = await startAndFetch(tmpDir2);
+    const { decisions: decisions3 } = await fetchDecisions2();
+    const entry3a = decisions3.pendingReview.find((e) => e.agentId === 'agentD1');
+    const entry3b = decisions3.pendingReview.find((e) => e.agentId === 'agentD2');
+    if (!entry3a || entry3a.unit !== null || !entry3b || entry3b.unit !== null) {
+      failures.push(`Test (d) FAILED: expected unit:null for both entries under multi-stamp ambiguity, got ${JSON.stringify([entry3a, entry3b])}`);
+    }
+
+    server2.close();
+    fs.rmSync(tmpDir2, { recursive: true });
+
     if (failures.filter((f) => f.includes('Test (d)')).length === 0) {
       console.log('  ✓ Test (d) passed');
     }

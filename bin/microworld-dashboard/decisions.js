@@ -105,16 +105,19 @@ function enumerateFindings(projectRoot) {
   return findings;
 }
 
-// The newest .review-join.<unit-id> stamp with no .pass marker written after
-// it (D-5) -- the unit a standing pending-review flag is presumed to be
-// waiting on. Returns null when no such stamp exists. Filename-derived,
-// matching ADR-0016's path grammar; a unit-id containing a path separator is
-// skipped, mirroring the traversal guard reviewer-route-gate.sh applies
-// before writing it.
+// The unit a standing pending-review flag is presumed to be waiting on,
+// derived from .review-join.<unit-id> stamps with no .pass marker written
+// after them (D-5). Exactly one such live stamp resolves to that unit; zero
+// live stamps resolve to null (nothing to report); more than one live stamp
+// -- the one-unit-at-a-time invariant broken -- also resolves to null, since
+// there is no reliable way to tell which flag belongs to which stamp.
+// Filename-derived, matching ADR-0016's path grammar; a unit-id containing a
+// path separator is skipped, mirroring the traversal guard
+// reviewer-route-gate.sh applies before writing it.
 function joinPendingReviewUnit(projectRoot) {
   const dotDir = path.join(projectRoot, '.claude');
   const reviewedDir = path.join(dotDir, 'reviewed');
-  let newest = null;
+  const liveStamps = [];
 
   for (const name of listFiles(dotDir)) {
     if (!name.startsWith('.review-join.')) continue;
@@ -136,12 +139,10 @@ function joinPendingReviewUnit(projectRoot) {
     }
     if (passWrittenAfter) continue;
 
-    if (!newest || stampMtime > newest.stampMtime) {
-      newest = { unitId, stampMtime };
-    }
+    liveStamps.push(unitId);
   }
 
-  return newest ? newest.unitId : null;
+  return liveStamps.length === 1 ? liveStamps[0] : null;
 }
 
 function enumeratePendingReview(projectRoot) {
