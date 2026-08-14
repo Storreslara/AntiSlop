@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.31.45] - 2026-08-14
+
+**Collapse spec-master / milestone-auditor / task-master dispatch routing (gh348-14, Step 14 of #348 spec).** Operator ruling R9.4 accepted finding 3.4, and OQ-N1 resolved to option (a): `spec-master` and `milestone-auditor` now always dispatch on their `opus` frontmatter default — their `sonnet`/`fable` downgrade tiers are removed entirely; `task-master` is unchanged, still dispatching on its `sonnet` frontmatter default. This partially reverses operator OQ5 (which had rejected more-aggressive compression of this routing prose) and, per a gap found during this revision, makes `docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md:22`'s `milestone-auditor` fable-tier caveat false — annotated in the same unit. `### Reviewer gate model selection` and `hooks/scripts/reviewer-tier.sh` are untouched (operator OQ3's protection, verified byte-identical).
+
+### Changed
+- **`agents/orchestrator.md`**: collapsed `### Dispatch-model routing for spec-master and milestone-auditor` (40 lines) and `### task-master model routing` (11 lines) into one compact subsection; dropped the now-vestigial `Escalation symmetry` paragraph (no cheaper tier exists for either persona to escalate from anymore); trimmed the `fable` exclusion for `task-master` to a single guard line (kept deliberately per Pass 3 Step 6's precedent, to block accidental re-introduction); dropped the routing section's "step-9 pre-audit checkpoint" citation, which Step 15 removes wholesale.
+- **`docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md`**: annotated the `milestone-auditor` fable-tier caveat as superseded by #348 (additive only, no body text deleted).
+- **`.claude/agents/*.md`, `.claude/persona-protocol{,-slim}.md`, `.claude/protocol-digest.md`**: mirrors regenerated via `node bin/cli.js --update`.
+
 ## [0.31.44] - 2026-08-14
 
 **Delete the redundant reviewer-gate `.fail` disqualifier paragraph, overriding a Pass-3 byte pin (gh348-13, Step 13 of #348 spec).** Operator ruling R9.2 accepted finding 1.6: the `` `.fail` disqualifier `` paragraph in § "Reviewer gate model selection" is pure prose redundant with `hooks/scripts/reviewer-tier.sh:73-75`'s mechanical, fail-closed enforcement of the same rule ("The script checks this too, but you check it as a belt-and-suspenders backstop"). This explicitly overrides Pass 3 Step 4 criterion 6c's byte-pin of that paragraph (`docs/plans/2026-08-03-efficiency-audit-remediation-pass3.md:1088-1100`) — the other two pinned paragraphs (`Downgrade-only asymmetry`, `Escalation.`) stay pinned, unmodified in content.
