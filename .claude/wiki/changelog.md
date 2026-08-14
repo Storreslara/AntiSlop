@@ -3,6 +3,28 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-08-14 (Step 3 of the `--update` flag-surface plan — scribe dispatch, gh339)
+- **Completed unit gh339 (issue #339, Step 3 of `docs/plans/2026-08-11-cli-update-flag-surface.md`) —
+  documented the flag surface Steps 1 (gh336, `--personas=` additive union, #289) and 2 (gh338,
+  `--force-render`/`--dry-run`/deprecated `--check`, #291) shipped, and released it as v0.31.50.**
+  Rewrote `CONTEXT.md`'s `--update` semantics glossary entry (previously stale: called `--check` "a
+  force-the-loop control, not a dry-run") to name `--force-render` as the canonical force-the-loop
+  control, record `--check` as a deprecated writing alias, and point to the genuine no-write mode.
+  Added two new glossary entries per the spec's terminology-consistency lens-3 finding: `--update
+  --dry-run` (the no-write investigation mode, all twelve write sites, mutation-based `0`/`3`/`1` exit
+  contract) and `--update --personas=` additive-union (explicitly contrasted with the fresh-scaffold
+  path's replacement semantics for the same flag — a real confusion risk the glossary now heads off).
+  Added `--dry-run` to `commands/update-antislop.md` as the safe pre-update investigation step. Bumped
+  `package.json`/`.claude-plugin/plugin.json` 0.31.49 → 0.31.50, added a matching `CHANGELOG.md` entry
+  covering both #289 and #291, and ran `node bin/cli.js --update` to restamp every mirror, committing
+  the restamp together with `.claude/persona-config.json`'s `fileHashes` in the same commit (`e7f688c`)
+  — the `gh308.fail` pairing this repo has failed on before. Post-commit verification: `node bin/cli.js
+  --update --dry-run` exits 0 and `git status --porcelain` is clean for every file this unit touched.
+  Reread both changed sections in full (C3.7): no sentence describes `--check` as canonical or claims
+  `--force-render` is read-only. Affected files: `CONTEXT.md`, `commands/update-antislop.md`,
+  `CHANGELOG.md`, `package.json`, `.claude-plugin/plugin.json`, plus the mechanical `.claude/` mirror
+  restamp. Not yet reviewer-PASSed at the time of this entry — issue #339 left open pending review.
+
 ## 2026-08-11
 - **Closed issue #323** (scribe post-PASS duties) — Step D10 reconciliation, dashboard polling clause.
   Unit #323 (commit `a1c4220`, PASS marker `.claude/reviewed/gh323.pass`) completed Step D10 of the
