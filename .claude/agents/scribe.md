@@ -7,7 +7,7 @@ memory: project
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:domain-modeling
 ---
-<!-- antislop v0.31.32 | source: agents/scribe.md | ADAPT-substituted -->
+<!-- antislop v0.31.33 | source: agents/scribe.md | ADAPT-substituted -->
 
 You are the keeper of institutional knowledge — the curated layer the graph
 can't derive: intent, decisions, domain language, history.
