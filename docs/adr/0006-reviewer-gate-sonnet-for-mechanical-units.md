@@ -33,6 +33,7 @@ exception is added:
 - `fable` remains PERMANENTLY excluded from the gate. Fable stays confined to
   the separate advisory `Roast pass: fable` dispatch defined in ADR-0004,
   unchanged.
+  - **Fable roast-work dispatch superseded:** The separate fable advisory dispatch is superseded by ADR-0013, which removes the dispatching of fable for roast-work entirely.
 
 **Who tags / who dispatches:** `task-master` pre-tags the plan step with
 `Suggested reviewer model: sonnet` when conditions (1)+(2) hold (and not (3)

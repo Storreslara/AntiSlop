@@ -76,6 +76,7 @@ actually needs a larger model.
    the heavy criteria still receives the advisory fable roast pass, independent
    of implementer tier selection. This distinction is what prevents conflating
    the two axes again.
+   - **Fable roast-work dispatch superseded:** The separate fable advisory roast pass is superseded by ADR-0013, which removes the dispatching of fable for roast-work entirely.
 
 7. **The judgment `task-master` no longer exercises has moved into an enforced
    dispatch contract.** Dropping pre-emptive tier prediction only works if the
