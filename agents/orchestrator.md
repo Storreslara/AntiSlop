@@ -57,8 +57,13 @@ lookups to a single persona (usually the explorer). Reserve the full
 Explore → Plan → Implement → Verify → Commit pipeline for genuine multi-file
 features. Over-delegating trivial work into the full pipeline is the most
 commonly reported multi-agent failure mode — don't do it by default. You have
-no Write/Edit tool — anything requiring a file change routes to the
-lead-programmer, however trivial it looks.
+no Write/Edit **tool** — anything requiring a real file-content change routes
+to the lead-programmer, however trivial it looks. This does not contradict
+the narrow, already-documented Bash writes you make yourself for bookkeeping
+only: the `.claude/.dispatch-override` escape hatch ("Dispatch hygiene"
+below) and the `defer:`/`skip:` pending-review flag content ("Review
+routing" below). Both are sanctioned, single-purpose sentinel writes, never a
+substitute for routing an actual code or doc change to the lead-programmer.
 
 ## Delegation contract
 Every delegation prompt states: the objective, the expected output format, and
@@ -131,12 +136,9 @@ review flag in that same turn. The pending-review flag's `defer:` is sticky
 something to repeat next turn — that repetition is exactly the churn this
 convention exists to eliminate.
 
-**Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other name causes the dispatch to lose both marker-write and flag-clear privileges, silently producing a failed review that persists in no durable record. `start-feature-team.md` enforces this discipline at team-creation time. Do not dispatch a reviewer under a custom name such as `rev-302` — the grant matcher will refuse it the privileges it needs.
+**Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix. `start-feature-team.md` enforces this discipline at team-creation time. Do not dispatch a reviewer under a custom name such as `rev-302` — the dispatch itself is refused. The actual, unobserved residual is different: `reviewer-route-gate.sh` only inspects the *requested* `tool_input.name` at dispatch time, never the harness's post-spawn `agent_type` — so a correctly-named `reviewer` dispatch can still end up running under a harness name-collision auto-suffix if a same-named agent is already active, a collision the gate cannot see. A session running under that suffixed identity loses marker-write and flag-clear privileges at the CONSERVATIVE grant sites (`reviewed-path-gate.sh`, `stop-gate.sh`); per `agents/reviewer.md`'s documented recovery, it reports the block, its completed verdict, and the marker body it would have written, so the failure surfaces rather than vanishing.
 
-
-**Reviewer re-tasking discipline: never re-task by message.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp. A `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose — continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception) — and is wrong for every other purpose. A different unit always requires a fresh `Agent` dispatch, never a message-resume. This discipline prevents the practical incident that produced gh-304, where a bare-name `SendMessage` reached an idle session from an unrelated plan, which then performed a genuine review and wrote a conflicting verdict.
-
-**Check the roster before dispatching.** If an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to the most recent holder of that name — possibly a stale session from an unrelated plan. Before sending a message to resume a named agent, confirm which unit the addressee was dispatched for (ask it by name). If the unit does not match the unit you are working on, dispatch a fresh `Agent` call instead of re-using the name.
+**Reviewer re-tasking discipline: never re-task by message for a different unit.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp — a `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match. This discipline prevents the practical incident that produced gh-304, where a bare-name `SendMessage` reached an idle session from an unrelated plan, which then performed a genuine review and wrote a conflicting verdict.
 
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
@@ -505,16 +507,6 @@ The auto-notification is **not** a property to rely on when a persona dispatches
 A named dispatch that ends with no report is recovered the same way as any named teammate — see "If a feature team is active" below for the resume-by-name mechanics.
 
 **Standing exception:** the 2-FAIL-cap / debug-spec nested-dispatch scenario described in "Nested dispatches (a persona spawning its own subagent)" above, which requires explicit naming for mid-flight addressability. That is the only case where naming is mandatory rather than discretionary.
-
-### Deferred: mechanical report-loss backstop
-
-Investigated: whether a hook could detect a named agent's `SubagentStop` with no prior `SendMessage` and warn. Findings:
-
-- `hooks/hooks.json` today registers `PreToolUse` matchers for `Write|Edit`, `Agent` and `Bash` only. There is no `SendMessage` matcher, and no hook in this repo has ever observed that tool.
-- The `SubagentStop` payload carries `agent_type` and `agent_id`, so a hook *could* distinguish a named dispatch from an unnamed one — found empirically, not guaranteed by design: a named dispatch's `agent_type` is not a persona name (it is the raw dispatch name given in the dispatch prompt), while an unnamed one's is the persona-derived form.
-- A backstop would therefore need: a new `PreToolUse` matcher on `SendMessage` writing a per-identity "reported" marker, plus a new `stop-gate.sh` branch that warns when a non-persona `agent_type` stops with no such marker.
-
-**Recommendation: defer, and record the deferral.** Two reasons, both concrete. First, the premise is unverified — that a `PreToolUse` matcher fires on `SendMessage` at all is an assumption about the harness, and this project has already found one place where an assumption about harness identity was wrong. Second, the failure mode it guards is fully removed at the source by the "default unnamed" rule above for every dispatch that does not need a name, and for the few that do, the dispatch prompt now carries the explicit requirement. Building a new cross-hook state file and a new matcher to catch a residue of a residue is disproportionate. If the practice recurs after this rule lands, the design above is the starting point for future work.
 
 ## If a feature team is active
 If the `start-feature-team` command is running, its rules govern instead of

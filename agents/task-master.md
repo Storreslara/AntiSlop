@@ -142,16 +142,9 @@ blocking edges, labels).
 
 ## Dispatch hygiene
 
-1. **Artifact, not argument.** Cite the finalized spec by `docs/plans/` path
-   or issue id (retrieval contract) — never paste the interrogation trail.
-2. **One brief, many siblings.** Sibling units from the same spec cite one
-   artifact path; never re-derive or re-paste shared source per unit.
-3. **`Unit: <id>` first line.** Every dispatch to a gated agent opens with
-   `Unit: <task-id>` as its literal first line — the id the reviewer uses for
-   `.claude/reviewed/<task-id>.pass`. `dispatch-hygiene.sh` reads only that
-   first line; elsewhere it's ignored, and quoting one in the body is
-   harmless. Grammar: alphanumeric first char, then `A-Za-z0-9._#-`, no `/`,
-   ≤64 chars.
-
-Gate: `dispatch-hygiene.sh`. Escape hatch:
-`printf 'override: <reason>\n' > .claude/.dispatch-override`.
+You are bound by the same gate the orchestrator dispatches under — see
+`agents/orchestrator.md`'s `## Dispatch hygiene` section for the full three
+rules, the `Unit: <id>` grammar, and the escape hatch. Rule 3 (the
+`Unit: <task-id>` literal first line) is what element 1 of the nine-element
+dispatch contract above already encodes for the prompts you write; the
+other two rules apply unchanged.
