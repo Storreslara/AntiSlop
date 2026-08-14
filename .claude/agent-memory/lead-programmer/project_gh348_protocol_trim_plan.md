@@ -1,0 +1,54 @@
+---
+name: gh348-protocol-trim-plan
+description: gh348 persona-efficiency-audit plan (docs/plans/2026-08-13-persona-efficiency-audit-gh348.md) — reversed prior A3 ruling on orchestrator, exposed a stale test not in the step's Affected files list
+metadata:
+  type: project
+---
+
+Step 4 of `docs/plans/2026-08-13-persona-efficiency-audit-gh348.md`
+(gh348-4, landed as commit `30ff620`, v0.31.36) trimmed
+`PROTOCOL_SECTIONS_BY_PERSONA` in `bin/cli.js`: reviewer drops "Fourth
+verdict"/"Microworld bundles"; orchestrator drops "Third verdict"/"Fourth
+verdict"/"Microworld bundles"; spec-master/task-master drop "Microworld
+bundles". `lead-programmer` untouched (it authors the microworld schema).
+
+**Why orchestrator's drop was surprising:** a much earlier pass (Pass 1,
+2026-08-01) ruled orchestrator "deliberately untrimmed" (Amendment A3: "the
+table wins, drop = []") and `tests/cli-backfill.test.js` hard-coded that as
+two assertions. gh348's own doc explicitly documents this as an
+**operator-approved reversal** (2026-08-13, finding 1.1 in its "Prior
+rulings that bind this spec" table) — not an oversight. But the reversal's
+own dispatch step never listed `tests/cli-backfill.test.js` in its Affected
+files, so `bash tests/validate.sh` went RED with two failures that read as
+unrelated ("orchestrator row must drop nothing", "memory section iff
+frontmatter" — the second one only appeared after a wrong fix attempt, see
+below).
+
+**How to apply — if you land a later step of this same gh348 plan:**
+- Before assuming a plan step's Affected-files list is exhaustive, check
+  `docs/plans/2026-08-13-persona-efficiency-audit-gh348.md`'s "Prior rulings
+  that bind this spec" table (~line 124) for whether your step reverses an
+  earlier-pass ruling. If so, grep `tests/*.js` for that ruling's exact
+  hard-coded phrasing before you start — it's very likely a test encodes it
+  and isn't listed as affected.
+- **Don't just add `orchestrator` to `TRIMMED_PERSONAS`** in
+  `tests/cli-backfill.test.js` — that array is reused by an UNRELATED check
+  (the memory-section iff-frontmatter rule), which orchestrator is a
+  documented, deliberate exception to (it keeps "A note on `memory`" despite
+  having no `memory:` frontmatter). Adding it there breaks that second
+  check. Give orchestrator its own dedicated include/drop check instead
+  (see the "Criterion 2 (revised for gh348 Step 4)" check in
+  `tests/cli-backfill.test.js` for the pattern).
+- A version bump alone does NOT force mirror regen — see
+  [[g1-bump-invalidates-mirrors]]; bump the version FIRST, then
+  `node bin/cli.js --update`, or the stamp-only fast path skips your changed
+  content.
+- `assertNoDanglingCrossReferences` (added in Step 2, gh348-2) runs at
+  `bin/cli.js` module load — confirm no throw by just requiring the module,
+  cheaper than a full test run.
+
+Remaining steps of this plan (5, 6, ..., 13-16 per the doc) may hit the same
+class of stale-test conflict for their own reversed findings (1.6 byte pin,
+3.1 debug-spec carve-out, 3.4 model routing, 3.5 STATUS-line, 3.3
+pre-audit checkpoint) — check each against its own listed prior-pass tests
+before assuming validate.sh will go green untouched.
