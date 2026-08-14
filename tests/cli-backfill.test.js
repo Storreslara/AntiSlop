@@ -1665,26 +1665,50 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   });
 
   // Whole-tree snapshot helper (issue #289, gh336 / C1.5-C1.8): relPath ->
-  // sha256, plus the sorted path list, so a "writes nothing" claim can be
-  // proven by one deep-equal instead of enumerating write sites. Reusable by
-  // a later step (dry-run) — do not duplicate.
+  // sha256 + mode, plus the sorted path list including directories, so a
+  // "writes nothing" claim can be proven by one deep-equal instead of
+  // enumerating write sites. Mode and directories are load-bearing (gh338,
+  // finding F-D): writeSpecBody chmods, and mkdirp can leave an empty
+  // directory that a file-only path list never sees. Do not duplicate.
   function snapshotTree(dir) {
     const hashes = {};
     const walk = (d) => {
       for (const entry of fs.readdirSync(d, { withFileTypes: true })) {
         if (entry.name === '.git') continue;
         const abs = path.join(d, entry.name);
+        const rel = path.relative(dir, abs).split(path.sep).join('/');
+        const mode = fs.statSync(abs).mode & 0o777;
         if (entry.isDirectory()) {
+          hashes[`DIR:${rel}`] = `mode:${mode.toString(8)}`;
           walk(abs);
           continue;
         }
-        const rel = path.relative(dir, abs).split(path.sep).join('/');
-        hashes[rel] = cli.sha256Hex(fs.readFileSync(abs, 'utf8'));
+        hashes[rel] = `${cli.sha256Hex(fs.readFileSync(abs, 'utf8'))} mode:${mode.toString(8)}`;
       }
     };
     walk(dir);
     return { paths: Object.keys(hashes).sort(), hashes };
   }
+
+  check('snapshotTree sees a mode-only change and an empty directory (gh338, ordered edit 9)', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-snapshot-widen-'));
+    try {
+      const filePath = path.join(tmp, 'a.sh');
+      fs.writeFileSync(filePath, 'echo hi\n');
+      fs.chmodSync(filePath, 0o644);
+      const before = snapshotTree(tmp);
+
+      fs.chmodSync(filePath, 0o755);
+      assert.notDeepStrictEqual(snapshotTree(tmp), before, 'a mode-only change must be visible (writeSpecBody chmods)');
+      fs.chmodSync(filePath, 0o644);
+      assert.deepStrictEqual(snapshotTree(tmp), before, 'restoring the mode must restore the snapshot');
+
+      fs.mkdirSync(path.join(tmp, 'left-behind'));
+      assert.notDeepStrictEqual(snapshotTree(tmp), before, 'an empty directory must be visible (mkdirp leaves them)');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
 
   // --- Integration (issue #289, gh336): --update --personas=<a,b,c> unions
   // additively with the recorded personaSelection instead of replacing it.
