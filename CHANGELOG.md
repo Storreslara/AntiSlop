@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.31.46] - 2026-08-14
+
+**Drop the milestone pre-audit human-confirm checkpoint, reversing a thrice-affirmed prior rejection (gh348-15, Step 15 of #348 spec).** Operator ruling R9.5 accepts finding 3.3 and explicitly re-opens it after being shown the prior rejection verbatim: operator OQ4 originally said "keep it as-is"; Pass 3 Step 12 rejected the idea "on assessment, not deferred"; a 2026-08-06 re-affirmation said "recorded so a Pass 4 does not re-open it." This spec *is* that Pass 4, and the operator chose to override the anti-re-litigation marker. **What is NOT reversed**: Pass 3's F10 proposed making the milestone audit itself opt-in — this step does not do that. The milestone-auditor's dispatch remains completely unconditional and mandatory (`docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md:28`'s "the gate is not optional" claim survives unmodified).
+
+### Changed
+- **`agents/orchestrator.md`**: deleted the `## Milestone audit gate` section's numbered pre-audit checkpoint (fetch spec assumptions, `AskUserQuestion` confirm/challenge pass, stop-if-challenged); the milestone-auditor dispatch is now unconditional. Re-homed the surviving re-plan-on-challenged-premise rule ("a materially challenged premise routes back to `spec-master`, not an audit finding to log and move on") into the existing findings-relay paragraph, per the finding's own suggested fix.
+- **`README.md`**: fixed a stale reference to the removed checkpoint in the `milestone-auditor` persona table row, found during this unit's downstream sweep.
+- **`.claude/agents/*.md`, `.claude/persona-protocol{,-slim}.md`, `.claude/protocol-digest.md`**: mirrors regenerated via `node bin/cli.js --update`.
+
 ## [0.31.45] - 2026-08-14
 
 **Collapse spec-master / milestone-auditor / task-master dispatch routing (gh348-14, Step 14 of #348 spec).** Operator ruling R9.4 accepted finding 3.4, and OQ-N1 resolved to option (a): `spec-master` and `milestone-auditor` now always dispatch on their `opus` frontmatter default — their `sonnet`/`fable` downgrade tiers are removed entirely; `task-master` is unchanged, still dispatching on its `sonnet` frontmatter default. This partially reverses operator OQ5 (which had rejected more-aggressive compression of this routing prose) and, per a gap found during this revision, makes `docs/adr/0013-fable-removed-from-roast-work-advisory-pass.md:22`'s `milestone-auditor` fable-tier caveat false — annotated in the same unit. `### Reviewer gate model selection` and `hooks/scripts/reviewer-tier.sh` are untouched (operator OQ3's protection, verified byte-identical).

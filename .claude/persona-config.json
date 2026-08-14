@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.45",
+  "pluginVersion": "0.31.46",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -44,7 +44,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "2108d2da8d0a1e649bfd0ef4dba08412a3d7b3a6145216ce5e1bb7db408003a5",
+    ".claude/agents/orchestrator.md": "99dda45480a3be59f408aa94f809a324367e68a54c07ac6912f0626635032ef7",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
     ".claude/agents/lead-programmer.md": "e70b7fbd737d4c4adde523e4d820c5169b04a2eaac063fb31329a69690945f31",
     ".claude/agents/spec-master.md": "0ed5f4e6b27636b99c15646f40a611fd4aa12319b47968bc100a19288577bf7f",
