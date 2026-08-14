@@ -173,6 +173,17 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   [modules/adapters.md](.claude/wiki/modules/adapters.md) and
   [modules/hooks.md](.claude/wiki/modules/hooks.md).
 
+**agent-memory write**:
+(unit #288, 2026-08-11) — a `Write` or `Edit` tool_use whose `file_path`
+  targets the agent-memory directory tree: `.claude/agent-memory/` or
+  `.claude/projects/*/memory/`. Distinct from general filesystem writes;
+  specifically observes memories saved by agents during their work. Recorded
+  by `scripts/agent-audit.sh`'s A8 section (Agent-memory writes) as an
+  informational audit event (never gating, never a finding). See [[gh-304
+  dual-marker incident]] for the concurrency defect that motivated tracking
+  memory writes (concurrent writes to `.claude/agent-memory/` can dirty the
+  git tree and fail marker preconditions).
+
 **clear-watermark**:
 **[Retired in 0.28.0; see review-join stamp below.]**
   Historically, `.claude/.last-review-clear` was a zero-byte file whose mtime
@@ -392,6 +403,18 @@ Claude Code the product — the IDE plugin and surrounding runtime
   `agent_type` privilege checks, or `Write`/`Edit` grant rejection at
   tool-call time), mitigation is via protocol documentation or harness
   upgrade, not repo-side code.
+
+**hook block event**:
+(unit #288, 2026-08-11) — a transcript event (a `tool_result` entry in
+  `message.content[]` with `is_error: true`) matching the pattern
+  `PreToolUse:<Tool> hook error: [<path>/<hook>.sh]: BLOCKED:`, signaling
+  that a `PreToolUse` hook refused a tool call. Distinct from the existing
+  **grant-denied** term, which is an append-only log record in
+  `.claude/review-audit.log` (not a transcript event). Hook block events are
+  recorded by `scripts/agent-audit.sh`'s A7 section (Hook block events) as
+  informational audit observations (never gating, never a finding). Named in
+  [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) as the event
+  class that detection mechanisms exist to observe for bypass-detection.
 
 **Agent identity**:
 in hook payloads' `agent_type` and `subagent_type` fields,
