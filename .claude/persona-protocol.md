@@ -250,10 +250,6 @@ pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`): turn-end and
 the next implementation dispatch are blocked while a completed unit awaits
 review.
 
-**Until 2026-07-27** (legacy-marker grace period), `task-gate.sh` warns-and-
-allows a legacy/empty/malformed marker instead of blocking, logging
-`legacy-marker-grace-period-warning`; after that, unconditional rejection.
-
 ## Pending-review flag (default-mode review backstop)
 In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
 `stop-gate.sh` carries its own mechanical backstop: whenever a gated agent

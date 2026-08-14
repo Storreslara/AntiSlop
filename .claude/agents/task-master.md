@@ -394,10 +394,6 @@ pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`): turn-end and
 the next implementation dispatch are blocked while a completed unit awaits
 review.
 
-**Until 2026-07-27** (legacy-marker grace period), `task-gate.sh` warns-and-
-allows a legacy/empty/malformed marker instead of blocking, logging
-`legacy-marker-grace-period-warning`; after that, unconditional rejection.
-
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
 (both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
