@@ -185,16 +185,23 @@ resolved. Your whole job here is **surfacing, not deciding**:
    may be a later session, after a restart, or from their own terminal; the
    packet is untracked-but-persistent, so nothing about this assumes the human
    was available the moment escalation fired.
-2. **Never run `run.sh` yourself and never pre-digest its result** — that would
+2. Point the human at `CHANGES.md` in that packet directory **(if present)** —
+   the **literate change summary** this project's `reviewer` (if present) wrote
+   at escalation time. Tell them to read it **before the diff**: it walks the
+   change in conceptual order, which a raw alphabetical diff does not. It is
+   comprehension material only — the `.escalated` marker stays the
+   authoritative record, and `CHANGES.md` never carries a decision. A unit with
+   no bundle still has one, and there it is the whole human-facing payload.
+3. **Never run `run.sh` yourself and never pre-digest its result** — that would
    restore the automation the escalation exists to interrupt. You surface the
    command; the human runs it.
-3. Surface the decision command template beside it, and **never write the
+4. Surface the decision command template beside it, and **never write the
    `DECISION` file yourself, and never offer to** — `human-decision-gate.sh`
    blocks every agent identity from writing it, this project's `reviewer` (if
    present) included:
    `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
    where `<ts>` is the standing marker's own first-line timestamp.
-4. Once the human says they have written it, dispatch this project's `reviewer`
+5. Once the human says they have written it, dispatch this project's `reviewer`
    (if present) afresh, **with `subagent_type: reviewer` set explicitly** — first
    non-blank line `Unit: <task-id>`, body naming only "resolve the standing
    escalation from its DECISION file". **Do not relay the decision in the

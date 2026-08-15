@@ -707,12 +707,14 @@ the collection of addressable **Agent** entities currently active in a
 (unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10; refreshed
   unit #138, 2026-08-11) — a directory structure created when a reviewer
   signals `ESCALATE-TO-HUMAN` on a unit, containing a snapshot of the unit's
-  microworld bundle (if any) plus a durable `PACKET.md` file. Written by the
+  microworld bundle (if any) plus a durable `PACKET.md` file and a
+  `CHANGES.md` **literate change summary** (unit #299). Written by the
   reviewer in the same action as the `.escalated` marker, sited at
   `.claude/human-review/<task-id>/` (distinct from the reviewed-markers
   directory). The `PACKET.md` is a byte-identical copy of the `.escalated`
   marker body (marker remains authoritative on divergence); a unit with no
-  bundle still receives a packet directory containing `PACKET.md` alone.
+  bundle still receives a packet directory containing `PACKET.md` and
+  `CHANGES.md` alone.
   Packets sit outside the reviewed-markers directory by design:
   `hooks/scripts/reviewed-path-gate.sh` blocks execution of anything under
   that path for non-reviewer callers, making a packet sited there unrunnable
@@ -801,6 +803,32 @@ the collection of addressable **Agent** entities currently active in a
   callers). The `.escalated` marker remains authoritative; if the two diverge, the marker
   is correct. Consumed by the **DECISION channel** (landed at unit #325/#326/#136)
   when routing escalated units to human review.
+
+**literate change summary**:
+(unit #299, 2026-08-15, Step 10 of the human-review convergence follow-ups) —
+  the `CHANGES.md` file the reviewer writes into the escalation packet
+  directory (`.claude/human-review/<task-id>/CHANGES.md`) in the same action as
+  the `.escalated` marker and [[PACKET.md]]. Explains **the change** to the
+  human who must now judge it, so they do not start from a raw alphabetically
+  ordered diff. Fixed four-section shape, asserted by exact-heading greps rather
+  than trusted to prose: `## Background`, `## What this change is for`,
+  `## Walkthrough` (the diff in conceptual order, one subsection per idea —
+  explicitly **not one subsection per file**, and not alphabetical), and
+  `## What to look at first`. Quotes the diff, never reproduces it; soft cap 400
+  lines. First line byte-exact:
+  `Comprehension material only — the .escalated marker is the authoritative record.`
+  Contrast with [[PACKET.md]], the near-synonym it is easiest to confuse it
+  with: `PACKET.md` is a *copy of the decision record* (byte-identical to the
+  marker body), while this is an *explanation of the change* and carries no
+  verdict at all. Neither is authoritative — the `.escalated` marker is. Written
+  **after** the would-be verdict is reached and never gates or influences it. A
+  unit with `microworld: none` still receives one, and there it is the entire
+  human-facing payload. Deleted with the rest of the packet in all three
+  terminal routes of the **DECISION channel**, in the same reviewer action.
+  Defined in `templates/persona-protocol.md`'s
+  "Fourth verdict: escalate-to-human" section.
+_Avoid_: change summary, walkthrough doc, CHANGES doc (use "literate change
+  summary", or name the file `CHANGES.md` directly)
 
 **humanReviewMode**:
 (unit #133, 2026-08-10, forward-looking; shipped unit #135, 2026-08-11;
