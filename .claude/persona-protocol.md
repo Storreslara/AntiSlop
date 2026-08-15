@@ -1,4 +1,4 @@
-<!-- antislop v0.31.55 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.56 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -391,6 +391,25 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
      least confident about.
 
   It **quotes** the diff, it does not reproduce it; soft cap 400 lines.
+- Write `QUIZ.md` and `QUIZ-ANSWERS.md` into that directory too — the
+  **comprehension quiz**, a speed regulator on the one route a human can
+  complete without demonstrating engagement. `QUIZ.md` carries 3 to 5
+  questions, each answerable from `CHANGES.md` and the bundle alone and each
+  about **consequence rather than recall** — *"what happens to X when Y is
+  absent?"*, never *"what is the new function called?"*, because a recall
+  question is answerable by skimming, which defeats the point.
+  `QUIZ-ANSWERS.md` carries the reviewer's answer key, in a **separate file**
+  so the human can attempt the questions first and self-check afterwards.
+
+  The quiz is self-administered, recorded, and
+  **never graded by the reviewer**, and it is **never a gate**.
+  The reviewer writes the questions and
+  the key and stops there: it never reads the human's answers, never marks them
+  right or wrong, and never conditions a verdict, a marker, or a route on them.
+  A reviewer that could mark a human's answers wrong and withhold their
+  approval would re-adjudicate the human, destroying the property the whole
+  escalation exists to create. Like `CHANGES.md`, both files are authored
+  **after** the would-be verdict is settled and **never gate or influence it**.
 - If the unit has **no** bundle: write `microworld: none` in the marker,
   create the packet directory anyway, and put `PACKET.md` and `CHANGES.md` in
   it alone. A human still gets the would-be verdict, the criteria, and the
@@ -407,7 +426,8 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   through the session. `.claude/human-review/` is ungated by design. Do not
   "tidy" the packet under the marker directory; that quietly breaks the whole
   feature.
-- Lifecycle: the packet — bundle copy, `PACKET.md`, and `CHANGES.md` alike —
+- Lifecycle: the packet — bundle copy, `PACKET.md`, `CHANGES.md`, `QUIZ.md`,
+  and `QUIZ-ANSWERS.md` alike —
   is deleted by the reviewer at the same moment it
   deletes `.escalated`. Both are untracked, so `git clean -fdx` or a fresh
   clone destroys a pending escalation unrecoverably — documented, not fixed;
@@ -459,12 +479,51 @@ On a missing, malformed, or stale `DECISION`: report and wait.
 
 | Human decision | Reviewer writes | `.escalated` | Packet | Cap slot | Next move |
 |---|---|---|---|---|---|
-| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601>` attestation line quoting the `DECISION` file, after the required first line | deleted | deleted | — | unit done |
+| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601> quiz: <token>` attestation line quoting the `DECISION` file, after the required first line | deleted | deleted | — | unit done |
 | **Reject with reason** | `.fail`, with the human's reason **verbatim** from the body as the defect list | deleted | deleted | **consumes one** | back to `lead-programmer`, normal FAIL route |
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the human's full prescribed fix **verbatim** from the body | deleted | deleted | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
 
+**The `quiz:` token on the approve attestation line.** The approve row's
+attestation line carries one required `quiz:` token, recording what the human
+actually did with the **comprehension quiz**. Exactly one of:
+
+- `quiz: passed-self-check` — they took the quiz and checked their own answers
+  against `QUIZ-ANSWERS.md`.
+- `quiz: skipped` — they chose not to take it.
+- `quiz: none-offered` — valid **only** when no `QUIZ.md` was written.
+
+The human states it in the `DECISION` file, as a body line after `by: <name>`,
+so it reaches the reviewer through the same file every other part of the
+decision travels in — approve-route template:
+
+`printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\nquiz: <token>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
+
+`quiz: skipped` is a **first-class, legitimate outcome**. It must not block,
+must not warn, and must not be retried, and the reviewer transcribes it exactly
+as it transcribes the other two — no different treatment of any kind. Its
+entire value is being *on the record*: an auditor reading
+`.claude/reviewed/<task-id>.pass` can see which approvals came with a
+self-check and which did not. A protocol that named only the success token
+would have quietly built a gate. If the `DECISION` file carries no `quiz:`
+line, the reviewer transcribes `quiz: skipped` when a `QUIZ.md` was written and
+`quiz: none-offered` when none was — it does **not** stall, warn, or send the
+human back for it; an absent line is a skip, which is legitimate.
+
+**The quiz is offered on the approve route only.** Reject-with-reason already
+carries the human's reason and fixable-a-specific-way already carries their
+directive — both are evidence of engagement, and approve is the only route a
+human can complete without any. Do not "harmonise" the three routes by adding a
+`quiz:` token to the other two.
+
+**Marker-format safety.** The token rides on the **appended** `human:`
+attestation line, never on the marker's required first line. `task-gate.sh`'s
+`marker_valid()` checks only line 1's `PASS <task-id> ` prefix and
+non-emptiness (PASS marker format v3 above), so no value of this token can
+invalidate a marker.
+
 In all three routes the packet is deleted in the **same reviewer action** that
-deletes `.escalated` — the whole directory, so `PACKET.md`, `CHANGES.md`, and
+deletes `.escalated` — the whole directory, so `PACKET.md`, `CHANGES.md`,
+`QUIZ.md`, `QUIZ-ANSWERS.md`, and
 the bundle copy all go together, on the same rule and with no route exempt —
 via `rm -rf .claude/human-review/<task-id>` — the decision
 gate's sanctioned deletion path, and what removes the decision file too, since

@@ -47,10 +47,27 @@ function canonicalHeaders() {
 }
 
 // Per-port parity map keyed by the EXACT canonical header. Each value is
-// either { probe } (content that must appear in the port) or { deferred }
-// (an explicit, documented gap this port is allowed to omit). The deferred
-// entries are the pre-existing broader drift spec-master surfaced — recorded
-// here visibly, not silently fixed and not silently ignored.
+// either { probe } (content that must appear in the port — a string, or an
+// array when one section carries several load-bearing sub-artifacts) or
+// { deferred } (an explicit, documented gap this port is allowed to omit). The
+// deferred entries are the pre-existing broader drift spec-master surfaced —
+// recorded here visibly, not silently fixed and not silently ignored.
+//
+// The escalate-to-human row probes the packet's human-facing artifacts by
+// name, not just the header: gh299 (CHANGES.md) and gh300 (QUIZ.md) both
+// landed in these hand-adapted ports, and a header-only probe would pass on a
+// port that had silently dropped either one.
+const ESCALATION_PROBES = [
+  'Fourth verdict: escalate-to-human',
+  'Comprehension material only',   // CHANGES.md's byte-exact authority line (gh299)
+  'QUIZ.md',                       // comprehension quiz, gh300
+  'QUIZ-ANSWERS.md',
+  'quiz: passed-self-check',
+  'quiz: skipped',                 // the non-gate token — omitting it builds a gate
+  'quiz: none-offered',
+  'never graded by the reviewer',  // the R6 authority constraint, gh300
+];
+
 const codexMap = {
   'Structural questions go to the explorer': { probe: 'Structural questions go to the explorer' },
   'Answer shape': { probe: 'Answer shape' },
@@ -67,7 +84,7 @@ const codexMap = {
   'Pending-review flag (default-mode review backstop)': { probe: 'Pending-review flag' },
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
-  'Fourth verdict: escalate-to-human': { probe: 'Fourth verdict: escalate-to-human' },
+  'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Codex has no per-agent memory primitive (file convention only) — see platform notes' },
   'Microworld bundles (format and the check contract)': { probe: 'Microworld bundles' },
@@ -89,7 +106,7 @@ const cursorMap = {
   'Pending-review flag (default-mode review backstop)': { probe: 'Pending-review flag' },
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
-  'Fourth verdict: escalate-to-human': { probe: 'Fourth verdict: escalate-to-human' },
+  'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Cursor has no per-agent memory primitive (file convention only) — see platform notes' },
   'Microworld bundles (format and the check contract)': { probe: 'Microworld bundles' },
@@ -109,7 +126,9 @@ function checkPort(headers, portText, portMap, portName) {
   }
   for (const [header, rule] of Object.entries(portMap)) {
     if (rule.probe) {
-      assert.ok(portText.includes(rule.probe), `${portName}: section "${header}" expected present (probe ${JSON.stringify(rule.probe)}) but missing`);
+      for (const probe of [].concat(rule.probe)) {
+        assert.ok(portText.includes(probe), `${portName}: section "${header}" expected present (probe ${JSON.stringify(probe)}) but missing`);
+      }
     } else if (!rule.deferred) {
       throw new Error(`${portName}: map entry for "${header}" must set probe or deferred`);
     }
