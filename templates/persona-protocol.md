@@ -464,7 +464,8 @@ where `escalation:` carries the standing `.escalated` marker's own first-line
 timestamp — the staleness binding, so a decision left over from an earlier
 escalation of the same unit cannot resolve a later one. Second line `by: <name>`.
 Body: for `reject`, the human's reason verbatim; for `direct`, the full
-prescribed fix verbatim.
+prescribed fix verbatim; for `approve`, a `quiz: <token>` line — see the
+`quiz:` token rules below.
 
 **Reviewer resolution.** The resolution dispatch names only the unit
 (`Unit: <task-id>`, plus "resolve the standing escalation from its DECISION

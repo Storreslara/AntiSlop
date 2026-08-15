@@ -54,7 +54,7 @@
     ".claude/agents/milestone-auditor.md": "1fe0ae615cc375b2e69f76dddc855bb96b4a7eefadaa756c4b00484c16254388",
     ".claude/agents/agent-auditor.md": "e2c60fc3cd47e5ba5686da193ceb3eec290f370cd6655a9cfe2bf1507edfd747",
     ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
-    ".claude/persona-protocol.md": "9411a9a943f9ad1f9ff3603d5a7e6bb50dc92ae26878f2650d50b75ba4f7d8cd",
+    ".claude/persona-protocol.md": "a3258d59355eadd23ad759759579f7d68538d66c628e8388cfb63a3e7bf194e1",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "1bf68b4f87d059438a74cda7dbeef5bfbaa415fc0cf04441d8e456627ed77d19",

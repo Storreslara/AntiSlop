@@ -222,7 +222,7 @@ First line exactly
 where `escalation:` repeats the standing marker's own first-line timestamp - the
 staleness binding, so an older decision cannot resolve a later escalation. Second
 line `by: <name>`. Body: the reason verbatim for `reject`, the full prescribed fix
-verbatim for `direct`.
+verbatim for `direct`, a `quiz: <token>` line for `approve`.
 
 The resolution dispatch names only the unit and carries no decision. The reviewer
 verifies the file exists, parses its first line, checks the task-id and the
