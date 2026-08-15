@@ -19,6 +19,46 @@ for f in hooks/scripts/*.sh hooks/scripts/lib/*.sh; do
 done
 
 echo
+echo "== hook script executable bits =="
+# hooks.json (and both adapter ports' hooks.json) invoke these scripts
+# DIRECTLY, with no `bash` prefix, so a lost +x silently disables that gate
+# (issue #273; regressed twice inside unit #262). */lib/*.sh are sourced,
+# never executed, and are 644 by design - the non-recursing glob excludes
+# them.
+for d in hooks/scripts adapters/codex/hooks/scripts adapters/cursor/hooks/scripts; do
+  n=0
+  for f in "$d"/*.sh; do
+    [ -e "$f" ] || break
+    n=$((n + 1))
+    if [ -x "$f" ]; then
+      echo "OK   $f executable"
+    else
+      echo "FAIL $f is not executable (invoked directly; a lost +x disables this gate)"
+      fail=1
+    fi
+  done
+  if [ "$n" -eq 0 ]; then
+    echo "FAIL no *.sh found under $d/ - executable-bit check would be vacuous"
+    fail=1
+  fi
+done
+# The git index is what actually ships, and it is immune to a checkout
+# filesystem that cannot represent the bit.
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  bad=$(git ls-files -s hooks/scripts adapters/codex/hooks/scripts adapters/cursor/hooks/scripts \
+        | grep -v '/lib/' | awk '$1 != "100755" { print $1 "  " $4 }')
+  if [ -z "$bad" ]; then
+    echo "OK   git index records mode 100755 for every directly-invoked hook script"
+  else
+    echo "FAIL git index records a non-executable mode:"
+    echo "$bad"
+    fail=1
+  fi
+else
+  echo "SKIP git index mode check (not inside a git work tree)"
+fi
+
+echo
 echo "== JSON validity =="
 for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json \
          templates/persona-config.schema.json templates/settings-fragment.json; do
