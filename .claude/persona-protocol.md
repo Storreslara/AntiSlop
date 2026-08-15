@@ -1,4 +1,4 @@
-<!-- antislop v0.31.50 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.51 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -69,6 +69,11 @@ slice you actually need rather than re-running the same command unfiltered.
   diagnose mid-task: fall back immediately to `Bash` — a quoted heredoc
   (`cat > file << 'EOF'`) for whole-file authoring, or a `python3` heredoc that
   asserts `old` occurs exactly once before replacing, for surgical edits.
+- A heredoc recreates the file at your umask default (usually `644`),
+  silently dropping an executable bit the original had. Capture the mode
+  first (`stat -c %a`), restore it after (`chmod`), or `chmod --reference` an
+  untouched sibling — hook scripts are invoked directly, so a lost `+x`
+  disables that gate outright.
 - If either `reviewed-path-gate.sh` or `human-decision-gate.sh` refuses a
   heredoc, read its refusal text before doing anything else: both gates print
   their complete remediation — the sanctioned heredoc template, when

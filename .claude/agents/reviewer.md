@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.50 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.51 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -327,6 +327,11 @@ slice you actually need rather than re-running the same command unfiltered.
   diagnose mid-task: fall back immediately to `Bash` — a quoted heredoc
   (`cat > file << 'EOF'`) for whole-file authoring, or a `python3` heredoc that
   asserts `old` occurs exactly once before replacing, for surgical edits.
+- A heredoc recreates the file at your umask default (usually `644`),
+  silently dropping an executable bit the original had. Capture the mode
+  first (`stat -c %a`), restore it after (`chmod`), or `chmod --reference` an
+  untouched sibling — hook scripts are invoked directly, so a lost `+x`
+  disables that gate outright.
 - If either `reviewed-path-gate.sh` or `human-decision-gate.sh` refuses a
   heredoc, read its refusal text before doing anything else: both gates print
   their complete remediation — the sanctioned heredoc template, when

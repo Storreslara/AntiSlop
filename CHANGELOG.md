@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.31.51] - 2026-08-14
+
+**Close the root cause behind executable-bit loss on hook scripts (gh273-2, Step 2 of #273 spec).** When the protocol's prescribed heredoc-fallback technique (used when Write/Edit are unavailable, e.g. in a teammate dispatch) recreates a file, it silently drops executable bits because shell redirection creates files at umask default (644). Step 2 adds mode-preservation guidance at the exact point the protocol prescribes that technique, closing the fail-open scenario in consumer projects where a lost `+x` on a directly-invoked hook script silently disables that gate. This is paired with Step 1 (gh273-1, merged earlier), which adds a merge-gate mode assertion; together they make the regression mechanically detectable at merge time and prevent it at the technique level.
+
+### Changed
+- **`templates/persona-protocol.md`**: added mode-preservation guidance to the `## Teammate Write/Edit fallback and gate rephrasing doctrine` section, immediately after the "fall back immediately to `Bash`" bullet, with guidance on capturing/restoring mode and a note that hook scripts are invoked directly, so a lost `+x` disables that gate outright.
+- **`.claude/agents/*.md`** (lead-programmer, reviewer): regenerated to include the new mode-preservation bullet; researcher omitted because it uses the slim protocol tier (`persona-protocol-slim.md`), which is designed to carry only role-agnostic content and does not include this section (out of scope per design).
+- **`.claude/persona-protocol.md`** / **`.claude/protocol-digest.md`**: mirrors regenerated via `node bin/cli.js --overwrite`.
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.50 → 0.31.51 (constitution P3).
+
 ## [0.31.50] - 2026-08-14
 
 **Give `bin/cli.js --update` an additive `--personas=` flag and an honest write/no-write flag split (#289, #291).** Two defects in the `--update` CLI surface, closed together because they touch adjacent argument-parsing code. `--personas=<a,b,c>` (#289) adds newly-registered optional personas to an already-adapted project by unioning them into the recorded `personaSelection` — never replacing it, unlike the fresh-scaffold path's `--personas=`, which does replace. `--check` (#291) is renamed to `--force-render`, its honest name for a control that forces the render loop and still writes; `--check` remains a deprecated alias that prints a stderr warning before any write. A genuine no-write `--dry-run` is added, covering all twelve write sites on the `--update` path and exiting `0`/`3`/`1` based on whether a live run would actually mutate the tree, closing a verification gap `--check`'s self-healing behaviour could not: `--check` silently repairs drift and exits `0` after writing, while `--dry-run`'s exit code is a direct, provable promise about the tree.
