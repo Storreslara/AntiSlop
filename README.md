@@ -189,6 +189,15 @@ gets human review on its next plugin update without editing anything, since
 unrecognised value also resolves to `critical`: this fails toward asking you,
 never toward silently approving. Set `"humanReviewMode": "off"` to opt out.
 
+**What's in the packet.** The unit's microworld bundle if it has one, `PACKET.md`
+— a verbatim copy of the escalation marker, so the directory reads standalone —
+and `CHANGES.md`, a **literate change summary**: the change walked in conceptual
+order, one section per idea rather than one per file, ending with the two or
+three places the reviewer is least sure about. Read `CHANGES.md` before the
+diff; that's what it's for. It is comprehension material only — the escalation
+marker stays the authoritative record — and a unit with no bundle still gets
+one. The whole directory is deleted when your decision resolves the escalation.
+
 The default is `critical` on purpose. Review that never stops is review that
 never says no, and an agent loop that can approve its own critical work will
 happily hyperscale slop. The friction here is the feature — this is the one
