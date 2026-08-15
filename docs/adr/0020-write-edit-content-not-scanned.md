@@ -12,17 +12,17 @@ The `reviewed-path-gate.sh` hook deliberately does **not** scan the *content* of
 
 The asymmetry was reported in issue #288 as a potential loophole: a `Write` call whose content discusses `.claude/reviewed` is allowed, while an equivalent Bash command spelling the substring in a heredoc is refused.
 
-**Measurement 1: False-positive surface** (2026-08-14)
+**Measurement 1: False-positive surface** (2026-08-11, commit ba69623)
 
 ```bash
 GATE_PATH="MARKER_DIRECTORY_PLACEHOLDER"
 GATE_PATH=$(echo "$GATE_PATH" | sed 's/MARKER_DIRECTORY_PLACEHOLDER/.claude\/reviewed/')
-grep -rl --exclude-dir=.git --exclude-dir=.claude/reviewed "$GATE_PATH" 2>/dev/null | wc -l
+git grep -l "$GATE_PATH" ba69623 | wc -l
 ```
 
-Returns **110 files** (non-marker files) as of today (2026-08-14), many of which legitimately discuss the gate's behavior in documentation, ADRs, protocol files, and test suites. A naive content scan on `Write`/`Edit` would flag all 110 as potential violations, blocking routine maintenance of this repo's own documentation by `scribe`, `spec-master`, and `lead-programmer` personas — the very roles that write ADRs, protocol updates, and plan documents discussing the gate.
+Returns **109 tracked files** at commit ba69623 (2026-08-11), many of which legitimately discuss the gate's behavior in documentation, ADRs, protocol files, and test suites. The count is tracked-only and inherently marker-free because `.claude/reviewed` is gitignored (see `.gitignore:12`). A naive content scan on `Write`/`Edit` would flag all 109 as potential violations, blocking routine maintenance of this repo's own documentation by `scribe`, `spec-master`, and `lead-programmer` personas — the very roles that write ADRs, protocol updates, and plan documents discussing the gate.
 
-**Measurement 2: Zero discriminative power on the actual incident** (2026-08-11)
+**Measurement 2: Zero discriminative power on the actual incident** (2026-08-11, commit ba69623)
 
 The incident file at commit `1be4ca1` (`feedback_reviewed_path_gate_heredoc_workaround.md`) contains the literal substring exactly once:
 
@@ -30,7 +30,13 @@ The incident file at commit `1be4ca1` (`feedback_reviewed_path_gate_heredoc_work
 git show 1be4ca1 2>/dev/null | grep -c "claude/reviewed" || true
 ```
 
-Returns **1** — a benign prose mention at line 9 describing the gate in a sentence. The actual malicious content (lines 25-37) — the bypass recipe using string concatenation (`".claude" + "/reviewed"`) to evade a substring scan — contains no substring hit at all. A content-based gate would flag the file for the wrong reason (the prose), miss the technique (the concatenation), and flag 13 other legitimate agent-memory files that document the *sanctioned* placeholder-then-substitute pattern the gate's own refusal text recommends.
+Returns **1** — a benign prose mention at line 9 describing the gate in a sentence. The actual malicious content (lines 25-37) — the bypass recipe using string concatenation (`".claude" + "/reviewed"`) to evade a substring scan — contains no substring hit at all. A content-based gate would flag the file for the wrong reason (the prose), miss the technique (the concatenation), and flag 12 other legitimate agent-memory files that document the *sanctioned* placeholder-then-substitute pattern the gate's own refusal text recommends. The 1 is pinned to commit `1be4ca1` (the incident blob itself); the 12 is pinned to commit `ba69623` (2026-08-11):
+
+```bash
+GATE_PATH="MARKER_DIRECTORY_PLACEHOLDER"
+GATE_PATH=$(echo "$GATE_PATH" | sed 's/MARKER_DIRECTORY_PLACEHOLDER/.claude\/reviewed/')
+git grep -l "$GATE_PATH" ba69623 -- .claude/agent-memory | wc -l
+```
 
 **Measurement 3: Reviewer-approved replacement file passes a content scan** (2026-08-11)
 
