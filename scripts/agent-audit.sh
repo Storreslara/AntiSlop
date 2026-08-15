@@ -312,9 +312,10 @@ DISTRIBUTION="$(mktemp)"; WORK_FILES+=("$DISTRIBUTION")
 SKILLS="$(mktemp)"; WORK_FILES+=("$SKILLS")
 
 emit_finding() {
-  # $1 id, $2 session, $3 agent, $4 persona, $5 tool/extra, $6 label
-  jq -nc --arg id "$1" --arg session "$2" --arg agent "$3" --arg persona "$4" --arg tool "$5" --arg label "$6" \
-    '{id:$id, session:$session, agent:$agent, persona:$persona} + (if $tool=="" then {} else {tool:$tool} end) + (if $label=="" then {} else {label:$label} end)' \
+  # $1 id, $2 session, $3 agent, $4 persona, $5 tool/extra, $6 label, $7 status (optional)
+  local status="${7:-}"
+  jq -nc --arg id "$1" --arg session "$2" --arg agent "$3" --arg persona "$4" --arg tool "$5" --arg label "$6" --arg status "$status" \
+    '{id:$id, session:$session, agent:$agent, persona:$persona} + (if $tool=="" then {} else {tool:$tool} end) + (if $label=="" then {} else {label:$label} end) + (if $status=="" then {} else {status:$status} end)' \
     >> "$FINDINGS"
 }
 
@@ -347,8 +348,26 @@ while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
   fi
   mapfile -t servers < <(persona_mcp_servers "$pf")
 
-  while IFS=$'\t' read -r tname fpath; do
+  # id -> is_error, built from this dispatch's own tool_result records
+  # (joined by tool_use.id == tool_result.tool_use_id, per the Step 12
+  # spec - never by array position, since a tool_result for an unrelated
+  # id can otherwise sit at the same position).
+  declare -A A1_ERR_MAP=()
+  while IFS=$'\t' read -r rid is_err; do
+    [ -n "$rid" ] || continue
+    if [ "$is_err" = "true" ]; then
+      A1_ERR_MAP["$rid"]="true"
+    elif [ -z "${A1_ERR_MAP[$rid]:-}" ]; then
+      A1_ERR_MAP["$rid"]="false"
+    fi
+  done < <(jq -r '.message.content[]? | select(.type=="tool_result") | [(.tool_use_id // ""), (.is_error // false)] | @tsv' "$jf" 2>/dev/null)
+
+  while IFS=$'\t' read -r tid tname fpath; do
     [ -n "$tname" ] || continue
+    status="executed"
+    if [ "${A1_ERR_MAP[$tid]:-false}" = "true" ]; then
+      status="refused"
+    fi
     case "$tname" in
       mcp__*)
         srv="${tname#mcp__}"; srv="${srv%%__*}"
@@ -356,7 +375,7 @@ while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
         for s in "${servers[@]:-}"; do
           [ "$s" = "$srv" ] && { found=1; break; }
         done
-        [ "$found" = 1 ] || emit_finding A1 "$sid" "$aid" "$persona" "$tname" ""
+        [ "$found" = 1 ] || emit_finding A1 "$sid" "$aid" "$persona" "$tname" "" "$status"
         ;;
       Write|Edit)
         case "$fpath" in
@@ -365,17 +384,17 @@ while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
         esac
         case "$declared" in
           *",$tname,"*) : ;;
-          *) emit_finding A1 "$sid" "$aid" "$persona" "$tname" "" ;;
+          *) emit_finding A1 "$sid" "$aid" "$persona" "$tname" "" "$status" ;;
         esac
         ;;
       *)
         case "$declared" in
           *",$tname,"*) : ;;
-          *) emit_finding A1 "$sid" "$aid" "$persona" "$tname" "" ;;
+          *) emit_finding A1 "$sid" "$aid" "$persona" "$tname" "" "$status" ;;
         esac
         ;;
     esac
-  done < <(jq -r '.message.content[]? | select(.type=="tool_use") | [.name, (.input.file_path // "")] | @tsv' "$jf" 2>/dev/null)
+  done < <(jq -r '.message.content[]? | select(.type=="tool_use") | [(.id // ""), .name, (.input.file_path // "")] | @tsv' "$jf" 2>/dev/null)
 done < "$DISPATCHES"
 
 # --- A2: unregistered agent type ---------------------------------------
@@ -565,7 +584,11 @@ print_section() {
   jq -r --arg id "$id" 'select(.id==$id) | "  session=\(.session) agent=\(.agent) persona=\(.persona)" + (if .tool then " tool=\(.tool)" else "" end) + (if .label then " \(.label)" else "" end)' "$FINDINGS" 2>/dev/null
 }
 
-print_section A1 "Undeclared tool use"
+n1="$(section_count A1)"
+n1_executed="$(jq -s '[.[] | select(.id=="A1" and .status=="executed")] | length' "$FINDINGS" 2>/dev/null)"
+n1_refused="$(jq -s '[.[] | select(.id=="A1" and .status=="refused")] | length' "$FINDINGS" 2>/dev/null)"
+echo "A1 Undeclared tool use (n=$n1, executed=$n1_executed, refused=$n1_refused)"
+jq -r 'select(.id=="A1") | "  session=\(.session) agent=\(.agent) persona=\(.persona)" + (if .tool then " tool=\(.tool)" else "" end) + (if .status then " status=\(.status)" else "" end) + (if .label then " \(.label)" else "" end)' "$FINDINGS" 2>/dev/null
 print_section A2 "Unregistered agent type"
 print_section A3 "Nested spawn"
 print_section A4 "Gated dispatch without review"

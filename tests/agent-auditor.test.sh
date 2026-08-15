@@ -26,6 +26,7 @@ mkdir -p \
   "$FIXTURE_ROOT/s6/subagents" \
   "$FIXTURE_ROOT/s7/subagents" \
   "$FIXTURE_ROOT/s8/subagents" \
+  "$FIXTURE_ROOT/s9/subagents" \
   "$FIXTURE_ROOT/reviewed"
 
 # --- s1: A1 (undeclared tool use), A2 (unregistered agent), A3 (nested spawn) ---
@@ -208,6 +209,53 @@ echo '{"agentType":"spec-master","description":"test","model":"sonnet","spawnDep
 echo '{"type":"user","timestamp":"2026-08-01T17:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
   > "$FIXTURE_ROOT/s8.jsonl"
 
+# --- s9: A1_refused / A1_executed - tool_use.id == tool_result.tool_use_id
+# join (Step 12). tool_result records live in a LATER record of the same
+# transcript than the tool_use they answer - both sit under
+# .message.content[]. ---
+
+# A1_refused: undeclared Write, matching tool_result carries is_error=true.
+# Its content also carries the R5 canary sentinel CANARY-ERROR-BODY - a
+# refusal message can quote a path/command, and that body must never reach
+# either render (R5 guard, ordered edit 6).
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s9/subagents/agent-a1refused.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:01Z","message":{"content":[{"type":"tool_use","id":"tA","name":"Write","input":{}}]}}'
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"tA","is_error":true,"content":"No such tool available: CANARY-ERROR-BODY"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s9/subagents/agent-a1refused.jsonl"
+
+# A1_executed: undeclared Write, matching tool_result carries is_error=false.
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s9/subagents/agent-a1executed.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:01Z","message":{"content":[{"type":"tool_use","id":"tE","name":"Write","input":{}}]}}'
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:02Z","message":{"content":[{"type":"tool_result","tool_use_id":"tE","is_error":false,"content":"written"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:03Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s9/subagents/agent-a1executed.jsonl"
+
+# A1_joinorder: two undeclared tool_use calls (tA2=Write, tB2=Edit) whose
+# tool_result records appear in the file in the OPPOSITE order from their
+# ids (tB2's result comes first, tA2's second). A join that matches by
+# array position instead of id (the Model note's named risk) would swap the
+# two statuses; a correct id-based join keeps them straight.
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s9/subagents/agent-a1joinorder.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:01Z","message":{"content":[{"type":"tool_use","id":"tA2","name":"Write","input":{}}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:02Z","message":{"content":[{"type":"tool_use","id":"tB2","name":"Edit","input":{}}]}}'
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:03Z","message":{"content":[{"type":"tool_result","tool_use_id":"tB2","is_error":false,"content":"edited"}]}}'
+  echo '{"type":"user","timestamp":"2026-08-01T20:00:04Z","message":{"content":[{"type":"tool_result","tool_use_id":"tA2","is_error":true,"content":"blocked"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T20:00:05Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s9/subagents/agent-a1joinorder.jsonl"
+
+echo '{"type":"user","timestamp":"2026-08-01T20:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
+  > "$FIXTURE_ROOT/s9.jsonl"
+
 # --- run the real script against the fixture tree, for real ---
 
 JSON_OUTPUT="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash scripts/agent-audit.sh --all --json)"
@@ -256,9 +304,36 @@ assert_task_finding() {
   fi
 }
 
+assert_finding_status() {
+  # $1 = anomaly id, $2 = agent id, $3 = tool name, $4 = expected status
+  local id="$1" agent="$2" tool="$3" want="$4" got
+  got="$(printf '%s' "$JSON_OUTPUT" | jq -r --arg id "$id" --arg agent "$agent" --arg tool "$tool" \
+    '[.findings[] | select(.id==$id and .agent==$agent and .tool==$tool)][0].status // "MISSING"')"
+  if [ "$got" = "$want" ]; then
+    echo "OK   $id agent=$agent tool=$tool status=$got"
+  else
+    echo "FAIL $id agent=$agent tool=$tool expected status=$want got=$got"
+    fail=1
+  fi
+}
+
 echo "== A1: undeclared tool use =="
 assert_agent_finding A1 a1bad present
 assert_agent_finding A1 a1good absent
+
+echo "== A1_refused / A1_executed: tool_use.id == tool_result.tool_use_id join (Step 12) =="
+assert_finding_status A1 a1refused Write refused
+assert_finding_status A1 a1executed Write executed
+assert_finding_status A1 a1joinorder Write refused
+assert_finding_status A1 a1joinorder Edit executed
+
+echo "== Step12 AC2 shape: JSON A1 findings carry both statuses =="
+if printf '%s' "$JSON_OUTPUT" | jq -e '[.findings[]|select(.id=="A1")|.status]|(index("refused") and index("executed"))' >/dev/null; then
+  echo "OK   A1 findings carry both refused and executed statuses"
+else
+  echo "FAIL A1 findings missing one of refused/executed statuses"
+  fail=1
+fi
 
 echo "== A2: unregistered agent type =="
 assert_agent_finding A2 a2bad present
@@ -298,6 +373,28 @@ if printf '%s' "$PLAIN_OUTPUT" | grep -q "CANARY-PROMPT-BODY"; then
   fail=1
 else
   echo "OK   plain-text output does not contain the privacy canary string"
+fi
+
+echo "== Step12 AC3 shape: plain-text A1 header states the refused/executed split =="
+if printf '%s' "$PLAIN_OUTPUT" | grep -qE '^A1 .*refused'; then
+  echo "OK   plain-text A1 header states the refused/executed split"
+else
+  echo "FAIL plain-text A1 header does not mention refused"
+  fail=1
+fi
+
+echo "== R5 (Step12): tool_result body must never leak, even for a refused call =="
+if printf '%s' "$JSON_OUTPUT" | grep -q "CANARY-ERROR-BODY"; then
+  echo "FAIL --json output leaked the tool_result canary string"
+  fail=1
+else
+  echo "OK   --json output does not contain the tool_result canary string"
+fi
+if printf '%s' "$PLAIN_OUTPUT" | grep -q "CANARY-ERROR-BODY"; then
+  echo "FAIL plain-text output leaked the tool_result canary string"
+  fail=1
+else
+  echo "OK   plain-text output does not contain the tool_result canary string"
 fi
 
 echo "== C1.5: A7 row distinguishes Bash and Write blocks on same dispatch =="
@@ -445,6 +542,38 @@ mutation_proof() {
 
 echo "== mutation proof: A1 =="
 mutation_proof A1 a1bad
+
+echo "== mutation proof: A1 status join (Step 12, a1refused) =="
+# Uses its own fresh mutant copy (not $MUTANT_DIR, whose emit_finding A1
+# call was already neutralized by mutation_proof above) to prove the
+# refused/executed join is itself load-bearing, not just riding on the
+# emit_finding call existing.
+MUTANT_STATUS_DIR="$FIXTURE_ROOT/mutant-status"
+mkdir -p "$MUTANT_STATUS_DIR/scripts"
+cp scripts/agent-audit.sh "$MUTANT_STATUS_DIR/scripts/agent-audit.sh"
+ln -s "$(pwd)/hooks" "$MUTANT_STATUS_DIR/hooks"
+ln -s "$(pwd)/agents" "$MUTANT_STATUS_DIR/agents"
+ln -s "$(pwd)/.claude" "$MUTANT_STATUS_DIR/.claude"
+ln -s "$(pwd)/templates" "$MUTANT_STATUS_DIR/templates"
+
+before_status="$(grep -c 'status="refused"' "$MUTANT_STATUS_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before_status" -eq 0 ]; then
+  echo "FAIL mutation proof for A1 status: no status=\"refused\" assignment found to neutralize"
+  fail=1
+else
+  sed -i 's/status="refused"/status="executed" # MUTATED-A1-STATUS/' "$MUTANT_STATUS_DIR/scripts/agent-audit.sh"
+  after_status="$(grep -c 'status="refused"' "$MUTANT_STATUS_DIR/scripts/agent-audit.sh" || true)"
+
+  mutant_status="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_STATUS_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+    jq -r '[.findings[] | select(.id=="A1" and .agent=="a1refused" and .tool=="Write")][0].status // "MISSING"')"
+
+  if [ "$after_status" -eq 0 ] && [ "$mutant_status" = "executed" ]; then
+    echo "OK   mutation proof for A1 status: hard-coding status to executed flips a1refused from refused to executed (status=$mutant_status) - the join was load-bearing"
+  else
+    echo "FAIL mutation proof for A1 status: still reports status=$mutant_status after mutation (call sites remaining=$after_status) - suite would not catch this regression"
+    fail=1
+  fi
+fi
 
 echo "== mutation proof: A1 memory-path exclusion (C1.6, a8bad) =="
 # Proves C1.6's "a8bad produces no A1 row" assertion is genuinely exercising
