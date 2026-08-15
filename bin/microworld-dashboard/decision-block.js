@@ -173,5 +173,5 @@ function composeDecisionBlock(kind, context) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { composeDecisionBlock, composeEscalationDecisionBody };
+  module.exports = { composeDecisionBlock, composeEscalationDecisionBody, ID_RE };
 }
