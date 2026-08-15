@@ -871,11 +871,19 @@ unit the reviewer *would have passed* escalates.
 
 **Trigger.** Escalate when `humanReviewMode` (Step 6) is `all`, or is
 `critical`/absent **and** the unit meets the existing heavy-unit trigger
-already defined in this protocol's "Reviewer roast-work advisory pass
-trigger" section — ≥ ~8 impacted files OR ≥ ~400 changed lines;
-structural/cross-cutting change; or security-sensitive surface. **Reuse that
-section by reference; do not restate or re-derive the criteria**, so a
-future amendment to the trigger cannot leave two copies disagreeing.
+already defined in `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` §
+"Heavy unit trigger" (as amended by ADR-0013). **Reuse that section by
+reference; do not restate or re-derive the criteria**, so a future amendment
+to the trigger cannot leave two copies disagreeing.
+
+**CORRECTED 2026-08-15 —** This paragraph originally stated the criteria
+inline (≥ ~8 impacted files OR ≥ ~400 changed lines; structural/cross-cutting
+change; or security-sensitive surface) and attributed them to a non-existent
+protocol section. The paragraph now points directly to
+`docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit
+trigger" (as amended by ADR-0013), matching what
+`templates/persona-protocol.md:329-336` (the ## Fourth verdict section)
+actually references.
 
 **Marker.** `.claude/reviewed/<task-id>.escalated`, written by the reviewer
 via Bash — the same named bookkeeping exception as `.pass`/`.fail`/`.blocked`,
@@ -971,9 +979,11 @@ it at ~15 lines.
 - `awk 'END{print NR}' templates/protocol-digest.md` returns a value no
   greater than its pre-change line count + 1 (proves the digest was amended
   in place, not grown).
-- `grep -c '≥ ~8 impacted files' templates/persona-protocol.md` is 1 (proves
-  the heavy trigger was referenced, not duplicated — the terminology-
-  consistency defect ask #1 exists to catch).
+- **CORRECTED 2026-08-15 —** The original criterion with the spaced literal `≥ ~8` was dead text (that literal never appears in the repo; the ADR's actual bytes are `≥~8` without a space). The correct criteria, as run and recorded by the gh133 reviewer, are:
+  - `grep -c 'impacted files' templates/persona-protocol.md` is **0** (not duplicated)
+  - `grep -q '0004-reviewer-roast-work-dual-model-routing' templates/persona-protocol.md` exits 0 (referenced)
+
+  Same intent — referenced, not duplicated — now provable in both directions.
 - **Packet assertions:**
   - `grep -q '.claude/human-review/' templates/persona-protocol.md` exits 0
     and the same grep against `.claude/agents/reviewer.md` exits 0 (proves
@@ -2027,3 +2037,981 @@ future maintainer is most likely to try to "strengthen", and the strengthening
 is the bug. Update `.claude/wiki/conventions.md` with the packet's full
 contents and `.claude/wiki/architecture.md` with the design provenance and the
 narrowing of "microworld" against its source.
+
+## Convergence follow-ups — 2026-08-15 (milestone-audit gap analysis)
+
+**Goal.** Close the four findings a `milestone-auditor` pass accepted at the
+Step 1–11 milestone boundary: the heavy-unit trigger is unmechanized and
+under-fired twice this milestone (A); the dashboard's decision composer never
+emits a `quiz:` line (B); the dashboard never surfaces `CHANGES.md` (C); and
+Step 4's own acceptance criterion in this document is dead text (D).
+
+**Origin.** A `milestone-auditor` dispatch after issues #129–#138 and
+#298–#300 all reached reviewer PASS, with every premise re-verified
+independently by `spec-master` on 2026-08-15 before this section was written.
+This is **append-only**: Steps 1–11 are unrenumbered and unreopened, their
+tracker issues (#122 for the spec, #129–138 and #298–300 for the units) are
+untouched and remain valid, and nothing here invalidates any of them.
+Numbering continues at Step 12. The single exception is Step 15, whose entire
+product is a dated in-place correction to Step 4's own text — the human
+**confirmed on 2026-08-15** that this exception is taken (Open Question 2,
+resolved), annotating in place with nothing deleted.
+
+**Status: FINAL.** All three Open Questions below were answered by the human on
+2026-08-15, each confirming this round's own recommended default. The Open
+Questions section is retained as a record of what was asked and decided; no
+branch below is conditional any longer.
+
+**Sequencing — read before dispatching.** Unlike the 2026-08-09 round, these
+follow-ups extend work that has **already shipped**, so none of them is
+blocked on an unbuilt base unit. **Exactly one ordering edge** across the four
+units — 12 → 13. The second bullet below records an *absence* of edges, not a
+second edge:
+
+- **12 → 13.** Step 13 wires the protocol and the reviewer persona to a script
+  that Step 12 creates. Dispatching 13 first would ship prose naming a file
+  that does not exist.
+- **14 and 15 are independent** of 12/13 and of each other, and may run in any
+  order or in parallel with them. Step 14 touches only
+  `bin/microworld-dashboard/` and its three test files; Step 15 touches only
+  this document.
+
+### What was measured (not assumed)
+
+Every number below was re-derived on 2026-08-15 from the repository itself,
+because the auditor's framing was explicitly not to be taken as established
+fact.
+
+| Claim | Verified | Command / evidence |
+|---|---|---|
+| ADR-0004 states the trigger as ANY-of, three criteria | yes | `docs/adr/0004-reviewer-roast-work-dual-model-routing.md:28-31`; criterion 1 reads verbatim `1. Large surface: ≥~8 impacted files OR ≥~400 changed lines` |
+| Nothing computes it | yes | `grep -rn 'humanReviewMode' hooks/` → 0 matches; `grep -rn 'impacted files\|400 changed lines' agents/ templates/ adapters/ hooks/ bin/` → 0 matches. The thresholds exist in exactly one place in the whole repo: the ADR. |
+| gh137 met criterion 1 and did not escalate | yes | range `2579331^..2579331` = **18 files / 116 lines**; `.claude/reviewed/137.pass` is a plain PASS with no `human:` attestation line and no mention of the trigger anywhere in its notes |
+| gh299 met criterion 1 and did not escalate | yes | the unit's own review range `a251c6f..77e1211` = **24 files / 328 lines**; `299.pass` likewise carries no `human:` line and never mentions the trigger |
+| gh300 escalated | yes | `300.pass` line 2 reads `human: approved by Seb 2026-08-15T17:57:54Z quiz: skipped` |
+| No `.escalated` marker survives | yes | expected — Step 7's three terminal routes each delete it |
+| The composer emits no `quiz:` line on any route | yes | `bin/microworld-dashboard/decision-block.js:53-58` builds exactly `DECISION …`, `by: …`, optional `reason: …` |
+| The dashboard never reads `CHANGES.md` | yes | `grep -rn -i 'CHANGES\.md' bin/microworld-dashboard/` → 0 matches; `decisions.js:48` reads `PACKET.md` and nothing else from the packet directory |
+| Step 4's criterion is dead text | yes | `grep -c '≥ ~8 impacted files' templates/persona-protocol.md` → **0**, not 1 |
+
+**Three corrections to the auditor's framing**, each sharpening a finding
+rather than weakening it:
+
+1. **Finding D is two defects, not one.** `grep -c 'impacted files'` over the
+   Step 4 range returns **2**, not 1. Besides the stale acceptance criterion,
+   the *prose* above it (Step 4, "**Trigger.**") restates the three criteria
+   inline — "≥ ~8 impacted files OR ≥ ~400 changed lines;
+   structural/cross-cutting change; or security-sensitive surface" — and
+   attributes them to "this protocol's 'Reviewer roast-work advisory pass
+   trigger' section", which has never existed (`grep -c 'Reviewer roast-work
+   advisory pass trigger' templates/persona-protocol.md` → 0). That paragraph
+   therefore contradicts its own next sentence ("**Reuse that section by
+   reference; do not restate or re-derive the criteria**"). Step 15 corrects
+   both. A third, smaller defect: the criterion greps `≥ ~8` (with a space)
+   while the ADR's literal bytes are `≥~8` (no space), so the string never
+   matched anything anywhere.
+2. **The correct criterion is already known and on the record.** The gh133
+   reviewer silently substituted the right check at review time and recorded
+   it in `.claude/reviewed/gh133.pass` line 1: `grep -c "impacted files"
+   templates/persona-protocol.md (0); grep -q
+   0004-reviewer-roast-work-dual-model-routing
+   templates/persona-protocol.md`. Step 15 adopts that pair verbatim rather
+   than inventing a replacement — it is the pair that was actually run and
+   actually verified.
+3. **Under-firing is not purely LLM sloppiness, and this changes Finding A's
+   design.** `gh133.pass` note N4 is a reviewer *explicitly* reasoning about
+   the trigger: it recorded that gh133 itself met the trigger (24 files,
+   structural), then returned PASS deliberately, because Steps 5/6/7 were
+   unbuilt and an `.escalated` marker would have been inert *and* would have
+   stranded the session with no legal way forward. That non-escalation was
+   **correct**, and a hook that mechanically forced escalation would have
+   made it wrong. The defect is not "the reviewer sometimes declines to
+   escalate" — it is that gh137 and gh299 declined **invisibly**, with no
+   record that the question was even asked. Step 13 is therefore designed to
+   make the override *recorded*, not impossible. See R3.
+
+### What is NOT a gap (stated explicitly, so no one re-litigates it)
+
+1. **The dashboard prohibition does not bar these steps.**
+   `templates/persona-protocol.md:592` states the dashboard "is a human-facing
+   exploration surface and **never an acceptance criterion** — no hook
+   registers it, no gate consults it, and no acceptance criterion in this or
+   any future spec may name it." The governing reading was settled by
+   precedent in `docs/plans/2026-08-13-dashboard-decision-approval-surface.md`
+   R3: the rule bars the dashboard's **rendered output** from adjudicating a
+   unit under review; it does **not** bar acceptance criteria that test
+   dashboard **code**. Step D8 of the dashboard plan, and units #350/#351,
+   already carry exactly such criteria. Step 14 tests dashboard code only, and
+   nothing in this round makes any hook, gate, or workflow depend on the
+   dashboard running.
+2. **`quiz: skipped` is not the bug.** Finding B is correct that every
+   dashboard-driven approval currently defaults to `quiz: skipped`, and it is
+   correct that this breaks nothing — the protocol names an absent `quiz:`
+   line as a legitimate skip and forbids stalling, warning, or retrying on it
+   (`templates/persona-protocol.md:501-511`). The gap being closed is
+   *reachability of the other two tokens*, never the legitimacy of this one.
+   R6 of the base plan — never graded, never a gate — survives verbatim.
+3. **`reviewer-tier.sh` is not being extended or replaced.** It answers a
+   different question (which *model* reviews this unit) with different
+   thresholds (40 lines / 3 files) and a different failure direction. Step 12
+   is a sibling script following its established doctrine, not a change to it.
+4. **No new hook is registered.** Like `reviewer-tier.sh`, Step 12's script is
+   deliberately absent from `hooks/hooks.json`; the missing registration is the
+   design, not an omission to "fix". Whether a *gate* should later exist is
+   Open Question 1.
+5. **Two adjacent known-stale items are deliberately out of scope**, named here
+   so their omission is a recorded decision rather than an oversight: `gh133.pass`
+   note N1 (the claim that the reviewed-path gate blocks read-only Bash callers
+   "read-only ones included", now false in 5 shipped files plus this document's
+   lines 168 and 919), and `299.pass` notes 1, 3, 4 and 6. Both are real; neither
+   is one of the four accepted findings, and this round adds no work beyond them.
+
+### Clarifications (this round)
+
+1. Functional scope & success criteria: Partial
+2. Domain entities / data model: Partial
+3. User interaction flow: Partial
+4. Non-functional attributes (perf, security, scale): Clear
+5. External dependencies & integrations: Clear
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Partial
+9. Completion / acceptance signals: Partial
+
+- 2026-08-15 Functional scope & success criteria: Q Does "give the reviewer a
+  MECHANICAL way to evaluate the ANY-of trigger" mean a computed *signal* the
+  reviewer consults, or a *gate* that blocks a PASS? → A: raised as Open
+  Question 1; recommended default is a computed signal plus a recorded
+  override, on the strength of `gh133.pass` N4 (correction 3 above).
+- 2026-08-15 Domain entities / data model: Q What artifacts does this round
+  introduce? → A (self-resolved): exactly two new files —
+  `hooks/scripts/heavy-trigger.sh` and `tests/heavy-trigger.test.sh` — plus
+  their `.claude/hooks/scripts/` mirror, which `bin/cli.js --update` produces
+  from a glob (`bin/cli.js:2303`) with no code change. No new directory, no
+  new marker kind, no new config key, no new hook registration, no new HTTP
+  endpoint. Steps 13–15 add no files at all.
+- 2026-08-15 User interaction flow: Q On the dashboard, does the human merely
+  *attest* to the quiz, or can they actually take it there? → A: raised as
+  Open Question 3, because taking it requires rendering `QUIZ.md` and gating
+  `QUIZ-ANSWERS.md` behind an explicit reveal, which is one step beyond
+  Finding B's literal wording. Recommended default is the fuller reading.
+- 2026-08-15 User interaction flow: Q Which `quiz:` token should the
+  dashboard pre-select? → A (self-resolved): `skipped`. It is the protocol's
+  own default for an absent line, so the dashboard's default agrees with the
+  reviewer's fallback transcription; and pre-selecting `passed-self-check`
+  would nudge a human toward claiming a self-check they did not perform,
+  which is the same class of error R6 exists to prevent.
+- 2026-08-15 Edge cases / failure handling: Q What does the script print when
+  the diff is unmeasurable (bad range, binary file, C-quoted path)? → A
+  (self-resolved): a distinct third value `surface: unknown`, exit 0, which
+  the protocol tells the reviewer to treat as `heavy`. A third state rather
+  than printing `heavy` directly, because printing `heavy` would silently
+  overstate a measurement that was never taken — and `unknown` is testable in
+  its own right.
+- 2026-08-15 Technical constraints & tradeoffs: Q Mechanizing the trigger puts
+  the `8`/`400` constants into a script — is that not exactly the second copy
+  Step 4's pointer discipline exists to prevent? → A (self-resolved): yes, and
+  it is unavoidable, so the duplication is made **mechanically pinned** rather
+  than merely documented. Step 12 carries a drift guard asserting the ADR's
+  literal sentence still reads `≥~8 impacted files OR ≥~400 changed lines`;
+  amending the ADR's thresholds without amending the script turns the suite
+  red. Prose discipline cannot do this; a test can. See R2.
+- 2026-08-15 Terminology consistency: Q What is the mechanism called? → A
+  (self-resolved): **measured heavy-unit surface**, following the existing
+  `CONTEXT.md:273` **Measured reviewer tier** entry — same "Measured X"
+  pattern, same deterministic-script-not-a-hook shape, so the two read as
+  siblings rather than as two unrelated inventions. Deliberately *not*
+  "measured heavy-unit trigger": the script measures ADR-0004 criterion 1
+  only, and naming it after the whole trigger would assert coverage it does
+  not have (R4).
+- 2026-08-15 Completion / acceptance signals: Q Who authors the acceptance
+  criteria, given the findings arrived without any? → A (self-resolved):
+  this round does, below; every criterion was executed against the working
+  tree on 2026-08-15 and confirmed currently RED (or, where it is a survival
+  guard rather than a change-proof, labelled as such inline).
+
+**Answers received from the human 2026-08-15** (appended, per the incremental
+Clarifications rule — the three lines above that read "raised as Open
+Question N" are retained as the record of what was asked):
+
+- 2026-08-15 Functional scope & success criteria: Q Signal the reviewer
+  consults, or gate that blocks a PASS (Open Question 1)? → A: **computed
+  signal plus a recorded override**, exactly as drafted — the override line
+  `heavy-surface override: <reason>` rides on the `.pass` marker's appended
+  notes, never line 1, and **no `stop-gate.sh` block is added this round**.
+  The human cited the gh133 precedent explicitly: a reviewer correctly PASSed
+  a unit that technically met the trigger, because force-escalating it would
+  have stranded an in-progress multi-step build. Steps 12 and 13 stand as
+  written.
+- 2026-08-15 Edge cases / failure handling: Q Does the append-only constraint
+  survive Finding D's required edit to Step 4 (Open Question 2)? → A:
+  **annotate Step 4 in place with a dated `CORRECTED 2026-08-15` marker,
+  deleting nothing**, following this document's existing `SUPERSEDED
+  2026-08-10` convention. Step 15's fallback branch is withdrawn.
+- 2026-08-15 User interaction flow: Q Does the dashboard render the quiz
+  itself, or only the attestation control (Open Question 3)? → A: the
+  **fuller reading** — render `CHANGES.md` and `QUIZ.md` inline in the
+  escalation view, with `QUIZ-ANSWERS.md` behind an explicit reveal control.
+  R6 (never graded, never a gate) is preserved either way, because the
+  decision composer never reads the answer key.
+- 2026-08-15 Technical constraints & tradeoffs: Q Given the confirmed fuller
+  reading, *how* is the answer key held behind the reveal — shipped in the
+  `/api/decisions` payload and hidden client-side, or fetched on demand when
+  the human clicks? → A (self-resolved): **fetched on demand through the
+  existing `GET /api/source`**, so `QUIZ-ANSWERS.md` never enters the
+  decisions payload at all. Two reasons. (a) It makes R6 *structural* rather
+  than conventional: a collapsed `<details>` would put the answer key in the
+  DOM from first render, so "revealed" would mean only "not currently
+  visible", whereas an un-fetched body is genuinely absent and is pinnable as
+  absent (C14.14). (b) It adds no seam — `loadBriefingExcerpt` already
+  fetches `/api/source` on demand from within this same Decisions section, and
+  the endpoint already reads any project-relative path, so the packet
+  directory needs no new route. The alternative (payload field plus
+  client-side toggle) is smaller and remains cheap to substitute; it is
+  recorded here rather than raised as a fourth Open Question because it is a
+  mechanism detail inside an answered decision, and overruling it changes only
+  C14.13/C14.14.
+
+### Risks and dependencies (this round)
+
+- **R1 — The dashboard prohibition will look like a blocker to a fresh
+  reviewer.** Mitigation: the governing reading is restated in "What is NOT a
+  gap" item 1 with its precedent cited, so it is resolved in this document
+  rather than re-derived under review.
+- **R2 — The thresholds become a second copy.** Mitigation: Step 12's drift
+  guard (C12.9) pins the script's constants to the ADR's exact bytes. Note the
+  ADR writes `≥~8` with **no space** after `≥`; the guard must grep those
+  bytes, since the existing Step 4 criterion failed precisely by greping a
+  spaced variant that appears nowhere.
+- **R3 — A mechanical force-escalate would have been wrong at least once.**
+  `gh133.pass` N4 documents a *correct* reasoned non-escalation on a unit that
+  met the trigger. Step 13 therefore requires the override to be **recorded**,
+  not forbidden. The recorded form rides in the `.pass` marker's appended
+  notes, never on its required first line, so `task-gate.sh`'s
+  `marker_valid()` is untouched — the same safety argument the `quiz:` token
+  already uses (`templates/persona-protocol.md:518-520`).
+- **R4 — `surface: light` is not permission to skip.** The script measures
+  ADR-0004 criterion 1 only; criteria 2 (structural/cross-cutting) and 3
+  (security-sensitive) remain reviewer judgment and are never downgraded by a
+  `light`. This is `reviewer-tier.sh`'s necessary-but-not-sufficient doctrine
+  inverted: there, `sonnet` is necessary-not-sufficient for a cheap review;
+  here, `heavy` is **sufficient-not-necessary** for escalation. Step 13's
+  prose must say this in those terms or the mechanization will be read as
+  having replaced the ANY-of, which would *narrow* the trigger and make this
+  round a regression.
+- **R5 — The human-decision gate will block naive test fixtures.**
+  `299.pass` note 2 records that `human-decision-gate.sh` denies any Bash
+  command whose text carries both the packet path segment and the decision-file
+  token. Step 14's fixtures must create packet files through Node's `fs` (as
+  `tests/dashboard-decisions.test.js` already does), never a Bash heredoc
+  spelling both. This is a fixture-authoring constraint, not a defect, and it
+  fails loudly rather than silently.
+- **R6 — Never graded, never a gate** (carried forward verbatim from the base
+  plan). Step 14 adds a *recording* control and — per the human's confirmed
+  answer to Open Question 3 — a *reveal* control. No comparison of a human's
+  answer to the answer key exists anywhere. Two criteria pin this from both
+  sides: C14.9 pins that the decision composer never names the answer key, and
+  C14.14 pins that the enumeration module never reads it either, so the key
+  reaches the browser only as the direct result of a human clicking reveal.
+- **R7 — Step 15's criteria target this document, so every one of them is
+  self-referential by construction.** All are scoped with `sed -n '/^### Step 4
+  — /,/^### Step 5 — /p'` so the criterion text in Step 15 cannot count itself.
+  A whole-file grep here is broken on sight.
+- **R8 — No criterion may be phrased against `git diff`.** At the moment a
+  reviewer evaluates a criterion the tree is committed and clean, so
+  `git diff --name-only` is empty by construction and such a criterion fails
+  silently. `299.pass` line 1 shipped exactly this mistake (`git diff
+  --name-only includes .claude/persona-config.json (R2)`). Every criterion
+  below asserts **content**, never a diff.
+- **R9 — Defect history by class, for tier assignment.** None of Steps 12–15
+  is a re-scope of a previously-failed unit, so no `.claude/reviewed/*.fail`
+  record applies directly. But two of the *classes* have a documented failure
+  history that `task-master` should weigh: (a) protocol-plus-adapters-plus-
+  mirrors prose units — `gh138` hit the 2-FAIL cap with all six gated criteria
+  green at both verdicts, and `260`, `gh-286-docs` failed the same way; Step 13
+  is squarely this class and its criteria are therefore **claim-anchored**
+  (a negative pinning the wrong phrase absent, paired with a positive pinning
+  the canonical phrase present), never existence greps. (b) dashboard units —
+  `adhoc-2026-08-11-dashboard-gvx-restyle-fix1.fail`, and `gh350` shipped a
+  join-ambiguity defect found live the day it landed. Neither Step 13 nor Step
+  14 should be tagged cheaply.
+
+### Constitution check, this round (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied — every premise in the auditor's
+  framing was re-measured before being written down (see "What was measured"),
+  and three of them turned out to need correction.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied, and
+  this round is an instance of the principle rather than merely compliant with
+  it — Finding A replaces LLM self-application of prose criteria with a
+  deterministic script. The `.claude/hooks/scripts/` mirror is glob-driven by
+  `bin/cli.js --update` (`bin/cli.js:2303`), so Step 12 adds **no** `bin/cli.js`
+  edit and the mirror is never hand-copied.
+- P3 "Version-stamp discipline": satisfied — Steps 12 and 13 both bump
+  `.claude-plugin/plugin.json` (0.31.56 → next) with a CHANGELOG entry, Step 12
+  because `--update` records a new `fileHashes` entry for the mirrored script
+  and Step 13 because it edits `templates/` and `agents/`. Step 14 touches
+  only `bin/microworld-dashboard/` and `tests/`, neither version-stamped;
+  C14.11 asserts that rather than assuming it. Step 15 touches only this
+  document.
+- P4 "Optional personas degrade gracefully": satisfied — Step 13's prose is
+  inert when `reviewer` is not in `personaSelection` (nothing invokes the
+  script), and Step 12's script is standalone and callable by anyone.
+- P5 "`tests/validate.sh` is the merge gate": satisfied — `bash
+  tests/validate.sh` is a criterion on Steps 12, 13 and 14, and Step 12
+  registers its new suite inside it so the suite cannot be silently skipped.
+
+### Step 12 — A(i): a deterministic measured heavy-unit surface script
+
+Add `hooks/scripts/heavy-trigger.sh`, a sibling of `reviewer-tier.sh`
+following its doctrine exactly: deterministic, **not** registered in
+`hooks/hooks.json` (the absence is the design), invoked by the reviewer at
+verdict time, exit 0 always, and living under `hooks/scripts/` so
+`tests/validate.sh`'s bash-syntax and executable-bit sweeps cover it
+automatically.
+
+**Contract.** `heavy-trigger.sh <git-range>` prints exactly one line:
+
+```
+surface: <heavy|light|unknown> files: <n|-> lines: <n|->
+```
+
+`heavy` when the range meets **ADR-0004 criterion 1** — `files >= 8` OR
+`lines >= 400`, the ADR's `~` pinned to exact `>=` boundaries, so that 8 files
+and 400 lines are each themselves already heavy. `light` when the range is
+measurable and meets neither.
+`unknown`, with `-` for both counts, when the range is unmeasurable: absent,
+leading-dash, unresolvable, zero changed files, a binary file (numstat `-`),
+or a C-quoted path. Reuse `reviewer-tier.sh`'s hardening verbatim where it
+applies — `-c core.quotepath=false -c diff.relative=false --no-renames` on the
+`git diff --numstat`, and the leading-dash rejection before git sees the
+argument — since both exist to stop a path escaping measurement.
+
+**Deliberately NOT computed:** criteria 2 (structural/cross-cutting) and 3
+(security-sensitive). The script measures criterion 1 only and says so in its
+header comment. It does **not** copy `reviewer-tier.sh`'s `SENSITIVE_PATHS`
+array, which encodes a different question with a different threshold and
+would become a third uncoordinated copy. See R4.
+
+No `<task-id>` argument: unlike `reviewer-tier.sh`, no `.fail` record or any
+other per-unit state participates in this measurement, and an unused
+positional argument invites being passed the wrong thing.
+
+**Affected files**
+- `hooks/scripts/heavy-trigger.sh` (new; git index mode **100755**, or
+  `tests/validate.sh`'s executable-bit block fails)
+- `tests/heavy-trigger.test.sh` (new; model it on
+  `tests/heavy-trigger.test.sh`'s sibling `tests/reviewer-tier.test.sh`, which
+  builds a throwaway git repo whose commits have exactly-known numstat shapes
+  so boundaries are pinned on both sides rather than by example)
+- `tests/validate.sh` (one registration block, mirroring the existing
+  `== reviewer-tier: … ==` block at line 418)
+- `.claude/hooks/scripts/heavy-trigger.sh` — written by `bin/cli.js --update`,
+  **never hand-copied** (constitution P2); no `bin/cli.js` edit is needed, the
+  copy is glob-driven
+- `.claude/persona-config.json` (`fileHashes`, written by `--update`)
+- `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md` (P3)
+- **Must NOT gain the file:** `adapters/codex/hooks/scripts/`,
+  `adapters/cursor/hooks/scripts/` — matching `reviewer-tier.sh`, which is
+  absent from both
+
+**Acceptance criteria**
+
+```sh
+# C12.1 the script exists and is executable
+test -x hooks/scripts/heavy-trigger.sh
+# C12.2 the new suite passes
+bash tests/heavy-trigger.test.sh
+# C12.3 the merge gate passes AND actually runs the new suite (a suite that
+#       validate.sh does not register is a suite that silently stops running)
+bash tests/validate.sh
+bash tests/validate.sh | grep -q 'tests/heavy-trigger.test.sh'
+# C12.4 THE FINDING-A CASE: file-count alone, at the boundary, is detected.
+#       The suite must contain a case labelled exactly `8f-1L-each` building a
+#       commit of 8 files x 1 line, and it must resolve heavy.
+bash tests/heavy-trigger.test.sh | grep -q 'OK   8f-1L-each -> surface: heavy'
+# C12.5 both sides of the file boundary are pinned, not just the passing side
+bash tests/heavy-trigger.test.sh | grep -q 'OK   7f-1L-each -> surface: light'
+# C12.6 both sides of the line boundary are pinned
+bash tests/heavy-trigger.test.sh | grep -q 'OK   1f-400L -> surface: heavy'
+bash tests/heavy-trigger.test.sh | grep -q 'OK   1f-399L -> surface: light'
+# C12.7 unmeasurable input is its own third state, never silently `light`
+bash tests/heavy-trigger.test.sh | grep -q 'OK   empty-range -> surface: unknown'
+# C12.8 the two real-world misses this finding is named for are regression
+#       cases, by their measured shapes: 18f/116L and 24f/328L both resolve heavy
+bash tests/heavy-trigger.test.sh | grep -q 'OK   gh137-shape-18f-116L -> surface: heavy'
+bash tests/heavy-trigger.test.sh | grep -q 'OK   gh299-shape-24f-328L -> surface: heavy'
+# C12.9 DRIFT GUARD (R2): the script's constants are pinned to the ADR's exact
+#       bytes. Note `>=~8`, no space -- the bytes are U+2265 then '~'.
+grep -qF '1. Large surface: ≥~8 impacted files OR ≥~400 changed lines' docs/adr/0004-reviewer-roast-work-dual-model-routing.md
+bash tests/heavy-trigger.test.sh | grep -q 'OK   adr-threshold-drift-guard'
+# C12.10 the mirror is generator output, byte-identical, not a hand copy
+cmp hooks/scripts/heavy-trigger.sh .claude/hooks/scripts/heavy-trigger.sh
+grep -q 'heavy-trigger.sh' .claude/persona-config.json
+# C12.11 GUARD (expected green throughout; proves scope was not exceeded, not
+#        that work was done): the adapters do not gain it, matching reviewer-tier.sh
+test ! -e adapters/codex/hooks/scripts/heavy-trigger.sh
+test ! -e adapters/cursor/hooks/scripts/heavy-trigger.sh
+# C12.12 GUARD (expected green throughout): still not a registered hook
+grep -c 'heavy-trigger' hooks/hooks.json    # must be 0
+```
+
+Baselines measured 2026-08-15: C12.1–C12.10 are all currently **RED** (the
+script and suite do not exist; `grep -qF` on the ADR literal is the one half
+already green, and it is green *because* it is a survival pin — deleting the
+ADR line turns it red, which is the drift it guards). C12.11 and C12.12 are
+labelled guards and are green now by construction.
+
+### Step 13 — A(ii): wire the measured surface into the protocol and the reviewer
+
+Amend the **existing** `## Fourth verdict: escalate-to-human` section of
+`templates/persona-protocol.md` — no new top-level `## ` heading, therefore no
+new `tests/adapter-protocol-parity.test.js` map entry — plus the condensed
+adapter ports and `agents/reviewer.md`, to state three things:
+
+1. **The reviewer runs the script**, once per unit, over the unit's own review
+   range, before settling its verdict.
+2. **`surface: heavy` is sufficient, never necessary** (R4). A `heavy` result
+   means ADR-0004 criterion 1 is met and the trigger fires. A `light` result
+   means *only* that criterion 1 is not met; criteria 2 and 3 remain reviewer
+   judgment, and the reviewer still escalates on either. `unknown` is treated
+   as `heavy`. The mechanization must be described as covering one of the
+   three ANY-of criteria — describing it as covering "the trigger" would
+   silently narrow the trigger and make this step a regression.
+3. **A `heavy` result that does not escalate must be recorded.** When the
+   script prints `surface: heavy` and the reviewer nonetheless returns PASS
+   without escalating (a legitimate move — see R3 and `gh133.pass` N4), it
+   appends to the `.pass` marker's notes a line beginning exactly
+   `heavy-surface override: ` followed by its reason. This rides in the
+   **appended** notes, never on the marker's required first line, so
+   `task-gate.sh`'s `marker_valid()` is unaffected — the identical safety
+   argument the `quiz:` token already carries. When it *does* escalate, the
+   script's output is what populates the `.escalated` marker's existing
+   `trigger:` field.
+
+**The pointer discipline is preserved and must be proven, not asserted.** The
+protocol continues to name ADR-0004 by pointer and must not restate any
+threshold. This is the exact property Step 4 tried and failed to pin, so
+Step 13 pins it with the pair the gh133 reviewer actually ran.
+
+**Affected files**
+- `templates/persona-protocol.md` (existing section amended in place)
+- `agents/reviewer.md`
+- `adapters/cursor/rules/persona-protocol.mdc`
+- `adapters/codex/agents-md-fragment.md`
+- `CONTEXT.md` (one new glossary entry, **measured heavy-unit surface**,
+  contrasted with its nearest neighbour `Measured reviewer tier` at line 273)
+- `.claude/agents/*.md`, `.claude/persona-protocol.md`,
+  `.claude/protocol-digest.md`, `.claude/persona-config.json` — regenerated by
+  `bin/cli.js --update`
+- `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md` (P3)
+- **Not touched:** `tests/adapter-protocol-parity.test.js` (no new canonical
+  section), `hooks/`, `templates/protocol-digest.md`
+
+**Acceptance criteria** — claim-anchored pairs throughout, per R9(a):
+
+```sh
+node tests/adapter-protocol-parity.test.js
+bash tests/validate.sh
+# C13.1 POSITIVE: the protocol names the script
+grep -q 'heavy-trigger.sh' templates/persona-protocol.md
+grep -q 'heavy-trigger.sh' .claude/agents/reviewer.md
+# C13.2 NEGATIVE + POSITIVE, the pointer-discipline pair, verbatim from
+#       .claude/reviewed/gh133.pass line 1 -- the pair actually run and verified
+test "$(grep -c 'impacted files' templates/persona-protocol.md)" = 0
+grep -q '0004-reviewer-roast-work-dual-model-routing' templates/persona-protocol.md
+# C13.3 NEGATIVE: the sufficient/necessary direction is not inverted. The
+#       protocol must NOT say a light result permits skipping escalation.
+test "$(grep -ci 'light.*no escalation\|light.*skip the escalation' templates/persona-protocol.md)" = 0
+# C13.4 POSITIVE: the direction is stated in the terms R4 requires
+grep -q 'sufficient' templates/persona-protocol.md
+grep -q 'criterion 1' templates/persona-protocol.md
+# C13.5 POSITIVE: `unknown` is given a defined meaning, not left dangling
+grep -q 'surface: unknown' templates/persona-protocol.md
+# C13.6 POSITIVE: the recorded-override sentinel is specified, and specified
+#       as riding on the appended notes rather than line 1
+grep -q 'heavy-surface override: ' templates/persona-protocol.md
+grep -q 'heavy-surface override: ' .claude/agents/reviewer.md
+# C13.7 SURVIVAL PIN: marker format v3 is not changed. The required first
+#       line's shape is untouched, so task-gate.sh keeps accepting v2/v3
+#       markers. Both patterns are short single-line fragments on purpose --
+#       the v3 format literal is WRAPPED across two lines in the source
+#       (templates/persona-protocol.md:233-235), so greping the whole
+#       first-line spec matches nothing. Baselines: 1 and 2.
+test "$(grep -cF 'commit: <sha|none> criteria:' templates/persona-protocol.md)" = 1
+test "$(grep -cF 'checks only line 1' templates/persona-protocol.md)" = 2
+# C13.8 no new top-level section (baselines measured 2026-08-15)
+test "$(grep -c '^## ' templates/persona-protocol.md)" = 19
+test "$(grep -c '^## ' .claude/persona-protocol.md)" = 19
+test "$(grep -c '^## ' adapters/codex/agents-md-fragment.md)" = 15
+test "$(grep -c '^## ' adapters/cursor/rules/persona-protocol.mdc)" = 15
+# C13.9 both adapter ports carry the rule, independently worded
+grep -q 'heavy-trigger.sh' adapters/codex/agents-md-fragment.md
+grep -q 'heavy-trigger.sh' adapters/cursor/rules/persona-protocol.mdc
+# C13.10 glossary entry landed and is cross-linked to its sibling
+grep -q 'measured heavy-unit surface' CONTEXT.md
+grep -q 'Measured reviewer tier' CONTEXT.md
+# C13.11 G2: --update is idempotent; a re-run at HEAD leaves the tree clean
+node bin/cli.js --update && git status --porcelain | grep -q . && exit 1 || true
+```
+
+Baselines measured 2026-08-15: C13.1, C13.4–C13.6, C13.9, C13.10 are **RED**.
+C13.2's negative half is *already* 0 and its positive half already exits 0 —
+both are **survival pins**, not change-proofs: the implementation they attest
+to shipped correctly in #133, and their job is to prove this step did not undo
+it. C13.3 and C13.7 are likewise survival pins. C13.8's four counts are
+current measurements and are expected to hold.
+
+**Canonical-source cross-check ledger** (per R9(a); citation resolution is
+mechanical, the last column is reviewer judgment — full semantic checking of
+prose is not mechanizable, and inventing a gate that looks like it is would be
+worse than saying so):
+
+| Claim added, `file:line` | Canonical source | Does the claim follow? |
+|---|---|---|
+| protocol: "the reviewer runs `heavy-trigger.sh` over the unit's range" | `hooks/scripts/heavy-trigger.sh` header + contract | |
+| protocol: "`heavy` is sufficient, not necessary" | `docs/adr/0004-…:28-31` (ANY-of, three criteria) | |
+| protocol: "`unknown` is treated as `heavy`" | script contract, C12.7 | |
+| protocol: "the override line rides on appended notes, not line 1" | `hooks/scripts/task-gate.sh` `marker_valid()` | |
+| reviewer.md: same four claims, condensed | the protocol section above | |
+| both adapter ports: same, condensed | the protocol section above | |
+| `CONTEXT.md` **measured heavy-unit surface** | script contract + `CONTEXT.md:273` | |
+
+### Step 14 — B + C: teach the dashboard the current escalation-packet format
+
+Findings B and C are one defect with two symptoms: `decision-block.js` and
+`decisions.js` both landed on 2026-08-13 (#351), before `CHANGES.md` (#299)
+and the comprehension quiz (#300) landed on 2026-08-15, and neither was
+updated for them. The dashboard therefore knows exactly one packet file,
+`PACKET.md`, and composes a `DECISION` body predating the `quiz:` token. They
+share the same read path (`enumerateEscalations`) and the same render site, so
+they are one unit; splitting them would have two units editing
+`index.html` and the same three test files back-to-back for no isolation gain.
+
+**Three changes.**
+
+1. **`decisions.js` — read the rest of the packet, but not the answer key.**
+   `enumerateEscalations` gains `changesBody` (the packet's `CHANGES.md`, or
+   `null` when absent) and `quizBody` (the packet's `QUIZ.md`, or `null` when
+   absent — a body rather than the boolean `quizPresent` an earlier draft
+   named, because the confirmed reading renders the quiz rather than merely
+   detecting it; `quizBody !== null` answers the presence question anyway).
+   Fail-soft per entry, exactly as `packetMissing` already does: a missing file
+   is a flag on the entry, never a throw. Keep `packetBody`/`packetMissing`
+   unchanged — existing consumers must not move.
+
+   **`QUIZ-ANSWERS.md` is deliberately NOT read here.** It never enters the
+   `/api/decisions` payload; the client fetches it on reveal (change 3). This
+   is the structural half of R6 and is pinned by C14.14.
+2. **`decision-block.js` — emit the `quiz:` line.** `composeEscalationDecision`
+   accepts an optional `quiz` in its context and emits `quiz: <token>` as a
+   body line **after** `by: <name>`, matching the protocol's approve-route
+   template byte-for-byte. Constraints, all from
+   `templates/persona-protocol.md:486-516`:
+   - **Approve route only.** The protocol says in terms: "Do not 'harmonise'
+     the three routes by adding a `quiz:` token to the other two." A `quiz`
+     supplied on `reject` or `direct` is ignored — or refused via the existing
+     `warnings[]` channel — and never emitted.
+   - **Exactly three legal tokens**: `passed-self-check`, `skipped`,
+     `none-offered`. Anything else throws, like the existing route validation.
+   - **Never required.** Omitting `quiz` composes exactly today's body. The
+     protocol names an absent line a legitimate skip; the composer must not
+     become the first thing in the system to disagree.
+   - The existing `assertNoCommandSubstitution` and heredoc-delimiter guards
+     apply to the new line unchanged.
+3. **`index.html` — render and collect.** `escalationForm` (line 137, reset at
+   line 311) gains `quiz`, defaulting to `skipped` per the Clarifications
+   entry above. The route `<select>` block (lines 576-582) gains a `quiz`
+   `<select>` **rendered only when `escalationForm.route === 'approve'`**, and
+   the packet pane (lines 572-573) renders the packet's comprehension material
+   in **reading order: `CHANGES.md`, then `PACKET.md`, then `QUIZ.md`** — each
+   labelled, each rendered through the existing `excerpt-pane` shape, and each
+   omitted entirely (not rendered as an empty pane) when its body is null.
+   `CHANGES.md` leads because it is the comprehension material meant to be
+   read before the diff; `QUIZ.md` trails because it is taken after both. The
+   new `quiz` value is passed into the existing `safeCompose` call at line 561.
+
+   **The reveal control.** Below the rendered `QUIZ.md`, and only when
+   `quizBody` is non-null, the view renders a single explicit control
+   (`id="quizRevealBtn"`, labelled to the effect of "Reveal answer key"). It
+   is **not** a CSS toggle over already-present text: on click it fetches
+   `GET /api/source?file=.claude/human-review/<taskId>/QUIZ-ANSWERS.md` —
+   the same endpoint and the same on-demand shape `loadBriefingExcerpt`
+   already uses inside this section — and renders the result into a pane that
+   does not exist before the click. A failed or 404 fetch renders the existing
+   inline-error treatment rather than throwing; a packet with no answer key is
+   an ordinary miss, not a defect. No new server route, no new payload field.
+
+This is the **fuller reading of Open Question 3, confirmed by the human on
+2026-08-15**: rendering `QUIZ.md` here is what makes `passed-self-check`
+*actually* reachable on this surface rather than merely assertable, which was
+the finding's own stated problem moved one step. R6 is untouched — the human
+reveals and self-checks; nothing compares, scores, or records an answer.
+
+**Affected files**
+- `bin/microworld-dashboard/decisions.js`
+- `bin/microworld-dashboard/decision-block.js`
+- `bin/microworld-dashboard/index.html`
+- `tests/dashboard-decisions.test.js`
+- `tests/dashboard-decision-block.test.js`
+- `tests/dashboard-decisions-client.test.js`
+- **Not touched:** `templates/`, `agents/`, `adapters/`, `hooks/`,
+  `bin/cli.js`, `bin/microworld-dashboard/server.js` — **no new endpoint**.
+  The existing `/api/decisions` already carries the payload, and the reveal
+  control reuses the existing `/api/source` bounded excerpt reader, which
+  already accepts any project-relative path and therefore already reaches the
+  packet directory. C14.15 pins that this step leaves `server.js` alone.
+
+**Acceptance criteria**
+
+```sh
+node tests/dashboard-decisions.test.js
+node tests/dashboard-decision-block.test.js
+node tests/dashboard-decisions-client.test.js
+bash tests/validate.sh
+# C14.1 the packet's CHANGES.md reaches the client payload, and its absence
+#       is a null rather than a throw
+node tests/dashboard-decisions.test.js | grep -q 'OK   changesBody read from packet'
+node tests/dashboard-decisions.test.js | grep -q 'OK   changesBody null when CHANGES.md absent'
+# C14.2 the quiz body reaches the payload, and its absence is a null
+node tests/dashboard-decisions.test.js | grep -q 'OK   quizBody read from packet'
+node tests/dashboard-decisions.test.js | grep -q 'OK   quizBody null when QUIZ.md absent'
+# C14.3 the composer emits the token on approve, positioned after `by:`
+node tests/dashboard-decision-block.test.js | grep -q 'OK   approve emits quiz line after by'
+# C14.4 all three legal tokens compose; nothing else does
+node tests/dashboard-decision-block.test.js | grep -q 'OK   quiz passed-self-check composes'
+node tests/dashboard-decision-block.test.js | grep -q 'OK   quiz skipped composes'
+node tests/dashboard-decision-block.test.js | grep -q 'OK   quiz none-offered composes'
+node tests/dashboard-decision-block.test.js | grep -q 'OK   quiz bogus-token rejected'
+# C14.5 THE PROTOCOL PROHIBITION: never on reject or direct
+node tests/dashboard-decision-block.test.js | grep -q 'OK   reject never emits quiz'
+node tests/dashboard-decision-block.test.js | grep -q 'OK   direct never emits quiz'
+# C14.6 omitting quiz composes byte-identically to today's approve body
+node tests/dashboard-decision-block.test.js | grep -q 'OK   omitted quiz composes unchanged body'
+# C14.7 the rendered escalation view shows CHANGES.md, and shows it first
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   escalation view renders CHANGES.md'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   CHANGES.md rendered before PACKET.md'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   absent CHANGES.md renders no empty pane'
+# C14.8 the quiz control appears on approve only
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   quiz select rendered on approve'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   quiz select absent on reject'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   quiz defaults to skipped'
+# C14.9 R6 ANTI-GRADING PIN (the load-bearing one; survives either branch of
+#        OQ3): the composer never sees the answer key, so no code path can
+#        compare a human's answer to it.
+test "$(grep -c 'QUIZ-ANSWERS' bin/microworld-dashboard/decision-block.js)" = 0
+# C14.10 GUARD: still compose-only, still zero writes -- the dashboard must
+#         not acquire a write path to the DECISION file (its unwritability by
+#         any agent is what makes it the human's own word). Reads as "both
+#         named files report a zero count", so it stays correct if either
+#         file gains a write rather than silently counting lines.
+test "$(grep -c 'writeFileSync\|appendFileSync' bin/microworld-dashboard/decisions.js bin/microworld-dashboard/decision-block.js | grep -c ':0$')" = 2
+# C14.11 P3: nothing version-stamped moved, asserted rather than assumed
+grep -q '"version": "0.31.56"' .claude-plugin/plugin.json    # or the value Steps 12/13 left
+# C14.12 OQ3 FULLER READING: the quiz itself is rendered, in reading order
+#         after PACKET.md, and is omitted rather than emptied when absent.
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   escalation view renders QUIZ.md'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   QUIZ.md rendered after PACKET.md'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   absent QUIZ.md renders no quiz pane'
+# C14.13 THE REVEAL IS A REAL REVEAL, not a CSS toggle: the answer key is
+#         absent from the pre-click render, and present only after the click.
+#         The control itself must not appear when there is no quiz.
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   answer key absent before reveal click'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   answer key rendered after reveal click'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   reveal control absent when no QUIZ.md'
+node tests/dashboard-decisions-client.test.js | grep -q 'OK   reveal fetch failure renders inline error'
+# C14.14 R6 STRUCTURAL PIN (the load-bearing companion to C14.9): the
+#         enumeration module never reads the answer key, so QUIZ-ANSWERS.md
+#         cannot ride along in the /api/decisions payload. Together with
+#         C14.9 this closes both halves -- neither the composer nor the
+#         payload builder can ever see the key.
+test "$(grep -c 'QUIZ-ANSWERS' bin/microworld-dashboard/decisions.js)" = 0
+node tests/dashboard-decisions.test.js | grep -q 'OK   answer key never enters the decisions payload'
+# C14.15 GUARD (expected green): the reveal reuses the existing endpoint and
+#         adds no route. server.js is untouched by this step.
+test "$(grep -c 'QUIZ' bin/microworld-dashboard/server.js)" = 0
+```
+
+Baselines measured 2026-08-15, re-measured after the Open Question 3 answer
+landed: C14.1–C14.8 and C14.12–C14.13 are all **RED** — `grep -rn -i
+'CHANGES\.md' bin/microworld-dashboard/` returns nothing, `grep -c 'quiz'
+tests/dashboard-decisions-client.test.js` returns **0** and `grep -c 'QUIZ'
+tests/dashboard-decisions.test.js` returns **0**, so none of the named
+test-case labels exists. C14.14 is **split**: its `grep -c` half returns 0
+today and is a survival pin (reading the answer key here is what it forbids),
+while its test-label half is RED. C14.9, C14.10 and C14.15 are labelled
+guards, green now — C14.15's `grep -c 'QUIZ'
+bin/microworld-dashboard/server.js` returns 0.
+
+### Step 15 — D: correct Step 4's dead acceptance criterion (this document only)
+
+Step 4's implementation was **correct** — it referenced ADR-0004 by pointer
+rather than restating the criteria, which is exactly what Step 4's own
+instruction demanded. Two pieces of Step 4's text are wrong about it, and both
+are corrected here (see correction 1 above):
+
+1. **The acceptance criterion** ``grep -c '≥ ~8 impacted files'
+   templates/persona-protocol.md`` is 1 — returns **0**, and cannot return
+   anything else, since the spaced literal `≥ ~8` appears nowhere in the repo.
+   Replace with the pair the gh133 reviewer actually ran and recorded:
+   `grep -c 'impacted files' templates/persona-protocol.md` is **0** (not
+   duplicated) **and** `grep -q '0004-reviewer-roast-work-dual-model-routing'
+   templates/persona-protocol.md` exits 0 (referenced). Same intent —
+   referenced, not duplicated — now provable in both directions.
+2. **The "**Trigger.**" paragraph** restates the three criteria inline and
+   attributes them to a protocol section that has never existed. Replace the
+   restatement with the pointer, and the attribution with
+   `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit
+   trigger" (as amended by ADR-0013) — which is what the section actually says
+   at `templates/persona-protocol.md:329-336`.
+
+**Method — append-only-respecting.** Per the human's confirmed answer to Open
+Question 2 (2026-08-15), both corrections are made **in place with a dated
+marker and nothing deleted**, following this document's own established
+pattern (the `**SUPERSEDED 2026-08-10 —**` annotation inside the 2026-08-09
+round). The original text stays legible with a `**CORRECTED 2026-08-15 —**`
+annotation naming what was wrong and why the implementation was right anyway.
+The alternative branch — leaving Step 4 physically untouched and recording the
+correction only here — is **withdrawn**; C15.1 and C15.2 target the Step 4
+region as written, and nothing in this step is conditional.
+
+Issue #133 is closed and PASSed and is **not** reopened; this corrects the
+plan document only, so a future reader is not misled by dead test text.
+
+**Affected files**
+- `docs/plans/2026-07-28-microworlds-ubiquitous-language-human-review.md` —
+  the `### Step 4` region only. Nothing else in this file, no other file.
+
+**Acceptance criteria** — every one scoped to the Step 4 region per R7; a
+whole-file grep would count Step 15's own text and is broken on sight.
+
+```sh
+P=docs/plans/2026-07-28-microworlds-ubiquitous-language-human-review.md
+S4() { sed -n '/^### Step 4 — /,/^### Step 5 — /p' "$P"; }
+# C15.1 the dated correction marker is present in the Step 4 region
+test "$(S4 | grep -c 'CORRECTED 2026-08-15')" -ge 1
+# C15.2 the corrected criterion's ADR pointer now appears in the Step 4 region
+test "$(S4 | grep -c '0004-reviewer-roast-work-dual-model-routing')" -ge 1
+# C15.3 the dead spaced literal is no longer presented as a live criterion.
+#       It may still appear inside a CORRECTED annotation quoting the defect;
+#       what must be gone is its use as an unqualified acceptance criterion.
+test "$(S4 | grep -c 'is 1 (proves')" = 0
+# C15.4 the false section attribution is gone from the Step 4 region.
+#       Pattern deliberately carries no quote or backtick of its own: the
+#       source sentence contains BOTH an apostrophe and a double quote, and
+#       this repo's prose is backtick-dense, so a quoted pattern here is a
+#       command-substitution hazard. Baseline: 1.
+test "$(S4 | grep -c 'Reviewer roast-work advisory pass')" = 0
+# C15.5 GUARD (already green -- this section's own append made it 15; it
+#        proves Step 15 did not renumber or drop a step, NOT that work was
+#        done). Steps 1-11 plus 12-15.
+test "$(grep -c '^### Step ' "$P")" = 15
+grep -q '^### Step 4 — ' "$P"
+grep -q '^### Step 11 — ' "$P"
+# C15.6 GUARD: the correction did not silently reach outside Step 4. The
+#        canonical claim in the SHIPPED protocol is unchanged either way.
+test "$(grep -c 'impacted files' templates/persona-protocol.md)" = 0
+```
+
+Baselines measured 2026-08-15, each command run as written: C15.1 **RED** (0
+in region), C15.2 **RED** (0 in region), C15.3 **RED** (`is 1 (proves` present,
+count 1), C15.4 **RED** (count 1). C15.5 and C15.6 are labelled guards and are
+green now — C15.5 because this very section's append took the step count to 15,
+which is precisely why it is a guard and not a change-proof.
+
+### Open Questions (this round) — all three ANSWERED 2026-08-15
+
+The human answered all three on 2026-08-15, **confirming this round's own
+recommended default in each case**. They are kept below with their full
+reasoning, because the alternatives are the things a future reader is most
+likely to propose, and the record of why each was not taken is the useful
+part. Each carries its answer inline. Nothing below gates dispatch.
+
+1. **Enforcement level for Finding A — signal, or gate?**
+   **ANSWERED 2026-08-15: the recommended default, confirmed.** A computed
+   signal plus a recorded override; **no new gate this round**. The human
+   cited the gh133 precedent as the deciding reason — a reviewer correctly
+   PASSed a unit that technically met the trigger, and a force-escalating hook
+   would have stranded an in-progress multi-step build. Steps 12 and 13 stand
+   as drafted. The gate alternative below remains available and cheap later.
+
+   **Recommended default: a computed signal plus a recorded override (Steps 12
+   + 13 as written), and no new gate this round.** `gh133.pass` N4 documents a
+   reasoned non-escalation on a unit that met the trigger, which a
+   force-escalating hook would have made wrong; and the measured defect is
+   *invisibility*, not the override itself, so making the override recorded
+   closes it. The alternative — a `stop-gate.sh` branch blocking a `.pass` on
+   a `surface: heavy` unit with neither an `.escalated` marker nor a
+   `heavy-surface override:` line — is a real option, would be genuinely
+   stronger, and is cheap to add later on top of Steps 12/13 (the signal and
+   the sentinel it would check both exist by then). It is not free: a gate that
+   fires wrongly blocks the session, and this one would fire on roughly every
+   large docs unit.
+2. **Finding D vs. the append-only constraint.** Correcting Step 4's criterion
+   means editing Step 4, which this round is otherwise forbidden to touch.
+   **ANSWERED 2026-08-15: the recommended default, confirmed** — annotate in
+   place with the dated `CORRECTED 2026-08-15` marker, deleting nothing,
+   following the existing `SUPERSEDED 2026-08-10` convention. Step 15's
+   alternative branch is withdrawn.
+
+   **Recommended default: annotate in place with a dated `**CORRECTED
+   2026-08-15 —**` marker, deleting nothing** — the same pattern this document
+   already uses for `**SUPERSEDED 2026-08-10 —**`, so nothing is lost and the
+   defect stays legible next to its correction. The alternative is to leave
+   Step 4 byte-untouched and record the correction only in Step 15, which
+   honours the constraint most literally but leaves the dead grep sitting
+   unmarked where a future reader will run it.
+3. **Does Step 14 render the quiz itself, or only the attestation control?**
+   **ANSWERED 2026-08-15: the recommended default, confirmed** — the fuller
+   reading. `CHANGES.md` and `QUIZ.md` render inline in the escalation view;
+   `QUIZ-ANSWERS.md` stays behind an explicit reveal control. The human noted
+   R6 holds either way, since the decision composer never reads the answer
+   key. Step 14 change 3 is written to this branch, and the *mechanism* of the
+   reveal (an on-demand `/api/source` fetch rather than a client-side toggle)
+   is a self-resolved detail recorded in the Clarifications above.
+
+   Finding B's literal scope is "a way for the human to indicate whether they
+   took the quiz". But `QUIZ.md` lives in the packet and the dashboard renders
+   no packet file except `PACKET.md`, so under the literal reading a human on
+   this surface can *claim* `passed-self-check` with no way to have taken the
+   quiz there — the finding's own stated problem, moved one step. **Recommended
+   default: render `CHANGES.md` and `QUIZ.md` inline, and `QUIZ-ANSWERS.md`
+   behind an explicit collapsed "reveal answers" control the human clicks.**
+   R6 is untouched: the human reveals and self-checks; nothing compares, scores,
+   or records an answer, and C14.9 pins that the composer never sees the answer
+   key. The alternative (token control only) satisfies the finding as literally
+   worded and is strictly smaller.
+
+### Self-check (this round)
+
+- CHK1: Is the heavy-unit trigger's ANY-of semantics preserved rather than
+  narrowed by the mechanization? — PASS (R4 states the
+  sufficient-not-necessary direction; C13.3 pins the inversion absent and
+  C13.4 pins the correct direction present)
+- CHK2: Is "which ADR-0004 criterion does the script compute" stated
+  unambiguously? — PASS (Step 12 "Deliberately NOT computed"; criterion 1 only)
+- CHK3: Is the heavy/light boundary stated consistently everywhere the plan
+  states it? — FAIL (conflicting) — revised in place: the first draft of Step
+  12's contract paragraph carried a garbled clause giving the line threshold
+  as both `8` and `400`. Corrected to `files >= 8` OR `lines >= 400`, which is
+  what ADR-0004 says, what C12.5/C12.6 pin on both sides, and what Step 13
+  refers to. Re-checked after revision: the three statements now agree.
+- CHK4: Is the fate of an unmeasurable diff defined everywhere it is
+  consumed? — PASS (Step 12 C12.7 defines `surface: unknown`; Step 13 point 2
+  and C13.5 define the reviewer's handling of it)
+- CHK5: Does the plan say whether a `surface: heavy` unit may still be
+  PASSed? — PASS (Step 13 point 3, R3, and the `heavy-surface override:`
+  sentinel pinned by C13.6)
+- CHK6: Is the second-copy objection to Finding A answered, rather than
+  ignored? — PASS (Clarifications, Technical constraints entry; R2; C12.9's
+  drift guard)
+- CHK7: Do Findings B and C agree on which module reads the packet? — PASS
+  (both route through `decisions.js`'s `enumerateEscalations`; that shared
+  read path is the stated reason they are one unit)
+- CHK8: Is "never graded, never a gate" defined for the branch where the
+  dashboard renders the answer key? — PASS (that branch is now the confirmed
+  one; the reveal is human-initiated and nothing compares, and the guarantee
+  is pinned from both sides by C14.9 on the composer and C14.14 on the
+  enumeration module)
+- CHK9: Is it defined whether the `quiz:` line is required by the composer? —
+  PASS (Step 14 change 2, "Never required"; C14.6 pins that omitting it
+  composes today's body byte-identically)
+- CHK10: Is the dashboard prohibition at `templates/persona-protocol.md:592`
+  reconciled with Step 14 having acceptance criteria at all? — PASS ("What is
+  NOT a gap" item 1, with the settling precedent cited)
+- CHK11: Do Step 15's criteria avoid counting their own text? — PASS (R7; all
+  six are scoped through the `S4()` helper to the Step 4 region, which ends at
+  `### Step 5 —`, far above Step 15)
+- CHK12: Is the append-only constraint reconciled with Finding D requiring an
+  edit to Step 4? — FAIL (conflicting) — converted to Open Question 2
+  — **CLOSED 2026-08-15** by the human's answer (annotate in place, delete
+  nothing); Step 15's alternative branch withdrawn, so no conditional remains.
+- CHK13: Is it defined whether a human can actually take the quiz on the
+  dashboard, as opposed to merely attesting to it? — FAIL (missing) —
+  converted to Open Question 3 — **CLOSED 2026-08-15** by the human's answer
+  (the fuller reading); Step 14 change 3 now specifies it, and CHK18–CHK21
+  below re-check the newly written text.
+- CHK14: Is the enforcement level of Finding A pinned to one answer? — FAIL
+  (ambiguous) — converted to Open Question 1 — **CLOSED 2026-08-15** by the
+  human's answer (signal plus recorded override, no gate); Steps 12/13 needed
+  no change, since they were drafted to this branch.
+- CHK15: Does every step carry at least one criterion that is currently RED,
+  i.e. that the work can actually fail? — PASS (each step's "Baselines
+  measured 2026-08-15" paragraph names which are RED and which are labelled
+  guards; no step consists only of guards)
+- CHK16: Does every criterion in this section actually run, and return the
+  baseline the section claims for it? — FAIL (missing) — revised in place.
+  Every command above was executed against the working tree before handoff,
+  which found three defects in my own criteria, all now corrected: **(a)**
+  C13.7 greped `PASS <task-id> <UTC ISO-8601 timestamp> commit:`, which
+  returns **0** — the v3 format literal is wrapped across two source lines
+  (`templates/persona-protocol.md:233-235`) and grep is line-oriented, so the
+  criterion was unsatisfiable in exactly the way Finding D's own defect is
+  unsatisfiable. Replaced with two short single-line pins (baselines 1 and 2).
+  **(b)** C15.5 was labelled RED but is already GREEN, because *this* section's
+  append took the step count from 11 to 15; relabelled a guard. **(c)** C14.10
+  and C15.4 were rewritten for shell-quoting safety — C15.4's original pattern
+  carried both an apostrophe and a double quote against backtick-dense prose.
+- CHK17: Is the plan's own terminology consistent with `CONTEXT.md`? — PASS
+  (`antislop:ubiquitous-language`, prose mode, three lenses, advisory. Lens 1:
+  nothing — "heavy-unit trigger", "escalation packet", "literate change
+  summary", "comprehension quiz", "DECISION file" and "Microworld dashboard"
+  are each used with their glossary meaning. Lens 2: nothing — "measured
+  heavy-unit surface" is deliberately *not* a synonym for the heavy-unit
+  trigger and the plan says so twice, in the Clarifications entry and R4.
+  Lens 3: two load-bearing terms with no entry, "decision composer" and
+  "escalation view", both routed to the Scribe update hint rather than
+  invented here.)
+
+**Second Self-check pass — 2026-08-15, after the three answers landed.** The
+answers to OQ1 and OQ2 changed no step text, so CHK1–CHK11 and CHK15–CHK17
+stand re-checked unchanged. OQ3's answer rewrote Step 14 changes 1 and 3 and
+added C14.12–C14.15, so that new text is checked here:
+
+- CHK18: Does the plan state which packet files reach the `/api/decisions`
+  payload and which deliberately do not? — PASS (Step 14 change 1 names
+  `changesBody` and `quizBody` as added, `packetBody`/`packetMissing` as
+  unchanged, and `QUIZ-ANSWERS.md` as explicitly not read, with C14.14 pinning
+  the exclusion in both directions)
+- CHK19: Is the render order of the packet panes stated once and consistently
+  everywhere the plan states it? — PASS (Step 14 change 3 gives one order —
+  `CHANGES.md`, `PACKET.md`, `QUIZ.md` — and the two criteria pin the two
+  adjacent pairs rather than restating the order: C14.7 `CHANGES.md` before
+  `PACKET.md`, C14.12 `QUIZ.md` after `PACKET.md`)
+- CHK20: Is "explicit reveal" given a machine-checkable meaning, rather than
+  left as a UX adjective a reviewer would have to judge? — PASS (C14.13's
+  before/after pair is the definition: the answer key must be absent from the
+  pre-click render and present after it, which a CSS toggle fails by
+  construction — this is precisely why the mechanism was pinned rather than
+  left open)
+- CHK21: Does the plan say what happens when the reveal is clicked but no
+  answer key exists, or the fetch fails? — PASS (Step 14 change 3: the control
+  renders only when `quizBody` is non-null, and a failed or 404 fetch takes
+  the existing inline-error treatment rather than throwing; C14.13 pins both
+  the absent-control case and the fetch-failure case)
+- CHK22: Does the terminology of the newly written Step 14 text hold up
+  against `CONTEXT.md`? — PASS (`antislop:ubiquitous-language`, prose mode,
+  re-run over the new text only. Lens 1: nothing — "escalation packet",
+  "comprehension quiz" and "decision composer" keep their established
+  meanings. Lens 2: nothing — "answer key" is used throughout for
+  `QUIZ-ANSWERS.md`'s contents, which is the wording `CONTEXT.md:881` and the
+  protocol already use, so no new synonym is introduced. Lens 3: one candidate
+  term, "reveal control", judged too narrow and UI-local to be worth a
+  glossary entry; not added to the Scribe hint.)
+
+### Scribe update hint (this round)
+
+After Steps 12–15 land, `scribe` should add one `CONTEXT.md` glossary entry —
+**measured heavy-unit surface** — contrasted with its two nearest neighbours:
+`Measured reviewer tier` (same "Measured X" shape, different question,
+different thresholds, different failure direction) and the **heavy-unit
+trigger** itself, which remains ADR-0004's three-criterion ANY-of and is *not*
+what the script measures. Two further terms surfaced by the
+`antislop:ubiquitous-language` lens-3 pass and are candidates rather than
+requirements: **decision composer** (`decision-block.js`'s compose-only role,
+load-bearing across #351, #350 and this round, with no entry) and **escalation
+view** (the dashboard panel, currently named only descriptively). Update
+`.claude/wiki/conventions.md` with the escalation packet's now-complete
+dashboard-visible contents, and note in `.claude/wiki/architecture.md` that
+the repo now has two sibling deterministic measurement scripts under
+`hooks/scripts/` that are deliberately not registered hooks.
