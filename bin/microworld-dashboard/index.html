@@ -134,7 +134,7 @@
     let decisions = null;
     let decisionsError = null;
     let selectedDecisionView = null;
-    let escalationForm = { route: 'approve', reason: '', by: '' };
+    let escalationForm = { route: 'approve', reason: '', by: '', quiz: 'skipped' };
     let pendingReviewForm = { reason: '' };
 
     async function fetchBundles() {
@@ -308,7 +308,7 @@
     }
 
     function resetDecisionForms() {
-      escalationForm = { route: 'approve', reason: '', by: '' };
+      escalationForm = { route: 'approve', reason: '', by: '', quiz: 'skipped' };
       pendingReviewForm = { reason: '' };
     }
 
@@ -564,13 +564,34 @@
         escalationTimestamp: entry.timestamp,
         by: escalationForm.by,
         reason: escalationForm.reason,
+        quiz: escalationForm.quiz,
       });
 
       let html = `<div style="padding: var(--space-6);">`;
       html += `<h2>Escalation: ${escapeHtml(entry.taskId)}</h2>`;
+
+      // Reading order per gh375 Step 14: CHANGES.md, then PACKET.md, then
+      // QUIZ.md -- each labelled, each omitted entirely (not an empty pane)
+      // when its body is null.
+      if (entry.changesBody !== null && entry.changesBody !== undefined) {
+        html += `<div class="output-label">CHANGES.md</div>`;
+        html += `<div class="excerpt-pane">${escapeHtml(entry.changesBody)}</div>`;
+      }
+
+      html += `<div class="output-label">PACKET.md</div>`;
       html += entry.packetMissing
         ? `<p style="color: var(--gvx-gray);">(no packet found for this escalation)</p>`
         : `<div class="excerpt-pane">${escapeHtml(entry.packetBody || '')}</div>`;
+
+      if (entry.quizBody !== null && entry.quizBody !== undefined) {
+        html += `<div class="output-label">QUIZ.md</div>`;
+        html += `<div class="excerpt-pane">${escapeHtml(entry.quizBody)}</div>`;
+        // The reveal pane is deliberately absent from this markup -- it is
+        // populated on demand, on click, via GET /api/source (R6: never
+        // shipped in the /api/decisions payload, never pre-rendered hidden).
+        html += `<button type="button" id="quizRevealBtn" class="copy-btn">Reveal answer key</button>`;
+        html += `<div id="quizAnswerContainer"></div>`;
+      }
 
       html += `<div class="form-group"><label>Route</label>
         <select id="escalationRoute">
@@ -578,6 +599,14 @@
           <option value="reject" ${escalationForm.route === 'reject' ? 'selected' : ''}>reject</option>
           <option value="direct" ${escalationForm.route === 'direct' ? 'selected' : ''}>direct</option>
         </select></div>`;
+      if (escalationForm.route === 'approve') {
+        html += `<div class="form-group"><label>Quiz</label>
+          <select id="quizSelect">
+            <option value="skipped" ${escalationForm.quiz === 'skipped' ? 'selected' : ''}>skipped</option>
+            <option value="passed-self-check" ${escalationForm.quiz === 'passed-self-check' ? 'selected' : ''}>passed-self-check</option>
+            <option value="none-offered" ${escalationForm.quiz === 'none-offered' ? 'selected' : ''}>none-offered</option>
+          </select></div>`;
+      }
       html += `<div class="form-group"><label>Reason</label><textarea id="escalationReason">${escapeHtml(escalationForm.reason)}</textarea></div>`;
       html += `<div class="form-group"><label>Name (by)</label><input type="text" id="escalationBy" value="${escapeHtml(escalationForm.by)}" /></div>`;
 
@@ -597,6 +626,8 @@
 
       const routeSel = document.getElementById('escalationRoute');
       if (routeSel) routeSel.addEventListener('change', () => { escalationForm.route = routeSel.value; renderContent(); });
+      const quizSel = document.getElementById('quizSelect');
+      if (quizSel) quizSel.addEventListener('change', () => { escalationForm.quiz = quizSel.value; renderContent(); });
       const reasonTa = document.getElementById('escalationReason');
       if (reasonTa) reasonTa.addEventListener('change', () => { escalationForm.reason = reasonTa.value; renderContent(); });
       const byInput = document.getElementById('escalationBy');
@@ -612,9 +643,45 @@
             escalationTimestamp: entry.timestamp,
             by: escalationForm.by,
             reason: escalationForm.reason,
+            quiz: escalationForm.quiz,
           });
           if (composed.text) await doCopyDecision(composed.text);
         });
+      }
+
+      const revealBtn = document.getElementById('quizRevealBtn');
+      if (revealBtn) {
+        revealBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          await loadQuizAnswerKey(entry.taskId);
+        });
+      }
+    }
+
+    // R6 discipline: QUIZ-ANSWERS.md reaches the browser only as the direct
+    // result of this click handler running -- it is never part of the
+    // /api/decisions payload (see decisions.js) and never named by
+    // decision-block.js. Reuses the same /api/source excerpt shape
+    // loadBriefingExcerpt already uses in this section; a failed/404 fetch
+    // renders the same inline-error treatment, never a throw.
+    async function loadQuizAnswerKey(taskId) {
+      const container = document.getElementById('quizAnswerContainer');
+      if (container) container.innerHTML = `<div class="excerpt-pane">Loading answer key...</div>`;
+      try {
+        const response = await fetch(
+          `/api/source?file=${encodeURIComponent(`.claude/human-review/${taskId}/QUIZ-ANSWERS.md`)}&startLine=1&endLine=400`,
+          { headers: token ? { 'X-Antislop-Token': token } : {} }
+        );
+        if (!response.ok) {
+          const error = await response.json();
+          if (container) container.innerHTML = `<div class="excerpt-pane">Error: ${escapeHtml(error.error || 'Cannot load answer key')}</div>`;
+          return;
+        }
+        const data = await response.json();
+        const lines = data.lines || [];
+        if (container) container.innerHTML = `<div class="excerpt-pane">${lines.map(line => `<div class="excerpt-line">${escapeHtml(line)}</div>`).join('')}</div>`;
+      } catch (err) {
+        if (container) container.innerHTML = `<div class="excerpt-pane">Error loading answer key: ${escapeHtml(err.message)}</div>`;
       }
     }
 

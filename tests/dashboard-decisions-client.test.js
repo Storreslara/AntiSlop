@@ -35,6 +35,21 @@ function makeFakeElement() {
   };
 }
 
+// gh375 Step 14: interactive controls (selects, buttons) that new tests
+// drive directly -- set .value then fire('change'), or fire('click') --
+// standing in for a real element's addEventListener/dispatchEvent pair.
+function makeFakeControl(initialValue = '') {
+  return {
+    value: initialValue,
+    _listeners: {},
+    addEventListener(type, cb) { this._listeners[type] = cb; },
+    async fire(type) {
+      const cb = this._listeners[type];
+      if (cb) await cb({ preventDefault() {} });
+    },
+  };
+}
+
 function makeFetchStub(bundlesData, decisionsData, sourceData, fetchCalls) {
   return async (url, options) => {
     const method = (options && options.method) || 'GET';
@@ -65,7 +80,18 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
 
   const leftRail = makeFakeElement();
   const contentArea = makeFakeElement();
-  const elementsById = { leftRail, contentArea };
+  const elementsById = {
+    leftRail,
+    contentArea,
+    // gh375 Step 14: escalation-form controls the new tests drive directly.
+    escalationRoute: makeFakeControl('approve'),
+    quizSelect: makeFakeControl('skipped'),
+    escalationReason: makeFakeControl(''),
+    escalationBy: makeFakeControl(''),
+    decisionCopyBtn: makeFakeControl(),
+    quizRevealBtn: makeFakeControl(),
+    quizAnswerContainer: makeFakeElement(),
+  };
   const fetchCalls = [];
   const sandbox = {
     document: {
@@ -89,7 +115,17 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
   vm.runInContext(decisionBlockSrc, sandbox);
   vm.runInContext(match[1], sandbox);
   await new Promise((r) => setTimeout(r, 50));
-  return { leftRailHtml: leftRail.innerHTML, contentHtml: contentArea.innerHTML, fetchCalls };
+  return {
+    leftRailHtml: leftRail.innerHTML,
+    contentHtml: contentArea.innerHTML,
+    fetchCalls,
+    // Live references (gh375 Step 14 tests): contentArea.innerHTML re-reads
+    // the latest render after firing a control; elementsById lets a test
+    // grab a specific control (e.g. quizRevealBtn) to fire an event on.
+    contentArea,
+    leftRail,
+    elementsById,
+  };
 }
 
 async function runTests() {
@@ -249,6 +285,177 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (e) ERROR: ${err.stack}`);
+  }
+
+  // Test (f): quiz select — rendered on approve, absent on reject, defaults
+  // to skipped (gh375 Step 14).
+  console.log('Test (f): quiz select — rendered on approve, absent on reject, defaults to skipped...');
+  try {
+    const escalationEntry = {
+      taskId: 'gh910', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'packet body', changesBody: null, quizBody: null,
+    };
+    const { contentArea, elementsById } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+    });
+
+    if (!contentArea.innerHTML.includes('id="quizSelect"')) {
+      failures.push('Test (f) FAILED: quiz select not rendered on default (approve) route');
+    } else {
+      console.log('OK   quiz select rendered on approve');
+    }
+    if (!contentArea.innerHTML.includes('value="skipped" selected')) {
+      failures.push(`Test (f) FAILED: quiz select does not default to skipped: ${contentArea.innerHTML.slice(0, 800)}`);
+    } else {
+      console.log('OK   quiz defaults to skipped');
+    }
+
+    elementsById.escalationRoute.value = 'reject';
+    await elementsById.escalationRoute.fire('change');
+
+    if (contentArea.innerHTML.includes('id="quizSelect"')) {
+      failures.push('Test (f) FAILED: quiz select still rendered after switching to reject');
+    } else {
+      console.log('OK   quiz select absent on reject');
+    }
+
+    if (failures.filter((f) => f.includes('Test (f)')).length === 0) {
+      console.log('  ✓ Test (f) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (f) ERROR: ${err.stack}`);
+  }
+
+  // Test (g): CHANGES.md / QUIZ.md pane rendering — presence, reading order,
+  // and clean omission when absent (gh375 Step 14).
+  console.log('Test (g): CHANGES.md / QUIZ.md pane rendering — presence, ordering, absence...');
+  try {
+    const withBoth = {
+      taskId: 'gh911', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'PACKET BODY TEXT',
+      changesBody: 'CHANGES BODY TEXT', quizBody: 'QUIZ BODY TEXT',
+    };
+    const { contentArea } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [withBoth] },
+    });
+    const html = contentArea.innerHTML;
+
+    if (!html.includes('CHANGES BODY TEXT')) {
+      failures.push('Test (g) FAILED: CHANGES.md body not rendered');
+    } else {
+      console.log('OK   escalation view renders CHANGES.md');
+    }
+    if (!html.includes('QUIZ BODY TEXT')) {
+      failures.push('Test (g) FAILED: QUIZ.md body not rendered');
+    } else {
+      console.log('OK   escalation view renders QUIZ.md');
+    }
+
+    const changesIdx = html.indexOf('CHANGES BODY TEXT');
+    const packetIdx = html.indexOf('PACKET BODY TEXT');
+    const quizIdx = html.indexOf('QUIZ BODY TEXT');
+    if (!(changesIdx !== -1 && packetIdx !== -1 && changesIdx < packetIdx)) {
+      failures.push('Test (g) FAILED: CHANGES.md not rendered before PACKET.md');
+    } else {
+      console.log('OK   CHANGES.md rendered before PACKET.md');
+    }
+    if (!(packetIdx !== -1 && quizIdx !== -1 && quizIdx > packetIdx)) {
+      failures.push('Test (g) FAILED: QUIZ.md not rendered after PACKET.md');
+    } else {
+      console.log('OK   QUIZ.md rendered after PACKET.md');
+    }
+
+    const withNeither = {
+      taskId: 'gh912', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'ONLY PACKET TEXT',
+      changesBody: null, quizBody: null,
+    };
+    const { contentArea: contentArea2 } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [withNeither] },
+    });
+    const html2 = contentArea2.innerHTML;
+    if (html2.includes('CHANGES.md')) {
+      failures.push('Test (g) FAILED: CHANGES.md label rendered though CHANGES.md is absent');
+    } else {
+      console.log('OK   absent CHANGES.md renders no empty pane');
+    }
+    if (html2.includes('QUIZ.md')) {
+      failures.push('Test (g) FAILED: QUIZ.md label rendered though QUIZ.md is absent');
+    } else {
+      console.log('OK   absent QUIZ.md renders no quiz pane');
+    }
+    if (html2.includes('quizRevealBtn') || html2.includes('Reveal answer key')) {
+      failures.push('Test (g) FAILED: reveal control rendered though QUIZ.md is absent');
+    } else {
+      console.log('OK   reveal control absent when no QUIZ.md');
+    }
+
+    if (failures.filter((f) => f.includes('Test (g)')).length === 0) {
+      console.log('  ✓ Test (g) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (g) ERROR: ${err.stack}`);
+  }
+
+  // Test (h): answer-key reveal — absent before click, on-demand fetch
+  // through /api/source on click, inline error on a failed/404 fetch
+  // (gh375 Step 14, R6 structural exclusion).
+  console.log('Test (h): reveal control — on-demand answer-key fetch behavior...');
+  try {
+    const entryWithQuiz = {
+      taskId: 'gh913', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'packet body',
+      changesBody: null, quizBody: 'QUIZ BODY TEXT',
+    };
+
+    // Sub-case: successful reveal.
+    const sourceData = { lines: ['ANSWER: 42'], startLine: 1, endLine: 1, totalLines: 1 };
+    const { elementsById, fetchCalls } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [entryWithQuiz] },
+      sourceData,
+    });
+
+    if (elementsById.quizAnswerContainer.innerHTML.includes('ANSWER: 42')) {
+      failures.push('Test (h) FAILED: answer key text present before reveal click');
+    } else {
+      console.log('OK   answer key absent before reveal click');
+    }
+
+    await elementsById.quizRevealBtn.fire('click');
+
+    if (!elementsById.quizAnswerContainer.innerHTML.includes('ANSWER: 42')) {
+      failures.push(`Test (h) FAILED: answer key not rendered after reveal click: ${elementsById.quizAnswerContainer.innerHTML.slice(0, 800)}`);
+    } else {
+      console.log('OK   answer key rendered after reveal click');
+    }
+
+    const sourceCall = fetchCalls.find((c) => c.url.includes('QUIZ-ANSWERS.md'));
+    if (!sourceCall || !sourceCall.url.startsWith('/api/source?file=')) {
+      failures.push(`Test (h) FAILED: reveal did not fetch QUIZ-ANSWERS.md through /api/source, got ${JSON.stringify(fetchCalls)}`);
+    }
+
+    // Sub-case: failed/404 fetch renders the inline-error treatment, never
+    // throws (no sourceData -> makeFetchStub 404s /api/source).
+    const { elementsById: elementsById2 } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [entryWithQuiz] },
+    });
+    await elementsById2.quizRevealBtn.fire('click');
+    if (!/error/i.test(elementsById2.quizAnswerContainer.innerHTML)) {
+      failures.push(`Test (h) FAILED: failed reveal fetch did not render inline error: ${elementsById2.quizAnswerContainer.innerHTML.slice(0, 800)}`);
+    } else {
+      console.log('OK   reveal fetch failure renders inline error');
+    }
+
+    if (failures.filter((f) => f.includes('Test (h)')).length === 0) {
+      console.log('  ✓ Test (h) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (h) ERROR: ${err.stack}`);
   }
 
   console.log();
