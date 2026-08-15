@@ -1073,3 +1073,24 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   carrying the human's prescribed fix verbatim. Defined in
   `templates/persona-protocol.md`'s "Resolving an escalation" section.
 
+**Mode assertion**:
+(units gh273-1/gh273-2, 2026-08-14, issue #273) — a merge-gate
+  check that a file's executable bit matches its invocation contract: `755`
+  for scripts invoked directly by a `hooks.json` command entry or as a CLI,
+  `644` for scripts that are only `source`d. Enforced by `tests/validate.sh`'s
+  "hook script executable bits" block (added by gh273-1), which asserts both
+  the working-tree mode and the git index mode across `hooks/scripts/`,
+  `adapters/codex/hooks/scripts/`, and `adapters/cursor/hooks/scripts/`.
+  Non-obvious: `hooks/scripts/lib/*.sh` are `644` by design — they are
+  `source`d, never executed directly — which is the trap the issue's own
+  suggested `find` command fell into (its unbounded recursion flagged them as
+  false positives; a non-recursing glob excludes them). Paired with mode
+  preservation, the companion discipline gh273-2 added to
+  `templates/persona-protocol.md`'s Teammate Write/Edit fallback doctrine: a
+  heredoc recreates a file at the umask default (usually `644`), silently
+  dropping an executable bit the original had, so the doctrine now instructs
+  capturing the mode first (`stat -c %a`) and restoring it after (`chmod`, or
+  `chmod --reference` an untouched sibling). Together the two close the same
+  defect class at two points — detection at merge time, prevention at the
+  authoring technique that caused the #262 regression.
+

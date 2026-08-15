@@ -6,8 +6,8 @@
 
 ### Changed
 - **`templates/persona-protocol.md`**: added mode-preservation guidance to the `## Teammate Write/Edit fallback and gate rephrasing doctrine` section, immediately after the "fall back immediately to `Bash`" bullet, with guidance on capturing/restoring mode and a note that hook scripts are invoked directly, so a lost `+x` disables that gate outright.
-- **`.claude/agents/*.md`** (lead-programmer, reviewer): regenerated to include the new mode-preservation bullet; researcher omitted because it uses the slim protocol tier (`persona-protocol-slim.md`), which is designed to carry only role-agnostic content and does not include this section (out of scope per design).
-- **`.claude/persona-protocol.md`** / **`.claude/protocol-digest.md`**: mirrors regenerated via `node bin/cli.js --overwrite`.
+- **`.claude/agents/*.md`** (lead-programmer, reviewer, spec-master, task-master, milestone-auditor): regenerated to include the new mode-preservation bullet; researcher omitted because it uses the slim protocol tier (`persona-protocol-slim.md`), which is designed to carry only role-agnostic content and does not include this section (out of scope per design).
+- **`.claude/persona-protocol.md`** / **`.claude/protocol-digest.md`**: mirrors regenerated via `node bin/cli.js --update`.
 - **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.50 → 0.31.51 (constitution P3).
 
 ## [0.31.50] - 2026-08-14
