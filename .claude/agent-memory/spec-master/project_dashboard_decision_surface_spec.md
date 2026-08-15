@@ -39,6 +39,17 @@ message, not a command) rather than as Open Questions — both are stated plainl
 and cheap to overrule additively. If the human pushes back, neither requires
 redesigning anything else.
 
+**The dashboard prohibition, settled reading (re-confirmed 2026-08-15).**
+`templates/persona-protocol.md:592` says the dashboard is "**never an
+acceptance criterion** — ... no acceptance criterion in this or any future
+spec may name it." Read literally that bars writing criteria for ANY dashboard
+unit, which would be absurd. The governing reading is fixed by precedent in
+`docs/plans/2026-08-13-dashboard-decision-approval-surface.md` R3: it bars the
+dashboard's **rendered output** from adjudicating a unit under review; it does
+**not** bar acceptance criteria that test dashboard **code**. Restate this
+with the citation in any dashboard spec, or a fresh reviewer will re-litigate
+it.
+
 Facts worth not re-deriving:
 - The dashboard has **zero** write calls across all 7 modules (re-measured
   2026-08-13). `GET /api/source` already reads any project-relative path

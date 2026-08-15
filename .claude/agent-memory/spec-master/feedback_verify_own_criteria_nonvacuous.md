@@ -196,6 +196,34 @@ diffing `persona-config.json` post-run. Generalizes past this repo: any
 idempotent/self-healing tool will quietly heal a negative fixture, so "I
 deleted X and it still passed" is evidence about the fixture, not the code.
 
+**Tenth trap - a criterion the AUTHORING PASS itself turns green (2026-08-15,
+microworlds Steps 12-15).** I wrote C15.5 `test "$(grep -c '^### Step ' plan.md)"
+= 15` and labelled its baseline RED "(11 step headings, not 15)". By the time I
+ran it, it was GREEN — because appending Steps 12-15 *is* what took the count
+from 11 to 15, and I had already done that in the same pass. Distinct from the
+self-reference trap (trap two): nothing was counting its own text. The criterion
+was correct, section-scoping was irrelevant, and it was measuring the right
+thing — but the *authoring act* performed the work the criterion checks, so it
+gates nothing for the implementer.
+
+**How to apply (self-satisfaction):** for any criterion whose target is an
+artifact THIS pass edits, run it *after* your last edit, never against the tree
+you remember from before drafting. If it is green, it is a **guard** (proves
+scope was not exceeded / nothing was renumbered) and must be labelled one — not
+a change-proof. Guards are legitimate and worth keeping; silently mislabelling
+one as RED is what lies to the implementer about what can fail.
+
+**Same session, trap five and trap "wrapped literal" both recurred and were
+caught only by running the commands:** C13.7 greped `PASS <task-id> <UTC
+ISO-8601 timestamp> commit:` and returned 0, because that literal is WRAPPED
+across `templates/persona-protocol.md:233-235`. I have written this rule down
+before and still did it. The mechanical fix that works: prefer a pattern short
+enough to be certain it fits one line (`commit: <sha|none> criteria:`, count 1),
+and pair it with a second short pin so a reflow cannot silently null both.
+C15.4 likewise needed rewriting because the source sentence carried an
+apostrophe AND a double quote in backtick-dense prose — the safe move is to
+pick a fragment containing **no quote characters at all**.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
 [[verify-deferred-issue-premises]],
 [[docs-units-need-claim-anchored-criteria]], and

@@ -44,3 +44,19 @@ dispatches the umbrella) while giving the plan a single citable tracker id.
 - On a fast path (≤2 units) no tracker issue is needed at all; the retrieval
   contract points at the `docs/plans/` path. Related:
   [[to-spec-slash-only]].
+
+**A later ROUND on an existing spec publishes as a COMMENT, not a new issue**
+(confirmed 2026-08-15 on #122, which now carries four). A revision or a
+`## Convergence follow-ups` round appends its PRD view to the umbrella issue
+that already exists — one new `[spec]` issue per *plan document*, not per
+round. The established comment opening on #122 is: name the `docs/plans/` doc
+as canonical, say "this comment is the published PRD view of the delta," and
+state that the issue body and earlier comments stay valid except where
+contradicted. `task-master` then adds its own separate slicing-table comment
+(retrieval contract + unit/model/depends-on table) — the two comment kinds
+alternate down the issue and are written by different personas, per ADR-0003.
+
+**How to apply:** before publishing any round after the first, read the
+umbrella issue's existing comments (`gh issue view <n> --json comments`) and
+match the opening of the most recent spec-master one. Do not open a second
+`[spec]` issue for the same plan doc — #122 has carried three rounds this way.
