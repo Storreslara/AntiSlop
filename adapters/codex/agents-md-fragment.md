@@ -152,7 +152,8 @@ durable packet, not the gitignored working `microworlds/<unit-slug>/`.
 `.claude/human-review/<task-id>/` - whole directory, executable bit on `run.sh`
 preserved - plus `PACKET.md`, a byte-identical copy of the marker body; the
 marker stays authoritative wherever the two differ. With no bundle, still create
-the directory with `PACKET.md` alone and write `microworld: none` - escalation is
+the directory with `PACKET.md` and `CHANGES.md` alone and write
+`microworld: none` - escalation is
 never skipped for want of a bundle. The packet is NOT under `.claude/reviewed/`
 because `reviewed-path-gate.sh` only lets a non-reviewer caller's command
 through when `command_is_provably_benign()` accepts it - a narrow allowlist of
@@ -161,6 +162,23 @@ tolerated, whether or not the command is conceptually read-only - and running
 a `run.sh` is never on that allowlist, so a packet sited there could not be
 run. It is untracked: `git clean -fdx` destroys it - documented,
 not fixed.
+
+**`CHANGES.md` (literate change summary):** the same action also writes
+`CHANGES.md` into the packet - the reading of the diff that produced the would-be
+verdict, written down for the human, so they do not start from a raw
+alphabetical diff. Authored AFTER the would-be verdict and never gating or
+influencing it. First line exactly
+`Comprehension material only — the .escalated marker is the authoritative record.`
+- the same authority rule `PACKET.md` carries. Then a fixed four-section shape,
+in order: `## Background` (what already existed here, mentioning no part of the
+change), `## What this change is for` (the goal in one paragraph, in the
+project glossary's terms, before any code appears), `## Walkthrough` (the diff in
+CONCEPTUAL order, one subsection per idea, each naming the files that idea
+touches and quoting only the lines that carry it - **not one subsection per
+file**, and not alphabetical), and `## What to look at first` (the two or three
+places the reviewer is least confident about). It quotes the diff, it does not
+reproduce it; soft cap 400 lines. A unit with no bundle still gets one, and that
+is the case where it carries the entire human-facing payload.
 
 Distinct from `.blocked` (reviewer *lacked context*; this one means policy wants
 human eyes on critical code) - separate marker files, separate audit-log tokens.
@@ -197,7 +215,8 @@ wait.
 | **Reject with reason** | `.fail` with the reason verbatim as the defect list | **consumes one** | back to `lead-programmer`, normal FAIL route |
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the prescribed fix verbatim | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
 
-All three delete `.escalated` and the packet in the same action, via
+All three delete `.escalated` and the packet - `PACKET.md`, `CHANGES.md`, and the
+bundle copy together, no route exempt - in the same action, via
 `rm -rf .claude/human-review/<task-id>` - the decision gate's sanctioned deletion
 path, which is also what removes the decision file, since no identity may `rm` it
 by name. Mandatory, not tidiness: nothing globs the packet directory, so a stale
