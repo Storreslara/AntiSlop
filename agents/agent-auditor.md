@@ -46,21 +46,29 @@ appropriate flags based on what the user or orchestrator asked for:
 
 **A1 — Undeclared tool use**: A tool was invoked outside a persona's declared
 `tools:` list. This accounts for auto-granted tools (via `memory:` field) and
-teammate SendMessage. Flag sparingly — the effective-tools formula filters false
-positives from the raw count.
+teammate SendMessage. Each finding carries a `status` of `executed` or `refused`:
+`refused` means the tool call was attempted and blocked by a gate (its paired
+`tool_result` came back `is_error: true`) — the tool was never actually invoked,
+no side effect occurred. Flag sparingly — the effective-tools formula filters
+false positives from the raw count, and a `refused` finding is weaker evidence
+of drift than an `executed` one.
 
 **A2 — Unregistered agent type**: A dispatch carried an `agentType` with no resolvable
-source file under `agents/`, `.claude/agents/`, or `templates/`. The persona is
-unregistered. In practice, most A2 findings fall into two benign classes: Claude Code
-built-in agent types with no source file by construction (e.g. `general-purpose`,
-`claude-code-guide`), and agent-teams named teammate spawns that don't canonicalize
-back to their underlying persona (e.g. `lp-246`, `reviewer-233`). A2 carries no
-calibration bound (unlike A1), so treat each hit as a candidate to investigate, not a
-confirmed registration gap.
+source file under `agents/`, `.claude/agents/`, or `templates/`. Findings sub-classify
+into three groups: `teammate-name` (an agent-teams named teammate spawn that doesn't
+canonicalize back to its underlying persona, e.g. `lp-246`, `reviewer-233`) and
+`foreign-type` (a Claude Code built-in agent type with no source file by construction,
+e.g. `general-purpose`, `claude-code-guide`) are both benign; the residual — findings
+with neither class — is the only real signal, a genuinely unregistered persona worth
+investigating.
 
-**A3 — Nested spawn**: A subagent was spawned with `spawnDepth >= 2`. Nested spawns
-(a subagent spawning another subagent) may indicate accidental delegation structure
-rather than intentional composition.
+**A3 — Nested spawn**: A subagent was spawned with `spawnDepth >= 2`. A nested
+`explorer` dispatch is protocol-sanctioned (the shared persona protocol's
+"Structural questions go to the explorer") and is suppressed rather than flagged;
+the suppressed count is printed alongside the residual, never silently dropped. A
+nested `reviewer` finding in the residual is a candidate review-ownership
+violation — review dispatch is meant to be single-owner (see "Review ownership"
+in the shared persona protocol).
 
 **A4 — Gated dispatch without review**: A gated-agents persona (one that requires
 reviewer verification) was dispatched with no reviewer dispatch later in the same

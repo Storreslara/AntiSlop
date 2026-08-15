@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.31.52] - 2026-08-15
+
+**Correct `agents/agent-auditor.md`'s A1/A2/A3 interpretation prose to match what Steps 12 and 13 actually shipped (gh344, round 3 of the agent-auditor persona spec).** A1 now names both the `executed` and `refused` statuses and states plainly that a refused call means the tool was attempted and blocked, never invoked. A2 replaces the stale two-benign-class prose (which described `teammate-name`/`foreign-type` as "unclassified noise" and claimed "no calibration bound") with the shipped three-class output, stating the residual is the only real signal. A3 states that a nested `explorer` is protocol-sanctioned and suppressed, that the suppressed count is printed, and that a nested `reviewer` in the residual is a candidate review-ownership violation. Source and mirror change together in one commit, per the persona-doc convention.
+
+### Changed
+- **`agents/agent-auditor.md`**: rewrote the A1, A2, A3 interpretation blocks to describe the executed/refused split, the three-class A2 output, and the A3 explorer-suppression/nested-reviewer distinction.
+- **`.claude/agents/agent-auditor.md`**: mirror regenerated via `node bin/cli.js --update --check`.
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.51 → 0.31.52 (constitution P3).
+
 ## [0.31.51] - 2026-08-14
 
 **Close the root cause behind executable-bit loss on hook scripts (gh273-2, Step 2 of #273 spec).** When the protocol's prescribed heredoc-fallback technique (used when Write/Edit are unavailable, e.g. in a teammate dispatch) recreates a file, it silently drops executable bits because shell redirection creates files at umask default (644). Step 2 adds mode-preservation guidance at the exact point the protocol prescribes that technique, closing the fail-open scenario in consumer projects where a lost `+x` on a directly-invoked hook script silently disables that gate. This is paired with Step 1 (gh273-1, merged earlier), which adds a merge-gate mode assertion; together they make the regression mechanically detectable at merge time and prevent it at the technique level.
