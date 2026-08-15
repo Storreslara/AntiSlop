@@ -632,6 +632,14 @@ else
   fail=1
 fi
 
+echo "== microworld dashboard decision-run (Node) =="
+if node tests/dashboard-decision-run.test.js; then
+  echo "OK   tests/dashboard-decision-run.test.js"
+else
+  echo "FAIL tests/dashboard-decision-run.test.js"
+  fail=1
+fi
+
 echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
