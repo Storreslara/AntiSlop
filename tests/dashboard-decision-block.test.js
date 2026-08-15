@@ -5,7 +5,7 @@
 // four-kind decision composer. Covers acceptance cases (a)-(j) from
 // docs/plans/2026-08-13-dashboard-decision-approval-surface.md Step 2.
 
-const { composeDecisionBlock } = require('../bin/microworld-dashboard/decision-block');
+const { composeDecisionBlock, composeEscalationDecisionBody } = require('../bin/microworld-dashboard/decision-block');
 
 const failures = [];
 
@@ -256,6 +256,116 @@ checkOk('omitted quiz composes unchanged body', () => {
   assert(bodyLines[0].startsWith('DECISION gh375 '), 'expected DECISION line unchanged');
   assert(bodyLines[1] === 'by: Sebastian', 'expected by: line unchanged');
   assert(!result.text.includes('quiz:'), 'expected no quiz: line when quiz omitted');
+});
+
+// gh379 Step 2: composeEscalationDecisionBody() extracts and exports the body
+// composition logic, returning { body, warnings }. The via: field records
+// authorship route.
+
+checkOk('composeEscalationDecisionBody is exported', () => {
+  assert(typeof composeEscalationDecisionBody === 'function', 'composeEscalationDecisionBody must be exported');
+});
+
+checkOk('composeEscalationDecisionBody returns { body, warnings }', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+  });
+  assert(typeof result.body === 'string', 'expected body to be a string');
+  assert(Array.isArray(result.warnings), 'expected warnings to be an array');
+  assert(result.body.includes('DECISION gh379'), 'expected DECISION line in body');
+  assert(result.body.includes('by: Sebastian'), 'expected by: line in body');
+  assert(!result.body.includes('via:'), 'expected no via: line when via is omitted');
+});
+
+checkOk('via: dashboard emits via line after by:', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    via: 'dashboard',
+  });
+  const lines = result.body.split('\n');
+  const byIdx = lines.findIndex((l) => l === 'by: Sebastian');
+  assert(byIdx !== -1, 'expected a by: line in body');
+  assert(lines[byIdx + 1] === 'via: dashboard', `expected via: dashboard line immediately after by:, got "${lines[byIdx + 1]}"`);
+  const viaLines = lines.filter((l) => l.startsWith('via:'));
+  assert(viaLines.length === 1, `expected exactly one via: line, got ${viaLines.length}`);
+});
+
+checkOk('via: terminal emits via line after by:', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'reject',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    via: 'terminal',
+  });
+  const lines = result.body.split('\n');
+  const byIdx = lines.findIndex((l) => l === 'by: Sebastian');
+  assert(byIdx !== -1, 'expected a by: line in body');
+  assert(lines[byIdx + 1] === 'via: terminal', `expected via: terminal line immediately after by:, got "${lines[byIdx + 1]}"`);
+  const viaLines = lines.filter((l) => l.startsWith('via:'));
+  assert(viaLines.length === 1, `expected exactly one via: line, got ${viaLines.length}`);
+});
+
+checkOk('omitting via: produces no via line in body', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'direct',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+  });
+  const lines = result.body.split('\n');
+  const viaLines = lines.filter((l) => l.startsWith('via:'));
+  assert(viaLines.length === 0, `expected no via: lines when via is omitted, got ${viaLines.length}`);
+});
+
+checkOk('via: appears after by: but before quiz and reason', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    via: 'dashboard',
+    quiz: 'passed-self-check',
+    reason: 'looks good',
+  });
+  const lines = result.body.split('\n');
+  const byIdx = lines.findIndex((l) => l === 'by: Sebastian');
+  const viaIdx = lines.findIndex((l) => l === 'via: dashboard');
+  const quizIdx = lines.findIndex((l) => l === 'quiz: passed-self-check');
+  const reasonIdx = lines.findIndex((l) => l === 'reason: looks good');
+  assert(byIdx < viaIdx && viaIdx < quizIdx && quizIdx < reasonIdx, 'expected order: by, via, quiz, reason');
+});
+
+checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload', () => {
+  const context = {
+    taskId: 'gh379-verify',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Reviewer Name',
+    via: 'dashboard',
+    quiz: 'passed-self-check',
+    reason: 'approved the work',
+  };
+
+  // Get body from composeEscalationDecisionBody
+  const bodyResult = composeEscalationDecisionBody(context);
+  const composedBody = bodyResult.body;
+
+  // Get heredoc from composeDecisionBlock and extract the payload
+  const commandResult = composeDecisionBlock('escalation-decision', context);
+  // Extract body from the heredoc command: `cat > path <<'EOF'\n<body>\nEOF\n`
+  const match = commandResult.text.match(/<<'EOF'\n([\s\S]*?)\nEOF\n/);
+  assert(match && match[1], 'failed to extract body from heredoc command');
+  const heredocBody = match[1];
+
+  // Bodies must be byte-identical
+  assert(composedBody === heredocBody, `bodies differ:\ncomposeEscalationDecisionBody: ${JSON.stringify(composedBody)}\nheredoc payload: ${JSON.stringify(heredocBody)}`);
 });
 
 console.log('\n' + '='.repeat(60));

@@ -42,8 +42,8 @@ function composeHeredocCommand(targetPath, body) {
   return `cat > ${targetPath} <<'${HEREDOC_DELIM}'\n${body}\n${HEREDOC_DELIM}\n`;
 }
 
-function composeEscalationDecision(context) {
-  const { taskId, route, escalationTimestamp, by = '', reason = '', quiz } = context || {};
+function composeEscalationDecisionBody(context) {
+  const { taskId, route, escalationTimestamp, by = '', reason = '', quiz, via } = context || {};
 
   if (escalationTimestamp === undefined || escalationTimestamp === null || escalationTimestamp === '') {
     throw new Error('escalation-decision requires context.escalationTimestamp (the .escalated marker timestamp)');
@@ -60,6 +60,12 @@ function composeEscalationDecision(context) {
   ];
 
   const warnings = [];
+
+  // Add via: line only when context.via is explicitly defined
+  if (via !== undefined) {
+    lines.push(`via: ${via}`);
+  }
+
   // quiz: approve-route only (gh375 Step 14). Omitting quiz composes
   // exactly today's body. On reject/direct the value is ignored, never
   // validated and never emitted -- the same form state carries a leftover
@@ -79,12 +85,23 @@ function composeEscalationDecision(context) {
   const body = lines.join('\n');
 
   if (bodyHasDelimiterLine(body)) {
-    return { kind: 'command', text: null, warnings: [...warnings, `body contains a line equal to the heredoc delimiter "${HEREDOC_DELIM}"; refusing to compose`] };
+    return { body: null, warnings: [...warnings, `body contains a line equal to the heredoc delimiter "${HEREDOC_DELIM}"; refusing to compose`] };
   }
 
-  const text = composeHeredocCommand(`.claude/human-review/${taskId}/DECISION`, body);
+  return { body, warnings };
+}
+
+function composeEscalationDecision(context) {
+  const { taskId } = context || {};
+  const bodyResult = composeEscalationDecisionBody(context);
+
+  if (bodyResult.body === null) {
+    return { kind: 'command', text: null, warnings: bodyResult.warnings };
+  }
+
+  const text = composeHeredocCommand(`.claude/human-review/${taskId}/DECISION`, bodyResult.body);
   assertNoCommandSubstitution(text);
-  return { kind: 'command', text, warnings };
+  return { kind: 'command', text, warnings: bodyResult.warnings };
 }
 
 function composePendingReviewFlag(action, context) {
@@ -143,5 +160,5 @@ function composeDecisionBlock(kind, context) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { composeDecisionBlock };
+  module.exports = { composeDecisionBlock, composeEscalationDecisionBody };
 }
