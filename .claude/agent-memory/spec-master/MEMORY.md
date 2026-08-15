@@ -25,4 +25,6 @@
 - [Docs units need claim-anchored criteria](feedback_docs_units_need_claim_anchored_criteria.md) — existence greps gate nothing when prose accuracy IS the deliverable; 3 units have FAILed this way.
 - [D8 decoupling criterion is vacuous](project_d8_decoupling_criterion_vacuous.md) — it greps `bin/dashboard/`, which doesn't exist; reports 0 for any code. Real dir is `bin/microworld-dashboard/`.
 - [Dashboard decision surface spec (#349)](project_dashboard_decision_surface_spec.md) — 4 touchpoints, compose-only; only the auditor findings relay needs a new artifact; R6/R7 are deliberate non-literal readings; see 2026-08-14 correction re: multi-stamp join.
+- [Dashboard /api/invoke is RCE](project_dashboard_invoke_is_rce.md) — measured: launch token alone = arbitrary write as the user; RESOLVED 2026-08-15 close it; gate goes in runDashboard, NOT startServer (8 tests).
+- [/dev/tty is a real out-of-band channel](technique_dev_tty_out_of_band_channel.md) — agent gets ENXIO, human doesn't; test openability not stdout.isTTY; a page-embedded nonce is never a boundary.
 - [Review-join null only covered zero-stamp](feedback_review_join_null_only_covered_zero_stamp.md) — an R-item's "already specified" claim wasn't; verify the referenced criterion covers the NAMED scenario, not just the general shape.
