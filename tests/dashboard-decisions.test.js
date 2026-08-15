@@ -309,6 +309,86 @@ async function runTests() {
     failures.push(`Test (h) ERROR: ${err.message}`);
   }
 
+  // Test (i): changesBody / quizBody read from packet, fail-soft when absent
+  // (gh375 Step 14, C14.1-C14.4).
+  console.log('Test (i): changesBody/quizBody read from packet + fail-soft absence...');
+  try {
+    const tmpDir = makeTestProject('i');
+    writeFixture(
+      path.join(tmpDir, '.claude', 'reviewed', 'gh900.escalated'),
+      'ESCALATE-TO-HUMAN gh900 2026-08-01T00:00:00Z trigger: heavy-unit microworld: none\n'
+    );
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'PACKET.md'), 'Packet body\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'CHANGES.md'), 'Changes body\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'QUIZ.md'), 'Quiz body\n');
+
+    writeFixture(
+      path.join(tmpDir, '.claude', 'reviewed', 'gh901.escalated'),
+      'ESCALATE-TO-HUMAN gh901 2026-08-01T00:00:00Z trigger: heavy-unit microworld: none\n'
+    );
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh901', 'PACKET.md'), 'Packet body only\n');
+
+    const { server, fetchDecisions } = await startAndFetch(tmpDir);
+    const { decisions } = await fetchDecisions();
+    const withBoth = decisions.escalations.find((e) => e.taskId === 'gh900');
+    const withNeither = decisions.escalations.find((e) => e.taskId === 'gh901');
+
+    if (!withBoth || withBoth.changesBody !== 'Changes body\n') {
+      failures.push(`Test (i) FAILED: changesBody not read, got ${JSON.stringify(withBoth && withBoth.changesBody)}`);
+    } else {
+      console.log('OK   changesBody read from packet');
+    }
+    if (!withBoth || withBoth.quizBody !== 'Quiz body\n') {
+      failures.push(`Test (i) FAILED: quizBody not read, got ${JSON.stringify(withBoth && withBoth.quizBody)}`);
+    } else {
+      console.log('OK   quizBody read from packet');
+    }
+    if (!withNeither || withNeither.changesBody !== null) {
+      failures.push(`Test (i) FAILED: expected changesBody null when CHANGES.md absent, got ${JSON.stringify(withNeither && withNeither.changesBody)}`);
+    } else {
+      console.log('OK   changesBody null when CHANGES.md absent');
+    }
+    if (!withNeither || withNeither.quizBody !== null) {
+      failures.push(`Test (i) FAILED: expected quizBody null when QUIZ.md absent, got ${JSON.stringify(withNeither && withNeither.quizBody)}`);
+    } else {
+      console.log('OK   quizBody null when QUIZ.md absent');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (i) ERROR: ${err.message}`);
+  }
+
+  // Test (j): QUIZ-ANSWERS.md must never enter the /api/decisions payload
+  // (R6 structural pin, C14.14).
+  console.log('Test (j): answer key never enters the decisions payload...');
+  try {
+    const tmpDir = makeTestProject('j');
+    writeFixture(
+      path.join(tmpDir, '.claude', 'reviewed', 'gh902.escalated'),
+      'ESCALATE-TO-HUMAN gh902 2026-08-01T00:00:00Z trigger: heavy-unit microworld: none\n'
+    );
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'PACKET.md'), 'Packet body\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'QUIZ.md'), 'Quiz body\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'QUIZ-ANSWERS.md'), 'SECRET-ANSWER-TEXT\n');
+
+    const { server, fetchDecisions } = await startAndFetch(tmpDir);
+    const { decisions } = await fetchDecisions();
+    const payload = JSON.stringify(decisions);
+
+    if (payload.includes('SECRET-ANSWER-TEXT')) {
+      failures.push('Test (j) FAILED: answer key text leaked into /api/decisions payload');
+    } else {
+      console.log('OK   answer key never enters the decisions payload');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (j) ERROR: ${err.message}`);
+  }
+
   console.log();
   if (failures.length > 0) {
     console.error('FAILURES:');
