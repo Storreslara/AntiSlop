@@ -424,6 +424,15 @@ else
 fi
 
 echo
+echo "== heavy-trigger: deterministic measured heavy-unit surface script (Bash) =="
+if bash tests/heavy-trigger.test.sh; then
+  echo "OK   tests/heavy-trigger.test.sh"
+else
+  echo "FAIL tests/heavy-trigger.test.sh"
+  fail=1
+fi
+
+echo
 echo "== scribe issue-closing duty: trigger/never-close conditions (Bash) =="
 if bash tests/scribe-issue-closing.test.sh; then
   echo "OK   tests/scribe-issue-closing.test.sh"
