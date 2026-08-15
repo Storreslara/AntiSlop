@@ -42,15 +42,28 @@ function bodyHasDelimiterLine(body) {
   return body.split('\n').some((line) => line === HEREDOC_DELIM);
 }
 
-// gh380 D2: by/reason are composed into the body as single lines
-// (`by: ${by}`, `reason: ${reason}`) with no further validation. A
-// newline (or CR) in either forges extra DECISION body lines -- e.g. a
-// `by` of "agent\nquiz: passed-self-check" fabricates a quiz attestation
-// that was never supplied. Mirrors the via:/quiz: allowlist discipline
-// immediately below, but as a straight structural-character reject since
-// by/reason are free text, not a closed set of tokens.
+// gh380: free-text fields must fail closed on unexpected type. A validator
+// gated on `typeof value === 'string' &&` silently no-ops for every other
+// JSON type while the sink -- template interpolation at `by: ${by}` /
+// `reason: ${reason}` -- coerces back to a string anyway (an array's
+// toString rejoins its elements and restores the newline). The type
+// predicate therefore belongs in the reject condition, never as a
+// precondition on whether to check at all. The allowlisted neighbours
+// (route/via/quiz) get this for free from `.indexOf()`; by/reason are free
+// text and have to state it explicitly.
+function assertStringField(value, label) {
+  if (typeof value !== 'string') {
+    throw new Error(`${label} must be a string, got ${JSON.stringify(value)}`);
+  }
+}
+
+// gh380 D2: by/reason are composed into the body as single lines. A newline
+// (or CR) in either forges extra DECISION body lines -- e.g. a `by` of
+// "agent\nquiz: passed-self-check" fabricates a quiz attestation that was
+// never supplied. Type first (fail closed), then content.
 function assertNoNewline(value, label) {
-  if (typeof value === 'string' && /[\r\n]/.test(value)) {
+  assertStringField(value, label);
+  if (/[\r\n]/.test(value)) {
     throw new Error(`${label} may not contain a newline: ${JSON.stringify(value)}`);
   }
 }
@@ -81,8 +94,14 @@ function composeEscalationDecisionBody(context) {
   // (server.js POST /api/decision/arm) fed by untrusted HTTP JSON, where
   // the human never previews the composed body before confirming via the
   // /dev/tty code (gh380 D2).
+  // The *type* check is unconditional on both paths; only the *content*
+  // (newline) check is via: 'dashboard'-only, so the terminal path keeps
+  // its legitimately multi-line reason (Test (e)) while a non-string still
+  // fails closed everywhere (gh380).
   if (via === 'dashboard') {
     assertNoNewline(reason, 'reason');
+  } else {
+    assertStringField(reason, 'reason');
   }
 
   // gh379 Step 2: the timestamp is injectable via context.now so callers
@@ -200,5 +219,5 @@ function composeDecisionBlock(kind, context) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { composeDecisionBlock, composeEscalationDecisionBody, ID_RE };
+  module.exports = { composeDecisionBlock, composeEscalationDecisionBody, assertNoNewline, ID_RE };
 }

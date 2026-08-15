@@ -17,7 +17,7 @@ const { discover } = require('./discover');
 const { invoke } = require('./invoke');
 const { readSourceExcerpt } = require('./source');
 const { enumerateDecisions } = require('./decisions');
-const { composeEscalationDecisionBody, ID_RE } = require('./decision-block');
+const { composeEscalationDecisionBody, assertNoNewline, ID_RE } = require('./decision-block');
 
 // Alphabet for 6-char code generation, excluding visually ambiguous glyphs (0, O, 1, I, l)
 const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
@@ -269,7 +269,19 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           }
 
           const data = JSON.parse(body);
-          const { taskId, route, escalationTimestamp, by, reason, quiz } = data;
+          // `by`/`reason` default to '' only when omitted (undefined) --
+          // exactly as composeEscalationDecisionBody destructures them, so
+          // an omitted field stays legal while an explicit null does not.
+          const { taskId, route, escalationTimestamp, by = '', reason = '', quiz } = data;
+
+          // gh380: validate the free-text fields here, at the JSON-parse
+          // boundary, and store *these* values into currentArm below. The
+          // audit-log sink reads currentArm.by, not the composer's copy, so
+          // relying on the composer alone would close that sink only
+          // transitively. Same exported guard the composer uses, so there is
+          // one place to neuter and one place to fix.
+          assertNoNewline(by, 'by');
+          assertNoNewline(reason, 'reason');
 
           // Validate taskId
           try {
@@ -422,8 +434,12 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
             return;
           }
 
-          // Compare code with timing-safe equality after length check
-          if (code.length !== currentArm.code.length) {
+          // Compare code with timing-safe equality after a type + length
+          // check. The type half is not decoration: `code: null` otherwise
+          // throws a TypeError on `.length` that the outer catch renders
+          // into the response as internal exception text (gh380, same
+          // type-confusion class as by/reason).
+          if (typeof code !== 'string' || code.length !== currentArm.code.length) {
             res.writeHead(409, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'invalid code' }));
             currentArm = null;
@@ -461,9 +477,12 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
             throw err;
           }
 
-          // Append to .claude/review-audit.log. currentArm.by/route already
-          // passed the composer's newline validation at arm time (gh380
-          // D2/D3), so this interpolation cannot inject extra lines.
+          // Append to .claude/review-audit.log. The three interpolated
+          // values were each constrained before currentArm was built:
+          // taskId by ID_RE (no whitespace), route by the composer's ROUTES
+          // allowlist, and by by assertNoNewline at the arm parse boundary
+          // (string type, no CR/LF) -- so this template renders one line
+          // (gh380 D3).
           const auditPath = path.join(projectRoot, '.claude', 'review-audit.log');
           const auditLine = `${new Date().toISOString()} decision-write-via-dashboard task=${taskId} route=${currentArm.route} by=${currentArm.by}\n`;
           // A failed append must not be silently swallowed (gh380
