@@ -210,9 +210,42 @@ subagents, use the `start-feature-team` command — this is the "deliberate
 gear" mentioned earlier; it's off by default and you opt in per task by
 invoking it explicitly rather than it ever kicking in on its own.
 
+## Microworld bundles
+
+A **microworld bundle** is a per-unit runnable fixture: `lead-programmer`
+produces one alongside a unit's implementation, and `reviewer` executes it as
+part of review. Layout, under `microworlds/<unit-slug>/`:
+
+| Path | Purpose |
+|---|---|
+| `manifest.json` | `{ "unit", "watch": [<source globs>], "description", "timeoutSeconds" }` (`timeoutSeconds` defaults to 60). `watch` is the set of globs a reactive rerun hook uses to decide whether an edit is relevant to this bundle. |
+| `run.sh` | Executable, takes no arguments, runs from the project root. Exit 0 = pass, non-zero = fail. This is the *only* execution contract — everything else in the bundle is its own business. |
+| `inputs/` | The fixture inputs the piece is exercised with. |
+| `expected/` | The expected outputs `run.sh` compares against. |
+| `README.md` | One screen, written for a human: what this piece does, what the fixtures represent, and what a correct result looks like. |
+
+**Storage: gitignored working-tree scratch, not committed.** A bundle never
+appears in `git status` or `git diff` and is **not part of the reviewed
+diff** — it isn't itself subject to code review the way a test file is.
+Consequently the reviewer establishes a bundle's presence and contents by
+looking at the filesystem (`ls microworlds/<unit-slug>/`), never by looking
+at the diff — a clean `git status` is not evidence that no bundle was
+produced, and a missing bundle isn't visible as a deletion. A bundle is
+expected to be **absent in a fresh clone** and in CI; nothing outside the
+current working tree may depend on one existing. The one exception is an
+escalation packet (see `humanReviewMode` above), which is copied to a
+durable location precisely because the working copy isn't durable enough for
+a human to come back to across sessions — see "Known limitations" below.
+
+On every source edit matching a bundle's `watch` globs, a `PostToolUse` hook
+reruns `run.sh` automatically and surfaces a failure as feedback (exit 2,
+never a block — the edit already happened). A bundle's result is advisory
+unless a spec step's acceptance criteria explicitly names its `run.sh`, in
+which case it's authoritative like any other machine-checkable criterion.
+
 ## Microworld dashboard
 
-The **microworld dashboard** is an interactive browser-based workbench for testing and exploring microworld bundles — discoverable artifact collections that capture function entry points, batch test cases, and feedback from agent runs. It serves as a development tool for working with microworld bundles without requiring manual CLI invocation.
+The **microworld dashboard** is an interactive browser-based workbench for testing and exploring microworld bundles (the format above) — discoverable artifact collections that capture function entry points, batch test cases, and feedback from agent runs. It serves as a development tool for working with microworld bundles without requiring manual CLI invocation.
 
 ### Starting the dashboard
 
@@ -236,6 +269,33 @@ When exploring a function in a microworld bundle via the dashboard, you can anno
 The `location` field is authored by `lead-programmer` at bundle capture time (e.g., in `microworlds/<unit-slug>/manifest.json`).
 
 ## Known limitations
+
+### Reviewer and escalation limitations
+
+- **(a) Stale marker after `skip:` (R5).** Writing `skip: <reason>` into a
+  pending-review flag deletes the flag but not the marker file itself, so a
+  stale `*.escalated` glob can keep flags standing at the next reviewer
+  `SubagentStop`. This is **shared with the existing `.blocked` marker** — a
+  pre-existing shape, not new here. It fails safe (over-blocks, never
+  under-blocks) and resolves itself the next time the reviewer resolves that
+  unit.
+- **(b) `package.json`'s `files` array ships only 2 of the `skills/`
+  directory's 17 skills.** This is a **recorded decision, not a bug**:
+  skills reach users via the git/marketplace install path, not via `npm
+  pack`/`npm install`. `tests/validate.sh`'s npm-pack check asserts only
+  that the `skills/` prefix is present in the tarball, not that any specific
+  skill is — it structurally cannot detect this gap, so don't expect a
+  regression here to show up as a test failure.
+- **(c) Escalation packets are untracked (R10).**
+  `.claude/human-review/<task-id>/` survives across sessions but not across
+  `git clean -fdx`, a fresh clone, or a discarded worktree. Losing it loses a
+  pending escalation and its evidence together, with no automatic recovery —
+  the unit must be re-reviewed and re-escalated from scratch. This is an
+  **accepted consequence of keeping review scratch out of project history,
+  not a defect**: the alternative was committing review scratch into project
+  history. The `.escalated` marker records the commit SHA at escalation
+  time, so a human can at least reproduce the state the escalation was
+  raised against.
 
 The fuller list (graph-update/lint hooks matching only `tool_input.file_path`,
 `reviewed-path-gate.sh`'s residual obfuscation bypass (splitting the marker
@@ -393,10 +453,15 @@ the actual installed names on disk rather than trusting this list:
 - `skills/fail-triage/SKILL.md` is a first-party skill derived from
   [mattpocock/skills](https://github.com/mattpocock/skills)' `triage` skill,
   scoped to this project's post-FAIL debug-spec path (used by `spec-master`).
-- `skills/ubiquitous-language/SKILL.md` is a first-party skill that detects
-  terminology drift against a canonical glossary. Dual-mode: diff mode for
-  `reviewer` (file:line anchors), prose mode for `spec-master` (quoted-span
-  anchors). Advisory-only; never gates PASS/FAIL.
+- `skills/ubiquitous-language/SKILL.md` — reachable as the
+  `antislop:ubiquitous-language` skill — reads a project's `CONTEXT.md`
+  glossary and reports naming/terminology drift introduced by a diff: an
+  existing term used with a new meaning, a new synonym for an
+  already-defined term, or a load-bearing new domain term with no glossary
+  entry at all. Dual-mode: diff mode for `reviewer` (file:line anchors,
+  findings appended as non-blocking notes after the PASS/FAIL verdict),
+  prose mode for `spec-master` (quoted-span anchors). Advisory-only; never a
+  FAIL ground.
 - **arXiv MCP** — powers the `researcher` persona. Deliberately not pinned to a
   specific server here; `install-antislop` step 5 has you find and wire in a
   currently-maintained one at setup time, since "currently maintained" is a
