@@ -14,6 +14,16 @@ function makeTestProject(name) {
   return tmpDir;
 }
 
+// Real .escalated marker first-line format (gh380 D1/D2 fix), matching
+// .claude/reviewed/373.escalated and 375.escalated verbatim:
+// "ESCALATE-TO-HUMAN <taskId> <ts> trigger: ... microworld: ...". The
+// timestamp is field index 2, not field index 0 -- a fixture using any
+// other shape exercises a code path the real dashboard client never
+// produces (see decisions.js:37, which parses this exact grammar).
+function realEscalatedMarker(taskId, escalationTimestamp) {
+  return `ESCALATE-TO-HUMAN ${taskId} ${escalationTimestamp} trigger: heavy-unit surface microworld: none\n`;
+}
+
 function setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp = '2026-08-15T10:00:00Z') {
   // Create .claude/human-review/<taskId>/
   const packetDir = path.join(tmpDir, '.claude', 'human-review', taskId);
@@ -23,7 +33,7 @@ function setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp = '2026-08
   const reviewedDir = path.join(tmpDir, '.claude', 'reviewed');
   fs.mkdirSync(reviewedDir, { recursive: true });
   const escalatedPath = path.join(reviewedDir, `${taskId}.escalated`);
-  fs.writeFileSync(escalatedPath, `${escalationTimestamp} escalation marker\n`);
+  fs.writeFileSync(escalatedPath, realEscalatedMarker(taskId, escalationTimestamp));
 
   // Create .claude/review-audit.log if it doesn't exist
   const auditDir = path.join(tmpDir, '.claude');
@@ -466,7 +476,7 @@ async function runTests() {
     const reviewedDir = path.join(tmpDir, '.claude', 'reviewed');
     fs.mkdirSync(reviewedDir, { recursive: true });
     const escalatedPath = path.join(reviewedDir, `${taskId}.escalated`);
-    fs.writeFileSync(escalatedPath, `${escalationTimestamp} escalation marker\n`);
+    fs.writeFileSync(escalatedPath, realEscalatedMarker(taskId, escalationTimestamp));
 
     const ttyWrite = { write: () => {} };
     const { server, token } = startServer(tmpDir, 0, { ttyWrite });
@@ -823,6 +833,228 @@ async function runTests() {
     fs.rmSync(tmpDir, { recursive: true });
   } catch (err) {
     failures.push(`Test (11) ERROR: ${err.message}`);
+  }
+
+  // Test (12): gh380 D1 exact repro -- arming against a REAL-format marker
+  // with its true timestamp succeeds; arming with the literal constant
+  // "ESCALATE-TO-HUMAN" (what the old split(' ')[0] bug would have
+  // accepted) is correctly refused.
+  console.log('Test (12): D1 repro -- real timestamp succeeds, literal constant refused...');
+  try {
+    const tmpDir = makeTestProject('12');
+    const taskId = 'test-task-12';
+    const trueTimestamp = '2026-08-15T19:54:54Z';
+    setupDecisionEnvironment(tmpDir, taskId, trueTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+
+    // The literal constant that the pre-fix split(' ')[0] bug always
+    // extracted from the real marker format, regardless of the actual
+    // timestamp -- must now be refused.
+    const bogusResult = await httpRequest(armUrl, {
+      method: 'POST',
+      token,
+      body: {
+        taskId,
+        route: 'approve',
+        escalationTimestamp: 'ESCALATE-TO-HUMAN',
+        by: 'TestUser',
+        reason: 'testing',
+        quiz: 'skipped',
+      },
+    });
+
+    if (bogusResult.status !== 409) {
+      failures.push(`Test (12) FAILED: literal "ESCALATE-TO-HUMAN" timestamp should be refused with 409, got ${bogusResult.status}`);
+    } else {
+      // The true timestamp (real field-index-2 value) must succeed.
+      const trueResult = await httpRequest(armUrl, {
+        method: 'POST',
+        token,
+        body: {
+          taskId,
+          route: 'approve',
+          escalationTimestamp: trueTimestamp,
+          by: 'TestUser',
+          reason: 'testing',
+          quiz: 'skipped',
+        },
+      });
+
+      if (trueResult.status !== 200) {
+        failures.push(`Test (12) FAILED: true marker timestamp should arm successfully, got ${trueResult.status}: ${trueResult.body}`);
+      } else {
+        console.log('  ✓ Test (12) passed');
+      }
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (12) ERROR: ${err.message}`);
+  }
+
+  // Test (13): gh380 D2 exact repro -- a `by` value forging a newline +
+  // "quiz: passed-self-check" line is refused end-to-end (arm returns 4xx,
+  // no arm is recorded, no code is delivered).
+  console.log('Test (13): D2 repro -- newline-injecting by field refused by /api/decision/arm...');
+  try {
+    const tmpDir = makeTestProject('13');
+    const taskId = 'test-task-13';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    let ttyMessages = [];
+    const ttyWrite = { write: (data) => ttyMessages.push(data.toString()) };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+
+    const armResult = await httpRequest(armUrl, {
+      method: 'POST',
+      token,
+      body: {
+        taskId,
+        route: 'approve',
+        escalationTimestamp,
+        by: 'agent\nquiz: passed-self-check\nnote: forged',
+        reason: 'testing',
+        quiz: 'skipped',
+      },
+    });
+
+    if (armResult.status < 400 || armResult.status >= 500) {
+      failures.push(`Test (13) FAILED: newline-injecting by should be refused with a 4xx, got ${armResult.status}: ${armResult.body}`);
+    } else if (ttyMessages.length !== 0) {
+      failures.push(`Test (13) FAILED: no confirmation code should have been delivered to tty, got ${JSON.stringify(ttyMessages)}`);
+    } else {
+      // A legitimate follow-up arm for the same task must still work --
+      // the injection attempt must not have wedged server state.
+      const cleanResult = await httpRequest(armUrl, {
+        method: 'POST',
+        token,
+        body: {
+          taskId,
+          route: 'approve',
+          escalationTimestamp,
+          by: 'TestUser',
+          reason: 'testing',
+          quiz: 'skipped',
+        },
+      });
+      if (cleanResult.status !== 200) {
+        failures.push(`Test (13) FAILED: a clean arm after a rejected injection attempt should still succeed, got ${cleanResult.status}`);
+      } else {
+        console.log('  ✓ Test (13) passed');
+      }
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (13) ERROR: ${err.message}`);
+  }
+
+  // Test (14): a `reason` value forging a newline + extra field line is
+  // also refused (same injection class as Test (13), different field).
+  console.log('Test (14): reason newline injection refused by /api/decision/arm...');
+  try {
+    const tmpDir = makeTestProject('14');
+    const taskId = 'test-task-14';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+
+    const armResult = await httpRequest(armUrl, {
+      method: 'POST',
+      token,
+      body: {
+        taskId,
+        route: 'approve',
+        escalationTimestamp,
+        by: 'TestUser',
+        reason: 'looks fine\nquiz: passed-self-check',
+        quiz: 'skipped',
+      },
+    });
+
+    if (armResult.status < 400 || armResult.status >= 500) {
+      failures.push(`Test (14) FAILED: newline-injecting reason should be refused with a 4xx, got ${armResult.status}: ${armResult.body}`);
+    } else {
+      console.log('  ✓ Test (14) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (14) ERROR: ${err.message}`);
+  }
+
+  // Test (15): gh380 D3 -- the audit log cannot receive injected lines via
+  // `by`, verified end-to-end (not just "the composer throws"): attempt a
+  // full arm+run cycle with a newline-bearing `by`, then assert the audit
+  // log file was never touched by the attempt (the arm itself is refused
+  // before any in-memory arm record -- and therefore any audit line -- can
+  // be produced).
+  console.log('Test (15): D3 repro -- audit log receives no injected content via by...');
+  try {
+    const tmpDir = makeTestProject('15');
+    const taskId = 'test-task-15';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const auditPath = path.join(tmpDir, '.claude', 'review-audit.log');
+    const beforeContent = fs.readFileSync(auditPath, 'utf8');
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+
+    const armResult = await httpRequest(armUrl, {
+      method: 'POST',
+      token,
+      body: {
+        taskId,
+        route: 'approve',
+        escalationTimestamp,
+        by: 'agent\n2026-01-01T00:00:00Z decision-gate-denied identity=forged',
+        reason: 'testing',
+        quiz: 'skipped',
+      },
+    });
+
+    const afterContent = fs.readFileSync(auditPath, 'utf8');
+
+    if (armResult.status < 400 || armResult.status >= 500) {
+      failures.push(`Test (15) FAILED: newline-injecting by should be refused with a 4xx, got ${armResult.status}`);
+    } else if (afterContent !== beforeContent) {
+      failures.push(`Test (15) FAILED: audit log was modified by a refused arm attempt: ${JSON.stringify(afterContent)}`);
+    } else if (afterContent.includes('decision-gate-denied identity=forged')) {
+      failures.push(`Test (15) FAILED: forged audit line reached the log`);
+    } else {
+      console.log('  ✓ Test (15) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (15) ERROR: ${err.message}`);
   }
 
   // Print results

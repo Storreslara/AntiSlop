@@ -42,6 +42,19 @@ function bodyHasDelimiterLine(body) {
   return body.split('\n').some((line) => line === HEREDOC_DELIM);
 }
 
+// gh380 D2: by/reason are composed into the body as single lines
+// (`by: ${by}`, `reason: ${reason}`) with no further validation. A
+// newline (or CR) in either forges extra DECISION body lines -- e.g. a
+// `by` of "agent\nquiz: passed-self-check" fabricates a quiz attestation
+// that was never supplied. Mirrors the via:/quiz: allowlist discipline
+// immediately below, but as a straight structural-character reject since
+// by/reason are free text, not a closed set of tokens.
+function assertNoNewline(value, label) {
+  if (typeof value === 'string' && /[\r\n]/.test(value)) {
+    throw new Error(`${label} may not contain a newline: ${JSON.stringify(value)}`);
+  }
+}
+
 // D-6 rule 2: multi-line bodies use a single-quoted heredoc.
 function composeHeredocCommand(targetPath, body) {
   return `cat > ${targetPath} <<'${HEREDOC_DELIM}'\n${body}\n${HEREDOC_DELIM}\n`;
@@ -57,6 +70,20 @@ function composeEscalationDecisionBody(context) {
     throw new Error(`route must be one of ${ROUTES.join('|')}, got ${JSON.stringify(route)}`);
   }
   validateId(taskId, 'taskId');
+  // by is always a name/identity -- never legitimately multi-line, on
+  // either the terminal or dashboard path.
+  assertNoNewline(by, 'by');
+  // reason legitimately supports multi-line free text on the terminal
+  // copy-paste path (D-6 rule 2's heredoc wrapping exists precisely for
+  // this, and Test (e) in tests/dashboard-decision-block.test.js pins a
+  // "line one\nline two" reason as intentional). The newline-injection
+  // risk is specific to via: 'dashboard' -- the server-side write sink
+  // (server.js POST /api/decision/arm) fed by untrusted HTTP JSON, where
+  // the human never previews the composed body before confirming via the
+  // /dev/tty code (gh380 D2).
+  if (via === 'dashboard') {
+    assertNoNewline(reason, 'reason');
+  }
 
   // gh379 Step 2: the timestamp is injectable via context.now so callers
   // (notably this test suite's byte-identity check) can pin two separate

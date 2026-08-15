@@ -283,6 +283,51 @@ checkOk('via: newline-injection payload rejected, not just unlisted string', () 
   assert(/via must be one of/.test(err.message), `expected the VIA_ROUTES rejection message, got "${err.message}"`);
 });
 
+// gh380 D2: by is always a name/identity, never legitimately multi-line
+// (unlike reason, which Test (e) above pins as intentionally multi-line
+// for the terminal copy-paste path).
+checkOk('by: newline-injection payload rejected', () => {
+  const err = throws(() => composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'agent\nquiz: passed-self-check\nnote: forged',
+    via: 'dashboard',
+  }), 'expected a newline-containing by value to throw');
+  assert(/by may not contain a newline/.test(err.message), `expected the by-newline rejection message, got "${err.message}"`);
+});
+
+// gh380 D2: reason newline-injection is rejected specifically on the
+// via: 'dashboard' path -- the server-side write sink fed by untrusted
+// HTTP JSON (server.js POST /api/decision/arm), where the human never
+// previews the composed body before confirming via the /dev/tty code.
+checkOk('reason: newline-injection payload rejected on via: dashboard', () => {
+  const err = throws(() => composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    reason: 'looks fine\nquiz: passed-self-check',
+    via: 'dashboard',
+  }), 'expected a newline-containing reason value to throw on via: dashboard');
+  assert(/reason may not contain a newline/.test(err.message), `expected the reason-newline rejection message, got "${err.message}"`);
+});
+
+// gh380: legitimate multi-line reason on the terminal path (no via, or
+// via: 'terminal') must still compose -- this is Test (e)'s exact shape,
+// re-asserted here at the composeEscalationDecisionBody level to pin that
+// the D2 fix did not regress it.
+checkOk('reason: multi-line still composes without via: dashboard', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    reason: 'line one\nline two',
+  });
+  assert(result.body.includes('reason: line one\nline two'), 'expected multi-line reason to compose unchanged when via is not dashboard');
+});
+
 // gh379 Step 2: composeEscalationDecisionBody() extracts and exports the body
 // composition logic, returning { body, warnings }. The via: field records
 // authorship route.

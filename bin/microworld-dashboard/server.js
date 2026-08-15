@@ -27,9 +27,11 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
   const microworldsPath = path.join(projectRoot, 'microworlds');
 
   // Attempt to open /dev/tty for decision write capability
+  let ownsTtyFd = false;
   if (ttyWrite === undefined) {
     try {
       ttyWrite = fs.openSync('/dev/tty', 'w');
+      ownsTtyFd = true;
     } catch (err) {
       // No controlling terminal (e.g., agent environment or output redirect)
       ttyWrite = null;
@@ -255,8 +257,12 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
       });
       req.on('end', () => {
         try {
-          // If no tty available, fail closed
-          if (ttyWrite === null) {
+          // If no tty available, fail closed. Gate on truthiness, not
+          // `=== null`: any other falsy value (0, false) must also fail
+          // closed rather than silently skipping both the 403 and the tty
+          // write -- fs.writeFileSync(0, ...) would otherwise target fd 0
+          // (stdin) instead of failing safely (gh380 advisory).
+          if (!ttyWrite) {
             res.writeHead(403, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'decision writes require a controlling terminal' }));
             return;
@@ -296,9 +302,14 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           }
 
           const firstLine = escalatedContent.split('\n')[0];
-          // Extract timestamp from first line (format: timestamp <other content>)
-          const markerTimestamp = firstLine.split(' ')[0];
-          if (markerTimestamp !== escalationTimestamp) {
+          // Extract timestamp from first line. Real format (matching
+          // decisions.js:37's parse of the same marker):
+          // "ESCALATE-TO-HUMAN <taskId> <ts> trigger: ... microworld: ...".
+          // Field index 0 is always the literal "ESCALATE-TO-HUMAN"; the
+          // timestamp is capture group 2 (gh380 D1 fix).
+          const markerMatch = firstLine.match(/^ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$/);
+          const markerTimestamp = markerMatch ? markerMatch[2] : null;
+          if (markerTimestamp === null || markerTimestamp !== escalationTimestamp) {
             res.writeHead(409, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'escalation timestamp mismatch' }));
             return;
@@ -327,6 +338,25 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
             code += CODE_ALPHABET[crypto.randomInt(0, CODE_ALPHABET.length)];
           }
 
+          // Write to /dev/tty BEFORE recording the arm and responding. If
+          // the human never receives the code, the arm attempt must fail
+          // rather than report armed:true (gh380 advisory).
+          const validSeconds = Math.round(armTtlMs / 1000);
+          const message = `antislop: confirmation code for DECISION ${taskId} is ${code} (valid ${validSeconds}s)\n`;
+          try {
+            if (typeof ttyWrite === 'number') {
+              fs.writeFileSync(ttyWrite, message);
+            } else if (ttyWrite && typeof ttyWrite.write === 'function') {
+              ttyWrite.write(message);
+            } else {
+              throw new Error('ttyWrite is neither a file descriptor nor a writable stub');
+            }
+          } catch (err) {
+            res.writeHead(502, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'failed to deliver confirmation code to /dev/tty' }));
+            return;
+          }
+
           // Replace any prior arm with a single in-memory record
           currentArm = {
             code,
@@ -337,19 +367,6 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
             expiresAt: Date.now() + armTtlMs,
             used: false,
           };
-
-          // Write to /dev/tty only
-          try {
-            const validSeconds = Math.round(armTtlMs / 1000);
-            const message = `antislop: confirmation code for DECISION ${taskId} is ${code} (valid ${validSeconds}s)\n`;
-            if (typeof ttyWrite === 'number') {
-              fs.writeFileSync(ttyWrite, message);
-            } else if (ttyWrite && typeof ttyWrite.write === 'function') {
-              ttyWrite.write(message);
-            }
-          } catch (err) {
-            // Ignore write errors; the code was still generated
-          }
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ armed: true, expiresInMs: armTtlMs }));
@@ -369,8 +386,12 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
       });
       req.on('end', () => {
         try {
-          // If no tty available, fail closed
-          if (ttyWrite === null) {
+          // If no tty available, fail closed. Gate on truthiness, not
+          // `=== null`: any other falsy value (0, false) must also fail
+          // closed rather than silently skipping both the 403 and the tty
+          // write -- fs.writeFileSync(0, ...) would otherwise target fd 0
+          // (stdin) instead of failing safely (gh380 advisory).
+          if (!ttyWrite) {
             res.writeHead(403, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ error: 'decision writes require a controlling terminal' }));
             return;
@@ -440,17 +461,25 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
             throw err;
           }
 
-          // Append to .claude/review-audit.log
+          // Append to .claude/review-audit.log. currentArm.by/route already
+          // passed the composer's newline validation at arm time (gh380
+          // D2/D3), so this interpolation cannot inject extra lines.
           const auditPath = path.join(projectRoot, '.claude', 'review-audit.log');
           const auditLine = `${new Date().toISOString()} decision-write-via-dashboard task=${taskId} route=${currentArm.route} by=${currentArm.by}\n`;
+          // A failed append must not be silently swallowed (gh380
+          // advisory): the DECISION file write already succeeded and
+          // cannot be un-written under R7's never-overwrite rule, so the
+          // response still reports written:true, but auditLogged:false
+          // tells the caller the write happened without an audit trail.
+          let auditLogged = true;
           try {
             fs.appendFileSync(auditPath, auditLine);
           } catch (err) {
-            // Ignore audit log errors; file write succeeded
+            auditLogged = false;
           }
 
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ written: true }));
+          res.end(JSON.stringify({ written: true, auditLogged }));
 
           // Clear arm after successful write
           currentArm = null;
@@ -466,6 +495,20 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
     res.writeHead(404, { 'Content-Type': 'text/plain' });
     res.end('Not found\n');
   });
+
+  // Close the self-opened /dev/tty fd when the server shuts down -- it is
+  // never closed otherwise, leaking one fd per startServer call under a
+  // real terminal (gh380 advisory). Only close a fd this function opened;
+  // never an injected handle (test stub or a fd the caller still owns).
+  if (ownsTtyFd) {
+    server.on('close', () => {
+      try {
+        fs.closeSync(ttyWrite);
+      } catch (err) {
+        // already closed or invalid; nothing to do
+      }
+    });
+  }
 
   server.listen(port, '127.0.0.1', () => {
     const addr = server.address();
