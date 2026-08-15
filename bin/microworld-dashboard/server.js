@@ -499,9 +499,9 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           // Append to .claude/review-audit.log. The three interpolated
           // values were each constrained before currentArm was built:
           // taskId by ID_RE (no whitespace), route by the composer's ROUTES
-          // allowlist, and by by assertNoNewline at the arm parse boundary
-          // (string type, no CR/LF) -- so this template renders one line
-          // (gh380 D3).
+          // allowlist, and `by` by assertNoNewline at the arm parse
+          // boundary (string type, no CR/LF) -- so this template renders
+          // one line (gh380 D3).
           const auditPath = path.join(projectRoot, '.claude', 'review-audit.log');
           const auditLine = `${new Date().toISOString()} decision-write-via-dashboard task=${taskId} route=${currentArm.route} by=${currentArm.by}\n`;
           // A failed append must not be silently swallowed (gh380
