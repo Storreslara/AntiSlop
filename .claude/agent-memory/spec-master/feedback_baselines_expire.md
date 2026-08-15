@@ -57,6 +57,32 @@ must ship with a re-derive-at-execution-time instruction naming the command
 "ensure X is present and correct", never "add X" — the two differ exactly when
 the packet has aged.
 
+**Fourth instance — and the general fix: pin the COMMIT, not the date
+(2026-08-14, gh288-2, C2.3, 2-FAIL-cap escalation).** ADR 0020 asserted "110
+files as of today (2026-08-14)" for a repo-wide grep. It hit the 2-FAIL cap
+because a *date* does not identify a tree, and every symptom cascaded from
+that one choice: the number drifted (109 at the authoring commit -> 124 three
+days later); an `--exclude-dir` flag was needed at all (marker files exist
+only in a live tree); and the count became tool-sensitive (see
+[[grep-is-wrapper-shadowed-inline]]). Rewriting the measurement as a
+**commit-pinned `git grep -l <pat> <sha> | wc -l`** collapsed all three at
+once — `git` is not wrapper-shadowed, gitignored paths are untracked so no
+exclusion flag is possible *or* needed, and a commit is immutable so the
+number reproduces on any day, from a fresh clone, dirty tree or clean.
+
+**How to apply:** when a criterion counts anything in a live, growing corpus,
+reach for a commit pin *before* reaching for the repo's older advice to
+"re-measure at execution time" (`docs/plans/2026-08-09-agent-auditor-persona.md`
+Step 12). Re-measuring is the right pattern only when the criterion must track
+the present (runtime, RSS, a merge gate's colour); when it is *evidence for an
+argument* — as a false-positive-surface count is — the pin is strictly better,
+because it makes re-measurement return the same number forever instead of
+telling the reader to expect drift. Bonus: pinning to the document's OWN
+authoring commit repairs internal date coherence for free, and lets a
+sibling measurement's stale count be restored rather than re-dated. Always
+add a non-vacuity control clause: substituting a different SHA must yield a
+different number, or the pin is decorative.
+
 Pairs with [[criteria-must-be-shell-validated]] and the sibling rule that every
 criterion needs a **negative control**: run it against the pre-change tree and
 confirm it fails there. Two of Step 7's criteria (`find -iname 'skill.md'` and

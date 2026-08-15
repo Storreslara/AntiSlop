@@ -486,3 +486,341 @@ entry (Step 2 owns this); `.claude/wiki/modules/hooks.md` should note that
 `reviewed-path-gate.sh` inspects the Write/Edit *destination* only, by ratified
 decision, with a pointer to the new ADR; `.claude/wiki/changelog.md` records
 the A7/A8 addition. Close issue #288 citing the ADR.
+
+---
+
+# Debug spec — gh288-2, criterion C2.3 (2026-08-14)
+
+Produced on the 2-FAIL-cap escalation for unit `gh288-2` (FAILs at
+2026-08-15T03:30:17Z and 2026-08-15T04:02:11Z, the latter on fix commit
+`f57e5b8`). This is a focused diagnosis plus revised acceptance criteria for
+the one failed criterion. **Step 2 above is not replanned**; C2.1, C2.2 and
+C2.4-C2.9 are untouched and remain green.
+
+## fail-triage: verify
+
+**Confirmed** — reproduced live at `f57e5b8`, and the reproduction corrects one
+detail of the FAIL record's account.
+
+GNU `grep --exclude-dir` matches a directory's **basename**, never a
+slash-containing path. Minimal control, run in a scratch tree:
+
+```
+$ command grep -rl --exclude-dir=a/b hit .     ->  ./a/b/c/f.txt   ./a/top.txt
+$ command grep -rl --exclude-dir=b   hit .     ->  ./a/top.txt
+```
+
+The exclusion flag added by `f57e5b8` is therefore a no-op, and 61 of the 190
+files the ADR's quoted command counts are themselves marker files — so the
+`(non-marker files)` parenthetical at ADR:23 is false for the command quoted
+immediately above it. GNU grep 3.11.
+
+**The tool divergence is three-way, not two-way.** In an agent Bash shell
+`grep` is a bash *function* that re-execs the `claude` binary as
+`ugrep -G --ignore-files --hidden -I --exclude-dir=.git …`; `--ignore-files`
+makes it honour `.gitignore`, and `.gitignore:12` ignores the marker
+directory. But a bash *function* is not exported, so it is **not** in scope
+inside a script invoked as `bash script.sh` — there, `grep` is the real GNU
+binary again (`type -t grep` returns `function` inline and `file` in a
+script). The same quoted command therefore returns:
+
+| how it is run | result |
+| --- | --- |
+| human shell / any `bash script.sh` (GNU grep 3.11) | **190** |
+| agent Bash tool, command typed inline (ugrep wrapper) | **124** |
+| GNU grep with a *working* `--exclude-dir=reviewed` | **129** |
+| `git grep -l` (tracked files only) | **124** |
+
+The FAIL record framed this as "human vs. agent". It is actually
+"inline vs. script", which is worse: an agent gets *both* answers depending on
+how it phrases the invocation. No variant yields the ADR's stated 110.
+
+**Where 110 came from.** A commit-pinned count at the ADR's own authoring
+commit `ba69623` returns **109**. The original number was, near-certainly, a
+live-tree measurement taken at authoring time that then drifted as marker and
+agent-memory files accumulated over the following three days.
+
+## fail-triage: categorize
+
+**Both routes fire, and the criterion defect is the load-bearing one.**
+
+- *Code (content) defect*: the ADR's quoted command is broken (no-op
+  exclusion) and its stated number is stale.
+- *Spec/criterion defect*: C2.3 says "re-running the command the ADR itself
+  quotes" while naming neither the tool nor the invocation form, in an
+  environment where `grep` resolves to two different programs. A criterion
+  whose result depends on unstated invocation context is **ambiguous** by the
+  shared protocol's machine-checkable-criteria rule. Separately, C2.3's
+  "on the day it is authored" licenses a number that is *correct at authoring
+  and false the next morning* — it gates the wrong instant.
+
+Fixing only the command would leave the criterion able to certify a
+next-day-false number, and would leave the tool ambiguity for the next author.
+So: fix the command **and** revise the criterion.
+
+## Root-cause diagnosis
+
+The deepest cause is that Measurement 1 asserts a property of a **live,
+growing corpus** and pins it with a **wall-clock date**. Dates do not identify
+trees; commits do. Every downstream symptom follows from that one choice —
+the drift from 109 to 124, the need for an exclusion flag at all (the marker
+directory is only present in a live tree, never in a tracked one), and the
+tool sensitivity (the wrapper's `--ignore-files` only matters because
+untracked/ignored files are in scope in the first place).
+
+Switching the measurement to a **commit-pinned `git grep -l`** collapses all
+three symptoms simultaneously:
+
+- `git` is not shadowed by any wrapper in this harness (`type -t git` ->
+  `file`), so there is exactly one answer.
+- Nothing under the marker directory is ever tracked (it is gitignored;
+  `git ls-files` there returns 0), so the count is inherently marker-free and
+  needs **no exclusion flag at all** — the flag whose brokenness caused this
+  FAIL simply ceases to exist.
+- A commit is immutable, so the number reproduces on any day, from a fresh
+  clone, with a clean or dirty working tree (verified: identical with 2 files
+  dirty).
+
+This is the same fix pattern this repo already adopted for this failure class
+(`docs/plans/2026-08-09-agent-auditor-persona.md`, Step 12: "re-measure at
+execution time rather than trusting this number - the corpus grows every
+session"). A commit pin is the stronger form of that advice: rather than
+telling the reader to re-measure, it makes re-measurement return the same
+number forever.
+
+**Pinning to `ba69623`** — the ADR's own authoring commit, dated 2026-08-11 —
+additionally repairs the ADR's internal date coherence for free. The header
+`**Date:** 2026-08-11`, Measurements 2, 3 and 4, and the newly-pinned
+Measurement 1 then all agree on one date and one tree.
+
+Measured, at `ba69623`: **109** tracked files repo-wide, **12** under
+`.claude/agent-memory`, **0** marker files, **0** scratch-tree noise.
+
+## Resolution of the secondary defect (Measurement 2's date)
+
+The FAIL offered a choice: re-date Measurement 2 to 2026-08-14 and keep 13, or
+restore 12 under 2026-08-11. **Restore 12**, pinned to `ba69623`.
+
+Re-dating to 2026-08-14 keeps a live-tree value that will read 14 next week —
+it patches the symptom and preserves the defect class. Restoring 12 under the
+same commit pin as Measurement 1 makes the number permanently reproducible and
+leaves the whole ADR on a single date. The choice is not a coin-flip: one
+option expires, the other does not.
+
+## Clarifications
+
+1. Functional scope & success criteria: Clear
+2. Domain entities / data model: Partial
+3. User interaction flow: Partial
+4. Non-functional attributes (perf, security, scale): Clear
+5. External dependencies & integrations: Partial
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Partial
+9. Completion / acceptance signals: Partial
+
+- 2026-08-14 Domain entities / data model: Q What *is* the corpus Measurement 1
+  counts — every file on disk, or the repository's tracked content? → A
+  (self-resolved): tracked content at a pinned commit. The false-positive
+  argument is about this repo's own documentation, all of which is tracked;
+  ignored scratch trees (5 files under `scratch/update-install/` today) are
+  noise, not surface.
+- 2026-08-14 User interaction flow: Q Who re-runs the quoted command, in which
+  shell, and must all of them agree? → A (self-resolved): any reader, in any
+  shell, and yes — they must agree exactly. That requirement is what disqualifies
+  bare `grep` and selects `git grep`.
+- 2026-08-14 External dependencies & integrations: Q Does the ADR's reproducer
+  depend on the harness's `grep` wrapper? → A (self-resolved): as written, yes,
+  and undeclared; after this fix, no — `git` is not shadowed.
+- 2026-08-14 Edge cases / failure handling: Q Must the number hold with a dirty
+  working tree, and after later commits land? → A (self-resolved): yes to both,
+  which only a commit pin delivers. Verified dirty-tree-invariant.
+- 2026-08-14 Technical constraints & tradeoffs: Q Tracked-only undercounts the
+  live tree (109 vs 129) — is that acceptable? → A (self-resolved): yes, and it
+  is stated inline in the ADR. The argument needs an order-of-magnitude true
+  claim, not a maximal one; 109 is as decisive as 129.
+- 2026-08-14 Terminology consistency: Q Is "non-marker file" (ADR:23, flagged
+  lens-3 by the reviewer as load-bearing and undefined) worth a glossary entry?
+  → A (self-resolved): no — this fix retires the coinage. Pinned counts are
+  marker-free by construction, so the prose says **tracked files**, a term git
+  already defines. The finding dissolves rather than needing an entry.
+- 2026-08-14 Completion / acceptance signals: Q Should C2.3 certify the
+  authoring day, or every day? → A (self-resolved): every day. "On the day it
+  is authored" is the clause that let a next-day-false number pass.
+
+## Constitution check (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied — every number in this spec was re-run
+  live rather than copied from the FAIL record, which is how the three-way tool
+  divergence (recorded there as two-way) was caught.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied — the ADR
+  has no script-driven path; the revised criterion moves *toward* determinism.
+- P3 "Version-stamp discipline": satisfied — `docs/adr/` is not version-stamped
+  (the principle names `agents/*.md` and templates), so no `plugin.json` bump
+  and no CHANGELOG entry. C2.9 already asserts `plugin.json` is unchanged.
+- P5 "`tests/validate.sh` is the merge gate": satisfied — C2.1 is retained
+  unchanged and still gates this unit.
+
+## Revised criterion C2.3 (replaces the C2.3 at line 384)
+
+- **C2.3 (revised)** Claim-anchored, measurement 1 — commit-pinned and
+  tool-unambiguous. All five clauses must hold:
+  - **(a) Pin stated inline.** The ADR's Measurement 1 states its file count
+    together with both the commit SHA it was measured at and that commit's
+    date, in the measurement's own heading or body.
+  - **(b) Tool is not shadowable.** The quoted command uses `git grep -l`
+    against that pinned commit and does **not** invoke bare `grep` or
+    `grep -r`. Rationale, which the ADR need not restate: in an agent Bash
+    shell `grep` resolves to a `ugrep --ignore-files` wrapper function and in
+    a script to GNU grep, yielding different counts from identical text;
+    `git` is shadowed by neither.
+  - **(c) Reproduces exactly, on any day.** Running the quoted command
+    verbatim prints exactly the stated number, with a clean **or** dirty
+    working tree. No "as of today" wording remains anywhere in Measurement 1.
+  - **(d) Marker-free by construction.** Piping the same command's output to
+    `grep -c '/reviewed/'` returns `0`. (Read the printed count, not the exit
+    status — `grep -c` prints `0` but exits 1; guard with `|| true`.)
+  - **(e) Non-vacuity control.** Substituting `f57e5b8` for the pinned SHA in
+    the quoted command yields a **different** number (124 vs 109), proving the
+    pin is load-bearing rather than decorative.
+
+- **C2.10 (new)** Measurement 2's agent-memory count is pinned to the same
+  commit and date as Measurement 1, quotes the command that produces it, and
+  reproduces exactly. No date/number pair anywhere in the ADR disagrees with
+  the ADR's own `**Date:**` header. Note Measurement 2 legitimately carries two
+  pins — `1be4ca1` for the incident blob (C2.4's evidence, untouched) and
+  `ba69623` for the agent-memory count — and the prose must make clear which
+  pin governs which number.
+
+- **C2.11 (new)** Scope: `git diff --name-only` for this unit's commit lists
+  exactly one path, `docs/adr/0020-write-edit-content-not-scanned.md`.
+
+## Self-check
+
+- CHK1: Does the revised C2.3 name the exact tool, so two readers cannot get
+  two answers? — PASS (clause (b) names `git grep -l` and bans bare `grep`)
+- CHK2: Does the plan say what happens to the number after the authoring day?
+  — PASS (clause (c): reproduces on any day; the commit pin is what delivers it)
+- CHK3: Is the tracked-vs-live undercount (109 vs 129) acknowledged rather than
+  silently chosen? — FAIL (missing) — revised in place: recorded in
+  Clarifications under category 7, and ordered edit 3 requires the ADR prose to
+  state "tracked files" explicitly.
+- CHK4: Do the revised C2.3 and new C2.10 agree on which commit is the pin? —
+  PASS (both name `ba69623`; C2.10 also disambiguates the `1be4ca1` blob pin)
+- CHK5: Could the revised C2.3 pass against an untouched ADR? — PASS, i.e. it
+  cannot: the current ADR fails (a), (b), (c) and (d) independently, so the
+  criterion distinguishes a fixed unit from an unfixed one.
+- CHK6: Is every number this spec asserts one this spec actually ran, rather
+  than one carried over from the FAIL record? — PASS (109, 12, 124, 13, 190,
+  129, 61, 0 all re-measured here; the FAIL's two-way tool claim was corrected
+  to three-way as a result)
+- CHK7: Does the secondary defect (Measurement 2's date) have a machine-checkable
+  criterion, given the FAIL noted it was not a numbered criterion? — FAIL
+  (missing) — revised in place: it is now C2.10.
+
+## Dispatch contract — unit `gh288-2-fix2`
+
+Single unit, documentation-only, single file. Per the fast path (<=2
+dispatchable units) this is dispatched directly from this document; it is not
+sliced by `task-master` and no tracker issue is created for it.
+
+**Unit:** `gh288-2-fix2`
+
+### Objective
+
+Make ADR 0020's Measurement 1 reproduce exactly and permanently, by replacing
+its broken, tool-sensitive live-tree command with a commit-pinned `git grep`,
+and bring Measurement 2's count back into agreement with the date it carries.
+Nothing else in the ADR changes.
+
+### Retrieval
+
+This document — `docs/plans/2026-08-11-gh288-write-edit-content-asymmetry.md`,
+the `# Debug spec — gh288-2, criterion C2.3 (2026-08-14)` section. Step 2
+above (line 357) is the originating spec; its C2.3 is superseded by the
+revised C2.3 in this section. No issue tracker fetch is required.
+
+### Affected files
+
+- `docs/adr/0020-write-edit-content-not-scanned.md` — the only file. Lines
+  15-23 (Measurement 1) and lines 25-33 (Measurement 2).
+
+### Ordered edits
+
+1. **ADR:15, Measurement 1 heading.** Replace the `(2026-08-14)` date with a
+   date-plus-pin naming `2026-08-11` and commit `ba69623`.
+2. **ADR:20, the command's third line.** Replace the whole
+   `grep -rl --exclude-dir=… | wc -l` line with a `git grep -l` against
+   `ba69623`, piped to `wc -l`. Keep the two `GATE_PATH` placeholder/`sed`
+   lines above it exactly as they are — they are what lets a future agent
+   paste the block without tripping `reviewed-path-gate.sh`. The exclusion
+   flags are deleted, not repaired: a tracked-file count cannot contain marker
+   files.
+3. **ADR:23, the paragraph.** State **109** (not 110), describe the counted
+   set as **tracked files** (retire the `(non-marker files)` parenthetical),
+   attribute the number to commit `ba69623` (2026-08-11) rather than "as of
+   today", add a brief clause noting the count is tracked-only and inherently
+   marker-free because the marker directory is gitignored, and update the
+   downstream "all 110" to "all 109".
+4. **ADR:25, Measurement 2 heading.** Add the same `ba69623` pin alongside its
+   existing `(2026-08-11)` date.
+5. **ADR:33, Measurement 2's final sentence.** Restore **12** in place of 13,
+   and add a short fenced `bash` block immediately after the paragraph quoting
+   the command that produces it (a `git grep -l` against `ba69623` scoped to
+   `-- .claude/agent-memory`, piped to `wc -l`), reusing the `GATE_PATH`
+   variable convention already established in Measurement 1. Word it so a
+   reader can tell that `1be4ca1` governs the blob's count of 1 and `ba69623`
+   governs the count of 12.
+
+### Do NOT touch
+
+- **C2.1, C2.2, C2.4-C2.9** and anything they assert. All are green; the
+  reviewer re-verified each on `f57e5b8`.
+- **Measurement 3 (ADR:35-43)** and **Measurement 4 (ADR:45-49)**, including
+  Measurement 3's hardcoded absolute path at ADR:40 and Measurement 4's
+  missing command. Both were raised as *non-blocking advisory notes*, not
+  defects; C2.5 currently passes against Measurement 3 and editing it risks
+  regressing a green criterion. Leave them for a separate pass.
+- `CONTEXT.md` and `README.md` — both PASSed on re-review of `f57e5b8` and are
+  outside this unit.
+- `gh288-1`'s work (`scripts/agent-audit.sh` A7/A8), the ADR's `## Decision`,
+  `## How the visibility gap is closed instead`, `## Related principles and
+  decisions`, `## Acceptance and audit trail`, and the closing paragraph.
+- The ADR's `**Date:** 2026-08-11` header — after this fix it is correct as-is.
+- Do **not** add a `.claude-plugin/plugin.json` version bump or a CHANGELOG
+  entry; P3 does not fire on `docs/adr/` and C2.9 asserts `plugin.json` is
+  unchanged.
+
+### Acceptance criteria
+
+Revised **C2.3** (a)-(e), new **C2.10**, new **C2.11**, all as specified
+above, plus the retained **C2.1** (`bash tests/validate.sh` exits 0) and
+**C2.9**. Run each one and paste the number it printed — the previous two
+attempts both failed on numbers that were asserted rather than re-run.
+
+### Pre-resolved context
+
+Already measured; do not re-derive from zero, though clause (c) and (e) still
+require you to run the final quoted command yourself:
+
+- `git grep -l "$GATE_PATH" ba69623 | wc -l` -> **109**; of those, `0` are
+  marker files and `0` are under `scratch/update-install/`.
+- `git grep -l "$GATE_PATH" ba69623 -- .claude/agent-memory | wc -l` -> **12**.
+- Same two commands at `f57e5b8` -> **124** and **13** (this is C2.3(e)'s
+  control, and it is where the stale 13 came from).
+- `git ls-files` under the marker directory -> `0`; `.gitignore:12` ignores it.
+  This is *why* no exclusion flag is needed.
+- `git` is not wrapper-shadowed in this harness: `type -t git` -> `file`.
+- Both commands are dirty-working-tree invariant (verified with 2 files
+  modified).
+- `grep -c` prints `0` but exits `1`; guard with `|| true` in any
+  `set -euo pipefail` context. This bit two earlier criteria in Step 2.
+
+### Escalation
+
+This unit is already at the 2-FAIL cap. If the revised C2.3 cannot be met as
+written — in particular if `git grep -l` at `ba69623` returns anything other
+than 109 on your machine — **stop and report**; do not adjust the number to
+whatever you observe and do not substitute a different command. A divergence
+there would mean the pin premise is wrong, which is a spec defect and routes
+back to `spec-master`, not a number to be edited into agreement.
