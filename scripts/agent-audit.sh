@@ -312,10 +312,10 @@ DISTRIBUTION="$(mktemp)"; WORK_FILES+=("$DISTRIBUTION")
 SKILLS="$(mktemp)"; WORK_FILES+=("$SKILLS")
 
 emit_finding() {
-  # $1 id, $2 session, $3 agent, $4 persona, $5 tool/extra, $6 label, $7 status (optional)
-  local status="${7:-}"
-  jq -nc --arg id "$1" --arg session "$2" --arg agent "$3" --arg persona "$4" --arg tool "$5" --arg label "$6" --arg status "$status" \
-    '{id:$id, session:$session, agent:$agent, persona:$persona} + (if $tool=="" then {} else {tool:$tool} end) + (if $label=="" then {} else {label:$label} end) + (if $status=="" then {} else {status:$status} end)' \
+  # $1 id, $2 session, $3 agent, $4 persona, $5 tool/extra, $6 label, $7 status (optional), $8 class (optional)
+  local status="${7:-}" class="${8:-}"
+  jq -nc --arg id "$1" --arg session "$2" --arg agent "$3" --arg persona "$4" --arg tool "$5" --arg label "$6" --arg status "$status" --arg class "$class" \
+    '{id:$id, session:$session, agent:$agent, persona:$persona} + (if $tool=="" then {} else {tool:$tool} end) + (if $label=="" then {} else {label:$label} end) + (if $status=="" then {} else {status:$status} end) + (if $class=="" then {} else {class:$class} end)' \
     >> "$FINDINGS"
 }
 
@@ -400,16 +400,41 @@ done < "$DISPATCHES"
 # --- A2: unregistered agent type ---------------------------------------
 # Canonicalizes via identity_persona_name (matching
 # hooks/scripts/lib/agent-identity.sh), then checks the same three
-# candidate source locations A1 uses.
+# candidate source locations A1 uses. Sub-classifies, per Step 13 - it does
+# NOT resolve: customAgentType cannot map a teammate name back to its
+# persona (only 103/878 meta.json records carry it), so class is decided by
+# taskKind alone. teammate-name (taskKind=="in_process_teammate") and
+# foreign-type (taskKind absent - a Claude Code built-in, by measurement)
+# are both benign; the residual with no class field at all is the only
+# genuinely unregistered persona.
 while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
   if ! persona_source_file "$persona" >/dev/null 2>&1; then
-    emit_finding A2 "$sid" "$aid" "$persona" "" ""
+    class=""
+    if [ "$teammate" = 1 ]; then
+      class="teammate-name"
+    else
+      taskkind="$(jq -r '(.taskKind // empty)' "${jf%.jsonl}.meta.json" 2>/dev/null || true)"
+      [ -n "$taskkind" ] || class="foreign-type"
+    fi
+    emit_finding A2 "$sid" "$aid" "$persona" "" "" "" "$class"
   fi
 done < "$DISPATCHES"
 
 # --- A3: nested spawn ----------------------------------------------------
+# Recalibrated per Step 13: spawnDepth never exceeds 2 corpus-wide, so a
+# higher threshold would be vacuous. Instead this suppresses the one nested
+# pattern the shared persona protocol explicitly prescribes - a nested
+# `explorer` dispatch ("Structural questions go to the explorer") - while
+# keeping the rest (e.g. a nested `reviewer`, a candidate review-ownership
+# violation). The suppression is counted, never silent - printed alongside
+# the residual in the plain-text render below.
+A3_SUPPRESSED=0
 while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
   if [[ "$depth" =~ ^[0-9]+$ ]] && [ "$depth" -ge 2 ]; then
+    if [ "$persona" = "explorer" ]; then
+      A3_SUPPRESSED=$((A3_SUPPRESSED + 1))
+      continue
+    fi
     emit_finding A3 "$sid" "$aid" "$persona" "" "spawnDepth=$depth"
   fi
 done < "$DISPATCHES"
@@ -589,8 +614,15 @@ n1_executed="$(jq -s '[.[] | select(.id=="A1" and .status=="executed")] | length
 n1_refused="$(jq -s '[.[] | select(.id=="A1" and .status=="refused")] | length' "$FINDINGS" 2>/dev/null)"
 echo "A1 Undeclared tool use (n=$n1, executed=$n1_executed, refused=$n1_refused)"
 jq -r 'select(.id=="A1") | "  session=\(.session) agent=\(.agent) persona=\(.persona)" + (if .tool then " tool=\(.tool)" else "" end) + (if .status then " status=\(.status)" else "" end) + (if .label then " \(.label)" else "" end)' "$FINDINGS" 2>/dev/null
-print_section A2 "Unregistered agent type"
-print_section A3 "Nested spawn"
+n2_residual="$(jq -s '[.[] | select(.id=="A2" and (.class|not))] | length' "$FINDINGS" 2>/dev/null)"
+n2_teammate="$(jq -s '[.[] | select(.id=="A2" and .class=="teammate-name")] | length' "$FINDINGS" 2>/dev/null)"
+n2_foreign="$(jq -s '[.[] | select(.id=="A2" and .class=="foreign-type")] | length' "$FINDINGS" 2>/dev/null)"
+echo "A2 Unregistered agent type (residual=$n2_residual, teammate-name=$n2_teammate, foreign-type=$n2_foreign)"
+jq -r 'select(.id=="A2") | "  session=\(.session) agent=\(.agent) persona=\(.persona)" + (if .class then " class=\(.class)" else "" end)' "$FINDINGS" 2>/dev/null
+
+n3="$(section_count A3)"
+echo "A3 Nested spawn (n=$n3, suppressed=$A3_SUPPRESSED explorer)"
+jq -r 'select(.id=="A3") | "  session=\(.session) agent=\(.agent) persona=\(.persona)" + (if .label then " \(.label)" else "" end)' "$FINDINGS" 2>/dev/null
 print_section A4 "Gated dispatch without review"
 n6="$(jq -s '[.[] | select(.id=="A6")] | length' "$FINDINGS" 2>/dev/null)"
 echo "A6 Orphan PASS marker (n=$n6)"

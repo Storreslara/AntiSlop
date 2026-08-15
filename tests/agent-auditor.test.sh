@@ -66,8 +66,27 @@ echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth"
   echo '{"type":"assistant","timestamp":"2026-08-01T10:00:06Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
 } > "$FIXTURE_ROOT/s1/subagents/agent-a2good.jsonl"
 
-# A3_bad: spawnDepth >= 2
-echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":2,"taskKind":"normal"}' > \
+# A2_teammate: unresolvable AND taskKind=="in_process_teammate" -> class=teammate-name
+echo '{"agentType":"lp-a2teammate","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"in_process_teammate"}' > \
+  "$FIXTURE_ROOT/s1/subagents/agent-a2teammate.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T10:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T10:00:06Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s1/subagents/agent-a2teammate.jsonl"
+
+# A2_foreign: unresolvable, taskKind absent (a Claude Code built-in, per
+# Step 13's own measurement) -> class=foreign-type
+echo '{"agentType":"general-purpose","description":"test","model":"sonnet","spawnDepth":0}' > \
+  "$FIXTURE_ROOT/s1/subagents/agent-a2foreign.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T10:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T10:00:06Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s1/subagents/agent-a2foreign.jsonl"
+
+# A3_bad: spawnDepth >= 2, persona=reviewer (non-explorer; re-based per
+# Step 13 - a nested reviewer dispatch is the candidate review-ownership
+# violation the recalibrated A3 keeps, since explorer is now suppressed)
+echo '{"agentType":"reviewer","description":"test","model":"sonnet","spawnDepth":2,"taskKind":"normal"}' > \
   "$FIXTURE_ROOT/s1/subagents/agent-a3bad.meta.json"
 {
   echo '{"type":"user","timestamp":"2026-08-01T10:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
@@ -81,6 +100,16 @@ echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth"
   echo '{"type":"user","timestamp":"2026-08-01T10:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
   echo '{"type":"assistant","timestamp":"2026-08-01T10:00:06Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
 } > "$FIXTURE_ROOT/s1/subagents/agent-a3good.jsonl"
+
+# A3_sanctioned: spawnDepth >= 2, persona=explorer - Step 13 suppresses this,
+# since a nested explorer dispatch is the exact pattern the shared persona
+# protocol prescribes ("Structural questions go to the explorer").
+echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth":2,"taskKind":"normal"}' > \
+  "$FIXTURE_ROOT/s1/subagents/agent-a3sanctioned.meta.json"
+{
+  echo '{"type":"user","timestamp":"2026-08-01T10:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}'
+  echo '{"type":"assistant","timestamp":"2026-08-01T10:00:06Z","message":{"content":[{"type":"text","text":"STATUS: complete"}]}}'
+} > "$FIXTURE_ROOT/s1/subagents/agent-a3sanctioned.jsonl"
 
 echo '{"type":"user","timestamp":"2026-08-01T10:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
   > "$FIXTURE_ROOT/s1.jsonl"
@@ -339,9 +368,64 @@ echo "== A2: unregistered agent type =="
 assert_agent_finding A2 a2bad present
 assert_agent_finding A2 a2good absent
 
+echo "== A2 (Step 13): sub-classification =="
+assert_agent_finding A2 a2teammate present
+assert_agent_finding A2 a2foreign present
+class_a2teammate="$(printf '%s' "$JSON_OUTPUT" | jq -r '[.findings[]|select(.id=="A2" and .agent=="a2teammate")][0].class // "MISSING"')"
+if [ "$class_a2teammate" = "teammate-name" ]; then
+  echo "OK   A2 a2teammate classified as teammate-name"
+else
+  echo "FAIL A2 a2teammate expected class=teammate-name, got $class_a2teammate"
+  fail=1
+fi
+class_a2foreign="$(printf '%s' "$JSON_OUTPUT" | jq -r '[.findings[]|select(.id=="A2" and .agent=="a2foreign")][0].class // "MISSING"')"
+if [ "$class_a2foreign" = "foreign-type" ]; then
+  echo "OK   A2 a2foreign classified as foreign-type"
+else
+  echo "FAIL A2 a2foreign expected class=foreign-type, got $class_a2foreign"
+  fail=1
+fi
+class_a2bad="$(printf '%s' "$JSON_OUTPUT" | jq -r '[.findings[]|select(.id=="A2" and .agent=="a2bad")][0].class // "MISSING"')"
+if [ "$class_a2bad" = "MISSING" ]; then
+  echo "OK   A2 a2bad (residual) carries no class"
+else
+  echo "FAIL A2 a2bad (residual) unexpectedly carries class=$class_a2bad"
+  fail=1
+fi
+
+echo "== A2 (Step 13) AC1/AC2 shape =="
+if printf '%s' "$JSON_OUTPUT" | jq -e '[.findings[]|select(.id=="A2")|.class]|(index("teammate-name") and index("foreign-type"))' >/dev/null; then
+  echo "OK   A2 findings carry both teammate-name and foreign-type classes"
+else
+  echo "FAIL A2 findings missing one of teammate-name/foreign-type classes"
+  fail=1
+fi
+a2_residual_count="$(printf '%s' "$JSON_OUTPUT" | jq '[.findings[]|select(.id=="A2" and (.class|not))]|length')"
+if [ "$a2_residual_count" -eq 1 ]; then
+  echo "OK   A2 residual (no-class) count is exactly 1"
+else
+  echo "FAIL A2 residual (no-class) count expected 1, got $a2_residual_count"
+  fail=1
+fi
+
 echo "== A3: nested spawn =="
 assert_agent_finding A3 a3bad present
 assert_agent_finding A3 a3good absent
+
+echo "== A3 (Step 13): explorer suppression =="
+assert_agent_finding A3 a3sanctioned absent
+if printf '%s' "$JSON_OUTPUT" | jq -e '[.findings[]|select(.id=="A3")|.persona]|(index("explorer")|not)' >/dev/null; then
+  echo "OK   A3 findings never carry persona=explorer"
+else
+  echo "FAIL A3 findings unexpectedly carry persona=explorer"
+  fail=1
+fi
+if printf '%s' "$JSON_OUTPUT" | jq -e '[.findings[]|select(.id=="A3")]|length >= 1' >/dev/null; then
+  echo "OK   A3 still fires for at least one finding (reviewer, a3bad)"
+else
+  echo "FAIL A3 fired for zero findings - residual signal lost"
+  fail=1
+fi
 
 echo "== A4: gated dispatch without review =="
 assert_agent_finding A4 a4bad present
@@ -373,6 +457,14 @@ if printf '%s' "$PLAIN_OUTPUT" | grep -q "CANARY-PROMPT-BODY"; then
   fail=1
 else
   echo "OK   plain-text output does not contain the privacy canary string"
+fi
+
+echo "== A3 (Step 13) AC4: plain-text render states the suppressed count, not silent =="
+if printf '%s' "$PLAIN_OUTPUT" | grep -qE '^A3 .*suppressed'; then
+  echo "OK   plain-text A3 header states the suppressed count"
+else
+  echo "FAIL plain-text A3 header does not mention suppressed"
+  fail=1
 fi
 
 echo "== Step12 AC3 shape: plain-text A1 header states the refused/executed split =="
@@ -653,6 +745,49 @@ else
     echo "OK   mutation proof for A8: neutralizing memory-path detection makes a8bad's A8 findings disappear (count=$mutant_a8_count) - detection was load-bearing"
   else
     echo "FAIL mutation proof for A8: still detected after attempted mutation (count=$mutant_a8_count) - suite may not catch a regression"
+    fail=1
+  fi
+fi
+
+echo "== mutation proof: A3 explorer exclusion (Step 13) =="
+# Drops the "$persona" = "explorer" suppression check, so a3sanctioned
+# should reappear as an A3 finding once mutated.
+before_a3excl="$(grep -c '\[ "\$persona" = "explorer" \]' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before_a3excl" -eq 0 ]; then
+  echo "FAIL mutation proof for A3 explorer exclusion: no persona==explorer check found to neutralize"
+  fail=1
+else
+  sed -i 's/\[ "\$persona" = "explorer" \]/[ "\$persona" = "MUTATED-A3-NEVER-MATCH" ]/' "$MUTANT_DIR/scripts/agent-audit.sh"
+
+  mutant_a3_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+    jq '[.findings[] | select(.id=="A3" and .agent=="a3sanctioned")] | length')"
+
+  if [ "$mutant_a3_count" -gt 0 ]; then
+    echo "OK   mutation proof for A3 explorer exclusion: dropping the exclusion makes a3sanctioned's A3 finding reappear (count=$mutant_a3_count) - suppression was load-bearing"
+  else
+    echo "FAIL mutation proof for A3 explorer exclusion: a3sanctioned still suppressed after removing the exclusion (count=$mutant_a3_count) - suppression logic is vacuous"
+    fail=1
+  fi
+fi
+
+echo "== mutation proof: A2 class emission (Step 13) =="
+# Neutralizes both class="teammate-name" and class="foreign-type"
+# assignments, so a2teammate/a2foreign should lose their class once mutated.
+before_a2class="$(grep -cE 'class="teammate-name"|class="foreign-type"' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+if [ "$before_a2class" -eq 0 ]; then
+  echo "FAIL mutation proof for A2 class emission: no class assignment found to neutralize"
+  fail=1
+else
+  sed -i 's/class="teammate-name"/true # MUTATED-A2-CLASS/;s/class="foreign-type"/true # MUTATED-A2-CLASS/' \
+    "$MUTANT_DIR/scripts/agent-audit.sh"
+
+  mutant_a2_classes="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+    jq '[.findings[] | select(.id=="A2" and (.agent=="a2teammate" or .agent=="a2foreign") and .class)] | length')"
+
+  if [ "$mutant_a2_classes" -eq 0 ]; then
+    echo "OK   mutation proof for A2 class emission: neutralizing the class assignments drops class from a2teammate/a2foreign (count=$mutant_a2_classes) - classification was load-bearing"
+  else
+    echo "FAIL mutation proof for A2 class emission: findings still carry a class after mutation (count=$mutant_a2_classes) - classification is vacuous"
     fail=1
   fi
 fi
