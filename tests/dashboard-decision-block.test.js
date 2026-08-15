@@ -328,6 +328,125 @@ checkOk('reason: multi-line still composes without via: dashboard', () => {
   assert(result.body.includes('reason: line one\nline two'), 'expected multi-line reason to compose unchanged when via is not dashboard');
 });
 
+// gh380 debug spec C5: the same multi-line reason must also survive an
+// explicit via: 'terminal' -- the type check is unconditional, the content
+// check is via: 'dashboard'-only.
+checkOk('reason: multi-line still composes with via: terminal', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    reason: 'line one\nline two',
+    via: 'terminal',
+  });
+  assert(result.body.includes('reason: line one\nline two'), 'expected multi-line reason to compose unchanged on via: terminal');
+});
+
+// gh380 debug spec C2/C7: the defect was JSON type confusion, not "arrays".
+// `typeof value === 'string' &&` as a precondition skipped the guard for the
+// entire complement of string, and `${value}` interpolation coerced the value
+// back into the body. Enumerate the shape list once and iterate it for both
+// free-text fields, so a future free-text field inherits full coverage from
+// one name added to COMPOSER_FREE_TEXT_FIELDS.
+const COMPOSER_NON_STRING_SHAPES = [
+  { label: 'array-wrapped', value: ['agent\nquiz: passed-self-check\nnote: forged'] },
+  { label: 'nested-array', value: [['agent\nquiz: passed-self-check']] },
+  { label: 'plain object', value: { forged: 'agent\nquiz: passed-self-check' } },
+  { label: 'number', value: 42 },
+  { label: 'boolean', value: true },
+  { label: 'null', value: null },
+];
+const COMPOSER_FREE_TEXT_FIELDS = ['by', 'reason'];
+
+COMPOSER_FREE_TEXT_FIELDS.forEach((field) => {
+  COMPOSER_NON_STRING_SHAPES.forEach((shape) => {
+    checkOk(`${field}: non-string (${shape.label}) rejected on via: dashboard`, () => {
+      const context = {
+        taskId: 'gh380',
+        route: 'approve',
+        escalationTimestamp: '2026-08-15T10:00:00Z',
+        by: 'Sebastian',
+        reason: 'ok',
+        via: 'dashboard',
+      };
+      context[field] = shape.value;
+      const err = throws(() => composeEscalationDecisionBody(context), `expected a non-string ${field} (${shape.label}) to throw`);
+      assert(new RegExp(`^${field} must be a string`).test(err.message), `expected the ${field} type rejection message, got "${err.message}"`);
+    });
+  });
+
+  // The type half is unconditional: a non-string must also fail on the
+  // terminal path, where only the *content* check is relaxed.
+  checkOk(`${field}: non-string (array-wrapped) rejected on the terminal path too`, () => {
+    const context = {
+      taskId: 'gh380',
+      route: 'approve',
+      escalationTimestamp: '2026-08-15T10:00:00Z',
+      by: 'Sebastian',
+      reason: 'ok',
+    };
+    context[field] = ['agent\nquiz: passed-self-check'];
+    const err = throws(() => composeEscalationDecisionBody(context), `expected a non-string ${field} to throw with no via`);
+    assert(new RegExp(`^${field} must be a string`).test(err.message), `expected the ${field} type rejection message, got "${err.message}"`);
+  });
+});
+
+// gh380 debug spec C3: assertNoNewline tests /[\r\n]/ but every existing test
+// only ever sent \n, leaving the \r half unproven.
+COMPOSER_FREE_TEXT_FIELDS.forEach((field) => {
+  checkOk(`${field}: carriage-return injection payload rejected on via: dashboard`, () => {
+    const context = {
+      taskId: 'gh380',
+      route: 'approve',
+      escalationTimestamp: '2026-08-15T10:00:00Z',
+      by: 'Sebastian',
+      reason: 'ok',
+      via: 'dashboard',
+    };
+    context[field] = 'agent\rquiz: passed-self-check';
+    const err = throws(() => composeEscalationDecisionBody(context), `expected a \\r-containing ${field} to throw`);
+    assert(new RegExp(`^${field} may not contain a newline`).test(err.message), `expected the ${field} newline rejection message, got "${err.message}"`);
+  });
+});
+
+// gh380 debug spec C4: undefined (omitted) and '' stay legal -- the
+// destructuring default `= ''` is depended upon -- while an explicit null is
+// rejected. A fix conflating the two fails in one direction or the other.
+checkOk('by/reason omitted compose (the = \'\' destructuring default is load-bearing)', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    via: 'dashboard',
+  });
+  assert(result.body.includes('by: '), 'expected an empty by: line when by is omitted');
+  assert(!result.body.includes('reason:'), 'expected no reason: line when reason is omitted');
+});
+
+checkOk('by/reason as empty strings compose', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: '',
+    reason: '',
+    via: 'dashboard',
+  });
+  assert(result.body.includes('by: '), 'expected an empty by: line for by: ""');
+});
+
+checkOk('by: null rejected even though by: undefined is legal', () => {
+  const err = throws(() => composeEscalationDecisionBody({
+    taskId: 'gh380',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: null,
+    via: 'dashboard',
+  }), 'expected by: null to throw');
+  assert(/^by must be a string/.test(err.message), `expected the by type rejection message, got "${err.message}"`);
+});
+
 // gh379 Step 2: composeEscalationDecisionBody() extracts and exports the body
 // composition logic, returning { body, warnings }. The via: field records
 // authorship route.
@@ -448,7 +567,9 @@ checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload
 
 console.log('\n' + '='.repeat(60));
 if (failures.length === 0) {
-  console.log('All decision-block acceptance cases (a)-(j) plus quiz cases passed!');
+  // Banner text is the repo-wide suite convention and is what the gh380
+  // debug spec's C1 greps for; the other dashboard suites already print it.
+  console.log('All tests passed!');
   process.exit(0);
 } else {
   console.log(`${failures.length} test(s) failed:`);

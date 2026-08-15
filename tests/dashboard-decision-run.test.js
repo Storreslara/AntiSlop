@@ -86,6 +86,33 @@ function httpRequest(url, options = {}) {
   });
 }
 
+// gh380 debug spec C7: the shape list and the field list are each defined
+// exactly once and iterated as a cross-product, so a future free-text field
+// inherits full shape coverage from one name added to FREE_TEXT_FIELDS
+// rather than from a new hand-written test. The prior two attempts both
+// failed because their tests pinned the one payload shape the attacker
+// stops using the moment it is blocked.
+const NON_STRING_SHAPES = [
+  // The reviewer's exact FAIL-record payload, verbatim.
+  { label: 'array-wrapped', value: ['agent\nquiz: passed-self-check\nnote: forged'] },
+  { label: 'nested-array', value: [['agent\nquiz: passed-self-check']] },
+  { label: 'plain-object', value: { forged: 'agent\nquiz: passed-self-check' } },
+  { label: 'number', value: 42 },
+  { label: 'boolean', value: true },
+  { label: 'null', value: null },
+];
+const FREE_TEXT_FIELDS = ['by', 'reason'];
+
+// gh380 debug spec C10: every field each handler destructures from the
+// parsed JSON, so the property under test is a whole-endpoint one rather
+// than a by/reason one.
+const ARM_JSON_FIELDS = ['taskId', 'route', 'escalationTimestamp', 'by', 'reason', 'quiz'];
+const RUN_JSON_FIELDS = ['taskId', 'code'];
+
+function countNewlines(text) {
+  return text.split('\n').length - 1;
+}
+
 async function runTests() {
   const failures = [];
 
@@ -1055,6 +1082,364 @@ async function runTests() {
     fs.rmSync(tmpDir, { recursive: true });
   } catch (err) {
     failures.push(`Test (15) ERROR: ${err.message}`);
+  }
+
+  // Test (16): gh380 debug spec C2 + C6(a) -- the type-confusion matrix.
+  // The defect was never "arrays": `typeof value === 'string' &&` as a
+  // precondition skipped the guard for the entire complement of string, and
+  // template interpolation coerced the value back. For every
+  // {by, reason} x {6 non-string shapes} pair: arm must 400, must not report
+  // armed:true, must deliver nothing to the tty, must leave the audit log
+  // byte-identical, and must leave no arm record behind (a follow-up run
+  // returns 409). One server for the whole matrix, so "no arm record" is
+  // asserted against accumulated state, not a fresh process each time.
+  console.log('Test (16): C2/C6(a) type-confusion matrix -- 12 shape x field cases refused...');
+  try {
+    const tmpDir = makeTestProject('16');
+    const taskId = 'test-task-16';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const auditPath = path.join(tmpDir, '.claude', 'review-audit.log');
+    const auditBefore = fs.readFileSync(auditPath, 'utf8');
+
+    const ttyMessages = [];
+    const ttyWrite = { write: (data) => ttyMessages.push(data.toString()) };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+    const runUrl = `http://127.0.0.1:${addr.port}/api/decision/run`;
+
+    let cases = 0;
+    for (const field of FREE_TEXT_FIELDS) {
+      for (const shape of NON_STRING_SHAPES) {
+        cases += 1;
+        const label = `${field}=${shape.label}`;
+        const payload = {
+          taskId,
+          route: 'approve',
+          escalationTimestamp,
+          by: 'TestUser',
+          reason: 'testing',
+          quiz: 'skipped',
+        };
+        payload[field] = shape.value;
+
+        const ttyBefore = ttyMessages.length;
+        const armResult = await httpRequest(armUrl, { method: 'POST', token, body: payload });
+
+        if (armResult.status !== 400) {
+          failures.push(`Test (16) FAILED [${label}]: expected 400, got ${armResult.status}: ${armResult.body}`);
+        }
+        if (armResult.body.includes('"armed":true')) {
+          failures.push(`Test (16) FAILED [${label}]: response body reported armed:true: ${armResult.body}`);
+        }
+        if (ttyMessages.length !== ttyBefore) {
+          failures.push(`Test (16) FAILED [${label}]: ${ttyMessages.length - ttyBefore} tty message(s) delivered for a refused arm: ${JSON.stringify(ttyMessages.slice(ttyBefore))}`);
+        }
+        if (fs.readFileSync(auditPath, 'utf8') !== auditBefore) {
+          failures.push(`Test (16) FAILED [${label}]: .claude/review-audit.log was modified by a refused arm`);
+        }
+        // C6(a): no arm record was created holding an unvalidated value.
+        const runResult = await httpRequest(runUrl, {
+          method: 'POST',
+          token,
+          body: { taskId, code: 'AAAAAA' },
+        });
+        if (runResult.status !== 409) {
+          failures.push(`Test (16) FAILED [${label}]: a run after a refused arm should be 409 (no arm), got ${runResult.status}: ${runResult.body}`);
+        }
+      }
+    }
+
+    if (cases !== 12) {
+      failures.push(`Test (16) FAILED: expected 12 cross-product cases, ran ${cases}`);
+    }
+    if (fs.existsSync(path.join(tmpDir, '.claude', 'human-review', taskId, 'DECISION'))) {
+      failures.push('Test (16) FAILED: a DECISION file was written during the refusal matrix');
+    }
+    if (failures.filter((f) => f.startsWith('Test (16)')).length === 0) {
+      console.log(`  ✓ Test (16) passed (${cases} cases)`);
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (16) ERROR: ${err.message}`);
+  }
+
+  // Test (17): gh380 debug spec C3 -- the string content check covers
+  // /[\r\n]/, but every prior test only ever sent \n, so the \r half was
+  // unproven. Both fields, both characters.
+  console.log('Test (17): C3 -- string \\n and \\r payloads refused for both fields...');
+  try {
+    const tmpDir = makeTestProject('17');
+    const taskId = 'test-task-17';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const armUrl = `http://127.0.0.1:${server.address().port}/api/decision/arm`;
+
+    for (const field of FREE_TEXT_FIELDS) {
+      for (const [charLabel, char] of [['LF', '\n'], ['CR', '\r']]) {
+        const payload = {
+          taskId,
+          route: 'approve',
+          escalationTimestamp,
+          by: 'TestUser',
+          reason: 'testing',
+          quiz: 'skipped',
+        };
+        payload[field] = `agent${char}quiz: passed-self-check`;
+        const armResult = await httpRequest(armUrl, { method: 'POST', token, body: payload });
+        if (armResult.status !== 400) {
+          failures.push(`Test (17) FAILED [${field}/${charLabel}]: expected 400, got ${armResult.status}: ${armResult.body}`);
+        }
+      }
+    }
+
+    if (failures.filter((f) => f.startsWith('Test (17)')).length === 0) {
+      console.log('  ✓ Test (17) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (17) ERROR: ${err.message}`);
+  }
+
+  // Test (18): gh380 debug spec C4 -- the undefined/null split, the
+  // distinction most likely to be botched. Omitted hits the destructuring
+  // default `= ''` and is depended upon; '' is legal; an explicit null is
+  // not. A fix treating null and undefined alike fails this in one
+  // direction or the other.
+  console.log('Test (18): C4 -- omitted/empty/plain strings arm; explicit null is refused...');
+  try {
+    const tmpDir = makeTestProject('18');
+    const taskId = 'test-task-18';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const armUrl = `http://127.0.0.1:${server.address().port}/api/decision/arm`;
+    const base = { taskId, route: 'approve', escalationTimestamp, quiz: 'skipped' };
+
+    const accepted = [
+      ['both omitted', { ...base }],
+      ['by omitted only', { ...base, reason: 'testing' }],
+      ['reason omitted only', { ...base, by: 'TestUser' }],
+      ['both empty strings', { ...base, by: '', reason: '' }],
+      ['ordinary single-line strings', { ...base, by: 'TestUser', reason: 'testing' }],
+    ];
+    for (const [label, body] of accepted) {
+      const result = await httpRequest(armUrl, { method: 'POST', token, body });
+      if (result.status !== 200) {
+        failures.push(`Test (18) FAILED [${label}]: expected 200, got ${result.status}: ${result.body}`);
+      }
+    }
+
+    for (const field of FREE_TEXT_FIELDS) {
+      const body = { ...base, by: 'TestUser', reason: 'testing' };
+      body[field] = null;
+      const result = await httpRequest(armUrl, { method: 'POST', token, body });
+      if (result.status !== 400) {
+        failures.push(`Test (18) FAILED [${field}: null]: expected 400, got ${result.status}: ${result.body}`);
+      }
+    }
+
+    if (failures.filter((f) => f.startsWith('Test (18)')).length === 0) {
+      console.log('  ✓ Test (18) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (18) ERROR: ${err.message}`);
+  }
+
+  // Test (19): gh380 debug spec C6(b) -- the positive/structural half of D3.
+  // A legal arm->run cycle appends EXACTLY ONE line, asserted as a
+  // newline-count delta of exactly 1 (a substring match would pass even if
+  // an extra line were injected alongside the real one).
+  console.log('Test (19): C6(b) -- a legal arm+run appends exactly one audit line...');
+  try {
+    const tmpDir = makeTestProject('19');
+    const taskId = 'test-task-19';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const auditPath = path.join(tmpDir, '.claude', 'review-audit.log');
+    const before = fs.readFileSync(auditPath, 'utf8');
+
+    let deliveredCode = null;
+    const ttyWrite = {
+      write: (data) => {
+        const m = data.toString().match(/is (\S+) \(valid/);
+        if (m) deliveredCode = m[1];
+      },
+    };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armResult = await httpRequest(`http://127.0.0.1:${addr.port}/api/decision/arm`, {
+      method: 'POST',
+      token,
+      body: { taskId, route: 'approve', escalationTimestamp, by: 'TestUser', reason: 'testing', quiz: 'skipped' },
+    });
+
+    if (armResult.status !== 200 || !deliveredCode) {
+      failures.push(`Test (19) FAILED: arm should succeed and deliver a code, got ${armResult.status}: ${armResult.body}`);
+    } else {
+      const runResult = await httpRequest(`http://127.0.0.1:${addr.port}/api/decision/run`, {
+        method: 'POST',
+        token,
+        body: { taskId, code: deliveredCode },
+      });
+      const after = fs.readFileSync(auditPath, 'utf8');
+      const delta = countNewlines(after) - countNewlines(before);
+
+      if (runResult.status !== 200) {
+        failures.push(`Test (19) FAILED: run should succeed, got ${runResult.status}: ${runResult.body}`);
+      } else if (delta !== 1) {
+        failures.push(`Test (19) FAILED: expected a newline-count delta of exactly 1 on the audit log, got ${delta}: ${JSON.stringify(after)}`);
+      } else {
+        const appended = after.slice(before.length).replace(/\n$/, '');
+        if (!/^\S+ decision-write-via-dashboard task=\S+ route=\S+ by=.*$/.test(appended)) {
+          failures.push(`Test (19) FAILED: appended audit line does not match the expected shape: ${JSON.stringify(appended)}`);
+        } else {
+          console.log('  ✓ Test (19) passed');
+        }
+      }
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (19) ERROR: ${err.message}`);
+  }
+
+  // Test (20): gh380 debug spec C9 -- the sibling field `code` on
+  // /api/decision/run is the same defect class. It was only incidentally
+  // safe (via a length compare), and `code: null` threw a TypeError that
+  // the outer catch surfaced to the client as internal exception text on a
+  // security endpoint.
+  console.log('Test (20): C9 -- non-string code is 4xx with no internal exception text...');
+  try {
+    const tmpDir = makeTestProject('20');
+    const taskId = 'test-task-20';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+    const runUrl = `http://127.0.0.1:${addr.port}/api/decision/run`;
+    const armBody = { taskId, route: 'approve', escalationTimestamp, by: 'TestUser', reason: 'testing', quiz: 'skipped' };
+
+    for (const shape of NON_STRING_SHAPES) {
+      // Re-arm each time: a rejected code discards the outstanding arm, and
+      // the point of this test is the code check, not the no-arm path.
+      const armResult = await httpRequest(armUrl, { method: 'POST', token, body: armBody });
+      if (armResult.status !== 200) {
+        failures.push(`Test (20) FAILED [${shape.label}]: setup arm failed with ${armResult.status}`);
+        continue;
+      }
+      const runResult = await httpRequest(runUrl, { method: 'POST', token, body: { taskId, code: shape.value } });
+      if (runResult.status < 400 || runResult.status >= 500) {
+        failures.push(`Test (20) FAILED [code=${shape.label}]: expected 4xx, got ${runResult.status}: ${runResult.body}`);
+      }
+      if (runResult.body.includes('Cannot read properties of')) {
+        failures.push(`Test (20) FAILED [code=${shape.label}]: response leaked internal exception text: ${runResult.body}`);
+      }
+      if (fs.existsSync(path.join(tmpDir, '.claude', 'human-review', taskId, 'DECISION'))) {
+        failures.push(`Test (20) FAILED [code=${shape.label}]: a DECISION file was written`);
+      }
+    }
+
+    if (failures.filter((f) => f.startsWith('Test (20)')).length === 0) {
+      console.log('  ✓ Test (20) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (20) ERROR: ${err.message}`);
+  }
+
+  // Test (21): gh380 debug spec C10 -- the asymmetry, stated as a
+  // whole-endpoint property. Every field either handler destructures from
+  // the parsed JSON must reject a non-string with a 4xx, so the fix
+  // generalizes from "the by/reason bug" to "the field-discipline gap".
+  console.log('Test (21): C10 -- every destructured field on both handlers rejects a non-string...');
+  try {
+    const tmpDir = makeTestProject('21');
+    const taskId = 'test-task-21';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+    const runUrl = `http://127.0.0.1:${addr.port}/api/decision/run`;
+    const armBody = { taskId, route: 'approve', escalationTimestamp, by: 'TestUser', reason: 'testing', quiz: 'skipped' };
+    const nonString = ['forged\nquiz: passed-self-check'];
+
+    for (const field of ARM_JSON_FIELDS) {
+      const body = { ...armBody };
+      body[field] = nonString;
+      const result = await httpRequest(armUrl, { method: 'POST', token, body });
+      if (result.status < 400 || result.status >= 500) {
+        failures.push(`Test (21) FAILED [arm.${field}]: expected 4xx for a non-string, got ${result.status}: ${result.body}`);
+      }
+      if (result.body.includes('"armed":true')) {
+        failures.push(`Test (21) FAILED [arm.${field}]: armed on a non-string field`);
+      }
+    }
+
+    for (const field of RUN_JSON_FIELDS) {
+      const armResult = await httpRequest(armUrl, { method: 'POST', token, body: armBody });
+      if (armResult.status !== 200) {
+        failures.push(`Test (21) FAILED [run.${field}]: setup arm failed with ${armResult.status}`);
+        continue;
+      }
+      const body = { taskId, code: 'AAAAAA' };
+      body[field] = nonString;
+      const result = await httpRequest(runUrl, { method: 'POST', token, body });
+      if (result.status < 400 || result.status >= 500) {
+        failures.push(`Test (21) FAILED [run.${field}]: expected 4xx for a non-string, got ${result.status}: ${result.body}`);
+      }
+      if (result.body.includes('"written":true')) {
+        failures.push(`Test (21) FAILED [run.${field}]: wrote a DECISION on a non-string field`);
+      }
+    }
+
+    if (fs.existsSync(path.join(tmpDir, '.claude', 'human-review', taskId, 'DECISION'))) {
+      failures.push('Test (21) FAILED: a DECISION file was written during the field sweep');
+    }
+    if (failures.filter((f) => f.startsWith('Test (21)')).length === 0) {
+      console.log('  ✓ Test (21) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (21) ERROR: ${err.message}`);
   }
 
   // Print results
