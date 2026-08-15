@@ -426,4 +426,98 @@ else
   fail=1
 fi
 
+
+# (h) GNU/BSD stat portability regression (issue #274): the review-join
+#     stamp's marker-coupling check reads a marker's mtime via GNU-only
+#     `stat --format=%Y`, which fails silently on BSD/macOS stat (the
+#     trailing `|| true` swallows the error), leaving a genuinely NEW verdict
+#     marker undetected and blocking with marker=MISSING on exactly the
+#     platform the fix targets. Stub a BSD-only `stat` first on PATH (accepts
+#     `-f %m`, rejects GNU's `-c`/`--format`) and drive the same repro shape
+#     as case (f3) through it, using the (e)/(g) mutation-control pattern: a
+#     throwaway copy with the OLD GNU-only call restored must still block
+#     under the BSD stub (proving the test is non-vacuous), while the real,
+#     fixed script must succeed.
+bsd_stat_bin="$tmproot/bsd-stat-bin"
+mkdir -p "$bsd_stat_bin"
+cat > "$bsd_stat_bin/stat" <<'STATEOF'
+#!/usr/bin/env bash
+# Minimal BSD-stat stand-in: supports -L/-f %m (mtime), rejects GNU's -c/--format.
+fmt=""
+file=""
+skip=false
+for a in "$@"; do
+  if $skip; then fmt="$a"; skip=false; continue; fi
+  case "$a" in
+    -c|--format=*|--format) echo "stat: illegal option" >&2; exit 1 ;;
+    -f) skip=true ;;
+    -L) ;;
+    -*) ;;
+    *) file="$a" ;;
+  esac
+done
+[ "$fmt" = "%m" ] && [ -n "$file" ] || exit 1
+/usr/bin/stat -c %Y "$file" 2>/dev/null || exit 1
+STATEOF
+chmod +x "$bsd_stat_bin/stat"
+
+fixed_call='mtime="$(stat -L -c %Y "$mpath" 2>/dev/null || stat -L -f %m "$mpath" 2>/dev/null || true)"'
+old_call='mtime="$(stat -L --format=%Y "$mpath" 2>/dev/null || true)"'
+
+for port in $PORTS; do
+  dot="$(dotdir_for "$port")"
+  script="$(script_for "$port")"
+
+  # mutant: throwaway copy with the OLD GNU-only stat call restored
+  mutant="$tmproot/mutant-h-$port"
+  mkdir -p "$mutant"
+  cp "$script" "$mutant/stop-gate.sh"
+  cp -R "$(dirname "$script")/lib" "$mutant/lib"
+  before_n="$(grep -cF "$fixed_call" "$mutant/stop-gate.sh" || true)"
+  python3 - "$mutant/stop-gate.sh" "$fixed_call" "$old_call" <<'PYEOF'
+import sys
+path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
+text = open(path).read()
+assert text.count(old) == 1, f"expected exactly one occurrence, found {text.count(old)}"
+open(path, "w").write(text.replace(old, new))
+PYEOF
+  after_n="$(grep -cF "$old_call" "$mutant/stop-gate.sh" || true)"
+  parses=yes
+  bash -n "$mutant/stop-gate.sh" 2>/dev/null || parses=no
+
+  # seed the repro: an OLD .fail marker, a stamp recording its mtime, and a
+  # NEWER format-valid .pass marker superseding it
+  dir="$(make_project "$port" "h-portability")"
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  printf 'FAIL unit-x 2026-08-07T12:00:00Z defects: 1) x\n' > "$dir/$dot/reviewed/unit-x.fail"
+  touch -d '2020-01-01T00:00:00' "$dir/$dot/reviewed/unit-x.fail"
+  fail_mtime="$(stat -L -c %Y "$dir/$dot/reviewed/unit-x.fail" 2>/dev/null || stat -L -f %m "$dir/$dot/reviewed/unit-x.fail")"
+  seed_join_stamp "$dir" "$port" unit-x fail "$fail_mtime"
+  printf 'PASS unit-x 2026-08-07T12:00:05Z commit: abc123 criteria: bash tests/validate.sh\n' \
+    > "$dir/$dot/reviewed/unit-x.pass"
+
+  # (h-mutant) the OLD code, under the BSD stub, must still block (non-vacuous)
+  rc=0
+  PATH="$bsd_stat_bin:$PATH" run_reviewer_stop "$port" "$dir" "$mutant/stop-gate.sh" 2>/dev/null || rc=$?
+  mutant_missing="$(records "$dir" "$port" 'marker=MISSING unit=unit-x')"
+  mutant_stamp_kept=false
+  [ -f "$dir/$dot/.review-join.unit-x" ] && mutant_stamp_kept=true
+
+  # (h-fixed) the real, fixed script, under the SAME BSD stub, must succeed
+  rc2=0
+  PATH="$bsd_stat_bin:$PATH" run_reviewer_stop "$port" "$dir" "$script" 2>/dev/null || rc2=$?
+  fixed_consumed="$(records "$dir" "$port" 'join-consumed=unit-x')"
+  fixed_stamp_gone=false
+  [ -e "$dir/$dot/.review-join.unit-x" ] || fixed_stamp_gone=true
+
+  if [ "${before_n:-0}" = 1 ] && [ "${after_n:-0}" = 1 ] && [ "$parses" = yes ] \
+     && [ "$rc" = 2 ] && [ "$mutant_missing" = 1 ] && [ "$mutant_stamp_kept" = true ] \
+     && [ "$rc2" = 0 ] && [ "$fixed_consumed" = 1 ] && [ "$fixed_stamp_gone" = true ]; then
+    echo "OK   (h) $port: BSD-only stat - OLD code blocks (marker=MISSING), FIXED code consumes the stamp (join-consumed=unit-x)"
+  else
+    echo "FAIL (h) $port: mutant before=$before_n after=$after_n parses=$parses rc=$rc missing=$mutant_missing stamp_kept=$mutant_stamp_kept | fixed rc2=$rc2 consumed=$fixed_consumed stamp_gone=$fixed_stamp_gone"
+    fail=1
+  fi
+done
+
 exit "$fail"

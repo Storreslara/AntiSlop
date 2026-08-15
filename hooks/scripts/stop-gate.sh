@@ -192,7 +192,7 @@ review_join_state() {
           satisfied=true
           ;;
         *)
-          mtime="$(stat -L --format=%Y "$mpath" 2>/dev/null || true)"
+          mtime="$(stat -L -c %Y "$mpath" 2>/dev/null || stat -L -f %m "$mpath" 2>/dev/null || true)"
           case "$mtime" in
             ''|*[!0-9]*) ;;
             *)
