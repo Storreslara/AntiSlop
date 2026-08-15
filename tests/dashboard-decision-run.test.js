@@ -49,6 +49,10 @@ function httpRequest(url, options = {}) {
     const method = options.method || 'GET';
     const token = options.token;
     const body = options.body;
+    // rawBody sends the payload verbatim, so a test can drive a non-object
+    // top-level JSON body that `body` (JSON.stringify'd) could express but
+    // not distinguish from a normal object.
+    const rawBody = options.rawBody;
 
     const reqOptions = {
       hostname: urlObj.hostname,
@@ -62,7 +66,9 @@ function httpRequest(url, options = {}) {
       reqOptions.headers['X-Antislop-Token'] = token;
     }
 
-    if (body && method === 'POST') {
+    if (rawBody !== undefined && method === 'POST') {
+      reqOptions.headers['Content-Length'] = Buffer.byteLength(rawBody);
+    } else if (body && method === 'POST') {
       const bodyStr = JSON.stringify(body);
       reqOptions.headers['Content-Length'] = Buffer.byteLength(bodyStr);
     }
@@ -79,7 +85,9 @@ function httpRequest(url, options = {}) {
 
     req.on('error', reject);
 
-    if (body && method === 'POST') {
+    if (rawBody !== undefined && method === 'POST') {
+      req.write(rawBody);
+    } else if (body && method === 'POST') {
       req.write(JSON.stringify(body));
     }
     req.end();
@@ -1440,6 +1448,48 @@ async function runTests() {
     fs.rmSync(tmpDir, { recursive: true });
   } catch (err) {
     failures.push(`Test (21) ERROR: ${err.message}`);
+  }
+
+  // Test (22): same defect class one level up -- the request body itself is
+  // a client-chosen type. A null/array/scalar body reached the destructure
+  // and the resulting TypeError was echoed back to the client as internal
+  // exception text on a security endpoint (the shape C9 forbids for `code`).
+  console.log('Test (22): non-object request bodies are 4xx with no internal exception text...');
+  try {
+    const tmpDir = makeTestProject('22');
+    const taskId = 'test-task-22';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+    await new Promise((r) => setTimeout(r, 100));
+    const addr = server.address();
+
+    for (const raw of ['null', '[1,2]', '"hello"', '42']) {
+      for (const endpoint of ['arm', 'run']) {
+        const result = await httpRequest(`http://127.0.0.1:${addr.port}/api/decision/${endpoint}`, {
+          method: 'POST',
+          token,
+          rawBody: raw,
+        });
+        if (result.status < 400 || result.status >= 500) {
+          failures.push(`Test (22) FAILED [${endpoint} ${raw}]: expected 4xx, got ${result.status}: ${result.body}`);
+        }
+        if (/Cannot destructure|Cannot read properties of/.test(result.body)) {
+          failures.push(`Test (22) FAILED [${endpoint} ${raw}]: response leaked internal exception text: ${result.body}`);
+        }
+      }
+    }
+
+    if (failures.filter((f) => f.startsWith('Test (22)')).length === 0) {
+      console.log('  ✓ Test (22) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (22) ERROR: ${err.message}`);
   }
 
   // Print results

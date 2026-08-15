@@ -269,6 +269,16 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           }
 
           const data = JSON.parse(body);
+          // The request body itself is a client-chosen type. Destructuring
+          // a null/array/scalar `data` throws, and the outer catch would
+          // hand the client that internal exception message -- same
+          // fail-open-on-unexpected-type class as the fields below (gh380).
+          if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'invalid request' }));
+            return;
+          }
+
           // `by`/`reason` default to '' only when omitted (undefined) --
           // exactly as composeEscalationDecisionBody destructures them, so
           // an omitted field stays legal while an explicit null does not.
@@ -410,6 +420,15 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           }
 
           const data = JSON.parse(body);
+          // See the arm handler: a non-object body must not reach the
+          // destructure, whose TypeError the outer catch would echo back as
+          // internal exception text (gh380).
+          if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'invalid request' }));
+            return;
+          }
+
           const { taskId, code } = data;
 
           // Verify arm exists and matches taskId
