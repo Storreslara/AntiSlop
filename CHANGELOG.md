@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.57] - 2026-08-15
+
+**Add `heavy-trigger.sh`, a deterministic measured heavy-unit surface script (gh373, Step 12 of the 2026-07-28 microworlds/ubiquitous-language/human-review spec).** Measures ADR-0004 criterion 1 only (file count ≥ 8 or line count ≥ 400) and classifies a git range as heavy/light/unknown. Deliberately does NOT measure criteria 2 (structural/cross-cutting) or 3 (security-sensitive); the three-criterion rule and its application live in Step 13 (the reviewer wiring). Not registered in `hooks.json` per spec — the absence is the design. Hardened against path escaping via git `core.quotepath=false`, `diff.relative=false`, and leading-dash rejection, reused verbatim from `reviewer-tier.sh`'s pattern.
+
+### Changed
+- **`hooks/scripts/heavy-trigger.sh`**: new executable script, deterministic, exit 0 always, prints one line `surface: <heavy|light|unknown> files: <n|-> lines: <n|->`, measures ADR-0004 criterion 1 only.
+- **`tests/heavy-trigger.test.sh`**: new test suite with boundary-sweep cases pinned on both sides (`8f-1L` ↔ `7f-1L`, `400L` ↔ `399L`), unmeasurable-range case (`empty-range`), real-world regression shapes (`gh137-18f-116L`, `gh299-24f-328L`), ADR drift guard, and mutation controls.
+- **`tests/validate.sh`**: registration block for new suite (parallel to `reviewer-tier.test.sh` block).
+- **`.claude/hooks/scripts/heavy-trigger.sh`**: mirror regenerated via `node bin/cli.js --update` (G2).
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.56 → 0.31.57 (constitution P3).
+- **`.claude/persona-config.json`**: `pluginVersion` and `fileHashes` updated via `node bin/cli.js --update` (G2).
+
 ## [0.31.56] - 2026-08-15
 
 **Add a comprehension quiz to the escalation packet's approve route (gh300, Step 11 of the 2026-08-09 human-review convergence follow-ups).** Of the DECISION channel's three terminal routes, approve was the only one a human could complete without demonstrating engagement: reject needs a reason, direct needs a directive, approve needed only a name. The reviewer now writes `QUIZ.md` and `QUIZ-ANSWERS.md` into the escalation packet directory in the same action that writes the `.escalated` marker, `PACKET.md`, and `CHANGES.md`. `QUIZ.md` holds 3 to 5 questions, each answerable from `CHANGES.md` and the bundle alone and each about **consequence rather than recall** ("what happens to X when Y is absent?", never "what is the new function called?" — a recall question is answerable by skimming); `QUIZ-ANSWERS.md` holds the answer key in a separate file so the human can attempt first and self-check after. It is a *speed regulator*, not a test. **Self-administered, recorded, and never graded by the reviewer — and never a gate.** The reviewer sets the questions and the key and stops there: it never reads the human's answers, never marks them, and never conditions a verdict, marker, or route on them, because a reviewer that could mark a human wrong and withhold approval would re-adjudicate the human (R6), destroying the property the escalation exists to create. What is recorded is one required `quiz:` token on the `.pass` marker's appended `human:` attestation line — exactly one of `quiz: passed-self-check`, `quiz: skipped`, or `quiz: none-offered` (that last only when no `QUIZ.md` was written) — stated by the human as a `quiz: <token>` body line in their decision file and transcribed by the reviewer. **`quiz: skipped` is a first-class legitimate outcome**: it must not block, warn, or be retried, and an absent `quiz:` line transcribes as a skip rather than stalling — naming only the success token would have built a gate by omission. The token rides on the *appended* attestation line, never the marker's required first line, so it cannot affect `task-gate.sh`'s `marker_valid()` (PASS marker format v3). Offered on the **approve route only**. Both files are deleted with the rest of the packet in all three terminal routes. Extends the existing `## Fourth verdict: escalate-to-human` section and its "Resolving an escalation" subsection — **no new top-level protocol section**, so the per-persona section matrix is untouched.
@@ -26,7 +38,7 @@
 - **`README.md`**: "What's in the packet" paragraph under `humanReviewMode`, naming `CHANGES.md`.
 - **`CONTEXT.md`**: glossary entry **literate change summary**, contrasted with `PACKET.md` (explanation of the change vs. copy of the decision record; neither authoritative — the marker is); the **Escalation packet** entry now lists it.
 - **`.claude/agents/*.md`** / **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update` (G2).
-- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.53 → 0.31.54 (constitution P3).
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.52 → 0.31.54 (constitution P3).
 
 ## [0.31.55] - 2026-08-15
 
