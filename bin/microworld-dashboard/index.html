@@ -89,6 +89,11 @@
     .copy-feedback { margin-bottom: var(--space-4); padding: var(--space-2); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip); color: var(--gvx-green); display: none; }
     .hidden-textarea { position: absolute; left: -9999px; width: 1px; height: 1px; }
     .bundle-section-header { padding: var(--space-3) var(--space-4); background: var(--gvx-bg-dim); font-weight: 600; font-size: 0.85rem; color: var(--gvx-gray); border-bottom: 1px solid var(--gvx-bg-soft); text-transform: uppercase; letter-spacing: 0.5px; }
+    .pill-option-group { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
+    .pill-option { background: var(--gvx-bg); color: var(--gvx-fg); border: 1px solid var(--gvx-bg-soft); padding: var(--space-3) var(--space-4); border-radius: var(--radius-pill); cursor: pointer; font-weight: 500; transition: all 0.2s ease; }
+    .pill-option:hover { filter: brightness(1.08); }
+    .pill-option.checked { background: var(--gvx-green); color: var(--gvx-bg); }
+    .pill-option.checked::after { content: ' ✓'; }
 
   </style>
 </head>
@@ -594,18 +599,18 @@
       }
 
       html += `<div class="form-group"><label>Route</label>
-        <select id="escalationRoute">
-          <option value="approve" ${escalationForm.route === 'approve' ? 'selected' : ''}>approve</option>
-          <option value="reject" ${escalationForm.route === 'reject' ? 'selected' : ''}>reject</option>
-          <option value="direct" ${escalationForm.route === 'direct' ? 'selected' : ''}>direct</option>
-        </select></div>`;
+        <div class="pill-option-group" role="radiogroup" aria-label="Route">
+          <button type="button" role="radio" aria-checked="${escalationForm.route === 'approve'}" id="routeOption-approve" class="pill-option ${escalationForm.route === 'approve' ? 'checked' : ''}">approve</button>
+          <button type="button" role="radio" aria-checked="${escalationForm.route === 'reject'}" id="routeOption-reject" class="pill-option ${escalationForm.route === 'reject' ? 'checked' : ''}">reject</button>
+          <button type="button" role="radio" aria-checked="${escalationForm.route === 'direct'}" id="routeOption-direct" class="pill-option ${escalationForm.route === 'direct' ? 'checked' : ''}">direct</button>
+        </div></div>`;
       if (escalationForm.route === 'approve') {
         html += `<div class="form-group"><label>Quiz</label>
-          <select id="quizSelect">
-            <option value="skipped" ${escalationForm.quiz === 'skipped' ? 'selected' : ''}>skipped</option>
-            <option value="passed-self-check" ${escalationForm.quiz === 'passed-self-check' ? 'selected' : ''}>passed-self-check</option>
-            <option value="none-offered" ${escalationForm.quiz === 'none-offered' ? 'selected' : ''}>none-offered</option>
-          </select></div>`;
+          <div class="pill-option-group" role="radiogroup" aria-label="Quiz">
+            <button type="button" role="radio" aria-checked="${escalationForm.quiz === 'skipped'}" id="quizOption-skipped" class="pill-option ${escalationForm.quiz === 'skipped' ? 'checked' : ''}">skipped</button>
+            <button type="button" role="radio" aria-checked="${escalationForm.quiz === 'passed-self-check'}" id="quizOption-passed-self-check" class="pill-option ${escalationForm.quiz === 'passed-self-check' ? 'checked' : ''}">passed-self-check</button>
+            <button type="button" role="radio" aria-checked="${escalationForm.quiz === 'none-offered'}" id="quizOption-none-offered" class="pill-option ${escalationForm.quiz === 'none-offered' ? 'checked' : ''}">none-offered</button>
+          </div></div>`;
       }
       html += `<div class="form-group"><label>Reason</label><textarea id="escalationReason">${escapeHtml(escalationForm.reason)}</textarea></div>`;
       html += `<div class="form-group"><label>Name (by)</label><input type="text" id="escalationBy" value="${escapeHtml(escalationForm.by)}" /></div>`;
@@ -624,10 +629,18 @@
       const entry = decisions.escalations.find(e => e.taskId === taskId);
       if (!entry) return;
 
-      const routeSel = document.getElementById('escalationRoute');
-      if (routeSel) routeSel.addEventListener('change', () => { escalationForm.route = routeSel.value; renderContent(); });
-      const quizSel = document.getElementById('quizSelect');
-      if (quizSel) quizSel.addEventListener('change', () => { escalationForm.quiz = quizSel.value; renderContent(); });
+      // Route option buttons
+      ['approve', 'reject', 'direct'].forEach(route => {
+        const btn = document.getElementById(`routeOption-${route}`);
+        if (btn) btn.addEventListener('click', () => { escalationForm.route = route; renderContent(); });
+      });
+
+      // Quiz option buttons (only attached if rendered)
+      ['skipped', 'passed-self-check', 'none-offered'].forEach(quiz => {
+        const btn = document.getElementById(`quizOption-${quiz}`);
+        if (btn) btn.addEventListener('click', () => { escalationForm.quiz = quiz; renderContent(); });
+      });
+
       const reasonTa = document.getElementById('escalationReason');
       if (reasonTa) reasonTa.addEventListener('change', () => { escalationForm.reason = reasonTa.value; renderContent(); });
       const byInput = document.getElementById('escalationBy');

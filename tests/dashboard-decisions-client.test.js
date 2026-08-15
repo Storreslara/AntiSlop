@@ -84,8 +84,13 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     leftRail,
     contentArea,
     // gh375 Step 14: escalation-form controls the new tests drive directly.
-    escalationRoute: makeFakeControl('approve'),
-    quizSelect: makeFakeControl('skipped'),
+    // Step 1: route and quiz are now radiogroup buttons
+    'routeOption-approve': makeFakeControl(''),
+    'routeOption-reject': makeFakeControl(''),
+    'routeOption-direct': makeFakeControl(''),
+    'quizOption-skipped': makeFakeControl(''),
+    'quizOption-passed-self-check': makeFakeControl(''),
+    'quizOption-none-offered': makeFakeControl(''),
     escalationReason: makeFakeControl(''),
     escalationBy: makeFakeControl(''),
     decisionCopyBtn: makeFakeControl(),
@@ -287,9 +292,10 @@ async function runTests() {
     failures.push(`Test (e) ERROR: ${err.stack}`);
   }
 
-  // Test (f): quiz select — rendered on approve, absent on reject, defaults
-  // to skipped (gh375 Step 14).
-  console.log('Test (f): quiz select — rendered on approve, absent on reject, defaults to skipped...');
+  // Test (f): pill-styled radiogroup controls — quiz rendered on approve,
+  // absent on reject, defaults to skipped; composed command reflects selections
+  // (Step 1).
+  console.log('Test (f): pill-styled radiogroup controls — composed command assertions...');
   try {
     const escalationEntry = {
       taskId: 'gh910', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
@@ -300,24 +306,34 @@ async function runTests() {
       decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
     });
 
-    if (!contentArea.innerHTML.includes('id="quizSelect"')) {
-      failures.push('Test (f) FAILED: quiz select not rendered on default (approve) route');
+    // Sub-check 1: quiz radiogroup rendered on default (approve) route
+    if (!contentArea.innerHTML.includes('id="quizOption-skipped"')) {
+      failures.push('Test (f) FAILED: quiz radiogroup not rendered on default (approve) route');
     } else {
-      console.log('OK   quiz select rendered on approve');
-    }
-    if (!contentArea.innerHTML.includes('value="skipped" selected')) {
-      failures.push(`Test (f) FAILED: quiz select does not default to skipped: ${contentArea.innerHTML.slice(0, 800)}`);
-    } else {
-      console.log('OK   quiz defaults to skipped');
+      console.log('OK   quiz radiogroup rendered on approve');
     }
 
-    elementsById.escalationRoute.value = 'reject';
-    await elementsById.escalationRoute.fire('change');
-
-    if (contentArea.innerHTML.includes('id="quizSelect"')) {
-      failures.push('Test (f) FAILED: quiz select still rendered after switching to reject');
+    // Sub-check 2: default composed command contains quiz: skipped (no interaction)
+    if (!contentArea.innerHTML.includes('quiz: skipped')) {
+      failures.push(`Test (f) FAILED: composed command does not contain "quiz: skipped" by default: ${contentArea.innerHTML.slice(0, 800)}`);
     } else {
-      console.log('OK   quiz select absent on reject');
+      console.log('OK   composed command defaults to quiz: skipped');
+    }
+
+    // Sub-check 3: clicking quizOption-passed-self-check updates composed command
+    await elementsById['quizOption-passed-self-check'].fire('click');
+    if (!contentArea.innerHTML.includes('quiz: passed-self-check')) {
+      failures.push(`Test (f) FAILED: composed command does not contain "quiz: passed-self-check" after click: ${contentArea.innerHTML.slice(0, 800)}`);
+    } else {
+      console.log('OK   composed command reflects quiz: passed-self-check after click');
+    }
+
+    // Sub-check 4: clicking routeOption-reject removes quiz radiogroup
+    await elementsById['routeOption-reject'].fire('click');
+    if (contentArea.innerHTML.includes('id="quizOption-skipped"')) {
+      failures.push('Test (f) FAILED: quiz radiogroup still rendered after switching to reject');
+    } else {
+      console.log('OK   quiz radiogroup absent on reject route');
     }
 
     if (failures.filter((f) => f.includes('Test (f)')).length === 0) {
