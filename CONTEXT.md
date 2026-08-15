@@ -368,6 +368,14 @@ this repo self-hosts the plugin it
   ships (dogfooding). Its `.claude/persona-config.json` documents exactly
   which personas and substitutions this repo itself uses.
 
+**npm distribution strategy**:
+(unit #137, 2026-08-15, policy decision) — the project's `package.json`
+  `files` array intentionally ships only 2 of 17 skills to npm:
+  `skills/coding-discipline` and `skills/install-antislop`. All other
+  skills (vendored, optional, project-specific) are distributed via git
+  clone or the plugin marketplace instead. See [ADR-0022](docs/adr/0022-npm-distribution-skills-excluded.md)
+  for rationale and distribution paths.
+
 **`to-spec` skill**:
 vendored first-party skill (originally from Matt
   Pocock's `skills` repo, see `skills/THIRD-PARTY-NOTICES.md`), wired to
@@ -703,6 +711,25 @@ the collection of addressable **Agent** entities currently active in a
   cases (f)/(f2)), not merely assumed — a dependency for Step D8 (microworld escalation)
   in the separate dashboard plan.
 
+**Watch globs**:
+(unit #137, 2026-08-15) — the set of glob patterns in a **microworld bundle**'s
+  `manifest.json` `watch` array that determines whether a source file edit
+  is relevant to that bundle and should trigger the **reactive rerun hook**.
+  Authored by `lead-programmer` at bundle creation time; consumed by the
+  `microworld-rerun.sh` hook on every `PostToolUse` operation (`Write`/`Edit`).
+  A bundle with an empty or absent `watch` array triggers on no edits; a bundle
+  with `watch: ["src/**/*.ts"]` triggers only when edits match that glob.
+
+**Reactive rerun hook**:
+(unit #137, 2026-08-15) — the `PostToolUse` hook (`hooks/scripts/microworld-rerun.sh`)
+  that monitors source-file edits and automatically reruns **microworld bundles**
+  whose **watch globs** match the changed file. Invoked after every `Write` or
+  `Edit` operation; queries the bundle manifest's `watch` array and reruns `run.sh`
+  if any edit path matches. Results logged to the **Microworld audit log** with
+  exit code, duration, and any infrastructure failures. Fail-open by design: even
+  if rerun fails (timeout, missing `run.sh`, jq failure), it surfaces stderr to
+  the model but never blocks the edit itself.
+
 **Escalation packet**:
 (unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10; refreshed
   unit #138, 2026-08-11) — a directory structure created when a reviewer
@@ -830,6 +857,18 @@ the collection of addressable **Agent** entities currently active in a
   "Fourth verdict: escalate-to-human" section.
 _Avoid_: change summary, walkthrough doc, CHANGES doc (use "literate change
   summary", or name the file `CHANGES.md` directly)
+
+**comprehension material**:
+(unit #299, 2026-08-15) — a standing designation for explanatory or reference
+  material that aids understanding but carries no authority or decision weight.
+  Marked in byte-exact authority lines: "Comprehension material only — the
+  .escalated marker is the authoritative record." Used in both [[PACKET.md]]
+  and the [[literate change summary]] to signal that these derived documents
+  (explaining the change or carrying decision metadata) do not decide anything —
+  the `.escalated` marker alone is authoritative. The phrase appears at the head
+  of both documents' content. Never conflate with authoritative decision records;
+  comprehension material is explanatory only.
+_Avoid_: reference material, explanatory material, supporting material (use "comprehension material")
 
 **comprehension quiz**:
 (unit #300, 2026-08-15, Step 11 of the human-review convergence follow-ups) —
