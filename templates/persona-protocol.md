@@ -374,10 +374,10 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
 
   `Comprehension material only — the .escalated marker is the authoritative record.`
 
-  the same authority rule `PACKET.md` carries, applied to a second derived
-  artifact and stated inside the file so a later reader cannot mistake it for
-  the review. Then a **fixed four-section shape**, in this order, so it cannot
-  decay into a restated diff:
+  That is the same authority rule `PACKET.md` carries, applied to a second
+  derived artifact and stated inside the file so a later reader cannot mistake
+  it for the review. Then a **fixed four-section shape**, in this order, so it
+  cannot decay into a restated diff:
 
   1. `## Background` — what already existed in this area, for a reader who has
      not been following. Mentions no part of the change.

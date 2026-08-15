@@ -211,8 +211,8 @@ with reasons.
   comprehension material for the human and **never gates or influences your
   verdict**. Its first line reads exactly
   `Comprehension material only — the .escalated marker is the authoritative record.`
-  — the same authority rule `PACKET.md` carries, stated inside the file so a
-  later reader cannot mistake it for the review. Then a fixed four-section
+  That is the same authority rule `PACKET.md` carries, stated inside the file so
+  a later reader cannot mistake it for the review. Then a fixed four-section
   shape, in this order:
   1. `## Background` — what already existed in this area, for a reader who has
      not been following. Mentions no part of the change.
