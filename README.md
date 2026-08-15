@@ -196,7 +196,21 @@ order, one section per idea rather than one per file, ending with the two or
 three places the reviewer is least sure about. Read `CHANGES.md` before the
 diff; that's what it's for. It is comprehension material only — the escalation
 marker stays the authoritative record — and a unit with no bundle still gets
-one. The whole directory is deleted when your decision resolves the escalation.
+one. Alongside it, `QUIZ.md` and `QUIZ-ANSWERS.md`: a **comprehension quiz** of
+three to five questions about what the change *does*, with the reviewer's answer
+key in the separate file so you can attempt them first and check yourself after.
+The whole directory is deleted when your decision resolves the escalation.
+
+**The quiz is yours, not a test you have to pass.** It is self-administered and
+never graded — the reviewer writes the questions and the key and never sees your
+answers, and nothing you do with it can change a verdict or hold up your
+approval. Approving records what you did with it as one token on the attestation
+line, exactly one of `quiz: passed-self-check`, `quiz: skipped`, or
+`quiz: none-offered` (that last only when no quiz was written). `quiz: skipped`
+is a perfectly legitimate answer and nothing will nag you for it; the point is
+only that the record says which approvals came with a self-check and which did
+not. The quiz appears on the approve route alone — rejecting already costs you a
+reason, and directing a fix already costs you a directive.
 
 The default is `critical` on purpose. Review that never stops is review that
 never says no, and an agent loop that can approve its own critical work will

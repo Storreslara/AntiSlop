@@ -707,8 +707,9 @@ the collection of addressable **Agent** entities currently active in a
 (unit #131, 2026-08-10, mechanism defined in unit #133, 2026-08-10; refreshed
   unit #138, 2026-08-11) — a directory structure created when a reviewer
   signals `ESCALATE-TO-HUMAN` on a unit, containing a snapshot of the unit's
-  microworld bundle (if any) plus a durable `PACKET.md` file and a
-  `CHANGES.md` **literate change summary** (unit #299). Written by the
+  microworld bundle (if any) plus a durable `PACKET.md` file, a
+  `CHANGES.md` **literate change summary** (unit #299), and the
+  `QUIZ.md` / `QUIZ-ANSWERS.md` **comprehension quiz** (unit #300). Written by the
   reviewer in the same action as the `.escalated` marker, sited at
   `.claude/human-review/<task-id>/` (distinct from the reviewed-markers
   directory). The `PACKET.md` is a byte-identical copy of the `.escalated`
@@ -829,6 +830,42 @@ the collection of addressable **Agent** entities currently active in a
   "Fourth verdict: escalate-to-human" section.
 _Avoid_: change summary, walkthrough doc, CHANGES doc (use "literate change
   summary", or name the file `CHANGES.md` directly)
+
+**comprehension quiz**:
+(unit #300, 2026-08-15, Step 11 of the human-review convergence follow-ups) —
+  the `QUIZ.md` / `QUIZ-ANSWERS.md` pair the reviewer writes into the escalation
+  packet directory (`.claude/human-review/<task-id>/`) in the same action as the
+  `.escalated` marker, [[PACKET.md]], and the [[literate change summary]].
+  `QUIZ.md` carries 3 to 5 questions, each answerable from `CHANGES.md` and the
+  bundle alone and each about **consequence rather than recall** (*"what happens
+  to X when Y is absent?"*, never *"what is the new function called?"* — a
+  recall question is answerable by skimming); `QUIZ-ANSWERS.md` carries the
+  reviewer's answer key, deliberately in a **separate file** so the human can
+  attempt the questions before self-checking. A *speed regulator*, not a test:
+  it exists because the approve route is the only one of the DECISION channel's
+  three a human can complete without demonstrating engagement (reject needs a
+  reason, direct needs a directive, approve needs only a name).
+  **Self-administered, recorded, and never graded by the reviewer — and never a
+  gate.** The reviewer sets the questions and the key and stops there: it never
+  reads the human's answers, never marks them, and never conditions a verdict,
+  marker, or route on them, because a reviewer that could mark a human wrong and
+  withhold approval would re-adjudicate the human (R6). What is recorded is one
+  required `quiz:` token on the `.pass` marker's appended `human:` attestation
+  line — exactly one of `quiz: passed-self-check`, `quiz: skipped`, or
+  `quiz: none-offered` (that last only when no `QUIZ.md` was written), stated by
+  the human as a `quiz: <token>` body line in the [[DECISION file]] and
+  transcribed by the reviewer. **`quiz: skipped` is a first-class legitimate
+  outcome**: it must not block, warn, or be retried, and an absent `quiz:` line
+  transcribes as a skip rather than stalling — naming only the success token
+  would build a gate by omission. The token rides on the *appended* attestation
+  line, never the marker's required first line, so it cannot affect
+  `task-gate.sh`'s `marker_valid()` (PASS marker format v3). Offered on the
+  **approve route only**. Both files are deleted with the rest of the packet in
+  all three terminal routes, in the same reviewer action. Defined in
+  `templates/persona-protocol.md`'s "Fourth verdict: escalate-to-human" section.
+_Avoid_: quiz gate, comprehension check, reviewer quiz (it is neither a gate nor
+  the reviewer's check on the human — use "comprehension quiz", or name
+  `QUIZ.md` / `QUIZ-ANSWERS.md` directly)
 
 **humanReviewMode**:
 (unit #133, 2026-08-10, forward-looking; shipped unit #135, 2026-08-11;

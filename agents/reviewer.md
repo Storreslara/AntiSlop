@@ -190,8 +190,8 @@ with reasons.
   `.claude/human-review/<task-id>/` — copy `microworlds/<unit-slug>/` wholesale
   with `run.sh`'s executable bit preserved (`cp -a`), and write `PACKET.md`
   there as a byte-identical copy of the marker body; the marker stays
-  authoritative wherever the two differ. Write `CHANGES.md` there too — see the
-  next bullet. With no bundle, still create that
+  authoritative wherever the two differ. Write `CHANGES.md`, `QUIZ.md`, and
+  `QUIZ-ANSWERS.md` there too — see the next two bullets. With no bundle, still create that
   directory with `PACKET.md` and `CHANGES.md` alone and write
   `microworld: none` — never skip
   the escalation for want of a bundle. Do not site the packet under
@@ -228,6 +228,22 @@ with reasons.
   bundle still gets a `CHANGES.md` — there it carries the entire human-facing
   payload. It is deleted with the rest of the packet when you resolve the
   escalation.
+- **`QUIZ.md` + `QUIZ-ANSWERS.md` — the comprehension quiz you set but do not
+  mark**: written into the packet directory in that same action. `QUIZ.md` gets
+  3 to 5 questions, each answerable from `CHANGES.md` and the bundle alone and
+  each about **consequence, not recall** — "what happens to X when Y is
+  absent?", never "what is the new function called?", since a recall question
+  is answerable by skimming. `QUIZ-ANSWERS.md` gets your answer key, kept in a
+  **separate file** so the human can attempt the questions before self-checking.
+  Author both **after** your would-be verdict is settled; like `CHANGES.md` they
+  are comprehension material and never gate or influence it. The quiz is
+  self-administered, recorded, and
+  **never graded by the reviewer** — that is you. You write the questions and
+  the key and stop: you never read the human's answers, never mark them right or
+  wrong, and never condition a verdict, a marker, or a route on them. Marking a
+  human's answers wrong and withholding their approval would re-adjudicate the
+  human, which is the exact property this escalation exists to protect. Both
+  files are deleted with the rest of the packet when you resolve the escalation.
 - **Resolving a standing escalation (transcription, never re-review)**: the
   resolution dispatch names only the unit (`Unit: <task-id>`, "resolve the
   standing escalation from its DECISION file") and carries no decision —
@@ -247,8 +263,18 @@ with reasons.
   re-adjudicating the human's decision quietly undoes the property this
   escalation exists to create. Route by the first line's `route:` value:
   - `approve` → write `.pass` per the PASS rules above, then append a
-    `human: approved by <name> <UTC ISO-8601>` attestation line quoting the
-    decision file, after the required first line.
+    `human: approved by <name> <UTC ISO-8601> quiz: <token>` attestation line
+    quoting the decision file, after the required first line. The `quiz:` token
+    is required and is exactly one of `quiz: passed-self-check`,
+    `quiz: skipped`, or `quiz: none-offered` (that last only when you wrote no
+    `QUIZ.md`); take it verbatim from the `DECISION` body's `quiz:` line. If
+    that line is absent, transcribe `quiz: skipped` when you wrote a `QUIZ.md`
+    and `quiz: none-offered` when you did not — never stall, warn, or send the
+    human back for it. **`quiz: skipped` is a legitimate outcome**, transcribed
+    exactly like the other two. The token goes only on this appended line,
+    never on the marker's required first line, so it cannot affect
+    `marker_valid()`. No `quiz:` token on the `reject` or `direct` routes —
+    those already carry the human's reason or directive.
   - `reject` → write `.fail` per the FAIL rules above, with the body's reason
     **verbatim** as the defect list. This **consumes** a 2-FAIL-cap slot.
   - `direct` → write `.claude/reviewed/<task-id>.directed`, first line exactly
@@ -261,7 +287,8 @@ with reasons.
     unit to PASS or FAIL, same rule as `.blocked`.
 
   In all three routes, delete `.escalated` **and** the whole packet —
-  `PACKET.md`, `CHANGES.md`, and the bundle copy together, no route exempt — in
+  `PACKET.md`, `CHANGES.md`, `QUIZ.md`, `QUIZ-ANSWERS.md`, and the bundle copy
+  together, no route exempt — in
   the same action, via `rm -rf .claude/human-review/<task-id>` — the decision gate's
   sanctioned deletion path, and what removes the decision file too, since no
   identity may `rm` it by name. Leaving a stale packet is not untidiness but a
