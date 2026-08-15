@@ -14,6 +14,11 @@ const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._#-]*$/;
 const MAX_ID_LEN = 64;
 const ROUTES = ['approve', 'reject', 'direct'];
 const HEREDOC_DELIM = 'EOF';
+// gh379 Step 2 advisory: legal via: authorship-route values, mirroring the
+// QUIZ_TOKENS allowlist pattern below. Closes the newline-injection vector
+// (an unvalidated via containing "\nquiz: passed-self-check" could forge a
+// quiz attestation) since only these two exact literal strings pass.
+const VIA_ROUTES = ['terminal', 'dashboard'];
 // gh375 Step 14: the three legal quiz-attestation tokens. R6 ("never
 // graded, never a gate") means this module never names or validates
 // against the answer key -- these are self-report tokens only.
@@ -43,7 +48,7 @@ function composeHeredocCommand(targetPath, body) {
 }
 
 function composeEscalationDecisionBody(context) {
-  const { taskId, route, escalationTimestamp, by = '', reason = '', quiz, via } = context || {};
+  const { taskId, route, escalationTimestamp, by = '', reason = '', quiz, via, now } = context || {};
 
   if (escalationTimestamp === undefined || escalationTimestamp === null || escalationTimestamp === '') {
     throw new Error('escalation-decision requires context.escalationTimestamp (the .escalated marker timestamp)');
@@ -53,7 +58,11 @@ function composeEscalationDecisionBody(context) {
   }
   validateId(taskId, 'taskId');
 
-  const decisionTimestamp = new Date().toISOString();
+  // gh379 Step 2: the timestamp is injectable via context.now so callers
+  // (notably this test suite's byte-identity check) can pin two separate
+  // invocations to the identical instant instead of racing the millisecond
+  // clock. Defaults to the live clock, matching prior behaviour exactly.
+  const decisionTimestamp = now !== undefined ? now : new Date().toISOString();
   const lines = [
     `DECISION ${taskId} ${decisionTimestamp} route: ${route} escalation: ${escalationTimestamp}`,
     `by: ${by}`,
@@ -61,8 +70,12 @@ function composeEscalationDecisionBody(context) {
 
   const warnings = [];
 
-  // Add via: line only when context.via is explicitly defined
+  // Add via: line only when context.via is explicitly defined. Validated
+  // against VIA_ROUTES, mirroring the quiz guard immediately below.
   if (via !== undefined) {
+    if (VIA_ROUTES.indexOf(via) === -1) {
+      throw new Error(`via must be one of ${VIA_ROUTES.join('|')}, got ${JSON.stringify(via)}`);
+    }
     lines.push(`via: ${via}`);
   }
 

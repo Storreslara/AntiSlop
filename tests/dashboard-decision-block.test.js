@@ -258,6 +258,31 @@ checkOk('omitted quiz composes unchanged body', () => {
   assert(!result.text.includes('quiz:'), 'expected no quiz: line when quiz omitted');
 });
 
+// gh379 advisory: via: is validated against an allowlist (VIA_ROUTES),
+// mirroring the quiz field's QUIZ_TOKENS guard. This also closes a
+// newline-injection vector: an unvalidated via containing a newline could
+// forge extra DECISION body lines (e.g. a bogus quiz: attestation).
+checkOk('via: unlisted plain value rejected', () => {
+  throws(() => composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    via: 'carrier-pigeon',
+  }), 'expected an unlisted via value to throw');
+});
+
+checkOk('via: newline-injection payload rejected, not just unlisted string', () => {
+  const err = throws(() => composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    via: 'dashboard\nquiz: passed-self-check',
+  }), 'expected a newline-containing via value to throw');
+  assert(/via must be one of/.test(err.message), `expected the VIA_ROUTES rejection message, got "${err.message}"`);
+});
+
 // gh379 Step 2: composeEscalationDecisionBody() extracts and exports the body
 // composition logic, returning { body, warnings }. The via: field records
 // authorship route.
@@ -343,6 +368,13 @@ checkOk('via: appears after by: but before quiz and reason', () => {
 });
 
 checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload', () => {
+  // gh379 Step 2 fix: pin both invocations to the identical instant via
+  // context.now. Without this, composeEscalationDecisionBody() and
+  // composeDecisionBlock() each independently evaluate
+  // `new Date().toISOString()` and can straddle a millisecond boundary,
+  // making this byte-equality assertion flaky (measured 3 failures in
+  // ~1000 runs pre-fix). The whole-body equality itself stays intact -- it
+  // is the load-bearing proof that there is genuinely one implementation.
   const context = {
     taskId: 'gh379-verify',
     route: 'approve',
@@ -351,6 +383,7 @@ checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload
     via: 'dashboard',
     quiz: 'passed-self-check',
     reason: 'approved the work',
+    now: '2026-08-15T22:00:00.000Z',
   };
 
   // Get body from composeEscalationDecisionBody
