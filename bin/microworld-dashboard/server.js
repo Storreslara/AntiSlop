@@ -17,10 +17,27 @@ const { discover } = require('./discover');
 const { invoke } = require('./invoke');
 const { readSourceExcerpt } = require('./source');
 const { enumerateDecisions } = require('./decisions');
+const { composeEscalationDecisionBody, ID_RE } = require('./decision-block');
 
-function startServer(projectRoot, port = 0) {
+// Alphabet for 6-char code generation, excluding visually ambiguous glyphs (0, O, 1, I, l)
+const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
+
+function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {}) {
   const token = crypto.randomBytes(32).toString('hex');
   const microworldsPath = path.join(projectRoot, 'microworlds');
+
+  // Attempt to open /dev/tty for decision write capability
+  if (ttyWrite === undefined) {
+    try {
+      ttyWrite = fs.openSync('/dev/tty', 'w');
+    } catch (err) {
+      // No controlling terminal (e.g., agent environment or output redirect)
+      ttyWrite = null;
+    }
+  }
+
+  // In-memory record of the most recent arm: { code, taskId, body, expiresAt, used }
+  let currentArm = null;
 
   // Watch for bundle directory changes (new/deleted bundles)
   if (fs.existsSync(microworldsPath)) {
@@ -225,6 +242,222 @@ function startServer(projectRoot, port = 0) {
         } catch (err) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'invalid request', message: err.message }));
+        }
+      });
+      return;
+    }
+
+    // POST /api/decision/arm
+    if (req.method === 'POST' && new URL(req.url, 'http://127.0.0.1').pathname === '/api/decision/arm') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk.toString();
+      });
+      req.on('end', () => {
+        try {
+          // If no tty available, fail closed
+          if (ttyWrite === null) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'decision writes require a controlling terminal' }));
+            return;
+          }
+
+          const data = JSON.parse(body);
+          const { taskId, route, escalationTimestamp, by, reason, quiz } = data;
+
+          // Validate taskId
+          try {
+            if (typeof taskId !== 'string' || !ID_RE.test(taskId)) {
+              throw new Error('invalid taskId format');
+            }
+          } catch (err) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: `invalid taskId: ${err.message}` }));
+            return;
+          }
+
+          // Verify .claude/human-review/<taskId>/ exists (R7: never mkdir -p)
+          const packetDir = path.join(projectRoot, '.claude', 'human-review', taskId);
+          if (!fs.existsSync(packetDir)) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'packet directory does not exist' }));
+            return;
+          }
+
+          // Verify escalationTimestamp matches the first line of .claude/reviewed/<taskId>.escalated
+          const escalatedPath = path.join(projectRoot, '.claude', 'reviewed', `${taskId}.escalated`);
+          let escalatedContent;
+          try {
+            escalatedContent = fs.readFileSync(escalatedPath, 'utf8');
+          } catch (err) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'escalation marker not found' }));
+            return;
+          }
+
+          const firstLine = escalatedContent.split('\n')[0];
+          // Extract timestamp from first line (format: timestamp <other content>)
+          const markerTimestamp = firstLine.split(' ')[0];
+          if (markerTimestamp !== escalationTimestamp) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'escalation timestamp mismatch' }));
+            return;
+          }
+
+          // Compose the body server-side via composeEscalationDecisionBody
+          const bodyResult = composeEscalationDecisionBody({
+            taskId,
+            route,
+            escalationTimestamp,
+            by,
+            reason,
+            quiz,
+            via: 'dashboard',
+          });
+
+          if (bodyResult.body === null) {
+            res.writeHead(400, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'failed to compose body', warnings: bodyResult.warnings }));
+            return;
+          }
+
+          // Generate a 6-character code via crypto.randomInt over ambiguous-glyph-free alphabet
+          let code = '';
+          for (let i = 0; i < 6; i++) {
+            code += CODE_ALPHABET[crypto.randomInt(0, CODE_ALPHABET.length)];
+          }
+
+          // Replace any prior arm with a single in-memory record
+          currentArm = {
+            code,
+            taskId,
+            body: bodyResult.body,
+            route,
+            by,
+            expiresAt: Date.now() + armTtlMs,
+            used: false,
+          };
+
+          // Write to /dev/tty only
+          try {
+            const validSeconds = Math.round(armTtlMs / 1000);
+            const message = `antislop: confirmation code for DECISION ${taskId} is ${code} (valid ${validSeconds}s)\n`;
+            if (typeof ttyWrite === 'number') {
+              fs.writeFileSync(ttyWrite, message);
+            } else if (ttyWrite && typeof ttyWrite.write === 'function') {
+              ttyWrite.write(message);
+            }
+          } catch (err) {
+            // Ignore write errors; the code was still generated
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ armed: true, expiresInMs: armTtlMs }));
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'invalid request', message: err.message }));
+        }
+      });
+      return;
+    }
+
+    // POST /api/decision/run
+    if (req.method === 'POST' && new URL(req.url, 'http://127.0.0.1').pathname === '/api/decision/run') {
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk.toString();
+      });
+      req.on('end', () => {
+        try {
+          // If no tty available, fail closed
+          if (ttyWrite === null) {
+            res.writeHead(403, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'decision writes require a controlling terminal' }));
+            return;
+          }
+
+          const data = JSON.parse(body);
+          const { taskId, code } = data;
+
+          // Verify arm exists and matches taskId
+          if (!currentArm || currentArm.taskId !== taskId) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'no matching arm' }));
+            return;
+          }
+
+          // Check expiry
+          if (Date.now() > currentArm.expiresAt) {
+            currentArm = null;
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'confirmation code expired' }));
+            return;
+          }
+
+          // Check if already used
+          if (currentArm.used) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'confirmation code already used' }));
+            return;
+          }
+
+          // Compare code with timing-safe equality after length check
+          if (code.length !== currentArm.code.length) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'invalid code' }));
+            currentArm = null;
+            return;
+          }
+
+          try {
+            if (!crypto.timingSafeEqual(Buffer.from(code), Buffer.from(currentArm.code))) {
+              res.writeHead(409, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'invalid code' }));
+              currentArm = null;
+              return;
+            }
+          } catch (err) {
+            res.writeHead(409, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'invalid code' }));
+            currentArm = null;
+            return;
+          }
+
+          // Mark used BEFORE writing
+          currentArm.used = true;
+
+          // Write the DECISION file with wx flag (never overwrite)
+          const decisionPath = path.join(projectRoot, '.claude', 'human-review', taskId, 'DECISION');
+          try {
+            fs.writeFileSync(decisionPath, currentArm.body, { flag: 'wx', mode: 0o600 });
+          } catch (err) {
+            if (err.code === 'EEXIST') {
+              res.writeHead(409, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'DECISION file already exists' }));
+              currentArm = null;
+              return;
+            }
+            throw err;
+          }
+
+          // Append to .claude/review-audit.log
+          const auditPath = path.join(projectRoot, '.claude', 'review-audit.log');
+          const auditLine = `${new Date().toISOString()} decision-write-via-dashboard task=${taskId} route=${currentArm.route} by=${currentArm.by}\n`;
+          try {
+            fs.appendFileSync(auditPath, auditLine);
+          } catch (err) {
+            // Ignore audit log errors; file write succeeded
+          }
+
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ written: true }));
+
+          // Clear arm after successful write
+          currentArm = null;
+        } catch (err) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'invalid request', message: err.message }));
+          currentArm = null;
         }
       });
       return;
