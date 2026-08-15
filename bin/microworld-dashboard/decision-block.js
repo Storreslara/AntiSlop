@@ -14,6 +14,10 @@ const ID_RE = /^[A-Za-z0-9][A-Za-z0-9._#-]*$/;
 const MAX_ID_LEN = 64;
 const ROUTES = ['approve', 'reject', 'direct'];
 const HEREDOC_DELIM = 'EOF';
+// gh375 Step 14: the three legal quiz-attestation tokens. R6 ("never
+// graded, never a gate") means this module never names or validates
+// against the answer key -- these are self-report tokens only.
+const QUIZ_TOKENS = ['passed-self-check', 'skipped', 'none-offered'];
 
 function validateId(value, label) {
   if (typeof value !== 'string' || value.length === 0 || value.length > MAX_ID_LEN || !ID_RE.test(value)) {
@@ -39,7 +43,7 @@ function composeHeredocCommand(targetPath, body) {
 }
 
 function composeEscalationDecision(context) {
-  const { taskId, route, escalationTimestamp, by = '', reason = '' } = context || {};
+  const { taskId, route, escalationTimestamp, by = '', reason = '', quiz } = context || {};
 
   if (escalationTimestamp === undefined || escalationTimestamp === null || escalationTimestamp === '') {
     throw new Error('escalation-decision requires context.escalationTimestamp (the .escalated marker timestamp)');
@@ -54,16 +58,33 @@ function composeEscalationDecision(context) {
     `DECISION ${taskId} ${decisionTimestamp} route: ${route} escalation: ${escalationTimestamp}`,
     `by: ${by}`,
   ];
+
+  const warnings = [];
+  // quiz: approve-route only (gh375 Step 14). Omitting quiz composes
+  // exactly today's body. On reject/direct the value is ignored, never
+  // validated and never emitted -- the same form state carries a leftover
+  // quiz field across route switches, and that must not throw.
+  if (quiz !== undefined) {
+    if (route === 'approve') {
+      if (QUIZ_TOKENS.indexOf(quiz) === -1) {
+        throw new Error(`quiz must be one of ${QUIZ_TOKENS.join('|')}, got ${JSON.stringify(quiz)}`);
+      }
+      lines.push(`quiz: ${quiz}`);
+    } else {
+      warnings.push(`quiz is ignored on route: ${route}`);
+    }
+  }
+
   if (reason) lines.push(`reason: ${reason}`);
   const body = lines.join('\n');
 
   if (bodyHasDelimiterLine(body)) {
-    return { kind: 'command', text: null, warnings: [`body contains a line equal to the heredoc delimiter "${HEREDOC_DELIM}"; refusing to compose`] };
+    return { kind: 'command', text: null, warnings: [...warnings, `body contains a line equal to the heredoc delimiter "${HEREDOC_DELIM}"; refusing to compose`] };
   }
 
   const text = composeHeredocCommand(`.claude/human-review/${taskId}/DECISION`, body);
   assertNoCommandSubstitution(text);
-  return { kind: 'command', text, warnings: [] };
+  return { kind: 'command', text, warnings };
 }
 
 function composePendingReviewFlag(action, context) {

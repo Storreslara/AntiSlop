@@ -178,9 +178,89 @@ check('(j) unknown kind throws', () => {
   throws(() => composeDecisionBlock('not-a-real-kind', {}));
 });
 
+// gh375 Step 14: quiz attestation on the approve route. Prints an
+// "OK   <label>" line on success (grepped by acceptance criteria) in
+// addition to this file's existing "Test .../✓ ok" convention.
+function checkOk(okLabel, fn) {
+  console.log(`Test ${okLabel}...`);
+  try {
+    fn();
+    console.log('OK   ' + okLabel);
+  } catch (err) {
+    console.log('  ✗ ' + err.message);
+    failures.push(`${okLabel}: ${err.message}`);
+  }
+}
+
+checkOk('approve emits quiz line after by', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375',
+    route: 'approve',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    quiz: 'passed-self-check',
+  });
+  const lines = result.text.split('\n');
+  const byIdx = lines.findIndex((l) => l === 'by: Sebastian');
+  assert(byIdx !== -1, 'expected a by: line in composed text');
+  assert(lines[byIdx + 1] === 'quiz: passed-self-check', `expected quiz line immediately after by:, got "${lines[byIdx + 1]}"`);
+});
+
+checkOk('quiz passed-self-check composes', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'passed-self-check',
+  });
+  assert(result.text.includes('quiz: passed-self-check'), 'expected quiz: passed-self-check in composed text');
+});
+
+checkOk('quiz skipped composes', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'skipped',
+  });
+  assert(result.text.includes('quiz: skipped'), 'expected quiz: skipped in composed text');
+});
+
+checkOk('quiz none-offered composes', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'none-offered',
+  });
+  assert(result.text.includes('quiz: none-offered'), 'expected quiz: none-offered in composed text');
+});
+
+checkOk('quiz bogus-token rejected', () => {
+  throws(() => composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'bogus-token',
+  }), 'expected a bogus quiz token to throw');
+});
+
+checkOk('reject never emits quiz', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'reject', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'passed-self-check', reason: 'not ready',
+  });
+  assert(!result.text.includes('quiz:'), `expected no quiz: line on reject, got "${result.text}"`);
+});
+
+checkOk('direct never emits quiz', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'direct', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'none-offered',
+  });
+  assert(!result.text.includes('quiz:'), `expected no quiz: line on direct, got "${result.text}"`);
+});
+
+checkOk('omitted quiz composes unchanged body', () => {
+  const result = composeDecisionBlock('escalation-decision', {
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian',
+  });
+  const bodyLines = result.text.split("<<'EOF'\n")[1].split('\nEOF\n')[0].split('\n');
+  assert(bodyLines.length === 2, `expected exactly 2 body lines (DECISION, by) when quiz omitted, got ${bodyLines.length}: ${JSON.stringify(bodyLines)}`);
+  assert(bodyLines[0].startsWith('DECISION gh375 '), 'expected DECISION line unchanged');
+  assert(bodyLines[1] === 'by: Sebastian', 'expected by: line unchanged');
+  assert(!result.text.includes('quiz:'), 'expected no quiz: line when quiz omitted');
+});
+
 console.log('\n' + '='.repeat(60));
 if (failures.length === 0) {
-  console.log('All 10 acceptance cases (a)-(j) passed!');
+  console.log('All decision-block acceptance cases (a)-(j) plus quiz cases passed!');
   process.exit(0);
 } else {
   console.log(`${failures.length} test(s) failed:`);
