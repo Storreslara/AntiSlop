@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.52 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.54 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -191,8 +191,10 @@ with reasons.
   `.claude/human-review/<task-id>/` — copy `microworlds/<unit-slug>/` wholesale
   with `run.sh`'s executable bit preserved (`cp -a`), and write `PACKET.md`
   there as a byte-identical copy of the marker body; the marker stays
-  authoritative wherever the two differ. With no bundle, still create that
-  directory with `PACKET.md` alone and write `microworld: none` — never skip
+  authoritative wherever the two differ. Write `CHANGES.md` there too — see the
+  next bullet. With no bundle, still create that
+  directory with `PACKET.md` and `CHANGES.md` alone and write
+  `microworld: none` — never skip
   the escalation for want of a bundle. Do not site the packet under
   `.claude/reviewed/`: `reviewed-path-gate.sh` only lets a non-reviewer
   caller's command through when `command_is_provably_benign()` accepts it — a
@@ -201,7 +203,32 @@ with reasons.
   conceptually read-only — and running a packet's `run.sh` is never on that
   allowlist, so a packet there could not be run by anyone but you. Write neither `.pass`
   nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. A later
-  re-dispatch naming the unit resolves it, per the next bullet.
+  re-dispatch naming the unit resolves it, per the bullet after next.
+- **`CHANGES.md` — the literate change summary you owe the human**: written into
+  the packet directory in that same action. You have already read the diff to
+  reach your would-be verdict; this is that reading written down, so the human
+  does not start from a raw alphabetical diff. No new tool, no rendering
+  pipeline, no HTML. Author it **after** the would-be verdict is settled: it is
+  comprehension material for the human and **never gates or influences your
+  verdict**. Its first line reads exactly
+  `Comprehension material only — the .escalated marker is the authoritative record.`
+  That is the same authority rule `PACKET.md` carries, stated inside the file so
+  a later reader cannot mistake it for the review. Then a fixed four-section
+  shape, in this order:
+  1. `## Background` — what already existed in this area, for a reader who has
+     not been following. Mentions no part of the change.
+  2. `## What this change is for` — the goal in one paragraph, in the
+     `CONTEXT.md` glossary's terms, before any code appears.
+  3. `## Walkthrough` — the diff in **conceptual** order, one subsection per
+     idea, each naming the files that idea touches and quoting only the lines
+     that carry it — **not one subsection per file**, and not alphabetical.
+  4. `## What to look at first` — the two or three places you are least
+     confident about.
+
+  **Quote** the diff, never reproduce it; soft cap 400 lines. A unit with no
+  bundle still gets a `CHANGES.md` — there it carries the entire human-facing
+  payload. It is deleted with the rest of the packet when you resolve the
+  escalation.
 - **Resolving a standing escalation (transcription, never re-review)**: the
   resolution dispatch names only the unit (`Unit: <task-id>`, "resolve the
   standing escalation from its DECISION file") and carries no decision —
@@ -234,8 +261,9 @@ with reasons.
     comes back for re-review; delete `.directed` when you next resolve the
     unit to PASS or FAIL, same rule as `.blocked`.
 
-  In all three routes, delete `.escalated` **and** the whole packet in the same
-  action, via `rm -rf .claude/human-review/<task-id>` — the decision gate's
+  In all three routes, delete `.escalated` **and** the whole packet —
+  `PACKET.md`, `CHANGES.md`, and the bundle copy together, no route exempt — in
+  the same action, via `rm -rf .claude/human-review/<task-id>` — the decision gate's
   sanctioned deletion path, and what removes the decision file too, since no
   identity may `rm` it by name. Leaving a stale packet is not untidiness but a
   defect: nothing globs that directory, so a human can mistake it for a live

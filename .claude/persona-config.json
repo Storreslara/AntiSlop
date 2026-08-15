@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.52",
+  "pluginVersion": "0.31.54",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -44,17 +44,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "ede328b046865cdc2a31ee8ab112274fbc8cdc0f86255faae075d5d42abb74ff",
+    ".claude/agents/orchestrator.md": "554cdd89d74ca22685d191c2dd1a4a8e6790ba08f46feeedfc26c3e8f249adf0",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
     ".claude/agents/lead-programmer.md": "15401b47eb8329a6c100c6aa191101106761711cd49b3507473589f6caf906e1",
     ".claude/agents/spec-master.md": "b01405cb8001ff16484c06617ffb920d59ad5f21fd5b8820421d5c47b75deedd",
     ".claude/agents/task-master.md": "01f528e14510b2739e1dc5ba989ff1e51856b4bf47351daf7f435e7a0f0583bb",
     ".claude/agents/scribe.md": "7c414abb1b10688499a16a055772c73a199cdfb07e8bca7d75dc1f52945e0a8a",
-    ".claude/agents/reviewer.md": "83e2eb588f5faff70f43daa51578639f0a3b7bf843bda74a2cefe695fa483580",
+    ".claude/agents/reviewer.md": "21fc448c7fddbd282133b303039e9a480748df5007ad8696c5c513bf37f6ca08",
     ".claude/agents/milestone-auditor.md": "1fe0ae615cc375b2e69f76dddc855bb96b4a7eefadaa756c4b00484c16254388",
     ".claude/agents/agent-auditor.md": "e2c60fc3cd47e5ba5686da193ceb3eec290f370cd6655a9cfe2bf1507edfd747",
     ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
-    ".claude/persona-protocol.md": "5e03072898f98fff1889afeefb19f0f81bf9fc1e4c301446fff48616a54bdbe4",
+    ".claude/persona-protocol.md": "c1bf769dd9439d235b46a0fae88a65ec084c23117dee5a8116b36119df49ac37",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "1bf68b4f87d059438a74cda7dbeef5bfbaa415fc0cf04441d8e456627ed77d19",

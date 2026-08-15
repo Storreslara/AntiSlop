@@ -1,4 +1,4 @@
-<!-- antislop v0.31.52 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.54 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -363,10 +363,40 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   the marker body**, not a re-summary, so the directory is self-contained for
   a human working outside the session. The **marker remains authoritative**
   wherever the two differ — `PACKET.md` is never an independent record.
+- Write `CHANGES.md` into that directory too — the **literate change summary**,
+  addressed to the human who must now read the change. Nothing else in the
+  packet describes *the change*: the marker carries the verdict, the bundle's
+  `README.md` describes *the piece*, and without this the human starts from a
+  raw alphabetical diff, which wastes most of what stopping the machine bought.
+  No new tool, no rendering pipeline, no HTML — the diff has already been read
+  to reach the would-be verdict, and this is that reading written down. It is
+  authored **after** that would-be verdict is reached and **never gates or
+  influences it**. Its first line reads exactly:
+
+  `Comprehension material only — the .escalated marker is the authoritative record.`
+
+  That is the same authority rule `PACKET.md` carries, applied to a second
+  derived artifact and stated inside the file so a later reader cannot mistake
+  it for the review. Then a **fixed four-section shape**, in this order, so it
+  cannot decay into a restated diff:
+
+  1. `## Background` — what already existed in this area, for a reader who has
+     not been following. Mentions no part of the change.
+  2. `## What this change is for` — the goal in one paragraph, in the
+     `CONTEXT.md` glossary's terms, before any code appears.
+  3. `## Walkthrough` — the diff in **conceptual** order, one subsection per
+     idea, each naming the files that idea touches and quoting only the lines
+     that carry it — **not one subsection per file**, and not alphabetical.
+  4. `## What to look at first` — the two or three places the reviewer is
+     least confident about.
+
+  It **quotes** the diff, it does not reproduce it; soft cap 400 lines.
 - If the unit has **no** bundle: write `microworld: none` in the marker,
-  create the packet directory anyway, and put `PACKET.md` in it alone. A human
-  still gets the would-be verdict and the criteria; they simply have nothing
-  to run. **Escalation is never skipped for want of a bundle.**
+  create the packet directory anyway, and put `PACKET.md` and `CHANGES.md` in
+  it alone. A human still gets the would-be verdict, the criteria, and the
+  walkthrough of the change; they simply have nothing to run — that is the
+  case where the literate change summary carries the entire human-facing
+  payload. **Escalation is never skipped for want of a bundle.**
 - **The packet deliberately does NOT live under `.claude/reviewed/`.**
   `hooks/scripts/reviewed-path-gate.sh` only lets a non-reviewer caller's
   command through when `command_is_provably_benign()` accepts it — a narrow
@@ -377,7 +407,8 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   through the session. `.claude/human-review/` is ungated by design. Do not
   "tidy" the packet under the marker directory; that quietly breaks the whole
   feature.
-- Lifecycle: the packet is deleted by the reviewer at the same moment it
+- Lifecycle: the packet — bundle copy, `PACKET.md`, and `CHANGES.md` alike —
+  is deleted by the reviewer at the same moment it
   deletes `.escalated`. Both are untracked, so `git clean -fdx` or a fresh
   clone destroys a pending escalation unrecoverably — documented, not fixed;
   the reviewer must then re-review and re-escalate.
@@ -433,7 +464,9 @@ On a missing, malformed, or stale `DECISION`: report and wait.
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the human's full prescribed fix **verbatim** from the body | deleted | deleted | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
 
 In all three routes the packet is deleted in the **same reviewer action** that
-deletes `.escalated`, via `rm -rf .claude/human-review/<task-id>` — the decision
+deletes `.escalated` — the whole directory, so `PACKET.md`, `CHANGES.md`, and
+the bundle copy all go together, on the same rule and with no route exempt —
+via `rm -rf .claude/human-review/<task-id>` — the decision
 gate's sanctioned deletion path, and what removes the decision file too, since
 no identity may `rm` it by name. A later re-escalation of the same unit writes a
 fresh packet from the then-current bundle. Deleting it is **mandatory, not
