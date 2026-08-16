@@ -265,7 +265,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       # Must go through block() (not a bare exit 2) so this check participates
       # in the loop guard like every other block site here.
       block "No verdict is recorded for the unit(s) you were dispatched for: ${missing}. A v3 PASS or FAIL marker must be written for each, first line exactly:
-  printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '$(git rev-parse HEAD 2>/dev/null || echo none)' > .codex/reviewed/<unit-id>.pass
+  printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '<the unit's own final commit, not HEAD>' > .codex/reviewed/<unit-id>.pass
 The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround."
     fi
 

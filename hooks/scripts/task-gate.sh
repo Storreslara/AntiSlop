@@ -64,7 +64,7 @@ marker_valid() {
 reject() {
   echo "Task '${task_name}' has no valid reviewer PASS marker at ${marker}." >&2
   echo "The reviewer (or the no-reviewer fallback lead) must write it in v3 format, first line exactly:" >&2
-  echo "  mkdir -p \"$(dirname "$marker")\" && printf 'PASS ${task_id} %s commit: %s criteria: <acceptance-criteria command(s) run>\\n' \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" \"\$(git rev-parse HEAD)\" > ${marker}" >&2
+  echo "  mkdir -p \"$(dirname "$marker")\" && printf 'PASS ${task_id} %s commit: %s criteria: <acceptance-criteria command(s) run>\\n' \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" \"<the unit's own final commit, not HEAD>\" > ${marker}" >&2
   echo "A bare 'touch' or an empty/malformed marker is rejected - existence alone is not enough." >&2
   echo "The v0.6.0 legacy-marker grace period ended ${GRACE_PERIOD_END} - it no longer softens this block." >&2
   echo "If your copied reviewer.md predates plugin v0.6.0 (still teaches a bare touch), run /antislop:update-antislop to pick up the v3 format." >&2

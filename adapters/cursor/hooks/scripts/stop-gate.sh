@@ -224,7 +224,7 @@ if [ "$hook_event" = "subagentStop" ] && persona_matches_grant "$agent_type" rev
     # Cursor has no loop guard (its .loop_count is read at the top instead), so
     # this stays a bare exit 2, matching the Claude port.
     echo "No verdict is recorded for the unit(s) you were dispatched for: ${missing}. A v3 PASS or FAIL marker must be written for each, first line exactly:" >&2
-    echo "  printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '$(git rev-parse HEAD 2>/dev/null || echo none)' > .cursor/reviewed/<unit-id>.pass" >&2
+    echo "  printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '<the unit's own final commit, not HEAD>' > .cursor/reviewed/<unit-id>.pass" >&2
     echo "The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround." >&2
     exit 2
   fi
