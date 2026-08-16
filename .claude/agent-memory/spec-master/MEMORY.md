@@ -28,3 +28,4 @@
 - [Dashboard /api/invoke is RCE](project_dashboard_invoke_is_rce.md) — measured: launch token alone = arbitrary write as the user; RESOLVED 2026-08-15 close it; gate goes in runDashboard, NOT startServer (8 tests).
 - [/dev/tty is a real out-of-band channel](technique_dev_tty_out_of_band_channel.md) — agent gets ENXIO, human doesn't; test openability not stdout.isTTY; a page-embedded nonce is never a boundary.
 - [Review-join null only covered zero-stamp](feedback_review_join_null_only_covered_zero_stamp.md) — an R-item's "already specified" claim wasn't; verify the referenced criterion covers the NAMED scenario, not just the general shape.
+- [Teammates cannot spawn named agents](project_teammate_cannot_spawn_named_agent.md) — `name:` is rejected; nested dispatch is an anonymous sync subagent, not lead-addressable.

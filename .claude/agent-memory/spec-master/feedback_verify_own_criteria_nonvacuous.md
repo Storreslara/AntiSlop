@@ -224,6 +224,35 @@ C15.4 likewise needed rewriting because the source sentence carried an
 apostrophe AND a double quote in backtick-dense prose — the safe move is to
 pick a fragment containing **no quote characters at all**.
 
+**Eleventh trap - a criterion can name a REAL, PASSING test that does not probe
+what the step changes (2026-08-15, marker-commit-attribution C4.5).** Step 4
+corrected marker-format prose in `templates/persona-protocol.md` and both
+adapter ports, and I listed `node tests/adapter-protocol-parity.test.js` exits 0
+among its criteria. The test exists, runs, and passes — and it is **irrelevant
+to that step**. Reading its probe list shows it asserts section *headings* plus
+an `ESCALATION_PROBES` array of escalation-prose artifacts (`Comprehension
+material only`, `QUIZ.md`, the `quiz:` tokens). Nothing in it touches marker
+format, so marker-format divergence between `adapters/codex/` and
+`adapters/cursor/` is undetected by any test in the repo. The step was still
+gated — sibling criteria greped the changed prose directly in each port — but
+the plan implicitly credited C4.5 with regression cover it never had. Surfaced
+by an explorer relay, then confirmed by reading the file.
+
+Distinct from trap eight (attribution): there the signal was real but came from
+the wrong file. Here the named test is simply **about a different subject**, and
+its name (`adapter-protocol-parity`) is what makes the error easy — "parity" reads
+as total parity when the implementation is a hand-maintained probe list.
+
+**How to apply (probe-list, not test-name):** before citing an existing test as a
+criterion, open it and read what it actually asserts. Named suites in this repo
+are curated allowlists (`ESCALATION_PROBES`, `canonicalHeaders()`, the per-port
+`{ probe } | { deferred }` maps), not exhaustive comparators — and a `deferred`
+entry is a documented hole that passes by design. If the suite does not probe
+your step's subject, either add a probe or explicitly label the criterion an
+*unrelated-regression guard*, and never let a reader infer it covers the change.
+The generalization: a green test proves what it probes, and the burden is on me
+to know which.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
 [[verify-deferred-issue-premises]],
 [[docs-units-need-claim-anchored-criteria]], and
