@@ -406,6 +406,15 @@ else
 fi
 
 echo
+echo "== marker-commit-check classifier: ok/mismatch/unverifiable states (Bash) =="
+if bash tests/marker-commit-check.test.sh; then
+  echo "OK   tests/marker-commit-check.test.sh"
+else
+  echo "FAIL tests/marker-commit-check.test.sh"
+  fail=1
+fi
+
+echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"
