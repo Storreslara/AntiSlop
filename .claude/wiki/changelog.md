@@ -1000,3 +1000,53 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   #0024`. The original entry is left as-is (accurate as a log of this
   dispatch's own scope) — this note corrects it as a statement of current
   repo state.
+
+## 2026-08-16 (adhoc units, `docs/plans/2026-08-16-ceremony-reduction-followups.md`)
+- **Two adhoc units, dispatched directly from the plan document** (both below
+  the ≤5 fast-path threshold — no `task-master`, no `to-tickets`, no tracker
+  issue for either):
+  - **`adhoc-2026-08-16-cap-paragraph-reconcile` (lead-programmer, Step 1 of
+    the plan).** Rewrote `templates/persona-protocol.md`'s "Cap at 2 FAILs
+    per unit" paragraph so it describes the human-gated cap and *points at*
+    the orchestrator's own 2-FAIL-cap section instead of restating it and
+    asserting the removed automatic `spec-master` spawn — the same
+    pointer-not-restate convention the `Fourth verdict: escalate-to-human`
+    section already documents elsewhere in the same file. The
+    Codex/Cursor/prototype ports (`adapters/codex/agents-md-fragment.md`,
+    `adapters/cursor/rules/persona-protocol.mdc`,
+    `prototype/protocol-mcp/rules/continuing-after-fail.md`) were found
+    **already correct** (already in the deferring, non-enumerating form) and
+    were deliberately left untouched — recorded here so a future reader does
+    not "discover" them as an unfixed gap. Also fixed a stale `<3 units`
+    publish-threshold leftover in `agents/spec-master.md:175` (a `≤2`/`≥3`-era
+    branch that, left alongside the current `≥6 units` branch, made 3-, 4-,
+    and 5-unit specs match neither): Step 3's own criterion AC3.8 ("no `≥3
+    units` threshold survives anywhere in `agents/`") had passed **vacuously**
+    against this leftover, because the literal on disk was `<3 units`, not
+    `≥3 units`. **Reusable lesson:** a "no stale value survives" criterion
+    must grep the old literal, not the old concept, or a differently-spelled
+    survivor passes the check while still contradicting the current value.
+    Regenerated all mirrors (`--force-render`, since the mirror-parity gap
+    already FAILed this milestone once as `gh403.fail`), bumped the version,
+    and added the `CHANGELOG.md` entry. This unit's own commit is separate
+    from this changelog entry's commit; see `git log` for its sha.
+  - **`adhoc-2026-08-16-publish-threshold-glossary` (scribe, this entry).**
+    Added two new cross-linked `CONTEXT.md` glossary entries, inserted
+    immediately after the existing **`to-spec` skill** entry: **fast-path
+    threshold** (≤5 dispatchable units — `spec-master` emits the
+    nine-element dispatch contract directly, `task-master`/`to-tickets`
+    bypassed; explicitly disambiguated from `bin/cli.js --update`'s
+    unrelated *version-match fast path*) and **publish threshold** (≥6
+    dispatchable units — `spec-master` publishes to the tracker with
+    `ready-for-agent`; records `tracker-publish threshold` and
+    `publish-threshold` as aliases of the canonical spelling). The two
+    entries state and cross-link the OQ-3 coupling invariant from
+    [ADR-0024](../../docs/adr/0024-ceremony-reduction-solo-operator.md):
+    the two thresholds were raised together by design and must move
+    together — a decoupled pair would let a 4-unit spec skip `task-master`
+    while still filing a tracker issue nobody slices from. Neither term had
+    a glossary entry before this pass (verified live: 100 pre-existing
+    `**term**:` entries contained neither spelling). No version bump in this
+    unit (that's the sibling unit's job; this unit's own AC2.8 asserts the
+    version is unchanged from this unit's perspective). Affected files:
+    `CONTEXT.md`, `.claude/wiki/changelog.md` (this entry).

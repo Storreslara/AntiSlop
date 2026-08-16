@@ -450,6 +450,33 @@ vendored first-party skill (originally from Matt
   publish. The template LAYERS on top of the v0.9.0 spec-kit format (Goal →
   Context → Clarifications → …), not replacing it.
 
+**fast-path threshold**:
+≤5 dispatchable units in a finalized spec. Below
+  it, `spec-master` emits the nine-element dispatch contract directly from
+  the `docs/plans/` document — `task-master` and `to-tickets` are bypassed,
+  and the `docs/plans/` document is itself the retrieval contract. Raised
+  from ≤2 to ≤5 by Step 3 of the 2026-08-16 ceremony-reduction plan
+  ([ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md), amending
+  [ADR-0003](docs/adr/0003-hivemind-split-spec-master-task-master.md)). Not
+  to be confused with `bin/cli.js --update`'s *version-match fast path*
+  (see this glossary's `--force-render` / `--dry-run` entries) — an
+  unrelated mechanism that happens to share the words "fast path". See
+  [[publish threshold]].
+
+**publish threshold**:
+≥6 dispatchable units in a finalized spec (or any
+  multi-milestone spec). At or above it, `spec-master` maps the finished
+  plan onto the `to-spec` PRD template and publishes it to the issue
+  tracker with the `ready-for-agent` label. Below it (≤5), publishing is
+  optional and the `docs/plans/` document remains the canonical artifact
+  either way. Also spelled `tracker-publish threshold` (`CHANGELOG.md`,
+  `docs/adr/0024`) and `publish-threshold` (`docs/adr/0024`) — this entry's
+  heading is the canonical spelling. Coupled to [[fast-path threshold]] by
+  design ([ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md),
+  OQ-3): the two thresholds move together, never independently — a
+  decoupled pair would let a 4-unit spec skip `task-master` while still
+  filing a tracker issue nobody slices from.
+
 **`pathfinder` skill**:
 first-party skill for `task-master`, derived from
   Matt Pocock's `wayfinder` (adapted for dispatch, not a passthrough). Helps
