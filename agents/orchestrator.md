@@ -247,18 +247,22 @@ the 2-FAIL cap (which counts `.fail` records only) — a rejection-with-reason
 does, a human-directed correction does not.
 
 **At the 2-FAIL cap**: stop re-dispatching lead-programmer on this unit. Surface the full two-attempt
-defect history to the user as before, but instead of only stopping there,
-also spawn `spec-master` to produce a **debug spec** — the focused
-diagnostic artifact spec-master's own file defines for exactly this
-escalation (a root-cause diagnosis read from the latest `.fail` record and
-both fix-attempt commits, plus revised acceptance criteria for the failed
-step(s); never a from-scratch replan). Once spec-master returns the debug
-spec, route it through the same ≤5-unit fast path as any other spec: a
-debug spec resolving to ≥6 units still goes to `task-master` to re-derive
-dispatch instructions from the revised step(s) — a fresh slice of the
-corrected spec, never a re-plan of its own; a debug spec resolving to ≤5
-units skips `task-master` and spec-master emits the dispatch contract
-directly. Either way, re-dispatch to lead-programmer.
+defect history to the user (both `.fail` records and the fix-attempt commits), then ask the human how to proceed via `AskUserQuestion`. The orchestrator waits for the user's choice before proceeding:
+
+- **(a) Debug spec** — dispatch `spec-master` to produce a focused diagnostic artifact (a root-cause
+diagnosis read from the latest `.fail` record and both fix-attempt commits, plus revised acceptance
+criteria for the failed step(s); never a from-scratch replan). Once spec-master returns the debug
+spec, route it through the same ≤5-unit fast path as any other spec: a debug spec resolving to ≥6
+units still goes to `task-master` to re-derive dispatch instructions from the revised step(s) — a
+fresh slice of the corrected spec, never a re-plan of its own; a debug spec resolving to ≤5
+units skips `task-master` and spec-master emits the dispatch contract directly. Either way,
+re-dispatch to lead-programmer.
+
+- **(b) Re-dispatch with a human directive** — re-dispatch `lead-programmer` on the same unit
+carrying an operator-supplied correction. This does **not** count against the 2-FAIL cap.
+
+- **(c) Park the unit** — stop work on it, leave the defect history standing, and move on. No
+marker is written and none is deleted.
 
 A mid-flight **"spec gap"** signal from `task-master` (per task-master's own
 file, it never fills a gap itself) routes the same way — straight to
@@ -291,8 +295,8 @@ haiku|sonnet|opus` tag and pass it as the dispatch's `model` parameter; omit
 it when absent, so lead-programmer's `model: haiku` frontmatter is the
 default, not an absolute. An `opus` tag passes through identically — it
 normally appears only after a unit hits the 2-FAIL cap (haiku → FAIL →
-sonnet → FAIL) and gets a `spec-master` debug spec and re-derived dispatch;
-treat it as expected. Per Claude Code's per-invocation model override (env
+sonnet → FAIL) and the human chooses option (a) to pursue a debug spec,
+surfaced as a re-derived dispatch; treat it as expected when it appears. Per Claude Code's per-invocation model override (env
 var > per-call param > frontmatter), if `CLAUDE_CODE_SUBAGENT_MODEL` is set
 it silently wins over any model routing in this section — check for it if
 routing ever appears to have no effect.

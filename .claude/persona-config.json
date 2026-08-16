@@ -47,7 +47,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "2b323cff2138eee129cb7cc68149ac30672c742289b90e5089f38975be4b9c2e",
+    ".claude/agents/orchestrator.md": "f69a7cf9f56102258c1a644631b2a35f949119c960000592524843438c590066",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
     ".claude/agents/lead-programmer.md": "947200e2210d9f5549fbe57b94fe6a76744b50c83dcff051e14dc0f890fe266b",
     ".claude/agents/spec-master.md": "2950345533006597c209c65aac68024085902a05e747de3c608b61155a9f3fd3",
