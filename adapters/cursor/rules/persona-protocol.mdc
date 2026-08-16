@@ -152,8 +152,9 @@ later amendment cannot leave two copies disagreeing.
 `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`
 - where `microworld:` is the durable packet directory, not the gitignored working
 `microworlds/<unit-slug>/`, which may be gone by the time a human reads it. Then,
-in order: the command to run the packet's `run.sh`, `commit: <sha>` at escalation
-time, a one-line inputs/expected-outputs description, the reviewer's would-be
+in order: the command to run the packet's `run.sh`, `commit: <sha>` - the commit
+the review was performed against, copied verbatim from the standing `.escalated`
+marker - at escalation time, a one-line inputs/expected-outputs description, the reviewer's would-be
 verdict plus the criteria it checked, and its non-blocking notes.
 
 **Packet:** the same action snapshots the bundle to

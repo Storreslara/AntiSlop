@@ -144,7 +144,7 @@ heavy-unit trigger defined solely in
 **Marker:** `.claude/reviewed/<task-id>.escalated`, first line exactly
 `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`,
 then the command to run the packet's `run.sh`, the escalation-time SHA as
-`commit: <sha>`, a one-line inputs/expected-outputs description, the would-be
+`commit: <sha>` — the commit the review was performed against, copied verbatim from the standing `.escalated` marker's own `commit:` line — a one-line inputs/expected-outputs description, the would-be
 verdict and the criteria checked, and non-blocking notes. `microworld:` names the
 durable packet, not the gitignored working `microworlds/<unit-slug>/`.
 

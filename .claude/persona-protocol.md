@@ -233,7 +233,7 @@ in BOTH modes, not only where a `TaskCompleted` hook exists to check it — a
 marker that exists only in one mode would be an audit gap. Marker format v3:
 the file must be non-empty and its first line must read exactly `PASS
 <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria
-command(s) run>`. The reviewer writes this via `Bash` (`printf`, not a bare
+command(s) run>`, where `<sha>` is the unit's own final commit, never HEAD at marker-write time. The reviewer writes this via `Bash` (`printf`, not a bare
 `touch`) on a PASS verdict — this is bookkeeping, not fixing code, and does
 not conflict with "the reviewer never edits the code under review."
 Planning/research/documentation work is never gated by this marker. On PASS,
@@ -347,7 +347,7 @@ exactly:
 may be gone by the time a human reads the marker. After that first line, in
 order: the exact command to run the microworld (a project-root-relative
 invocation of the **packet's** `run.sh`); the commit SHA at escalation time,
-as `commit: <sha>`, so a human arriving later can tell what the bundle was run
+as `commit: <sha>` — the commit the review was performed against, the value the `approve` route copies verbatim — so a human arriving later can tell what the bundle was run
 against; a one-line description of the inputs and the expected outputs; the
 reviewer's own would-be verdict and the criteria it checked; and its
 non-blocking notes.

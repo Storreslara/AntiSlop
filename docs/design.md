@@ -43,7 +43,7 @@ debugging a surprising interaction.
   (default mode), not a change to reviewed code. Marker format v3: a bare
   `touch` no longer satisfies `task-gate.sh` — the file must be non-empty and
   its first line must read exactly `PASS <task-id> <UTC ISO-8601 timestamp>
-  commit: <sha|none> criteria: <acceptance-criteria command(s) run>`, written via `printf`; an
+  commit: <sha|none> criteria: <acceptance-criteria command(s) run>`, written via `printf`, where `<sha>` is the unit's own final commit. An
   accepted marker is logged to `.claude/review-audit.log`. This closes the
   bare-`touch`-is-anyone-with-Bash forgery gap the v1 format left open. Setup
   pre-creates the directory so the first-ever marker write doesn't fail on a
