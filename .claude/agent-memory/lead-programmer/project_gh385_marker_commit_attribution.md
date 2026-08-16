@@ -11,11 +11,25 @@ landed per recent commits; gh385-5 done this session: placeholder replaces
 baked `rev-parse HEAD` in stop-gate.sh/task-gate.sh remediation printfs +
 adapter ports + `.claude/hooks/scripts/**` resync via `bin/cli.js --update`).
 
-Remaining: gh385-6 (new `hooks/scripts/marker-commit-check.sh`, does not exist
-yet), gh385-7 (wire a classifier into stop-gate.sh's review-join loop — do NOT
-touch this in gh385-5/6), gh385-8 (version bump, must land last, owns all
-version-stamped files: `.claude-plugin/plugin.json`, `package.json`,
-`CHANGELOG.md`).
+gh385-6 done (commit c9b727a): `hooks/scripts/marker-commit-check.sh` +
+`tests/marker-commit-check.test.sh` (throwaway mktemp-d git repo, 10 pinned
+cases), wired into `tests/validate.sh` explicitly (no wildcard `*.test.sh`
+sweep exists there — every test file needs its own named block), mirror
+synced via `bin/cli.js --update`. Key algorithm choice: the marker's own
+cited commit is checked via one direct `git log -1 --format=%s%n%b <sha>`
+call; only if that fails to reference the unit does a SEPARATE single bulk
+`git log --format=%x1e%H%x01%s%x02%b` pipe run for the mismatch/candidate
+scan — two total git-log invocations, never a per-commit loop. For a
+purely-numeric task-id (e.g. "31"), the plain literal-substring match arm is
+skipped entirely (it would degenerate into the forbidden bare-digit match);
+only the id-bearing-context regex (`gh<N>|gh-<N>|#<N>|unit <N>|unit #<N>`,
+trailing non-digit boundary) applies. Non-numeric ids (e.g. "gh450",
+"adhoc-2026-08-14-slug") get both arms.
+
+Remaining: gh385-7 (wire the classifier into stop-gate.sh's review-join loop
+— do NOT touch this in gh385-6, confirmed untouched), gh385-8 (version bump,
+must land last, owns all version-stamped files: `.claude-plugin/plugin.json`,
+`package.json`, `CHANGELOG.md`).
 
 **Why:** the spec deliberately isolates the mirror-regen step (bin/cli.js
 --update) into the unit that touches the source files, rather than deferring
