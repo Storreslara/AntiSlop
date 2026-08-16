@@ -14,6 +14,15 @@ the one-time per-project setup process that turns the
   cost in the common case) and a judgment half
   (`skills/install-antislop/SKILL.md`).
 
+**Attested commit**:
+(unit #386, 2026-08-15) — the commit recorded in a [[PASS marker]]'s
+  `commit:` field (v3 format), representing the unit's own final commit — the
+  exact point in history at which the unit's work, as reviewed and accepted,
+  concluded. Distinct from marker-write-time HEAD, which may have moved by the
+  time the marker is consulted (e.g., after a rebase or force push). The
+  attested commit is what dispatch-hygiene's H3 gate tests for reachability (see
+  [[Dispatch hygiene]], [[Commit attribution]], and [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
+
 **Persona**:
 a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
@@ -139,6 +148,17 @@ an append-only audit-log record class written to
   `microworld-rerun.sh` **Reporter** hook on every `PostToolUse` for
   `Edit|Write` operations. Line format: `<ts> unit=<slug> result=pass|fail|timeout file=<path>` for real bundle runs, and `<ts> unit=<slug> result=error ... file=<path> reason=<...>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
 
+**Commit attribution**:
+(unit #386, 2026-08-15) — the mechanism of recording which commit a unit was
+  completed at, captured in a [[PASS marker]]'s `commit:` field (v3 format).
+  The field's semantic meaning (see [[Attested commit]]) is the unit's own
+  final commit, not the state of HEAD at marker-write time. This attribution
+  enables dispatch-hygiene's H3 gate to detect work lost to history (unreachable
+  commits allow re-dispatch; reachable commits remain protected). See
+  [ADR-0023](docs/adr/0023-marker-commit-attribution.md) for the semantic
+  clarification and [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)
+  for the technical mechanism.
+
 **Consumed interface**:
 (unit #316, 2026-08-10) — a formal label for a wire contract or data format
   that is explicitly documented as being read/parsed by a downstream system.
@@ -181,7 +201,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   `persona-config.json`'s `dispatchHygiene` (default mode `block`); single-use
   escape hatch `.claude/.dispatch-override`. H3 is anchored by a `commit:`
   field in the PASS marker (v3 format, see [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
-  records the commit at which the unit was marked done: a marker from an
+  records the unit's own final commit (see [[Commit attribution]]): a marker from an
   unreachable commit is treated as void, allowing re-dispatch of units whose
   work was lost to history. H3 is only as good as the reviewer's marker id
   matching the dispatch's `Unit:` line, and issue #153 originally flagged

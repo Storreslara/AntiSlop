@@ -38,6 +38,8 @@ Adopt v3 marker format with a required `commit:` field:
 PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria command(s) run>
 ```
 
+**SUPERSEDED 2026-08-15 —** See [ADR-0023](0023-marker-commit-attribution.md) for the semantic clarification of the `commit:` field. This ADR documents the v3 format and technical mechanism; ADR-0023 clarifies that the field's meaning is the unit's own final commit, not marker-write-time HEAD. *This is a partial supersession:* the v3 marker format itself is unchanged; only the semantic reading is superseded.
+
 - `<sha|none>`: The commit SHA (full or abbreviated, as returned by `git rev-parse HEAD`), or the literal string `none` if the marker was written before the first commit (fail-open bootstrap for empty repos).
 - `criteria:` field (existing, v2 onward) is unchanged.
 
@@ -83,6 +85,8 @@ The v0.6.0 legacy-marker grace period (through 2026-07-27) already handles v1 fo
 - `dispatch-hygiene.sh`: H3 gate logic updated to check commit reachability — landed in unit #256 (commit `1b884fa`, spec Step 1), not unit #260. This ADR documents that shipped behaviour; unit #260 itself only updated marker-writer templates and documentation (`git diff --stat 9959b19..HEAD` touches 9 files, none of them `dispatch-hygiene.sh`).
 
 ### Marker Writers
+
+**SUPERSEDED 2026-08-15 —** See [ADR-0023](0023-marker-commit-attribution.md) for the semantic meaning of the `commit:` field being recorded here. This ADR documents the implementation (what to write); ADR-0023 clarifies the meaning (what it represents). *This is a partial supersession:* the marker-writing technique itself is unchanged; only the semantic reading of what the field means is superseded.
 
 - `reviewer.md`: printf template updated to include `commit: $(git rev-parse HEAD)`.
 - `start-feature-team.md`: No-reviewer fallback printf updated similarly.
