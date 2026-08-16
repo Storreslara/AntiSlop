@@ -172,7 +172,7 @@ clarify intent is fine.
   Scope; the Clarifications log and Self-check itemization → Further Notes.
   Run `to-spec` to publish the mapped artifact to the project issue tracker
   with the `ready-for-agent` label. For smaller specs (single-milestone,
-  <3 units), publishing via `to-spec` is optional. The saved `docs/plans/`
+  ≤5 units), publishing via `to-spec` is optional. The saved `docs/plans/`
   document (below) remains the canonical artifact — `to-spec`'s publish is
   additive, not a substitute for it.
 - **Hand off to `task-master`**: once Self-check passes (and, where used,
