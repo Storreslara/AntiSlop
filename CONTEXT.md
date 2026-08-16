@@ -1279,3 +1279,17 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   defect class at two points — detection at merge time, prevention at the
   authoring technique that caused the #262 regression.
 
+**Marker state summary**:
+(unit #385-9, 2026-08-16) — a one-line summary printed by `bin/marker-commit-audit.sh`
+  reporting aggregate state counts across an enumerated set of `.pass` markers, in the
+  format `ok=N mismatch=N unverifiable=N`. Each count represents the number of markers
+  in that state from a single classification run. This is a consumed interface distinct
+  from individual per-marker outputs: the classifier emits one line per marker (see
+  [[Marker classifier states]]); the audit script aggregates results and reports
+  per-state totals. Used to surface marker health at a glance — in this repo, the
+  initial audit run over all 234 `.pass` markers reported `ok=106 mismatch=15
+  unverifiable=113`. Note: the audit script silently degrades both `unavailable`
+  (classifier missing/non-executable) and `unverifiable` (classifier ran but couldn't
+  decide) into the unverifiable_count bucket; see [[Marker audit-log states]] for the
+  semantic distinction between these two system states.
+
