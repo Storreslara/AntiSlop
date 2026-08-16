@@ -579,9 +579,9 @@ normal FAIL routes the defect list to
   `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
   `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
   record plus git log/git diff over fix-attempt commits, revised steps), which
-  then routes through the same ≤2-unit fast path as any other spec: `task-master`
+  then routes through the same ≤5-unit fast path as any other spec: `task-master`
   re-derives dispatch instructions only if the debug spec itself resolves to
-  ≥3 units; a debug spec resolving to ≤2 units skips `task-master` and
+  ≥6 units; a debug spec resolving to ≤5 units skips `task-master` and
   spec-master emits the dispatch contract directly. `task-master` is never a
   re-plan owner. Mid-flight "spec gap" signals also route back to
   `spec-master`.
