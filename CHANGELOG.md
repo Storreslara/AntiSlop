@@ -8,7 +8,7 @@
 - **`.claude/persona-config.json`**: `humanReviewMode` set to `"off"`, `dispatchHygiene.mode` set to `"warn"` (Step 1).
 - **`agents/orchestrator.md`**: milestone audit gate now on-demand; 2-FAIL cap now routes through `AskUserQuestion` with three options before a debug-spec cycle (Steps 2 and 4).
 - **`agents/spec-master.md`**: fast path raised to ≤5 dispatchable units; `to-spec` tracker-publish threshold raised to ≥6 units (Step 3).
-- New ADR at `docs/adr/00NN-ceremony-reduction-solo-operator.md`, an inline annotation to `docs/adr/0018-human-in-the-loop-review-on-by-default.md`, and glossary entries in `CONTEXT.md` / `.claude/wiki/**`: authored separately by `scribe` (Dispatch B of this unit), not part of this commit's diff.
+- New ADR at `docs/adr/0024-ceremony-reduction-solo-operator.md`, an inline annotation to `docs/adr/0018-human-in-the-loop-review-on-by-default.md`, and glossary entries in `CONTEXT.md` / `.claude/wiki/**`: authored separately by `scribe` (Dispatch B of this unit), not part of this commit's diff.
 - **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.58 → 0.31.59 (constitution P3).
 - **`.claude/agents/*.md`** / **`.claude/persona-protocol*.md`** / **`.claude/persona-config.json`**'s `fileHashes`: regenerated via `node bin/cli.js --update` (G2).
 

@@ -992,3 +992,11 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
   fixed. Affected files: `docs/adr/0024-ceremony-reduction-solo-operator.md`
   (new), `docs/adr/0018-human-in-the-loop-review-on-by-default.md`,
   `CONTEXT.md`, `.claude/wiki/changelog.md` (this entry).
+
+  **Superseding note (2026-08-16, gh405 close-out):** the "Not touched"
+  statement above is stale. Commit `6c0b7c2`, one commit later in this same
+  range, resolved both `docs/adr/0003-hivemind-split-spec-master-task-master.md`
+  `**Superseded by (ADR TBD, Step 5):**` placeholders to `Superseded by
+  #0024`. The original entry is left as-is (accurate as a log of this
+  dispatch's own scope) — this note corrects it as a statement of current
+  repo state.
