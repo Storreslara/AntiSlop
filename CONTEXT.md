@@ -576,15 +576,20 @@ the standing convention that `Agent` tool calls should dispatch without a `name:
 
 **FAIL routing (post-reviewer)**:
 normal FAIL routes the defect list to
-  `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator routes to
-  `spec-master` to produce a debug spec (diagnosis using the latest `.fail`
-  record plus git log/git diff over fix-attempt commits, revised steps), which
-  then routes through the same ≤5-unit fast path as any other spec: `task-master`
-  re-derives dispatch instructions only if the debug spec itself resolves to
-  ≥6 units; a debug spec resolving to ≤5 units skips `task-master` and
-  spec-master emits the dispatch contract directly. `task-master` is never a
-  re-plan owner. Mid-flight "spec gap" signals also route back to
-  `spec-master`.
+  `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator surfaces
+  the two-attempt defect history and asks the human (via `AskUserQuestion`) how
+  to proceed, offering three discrete options: **(a) Debug spec** — dispatch
+  `spec-master` to produce a diagnostic artifact (diagnosis using the latest
+  `.fail` record plus git log/git diff over fix-attempt commits, revised steps),
+  which then routes through the same ≤5-unit fast path as any other spec:
+  `task-master` re-derives dispatch instructions only if the debug spec itself
+  resolves to ≥6 units; a debug spec resolving to ≤5 units skips `task-master`
+  and spec-master emits the dispatch contract directly. **(b) Re-dispatch with
+  human directive** — re-dispatch `lead-programmer` on the same unit with an
+  operator-supplied correction (this option does not count against the 2-FAIL
+  cap). **(c) Park the unit** — stop work on it and move on without modifying
+  the defect-history marker. `task-master` is never a re-plan owner. Mid-flight
+  "spec gap" signals also route back to `spec-master`.
 
 **Blocked by a gate you do not own**:
 (unit #265, 2026-08-08, protocol section
