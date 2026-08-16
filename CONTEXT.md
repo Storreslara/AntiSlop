@@ -193,6 +193,25 @@ an append-only audit-log record class written to
   consumes these states as trigger conditions for audit logging to `.claude/review-audit.log`.
 _Avoid_: classifier result (use specific state names or "Marker classifier states")
 
+**Marker audit-log states**:
+(unit #385, 2026-08-15) — the set of possible state values written to `.claude/review-audit.log`
+  when `marker-commit-check.sh` is consulted. Superset of [[Marker classifier states]];
+  includes three states from the classifier (`ok`, `mismatch`, `unverifiable`) plus a
+  fourth caller-side state: `unavailable` (the classifier could not be consulted — missing
+  script, execution failure, or preconditions unmet). Key distinction: `unavailable` means
+  "could not even run the classifier" (a system state), while `unverifiable` means "the
+  classifier ran but couldn't decide" (a classification result). Audit-log records emitted
+  by `stop-gate.sh` when running in `warn` or `block` mode per [[markerCommitCheck.mode]].
+
+**markerCommitCheck.mode**:
+(unit #385, 2026-08-15) — configuration key in `.claude/persona-config.json` (schema:
+  `templates/persona-config.schema.json`, paths: `dispatchHygiene` sibling) controlling
+  `stop-gate.sh`'s behavior when `marker-commit-check.sh` runs. Defined modes: `off`
+  (no audit line written, classifier not invoked), `warn` (audit line written, classifier
+  runs but does not block), `block` (audit line written, classifier runs and blocks on
+  `mismatch` at stop-gate.sh:290). Parallel to [[Dispatch hygiene]]'s `dispatchHygiene.mode`
+  posture. Consumed by `stop-gate.sh:276,284` in its review-join validation loop.
+
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
   pattern named) — a standing principle for `reviewed-path-gate.sh`'s
