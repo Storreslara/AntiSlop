@@ -415,6 +415,15 @@ else
 fi
 
 echo
+echo "== marker-commit-audit: enumerate and report on all .pass markers (Bash) =="
+if bash tests/marker-commit-audit.test.sh; then
+  echo "OK   tests/marker-commit-audit.test.sh"
+else
+  echo "FAIL tests/marker-commit-audit.test.sh"
+  fail=1
+fi
+
+echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"
