@@ -262,7 +262,9 @@ with reasons.
   judgment. Then **transcribe, never re-review** — you are an AI, and
   re-adjudicating the human's decision quietly undoes the property this
   escalation exists to create. Route by the first line's `route:` value:
-  - `approve` → write `.pass` per the PASS rules above, then append a
+  - `approve` → write `.pass` per the PASS rules above, **with one exception:
+    the `commit:` field is copied verbatim from the standing `.escalated`
+    marker's own `commit:` line. Never re-derive it.** Then append a
     `human: approved by <name> <UTC ISO-8601> quiz: <token>` attestation line
     quoting the decision file, after the required first line. The `quiz:` token
     is required and is exactly one of `quiz: passed-self-check`,
@@ -274,7 +276,15 @@ with reasons.
     exactly like the other two. The token goes only on this appended line,
     never on the marker's required first line, so it cannot affect
     `marker_valid()`. No `quiz:` token on the `reject` or `direct` routes —
-    those already carry the human's reason or directive.
+    those already carry the human's reason or directive. **Rationale for the
+    `commit:` exception:** resolution is a transcription, not a re-review — the
+    escalated marker already records the commit the review was actually
+    performed against, and by the time a human decides, `HEAD` has normally
+    moved on to other units' work; a marker written from `HEAD` here would name
+    a different unit's commit. **Fallback:** if the `.escalated` marker carries
+    no parseable `commit:` line, fall back to the Step 2 (gh385-2) derivation —
+    derive from the unit's own reviewed range, verify via `git log -1 --format=%s`
+    — and record on a note line that you did.
   - `reject` → write `.fail` per the FAIL rules above, with the body's reason
     **verbatim** as the defect list. This **consumes** a 2-FAIL-cap slot.
   - `direct` → write `.claude/reviewed/<task-id>.directed`, first line exactly
