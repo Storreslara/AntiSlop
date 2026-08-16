@@ -162,7 +162,7 @@ clarify intent is fine.
     revised in place
   ```
 - **Publish via `to-spec` — layered on top of the plan format above, never
-  replacing it.** For multi-milestone specs or specs resolving to ≥3 units,
+  replacing it.** For multi-milestone specs or specs resolving to ≥6 units,
   once Self-check passes, `to-spec` is a synthesis/publish step, not a second
   interview (it explicitly does not interview the user — that's `grill-me`'s
   job, already done by this point). Map the finished plan onto `to-spec`'s own
@@ -178,8 +178,8 @@ clarify intent is fine.
   additive, not a substitute for it.
 - **Hand off to `task-master`**: once Self-check passes (and, where used,
   the plan is published via `to-spec`), your side of the work is done.
-  **Fast path (≤2 dispatchable units)**: when a finalized spec resolves to
-  two or fewer independently-grabbable units, emit the nine-element dispatch
+  **Fast path (≤5 dispatchable units)**: when a finalized spec resolves to
+  five or fewer independently-grabbable units, emit the nine-element dispatch
   contract for each unit directly (`Unit: <task-id>`, `## Objective`,
   `## Retrieval`, `## Affected files`, `## Ordered edits`, `## Do NOT touch`,
   `## Acceptance criteria`, `## Pre-resolved context`, `## Escalation`), and
@@ -187,7 +187,7 @@ clarify intent is fine.
   `to-tickets` on any path (ADR-0003 preserved); on the fast path no tracker
   issue exists, the retrieval contract points at the `docs/plans/` path, and
   `scribe`'s issue-closing duty correctly does not fire (it requires an issue
-  number in its dispatch). **Standard path (≥3 units, Convergence
+  number in its dispatch). **Standard path (≥6 units, Convergence
   follow-ups)**: `task-master` slices the plan into independently-grabbable
   units with `to-tickets`, assigns each unit's `Suggested model` tag, states
   the retrieval contract, and writes the detailed per-unit dispatch prompts
@@ -229,9 +229,9 @@ clarify intent is fine.
      corrected acceptance criteria (or, if the diagnosis found the wrong
      approach entirely, a revised approach), re-checked against the
      taxonomy/constitution/self-check machinery above. Route the result
-     through the same ≤2-unit fast path as any other spec: a debug spec
-     resolving to ≤2 units emits the nine-element dispatch contract
-     directly and skips `task-master`; one resolving to ≥3 units still
+     through the same ≤5-unit fast path as any other spec: a debug spec
+     resolving to ≤5 units emits the nine-element dispatch contract
+     directly and skips `task-master`; one resolving to ≥6 units still
      goes to `task-master`, which re-dispatches the corrected spec to
      `lead-programmer`. Never rewrite steps beyond the escalated unit in
      this pass.
@@ -505,7 +505,7 @@ orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
 surfaces the full defect history across both attempts to the user, then
 spawns `spec-master` to produce a debug spec (a focused root-cause diagnosis
 plus revised acceptance criteria for the failed step(s), never a
-from-scratch replan), which then routes through the same ≤2-unit fast path
+from-scratch replan), which then routes through the same ≤5-unit fast path
 spec-master already owns for any other spec before re-dispatch. A unit that
 fails twice usually means the plan itself has a gap, not that one more
 automated pass will close it.

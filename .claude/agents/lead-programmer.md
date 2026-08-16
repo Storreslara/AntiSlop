@@ -379,7 +379,7 @@ orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
 surfaces the full defect history across both attempts to the user, then
 spawns `spec-master` to produce a debug spec (a focused root-cause diagnosis
 plus revised acceptance criteria for the failed step(s), never a
-from-scratch replan), which then routes through the same ≤2-unit fast path
+from-scratch replan), which then routes through the same ≤5-unit fast path
 spec-master already owns for any other spec before re-dispatch. A unit that
 fails twice usually means the plan itself has a gap, not that one more
 automated pass will close it.

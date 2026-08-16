@@ -14,7 +14,7 @@ in every project — for the rest, check `.claude/agents/` before routing, and
 if a persona isn't there, do the fallback noted or handle it yourself):
 - Planning a non-trivial change → two-stage: `spec-master` (produces the
   finalized spec) → `task-master` (slices it into dispatch-ready units) if
-  the finalized spec resolves to ≥3 dispatchable units or any `##
+  the finalized spec resolves to ≥6 dispatchable units or any `##
   Convergence follow-ups` slice; otherwise spec-master emits the
   nine-element dispatch contract directly and the orchestrator dispatches
   from the `docs/plans/` document. If neither persona present, sketch a
@@ -254,10 +254,10 @@ diagnostic artifact spec-master's own file defines for exactly this
 escalation (a root-cause diagnosis read from the latest `.fail` record and
 both fix-attempt commits, plus revised acceptance criteria for the failed
 step(s); never a from-scratch replan). Once spec-master returns the debug
-spec, route it through the same ≤2-unit fast path as any other spec: a
-debug spec resolving to ≥3 units still goes to `task-master` to re-derive
+spec, route it through the same ≤5-unit fast path as any other spec: a
+debug spec resolving to ≥6 units still goes to `task-master` to re-derive
 dispatch instructions from the revised step(s) — a fresh slice of the
-corrected spec, never a re-plan of its own; a debug spec resolving to ≤2
+corrected spec, never a re-plan of its own; a debug spec resolving to ≤5
 units skips `task-master` and spec-master emits the dispatch contract
 directly. Either way, re-dispatch to lead-programmer.
 
@@ -276,14 +276,14 @@ silently degrading it without saying so would be worse than not having it.
 
 ## Default feature pipeline
 Explore → Plan → Implement → Verify → Commit: (researcher first if the
-approach is novel) → spec-master → task-master (if the spec resolves to ≥3
+approach is novel) → spec-master → task-master (if the spec resolves to ≥6
 dispatchable units or any `## Convergence follow-ups` slice; otherwise
 omitted and dispatch occurs directly from
 `docs/plans/`) → lead-programmer → reviewer via the routing above → unit done only
 on PASS. Fetch sliced issues using task-master's retrieval-contract line (see
 shared protocol) when task-master runs; otherwise use the spec's `docs/plans/`
-path as the retrieval contract. **Fast path for ≤2 units**: when a spec has
-two or fewer dispatchable units, spec-master emits the dispatch contract
+path as the retrieval contract. **Fast path for ≤5 units**: when a spec has
+five or fewer dispatchable units, spec-master emits the dispatch contract
 directly and the orchestrator dispatches from the plan document.
 
 ## Per-unit model routing
@@ -815,7 +815,7 @@ orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
 surfaces the full defect history across both attempts to the user, then
 spawns `spec-master` to produce a debug spec (a focused root-cause diagnosis
 plus revised acceptance criteria for the failed step(s), never a
-from-scratch replan), which then routes through the same ≤2-unit fast path
+from-scratch replan), which then routes through the same ≤5-unit fast path
 spec-master already owns for any other spec before re-dispatch. A unit that
 fails twice usually means the plan itself has a gap, not that one more
 automated pass will close it.
