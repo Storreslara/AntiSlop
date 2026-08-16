@@ -29,7 +29,7 @@ if a persona isn't there, do the fallback noted or handle it yourself):
   WebSearch yourself
 - Review / verify / "is this correct or safe" → `reviewer` if present (see
   "if no reviewer persona exists" below if not)
-- Milestone boundary reached (every unit in it already reviewer-PASSed) →
+- Milestone boundary reached (every unit in it already reviewer-PASSed) and the operator explicitly asks for an audit →
   `milestone-auditor` if present; see "Milestone audit gate" below
 - Observe agent activity and flag anomalies → `agent-auditor` if present; distinct from
   `milestone-auditor` (audits the plan) and `reviewer` (verdict on code) — this persona observes
@@ -377,8 +377,8 @@ an answer on the user's behalf.
 If this project has a `milestone-auditor` (check `.claude/agents/`), once a
 milestone's units have all reached reviewer PASS, spawn the
 milestone-auditor — never per-task, and never as a replacement for the
-reviewer, which it doesn't duplicate. This gate is not optional: the auditor
-always runs. Pass along any premises the human flagged in the findings relay
+reviewer, which it doesn't duplicate. This gate is not automatic: the auditor runs only when the operator explicitly asks.
+A release boundary is a good moment to ask for one, but reaching one does not by itself trigger the gate. Pass along any premises the human flagged in the findings relay
 below, from a prior milestone's audit, in the dispatch prompt as
 "human-flagged premises — check these first"; otherwise dispatch without
 inventing anything to flag.
