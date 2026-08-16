@@ -101,6 +101,18 @@
           "description": "Maximum interior lines of a fenced code block in a dispatch prompt. Calibrated to 2× the observed maximum (41) as of 2026-07-30 from a measured corpus of 26 task-master unit prompts."
         }
       }
+    },
+    "markerCommitCheck": {
+      "type": "object",
+      "description": "Configuration for the marker-commit-check.sh classifier invoked at reviewer turn-end (stop-gate.sh's per-unit review-join loop), which flags a PASS marker's commit: field as possibly citing a commit that does not belong to its unit. Absent object ⇒ mode: \"warn\" - deliberately differs from dispatchHygiene's \"block\" default, since ~1-2% of mismatch classifications are hard false positives and a false block on a gate the reviewer does not own is worse than a missed warning.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["off", "warn", "block"],
+          "default": "warn",
+          "description": "Posture on a mismatch classification: \"warn\" (one-line stderr warning, exit path unchanged), \"block\" (exit 2, pending-review flags left standing so the reviewer gets a second attempt), or \"off\" (skip the classifier call entirely - no audit line at all). \"ok\"/\"unverifiable\" states are always silent apart from the audit line, in every mode."
+        }
+      }
     }
   },
   "required": ["testAndLintCommand"]

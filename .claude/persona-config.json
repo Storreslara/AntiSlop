@@ -27,6 +27,9 @@
     "maxPromptBytes": 30000,
     "maxInlineBlockLines": 80
   },
+  "markerCommitCheck": {
+    "mode": "warn"
+  },
   "substitutions": {
     "graphMcpLaunch": {
       "command": "/home/sebas/.local/share/pipx/venvs/code-review-graph/bin/python",
@@ -66,7 +69,7 @@
     ".claude/hooks/scripts/reviewer-route-gate.sh": "576ae3fc3d5f390d1d3905ed5ee5609a4696ab93c62f6c5d31412ef7f339f800",
     ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
     ".claude/hooks/scripts/session-start.sh": "75027910bbe85781dc5c382ed0400347a2ca42d31a59946adeb5c9d68eb0e993",
-    ".claude/hooks/scripts/stop-gate.sh": "65089cd1295d2cc7922f0525647142d5df6f911b048279da99f66f3a20864e36",
+    ".claude/hooks/scripts/stop-gate.sh": "d03bcc78b0aff56fe1b3ffecfa7f4b47a8de129e409f80e45ab3f63f10eab2c1",
     ".claude/hooks/scripts/task-gate.sh": "984ff31817d8c241149d05f02096cb777ff32f9d8c59c4c39bd4c1bd646208ac",
     ".claude/hooks/scripts/human-decision-gate.sh": "1c4b0ddd0a328f6d094ae6703f6c87ae54bd8a7cd96e8c05c394191a7441b893",
     ".claude/hooks/scripts/lib/benign-command.sh": "5b64d3f39e1a06607344ad98ef3331abb83a38d45229f8317e5baebe8e7da18c",

@@ -205,8 +205,34 @@ if [ "$hook_event" = "subagentStop" ] && persona_matches_grant "$agent_type" rev
     # unit that already held a valid PASS. Fail OPEN, as bootstrap did.
     printf '%s marker-check=bootstrap\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
   elif [ "${#JOIN_SATISFIED_STAMPS[@]}" -gt 0 ] || [ "${JOIN_FAILOPEN:-false}" = true ]; then
+    # marker-commit-check: classify each satisfied unit's PASS marker
+    # `commit:` field before its stamp is consumed. Advisory - see
+    # docs/plans/2026-08-15-marker-commit-attribution.md Step 7.
+    mcc_mode="$(jq -r '.markerCommitCheck.mode // "warn"' "$config" 2>/dev/null || echo warn)"
+    case "$mcc_mode" in off|warn|block) ;; *) mcc_mode=warn ;; esac
+    mcc_script="$(dirname "${BASH_SOURCE[0]}")/marker-commit-check.sh"
     idx=0
     while [ "$idx" -lt "${#JOIN_SATISFIED_STAMPS[@]}" ]; do
+      unit="${JOIN_SATISFIED_UNITS[$idx]}"
+      if [ "$mcc_mode" != off ]; then
+        mcc_state=unavailable
+        mcc_out=""
+        if [ -x "$mcc_script" ]; then
+          mcc_out="$("$mcc_script" "$unit" "$project_dir" 2>/dev/null || true)"
+        fi
+        if [[ $mcc_out =~ ^marker-commit-check=([a-z]+)[[:space:]] ]]; then
+          mcc_state="${BASH_REMATCH[1]}"
+        fi
+        printf '%s marker-commit-check=%s unit=%s\n' \
+          "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$mcc_state" "$unit" >> "$review_audit"
+        if [ "$mcc_state" = mismatch ]; then
+          echo "marker-commit-check: unit ${unit}'s PASS marker cites a commit that does not appear to belong to it - ${mcc_out}" >&2
+          if [ "$mcc_mode" = block ]; then
+            echo "Remediation: correct the commit: field in .cursor/reviewed/${unit}.pass to name the unit's own final commit, then re-run." >&2
+            exit 2
+          fi
+        fi
+      fi
       rm -f "${JOIN_SATISFIED_STAMPS[$idx]}" 2>/dev/null || true
       printf '%s join-consumed=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
         "${JOIN_SATISFIED_UNITS[$idx]}" >> "$review_audit"

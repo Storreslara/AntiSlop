@@ -520,4 +520,105 @@ PYEOF
   fi
 done
 
+# (i) marker-commit-check wiring parity (gh385-7, spec Step 7): all three
+#     ports handle a classifier-reported "mismatch" identically - warn logs +
+#     continues, block logs + exits 2 with the pending-review flag kept, and
+#     a missing classifier logs "unavailable" and never blocks. A STUB
+#     classifier (always reports mismatch, regardless of git state) is used
+#     instead of the real hooks/scripts/marker-commit-check.sh, because that
+#     script's own marker lookup path is not adapter-dot-dir-aware (gh385-6's
+#     scope, not this unit's) - the stub isolates the WIRING under test from
+#     that unrelated, pre-existing limitation.
+mcc_stub_script() {
+  # $1 = directory to drop the stub in -> an always-mismatch classifier stand-in
+  cat > "$1/marker-commit-check.sh" <<'STUBEOF'
+#!/usr/bin/env bash
+printf 'marker-commit-check=mismatch unit=%s commit=deadbeef candidates=cafebabe\n' "$1"
+exit 0
+STUBEOF
+  chmod +x "$1/marker-commit-check.sh"
+}
+
+mcc_project() {
+  # $1 = port, $2 = case name, $3 = markerCommitCheck mode -> a fresh project
+  # dir with a satisfied review-join stamp and a format-valid PASS marker for
+  # unit "unit-<case>" (the classifier's verdict comes from the stub, not the
+  # marker content, so no git repo is needed here).
+  local port="$1" case="$2" mode="$3" dot dir
+  dot="$(dotdir_for "$port")"
+  dir="$tmproot/$port-mcc-$case"
+  mkdir -p "$dir/$dot/reviewed"
+  printf '{"gatedAgents":["lead-programmer"],"markerCommitCheck":{"mode":"%s"}}\n' "$mode" \
+    > "$dir/$dot/persona-config.json"
+  seed_join_stamp "$dir" "$port" "unit-$case" none -
+  printf 'PASS unit-%s 2026-08-15T00:00:00Z commit: abc123 criteria: true\n' "$case" \
+    > "$dir/$dot/reviewed/unit-$case.pass"
+  echo "$dir"
+}
+
+for port in $PORTS; do
+  dot="$(dotdir_for "$port")"
+  script="$(script_for "$port")"
+
+  # throwaway copy of this port's stop-gate.sh WITH the stub classifier
+  # dropped alongside it, so its dirname-relative invocation finds it
+  mcc_port_mutant="$tmproot/mcc-$port"
+  mkdir -p "$mcc_port_mutant"
+  cp "$script" "$mcc_port_mutant/stop-gate.sh"
+  cp -R "$(dirname "$script")/lib" "$mcc_port_mutant/lib"
+  mcc_stub_script "$mcc_port_mutant"
+
+  # throwaway copy WITHOUT any classifier at all, for the unavailable case -
+  # built the same way for every port, regardless of whether that port's real
+  # adapters/*/hooks/scripts directory happens to ship one today
+  mcc_port_no_classifier="$tmproot/mcc-noclassifier-$port"
+  mkdir -p "$mcc_port_no_classifier"
+  cp "$script" "$mcc_port_no_classifier/stop-gate.sh"
+  cp -R "$(dirname "$script")/lib" "$mcc_port_no_classifier/lib"
+
+  # i-warn: warn+mismatch -> exit 0, audit logged, flag still cleared
+  dir="$(mcc_project "$port" warn warn)"
+  run_gated_stop "$port" "$dir" "$mcc_port_mutant/stop-gate.sh" 2>/dev/null || true
+  rc=0
+  run_reviewer_stop "$port" "$dir" "$mcc_port_mutant/stop-gate.sh" 2>/dev/null || rc=$?
+  has_mismatch="$(records "$dir" "$port" 'marker-commit-check=mismatch unit=unit-warn')"
+  flag_exists=false
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
+  if [ "$rc" = 0 ] && [ "$has_mismatch" = 1 ] && [ "$flag_exists" = false ]; then
+    echo "OK   (i-warn) $port: markerCommitCheck warn+mismatch -> exit 0, audit logged, flag cleared"
+  else
+    echo "FAIL (i-warn) $port: expected rc=0, mismatch record, flag cleared (rc=$rc has_mismatch=$has_mismatch flag_exists=$flag_exists)"
+    fail=1
+  fi
+
+  # i-block: block+mismatch -> exit 2, flag still present
+  dir="$(mcc_project "$port" block block)"
+  run_gated_stop "$port" "$dir" "$mcc_port_mutant/stop-gate.sh" 2>/dev/null || true
+  rc=0
+  run_reviewer_stop "$port" "$dir" "$mcc_port_mutant/stop-gate.sh" 2>/dev/null || rc=$?
+  has_mismatch="$(records "$dir" "$port" 'marker-commit-check=mismatch unit=unit-block')"
+  flag_exists=false
+  ls "$dir/$dot"/.pending-review.* >/dev/null 2>&1 && flag_exists=true
+  if [ "$rc" = 2 ] && [ "$has_mismatch" = 1 ] && [ "$flag_exists" = true ]; then
+    echo "OK   (i-block) $port: markerCommitCheck block+mismatch -> exit 2, audit logged, flag kept"
+  else
+    echo "FAIL (i-block) $port: expected rc=2, mismatch record, flag kept (rc=$rc has_mismatch=$has_mismatch flag_exists=$flag_exists)"
+    fail=1
+  fi
+
+  # i-unavail: no classifier present next to this port's script -> logs
+  #            unavailable, never blocks, regardless of markerCommitCheck.mode
+  dir="$(mcc_project "$port" unavail block)"
+  run_gated_stop "$port" "$dir" "$mcc_port_no_classifier/stop-gate.sh" 2>/dev/null || true
+  rc=0
+  run_reviewer_stop "$port" "$dir" "$mcc_port_no_classifier/stop-gate.sh" 2>/dev/null || rc=$?
+  has_unavail="$(records "$dir" "$port" 'marker-commit-check=unavailable unit=unit-unavail')"
+  if [ "$rc" = 0 ] && [ "$has_unavail" = 1 ]; then
+    echo "OK   (i-unavail) $port: no classifier present next to this port's script -> logs marker-commit-check=unavailable, exit 0"
+  else
+    echo "FAIL (i-unavail) $port: expected rc=0, unavailable record (rc=$rc has_unavail=$has_unavail)"
+    fail=1
+  fi
+done
+
 exit "$fail"

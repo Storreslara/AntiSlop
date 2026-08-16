@@ -317,4 +317,119 @@ else
   fail=1
 fi
 
+# ============================================================================
+# MARKER-COMMIT-CHECK WIRING (gh385-7, spec Step 7). stop-gate.sh's
+# JOIN_SATISFIED_UNITS[] loop now invokes hooks/scripts/marker-commit-check.sh
+# for each unit before its stamp is consumed. Each case builds its own
+# throwaway git repo (same pattern as tests/marker-commit-check.test.sh) so a
+# genuine mismatch can be produced.
+# ============================================================================
+
+mcc_reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-mcc","session_id":"s-mcc"}'
+
+mcc_repo() {
+  # $1 = case name -> echoes a fresh git-init'd project dir seeded with
+  # .claude/reviewed and one commit naming unit "own-<case>".
+  local dir="$tmproot/mcc-$1"
+  mkdir -p "$dir/.claude/reviewed"
+  git -C "$dir" init -q
+  git -C "$dir" config user.email test@example.com
+  git -C "$dir" config user.name Test
+  git -C "$dir" commit -q --allow-empty -m "feat(own-$1): the unit's own commit"
+  echo "$dir"
+}
+
+mcc_seed_mismatch() {
+  # $1 = project dir, $2 = case name, $3 = markerCommitCheck mode -> adds a
+  # sibling commit, a satisfied review-join stamp, a PASS marker citing the
+  # SIBLING commit (a genuine mismatch), a pending-review flag, and config.
+  local dir="$1" case="$2" mode="$3" sibling_sha
+  git -C "$dir" commit -q --allow-empty -m "chore(sibling-$case): unrelated work"
+  sibling_sha="$(git -C "$dir" rev-parse HEAD)"
+  printf '{"gatedAgents":["lead-programmer"],"markerCommitCheck":{"mode":"%s"}}\n' "$mode" \
+    > "$dir/.claude/persona-config.json"
+  printf '2026-08-15T00:00:00Z unit=own-%s prior=none prior_mtime=-\n' "$case" \
+    > "$dir/.claude/.review-join.own-$case"
+  printf 'PASS own-%s 2026-08-15T00:00:00Z commit: %s criteria: true\n' "$case" "$sibling_sha" \
+    > "$dir/.claude/reviewed/own-$case.pass"
+  printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-mcc"
+}
+
+# --- mcc-warn-mismatch: mode warn, marker cites a sibling's commit -> exit 0, stderr warning, audit line, flags still cleared ---
+dir="$(mcc_repo warn)"
+mcc_seed_mismatch "$dir" warn warn
+rc=0
+stderr_out="$(printf '%s' "$mcc_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>&1 >/dev/null)" || rc=$?
+if [ "$rc" = 0 ] \
+   && grep -q 'marker-commit-check=mismatch unit=own-warn' "$dir/.claude/review-audit.log" \
+   && [[ $stderr_out == *"own-warn"* ]] \
+   && [ ! -e "$dir/.claude/.pending-review.lp-mcc" ]; then
+  echo "OK   (mcc-warn-mismatch) mode warn + mismatch -> exit 0, stderr warning, audit logged, flags cleared"
+else
+  echo "FAIL (mcc-warn-mismatch) rc=$rc audit=$(grep -c 'marker-commit-check=mismatch' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0) stderr=[$stderr_out]"
+  fail=1
+fi
+
+# --- mcc-block-mismatch: mode block, marker cites a sibling's commit -> exit 2, pending-review flag still present ---
+dir="$(mcc_repo block)"
+mcc_seed_mismatch "$dir" block block
+rc=0
+printf '%s' "$mcc_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 2 ] \
+   && grep -q 'marker-commit-check=mismatch unit=own-block' "$dir/.claude/review-audit.log" \
+   && [ -f "$dir/.claude/.pending-review.lp-mcc" ]; then
+  echo "OK   (mcc-block-mismatch) mode block + mismatch -> exit 2, pending-review flag still present"
+else
+  echo "FAIL (mcc-block-mismatch) rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-mcc" ] && echo yes || echo no)"
+  fail=1
+fi
+
+# --- mcc-off-no-audit-line: mode off -> no marker-commit-check= line at all ---
+dir="$(mcc_repo off)"
+mcc_seed_mismatch "$dir" off off
+rc=0
+printf '%s' "$mcc_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && ! grep -q 'marker-commit-check=' "$dir/.claude/review-audit.log" 2>/dev/null; then
+  echo "OK   (mcc-off-no-audit-line) mode off -> no marker-commit-check= line written"
+else
+  echo "FAIL (mcc-off-no-audit-line) rc=$rc lines=$(grep -c 'marker-commit-check=' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0)"
+  fail=1
+fi
+
+# --- mcc-degrade-gracefully (constitution P4): a fixture with zero .review-join.* stamps -> no marker-commit-check= line ---
+dir="$(mcc_repo degrade)"
+printf '{"gatedAgents":["lead-programmer"]}\n' > "$dir/.claude/persona-config.json"
+rc=0
+printf '%s' "$mcc_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && ! grep -q 'marker-commit-check=' "$dir/.claude/review-audit.log" 2>/dev/null; then
+  echo "OK   (mcc-degrade-gracefully) zero review-join stamps -> no marker-commit-check= line (constitution P4)"
+else
+  echo "FAIL (mcc-degrade-gracefully) rc=$rc lines=$(grep -c 'marker-commit-check=' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0)"
+  fail=1
+fi
+
+# --- mcc-helper-unavailable: classifier renamed away -> exit 0 on an otherwise-clean turn, logs marker-commit-check=unavailable ---
+mcc_mutant="$tmproot/mcc-mutant"
+mkdir -p "$mcc_mutant"
+cp hooks/scripts/stop-gate.sh "$mcc_mutant/stop-gate.sh"
+cp -R hooks/scripts/lib "$mcc_mutant/lib"
+# deliberately NOT copying marker-commit-check.sh - simulates it being renamed away
+dir="$(mcc_repo unavail)"
+printf '{"gatedAgents":["lead-programmer"]}\n' > "$dir/.claude/persona-config.json"
+printf '2026-08-15T00:00:00Z unit=own-unavail prior=none prior_mtime=-\n' \
+  > "$dir/.claude/.review-join.own-unavail"
+own_sha="$(git -C "$dir" rev-parse HEAD)"
+printf 'PASS own-unavail 2026-08-15T00:00:00Z commit: %s criteria: true\n' "$own_sha" \
+  > "$dir/.claude/reviewed/own-unavail.pass"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-mcc"
+rc=0
+printf '%s' "$mcc_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash "$mcc_mutant/stop-gate.sh" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-mcc" ] \
+   && grep -q 'marker-commit-check=unavailable unit=own-unavail' "$dir/.claude/review-audit.log"; then
+  echo "OK   (mcc-helper-unavailable) marker-commit-check.sh renamed away -> exit 0, logs marker-commit-check=unavailable, gate itself unaffected"
+else
+  echo "FAIL (mcc-helper-unavailable) rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-mcc" ] && echo yes || echo no) audit=$(grep -c 'marker-commit-check=unavailable' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0)"
+  fail=1
+fi
+
 exit "$fail"

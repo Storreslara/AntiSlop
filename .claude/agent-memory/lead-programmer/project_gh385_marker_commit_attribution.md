@@ -26,10 +26,31 @@ only the id-bearing-context regex (`gh<N>|gh-<N>|#<N>|unit <N>|unit #<N>`,
 trailing non-digit boundary) applies. Non-numeric ids (e.g. "gh450",
 "adhoc-2026-08-14-slug") get both arms.
 
-Remaining: gh385-7 (wire the classifier into stop-gate.sh's review-join loop
-— do NOT touch this in gh385-6, confirmed untouched), gh385-8 (version bump,
-must land last, owns all version-stamped files: `.claude-plugin/plugin.json`,
-`package.json`, `CHANGELOG.md`).
+gh385-7 done: wired marker-commit-check.sh into stop-gate.sh's
+JOIN_SATISFIED_UNITS[] loop (all 3 copies + adapters), added
+`markerCommitCheck.mode` (off|warn|block, default warn) to the schema +
+`.claude/persona-config.json`, extended `tests/review-join.test.sh` (5 new
+cases) and `tests/adapter-stop-gate-parity.test.sh` (9 new cases), synced
+mirror via `bin/cli.js --update`.
+
+Key gotcha found: `hooks/scripts/marker-commit-check.sh` (gh385-6) hardcodes
+the `.claude/reviewed` marker path — NOT adapter-dot-dir-aware. So codex/
+cursor stop-gate.sh, even if the classifier script were dropped alongside
+them, could never produce `ok`/`mismatch` against a `.codex`/`.cursor`
+project (always `unverifiable`, since the file it looks for doesn't exist at
+that path). This is gh385-6's scope, not touchable here. Adapter parity
+tests for the block/warn/mismatch states therefore use a STUB classifier
+(always-mismatch, ignores git state) dropped next to a throwaway copy of
+each port's stop-gate.sh — decouples the WIRING test (this unit) from
+gh385-6's path-resolution behavior. Real adapters ship no
+marker-commit-check.sh copy at all (by design — it's a helper script, not a
+registered hook; adapters only port scripts actually registered as their own
+hook events), so in production codex/cursor always log
+`marker-commit-check=unavailable`, which is legitimate graceful degradation,
+not a defect.
+
+Remaining: gh385-8 (version bump, must land last, owns all version-stamped
+files: `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`).
 
 **Why:** the spec deliberately isolates the mirror-regen step (bin/cli.js
 --update) into the unit that touches the source files, rather than deferring
