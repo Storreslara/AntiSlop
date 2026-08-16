@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.31.59] - 2026-08-16
+
+**Ceremony reduction for the solo-operator posture (gh405, Step 5 of the 2026-08-15 ceremony-reduction-solo-operator plan).** Cuts the per-unit ceremony cost of this repo's own persona workflow along four axes, without deleting any load-bearing rule: (1) solo-operator posture — `.claude/persona-config.json` now sets `humanReviewMode: "off"` and `dispatchHygiene.mode: "warn"`, so heavy units no longer force a human escalation pause and dispatch-hygiene violations are logged (`.claude/dispatch-audit.log`) rather than blocked; (2) the `milestone-auditor` gate is now on-demand (explicit operator request) rather than unconditional at every milestone boundary; (3) `spec-master`'s fast path widens from ≤2 to ≤5 dispatchable units, with the `to-spec` tracker-publish threshold moving in lockstep to ≥6 units; (4) the 2-FAIL cap no longer auto-spawns an `opus` debug-spec cycle — the orchestrator now asks the human via `AskUserQuestion` with three discrete options (debug spec, direct `lead-programmer` dispatch, or park the unit) before proceeding. **Two risks are accepted plainly, not softened:** **R1** — with `humanReviewMode: "off"`, units meeting ADR-0004's heavy-unit trigger (security-sensitive surface, structural change, large diff) now ship on reviewer PASS with no forced human comprehension pause; this is the single largest safety reduction in this plan. **R3** — `dispatchHygiene: "warn"` de-fangs H3, the re-dispatch guard that blocks respawning a unit already holding a `.pass` marker; warn mode keeps the audit-log record but nothing stops the dispatch, so H3's protection against duplicate work is lost as an active gate and survives only as a trail. Both are accepted as a local, solo-operator posture; the shipped plugin defaults are unchanged (ADR-0018's decision is not reversed).
+
+### Changed
+- **`.claude/persona-config.json`**: `humanReviewMode` set to `"off"`, `dispatchHygiene.mode` set to `"warn"` (Step 1).
+- **`agents/orchestrator.md`**: milestone audit gate now on-demand; 2-FAIL cap now routes through `AskUserQuestion` with three options before a debug-spec cycle (Steps 2 and 4).
+- **`agents/spec-master.md`**: fast path raised to ≤5 dispatchable units; `to-spec` tracker-publish threshold raised to ≥6 units (Step 3).
+- New ADR at `docs/adr/00NN-ceremony-reduction-solo-operator.md`, an inline annotation to `docs/adr/0018-human-in-the-loop-review-on-by-default.md`, and glossary entries in `CONTEXT.md` / `.claude/wiki/**`: authored separately by `scribe` (Dispatch B of this unit), not part of this commit's diff.
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.58 → 0.31.59 (constitution P3).
+- **`.claude/agents/*.md`** / **`.claude/persona-protocol*.md`** / **`.claude/persona-config.json`**'s `fileHashes`: regenerated via `node bin/cli.js --update` (G2).
+
 ## [0.31.58] - 2026-08-16
 
 **Version bump and mirror regeneration (gh385-8, final step of the 2026-08-15 marker-commit-attribution milestone).** All functional changes from gh385-1 through gh385-7 (new `marker-commit-check` script and configuration key, updated hooks and personas) have already landed; this unit completes the milestone with version/mirror bookkeeping. Regenerates all script-driven mirrors (`.claude/agents/*.md`, `.claude/hooks/scripts/**`, `.claude/persona-config.json`'s `fileHashes` and `pluginVersion`) to ensure the tree is consistent and idempotent.
