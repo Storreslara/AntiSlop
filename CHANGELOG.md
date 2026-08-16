@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.31.58] - 2026-08-16
+
+**Version bump and mirror regeneration (gh385-8, final step of the 2026-08-15 marker-commit-attribution milestone).** All functional changes from gh385-1 through gh385-7 (new `marker-commit-check` script and configuration key, updated hooks and personas) have already landed; this unit completes the milestone with version/mirror bookkeeping. Regenerates all script-driven mirrors (`.claude/agents/*.md`, `.claude/hooks/scripts/**`, `.claude/persona-config.json`'s `fileHashes` and `pluginVersion`) to ensure the tree is consistent and idempotent.
+
+### Changed
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.57 → 0.31.58 (constitution P3).
+- **`CHANGELOG.md`**: added this entry documenting the version bump and `marker-commit-check`.
+- **`.claude/agents/*.md`** / **`.claude/hooks/scripts/**`** / **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update` (G2); all mirrors now reflect prior units' functional changes.
+
 ## [0.31.57] - 2026-08-15
 
 **Add `heavy-trigger.sh`, a deterministic measured heavy-unit surface script (gh373, Step 12 of the 2026-07-28 microworlds/ubiquitous-language/human-review spec).** Measures ADR-0004 criterion 1 only (file count ≥ 8 or line count ≥ 400) and classifies a git range as heavy/light/unknown. Deliberately does NOT measure criteria 2 (structural/cross-cutting) or 3 (security-sensitive); the three-criterion rule and its application live in Step 13 (the reviewer wiring). Not registered in `hooks.json` per spec — the absence is the design. Hardened against path escaping via git `core.quotepath=false`, `diff.relative=false`, and leading-dash rejection, reused verbatim from `reviewer-tier.sh`'s pattern.
