@@ -153,8 +153,8 @@ later amendment cannot leave two copies disagreeing.
 - where `microworld:` is the durable packet directory, not the gitignored working
 `microworlds/<unit-slug>/`, which may be gone by the time a human reads it. Then,
 in order: the command to run the packet's `run.sh`, `commit: <sha>` - the commit
-the review was performed against, copied verbatim from the standing `.escalated`
-marker - at escalation time, a one-line inputs/expected-outputs description, the reviewer's would-be
+the review was performed against at escalation time, the value the `approve` route
+copies verbatim, a one-line inputs/expected-outputs description, the reviewer's would-be
 verdict plus the criteria it checked, and its non-blocking notes.
 
 **Packet:** the same action snapshots the bundle to
@@ -234,7 +234,7 @@ wait.
 
 | Human decision | Reviewer writes | Cap slot | Next move |
 |---|---|---|---|
-| **Approve** | `.pass` plus an appended `human: approved by <name> <UTC ISO-8601> quiz: <token>` attestation quoting the file | - | unit done |
+| **Approve** | `.pass`, with the `commit:` field copied verbatim from the standing `.escalated` marker's own `commit:` line (never re-derived), plus an appended `human: approved by <name> <UTC ISO-8601> quiz: <token>` attestation quoting the file | - | unit done |
 | **Reject with reason** | `.fail` with the reason verbatim as the defect list | **consumes one** | back to `lead-programmer`, normal FAIL route |
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the prescribed fix verbatim | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
 
