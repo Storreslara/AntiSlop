@@ -239,7 +239,9 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   dispatch missing any of the nine dispatch-contract elements (the `Unit:
   <id>` first line plus eight `## `-headings `agents/task-master.md` defines)
   — checked by presence only, not content. Configured via
-  `persona-config.json`'s `dispatchHygiene` (default mode `block`); single-use
+  `persona-config.json`'s `dispatchHygiene` (default mode `block`; this
+  repo's own config runs `warn` as part of its [[solo-operator posture]] —
+  violations are logged, not blocked); single-use
   escape hatch `.claude/.dispatch-override`. H3 is anchored by a `commit:`
   field in the PASS marker (v3 format, see [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
   records the unit's own final commit (see [[Commit attribution]]): a marker from an
@@ -588,7 +590,7 @@ normal FAIL routes the defect list to
   human directive** — re-dispatch `lead-programmer` on the same unit with an
   operator-supplied correction (this option does not count against the 2-FAIL
   cap). **(c) Park the unit** — stop work on it and move on without modifying
-  the defect-history marker. `task-master` is never a re-plan owner. Mid-flight
+  the defect-history marker (see [[parked unit]]). `task-master` is never a re-plan owner. Mid-flight
   "spec gap" signals also route back to `spec-master`.
 
 **Blocked by a gate you do not own**:
@@ -1012,8 +1014,12 @@ _Avoid_: quiz gate, comprehension check, reviewer quiz (it is neither a gate nor
   default there instead would have silently left every existing user opted
   out. This repo's own config ran the [[bootstrap window]] override
   (`humanReviewMode: "off"`) only until the human-decision resolution channel
-  landed at unit #136; the live value is now `critical`, the same as any
-  other adapted project.
+  landed at unit #136; the live value returned to `critical`, the same as any
+  other adapted project, at that point. **Superseded 2026-08-16** by Step 1
+  of the ceremony-reduction plan: this repo's config now runs
+  `humanReviewMode: "off"` again, this time as a permanent [[solo-operator
+  posture]], not a bootstrap window — see that entry and
+  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md).
 
 **bootstrap window**:
 (unit #135, 2026-08-11; closed unit #136/#138, 2026-08-11) — a temporary,
@@ -1297,4 +1303,57 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   (classifier missing/non-executable) and `unverifiable` (classifier ran but couldn't
   decide) into the unverifiable_count bucket; see [[Marker audit-log states]] for the
   semantic distinction between these two system states.
+
+**on-demand milestone audit**:
+(unit gh402, 2026-08-16, Step 2 of the ceremony-reduction plan) — the
+  `## Milestone audit gate` in `agents/orchestrator.md` no longer fires
+  automatically once a milestone's units all reach reviewer PASS; it now runs
+  only when the operator explicitly asks (the literal greppable trigger
+  string). A non-gating reminder that a release boundary is a good moment to
+  ask for one is retained, but reaching one no longer triggers the gate by
+  itself. Every other property of the gate — never per-task, never a
+  replacement for the reviewer, the human-flagged-premises pass-through, the
+  findings-relay protocol, the challenged-premise re-plan route, and the
+  `unconverged-requirement` → `## Convergence follow-ups` route — is
+  unchanged; this is a change in *when* the gate fires, not what it does.
+  Distinct from `agent-auditor`, which was already on-demand before this
+  change and needed no edit. See
+  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md).
+
+**solo-operator posture**:
+(unit gh401, 2026-08-16, Step 1 of the ceremony-reduction plan) — this
+  repo's own `.claude/persona-config.json` running two documented opt-outs at
+  once, as a deliberate standing configuration for a single, unsupervised
+  developer rather than a team: `humanReviewMode: "off"` (no forced human
+  comprehension pause on heavy-unit PASS, see [[humanReviewMode]] — this
+  supersedes that entry's now-closed [[bootstrap window]] statement that the
+  live value returned to `critical`) and `dispatchHygiene.mode: "warn"`
+  (hygiene violations are logged, not blocked, see [[Dispatch hygiene]]).
+  Both values are each mechanism's own shipped opt-out path, not a
+  workaround; the shipped defaults (`critical` / `block`) are unchanged for
+  every other adapted project. Risks R1 (no forced human pause) and R3 (H3
+  coverage loss under `warn`) are accepted deliberately, stated plainly in
+  `CHANGELOG.md`, not softened. See
+  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md).
+
+**parked unit**:
+(unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
+  at the 2-FAIL cap (see [[FAIL routing (post-reviewer)]]): the orchestrator
+  stops re-dispatching `lead-programmer` on the unit and moves on, leaving
+  the two-attempt defect history standing. No marker is written and none is
+  deleted — a parked unit is distinguishable from any other unit only by the
+  absence of further dispatch, never by a dedicated marker state. Contrast
+  with (a) debug spec and (b) human-directed re-dispatch, the other two
+  options offered by the same `AskUserQuestion` prompt.
+
+**operator**:
+(unit gh405, 2026-08-16, Step 5 of the ceremony-reduction plan) — an
+  explicit synonym for **human** throughout this glossary and this repo's
+  persona prose (e.g. `ESCALATE-TO-HUMAN`, [[The human-decision gate]],
+  [[humanReviewMode]], and the [[on-demand milestone audit]] trigger's
+  literal `only when the operator explicitly asks`). Recorded here because
+  that literal is now shipped in `agents/orchestrator.md` but "operator" did
+  not otherwise appear among this glossary's defined terms. Not a distinct
+  role: do not read "operator" as narrower than, or different from, "human"
+  anywhere in this document.
 

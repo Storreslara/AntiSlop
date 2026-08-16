@@ -946,3 +946,49 @@ own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 ## 2026-07-15 (continued)
 - **Completed Track A (Step A.3) — Vendor the 3 repointed mattpocock skills:** vendored `to-spec`, `to-tickets`, and `code-review` from mattpocock/skills @ SHA e9fcdf95b402d360f90f1db8d776d5dd450f9234 as first-party `skills/` entries (provenance headers added). Each references `/setup-matt-pocock-skills` in upstream body — repointed to antislop's native mechanism (`install-antislop` + `.claude/persona-config.json` `issueTracker` field + retrieval contract) per plan design. No breaking changes to body prose besides the repoints. All 12 mattpocock-dependency skills now on disk (Track A complete): 9 byte-verbatim + 3 repointed. Acceptance: `grep -rniI 'setup-matt-pocock-skills' skills/to-spec skills/to-tickets skills/code-review` returns 0 matches; repoint recorded in each skill's provenance header; `bash tests/validate.sh` passes; `bash scripts/resync-vendored-skills.sh --check` exit 0 (0 drift on the pinned SHA).
 - **Completed plan 2026-07-15-vendor-mattpocock-skills (all tracks A–F):** vendored the full 12-skill mattpocock dependency closure (grill-me, grilling, handoff, to-spec, to-tickets, tdd, diagnosing-bugs, improve-codebase-architecture, codebase-design, domain-modeling, implement, code-review) first-party into `skills/` under MIT license (© Matt Pocock), pinned at SHA e9fcdf95b402d360f90f1db8d776d5dd450f9234 (Track A complete: 9 byte-verbatim + 3 with documented repoints of /setup-matt-pocock-skills refs). Deleted the `<MATTPOCOCK:slot>` substitution machinery entirely (MATTPOCOCK_RE, applyMattpocockSubs, deriveMattpocockSubsForFile, hasMattpocockResidue, the substitutions map, --with-mattpocock/--only-mattpocock install paths, TDD-first test rewrite: Tracks B–C complete). Simplified install/adapt flow (mattpocock-selection step removed; issue-tracker capture moved to install-antislop native step: Track D complete). Documented periodic re-sync process (docs/maintenance/resync-vendored-skills.md + scripts/resync-vendored-skills.sh --check: Track E complete). Bumped version to 0.12.0, re-stamped all affected agent files, recorded capability loss (no more <MATTPOCOCK:slot> extension point; add new skills as first-party skills/<name>/ instead) in CHANGELOG.md [0.12.0] and new ADR-0005 (Track F complete). Acceptance: all Tracks landed reviewer-PASSed; plugin.json/package.json version equal at 0.12.0; all 12 skills `[OK]` under resync check; `bash tests/validate.sh` exit 0. ADR-0005 supersedes ADR-0003's slot-wiring language; deps.md and architecture.md updated to reflect final state (mattpocock/skills is one-time pinned source, not runtime dependency). Full plan: docs/plans/2026-07-15-vendor-mattpocock-skills.md. Re-sync runbook: docs/maintenance/resync-vendored-skills.md. Licenses: skills/THIRD-PARTY-NOTICES.md.
+
+## 2026-08-16 (gh405, Dispatch B — scribe, Step 5 of the ceremony-reduction plan)
+- **Completed unit gh405 (issue #405, Dispatch B of Step 5 of
+  `docs/plans/2026-08-15-ceremony-reduction-solo-operator.md`) — filed the
+  ADR covering Steps 2-4, annotated ADR-0018, added four glossary entries.**
+  `lead-programmer`'s Dispatch A (version bump, CHANGELOG, mirror
+  regeneration) is a separate half of the same unit, not covered here.
+  Determined the next free ADR number by listing `docs/adr/` live at
+  execution time (highest on disk was `0023`, no concurrent claim found) and
+  wrote [ADR 0024](../../docs/adr/0024-ceremony-reduction-solo-operator.md),
+  covering Step 2 (milestone audit becomes on-demand), Step 3 (fast path
+  ≤2→≤5, `to-spec` publish threshold ≥3→≥6, coupled per Open Question 3),
+  and Step 4 (2-FAIL cap asks the human via `AskUserQuestion` instead of
+  auto-spawning a debug spec) as one decision, with an in-body **Amends
+  ADR-0003** line for the fast-path/publish thresholds and references to
+  both ADR-0003 and ADR-0018. Added an inline annotation to
+  [ADR 0018](../../docs/adr/0018-human-in-the-loop-review-on-by-default.md)
+  recording that this repo now runs the documented `humanReviewMode: "off"`
+  opt-out locally and permanently (the solo-operator posture, distinct from
+  the earlier, now-closed bootstrap window) — the annotation does not
+  reverse ADR-0018's decision; the shipped default stays `critical`. Added
+  four new `CONTEXT.md` glossary entries: **on-demand milestone audit**
+  (Step 2), **solo-operator posture** (Step 1, this repo's `humanReviewMode:
+  "off"` + `dispatchHygiene.mode: "warn"` combination), **parked unit**
+  (Step 4 option (c) — no marker written, none deleted, distinguishable only
+  by absence of further dispatch), and **operator** (an explicit synonym of
+  **human**, since Step 2's shipped trigger literal "only when the operator
+  explicitly asks" put that word into persona prose with no matching
+  glossary term). Made an additive consistency pass over the existing "FAIL
+  routing (post-reviewer)" and "Dispatch hygiene" glossary entries (already
+  substantively updated by Steps 4 and 1's own dispatches): linked the
+  former's option-(c) mention to the new **parked unit** entry, and added a
+  clause to the latter noting this repo's own config runs `warn`. Also
+  corrected a staleness gap surfaced in passing: the `humanReviewMode`
+  glossary entry stated the bootstrap-window closure returned this repo's
+  config to `critical` "the same as any other adapted project" — true as of
+  unit #136, but superseded by this plan's Step 1 (the config now runs `off`
+  again, permanently); appended a superseding note rather than rewriting the
+  historical statement. **Not touched, per this dispatch's explicit
+  boundary:** `docs/adr/0003-hivemind-split-spec-master-task-master.md`'s two
+  standing `**Superseded by (ADR TBD, Step 5):**` placeholders now have a
+  concrete answer (ADR-0024) but resolving them was not in this dispatch's
+  affected-files list — flagged here as a loose end for a future pass, not
+  fixed. Affected files: `docs/adr/0024-ceremony-reduction-solo-operator.md`
+  (new), `docs/adr/0018-human-in-the-loop-review-on-by-default.md`,
+  `CONTEXT.md`, `.claude/wiki/changelog.md` (this entry).

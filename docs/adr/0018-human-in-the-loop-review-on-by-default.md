@@ -54,6 +54,26 @@ The default `critical` mode balances human oversight with automation: small, mec
 
 This repo's own `.claude/persona-config.json` temporarily held `humanReviewMode: "off"` during a **bootstrap window** (documented in `docs/plans/2026-08-11-human-decision-channel.md` Step 4) while the human-decision resolution channel — the mechanism that *routes* escalations to humans — was still being built. With escalation on, the fix batch's own heavy-unit changes (hook code, security-sensitive) would have escalated into a route that did not yet exist. The decision channel landed at unit #136 (issue #324); this repo's own config now runs at the default `humanReviewMode: "critical"`, the same as any other adapted project.
 
+### Update 2026-08-16 — this repo now runs the documented opt-out locally (solo-operator posture)
+
+**This annotation does not reverse this ADR's decision.** The shipped
+default for every other adapted project remains `humanReviewMode: "critical"`
+(on-by-default), unchanged.
+
+Separately from the bootstrap window described above (which closed at unit
+#136 and reverted this repo's config to `critical`), this repo's own
+`.claude/persona-config.json` now runs `humanReviewMode: "off"` again — this
+time as a **permanent, deliberate local posture** for a single, unsupervised
+developer, not a temporary workaround held open for a landing mechanism. It
+was set by Step 1 of `docs/plans/2026-08-15-ceremony-reduction-solo-operator.md`
+(Open Question 1, resolved 2026-08-15: local posture only — the alternative
+of changing the shipped default, which would have required reversing this
+ADR, was explicitly declined). Risk R1 — heavy units ship on reviewer PASS
+with no forced human comprehension pause — is accepted knowingly, per this
+ADR's own "Opt-out is real and easy" consequence below. See
+[ADR-0024](0024-ceremony-reduction-solo-operator.md) and `CONTEXT.md`'s
+"solo-operator posture" glossary entry.
+
 ## Consequences
 
 - **Immediate impact:** From this version onward, every already-adapted project with critical-weight units will experience escalation by default, without configuration changes.
