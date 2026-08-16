@@ -468,6 +468,26 @@ Claude Code the product — the IDE plugin and surrounding runtime
   [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) as the event
   class that detection mechanisms exist to observe for bypass-detection.
 
+**JSON type confusion**:
+(unit #380, 2026-08-15) — a vulnerability class where a validator is gated on
+  a type predicate (e.g., `typeof value === 'string'`) that silently no-ops for
+  every other type, while the sink (where the value is used) coerces back to
+  that type anyway. Validation is type-gated; the sink is type-agnostic, and the
+  gap between them is the vulnerability. Classic example: a check like
+  `if (typeof value === 'string' && /[\r\n]/.test(value))` written as a safety
+  guard actually permits non-string JSON shapes (arrays, objects, booleans,
+  numbers, null) to pass validation entirely; they then reach a template-literal
+  sink (e.g., `` `by: ${value}` ``) where `Array.prototype.toString()` or
+  similar coercion reconstitutes the prohibited content on the far side of the
+  type check. **The fix:** validators must **fail closed on unexpected type**,
+  never skip—put the type check in the **reject** condition, not as a
+  precondition on whether to validate content. Free-text fields without an
+  allowlist inheritance path need explicit type+content contracts precisely
+  because they cannot borrow type-safety from field-level constraints. See
+  `docs/plans/2026-08-15-gh380-debug-spec-type-confusion.md` for the worked
+  instance and [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) for
+  the related security audit context.
+
 **Agent identity**:
 in hook payloads' `agent_type` and `subagent_type` fields,
   this field can take two forms: for unnamed (default) dispatch, it is the
