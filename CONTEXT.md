@@ -174,6 +174,25 @@ an append-only audit-log record class written to
   (e.g., `hooks/scripts/microworld-rerun.sh:10`) when a hook's header documents
   its output as a consumed interface, clarifying that the format is not arbitrary.
 
+**marker-commit-check**:
+(unit #385, 2026-08-15) — the executable script at `hooks/scripts/marker-commit-check.sh`
+  (mode 755) that reads a [[PASS marker]]'s `commit:` field and classifies it as one of
+  three [[Marker classifier states]]. Output: exactly one line per marker; always exits 0
+  (fail-open interface). Proven via 10 pinned test cases in `tests/marker-commit-check.test.sh`
+  (mutation-verified). Not yet wired to a consumer gate (Step 7, gh385-7, handles that
+  integration). Sibling gate-adjacent tooling: [[Dispatch hygiene]], **stop-gate.sh**,
+  **DECISION channel**.
+
+**Marker classifier states**:
+(unit #385, 2026-08-15) — the three-state classification result from `marker-commit-check.sh`
+  when verifying a [[PASS marker]]'s `commit:` field against git history. Defined values:
+  `ok` (commit is reachable and valid in unit-id context), `mismatch` (commit is reachable
+  but fails unit-id context validation), `unverifiable` (commit cannot be verified — missing
+  from git, malformed format, or context ambiguous). Key semantic: `unverifiable` is
+  **fail-open** ("not proven wrong", safe to proceed) rather than fail-closed. Step 7
+  consumes these states as trigger conditions for audit logging to `.claude/review-audit.log`.
+_Avoid_: classifier result (use specific state names or "Marker classifier states")
+
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
   pattern named) — a standing principle for `reviewed-path-gate.sh`'s
