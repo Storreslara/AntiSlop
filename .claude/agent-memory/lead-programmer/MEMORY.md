@@ -19,3 +19,4 @@
 - [gh348 protocol-trim plan tracking](project_gh348_protocol_trim_plan.md) — stale Affected-files (Step 3), stale line numbers (Step 5), own edit shifts a line-grep baseline (Step 9)
 - [sed mutant `#` comment in jq/case](feedback_sed_mutant_hash_comment_in_jq.md) — trailing `# MUTATED-X` in a mutation-proof sed can silently break a jq program or a case label; pick site by syntax, no comment inside jq strings
 - [Negative-grep substring & git commit -m ordering](feedback_negative_grep_substring_reorder.md) — reorder terms to break a banned literal substring; `-m` must precede `-- <path>` in git commit
+- [gh385 marker-commit-attribution plan tracking](project_gh385_marker_commit_attribution.md) — gh385-5 done; remaining 6/7/8; `\$(...)` vs `$(...)` quoting gotcha in gate remediation blocks
