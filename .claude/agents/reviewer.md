@@ -113,7 +113,7 @@ with reasons.
   no tracked file carries an uncommitted change. For each file the reviewer
   inspected to satisfy a criterion, run `git ls-files --error-unmatch <path>` —
   it must exit 0, so the file is tracked and not a never-added new file that
-  `git diff HEAD` cannot see. Capture the commit SHA via `sha="$(git rev-parse HEAD)"`.
+  `git diff HEAD` cannot see. Derive the commit SHA from the unit's own reviewed range — that is, the tip of the range actually reviewed, the unit's own final commit. Assign it to `$sha`. Note: in a session where nothing has landed on top since the unit landed, `$sha` is the same as `HEAD`; when a sibling unit has landed since, `HEAD` now points to that later commit, and `$sha` must name the unit's own. Before writing the marker, verify: run `git log -1 --format=%s "$sha"` and confirm the output names this unit. If the commit's subject genuinely does not name the unit (an unconventional message), note this on a note line in the marker rather than falling back to `HEAD`.
   If (1) or (2) fails, the verdict is **FAIL**, not PASS, with the defect
   stated as "the unit's changes are not committed; the criteria were satisfied
   against an uncommitted working tree" plus the offending paths. This is not
@@ -122,7 +122,7 @@ with reasons.
   write `commit: none` instead of the SHA and note this in the verdict line.
   Write the v3 marker via Bash — `mkdir -p .claude/reviewed` then a `printf` of
   the marker's required first line:
-  `printf 'PASS <task-id> %s commit: %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(git rev-parse HEAD)" > .claude/reviewed/<task-id>.pass`
+  `printf 'PASS <task-id> %s commit: %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$sha" > .claude/reviewed/<task-id>.pass`
   — so both the TaskCompleted hook (agent-teams mode) and the pending-review
   gate (default mode) can mechanically confirm "done = reviewer passed" per
   the shared protocol. A bare `touch` no longer satisfies `task-gate.sh`'s
