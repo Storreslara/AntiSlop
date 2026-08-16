@@ -40,15 +40,15 @@ Split `hivemind` into two personas with clear handoff:
 ## Related decisions
 - **OQ5a (final):** `to-issues` slicing is task-master's sole responsibility — spec-master does NOT carry the `to-issues` slot. Distinct and non-overlapping from `to-spec`'s single-spec publish.
 - **OQ3/OQ4 (final):** 2-FAIL cap routes to spec-master's debug spec (diagnosed from the latest `.fail` record plus git history of fix-attempt commits) plus task-master re-derives dispatch. No new mattpocock diagnostic skill added (spec-master already has Read/Grep/Bash; diagnosis is prose reasoning, not code repro).
-- **Fast-path dispatch for ≤5 units (efficiency audit Milestone 2, Step 9):** when a finalized spec resolves to five or fewer dispatchable units, spec-master emits the nine-element dispatch contract directly and the orchestrator dispatches from the `docs/plans/` document, bypassing task-master. task-master remains mandatory for ≥6 units, any debug-spec re-derivation, and any `## Convergence follow-ups` slice. This preserves ADR-0003's "task-master owns slicing outright" decision: spec-master never runs `to-issues` and still files no tracker issues; only the dispatch-prompt authoring moves to spec-master for the fast-path cases.
-  - **Amends ADR-0003:** Step 5 will file a new ADR formalizing this fast-path threshold change from ≤2 to ≤5 units.
+- **Fast-path dispatch for ≤2 units (efficiency audit Milestone 2, Step 9):** when a finalized spec resolves to two or fewer dispatchable units, spec-master emits the nine-element dispatch contract directly and the orchestrator dispatches from the `docs/plans/` document, bypassing task-master. task-master remains mandatory for ≥3 units, any debug-spec re-derivation, and any `## Convergence follow-ups` slice. This preserves ADR-0003's "task-master owns slicing outright" decision: spec-master never runs `to-issues` and still files no tracker issues; only the dispatch-prompt authoring moves to spec-master for the fast-path cases.
+  - **Superseded by (ADR TBD, Step 5):** Step 5 will file a new ADR formalizing this fast-path threshold change from ≤2 to ≤5 units.
 
 ### Correction (2026-08-14)
 
 The "any debug-spec re-derivation" clause above is superseded. Per
 `agents/orchestrator.md`'s "At the 2-FAIL cap" section, a debug spec now
-routes through the same ≤5-unit fast path as any other spec: task-master is
-mandatory only if the debug spec itself resolves to ≥6 units, not
+routes through the same ≤2-unit fast path as any other spec: task-master is
+mandatory only if the debug spec itself resolves to ≥3 units, not
 unconditionally. The original bullet is left unedited above per this
 project's additive-correction convention for ADRs.
-  - **Amends ADR-0003:** Step 5 will file a new ADR formalizing this fast-path threshold change from ≤2 to ≤5 units.
+  - **Superseded by (ADR TBD, Step 5):** Step 5 will file a new ADR formalizing this fast-path threshold change from ≤2 to ≤5 units.
