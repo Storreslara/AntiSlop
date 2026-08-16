@@ -12,12 +12,17 @@ happens on the npx/non-plugin scaffold path).
 | --- | --- | --- |
 | `graph-update.sh` | PostToolUse (Edit\|Write) | Incremental Code Review Graph update on the changed file; no-ops if graph isn't installed. Known gap: only reads `tool_input.file_path`, misses MultiEdit's array form / NotebookEdit. |
 | `lint-on-edit.sh` | PostToolUse (Edit\|Write) | Runs the project's configured formatter/linter (`persona-config.json`'s `lintCommand`) on the changed file only; no-ops if unconfigured. |
+| `marker-commit-check.sh` | Called from stop-gate.sh | Advisory classifier for PASS marker `commit:` field attribution — invoked at reviewer turn-end to verify the marker names the unit's own commit, not a sibling's. Prints `marker-commit-check=ok\|mismatch\|unverifiable` and **always exits 0** (never blocks). Configurable via `markerCommitCheck.mode`. See "Marker commit attribution verification" section below. |
 | `protected-paths.sh` | PreToolUse (Write\|Edit) | Blocks writes to configured `protectedPaths` (migrations, lockfiles, this repo's `.claude-plugin/*` etc.) pending human approval. Advisory only — covers Write/Edit, not Bash (`sed -i` bypasses it). |
 | `reviewed-path-gate.sh` | PreToolUse (Bash \| Write\|Edit) | Two matchers, one script: on Bash, allows a command mentioning `.claude/reviewed` only if it's provably read-only or text-only (an allowlist), blocking write-intent commands; on Write\|Edit, blocks any write to the path outright. Both defer to the caller's `agent_type` (`reviewer`, or the main session only in the no-reviewer fallback). Hit live during this repo's own ADAPT — see [ADR 0002](../../docs/adr/0002-reviewed-dir-owned-by-reviewer.md). |
 | `reviewer-route-gate.sh` | PreToolUse (Agent) | Mechanically enforces "lead-programmer never spawns/messages reviewer directly"; also blocks dispatching the next gated unit while an earlier one awaits review. |
 | `session-start.sh` | SessionStart | Records session-start HEAD sha for `stop-gate.sh`; drift-checks `persona-config.json`'s stamped `pluginVersion` vs. the installed plugin version; re-injects `protocol-digest.md` as additionalContext on resume/compact only. |
-| `stop-gate.sh` | Stop + SubagentStop | Core "done = reviewer PASS" enforcement — checks commits/PASS markers before allowing a gated agent (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) to stop. |
+| `stop-gate.sh` | Stop + SubagentStop | Core "done = reviewer PASS" enforcement — checks commits/PASS markers before allowing a gated agent (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) to stop. Invokes `marker-commit-check.sh` during the review-join loop. |
 | `task-gate.sh` | TaskCompleted | Agent-teams-mode equivalent of stop-gate: requires a reviewer PASS marker before completing any `impl:*` task; planning/research/doc tasks pass through ungated. |
+
+## Wiki changelog — Semantic change in marker `commit:` field (milestone 2026-08-15)
+
+The required-first-line `commit:` field in `.pass` markers changed semantics at this milestone (issues #385–#392). **Prior to 2026-08-15**, the field recorded the commit at which the marker was written (nominally `HEAD` at that time). **From 2026-08-15 onward**, it records the unit's own final commit — the tip of the range the reviewer actually reviewed. These are the same commit only when nothing lands on top between units. This distinction is **not recoverable from the markers themselves** — a marker written before this milestone cannot be retroactively reclassified without human re-review. All markers remain valid; only the meaning of the `commit:` value changed. Markers written before this date: `commit:` is when-written. Markers from this date onward: `commit:` is unit-authored. See [ADR-00NN](../../docs/adr/00NN-marker-commit-attribution.md) and [issue #385](https://github.com/Storreslara/AntiSlop/issues/385) for the full rationale.
 
 ## Historical issues resolved before plan 2026-08-02
 
@@ -115,6 +120,43 @@ name and payload shape, asserting the same audit-log record count and exit
 code from each. See [modules/adapters.md](adapters.md)'s "Behavioural
 parity guard" section for what the guard covers and what it deliberately
 does not.
+
+## Marker commit attribution verification (issue #385, resolved by #391–#392)
+
+A `.pass` marker's required `commit:` field (v3 format) must name the unit's own final commit — the tip of the range the reviewer actually reviewed — not `HEAD` at marker-write time. When multiple units land concurrently, sibling work lands on top between units, making `HEAD` incorrect for markers written after the first.
+
+**The three-layer solution:**
+1. **G1 (deterministic).** The `approve` route in escalation-resolution copies `commit:` verbatim from the standing `.escalated` marker, eliminating re-derivation at transcription time.
+2. **G2 (protocol).** Every documentation surface that prescribed `git rev-parse HEAD` was corrected to prescribe deriving the value from the unit's own reviewed range, with verification before writing.
+3. **G3 (advisory heuristic).** The new `marker-commit-check.sh` script classifies each marker's `commit:` field as `ok` / `mismatch` / `unverifiable` at reviewer turn-end, logged to `.claude/review-audit.log` for observability.
+
+**Interface of `marker-commit-check.sh`**
+
+`marker-commit-check.sh <task-id> [project-dir]`
+
+Prints exactly one line to stdout (always exits 0, never decides policy):
+```
+marker-commit-check=<state> unit=<id> commit=<sha|none> [candidates=<sha,sha,sha>]
+```
+
+**Output states:**
+- `ok`: The marker's `commit:` field names a commit belonging to the unit (the commit subject/body references the unit id).
+- `mismatch`: The marker's `commit:` field names a different unit's commit, and the correct commit for this unit exists in history (up to 3 candidates listed).
+- `unverifiable`: The marker has no valid `commit:` field, the repository is not a git work tree, the cited commit is absent from history, or no commit anywhere names the unit.
+
+The classification is measured and conservative — a proven mismatch requires both that the cited commit does NOT belong to the unit AND that another reachable commit does.
+
+## Config: `markerCommitCheck.mode`
+
+Located in `.claude/persona-config.json`, controls G3's behaviour at reviewer turn-end:
+
+- `off`: No advisory check; no audit line written.
+- `warn` (default): On `mismatch`, print a one-line warning to stderr naming the unit, cited SHA, and candidates — turn continues unchanged. On `ok` or `unverifiable`, silent except for the audit line.
+- `block`: On `mismatch`, print the warning and remediation, then `exit 2` — pending-review flags remain standing for a second attempt.
+
+**Why `warn` is the default:** A false block on a gate the reviewer does not own is worse than a missed warning — and measured false-positive rate is ~1-2% (e.g., a marker legitimately citing a commit that names the subject issue rather than the unit id). G1 and G2 already prevent the defect's source; G3 is advisory only. If the marker genuinely cites the wrong commit, G1's deterministic copy eliminates it going forward, and the warning surfaces it this time. If it is a false positive (unverifiable id match, unconventional subject), a block forces an unnecessary retry.
+
+If no `markerCommitCheck` object exists in the config, it resolves to `warn`.
 
 ## Measured reviewer tier: `reviewer-tier.sh` is not a hook
 
