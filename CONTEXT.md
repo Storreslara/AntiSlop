@@ -825,7 +825,7 @@ the collection of addressable **Agent** entities currently active in a
   `ESCALATE-TO-HUMAN` verdict, carrying the marker body as fixed-shape text.
   First line: `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger:
   <criterion> microworld: <packet path or "none">`. Followed by the packet's
-  `run.sh` invocation, `commit: <sha>`, inputs/expected-outputs description,
+  `run.sh` invocation, `commit: <sha>` (see [[Commit attribution]] — this field is copied verbatim during approval), inputs/expected-outputs description,
   the would-be verdict and criteria checked, and non-blocking notes. Distinct
   from `.blocked` (reviewer *lacked context* to verify a criterion) — this
   marker means *policy requires human eyes* on critical code instead: separate
