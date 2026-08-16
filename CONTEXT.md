@@ -21,7 +21,8 @@ the one-time per-project setup process that turns the
   concluded. Distinct from marker-write-time HEAD, which may have moved by the
   time the marker is consulted (e.g., after a rebase or force push). The
   attested commit is what dispatch-hygiene's H3 gate tests for reachability (see
-  [[Dispatch hygiene]], [[Commit attribution]], and [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
+  [[Dispatch hygiene]], [[Commit attribution]], [[`.escalated` marker]], and
+  [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
 
 **Persona**:
 a subagent system prompt in `agents/*.md`. "Core" personas
@@ -154,7 +155,9 @@ an append-only audit-log record class written to
   The field's semantic meaning (see [[Attested commit]]) is the unit's own
   final commit, not the state of HEAD at marker-write time. This attribution
   enables dispatch-hygiene's H3 gate to detect work lost to history (unreachable
-  commits allow re-dispatch; reachable commits remain protected). See
+  commits allow re-dispatch; reachable commits remain protected). On
+  escalation approval, the field is copied verbatim from the standing
+  [[`.escalated` marker]] rather than re-derived. See
   [ADR-0023](docs/adr/0023-marker-commit-attribution.md) for the semantic
   clarification and [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)
   for the technical mechanism.
