@@ -1089,6 +1089,40 @@ _Avoid_: temporary override, escape hatch (use "bootstrap window" for this speci
 _Avoid_: review directory, human review folder (use "human-review directory" with the
   dot-path for clarity about adapter specificity)
 
+**Document pane**:
+(unit #322, 2026-08-11; terminology recorded unit #400, 2026-08-18) — a
+  content pane in the **Microworld dashboard** that displays rendered markdown
+  (e.g., a documentation excerpt or a literate change summary), distinct from a
+  **verbatim pane** (which displays clipboard-destined text unchanged, such as
+  a composed command or a source-code excerpt). The dashboard renders six
+  document panes via `renderMarkdown`: (1) Escalation `CHANGES.md` body, (2)
+  Escalation `PACKET.md` body, (3) Escalation `QUIZ.md` body, (4)
+  `QUIZ-ANSWERS.md` lazy reveal, (5) Briefing / plan-doc excerpt, and (6)
+  Milestone findings `finding.body`. The six verbatim panes (composed commands,
+  paste-back blocks, `defer`/`skip` commands, source-code excerpts, and notebook
+  stdout/stderr cells) use `escapeHtml` and remain byte-identical to their
+  source. Naming note: the `Review` rail-section header uses "review" in a
+  UI-grouping sense (artifacts awaiting human attention) distinct from the
+  `reviewer`-verdict sense (the PASS/FAIL marker role) used elsewhere in this
+  glossary — the two meanings now coexist in this codebase and are disambiguated
+  here to prevent silent confusion by a future reader.
+
+**Markdown-lite renderer**:
+(unit #401, 2026-08-18) — the module at `bin/microworld-dashboard/markdown-lite.js`,
+  a vendored, dependency-free, dual-environment markdown renderer that works both
+  as a CommonJS `require()`-able module (for unit tests) and injected verbatim as
+  a browser global (for page rendering). XSS-safe via escape-first design: every
+  text span is escaped before the renderer wraps it in a fixed, renderer-generated
+  tag set, so raw inline HTML in the markdown source can never reach the page as
+  markup. Supports: headings (`#`..`######`), bold, italic, inline code, fenced
+  code blocks, unordered and ordered lists, blockquotes, links, horizontal rule,
+  paragraphs. Link `href`s are restricted to `http:`, `https:`, or relative
+  targets; `javascript:` and other schemes render as plain text with no anchor
+  emitted. Non-string input fails closed (returns a string, never throws, never
+  emits markup from coercion). Covers the construct set attested by
+  `tests/dashboard-markdown-lite.test.js`, not by design assumption — verify
+  against shipped test cases, not by re-reading this entry.
+
 **Microworld dashboard**:
 (unit #314, 2026-08-10, forward-looking; built and documented unit #322,
   2026-08-11) — the loopback-only HTTP server/UI process itself, started via
@@ -1110,6 +1144,12 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   new headword "microworld rerun hook" was considered and rejected for
   this contrast — see this plan's D10 "Rerun-hook naming decision" — to
   avoid minting an avoidable synonym for the already-named reporter.)
+  The left rail is organized into three sections, each header carrying a count
+  and displayed only when non-empty: `Review (N)` contains escalations, packet
+  bundles, findings, and pending-review flags; `Plans & Specs (N)` contains
+  briefings (plan-doc entries); `Microworlds (N)` contains working bundles.
+  Packet bundles within the Review section are prefixed with `Packet: ` in their
+  row title, a UI abbreviation of the canonical **escalation packet** term.
 _Avoid_: "the dashboard" alone in glossary cross-references now that this
   entry exists — link explicitly to disambiguate from the individual
   **Microworld** entry (dashboard *entries*) and **D5 browser client**
