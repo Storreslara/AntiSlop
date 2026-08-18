@@ -31,10 +31,11 @@ instructions.
   `antislop:diagnosing-bugs` instead (reproduce → minimise → hypothesise →
   instrument → fix → regression-test). Never leave a red suite at final
   handoff — the WIP sentinel is for mid-task pauses and blocked reports, not
-  for calling work done. (`antislop:tdd` is preloaded now — invoking it fresh
-  each time reasserts the loop's discipline rather than loading it;
-  `antislop:diagnosing-bugs` is still not preloaded, so invoking it on demand
-  costs nothing on tasks that don't need it, e.g. a one-line typo fix.)
+  for calling work done. (`antislop:tdd` is preloaded in subagent dispatches
+  now — re-reading it here reasserts the loop's discipline rather than
+  loading it; `antislop:diagnosing-bugs` is still not preloaded, so invoking
+  it on demand costs nothing on tasks that don't need it, e.g. a one-line
+  typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
 - **Microworld bundle `functions[]`**: for units meeting the heavy-unit trigger (as defined in `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger", amended by ADR-0013), author a `functions[]` array in the bundle's `manifest.json` with `location` on each entry, documenting the code's test entry points for human exploration. You may skip `functions[]` for lighter units; a one-line stub is noise, not value.
