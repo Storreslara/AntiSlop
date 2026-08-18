@@ -642,6 +642,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard markdown-lite (Node) =="
+if node tests/dashboard-markdown-lite.test.js; then
+  echo "OK   tests/dashboard-markdown-lite.test.js"
+else
+  echo "FAIL tests/dashboard-markdown-lite.test.js"
+  fail=1
+fi
+
+echo
 echo "== microworld dashboard decisions client (Node) =="
 if node tests/dashboard-decisions-client.test.js; then
   echo "OK   tests/dashboard-decisions-client.test.js"
