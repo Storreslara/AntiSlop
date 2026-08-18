@@ -70,13 +70,15 @@ const emptyDecisions = { escalations: [], briefings: [], findings: [], pendingRe
 
 // Executes the client's inline module script against a minimal stub DOM,
 // with stubbed /api/bundles, /api/decisions and /api/source responses.
-async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, sourceData } = {}) {
+// markdownStub: optional function (s) => string to replace renderMarkdown, for testing single-implementation (U2-C2).
+async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, sourceData, markdownStub } = {}) {
   const html = fs.readFileSync(path.join(REPO_ROOT, 'bin/microworld-dashboard/index.html'), 'utf8');
   const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
   if (!match) throw new Error('could not find inline module script in index.html');
 
   const feedbackBlockSrc = fs.readFileSync(path.join(REPO_ROOT, 'bin/microworld-dashboard/feedback-block.js'), 'utf8');
   const decisionBlockSrc = fs.readFileSync(path.join(REPO_ROOT, 'bin/microworld-dashboard/decision-block.js'), 'utf8');
+  const markdownLiteSrc = fs.readFileSync(path.join(REPO_ROOT, 'bin/microworld-dashboard/markdown-lite.js'), 'utf8');
 
   const leftRail = makeFakeElement();
   const contentArea = makeFakeElement();
@@ -113,11 +115,17 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     navigator: {},
   };
   vm.createContext(sandbox);
-  // Same injection pattern server.js uses for the real page: these two files
-  // become page globals (formatFeedbackBlock, composeDecisionBlock) before
-  // the module script that calls them by name runs.
+  // Same injection pattern server.js uses for the real page: these files
+  // become page globals (formatFeedbackBlock, composeDecisionBlock, renderMarkdown)
+  // before the module script that calls them by name runs.
   vm.runInContext(feedbackBlockSrc, sandbox);
   vm.runInContext(decisionBlockSrc, sandbox);
+  if (markdownStub) {
+    // For U2-C2: inject a stub that returns a sentinel value instead of the real renderer.
+    vm.runInContext(`const renderMarkdown = ${markdownStub.toString()};`, sandbox);
+  } else {
+    vm.runInContext(markdownLiteSrc, sandbox);
+  }
   vm.runInContext(match[1], sandbox);
   await new Promise((r) => setTimeout(r, 50));
   return {
@@ -472,6 +480,198 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (h) ERROR: ${err.stack}`);
+  }
+
+  // Test (i): U2-C2 single-implementation proof — stub renderMarkdown sentinel
+  // must appear in D1-D3 and D6 (synchronous renders) and none of the
+  // composed-text verbatim sites (V1, V2, V3, V4).
+  console.log('Test (i): U2-C2 single-implementation proof — sentinel injection test...');
+  try {
+    const stubRenderMarkdown = (s) => 'MDSENTINEL:' + String(s);
+    const escalationEntry = {
+      taskId: 'gu99', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'packet-text', changesBody: 'changes-text', quizBody: 'quiz-text',
+    };
+    const findingEntry = { slug: 'finding-slug', timestamp: '2026-08-01T00:00:00Z', count: 1, body: 'finding-body', malformed: false };
+
+    // Sub-case 1: Test D1, D2, D3 (escalation view)
+    const { contentHtml: escalationHtml } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+      markdownStub: stubRenderMarkdown,
+    });
+
+    const d1 = escalationHtml.includes('MDSENTINEL:changes-text');
+    const d2 = escalationHtml.includes('MDSENTINEL:packet-text');
+    const d3 = escalationHtml.includes('MDSENTINEL:quiz-text');
+
+    if (!d1) failures.push('Test (i) FAILED: D1 (CHANGES.md) does not contain sentinel');
+    if (!d2) failures.push('Test (i) FAILED: D2 (PACKET.md) does not contain sentinel');
+    if (!d3) failures.push('Test (i) FAILED: D3 (QUIZ.md) does not contain sentinel');
+
+    // V1 (composed escalation-decision command) must NOT contain sentinel
+    if (escalationHtml.match(/MDSENTINEL:.*route:/)) {
+      failures.push('Test (i) FAILED: V1 (composed command) contains sentinel (should be escaped, not rendered)');
+    }
+
+    // Sub-case 2: Test D6 (findings view)
+    const { contentHtml: findingsHtml } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, findings: [findingEntry] },
+      markdownStub: stubRenderMarkdown,
+    });
+
+    const d6 = findingsHtml.includes('MDSENTINEL:finding-body');
+    if (!d6) failures.push('Test (i) FAILED: D6 (findings body) does not contain sentinel');
+
+    if (failures.filter((f) => f.includes('Test (i)')).length === 0) {
+      console.log('  ✓ Test (i) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (i) ERROR: ${err.stack}`);
+  }
+
+  // Test (i2): D4 (quiz answer reveal) also uses renderMarkdown
+  console.log('Test (i2): U2-C2 D4 quiz reveal sentinel check...');
+  try {
+    const stubRenderMarkdown = (s) => 'MDSENTINEL:' + String(s);
+    const escalationEntry = {
+      taskId: 'gu88', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz',
+    };
+    const sourceData = { lines: ['answer-line'], startLine: 1, endLine: 1, totalLines: 1 };
+
+    const { elementsById } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+      sourceData,
+      markdownStub: stubRenderMarkdown,
+    });
+
+    // Before click, no answer visible
+    if (elementsById.quizAnswerContainer?.innerHTML?.includes('MDSENTINEL')) {
+      failures.push('Test (i2) FAILED: answer visible before reveal click');
+    }
+
+    // After click, answer should contain sentinel
+    await elementsById.quizRevealBtn.fire('click');
+    const html = elementsById.quizAnswerContainer?.innerHTML || '';
+    if (!html.includes('MDSENTINEL:answer-line')) {
+      failures.push(`Test (i2) FAILED: D4 (quiz answer) does not contain sentinel after reveal: ${html.slice(0, 300)}`);
+    } else {
+      console.log('OK   D4 quiz answer contains sentinel');
+    }
+
+    if (failures.filter((f) => f.includes('Test (i2)')).length === 0) {
+      console.log('  ✓ Test (i2) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (i2) ERROR: ${err.stack}`);
+  }
+
+  // Test (j): U2-C4 real renderer proves shipped code uses the module
+  console.log('Test (j): U2-C4 real renderer at D6 with bold text...');
+  try {
+    const findingEntry = { slug: 'test-finding', timestamp: '2026-08-01T00:00:00Z', count: 1, body: '**bold text**', malformed: false };
+    const { contentHtml } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, findings: [findingEntry] },
+    });
+
+    // D6 should render **bold text** as <strong>bold text</strong>
+    if (!contentHtml.includes('<strong>bold text</strong>')) {
+      failures.push(`Test (j) FAILED: D6 did not render markdown bold: ${contentHtml.slice(0, 1000)}`);
+    } else {
+      console.log('OK   D6 renders markdown bold');
+    }
+
+    if (failures.filter((f) => f.includes('Test (j)')).length === 0) {
+      console.log('  ✓ Test (j) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (j) ERROR: ${err.stack}`);
+  }
+
+  // Test (k): U2-C5 truncation marker is truthful in quiz answer reveal (D4)
+  console.log('Test (k): U2-C5 truncation marker truthful...');
+  try {
+    const escalationEntry = { taskId: 'gu77', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz' };
+
+    // Sub-case 1: totalLines > endLine, marker MUST appear
+    const sourceDataTruncated = { lines: ['a', 'b'], startLine: 1, endLine: 2, totalLines: 100 };
+    const { elementsById: elementsById1 } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+      sourceData: sourceDataTruncated,
+    });
+    await elementsById1.quizRevealBtn.fire('click');
+    if (!elementsById1.quizAnswerContainer?.innerHTML?.includes('Truncated at line 2 of 100')) {
+      failures.push(`Test (k) FAILED: truncation marker missing when totalLines > endLine: ${elementsById1.quizAnswerContainer?.innerHTML?.slice(0, 400)}`);
+    } else {
+      console.log('OK   truncation marker present when totalLines > endLine');
+    }
+
+    // Sub-case 2: totalLines <= endLine, marker MUST NOT appear
+    const sourceDataNotTruncated = { lines: ['x'], startLine: 1, endLine: 1, totalLines: 1 };
+    const escalationEntry2 = { taskId: 'gu66', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz-2' };
+    const { elementsById: elementsById2 } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry2] },
+      sourceData: sourceDataNotTruncated,
+    });
+    await elementsById2.quizRevealBtn.fire('click');
+    if (elementsById2.quizAnswerContainer?.innerHTML?.includes('Truncated at line')) {
+      failures.push('Test (k) FAILED: truncation marker present when totalLines <= endLine');
+    } else {
+      console.log('OK   truncation marker absent when totalLines <= endLine');
+    }
+
+    if (failures.filter((f) => f.includes('Test (k)')).length === 0) {
+      console.log('  ✓ Test (k) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (k) ERROR: ${err.stack}`);
+  }
+
+  // Test (l): U2-C6 document-not-per-line rendering in quiz answer reveal (D4)
+  console.log('Test (l): U2-C6 document rendering, not per-line...');
+  try {
+    const escalationEntry = { taskId: 'gu55', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz' };
+    const sourceData = { lines: ['- a', '- b'], startLine: 1, endLine: 2, totalLines: 2 };
+    const { elementsById } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+      sourceData,
+    });
+
+    await elementsById.quizRevealBtn.fire('click');
+    const quizAnswerHtml = elementsById.quizAnswerContainer?.innerHTML || '';
+    // Should render as ONE <ul> with TWO <li>, not per-line divs
+    const ulCount = (quizAnswerHtml.match(/<ul>/g) || []).length;
+    const liCount = (quizAnswerHtml.match(/<li>/g) || []).length;
+    const excerptLineCount = (quizAnswerHtml.match(/excerpt-line/g) || []).length;
+
+    if (ulCount !== 1) {
+      failures.push(`Test (l) FAILED: expected exactly one <ul>, got ${ulCount}: ${quizAnswerHtml.slice(0, 400)}`);
+    } else {
+      console.log('OK   exactly one <ul> rendered');
+    }
+    if (liCount !== 2) {
+      failures.push(`Test (l) FAILED: expected exactly two <li>, got ${liCount}: ${quizAnswerHtml.slice(0, 400)}`);
+    } else {
+      console.log('OK   exactly two <li> rendered');
+    }
+    if (excerptLineCount !== 0) {
+      failures.push(`Test (l) FAILED: should not use .excerpt-line class, found ${excerptLineCount} occurrences`);
+    } else {
+      console.log('OK   no .excerpt-line divs in document rendering');
+    }
+
+    if (failures.filter((f) => f.includes('Test (l)')).length === 0) {
+      console.log('  ✓ Test (l) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (l) ERROR: ${err.stack}`);
   }
 
   console.log();

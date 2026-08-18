@@ -87,6 +87,9 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           // Same injection pattern for the decision-block composer (gh351).
           const decisionBlockSrc = fs.readFileSync(path.join(__dirname, 'decision-block.js'), 'utf8');
           html = html.replace('/* __DECISION_BLOCK_SOURCE__ */', decisionBlockSrc);
+          // Same injection pattern for the markdown-lite renderer.
+          const markdownLiteSrc = fs.readFileSync(path.join(__dirname, 'markdown-lite.js'), 'utf8');
+          html = html.replace('/* __MARKDOWN_LITE_SOURCE__ */', markdownLiteSrc);
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(html);
         } catch (err) {

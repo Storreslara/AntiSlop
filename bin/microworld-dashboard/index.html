@@ -80,6 +80,7 @@
     .no-functions { color: var(--gvx-gray); font-style: italic; padding: var(--space-4); }
     .excerpt-pane { border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); background: var(--gvx-bg-dim); padding: var(--space-3); margin-bottom: var(--space-6); max-height: 200px; overflow-y: auto; font-size: 0.85rem; }
     .excerpt-line { white-space: pre-wrap; word-break: break-all; }
+    .doc-pane { border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); background: var(--gvx-bg-dim); padding: var(--space-3); margin-bottom: var(--space-6); overflow-y: auto; font-size: 0.85rem; word-break: normal; font-family: inherit; }
     .comment-section { margin-bottom: var(--space-6); }
     .comment-section label { margin-bottom: var(--space-2); font-weight: 500; }
     .comment-box { width: 100%; padding: var(--space-2); border: 1px solid var(--gvx-bg-soft); border-radius: var(--radius-chip); font: inherit; resize: vertical; min-height: 60px; background: var(--gvx-bg); color: var(--gvx-fg); }
@@ -121,6 +122,13 @@
        only; the module script below calls the resulting page-global
        `composeDecisionBlock` by name. -->
   <script>/* __DECISION_BLOCK_SOURCE__ */</script>
+
+  <!-- Injected verbatim by server.js's GET / handler from markdown-lite.js
+       (the pure renderer also required directly by
+       tests/dashboard-markdown-lite.test.js). Renders markdown as HTML
+       for document panes; the module script below calls the resulting
+       page-global `renderMarkdown` by name. -->
+  <script>/* __MARKDOWN_LITE_SOURCE__ */</script>
 
   <script type="module">
     const token = new URLSearchParams(location.search).get('t');
@@ -580,17 +588,17 @@
       // when its body is null.
       if (entry.changesBody !== null && entry.changesBody !== undefined) {
         html += `<div class="output-label">CHANGES.md</div>`;
-        html += `<div class="excerpt-pane">${escapeHtml(entry.changesBody)}</div>`;
+        html += `<div class="doc-pane">${renderMarkdown(entry.changesBody)}</div>`;
       }
 
       html += `<div class="output-label">PACKET.md</div>`;
       html += entry.packetMissing
         ? `<p style="color: var(--gvx-gray);">(no packet found for this escalation)</p>`
-        : `<div class="excerpt-pane">${escapeHtml(entry.packetBody || '')}</div>`;
+        : `<div class="doc-pane">${renderMarkdown(entry.packetBody || '')}</div>`;
 
       if (entry.quizBody !== null && entry.quizBody !== undefined) {
         html += `<div class="output-label">QUIZ.md</div>`;
-        html += `<div class="excerpt-pane">${escapeHtml(entry.quizBody)}</div>`;
+        html += `<div class="doc-pane">${renderMarkdown(entry.quizBody)}</div>`;
         // The reveal pane is deliberately absent from this markup -- it is
         // populated on demand, on click, via GET /api/source (R6: never
         // shipped in the /api/decisions payload, never pre-rendered hidden).
@@ -692,7 +700,12 @@
         }
         const data = await response.json();
         const lines = data.lines || [];
-        if (container) container.innerHTML = `<div class="excerpt-pane">${lines.map(line => `<div class="excerpt-line">${escapeHtml(line)}</div>`).join('')}</div>`;
+        const content = lines.join('\n');
+        let html = `<div class="doc-pane">${renderMarkdown(content)}</div>`;
+        if (data.totalLines > data.endLine) {
+          html += `<div style="color: var(--gvx-gray); font-size: 0.85rem; margin-top: var(--space-2);">Truncated at line ${data.endLine} of ${data.totalLines}</div>`;
+        }
+        if (container) container.innerHTML = html;
       } catch (err) {
         if (container) container.innerHTML = `<div class="excerpt-pane">Error loading answer key: ${escapeHtml(err.message)}</div>`;
       }
@@ -738,7 +751,12 @@
         }
         const data = await response.json();
         const lines = data.lines || [];
-        if (pane) pane.innerHTML = lines.map(line => `<div class="excerpt-line">${escapeHtml(line)}</div>`).join('');
+        const content = lines.join('\n');
+        let html = `<div class="doc-pane">${renderMarkdown(content)}</div>`;
+        if (data.totalLines > data.endLine) {
+          html += `<div style="color: var(--gvx-gray); font-size: 0.85rem; margin-top: var(--space-2);">Truncated at line ${data.endLine} of ${data.totalLines}</div>`;
+        }
+        if (pane) pane.innerHTML = html;
       } catch (err) {
         if (pane) pane.textContent = `Error loading excerpt: ${err.message}`;
       }
@@ -757,7 +775,7 @@
       html += finding.malformed
         ? `<p style="color: var(--gvx-red);">Malformed findings record: ${escapeHtml(finding.malformedReason || '')}</p>`
         : `<p style="color: var(--gvx-gray); font-size: 0.85rem;">count: ${escapeHtml(String(finding.count))} · ${escapeHtml(finding.timestamp || '')}</p>`;
-      html += `<div class="excerpt-pane">${escapeHtml(finding.body)}</div>`;
+      html += `<div class="doc-pane">${renderMarkdown(finding.body)}</div>`;
 
       html += `<div class="output-label">Paste-back block</div>`;
       html += composed.text
