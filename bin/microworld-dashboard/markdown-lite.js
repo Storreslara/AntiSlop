@@ -32,6 +32,12 @@ function renderMarkdown(input) {
     return '<p></p>';
   }
 
+  // Strip NUL bytes: renderInline uses \x00-delimited sentinels internally to
+  // mark already-processed spans. An input-supplied NUL could otherwise forge
+  // a marker and smuggle unescaped HTML through, so none may survive to reach
+  // renderInline.
+  input = input.replace(/\x00/g, '');
+
   const lines = input.split('\n');
   let html = '';
   let i = 0;
@@ -121,51 +127,6 @@ function renderMarkdown(input) {
   return html;
 }
 
-function renderInline(text) {
-  // Process inline formatting: bold, italic, code, links
-  // Order matters: process from inside-out to avoid double-escaping
-
-  // Handle inline code first (backticks)
-  text = text.replace(/`([^`]+)`/g, function(match, code) {
-    return '<code>' + escapeHtml(code) + '</code>';
-  });
-
-  // Handle links (must be done before bold/italic to avoid confusion)
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(match, label, href) {
-    if (isValidLinkScheme(href)) {
-      return '<a href="' + escapeHtml(href) + '" rel="noopener noreferrer" target="_blank">' + escapeHtml(label) + '</a>';
-    } else {
-      // Invalid scheme - render as plain text
-      return escapeHtml(label);
-    }
-  });
-
-  // Handle bold (**text**)
-  text = text.replace(/\*\*([^\*]+)\*\*/g, function(match, bold) {
-    return '<strong>' + escapeHtml(bold) + '</strong>';
-  });
-
-  // Handle italic (*text*)
-  text = text.replace(/\*([^\*]+)\*/g, function(match, italic) {
-    return '<em>' + escapeHtml(italic) + '</em>';
-  });
-
-  // Escape remaining text that hasn't been processed
-  // But we need to be careful not to double-escape already-escaped content
-  // Since we've already escaped code, links, bold, and italic content,
-  // we need to escape any remaining unprocessed text
-  // The issue is that after processing the above, we have HTML tags
-  // and we need to escape plain text segments between them.
-
-  // Actually, let me reconsider: we need to escape plain text portions
-  // Let's use a different approach: escape the entire input first,
-  // then process markdown with a smarter replacement that doesn't
-  // double-escape.
-
-  return text;
-}
-
-// Simplified inline rendering
 function renderInline(text) {
   let result = text;
 

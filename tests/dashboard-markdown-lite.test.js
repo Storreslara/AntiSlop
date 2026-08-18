@@ -178,6 +178,25 @@ check('JavaScript link is NOT rendered as link', () => {
   notContains(result, 'href=');
 });
 
+// XSS: forged NUL-byte sentinel markers cannot smuggle raw HTML or bypass
+// the link-scheme allowlist
+check('Forged NUL marker cannot smuggle raw HTML via bold', () => {
+  const result = renderMarkdown('\x00BOLD\x00<img src=x onerror=alert(1)>\x00/BOLD\x00');
+  notContains(result, '<img');
+});
+
+check('Forged NUL marker cannot smuggle raw HTML via italic', () => {
+  const result = renderMarkdown('\x00ITALIC\x00<svg onload=alert(1)>\x00/ITALIC\x00');
+  notContains(result, '<svg');
+});
+
+check('Forged NUL marker cannot bypass link-scheme allowlist', () => {
+  const result = renderMarkdown('\x00LINK\x00click\x00HREF\x00javascript:alert(1)\x00/LINK\x00');
+  // No anchor is emitted at all: the forged marker is neutered into plain
+  // escaped text, never reaches isValidLinkScheme, and never becomes an href.
+  notContains(result, 'href=');
+});
+
 // Non-string input handling
 check('Null input returns string', () => {
   const result = renderMarkdown(null);
