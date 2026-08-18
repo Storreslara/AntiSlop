@@ -98,6 +98,7 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     decisionCopyBtn: makeFakeControl(),
     quizRevealBtn: makeFakeControl(),
     quizAnswerContainer: makeFakeElement(),
+    briefingExcerptPane: makeFakeElement(),
   };
   const fetchCalls = [];
   const sandbox = {
@@ -569,6 +570,33 @@ async function runTests() {
     failures.push(`Test (i2) ERROR: ${err.stack}`);
   }
 
+  // Test (i3): D5 (briefing excerpt) also uses renderMarkdown
+  console.log('Test (i3): U2-C2 D5 briefing excerpt sentinel check...');
+  try {
+    const stubRenderMarkdown = (s) => 'MDSENTINEL:' + String(s);
+    const sourceData = { lines: ['briefing-excerpt-line'], startLine: 1, endLine: 1, totalLines: 1 };
+
+    const { elementsById } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, briefings: [{ path: 'docs/plans/x.md', heading: 'X' }] },
+      sourceData,
+      markdownStub: stubRenderMarkdown,
+    });
+
+    const html = elementsById.briefingExcerptPane?.innerHTML || '';
+    if (!html.includes('MDSENTINEL:briefing-excerpt-line')) {
+      failures.push(`Test (i3) FAILED: D5 (briefing excerpt) does not contain sentinel: ${html.slice(0, 300)}`);
+    } else {
+      console.log('OK   D5 briefing excerpt contains sentinel');
+    }
+
+    if (failures.filter((f) => f.includes('Test (i3)')).length === 0) {
+      console.log('  ✓ Test (i3) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (i3) ERROR: ${err.stack}`);
+  }
+
   // Test (j): U2-C4 real renderer proves shipped code uses the module
   console.log('Test (j): U2-C4 real renderer at D6 with bold text...');
   try {
@@ -583,6 +611,19 @@ async function runTests() {
       failures.push(`Test (j) FAILED: D6 did not render markdown bold: ${contentHtml.slice(0, 1000)}`);
     } else {
       console.log('OK   D6 renders markdown bold');
+    }
+
+    // V2 (findings paste-back block, same render, same finding.body) must stay
+    // verbatim: the literal source text, no markdown applied.
+    if (!contentHtml.includes('**bold text**')) {
+      failures.push(`Test (j) FAILED: V2 (paste-back pane) does not contain the literal '**bold text**': ${contentHtml.slice(0, 1000)}`);
+    } else {
+      console.log('OK   V2 paste-back pane keeps literal **bold text**');
+    }
+    if (contentHtml.includes('<strong>bold text</strong>', contentHtml.indexOf('Paste-back block'))) {
+      failures.push('Test (j) FAILED: V2 (paste-back pane) contains <strong> -- markdown over-applied to a verbatim pane');
+    } else {
+      console.log('OK   V2 paste-back pane contains no <strong>');
     }
 
     if (failures.filter((f) => f.includes('Test (j)')).length === 0) {
@@ -672,6 +713,81 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (l) ERROR: ${err.stack}`);
+  }
+
+  // Test (k2): U2-C5 truncation marker is truthful in the D5 briefing excerpt pane
+  console.log('Test (k2): U2-C5 truncation marker truthful (D5 briefing excerpt)...');
+  try {
+    // Sub-case 1: totalLines > endLine, marker MUST appear
+    const sourceDataTruncated = { lines: ['a', 'b'], startLine: 1, endLine: 400, totalLines: 1200 };
+    const { elementsById: elementsById1 } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, briefings: [{ path: 'docs/plans/x.md', heading: 'X' }] },
+      sourceData: sourceDataTruncated,
+    });
+    if (!elementsById1.briefingExcerptPane?.innerHTML?.includes('Truncated at line 400 of 1200')) {
+      failures.push(`Test (k2) FAILED: truncation marker missing when totalLines > endLine: ${elementsById1.briefingExcerptPane?.innerHTML?.slice(0, 400)}`);
+    } else {
+      console.log('OK   D5 truncation marker present when totalLines > endLine');
+    }
+
+    // Sub-case 2: totalLines <= endLine, marker MUST NOT appear
+    const sourceDataNotTruncated = { lines: ['x'], startLine: 1, endLine: 120, totalLines: 120 };
+    const { elementsById: elementsById2 } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, briefings: [{ path: 'docs/plans/y.md', heading: 'Y' }] },
+      sourceData: sourceDataNotTruncated,
+    });
+    if (elementsById2.briefingExcerptPane?.innerHTML?.includes('Truncated at line')) {
+      failures.push('Test (k2) FAILED: truncation marker present when totalLines <= endLine');
+    } else {
+      console.log('OK   D5 truncation marker absent when totalLines <= endLine');
+    }
+
+    if (failures.filter((f) => f.includes('Test (k2)')).length === 0) {
+      console.log('  ✓ Test (k2) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (k2) ERROR: ${err.stack}`);
+  }
+
+  // Test (l2): U2-C6 document-not-per-line rendering in the D5 briefing excerpt pane
+  console.log('Test (l2): U2-C6 document rendering, not per-line (D5 briefing excerpt)...');
+  try {
+    const sourceData = { lines: ['- a', '- b'], startLine: 1, endLine: 2, totalLines: 2 };
+    const { elementsById } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, briefings: [{ path: 'docs/plans/z.md', heading: 'Z' }] },
+      sourceData,
+    });
+
+    const briefingHtml = elementsById.briefingExcerptPane?.innerHTML || '';
+    // Should render as ONE <ul> with TWO <li>, not per-line divs
+    const ulCount = (briefingHtml.match(/<ul>/g) || []).length;
+    const liCount = (briefingHtml.match(/<li>/g) || []).length;
+    const excerptLineCount = (briefingHtml.match(/excerpt-line/g) || []).length;
+
+    if (ulCount !== 1) {
+      failures.push(`Test (l2) FAILED: expected exactly one <ul>, got ${ulCount}: ${briefingHtml.slice(0, 400)}`);
+    } else {
+      console.log('OK   exactly one <ul> rendered in D5');
+    }
+    if (liCount !== 2) {
+      failures.push(`Test (l2) FAILED: expected exactly two <li>, got ${liCount}: ${briefingHtml.slice(0, 400)}`);
+    } else {
+      console.log('OK   exactly two <li> rendered in D5');
+    }
+    if (excerptLineCount !== 0) {
+      failures.push(`Test (l2) FAILED: should not use .excerpt-line class in D5, found ${excerptLineCount} occurrences`);
+    } else {
+      console.log('OK   no .excerpt-line divs in D5 document rendering');
+    }
+
+    if (failures.filter((f) => f.includes('Test (l2)')).length === 0) {
+      console.log('  ✓ Test (l2) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (l2) ERROR: ${err.stack}`);
   }
 
   console.log();

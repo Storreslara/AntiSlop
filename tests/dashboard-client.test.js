@@ -239,6 +239,33 @@ async function runTests() {
     failures.push(`Test (f) ERROR: ${err.message}`);
   }
 
+  // Test (g): U2-C3 markdown-lite.js is injected end-to-end into the served page
+  console.log('Test (g): served page injects real markdown-lite.js...');
+  try {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dashboard-client-test-g-'));
+    const { server, token } = startServer(tmpDir, 0);
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const result = await httpRequest(`http://127.0.0.1:${addr.port}/?t=${token}`);
+
+    if (!result.body.includes('function renderMarkdown')) {
+      failures.push(`Test (g) FAILED: served body does not contain 'function renderMarkdown'`);
+    }
+    if (result.body.includes('__MARKDOWN_LITE_SOURCE__')) {
+      failures.push(`Test (g) FAILED: served body still contains the unconsumed placeholder '__MARKDOWN_LITE_SOURCE__'`);
+    }
+
+    if (failures.filter((f) => f.includes('Test (g)')).length === 0) {
+      console.log('  ✓ Test (g) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (g) ERROR: ${err.message}`);
+  }
+
   console.log();
   if (failures.length > 0) {
     console.error('FAILURES:');
