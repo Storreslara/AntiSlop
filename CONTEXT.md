@@ -536,6 +536,19 @@ a hard, mode-independent skill
   for the correction to this repo's prior documentation, which had stated
   the weaker (false) version: "not in teams mode only."
 
+**Preloaded skill**:
+a skill declared in a [[Persona]]'s `skills:` frontmatter, loaded into
+  context automatically at dispatch time. Contrasts with an on-demand skill,
+  which a persona must explicitly invoke via the `Skill` tool when needed.
+  The distinction is **mode-sensitive**: `skills:` frontmatter preloading
+  applies in normal subagent dispatch but NOT in agent-teams mode (see the
+  "Agent-teams mode" section of `.claude/persona-protocol.md`). **Example:**
+  `lead-programmer` preloads `antislop:coding-discipline`,
+  `antislop:handoff`, and `antislop:tdd`; it invokes `antislop:diagnosing-bugs`
+  on demand only. Contrast with [[`disable-model-invocation` flag]], which
+  removes a skill from all contexts regardless of mode — preloading is
+  context-dependent, not absolute.
+
 **Harness**:
 Claude Code the product — the IDE plugin and surrounding runtime
   infrastructure that hosts all personas, hook scripts, and agent dispatches.
