@@ -1492,6 +1492,91 @@ async function runTests() {
     failures.push(`Test (22) ERROR: ${err.message}`);
   }
 
+  // Test (23): U4-C5 Never server-attributed — USER_NAME occurs once in server.js,
+  // and omitted 'by' field stays empty in composed body
+  console.log('Test (23): U4-C5 Never server-attributed...');
+  try {
+    const tmpDir = makeTestProject('u4c5');
+    const taskId = 'task-u4c5-test';
+    const escalationTimestamp = '2026-08-18T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const originalUserName = process.env.USER_NAME;
+    try {
+      process.env.USER_NAME = 'Seb';
+      const ttyWrite = { write: () => {} };
+      const { server, token } = startServer(tmpDir, 0, { ttyWrite });
+      await new Promise((r) => setTimeout(r, 100));
+
+      try {
+        // POST /api/decision/arm WITHOUT 'by' field
+        const armResponse = await httpRequest(
+          `http://127.0.0.1:${server.address().port}/api/decision/arm`,
+          {
+            method: 'POST',
+            token,
+            body: {
+              taskId,
+              route: 'approve',
+              reason: 'Test escalation',
+              quiz: 'skipped',
+              escalationTimestamp,
+              // Intentionally omit 'by' field
+            },
+          }
+        );
+
+        if (armResponse.status !== 200) {
+          throw new Error(`ARM failed: ${armResponse.status} ${armResponse.body}`);
+        }
+
+        const armData = JSON.parse(armResponse.body);
+        if (!armData.armed) {
+          throw new Error('Expected armed: true');
+        }
+
+        // Extract the composed body from the arm response
+        const composedBody = armData.body || '';
+        if (composedBody.includes('by: Seb')) {
+          throw new Error('Composed body should NOT contain "by: Seb" when omitted');
+        }
+        // The body should either have "by:" (with empty or non-Seb value) or not mention Seb at all
+        // The key point is: Seb must not be in the composed body when omitted from client
+        if (composedBody.includes('Seb')) {
+          throw new Error(`Composed body should NOT contain 'Seb' when by field omitted. Body: ${composedBody.substring(0, 200)}`);
+        }
+
+        // Verify that USER_NAME appears exactly once in server.js
+        const { execSync } = require('child_process');
+        try {
+          const output = execSync('git grep "USER_NAME" bin/microworld-dashboard/server.js', { encoding: 'utf8' }).trim();
+          const lines = output.split('\n').filter(l => l.trim());
+          if (lines.length !== 1) {
+            throw new Error(`USER_NAME should appear exactly once in server.js, found ${lines.length}`);
+          }
+        } catch (err) {
+          if (err.status === 1 && err.message.includes('no matches')) {
+            throw new Error('USER_NAME should appear in server.js');
+          }
+          throw err;
+        }
+
+        console.log('  ✓ Never server-attributed: by field omitted stays empty');
+      } finally {
+        server.close();
+      }
+    } finally {
+      if (originalUserName !== undefined) {
+        process.env.USER_NAME = originalUserName;
+      } else {
+        delete process.env.USER_NAME;
+      }
+      fs.rmSync(tmpDir, { recursive: true });
+    }
+  } catch (err) {
+    failures.push(`Test (23) U4-C5: ${err.message}`);
+  }
+
   // Print results
   console.log('\n' + '='.repeat(60));
   if (failures.length === 0) {

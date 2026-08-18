@@ -24,6 +24,7 @@ const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz'
 
 function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {}) {
   const token = crypto.randomBytes(32).toString('hex');
+  const userName = process.env.USER_NAME || '';
   const microworldsPath = path.join(projectRoot, 'microworlds');
 
   // Attempt to open /dev/tty for decision write capability
@@ -125,12 +126,12 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
         return;
       }
 
-      // GET /api/context (git HEAD sha)
+      // GET /api/context (git HEAD sha and userName)
       if (pathname === '/api/context') {
         try {
           const sha = execSync('git rev-parse HEAD', { cwd: projectRoot, encoding: 'utf8' }).trim();
           res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ sha }));
+          res.end(JSON.stringify({ sha, userName }));
         } catch (err) {
           res.writeHead(500, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Failed to get git HEAD' }));

@@ -147,6 +147,7 @@
     let decisions = null;
     let decisionsError = null;
     let selectedDecisionView = null;
+    let defaultBy = '';
     let escalationForm = { route: 'approve', reason: '', by: '', quiz: 'skipped' };
     let pendingReviewForm = { reason: '' };
 
@@ -329,7 +330,7 @@
     }
 
     function resetDecisionForms() {
-      escalationForm = { route: 'approve', reason: '', by: '', quiz: 'skipped' };
+      escalationForm = { route: 'approve', reason: '', by: defaultBy, quiz: 'skipped' };
       pendingReviewForm = { reason: '' };
     }
 
@@ -1080,6 +1081,19 @@
     }
 
     async function init() {
+      // Fetch context (userName for defaultBy) non-fatally
+      try {
+        const contextResponse = await fetch('/api/context');
+        if (contextResponse.ok) {
+          const contextData = await contextResponse.json();
+          defaultBy = contextData.userName || '';
+        }
+      } catch (err) {
+        // Non-fatal: fetch failure or thrown error leaves defaultBy = ''
+      }
+      // Initialize escalationForm with defaultBy
+      escalationForm = { route: 'approve', reason: '', by: defaultBy, quiz: 'skipped' };
+
       await Promise.all([refreshBundles(), refreshDecisions()]);
       // Priority order: escalations → working bundles → briefings → findings → pending review
       if (decisions && decisions.escalations && decisions.escalations.length > 0) {

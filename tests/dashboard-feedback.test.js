@@ -841,6 +841,75 @@ async function runTests() {
     failures.push('(m) shipped client integration (D3/D4/D5 wiring)');
   }
 
+  // Test (n): U4-C1 GET /api/context with USER_NAME set and unset
+  console.log('Test (n): U4-C1 GET /api/context returns userName from USER_NAME env...');
+  try {
+    const tmpDir = makeTestProject('n');
+
+    // Test with USER_NAME set
+    const originalUserName = process.env.USER_NAME;
+    try {
+      process.env.USER_NAME = 'Seb';
+      const { server: server1, token: token1 } = startServer(REPO_ROOT, 0);
+      await new Promise((r) => setTimeout(r, 100));
+
+      try {
+        const response1 = await httpRequest(
+          `http://127.0.0.1:${server1.address().port}/api/context?t=${token1}`,
+          { token: token1 }
+        );
+
+        if (response1.status !== 200) {
+          throw new Error(`Expected 200, got ${response1.status}`);
+        }
+
+        const data1 = JSON.parse(response1.body);
+        if (data1.userName !== 'Seb') {
+          throw new Error(`Expected userName='Seb', got '${data1.userName}'`);
+        }
+        if (!data1.sha || data1.sha.length < 7) {
+          throw new Error(`Invalid SHA: ${data1.sha}`);
+        }
+
+        console.log('  ✓ GET /api/context with USER_NAME=Seb returns userName');
+      } finally {
+        server1.close();
+      }
+
+      // Test with USER_NAME unset
+      delete process.env.USER_NAME;
+      const { server: server2, token: token2 } = startServer(REPO_ROOT, 0);
+      await new Promise((r) => setTimeout(r, 100));
+
+      try {
+        const response2 = await httpRequest(
+          `http://127.0.0.1:${server2.address().port}/api/context?t=${token2}`,
+          { token: token2 }
+        );
+
+        if (response2.status !== 200) {
+          throw new Error(`Expected 200, got ${response2.status}`);
+        }
+
+        const data2 = JSON.parse(response2.body);
+        if (data2.userName !== '') {
+          throw new Error(`Expected userName='', got '${data2.userName}'`);
+        }
+
+        console.log('  ✓ GET /api/context with USER_NAME unset returns empty userName');
+      } finally {
+        server2.close();
+      }
+    } finally {
+      if (originalUserName !== undefined) {
+        process.env.USER_NAME = originalUserName;
+      }
+    }
+  } catch (err) {
+    console.log('  ✗ ' + err.message);
+    failures.push('(n) U4-C1 GET /api/context userName');
+  }
+
   // Summary
   console.log('\n' + '='.repeat(60));
   if (failures.length === 0) {
