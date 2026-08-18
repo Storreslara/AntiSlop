@@ -145,8 +145,8 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
 async function runTests() {
   const failures = [];
 
-  // Test (a): distinct section header + composed command present
-  console.log('Test (a): Decisions header distinct from Working Bundles/Escalation Packets; composed command rendered...');
+  // Test (a): new section headers and auto-select behavior
+  console.log('Test (a): new Review/Plans & Specs/Microworlds headers; auto-select of escalations...');
   try {
     const escalationEntry = {
       taskId: 'gh999',
@@ -157,23 +157,29 @@ async function runTests() {
       packetBody: 'packet body text',
     };
 
-    // Sub-check 1: with bundles present (so all three headers render),
-    // the Decisions header is a distinct string from the other two.
+    // Sub-check 1: with bundles and decisions present, all three headers render.
     const withBundles = await renderClient({
       bundlesData: [
         { id: 'b1', unit: 'b1', description: 'd', status: null, source: 'working', functions: [] },
         { id: 'b2', unit: 'b2', description: 'd', status: null, source: 'packet', functions: [] },
       ],
-      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+      decisionsData: {
+        ...emptyDecisions,
+        escalations: [escalationEntry],
+        briefings: [{ path: 'docs/plans/x.md', heading: 'Test' }],
+      },
     });
-    if (!withBundles.leftRailHtml.includes('Working Bundles')) {
-      failures.push('Test (a) FAILED: missing Working Bundles header');
+    if (!withBundles.leftRailHtml.includes('Microworlds')) {
+      failures.push('Test (a) FAILED: missing Microworlds header');
     }
-    if (!withBundles.leftRailHtml.includes('Escalation Packets')) {
-      failures.push('Test (a) FAILED: missing Escalation Packets header');
+    if (!withBundles.leftRailHtml.includes('Plans & Specs')) {
+      failures.push('Test (a) FAILED: missing Plans & Specs header');
     }
-    if (!withBundles.leftRailHtml.includes('Decisions')) {
-      failures.push('Test (a) FAILED: missing Decisions header');
+    if (!withBundles.leftRailHtml.includes('Review')) {
+      failures.push('Test (a) FAILED: missing Review header');
+    }
+    if (withBundles.leftRailHtml.includes('Decisions')) {
+      failures.push('Test (a) FAILED: old Decisions header still present');
     }
 
     // Sub-check 2: with no bundles, the escalation auto-selects and its
@@ -196,12 +202,12 @@ async function runTests() {
     failures.push(`Test (a) ERROR: ${err.stack}`);
   }
 
-  // Test (b): all four groups empty -> Decisions section absent
-  console.log('Test (b): Decisions section absent when all four groups are empty...');
+  // Test (b): Review section absent when all four groups are empty
+  console.log('Test (b): Review section absent when all four groups are empty...');
   try {
     const { leftRailHtml } = await renderClient({ bundlesData: [], decisionsData: emptyDecisions });
-    if (leftRailHtml.includes('Decisions')) {
-      failures.push(`Test (b) FAILED: Decisions header rendered with no data: ${leftRailHtml.slice(0, 400)}`);
+    if (leftRailHtml.includes('Review')) {
+      failures.push(`Test (b) FAILED: Review header rendered with no data: ${leftRailHtml.slice(0, 400)}`);
     } else {
       console.log('  ✓ Test (b) passed');
     }
@@ -788,6 +794,192 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (l2) ERROR: ${err.stack}`);
+  }
+
+  // Test (m): U3-C2 header set with exact counts and ordering
+  console.log('Test (m): U3-C2 header set exact with counts, in order...');
+  try {
+    const escalationEntry = { taskId: 'gh1', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'body' };
+    const { leftRailHtml } = await renderClient({
+      bundlesData: [
+        { id: 'b1', unit: 'b1', description: 'd', status: null, source: 'working', functions: [] },
+        { id: 'b2', unit: 'b2', description: 'd', status: null, source: 'packet', functions: [] },
+      ],
+      decisionsData: {
+        escalations: [escalationEntry],
+        briefings: [{ path: 'docs/plans/x.md', heading: 'Test Plan' }],
+        findings: [{ slug: 'f1', timestamp: '2026-08-01T00:00:00Z', count: 1, body: 'body', malformed: false }],
+        pendingReview: [{ agentId: 'a1', state: 'pending', reason: null, timestamp: '2026-08-01T00:00:00Z', unit: 'gh1' }],
+      },
+    });
+    const headers = (leftRailHtml.match(/<div class="bundle-section-header">([^<]*)<\/div>/g) || []).map(h => h.match(/>([^<]*)</)[1]);
+    const expected = ['Review (4)', 'Plans & Specs (1)', 'Microworlds (1)'];
+    if (JSON.stringify(headers) !== JSON.stringify(expected)) {
+      failures.push(`Test (m) FAILED: expected headers ${JSON.stringify(expected)}, got ${JSON.stringify(headers)}`);
+    } else {
+      console.log('  ✓ Test (m) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (m) ERROR: ${err.stack}`);
+  }
+
+  // Test (n): U3-C3 row containment by offset (sections properly ordered)
+  console.log('Test (n): U3-C3 row containment by offset...');
+  try {
+    const escalationEntry = { taskId: 'gh1', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'body' };
+    const { leftRailHtml } = await renderClient({
+      bundlesData: [
+        { id: 'b1', unit: 'working1', description: 'd', status: null, source: 'working', functions: [] },
+        { id: 'b2', unit: 'packet1', description: 'd', status: null, source: 'packet', functions: [] },
+      ],
+      decisionsData: {
+        escalations: [escalationEntry],
+        briefings: [{ path: 'docs/plans/brief.md', heading: 'Brief' }],
+        findings: [{ slug: 'findings1', timestamp: '2026-08-01T00:00:00Z', count: 1, body: 'body', malformed: false }],
+        pendingReview: [{ agentId: 'pr1', state: 'pending', reason: null, timestamp: '2026-08-01T00:00:00Z', unit: 'pr1' }],
+      },
+    });
+    const reviewIdx = leftRailHtml.indexOf('Review (4)');
+    const plansIdx = leftRailHtml.indexOf('Plans & Specs (1)');
+    const microIdx = leftRailHtml.indexOf('Microworlds (1)');
+    const escalationIdx = leftRailHtml.indexOf('Escalation: gh1');
+    const packetIdx = leftRailHtml.indexOf('Packet: packet1');
+    const findingsIdx = leftRailHtml.indexOf('Findings: findings1');
+    const pendingIdx = leftRailHtml.indexOf('Pending review: pr1');
+    const briefIdx = leftRailHtml.indexOf('Brief');
+    const workingIdx = leftRailHtml.indexOf('working1');
+
+    if (!(reviewIdx < escalationIdx && escalationIdx < plansIdx)) {
+      failures.push(`Test (n) FAILED: escalation not between Review and Plans & Specs headers`);
+    }
+    if (!(reviewIdx < packetIdx && packetIdx < plansIdx)) {
+      failures.push(`Test (n) FAILED: packet not between Review and Plans & Specs headers`);
+    }
+    if (!(reviewIdx < findingsIdx && findingsIdx < plansIdx)) {
+      failures.push(`Test (n) FAILED: findings not between Review and Plans & Specs headers`);
+    }
+    if (!(reviewIdx < pendingIdx && pendingIdx < plansIdx)) {
+      failures.push(`Test (n) FAILED: pending-review not between Review and Plans & Specs headers`);
+    }
+    if (!(plansIdx < briefIdx && briefIdx < microIdx)) {
+      failures.push(`Test (n) FAILED: briefing not between Plans & Specs and Microworlds headers`);
+    }
+    if (!(microIdx < workingIdx)) {
+      failures.push(`Test (n) FAILED: working bundle not after Microworlds header`);
+    }
+    if (failures.filter((f) => f.includes('Test (n)')).length === 0) {
+      console.log('  ✓ Test (n) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (n) ERROR: ${err.stack}`);
+  }
+
+  // Test (o): U3-C4 type prefixes on rows
+  console.log('Test (o): U3-C4 type prefixes on rows...');
+  try {
+    const escalationEntry = { taskId: 'esc1', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'body' };
+    const { leftRailHtml } = await renderClient({
+      bundlesData: [
+        { id: 'b2', unit: 'packet1', description: 'd', status: null, source: 'packet', functions: [] },
+      ],
+      decisionsData: {
+        escalations: [escalationEntry],
+        briefings: [],
+        findings: [{ slug: 'find1', timestamp: '2026-08-01T00:00:00Z', count: 1, body: 'body', malformed: false }],
+        pendingReview: [{ agentId: 'pr1', state: 'pending', reason: null, timestamp: '2026-08-01T00:00:00Z', unit: 'pr1' }],
+      },
+    });
+    if (!leftRailHtml.includes('Escalation: esc1')) {
+      failures.push('Test (o) FAILED: escalation row missing "Escalation: " prefix');
+    } else {
+      console.log('OK   escalation row has Escalation: prefix');
+    }
+    if (!leftRailHtml.includes('Packet: packet1')) {
+      failures.push('Test (o) FAILED: packet row missing "Packet: " prefix');
+    } else {
+      console.log('OK   packet row has Packet: prefix');
+    }
+    if (!leftRailHtml.includes('Findings: find1')) {
+      failures.push('Test (o) FAILED: findings row missing "Findings: " prefix');
+    } else {
+      console.log('OK   findings row has Findings: prefix');
+    }
+    if (!leftRailHtml.includes('Pending review: pr1')) {
+      failures.push('Test (o) FAILED: pending-review row missing "Pending review: " prefix');
+    } else {
+      console.log('OK   pending-review row has Pending review: prefix');
+    }
+    if (failures.filter((f) => f.includes('Test (o)')).length === 0) {
+      console.log('  ✓ Test (o) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (o) ERROR: ${err.stack}`);
+  }
+
+  // Test (p): U3-C6 empty sections don't render
+  console.log('Test (p): U3-C6 empty sections dont render...');
+  try {
+    // Only working bundle, nothing else
+    const { leftRailHtml } = await renderClient({
+      bundlesData: [
+        { id: 'b1', unit: 'working1', description: 'd', status: null, source: 'working', functions: [] },
+      ],
+      decisionsData: { escalations: [], briefings: [], findings: [], pendingReview: [] },
+    });
+    const headers = (leftRailHtml.match(/<div class="bundle-section-header">([^<]*)<\/div>/g) || []).map(h => h.match(/>([^<]*)</)[1]);
+    const expected = ['Microworlds (1)'];
+    if (JSON.stringify(headers) !== JSON.stringify(expected)) {
+      failures.push(`Test (p) FAILED: with only working bundle, expected ${JSON.stringify(expected)}, got ${JSON.stringify(headers)}`);
+    } else {
+      console.log('  ✓ Test (p) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (p) ERROR: ${err.stack}`);
+  }
+
+  // Test (q): U3-C7 inverted urgency fixed - escalation auto-selects before working bundle
+  console.log('Test (q): U3-C7 inverted urgency fixed...');
+  try {
+    const escalationEntry = { taskId: 'esc-urgent', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'body' };
+    const workingBundle = { id: 'b1', unit: 'work-unit', description: 'd', status: null, source: 'working', functions: [] };
+
+    // With both escalation and working bundle, escalation should auto-select
+    const { contentHtml } = await renderClient({
+      bundlesData: [workingBundle],
+      decisionsData: {
+        escalations: [escalationEntry],
+        briefings: [],
+        findings: [],
+        pendingReview: [],
+      },
+    });
+    if (!contentHtml.includes('Escalation: esc-urgent')) {
+      failures.push('Test (q) FAILED: escalation not auto-selected when both escalation and working bundle present');
+    } else {
+      console.log('OK   escalation auto-selected over working bundle');
+    }
+
+    // With only working bundle (no escalation), working bundle should auto-select
+    const { contentHtml: contentHtml2 } = await renderClient({
+      bundlesData: [workingBundle],
+      decisionsData: {
+        escalations: [],
+        briefings: [],
+        findings: [],
+        pendingReview: [],
+      },
+    });
+    if (!contentHtml2.includes('work-unit')) {
+      failures.push('Test (q) FAILED: working bundle not auto-selected when no escalation present');
+    } else {
+      console.log('OK   working bundle auto-selected when no escalation');
+    }
+
+    if (failures.filter((f) => f.includes('Test (q)')).length === 0) {
+      console.log('  ✓ Test (q) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (q) ERROR: ${err.stack}`);
   }
 
   console.log();

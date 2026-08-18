@@ -231,8 +231,64 @@
 
       let html = '';
 
+      // Review section: escalations, packet bundles, findings, pending review
+      const reviewCount = (decisions?.escalations?.length || 0) + packetBundles.length + (decisions?.findings?.length || 0) + (decisions?.pendingReview?.length || 0);
+      if (reviewCount > 0) {
+        html += `<div class="bundle-section-header">Review (${reviewCount})</div>`;
+
+        // Escalations
+        if (decisions && decisions.escalations) {
+          html += decisions.escalations.map((e) => `
+            <div class="bundle-item decision-item ${isSelectedDecision('escalation', e.taskId) ? 'active' : ''}" data-decision-kind="escalation" data-decision-key="${escapeHtml(e.taskId)}">
+              <div class="bundle-title">Escalation: ${escapeHtml(e.taskId)}</div>
+            </div>
+          `).join('');
+        }
+
+        // Packet bundles
+        html += packetBundles.map((b) => `
+          <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
+            <div>
+              <span class="status-indicator ${getStatusClass(b.status)}"></span>
+              <span class="bundle-title">Packet: ${escapeHtml(b.unit)}</span>
+            </div>
+            <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
+          </div>
+        `).join('');
+
+        // Findings
+        if (decisions && decisions.findings) {
+          html += decisions.findings.map((f) => `
+            <div class="bundle-item decision-item ${isSelectedDecision('findings', f.slug) ? 'active' : ''}" data-decision-kind="findings" data-decision-key="${escapeHtml(f.slug)}">
+              <div class="bundle-title">Findings: ${escapeHtml(f.slug)}</div>
+            </div>
+          `).join('');
+        }
+
+        // Pending review
+        if (decisions && decisions.pendingReview) {
+          html += decisions.pendingReview.map((p) => `
+            <div class="bundle-item decision-item ${isSelectedDecision('pending-review', p.agentId) ? 'active' : ''}" data-decision-kind="pending-review" data-decision-key="${escapeHtml(p.agentId)}">
+              <div class="bundle-title">Pending review: ${escapeHtml(p.unit || p.agentId)}</div>
+            </div>
+          `).join('');
+        }
+      }
+
+      // Plans & Specs section: briefings
+      const briefingsCount = decisions?.briefings?.length || 0;
+      if (briefingsCount > 0) {
+        html += `<div class="bundle-section-header">Plans & Specs (${briefingsCount})</div>`;
+        html += decisions.briefings.map((b) => `
+          <div class="bundle-item decision-item ${isSelectedDecision('briefing', b.path) ? 'active' : ''}" data-decision-kind="briefing" data-decision-key="${escapeHtml(b.path)}">
+            <div class="bundle-title">${escapeHtml(b.heading || b.path)}</div>
+          </div>
+        `).join('');
+      }
+
+      // Microworlds section: working bundles
       if (workingBundles.length > 0) {
-        html += '<div class="bundle-section-header">Working Bundles</div>';
+        html += `<div class="bundle-section-header">Microworlds (${workingBundles.length})</div>`;
         html += workingBundles.map((b) => `
           <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
             <div>
@@ -244,33 +300,18 @@
         `).join('');
       }
 
-      if (packetBundles.length > 0) {
-        html += '<div class="bundle-section-header">Escalation Packets</div>';
-        html += packetBundles.map((b) => `
-          <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
-            <div>
-              <span class="status-indicator ${getStatusClass(b.status)}"></span>
-              <span class="bundle-title">${escapeHtml(b.unit)}</span>
-            </div>
-            <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
-          </div>
-        `).join('');
-      }
-
-      if (hasDecisions) {
-        html += renderDecisionsLeftRail();
-      }
-
       rail.innerHTML = html;
 
       rail.querySelectorAll('.bundle-item').forEach(item => {
         item.addEventListener('click', () => {
           const bundleId = item.getAttribute('data-bundle-id');
-          selectedBundle = bundles.find(b => b.id === bundleId);
-          selectedFunction = null;
-          selectedGroup = null;
-          selectedDecisionView = null;
-          render();
+          if (bundleId) {
+            selectedBundle = bundles.find(b => b.id === bundleId);
+            selectedFunction = null;
+            selectedGroup = null;
+            selectedDecisionView = null;
+            render();
+          }
         });
       });
 
@@ -281,39 +322,6 @@
           selectDecisionView(kind, key);
         });
       });
-    }
-
-    // Decisions section (D8: separately-labelled, never interleaved with
-    // Working Bundles or Escalation Packets). One row per touchpoint entry
-    // across all four groups.
-    function renderDecisionsLeftRail() {
-      let html = '<div class="bundle-section-header">Decisions</div>';
-
-      html += decisions.escalations.map((e) => `
-        <div class="bundle-item decision-item ${isSelectedDecision('escalation', e.taskId) ? 'active' : ''}" data-decision-kind="escalation" data-decision-key="${escapeHtml(e.taskId)}">
-          <div class="bundle-title">Escalation: ${escapeHtml(e.taskId)}</div>
-        </div>
-      `).join('');
-
-      html += decisions.briefings.map((b) => `
-        <div class="bundle-item decision-item ${isSelectedDecision('briefing', b.path) ? 'active' : ''}" data-decision-kind="briefing" data-decision-key="${escapeHtml(b.path)}">
-          <div class="bundle-title">${escapeHtml(b.heading || b.path)}</div>
-        </div>
-      `).join('');
-
-      html += decisions.findings.map((f) => `
-        <div class="bundle-item decision-item ${isSelectedDecision('findings', f.slug) ? 'active' : ''}" data-decision-kind="findings" data-decision-key="${escapeHtml(f.slug)}">
-          <div class="bundle-title">Findings: ${escapeHtml(f.slug)}</div>
-        </div>
-      `).join('');
-
-      html += decisions.pendingReview.map((p) => `
-        <div class="bundle-item decision-item ${isSelectedDecision('pending-review', p.agentId) ? 'active' : ''}" data-decision-kind="pending-review" data-decision-key="${escapeHtml(p.agentId)}">
-          <div class="bundle-title">Pending review: ${escapeHtml(p.unit || p.agentId)}</div>
-        </div>
-      `).join('');
-
-      return html;
     }
 
     function isSelectedDecision(kind, key) {
@@ -1073,7 +1081,11 @@
 
     async function init() {
       await Promise.all([refreshBundles(), refreshDecisions()]);
-      if (bundles.length > 0) {
+      // Priority order: escalations → working bundles → briefings → findings → pending review
+      if (decisions && decisions.escalations && decisions.escalations.length > 0) {
+        selectedDecisionView = { kind: 'escalation', key: decisions.escalations[0].taskId };
+        resetDecisionForms();
+      } else if (bundles.length > 0) {
         selectedBundle = bundles[0];
         if (selectedBundle.functions && selectedBundle.functions.length > 0) {
           selectedFunction = selectedBundle.functions[0];
