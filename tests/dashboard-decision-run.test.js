@@ -1493,7 +1493,9 @@ async function runTests() {
   }
 
   // Test (23): U4-C5 Never server-attributed — USER_NAME occurs once in server.js,
-  // and omitted 'by' field stays empty in composed body
+  // and an omitted 'by' field lands empty in the actual DECISION file and
+  // audit log written by a real arm+run flow (not the arm response, which
+  // carries no 'body' field to observe).
   console.log('Test (23): U4-C5 Never server-attributed...');
   try {
     const tmpDir = makeTestProject('u4c5');
@@ -1504,7 +1506,13 @@ async function runTests() {
     const originalUserName = process.env.USER_NAME;
     try {
       process.env.USER_NAME = 'Seb';
-      const ttyWrite = { write: () => {} };
+      let capturedCode = null;
+      const ttyWrite = {
+        write: (data) => {
+          const match = data.toString().match(/is (\S+) \(valid/);
+          if (match) capturedCode = match[1];
+        },
+      };
       const { server, token } = startServer(tmpDir, 0, { ttyWrite });
       await new Promise((r) => setTimeout(r, 100));
 
@@ -1534,16 +1542,43 @@ async function runTests() {
         if (!armData.armed) {
           throw new Error('Expected armed: true');
         }
-
-        // Extract the composed body from the arm response
-        const composedBody = armData.body || '';
-        if (composedBody.includes('by: Seb')) {
-          throw new Error('Composed body should NOT contain "by: Seb" when omitted');
+        if (!capturedCode) {
+          throw new Error('could not capture code from tty output');
         }
-        // The body should either have "by:" (with empty or non-Seb value) or not mention Seb at all
-        // The key point is: Seb must not be in the composed body when omitted from client
-        if (composedBody.includes('Seb')) {
-          throw new Error(`Composed body should NOT contain 'Seb' when by field omitted. Body: ${composedBody.substring(0, 200)}`);
+
+        // Actually run the decision so the composed body reaches the two
+        // real sinks: the DECISION file and the audit log line.
+        const runResponse = await httpRequest(
+          `http://127.0.0.1:${server.address().port}/api/decision/run`,
+          {
+            method: 'POST',
+            token,
+            body: { taskId, code: capturedCode },
+          }
+        );
+        if (runResponse.status !== 200) {
+          throw new Error(`RUN failed: ${runResponse.status} ${runResponse.body}`);
+        }
+
+        // Read back the written DECISION file -- the actual sink, not the
+        // arm response.
+        const decisionPath = path.join(tmpDir, '.claude', 'human-review', taskId, 'DECISION');
+        const decisionBody = fs.readFileSync(decisionPath, 'utf8');
+        if (!decisionBody.split('\n').includes('by: ')) {
+          throw new Error(`DECISION file should contain a bare "by: " line when omitted. Body: ${decisionBody}`);
+        }
+        if (decisionBody.includes('Seb')) {
+          throw new Error(`DECISION file should NOT contain 'Seb' when by field omitted. Body: ${decisionBody}`);
+        }
+
+        // Read back the audit log line -- the second real sink.
+        const auditPath = path.join(tmpDir, '.claude', 'review-audit.log');
+        const auditLog = fs.readFileSync(auditPath, 'utf8');
+        if (!auditLog.includes(`task=${taskId}`) || !/ by=(\n|$)/.test(auditLog)) {
+          throw new Error(`review-audit.log should record an empty by= for this task. Log: ${auditLog}`);
+        }
+        if (auditLog.includes('by=Seb')) {
+          throw new Error(`review-audit.log should NOT contain 'by=Seb' when by field omitted. Log: ${auditLog}`);
         }
 
         // Verify that USER_NAME appears exactly once in server.js

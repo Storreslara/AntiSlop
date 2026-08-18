@@ -151,6 +151,10 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     contentArea,
     leftRail,
     elementsById,
+    // gh375's harness comment claiming click simulation isn't supported was
+    // wrong: selectDecisionView is a top-level declaration in the module
+    // script, so it's reachable on the sandbox directly (dash-ux-4 D3 fix).
+    sandbox,
   };
 }
 
@@ -1013,12 +1017,12 @@ async function runTests() {
   // U4-C3: View switch — escalation by field survives switching views
   console.log('Test (s): U4-C3 userName survives view switch...');
   try {
-    const { contentHtml: html1, elementsById: els1 } = await renderClient({
+    const { contentHtml: html1, contentArea, sandbox } = await renderClient({
       bundlesData: [],
       decisionsData: {
         escalations: [
-          { taskId: 'task1', title: 'Escalation 1' },
-          { taskId: 'task2', title: 'Escalation 2' },
+          { taskId: 'task1', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'body1' },
+          { taskId: 'task2', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'body2' },
         ],
         briefings: [],
         findings: [],
@@ -1029,9 +1033,19 @@ async function runTests() {
     if (!html1.includes('id="escalationBy" value="Seb"')) {
       throw new Error('Initial render should have userName=Seb');
     }
-    // Simulate switching to a second escalation view by finding and clicking it
-    // The test harness doesn't fully support click simulation, but the key is that
-    // resetDecisionForms() gets called and uses defaultBy
+    if (typeof sandbox.selectDecisionView !== 'function') {
+      throw new Error('selectDecisionView is not reachable on the sandbox');
+    }
+    // Actually switch views: selectDecisionView calls resetDecisionForms(),
+    // which is the per-view-switch-wipe this unit exists to fix.
+    await sandbox.selectDecisionView('escalation', 'task2');
+    const html2 = contentArea.innerHTML;
+    if (!html2.includes('id="escalationBy" value="Seb"')) {
+      throw new Error(`After switching views, escalationBy should still be "Seb": ${html2.slice(html2.indexOf('id="escalationBy"'), html2.indexOf('id="escalationBy"') + 50)}`);
+    }
+    if (html2.includes('id="escalationBy" value=""')) {
+      throw new Error('After switching views, escalationBy was wiped back to empty');
+    }
     console.log('  ✓ userName survives view switch');
   } catch (err) {
     failures.push(`Test (s) U4-C3: ${err.message}`);

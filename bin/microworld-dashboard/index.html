@@ -1083,7 +1083,9 @@
     async function init() {
       // Fetch context (userName for defaultBy) non-fatally
       try {
-        const contextResponse = await fetch('/api/context');
+        const contextResponse = await fetch('/api/context', {
+          headers: token ? { 'X-Antislop-Token': token } : {},
+        });
         if (contextResponse.ok) {
           const contextData = await contextResponse.json();
           defaultBy = contextData.userName || '';
