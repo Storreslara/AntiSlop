@@ -5,7 +5,7 @@ model: haiku
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, antislop:handoff
+skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
 maxTurns: 50
 ---
 
@@ -31,7 +31,9 @@ instructions.
   `antislop:diagnosing-bugs` instead (reproduce → minimise → hypothesise →
   instrument → fix → regression-test). Never leave a red suite at final
   handoff — the WIP sentinel is for mid-task pauses and blocked reports, not
-  for calling work done. (Neither skill is preloaded — invoking it on demand
+  for calling work done. (`antislop:tdd` is preloaded now — invoking it fresh
+  each time reasserts the loop's discipline rather than loading it;
+  `antislop:diagnosing-bugs` is still not preloaded, so invoking it on demand
   costs nothing on tasks that don't need it, e.g. a one-line typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
