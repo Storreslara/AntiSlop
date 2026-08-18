@@ -3,7 +3,11 @@
 // Vendored, dependency-free markdown renderer for dashboard document panes.
 // Dual-environment, single implementation: CommonJS-requirable and injectable
 // as a page global. No external dependencies.
-// Escape-first XSS model: every text span is escaped before tag emission.
+// Escape-first XSS model: renderInline escapes its whole argument once, as its
+// first statement, and that is the only escape site on the inline path. Every
+// replace after it merely wraps already-escaped spans in renderer-generated
+// tags, so no code path there ever holds unescaped user text. Do not add a
+// second escape call inside renderInline.
 
 function escapeHtml(text) {
   return String(text)
@@ -31,12 +35,6 @@ function renderMarkdown(input) {
   if (typeof input !== 'string') {
     return '<p></p>';
   }
-
-  // Strip NUL bytes: renderInline uses \x00-delimited sentinels internally to
-  // mark already-processed spans. An input-supplied NUL could otherwise forge
-  // a marker and smuggle unescaped HTML through, so none may survive to reach
-  // renderInline.
-  input = input.replace(/\x00/g, '');
 
   const lines = input.split('\n');
   let html = '';
@@ -128,45 +126,25 @@ function renderMarkdown(input) {
 }
 
 function renderInline(text) {
-  let result = text;
+  // The one and only escape on this path. Everything below operates on escaped
+  // text and only adds tags, so no span can be left unescaped or escaped twice.
+  let result = escapeHtml(text);
 
-  // Process inline formatting in order, using unique markers to protect content
   // Inline code first (nothing inside backticks should be processed further)
-  result = result.replace(/`([^`]+)`/g, function(m, code) {
-    return '\x00INLINE_CODE\x00' + escapeHtml(code) + '\x00/INLINE_CODE\x00';
-  });
+  result = result.replace(/`([^`]+)`/g, '<code>$1</code>');
 
-  // Links: [text](url)
+  // Links: [text](url). The href is already escaped, so it lands safe in the
+  // attribute; a non-allowlisted scheme emits no anchor at all.
   result = result.replace(/\[([^\]]+)\]\(([^)]+)\)/g, function(m, label, href) {
     if (isValidLinkScheme(href)) {
-      return '\x00LINK\x00' + escapeHtml(label) + '\x00HREF\x00' + escapeHtml(href) + '\x00/LINK\x00';
+      return '<a href="' + href + '" rel="noopener noreferrer" target="_blank">' + label + '</a>';
     }
-    return escapeHtml(label);
+    return label;
   });
 
-  // Bold: **text**
-  result = result.replace(/\*\*([^*]+)\*\*/g, function(m, text) {
-    return '\x00BOLD\x00' + escapeHtml(text) + '\x00/BOLD\x00';
-  });
-
-  // Italic: *text*
-  result = result.replace(/\*([^*]+)\*/g, function(m, text) {
-    return '\x00ITALIC\x00' + escapeHtml(text) + '\x00/ITALIC\x00';
-  });
-
-  // Escape remaining plain text (split by markers and escape non-marked portions)
-  result = result.split(/(\x00[^/]*\x00|\x00\/[^/]*\x00)/g).map(function(part) {
-    if (part.startsWith('\x00')) {
-      return part; // Marker - don't escape
-    }
-    return escapeHtml(part); // Plain text - escape it
-  }).join('');
-
-  // Replace markers with actual HTML
-  result = result.replace(/\x00INLINE_CODE\x00([^\x00]*)\x00\/INLINE_CODE\x00/g, '<code>$1</code>');
-  result = result.replace(/\x00BOLD\x00([^\x00]*)\x00\/BOLD\x00/g, '<strong>$1</strong>');
-  result = result.replace(/\x00ITALIC\x00([^\x00]*)\x00\/ITALIC\x00/g, '<em>$1</em>');
-  result = result.replace(/\x00LINK\x00([^\x00]*)\x00HREF\x00([^\x00]*)\x00\/LINK\x00/g, '<a href="$2" rel="noopener noreferrer" target="_blank">$1</a>');
+  // Bold before italic, so ** is not consumed by the single-* pattern
+  result = result.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  result = result.replace(/\*([^*]+)\*/g, '<em>$1</em>');
 
   return result;
 }

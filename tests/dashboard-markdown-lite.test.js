@@ -220,6 +220,112 @@ check('Array input returns string and is safe', () => {
   notContains(result, '<img');
 });
 
+// --- Escape-first invariant (U1-C3 c/d/e and U1-C4) ---
+// The property under test: every '<' and '>' in the output belongs to a tag the
+// renderer itself emitted from its fixed vocabulary, and no emitted anchor
+// carries a non-allowlisted scheme. ALLOWED_TAG and JS_HREF are spelled exactly
+// as measured in docs/plans/2026-08-18-dash-ux-1-debug-spec-escape-first.md --
+// a looser anchor pattern stops detecting an injected <a>, and asserting on a
+// bare 'javascript:' substring false-positives on correctly escaped text.
+const ALLOWED_TAG = /<\/?(?:h[1-6]|p|strong|em|code|pre|ul|ol|li|blockquote)>|<hr \/>|<br \/>|<a href="[^"<>]*" rel="noopener noreferrer" target="_blank">|<\/a>/g;
+const JS_HREF     = /href="\s*javascript:/i;
+
+function unsafe(out) {
+  const residue = out.replace(ALLOWED_TAG, '');
+  return residue.includes('<') || residue.includes('>') || JS_HREF.test(out);
+}
+
+// The three block contexts renderInline is reachable from.
+const CONTEXTS = [
+  { name: 'paragraph', wrap: (s) => s },
+  { name: 'ul item', wrap: (s) => '- ' + s },
+  { name: 'ol item', wrap: (s) => '1. ' + s }
+];
+
+// U1-C3 (c): the five adjacency payloads, each in all three block contexts.
+const ADJACENCY_PAYLOADS = [
+  '**a** <img src=x onerror=alert(1)> **b**',
+  '*a* <svg onload=alert(1)> *b*',
+  '`a` <img onerror=alert(1) src=q> `b`',
+  '[a](http://x) <img src=q> [b](http://y)',
+  '**a** <a href=javascript:alert(1)>x **b**'
+];
+
+ADJACENCY_PAYLOADS.forEach((payload, index) => {
+  CONTEXTS.forEach((ctx) => {
+    check(`U1-C3c adjacency payload ${index + 1} in ${ctx.name}`, () => {
+      const input = ctx.wrap(payload);
+      const result = renderMarkdown(input);
+      assert(!unsafe(result), `unsafe output for ${JSON.stringify(input)}: ${result}`);
+    });
+  });
+});
+
+// U1-C3 (d): the '/'-containing control. This passes on the exploitable module
+// too -- it is here to record WHY the bare-<img XSS case passed while the
+// module was unsafe, so it is never mistaken for coverage.
+check('U1-C3d slash-containing adjacency control is escaped', () => {
+  const result = renderMarkdown('**a** <img src=/x> **b**');
+  contains(result, '&lt;img src=/x&gt;');
+  assert(!unsafe(result), `unsafe output: ${result}`);
+});
+
+// U1-C3 (e): both double-escape instances.
+check('U1-C3e nested inline code is escaped exactly once', () => {
+  const result = renderMarkdown('**a `<x>` b**');
+  contains(result, '<code>&lt;x&gt;</code>');
+  notContains(result, '&amp;lt;');
+});
+
+check('U1-C3e link href ampersand is escaped exactly once', () => {
+  const result = renderMarkdown('[a](http://x?a=1&b=2)');
+  contains(result, 'href="http://x?a=1&amp;b=2"');
+  notContains(result, '&amp;amp;');
+});
+
+// U1-C4: generated cross-product, not a hand-written list.
+const RAW_FRAGMENTS = [
+  '<img src=x onerror=alert(1)>',
+  '<svg onload=alert(1)>',
+  '<a href=javascript:alert(1)>x',
+  '"><img src=x>',
+  '<img src=q>',
+  '<iframe src=x>',
+  '<b onmouseover=alert(1)>',
+  '<img src=/x>',
+  '</p><script>alert(1)</script>'
+];
+
+const MARKERS = ['**a**', '*a*', '`a`', '[a](http://x)'];
+
+const POSITIONS = [
+  { name: 'before', build: (frag, marker) => frag + ' ' + marker },
+  { name: 'after', build: (frag, marker) => marker + ' ' + frag },
+  { name: 'between', build: (frag, marker) => marker + ' ' + frag + ' ' + marker }
+];
+
+check('U1-C4 property test: generated cross-product holds the escape-first invariant', () => {
+  let generated = 0;
+  const unsafeCases = [];
+  RAW_FRAGMENTS.forEach((frag) => {
+    MARKERS.forEach((marker) => {
+      POSITIONS.forEach((pos) => {
+        CONTEXTS.forEach((ctx) => {
+          generated++;
+          const input = ctx.wrap(pos.build(frag, marker));
+          const out = renderMarkdown(input);
+          if (unsafe(out)) unsafeCases.push(`${JSON.stringify(input)} -> ${out}`);
+        });
+      });
+    });
+  });
+  assert(generated >= 250, `expected at least 250 generated cases, built ${generated}`);
+  assert(
+    unsafeCases.length === 0,
+    `${unsafeCases.length} of ${generated} generated cases unsafe; first: ${unsafeCases[0]}`
+  );
+});
+
 // Test exit on failures
 if (failures.length > 0) {
   console.log('\n' + failures.length + ' test(s) failed:');
