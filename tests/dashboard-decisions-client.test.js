@@ -98,18 +98,16 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     leftRail,
     contentArea,
     // gh375 Step 14: escalation-form controls the new tests drive directly.
-    // Step 1: route and quiz are now radiogroup buttons
+    // Step 1: route and examples are now radiogroup buttons
     'routeOption-approve': makeFakeControl(''),
     'routeOption-reject': makeFakeControl(''),
     'routeOption-direct': makeFakeControl(''),
-    'quizOption-skipped': makeFakeControl(''),
-    'quizOption-passed-self-check': makeFakeControl(''),
-    'quizOption-none-offered': makeFakeControl(''),
+    'examplesOption-skipped': makeFakeControl(''),
+    'examplesOption-reviewed': makeFakeControl(''),
+    'examplesOption-none-offered': makeFakeControl(''),
     escalationReason: makeFakeControl(''),
     escalationBy: makeFakeControl(''),
     decisionCopyBtn: makeFakeControl(),
-    quizRevealBtn: makeFakeControl(),
-    quizAnswerContainer: makeFakeElement(),
     briefingExcerptPane: makeFakeElement(),
   };
   const fetchCalls = [];
@@ -147,7 +145,8 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     fetchCalls,
     // Live references (gh375 Step 14 tests): contentArea.innerHTML re-reads
     // the latest render after firing a control; elementsById lets a test
-    // grab a specific control (e.g. quizRevealBtn) to fire an event on.
+    // grab a specific control (e.g. examplesOption-reviewed) to fire an
+    // event on.
     contentArea,
     leftRail,
     elementsById,
@@ -323,48 +322,48 @@ async function runTests() {
     failures.push(`Test (e) ERROR: ${err.stack}`);
   }
 
-  // Test (f): pill-styled radiogroup controls — quiz rendered on approve,
-  // absent on reject, defaults to skipped; composed command reflects selections
-  // (Step 1).
+  // Test (f): pill-styled radiogroup controls — examples rendered on
+  // approve, absent on reject, defaults to skipped; composed command
+  // reflects selections (Step 1).
   console.log('Test (f): pill-styled radiogroup controls — composed command assertions...');
   try {
     const escalationEntry = {
       taskId: 'gh910', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
-      packetMissing: false, packetBody: 'packet body', changesBody: null, quizBody: null,
+      packetMissing: false, packetBody: 'packet body', changesBody: null, examplesBody: null,
     };
     const { contentArea, elementsById } = await renderClient({
       bundlesData: [],
       decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
     });
 
-    // Sub-check 1: quiz radiogroup rendered on default (approve) route
-    if (!contentArea.innerHTML.includes('id="quizOption-skipped"')) {
-      failures.push('Test (f) FAILED: quiz radiogroup not rendered on default (approve) route');
+    // Sub-check 1: examples radiogroup rendered on default (approve) route
+    if (!contentArea.innerHTML.includes('id="examplesOption-skipped"')) {
+      failures.push('Test (f) FAILED: examples radiogroup not rendered on default (approve) route');
     } else {
-      console.log('OK   quiz radiogroup rendered on approve');
+      console.log('OK   examples radiogroup rendered on approve');
     }
 
-    // Sub-check 2: default composed command contains quiz: skipped (no interaction)
-    if (!contentArea.innerHTML.includes('quiz: skipped')) {
-      failures.push(`Test (f) FAILED: composed command does not contain "quiz: skipped" by default: ${contentArea.innerHTML.slice(0, 800)}`);
+    // Sub-check 2: default composed command contains examples: skipped (no interaction)
+    if (!contentArea.innerHTML.includes('examples: skipped')) {
+      failures.push(`Test (f) FAILED: composed command does not contain "examples: skipped" by default: ${contentArea.innerHTML.slice(0, 800)}`);
     } else {
-      console.log('OK   composed command defaults to quiz: skipped');
+      console.log('OK   composed command defaults to examples: skipped');
     }
 
-    // Sub-check 3: clicking quizOption-passed-self-check updates composed command
-    await elementsById['quizOption-passed-self-check'].fire('click');
-    if (!contentArea.innerHTML.includes('quiz: passed-self-check')) {
-      failures.push(`Test (f) FAILED: composed command does not contain "quiz: passed-self-check" after click: ${contentArea.innerHTML.slice(0, 800)}`);
+    // Sub-check 3: clicking examplesOption-reviewed updates composed command
+    await elementsById['examplesOption-reviewed'].fire('click');
+    if (!contentArea.innerHTML.includes('examples: reviewed')) {
+      failures.push(`Test (f) FAILED: composed command does not contain "examples: reviewed" after click: ${contentArea.innerHTML.slice(0, 800)}`);
     } else {
-      console.log('OK   composed command reflects quiz: passed-self-check after click');
+      console.log('OK   composed command reflects examples: reviewed after click');
     }
 
-    // Sub-check 4: clicking routeOption-reject removes quiz radiogroup
+    // Sub-check 4: clicking routeOption-reject removes examples radiogroup
     await elementsById['routeOption-reject'].fire('click');
-    if (contentArea.innerHTML.includes('id="quizOption-skipped"')) {
-      failures.push('Test (f) FAILED: quiz radiogroup still rendered after switching to reject');
+    if (contentArea.innerHTML.includes('id="examplesOption-skipped"')) {
+      failures.push('Test (f) FAILED: examples radiogroup still rendered after switching to reject');
     } else {
-      console.log('OK   quiz radiogroup absent on reject route');
+      console.log('OK   examples radiogroup absent on reject route');
     }
 
     if (failures.filter((f) => f.includes('Test (f)')).length === 0) {
@@ -374,14 +373,14 @@ async function runTests() {
     failures.push(`Test (f) ERROR: ${err.stack}`);
   }
 
-  // Test (g): CHANGES.md / QUIZ.md pane rendering — presence, reading order,
-  // and clean omission when absent (gh375 Step 14).
-  console.log('Test (g): CHANGES.md / QUIZ.md pane rendering — presence, ordering, absence...');
+  // Test (g): CHANGES.md / EXAMPLES.md pane rendering — presence, reading
+  // order, and clean omission when absent (gh375 Step 14).
+  console.log('Test (g): CHANGES.md / EXAMPLES.md pane rendering — presence, ordering, absence...');
   try {
     const withBoth = {
       taskId: 'gh911', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
       packetMissing: false, packetBody: 'PACKET BODY TEXT',
-      changesBody: 'CHANGES BODY TEXT', quizBody: 'QUIZ BODY TEXT',
+      changesBody: 'CHANGES BODY TEXT', examplesBody: 'EXAMPLES BODY TEXT',
     };
     const { contentArea } = await renderClient({
       bundlesData: [],
@@ -394,30 +393,30 @@ async function runTests() {
     } else {
       console.log('OK   escalation view renders CHANGES.md');
     }
-    if (!html.includes('QUIZ BODY TEXT')) {
-      failures.push('Test (g) FAILED: QUIZ.md body not rendered');
+    if (!html.includes('EXAMPLES BODY TEXT')) {
+      failures.push('Test (g) FAILED: EXAMPLES.md body not rendered');
     } else {
-      console.log('OK   escalation view renders QUIZ.md');
+      console.log('OK   escalation view renders EXAMPLES.md');
     }
 
     const changesIdx = html.indexOf('CHANGES BODY TEXT');
     const packetIdx = html.indexOf('PACKET BODY TEXT');
-    const quizIdx = html.indexOf('QUIZ BODY TEXT');
+    const examplesIdx = html.indexOf('EXAMPLES BODY TEXT');
     if (!(changesIdx !== -1 && packetIdx !== -1 && changesIdx < packetIdx)) {
       failures.push('Test (g) FAILED: CHANGES.md not rendered before PACKET.md');
     } else {
       console.log('OK   CHANGES.md rendered before PACKET.md');
     }
-    if (!(packetIdx !== -1 && quizIdx !== -1 && quizIdx > packetIdx)) {
-      failures.push('Test (g) FAILED: QUIZ.md not rendered after PACKET.md');
+    if (!(packetIdx !== -1 && examplesIdx !== -1 && examplesIdx > packetIdx)) {
+      failures.push('Test (g) FAILED: EXAMPLES.md not rendered after PACKET.md');
     } else {
-      console.log('OK   QUIZ.md rendered after PACKET.md');
+      console.log('OK   EXAMPLES.md rendered after PACKET.md');
     }
 
     const withNeither = {
       taskId: 'gh912', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
       packetMissing: false, packetBody: 'ONLY PACKET TEXT',
-      changesBody: null, quizBody: null,
+      changesBody: null, examplesBody: null,
     };
     const { contentArea: contentArea2 } = await renderClient({
       bundlesData: [],
@@ -429,15 +428,10 @@ async function runTests() {
     } else {
       console.log('OK   absent CHANGES.md renders no empty pane');
     }
-    if (html2.includes('QUIZ.md')) {
-      failures.push('Test (g) FAILED: QUIZ.md label rendered though QUIZ.md is absent');
+    if (html2.includes('EXAMPLES.md')) {
+      failures.push('Test (g) FAILED: EXAMPLES.md label rendered though EXAMPLES.md is absent');
     } else {
-      console.log('OK   absent QUIZ.md renders no quiz pane');
-    }
-    if (html2.includes('quizRevealBtn') || html2.includes('Reveal answer key')) {
-      failures.push('Test (g) FAILED: reveal control rendered though QUIZ.md is absent');
-    } else {
-      console.log('OK   reveal control absent when no QUIZ.md');
+      console.log('OK   absent EXAMPLES.md renders no examples pane');
     }
 
     if (failures.filter((f) => f.includes('Test (g)')).length === 0) {
@@ -445,64 +439,6 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (g) ERROR: ${err.stack}`);
-  }
-
-  // Test (h): answer-key reveal — absent before click, on-demand fetch
-  // through /api/source on click, inline error on a failed/404 fetch
-  // (gh375 Step 14, R6 structural exclusion).
-  console.log('Test (h): reveal control — on-demand answer-key fetch behavior...');
-  try {
-    const entryWithQuiz = {
-      taskId: 'gh913', timestamp: '2026-08-15T00:00:00Z', trigger: 't', microworld: 'm',
-      packetMissing: false, packetBody: 'packet body',
-      changesBody: null, quizBody: 'QUIZ BODY TEXT',
-    };
-
-    // Sub-case: successful reveal.
-    const sourceData = { lines: ['ANSWER: 42'], startLine: 1, endLine: 1, totalLines: 1 };
-    const { elementsById, fetchCalls } = await renderClient({
-      bundlesData: [],
-      decisionsData: { ...emptyDecisions, escalations: [entryWithQuiz] },
-      sourceData,
-    });
-
-    if (elementsById.quizAnswerContainer.innerHTML.includes('ANSWER: 42')) {
-      failures.push('Test (h) FAILED: answer key text present before reveal click');
-    } else {
-      console.log('OK   answer key absent before reveal click');
-    }
-
-    await elementsById.quizRevealBtn.fire('click');
-
-    if (!elementsById.quizAnswerContainer.innerHTML.includes('ANSWER: 42')) {
-      failures.push(`Test (h) FAILED: answer key not rendered after reveal click: ${elementsById.quizAnswerContainer.innerHTML.slice(0, 800)}`);
-    } else {
-      console.log('OK   answer key rendered after reveal click');
-    }
-
-    const sourceCall = fetchCalls.find((c) => c.url.includes('QUIZ-ANSWERS.md'));
-    if (!sourceCall || !sourceCall.url.startsWith('/api/source?file=')) {
-      failures.push(`Test (h) FAILED: reveal did not fetch QUIZ-ANSWERS.md through /api/source, got ${JSON.stringify(fetchCalls)}`);
-    }
-
-    // Sub-case: failed/404 fetch renders the inline-error treatment, never
-    // throws (no sourceData -> makeFetchStub 404s /api/source).
-    const { elementsById: elementsById2 } = await renderClient({
-      bundlesData: [],
-      decisionsData: { ...emptyDecisions, escalations: [entryWithQuiz] },
-    });
-    await elementsById2.quizRevealBtn.fire('click');
-    if (!/error/i.test(elementsById2.quizAnswerContainer.innerHTML)) {
-      failures.push(`Test (h) FAILED: failed reveal fetch did not render inline error: ${elementsById2.quizAnswerContainer.innerHTML.slice(0, 800)}`);
-    } else {
-      console.log('OK   reveal fetch failure renders inline error');
-    }
-
-    if (failures.filter((f) => f.includes('Test (h)')).length === 0) {
-      console.log('  ✓ Test (h) passed');
-    }
-  } catch (err) {
-    failures.push(`Test (h) ERROR: ${err.stack}`);
   }
 
   // Test (i): U2-C2 single-implementation proof — stub renderMarkdown sentinel
@@ -513,7 +449,7 @@ async function runTests() {
     const stubRenderMarkdown = (s) => 'MDSENTINEL:' + String(s);
     const escalationEntry = {
       taskId: 'gu99', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm',
-      packetMissing: false, packetBody: 'packet-text', changesBody: 'changes-text', quizBody: 'quiz-text',
+      packetMissing: false, packetBody: 'packet-text', changesBody: 'changes-text', examplesBody: 'examples-text',
     };
     const findingEntry = { slug: 'finding-slug', timestamp: '2026-08-01T00:00:00Z', count: 1, body: 'finding-body', malformed: false };
 
@@ -526,11 +462,11 @@ async function runTests() {
 
     const d1 = escalationHtml.includes('MDSENTINEL:changes-text');
     const d2 = escalationHtml.includes('MDSENTINEL:packet-text');
-    const d3 = escalationHtml.includes('MDSENTINEL:quiz-text');
+    const d3 = escalationHtml.includes('MDSENTINEL:examples-text');
 
     if (!d1) failures.push('Test (i) FAILED: D1 (CHANGES.md) does not contain sentinel');
     if (!d2) failures.push('Test (i) FAILED: D2 (PACKET.md) does not contain sentinel');
-    if (!d3) failures.push('Test (i) FAILED: D3 (QUIZ.md) does not contain sentinel');
+    if (!d3) failures.push('Test (i) FAILED: D3 (EXAMPLES.md) does not contain sentinel');
 
     // V1 (composed escalation-decision command) must NOT contain sentinel
     if (escalationHtml.match(/MDSENTINEL:.*route:/)) {
@@ -552,44 +488,6 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (i) ERROR: ${err.stack}`);
-  }
-
-  // Test (i2): D4 (quiz answer reveal) also uses renderMarkdown
-  console.log('Test (i2): U2-C2 D4 quiz reveal sentinel check...');
-  try {
-    const stubRenderMarkdown = (s) => 'MDSENTINEL:' + String(s);
-    const escalationEntry = {
-      taskId: 'gu88', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm',
-      packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz',
-    };
-    const sourceData = { lines: ['answer-line'], startLine: 1, endLine: 1, totalLines: 1 };
-
-    const { elementsById } = await renderClient({
-      bundlesData: [],
-      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
-      sourceData,
-      markdownStub: stubRenderMarkdown,
-    });
-
-    // Before click, no answer visible
-    if (elementsById.quizAnswerContainer?.innerHTML?.includes('MDSENTINEL')) {
-      failures.push('Test (i2) FAILED: answer visible before reveal click');
-    }
-
-    // After click, answer should contain sentinel
-    await elementsById.quizRevealBtn.fire('click');
-    const html = elementsById.quizAnswerContainer?.innerHTML || '';
-    if (!html.includes('MDSENTINEL:answer-line')) {
-      failures.push(`Test (i2) FAILED: D4 (quiz answer) does not contain sentinel after reveal: ${html.slice(0, 300)}`);
-    } else {
-      console.log('OK   D4 quiz answer contains sentinel');
-    }
-
-    if (failures.filter((f) => f.includes('Test (i2)')).length === 0) {
-      console.log('  ✓ Test (i2) passed');
-    }
-  } catch (err) {
-    failures.push(`Test (i2) ERROR: ${err.stack}`);
   }
 
   // Test (i3): D5 (briefing excerpt) also uses renderMarkdown
@@ -653,88 +551,6 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (j) ERROR: ${err.stack}`);
-  }
-
-  // Test (k): U2-C5 truncation marker is truthful in quiz answer reveal (D4)
-  console.log('Test (k): U2-C5 truncation marker truthful...');
-  try {
-    const escalationEntry = { taskId: 'gu77', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz' };
-
-    // Sub-case 1: totalLines > endLine, marker MUST appear
-    const sourceDataTruncated = { lines: ['a', 'b'], startLine: 1, endLine: 2, totalLines: 100 };
-    const { elementsById: elementsById1 } = await renderClient({
-      bundlesData: [],
-      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
-      sourceData: sourceDataTruncated,
-    });
-    await elementsById1.quizRevealBtn.fire('click');
-    if (!elementsById1.quizAnswerContainer?.innerHTML?.includes('Truncated at line 2 of 100')) {
-      failures.push(`Test (k) FAILED: truncation marker missing when totalLines > endLine: ${elementsById1.quizAnswerContainer?.innerHTML?.slice(0, 400)}`);
-    } else {
-      console.log('OK   truncation marker present when totalLines > endLine');
-    }
-
-    // Sub-case 2: totalLines <= endLine, marker MUST NOT appear
-    const sourceDataNotTruncated = { lines: ['x'], startLine: 1, endLine: 1, totalLines: 1 };
-    const escalationEntry2 = { taskId: 'gu66', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz-2' };
-    const { elementsById: elementsById2 } = await renderClient({
-      bundlesData: [],
-      decisionsData: { ...emptyDecisions, escalations: [escalationEntry2] },
-      sourceData: sourceDataNotTruncated,
-    });
-    await elementsById2.quizRevealBtn.fire('click');
-    if (elementsById2.quizAnswerContainer?.innerHTML?.includes('Truncated at line')) {
-      failures.push('Test (k) FAILED: truncation marker present when totalLines <= endLine');
-    } else {
-      console.log('OK   truncation marker absent when totalLines <= endLine');
-    }
-
-    if (failures.filter((f) => f.includes('Test (k)')).length === 0) {
-      console.log('  ✓ Test (k) passed');
-    }
-  } catch (err) {
-    failures.push(`Test (k) ERROR: ${err.stack}`);
-  }
-
-  // Test (l): U2-C6 document-not-per-line rendering in quiz answer reveal (D4)
-  console.log('Test (l): U2-C6 document rendering, not per-line...');
-  try {
-    const escalationEntry = { taskId: 'gu55', timestamp: '2026-08-01T00:00:00Z', trigger: 't', microworld: 'm', packetMissing: false, packetBody: 'packet', changesBody: null, quizBody: 'has-quiz' };
-    const sourceData = { lines: ['- a', '- b'], startLine: 1, endLine: 2, totalLines: 2 };
-    const { elementsById } = await renderClient({
-      bundlesData: [],
-      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
-      sourceData,
-    });
-
-    await elementsById.quizRevealBtn.fire('click');
-    const quizAnswerHtml = elementsById.quizAnswerContainer?.innerHTML || '';
-    // Should render as ONE <ul> with TWO <li>, not per-line divs
-    const ulCount = (quizAnswerHtml.match(/<ul>/g) || []).length;
-    const liCount = (quizAnswerHtml.match(/<li>/g) || []).length;
-    const excerptLineCount = (quizAnswerHtml.match(/excerpt-line/g) || []).length;
-
-    if (ulCount !== 1) {
-      failures.push(`Test (l) FAILED: expected exactly one <ul>, got ${ulCount}: ${quizAnswerHtml.slice(0, 400)}`);
-    } else {
-      console.log('OK   exactly one <ul> rendered');
-    }
-    if (liCount !== 2) {
-      failures.push(`Test (l) FAILED: expected exactly two <li>, got ${liCount}: ${quizAnswerHtml.slice(0, 400)}`);
-    } else {
-      console.log('OK   exactly two <li> rendered');
-    }
-    if (excerptLineCount !== 0) {
-      failures.push(`Test (l) FAILED: should not use .excerpt-line class, found ${excerptLineCount} occurrences`);
-    } else {
-      console.log('OK   no .excerpt-line divs in document rendering');
-    }
-
-    if (failures.filter((f) => f.includes('Test (l)')).length === 0) {
-      console.log('  ✓ Test (l) passed');
-    }
-  } catch (err) {
-    failures.push(`Test (l) ERROR: ${err.stack}`);
   }
 
   // Test (k2): U2-C5 truncation marker is truthful in the D5 briefing excerpt pane

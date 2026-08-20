@@ -43,7 +43,7 @@ function enumerateEscalations(projectRoot) {
       packetMissing: false,
       packetBody: null,
       changesBody: null,
-      quizBody: null,
+      examplesBody: null,
     };
 
     try {
@@ -54,9 +54,8 @@ function enumerateEscalations(projectRoot) {
 
     // Sibling reads for the escalation-packet format (gh375, Step 14): both
     // fail-soft exactly like packetBody/packetMissing above -- absent file
-    // means null, never a throw. The answer key sitting alongside QUIZ.md
-    // in this same directory is deliberately never read here; it must
-    // never enter the /api/decisions payload (R6, C14.14).
+    // means null, never a throw. Only EXAMPLES.md is read here -- there is
+    // no answer key in this mechanism (R6, C14.14).
     try {
       entry.changesBody = fs.readFileSync(path.join(projectRoot, '.claude', 'human-review', taskId, 'CHANGES.md'), 'utf8');
     } catch (err) {
@@ -64,9 +63,9 @@ function enumerateEscalations(projectRoot) {
     }
 
     try {
-      entry.quizBody = fs.readFileSync(path.join(projectRoot, '.claude', 'human-review', taskId, 'QUIZ.md'), 'utf8');
+      entry.examplesBody = fs.readFileSync(path.join(projectRoot, '.claude', 'human-review', taskId, 'EXAMPLES.md'), 'utf8');
     } catch (err) {
-      // absent -- quizBody stays null
+      // absent -- examplesBody stays null
     }
 
     escalations.push(entry);

@@ -21,3 +21,4 @@
 - [Negative-grep substring & git commit -m ordering](feedback_negative_grep_substring_reorder.md) — reorder terms to break a banned literal substring; `-m` must precede `-- <path>` in git commit
 - [gh385 marker-commit-attribution plan tracking](project_gh385_marker_commit_attribution.md) — gh385-5 done; remaining 6/7/8; `\$(...)` vs `$(...)` quoting gotcha in gate remediation blocks
 - [Vacuous guard & vm sandbox functions](feedback_vacuous_guard_vm_sandbox_functions.md) — check assertion field exists in real response; `vm.runInContext` exposes top-level fns on sandbox, don't excuse "can't simulate clicks"
+- [Word-boundary regex escape-sequence gotcha](feedback_word_boundary_regex_escape_sequence.md) — `\bword\b` bulk-rename skips matches after a literal `\n`/`\r` in JS source text; always re-grep after

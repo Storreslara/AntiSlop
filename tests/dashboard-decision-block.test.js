@@ -178,7 +178,7 @@ check('(j) unknown kind throws', () => {
   throws(() => composeDecisionBlock('not-a-real-kind', {}));
 });
 
-// gh375 Step 14: quiz attestation on the approve route. Prints an
+// gh375 Step 14: examples attestation on the approve route. Prints an
 // "OK   <label>" line on success (grepped by acceptance criteria) in
 // addition to this file's existing "Test .../✓ ok" convention.
 function checkOk(okLabel, fn) {
@@ -192,76 +192,76 @@ function checkOk(okLabel, fn) {
   }
 }
 
-checkOk('approve emits quiz line after by', () => {
+checkOk('approve emits examples line after by', () => {
   const result = composeDecisionBlock('escalation-decision', {
     taskId: 'gh375',
     route: 'approve',
     escalationTimestamp: '2026-08-15T10:00:00Z',
     by: 'Sebastian',
-    quiz: 'passed-self-check',
+    examples: 'reviewed',
   });
   const lines = result.text.split('\n');
   const byIdx = lines.findIndex((l) => l === 'by: Sebastian');
   assert(byIdx !== -1, 'expected a by: line in composed text');
-  assert(lines[byIdx + 1] === 'quiz: passed-self-check', `expected quiz line immediately after by:, got "${lines[byIdx + 1]}"`);
+  assert(lines[byIdx + 1] === 'examples: reviewed', `expected examples line immediately after by:, got "${lines[byIdx + 1]}"`);
 });
 
-checkOk('quiz passed-self-check composes', () => {
+checkOk('examples reviewed composes', () => {
   const result = composeDecisionBlock('escalation-decision', {
-    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'passed-self-check',
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', examples: 'reviewed',
   });
-  assert(result.text.includes('quiz: passed-self-check'), 'expected quiz: passed-self-check in composed text');
+  assert(result.text.includes('examples: reviewed'), 'expected examples: reviewed in composed text');
 });
 
-checkOk('quiz skipped composes', () => {
+checkOk('examples skipped composes', () => {
   const result = composeDecisionBlock('escalation-decision', {
-    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'skipped',
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', examples: 'skipped',
   });
-  assert(result.text.includes('quiz: skipped'), 'expected quiz: skipped in composed text');
+  assert(result.text.includes('examples: skipped'), 'expected examples: skipped in composed text');
 });
 
-checkOk('quiz none-offered composes', () => {
+checkOk('examples none-offered composes', () => {
   const result = composeDecisionBlock('escalation-decision', {
-    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'none-offered',
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', examples: 'none-offered',
   });
-  assert(result.text.includes('quiz: none-offered'), 'expected quiz: none-offered in composed text');
+  assert(result.text.includes('examples: none-offered'), 'expected examples: none-offered in composed text');
 });
 
-checkOk('quiz bogus-token rejected', () => {
+checkOk('examples bogus-token rejected', () => {
   throws(() => composeDecisionBlock('escalation-decision', {
-    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'bogus-token',
-  }), 'expected a bogus quiz token to throw');
+    taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', examples: 'bogus-token',
+  }), 'expected a bogus examples token to throw');
 });
 
-checkOk('reject never emits quiz', () => {
+checkOk('reject never emits examples', () => {
   const result = composeDecisionBlock('escalation-decision', {
-    taskId: 'gh375', route: 'reject', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'passed-self-check', reason: 'not ready',
+    taskId: 'gh375', route: 'reject', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', examples: 'reviewed', reason: 'not ready',
   });
-  assert(!result.text.includes('quiz:'), `expected no quiz: line on reject, got "${result.text}"`);
+  assert(!result.text.includes('examples:'), `expected no examples: line on reject, got "${result.text}"`);
 });
 
-checkOk('direct never emits quiz', () => {
+checkOk('direct never emits examples', () => {
   const result = composeDecisionBlock('escalation-decision', {
-    taskId: 'gh375', route: 'direct', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', quiz: 'none-offered',
+    taskId: 'gh375', route: 'direct', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian', examples: 'none-offered',
   });
-  assert(!result.text.includes('quiz:'), `expected no quiz: line on direct, got "${result.text}"`);
+  assert(!result.text.includes('examples:'), `expected no examples: line on direct, got "${result.text}"`);
 });
 
-checkOk('omitted quiz composes unchanged body', () => {
+checkOk('omitted examples composes unchanged body', () => {
   const result = composeDecisionBlock('escalation-decision', {
     taskId: 'gh375', route: 'approve', escalationTimestamp: '2026-08-15T10:00:00Z', by: 'Sebastian',
   });
   const bodyLines = result.text.split("<<'EOF'\n")[1].split('\nEOF\n')[0].split('\n');
-  assert(bodyLines.length === 2, `expected exactly 2 body lines (DECISION, by) when quiz omitted, got ${bodyLines.length}: ${JSON.stringify(bodyLines)}`);
+  assert(bodyLines.length === 2, `expected exactly 2 body lines (DECISION, by) when examples omitted, got ${bodyLines.length}: ${JSON.stringify(bodyLines)}`);
   assert(bodyLines[0].startsWith('DECISION gh375 '), 'expected DECISION line unchanged');
   assert(bodyLines[1] === 'by: Sebastian', 'expected by: line unchanged');
-  assert(!result.text.includes('quiz:'), 'expected no quiz: line when quiz omitted');
+  assert(!result.text.includes('examples:'), 'expected no examples: line when examples omitted');
 });
 
 // gh379 advisory: via: is validated against an allowlist (VIA_ROUTES),
-// mirroring the quiz field's QUIZ_TOKENS guard. This also closes a
+// mirroring the examples field's EXAMPLES_TOKENS guard. This also closes a
 // newline-injection vector: an unvalidated via containing a newline could
-// forge extra DECISION body lines (e.g. a bogus quiz: attestation).
+// forge extra DECISION body lines (e.g. a bogus examples: attestation).
 checkOk('via: unlisted plain value rejected', () => {
   throws(() => composeEscalationDecisionBody({
     taskId: 'gh379',
@@ -278,7 +278,7 @@ checkOk('via: newline-injection payload rejected, not just unlisted string', () 
     route: 'approve',
     escalationTimestamp: '2026-08-15T10:00:00Z',
     by: 'Sebastian',
-    via: 'dashboard\nquiz: passed-self-check',
+    via: 'dashboard\nexamples: reviewed',
   }), 'expected a newline-containing via value to throw');
   assert(/via must be one of/.test(err.message), `expected the VIA_ROUTES rejection message, got "${err.message}"`);
 });
@@ -291,7 +291,7 @@ checkOk('by: newline-injection payload rejected', () => {
     taskId: 'gh380',
     route: 'approve',
     escalationTimestamp: '2026-08-15T10:00:00Z',
-    by: 'agent\nquiz: passed-self-check\nnote: forged',
+    by: 'agent\nexamples: reviewed\nnote: forged',
     via: 'dashboard',
   }), 'expected a newline-containing by value to throw');
   assert(/by may not contain a newline/.test(err.message), `expected the by-newline rejection message, got "${err.message}"`);
@@ -307,7 +307,7 @@ checkOk('reason: newline-injection payload rejected on via: dashboard', () => {
     route: 'approve',
     escalationTimestamp: '2026-08-15T10:00:00Z',
     by: 'Sebastian',
-    reason: 'looks fine\nquiz: passed-self-check',
+    reason: 'looks fine\nexamples: reviewed',
     via: 'dashboard',
   }), 'expected a newline-containing reason value to throw on via: dashboard');
   assert(/reason may not contain a newline/.test(err.message), `expected the reason-newline rejection message, got "${err.message}"`);
@@ -350,9 +350,9 @@ checkOk('reason: multi-line still composes with via: terminal', () => {
 // free-text fields, so a future free-text field inherits full coverage from
 // one name added to COMPOSER_FREE_TEXT_FIELDS.
 const COMPOSER_NON_STRING_SHAPES = [
-  { label: 'array-wrapped', value: ['agent\nquiz: passed-self-check\nnote: forged'] },
-  { label: 'nested-array', value: [['agent\nquiz: passed-self-check']] },
-  { label: 'plain object', value: { forged: 'agent\nquiz: passed-self-check' } },
+  { label: 'array-wrapped', value: ['agent\nexamples: reviewed\nnote: forged'] },
+  { label: 'nested-array', value: [['agent\nexamples: reviewed']] },
+  { label: 'plain object', value: { forged: 'agent\nexamples: reviewed' } },
   { label: 'number', value: 42 },
   { label: 'boolean', value: true },
   { label: 'null', value: null },
@@ -386,7 +386,7 @@ COMPOSER_FREE_TEXT_FIELDS.forEach((field) => {
       by: 'Sebastian',
       reason: 'ok',
     };
-    context[field] = ['agent\nquiz: passed-self-check'];
+    context[field] = ['agent\nexamples: reviewed'];
     const err = throws(() => composeEscalationDecisionBody(context), `expected a non-string ${field} to throw with no via`);
     assert(new RegExp(`^${field} must be a string`).test(err.message), `expected the ${field} type rejection message, got "${err.message}"`);
   });
@@ -404,7 +404,7 @@ COMPOSER_FREE_TEXT_FIELDS.forEach((field) => {
       reason: 'ok',
       via: 'dashboard',
     };
-    context[field] = 'agent\rquiz: passed-self-check';
+    context[field] = 'agent\rexamples: reviewed';
     const err = throws(() => composeEscalationDecisionBody(context), `expected a \\r-containing ${field} to throw`);
     assert(new RegExp(`^${field} may not contain a newline`).test(err.message), `expected the ${field} newline rejection message, got "${err.message}"`);
   });
@@ -513,22 +513,22 @@ checkOk('omitting via: produces no via line in body', () => {
   assert(viaLines.length === 0, `expected no via: lines when via is omitted, got ${viaLines.length}`);
 });
 
-checkOk('via: appears after by: but before quiz and reason', () => {
+checkOk('via: appears after by: but before examples and reason', () => {
   const result = composeEscalationDecisionBody({
     taskId: 'gh379',
     route: 'approve',
     escalationTimestamp: '2026-08-15T10:00:00Z',
     by: 'Sebastian',
     via: 'dashboard',
-    quiz: 'passed-self-check',
+    examples: 'reviewed',
     reason: 'looks good',
   });
   const lines = result.body.split('\n');
   const byIdx = lines.findIndex((l) => l === 'by: Sebastian');
   const viaIdx = lines.findIndex((l) => l === 'via: dashboard');
-  const quizIdx = lines.findIndex((l) => l === 'quiz: passed-self-check');
+  const examplesIdx = lines.findIndex((l) => l === 'examples: reviewed');
   const reasonIdx = lines.findIndex((l) => l === 'reason: looks good');
-  assert(byIdx < viaIdx && viaIdx < quizIdx && quizIdx < reasonIdx, 'expected order: by, via, quiz, reason');
+  assert(byIdx < viaIdx && viaIdx < examplesIdx && examplesIdx < reasonIdx, 'expected order: by, via, examples, reason');
 });
 
 checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload', () => {
@@ -545,7 +545,7 @@ checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload
     escalationTimestamp: '2026-08-15T10:00:00Z',
     by: 'Reviewer Name',
     via: 'dashboard',
-    quiz: 'passed-self-check',
+    examples: 'reviewed',
     reason: 'approved the work',
     now: '2026-08-15T22:00:00.000Z',
   };

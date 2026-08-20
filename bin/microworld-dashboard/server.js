@@ -286,7 +286,7 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
           // `by`/`reason` default to '' only when omitted (undefined) --
           // exactly as composeEscalationDecisionBody destructures them, so
           // an omitted field stays legal while an explicit null does not.
-          const { taskId, route, escalationTimestamp, by = '', reason = '', quiz } = data;
+          const { taskId, route, escalationTimestamp, by = '', reason = '', examples } = data;
 
           // gh380: validate the free-text fields here, at the JSON-parse
           // boundary, and store *these* values into currentArm below. The
@@ -348,7 +348,7 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
             escalationTimestamp,
             by,
             reason,
-            quiz,
+            examples,
             via: 'dashboard',
           });
 

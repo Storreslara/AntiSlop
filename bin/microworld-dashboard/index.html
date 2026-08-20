@@ -152,7 +152,7 @@
     let decisionsError = null;
     let selectedDecisionView = null;
     let defaultBy = '';
-    let escalationForm = { route: 'approve', reason: '', by: '', quiz: 'skipped' };
+    let escalationForm = { route: 'approve', reason: '', by: '', examples: 'skipped' };
     let pendingReviewForm = { reason: '' };
 
     // Left-rail section collapse state (survives re-renders across poll interval)
@@ -367,7 +367,7 @@
     }
 
     function resetDecisionForms() {
-      escalationForm = { route: 'approve', reason: '', by: defaultBy, quiz: 'skipped' };
+      escalationForm = { route: 'approve', reason: '', by: defaultBy, examples: 'skipped' };
       pendingReviewForm = { reason: '' };
     }
 
@@ -623,15 +623,15 @@
         escalationTimestamp: entry.timestamp,
         by: escalationForm.by,
         reason: escalationForm.reason,
-        quiz: escalationForm.quiz,
+        examples: escalationForm.examples,
       });
 
       let html = `<div style="padding: var(--space-6);">`;
       html += `<h2>Escalation: ${escapeHtml(entry.taskId)}</h2>`;
 
       // Reading order per gh375 Step 14: CHANGES.md, then PACKET.md, then
-      // QUIZ.md -- each labelled, each omitted entirely (not an empty pane)
-      // when its body is null.
+      // EXAMPLES.md -- each labelled, each omitted entirely (not an empty
+      // pane) when its body is null.
       if (entry.changesBody !== null && entry.changesBody !== undefined) {
         html += `<div class="output-label">CHANGES.md</div>`;
         html += `<div class="doc-pane">${renderMarkdown(entry.changesBody)}</div>`;
@@ -642,14 +642,9 @@
         ? `<p style="color: var(--gvx-gray);">(no packet found for this escalation)</p>`
         : `<div class="doc-pane">${renderMarkdown(entry.packetBody || '')}</div>`;
 
-      if (entry.quizBody !== null && entry.quizBody !== undefined) {
-        html += `<div class="output-label">QUIZ.md</div>`;
-        html += `<div class="doc-pane">${renderMarkdown(entry.quizBody)}</div>`;
-        // The reveal pane is deliberately absent from this markup -- it is
-        // populated on demand, on click, via GET /api/source (R6: never
-        // shipped in the /api/decisions payload, never pre-rendered hidden).
-        html += `<button type="button" id="quizRevealBtn" class="copy-btn">Reveal answer key</button>`;
-        html += `<div id="quizAnswerContainer"></div>`;
+      if (entry.examplesBody !== null && entry.examplesBody !== undefined) {
+        html += `<div class="output-label">EXAMPLES.md</div>`;
+        html += `<div class="doc-pane">${renderMarkdown(entry.examplesBody)}</div>`;
       }
 
       html += `<div class="form-group"><label>Route</label>
@@ -659,11 +654,11 @@
           <button type="button" role="radio" aria-checked="${escalationForm.route === 'direct'}" id="routeOption-direct" class="pill-option ${escalationForm.route === 'direct' ? 'checked' : ''}">direct</button>
         </div></div>`;
       if (escalationForm.route === 'approve') {
-        html += `<div class="form-group"><label>Quiz</label>
-          <div class="pill-option-group" role="radiogroup" aria-label="Quiz">
-            <button type="button" role="radio" aria-checked="${escalationForm.quiz === 'skipped'}" id="quizOption-skipped" class="pill-option ${escalationForm.quiz === 'skipped' ? 'checked' : ''}">skipped</button>
-            <button type="button" role="radio" aria-checked="${escalationForm.quiz === 'passed-self-check'}" id="quizOption-passed-self-check" class="pill-option ${escalationForm.quiz === 'passed-self-check' ? 'checked' : ''}">passed-self-check</button>
-            <button type="button" role="radio" aria-checked="${escalationForm.quiz === 'none-offered'}" id="quizOption-none-offered" class="pill-option ${escalationForm.quiz === 'none-offered' ? 'checked' : ''}">none-offered</button>
+        html += `<div class="form-group"><label>Examples</label>
+          <div class="pill-option-group" role="radiogroup" aria-label="Examples">
+            <button type="button" role="radio" aria-checked="${escalationForm.examples === 'skipped'}" id="examplesOption-skipped" class="pill-option ${escalationForm.examples === 'skipped' ? 'checked' : ''}">skipped</button>
+            <button type="button" role="radio" aria-checked="${escalationForm.examples === 'reviewed'}" id="examplesOption-reviewed" class="pill-option ${escalationForm.examples === 'reviewed' ? 'checked' : ''}">reviewed</button>
+            <button type="button" role="radio" aria-checked="${escalationForm.examples === 'none-offered'}" id="examplesOption-none-offered" class="pill-option ${escalationForm.examples === 'none-offered' ? 'checked' : ''}">none-offered</button>
           </div></div>`;
       }
       html += `<div class="form-group"><label>Reason</label><textarea id="escalationReason">${escapeHtml(escalationForm.reason)}</textarea></div>`;
@@ -689,10 +684,10 @@
         if (btn) btn.addEventListener('click', () => { escalationForm.route = route; renderContent(); });
       });
 
-      // Quiz option buttons (only attached if rendered)
-      ['skipped', 'passed-self-check', 'none-offered'].forEach(quiz => {
-        const btn = document.getElementById(`quizOption-${quiz}`);
-        if (btn) btn.addEventListener('click', () => { escalationForm.quiz = quiz; renderContent(); });
+      // Examples option buttons (only attached if rendered)
+      ['skipped', 'reviewed', 'none-offered'].forEach(examples => {
+        const btn = document.getElementById(`examplesOption-${examples}`);
+        if (btn) btn.addEventListener('click', () => { escalationForm.examples = examples; renderContent(); });
       });
 
       const reasonTa = document.getElementById('escalationReason');
@@ -710,50 +705,10 @@
             escalationTimestamp: entry.timestamp,
             by: escalationForm.by,
             reason: escalationForm.reason,
-            quiz: escalationForm.quiz,
+            examples: escalationForm.examples,
           });
           if (composed.text) await doCopyDecision(composed.text);
         });
-      }
-
-      const revealBtn = document.getElementById('quizRevealBtn');
-      if (revealBtn) {
-        revealBtn.addEventListener('click', async (e) => {
-          e.preventDefault();
-          await loadQuizAnswerKey(entry.taskId);
-        });
-      }
-    }
-
-    // R6 discipline: QUIZ-ANSWERS.md reaches the browser only as the direct
-    // result of this click handler running -- it is never part of the
-    // /api/decisions payload (see decisions.js) and never named by
-    // decision-block.js. Reuses the same /api/source excerpt shape
-    // loadBriefingExcerpt already uses in this section; a failed/404 fetch
-    // renders the same inline-error treatment, never a throw.
-    async function loadQuizAnswerKey(taskId) {
-      const container = document.getElementById('quizAnswerContainer');
-      if (container) container.innerHTML = `<div class="excerpt-pane">Loading answer key...</div>`;
-      try {
-        const response = await fetch(
-          `/api/source?file=${encodeURIComponent(`.claude/human-review/${taskId}/QUIZ-ANSWERS.md`)}&startLine=1&endLine=400`,
-          { headers: token ? { 'X-Antislop-Token': token } : {} }
-        );
-        if (!response.ok) {
-          const error = await response.json();
-          if (container) container.innerHTML = `<div class="excerpt-pane">Error: ${escapeHtml(error.error || 'Cannot load answer key')}</div>`;
-          return;
-        }
-        const data = await response.json();
-        const lines = data.lines || [];
-        const content = lines.join('\n');
-        let html = `<div class="doc-pane">${renderMarkdown(content)}</div>`;
-        if (data.totalLines > data.endLine) {
-          html += `<div style="color: var(--gvx-gray); font-size: 0.85rem; margin-top: var(--space-2);">Truncated at line ${data.endLine} of ${data.totalLines}</div>`;
-        }
-        if (container) container.innerHTML = html;
-      } catch (err) {
-        if (container) container.innerHTML = `<div class="excerpt-pane">Error loading answer key: ${escapeHtml(err.message)}</div>`;
       }
     }
 
@@ -1131,7 +1086,7 @@
         // Non-fatal: fetch failure or thrown error leaves defaultBy = ''
       }
       // Initialize escalationForm with defaultBy
-      escalationForm = { route: 'approve', reason: '', by: defaultBy, quiz: 'skipped' };
+      escalationForm = { route: 'approve', reason: '', by: defaultBy, examples: 'skipped' };
 
       await Promise.all([refreshBundles(), refreshDecisions()]);
       // Priority order: escalations → working bundles → briefings → findings → pending review

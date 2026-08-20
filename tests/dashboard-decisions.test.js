@@ -309,9 +309,9 @@ async function runTests() {
     failures.push(`Test (h) ERROR: ${err.message}`);
   }
 
-  // Test (i): changesBody / quizBody read from packet, fail-soft when absent
-  // (gh375 Step 14, C14.1-C14.4).
-  console.log('Test (i): changesBody/quizBody read from packet + fail-soft absence...');
+  // Test (i): changesBody / examplesBody read from packet, fail-soft when
+  // absent (gh375 Step 14, C14.1-C14.4).
+  console.log('Test (i): changesBody/examplesBody read from packet + fail-soft absence...');
   try {
     const tmpDir = makeTestProject('i');
     writeFixture(
@@ -320,7 +320,7 @@ async function runTests() {
     );
     writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'PACKET.md'), 'Packet body\n');
     writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'CHANGES.md'), 'Changes body\n');
-    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'QUIZ.md'), 'Quiz body\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh900', 'EXAMPLES.md'), 'Examples body\n');
 
     writeFixture(
       path.join(tmpDir, '.claude', 'reviewed', 'gh901.escalated'),
@@ -338,20 +338,20 @@ async function runTests() {
     } else {
       console.log('OK   changesBody read from packet');
     }
-    if (!withBoth || withBoth.quizBody !== 'Quiz body\n') {
-      failures.push(`Test (i) FAILED: quizBody not read, got ${JSON.stringify(withBoth && withBoth.quizBody)}`);
+    if (!withBoth || withBoth.examplesBody !== 'Examples body\n') {
+      failures.push(`Test (i) FAILED: examplesBody not read, got ${JSON.stringify(withBoth && withBoth.examplesBody)}`);
     } else {
-      console.log('OK   quizBody read from packet');
+      console.log('OK   examplesBody read from packet');
     }
     if (!withNeither || withNeither.changesBody !== null) {
       failures.push(`Test (i) FAILED: expected changesBody null when CHANGES.md absent, got ${JSON.stringify(withNeither && withNeither.changesBody)}`);
     } else {
       console.log('OK   changesBody null when CHANGES.md absent');
     }
-    if (!withNeither || withNeither.quizBody !== null) {
-      failures.push(`Test (i) FAILED: expected quizBody null when QUIZ.md absent, got ${JSON.stringify(withNeither && withNeither.quizBody)}`);
+    if (!withNeither || withNeither.examplesBody !== null) {
+      failures.push(`Test (i) FAILED: expected examplesBody null when EXAMPLES.md absent, got ${JSON.stringify(withNeither && withNeither.examplesBody)}`);
     } else {
-      console.log('OK   quizBody null when QUIZ.md absent');
+      console.log('OK   examplesBody null when EXAMPLES.md absent');
     }
 
     server.close();
@@ -360,9 +360,11 @@ async function runTests() {
     failures.push(`Test (i) ERROR: ${err.message}`);
   }
 
-  // Test (j): QUIZ-ANSWERS.md must never enter the /api/decisions payload
-  // (R6 structural pin, C14.14).
-  console.log('Test (j): answer key never enters the decisions payload...');
+  // Test (j): a sibling file in the packet directory that is none of
+  // PACKET.md/CHANGES.md/EXAMPLES.md must never enter the /api/decisions
+  // payload (R6 structural pin, C14.14) -- containment property, retargeted
+  // to a generic side file (the packet's old answer-key sibling is retired).
+  console.log('Test (j): unrelated sibling file never enters the decisions payload...');
   try {
     const tmpDir = makeTestProject('j');
     writeFixture(
@@ -370,17 +372,17 @@ async function runTests() {
       'ESCALATE-TO-HUMAN gh902 2026-08-01T00:00:00Z trigger: heavy-unit microworld: none\n'
     );
     writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'PACKET.md'), 'Packet body\n');
-    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'QUIZ.md'), 'Quiz body\n');
-    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'QUIZ-ANSWERS.md'), 'SECRET-ANSWER-TEXT\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'EXAMPLES.md'), 'Examples body\n');
+    writeFixture(path.join(tmpDir, '.claude', 'human-review', 'gh902', 'SIDE-FILE.md'), 'SECRET-SIDE-TEXT\n');
 
     const { server, fetchDecisions } = await startAndFetch(tmpDir);
     const { decisions } = await fetchDecisions();
     const payload = JSON.stringify(decisions);
 
-    if (payload.includes('SECRET-ANSWER-TEXT')) {
-      failures.push('Test (j) FAILED: answer key text leaked into /api/decisions payload');
+    if (payload.includes('SECRET-SIDE-TEXT')) {
+      failures.push('Test (j) FAILED: unrelated sibling file text leaked into /api/decisions payload');
     } else {
-      console.log('OK   answer key never enters the decisions payload');
+      console.log('OK   unrelated sibling file never enters the decisions payload');
     }
 
     server.close();

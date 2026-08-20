@@ -15,14 +15,15 @@ const MAX_ID_LEN = 64;
 const ROUTES = ['approve', 'reject', 'direct'];
 const HEREDOC_DELIM = 'EOF';
 // gh379 Step 2 advisory: legal via: authorship-route values, mirroring the
-// QUIZ_TOKENS allowlist pattern below. Closes the newline-injection vector
-// (an unvalidated via containing "\nquiz: passed-self-check" could forge a
-// quiz attestation) since only these two exact literal strings pass.
+// EXAMPLES_TOKENS allowlist pattern below. Closes the newline-injection
+// vector (an unvalidated via containing "\nexamples: reviewed" could forge
+// an examples attestation) since only these two exact literal strings pass.
 const VIA_ROUTES = ['terminal', 'dashboard'];
-// gh375 Step 14: the three legal quiz-attestation tokens. R6 ("never
-// graded, never a gate") means this module never names or validates
-// against the answer key -- these are self-report tokens only.
-const QUIZ_TOKENS = ['passed-self-check', 'skipped', 'none-offered'];
+// gh375 Step 14 (comprehension-check token retired in favor of worked
+// examples): the three legal examples-attestation tokens. R6 ("never
+// graded, never a gate") means this module never reads or judges
+// EXAMPLES.md -- these are self-report tokens only.
+const EXAMPLES_TOKENS = ['reviewed', 'skipped', 'none-offered'];
 
 function validateId(value, label) {
   if (typeof value !== 'string' || value.length === 0 || value.length > MAX_ID_LEN || !ID_RE.test(value)) {
@@ -49,7 +50,7 @@ function bodyHasDelimiterLine(body) {
 // toString rejoins its elements and restores the newline). The type
 // predicate therefore belongs in the reject condition, never as a
 // precondition on whether to check at all. The allowlisted neighbours
-// (route/via/quiz) get this for free from `.indexOf()`; by/reason are free
+// (route/via/examples) get this for free from `.indexOf()`; by/reason are free
 // text and have to state it explicitly.
 function assertStringField(value, label) {
   if (typeof value !== 'string') {
@@ -59,7 +60,7 @@ function assertStringField(value, label) {
 
 // gh380 D2: by/reason are composed into the body as single lines. A newline
 // (or CR) in either forges extra DECISION body lines -- e.g. a `by` of
-// "agent\nquiz: passed-self-check" fabricates a quiz attestation that was
+// "agent\nexamples: reviewed" fabricates an examples attestation that was
 // never supplied. Type first (fail closed), then content.
 function assertNoNewline(value, label) {
   assertStringField(value, label);
@@ -74,7 +75,7 @@ function composeHeredocCommand(targetPath, body) {
 }
 
 function composeEscalationDecisionBody(context) {
-  const { taskId, route, escalationTimestamp, by = '', reason = '', quiz, via, now } = context || {};
+  const { taskId, route, escalationTimestamp, by = '', reason = '', examples, via, now } = context || {};
 
   if (escalationTimestamp === undefined || escalationTimestamp === null || escalationTimestamp === '') {
     throw new Error('escalation-decision requires context.escalationTimestamp (the .escalated marker timestamp)');
@@ -117,7 +118,7 @@ function composeEscalationDecisionBody(context) {
   const warnings = [];
 
   // Add via: line only when context.via is explicitly defined. Validated
-  // against VIA_ROUTES, mirroring the quiz guard immediately below.
+  // against VIA_ROUTES, mirroring the examples guard immediately below.
   if (via !== undefined) {
     if (VIA_ROUTES.indexOf(via) === -1) {
       throw new Error(`via must be one of ${VIA_ROUTES.join('|')}, got ${JSON.stringify(via)}`);
@@ -125,18 +126,19 @@ function composeEscalationDecisionBody(context) {
     lines.push(`via: ${via}`);
   }
 
-  // quiz: approve-route only (gh375 Step 14). Omitting quiz composes
-  // exactly today's body. On reject/direct the value is ignored, never
-  // validated and never emitted -- the same form state carries a leftover
-  // quiz field across route switches, and that must not throw.
-  if (quiz !== undefined) {
+  // examples: approve-route only (gh375 Step 14). Omitting examples
+  // composes exactly today's body. On reject/direct the value is ignored,
+  // never validated and never emitted -- the same form state carries a
+  // leftover examples field across route switches, and that must not
+  // throw.
+  if (examples !== undefined) {
     if (route === 'approve') {
-      if (QUIZ_TOKENS.indexOf(quiz) === -1) {
-        throw new Error(`quiz must be one of ${QUIZ_TOKENS.join('|')}, got ${JSON.stringify(quiz)}`);
+      if (EXAMPLES_TOKENS.indexOf(examples) === -1) {
+        throw new Error(`examples must be one of ${EXAMPLES_TOKENS.join('|')}, got ${JSON.stringify(examples)}`);
       }
-      lines.push(`quiz: ${quiz}`);
+      lines.push(`examples: ${examples}`);
     } else {
-      warnings.push(`quiz is ignored on route: ${route}`);
+      warnings.push(`examples is ignored on route: ${route}`);
     }
   }
 
