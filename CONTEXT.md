@@ -863,8 +863,10 @@ the collection of addressable **Agent** entities currently active in a
   unit #138, 2026-08-11) — a directory structure created when a reviewer
   signals `ESCALATE-TO-HUMAN` on a unit, containing a snapshot of the unit's
   microworld bundle (if any) plus a durable `PACKET.md` file, a
-  `CHANGES.md` **literate change summary** (unit #299), and the
-  `QUIZ.md` / `QUIZ-ANSWERS.md` **comprehension quiz** (unit #300). Written by the
+  `CHANGES.md` **literate change summary** (unit #299), and `EXAMPLES.md`'s
+  **worked example** illustrations (unit #300, renamed from the retired
+  **comprehension quiz** in the 2026-08-20 quiz-to-worked-examples plan).
+  Written by the
   reviewer in the same action as the `.escalated` marker, sited at
   `.claude/human-review/<task-id>/` (distinct from the reviewed-markers
   directory). The `PACKET.md` is a byte-identical copy of the `.escalated`
@@ -999,6 +1001,7 @@ _Avoid_: change summary, walkthrough doc, CHANGES doc (use "literate change
 _Avoid_: reference material, explanatory material, supporting material (use "comprehension material")
 
 **comprehension quiz**:
+**[Retired in 0.31.62; see worked example below.]**
 (unit #300, 2026-08-15, Step 11 of the human-review convergence follow-ups) —
   the `QUIZ.md` / `QUIZ-ANSWERS.md` pair the reviewer writes into the escalation
   packet directory (`.claude/human-review/<task-id>/`) in the same action as the
@@ -1033,6 +1036,49 @@ _Avoid_: reference material, explanatory material, supporting material (use "com
 _Avoid_: quiz gate, comprehension check, reviewer quiz (it is neither a gate nor
   the reviewer's check on the human — use "comprehension quiz", or name
   `QUIZ.md` / `QUIZ-ANSWERS.md` directly)
+
+**worked example**:
+(units #299/#300 renamed 2026-08-20, examples-1/2/3 of the
+  quiz-to-worked-examples plan) — a subtype of [[comprehension material]],
+  alongside the [[literate change summary]], and the replacement for the
+  retired **comprehension quiz** above. `EXAMPLES.md` carries **3 to 5 worked
+  examples**, each a **behavioural before/after** ("before this change, X did
+  Y; after, X does Z"), each grounded in `CHANGES.md` and the bundle alone,
+  and each about **consequence rather than recall** (*"what happens to X when
+  Y is absent?"*, never *"what is the new function called?"*).
+  **When needed.** Written whenever the change has an **observable
+  behavioural consequence**; skipped for changes with no behavioural surface —
+  pure docs, formatting, comments, pure renames. **Auditable skip:** the
+  `.escalated` marker body carries one `examples:` line — `examples: <count>`
+  when `EXAMPLES.md` was written, or `examples: none — <one-line reason>`
+  when it was not, so a skip is a written record rather than a silent
+  absence. [[PACKET.md]], a byte-identical copy of the marker body, inherits
+  this line automatically.
+  **Self-administered, recorded, and never graded by the reviewer — and never
+  a gate.** The reviewer writes the worked examples and stops there: it never
+  reads, judges, or scores the human's engagement with them, and never
+  conditions a verdict, marker, or route on them — a reviewer that could mark
+  a human's engagement wrong and withhold approval would re-adjudicate the
+  human (R6). Authored **after** the would-be verdict is settled, never gating
+  or influencing it. What is recorded is one required `examples:` token on the
+  `.pass` marker's appended `human:` attestation line — exactly one of
+  `examples: reviewed`, `examples: skipped`, or `examples: none-offered` (that
+  last only when no `EXAMPLES.md` was written), stated by the human as an
+  `examples: <token>` body line in the [[DECISION file]] and transcribed by
+  the reviewer. **`examples: skipped` is a first-class legitimate outcome**:
+  it must not block, warn, or be retried, and an absent `examples:` line
+  transcribes as a skip rather than stalling — naming only the success token
+  would build a gate by omission. The token rides on the *appended*
+  attestation line, never the marker's required first line, so it cannot
+  affect `task-gate.sh`'s `marker_valid()` (PASS marker format v3). Offered on
+  the **approve route only** — reject-with-reason and direct-a-fix already
+  carry evidence of engagement. `EXAMPLES.md` is deleted with the rest of the
+  [[Escalation packet]] in all three terminal routes, in the same reviewer
+  action. Defined in `templates/persona-protocol.md`'s "Fourth verdict:
+  escalate-to-human" section.
+_Avoid_: example, sample, demo, examples quiz (none of these name the
+  behavioural-illustration concept precisely — use "worked example", or name
+  `EXAMPLES.md` directly)
 
 **humanReviewMode**:
 (unit #133, 2026-08-10, forward-looking; shipped unit #135, 2026-08-11;
@@ -1094,11 +1140,13 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   content pane in the **Microworld dashboard** that displays rendered markdown
   (e.g., a documentation excerpt or a literate change summary), distinct from a
   **verbatim pane** (which displays clipboard-destined text unchanged, such as
-  a composed command or a source-code excerpt). The dashboard renders six
+  a composed command or a source-code excerpt). The dashboard renders five
   document panes via `renderMarkdown`: (1) Escalation `CHANGES.md` body, (2)
-  Escalation `PACKET.md` body, (3) Escalation `QUIZ.md` body, (4)
-  `QUIZ-ANSWERS.md` lazy reveal, (5) Briefing / plan-doc excerpt, and (6)
-  Milestone findings `finding.body`. The six verbatim panes (composed commands,
+  Escalation `PACKET.md` body, (3) Escalation `EXAMPLES.md` body (renamed from
+  the retired `QUIZ.md` body and `QUIZ-ANSWERS.md` lazy reveal, which the
+  2026-08-20 quiz-to-worked-examples plan collapsed from two panes into one and
+  removed the lazy-fetch reveal entirely), (4) Briefing / plan-doc excerpt, and
+  (5) Milestone findings `finding.body`. The six verbatim panes (composed commands,
   paste-back blocks, `defer`/`skip` commands, source-code excerpts, and notebook
   stdout/stderr cells) use `escapeHtml` and remain byte-identical to their
   source. Naming note: the `Review` rail-section header uses "review" in a
