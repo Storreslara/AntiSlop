@@ -1,8 +1,8 @@
 {
-  "_comment": "Plugins cannot ship settings.json - this fragment is MERGED into the project's .claude/settings.json by install-antislop, never overwritten wholesale. The default teammate model has no reliable settings key as of this plugin's version pin (>=2.1.178) - set it by hand via /config after install. The agent-teams flag is experimental.",
+  "_comment": "Plugins cannot ship settings.json - this fragment is MERGED into the project's .claude/settings.json by install-antislop, never overwritten wholesale. The default teammate model has no reliable settings key as of this plugin's version pin (>=2.1.178) - set it by hand via /config after install. The agent-teams flag defaults OFF here: per Anthropic's docs (https://code.claude.com/docs/en/agent-teams, 'Claude spawns teammates instead of subagents'), while it's on, ANY named subagent dispatch launches as a teammate whose completion surfaces only as a content-free idle notification unless it explicitly SendMessages back - quoting the docs, 'An orchestration flow that waits on subagent results can stall.' Opt in per task via `/antislop:start-feature-team` instead of leaving this on globally. To flip it on for a session, edit this value to \"1\" and save - the docs confirm Claude Code reapplies settings-file env values to a running session on save and rereads the variable before each subagent spawn, so no restart is required.",
   "agent": "orchestrator",
   "env": {
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "0"
   },
   "permissions": {
     "allow": [

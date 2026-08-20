@@ -2,6 +2,16 @@
 description: Spin up the persona feature team for a task (agent-teams mode - off by default, a deliberate gear).
 ---
 
+**Precondition:** this project ships `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`
+set to `"0"` by default (see `agents/orchestrator.md`'s "Default dispatch
+naming" section for why). To run this command for real, first set it to
+`"1"` in `.claude/settings.json` and save the file — per Anthropic's docs
+(https://code.claude.com/docs/en/agent-teams), Claude Code reapplies
+settings-file `env` values to the running session on save and rereads the
+variable before each subagent spawn, so this does not require restarting
+the session. Set it back to `"0"` when the team's work is done to restore
+the default.
+
 Act as team lead (coordinate, do NOT implement). Create an agent team for
 "$ARGUMENTS". Check `.claude/agents/` for which personas this project
 actually has (spec-master, task-master, scribe, reviewer, and researcher are

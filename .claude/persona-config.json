@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.60",
+  "pluginVersion": "0.31.61",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -47,14 +47,14 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "54224b9891c59f21350512050e12b7f42f5587707784f300f6a118b534a4beca",
+    ".claude/agents/orchestrator.md": "eef003855a0290d3239cc1c3328340d10e6fa2ece69a955db902e9fa94baa39c",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
-    ".claude/agents/lead-programmer.md": "a6377b9fc43e47cdd772c8b1764c5628d592a4cb25a2b69151b2bea04d1e5640",
-    ".claude/agents/spec-master.md": "5b282f07593085fd14362f64db62b8e82bd1fbe6fb5d13d84af6af2fd9ce2b5f",
+    ".claude/agents/lead-programmer.md": "24667a28ea977728935ab2cf27e2b930ffaf8fac22dead235bf3f73a04e02f10",
+    ".claude/agents/spec-master.md": "7fca5141ef3a6941293e9130d88c48612d2e1a907e9de0cebb7b3c7421ad5ac8",
     ".claude/agents/task-master.md": "00aee58c136b08573d9dce87b6bdfdf11a93a62d8949e23d0435e4acd5d585f1",
     ".claude/agents/scribe.md": "7c414abb1b10688499a16a055772c73a199cdfb07e8bca7d75dc1f52945e0a8a",
     ".claude/agents/reviewer.md": "e91ced176af7c32abd3d05a489e9dbf1e0e2e1207bf0fa25a233e931e8913848",
-    ".claude/agents/milestone-auditor.md": "7c3175e1a11a6d12d72231ebe1ecefee24ccf42f6df205831c0d0b3cc782ad5d",
+    ".claude/agents/milestone-auditor.md": "52cb64b82638f67559068c81408b7caf3d4347db8431dc40d4e4fa1f9d036d07",
     ".claude/agents/agent-auditor.md": "e2c60fc3cd47e5ba5686da193ceb3eec290f370cd6655a9cfe2bf1507edfd747",
     ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
     ".claude/persona-protocol.md": "71118faa22d1be212f87583bd9dcf07a7dab6332126d4073405311d7ebd52664",

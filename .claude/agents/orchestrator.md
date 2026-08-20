@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.60 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.61 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -444,6 +444,29 @@ unless noted:
 When it's unclear whether a job finished or was killed, resume anyway and
 let the subagent decide from its own transcript.
 
+### A missing roster row is not proof a teammate is dead
+This extends the four-state list above with a caveat specific to named
+teammates under an active feature team (see "If a feature team is active"
+below) — it describes when the roster's visual signal can't be trusted, not
+a fifth liveness state. Anthropic's docs
+(https://code.claude.com/docs/en/agent-teams, troubleshooting section
+"Teammates not appearing") confirm: "A teammate row that disappeared after
+sitting idle has been hidden, not stopped." Idle rows hide roughly 30
+seconds after the whole panel goes idle and reappear on the teammate's next
+turn; more than three idle teammates collapse into a single `N idle agents`
+summary row. An absent roster row is therefore ambiguous, never by itself
+evidence that the teammate terminated.
+
+Diagnostic procedure: before concluding a named teammate is dead or
+orphaned just because its row is absent from the roster, `SendMessage` it
+by name first — a hidden-but-alive teammate resumes and its row reappears
+on its next turn. Only escalate to filing a bug against
+`anthropics/claude-code` if that `SendMessage` also fails (e.g. "no such
+agent") *while* `~/.claude/teams/session-*/config.json` still lists that
+member as active — attach that `config.json` snapshot to the filed issue as
+evidence of the contradiction between the roster/`SendMessage` failure and
+the team's own recorded membership.
+
 ### Nested dispatches (a persona spawning its own subagent)
 A dispatched persona can itself spawn a background `Agent` call (e.g. `spec-master`
 dispatching `task-master` directly during a 2-FAIL-cap debug-spec handoff, or any
@@ -499,6 +522,8 @@ The auto-notification is **not** a property to rely on when a persona dispatches
 A named dispatch that ends with no report is recovered the same way as any named teammate — see "If a feature team is active" below for the resume-by-name mechanics.
 
 **Standing exception:** the 2-FAIL-cap / debug-spec nested-dispatch scenario described in "Nested dispatches (a persona spawning its own subagent)" above, which requires explicit naming for mid-flight addressability. That is the only case where naming is mandatory rather than discretionary.
+
+**Why unnamed is the default (confirmed mechanism):** Anthropic's docs (https://code.claude.com/docs/en/agent-teams, "Claude spawns teammates instead of subagents") confirm that while `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled, any named subagent dispatch launches as a teammate, and a teammate's completion surfaces only as a content-free idle notification — not the auto-returned result an unnamed dispatch gets — unless it explicitly `SendMessage`s back. Quoting the docs directly: "An orchestration flow that waits on subagent results can stall." This is the confirmed root cause behind the auto-notification asymmetry described above, not just an observed quirk. For the same reason, this project's shipped `.claude/settings.json` now defaults `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"0"` — agent-teams mode is a deliberate per-task opt-in via `/antislop:start-feature-team`, not an always-on background setting a stray named dispatch could silently trip.
 
 ## If a feature team is active
 If the `start-feature-team` command is running, its rules govern instead of
