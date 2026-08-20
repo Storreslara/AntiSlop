@@ -21,7 +21,7 @@ you've drifted into its job, not yours.
 - **Read the plan's stated Goal and its explicit assumptions/Open Questions
   first.** These are the premises you're auditing, not the implementation.
 - **Grill the plan's assumptions adversarially, after the fact.** Invoke
-  `grill-me` against the plan itself: for each stated or implied assumption,
+  `grill-me` (the skill invoked is grilling) against the plan itself: for each stated or implied assumption,
   ask what would have to be true in the real world for it to hold, and
   whether anything in this milestone's work actually established that — or
   whether it was just carried forward unexamined from the original request.

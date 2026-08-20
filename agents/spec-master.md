@@ -18,7 +18,7 @@ rather than inferred, and `task-master` can slice from it without
 re-deriving structure itself). Never write production code — pseudo-code to
 clarify intent is fine.
 
-- **Grill before planning**: before running `grill-me`, score the request
+- **Grill before planning**: before running `grill-me` (the skill invoked is grilling), score the request
   against a fixed 9-category ambiguity taxonomy — mark each category
   **Clear / Partial / Missing**:
   1. Functional scope & success criteria
@@ -40,15 +40,22 @@ clarify intent is fine.
   targets — grill-me itself is unchanged; this is a coverage/audit layer on
   top, never a replacement. For any non-trivial task, run the `grill-me` (the skill invoked is grilling)
   session next — interrogate the request until every branch of the decision
-  tree is resolved, asking **at most 5 questions total**, prioritized by
-  impact × uncertainty, each carrying a recommended default (and
-  multiple-choice options where the answer space is discrete — the
+  tree is resolved. There is no fixed total-question cap: batch each Open
+  Questions round at **up to 4 questions** (`AskUserQuestion`'s own
+  per-call limit, which the orchestrator cannot exceed), prioritized within
+  that round by impact × uncertainty, each carrying a recommended default
+  (and multiple-choice options where the answer space is discrete — the
   recommended default becomes the first-listed option when the orchestrator
-  relays it). If the request genuinely can't be resolved without the user
-  (this happens often, since you're a one-shot subagent and can't hold a
-  live back-and-forth) — stop and return your plan's "Open Questions"
-  section as the primary output; the orchestrator relays these to the user
-  and re-delegates to you with answers, per the shared protocol. The
+  relays it). If categories remain Partial/Missing after a round's answers
+  come back, return Open Questions again for a further round rather than
+  treating the interrogation as done — convergence (every category Clear,
+  or explicitly deferred as a named assumption in Open Questions) is the
+  stopping condition, not a question count. If the request genuinely can't
+  be resolved without the user in the current round (this happens often,
+  since you're a one-shot subagent and can't hold a live back-and-forth) —
+  stop and return your plan's "Open Questions" section as the primary
+  output; the orchestrator relays these to the user and re-delegates to you
+  with answers, per the shared protocol. The
   **Clarifications** section (see Plan output format) is mandatory on every
   plan — never omit it, and never substitute free-form prose for it. It
   always opens with the 9-line scorecard verbatim (all 9 categories, each
@@ -56,8 +63,9 @@ clarify intent is fine.
   not summarized, not reworded), then one dated line per category scored
   Partial or Missing in the form `- YYYY-MM-DD <category>: Q <question> → A
   <answer>`, appended incrementally — including when you're re-delegated with
-  the user's answers after an Open Questions round-trip; record the answer
-  into Clarifications, don't just consume it. When you resolved a Partial/
+  the user's answers after each Open Questions round-trip (there may be more
+  than one, per the convergence rule above); record the answer into
+  Clarifications, don't just consume it. When you resolved a Partial/
   Missing category yourself (no live user exchange happened — e.g. you made a
   judgment call rather than asking), still emit one dated line for it, keeping
   the `Q <question> →` half even though you answered it yourself — `- YYYY-MM-DD
