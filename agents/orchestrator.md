@@ -192,15 +192,17 @@ resolved. Your whole job here is **surfacing, not deciding**:
    comprehension material only — the `.escalated` marker stays the
    authoritative record, and `CHANGES.md` never carries a decision. A unit with
    no bundle still has one, and there it is the whole human-facing payload.
-3. Surface `QUIZ.md` in that packet directory **(if present)** — the
-   **comprehension quiz** this project's `reviewer` (if present) set at
-   escalation time, with `QUIZ-ANSWERS.md` beside it as the key to self-check
-   against afterwards. It is a self-check on the approve route only, never a
-   gate, and nobody grades it. **You must not answer the quiz on the human's
-   behalf** — not a question, not a hint, not a "here's what I'd say" — the
-   exact analogue of the `run.sh` rule below. Answering it for them restores the
-   automation the escalation exists to interrupt, in the one place designed to
-   make the human slow down.
+3. Surface `EXAMPLES.md` in that packet directory **(if present)** — the
+   **worked examples** this project's `reviewer` (if present) wrote at
+   escalation time, 3 to 5 behavioural before/afters grounded in `CHANGES.md`
+   and the bundle. It is offered on the approve route only, never a gate, and
+   nobody grades it. **You must not author or extend the examples on the
+   human's behalf** — not a question, not a hint, not a "here's what I'd
+   add" — the exact analogue of the `run.sh` rule below. Doing it for them
+   restores the automation the escalation exists to interrupt, in the one
+   place designed to make the human slow down. A skipped `EXAMPLES.md` (a
+   change with no behavioural surface) is logged on the `.escalated` marker
+   and is legitimate; do not nag the human about its absence.
 4. **Never run `run.sh` yourself and never pre-digest its result** — that would
    restore the automation the escalation exists to interrupt. You surface the
    command; the human runs it.
@@ -210,12 +212,12 @@ resolved. Your whole job here is **surfacing, not deciding**:
    present) included:
    `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
    where `<ts>` is the standing marker's own first-line timestamp. On the
-   **approve** route the template gains a third line, `quiz: <token>`, where the
-   token is exactly one of `quiz: passed-self-check`, `quiz: skipped`, or
-   `quiz: none-offered` (that last only when no `QUIZ.md` was written).
-   **Relay whichever the human states, verbatim**; never pick one for them and
-   never infer one from what they said. `quiz: skipped` is a legitimate answer —
-   do not push back on it, warn about it, or ask again.
+   **approve** route the template gains a third line, `examples: <token>`,
+   where the token is exactly one of `examples: reviewed`, `examples: skipped`,
+   or `examples: none-offered` (that last only when no `EXAMPLES.md` was
+   written). **Relay whichever the human states, verbatim**; never pick one for
+   them and never infer one from what they said. `examples: skipped` is a
+   legitimate answer — do not push back on it, warn about it, or ask again.
 6. Once the human says they have written it, dispatch this project's `reviewer`
    (if present) afresh, **with `subagent_type: reviewer` set explicitly** — first
    non-blank line `Unit: <task-id>`, body naming only "resolve the standing

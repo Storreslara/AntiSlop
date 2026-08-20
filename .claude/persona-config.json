@@ -11,7 +11,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.61",
+  "pluginVersion": "0.31.62",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -47,17 +47,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "eef003855a0290d3239cc1c3328340d10e6fa2ece69a955db902e9fa94baa39c",
+    ".claude/agents/orchestrator.md": "c662d1a97208731089a33077772380eeb3fb256f8a7b0c0e7786323ddd7af3dd",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
     ".claude/agents/lead-programmer.md": "24667a28ea977728935ab2cf27e2b930ffaf8fac22dead235bf3f73a04e02f10",
     ".claude/agents/spec-master.md": "7fca5141ef3a6941293e9130d88c48612d2e1a907e9de0cebb7b3c7421ad5ac8",
     ".claude/agents/task-master.md": "00aee58c136b08573d9dce87b6bdfdf11a93a62d8949e23d0435e4acd5d585f1",
     ".claude/agents/scribe.md": "7c414abb1b10688499a16a055772c73a199cdfb07e8bca7d75dc1f52945e0a8a",
-    ".claude/agents/reviewer.md": "e91ced176af7c32abd3d05a489e9dbf1e0e2e1207bf0fa25a233e931e8913848",
+    ".claude/agents/reviewer.md": "ebf44355e9eb26a0a908d21e41b579f0eb12d9b04bb33426868f0afd7aa2e753",
     ".claude/agents/milestone-auditor.md": "52cb64b82638f67559068c81408b7caf3d4347db8431dc40d4e4fa1f9d036d07",
     ".claude/agents/agent-auditor.md": "e2c60fc3cd47e5ba5686da193ceb3eec290f370cd6655a9cfe2bf1507edfd747",
     ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
-    ".claude/persona-protocol.md": "71118faa22d1be212f87583bd9dcf07a7dab6332126d4073405311d7ebd52664",
+    ".claude/persona-protocol.md": "2167f14e5ac813b06866032586a78529a2a3eff77b42ed2c0aa82e3ed9a8a58f",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "1bf68b4f87d059438a74cda7dbeef5bfbaa415fc0cf04441d8e456627ed77d19",
@@ -69,7 +69,7 @@
     ".claude/hooks/scripts/reviewer-route-gate.sh": "576ae3fc3d5f390d1d3905ed5ee5609a4696ab93c62f6c5d31412ef7f339f800",
     ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
     ".claude/hooks/scripts/session-start.sh": "75027910bbe85781dc5c382ed0400347a2ca42d31a59946adeb5c9d68eb0e993",
-    ".claude/hooks/scripts/stop-gate.sh": "d03bcc78b0aff56fe1b3ffecfa7f4b47a8de129e409f80e45ab3f63f10eab2c1",
+    ".claude/hooks/scripts/stop-gate.sh": "64f4f2d5f55edfea21c2fee49a2d61f23aa74273540d220b386be9d3ae82b214",
     ".claude/hooks/scripts/task-gate.sh": "984ff31817d8c241149d05f02096cb777ff32f9d8c59c4c39bd4c1bd646208ac",
     ".claude/hooks/scripts/human-decision-gate.sh": "1c4b0ddd0a328f6d094ae6703f6c87ae54bd8a7cd96e8c05c394191a7441b893",
     ".claude/hooks/scripts/lib/benign-command.sh": "5b64d3f39e1a06607344ad98ef3331abb83a38d45229f8317e5baebe8e7da18c",
