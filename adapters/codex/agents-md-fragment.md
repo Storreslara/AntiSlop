@@ -180,19 +180,24 @@ places the reviewer is least confident about). It quotes the diff, it does not
 reproduce it; soft cap 400 lines. A unit with no bundle still gets one, and that
 is the case where it carries the entire human-facing payload.
 
-**`QUIZ.md` + `QUIZ-ANSWERS.md` (comprehension quiz):** the same action also
-writes both into the packet. `QUIZ.md` holds 3 to 5 questions, each answerable
-from `CHANGES.md` and the bundle alone and each about CONSEQUENCE rather than
-recall ("what happens to X when Y is absent?", never "what is the new function
-called?") - a recall question is answerable by skimming. `QUIZ-ANSWERS.md` holds
-the reviewer's answer key, in a separate file so the human can attempt first and
-self-check after. Authored AFTER the would-be verdict, like `CHANGES.md`, and
-never gating or influencing it. The quiz is self-administered, recorded, and
-**never graded by the reviewer**, and it is **never a gate**: the reviewer sets
-the questions and the key and stops there - it never reads the human's answers,
-never marks them, and never conditions a verdict, marker, or route on them.
-Grading them would re-adjudicate the human, which is the property the escalation
-exists to protect.
+**`EXAMPLES.md` (worked examples):** the same action also writes it into the
+packet - 3 to 5 **behavioural before/after** illustrations ("before this
+change, X did Y; after, X does Z"), each grounded in `CHANGES.md` and the
+bundle alone and each about CONSEQUENCE rather than recall - a recall
+illustration is skimmable, which defeats the point. **When needed:** written
+whenever the change has an observable behavioural consequence; skipped for
+changes with no behavioural surface (pure docs, formatting, comments, pure
+renames). **Auditable skip:** the `.escalated` marker body carries one
+`examples:` line - `examples: <count>` when written, or
+`examples: none - <one-line reason>` when not, so a skip is a written record
+rather than a silent absence; `PACKET.md` inherits this automatically. Authored
+AFTER the would-be verdict, like `CHANGES.md`, and never gating or influencing
+it. Worked examples are self-administered, recorded, and
+**never graded by the reviewer**, and they are **never a gate**: the reviewer
+writes the examples and stops - it never reads, judges, or scores the human's
+engagement with them, and never conditions a verdict, marker, or route on
+them. Grading them would re-adjudicate the human, which is the property the
+escalation exists to protect.
 
 Distinct from `.blocked` (reviewer *lacked context*; this one means policy wants
 human eyes on critical code) - separate marker files, separate audit-log tokens.
@@ -214,7 +219,7 @@ First line exactly
 where `escalation:` repeats the standing marker's own first-line timestamp - the
 staleness binding, so an older decision cannot resolve a later escalation. Second
 line `by: <name>`. Body: the reason verbatim for `reject`, the full prescribed fix
-verbatim for `direct`, a `quiz: <token>` line for `approve`.
+verbatim for `direct`, an `examples: <token>` line for `approve`.
 
 The resolution dispatch names only the unit and carries no decision. The reviewer
 verifies the file exists, parses its first line, checks the task-id and the
@@ -225,27 +230,27 @@ wait.
 
 | Human decision | Reviewer writes | Cap slot | Next move |
 |---|---|---|---|
-| **Approve** | `.pass`, with the `commit:` field copied verbatim from the standing `.escalated` marker's own `commit:` line (never re-derived), plus an appended `human: approved by <name> <UTC ISO-8601> quiz: <token>` attestation quoting the file | - | unit done |
+| **Approve** | `.pass`, with the `commit:` field copied verbatim from the standing `.escalated` marker's own `commit:` line (never re-derived), plus an appended `human: approved by <name> <UTC ISO-8601> examples: <token>` attestation quoting the file | - | unit done |
 | **Reject with reason** | `.fail` with the reason verbatim as the defect list | **consumes one** | back to `lead-programmer`, normal FAIL route |
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the prescribed fix verbatim | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
 
-The approve attestation carries one required `quiz:` token recording what the
-human did with the comprehension quiz, exactly one of `quiz: passed-self-check`,
-`quiz: skipped`, or `quiz: none-offered` (the last only when no `QUIZ.md` was
-written). The human states it as a `quiz: <token>` body line in the DECISION
-file, after `by: <name>`, and the reviewer transcribes it. `quiz: skipped` is a
-first-class legitimate outcome - it must not block, must not warn, and must not
-be retried; its value is being on the record, so an auditor can see which
-approvals came with a self-check. An absent `quiz:` line transcribes as
-`quiz: skipped` (or `quiz: none-offered` if no `QUIZ.md` was written), never a
-stall. The quiz is offered on the **approve route only** - reject-with-reason
-and fixable-a-specific-way already carry a reason or a directive as evidence of
-engagement, so do not harmonise the three routes. The token rides on the
-appended `human:` line, never the marker's required first line, so it cannot
-affect `marker_valid()`.
+The approve attestation carries one required `examples:` token recording what
+the human did with the worked examples, exactly one of `examples: reviewed`,
+`examples: skipped`, or `examples: none-offered` (the last only when no
+`EXAMPLES.md` was written). The human states it as an `examples: <token>` body
+line in the DECISION file, after `by: <name>`, and the reviewer transcribes it.
+`examples: skipped` is a first-class legitimate outcome - it must not block,
+must not warn, and must not be retried; its value is being on the record, so
+an auditor can see which approvals came with the material read. An absent
+`examples:` line transcribes as `examples: skipped` (or `examples: none-offered`
+if no `EXAMPLES.md` was written), never a stall. Worked examples are offered on
+the **approve route only** - reject-with-reason and fixable-a-specific-way
+already carry a reason or a directive as evidence of engagement, so do not
+harmonise the three routes. The token rides on the appended `human:` line,
+never the marker's required first line, so it cannot affect `marker_valid()`.
 
 All three delete `.escalated` and the packet - `PACKET.md`, `CHANGES.md`,
-`QUIZ.md`, `QUIZ-ANSWERS.md`, and the
+`EXAMPLES.md`, and the
 bundle copy together, no route exempt - in the same action, via
 `rm -rf .claude/human-review/<task-id>` - the decision gate's sanctioned deletion
 path, which is also what removes the decision file, since no identity may `rm` it

@@ -54,17 +54,16 @@ function canonicalHeaders() {
 // recorded here visibly, not silently fixed and not silently ignored.
 //
 // The escalate-to-human row probes the packet's human-facing artifacts by
-// name, not just the header: gh299 (CHANGES.md) and gh300 (QUIZ.md) both
-// landed in these hand-adapted ports, and a header-only probe would pass on a
-// port that had silently dropped either one.
+// name, not just the header: gh299 (CHANGES.md) and examples-1 (EXAMPLES.md)
+// both landed in these hand-adapted ports, and a header-only probe would pass
+// on a port that had silently dropped either one.
 const ESCALATION_PROBES = [
   'Fourth verdict: escalate-to-human',
   'Comprehension material only',   // CHANGES.md's byte-exact authority line (gh299)
-  'QUIZ.md',                       // comprehension quiz, gh300
-  'QUIZ-ANSWERS.md',
-  'quiz: passed-self-check',
-  'quiz: skipped',                 // the non-gate token — omitting it builds a gate
-  'quiz: none-offered',
+  'EXAMPLES.md',                   // worked examples, examples-1
+  'examples: reviewed',
+  'examples: skipped',             // the non-gate token — omitting it builds a gate
+  'examples: none-offered',
   'never graded by the reviewer',  // the R6 authority constraint, gh300
 ];
 
