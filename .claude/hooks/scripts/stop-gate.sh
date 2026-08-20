@@ -388,7 +388,7 @@ if [ "$hook_event" = "Stop" ]; then
       esac
     done
     if [ "$blocked" = true ]; then
-      echo "Unit awaiting review - confirm the reviewer is dispatched for it, or dispatch it now if not (persona-protocol.md's Review Ownership section); this hook cannot tell which. Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .claude/.pending-review.<agent-id>' - defer keeps the flag (sticky: allows every subsequent Stop too, still owed), skip deletes it (abandoned). Empty reason rejected." >&2
+      echo "Unit awaiting review. Dispatch reviewer, or: printf \"defer|skip: <reason>\\n\" > .claude/.pending-review.<agent-id> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected." >&2
       exit 2
     fi
     exit 0
