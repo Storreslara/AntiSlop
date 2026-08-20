@@ -828,8 +828,8 @@ async function runTests() {
         pendingReview: [{ agentId: 'a1', state: 'pending', reason: null, timestamp: '2026-08-01T00:00:00Z', unit: 'gh1' }],
       },
     });
-    const headers = (leftRailHtml.match(/<div class="bundle-section-header">([^<]*)<\/div>/g) || []).map(h => h.match(/>([^<]*)</)[1]);
-    const expected = ['Review (4)', 'Plans & Specs (1)', 'Microworlds (1)'];
+    const headers = (leftRailHtml.match(/<button class="bundle-section-header"[^>]*>[\s\S]*?<\/button>/g) || []).map(h => h.replace(/<[^>]+>/g, '').trim());
+    const expected = ['▾ Review (4)', '▾ Plans & Specs (1)', '▾ Microworlds (1)'];
     if (JSON.stringify(headers) !== JSON.stringify(expected)) {
       failures.push(`Test (m) FAILED: expected headers ${JSON.stringify(expected)}, got ${JSON.stringify(headers)}`);
     } else {
@@ -942,8 +942,8 @@ async function runTests() {
       ],
       decisionsData: { escalations: [], briefings: [], findings: [], pendingReview: [] },
     });
-    const headers = (leftRailHtml.match(/<div class="bundle-section-header">([^<]*)<\/div>/g) || []).map(h => h.match(/>([^<]*)</)[1]);
-    const expected = ['Microworlds (1)'];
+    const headers = (leftRailHtml.match(/<button class="bundle-section-header"[^>]*>[\s\S]*?<\/button>/g) || []).map(h => h.replace(/<[^>]+>/g, '').trim());
+    const expected = ['▾ Microworlds (1)'];
     if (JSON.stringify(headers) !== JSON.stringify(expected)) {
       failures.push(`Test (p) FAILED: with only working bundle, expected ${JSON.stringify(expected)}, got ${JSON.stringify(headers)}`);
     } else {

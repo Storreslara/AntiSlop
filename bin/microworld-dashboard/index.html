@@ -89,7 +89,11 @@
     .copy-btn:hover { filter: brightness(1.08); }
     .copy-feedback { margin-bottom: var(--space-4); padding: var(--space-2); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip); color: var(--gvx-green); display: none; }
     .hidden-textarea { position: absolute; left: -9999px; width: 1px; height: 1px; }
-    .bundle-section-header { padding: var(--space-3) var(--space-4); background: var(--gvx-bg-dim); font-weight: 600; font-size: 0.85rem; color: var(--gvx-gray); border-bottom: 1px solid var(--gvx-bg-soft); text-transform: uppercase; letter-spacing: 0.5px; }
+    .bundle-section-header { padding: var(--space-3) var(--space-4); background: var(--gvx-bg-dim); font-weight: 600; font-size: 0.85rem; color: var(--gvx-gray); border-bottom: 1px solid var(--gvx-bg-soft); text-transform: uppercase; letter-spacing: 0.5px; border: none; cursor: pointer; width: 100%; text-align: left; display: flex; align-items: center; gap: var(--space-2); font-family: inherit; font-size: inherit; }
+    .bundle-section-header:hover { background: var(--gvx-bg-soft); }
+    .bundle-section-header:focus-visible { outline: 2px solid var(--gvx-yellow); outline-offset: -2px; }
+    .bundle-section-toggle { display: inline-block; flex-shrink: 0; width: 1em; text-align: center; }
+    .bundle-section-items { display: contents; }
     .pill-option-group { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-4); }
     .pill-option { background: var(--gvx-bg); color: var(--gvx-fg); border: 1px solid var(--gvx-bg-soft); padding: var(--space-3) var(--space-4); border-radius: var(--radius-pill); cursor: pointer; font-weight: 500; transition: all 0.2s ease; }
     .pill-option:hover { filter: brightness(1.08); }
@@ -150,6 +154,9 @@
     let defaultBy = '';
     let escalationForm = { route: 'approve', reason: '', by: '', quiz: 'skipped' };
     let pendingReviewForm = { reason: '' };
+
+    // Left-rail section collapse state (survives re-renders across poll interval)
+    let collapsedSections = new Set();
 
     async function fetchBundles() {
       const response = await fetch('/api/bundles', {
@@ -235,7 +242,11 @@
       // Review section: escalations, packet bundles, findings, pending review
       const reviewCount = (decisions?.escalations?.length || 0) + packetBundles.length + (decisions?.findings?.length || 0) + (decisions?.pendingReview?.length || 0);
       if (reviewCount > 0) {
-        html += `<div class="bundle-section-header">Review (${reviewCount})</div>`;
+        const reviewCollapsed = collapsedSections.has('review');
+        html += `<button class="bundle-section-header" type="button" data-section="review" aria-expanded="${!reviewCollapsed}">
+          <span class="bundle-section-toggle">${reviewCollapsed ? '▸' : '▾'}</span> Review (${reviewCount})
+        </button>`;
+        html += `<div class="bundle-section-items" data-section="review" ${reviewCollapsed ? 'style="display: none"' : ''}>`;
 
         // Escalations
         if (decisions && decisions.escalations) {
@@ -274,22 +285,33 @@
             </div>
           `).join('');
         }
+
+        html += '</div>';
       }
 
       // Plans & Specs section: briefings
       const briefingsCount = decisions?.briefings?.length || 0;
       if (briefingsCount > 0) {
-        html += `<div class="bundle-section-header">Plans & Specs (${briefingsCount})</div>`;
+        const plansCollapsed = collapsedSections.has('plans-specs');
+        html += `<button class="bundle-section-header" type="button" data-section="plans-specs" aria-expanded="${!plansCollapsed}">
+          <span class="bundle-section-toggle">${plansCollapsed ? '▸' : '▾'}</span> Plans & Specs (${briefingsCount})
+        </button>`;
+        html += `<div class="bundle-section-items" data-section="plans-specs" ${plansCollapsed ? 'style="display: none"' : ''}>`;
         html += decisions.briefings.map((b) => `
           <div class="bundle-item decision-item ${isSelectedDecision('briefing', b.path) ? 'active' : ''}" data-decision-kind="briefing" data-decision-key="${escapeHtml(b.path)}">
             <div class="bundle-title">${escapeHtml(b.heading || b.path)}</div>
           </div>
         `).join('');
+        html += '</div>';
       }
 
       // Microworlds section: working bundles
       if (workingBundles.length > 0) {
-        html += `<div class="bundle-section-header">Microworlds (${workingBundles.length})</div>`;
+        const microCollapsed = collapsedSections.has('microworlds');
+        html += `<button class="bundle-section-header" type="button" data-section="microworlds" aria-expanded="${!microCollapsed}">
+          <span class="bundle-section-toggle">${microCollapsed ? '▸' : '▾'}</span> Microworlds (${workingBundles.length})
+        </button>`;
+        html += `<div class="bundle-section-items" data-section="microworlds" ${microCollapsed ? 'style="display: none"' : ''}>`;
         html += workingBundles.map((b) => `
           <div class="bundle-item ${selectedBundle?.id === b.id ? 'active' : ''}" data-bundle-id="${escapeHtml(b.id)}">
             <div>
@@ -299,9 +321,24 @@
             <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
           </div>
         `).join('');
+        html += '</div>';
       }
 
       rail.innerHTML = html;
+
+      // Attach section header toggle listeners
+      rail.querySelectorAll('.bundle-section-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+          e.preventDefault();
+          const section = header.getAttribute('data-section');
+          if (collapsedSections.has(section)) {
+            collapsedSections.delete(section);
+          } else {
+            collapsedSections.add(section);
+          }
+          renderLeftRail();
+        });
+      });
 
       rail.querySelectorAll('.bundle-item').forEach(item => {
         item.addEventListener('click', () => {
