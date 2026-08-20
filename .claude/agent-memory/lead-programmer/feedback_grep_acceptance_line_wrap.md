@@ -35,3 +35,16 @@ made it 2. The file's own prose/comments count toward a bare-substring
 `grep -c`, so when a criterion pins an exact count, word any nearby comment to
 avoid the anchor string entirely rather than assuming only the data lines are
 counted.
+
+**Same failure mode inside a JS test's `String.prototype.includes()` probe,
+not just `grep`.** On unit `examples-2`
+(`docs/plans/2026-08-20-quiz-to-worked-examples.md`), porting protocol prose
+into `adapters/codex/agents-md-fragment.md` /
+`adapters/cursor/rules/persona-protocol.mdc` wrapped the literal phrase
+`never graded by the reviewer` across a line break, silently failing
+`tests/adapter-protocol-parity.test.js`'s `portText.includes(probe)` check
+with no diagnostic beyond "expected present but missing" — same root cause as
+the `grep -q` case, different tool. Also hit the negative-corollary: a stale
+descriptive comment in the test file itself (`gh300 (QUIZ.md)`) tripped the
+unit's own `git grep -ci quiz` acceptance criterion. Both apply to any literal
+substring check, not just `grep`.
