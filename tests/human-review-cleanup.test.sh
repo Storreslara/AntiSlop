@@ -121,4 +121,30 @@ else
   bad "sibling resolved packet was NOT deleted (sweep likely aborted early)"
 fi
 
+echo
+echo "-- DECISION is unreadable (mode 000): malformed entry skipped, sweep keeps going --"
+dir="$(mk_project unreadable)"
+mkdir -p "$dir/.claude/human-review/unreadable-decision-task"
+printf 'DECISION unreadable-decision-task 2026-08-24T00:00:00Z route: approve escalation: 2026-08-20T00:00:00Z\nby: human\n' \
+  > "$dir/.claude/human-review/unreadable-decision-task/DECISION"
+chmod 000 "$dir/.claude/human-review/unreadable-decision-task/DECISION"
+rc=0
+out="$("$script" --project-dir "$dir" --apply)" || rc=$?
+chmod 644 "$dir/.claude/human-review/unreadable-decision-task/DECISION" 2>/dev/null || true
+if [ "$rc" = 0 ]; then
+  pass "sweep does not abort when a DECISION file is unreadable"
+else
+  bad "sweep aborted (rc=$rc) when a DECISION file is unreadable (out=[$out])"
+fi
+if [ -d "$dir/.claude/human-review/unreadable-decision-task" ]; then
+  pass "malformed entry with unreadable DECISION is left in place"
+else
+  bad "malformed entry with unreadable DECISION was deleted"
+fi
+if [ ! -e "$dir/.claude/human-review/resolved-task" ]; then
+  pass "sibling resolved packet still deleted despite the unreadable DECISION"
+else
+  bad "sibling resolved packet was NOT deleted (sweep likely aborted early)"
+fi
+
 exit "$fail"
