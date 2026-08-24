@@ -34,4 +34,6 @@
 - [PASS-note warnings don't propagate](feedback_pass_note_warnings_do_not_propagate.md) — harvest sibling `.pass` notes for steps still ahead; gh402 predicted gh403's 2-FAIL cap verbatim and nobody acted.
 - [Dashboard usability revision spec (#406)](project_dashboard_usability_revision_spec.md) — settled rail IA / md-pane split / USER_NAME decisions + 4 premise corrections the Fable critique got wrong.
 - [Quiz-to-worked-examples spec (2026-08-20)](project_quiz_to_worked_examples_spec.md) — settled token/example/when-needed decisions; the quiz was a *speed regulator*, not comprehension material; 3 brief premise corrections.
+- [Escalation vs protectedPaths](project_escalation_vs_protectedpaths.md) — humanReviewMode is `off` here so ESCALATE never fires; protectedPaths is a separate Write/Edit-only block. I conflated them once.
+- [Decision-gate prose false positive](project_decision_gate_prose_false_positive.md) — fires on 2 bare substrings; "narrow it to the real write target" is impossible (skeletons of `git commit -m` and `sh -c` are identical).
 - [Sentinel-stub single-impl proof](technique_sentinel_stub_single_impl_proof.md) — stub the injected module, assert a sentinel at every intended site and none of the others; kills gh320 D4's vacuous-criteria class.
