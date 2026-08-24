@@ -23,3 +23,4 @@
 - [gh385 marker-commit-attribution plan tracking](project_gh385_marker_commit_attribution.md) — gh385-5 done; remaining 6/7/8; `\$(...)` vs `$(...)` quoting gotcha in gate remediation blocks
 - [Vacuous guard & vm sandbox functions](feedback_vacuous_guard_vm_sandbox_functions.md) — check assertion field exists in real response; `vm.runInContext` exposes top-level fns on sandbox, don't excuse "can't simulate clicks"
 - [Word-boundary regex escape-sequence gotcha](feedback_word_boundary_regex_escape_sequence.md) — `\bword\b` bulk-rename skips matches after a literal `\n`/`\r` in JS source text; always re-grep after
+- [Mutation proof needs a sole denier](feedback_mutation_proof_needs_sole_denier.md) — pick a case the new guard ALONE denies; an allowlist or unbalanced-quote fallback lets the mutant survive
