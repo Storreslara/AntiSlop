@@ -11,6 +11,7 @@
 - [Bash/jq TSV pitfalls](project_bash_jq_tsv_pitfalls.md) — IFS=$'\t' read collapses consecutive tabs; jq `X // empty` in if/as silently zero-outputs instead of falling through
 - [Transcript store quirks](project_transcript_store_quirks.md) — thin sessions, orphaned meta.json, agent-teams SendMessage auto-grant + customAgentType field (#281)
 - [reviewed-path-gate false positive: report and wait](feedback_reviewed_path_gate_false_positive_report_and_wait.md) — gate can false-positive on unrelated heredocs; never route around a gate block, report and wait
+- [human-decision-gate: no rephrase exception](feedback_human_decision_gate_no_rephrase_exception.md) — unlike reviewed-path-gate.sh, this gate grants NO identity a message-rephrasing allowance; any block must be reported and waited on, never reworded past
 - [Permission layers](project_permission_layers.md) — the auto-mode classifier is independent of `permissions.allow`; "Blocked by classifier" is final, "Stage 2 classifier error" is transient (retry once)
 - [G1 bump invalidates mirrors](project_g1_bump_invalidates_mirrors.md) — a version bump alone turns validate.sh RED via cli-backfill F2; regenerate the 13 stamps in the same unit; `--update --check` writes
 - [Never unconditional stash pop](feedback_never_unconditional_stash_pop.md) — `git stash; ...; git stash pop` can pop ANOTHER agent's stash in this shared tree; prefer a detached worktree for investigation
