@@ -37,7 +37,7 @@ for entry_path in "$review_dir"/*; do
 
   decision="$entry_path/DECISION"
   resolved=false
-  if [ -s "$decision" ]; then
+  if [ -f "$decision" ] && [ -s "$decision" ]; then
     first_line="$(head -n1 "$decision")"
     case "$first_line" in
       "DECISION $entry "*) resolved=true ;;
@@ -49,7 +49,7 @@ for entry_path in "$review_dir"/*; do
     continue
   fi
 
-  entry_real="$(cd -P "$entry_path" && pwd)"
+  entry_real="$(cd -P "$entry_path" && pwd)" || continue
   [ "$entry_real" != "$review_real" ] || continue
   case "$entry_real" in
     "$review_real"/*) ;;

@@ -99,4 +99,26 @@ else
   bad ".escalated marker was removed"
 fi
 
+echo
+echo "-- DECISION is a directory: malformed entry skipped, sweep keeps going --"
+dir="$(mk_project dirdecision)"
+mkdir -p "$dir/.claude/human-review/dir-decision-task/DECISION"
+rc=0
+out="$("$script" --project-dir "$dir" --apply)" || rc=$?
+if [ "$rc" = 0 ]; then
+  pass "sweep does not abort when a DECISION path is a directory"
+else
+  bad "sweep aborted (rc=$rc) when a DECISION path is a directory (out=[$out])"
+fi
+if [ -d "$dir/.claude/human-review/dir-decision-task" ]; then
+  pass "malformed entry with directory DECISION is left in place"
+else
+  bad "malformed entry with directory DECISION was deleted"
+fi
+if [ ! -e "$dir/.claude/human-review/resolved-task" ]; then
+  pass "sibling resolved packet still deleted despite the malformed entry"
+else
+  bad "sibling resolved packet was NOT deleted (sweep likely aborted early)"
+fi
+
 exit "$fail"

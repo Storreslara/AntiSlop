@@ -424,6 +424,15 @@ else
 fi
 
 echo
+echo "== human-review-cleanup: resolved-packet sweep (Bash) =="
+if bash tests/human-review-cleanup.test.sh; then
+  echo "OK   tests/human-review-cleanup.test.sh"
+else
+  echo "FAIL tests/human-review-cleanup.test.sh"
+  fail=1
+fi
+
+echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"
