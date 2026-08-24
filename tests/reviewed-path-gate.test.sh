@@ -499,6 +499,116 @@ bash_case "case 36.19 \$'...' mis-pairing hides a live write (binds the guard)" 
   blocked lead-programmer "printf \$'a\\'' ; printf x > $marker/9.pass\\'"
 
 echo
+echo "-- case 37: a mention that survives only inside a '#' comment (decision A) --"
+# Unit hdg-prose-2 taught human-decision-gate.sh that a trigger sitting in a
+# trailing comment is text bash discards. This is the same allowance for the
+# marker directory and nothing more: a mention that does not survive
+# comment-masking is not this gate's business, while a mention bash could act on
+# - in code, in a quoted word, in a redirection target - still denies. The
+# `git commit` recognizer that unit added is deliberately NOT ported here
+# (decision A): this gate's `git commit -F <file>` workaround is sanctioned, so
+# the commit case traps nobody, and case 30 keeps `git` denied whole.
+#
+# Zero marginal capability, proven for THIS gate rather than inherited from the
+# sibling one (R-13 - this gate protects a DIRECTORY, not a single file): if
+# every mention sits inside a comment body, deleting the comments leaves a
+# command whose text has no ".claude/reviewed" substring at all, which the
+# substring early-exit already allows today. 37.3 measures that half, and is the
+# second deliberate exception to this file's build-from-$marker rule (case 19 is
+# the first).
+allowed_37=(
+  "printf x > notes.txt  # summarised from $marker/9.pass"
+  "printf x > notes.txt  #summarised from $marker/9.pass"
+  "printf x > 9.pass  # writes into $marker when cwd is the marker dir"
+)
+bash_case "case 37.1 write elsewhere, trailing comment names the marker dir" \
+  allowed lead-programmer "${allowed_37[0]}"
+bash_case "case 37.2 same, with no space after the '#'" \
+  allowed lead-programmer "${allowed_37[1]}"
+bash_case "case 37.3 R-13 control: the cd-relative write with NO comment, already allowed today" \
+  allowed lead-programmer "printf x > 9.pass"
+bash_case "case 37.4 R-13 pair: its commented twin, which therefore grants nothing new" \
+  allowed lead-programmer "${allowed_37[2]}"
+
+# The must-stay-denied set. Each either spells the marker directory somewhere
+# bash can act on it, or reaches for a program/construct the allowlist never
+# admitted. Three are mutation kills for the three parts of the new branch:
+#   37.13 binds comment-masking's QUOTE-awareness - a naive "mask from the first
+#     '#' to end of line" hides a real redirection target, and real bash then
+#     writes the marker file;
+#   37.14 binds the comment ending at the NEWLINE - a mask running to end of
+#     string hides the second line's write entirely;
+#   37.20 binds the substitution rejection - with it dropped, an allowlisted
+#     program writes into a directory named by a command substitution.
+# 37.5 kills a mutant that drops the segment allowlist. It is defence in depth
+# rather than the thing standing between this gate and a real write (by the
+# zero-marginal-capability argument above, nothing here is), and it is pinned
+# because the spec requires the allowlist kept, not because it closes a hole.
+# The eval/exec/source scan is NOT independently binding - segment_allowed()
+# already refuses all three as a segment's first word - so 37.12 is pinned as
+# the shape an attacker reaches for first, not as a kill.
+bash_case "case 37.5 sh -c write with a comment decoy (program allowlist still governs)" \
+  blocked lead-programmer "sh -c 'printf x > 9.pass'  # into $marker"
+bash_case "case 37.6 direct redirect" blocked lead-programmer \
+  "printf x > $marker/9.pass"
+bash_case "case 37.7 append" blocked lead-programmer \
+  "printf x >> $marker/9.pass"
+bash_case "case 37.8 redirect carrying an unrelated comment" blocked lead-programmer \
+  "printf x > $marker/9.pass  # unrelated note"
+bash_case "case 37.9 quoted target with a comment (quoted spans stay intact)" \
+  blocked lead-programmer "printf x > \"$marker/9.pass\"  # note"
+bash_case "case 37.10 bare cd-relative write" blocked lead-programmer \
+  "cd $marker && printf x > 9.pass"
+bash_case "case 37.11 commented cd-relative write" blocked lead-programmer \
+  "cd $marker && printf x > 9.pass  # note"
+bash_case "case 37.12 eval with the mention in a comment" blocked lead-programmer \
+  "eval 'printf x > 9.pass'  # into $marker"
+bash_case "case 37.13 a quoted '#' is not a comment, so the mention still stands" \
+  blocked lead-programmer "echo '#' > $marker/9.pass"
+bash_case "case 37.14 a comment ends at the newline; the next line still writes" \
+  blocked lead-programmer "echo hi  # note
+printf x > $marker/9.pass"
+bash_case "case 37.15 tee with a comment" blocked lead-programmer \
+  "tee $marker/9.pass  # note"
+bash_case "case 37.16 cp with a comment" blocked lead-programmer \
+  "cp /dev/null $marker/9.pass  # note"
+bash_case "case 37.17 node -e with a comment decoy" blocked lead-programmer \
+  "node -e 'require(\"fs\").writeFileSync(\"9.pass\",\"x\")'  # into $marker"
+bash_case "case 37.18 python3 -c with a comment decoy" blocked lead-programmer \
+  "python3 -c 'open(\"9.pass\",\"w\").write(\"x\")'  # into $marker"
+bash_case "case 37.19 command-substitution target spelling the dir" blocked lead-programmer \
+  "printf x > \$(printf %s $marker)/9.pass  # note"
+bash_case "case 37.20 command-substitution target with the mention only in the comment" \
+  blocked lead-programmer "printf x > \$(cat dir.txt)/9.pass  # into $marker"
+bash_case "case 37.21 \$VAR target spelling the dir" blocked lead-programmer \
+  "printf x > \${D:-$marker}/9.pass  # note"
+bash_case "case 37.22 backslash outside quotes (lexer still fails closed)" \
+  blocked lead-programmer "printf x > $marker/9.pass\\ b  # note"
+bash_case "case 37.23 ANSI-C quoting (lexer still fails closed)" blocked lead-programmer \
+  "printf \$'x\\n' > $marker/9.pass  # note"
+bash_case "case 37.24 sed -i with a comment" blocked lead-programmer \
+  "sed -i s/a/b/ $marker/9.pass  # note"
+bash_case "case 37.25 mention in a quoted argument is not a comment" blocked lead-programmer \
+  "printf '%s' \"$marker/9.pass\" > notes.txt  # note"
+bash_case "case 37.26 own-line comment still fails closed (ratified #183 residual, R-11)" \
+  blocked lead-programmer "printf x > 9.pass
+# writes into $marker"
+
+# Anti-fail-open control: every payload this section newly allows is handed to
+# REAL bash in a sandbox seeded with a sentinel, exactly as case 26 does, so an
+# allowance that turns out to touch the marker directory fails the suite rather
+# than being argued about.
+for c in "${allowed_37[@]}"; do
+  bash_run "$c"
+  if [ "$rc" = 0 ]; then
+    sweep_differential "37 differential" "$c" "$c"
+    pass "case 37 differential: allowed, and real bash left the marker dir alone"
+  else
+    bad "case 37 differential: expected the gate to allow [$c], got rc=$rc"
+  fi
+done
+
+echo
 echo "-- case 30: git and rg are off the allowlist entirely (#186) --"
 # Both were allowlisted with a flag scan guarding the options that make them
 # write or run a program. Both were removed outright instead: each consults
