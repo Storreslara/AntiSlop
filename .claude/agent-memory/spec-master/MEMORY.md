@@ -38,3 +38,5 @@
 - [Decision-gate prose false positive](project_decision_gate_prose_false_positive.md) — fires on 2 bare substrings; "narrow it to the real write target" is impossible (skeletons of `git commit -m` and `sh -c` are identical).
 - [hdg-prose-2 debug spec](project_hdg_prose_2_debug_spec.md) — settled remedy + 4 premise reversals; a `warn`-mode grammar constrains nothing; 420-command differential sweep as the no-new-FP proof.
 - [Sentinel-stub single-impl proof](technique_sentinel_stub_single_impl_proof.md) — stub the injected module, assert a sentinel at every intended site and none of the others; kills gh320 D4's vacuous-criteria class.
+- [Branch-agreement criterion](technique_branch_agreement_criterion.md) — assert a textual guard AGREES with its structural sibling; character enumerations kept missing one more dimension (630/670 → 0/670).
+- [Gate early-exit residuals spec](project_gate_early_exit_residuals_spec.md) — anchored arm beat charclass widening 0 FPs to 97; one-site rpg fix closes 1 of 10; CONTEXT.md's gate glossary is wrong in 5 entries.
