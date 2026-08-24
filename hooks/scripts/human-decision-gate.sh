@@ -4,12 +4,14 @@
 # .claude/human-review/<task-id>/DECISION, the human's own resolution of a
 # pending ESCALATE-TO-HUMAN packet. No grant branch and no fallback: unlike
 # reviewed-path-gate.sh, no identity may ever write this file. Reads are
-# allowed, EXCEPT that a read whose command text contains any backslash is
-# denied - the shared lexer fails closed on every backslash, including one
-# inside single quotes where it is inert. That is a known false positive, left
-# open deliberately (docs/plans/2026-08-12-human-decision-gate-false-positive.md,
-# Open Question 2): closing it means modelling backslash escapes in a lexer
-# reviewed-path-gate.sh also depends on.
+# allowed, a backslash inside a single-quoted span included. The shared lexer
+# once failed closed on EVERY backslash, inert or not, and this header used to
+# record that as a deliberately-open false positive; hdg-lexer-1 closed it
+# (docs/plans/2026-08-24-human-decision-gate-prose-false-positive.md Step 1).
+# What still fails closed is a backslash that changes bash's OWN lexing - a
+# `$'...'` or `$"..."` span, an escaped quote inside double quotes, a line
+# continuation, an escaped separator - because each of those moves where a write
+# really lands (pinned as P13-d through P13-l in the suite).
 #
 # One write shape IS allowed, via is_sanctioned_marker_write() below: the
 # sanctioned marker-write template, which exists because the protocol requires
@@ -88,9 +90,17 @@ is_sanctioned_marker_write() {
 # into one word, so `'<dir>/'"DECISION"` names the file exactly as the bare
 # spelling does - treating the quote as a terminator saw two harmless halves and
 # let an allowlisted program write the real file (measured fail-open, pinned as
-# Q1-Q16 in the suite). Whitespace ends a run even INSIDE quotes, which is what
-# keeps a prose sentence naming both tokens from reading as a path: a bash word
-# may contain a space, but this gate's file cannot.
+# Q1-Q16 in the suite). Whitespace still ends a run even INSIDE quotes, which is
+# what keeps a prose sentence naming both tokens from reading as a path - but
+# that is a property of THIS scan, not of the protected set. A bash word may
+# contain a space and so may this gate's file: nothing constrains the packet
+# directory's name at creation time (the reviewer derives it from the free-form
+# `Unit: <id>` dispatch line, dispatchHygiene.mode is "warn" rather than "block",
+# and reviewer spawns are not gated by that grammar at all), and the Write/Edit
+# branch below already denies such a path through a `*` glob.
+# has_whitespace_id_packet_path() is what makes the two branches agree about the
+# identical path string; without it they disagreed, and the Bash branch was the
+# looser of the two (measured fail-open, pinned as W1-W16).
 #
 # Deliberately a pure-bash scan - tokenizing via $(printf ... | tr ...) would
 # word-split AND glob, and a bare `*` in a commit message then expands to every
@@ -112,10 +122,48 @@ has_path_shaped_occurrence() {
   done
 }
 
+# Companion to the run scan, covering the one word shape it structurally cannot
+# see: a packet directory whose NAME holds whitespace. True when a `/DECISION`
+# follows a `human-review` in the quote-joined text with nothing but path-safe
+# characters between them - the marker id charclass plus `/`, space and tab.
+# Newline is deliberately NOT path-safe, which is what keeps a multi-line commit
+# message naming the two tokens on different lines allowed.
+#
+# It sits BESIDE has_path_shaped_occurrence(), never in place of it, and is
+# never consulted to permit anything - so it can only ever add denials. Prose
+# between the two tokens almost always carries punctuation outside the
+# charclass (`:`, `;`, `(`, `)`, `<`, `>`), which is what leaves the
+# commit-message allowance standing.
+has_whitespace_id_packet_path() {
+  # \047 and \042 are ' and ", spelled as escapes for the same reason as above.
+  local rest="$1" head
+  rest="${rest//$'\047'/}"
+  rest="${rest//$'\042'/}"
+  while :; do
+    case "$rest" in
+      *human-review*) rest="${rest#*human-review}" ;;
+      *) return 1 ;;
+    esac
+    case "$rest" in
+      */DECISION*)
+        head="${rest%%/DECISION*}"
+        # Only the FIRST /DECISION is worth testing: every later one has a head
+        # that contains this one, so an unsafe head can never become safe. A
+        # failed head therefore means this `human-review` is spent - go on to
+        # the next one rather than to the next `/DECISION`.
+        case "$head" in
+          *[!A-Za-z0-9_$' \t'/.#-]*) ;;
+          *) return 0 ;;
+        esac
+        ;;
+    esac
+  done
+}
+
 # Shared precondition for both allowances below: bash cannot act on any mention.
 # No substitution - read from the RAW text, since double quotes do not inhibit
-# `$(` or backticks; no path-shaped run; the command must lex; and no trigger may
-# survive into the skeleton's CODE text. command_skeleton() masks quoted spans
+# `$(` or backticks; neither path condition above may hold; the command must
+# lex; and no trigger may survive into the skeleton's CODE text. command_skeleton() masks quoted spans
 # and comment bodies to X, so a trigger still visible in the skeleton sat where
 # bash would execute it or use it as a redirection target - `printf x > DECISION`
 # with a `# human-review` comment is denied here, and would otherwise write the
@@ -124,6 +172,7 @@ triggers_are_inert() {
   local cmd="$1" skel
   case "$cmd" in *'`'*|*'$('*|*'<('*) return 1 ;; esac
   has_path_shaped_occurrence "$cmd" && return 1
+  has_whitespace_id_packet_path "$cmd" && return 1
   skel="$(command_skeleton "$cmd")" || return 1
   case "$skel" in *human-review*|*DECISION*) return 1 ;; esac
   return 0
@@ -230,8 +279,12 @@ fi
 # `"DEC"'IS'"ION"` each spell a trigger token the raw text does not, and each
 # really writes the file. Deleting the quote characters can only ADD occurrences
 # - neither token contains one - so this subsumes the raw test. It does NOT
-# close the two pinned residuals of the same family, which need runtime
-# information this has none of: R-4's split variable and R-5's `DECISIO\N`.
+# close the residual CLASS of the same family, whose members reach the real file
+# because the raw text never spells a trigger token at all. R-4's split variable
+# and R-5's `DECISIO\N` are two examples of it, not the whole enumeration: the
+# glob-metacharacter sub-class is wider and is tracked separately as F-1
+# (docs/plans/2026-08-24-debug-hdg-prose-2-whitespace-id.md Part 4, pinned as
+# F1a-F1d in the suite and deferred rather than accepted).
 joined="${command//$'\047'/}"
 joined="${joined//$'\042'/}"
 case "$joined" in

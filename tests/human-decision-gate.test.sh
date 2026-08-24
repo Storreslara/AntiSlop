@@ -261,7 +261,7 @@ bash_case "P13-k own-line comment after a read stays blocked (R-11 residual)" bl
 # note"
 
 echo
-echo "-- FP-B: a prose-only git commit is allowed (C1-C8) --"
+echo "-- FP-B: a prose-only git commit is allowed (C1-C12) --"
 bash_case "C1 the operator's exact commit, both tokens in the message" allowed \
   antislop:reviewer \
   "git commit -m \"fix(human-review-cleanup-1): pin the unreadable DECISION file\""
@@ -286,6 +286,27 @@ bash_case "C7 apostrophe inside a double-quoted message" allowed antislop:review
 # the path-shape test ever runs. The pure-bash scan must not.
 bash_case "C8 a bare * in the message (glob hazard)" allowed antislop:reviewer \
   "git commit -m \"fix(human-review-cleanup-1): DECISION * glob hazard\""
+# C9-C12 bound has_whitespace_id_packet_path() from the allow side: it may only
+# fire on text that really spells the path. C9's tokens are separated by prose
+# carrying an apostrophe, C10's by a `;` (inside the quoted span, so the skeleton
+# still sees one segment), and neither reaches a `/DECISION` at all.
+bash_case "C9 both tokens in ordinary prose, dir named with its trailing slash" allowed \
+  antislop:reviewer \
+  "git commit -m \"note: .claude/human-review/ holds the human's own DECISION file\""
+bash_case "C10 prose whose interstitial text carries a ;" allowed antislop:reviewer \
+  "git commit -m 'human-review packet ; then the DECISION file'"
+# C11 is the newline exclusion, and it is the ONLY thing keeping it allowed:
+# every character between the two tokens here is otherwise path-safe. Add \n to
+# the companion scan's charclass and this multi-line message flips to blocked.
+bash_case "C11 multi-line message, second line a bare u1/DECISION (binds \\n exclusion)" \
+  allowed antislop:reviewer "git commit -m \"human-review
+u1/DECISION\""
+# C12 is denied by has_path_shaped_occurrence(), NOT by the companion scan: the
+# template's `<` and `>` are outside the path-safe charclass, and the whole
+# literal is one unbroken run anyway. Pinned so a later reader does not read a
+# denied commit message as evidence for the companion condition.
+bash_case "C12 a message spelling the literal template path (run scan denies it)" blocked \
+  antislop:reviewer "git commit -m \"see .claude/human-review/<task-id>/DECISION\""
 
 echo
 echo "-- P16: an inert trailing comment no longer denies a write elsewhere --"
@@ -394,10 +415,14 @@ echo "-- adjacent-fragment concatenation spells the path too (Q1-Q16) --"
 # path split across a quote boundary is the same path. A scan that ends a run at
 # a quote sees two harmless halves and lets an allowlisted program write the real
 # file - measured fail-open at e7deb42, which is why every direction of the split
-# is pinned here rather than one representative. Two conditions carry a
-# sole-denier proven by mutation: joining fragments in the path-shape scan (Q1
-# and eleven others flip to allowed without it) and reading the quote-joined text
-# in the substring early-exit (Q13 alone flips; Q12 flips under either).
+# is pinned here rather than one representative. Both conditions still carry a
+# sole-denier proven by mutation, but one binding case MOVED when
+# has_whitespace_id_packet_path() landed: that scan deletes quote characters
+# itself, so reverting the fragment joining now flips NONE of Q1-Q20 (measured
+# on this tree; it flipped fourteen of them before the companion scan existed,
+# not the twelve an earlier version of this comment claimed). Q21 below is what
+# binds the fragment joining today. The substring early-exit is untouched by any
+# of that - Q12 and Q13 both flip to allowed when it reads the raw text again.
 bash_case "Q1 dir and file in two single-quoted fragments" blocked antislop:reviewer \
   "printf x > '.claude/human-review/u1/''DECISION'"
 bash_case "Q2 single-quoted dir, double-quoted /file" blocked antislop:reviewer \
@@ -460,6 +485,19 @@ bash_case "Q19 brace expansion with a comma (measured: ambiguous redirect)" bloc
 # the ALLOW costs nothing. Pinned as an accepted residual, same as R5.
 bash_case "Q20 brace expansion splitting the filename (accepted residual)" allowed \
   antislop:reviewer "printf x > .claude/human-review/u1/DECISIO{N,}"
+
+echo
+echo "-- fragment joining, re-bound now that the companion scan exists (Q21) --"
+# Q21 is the sole denier for fragment joining in has_path_shaped_occurrence().
+# The companion scan cannot cover it: this id spells a `:`, which is outside the
+# path-safe charclass, so only the JOINED run sees the path as one word. An id
+# like `fix:thing` is exactly as producible as `my unit` - both come off the same
+# free-form `Unit:` line, which nothing gates. Measured on this tree: reverting
+# the joining flips this case and no other, and real bash then OVERWRITES a
+# DECISION already sitting in the fixture, so the ALLOW is a live fail-open
+# rather than an argument.
+bash_case "Q21 split path whose id carries a character outside the path-safe set" \
+  blocked antislop:reviewer "printf x > '.claude/human-review/fix:thing/''DECISION'"
 
 echo
 echo "-- the gh arm of the allowlist, reached through the inert-trigger write path (G1-G3) --"
@@ -531,6 +569,80 @@ bash_case "B2 commit whose message carries neither token" allowed antislop:revie
   "git commit -m 'fix(cleanup-1): tidy up'"
 bash_case "B3 commit whose message carries one token only" allowed antislop:reviewer \
   "git commit -m 'fix(human-review-cleanup-1): tidy up'"
+
+echo
+echo "-- a whitespace-bearing task-id spells the path too (W1-W16) --"
+# Nothing constrains the packet directory's NAME at creation time: the reviewer
+# derives it from the free-form `Unit: <id>` dispatch line, dispatchHygiene.mode
+# is "warn" rather than "block", and reviewer spawns are not gated by that
+# grammar at all - so an id holding a space or a tab is off-convention but
+# producible, and the Write/Edit branch's `*` glob already denies exactly these
+# paths. The run scan structurally cannot see them, because it ends a run at
+# whitespace even inside quotes - which is what keeps C1-C12 allowed - so
+# has_whitespace_id_packet_path() covers the word shape beside it rather than
+# in place of it. All sixteen were measured DENIED at the pre-unit baseline
+# f6d2923 and ALLOWED with a real write at be9f027, so each is a regression pin.
+#
+# Mutation proof: delete the has_whitespace_id_packet_path call from
+# triggers_are_inert() and fourteen of these flip to allowed. W1 is a sole
+# denier - printf is allowlisted, no run of the text spells the path, and
+# nothing else stands between it and the real file. W13/W14 are the two that do
+# NOT flip: tee and cp are absent from the program allowlist and were already
+# denied at HEAD, so they are a regression net, not evidence for the condition.
+bash_case "W1 space in the id, single-quoted (sole denier for the companion scan)" \
+  blocked antislop:reviewer "printf x > '.claude/human-review/u 1/DECISION'"
+bash_case "W2 space in the id, double-quoted" blocked antislop:reviewer \
+  "printf x > \".claude/human-review/u 1/DECISION\""
+bash_case "W3 a two-word id" blocked antislop:reviewer \
+  "cat /etc/hostname > '.claude/human-review/my unit/DECISION'"
+# W4 concatenates a $'\t' fragment rather than embedding a raw tab, which no
+# editor or trailing-whitespace check can silently eat.
+bash_case "W4 tab in the id" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u"$'\t'"1/DECISION'"
+bash_case "W5 two consecutive spaces in the id" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u  1/DECISION'"
+bash_case "W6 the space split across a quote boundary" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u '\"1/DECISION\""
+bash_case "W7 double slash before the id segment" blocked antislop:reviewer \
+  "printf x > '.claude/human-review//u 1/DECISION'"
+bash_case "W8 dot-segment before the id segment" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/./u 1/DECISION'"
+bash_case "W9 traversal before the id segment" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/x/../u 1/DECISION'"
+bash_case "W10 leading ./ on the whole path" blocked antislop:reviewer \
+  "printf x > './.claude/human-review/u 1/DECISION'"
+bash_case "W11 dotted id plus a space" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/gh345.1 b/DECISION'"
+bash_case "W12 append rather than truncate" blocked antislop:reviewer \
+  "printf x >> '.claude/human-review/u 1/DECISION'"
+bash_case "W13 tee (already denied by the program allowlist, not by this scan)" blocked \
+  antislop:reviewer "tee '.claude/human-review/u 1/DECISION'"
+bash_case "W14 cp (already denied by the program allowlist, not by this scan)" blocked \
+  antislop:reviewer "cp /tmp/x '.claude/human-review/u 1/DECISION'"
+bash_case "W15 trailing whitespace in the id segment" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1 /DECISION'"
+bash_case "W16 leading whitespace in the id segment" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/ u1/DECISION'"
+
+echo
+echo "-- F-1 glob metacharacters: ALLOW, TRACKED-OPEN (not accepted) --"
+# Unlike R5/N21/Q20 above, these are NOT ratified as acceptable. They are
+# deferred with their own scope (docs/plans/2026-08-24-debug-hdg-prose-2-
+# whitespace-id.md Part 4). Bash expands the glob against the filesystem and
+# OVERWRITES a decision the human has already made, but the raw text never
+# spells a trigger token, so the substring early-exit returns before any
+# recognizer runs. Measured byte-identical at f6d2923, e7deb42 and HEAD, so the
+# class is no unit's regression and is not this unit's to close. A later unit
+# that closes F-1 is EXPECTED to break these four pins: flip them to `blocked`
+# and delete this comment rather than working around them.
+bash_case "F1a bracket around the first letter of the filename" allowed antislop:reviewer \
+  "printf x > .claude/human-review/u1/[D]ECISION"
+bash_case "F1b ? in place of the first letter" allowed antislop:reviewer \
+  "printf x > .claude/human-review/u1/?ECISION"
+bash_case "F1c a trailing * on the filename" allowed antislop:reviewer \
+  "printf x > .claude/human-review/u1/DEC*"
+bash_case "F1d the bracket in the directory component instead" allowed antislop:reviewer \
+  "printf x > .claude/human-rev[i]ew/u1/DECISION"
 
 echo
 echo "-- widened charclass: dots and hashes in id (N24-N27) --"
