@@ -1380,15 +1380,21 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   word, not an agent's paraphrase.
 
 **The human-decision gate** (`human-decision-gate.sh`):
-(unit #325, 2026-08-11, Step 1 of #324) — the new `PreToolUse` hook (`Write|Edit`
-  and `Bash` matchers) that blocks **every** agent identity from writing a
-  [[DECISION file]] — reviewer included, empty/main-session `agent_type` included.
-  Contrast with `reviewed-path-gate.sh`: that gate has a grant branch (the reviewer
-  may write `.claude/reviewed/*.pass`, and a no-reviewer fallback exists for the
-  main session); this gate has no grant branch and no fallback — no identity may
-  ever write a DECISION file, full stop. Reads stay allowed for both gates. The
-  two gates share their read-only/text-only command classifier, extracted in this
-  same unit into `hooks/scripts/lib/benign-command.sh` (previously private to
+(unit #325, 2026-08-11, Step 1 of #324; extended units hdg-lexer-1, hdg-prose-2,
+  hdg-prose-2-fix2, 2026-08-24) — the new `PreToolUse` hook (`Write|Edit` and
+  `Bash` matchers) that blocks **every** agent identity from writing a [[DECISION
+  file]] — reviewer included, empty/main-session `agent_type` included. Contrast
+  with `reviewed-path-gate.sh`: that gate has a grant branch (the reviewer may
+  write `.claude/reviewed/*.pass`, and a no-reviewer fallback exists for the main
+  session); this gate has no grant branch and no fallback — no identity may ever
+  write a DECISION file, full stop. **Reads are allowed** in both gates, including
+  read-only commands (e.g. `grep`, file read, stat), [[prose mention]]s of the
+  protected paths in commit messages, **single-quoted patterns** in grep and other
+  read commands, and trailing shell comments — but only when these represent
+  inert mentions rather than write attempts (see the [[narrate-versus-target
+  distinction]]).
+  The two gates share their read-only/text-only command classifier, extracted in
+  this same unit into `hooks/scripts/lib/benign-command.sh` (previously private to
   `reviewed-path-gate.sh`). The sanctioned way to discard a resolved escalation
   packet is `rm -rf .claude/human-review/<task-id>` (the whole directory) — its
   command text never spells `DECISION`, so it clears the gate's substring
@@ -1517,4 +1523,158 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   not otherwise appear among this glossary's defined terms. Not a distinct
   role: do not read "operator" as narrower than, or different from, "human"
   anywhere in this document.
+
+**narrate-versus-target distinction**:
+(units hdg-prose-2, hdg-prose-2-fix2, rpg-comment-3, 2026-08-24) — a gate-design
+  principle distinguishing whether a command **narrates** (mentions or describes)
+  a protected path as inert text, versus actually **targeting** it as a write
+  destination. A command that narrates a path in a commit message (`git commit -m
+  "fix(task-id): guard the DECISION file"`), a single-quoted read pattern
+  (`grep 'DECISION\|human-review' <file>`), or a trailing shell comment (`echo x
+  > other.pass # avoid touching .claude/reviewed/`) may be allowed even if the
+  raw text contains both [[trigger token]]s, because these contexts are inert to
+  bash execution. In contrast, a command that targets the path for a write
+  (`printf x > .claude/human-review/id/DECISION`, `sh -c 'printf x > DECISION'`)
+  is denied unconditionally. Both [[The human-decision gate]] and
+  [[reviewed-path-gate.sh]] apply this distinction via gate-local allowances that
+  check whether tokens survive into the command skeleton's CODE text (prose,
+  single-quoted spans, and comments are masked and ignored). This is the design
+  principle that closes false-positive denials of reads and inert narration while
+  preserving the invariant that no agent can write the protected paths.
+
+**trigger token**:
+(units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings
+  whose co-occurrence arms [[The human-decision gate]] and (in asymmetric form)
+  other text-protection gates. In `human-decision-gate.sh`, the two triggers are
+  `human-review` and `DECISION`. A command is blocked only if its raw text
+  contains both substrings anywhere; either trigger alone allows the command
+  through. This "both tokens must appear" rule is the gate's substring early-exit
+  (a fast check before deeper gate logic). See [[narrate-versus-target
+  distinction]] for when a command carrying both tokens is allowed anyway (when
+  they are inert to execution).
+
+**marker id charclass**:
+(units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24, defined in
+  `human-decision-gate.sh:97`) — the set of characters allowed in a task id that
+  appears in the packet path `.claude/human-review/<marker-id>/`. The charclass
+  is defined as `[a-zA-Z0-9_-]`, plus `/`, space, and tab (both whitespace
+  characters are path-safe when a task id spans them, which is uncommon). A id
+  holding a space, tab, or unprintable character triggers additional scans (see
+  [[path-safe charclass]]) to distinguish prose mentions from write targets.
+
+**path-safe charclass**:
+(units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — a strict subset of the
+  [[marker id charclass]] used to separate [[prose mention]]s from actual path
+  targets. Defined as `[a-zA-Z0-9_-.]` (alphanumeric, underscore, hyphen, dot),
+  this subset excludes space, tab, and shell metacharacters. A [[marker id
+  charclass]] id that holds a space or tab (e.g. `"my task"`) requires the run
+  scan (see [[run scan]]) to confirm both [[trigger token]]s appear in a
+  contiguous non-whitespace run — if they span different words or sit in separate
+  quoted regions, the id is allowed even if it contains both tokens.
+
+**path-shaped run**:
+(units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — a contiguous sequence of
+  non-whitespace characters in the command text that contains both [[trigger
+  token]]s and resembles a file path. The [[run scan]] in `has_path_shaped_occurrence()`
+  checks whether such a run exists — if both tokens appear together in one
+  unbroken word-like span (e.g. `.claude/human-review/id/DECISION` or
+  `human-review-task-DECISION`), the gate treats it as a potential write target
+  and denies the command. If the tokens are separated by whitespace or safe
+  punctuation (see [[marker id charclass]] and [[path-safe charclass]]), no
+  path-shaped run is found and the gate may allow the command. This is a
+  structural property of the text, not merely word presence.
+
+**run scan** / **companion scan**:
+(units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — two tandem gate-logic
+  functions in `has_path_shaped_occurrence()` (see [[command skeleton]]) that
+  determine whether both [[trigger token]]s appear in a form that could name an
+  actual file path. The **run scan** checks whether some contiguous run of
+  non-whitespace characters holds both tokens (the [[marker id charclass]] proof).
+  The **companion scan** (added in hdg-prose-2-fix2) checks whether unsafe
+  characters (`:!,;()[]="@+%~^&*?\` and newline) sit between the two tokens,
+  which escape the run — if unsafe characters are present between them, the scan
+  rejects the shape as a false-positive prose mention. Both scans use no word
+  splitting and no pathname expansion (a measured hazard: a bare `*` in commit
+  text once expanded to repository filenames).
+
+**quote-joined text**:
+(units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — a textual normalization
+  applied before the [[run scan]]: concatenating adjacent quoted and unquoted
+  spans (e.g. `.claude/'re'viewed` → `.claude/reviewed`) so that quote-split
+  obfuscations of the marker directory do not bypass the gate. Implemented in
+  `human-decision-gate.sh` as a loop that joins sequences of single-quoted,
+  double-quoted, and unquoted tokens into single words before scanning for the
+  path shape.
+
+**sanctioned marker-write template**:
+(units gh345-1 note N6, hdg-prose-2, 2026-08-24, implemented in
+  `is_sanctioned_marker_write()` since 2026-08-12) — a narrowly-scoped
+  exception to [[The human-decision gate]]'s write block: the one command shape
+  that every agent identity may use to create a `.claude/reviewed/<id>.pass` or
+  `.claude/reviewed/<id>.fail` marker file. The template is a heredoc-based
+  marker creation: `cat > .claude/reviewed/<id>.pass <<'EOF' … EOF`, which reads
+  from standard input and writes to a single explicit marker file path. This is
+  the **only** write shape the gate allows, and it is unconditional across all
+  identities (reviewer, main session, orchestrator). The restriction to this
+  single shape (no piping, no redirection to other files, no `tee`, no `cp`)
+  closes a class of attacks that use marker-write privileges to access other
+  protected files. The gate recognizes the template syntactically (via a
+  dedicated function) and performs no capability delegation — a bare `cat >
+  .claude/reviewed/id.pass` (without the heredoc) is denied.
+
+**single-quoted span** / **double-quoted span**:
+(units hdg-lexer-1, 2026-08-24, refined in gate lexing via `command_skeleton()`
+  in `hooks/scripts/lib/benign-command.sh`) — a quoted region in bash command
+  text where escaping rules differ. A **single-quoted span** (e.g. `'text\n'`)
+  treats all characters literally — even backslash is literal, so `\` inside
+  single quotes poses no escaping hazard and is safe to permit. A
+  **double-quoted span** (e.g. `"text\n"`) honors backslash escapes (`\"` becomes
+  `"`), so a backslash inside double quotes is dangerous and must fail closed (a
+  `\"` at span's end could close an unrelated quote). The lexer models these
+  separately; a backslash outside both quote types and within `$'…'` or `$"…"`
+  (ANSI-C or locale quoting, which honor escapes) must also fail closed.
+
+**skeleton** / **command_skeleton**:
+(units hdg-lexer-1, earlier, implemented in `hooks/scripts/lib/benign-command.sh`
+  and used by both [[The human-decision gate]] and [[reviewed-path-gate.sh]]) —
+  a representation of a bash command that masks (replaces with whitespace) all
+  quoted spans, comments, and variable expansions, leaving only the bare
+  executable structure. The skeleton is what gate logic scans to determine whether
+  a command can write a protected path — by looking at which words survived into
+  CODE text (vs. being masked as inert quoted/commented/expanded regions). The
+  lexer that builds the skeleton is shared between both gates and must fail
+  closed on every bash quoting and escaping rule; the two units hdg-lexer-1 and
+  hdg-prose-2 hardened this lexer against seventeen measured escape hazards
+  (ANSI-C quoting, locale quoting, escaped quotes in double-quoted spans, line
+  continuation, `$'…'`, `$"…"`, and backslash in various contexts).
+
+**prose mention**:
+(units hdg-prose-2, 2026-08-24) — a reference to a protected path that appears
+  only in inert textual contexts: a git commit message (the `-m` flag's argument),
+  a single-quoted read pattern (as in `grep 'DECISION' file`), or a shell comment
+  (trailing `# text`). Prose mentions are allowed by [[The human-decision gate]]
+  even if they carry both [[trigger token]]s, because they do not execute and
+  cannot be used to write the protected path. Contrast with a write target (see
+  [[narrate-versus-target distinction]]).
+
+**inert triggers**:
+(units hdg-prose-2, 2026-08-24) — a condition checked by `triggers_are_inert()`
+  in `human-decision-gate.sh`: both [[trigger token]]s are present in the command
+  text, but neither survives into the skeleton's CODE section (both are masked by
+  quoting, comments, or expansion). Inert triggers pass the gate's second allowance
+  branch because they are absent from executable positions where bash would use
+  them as redirection targets or command names.
+
+**prose-only commit**:
+(units hdg-prose-2, 2026-08-24, checked by `is_prose_only_commit()` in
+  `human-decision-gate.sh:183-195`) — a `git commit` command that carries only
+  a commit message (`git commit -m`), with no redirection, no file arguments
+  beyond the message text, and no leading commands (e.g. `cd` then `commit` is
+  denied, but a bare `git commit -m …` is allowed). This is a gate-local
+  recognizer that permits commits whose text contains both [[trigger token]]s,
+  because the message is inert and the message is the *only* place those tokens
+  can appear in a prose-only commit. The condition is strict: `git add` is not
+  allowed alongside the commit (chaining is what enables commit-then-write
+  attacks), and this recognizer applies only to the `git commit` program, not to
+  other programs.
 
