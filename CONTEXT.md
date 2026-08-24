@@ -900,14 +900,26 @@ the collection of addressable **Agent** entities currently active in a
 
 **Pending packet**:
 (unit human-review-cleanup-1, 2026-08-24) — a state of an [[Escalation packet]]
-  defined by the absence of a `DECISION` file or the presence of a malformed/mismatched
-  one (first line not matching `DECISION <task-id> ...`). Such packets are left
-  untouched by the **packet-only** deletion operation `bin/human-review-cleanup.sh`,
+  defined by the absence of a `DECISION` file, or the presence of a `DECISION` path
+  that is unreadable, non-regular (e.g. a directory or FIFO), malformed, or mismatched
+  (first line not matching `DECISION <task-id> ...`). Such packets are left
+  untouched by the **sweep** operation `bin/human-review-cleanup.sh`,
   which only deletes [[Resolved packet|resolved packets]]. Packets remain in this
   state while awaiting human review and decision. Distinct from the reviewer's existing
   cleanup mechanism (which deletes both marker and packet when escalation is resolved
-  via the [[DECISION channel]]); this script is a supplementary manual sweep for
+  via the [[DECISION channel]]); the sweep is a supplementary manual operation for
   orphaned/leftover packets (e.g. after a crash).
+
+**Sweep**:
+(unit human-review-cleanup-1, 2026-08-24) — the operation performed by
+  `bin/human-review-cleanup.sh`: a single pass over `.claude/human-review/` that
+  identifies and deletes only [[Resolved packet|resolved packets]], leaving
+  [[Pending packet|pending packets]] untouched. Runs in dry-run mode by default
+  (reporting what would be deleted), with `--apply` flag to perform actual deletion.
+  Intended as a manual, supplementary cleanup for orphaned/resolved packets after
+  escalations, distinct from the reviewer's own cleanup mechanism (which deletes
+  both marker and packet during escalation resolution). Cross-references:
+  [[Escalation packet]], [[Resolved packet]], [[Pending packet]].
 
 **ESCALATE-TO-HUMAN**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — the fourth reviewer
