@@ -4,9 +4,7 @@
   "sourceGlobs": [],
   "protectedPaths": [
     ".github/workflows/*",
-    ".claude/constitution.md",
-    "hooks/scripts/human-decision-gate.sh",
-    "hooks/scripts/reviewed-path-gate.sh"
+    ".claude/constitution.md"
   ],
   "gatedAgents": [
     "lead-programmer"
