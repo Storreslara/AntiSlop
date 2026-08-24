@@ -46,3 +46,26 @@ merely happens to match both substrings.
 See [[reviewed-path-gate-false-positive-report-and-wait]], which has
 been corrected to remove the human-decision-gate.sh paragraph that
 previously modeled this same mistake as acceptable guidance.
+
+**The file-hosted probe boundary (hdg-prose-2-fix2, 2026-08-24).** Working
+ON this gate means measuring it, and a verdict table needs the protected
+path as data. The sanctioned method is a script FILE — `probe.sh`,
+`cases.sh`, and above all `tests/human-decision-gate.test.sh` itself,
+which is nothing but hundreds of these command texts. Running
+`bash <script>` is not a rephrasing: the text lives in a file the gate's
+Write branch checks by `file_path`, and the Bash command really does not
+target the file. The line that matters is WHEN you reach for it:
+
+- Established method first, block never involved → fine. Author probes as
+  files from the start.
+- Blocked, then restructure the same one-off command into a file to get it
+  through → that is the bypass shape, even when the content is provably a
+  measurement. Disclose it rather than deciding for yourself that it was
+  fine.
+
+Same split for `git commit -F <file>`: the default way to write a long
+multi-paragraph message (fine), versus the thing you reach for *after* the
+gate refuses your `-m` (bypass). I hit two blocks on this unit, both from
+putting path text inline in a one-off `Bash` call out of laziness when the
+file harness already existed — the fix is to keep every such text in a
+file by default so the question never arises.

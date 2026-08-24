@@ -28,3 +28,21 @@ through real bash in a throwaway sandbox and show it actually performs the
 write. ALLOW + a real side effect is the kill; anything less is an argument.
 Related: [[review_technique_mutate_to_prove_criterion]] (the reviewer-side
 version of the same move).
+
+**A NEW condition can silently un-bind an OLD one's proof.** On
+hdg-prose-2-fix2 the added companion scan did its own quote-joining, so it
+denied every case that used to bind the run scan's fragment joining: reverting
+that older condition went from flipping 14 suite cases to flipping ZERO. The
+older guard was still load-bearing (a case with a non-path-safe interstitial
+still needs it) but nothing in the suite proved it any more. So after adding a
+condition, re-run EVERY existing mutant, not just your own, and add a binder
+back if one went vacuous — a mutation proof rots silently, with a green suite
+the whole time.
+
+**Measurement hygiene: never baseline a sweep on `HEAD`.** A differential
+script doing `git show HEAD:<file>` re-baselines itself the moment you commit,
+and then cheerfully reports a tiny diff because it is comparing your work
+against itself. Pin the explicit pre-unit sha. Also widen the corpus along
+combined dimensions: a sweep over "whitespace ids" and "punctuation ids"
+separately misses ids holding BOTH, which was exactly the hole the spec's own
+420-command sweep failed to surface.
