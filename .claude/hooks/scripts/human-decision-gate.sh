@@ -77,25 +77,38 @@ is_sanctioned_marker_write() {
   done
 }
 
-# True when some contiguous run of non-whitespace, non-quote characters spells
-# BOTH trigger tokens - i.e. the text names the file as a path, in any quoting,
+# True when some run of the text spells BOTH trigger tokens with no whitespace
+# between them - i.e. the text names the file as a path, in any quoting,
 # dot-segments, `..` traversal and repeated slashes included. Unconditional: a
 # spelled path is denied wherever it sits, a commit message and a comment
 # included, because this gate cannot resolve a target and must not try.
+#
+# A quote character does NOT end a run; it is deleted and the fragments on
+# either side JOIN. Bash concatenates adjacent quoted and unquoted fragments
+# into one word, so `'<dir>/'"DECISION"` names the file exactly as the bare
+# spelling does - treating the quote as a terminator saw two harmless halves and
+# let an allowlisted program write the real file (measured fail-open, pinned as
+# Q1-Q16 in the suite). Whitespace ends a run even INSIDE quotes, which is what
+# keeps a prose sentence naming both tokens from reading as a path: a bash word
+# may contain a space, but this gate's file cannot.
+#
 # Deliberately a pure-bash scan - tokenizing via $(printf ... | tr ...) would
 # word-split AND glob, and a bare `*` in a commit message then expands to every
 # filename in the repository (measured: 22 of them).
 has_path_shaped_occurrence() {
   # \047 and \042 are ' and ". Spelled as escapes so a literal quote inside the
   # pattern cannot unbalance this file's own quoting.
-  local rest="$1" run seps=$' \t\n\047\042'
+  local rest="$1" run="" chunk sep ws=$' \t\n' seps=$' \t\n\047\042'
   while :; do
-    run="${rest%%[$seps]*}"
+    chunk="${rest%%[$seps]*}"
+    run="$run$chunk"
     case "$run" in
       *human-review*) case "$run" in *DECISION*) return 0 ;; esac ;;
     esac
-    [ "$run" != "$rest" ] || return 1
-    rest="${rest:${#run}+1}"
+    [ "$chunk" != "$rest" ] || return 1
+    sep="${rest:${#chunk}:1}"
+    rest="${rest:${#chunk}+1}"
+    case "$sep" in [$ws]) run="" ;; esac
   done
 }
 
@@ -152,6 +165,12 @@ is_prose_only_commit() {
   triggers_are_inert "$cmd" || return 1
   skel="$(command_skeleton "$cmd")" || return 1
   case "$skel" in *[$ops]*) return 1 ;; esac
+  # `first`/`sub` are read from the RAW cmd, not the skeleton, and that is safe
+  # only because of the guard immediately above: `ops` holds every separator, so
+  # by here the command is provably ONE segment, and command_skeleton() is
+  # length-preserving, so the two texts agree on where words begin. Widening
+  # `ops` is fine; NARROWING it - dropping a separator - would let `read` reach
+  # across one and report a first word that is not the segment's.
   read -r first sub _ <<< "$cmd"
   [ "$first" = git ] && [ "$sub" = commit ]
 }
@@ -183,8 +202,8 @@ not fit your write, report and wait instead.
 That rule governs commands TARGETING this file. A mention that only narrates it
 is allowed outright and needs no workaround: prose inside a single 'git commit'
 message, a single-quoted read pattern, and a trailing '#' comment all pass. What
-you hit is narrower - some unbroken run of this command's text spells the path
-itself, or a mention sits where bash would execute it.
+you hit is narrower - this command's text spells the path itself, or a mention
+sits where bash would execute it.
 
 To discard a resolved packet, delete the whole directory with
 'rm -rf .claude/human-review/<task-id>' (its command text never spells DECISION).
@@ -206,11 +225,20 @@ if [ -z "$command" ]; then
   esac
 fi
 
-case "$command" in
+# Both substring tests read the QUOTE-JOINED text, not the raw command: bash
+# concatenates adjacent fragments, so `.claude/human-rev'iew'/u1/DECISION` and
+# `"DEC"'IS'"ION"` each spell a trigger token the raw text does not, and each
+# really writes the file. Deleting the quote characters can only ADD occurrences
+# - neither token contains one - so this subsumes the raw test. It does NOT
+# close the two pinned residuals of the same family, which need runtime
+# information this has none of: R-4's split variable and R-5's `DECISIO\N`.
+joined="${command//$'\047'/}"
+joined="${joined//$'\042'/}"
+case "$joined" in
   *human-review*) ;;
   *) exit 0 ;;
 esac
-case "$command" in
+case "$joined" in
   *DECISION*) ;;
   *) exit 0 ;;
 esac

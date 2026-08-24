@@ -389,6 +389,96 @@ bash_case "D30 xargs" blocked antislop:reviewer \
   "printf '.claude/human-review/u1/DECISION' | xargs -I{} cp /tmp/x {}"
 
 echo
+echo "-- adjacent-fragment concatenation spells the path too (Q1-Q16) --"
+# Bash CONCATENATES adjacent quoted and unquoted fragments into one word, so a
+# path split across a quote boundary is the same path. A scan that ends a run at
+# a quote sees two harmless halves and lets an allowlisted program write the real
+# file - measured fail-open at e7deb42, which is why every direction of the split
+# is pinned here rather than one representative. Two conditions carry a
+# sole-denier proven by mutation: joining fragments in the path-shape scan (Q1
+# and eleven others flip to allowed without it) and reading the quote-joined text
+# in the substring early-exit (Q13 alone flips; Q12 flips under either).
+bash_case "Q1 dir and file in two single-quoted fragments" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1/''DECISION'"
+bash_case "Q2 single-quoted dir, double-quoted /file" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1'\"/DECISION\""
+bash_case "Q3 both fragments double-quoted" blocked antislop:reviewer \
+  "printf x > \".claude/human-review/u1/\"\"DECISION\""
+bash_case "Q4 append rather than truncate" blocked antislop:reviewer \
+  "echo approve >> '.claude/human-review/u1/'\"DECISION\""
+bash_case "Q5 cat as the write primitive" blocked antislop:reviewer \
+  "cat /etc/hostname > '.claude/human-review/u1/''DECISION'"
+bash_case "Q6 gh as the write primitive" blocked antislop:reviewer \
+  "gh issue view 1 > '.claude/human-review/u1/''DECISION'"
+bash_case "Q7 head as the write primitive" blocked antislop:reviewer \
+  "head -1 /etc/hostname > '.claude/human-review/u1/'\"DECISION\""
+bash_case "Q8 [ as the write primitive" blocked antislop:reviewer \
+  "[ -f x ] > '.claude/human-review/u1/''DECISION'"
+bash_case "Q9 the directory itself split across three fragments" blocked antislop:reviewer \
+  "printf x > '.claude/''human-review''/u1/'\"DECISION\""
+bash_case "Q10 split target followed by a chained command" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1/''DECISION' && echo ok"
+bash_case "Q11 split target with a trailing comment" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1/'\"DECISION\" # write it"
+# Q12/Q13 split a trigger TOKEN rather than the slash between them, so the raw
+# text spells neither `DECISION` nor `human-review` and the substring early-exit
+# used to return before any recognizer ran. Measured ALLOW on the pre-change gate
+# too, with real bash creating the file - so unlike Q1-Q11 these are not this
+# unit's regressions, but they are the same word-assembly mechanism and the
+# early-exit now reads the quote-joined text.
+bash_case "Q12 the filename itself split three ways, quote types alternating" blocked \
+  antislop:reviewer "printf x > '.claude/human-review/u1/'\"DEC\"'IS'\"ION\""
+bash_case "Q13 the split falls inside human-review, not at the slash" blocked \
+  antislop:reviewer "printf x > .claude/human-rev'iew'/u1/DECISION"
+bash_case "Q14 an unquoted slash between two quoted fragments" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1'/'DECISION'"
+bash_case "Q15 an empty leading fragment" blocked antislop:reviewer \
+  "printf x > \"\"'.claude/human-review/u1/DECISION'"
+# Q16: the same concatenation inside a commit message. The gate cannot resolve a
+# target, so a spelled path is denied wherever it sits - C1-C8 stay allowed
+# because their tokens are separated by whitespace, which no quoting undoes.
+bash_case "Q16 a commit message whose fragments concatenate into the path" blocked \
+  antislop:reviewer "git commit -m \"human-review\"\"/u1/DECISION\""
+
+echo
+echo "-- the same word-assembly shape via variables and braces (Q17-Q20) --"
+# The two other expansions that assemble a word were flagged as untested. Both
+# were measured against real bash rather than assumed. Q17 IS a live write (one
+# word, no IFS character in it) and the path-shape scan denies it. Q19 and Q20
+# are NOT: a brace expansion yielding more than one word makes the redirect
+# ambiguous and bash writes nothing, and one yielding a single word is not
+# expanded at all, so Q18's `{DECISION}` is a literally different filename.
+bash_case "Q17 unquoted variable holding the whole path" blocked antislop:reviewer \
+  "d='.claude/human-review/u1/DECISION'; printf x > \$d"
+bash_case "Q18 brace expansion around the filename (not expanded by bash)" blocked \
+  antislop:reviewer "printf x > .claude/human-review/u1/{DECISION}"
+bash_case "Q19 brace expansion with a comma (measured: ambiguous redirect)" blocked \
+  antislop:reviewer "printf x > .claude/human-review/u1/{DECISION,zz}"
+# Q20 is R-5's class, not a new hole: the raw text spells DECISIO{N,}, never
+# DECISION, so the substring early-exit fires before any recognizer runs. Bash
+# expands it to two words and refuses the redirect as ambiguous (measured), so
+# the ALLOW costs nothing. Pinned as an accepted residual, same as R5.
+bash_case "Q20 brace expansion splitting the filename (accepted residual)" allowed \
+  antislop:reviewer "printf x > .claude/human-review/u1/DECISIO{N,}"
+
+echo
+echo "-- the gh arm of the allowlist, reached through the inert-trigger write path (G1-G3) --"
+# G1 is the positive: gh with an allowlisted subcommand, writing somewhere that
+# is not this gate's file, mentioning both tokens only in a discarded comment.
+bash_case "G1 gh issue view writing elsewhere, tokens in a comment only" allowed \
+  antislop:reviewer \
+  "gh issue view 1 > /tmp/hdg-note.txt # the human-review packet and its DECISION"
+# G2/G3 are the negatives that bind the subcommand allowlist on this path: `api`
+# and `run` are excluded (benign-command.sh:41-49) and must stay excluded even
+# when the triggers are inert, since neither's writes are bounded by its text.
+bash_case "G2 gh api reached through the same path stays blocked" blocked \
+  antislop:reviewer \
+  "gh api repos/o/r/issues > /tmp/hdg-note.txt # the human-review packet and its DECISION"
+bash_case "G3 gh run download reached through the same path stays blocked" blocked \
+  antislop:reviewer \
+  "gh run download 1 > /tmp/hdg-note.txt # the human-review packet and its DECISION"
+
+echo
 echo "-- backslash and comment attacks that must stay denied (X1-X3) --"
 # X1: the comment mask ends at the newline, so the second line is still code.
 bash_case "X1 a comment ending at the newline before a real write" blocked \
