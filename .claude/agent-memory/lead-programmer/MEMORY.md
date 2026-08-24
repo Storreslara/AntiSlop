@@ -26,3 +26,4 @@
 - [protected-paths blocks pre-approved gate edits](project_protected_paths_blocks_preapproved_edits.md) — advance approval in a dispatch does NOT clear the hook; probe with the first real edit, then report and wait
 - [Bash word assembly in gates](feedback_bash_word_assembly_in_gates.md) — quotes never terminate a word; join adjacent fragments in BOTH the run scan and any raw-text early-exit
 - [Mutation proof needs a sole denier](feedback_mutation_proof_needs_sole_denier.md) — pick a case the new guard ALONE denies; an allowlist or unbalanced-quote fallback lets the mutant survive
+- [Mask comments via the skeleton](technique_mask_comments_via_skeleton.md) — scan for `#X` in command_skeleton()'s output instead of re-lexing; trailing-newline alignment trap; rpg's open quote-split residual
