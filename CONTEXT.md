@@ -888,6 +888,27 @@ the collection of addressable **Agent** entities currently active in a
   route units to human review — landed, not a forward-looking mechanism.
   Deleted by the reviewer in the same action that resolves the escalation.
 
+**Resolved packet**:
+(unit human-review-cleanup-1, 2026-08-24) — a state of an [[Escalation packet]]
+  defined by the presence of a non-empty `DECISION` file whose first line reads
+  `DECISION <task-id> ...` where `<task-id>` matches that packet's directory name.
+  The **packet-only** deletion operation `bin/human-review-cleanup.sh` targets only
+  resolved packets, distinct from the reviewer's existing cleanup (which deletes both
+  marker and packet). Packets transition to this state when a human decision is written
+  to resolve an escalation. Packets in this state are safe to delete because their
+  DECISION resolution has already been transcribed into the corresponding `.pass` marker.
+
+**Pending packet**:
+(unit human-review-cleanup-1, 2026-08-24) — a state of an [[Escalation packet]]
+  defined by the absence of a `DECISION` file or the presence of a malformed/mismatched
+  one (first line not matching `DECISION <task-id> ...`). Such packets are left
+  untouched by the **packet-only** deletion operation `bin/human-review-cleanup.sh`,
+  which only deletes [[Resolved packet|resolved packets]]. Packets remain in this
+  state while awaiting human review and decision. Distinct from the reviewer's existing
+  cleanup mechanism (which deletes both marker and packet when escalation is resolved
+  via the [[DECISION channel]]); this script is a supplementary manual sweep for
+  orphaned/leftover packets (e.g. after a crash).
+
 **ESCALATE-TO-HUMAN**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — the fourth reviewer
   verdict, signaling that a unit the reviewer would otherwise pass requires
