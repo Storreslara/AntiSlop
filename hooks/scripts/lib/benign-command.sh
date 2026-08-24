@@ -62,9 +62,21 @@ program_allowed() {
 # with real quotes and masks the separators between commands (issue #182: both a
 # comment's apostrophe and a heredoc body's quote could swallow a newline and
 # hide the second line of a two-line command entirely). So this returns non-zero,
-# printing nothing, for a heredoc operator, ANY backslash escape (an escaped
-# space defeats the word-start test below just as an escaped quote defeats the
-# pairing), and an unbalanced quote.
+# printing nothing, for a heredoc operator, an unbalanced quote, and the three
+# backslash positions named below.
+#
+# Backslash is MODELLED rather than blanket-rejected (issue #182's residual,
+# narrowed by docs/plans/2026-08-24-human-decision-gate-prose-false-positive.md).
+# Bash performs no escaping at all inside single quotes, and a `#` comment ends
+# at the newline whatever it contains, so a backslash in either place is inert
+# and is masked along with the rest of the span. Everywhere else it changes
+# bash's own lexing, so three positions fail closed: OUTSIDE quotes, where an
+# escaped space defeats the word-start test and `\"` is a literal quote
+# character that mis-pairs every quote after it; INSIDE a double-quoted span,
+# where `\"` keeps the span OPEN, so closing at the next `"` would mask text
+# bash runs as code (a second escaped quote re-balances the naive count, which
+# is exactly how a `>` gets hidden); and immediately after a `$`, because
+# `$'...'` and `$"..."` both honour `\'` and are not ordinary quoted spans.
 #
 # A `#` opens a comment only at the start of a word and only outside quotes,
 # which is why the two are resolved in one left-to-right pass rather than in
@@ -79,16 +91,20 @@ program_allowed() {
 # anchors both redirection exemptions below, for the same reason.
 #
 # Two over-blocks here are RATIFIED residuals, not oversights (issue #183,
-# docs/plans/2026-07-31-debug-182-step6-word-boundary.md, step 6R-4): ANY
-# backslash fails closed, so `cat <dir>/a\ b` is blocked - quote the path
-# instead; and a trailing segment that is entirely a comment fails closed,
-# because the masked `#` is then the word segment_allowed reads - put the comment
-# above the command, or omit it.
+# docs/plans/2026-07-31-debug-182-step6-word-boundary.md, step 6R-4): a
+# backslash outside single quotes and comments fails closed, so `cat <dir>/a\ b`
+# is blocked - quote the path instead; and a trailing segment that is entirely a
+# comment fails closed, because the masked `#` is then the word segment_allowed
+# reads. For that second one the only workarounds that actually work are keeping
+# the comment on the SAME line as the command, or omitting it: a comment on a
+# line of its own fails closed whether it sits above or below the command
+# (measured 2026-08-24 - the earlier "put the comment above the command" advice
+# was wrong).
 command_skeleton() {
   local cmd="$1" out="" pre q body pad
-  case "$cmd" in *\\*|*'<<'*) return 1 ;; esac
+  case "$cmd" in *'<<'*) return 1 ;; esac
   while :; do
-    pre="${cmd%%[\"\'#]*}"
+    pre="${cmd%%[\"\'#\\]*}"
     if [ "$pre" = "$cmd" ]; then
       printf '%s' "$out$cmd"
       return 0
@@ -96,7 +112,9 @@ command_skeleton() {
     q="${cmd:${#pre}:1}"
     cmd="${cmd:${#pre}+1}"
     out="$out$pre"
-    if [ "$q" = '#' ]; then
+    if [ "$q" = '\' ]; then
+      return 1                       # backslash outside quotes and comments
+    elif [ "$q" = '#' ]; then
       case "${out: -1}" in
         ''|[$' \t\n']|[\;\&\|\(\)\<\>]) ;;
         *) out="$out#"; continue ;;
@@ -106,8 +124,12 @@ command_skeleton() {
       printf -v pad '%*s' "${#body}" ''
       out="$out#${pad// /X}"
     else
+      # `$` right before the quote makes this ANSI-C or locale quoting, whose
+      # `\'` would keep the span open and mis-pair every quote that follows.
+      case "${out: -1}" in \$) return 1 ;; esac
       body="${cmd%%"$q"*}"
       [ "$body" != "$cmd" ] || return 1
+      [ "$q" = \' ] || case "$body" in *\\*) return 1 ;; esac
       cmd="${cmd:${#body}+1}"
       printf -v pad '%*s' "${#body}" ''
       out="$out$q${pad// /X}$q"

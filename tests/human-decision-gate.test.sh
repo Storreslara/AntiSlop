@@ -213,6 +213,49 @@ else
 fi
 
 echo
+echo "-- P13: a backslash inside single quotes no longer denies a pure read --"
+bash_case "P13-a grep with an escaped alternation over the packet file" allowed \
+  antislop:reviewer "grep -n 'DECISION\\|human-review' .claude/human-review/u1/DECISION"
+bash_case "P13-b grep -E with an escaped word boundary" allowed antislop:reviewer \
+  "grep -nE 'DECISION\\b' .claude/human-review/u1/DECISION"
+bash_case "P13-c recursive grep over the whole human-review tree" allowed \
+  antislop:reviewer "grep -rn 'DECISION\\|approve' .claude/human-review/"
+# The narrowing must not widen the write surface: every backslash construct that
+# changes bash's own lexing stays denied. P13-l binds the `$'`/`$"` branch and
+# P13-g the backslash-inside-double-quotes branch (delete either and the gate
+# allows the case, with real bash then creating the file); P13-d/e/f/h/i/j are
+# the surrounding regression net.
+bash_case "P13-d ANSI-C quoted write" blocked antislop:reviewer \
+  "sh -c \$'printf x > .claude/human-review/u1/DECISION'"
+bash_case "P13-e locale-quoted write" blocked antislop:reviewer \
+  "sh -c \$\"printf x > .claude/human-review/u1/DECISION\""
+bash_case "P13-f escaped quote inside a double-quoted span" blocked antislop:reviewer \
+  "echo \"a\\\" ; printf x > .claude/human-review/u1/DECISION\""
+bash_case "P13-g two escaped quotes re-balance the naive count, hiding a >" blocked \
+  antislop:reviewer "echo \"a\\\"\" ; printf x > .claude/human-review/u1/DECISION\\\""
+bash_case "P13-h escaped space in the redirection target" blocked antislop:reviewer \
+  "printf x > .claude/human-review/u1/DECISION\\ b"
+bash_case "P13-i line continuation before the redirect" blocked antislop:reviewer \
+  "printf x \\
+ > .claude/human-review/u1/DECISION"
+bash_case "P13-j backslash ending a single-quoted span, then a real write" blocked \
+  antislop:reviewer "printf 'a\\' ; printf x > .claude/human-review/u1/DECISION"
+# P13-l: bash reads $'a\'' as ONE ANSI-C word - the \' does not close it - so the
+# write that follows is live. A lexer treating $' as an ordinary single quote
+# pairs the quotes one position off and masks that write. First word is
+# allowlisted, so this branch is the only thing denying it.
+bash_case "P13-l \$'...' mis-pairing hides a live write (binds the guard)" blocked \
+  antislop:reviewer "printf \$'a\\'' ; printf x > .claude/human-review/u1/DECISION\\'"
+# R-11: the comment allowance the shared lexer grants is for TRAILING comments
+# only. A comment on its own line still fails closed, because the skeleton splits
+# segments on newlines and the masked '#' becomes the segment's program. That is
+# the ratified issue-#183 residual, deliberately NOT fixed here - pinned so a
+# later implementer does not read it as an oversight.
+bash_case "P13-k own-line comment after a read stays blocked (R-11 residual)" blocked \
+  antislop:reviewer "cat .claude/human-review/u1/DECISION
+# note"
+
+echo
 echo "-- widened charclass: dots and hashes in id (N24-N27) --"
 bash_case "N24 id with a dot (e.g. gh345.1)" allowed antislop:reviewer \
   "cat > .claude/reviewed/gh345.1.pass <<'EOF'

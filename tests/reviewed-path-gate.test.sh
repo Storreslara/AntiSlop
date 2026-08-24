@@ -400,7 +400,9 @@ done
 echo "     case 26 sweep: $sweep_probes probes, gate ALLOWED $sweep_allowed of them"
 # Non-vacuity floor. A future change that simply blocked everything would drive
 # the fail-open count to 0 and make the sweep pass for the wrong reason; this is
-# the assertion that fails instead. Measured on the fixed gate: 247 of 381.
+# the assertion that fails instead. Measured on the fixed gate: 248 of 381 (247
+# before the lexer modelled backslash escapes; the one added probe is T2 at 0x5C,
+# a backslash inside a `#` comment, which bash keeps inert to end of line).
 if [ "$sweep_allowed" -ge 200 ]; then
   pass "case 26 non-vacuity floor ($sweep_allowed gate-allowed probes >= 200)"
 else
@@ -415,12 +417,12 @@ echo "-- ratified residuals: known over-blocks, pinned so they are not re-litiga
 # and so that if someone does decide to narrow them, it is a deliberate change to
 # a named assertion rather than a silent drift.
 #
-# 27.1/27.2: ANY backslash makes the command unresolvable to the skeletonizer, so
-# it fails closed - an escaped space defeats the word-start test exactly as an
-# escaped quote defeats quote pairing. Narrowing this to "only the interesting
-# backslashes" is the same species of clever, narrowly-scoped lexer rule that
-# produced both prior fail-opens, so the broad rule stays. Documented workaround:
-# quote the path instead of escaping it, which 27.2 pins as allowed.
+# 27.1/27.2: a backslash OUTSIDE single quotes and comments makes the command
+# unresolvable to the skeletonizer, so it fails closed - an escaped space defeats
+# the word-start test exactly as an escaped quote defeats quote pairing. This
+# half of the residual stays; the inert half (single quotes, comments) was
+# narrowed by case 36 below. Documented workaround: quote the path instead of
+# escaping it, which 27.2 pins as allowed.
 bash_case "case 27.1 escaped space fails closed (ratified residual)" \
   blocked lead-programmer "cat $marker/a\ b"
 bash_case "case 27.2 the documented workaround - quote it instead - is allowed" \
@@ -429,11 +431,72 @@ bash_case "case 27.2 the documented workaround - quote it instead - is allowed" 
 # the comment is masked the segment's first word is the '#' itself, which is not
 # allowlisted. Ratified as blocked (OQ1, resolved 2026-07-31): the alternative is
 # new masking logic in a function that has now failed twice, and "model one more
-# construct" is precisely the move that produced those failures. Documented
-# workaround: put the comment above the command, or omit it.
+# construct" is precisely the move that produced those failures. The workarounds
+# that actually work are keeping the comment on the SAME line as the command, or
+# omitting it - a comment on a line of its own fails closed whether it sits above
+# or below (measured 2026-08-24; the older "put it above" advice was wrong).
 bash_case "case 27.3 comment-only trailing segment stays blocked (ratified residual, OQ1)" \
   blocked lead-programmer "ls $marker
 # note"
+
+echo
+echo "-- case 36: backslash escapes are modelled, not blanket-rejected (P13) --"
+bash_case "case 36.1 read: escaped alternation in a single-quoted grep pattern" \
+  allowed lead-programmer "grep -n 'PASS\\|FAIL' $marker/u1.pass"
+bash_case "case 36.2 read: escaped alternation, recursive grep over the dir" \
+  allowed lead-programmer "grep -rn 'commit\\|criteria' $marker/"
+bash_case "case 36.3 control: the same read with no backslash at all" \
+  allowed lead-programmer "grep -n PASS $marker/u1.pass"
+# The fifteen write shapes below bind the narrowing: each one is a backslash
+# construct that either changes bash's own lexing or rides a newly-lexable
+# command, and each must stay blocked. Three of them are the mutation proof that
+# each new fail-closed branch is load-bearing - delete the branch and the case
+# flips to allowed, with real bash then creating the file:
+#   36.19 binds the `$'`/`$"` branch, 36.7 the backslash-inside-double-quotes
+#   branch, and 27.1 above the backslash-outside-quotes branch.
+# The rest are the surrounding regression net. 36.4/36.5/36.16/36.17 are denied
+# by the program allowlist and the eval scan as well, so they do not bind
+# anything on their own; they are pinned because they are the shapes an attacker
+# reaches for first.
+bash_case "case 36.4 ANSI-C quoted write (\$'...' honours \\' - fail closed)" \
+  blocked lead-programmer "sh -c \$'printf x > $marker/9.pass'"
+bash_case "case 36.5 locale-quoted write (\$\"...\" - same escape handling)" \
+  blocked lead-programmer "sh -c \$\"printf x > $marker/9.pass\""
+bash_case "case 36.6 escaped quote inside a double-quoted span" \
+  blocked lead-programmer "echo \"a\\\" ; printf x > $marker/9.pass\""
+bash_case "case 36.7 two escaped quotes re-balance the naive count, hiding a >" \
+  blocked lead-programmer "echo \"a\\\"\" ; printf x > $marker/9.pass\\\""
+bash_case "case 36.8 escaped backslash before the closing double quote" \
+  blocked lead-programmer "echo \"a\\\\\" ; printf x > $marker/9.pass"
+bash_case "case 36.9 ANSI-C escaped-quote pairing, then a real write" \
+  blocked lead-programmer "printf \$'a\\'b' ; printf x > $marker/9.pass"
+bash_case "case 36.10 escaped space in the redirection target" \
+  blocked lead-programmer "printf x > $marker/9.pass\\ b"
+bash_case "case 36.11 line continuation before the redirect" \
+  blocked lead-programmer "printf x \\
+ > $marker/9.pass"
+bash_case "case 36.12 backslash ending a single-quoted span, then a real write" \
+  blocked lead-programmer "printf 'a\\' ; printf x > $marker/9.pass"
+bash_case "case 36.13 single-quoted backslash on a newly-lexable write" \
+  blocked lead-programmer "printf 'x\\n' > $marker/9.pass"
+bash_case "case 36.14 quoted '#' is not a comment, so the > stays live" \
+  blocked lead-programmer "printf 'a#b\\c' > $marker/9.pass"
+bash_case "case 36.15 comment ends at the newline, the next line still writes" \
+  blocked lead-programmer "ls $marker # note \\
+printf x > $marker/9.pass"
+bash_case "case 36.16 sed -i with escapes (program allowlist still governs)" \
+  blocked lead-programmer "sed -i 's/a\\/b/c/' $marker/9.pass"
+bash_case "case 36.17 eval with a single-quoted payload" \
+  blocked lead-programmer "eval 'printf x > $marker/9.pass'"
+bash_case "case 36.18 escaped dot in the target" \
+  blocked lead-programmer "printf x > $marker/9\\.pass"
+# 36.19 is the binding case for the `$'` branch, and the only one of these whose
+# first word is allowlisted, so nothing else denies it: bash reads $'a\'' as one
+# ANSI-C word (the \' does NOT close it), leaving the write live, while a lexer
+# that treated $' as an ordinary quote masks it. Measured: with the branch
+# deleted the gate ALLOWS this and real bash creates the file.
+bash_case "case 36.19 \$'...' mis-pairing hides a live write (binds the guard)" \
+  blocked lead-programmer "printf \$'a\\'' ; printf x > $marker/9.pass\\'"
 
 echo
 echo "-- case 30: git and rg are off the allowlist entirely (#186) --"
