@@ -134,6 +134,15 @@ has_path_shaped_occurrence() {
 # between the two tokens almost always carries punctuation outside the
 # charclass (`:`, `;`, `(`, `)`, `<`, `>`), which is what leaves the
 # commit-message allowance standing.
+#
+# BOUNDARY, measured and NOT closed here: an id carrying BOTH whitespace and a
+# character outside the charclass (`my unit!`, `u: 1`) escapes this scan on the
+# unsafe character and the run scan on the whitespace, and really writes the
+# file. That is the same regression class as W1-W16, not a pre-existing
+# residual, so it is deliberately NOT pinned as accepted anywhere in the suite.
+# Widening the charclass closes it, but buys the coverage with prose false
+# positives, which is a spec decision rather than an implementation one; it was
+# reported with this unit and is unadjudicated as this is written.
 has_whitespace_id_packet_path() {
   # \047 and \042 are ' and ", spelled as escapes for the same reason as above.
   local rest="$1" head
