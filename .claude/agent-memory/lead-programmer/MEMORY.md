@@ -24,4 +24,5 @@
 - [Vacuous guard & vm sandbox functions](feedback_vacuous_guard_vm_sandbox_functions.md) — check assertion field exists in real response; `vm.runInContext` exposes top-level fns on sandbox, don't excuse "can't simulate clicks"
 - [Word-boundary regex escape-sequence gotcha](feedback_word_boundary_regex_escape_sequence.md) — `\bword\b` bulk-rename skips matches after a literal `\n`/`\r` in JS source text; always re-grep after
 - [protected-paths blocks pre-approved gate edits](project_protected_paths_blocks_preapproved_edits.md) — advance approval in a dispatch does NOT clear the hook; probe with the first real edit, then report and wait
+- [Bash word assembly in gates](feedback_bash_word_assembly_in_gates.md) — quotes never terminate a word; join adjacent fragments in BOTH the run scan and any raw-text early-exit
 - [Mutation proof needs a sole denier](feedback_mutation_proof_needs_sole_denier.md) — pick a case the new guard ALONE denies; an allowlist or unbalanced-quote fallback lets the mutant survive
