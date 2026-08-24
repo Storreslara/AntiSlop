@@ -211,6 +211,11 @@ if grep -qF 'rm -rf .claude/human-review/<task-id>' "$errf"; then
 else
   bad "N23b deny message dropped the rm -rf guidance"
 fi
+if grep -qF 'needs no workaround' "$errf"; then
+  pass "N23c deny message scopes the rule to commands TARGETING the path"
+else
+  bad "N23c deny message dropped the clarifying sentence"
+fi
 
 echo
 echo "-- P13: a backslash inside single quotes no longer denies a pure read --"
@@ -254,6 +259,188 @@ bash_case "P13-l \$'...' mis-pairing hides a live write (binds the guard)" block
 bash_case "P13-k own-line comment after a read stays blocked (R-11 residual)" blocked \
   antislop:reviewer "cat .claude/human-review/u1/DECISION
 # note"
+
+echo
+echo "-- FP-B: a prose-only git commit is allowed (C1-C8) --"
+bash_case "C1 the operator's exact commit, both tokens in the message" allowed \
+  antislop:reviewer \
+  "git commit -m \"fix(human-review-cleanup-1): pin the unreadable DECISION file\""
+bash_case "C2 single-quoted message" allowed antislop:reviewer \
+  "git commit -m 'fix(human-review-cleanup-1): unreadable DECISION file'"
+bash_case "C3 -am" allowed antislop:reviewer \
+  "git commit -am \"fix(human-review-cleanup-1): unreadable DECISION file\""
+bash_case "C4 --amend" allowed antislop:reviewer \
+  "git commit --amend -m \"fix(human-review-cleanup-1): unreadable DECISION file\""
+bash_case "C5 two -m parts" allowed antislop:reviewer \
+  "git commit -m \"fix(human-review-cleanup-1): headline\" -m \"body names the DECISION file\""
+# C6: the newline sits INSIDE the quoted span, so command_skeleton() masks it and
+# the one-segment test still sees a single command. An unquoted newline splits.
+bash_case "C6 multi-line message" allowed antislop:reviewer \
+  "git commit -m \"fix(human-review-cleanup-1): headline
+
+body names the DECISION file\""
+bash_case "C7 apostrophe inside a double-quoted message" allowed antislop:reviewer \
+  "git commit -m \"fix(human-review-cleanup-1): don't lose the DECISION file\""
+# C8 is the measured glob hazard: a tokenizer built on \$(printf ... | tr ...)
+# expands this bare * to every filename in the repository (22 of them) before
+# the path-shape test ever runs. The pure-bash scan must not.
+bash_case "C8 a bare * in the message (glob hazard)" allowed antislop:reviewer \
+  "git commit -m \"fix(human-review-cleanup-1): DECISION * glob hazard\""
+
+echo
+echo "-- P16: an inert trailing comment no longer denies a write elsewhere --"
+bash_case "P16-a write elsewhere, both tokens only in a trailing comment" allowed \
+  antislop:reviewer \
+  "printf ok > /tmp/hdg-note.txt # relates to the human-review packet and its DECISION"
+bash_case "P16-b no space after the #" allowed antislop:reviewer \
+  "printf ok > /tmp/hdg-note.txt #human-review DECISION"
+# P16-c only DESCRIBES a cd-relative write; bash discards the whole comment. Note
+# the boundary: had the comment spelled the path in one unbroken run it would be
+# denied, which is D25-D28's class and is deliberate.
+bash_case "P16-c a comment describing a cd-relative write" allowed antislop:reviewer \
+  "printf ok > /tmp/hdg-note.txt # cd .claude/human-review/u1 then write DECISION by hand"
+# R-11: the allowance covers TRAILING comments only. P16-d is P16-a's comment
+# moved to its own line, and it stays DENIED - command_skeleton() splits segments
+# on newlines, so the masked '#' becomes that segment's program and fails the
+# allowlist. That is the ratified issue-#183 residual (benign-command.sh header,
+# docs/plans/2026-07-31-debug-182-step6-word-boundary.md step 6R-4), deliberately
+# NOT fixed here. Pinned as a pair with P16-a so a later implementer reads it as
+# a boundary rather than an oversight. P13-k pins the same shape after a read,
+# but is denied by the path-shape scan first, so only P16-d binds the residual.
+bash_case "P16-d the same comment on its OWN line stays blocked (R-11 residual)" \
+  blocked antislop:reviewer "printf ok > /tmp/hdg-note.txt
+# relates to the human-review packet and its DECISION"
+
+echo
+echo "-- the invariant: DECISION-writing shapes stay denied (D1-D30) --"
+bash_case "D1 direct redirect" blocked antislop:reviewer \
+  "printf approved > .claude/human-review/u1/DECISION"
+bash_case "D2 sh -c single-quoted write" blocked antislop:reviewer \
+  "sh -c 'printf x > .claude/human-review/u1/DECISION'"
+# D3/D4: no run spells the path, so only the program allowlist (D3) and the
+# surviving-trigger test (D4) stand between these and the real file.
+bash_case "D3 sh -c cd-relative write" blocked antislop:reviewer \
+  "sh -c 'cd .claude/human-review/u1 && printf x > DECISION'"
+bash_case "D4 bare cd-relative write" blocked antislop:reviewer \
+  "cd .claude/human-review/u1 && printf x > DECISION"
+bash_case "D5 node -e" blocked antislop:reviewer \
+  "node -e 'require(\"fs\").writeFileSync(\".claude/human-review/u1/DECISION\",\"x\")'"
+bash_case "D6 python3 -c" blocked antislop:reviewer \
+  "python3 -c 'open(\".claude/human-review/u1/DECISION\",\"w\").write(\"x\")'"
+bash_case "D7 tee" blocked antislop:reviewer \
+  "tee .claude/human-review/u1/DECISION"
+bash_case "D8 cp" blocked antislop:reviewer \
+  "cp /tmp/x .claude/human-review/u1/DECISION"
+bash_case "D9 sed -i" blocked antislop:reviewer \
+  "sed -i 's/x/y/' .claude/human-review/u1/DECISION"
+bash_case "D10 git apply" blocked antislop:reviewer \
+  "git apply .claude/human-review/u1/DECISION.patch"
+bash_case "D11 commit then write via &&" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): DECISION note\" && printf x > .claude/human-review/u1/DECISION"
+bash_case "D12 commit then write via ;" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): DECISION note\" ; printf x > .claude/human-review/u1/DECISION"
+bash_case "D13 commit then cd-relative write" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): DECISION note\" && cd .claude/human-review/u1 && printf x > DECISION"
+bash_case "D14 commit with stdout redirected at the path" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): DECISION note\" > .claude/human-review/u1/DECISION"
+bash_case "D15 commit with stderr redirected at the path" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): DECISION note\" 2> .claude/human-review/u1/DECISION"
+bash_case "D16 command substitution in the message" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): \$(cat /etc/hostname) DECISION\""
+bash_case "D17 backtick in the message" blocked antislop:reviewer \
+  "git commit -m \"fix(human-review-x): \`id\` DECISION\""
+bash_case "D18 -F at the path, bare" blocked antislop:reviewer \
+  "git commit -F .claude/human-review/u1/DECISION"
+# D19 is the sole-denier for has_path_shaped_occurrence(): the quoting hides the
+# path from the surviving-trigger test, the words are `git commit`, and there is
+# no redirection - delete the path-shape condition and this one write flips to
+# allowed. Verified by mutation, which is why the quoted form is pinned here.
+bash_case "D19 -F at the path, quoted (binds the path-shape scan)" blocked antislop:reviewer \
+  "git commit -F '.claude/human-review/u1/DECISION'"
+# D20 is the sole-denier for `second word must be commit`: its triggers are inert
+# and its first word IS git, so deleting that half lets through a commit running
+# hooks from a path of the caller's choosing (measured: blocked -> allowed).
+bash_case "D20 git -c core.hooksPath=... commit (binds the subcommand test)" blocked \
+  antislop:reviewer \
+  "git -c core.hooksPath=/tmp/h commit -m \"fix(human-review-x): DECISION note\""
+# D21 does NOT bind the first-word test, though it looks like it should: `env git
+# commit` has second word `git`, so the subcommand half rejects it either way
+# (measured - it stays blocked with the first-word check deleted). M3 is the case
+# that actually binds it.
+bash_case "D21 env prefix" blocked antislop:reviewer \
+  "env git commit -m \"fix(human-review-x): DECISION note\""
+bash_case "D22 pipeline into tee" blocked antislop:reviewer \
+  "printf approved | tee .claude/human-review/u1/DECISION"
+bash_case "D23 sh -c wrapping the commit" blocked antislop:reviewer \
+  "sh -c \"git commit -m 'fix(human-review-x): DECISION note'\""
+bash_case "D24 a command precedes git" blocked antislop:reviewer \
+  "printf x; git commit -m \"fix(human-review-x): DECISION note\""
+bash_case "D25 dot-segment target" blocked antislop:reviewer \
+  "printf x > .claude/./human-review/u1/DECISION"
+bash_case "D26 traversal target" blocked antislop:reviewer \
+  "printf x > .claude/reviewed/../human-review/u1/DECISION"
+bash_case "D27 double-slash target" blocked antislop:reviewer \
+  "printf x > .claude//human-review/u1//DECISION"
+bash_case "D28 quoted target" blocked antislop:reviewer \
+  "printf x > '.claude/human-review/u1/DECISION'"
+bash_case "D29 \$HOME in the message spells the path" blocked antislop:reviewer \
+  "git commit -m \"see \$HOME/.claude/human-review/u1/DECISION\""
+bash_case "D30 xargs" blocked antislop:reviewer \
+  "printf '.claude/human-review/u1/DECISION' | xargs -I{} cp /tmp/x {}"
+
+echo
+echo "-- backslash and comment attacks that must stay denied (X1-X3) --"
+# X1: the comment mask ends at the newline, so the second line is still code.
+bash_case "X1 a comment ending at the newline before a real write" blocked \
+  antislop:reviewer "printf ok > /tmp/hdg-note.txt # human-review DECISION
+cd .claude/human-review/u1 && printf x > DECISION"
+# X2: a # inside a quoted span is NOT a comment. Were it masked as one, the mask
+# would swallow `> DECISION` too, no trigger would survive, and printf/echo being
+# allowlisted the gate would allow a command that really writes ./DECISION -
+# which IS the protected file whenever the cwd is the packet directory.
+bash_case "X2 a quoted # that is not a comment (binds the mask boundary)" blocked \
+  antislop:reviewer "echo '#human-review' > DECISION"
+bash_case "X3 eval with a quoted payload" blocked antislop:reviewer \
+  "eval 'cd .claude/human-review/u1 && printf x > DECISION'"
+
+echo
+echo "-- each remaining new condition, bound by a case only it denies (M1-M3) --"
+# M1: sole-denier for the surviving-trigger test. The comment is masked, so the
+# ONLY trigger left in the skeleton is `DECISION` as a redirection target, with
+# printf allowlisted and no path-shaped run anywhere. Delete that condition and
+# real bash writes ./DECISION.
+bash_case "M1 cd-relative write whose only mention is a comment decoy" blocked \
+  antislop:reviewer "printf x > DECISION # human-review packet"
+# M2: sole-denier for is_prose_only_commit()'s no-redirection / one-segment test
+# (one `case` covers both). Triggers are inert and the words are `git commit`,
+# so nothing else denies a commit whose stdout is aimed at a caller-built path.
+bash_case "M2 prose commit with its stdout redirected elsewhere" blocked \
+  antislop:reviewer \
+  "git commit -m \"fix(human-review-x): DECISION note\" > /tmp/hdg-out.txt"
+# M3: sole-denier for `first word must be git`. The allowance is anchored to git
+# specifically, NOT to "second word is commit" - otherwise any program at all
+# could be waved through by naming its subcommand `commit`. Measured: deleting
+# the first-word check flips this to allowed.
+bash_case "M3 an arbitrary program whose second word is commit" blocked \
+  antislop:reviewer \
+  "./tools/release commit -m \"fix(human-review-x): DECISION note\""
+
+echo
+echo "-- pinned residuals: unchanged ALLOW (R5, B2, B3) --"
+# R-5, decision B: bash resolves \\N to N and writes the file, but the raw text
+# never spells DECISION, so the substring early-exit fires before any of this
+# gate's logic. Measured ALLOW both before and after this change, so it is NOT a
+# regression - it is an accepted, tracked limitation of the same family as N21.
+# Closing it needs backslash normalization ahead of the early-exit on every Bash
+# command in the session, and would still leave N21 open.
+bash_case "R5 DECISIO\\N escapes the substring early-exit (accepted residual)" allowed \
+  antislop:reviewer "printf x > .claude/human-review/u1/DECISIO\\N"
+# B2/B3 pin the early-exit itself: it takes BOTH tokens to engage this gate, which
+# is what made the verdict on a commit turn entirely on message prose.
+bash_case "B2 commit whose message carries neither token" allowed antislop:reviewer \
+  "git commit -m 'fix(cleanup-1): tidy up'"
+bash_case "B3 commit whose message carries one token only" allowed antislop:reviewer \
+  "git commit -m 'fix(human-review-cleanup-1): tidy up'"
 
 echo
 echo "-- widened charclass: dots and hashes in id (N24-N27) --"

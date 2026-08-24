@@ -46,7 +46,9 @@ agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
 # The one command shape allowed past command_is_provably_benign(): a marker
 # write whose heredoc body may quote the DECISION path as inert data. Safety
-# rests on four properties, together proven against a 22-case attack suite:
+# rests on four properties, together proven against the attack suite in
+# tests/human-decision-gate.test.sh (named rather than counted, because the
+# count in this comment had already drifted twice):
 # only the first physical line is code and it must match end-to-end, so nothing
 # rides along; the delimiter is single-quoted, which is bash's own guarantee the
 # body is wholly inert; the target is a bare literal under .claude/reviewed/
@@ -75,6 +77,85 @@ is_sanctioned_marker_write() {
   done
 }
 
+# True when some contiguous run of non-whitespace, non-quote characters spells
+# BOTH trigger tokens - i.e. the text names the file as a path, in any quoting,
+# dot-segments, `..` traversal and repeated slashes included. Unconditional: a
+# spelled path is denied wherever it sits, a commit message and a comment
+# included, because this gate cannot resolve a target and must not try.
+# Deliberately a pure-bash scan - tokenizing via $(printf ... | tr ...) would
+# word-split AND glob, and a bare `*` in a commit message then expands to every
+# filename in the repository (measured: 22 of them).
+has_path_shaped_occurrence() {
+  # \047 and \042 are ' and ". Spelled as escapes so a literal quote inside the
+  # pattern cannot unbalance this file's own quoting.
+  local rest="$1" run seps=$' \t\n\047\042'
+  while :; do
+    run="${rest%%[$seps]*}"
+    case "$run" in
+      *human-review*) case "$run" in *DECISION*) return 0 ;; esac ;;
+    esac
+    [ "$run" != "$rest" ] || return 1
+    rest="${rest:${#run}+1}"
+  done
+}
+
+# Shared precondition for both allowances below: bash cannot act on any mention.
+# No substitution - read from the RAW text, since double quotes do not inhibit
+# `$(` or backticks; no path-shaped run; the command must lex; and no trigger may
+# survive into the skeleton's CODE text. command_skeleton() masks quoted spans
+# and comment bodies to X, so a trigger still visible in the skeleton sat where
+# bash would execute it or use it as a redirection target - `printf x > DECISION`
+# with a `# human-review` comment is denied here, and would otherwise write the
+# real file whenever the cwd is the packet directory.
+triggers_are_inert() {
+  local cmd="$1" skel
+  case "$cmd" in *'`'*|*'$('*|*'<('*) return 1 ;; esac
+  has_path_shaped_occurrence "$cmd" && return 1
+  skel="$(command_skeleton "$cmd")" || return 1
+  case "$skel" in *human-review*|*DECISION*) return 1 ;; esac
+  return 0
+}
+
+# command_is_provably_benign() with its write test replaced by the condition
+# above: this gate guards ONE file, so a write that provably cannot name it is
+# not its business. The program allowlist still applies, which is what keeps
+# `sh -c 'cd .claude/human-review/u1 && printf x > DECISION'` denied.
+write_with_inert_triggers() {
+  local cmd="$1" skel rest head start=0 seps=$';&|\n'
+  triggers_are_inert "$cmd" || return 1
+  skel="$(command_skeleton "$cmd")" || return 1
+  skel="$(mask_inert_redirections "$skel")"
+  if printf '%s' "$skel" | grep -Eq '(^|[^[:alnum:]_])(eval|exec|source)([^[:alnum:]_]|$)'; then
+    return 1
+  fi
+  rest="$skel"
+  while :; do
+    head="${rest%%[$seps]*}"
+    segment_allowed "${cmd:start:${#head}}" || return 1
+    [ "$head" != "$rest" ] || return 0
+    start=$((start + ${#head} + 1))
+    rest="${rest:${#head}+1}"
+  done
+}
+
+# A single `git commit` whose only mention is prose in its message. `git` is
+# absent from the SHARED program_allowed() (benign-command.sh:12-14, "do not
+# re-add either one") and STAYS absent - this judgment is local to this file,
+# exactly as is_sanctioned_marker_write() is. It is sound because the capability
+# is message-independent: the identical commit carrying different prose is
+# already allowed, and a repository pre-commit hook runs either way, so refusing
+# on prose alone was removing no capability at all. What keeps the attacks denied
+# is the rest: no redirection, exactly one segment, and both words fixed - which
+# is what rejects `git -c core.hooksPath=... commit` and every chained write.
+is_prose_only_commit() {
+  local cmd="$1" skel first sub ops=$'>;&|\n<'
+  triggers_are_inert "$cmd" || return 1
+  skel="$(command_skeleton "$cmd")" || return 1
+  case "$skel" in *[$ops]*) return 1 ;; esac
+  read -r first sub _ <<< "$cmd"
+  [ "$first" = git ] && [ "$sub" = commit ]
+}
+
 deny() {
   { printf '%s decision-gate-denied identity=%s\n' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
@@ -98,6 +179,12 @@ command text never spells it, is a self-authorized bypass for this gate - not
 a sanctioned move. That workaround is scoped to reviewed-path-gate.sh, which
 grants the reviewer an identity; this gate grants nobody. If the template does
 not fit your write, report and wait instead.
+
+That rule governs commands TARGETING this file. A mention that only narrates it
+is allowed outright and needs no workaround: prose inside a single 'git commit'
+message, a single-quoted read pattern, and a trailing '#' comment all pass. What
+you hit is narrower - some unbroken run of this command's text spells the path
+itself, or a mention sits where bash would execute it.
 
 To discard a resolved packet, delete the whole directory with
 'rm -rf .claude/human-review/<task-id>' (its command text never spells DECISION).
@@ -129,5 +216,7 @@ case "$command" in
 esac
 
 command_is_provably_benign "$command" && exit 0
+write_with_inert_triggers "$command" && exit 0
+is_prose_only_commit "$command" && exit 0
 is_sanctioned_marker_write "$command" && exit 0
 deny
