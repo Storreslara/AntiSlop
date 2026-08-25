@@ -1176,8 +1176,28 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     return !/: (updated|created|pending)$/m.test(stdout);
   }
 
+  // Isolated HOME with the marketplace plugin marked enabled — same fix as
+  // the C2.12 test below (search "site 12's registration backfill"). Without
+  // this, runUpdate()'s registration-backfill write site
+  // (`if (settings && !pluginState.enabled)`) reads the INVOKING MACHINE's
+  // real ~/.claude/settings.json: enabled on a dev box that has antislop
+  // installed as a marketplace plugin, but never enabled on a CI runner
+  // (no ~/.claude at all) — so the backfill fires there and rewrites this
+  // fixture's `.claude/settings.json`, dirtying the post-run tree for a
+  // reason unrelated to the pending/self-heal decision under test.
+  function buildF2Home(label) {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), `antislop-f2-home-${label}-`));
+    fs.mkdirSync(path.join(home, '.claude'), { recursive: true });
+    fs.writeFileSync(
+      path.join(home, '.claude', 'settings.json'),
+      JSON.stringify({ enabledPlugins: { 'antislop@antislop-marketplace': true } })
+    );
+    return home;
+  }
+
   check('F2 regression: shape A (source committed-edited, mirror stale) is caught ONLY by the post-run git-clean assertion — the exit code alone (0) reports fine', () => {
     const { tmp, git, porcelain, cli: tmpCli } = buildF2GitFixture('shape-a');
+    const home = buildF2Home('shape-a');
     try {
       // Mutation must be COMMITTED, not left uncommitted — an uncommitted
       // mutation would make the tree dirty before the CLI ever runs, which
@@ -1188,7 +1208,11 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       assert.strictEqual(git(['commit', '-q', '-m', 'shape A: commit the source edit']).status, 0, 'git commit failed');
       assert.strictEqual(porcelain(), '', 'precondition: shape A must start from a clean tree, same as the criterion\'s own pre-run assertion');
 
-      const checked = spawnSync('node', [tmpCli, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      const checked = spawnSync('node', [tmpCli, '--update', '--check'], {
+        cwd: tmp,
+        env: Object.assign({}, process.env, { HOME: home }),
+        encoding: 'utf8',
+      });
       assert.ok(oldFormFooled(checked.stdout), `expected the old broken grep form to be fooled (GREEN) on shape A, got stdout: ${checked.stdout}`);
 
       // The dangerous part of shape A: --check self-heals and exits 0, so a
@@ -1205,11 +1229,13 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
     }
   });
 
   check('F2 regression: shape B (mirror locally edited+committed) is caught ONLY by the exit-code assertion — the post-run tree comes back clean', () => {
     const { tmp, git, porcelain, cli: tmpCli } = buildF2GitFixture('shape-b');
+    const home = buildF2Home('shape-b');
     try {
       // Committed hand-edit to the MIRROR (not the source), so it diverges
       // from what a fresh render would produce.
@@ -1218,7 +1244,11 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       assert.strictEqual(git(['commit', '-q', '-m', 'shape B: commit the mirror edit']).status, 0, 'git commit failed');
       assert.strictEqual(porcelain(), '', 'precondition: shape B must start from a clean tree, same as the criterion\'s own pre-run assertion');
 
-      const checked = spawnSync('node', [tmpCli, '--update', '--check'], { cwd: tmp, encoding: 'utf8' });
+      const checked = spawnSync('node', [tmpCli, '--update', '--check'], {
+        cwd: tmp,
+        env: Object.assign({}, process.env, { HOME: home }),
+        encoding: 'utf8',
+      });
       assert.ok(oldFormFooled(checked.stdout), `expected the old broken grep form to be fooled (GREEN) on shape B, got stdout: ${checked.stdout}`);
 
       // The CLI refuses to silently overwrite a locally-edited mirror — it
@@ -1233,6 +1263,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       );
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(home, { recursive: true, force: true });
     }
   });
 
