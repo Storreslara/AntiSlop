@@ -826,4 +826,161 @@ bash_case "case m  empty agent_type Bash cat of the escalation marker (reads sta
 write_case "case n  antislop:reviewer Write, standing escalation (GRANT unaffected)" allowed \
   "antislop:reviewer" "$marker/u9.pass" "$proj_escalated"
 echo
+
+echo "-- case 38: spellings bash resolves to the marker dir (rpg-canon-2) --"
+# THIRD deliberate exception to this file's build-from-$marker rule (case 19 and
+# 37.3 are the others), and for the opposite reason: every payload here exists
+# precisely BECAUSE its raw text does not hold the contiguous literal, so it has
+# to be assembled from pieces. Each piece is guarded below - if a fixture ever
+# comes to spell the path raw, the control is dead and the suite says so rather
+# than passing for the wrong reason.
+#
+# Until this case landed, the Bash path tested the RAW command text at both
+# copies of the literal, so any spelling that broke that contiguity exited 0
+# before any allowlist ran and really wrote the file. mentions_marker_dir() now
+# canonicalizes at both. The two copies are why: closing only the early-exit
+# closes ONE of these shapes, because write_with_commented_mention() then
+# re-tests the raw literal against the comment-masked text, finds nothing, and
+# hands the command to the program allowlist, which admits `printf`.
+dot="${marker%/*}"                                  # .claude
+leaf="${marker##*/}"                                # reviewed
+o_sq="$dot/'${leaf:0:2}'${leaf:2}"                  # quote-split, single
+o_dq="$dot/\"${leaf:0:2}\"${leaf:2}"                # quote-split, double
+o_lead="'$dot/${leaf:0:3}'${leaf:3}"                # quote spanning the slash
+o_dot="$dot/./$leaf"                                # dot segment
+o_dot2="$dot/.//./$leaf"                            # doubled dot segments
+o_dbl="$dot//$leaf"                                 # doubled slash
+o_trav="$dot/agents/../$leaf"                       # .. traversal
+o_mix="$dot/'.'/$leaf"                              # quote-split AND dot segment
+for o in "$o_sq" "$o_dq" "$o_lead" "$o_dot" "$o_dot2" "$o_dbl" "$o_trav" "$o_mix"; do
+  case "$o" in
+    *"$marker"*) bad "case 38 fixture [$o] spells the marker dir raw - the control is dead" ;;
+  esac
+done
+
+# Anti-vacuity for the deny assertions: a payload that no longer writes anything
+# would leave "blocked" passing for the wrong reason. Each newly-denied payload
+# is executed under REAL bash in a sentinel-seeded sandbox and must alter the
+# marker directory. The sandbox carries the intermediate directories the
+# traversal spellings pass through, or the redirection would fail on the fixture
+# rather than on the payload.
+mutates_marker() {
+  local box out=1 entries
+  box="$(mktemp -d "$tmproot/canon.XXXXXX")"
+  mkdir -p "$box/$marker" "$box/$dot/agents" "$box/$dot/x"
+  printf 'SENTINEL' > "$box/$marker/9.pass"
+  ( cd "$box" && bash -c "$1" ) >/dev/null 2>&1 </dev/null || true
+  entries="$( (cd "$box/$marker" && ls -A) 2>/dev/null || true )"
+  [ "$(cat "$box/$marker/9.pass" 2>/dev/null || true)" = SENTINEL ] || out=0
+  [ "$entries" = "9.pass" ] || out=0
+  rm -rf "$box"
+  return "$out"
+}
+
+n=0
+for c in "printf x > $o_sq/9.pass" \
+         "printf x > $o_dq/9.pass" \
+         "printf x > $o_lead/9.pass" \
+         "printf x > $o_dot/9.pass" \
+         "printf x > $o_dot2/9.pass" \
+         "printf x > $o_dbl/9.pass" \
+         "printf x > $o_trav/9.pass" \
+         "printf x > $o_mix/9.pass" \
+         "printf x >> $o_sq/9.pass" \
+         "printf x > $o_sq/9.pass  # writes a marker" \
+         "printf x > $o_dot/9.pass  # writes a marker" \
+         "cp /dev/null $o_sq/9.pass" \
+         "tee $o_sq/9.pass" \
+         "sh -c 'printf x > $o_dq/9.pass'"; do
+  n=$((n + 1))
+  bash_case "case 38.$n write [$c]" blocked lead-programmer "$c"
+  if mutates_marker "$c"; then
+    pass "case 38.$n real-write control: real bash altered the marker dir"
+  else
+    bad "case 38.$n real-write control: real bash left the marker dir alone - the deny is vacuous"
+  fi
+done
+
+# The 10 read/prose/comment shapes that must NOT flip. Canonicalization decides
+# only what the gate LOOKS at; the write-intent allowlist still decides the
+# verdict, so narration in an obfuscated spelling stays as allowed as narration
+# in the plain one, and only writes flip.
+for c in "cat $o_sq/9.pass" \
+         "grep -n PASS $o_dot/9.pass" \
+         "grep -rn commit $o_trav/" \
+         "ls $o_dbl" \
+         "wc -l $o_dq/9.pass" \
+         "stat $dot/x/../$leaf/9.pass" \
+         "gh issue comment 1 -b \"see $o_sq/9.pass\"" \
+         "printf x > notes.txt  # see $o_sq/9.pass" \
+         "printf x > notes.txt  # see $o_dot/9.pass" \
+         "printf x > /tmp/o.txt"; do
+  bash_case "case 38 allow [$c]" allowed lead-programmer "$c"
+done
+
+# The shape a normalize-only implementation would newly ALLOW: `<marker>/../x`
+# normalizes to `.claude/x`, which mentions nothing. It is denied only because
+# the RAW substring test is the union's FIRST disjunct, so this is the assertion
+# that binds that ordering - reorder the disjuncts and this flips.
+bash_case "case 38 raw-disjunct binder: rm through the marker dir" blocked lead-programmer \
+  "rm -rf $marker/../x"
+# The same shape spelled obfuscatedly stays ALLOWED, and deliberately so: the
+# plain spelling is denied by the raw disjunct even though the command provably
+# does not touch the marker directory (it resolves to `.claude/x`), so that
+# denial is an over-block the raw disjunct pays for keeping. The obfuscated twins
+# are the only place the three disjuncts disagree with each other - measured over
+# a 444-pair spelling-consistency sweep, these 6 are the whole disagreement - and
+# they disagree in the SAFE direction: unchanged from before this unit, and
+# allowing a command that does not reach the directory.
+bash_case "case 38 transit spelling: allowed, and it never reaches the marker dir" \
+  allowed lead-programmer "rm -rf $o_dot/../x"
+
+# R-11 residuals, measured unchanged by the canonicalization and pinned so a
+# later reader sees a KNOWN state, not a gap. Case 19 already pins the
+# shell-variable split. These are TRACKED OPEN, not accepted: every one was
+# executed under real bash this session and really wrote the marker file.
+#   F-1 glob metacharacters - a partial fix is worse than none, since stripping
+#     brackets catches `[w]` and silently misses `?` and `*`.
+#   backslash and $'...' spellings - bash resolves both before any redirection,
+#     and neither survives as `.claude` in the command's own text, so the
+#     per-word normalization never sees a candidate.
+#   a directory-relative write after `cd` - unresolvable without executing the
+#     command, the same ground as case 19.
+for c in "printf x > $dot/${leaf:0:5}[${leaf:5:1}]${leaf:6}/9.pass" \
+         "printf x > $dot/?${leaf:1}/9.pass" \
+         "printf x > $dot/${leaf:0:4}*/9.pass" \
+         "printf x > ${dot:0:3}\\${dot:3}/$leaf/9.pass" \
+         "printf x > $dot/${leaf:0:2}\\${leaf:2}/9.pass" \
+         "cd $dot && printf x > $leaf/9.pass"; do
+  case "$c" in
+    *"$marker"*) bad "case 38 residual pin [$c] spells the marker dir raw - the control is dead" ;;
+    *) bash_case "case 38 residual (tracked open, not accepted): $c" allowed lead-programmer "$c" ;;
+  esac
+done
+
+# MUTATION CONTROLS (two, one per call site, both run for this unit rather than
+# asserted from a document). Neither can be pasted straight into a terminal: the
+# replacement text spells the marker directory, so THIS gate blocks the command.
+# Author the mutation as a script FILE and run `bash <file>` - a file's contents
+# are not a command, which is the route the spec's own probes used.
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   copy hooks/scripts/reviewed-path-gate.sh to "$d/mutant.sh", and in the copy
+#   revert exactly ONE call site to the raw contiguous literal:
+#     (a) site 2, in write_with_commented_mention():
+#           mentions_marker_dir "$masked" && return 1
+#         becomes   case "$masked" in *"<marker>"*) return 1 ;; esac
+#     (b) site 1, the Bash-path early-exit:
+#           mentions_marker_dir "$subject" || exit 0
+#         becomes   case "$subject" in *"<marker>"*) ;; *) exit 0 ;; esac
+#   then GATE_UNDER_TEST="$d/mutant.sh" bash tests/reviewed-path-gate.test.sh
+#
+# Expected for BOTH: exit 1 with case 38.1 reading rc=0 - the mutant ALLOWED a
+# write that real bash performs. Each site is therefore a SOLE denier for 38.1,
+# which is the property the one-site fix would have failed: reverting site 2
+# alone leaves the early-exit intact and still reopens the hole. The same two
+# traps as the case 26/32 controls apply - GATE_UNDER_TEST must be an ABSOLUTE
+# path or every case reads rc=127, and lib/ must sit beside the copy or the gate
+# dies sourcing lib/agent-identity.sh and every case reads rc=1.
+echo
 exit "$fail"

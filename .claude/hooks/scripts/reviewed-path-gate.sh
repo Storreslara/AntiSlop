@@ -29,14 +29,73 @@
 # write_with_commented_mention() below - bash discards that text, so the same
 # command with the comment deleted never spells the path and the substring
 # early-exit already allows it (2026-08-24 spec, decision A).
-# This is advisory, not airtight - a determined agent can still obfuscate the
-# path past both the substring early-exit and the allowlist (e.g. splitting it
-# across a shell variable); see README.md's "Known limitations", same framing
-# as the existing `sed -i` bypass caveat on protected-paths.sh.
+# This is advisory, not airtight, and which obfuscations it survives is now
+# measured rather than assumed. CLOSED on the Bash path by mentions_marker_dir()
+# below: quote-split spellings, `.` segments, doubled slashes and `..` traversal
+# - every spelling bash resolves from the command's own text. STILL OPEN: a path
+# assembled from a shell variable, glob metacharacters, a backslash escape or
+# `$'...'` quoting inside the path, and a directory-relative write after a `cd`.
+# Each of those is resolved by bash from something the command text does not
+# state, so no scan of that text can see it; see README.md's "Known limitations",
+# same framing as the existing `sed -i` bypass caveat on protected-paths.sh, and
+# the pins at the end of tests/reviewed-path-gate.test.sh.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/benign-command.sh"
+
+# Does $1 mention the marker directory in any spelling bash would resolve to it?
+# A UNION of three tests, and the RAW one is deliberately FIRST: that is what
+# makes this purely additive, so no text that fires the gate today can stop
+# firing it. It is also what keeps `rm -rf .claude/reviewed/../x` denied, which
+# normalization ALONE would newly allow - it resolves that path to `.claude/x`
+# and erases the mention.
+#
+# The per-word normalization is prefiltered on the word holding BOTH `.claude`
+# and `reviewed`, which is exact rather than merely cheap: normalize_path()
+# copies segments verbatim and only drops `.`/empty ones or pops on `..`, so
+# every character of its output came from the input word. A word whose output
+# holds `.claude/reviewed` therefore already holds both halves of it, in that
+# order (output segments follow input order, and the `/` between the two halves
+# is a segment boundary, so they cannot come from one segment), and skipping the
+# rest changes no verdict - it only skips a subshell.
+#
+# That filter is what keeps this affordable on the HOT PATH: this runs before the
+# early-exit, so every Bash call in the session pays for it. Measured against the
+# pre-unit gate - a typical command 9ms -> 8ms, 60KB of prose 9ms -> 10ms, and
+# 3000 `.claude`-bearing words 9ms -> 12ms. What stays expensive is a command
+# crafted so that thousands of words hold BOTH tokens without being contiguous
+# (3000 of them cost 4.6s, one fork each). That is a self-inflicted cost with no
+# verdict to gain - the command is still judged, just slowly - so it is accepted
+# and recorded rather than bought off with a cap, which could only be paid for
+# either by failing open or by denying a long read.
+#
+# This exists as ONE function because the gate holds TWO copies of the protected
+# -path literal - this test and write_with_commented_mention()'s masked test -
+# and they agreed only by convention. That was flagged as a maintenance risk,
+# and it was not theoretical: canonicalizing only the early-exit closes ONE of
+# ten obfuscated shapes while the whole suite stays green, because the second
+# copy then re-tests the raw literal and admits the command.
+mentions_marker_dir() {
+  local cmd="$1" rest chunk ws=$' \t\n'
+  case "$cmd" in *".claude/reviewed"*) return 0 ;; esac
+  rest="${cmd//$'\047'/}"; rest="${rest//$'\042'/}"
+  case "$rest" in
+    *".claude/reviewed"*) return 0 ;;
+    *.claude*reviewed*) ;;
+    *) return 1 ;;
+  esac
+  while :; do
+    chunk="${rest%%[$ws]*}"
+    case "$chunk" in
+      *.claude*reviewed*)
+        case "$(normalize_path "$chunk")" in *".claude/reviewed"*) return 0 ;; esac
+        ;;
+    esac
+    [ "$chunk" != "$rest" ] || return 1
+    rest="${rest:${#chunk}+1}"
+  done
+}
 
 # Length-preserving mask of every `#` COMMENT BODY, leaving quoted spans intact.
 # Every fail-closed rule is DELEGATED to command_skeleton() rather than restated:
@@ -97,7 +156,7 @@ write_with_commented_mention() {
     *'`'*|*'$('*|*'<('*) return 1 ;;
   esac
   masked="$(mask_comments_only "$cmd")" || return 1
-  case "$masked" in *".claude/reviewed"*) return 1 ;; esac
+  mentions_marker_dir "$masked" && return 1
   skel="$(command_skeleton "$cmd")" || return 1
   skel="$(mask_inert_redirections "$skel")"
   if printf '%s' "$skel" | grep -Eq '(^|[^[:alnum:]_])(eval|exec|source)([^[:alnum:]_]|$)'; then
@@ -149,10 +208,18 @@ if [ -z "$command" ]; then
   esac
 fi
 
-case "$subject" in
-  *".claude/reviewed"*) ;;
-  *) exit 0 ;;
-esac
+# Bash path only: $subject is raw command TEXT there, so it is canonicalized
+# before the test. On the Write/Edit path $subject is already a normalize_path()
+# resolved file path (:146 above), so the raw literal is the right test and
+# running the text-level union over a single path would add nothing.
+if [ -z "$write_tool" ]; then
+  mentions_marker_dir "$subject" || exit 0
+else
+  case "$subject" in
+    *".claude/reviewed"*) ;;
+    *) exit 0 ;;
+  esac
+fi
 
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
@@ -215,5 +282,5 @@ fi
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
     >> "$review_audit"; } 2>/dev/null || true
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>', whose command text then never spells the path; to search the directory, use 'grep -r'. That rephrasing workaround is sanctioned for THIS gate only, which grants the reviewer an identity - it is never for human-decision-gate.sh, which grants no identity at all, and rewording a command so that gate's scan stops seeing the path it protects is a self-authorized bypass. Use the sanctioned marker-write template that gate prints in its own refusal instead. All of that governs commands TARGETING this directory. A mention that only NARRATES it is allowed outright and needs no workaround: a trailing '#' comment naming the directory passes, whatever the rest of the command does, because bash discards it. What you hit is narrower - this command's text spells the path where bash would act on it (in code, in a quoted word, or as a redirection target), or it could not be lexed at all. A comment on a line of its OWN still fails closed; that is a ratified residual (issue #183), so keep the comment on the same line as the command." >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>', whose command text then never spells the path; to search the directory, use 'grep -r'. That rephrasing workaround is sanctioned for THIS gate only, which grants the reviewer an identity - it is never for human-decision-gate.sh, which grants no identity at all, and rewording a command so that gate's scan stops seeing the path it protects is a self-authorized bypass. Use the sanctioned marker-write template that gate prints in its own refusal instead. All of that governs commands TARGETING this directory. Both sanctioned workarounds keep the path OUT of the command text entirely; respelling it in place does not work and is not sanctioned, because quote-split, dot-segment, doubled-slash and '..' traversal spellings are all recognized here. A mention that only NARRATES the directory is allowed outright and needs no workaround: a trailing '#' comment naming it passes provided the rest of the command is itself allowlisted, since bash discards the comment but still runs everything else. What you hit is narrower - this command's text spells the path where bash would act on it (in code, in a quoted word, or as a redirection target), or it could not be lexed at all. A comment on a line of its OWN still fails closed; that is a ratified residual (issue #183), so keep the comment on the same line as the command." >&2
 exit 2
