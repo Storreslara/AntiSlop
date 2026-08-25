@@ -216,9 +216,16 @@ echo
 echo "-- marker sweep: marker NOT deleted if review-join stamp exists --"
 dir="$(mk_project marker-review-join)"
 mkdir -p "$dir/.claude/reviewed"
+old_time=$(( $(date +%s) - 40 * 86400 ))
 printf 'PASS 150 2026-07-01T00:00:00Z commit: abc123 criteria: test\n' > "$dir/.claude/reviewed/150.pass"
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/reviewed/150.pass"
 # Create review-join stamp for this unit
 touch "$dir/.claude/.review-join.150"
+# Same-age control marker with no stamp -> must still be deleted, proving
+# the aged-150.pass survival above is actually due to the stamp and not
+# just retention leaving everything alone.
+printf 'PASS 151 2026-07-01T00:00:00Z commit: def456 criteria: test\n' > "$dir/.claude/reviewed/151.pass"
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/reviewed/151.pass"
 
 "$script" --project-dir "$dir" --retention-days 30 --apply >/dev/null
 if [ -f "$dir/.claude/reviewed/150.pass" ]; then
@@ -226,21 +233,28 @@ if [ -f "$dir/.claude/reviewed/150.pass" ]; then
 else
   bad "marker was deleted even with review-join stamp"
 fi
+if [ ! -f "$dir/.claude/reviewed/151.pass" ]; then
+  pass "same-age unstamped control marker is deleted (proves stamp path is exercised)"
+else
+  bad "unstamped control marker was not deleted"
+fi
 
 echo
 echo "-- session-baseline sweep: dry-run reports, --apply deletes --"
 dir="$(mk_project session-baseline)"
 mkdir -p "$dir/.claude"
+old_time=$(( $(date +%s) - 40 * 86400 ))
 # Old baseline
 printf '{}' > "$dir/.claude/.session-baseline.old-id-from-2026-07"
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/.session-baseline.old-id-from-2026-07"
 # Recent baseline
 printf '{}' > "$dir/.claude/.session-baseline.recent-id-from-2026-08"
 
 out="$("$script" --project-dir "$dir" --retention-days 30)"
-if echo "$out" | grep -qF 'session-baseline'; then
-  pass "session-baseline dry-run reports them"
+if echo "$out" | grep -qF '[dry-run] would delete: .claude/.session-baseline.old-id-from-2026-07'; then
+  pass "session-baseline dry-run reports the old fixture as a delete candidate"
 else
-  bad "session-baseline dry-run did not report (out=[$out])"
+  bad "session-baseline dry-run did not report a delete line (out=[$out])"
 fi
 if [ -f "$dir/.claude/.session-baseline.old-id-from-2026-07" ] && [ -f "$dir/.claude/.session-baseline.recent-id-from-2026-08" ]; then
   pass "session-baseline dry-run deletes nothing"
@@ -248,25 +262,51 @@ else
   bad "session-baseline dry-run deleted files"
 fi
 
+"$script" --project-dir "$dir" --retention-days 30 --apply >/dev/null
+if [ ! -f "$dir/.claude/.session-baseline.old-id-from-2026-07" ]; then
+  pass "old session-baseline deleted under --apply"
+else
+  bad "old session-baseline not deleted under --apply"
+fi
+if [ -f "$dir/.claude/.session-baseline.recent-id-from-2026-08" ]; then
+  pass "recent session-baseline preserved under --apply"
+else
+  bad "recent session-baseline was deleted under --apply"
+fi
+
 echo
 echo "-- wip-handoff sweep: dry-run reports, --apply deletes --"
 dir="$(mk_project wip-handoff)"
 mkdir -p "$dir/.claude"
+old_time=$(( $(date +%s) - 40 * 86400 ))
 # Old handoff
 printf 'reason: test' > "$dir/.claude/wip-handoff.old-id"
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/wip-handoff.old-id"
 # Recent handoff
 printf 'reason: test' > "$dir/.claude/wip-handoff.recent-id"
 
 out="$("$script" --project-dir "$dir" --retention-days 30)"
-if echo "$out" | grep -qF 'wip-handoff'; then
-  pass "wip-handoff dry-run reports them"
+if echo "$out" | grep -qF '[dry-run] would delete: .claude/wip-handoff.old-id'; then
+  pass "wip-handoff dry-run reports the old fixture as a delete candidate"
 else
-  bad "wip-handoff dry-run did not report (out=[$out])"
+  bad "wip-handoff dry-run did not report a delete line (out=[$out])"
 fi
 if [ -f "$dir/.claude/wip-handoff.old-id" ] && [ -f "$dir/.claude/wip-handoff.recent-id" ]; then
   pass "wip-handoff dry-run deletes nothing"
 else
   bad "wip-handoff dry-run deleted files"
+fi
+
+"$script" --project-dir "$dir" --retention-days 30 --apply >/dev/null
+if [ ! -f "$dir/.claude/wip-handoff.old-id" ]; then
+  pass "old wip-handoff deleted under --apply"
+else
+  bad "old wip-handoff not deleted under --apply"
+fi
+if [ -f "$dir/.claude/wip-handoff.recent-id" ]; then
+  pass "recent wip-handoff preserved under --apply"
+else
+  bad "recent wip-handoff was deleted under --apply"
 fi
 
 echo

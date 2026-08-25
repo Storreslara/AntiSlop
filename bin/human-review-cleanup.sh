@@ -195,20 +195,13 @@ rotate_log() {
   fi
 }
 
-# Rotate the four append-only audit logs (only if they exist and are older than window)
+# Rotate the four append-only audit logs. Unlike the marker/baseline/handoff
+# sweeps above, rotation is NOT retention-gated: these logs are append-only
+# and stay in active use, so their mtime is always recent and a retention
+# check would mean --apply never rotates them. Rotate unconditionally.
 if [ -d "$claude_dir" ]; then
-  # Only rotate logs, don't report them in dry-run if they're recent
-  # Check if any log is old enough to warrant rotation
-  if is_older_than_window "$claude_dir/review-audit.log"; then
-    rotate_log "$claude_dir/review-audit.log"
-  fi
-  if is_older_than_window "$claude_dir/dispatch-audit.log"; then
-    rotate_log "$claude_dir/dispatch-audit.log"
-  fi
-  if is_older_than_window "$claude_dir/microworld-audit.log"; then
-    rotate_log "$claude_dir/microworld-audit.log"
-  fi
-  if is_older_than_window "$claude_dir/wip-audit.log"; then
-    rotate_log "$claude_dir/wip-audit.log"
-  fi
+  rotate_log "$claude_dir/review-audit.log"
+  rotate_log "$claude_dir/dispatch-audit.log"
+  rotate_log "$claude_dir/microworld-audit.log"
+  rotate_log "$claude_dir/wip-audit.log"
 fi
