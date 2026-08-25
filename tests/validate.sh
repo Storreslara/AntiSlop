@@ -352,6 +352,15 @@ else
 fi
 
 echo
+echo "== watch-map.json run[] commands are registered in tests/validate.sh (Bash) =="
+if bash tests/watch-map-registration.test.sh; then
+  echo "OK   tests/watch-map-registration.test.sh"
+else
+  echo "FAIL tests/watch-map-registration.test.sh"
+  fail=1
+fi
+
+echo
 echo "== microworld audit log contract test: bash hook ↔ Node parser (Node) =="
 if node tests/microworld-audit-contract.test.js; then
   echo "OK   tests/microworld-audit-contract.test.js"
