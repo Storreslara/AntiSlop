@@ -165,3 +165,44 @@ backfill branch fires on a *bare* `--update` and grows a 2-byte
 without ever reaching the branch. The third skip condition is `settings`
 being null: `buildBaselineProject` never writes `.claude/settings.json`, so
 the file must be created explicitly (`{}` is enough).
+
+**Gotcha 11 (unit ci-unbrick-p0, CI-only F2 regression):** Gotcha 9's fixture
+polarity issue isn't limited to `buildBaselineProject`-based tests — the
+`buildF2GitFixture`-based shape A/B tests (real git-tracked copies of the
+WHOLE repo) also called `spawnSync('node', [tmpCli, '--update', '--check'],
+{ cwd: tmp, encoding: 'utf8' })` with NO `env` override at all, so they
+inherited the actual invoking machine's `HOME`. On a dev box that has
+antislop installed as a marketplace plugin this reads `enabled: true`
+(backfill never fires, test passes "by accident"); on a GH Actions runner
+there is no `~/.claude` at all, so it reads `enabled: false`, the backfill
+rewrites the fixture's `.claude/settings.json`, and shape B's stricter
+"tree comes back clean" assertion fails with `got: M .claude/settings.json`
+— reproducible on a real runner but never locally, which is why it sat
+broken on `master` for a week (2026-08-18, 08-20, 08-25) before anyone
+diagnosed it as environment-dependent rather than a fresh-clone content-
+divergence bug. The sibling C2.12 test (`--update --dry-run discriminates
+all three F2 drift shapes`) had ALREADY been fixed this exact way — its own
+comment names "site 12's registration backfill" — but shape A/B were never
+given the same treatment. Repro trick for this whole class locally, no CI
+needed: `env -i HOME="$(mktemp -d)" PATH="$PATH" node
+tests/cli-backfill.test.js` (empty isolated HOME, no marketplace
+registration) reproduces the CI failure deterministically on any machine.
+Fix: give the fixture (or each call site) an isolated `HOME` whose
+`~/.claude/settings.json` pre-registers `enabledPlugins["antislop@antislop-
+marketplace"]: true`, mirroring [[project_cli_update_testing]] Gotcha 9's
+own advice, which this file's OTHER tests had already followed.
+
+**Unrelated landmine found while verifying this on a real runner:**
+`scripts/rollout-preflight.sh`'s `W0` case shells out to `gh run list
+--branch master --workflow validate --limit 1 --json conclusion --jq
+'.[0].conclusion' 2>/dev/null || echo "unknown"` — the `validate.yml`
+workflow never exports `GH_TOKEN`/`GITHUB_TOKEN` for the `gh` CLI, so this
+query is UNAUTHENTICATED on the runner and silently falls to `"unknown"`.
+The printed fallback message is `"W0: CI conclusion is 'unknown' (expected
+'success')"`, which contains the literal substring `"success"` — and
+`tests/rollout-preflight.test.sh`'s AC2 does `grep -q "failure"` then
+`elif grep -q "success"`, so an `"unknown"` conclusion is misreported as
+"W0: incorrectly reports success" even though CI's real conclusion was
+never queried successfully. Not fixed as part of ci-unbrick-p0 (out of
+scope — a different, concurrently-landed unit's file); flagging so nobody
+mistakes this for a second CI-unbricking bug.
