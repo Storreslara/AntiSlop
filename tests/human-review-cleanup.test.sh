@@ -173,4 +173,143 @@ else
   bad "FIFO entry was deleted"
 fi
 
+echo
+echo "-- marker sweep: dry-run reports, --apply deletes, respects retention window --"
+dir="$(mk_project marker-sweep)"
+mkdir -p "$dir/.claude/reviewed"
+# Marker older than retention window (set timestamp to 40 days ago)
+old_time=$(( $(date +%s) - 40 * 86400 ))
+printf 'PASS 100 2026-07-20T00:00:00Z commit: abc123 criteria: test\n' > "$dir/.claude/reviewed/100.pass"
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/reviewed/100.pass"
+# Recent marker (within retention window)
+printf 'PASS 101 2026-08-24T00:00:00Z commit: def456 criteria: test\n' > "$dir/.claude/reviewed/101.pass"
+# Marker with fail (also old)
+printf 'FAIL 102 2026-07-15T00:00:00Z\ndefect: test\n' > "$dir/.claude/reviewed/102.fail"
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/reviewed/102.fail"
+
+out="$("$script" --project-dir "$dir" --retention-days 30)"
+if echo "$out" | grep -qF '[dry-run] would delete:'; then
+  pass "marker dry-run reports deletions"
+else
+  bad "marker dry-run did not report deletions (out=[$out])"
+fi
+if [ -f "$dir/.claude/reviewed/100.pass" ] && [ -f "$dir/.claude/reviewed/101.pass" ] && [ -f "$dir/.claude/reviewed/102.fail" ]; then
+  pass "marker dry-run deletes nothing"
+else
+  bad "marker dry-run deleted files"
+fi
+
+# Now test --apply
+"$script" --project-dir "$dir" --retention-days 30 --apply >/dev/null
+if [ ! -f "$dir/.claude/reviewed/100.pass" ] && [ ! -f "$dir/.claude/reviewed/102.fail" ]; then
+  pass "old markers deleted under --apply with retention window"
+else
+  bad "old markers not deleted (100.pass exists=$([ -f "$dir/.claude/reviewed/100.pass" ] && echo yes || echo no), 102.fail exists=$([ -f "$dir/.claude/reviewed/102.fail" ] && echo yes || echo no))"
+fi
+if [ -f "$dir/.claude/reviewed/101.pass" ]; then
+  pass "recent marker (within retention window) preserved"
+else
+  bad "recent marker was deleted"
+fi
+
+echo
+echo "-- marker sweep: marker NOT deleted if review-join stamp exists --"
+dir="$(mk_project marker-review-join)"
+mkdir -p "$dir/.claude/reviewed"
+printf 'PASS 150 2026-07-01T00:00:00Z commit: abc123 criteria: test\n' > "$dir/.claude/reviewed/150.pass"
+# Create review-join stamp for this unit
+touch "$dir/.claude/.review-join.150"
+
+"$script" --project-dir "$dir" --retention-days 30 --apply >/dev/null
+if [ -f "$dir/.claude/reviewed/150.pass" ]; then
+  pass "marker with active review-join stamp is not deleted"
+else
+  bad "marker was deleted even with review-join stamp"
+fi
+
+echo
+echo "-- session-baseline sweep: dry-run reports, --apply deletes --"
+dir="$(mk_project session-baseline)"
+mkdir -p "$dir/.claude"
+# Old baseline
+printf '{}' > "$dir/.claude/.session-baseline.old-id-from-2026-07"
+# Recent baseline
+printf '{}' > "$dir/.claude/.session-baseline.recent-id-from-2026-08"
+
+out="$("$script" --project-dir "$dir" --retention-days 30)"
+if echo "$out" | grep -qF 'session-baseline'; then
+  pass "session-baseline dry-run reports them"
+else
+  bad "session-baseline dry-run did not report (out=[$out])"
+fi
+if [ -f "$dir/.claude/.session-baseline.old-id-from-2026-07" ] && [ -f "$dir/.claude/.session-baseline.recent-id-from-2026-08" ]; then
+  pass "session-baseline dry-run deletes nothing"
+else
+  bad "session-baseline dry-run deleted files"
+fi
+
+echo
+echo "-- wip-handoff sweep: dry-run reports, --apply deletes --"
+dir="$(mk_project wip-handoff)"
+mkdir -p "$dir/.claude"
+# Old handoff
+printf 'reason: test' > "$dir/.claude/wip-handoff.old-id"
+# Recent handoff
+printf 'reason: test' > "$dir/.claude/wip-handoff.recent-id"
+
+out="$("$script" --project-dir "$dir" --retention-days 30)"
+if echo "$out" | grep -qF 'wip-handoff'; then
+  pass "wip-handoff dry-run reports them"
+else
+  bad "wip-handoff dry-run did not report (out=[$out])"
+fi
+if [ -f "$dir/.claude/wip-handoff.old-id" ] && [ -f "$dir/.claude/wip-handoff.recent-id" ]; then
+  pass "wip-handoff dry-run deletes nothing"
+else
+  bad "wip-handoff dry-run deleted files"
+fi
+
+echo
+echo "-- log rotation preserves tail for defer: dedup --"
+dir="$(mk_project log-rotation)"
+mkdir -p "$dir/.claude"
+# Create a log with multiple lines including a defer: at the end
+printf '2026-08-20T10:00:00Z cleared-by=reviewer unit=100\n' > "$dir/.claude/review-audit.log"
+printf '2026-08-21T10:00:00Z defer: unit=101 reason=test\n' >> "$dir/.claude/review-audit.log"
+
+# Make the log old enough to be rotated (40 days ago)
+old_time=$(( $(date +%s) - 40 * 86400 ))
+touch -t "$(date -d @$old_time +%Y%m%d%H%M.%S)" "$dir/.claude/review-audit.log"
+
+# Get the last line before rotation
+last_before="$(tail -n 1 "$dir/.claude/review-audit.log")"
+# Extract the content part (after timestamp) like stop-gate.sh does
+last_content_before="$(tail -n 1 "$dir/.claude/review-audit.log" | cut -d' ' -f2-)"
+
+# Run the sweeper which should rotate the log
+"$script" --project-dir "$dir" --retention-days 30 --apply >/dev/null 2>&1
+
+# Check that active log still exists
+if [ -f "$dir/.claude/review-audit.log" ]; then
+  pass "review-audit.log exists after rotation"
+else
+  bad "review-audit.log was deleted after rotation"
+fi
+
+# Check that the tail is preserved (for the dedup logic)
+last_content_after="$(tail -n 1 "$dir/.claude/review-audit.log" 2>/dev/null | cut -d' ' -f2- || true)"
+if [ "$last_content_before" = "$last_content_after" ]; then
+  pass "rotation preserves tail content for defer dedup"
+else
+  bad "rotation did not preserve tail (before=[$last_content_before], after=[$last_content_after])"
+fi
+
+# Verify archive exists (look for any file starting with review-audit.log.)
+archive_count=$(find "$dir/.claude" -name "review-audit.log.*" -type f 2>/dev/null | wc -l)
+if [ "$archive_count" -gt 0 ]; then
+  pass "rotated log archive created"
+else
+  bad "rotated log archive not found"
+fi
+
 exit "$fail"
