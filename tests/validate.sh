@@ -695,6 +695,15 @@ else
 fi
 
 echo
+echo "== microworld dashboard capability register bijection (Node) =="
+if node tests/dashboard-capability-register.test.js; then
+  echo "OK   tests/dashboard-capability-register.test.js"
+else
+  echo "FAIL tests/dashboard-capability-register.test.js"
+  fail=1
+fi
+
+echo
 echo "== rollout wave-graph preflight checker (Bash, scaffolding) =="
 rollout_test="tests/rollout-preflight.test.sh"
 if bash "$rollout_test"; then
