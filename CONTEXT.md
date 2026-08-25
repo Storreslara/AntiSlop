@@ -107,6 +107,17 @@ a placeholder in a shipped persona file (e.g.
   value at ADAPT time and recorded in `.claude/persona-config.json`'s
   `substitutions` field.
 
+**`{{DOTDIR}}` placeholder token**:
+(unit #408, 2026-08-25) — a parameterization token in the [[Operational ignore list]]
+  and other canonicalized patterns, substituted at render time to target a
+  specific dot-dir (`.claude`, `.cursor`, `.codex`). Allows a single canonical
+  array of operational patterns to serve all three adapters without
+  hand-maintaining separate copies per target. Rendered via
+  `renderIgnorePatterns()` in `bin/cli.js` for each scaffold and the `--update`
+  backfill step. Example: `'{{DOTDIR}}/reviewed/'` renders to
+  `.claude/reviewed/`, `.cursor/reviewed/`, or `.codex/reviewed/` depending on
+  target.
+
 **The Writer/Reviewer split**:
 the system's core safety property: the
   `lead-programmer` writes code, but only the independent `reviewer`
@@ -1512,6 +1523,19 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   absence of further dispatch, never by a dedicated marker state. Contrast
   with (a) debug spec and (b) human-directed re-dispatch, the other two
   options offered by the same `AskUserQuestion` prompt.
+
+**Operational ignore list**:
+(unit #408, 2026-08-25) — the canonical, single-sourced array of operational
+  ignore patterns (lines 155-170 in `bin/cli.js`) representing every managed
+  state-file pattern any target's scaffold or `--update` backfill needs to keep
+  out of version control. Expressed relative to the [[`{{DOTDIR}}`  placeholder token]]
+  so one array serves `.claude/.cursor/.codex` alike via `renderIgnorePatterns()`
+  substitution, eliminating four hand-maintained copies that previously drifted
+  independently. Patterns include marker directories, audit logs, session
+  baselines, dispatch-override state, and microworld bundles. Consumed by
+  every adaptor port and this repo's own `.gitignore` — a change to the list
+  propagates everywhere in one edit, closing the measurement from unit #408's A3-A4
+  acceptance criteria.
 
 **operator**:
 (unit gh405, 2026-08-16, Step 5 of the ceremony-reduction plan) — an

@@ -7,3 +7,4 @@
 - [Scribe-tagged step exceeds mandate](project_scribe_tagged_step_exceeds_mandate.md) — a `[scribe]` spec step can still ask for test/version work outside scribe's write scope; do the doc part, route the rest
 - [PASS-marker comment gate workaround](feedback_pass_marker_comment_gate_workaround.md) — heredoc quoting a `.pass` marker path trips reviewed-path-gate; write body to scratchpad, use `--body-file`
 - [gh405 ADR-0003 TBD placeholder](project_gh405_adr0003_tbd_placeholder.md) — filed ADR-0024 but left ADR-0003's two "ADR TBD" refs unresolved; out of gh405's affected-files scope
+- [Unit #408 advisory cleanup](project_gh408_advisory_cleanup.md) — stale dashboard prose and test assertions remain after removing findings pane reader; non-blocking degradation confirmed
