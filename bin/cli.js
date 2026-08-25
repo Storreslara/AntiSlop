@@ -585,6 +585,61 @@ function buildHookScriptSpecs() {
   }));
 }
 
+// The declared shared-vs-Claude-only split for hooks/scripts/lib/ (gh410).
+// Explicit lists, not a directory glob, so a file added to hooks/scripts/lib/
+// without updating one of these two arrays fails assertHookLibDeclarationComplete()
+// below at load, instead of silently reaching (or never reaching) the two
+// adapter trees.
+const SHARED_HOOK_LIB_FILES = [
+  'agent-identity.sh',
+  'graph-update-core.sh',
+  'lint-on-edit-core.sh',
+  'microworld-rerun-core.sh',
+  'protected-paths-core.sh',
+];
+const CLAUDE_ONLY_HOOK_LIB_FILES = ['benign-command.sh'];
+
+function assertHookLibDeclarationComplete() {
+  const libDir = path.join(PKG_ROOT, 'hooks', 'scripts', 'lib');
+  const onDisk = fs.readdirSync(libDir).filter((f) => f.endsWith('.sh'));
+  const declared = SHARED_HOOK_LIB_FILES.concat(CLAUDE_ONLY_HOOK_LIB_FILES);
+  const undeclared = onDisk.filter((f) => !declared.includes(f));
+  if (undeclared.length) {
+    throw new Error(`hooks/scripts/lib/ contains file(s) not classified into SHARED_HOOK_LIB_FILES or CLAUDE_ONLY_HOOK_LIB_FILES: ${undeclared.join(', ')}. Add each to the appropriate list in bin/cli.js.`);
+  }
+  const missing = declared.filter((f) => !onDisk.includes(f));
+  if (missing.length) {
+    throw new Error(`SHARED_HOOK_LIB_FILES/CLAUDE_ONLY_HOOK_LIB_FILES names file(s) absent from hooks/scripts/lib/: ${missing.join(', ')}. Remove from the list, or restore the file.`);
+  }
+}
+
+// At load, so an undeclared lib/ file makes bin/cli.js unloadable, matching
+// assertProtocolMatrixComplete's pattern below.
+assertHookLibDeclarationComplete();
+
+// Generates the declared-shared subset of hooks/scripts/lib/ into each
+// adapter's own hooks/scripts/lib/ tree, reusing buildHookScriptSpecs' same
+// content-hash-tracked 'raw' spec shape. Only emits specs for an adapter
+// whose lib/ dir already exists under CWD — this generation step is specific
+// to antislop's own repo (the only project with an adapters/ tree); a
+// project adapted FROM antislop never has one, so this is a no-op there.
+function buildAdapterLibSpecs() {
+  const specs = [];
+  for (const port of ['codex', 'cursor']) {
+    const destDir = path.join(CWD, 'adapters', port, 'hooks', 'scripts', 'lib');
+    if (!fs.existsSync(destDir)) continue;
+    for (const file of SHARED_HOOK_LIB_FILES) {
+      specs.push({
+        projectRelPath: `adapters/${port}/hooks/scripts/lib/${file}`,
+        sourceAbsPath: path.join(PKG_ROOT, 'hooks', 'scripts', 'lib', file),
+        sourceRelPath: `hooks/scripts/lib/${file}`,
+        kind: 'raw',
+      });
+    }
+  }
+  return specs;
+}
+
 // Splits the canonical protocol into its leading header comment (which is NOT
 // a section) plus one entry per `## ` heading, in template order. Joining the
 // preamble and every section text with '\n' reproduces the file byte-for-byte.
@@ -1136,7 +1191,7 @@ async function runUpdate(args) {
     console.log(`  .gitignore: ${gitignoreAdds} managed entry(ies) would be appended to it.`);
   }
 
-  const specs = buildFileSpecs(personaSelection).concat(buildHookScriptSpecs());
+  const specs = buildFileSpecs(personaSelection).concat(buildHookScriptSpecs(), buildAdapterLibSpecs());
 
   // Legacy backfill: derive whatever substitutions/fileHashes entries are
   // missing from what's already on disk — deterministic, zero LLM cost. Runs
