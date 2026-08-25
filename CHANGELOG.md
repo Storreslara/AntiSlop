@@ -12,7 +12,7 @@
 - **`bin/microworld-dashboard/decisions.js`**: escalation entries now read and expose `verifiedBy` from packet manifest (AC3.4).
 - **`bin/microworld-dashboard/index.html`**: escalation view renders provenance line — "Verified by <agent> at <commit>" when `verifiedBy` present, "unverified — carried over from implementation" when absent (AC3.5).
 - **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.63 → 0.31.64 (constitution P3).
-- **`.claude/agents/*.md`** / **`.claude/persona-protocol*.md`** / **`.claude/protocol-digest.md`** / **`.claude/persona-config.json`**'s `fileHashes`: regenerated via `node bin/cli.js --update` (G1/G2).
+- **`.claude/agents/*.md`** / **`.claude/persona-protocol*.md`** / **`.claude/protocol-digest.md`** / **`.claude/persona-config.json`**'s `fileHashes`: regenerated via `node bin/cli.js --update --force-render` (G1/G2).
 
 ## [0.31.63] - 2026-08-25
 

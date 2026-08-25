@@ -204,11 +204,15 @@ with reasons.
     "agent": "reviewer",
     "timestamp": "<ISO-8601 UTC>",
     "commit": "<40-hex sha at escalation>",
-    "functionsAuthoredBy": "reviewer" or "implementer-verified",
+    "functionsAuthoredBy": "<reviewer|implementer-verified>",
     "locationsChecked": "<N>/<N>",
     "locationsCorrected": <count>
   }
   ```
+  `functionsAuthoredBy` is `"reviewer"` when the reviewer authored the array
+  outright because the escalating unit had none, or `"implementer-verified"`
+  when it was carried over from the unit and the reviewer verified/corrected
+  its locations.
   Write `CHANGES.md` and `EXAMPLES.md`
   there too — see the next two bullets. With no bundle, still create that
   directory with `PACKET.md` and `CHANGES.md` alone and write
