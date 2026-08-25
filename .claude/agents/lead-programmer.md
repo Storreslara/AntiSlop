@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
 maxTurns: 50
 ---
-<!-- antislop v0.31.63 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.31.64 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.
@@ -39,7 +39,6 @@ instructions.
   typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
-- **Microworld bundle `functions[]`**: for units meeting the heavy-unit trigger (as defined in `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger", amended by ADR-0013), author a `functions[]` array in the bundle's `manifest.json` with `location` on each entry, documenting the code's test entry points for human exploration. You may skip `functions[]` for lighter units; a one-line stub is noise, not value.
 - **Scope your reading via the explorer**: before editing a symbol, spawn the
   `explorer` for its callers and dependencies, then read only those files —
   not whole modules — unless your dispatch packet's `## Pre-resolved context`
@@ -429,12 +428,13 @@ Each `entry` is an executable (any language; shell-relative paths survive packet
 
 ### Storage, lifecycle, and the reviewer's role
 - Bundles are **gitignored working-tree scratch** — every `.gitignore` file covering `microworlds/` is at the discretion of the implementing project, and bundles never commit to version control.
-- A bundle's contents are **not part of the reviewed diff** — the reviewer's role is to verify bundle presence by filesystem check (does the directory exist?) not to evaluate its structure or contents.
+- A bundle's contents are **not part of the reviewed diff** — the reviewer's role is to verify bundle presence by filesystem check (does the directory exist?) or watch-map entry coverage, not to evaluate the bundle's structure or contents at implementation time.
+- **At escalation time**, the reviewer verifies each `functions[]` entry's `location` against the escalation commit, corrects stale line ranges in the **packet copy** (never the working bundle), authors `functions[]` when the unit has none, and stamps a `verifiedBy` block into the packet's `manifest.json` (never the working bundle).
 - The `run.sh` check is the **sole execution contract** respected by any gate or hook; the rerun hook never invokes a function entry (it would convert a synchronous check into a hang), and the reviewer never invokes one to adjudicate a unit.
 
 ### `run.sh` contract and authority
 The `run.sh` script executes with cwd = the project root, reads from `inputs/` directory and writes expected outputs to `expected/` directory (locations determined by the bundle itself; no global registry). It must be **relocatable** — it inherits and re-affirms the `$(cd "$(dirname "$0")" && pwd)` pattern so the bundle can survive packet copies (an escalation archive, a handoff to a human). `watch` globs, `timeoutSeconds`, a human-facing `README.md` in the bundle, and input/output staging are all defined by the bundle and `run.sh` jointly. A check result is **advisory only** — its value is meaningful only when a spec step's acceptance criteria name it explicitly.
 
 ### Authoring policy for `functions[]` and `location`
-`lead-programmer` SHOULD author `functions[]` (with `location` on each entry) for units meeting the existing heavy-unit trigger as described in `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger" (as amended by ADR-0013); `lead-programmer` MAY skip `functions[]` and `location` otherwise. This is a documented expectation, not a mandatory ceremony: a one-line stub that stops meaning anything is noise, not value.
+`functions[]` is authored at escalation time by the reviewer, never by `lead-programmer` at implementation time. The reviewer authors it when the escalating unit has none, or verifies and may correct `location` ranges in the packet copy when the implementer provided one. This keeps `functions[]` coupled to the escalation commit at which a human actually reviews the code, and ensures authorship is clear on the packet that humans read.
 <!-- ANTISLOP:END persona-protocol -->
