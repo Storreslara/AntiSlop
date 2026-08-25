@@ -1005,7 +1005,7 @@ the collection of addressable **Agent** entities currently active in a
   than trusted to prose: `## Background`, `## What this change is for`,
   `## Walkthrough` (the diff in conceptual order, one subsection per idea —
   explicitly **not one subsection per file**, and not alphabetical), and
-  `## What to look at first`. Quotes the diff, never reproduces it; soft cap 400
+  `## What to look at first`. Quotes the diff, never reproduces it; soft cap 120
   lines. First line byte-exact:
   `Comprehension material only — the .escalated marker is the authoritative record.`
   Contrast with [[PACKET.md]], the near-synonym it is easiest to confuse it

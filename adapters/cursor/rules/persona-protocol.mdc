@@ -185,14 +185,19 @@ CONCEPTUAL order, one subsection per idea, each naming the files that idea
 touches and quoting only the lines that carry it - **not one subsection per
 file**, and not alphabetical), and `## What to look at first` (the two or three
 places the reviewer is least confident about). It quotes the diff, it does not
-reproduce it; soft cap 400 lines. A unit with no bundle still gets one, and that
-is the case where it carries the entire human-facing payload.
+reproduce it; soft cap 120 lines. All four sections stay terse - short bullets
+or short paragraphs over prose exposition, no filler transitions, no restating
+what a quoted diff snippet already shows, no throat-clearing. A unit with no
+bundle still gets one, and that is the case where it carries the entire
+human-facing payload.
 
 **`EXAMPLES.md` (worked examples):** the same action also writes it into the
 packet - 3 to 5 **behavioural before/after** illustrations ("before this
 change, X did Y; after, X does Z"), each grounded in `CHANGES.md` and the
 bundle alone and each about CONSEQUENCE rather than recall - a recall
-illustration is skimmable, which defeats the point. **When needed:** written
+illustration is skimmable, which defeats the point. Each example is short -
+target 2 to 4 lines: the before/after statement itself, nothing more, no
+preamble and no scene-setting. **When needed:** written
 whenever the change has an observable behavioural consequence; skipped for
 changes with no behavioural surface (pure docs, formatting, comments, pure
 renames). **Auditable skip:** the `.escalated` marker body carries one
