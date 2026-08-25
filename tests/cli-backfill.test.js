@@ -1961,8 +1961,17 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
   // easiest way to ship a green, meaningless test here.
   const MARKETPLACE_KEY = 'antislop@antislop-marketplace';
   const MANAGED_GITIGNORE = [
+    '.claude/reviewed/',
+    '.claude/wip-handoff.*',
+    '.claude/.session-baseline.*',
+    '.claude/wip-audit.log',
+    '.claude/.pending-review.*',
+    '.claude/.review-join.*',
+    '.claude/review-audit.log',
     '.claude/dispatch-audit.log',
     '.claude/.dispatch-override',
+    '.claude/.dispatch-override.consumed*',
+    '.claude/.stop-loop-guard.*',
     'microworlds/',
     '.claude/human-review/',
     '.claude/microworld-audit.log',

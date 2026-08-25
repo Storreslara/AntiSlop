@@ -18,6 +18,8 @@ scratch/
 .claude/review-audit.log
 .claude/dispatch-audit.log
 .claude/.dispatch-override
+.claude/.dispatch-override.consumed*
+.claude/.stop-loop-guard.*
 .claude/microworld-audit.log
 .claude/settings.local.*
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-// Read-only enumeration of the four human-decision touchpoints: escalations,
-// milestone-briefing candidates (docs/plans/*.md), milestone findings
-// records, and pending-review flags joined to their unit. Reads only --
-// never touches discover.js or GET /api/bundles (D-7). Fails soft per
-// entry, matching discover.js's convention: malformed or missing input is
-// flagged on the entry, never thrown.
+// Read-only enumeration of three human-decision touchpoints: escalations,
+// milestone-briefing candidates (docs/plans/*.md), and pending-review flags
+// joined to their unit. Reads only -- never touches discover.js or
+// GET /api/bundles (D-7). Fails soft per entry, matching discover.js's
+// convention: malformed or missing input is flagged on the entry, never
+// thrown.
 
 const fs = require('fs');
 const path = require('path');
@@ -96,33 +96,6 @@ function enumerateBriefings(projectRoot) {
   return briefings;
 }
 
-function enumerateFindings(projectRoot) {
-  const auditDir = path.join(projectRoot, '.claude', 'milestone-audit');
-  const findings = [];
-
-  for (const slug of listFiles(auditDir)) {
-    let content;
-    try {
-      content = fs.readFileSync(path.join(auditDir, slug, 'FINDINGS.md'), 'utf8');
-    } catch (err) {
-      continue; // no FINDINGS.md here -- not a findings record
-    }
-
-    const lines = content.split('\n');
-    const body = lines.slice(1).join('\n');
-    const match = (lines[0] || '').match(/^FINDINGS (\S+) (\S+) count: (\d+)$/);
-
-    if (!match) {
-      findings.push({ slug, timestamp: null, count: null, body, malformed: true, malformedReason: 'first line does not parse' });
-      continue;
-    }
-
-    findings.push({ slug: match[1], timestamp: match[2], count: parseInt(match[3], 10), body, malformed: false });
-  }
-
-  return findings;
-}
-
 // The unit a standing pending-review flag is presumed to be waiting on,
 // derived from .review-join.<unit-id> stamps with no .pass marker written
 // after them (D-5). Exactly one such live stamp resolves to that unit; zero
@@ -199,7 +172,6 @@ function enumerateDecisions(projectRoot) {
   return {
     escalations: enumerateEscalations(projectRoot),
     briefings: enumerateBriefings(projectRoot),
-    findings: enumerateFindings(projectRoot),
     pendingReview: enumeratePendingReview(projectRoot),
   };
 }

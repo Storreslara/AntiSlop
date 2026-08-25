@@ -148,6 +148,31 @@ function copyDirRecursive(srcDir, destDir) {
   }
 }
 
+// Single-sourced operational .gitignore list (issue gh408) — every managed
+// state-file pattern any target's scaffold or backfill needs to keep out of
+// version control, expressed relative to a {{DOTDIR}} token so one array
+// serves .claude/.cursor/.codex alike instead of five separate literals.
+const OPERATIONAL_GITIGNORE_PATTERNS = [
+  '{{DOTDIR}}/reviewed/',
+  '{{DOTDIR}}/wip-handoff.*',
+  '{{DOTDIR}}/.session-baseline.*',
+  '{{DOTDIR}}/wip-audit.log',
+  '{{DOTDIR}}/.pending-review.*',
+  '{{DOTDIR}}/.review-join.*',
+  '{{DOTDIR}}/review-audit.log',
+  '{{DOTDIR}}/dispatch-audit.log',
+  '{{DOTDIR}}/.dispatch-override',
+  '{{DOTDIR}}/.dispatch-override.consumed*',
+  '{{DOTDIR}}/.stop-loop-guard.*',
+  'microworlds/',
+  '{{DOTDIR}}/human-review/',
+  '{{DOTDIR}}/microworld-audit.log',
+];
+
+function renderIgnorePatterns(dotDir) {
+  return OPERATIONAL_GITIGNORE_PATTERNS.map((line) => line.replace('{{DOTDIR}}', dotDir));
+}
+
 // Returns how many lines were (or, under dryRun, would have been) appended —
 // the answer has to survive the write being suppressed, or --dry-run loses the
 // report line along with the write.
@@ -163,6 +188,23 @@ function appendUnique(filePath, lines, dryRun) {
     fs.writeFileSync(filePath, existing + sep + missing.join('\n') + '\n');
   }
   return missing.length;
+}
+
+// Cursor/codex --dry-run (issue gh408 A4) is scoped to the gitignore-append
+// step only, not the rest of the scaffold — reports which managed patterns
+// are missing without writing anything or touching any other file.
+function reportGitignoreDryRun(dotDir, label) {
+  const version = readPluginVersion();
+  console.log(`antislop v${version} (${label} target) — dry-run: gitignore-append only, nothing written\n`);
+  const gitignorePath = path.join(CWD, '.gitignore');
+  const existing = fs.existsSync(gitignorePath) ? fs.readFileSync(gitignorePath, 'utf8') : '';
+  const missing = renderIgnorePatterns(dotDir).filter((line) => !existing.includes(line));
+  if (missing.length === 0) {
+    console.log('  .gitignore: no managed entries missing — nothing would change.');
+    return;
+  }
+  console.log(`  .gitignore: ${missing.length} managed entry(ies) would be appended:`);
+  for (const pattern of missing) console.log(`    ${pattern}`);
 }
 
 function canonicalizeForComparison(obj) {
@@ -1082,22 +1124,12 @@ async function runUpdate(args) {
     console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (now delivered per-persona).');
   }
 
-  // Backfill .gitignore reach for the two dispatch-hygiene state files
-  // (Step 5, token-hygiene-dispatch-gate) into already-adapted projects,
-  // which a scaffold-list-only change would never reach.
-  let gitignoreAdds = appendUnique(path.join(CWD, '.gitignore'), [
-    '.claude/dispatch-audit.log',
-    '.claude/.dispatch-override',
-  ], dryRun);
-
-  // Same reach problem for microworld bundles and human-review escalation
-  // packets (Step 3a): without this, an already-adapted project sees both as
-  // untracked noise and plausibly commits them.
-  gitignoreAdds += appendUnique(path.join(CWD, '.gitignore'), [
-    'microworlds/',
-    '.claude/human-review/',
-    '.claude/microworld-audit.log',
-  ], dryRun);
+  // Backfill full reach of the single-sourced operational .gitignore list
+  // (issue gh408) into already-adapted projects, which a scaffold-list-only
+  // change would never reach. Originally two piecemeal calls (Step 5
+  // token-hygiene-dispatch-gate, Step 3a microworld/human-review reach);
+  // merged into one now that the pattern list itself is single-sourced.
+  let gitignoreAdds = appendUnique(path.join(CWD, '.gitignore'), renderIgnorePatterns('.claude'), dryRun);
 
   if (dryRun && gitignoreAdds > 0) {
     wouldMutate = true;
@@ -1547,6 +1579,9 @@ async function runWireMcp(kind, args) {
 const CURSOR_MVP_PERSONAS = ['orchestrator', 'explorer', 'lead-programmer', 'reviewer'];
 
 async function scaffoldCursor(args) {
+  if (args.includes('--dry-run')) {
+    return reportGitignoreDryRun('.cursor', 'Cursor');
+  }
   const version = readPluginVersion();
   const overwrite = args.includes('--overwrite');
   const forceHooks = args.includes('--force-hooks');
@@ -1680,19 +1715,7 @@ async function scaffoldCursor(args) {
     console.log('  .cursor/persona-config.json written (skeleton — fill in test/lint/graph/protected fields against this repo)');
   }
 
-  appendUnique(path.join(CWD, '.gitignore'), [
-    '.cursor/reviewed/',
-    '.cursor/wip-handoff.*',
-    '.cursor/.session-baseline.*',
-    '.cursor/wip-audit.log',
-    '.cursor/.pending-review.*',
-    '.cursor/review-audit.log',
-    '.cursor/dispatch-audit.log',
-    '.cursor/.dispatch-override',
-    'microworlds/',
-    '.cursor/human-review/',
-    '.cursor/microworld-audit.log',
-  ]);
+  appendUnique(path.join(CWD, '.gitignore'), renderIgnorePatterns('.cursor'));
   console.log('  .gitignore updated');
 
   console.log(
@@ -1954,6 +1977,9 @@ function applyMcpTomlPlaceholder(body, placeholder, launch, fileLabel) {
 }
 
 async function scaffoldCodex(args) {
+  if (args.includes('--dry-run')) {
+    return reportGitignoreDryRun('.codex', 'Codex');
+  }
   const version = readPluginVersion();
   const overwrite = args.includes('--overwrite');
   const forceHooks = args.includes('--force-hooks');
@@ -2066,20 +2092,7 @@ async function scaffoldCodex(args) {
     console.log('  .codex/persona-config.json written (skeleton — fill in test/lint/graph/protected fields against this repo)');
   }
 
-  appendUnique(path.join(CWD, '.gitignore'), [
-    '.codex/reviewed/',
-    '.codex/wip-handoff.*',
-    '.codex/.session-baseline.*',
-    '.codex/wip-audit.log',
-    '.codex/.pending-review.*',
-    '.codex/review-audit.log',
-    '.codex/dispatch-audit.log',
-    '.codex/.dispatch-override',
-    '.codex/.stop-loop-guard.*',
-    'microworlds/',
-    '.codex/human-review/',
-    '.codex/microworld-audit.log',
-  ]);
+  appendUnique(path.join(CWD, '.gitignore'), renderIgnorePatterns('.codex'));
   console.log('  .gitignore updated');
 
   console.log(
@@ -2351,19 +2364,7 @@ async function main() {
     console.log('  CLAUDE.md: removed the legacy global @.claude/persona-protocol.md import (protocol is now per-persona).');
   }
 
-  appendUnique(path.join(CWD, '.gitignore'), [
-    '.claude/reviewed/',
-    '.claude/wip-handoff.*',
-    '.claude/.session-baseline.*',
-    '.claude/wip-audit.log',
-    '.claude/.pending-review.*',
-    '.claude/review-audit.log',
-    '.claude/dispatch-audit.log',
-    '.claude/.dispatch-override',
-    'microworlds/',
-    '.claude/human-review/',
-    '.claude/microworld-audit.log',
-  ]);
+  appendUnique(path.join(CWD, '.gitignore'), renderIgnorePatterns('.claude'));
   console.log('  .gitignore updated');
 
   const personaSelection = selected.filter((p) => OPTIONAL_PERSONAS.includes(p)).concat(includeResearcher ? ['researcher'] : []);
