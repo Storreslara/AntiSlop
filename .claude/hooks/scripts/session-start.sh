@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# SessionStart. Three jobs, all no-ops if this project never ran
+# SessionStart. Four jobs, all no-ops if this project never ran
 # install-antislop (no persona-config.json):
 #  1) Record this session's starting HEAD sha, so stop-gate.sh can tell
 #     whether commits happened this session even when the tree ends clean.
@@ -57,6 +57,7 @@ fi
 
 # Job 4: Microworld layer status reporting (per D5)
 human_review_mode="$(jq -r '.humanReviewMode // empty' "$config" 2>/dev/null || true)"
+[ -n "$human_review_mode" ] || human_review_mode="critical"
 
 # Count bundles and watch-map entries
 bundle_count=0
@@ -89,7 +90,7 @@ if [ ${#orphaned_markers[@]} -gt 0 ]; then
   orphaned_list=$(printf ', %s' "${orphaned_markers[@]}" | sed 's/^, //')
   microworld_msg="Orphaned .escalated marker(s): ${orphaned_list} (packet directory missing)"
 elif [ "$human_review_mode" != "off" ]; then
-  if [ "$bundle_count" = 0 ]; then
+  if [ "$bundle_count" -eq 0 ]; then
     microworld_msg="humanReviewMode: $human_review_mode but zero microworld bundles present"
   else
     microworld_msg="Microworld status: $bundle_count bundle(s), $watchmap_count watch-map entry(ies)"
