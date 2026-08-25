@@ -69,7 +69,7 @@
     ".claude/hooks/scripts/session-start.sh": "75027910bbe85781dc5c382ed0400347a2ca42d31a59946adeb5c9d68eb0e993",
     ".claude/hooks/scripts/stop-gate.sh": "64f4f2d5f55edfea21c2fee49a2d61f23aa74273540d220b386be9d3ae82b214",
     ".claude/hooks/scripts/task-gate.sh": "984ff31817d8c241149d05f02096cb777ff32f9d8c59c4c39bd4c1bd646208ac",
-    ".claude/hooks/scripts/human-decision-gate.sh": "e76accf4f5f2f974250f177fc0b36b5d3056dc0d438e9fb663d7680b78e3eca8",
+    ".claude/hooks/scripts/human-decision-gate.sh": "cdd0260de0d16882e65d846e77997bdd54703c7c4e04ffbf59df3d7ac5875b71",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
     ".claude/hooks/scripts/microworld-rerun.sh": "7794ff67cb31c2fe9a53e3f7e6e2e1a783cfc613e66abe40f69b941dfb0cce4e",
     ".claude/hooks/scripts/heavy-trigger.sh": "b71a55d9cd6ebc5f379dc8b32006e1cf549d33f2d10d6a4d961bb5bac996fc3c",

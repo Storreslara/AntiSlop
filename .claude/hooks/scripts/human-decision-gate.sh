@@ -11,7 +11,9 @@
 # What still fails closed is a backslash that changes bash's OWN lexing - a
 # `$'...'` or `$"..."` span, an escaped quote inside double quotes, a line
 # continuation, an escaped separator - because each of those moves where a write
-# really lands (pinned as P13-d through P13-l in the suite).
+# really lands (pinned in the suite as the P13 cases that name a backslash
+# construct; P13-k, which sits inside that range, is the own-line-comment R-11
+# residual instead and is not one of them).
 #
 # One write shape IS allowed, via is_sanctioned_marker_write() below: the
 # sanctioned marker-write template, which exists because the protocol requires
@@ -100,7 +102,11 @@ is_sanctioned_marker_write() {
 # branch below already denies such a path through a `*` glob.
 # has_whitespace_id_packet_path() is what makes the two branches agree about the
 # identical path string; without it they disagreed, and the Bash branch was the
-# looser of the two (measured fail-open, pinned as W1-W16).
+# looser of the two (measured fail-open, pinned as W1-W16 and U1-U126). That
+# agreement is now unqualified rather than holding only for path-safe ids: the
+# branch it agrees with is the `.claude/human-review/*/DECISION` case below, and
+# the suite asserts the two verdicts EQUAL over a punctuation x id-shape x
+# prefix-spelling corpus.
 #
 # Deliberately a pure-bash scan - tokenizing via $(printf ... | tr ...) would
 # word-split AND glob, and a bare `*` in a commit message then expands to every
@@ -123,26 +129,42 @@ has_path_shaped_occurrence() {
 }
 
 # Companion to the run scan, covering the one word shape it structurally cannot
-# see: a packet directory whose NAME holds whitespace. True when a `/DECISION`
-# follows a `human-review` in the quote-joined text with nothing but path-safe
-# characters between them - the marker id charclass plus `/`, space and tab.
-# Newline is deliberately NOT path-safe, which is what keeps a multi-line commit
-# message naming the two tokens on different lines allowed.
+# see: a packet directory whose NAME holds whitespace. Two arms, either of which
+# denies, applied to the head between a `human-review` and the first `/DECISION`
+# after it in the quote-joined text.
+#
+# Arm 1 - path-safe characters only: the marker id charclass plus `/`, space and
+# tab. Newline is deliberately NOT path-safe, which is what keeps a multi-line
+# commit message naming the two tokens on different lines allowed.
+#
+# Arm 2 - the head BEGINS with `/` and holds no newline. This one is anchored to
+# the protected path's own STRUCTURE rather than to the id's characters: the path
+# is .claude/human-review/<task-id>/DECISION, so the character straight after
+# `human-review` is always `/`. Prose naming the two tokens interposes something
+# else first (`, `, ` packet -> `, `: `), which is what keeps the commit-message
+# allowance standing. Arm 2 exists because arm 1 alone made the verdict depend on
+# WHICH characters an id spelled: an id holding both whitespace and one character
+# outside the charclass (`my unit!`, `u: 1`) escaped arm 1 on the punctuation and
+# the run scan on the whitespace, and really wrote the file. That was the third
+# character dimension to cost this function a fail-open, after quote boundaries
+# and quoted whitespace, so arm 2 deliberately names no characters at all.
+#
+# The binding property is BRANCH AGREEMENT with the Write/Edit branch below,
+# which is this gate's own definition of the protected set: for any path, the
+# verdict on `printf x > '<path>'` equals the verdict on a Write to `<path>`.
+# The suite asserts that equality rather than a fixed verdict, so it cannot rot
+# when the protected set next changes.
+#
+# STILL OPEN, and the one path where the two branches disagree: an id holding a
+# NEWLINE. Arm 1 misses it because newline is not path-safe, arm 2 because it
+# excludes newline, the run scan because newline is whitespace and ends a run.
+# It is not closable behind arm 2's newline exclusion, which is the only thing
+# keeping a multi-line commit message that names the two tokens on separate
+# lines allowed - the exact false positive the parent units exist to remove.
+# Tracked open, pinned as NL1 in the suite, NOT accepted.
 #
 # It sits BESIDE has_path_shaped_occurrence(), never in place of it, and is
-# never consulted to permit anything - so it can only ever add denials. Prose
-# between the two tokens almost always carries punctuation outside the
-# charclass (`:`, `;`, `(`, `)`, `<`, `>`), which is what leaves the
-# commit-message allowance standing.
-#
-# BOUNDARY, measured and NOT closed here: an id carrying BOTH whitespace and a
-# character outside the charclass (`my unit!`, `u: 1`) escapes this scan on the
-# unsafe character and the run scan on the whitespace, and really writes the
-# file. That is the same regression class as W1-W16, not a pre-existing
-# residual, so it is deliberately NOT pinned as accepted anywhere in the suite.
-# Widening the charclass closes it, but buys the coverage with prose false
-# positives, which is a spec decision rather than an implementation one; it was
-# reported with this unit and is unadjudicated as this is written.
+# never consulted to permit anything - so it can only ever add denials.
 has_whitespace_id_packet_path() {
   # \047 and \042 are ' and ", spelled as escapes for the same reason as above.
   local rest="$1" head
@@ -157,12 +179,19 @@ has_whitespace_id_packet_path() {
       */DECISION*)
         head="${rest%%/DECISION*}"
         # Only the FIRST /DECISION is worth testing: every later one has a head
-        # that contains this one, so an unsafe head can never become safe. A
-        # failed head therefore means this `human-review` is spent - go on to
-        # the next one rather than to the next `/DECISION`.
+        # that CONTAINS this one, so a head that failed both arms can never
+        # become safe by growing. Arm 1 is monotone because an unsafe character
+        # stays present; arm 2 for the same reason in both halves - "begins with
+        # `/`" is fixed by the head's first character, which a longer head keeps,
+        # and "holds no newline" only ever degrades as the head grows. A failed
+        # head therefore means this `human-review` is spent - go on to the next
+        # one rather than to the next `/DECISION`.
         case "$head" in
           *[!A-Za-z0-9_$' \t'/.#-]*) ;;
           *) return 0 ;;
+        esac
+        case "$head" in
+          /*) case "$head" in *$'\n'*) ;; *) return 0 ;; esac ;;
         esac
         ;;
     esac
@@ -172,11 +201,12 @@ has_whitespace_id_packet_path() {
 # Shared precondition for both allowances below: bash cannot act on any mention.
 # No substitution - read from the RAW text, since double quotes do not inhibit
 # `$(` or backticks; neither path condition above may hold; the command must
-# lex; and no trigger may survive into the skeleton's CODE text. command_skeleton() masks quoted spans
-# and comment bodies to X, so a trigger still visible in the skeleton sat where
-# bash would execute it or use it as a redirection target - `printf x > DECISION`
-# with a `# human-review` comment is denied here, and would otherwise write the
-# real file whenever the cwd is the packet directory.
+# lex; and no trigger may survive into the skeleton's CODE text.
+# command_skeleton() masks quoted spans and comment bodies to X, so a trigger
+# still visible in the skeleton sat where bash would execute it or use it as a
+# redirection target - `printf x > DECISION` with a `# human-review` comment is
+# denied here, and would otherwise write the real file whenever the cwd is the
+# packet directory.
 triggers_are_inert() {
   local cmd="$1" skel
   case "$cmd" in *'`'*|*'$('*|*'<('*) return 1 ;; esac

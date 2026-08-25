@@ -12,7 +12,9 @@ cd "$(dirname "$0")/.."
 unset CLAUDE_PLUGIN_ROOT || true
 fail=0
 
-gate="hooks/scripts/human-decision-gate.sh"
+# Overridable so the U-set mutation control can point the whole suite at a
+# mutated scratch copy without editing the gate in place. Defaults to the real one.
+gate="${GATE_UNDER_TEST:-hooks/scripts/human-decision-gate.sh}"
 
 tmproot="$(mktemp -d)"
 trap 'rm -rf "$tmproot"' EXIT
@@ -307,6 +309,28 @@ u1/DECISION\""
 # denied commit message as evidence for the companion condition.
 bash_case "C12 a message spelling the literal template path (run scan denies it)" blocked \
   antislop:reviewer "git commit -m \"see .claude/human-review/<task-id>/DECISION\""
+# C13-C20 are the prose separators that decided which remedy shipped. Each puts a
+# `/DECISION` after a `human-review` on ONE line, so the only thing keeping them
+# allowed is that the head does not begin with `/`. Widening the path-safe
+# charclass instead - the rejected candidate - re-denies all of them; the two the
+# earlier report named verbatim are C13 and C14. They are the false positives the
+# parent units exist to remove, so they are pinned rather than left to a sweep.
+bash_case "C13 'human-review, /DECISION'" allowed antislop:reviewer \
+  "git commit -m 'note human-review, /DECISION file'"
+bash_case "C14 'human-review packet -> /DECISION'" allowed antislop:reviewer \
+  "git commit -m 'note human-review packet -> /DECISION file'"
+bash_case "C15 ': ' separator" allowed antislop:reviewer \
+  "git commit -m 'note human-review: /DECISION file'"
+bash_case "C16 '; ' separator" allowed antislop:reviewer \
+  "git commit -m 'note human-review; /DECISION file'"
+bash_case "C17 '(' separator" allowed antislop:reviewer \
+  "git commit -m 'note human-review (/DECISION file)'"
+bash_case "C18 ') ' separator" allowed antislop:reviewer \
+  "git commit -m 'note (human-review) /DECISION file'"
+bash_case "C19 ' => ' separator" allowed antislop:reviewer \
+  "git commit -m 'note human-review => /DECISION file'"
+bash_case "C20 ' | ' separator" allowed antislop:reviewer \
+  "git commit -m 'note human-review | /DECISION file'"
 
 echo
 echo "-- P16: an inert trailing comment no longer denies a write elsewhere --"
@@ -327,7 +351,7 @@ bash_case "P16-c a comment describing a cd-relative write" allowed antislop:revi
 # docs/plans/2026-07-31-debug-182-step6-word-boundary.md step 6R-4), deliberately
 # NOT fixed here. Pinned as a pair with P16-a so a later implementer reads it as
 # a boundary rather than an oversight. P13-k pins the same shape after a read,
-# but is denied by the path-shape scan first, so only P16-d binds the residual.
+# but is denied by the run scan first, so only P16-d binds the residual.
 bash_case "P16-d the same comment on its OWN line stays blocked (R-11 residual)" \
   blocked antislop:reviewer "printf ok > /tmp/hdg-note.txt
 # relates to the human-review packet and its DECISION"
@@ -372,11 +396,16 @@ bash_case "D17 backtick in the message" blocked antislop:reviewer \
   "git commit -m \"fix(human-review-x): \`id\` DECISION\""
 bash_case "D18 -F at the path, bare" blocked antislop:reviewer \
   "git commit -F .claude/human-review/u1/DECISION"
-# D19 is the sole-denier for has_path_shaped_occurrence(): the quoting hides the
-# path from the surviving-trigger test, the words are `git commit`, and there is
-# no redirection - delete the path-shape condition and this one write flips to
-# allowed. Verified by mutation, which is why the quoted form is pinned here.
-bash_case "D19 -F at the path, quoted (binds the path-shape scan)" blocked antislop:reviewer \
+# D19 is NO LONGER a sole-denier for has_path_shaped_occurrence(), and it stopped
+# being one when the companion scan landed rather than here: this path's head is
+# `/u1`, which the companion scan's path-safe arm denies on its own. Re-measured
+# on the pre-unit gate as well as this one - deleting the run scan call leaves
+# D19 blocked at BOTH revisions, so the claim this comment used to make ("delete
+# the path-shape condition and this one write flips to allowed") was already
+# false before this unit. It stays as a regression pin for the quoted `-F` form;
+# Q22 is the case that binds the run scan today.
+bash_case "D19 -F at the path, quoted (regression pin; Q22 binds the run scan)" blocked \
+  antislop:reviewer \
   "git commit -F '.claude/human-review/u1/DECISION'"
 # D20 is the sole-denier for `second word must be commit`: its triggers are inert
 # and its first word IS git, so deleting that half lets through a commit running
@@ -469,7 +498,7 @@ echo
 echo "-- the same word-assembly shape via variables and braces (Q17-Q20) --"
 # The two other expansions that assemble a word were flagged as untested. Both
 # were measured against real bash rather than assumed. Q17 IS a live write (one
-# word, no IFS character in it) and the path-shape scan denies it. Q19 and Q20
+# word, no IFS character in it) and the run scan denies it. Q19 and Q20
 # are NOT: a brace expansion yielding more than one word makes the redirect
 # ambiguous and bash writes nothing, and one yielding a single word is not
 # expanded at all, so Q18's `{DECISION}` is a literally different filename.
@@ -487,17 +516,26 @@ bash_case "Q20 brace expansion splitting the filename (accepted residual)" allow
   antislop:reviewer "printf x > .claude/human-review/u1/DECISIO{N,}"
 
 echo
-echo "-- fragment joining, re-bound now that the companion scan exists (Q21) --"
-# Q21 is the sole denier for fragment joining in has_path_shaped_occurrence().
-# The companion scan cannot cover it: this id spells a `:`, which is outside the
-# path-safe charclass, so only the JOINED run sees the path as one word. An id
-# like `fix:thing` is exactly as producible as `my unit` - both come off the same
-# free-form `Unit:` line, which nothing gates. Measured on this tree: reverting
-# the joining flips this case and no other, and real bash then OVERWRITES a
-# DECISION already sitting in the fixture, so the ALLOW is a live fail-open
-# rather than an argument.
+echo "-- fragment joining, re-bound AGAIN now that the anchored arm exists (Q21-Q22) --"
+# Q21 used to be the sole denier for fragment joining in
+# has_path_shaped_occurrence(). It is NOT any more, and the binding MOVED for the
+# second time: its id spells a `:`, so the companion scan's path-safe arm misses
+# it, but the anchored arm now denies it on the head `/fix:thing` alone. Measured
+# on this tree - reverting the joining leaves Q21 blocked. It stays as a
+# regression pin; Q22 is what binds the joining today.
+#
+# This is the second time a NEW condition silently un-bound an OLD condition's
+# proof in this file (the companion scan did it to fourteen cases when it
+# landed). Re-run every existing mutant after adding a condition, not just the
+# new one's - a mutation proof rots with the suite green the whole time.
 bash_case "Q21 split path whose id carries a character outside the path-safe set" \
   blocked antislop:reviewer "printf x > '.claude/human-review/fix:thing/''DECISION'"
+# Q22 IS the sole denier for fragment joining today: the two tokens concatenate
+# with no `/` between them, so no `/DECISION` ever follows the `human-review` and
+# the companion scan cannot fire on either arm - only the JOINED run sees both
+# tokens in one word. Measured: blocked here, allowed with the joining reverted.
+bash_case "Q22 the two tokens concatenated with no slash (binds fragment joining)" \
+  blocked antislop:reviewer "printf x > '.claude/human-review''DECISION'"
 
 echo
 echo "-- the gh arm of the allowlist, reached through the inert-trigger write path (G1-G3) --"
@@ -623,6 +661,191 @@ bash_case "W15 trailing whitespace in the id segment" blocked antislop:reviewer 
   "printf x > '.claude/human-review/u1 /DECISION'"
 bash_case "W16 leading whitespace in the id segment" blocked antislop:reviewer \
   "printf x > '.claude/human-review/ u1/DECISION'"
+
+echo
+echo "-- U-set: an id holding whitespace AND a character outside the path-safe set --"
+# The third character dimension to cost this function a fail-open. W1-W16 above
+# cover an id that is whitespace-bearing but otherwise path-safe; these ids carry
+# BOTH, so they escaped the run scan on the whitespace and the path-safe arm of
+# has_whitespace_id_packet_path() on the punctuation, and really wrote the file.
+# Every one of them was measured ALLOW before the anchored arm landed.
+#
+# They are denied by the anchored arm, which tests the packet path's STRUCTURE
+# rather than the id's characters: the head between `human-review` and the first
+# `/DECISION` begins with `/`, because in the real path that character always
+# does. Enumerating characters is what missed this class twice; the arm names
+# none.
+#
+# MUTATION CONTROL (sole-denier proof for the anchored arm). Delete ONLY the arm
+# in a scratch copy and point the suite at it. Copy lib/ alongside it: the gate
+# sources lib/agent-identity.sh relative to its OWN path, so a bare copy into an
+# empty directory dies at startup and every case "fails" with rc=1 - which looks
+# like a kill but proves nothing. GATE_UNDER_TEST must be an ABSOLUTE path.
+#
+#   d="$(mktemp -d)"; cp -r hooks/scripts/lib "$d/"
+#   n=$(grep -n '^          /\*) case ' hooks/scripts/human-decision-gate.sh | cut -d: -f1)
+#   sed "$((n-1)),$((n+1))d" hooks/scripts/human-decision-gate.sh > "$d/mutant.sh"
+#   GATE_UNDER_TEST="$d/mutant.sh" bash tests/human-decision-gate.test.sh; echo $?
+#
+# Expected: exit 1 with 130 FAIL lines - all 126 U cases, BA1, BA2, PD1 and PD2 -
+# and each of the 128 case-level FAILs reading rc=0, i.e. the mutant really
+# ALLOWED a write it should have blocked. An rc=1 anywhere means the mutant
+# crashed and the run is void. U1 is a genuine SOLE denier: it is ALLOW on the
+# pre-unit gate too, so with the arm gone nothing else in the pipeline stands
+# between it and the real file.
+u_puncts=(':' '!' ',' ';' '(' ')' '[' ']' '=' '@' '+' '%' '~' '^' '&' '*' '?' '<' '>' '{' '}')
+u_n=0
+for u_p in "${u_puncts[@]}"; do
+  # mid-id, leading, trailing, and a nested segment - each still inside the
+  # protected set, i.e. each matched by the Write/Edit branch's own `*` glob.
+  for u_shape in "u${u_p} 1" "${u_p}u 1" "u 1${u_p}" "x${u_p}/u 1"; do
+    u_n=$((u_n + 1))
+    bash_case "U$u_n id [$u_shape]" blocked antislop:reviewer \
+      "printf x > '.claude/human-review/${u_shape}/DECISION'"
+  done
+done
+for u_p in "${u_puncts[@]}"; do
+  u_n=$((u_n + 1))
+  bash_case "U$u_n id [u${u_p}<tab>1]" blocked antislop:reviewer \
+    "printf x > '.claude/human-review/u${u_p}"$'\t'"1/DECISION'"
+  u_n=$((u_n + 1))
+  bash_case "U$u_n id [u${u_p}<2 spaces>1]" blocked antislop:reviewer \
+    "printf x > '.claude/human-review/u${u_p}  1/DECISION'"
+done
+
+echo
+echo "-- after-hr family: OUTSIDE the protected set, correctly ALLOWED --"
+# `.claude/human-review:/u 1/DECISION` names `human-review:`, a DIFFERENT
+# directory, so it is not this gate's file - and the Write/Edit branch below
+# ALLOWS it too, because it does not match `.claude/human-review/*/DECISION`.
+# These are pinned as correct allowances, NOT as residuals: a later reader who
+# "closes" them would be adding a false positive and breaking branch agreement,
+# which is exactly what the rejected wider-charclass candidate did. They are
+# also what keeps the branch-agreement assertion below non-vacuous, by putting
+# both verdicts in its corpus rather than only `blocked`.
+for u_p in "${u_puncts[@]}"; do
+  u_n=$((u_n + 1))
+  bash_case "U$u_n after-hr [human-review${u_p}] is a different dir (correct ALLOW)" \
+    allowed antislop:reviewer \
+    "printf x > '.claude/human-review${u_p}/u 1/DECISION'"
+done
+
+echo
+echo "-- BRANCH AGREEMENT: the Bash verdict must EQUAL the Write/Edit verdict --"
+# The binding, dimension-free criterion. Both prior fail-opens in
+# has_whitespace_id_packet_path() came from a deny condition defined by
+# ENUMERATING a character dimension (quote boundaries, then quoted whitespace,
+# then interstitial punctuation); each time an unmodelled value of that
+# dimension walked through. This criterion names no characters at all.
+#
+# The Write/Edit branch is the ORACLE: `.claude/human-review/*/DECISION` applied
+# to a normalize_path()-resolved path is what this gate MEANS by the protected
+# file. So the assertion is that the two verdicts are EQUAL - not that either is
+# `blocked` - which is also why it cannot rot if the protected set is changed
+# later. Measured 630 disagreements over this corpus before the anchored arm and
+# 0 after; the corpus deliberately contains paths of both polarities (the
+# after-hr family above is genuinely outside the set), so equality is a real
+# constraint here rather than a tautology.
+verdict_of() { # $1 = bash|write, $2 = payload; echoes allowed|blocked
+  local vrc=0 vjson
+  if [ "$1" = bash ]; then
+    vjson="$(jq -n --arg a antislop:reviewer --arg c "$2" \
+      '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')"
+  else
+    vjson="$(jq -n --arg a antislop:reviewer --arg p "$2" \
+      '{tool_name:"Write",agent_type:$a,tool_input:{file_path:$p}}')"
+  fi
+  printf '%s' "$vjson" | CLAUDE_PROJECT_DIR="$proj" bash "$gate" >/dev/null 2>&1 || vrc=$?
+  [ "$vrc" = 0 ] && echo allowed || echo blocked
+}
+
+ba_total=0
+ba_bad=0
+ba_allowed=0
+for u_p in "${u_puncts[@]}"; do
+  for ba_id in "u${u_p} 1" "${u_p}u 1" "u 1${u_p}" "x${u_p}/u 1" "u${u_p}1" \
+               "u${u_p}"$'\t'"1"; do
+    for ba_pfx in ".claude/human-review" "./.claude/human-review" \
+                  ".claude//human-review" ".claude/./human-review" \
+                  ".claude/x/../human-review"; do
+      ba_path="$ba_pfx/$ba_id/DECISION"
+      ba_b="$(verdict_of bash "printf x > '$ba_path'")"
+      ba_w="$(verdict_of write "$ba_path")"
+      ba_total=$((ba_total + 1))
+      [ "$ba_b" = allowed ] && ba_allowed=$((ba_allowed + 1))
+      if [ "$ba_b" != "$ba_w" ]; then
+        ba_bad=$((ba_bad + 1))
+        [ "$ba_bad" -le 5 ] && echo "     disagreement: bash=$ba_b write=$ba_w [$ba_path]"
+      fi
+    done
+  done
+  # the after-hr sibling of the same punctuation: both branches must ALLOW it
+  ba_path=".claude/human-review${u_p}/u 1/DECISION"
+  ba_b="$(verdict_of bash "printf x > '$ba_path'")"
+  ba_w="$(verdict_of write "$ba_path")"
+  ba_total=$((ba_total + 1))
+  [ "$ba_b" = allowed ] && ba_allowed=$((ba_allowed + 1))
+  if [ "$ba_b" != "$ba_w" ]; then
+    ba_bad=$((ba_bad + 1))
+    [ "$ba_bad" -le 5 ] && echo "     disagreement: bash=$ba_b write=$ba_w [$ba_path]"
+  fi
+done
+if [ "$ba_bad" = 0 ]; then
+  pass "BA1 Bash and Write/Edit agree on all $ba_total paths"
+else
+  bad "BA1 $ba_bad of $ba_total paths disagree between the Bash and Write/Edit branches"
+fi
+# Guards the assertion above against going vacuous: if the corpus ever collapses
+# to one verdict, equality stops constraining anything. The after-hr family is
+# what supplies the ALLOW side, so this count must be exactly that family.
+if [ "$ba_allowed" = "${#u_puncts[@]}" ]; then
+  pass "BA2 corpus spans both verdicts ($ba_allowed allowed of $ba_total)"
+else
+  bad "BA2 expected ${#u_puncts[@]} allowed paths in the corpus, got $ba_allowed of $ba_total"
+fi
+
+echo
+echo "-- newline in the packet id: ALLOW, TRACKED-OPEN (not accepted) --"
+# The one member of the U-set's class the anchored arm deliberately cannot close,
+# and the one path in this suite where the two branches still disagree: Write
+# DENIES it, Bash ALLOWS it, and real bash creates the file (verified with a
+# sentinel, not just a verdict). Arm 1 misses it because newline is not
+# path-safe, arm 2 because it excludes newline, and the run scan because newline
+# is whitespace and resets the run.
+#
+# It is NOT closable here: arm 2's newline exclusion is exactly what keeps C11 -
+# a multi-line commit message naming the two tokens on different lines - allowed,
+# which is the false positive the parent units exist to remove. The two criteria
+# are in genuine tension, so this is reported rather than patched around. Like
+# F-1 below it is tracked-open, NOT accepted; a later unit that closes it is
+# EXPECTED to flip this pin and delete this comment.
+bash_case "NL1 newline in the packet id (branch disagreement, tracked-open)" allowed \
+  antislop:reviewer "printf x > '.claude/human-review/a
+b/DECISION'"
+
+echo
+echo "-- prose the anchored arm newly denies, by design (PD1-PD3) --"
+# The arm's cost, pinned so it is visible rather than discovered. A message that
+# writes `/` straight after `human-review` and reaches a `/DECISION` on the SAME
+# line is now denied whatever punctuation sits between - previously the verdict
+# depended on which punctuation the prose happened to use, since the path-safe
+# arm already denied the `-` and space spellings of exactly these. So this is the
+# same doctrine the gate already applied ("a spelled path is denied wherever it
+# sits", C12), applied consistently rather than a new policy.
+#
+# Measured cost: 36 deltas over a 174-command prose/read/comment corpus, ALL of
+# this one shape, and ZERO over all 813 commit messages in this repository's
+# history. Reads are untouched, because command_is_provably_benign() answers them
+# before this scan ever runs. A human hitting this puts the tokens on separate
+# lines (C11) or drops the slash (C9/C10), both already allowed.
+bash_case "PD1 prose naming the packet dir as a path, then /DECISION" blocked \
+  antislop:reviewer "git commit -m 'note human-review/u1: /DECISION file'"
+bash_case "PD2 the same shape in a trailing comment" blocked antislop:reviewer \
+  "printf ok > /tmp/hdg-note.txt # note human-review/u1 => /DECISION"
+# PD3 is the control that keeps PD1/PD2 honest: identical prose, tokens NOT
+# spelled as a path (no slash after the token), stays allowed.
+bash_case "PD3 the same prose without the slash stays allowed" allowed antislop:reviewer \
+  "git commit -m 'note human-review, u1: /DECISION file'"
 
 echo
 echo "-- F-1 glob metacharacters: ALLOW, TRACKED-OPEN (not accepted) --"
