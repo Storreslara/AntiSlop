@@ -184,6 +184,17 @@ rotate_log() {
   timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
   local archive_file="${log_file}.${timestamp}"
 
+  # Guard against a same-second collision: two --apply runs within the same
+  # second would otherwise compute the same archive name and mv would
+  # clobber the first run's archive. Append a counter until the name is free.
+  if [ -e "$archive_file" ]; then
+    local counter=1
+    while [ -e "${log_file}.${timestamp}.${counter}" ]; do
+      counter=$((counter + 1))
+    done
+    archive_file="${log_file}.${timestamp}.${counter}"
+  fi
+
   if [ "$apply" = true ]; then
     # Move old log to archive
     mv "$log_file" "$archive_file"

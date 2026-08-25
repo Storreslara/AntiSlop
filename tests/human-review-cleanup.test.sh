@@ -352,4 +352,67 @@ else
   bad "rotated log archive not found"
 fi
 
+# Verify archive CONTENT (not just existence) matches the original pre-rotation log.
+archive_path="$(find "$dir/.claude" -name "review-audit.log.*" -type f 2>/dev/null | head -n1)"
+archive_content="$(cat "$archive_path" 2>/dev/null)"
+original_content="$(printf '2026-08-20T10:00:00Z cleared-by=reviewer unit=100\n2026-08-21T10:00:00Z defer: unit=101 reason=test')"
+if [ "$archive_content" = "$original_content" ]; then
+  pass "archive content matches original pre-rotation log"
+else
+  bad "archive content does not match original log (archive=[$archive_content])"
+fi
+
+echo
+echo "-- log rotation fires on a fresh (non-backdated) log -- regression for rotation-unreachable fix --"
+dir="$(mk_project fresh-rotation)"
+mkdir -p "$dir/.claude"
+printf '2026-08-22T10:00:00Z cleared-by=reviewer unit=200\n' > "$dir/.claude/review-audit.log"
+printf '2026-08-22T10:00:01Z cleared-by=reviewer unit=201\n' >> "$dir/.claude/review-audit.log"
+# No backdating: mtime is "now", well within the default 30-day retention window.
+"$script" --project-dir "$dir" --apply >/dev/null 2>&1
+fresh_archive_count=$(find "$dir/.claude" -name "review-audit.log.*" -type f 2>/dev/null | wc -l)
+if [ "$fresh_archive_count" -gt 0 ]; then
+  pass "fresh log rotates unconditionally (not retention-gated)"
+else
+  bad "fresh log did not rotate -- rotation regressed to being retention-gated"
+fi
+
+echo
+echo "-- log rotation is collision-safe within the same second (regression for gh409) --"
+dir="$(mk_project collision)"
+mkdir -p "$dir/.claude"
+for i in $(seq 1 200); do printf 'line %s\n' "$i" >> "$dir/.claude/review-audit.log"; done
+
+# Stub `date` so both --apply runs below compute the identical archive
+# timestamp, deterministically forcing the same-second collision instead of
+# relying on a real timing race.
+stubdir="$tmproot/stub-date-collision"
+mkdir -p "$stubdir"
+cat > "$stubdir/date" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = "-u" ] && [ "$2" = "+%Y%m%dT%H%M%SZ" ]; then
+  echo "20260101T000000Z"
+  exit 0
+fi
+exec /usr/bin/date "$@"
+EOF
+chmod +x "$stubdir/date"
+
+PATH="$stubdir:$PATH" "$script" --project-dir "$dir" --apply >/dev/null 2>&1
+for i in $(seq 201 210); do printf 'line %s\n' "$i" >> "$dir/.claude/review-audit.log"; done
+PATH="$stubdir:$PATH" "$script" --project-dir "$dir" --apply >/dev/null 2>&1
+
+first_archive_lines=$(wc -l < "$dir/.claude/review-audit.log.20260101T000000Z" 2>/dev/null || echo 0)
+if [ "$first_archive_lines" -eq 200 ]; then
+  pass "first archive (200 lines) survives a same-second rotation, not clobbered"
+else
+  bad "first archive was clobbered by the same-second collision (expected 200 lines, got $first_archive_lines)"
+fi
+
+if [ -f "$dir/.claude/review-audit.log.20260101T000000Z.1" ]; then
+  pass "second same-second rotation used a collision-safe counter-suffixed archive name"
+else
+  bad "second same-second rotation did not create a counter-suffixed archive"
+fi
+
 exit "$fail"
