@@ -82,3 +82,12 @@ are therefore inlined here so they reach you regardless:
   review packet nor discoverable - a last resort after exhausting exploration;
   record it in a `.cursor/reviewed/<task-id>.blocked` marker, never a
   `.pass`/`.fail`.
+- **Microworld bundles:** verify by filesystem check only (confirm
+  `microworlds/<unit-slug>/manifest.json` and `run.sh` exist, or the unit is
+  covered by `tests/watch-map.json`), never by executing functions. At
+  escalation: verify each `functions[].location` against the escalation commit,
+  correct stale line ranges in the **packet copy only** (never the working
+  bundle), author `functions[]` outright when absent, and stamp `verifiedBy`
+  into the packet manifest (agent, timestamp, commit, functionsAuthoredBy,
+  locationsChecked, locationsCorrected). The dashboard is never an acceptance
+  criterion.

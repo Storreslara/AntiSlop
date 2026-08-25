@@ -55,7 +55,8 @@ with reasons.
   an uncommitted change.
 - **Microworld bundles (if present):** a bundle is verified by filesystem check
   only — confirm the directory exists under `microworlds/<unit-slug>/` and
-  contains a `manifest.json` and `run.sh`. **Never** invoke a `functions[]`
+  contains a `manifest.json` and `run.sh`, **or** that the unit is covered by a
+  `tests/watch-map.json` entry (tier A). **Never** invoke a `functions[]`
   entry to adjudicate the unit, and never treat the bundle as part of the
   reviewed diff (it is gitignored working-tree scratch). `run.sh` is the sole
   execution contract; bundle presence is a filesystem check; the dashboard is
@@ -190,7 +191,24 @@ with reasons.
   `.claude/human-review/<task-id>/` — copy `microworlds/<unit-slug>/` wholesale
   with `run.sh`'s executable bit preserved (`cp -a`), and write `PACKET.md`
   there as a byte-identical copy of the marker body; the marker stays
-  authoritative wherever the two differ. Write `CHANGES.md` and `EXAMPLES.md`
+  authoritative wherever the two differ. **After copying, verify the escalation
+  manifest:** for each `functions[]` entry in the packet's `manifest.json`,
+  verify `location.file` exists at the escalation commit and `startLine`/`endLine`
+  lie within that file's line count and still bracket the named `group`. Correct
+  any stale range **in the packet copy only** — the working-tree bundle is never
+  modified. Author `functions[]` outright when the escalating unit has none.
+  Stamp into the packet `manifest.json` a `verifiedBy` block:
+  ```json
+  "verifiedBy": {
+    "agent": "reviewer",
+    "timestamp": "<ISO-8601 UTC>",
+    "commit": "<40-hex sha at escalation>",
+    "functionsAuthoredBy": "reviewer" or "implementer-verified",
+    "locationsChecked": "<N>/<N>",
+    "locationsCorrected": <count>
+  }
+  ```
+  Write `CHANGES.md` and `EXAMPLES.md`
   there too — see the next two bullets. With no bundle, still create that
   directory with `PACKET.md` and `CHANGES.md` alone and write
   `microworld: none` — never skip

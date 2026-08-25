@@ -629,6 +629,20 @@
       let html = `<div style="padding: var(--space-6);">`;
       html += `<h2>Escalation: ${escapeHtml(entry.taskId)}</h2>`;
 
+      // Provenance line: verifiedBy when present, unverified marker when absent
+      if (entry.verifiedBy) {
+        html += `<div style="color: var(--gvx-gray); font-size: 0.9em; margin-bottom: var(--space-3);">`;
+        html += `Verified by ${escapeHtml(entry.verifiedBy.agent)} `;
+        if (entry.verifiedBy.commit) {
+          html += `at <code>${escapeHtml(entry.verifiedBy.commit.slice(0, 8))}</code>`;
+        }
+        html += `</div>`;
+      } else {
+        html += `<div style="color: var(--gvx-gray); font-size: 0.9em; margin-bottom: var(--space-3);">`;
+        html += `unverified — carried over from implementation`;
+        html += `</div>`;
+      }
+
       // Reading order per gh375 Step 14: CHANGES.md, then PACKET.md, then
       // EXAMPLES.md -- each labelled, each omitted entirely (not an empty
       // pane) when its body is null.

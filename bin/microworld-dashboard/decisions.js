@@ -44,6 +44,7 @@ function enumerateEscalations(projectRoot) {
       packetBody: null,
       changesBody: null,
       examplesBody: null,
+      verifiedBy: null,
     };
 
     try {
@@ -66,6 +67,16 @@ function enumerateEscalations(projectRoot) {
       entry.examplesBody = fs.readFileSync(path.join(projectRoot, '.claude', 'human-review', taskId, 'EXAMPLES.md'), 'utf8');
     } catch (err) {
       // absent -- examplesBody stays null
+    }
+
+    // Read verifiedBy from packet manifest if present
+    try {
+      const manifestPath = path.join(projectRoot, '.claude', 'human-review', taskId, 'manifest.json');
+      const manifestContent = fs.readFileSync(manifestPath, 'utf8');
+      const manifest = JSON.parse(manifestContent);
+      entry.verifiedBy = manifest.verifiedBy || null;
+    } catch (err) {
+      // absent or malformed -- verifiedBy stays null
     }
 
     escalations.push(entry);

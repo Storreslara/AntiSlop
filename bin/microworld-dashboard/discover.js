@@ -241,6 +241,9 @@ function discoverPackets(projectRoot, bundles) {
     // Check if any function is disabled
     const hasDisabledFunctions = functions.some((f) => f.disabled);
 
+    // Extract verifiedBy from manifest if present
+    const verifiedBy = manifest.verifiedBy || null;
+
     bundles.push({
       id: `packet:${taskId}`,
       unit,
@@ -251,6 +254,7 @@ function discoverPackets(projectRoot, bundles) {
       disabled: hasDisabledFunctions,
       disabledReason: hasDisabledFunctions ? 'some functions cannot be invoked' : '',
       functions,
+      verifiedBy,
       status: null,
     });
   }

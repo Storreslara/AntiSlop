@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.31.64] - 2026-08-25
+
+**Reviewer authors and stamps the escalation manifest (mw-step3, Step 3 of the 2026-08-25 microworlds-workflow-redesign plan).** At escalation time, the reviewer now verifies each `functions[]` entry's `location` against the escalation commit, corrects stale line ranges in the **packet copy only** (never the working bundle), authors `functions[]` when the unit has none, and stamps a `verifiedBy` block into the packet's `manifest.json` with agent, timestamp, commit SHA, authorship provenance (reviewer or implementer-verified), location checks, and corrections. The lead-programmer no longer authors `functions[]` at implementation time — authorship moves to the reviewer at escalation so it is coupled to the commit and party that the human actually trusts. The bundle-presence check accepts tier A units covered by `tests/watch-map.json` as a valid state. The dashboard's escalation view renders a provenance line when `verifiedBy` is present ("Verified by reviewer at commit: <sha>") and an explicit "unverified — carried over from implementation" marker when absent. Per constitution §3, both working bundles and watch-map entries remain gitignored/uncommitted (no diff bloat); only the packet copy carries `verifiedBy` (no reviewer-authored field enters the working bundle).
+
+### Changed
+- **`agents/reviewer.md`** / **`templates/persona-protocol.md`**: bundle-presence check accepts tier A (watch-map entry); escalation section adds `verifiedBy` verification and stamping logic (verify locations, correct in packet, author functions when needed, stamp block with authorship provenance).
+- **`agents/lead-programmer.md`** / **`adapters/cursor/agents/lead-programmer.md`**: removed the `functions[]` authoring requirement for heavy-unit bundles (D7).
+- **`adapters/codex/agents-md-fragment.md`** / **`adapters/cursor/agents/reviewer.md`**: hand-ported the bundle-presence and escalation language into both house styles (D8, D6 via adapter parity).
+- **`bin/microworld-dashboard/discover.js`**: packet bundles now expose `verifiedBy` from `manifest.json` (AC3.4).
+- **`bin/microworld-dashboard/decisions.js`**: escalation entries now read and expose `verifiedBy` from packet manifest (AC3.4).
+- **`bin/microworld-dashboard/index.html`**: escalation view renders provenance line — "Verified by <agent> at <commit>" when `verifiedBy` present, "unverified — carried over from implementation" when absent (AC3.5).
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.63 → 0.31.64 (constitution P3).
+- **`.claude/agents/*.md`** / **`.claude/persona-protocol*.md`** / **`.claude/protocol-digest.md`** / **`.claude/persona-config.json`**'s `fileHashes`: regenerated via `node bin/cli.js --update` (G1/G2).
+
 ## [0.31.63] - 2026-08-25
 
 **Propagate the packet-brevity tightening from the mirrors to the generator sources (packet-brevity-1 fix-forward, completing what 87bc9a4 started).** 87bc9a4 lowered `CHANGES.md`'s soft cap from 400 to 120 lines (plus a terseness instruction for its four sections) and added `EXAMPLES.md`'s 2-to-4-line per-example brevity cap, but applied the edit only to the generated mirrors (`.claude/persona-protocol.md`, `.claude/agents/reviewer.md`) rather than the sources they are rendered from, breaking `bin/cli.js --update`'s byte-equality invariant and failing `tests/validate.sh`. The prose itself was already correct and unchanged here — only its location moves.
