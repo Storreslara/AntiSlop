@@ -47,7 +47,7 @@ function makeBundle(tmpDir, unitSlug, entries = {}) {
   return bundleDir;
 }
 
-function makePacket(tmpDir, taskId, entries = {}) {
+function makePacket(tmpDir, taskId, entries = {}, extraManifestFields = {}) {
   const packetDir = path.join(tmpDir, '.claude', 'human-review', taskId);
   fs.mkdirSync(packetDir, { recursive: true });
 
@@ -65,6 +65,7 @@ function makePacket(tmpDir, taskId, entries = {}) {
     unit: taskId,
     description: `Packet for ${taskId}`,
     functions,
+    ...extraManifestFields,
   };
 
   // Create entry scripts
@@ -341,6 +342,98 @@ async function runTests() {
     server.close();
   } catch (err) {
     failures.push(`Test (e): ${err.message}`);
+  }
+
+  // Test (f): AC3.4 — a packet manifest with verifiedBy exposes it verbatim
+  //           on the discovered bundle object
+  console.log('Test (f): AC3.4 — verifiedBy present on packet manifest is exposed...');
+  try {
+    const tmpDir = makeTestProject('f');
+    const verifiedBy = {
+      agent: 'reviewer',
+      timestamp: '2026-08-25T12:00:00Z',
+      commit: 'a'.repeat(40),
+      functionsAuthoredBy: 'reviewer',
+      locationsChecked: '1/1',
+      locationsCorrected: 0,
+    };
+    makePacket(tmpDir, 'gh-verified', { run: '#!/bin/bash\necho "ok"' }, { verifiedBy });
+
+    const { server, token } = startServer(tmpDir);
+    await waitForServer(server);
+    const response = await httpRequest(
+      `http://127.0.0.1:${server.address().port}/api/bundles?t=${token}`
+    );
+    const bundles = JSON.parse(response.body);
+    const packetBundle = bundles.find((b) => b.id === 'packet:gh-verified');
+
+    if (!packetBundle) {
+      failures.push('Test (f): packet bundle not found');
+    } else if (JSON.stringify(packetBundle.verifiedBy) !== JSON.stringify(verifiedBy)) {
+      failures.push(`Test (f): verifiedBy is ${JSON.stringify(packetBundle.verifiedBy)}, expected ${JSON.stringify(verifiedBy)}`);
+    }
+
+    server.close();
+  } catch (err) {
+    failures.push(`Test (f): ${err.message}`);
+  }
+
+  // Test (g): AC3.4 — a packet manifest with no verifiedBy exposes an
+  //           explicit unverified marker (verifiedBy: null), not an absent key
+  console.log('Test (g): AC3.4 — verifiedBy absent from manifest exposes an explicit null marker...');
+  try {
+    const tmpDir = makeTestProject('g');
+    makePacket(tmpDir, 'gh-unverified', { run: '#!/bin/bash\necho "ok"' });
+
+    const { server, token } = startServer(tmpDir);
+    await waitForServer(server);
+    const response = await httpRequest(
+      `http://127.0.0.1:${server.address().port}/api/bundles?t=${token}`
+    );
+    const bundles = JSON.parse(response.body);
+    const packetBundle = bundles.find((b) => b.id === 'packet:gh-unverified');
+
+    if (!packetBundle) {
+      failures.push('Test (g): packet bundle not found');
+    } else if (!('verifiedBy' in packetBundle)) {
+      failures.push('Test (g): verifiedBy key is absent, expected an explicit key with value null');
+    } else if (packetBundle.verifiedBy !== null) {
+      failures.push(`Test (g): verifiedBy is ${JSON.stringify(packetBundle.verifiedBy)}, expected null`);
+    }
+
+    server.close();
+  } catch (err) {
+    failures.push(`Test (g): ${err.message}`);
+  }
+
+  // Test (h): AC3.4 — a packet with a malformed/missing manifest.json ALSO
+  //           exposes the explicit unverified marker (verifiedBy: null),
+  //           not an absent key — the error-path branch in discover.js
+  console.log('Test (h): AC3.4 — malformed manifest packet exposes an explicit null marker...');
+  try {
+    const tmpDir = makeTestProject('h');
+    // No manifest.json written at all — triggers the malformed/missing branch.
+    fs.mkdirSync(path.join(tmpDir, '.claude', 'human-review', 'gh-malformed'), { recursive: true });
+
+    const { server, token } = startServer(tmpDir);
+    await waitForServer(server);
+    const response = await httpRequest(
+      `http://127.0.0.1:${server.address().port}/api/bundles?t=${token}`
+    );
+    const bundles = JSON.parse(response.body);
+    const packetBundle = bundles.find((b) => b.id === 'packet:gh-malformed');
+
+    if (!packetBundle) {
+      failures.push('Test (h): packet bundle not found');
+    } else if (!('verifiedBy' in packetBundle)) {
+      failures.push('Test (h): verifiedBy key is absent on the malformed-manifest branch, expected an explicit key with value null');
+    } else if (packetBundle.verifiedBy !== null) {
+      failures.push(`Test (h): verifiedBy is ${JSON.stringify(packetBundle.verifiedBy)}, expected null`);
+    }
+
+    server.close();
+  } catch (err) {
+    failures.push(`Test (h): ${err.message}`);
   }
 
   // Report results

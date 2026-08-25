@@ -89,5 +89,7 @@ are therefore inlined here so they reach you regardless:
   correct stale line ranges in the **packet copy only** (never the working
   bundle), author `functions[]` outright when absent, and stamp `verifiedBy`
   into the packet manifest (agent, timestamp, commit, functionsAuthoredBy,
-  locationsChecked, locationsCorrected). The dashboard is never an acceptance
+  locationsChecked, locationsCorrected). `functionsAuthoredBy` is "reviewer"
+  when authored outright (unit had none), or "implementer-verified" when
+  carried over and checked. The dashboard is never an acceptance
   criterion.

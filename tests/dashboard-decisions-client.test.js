@@ -932,6 +932,52 @@ async function runTests() {
     failures.push(`Test (u) U4-C6: ${err.message}`);
   }
 
+  // Test (v): AC3.5 — escalation view renders a provenance line naming the
+  // verifying agent and commit when verifiedBy is present, and an explicit
+  // "unverified" line when it is absent.
+  console.log('Test (v): AC3.5 — escalation provenance line (verified/unverified)...');
+  try {
+    const verifiedEntry = {
+      taskId: 'gh-verified', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body',
+      verifiedBy: { agent: 'reviewer', timestamp: '2026-08-25T12:00:00Z', commit: 'a'.repeat(40), functionsAuthoredBy: 'reviewer', locationsChecked: '1/1', locationsCorrected: 0 },
+    };
+    const { contentHtml: verifiedHtml } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [verifiedEntry] },
+    });
+    if (!verifiedHtml.includes('Verified by reviewer')) {
+      failures.push(`Test (v) FAILED: provenance line missing verifying agent: ${verifiedHtml.slice(0, 600)}`);
+    } else {
+      console.log('OK   provenance line names the verifying agent');
+    }
+    if (!verifiedHtml.includes('a'.repeat(8))) {
+      failures.push('Test (v) FAILED: provenance line missing the commit');
+    } else {
+      console.log('OK   provenance line names the commit');
+    }
+
+    const unverifiedEntry = {
+      taskId: 'gh-unverified', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body', verifiedBy: null,
+    };
+    const { contentHtml: unverifiedHtml } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [unverifiedEntry] },
+    });
+    if (!unverifiedHtml.includes('unverified — carried over from implementation')) {
+      failures.push(`Test (v) FAILED: unverified marker missing: ${unverifiedHtml.slice(0, 600)}`);
+    } else {
+      console.log('OK   unverified marker rendered when verifiedBy is absent');
+    }
+
+    if (failures.filter((f) => f.includes('Test (v)')).length === 0) {
+      console.log('  ✓ Test (v) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (v) ERROR: ${err.stack}`);
+  }
+
   console.log();
   if (failures.length > 0) {
     console.error('FAILURES:');

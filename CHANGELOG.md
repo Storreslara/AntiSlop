@@ -6,7 +6,7 @@
 
 ### Changed
 - **`agents/reviewer.md`** / **`templates/persona-protocol.md`**: bundle-presence check accepts tier A (watch-map entry); escalation section adds `verifiedBy` verification and stamping logic (verify locations, correct in packet, author functions when needed, stamp block with authorship provenance).
-- **`agents/lead-programmer.md`** / **`adapters/cursor/agents/lead-programmer.md`**: removed the `functions[]` authoring requirement for heavy-unit bundles (D7).
+- **`agents/lead-programmer.md`** / **`adapters/cursor/rules/persona-protocol.mdc`**: removed the `functions[]` authoring requirement for heavy-unit bundles (D7).
 - **`adapters/codex/agents-md-fragment.md`** / **`adapters/cursor/agents/reviewer.md`**: hand-ported the bundle-presence and escalation language into both house styles (D8, D6 via adapter parity).
 - **`bin/microworld-dashboard/discover.js`**: packet bundles now expose `verifiedBy` from `manifest.json` (AC3.4).
 - **`bin/microworld-dashboard/decisions.js`**: escalation entries now read and expose `verifiedBy` from packet manifest (AC3.4).

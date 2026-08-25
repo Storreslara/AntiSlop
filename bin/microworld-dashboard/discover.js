@@ -169,6 +169,7 @@ function discoverPackets(projectRoot, bundles) {
         disabled: true,
         disabledReason: err.code === 'ENOENT' ? 'manifest.json not found' : `malformed JSON: ${err.message}`,
         functions: [],
+        verifiedBy: null,
         status: null,
       });
       continue;

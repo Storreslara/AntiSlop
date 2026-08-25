@@ -305,7 +305,7 @@ A **microworld bundle** is a gitignored directory under `microworlds/<unit-slug>
 
 **Storage and reviewer scope:** bundles are gitignored working-tree scratch, not part of the reviewed diff. The reviewer checks for bundle presence only (filesystem check or watch-map entry) at implementation time, never executes entries. At escalation, the reviewer verifies each `functions[]` entry's `location` against the escalation commit, corrects stale line ranges in the **packet copy only**, authors `functions[]` when absent, and stamps `verifiedBy` into the packet manifest. The rerun hook never invokes function entries (would convert sync check to hang), and neither does the reviewer for adjudication.
 
-**Authoring policy:** `functions[]` is authored at escalation time by the reviewer, never by `lead-programmer`. The reviewer authors it when missing, or verifies and corrects locations in the packet when provided. This couples `functions[]` to the escalation commit at which a human actually reviews the code.
+**Authoring policy:** `functions[]` is authored at escalation time by the reviewer, never by `lead-programmer`. The reviewer authors it when missing, or verifies and corrects locations in the packet when provided. This couples `functions[]` to the escalation commit at which a human actually reviews the code. The packet's `verifiedBy.functionsAuthoredBy` field records which case applied: `"reviewer"` when authored outright, `"implementer-verified"` when carried over and checked.
 
 ## Codex platform notes (loud degradations - see docs/codex-port-notes.md)
 - **AGENTS.md reaching subagents is doc-stated but NOT empirically confirmed
