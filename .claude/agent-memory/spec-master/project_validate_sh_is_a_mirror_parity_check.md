@@ -39,5 +39,35 @@ and never write a "Do NOT touch any `.claude/` mirror" line alongside a
 detached worktree at the unit's own commit**, never the live tree — see
 [[baselines-expire]] and [[verify-own-criteria-nonvacuous]].
 
-Third recorded instance of this one failure class: `gh385-2.fail`,
-`gh402.pass` note 1, `gh403.fail`.
+**Why it keeps recurring — the live tree gives a FALSE PASS.**
+`buildF2GitFixture` copies the **real repo root verbatim**, including
+*uncommitted* files. So an in-flight (unstaged) regeneration makes
+`cli-backfill`/`validate.sh` exit 0 locally while the same commit exits 1 in a
+pristine worktree. Measured 2026-08-25 at `76c51a8`: live tree exit **0**,
+pristine worktree exit **1**. An implementer who "verified" in place sees
+green. Always `git worktree add --detach <tmp> <sha>`.
+
+**The fast-path trap is intermittent, which makes it worse.** Measured
+2026-08-25: plain `--update` wrote nothing at `6b6a7a2` (test still exit 1)
+but *did* fully render at `76c51a8` — only because an unrelated open unit had
+left one hash stale, tripping drift detection into a full render. Repairing
+that other unit first would silently re-arm the fast path. Never let a spec,
+CHANGELOG, or dispatch say "regenerate via `bin/cli.js --update`" — always
+`--force-render`.
+
+**Strongest criterion for this class** (better than enumerating greps): in a
+pristine worktree at the fix commit, `node bin/cli.js --update --force-render
+&& git status --porcelain` must emit **zero lines** — i.e. the committed tree
+is a render fixed point. Un-hand-editable, and it fails loudly pre-fix (4
+` M ` lines).
+
+**Scope hazard:** `bin/cli.js` rewrites the *whole* `fileHashes` map and
+cannot render a subset, so the fix commit may unavoidably carry hash lines
+belonging to other open units. Pre-authorize them in the spec and require the
+commit message to name them, or a reviewer will FAIL the unit for
+out-of-scope hunks.
+
+Fourth recorded instance of this one failure class: `gh385-2.fail`,
+`gh402.pass` note 1, `gh403.fail`, `mw-step3.fail` (2026-08-25 — see
+`docs/plans/2026-08-25-debug-mw-step3-mirror-regeneration.md`; the 0.31.63
+CHANGELOG entry is the mirror-image, mirrors edited without sources).

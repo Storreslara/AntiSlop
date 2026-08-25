@@ -271,25 +271,74 @@ the **Gate** applied at the `PreToolUse`/`Agent`
 
 **Adapter behavioural parity**:
 (issue #202, 2026-08-01 efficiency pass 2,
-  Step 4) — a merge-gate check that the adapter ports' *scripts* produce the
-  same observable behaviour as the main Claude Code hook, not merely that
-  the same *text* is present. `tests/adapter-stop-gate-parity.test.sh`
-  drives `hooks/scripts/stop-gate.sh` and both adapter ports
-  (`adapters/{codex,cursor}/hooks/scripts/stop-gate.sh`) through the same
-  `defer:`-dedupe scenarios *and* the empty-after-colon `defer:`/`skip:`
-  rejection scenario, asserting the same audit-log record count and exit
-  code from each, scoped to those two scenarios — not a general
-  behavioural-parity guarantee for every hook. Do not conflate with the
-  other two parity mechanisms in this repo: **byte-parity**
-  (`tests/validate.sh`'s check that the three copies of
-  `hooks/scripts/lib/agent-identity.sh` are byte-identical, since that file
-  derives its behaviour from its own on-disk location rather than any
-  per-platform input) and **document/section-presence parity**
-  (`tests/adapter-protocol-parity.test.js`, which checks that canonical
-  protocol *sections* are accounted for in the Codex/Cursor doc ports —
-  presence, not runtime behaviour). See
+  Step 4, refreshed unit #411) — a merge-gate check that verifies the
+  adapter ports' **thin entry scripts** correctly translate their native
+  payloads into the shared **core file**'s contract, and that the core's
+  decision logic is genuinely shared (byte-identical) across all three ports.
+  `tests/adapter-stop-gate-parity.test.sh` verifies two things: (1) each
+  **thin entry script** correctly populates all variables the core expects
+  (payload-shape translation, input wiring), proven by running the full
+  review-join scenario suite once on Claude and a two-case wiring smoke test
+  on both adapter ports; (2) codex-only mutation controls prove the core's
+  logic is actually exercised, not bypassed. Complement: **byte-parity**
+  (`tests/validate.sh`'s check that declared-shared files are byte-identical
+  across ports) proves the core files themselves match exactly. Do not
+  conflate with the third parity mechanism: **document/section-presence
+  parity** (`tests/adapter-protocol-parity.test.js`, which checks that
+  canonical protocol *sections* are accounted for in the Codex/Cursor doc
+  ports — presence, not runtime behaviour). See [[thin entry script]],
+  [[core file]], [[payload-shape translation]], [[declared-shared set]],
   [modules/adapters.md](.claude/wiki/modules/adapters.md) and
   [modules/hooks.md](.claude/wiki/modules/hooks.md).
+
+**core file**:
+(unit #411, 2026-08-25) — a reusable, port-invariant logic module at
+  `hooks/scripts/lib/<name>-core.sh` (e.g. `stop-gate-core.sh`,
+  `reviewer-route-gate-core.sh`) containing decision logic that is sourced
+  (never executed directly) by per-port **thin entry scripts**. The core
+  file is byte-identical across all three ports (Claude, Codex, Cursor),
+  enforced by **byte-parity** tests. It defines a contract of input
+  variables (set by the caller before sourcing) and, for scripts that need
+  differing control-flow per port, caller-defined functions like
+  `block()`/`allow()` that the core invokes at decision points. Introduced
+  in unit #410 for `graph-update` and extended in unit #411 to `stop-gate`
+  and `reviewer-route-gate`. See [[thin entry script]] and [[Adapter
+  behavioural parity]].
+
+**declared-shared set**:
+(unit #411, 2026-08-25) — the list of files in `hooks/scripts/lib/` that
+  are mirrored byte-for-byte to both adapter ports (Codex and Cursor), as
+  declared in `bin/cli.js`'s `SHARED_HOOK_LIB_FILES` array. These files
+  include all **core files** plus `agent-identity.sh`, which derives
+  behaviour from its on-disk location rather than per-port input. Files in
+  `CLAUDE_ONLY_HOOK_LIB_FILES` (e.g. `benign-command.sh`) are NOT in the
+  declared-shared set and exist only in Claude's tree. The `--update`
+  mechanism enforces the declaration: any new file in `hooks/scripts/lib/`
+  that is not classified into one of the two lists causes an error.
+
+**payload-shape translation**:
+(unit #411, 2026-08-25) — the per-port work a **thin entry script** must
+  perform to convert its native hook payload into the normalized form
+  expected by the **core file**'s contract. Examples: Codex provides
+  `.agent_id`, Cursor provides `.subagent_type`, Claude provides
+  `.agent_type` — each **thin entry script** normalizes its native field
+  into the shared variable name the core expects. Cursor's hook events come
+  as lowercase/camelCase (`"stop"`, `"subagentStop"`), while the core
+  expects Pascal case (`"Stop"`, `"SubagentStop"`) — translation happens in
+  the **thin entry script** before sourcing. Payload-shape translation is
+  proven by **adapter behavioural parity** tests to happen correctly for
+  each port.
+
+**thin entry script**:
+(unit #411, 2026-08-25) — a per-port hook wrapper at
+  `adapters/{codex,cursor}/hooks/scripts/<name>.sh` (or the Claude main at
+  `hooks/scripts/<name>.sh`) that is responsible for payload translation and
+  sourcing the shared **core file**. Called "thin" because it contains no
+  decision logic of its own — all branching lives in the core. The **thin
+  entry script** is the only per-port variant; the **core file** it sources
+  is byte-identical across all three ports. Replaces the term "shim" for
+  clarity. See [[core file]], [[payload-shape translation]], and [[Adapter
+  behavioural parity]].
 
 **agent-memory write**:
 (unit #288, 2026-08-11) — a `Write` or `Edit` tool_use whose `file_path`
