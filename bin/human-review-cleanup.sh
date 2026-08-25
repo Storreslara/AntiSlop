@@ -38,7 +38,7 @@ for entry_path in "$review_dir"/*; do
   decision="$entry_path/DECISION"
   resolved=false
   if [ -f "$decision" ] && [ -s "$decision" ]; then
-    first_line="$(head -n1 "$decision" 2>/dev/null)" || continue
+    first_line="$(head -n1 "$decision" 2>/dev/null)" || first_line=""
     case "$first_line" in
       "DECISION $entry "*) resolved=true ;;
     esac

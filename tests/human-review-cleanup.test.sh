@@ -123,28 +123,54 @@ fi
 
 echo
 echo "-- DECISION is unreadable (mode 000): malformed entry skipped, sweep keeps going --"
-dir="$(mk_project unreadable)"
-mkdir -p "$dir/.claude/human-review/unreadable-decision-task"
-printf 'DECISION unreadable-decision-task 2026-08-24T00:00:00Z route: approve escalation: 2026-08-20T00:00:00Z\nby: human\n' \
-  > "$dir/.claude/human-review/unreadable-decision-task/DECISION"
-chmod 000 "$dir/.claude/human-review/unreadable-decision-task/DECISION"
+if [ "$(id -u)" = "0" ]; then
+  echo "SKIP root ignores permission bits; mode-000 unreadable-DECISION test skipped"
+else
+  dir="$(mk_project unreadable)"
+  # Named to sort BEFORE "resolved-task" in glob order, so the sibling
+  # assertion below is only satisfied if the sweep actually keeps going
+  # past this malformed entry (not merely because glob order already
+  # deleted resolved-task first).
+  mkdir -p "$dir/.claude/human-review/0-unreadable-decision-task"
+  printf 'DECISION 0-unreadable-decision-task 2026-08-24T00:00:00Z route: approve escalation: 2026-08-20T00:00:00Z\nby: human\n' \
+    > "$dir/.claude/human-review/0-unreadable-decision-task/DECISION"
+  chmod 000 "$dir/.claude/human-review/0-unreadable-decision-task/DECISION"
+  rc=0
+  out="$("$script" --project-dir "$dir" --apply)" || rc=$?
+  chmod 644 "$dir/.claude/human-review/0-unreadable-decision-task/DECISION" 2>/dev/null || true
+  if [ "$rc" = 0 ]; then
+    pass "sweep does not abort when a DECISION file is unreadable"
+  else
+    bad "sweep aborted (rc=$rc) when a DECISION file is unreadable (out=[$out])"
+  fi
+  if [ -d "$dir/.claude/human-review/0-unreadable-decision-task" ]; then
+    pass "malformed entry with unreadable DECISION is left in place"
+  else
+    bad "malformed entry with unreadable DECISION was deleted"
+  fi
+  if [ ! -e "$dir/.claude/human-review/resolved-task" ]; then
+    pass "sibling resolved packet still deleted despite the unreadable DECISION"
+  else
+    bad "sibling resolved packet was NOT deleted (sweep likely aborted early)"
+  fi
+fi
+
+echo
+echo "-- DECISION is a FIFO: [ -f ] rejects it, sweep completes without hanging --"
+dir="$(mk_project fifo)"
+mkdir -p "$dir/.claude/human-review/fifo-decision-task"
+mkfifo "$dir/.claude/human-review/fifo-decision-task/DECISION"
 rc=0
-out="$("$script" --project-dir "$dir" --apply)" || rc=$?
-chmod 644 "$dir/.claude/human-review/unreadable-decision-task/DECISION" 2>/dev/null || true
+out="$(timeout 5 "$script" --project-dir "$dir" --apply)" || rc=$?
 if [ "$rc" = 0 ]; then
-  pass "sweep does not abort when a DECISION file is unreadable"
+  pass "sweep completes (does not hang) when DECISION is a FIFO"
 else
-  bad "sweep aborted (rc=$rc) when a DECISION file is unreadable (out=[$out])"
+  bad "sweep did not complete cleanly with a FIFO DECISION (rc=$rc, out=[$out])"
 fi
-if [ -d "$dir/.claude/human-review/unreadable-decision-task" ]; then
-  pass "malformed entry with unreadable DECISION is left in place"
+if [ -d "$dir/.claude/human-review/fifo-decision-task" ]; then
+  pass "FIFO entry treated as pending/skipped, not deleted"
 else
-  bad "malformed entry with unreadable DECISION was deleted"
-fi
-if [ ! -e "$dir/.claude/human-review/resolved-task" ]; then
-  pass "sibling resolved packet still deleted despite the unreadable DECISION"
-else
-  bad "sibling resolved packet was NOT deleted (sweep likely aborted early)"
+  bad "FIFO entry was deleted"
 fi
 
 exit "$fail"
