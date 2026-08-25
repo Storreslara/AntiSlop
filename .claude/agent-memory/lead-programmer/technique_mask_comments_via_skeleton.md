@@ -32,13 +32,13 @@ is inside a comment body, the comment-stripped command behaves identically and
 no longer spells the path, so the gate's own substring early-exit already
 allowed it.
 
-**Open, pre-existing, NOT mine (found 2026-08-24 while fuzzing rpg-comment-3):**
-`hooks/scripts/reviewed-path-gate.sh` still fails open on the quote-split
-spelling `printf x > .claude/'re'viewed/9.pass` — measured identical on the
-patched and unpatched gate. `human-decision-gate.sh` closed this class by
-quote-JOINING (deleting `'` and `"`) before its substring early-exit; this gate
-never got that treatment. Case 19 pins the variable-split cousin as accepted;
-the quote-split cousin is not pinned anywhere.
+**CLOSED 2026-08-24 by rpg-canon-2** (was: the gate failed open on the
+quote-split spelling). `mentions_marker_dir()` now unions raw / quote-joined /
+per-word-normalized text at BOTH copies of the literal. What still fails open
+there, measured with real writes: backslash escapes inside the path, `$'...'`
+quoting, glob metacharacters, shell-variable splitting and a `cd`-relative
+write — all pinned as case 38 residuals now, so they are ratified rather than
+silent.
 
 See [[feedback_bash_word_assembly_in_gates]] for the joining rule this residual
 is the other half of, and [[feedback_mutation_proof_needs_sole_denier]] for
