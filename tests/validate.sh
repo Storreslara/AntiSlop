@@ -334,6 +334,15 @@ else
 fi
 
 echo
+echo "== SessionStart microworld layer status reporting (Bash) =="
+if bash tests/session-start-microworld-status.test.sh; then
+  echo "OK   tests/session-start-microworld-status.test.sh"
+else
+  echo "FAIL tests/session-start-microworld-status.test.sh"
+  fail=1
+fi
+
+echo
 echo "== microworld reactive rerun hook + relocation proof (Bash) =="
 if bash tests/microworld-rerun.test.sh; then
   echo "OK   tests/microworld-rerun.test.sh"
@@ -673,6 +682,15 @@ if node tests/dashboard-decision-run.test.js; then
   echo "OK   tests/dashboard-decision-run.test.js"
 else
   echo "FAIL tests/dashboard-decision-run.test.js"
+  fail=1
+fi
+
+echo
+echo "== microworld dashboard capability register bijection (Node) =="
+if node tests/dashboard-capability-register.test.js; then
+  echo "OK   tests/dashboard-capability-register.test.js"
+else
+  echo "FAIL tests/dashboard-capability-register.test.js"
   fail=1
 fi
 

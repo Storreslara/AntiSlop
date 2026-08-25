@@ -55,6 +55,51 @@ if { [ "$source_type" = "resume" ] || [ "$source_type" = "compact" ]; } && [ -f 
   context_parts+=("$(cat "$digest_file")")
 fi
 
+# Job 4: Microworld layer status reporting (per D5)
+human_review_mode="$(jq -r '.humanReviewMode // empty' "$config" 2>/dev/null || true)"
+
+# Count bundles and watch-map entries
+bundle_count=0
+[ -d "${project_dir}/microworlds" ] && bundle_count=$(find "${project_dir}/microworlds" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l)
+
+watchmap_count=0
+watchmap_file="${project_dir}/tests/watch-map.json"
+if [ -f "$watchmap_file" ]; then
+  watchmap_count=$(jq -r '.entries | length' "$watchmap_file" 2>/dev/null || echo 0)
+fi
+
+# Find orphaned .escalated markers (marker exists but packet directory absent)
+orphaned_markers=()
+reviewed_dir="${project_dir}/.claude/reviewed"
+if [ -d "$reviewed_dir" ]; then
+  for marker in "$reviewed_dir"/*.escalated; do
+    [ -f "$marker" ] || continue
+    task_id=$(basename "$marker" .escalated)
+    packet_dir="${project_dir}/.claude/human-review/${task_id}"
+    if [ ! -d "$packet_dir" ]; then
+      orphaned_markers+=("$task_id")
+    fi
+  done
+fi
+
+# Emission logic per D5 emission rules
+microworld_msg=""
+if [ ${#orphaned_markers[@]} -gt 0 ]; then
+  # always warn on orphaned markers, regardless of humanReviewMode
+  orphaned_list=$(printf ', %s' "${orphaned_markers[@]}" | sed 's/^, //')
+  microworld_msg="Orphaned .escalated marker(s): ${orphaned_list} (packet directory missing)"
+elif [ "$human_review_mode" != "off" ]; then
+  if [ "$bundle_count" = 0 ]; then
+    microworld_msg="humanReviewMode: $human_review_mode but zero microworld bundles present"
+  else
+    microworld_msg="Microworld status: $bundle_count bundle(s), $watchmap_count watch-map entry(ies)"
+  fi
+fi
+
+if [ -n "$microworld_msg" ]; then
+  context_parts+=("$microworld_msg")
+fi
+
 if [ "${#context_parts[@]}" -gt 0 ]; then
   joined="$(printf '%s\n\n' "${context_parts[@]}")"
   jq -n --arg msg "$joined" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'
