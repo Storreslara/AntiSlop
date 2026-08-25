@@ -5,15 +5,15 @@
 # Mutation record (per wave, which single line deletion in scripts/rollout-preflight.sh
 # makes that wave's assertion fail):
 # W0: line checking gh run list (around "gh run list --branch master...")
-# W1: line returning non-zero for W1 case statement
-# W2: line checking tests/watch-map.json (around "if [ ! -f \"tests/watch-map.json\" ]")
-# W3: line returning non-zero for W3 case statement
-# W4: line returning non-zero for W4 case statement
-# W5: line returning non-zero for W5 case statement
-# W6: line returning non-zero for W6 case statement
-# W7: line that includes "escape hatch" in E7 message
-# W8: line returning non-zero for W8 case statement
-# W9: line listing W3, W7, W8 as unmet predecessors in case statement
+# W1: line defining WAVE_OWNER_SPECS[W1] (spec 3's owner mapping)
+# W2: line defining EDGES[E2] (the W1 -> W2 edge)
+# W3: line defining EDGES[E3] (the W1,W2 -> W3 edge)
+# W4: line defining EDGES[E4] (the W1 -> W4 edge)
+# W5: line defining EDGES[E5] (the W3,W4 -> W5 edge)
+# W6: line defining EDGES[E6] (the W5 -> W6 edge)
+# W7: line defining EDGES[E7] (carries the "escape hatch" phrase)
+# W8: line defining EDGES[E1] (the W0 -> W8 edge)
+# W9: line defining EDGES[E7] (the W7 -> W9 edge)
 # W10: line mentioning "blocked by design" and "A23" and "OQ2"
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -37,14 +37,15 @@ else
   fail_test "syntax: bash -n failed"
 fi
 
-# AC2: W0 reports actual CI status (should be failure today per F2)
+# AC2: W0 reproduces the live `validate` workflow conclusion rather than
+# asserting a fixed value -- CI's actual conclusion moves over time (it was
+# `failure` when this spec was written, and may be `success` later).
+live_conclusion=$(gh run list --branch master --workflow validate --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "unknown")
 w0_output=$(bash "$SCRIPT" W0 2>&1 || true)
-if echo "$w0_output" | grep -q "failure"; then
-  pass_test "W0: reports CI failure status"
-elif echo "$w0_output" | grep -q "success"; then
-  fail_test "W0: incorrectly reports success (F2 says CI is red)"
+if echo "$w0_output" | grep -q "$live_conclusion"; then
+  pass_test "W0: reports live CI conclusion ($live_conclusion)"
 else
-  fail_test "W0: did not report CI status"
+  fail_test "W0: did not report live CI conclusion ($live_conclusion)"
 fi
 
 # AC3: W9 lists W3, W7, W8 as unmet predecessors
@@ -61,6 +62,62 @@ if echo "$w7_output" | grep -q "escape" || echo "$w7_output" | grep -q "baseline
   pass_test "W7: mentions escape hatch"
 else
   fail_test "W7: escape hatch not mentioned"
+fi
+
+# W1: lists spec 3 (no predecessors; owner is data-driven)
+w1_output=$(bash "$SCRIPT" W1 2>&1 || true)
+if echo "$w1_output" | grep -q "spec 3"; then
+  pass_test "W1: names spec 3 as owner"
+else
+  fail_test "W1: did not name spec 3 as owner"
+fi
+
+# W2: lists W1 as unmet predecessor
+w2_output=$(bash "$SCRIPT" W2 2>&1 || true)
+if echo "$w2_output" | grep -q "W1"; then
+  pass_test "W2: lists W1 as predecessor"
+else
+  fail_test "W2: did not list W1 as predecessor"
+fi
+
+# W3: lists W1 and W2 as unmet predecessors
+w3_output=$(bash "$SCRIPT" W3 2>&1 || true)
+if echo "$w3_output" | grep -q "W1" && echo "$w3_output" | grep -q "W2"; then
+  pass_test "W3: lists W1, W2 as predecessors"
+else
+  fail_test "W3: did not list W1, W2 as predecessors"
+fi
+
+# W4: lists W1 as unmet predecessor
+w4_output=$(bash "$SCRIPT" W4 2>&1 || true)
+if echo "$w4_output" | grep -q "W1"; then
+  pass_test "W4: lists W1 as predecessor"
+else
+  fail_test "W4: did not list W1 as predecessor"
+fi
+
+# W5: lists W3 and W4 as unmet predecessors
+w5_output=$(bash "$SCRIPT" W5 2>&1 || true)
+if echo "$w5_output" | grep -q "W3" && echo "$w5_output" | grep -q "W4"; then
+  pass_test "W5: lists W3, W4 as predecessors"
+else
+  fail_test "W5: did not list W3, W4 as predecessors"
+fi
+
+# W6: lists W5 as unmet predecessor
+w6_output=$(bash "$SCRIPT" W6 2>&1 || true)
+if echo "$w6_output" | grep -q "W5"; then
+  pass_test "W6: lists W5 as predecessor"
+else
+  fail_test "W6: did not list W5 as predecessor"
+fi
+
+# W8: lists W0 and W2 as unmet predecessors
+w8_output=$(bash "$SCRIPT" W8 2>&1 || true)
+if echo "$w8_output" | grep -q "W0" && echo "$w8_output" | grep -q "W2"; then
+  pass_test "W8: lists W0, W2 as predecessors"
+else
+  fail_test "W8: did not list W0, W2 as predecessors"
 fi
 
 # AC5: W10 reports blocked by design with A23 and OQ2
@@ -96,6 +153,31 @@ else
   fail_test "--owner .github/workflows/: incorrect specs"
 fi
 
+# --owner defect-5 regression: previously-false-negative/mislabeled paths
+owner4_output=$(bash "$SCRIPT" --owner bin/cli.js 2>&1)
+owner4_exit=$?
+if [ "$owner4_exit" -eq 0 ] && echo "$owner4_output" | grep -q "spec 3"; then
+  pass_test "--owner bin/cli.js: lists spec 3, exit 0"
+else
+  fail_test "--owner bin/cli.js: false negative or non-zero exit"
+fi
+
+owner5_output=$(bash "$SCRIPT" --owner .claude/persona-config.json 2>&1)
+owner5_exit=$?
+if [ "$owner5_exit" -eq 0 ] && echo "$owner5_output" | grep -q "spec 1" && echo "$owner5_output" | grep -q "spec 2" && echo "$owner5_output" | grep -q "spec 3" && echo "$owner5_output" | grep -q "spec 6"; then
+  pass_test "--owner .claude/persona-config.json: lists specs 1,2,3,6, exit 0"
+else
+  fail_test "--owner .claude/persona-config.json: missing claimants or non-zero exit"
+fi
+
+owner6_output=$(bash "$SCRIPT" --owner hooks/scripts/protected-paths.sh 2>&1)
+owner6_exit=$?
+if [ "$owner6_exit" -eq 0 ] && echo "$owner6_output" | grep -q "spec 1" && echo "$owner6_output" | grep -q "spec 2" && echo "$owner6_output" | grep -q "spec 3"; then
+  pass_test "--owner hooks/scripts/protected-paths.sh: lists specs 1,2,3, exit 0"
+else
+  fail_test "--owner hooks/scripts/protected-paths.sh: missing claimants or non-zero exit"
+fi
+
 # AC7: --resource protected-paths points to spec 2 Unit E
 resource_output=$(bash "$SCRIPT" --resource protected-paths 2>&1 || true)
 if echo "$resource_output" | grep -q "spec 2" && echo "$resource_output" | grep -q "Unit E"; then
@@ -120,8 +202,8 @@ else
   fail_test "unknown wave: did not report reason"
 fi
 
-# AC10: wiring in validate.sh (check that bash invocation appears exactly once)
-grep_count=$(grep -c 'bash tests/rollout-preflight' tests/validate.sh || true)
+# AC10: wiring in validate.sh -- the actual criterion command, exactly 1 hit
+grep_count=$(grep -c 'rollout-preflight' tests/validate.sh || true)
 if [ "$grep_count" -eq 1 ]; then
   pass_test "validate.sh: exactly 1 wiring block"
 else
@@ -181,6 +263,22 @@ if echo "$reverify_output" | grep -q "A25b" && echo "$reverify_output" | grep -q
   pass_test "--reverify: A25b appears as skipped with reason"
 else
   fail_test "--reverify: A25b not marked as skipped"
+fi
+
+# AC14: the staleness gate is wired to sibling amendments. Reuse tmp_repo (its
+# spec 6 doc has the same content/mtime as this tree at copy time) so touching
+# it here never mutates a real project file. Order matters: --reverify 6 was
+# just run above, so spec 6's reverify stamp is fresh and W9 starts "green"
+# (no staleness line) before the touch flips it to unmet-on-staleness.
+sibling_in_tmp="$tmp_repo/docs/plans/2026-08-25-ci-shaped-review-architecture-d.md"
+w9_before_touch=$(cd "$tmp_repo" && bash "$SCRIPT" W9 2>&1 || true)
+sleep 1
+touch "$sibling_in_tmp"
+w9_after_touch=$(cd "$tmp_repo" && bash "$SCRIPT" W9 2>&1 || true)
+if [ "$w9_before_touch" != "$w9_after_touch" ] && echo "$w9_after_touch" | grep -q "unmet-on-staleness"; then
+  pass_test "AC14: W9 report flips to unmet-on-staleness after sibling spec amendment"
+else
+  fail_test "AC14: W9 report did not flip on sibling spec amendment"
 fi
 
 # AC15: no unintended file changes

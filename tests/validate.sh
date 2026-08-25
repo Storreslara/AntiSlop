@@ -677,11 +677,12 @@ else
 fi
 
 echo
-echo "== rollout-preflight: wave graph and preflight checker (Bash, scaffolding) =="
-if bash tests/rollout-preflight.test.sh; then
-  echo "OK   tests/rollout-preflight.test.sh"
+echo "== rollout wave-graph preflight checker (Bash, scaffolding) =="
+rollout_test="tests/rollout-preflight.test.sh"
+if bash "$rollout_test"; then
+  echo "OK   $rollout_test"
 else
-  echo "FAIL tests/rollout-preflight.test.sh"
+  echo "FAIL $rollout_test"
   fail=1
 fi
 
