@@ -12,7 +12,8 @@ metadata:
 **What was the gap:** The microworld dashboard was not surfacing `CHANGES.md` to a human reviewing via the dashboard UI.
 
 **How it was fixed:**
-- **Data layer:** `bin/microworld-dashboard/index.html:635-637` renders `CHANGES.md`, labelled, in the reading order CHANGES.md → PACKET.md → EXAMPLES.md, omitting the pane entirely (not an empty pane) when null.
+- **Data layer:** `bin/microworld-dashboard/decisions.js:59-63` reads `CHANGES.md` into `entry.changesBody`, fail-soft to `null` when absent.
+- **Render layer:** `bin/microworld-dashboard/index.html:635-637` renders `CHANGES.md`, labelled, in the reading order CHANGES.md → PACKET.md → EXAMPLES.md, omitting the pane entirely (not an empty pane) when null.
 - **Coverage:** `tests/dashboard-decisions.test.js` Test (i) covers data layer presence + fail-soft absence; `tests/dashboard-decisions-client.test.js` Test (g) covers render layer presence, ordering, and clean absence.
 
 **Why this matters:** Unit #299 added CHANGES.md as a human-readable walkthrough of *the change* in conceptual order — the whole feature exists to help humans read "CHANGES.md before the diff." The dashboard is a primary way humans engage with escalations, so fixing this was essential to the feature's stated goal.
