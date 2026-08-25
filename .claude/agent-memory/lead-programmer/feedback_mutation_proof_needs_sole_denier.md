@@ -39,6 +39,23 @@ condition, re-run EVERY existing mutant, not just your own, and add a binder
 back if one went vacuous — a mutation proof rots silently, with a green suite
 the whole time.
 
+**Confirmed again on hdg-anchor-1, and it rotted TWO proofs, not one.** Adding
+the anchored arm un-bound Q21 (fragment joining) exactly as predicted above; the
+re-run also exposed D19, whose "delete the run scan and this flips" comment had
+been false since the *previous* unit landed. Both were found only by re-running
+every existing mutant. Budget for that sweep — it is not optional, and the file
+you are editing may already contain a false mutation claim you will be blamed
+for if you leave it.
+
+**An EQUALITY assertion needs its own anti-vacuity guard.** Asserting "branch A's
+verdict == branch B's verdict" over a corpus passes trivially if the corpus
+collapses to a single verdict — every path denied compares equal to every path
+denied. Pair it with a counter asserting the corpus still spans BOTH verdicts
+(on hdg-anchor-1: exactly 21 of 651 paths must be allowed, those being the
+family genuinely outside the protected set). Without that second assertion the
+equality check silently stops constraining anything the moment someone widens a
+condition.
+
 **Measurement hygiene: never baseline a sweep on `HEAD`.** A differential
 script doing `git show HEAD:<file>` re-baselines itself the moment you commit,
 and then cheerfully reports a tiny diff because it is comparing your work
