@@ -134,6 +134,23 @@ pre-existing in the SOURCE file — confirm with `grep '<HEAD>'
 agents/orchestrator.md` before assuming your own edit caused it. Do not
 "fix" it inside a release unit that's scoped to version bumps only.
 
+**Gotcha 10 (packet-brevity-1 fix-forward):** the "hash healed" branch
+(`currentStripped === cleanBody`, ~line 1337) fires when a mirror's recorded
+`fileHashes` entry is stale but its on-disk stripped content already matches
+a fresh render (e.g. you hand-edited only the mirror earlier, then fixed the
+source to match and re-ran `--update`). This branch updates `fileHashes` but
+does NOT call `copyStampedBody` — it silently leaves the OLD version stamp on
+disk even under a real (non-dry) `--update`, unlike the "already current"
+branch a few lines above it, which does check/refresh the stamp. One
+`--update` run is therefore not always enough: if `fileHashes` was stale AND
+`pluginVersion` changed in the same session, the first run only fixes the
+hash; you must run `--update` a SECOND time (now `noLocalEdits &&
+cleanHash === recordedHash` is true) to pick up the stamp refresh. Verify
+with `grep 'antislop v' <mirror>` after — don't trust one run's "hash healed"
+message as proof the file is fully current; contrast with Gotcha 4, where a
+pure version bump (no prior hash staleness) never self-heals the stamp at
+all and needs a hand-edit instead.
+
 **Gotcha 9 (gh338, `--update` fixture polarity):** `pluginState.enabled` is a
 single boolean per run, and two `--update` write sites depend on opposite
 values of it — the `--dedupe-hooks` strip needs the marketplace plugin
