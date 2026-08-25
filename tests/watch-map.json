@@ -1,0 +1,46 @@
+{
+  "entries": [
+    {
+      "id": "gh338",
+      "watch": ["bin/cli.js", "tests/cli-backfill.test.js"],
+      "run": ["node tests/cli-backfill.test.js"],
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "gh347-1",
+      "watch": ["hooks/scripts/reviewer-route-gate.sh", "tests/reviewer-route-gate-caller.test.sh"],
+      "run": ["bash tests/reviewer-route-gate-caller.test.sh"],
+      "timeoutSeconds": 60
+    },
+    {
+      "id": "gh351",
+      "watch": ["bin/microworld-dashboard/decision-block.js", "tests/dashboard-decision-block.test.js"],
+      "run": ["node tests/dashboard-decision-block.test.js"],
+      "timeoutSeconds": 60
+    },
+    {
+      "id": "hdg-lexer-1",
+      "watch": ["hooks/scripts/lib/benign-command.sh", "tests/reviewed-path-gate.test.sh", "tests/human-decision-gate.test.sh"],
+      "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "hdg-prose-2",
+      "watch": ["hooks/scripts/human-decision-gate.sh", "tests/human-decision-gate.test.sh"],
+      "run": ["bash tests/human-decision-gate.test.sh", "bash tests/reviewed-path-gate.test.sh"],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "hdg-prose-2-fix2",
+      "watch": ["hooks/scripts/human-decision-gate.sh", "tests/human-decision-gate.test.sh"],
+      "run": ["bash tests/human-decision-gate.test.sh", "bash tests/reviewed-path-gate.test.sh"],
+      "timeoutSeconds": 120
+    },
+    {
+      "id": "rpg-comment-3",
+      "watch": ["hooks/scripts/reviewed-path-gate.sh", "tests/reviewed-path-gate.test.sh"],
+      "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
+      "timeoutSeconds": 180
+    }
+  ]
+}

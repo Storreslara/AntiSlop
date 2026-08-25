@@ -13,7 +13,8 @@
 # is ever reached, matching that port's own current fail-open behavior.
 set -euo pipefail
 
-[ -d "${project_dir}/microworlds" ] || exit 0
+# Proceed if either microworlds/ or tests/watch-map.json exists
+[ -d "${project_dir}/microworlds" ] || [ -f "${project_dir}/tests/watch-map.json" ] || exit 0
 
 log() {
   # $1 = unit slug, $2 = result, $3 = file, $4 = optional reason
@@ -41,6 +42,7 @@ while IFS= read -r file_path; do
     "$project_dir"/*) rel_path="${rel_path#"$project_dir"/}" ;;
   esac
 
+  # Check bundles (tier B)
   for manifest in "${project_dir}"/microworlds/*/manifest.json; do
     [ -f "$manifest" ] || continue
     slug="$(basename "$(dirname "$manifest")")"
@@ -79,6 +81,59 @@ while IFS= read -r file_path; do
       *)   log "$slug" fail "$rel_path"; broken="$broken $slug" ;;
     esac
   done
+
+  # Check watch-map (tier A) entries
+  watchmap="${project_dir}/tests/watch-map.json"
+  if [ -f "$watchmap" ]; then
+    entries="$(jq -c '.entries[]? // empty' "$watchmap" 2>/dev/null)" || {
+      log - error "$rel_path" malformed-watch-map
+      continue
+    }
+
+    while IFS= read -r entry_json; do
+      [ -n "$entry_json" ] || continue
+
+      id="$(echo "$entry_json" | jq -r '.id // empty' 2>/dev/null)" || {
+        log - error "$rel_path" malformed-watch-map
+        continue
+      }
+      [ -n "$id" ] || continue
+
+      globs="$(echo "$entry_json" | jq -r '.watch[]? // empty' 2>/dev/null)" || {
+        log "$id" error "$rel_path" malformed-watch-map
+        continue
+      }
+
+      matched=false
+      while IFS= read -r glob; do
+        [ -n "$glob" ] || continue
+        case "$rel_path" in
+          $glob) matched=true ;;
+        esac
+      done <<< "$globs"
+      [ "$matched" = true ] || continue
+
+      secs="$(echo "$entry_json" | jq -r '.timeoutSeconds // 60' 2>/dev/null || echo 60)"
+      case "$secs" in ''|*[!0-9]*) secs=60 ;; esac
+
+      # Execute each command in the 'run' array in order, stopping on first failure
+      run_commands="$(echo "$entry_json" | jq -r '.run[]? // empty' 2>/dev/null)"
+      rc=0
+      while IFS= read -r cmd; do
+        [ -n "$cmd" ] || continue
+        # Commands are executed from project root with timeout
+        ( cd "$project_dir" && timeout "$secs" bash -c "$cmd" ) \
+          >/dev/null 2>&1 || rc=$?
+        [ "$rc" = 0 ] || break
+      done <<< "$run_commands"
+
+      case "$rc" in
+        0)   log "$id" pass "$rel_path" ;;
+        124) log "$id" timeout "$rel_path"; broken="$broken $id(timeout)" ;;
+        *)   log "$id" fail "$rel_path"; broken="$broken $id" ;;
+      esac
+    done <<< "$entries"
+  fi
 done <<< "$paths"
 
 if [ -n "$broken" ]; then

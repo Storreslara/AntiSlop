@@ -209,6 +209,94 @@ else
   fail=1
 fi
 
+# (h) WATCH-MAP with no microworlds/ -> exit 0 and no audit line (when no match)
+dir="$(make_project watch-map-no-bundles)"
+mkdir -p "$dir/tests"
+printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sample.test.sh"],"timeoutSeconds":10}]}\n' \
+  > "$dir/tests/watch-map.json"
+printf '#!/bin/bash\nexit 0\n' > "$dir/tests/sample.test.sh"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+if [ "$rc" = 0 ] && grep -q 'unit=sample result=pass file=src/app.js' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (h) watch-map entry with no microworlds/ dir -> watch-map runs, exit 0, result=pass logged"
+else
+  echo "FAIL (h) expected exit 0 and result=pass from watch-map (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (h2) watch-map entry that fails -> exit 2, result=fail logged
+dir="$(make_project watch-map-fail)"
+mkdir -p "$dir/tests"
+printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sample.test.sh"],"timeoutSeconds":10}]}\n' \
+  > "$dir/tests/watch-map.json"
+printf '#!/bin/bash\nexit 1\n' > "$dir/tests/sample.test.sh"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+if [ "$rc" = 2 ] && grep -q 'unit=sample result=fail file=src/app.js' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (h2) watch-map entry with failing command -> exit 2, result=fail logged"
+else
+  echo "FAIL (h2) expected exit 2 and result=fail (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (h3) watch-map entry with multiple commands, second one fails -> exit 2, result=fail, first command was run
+dir="$(make_project watch-map-multi-fail)"
+mkdir -p "$dir/tests"
+printf '{"entries":[{"id":"multi","watch":["src/*.js"],"run":["bash tests/first.test.sh","bash tests/second.test.sh"],"timeoutSeconds":10}]}\n' \
+  > "$dir/tests/watch-map.json"
+printf '#!/bin/bash\necho "first ran" >> tests/trace.txt\nexit 0\n' > "$dir/tests/first.test.sh"
+printf '#!/bin/bash\nexit 1\n' > "$dir/tests/second.test.sh"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+if [ "$rc" = 2 ] && grep -q 'unit=multi result=fail' "$dir/.claude/microworld-audit.log" && [ -f "$dir/tests/trace.txt" ]; then
+  echo "OK   (h3) watch-map multi-command: first succeeds, second fails -> exit 2, result=fail, first was executed"
+else
+  echo "FAIL (h3) expected exit 2, result=fail, and first command execution (rc=$rc trace-exists=$([ -f "$dir/tests/trace.txt" ] && echo yes || echo no))"
+  fail=1
+fi
+
+# (h4) watch-map entry that times out -> exit 2, result=timeout logged
+dir="$(make_project watch-map-timeout)"
+mkdir -p "$dir/tests"
+printf '{"entries":[{"id":"slow","watch":["src/*.js"],"run":["bash tests/slow.test.sh"],"timeoutSeconds":1}]}\n' \
+  > "$dir/tests/watch-map.json"
+printf '#!/bin/bash\nsleep 30\n' > "$dir/tests/slow.test.sh"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+if [ "$rc" = 2 ] && grep -q 'unit=slow result=timeout file=src/app.js' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (h4) watch-map entry that times out -> exit 2, result=timeout logged"
+else
+  echo "FAIL (h4) expected exit 2 and result=timeout (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (h5) malformed watch-map.json -> exit 0 (fail open) and a logged error line
+dir="$(make_project watch-map-malformed)"
+mkdir -p "$dir/tests"
+printf '{"entries":[{"id":,"watch":["src/*"],\n' > "$dir/tests/watch-map.json"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+if [ "$rc" = 0 ] && grep -q 'result=error' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (h5) malformed watch-map.json -> exit 0 (fail open) and a logged error line"
+else
+  echo "FAIL (h5) expected exit 0 plus error log (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (h6) watch-map entry without microworlds/ dir, unrelated file edit -> exit 0, no audit line
+dir="$(make_project watch-map-nomatch)"
+mkdir -p "$dir/tests"
+printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sample.test.sh"],"timeoutSeconds":10}]}\n' \
+  > "$dir/tests/watch-map.json"
+rc=0
+run_hook "$dir" lib/other.js || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/microworld-audit.log" ]; then
+  echo "OK   (h6) watch-map with no microworlds/ and unrelated edit -> exit 0, no audit line"
+else
+  echo "FAIL (h6) expected exit 0 with no audit log (rc=$rc log-exists=$([ -e "$dir/.claude/microworld-audit.log" ] && echo yes || echo no))"
+  fail=1
+fi
+
 # (g) ADAPTER PARITY - both hand-adapted mirrors are EXECUTED with their own
 #     payload shapes and must reproduce the same exit-code asymmetry into their
 #     own dot-dir audit log. bash -n in validate.sh only proves they parse.
