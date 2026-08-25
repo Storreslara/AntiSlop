@@ -28,3 +28,4 @@
 - [Mutation proof needs a sole denier](feedback_mutation_proof_needs_sole_denier.md) — pick a case the new guard ALONE denies; an allowlist or unbalanced-quote fallback lets the mutant survive
 - [Hot-path gate predicate costs a fork](technique_hot_path_predicate_costs_a_fork.md) — a per-word `$(helper)` before the early-exit runs on every tool call; prefilter with a provably-exact condition, and measure your own diff even when the spec pre-resolved a number
 - [Mask comments via the skeleton](technique_mask_comments_via_skeleton.md) — scan for `#X` in command_skeleton()'s output instead of re-lexing; trailing-newline alignment trap; rpg's open quote-split residual
+- [Deterministic date-stub for race tests](technique_deterministic_date_stub_for_race_tests.md) — stub `date` in PATH to force a same-second collision test deterministically instead of a flaky real race (gh409)
