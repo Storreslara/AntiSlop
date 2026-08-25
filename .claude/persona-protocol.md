@@ -390,7 +390,10 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   4. `## What to look at first` — the two or three places the reviewer is
      least confident about.
 
-  It **quotes** the diff, it does not reproduce it; soft cap 400 lines.
+  It **quotes** the diff, it does not reproduce it; soft cap 120 lines. All
+  four sections are terse: short bullets or short paragraphs over prose
+  exposition, no filler transitions, no restating what a quoted diff snippet
+  already shows, no throat-clearing.
 - Write `EXAMPLES.md` into that directory too — **worked examples**, a speed
   regulator on the one route a human can complete without demonstrating
   engagement. `EXAMPLES.md` carries **3 to 5 worked examples**, each a
@@ -398,7 +401,10 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   Z"), each grounded in `CHANGES.md` and the bundle alone, and each about
   **consequence rather than recall** — *"what happens to X when Y is
   absent?"*, never *"what is the new function called?"*, because a recall
-  illustration is skimmable, which defeats the point.
+  illustration is skimmable, which defeats the point. Each example is short —
+  target **2 to 4 lines**: the before/after statement itself, nothing more.
+  No preamble, no restating why it matters beyond the one-line consequence,
+  no scene-setting.
 
   **When needed.** Written whenever the change has an **observable
   behavioural consequence**; skipped for changes with no behavioural surface —

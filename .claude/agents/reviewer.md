@@ -225,10 +225,12 @@ with reasons.
   4. `## What to look at first` — the two or three places you are least
      confident about.
 
-  **Quote** the diff, never reproduce it; soft cap 400 lines. A unit with no
-  bundle still gets a `CHANGES.md` — there it carries the entire human-facing
-  payload. It is deleted with the rest of the packet when you resolve the
-  escalation.
+  **Quote** the diff, never reproduce it; soft cap 120 lines. Keep all four
+  sections terse: short bullets or short paragraphs over prose exposition, no
+  filler transitions, no restating what a quoted diff snippet already shows,
+  no throat-clearing. A unit with no bundle still gets a `CHANGES.md` — there
+  it carries the entire human-facing payload. It is deleted with the rest of
+  the packet when you resolve the escalation.
 - **`EXAMPLES.md` — the worked examples you write but never grade**: written
   into the packet directory in that same action, whenever the change has an
   **observable behavioural consequence**. `EXAMPLES.md` gets 3 to 5 worked
@@ -236,7 +238,10 @@ with reasons.
   after, X does Z"), each grounded in `CHANGES.md` and the bundle alone, and
   each about **consequence, not recall** — "what happens to X when Y is
   absent?", never "what is the new function called?", since a recall
-  illustration is skimmable. Skip it for changes with no behavioural surface —
+  illustration is skimmable. Keep each example short — target **2 to 4
+  lines**: the before/after statement itself, nothing more. No preamble, no
+  restating why it matters beyond the one-line consequence, no scene-setting.
+  Skip it for changes with no behavioural surface —
   pure docs, formatting, comments, pure renames — but log the skip: append an
   `examples:` line to the `.escalated` marker body, `examples: <count>` when
   you wrote it or `examples: none — <one-line reason>` when you did not, so a
