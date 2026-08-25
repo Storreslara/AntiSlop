@@ -2,7 +2,7 @@
 'use strict';
 
 // Test suite for decisions.js and GET /api/decisions: read-only enumeration
-// of the four human-decision touchpoints (escalations, briefings, findings,
+// of the three human-decision touchpoints (escalations, briefings,
 // pending-review). Fixture-driven against a real temp project root, no
 // mocking of fs.
 
@@ -210,35 +210,6 @@ async function runTests() {
     failures.push(`Test (d) ERROR: ${err.message}`);
   }
 
-  // Test (e): findings record, happy path + malformed first line
-  console.log('Test (e): milestone findings record, incl. malformed...');
-  try {
-    const tmpDir = makeTestProject('e');
-    writeFixture(
-      path.join(tmpDir, '.claude', 'milestone-audit', 'plan-x', 'FINDINGS.md'),
-      'FINDINGS plan-x 2026-08-01T00:00:00Z count: 2\n- finding one\n- finding two\n'
-    );
-    writeFixture(path.join(tmpDir, '.claude', 'milestone-audit', 'plan-y', 'FINDINGS.md'), 'not a valid first line\nmore text\n');
-
-    const { server, fetchDecisions } = await startAndFetch(tmpDir);
-    const { decisions } = await fetchDecisions();
-    const good = decisions.findings.find((f) => f.slug === 'plan-x');
-    const bad = decisions.findings.find((f) => !f.slug || f.malformed);
-
-    if (!good || good.timestamp !== '2026-08-01T00:00:00Z' || good.count !== 2 || !good.body.includes('finding one')) {
-      failures.push(`Test (e) FAILED: happy-path findings entry wrong, got ${JSON.stringify(good)}`);
-    } else if (!bad || bad.malformed !== true) {
-      failures.push(`Test (e) FAILED: malformed findings entry not flagged, got ${JSON.stringify(bad)}`);
-    } else {
-      console.log('  ✓ Test (e) passed');
-    }
-
-    server.close();
-    fs.rmSync(tmpDir, { recursive: true });
-  } catch (err) {
-    failures.push(`Test (e) ERROR: ${err.message}`);
-  }
-
   // Test (f): docs/plans/*.md enumeration — path + first "# " heading
   console.log('Test (f): plan-doc briefing candidates...');
   try {
@@ -261,7 +232,7 @@ async function runTests() {
     failures.push(`Test (f) ERROR: ${err.message}`);
   }
 
-  // Test (g): all four sources absent — 200, each group an empty array
+  // Test (g): all three sources absent — 200, each group an empty array
   console.log('Test (g): all sources absent — 200 with empty arrays...');
   try {
     const tmpDir = makeTestProject('g');
@@ -274,7 +245,6 @@ async function runTests() {
     } else if (
       !Array.isArray(decisions.escalations) || decisions.escalations.length !== 0 ||
       !Array.isArray(decisions.briefings) || decisions.briefings.length !== 0 ||
-      !Array.isArray(decisions.findings) || decisions.findings.length !== 0 ||
       !Array.isArray(decisions.pendingReview) || decisions.pendingReview.length !== 0
     ) {
       failures.push(`Test (g) FAILED: expected all-empty groups, got ${JSON.stringify(decisions)}`);
