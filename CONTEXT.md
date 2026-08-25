@@ -922,15 +922,35 @@ the collection of addressable **Agent** entities currently active in a
   orphaned/leftover packets (e.g. after a crash).
 
 **Sweep**:
-(unit human-review-cleanup-1, 2026-08-24) — the operation performed by
-  `bin/human-review-cleanup.sh`: a single pass over `.claude/human-review/` that
-  identifies and deletes only [[Resolved packet|resolved packets]], leaving
-  [[Pending packet|pending packets]] untouched. Runs in dry-run mode by default
-  (reporting what would be deleted), with `--apply` flag to perform actual deletion.
-  Intended as a manual, supplementary cleanup for orphaned/resolved packets after
-  escalations, distinct from the reviewer's own cleanup mechanism (which deletes
-  both marker and packet during escalation resolution). Cross-references:
-  [[Escalation packet]], [[Resolved packet]], [[Pending packet]].
+(unit human-review-cleanup-1, 2026-08-24; broadened unit #409, 2026-08-25) — the
+  operation performed by `bin/human-review-cleanup.sh`: a retention-gated pass
+  over five artifact classes in `.claude/`, identifying and deleting stale items
+  in each. Sweeps: (1) [[Resolved packet|resolved packets]] from `.claude/human-review/`,
+  (2) reviewed markers (`.claude/reviewed/*.pass`, `.claude/reviewed/*.fail`, etc.),
+  (3) session baselines (`.claude/baseline-*.json` files), (4) WIP handoffs
+  (`.claude/wip-handoff-*.json` files), and (5) **log rotation** (see
+  [[Log rotation / archive]]) on append-only audit logs. Runs in dry-run mode by
+  default (reporting what would be deleted), with `--apply` flag to perform actual
+  deletion. Items 1-4 are retention-gated; item 5 (logs) rotates unconditionally
+  since they are append-only and in active use. Distinct from the reviewer's own
+  cleanup mechanism (which deletes both marker and packet during escalation
+  resolution). Cross-references: [[Escalation packet]], [[Resolved packet]],
+  [[Pending packet]], [[Log rotation / archive]].
+
+**Log rotation / archive**:
+(unit #409, 2026-08-25) — the mechanism in `bin/human-review-cleanup.sh:187-196,209-212`
+  that archives append-only audit logs (`.claude/review-audit.log`, `.claude/dispatch-audit.log`,
+  `.claude/microworld-audit.log`, `.claude/wip-audit.log`) as part of the
+  **Sweep** operation. Archive filename shape: `<log>.<UTC-compact-timestamp>[.N]`,
+  where the timestamp is ISO-8601 compact format (`YYYYMMDDTHHMMSSz`) and the
+  `.N` counter suffix (e.g. `.1`, `.2`) appears only on same-second collision to
+  prevent clobbering when multiple `--apply` runs occur within the same second.
+  Rotation is unconditional (not retention-gated) because these logs are
+  append-only and in active use; their mtime is always recent and retention
+  gating would block rotation. Advisory note: archives are unswept by any
+  retention gate, so they may accumulate indefinitely; this is a known gap in
+  the artifact-leaking prevention (unit #409, non-blocking observation).
+  Cross-references: [[Sweep]], [[Microworld audit log]].
 
 **ESCALATE-TO-HUMAN**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — the fourth reviewer
