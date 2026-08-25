@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# CURSOR ADAPTER over the shared stop-gate logic (ported from
-# hooks/scripts/stop-gate.sh - the ordered decision logic is identical; only
-# the payload field extraction and the loop guard differ). Registered on
-# `stop` (main session) AND `subagentStop`. Gating is config-driven via
-# persona-config.json's gatedAgents list (default ["lead-programmer"]).
+# CURSOR entry point over the shared stop-gate decision logic (generated
+# from hooks/scripts/lib/stop-gate-core.sh - node bin/cli.js --update
+# --force-render). Registered on `stop` (main session) AND `subagentStop`.
+# Gating is config-driven via persona-config.json's gatedAgents list
+# (default ["lead-programmer"]).
 #
 # Cursor payload differences vs Claude (spec §3, §6 open q #5):
-#  - `hook_event_name` is "stop" | "subagentStop" (camelCase).
+#  - `hook_event_name` is "stop" | "subagentStop" (camelCase) - normalized to
+#    "Stop"/"SubagentStop" below before sourcing the core, which compares
+#    against the canonical PascalCase form shared with Claude/codex.
 #  - the caller-agent identity on subagentStop is `.subagent_type` (Claude's
 #    `.agent_type`). CONFIRMED present per cursor.com/docs/hooks.
 #  - the plain `stop` payload carries NO agent identity (same as Claude), so
@@ -20,7 +22,8 @@
 #    would share one flag - acceptable for the sequential MVP flow).
 #  - session/baseline id is `.conversation_id` (Claude's `.session_id`).
 #
-# Ordered logic (identical to the Claude version):
+# Ordered logic (identical to the Claude version - see
+# hooks/scripts/lib/stop-gate-core.sh):
 #  0) loop guard - never re-trigger ourselves into an infinite loop.
 #  0.5) reviewer's subagentStop -> if any .cursor/reviewed/*.blocked marker
 #     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
@@ -56,359 +59,36 @@ set -euo pipefail
 # shellcheck source=lib/agent-identity.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
-# review-join: a marker counts only for the unit whose stamp names it. The
-# stamps are written at dispatch time by reviewer-route-gate.sh because the
-# SubagentStop payload carries no unit id and no prompt - the join cannot be
-# established here, only consumed.
-
-# marker_format_valid <path> <unit-id> <verb> - mirrors task-gate.sh's
-# marker_valid(), so both mechanisms share one definition of "a marker was
-# written": the file must exist, be non-empty, and its first line must begin
-# "<verb> <unit-id> ". Prefix-only, so no pre-existing marker is retroactively
-# rejected; a zero-byte `touch` is.
-marker_format_valid() {
-  local path="$1" unit="$2" verb="$3" first_line
-  [ -f "$path" ] && [ -s "$path" ] || return 1
-  first_line="$(head -n 1 "$path" 2>/dev/null || true)"
-  case "$first_line" in
-    "${verb} ${unit} "*) return 0 ;;
-    *) return 1 ;;
-  esac
-}
-
-# review_join_state <dot-dir> - classifies every .review-join.* stamp into the
-# JOIN_* globals below. A stamp that is unreadable, or whose `unit=` field is
-# absent or malformed, is deleted here and counted as satisfied (fail OPEN): it
-# names no unit, so it could never be satisfied later and would deadlock the
-# reviewer permanently instead.
-review_join_state() {
-  local dot="$1" stamp line unit prior_mtime pair ext verb mpath mtime satisfied
-  local -a stamps
-  JOIN_SATISFIED_STAMPS=()
-  JOIN_SATISFIED_UNITS=()
-  JOIN_UNSATISFIED_UNITS=()
-  JOIN_FAILOPEN=false
-
-  shopt -s nullglob
-  stamps=( "$dot"/.review-join.* )
-  shopt -u nullglob
-  JOIN_STAMP_COUNT="${#stamps[@]}"
-  [ "$JOIN_STAMP_COUNT" -gt 0 ] || return 0
-
-  for stamp in "${stamps[@]}"; do
-    line=""
-    if [ -r "$stamp" ]; then
-      line="$(head -n 1 "$stamp" 2>/dev/null || true)"
-    fi
-
-    unit=""
-    if [[ $line =~ (^|[[:space:]])unit=([A-Za-z0-9][A-Za-z0-9._#-]{0,63})([[:space:]]|$) ]]; then
-      unit="${BASH_REMATCH[2]}"
-    fi
-    # Same traversal guard reviewer-route-gate.sh applies before it writes the
-    # id, re-applied on read: the stamp file is not a trusted channel.
-    case "$unit" in
-      ''|*/*|*..*)
-        rm -f "$stamp" 2>/dev/null || true
-        JOIN_FAILOPEN=true
-        continue
-        ;;
-    esac
-
-    prior_mtime=""
-    if [[ $line =~ (^|[[:space:]])prior_mtime=([^[:space:]]+) ]]; then
-      prior_mtime="${BASH_REMATCH[2]}"
-    fi
-
-    satisfied=false
-    for pair in pass:PASS fail:FAIL; do
-      ext="${pair%%:*}"
-      verb="${pair##*:}"
-      mpath="${dot}/reviewed/${unit}.${ext}"
-      if ! marker_format_valid "$mpath" "$unit" "$verb"; then
-        continue
-      fi
-      case "$prior_mtime" in
-        ''|*[!0-9]*)
-          # No usable prior_mtime recorded (a first review writes `-`): any
-          # format-valid marker satisfies the stamp.
-          satisfied=true
-          ;;
-        *)
-          mtime="$(stat -L -c %Y "$mpath" 2>/dev/null || stat -L -f %m "$mpath" 2>/dev/null || true)"
-          case "$mtime" in
-            ''|*[!0-9]*) ;;
-            *)
-              # Never run `[ a -gt b ]` on unvalidated text: a non-numeric
-              # operand is a `test` syntax error, and under set -e that aborts
-              # the hook silently rather than failing the check.
-              if [ "$mtime" -gt "$prior_mtime" ]; then
-                satisfied=true
-              fi
-              ;;
-          esac
-          ;;
-      esac
-      if [ "$satisfied" = true ]; then
-        break
-      fi
-    done
-
-    if [ "$satisfied" = true ]; then
-      JOIN_SATISFIED_STAMPS+=( "$stamp" )
-      JOIN_SATISFIED_UNITS+=( "$unit" )
-    else
-      JOIN_UNSATISFIED_UNITS+=( "$unit" )
-    fi
-  done
-}
-
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.workspace_roots[0] // .cwd // "."' 2>/dev/null || echo .)"
-config="${project_dir}/.cursor/persona-config.json"
-review_audit="${project_dir}/.cursor/review-audit.log"
+dot="${project_dir}/.cursor"
+dot_label=".cursor"
+config="${dot}/persona-config.json"
+review_audit="${dot}/review-audit.log"
+
+block() { echo "$1" >&2; exit 2; }
+allow() { exit 0; }
 
 loop_count="$(echo "$input" | jq -r '.loop_count // 0' 2>/dev/null || echo 0)"
 case "$loop_count" in ''|*[!0-9]*) loop_count=0 ;; esac
-[ "$loop_count" -ge 5 ] && exit 0
+[ "$loop_count" -ge 5 ] && allow
 
-hook_event="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
+raw_hook_event="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
+case "$raw_hook_event" in
+  stop) hook_event="Stop" ;;
+  subagentStop) hook_event="SubagentStop" ;;
+  *) hook_event="$raw_hook_event" ;;
+esac
 agent_type="$(echo "$input" | jq -r '.subagent_type // empty' 2>/dev/null || true)"
-
-identity_drift_log "$agent_type" "$hook_event" "$review_audit"
-
-if [ "$hook_event" = "subagentStop" ] && persona_matches_grant "$agent_type" reviewer; then
-  [ -f "$config" ] || exit 0
-  shopt -s nullglob
-  blocked_markers=( "${project_dir}"/.cursor/reviewed/*.blocked )
-  escalated_markers=( "${project_dir}"/.cursor/reviewed/*.escalated )
-  shopt -u nullglob
-  # Both globs log, so a blocked unit and an escalated one in the same turn stay
-  # distinguishable in the audit log. `.directed` is deliberately not globbed.
-  if [ "${#blocked_markers[@]}" -gt 0 ]; then
-    printf '%s verdict=blocked flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  fi
-  if [ "${#escalated_markers[@]}" -gt 0 ]; then
-    printf '%s verdict=escalated flags-kept\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  fi
-  if [ "${#blocked_markers[@]}" -gt 0 ] || [ "${#escalated_markers[@]}" -gt 0 ]; then
-    exit 0
-  fi
-
-  # Per-unit review-join, evaluated after the .blocked early-exit above and
-  # before the flag rm -f below, so a blocked verdict still short-circuits.
-  dot="${project_dir}/.cursor"
-  review_join_state "$dot"
-
-  if [ "${JOIN_STAMP_COUNT:-0}" -eq 0 ]; then
-    # Nothing joined this reviewer to a unit - an un-stamped dispatch, or a
-    # unit that already held a valid PASS. Fail OPEN, as bootstrap did.
-    printf '%s marker-check=bootstrap\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  elif [ "${#JOIN_SATISFIED_STAMPS[@]}" -gt 0 ] || [ "${JOIN_FAILOPEN:-false}" = true ]; then
-    # marker-commit-check: classify each satisfied unit's PASS marker
-    # `commit:` field before its stamp is consumed. Advisory - see
-    # docs/plans/2026-08-15-marker-commit-attribution.md Step 7.
-    mcc_mode="$(jq -r '.markerCommitCheck.mode // "warn"' "$config" 2>/dev/null || echo warn)"
-    case "$mcc_mode" in off|warn|block) ;; *) mcc_mode=warn ;; esac
-    mcc_script="$(dirname "${BASH_SOURCE[0]}")/marker-commit-check.sh"
-    idx=0
-    while [ "$idx" -lt "${#JOIN_SATISFIED_STAMPS[@]}" ]; do
-      unit="${JOIN_SATISFIED_UNITS[$idx]}"
-      if [ "$mcc_mode" != off ]; then
-        mcc_state=unavailable
-        mcc_out=""
-        if [ -x "$mcc_script" ]; then
-          mcc_out="$("$mcc_script" "$unit" "$project_dir" 2>/dev/null || true)"
-        fi
-        if [[ $mcc_out =~ ^marker-commit-check=([a-z]+)[[:space:]] ]]; then
-          mcc_state="${BASH_REMATCH[1]}"
-        fi
-        printf '%s marker-commit-check=%s unit=%s\n' \
-          "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$mcc_state" "$unit" >> "$review_audit"
-        if [ "$mcc_state" = mismatch ]; then
-          echo "marker-commit-check: unit ${unit}'s PASS marker cites a commit that does not appear to belong to it - ${mcc_out}" >&2
-          if [ "$mcc_mode" = block ]; then
-            echo "Remediation: correct the commit: field in .cursor/reviewed/${unit}.pass to name the unit's own final commit, then re-run." >&2
-            exit 2
-          fi
-        fi
-      fi
-      rm -f "${JOIN_SATISFIED_STAMPS[$idx]}" 2>/dev/null || true
-      printf '%s join-consumed=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-        "${JOIN_SATISFIED_UNITS[$idx]}" >> "$review_audit"
-      idx=$(( idx + 1 ))
-    done
-  else
-    missing=""
-    idx=0
-    while [ "$idx" -lt "${#JOIN_UNSATISFIED_UNITS[@]}" ]; do
-      printf '%s cleared-by=reviewer marker=MISSING unit=%s\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${JOIN_UNSATISFIED_UNITS[$idx]}" >> "$review_audit"
-      missing="${missing:+$missing, }${JOIN_UNSATISFIED_UNITS[$idx]}"
-      idx=$(( idx + 1 ))
-    done
-    # Cursor has no loop guard (its .loop_count is read at the top instead), so
-    # this stays a bare exit 2, matching the Claude port.
-    echo "No verdict is recorded for the unit(s) you were dispatched for: ${missing}. A v3 PASS or FAIL marker must be written for each, first line exactly:" >&2
-    echo "  printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '<the unit's own final commit, not HEAD>' > .cursor/reviewed/<unit-id>.pass" >&2
-    echo "The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround." >&2
-    exit 2
-  fi
-
-  rm -f "${project_dir}"/.cursor/.pending-review.* 2>/dev/null || true
-  printf '%s cleared-by=reviewer\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
-  exit 0
-fi
-
-# R7: reached only when the GRANT match above failed. A reviewer from an
-# unrecognized namespace cannot clear the flags the liberal gate below creates,
-# so say so out loud rather than deadlocking silently.
-if [ "$hook_event" = "subagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
-  # Log grant-denied if pending-review flags are standing
-  shopt -s nullglob
-  pending_flags_check=( "${project_dir}"/.cursor/.pending-review.* )
-  shopt -u nullglob
-  if [ "${#pending_flags_check[@]}" -gt 0 ]; then
-    { printf '%s grant-denied hook=stop-gate identity=%s\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
-        >> "$review_audit"; } 2>/dev/null || true
-  fi
-  echo "Reviewer identity '${agent_type}' is outside this project's recognized plugin namespace - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or write 'defer: <reason>' (keeps the flag, review still owed) or 'skip: <reason>' (deletes it, unit abandoned) into .cursor/.pending-review.<agent-id>." >&2
-fi
-
-# C2 also bites when the subagentStop identity does not resolve to this
-# project's reviewer at all (a persona name other than "reviewer", not just
-# a foreign namespace of it) - that identity never enters the branch above,
-# so it needs its own, independent guard to leave a trace when flags are
-# left standing.
-if [ "$hook_event" = "subagentStop" ] && [ "$(identity_persona_name "$agent_type")" != "reviewer" ]; then
-  shopt -s nullglob
-  pending_flags_check=( "${project_dir}"/.cursor/.pending-review.* )
-  shopt -u nullglob
-  if [ "${#pending_flags_check[@]}" -gt 0 ]; then
-    { printf '%s grant-denied hook=stop-gate identity=%s\n' \
-        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
-        >> "$review_audit"; } 2>/dev/null || true
-  fi
-fi
-
-if [ "$hook_event" = "stop" ]; then
-  shopt -s nullglob
-  pending_flags=( "${project_dir}"/.cursor/.pending-review.* )
-  shopt -u nullglob
-  if [ "${#pending_flags[@]}" -gt 0 ]; then
-    blocked=false
-    for flag in "${pending_flags[@]}"; do
-      [ -f "$flag" ] || continue
-      flag_content="$(cat "$flag" 2>/dev/null || true)"
-      # The audit log is one record per line, so a multi-line reason could
-      # never compare equal to the log's last line and dedupe never fired for
-      # it. Flatten to a single logical line before BOTH the comparison and
-      # the write - do not widen the log record to multiple lines instead.
-      flag_content="$(printf '%s' "$flag_content" | tr '\n\r' '  ')"
-      case "$flag_content" in
-        "defer: "|"skip: ")
-          # Nothing after the colon is not a reason - the block message has
-          # always said so, and the WIP sentinel below enforces the same rule.
-          # Must precede the two arms below, whose trailing * matches empty.
-          blocked=true
-          ;;
-        "defer: "*)
-          # A defer: is sticky, so an unchanged reason would otherwise log one
-          # identical line per turn forever. Append only when it differs from
-          # the last line's content (i.e. after the timestamp field) - distinct
-          # events, including a defer: repeated after some other line, still log.
-          last_logged="$(tail -n 1 "$review_audit" 2>/dev/null | cut -d' ' -f2- || true)"
-          if [ "$last_logged" != "$flag_content" ]; then
-            printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
-          fi
-          ;;
-        "skip: "*)
-          printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content" >> "$review_audit"
-          rm -f "$flag"
-          ;;
-        *)
-          blocked=true
-          ;;
-      esac
-    done
-    if [ "$blocked" = true ]; then
-      echo "Unit awaiting review - confirm the reviewer is dispatched for it, or dispatch it now if not (persona-protocol's Review ownership section); this hook cannot tell which. Escape hatch: 'printf \"defer|skip: <reason>\\n\" > .cursor/.pending-review.<agent-id>' - defer keeps the flag (sticky: allows every subsequent stop too, still owed), skip deletes it (abandoned). Empty reason rejected." >&2
-      exit 2
-    fi
-    exit 0
-  fi
-fi
-
-if [ "$hook_event" = "stop" ] || [ "$hook_event" = "subagentStop" ]; then
-  [ -f "$config" ] || exit 0
-  gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
-  [ -n "$gated" ] || gated="lead-programmer"
-
-  if [ "$hook_event" = "subagentStop" ]; then
-    check_name="$agent_type"
-  else
-    check_name="$(jq -r '.mainAgent // "orchestrator"' "$config" 2>/dev/null || echo orchestrator)"
-  fi
-
-  match=false
-  while IFS= read -r name; do
-    persona_matches_gate "$name" "$check_name" && match=true
-  done <<< "$gated"
-  [ "$match" = true ] || exit 0
-fi
-
-raw_agent_id="$(echo "$input" | jq -r '.subagent_type // .conversation_id // "main"' 2>/dev/null || echo main)"
-agent_id="${raw_agent_id//[^a-zA-Z0-9._-]/_}"
-sentinel="${project_dir}/.cursor/wip-handoff.${agent_id}"
-
-if [ -f "$sentinel" ]; then
-  if [ -s "$sentinel" ]; then
-    reason="$(cat "$sentinel")"
-    printf '%s agent=%s reason=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$reason" \
-      >> "${project_dir}/.cursor/wip-audit.log"
-    rm -f "$sentinel"
-    exit 0
-  fi
-  echo "WIP sentinel at ${sentinel} is empty - a reason is required (e.g. 'echo \"blocked on X\" > ${sentinel}'). Ignoring it and running the normal check instead." >&2
-  rm -f "$sentinel"
-fi
-
-if [ "$hook_event" = "subagentStop" ]; then
-  pending_flag="${project_dir}/.cursor/.pending-review.${agent_id}"
-  [ -f "$pending_flag" ] || printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
-fi
-
-dirty=false
-[ -n "$(git -C "$project_dir" status --porcelain 2>/dev/null || true)" ] && dirty=true
-
 raw_session_id="$(echo "$input" | jq -r '.conversation_id // "unknown"' 2>/dev/null || echo unknown)"
-session_id="${raw_session_id//[^a-zA-Z0-9._-]/_}"
-baseline_file="${project_dir}/.cursor/.session-baseline.${session_id}"
+raw_agent_id="$(echo "$input" | jq -r '.subagent_type // .conversation_id // "main"' 2>/dev/null || echo main)"
 
-moved=false
-if [ -f "$baseline_file" ]; then
-  baseline_sha="$(cat "$baseline_file" 2>/dev/null || true)"
-  current_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || true)"
-  if [ -n "$baseline_sha" ] && [ -n "$current_sha" ] && [ "$baseline_sha" != "$current_sha" ]; then
-    moved=true
-  fi
+main_agent_name=""
+if [ "$hook_event" != "SubagentStop" ]; then
+  main_agent_name="$(jq -r '.mainAgent // "orchestrator"' "$config" 2>/dev/null || echo orchestrator)"
 fi
 
-if [ "$dirty" = false ] && [ "$moved" = false ]; then
-  exit 0
-fi
+mcc_script="$(dirname "${BASH_SOURCE[0]}")/marker-commit-check.sh"
 
-[ -f "$config" ] || exit 0
-check_cmd="$(jq -r '.testAndLintCommand // empty' "$config" 2>/dev/null || true)"
-[ -n "$check_cmd" ] || exit 0
-
-tmp_out="$(mktemp)"
-if ! (cd "$project_dir" && eval "$check_cmd") >"$tmp_out" 2>&1; then
-  echo "Test/lint check failed - fix before ending the turn, or 'echo \"<reason>\" > ${sentinel}' if this is a legitimate mid-task pause (TDD red phase, blocked report, plan-is-wrong escalation). The sentinel must contain a reason - an empty file is ignored." >&2
-  cat "$tmp_out" >&2
-  rm -f "$tmp_out"
-  exit 2
-fi
-rm -f "$tmp_out"
-exit 0
+lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/stop-gate-core.sh"

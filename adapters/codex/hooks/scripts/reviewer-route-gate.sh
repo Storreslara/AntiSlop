@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# CODEX ADAPTER over the shared reviewer-route-gate logic (ported from
-# hooks/scripts/reviewer-route-gate.sh via adapters/cursor/hooks/scripts/
-# reviewer-route-gate.sh). Registered on `SubagentStart`.
+# CODEX entry point over the shared reviewer-route-gate gating logic
+# (generated from hooks/scripts/lib/reviewer-route-gate-core.sh - node
+# bin/cli.js --update --force-render). Registered on `SubagentStart`. Sets
+# codex's payload contract then sources the port-invariant core.
 #
 # IMPORTANT DEGRADATION (docs/specs/codex-plugin.md §6, §12 #2 - UNRESOLVED):
 # Codex's `SubagentStart` payload is confirmed to carry `.agent_id`/
@@ -44,84 +45,16 @@ set -euo pipefail
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.cwd // "."' 2>/dev/null || echo .)"
-config="${project_dir}/.codex/persona-config.json"
-review_audit="${project_dir}/.codex/review-audit.log"
+dot="${project_dir}/.codex"
+dot_label=".codex"
+config="${dot}/persona-config.json"
+review_audit="${dot}/review-audit.log"
 
 target_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
-if [ -f "$config" ] && [ -n "$target_type" ]; then
-  identity_drift_log "$target_type" SubagentStart "$review_audit"
-  shopt -s nullglob
-  pending_flags=( "${project_dir}"/.codex/.pending-review.* )
-  shopt -u nullglob
-  if [ "${#pending_flags[@]}" -gt 0 ]; then
-    gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
-    [ -n "$gated" ] || gated="lead-programmer"
+hook_event_label="SubagentStart"
+dispatch_name="$(echo "$input" | jq -r '.name // empty' 2>/dev/null || true)"
+prompt="$(echo "$input" | jq -r '.prompt // .instructions // .task // empty' 2>/dev/null || true)"
 
-    # Liberal on both sides, as at the stop-gate's gatedAgents check: a miss
-    # here fails OPEN (the next gated unit dispatches while review is owed).
-    match=false
-    while IFS= read -r name; do
-      [ -n "$name" ] && persona_matches_gate "$name" "$target_type" && match=true
-    done <<< "$gated"
-
-    if [ "$match" = true ]; then
-      echo "BLOCKED: a completed unit is awaiting review - route it to the reviewer first, or use the defer:/skip: escape in the flag file (.codex/.pending-review.*), per the persona protocol's Pending-review flag section." >&2
-      exit 2
-    fi
-  fi
-fi
-
-if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
-  dispatch_name="$(echo "$input" | jq -r '.name // empty' 2>/dev/null || true)"
-  if [ -n "$dispatch_name" ]; then
-    dispatch_persona="$(identity_persona_name "$dispatch_name")"
-    if [ "$dispatch_persona" != "reviewer" ]; then
-      echo "BLOCKED: a reviewer dispatch must carry no \`name:\` parameter, or exactly \`name: \"reviewer\"\`. This dispatch's \`name: \"$dispatch_name\"\` will report an \`agent_type\` of '$dispatch_name', which fails the grant matcher. The reviewer will be unable to write its verdict marker or clear the pending-review flag. Fix: re-dispatch with no \`name\` at all, or (in agent-teams mode) with exactly \`name: \"reviewer\"\`." >&2
-      exit 2
-    fi
-  fi
-
-  prompt="$(echo "$input" | jq -r '.prompt // .instructions // .task // empty' 2>/dev/null || true)"
-  first_line=""
-  while IFS= read -r line; do
-    if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
-  done <<< "$prompt"
-
-  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
-    unit_id="${BASH_REMATCH[1]}"
-    case "$unit_id" in
-      */*|*..*) ;;
-      *)
-        reviewed_dir="${project_dir}/.codex/reviewed"
-        pass_marker="${reviewed_dir}/${unit_id}.pass"
-        pass_valid=false
-        if [ -f "$pass_marker" ] && [ -s "$pass_marker" ]; then
-          first="$(head -n 1 "$pass_marker")"
-          case "$first" in
-            "PASS ${unit_id} "*) pass_valid=true ;;
-          esac
-        fi
-        if [ "$pass_valid" = false ]; then
-          prior=none
-          prior_mtime=-
-          fail_marker="${reviewed_dir}/${unit_id}.fail"
-          blocked_marker="${reviewed_dir}/${unit_id}.blocked"
-          if [ -f "$fail_marker" ]; then
-            prior=fail
-            prior_mtime="$(stat -L -c %Y "$fail_marker" 2>/dev/null || stat -L -f %m "$fail_marker" 2>/dev/null || echo -)"
-          elif [ -f "$blocked_marker" ]; then
-            prior=blocked
-            prior_mtime="$(stat -L -c %Y "$blocked_marker" 2>/dev/null || stat -L -f %m "$blocked_marker" 2>/dev/null || echo -)"
-          fi
-          stamp="${project_dir}/.codex/.review-join.${unit_id}"
-          printf '%s unit=%s prior=%s prior_mtime=%s\n' \
-            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp"
-          printf 'review-join=%s\n' "$unit_id" >> "$review_audit"
-        fi
-        ;;
-    esac
-  fi
-fi
-
-exit 0
+lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/reviewer-route-gate-core.sh"

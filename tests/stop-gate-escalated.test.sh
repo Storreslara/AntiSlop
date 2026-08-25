@@ -115,12 +115,13 @@ mutant="$tmproot/mutant"
 mkdir -p "$mutant"
 cp hooks/scripts/stop-gate.sh "$mutant/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant/lib"
-glob='escalated_markers=( "${project_dir}"/.claude/reviewed/*.escalated )'
-before_n="$(grep -cF "$glob" "$mutant/stop-gate.sh" || true)"
-sed -i 's/^\( *\)escalated_markers=(.*$/\1escalated_markers=( )/' "$mutant/stop-gate.sh"
-after_n="$(grep -cF "$glob" "$mutant/stop-gate.sh" || true)"
+mutant_core="$mutant/lib/stop-gate-core.sh"
+glob='escalated_markers=( "${dot}"/reviewed/*.escalated )'
+before_n="$(grep -cF "$glob" "$mutant_core" || true)"
+sed -i 's/^\( *\)escalated_markers=(.*$/\1escalated_markers=( )/' "$mutant_core"
+after_n="$(grep -cF "$glob" "$mutant_core" || true)"
 parses=yes
-bash -n "$mutant/stop-gate.sh" 2>/dev/null || parses=no
+bash -n "$mutant_core" 2>/dev/null || parses=no
 
 dir="$(make_project mutation)"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"

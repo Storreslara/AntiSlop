@@ -596,6 +596,8 @@ const SHARED_HOOK_LIB_FILES = [
   'lint-on-edit-core.sh',
   'microworld-rerun-core.sh',
   'protected-paths-core.sh',
+  'reviewer-route-gate-core.sh',
+  'stop-gate-core.sh',
 ];
 const CLAUDE_ONLY_HOOK_LIB_FILES = ['benign-command.sh'];
 

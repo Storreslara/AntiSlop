@@ -159,10 +159,11 @@ mutant="$tmproot/mutant"
 mkdir -p "$mutant"
 cp hooks/scripts/stop-gate.sh "$mutant/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant/lib"
+mutant_core="$mutant/lib/stop-gate-core.sh"
 guard='if [ "$last_logged" != "$flag_content" ]; then'
-before_n="$(grep -cF "$guard" "$mutant/stop-gate.sh" || true)"
-sed -i "s/$(printf '%s' "$guard" | sed 's/[][\\.*^$\/]/\\&/g')/if true; then/" "$mutant/stop-gate.sh"
-after_n="$(grep -cF "$guard" "$mutant/stop-gate.sh" || true)"
+before_n="$(grep -cF "$guard" "$mutant_core" || true)"
+sed -i "s/$(printf '%s' "$guard" | sed 's/[][\\.*^$\/]/\\&/g')/if true; then/" "$mutant_core"
+after_n="$(grep -cF "$guard" "$mutant_core" || true)"
 
 dir="$(make_project mutation)"
 printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-1"
@@ -266,11 +267,12 @@ mutant_flat="$tmproot/mutant-flatten"
 mkdir -p "$mutant_flat"
 cp hooks/scripts/stop-gate.sh "$mutant_flat/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant_flat/lib"
-flat_before="$(grep -c '| tr ' "$mutant_flat/stop-gate.sh" || true)"
-sed -i '/| tr /d' "$mutant_flat/stop-gate.sh"
-flat_after="$(grep -c '| tr ' "$mutant_flat/stop-gate.sh" || true)"
+mutant_flat_core="$mutant_flat/lib/stop-gate-core.sh"
+flat_before="$(grep -c '| tr ' "$mutant_flat_core" || true)"
+sed -i '/| tr /d' "$mutant_flat_core"
+flat_after="$(grep -c '| tr ' "$mutant_flat_core" || true)"
 parses=yes
-bash -n "$mutant_flat/stop-gate.sh" 2>/dev/null || parses=no
+bash -n "$mutant_flat_core" 2>/dev/null || parses=no
 
 dir="$(make_project mutation-flatten)"
 printf 'defer: reviewer dispatched\nsee issue 201 for the reason\n' \
@@ -476,13 +478,14 @@ mutant_join="$tmproot/mutant-join"
 mkdir -p "$mutant_join"
 cp hooks/scripts/stop-gate.sh "$mutant_join/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant_join/lib"
+mutant_join_core="$mutant_join/lib/stop-gate-core.sh"
 join_call='    review_join_state "$dot"'
-join_before="$(grep -cxF "$join_call" "$mutant_join/stop-gate.sh" || true)"
+join_before="$(grep -cxF "$join_call" "$mutant_join_core" || true)"
 sed -i 's/^    review_join_state "\$dot"$/    review_join_state "$dot"; JOIN_STAMP_COUNT=0/' \
-  "$mutant_join/stop-gate.sh"
-join_after="$(grep -cF 'JOIN_STAMP_COUNT=0' "$mutant_join/stop-gate.sh" || true)"
+  "$mutant_join_core"
+join_after="$(grep -cF 'JOIN_STAMP_COUNT=0' "$mutant_join_core" || true)"
 join_parses=yes
-bash -n "$mutant_join/stop-gate.sh" 2>/dev/null || join_parses=no
+bash -n "$mutant_join_core" 2>/dev/null || join_parses=no
 
 # join-unsatisfied-blocks against the mutant - must NOT block
 dir="$(make_project mutation-join-unsat)"
@@ -506,11 +509,12 @@ else
   fail=1
 fi
 
-# (w) Baseline check: grep for marker=MISSING in the hook script is GREEN
-if tr '\n' ' ' < hooks/scripts/stop-gate.sh | tr -s ' ' | grep -qF -e 'marker=MISSING'; then
-  echo "OK   (w) baseline: 'marker=MISSING' string is present in hooks/scripts/stop-gate.sh"
+# (w) Baseline check: grep for marker=MISSING in the shared core is GREEN -
+#     that decision text moved out of the thin entry script since gh411.
+if tr '\n' ' ' < hooks/scripts/lib/stop-gate-core.sh | tr -s ' ' | grep -qF -e 'marker=MISSING'; then
+  echo "OK   (w) baseline: 'marker=MISSING' string is present in hooks/scripts/lib/stop-gate-core.sh"
 else
-  echo "FAIL (w) baseline: 'marker=MISSING' string NOT found in the script"
+  echo "FAIL (w) baseline: 'marker=MISSING' string NOT found in the core"
   fail=1
 fi
 

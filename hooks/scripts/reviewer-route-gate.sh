@@ -29,14 +29,23 @@
 # This only covers the `Agent` tool (a direct spawn attempt); it does not
 # cover SendMessage to an existing reviewer teammate in agent-teams mode -
 # that's a different tool with a different payload shape, out of scope here.
+#
+# Claude entry point over the shared reviewer-route-gate gating logic
+# (hooks/scripts/lib/reviewer-route-gate-core.sh) — sets Claude's payload
+# contract then sources the port-invariant core. The two blocks below (lead-
+# programmer-may-not-spawn-reviewer, caller allowlist) stay here rather than
+# in the core: they key off the CALLING agent's identity, which only
+# Claude's PreToolUse payload carries — see the core file's own header.
 set -euo pipefail
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
-config="${project_dir}/.claude/persona-config.json"
-review_audit="${project_dir}/.claude/review-audit.log"
+dot="${project_dir}/.claude"
+dot_label=".claude"
+config="${dot}/persona-config.json"
+review_audit="${dot}/review-audit.log"
 
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
@@ -45,7 +54,6 @@ target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev
 # this config declares). Empty identities are a no-op inside the library.
 if [ -f "$config" ]; then
   identity_drift_log "$agent_type" "reviewer-route-gate" "$review_audit"
-  identity_drift_log "$target_type" "reviewer-route-gate" "$review_audit"
 fi
 
 if persona_matches_gate "$agent_type" "lead-programmer" \
@@ -64,78 +72,9 @@ if persona_matches_gate "$target_type" "reviewer" \
   exit 2
 fi
 
-if [ -f "$config" ]; then
-  shopt -s nullglob
-  pending_flags=( "${project_dir}"/.claude/.pending-review.* )
-  shopt -u nullglob
-  if [ "${#pending_flags[@]}" -gt 0 ]; then
-    gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
-    [ -n "$gated" ] || gated="lead-programmer"
+hook_event_label="reviewer-route-gate"
+dispatch_name="$(echo "$input" | jq -r '.tool_input.name // empty' 2>/dev/null || true)"
+prompt="$(echo "$input" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)"
 
-    match=false
-    while IFS= read -r name; do
-      persona_matches_gate "$name" "$target_type" && match=true
-    done <<< "$gated"
-
-    if [ "$match" = true ]; then
-      echo "BLOCKED: a completed unit is awaiting review - route it to the reviewer first, or use the defer:/skip: escape in the flag file (.claude/.pending-review.*), per persona-protocol.md's Pending-review flag section." >&2
-      exit 2
-    fi
-  fi
-fi
-
-
-if persona_matches_gate "$target_type" "reviewer"; then
-  dispatch_name="$(echo "$input" | jq -r '.tool_input.name // empty' 2>/dev/null || true)"
-  if [ -n "$dispatch_name" ]; then
-    dispatch_persona="$(identity_persona_name "$dispatch_name")"
-    if [ "$dispatch_persona" != "reviewer" ]; then
-      echo "BLOCKED: a reviewer dispatch must carry no \`name:\` parameter, or exactly \`name: \"reviewer\"\`. This dispatch's \`name: \"$dispatch_name\"\` will report an \`agent_type\` of '$dispatch_name', which fails the grant matcher. The reviewer will be unable to write its verdict marker or clear the pending-review flag. Fix: re-dispatch with no \`name\` at all, or (in agent-teams mode) with exactly \`name: \"reviewer\"\`." >&2
-      exit 2
-    fi
-  fi
-
-  prompt="$(echo "$input" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)"
-  first_line=""
-  while IFS= read -r line; do
-    if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
-  done <<< "$prompt"
-
-  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
-    unit_id="${BASH_REMATCH[1]}"
-    case "$unit_id" in
-      */*|*..*) ;;
-      *)
-        if [ -f "$config" ]; then
-          reviewed_dir="${project_dir}/.claude/reviewed"
-          pass_marker="${reviewed_dir}/${unit_id}.pass"
-          pass_valid=false
-          if [ -f "$pass_marker" ] && [ -s "$pass_marker" ]; then
-            first="$(head -n 1 "$pass_marker")"
-            case "$first" in
-              "PASS ${unit_id} "*) pass_valid=true ;;
-            esac
-          fi
-          if [ "$pass_valid" = false ]; then
-            prior=none
-            prior_mtime=-
-            fail_marker="${reviewed_dir}/${unit_id}.fail"
-            blocked_marker="${reviewed_dir}/${unit_id}.blocked"
-            if [ -f "$fail_marker" ]; then
-              prior=fail
-              prior_mtime="$(stat -L -c %Y "$fail_marker" 2>/dev/null || stat -L -f %m "$fail_marker" 2>/dev/null || echo -)"
-            elif [ -f "$blocked_marker" ]; then
-              prior=blocked
-              prior_mtime="$(stat -L -c %Y "$blocked_marker" 2>/dev/null || stat -L -f %m "$blocked_marker" 2>/dev/null || echo -)"
-            fi
-            stamp="${project_dir}/.claude/.review-join.${unit_id}"
-            printf '%s unit=%s prior=%s prior_mtime=%s\n' \
-              "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp" || true
-            printf 'review-join=%s\n' "$unit_id" >> "$review_audit" || true
-          fi
-        fi
-        ;;
-    esac
-  fi
-fi
-exit 0
+lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/reviewer-route-gate-core.sh"
