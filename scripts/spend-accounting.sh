@@ -1,23 +1,17 @@
 #!/usr/bin/env bash
-# Cost accounting script: reports per-model spend and per-model FAIL rate
+# Cost accounting script: reports per-model spend and per-period FAIL rate
 # from the transcript corpus and .claude/reviewed/ markers.
 #
 # Modeled on scripts/agent-audit.sh. Reads Claude Code's existing transcript
-# store (~/.claude/projects/<slug>/) and .claude/reviewed/ markers; reads-only,
+# store (~/.claude/projects/<slug>/) and .claude/reviewed/ markers; read-only,
 # no repo modification. Requires an explicit cutoff (--until <ISO-8601>) to
 # bound the corpus, since transcripts grow with every session.
-#
-# Outputs stable, parseable JSON with:
-#   - per_model_spend: { model: string, messages: number, cost: number, share: string }
-#   - per_period_fail_rate: { period: string, units: number, with_fail: number, rate: string }
-#
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 CUTOFF_ISO8601=""
-
 for arg in "$@"; do
   case "$arg" in
     --until=*) CUTOFF_ISO8601="${arg#--until=}" ;;
@@ -33,34 +27,29 @@ if [ -z "$CUTOFF_ISO8601" ]; then
   exit 1
 fi
 
-# --- pricing table (published rates as of spec authoring) -----
-# Haiku 4.5 $1/$5, Sonnet 5 $3/$15, Opus 5 $5/$25, Fable 5 $10/$50 per MTok
-# Cache reads at 0.1×, cache writes at 1.25×; this script ignores cache
-# (messages with usage.cache_* fields are rare in the corpus).
+# Published rates, $/MTok, as (input:output). Cache reads price at 0.1x
+# input; cache writes (cache_creation_input_tokens) price at 1.25x input.
 declare -A PRICING=(
-  [claude-haiku-4-5]="0.001:0.005"
-  [claude-haiku-4]="0.001:0.005"
-  [claude-sonnet-5]="0.003:0.015"
-  [claude-sonnet-4-20250514]="0.003:0.015"
-  [claude-opus-5]="0.005:0.025"
-  [claude-opus-4-8]="0.005:0.025"
-  [claude-fable-5]="0.010:0.050"
+  [claude-haiku-4-5]="1:5"
+  [claude-sonnet-5]="3:15"
+  [claude-opus-5]="5:25"
+  [claude-opus-4-8]="5:25"
+  [claude-fable-5]="10:50"
 )
 
-cost_for_model() {
-  local model="$1" input_tokens="$2" output_tokens="$3"
-  local rates="${PRICING[$model]:-}"
-  if [ -z "$rates" ]; then
-    echo "0"
-    return
-  fi
-  local in_rate="${rates%:*}" out_rate="${rates#*:}"
-  awk -v in_tok="$input_tokens" -v out_tok="$output_tokens" -v in_r="$in_rate" -v out_r="$out_rate" \
-    'BEGIN {printf "%.2f", (in_tok * in_r / 1000000) + (out_tok * out_r / 1000000)}'
+# Collapses a dispatched model string (which may carry a dated suffix, e.g.
+# claude-haiku-4-5-20251001) to the family bucket used for pricing/reporting.
+normalize_model() {
+  case "$1" in
+    claude-haiku-4-5*) echo "claude-haiku-4-5" ;;
+    claude-sonnet-5*) echo "claude-sonnet-5" ;;
+    claude-opus-4-8*) echo "claude-opus-4-8" ;;
+    claude-opus-5*) echo "claude-opus-5" ;;
+    claude-fable-5*) echo "claude-fable-5" ;;
+    *) echo "$1" ;;
+  esac
 }
 
-# Root resolution: transcript corpus at ~/.claude/projects/<slug>/,
-# markers at .claude/reviewed/
 slugify() {
   local p="$1" out="" c i
   for (( i = 0; i < ${#p}; i++ )); do
@@ -81,173 +70,135 @@ if [ ! -d "$ROOT" ]; then
   exit 0
 fi
 
-# --- spend aggregation from transcripts ----
-SPEND_FILE="$(mktemp)"
-trap "rm -f '$SPEND_FILE'" EXIT
+# --- spend aggregation ------------------------------------------------
+# One row per usage-bearing assistant message, across every session and
+# subagent transcript file: model, input_tokens, cache_creation_input_tokens,
+# cache_read_input_tokens, output_tokens. "<synthetic>" is a non-billable
+# marker Claude Code emits and is excluded.
+RAW="$(mktemp)"
+TOTALS="$(mktemp)"
+trap 'rm -f "$RAW" "$TOTALS"' EXIT
 
-# Iterate sessions, extract usage.input_tokens and usage.output_tokens per message,
-# look up dispatched model from meta.json, sum by model.
-for sid in "$ROOT"/*; do
-  [ -d "$sid" ] || continue
-  # Session .jsonl files
-  for f in "$sid"/*.jsonl; do
-    [ -e "$f" ] || continue
-    # Filter by timestamp <= cutoff
-    jq -r --arg cutoff "$CUTOFF_ISO8601" \
-      '.message.usage? | select((.timestamp // "") <= $cutoff) |
-       (.model // "unknown") as $m | ($_.input_tokens // 0) as $in | ($_.output_tokens // 0) as $out |
-       "\($m)\t\($in)\t\($out)"' "$f" 2>/dev/null || true
-  done | while read -r model in_tok out_tok; do
-    [ -n "$model" ] || continue
-    printf '%s\t%s\t%s\n' "$model" "$in_tok" "$out_tok" >> "$SPEND_FILE"
-  done
+while IFS= read -r -d '' f; do
+  jq -r --arg cutoff "$CUTOFF_ISO8601" '
+    select(.message.usage != null and (.timestamp // "") != "" and .timestamp <= $cutoff) |
+    select(.message.model != "<synthetic>") |
+    [
+      (.message.model // "unknown"),
+      (.message.usage.input_tokens // 0),
+      (.message.usage.cache_creation_input_tokens // 0),
+      (.message.usage.cache_read_input_tokens // 0),
+      (.message.usage.output_tokens // 0)
+    ] | @tsv
+  ' "$f" 2>/dev/null || true
+done < <(find "$ROOT" -name '*.jsonl' -print0) >> "$RAW"
 
-  # Dispatch .jsonl files (subagents)
-  subdir="$sid/subagents"
-  [ -d "$subdir" ] || continue
-  for meta in "$subdir"/*.meta.json; do
-    [ -e "$meta" ] || continue
-    jsonl="${meta%.meta.json}.jsonl"
-    [ -f "$jsonl" ] || continue
-    dispatch_model="$(jq -r '.model // empty' "$meta" 2>/dev/null || true)"
-    [ -n "$dispatch_model" ] || dispatch_model="unknown"
-    # Filter by timestamp <= cutoff
-    jq -r --arg cutoff "$CUTOFF_ISO8601" --arg dmodel "$dispatch_model" \
-      '.message.usage? | select((.timestamp // "") <= $cutoff) |
-       ($_.input_tokens // 0) as $in | ($_.output_tokens // 0) as $out |
-       "\($dmodel)\t\($in)\t\($out)"' "$jsonl" 2>/dev/null || true
-  done | while read -r model in_tok out_tok; do
-    [ -n "$model" ] || continue
-    printf '%s\t%s\t%s\n' "$model" "$in_tok" "$out_tok" >> "$SPEND_FILE"
-  done
-done
-
-# Aggregate by model
-if [ ! -s "$SPEND_FILE" ]; then
+if [ ! -s "$RAW" ]; then
   jq -n --arg error "no usage records found in corpus (cutoff: $CUTOFF_ISO8601)" '{error: $error}'
   exit 0
 fi
 
-TOTALS="$(mktemp)"
-trap "rm -f '$SPEND_FILE' '$TOTALS'" EXIT
-
-sort "$SPEND_FILE" | awk '
+while IFS=$'\t' read -r model in_tok cache_w cache_r out_tok; do
+  [ -n "$model" ] || continue
+  family="$(normalize_model "$model")"
+  printf '%s\t%s\t%s\t%s\t%s\n' "$family" "$in_tok" "$cache_w" "$cache_r" "$out_tok"
+done < "$RAW" | sort | awk -F'\t' '
   {
-    model = $1
-    in_tok = $2 + 0
-    out_tok = $3 + 0
-    if (!(model in models)) {
-      models[model] = 0
-      in_tokens[model] = 0
-      out_tokens[model] = 0
-      msgs[model] = 0
-    }
-    in_tokens[model] += in_tok
-    out_tokens[model] += out_tok
-    msgs[model] += 1
+    m = $1
+    msgs[m]++
+    in_tok[m] += $2
+    cache_w[m] += $3
+    cache_r[m] += $4
+    out_tok[m] += $5
   }
   END {
-    for (m in models) {
-      printf "%s\t%d\t%d\t%d\n", m, msgs[m], in_tokens[m], out_tokens[m]
-    }
+    for (m in msgs) printf "%s\t%d\t%d\t%d\t%d\t%d\n", m, msgs[m], in_tok[m], cache_w[m], cache_r[m], out_tok[m]
   }
 ' > "$TOTALS"
 
-# Calculate spend per model
-SPEND_JSON="$(mktemp)"
-trap "rm -f '$SPEND_FILE' '$TOTALS' '$SPEND_JSON'" EXIT
-
-while read -r model msgs in_tok out_tok; do
+# --- cost per model -----------------------------------------------------
+SPEND_JSON="[]"
+TOTAL_SPEND="0"
+while IFS=$'\t' read -r model msgs in_tok cache_w cache_r out_tok; do
   [ -n "$model" ] || continue
-  cost="$(cost_for_model "$model" "$in_tok" "$out_tok")"
-  printf '%s\t%s\t%s\t%s\n' "$model" "$msgs" "$cost" "$in_tok:$out_tok" >> "$SPEND_JSON"
+  rates="${PRICING[$model]:-0:0}"
+  in_rate="${rates%:*}"
+  out_rate="${rates#*:}"
+  cost="$(awk -v in_t="$in_tok" -v cw="$cache_w" -v cr="$cache_r" -v out_t="$out_tok" \
+               -v in_r="$in_rate" -v out_r="$out_rate" \
+    'BEGIN {
+       c = (in_t * in_r / 1000000) + (cw * in_r * 1.25 / 1000000) + (cr * in_r * 0.1 / 1000000) + (out_t * out_r / 1000000)
+       printf "%.2f", c
+     }')"
+  TOTAL_SPEND="$(awk -v a="$TOTAL_SPEND" -v b="$cost" 'BEGIN {printf "%.2f", a + b}')"
+  SPEND_JSON="$(jq -c --argjson arr "$SPEND_JSON" --arg model "$model" --argjson msgs "$msgs" --argjson cost "$cost" \
+    '$arr + [{model: $model, messages: $msgs, cost: $cost}]' <<< '{}')"
 done < "$TOTALS"
 
-# --- FAIL rate aggregation from markers ----
-# Markers: .claude/reviewed/<task-id>.pass or .fail
-# Extract mtime to approximate dispatch date, count pre/post ADR-0010 (2026-08-02)
-FAIL_FILE="$(mktemp)"
-trap "rm -f '$SPEND_FILE' '$TOTALS' '$SPEND_JSON' '$FAIL_FILE'" EXIT
+# Recompute with share percentages now that total is known.
+SPEND_JSON="$(jq -c --argjson total "$TOTAL_SPEND" \
+  'map(. + {share: (if $total > 0 then (((.cost / $total) * 1000 | round) / 10 | tostring) + "%" else "0.0%" end)})' \
+  <<< "$SPEND_JSON")"
+
+# --- FAIL rate aggregation from markers ---------------------------------
+# One row per marker (task-id, mtime ISO-8601, pass|fail); split at
+# ADR-0010's date (2026-08-02) by mtime, unique per task-id.
+FAIL_RAW="$(mktemp)"
+trap 'rm -f "$RAW" "$TOTALS" "$FAIL_RAW"' EXIT
 
 if [ -d "$MARKER_DIR" ]; then
-  for marker in "$MARKER_DIR"/*.{pass,fail}; do
+  for marker in "$MARKER_DIR"/*.pass "$MARKER_DIR"/*.fail; do
     [ -e "$marker" ] || continue
     mtime_sec="$(stat -c '%Y' "$marker" 2>/dev/null || echo 0)"
-    # Convert to ISO-8601
     mtime_iso="$(date -u -d @"$mtime_sec" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "")"
     [ -n "$mtime_iso" ] || continue
-    # Filter by cutoff
-    if [ "$mtime_iso" \> "$CUTOFF_ISO8601" ]; then
-      continue
-    fi
-    case "$(basename "$marker")" in
-      *.pass) printf '%s\t%s\tpass\n' "$(basename "$marker" .pass)" "$mtime_iso" >> "$FAIL_FILE" ;;
-      *.fail) printf '%s\t%s\tfail\n' "$(basename "$marker" .fail)" "$mtime_iso" >> "$FAIL_FILE" ;;
+    [ "$mtime_iso" \> "$CUTOFF_ISO8601" ] && continue
+    base="$(basename "$marker")"
+    case "$base" in
+      *.pass) printf '%s\t%s\tpass\n' "${base%.pass}" "$mtime_iso" >> "$FAIL_RAW" ;;
+      *.fail) printf '%s\t%s\tfail\n' "${base%.fail}" "$mtime_iso" >> "$FAIL_RAW" ;;
     esac
   done
 fi
 
-# Calculate FAIL rate per period (pre/post ADR-0010 2026-08-02)
-FAIL_RATE_PRE="{\"period\": \"before 2026-08-02\", \"units\": 0, \"with_fail\": 0, \"rate\": \"0.0%\"}"
-FAIL_RATE_POST="{\"period\": \"from 2026-08-02\", \"units\": 0, \"with_fail\": 0, \"rate\": \"0.0%\"}"
-
-if [ -s "$FAIL_FILE" ]; then
-  PRE_UNITS=0
-  PRE_FAILS=0
-  POST_UNITS=0
-  POST_FAILS=0
-
-  # Track unique task-ids per period (each task-id counts once)
-  while read -r taskid mtime verdict; do
+# Counts unique task-ids (units) and unique task-ids with >=1 .fail marker
+# (with_fail), both within [lo, hi) by marker mtime — never raw marker rows,
+# so a unit with two .fail markers before its eventual PASS still counts once.
+fail_rate_for_period() {
+  local label="$1" lo="$2" hi="$3"
+  local units=0 fails=0 seen_units="" seen_fails=""
+  while IFS=$'\t' read -r taskid mtime verdict; do
     [ -n "$taskid" ] || continue
-    if [ "$mtime" \< "2026-08-02T00:00:00Z" ]; then
-      if ! echo "$PRE_SEEN" | grep -q "^$taskid$"; then
-        PRE_UNITS=$((PRE_UNITS + 1))
-        PRE_SEEN="${PRE_SEEN}$taskid"$'\n'
-      fi
-      if [ "$verdict" = "fail" ]; then
-        PRE_FAILS=$((PRE_FAILS + 1))
-      fi
-    else
-      if ! echo "$POST_SEEN" | grep -q "^$taskid$"; then
-        POST_UNITS=$((POST_UNITS + 1))
-        POST_SEEN="${POST_SEEN}$taskid"$'\n'
-      fi
-      if [ "$verdict" = "fail" ]; then
-        POST_FAILS=$((POST_FAILS + 1))
-      fi
+    if [[ "$mtime" < "$lo" ]]; then continue; fi
+    if [ -n "$hi" ] && [[ ! "$mtime" < "$hi" ]]; then continue; fi
+    case "$seen_units" in
+      *"|$taskid|"*) : ;;
+      *) seen_units="${seen_units}|$taskid|"; units=$((units + 1)) ;;
+    esac
+    if [ "$verdict" = "fail" ]; then
+      case "$seen_fails" in
+        *"|$taskid|"*) : ;;
+        *) seen_fails="${seen_fails}|$taskid|"; fails=$((fails + 1)) ;;
+      esac
     fi
-  done < "$FAIL_FILE"
+  done < "$FAIL_RAW"
+  local rate="0.0"
+  [ "$units" -gt 0 ] && rate="$(awk -v f="$fails" -v u="$units" 'BEGIN {printf "%.1f", (f/u)*100}')"
+  jq -nc --arg period "$label" --argjson units "$units" --argjson with_fail "$fails" --arg rate "${rate}%" \
+    '{period: $period, units: $units, with_fail: $with_fail, rate: $rate}'
+}
 
-  if [ "$PRE_UNITS" -gt 0 ]; then
-    PRE_RATE=$(awk "BEGIN {printf \"%.1f\", ($PRE_FAILS / $PRE_UNITS) * 100}")
-    FAIL_RATE_PRE="{\"period\": \"before 2026-08-02\", \"units\": $PRE_UNITS, \"with_fail\": $PRE_FAILS, \"rate\": \"${PRE_RATE}%\"}"
-  fi
-  if [ "$POST_UNITS" -gt 0 ]; then
-    POST_RATE=$(awk "BEGIN {printf \"%.1f\", ($POST_FAILS / $POST_UNITS) * 100}")
-    FAIL_RATE_POST="{\"period\": \"from 2026-08-02\", \"units\": $POST_UNITS, \"with_fail\": $POST_FAILS, \"rate\": \"${POST_RATE}%\"}"
-  fi
-fi
+FAIL_RATE_PRE="$(fail_rate_for_period "before 2026-08-02" "0000-01-01T00:00:00Z" "2026-08-02T00:00:00Z")"
+FAIL_RATE_POST="$(fail_rate_for_period "from 2026-08-02" "2026-08-02T00:00:00Z" "")"
 
-# --- output ----
-# Emit JSON with spend and FAIL rate data
-TOTAL_SPEND=0
-SPEND_LINES=""
-while read -r model msgs cost tok_info; do
-  [ -n "$model" ] || continue
-  TOTAL_SPEND=$(awk -v ts="$TOTAL_SPEND" -v c="$cost" 'BEGIN {printf "%.2f", ts + c}')
-  SPEND_LINES="${SPEND_LINES}{\"model\": \"$model\", \"messages\": $msgs, \"cost\": $cost},"
-done < "$SPEND_JSON"
-
-# Remove trailing comma
-SPEND_LINES="${SPEND_LINES%,}"
-
+# --- output --------------------------------------------------------------
 jq -n --arg cutoff "$CUTOFF_ISO8601" --argjson total_spend "$TOTAL_SPEND" \
-  --argjson fail_rate_pre "$(echo "$FAIL_RATE_PRE")" \
-  --argjson fail_rate_post "$(echo "$FAIL_RATE_POST")" \
+  --argjson per_model_spend "$SPEND_JSON" \
+  --argjson fail_rate_pre "$FAIL_RATE_PRE" \
+  --argjson fail_rate_post "$FAIL_RATE_POST" \
   '{
     cutoff: $cutoff,
-    per_model_spend: ('"$([[ -n "$SPEND_LINES" ]] && echo "[$SPEND_LINES]" || echo "[]")"'),
+    per_model_spend: $per_model_spend,
     total_spend: $total_spend,
     per_period_fail_rate: [$fail_rate_pre, $fail_rate_post]
   }'
