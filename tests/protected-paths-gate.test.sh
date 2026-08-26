@@ -73,5 +73,28 @@ else
   exit 1
 fi
 
+# Test 6: legacy string-shaped protectedPaths entries (pre-object-shape
+# configs, still shipped by every already-adapted downstream project since
+# --update preserves the field verbatim) must still deny.
+echo "Test 6: legacy string-shaped protectedPaths config should still exit 2"
+fixture_dir="$(mktemp -d)"
+trap 'rm -rf "$fixture_dir"' EXIT
+mkdir -p "$fixture_dir/.claude"
+printf '{"protectedPaths":[".github/workflows/*","hooks/scripts/stop-gate.sh"]}' \
+  > "$fixture_dir/.claude/persona-config.json"
+if echo '{"tool_input":{"file_path":"hooks/scripts/stop-gate.sh"}}' \
+  | CLAUDE_PROJECT_DIR="$fixture_dir" bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
+  echo "  ✗ Failed: expected exit 2, got exit 0"
+  exit 1
+else
+  exit_code=$?
+  if [ $exit_code -eq 2 ]; then
+    echo "  ✓ Correctly blocked with exit 2"
+  else
+    echo "  ✗ Failed: expected exit 2, got exit $exit_code"
+    exit 1
+  fi
+fi
+
 echo ""
 echo "✓ All AC-E2/AC-E3 tests passed"

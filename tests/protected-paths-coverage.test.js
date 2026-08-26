@@ -90,11 +90,24 @@ if (uncovered.length > 0) {
 }
 
 // Verify all exemptions have reasons
-for (const [script, reason] of Object.entries(exemptions)) {
-  if (!reason || !reason.trim()) {
-    console.error(`ERROR: Exemption for ${script} has no reason`);
-    process.exit(1);
-  }
+function findExemptionsMissingReasons(exemptionsMap) {
+  return Object.entries(exemptionsMap)
+    .filter(([, reason]) => !reason || !reason.trim())
+    .map(([script]) => script);
+}
+
+for (const script of findExemptionsMissingReasons(exemptions)) {
+  console.error(`ERROR: Exemption for ${script} has no reason`);
+  process.exit(1);
+}
+
+// Self-test: exemptions is currently empty, so the reasonless-exemption path
+// above is otherwise dead code. Prove findExemptionsMissingReasons() actually
+// catches a reasonless exemption, independent of the live (empty) map.
+const selfTestMissing = findExemptionsMissingReasons({ 'fake-script.sh': '' });
+if (selfTestMissing.length !== 1 || selfTestMissing[0] !== 'fake-script.sh') {
+  console.error('ERROR: self-test failed - findExemptionsMissingReasons() did not flag a reasonless exemption');
+  process.exit(1);
 }
 
 console.log('\n✓ All hook scripts are covered');

@@ -23,8 +23,21 @@
     },
     "protectedPaths": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "Shell glob patterns, PROJECT-ROOT-RELATIVE (not absolute - e.g. 'supabase/migrations/*', not '/home/u/proj/supabase/migrations/*'), for paths requiring explicit human approval before Write/Edit. Examples: 'supabase/migrations/*', '*.lock', 'generated/*'"
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "properties": {
+              "pattern": { "type": "string" },
+              "tag": { "type": "string" },
+              "reason": { "type": "string" }
+            },
+            "required": ["pattern"]
+          }
+        ]
+      },
+      "description": "Shell glob patterns, PROJECT-ROOT-RELATIVE (not absolute - e.g. 'supabase/migrations/*', not '/home/u/proj/supabase/migrations/*'), for paths requiring explicit human approval before Write/Edit. Entries may be a bare glob string (legacy shape, still supported by the reader), or an object with 'pattern' (required) plus optional 'tag'/'reason' for the server-mirror-eligible/local-only E8 tagging contract. Examples: 'supabase/migrations/*', {\"pattern\": \"*.lock\", \"tag\": \"local-only\", \"reason\": \"...\"}"
     },
     "gatedAgents": {
       "type": "array",
