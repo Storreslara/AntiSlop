@@ -361,6 +361,15 @@ else
 fi
 
 echo
+echo "== PostToolUse latency budget, real hooks + watch-map (Bash, Unit A AC-A1) =="
+if bash tests/hook-latency-budget.test.sh; then
+  echo "OK   tests/hook-latency-budget.test.sh"
+else
+  echo "FAIL tests/hook-latency-budget.test.sh"
+  fail=1
+fi
+
+echo
 echo "== watch-map.json run[] commands are registered in tests/validate.sh (Bash) =="
 if bash tests/watch-map-registration.test.sh; then
   echo "OK   tests/watch-map-registration.test.sh"
