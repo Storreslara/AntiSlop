@@ -55,6 +55,17 @@ enqueue_watchmap() {
 # multi-minute hang under this repo's sandboxed shell (stale command-hash
 # caching in forked subshells); the exported-function form was verified not
 # to reproduce that failure mode before landing.
+#
+# The cache key is the sanitized test path PLUS a `cksum` digest over the
+# full argv and the process environment (`env | sort`), so two invocations of
+# the same suite under different environments (e.g. a `GATE_UNDER_TEST=...`
+# prefix mutating a bundle's temp-copy target) never collide - this is how a
+# bundle's own mutation-proof pattern (baseline call, then a differing env
+# prefix) is kept honest. A `<key>.$$.seen` marker additionally caps each
+# invoking shell to at most one cache hit per key, so a same-environment
+# in-tree mutation (edit, re-invoke, restore) within one run.sh is never
+# served a stale result either. An existing `.rc` file is never overwritten -
+# the first (unmutated) result is the one worth sharing across bundles.
 _memo_setup() {
   local memo_dir="$1"
   export MICROWORLD_MEMO_DIR="$memo_dir"
@@ -62,15 +73,19 @@ _memo_setup() {
   bash() {
     case "$1" in
       tests/*.test.sh)
-        local key rc_file rc
-        key="$(printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_')"
+        local key digest rc_file seen_file rc
+        digest="$( { printf '%s\n' "$@"; env | sort; } | cksum | tr -cd '0-9')"
+        key="$(printf '%s' "$1" | tr -c 'A-Za-z0-9_.-' '_').${digest}"
         rc_file="${MICROWORLD_MEMO_DIR}/results/${key}.rc"
-        if [ -f "$rc_file" ]; then
+        seen_file="${MICROWORLD_MEMO_DIR}/results/${key}.$$.seen"
+        if [ -f "$rc_file" ] && [ ! -f "$seen_file" ]; then
+          touch "$seen_file"
           return "$(cat "$rc_file")"
         fi
+        touch "$seen_file"
         command bash "$@"
         rc=$?
-        echo "$rc" > "$rc_file"
+        [ -f "$rc_file" ] || echo "$rc" > "$rc_file"
         return "$rc"
         ;;
     esac
@@ -140,6 +155,11 @@ _drain_loop() {
   # outer passes is far beyond any real coalescing scenario.
   while [ "$iterations" -lt 1000 ]; do
     iterations=$((iterations + 1))
+    # Flush the suite memo at the top of every pass: a result cached in pass
+    # N was computed against the pre-edit tree, and pass N+1 exists only
+    # because a new edit landed, so it must never be served pass N's result.
+    rm -rf "${memo_dir:?}/results"
+    mkdir -p "${memo_dir}/results"
     found=false
     # dotglob: watch-map pending files are named ".wm.<id>.pending" - a bare
     # "*.pending" glob does not match dotfiles by default and would silently

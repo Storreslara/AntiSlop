@@ -416,6 +416,109 @@ else
   fail=1
 fi
 
+# (k) AC-1.3 - MUTATION-PROOF REGRESSION: the same suite invoked once plainly
+#     and once with a differing GATE-style env prefix (mirroring
+#     microworlds/rpg-canon-2 and hdg-anchor-1's own pattern) must observe
+#     DIFFERENT exit codes, even when another bundle already populated the
+#     memo cache for the plain invocation first - the realistic ordering that
+#     exposed the naive owner-PID key variant during scoping.
+dir="$(make_project mutation-proof)"
+mkdir -p "$dir/tests"
+cat > "$dir/tests/fixture-suite.test.sh" <<'EOF'
+#!/usr/bin/env bash
+if [ "${FIXTURE_MUTANT:-}" = "1" ]; then
+  exit 1
+fi
+exit 0
+EOF
+chmod +x "$dir/tests/fixture-suite.test.sh"
+mkdir -p "$dir/microworlds/a-populate"
+printf '{"unit":"a-populate","watch":["src/*.js"],"timeoutSeconds":10}\n' \
+  > "$dir/microworlds/a-populate/manifest.json"
+cat > "$dir/microworlds/a-populate/run.sh" <<'RUNEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(cd "$(dirname "$0")" && pwd)/../.."
+bash tests/fixture-suite.test.sh
+RUNEOF
+chmod +x "$dir/microworlds/a-populate/run.sh"
+mkdir -p "$dir/microworlds/b-mutant"
+printf '{"unit":"b-mutant","watch":["src/*.js"],"timeoutSeconds":10}\n' \
+  > "$dir/microworlds/b-mutant/manifest.json"
+cat > "$dir/microworlds/b-mutant/run.sh" <<'RUNEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(cd "$(dirname "$0")" && pwd)/../.."
+rc1=0
+bash tests/fixture-suite.test.sh || rc1=$?
+rc2=0
+FIXTURE_MUTANT=1 bash tests/fixture-suite.test.sh || rc2=$?
+echo "$rc1" > rc1.txt
+echo "$rc2" > rc2.txt
+RUNEOF
+chmod +x "$dir/microworlds/b-mutant/run.sh"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+rc1="$(cat "$dir/rc1.txt" 2>/dev/null || echo MISSING)"
+rc2="$(cat "$dir/rc2.txt" 2>/dev/null || echo MISSING)"
+if [ "$rc" = 0 ] && [ "$rc1" != "MISSING" ] && [ "$rc2" != "MISSING" ] && [ "$rc1" != "$rc2" ]; then
+  echo "OK   (k) mutation-proof: suite invoked plainly then with a differing env prefix returns different exit codes (rc1=$rc1 rc2=$rc2), even after another bundle pre-populated the memo cache"
+else
+  echo "FAIL (k) expected different exit codes for plain vs mutant invocation (rc=$rc rc1=$rc1 rc2=$rc2)"
+  fail=1
+fi
+
+# (l) AC-1.9 - PER-PASS FLUSH REGRESSION: a bundle that is still executing
+#     (>=2s) when it is re-enqueued must be RE-EXECUTED in drain-loop PASS 2,
+#     not served pass 1's cached memo result. R11: deterministic via polling
+#     .runner.lock AND the original .pending file's removal before the
+#     second enqueue, never a bare sleep race.
+dir="$(make_project per-pass-flush)"
+mkdir -p "$dir/tests"
+marker="$dir/flush-marker.txt"
+: > "$marker"
+cat > "$dir/tests/flush-suite.test.sh" <<EOF
+#!/usr/bin/env bash
+echo ran >> "$marker"
+exit 0
+EOF
+chmod +x "$dir/tests/flush-suite.test.sh"
+b="$dir/microworlds/slow-flush"
+mkdir -p "$b"
+printf '{"unit":"slow-flush","watch":["src/*.js"],"timeoutSeconds":30}\n' > "$b/manifest.json"
+cat > "$b/run.sh" <<'RUNEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(cd "$(dirname "$0")" && pwd)/../.."
+sleep 3
+bash tests/flush-suite.test.sh
+RUNEOF
+chmod +x "$b/run.sh"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+lock="$dir/.claude/microworld-queue/.runner.lock"
+for i in $(seq 1 50); do
+  [ -d "$lock" ] && break
+  sleep 0.1
+done
+pending="$dir/.claude/microworld-queue/slow-flush.pending"
+for i in $(seq 1 50); do
+  [ -f "$pending" ] || break
+  sleep 0.1
+done
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+audit_slug_lines="$(grep -c 'unit=slow-flush' "$dir/.claude/microworld-audit.log" 2>/dev/null || true)"
+[ -n "$audit_slug_lines" ] || audit_slug_lines=0
+marker_lines="$(wc -l < "$marker" 2>/dev/null || echo 0)"
+if [ "$rc" = 0 ] && [ "$audit_slug_lines" = 2 ] && [ "$marker_lines" = 2 ]; then
+  echo "OK   (l) per-pass flush: a bundle re-enqueued mid-run is re-executed in drain pass 2 (2 audit lines, 2 marker lines)"
+else
+  echo "FAIL (l) expected 2 audit lines and 2 marker lines from a genuine second drain pass (rc=$rc audit=$audit_slug_lines marker=$marker_lines)"
+  fail=1
+fi
+
 # (g) ADAPTER PARITY - both hand-adapted mirrors are EXECUTED with their own
 #     payload shapes and must reproduce the same async contract (exit 0
 #     immediately; audit log populated after the drain) into their own

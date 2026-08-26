@@ -217,9 +217,9 @@
     "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "162377f20d441c8de1c4a568ba058e44bdb03a637c22f69f49f47ae2a02ce665",
     "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
     "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "162377f20d441c8de1c4a568ba058e44bdb03a637c22f69f49f47ae2a02ce665",
-    ".claude/hooks/scripts/lib/microworld-queue.sh": "f3447a43ec1dae4f3bb4e1641e1b9ec6704647da81d6a6fcf9a910d7eba498ec",
-    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "f3447a43ec1dae4f3bb4e1641e1b9ec6704647da81d6a6fcf9a910d7eba498ec",
-    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "f3447a43ec1dae4f3bb4e1641e1b9ec6704647da81d6a6fcf9a910d7eba498ec"
+    ".claude/hooks/scripts/lib/microworld-queue.sh": "5d05874f932df0c0ba10aaf1d1392a8c6015c0ae4ae4b90f9d7be41218da5c29",
+    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "5d05874f932df0c0ba10aaf1d1392a8c6015c0ae4ae4b90f9d7be41218da5c29",
+    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "5d05874f932df0c0ba10aaf1d1392a8c6015c0ae4ae4b90f9d7be41218da5c29"
   },
   "humanReviewMode": "off"
 }
