@@ -37,6 +37,31 @@ the one-time per-project setup process that turns the
   empty-fileHashes-map path would pass vacuously if ever emptied; slightly-early
   counter increment weakens "examined === keyCount" completeness assertion.
 
+**session baseline commit**:
+(unit spec2-unitB, 2026-08-26) — the git commit SHA stored in `.claude/.session-baseline.<session_id>`
+  that marks the starting point for this session's changed-file enumeration. Used by
+  [[microworld_skip_ok]] to compute `git diff` from that baseline to `HEAD`, in order to
+  determine which files have been modified since the session began. Distinct from
+  **session baselines** (see [[Sweep]]), which refers to `.claude/baseline-*.json`
+  files that track fileHashes currency across different artifacts. The session baseline
+  commit's core contract (unit spec2-unitB): must be reachable in the working repository's
+  git history — if history is rewritten, pruned, or a baseline file is carried over from
+  another clone where the commit is unreachable, the changed-file enumeration fails and
+  `microworld_skip_ok` returns 1 (fail closed) rather than silently misrepresenting
+  "couldn't compute" as "no changes" (see AC-B2 / [[unreachable baseline]]).
+
+**unreachable baseline**:
+(unit spec2-unitB, 2026-08-26) — the condition where a [[session baseline commit]]
+  SHA cannot be verified as present in the working repository's git history (e.g. via
+  `git rev-parse --verify`). This occurs when: (1) a session baseline file is copied
+  from another clone or branch where the commit has since been deleted/rewritten,
+  (2) the current repository's history has been force-pushed or rebased and the baseline
+  commit is no longer reachable, or (3) the baseline file contains a corrupted or invalid
+  SHA. When a session baseline is unreachable, `_mw_changed_files` returns 1 (failure),
+  signaling to `microworld_skip_ok` that the changed-file enumeration could not be
+  completed — this forces a fail-closed return (return 1) rather than granting a skip
+  based on an incomplete or empty changed-file list (see AC-B5d and [[microworld_skip_ok]]).
+
 **Persona**:
 a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
@@ -1127,8 +1152,8 @@ the collection of addressable **Agent** entities currently active in a
   over five artifact classes in `.claude/`, identifying and deleting stale items
   in each. Sweeps: (1) [[Resolved packet|resolved packets]] from `.claude/human-review/`,
   (2) reviewed markers (`.claude/reviewed/*.pass`, `.claude/reviewed/*.fail`, etc.),
-  (3) session baselines (`.claude/baseline-*.json` files), (4) WIP handoffs
-  (`.claude/wip-handoff-*.json` files), and (5) **log rotation** (see
+  (3) **session baselines** — `.claude/baseline-*.json` files, distinct from [[session baseline commit]] —
+  (4) WIP handoffs (`.claude/wip-handoff-*.json` files), and (5) **log rotation** (see
   [[Log rotation / archive]]) on append-only audit logs. Runs in dry-run mode by
   default (reporting what would be deleted), with `--apply` flag to perform actual
   deletion. Items 1-4 are retention-gated; item 5 (logs) rotates unconditionally

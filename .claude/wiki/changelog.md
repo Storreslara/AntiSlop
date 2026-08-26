@@ -3,6 +3,21 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-08-26 (spec2-unitB documentation pass, after reviewer PASS)
+- **Completed unit spec2-unitB (reviewer PASS at commit `6fcb355`) — documentation pass
+  (scribe task, no tracker issue).**
+  Fixed an omission in `CONTEXT.md`'s glossary: the bug fix introduced two load-bearing
+  terms that lacked definitions. Added two new glossary entries: [[session baseline commit]]
+  (the git commit SHA stored in `.claude/.session-baseline.<session_id>` that marks the
+  starting point for changed-file enumeration in `microworld_skip_ok`) and [[unreachable baseline]]
+  (the condition where that commit cannot be verified in git history, triggering a fail-closed
+  return from `_mw_changed_files`). Clarified the existing "session baselines" reference in
+  the [[Sweep]] entry to explicitly distinguish it from the new "session baseline commit" term
+  (the former refers to `.claude/baseline-*.json` files; the latter is a git SHA). Updated
+  this changelog entry to record the documentation pass. Affected files: `CONTEXT.md`,
+  `.claude/wiki/changelog.md` (this file). No code changes, no interface changes — glossary
+  additions only, per reviewer's ubiquitous-language advisory items 2 and 3.
+
 ## 2026-08-14 (Step 3 of the `--update` flag-surface plan — scribe dispatch, gh339)
 - **Completed unit gh339 (issue #339, Step 3 of `docs/plans/2026-08-11-cli-update-flag-surface.md`) —
   documented the flag surface Steps 1 (gh336, `--personas=` additive union, #289) and 2 (gh338,
