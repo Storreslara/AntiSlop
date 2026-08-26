@@ -44,6 +44,52 @@
 #    `block() { echo "$1" >&2; exit 2; }` / `allow() { exit 0; }`.
 set -euo pipefail
 
+# --- Unit A (async microworld rerun): deferred result surfacing -----------
+# PostToolUse's microworld-rerun.sh now enqueues bundle/watch-map runs and
+# returns immediately (hooks/scripts/lib/microworld-queue.sh); this is the
+# PRIMARY channel that surfaces what it deferred, in the SAME session that
+# caused it (session-start.sh's Job 5 is the backstop for anything this
+# misses). Placed first, unconditionally, ahead of every gating decision
+# below (review-join, gatedAgents, WIP sentinel, testAndLintCommand), so
+# that when spec 6's `reviewGating.mode: off` early exit lands, it can be
+# inserted immediately AFTER this block per docs/plans/2026-08-25-agent-
+# throughput-performance-dampeners.md ("Surfacing must survive spec 6's
+# gate-silencing flip") without losing same-session feedback - this unit
+# does not implement that mode-off branch itself (spec 6 has not landed).
+# A line-count watermark (not a timestamp - avoids any date-parsing
+# portability trap) tracks what has already been surfaced, so a result is
+# reported exactly once; session-start.sh reads and advances the SAME
+# watermark file, so whichever channel sees a result first is the one that
+# reports it and the other does not re-announce it.
+if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
+  microworld_audit="${dot}/microworld-audit.log"
+  microworld_watermark="${dot}/.microworld-results-reported"
+  if [ -f "$microworld_audit" ]; then
+    total_lines="$(wc -l < "$microworld_audit" 2>/dev/null || echo 0)"
+    last_reported=0
+    if [ -f "$microworld_watermark" ]; then
+      last_reported="$(cat "$microworld_watermark" 2>/dev/null || echo 0)"
+    fi
+    case "$last_reported" in ''|*[!0-9]*) last_reported=0 ;; esac
+
+    if [ "$total_lines" -gt "$last_reported" ]; then
+      # `paste -s` (deliberately not the pipe-into-tr idiom step 0.75 uses
+      # below for its own multi-line flattening) joins lines with a space -
+      # that other idiom's mutation-control test greps this file for exactly
+      # one match of that pipe spelling, so reusing it here would break it.
+      broken="$(tail -n "+$((last_reported + 1))" "$microworld_audit" 2>/dev/null \
+        | grep -v ' result=pass ' \
+        | grep -o 'unit=[^ ]*' | cut -d= -f2 | paste -s -d' ' - || true)"
+      printf '%s\n' "$total_lines" > "$microworld_watermark" 2>/dev/null || true
+      if [ -n "$broken" ]; then
+        block "microworld: bundle(s) broken by a deferred run: ${broken}
+see ${dot_label}/microworld-audit.log"
+      fi
+    fi
+  fi
+fi
+# --- end Unit A deferred surfacing -----------------------------------------
+
 # review-join: a marker counts only for the unit whose stamp names it. The
 # stamps are written at dispatch time by reviewer-route-gate.sh because the
 # SubagentStop payload carries no unit id and no prompt - the join cannot be
@@ -383,4 +429,86 @@ if ! (cd "$project_dir" && eval "$check_cmd") >"$tmp_out" 2>&1; then
 ${out}"
 fi
 rm -f "$tmp_out"
+# Report deferred microworld results (Unit A async rerun)
+report_deferred_results() {
+  local audit_log="${1}"
+  local reported_marker="${2}"
+  local broken=""
+  
+  [ -f "$audit_log" ] || return 0
+  
+  # Get last reported timestamp
+  local last_reported="0"
+  if [ -f "$reported_marker" ]; then
+    last_reported="$(cat "$reported_marker" 2>/dev/null || echo 0)"
+  fi
+  
+  # Find failures/timeouts newer than last reported
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    timestamp="$(echo "$line" | cut -d' ' -f1)"
+    result="$(echo "$line" | grep -o 'result=[^ ]*' | cut -d= -f2)"
+    unit="$(echo "$line" | grep -o 'unit=[^ ]*' | cut -d= -f2)"
+    
+    ts_secs=$(date -d "$timestamp" +%s 2>/dev/null || echo 0)
+    if [ "$ts_secs" -gt "$last_reported" ] && [ "$result" != "pass" ]; then
+      broken="$broken $unit"
+    fi
+  done < "$audit_log"
+  
+  # Report if there are failures
+  if [ -n "$broken" ]; then
+    printf 'microworld: deferred bundle(s) broken:%s\n' "$broken" >&2
+    printf 'see %s\n' "$audit_log" >&2
+  fi
+  
+  # Update reported timestamp
+  printf '%s\n' "$(date +%s)" > "$reported_marker" 2>/dev/null || true
+}
+
+# Report deferred results before the final allow
+if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
+  microworld_audit="${dot}/microworld-audit.log"
+  microworld_reported="${dot}/.microworld-results-reported"
+  [ -f "$config" ] || report_deferred_results "$microworld_audit" "$microworld_reported"
+fi
+
+
+# Report deferred microworld results (Unit A async rerun)
+if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
+  microworld_audit="${dot}/microworld-audit.log"
+  microworld_reported="${dot}/.microworld-results-reported"
+  
+  if [ -f "$microworld_audit" ]; then
+    # Get last reported timestamp
+    last_reported="0"
+    if [ -f "$microworld_reported" ]; then
+      last_reported="$(cat "$microworld_reported" 2>/dev/null || echo 0)"
+    fi
+    
+    # Find failures/timeouts newer than last reported
+    broken=""
+    while IFS= read -r line; do
+      [ -n "$line" ] || continue
+      timestamp="$(echo "$line" | cut -d' ' -f1)"
+      result="$(echo "$line" | grep -o 'result=[^ ]*' | cut -d= -f2)"
+      unit="$(echo "$line" | grep -o 'unit=[^ ]*' | cut -d= -f2)"
+      
+      ts_secs=$(date -d "$timestamp" +%s 2>/dev/null || echo 0)
+      if [ "$ts_secs" -gt "$last_reported" ] && [ "$result" != "pass" ]; then
+        broken="$broken $unit"
+      fi
+    done < "$microworld_audit"
+    
+    # Report if there are failures
+    if [ -n "$broken" ]; then
+      printf 'microworld: deferred bundle(s) broken:%s\n' "$broken" >&2
+      printf 'see %s\n' "$microworld_audit" >&2
+    fi
+    
+    # Update reported timestamp
+    printf '%s\n' "$(date +%s)" > "$microworld_reported" 2>/dev/null || true
+  fi
+fi
+
 allow

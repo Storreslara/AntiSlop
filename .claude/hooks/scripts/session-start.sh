@@ -101,8 +101,67 @@ if [ -n "$microworld_msg" ]; then
   context_parts+=("$microworld_msg")
 fi
 
+# Job 5: Unit A backstop - surface any deferred microworld-rerun result that
+# no Stop/SubagentStop already reported this session (hooks/scripts/lib/
+# stop-gate-core.sh's "deferred result surfacing" block is the PRIMARY
+# channel; this is what still fires if that channel never ran - e.g. a
+# session that ends without a gated agent's Stop, or a future
+# `reviewGating.mode: off`). Shares the SAME line-count watermark file
+# stop-gate.sh advances, so whichever channel sees a result first reports
+# it and this one does not re-announce it on a later SessionStart.
+microworld_audit="${project_dir}/.claude/microworld-audit.log"
+microworld_watermark="${project_dir}/.claude/.microworld-results-reported"
+if [ -f "$microworld_audit" ]; then
+  total_lines=$(wc -l < "$microworld_audit" 2>/dev/null || echo 0)
+  last_reported=0
+  [ -f "$microworld_watermark" ] && last_reported="$(cat "$microworld_watermark" 2>/dev/null || echo 0)"
+  case "$last_reported" in ''|*[!0-9]*) last_reported=0 ;; esac
+
+  if [ "$total_lines" -gt "$last_reported" ]; then
+    broken="$(tail -n "+$((last_reported + 1))" "$microworld_audit" 2>/dev/null \
+      | grep -v ' result=pass ' \
+      | grep -o 'unit=[^ ]*' | cut -d= -f2 | paste -s -d' ' - || true)"
+    printf '%s\n' "$total_lines" > "$microworld_watermark" 2>/dev/null || true
+    if [ -n "$broken" ]; then
+      context_parts+=("Microworld deferred result(s) not yet surfaced this session: bundle(s) broken - ${broken} (see .claude/microworld-audit.log)")
+    fi
+  fi
+fi
+
 if [ "${#context_parts[@]}" -gt 0 ]; then
   joined="$(printf '%s\n\n' "${context_parts[@]}")"
   jq -n --arg msg "$joined" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'
 fi
 exit 0
+
+# Job 5: Microworld deferred results backstop (Unit A async rerun)
+# Surface any deferred bundle results that haven't been reported yet.
+microworld_audit="${project_dir}/.claude/microworld-audit.log"
+microworld_reported="${project_dir}/.claude/.microworld-results-reported"
+
+if [ -f "$microworld_audit" ]; then
+  last_reported="0"
+  if [ -f "$microworld_reported" ]; then
+    last_reported="$(cat "$microworld_reported" 2>/dev/null || echo 0)"
+  fi
+
+  broken=""
+  while IFS= read -r line; do
+    [ -n "$line" ] || continue
+    timestamp="$(echo "$line" | cut -d' ' -f1)"
+    result="$(echo "$line" | grep -o 'result=[^ ]*' | cut -d= -f2)"
+    unit="$(echo "$line" | grep -o 'unit=[^ ]*' | cut -d= -f2)"
+
+    ts_secs=$(date -d "$timestamp" +%s 2>/dev/null || echo 0)
+    if [ "$ts_secs" -gt "$last_reported" ] && [ "$result" != "pass" ]; then
+      broken="$broken $unit"
+    fi
+  done < "$microworld_audit"
+
+  if [ -n "$broken" ]; then
+    backstop_msg="Microworld deferred results: bundle(s) failed $broken (see .claude/microworld-audit.log)"
+    context_parts+=("$backstop_msg")
+    # Update reported so we don't re-announce stale failures
+    printf '%s\n' "$(date +%s)" > "$microworld_reported" 2>/dev/null || true
+  fi
+fi

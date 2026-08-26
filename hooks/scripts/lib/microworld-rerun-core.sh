@@ -4,10 +4,15 @@
 # adapters/*/hooks/scripts/lib/microworld-rerun-core.sh are generated copies
 # (node bin/cli.js --update --force-render). Sourced, never executed.
 #
-# CONTRACT CHANGE (Unit A — async rerun): The hook's contract changes from
-# "run and report" to "enqueue and return". Bundles are queued for async
-# execution; the hook returns 0 immediately. Results are surfaced at the next
-# Stop/SubagentStop by stop-gate.sh.
+# CONTRACT (Unit A — async rerun): "run and report" became "enqueue and
+# return". Matching a file against watch globs (cheap, no subprocess) stays
+# inline and synchronous; actually running a bundle/watch-map entry is
+# deferred to hooks/scripts/lib/microworld-queue.sh's detached drain loop.
+# Results are surfaced at the next Stop/SubagentStop by stop-gate.sh, with
+# session-start.sh as a backstop. This hook itself always exits 0 now - it
+# no longer knows the result at return time, so it cannot report broken vs.
+# clean (see the header's own prior claim, "This is a REPORTER, not a
+# gate" - the deferred reporting further downstream is what still gates).
 #
 # Caller contract (set before sourcing): project_dir, audit (absolute path to
 # the port's own microworld-audit.log), paths (newline-separated candidate
@@ -34,12 +39,13 @@ command -v jq >/dev/null 2>&1 || { log - error - no-jq; exit 0; }
 
 [ -n "$paths" ] || exit 0
 
-# Source queue management library
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "${lib_dir}/microworld-queue.sh"
 
-# Track which bundles need to run (for deduplication)
-declare -A bundles_to_enqueue
+queue_dir_path="$(queue_dir "$audit")"
+mkdir -p "$queue_dir_path" 2>/dev/null || { log - error - queue-unwritable; exit 0; }
+
+any_enqueued=false
 
 while IFS= read -r file_path; do
   [ -n "$file_path" ] || continue
@@ -77,8 +83,9 @@ while IFS= read -r file_path; do
       continue
     fi
 
-    # Mark for enqueueing (dedup at bundle level)
-    bundles_to_enqueue["$slug"]="$rel_path"
+    # Defer execution - dedup (coalescing) happens inside enqueue_bundle.
+    enqueue_bundle "$project_dir" "$slug" "$rel_path" "$audit"
+    any_enqueued=true
   done
 
   # Check watch-map (tier A) entries
@@ -112,40 +119,14 @@ while IFS= read -r file_path; do
       done <<< "$globs"
       [ "$matched" = true ] || continue
 
-      # For watch-map, run synchronously inline (not async yet)
-      secs="$(echo "$entry_json" | jq -r '.timeoutSeconds // 60' 2>/dev/null || echo 60)"
-      case "$secs" in ''|*[!0-9]*) secs=60 ;; esac
-
-      # Execute each command in the 'run' array in order, stopping on first failure
-      run_commands="$(echo "$entry_json" | jq -r '.run[]? // empty' 2>/dev/null)"
-      rc=0
-      while IFS= read -r cmd; do
-        [ -n "$cmd" ] || continue
-        # Commands are executed from project root with timeout
-        ( cd "$project_dir" && timeout "$secs" bash -c "$cmd" ) \
-          >/dev/null 2>&1 || rc=$?
-        [ "$rc" = 0 ] || break
-      done <<< "$run_commands"
-
-      case "$rc" in
-        0)   log "$id" pass "$rel_path" ;;
-        124) log "$id" timeout "$rel_path" ;;
-        *)   log "$id" fail "$rel_path" ;;
-      esac
+      enqueue_watchmap "$project_dir" "$id" "$rel_path" "$audit"
+      any_enqueued=true
     done <<< "$entries"
   fi
 done <<< "$paths"
 
-# Enqueue all marked bundles for async execution
-for slug in "${!bundles_to_enqueue[@]}"; do
-  rel_path="${bundles_to_enqueue[$slug]}"
-  enqueue_bundle "$project_dir" "$slug" "$rel_path"
-done
-
-# Start async runner if any bundles were enqueued
-if [ "${#bundles_to_enqueue[@]}" -gt 0 ]; then
-  start_async_runner "$project_dir"
+if [ "$any_enqueued" = true ]; then
+  start_async_runner "$project_dir" "$audit"
 fi
 
-# Always return 0 - reporter, not a gate
 exit 0

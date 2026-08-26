@@ -49,7 +49,11 @@ exit 1
 }
 
 function runHook(projectDir, editedFilePath, hookScript) {
-  // Execute the hook with canned hook-input JSON
+  // Execute the hook with canned hook-input JSON. Unit A (async rerun):
+  // the hook now enqueues and returns immediately (always exit 0), so this
+  // waits for the detached drain loop to finish before returning - the
+  // AUDIT LOG FORMAT contract under test (AC-A2) is unaffected; only the
+  // timing of when a line appears changed.
   const hookInput = JSON.stringify({
     tool_input: {
       file_path: path.join(projectDir, editedFilePath),
@@ -65,6 +69,12 @@ function runHook(projectDir, editedFilePath, hookScript) {
     });
   } catch (err) {
     // Hook exits 2 on bundle failure (expected); ignore
+  }
+
+  const lockDir = path.join(projectDir, '.claude', 'microworld-queue', '.runner.lock');
+  const deadline = Date.now() + 10000;
+  while (fs.existsSync(lockDir) && Date.now() < deadline) {
+    execSync('sleep 0.2');
   }
 }
 

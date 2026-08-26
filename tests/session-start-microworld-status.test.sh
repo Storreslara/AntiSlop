@@ -117,6 +117,55 @@ else
   fail=1
 fi
 
+# (h) AC-A9 - BACKSTOP: a failed bundle result on the audit log that no
+#     Stop/SubagentStop has reported yet is surfaced in additionalContext.
+dir="$(make_project backstop-report critical)"
+printf '2026-08-26T00:00:00Z unit=widget result=fail file=src/app.js\n' \
+  > "$dir/.claude/microworld-audit.log"
+rc=0
+output=$(run_session_start "$dir" || rc=$?)
+if [ "$rc" = 0 ] && echo "$output" | jq -r '.hookSpecificOutput.additionalContext' 2>/dev/null \
+     | grep -q 'widget'; then
+  echo "OK   (h) AC-A9: an unreported failed bundle is surfaced in additionalContext"
+else
+  echo "FAIL (h) expected the failed bundle named in additionalContext (output: $output)"
+  fail=1
+fi
+
+# (h2) AC-A9 - REPORTED ONCE: a second SessionStart with no NEW audit lines
+#      does not re-announce the same failure (watermark advanced by (h)).
+rc=0
+output2=$(run_session_start "$dir" || rc=$?)
+if [ "$rc" = 0 ]; then
+  ctx="$(echo "$output2" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null || true)"
+  if ! echo "$ctx" | grep -q 'widget'; then
+    echo "OK   (h2) AC-A9: the same failure is not re-announced on a second SessionStart"
+  else
+    echo "FAIL (h2) expected no re-announcement of an already-reported failure (output: $output2)"
+    fail=1
+  fi
+else
+  echo "FAIL (h2) second session-start call errored (rc=$rc)"
+  fail=1
+fi
+
+# (h3) a NEW failure appended after the watermark IS surfaced
+dir="$(make_project backstop-new critical)"
+printf '2026-08-26T00:00:00Z unit=widget result=pass file=src/app.js\n' \
+  > "$dir/.claude/microworld-audit.log"
+run_session_start "$dir" > /dev/null 2>&1 || true
+printf '2026-08-26T00:01:00Z unit=gadget result=fail file=src/other.js\n' \
+  >> "$dir/.claude/microworld-audit.log"
+rc=0
+output3=$(run_session_start "$dir" || rc=$?)
+if [ "$rc" = 0 ] && echo "$output3" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null \
+     | grep -q 'gadget'; then
+  echo "OK   (h3) a new failure appended after the watermark is surfaced"
+else
+  echo "FAIL (h3) expected the new failure named in additionalContext (output: $output3)"
+  fail=1
+fi
+
 # (g) MUTATION CONTROL: verify the microworld job is load-bearing
 # Disable the emission by changing the if condition to always false
 mutant="$tmproot/mutant"

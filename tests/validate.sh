@@ -343,6 +343,15 @@ else
 fi
 
 echo
+echo "== stop-gate deferred microworld result surfacing (Bash, Unit A) =="
+if bash tests/stop-gate-deferred-microworld.test.sh; then
+  echo "OK   tests/stop-gate-deferred-microworld.test.sh"
+else
+  echo "FAIL tests/stop-gate-deferred-microworld.test.sh"
+  fail=1
+fi
+
+echo
 echo "== microworld reactive rerun hook + relocation proof (Bash) =="
 if bash tests/microworld-rerun.test.sh; then
   echo "OK   tests/microworld-rerun.test.sh"

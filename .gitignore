@@ -21,6 +21,8 @@ scratch/
 .claude/.dispatch-override.consumed*
 .claude/.stop-loop-guard.*
 .claude/microworld-audit.log
+.claude/.microworld-results-reported
+.claude/microworld-queue/
 .claude/settings.local.*
 
 # antislop microworld bundles + escalation packets (local scratch, never committed)

@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
-# Fixture-driven test for hooks/scripts/microworld-rerun.sh - the reactive
-# PostToolUse(Edit|Write) microworld rerun hook. Canned hook-input JSON piped
-# to the script against throwaway fixture projects; the hook is EXECUTED, never
+# Fixture-driven test for hooks/scripts/microworld-rerun.sh - the PostToolUse
+# (Edit|Write) microworld rerun hook. Canned hook-input JSON piped to the
+# script against throwaway fixture projects; the hook is EXECUTED, never
 # source-inspected. Also carries the executable relocation proof (case f) that
 # the escalation packet depends on.
+#
+# Unit A (async rerun): the hook now enqueues and returns immediately (always
+# exit 0); actual bundle/watch-map execution happens in a detached background
+# drain loop. wait_for_drain polls for that loop's completion before a test
+# asserts on the audit log. Blocking (exit 2) moved downstream to
+# stop-gate.sh's deferred-result reporting (tests/stop-gate.test.sh) - it is
+# NOT re-asserted here.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -43,11 +50,23 @@ EOF
 
 run_hook() {
   # $1 = project dir, $2 = project-relative edited path -> returns the hook's
-  # exit code; stderr lands in $tmproot/stderr.txt
+  # exit code (always 0 once a bundle/entry is merely enqueued); stderr lands
+  # in $tmproot/stderr.txt
   local rc=0
   printf '{"tool_input":{"file_path":"%s"}}' "$1/$2" \
     | CLAUDE_PROJECT_DIR="$1" bash "$hook" 2>"$tmproot/stderr.txt" || rc=$?
   return "$rc"
+}
+
+wait_for_drain() {
+  # $1 = project dir, $2 = dot-dir (default .claude) -> polls up to ~10s for
+  # the async drain loop's lock to clear (queue fully processed).
+  local dir="$1" dot="${2:-.claude}" lock="${1}/${2:-.claude}/microworld-queue/.runner.lock" i
+  for i in $(seq 1 50); do
+    [ -d "$lock" ] || return 0
+    sleep 0.2
+  done
+  return 0
 }
 
 audit_lines() {
@@ -75,42 +94,50 @@ make_bundle "$dir" widget 'lib/*.js' 0
 rc=0
 run_hook "$dir" src/app.js || rc=$?
 if [ "$rc" = 0 ] && [ "$(audit_lines "$dir")" = 0 ]; then
-  echo "OK   (b) edit matching no watch glob -> exit 0 and no audit line"
+  echo "OK   (b) edit matching no watch glob -> exit 0, no audit line"
 else
   echo "FAIL (b) expected exit 0 with no audit line (rc=$rc lines=$(audit_lines "$dir"))"
   fail=1
 fi
 
-# (c) an edit matching a bundle whose run.sh exits 0 -> exit 0 + result=pass line
+# (c) an edit matching a bundle whose run.sh exits 0 -> hook returns 0
+#     IMMEDIATELY (enqueue-and-return); after the drain loop finishes, a
+#     result=pass line is on the audit log.
 dir="$(make_project pass)"
 make_bundle "$dir" widget 'src/*.js' 0
 rc=0
 run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
 if [ "$rc" = 0 ] \
    && grep -q 'unit=widget result=pass file=src/app.js' "$dir/.claude/microworld-audit.log"; then
-  echo "OK   (c) matching bundle whose run.sh exits 0 -> exit 0 and a result=pass audit line"
+  echo "OK   (c) matching bundle whose run.sh exits 0 -> exit 0 and, after the drain, a result=pass audit line"
 else
   echo "FAIL (c) expected exit 0 and a result=pass audit line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
 fi
 
-# (d) an edit matching a bundle whose run.sh exits 1 -> exit 2, stderr names the
-#     unit, and a result=fail audit line. Paired with (e) this is the whole
-#     exit-code asymmetry: 2 for a real bundle failure, 0 for infrastructure.
+# (d) an edit matching a bundle whose run.sh exits 1 -> hook STILL returns 0
+#     immediately (it is a reporter that no longer knows the result at
+#     return time - see the core's own header). After the drain loop
+#     finishes, a result=fail audit line is recorded; deferred BLOCKING on
+#     this result is stop-gate.sh's job, asserted in tests/stop-gate.test.sh,
+#     not here.
 dir="$(make_project fail)"
 make_bundle "$dir" widget 'src/*.js' 1
 rc=0
 run_hook "$dir" src/app.js || rc=$?
-if [ "$rc" = 2 ] && grep -q 'widget' "$tmproot/stderr.txt" \
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
    && grep -q 'unit=widget result=fail file=src/app.js' "$dir/.claude/microworld-audit.log"; then
-  echo "OK   (d) matching bundle whose run.sh exits 1 -> exit 2, stderr names the unit, result=fail logged"
+  echo "OK   (d) matching bundle whose run.sh exits 1 -> hook exit 0 (deferred), result=fail logged after the drain"
 else
-  echo "FAIL (d) expected exit 2 naming the unit plus a result=fail line (rc=$rc stderr=[$(cat "$tmproot/stderr.txt")] log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  echo "FAIL (d) expected exit 0 immediately plus a deferred result=fail line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
 fi
 
-# (d2) a matched bundle that exceeds its manifest timeoutSeconds -> exit 2 and a
-#      result=timeout line (distinct from the plain-failure result)
+# (d2) a matched bundle that exceeds its manifest timeoutSeconds -> hook
+#      exit 0 immediately; after the drain, a result=timeout line (distinct
+#      from the plain-failure result)
 dir="$(make_project timeout)"
 make_bundle "$dir" widget 'src/*.js' 0
 printf '{"unit":"widget","watch":["src/*.js"],"timeoutSeconds":1}\n' \
@@ -118,16 +145,18 @@ printf '{"unit":"widget","watch":["src/*.js"],"timeoutSeconds":1}\n' \
 printf '#!/usr/bin/env bash\nsleep 30\n' > "$dir/microworlds/widget/run.sh"
 rc=0
 run_hook "$dir" src/app.js || rc=$?
-if [ "$rc" = 2 ] \
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
    && grep -q 'unit=widget result=timeout file=src/app.js' "$dir/.claude/microworld-audit.log"; then
-  echo "OK   (d2) a bundle exceeding timeoutSeconds -> exit 2 and a result=timeout audit line"
+  echo "OK   (d2) a bundle exceeding timeoutSeconds -> hook exit 0 (deferred), result=timeout logged after the drain"
 else
-  echo "FAIL (d2) expected exit 2 and a result=timeout line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  echo "FAIL (d2) expected exit 0 immediately plus a deferred result=timeout line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
 fi
 
-# (e) a bundle with a malformed manifest.json -> exit 0 (fail open) and a logged
-#     line: infrastructure breakage is reported, never gated on
+# (e) a bundle with a malformed manifest.json -> exit 0 (fail open) and a
+#     logged line, SYNCHRONOUSLY (infrastructure checks are not deferred -
+#     they are cheap, no subprocess involved)
 dir="$(make_project malformed)"
 mkdir -p "$dir/microworlds/broken"
 printf '{"unit":"broken","watch":["src/*.js",,,\n' > "$dir/microworlds/broken/manifest.json"
@@ -142,7 +171,8 @@ else
   fail=1
 fi
 
-# (e2) a matched bundle with NO run.sh -> exit 0 (fail open) and a logged line
+# (e2) a matched bundle with NO run.sh -> exit 0 (fail open) and a logged
+#      line, SYNCHRONOUSLY
 dir="$(make_project no-run-sh)"
 make_bundle "$dir" widget 'src/*.js' 0
 rm "$dir/microworlds/widget/run.sh"
@@ -209,7 +239,8 @@ else
   fail=1
 fi
 
-# (h) WATCH-MAP with no microworlds/ -> exit 0 and no audit line (when no match)
+# (h) WATCH-MAP with no microworlds/ -> hook exit 0 immediately, and after
+#     the drain loop, result=pass logged (watch-map entries are deferred too)
 dir="$(make_project watch-map-no-bundles)"
 mkdir -p "$dir/tests"
 printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sample.test.sh"],"timeoutSeconds":10}]}\n' \
@@ -217,14 +248,16 @@ printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sampl
 printf '#!/bin/bash\nexit 0\n' > "$dir/tests/sample.test.sh"
 rc=0
 run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
 if [ "$rc" = 0 ] && grep -q 'unit=sample result=pass file=src/app.js' "$dir/.claude/microworld-audit.log"; then
-  echo "OK   (h) watch-map entry with no microworlds/ dir -> watch-map runs, exit 0, result=pass logged"
+  echo "OK   (h) watch-map entry with no microworlds/ dir -> hook exit 0, result=pass logged after the drain"
 else
   echo "FAIL (h) expected exit 0 and result=pass from watch-map (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
 fi
 
-# (h2) watch-map entry that fails -> exit 2, result=fail logged
+# (h2) watch-map entry that fails -> hook exit 0 immediately; result=fail
+#      logged after the drain
 dir="$(make_project watch-map-fail)"
 mkdir -p "$dir/tests"
 printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sample.test.sh"],"timeoutSeconds":10}]}\n' \
@@ -232,14 +265,17 @@ printf '{"entries":[{"id":"sample","watch":["src/*.js"],"run":["bash tests/sampl
 printf '#!/bin/bash\nexit 1\n' > "$dir/tests/sample.test.sh"
 rc=0
 run_hook "$dir" src/app.js || rc=$?
-if [ "$rc" = 2 ] && grep -q 'unit=sample result=fail file=src/app.js' "$dir/.claude/microworld-audit.log"; then
-  echo "OK   (h2) watch-map entry with failing command -> exit 2, result=fail logged"
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] && grep -q 'unit=sample result=fail file=src/app.js' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (h2) watch-map entry with failing command -> hook exit 0 (deferred), result=fail logged after the drain"
 else
-  echo "FAIL (h2) expected exit 2 and result=fail (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  echo "FAIL (h2) expected exit 0 immediately plus a deferred result=fail (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
 fi
 
-# (h3) watch-map entry with multiple commands, second one fails -> exit 2, result=fail, first command was run
+# (h3) watch-map entry with multiple commands, second one fails -> hook exit
+#      0 immediately; after the drain, result=fail logged and the first
+#      command was run
 dir="$(make_project watch-map-multi-fail)"
 mkdir -p "$dir/tests"
 printf '{"entries":[{"id":"multi","watch":["src/*.js"],"run":["bash tests/first.test.sh","bash tests/second.test.sh"],"timeoutSeconds":10}]}\n' \
@@ -248,14 +284,16 @@ printf '#!/bin/bash\necho "first ran" >> tests/trace.txt\nexit 0\n' > "$dir/test
 printf '#!/bin/bash\nexit 1\n' > "$dir/tests/second.test.sh"
 rc=0
 run_hook "$dir" src/app.js || rc=$?
-if [ "$rc" = 2 ] && grep -q 'unit=multi result=fail' "$dir/.claude/microworld-audit.log" && [ -f "$dir/tests/trace.txt" ]; then
-  echo "OK   (h3) watch-map multi-command: first succeeds, second fails -> exit 2, result=fail, first was executed"
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] && grep -q 'unit=multi result=fail' "$dir/.claude/microworld-audit.log" && [ -f "$dir/tests/trace.txt" ]; then
+  echo "OK   (h3) watch-map multi-command: first succeeds, second fails -> hook exit 0 (deferred), result=fail logged, first was executed"
 else
-  echo "FAIL (h3) expected exit 2, result=fail, and first command execution (rc=$rc trace-exists=$([ -f "$dir/tests/trace.txt" ] && echo yes || echo no))"
+  echo "FAIL (h3) expected exit 0 immediately, a deferred result=fail, and first command execution (rc=$rc trace-exists=$([ -f "$dir/tests/trace.txt" ] && echo yes || echo no))"
   fail=1
 fi
 
-# (h4) watch-map entry that times out -> exit 2, result=timeout logged
+# (h4) watch-map entry that times out -> hook exit 0 immediately; result=timeout
+#      logged after the drain
 dir="$(make_project watch-map-timeout)"
 mkdir -p "$dir/tests"
 printf '{"entries":[{"id":"slow","watch":["src/*.js"],"run":["bash tests/slow.test.sh"],"timeoutSeconds":1}]}\n' \
@@ -263,14 +301,16 @@ printf '{"entries":[{"id":"slow","watch":["src/*.js"],"run":["bash tests/slow.te
 printf '#!/bin/bash\nsleep 30\n' > "$dir/tests/slow.test.sh"
 rc=0
 run_hook "$dir" src/app.js || rc=$?
-if [ "$rc" = 2 ] && grep -q 'unit=slow result=timeout file=src/app.js' "$dir/.claude/microworld-audit.log"; then
-  echo "OK   (h4) watch-map entry that times out -> exit 2, result=timeout logged"
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] && grep -q 'unit=slow result=timeout file=src/app.js' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (h4) watch-map entry that times out -> hook exit 0 (deferred), result=timeout logged after the drain"
 else
-  echo "FAIL (h4) expected exit 2 and result=timeout (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  echo "FAIL (h4) expected exit 0 immediately plus a deferred result=timeout (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
 fi
 
-# (h5) malformed watch-map.json -> exit 0 (fail open) and a logged error line
+# (h5) malformed watch-map.json -> exit 0 (fail open) and a logged error line,
+#      SYNCHRONOUSLY
 dir="$(make_project watch-map-malformed)"
 mkdir -p "$dir/tests"
 printf '{"entries":[{"id":,"watch":["src/*"],\n' > "$dir/tests/watch-map.json"
@@ -297,9 +337,89 @@ else
   fail=1
 fi
 
+# (i) AC-A4 - DEDUP: one enqueue matching THREE bundles that each shell out
+#     to the identical `bash tests/shared.test.sh` invocation inside their
+#     own run.sh executes that suite exactly ONCE (a marker file the suite
+#     appends to has exactly one line), while still emitting one audit line
+#     PER bundle (3 lines) - bundle-level results are not collapsed, only the
+#     underlying suite execution is.
+dir="$(make_project dedup)"
+mkdir -p "$dir/tests"
+marker="$dir/marker.txt"
+: > "$marker"
+cat > "$dir/tests/shared.test.sh" <<EOF
+#!/usr/bin/env bash
+echo ran >> "$marker"
+exit 0
+EOF
+chmod +x "$dir/tests/shared.test.sh"
+for slug in b1 b2 b3; do
+  mkdir -p "$dir/microworlds/$slug"
+  printf '{"unit":"%s","watch":["src/*.js"],"timeoutSeconds":10}\n' "$slug" \
+    > "$dir/microworlds/$slug/manifest.json"
+  cat > "$dir/microworlds/$slug/run.sh" <<'RUNEOF'
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(cd "$(dirname "$0")" && pwd)/../.."
+bash tests/shared.test.sh
+RUNEOF
+  chmod +x "$dir/microworlds/$slug/run.sh"
+done
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+suite_runs="$(wc -l < "$marker" 2>/dev/null || echo 0)"
+# grep -c already prints "0" (and exits 1) when there are no matches, so
+# `|| echo 0` would double-print in that case; only the missing-file case
+# needs a fallback, guarded separately.
+bundle_lines="$(grep -c 'result=pass' "$dir/.claude/microworld-audit.log" 2>/dev/null || true)"
+[ -n "$bundle_lines" ] || bundle_lines=0
+if [ "$rc" = 0 ] && [ "$suite_runs" = 1 ] && [ "$bundle_lines" = 3 ]; then
+  echo "OK   (i) dedup: 3 bundles sharing one suite invocation -> the suite ran exactly once, 3 per-bundle audit lines"
+else
+  echo "FAIL (i) expected 1 suite execution and 3 audit lines (rc=$rc suite_runs=$suite_runs bundle_lines=$bundle_lines)"
+  fail=1
+fi
+
+# (j) AC-A5 - BOUNDED QUEUE / COALESCING: 10 rapid enqueues for the same
+#     bundle leave no orphaned process once the drain completes, and the
+#     bundle's own run.sh (traced via a counter file) does not run once per
+#     enqueue - coalescing collapses the pending slot.
+dir="$(make_project coalesce)"
+counter="$dir/run-count.txt"
+: > "$counter"
+b="$dir/microworlds/widget"
+mkdir -p "$b"
+printf '{"unit":"widget","watch":["src/*.js"],"timeoutSeconds":10}\n' > "$b/manifest.json"
+cat > "$b/run.sh" <<EOF
+#!/usr/bin/env bash
+echo ran >> "$counter"
+sleep 0.3
+exit 0
+EOF
+chmod +x "$b/run.sh"
+for i in $(seq 1 5); do
+  printf '{"tool_input":{"file_path":"%s/src/app.js"}}' "$dir" \
+    | CLAUDE_PROJECT_DIR="$dir" timeout 5 bash "$hook" >/dev/null 2>&1 || true
+done
+wait_for_drain "$dir"
+runs="$(wc -l < "$counter" 2>/dev/null || echo 0)"
+# pgrep exits 1 when it finds nothing (the expected outcome here); under
+# this script's `set -e`+pipefail, that would otherwise abort silently even
+# though `wc -l` itself succeeds - `|| true` on the whole pipe absorbs it
+# without adding output (unlike `|| echo 0`, which would double-print).
+orphans="$(pgrep -f "$dir/microworlds/widget/run.sh" 2>/dev/null | wc -l || true)"
+if [ "$runs" -ge 1 ] && [ "$runs" -le 2 ] && [ "$orphans" = 0 ]; then
+  echo "OK   (j) coalescing: 10 rapid enqueues collapsed to $runs actual run(s), no orphaned process survives"
+else
+  echo "FAIL (j) expected 1-2 actual runs and 0 orphans (runs=$runs orphans=$orphans)"
+  fail=1
+fi
+
 # (g) ADAPTER PARITY - both hand-adapted mirrors are EXECUTED with their own
-#     payload shapes and must reproduce the same exit-code asymmetry into their
-#     own dot-dir audit log. bash -n in validate.sh only proves they parse.
+#     payload shapes and must reproduce the same async contract (exit 0
+#     immediately; audit log populated after the drain) into their own
+#     dot-dir audit log. bash -n in validate.sh only proves they parse.
 adapter_payload() {
   # $1 = adapter, $2 = project dir, $3 = absolute edited path
   case "$1" in
@@ -320,6 +440,7 @@ for adapter in cursor codex; do
   make_bundle "$dir" widget 'src/*.js' 0
   rc=0
   adapter_payload "$adapter" "$dir" "$dir/src/app.js" | bash "$script" >/dev/null 2>&1 || rc=$?
+  for i in $(seq 1 50); do [ -d "$dir/$dot/microworld-queue/.runner.lock" ] || break; sleep 0.2; done
   { [ "$rc" = 0 ] && grep -q 'unit=widget result=pass' "$dir/$dot/microworld-audit.log"; } || ok=false
   pass_rc="$rc"
 
@@ -327,10 +448,11 @@ for adapter in cursor codex; do
   make_bundle "$dir" widget 'src/*.js' 1
   rc=0
   adapter_payload "$adapter" "$dir" "$dir/src/app.js" | bash "$script" >/dev/null 2>&1 || rc=$?
-  { [ "$rc" = 2 ] && grep -q 'unit=widget result=fail' "$dir/$dot/microworld-audit.log"; } || ok=false
+  for i in $(seq 1 50); do [ -d "$dir/$dot/microworld-queue/.runner.lock" ] || break; sleep 0.2; done
+  { [ "$rc" = 0 ] && grep -q 'unit=widget result=fail' "$dir/$dot/microworld-audit.log"; } || ok=false
 
   if [ "$ok" = true ]; then
-    echo "OK   (g) $adapter mirror: pass bundle -> exit 0, failing bundle -> exit 2, both logged to $dot/microworld-audit.log"
+    echo "OK   (g) $adapter mirror: hook exit 0 immediately for pass and fail bundles, both logged to $dot/microworld-audit.log after the drain"
   else
     echo "FAIL (g) $adapter mirror parity broken (pass-rc=$pass_rc fail-rc=$rc)"
     fail=1
@@ -344,8 +466,9 @@ make_bundle "$dir" widget 'src/*.js' 1
 rc=0
 printf '{"cwd":"%s","tool_name":"apply_patch","tool_input":{"input":"*** Update File: %s/src/app.js\\n"}}' \
   "$dir" "$dir" | bash adapters/codex/hooks/scripts/microworld-rerun.sh >/dev/null 2>&1 || rc=$?
-if [ "$rc" = 2 ] && grep -q 'unit=widget result=fail' "$dir/.codex/microworld-audit.log"; then
-  echo "OK   (g2) codex mirror resolves apply_patch header paths and still reports the failing bundle"
+for i in $(seq 1 50); do [ -d "$dir/.codex/microworld-queue/.runner.lock" ] || break; sleep 0.2; done
+if [ "$rc" = 0 ] && grep -q 'unit=widget result=fail' "$dir/.codex/microworld-audit.log"; then
+  echo "OK   (g2) codex mirror resolves apply_patch header paths and still reports the failing bundle after the drain"
 else
   echo "FAIL (g2) codex apply_patch path extraction broken (rc=$rc log=[$(cat "$dir/.codex/microworld-audit.log" 2>/dev/null || true)])"
   fail=1
