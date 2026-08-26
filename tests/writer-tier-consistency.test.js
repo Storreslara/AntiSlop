@@ -55,6 +55,12 @@ check('AC-D5: agents/task-master.md default tag is sonnet, not haiku', () => {
   assert.ok(!text.includes('`haiku` is\n  the default'), 'task-master.md still states haiku as the default tag');
 });
 
+check('AC-D5: CONTEXT.md Implementer-tier ratchet reads sonnet→opus on re-attempt, not haiku→sonnet', () => {
+  const text = read('CONTEXT.md');
+  assert.ok(text.includes('`sonnet`→`opus` on re-attempt'), 'CONTEXT.md does not state the sonnet→opus re-attempt ratchet');
+  assert.ok(!text.includes('`haiku`→`sonnet` on re-attempt'), 'CONTEXT.md still states the stale haiku→sonnet re-attempt ratchet');
+});
+
 check('AC-D6: no surface instructs pre-emptive "looks mechanical" tier tagging', () => {
   for (const rel of ['agents/task-master.md', 'agents/orchestrator.md', 'agents/lead-programmer.md']) {
     const text = read(rel);
@@ -72,6 +78,13 @@ check('AC-D7: orchestrator.md escalation ladder starts sonnet -> opus, not haiku
     !/Haiku units escalate on first FAIL/.test(text),
     'orchestrator.md still states the stale haiku-first-FAIL escalation rule',
   );
+});
+
+check('AC-D8: ADR-0026 pins the pre-registered forward-verification rule by substring', () => {
+  const text = read('docs/adr/0026-writer-tier-reversed-to-sonnet.md');
+  assert.ok(text.includes('≥60 units'), 'ADR-0026 does not state the >=60 units threshold');
+  assert.ok(text.includes('32.5%'), 'ADR-0026 does not state the 32.5% FAIL-rate threshold');
+  assert.ok(text.includes('must not materially worsen'), 'ADR-0026 does not state the spend-neutrality condition');
 });
 
 console.log(failures === 0 ? '\nAll writer-tier-consistency checks passed.' : `\n${failures} check(s) failed.`);
