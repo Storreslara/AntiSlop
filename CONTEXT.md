@@ -454,6 +454,14 @@ the `.fail` disqualifier on lead-programmer
   subsequent verified PASS marker for that unit (unit #233). Distinct from the
   reviewer-gate ratchet.
 
+**Writer tier**:
+the lead-programmer's (implementer's) model tier, defaulting to
+  `sonnet` as of ADR-0026 (reversing ADR-0010's earlier `haiku` default).
+  Synonym for "implementer tier" in the context of the writer/implementer
+  executing a spec. The reactive escalation rule (the **Implementer-tier ratchet**)
+  applies when a unit fails: a `.fail` record forces `opus` on re-attempt.
+  See [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
+
 **Reviewer-gate ratchet**:
 the `.fail` disqualifier on the reviewer's own
   model eligibility. A unit's `.claude/reviewed/<task-id>.fail` record from the
@@ -463,6 +471,27 @@ the `.fail` disqualifier on the reviewer's own
   does not) preserves the core safety property: if a reviewer has once missed
   something on a cheaper tier, all future reviews run on the full-strength tier.
   Distinct from the implementer-tier ratchet.
+
+**Forward-verification rule**:
+(ADR-0026, unit spec2-unitD, 2026-08-25) — the pre-registered criterion for
+  validating whether the **Writer tier** reversal (from haiku to sonnet default)
+  delivers its predicted benefit. Stated as: "After ≥60 units dispatched under
+  the `sonnet` default, the FAIL rate must have fallen below the 32.5% haiku-era
+  rate. If not, the reversal has not delivered its predicted benefit and must be
+  revisited rather than defended." Measurement is mandatory, not optional; the
+  rule is recorded in the decision record itself, not as a post-hoc intention.
+  Verified via `scripts/spend-accounting.sh --until=<cutoff>`. Coupled with
+  **spend-neutrality** — both conditions must hold for the reversal to remain valid.
+
+**Spend-neutrality**:
+(ADR-0026, unit spec2-unitD, 2026-08-25) — the cost-accounting condition for
+  validating the **Writer tier** reversal. The rule states: total spend must not
+  materially worsen. A `sonnet` writer costs ~3× a `haiku` one per attempt; the
+  bet is that fewer opus re-reviews more than pay for that per-attempt cost
+  increase. Not a hard threshold (no numeric tolerance is specified in ADR-0026),
+  but a materiality judgment to be rendered at verification time using
+  `scripts/spend-accounting.sh` output. Coupled with the **Forward-verification
+  rule** — both conditions must hold for the reversal to remain valid.
 
 **F9 convention (unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`:**:
 When
