@@ -361,6 +361,15 @@ else
 fi
 
 echo
+echo "== timing harness assert_budget discriminates on budget (Bash) =="
+if bash tests/timing-harness.test.sh; then
+  echo "OK   tests/timing-harness.test.sh"
+else
+  echo "FAIL tests/timing-harness.test.sh"
+  fail=1
+fi
+
+echo
 echo "== PostToolUse latency budget, real hooks + watch-map (Bash, Unit A AC-A1) =="
 if bash tests/hook-latency-budget.test.sh; then
   echo "OK   tests/hook-latency-budget.test.sh"

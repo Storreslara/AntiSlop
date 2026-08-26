@@ -10,12 +10,18 @@ set -euo pipefail
 measure_latencies() {
   local iterations="$1" json_input="$2"; shift 2
   [ "${1:-}" = "--" ] && shift
-  local i start_ns end_ns
+  local i start_ns end_ns rc
   for ((i = 0; i < iterations; i++)); do
     start_ns="$(date +%s%N)"
-    printf '%s' "$json_input" | "$@" >/dev/null 2>&1 || true
+    rc=0
+    printf '%s' "$json_input" | "$@" >/dev/null 2>&1 || rc=$?
     end_ns="$(date +%s%N)"
-    awk -v ns="$((end_ns - start_ns))" 'BEGIN { printf "%.3f\n", ns / 1000000000 }'
+    if [ "$rc" -ne 0 ]; then
+      echo "measure_latencies: command exited $rc" >&2
+      echo 999999
+    else
+      awk -v ns="$((end_ns - start_ns))" 'BEGIN { printf "%.3f\n", ns / 1000000000 }'
+    fi
   done
 }
 
@@ -36,6 +42,7 @@ percentile() {
 # Prints a measurement line; returns non-zero if either budget is exceeded.
 assert_budget() {
   local label="$1" p50_budget="$2" p99_budget="$3" iterations="$4" json_input="$5"; shift 5
+  [ "${1:-}" = "--" ] && shift
   local sorted p50 p99 ok=0
   sorted="$(measure_latencies "$iterations" "$json_input" -- "$@" | sort -n)"
   p50="$(printf '%s\n' "$sorted" | percentile 50)"
