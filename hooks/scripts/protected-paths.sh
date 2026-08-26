@@ -17,4 +17,6 @@ config="${project_dir}/.claude/persona-config.json"
 paths="$(echo "$input" | jq -r '.tool_input.file_path // empty' 2>/dev/null || true)"
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/harness-arm.sh"
+harness_arm_or_deny "$project_dir" ".claude"
 source "${lib_dir}/protected-paths-core.sh"

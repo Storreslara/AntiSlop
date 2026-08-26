@@ -44,6 +44,7 @@ set -euo pipefail
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/benign-command.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 
 # Does $1 mention the marker directory in any spelling bash would resolve to it?
 # A UNION of three tests, and the RAW one is deliberately FIRST: that is what
@@ -176,6 +177,7 @@ write_with_commented_mention() {
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
+harness_arm_or_deny "$project_dir" ".claude"
 [ -f "$config" ] || exit 0
 
 command="$(echo "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"

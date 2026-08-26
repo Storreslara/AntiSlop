@@ -39,6 +39,7 @@
 set -euo pipefail
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -46,6 +47,7 @@ dot="${project_dir}/.claude"
 dot_label=".claude"
 config="${dot}/persona-config.json"
 review_audit="${dot}/review-audit.log"
+harness_arm_or_deny "$project_dir" "$dot_label"
 
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 target_type="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"

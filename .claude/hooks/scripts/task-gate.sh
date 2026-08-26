@@ -35,10 +35,12 @@ set -euo pipefail
 GRACE_PERIOD_END="2026-07-27"
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
+harness_arm_or_deny "$project_dir" ".claude"
 [ -f "$config" ] || exit 0
 
 task_name="$(echo "$input" | jq -r '.task.subject // .task.name // empty' 2>/dev/null || true)"

@@ -325,6 +325,15 @@ else
 fi
 
 echo
+echo "== harness_armed: six trust gates refuse a config-deleted adapted project (Bash) =="
+if bash tests/harness-arm.test.sh; then
+  echo "OK   tests/harness-arm.test.sh"
+else
+  echo "FAIL tests/harness-arm.test.sh"
+  fail=1
+fi
+
+echo
 echo "== stop-gate .blocked-marker behaviour (Bash) =="
 if bash tests/stop-gate-blocked.test.sh; then
   echo "OK   tests/stop-gate-blocked.test.sh"

@@ -83,6 +83,7 @@ LC_ALL=C
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -108,6 +109,7 @@ tool_name="$(echo "$input" | jq -r '.tool_name // empty' 2>/dev/null || true)"
 prompt="$(echo "$input" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)"
 [ -n "$prompt" ] || exit 0
 
+harness_arm_or_deny "$project_dir" ".claude" "$audit"
 [ -f "$config" ] || exit 0
 mode="$(jq -r '.dispatchHygiene.mode // "block"' "$config" 2>/dev/null || echo block)"
 max_bytes="$(jq -r '.dispatchHygiene.maxPromptBytes // 30000' "$config" 2>/dev/null || echo 30000)"
