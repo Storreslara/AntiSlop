@@ -25,7 +25,7 @@ check() {
 make_project() {
   local dir="$tmproot/$1" cmd="$2"
   mkdir -p "$dir/microworlds/skiptest" "$dir/.claude"
-  printf 'microworlds/\n.claude/microworld-audit.log\n.claude/.pending-review.*\n.claude/review-audit.log\n.claude/.microworld-results-reported\n' \
+  printf 'microworlds/\n.claude/microworld-audit.log\n.claude/.pending-review.*\n.claude/review-audit.log\n.claude/.microworld-results-reported\n.claude/.session-baseline.*\n' \
     > "$dir/.gitignore"
   printf '{"watch": ["dirty.txt"]}\n' > "$dir/microworlds/skiptest/manifest.json"
   printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"%s"}\n' "$cmd" \
@@ -164,6 +164,19 @@ printf '2026-08-25T00:05:00Z unit=skiptest result=fail file=dirty.txt\n' > "$dir
 printf '1\n' > "$dir/.claude/.microworld-results-reported"
 rc=0; run_stop "$dir" || rc=$?
 check "AC-B5c: a non-pass bundle result forces the full (failing) check" \
+  "$([ "$rc" = 2 ] && echo true || echo false)" "rc=$rc"
+
+dir="$(make_project b5-unreachable-baseline false)"
+# Working tree stays clean (no seed_dirty) - only the baseline SHA is bogus,
+# so this isolates "baseline commit unreachable" from "dirty tree" as the
+# thing that forces the check to run. A readable audit log with a pass is
+# seeded so the ONLY reason a naive implementation would wrongly skip is the
+# swallowed `git diff` failure enumerating zero changed files, not the
+# `[ -r "$audit" ]` precondition AC-B5b already covers.
+printf 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\n' > "$dir/.claude/.session-baseline.s"
+seed_pass "$dir" '2026-08-25T00:05:00Z'
+rc=0; run_stop "$dir" || rc=$?
+check "AC-B5d: an unreachable session baseline commit forces the full (failing) check, not a silent skip" \
   "$([ "$rc" = 2 ] && echo true || echo false)" "rc=$rc"
 
 # --- AC-B6: adapter parity is unaffected ------------------------------------

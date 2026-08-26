@@ -153,6 +153,9 @@ _mw_latest_result() {
 # _mw_changed_files <project_dir> <baseline_sha> <moved> - one relative path
 # per line: the dirty working tree (git status --porcelain) plus, if HEAD
 # has moved since this session's baseline, everything committed since.
+# Returns non-zero if the baseline diff was needed but could not be computed
+# (e.g. an unreachable baseline commit), so the caller never mistakes "found
+# nothing" for "verified nothing changed".
 _mw_changed_files() {
   local project_dir="$1" baseline_sha="$2" moved="$3" line path
   git -C "$project_dir" status --porcelain 2>/dev/null | while IFS= read -r line; do
@@ -161,7 +164,8 @@ _mw_changed_files() {
     printf '%s\n' "$path"
   done || true
   if [ "$moved" = true ] && [ -n "$baseline_sha" ]; then
-    git -C "$project_dir" diff --name-only "$baseline_sha" HEAD 2>/dev/null || true
+    git -C "$project_dir" rev-parse --verify "${baseline_sha}^{commit}" >/dev/null 2>&1 || return 1
+    git -C "$project_dir" diff --name-only "$baseline_sha" HEAD 2>/dev/null
   fi
 }
 
@@ -173,8 +177,10 @@ _mw_changed_files() {
 # returns 1 (fail closed, AC-B5).
 microworld_skip_ok() {
   local project_dir="$1" audit="$2" baseline_sha="$3" moved="$4"
-  local file slug bundles file_iso latest ts result seen=""
+  local file slug bundles file_iso latest ts result seen="" changed_files
   [ -r "$audit" ] || return 1
+
+  changed_files="$(_mw_changed_files "$project_dir" "$baseline_sha" "$moved")" || return 1
 
   while IFS= read -r file; do
     [ -n "$file" ] || continue
@@ -195,7 +201,7 @@ microworld_skip_ok() {
       [ "$result" = pass ] || return 1
       [[ "$ts" > "$file_iso" ]] || return 1
     done <<< "$bundles"
-  done < <(_mw_changed_files "$project_dir" "$baseline_sha" "$moved")
+  done <<< "$changed_files"
 
   return 0
 }
