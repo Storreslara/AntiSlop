@@ -94,7 +94,7 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
           stamp="${dot}/.review-join.${unit_id}"
           printf '%s unit=%s prior=%s prior_mtime=%s\n' \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp" || true
-          printf 'review-join=%s\n' "$unit_id" >> "$review_audit" || true
+          audit_append "$review_audit" "review-join=$unit_id"
         fi
         ;;
     esac

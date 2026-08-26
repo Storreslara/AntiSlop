@@ -25,7 +25,7 @@ check() {
 make_project() {
   local dir="$tmproot/$1" cmd="$2"
   mkdir -p "$dir/microworlds/skiptest" "$dir/.claude"
-  printf 'microworlds/\n.claude/microworld-audit.log\n.claude/.pending-review.*\n.claude/review-audit.log\n.claude/.microworld-results-reported\n.claude/.session-baseline.*\n' \
+  printf 'microworlds/\n.claude/microworld-audit.log\n.claude/.pending-review.*\n.claude/review-audit.log\n.claude/*.log.seal\n.claude/.microworld-results-reported\n.claude/.session-baseline.*\n' \
     > "$dir/.gitignore"
   printf '{"watch": ["dirty.txt"]}\n' > "$dir/microworlds/skiptest/manifest.json"
   printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"%s"}\n' "$cmd" \

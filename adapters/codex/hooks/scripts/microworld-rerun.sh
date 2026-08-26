@@ -33,4 +33,5 @@ if [ -z "$paths" ]; then
 fi
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/audit-log.sh"
 source "${lib_dir}/microworld-rerun-core.sh"

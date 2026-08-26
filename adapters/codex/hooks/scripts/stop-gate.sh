@@ -72,6 +72,7 @@
 # field here is assumed to arrive bare.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.cwd // "."' 2>/dev/null || echo .)"

@@ -17,6 +17,10 @@
 
 _IDENTITY_TOKEN='[A-Za-z0-9_.-]+'
 _identity_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || true)"
+# identity_drift_log() below calls audit_append - source it here so every
+# caller gets it transitively, rather than requiring each of the many
+# scripts that source this file to also source lib/audit-log.sh themselves.
+. "${_identity_lib_dir}/audit-log.sh"
 _identity_ns=""
 
 # The recognized namespace is derived from the library's own on-disk location,
@@ -179,7 +183,6 @@ identity_drift_log() {
   # its `set -e` - this is a logging side-effect, never a gate decision. The
   # brace group is required: a failed redirection is diagnosed by the shell
   # itself, so a bare `2>/dev/null` on the command would not silence it.
-  { printf '%s identity-drift class=%s hook=%s identity=%s\n' \
-      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$class" "$(_identity_sanitize "$hook")" "$safe" \
-      >> "$audit"; } 2>/dev/null || true
+  audit_append "$audit" "$(printf '%s identity-drift class=%s hook=%s identity=%s' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$class" "$(_identity_sanitize "$hook")" "$safe")"
 }

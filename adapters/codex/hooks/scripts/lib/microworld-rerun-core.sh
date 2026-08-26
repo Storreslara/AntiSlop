@@ -32,7 +32,7 @@ log() {
   line="$(date -u +%Y-%m-%dT%H:%M:%SZ) unit=$1 result=$2 file=$3"
   if [ "$#" -ge 4 ]; then line="$line reason=$4"; fi
   mkdir -p "$(dirname "$audit")" 2>/dev/null || true
-  printf '%s\n' "$line" >> "$audit" 2>/dev/null || true
+  audit_append "$audit" "$line"
 }
 
 command -v jq >/dev/null 2>&1 || { log - error - no-jq; exit 0; }

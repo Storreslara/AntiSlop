@@ -96,8 +96,8 @@ _memo_setup() {
 
 # _log_result <audit> <unit> <result> <rel_path>
 _log_result() {
-  printf '%s unit=%s result=%s file=%s\n' \
-    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "$3" "$4" >> "$1" 2>/dev/null || true
+  audit_append "$1" "$(printf '%s unit=%s result=%s file=%s' \
+    "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "$3" "$4")"
 }
 
 # _run_bundle <project_dir> <slug> <rel_path> <memo_dir> <audit>

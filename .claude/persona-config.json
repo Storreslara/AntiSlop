@@ -54,11 +54,6 @@
       "reason": "Session startup hook; exempt reporter, edited as other hooks change"
     },
     {
-      "pattern": "hooks/scripts/lib/agent-identity.sh",
-      "tag": "local-only",
-      "reason": "Shared library for agent identity tagging; used by gate scripts"
-    },
-    {
       "pattern": "hooks/scripts/lib/graph-update-core.sh",
       "tag": "local-only",
       "reason": "Shared core for graph update hook"
@@ -69,29 +64,9 @@
       "reason": "Shared core for lint-on-edit hook"
     },
     {
-      "pattern": "hooks/scripts/lib/microworld-rerun-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for microworld rerun hook"
-    },
-    {
-      "pattern": "hooks/scripts/lib/microworld-queue.sh",
-      "tag": "local-only",
-      "reason": "Queue management for async microworld rerun; critical for Unit A async mechanism"
-    },
-    {
       "pattern": "hooks/scripts/lib/protected-paths-core.sh",
       "tag": "local-only",
       "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
-    },
-    {
-      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for stop gate; coordinates with multiple hooks"
-    },
-    {
-      "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for reviewer routing gate"
     }
   ],
   "gatedAgents": [
@@ -148,7 +123,7 @@
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "ea5132383f987fceff4c931030c23723d66ba51ed72f9c8abe41d0bc68b8a889",
     ".claude/hooks/scripts/graph-update.sh": "a543070d6c0dd4a28b71feab85853af60c0e082dab21b0c1fd44f8106d169ed4",
-    ".claude/hooks/scripts/lib/agent-identity.sh": "21c457832899bc96225acb13c8c07b359b4bcf45d4cd88f3701b1acf425c577c",
+    ".claude/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
     ".claude/hooks/scripts/lint-on-edit.sh": "b1db05986d2c553e32234934a524936b741f6fc3dab90eb0588e9c6d24f722d0",
     ".claude/hooks/scripts/protected-paths.sh": "30e0f5296725c18f98a52a288a409e865c73dcf82aa8a551b43b2822786ec733",
     ".claude/hooks/scripts/reviewed-path-gate.sh": "165ff09436dbbb2731c87106844dc9948e89409da7ceccb9f697d532aaa4bb98",
@@ -164,30 +139,30 @@
     ".claude/hooks/scripts/marker-commit-check.sh": "d98f9f6c4557238fca131ad4b08e9ff5fd738da23ed66da6647b5dc8e3571442",
     ".claude/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
     ".claude/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
-    ".claude/hooks/scripts/lib/microworld-rerun-core.sh": "7b4699da657276d470330fa9a852db9b96be53b2a95a8b0974fed0470cd026f2",
+    ".claude/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
     ".claude/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
-    "adapters/codex/hooks/scripts/lib/agent-identity.sh": "21c457832899bc96225acb13c8c07b359b4bcf45d4cd88f3701b1acf425c577c",
-    "adapters/cursor/hooks/scripts/lib/agent-identity.sh": "21c457832899bc96225acb13c8c07b359b4bcf45d4cd88f3701b1acf425c577c",
+    "adapters/codex/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
+    "adapters/cursor/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
     "adapters/codex/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
     "adapters/codex/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
-    "adapters/codex/hooks/scripts/lib/microworld-rerun-core.sh": "7b4699da657276d470330fa9a852db9b96be53b2a95a8b0974fed0470cd026f2",
+    "adapters/codex/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
     "adapters/codex/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
     "adapters/cursor/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
     "adapters/cursor/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
-    "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "7b4699da657276d470330fa9a852db9b96be53b2a95a8b0974fed0470cd026f2",
+    "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
     "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
-    ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
-    ".claude/hooks/scripts/lib/stop-gate-core.sh": "162377f20d441c8de1c4a568ba058e44bdb03a637c22f69f49f47ae2a02ce665",
-    "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
-    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "162377f20d441c8de1c4a568ba058e44bdb03a637c22f69f49f47ae2a02ce665",
-    "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
-    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "162377f20d441c8de1c4a568ba058e44bdb03a637c22f69f49f47ae2a02ce665",
-    ".claude/hooks/scripts/lib/microworld-queue.sh": "5d05874f932df0c0ba10aaf1d1392a8c6015c0ae4ae4b90f9d7be41218da5c29",
-    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "5d05874f932df0c0ba10aaf1d1392a8c6015c0ae4ae4b90f9d7be41218da5c29",
-    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "5d05874f932df0c0ba10aaf1d1392a8c6015c0ae4ae4b90f9d7be41218da5c29",
-    "adapters/codex/hooks/scripts/lib/audit-log.sh": "73c06bc39fb973e6576e72367d79793702794e8a470e69ac5d8cc49f852aa1ee",
-    "adapters/cursor/hooks/scripts/lib/audit-log.sh": "73c06bc39fb973e6576e72367d79793702794e8a470e69ac5d8cc49f852aa1ee",
-    ".claude/hooks/scripts/lib/audit-log.sh": "73c06bc39fb973e6576e72367d79793702794e8a470e69ac5d8cc49f852aa1ee"
+    ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "e58404b0df0c2989ec575728a9ed0c69c49bd87740fed3c5aefd27c70d46e526",
+    ".claude/hooks/scripts/lib/stop-gate-core.sh": "f2de27651215eb333e21e2cf6b8297bdf4294428fd7cea8a7e5cde21740f90fc",
+    "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "e58404b0df0c2989ec575728a9ed0c69c49bd87740fed3c5aefd27c70d46e526",
+    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "f2de27651215eb333e21e2cf6b8297bdf4294428fd7cea8a7e5cde21740f90fc",
+    "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "e58404b0df0c2989ec575728a9ed0c69c49bd87740fed3c5aefd27c70d46e526",
+    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "f2de27651215eb333e21e2cf6b8297bdf4294428fd7cea8a7e5cde21740f90fc",
+    ".claude/hooks/scripts/lib/microworld-queue.sh": "f5ccf19aa62d5146ab157698b00c51894f61130e6b86fd8c23a80fca2e54c048",
+    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "f5ccf19aa62d5146ab157698b00c51894f61130e6b86fd8c23a80fca2e54c048",
+    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "f5ccf19aa62d5146ab157698b00c51894f61130e6b86fd8c23a80fca2e54c048",
+    "adapters/codex/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
+    "adapters/cursor/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
+    ".claude/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3"
   },
   "humanReviewMode": "off"
 }

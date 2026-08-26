@@ -22,9 +22,13 @@ set -euo pipefail
 # at verify time means "everything sealed so far".
 _audit_reseal() {
   local log="$1" n hash
-  n="$(wc -l < "$log" 2>/dev/null || echo 0)"
+  # Each redirection is wrapped in its own brace group so a failed open (an
+  # unreadable/unwritable path) is suppressed by the trailing 2>/dev/null - a
+  # bare `cmd < file 2>/dev/null` does NOT suppress a failed `<` open, because
+  # bash reports that error before the later 2>/dev/null redirection applies.
+  n="$({ wc -l < "$log"; } 2>/dev/null)" || n=0
   hash="$(sha256sum "$log" 2>/dev/null | cut -d' ' -f1)"
-  printf 'lines=%s sha256=%s\n' "$n" "$hash" > "${log}.seal" 2>/dev/null || true
+  { printf 'lines=%s sha256=%s\n' "$n" "$hash" > "${log}.seal"; } 2>/dev/null || true
 }
 
 # audit_append <log> <line> - appends <line> to <log>, then reseals. A write
@@ -32,7 +36,7 @@ _audit_reseal() {
 # aborts the caller under set -e.
 audit_append() {
   local log="$1" line="$2"
-  printf '%s\n' "$line" >> "$log" 2>/dev/null || return 0
+  { printf '%s\n' "$line" >> "$log"; } 2>/dev/null || return 0
   _audit_reseal "$log"
 }
 

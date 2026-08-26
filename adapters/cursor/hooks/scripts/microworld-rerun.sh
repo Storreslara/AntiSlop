@@ -18,4 +18,5 @@ audit="${project_dir}/.cursor/microworld-audit.log"
 paths="$(echo "$input" | jq -r '.file_path // empty' 2>/dev/null || true)"
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/audit-log.sh"
 source "${lib_dir}/microworld-rerun-core.sh"
