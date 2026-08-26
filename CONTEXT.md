@@ -152,13 +152,36 @@ an append-only audit-log record class written to
   fires, but the denial is now recorded. Completes Finding R3 from the
   orchestration-dispatch-identity-defects spec (unit #307).
 
+**watch-map** / **watch-map entry**:
+(introduced mw-step1, unit #313) — the committed reactive-check source at
+  `tests/watch-map.json`, defining a second namespace of checks alongside
+  **microworld bundles**. Each entry carries an `.id` (the entry id, distinct
+  namespace from bundle slugs), a `.watch[]` array of glob patterns that
+  trigger re-runs, `.location` and `.startLine`/`.endLine` for source
+  verification, and `inputs`/`expected`/output contract paths. Watch-map
+  entries are classified as **Tier A** checks; **microworld bundles** are
+  **Tier B** (see those entries). The audit log's `unit=` field now carries
+  both bundle slugs and watch-map entry ids; see [[Microworld audit log]].
+
+**Tier A / Tier B bundle classification**:
+(introduced mw-step1, unit #313) — a pair of mechanisms for microworld
+  checks. **Tier A** = committed watch-map-driven checks (defined in
+  `tests/watch-map.json`, sourced via `git ls-files`, one fixed watch-set
+  per entry id). **Tier B** = the pre-existing gitignored
+  `microworlds/<bundle-slug>/` bundles (dynamically discovered from disk,
+  varying per working tree, carry the microworld dashboard UI). Both are
+  monitored by the microworld reporter hook; the audit log records both
+  in the same append-only format. Tier A enables committed, versioned
+  reactive checks; Tier B enables explorer-driven escalations. See
+  [[watch-map]] and [[Microworld bundles]].
+
 **Microworld audit log**:
 (unit #132, 2026-08-10) — an append-only log file at
   `.claude/microworld-audit.log` (+ per-adapter equivalents
   `.cursor/microworld-audit.log`, `.codex/microworld-audit.log`) recording
-  execution results of **microworld bundle** invocations. Written by the
-  `microworld-rerun.sh` **Reporter** hook on every `PostToolUse` for
-  `Edit|Write` operations. Line format: `<ts> unit=<slug> result=pass|fail|timeout file=<path>` for real bundle runs, and `<ts> unit=<slug> result=error ... file=<path> reason=<...>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
+  execution results of **microworld bundle** invocations and **watch-map**
+  entries. Written by the `microworld-rerun.sh` **Reporter** hook on every
+  `PostToolUse` for `Edit|Write` operations. Line format: `<ts> unit=<slug|entry-id> result=pass|fail|timeout file=<path>` for real runs, and `<ts> unit=<slug|entry-id> result=error ... file=<path> reason=<...>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). The `unit=` field now carries both bundle slugs (**Tier B**) and watch-map entry ids (**Tier A**). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
 
 **Commit attribution**:
 (unit #386, 2026-08-15) — the mechanism of recording which commit a unit was
@@ -1770,4 +1793,40 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   allowed alongside the commit (chaining is what enables commit-then-write
   attacks), and this recognizer applies only to the `git commit` program, not to
   other programs.
+
+**Capability register**:
+(introduced mw-step4, unit #322) — the demand-gated HTTP API inventory
+  documented at `docs/microworld-dashboard-capabilities.md`, classifying each
+  `/api/*` route served by `bin/microworld-dashboard/server.js` as
+  **load-bearing** (required for a real escalation or debug session) or
+  **speculative** (exploratory, not yet demanded). Load-bearing routes must
+  cite an actual escalation, debugging session, or protocol entry (e.g. ADR
+  0018); speculative routes must state a rationale. The gate is enforced by
+  review discipline: any new capability flagged in review must have a
+  corresponding register row before merging. Complements the microworld
+  dashboard's protocol obligations (see [[Microworld dashboard]]).
+
+**verifiedBy** / **functionsAuthoredBy**:
+(introduced mw-step3, stamped into escalation packets) — a provenance block
+  in an escalation packet's `manifest.json` (added by the reviewer) that
+  records which party authored the `functions[]` array and how it was
+  verified. The `verifiedBy` object carries `agent: "reviewer"`,
+  `timestamp`, `commit`, and `functionsAuthoredBy` (either `"reviewer"` if
+  the reviewer authored the array outright because the escalating unit had
+  none, or `"implementer-verified"` if it was carried over from the unit
+  and the reviewer verified/corrected its locations). This distinction marks
+  the reviewer's provenance stamp on escalation packets, load-bearing across
+  the persona protocol and both adapter ports (Codex and Cursor). See
+  `agents/reviewer.md` step R2 for stamping discipline.
+
+**Render fixed point**:
+(property asserted by mw-step3's AC-R3) — the idempotency property
+  of `bin/cli.js --update --force-render`: after running the command followed
+  by `git status --porcelain`, the output must be zero lines (or only
+  `.claude/` autogenerated files if the repo itself touches them). This
+  property detects **stale managed mirrors** — commits that leave ADAPT-stamped
+  files (e.g. `templates/persona-protocol.md` or shipped persona mirrors)
+  out of sync. A render-fixed-point failure signals that the mirrors need
+  re-rendering or the source stamp needs updating. Related to **managed
+  mirror** copies and the stamp-refresh mechanism in `--update` semantics.
 
