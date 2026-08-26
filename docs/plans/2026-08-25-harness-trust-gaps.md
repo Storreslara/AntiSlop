@@ -868,12 +868,15 @@ New `hooks/scripts/lib/audit-log.sh`:
   This is what makes the chain continuous, and why `truncated` can be read as
   "unsanctioned" (R3).
 
-Convert every existing append site to `audit_append`. Measured at `09cc304` —
-**20 sites across seven scripts**: `stop-gate.sh` 12, `reviewed-path-gate.sh` 2,
-`task-gate.sh` 2, and one each in `dispatch-hygiene.sh`,
-`human-decision-gate.sh` (`deny()`), `microworld-rerun.sh` (`log()`) and
-`reviewer-route-gate.sh`. Re-derive with C3.2's grep rather than trusting these
-counts.
+Convert every existing append site to `audit_append`. **Re-measured at
+`e685a01` (2026-08-26), after spec 3's M2 core extraction — see the correction
+at the end of this step** — **23 sites across nine files**:
+`lib/stop-gate-core.sh` 13, `reviewed-path-gate.sh` 2, `task-gate.sh` 2, and one
+each in `dispatch-hygiene.sh`, `human-decision-gate.sh` (`deny()`),
+`lib/microworld-rerun-core.sh` (`log()`), `lib/reviewer-route-gate-core.sh`,
+`lib/agent-identity.sh` (`identity_drift_log()`, shared by three gates) and
+`lib/microworld-queue.sh` (`_log_result()`). Re-derive with C3.2's grep rather
+than trusting these counts.
 
 New `bin/harness-integrity.sh` — read-only report, always `exit 0`, one line,
 same contract as `marker-commit-check.sh`:
@@ -919,13 +922,53 @@ hand-editing.
 test -f hooks/scripts/lib/audit-log.sh
 test -x bin/harness-integrity.sh
 
-# C3.2  every append site goes through audit_append; no raw `>>` to an audit log
-#       survives in hooks/scripts/ (single-file greps, not one recursive sweep)
-for g in stop-gate dispatch-hygiene reviewed-path-gate human-decision-gate \
+# C3.2  every append site goes through audit_append; no raw `>>` redirection to
+#       an audit log survives under hooks/scripts/. TWO HALVES, both required.
+#
+#   (a) ATTRIBUTION -- a per-file check over every file that holds an append site
+#       today, so a failure names the file whose conversion was missed. The loop
+#       covers each gate's entry point AND its extracted lib/<name>-core.sh,
+#       because M2 moved stop-gate's, microworld-rerun's and reviewer-route-gate's
+#       append logic into their cores after this spec was finalized. The
+#       `[ -f ] || continue` keeps the loop correct for the four gates that were
+#       not extracted and have no core.
+#
+#   (b) BACKSTOP -- a sweep proving no OTHER file under hooks/scripts/ holds one.
+#       This is what stops the criterion going silently vacuous the next time a
+#       site moves, which is exactly how (a)'s file list went stale once already.
+#       hooks/scripts/lib/audit-log.sh is the single sanctioned holder of a raw
+#       `>>` (inside audit_append) and is the sweep's only exemption.
+#
+#       The pattern is `>>` + optional space + a double quote, NOT an enumeration
+#       of destination variable names. The old enumeration
+#       ($audit|$review_audit|$project_dir) was broken by M2's port-neutral
+#       rename of ${project_dir}/.claude to ${dot}, which silently dropped
+#       stop-gate's wip-audit.log site (12 of its 13 matched). Measured at
+#       e685a01: every `>>` redirection under hooks/scripts/ targets an audit
+#       log, and the only two `>>` mentions that are prose rather than
+#       redirection -- human-decision-gate.sh:282 and lib/benign-command.sh:145 --
+#       do not match, so the wider pattern costs no false positive.
+
+# (a) attribution: entry point and extracted core, each individually provable
+for f in stop-gate dispatch-hygiene reviewed-path-gate human-decision-gate \
          task-gate microworld-rerun reviewer-route-gate; do
-  test "$(grep -cE '>>[[:space:]]*"?\$\{?(audit|review_audit|project_dir)' \
-          "hooks/scripts/$g.sh")" = 0 || { echo "RAW APPEND in $g"; exit 1; }
+  for p in "hooks/scripts/$f.sh" "hooks/scripts/lib/$f-core.sh"; do
+    [ -f "$p" ] || continue
+    test "$(grep -cE '>>[[:space:]]*"' "$p")" = 0 || { echo "RAW APPEND in $p"; exit 1; }
+  done
 done
+# shared libraries, each reached by three or more of the gates above and named
+# after none of them: agent-identity.sh's identity_drift_log() (called from
+# reviewed-path-gate.sh, reviewer-route-gate.sh and its core, and
+# stop-gate-core.sh) and microworld-queue.sh's _log_result() (the deferred
+# writer for the microworld audit log). Neither is reachable by the loop above.
+for p in hooks/scripts/lib/agent-identity.sh hooks/scripts/lib/microworld-queue.sh; do
+  test "$(grep -cE '>>[[:space:]]*"' "$p")" = 0 || { echo "RAW APPEND in $p"; exit 1; }
+done
+
+# (b) backstop: nothing else under hooks/scripts/ holds one either
+test "$(grep -rlE '>>[[:space:]]*"' hooks/scripts/ \
+        | grep -vF 'hooks/scripts/lib/audit-log.sh' | wc -l)" = 0
 
 # C3.3  detection behaviour, over a fixture (the suite):
 #   - seal, append, verify                     -> ok
@@ -968,17 +1011,98 @@ bash tests/validate.sh
 ```
 
 *Baseline at `09cc304`:* `hooks/scripts/lib/audit-log.sh`,
-`bin/harness-integrity.sh`, `tests/audit-seal.test.sh` all absent. C3.2's grep
-returns non-zero for all seven scripts — `stop-gate` 12, `reviewed-path-gate` 2,
-`task-gate` 2, `dispatch-hygiene` 1, `human-decision-gate` 1, `microworld-rerun`
-1, `reviewer-route-gate` 1 — so the criterion is RED seven times over, and its
-per-file form (rather than one recursive sweep) is what makes each conversion
-individually provable.
+`bin/harness-integrity.sh`, `tests/audit-seal.test.sh` all absent — still true at
+`e685a01`.
+
+*C3.2 re-measured at `e685a01` (2026-08-26), after M2's core extraction:* the
+rewritten criterion is RED **nine** times over — `lib/stop-gate-core.sh` 13,
+`reviewed-path-gate.sh` 2, `task-gate.sh` 2, and one each in
+`dispatch-hygiene.sh`, `human-decision-gate.sh`, `lib/microworld-rerun-core.sh`,
+`lib/reviewer-route-gate-core.sh`, `lib/agent-identity.sh` and
+`lib/microworld-queue.sh`. Its per-file form (rather than one recursive sweep) is
+what makes each conversion individually provable; the backstop sweep is what
+keeps that per-file list honest. Non-vacuity was proved by execution, not
+asserted: over a fixture with every one of the 23 sites converted the criterion
+goes GREEN, and re-introducing a single raw append in each of the nine files in
+turn kills it nine times, naming the right file each time — with a tenth
+re-introduction, in a file on no list (`lib/graph-update-core.sh`), caught by the
+backstop alone.
 
 **Do not touch:** the audit-log **line formats**. Every existing consumer
 (`bin/microworld-dashboard/audit-log.js`, `bin/marker-commit-audit.sh`,
 `tests/marker-commit-audit.test.sh`) must keep parsing today's lines
 byte-for-byte. `audit_append` changes the write *path*, never the written *text*.
+
+**Correction (2026-08-26) — C3.2's target file set only. Step 3's substance is
+unchanged, and no other criterion in this document is touched.**
+
+C3.2 as originally written greped `hooks/scripts/$g.sh` for seven gate names.
+After this spec was finalized at `09cc304`, spec 3's **M2** work (`gh410` tier 1,
+`gh411`/`gh412` tier 2 — all three reviewer-PASSed and correctly implemented; the
+staleness is this criterion's, not theirs) extracted the port-invariant decision
+logic of several hooks into sourced `hooks/scripts/lib/<name>-core.sh` files.
+Three of C3.2's seven targets moved with it: `stop-gate.sh`'s appends (13) now
+live in `lib/stop-gate-core.sh`, `microworld-rerun.sh`'s (1) in
+`lib/microworld-rerun-core.sh`, and `reviewer-route-gate.sh`'s (1) in
+`lib/reviewer-route-gate-core.sh`. Their entry-point files now hold **zero**
+appends, so the criterion read `0` for all three **whether or not the conversion
+to `audit_append` had happened** — vacuous for three of seven. The `lead-programmer`
+dispatched on `gh415` stopped and escalated rather than implement against it,
+which was the right call. The four gates M2 did **not** extract —
+`dispatch-hygiene.sh`, `reviewed-path-gate.sh`, `human-decision-gate.sh`,
+`task-gate.sh` — were always checkable as written and their checks are unchanged
+in intent.
+
+Two further defects surfaced while verifying that claim rather than trusting it,
+and both are fixed in the same rewrite because leaving either would ship a
+criterion already known to be partly vacuous:
+
+1. **The destination-variable enumeration was itself broken by M2.** The old
+   pattern matched `$audit|$review_audit|$project_dir`. M2's port-neutral rename
+   of `${project_dir}/.claude` to `${dot}` dropped `stop-gate`'s
+   `wip-audit.log` append out of the pattern — 12 of its 13 sites match, and the
+   one that does not is the WIP audit trail. Enumerating destination spellings
+   was the wrong shape (`[[branch-agreement-criterion]]`); the rewrite asserts
+   *no quoted `>>` redirection at all*, which is sound here because every `>>`
+   redirection under `hooks/scripts/` targets an audit log, verified at
+   `e685a01`.
+2. **Two shared libraries with real append sites were on no list at all.**
+   `lib/agent-identity.sh`'s `identity_drift_log()` — one append, reached by
+   `reviewed-path-gate.sh`, `reviewer-route-gate.sh` (entry point *and* core) and
+   `stop-gate-core.sh` — was present at `09cc304` and simply missed by the
+   original inventory. `lib/microworld-queue.sh`'s `_log_result()` — one append
+   to the microworld audit log — did not exist at `09cc304` and arrived
+   post-baseline. Neither is named after a gate, so neither was reachable by a
+   loop over gate filenames.
+
+The structural fix is the **backstop sweep**, half (b) of the rewritten
+criterion. Half (a) still names files, so a failure still says which conversion
+was missed; half (b) fails on any file under `hooks/scripts/` that the list does
+not know about, so the *next* extraction cannot make this criterion silently
+vacuous the way M2's did.
+
+**Two knock-ons flagged, deliberately not taken as scope here** (both are for
+whoever dispatches Step 3; neither changes a criterion):
+
+- **The adapter port obligation moved the same way.** The paragraph above and
+  C3.7 name `stop-gate.sh`, `reviewer-route-gate.sh` and `microworld-rerun.sh`;
+  measured at `e685a01`, both ports' append sites now sit in
+  `lib/stop-gate-core.sh` (13 each), `lib/microworld-rerun-core.sh`,
+  `lib/reviewer-route-gate-core.sh`, `lib/agent-identity.sh` and
+  `lib/microworld-queue.sh`, plus one remaining in the codex port's own
+  `stop-gate.sh`. C3.7 is left as written — it asserts library presence and the
+  behavioural parity suite, both still correct — but the hand-edit list is
+  today's file layout, not the baseline's.
+- **A sanctioned rotator already exists, and R3 does not know about it.**
+  `bin/human-review-cleanup.sh:166-212` already rotates all four audit logs as
+  part of the Sweep (`CONTEXT.md`, *Log rotation / archive*, unit #409), and it
+  was present at `09cc304`. R3 anticipated the hazard in the abstract but assumed
+  rotation would arrive with `audit_rotate`; in fact `audit_rotate` must either
+  replace that mechanism or be integrated with it, or the first `--apply` sweep
+  after Step 3 lands will `mv` a sealed log out from under its `.seal` and the
+  seal check will report `absent` on a legitimate, already-shipped operation.
+  Raised here, unresolved, because resolving it is a Step 3 design decision and
+  this amendment is scoped to C3.2.
 
 ---
 
@@ -1531,6 +1655,19 @@ bundle's contents and no bundle's schedule.
   **no step deletes a line of the corpus**. Spec 4: Step 9 adds one marker kind
   and one audit field, no lifecycle change. Spec 2: no criterion names a model
   tier. Spec 5: no cross-spec ordering asserted beyond R6's note.
+- **Was C3.2 re-verified against the tree it will actually run on, not just the
+  tree it was written against?** *(added 2026-08-26)* Not at authoring — and the
+  gap was real. Spec 3's M2 extraction moved three of C3.2's seven target files'
+  append logic into `lib/<name>-core.sh` after this document was finalized, so the
+  criterion read `0` for them regardless of whether the work was done
+  (`[[verify-own-criteria-nonvacuous]]`). See Step 3's 2026-08-26 correction. The
+  rewritten C3.2 was executed at `e685a01`: RED nine times over today, GREEN over
+  a fixture with all 23 sites converted, and killed individually by a single
+  re-introduced raw append in each of the nine files, plus a tenth caught only by
+  its new backstop half. **Every other criterion in this document still carries
+  only its `09cc304` baseline and must be re-measured before dispatch, for
+  exactly the same reason** (`[[baselines-expire]]`) — this correction fixed one
+  instance of a hazard the whole document is exposed to, not the hazard itself.
 - **Was the retracted instruction handled correctly?** The CI retarget was
   applied, then reverted after reading D0 directly rather than on the
   coordinator's word alone — the same verification spec 3 performed
