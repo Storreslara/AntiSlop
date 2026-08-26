@@ -14,6 +14,36 @@
       "reason": "Constitution is stable policy document; candidates for server freeze"
     },
     {
+      "pattern": "hooks/scripts/human-decision-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; local edits are frequent during development"
+    },
+    {
+      "pattern": "hooks/scripts/reviewed-path-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; local edits are frequent during development"
+    },
+    {
+      "pattern": "hooks/scripts/stop-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; largest gate in system, edited frequently"
+    },
+    {
+      "pattern": "hooks/scripts/task-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; controls marker validity and task dispatch"
+    },
+    {
+      "pattern": "hooks/scripts/reviewer-route-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; controls reviewer dispatch and routing"
+    },
+    {
+      "pattern": "hooks/scripts/dispatch-hygiene.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; validates dispatch packet structure"
+    },
+    {
       "pattern": "hooks/scripts/protected-paths.sh",
       "tag": "local-only",
       "reason": "Gate itself; protected to prevent bypassing the protection mechanism"
@@ -22,6 +52,11 @@
       "pattern": "hooks/scripts/lib/benign-command.sh",
       "tag": "local-only",
       "reason": "Shared lexer library used by textual enforcement gates (reviewed-path-gate, human-decision-gate)"
+    },
+    {
+      "pattern": "hooks/scripts/microworld-rerun.sh",
+      "tag": "local-only",
+      "reason": "Reporter hook with audit-log contract; edited during feature work"
     },
     {
       "pattern": "hooks/scripts/graph-update.sh",
@@ -54,6 +89,16 @@
       "reason": "Session startup hook; exempt reporter, edited as other hooks change"
     },
     {
+      "pattern": "hooks/scripts/lib/agent-identity.sh",
+      "tag": "local-only",
+      "reason": "Shared library for agent identity tagging; used by gate scripts"
+    },
+    {
+      "pattern": "hooks/scripts/lib/audit-log.sh",
+      "tag": "local-only",
+      "reason": "Shared library for sidecar-sealed audit log writes; used by gate scripts"
+    },
+    {
       "pattern": "hooks/scripts/lib/graph-update-core.sh",
       "tag": "local-only",
       "reason": "Shared core for graph update hook"
@@ -64,9 +109,29 @@
       "reason": "Shared core for lint-on-edit hook"
     },
     {
+      "pattern": "hooks/scripts/lib/microworld-rerun-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for microworld rerun hook"
+    },
+    {
+      "pattern": "hooks/scripts/lib/microworld-queue.sh",
+      "tag": "local-only",
+      "reason": "Queue management for async microworld rerun; critical for Unit A async mechanism"
+    },
+    {
       "pattern": "hooks/scripts/lib/protected-paths-core.sh",
       "tag": "local-only",
       "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
+    },
+    {
+      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for stop gate; coordinates with multiple hooks"
+    },
+    {
+      "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for reviewer routing gate"
     }
   ],
   "gatedAgents": [
