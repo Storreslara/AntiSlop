@@ -34,3 +34,25 @@ For "try something risky, then restore" investigations, prefer a detached
 `git worktree add` against a specific commit (as I did to isolate the F2
 regression test's pre-existing-vs-introduced status) — it never touches the
 shared stash namespace at all.
+
+**Recurrence (spec2-unitE, 2026-08-25):** even a "correct" stash/pop (real
+"Saved working directory", stack depth verified before/after, my own stash
+popped cleanly) still isn't safe here, because the danger isn't only about
+popping the wrong stash — it's the WINDOW where the tree sits reverted to
+HEAD. A concurrent agent's own broad `git commit -a`/`add -A` landing during
+that window scoops up nothing extra (tree was clean then), but once my `pop`
+restores my edits to disk, if THEIR commit lands microseconds later than my
+pop, their broad add sweeps up MY uncommitted files under THEIR commit
+message. This is what happened: a "spec2-unitD" commit ended up containing my
+entire Unit E `protectedPaths` restructuring, correctly content-wise but
+mislabeled and un-reviewable as Unit E's own diff. Detected it by noticing
+`git diff` on files I'd just edited showed no changes (already matched HEAD)
+and cross-checking `git show --stat <their-commit>`. Recovery: don't rewrite
+their history — just commit only the genuinely-still-uncommitted remainder
+(`git add <exact files>; git commit -m ... -- <exact files>`) and note the
+mislabeled prior commit in the ready-for-review report so the reviewer can
+verify the right diff. Root cause is shared-tree concurrency, not the stash
+mechanics — the fix is the same as always: prefer a worktree, and if a plain
+`git stash` was already run, treat the immediate post-pop window as
+contended and commit your own files IMMEDIATELY, narrowly, before doing
+anything else that takes time (like running a 100s+ test suite).

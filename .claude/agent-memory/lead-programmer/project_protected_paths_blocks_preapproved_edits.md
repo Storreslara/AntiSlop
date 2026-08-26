@@ -28,6 +28,16 @@ agent `a3bc162d81334e5cf`, unit gh345-2, identical situation on the sibling
 gate — the human removed the entry. Recurred 2026-08-24 on hdg-prose-2, and
 `rpg-comment-3` will hit it next.
 
+**Recurred 2026-08-26 on spec2-unitE (lp-tag sentinel `wip-handoff.lp-spec2-unitE`):**
+same block, but on `hooks/scripts/lib/protected-paths-core.sh` itself — the
+gate's own decision logic, protected under its own `local-only` entry ("Gate
+itself; protected to prevent bypassing the protection mechanism"). Confirms
+this class extends beyond human-decision-gate.sh/reviewed-path-gate.sh to any
+file explicitly listed in `protectedPaths`, even when the fix is a
+reviewer-verified one-line security patch to the gate's own fail-open bug.
+Non-blocked parts of the same unit's fix (schema, dead-test-path fix,
+regression test) were completed and committed separately while waiting.
+
 **Recovering your own `agent_id` (for the sentinel path).** You cannot read it
 directly, and the session UUID from the scratchpad path is the WRONG key — it
 is only `stop-gate.sh`'s `.session_id` fallback, so a sentinel named for it is
