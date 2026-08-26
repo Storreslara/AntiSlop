@@ -630,6 +630,38 @@ extended sweeper, and the state-access lib.
 All commands run from the repo root. Baselines measured at `09cc304`,
 2026-08-25.
 
+> **Correction note (2026-08-26) — A8 and A16 only.** Two **M2** criteria below
+> carried arithmetic defects that predate any implementation work. Both were
+> found and measured by the reviewer during M2's own reviews and are recorded
+> verbatim in `.claude/reviewed/gh411.pass` (notes **N1** and **N2**) and
+> `.claude/reviewed/gh410.pass` (finding **2**). **This corrects the criteria,
+> not the code.** M2 tier 1 and tier 2 are implemented correctly and
+> reviewer-PASSed; both corrected criteria are **already satisfied** at
+> `96ce365`, so **no re-dispatch is needed** and this amendment generates no new
+> unit. Nothing outside A8 and A16 changes — no other criterion, milestone or
+> wave is reopened.
+>
+> - **A8 was arithmetically unreachable, not merely mis-baselined.** It counted
+>   adapter `hooks/scripts/` **recursively**, which sweeps in each port's
+>   generated `lib/` **core files** — but **A10** requires every declared-shared
+>   file to be byte-identical in all three `lib/` trees, i.e. physically copied
+>   into both adapters. Single-sourcing therefore *raises* the recursive count
+>   by design: 1,995 at `09cc304` → 2,252 at gh410's tip → 2,447 at gh411's →
+>   **3,175** at `96ce365` (the last step from unrelated later `lib/` growth,
+>   such as the `memo-key-1` re-render of `microworld-queue.sh`). No
+>   implementation satisfying A10 could ever have reached the old **≤1,097**
+>   target. A8's own rationale text confirms the modelling error: it derived the
+>   floor from "the shared portion of `stop-gate.sh`" treated as **removed**
+>   from the adapter trees, when A10 mandates it be **duplicated** into them.
+>   A8 now measures the hand-maintained thin-entry-script set, which is what the
+>   45% floor was always about.
+> - **A16's baseline was a `git ls-tree` miscount.** `git ls-tree <commit>
+>   adapters/<port>/hooks/scripts/` lists seven entries per port, but one of
+>   them is the `lib` **tree** entry, not a script; blobs alone number **6**, at
+>   `09cc304` and `96ce365` alike. The old wording ("**7** scripts plus `lib/`")
+>   double-counted `lib`. Confirmed independently by both PASS markers; no M2
+>   unit added or removed an adapter script.
+
 ### M1
 
 - **A1.** `git ls-files | grep -c 'last-review-clear'` returns **0** (baseline: 1).
@@ -642,7 +674,7 @@ All commands run from the repo root. Baselines measured at `09cc304`,
 
 ### M2
 
-- **A8.** Combined adapter hook-script volume drops by **≥45%**: `find adapters/codex/hooks/scripts adapters/cursor/hooks/scripts -type f -exec cat {} + | wc -l` returns **≤1,097** (baseline: **1,995**). The 45% floor is derived from the four low-divergence scripts plus the shared portion of `stop-gate.sh`, not chosen as a round number.
+- **A8.** *(Corrected 2026-08-26 — see the correction note above.)* Hand-maintained adapter **thin entry script** volume drops by **≥45%**: `find adapters/codex/hooks/scripts adapters/cursor/hooks/scripts -maxdepth 1 -type f -exec cat {} + | wc -l` returns **≤893** (baseline: **1,625** at `09cc304`). The `-maxdepth 1` scope is load-bearing: it counts the two ports' hand-maintained thin entry scripts and excludes their generated `lib/` core files, which A10 requires to be byte-identical copies and which therefore *add* volume by design. `lib/` is the only subdirectory under either port's `hooks/scripts/`, at baseline and now, so `-maxdepth 1` and `! -path '*/lib/*'` are equivalent here — both return 581. The **≥45%** floor is carried over unchanged from the original criterion; what was defective was the measurement set and its baseline, not the target reduction. **Already satisfied at `96ce365`: 581 lines, −64.2%.**
 - **A9.** Generation is proven equivalent, not asserted: after `node bin/cli.js --update --force-render`, `diff -r hooks/scripts/lib adapters/codex/hooks/scripts/lib` and `diff -r hooks/scripts/lib adapters/cursor/hooks/scripts/lib` both exit **0** with empty output.
 - **A10.** Every file in the declared **shared** set exists in all three `lib/` trees **and** is byte-identical. Both halves are required: a hash-only check silently passes on a file that is simply absent from the adapters. Machine-check — for each file in the shared set, `test -f` in both adapter trees succeeds **and** `md5sum` across the three copies yields **1** distinct hash. Baseline: `agent-identity.sh` present-in-all-3 with 1 distinct hash; `benign-command.sh` **absent from both adapters** and therefore must **not** be in the shared set.
 - **A11.** Regeneration is idempotent and drift is detectable: running `--update --force-render` twice leaves `git status --porcelain` empty on the second run; and after hand-mutating one byte in an adapter `lib/` file, `node bin/cli.js --update --check` exits **non-zero**.
@@ -650,7 +682,7 @@ All commands run from the repo root. Baselines measured at `09cc304`,
 - **A13.** The retargeted parity test is **non-vacuous**: reverting any one port's shim contract assignment causes it to exit non-zero. Verified by mutation, recorded in the unit's marker.
 - **A14.** `tests/adapter-protocol-parity.test.js` is **byte-unchanged**: `git diff --quiet HEAD~ -- tests/adapter-protocol-parity.test.js` exits 0 for every unit in M2.
 - **A15.** No new adapter ports appear: `find adapters -name 'reviewed-path-gate.sh' -o -name 'human-decision-gate.sh' -o -name 'dispatch-hygiene.sh' | wc -l` returns **0**.
-- **A16.** Per-port hook counts are unchanged: each adapter tree still carries **7** scripts plus `lib/` (baseline: 7 each).
+- **A16.** *(Corrected 2026-08-26 — see the correction note above.)* Per-port hook counts are unchanged: each adapter tree still carries **6** thin entry scripts plus a `lib/` directory (baseline: **6** each — only 6 of the 14 `hooks/scripts/*.sh` files have any adapter port at all). Machine-check: `find adapters/codex/hooks/scripts adapters/cursor/hooks/scripts -maxdepth 1 -type f | wc -l` returns **12**, and `test -d adapters/codex/hooks/scripts/lib && test -d adapters/cursor/hooks/scripts/lib` exits **0**. **Already satisfied at `96ce365`.**
 
 ### M3
 
