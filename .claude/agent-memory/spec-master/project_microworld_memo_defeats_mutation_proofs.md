@@ -41,9 +41,21 @@ tree-state breakage would vary.
    relaxing the bundle to match would delete real coverage and leave the
    vacuity undetectable. Fix belongs in `_memo_setup`, not the bundles.
 3. When specing anything that touches the microworld queue, require the memo
-   key to include the content hash of the files the suite exercises, or an
-   opt-out a mutation-proof `run.sh` can set. A criterion of the shape "bundle
-   X exits 0 under the queue" is not machine-checkable today for this class.
+   key to distinguish invocations that can legitimately differ. **Correction
+   (measured 2026-08-26, while specing the fix): a content hash of "the files
+   the suite exercises" — this memory's original suggestion — does NOT fix
+   either affected bundle.** Neither mutates the working tree. Both copy
+   `hooks/scripts/lib` to a `mktemp -d`, build the mutant there, and re-invoke
+   the suite with an env prefix (`GATE_UNDER_TEST=…`): `rpg-canon-2/run.sh:29`,
+   `hdg-anchor-1/run.sh:31`. The tree is byte-identical across baseline and
+   mutant; **the environment is the only difference**, so a tree hash computes
+   the same key for both. What was measured to work: argv+`env` digest in the
+   key, AND/OR a "one cache hit per shell per key" guard (`<key>.$$.seen`);
+   both preserve AC-A4 dedup at 1 execution. The naive owner-PID-in-the-`.rc`
+   variant was measured BROKEN — a bundle that takes a cross-owner hit never
+   becomes the owner, so all its later calls hit too. A criterion of the shape
+   "bundle X exits 0 under the queue" is not machine-checkable for this class
+   until the fix lands. Full spec: `docs/plans/2026-08-26-microworld-memo-mutation-proof.md`.
 4. Not a timeout: `rpg-canon-2`'s manifest allows 180 s and it runs in 69 s.
    That was the obvious first hypothesis and it is wrong.
 
