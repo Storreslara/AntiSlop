@@ -352,6 +352,15 @@ else
 fi
 
 echo
+echo "== stop-gate testAndLintCommand skip precondition (Bash, Unit B) =="
+if bash tests/stop-gate-microworld-skip.test.sh; then
+  echo "OK   tests/stop-gate-microworld-skip.test.sh"
+else
+  echo "FAIL tests/stop-gate-microworld-skip.test.sh"
+  fail=1
+fi
+
+echo
 echo "== microworld reactive rerun hook + relocation proof (Bash) =="
 if bash tests/microworld-rerun.test.sh; then
   echo "OK   tests/microworld-rerun.test.sh"

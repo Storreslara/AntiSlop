@@ -90,6 +90,117 @@ see ${dot_label}/microworld-audit.log"
 fi
 # --- end Unit A deferred surfacing -----------------------------------------
 
+# --- Unit B (cheapen the redundant stop-gate run): skip precondition ------
+# Step 4 below (testAndLintCommand) is redundant work whenever Unit A's
+# rerun queue has ALREADY proven every changed file clean via a bundle that
+# watches it, and nothing has changed since. microworld_skip_ok is provably
+# conservative (AC-B5): any changed file watched by no bundle, any bundle
+# whose latest result for that file isn't a pass, or a pass no fresher than
+# the file's own mtime (an edit may have landed after it) each make it
+# return 1 - it only ever adds a skip, never removes a check.
+#
+# _mw_file_iso <abs-path> - the file's mtime as a UTC ISO-8601 string,
+# comparable lexicographically against the audit log's own timestamp field
+# (same format). GNU/BSD stat dual-fallback matches review_join_state's
+# existing convention below.
+_mw_file_iso() {
+  local mtime
+  mtime="$(stat -L -c %Y "$1" 2>/dev/null || stat -L -f %m "$1" 2>/dev/null)" || return 1
+  case "$mtime" in ''|*[!0-9]*) return 1 ;; esac
+  date -u -d "@${mtime}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+    || date -u -r "$mtime" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null
+}
+
+# _mw_bundles_for_file <project_dir> <rel_path> - one bundle slug per line
+# for every microworlds/*/manifest.json whose `watch` globs match rel_path,
+# using the SAME glob-matching semantics as microworld-rerun-core.sh's own
+# tier-B check, so "watched" here means exactly what enqueued it there.
+_mw_bundles_for_file() {
+  local project_dir="$1" rel_path="$2" manifest slug globs glob matched
+  for manifest in "${project_dir}"/microworlds/*/manifest.json; do
+    [ -f "$manifest" ] || continue
+    slug="$(basename "$(dirname "$manifest")")"
+    globs="$(jq -r '.watch[]? // empty' "$manifest" 2>/dev/null)" || continue
+    matched=false
+    while IFS= read -r glob; do
+      [ -n "$glob" ] || continue
+      case "$rel_path" in
+        $glob) matched=true ;;
+      esac
+    done <<< "$globs"
+    [ "$matched" = true ] && echo "$slug"
+  done
+}
+
+# _mw_latest_result <audit> <slug> <file> - prints "<timestamp> <result>"
+# for the LAST audit-log line naming this exact (unit, file) pair, or
+# nothing. Field-parsed, not regex-matched against the raw line, so a
+# slug/path containing regex metacharacters can never produce a false match.
+_mw_latest_result() {
+  awk -v slug="$2" -v file="$3" '
+    { u=""; r=""; f="";
+      for (i = 2; i <= NF; i++) {
+        if ($i ~ /^unit=/) u = substr($i, 6);
+        else if ($i ~ /^result=/) r = substr($i, 8);
+        else if ($i ~ /^file=/) f = substr($i, 6);
+      }
+      if (u == slug && f == file) { last_ts = $1; last_r = r }
+    }
+    END { if (last_ts != "") print last_ts" "last_r }
+  ' "$1" 2>/dev/null
+}
+
+# _mw_changed_files <project_dir> <baseline_sha> <moved> - one relative path
+# per line: the dirty working tree (git status --porcelain) plus, if HEAD
+# has moved since this session's baseline, everything committed since.
+_mw_changed_files() {
+  local project_dir="$1" baseline_sha="$2" moved="$3" line path
+  git -C "$project_dir" status --porcelain 2>/dev/null | while IFS= read -r line; do
+    path="${line:3}"
+    case "$path" in *' -> '*) path="${path##* -> }" ;; esac
+    printf '%s\n' "$path"
+  done || true
+  if [ "$moved" = true ] && [ -n "$baseline_sha" ]; then
+    git -C "$project_dir" diff --name-only "$baseline_sha" HEAD 2>/dev/null || true
+  fi
+}
+
+# microworld_skip_ok <project_dir> <audit> <baseline_sha> <moved> - AC-B1/B5.
+# Returns 0 only when EVERY changed file is watched by at least one bundle
+# and EVERY such bundle's latest result for that file is a pass logged
+# strictly after the file's own mtime. Any other outcome - no bundle, no
+# recorded result, a fail/timeout/error result, or an unreadable timestamp -
+# returns 1 (fail closed, AC-B5).
+microworld_skip_ok() {
+  local project_dir="$1" audit="$2" baseline_sha="$3" moved="$4"
+  local file slug bundles file_iso latest ts result seen=""
+  [ -r "$audit" ] || return 1
+
+  while IFS= read -r file; do
+    [ -n "$file" ] || continue
+    case " $seen " in *" $file "*) continue ;; esac
+    seen="$seen $file"
+
+    bundles="$(_mw_bundles_for_file "$project_dir" "$file")"
+    [ -n "$bundles" ] || return 1
+
+    file_iso="$(_mw_file_iso "${project_dir}/${file}")" || return 1
+
+    while IFS= read -r slug; do
+      [ -n "$slug" ] || continue
+      latest="$(_mw_latest_result "$audit" "$slug" "$file")"
+      [ -n "$latest" ] || return 1
+      ts="${latest%% *}"
+      result="${latest#* }"
+      [ "$result" = pass ] || return 1
+      [[ "$ts" > "$file_iso" ]] || return 1
+    done <<< "$bundles"
+  done < <(_mw_changed_files "$project_dir" "$baseline_sha" "$moved")
+
+  return 0
+}
+# --- end Unit B skip precondition ------------------------------------------
+
 # review-join: a marker counts only for the unit whose stamp names it. The
 # stamps are written at dispatch time by reviewer-route-gate.sh because the
 # SubagentStop payload carries no unit id and no prompt - the join cannot be
@@ -420,6 +531,15 @@ fi
 [ -f "$config" ] || allow
 check_cmd="$(jq -r '.testAndLintCommand // empty' "$config" 2>/dev/null || true)"
 [ -n "$check_cmd" ] || allow
+
+# Unit B: skip testAndLintCommand when Unit A's queue already proved every
+# changed file clean (AC-B1/B2/B5). Logged with a token distinct from every
+# other review-audit.log line, so "checked and passed" (no line here) is
+# never conflated with "skipped because already checked" (this line).
+if microworld_skip_ok "$project_dir" "${dot}/microworld-audit.log" "${baseline_sha:-}" "$moved"; then
+  printf '%s microworld-skip=testAndLintCommand\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+  allow
+fi
 
 tmp_out="$(mktemp)"
 if ! (cd "$project_dir" && eval "$check_cmd") >"$tmp_out" 2>&1; then
