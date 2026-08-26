@@ -92,8 +92,8 @@ block() {
   case "$count" in ''|*[!0-9]*) count=0 ;; esac
   count=$((count + 1))
   if [ "$count" -ge 5 ]; then
-    printf '%s loop-guard tripped (5 consecutive blocks) - forcing ALLOW\n' \
-      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$review_audit"
+    audit_append "$review_audit" "$(printf '%s loop-guard tripped (5 consecutive blocks) - forcing ALLOW' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     rm -f "$loop_guard_file"
     exit 0
   fi
