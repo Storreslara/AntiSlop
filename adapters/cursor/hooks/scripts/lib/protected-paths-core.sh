@@ -14,7 +14,7 @@ set -euo pipefail
 [ -f "$config" ] || exit 0
 [ -n "$paths" ] || exit 0
 
-protected="$(jq -r '.protectedPaths[]? | .pattern // . // empty' "$config" 2>/dev/null || true)"
+protected="$(jq -r '.protectedPaths[]? | .pattern? // . // empty' "$config" 2>/dev/null || true)"
 [ -n "$protected" ] || exit 0
 
 while IFS= read -r file_path; do
