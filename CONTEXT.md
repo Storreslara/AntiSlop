@@ -24,6 +24,19 @@ the one-time per-project setup process that turns the
   [[Dispatch hygiene]], [[Commit attribution]], [[`.escalated` marker]], and
   [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
 
+**baseline currency**:
+(unit spec2-unitE, 2026-08-26) — the property that a fileHashes baseline's
+  recorded hashes remain synchronized with the actual mirror content on disk.
+  Distinct from mirror *content* drift (where semantic content changes); baseline
+  currency tracks whether hashes are stale relative to content that may still be
+  content-correct. The **filehashes-currency test** (`tests/filehashes-currency.test.js`)
+  verifies this as a standing merge gate, catching regressions of the "stale
+  fileHashes after mirror regen" bug class (occurred 3× in 2026-08). Implemented
+  using `sha256Hex()` and `stripStamp()` functions exported from `bin/cli.js`.
+  Known limitations (not required fixes, noted for maintenance): unguarded
+  empty-fileHashes-map path would pass vacuously if ever emptied; slightly-early
+  counter increment weakens "examined === keyCount" completeness assertion.
+
 **Persona**:
 a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
