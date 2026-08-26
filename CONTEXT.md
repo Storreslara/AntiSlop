@@ -135,12 +135,16 @@ _Avoid_: marker-directory gate
 (unit #132, 2026-08-10) — a hook script that observes and logs an
   action without blocking it; the formal antonym of **Gate**. Unlike a gate,
   which refuses an action, a reporter permits it and records metadata in an
-  audit trail. Example: `microworld-rerun.sh` is a reporter that captures
-  microworld bundle execution results (pass/fail/timeout) and infrastructure
-  failures, logging to `.claude/microworld-audit.log`. Exit codes: 2 signals a
-  genuine bundle failure (surfaces stderr to the model, does not block); 0
-  covers both "nothing matched" and "infrastructure broke" (fail-open). The
-  reporter/gate distinction is a formal semantic pairing; never conflate them.
+  audit trail. Example: `microworld-rerun.sh` is a reporter that enqueues
+  microworld bundles and watch-map entries for **deferred result surfacing** via
+  an async **drain loop** (unit A, 2026-08-25), logging to `.claude/microworld-audit.log`.
+  It returns immediately (exit 0 on success, 2 on infrastructure failures like missing
+  `run.sh` or timeout parsing errors) without waiting for the actual bundle run,
+  which executes asynchronously via the **drain loop**. Results are surfaced in
+  the **same session** by `stop-gate.sh`'s deferred-result reader (primary channel)
+  or `session-start.sh`'s backstop reader (for results from prior sessions). See
+  [[deferred result surfacing]], [[drain loop]], [[results-reported cursor]].
+  The reporter/gate distinction is a formal semantic pairing; never conflate them.
 
 **grant-denied**:
 an append-only audit-log record class written to
@@ -180,8 +184,18 @@ an append-only audit-log record class written to
   `.claude/microworld-audit.log` (+ per-adapter equivalents
   `.cursor/microworld-audit.log`, `.codex/microworld-audit.log`) recording
   execution results of **microworld bundle** invocations and **watch-map**
-  entries. Written by the `microworld-rerun.sh` **Reporter** hook on every
-  `PostToolUse` for `Edit|Write` operations. Line format: `<ts> unit=<slug|entry-id> result=pass|fail|timeout file=<path>` for real runs, and `<ts> unit=<slug|entry-id> result=error ... file=<path> reason=<...>` for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.). The `unit=` field now carries both bundle slugs (**Tier B**) and watch-map entry ids (**Tier A**). Never gates; logged failures surface stderr to the model on `PostToolUse` but do not block the edit. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a fourth sibling log class.
+  entries. Populated asynchronously by the **drain loop** (not synchronously
+  on `PostToolUse`; see [[deferred result surfacing]], unit A, 2026-08-25).
+  The `microworld-rerun.sh` **Reporter** hook enqueues bundles via `PostToolUse`
+  (exit 0 on success, 2 on infrastructure failures), then the drain loop writes
+  results lines as it processes the async queue. Line format: `<ts> unit=<slug|entry-id> result=pass|fail|timeout file=<path>`
+  for real runs, and `<ts> unit=<slug|entry-id> result=error ... file=<path> reason=<...>`
+  for infrastructure failures (malformed manifest, missing `run.sh`, absent `jq`, etc.).
+  The `unit=` field carries both bundle slugs (**Tier B**) and watch-map entry ids
+  (**Tier A**). Failures are surfaced to the model by `stop-gate.sh` (primary) or
+  `session-start.sh` (backstop) via the **results-reported cursor**, never blocking
+  edits. Complements `.claude/review-audit.log` and `.claude/wip-audit.log` as a
+  fourth sibling log class. See [[Consumed interface]].
 
 **Commit attribution**:
 (unit #386, 2026-08-15) — the mechanism of recording which commit a unit was
@@ -398,6 +412,78 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md) for design
   and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
 _Avoid_: clear-watermark
+
+**results-reported cursor**:
+(unit A, 2026-08-25) — a line-count watermark at `.claude/.microworld-results-reported`
+  (one per port: `.cursor/`, `.codex/`, `.claude/`) that tracks which lines of the
+  **Microworld audit log** have already been surfaced to the user. Distinct from the
+  retired [[clear-watermark]] (a timestamp-based global flag) and the per-unit [[review-join stamp]].
+  This cursor enables "exactly-once" reporting of **deferred result surfacing** by both
+  `stop-gate.sh` (primary channel, runs at every Stop/SubagentStop) and `session-start.sh`
+  (backstop channel, runs once at session start). The reader that sees a new audit-log
+  line first advances the cursor; the other reader checks the cursor and skips already-reported
+  lines. See [[deferred result surfacing]].
+
+**deferred result surfacing**:
+(unit A, 2026-08-25) — the mechanism by which asynchronous microworld bundle
+  and watch-map entry results are reported to the user after they complete. The
+  `microworld-rerun.sh` **Reporter** enqueues bundles on `PostToolUse` and returns
+  immediately; results are logged asynchronously by the **drain loop** and surfaced
+  via two channels: `stop-gate.sh` (primary, runs at Stop/SubagentStop events in the
+  same session) and `session-start.sh` (backstop, runs once per session start for
+  results from prior sessions). Both channels use the **results-reported cursor** to
+  avoid duplicate reporting. Implemented in [[microworld-queue.sh]], [[stop-gate-core.sh]],
+  and `session-start.sh`. See [[drain loop]], [[coalescing]], [[pending file]].
+
+**drain loop**:
+(unit A, 2026-08-25) — the async background process body that consumes queued
+  microworld bundles and watch-map entries from **pending file**s and executes them,
+  logging results to the **Microworld audit log**. Implemented in `hooks/scripts/lib/microworld-queue.sh`'s
+  `_drain_loop()` function: runs as a detached child (`&` spawn) after `start_async_runner()`
+  acquires the lock, processes all pending entries in a defensive loop with a 1000-iteration
+  cap, and terminates when no pending files are found. A single drain loop instance
+  enforces at-most-one-in-flight per bundle (AC-A5) and provides suite-level dedup (AC-A4)
+  via the **coalescing** of edits into one memoizing bash wrapper. The lock file
+  `.claude/microworld-queue/.runner.lock` (created via `mkdir`) ensures only one drain loop
+  runs at a time; multiple enqueue attempts just overwrite pending files while the loop is
+  active, adding new work to the same drain pass.
+
+**coalescing**:
+(unit A, 2026-08-25) — the queueing strategy where multiple enqueued runs of the same
+  bundle from a single edit (or multiple edits in rapid succession) are collapsed into a
+  single execution within one **drain loop** pass. Implemented via **pending file** overwrites:
+  a new `enqueue_bundle()` call just writes over the old `.pending` file for that slug,
+  so the drain loop only sees the latest rel_path. Satisfies AC-A4 (dedup) and AC-A5
+  (at-most-one-in-flight + at-most-one-queued). Suite-level dedup is additionally provided
+  by the memoizing-bash wrapper (see `_memo_setup()` in [[microworld-queue.sh]]).
+
+**pending file**:
+(unit A, 2026-08-25) — a state file in `.claude/microworld-queue/` (or `.cursor/`/`.codex/`)
+  that records a bundle or watch-map entry awaiting a run. Named `<slug>.pending` for
+  **microworld bundle**s (e.g., `mytest.pending`) or `.wm.<id>.pending` for watch-map entries
+  (e.g., `.wm.check-1.pending`). Contains a single line: the relative path to the changed
+  file that triggered the enqueue. Written by `enqueue_bundle()` and `enqueue_watchmap()`
+  (overwriting on subsequent enqueues, implementing [[coalescing]]). Consumed by the **drain loop**'s
+  glob-based scan each iteration; files are deleted after processing. See [[microworld-queue.sh]].
+
+**timing harness**:
+(unit A, 2026-08-25) — a reusable latency-measurement framework at `tests/lib/timing-harness.sh`
+  that invokes a real hook with canned stdin, records wall-clock elapsed times over N iterations,
+  and computes p50/p99 percentiles. Sourced by budget tests (e.g., `tests/hook-latency-budget.test.sh`
+  for AC-A1). Exported functions: `measure_latencies()` (returns one float per line, invocation order),
+  `percentile()` (reads sorted latencies, computes p-th percentile), `assert_budget()` (measures,
+  reports, and returns nonzero if either p50 or p99 exceeds budget). Used by Unit B's AC-B1
+  to measure SubagentStop latency gates; **forward note:** `assert_budget()` currently treats any
+  nonzero exit as a budget blowout, but Unit B's AC-B1 will legitimately exit 2 when stop-gate.sh
+  has deferred results to report — a future `expected-rc` parameter is needed to avoid false failures.
+
+**latency budget** / **p50/p99 budget**:
+(unit A, 2026-08-25) — performance target thresholds (in seconds) specified for a hook test,
+  enforced by the [[timing harness]]'s `assert_budget()` function. Format: `p50_budget` (median
+  latency upper bound) and `p99_budget` (99th percentile latency upper bound). Example:
+  `assert_budget "stop-gate" 0.100 0.200 50 "$json" -- stop-gate.sh` measures 50 invocations
+  and requires p50 ≤ 0.1s and p99 ≤ 0.2s, returning nonzero if either is exceeded. Gates used
+  by AC-A1 (Unit A) and will be used by AC-B1 (Unit B).
 
 **Protocol excerpt**:
 the subset of `templates/persona-protocol.md`'s 19

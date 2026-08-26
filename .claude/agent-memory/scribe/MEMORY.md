@@ -9,3 +9,4 @@
 - [gh405 ADR-0003 TBD placeholder](project_gh405_adr0003_tbd_placeholder.md) — filed ADR-0024 but left ADR-0003's two "ADR TBD" refs unresolved; out of gh405's affected-files scope
 - [Unit #408 advisory cleanup](project_gh408_advisory_cleanup.md) — stale dashboard prose and test assertions remain after removing findings pane reader; non-blocking degradation confirmed
 - [Unit #411 documentation updates](project_gh411_documentation_updates.md) — refreshed Adapter behavioural parity description, added four new glossary entries for core-file extraction work
+- [CONTEXT.md commit before reviewer dispatch](feedback_context_commit_before_reviewer.md) — recurring pattern: commit CONTEXT.md updates before reviewer stage to avoid dirty tree issues
