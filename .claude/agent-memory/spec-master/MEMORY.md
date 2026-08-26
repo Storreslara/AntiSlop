@@ -29,7 +29,7 @@
 - [/dev/tty is a real out-of-band channel](technique_dev_tty_out_of_band_channel.md) — agent gets ENXIO, human doesn't; test openability not stdout.isTTY; a page-embedded nonce is never a boundary.
 - [Review-join null only covered zero-stamp](feedback_review_join_null_only_covered_zero_stamp.md) — an R-item's "already specified" claim wasn't; verify the referenced criterion covers the NAMED scenario, not just the general shape.
 - [Teammates cannot spawn named agents](project_teammate_cannot_spawn_named_agent.md) — `name:` is rejected; nested dispatch is an anonymous sync subagent, not lead-addressable.
-- [validate.sh IS a mirror-parity check](project_validate_sh_is_a_mirror_parity_check.md) — source edits must regen mirrors in-unit; plain `--update` can't (stamp-not-content fast path) — use `--force-render`.
+- [validate.sh IS a mirror-parity check](project_validate_sh_is_a_mirror_parity_check.md) — 5 instances; it's a FIVE-artifact change (mirrors + fileHashes); a direct hash check MUST stripStamp (13/52 FPs without it).
 - [Adapter ports are hand-maintained](project_adapter_ports_are_hand_maintained.md) — codex/cursor protocol ports are NOT rendered by cli.js; parity test asserts literal strings, so probe arrays are a deliverable.
 - [PASS-note warnings don't propagate](feedback_pass_note_warnings_do_not_propagate.md) — harvest sibling `.pass` notes for steps still ahead; gh402 predicted gh403's 2-FAIL cap verbatim and nobody acted.
 - [Dashboard usability revision spec (#406)](project_dashboard_usability_revision_spec.md) — settled rail IA / md-pane split / USER_NAME decisions + 4 premise corrections the Fable critique got wrong.

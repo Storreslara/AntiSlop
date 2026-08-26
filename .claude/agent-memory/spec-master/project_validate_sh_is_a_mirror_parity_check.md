@@ -71,3 +71,45 @@ Fourth recorded instance of this one failure class: `gh385-2.fail`,
 `gh402.pass` note 1, `gh403.fail`, `mw-step3.fail` (2026-08-25 — see
 `docs/plans/2026-08-25-debug-mw-step3-mirror-regeneration.md`; the 0.31.63
 CHANGELOG entry is the mirror-image, mirrors edited without sources).
+**Fifth: `spec2-unitE.fail` (2026-08-26)** — the *baseline-only* sub-shape:
+content correct in all four copies, only `fileHashes` stale. See
+`docs/plans/2026-08-26-debug-spec2-unite-stale-hash-baselines.md`.
+
+**The four-copy change is really a FIVE-artifact change** — three managed
+mirrors *plus* `persona-config.json`'s `fileHashes`. `spec2-unitE`'s commit
+`9832876` regenerated all three mirrors and omitted the config, so
+`bin/cli.js:1427-1431` self-healed on the next `--update`, dirtying the tree
+and turning `cli-backfill` red. Any spec whose cross-cutting constraint says
+"four-copy change" understates it; say five.
+
+**`validate.sh` has no direct `fileHashes` check** (as of 2026-08-26).
+`validate.sh:302` (`diff -rq hooks/scripts .claude/hooks/scripts`) guards
+mirror *content* only, and it was GREEN throughout `spec2-unitE`'s FAIL. The
+sole detection is `cli-backfill.test.js`'s F2/C2.12, whose message names a
+synthetic drift shape ("shape B must leave the working tree clean post-run"),
+not the real cause — three `hash would be healed (content unchanged, hash was
+stale)` lines buried in an ~80-line summary. That **misattribution**, not the
+absence of detection, is what cost three separate debug detours.
+
+**If you propose a direct hash check, `stripStamp` is mandatory — measured
+trap.** The obvious form (`sha256sum <file>` vs the recorded value) fails
+**13 of 52 entries at a known-green HEAD**: every `kind !== 'raw'` artifact
+(ten `.claude/agents/*.md`, `persona-protocol.md`, `persona-protocol-slim.md`,
+`protocol-digest.md`) records the hash of the *stamp-stripped* body per
+`bin/cli.js:476`. Route through `bin/cli.js`'s exported `sha256Hex` +
+`stripStamp` (both in `module.exports`): measured **52/52 clean, 84 ms**.
+
+**Why the render-fixed-point criterion above did NOT generalize.** It works,
+but it *mutates* the tree and presupposes a clean one, so it can only ever be
+a per-unit criterion — never a standing `validate.sh` gate. That is why the
+mw-step3 remedy failed to prevent `spec2-unitE` 24 hours later. A standing
+gate must be read-only. Also rejected, both measured: `--update --dry-run`
+(exit 3 after any constitution-§3 version bump until mirrors re-stamp, per
+`bin/cli.js:1359`/`1403-1409`/`1508`; and its exit code depends on the
+invoking machine's `~/.claude/settings.json` — the hazard
+`cli-backfill.test.js:1179-1194`'s `buildF2Home` exists to work around).
+
+Precision on line 17 above: `--dry-run` does not literally imply
+`--force-render` — the `pluginVersion` fast path at `:1359` still applies. It
+renders in the fixture because `buildF2GitFixture` copies a repo whose state
+trips drift detection.
