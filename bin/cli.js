@@ -594,6 +594,7 @@ const SHARED_HOOK_LIB_FILES = [
   'agent-identity.sh',
   'graph-update-core.sh',
   'lint-on-edit-core.sh',
+  'microworld-queue.sh',
   'microworld-rerun-core.sh',
   'protected-paths-core.sh',
   'reviewer-route-gate-core.sh',

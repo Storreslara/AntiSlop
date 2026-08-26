@@ -50,19 +50,19 @@ this project's dispatch model. pathfinder governs sizing, naming, and
 ordering; to-tickets governs tracker publishing shape (ticket bodies,
 blocking edges, labels).
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
-  haiku|sonnet|opus`. Tagging is **reactive**, not predictive: `haiku` is
+  sonnet|opus`. Tagging is **reactive**, not predictive: `sonnet` is
   the default for every unit, and a unit you judge security-sensitive,
-  structural, or otherwise hard-judgment still starts on haiku — you never
-  pre-emptively tag a unit `sonnet` or `opus`, no matter how risky it looks.
-  `sonnet`/`opus` are reachable only two ways, both reactive to something
+  structural, or otherwise hard-judgment still starts on sonnet — you never
+  pre-emptively tag a unit `opus`, no matter how risky it looks.
+  `opus` is reachable only two ways, both reactive to something
   already on record, never to your own risk judgment: (a) check
   `.claude/reviewed/<task-id>.fail` before tagging any unit — a prior FAIL is
   durable evidence it needed more judgment than first estimated;
-  never tag that unit `haiku`
+  never tag that unit `sonnet`
   (unless a `.pass` marker newer than the `.fail` record exists for that unit,
   indicating it was subsequently fixed and independently verified); or (b) the
-  orchestrator's own first-FAIL escalation (a haiku unit's first FAIL routes its
-  retry to sonnet) — that mechanism lives in `agents/orchestrator.md`, not here,
+  orchestrator's own first-FAIL escalation (a sonnet unit's first FAIL routes its
+  retry to opus) — that mechanism lives in `agents/orchestrator.md`, not here,
   and is unchanged by this rule.
 - **No reviewer-tier tag — never predict the reviewer's model**: emit no tag
   of any kind proposing which model gates a unit's review. You slice

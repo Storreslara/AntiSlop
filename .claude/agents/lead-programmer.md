@@ -1,14 +1,14 @@
 ---
 name: lead-programmer
 description: Pragmatic senior engineer that executes an approved plan step by step, TDD-first, with surgical diffs. Invoke for build/fix/refactor/test work.
-model: haiku
+model: sonnet
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
 maxTurns: 50
 ---
-<!-- antislop v0.31.64 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.31.65 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.

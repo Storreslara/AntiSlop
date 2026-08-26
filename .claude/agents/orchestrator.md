@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.64 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.65 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -309,8 +309,8 @@ disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
 exists and is newer than the fail record. Until then it disqualifies
 unchanged; while a unit is mid-retry with no PASS yet, nothing expires.
 
-**Haiku units escalate on first FAIL.** A FAIL on a `haiku` unit
-re-dispatches on `sonnet` (not haiku again) with the defect list; this still
+**Sonnet units escalate on first FAIL.** A FAIL on a `sonnet` unit
+re-dispatches on `opus` (not sonnet again) with the defect list; this still
 counts against the 2-FAIL cap. See the ratchet-expiry rule above for when a
 prior FAIL stops disqualifying.
 

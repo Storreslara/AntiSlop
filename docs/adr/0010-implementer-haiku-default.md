@@ -1,7 +1,12 @@
 # ADR 0010: Implementer tier defaults to `haiku`; judgment moved to dispatch contract
 
 Date: 2026-08-02
-Status: Accepted (works alongside ADR-0009)
+Status: Amended by ADR-0026 (2026-08-25)
+
+**AMENDMENT NOTE (2026-08-25)**: This ADR's implementer-tier default has been
+reversed. See [ADR-0026](0026-writer-tier-reversed-to-sonnet.md) for the
+ratified decision to default to `sonnet` instead, the measured basis (FAIL-rate
+doubling post-ADR-0010), and the forward-verification rule.
 
 ## Context
 

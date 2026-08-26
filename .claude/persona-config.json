@@ -3,15 +3,136 @@
   "graphUpdateCommand": "code-review-graph update --skip-flows",
   "sourceGlobs": [],
   "protectedPaths": [
-    ".github/workflows/*",
-    ".claude/constitution.md",
-    "hooks/scripts/human-decision-gate.sh",
-    "hooks/scripts/reviewed-path-gate.sh"
+    {
+      "pattern": ".github/workflows/*",
+      "tag": "server-mirror-eligible",
+      "reason": "Workflows change rarely; CI rulesets depend on this path"
+    },
+    {
+      "pattern": ".claude/constitution.md",
+      "tag": "server-mirror-eligible",
+      "reason": "Constitution is stable policy document; candidates for server freeze"
+    },
+    {
+      "pattern": "hooks/scripts/human-decision-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; local edits are frequent during development"
+    },
+    {
+      "pattern": "hooks/scripts/reviewed-path-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; local edits are frequent during development"
+    },
+    {
+      "pattern": "hooks/scripts/stop-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; largest gate in system, edited frequently"
+    },
+    {
+      "pattern": "hooks/scripts/task-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; controls marker validity and task dispatch"
+    },
+    {
+      "pattern": "hooks/scripts/reviewer-route-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; controls reviewer dispatch and routing"
+    },
+    {
+      "pattern": "hooks/scripts/dispatch-hygiene.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; validates dispatch packet structure"
+    },
+    {
+      "pattern": "hooks/scripts/protected-paths.sh",
+      "tag": "local-only",
+      "reason": "Gate itself; protected to prevent bypassing the protection mechanism"
+    },
+    {
+      "pattern": "hooks/scripts/lib/benign-command.sh",
+      "tag": "local-only",
+      "reason": "Shared lexer library used by textual enforcement gates (reviewed-path-gate, human-decision-gate)"
+    },
+    {
+      "pattern": "hooks/scripts/microworld-rerun.sh",
+      "tag": "local-only",
+      "reason": "Reporter hook with audit-log contract; edited during feature work"
+    },
+    {
+      "pattern": "hooks/scripts/graph-update.sh",
+      "tag": "local-only",
+      "reason": "Graph update hook; graph state is development-time artifact"
+    },
+    {
+      "pattern": "hooks/scripts/lint-on-edit.sh",
+      "tag": "local-only",
+      "reason": "Reporter hook; lint rules are development-time enforcement"
+    },
+    {
+      "pattern": "hooks/scripts/marker-commit-check.sh",
+      "tag": "local-only",
+      "reason": "Hook for marker commit validation; affects local verdict workflow"
+    },
+    {
+      "pattern": "hooks/scripts/heavy-trigger.sh",
+      "tag": "local-only",
+      "reason": "Utility hook; no cross-session contract"
+    },
+    {
+      "pattern": "hooks/scripts/reviewer-tier.sh",
+      "tag": "local-only",
+      "reason": "Utility script setting reviewer tier based on paths; affects local review logic"
+    },
+    {
+      "pattern": "hooks/scripts/session-start.sh",
+      "tag": "local-only",
+      "reason": "Session startup hook; exempt reporter, edited as other hooks change"
+    },
+    {
+      "pattern": "hooks/scripts/lib/agent-identity.sh",
+      "tag": "local-only",
+      "reason": "Shared library for agent identity tagging; used by gate scripts"
+    },
+    {
+      "pattern": "hooks/scripts/lib/graph-update-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for graph update hook"
+    },
+    {
+      "pattern": "hooks/scripts/lib/lint-on-edit-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for lint-on-edit hook"
+    },
+    {
+      "pattern": "hooks/scripts/lib/microworld-rerun-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for microworld rerun hook"
+    },
+    {
+      "pattern": "hooks/scripts/lib/microworld-queue.sh",
+      "tag": "local-only",
+      "reason": "Queue management for async microworld rerun; critical for Unit A async mechanism"
+    },
+    {
+      "pattern": "hooks/scripts/lib/protected-paths-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
+    },
+    {
+      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for stop gate; coordinates with multiple hooks"
+    },
+    {
+      "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for reviewer routing gate"
+    }
   ],
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.64",
+  "pluginVersion": "0.31.65",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -47,11 +168,11 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "c662d1a97208731089a33077772380eeb3fb256f8a7b0c0e7786323ddd7af3dd",
+    ".claude/agents/orchestrator.md": "4aefafae3c6d4dd1bf737590df48b2ff8eca09453f4c2ec0d531739763493576",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
-    ".claude/agents/lead-programmer.md": "51d4756b5cff6f5aa22ed80813d078197f13c151e0cf1918a460b9035599cea3",
+    ".claude/agents/lead-programmer.md": "053afa02649c2247500903765ca2d76f31ce9cfbb972e3f853d0908fd7aee761",
     ".claude/agents/spec-master.md": "7fca5141ef3a6941293e9130d88c48612d2e1a907e9de0cebb7b3c7421ad5ac8",
-    ".claude/agents/task-master.md": "00aee58c136b08573d9dce87b6bdfdf11a93a62d8949e23d0435e4acd5d585f1",
+    ".claude/agents/task-master.md": "e04f28f8e0cd151965a03d953a3aa5803d6ed9f0b37777ef05d21f0aaa20a09f",
     ".claude/agents/scribe.md": "7c414abb1b10688499a16a055772c73a199cdfb07e8bca7d75dc1f52945e0a8a",
     ".claude/agents/reviewer.md": "45d03327d224445eca2802d4388fc63522d0e13ef342ee4209c82c3be7a3e5be",
     ".claude/agents/milestone-auditor.md": "52cb64b82638f67559068c81408b7caf3d4347db8431dc40d4e4fa1f9d036d07",
@@ -78,24 +199,27 @@
     ".claude/hooks/scripts/marker-commit-check.sh": "d98f9f6c4557238fca131ad4b08e9ff5fd738da23ed66da6647b5dc8e3571442",
     ".claude/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
     ".claude/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
-    ".claude/hooks/scripts/lib/microworld-rerun-core.sh": "5efe47e5afe04b41c74a310d9345effafc1d63fefc9b014a4cab93779a4c431b",
-    ".claude/hooks/scripts/lib/protected-paths-core.sh": "d8a1d0862699c34710207329e095d488f37096d0cf422120ef1b991b4ee78921",
+    ".claude/hooks/scripts/lib/microworld-rerun-core.sh": "d4208bb77d009369aa97ede2266ee135c8658b2d8d27ae5ea699539cdd722096",
+    ".claude/hooks/scripts/lib/protected-paths-core.sh": "519b6223a723fdf784703cd2059df77d4057e516b61d48d9e1869708df2cc648",
     "adapters/codex/hooks/scripts/lib/agent-identity.sh": "21c457832899bc96225acb13c8c07b359b4bcf45d4cd88f3701b1acf425c577c",
     "adapters/cursor/hooks/scripts/lib/agent-identity.sh": "21c457832899bc96225acb13c8c07b359b4bcf45d4cd88f3701b1acf425c577c",
     "adapters/codex/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
     "adapters/codex/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
-    "adapters/codex/hooks/scripts/lib/microworld-rerun-core.sh": "5efe47e5afe04b41c74a310d9345effafc1d63fefc9b014a4cab93779a4c431b",
-    "adapters/codex/hooks/scripts/lib/protected-paths-core.sh": "d8a1d0862699c34710207329e095d488f37096d0cf422120ef1b991b4ee78921",
+    "adapters/codex/hooks/scripts/lib/microworld-rerun-core.sh": "d4208bb77d009369aa97ede2266ee135c8658b2d8d27ae5ea699539cdd722096",
+    "adapters/codex/hooks/scripts/lib/protected-paths-core.sh": "519b6223a723fdf784703cd2059df77d4057e516b61d48d9e1869708df2cc648",
     "adapters/cursor/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
     "adapters/cursor/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
-    "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "5efe47e5afe04b41c74a310d9345effafc1d63fefc9b014a4cab93779a4c431b",
-    "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "d8a1d0862699c34710207329e095d488f37096d0cf422120ef1b991b4ee78921",
+    "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "d4208bb77d009369aa97ede2266ee135c8658b2d8d27ae5ea699539cdd722096",
+    "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "519b6223a723fdf784703cd2059df77d4057e516b61d48d9e1869708df2cc648",
     ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
     ".claude/hooks/scripts/lib/stop-gate-core.sh": "f82dc307f9cdc209cd233dad5bc3f9cbc31bfdb5816bc6f8a4559fd0e605ad32",
     "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
     "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "f82dc307f9cdc209cd233dad5bc3f9cbc31bfdb5816bc6f8a4559fd0e605ad32",
     "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "1dd2c1cc3a174a301bedffcac8b8dbbb6f80757d0a55ca0ab6af567af5833bd4",
-    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "f82dc307f9cdc209cd233dad5bc3f9cbc31bfdb5816bc6f8a4559fd0e605ad32"
+    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "f82dc307f9cdc209cd233dad5bc3f9cbc31bfdb5816bc6f8a4559fd0e605ad32",
+    ".claude/hooks/scripts/lib/microworld-queue.sh": "9a45f68b02423c2f7fa4f4ca877e84ae1a057ea90a40b63e60ad8e3f4de8307a",
+    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "9a45f68b02423c2f7fa4f4ca877e84ae1a057ea90a40b63e60ad8e3f4de8307a",
+    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "9a45f68b02423c2f7fa4f4ca877e84ae1a057ea90a40b63e60ad8e3f4de8307a"
   },
   "humanReviewMode": "off"
 }

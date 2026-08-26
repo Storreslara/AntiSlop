@@ -4,6 +4,11 @@
 # adapters/*/hooks/scripts/lib/microworld-rerun-core.sh are generated copies
 # (node bin/cli.js --update --force-render). Sourced, never executed.
 #
+# CONTRACT CHANGE (Unit A — async rerun): The hook's contract changes from
+# "run and report" to "enqueue and return". Bundles are queued for async
+# execution; the hook returns 0 immediately. Results are surfaced at the next
+# Stop/SubagentStop by stop-gate.sh.
+#
 # Caller contract (set before sourcing): project_dir, audit (absolute path to
 # the port's own microworld-audit.log), paths (newline-separated candidate
 # file path(s), already extracted from the port's own payload shape — zero,
@@ -29,7 +34,13 @@ command -v jq >/dev/null 2>&1 || { log - error - no-jq; exit 0; }
 
 [ -n "$paths" ] || exit 0
 
-broken=""
+# Source queue management library
+lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "${lib_dir}/microworld-queue.sh"
+
+# Track which bundles need to run (for deduplication)
+declare -A bundles_to_enqueue
+
 while IFS= read -r file_path; do
   [ -n "$file_path" ] || continue
   [ -e "$file_path" ] || continue
@@ -66,20 +77,8 @@ while IFS= read -r file_path; do
       continue
     fi
 
-    secs="$(jq -r '.timeoutSeconds // 60' "$manifest" 2>/dev/null || echo 60)"
-    case "$secs" in ''|*[!0-9]*) secs=60 ;; esac
-
-    # run.sh is invoked directly with the changed path as a positional
-    # parameter - never string-interpolated into an eval'd command - so a
-    # crafted filename cannot inject shell. cwd is the project root.
-    rc=0
-    ( cd "$project_dir" && timeout "$secs" bash "./microworlds/${slug}/run.sh" "$rel_path" ) \
-      >/dev/null 2>&1 || rc=$?
-    case "$rc" in
-      0)   log "$slug" pass "$rel_path" ;;
-      124) log "$slug" timeout "$rel_path"; broken="$broken $slug(timeout)" ;;
-      *)   log "$slug" fail "$rel_path"; broken="$broken $slug" ;;
-    esac
+    # Mark for enqueueing (dedup at bundle level)
+    bundles_to_enqueue["$slug"]="$rel_path"
   done
 
   # Check watch-map (tier A) entries
@@ -113,6 +112,7 @@ while IFS= read -r file_path; do
       done <<< "$globs"
       [ "$matched" = true ] || continue
 
+      # For watch-map, run synchronously inline (not async yet)
       secs="$(echo "$entry_json" | jq -r '.timeoutSeconds // 60' 2>/dev/null || echo 60)"
       case "$secs" in ''|*[!0-9]*) secs=60 ;; esac
 
@@ -129,16 +129,23 @@ while IFS= read -r file_path; do
 
       case "$rc" in
         0)   log "$id" pass "$rel_path" ;;
-        124) log "$id" timeout "$rel_path"; broken="$broken $id(timeout)" ;;
-        *)   log "$id" fail "$rel_path"; broken="$broken $id" ;;
+        124) log "$id" timeout "$rel_path" ;;
+        *)   log "$id" fail "$rel_path" ;;
       esac
     done <<< "$entries"
   fi
 done <<< "$paths"
 
-if [ -n "$broken" ]; then
-  printf 'microworld: bundle(s) broken by this edit:%s\n' "$broken" >&2
-  printf 'see %s\n' "$audit" >&2
-  exit 2
+# Enqueue all marked bundles for async execution
+for slug in "${!bundles_to_enqueue[@]}"; do
+  rel_path="${bundles_to_enqueue[$slug]}"
+  enqueue_bundle "$project_dir" "$slug" "$rel_path"
+done
+
+# Start async runner if any bundles were enqueued
+if [ "${#bundles_to_enqueue[@]}" -gt 0 ]; then
+  start_async_runner "$project_dir"
 fi
+
+# Always return 0 - reporter, not a gate
 exit 0

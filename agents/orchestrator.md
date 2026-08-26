@@ -308,8 +308,8 @@ disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
 exists and is newer than the fail record. Until then it disqualifies
 unchanged; while a unit is mid-retry with no PASS yet, nothing expires.
 
-**Haiku units escalate on first FAIL.** A FAIL on a `haiku` unit
-re-dispatches on `sonnet` (not haiku again) with the defect list; this still
+**Sonnet units escalate on first FAIL.** A FAIL on a `sonnet` unit
+re-dispatches on `opus` (not sonnet again) with the defect list; this still
 counts against the 2-FAIL cap. See the ratchet-expiry rule above for when a
 prior FAIL stops disqualifying.
 

@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.31.65] - 2026-08-25
+
+**Writer-tier re-pricing to `sonnet`, reversing ADR-0010 (spec unit D, agent-throughput-performance-dampeners).** Lead-programmer default model changes from `haiku` to `sonnet` based on measured FAIL-rate doubling post-ADR-0010 (16.7% pre → 32.5% post) and measured cost concentration in re-verification rather than writer tier (opus 58.6% vs haiku 4.6% of total spend). The reversal is ratified (user, 2026-08-25) with explicit forward-verification rule: after ≥60 units on `sonnet` default, FAIL rate must fall below 32.5%, else the amendment must be revisited. A new cost-accounting script (`scripts/spend-accounting.sh`, --until cutoff required) records the decision basis and serves as the standing tool for forward verification. The escalation ladder starts one rung higher (sonnet → opus on FAIL, rather than haiku → sonnet → opus). No pre-emptive tier prediction is reintroduced; `task-master` tagging remains reactive. The reviewer-gate ratchet and ADR-0009 measurement remain untouched.
+
+### Changed
+- **`agents/lead-programmer.md`**: `model: haiku` → `model: sonnet` frontmatter change (triggers constitution P3).
+- **`agents/orchestrator.md`**: "Haiku units escalate on first FAIL" → "Sonnet units escalate on first FAIL… on `sonnet` (not sonnet again)" with escalation to `opus` (not `sonnet`).
+- **`agents/task-master.md`**: per-unit model tag default value `haiku` → `sonnet` in both the reactive escalation section and the documentation.
+- **`README.md`**: persona table, lead-programmer row: `model` column changed `haiku` → `sonnet`.
+- **`CONTEXT.md`**: Writer-tier glossary entry and any references to the default changed from `haiku` to `sonnet`.
+- **`docs/adr/0010-implementer-haiku-default.md`**: status line amended to mark ADR as superseded by ADR-0026, forward link added.
+- **`docs/adr/0026-writer-tier-reversed-to-sonnet.md`** (new): decision, ratification, measured basis (§B4 figures), acknowledged confounds, forward-verification rule, cost-accounting script commitment.
+- **`scripts/spend-accounting.sh`** (new): read-only cost-accounting script accepting --until <ISO-8601> cutoff, emits per-model spend and per-period FAIL rate in stable JSON, based on transcript corpus and `.claude/reviewed/` markers.
+- **`.claude-plugin/plugin.json`** / **`package.json`**: version bump 0.31.64 → 0.31.65 (constitution P3).
+- **`.claude/agents/*.md`** / **`.claude/persona-protocol*.md`** / **`.claude/protocol-digest.md`** / **`.claude/persona-config.json`**'s `fileHashes`: regenerated via `node bin/cli.js --update --force-render` (G1/G2).
+
 ## [0.31.64] - 2026-08-25
 
 **Reviewer authors and stamps the escalation manifest (mw-step3, Step 3 of the 2026-08-25 microworlds-workflow-redesign plan).** At escalation time, the reviewer now verifies each `functions[]` entry's `location` against the escalation commit, corrects stale line ranges in the **packet copy only** (never the working bundle), authors `functions[]` when the unit has none, and stamps a `verifiedBy` block into the packet's `manifest.json` with agent, timestamp, commit SHA, authorship provenance (reviewer or implementer-verified), location checks, and corrections. The lead-programmer no longer authors `functions[]` at implementation time — authorship moves to the reviewer at escalation so it is coupled to the commit and party that the human actually trusts. The bundle-presence check accepts tier A units covered by `tests/watch-map.json` as a valid state. The dashboard's escalation view renders a provenance line when `verifiedBy` is present ("Verified by reviewer at commit: <sha>") and an explicit "unverified — carried over from implementation" marker when absent. Per constitution §3, both working bundles and watch-map entries remain gitignored/uncommitted (no diff bloat); only the packet copy carries `verifiedBy` (no reviewer-authored field enters the working bundle).

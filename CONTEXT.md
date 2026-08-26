@@ -450,7 +450,7 @@ _Avoid_: vacuous test, untested criterion
 the `.fail` disqualifier on lead-programmer
   tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from a
   prior FAIL verdict) permanently removes access to cheaper tiers, forcing
-  `sonnet`→`opus` or `haiku`→`sonnet` on re-attempt. This ratchet expires on a
+  `sonnet`→`opus` on re-attempt. This ratchet expires on a
   subsequent verified PASS marker for that unit (unit #233). Distinct from the
   reviewer-gate ratchet.
 
