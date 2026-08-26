@@ -713,6 +713,24 @@ else
 fi
 
 echo
+echo "== protected-paths.sh coverage (Node) =="
+if node tests/protected-paths-coverage.test.js; then
+  echo "OK   tests/protected-paths-coverage.test.js"
+else
+  echo "FAIL tests/protected-paths-coverage.test.js"
+  fail=1
+fi
+
+echo
+echo "== protected-paths.sh gate functionality (Bash) =="
+if bash tests/protected-paths-gate.test.sh; then
+  echo "OK   tests/protected-paths-gate.test.sh"
+else
+  echo "FAIL tests/protected-paths-gate.test.sh"
+  fail=1
+fi
+
+echo
 echo "== rollout wave-graph preflight checker (Bash, scaffolding) =="
 rollout_test="tests/rollout-preflight.test.sh"
 if bash "$rollout_test"; then

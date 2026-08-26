@@ -1,0 +1,108 @@
+#!/usr/bin/env node
+// AC-E1: Every *.sh under hooks/scripts/ is either protected or exempted with reason
+
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require('child_process');
+
+const projectDir = path.resolve(__dirname, '..');
+const hooksDir = path.join(projectDir, 'hooks', 'scripts');
+const configPath = path.join(projectDir, '.claude', 'persona-config.json');
+
+// Exemption list: scripts that are deliberately not protected, with reasoning
+const exemptions = {
+  // Currently empty - all hook scripts are critical to the system's integrity
+};
+
+const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+const protectedPaths = config.protectedPaths || [];
+
+// Extract all patterns from protectedPaths (handle both string and object formats)
+const patterns = protectedPaths.map(entry =>
+  typeof entry === 'string' ? entry : entry.pattern
+);
+
+// Enumerate all .sh files under hooks/scripts/
+function getAllShFiles(dir, baseDir = '') {
+  const files = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+    const relPath = baseDir ? path.join(baseDir, entry.name) : entry.name;
+
+    if (entry.isDirectory()) {
+      files.push(...getAllShFiles(fullPath, relPath));
+    } else if (entry.isFile() && entry.name.endsWith('.sh')) {
+      files.push(relPath);
+    }
+  }
+
+  return files;
+}
+
+// Check if a path matches any pattern (mimics bash case statement)
+function matchesPattern(filePath, patterns) {
+  for (const pattern of patterns) {
+    // Convert glob pattern to regex
+    const regexPattern = pattern
+      .replace(/\./g, '\\.')
+      .replace(/\*/g, '[^/]*')
+      .replace(/\?/g, '.');
+
+    const regex = new RegExp(`^${regexPattern}$`);
+    if (regex.test(filePath)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const allFiles = getAllShFiles(hooksDir);
+const uncovered = [];
+const covered = [];
+
+for (const file of allFiles) {
+  const isExempt = exemptions[file] !== undefined;
+  // Check both relative path (from hooks/scripts) and full path (from project root)
+  const fullPath = path.join('hooks', 'scripts', file);
+  const isProtected = matchesPattern(file, patterns) || matchesPattern(fullPath, patterns);
+
+  if (!isProtected && !isExempt) {
+    uncovered.push(file);
+  } else if (isProtected) {
+    covered.push(file);
+  }
+}
+
+// Report results
+console.log(`Total hook scripts found: ${allFiles.length}`);
+console.log(`Protected: ${covered.length}`);
+console.log(`Exempted: ${Object.keys(exemptions).length}`);
+
+if (uncovered.length > 0) {
+  console.error(`\nERROR: ${uncovered.length} script(s) not covered:\n`);
+  for (const file of uncovered) {
+    console.error(`  - hooks/scripts/${file}`);
+  }
+  console.error('\nEvery script must be either in protectedPaths or exemptions.');
+  process.exit(1);
+}
+
+// Verify all exemptions have reasons
+for (const [script, reason] of Object.entries(exemptions)) {
+  if (!reason || !reason.trim()) {
+    console.error(`ERROR: Exemption for ${script} has no reason`);
+    process.exit(1);
+  }
+}
+
+console.log('\n✓ All hook scripts are covered');
+if (Object.keys(exemptions).length > 0) {
+  console.log('\nExempted scripts:');
+  for (const [script, reason] of Object.entries(exemptions)) {
+    console.log(`  - ${script}: ${reason}`);
+  }
+}
+
+process.exit(0);
