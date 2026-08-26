@@ -307,6 +307,15 @@ else
 fi
 
 echo
+echo "== persona-config fileHashes baselines match on-disk content =="
+if node tests/filehashes-currency.test.js; then
+  echo "OK   tests/filehashes-currency.test.js"
+else
+  echo "FAIL tests/filehashes-currency.test.js"
+  fail=1
+fi
+
+echo
 echo "== agent-identity library: identity_drift_log behaviour (Bash) =="
 if bash tests/agent-identity-lib.test.sh; then
   echo "OK   tests/agent-identity-lib.test.sh"
