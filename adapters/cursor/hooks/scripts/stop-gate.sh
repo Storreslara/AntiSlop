@@ -59,6 +59,7 @@ set -euo pipefail
 # shellcheck source=lib/agent-identity.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.workspace_roots[0] // .cwd // "."' 2>/dev/null || echo .)"
@@ -66,6 +67,7 @@ dot="${project_dir}/.cursor"
 dot_label=".cursor"
 config="${dot}/persona-config.json"
 review_audit="${dot}/review-audit.log"
+harness_arm_or_deny "$project_dir" "$dot_label"
 
 block() { echo "$1" >&2; exit 2; }
 allow() { exit 0; }

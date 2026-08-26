@@ -54,4 +54,6 @@ if [ -z "$paths" ]; then
 fi
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/harness-arm.sh"
+harness_arm_or_deny "$project_dir" ".codex"
 source "${lib_dir}/protected-paths-core.sh"

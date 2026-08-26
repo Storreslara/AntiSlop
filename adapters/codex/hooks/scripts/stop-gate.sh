@@ -73,6 +73,7 @@
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.cwd // "."' 2>/dev/null || echo .)"
@@ -80,6 +81,7 @@ dot="${project_dir}/.codex"
 dot_label=".codex"
 config="${dot}/persona-config.json"
 review_audit="${dot}/review-audit.log"
+harness_arm_or_deny "$project_dir" "$dot_label"
 
 raw_session_id="$(echo "$input" | jq -r '.session_id // "unknown"' 2>/dev/null || echo unknown)"
 session_id_for_guard="${raw_session_id//[^a-zA-Z0-9._-]/_}"
