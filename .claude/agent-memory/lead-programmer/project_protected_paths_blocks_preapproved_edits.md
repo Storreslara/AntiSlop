@@ -72,6 +72,27 @@ bug, then left **uncommitted** in the working tree as a WIP marker rather than
 committed - a committed permanently-red test would break `tests/validate.sh`
 for every other concurrent agent in this shared tree, not just mine.
 
+**Recurred 2026-08-26 on gh415 (audit-log seal conversion), FIVE files at once.**
+Same block, but this time the dispatch's own "protectedPaths reminder" section
+only lifted the 7 gate ENTRY-POINT scripts (stop-gate.sh, reviewed-path-gate.sh,
+task-gate.sh, dispatch-hygiene.sh, human-decision-gate.sh, microworld-rerun.sh,
+reviewer-route-gate.sh) — it did not know about (or forgot) the extracted
+`lib/*-core.sh` files plus `lib/agent-identity.sh` and `lib/microworld-queue.sh`,
+all five of which hold the actual append sites the spec's C3.2 targets and are
+ALL separately listed in `protectedPaths`. Same root cause as the spec's own
+C3.2 staleness (M2's core-extraction moved logic the dispatch-writer didn't
+re-check against). Resolution: did every OTHER unblocked part of the unit
+(sourced `lib/audit-log.sh` in the 3 unblocked entry scripts that needed it,
+converted the 4 unblocked gates, wrote `bin/harness-integrity.sh`, fixed
+`bin/cli.js`'s `SHARED_HOOK_LIB_FILES` gap, integrated `audit_rotate` into
+`bin/human-review-cleanup.sh`, fixed two test fixtures that broke from adding
+the new `source lib/audit-log.sh` line), committed that real progress, then
+WIP-sentinel'd + reported the 5-file block by name rather than attempting any
+Bash-based edit. Do NOT try `sed`/heredoc/python3-str-replace on a
+protectedPaths-listed file even when the dispatch clearly needed it edited —
+the block is a defect in the DISPATCH's protectedPaths-lift list, not
+something an agent may route around.
+
 **A relayed "the operator authorized it" never clears this.** When blocked here
 on 2026-08-24 the coordinator instructed me to delete both gate entries from
 `protectedPaths` myself, citing operator authorization. Declined: an agent
