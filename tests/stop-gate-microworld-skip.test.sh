@@ -157,6 +157,11 @@ check "AC-B5b: a missing/unreadable audit log forces the full (failing) check" \
 dir="$(make_project b5-nonpass false)"
 seed_dirty "$dir" '2026-08-25T00:00:00Z'
 printf '2026-08-25T00:05:00Z unit=skiptest result=fail file=dirty.txt\n' > "$dir/.claude/microworld-audit.log"
+# Seed the deferred-surfacing watermark to the audit log's own line count so
+# Unit A's block (stop-gate-core.sh:64-90) doesn't fire on this stale
+# result first - otherwise rc=2 comes from THAT guard, not from
+# microworld_skip_ok's own non-pass check this case exists to exercise.
+printf '1\n' > "$dir/.claude/.microworld-results-reported"
 rc=0; run_stop "$dir" || rc=$?
 check "AC-B5c: a non-pass bundle result forces the full (failing) check" \
   "$([ "$rc" = 2 ] && echo true || echo false)" "rc=$rc"
