@@ -473,6 +473,16 @@ _Avoid_: clear-watermark
   avoid duplicate reporting. Implemented in [[microworld-queue.sh]], [[stop-gate-core.sh]],
   and `session-start.sh`. See [[drain loop]], [[coalescing]], [[pending file]].
 
+**mutation proof**:
+(memo-key-2, 2026-08-26) — the repo's primary anti-vacuity mechanism: a
+  **[[Microworld bundle]]** that mutates the code under test (by environment prefix,
+  file modification, or equivalent mechanism) and re-invokes the same test suite,
+  expecting a *different* exit code than the unmutated baseline run. Regression tests
+  for **mutation proof** bundles are themselves mutation-proved (AC-1.3, AC-1.4 in
+  the plan). Enabled by **[[suite-level memoization]]**, which keys on code state
+  changes; prior to commit 194add2, the memoization was keyed on test path alone and
+  defeated this mechanism. See [[drain loop]].
+
 **drain loop**:
 (unit A, 2026-08-25) — the async background process body that consumes queued
   microworld bundles and watch-map entries from **pending file**s and executes them,
@@ -481,7 +491,7 @@ _Avoid_: clear-watermark
   acquires the lock, processes all pending entries in a defensive loop with a 1000-iteration
   cap, and terminates when no pending files are found. A single drain loop instance
   enforces at-most-one-in-flight per bundle (AC-A5) and provides suite-level dedup (AC-A4)
-  via the **coalescing** of edits into one memoizing bash wrapper. The lock file
+  via the **coalescing** of edits and [[suite-level memoization]]. The lock file
   `.claude/microworld-queue/.runner.lock` (created via `mkdir`) ensures only one drain loop
   runs at a time; multiple enqueue attempts just overwrite pending files while the loop is
   active, adding new work to the same drain pass.
@@ -493,7 +503,7 @@ _Avoid_: clear-watermark
   a new `enqueue_bundle()` call just writes over the old `.pending` file for that slug,
   so the drain loop only sees the latest rel_path. Satisfies AC-A4 (dedup) and AC-A5
   (at-most-one-in-flight + at-most-one-queued). Suite-level dedup is additionally provided
-  by the memoizing-bash wrapper (see `_memo_setup()` in [[microworld-queue.sh]]).
+  by [[suite-level memoization]].
 
 **pending file**:
 (unit A, 2026-08-25) — a state file in `.claude/microworld-queue/` (or `.cursor/`/`.codex/`)
@@ -503,6 +513,22 @@ _Avoid_: clear-watermark
   file that triggered the enqueue. Written by `enqueue_bundle()` and `enqueue_watchmap()`
   (overwriting on subsequent enqueues, implementing [[coalescing]]). Consumed by the **drain loop**'s
   glob-based scan each iteration; files are deleted after processing. See [[microworld-queue.sh]].
+
+**suite-level memoization**:
+(memo-key-1, 2026-08-26; AC-A4 control, expanded memo-key-2) — the exported-`bash`-function
+  wrapper (`_memo_setup` in `hooks/scripts/lib/microworld-queue.sh`, :58-80) that memoizes
+  `bash tests/*.test.sh` calls to avoid redundant suite executions within a **drain loop** pass.
+  Implements AC-A4 (dedup) across multiple **[[Microworld bundle]]**s and edits that invoke the
+  same suite identically. **Post-fix key composition** (commit 194add2): the sanitized test
+  file path (`$1`) plus a `cksum` digest over argv (`"$@"`) and environment (`env | sort`),
+  combined as `key="<sanitized-path>.<digest-value>"`. **Per-shell guard**: a `<key>.$$.seen`
+  zero-byte marker (where `$$` is the invoking shell's PID) ensures each shell consumes a cached
+  result at most once, preventing in-process [[mutation proof]] bundles from seeing stale results
+  across independent suite invocations. **Per-pass flush**: results are cached in
+  `$MICROWORLD_MEMO_DIR/results/` (a drain-loop-scoped `mktemp -d`), and this directory is
+  cleared at the top of each outer **drain loop** iteration (before the `*.pending` glob), so
+  pass-2 results are never served from pass-1 cache. Cache never overwrites an earlier result
+  (the unmutated baseline is always the authority). See [[drain loop]], [[mutation proof]].
 
 **timing harness**:
 (unit A, 2026-08-25) — a reusable latency-measurement framework at `tests/lib/timing-harness.sh`

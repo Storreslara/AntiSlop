@@ -32,9 +32,16 @@ every time. A *stable* fail/pass split across drains is the signature; genuine
 tree-state breakage would vary.
 
 **How to apply:**
-1. **Never read `result=fail` in `.claude/microworld-audit.log` as evidence a
-   unit regressed** without first re-running the bundle standalone. For a
-   mutation-proof bundle the queue's verdict is unconditionally wrong.
+1. **Before commit 194add2** (memo-key-1 fix — 2026-08-26): Never read `result=fail` in
+   `.claude/microworld-audit.log` as evidence a unit regressed without first re-running
+   the bundle standalone. For a mutation-proof bundle the queue's verdict was
+   unconditionally wrong.
+   
+   **After commit 194add2**: The memo key now includes argv+environment digest and per-shell
+   guards, so mutation-proof bundles can legitimately pass under the queue. See
+   **[[suite-level memoization]]** for the corrected behavior. Verify real regressions by
+   re-running standalone as always, but a queue PASS on a mutation-proof bundle is now valid.
+   
 2. **Never "fix" a mutation-proof bundle to make the queue green.** The memo
    defeats the repo's primary anti-vacuity mechanism (see
    [[mutate-to-prove-the-criterion]], [[verify-own-criteria-nonvacuous]]);
