@@ -346,9 +346,82 @@ the standing guard.
 open on evidence of tampering is not a trust gate, and the whole finding is that
 these gates currently fail open on exactly that evidence. Named risk (R1): a
 genuinely lost config bricks the session, and Step 2's gate simultaneously
-refuses the write that would restore it — so the refusal **must** name
-`node bin/cli.js --update`, and verifying that `--update` really reconstructs a
-*deleted* config is a **precondition on Step 1**, not an assumption.
+refuses the write that would restore it — so the refusal **must** name a recovery
+route, and verifying that the named route really reconstructs a *deleted* config
+is a **precondition on Step 1**, not an assumption.
+
+> **RD2 amended 2026-08-26 (see RD2a).** The precondition was executed and the
+> originally-named route, `node bin/cli.js --update`, **failed it**. The ruling
+> above (tampered BLOCKS) is unchanged; only the named route changed. Read RD2a
+> before implementing Step 1.
+
+**RD2a — the sanctioned recovery route is `git restore`, performed by the
+operator, and the refusal names no self-service rebuild command.** *Ratified
+2026-08-26, replacing RD2's `--update` route after C1.0 was executed.*
+
+Three measured facts drive this, each re-verified against `bin/cli.js` at
+v0.31.65 on throwaway fixtures (`--personas=reviewer` and `--yes` scaffolds):
+
+1. **`--update` cannot reconstruct a deleted config, by construction.**
+   `runUpdate()` early-exits `process.exit(1)` when the config is absent
+   (`bin/cli.js:1076-1083`) — a circular check that refuses to proceed precisely
+   *because* the file it would rebuild is missing, regardless of which other
+   adaptation witnesses survive. Six flag combinations were tested
+   (`--update` alone, `+--force-render`, `+--check`, `+--dry-run`,
+   `+--allow-downgrade`, and all of them together): every one exits `1` and
+   mutates zero bytes of the tree. There is no bypass flag.
+2. **The scaffold path "works" but writes a weaker harness than it found.**
+   `node bin/cli.js --yes --overwrite` does exit `0` and does write a config, but
+   the config it writes carries only ten default-valued fields:
+   `protectedPaths: []`, `testAndLintCommand: ""`, `lintCommand: ""`,
+   `graphUpdateCommand: ""`, `sourceGlobs: []`, `issueTracker: ""`,
+   `gatedAgents: ["lead-programmer"]`, `humanReviewMode: "critical"`, plus
+   `pluginVersion` and `personaSelection` — and **no `fileHashes`, no
+   `substitutions`, no `dispatchHygiene`, no `markerCommitCheck` keys at all.**
+   Against this repo's own live config that is the loss of **26 `protectedPaths`
+   entries**, the `testAndLintCommand`, the `issueTracker` retrieval contract,
+   both MCP launch `substitutions`, and all **52 `fileHashes`** rows.
+   `personaSelection` is **not** recovered from the surviving
+   `.claude/agents/*.md` witnesses either: a fixture scaffolded
+   `--personas=reviewer` (four agent files on disk) came back with all seven
+   optional personas selected and **six agent files it had never selected newly
+   written to disk**. Nor does chaining heal it — `--update` run immediately
+   after such a rebuild exits `1`, refusing to render `explorer.md` because the
+   `substitutions` that carried its MCP launch command are gone.
+3. **Naming that command in *this particular* refusal would teach the disarm.**
+   The `tampered` verdict fires exactly when the config is missing on an adapted
+   project. A refusal that answers "run `node bin/cli.js --yes --overwrite`"
+   hands the reader a two-step recipe whose net effect is
+   `protectedPaths: []` — it converts the gate from a tamper *detector* into a
+   documented tamper *completion*. That is F3's failure mode in its sharpest
+   form, and RD4 is the standing ruling that such sentences are replaced rather
+   than kept.
+
+**So the route is version control, and it is an operator action.**
+`.claude/persona-config.json` is a tracked file — confirmed by
+`git ls-files --error-unmatch`, and confirmed *for adopters* by
+`OPERATIONAL_GITIGNORE_PATTERNS` (`bin/cli.js:155-170`), the single-sourced
+managed ignore list every target's scaffold appends, which does not contain it.
+`git restore` is therefore the only route that returns the *actual* prior config
+rather than a weaker stand-in, and it needs no new code. This is the same
+mechanism D3 already ratified as the config's drift **baseline**; RD2a simply
+makes the **recovery** route agree with the baseline route instead of diverging
+from it.
+
+It is scoped to the operator deliberately, and the scoping costs nothing that was
+ever available: Step 2's `Bash` branch matches Set A, which contains
+`.claude/persona-config.json`, so any in-session command spelling that path is
+denied. An operator at their own terminal runs no hooks. Rewording the command so
+Step 2 stops seeing the path would be a self-authorized bypass, and the refusal
+must not hint at one (RD4, F3).
+
+**What this costs, accepted explicitly.** A session that hits `tampered` halts
+until a human intervenes. That is the intended behaviour, not a regression: two
+independent adaptation witnesses plus a missing config is either tampering or the
+loss of an irreplaceable judgment-bearing file, and neither is a state an agent
+should self-service its way out of. The halt is one operator command wide, and
+the alternative — a self-service rebuild — is strictly worse than the halt,
+because it ends with the harness disarmed and the session *unblocked*.
 
 **RD3 — Config drift is reported at `SessionStart` and blocks only at a gated
 agent's `SubagentStop`; never at main-session `Stop`.** The operator edits this
@@ -447,19 +520,71 @@ gates' **runtime stderr**, never the repo tree. A tree-wide grep for the banned
 phrases would match this plan document and the new test file, and would be
 unsatisfiable by construction (`[[verify-own-criteria-nonvacuous]]`, trap two).
 
+**D9 — A recovery route that writes a weaker config is not a recovery route
+(2026-08-26).** *Added when C1.0's precondition failed; see RD2a.* The tempting
+fix was to repoint Step 1 at `node bin/cli.js --yes --overwrite`, which does
+work in the narrow sense of exiting `0` with a config on disk. It is rejected
+because "reconstructs the config" and "writes a file at that path" are not the
+same claim, and only the first one makes the gate's refusal honest. The measured
+gap is in RD2a fact 2; the shape of the error is worth stating separately because
+it generalizes: a fail-closed gate's refusal is read at the moment its reader has
+the least context and the most incentive to take the first offered exit, so the
+route it names has to be the *correct* one, not the *available* one.
+
+Two consequences follow that the rest of this spec now depends on:
+- **Step 1 ships no new `bin/cli.js` code, and no new unit was created.** A
+  narrower `--reconstruct-config` was considered and rejected on value: the
+  fields it could recover from disk (`personaSelection`, `fileHashes`,
+  `substitutions`, `pluginVersion`) are the recoverable ones, and the fields that
+  make the config load-bearing for *these six gates* — `protectedPaths`,
+  `gatedAgents`, `humanReviewMode`, `testAndLintCommand`, `issueTracker` — have
+  no on-disk witness and would still come back empty or defaulted. New code in
+  `bin/cli.js` that leaves `protectedPaths: []` buys collateral reduction, not
+  correctness, and `bin/cli.js` is not a file where speculative code is cheap.
+  Constitution P2 also points this way: `--update`'s deterministic backfill is
+  the sanctioned mechanism, and it is precisely the mechanism that cannot reach
+  the judgment fields.
+- **`git restore` is not a new mechanism here; it is D3's.** D3 already ratified
+  git as the config's immutable baseline for Step 4's drift check. RD2a makes the
+  recovery route the same mechanism as the baseline route, which is a
+  simplification of the spec, not an addition to it.
+
 ---
 
 ## Risks / dependencies
 
-- **R1 — Fail-closed can brick a session (drives RD2's precondition).** If Step 1's
-  `harness_armed()` blocks on "adapted but no config", and the config is genuinely
-  lost, Step 2's gate simultaneously refuses the write that would restore it. The
-  recovery route must exist and be named in the refusal: `node bin/cli.js
-  --update`, which reconstructs the config by backfilling from disk and whose
-  command text never spells the protected path. **Verify before building** that
-  `--update` really restores a *deleted* config rather than requiring one —
+- **R1 — Fail-closed halts a session, and no in-session route un-halts it
+  (RESOLVED 2026-08-26 as RD2a; the precondition ran and the original route
+  failed).** If Step 1's `harness_armed()` blocks on "adapted but no config", and
+  the config is genuinely lost, Step 2's gate simultaneously refuses the write
+  that would restore it. The originally-named route, `node bin/cli.js --update`,
+  was **verified not to work**: `runUpdate()` early-exits `1` on an absent config
+  (`bin/cli.js:1076-1083`) across all six flag combinations tested, mutating
+  nothing. The scaffold path does write a config but writes a materially weaker
+  one (RD2a fact 2), so it is rejected as a *named* route rather than adopted.
+
+  The resolution keeps the block and moves the route out of the session: the
+  operator runs `git restore` on a tracked file, outside any hook. Three residual
+  properties, recorded so nobody re-opens them as defects:
+  - **The session stays halted until a human acts.** Intended (RD2a). A
+    `tampered` verdict is not an agent-recoverable condition.
+  - **Step 2 denies the recovery command in-session.**
+    `.claude/persona-config.json` is in Step 2's Set A, which the `Bash` branch
+    scans, so `git restore .claude/persona-config.json` is denied from inside a
+    session. Consistent, not contradictory — the route was never an in-session
+    one. **No Step 2 change is required or authorized by this amendment**; its
+    Set A membership and its C2.4 `node bin/cli.js --update` GUARD both remain
+    correct as written (that GUARD asserts a legitimate command is not
+    over-blocked; it never claimed the command reconstructs anything).
+  - **An untracked config has no lossless route.** A project that gitignored or
+    never committed its config can only be rebuilt by re-running
+    `/antislop:install-antislop`, whose repo scan refills the judgment fields
+    with a human in the loop. The plain CLI rescaffold is not a substitute and
+    Step 1's message must not present it as one.
+
   `[[verify-own-criteria-nonvacuous]]` trap nine (the tool self-repairing your
-  negative fixture) cuts both ways here, and here the self-repair is the feature.
+  negative fixture) is what C1.0 was written to catch. It caught the opposite and
+  rarer case: the tool refusing to repair at all.
 - **R2 — Adaptation detection false-positives.** `harness_armed()` must not report
   "tampered" for a project mid-`install-antislop`. Detection keys on
   `.claude/agents/*.md` existing; a partial adapt could satisfy that before the
@@ -572,14 +697,55 @@ Add `hooks/scripts/lib/harness-arm.sh` exporting one function,
 
 Adopt it in the six trust gates whose disarming is the finding:
 `reviewed-path-gate.sh`, `stop-gate.sh`, `task-gate.sh`, `reviewer-route-gate.sh`,
-`dispatch-hygiene.sh`, `protected-paths.sh`. On `2` each blocks (`exit 2`) with a
-fixed message naming `node bin/cli.js --update` as the recovery route (RD2, R1).
+`dispatch-hygiene.sh`, `protected-paths.sh`. On `2` each blocks (`exit 2`) with
+the fixed message specified below (RD2a, R1).
 On `1` each keeps today's behaviour byte-for-byte. `graph-update.sh`,
 `lint-on-edit.sh` and `session-start.sh` are **not** adopters — they are
 reporters, not trust gates, and D0 independently exempts them.
 
 The function must never consult `persona-config.json` to decide whether the
 project is adapted (D1).
+
+**The `tampered` denial message (RD2a).** Ship this text, once, in the shared
+library rather than copied into six gates — the six adopters emit it verbatim so
+a later correction lands in one place. `<witnesses>` is the concrete witness list
+that fired; `<state>` is `absent`, `empty` or `unparseable`.
+
+```
+antislop: harness disarmed — refusing to proceed.
+
+This project is adapted (<witnesses> present) but .claude/persona-config.json
+is <state>. The trust gates cannot verify their own configuration, so this
+action is denied rather than silently allowed.
+
+This file is judgment-bearing and cannot be regenerated from what is on disk:
+protectedPaths, testAndLintCommand, issueTracker, gatedAgents and
+humanReviewMode have no other on-disk witness. Restoring it is an operator
+action, not an in-session one.
+
+Operator: restore the file from version control — it is a tracked file — then
+start a new session. If it was never committed, run /antislop:install-antislop,
+whose repo scan refills those fields with you in the loop. Re-running the
+plain CLI scaffold is NOT equivalent: it writes protectedPaths empty and would
+leave this project's harness weaker than it was before the file went missing.
+```
+
+Three properties of this text are load-bearing and each is pinned by a criterion
+below, because each is a thing a well-meaning later edit would undo:
+
+- **It names no self-service rebuild command** (C1.7). Under RD2a fact 3 such a
+  sentence would be a disarm recipe, not a recovery route. This is the same
+  discipline Step 5 applies to the two gates it edits; Step 1 must not
+  reintroduce the class Step 5 is removing.
+- **It names the operator, not the agent, as the actor** (C1.7). The route is
+  denied in-session by Step 2's own `Bash` branch (R1), and a message that
+  implied otherwise would push its reader toward rephrasing around that gate.
+- **It states the rescaffold's cost rather than the rescaffold's command**
+  (C1.7). Warning about a footgun without handing over the footgun is exactly
+  RD4's "keep the prohibition, drop the technique".
+
+Nothing here changes the *verdict* RD2 ratified — `tampered` still blocks. Only
+the recovery route named in the refusal changed.
 
 **Adapter ports (R7).** Three of the six adopters are ported. Copy
 `lib/harness-arm.sh` into `adapters/codex/hooks/scripts/lib/` and
@@ -590,11 +756,44 @@ The function is payload-independent, so no port-specific logic is needed.
 **Acceptance criteria**
 
 ```sh
-# C1.0  PRECONDITION (R1/RD2): prove `node bin/cli.js --update` reconstructs a
-#       DELETED config, so the refusal's recovery route is real. Build a fixture
-#       adapted project, delete .claude/persona-config.json, run --update, and
-#       assert the file exists afterwards AND carries gatedAgents. If it does
-#       not, Step 1 must ship a different recovery route before blocking.
+# C1.0  DISCHARGED 2026-08-26 — do NOT re-run as a gate on the approach.
+#       The original precondition ("prove `node bin/cli.js --update` reconstructs
+#       a DELETED config") was executed and FAILED. RD2a is the ruling that
+#       replaced it; the recovery route is now `git restore`, performed by the
+#       operator, and Step 1 ships no self-service rebuild command. What survives
+#       as a criterion is the GUARD below, which pins the two measured facts the
+#       denial message asserts, so that a later `bin/cli.js` change making either
+#       one false is visible instead of silently rotting the message.
+
+# C1.0a GUARD: `--update` still cannot reconstruct a deleted config (exit 1,
+#       writes nothing). If this ever goes red, RD2a's fact 1 is stale and the
+#       message should be revisited — that is the signal, not a failure.
+#       DO NOT DROP THE `test ! -e` LINE. Measured 2026-08-26 against a mutant
+#       cli.js with the early exit replaced by a config write: the mutant STILL
+#       exits 1 (it fails later, on the missing `substitutions` that render
+#       explorer.md). The exit code alone therefore passes for both the real and
+#       the mutated CLI; only the absent-file assertion kills the mutant.
+t=$(mktemp -d)
+( cd "$t" && node "$OLDPWD/bin/cli.js" --personas=reviewer >/dev/null 2>&1 )
+rm -f "$t/.claude/persona-config.json"
+( cd "$t" && node "$OLDPWD/bin/cli.js" --update >/dev/null 2>&1 ); test $? = 1
+test ! -e "$t/.claude/persona-config.json"
+rm -rf "$t"
+
+# C1.0b GUARD: the CLI scaffold path rebuilds the config with protectedPaths
+#       EMPTY and no fileHashes — the measured basis for the message's claim
+#       that a rescaffold leaves the harness weaker. Pinned so the claim cannot
+#       become a false statement without a red criterion.
+t=$(mktemp -d)
+( cd "$t" && node "$OLDPWD/bin/cli.js" --personas=reviewer >/dev/null 2>&1 )
+rm -f "$t/.claude/persona-config.json"
+( cd "$t" && node "$OLDPWD/bin/cli.js" --yes --overwrite >/dev/null 2>&1 ); test $? = 0
+test "$(jq '.protectedPaths | length' "$t/.claude/persona-config.json")" = 0
+test "$(jq 'has("fileHashes")' "$t/.claude/persona-config.json")" = false
+# and it does NOT recover the recorded persona selection from the surviving
+# .claude/agents/*.md witnesses (measured: --personas=reviewer comes back as 7)
+test "$(jq '.personaSelection | length' "$t/.claude/persona-config.json")" != 1
+rm -rf "$t"
 
 # C1.1  the library exists and is sourced by exactly the six adopters
 test -f hooks/scripts/lib/harness-arm.sh
@@ -633,6 +832,34 @@ bash tests/adapter-stop-gate-parity.test.sh
 # C1.6  mirror + hashes regenerated
 node bin/cli.js --update --check
 bash tests/validate.sh
+
+# C1.7  RD2a message discipline. The message lives once, in the library, and
+#       names no self-service rebuild command. Asserted over the shipped text
+#       AND both adapter ports, since a hand-edited port is where this would
+#       drift first (R7).
+#   (a) the message is single-sourced: the six adopters carry the literal text
+#       zero times; only the library does.
+test "$(grep -cF 'harness disarmed' hooks/scripts/lib/harness-arm.sh)" -ge 1
+for g in reviewed-path-gate stop-gate task-gate reviewer-route-gate \
+         dispatch-hygiene protected-paths; do
+  test "$(grep -cF 'harness disarmed' "hooks/scripts/$g.sh")" = 0 || exit 1
+done
+#   (b) no rebuild command is named anywhere in the library or either port.
+#       `--update` is included: it does not work (C1.0a) and naming it would
+#       send the reader down the dead route this amendment removed.
+for f in hooks/scripts/lib/harness-arm.sh \
+         adapters/codex/hooks/scripts/lib/harness-arm.sh \
+         adapters/cursor/hooks/scripts/lib/harness-arm.sh; do
+  for banned in '--overwrite' '--update' '--force-render' '--personas='; do
+    test "$(grep -cF -- "$banned" "$f")" = 0 || { echo "BANNED $banned in $f"; exit 1; }
+  done
+done
+#   (c) the operator route and the rescaffold warning are both present — (b)
+#       alone is satisfiable by deleting the whole message, so this pins the
+#       content it is meant to constrain.
+grep -qF 'restore the file from version control' hooks/scripts/lib/harness-arm.sh
+grep -qF 'protectedPaths empty' hooks/scripts/lib/harness-arm.sh
+grep -qF '/antislop:install-antislop' hooks/scripts/lib/harness-arm.sh
 ```
 
 *Baseline at `09cc304`, re-verified after spec 6 landed:* `harness-arm.sh`
@@ -1598,6 +1825,90 @@ bundle's contents and no bundle's schedule.
 
 ## Self-check
 
+### Amendment self-check — RD2a (2026-08-26)
+
+Run against the amendment only; the original items below stand unchanged except
+where an item explicitly names Step 1's recovery route.
+
+- **CHK-A1: Is the recovery route named in Step 1 proven to work?** — PASS.
+  The original route was not, which is what triggered this amendment. The
+  replacement is `git restore` on a tracked file, with tracked-ness verified two
+  ways: `git ls-files --error-unmatch` for this repo, and the absence of the path
+  from `OPERATIONAL_GITIGNORE_PATTERNS` (`bin/cli.js:155-170`) for adopters.
+- **CHK-A2: Does the plan state what the rejected route actually does, rather
+  than only that it was rejected?** — PASS. RD2a fact 2 enumerates the ten
+  default-valued fields written and the four keys omitted entirely, and C1.0b
+  pins three of those facts as executable assertions.
+- **CHK-A3: Do RD2, RD2a, R1, D9, Step 1's body and C1.0 agree on which route is
+  sanctioned?** — PASS after revision. RD2's original sentence still named
+  `--update` after RD2a was drafted; revised in place to carry an explicit
+  "amended, see RD2a" marker rather than being silently rewritten, so the
+  superseded ruling stays legible.
+- **CHK-A4: Is C1.0 still phrased as a precondition that gates the approach?** —
+  FAIL (conflicting) — revised in place. It was, and re-running it would have
+  re-escalated the unit forever. It is now marked DISCHARGED and replaced by two
+  GUARDs (C1.0a, C1.0b) that pin the measured facts instead of re-litigating the
+  decision.
+- **CHK-A5: Is the denial message's content constrained by anything, or only its
+  absences?** — FAIL (ambiguous) — revised in place. C1.7(b) alone is satisfied
+  by deleting the message entirely. C1.7(c) was added to pin the three positive
+  strings (operator route, rescaffold warning, `/antislop:install-antislop`).
+- **CHK-A6: Are C1.0a and C1.0b non-vacuous?** — PASS, proved rather than
+  asserted. Both were executed as written (green). C1.0b was shown to
+  discriminate by running its assertions against this repo's live config, where
+  all three go red (26 `protectedPaths`, `fileHashes` present). C1.0a was shown
+  to discriminate against a mutated `bin/cli.js` with the early exit replaced by
+  a config write — **and that mutation exposed that the `test $? = 1` half is
+  vacuous on its own**, since the mutant still exits 1 for a later reason. The
+  criterion now carries a DO-NOT-DROP note naming the `test ! -e` line as the
+  load-bearing half.
+- **CHK-A7: Does the amendment stay inside Step 1?** — PASS. Step 3 (gh415,
+  PASSed) is untouched; no sibling spec or the rollout doc is touched. The one
+  cross-step interaction found — `.claude/persona-config.json` being in Step 2's
+  Set A, so the recovery command is denied in-session — is *recorded* in R1 as a
+  consistent-and-intended property with an explicit "no Step 2 change is required
+  or authorized", not acted on.
+- **CHK-A8: Does the amendment introduce a bypass hint?** — PASS. The message
+  names an operator action outside the session and never suggests rewording a
+  command so Step 2 stops matching the path; R1 and RD2a both state plainly that
+  such rewording would be a self-authorized bypass.
+- **CHK-A9: Is Step 1's model tag still right?** — FAIL (missing) — converted to
+  Open Question A1. The unit is no longer the one `sonnet` was tagged for: it now
+  carries a prior escalation and a hand-authored message with three pinned
+  content properties.
+
+**Constitution check (`.claude/constitution.md` v1.0.0), amendment scope only**
+- P1 "Verify, don't assume": satisfied — every claim in RD2a was executed on
+  throwaway fixtures, including the mutation proof; nothing is carried over from
+  the escalation brief on its word.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied, and it is
+  the affirmative argument against direction (b) — the deterministic backfill
+  path is the sanctioned one and it structurally cannot reach the judgment
+  fields, so hand-writing new reconstruction code would be working against this
+  principle, not with it.
+- P3 "Version-stamp discipline": satisfied — no version-stamped file changed
+  (docs only).
+- P5 "`tests/validate.sh` is the merge gate": satisfied — re-run green after the
+  edit; the amendment touches no shell or JSON.
+
+### Open Questions raised by this amendment
+
+1. **A1 — Should gh416's `Suggested model` tag rise from `sonnet`?**
+   *Recommended default: yes, `opus`.* The unit already escalated once, and its
+   deliverable now includes a message whose wording is load-bearing (C1.7 pins
+   three positive strings and four banned substrings). Model tagging is
+   `task-master`'s dispatch decision, not mine, so this is raised rather than
+   applied.
+2. **A2 — Is halting the session until a human acts acceptable, or should
+   `tampered` warn rather than block for one release?**
+   *Recommended default: keep the block (RD2's ruling stands).* Flagged because
+   RD2 was ratified when a self-service recovery route was believed to exist, and
+   that premise is now false — the cost of the ruling went up even though the
+   ruling itself did not change. Ratifying it a second time with the true cost
+   visible is worth one explicit confirmation.
+
+### Original self-check (2026-08-25)
+
 - **Does every step carry a criterion that would fail if the step were not
   done?** Yes — every criterion above was executed at `09cc304` and is RED, or is
   explicitly labelled `GUARD`. The RED baselines are quoted inline per step, and
@@ -1688,6 +1999,22 @@ first-N-lines hash), **sanctioned rotation**, **countersign** (a reviewer's
 `reviewer` provenance on a microworld result). `docs/trust-model.md` (Step 8)
 becomes the canonical home for the self-report-vs-mechanical distinction, and —
 per spec 6's request — for the credential-split upgrade path.
+
+**Added by the RD2a amendment (2026-08-26).** Two terminology items, from the
+prose-mode glossary check against `CONTEXT.md`:
+- **Terminology collision, worth resolving before it spreads.** `CONTEXT.md`
+  already defines **skeleton** as `command_skeleton` — the gate lexer's masked
+  view of a Bash command. `bin/cli.js` independently prints "skeleton" for the
+  blank-field `persona-config.json` it writes on a rescaffold. Two unrelated
+  meanings, one term. This amendment therefore says **"blank-field config"** or
+  **"default-valued config"** throughout and quotes the CLI's own word only when
+  quoting its output. `scribe` should decide whether to rename the CLI's usage or
+  record both senses explicitly.
+- **New load-bearing term with no entry:** **adaptation witness** — an on-disk
+  artefact (`.claude/agents/*.md`, `.claude/hooks/scripts/`, `.claude/reviewed/`)
+  that proves a project was adapted *without* consulting `persona-config.json`.
+  It is the whole basis of `harness_armed()`'s `1` vs `2` split (D1, R2) and is
+  used across Step 1's text with no glossary entry behind it.
 
 Also flagged for `scribe`, found while verifying and out of this spec's scope:
 `README.md`'s "Known limitations" still names only variable-splitting as
