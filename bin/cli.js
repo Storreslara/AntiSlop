@@ -592,6 +592,7 @@ function buildHookScriptSpecs() {
 // adapter trees.
 const SHARED_HOOK_LIB_FILES = [
   'agent-identity.sh',
+  'audit-log.sh',
   'graph-update-core.sh',
   'lint-on-edit-core.sh',
   'microworld-queue.sh',

@@ -34,6 +34,8 @@ set -euo pipefail
 # be extended for the v2 rollout itself.
 GRACE_PERIOD_END="2026-07-27"
 
+source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
+
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
@@ -75,14 +77,14 @@ warn_and_allow_legacy() {
   echo "WARNING: Task '${task_name}' has no valid v2 reviewer PASS marker at ${marker}." >&2
   echo "Allowed ONLY under the v0.6.0 legacy-marker grace period, which ends ${GRACE_PERIOD_END} (UTC) - after that date this will BLOCK." >&2
   echo "Run /antislop:update-antislop now to pick up the v2 marker format before the grace period ends." >&2
-  printf '%s task=%s legacy-marker-grace-period-warning\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$task_id" \
-    >> "${project_dir}/.claude/review-audit.log"
+  audit_append "${project_dir}/.claude/review-audit.log" \
+    "$(printf '%s task=%s legacy-marker-grace-period-warning' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$task_id")"
   exit 0
 }
 
 if marker_valid; then
-  printf '%s task=%s marker-accepted\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$task_id" \
-    >> "${project_dir}/.claude/review-audit.log"
+  audit_append "${project_dir}/.claude/review-audit.log" \
+    "$(printf '%s task=%s marker-accepted' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$task_id")"
   exit 0
 fi
 

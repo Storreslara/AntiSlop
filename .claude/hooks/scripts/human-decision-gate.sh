@@ -40,6 +40,7 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/benign-command.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -264,9 +265,8 @@ is_prose_only_commit() {
 }
 
 deny() {
-  { printf '%s decision-gate-denied identity=%s\n' \
-      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
-      >> "$audit"; } 2>/dev/null || true
+  audit_append "$audit" "$(printf '%s decision-gate-denied identity=%s' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
   printf "BLOCKED: '%s' may not write .claude/human-review/<task-id>/DECISION - that file records the human's own resolution of a pending escalation and no agent identity may create or modify it, reviewer included.\n" "$agent_type" >&2
   cat >&2 <<'MSG'
 

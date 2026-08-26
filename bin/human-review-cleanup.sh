@@ -9,6 +9,9 @@
 # Usage: bin/human-review-cleanup.sh [--project-dir <path>] [--retention-days N] [--apply]
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+source "${script_dir}/../hooks/scripts/lib/audit-log.sh"
+
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 apply=false
 retention_days=30
@@ -200,6 +203,12 @@ rotate_log() {
     mv "$log_file" "$archive_file"
     # Create new log with the preserved last line (for dedup to work)
     printf '%s\n' "$last_line" > "$log_file"
+    # The old .seal (if any) sealed the archived content, not this fresh
+    # file - drop it and reseal, so a legitimate rotation never reads as
+    # tampering to audit_seal_verify (docs/plans/2026-08-25-harness-trust-
+    # gaps.md Step 3, R3/the audit_rotate integration note).
+    rm -f "${log_file}.seal"
+    _audit_reseal "$log_file"
     echo "rotated: $(basename "$log_file") -> $(basename "$archive_file"), tail preserved"
   else
     echo "[dry-run] would rotate: $(basename "$log_file") -> $(basename "$archive_file"), tail preserved for defer dedup"

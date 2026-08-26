@@ -77,4 +77,5 @@ dispatch_name="$(echo "$input" | jq -r '.tool_input.name // empty' 2>/dev/null |
 prompt="$(echo "$input" | jq -r '.tool_input.prompt // empty' 2>/dev/null || true)"
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+source "${lib_dir}/audit-log.sh"
 source "${lib_dir}/reviewer-route-gate-core.sh"

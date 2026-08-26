@@ -82,6 +82,7 @@ set -euo pipefail
 LC_ALL=C
 
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -96,7 +97,7 @@ reviewed_dir="${CLAUDE_PROJECT_DIR:-.}/.claude/reviewed"
 # A write failure here (unwritable path, full disk) must degrade to "it wasn't
 # logged", never abort the gate under set -e.
 log_line() {
-  { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" >> "$audit"; } 2>/dev/null || true
+  audit_append "$audit" "$(date -u +%Y-%m-%dT%H:%M:%SZ) $1"
 }
 
 # Malformed JSON leaves every field empty, so the tool_name test below is also

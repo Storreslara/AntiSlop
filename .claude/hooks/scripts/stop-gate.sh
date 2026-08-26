@@ -117,6 +117,7 @@
 # port-invariant core.
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"

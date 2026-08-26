@@ -100,6 +100,7 @@ mutant_entry="$tmproot/mutant-entry.sh"
 cp hooks/scripts/stop-gate.sh "$mutant_entry"
 mkdir -p "$tmproot/lib"
 cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
+cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
 python3 - "$mutant_entry" "$mutant_lib" <<'PYEOF'
 import sys
 path, mutant_lib = sys.argv[1], sys.argv[2]

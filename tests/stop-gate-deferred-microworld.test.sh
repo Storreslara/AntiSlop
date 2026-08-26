@@ -103,6 +103,7 @@ sed -i 's/if \[ -n "\$broken" \]; then/if false \&\& [ -n "$broken" ]; then/' \
 cp hooks/scripts/stop-gate.sh "$tmproot/entry.sh"
 mkdir -p "$tmproot/lib"
 cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
+cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
 python3 - "$tmproot/entry.sh" "$mutant_lib" <<'PYEOF'
 import sys
 path, mutant_lib = sys.argv[1], sys.argv[2]
@@ -245,6 +246,7 @@ cp hooks/scripts/stop-gate.sh "$mutant_entry"
 [ -f "$tmproot/lib/agent-identity.sh" ] || {
   mkdir -p "$tmproot/lib"
   cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
+  cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
 }
 python3 - "$mutant_entry" "$mutant_dup_lib" <<'PYEOF'
 import sys

@@ -24,6 +24,8 @@ scratch/
 .claude/.microworld-results-reported
 .claude/microworld-queue/
 .claude/settings.local.*
+.claude/*.log.seal
+.claude/audit-archive/
 
 # antislop microworld bundles + escalation packets (local scratch, never committed)
 microworlds/

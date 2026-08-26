@@ -345,7 +345,7 @@ else
 fi
 
 # Verify archive exists (look for any file starting with review-audit.log.)
-archive_count=$(find "$dir/.claude" -name "review-audit.log.*" -type f 2>/dev/null | wc -l)
+archive_count=$(find "$dir/.claude" -name "review-audit.log.*" ! -name "*.seal" -type f 2>/dev/null | wc -l)
 if [ "$archive_count" -gt 0 ]; then
   pass "rotated log archive created"
 else
@@ -353,7 +353,7 @@ else
 fi
 
 # Verify archive CONTENT (not just existence) matches the original pre-rotation log.
-archive_path="$(find "$dir/.claude" -name "review-audit.log.*" -type f 2>/dev/null | head -n1)"
+archive_path="$(find "$dir/.claude" -name "review-audit.log.*" ! -name "*.seal" -type f 2>/dev/null | head -n1)"
 archive_content="$(cat "$archive_path" 2>/dev/null)"
 original_content="$(printf '2026-08-20T10:00:00Z cleared-by=reviewer unit=100\n2026-08-21T10:00:00Z defer: unit=101 reason=test')"
 if [ "$archive_content" = "$original_content" ]; then
@@ -370,7 +370,7 @@ printf '2026-08-22T10:00:00Z cleared-by=reviewer unit=200\n' > "$dir/.claude/rev
 printf '2026-08-22T10:00:01Z cleared-by=reviewer unit=201\n' >> "$dir/.claude/review-audit.log"
 # No backdating: mtime is "now", well within the default 30-day retention window.
 "$script" --project-dir "$dir" --apply >/dev/null 2>&1
-fresh_archive_count=$(find "$dir/.claude" -name "review-audit.log.*" -type f 2>/dev/null | wc -l)
+fresh_archive_count=$(find "$dir/.claude" -name "review-audit.log.*" ! -name "*.seal" -type f 2>/dev/null | wc -l)
 if [ "$fresh_archive_count" -gt 0 ]; then
   pass "fresh log rotates unconditionally (not retention-gated)"
 else
