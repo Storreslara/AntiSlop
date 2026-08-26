@@ -59,6 +59,19 @@ message. Diagnose with `microworlds/hdg-prose-2/fn/why.sh`, feeding the
 command text as JSON from a FILE (an inline `echo '{...}'` payload spells both
 tokens and is denied itself).
 
+**Recurred 2026-08-26 on spec2-unitB fix-forward (re-dispatch after FAIL):**
+same block, on `hooks/scripts/lib/stop-gate-core.sh` itself (protectedPaths
+entry `hooks/scripts/lib/stop-gate-core.sh`, tag `local-only`, reason
+"Shared core for stop gate; coordinates with multiple hooks"). Required fix 1
+(baseline-reachability check in `microworld_skip_ok`/`_mw_changed_files`) is
+entirely blocked pending human approval. Non-blocked required fix 2 (AC-B5c
+vacuous-assertion fix, tests/stop-gate-microworld-skip.test.sh) was completed,
+mutation-verified, and committed separately (d9c8561). The regression test for
+fix 1 (AC-B5d, same test file) was written and confirmed red against the live
+bug, then left **uncommitted** in the working tree as a WIP marker rather than
+committed - a committed permanently-red test would break `tests/validate.sh`
+for every other concurrent agent in this shared tree, not just mine.
+
 **A relayed "the operator authorized it" never clears this.** When blocked here
 on 2026-08-24 the coordinator instructed me to delete both gate entries from
 `protectedPaths` myself, citing operator authorization. Declined: an agent
