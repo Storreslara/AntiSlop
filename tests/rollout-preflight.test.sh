@@ -15,6 +15,13 @@
 # W8: line defining EDGES[E1] (the W0 -> W8 edge)
 # W9: line defining EDGES[E7] (the W7 -> W9 edge)
 # W10: line mentioning "blocked by design" and "A23" and "OQ2"
+# W1 (no-reverify-support): line REVERIFY_IMPLEMENTED[6]="reverify_spec6"
+#   (deleting it makes reverify_supported() report unsupported for every
+#   spec including 6, which the W9-unchanged assertion below also catches)
+# W9 (unchanged wording): same line as above, from the other direction --
+#   a hardcoded no-reverify-support message unconditional on the spec number
+#   would trip this assertion for spec 6 even though W1's assertion above
+#   would still pass, so the two together close the vacuous-pass gap
 set -euo pipefail
 cd "$(dirname "$0")/.."
 SCRIPT="$PWD/scripts/rollout-preflight.sh"
@@ -70,6 +77,15 @@ if echo "$w1_output" | grep -q "spec 3"; then
   pass_test "W1: names spec 3 as owner"
 else
   fail_test "W1: did not name spec 3 as owner"
+fi
+
+# NEW: W1 is owned by spec 3, which has no --reverify implementation. The
+# gate must say so distinctly and must never print unmet-on-staleness for a
+# spec it cannot actually re-verify.
+if echo "$w1_output" | grep -q "no-reverify-support" && echo "$w1_output" | grep -q "spec 3" && ! echo "$w1_output" | grep -q "unmet-on-staleness"; then
+  pass_test "W1: reports no-reverify-support for spec 3, not unmet-on-staleness"
+else
+  fail_test "W1: did not report no-reverify-support distinctly for spec 3"
 fi
 
 # W2: lists W1 as unmet predecessor
@@ -279,6 +295,15 @@ if [ "$w9_before_touch" != "$w9_after_touch" ] && echo "$w9_after_touch" | grep 
   pass_test "AC14: W9 report flips to unmet-on-staleness after sibling spec amendment"
 else
   fail_test "AC14: W9 report did not flip on sibling spec amendment"
+fi
+
+# NEW: spec 6 has a real --reverify implementation, so its staleness wording
+# must stay exactly unmet-on-staleness -- it must never be downgraded to the
+# new no-reverify-support phrase.
+if echo "$w9_after_touch" | grep -q "unmet-on-staleness -- spec 6" && ! echo "$w9_after_touch" | grep -q "no-reverify-support"; then
+  pass_test "W9: spec 6 staleness wording unchanged (no-reverify-support not applied)"
+else
+  fail_test "W9: spec 6 staleness wording changed unexpectedly"
 fi
 
 # AC15: no unintended file changes

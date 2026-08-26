@@ -102,6 +102,14 @@ ADR_ALLOC[0026]="spec 2, Unit D (amending ADR-0010)|unconditional; Unit D is a f
 ADR_ALLOC[0027]="spec 6 -- exactly one ADR, covering both the CI-shaped architecture and the D0 scope split as a section of it|unconditional; cited by its own A25b and A27. Ruling: one ADR, 0027, D0 as a section"
 ADR_ALLOC[0028]="spec 4, the conditional D9/D11 ADR|conditional (\"consider\"). If declined, 0028 stays unused. Do not backfill it, per this project's increment-never-backfill convention"
 
+# ============================================================================
+# EMBEDDED DATA: which specs have a real --reverify implementation. Single
+# source of truth for both reverify_spec()'s dispatch and
+# wave_staleness_check()'s "stale" vs "no support" distinction.
+# ============================================================================
+declare -A REVERIFY_IMPLEMENTED
+REVERIFY_IMPLEMENTED[6]="reverify_spec6"
+
 REVERIFY_STATE_DIR="${ROLLOUT_PREFLIGHT_STATE_DIR:-${TMPDIR:-/tmp}/rollout-preflight-reverify-state}"
 
 # ============================================================================
@@ -161,8 +169,16 @@ wave_predecessors() {
   echo "$preds" | tr ' ' '\n' | grep -v '^$' | sort -u | tr '\n' ' ' || true
 }
 
+# True if $1 has a real --reverify implementation (see REVERIFY_IMPLEMENTED).
+reverify_supported() {
+  [ -n "${REVERIFY_IMPLEMENTED[$1]:-}" ]
+}
+
 # AC14: reports unmet-on-staleness if the wave's owning spec's plan doc was
 # amended more recently than the last recorded --reverify run for that spec.
+# A spec with no --reverify implementation can't have its staleness measured
+# at all, so it gets a distinct no-reverify-support line instead and never
+# counts toward the stale=1 return.
 # Returns 0 (fresh) or 1 (stale, with a printed line naming the spec and time).
 wave_staleness_check() {
   local wave="$1" specs="${WAVE_OWNER_SPECS[$1]:-}"
@@ -171,6 +187,10 @@ wave_staleness_check() {
     spec_file="${SPEC_FILE[$spec_num]:-}"
     [ -z "$spec_file" ] && continue
     [ -f "$spec_file" ] || continue
+    if ! reverify_supported "$spec_num"; then
+      echo "$wave: no-reverify-support -- spec $spec_num has no --reverify implementation; staleness cannot be measured"
+      continue
+    fi
     mtime=$(stat -c %Y "$spec_file" 2>/dev/null || echo 0)
     last_run=0
     if [ -f "$REVERIFY_STATE_DIR/spec-$spec_num.stamp" ]; then
@@ -415,22 +435,20 @@ reverify_spec6() {
 }
 
 reverify_spec() {
-  local spec="$1"
+  local spec="$1" fn
 
   if [ -z "$spec" ]; then
     echo "Error: --reverify requires a spec number" >&2
     return 1
   fi
 
-  case "$spec" in
-    6)
-      reverify_spec6
-      ;;
-    *)
-      echo "reverify: spec $spec not yet implemented or not supported"
-      return 1
-      ;;
-  esac
+  if ! reverify_supported "$spec"; then
+    echo "reverify: spec $spec not yet implemented or not supported"
+    return 1
+  fi
+
+  fn="${REVERIFY_IMPLEMENTED[$spec]}"
+  "$fn"
 }
 
 # ============================================================================
