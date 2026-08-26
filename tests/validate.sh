@@ -579,6 +579,15 @@ else
 fi
 
 echo
+echo "== writer-tier consistency: sonnet default stated consistently across surfaces (Node) =="
+if node tests/writer-tier-consistency.test.js; then
+  echo "OK   tests/writer-tier-consistency.test.js"
+else
+  echo "FAIL tests/writer-tier-consistency.test.js"
+  fail=1
+fi
+
+echo
 echo "== protocol doc-drift: CONTEXT.md/wiki section counts vs live templates (Node) =="
 if node tests/protocol-doc-drift.test.js; then
   echo "OK   tests/protocol-doc-drift.test.js"
