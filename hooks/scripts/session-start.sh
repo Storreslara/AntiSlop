@@ -133,35 +133,3 @@ if [ "${#context_parts[@]}" -gt 0 ]; then
   jq -n --arg msg "$joined" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'
 fi
 exit 0
-
-# Job 5: Microworld deferred results backstop (Unit A async rerun)
-# Surface any deferred bundle results that haven't been reported yet.
-microworld_audit="${project_dir}/.claude/microworld-audit.log"
-microworld_reported="${project_dir}/.claude/.microworld-results-reported"
-
-if [ -f "$microworld_audit" ]; then
-  last_reported="0"
-  if [ -f "$microworld_reported" ]; then
-    last_reported="$(cat "$microworld_reported" 2>/dev/null || echo 0)"
-  fi
-
-  broken=""
-  while IFS= read -r line; do
-    [ -n "$line" ] || continue
-    timestamp="$(echo "$line" | cut -d' ' -f1)"
-    result="$(echo "$line" | grep -o 'result=[^ ]*' | cut -d= -f2)"
-    unit="$(echo "$line" | grep -o 'unit=[^ ]*' | cut -d= -f2)"
-
-    ts_secs=$(date -d "$timestamp" +%s 2>/dev/null || echo 0)
-    if [ "$ts_secs" -gt "$last_reported" ] && [ "$result" != "pass" ]; then
-      broken="$broken $unit"
-    fi
-  done < "$microworld_audit"
-
-  if [ -n "$broken" ]; then
-    backstop_msg="Microworld deferred results: bundle(s) failed $broken (see .claude/microworld-audit.log)"
-    context_parts+=("$backstop_msg")
-    # Update reported so we don't re-announce stale failures
-    printf '%s\n' "$(date +%s)" > "$microworld_reported" 2>/dev/null || true
-  fi
-fi
