@@ -39,6 +39,18 @@
 # state, so no scan of that text can see it; see README.md's "Known limitations",
 # same framing as the existing `sed -i` bypass caveat on protected-paths.sh, and
 # the pins at the end of tests/reviewed-path-gate.test.sh.
+#
+# STILL OPEN (disclosure, moved out of runtime denial stderr, gh419/RD4): the
+# BLOCKED message used to add, past the two sanctioned routes, a generalization
+# ("[b]oth sanctioned workarounds keep the path OUT of the command text
+# entirely"), the enumeration of which respellings this gate's own scan
+# recognizes ("quote-split, dot-segment, doubled-slash and '..' traversal"), a
+# cross-reference telling a caller blocked here what human-decision-gate.sh
+# separately sanctions, and the rationale clause "whose command text then never
+# spells the path" attached to the `git commit -F` route. All of that stays
+# true and lives here now, for a human reading this file at leisure; the
+# runtime denial states only the blocked action, the sanctioned route, and one
+# flat, technique-free prohibition on everything else.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
@@ -283,5 +295,5 @@ fi
 audit_append "$review_audit" "$(printf '%s grant-denied hook=reviewed-path-gate identity=%s' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>', whose command text then never spells the path; to search the directory, use 'grep -r'. That rephrasing workaround is sanctioned for THIS gate only, which grants the reviewer an identity - it is never for human-decision-gate.sh, which grants no identity at all, and rewording a command so that gate's scan stops seeing the path it protects is a self-authorized bypass. Use the sanctioned marker-write template that gate prints in its own refusal instead. All of that governs commands TARGETING this directory. Both sanctioned workarounds keep the path OUT of the command text entirely; respelling it in place does not work and is not sanctioned, because quote-split, dot-segment, doubled-slash and '..' traversal spellings are all recognized here. A mention that only NARRATES the directory is allowed outright and needs no workaround: a trailing '#' comment naming it passes provided the rest of the command is itself allowlisted, since bash discards the comment but still runs everything else. What you hit is narrower - this command's text spells the path where bash would act on it (in code, in a quoted word, or as a redirection target), or it could not be lexed at all. A comment on a line of its OWN still fails closed; that is a ratified residual (issue #183), so keep the comment on the same line as the command." >&2
+echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>'; to search the directory, use 'grep -r'. Any other route to this path is a self-authorized bypass whether or not this gate blocks it; if the sanctioned route does not fit, report the block and wait. A mention that only NARRATES the directory is allowed outright and needs no workaround: a trailing '#' comment naming it passes provided the rest of the command is itself allowlisted, since bash discards the comment but still runs everything else. What you hit is narrower - this command's text spells the path where bash would act on it (in code, in a quoted word, or as a redirection target), or it could not be lexed at all. A comment on a line of its OWN still fails closed; that is a ratified residual (issue #183), so keep the comment on the same line as the command." >&2
 exit 2

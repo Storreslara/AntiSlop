@@ -36,6 +36,17 @@
 # is never routed through command_is_provably_benign() at all. A per-file
 # `rm .../DECISION` is blocked for every identity, reviewer included; that is
 # intended, not a defect.
+#
+# STILL OPEN (disclosure, moved out of runtime denial stderr, gh419/RD4): the
+# deny() message used to name the technique "[s]plitting the path across shell
+# variables, or otherwise rephrasing so the command text never spells it" as a
+# self-authorized bypass, cross-reference reviewed-path-gate.sh (which grants
+# the reviewer an identity that this gate grants nobody), and attach the
+# rationale clause "its command text never spells DECISION" to the `rm -rf`
+# discard route. All of that stays true and lives here now, for a human
+# reading this file at leisure; the runtime denial states only the blocked
+# action, the sanctioned route, and one flat, technique-free prohibition on
+# everything else.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
@@ -281,11 +292,9 @@ Rules: the delimiter must be single-quoted, the target a bare literal
 .claude/reviewed/<id>.{pass,fail,directed,blocked,escalated}, and the
 terminator the last line of the command. >> works in place of >.
 
-Splitting the path across shell variables, or otherwise rephrasing so the
-command text never spells it, is a self-authorized bypass for this gate - not
-a sanctioned move. That workaround is scoped to reviewed-path-gate.sh, which
-grants the reviewer an identity; this gate grants nobody. If the template does
-not fit your write, report and wait instead.
+This path has one sanctioned route. Any other route to it is a
+self-authorized bypass whether or not this gate blocks it; if the sanctioned
+route does not fit, report and wait.
 
 That rule governs commands TARGETING this file. A mention that only narrates it
 is allowed outright and needs no workaround: prose inside a single 'git commit'
@@ -294,7 +303,7 @@ you hit is narrower - this command's text spells the path itself, or a mention
 sits where bash would execute it.
 
 To discard a resolved packet, delete the whole directory with
-'rm -rf .claude/human-review/<task-id>' (its command text never spells DECISION).
+'rm -rf .claude/human-review/<task-id>'.
 MSG
   exit 2
 }
