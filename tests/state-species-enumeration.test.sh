@@ -73,21 +73,21 @@ test_species_documented() {
 
 # Test: marker directory only contains expected patterns
 test_no_unexpected_patterns() {
-  local tmpdir="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir"' EXIT
+  local tmpdir_local="$(mktemp -d)"
+  trap 'rm -rf "$tmpdir_local"' RETURN
 
   # Simulate: create only allowed patterns
-  mkdir -p "$tmpdir/.claude/reviewed" "$tmpdir/.claude/human-review/unit-1"
-  touch "$tmpdir/.claude/.pending-review.agent-1"
-  touch "$tmpdir/.claude/.review-join.unit-1"
-  touch "$tmpdir/.claude/.session-baseline.sess-1"
-  touch "$tmpdir/.claude/.dispatch-override"
-  touch "$tmpdir/.claude/reviewed/unit-1.pass"
-  touch "$tmpdir/.claude/human-review/unit-1/DECISION"
-  touch "$tmpdir/.claude/review-audit.log"
+  mkdir -p "$tmpdir_local/.claude/reviewed" "$tmpdir_local/.claude/human-review/unit-1"
+  touch "$tmpdir_local/.claude/.pending-review.agent-1"
+  touch "$tmpdir_local/.claude/.review-join.unit-1"
+  touch "$tmpdir_local/.claude/.session-baseline.sess-1"
+  touch "$tmpdir_local/.claude/.dispatch-override"
+  touch "$tmpdir_local/.claude/reviewed/unit-1.pass"
+  touch "$tmpdir_local/.claude/human-review/unit-1/DECISION"
+  touch "$tmpdir_local/.claude/review-audit.log"
 
   # Verify: no unexpected files exist
-  local unexpected_count=$(find "$tmpdir/.claude" -type f \! \
+  local unexpected_count=$(find "$tmpdir_local/.claude" -type f \! \
     -name ".pending-review.*" \! \
     -name ".wip-handoff.*" \! \
     -name ".review-join.*" \! \

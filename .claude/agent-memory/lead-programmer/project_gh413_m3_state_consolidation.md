@@ -67,11 +67,20 @@ Six more (from Testing decisions, need to identify):
 - A22: capability-regression fixture (humanReviewMode: "all")
 - A30: no persona-config.json changes except fileHashes/pluginVersion
 
-## Next Steps
+## Completed (Commit 91cb782)
 
-1. Wait for explorer results on affected hook scripts
-2. Design state-access.sh seams (read/write/sweep per domain)
-3. Write TDD red-phase tests (15 + 10 + species enumeration + concurrency + capability)
-4. Implement state-access.sh
-5. Migrate hooks one at a time with test re-runs
-6. Verify all acceptance criteria
+1. ✅ Explorer identified 17 hook scripts touching state artifacts
+2. ✅ TDD red-phase tests written and PASSING (all assert current behavior):
+   - `tests/state-access-constraints.test.sh` (10 constraints + 15 distinctions)
+   - `tests/state-species-enumeration.test.sh` (A17: 25 species patterns)
+   - `tests/state-access-concurrency.test.sh` (A20: ADR-0016 deadlock prevention)
+   - `tests/state-access-capability-regression.test.sh` (A22: escalation capability)
+3. ✅ `hooks/scripts/lib/state-access.sh` implemented (core read/write/sweep functions)
+
+## Remaining Work
+
+- Migrate 17 hook scripts to source state-access.sh (one at a time)
+- Re-run constraint tests after each migration
+- Verify A21: validate.sh + cli.js --update --check in clean worktree
+- Verify A30: no persona-config.json changes except fileHashes/pluginVersion
+- Final mutation-proof verification of all 10 constraints
