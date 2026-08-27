@@ -343,6 +343,15 @@ else
 fi
 
 echo
+echo "== refusal-disclosure hygiene: reviewed-path-gate.sh / human-decision-gate.sh denial stderr (Bash) =="
+if bash tests/refusal-disclosure.test.sh; then
+  echo "OK   tests/refusal-disclosure.test.sh"
+else
+  echo "FAIL tests/refusal-disclosure.test.sh"
+  fail=1
+fi
+
+echo
 echo "== stop-gate .blocked-marker behaviour (Bash) =="
 if bash tests/stop-gate-blocked.test.sh; then
   echo "OK   tests/stop-gate-blocked.test.sh"
