@@ -24,6 +24,11 @@
       "reason": "Enforcement gate; local edits are frequent during development"
     },
     {
+      "pattern": "hooks/scripts/stop-gate.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; largest gate in system, edited frequently"
+    },
+    {
       "pattern": "hooks/scripts/task-gate.sh",
       "tag": "local-only",
       "reason": "Enforcement gate; controls marker validity and task dispatch"
@@ -79,6 +84,11 @@
       "reason": "Utility script setting reviewer tier based on paths; affects local review logic"
     },
     {
+      "pattern": "hooks/scripts/session-start.sh",
+      "tag": "local-only",
+      "reason": "Session startup hook; exempt reporter, edited as other hooks change"
+    },
+    {
       "pattern": "hooks/scripts/lib/agent-identity.sh",
       "tag": "local-only",
       "reason": "Shared library for agent identity tagging; used by gate scripts"
@@ -117,6 +127,11 @@
       "pattern": "hooks/scripts/lib/protected-paths-core.sh",
       "tag": "local-only",
       "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
+    },
+    {
+      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
+      "tag": "local-only",
+      "reason": "Shared core for stop gate; coordinates with multiple hooks"
     },
     {
       "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
