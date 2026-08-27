@@ -48,3 +48,13 @@ the `grep -q` case, different tool. Also hit the negative-corollary: a stale
 descriptive comment in the test file itself (`gh300 (QUIZ.md)`) tripped the
 unit's own `git grep -ci quiz` acceptance criterion. Both apply to any literal
 substring check, not just `grep`.
+
+**Same failure mode inside a `cat >&2 <<'EOF'` denial-message heredoc.** On
+gh419 (refusal-message disclosure hygiene), the new prohibition sentence
+"...self-authorized bypass whether or not this gate blocks it" wrapped across
+two heredoc lines in `human-decision-gate.sh`'s `deny()`, so
+`tests/refusal-disclosure.test.sh`'s `grep -cF` against the gate's real
+runtime stderr returned 0 until reworded onto one line. The sibling gate's
+same sentence sat inside a single long `echo "..."` string (never wrapped) and
+passed first try — wrapping risk is specific to hand-wrapped multi-line
+heredocs/prose, not long single-line strings.
