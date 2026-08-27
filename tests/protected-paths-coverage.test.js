@@ -11,7 +11,11 @@ const configPath = path.join(projectDir, '.claude', 'persona-config.json');
 
 // Exemption list: scripts that are deliberately not protected, with reasoning
 const exemptions = {
-  // Currently empty - all hook scripts are critical to the system's integrity
+  'harness-integrity-gate.sh': 'Self-protecting instead: its own Write/Edit ' +
+    'branch hardcodes a deny on writes to hooks/hooks.json, ' +
+    '.claude/settings.json, and itself (Set B). gh418\'s "Do NOT touch" ' +
+    'section reserves adding it to protectedPaths as an operator decision, ' +
+    'not something this unit bakes in.',
 };
 
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));

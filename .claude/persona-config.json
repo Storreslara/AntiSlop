@@ -235,7 +235,8 @@
     ".claude/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
     ".claude/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
     "adapters/codex/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
-    "adapters/cursor/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec"
+    "adapters/cursor/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
+    ".claude/hooks/scripts/harness-integrity-gate.sh": "16680fa2120c3fc240781bc47980fbab55638b2924c89e71c590b9f789cd46d3"
   },
   "humanReviewMode": "off"
 }
