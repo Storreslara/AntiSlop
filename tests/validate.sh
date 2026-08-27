@@ -334,6 +334,15 @@ else
 fi
 
 echo
+echo "== harness-integrity-gate.sh: configless write-deny on the harness's own control surface (Bash) =="
+if bash tests/harness-integrity-gate.test.sh; then
+  echo "OK   tests/harness-integrity-gate.test.sh"
+else
+  echo "FAIL tests/harness-integrity-gate.test.sh"
+  fail=1
+fi
+
+echo
 echo "== stop-gate .blocked-marker behaviour (Bash) =="
 if bash tests/stop-gate-blocked.test.sh; then
   echo "OK   tests/stop-gate-blocked.test.sh"
