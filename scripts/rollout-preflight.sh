@@ -398,16 +398,17 @@ reverify_spec6() {
   echo ""
 
   # Baseline bumped 14 -> 15 (2026-08-26) once spec 1's Step 2 (gh418) landed
-  # hooks/scripts/harness-integrity-gate.sh, a genuinely new top-level hook
-  # script -- exactly the staleness the rollout-sequencing doc's own A24
-  # discussion predicted ("the literal 14 is stale even though nothing in
-  # spec 6 is wrong"). This snapshot must move again if a later unit adds or
-  # removes a top-level hooks/scripts/*.sh file; re-derive by counting rather
-  # than trusting this comment.
+  # hooks/scripts/harness-integrity-gate.sh, then 15 -> 16 (2026-08-26) once
+  # spec 1's Step 6 (gh420) landed hooks/scripts/marker-verify.sh -- exactly
+  # the staleness the rollout-sequencing doc's own A24 discussion predicted
+  # ("the literal 14 is stale even though nothing in spec 6 is wrong"). This
+  # snapshot must move again if a later unit adds or removes a top-level
+  # hooks/scripts/*.sh file; re-derive by counting rather than trusting this
+  # comment.
   local hook_count=$(find hooks/scripts -maxdepth 1 -name '*.sh' -type f | wc -l)
   echo "checked: A24 — hook script count"
-  echo "  Expected: 15, Actual: $hook_count"
-  if [ "$hook_count" -eq 15 ]; then
+  echo "  Expected: 16, Actual: $hook_count"
+  if [ "$hook_count" -eq 16 ]; then
     echo "  ✓ passing"
   else
     echo "  ✗ FAILING"
