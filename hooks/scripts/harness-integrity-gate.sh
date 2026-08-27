@@ -146,4 +146,9 @@ is_benign_jq_read() {
 set_a_mentioned "$command" || exit 0
 command_is_provably_benign "$command" && exit 0
 is_benign_jq_read "$command" && exit 0
-deny A "$command" "audit/config surface (Set A)"
+# $command is raw, fully agent-controlled text and deny() logs it verbatim
+# via audit_append - an embedded newline would forge a second line into
+# .claude/review-audit.log (Set A member #2) otherwise. Flatten first, same
+# idiom as stop-gate-core.sh:439-441 ("do not widen the log record to
+# multiple lines instead").
+deny A "$(printf '%s' "$command" | tr '\n\r' '  ')" "audit/config surface (Set A)"

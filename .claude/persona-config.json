@@ -236,7 +236,7 @@
     ".claude/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
     "adapters/codex/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
     "adapters/cursor/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
-    ".claude/hooks/scripts/harness-integrity-gate.sh": "16680fa2120c3fc240781bc47980fbab55638b2924c89e71c590b9f789cd46d3"
+    ".claude/hooks/scripts/harness-integrity-gate.sh": "e30c3f1eae8aaffae91ff2862f8f6cc7bf6b4b4d15e939377b0f81291f4c0eb4"
   },
   "humanReviewMode": "off"
 }

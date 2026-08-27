@@ -105,9 +105,10 @@ for (const script of findExemptionsMissingReasons(exemptions)) {
   process.exit(1);
 }
 
-// Self-test: exemptions is currently empty, so the reasonless-exemption path
-// above is otherwise dead code. Prove findExemptionsMissingReasons() actually
-// catches a reasonless exemption, independent of the live (empty) map.
+// Self-test: every entry in the live exemptions map has a reason, so the
+// reasonless-exemption path above is otherwise dead code. Prove
+// findExemptionsMissingReasons() actually catches a reasonless exemption,
+// independent of the live map's own contents.
 const selfTestMissing = findExemptionsMissingReasons({ 'fake-script.sh': '' });
 if (selfTestMissing.length !== 1 || selfTestMissing[0] !== 'fake-script.sh') {
   console.error('ERROR: self-test failed - findExemptionsMissingReasons() did not flag a reasonless exemption');
