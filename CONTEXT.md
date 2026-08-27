@@ -2009,3 +2009,112 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   re-rendering or the source stamp needs updating. Related to **managed
   mirror** copies and the stamp-refresh mechanism in `--update` semantics.
 
+**disarm surface**:
+(unit gh423, 2026-08-27) — the config field set whose weakening turns a
+  trust gate off. Defined exactly by `normalize_disarm_surface()` in
+  `bin/harness-integrity.sh` as nine `.claude/persona-config.json` fields:
+  `gatedAgents`, `protectedPaths`, `personaSelection`,
+  `dispatchHygiene.mode`, `dispatchHygiene.requireContract`,
+  `markerCommitCheck.mode`, `humanReviewMode`, `testAndLintCommand`, and
+  `reviewGating.mode`. Each field is normalized to its **effective** value
+  (an absent key maps to the same documented default its consuming gate
+  already falls back to, per D6) before comparison, so an absent key and an
+  explicit default-valued key compare equal while a genuine weakening —
+  including the absent → `"off"` transition on `reviewGating.mode` D
+  introduces — does not get silently normalized away.
+  `fileHashes`/`pluginVersion`/`substitutions` are deliberately excluded:
+  `--update` rewrites them routinely and they carry no gating authority.
+  The comparison runs against the **session baseline commit** (D4, not live
+  `HEAD`), is reported (never blocks) from `session-start.sh`, and hard
+  **blocks** only at a gated agent's own `SubagentStop` inside
+  `stop-gate.sh` — never at main-session `Stop` (RD3) — via a
+  `defer:`/`skip:` override file mirroring the pending-review escape hatch.
+  See [[audit seal]] (the parallel mechanism for the four gitignored audit
+  logs, which are not tracked by git and so need a sidecar rather than a
+  git-baseline comparison) and `docs/trust-model.md` for the broader
+  self-report-vs-mechanical map this closes row 13 of.
+
+**audit seal**:
+(unit gh415, 2026-08-26) — the append-only sidecar `<log>.seal` maintained
+  alongside each of the four gitignored `.claude/*-audit.log` files by
+  `hooks/scripts/lib/audit-log.sh`, holding a single line
+  `lines=<N> sha256=<hash>` — `N` is the log's line count and `hash` is the
+  sha256 of the whole file at the moment of the last reseal. `audit_append`
+  appends a line then reseals unconditionally; `audit_seal_verify` reports
+  `ok` only when the log has at least `N` lines AND the sha256 of exactly
+  its first `N` lines matches the sealed hash — `truncated`, `missing-seal`,
+  `absent`, or `unverifiable` otherwise. Per the library's own header
+  comment (its "what the seal does and does not prove" section, stated
+  candidly rather than overclaimed here): it **detects** accidental
+  truncation, a crashed/partial write, a `git clean` that removed the log,
+  and an out-of-band edit by a tool that doesn't know the seal exists; it
+  does **not detect** an adversary who truncates the log AND reseals —
+  resealing is one `sha256sum` plus a two-line rewrite, and nothing in the
+  library stops a determined agent from doing both. The seal prices that
+  attack (turns a one-call truncation into a two-step operation that must
+  also model the seal format) and catches accidents reliably; it is
+  evidence against carelessness, not a defense against intent. See
+  [[sanctioned rotation]] for the one operation that legitimately rewrites
+  a sealed log without tripping this detector, and `docs/trust-model.md`
+  row 12 for how this feeds the broader trust map.
+
+**sanctioned rotation**:
+(unit gh415, 2026-08-26) — a log rotation that ends by leaving the sealed
+  log's new content and its `.seal` sidecar consistent, so `audit_seal_verify`
+  reads the result as `ok` rather than `truncated` — which is otherwise
+  indistinguishable from a truncate-and-not-reseal attack against the
+  [[audit seal]]. Two call sites both qualify, and neither predates the
+  other's reseal discipline: `audit_rotate()` in
+  `hooks/scripts/lib/audit-log.sh` (invoked by `bin/harness-integrity.sh
+  --rotate`) moves the log to `<dot-dir>/audit-archive/<utc>-<name>.log`,
+  starts a fresh log whose first line records the archived file's name,
+  line count and sha256, and reseals it. `bin/human-review-cleanup.sh`'s
+  pre-existing `rotate_log()` (its own, older archival shape — it preserves
+  the log's last line as the new file's sole content, for defer-dedup
+  continuity, rather than writing `audit_rotate`'s header line) was extended
+  by this unit to drop the stale `.seal` left over from the archived content
+  and call `_audit_reseal` directly on the fresh file, rather than switching
+  to `audit_rotate`'s incompatible archive-naming scheme. Either path is
+  "sanctioned"; a rotation that moves or truncates a sealed log through any
+  other route (e.g. a bare `mv`/`: >`) leaves a stale `.seal` behind and
+  will read as tampering.
+
+**countersign**:
+(unit gh417, 2026-08-26) — an optional marker a reviewer writes at
+  `.claude/reviewed/<slug>.countersign`, one line:
+  `COUNTERSIGN <slug> <UTC ISO-8601> runsh: <sha256 of
+  microworlds/<slug>/run.sh>`. Writing one attests that the reviewer **read
+  and re-derived** the bundle's `run.sh` checks — never that they
+  re-authored it, and never a claim of authorship. Like every marker under
+  `.claude/reviewed/`, it is not self-declarable: the directory's own
+  write-identity grant (see [[The Writer/Reviewer split]],
+  [[reviewed-path-gate.sh]]) restricts who may write it, and RD5 records
+  that its loss fails safe to the honest `self` default rather than silently
+  granting authority. It is optional — an uncountersigned bundle simply
+  stays at the honest default (see [[authority]]) — and it is **automatically
+  invalidated** the moment `run.sh` is edited after countersigning: the
+  hash recorded in the marker no longer matches the file's current hash,
+  which is exactly the comparison [[authority]] performs. See
+  `docs/trust-model.md` for the canonical self-report-vs-mechanical
+  framing this marker converts one row of.
+
+**authority**:
+(unit gh417, 2026-08-26) — a `self`/`reviewer` provenance field appended
+  to a **microworld bundle**'s result line in the **Microworld audit log**
+  (`... authority=self` or `... authority=reviewer`), derived by
+  `_bundle_authority()` in `hooks/scripts/lib/microworld-queue.sh`. It is
+  never self-declarable and never read from a bundle's own `manifest.json`:
+  it is `reviewer` if and only if a matching [[countersign]] marker exists
+  at `.claude/reviewed/<slug>.countersign` AND its recorded `runsh:` sha256
+  equals `run.sh`'s **current** hash (computed fresh, never cached); any
+  mismatch — no countersign, a malformed or absent `runsh:` field, or
+  `run.sh` edited since the countersign was written — falls back to `self`.
+  The microworld dashboard renders anything other than `authority=reviewer`
+  with an explicit `unverified — implementer-authored check` text label
+  (never a colour alone) at every place a bundle's status is shown, closing
+  the F5 gap where a self-graded pass looked identical to any other green
+  signal. See `docs/trust-model.md` row 10 and, for the fuller
+  self-report-vs-mechanical distinction this term is one instance of, that
+  document generally — restated here only to the extent needed to define
+  the field itself, not forked.
+
