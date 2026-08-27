@@ -514,6 +514,15 @@ else
 fi
 
 echo
+echo "== marker-verify: --list/--execute re-run of a marker's criteria (Bash) =="
+if bash tests/marker-verify.test.sh; then
+  echo "OK   tests/marker-verify.test.sh"
+else
+  echo "FAIL tests/marker-verify.test.sh"
+  fail=1
+fi
+
+echo
 echo "== human-review-cleanup: resolved-packet sweep (Bash) =="
 if bash tests/human-review-cleanup.test.sh; then
   echo "OK   tests/human-review-cleanup.test.sh"

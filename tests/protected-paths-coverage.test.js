@@ -16,6 +16,11 @@ const exemptions = {
     '.claude/settings.json, and itself (Set B). gh418\'s "Do NOT touch" ' +
     'section reserves adding it to protectedPaths as an operator decision, ' +
     'not something this unit bakes in.',
+  'marker-verify.sh': 'Never registered in any hook (RD1\'s safety property, ' +
+    'C6.1 GUARD in gh420) - it has no execution path in the harness for a ' +
+    'protectedPaths entry to guard. gh420\'s "Do NOT touch" section reserves ' +
+    '.claude/persona-config.json as an operator decision, not something this ' +
+    'unit bakes in.',
 };
 
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
