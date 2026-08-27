@@ -143,8 +143,12 @@ if [ -f "$harness_integrity_bin" ]; then
     --self-report "$(cat "$baseline_file" 2>/dev/null || true)" 2>/dev/null || true)"
 fi
 if [[ $self_report_line =~ wip-sentinels=([0-9]+)\ defers=([0-9]+)\ skips=([0-9]+)\ abandoned-unrecorded=([0-9]+) ]]; then
+  # abandoned-unrecorded (group 4) is a documented, permanent constant 0 -
+  # bin/harness-integrity.sh:31-44 explains why it cannot be reliably
+  # computed from the current skip: log format. Never check it here; doing
+  # so would silently reintroduce a dead disjunct that can never fire.
   if [ "${BASH_REMATCH[1]}" != 0 ] || [ "${BASH_REMATCH[2]}" != 0 ] \
-     || [ "${BASH_REMATCH[3]}" != 0 ] || [ "${BASH_REMATCH[4]}" != 0 ]; then
+     || [ "${BASH_REMATCH[3]}" != 0 ]; then
     context_parts+=("Self-report (since session baseline): ${self_report_line}")
   fi
 fi
