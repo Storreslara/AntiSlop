@@ -94,6 +94,11 @@
       "reason": "Shared library for agent identity tagging; used by gate scripts"
     },
     {
+      "pattern": "hooks/scripts/lib/harness-arm.sh",
+      "tag": "local-only",
+      "reason": "Shared library computing the harness_armed() tamper verdict; used by six trust gates"
+    },
+    {
       "pattern": "hooks/scripts/lib/audit-log.sh",
       "tag": "local-only",
       "reason": "Shared library for sidecar-sealed audit log writes; used by gate scripts"
@@ -186,17 +191,17 @@
     ".claude/persona-protocol.md": "84bb9df160e0cce7c9e3ed64199406b1c46970a8a9a94628757d0fd6f8ca9048",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
-    ".claude/hooks/scripts/dispatch-hygiene.sh": "ea5132383f987fceff4c931030c23723d66ba51ed72f9c8abe41d0bc68b8a889",
+    ".claude/hooks/scripts/dispatch-hygiene.sh": "704e5b65903f8c4a71bde0bb2d8377a5ab933be80e20048e7307cebeae7fcca6",
     ".claude/hooks/scripts/graph-update.sh": "a543070d6c0dd4a28b71feab85853af60c0e082dab21b0c1fd44f8106d169ed4",
     ".claude/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
     ".claude/hooks/scripts/lint-on-edit.sh": "b1db05986d2c553e32234934a524936b741f6fc3dab90eb0588e9c6d24f722d0",
-    ".claude/hooks/scripts/protected-paths.sh": "30e0f5296725c18f98a52a288a409e865c73dcf82aa8a551b43b2822786ec733",
-    ".claude/hooks/scripts/reviewed-path-gate.sh": "165ff09436dbbb2731c87106844dc9948e89409da7ceccb9f697d532aaa4bb98",
-    ".claude/hooks/scripts/reviewer-route-gate.sh": "388052d1a3c2a3272322e62d5c9391b51522bf22fe20c10e30d787c5a3d59b5b",
+    ".claude/hooks/scripts/protected-paths.sh": "3efc9097a0d915f725deb3a28ea482220dddafa7d83a56c93e8c42644fa51728",
+    ".claude/hooks/scripts/reviewed-path-gate.sh": "20de30d615563239af37cf90e945a66e5cb415b4a4a83677d5e8fc93db163a46",
+    ".claude/hooks/scripts/reviewer-route-gate.sh": "2d899dfffe870d2f813d30e9ebd37614f8f325d0a5a125e86bf203e8ba748b37",
     ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
     ".claude/hooks/scripts/session-start.sh": "61f68442f7b6f526a3fd398664194e509c873498235e64031008690266a4053d",
-    ".claude/hooks/scripts/stop-gate.sh": "9c52c0175f544f71c8c4e312d3b19a28580b67897324aadfe262bfd330a39c71",
-    ".claude/hooks/scripts/task-gate.sh": "e49caba2aec0eb0df2c1d7da5d82bde8d4878776e0058d95e9ac0d9378255f91",
+    ".claude/hooks/scripts/stop-gate.sh": "57c7b020a350ad48b4733b2c9468ac1ded7d0ad848ccc1cbdab85c28311bd9eb",
+    ".claude/hooks/scripts/task-gate.sh": "7ed3a52aa33ab7e2bb19a657b2ab21779eec42a8a06a00b32153ee6af4117e15",
     ".claude/hooks/scripts/human-decision-gate.sh": "eeb7c67fdfbc13acc54ba22532a51c0547c7aac317b7192acd903750e5a263ce",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
     ".claude/hooks/scripts/microworld-rerun.sh": "0b0a3b94e86644ad010bc2f7145879ba33c29209bb5af080836f0d6da30dcc7d",
@@ -227,7 +232,10 @@
     "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "f5ccf19aa62d5146ab157698b00c51894f61130e6b86fd8c23a80fca2e54c048",
     "adapters/codex/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
     "adapters/cursor/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
-    ".claude/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3"
+    ".claude/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
+    ".claude/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
+    "adapters/codex/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
+    "adapters/cursor/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec"
   },
   "humanReviewMode": "off"
 }
