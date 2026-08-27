@@ -19,13 +19,29 @@
 #   unresolvable sha (bad hash, no git repo) disarms the filter rather than
 #   reporting zero: the whole log is tallied instead, so a broken baseline
 #   fails toward over-reporting, not silence.
-#   abandoned-unrecorded mechanizes only the CONSEQUENCE of a skip: -
-#   candidate unit id = the first whitespace-delimited token of the text
-#   after "skip: ", if it matches the same id grammar dispatch-hygiene.sh
-#   uses for its own `Unit: <id>` line. Distinct candidate ids are deduped;
-#   an id with no .pass/.fail/.blocked/.escalated marker on disk counts once.
-#   This can never tell "id never really dispatched" from "dispatched,
-#   skipped, never marked" - it counts unmarked ids, not proven abandonments.
+#   The window this produces is "since the project's last commit at the
+#   moment this session began" - NOT "since this session's wall-clock
+#   start". session-start.sh writes .session-baseline.<id> as HEAD at first
+#   SessionStart, so a session that starts right after a commit gets a
+#   near-now baseline and will under-report anything logged before that
+#   commit, converging toward all-zero until the session's own new self-
+#   reports accumulate past it. This is the same D4 baseline-sha mechanism
+#   the config-drift check (Step 4) uses, reused here for a timestamp
+#   comparison rather than a content diff - intentional reuse, not a bug.
+#   abandoned-unrecorded is held at a fixed 0 (gh421 fix-2). A skip: line's
+#   reason (hooks/scripts/lib/stop-gate-core.sh:460) is free text an
+#   operator/orchestrator wrote, with no structured unit-id field - real
+#   examples put the id first, mid-sentence, or not at all, so no fixed
+#   token position can find it. Scanning every id-shaped word instead
+#   doesn't work either: an ordinary word ("human", "abandoning") matches the
+#   same grammar as a real id, and the only ground truth available for "is
+#   this really a unit id" - a marker file under .claude/reviewed/ - already
+#   means the unit was NOT abandoned by the time it can be confirmed as a
+#   real id. Nothing else in this project's logs enumerates every unit ever
+#   dispatched, so a truly unmarked id can never be told apart from a
+#   coincidental word. Making this count meaningful requires
+#   stop-gate-core.sh to write a structured `unit=<id>` field into the
+#   skip: line itself.
 set -uo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
@@ -69,7 +85,6 @@ if [ "$do_self_report" = true ]; then
 
   wip_log="${dot}/wip-audit.log"
   review_log="${dot}/review-audit.log"
-  reviewed_dir="${dot}/reviewed"
 
   # count_since <log> <needle> - number of lines in <log> containing <needle>
   # as a plain substring, whose own leading timestamp field is >= baseline_ts
@@ -90,29 +105,14 @@ if [ "$do_self_report" = true ]; then
 
   wip_sentinels="$(count_since "$wip_log" "agent=")"
   defers="$(count_since "$review_log" " defer: ")"
-  skips=$(( $(count_since "$review_log" " skip: ") + $(count_since "$wip_log" " skip: ") ))
+  # wip-audit.log never carries a "skip: " line (its own shape is always
+  # `agent=<id> reason=<text>`, per stop-gate-core.sh:502) - only review_log
+  # does (stop-gate-core.sh:460), so it is the sole source scanned here.
+  skips="$(count_since "$review_log" " skip: ")"
 
+  # See the header comment above: no unit id can be reliably read out of a
+  # skip: line's free text, so this stays a fixed 0 rather than guessing.
   abandoned=0
-  declare -A seen_abandoned=()
-  for log in "$wip_log" "$review_log"; do
-    [ -f "$log" ] || continue
-    while IFS= read -r line; do
-      case "$line" in *" skip: "*) ;; *) continue ;; esac
-      if [ -n "$baseline_ts" ]; then
-        ts="${line%% *}"
-        [[ "$ts" < "$baseline_ts" ]] && continue
-      fi
-      reason="${line#*" skip: "}"
-      token="${reason%% *}"
-      [[ $token =~ ^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$ ]] || continue
-      [ -n "${seen_abandoned[$token]:-}" ] && continue
-      seen_abandoned[$token]=1
-      if [ ! -f "${reviewed_dir}/${token}.pass" ] && [ ! -f "${reviewed_dir}/${token}.fail" ] \
-         && [ ! -f "${reviewed_dir}/${token}.blocked" ] && [ ! -f "${reviewed_dir}/${token}.escalated" ]; then
-        abandoned=$((abandoned + 1))
-      fi
-    done < "$log"
-  done
 
   printf 'self-report wip-sentinels=%s defers=%s skips=%s abandoned-unrecorded=%s\n' \
     "$wip_sentinels" "$defers" "$skips" "$abandoned"

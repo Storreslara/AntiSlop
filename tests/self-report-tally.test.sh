@@ -30,44 +30,51 @@ make_repo() {
 
 # T1 - basic tally + baseline filtering: one wip-sentinel line before the
 # baseline commit's date (excluded) and one after (counted); one defer: and
-# one skip: after the baseline, the skipped unit carrying no marker at all.
+# one skip: after the baseline. The skip: reason is REAL free text (as
+# stop-gate-core.sh:460 actually writes it - no structured unit-id field),
+# naming no unit that carries a marker anywhere.
 dir="$(make_repo t1)"
 sha="$(git -C "$dir" rev-parse HEAD)"
 printf '2019-01-01T00:00:00Z agent=a1 reason=old, before baseline\n' >> "$dir/.claude/wip-audit.log"
 printf '2025-01-01T00:00:00Z agent=a2 reason=new, after baseline\n' >> "$dir/.claude/wip-audit.log"
 printf '2025-01-02T00:00:00Z defer: still working on it\n' >> "$dir/.claude/review-audit.log"
-printf '2025-01-03T00:00:00Z skip: gh999 human decided to drop it\n' >> "$dir/.claude/review-audit.log"
+printf '2025-01-03T00:00:00Z skip: human decided to drop it\n' >> "$dir/.claude/review-audit.log"
 out="$(bash bin/harness-integrity.sh "$dir" --self-report "$sha")"
-if [ "$out" = "self-report wip-sentinels=1 defers=1 skips=1 abandoned-unrecorded=1" ]; then
+if [ "$out" = "self-report wip-sentinels=1 defers=1 skips=1 abandoned-unrecorded=0" ]; then
   ok "T1 tallies since baseline sha, excludes a pre-baseline wip-sentinel line"
 else
-  bad "T1 expected 'self-report wip-sentinels=1 defers=1 skips=1 abandoned-unrecorded=1', got '$out'"
+  bad "T1 expected 'self-report wip-sentinels=1 defers=1 skips=1 abandoned-unrecorded=0', got '$out'"
 fi
 
-# T2 - GUARD: a skip:ped unit WITH a .fail marker is NOT counted as
-# abandoned-unrecorded, even though it still counts toward `skips`.
+# T2 - GUARD, using the reviewer's own gh421 repro: unit gh998 HAS a .fail
+# marker, and the real skip: reason names it MID-SENTENCE (not as the first
+# word) - "abandoning gh998, it already has a FAIL verdict". No first-token
+# or positional extraction can find gh998 here; abandoned-unrecorded must
+# stay 0 regardless.
 dir="$(make_repo t2)"
 sha="$(git -C "$dir" rev-parse HEAD)"
 printf 'FAIL gh998 2026-01-01T00:00:00Z\nsome defect\n' > "$dir/.claude/reviewed/gh998.fail"
-printf '2025-01-01T00:00:00Z skip: gh998 abandoning, already has a verdict\n' >> "$dir/.claude/review-audit.log"
+printf '2025-01-01T00:00:00Z skip: abandoning gh998, it already has a FAIL verdict\n' >> "$dir/.claude/review-audit.log"
 out="$(bash bin/harness-integrity.sh "$dir" --self-report "$sha")"
 if [ "$out" = "self-report wip-sentinels=0 defers=0 skips=1 abandoned-unrecorded=0" ]; then
-  ok "T2 GUARD: skip:ped unit with a .fail marker counts toward skips, not abandoned-unrecorded"
+  ok "T2 GUARD: a real, mid-sentence unit id with a .fail marker never counts toward abandoned-unrecorded"
 else
   bad "T2 expected skips=1 abandoned-unrecorded=0, got '$out'"
 fi
 
-# T3 - dedup: two skip: lines naming the SAME unmarked unit id count
-# abandoned-unrecorded once, not twice.
+# T3 - the OTHER gh421 repro: two skip: lines whose free text has no
+# extractable unit id at all - first-token extraction previously misread
+# "human" and "superseded" as unit ids. Neither should ever count as
+# abandoned-unrecorded (no id is present in the log line to begin with).
 dir="$(make_repo t3)"
 sha="$(git -C "$dir" rev-parse HEAD)"
-printf '2025-01-01T00:00:00Z skip: gh997 first attempt to drop it\n' >> "$dir/.claude/review-audit.log"
-printf '2025-01-02T00:00:00Z skip: gh997 second attempt, still no marker\n' >> "$dir/.claude/review-audit.log"
+printf '2025-01-01T00:00:00Z skip: human abandoned this line of work\n' >> "$dir/.claude/review-audit.log"
+printf '2025-01-02T00:00:00Z skip: superseded by a later spec revision\n' >> "$dir/.claude/review-audit.log"
 out="$(bash bin/harness-integrity.sh "$dir" --self-report "$sha")"
-if [ "$out" = "self-report wip-sentinels=0 defers=0 skips=2 abandoned-unrecorded=1" ]; then
-  ok "T3 two skip: lines naming the same unmarked unit -> abandoned-unrecorded=1 (deduped), skips=2 (raw)"
+if [ "$out" = "self-report wip-sentinels=0 defers=0 skips=2 abandoned-unrecorded=0" ]; then
+  ok "T3 free-text skip: reasons with no real unit id never inflate abandoned-unrecorded"
 else
-  bad "T3 expected skips=2 abandoned-unrecorded=1, got '$out'"
+  bad "T3 expected skips=2 abandoned-unrecorded=0, got '$out'"
 fi
 
 # T4 - fallback: an invalid/unresolvable baseline sha (or no git repo at all)
