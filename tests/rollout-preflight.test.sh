@@ -243,7 +243,8 @@ else
 fi
 
 # AC12: --reverify works and can fail
-# Test 1: On unmodified worktree, A24 should pass (14 scripts exist)
+# Test 1: On unmodified worktree, A24 should pass (15 scripts exist as of
+# gh418 landing hooks/scripts/harness-integrity-gate.sh, 2026-08-26)
 reverify_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
 if echo "$reverify_output" | grep -q "A24" && echo "$reverify_output" | grep -q "passing"; then
   pass_test "--reverify: A24 passes on unmodified worktree"
@@ -251,7 +252,7 @@ else
   fail_test "--reverify: A24 did not show passing on unmodified worktree"
 fi
 
-# Test 2: Create a temporary worktree with 15 scripts and verify A24 fails
+# Test 2: Create a temporary worktree with 16 scripts and verify A24 fails
 tmp_repo=$(mktemp -d)
 trap "rm -rf $tmp_repo" EXIT
 cp -r . "$tmp_repo"
@@ -262,9 +263,9 @@ cd "$tmp_repo"
 reverify_fail_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
 cd - >/dev/null
 if echo "$reverify_fail_output" | grep -q "A24" && echo "$reverify_fail_output" | grep -q "FAILING"; then
-  pass_test "--reverify: A24 fails with 15 scripts"
+  pass_test "--reverify: A24 fails with 16 scripts"
 else
-  fail_test "--reverify: A24 did not fail with 15 scripts"
+  fail_test "--reverify: A24 did not fail with 16 scripts"
 fi
 
 # AC13: --reverify shows checked/skipped status without silent drops
