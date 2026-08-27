@@ -307,6 +307,8 @@ A **microworld bundle** is a gitignored directory under `microworlds/<unit-slug>
 
 **Authoring policy:** `functions[]` is authored at escalation time by the reviewer, never by `lead-programmer`. The reviewer authors it when missing, or verifies and corrects locations in the packet when provided. This couples `functions[]` to the escalation commit at which a human actually reviews the code. The packet's `verifiedBy.functionsAuthoredBy` field records which case applied: `"reviewer"` when authored outright, `"implementer-verified"` when carried over and checked.
 
+**Countersign and result provenance:** a reviewer may optionally write `.claude/reviewed/<slug>.countersign` (`COUNTERSIGN <slug> <UTC ISO-8601> runsh: <sha256 of microworlds/<slug>/run.sh>`), attesting they re-derived the check. Every bundle result line the rerun hook logs carries a trailing `authority=reviewer|self` field - never self-declarable, never read from `manifest.json` - true only when a matching countersign's hash equals `run.sh`'s CURRENT hash; editing `run.sh` afterward invalidates it back to `authority=self`. The dashboard labels anything but `authority=reviewer` as `unverified - implementer-authored check`.
+
 ## Codex platform notes (loud degradations - see docs/codex-port-notes.md)
 - **AGENTS.md reaching subagents is doc-stated but NOT empirically confirmed
   by this project.** Codex's own docs state custom agents "automatically

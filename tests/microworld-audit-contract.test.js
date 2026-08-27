@@ -148,6 +148,71 @@ async function runTests() {
     failures.push(`Test (B) ERROR: ${err.message}`);
   }
 
+  // Test (C): Real hook + real parser — a countersigned bundle's result line
+  // carries authority=reviewer, and the real parser recovers it.
+  console.log('Test (C): Real hook emits authority=reviewer, real parser recovers it...');
+  try {
+    const tmpDir = makeFixtureProject('contract-c');
+    const bundleDir = path.join(tmpDir, 'microworlds', 'test-unit');
+    fs.mkdirSync(path.join(bundleDir, 'inputs'), { recursive: true });
+    fs.mkdirSync(path.join(bundleDir, 'expected'), { recursive: true });
+    fs.writeFileSync(path.join(bundleDir, 'manifest.json'), JSON.stringify({
+      unit: 'test-unit', watch: ['src/*.js'], description: 'fixture', timeoutSeconds: 10,
+    }));
+    const runShPath = path.join(bundleDir, 'run.sh');
+    fs.writeFileSync(runShPath, '#!/usr/bin/env bash\nexit 0\n');
+    fs.chmodSync(runShPath, 0o755);
+
+    const hash = require('crypto').createHash('sha256').update(fs.readFileSync(runShPath)).digest('hex');
+    fs.mkdirSync(path.join(tmpDir, '.claude', 'reviewed'), { recursive: true });
+    fs.writeFileSync(
+      path.join(tmpDir, '.claude', 'reviewed', 'test-unit.countersign'),
+      `COUNTERSIGN test-unit 2026-08-26T00:00:00Z runsh: ${hash}\n`
+    );
+
+    const hookScript = path.join(REPO_ROOT, 'hooks/scripts/microworld-rerun.sh');
+    runHook(tmpDir, 'src/app.js', hookScript);
+
+    const auditStatus = await parseAuditLog(tmpDir);
+    const status = auditStatus['test-unit'];
+
+    if (!status) {
+      failures.push(`Test (C) FAILED: no audit entry for test-unit`);
+    } else if (status.authority !== 'reviewer') {
+      failures.push(`Test (C) FAILED: expected authority 'reviewer', got '${status.authority}'`);
+    } else {
+      console.log('  ✓ Test (C) passed');
+    }
+
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (C) ERROR: ${err.message}`);
+  }
+
+  // Test (D): a pre-authority-field line (no `authority=`) still parses,
+  // with `authority` coming back undefined rather than a parse failure.
+  console.log('Test (D): pre-change line with no authority field still parses...');
+  try {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'audit-contract-d-'));
+    fs.mkdirSync(path.join(tmpDir, '.claude'));
+    fs.writeFileSync(
+      path.join(tmpDir, '.claude', 'microworld-audit.log'),
+      '2024-01-01T12:00:00Z unit=old-unit result=pass file=src/app.js\n'
+    );
+    const auditStatus = await parseAuditLog(tmpDir);
+    const status = auditStatus['old-unit'];
+    if (!status) {
+      failures.push('Test (D) FAILED: pre-change line did not parse at all');
+    } else if (status.authority !== undefined) {
+      failures.push(`Test (D) FAILED: expected authority undefined, got '${status.authority}'`);
+    } else {
+      console.log('  ✓ Test (D) passed');
+    }
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (D) ERROR: ${err.message}`);
+  }
+
   // Summary
   console.log();
   if (failures.length > 0) {

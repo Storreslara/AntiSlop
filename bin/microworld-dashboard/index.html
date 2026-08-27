@@ -223,6 +223,12 @@
       return 'status-unknown';
     }
 
+    // A result is unverified unless a matching, hash-verified reviewer
+    // countersign derived authority=reviewer for it (never self-declarable).
+    function isUnverifiedStatus(status) {
+      return !status || status.authority !== 'reviewer';
+    }
+
     function renderLeftRail() {
       const rail = document.getElementById('leftRail');
       const hasDecisions = decisionsHasAnyGroup();
@@ -263,6 +269,7 @@
             <div>
               <span class="status-indicator ${getStatusClass(b.status)}"></span>
               <span class="bundle-title">Packet: ${escapeHtml(b.unit)}</span>
+              ${isUnverifiedStatus(b.status) ? '<span class="unverified-label">unverified — implementer-authored check</span>' : ''}
             </div>
             <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
           </div>
@@ -317,6 +324,7 @@
             <div>
               <span class="status-indicator ${getStatusClass(b.status)}"></span>
               <span class="bundle-title">${escapeHtml(b.unit)}</span>
+              ${isUnverifiedStatus(b.status) ? '<span class="unverified-label">unverified — implementer-authored check</span>' : ''}
             </div>
             <div class="bundle-desc">${escapeHtml(b.description || '(no description)')}</div>
           </div>
@@ -747,7 +755,7 @@
       if (workingBundles.length === 0) return '';
       let html = `<div class="output-label" style="margin-top: var(--space-4);">Units</div>`;
       html += workingBundles.map(b => `
-        <div><span class="status-indicator ${getStatusClass(b.status)}"></span>${escapeHtml(b.unit)}</div>
+        <div><span class="status-indicator ${getStatusClass(b.status)}"></span>${escapeHtml(b.unit)}${isUnverifiedStatus(b.status) ? '<span class="unverified-label">unverified — implementer-authored check</span>' : ''}</div>
       `).join('');
       return html;
     }

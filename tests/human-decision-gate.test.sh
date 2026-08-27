@@ -111,6 +111,11 @@ bash_case "N5 .directed target" allowed antislop:reviewer \
   "cat > .claude/reviewed/u1.directed <<'EOF'
 DIRECTED u1 - fix per .claude/human-review/u1/DECISION
 EOF"
+bash_case "N28 .countersign target" allowed antislop:reviewer \
+  "cat > .claude/reviewed/u1.countersign <<'EOF'
+COUNTERSIGN u1 2026-08-26T00:00:00Z runsh: $(printf 'a%.0s' {1..64})
+quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
 
 echo
 echo "-- the invariant: DECISION-targeting shapes stay denied (N6-N20) --"

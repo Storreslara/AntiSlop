@@ -11,6 +11,11 @@
 # is a consumed interface with a Node.js parser (bin/dashboard/audit-log.js) on the other side.
 # Contract test: tests/microworld-audit-contract.test.js. Do not change the separator or format
 # without updating the parser and re-running the contract test.
+#
+# A bundle result line may additionally carry an optional trailing
+# `authority=reviewer|self` field (never self-declarable), derived in
+# lib/microworld-queue.sh from a matching, hash-verified
+# .claude/reviewed/<slug>.countersign marker.
 set -euo pipefail
 
 input="$(cat)"

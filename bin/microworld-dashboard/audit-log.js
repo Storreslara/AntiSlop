@@ -39,20 +39,23 @@ async function parseAuditLog(projectRoot) {
 }
 
 function parseLine(line) {
-  // Expected format: <timestamp> unit=<slug> result=<pass|fail|timeout|error> file=<path> [reason=<...>]
+  // Expected format: <timestamp> unit=<slug> result=<pass|fail|timeout|error> file=<path> [reason=<...>] [authority=<reviewer|self>]
   if (!line.trim()) {
     return null;
   }
 
-  const match = line.match(/^[^\s]+\s+unit=(\S+)\s+result=(\S+)\s+file=(\S+)(?:\s+reason=(.+))?$/);
+  const match = line.match(/^[^\s]+\s+unit=(\S+)\s+result=(\S+)\s+file=(\S+)(?:\s+reason=(.+?))?(?:\s+authority=(\S+))?$/);
   if (!match) {
     return null;
   }
 
-  const [, unit, result, file, reason] = match;
+  const [, unit, result, file, reason, authority] = match;
   const parsed = { unit, result, file };
   if (reason) {
     parsed.reason = reason;
+  }
+  if (authority) {
+    parsed.authority = authority;
   }
   return parsed;
 }

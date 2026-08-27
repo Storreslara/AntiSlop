@@ -94,28 +94,55 @@ _memo_setup() {
   export -f bash
 }
 
-# _log_result <audit> <unit> <result> <rel_path>
+# _log_result <audit> <unit> <result> <rel_path> [authority]
 _log_result() {
-  audit_append "$1" "$(printf '%s unit=%s result=%s file=%s' \
+  local line
+  line="$(printf '%s unit=%s result=%s file=%s' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$2" "$3" "$4")"
+  [ "$#" -ge 5 ] && line="$line authority=$5"
+  audit_append "$1" "$line"
+}
+
+# _bundle_authority <project_dir> <slug> <audit> -> reviewer|self. Never
+# self-declarable: reads .claude/reviewed/<slug>.countersign (sibling to
+# <audit>'s own dot-dir) and compares its runsh: sha256 against run.sh's
+# CURRENT hash. Any mismatch - no countersign, a malformed/absent runsh:
+# field, or run.sh edited since the countersign was written - falls back to
+# self. Only ever hashes run.sh; never executes it.
+_bundle_authority() {
+  local project_dir="$1" slug="$2" audit="$3"
+  local run_sh="${project_dir}/microworlds/${slug}/run.sh"
+  local marker line kind msg_slug ts label hash current
+  [ -f "$run_sh" ] || { echo self; return 0; }
+  marker="$(dirname "$audit")/reviewed/${slug}.countersign"
+  [ -f "$marker" ] || { echo self; return 0; }
+  line="$(head -n1 "$marker" 2>/dev/null || true)"
+  read -r kind msg_slug ts label hash <<< "$line"
+  if [ "$kind" = "COUNTERSIGN" ] && [ "$msg_slug" = "$slug" ] && [ "$label" = "runsh:" ] \
+     && [[ "$hash" =~ ^[0-9a-f]{64}$ ]]; then
+    current="$(sha256sum "$run_sh" 2>/dev/null | cut -d' ' -f1)"
+    [ "$hash" = "$current" ] && { echo reviewer; return 0; }
+  fi
+  echo self
 }
 
 # _run_bundle <project_dir> <slug> <rel_path> <memo_dir> <audit>
 _run_bundle() {
   local project_dir="$1" slug="$2" rel_path="$3" memo_dir="$4" audit="$5"
-  local manifest="${project_dir}/microworlds/${slug}/manifest.json" secs rc
+  local manifest="${project_dir}/microworlds/${slug}/manifest.json" secs rc authority
   [ -f "$manifest" ] || return 0
   [ -f "${project_dir}/microworlds/${slug}/run.sh" ] || return 0
   [ -e "${project_dir}/${rel_path}" ] || return 0
   secs="$(jq -r '.timeoutSeconds // 60' "$manifest" 2>/dev/null || echo 60)"
   case "$secs" in ''|*[!0-9]*) secs=60 ;; esac
+  authority="$(_bundle_authority "$project_dir" "$slug" "$audit")"
   rc=0
   ( cd "$project_dir" && timeout "$secs" \
       bash "./microworlds/${slug}/run.sh" "$rel_path" ) >/dev/null 2>&1 || rc=$?
   case "$rc" in
-    0)   _log_result "$audit" "$slug" pass "$rel_path" ;;
-    124) _log_result "$audit" "$slug" timeout "$rel_path" ;;
-    *)   _log_result "$audit" "$slug" fail "$rel_path" ;;
+    0)   _log_result "$audit" "$slug" pass "$rel_path" "$authority" ;;
+    124) _log_result "$audit" "$slug" timeout "$rel_path" "$authority" ;;
+    *)   _log_result "$audit" "$slug" fail "$rel_path" "$authority" ;;
   esac
 }
 

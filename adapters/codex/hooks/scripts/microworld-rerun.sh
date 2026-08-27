@@ -11,6 +11,11 @@
 # be available just to extract project_dir/paths from the payload, so a
 # missing jq exits here, before the core's own jq-availability log branch is
 # ever reached.
+#
+# A bundle result line may additionally carry an optional trailing
+# `authority=reviewer|self` field (never self-declarable), derived in
+# lib/microworld-queue.sh from a matching, hash-verified
+# .codex/reviewed/<slug>.countersign marker.
 set -euo pipefail
 
 input="$(cat)"

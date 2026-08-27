@@ -499,6 +499,72 @@ async function runTests() {
     failures.push(`Test (j) ERROR: ${err.message}`);
   }
 
+  // Test (k): the "unverified" label is bound to exactly the three
+  // status-indicator render sites, and its verdict is derived from
+  // authority alone -- proven by stubbing getStatusClass and confirming
+  // the label logic is unaffected.
+  console.log('Test (k): unverified label at exactly three render sites, stub-proof...');
+  try {
+    const indexPath = path.join(__dirname, '..', 'bin', 'microworld-dashboard', 'index.html');
+    const html = fs.readFileSync(indexPath, 'utf8');
+
+    const siteCount = (html.match(/getStatusClass\(b\.status\)/g) || []).length;
+    if (siteCount !== 3) {
+      failures.push(`Test (k) FAILED: expected exactly 3 getStatusClass(b.status) call sites, found ${siteCount}`);
+    }
+
+    const labelCallCount = (html.match(/isUnverifiedStatus\(b\.status\)/g) || []).length;
+    if (labelCallCount !== 3) {
+      failures.push(`Test (k) FAILED: expected exactly 3 isUnverifiedStatus(b.status) call sites, found ${labelCallCount}`);
+    }
+
+    if (!html.includes('unverified — implementer-authored check')) {
+      failures.push('Test (k) FAILED: missing the "unverified — implementer-authored check" label text');
+    }
+
+    // Stub proof: extract isUnverifiedStatus and evaluate it against a
+    // deliberately nonsense getStatusClass stub -- the verdict must not change.
+    const extractFn = (name) => {
+      const start = html.indexOf(`function ${name}(status) {`);
+      if (start === -1) throw new Error(`function ${name} not found in index.html`);
+      let depth = 0;
+      let i = html.indexOf('{', start);
+      for (; i < html.length; i++) {
+        if (html[i] === '{') depth++;
+        else if (html[i] === '}') { depth--; if (depth === 0) break; }
+      }
+      return html.slice(start, i + 1);
+    };
+
+    const vm = require('vm');
+    const sandbox = {};
+    vm.createContext(sandbox);
+    vm.runInContext(
+      "function getStatusClass(status) { return 'STUBBED-CLASS'; }\n" + extractFn('isUnverifiedStatus'),
+      sandbox
+    );
+
+    const cases = [
+      [{ authority: 'reviewer', result: 'pass' }, false],
+      [{ authority: 'self', result: 'pass' }, true],
+      [{ result: 'pass' }, true],
+      [null, true],
+    ];
+    for (const [status, expected] of cases) {
+      sandbox.__status = status;
+      const got = vm.runInContext('isUnverifiedStatus(__status)', sandbox);
+      if (got !== expected) {
+        failures.push(`Test (k) FAILED: isUnverifiedStatus(${JSON.stringify(status)}) expected ${expected}, got ${got}`);
+      }
+    }
+
+    if (failures.filter((f) => f.includes('Test (k)')).length === 0) {
+      console.log('  ✓ Test (k) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (k) ERROR: ${err.message}`);
+  }
+
   console.log();
   if (failures.length > 0) {
     console.error('FAILURES:');

@@ -86,7 +86,7 @@ const codexMap = {
   'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Codex has no per-agent memory primitive (file convention only) — see platform notes' },
-  'Microworld bundles (format and the check contract)': { probe: 'Microworld bundles' },
+  'Microworld bundles (format and the check contract)': { probe: ['Microworld bundles', 'authority=reviewer'] },
 };
 
 const cursorMap = {
@@ -108,7 +108,7 @@ const cursorMap = {
   'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Cursor has no per-agent memory primitive (file convention only) — see platform notes' },
-  'Microworld bundles (format and the check contract)': { probe: 'Microworld bundles' },
+  'Microworld bundles (format and the check contract)': { probe: ['Microworld bundles', 'authority=reviewer'] },
 };
 
 // Throws on any drift: an unmapped canonical section, a stale map key, or a

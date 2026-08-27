@@ -154,6 +154,57 @@ else
   fail=1
 fi
 
+# (c2) a matching, hash-verified .countersign for the bundle's run.sh ->
+#      the deferred result line carries authority=reviewer
+dir="$(make_project countersigned)"
+make_bundle "$dir" widget 'src/*.js' 0
+mkdir -p "$dir/.claude/reviewed"
+hash="$(sha256sum "$dir/microworlds/widget/run.sh" | cut -d' ' -f1)"
+printf 'COUNTERSIGN widget 2026-08-26T00:00:00Z runsh: %s\n' "$hash" \
+  > "$dir/.claude/reviewed/widget.countersign"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
+   && grep -q 'unit=widget result=pass file=src/app.js authority=reviewer' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (c2) matching countersign -> deferred result line carries authority=reviewer"
+else
+  echo "FAIL (c2) expected an authority=reviewer result line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (c3) no countersign at all -> authority=self (never self-declarable as reviewer)
+dir="$(make_project uncountersigned)"
+make_bundle "$dir" widget 'src/*.js' 0
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
+   && grep -q 'unit=widget result=pass file=src/app.js authority=self' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (c3) no countersign -> deferred result line carries authority=self"
+else
+  echo "FAIL (c3) expected an authority=self result line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (c4) a countersign exists but run.sh was edited AFTER it was written -> the
+#      hash no longer matches, invalidating the countersign back to authority=self
+dir="$(make_project stale-countersign)"
+make_bundle "$dir" widget 'src/*.js' 0
+mkdir -p "$dir/.claude/reviewed"
+printf 'COUNTERSIGN widget 2026-08-26T00:00:00Z runsh: %s\n' "$(printf 'a%.0s' {1..64})" \
+  > "$dir/.claude/reviewed/widget.countersign"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
+   && grep -q 'unit=widget result=pass file=src/app.js authority=self' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (c4) run.sh edited after countersigning -> invalidated back to authority=self"
+else
+  echo "FAIL (c4) expected an authority=self result line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
 # (e) a bundle with a malformed manifest.json -> exit 0 (fail open) and a
 #     logged line, SYNCHRONOUSLY (infrastructure checks are not deferred -
 #     they are cheap, no subprocess involved)

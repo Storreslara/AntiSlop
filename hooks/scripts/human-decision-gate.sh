@@ -62,7 +62,7 @@ agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 # without which a body could close the heredoc early and run whatever follows.
 is_sanctioned_marker_write() {
   local cmd="$1" first delim rest line
-  local re='^cat[[:space:]]+>>?[[:space:]]*[.]claude/reviewed/[A-Za-z0-9_][A-Za-z0-9_#.-]*[.](pass|fail|directed|blocked|escalated)[[:space:]]+<<'\''([A-Za-z0-9_]+)'\''$'
+  local re='^cat[[:space:]]+>>?[[:space:]]*[.]claude/reviewed/[A-Za-z0-9_][A-Za-z0-9_#.-]*[.](pass|fail|directed|blocked|escalated|countersign)[[:space:]]+<<'\''([A-Za-z0-9_]+)'\''$'
 
   while [ "${cmd: -1}" = $'\n' ]; do cmd="${cmd%$'\n'}"; done
   first="${cmd%%$'\n'*}"
