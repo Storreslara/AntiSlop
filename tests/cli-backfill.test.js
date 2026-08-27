@@ -1104,6 +1104,36 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     }
   });
 
+  // --- Integration (gh423 FAIL-recovery): the config-drift override file is
+  // a sibling of the other managed escape-hatch files above and must be
+  // backfilled the same way, or its untracked presence pollutes git status.
+  check('--update backfills .claude/.config-drift-override.* into .gitignore without touching other lines, idempotently', () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-config-drift-override-gitignore-'));
+    try {
+      buildBaselineProject(tmp, {});
+      const gitignorePath = path.join(tmp, '.gitignore');
+      const original = '*.log\nnode_modules/\n.claude/reviewed/\n.claude/wip-audit.log\n.claude/review-audit.log\n';
+      fs.writeFileSync(gitignorePath, original);
+
+      const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(first.status, 0, `expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+
+      const afterFirst = fs.readFileSync(gitignorePath, 'utf8');
+      assert.ok(
+        afterFirst.split('\n').includes('.claude/.config-drift-override.*'),
+        `expected .claude/.config-drift-override.* to be backfilled as its own line, got: ${afterFirst}`
+      );
+      assert.ok(afterFirst.startsWith(original), 'pre-existing .gitignore lines must survive unmodified and unreordered, as an exact prefix');
+
+      const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+      assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+      const afterSecond = fs.readFileSync(gitignorePath, 'utf8');
+      assert.strictEqual(afterSecond, afterFirst, 'a second --update must leave .gitignore byte-identical (idempotence)');
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  });
+
   check('--update --force-render catches drift past the version-match fast-path that a plain --update misses (C2.7)', () => {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-check-test-'));
     try {

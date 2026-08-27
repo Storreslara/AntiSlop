@@ -30,3 +30,4 @@ scratch/
 # antislop microworld bundles + escalation packets (local scratch, never committed)
 microworlds/
 .claude/human-review/
+.claude/.config-drift-override.*

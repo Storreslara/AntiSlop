@@ -164,6 +164,7 @@ const OPERATIONAL_GITIGNORE_PATTERNS = [
   '{{DOTDIR}}/.dispatch-override',
   '{{DOTDIR}}/.dispatch-override.consumed*',
   '{{DOTDIR}}/.stop-loop-guard.*',
+  '{{DOTDIR}}/.config-drift-override.*',
   'microworlds/',
   '{{DOTDIR}}/human-review/',
   '{{DOTDIR}}/microworld-audit.log',
