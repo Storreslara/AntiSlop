@@ -36,3 +36,4 @@
 - [New hook lib file ripples](technique_new_hook_lib_file_ripples.md) — a new `hooks/scripts/lib/*.sh` breaks cli.js load, two mutant-copy suites, and the coverage test
 - [Adapter entry point not generated](project_adapter_entrypoint_not_generated.md) — `adapters/*/hooks/scripts/<gate>.sh` is hand-edited, unlike sibling `lib/*-core.sh`; verify with `--update --check` "already current" (gh415 2nd FAIL fix)
 - [Concurrent agent persona-config race](project_concurrent_agent_persona_config_race.md) — a surprising `--update --check` diff can be another agent's mid-flight write; check `git log` and re-run before escalating (gh419)
+- [New hook script shifts out-of-scope baseline](feedback_new_hook_script_shifts_out_of_scope_baseline.md) — a new top-level hooks/scripts/*.sh breaks scripts/rollout-preflight.sh's A24 count; report it, never fix it yourself (recurred gh418, gh420)
