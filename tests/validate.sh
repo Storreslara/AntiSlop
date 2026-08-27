@@ -678,6 +678,15 @@ else
 fi
 
 echo
+echo "== trust-model bijection: docs/trust-model.md vs hooks/scripts/*.sh (Node) =="
+if node tests/trust-model-bijection.test.js; then
+  echo "OK   tests/trust-model-bijection.test.js"
+else
+  echo "FAIL tests/trust-model-bijection.test.js"
+  fail=1
+fi
+
+echo
 echo "== protocol doc-drift: CONTEXT.md/wiki section counts vs live templates (Node) =="
 if node tests/protocol-doc-drift.test.js; then
   echo "OK   tests/protocol-doc-drift.test.js"
