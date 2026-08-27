@@ -603,7 +603,7 @@ const SHARED_HOOK_LIB_FILES = [
   'reviewer-route-gate-core.sh',
   'stop-gate-core.sh',
 ];
-const CLAUDE_ONLY_HOOK_LIB_FILES = ['benign-command.sh'];
+const CLAUDE_ONLY_HOOK_LIB_FILES = ['benign-command.sh', 'state-access.sh'];
 
 function assertHookLibDeclarationComplete() {
   const libDir = path.join(PKG_ROOT, 'hooks', 'scripts', 'lib');

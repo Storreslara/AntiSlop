@@ -142,6 +142,11 @@
       "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
       "tag": "local-only",
       "reason": "Shared core for reviewer routing gate"
+    },
+    {
+      "pattern": "hooks/scripts/lib/state-access.sh",
+      "tag": "local-only",
+      "reason": "Consolidated state-access library for marker/artifact management (M3); single seam for all hook-script state operations"
     }
   ],
   "gatedAgents": [
