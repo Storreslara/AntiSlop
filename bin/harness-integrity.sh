@@ -3,10 +3,20 @@
 # always-exit-0, one-line contract. See docs/plans/2026-08-25-harness-trust-
 # gaps.md Steps 3 and 7.
 #
-# Usage: harness-integrity.sh [project-dir] [--rotate]
+# Usage: harness-integrity.sh [project-dir] [baseline-sha] [--rotate]
 #        harness-integrity.sh [project-dir] --self-report [baseline-sha]
 # Output (report mode, always):
-#   harness-integrity=<ok|drift|tampered|unverifiable> config=<ok|drift|missing> logs=<ok|LIST>
+#   harness-integrity=<ok|drift|tampered|unverifiable> config=<ok|drift|missing> fields=<-|f1,f2,...> logs=<ok|LIST>
+# <baseline-sha> (default: the most recently modified .claude/.session-
+#   baseline.* file's contents, same lookup --self-report uses) drives the
+#   disarm-surface config-drift comparison (Step 4): the nine fields listed
+#   in normalize_disarm_surface() below are read from BOTH
+#   `git show <baseline-sha>:.claude/persona-config.json` and the working
+#   tree, each normalized to its effective value, and compared. A difference
+#   sets config=drift and lists the drifted field names in `fields=`; an
+#   unresolvable baseline (bad sha, no git repo) leaves config at its
+#   existence-only value (ok/missing) rather than fabricating a verdict from
+#   nothing to compare against.
 # --rotate: rotates the four audit logs (R3) instead of reporting.
 # --self-report: tallies the irreducible self-reports (Step 7b, F4 rows 6-8)
 #   since <baseline-sha> (default: the most recently modified
@@ -64,6 +74,40 @@ baseline_sha="${pos_args[1]:-}"
 dot="${project_dir}/.claude"
 log_names="review-audit.log dispatch-audit.log microworld-audit.log wip-audit.log"
 
+# normalize_disarm_surface <json-content> -> compact JSON of the nine
+# disarm-surface fields (D6/Ordered edit 1), each mapped to its EFFECTIVE
+# value: an absent key normalizes to the documented default so an absent
+# key and an explicit default-valued key compare equal, while an explicit
+# non-default value is never silently defaulted away. Defaults mirror each
+# consuming gate's own fallback exactly (dispatch-hygiene.sh:118,130-131;
+# stop-gate-core.sh:351,478; reviewer.md's documented humanReviewMode
+# default; spec 6's A24b for reviewGating.mode). requireContract is compared
+# against the literal boolean `false`, not via `//`, because jq's `//`
+# treats `false` the same as absent and would silently undo an explicit
+# opt-out (same footgun dispatch-hygiene.sh:126-130 already documents).
+# fileHashes/pluginVersion/substitutions are deliberately absent from this
+# list - bin/cli.js --update rewrites them routinely and they carry no
+# gating authority.
+normalize_disarm_surface() {
+  local content="$1"
+  [ -n "$content" ] || content='{}'
+  printf '%s' "$content" | jq -c '
+    (if type == "object" then . else {} end) as $c |
+    {
+      gatedAgents: ($c.gatedAgents // ["lead-programmer"]),
+      protectedPaths: ($c.protectedPaths // []),
+      personaSelection: ($c.personaSelection // []),
+      "dispatchHygiene.mode": ($c.dispatchHygiene.mode // "block"),
+      "dispatchHygiene.requireContract":
+        (if $c.dispatchHygiene.requireContract == false then false else true end),
+      "markerCommitCheck.mode": ($c.markerCommitCheck.mode // "warn"),
+      humanReviewMode: ($c.humanReviewMode // "critical"),
+      testAndLintCommand: ($c.testAndLintCommand // ""),
+      "reviewGating.mode": ($c.reviewGating.mode // "enforce")
+    }
+  ' 2>/dev/null || echo '{}'
+}
+
 if [ "$do_rotate" = true ]; then
   for name in $log_names; do
     log="${dot}/${name}"
@@ -120,7 +164,28 @@ if [ "$do_self_report" = true ]; then
 fi
 
 config_state=ok
-[ -f "${dot}/persona-config.json" ] || config_state=missing
+drift_fields=""
+if [ ! -f "${dot}/persona-config.json" ]; then
+  config_state=missing
+else
+  if [ -z "$baseline_sha" ]; then
+    latest_baseline_file="$(ls -t "${dot}"/.session-baseline.* 2>/dev/null | head -n 1 || true)"
+    [ -n "$latest_baseline_file" ] && baseline_sha="$(cat "$latest_baseline_file" 2>/dev/null || true)"
+  fi
+  if [ -n "$baseline_sha" ]; then
+    baseline_content="$(git -C "$project_dir" show "${baseline_sha}:.claude/persona-config.json" 2>/dev/null || true)"
+    if [ -n "$baseline_content" ]; then
+      tree_content="$(cat "${dot}/persona-config.json" 2>/dev/null || true)"
+      baseline_norm="$(normalize_disarm_surface "$baseline_content")"
+      tree_norm="$(normalize_disarm_surface "$tree_content")"
+      if [ "$baseline_norm" != "$tree_norm" ]; then
+        config_state=drift
+        drift_fields="$(jq -nr --argjson a "$baseline_norm" --argjson b "$tree_norm" \
+          '($a | keys) as $k | [$k[] | select($a[.] != $b[.])] | join(",")' 2>/dev/null || true)"
+      fi
+    fi
+  fi
+fi
 
 bad_logs=""
 worst=ok
@@ -139,9 +204,11 @@ done
 [ -n "$bad_logs" ] || bad_logs=ok
 
 overall="$worst"
-if [ "$config_state" != ok ] && [ "$overall" != tampered ]; then
-  overall=unverifiable
-fi
+case "$config_state" in
+  missing) [ "$overall" = tampered ] || overall=unverifiable ;;
+  drift)   [ "$overall" = tampered ] || overall=drift ;;
+esac
 
-printf 'harness-integrity=%s config=%s logs=%s\n' "$overall" "$config_state" "$bad_logs"
+printf 'harness-integrity=%s config=%s fields=%s logs=%s\n' \
+  "$overall" "$config_state" "${drift_fields:--}" "$bad_logs"
 exit 0

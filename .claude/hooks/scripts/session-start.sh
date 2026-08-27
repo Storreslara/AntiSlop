@@ -153,6 +153,20 @@ if [[ $self_report_line =~ wip-sentinels=([0-9]+)\ defers=([0-9]+)\ skips=([0-9]
   fi
 fi
 
+# Job 7: disarm-surface config-drift report (Step 4, RD3) - report only,
+# NEVER blocks (stop-gate.sh's SubagentStop is where a gated agent's drift
+# actually blocks). Reuses the same harness-integrity.sh binary and baseline
+# sha Job 6 already resolved.
+config_drift_line=""
+if [ -f "$harness_integrity_bin" ]; then
+  config_drift_line="$(bash "$harness_integrity_bin" "$project_dir" \
+    "$(cat "$baseline_file" 2>/dev/null || true)" 2>/dev/null || true)"
+fi
+if echo "$config_drift_line" | grep -q ' config=drift '; then
+  drifted_fields="$(echo "$config_drift_line" | grep -oE 'fields=[^ ]*' | cut -d= -f2)"
+  context_parts+=("Disarm-surface config drift since session baseline: ${drifted_fields:-unknown} (report only; see docs/plans/2026-08-25-harness-trust-gaps.md Step 4).")
+fi
+
 if [ "${#context_parts[@]}" -gt 0 ]; then
   joined="$(printf '%s\n\n' "${context_parts[@]}")"
   jq -n --arg msg "$joined" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'

@@ -24,11 +24,6 @@
       "reason": "Enforcement gate; local edits are frequent during development"
     },
     {
-      "pattern": "hooks/scripts/stop-gate.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; largest gate in system, edited frequently"
-    },
-    {
       "pattern": "hooks/scripts/task-gate.sh",
       "tag": "local-only",
       "reason": "Enforcement gate; controls marker validity and task dispatch"
@@ -84,11 +79,6 @@
       "reason": "Utility script setting reviewer tier based on paths; affects local review logic"
     },
     {
-      "pattern": "hooks/scripts/session-start.sh",
-      "tag": "local-only",
-      "reason": "Session startup hook; exempt reporter, edited as other hooks change"
-    },
-    {
       "pattern": "hooks/scripts/lib/agent-identity.sh",
       "tag": "local-only",
       "reason": "Shared library for agent identity tagging; used by gate scripts"
@@ -127,11 +117,6 @@
       "pattern": "hooks/scripts/lib/protected-paths-core.sh",
       "tag": "local-only",
       "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
-    },
-    {
-      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for stop gate; coordinates with multiple hooks"
     },
     {
       "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
@@ -199,8 +184,8 @@
     ".claude/hooks/scripts/reviewed-path-gate.sh": "fc2f32b91830588ad0ecc52da44c3a6dddf978a51728a68e156df2d9163404db",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "2d899dfffe870d2f813d30e9ebd37614f8f325d0a5a125e86bf203e8ba748b37",
     ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
-    ".claude/hooks/scripts/session-start.sh": "0e542beb14f599258696bc7c9291cf0651a9b4b03e5d5835180fc9bd36fc194b",
-    ".claude/hooks/scripts/stop-gate.sh": "57c7b020a350ad48b4733b2c9468ac1ded7d0ad848ccc1cbdab85c28311bd9eb",
+    ".claude/hooks/scripts/session-start.sh": "b11fce7ec5e98f9c18a6eb2360dca000fb6004ce0c0ca9154b5c1f268133a0ca",
+    ".claude/hooks/scripts/stop-gate.sh": "3d15f91bf5bb1fea88c18032f16e7511b1f4c628c826d08a584ed3131a09ca2a",
     ".claude/hooks/scripts/task-gate.sh": "7ed3a52aa33ab7e2bb19a657b2ab21779eec42a8a06a00b32153ee6af4117e15",
     ".claude/hooks/scripts/human-decision-gate.sh": "ac3cd5e96e6703a9c6a02b221645078067280c9e45d0e15ee2595649a66c6a9f",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
@@ -222,11 +207,11 @@
     "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
     "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
     ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "e58404b0df0c2989ec575728a9ed0c69c49bd87740fed3c5aefd27c70d46e526",
-    ".claude/hooks/scripts/lib/stop-gate-core.sh": "f2de27651215eb333e21e2cf6b8297bdf4294428fd7cea8a7e5cde21740f90fc",
+    ".claude/hooks/scripts/lib/stop-gate-core.sh": "536f03a0b2ec4f5eec5c37d630d2fbe574abcc90efa039e54edbea3a23a8abbb",
     "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "e58404b0df0c2989ec575728a9ed0c69c49bd87740fed3c5aefd27c70d46e526",
-    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "f2de27651215eb333e21e2cf6b8297bdf4294428fd7cea8a7e5cde21740f90fc",
+    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "536f03a0b2ec4f5eec5c37d630d2fbe574abcc90efa039e54edbea3a23a8abbb",
     "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "e58404b0df0c2989ec575728a9ed0c69c49bd87740fed3c5aefd27c70d46e526",
-    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "f2de27651215eb333e21e2cf6b8297bdf4294428fd7cea8a7e5cde21740f90fc",
+    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "536f03a0b2ec4f5eec5c37d630d2fbe574abcc90efa039e54edbea3a23a8abbb",
     ".claude/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
     "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
     "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",

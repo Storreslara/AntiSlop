@@ -527,6 +527,47 @@ if [ -f "$baseline_file" ]; then
   fi
 fi
 
+# Step 4 (disarm-surface config drift, RD3): a GATED agent's SubagentStop
+# blocks when persona-config.json has weakened since this session's
+# baseline sha - never the main-session Stop (RD3), and never when the
+# baseline is unresolvable (nothing to compare against). Placed ahead of
+# the dirty/moved early-allow below so a drift committed mid-session (tree
+# clean, HEAD moved) is still caught. harness_integrity_bin is read
+# defensively (${...:-}) because only the Claude entry script currently
+# sets it - a port without it simply skips this check (see stop-gate.sh's
+# mcc_script precedent for the same caller-resolved-path pattern).
+if [ "$hook_event" = "SubagentStop" ] && [ -n "${baseline_sha:-}" ] \
+   && [ -x "${harness_integrity_bin:-}" ]; then
+  drift_out="$("$harness_integrity_bin" "$project_dir" "$baseline_sha" 2>/dev/null || true)"
+  if [[ $drift_out == *" config=drift "* ]]; then
+    drifted_fields=""
+    if [[ $drift_out =~ fields=([^\ ]+) ]]; then
+      drifted_fields="${BASH_REMATCH[1]}"
+    fi
+    override_file="${dot}/.config-drift-override.${agent_id}"
+    overridden=false
+    if [ -f "$override_file" ]; then
+      override_content="$(cat "$override_file" 2>/dev/null || true)"
+      override_content="$(tr '\n\r' '  ' < <(printf '%s' "$override_content"))"
+      case "$override_content" in
+        "defer: "|"skip: ") ;;
+        "defer: "*)
+          audit_append "$review_audit" "$(printf '%s config-drift-%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$override_content")"
+          overridden=true
+          ;;
+        "skip: "*)
+          audit_append "$review_audit" "$(printf '%s config-drift-%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$override_content")"
+          rm -f "$override_file"
+          overridden=true
+          ;;
+      esac
+    fi
+    if [ "$overridden" != true ]; then
+      block "Disarm-surface config drift detected (fields: ${drifted_fields:-unknown}) since this session's baseline - a gated agent's SubagentStop is refused rather than ending on a weakened trust config (see docs/plans/2026-08-25-harness-trust-gaps.md Step 4). Override: 'printf \"defer: <reason>\\n\" > ${dot_label}/.config-drift-override.${agent_id}' (sticky, review still owed) or 'skip: <reason>' (one-shot). Empty reason rejected."
+    fi
+  fi
+fi
+
 if [ "$dirty" = false ] && [ "$moved" = false ]; then
   allow
 fi

@@ -352,6 +352,30 @@ else
 fi
 
 echo
+echo "== disarm-surface config-drift comparison (Step 4) (Bash) =="
+if bash tests/harness-config-drift.test.sh; then
+  echo "OK   tests/harness-config-drift.test.sh"
+else
+  echo "FAIL tests/harness-config-drift.test.sh"
+  fail=1
+fi
+if bash tests/harness-config-drift.test.sh --session-start; then
+  echo "OK   tests/harness-config-drift.test.sh --session-start"
+else
+  echo "FAIL tests/harness-config-drift.test.sh --session-start"
+  fail=1
+fi
+
+echo
+echo "== stop-gate.sh: gated SubagentStop blocks on disarm-surface config drift (Step 4, RD3) (Bash) =="
+if bash tests/stop-gate-config-drift.test.sh; then
+  echo "OK   tests/stop-gate-config-drift.test.sh"
+else
+  echo "FAIL tests/stop-gate-config-drift.test.sh"
+  fail=1
+fi
+
+echo
 echo "== refusal-disclosure hygiene: reviewed-path-gate.sh / human-decision-gate.sh denial stderr (Bash) =="
 if bash tests/refusal-disclosure.test.sh; then
   echo "OK   tests/refusal-disclosure.test.sh"
