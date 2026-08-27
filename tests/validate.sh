@@ -556,6 +556,15 @@ else
 fi
 
 echo
+echo "== marker-write: single-call PASS/FAIL/BLOCKED helper (Bash, spec2-unitC) =="
+if bash tests/marker-write.test.sh; then
+  echo "OK   tests/marker-write.test.sh"
+else
+  echo "FAIL tests/marker-write.test.sh"
+  fail=1
+fi
+
+echo
 echo "== human-review-cleanup: resolved-packet sweep (Bash) =="
 if bash tests/human-review-cleanup.test.sh; then
   echo "OK   tests/human-review-cleanup.test.sh"
