@@ -205,6 +205,43 @@ else
   fail=1
 fi
 
+# (c5) manifest.json itself claims authority -> IGNORED, still authority=self
+#      (GUARD: provenance must not be self-declarable via the manifest)
+dir="$(make_project manifest-claims-authority)"
+make_bundle "$dir" widget 'src/*.js' 0
+printf '{"unit":"widget","watch":["src/*.js"],"description":"fixture bundle","timeoutSeconds":10,"authority":"reviewer"}\n' \
+  > "$dir/microworlds/widget/manifest.json"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
+   && grep -q 'unit=widget result=pass file=src/app.js authority=self' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (c5) manifest.json claiming authority -> ignored, still authority=self"
+else
+  echo "FAIL (c5) expected the manifest's authority claim to be ignored (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
+# (c6) countersign present with a malformed runsh: label (e.g. "hash:"
+#      instead of "runsh:", hash otherwise matching) -> the label guard
+#      rejects it, authority=self
+dir="$(make_project malformed-countersign-label)"
+make_bundle "$dir" widget 'src/*.js' 0
+mkdir -p "$dir/.claude/reviewed"
+hash="$(sha256sum "$dir/microworlds/widget/run.sh" | cut -d' ' -f1)"
+printf 'COUNTERSIGN widget 2026-08-26T00:00:00Z hash: %s\n' "$hash" \
+  > "$dir/.claude/reviewed/widget.countersign"
+rc=0
+run_hook "$dir" src/app.js || rc=$?
+wait_for_drain "$dir"
+if [ "$rc" = 0 ] \
+   && grep -q 'unit=widget result=pass file=src/app.js authority=self' "$dir/.claude/microworld-audit.log"; then
+  echo "OK   (c6) countersign with a malformed runsh: label -> authority=self"
+else
+  echo "FAIL (c6) expected an authority=self result line (rc=$rc log=[$(cat "$dir/.claude/microworld-audit.log" 2>/dev/null || true)])"
+  fail=1
+fi
+
 # (e) a bundle with a malformed manifest.json -> exit 0 (fail open) and a
 #     logged line, SYNCHRONOUSLY (infrastructure checks are not deferred -
 #     they are cheap, no subprocess involved)
