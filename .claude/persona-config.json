@@ -39,6 +39,11 @@
       "reason": "Enforcement gate; controls reviewer dispatch and routing"
     },
     {
+      "pattern": "hooks/scripts/dispatch-hygiene.sh",
+      "tag": "local-only",
+      "reason": "Enforcement gate; validates dispatch packet structure"
+    },
+    {
       "pattern": "hooks/scripts/protected-paths.sh",
       "tag": "local-only",
       "reason": "Gate itself; protected to prevent bypassing the protection mechanism"
@@ -77,6 +82,11 @@
       "pattern": "hooks/scripts/reviewer-tier.sh",
       "tag": "local-only",
       "reason": "Utility script setting reviewer tier based on paths; affects local review logic"
+    },
+    {
+      "pattern": "hooks/scripts/session-start.sh",
+      "tag": "local-only",
+      "reason": "Session startup hook; exempt reporter, edited as other hooks change"
     },
     {
       "pattern": "hooks/scripts/lib/agent-identity.sh",
