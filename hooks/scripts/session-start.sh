@@ -128,6 +128,27 @@ if [ -f "$microworld_audit" ]; then
   fi
 fi
 
+# Job 6: self-report tally (Step 7b) - surfaced only when any count is
+# non-zero, so a clean session never sees this line. bin/harness-integrity.sh
+# is resolved relative to THIS script's own location, not project_dir - it
+# ships alongside hooks/scripts/ in the antislop repo itself and in a
+# marketplace-plugin install (both keep the hooks/scripts/../../bin/ layout),
+# but is not mirrored into a standalone-scaffolded project's .claude/, so it
+# silently no-ops there (same limitation gh415 shipped bin/harness-integrity.sh
+# with).
+harness_integrity_bin="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/bin/harness-integrity.sh"
+self_report_line=""
+if [ -f "$harness_integrity_bin" ]; then
+  self_report_line="$(bash "$harness_integrity_bin" "$project_dir" \
+    --self-report "$(cat "$baseline_file" 2>/dev/null || true)" 2>/dev/null || true)"
+fi
+if [[ $self_report_line =~ wip-sentinels=([0-9]+)\ defers=([0-9]+)\ skips=([0-9]+)\ abandoned-unrecorded=([0-9]+) ]]; then
+  if [ "${BASH_REMATCH[1]}" != 0 ] || [ "${BASH_REMATCH[2]}" != 0 ] \
+     || [ "${BASH_REMATCH[3]}" != 0 ] || [ "${BASH_REMATCH[4]}" != 0 ]; then
+    context_parts+=("Self-report (since session baseline): ${self_report_line}")
+  fi
+fi
+
 if [ "${#context_parts[@]}" -gt 0 ]; then
   joined="$(printf '%s\n\n' "${context_parts[@]}")"
   jq -n --arg msg "$joined" '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $msg}}'

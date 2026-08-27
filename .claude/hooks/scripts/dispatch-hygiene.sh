@@ -61,10 +61,14 @@
 # unreachable from HEAD, never the reverse - anything it cannot verify (no
 # field, a malformed token, no git repo) still fires.
 #
-# H4 checks LABELS, NOT SUBSTANCE. It can force a well-LABELLED dispatch, never
-# a well-FORMED one: an agent can emit all nine headings and fill them with
-# nothing, and H4 will pass it. Presence is matched as a plain substring
-# anywhere in the prompt, so the failure direction is under-firing, i.e. open.
+# H4 checks LABELS, plus a MINIMAL SUBSTANCE FLOOR (Step 7a). It forces a
+# well-LABELLED dispatch whose eight `## ` headings each carry at least one
+# non-blank line that is not itself a heading (a nested `### `-only body does
+# NOT count), but never a well-FORMED one: a single filler line under a
+# heading still satisfies it. Heading presence is matched as a plain
+# substring anywhere in the prompt; the body check re-scans line-by-line only
+# for headings found present. The failure direction is still under-firing,
+# i.e. open.
 #
 # Escape-hatch fail-open floor: if .dispatch-override.consumed cannot be
 # written (disk full, unwritable path), the first invocation still honours and
@@ -248,6 +252,23 @@ fire() {
   messages="${messages}  ${2}"$'\n'
 }
 
+# heading_has_body <heading> - true if the prompt's own copy of $heading (a
+# line matching it exactly) is followed by at least one non-blank line that
+# is not itself a heading (any '#'-prefixed line, including a nested '### ')
+# before the next '## ' heading or EOF. A '### '-only body is deliberately
+# NOT substance (Step 7a).
+heading_has_body() {
+  awk -v h="$1" '
+    $0 == h { found=1; next }
+    found && /^## / { exit }
+    found {
+      line=$0
+      gsub(/^[ \t]+|[ \t]+$/, "", line)
+      if (line != "" && substr(line, 1, 1) != "#") { print "1"; exit }
+    }
+  ' <<< "$prompt" | grep -q 1
+}
+
 # H1 - oversize prompt.
 if [ "${#prompt}" -gt "$max_bytes" ]; then
   fire H1 "H1: prompt is ${#prompt} bytes, over the ${max_bytes}-byte limit. Reference the artifact by path (docs/plans/..., a file path) or by issue id instead of inlining it."
@@ -353,12 +374,14 @@ if [ "$is_gated" = true ]; then
                    '## Ordered edits' '## Do NOT touch' '## Acceptance criteria' \
                    '## Pre-resolved context' '## Escalation'; do
       case "$prompt" in
-        *"$heading"*) ;;
+        *"$heading"*)
+          heading_has_body "$heading" || missing="${missing}${missing:+, }${heading} (empty body)"
+          ;;
         *) missing="${missing}${missing:+, }${heading}" ;;
       esac
     done
     if [ -n "$missing" ]; then
-      fire H4 "H4: dispatch to a gated target is missing ${missing}. A gated dispatch must carry all nine contract elements (see agents/task-master.md); set dispatchHygiene.requireContract to false to disarm this check."
+      fire H4 "H4: dispatch to a gated target is missing or has an empty body under ${missing}. A gated dispatch must carry all nine contract elements, each with real content (see agents/task-master.md); set dispatchHygiene.requireContract to false to disarm this check."
     fi
   fi
 fi

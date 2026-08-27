@@ -64,9 +64,18 @@ fenced() {
 
 contract() {
   # $1 = unit id -> a fully compliant nine-element dispatch prompt (Step 3's
-  # contract). Deliberately terse: H4 checks labels, not substance, so the
-  # thinnest possible body that carries all nine markers is the honest fixture.
+  # contract). Deliberately terse: H4 checks labels plus a minimal substance
+  # floor, not real content, so the thinnest non-empty body under each
+  # heading is the honest fixture.
   printf 'Unit: %s\n\n## Objective\nLand the thing.\n\n## Retrieval\nGitHub issues, gh CLI.\n\n## Affected files\n- lib/foo.sh (anchor: main())\n\n## Ordered edits\n1. Edit lib/foo.sh at main().\n\n## Do NOT touch\n- every other path.\n\n## Acceptance criteria\n- bash -n lib/foo.sh -> exit 0\n\n## Pre-resolved context\nTDD applies; extend tests/foo.test.sh.\n\n## Escalation\nIf any instruction cannot be followed exactly as written, STOP.\n' "$1"
+}
+
+contract_empty_bodies() {
+  # $1 = unit id -> all nine contract markers present, but every heading's
+  # body is EMPTY (blank line straight to the next heading). Step 7a's
+  # substance-floor case: H4 must now fire on this shape, where before it
+  # was silent (the file's own :64-68 comment named this exact gap).
+  printf 'Unit: %s\n\n## Objective\n\n## Retrieval\n\n## Affected files\n\n## Ordered edits\n\n## Do NOT touch\n\n## Acceptance criteria\n\n## Pre-resolved context\n\n## Escalation\n' "$1"
 }
 
 # A prompt carrying none of the nine markers. Reused by T24/T25/T26.
@@ -878,6 +887,83 @@ if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
   ok "T43 gated dispatch missing 'Unit: <id>' first line (all eight headings present) -> exit 2, blocked=H4, stderr names the missing-Unit-line specifically"
 else
   bad "T43 expected exit 2 + blocked=H4 alone + \"a 'Unit: <id>' first line\" on stderr (rc=$rc err=$err)"
+fi
+
+# T44 - H4 SUBSTANCE FLOOR (Step 7a): all nine markers present, every heading
+# body EMPTY -> H4 now fires (baseline at 09cc304: this shape was silent).
+dir="$(make_project t44 "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(contract_empty_bodies 400)")"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log"; then
+  ok "T44 all-nine-headings-empty-body -> exit 2, blocked=H4 (Step 7a substance floor)"
+else
+  bad "T44 expected exit 2 + blocked=H4 for an all-empty-body contract (rc=$rc err=$err)"
+fi
+
+# T45 - one-of-nine-empty: every heading filled except '## Escalation', whose
+# body line is blanked out in place (heading stays, body becomes empty). H4
+# must fire and name that one heading specifically.
+dir="$(make_project t45 "$h4_cfg")"
+t45_prompt="$(contract 401 | sed '/^## Escalation$/{n;s/.*//;}')"
+run "$dir" "$(payload lead-programmer "$t45_prompt")"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
+   && grep -q '## Escalation' <<< "$err"; then
+  ok "T45 one heading with an empty body (Escalation) -> exit 2, blocked=H4, names it"
+else
+  bad "T45 expected exit 2 + blocked=H4 naming '## Escalation' (rc=$rc err=$err)"
+fi
+
+# T46 - a body consisting ONLY of a nested '### ' heading must still fire:
+# a sub-heading is not substance.
+dir="$(make_project t46 "$h4_cfg")"
+t46_prompt="$(contract 402 | sed '/^## Acceptance criteria$/{n;s/.*/### Just a nested heading/;}')"
+run "$dir" "$(payload lead-programmer "$t46_prompt")"
+log="$dir/.claude/dispatch-audit.log"
+if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
+   && grep -q '## Acceptance criteria' <<< "$err"; then
+  ok "T46 a nested '### '-only body under '## Acceptance criteria' still fires H4"
+else
+  bad "T46 expected exit 2 + blocked=H4 naming '## Acceptance criteria' (rc=$rc err=$err)"
+fi
+
+# T47 - GUARD: requireContract:false genuinely disarms the substance floor
+# too, not just the presence check - same all-empty-body prompt as T44.
+dir="$(make_project t47 '{"mode":"block","maxPromptBytes":30000,"maxInlineBlockLines":200,"requireContract":false}')"
+run "$dir" "$(payload lead-programmer "$(contract_empty_bodies 403)")"
+if [ "$rc" = 0 ] && [ ! -f "$dir/.claude/dispatch-audit.log" ]; then
+  ok "T47 GUARD: requireContract:false -> silent even on an all-empty-body contract"
+else
+  bad "T47 expected exit 0 and no audit log with requireContract:false (rc=$rc err=$err)"
+fi
+
+# T48 - MUTATION PROOF for the substance-floor check specifically (distinct
+# from T27, which neuters `fire H4` wholesale). Neuter ONLY heading_has_body
+# so it always reports "has a body", and confirm the two body-check cases
+# (T44 all-empty, T46 nested-heading-only) flip to exit 0, while T22's
+# presence check (a heading missing ENTIRELY) is untouched and still fires -
+# isolating that heading_has_body(), not the presence scan, is what T44/T46
+# depend on.
+mutant_dir="$tmproot/t48bin"
+mkdir -p "$mutant_dir"
+cp "$hook" "$mutant_dir/dispatch-hygiene.sh"
+cp -r hooks/scripts/lib "$mutant_dir/lib"
+mutant="$mutant_dir/dispatch-hygiene.sh"
+sed -i '/^heading_has_body() {$/a\  return 0' "$mutant"
+dir="$(make_project t48 "$h4_cfg")"
+hook_real="$hook"; hook="$mutant"
+run "$dir" "$(payload lead-programmer "$(contract_empty_bodies 404)")"
+rc_mutant_empty="$rc"
+run "$dir" "$(payload lead-programmer "$t46_prompt")"
+rc_mutant_nested="$rc"
+run "$dir" "$(payload lead-programmer "$(contract 300 | grep -v '^## Escalation$')")"
+rc_mutant_missing="$rc"
+hook="$hook_real"
+if grep -q '^  return 0$' "$mutant" && [ "$rc_mutant_empty" = 0 ] && [ "$rc_mutant_nested" = 0 ] \
+   && [ "$rc_mutant_missing" = 2 ]; then
+  ok "T48 mutation proof: neutering heading_has_body() flips T44/T46 to exit 0, T22's missing-heading case still exits 2"
+else
+  bad "T48 mutation proof failed (rc_mutant_empty=$rc_mutant_empty rc_mutant_nested=$rc_mutant_nested rc_mutant_missing=$rc_mutant_missing)"
 fi
 
 # H3 commit-anchored verdict table (marker format v3, spec Step 1). All six

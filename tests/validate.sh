@@ -343,6 +343,15 @@ else
 fi
 
 echo
+echo "== bin/harness-integrity.sh --self-report tally, wired into session-start.sh (Bash) =="
+if bash tests/self-report-tally.test.sh; then
+  echo "OK   tests/self-report-tally.test.sh"
+else
+  echo "FAIL tests/self-report-tally.test.sh"
+  fail=1
+fi
+
+echo
 echo "== refusal-disclosure hygiene: reviewed-path-gate.sh / human-decision-gate.sh denial stderr (Bash) =="
 if bash tests/refusal-disclosure.test.sh; then
   echo "OK   tests/refusal-disclosure.test.sh"

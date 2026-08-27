@@ -39,11 +39,6 @@
       "reason": "Enforcement gate; controls reviewer dispatch and routing"
     },
     {
-      "pattern": "hooks/scripts/dispatch-hygiene.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; validates dispatch packet structure"
-    },
-    {
       "pattern": "hooks/scripts/protected-paths.sh",
       "tag": "local-only",
       "reason": "Gate itself; protected to prevent bypassing the protection mechanism"
@@ -82,11 +77,6 @@
       "pattern": "hooks/scripts/reviewer-tier.sh",
       "tag": "local-only",
       "reason": "Utility script setting reviewer tier based on paths; affects local review logic"
-    },
-    {
-      "pattern": "hooks/scripts/session-start.sh",
-      "tag": "local-only",
-      "reason": "Session startup hook; exempt reporter, edited as other hooks change"
     },
     {
       "pattern": "hooks/scripts/lib/agent-identity.sh",
@@ -191,7 +181,7 @@
     ".claude/persona-protocol.md": "cc2208b1eb0a24a70050521f98249778bf49107737439ee6c64af82dce107e7a",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
-    ".claude/hooks/scripts/dispatch-hygiene.sh": "704e5b65903f8c4a71bde0bb2d8377a5ab933be80e20048e7307cebeae7fcca6",
+    ".claude/hooks/scripts/dispatch-hygiene.sh": "81568723d252f2906a811ebbc27a616af91bf8b7ab0d61a5e2a5bbc6bcff5d46",
     ".claude/hooks/scripts/graph-update.sh": "a543070d6c0dd4a28b71feab85853af60c0e082dab21b0c1fd44f8106d169ed4",
     ".claude/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
     ".claude/hooks/scripts/lint-on-edit.sh": "b1db05986d2c553e32234934a524936b741f6fc3dab90eb0588e9c6d24f722d0",
@@ -199,7 +189,7 @@
     ".claude/hooks/scripts/reviewed-path-gate.sh": "fc2f32b91830588ad0ecc52da44c3a6dddf978a51728a68e156df2d9163404db",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "2d899dfffe870d2f813d30e9ebd37614f8f325d0a5a125e86bf203e8ba748b37",
     ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
-    ".claude/hooks/scripts/session-start.sh": "61f68442f7b6f526a3fd398664194e509c873498235e64031008690266a4053d",
+    ".claude/hooks/scripts/session-start.sh": "4dc786238fc1ccdcdac3aa67ba75d030d2cfc0551f5b71eff6a259e010e6cae5",
     ".claude/hooks/scripts/stop-gate.sh": "57c7b020a350ad48b4733b2c9468ac1ded7d0ad848ccc1cbdab85c28311bd9eb",
     ".claude/hooks/scripts/task-gate.sh": "7ed3a52aa33ab7e2bb19a657b2ab21779eec42a8a06a00b32153ee6af4117e15",
     ".claude/hooks/scripts/human-decision-gate.sh": "ac3cd5e96e6703a9c6a02b221645078067280c9e45d0e15ee2595649a66c6a9f",
