@@ -873,6 +873,51 @@ else
 fi
 
 echo
+echo "== state-access.sh ordering/atomicity constraints (Bash) =="
+if bash tests/state-access-constraints.test.sh; then
+  echo "OK   tests/state-access-constraints.test.sh"
+else
+  echo "FAIL tests/state-access-constraints.test.sh"
+  fail=1
+fi
+
+echo
+echo "== state-access.sh distinctions manifest (Bash) =="
+if bash tests/state-distinctions-manifest.test.sh; then
+  echo "OK   tests/state-distinctions-manifest.test.sh"
+else
+  echo "FAIL tests/state-distinctions-manifest.test.sh"
+  fail=1
+fi
+
+echo
+echo "== state-access.sh species enumeration (Bash) =="
+if bash tests/state-species-enumeration.test.sh; then
+  echo "OK   tests/state-species-enumeration.test.sh"
+else
+  echo "FAIL tests/state-species-enumeration.test.sh"
+  fail=1
+fi
+
+echo
+echo "== state-access.sh per-unit concurrency, ADR-0016 (Bash) =="
+if bash tests/state-access-concurrency.test.sh; then
+  echo "OK   tests/state-access-concurrency.test.sh"
+else
+  echo "FAIL tests/state-access-concurrency.test.sh"
+  fail=1
+fi
+
+echo
+echo "== state-access.sh escalation-path capability regression (Bash) =="
+if bash tests/state-access-capability-regression.test.sh; then
+  echo "OK   tests/state-access-capability-regression.test.sh"
+else
+  echo "FAIL tests/state-access-capability-regression.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
