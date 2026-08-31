@@ -119,6 +119,7 @@ if [ "$hook_event" != "SubagentStop" ]; then
 fi
 
 mcc_script="$(dirname "${BASH_SOURCE[0]}")/marker-commit-check.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
 source "${lib_dir}/stop-gate-core.sh"

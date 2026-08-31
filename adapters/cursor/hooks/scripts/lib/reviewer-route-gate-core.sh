@@ -73,8 +73,8 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
         reviewed_dir="${dot}/reviewed"
         pass_marker="${reviewed_dir}/${unit_id}.pass"
         pass_valid=false
-        if [ -f "$pass_marker" ] && [ -s "$pass_marker" ]; then
-          first="$(head -n 1 "$pass_marker")"
+        if state_unit_marker_exists "$unit_id" pass; then
+          first="$(state_read_unit_marker "$unit_id" "pass" 2>/dev/null)"
           case "$first" in
             "PASS ${unit_id} "*) pass_valid=true ;;
           esac
@@ -84,11 +84,13 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
           prior_mtime=-
           fail_marker="${reviewed_dir}/${unit_id}.fail"
           blocked_marker="${reviewed_dir}/${unit_id}.blocked"
-          if [ -f "$fail_marker" ]; then
+          if state_unit_marker_exists "$unit_id" fail; then
             prior=fail
+            fail_marker="${reviewed_dir}/${unit_id}.fail"
             prior_mtime="$(stat -L -c %Y "$fail_marker" 2>/dev/null || stat -L -f %m "$fail_marker" 2>/dev/null || echo -)"
-          elif [ -f "$blocked_marker" ]; then
+          elif state_unit_marker_exists "$unit_id" blocked; then
             prior=blocked
+            blocked_marker="${reviewed_dir}/${unit_id}.blocked"
             prior_mtime="$(stat -L -c %Y "$blocked_marker" 2>/dev/null || stat -L -f %m "$blocked_marker" 2>/dev/null || echo -)"
           fi
           stamp="${dot}/.review-join.${unit_id}"
