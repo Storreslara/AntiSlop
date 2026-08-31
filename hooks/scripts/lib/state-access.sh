@@ -3,6 +3,7 @@
 # All 17 hook scripts source this lib for read/write/sweep operations across
 # 5 domains: Unit, Agent, Session, One-shot, Log.
 # Preserves 10 ordering/atomicity constraints and 15 distinctions.
+# Expects ${dot} to be set in the environment (e.g. dot="${project_dir}/.claude").
 set -euo pipefail
 
 # Domain: Unit (keyed by unit id)
@@ -11,7 +12,7 @@ set -euo pipefail
 state_read_unit_marker() {
   local unit_id="$1"
   local marker_type="$2"  # pass, fail, blocked, escalated, directed
-  local marker_file="${dot_dir}/reviewed/${unit_id}.${marker_type}"
+  local marker_file="${dot}/reviewed/${unit_id}.${marker_type}"
 
   if [ -f "$marker_file" ]; then
     cat "$marker_file"
@@ -24,7 +25,7 @@ state_write_unit_marker() {
   local unit_id="$1"
   local marker_type="$2"  # pass, fail, blocked, escalated, directed
   local content="$3"
-  local marker_file="${dot_dir}/reviewed/${unit_id}.${marker_type}"
+  local marker_file="${dot}/reviewed/${unit_id}.${marker_type}"
 
   mkdir -p "$(dirname "$marker_file")"
   printf '%s\n' "$content" > "$marker_file"
@@ -33,12 +34,12 @@ state_write_unit_marker() {
 state_unit_marker_exists() {
   local unit_id="$1"
   local marker_type="$2"
-  [ -f "${dot_dir}/reviewed/${unit_id}.${marker_type}" ]
+  [ -f "${dot}/reviewed/${unit_id}.${marker_type}" ]
 }
 
 state_read_review_join() {
   local unit_id="$1"
-  local stamp_file="${dot_dir}/.review-join.${unit_id}"
+  local stamp_file="${dot}/.review-join.${unit_id}"
 
   if [ -f "$stamp_file" ]; then
     cat "$stamp_file"
@@ -50,14 +51,14 @@ state_read_review_join() {
 state_write_review_join() {
   local unit_id="$1"
   local content="$2"
-  local stamp_file="${dot_dir}/.review-join.${unit_id}"
+  local stamp_file="${dot}/.review-join.${unit_id}"
 
   printf '%s\n' "$content" > "$stamp_file"
 }
 
 state_delete_review_join() {
   local unit_id="$1"
-  local stamp_file="${dot_dir}/.review-join.${unit_id}"
+  local stamp_file="${dot}/.review-join.${unit_id}"
 
   rm -f "$stamp_file"
 }
@@ -67,7 +68,7 @@ state_delete_review_join() {
 
 state_read_pending_review() {
   local agent_id="$1"
-  local flag_file="${dot_dir}/.pending-review.${agent_id}"
+  local flag_file="${dot}/.pending-review.${agent_id}"
 
   if [ -f "$flag_file" ]; then
     cat "$flag_file"
@@ -78,13 +79,13 @@ state_read_pending_review() {
 
 state_pending_review_exists() {
   local agent_id="$1"
-  [ -f "${dot_dir}/.pending-review.${agent_id}" ]
+  [ -f "${dot}/.pending-review.${agent_id}" ]
 }
 
 state_write_pending_review() {
   local agent_id="$1"
   local content="$2"
-  local flag_file="${dot_dir}/.pending-review.${agent_id}"
+  local flag_file="${dot}/.pending-review.${agent_id}"
 
   # CONSTRAINT 3: create-only-if-absent
   # Only write if the flag doesn't already exist
@@ -95,7 +96,7 @@ state_write_pending_review() {
 
 state_delete_pending_review() {
   local agent_id="$1"
-  local flag_file="${dot_dir}/.pending-review.${agent_id}"
+  local flag_file="${dot}/.pending-review.${agent_id}"
 
   rm -f "$flag_file"
 }
@@ -103,12 +104,12 @@ state_delete_pending_review() {
 state_clear_all_pending_review() {
   # CONSTRAINT 2: reviewer's SubagentStop clears ALL pending-review flags
   # after review-join evaluation is satisfied
-  rm -f "${dot_dir}"/.pending-review.*
+  rm -f "${dot}"/.pending-review.*
 }
 
 state_read_wip_handoff() {
   local agent_id="$1"
-  local handoff_file="${dot_dir}/.wip-handoff.${agent_id}"
+  local handoff_file="${dot}/.wip-handoff.${agent_id}"
 
   if [ -f "$handoff_file" ]; then
     cat "$handoff_file"
@@ -119,13 +120,13 @@ state_read_wip_handoff() {
 
 state_wip_handoff_exists() {
   local agent_id="$1"
-  [ -f "${dot_dir}/.wip-handoff.${agent_id}" ]
+  [ -f "${dot}/.wip-handoff.${agent_id}" ]
 }
 
 state_write_wip_handoff() {
   local agent_id="$1"
   local content="$2"
-  local handoff_file="${dot_dir}/.wip-handoff.${agent_id}"
+  local handoff_file="${dot}/.wip-handoff.${agent_id}"
 
   if [ -z "$content" ]; then
     # DISTINCTION: empty ≠ absent; delete empty files
@@ -137,7 +138,7 @@ state_write_wip_handoff() {
 
 state_delete_wip_handoff() {
   local agent_id="$1"
-  local handoff_file="${dot_dir}/.wip-handoff.${agent_id}"
+  local handoff_file="${dot}/.wip-handoff.${agent_id}"
 
   rm -f "$handoff_file"
 }
@@ -147,7 +148,7 @@ state_delete_wip_handoff() {
 
 state_read_session_baseline() {
   local session_id="$1"
-  local baseline_file="${dot_dir}/.session-baseline.${session_id}"
+  local baseline_file="${dot}/.session-baseline.${session_id}"
 
   if [ -f "$baseline_file" ]; then
     cat "$baseline_file"
@@ -158,13 +159,13 @@ state_read_session_baseline() {
 
 state_session_baseline_exists() {
   local session_id="$1"
-  [ -f "${dot_dir}/.session-baseline.${session_id}" ]
+  [ -f "${dot}/.session-baseline.${session_id}" ]
 }
 
 state_write_session_baseline() {
   local session_id="$1"
   local content="$2"
-  local baseline_file="${dot_dir}/.session-baseline.${session_id}"
+  local baseline_file="${dot}/.session-baseline.${session_id}"
 
   # CONSTRAINT 4: create-only-if-absent
   # Only write if the baseline doesn't already exist
@@ -177,7 +178,7 @@ state_write_session_baseline() {
 # Artifacts: .dispatch-override, .dispatch-override.consumed, .dispatch-override.consumed.tmp.*
 
 state_read_dispatch_override() {
-  local override_file="${dot_dir}/.dispatch-override"
+  local override_file="${dot}/.dispatch-override"
 
   if [ -f "$override_file" ]; then
     cat "$override_file"
@@ -187,12 +188,12 @@ state_read_dispatch_override() {
 }
 
 state_dispatch_override_exists() {
-  [ -f "${dot_dir}/.dispatch-override" ]
+  [ -f "${dot}/.dispatch-override" ]
 }
 
 state_write_dispatch_override() {
   local content="$1"
-  local override_file="${dot_dir}/.dispatch-override"
+  local override_file="${dot}/.dispatch-override"
 
   if [ -z "$content" ]; then
     # Reason-less override is not honored; delete it
@@ -203,7 +204,7 @@ state_write_dispatch_override() {
 }
 
 state_read_dispatch_consumed() {
-  local consumed_file="${dot_dir}/.dispatch-override.consumed"
+  local consumed_file="${dot}/.dispatch-override.consumed"
 
   if [ -f "$consumed_file" ]; then
     cat "$consumed_file"
@@ -213,25 +214,25 @@ state_read_dispatch_consumed() {
 }
 
 state_dispatch_consumed_exists() {
-  [ -f "${dot_dir}/.dispatch-override.consumed" ]
+  [ -f "${dot}/.dispatch-override.consumed" ]
 }
 
 state_write_dispatch_consumed() {
   local epoch="$1"
   local dispatch_hash="$2"
-  local consumed_file="${dot_dir}/.dispatch-override.consumed"
+  local consumed_file="${dot}/.dispatch-override.consumed"
 
   # DISTINCTION: content-embedded epoch (deliberately not mtime)
   printf '%s %s\n' "$epoch" "$dispatch_hash" > "$consumed_file"
 }
 
 state_delete_dispatch_consumed() {
-  local consumed_file="${dot_dir}/.dispatch-override.consumed"
+  local consumed_file="${dot}/.dispatch-override.consumed"
   rm -f "$consumed_file"
 }
 
 state_delete_dispatch_override() {
-  local override_file="${dot_dir}/.dispatch-override"
+  local override_file="${dot}/.dispatch-override"
 
   # CONSTRAINT 1: .consumed-before-rm ordering
   # Verify consumed marker exists BEFORE deleting override
@@ -245,7 +246,7 @@ state_delete_dispatch_override() {
 state_append_audit_log() {
   local log_name="$1"
   local entry="$2"
-  local log_file="${dot_dir}/${log_name}"
+  local log_file="${dot}/${log_name}"
 
   # Source audit-log.sh if not already sourced
   if ! declare -f audit_append >/dev/null 2>&1; then
@@ -259,18 +260,18 @@ state_append_audit_log() {
 
 state_sweep_wip_handoffs() {
   # Delete empty WIP handoffs (they're not honored)
-  find "${dot_dir}" -maxdepth 1 -name ".wip-handoff.*" -type f -empty -delete 2>/dev/null || true
+  find "${dot}" -maxdepth 1 -name ".wip-handoff.*" -type f -empty -delete 2>/dev/null || true
 }
 
 state_sweep_session_baselines() {
   # Delete old session baselines (configurable retention window)
   # For now, just list them - actual deletion is operator-controlled
-  find "${dot_dir}" -maxdepth 1 -name ".session-baseline.*" -type f 2>/dev/null || true
+  find "${dot}" -maxdepth 1 -name ".session-baseline.*" -type f 2>/dev/null || true
 }
 
 state_sweep_dispatch_overrides() {
   # Delete consumed dispatches outside 10-second window
-  local consumed_file="${dot_dir}/.dispatch-override.consumed"
+  local consumed_file="${dot}/.dispatch-override.consumed"
   if [ -f "$consumed_file" ]; then
     local epoch=$(head -n 1 "$consumed_file" | cut -d' ' -f1)
     local now=$(date +%s)
@@ -285,12 +286,12 @@ state_sweep_dispatch_overrides() {
 # Utility functions
 
 state_get_dot_dir() {
-  echo "${dot_dir}"
+  echo "${dot}"
 }
 
 state_init() {
   # Ensure marker directory exists
-  mkdir -p "${dot_dir}/reviewed" "${dot_dir}/human-review"
+  mkdir -p "${dot}/reviewed" "${dot}/human-review"
 }
 
 # Export functions for sourcing scripts

@@ -10,7 +10,8 @@
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
-      "Bash(code-review-graph update*)"
+      "Bash(code-review-graph update*)",
+      "Bash(printf * > .claude/.pending-review.*)"
     ]
   },
   "hooks": {

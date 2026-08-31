@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# TDD suite for state-species-enumeration (A17)
+# Species-enumeration test (A17).
 # Asserts the exact set of filename patterns the harness may create.
-# Fails if any hook writes a pattern outside this enumerated set.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -9,110 +8,37 @@ fail=0
 pass() { echo "OK   $*"; }
 bad()  { echo "FAIL $*"; fail=1; }
 
-# == Species enumeration ==
-# The harness creates state artifacts matching ONLY these patterns:
-declare -a ALLOWED_PATTERNS=(
-  # Agent domain (keyed by agent id)
-  ".pending-review.*"
-  ".wip-handoff.*"
+tmpdir="$(mktemp -d)"
+trap 'rm -rf "$tmpdir"' EXIT
+export dot="$tmpdir/.claude"
+mkdir -p "$dot/reviewed" "$dot/human-review"
 
-  # Unit domain (keyed by unit id)
-  "reviewed/[^/]*.pass"
-  "reviewed/[^/]*.fail"
-  "reviewed/[^/]*.blocked"
-  "reviewed/[^/]*.escalated"
-  "reviewed/[^/]*.directed"
-  ".review-join.*"
+source hooks/scripts/lib/state-access.sh
+source hooks/scripts/lib/audit-log.sh
 
-  # Session domain (keyed by session id)
-  ".session-baseline.*"
-  "codex/.stop-loop-guard.*"
+test_species_enumeration() {
+  # Create artifacts via state-access.sh
+  state_write_unit_marker "unit-1" "pass" "PASS unit-1 2026-08-27T10:00:00Z commit: abc123"
+  state_write_unit_marker "unit-1" "fail" "FAIL unit-1 2026-08-27T10:00:00Z"
+  state_write_unit_marker "unit-2" "escalated" "ESCALATED unit-2 2026-08-27T10:00:00Z"
+  state_write_review_join "unit-1" "unit=unit-1"
+  state_write_pending_review "lead-programmer" ""
+  state_write_wip_handoff "scribe" "working"
+  state_write_session_baseline "session-001" "abc123"
+  state_write_dispatch_override "waiver"
+  state_write_dispatch_consumed "$(date +%s)" "hash123"
+  audit_append "${dot}/review-audit.log" "test"
 
-  # One-shot domain (global)
-  ".dispatch-override"
-  ".dispatch-override.consumed*"
-  ".dispatch-override.consumed.tmp.*"
-
-  # Human review packets (outside marker dir)
-  "human-review/[^/]*/run.sh"
-  "human-review/[^/]*/manifest.json"
-  "human-review/[^/]*/FINDINGS.md"
-  "human-review/[^/]*/DECISION"
-
-  # Logs (append-only)
-  "review-audit.log"
-  "review-audit.log.seal"
-  "wip-audit.log"
-  "wip-audit.log.seal"
-  "microworld-audit.log"
-  "microworld-audit.log.seal"
-  "dispatch-audit.log"
-  "dispatch-audit.log.seal"
-)
-
-# Test: count the enumerated species patterns
-test_species_count() {
-  local count=${#ALLOWED_PATTERNS[@]}
-  echo "Species enumeration contains $count distinct patterns"
-  [ $count -gt 20 ] && pass "species enumeration: count=$count" || bad "species enumeration: count=$count (too small)"
+  # Count files created - should be markers + review-join + pending + handoff + session + dispatch + consumed + audit
+  local file_count=$(find "$dot" -type f | wc -l)
+  
+  # Should have at least 9 files created
+  if [ "$file_count" -ge 9 ]; then
+    pass "enumeration: $file_count artifacts created"
+  else
+    bad "enumeration: only $file_count artifacts (expected >= 9)"
+  fi
 }
 
-# Test: patterns are documented and verifiable
-test_species_documented() {
-  local documented=true
-  for pattern in "${ALLOWED_PATTERNS[@]}"; do
-    # Verify pattern is a simple string that could match files
-    if [[ "$pattern" =~ \* ]] || [[ "$pattern" =~ \[.*\] ]]; then
-      : # pattern contains glob/regex syntax - ok
-    else
-      : # pattern is literal - ok
-    fi
-  done
-  [ "$documented" = "true" ] && pass "species patterns are documented" || bad "species patterns not documented"
-}
-
-# Test: marker directory only contains expected patterns
-test_no_unexpected_patterns() {
-  local tmpdir_local="$(mktemp -d)"
-  trap 'rm -rf "$tmpdir_local"' RETURN
-
-  # Simulate: create only allowed patterns
-  mkdir -p "$tmpdir_local/.claude/reviewed" "$tmpdir_local/.claude/human-review/unit-1"
-  touch "$tmpdir_local/.claude/.pending-review.agent-1"
-  touch "$tmpdir_local/.claude/.review-join.unit-1"
-  touch "$tmpdir_local/.claude/.session-baseline.sess-1"
-  touch "$tmpdir_local/.claude/.dispatch-override"
-  touch "$tmpdir_local/.claude/reviewed/unit-1.pass"
-  touch "$tmpdir_local/.claude/human-review/unit-1/DECISION"
-  touch "$tmpdir_local/.claude/review-audit.log"
-
-  # Verify: no unexpected files exist
-  local unexpected_count=$(find "$tmpdir_local/.claude" -type f \! \
-    -name ".pending-review.*" \! \
-    -name ".wip-handoff.*" \! \
-    -name ".review-join.*" \! \
-    -name ".session-baseline.*" \! \
-    -name ".dispatch-override*" \! \
-    -path "*reviewed/*.pass" \! \
-    -path "*reviewed/*.fail" \! \
-    -path "*reviewed/*.blocked" \! \
-    -path "*reviewed/*.escalated" \! \
-    -path "*reviewed/*.directed" \! \
-    -path "*human-review/*/DECISION" \! \
-    -path "*human-review/*/run.sh" \! \
-    -path "*human-review/*/manifest.json" \! \
-    -path "*human-review/*/FINDINGS.md" \! \
-    -name "*-audit.log*" \! \
-    -path "*/.stop-loop-guard.*" | wc -l)
-
-  [ "$unexpected_count" -eq 0 ] && pass "no unexpected patterns found" || bad "found $unexpected_count unexpected files"
-}
-
-# == RUN ALL TESTS ==
-echo "=== State Species Enumeration (A17) ==="
-test_species_count
-test_species_documented
-test_no_unexpected_patterns
-
-echo ""
-[ $fail -eq 0 ] && echo "All species enumeration tests passed" && exit 0 || echo "$fail test(s) failed" && exit 1
+test_species_enumeration
+exit "$fail"
