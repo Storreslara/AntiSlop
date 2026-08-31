@@ -43,6 +43,7 @@ set -euo pipefail
 # shellcheck source=lib/agent-identity.sh
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 input="$(cat)"
 project_dir="$(echo "$input" | jq -r '.workspace_roots[0] // .cwd // "."' 2>/dev/null || echo .)"
