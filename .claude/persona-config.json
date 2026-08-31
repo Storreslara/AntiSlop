@@ -209,7 +209,7 @@
     ".claude/hooks/scripts/reviewed-path-gate.sh": "fc2f32b91830588ad0ecc52da44c3a6dddf978a51728a68e156df2d9163404db",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "2d899dfffe870d2f813d30e9ebd37614f8f325d0a5a125e86bf203e8ba748b37",
     ".claude/hooks/scripts/reviewer-tier.sh": "ebf98732dda3f3dcc96907b59a2d16e48abfc740a5e35992908d27581d9e3da2",
-    ".claude/hooks/scripts/session-start.sh": "b11fce7ec5e98f9c18a6eb2360dca000fb6004ce0c0ca9154b5c1f268133a0ca",
+    ".claude/hooks/scripts/session-start.sh": "3671f80d86a70a10756ed07364272a351f6b89faff928632dcafe972cd5fddca",
     ".claude/hooks/scripts/stop-gate.sh": "3d15f91bf5bb1fea88c18032f16e7511b1f4c628c826d08a584ed3131a09ca2a",
     ".claude/hooks/scripts/task-gate.sh": "7ed3a52aa33ab7e2bb19a657b2ab21779eec42a8a06a00b32153ee6af4117e15",
     ".claude/hooks/scripts/human-decision-gate.sh": "ac3cd5e96e6703a9c6a02b221645078067280c9e45d0e15ee2595649a66c6a9f",
@@ -249,7 +249,7 @@
     ".claude/hooks/scripts/harness-integrity-gate.sh": "e30c3f1eae8aaffae91ff2862f8f6cc7bf6b4b4d15e939377b0f81291f4c0eb4",
     ".claude/hooks/scripts/marker-verify.sh": "e31356f6ff646d266a4185a08d200d2b6fc58a5d3893f593ef3de776c4e63714",
     ".claude/hooks/scripts/marker-write.sh": "b4ae81d9306604067ee9c0b4be4670ac7ed65beb553d87dd09a5774c0081ae3e",
-    ".claude/hooks/scripts/lib/state-access.sh": "f5540e29cf1d27d4ee2d75e56480872f5d6f1b0417c702ce38e19cbb9e54bdbe"
+    ".claude/hooks/scripts/lib/state-access.sh": "d081004505bb550e1c508cf5430d51ec1067b157332955ad8af4ac108f339ab5"
   },
   "humanReviewMode": "off"
 }
