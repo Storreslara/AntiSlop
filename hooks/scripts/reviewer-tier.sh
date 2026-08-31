@@ -14,6 +14,7 @@
 # prints `opus`. The result is a NECESSARY condition for sonnet review, never a
 # sufficient one - the orchestrator may downgrade sonnet->opus, never upgrade.
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 MAX_CHANGED_LINES=40
 MAX_CHANGED_FILES=3
@@ -67,10 +68,7 @@ fi
 # marker directory anywhere, it cannot be evaluated either - unmeasurable, so
 # it fails closed like every other unmeasurable input.
 [ -n "$task_id" ] || opus
-safe_id="${task_id//[^a-zA-Z0-9._-]/_}"
-marker_dir="${project_dir}/.claude/reviewed"
-[ -d "$marker_dir" ] || opus
-if [ -f "${marker_dir}/${safe_id}.fail" ]; then
+if state_unit_marker_exists "$task_id" fail; then
   opus
 fi
 
