@@ -105,6 +105,7 @@ mkdir -p "$tmproot/lib"
 cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
 cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
 cp hooks/scripts/lib/harness-arm.sh "$tmproot/lib/harness-arm.sh"
+cp hooks/scripts/lib/state-access.sh "$tmproot/lib/state-access.sh"
 python3 - "$tmproot/entry.sh" "$mutant_lib" <<'PYEOF'
 import sys
 path, mutant_lib = sys.argv[1], sys.argv[2]
@@ -249,6 +250,7 @@ cp hooks/scripts/stop-gate.sh "$mutant_entry"
   cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
   cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
   cp hooks/scripts/lib/harness-arm.sh "$tmproot/lib/harness-arm.sh"
+  cp hooks/scripts/lib/state-access.sh "$tmproot/lib/state-access.sh"
 }
 python3 - "$mutant_entry" "$mutant_dup_lib" <<'PYEOF'
 import sys

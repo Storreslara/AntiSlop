@@ -268,9 +268,9 @@ mkdir -p "$mutant_flat"
 cp hooks/scripts/stop-gate.sh "$mutant_flat/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant_flat/lib"
 mutant_flat_core="$mutant_flat/lib/stop-gate-core.sh"
-flat_before="$(grep -c '| tr ' "$mutant_flat_core" || true)"
-sed -i '/| tr /d' "$mutant_flat_core"
-flat_after="$(grep -c '| tr ' "$mutant_flat_core" || true)"
+flat_before="$(grep -cF "| tr '\n\r'" "$mutant_flat_core" || true)"
+sed -i "/| tr '\\\\n\\\\r'/d" "$mutant_flat_core"
+flat_after="$(grep -cF "| tr '\n\r'" "$mutant_flat_core" || true)"
 parses=yes
 bash -n "$mutant_flat_core" 2>/dev/null || parses=no
 
