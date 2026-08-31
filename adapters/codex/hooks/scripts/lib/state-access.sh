@@ -221,10 +221,11 @@ state_dispatch_consumed_exists() {
 state_write_dispatch_consumed() {
   local epoch="$1"
   local dispatch_hash="$2"
+  local reason="${3:-}"
   local consumed_file="${dot}/.dispatch-override.consumed"
 
   # DISTINCTION: content-embedded epoch (deliberately not mtime)
-  printf '%s %s\n' "$epoch" "$dispatch_hash" > "$consumed_file"
+  printf '%s %s %s\n' "$epoch" "$dispatch_hash" "$reason" > "$consumed_file"
 }
 
 state_delete_dispatch_consumed() {

@@ -162,7 +162,8 @@ if state_dispatch_override_exists; then
       # the sentinel. Order matters: if Process B is scheduled between these
       # operations, we want it to find the consumed stamp, not an empty space.
       # Format: <epoch-seconds> <dispatch-key> <reason>.
-      state_write_dispatch_consumed "$now" "$dispatch_key"
+      state_write_dispatch_consumed "$now" "$dispatch_key" "$reason"
+      state_delete_dispatch_override
       log_line "override=${reason} target=${target}"
       exit 0
       ;;

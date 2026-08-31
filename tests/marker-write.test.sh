@@ -35,10 +35,12 @@ fmt_valid_src="$tmproot/marker_format_valid.sh"
 sed -n '/^marker_format_valid() {/,/^}/p' hooks/scripts/lib/stop-gate-core.sh > "$fmt_valid_src"
 [ -s "$fmt_valid_src" ] || { echo "FAIL could not extract marker_format_valid() from stop-gate-core.sh"; exit 1; }
 source "$fmt_valid_src"
+source hooks/scripts/lib/state-access.sh
 
 echo "-- AC-C4: single-call PASS/FAIL/BLOCKED writes ------------------------"
 
 proj="$tmproot/proj1"
+dot="$proj/.claude"
 mkdir -p "$proj"
 run_helper() { ( cd "$proj" && "$helper" "$@" ); }
 

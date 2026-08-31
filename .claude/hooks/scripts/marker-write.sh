@@ -68,7 +68,7 @@ case "$verdict" in
     state_write_unit_marker "$unit_id" "$ext" "PASS $unit_id $ts commit: $commit criteria: $detail"
     ;;
   FAIL)
-    local fail_content="FAIL $unit_id $ts"
+    fail_content="FAIL $unit_id $ts"
     [ -n "$detail" ] && fail_content="${fail_content}"$'\n'"$detail"
     state_write_unit_marker "$unit_id" "$ext" "$fail_content"
     ;;

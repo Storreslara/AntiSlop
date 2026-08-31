@@ -48,7 +48,6 @@
 # action, the sanctioned route, and one flat, technique-free prohibition on
 # everything else.
 set -euo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/benign-command.sh"
