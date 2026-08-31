@@ -395,7 +395,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
 The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround."
     fi
 
-    rm -f "${dot}"/.pending-review.* 2>/dev/null || true
+    state_clear_all_pending_review
     state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     allow
   fi
@@ -512,8 +512,7 @@ if [ -f "$sentinel" ]; then
 fi
 
 if [ "$hook_event" = "SubagentStop" ]; then
-  pending_flag="${dot}/.pending-review.${agent_id}"
-  [ -f "$pending_flag" ] || printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
+  state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id")"
 fi
 
 dirty=false
