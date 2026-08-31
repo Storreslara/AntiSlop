@@ -298,21 +298,10 @@ NODEEOF
 }
 
 # == CONSTRAINT 8: wip-handoff empty ≠ absent ==
-# An empty .wip-handoff file must be deleted, NOT preserved.
+# An empty wip-handoff file must be deleted, NOT preserved.
 # Empty does not mean "pause honored"; it means "misconfigured — delete it."
-#
-# KNOWN GAP (blocked, not overlooked): the real sentinel path is
-# ".claude/wip-handoff.<agent-id>" (no leading dot) at stop-gate-core.sh:501,
-# but hooks/scripts/lib/state-access.sh's four wip-handoff functions still
-# build the dotted ".claude/.wip-handoff.<agent-id>" path, so the sentinel
-# state-gate-core.sh reads and this test's own assertions below are checking
-# are NOT the same file the WIP-sentinel doc and 15 other call sites use.
-# This assertion is left pointed at the LIB's current (buggy) path rather than
-# the correct one so this suite stays green: state-access.sh is
-# protectedPaths-listed ("local-only", requires explicit human approval) and
-# could not be edited from this dispatch. Fixing the four dotted paths in the
-# lib and flipping this assertion to the no-dot path are the same change and
-# must land together - see this unit's report for the exact 4-line diff.
+# Path has no leading dot, matching the real sentinel path
+# ".claude/wip-handoff.<agent-id>" at stop-gate-core.sh:501 (defect 1 fix).
 test_wip_handoff_empty_not_absent() {
   local agent_id="test-agent-2"
 
@@ -320,11 +309,11 @@ test_wip_handoff_empty_not_absent() {
   state_write_wip_handoff "$agent_id" ""
 
   # Verify it was deleted (not preserved as empty)
-  [ ! -f "${dot}/.wip-handoff.${agent_id}" ] && pass "C8: empty wip-handoff deleted" || bad "C8: empty file not deleted"
+  [ ! -f "${dot}/wip-handoff.${agent_id}" ] && pass "C8: empty wip-handoff deleted" || bad "C8: empty file not deleted"
 
   # Write non-empty and verify it survives
   state_write_wip_handoff "$agent_id" "TDD red phase"
-  [ -f "${dot}/.wip-handoff.${agent_id}" ] && pass "C8: non-empty wip-handoff written" || bad "C8: non-empty not preserved"
+  [ -f "${dot}/wip-handoff.${agent_id}" ] && pass "C8: non-empty wip-handoff written" || bad "C8: non-empty not preserved"
 }
 
 # == CONSTRAINT 9: .dispatch-override.consumed content-embedded epoch ==
