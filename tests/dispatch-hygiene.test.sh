@@ -715,12 +715,12 @@ mkdir -p "$mutant_dir"
 cp "$hook" "$mutant_dir/dispatch-hygiene.sh"
 cp -r hooks/scripts/lib "$mutant_dir/lib"
 mutant_t38="$mutant_dir/dispatch-hygiene.sh"
-sed -i -e '/^[[:space:]]*rm -f "\$override"$/d' \
+sed -i -e '/^[[:space:]]*state_delete_dispatch_override$/d' \
        -e '/^[[:space:]]*consumed_tmp="\${consumed}\.tmp/i\
-rm -f "$override"\
+state_delete_dispatch_override\
 sleep 0.3' \
   "$mutant_t38"
-rm_line="$(grep -n '^[[:space:]]*rm -f "\$override"$' "$mutant_t38" | head -1 | cut -d: -f1)"
+rm_line="$(grep -n '^[[:space:]]*state_delete_dispatch_override$' "$mutant_t38" | head -1 | cut -d: -f1)"
 tmp_line="$(grep -n '^[[:space:]]*consumed_tmp="\${consumed}\.tmp' "$mutant_t38" | head -1 | cut -d: -f1)"
 order_ok=0
 [ -n "$rm_line" ] && [ -n "$tmp_line" ] && [ "$rm_line" -lt "$tmp_line" ] && order_ok=1
