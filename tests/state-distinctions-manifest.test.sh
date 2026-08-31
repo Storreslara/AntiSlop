@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 # Distinctions-manifest test (A18).
 # Per the spec: "Every distinction listed in M3 is covered by a named test."
-# This test asserts one test id per bullet in the "distinctions that must survive"
-# list. A missing id fails the suite.
-# Count: 15 distinctions from the spec's enumeration.
+# The spec's own enumeration (docs/plans/2026-08-25-harness-ceremony-consolidation.md,
+# "Distinctions that must survive") lists exactly 15 bullets - counted by hand
+# against that section, not taken on faith from any prior packet. This suite
+# asserts one id per bullet (not one id per sub-property within a bullet,
+# which is what the old D1/D2/D3-all-map-to-one-bullet shape got wrong), and
+# every id must resolve or the suite fails - no partial-credit threshold.
+#
+# Each id's evidence is a FIXED STRING (grep -F) matched against the REAL
+# harness file that implements or documents the property - never against
+# tests/*.test.sh's own fixture text. Checking a test file against its own
+# array (the old bug: every id matched itself, unconditionally) is exactly
+# what made this suite unable to ever report a miss.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -11,63 +20,102 @@ fail=0
 pass() { echo "OK   $*"; }
 bad()  { echo "FAIL $*"; fail=1; }
 
-# == Distinctions (from spec 2026-08-25-harness-ceremony-consolidation.md, M3 section) ==
-# Each bullet point is a distinct property that no other artifact encodes.
-# We assert one named test id per bullet; a missing id fails this test.
-
-declare -a required_distinctions=(
-  "D1_pending_review_agent_keyed"         # .pending-review.<agent> — agent-keyed; existence blocks dispatch
-  "D2_pending_review_content_signal"      # .pending-review content (defer:/skip:) gates turn-end
-  "D3_pending_review_create_if_absent"    # .pending-review created only-if-absent
-  "D4_review_join_staleness_anchor"       # .review-join.<unit> prior_mtime is staleness anchor
-  "D5_session_baseline_git_ref"           # .session-baseline.<session> holds git object ref
-  "D6_session_baseline_create_if_absent"  # .session-baseline created only-if-absent
-  "D7_wip_handoff_suppress_check"         # wip-handoff.<agent> is only artifact suppressing test/lint
-  "D8_wip_handoff_empty_not_absent"       # wip-handoff empty ≠ absent (empty deleted, not honored)
-  "D9_dispatch_override_global_one_shot"  # .dispatch-override is global, one-shot token
-  "D10_dispatch_consumed_epoch_hash"      # .dispatch-override.consumed has epoch + dispatch-identity hash
-  "D11_pass_marker_commit_attestation"    # .pass is only marker with commit attestation
-  "D12_fail_2cap_not_filesystem_derivable"  # .fail consumes 2-FAIL-cap slot (not filesystem-derivable)
-  "D13_blocked_existence_glob_only"       # .blocked read by existence glob only, not content
-  "D14_escalated_timestamp_decision_bind" # .escalated first-line timestamp echoed in DECISION
-  "D15_directed_excluded_from_globs"      # .directed deliberately absent from stop-gate globs
+# Parallel arrays, one entry per spec bullet, in the spec's own order.
+declare -a ids=(
+  D1_pending_review_agent_keyed
+  D2_review_join_staleness_anchor
+  D3_session_baseline_create_if_absent
+  D4_wip_handoff_empty_not_absent
+  D5_dispatch_override_one_shot
+  D6_dispatch_consumed_epoch_hash
+  D7_pass_commit_attestation
+  D8_fail_2cap_not_filesystem_derivable
+  D9_blocked_existence_glob_only
+  D10_escalated_decision_timestamp_bind
+  D11_directed_excluded_from_globs
+  D12_human_review_packet_location
+  D13_decision_zero_identity_write_ban
+  D14_four_logs_review_audit_control_input
+  D15_codex_stop_loop_guard_counter
+)
+declare -a patterns=(
+  'pending-review.${agent_id}'
+  'prior_mtime'
+  'CONSTRAINT 4: create-only-if-absent'
+  'DISTINCTION: empty'
+  'Reason-less override is not honored'
+  'DISTINCTION: content-embedded epoch'
+  'commit: <sha|none>'
+  'durable FAIL record'
+  'blocked_markers='
+  'escalationTimestamp'
+  ''
+  'human-review'
+  'may not write'
+  'tail -n 1 "$review_audit"'
+  'stop-loop-guard'
+)
+declare -a files=(
+  hooks/scripts/lib/state-access.sh
+  hooks/scripts/stop-gate.sh
+  hooks/scripts/lib/state-access.sh
+  hooks/scripts/lib/state-access.sh
+  hooks/scripts/lib/state-access.sh
+  hooks/scripts/lib/state-access.sh
+  hooks/scripts/task-gate.sh
+  hooks/scripts/reviewer-tier.sh
+  hooks/scripts/lib/stop-gate-core.sh
+  bin/microworld-dashboard/server.js
+  hooks/scripts/lib/stop-gate-core.sh
+  hooks/scripts/human-decision-gate.sh
+  hooks/scripts/human-decision-gate.sh
+  hooks/scripts/lib/stop-gate-core.sh
+  adapters/codex/hooks/scripts/stop-gate.sh
 )
 
-# Count assertions from constraint tests that cover these distinctions
-# (In a real implementation, each distinction would be tested in detail;
-#  here we verify each id is present in the test sources)
-
 test_manifest() {
-  local test_dir="tests"
-  local count_found=0
-  local missing_ids=()
+  local count_found=0 total=${#ids[@]}
+  local i id pattern file
 
-  for distinction_id in "${required_distinctions[@]}"; do
-    # Check if this id appears in any test file as a comment or function name
-    if grep -r "$distinction_id" "$test_dir"/*.test.sh >/dev/null 2>&1; then
+  for i in "${!ids[@]}"; do
+    id="${ids[$i]}"
+    pattern="${patterns[$i]}"
+    file="${files[$i]}"
+
+    if [ "$id" = "D11_directed_excluded_from_globs" ]; then
+      # Negative check: stop-gate-core.sh's *.blocked/*.escalated glob logic
+      # must contain NO mention of .directed at all - that absence IS the
+      # distinction (including it would deadlock the very dispatch it
+      # authorizes). A positive-match check cannot express this.
+      if ! grep -qF '.directed' "$file"; then
+        count_found=$((count_found + 1))
+        echo "OK   $id: .directed is genuinely absent from ${file}'s glob logic"
+      else
+        echo "FAIL $id: ${file} now mentions .directed - re-check it hasn't entered the .blocked/.escalated glob"
+      fi
+      continue
+    fi
+
+    if [ -f "$file" ] && grep -qF -- "$pattern" "$file"; then
       count_found=$((count_found + 1))
-      echo "OK   $distinction_id found"
+      echo "OK   $id found in $file"
     else
-      echo "SKIP $distinction_id not yet in tests (will be added)"
-      missing_ids+=("$distinction_id")
+      echo "FAIL $id not found in $file (pattern: $pattern)"
     fi
   done
 
-  # Count expected
-  local total=${#required_distinctions[@]}
   echo ""
   echo "Distinctions manifest:"
   echo "  Total expected: $total"
   echo "  Found: $count_found"
-  echo "  Missing: ${#missing_ids[@]}"
 
-  # For now, we require at least 10 to be documented
-  # (Full coverage comes as each test is written)
-  if [ $count_found -ge 10 ]; then
-    pass "manifest: $count_found / $total distinctions have named test ids"
+  # Per the spec ("a missing id fails the suite"): every one of the 15 must
+  # resolve, not merely 10 of them.
+  if [ "$count_found" -eq "$total" ]; then
+    pass "manifest: $count_found / $total distinctions genuinely referenced in real harness code"
     return 0
   else
-    bad "manifest: only $count_found / $total distinctions have test ids (need at least 10)"
+    bad "manifest: only $count_found / $total distinctions found (all $total are required)"
     return 1
   fi
 }
