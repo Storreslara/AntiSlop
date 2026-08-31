@@ -28,14 +28,15 @@ project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
 [ -f "$config" ] || exit 0
 
+source "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
+
 raw_session_id="$(echo "$input" | jq -r '.session_id // "unknown"' 2>/dev/null || echo unknown)"
 session_id="${raw_session_id//[^a-zA-Z0-9._-]/_}"
 baseline_file="${project_dir}/.claude/.session-baseline.${session_id}"
 
-if [ ! -f "$baseline_file" ]; then
-  mkdir -p "${project_dir}/.claude"
-  git -C "$project_dir" rev-parse HEAD 2>/dev/null > "$baseline_file" || true
-fi
+# Write session baseline (create-only-if-absent semantics via state-access.sh)
+head_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || true)"
+[ -n "$head_sha" ] && state_write_session_baseline "$session_id" "$head_sha"
 
 context_parts=()
 
