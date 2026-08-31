@@ -5,6 +5,7 @@
 # Preserves 10 ordering/atomicity constraints and 15 distinctions.
 # Expects ${dot} to be set in the environment (e.g. dot="${project_dir}/.claude").
 set -euo pipefail
+: "${dot:=${CLAUDE_PROJECT_DIR:-.}/.claude}"
 
 # Domain: Unit (keyed by unit id)
 # Markers: .pass, .fail, .blocked, .escalated, .directed, .review-join, human-review packet, DECISION

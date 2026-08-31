@@ -25,6 +25,7 @@ set -euo pipefail
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
+dot="${project_dir}/.claude"
 config="${project_dir}/.claude/persona-config.json"
 [ -f "$config" ] || exit 0
 
