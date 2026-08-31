@@ -208,7 +208,7 @@
     ".claude/hooks/scripts/protected-paths.sh": "3efc9097a0d915f725deb3a28ea482220dddafa7d83a56c93e8c42644fa51728",
     ".claude/hooks/scripts/reviewed-path-gate.sh": "fc2f32b91830588ad0ecc52da44c3a6dddf978a51728a68e156df2d9163404db",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
-    ".claude/hooks/scripts/reviewer-tier.sh": "61d7a6a0904477048112e75efdd3ac3eee2557d27ac8917b7293210fe08f339f",
+    ".claude/hooks/scripts/reviewer-tier.sh": "ac1b5126f9496e654552bb960a61b96349776cefc261728e489b286ca3354f6d",
     ".claude/hooks/scripts/session-start.sh": "72658463b95dc92db20166bc883974de85cbcb502876dc59dd79035c021c6391",
     ".claude/hooks/scripts/stop-gate.sh": "d28cb79bdbe16fc1d7c70ef240a031017cc840abb2428ad1c3547efe100be2ec",
     ".claude/hooks/scripts/task-gate.sh": "fab73cd9043dcb93beb23bca91ec2cc5cd1ac0c168caa17f226ff1ef2da27832",
@@ -249,9 +249,9 @@
     ".claude/hooks/scripts/harness-integrity-gate.sh": "e30c3f1eae8aaffae91ff2862f8f6cc7bf6b4b4d15e939377b0f81291f4c0eb4",
     ".claude/hooks/scripts/marker-verify.sh": "33f78eb5c211fd43af3e4048f7d1a927f595569b403e9cf85ac33a6f9cabc5cb",
     ".claude/hooks/scripts/marker-write.sh": "ef1e518f485b8ef6dbf7826162a4d61b31ba54977b9a8a48a24854ee0cbc3ea8",
-    ".claude/hooks/scripts/lib/state-access.sh": "0dcd76113282f490455d36ea4b34b03fc1ed7923932ed24dc58ee0b7eebf03ba",
-    "adapters/codex/hooks/scripts/lib/state-access.sh": "0dcd76113282f490455d36ea4b34b03fc1ed7923932ed24dc58ee0b7eebf03ba",
-    "adapters/cursor/hooks/scripts/lib/state-access.sh": "0dcd76113282f490455d36ea4b34b03fc1ed7923932ed24dc58ee0b7eebf03ba"
+    ".claude/hooks/scripts/lib/state-access.sh": "374b7c54fa6bb2efb24ee4131593a50123aae7dacbbf8bf642f914e045846e8a",
+    "adapters/codex/hooks/scripts/lib/state-access.sh": "374b7c54fa6bb2efb24ee4131593a50123aae7dacbbf8bf642f914e045846e8a",
+    "adapters/cursor/hooks/scripts/lib/state-access.sh": "374b7c54fa6bb2efb24ee4131593a50123aae7dacbbf8bf642f914e045846e8a"
   },
   "humanReviewMode": "off"
 }

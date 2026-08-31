@@ -65,7 +65,7 @@ state_delete_review_join() {
 }
 
 # Domain: Agent (keyed by agent id)
-# Artifacts: .pending-review, .wip-handoff
+# Artifacts: .pending-review, wip-handoff
 
 state_read_pending_review() {
   local agent_id="$1"
@@ -110,7 +110,7 @@ state_clear_all_pending_review() {
 
 state_read_wip_handoff() {
   local agent_id="$1"
-  local handoff_file="${dot}/.wip-handoff.${agent_id}"
+  local handoff_file="${dot}/wip-handoff.${agent_id}"
 
   if [ -f "$handoff_file" ]; then
     cat "$handoff_file"
@@ -121,13 +121,13 @@ state_read_wip_handoff() {
 
 state_wip_handoff_exists() {
   local agent_id="$1"
-  [ -f "${dot}/.wip-handoff.${agent_id}" ]
+  [ -f "${dot}/wip-handoff.${agent_id}" ]
 }
 
 state_write_wip_handoff() {
   local agent_id="$1"
   local content="$2"
-  local handoff_file="${dot}/.wip-handoff.${agent_id}"
+  local handoff_file="${dot}/wip-handoff.${agent_id}"
 
   if [ -z "$content" ]; then
     # DISTINCTION: empty ≠ absent; delete empty files
@@ -139,7 +139,7 @@ state_write_wip_handoff() {
 
 state_delete_wip_handoff() {
   local agent_id="$1"
-  local handoff_file="${dot}/.wip-handoff.${agent_id}"
+  local handoff_file="${dot}/wip-handoff.${agent_id}"
 
   rm -f "$handoff_file"
 }
@@ -262,7 +262,7 @@ state_append_audit_log() {
 
 state_sweep_wip_handoffs() {
   # Delete empty WIP handoffs (they're not honored)
-  find "${dot}" -maxdepth 1 -name ".wip-handoff.*" -type f -empty -delete 2>/dev/null || true
+  find "${dot}" -maxdepth 1 -name "wip-handoff.*" -type f -empty -delete 2>/dev/null || true
 }
 
 state_sweep_session_baselines() {
