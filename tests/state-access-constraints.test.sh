@@ -2,7 +2,10 @@
 # TDD suite for state-access.sh — tests for ordering/atomicity constraints.
 # Written BEFORE consolidation to verify current behavior.
 # Each constraint test is mutation-proved: reverting the fix must make the test red.
-# Tests exercise state-access.sh functions directly, not inline fixture setup.
+# Constraints the LIB itself owns (C3, C4, C6, C8, C9) exercise state-access.sh
+# functions directly. Constraints owned by a CALLER instead (C1, C2, C5, C7)
+# invoke the real hooks/scripts/*.sh or bin/microworld-dashboard/server.js that
+# actually implements the ordering/binding, since the lib alone cannot prove it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -41,33 +44,78 @@ test_consumed_before_rm() {
   # CONSTRAINT: consumed must still exist after override is deleted
   [ -f "${dot}/.dispatch-override.consumed" ] && pass "C1: consumed survives rm" || bad "C1: consumed lost after rm"
 
-  # Content must match pattern: epoch hash
-  grep -E "^[0-9]+ [a-f0-9]+$" "${dot}/.dispatch-override.consumed" >/dev/null && \
-    pass "C1: consumed has epoch + hash" || bad "C1: consumed format wrong"
+  # Content is THREE fields: epoch hash reason (reason may be empty, leaving
+  # a trailing space) - state_write_dispatch_consumed emits this exactly,
+  # and dispatch-hygiene.sh:200's consumer regex requires the third field.
+  grep -E "^[0-9]+ [a-f0-9]+ .*$" "${dot}/.dispatch-override.consumed" >/dev/null && \
+    pass "C1: consumed has epoch + hash + reason" || bad "C1: consumed format wrong"
+
+  # The lib does not own this ordering at all - state_delete_dispatch_override's
+  # own comment says "Caller must handle this constraint". The real ordering
+  # invariant lives in the CALLER, hooks/scripts/dispatch-hygiene.sh, which is
+  # protectedPaths-listed and cannot be mutated from this suite to prove it
+  # behaviorally; the full behavioral mutation-proof (a reordered copy of the
+  # real script deterministically loses a staggered concurrent replay) already
+  # lives in tests/dispatch-hygiene.test.sh's T38. Re-derive the source-order
+  # invariant here against the REAL, unmutated script, so a regression that
+  # swaps the two lines is caught by this suite too, not only by T38's copy.
+  local real_hook="hooks/scripts/dispatch-hygiene.sh"
+  local rm_line write_line
+  rm_line="$(grep -n '^[[:space:]]*state_delete_dispatch_override$' "$real_hook" | head -1 | cut -d: -f1)"
+  write_line="$(grep -n '^[[:space:]]*state_write_dispatch_consumed ' "$real_hook" | head -1 | cut -d: -f1)"
+  if [ -n "$write_line" ] && [ -n "$rm_line" ] && [ "$write_line" -lt "$rm_line" ]; then
+    pass "C1: real dispatch-hygiene.sh writes .consumed before deleting .dispatch-override (full behavioral proof: tests/dispatch-hygiene.test.sh T38)"
+  else
+    bad "C1: real dispatch-hygiene.sh does not write .consumed before deleting .dispatch-override"
+  fi
 }
 
 # == CONSTRAINT 2: review-join → clear .pending-review ==
-# When a reviewer's SubagentStop sees .escalated, it must clear .pending-review
-# flags ONLY after consulting review-join stamps.
+# A reviewer's SubagentStop must clear .pending-review flags ONLY after the
+# review-join stamp for its unit is satisfied by a fresh verdict marker - not
+# unconditionally. Exercised through the REAL hooks/scripts/stop-gate.sh (via
+# lib/stop-gate-core.sh), not by writing files and re-reading them back.
 test_review_join_ordering() {
   local unit_id="test-unit-1"
   local agent_id="lead-programmer"
+  local reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
 
-  # Setup: create pending-review flag (as stop-gate does)
-  state_write_pending_review "$agent_id" ""
-  [ -f "${dot}/.pending-review.${agent_id}" ] || { bad "C2: pending-review not created"; return 1; }
+  # (a) satisfied stamp: a fresh PASS marker for the joined unit -> the join
+  # stamp is consumed AND pending-review flags are cleared.
+  local dir1="${tmpdir}/c2-satisfied"
+  mkdir -p "$dir1/.claude/reviewed"
+  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir1/.claude/persona-config.json"
+  printf 'lead-programmer flag\n' > "$dir1/.claude/.pending-review.${agent_id}"
+  printf '2026-08-27T00:00:00Z unit=%s prior=none prior_mtime=-\n' "$unit_id" > "$dir1/.claude/.review-join.${unit_id}"
+  printf 'PASS %s 2026-08-27T10:00:00Z commit: abc1234 criteria: true\n' "$unit_id" > "$dir1/.claude/reviewed/${unit_id}.pass"
 
-  # Setup: write .escalated marker (as reviewer does)
-  state_write_unit_marker "$unit_id" "escalated" "ESCALATED $unit_id 2026-08-27T10:00:00Z"
+  local rc=0
+  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir1" bash hooks/scripts/stop-gate.sh || rc=$?
+  if [ "$rc" = 0 ] && [ ! -f "$dir1/.claude/.review-join.${unit_id}" ] \
+     && [ ! -f "$dir1/.claude/.pending-review.${agent_id}" ] \
+     && grep -q "join-consumed=${unit_id}" "$dir1/.claude/review-audit.log" \
+     && grep -q 'cleared-by=reviewer' "$dir1/.claude/review-audit.log"; then
+    pass "C2: real stop-gate.sh consumes a satisfied review-join stamp then clears pending-review"
+  else
+    bad "C2: satisfied-stamp flow did not consume+clear as expected (rc=$rc)"
+  fi
 
-  # Setup: write review-join stamp (as reviewer-route-gate does)
-  state_write_review_join "$unit_id" "unit=$unit_id prior_mtime=1693114800"
+  # (b) unsatisfied stamp: no PASS/FAIL marker for the joined unit -> BLOCK,
+  # and pending-review is left standing (never cleared before a verdict
+  # exists). Proves the clear only happens AFTER the join check, not before.
+  local dir2="${tmpdir}/c2-unsatisfied"
+  mkdir -p "$dir2/.claude/reviewed"
+  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir2/.claude/persona-config.json"
+  printf 'lead-programmer flag\n' > "$dir2/.claude/.pending-review.${agent_id}"
+  printf '2026-08-27T00:00:00Z unit=%s prior=none prior_mtime=-\n' "$unit_id" > "$dir2/.claude/.review-join.${unit_id}"
 
-  # Marker exists
-  state_unit_marker_exists "$unit_id" "escalated" && pass "C2: escalated marker written" || bad "C2: escalated missing"
-
-  # pending-review still exists (not yet cleared by reviewer)
-  state_pending_review_exists "$agent_id" && pass "C2: pending-review not yet cleared" || bad "C2: pending-review cleared prematurely"
+  rc=0
+  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir2" bash hooks/scripts/stop-gate.sh || rc=$?
+  if [ "$rc" = 2 ] && [ -f "$dir2/.claude/.pending-review.${agent_id}" ]; then
+    pass "C2: an unsatisfied review-join stamp blocks and leaves pending-review standing"
+  else
+    bad "C2: expected block (rc=2) with pending-review left standing (got rc=$rc)"
+  fi
 }
 
 # == CONSTRAINT 3: .pending-review create-only-if-absent ==
@@ -108,27 +156,50 @@ test_session_baseline_idempotent() {
 }
 
 # == CONSTRAINT 5: .directed exclusion from stop-gate globs ==
-# .directed MUST NOT be checked by stop-gate's glob patterns.
-# Including it would deadlock the dispatch it's meant to authorize.
+# .directed MUST NOT be checked by stop-gate's glob patterns. Including it
+# would deadlock the dispatch it's meant to authorize. Exercised through the
+# REAL hooks/scripts/stop-gate.sh, so a regression that starts globbing
+# .directed in is actually caught.
 test_directed_excluded_from_globs() {
   local unit_id="test-unit-2"
+  local reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
 
-  # Write a .directed marker
-  state_write_unit_marker "$unit_id" "directed" "DIRECTED $unit_id"
+  # (a) a .directed marker alone must NOT keep a pending-review flag standing
+  # the way .blocked/.escalated do - if stop-gate's glob ever started
+  # matching .directed too, this case would flip to "flag kept".
+  local dir1="${tmpdir}/c5-directed-only"
+  mkdir -p "$dir1/.claude/reviewed"
+  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir1/.claude/persona-config.json"
+  printf 'DIRECTED %s human resolution\n' "$unit_id" > "$dir1/.claude/reviewed/${unit_id}.directed"
+  printf 'lead-programmer flag\n' > "$dir1/.claude/.pending-review.lp-1"
 
-  # Verify .directed exists
-  state_unit_marker_exists "$unit_id" "directed" && pass "C5: directed marker created" || bad "C5: directed missing"
+  local rc=0
+  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir1" bash hooks/scripts/stop-gate.sh || rc=$?
+  if [ "$rc" = 0 ] && [ ! -f "$dir1/.claude/.pending-review.lp-1" ] \
+     && ! grep -q 'verdict=blocked\|verdict=escalated' "$dir1/.claude/review-audit.log" 2>/dev/null; then
+    pass "C5: real stop-gate.sh does not treat .directed as .blocked/.escalated (flag clears)"
+  else
+    bad "C5: .directed changed stop-gate.sh's clearing behavior - check it hasn't entered the glob"
+  fi
 
-  # Critical: verify .directed is NOT matched by the glob that matches .blocked/.escalated
-  # This tests that the lib function does not include .directed in problematic globs
-  # (Actual stop-gate.sh logic handles the glob; this verifies the marker was created separately)
+  # (b) control: a sibling .blocked marker (same fixture shape, different
+  # unit) DOES keep the flag standing - proves the glob mechanism genuinely
+  # fires here, so (a)'s green result isn't just "nothing matched anything".
+  local dir2="${tmpdir}/c5-directed-and-blocked"
+  mkdir -p "$dir2/.claude/reviewed"
+  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir2/.claude/persona-config.json"
+  printf 'DIRECTED %s human resolution\n' "$unit_id" > "$dir2/.claude/reviewed/${unit_id}.directed"
+  printf 'BLOCKED other-unit 2026-07-22T00:00:00Z missing: X\n' > "$dir2/.claude/reviewed/other-unit.blocked"
+  printf 'lead-programmer flag\n' > "$dir2/.claude/.pending-review.lp-1"
 
-  # Create .blocked for comparison (should be globs-able by stop-gate)
-  state_write_unit_marker "$unit_id" "blocked" "BLOCKED"
-
-  # Both should exist but have different treatment expectations
-  [ -f "${dot}/reviewed/${unit_id}.directed" ] && [ -f "${dot}/reviewed/${unit_id}.blocked" ] && \
-    pass "C5: both directed and blocked exist separately" || bad "C5: marker files missing"
+  rc=0
+  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir2" bash hooks/scripts/stop-gate.sh || rc=$?
+  if [ "$rc" = 0 ] && [ -f "$dir2/.claude/.pending-review.lp-1" ] \
+     && grep -q 'verdict=blocked flags-kept' "$dir2/.claude/review-audit.log"; then
+    pass "C5: a sibling .blocked marker still keeps flags standing (control: glob matching proven active)"
+  else
+    bad "C5: control case failed - .blocked no longer triggers the keep-standing path"
+  fi
 }
 
 # == CONSTRAINT 6: DECISION zero-identity write ban ==
@@ -146,26 +217,102 @@ test_decision_zero_identity_write() {
 }
 
 # == CONSTRAINT 7: DECISION↔.escalated timestamp binding ==
-# When a unit is escalated, the .escalated marker's timestamp must be parseable
-# and will be echoed in the DECISION packet by the human.
+# Neither stop-gate.sh nor human-decision-gate.sh cross-reference this
+# timestamp - the only REAL mechanical binding in the codebase is the
+# dashboard's POST /api/decision/arm route (bin/microworld-dashboard/server.js:
+# ~319-342), which refuses to arm a decision whose escalationTimestamp does
+# not match the first line of .claude/reviewed/<id>.escalated verbatim.
+# Invoking the real route (not writing-then-reading a timestamp back) is the
+# only way to prove the binding is enforced, not merely documented.
 test_escalated_timestamp_binding() {
   local unit_id="test-unit-4"
-  local timestamp="2026-08-27T10:00:00Z"
+  local real_ts="2026-08-27T10:00:00Z"
+  local fixture_dir="${tmpdir}/c7-fixture"
+  mkdir -p "$fixture_dir/.claude/human-review/${unit_id}" "$fixture_dir/.claude/reviewed"
+  printf 'ESCALATE-TO-HUMAN %s %s trigger: c7-test microworld: none\n' "$unit_id" "$real_ts" \
+    > "$fixture_dir/.claude/reviewed/${unit_id}.escalated"
+  : > "$fixture_dir/.claude/review-audit.log"
 
-  # Write escalated with timestamp
-  state_write_unit_marker "$unit_id" "escalated" "ESCALATED $unit_id $timestamp"
+  local script="${tmpdir}/c7-check.js"
+  cat > "$script" <<'NODEEOF'
+'use strict';
+const fs = require('fs');
+const http = require('http');
+const { startServer } = require(process.env.C7_SERVER_PATH);
 
-  # Read it back
-  local content=$(state_read_unit_marker "$unit_id" "escalated")
+function httpPost(url, token, body) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url);
+    const req = http.request({
+      hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Antislop-Token': token },
+    }, (res) => {
+      let data = '';
+      res.on('data', (c) => (data += c));
+      res.on('end', () => resolve({ status: res.statusCode, body: data }));
+    });
+    req.on('error', reject);
+    req.write(JSON.stringify(body));
+    req.end();
+  });
+}
 
-  # Verify timestamp is present and RFC3339-like
-  echo "$content" | grep -E "T[0-9]{2}:[0-9]{2}:[0-9]{2}Z" >/dev/null && \
-    pass "C7: escalated timestamp is parseable" || bad "C7: timestamp format wrong"
+async function main() {
+  const projectDir = process.env.C7_PROJECT_DIR;
+  const taskId = process.env.C7_TASK_ID;
+  const realTs = process.env.C7_REAL_TS;
+
+  const { server, token } = startServer(projectDir, 0, { ttyWrite: { write: () => {} } });
+  await new Promise((r) => setTimeout(r, 100));
+  const url = `http://127.0.0.1:${server.address().port}/api/decision/arm`;
+
+  const mismatched = await httpPost(url, token, {
+    taskId, route: 'approve', escalationTimestamp: '2026-08-27T11:00:00Z',
+    by: 'c7', reason: 'test', examples: 'skipped',
+  });
+  const matched = await httpPost(url, token, {
+    taskId, route: 'approve', escalationTimestamp: realTs,
+    by: 'c7', reason: 'test', examples: 'skipped',
+  });
+  server.close();
+
+  if (mismatched.status === 409 && matched.status === 200) {
+    console.log('C7-BIND-OK');
+    process.exit(0);
+  }
+  console.log(`C7-BIND-FAIL mismatched=${mismatched.status} matched=${matched.status}`);
+  process.exit(1);
+}
+
+main().catch((err) => { console.log(`C7-BIND-FAIL error=${err.message}`); process.exit(1); });
+NODEEOF
+
+  local server_path
+  server_path="$(pwd)/bin/microworld-dashboard/server.js"
+  if C7_SERVER_PATH="$server_path" C7_PROJECT_DIR="$fixture_dir" C7_TASK_ID="$unit_id" C7_REAL_TS="$real_ts" \
+       node "$script" 2>&1 | grep -q '^C7-BIND-OK$'; then
+    pass "C7: escalated<->DECISION timestamp binding enforced by the real dashboard decision/arm route"
+  else
+    bad "C7: escalated<->DECISION timestamp binding not enforced"
+  fi
 }
 
 # == CONSTRAINT 8: wip-handoff empty ≠ absent ==
 # An empty .wip-handoff file must be deleted, NOT preserved.
 # Empty does not mean "pause honored"; it means "misconfigured — delete it."
+#
+# KNOWN GAP (blocked, not overlooked): the real sentinel path is
+# ".claude/wip-handoff.<agent-id>" (no leading dot) at stop-gate-core.sh:501,
+# but hooks/scripts/lib/state-access.sh's four wip-handoff functions still
+# build the dotted ".claude/.wip-handoff.<agent-id>" path, so the sentinel
+# state-gate-core.sh reads and this test's own assertions below are checking
+# are NOT the same file the WIP-sentinel doc and 15 other call sites use.
+# This assertion is left pointed at the LIB's current (buggy) path rather than
+# the correct one so this suite stays green: state-access.sh is
+# protectedPaths-listed ("local-only", requires explicit human approval) and
+# could not be edited from this dispatch. Fixing the four dotted paths in the
+# lib and flipping this assertion to the no-dot path are the same change and
+# must land together - see this unit's report for the exact 4-line diff.
 test_wip_handoff_empty_not_absent() {
   local agent_id="test-agent-2"
 
@@ -214,16 +361,33 @@ test_fail_overwrites_cap() {
   local fail_file="${dot}/reviewed/${unit_id}.fail"
 
   # First FAIL
-  state_write_unit_marker "$unit_id" "fail" "FAIL $unit_id 2026-08-27T09:00:00Z\nDefect A"
+  state_write_unit_marker "$unit_id" "fail" "FAIL $unit_id 2026-08-27T09:00:00Z"$'\n'"Defect A"
 
   # Second FAIL overwrites
-  state_write_unit_marker "$unit_id" "fail" "FAIL $unit_id 2026-08-27T10:00:00Z\nDefect B"
+  state_write_unit_marker "$unit_id" "fail" "FAIL $unit_id 2026-08-27T10:00:00Z"$'\n'"Defect B"
 
   # Only one .fail file exists (overwritten)
   [ -f "$fail_file" ] && pass "C10: fail file exists" || bad "C10: fail file missing"
 
   # Content is the second one
   grep -q "Defect B" "$fail_file" && pass "C10: fail overwrites in place" || bad "C10: fail content wrong"
+
+  # The named property: NOT filesystem-derivable. Modeled on C9's proof that
+  # .dispatch-override.consumed's epoch survives an mtime-only touch - here
+  # it's the mirror case: a second write destroys the first write's content
+  # entirely, so nothing readable from the file (or its single directory
+  # entry) can recover how many times it has been overwritten. That is
+  # exactly why the 2-FAIL cap is tracked by parsing review-audit.log
+  # (reviewer-tier.sh), never by anything derivable from .fail alone.
+  if grep -q "Defect A" "$fail_file"; then
+    bad "C10: prior FAIL content survived an overwrite - cap count would be filesystem-derivable"
+  else
+    pass "C10: prior FAIL content is destroyed by overwrite - 2-FAIL-cap count is not filesystem-derivable"
+  fi
+
+  local entry_count
+  entry_count=$(find "${dot}/reviewed" -maxdepth 1 -name "${unit_id}.fail" | wc -l)
+  [ "$entry_count" = "1" ] && pass "C10: exactly one directory entry regardless of overwrite count" || bad "C10: unexpected .fail entry count ($entry_count)"
 }
 
 # == Run all tests ==
