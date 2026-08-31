@@ -218,8 +218,9 @@ microworld_skip_ok() {
 # "<verb> <unit-id> ". Prefix-only, so no pre-existing marker is retroactively
 # rejected; a zero-byte `touch` is.
 marker_format_valid() {
-  local path="$1" unit="$2" verb="$3" first_line content
-  if ! content="$(state_read_unit_marker "$unit" "$verb" 2>/dev/null)"; then
+  local path="$1" unit="$2" verb="$3" first_line content marker_type
+  marker_type="$(echo "$verb" | tr 'A-Z' 'a-z')"
+  if ! content="$(state_read_unit_marker "$unit" "$marker_type" 2>/dev/null)"; then
     return 1
   fi
   [ -n "$content" ] || return 1
