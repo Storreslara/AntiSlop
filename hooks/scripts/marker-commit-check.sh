@@ -9,6 +9,7 @@
 #                   commit=<sha|none> [candidates=<sha,sha,sha>]
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
+dot="${2:-.}/.claude"
 
 task_id="${1:-}"
 project_dir="${2:-.}"

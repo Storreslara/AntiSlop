@@ -60,6 +60,7 @@ if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
   project_dir="$CLAUDE_PROJECT_DIR"
 else
   project_dir="$(git rev-parse --show-toplevel 2>/dev/null)" || project_dir=.
+dot="${project_dir}/.claude"
 fi
 
 # 1 - a durable FAIL record for this unit disqualifies it (same id sanitizing
