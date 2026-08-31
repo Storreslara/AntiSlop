@@ -500,15 +500,15 @@ fi
 agent_id="${raw_agent_id//[^a-zA-Z0-9._-]/_}"
 sentinel="${dot}/wip-handoff.${agent_id}"
 
-if [ -f "$sentinel" ]; then
-  if [ -s "$sentinel" ]; then
-    reason="$(cat "$sentinel")"
+if state_wip_handoff_exists "$agent_id"; then
+  reason="$(state_read_wip_handoff "$agent_id")"
+  if [ -n "$reason" ]; then
     state_append_audit_log "wip-audit.log" "$(printf '%s agent=%s reason=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$reason")"
-    rm -f "$sentinel"
+    state_delete_wip_handoff "$agent_id"
     allow
   fi
   echo "WIP sentinel at ${sentinel} is empty - a reason is required (e.g. 'echo \"blocked on X\" > ${sentinel}'). Ignoring it and running the normal check instead." >&2
-  rm -f "$sentinel"
+  state_delete_wip_handoff "$agent_id"
 fi
 
 if [ "$hook_event" = "SubagentStop" ]; then
