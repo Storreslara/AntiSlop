@@ -61,6 +61,7 @@ if [ -n "${CLAUDE_PROJECT_DIR:-}" ]; then
 else
   project_dir="$(git rev-parse --show-toplevel 2>/dev/null)" || project_dir=.
 fi
+dot="${project_dir}/.claude"
 
 # 1 - a durable FAIL record for this unit disqualifies it (same id sanitizing
 # and same marker directory as task-gate.sh). Without an id there is no record
@@ -68,6 +69,7 @@ fi
 # marker directory anywhere, it cannot be evaluated either - unmeasurable, so
 # it fails closed like every other unmeasurable input.
 [ -n "$task_id" ] || opus
+[ -d "${dot}/reviewed" ] || opus
 if state_unit_marker_exists "$task_id" fail; then
   opus
 fi

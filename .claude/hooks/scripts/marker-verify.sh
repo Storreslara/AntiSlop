@@ -25,6 +25,7 @@ for arg in "$@"; do
     *) project_dir="$arg" ;;
   esac
 done
+dot="${project_dir}/.claude"
 
 emit() {
   printf '%s\n' "$1"

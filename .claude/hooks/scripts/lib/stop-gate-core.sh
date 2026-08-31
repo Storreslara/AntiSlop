@@ -218,7 +218,7 @@ microworld_skip_ok() {
 # "<verb> <unit-id> ". Prefix-only, so no pre-existing marker is retroactively
 # rejected; a zero-byte `touch` is.
 marker_format_valid() {
-  local path="$1" unit="$2" verb="$3" first_line content marker_type
+  local unit="$1" verb="$2" first_line content marker_type
   marker_type="$(echo "$verb" | tr 'A-Z' 'a-z')"
   if ! content="$(state_read_unit_marker "$unit" "$marker_type" 2>/dev/null)"; then
     return 1
@@ -280,7 +280,7 @@ review_join_state() {
       ext="${pair%%:*}"
       verb="${pair##*:}"
       mpath="${dot}/reviewed/${unit}.${ext}"
-      if ! marker_format_valid "$mpath" "$unit" "$verb"; then
+      if ! marker_format_valid "$unit" "$verb"; then
         continue
       fi
       case "$prior_mtime" in
@@ -331,10 +331,10 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     # in the same reviewer turn must both appear, or the audit log cannot tell
     # "the reviewer lacked context" from "policy wanted human eyes" afterwards.
     if [ "${#blocked_markers[@]}" -gt 0 ]; then
-      audit_append "$review_audit" "$(printf '%s verdict=blocked flags-kept' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
+      state_append_audit_log "review-audit.log" "$(printf '%s verdict=blocked flags-kept' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     fi
     if [ "${#escalated_markers[@]}" -gt 0 ]; then
-      audit_append "$review_audit" "$(printf '%s verdict=escalated flags-kept' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
+      state_append_audit_log "review-audit.log" "$(printf '%s verdict=escalated flags-kept' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     fi
     if [ "${#blocked_markers[@]}" -gt 0 ] || [ "${#escalated_markers[@]}" -gt 0 ]; then
       allow
@@ -347,7 +347,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     if [ "${JOIN_STAMP_COUNT:-0}" -eq 0 ]; then
       # Nothing joined this reviewer to a unit - an un-stamped dispatch, or a
       # unit that already held a valid PASS. Fail OPEN, as bootstrap did.
-      audit_append "$review_audit" "$(printf '%s marker-check=bootstrap' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
+      state_append_audit_log "review-audit.log" "$(printf '%s marker-check=bootstrap' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     elif [ "${#JOIN_SATISFIED_STAMPS[@]}" -gt 0 ] || [ "${JOIN_FAILOPEN:-false}" = true ]; then
       # marker-commit-check: classify each satisfied unit's PASS marker
       # `commit:` field before its stamp is consumed. Advisory - see
@@ -366,7 +366,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
           if [[ $mcc_out =~ ^marker-commit-check=([a-z]+)[[:space:]] ]]; then
             mcc_state="${BASH_REMATCH[1]}"
           fi
-          audit_append "$review_audit" "$(printf '%s marker-commit-check=%s unit=%s' \
+          state_append_audit_log "review-audit.log" "$(printf '%s marker-commit-check=%s unit=%s' \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$mcc_state" "$unit")"
           if [ "$mcc_state" = mismatch ]; then
             echo "marker-commit-check: unit ${unit}'s PASS marker cites a commit that does not appear to belong to it - ${mcc_out}" >&2
@@ -377,7 +377,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
           fi
         fi
         rm -f "${JOIN_SATISFIED_STAMPS[$idx]}" 2>/dev/null || true
-        audit_append "$review_audit" "$(printf '%s join-consumed=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        state_append_audit_log "review-audit.log" "$(printf '%s join-consumed=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
           "${JOIN_SATISFIED_UNITS[$idx]}")"
         idx=$(( idx + 1 ))
       done
@@ -385,7 +385,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       missing=""
       idx=0
       while [ "$idx" -lt "${#JOIN_UNSATISFIED_UNITS[@]}" ]; do
-        audit_append "$review_audit" "$(printf '%s cleared-by=reviewer marker=MISSING unit=%s' \
+        state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer marker=MISSING unit=%s' \
           "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${JOIN_UNSATISFIED_UNITS[$idx]}")"
         missing="${missing:+$missing, }${JOIN_UNSATISFIED_UNITS[$idx]}"
         idx=$(( idx + 1 ))
@@ -395,8 +395,8 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
 The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround."
     fi
 
-    rm -f "${dot}"/.pending-review.* 2>/dev/null || true
-    audit_append "$review_audit" "$(printf '%s cleared-by=reviewer' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
+    state_clear_all_pending_review
+    state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     allow
   fi
   # Clearing review flags is a privilege granted only to this project's own
@@ -408,7 +408,7 @@ The only two legal responses to this block are writing the genuine verdict you a
   pending_flags_check=( "${dot}"/.pending-review.* )
   shopt -u nullglob
   if [ "${#pending_flags_check[@]}" -gt 0 ]; then
-    audit_append "$review_audit" "$(printf '%s grant-denied hook=stop-gate identity=%s' \
+    state_append_audit_log "review-audit.log" "$(printf '%s grant-denied hook=stop-gate identity=%s' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
   fi
   echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or per flag: 'printf \"defer: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id>' (keeps it, review still owed) or 'skip: <reason>' (deletes it, unit abandoned)." >&2
@@ -424,7 +424,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
   pending_flags_check=( "${dot}"/.pending-review.* )
   shopt -u nullglob
   if [ "${#pending_flags_check[@]}" -gt 0 ]; then
-    audit_append "$review_audit" "$(printf '%s grant-denied hook=stop-gate identity=%s' \
+    state_append_audit_log "review-audit.log" "$(printf '%s grant-denied hook=stop-gate identity=%s' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
   fi
 fi
@@ -457,11 +457,11 @@ if [ "$hook_event" = "Stop" ]; then
           # events, including a defer: repeated after some other line, still log.
           last_logged="$(tail -n 1 "$review_audit" 2>/dev/null | cut -d' ' -f2- || true)"
           if [ "$last_logged" != "$flag_content" ]; then
-            audit_append "$review_audit" "$(printf '%s %s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content")"
+            state_append_audit_log "review-audit.log" "$(printf '%s %s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content")"
           fi
           ;;
         "skip: "*)
-          audit_append "$review_audit" "$(printf '%s %s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content")"
+          state_append_audit_log "review-audit.log" "$(printf '%s %s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content")"
           rm -f "$flag"
           ;;
         *)
@@ -500,31 +500,29 @@ fi
 agent_id="${raw_agent_id//[^a-zA-Z0-9._-]/_}"
 sentinel="${dot}/wip-handoff.${agent_id}"
 
-if [ -f "$sentinel" ]; then
-  if [ -s "$sentinel" ]; then
-    reason="$(cat "$sentinel")"
-    audit_append "${dot}/wip-audit.log" "$(printf '%s agent=%s reason=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$reason")"
-    rm -f "$sentinel"
+if state_wip_handoff_exists "$agent_id"; then
+  reason="$(state_read_wip_handoff "$agent_id")"
+  if [ -n "$reason" ]; then
+    state_append_audit_log "wip-audit.log" "$(printf '%s agent=%s reason=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$reason")"
+    state_delete_wip_handoff "$agent_id"
     allow
   fi
   echo "WIP sentinel at ${sentinel} is empty - a reason is required (e.g. 'echo \"blocked on X\" > ${sentinel}'). Ignoring it and running the normal check instead." >&2
-  rm -f "$sentinel"
+  state_delete_wip_handoff "$agent_id"
 fi
 
 if [ "$hook_event" = "SubagentStop" ]; then
-  pending_flag="${dot}/.pending-review.${agent_id}"
-  [ -f "$pending_flag" ] || printf '%s agent=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" > "$pending_flag"
+  state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id")"
 fi
 
 dirty=false
 [ -n "$(git -C "$project_dir" status --porcelain 2>/dev/null || true)" ] && dirty=true
 
 session_id="${raw_session_id//[^a-zA-Z0-9._-]/_}"
-baseline_file="${dot}/.session-baseline.${session_id}"
 
 moved=false
-if [ -f "$baseline_file" ]; then
-  baseline_sha="$(cat "$baseline_file" 2>/dev/null || true)"
+if state_session_baseline_exists "$session_id"; then
+  baseline_sha="$(state_read_session_baseline "$session_id")"
   current_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || true)"
   if [ -n "$baseline_sha" ] && [ -n "$current_sha" ] && [ "$baseline_sha" != "$current_sha" ]; then
     moved=true
@@ -556,11 +554,11 @@ if [ "$hook_event" = "SubagentStop" ] && [ -n "${baseline_sha:-}" ] \
       case "$override_content" in
         "defer: "|"skip: ") ;;
         "defer: "*)
-          audit_append "$review_audit" "$(printf '%s config-drift-%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$override_content")"
+          state_append_audit_log "review-audit.log" "$(printf '%s config-drift-%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$override_content")"
           overridden=true
           ;;
         "skip: "*)
-          audit_append "$review_audit" "$(printf '%s config-drift-%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$override_content")"
+          state_append_audit_log "review-audit.log" "$(printf '%s config-drift-%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$override_content")"
           rm -f "$override_file"
           overridden=true
           ;;
@@ -585,7 +583,7 @@ check_cmd="$(jq -r '.testAndLintCommand // empty' "$config" 2>/dev/null || true)
 # other review-audit.log line, so "checked and passed" (no line here) is
 # never conflated with "skipped because already checked" (this line).
 if microworld_skip_ok "$project_dir" "${dot}/microworld-audit.log" "${baseline_sha:-}" "$moved"; then
-  audit_append "$review_audit" "$(printf '%s microworld-skip=testAndLintCommand' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
+  state_append_audit_log "review-audit.log" "$(printf '%s microworld-skip=testAndLintCommand' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
   allow
 fi
 

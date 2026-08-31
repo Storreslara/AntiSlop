@@ -23,6 +23,8 @@
 #   BLOCKED: "BLOCKED <unit-id> <ts> missing: <detail>". commit is unused -
 #            pass "-".
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
+dot="${CLAUDE_PROJECT_DIR:-.}/.claude"
 
 # Same unit-id grammar dispatch-hygiene.sh already enforces elsewhere in this
 # repo: alphanumeric first character, then alphanumeric/`._#-`, <=64 chars.
@@ -61,19 +63,16 @@ expected_path=".claude/reviewed/${unit_id}.${ext}"
   usage_die "marker-path '${marker_path}' does not match the expected '${expected_path}' for verdict ${verdict}/unit ${unit_id}"
 
 ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-mkdir -p "$(dirname "$marker_path")"
-
 case "$verdict" in
   PASS)
-    printf 'PASS %s %s commit: %s criteria: %s\n' "$unit_id" "$ts" "$commit" "$detail" > "$marker_path"
+    state_write_unit_marker "$unit_id" "$ext" "PASS $unit_id $ts commit: $commit criteria: $detail"
     ;;
   FAIL)
-    {
-      printf 'FAIL %s %s\n' "$unit_id" "$ts"
-      [ -z "$detail" ] || printf '%s\n' "$detail"
-    } > "$marker_path"
+    local fail_content="FAIL $unit_id $ts"
+    [ -n "$detail" ] && fail_content="${fail_content}"$'\n'"$detail"
+    state_write_unit_marker "$unit_id" "$ext" "$fail_content"
     ;;
   BLOCKED)
-    printf 'BLOCKED %s %s missing: %s\n' "$unit_id" "$ts" "$detail" > "$marker_path"
+    state_write_unit_marker "$unit_id" "$ext" "BLOCKED $unit_id $ts missing: $detail"
     ;;
 esac

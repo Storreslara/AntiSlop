@@ -17,6 +17,7 @@
 # lib/microworld-queue.sh from a matching, hash-verified
 # .claude/reviewed/<slug>.countersign marker.
 set -euo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
