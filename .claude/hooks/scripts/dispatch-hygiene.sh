@@ -88,12 +88,12 @@ LC_ALL=C
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
 audit="${project_dir}/.claude/dispatch-audit.log"
-override="${project_dir}/.claude/.dispatch-override"
 # Spelled from the environment directly rather than via $project_dir: this is
 # the one path with wire data interpolated into it (R5), so its root stays
 # visible at the point the id is appended.
@@ -102,7 +102,7 @@ reviewed_dir="${CLAUDE_PROJECT_DIR:-.}/.claude/reviewed"
 # A write failure here (unwritable path, full disk) must degrade to "it wasn't
 # logged", never abort the gate under set -e.
 log_line() {
-  audit_append "$audit" "$(date -u +%Y-%m-%dT%H:%M:%SZ) $1"
+  state_append_audit_log "dispatch-audit.log" "$(date -u +%Y-%m-%dT%H:%M:%SZ) $1"
 }
 
 # Malformed JSON leaves every field empty, so the tool_name test below is also
@@ -151,11 +151,10 @@ target="${target_type//[^a-zA-Z0-9:._-]/_}"
 _dispatch_key_sep=$'\x1e'
 dispatch_key="$(cksum <<< "${target_type}${_dispatch_key_sep}${prompt}" | tr -d ' ')"
 
-consumed="${project_dir}/.claude/.dispatch-override.consumed"
 now="$(date +%s 2>/dev/null || echo 0)"
 
-if [ -f "$override" ]; then
-  override_content="$(head -n 1 "$override" 2>/dev/null || true)"
+if state_dispatch_override_exists; then
+  override_content="$(state_read_dispatch_override || true)"
   case "$override_content" in
     "override: "*)
       reason="${override_content#override: }"
@@ -163,20 +162,13 @@ if [ -f "$override" ]; then
       # the sentinel. Order matters: if Process B is scheduled between these
       # operations, we want it to find the consumed stamp, not an empty space.
       # Format: <epoch-seconds> <dispatch-key> <reason>.
-      consumed_tmp="${consumed}.tmp.$$.$RANDOM"
-      if ! { printf '%s %s %s\n' "$now" "$dispatch_key" "$reason" > "$consumed_tmp" && \
-             mv -f "$consumed_tmp" "$consumed"; } 2>/dev/null; then
-        # printf succeeded but the rename failed (or printf itself failed and
-        # left a partial tempfile): never orphan the tempfile in .claude/.
-        rm -f "$consumed_tmp" 2>/dev/null || true
-      fi
-      rm -f "$override"
+      state_write_dispatch_consumed "$now" "$dispatch_key"
       log_line "override=${reason} target=${target}"
       exit 0
       ;;
     *)
-      echo "Dispatch-hygiene override at ${override} carried no reason - a 'override: <reason>' line is required. Ignoring it and running the checks instead." >&2
-      rm -f "$override"
+      echo "Dispatch-hygiene override at .claude/.dispatch-override carried no reason - a 'override: <reason>' line is required. Ignoring it and running the checks instead." >&2
+      state_delete_dispatch_override
       ;;
   esac
 fi
@@ -186,8 +178,8 @@ fi
 # key). This allows double-fire scenarios (sequential or parallel) to both
 # honour an operator's escape hatch without requiring the operator to write
 # the sentinel twice.
-if [ -f "$consumed" ]; then
-  consumed_line="$(head -n 1 "$consumed" 2>/dev/null || true)"
+if state_dispatch_consumed_exists; then
+  consumed_line="$(state_read_dispatch_consumed || true)"
 
   # Parse consumed stamp AS A WHOLE: it must structurally match
   # "<digits> <non-space> <rest>" or it is rejected outright - no field is
@@ -226,7 +218,7 @@ if [ -f "$consumed" ]; then
     # ANY dispatch, so - unlike a valid-but-key-mismatched stamp - it can
     # never be protecting a live sibling's replay window. Safe to delete
     # outright, distinct from the staleness-based deletion path above.
-    rm -f "$consumed"
+    state_delete_dispatch_consumed
   fi
 
   if [ "$is_valid" = true ]; then
@@ -235,7 +227,7 @@ if [ -f "$consumed" ]; then
     exit 0
   elif [ "$is_stale" = true ]; then
     # Genuinely past the window: safe to delete regardless of key.
-    rm -f "$consumed"
+    state_delete_dispatch_consumed
   fi
   # Else (key-mismatched but still fresh - the unparseable case is deleted
   # above): leave the stamp alone. It is not honoured for THIS dispatch, but
@@ -330,7 +322,7 @@ if [ "$is_gated" = true ]; then
       */*|*..*) ;;
       *)
         marker="${reviewed_dir}/${unit_id}.pass"
-        if [ -f "$marker" ]; then
+        if state_unit_marker_exists "$unit_id" "pass"; then
           # Commit-anchored verdict (marker format v3, six-branch table): a
           # bare marker fires by default; only a positively-proven-unreachable
           # commit (branch 6) suppresses H3. Everything unverifiable - no
@@ -338,7 +330,7 @@ if [ "$is_gated" = true ]; then
           # keeps today's behaviour and fires (R4/governing rule).
           h3_fire=true
           sha=""
-          marker_first="$(head -n 1 "$marker" 2>/dev/null || true)"
+          marker_first="$(state_read_unit_marker "$unit_id" "pass" || true)"
           if [[ $marker_first =~ commit:[[:space:]]+([0-9a-f]{7,40}|none)([[:space:]]|$) ]]; then
             sha="${BASH_REMATCH[1]}"
             if [ "$sha" != none ] \

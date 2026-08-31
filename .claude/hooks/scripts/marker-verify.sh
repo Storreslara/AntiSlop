@@ -13,6 +13,7 @@
 #   --execute: marker-verify=<ok|mismatch|unverifiable> unit=<id> ran=<n> failed=<n> [failing=<i,j>]
 #   unverifiable (either mode): marker-verify=unverifiable unit=<id>
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 task_id="${1:-}"
 shift || true
@@ -36,10 +37,9 @@ unverifiable() {
 
 [ -n "$task_id" ] || unverifiable
 
-marker="$project_dir/.claude/reviewed/${task_id}.pass"
-[ -f "$marker" ] || unverifiable
+state_unit_marker_exists "$task_id" pass || unverifiable
 
-first_line="$(head -n 1 "$marker" 2>/dev/null || true)"
+first_line="$(state_read_unit_marker "$task_id" "pass" 2>/dev/null | head -n 1 || true)"
 
 criteria_text=""
 if [[ $first_line =~ criteria:[[:space:]]+(.*)$ ]]; then

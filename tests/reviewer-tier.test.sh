@@ -12,6 +12,8 @@ fail=0
 
 tmproot="$(mktemp -d)"
 trap 'rm -rf "$tmproot"' EXIT
+# Copy the lib directory so mutants can source state-access.sh with relative path
+cp -r "$(dirname "$SCRIPT")/lib" "$tmproot/"
 repo="$tmproot/repo"
 mkdir -p "$repo"
 git -C "$repo" init -q
@@ -317,10 +319,10 @@ if mutate relative-on 's/ -c diff\.relative=false//'; then
     sonnet unit-1 "$r_rel" "$repo/sub" "$repo" "$MUTANT"
   git -C "$repo" config --unset diff.relative
 fi
-if mutate projectdir-dot 's|^  project_dir="\$(git rev-parse --show-toplevel.*|  project_dir=.|; /-d "\$marker_dir"/d'; then
+if mutate projectdir-dot 's|^  project_dir="\$(git rev-parse --show-toplevel.*|  project_dir=.|; /\[ -d "\${dot}\/reviewed" \]/d'; then
   # `mutate` only proves the copy differs; both halves of this two-part
   # mutation must land, or the flip is decided by the half that survived.
-  if grep -q 'show-toplevel' "$MUTANT" || grep -q -- '-d "\$marker_dir"' "$MUTANT"; then
+  if grep -q 'show-toplevel' "$MUTANT" || grep -q -- '\[ -d "\${dot}/reviewed" \]' "$MUTANT"; then
     echo "FAIL (mc12) the two-part mutation did not fully apply"
     fail=1
   else

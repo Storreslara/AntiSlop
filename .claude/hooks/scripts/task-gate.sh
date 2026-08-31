@@ -36,6 +36,7 @@ GRACE_PERIOD_END="2026-07-27"
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -56,9 +57,9 @@ task_id="${raw_task_id//[^a-zA-Z0-9._-]/_}"
 marker="${project_dir}/.claude/reviewed/${task_id}.pass"
 
 marker_valid() {
-  [ -f "$marker" ] && [ -s "$marker" ] || return 1
+  state_unit_marker_exists "$task_id" pass || return 1
   local first_line
-  first_line="$(head -n 1 "$marker")"
+  first_line="$(state_read_unit_marker "$task_id" pass 2>/dev/null | head -n 1)"
   case "$first_line" in
     "PASS ${task_id} "*) return 0 ;;
     *) return 1 ;;

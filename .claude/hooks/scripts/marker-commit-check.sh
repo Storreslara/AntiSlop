@@ -8,6 +8,7 @@
 # Output (always): marker-commit-check=<ok|mismatch|unverifiable> unit=<id>
 #                   commit=<sha|none> [candidates=<sha,sha,sha>]
 set -uo pipefail
+. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 task_id="${1:-}"
 project_dir="${2:-.}"
@@ -22,10 +23,9 @@ emit() {
 
 [ -n "$task_id" ] || emit unverifiable none
 
-marker="$project_dir/.claude/reviewed/${task_id}.pass"
-[ -f "$marker" ] || emit unverifiable none
+  state_unit_marker_exists "$task_id" pass || emit unverifiable none
 
-first_line="$(head -n 1 "$marker" 2>/dev/null || true)"
+first_line="$(state_read_unit_marker "$task_id" "pass" 2>/dev/null | head -n 1 || true)"
 sha=""
 if [[ $first_line =~ commit:[[:space:]]+([0-9a-f]{7,40}|none)([[:space:]]|$) ]]; then
   sha="${BASH_REMATCH[1]}"
