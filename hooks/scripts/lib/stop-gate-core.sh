@@ -519,11 +519,10 @@ dirty=false
 [ -n "$(git -C "$project_dir" status --porcelain 2>/dev/null || true)" ] && dirty=true
 
 session_id="${raw_session_id//[^a-zA-Z0-9._-]/_}"
-baseline_file="${dot}/.session-baseline.${session_id}"
 
 moved=false
-if [ -f "$baseline_file" ]; then
-  baseline_sha="$(cat "$baseline_file" 2>/dev/null || true)"
+if state_session_baseline_exists "$session_id"; then
+  baseline_sha="$(state_read_session_baseline "$session_id")"
   current_sha="$(git -C "$project_dir" rev-parse HEAD 2>/dev/null || true)"
   if [ -n "$baseline_sha" ] && [ -n "$current_sha" ] && [ "$baseline_sha" != "$current_sha" ]; then
     moved=true
