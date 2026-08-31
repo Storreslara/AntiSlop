@@ -128,6 +128,7 @@ echo "-- AC-C4/AC-C5: gate interaction (the empirical check) ----------------"
 
 cfg='{"gatedAgents":["lead-programmer"],"personaSelection":["reviewer"],"testAndLintCommand":"true"}'
 gproj="$tmproot/gate-proj"
+dot="$gproj/.claude"
 mkdir -p "$gproj/.claude/reviewed"
 printf '%s\n' "$cfg" > "$gproj/.claude/persona-config.json"
 
