@@ -451,6 +451,75 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
 _Avoid_: clear-watermark
 
+**state-artifact species**:
+(unit gh413, 2026-08-31) — an individual marker type, flag file, log, or
+  other filesystem artifact that encodes persistent state in the harness.
+  Examples: `.pass` markers, `.pending-review.<agent-id>` flags,
+  `wip-handoff.<agent-id>` handoff files, `.session-baseline.<session-id>`
+  baseline commits, `.dispatch-override` escape hatches, the four audit logs
+  (review-audit.log, wip-audit.log, microworld-audit.log, dispatch-audit.log),
+  and the human-review packet. Prior to unit gh413, these species were
+  individually manipulated throughout 12+ hook scripts; gh413 consolidated
+  them into a unified access layer organized by **5 key domains**.
+_Avoid_: state object, artifact type, marker type (be specific about what
+  you're referring to; "state-artifact species" names the general taxonomy)
+
+**5 key domains** (or **Five key domains**):
+(unit gh413, 2026-08-31) — the organizational model into which all
+  **state-artifact species** are consolidated by their access pattern and
+  keying scheme. Each domain serves a distinct role in the harness. **Unit
+  domain** (keyed by unit id): markers (`.pass`, `.fail`, `.blocked`,
+  `.escalated`, `.directed`), review-join stamps (`.review-join.<unit-id>`),
+  human-review packets (`.claude/human-review/<id>/` directory), and DECISION
+  files. Per-unit keying preserves ADR-0016's invariant that each review
+  cycle is isolated from concurrent siblings. **Agent domain** (keyed by agent
+  id): pending-review flags (`.pending-review.<agent-id>`, created on dispatch,
+  cleared by reviewer's SubagentStop) and WIP handoff files
+  (`wip-handoff.<agent-id>`, consumed-on-read semantics). **Session domain**
+  (keyed by session id): session baseline commits (`.session-baseline.<session-id>`,
+  create-only-if-absent, used for changed-file enumeration). **One-shot domain**
+  (unkeyed/global): dispatch override (`.dispatch-override` single-use escape
+  hatch) and its consumed marker (`.dispatch-override.consumed`, with
+  content-embedded epoch and dispatch hash for lifecycle management).
+  **Log domain** (unkeyed, append-only): the four audit logs
+  (review-audit.log, wip-audit.log, microworld-audit.log, dispatch-audit.log),
+  each with a `.seal` sidecar for integrity verification. Access across all
+  domains is provided by the [[state-access seam]]; glob/enumeration
+  operations (listing all pending reviews, sweeping old baselines, etc.)
+  remain in calling scripts, not in the seam itself. See
+  [ADR-0016](docs/adr/0016-per-unit-review-join.md) for the per-unit-keying
+  invariant that this model preserves.
+
+**state-access seam**:
+(unit gh413, 2026-08-31) — the unified shell library at
+  `hooks/scripts/lib/state-access.sh` that provides the single sourced
+  interface for all state-touching hook scripts to read, write, and sweep
+  (prune) artifacts. Consolidates what were previously hand-rolled
+  read/write/delete operations scattered across 12+ hook scripts into
+  named entry points organized by **5 key domains**. Exported functions
+  include `state_read_unit_marker`, `state_write_unit_marker`,
+  `state_read_pending_review`, `state_write_pending_review`,
+  `state_delete_pending_review`, `state_read_session_baseline`,
+  `state_write_session_baseline`, `state_read_dispatch_override`,
+  `state_write_dispatch_override`, `state_append_audit_log`,
+  `state_sweep_wip_handoffs`, `state_sweep_session_baselines`, and
+  `state_sweep_dispatch_overrides`. The seam preserves all 10 ordering and
+  atomicity constraints, all 15 distinctions (e.g., `.directed`'s deliberate
+  exclusion from stop-gate's glob check, create-only-if-absent semantics on
+  `.pending-review` and `.session-baseline`, `.consumed`'s content-embedded
+  epoch, the DECISION zero-identity write ban, per-unit file granularity per
+  ADR-0016). Does NOT own glob or enumeration operations — those remain as
+  direct filesystem globs in the calling scripts, since enumeration wasn't
+  part of the seam's contract. Mirrored byte-for-byte to adapter ports
+  (Codex, Cursor) as part of the **declared-shared set**; each adapter port's
+  own **thin entry script** wraps the seam with port-specific payload
+  translation. **Important note on adopting repos:** this repo self-hosts the
+  plugin it ships and has stopped *populating* these artifacts locally as of
+  unit gh413, per sibling spec 6's adoption. The shipped product continues to
+  create and manage these artifacts in every adopting project; this repo's own
+  operations no longer validate this surface end-to-end, but the seam itself
+  is still shipped and must work correctly when other projects use it.
+
 **results-reported cursor**:
 (unit A, 2026-08-25) — a line-count watermark at `.claude/.microworld-results-reported`
   (one per port: `.cursor/`, `.codex/`, `.claude/`) that tracks which lines of the
