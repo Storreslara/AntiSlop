@@ -6,6 +6,12 @@ Date: 2026-08-15 (finalized 2026-08-15)
 Author: spec-master
 PRD-view issue: https://github.com/Storreslara/AntiSlop/issues/377
 
+> **See Addendum A (2026-09-01) at the end of this document.** Step 6 landed
+> the `via:` transcription duty in the protocol template and the Cursor port
+> but under-scoped its affected files, so the duty never reached
+> `agents/reviewer.md` or the Codex port. Addendum A adds **Step 8**
+> (unit `gh377-6a`) to close that gap. Steps 1-7 are unchanged.
+
 ## Goal
 
 Two changes to the microworld dashboard's escalation-decision view
@@ -942,3 +948,503 @@ Two notes for `task-master`, neither a slicing instruction:
   `adapters/cursor/rules/persona-protocol.mdc` are gated together by
   `tests/adapter-protocol-parity.test.js`, so slicing the source edit apart
   from its shipped port would fail the merge gate.
+
+---
+
+## Addendum A (2026-09-01) — Step 6 scope gap: the `via:` duty never reached the reviewer
+
+*Author: `spec-master`. Status: **FINAL — unconditional**, no Open Questions.
+PRD-view issue: https://github.com/Storreslara/AntiSlop/issues/425 (this
+document is authoritative; #425 is the path-free PRD view).
+Scope: **Step 6's under-scoping only**. Measured at
+`2b5b853` (tree clean, `tests/adapter-protocol-parity.test.js` green).
+Recorded as a dated, append-only addendum rather than an edit to Step 6, so
+the landed unit's own criteria stay auditable as written. **Steps 1-5 and 7
+are untouched, unreopened, and out of this addendum's scope.** No new
+behaviour is introduced here — this closes a propagation gap in an already-
+landed protocol amendment.*
+
+**Why an addendum and not a standalone spec.** The defect is *the affected-
+files list of Step 6*, not a new capability. The corrective text is
+verbatim-derivable from what Step 6 already landed in
+`templates/persona-protocol.md`, and its acceptance criteria are the same
+family as Step 6's own. A standalone spec would detach the fix from the step
+it corrects and force a future reader to reconcile two documents. Precedent:
+`docs/plans/2026-08-25-harness-ceremony-consolidation.md`'s "Addendum A".
+
+### Goal
+
+Make the `via:` transcription duty **operative**, not merely documented:
+propagate it from `templates/persona-protocol.md` (where Step 6 landed it)
+into (a) the reviewer persona that actually writes approve attestation lines,
+and (b) the Codex protocol port Step 6 skipped — and add a regression probe
+so the next port drift on this surface fails the merge gate instead of a
+reviewer's eyes.
+
+### Context
+
+Step 6 (unit `gh377-6`, PASS at `0d11b51`, marker `.claude/reviewed/gh377-6.pass`)
+amended the canonical protocol and the Cursor port. Its `.pass` marker carries
+two non-blocking notes explicitly routing this back here (notes 1 and 2), plus
+a cosmetic note 3. Measured state at `2b5b853` — the complete inventory of
+live surfaces that describe the approve attestation line:
+
+| Surface | Carries `via:`? |
+|---|---|
+| `templates/persona-protocol.md:486-494, 508` | **yes** (Step 6) |
+| `.claude/persona-protocol.md:509` (generated mirror) | **yes** |
+| `adapters/cursor/rules/persona-protocol.mdc:240-243, 254` | **yes** |
+| `agents/reviewer.md:298-321` (approve route) | **no** |
+| `.claude/agents/reviewer.md:302` (generated mirror) | **no** |
+| `adapters/codex/agents-md-fragment.md:227, 238, 242-255` | **no** |
+
+Derived by `git grep -l "human: approved by"` over the tree, excluding
+`docs/plans/` and `.claude/wiki/changelog.md` (historical records, not
+operative instructions).
+
+Two findings that shape the scope:
+
+- **A1 — the reviewer persona is the operative surface, and it is not fed by
+  the protocol block.** The "Resolving an escalation" section is *not* part of
+  the trimmed `<!-- ANTISLOP:BEGIN persona-protocol -->` block inlined into
+  persona bodies (`agents/reviewer.md` has no such markers at all; its
+  generated mirror `.claude/agents/reviewer.md` opens the block at line 358,
+  *after* the approve-route text at line 302). So amending the template can
+  never reach the reviewer's approve route by construction. Confirmed by
+  `git grep -l "human: approved by"` returning `.claude/agents/reviewer.md`
+  at a line *outside* the block.
+- **A2 — Cursor needs nothing further; Codex needs both halves.**
+  `adapters/cursor/agents/reviewer.md` (95 lines) and
+  `adapters/codex/agents/reviewer.toml` (94 lines) carry **no** DECISION-file
+  resolution instructions at all — no `examples:`, no `approved by`, no
+  DECISION parsing. On both adapters the approve-route duty lives solely in
+  the protocol port. Cursor's port has it; Codex's does not, and Codex is
+  additionally missing Step 6's *first* half (the dashboard as a second
+  sanctioned authoring path — `grep -i "dashboard\|confirmation code"` over
+  `adapters/codex/agents-md-fragment.md` returns only two unrelated Microworld-
+  bundle lines). So: **no adapter persona file is in scope**; only the Codex
+  protocol port is.
+
+**Why the merge gate did not catch this.** `tests/adapter-protocol-parity.test.js`
+checks section *presence* via literal probes, and `ESCALATION_PROBES`
+(lines 60-68) contains no `via:` string. Step 6 could therefore extend the
+canonical section and the Cursor port while leaving the Codex port behind, and
+the gate stayed green. This is the vacuous-criterion pattern: Step 6's AC1 was
+satisfiable without the port being correct. The fix below closes the gate, not
+just the text.
+
+### Clarifications
+
+1. Functional scope & success criteria: Clear
+2. Domain entities / data model: Clear
+3. User interaction flow: Clear
+4. Non-functional attributes (perf, security, scale): Clear
+5. External dependencies & integrations: Clear
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Clear
+9. Completion / acceptance signals: Clear
+
+- 2026-09-01 Edge cases / failure handling: Q What must the reviewer do when
+  the `DECISION` body carries **no** `via:` line — stall, warn, default to
+  `via: terminal`, or append nothing? → A (self-resolved): append nothing.
+  `templates/persona-protocol.md:489` already fixes absence as "pre-existing
+  default — not a failure, no action required", and `CONTEXT.md:1793-1798`
+  records that absence is in fact the *majority* live state (both the
+  hand-typed path and the dashboard copy/heredoc path emit no `via:` line).
+  The reviewer text must say this explicitly, mirroring the
+  `examples: skipped` never-a-gate framing, or an implementer will build a
+  gate by omission.
+- 2026-09-01 Technical constraints & tradeoffs: Q Should the Codex port
+  document `via: terminal` even though `CONTEXT.md:1796-1798` records that no
+  current code path emits it (it exists only as an unused `VIA_ROUTES`
+  allowlist entry in `decision-block.js`)? → A (self-resolved): yes. The
+  canonical template and the Cursor port both document all three states, and
+  a port that documents two would be the same drift this addendum exists to
+  fix. The reviewer is transcribing whatever it finds, not enumerating what
+  the dashboard emits. A reviewer of *this* unit must not FAIL the
+  `via: terminal` line as "documents an unreachable state" — porting
+  canonical text is the deliverable.
+
+**Ubiquitous-language check (prose mode, advisory).** Glossary read at
+`CONTEXT.md:1740-1800` (`DECISION file`, `dashboard-originated decision write`,
+`confirmation code`, `Staleness binding`). Lens 1 (term used with a different
+meaning): nothing found. Lens 2 (new synonym for a defined term): nothing
+found — this addendum says "`via:` line" throughout and never coins a
+paraphrase such as "delivery tag". Lens 3 (undefined load-bearing new term):
+nothing found; every term used here already has a `CONTEXT.md` entry.
+
+### Risks and dependencies
+
+- **R1 — `--update` short-circuits on an unchanged version.** Measured at
+  `2b5b853`: `node bin/cli.js --update` on a clean tree printed *"antislop
+  v0.31.66 — already current. Nothing to update."* and regenerated nothing.
+  The version bump therefore **must precede** the `--update` run, or the
+  mirrors silently stay stale and `tests/filehashes-currency.test.js` will
+  disagree with the sources. This is an ordering constraint, not a preference.
+- **R2 — prior defect history on this exact surface.** `.claude/reviewed/`
+  holds `gh385-1.fail`, `gh385-2.fail`, `gh385-4.fail` and `gh377-7.fail`, all
+  on the escalation-attestation surface, and `gh385-4.fail` is specifically a
+  *port-wording inversion*: the clause was ported onto the wrong paragraph
+  (`.escalated`-write time instead of the approve route), producing text that
+  was self-referential and unfollowable. **The same trap applies here** — the
+  `via:` clause belongs on the **approve route's `.pass` attestation line**,
+  never on the `.escalated` marker. This unit must not carry a `haiku` model
+  tag; the failure mode is a plausible-looking sentence in the wrong place,
+  which cheap models reliably produce and greps reliably miss.
+- **R3 — `agents/reviewer.md` is version-stamped for constitution P3.** P3
+  names `agents/*.md` explicitly, so the bump and CHANGELOG entry are
+  mandatory. `tests/validate.sh:80` separately asserts
+  `package.json.version == .claude-plugin/plugin.json.version`, so **both**
+  files bump.
+- **R4 — source and shipped copy must not be sliced apart.** `validate.sh`
+  and `tests/filehashes-currency.test.js` assert the shipped mirrors; per this
+  document's own Handoff note for Step 6, a source edit sliced apart from its
+  port fails the merge gate. Everything below is **one commit**.
+- **R5 — this addendum does not reopen Step 7.** `CONTEXT.md`'s glossary is
+  already correct on `via:` (amended by `gh377-7` at `5558252`). No glossary
+  work is authorized here.
+
+### Constitution check (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied — every claim in Context above was
+  measured at `2b5b853` (probe-presence counts, `--update` short-circuit,
+  `awk`-range extraction, mirror `diff`), not inferred.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied —
+  `.claude/agents/reviewer.md`, `.claude/persona-protocol.md` and
+  `.claude/persona-config.json`'s `fileHashes` are regenerated by
+  `node bin/cli.js --update`, never hand-edited. B6 states this explicitly.
+- P3 "Version-stamp discipline": satisfied — `agents/reviewer.md` and
+  `templates/persona-protocol.md` are both in P3's named scope; B5 bumps
+  `.claude-plugin/plugin.json` **and** `package.json` and adds a CHANGELOG
+  entry.
+- P4 "Optional personas degrade gracefully": satisfied — the edited text is
+  inside the reviewer persona's own body and the protocol ports' reviewer-
+  addressed prose; a project without a reviewer never receives either file.
+  No new cross-persona reference is introduced.
+- P5 "`tests/validate.sh` is the merge gate": satisfied — C7 requires it to
+  print `All checks passed.`
+
+### Step 8 — Propagate the `via:` transcription duty to the operative reviewer surface and the Codex port
+
+**Unit id:** `gh377-6a` (single unit, single commit — see R4)
+
+**Affected files**
+- `agents/reviewer.md` (B1, B2)
+- `adapters/codex/agents-md-fragment.md` (B3)
+- `templates/persona-protocol.md` (B4)
+- `tests/adapter-protocol-parity.test.js` (B7)
+- `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md` (B5)
+- `.claude/agents/reviewer.md`, `.claude/persona-protocol.md`,
+  `.claude/persona-config.json` — **regenerated by `node bin/cli.js --update`,
+  never hand-edited** (B6)
+
+**Do NOT touch:** `adapters/cursor/rules/persona-protocol.mdc` (already
+correct — A2), `adapters/cursor/agents/reviewer.md`,
+`adapters/codex/agents/reviewer.toml` (carry no DECISION-resolution text at
+all — A2), `templates/persona-protocol-slim.md` (the parity test checks it
+only for the terminal-status-line section; it carries no attestation text),
+`CONTEXT.md` (R5), `bin/microworld-dashboard/**`, and any hook script.
+
+**Ordered edits**
+
+- **B1 — `agents/reviewer.md`, the DECISION-file sentence (line 285).** Extend
+  `` `.claude/human-review/<task-id>/DECISION` in their own terminal; `` to
+  name the second sanctioned authoring path, mirroring
+  `adapters/cursor/rules/persona-protocol.mdc:224-226`: the human writes it in
+  their own terminal, **or confirms the write via the Microworld dashboard,
+  which requires a confirmation code delivered to the terminal**. Restate, do
+  not weaken, the surrounding constraint: `human-decision-gate.sh` still
+  blocks every identity, the reviewer included. Without this, the reviewer's
+  own text ("in their own terminal") contradicts the `via: dashboard` value it
+  is being told to transcribe.
+- **B2 — `agents/reviewer.md`, the `approve` route (lines 298-321).** After
+  the existing `examples:` paragraph — specifically after the sentence ending
+  "those already carry the human's reason or directive." — append a `via:`
+  paragraph stating, in the reviewer's own imperative voice:
+  1. If the `DECISION` body carries a `via:` line, append ` via: <value>`
+     (space-prefixed, value verbatim) to the **end of that same `human:`
+     attestation line**.
+  2. The value is exactly one of `via: terminal` (terminal copy/heredoc path)
+     or `via: dashboard` (Microworld dashboard confirm-write path).
+  3. **Absent means append nothing** — the hand-typed default; never a
+     failure, a warning, a stall, or a reason to send the human back
+     (Clarification, category 6).
+  4. Like `examples:`, it rides only on the appended line, never the marker's
+     required first line, so it cannot affect `marker_valid()`; and there is
+     no `via:` token on the `reject` or `direct` routes.
+  **Siting constraint (R2):** this paragraph belongs inside the `approve`
+  bullet, between the existing `examples:` prose and the `` - `reject` → ``
+  bullet. It must not be attached to the `.escalated`-marker paragraph at
+  lines 265-267 — that is the exact inversion `gh385-4.fail` recorded.
+- **B3 — `adapters/codex/agents-md-fragment.md`, three sites.** Port both
+  halves of Step 6, taking the Cursor port as the reference wording so the two
+  ports stay comparable:
+  1. **Line 215** — same extension as B1, mirroring
+     `adapters/cursor/rules/persona-protocol.mdc:224-226`.
+  2. **After line 238** (the "Body: the reason verbatim for `reject`…"
+     paragraph) — insert the `via:`-line paragraph documenting all three
+     states, mirroring `adapters/cursor/rules/persona-protocol.mdc:240-243`.
+  3. **Line 238's table row** (`| **Approve** | …`) — extend
+     "…attestation quoting the file" to "…attestation **with optional
+     ` via: <value>` appended if present in the file**, quoting the file",
+     mirroring `adapters/cursor/rules/persona-protocol.mdc:254`.
+- **B4 — `templates/persona-protocol.md:493`, trailing whitespace.** Strip the
+  single trailing space at end of line 493 (`gh377-6.pass` note 3). Measured:
+  `git grep -n ' $' -- templates/persona-protocol.md` returns exactly this one
+  line, and its regenerated mirror `.claude/persona-protocol.md` carries the
+  same. Included here rather than deferred because it is on the same surface,
+  is a whitespace-only change, and would otherwise be re-noted on every future
+  review of this section.
+- **B5 — version discipline (P3, R3).** Bump `.claude-plugin/plugin.json` and
+  `package.json` from `0.31.66` to the next patch version (**both**, same
+  value — `tests/validate.sh:80` asserts equality) and add a `CHANGELOG.md`
+  entry under `[Unreleased]` naming that version, the propagation, and this
+  addendum. **Do this before B6** (R1).
+- **B6 — regenerate mirrors (P2).** Run `node bin/cli.js --update`. It
+  regenerates `.claude/agents/reviewer.md`, `.claude/persona-protocol.md` and
+  `.claude/persona-config.json`'s `fileHashes`. Never hand-edit any of the
+  three. If `--update` reports "already current", B5 was not done first — go
+  back, do not work around it.
+- **B7 — close the gate (`tests/adapter-protocol-parity.test.js`).** Add three
+  literal probes to `ESCALATION_PROBES` (lines 60-68), each with a short
+  comment naming this addendum: `'Microworld dashboard'`, `'via: terminal'`,
+  `'via: dashboard'`. `ESCALATION_PROBES` is shared by `codexMap` and
+  `cursorMap`, so this enforces the duty on **both** ports going forward.
+  Measured at `2b5b853`: all three are present in the Cursor port (counts
+  2/1/1) and absent from the Codex port (0/0/0), so these probes fail today
+  and pass only once B3 lands — a proven non-vacuous guard, not decoration.
+
+**Acceptance criteria**
+
+Run from the repo root. Every command below was executed against `2b5b853` to
+confirm it currently reports the *failing* side, so none of them is vacuous.
+
+1. **C1 — the reviewer's approve route carries the duty.**
+   `awk '/^  - \`approve\` →/,/^  - \`reject\` →/' agents/reviewer.md | grep -cF 'via: <value>'`
+   outputs a value `>= 1`. *(Measured at `2b5b853`: `0`. The `awk` range
+   currently extracts 25 lines, so the anchors are live.)*
+2. **C2 — absence is explicitly a non-event.** Piping the same `awk` range
+   through each of `grep -cF 'append nothing'` and
+   `grep -cF 'never a failure'` outputs `>= 1` for both. B2 must therefore use
+   these two exact phrases; they are the literals this criterion pins, chosen
+   because they are the ones that foreclose an implementer building a gate out
+   of an absent `via:` line. *(Measured at `2b5b853`: `0` and `0`.)*
+3. **C3 — source and generated mirror agree.**
+   `diff <(awk '/^  - \`approve\` →/,/^  - \`reject\` →/' agents/reviewer.md) <(awk '/^  - \`approve\` →/,/^  - \`reject\` →/' .claude/agents/reviewer.md)`
+   produces **no output** and exits 0. *(Measured at `2b5b853`: already
+   identical, so this catches a missed B6 regeneration rather than passing
+   trivially — if B2 lands without B6 it becomes non-empty.)*
+4. **C4 — the Codex port carries both halves.** Each of
+   `grep -cF 'Microworld dashboard' adapters/codex/agents-md-fragment.md`,
+   `grep -cF 'via: terminal' adapters/codex/agents-md-fragment.md`, and
+   `grep -cF 'via: dashboard' adapters/codex/agents-md-fragment.md` outputs
+   `>= 1`. *(Measured at `2b5b853`: `0`, `0`, `0`.)*
+5. **C5 — the new probes are actually wired into `ESCALATION_PROBES`, not
+   merely present somewhere in the test file.** For each of `via: dashboard`,
+   `via: terminal`, `Microworld dashboard`:
+   `awk '/^const ESCALATION_PROBES = \[/,/^\];/' tests/adapter-protocol-parity.test.js | grep -cF "'<probe>'"`
+   outputs `1`.
+6. **C6 — the gate is green and the new probes are load-bearing.**
+   `node tests/adapter-protocol-parity.test.js` exits 0 **and** prints
+   `All adapter-protocol-parity checks passed.` Then the **mutation control**:
+   restore the pre-unit Codex port, re-run, and confirm it now fails —
+   `git show <base>:adapters/codex/agents-md-fragment.md > /tmp/codex-port.orig`,
+   `cp adapters/codex/agents-md-fragment.md /tmp/codex-port.new`,
+   `cp /tmp/codex-port.orig adapters/codex/agents-md-fragment.md`,
+   `node tests/adapter-protocol-parity.test.js` → **non-zero exit**, with a
+   message matching `expected present.*but missing`; then
+   `cp /tmp/codex-port.new adapters/codex/agents-md-fragment.md` and confirm
+   `git status --porcelain` is empty again. A test that still exits 0 with the
+   old port restored means B7 did not land.
+7. **C7 — no trailing whitespace on the amended template or its mirror.**
+   `git grep -n ' $' -- templates/persona-protocol.md .claude/persona-protocol.md | wc -l`
+   outputs `0`. *(Measured at `2b5b853`: `2`.)*
+8. **C8 — version discipline (P3).**
+   `node -e "const p=require('./.claude-plugin/plugin.json').version, k=require('./package.json').version, c=require('fs').readFileSync('CHANGELOG.md','utf8'); if (p!==k || p==='0.31.66' || !c.includes(p)) { console.error('P3 fail: plugin='+p+' package='+k); process.exit(1); } console.log('P3 ok '+p);"`
+   exits 0.
+9. **C9 — mirrors are regenerated, not hand-edited (P2).**
+   `node tests/filehashes-currency.test.js` exits 0, **and** re-running
+   `node bin/cli.js --update` after the commit leaves `git status --porcelain`
+   empty. *(Measured at `2b5b853`: `--update` on a clean tree is a no-op that
+   prints "already current", so an empty status here is only meaningful once
+   the version has been bumped — see R1.)*
+10. **C10 — merge gate.** `bash tests/validate.sh` prints `All checks passed.`
+11. **C11 — scope.**
+    `git diff --name-only <base>..HEAD | grep -cE '^(adapters/cursor/|bin/|hooks/|CONTEXT\.md|docs/adr/|templates/persona-protocol-slim\.md)'`
+    outputs `0`, **and** every remaining path is either in the Affected-files
+    list above or under `.claude/` (a regenerated mirror). The addendum
+    document itself may or may not be in the same commit; either is fine.
+
+**Suggested order:** B1 → B2 → B3 → B4 → B7 → B5 → B6. B7 before B5/B6 so the
+gate is red-then-green within the unit; B5 strictly before B6 (R1).
+
+### Open Questions
+
+None. Both categories scored Partial were self-resolved from measured repo
+state and recorded above; neither needs the human. This addendum is
+**FINAL — unconditional**.
+
+### Self-check
+
+- CHK22: Is the exact set of surfaces carrying the approve attestation line
+  enumerated, rather than sampled? — PASS (Context table, derived from
+  `git grep -l "human: approved by"` over the whole tree, with the two
+  excluded paths named and justified)
+- CHK23: Does the addendum say what the reviewer must do when the `via:` line
+  is **absent**? — FAIL (missing) — revised in place (B2 item 3, plus the
+  category-6 Clarifications line and criterion C2)
+- CHK24: Do A2 and the Affected-files list agree about whether any adapter
+  *persona* file is in scope? — PASS (A2 concludes no; "Do NOT touch" names
+  `adapters/cursor/agents/reviewer.md` and
+  `adapters/codex/agents/reviewer.toml` explicitly)
+- CHK25: Is every acceptance criterion machine-runnable, and was each one
+  actually executed against the base commit to confirm it reports the failing
+  side today? — PASS (C1 `0`, C4 `0/0/0`, C7 `2`, C6's probe deltas 2/1/1 vs
+  0/0/0, C9's `--update` no-op — all measured and quoted inline)
+- CHK26: Does the addendum state the ordering constraint between the version
+  bump and `--update`? — FAIL (missing on first draft) — revised in place (R1,
+  B5/B6 ordering, the "Suggested order" line, and C9's parenthetical)
+- CHK27: Is the prior `.fail` history on this surface named, so `task-master`
+  cannot tag this unit `haiku`? — PASS (R2 names `gh385-1/2/4` and `gh377-7`,
+  and states the specific inversion trap from `gh385-4.fail`)
+- CHK28: Do B2's siting constraint and R2 agree about where the `via:` clause
+  must **not** go? — PASS (both name the `.escalated` marker paragraph at
+  `agents/reviewer.md:265-267`)
+- CHK29: Is C3 non-trivial — i.e. can it fail? — PASS (it compares source
+  against generated mirror; identical today, divergent the moment B2 lands
+  without B6)
+- CHK30: Does the addendum authorize any work outside the named gap? — PASS
+  (B4 is the only addition beyond the reviewer's finding, is whitespace-only,
+  comes from the same `.pass` marker's note 3, and is justified in place; R5
+  explicitly forecloses reopening Step 7)
+
+### Scribe update hint
+
+None. `CONTEXT.md`'s `DECISION file` and `dashboard-originated decision write`
+entries already describe the `via:` line correctly (amended by `gh377-7` at
+`5558252`) and need no change — this addendum propagates existing documented
+behaviour into the persona and port surfaces, and introduces no new term. No
+ADR either: the architectural decision was already recorded for Step 6.
+
+### Handoff
+
+**1 unit → fast path.** No `to-tickets` slicing; dispatch `gh377-6a` directly
+from this document. Contract below.
+
+Two notes for whoever dispatches it, neither a slicing instruction:
+
+- **Model tag: not `haiku`.** R2 — this exact surface has four `.fail` records
+  and the specific failure mode (`gh385-4.fail`) is a correct-sounding
+  sentence sited on the wrong paragraph, which greps cannot catch.
+- **One commit.** R4 — the source edits and their shipped mirrors/ports are
+  gated together by `tests/validate.sh` and
+  `tests/filehashes-currency.test.js`.
+
+---
+
+## Dispatch contract — unit `gh377-6a`
+
+**Unit:** `gh377-6a`
+
+### Objective
+
+Make the `via:` transcription duty operative rather than merely documented:
+add it to `agents/reviewer.md`'s approve route, port both halves of Step 6 to
+`adapters/codex/agents-md-fragment.md`, and add three literal probes to
+`ESCALATION_PROBES` so the merge gate catches this drift class from now on.
+No behaviour changes; this is a propagation fix for an already-landed
+protocol amendment.
+
+### Retrieval
+
+Issues live on GitHub (repo `Storreslara/AntiSlop`, `gh` CLI authenticated);
+fetch with `gh issue view 425`. That issue is the **PRD view** and is
+deliberately path-free — it states the problem, the decisions and the seams,
+not the edits.
+
+**The authoritative artifact is this document**: `Addendum A → Step 8` of
+`/home/sebas/AntiSlop/docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md`.
+Read it end-to-end (Context, A1-A2, Clarifications, R1-R5, Constitution check,
+B1-B7, C1-C11) before editing — the file paths, line anchors and exact
+criteria exist only here. Cross-reference the originating finding in
+`.claude/reviewed/gh377-6.pass` (non-blocking notes 1, 2 and 3) and the prior
+defect record `.claude/reviewed/gh385-4.fail` (the siting inversion R2 warns
+about).
+
+`scribe` closes #425 on merge.
+
+### Affected files
+
+- `agents/reviewer.md` — B1 (line ~285), B2 (approve route, lines ~298-321)
+- `adapters/codex/agents-md-fragment.md` — B3 (line ~215, after line ~238,
+  and the `| **Approve** |` table row)
+- `templates/persona-protocol.md` — B4 (line 493, trailing space only)
+- `tests/adapter-protocol-parity.test.js` — B7 (`ESCALATION_PROBES`, lines 60-68)
+- `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md` — B5
+- `.claude/agents/reviewer.md`, `.claude/persona-protocol.md`,
+  `.claude/persona-config.json` — B6, **regenerated only**
+
+### Ordered edits
+
+B1 → B2 → B3 → B4 → B7 → B5 → B6, exactly as specified in Addendum A's
+"Ordered edits". B5 **must** precede B6 (R1: `--update` short-circuits on an
+unchanged version and silently regenerates nothing). Single commit.
+
+### Do NOT touch
+
+`adapters/cursor/rules/persona-protocol.mdc` (already correct),
+`adapters/cursor/agents/reviewer.md`, `adapters/codex/agents/reviewer.toml`
+(neither carries DECISION-resolution text), `templates/persona-protocol-slim.md`,
+`CONTEXT.md`, `docs/adr/**`, `bin/microworld-dashboard/**`, `hooks/**`. Do not
+hand-edit any file under `.claude/` — B6's `node bin/cli.js --update` owns
+them. Do not re-open Steps 1-7.
+
+### Acceptance criteria
+
+C1-C11 verbatim from Addendum A → Step 8 → "Acceptance criteria". Run all
+eleven; C6 includes a mandatory mutation control (restore the pre-unit Codex
+port, confirm the parity test now **fails**, restore the new one, confirm
+`git status --porcelain` is empty).
+
+### Pre-resolved context
+
+Do not re-derive these — they were measured at `2b5b853` and are stated here
+so no exploration is needed:
+
+- The complete set of surfaces carrying the approve attestation line is the
+  six-row table in Addendum A's Context. Three already have `via:`, three do
+  not.
+- The `via:` duty **cannot** reach the reviewer through the protocol block:
+  `agents/reviewer.md` contains no `ANTISLOP:BEGIN` markers, and in the
+  generated mirror the block opens at line 358, *after* the approve-route text
+  at line 302. The reviewer's approve route must be edited directly.
+- No adapter *persona* file is in scope. `adapters/cursor/agents/reviewer.md`
+  (95 lines) and `adapters/codex/agents/reviewer.toml` (94 lines) contain no
+  `examples:`, no `approved by`, and no DECISION parsing at all.
+- Reference wording for every B3 edit already exists in
+  `adapters/cursor/rules/persona-protocol.mdc` at lines 224-226, 240-243, and
+  254. Port from there.
+- Probe presence at `2b5b853` — Cursor `Microworld dashboard`/`via: terminal`/
+  `via: dashboard` = 2/1/1; Codex = 0/0/0. This is why B7's probes are
+  non-vacuous.
+- `git grep -n ' $' -- templates/persona-protocol.md` returns exactly one line
+  (493); that is B4's entire scope.
+- Current version is `0.31.66` in both `.claude-plugin/plugin.json` and
+  `package.json`; `tests/validate.sh:80` asserts they stay equal.
+
+### Escalation
+
+Stop and report rather than improvising if any of these occur:
+
+- `node bin/cli.js --update` reports "already current" after B5 — that means
+  the bump did not land; fix B5, never work around `--update`.
+- `--update` reports divergence on `.claude/agents/reviewer.md` or
+  `.claude/persona-protocol.md` (a hand-edited mirror) — report it; do not
+  force or hand-reconcile.
+- `tests/validate.sh` fails on a check unrelated to these files.
+- The `awk` range anchors in C1/C3 stop matching because B2's edit changed the
+  `` - `approve` → `` or `` - `reject` → `` bullet lines — those two lines are
+  load-bearing for two criteria and must keep their exact leading text.
+- Any temptation to satisfy a criterion by editing the criterion, the probe
+  list, or a `.claude/` mirror by hand.

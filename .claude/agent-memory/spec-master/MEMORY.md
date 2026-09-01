@@ -42,3 +42,4 @@
 - [Microworld memo defeats mutation proofs](project_microworld_memo_defeats_mutation_proofs.md) — queue memoizes on test PATH alone, so mutation-proof bundles report FALSE fails; re-run standalone before believing the audit log.
 - [Config deletion has no automated recovery](project_config_recovery_has_no_automated_route.md) — `--update` refuses by construction; the scaffold rebuild loses 26 protectedPaths + 52 fileHashes and ADDS unselected personas; git restore is the only lossless route.
 - [Gate early-exit residuals spec](project_gate_early_exit_residuals_spec.md) — anchored arm beat charclass widening 0 FPs to 97; one-site rpg fix closes 1 of 10; CONTEXT.md's gate glossary is wrong in 5 entries.
+- [Protocol amendments don't propagate](project_protocol_amendments_do_not_propagate.md) — the inlined block is TRIMMED (escalation section reaches no persona); enumerate all 6 surfaces; bump version BEFORE `--update` or it no-ops.
