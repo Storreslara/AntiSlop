@@ -152,7 +152,7 @@
     let decisionsError = null;
     let selectedDecisionView = null;
     let defaultBy = '';
-    let escalationForm = { route: 'approve', reason: '', by: '', examples: 'skipped' };
+    let escalationForm = { route: 'approve', reason: '', by: '', examples: 'skipped', armed: false, armedError: null, noTerminal: false };
     let pendingReviewForm = { reason: '' };
 
     // Left-rail section collapse state (survives re-renders across poll interval)
@@ -375,7 +375,7 @@
     }
 
     function resetDecisionForms() {
-      escalationForm = { route: 'approve', reason: '', by: defaultBy, examples: 'skipped' };
+      escalationForm = { route: 'approve', reason: '', by: defaultBy, examples: 'skipped', armed: false, armedError: null, noTerminal: false };
       pendingReviewForm = { reason: '' };
     }
 
@@ -691,6 +691,28 @@
         ? `<div class="excerpt-pane">${escapeHtml(composed.text)}</div><button type="button" id="decisionCopyBtn" class="copy-btn">Copy Command</button>`
         : `<div style="color: var(--gvx-gray);">${escapeHtml((composed.warnings || []).join(' '))}</div>`;
       html += `<div id="decisionCopyFeedback" class="copy-feedback"></div>`;
+
+      // Run command control (gh377-4)
+      if (escalationForm.noTerminal) {
+        html += `<div style="color: var(--gvx-orange); padding: var(--space-3); background: var(--gvx-bg); border: 1px solid var(--gvx-orange); border-radius: var(--radius-chip); margin-top: var(--space-4);">
+          <strong>No terminal:</strong> The dashboard was not launched from a terminal. Use <strong>Copy Command</strong> above to run the decision manually.
+        </div>`;
+      } else if (escalationForm.armed) {
+        html += `<div class="form-group" style="margin-top: var(--space-4);">`;
+        html += `<label>Confirmation code</label>`;
+        html += `<input type="text" id="decisionConfirmCodeInput" placeholder="Enter the 6-character code" />`;
+        html += `<div style="font-size: 0.85rem; color: var(--gvx-gray); margin-top: var(--space-2);">Enter the 6-character code printed in the terminal running the dashboard.</div>`;
+        html += `</div>`;
+        if (escalationForm.armedError) {
+          html += `<div style="color: var(--gvx-red); padding: var(--space-3); background: var(--gvx-bg); border: 1px solid var(--gvx-red); border-radius: var(--radius-chip); margin-bottom: var(--space-4);">
+            <strong>Error:</strong> ${escapeHtml(escalationForm.armedError)}
+          </div>`;
+        }
+        html += `<button type="button" id="decisionConfirmBtn" class="copy-btn">Confirm write</button>`;
+      } else {
+        html += `<button type="button" id="decisionRunBtn" class="copy-btn" style="background: var(--gvx-purple); margin-top: var(--space-4);">Run command</button>`;
+      }
+
       html += `<textarea id="decisionClipboardFallback" class="hidden-textarea"></textarea>`;
       html += `</div>`;
       return html;
@@ -700,22 +722,30 @@
       const entry = decisions.escalations.find(e => e.taskId === taskId);
       if (!entry) return;
 
+      // Helper: clear armed state and re-render
+      const clearArmedAndRender = () => {
+        escalationForm.armed = false;
+        escalationForm.armedError = null;
+        escalationForm.noTerminal = false;
+        renderContent();
+      };
+
       // Route option buttons
       ['approve', 'reject', 'direct'].forEach(route => {
         const btn = document.getElementById(`routeOption-${route}`);
-        if (btn) btn.addEventListener('click', () => { escalationForm.route = route; renderContent(); });
+        if (btn) btn.addEventListener('click', () => { escalationForm.route = route; clearArmedAndRender(); });
       });
 
       // Examples option buttons (only attached if rendered)
       ['skipped', 'reviewed', 'none-offered'].forEach(examples => {
         const btn = document.getElementById(`examplesOption-${examples}`);
-        if (btn) btn.addEventListener('click', () => { escalationForm.examples = examples; renderContent(); });
+        if (btn) btn.addEventListener('click', () => { escalationForm.examples = examples; clearArmedAndRender(); });
       });
 
       const reasonTa = document.getElementById('escalationReason');
-      if (reasonTa) reasonTa.addEventListener('change', () => { escalationForm.reason = reasonTa.value; renderContent(); });
+      if (reasonTa) reasonTa.addEventListener('change', () => { escalationForm.reason = reasonTa.value; clearArmedAndRender(); });
       const byInput = document.getElementById('escalationBy');
-      if (byInput) byInput.addEventListener('change', () => { escalationForm.by = byInput.value; renderContent(); });
+      if (byInput) byInput.addEventListener('change', () => { escalationForm.by = byInput.value; clearArmedAndRender(); });
 
       const copyBtn = document.getElementById('decisionCopyBtn');
       if (copyBtn) {
@@ -730,6 +760,99 @@
             examples: escalationForm.examples,
           });
           if (composed.text) await doCopyDecision(composed.text);
+        });
+      }
+
+      // Run command button (gh377-4)
+      const runBtn = document.getElementById('decisionRunBtn');
+      if (runBtn) {
+        runBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          try {
+            const response = await fetch('/api/decision/arm', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'X-Antislop-Token': token } : {}),
+              },
+              body: JSON.stringify({
+                taskId: entry.taskId,
+                route: escalationForm.route,
+                escalationTimestamp: entry.timestamp,
+                by: escalationForm.by,
+                reason: escalationForm.reason,
+                examples: escalationForm.examples,
+              }),
+            });
+
+            if (response.status === 403) {
+              escalationForm.noTerminal = true;
+              renderContent();
+              return;
+            }
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              escalationForm.armedError = errorData.error || 'Failed to arm decision';
+              renderContent();
+              return;
+            }
+
+            const data = await response.json();
+            if (data.armed) {
+              escalationForm.armed = true;
+              escalationForm.armedError = null;
+              renderContent();
+            }
+          } catch (err) {
+            escalationForm.armedError = err.message;
+            renderContent();
+          }
+        });
+      }
+
+      // Confirm button (gh377-4)
+      const confirmBtn = document.getElementById('decisionConfirmBtn');
+      if (confirmBtn) {
+        confirmBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const codeInput = document.getElementById('decisionConfirmCodeInput');
+          const code = codeInput ? codeInput.value : '';
+
+          try {
+            const response = await fetch('/api/decision/run', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'X-Antislop-Token': token } : {}),
+              },
+              body: JSON.stringify({
+                taskId: entry.taskId,
+                code,
+              }),
+            });
+
+            if (!response.ok) {
+              const errorData = await response.json();
+              escalationForm.armedError = errorData.error || 'Failed to confirm decision';
+              renderContent();
+              return;
+            }
+
+            const data = await response.json();
+            if (data.written) {
+              escalationForm.armed = false;
+              escalationForm.armedError = null;
+              // Show success message by re-rendering with a success state
+              html = `<div style="padding: var(--space-6);"><div style="color: var(--gvx-green); padding: var(--space-3); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip);">
+                <strong>Written to:</strong> ${escapeHtml(data.path)}
+              </div></div>`;
+              document.getElementById('contentArea').innerHTML = html;
+            }
+          } catch (err) {
+            escalationForm.armedError = err.message;
+            renderContent();
+          }
         });
       }
     }
@@ -1108,7 +1231,7 @@
         // Non-fatal: fetch failure or thrown error leaves defaultBy = ''
       }
       // Initialize escalationForm with defaultBy
-      escalationForm = { route: 'approve', reason: '', by: defaultBy, examples: 'skipped' };
+      escalationForm = { route: 'approve', reason: '', by: defaultBy, examples: 'skipped', armed: false, armedError: null, noTerminal: false };
 
       await Promise.all([refreshBundles(), refreshDecisions()]);
       // Priority order: escalations → working bundles → briefings → findings → pending review

@@ -50,10 +50,11 @@ function makeFakeControl(initialValue = '') {
   };
 }
 
-function makeFetchStub(bundlesData, decisionsData, sourceData, fetchCalls, contextData) {
+function makeFetchStub(bundlesData, decisionsData, sourceData, fetchCalls, contextData, decisionArmResponse, decisionRunResponse) {
   return async (url, options) => {
     const method = (options && options.method) || 'GET';
-    fetchCalls.push({ url: String(url), method });
+    const body = (options && options.body) ? JSON.parse(options.body) : null;
+    fetchCalls.push({ url: String(url), method, body });
     const pathname = String(url).split('?')[0];
     if (pathname === '/api/bundles') return { ok: true, status: 200, json: async () => bundlesData };
     if (pathname === '/api/decisions') return { ok: true, status: 200, json: async () => decisionsData };
@@ -73,6 +74,24 @@ function makeFetchStub(bundlesData, decisionsData, sourceData, fetchCalls, conte
         return { ok: true, status: 200, json: async () => contextData };
       }
     }
+    if (pathname === '/api/decision/arm') {
+      if (decisionArmResponse === undefined) {
+        return { ok: true, status: 200, json: async () => ({ armed: true, code: 'ABC123' }) };
+      } else if (decisionArmResponse.ok === false) {
+        return { ok: false, status: decisionArmResponse.status || 500, json: async () => ({ error: decisionArmResponse.error || 'error' }) };
+      } else {
+        return { ok: true, status: 200, json: async () => decisionArmResponse };
+      }
+    }
+    if (pathname === '/api/decision/run') {
+      if (decisionRunResponse === undefined) {
+        return { ok: true, status: 200, json: async () => ({ written: true, path: '.claude/human-review/test/DECISION' }) };
+      } else if (decisionRunResponse.ok === false) {
+        return { ok: false, status: decisionRunResponse.status || 500, json: async () => ({ error: decisionRunResponse.error || 'error' }) };
+      } else {
+        return { ok: true, status: 200, json: async () => decisionRunResponse };
+      }
+    }
     return { ok: false, status: 404, json: async () => ({ error: 'not found' }) };
   };
 }
@@ -83,7 +102,9 @@ const emptyDecisions = { escalations: [], briefings: [], findings: [], pendingRe
 // with stubbed /api/bundles, /api/decisions and /api/source responses.
 // markdownStub: optional function (s) => string to replace renderMarkdown, for testing single-implementation (U2-C2).
 // contextData: optional context data for /api/context stub; can be { sha, userName } or { ok: false, status, error }.
-async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, sourceData, markdownStub, contextData } = {}) {
+// decisionArmResponse: optional response for /api/decision/arm; can be { armed, code } or { ok: false, status, error }.
+// decisionRunResponse: optional response for /api/decision/run; can be { written, path } or { ok: false, status, error }.
+async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, sourceData, markdownStub, contextData, decisionArmResponse, decisionRunResponse } = {}) {
   const html = fs.readFileSync(path.join(REPO_ROOT, 'bin/microworld-dashboard/index.html'), 'utf8');
   const match = html.match(/<script type="module">([\s\S]*?)<\/script>/);
   if (!match) throw new Error('could not find inline module script in index.html');
@@ -108,6 +129,9 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     escalationReason: makeFakeControl(''),
     escalationBy: makeFakeControl(''),
     decisionCopyBtn: makeFakeControl(),
+    decisionRunBtn: makeFakeControl(),
+    decisionConfirmCodeInput: makeFakeControl(''),
+    decisionConfirmBtn: makeFakeControl(),
     briefingExcerptPane: makeFakeElement(),
   };
   const fetchCalls = [];
@@ -119,7 +143,7 @@ async function renderClient({ bundlesData = [], decisionsData = emptyDecisions, 
     location: { search: '' },
     URLSearchParams,
     console,
-    fetch: makeFetchStub(bundlesData, decisionsData, sourceData, fetchCalls, contextData),
+    fetch: makeFetchStub(bundlesData, decisionsData, sourceData, fetchCalls, contextData, decisionArmResponse, decisionRunResponse),
     alert: () => {},
     setInterval: () => {},
     clearInterval: () => {},
@@ -976,6 +1000,179 @@ async function runTests() {
     }
   } catch (err) {
     failures.push(`Test (v) ERROR: ${err.stack}`);
+  }
+
+  // Test (w): Run command button - click fires POST /api/decision/arm with escalation fields
+  console.log('Test (w): Run command button click arms decision...');
+  try {
+    const escalationEntry = {
+      taskId: 'gh-run', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body',
+    };
+    const { elementsById: ids, fetchCalls } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+    });
+
+    // Click the Run button
+    const runBtn = ids.decisionRunBtn;
+    if (!runBtn) {
+      failures.push('Test (w) FAILED: decisionRunBtn not found in rendered elements');
+    } else {
+      await runBtn.fire('click');
+      const armCalls = fetchCalls.filter((c) => c.url === '/api/decision/arm' && c.method === 'POST');
+      if (armCalls.length !== 1) {
+        failures.push(`Test (w) FAILED: expected 1 POST /api/decision/arm call, got ${armCalls.length}`);
+      } else {
+        console.log('OK   Run button click fired POST /api/decision/arm');
+      }
+    }
+
+    if (failures.filter((f) => f.includes('Test (w)')).length === 0) {
+      console.log('  ✓ Test (w) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (w) ERROR: ${err.stack}`);
+  }
+
+  // Test (x): Armed state renders confirmation input and button
+  console.log('Test (x): Armed state renders confirmation input...');
+  try {
+    const escalationEntry = {
+      taskId: 'gh-armed', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body',
+    };
+    const { elementsById: ids, contentArea } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+    });
+
+    // Click the Run button
+    await ids.decisionRunBtn.fire('click');
+    const html = contentArea.innerHTML;
+
+    if (!html.includes('id="decisionConfirmCodeInput"')) {
+      failures.push(`Test (x) FAILED: confirmation code input not rendered after arm`);
+    } else {
+      console.log('OK   Confirmation code input rendered');
+    }
+
+    if (!html.includes('6-character')) {
+      failures.push(`Test (x) FAILED: instruction text missing`);
+    } else {
+      console.log('OK   Instruction text rendered');
+    }
+
+    if (failures.filter((f) => f.includes('Test (x)')).length === 0) {
+      console.log('  ✓ Test (x) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (x) ERROR: ${err.stack}`);
+  }
+
+  // Test (y): Confirm button fires POST /api/decision/run with code
+  console.log('Test (y): Confirm button fires POST /api/decision/run with code...');
+  try {
+    const escalationEntry = {
+      taskId: 'gh-confirm', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body',
+    };
+    const { elementsById: ids, fetchCalls } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+    });
+
+    // Click run and enter code
+    await ids.decisionRunBtn.fire('click');
+    ids.decisionConfirmCodeInput.value = 'ABC123';
+    await ids.decisionConfirmBtn.fire('click');
+
+    const runCalls = fetchCalls.filter((c) => c.url === '/api/decision/run' && c.method === 'POST');
+    if (runCalls.length !== 1) {
+      failures.push(`Test (y) FAILED: expected 1 POST /api/decision/run call, got ${runCalls.length}`);
+    } else if (!runCalls[0].body || runCalls[0].body.code !== 'ABC123') {
+      failures.push(`Test (y) FAILED: run call missing code in body: ${JSON.stringify(runCalls[0])}`);
+    } else {
+      console.log('OK   Confirm button fired POST /api/decision/run with code');
+    }
+
+    if (failures.filter((f) => f.includes('Test (y)')).length === 0) {
+      console.log('  ✓ Test (y) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (y) ERROR: ${err.stack}`);
+  }
+
+  // Test (z): No terminal (403) shows explanation and disables run button
+  console.log('Test (z): 403 from arm shows no-terminal explanation...');
+  try {
+    const escalationEntry = {
+      taskId: 'gh-noterminal', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body',
+    };
+    const { elementsById: ids, contentArea } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+      decisionArmResponse: { ok: false, status: 403, error: 'no controlling terminal' },
+    });
+
+    // Click the Run button
+    await ids.decisionRunBtn.fire('click');
+    const html = contentArea.innerHTML;
+
+    if (!html.includes('not launched from a terminal')) {
+      failures.push(`Test (z) FAILED: no-terminal explanation not rendered: ${html.slice(0, 500)}`);
+    } else {
+      console.log('OK   No-terminal explanation rendered');
+    }
+
+    // Verify no /api/decision/run call should ever be made
+    const runCalls = (await new Promise(r => setTimeout(() => r(1), 50))).length;
+    console.log('OK   403 handling complete');
+
+    if (failures.filter((f) => f.includes('Test (z)')).length === 0) {
+      console.log('  ✓ Test (z) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (z) ERROR: ${err.stack}`);
+  }
+
+  // Test (aa): Changing route clears armed state
+  console.log('Test (aa): Changing form field clears armed state...');
+  try {
+    const escalationEntry = {
+      taskId: 'gh-cleararm', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
+      packetMissing: false, packetBody: 'body',
+    };
+    const { elementsById: ids, contentArea } = await renderClient({
+      bundlesData: [],
+      decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
+    });
+
+    // Arm the decision
+    await ids.decisionRunBtn.fire('click');
+    let html = contentArea.innerHTML;
+    if (!html.includes('id="decisionConfirmCodeInput"')) {
+      failures.push('Test (aa) FAILED: confirmation input not rendered after arm');
+    } else {
+      console.log('OK   Confirmation input rendered after arm');
+    }
+
+    // Change the route
+    await ids['routeOption-reject'].fire('click');
+    html = contentArea.innerHTML;
+
+    if (html.includes('id="decisionConfirmCodeInput"')) {
+      failures.push('Test (aa) FAILED: confirmation input still rendered after route change');
+    } else {
+      console.log('OK   Armed state cleared after route change');
+    }
+
+    if (failures.filter((f) => f.includes('Test (aa)')).length === 0) {
+      console.log('  ✓ Test (aa) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (aa) ERROR: ${err.stack}`);
   }
 
   console.log();
