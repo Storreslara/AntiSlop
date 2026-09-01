@@ -272,15 +272,45 @@ node bin/cli.js --dashboard
 
 The dashboard requires a controlling terminal. It binds to loopback only (`127.0.0.1`) on an ephemeral port, and prints the port and a per-launch token to the terminal. Every HTTP request requires the token via `?t=<token>` query parameter or `X-Antislop-Token` header.
 
+### Run command flow
+
+Escalation-decision forms in the dashboard include a **Run command** button. The flow is:
+
+1. **Arm:** The human clicks "Run command" or "Arm decision", triggering `POST /api/decision/arm`.
+2. **Terminal code:** The server generates a per-decision confirmation code and writes it to the controlling terminal (`/dev/tty`). This code appears in the human's terminal, not in stdout or log files.
+3. **Confirm:** The human enters the confirmation code into the dashboard form and clicks "Confirm", triggering `POST /api/decision/run` with the code. The server validates the code (120-second TTL, single use), then writes the **DECISION file**.
+
+The terminal-code requirement ensures that the human is present at their terminal at decision time — no agent, no matter how it acquires the dashboard token, can complete a decision write without reading the confirmation code from the human's own terminal.
+
+### Read-only mode for CI/containers
+
 For CI/container environments without a controlling terminal, use `--dashboard-no-tty` to start in read-only mode:
 
 ```
 node bin/cli.js --dashboard --dashboard-no-tty
 ```
 
-In read-only mode, the URL (including the token) is printed to stdout, and bundle invocation is refused with 403 errors.
+In read-only mode:
+- The URL (including the token) is printed to stdout instead of the terminal.
+- Bundle invocation (`POST /api/invoke`) returns 403 "dashboard is running in read-only mode".
+- Decision writes (`POST /api/decision/arm` and `/api/decision/run`) also return 403.
+- The dashboard operates as a read-only browser for viewing escalation packets and existing state.
 
-The dashboard writes nothing to disk — cells are ephemeral, in-page, and lost on refresh. Note that **each cell runs in a fresh process**, with no shared state between cells; the dashboard is never a gate (failures in cell invocations do not block any workflow).
+This mode exists because the per-launch token is an **execution credential**, not a read credential — it authenticates access to code-execution endpoints, not just read access. Therefore, the dashboard refuses to start without a controlling terminal unless explicitly told via `--dashboard-no-tty` that read-only operation is intended.
+
+Cells are ephemeral, in-page, and lost on refresh. Note that **each cell runs in a fresh process**, with no shared state between cells; the dashboard is never a gate (failures in cell invocations do not block any workflow).
+
+### Residual risks
+
+The terminal-code requirement and controlling-terminal gating provide the same security boundary as `human-decision-gate.sh` for the DECISION-file write protection — human presence at decision time. However, several residual risks survive:
+
+- **Deliberate pty allocation:** An agent can allocate a pseudo-terminal deliberately (e.g., via `script -qec`, `unbuffer`, or `tmux new-session`) and thereby obtain a controlling terminal, circumventing the no-terminal detection.
+- **Shared terminal multiplexer:** An agent sharing the human's `tmux` or `screen` session can read the confirmation code and dashboard URL via pane capture (`tmux capture-pane -p`) or equivalent multiplexer inspection.
+- **Chat message leakage:** The human pasting the dashboard URL or confirmation code into a chat message an agent reads (via RAG, multimodal scanning, or shared workspace) defeats the terminal-delivery requirement.
+- **Process memory inspection:** Same-uid process inspection can read the confirmation code from the dashboard server's memory.
+- **Adapter scope limitation:** The DECISION-file write protection (`human-decision-gate.sh`) is Claude Code (`claude-adapter`-only) today — **it has no port to Cursor or Codex adapters**. A Cursor/Codex user receives the security guarantees of the dashboard terminal-code flow for decision writes, but not the gate.
+
+None of these risks are introduced by the dashboard; they all survive from the baseline. The trade-off is intentional: the terminal-code requirement is a real improvement over an unauthenticated HTTP endpoint, and it reaches parity with the existing DECISION-file protection bar (same-uid process boundary).
 
 ### Feedback blocks
 
