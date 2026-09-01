@@ -13,3 +13,4 @@
 - [Filehashes-currency test coverage gaps](project_filehashes_currency_test_coverage_gaps.md) — two known test-robustness gaps; not urgent or security-critical, noted for future maintenance
 - [gh413 state model documentation](gh413_state_model_documentation.md) — unit gh413 scribe dispatch added three CONTEXT.md glossary entries for 5-domain state model and unified state-access.sh seam
 - [gh424 spec 1 completion](project_gh424_spec1_completion.md) — 5 glossary terms all matched shipped code exactly; two distinct sanctioned-rotation call sites noted
+- [Verify each disk sink and field location](feedback_verify_each_disk_sink_and_field_location.md) — gh377-7 FAIL: don't generalize one confirmed write claim to adjacent unverified ones
