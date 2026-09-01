@@ -1562,12 +1562,19 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   browse and invoke **microworld bundles** without manual CLI invocation. Binds
   to `127.0.0.1` on an ephemeral port; every request requires a per-launch
   token via `?t=<token>` or `X-Antislop-Token` (see `server.js:21`/`:45-47`).
-  Writes nothing to disk — invocation results live only as ephemeral, in-page
-  **Cell**s. Documented in `README.md`'s "Microworld dashboard" section
-  (`README.md:177`). Distinct from **Microworld** (an individual bundle's
-  rendered dashboard entry a human explores) and **Microworld bundle** (the
-  gitignored `microworlds/<unit-slug>/` directory the dashboard renders) — this
-  entry is the process/UI as a whole, the other two are what it displays.
+  Writes exactly one file: the **DECISION file**, only when a human submits an
+  escalation-decision form with a **confirmation code** delivered over the
+  controlling terminal (see [[confirmation code]]). Invocation results live only
+  as ephemeral, in-page **Cell**s. The dashboard cannot be started without a
+  controlling terminal, except via the `--dashboard-no-tty` flag, which starts
+  it in **read-only mode** — refusing both bundle invocation (`/api/invoke`) and
+  decision writes (`/api/decision/*`). This launch-mode split exists because the
+  launch token is an execution credential, not a read credential. Documented in
+  `README.md`'s "Microworld dashboard" section (`README.md:177`). Distinct from
+  **Microworld** (an individual bundle's rendered dashboard entry a human
+  explores) and **Microworld bundle** (the gitignored `microworlds/<unit-slug>/`
+  directory the dashboard renders) — this entry is the process/UI as a whole,
+  the other two are what it displays.
   Also distinct from the `microworld-rerun.sh` **Reporter** hook (see that
   entry and **Microworld audit log**): the dashboard is the standing,
   human-facing viewer a user starts and stops; the reporter is the
@@ -1586,6 +1593,19 @@ _Avoid_: "the dashboard" alone in glossary cross-references now that this
   entry exists — link explicitly to disambiguate from the individual
   **Microworld** entry (dashboard *entries*) and **D5 browser client**
   (the specific static-HTML implementation of this process's UI).
+
+**confirmation code**:
+(unit #377, Step 7, 2026-08-31) — the per-decision, time-limited code delivered
+  over the controlling terminal (`/dev/tty`) during a **Microworld dashboard**
+  escalation-decision write. Generated when a human arms a decision form (via
+  `/api/decision/arm`); must be entered into the confirm step to complete the
+  write (via `/api/decision/run`). Time-to-live is 120 seconds; the code cannot
+  be reused and expires after one confirmation attempt. Exists to make the
+  decision-write flow unmistakably intentional (a deliberate, terminal-confirmed
+  action) rather than something an HTTP request alone could trigger. Distinct
+  from the **DECISION file**'s body content; the confirmation code gates the
+  ability to write, not the file's semantic contents. See [[Microworld dashboard]],
+  [[dashboard-originated decision write]], and [[DECISION file]].
 
 **Bundle source**:
 (unit #315, 2026-08-10; `"packet"` value implemented unit #321, 2026-08-11) —
@@ -1728,7 +1748,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   — never re-reviews it — into one of three terminal routes (see [[DECISION
   channel]]). The DECISION file is the consent artifact: its unwritability by
   any agent identity is what makes its contents trustworthy as the human's own
-  word, not an agent's paraphrase.
+  word, not an agent's paraphrase. A second, sanctioned authoring path exists via
+  the **Microworld dashboard**: a human-driven, terminal-confirmed **dashboard-originated
+  decision write** (see [[dashboard-originated decision write]]) that delivers
+  the **confirmation code** over `/dev/tty` and writes the file with a `via:`
+  audit-log annotation distinguishing it from the typed-terminal path.
 
 **The human-decision gate** (`human-decision-gate.sh`):
 (unit #325, 2026-08-11, Step 1 of #324; extended units hdg-lexer-1, hdg-prose-2,
@@ -1752,6 +1776,23 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   early-exit; a per-file `rm .../DECISION` is blocked for every identity, reviewer
   included, by design. No adapter port exists, the same precedent already set by
   `reviewed-path-gate.sh`.
+
+**dashboard-originated decision write**:
+(unit #377, Step 7, 2026-08-31) — a **DECISION file** write that originates from
+  the **Microworld dashboard** server, as opposed to the classic path where a human
+  types the file manually in their terminal. Characterized by two properties: (1) the
+  write is gated on a human-entered **confirmation code** delivered over the
+  controlling terminal (`/dev/tty`), ensuring the human is present and the action is
+  intentional; (2) the written **DECISION file** carries a `via: dashboard` annotation
+  in its audit-log line (distinct from `via: terminal`, which marks files typed
+  manually). Both authoring paths satisfy the [[DECISION file]]'s "unwritable by any
+  agent identity" property — the dashboard is not an agent identity, and the
+  confirmation-code gate and TTY delivery mechanism enforce the same human-presence
+  requirement as the terminal path, just via a different channel. Exists only when
+  the dashboard is started with a controlling terminal (not `--dashboard-no-tty`);
+  the read-only mode explicitly refuses `/api/decision/arm` and `/api/decision/run`
+  because the launch token is an execution credential, not a read credential. See
+  [[confirmation code]], [[Microworld dashboard]], and [[DECISION file]].
 
 **Escalation-laundering**:
 (unit #326, 2026-08-11, Step 2 of the human-decision-channel fix, issue #324) —
