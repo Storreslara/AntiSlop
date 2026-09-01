@@ -553,8 +553,7 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
   }
 
   server.listen(port, '127.0.0.1', () => {
-    const addr = server.address();
-    console.log(`http://127.0.0.1:${addr.port}/?t=${token}`);
+    // URL logging is now handled by runDashboard, not here
   });
 
   return { server, token };

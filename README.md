@@ -270,7 +270,15 @@ The **microworld dashboard** is an interactive browser-based workbench for testi
 node bin/cli.js --dashboard
 ```
 
-Nothing auto-starts the dashboard. It binds to loopback only (`127.0.0.1`) on an ephemeral port, and prints the port and a per-launch token to stdout. Every HTTP request requires the token via `?t=<token>` query parameter or `X-Antislop-Token` header.
+The dashboard requires a controlling terminal. It binds to loopback only (`127.0.0.1`) on an ephemeral port, and prints the port and a per-launch token to the terminal. Every HTTP request requires the token via `?t=<token>` query parameter or `X-Antislop-Token` header.
+
+For CI/container environments without a controlling terminal, use `--dashboard-no-tty` to start in read-only mode:
+
+```
+node bin/cli.js --dashboard --dashboard-no-tty
+```
+
+In read-only mode, the URL (including the token) is printed to stdout, and bundle invocation is refused with 403 errors.
 
 The dashboard writes nothing to disk — cells are ephemeral, in-page, and lost on refresh. Note that **each cell runs in a fresh process**, with no shared state between cells; the dashboard is never a gate (failures in cell invocations do not block any workflow).
 

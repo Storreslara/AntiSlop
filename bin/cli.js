@@ -2509,20 +2509,89 @@ async function main() {
   );
 }
 
-async function runDashboard(args) {
+async function runDashboard(args, options = {}) {
   const portFlag = args.find((a) => a.startsWith('--dashboard-port='));
   const port = portFlag ? parseInt(portFlag.slice('--dashboard-port='.length), 10) : 0;
+  const noTtyFlag = args.includes('--dashboard-no-tty');
 
   const { startServer } = require('./microworld-dashboard/server');
-  const { server } = startServer(process.cwd(), port);
 
-  // Handle SIGINT gracefully
-  process.on('SIGINT', () => {
-    server.close(() => {
-      process.exit(0);
-    });
+  // Allow injection of the tty probe for testing (default to real fs.openSync)
+  const probeTerminal = options.probeTerminal || (() => {
+    try {
+      const fd = fs.openSync('/dev/tty', 'w');
+      fs.closeSync(fd);
+      return { hasTty: true };
+    } catch (err) {
+      return { hasTty: false };
+    }
   });
+
+  const probe = probeTerminal();
+  const hasTty = probe.hasTty;
+
+  if (hasTty) {
+    // Terminal present: start with readOnly: false
+    // Open /dev/tty for writing the URL
+    let ttyWrite;
+    try {
+      ttyWrite = fs.openSync('/dev/tty', 'w');
+    } catch (err) {
+      console.error('antislop: failed to open /dev/tty for writing (this should not happen after probing succeeded)');
+      process.exit(1);
+      return;
+    }
+
+    const { server, token } = startServer(process.cwd(), port, { ttyWrite, readOnly: false });
+
+    server.on('listening', () => {
+      const addr = server.address();
+      const url = `http://127.0.0.1:${addr.port}/?t=${token}`;
+      // Write URL to tty, not to stdout
+      try {
+        fs.writeSync(ttyWrite, `${url}\n`);
+      } catch (err) {
+        // tty closed; best effort only
+      }
+    });
+
+    // Handle SIGINT gracefully
+    process.on('SIGINT', () => {
+      server.close(() => {
+        try {
+          fs.closeSync(ttyWrite);
+        } catch (err) {
+          // already closed
+        }
+        process.exit(0);
+      });
+    });
+  } else if (noTtyFlag) {
+    // No terminal, --dashboard-no-tty: start with readOnly: true
+    const { server, token } = startServer(process.cwd(), port, { ttyWrite: null, readOnly: true });
+
+    server.on('listening', () => {
+      const addr = server.address();
+      const url = `http://127.0.0.1:${addr.port}/?t=${token}`;
+      // Write URL to stdout in read-only mode
+      console.log(url);
+    });
+
+    // Handle SIGINT gracefully
+    process.on('SIGINT', () => {
+      server.close(() => {
+        process.exit(0);
+      });
+    });
+  } else {
+    // No terminal, no --dashboard-no-tty: refuse to start
+    console.error('antislop: --dashboard requires a controlling terminal. Either:');
+    console.error('  1. Run this command interactively in a terminal, or');
+    console.error('  2. Pass --dashboard-no-tty to start in read-only mode (for CI/container use)');
+    process.exit(1);
+  }
 }
+
 
 if (require.main === module) {
   main().catch((err) => {
