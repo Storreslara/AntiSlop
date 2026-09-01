@@ -47,8 +47,8 @@ This decision is the highest-stakes choice in the dashboard change plan
   invoke-capable URL.
 - Only a human-present session (one with a real terminal connected) can invoke
   bundles going forward.
-- The phrase "nothing auto-starts it" in `CONTEXT.md:963` (Microworld dashboard
-  entry) is narrowed to: nothing auto-starts it, and it cannot be started in
+- The phrase "nothing auto-starts it" (see **Microworld dashboard** entry in
+  `CONTEXT.md`) is narrowed to: nothing auto-starts it, and it cannot be started in
   automation except in read-only mode.
 
 **(b) Accept and document:**

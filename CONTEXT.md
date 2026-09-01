@@ -1568,9 +1568,9 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   controlling terminal (see [[confirmation code]]). Invocation results live only
   as ephemeral, in-page **Cell**s. The dashboard cannot be started without a
   controlling terminal, except via the `--dashboard-no-tty` flag, which starts
-  it in **read-only mode** — refusing both bundle invocation (`/api/invoke`) and
+  it in [[read-only mode]] — refusing both bundle invocation (`/api/invoke`) and
   decision writes (`/api/decision/*`). This launch-mode split exists because the
-  launch token is an execution credential, not a read credential. Documented in
+  launch token is an [[execution credential]], not a read credential. Documented in
   `README.md`'s "Microworld dashboard" section (`README.md:177`). Distinct from
   **Microworld** (an individual bundle's rendered dashboard entry a human
   explores) and **Microworld bundle** (the gitignored `microworlds/<unit-slug>/`
@@ -1800,9 +1800,33 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   confirmation-code gate and TTY delivery mechanism enforce the same human-presence
   requirement as the terminal path, just via a different channel. Exists only when
   the dashboard is started with a controlling terminal (not `--dashboard-no-tty`);
-  the read-only mode explicitly refuses `/api/decision/arm` and `/api/decision/run`
-  because the launch token is an execution credential, not a read credential. See
+  [[read-only mode]] explicitly refuses `/api/decision/arm` and `/api/decision/run`
+  because the launch token is an [[execution credential]], not a read credential. See
   [[confirmation code]], [[Microworld dashboard]], and [[DECISION file]].
+
+**execution credential**:
+(unit #377, Step 7, 2026-08-31) — a credential that authenticates to both
+  read-only and write/execute endpoints, not merely to read-only endpoints. The
+  per-launch **Microworld dashboard** token is an execution credential: an agent
+  holding it can read bundle listings *and* invoke (`POST /api/invoke`) or write
+  decisions (`POST /api/decision/*`). This is why the dashboard cannot be started
+  without a controlling terminal in the normal case — the token would otherwise be
+  an easy hand-off to automation with full write access. When the dashboard is
+  started with `--dashboard-no-tty` (**read-only mode**), the entire server becomes
+  unreachable (not just write endpoints), closing the "scrape the token and POST"
+  attack vector. See [[Microworld dashboard]], [[read-only mode]], and [[DECISION file]].
+
+**read-only mode**:
+(unit #377, Step 7, 2026-08-31) — the operational mode of the **Microworld dashboard**
+  when started with the `--dashboard-no-tty` flag, blocking both bundle execution
+  (`/api/invoke`, HTTP 403) and decision writes (`/api/decision/arm` and
+  `/api/decision/run`, HTTP 403). Used in automation, CI, or container contexts where
+  a human cannot be present and no controlling terminal is available. In this mode,
+  the dashboard remains accessible for read-only browsing of existing microworld bundles,
+  escalation packets, and review artifacts, but cannot modify state. Exists because
+  the launch token is an **execution credential**, not a read credential — a mode that
+  restricts read-only access prevents exposing the execution capability to automation.
+  See [[Microworld dashboard]], [[execution credential]], and [[--dashboard-no-tty]].
 
 **Escalation-laundering**:
 (unit #326, 2026-08-11, Step 2 of the human-decision-channel fix, issue #324) —
