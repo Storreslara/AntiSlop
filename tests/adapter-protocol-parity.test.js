@@ -65,6 +65,9 @@ const ESCALATION_PROBES = [
   'examples: skipped',             // the non-gate token — omitting it builds a gate
   'examples: none-offered',
   'never graded by the reviewer',  // the R6 authority constraint, gh300
+  'Microworld dashboard',          // second DECISION-authoring path, gh377-6a
+  'via: terminal',                 // via: transcription duty, gh377-6a
+  'via: dashboard',                // via: transcription duty, gh377-6a
 ];
 
 const codexMap = {

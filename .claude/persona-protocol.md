@@ -1,4 +1,4 @@
-<!-- antislop v0.31.66 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.67 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -491,7 +491,7 @@ recording how the decision was composed and delivered. Exactly one of:
 - `via: terminal` (composed for the terminal copy/heredoc path)
 - `via: dashboard` (composed for the Microworld dashboard confirm-write path)
 
-When present, the reviewer transcribes ` via: <value>` (space-prefixed, exactly as written) 
+When present, the reviewer transcribes ` via: <value>` (space-prefixed, exactly as written)
 appended to the `human:` attestation line so an auditor can see how the decision was delivered.
 
 **Reviewer resolution.** The resolution dispatch names only the unit

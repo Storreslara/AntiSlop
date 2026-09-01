@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**0.31.67 — Propagate the `via:` transcription duty to the reviewer persona and the Codex port (gh377-6a, Addendum A → Step 8 of docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md).** Step 6 landed the `via:` transcription duty (and the dashboard-as-second-authoring-path text) in `templates/persona-protocol.md` and the Cursor port, but `agents/reviewer.md` has no `ANTISLOP:BEGIN` markers, so it was never reached, and the Codex port was skipped for both halves. This unit edits `agents/reviewer.md`'s approve route directly, ports both halves to `adapters/codex/agents-md-fragment.md`, and adds `'Microworld dashboard'`, `'via: terminal'`, `'via: dashboard'` to `tests/adapter-protocol-parity.test.js`'s `ESCALATION_PROBES` so this drift class fails the merge gate going forward. No behaviour change — a propagation fix for an already-landed protocol amendment.
+
 **Protocol amendment: Dashboard-confirmed DECISION routing and `via:` attribution (gh383, Step 6 of docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md).** The DECISION file resolution now documents a second authoring path: the human may confirm the write via the Microworld dashboard using a confirmation code delivered to the terminal, alongside the existing terminal copy/heredoc path. An optional `via:` body line records the delivery method (absent by default, `via: terminal` for the terminal path, or `via: dashboard` for the dashboard path). When present in the DECISION file, the reviewer appends ` via: <value>` to the `human:` attestation line so an auditor can see which path was used.
 
 ### Changed

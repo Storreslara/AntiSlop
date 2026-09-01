@@ -490,7 +490,7 @@ recording how the decision was composed and delivered. Exactly one of:
 - `via: terminal` (composed for the terminal copy/heredoc path)
 - `via: dashboard` (composed for the Microworld dashboard confirm-write path)
 
-When present, the reviewer transcribes ` via: <value>` (space-prefixed, exactly as written) 
+When present, the reviewer transcribes ` via: <value>` (space-prefixed, exactly as written)
 appended to the `human:` attestation line so an auditor can see how the decision was delivered.
 
 **Reviewer resolution.** The resolution dispatch names only the unit
