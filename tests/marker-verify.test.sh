@@ -109,6 +109,68 @@ else
   fail=1
 fi
 
+# --- --notes mode: enumerates non-blocking notes, executes nothing ---
+
+write_marker_body() {
+  # $1=task-id $2=commit $3=criteria-text $4=body (appended verbatim after header)
+  local line="PASS $1 2026-08-15T00:00:00Z commit: $2"
+  [ -n "$3" ] && line="$line criteria: $3"
+  printf '%s\n%s\n' "$line" "$4" > "$repo/.claude/reviewed/$1.pass"
+}
+
+expect_exact() {
+  # $1=actual $2=expected(exact) $3=label
+  if [ "$1" = "$2" ]; then
+    echo "OK   $3"
+  else
+    echo "FAIL $3: expected '$2', got '$1'"
+    fail=1
+  fi
+}
+
+# AC1.3 exact anchor, one NOTE[spec] + one NOTE[code] note
+write_marker_body notesboth "$sha_ok" "true" $'Non-blocking notes:\n- NOTE[spec]: spec drift found here\n- NOTE[code]: code style nit here'
+out="$(bash "$script" notesboth "$repo" --notes)"
+expect_exact "$(printf '%s\n' "$out" | sed -n '1p')" "marker-note=spec unit=notesboth - NOTE[spec]: spec drift found here" "(notes) AC1.3 spec note"
+expect_exact "$(printf '%s\n' "$out" | sed -n '2p')" "marker-note=code unit=notesboth - NOTE[code]: code style nit here" "(notes) AC1.3 code note"
+expect_exact "$(printf '%s\n' "$out" | sed -n '3p')" "marker-notes=2 unit=notesboth spec=1 code=1 untagged=0" "(notes) AC1.3 summary"
+
+# AC1.4 loosened anchor (leading space + dash, no colon) -> untagged
+write_marker_body notesloose "$sha_ok" "true" $' - Non-blocking notes\nsomething worth flagging later'
+out="$(bash "$script" notesloose "$repo" --notes)"
+expect_exact "$(printf '%s\n' "$out" | sed -n '1p')" "marker-note=untagged unit=notesloose something worth flagging later" "(notes) AC1.4 loose anchor untagged"
+expect_exact "$(printf '%s\n' "$out" | sed -n '2p')" "marker-notes=1 unit=notesloose spec=0 code=0 untagged=1" "(notes) AC1.4 summary"
+
+# AC1.5 fallback: no anchor of either form -> non-zero notes, not empty
+write_marker_body notesfallback "$sha_ok" "true" $'first remark line\nsecond remark line'
+out="$(bash "$script" notesfallback "$repo" --notes)"
+expect_exact "$(printf '%s\n' "$out" | sed -n '3p')" "marker-notes=2 unit=notesfallback spec=0 code=0 untagged=2" "(notes) AC1.5 fallback yields notes"
+
+# AC1.6 safety (R5): --notes never runs a marker's criteria, still exits 0.
+# Fresh sentinel path: the "sentinel" fixture's criteria already ran earlier
+# in --execute mode above, so its own $tmproot/SENTINEL already exists.
+write_marker notessentinel "$sha_ok" "touch $tmproot/SENTINEL2"
+out="$(bash "$script" notessentinel "$repo" --notes)"
+expect_exact "$out" "marker-notes=0 unit=notessentinel spec=0 code=0 untagged=0" "(notes) AC1.6 sentinel: single-line marker has no notes"
+if [ -f "$tmproot/SENTINEL2" ]; then
+  echo "FAIL: --notes executed the criteria (SENTINEL2 appeared)"
+  fail=1
+else
+  echo "OK   (notes) AC1.6 SENTINEL2 never appears"
+fi
+
+# AC1.7 bin/marker-audit.sh --surface filter
+write_marker_body surfacea "$sha_ok" "true" $'Non-blocking notes:\n- NOTE[code]: touches bin/cli.js render loop'
+write_marker_body surfaceb "$sha_ok" "true" $'Non-blocking notes:\n- NOTE[code]: touches hooks/scripts/stop-gate.sh'
+audit_out="$(bash bin/marker-audit.sh "$repo" --notes --surface=bin/cli.js)"
+note_line_count="$(printf '%s\n' "$audit_out" | grep -c '^marker-note=')"
+if [ "$note_line_count" -eq 1 ] && printf '%s\n' "$audit_out" | grep -q 'bin/cli.js'; then
+  echo "OK   (audit) AC1.7 surface filter: exactly one bin/cli.js line"
+else
+  echo "FAIL (audit) AC1.7 surface filter: got: $audit_out"
+  fail=1
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All marker-verify cases passed."
 else
