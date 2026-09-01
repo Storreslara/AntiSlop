@@ -1562,7 +1562,8 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   browse and invoke **microworld bundles** without manual CLI invocation. Binds
   to `127.0.0.1` on an ephemeral port; every request requires a per-launch
   token via `?t=<token>` or `X-Antislop-Token` (see `server.js:21`/`:45-47`).
-  Writes exactly one file: the **DECISION file**, only when a human submits an
+  Writes the **DECISION file** and appends a line to the review audit log
+  (`.claude/review-audit.log`, `server.js:533`), only when a human submits an
   escalation-decision form with a **confirmation code** delivered over the
   controlling terminal (see [[confirmation code]]). Invocation results live only
   as ephemeral, in-page **Cell**s. The dashboard cannot be started without a
@@ -1751,8 +1752,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   word, not an agent's paraphrase. A second, sanctioned authoring path exists via
   the **Microworld dashboard**: a human-driven, terminal-confirmed **dashboard-originated
   decision write** (see [[dashboard-originated decision write]]) that delivers
-  the **confirmation code** over `/dev/tty` and writes the file with a `via:`
-  audit-log annotation distinguishing it from the typed-terminal path.
+  the **confirmation code** over `/dev/tty` and writes the file with a `via:
+  dashboard` line in the file body itself distinguishing it from the
+  typed-terminal path (which carries no `via:` line at all); the write
+  separately appends its own `decision-write-via-dashboard` line to the
+  review audit log, which contains no `via:` token.
 
 **The human-decision gate** (`human-decision-gate.sh`):
 (unit #325, 2026-08-11, Step 1 of #324; extended units hdg-lexer-1, hdg-prose-2,
@@ -1783,9 +1787,15 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   types the file manually in their terminal. Characterized by two properties: (1) the
   write is gated on a human-entered **confirmation code** delivered over the
   controlling terminal (`/dev/tty`), ensuring the human is present and the action is
-  intentional; (2) the written **DECISION file** carries a `via: dashboard` annotation
-  in its audit-log line (distinct from `via: terminal`, which marks files typed
-  manually). Both authoring paths satisfy the [[DECISION file]]'s "unwritable by any
+  intentional; (2) the written **DECISION file** carries a `via: dashboard` line in
+  the file body itself (`decision-block.js:126`, fed by `server.js:362`) — not in
+  the audit log, which instead gets its own, separate `decision-write-via-dashboard`
+  line (`server.js:525`) with no `via:` token. Today only two `via:` states actually
+  occur: **absent** (both the hand-typed-in-terminal path and the copy/heredoc
+  dashboard path pass no `via` field, so `decision-block.js:122` omits the line
+  entirely) and **`via: dashboard`** (the confirmed-write path above). `via:
+  terminal` exists only as an unused entry in `decision-block.js`'s `VIA_ROUTES`
+  allowlist — no current code path emits it. Both authoring paths satisfy the [[DECISION file]]'s "unwritable by any
   agent identity" property — the dashboard is not an agent identity, and the
   confirmation-code gate and TTY delivery mechanism enforce the same human-presence
   requirement as the terminal path, just via a different channel. Exists only when

@@ -136,8 +136,15 @@ execution.
 
 ## Related decisions
 
-- **ADR-0003** (fast-path dispatch threshold) — unrelated; included here for
-  completeness.
+- **ADR-0018** (human-in-the-loop review enabled by default) — the standing
+  policy this decision's confirmation-code/controlling-terminal requirement
+  enforces for the dashboard's write paths.
+- **ADR-0019** (Microworld dashboard supersedes the fixture-only narrowing) —
+  the decision that introduced the dashboard this ADR closes an exposure in.
+- **ADR-0025** (textual-gate protection requires structural triggers, never
+  word presence) — same family of reasoning applied here: the launch-token
+  gate is structural (controlling-terminal presence), not a substring or
+  secret check.
 - **Step 5 of `docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md`**
   (this decision's implementation); Step 7 (user-facing documentation of the
   modes and residual risks).
