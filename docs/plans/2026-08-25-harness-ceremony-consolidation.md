@@ -807,3 +807,160 @@ strictly worse than today.
 a *summary* of spec 6 rather than its current text should re-read D11 first;
 this spec's M4 has been re-verified against spec 6 at 1,003 lines and stands
 blocked.
+
+> **Superseded for OQ2 by the addendum below (2026-08-31).** OQ2 is now
+> **CLOSED**. The paragraph above is retained as the record of the question as
+> it stood; the answer is in *Addendum A*.
+
+---
+
+## Addendum A (2026-08-31) — A23 adjudication and OQ2 resolution
+
+*Author: `spec-master`. Scope: **M4 / A23 / OQ2 only**. Measured at `3a3d019`.
+Recorded as a dated addendum rather than an edit to the criteria above, per this
+document's own correction convention (see the A8/A16 correction note). **M1, M2
+and M3 are untouched, unreopened and out of this addendum's scope.** No M4 work
+is performed or authorized here.*
+
+**Why now.** Sibling spec 1's Step 2 (`hooks/scripts/harness-integrity-gate.sh`)
+landed at `21d7c5b`/`a14aa31` on 2026-08-26 (unit gh418, reviewer-PASSed), and
+spec 6's D11 flagged it as *"exactly the Bash-half coverage spec 3's OQ2 doubted
+was achievable."* Spec 1 itself deferred the call: *"M4 remains spec 3's to
+adjudicate."* This addendum is that adjudication. Prior PASS markers were
+**not** treated as evidence for A23; the verdict below is from the code and a
+direct re-run.
+
+### A23 — **NOT SATISFIED**
+
+Not partially. Not on the Bash branch, and not on the Write/Edit branch either.
+
+**The finding is one of scope, not of quality.** Step 2's gate is well built and
+does what *it* claims. It simply does not claim A23's subject.
+`.claude/reviewed/` **is not a member of Set A or Set B**, so the marker
+directory is outside the gate's protected surface entirely
+(`harness-integrity-gate.sh:11-27`; spec 1 lines 895-913). Set A is the persona
+config plus the four audit logs and their `.seal` sidecars; Set B is the three
+gate-registration files.
+
+**Re-verified by direct execution**, feeding payloads to the gate on stdin with
+`CLAUDE_PROJECT_DIR` pointed at a throwaway `mktemp -d` (the gate is a
+`PreToolUse` decision hook, so nothing was written and the real marker directory
+was never touched):
+
+| Payload | Branch | Exit | Expected if A23 held |
+|---|---|---|---|
+| `echo PASS > .claude/reviewed/gh999.pass` | Bash | **0** (allowed) | 2 |
+| `printf 'verdict: PASS' >> …/gh999.pass` | Bash | **0** (allowed) | 2 |
+| `touch …/gh999.pass` | Bash | **0** (allowed) | 2 |
+| `echo PASS \| tee …/gh999.pass` | Bash | **0** (allowed) | 2 |
+| `cp /etc/hostname …/gh999.pass` | Bash | **0** (allowed) | 2 |
+| `Write` `file_path=…/gh999.pass` | Write/Edit | **0** (allowed) | 2 |
+| `Edit` `file_path=…/gh999.pass` | Write/Edit | **0** (allowed) | 2 |
+
+The same run's **controls all behaved correctly**, which is what makes the
+result a scope finding rather than a broken-gate finding: `echo x >
+.claude/review-audit.log` → exit **2**; `Write .claude/persona-config.json` →
+exit **2**; `Write hooks/hooks.json` → exit **2**; `Bash` on `hooks/hooks.json`
+→ exit **0** (the ratified ADR-0025 Set-B asymmetry, working as designed).
+`bash tests/harness-integrity-gate.test.sh` exits **0**, all 30 cases, both
+mutation controls green.
+
+**Corroborating evidence, each independent of the others:**
+
+1. **The Step 2 suite contains no marker-directory case at all** — `grep -c
+   'reviewed/' tests/harness-integrity-gate.test.sh` returns **0**. A23 requires
+   *"a test demonstrates…"*; no such test exists to point at.
+2. **No reviewer ever claimed otherwise.** `gh418.pass` records criteria
+   **C2.1-C2.6**, all confined to Set A / Set B; no marker in
+   `.claude/reviewed/` asserts A23. The gh415-gh419 markers are evidence Step 2
+   was built as specified, not evidence it covers M4's precondition.
+3. **The gate does not even reference the directory** — it is absent from the
+   set of `hooks/scripts/*.sh` that mention the marker path.
+4. **No other mechanism substitutes.** `protected-paths.sh` is `Write|Edit`-only
+   by matcher, config-driven, and self-describes as *"ADVISORY ONLY … a persona
+   running `sed -i` … bypasses this gate entirely"* (`:8-11`) — it fails A23's
+   Bash requirement and its configless requirement. The **permission layer runs
+   the other way**: no `deny` rule exists anywhere, and
+   `.claude/settings.local.json` explicitly **allows** `Bash(printf * >
+   .claude/reviewed/*)`.
+5. **The second half of the precondition is uncovered too.** The precondition
+   text also names `.claude/human-review/*/DECISION`; both `Bash` and `Write`
+   payloads against it exit **0** through Step 2's gate.
+
+**What Step 2 did establish**, and it is worth stating precisely because it is
+the part D11 got right: a **configless, hardcoded Bash-branch text-scan deny is
+architecturally achievable and is now in production** for Set A. OQ2's doubt was
+whether *any* mechanical Bash-half denial could exist; that doubt is retired.
+What has not happened is anyone applying that mechanism to the marker directory.
+
+**Two cautions for whoever eventually does apply it**, so this is not read as a
+one-line fix:
+
+- Extending Set A to `.claude/reviewed/` would deny the **reviewer's own
+  sanctioned marker write**. Set A has *"no grant branch, no identity
+  exemption"* by design (D1) — the very property that makes it a guard is what
+  makes it unusable as-is for a directory with a legitimate writer. This needs
+  the *"write-only-through-a-helper contract with the directory made
+  non-writable"* shape M4's own text already predicted, not a Set A addition.
+- Step 2's Bash branch **is a lexical text scan** that sources
+  `benign-command.sh` and inherits *"every residual the existing gates
+  disclose"* (spec 1, D2). Retiring a textual gate by adding a second textual
+  gate over the same paths does not discharge A23's intent.
+
+### New defect in M4's own deletion manifest (found while adjudicating)
+
+**A24 is now unsatisfiable as written, independently of A23.** The manifest
+annotates `hooks/scripts/lib/benign-command.sh` as *"sourced by these two gates
+and nothing else."* **That parenthetical became false on 2026-08-26.**
+`harness-integrity-gate.sh:40` sources it, and depends on it for
+`normalize_path()` (`benign-command.sh:211`) on **both** branches plus
+`command_is_provably_benign()` and `command_skeleton()` on the Bash branch.
+Deleting the file — which A24 requires — would break a gate that spec 6's D0
+names as this repo's *only* remaining live enforcement after the
+`reviewGating.mode: "off"` flip. Any future M4 dispatch must re-scope the
+manifest so `benign-command.sh` **survives**, whatever happens to A23. This
+addendum records the defect; it does not rewrite A24, since M4 is not
+dispatchable anyway.
+
+### OQ2 — **CLOSED (2026-08-31): the deletable set is empty.**
+
+Resolved by applying this spec's own **recommended default**, with **no
+deviation**. OQ2 asked what M4's deletable set is *if the mechanical fix covers
+only Write/Edit*. The measured answer is stronger than the premise: the
+configless fix covers **neither** branch for this subject, so the reduced
+Write/Edit slice the fallback contemplated has nothing behind it either. Today
+the *only* thing denying a marker write on either branch is
+`reviewed-path-gate.sh` — the very file A24/A25 propose to delete, and the one
+A23 requires the denial to survive **without**. Deleting the corpus now would
+not partially cover the Bash path; it would take coverage from *today's* level
+to **zero**, which is the outcome the standing warning — *"a half-covered Bash
+path with a deleted corpus is strictly worse than today"* — exists to prevent.
+
+**The corpus stays. Nothing in the deletion manifest is deletable at
+`3a3d019`.**
+
+*Re-opening criterion, stated so this closure is not permanent by accident:* OQ2
+returns to open only if a future unit lands a configless mechanism that denies
+writes to `.claude/reviewed/<id>.pass` on the **Bash** branch while preserving
+the reviewer's sanctioned write, with neither `reviewed-path-gate.sh` nor
+`human-decision-gate.sh` registered. That unit is **not specified here** and is
+not in this spec's scope; it belongs to sibling spec 1's problem space.
+
+### M4's actionable state: **STILL BLOCKED — not dispatchable in any form**
+
+Not fully dispatchable, and **not reduced-dispatchable** either. A23 is a hard
+gate by its own terms — *"until this exits 0, no other M4 criterion may be
+evaluated"* — so A24-A29 remain unevaluated, and the manifest defect above means
+A24 would need re-scoping even if A23 were later satisfied. Issue **#414** stays
+in its blocked state with its **"DO NOT DISPATCH YET"** body intact; this
+addendum resolves the *question* it was waiting on and returns the answer
+**blocked**, so no dispatch contract follows. Writing one would be `task-master`
+work in any case, and there is nothing to write.
+
+`scripts/rollout-preflight.sh:235-236` (**W10: blocked by design**, preconditions
+*"spec 3's A23 and OQ2"*) remains **accurate and needs no edit**: A23 is
+unsatisfied and OQ2 is now answered *in the blocking direction*.
+
+**Spec status is otherwise unchanged.** M1-M3 stay complete; the header's *"M4
+still blocked on its own precondition"* stands as written, now with the
+precondition measured rather than assumed.
