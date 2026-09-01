@@ -11,4 +11,5 @@
 - [Unit #411 documentation updates](project_gh411_documentation_updates.md) — refreshed Adapter behavioural parity description, added four new glossary entries for core-file extraction work
 - [CONTEXT.md commit before reviewer dispatch](feedback_context_commit_before_reviewer.md) — recurring pattern: commit CONTEXT.md updates before reviewer stage to avoid dirty tree issues
 - [Filehashes-currency test coverage gaps](project_filehashes_currency_test_coverage_gaps.md) — two known test-robustness gaps; not urgent or security-critical, noted for future maintenance
+- [gh413 state model documentation](gh413_state_model_documentation.md) — unit gh413 scribe dispatch added three CONTEXT.md glossary entries for 5-domain state model and unified state-access.sh seam
 - [gh424 spec 1 completion](project_gh424_spec1_completion.md) — 5 glossary terms all matched shipped code exactly; two distinct sanctioned-rotation call sites noted
