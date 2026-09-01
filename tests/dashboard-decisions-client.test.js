@@ -1026,6 +1026,20 @@ async function runTests() {
       } else {
         console.log('OK   Run button click fired POST /api/decision/arm');
       }
+
+      const nonGetCalls = fetchCalls.filter((c) => c.method !== 'GET');
+      if (nonGetCalls.length !== 1) {
+        failures.push(`Test (w) FAILED: expected exactly 1 non-GET fetch, got ${nonGetCalls.length}`);
+      } else {
+        console.log('OK   Exactly one non-GET fetch occurred');
+      }
+
+      const runCallsBeforeConfirm = fetchCalls.filter((c) => c.url === '/api/decision/run');
+      if (runCallsBeforeConfirm.length !== 0) {
+        failures.push(`Test (w) FAILED: expected 0 /api/decision/run calls before confirm, got ${runCallsBeforeConfirm.length}`);
+      } else {
+        console.log('OK   No /api/decision/run call before confirm click');
+      }
     }
 
     if (failures.filter((f) => f.includes('Test (w)')).length === 0) {
@@ -1110,7 +1124,7 @@ async function runTests() {
       taskId: 'gh-noterminal', timestamp: '2026-08-25T12:00:00Z', trigger: 't', microworld: 'm',
       packetMissing: false, packetBody: 'body',
     };
-    const { elementsById: ids, contentArea } = await renderClient({
+    const { elementsById: ids, contentArea, fetchCalls } = await renderClient({
       bundlesData: [],
       decisionsData: { ...emptyDecisions, escalations: [escalationEntry] },
       decisionArmResponse: { ok: false, status: 403, error: 'no controlling terminal' },
@@ -1126,9 +1140,13 @@ async function runTests() {
       console.log('OK   No-terminal explanation rendered');
     }
 
-    // Verify no /api/decision/run call should ever be made
-    const runCalls = (await new Promise(r => setTimeout(() => r(1), 50))).length;
-    console.log('OK   403 handling complete');
+    // Verify no /api/decision/run fetch is ever issued
+    const runCalls = fetchCalls.filter((c) => c.url === '/api/decision/run');
+    if (runCalls.length !== 0) {
+      failures.push(`Test (z) FAILED: expected 0 /api/decision/run calls, got ${runCalls.length}`);
+    } else {
+      console.log('OK   No /api/decision/run call issued');
+    }
 
     if (failures.filter((f) => f.includes('Test (z)')).length === 0) {
       console.log('  ✓ Test (z) passed');

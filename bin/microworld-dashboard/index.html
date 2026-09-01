@@ -844,7 +844,7 @@
               escalationForm.armed = false;
               escalationForm.armedError = null;
               // Show success message by re-rendering with a success state
-              html = `<div style="padding: var(--space-6);"><div style="color: var(--gvx-green); padding: var(--space-3); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip);">
+              const html = `<div style="padding: var(--space-6);"><div style="color: var(--gvx-green); padding: var(--space-3); background: var(--gvx-bg); border: 1px solid var(--gvx-green); border-radius: var(--radius-chip);">
                 <strong>Written to:</strong> ${escapeHtml(data.path)}
               </div></div>`;
               document.getElementById('contentArea').innerHTML = html;
