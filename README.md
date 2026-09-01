@@ -298,6 +298,8 @@ In read-only mode:
 
 This mode exists because the per-launch token is an **execution credential**, not a read credential — it authenticates access to code-execution endpoints, not just read access. Therefore, the dashboard refuses to start without a controlling terminal unless explicitly told via `--dashboard-no-tty` that read-only operation is intended.
 
+`--dashboard-no-tty` only takes effect when no controlling terminal is present; if one is present, the dashboard starts in its normal (non-read-only) mode and the flag is silently ignored — a human with a terminal cannot use it to force read-only mode.
+
 Cells are ephemeral, in-page, and lost on refresh. Note that **each cell runs in a fresh process**, with no shared state between cells; the dashboard is never a gate (failures in cell invocations do not block any workflow).
 
 ### Residual risks
@@ -364,7 +366,7 @@ path across a shell variable defeats the write-intent allowlist), the
 - **Bundle verification**: Microworld bundles are gitignored, so nothing verifies a bundle was authored via the documented authoring path (audit-log, commit hash, etc.) versus hand-written. This is by design — bundles are working artifacts, not source truth.
 - **Location line numbers**: The `location` field's start/end line numbers can go stale if the source file changes after bundle creation. The block carries the commit SHA, so a receiving agent can re-derive or re-verify line ranges against that commit.
 
-**No new `.gitignore` entry is needed for the dashboard**, because it writes nothing to disk (coordinating with #131). The existing `.gitignore` entry for `microworlds/` applies to bundles discovered and cached by the CLI, not by the dashboard itself.
+**No new `.gitignore` entry is needed for the dashboard.** The only file it writes is the DECISION file from the Run command flow above, which lands under `.claude/human-review/<task-id>/` — already covered by that directory's existing `.gitignore` entry. The existing `.gitignore` entry for `microworlds/` applies separately, to bundles discovered and cached by the CLI, not by the dashboard itself.
 
 One limitation is worth stating here rather than only in the fuller list,
 because it bounds what the gate can be trusted for at all. An allowlisted
