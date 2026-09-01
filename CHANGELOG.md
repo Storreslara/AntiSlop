@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+**Protocol amendment: Dashboard-confirmed DECISION routing and `via:` attribution (gh383, Step 6 of docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md).** The DECISION file resolution now documents a second authoring path: the human may confirm the write via the Microworld dashboard using a confirmation code delivered to the terminal, alongside the existing terminal copy/heredoc path. An optional `via:` body line records the delivery method (absent by default, `via: terminal` for the terminal path, or `via: dashboard` for the dashboard path). When present in the DECISION file, the reviewer appends ` via: <value>` to the `human:` attestation line so an auditor can see which path was used.
+
+### Changed
+- **`templates/persona-protocol.md`**: amended "in their own terminal" sentence to name dashboard confirm-write as a second path; added `via:` line documentation; extended approve row to show ` via: <value>` appended to attestation when present.
+- **`adapters/cursor/rules/persona-protocol.mdc`**: ported the same substance in the same commit.
+- **`.claude-plugin/plugin.json`**: version bump 0.31.65 → 0.31.66.
+- **`.claude/persona-protocol.md`**, **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update`.
+
 **New `harness-integrity-gate.sh`: configless write-deny for the harness's own control surface (gh418, Step 2 of docs/plans/2026-08-25-harness-trust-gaps.md).** Registered on both `PreToolUse (Write|Edit)` and `PreToolUse (Bash)` in `hooks/hooks.json`, this new gate hardcodes a deny — no config, no grant branch, no identity exemption — on writes to Set A (the harness's persona-selection config file, plus `.claude/{review,dispatch,microworld,wip}-audit.log` and each `.seal` sidecar, checked on both branches) and Set B (`hooks/hooks.json`, `.claude/settings.json`, and the gate script itself, checked on the Write/Edit branch only — a ratified ADR-0025 gap, since a Bash text-scan for these paths would fire on ordinary prose in this repo's own test suites). The persona-config path is never spelled as one contiguous literal in the gate's own source (built by string concatenation) so a grep for the literal filename over the script proves it is never read as a config or precondition. Self-protecting rather than `protectedPaths`-listed, since its own Set B already denies writes to itself; `tests/protected-paths-coverage.test.js` gains a reasoned exemption entry for it.
 
 ### Changed

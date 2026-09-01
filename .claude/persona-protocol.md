@@ -1,4 +1,4 @@
-<!-- antislop v0.31.65 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.66 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -463,7 +463,9 @@ that `.blocked` is deleted when the reviewer resolves the unit.
 
 ### Resolving an escalation: the DECISION file and the three routes
 **The decision travels as a file, never as a chat message.** The human writes
-`.claude/human-review/<task-id>/DECISION` **in their own terminal**;
+`.claude/human-review/<task-id>/DECISION` **in their own terminal**, or may
+instead confirm the write via the Microworld dashboard, which requires a
+confirmation code delivered to the terminal;
 `hooks/scripts/human-decision-gate.sh` blocks every agent identity — the
 reviewer included — from creating or modifying it, so a decision relayed in a
 dispatch prompt or any chat message is never a substitute for the file. The
@@ -482,6 +484,16 @@ Body: for `reject`, the human's reason verbatim; for `direct`, the full
 prescribed fix verbatim; for `approve`, an `examples: <token>` line — see the
 `examples:` token rules below.
 
+**The `via:` line.** The `DECISION` file may carry an optional `via:` body line
+recording how the decision was composed and delivered. Exactly one of:
+
+- absent (hand-typed decision, pre-existing default — not a failure, no action required)
+- `via: terminal` (composed for the terminal copy/heredoc path)
+- `via: dashboard` (composed for the Microworld dashboard confirm-write path)
+
+When present, the reviewer transcribes ` via: <value>` (space-prefixed, exactly as written) 
+appended to the `human:` attestation line so an auditor can see how the decision was delivered.
+
 **Reviewer resolution.** The resolution dispatch names only the unit
 (`Unit: <task-id>`, plus "resolve the standing escalation from its DECISION
 file") and carries no decision to relay. The reviewer verifies the file exists
@@ -494,7 +506,7 @@ On a missing, malformed, or stale `DECISION`: report and wait.
 
 | Human decision | Reviewer writes | `.escalated` | Packet | Cap slot | Next move |
 |---|---|---|---|---|---|
-| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601> examples: <token>` attestation line quoting the `DECISION` file, after the required first line | deleted | deleted | — | unit done |
+| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601> examples: <token>` attestation line, plus optional ` via: <value>` appended if present in the `DECISION` file, quoting the `DECISION` file, after the required first line | deleted | deleted | — | unit done |
 | **Reject with reason** | `.fail`, with the human's reason **verbatim** from the body as the defect list | deleted | deleted | **consumes one** | back to `lead-programmer`, normal FAIL route |
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the human's full prescribed fix **verbatim** from the body | deleted | deleted | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
 
