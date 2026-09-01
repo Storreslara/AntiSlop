@@ -1612,6 +1612,68 @@ async function runTests() {
     failures.push(`Test (23) U4-C5: ${err.message}`);
   }
 
+  // Test (24): readOnly:true returns the read-only 403 for both endpoints,
+  // distinct from the ttyWrite-null 403 (Test (3)) -- ttyWrite is a live
+  // stub here, so a 403 can only come from the readOnly gate.
+  console.log('Test (24): readOnly mode returns read-only 403, not the tty-null 403...');
+  try {
+    const tmpDir = makeTestProject('24');
+    const taskId = 'test-task-24';
+    const escalationTimestamp = '2026-08-15T10:00:00Z';
+    setupDecisionEnvironment(tmpDir, taskId, escalationTimestamp);
+
+    const ttyWrite = { write: () => {} };
+    const { server, token } = startServer(tmpDir, 0, { ttyWrite, readOnly: true });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+
+    const armUrl = `http://127.0.0.1:${addr.port}/api/decision/arm`;
+    const armResult = await httpRequest(armUrl, {
+      method: 'POST',
+      token,
+      body: {
+        taskId,
+        route: 'approve',
+        escalationTimestamp,
+        by: 'TestUser',
+        reason: 'testing',
+        examples: 'skipped',
+      },
+    });
+
+    if (armResult.status !== 403) {
+      failures.push(`Test (24) FAILED: arm should return 403, got ${armResult.status}`);
+    } else if (!JSON.parse(armResult.body).error.includes('read-only mode')) {
+      failures.push(`Test (24) FAILED: arm 403 should be the read-only error, got ${armResult.body}`);
+    }
+
+    const runUrl = `http://127.0.0.1:${addr.port}/api/decision/run`;
+    const runResult = await httpRequest(runUrl, {
+      method: 'POST',
+      token,
+      body: {
+        taskId,
+        code: 'SOMECODE',
+      },
+    });
+
+    if (runResult.status !== 403) {
+      failures.push(`Test (24) FAILED: run should return 403, got ${runResult.status}`);
+    } else if (!JSON.parse(runResult.body).error.includes('read-only mode')) {
+      failures.push(`Test (24) FAILED: run 403 should be the read-only error, got ${runResult.body}`);
+    }
+
+    if (failures.filter((f) => f.includes('Test (24)')).length === 0) {
+      console.log('  ✓ Test (24) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (24) ERROR: ${err.message}`);
+  }
+
   // Print results
   console.log('\n' + '='.repeat(60));
   if (failures.length === 0) {

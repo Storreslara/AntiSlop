@@ -565,6 +565,61 @@ async function runTests() {
     failures.push(`Test (k) ERROR: ${err.message}`);
   }
 
+  // Test (l): failed tty probe -- runDashboard exits non-zero, never calls
+  // startServer, and prints no string matching `?t=` (Step 5 criterion 5).
+  // Driven via the injected probeTerminal seam, not a real terminal.
+  console.log('Test (l): failed tty probe refuses to start, no token leaked...');
+  try {
+    const cli = require(path.join(REPO_ROOT, 'bin', 'cli.js'));
+    const serverModule = require(path.join(REPO_ROOT, 'bin', 'microworld-dashboard', 'server.js'));
+    const originalStartServer = serverModule.startServer;
+    let startServerCallCount = 0;
+    serverModule.startServer = (...args) => {
+      startServerCallCount++;
+      return originalStartServer(...args);
+    };
+
+    const originalExit = process.exit;
+    const originalConsoleLog = console.log;
+    const originalConsoleError = console.error;
+    let exitCode = null;
+    let output = '';
+    process.exit = (code) => {
+      exitCode = code;
+      throw new Error('__TEST_PROCESS_EXIT__');
+    };
+    console.log = (...args) => { output += args.join(' ') + '\n'; };
+    console.error = (...args) => { output += args.join(' ') + '\n'; };
+
+    try {
+      await cli.runDashboard([], { probeTerminal: () => ({ hasTty: false }) });
+    } catch (err) {
+      if (err.message !== '__TEST_PROCESS_EXIT__') {
+        throw err;
+      }
+    } finally {
+      process.exit = originalExit;
+      console.log = originalConsoleLog;
+      console.error = originalConsoleError;
+      serverModule.startServer = originalStartServer;
+    }
+
+    if (exitCode === null || exitCode === 0) {
+      failures.push(`Test (l) FAILED: expected non-zero exit, got ${exitCode}`);
+    }
+    if (startServerCallCount !== 0) {
+      failures.push(`Test (l) FAILED: expected startServer to be called 0 times, got ${startServerCallCount}`);
+    }
+    if (output.includes('?t=')) {
+      failures.push(`Test (l) FAILED: output leaked a token-shaped string: ${output}`);
+    }
+    if (failures.filter((f) => f.includes('Test (l)')).length === 0) {
+      console.log('  ✓ Test (l) passed');
+    }
+  } catch (err) {
+    failures.push(`Test (l) ERROR: ${err.message}`);
+  }
+
   console.log();
   if (failures.length > 0) {
     console.error('FAILURES:');

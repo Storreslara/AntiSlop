@@ -2628,4 +2628,5 @@ module.exports = {
   backfillFileHashesFromDisk,
   pruneStaleFileHashes,
   deepMerge,
+  runDashboard,
 };

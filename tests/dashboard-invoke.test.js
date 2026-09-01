@@ -509,6 +509,45 @@ exec cat`;
     failures.push(`Test (h) ERROR: ${err.message}`);
   }
 
+  // Test (i): readOnly:true -- POST /api/invoke returns 403, bundle never runs
+  console.log('Test (i): readOnly mode returns 403 and does not run the bundle...');
+  try {
+    const tmpDir = makeTestProject('i');
+    const markerPath = path.join(tmpDir, 'ran.marker');
+    const writeScript = `#!/bin/bash
+touch ${markerPath}`;
+    makeBundle(tmpDir, 'write-unit', { write: writeScript });
+
+    const { server, token } = startServer(tmpDir, 0, { readOnly: true });
+    await new Promise((r) => setTimeout(r, 100));
+
+    const addr = server.address();
+    const url = `http://127.0.0.1:${addr.port}/api/invoke`;
+
+    const result = await httpRequest(url, {
+      method: 'POST',
+      token,
+      body: {
+        id: 'working:write-unit',
+        functionId: 'write',
+        inputs: {},
+      },
+    });
+
+    if (result.status !== 403) {
+      failures.push(`Test (i) FAILED: expected 403, got ${result.status}`);
+    } else if (fs.existsSync(markerPath)) {
+      failures.push(`Test (i) FAILED: bundle ran (marker file exists) despite readOnly:true`);
+    } else {
+      console.log('  ✓ Test (i) passed');
+    }
+
+    server.close();
+    fs.rmSync(tmpDir, { recursive: true });
+  } catch (err) {
+    failures.push(`Test (i) ERROR: ${err.message}`);
+  }
+
   console.log();
   if (failures.length > 0) {
     console.error('FAILURES:');

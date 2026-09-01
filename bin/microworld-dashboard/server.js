@@ -22,7 +22,7 @@ const { composeEscalationDecisionBody, assertNoNewline, ID_RE } = require('./dec
 // Alphabet for 6-char code generation, excluding visually ambiguous glyphs (0, O, 1, I, l)
 const CODE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz';
 
-function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {}) {
+function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000, readOnly = false } = {}) {
   const token = crypto.randomBytes(32).toString('hex');
   const userName = process.env.USER_NAME || '';
   const microworldsPath = path.join(projectRoot, 'microworlds');
@@ -182,6 +182,11 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
 
     // POST /api/invoke
     if (req.method === 'POST' && new URL(req.url, 'http://127.0.0.1').pathname === '/api/invoke') {
+      if (readOnly) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'dashboard is running in read-only mode' }));
+        return;
+      }
       let body = '';
       req.on('data', (chunk) => {
         body += chunk.toString();
@@ -255,6 +260,11 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
 
     // POST /api/decision/arm
     if (req.method === 'POST' && new URL(req.url, 'http://127.0.0.1').pathname === '/api/decision/arm') {
+      if (readOnly) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'dashboard is running in read-only mode' }));
+        return;
+      }
       let body = '';
       req.on('data', (chunk) => {
         body += chunk.toString();
@@ -406,6 +416,11 @@ function startServer(projectRoot, port = 0, { ttyWrite, armTtlMs = 120_000 } = {
 
     // POST /api/decision/run
     if (req.method === 'POST' && new URL(req.url, 'http://127.0.0.1').pathname === '/api/decision/run') {
+      if (readOnly) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'dashboard is running in read-only mode' }));
+        return;
+      }
       let body = '';
       req.on('data', (chunk) => {
         body += chunk.toString();
