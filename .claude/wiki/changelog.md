@@ -3,6 +3,35 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-09-01 (Step 1 of advisory-note-channel plan, after reviewer PASS)
+- **Completed unit gh295-1 (issue #295, Step 1 of `docs/plans/2026-09-01-advisory-note-channel-gh295.md`) —
+  advisory-only marker-note enumeration surface.**
+  Shipped new `--notes` mode for `hooks/scripts/marker-verify.sh` and passthrough/aggregate flags for
+  `bin/marker-audit.sh` (`--notes`, `--tag=`, `--surface=`). The tools parse the "Non-blocking notes:"
+  section of `.pass` markers via a three-tier anchor search (exact line match → regex prefix → fallback
+  to all non-blank lines), classify each note by optional `NOTE[spec]:`/`NOTE[code]:` prefix (untagged
+  otherwise), and optionally filter by tag or substring. Output grammar: `marker-note=<spec|code|untagged> unit=<id> <text>`,
+  summary `marker-notes=<n> unit=<id> spec=<a> code=<b> untagged=<c>`, aggregate sweep
+  `marker-notes-sweep=<total> markers=<m> spec=<a> code=<b> untagged=<c>`. Deliberately not
+  registered in any hook — remains advisory-only/read-only, same posture as the rest of the sweep pair.
+  Reviewed at e00d48a with 11 non-blocking notes: highest-value follow-up flagged is the note-boundary
+  heuristic losing tags on indented lists (reviewed note 1), and the `--tag` flag lacks regression test
+  coverage (note 11). Constitution P3 (version-stamp discipline) is a plan-recorded transient (note 9,
+  carried in Step 3's scope). All core acceptance criteria (AC1.1-1.10) re-verified in pristine worktree.
+  Affected files: `hooks/scripts/marker-verify.sh`, `bin/marker-audit.sh`, `tests/marker-verify.test.sh`,
+  plus mirrors and `.claude/persona-config.json` restamp (AC1.9 verified via `--force-render`).
+  **Ubiquitous-language findings (to be resolved in Step 3):** The `--surface=` flag introduces "surface"
+  as a fourth distinct sense (substring filter for note text, vs. existing "behavioural surface",
+  "disarm surface", and gate's "audit/config surface"). Reviewer's Lens 1 finding: Step 3's scribe pass
+  should either add `[[surface (in marker audit)]]` to CONTEXT.md's glossary or rename the flag to
+  avoid overload. Term "sweep" is reused in `marker-notes-sweep=` line (Lens 2) and has pre-existing
+  ambiguity in CONTEXT.md (cleanup "sweep" at line 1237 vs. audit "sweep" at 488); no new action required
+  (pre-existing condition). New terms "non-blocking note", the `marker-note=` / `marker-notes=` /
+  `marker-notes-sweep=` output grammar, and tag vocabulary (spec/code/untagged) explicitly scheduled
+  as Step 3's glossary deliverable (category-8 "Partial" in plan). Affected files: `.claude/wiki/conventions.md`
+  (documented state-access.sh sourcing trap per lead-programmer advisory), CONTEXT.md (no changes — Step 3
+  will handle glossary entries).
+
 ## 2026-08-26 (spec2-unitB documentation pass, after reviewer PASS)
 - **Completed unit spec2-unitB (reviewer PASS at commit `6fcb355`) — documentation pass
   (scribe task, no tracker issue).**

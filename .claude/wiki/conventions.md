@@ -65,5 +65,12 @@
   and MAY skip `functions[]` and `location` otherwise. Every microworld bundle still
   gets `run.sh` (the check) regardless of trigger status; only `functions[]`
   (human-explorable entries) is conditional on the heavy-unit trigger.
+- **`hooks/scripts/lib/state-access.sh` sourcing trap** (unit gh295-1, 2026-09-01) —
+  `state-access.sh` sources with `set -euo pipefail`, which overrides a sourcing script's own
+  looser `set` options for the remainder of execution. Any hook function whose normal/expected
+  return path is non-zero (e.g., a check that returns 1 on success) must explicitly use `|| true`
+  or `return 0` before reaching the end of the script, or the script dies silently with no error
+  text. This is not a documentation issue — the trap has caught unwary authors before; document
+  this in any hook-authoring guide or README for hook developers.
 - See also the [project constitution](../constitution.md) for the
   human-ratified version of several of these rules, with rationale.
