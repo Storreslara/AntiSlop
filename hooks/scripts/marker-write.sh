@@ -24,7 +24,7 @@
 #            pass "-".
 set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
-dot="${CLAUDE_PROJECT_DIR:-.}/.claude"
+: "${dot:=${CLAUDE_PROJECT_DIR:-.}/.claude}"
 
 # Same unit-id grammar dispatch-hygiene.sh already enforces elsewhere in this
 # repo: alphanumeric first character, then alphanumeric/`._#-`, <=64 chars.
