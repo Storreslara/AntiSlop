@@ -6,7 +6,10 @@
 # instead, printing each `marker-note=` line then one aggregate
 # `marker-notes-sweep=` line; --tag=<spec|code|untagged|all> filters by tag
 # (default all), --surface=<substring> is repeatable and keeps only note
-# lines whose text contains it. Read-only sweep; never writes.
+# lines whose text contains it. The aggregate line's `malformed=<d>` counts
+# every untagged note across the whole sweep (independent of --tag/--surface)
+# whose text contains the substring `NOTE[` - a wrapper variant the parser
+# doesn't yet tolerate. Read-only sweep; never writes.
 # See docs/plans/2026-08-25-harness-trust-gaps.md Step 6 and
 # docs/plans/2026-09-01-advisory-note-channel-gh295.md Step 1.
 #
@@ -44,7 +47,7 @@ matches_surfaces() {
   return 1
 }
 
-total=0; markers=0; spec=0; code=0; untagged=0
+total=0; markers=0; spec=0; code=0; untagged=0; malformed=0
 while IFS= read -r marker_file; do
   [ -n "$marker_file" ] || continue
   task_id="${marker_file%.pass}"
@@ -59,8 +62,9 @@ while IFS= read -r marker_file; do
     case "$out_line" in
       marker-note=*)
         tag="${out_line#marker-note=}"; tag="${tag%% *}"
-        [ "$tag_filter" = "all" ] || [ "$tag_filter" = "$tag" ] || continue
         note_text="${out_line#marker-note=*unit=* }"
+        [ "$tag" = "untagged" ] && [[ $note_text == *"NOTE["* ]] && malformed=$((malformed + 1))
+        [ "$tag_filter" = "all" ] || [ "$tag_filter" = "$tag" ] || continue
         matches_surfaces "$note_text" || continue
         printf '%s\n' "$out_line"
         total=$((total + 1))
@@ -74,6 +78,6 @@ while IFS= read -r marker_file; do
   done < <("$verifier" "$task_id" "$project_dir" --notes)
 done < <(ls -1 "$reviewed_dir"/*.pass 2>/dev/null || true)
 
-[ "$notes_flag" -eq 1 ] && printf 'marker-notes-sweep=%d markers=%d spec=%d code=%d untagged=%d\n' "$total" "$markers" "$spec" "$code" "$untagged"
+[ "$notes_flag" -eq 1 ] && printf 'marker-notes-sweep=%d markers=%d spec=%d code=%d untagged=%d malformed=%d\n' "$total" "$markers" "$spec" "$code" "$untagged" "$malformed"
 
 exit 0

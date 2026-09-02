@@ -47,8 +47,12 @@ unverifiable() {
 state_unit_marker_exists "$task_id" pass || unverifiable
 
 # --notes: three-tier anchor search (exact -> loosened -> fallback), never
-# touches criteria/commit fields. See
-# docs/plans/2026-09-01-advisory-note-channel-gh295.md Step 1.
+# touches criteria/commit fields. Tag classification tolerates a note's tag
+# being wrapped in markdown emphasis/code (`*`, `_`, backticks) and written on
+# an indented list line, which then starts a new note instead of merging as a
+# continuation of the previous one. See
+# docs/plans/2026-09-01-advisory-note-channel-gh295.md Step 1 and Addendum A
+# Step 1b.
 find_anchor_line() {
   local body="$1" n=0 line loose_re='^[#> -]{0,4}[Nn]on-blocking [Nn]ote'
   while IFS= read -r line; do
@@ -67,22 +71,53 @@ trim() {
   printf '%s' "$1" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
 }
 
+# B1: strip one leading whitespace run, list marker (`-`, `*`, `N.`, `N)`, an
+# `A1`-style token) or emphasis/code wrapper (`*`, `_`, backtick) from $1.
+strip_note_wrapper() {
+  local s="$1" t
+  t="$(printf '%s' "$s" | sed -E 's/^[[:space:]]+//')"
+  if [ "$t" != "$s" ]; then printf '%s' "$t"; return 0; fi
+  t="$(printf '%s' "$s" | sed -E 's/^(-|\*|[0-9]+[.)]|[A-Za-z][0-9]+)[[:space:]]*//')"
+  if [ "$t" != "$s" ]; then printf '%s' "$t"; return 0; fi
+  t="$(printf '%s' "$s" | sed -E 's/^[*_`]//')"
+  printf '%s' "$t"
+}
+
+# B1: repeatedly apply strip_note_wrapper until $1 stops changing. Used only
+# to decide a note's tag; the emitted note text stays verbatim.
+normalize_tag_prefix() {
+  local s="$1" prev
+  while :; do
+    prev="$s"
+    s="$(strip_note_wrapper "$s")"
+    [ "$s" = "$prev" ] && break
+  done
+  printf '%s' "$s"
+}
+
 extract_notes() {
   local body="$1" start_line="$2"
-  local n=0 line have=0 cur="" tag="" stripped
+  local n=0 line have=0 cur="" tag="" stripped cand cand_tag
   NOTE_TAG=(); NOTE_TEXT=()
   while IFS= read -r line; do
     n=$((n + 1))
     [ "$n" -ge "$start_line" ] || continue
     [ -n "$(trim "$line")" ] || continue
     if [ "$have" -eq 1 ] && [[ $line =~ ^[[:space:]] ]]; then
-      cur="$cur $(trim "$line")"
-      continue
+      cand="$(trim "$line")"
+      cand_tag="$(normalize_tag_prefix "$cand")"
+      case "$cand_tag" in
+        NOTE\[spec\]:*|NOTE\[code\]:*) : ;;  # B2: starts a new note
+        *)
+          cur="$cur $cand"
+          continue
+          ;;
+      esac
     fi
     [ "$have" -eq 1 ] && { NOTE_TAG+=("$tag"); NOTE_TEXT+=("$cur"); }
     have=1
     cur="$(trim "$line")"
-    stripped="$(printf '%s' "$cur" | sed -E 's/^(-|\*|[0-9]+[.)]|[A-Za-z][0-9]+)[[:space:]]*//')"
+    stripped="$(normalize_tag_prefix "$cur")"
     case "$stripped" in
       NOTE\[spec\]:*) tag=spec ;;
       NOTE\[code\]:*) tag=code ;;

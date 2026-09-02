@@ -171,6 +171,59 @@ else
   fail=1
 fi
 
+# --- AC1b: parser tolerance for wrapped and indented tags (Step 1b) ---
+
+# AC1b.1 classification table: A.1's Defect-B rows, four already-passing plus
+# five previously-untagged rows now fixed by B1's wrapper normalization.
+write_marker_body ac1b1 "$sha_ok" "true" $'Non-blocking notes:\nNOTE[spec]: x\n- NOTE[spec]: x\n* NOTE[code]: x\n1. NOTE[spec]: x\n1) NOTE[code]: x\n- **NOTE[spec]:** x\n**NOTE[code]:** x\n- `NOTE[spec]:` x\n- __NOTE[code]:__ x\n- _NOTE[spec]:_ x'
+out="$(bash "$script" ac1b1 "$repo" --notes)"
+tags="$(printf '%s\n' "$out" | grep '^marker-note=' | sed -E 's/^marker-note=([a-z]+).*/\1/' | paste -sd, -)"
+expect_exact "$tags" "spec,spec,code,spec,code,spec,code,spec,code,spec" "(notes) AC1b.1 classification order"
+expect_exact "$(printf '%s\n' "$out" | tail -n 1)" "marker-notes=10 unit=ac1b1 spec=6 code=4 untagged=0" "(notes) AC1b.1 summary"
+
+# AC1b.2 over-match guards: tolerance must not become greedy.
+write_marker_body ac1b2 "$sha_ok" "true" $'Non-blocking notes:\nNOTE[spec] no colon x\nsee NOTE[spec]: mid-sentence\nNOTE[other]: x\n- Non-blocking: plain prose'
+out="$(bash "$script" ac1b2 "$repo" --notes)"
+expect_exact "$(printf '%s\n' "$out" | tail -n 1)" "marker-notes=4 unit=ac1b2 spec=0 code=0 untagged=4" "(notes) AC1b.2 over-match guards stay untagged"
+
+# AC1b.3 Defect A fixed: an indented, tagged line starts a NEW note.
+write_marker_body ac1b3 "$sha_ok" "true" $'Non-blocking notes:\n- NOTE[code]: a\n  - NOTE[spec]: b'
+out="$(bash "$script" ac1b3 "$repo" --notes)"
+expect_exact "$(printf '%s\n' "$out" | sed -n '1p')" "marker-note=code unit=ac1b3 - NOTE[code]: a" "(notes) AC1b.3 first note code"
+expect_exact "$(printf '%s\n' "$out" | sed -n '2p')" "marker-note=spec unit=ac1b3 - NOTE[spec]: b" "(notes) AC1b.3 second note spec"
+expect_exact "$(printf '%s\n' "$out" | sed -n '3p')" "marker-notes=2 unit=ac1b3 spec=1 code=1 untagged=0" "(notes) AC1b.3 summary"
+
+# AC1b.4 Defect A fix is narrow: an untagged indented line still merges.
+write_marker_body ac1b4 "$sha_ok" "true" $'Non-blocking notes:\n- NOTE[code]: a\n  more prose about a'
+out="$(bash "$script" ac1b4 "$repo" --notes)"
+expect_exact "$out" $'marker-note=code unit=ac1b4 - NOTE[code]: a more prose about a\nmarker-notes=1 unit=ac1b4 spec=0 code=1 untagged=0' "(notes) AC1b.4 untagged indented line still merges"
+
+# AC1b.5 legacy-parse invariance (fixture-based, expiry-proof): markers with
+# no `NOTE[` substring anywhere must parse byte-identically. Isolated repo so
+# the sweep below cannot pick up any of this file's tagged fixtures.
+legacy_repo="$tmproot/legacy"
+mkdir -p "$legacy_repo/.claude/reviewed"
+write_legacy() {
+  # $1=task-id $2=body (appended verbatim after header)
+  printf 'PASS %s 2026-08-15T00:00:00Z commit: %s criteria: true\n%s\n' "$1" "$sha_ok" "$2" > "$legacy_repo/.claude/reviewed/$1.pass"
+}
+write_legacy ac1b5exact $'Non-blocking notes:\nsome remark without any tag here'
+write_legacy ac1b5loose $' - Non-blocking notes\nanother remark, no anchor colon'
+write_legacy ac1b5fallback $'plain first remark\nplain second remark'
+legacy_out="$(bash bin/marker-audit.sh "$legacy_repo" --notes)"
+expected_legacy=$'marker-note=untagged unit=ac1b5exact some remark without any tag here\nmarker-note=untagged unit=ac1b5fallback plain first remark\nmarker-note=untagged unit=ac1b5fallback plain second remark\nmarker-note=untagged unit=ac1b5loose another remark, no anchor colon\nmarker-notes-sweep=4 markers=3 spec=0 code=0 untagged=4 malformed=0'
+expect_exact "$legacy_out" "$expected_legacy" "(audit) AC1b.5 legacy-parse invariance"
+
+# AC1b.8 safety (R5, unchanged): the existing SENTINEL case above already
+# covers this - --notes never executes a marker's criteria.
+
+# AC1b.9 malformed count (OQ-A1 accepted: option a).
+malformed_repo="$tmproot/malformed"
+mkdir -p "$malformed_repo/.claude/reviewed"
+printf 'PASS ac1b9bad 2026-08-15T00:00:00Z commit: %s criteria: true\nNon-blocking notes:\n- NOTE[bogus]: x\n' "$sha_ok" > "$malformed_repo/.claude/reviewed/ac1b9bad.pass"
+malformed_out="$(bash bin/marker-audit.sh "$malformed_repo" --notes)"
+expect_exact "$(printf '%s\n' "$malformed_out" | tail -n 1)" "marker-notes-sweep=1 markers=1 spec=0 code=0 untagged=1 malformed=1" "(audit) AC1b.9 malformed=1 with a bogus tag"
+
 if [ "$fail" -eq 0 ]; then
   echo "All marker-verify cases passed."
 else
