@@ -323,10 +323,41 @@ identity_drift_log "$agent_type" "$hook_event" "$review_audit"
 if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
   if persona_matches_grant "$agent_type" reviewer; then
     [ -f "$config" ] || allow
+
+    # Per-unit review-join, evaluated BEFORE the .blocked/.escalated check
+    # below so a marker's relevance can be scoped to the units this reviewer
+    # was actually dispatched for (gh425): a stray marker belonging to no
+    # stamped unit must not disable flag-clearing project-wide.
+    review_join_state "$dot"
+    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" )
+
     shopt -s nullglob
-    blocked_markers=( "${dot}"/reviewed/*.blocked )
-    escalated_markers=( "${dot}"/reviewed/*.escalated )
+    if [ "${#scoped_units[@]}" -eq 0 ]; then
+      # No review-join stamp (or every stamp present is malformed): no
+      # scoping information exists, so fall back to today's global behaviour
+      # verbatim rather than ruling a marker irrelevant.
+      blocked_markers=( "${dot}"/reviewed/*.blocked )
+      escalated_markers=( "${dot}"/reviewed/*.escalated )
+    else
+      blocked_markers=()
+      escalated_markers=()
+      for marker_path in "${dot}"/reviewed/*.blocked; do
+        marker_unit="$(basename "$marker_path" .blocked)"
+        case " ${scoped_units[*]} " in
+          *" ${marker_unit} "*) blocked_markers+=( "$marker_path" ) ;;
+          *) state_append_audit_log "review-audit.log" "$(printf '%s marker-out-of-scope=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$marker_unit")" ;;
+        esac
+      done
+      for marker_path in "${dot}"/reviewed/*.escalated; do
+        marker_unit="$(basename "$marker_path" .escalated)"
+        case " ${scoped_units[*]} " in
+          *" ${marker_unit} "*) escalated_markers+=( "$marker_path" ) ;;
+          *) state_append_audit_log "review-audit.log" "$(printf '%s marker-out-of-scope=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$marker_unit")" ;;
+        esac
+      done
+    fi
     shopt -u nullglob
+
     # Two independent logs, not an if/elif: a unit blocked and another escalated
     # in the same reviewer turn must both appear, or the audit log cannot tell
     # "the reviewer lacked context" from "policy wanted human eyes" afterwards.
@@ -339,10 +370,6 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     if [ "${#blocked_markers[@]}" -gt 0 ] || [ "${#escalated_markers[@]}" -gt 0 ]; then
       allow
     fi
-
-    # Per-unit review-join, evaluated after the .blocked early-exit above and
-    # before the flag rm -f below, so a blocked verdict still short-circuits.
-    review_join_state "$dot"
 
     if [ "${JOIN_STAMP_COUNT:-0}" -eq 0 ]; then
       # Nothing joined this reviewer to a unit - an un-stamped dispatch, or a

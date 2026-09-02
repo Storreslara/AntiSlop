@@ -509,6 +509,108 @@ else
   fail=1
 fi
 
+# ============================================================================
+# MARKER-RELEVANCE SCOPING TEST CASES (gh425-3: a stray .blocked/.escalated
+# marker for a unit outside the stopping reviewer's own scoped unit set must
+# not keep unrelated flags standing project-wide)
+# ============================================================================
+
+# (x1) scoping-live-defect (REGRESSION for the bug this unit fixes): a
+#      satisfied stamp for unit-a plus an UNRELATED stray .blocked marker for
+#      a non-stamped unit must not keep unit-a's flag standing - only markers
+#      for units in the scoped set do.
+dir="$(make_project scoping-live-defect)"
+seed_stamp "$dir" unit-a none -
+printf 'PASS unit-a 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/unit-a.pass"
+printf 'BLOCKED strayunit 2026-08-07T12:00:00Z missing: constraint X\n' \
+  > "$dir/.claude/reviewed/strayunit.blocked"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+oos_n="$(grep -c 'marker-out-of-scope=strayunit' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+oos_n="${oos_n:-0}"
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'cleared-by=reviewer' "$dir/.claude/review-audit.log" \
+   && ! grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log" \
+   && [ "$oos_n" = 1 ]; then
+  echo "OK   (x1) scoping-live-defect: unrelated stray .blocked marker no longer keeps unit-a's flag standing"
+else
+  echo "FAIL (x1) scoping-live-defect broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) verdict-line=$(grep -c 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0) oos=$oos_n)"
+  fail=1
+fi
+
+# (x2) scoping-multi-stamp: stamps for unit-a AND unit-b, with a .blocked
+#      marker for unit-b specifically -> flags KEPT, verdict=blocked
+#      flags-kept logged. Proves scoping is not simply "ignore everything
+#      once stamps exist".
+dir="$(make_project scoping-multi-stamp)"
+seed_stamp "$dir" unit-a none -
+seed_stamp "$dir" unit-b none -
+printf 'BLOCKED unit-b 2026-08-07T12:00:00Z missing: constraint Y\n' \
+  > "$dir/.claude/reviewed/unit-b.blocked"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log"; then
+  echo "OK   (x2) scoping-multi-stamp: .blocked for a scoped unit still keeps flags standing"
+else
+  echo "FAIL (x2) scoping-multi-stamp broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  fail=1
+fi
+
+# (x3) scoping-all-malformed: one stamp whose unit= field is absent/malformed,
+#      plus an unrelated stray .blocked marker -> flags KEPT (the scoped unit
+#      set is empty, so the global fallback applies, same as (a)).
+dir="$(make_project scoping-all-malformed)"
+printf '2026-08-07T12:00:00Z prior=none prior_mtime=-\n' > "$dir/.claude/.review-join.badstamp"
+printf 'BLOCKED strayunit 2026-08-07T12:00:00Z missing: constraint X\n' \
+  > "$dir/.claude/reviewed/strayunit.blocked"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log"; then
+  echo "OK   (x3) scoping-all-malformed: malformed-only stamp set falls back to the global glob, flags kept"
+else
+  echo "FAIL (x3) scoping-all-malformed broken (rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  fail=1
+fi
+
+# (x4) MUTATION CONTROL for (x1): force the scoped unit set to always be
+#      empty in a throwaway copy - (x1) must then revert to keeping unit-a's
+#      flag standing, proving the scoping logic is actually load-bearing.
+mutant_scope="$tmproot/mutant-scope"
+mkdir -p "$mutant_scope"
+cp hooks/scripts/stop-gate.sh "$mutant_scope/stop-gate.sh"
+cp -R hooks/scripts/lib "$mutant_scope/lib"
+mutant_scope_core="$mutant_scope/lib/stop-gate-core.sh"
+scope_line='    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" )'
+scope_before="$(grep -cxF "$scope_line" "$mutant_scope_core" || true)"
+sed -i 's/^    scoped_units=(.*$/    scoped_units=()/' "$mutant_scope_core"
+scope_after="$(grep -cxF '    scoped_units=()' "$mutant_scope_core" || true)"
+scope_parses=yes
+bash -n "$mutant_scope_core" 2>/dev/null || scope_parses=no
+
+dir="$(make_project mutation-scope)"
+seed_stamp "$dir" unit-a none -
+printf 'PASS unit-a 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/unit-a.pass"
+printf 'BLOCKED strayunit 2026-08-07T12:00:00Z missing: constraint X\n' \
+  > "$dir/.claude/reviewed/strayunit.blocked"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash "$mutant_scope/stop-gate.sh" || rc=$?
+if [ "${scope_before:-0}" = 1 ] && [ "${scope_after:-0}" = 1 ] && [ "$scope_parses" = yes ] \
+   && [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log"; then
+  echo "OK   (x4) mutation control: with the scoped unit set forced empty, (x1) reverts to keeping the flag, so the scoping logic is binding"
+else
+  echo "FAIL (x4) mutation control not applied or did not change behaviour (line before=$scope_before after=$scope_after parses=$scope_parses rc=$rc flag-exists=$([ -f "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no))"
+  fail=1
+fi
+
 # (w) Baseline check: grep for marker=MISSING in the shared core is GREEN -
 #     that decision text moved out of the thin entry script since gh411.
 if tr '\n' ' ' < hooks/scripts/lib/stop-gate-core.sh | tr -s ' ' | grep -qF -e 'marker=MISSING'; then

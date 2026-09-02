@@ -109,6 +109,31 @@ else
   fail=1
 fi
 
+# (h) scoping-live-defect (REGRESSION for gh425, ESCALATE-TO-HUMAN shape): a
+#     satisfied stamp for unit-a plus an UNRELATED stray .escalated marker for
+#     a non-stamped unit must not keep unit-a's flag standing.
+dir="$(make_project scoping-live-defect)"
+printf '2026-08-07T12:00:00Z unit=unit-a prior=none prior_mtime=-\n' \
+  > "$dir/.claude/.review-join.unit-a"
+printf 'PASS unit-a 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/unit-a.pass"
+printf 'ESCALATE-TO-HUMAN strayunit 2026-08-07T12:00:00Z trigger: security-sensitive microworld: none\n' \
+  > "$dir/.claude/reviewed/strayunit.escalated"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+run_reviewer_stop "$dir" || rc=$?
+oos_n="$(grep -c 'marker-out-of-scope=strayunit' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+oos_n="${oos_n:-0}"
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'cleared-by=reviewer' "$dir/.claude/review-audit.log" \
+   && ! grep -q 'verdict=escalated flags-kept' "$dir/.claude/review-audit.log" \
+   && [ "$oos_n" = 1 ]; then
+  echo "OK   (h) scoping-live-defect: unrelated stray .escalated marker no longer keeps unit-a's flag standing"
+else
+  echo "FAIL (h) scoping-live-defect broken (rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-1" ] && echo yes || echo no) verdict-line=$(grep -c 'verdict=escalated flags-kept' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0) oos=$oos_n)"
+  fail=1
+fi
+
 # (f) MUTATION CONTROL for (a): neutralize the .escalated glob in a throwaway
 #     copy - the flag must then clear, proving (a) binds to the new branch.
 mutant="$tmproot/mutant"
