@@ -247,7 +247,7 @@
     "adapters/codex/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
     "adapters/cursor/hooks/scripts/lib/harness-arm.sh": "5297a703b8c9f5fdce10b0f6b7098f838a74cb4f802d91c7f822a2226ed567ec",
     ".claude/hooks/scripts/harness-integrity-gate.sh": "e30c3f1eae8aaffae91ff2862f8f6cc7bf6b4b4d15e939377b0f81291f4c0eb4",
-    ".claude/hooks/scripts/marker-verify.sh": "c896f35ebe801f9f86cc67d8af2fe96ba3dcc51362926892f77737cef7e32920",
+    ".claude/hooks/scripts/marker-verify.sh": "e628d6cb82891aa07270a5e0f61262fa77bad848d19442cd9af7da4d7c7cfd9a",
     ".claude/hooks/scripts/marker-write.sh": "ef1e518f485b8ef6dbf7826162a4d61b31ba54977b9a8a48a24854ee0cbc3ea8",
     ".claude/hooks/scripts/lib/state-access.sh": "374b7c54fa6bb2efb24ee4131593a50123aae7dacbbf8bf642f914e045846e8a",
     "adapters/codex/hooks/scripts/lib/state-access.sh": "374b7c54fa6bb2efb24ee4131593a50123aae7dacbbf8bf642f914e045846e8a",
