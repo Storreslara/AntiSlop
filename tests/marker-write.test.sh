@@ -42,7 +42,7 @@ echo "-- AC-C4: single-call PASS/FAIL/BLOCKED writes ------------------------"
 proj="$tmproot/proj1"
 dot="$proj/.claude"
 mkdir -p "$proj"
-run_helper() { ( cd "$proj" && "$helper" "$@" ); }
+run_helper() { ( cd "$proj" && CLAUDE_PROJECT_DIR="$proj" "$helper" "$@" ); }
 
 rc=0
 run_helper PASS unitA abc123 "bash tests/validate.sh" .claude/reviewed/unitA.pass || rc=$?
@@ -91,7 +91,7 @@ echo "-- AC-C5: rejection (malformed id / missing commit / no write) -------"
 reject_case() {
   local label="$1" expect_no_file="$2"; shift 2
   local rc=0
-  ( cd "$proj" && "$helper" "$@" ) >/dev/null 2>"$tmproot/stderr" || rc=$?
+  ( cd "$proj" && CLAUDE_PROJECT_DIR="$proj" "$helper" "$@" ) >/dev/null 2>"$tmproot/stderr" || rc=$?
   if [ "$rc" = 0 ]; then
     bad "$label -> rc=0, expected a nonzero rejection"
     return
@@ -185,7 +185,7 @@ done
 # Execute the helper for real, as the reviewer would, proving the single
 # invocation both passes the gate AND produces a correct marker.
 rc=0
-( cd "$gproj" && "$helper" PASS spec2-unitC abc123 "bash tests/validate.sh" .claude/reviewed/spec2-unitC.pass ) >/dev/null 2>&1 || rc=$?
+( cd "$gproj" && CLAUDE_PROJECT_DIR="$gproj" "$helper" PASS spec2-unitC abc123 "bash tests/validate.sh" .claude/reviewed/spec2-unitC.pass ) >/dev/null 2>&1 || rc=$?
 if [ "$rc" = 0 ] && marker_format_valid "$gproj/.claude/reviewed/spec2-unitC.pass" spec2-unitC PASS; then
   pass "one real invocation produces a marker_format_valid()-valid marker"
 else

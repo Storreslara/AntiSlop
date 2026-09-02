@@ -918,6 +918,15 @@ else
 fi
 
 echo
+echo "== reviewed-dir leak guard: no suite leaks fixtures into .claude/reviewed/ (Bash, gh425) =="
+if bash tests/reviewed-dir-leak-guard.test.sh; then
+  echo "OK   tests/reviewed-dir-leak-guard.test.sh"
+else
+  echo "FAIL tests/reviewed-dir-leak-guard.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
