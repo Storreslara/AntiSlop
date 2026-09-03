@@ -1,6 +1,6 @@
 # Stale `.blocked` marker jams every reviewer's flag-clearing (gh425)
 
-**Status:** FINAL — Q1–Q4 answered 2026-09-02 (all recommended defaults). Ready for dispatch.
+**Status:** COMPLETE — all four units (gh425-1, gh425-2, gh425-3, gh425-4) plus ancillary unit (protectedpaths-test-fix) reviewer-PASSed as of 2026-09-03. Two follow-on items tracked elsewhere: `state_append_audit_log()` Set-A bypass hole and `protectedPaths` policy decision.
 **Author:** spec-master, 2026-09-02
 **Dispatch order:** `gh425-2` → `gh425-1` → `gh425-3` → `gh425-4`
 (step *numbers* are authoring order; the leak fix ships before the cleanup so
