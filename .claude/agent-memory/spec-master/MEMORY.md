@@ -31,7 +31,8 @@
 - [Teammates cannot spawn named agents](project_teammate_cannot_spawn_named_agent.md) — `name:` is rejected; nested dispatch is an anonymous sync subagent, not lead-addressable.
 - [validate.sh IS a mirror-parity check](project_validate_sh_is_a_mirror_parity_check.md) — 5 instances; it's a FIVE-artifact change (mirrors + fileHashes); a direct hash check MUST stripStamp (13/52 FPs without it).
 - [Adapter ports are hand-maintained](project_adapter_ports_are_hand_maintained.md) — codex/cursor protocol ports are NOT rendered by cli.js; parity test asserts literal strings, so probe arrays are a deliverable.
-- [PASS-note warnings don't propagate](feedback_pass_note_warnings_do_not_propagate.md) — harvest sibling `.pass` notes for steps still ahead; gh402 predicted gh403's 2-FAIL cap verbatim and nobody acted.
+- [PASS-note warnings don't propagate](feedback_pass_note_warnings_do_not_propagate.md) — harvest sibling `.pass` notes AND `tmp/*handoff*.md` before calling anything a first occurrence; gh402 and gh425 both had the fix written down already.
+- [audit_append bypasses the Set-A gate](project_audit_append_bypasses_set_a_gate.md) — a bare log NAME dodges harness-integrity-gate's path scan; real hole, needs its own spec.
 - [Dashboard usability revision spec (#406)](project_dashboard_usability_revision_spec.md) — settled rail IA / md-pane split / USER_NAME decisions + 4 premise corrections the Fable critique got wrong.
 - [Quiz-to-worked-examples spec (2026-08-20)](project_quiz_to_worked_examples_spec.md) — settled token/example/when-needed decisions; the quiz was a *speed regulator*, not comprehension material; 3 brief premise corrections.
 - [Escalation vs protectedPaths](project_escalation_vs_protectedpaths.md) — humanReviewMode is `off` here so ESCALATE never fires; protectedPaths is a separate Write/Edit-only block. I conflated them once.

@@ -1,6 +1,6 @@
 ---
 name: pass-note-warnings-do-not-propagate
-description: A correct diagnosis parked in a non-blocking PASS-marker note does NOT reach the next dispatch — harvest .pass notes for the steps still ahead, not just .fail records
+description: A correct diagnosis parked in a non-blocking PASS-marker note or a tmp/ handoff doc does NOT reach the next dispatch — harvest .pass notes AND tmp/*handoff*.md, not just .fail records
 metadata:
   type: feedback
 ---
@@ -25,8 +25,29 @@ that the implementer was sloppy. Step 2 regenerated its mirror in-unit
 Step 3 obeyed the instruction and went red. Same rule, opposite outcomes —
 the rule was the defect. See [[validate-sh-is-a-mirror-parity-check]].
 
+**`tmp/*handoff*.md` is the same dead-letter channel — check it before calling
+any incident a first occurrence.** In gh425 I scoped a stop-gate defect as a
+newly-discovered bug. It was not: `tmp/gh413-gh414-handoff.md:92-105` recorded
+the *identical* four-file fixture leak firing at 2026-08-31T22:12:03Z, cleaned
+up by the human by hand, with a reviewer's root-cause naming the exact line
+(`stop-gate-core.sh:327`, "directory-wide, not per-unit") and the exact remedy
+("worth its own small unit someday"). Nobody was obliged to read it, so the
+same failure fired again 30 hours later and cost a fresh investigation. The
+correction came from the orchestrator, not from my own sweep.
+
+Two things this changes in how I open an investigation:
+- **Grep `tmp/` and `docs/plans/` for the symptom's own vocabulary before
+  writing the Context section.** A plan that says "first occurrence" when it is
+  a recurrence understates the case for the fix and for a standing guard test.
+- **Prefer the audit log over inference for incident timelines.**
+  `.claude/review-audit.log` survived a clobber that destroyed the marker it
+  described, and independently attested the lost review
+  (`marker-commit-check=ok unit=spec2-unitC` at 2026-08-27T18:54:38Z). It is
+  append-only and Set-A protected, so it outlives the artifacts it references.
+
 **How to apply:** in the `.fail`-record screening pass my persona already
 requires, widen the sweep to `.pass` markers for units in the *same plan*,
 and grep their notes for the names of steps not yet dispatched. Treat any
 "Step N will hit this too" note as a blocking input to Step N's criteria.
-Per [[survey-all-fail-records]], enumerate rather than sample.
+Per [[survey-all-fail-records]], enumerate rather than sample. Add `tmp/
+*handoff*.md` and the audit log to that same sweep.
