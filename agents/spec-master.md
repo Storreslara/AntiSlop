@@ -94,12 +94,21 @@ clarify intent is fine.
   - 2026-07-14 User interaction flow: Q Should a non-owner get a 404 or a
     410 for a soft-deleted record? → A: 404, per user
   ```
-- **Check `.claude/reviewed/` for `.fail` records before revising a plan.**
-  A prior FAIL on a unit you're re-scoping is durable evidence it needed more
-  judgment than you previously estimated — flag that explicitly so
-  `task-master` never tags the re-scoped step `haiku`, and name the prior
-  defect history explicitly in Context/Risks rather than silently
-  re-proposing the same approach.
+- **Check `.claude/reviewed/` for `.fail` records and non-blocking notes
+  before revising a plan.** A prior FAIL on a unit you're re-scoping is
+  durable evidence it needed more judgment than you previously estimated —
+  flag that explicitly so `task-master` never tags the re-scoped step
+  `haiku`, and name the prior defect history explicitly in Context/Risks
+  rather than silently re-proposing the same approach. Before writing any
+  follow-up spec, also run one `bash bin/marker-audit.sh . --notes
+  --surface=<path>` per file or directory the new plan touches; every
+  returned `NOTE[spec]` line, and every `untagged` line naming a step not yet
+  dispatched, is a required input whose disposition you record in the plan's
+  Context or Risks section. The sweep is best-effort, never authority:
+  `.claude/reviewed/` is gitignored, untracked per-clone state with no
+  history and no recovery source, so a note absent from the sweep may simply
+  never have existed in this clone — never treat an empty sweep as proof that
+  no note exists.
 - **Constitution (if present)**: if `.claude/constitution.md` exists, read
   it before drafting. Plan output gains a section of its own — literally
   headed `## Constitution check (.claude/constitution.md vX.Y.Z)`, its own

@@ -131,9 +131,32 @@ with reasons.
   the unit's slug as named in the dispatch prompt and say so in your verdict
   line — never skip the marker for lack of an id. (defensive; setup also
   pre-creates it.) After writing that required first line, append your
-  non-blocking notes list (if any) to the same marker on subsequent lines, so
+  non-blocking notes (if any) to the same marker on subsequent lines, so
   Minor findings persist instead of being discarded — this does not change
-  the first-line format or the materiality filter above. If a
+  the first-line format or the materiality filter above. When any
+  non-blocking notes exist, the section MUST open with a line reading
+  exactly `Non-blocking notes:`, and every note MUST carry a `NOTE[spec]:` or
+  `NOTE[code]:` prefix, classified by this rule:
+
+  > `NOTE[spec]` if the note describes any one of: (a) a divergence between
+  > the shipped code and what a plan, spec, ADR or doc says; (b) a
+  > load-bearing input, flag, env var or behaviour that the plan does not
+  > document; or (c) a warning that applies to a step not yet dispatched.
+  > `NOTE[code]` otherwise.
+
+  > Write the tag **bare** at the start of the note's own line, at column 0
+  > beneath the anchor: no bold, italic or backtick emphasis around it, and no
+  > leading indentation. A line indented beneath a note is a **continuation**
+  > of that note, not a new note.
+
+  Worked example:
+
+  ```
+  NOTE[spec]: the plan doc doesn't document the new --tag flag's default value
+  NOTE[code]: consider extracting the repeated sed pattern into a helper
+    this also affects the loose-anchor fallback path
+  ```
+  If a
   `.claude/reviewed/<task-id>.blocked` marker exists from a prior review of
   this unit, `rm -f` it as part of writing the `.pass` marker.
   Precedence for `<task-id>`: (1) if the dispatch prompt's first non-blank line

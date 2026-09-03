@@ -224,6 +224,52 @@ printf 'PASS ac1b9bad 2026-08-15T00:00:00Z commit: %s criteria: true\nNon-blocki
 malformed_out="$(bash bin/marker-audit.sh "$malformed_repo" --notes)"
 expect_exact "$(printf '%s\n' "$malformed_out" | tail -n 1)" "marker-notes-sweep=1 markers=1 spec=0 code=0 untagged=1 malformed=1" "(audit) AC1b.9 malformed=1 with a bogus tag"
 
+# --- AC2.1: branch agreement - the three literals the parser matches on
+# must occur both in hooks/scripts/marker-verify.sh and in agents/reviewer.md.
+# The script's own case patterns escape the brackets for bash glob syntax
+# (`NOTE\[spec\]:*`), so the check tolerates one optional literal backslash
+# before each bracket in either file - this is what "occurs" means given
+# that constraint, not a loosening of the rule.
+
+check_literal_pair() {
+  # $1=ERE pattern $2=label
+  if grep -qE "$1" "$script" && grep -qE "$1" agents/reviewer.md; then
+    echo "OK   (branch-agreement) AC2.1 $2 present in both files"
+  else
+    echo "FAIL (branch-agreement) AC2.1 $2 missing from marker-verify.sh and/or agents/reviewer.md"
+    fail=1
+  fi
+}
+
+check_literal_pair 'Non-blocking notes:' "anchor literal"
+check_literal_pair 'NOTE\\?\[spec\\?\]:' "NOTE[spec]: literal"
+check_literal_pair 'NOTE\\?\[code\\?\]:' "NOTE[code]: literal"
+
+# --- AC2.7 (Addendum A.4.2): the worked example in agents/reviewer.md,
+# extracted verbatim, must parse under the exact anchor as one NOTE[spec]
+# note then one NOTE[code] note, with its indented line merged as a
+# continuation of the NOTE[code] note.
+
+example_block="$(awk '
+  /^[[:space:]]*Worked example:[[:space:]]*$/ { found=1; next }
+  found && !infence && /^[[:space:]]*```[[:space:]]*$/ {
+    match($0, /^[[:space:]]*/); indent=RLENGTH; infence=1; next
+  }
+  found && infence && /^[[:space:]]*```[[:space:]]*$/ { exit }
+  found && infence { print substr($0, indent + 1) }
+' agents/reviewer.md)"
+
+if [ -z "$example_block" ]; then
+  echo "FAIL (notes) AC2.7 could not extract worked example block from agents/reviewer.md"
+  fail=1
+else
+  write_marker_body ac27 "$sha_ok" "true" "$(printf 'Non-blocking notes:\n%s' "$example_block")"
+  out="$(bash "$script" ac27 "$repo" --notes)"
+  tags="$(printf '%s\n' "$out" | grep '^marker-note=' | sed -E 's/^marker-note=([a-z]+).*/\1/' | paste -sd, -)"
+  expect_exact "$tags" "spec,code" "(notes) AC2.7 worked example order"
+  expect_exact "$(printf '%s\n' "$out" | tail -n 1)" "marker-notes=2 unit=ac27 spec=1 code=1 untagged=0" "(notes) AC2.7 worked example summary"
+fi
+
 if [ "$fail" -eq 0 ]; then
   echo "All marker-verify cases passed."
 else
