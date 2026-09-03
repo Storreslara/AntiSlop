@@ -231,7 +231,7 @@ is scoped to the stopping reviewer's own stamped units (falling back to a
 directory-wide check when scoping information is unavailable) so that a stray
 or orphaned `.blocked` marker from an unrelated unit cannot jam unrelated
 reviewers' operations — this scoped-relevance mechanism (see
-[ADR-0028](../docs/adr/0028-scoped-marker-relevance-sealed-stamp-asymmetry.md)) is
+[ADR-0028](../docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md)) is
 a complementary safety layer that works alongside the one-unit-at-a-time invariant.
 
 The reviewer writes the v3 PASS marker at `.claude/reviewed/<task-id>.pass`

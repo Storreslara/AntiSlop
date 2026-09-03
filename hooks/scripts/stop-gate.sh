@@ -56,10 +56,7 @@
 #     very route it exists to open. A stamp is SATISFIED when a format-valid
 #     `PASS <id> ` / `FAIL <id> ` marker exists for that unit and, where the
 #     stamp recorded a prior_mtime, the marker is strictly newer than it. Then:
-#     .claude/.review-join.<unit-id> per unit this reviewer was dispatched
-#     for). A stamp is SATISFIED when a format-valid `PASS <id> ` / `FAIL <id> `
-#     marker exists for that unit and, where the stamp recorded a prior_mtime,
-#     the marker is strictly newer than it. Then: no stamps at all -> fail OPEN,
+#     no stamps at all -> fail OPEN,
 #     log `marker-check=bootstrap`; at least one satisfied -> delete every
 #     satisfied stamp, log one `join-consumed=<id>` per deletion; stamps exist
 #     and none is satisfied -> log `cleared-by=reviewer marker=MISSING

@@ -462,7 +462,7 @@ _Avoid_: clear-watermark
   all stamps are malformed), the marker check falls back to the directory-wide
   glob to preserve the original safety semantics for reviewers dispatched without
   a `Unit:` line. Introduced to close the gap identified in
-  [ADR-0028](docs/adr/0028-scoped-marker-relevance-sealed-stamp-asymmetry.md) where
+  [ADR-0028](docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md) where
   a stray `.blocked` marker for an unrelated unit could jam unrelated reviewers'
   operations.
 
