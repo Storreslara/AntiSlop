@@ -32,21 +32,30 @@
 #
 # Logic, in order:
 #  0) stop_hook_active guard - never re-trigger ourselves in a loop.
-#  0.5) reviewer's own SubagentStop -> if any .claude/reviewed/*.blocked
-#     marker stands (an INSUFFICIENT-CONTEXT verdict), do NOT clear the
+#  0.5) reviewer's own SubagentStop -> first, consult the PER-UNIT
+#     review-join stamps that reviewer-route-gate.sh wrote at dispatch time
+#     (one .claude/.review-join.<unit-id> per unit this reviewer was dispatched
+#     for) to build a scoped set of units this reviewer is responsible for. Then,
+#     check for .claude/reviewed/*.blocked and .claude/reviewed/*.escalated
+#     markers relevant to that scoped set: (a) if scoped unit set is empty (no
+#     stamps exist, or all stamps are malformed), fall back to global glob
+#     checking; (b) if scoped unit set is non-empty, check only
+#     .blocked/.escalated markers for units in that set, logging
+#     `marker-out-of-scope=<unit>` for any skipped marker. If a relevant
+#     .blocked marker stands (an INSUFFICIENT-CONTEXT verdict), do NOT clear the
 #     pending-review flags: log `verdict=blocked flags-kept` and ALLOW, so
 #     turn-end/next-gated-dispatch stay blocked until a real PASS/FAIL
 #     resolves the unit (the reviewer deletes the .blocked marker then). A
-#     .claude/reviewed/*.escalated marker (an ESCALATE-TO-HUMAN verdict) does
-#     the same, logging `verdict=escalated flags-kept` instead - a DISTINCT
-#     token, so "the reviewer lacked context" and "policy wanted human eyes"
-#     stay apart in the audit log; both globs are checked and both log, so one
-#     never masks the other. `.directed` is DELIBERATELY absent from both
-#     globs: it records a human decision the fix still has to be dispatched
-#     for, and only the flags clearing lets that dispatch through - adding it
-#     here would deadlock the very route it exists to open. Otherwise consult
-#     the PER-UNIT review-join stamps that
-#     reviewer-route-gate.sh wrote at dispatch time (one
+#     .escalated marker (an ESCALATE-TO-HUMAN verdict) does the same, logging
+#     `verdict=escalated flags-kept` instead - a DISTINCT token, so "the
+#     reviewer lacked context" and "policy wanted human eyes" stay apart in the
+#     audit log; both are checked and both log, so one never masks the other.
+#     `.directed` is DELIBERATELY absent from both checks: it records a human
+#     decision the fix still has to be dispatched for, and only the flags
+#     clearing lets that dispatch through - adding it here would deadlock the
+#     very route it exists to open. A stamp is SATISFIED when a format-valid
+#     `PASS <id> ` / `FAIL <id> ` marker exists for that unit and, where the
+#     stamp recorded a prior_mtime, the marker is strictly newer than it. Then:
 #     .claude/.review-join.<unit-id> per unit this reviewer was dispatched
 #     for). A stamp is SATISFIED when a format-valid `PASS <id> ` / `FAIL <id> `
 #     marker exists for that unit and, where the stamp recorded a prior_mtime,

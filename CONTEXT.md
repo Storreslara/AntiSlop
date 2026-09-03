@@ -451,6 +451,30 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
 _Avoid_: clear-watermark
 
+**scoped unit set** / **marker relevance scoping**:
+(ADR-0028, gh425-3) — the set of unit ids that a stopping reviewer is
+  responsible for, derived from that reviewer's own [[review-join stamp]]
+  files at stop time. Used to determine which `.blocked` / `.escalated` markers
+  are relevant to this reviewer's flag-clear operation. When the scoped unit set
+  is non-empty, only markers for units in that set can hold pending-review flags;
+  markers for units outside the set are logged as `marker-out-of-scope` instead
+  of silently blocking. When the scoped unit set is empty (no stamps exist or
+  all stamps are malformed), the marker check falls back to the directory-wide
+  glob to preserve the original safety semantics for reviewers dispatched without
+  a `Unit:` line. Introduced to close the gap identified in
+  [ADR-0028](docs/adr/0028-scoped-marker-relevance-sealed-stamp-asymmetry.md) where
+  a stray `.blocked` marker for an unrelated unit could jam unrelated reviewers'
+  operations.
+
+**marker-out-of-scope** (audit log token):
+(ADR-0028, gh425-3) — an audit-log entry emitted by `stop-gate.sh` when a
+  `.blocked` or `.escalated` marker exists but is not relevant to the stopping
+  reviewer's [[scoped unit set]]. Format in `.claude/review-audit.log`:
+  `marker-out-of-scope=<unit>` (one line per out-of-scope marker). Introduced
+  to make marker-based flag-clearing jams diagnosable from the audit log rather
+  than requiring inspection of `.claude/reviewed/` directory contents. Complements
+  the `marker=MISSING unit=<U>` token for unsatisfied stamps.
+
 **state-artifact species**:
 (unit gh413, 2026-08-31) — an individual marker type, flag file, log, or
   other filesystem artifact that encodes persistent state in the harness.
