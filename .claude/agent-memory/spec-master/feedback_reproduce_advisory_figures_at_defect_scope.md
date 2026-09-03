@@ -21,9 +21,29 @@ figure measured over INDENTED lines. Three things were wrong at once:
    and had never been measured at all. Ranking by the quoted figure would have
    prioritized the smaller defect.
 
+**Never state a count and an enumeration as two independent assertions —
+derive the count FROM the list.** On gh425 (2026-09-02) I wrote "six of those
+eight belong to a completely unrelated plan" directly beside a list naming
+five, when the true figure was seven. Three numbers, no two agreeing. A
+reader checking the prose against the list finds the contradiction instantly;
+I never checked, because the count and the list were written as separate
+claims rather than one derived from the other.
+
+Two aggravating details worth remembering:
+- **It happened inside the finding whose entire purpose was to correct someone
+  else's count.** Correcting a figure creates a false sense of having been
+  careful with figures. The opposite is true: that is exactly the moment to
+  re-count.
+- **It propagated verbatim into an ADR before anyone caught it** (gh425's F10
+  into ADR-0028). A plan doc that a scribe unit cites is a source, not a
+  draft — an off-by-one in it becomes institutional record within one dispatch.
+
 **How to apply:** before promoting an advisory into a step or an acceptance
 criterion, (a) split it into one mechanism per finding, (b) re-run the count
 scoped to the code path that mis-handles it, and (c) execute the illustrated
 example against a verbatim copy of the shipped logic — do not read the regex
-and infer. The advisory is a lead, not a measurement. Related:
-[[verify-own-criteria-nonvacuous]], [[review-join-null-only-covered-zero-stamp]].
+and infer. The advisory is a lead, not a measurement. And when a finding
+carries both a total and a breakdown, write the breakdown first and make the
+total its sum — or, better, give only the breakdown and let the reader add up.
+Related: [[verify-own-criteria-nonvacuous]],
+[[review-join-null-only-covered-zero-stamp]].

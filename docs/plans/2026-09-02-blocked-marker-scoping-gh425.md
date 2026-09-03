@@ -115,11 +115,27 @@ in a side artifact that no later dispatch was obliged to read.
 clearing event at `2026-09-02T19:46:16Z`, immediately after `unitC.blocked` was
 deleted, consumed **eight** review-join stamps in a single
 `cleared-by=reviewer`: `gh295-1`, `gh295-1b`, `gh377-4`, `gh377-5`, `gh377-6`,
-`gh377-6a`, `gh377-7`, `gh425-2`. Six of those eight belong to a completely
-unrelated plan and had been silently jammed. (Relayed as "three pending-review
-flags" — both are true and measure different things: flags are agent-keyed,
-stamps are unit-keyed. The stamp count is the one that shows how many *units*
-were affected, so it is the figure the ADR should cite.)
+`gh377-6a`, `gh377-7`, `gh425-2`. Broken down by originating plan:
+
+- **1 of 8** — `gh425-2` — belongs to this plan.
+- **2 of 8** — `gh295-1`, `gh295-1b` — belong to the #295 advisory-note-channel
+  plan, the units whose review exposed the defect in the first place.
+- **5 of 8** — `gh377-4`, `gh377-5`, `gh377-6`, `gh377-6a`, `gh377-7` — belong
+  to a third plan with no involvement in the discovery at all. These are the
+  ones that had been silently jammed with nobody watching.
+
+So **seven of the eight belong to plans other than gh425**, and five to a plan
+nobody was looking at. (Relayed as "three pending-review flags" — both are true
+and measure different things: flags are agent-keyed, stamps are unit-keyed. The
+stamp count is the one that shows how many *units* were affected, so it is the
+figure the ADR should cite.)
+
+*Correction, 2026-09-03:* this finding first read "six of those eight belong to
+a completely unrelated plan" while enumerating only five, and seven is the
+correct count of non-gh425 units. Caught by the gh425-4 reviewer; it had already
+propagated verbatim into ADR-0028, which `scribe` corrected on its side. The
+error is instructive: it appeared in the very finding whose purpose was to
+correct someone else's count.
 
 **F11 — `spec2-unitC`'s genuine review is independently attested, though its
 marker body is not.** `.claude/review-audit.log` retains
