@@ -26,6 +26,16 @@ const exemptions = {
 const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 const protectedPaths = config.protectedPaths || [];
 
+// Coverage enforcement is opt-in: it only applies when this project has
+// actually populated protectedPaths. An empty array is a deliberate,
+// valid opt-out (this repo's own choice as of commit d3e18d0) - not a
+// drifted-from invariant to flag.
+if (protectedPaths.length === 0) {
+  console.log('protectedPaths is empty - coverage enforcement is opted out for this repo.');
+  console.log('(Every *.sh under hooks/scripts/ would otherwise need to be protected or exempted.)');
+  process.exit(0);
+}
+
 // Extract all patterns from protectedPaths (handle both string and object formats)
 const patterns = protectedPaths.map(entry =>
   typeof entry === 'string' ? entry : entry.pattern

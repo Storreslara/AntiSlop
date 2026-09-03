@@ -6,9 +6,28 @@ set -euo pipefail
 
 export CLAUDE_PROJECT_DIR="."
 
+# Tests 1, 2, 4, and 6 exercise the gate MECHANISM against a synthetic
+# config, not this repo's own live .claude/persona-config.json - this repo's
+# protectedPaths is now deliberately [] (see commit d3e18d0), so a fixture
+# config is the only way to still prove a non-empty protectedPaths blocks a
+# matching edit. Cleanup covers both fixture dirs regardless of which have
+# been created yet.
+trap 'rm -rf "${nonempty_fixture_dir:-}" "${fixture_dir:-}"' EXIT
+
+nonempty_fixture_dir="$(mktemp -d)"
+mkdir -p "$nonempty_fixture_dir/.claude"
+cat > "$nonempty_fixture_dir/.claude/persona-config.json" <<'EOF'
+{"protectedPaths":[
+  {"pattern": "hooks/scripts/stop-gate.sh", "reason": "test fixture"},
+  {"pattern": "hooks/scripts/task-gate.sh", "reason": "test fixture"},
+  {"pattern": ".github/workflows/*", "reason": "test fixture"}
+]}
+EOF
+
 # Test 1: Protected path should be blocked (exit 2)
 echo "Test 1: Protected path (hooks/scripts/stop-gate.sh) should exit 2"
-if echo '{"tool_input":{"file_path":"hooks/scripts/stop-gate.sh"}}' | bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
+if echo '{"tool_input":{"file_path":"hooks/scripts/stop-gate.sh"}}' \
+  | CLAUDE_PROJECT_DIR="$nonempty_fixture_dir" bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
   echo "  ✗ Failed: expected exit 2, got exit 0"
   exit 1
 else
@@ -23,7 +42,8 @@ fi
 
 # Test 2: Another protected path
 echo "Test 2: Protected path (hooks/scripts/task-gate.sh) should exit 2"
-if echo '{"tool_input":{"file_path":"hooks/scripts/task-gate.sh"}}' | bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
+if echo '{"tool_input":{"file_path":"hooks/scripts/task-gate.sh"}}' \
+  | CLAUDE_PROJECT_DIR="$nonempty_fixture_dir" bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
   echo "  ✗ Failed: expected exit 2, got exit 0"
   exit 1
 else
@@ -48,7 +68,8 @@ fi
 
 # Test 4: Pattern matching with wildcards
 echo "Test 4: Protected pattern (.github/workflows/*) should match .github/workflows/validate.yml"
-if echo '{"tool_input":{"file_path":".github/workflows/validate.yml"}}' | bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
+if echo '{"tool_input":{"file_path":".github/workflows/validate.yml"}}' \
+  | CLAUDE_PROJECT_DIR="$nonempty_fixture_dir" bash hooks/scripts/protected-paths.sh >/dev/null 2>&1; then
   echo "  ✗ Failed: expected exit 2, got exit 0"
   exit 1
 else
@@ -78,7 +99,6 @@ fi
 # --update preserves the field verbatim) must still deny.
 echo "Test 6: legacy string-shaped protectedPaths config should still exit 2"
 fixture_dir="$(mktemp -d)"
-trap 'rm -rf "$fixture_dir"' EXIT
 mkdir -p "$fixture_dir/.claude"
 printf '{"protectedPaths":[".github/workflows/*","hooks/scripts/stop-gate.sh"]}' \
   > "$fixture_dir/.claude/persona-config.json"
