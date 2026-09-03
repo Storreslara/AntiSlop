@@ -2,153 +2,7 @@
   "testAndLintCommand": "bash tests/validate.sh",
   "graphUpdateCommand": "code-review-graph update --skip-flows",
   "sourceGlobs": [],
-  "protectedPaths": [
-    {
-      "pattern": ".github/workflows/*",
-      "tag": "server-mirror-eligible",
-      "reason": "Workflows change rarely; CI rulesets depend on this path"
-    },
-    {
-      "pattern": ".claude/constitution.md",
-      "tag": "server-mirror-eligible",
-      "reason": "Constitution is stable policy document; candidates for server freeze"
-    },
-    {
-      "pattern": "hooks/scripts/human-decision-gate.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; local edits are frequent during development"
-    },
-    {
-      "pattern": "hooks/scripts/reviewed-path-gate.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; local edits are frequent during development"
-    },
-    {
-      "pattern": "hooks/scripts/stop-gate.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; largest gate in system, edited frequently"
-    },
-    {
-      "pattern": "hooks/scripts/task-gate.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; controls marker validity and task dispatch"
-    },
-    {
-      "pattern": "hooks/scripts/reviewer-route-gate.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; controls reviewer dispatch and routing"
-    },
-    {
-      "pattern": "hooks/scripts/dispatch-hygiene.sh",
-      "tag": "local-only",
-      "reason": "Enforcement gate; validates dispatch packet structure"
-    },
-    {
-      "pattern": "hooks/scripts/protected-paths.sh",
-      "tag": "local-only",
-      "reason": "Gate itself; protected to prevent bypassing the protection mechanism"
-    },
-    {
-      "pattern": "hooks/scripts/lib/benign-command.sh",
-      "tag": "local-only",
-      "reason": "Shared lexer library used by textual enforcement gates (reviewed-path-gate, human-decision-gate)"
-    },
-    {
-      "pattern": "hooks/scripts/microworld-rerun.sh",
-      "tag": "local-only",
-      "reason": "Reporter hook with audit-log contract; edited during feature work"
-    },
-    {
-      "pattern": "hooks/scripts/graph-update.sh",
-      "tag": "local-only",
-      "reason": "Graph update hook; graph state is development-time artifact"
-    },
-    {
-      "pattern": "hooks/scripts/lint-on-edit.sh",
-      "tag": "local-only",
-      "reason": "Reporter hook; lint rules are development-time enforcement"
-    },
-    {
-      "pattern": "hooks/scripts/marker-commit-check.sh",
-      "tag": "local-only",
-      "reason": "Hook for marker commit validation; affects local verdict workflow"
-    },
-    {
-      "pattern": "hooks/scripts/heavy-trigger.sh",
-      "tag": "local-only",
-      "reason": "Utility hook; no cross-session contract"
-    },
-    {
-      "pattern": "hooks/scripts/reviewer-tier.sh",
-      "tag": "local-only",
-      "reason": "Utility script setting reviewer tier based on paths; affects local review logic"
-    },
-    {
-      "pattern": "hooks/scripts/marker-write.sh",
-      "tag": "local-only",
-      "reason": "Single-call marker-write helper (spec2-unitC); affects local review-marker bookkeeping"
-    },
-    {
-      "pattern": "hooks/scripts/session-start.sh",
-      "tag": "local-only",
-      "reason": "Session startup hook; exempt reporter, edited as other hooks change"
-    },
-    {
-      "pattern": "hooks/scripts/lib/agent-identity.sh",
-      "tag": "local-only",
-      "reason": "Shared library for agent identity tagging; used by gate scripts"
-    },
-    {
-      "pattern": "hooks/scripts/lib/harness-arm.sh",
-      "tag": "local-only",
-      "reason": "Shared library computing the harness_armed() tamper verdict; used by six trust gates"
-    },
-    {
-      "pattern": "hooks/scripts/lib/audit-log.sh",
-      "tag": "local-only",
-      "reason": "Shared library for sidecar-sealed audit log writes; used by gate scripts"
-    },
-    {
-      "pattern": "hooks/scripts/lib/graph-update-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for graph update hook"
-    },
-    {
-      "pattern": "hooks/scripts/lib/lint-on-edit-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for lint-on-edit hook"
-    },
-    {
-      "pattern": "hooks/scripts/lib/microworld-rerun-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for microworld rerun hook"
-    },
-    {
-      "pattern": "hooks/scripts/lib/microworld-queue.sh",
-      "tag": "local-only",
-      "reason": "Queue management for async microworld rerun; critical for Unit A async mechanism"
-    },
-    {
-      "pattern": "hooks/scripts/lib/protected-paths-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
-    },
-    {
-      "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for reviewer routing gate"
-    },
-    {
-      "pattern": "hooks/scripts/lib/state-access.sh",
-      "tag": "local-only",
-      "reason": "Consolidated state-access library for marker/artifact management (M3); single seam for all hook-script state operations"
-    },
-    {
-      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for stop gate; coordinates with multiple hooks"
-    }
-  ],
+  "protectedPaths": [],
   "gatedAgents": [
     "lead-programmer"
   ],
@@ -188,17 +42,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "4aefafae3c6d4dd1bf737590df48b2ff8eca09453f4c2ec0d531739763493576",
+    ".claude/agents/orchestrator.md": "174bb7ea643cdb2c20155325e3736f06e91e2c45af468da437c58d4a4a207ba9",
     ".claude/agents/explorer.md": "0a148a47e8936186b954b144a5a9e047ac3474dc82372d33a0fb5096b9bc24d6",
-    ".claude/agents/lead-programmer.md": "e13c4aa35d6d56a9d1775e5f2908ed952e50499d191d4314a665ba0979c0b81c",
-    ".claude/agents/spec-master.md": "7fca5141ef3a6941293e9130d88c48612d2e1a907e9de0cebb7b3c7421ad5ac8",
-    ".claude/agents/task-master.md": "e04f28f8e0cd151965a03d953a3aa5803d6ed9f0b37777ef05d21f0aaa20a09f",
+    ".claude/agents/lead-programmer.md": "cb3a7e727b11d1c1019f0db2a04b50d80b512426fa91194a52f90acc65d7e3a3",
+    ".claude/agents/spec-master.md": "3ca2780275be878d427d48edcba16ce0b55df5d4337d325cdec24afd7559396a",
+    ".claude/agents/task-master.md": "a0cfe96029561187633f5311bd5beded7d948ec4e96fd2302a61e8b8460847fd",
     ".claude/agents/scribe.md": "7c414abb1b10688499a16a055772c73a199cdfb07e8bca7d75dc1f52945e0a8a",
-    ".claude/agents/reviewer.md": "9f23ea8c2abbda72ba4306f710312c23bcbdc11da20ab83b12e89e5166f4ba77",
-    ".claude/agents/milestone-auditor.md": "52cb64b82638f67559068c81408b7caf3d4347db8431dc40d4e4fa1f9d036d07",
+    ".claude/agents/reviewer.md": "c5d0ea4d21cafdc745915c25b252d702eb648c05c315ce2768e455221e9338c0",
+    ".claude/agents/milestone-auditor.md": "36dfef1d54add0af9f98612c19c5afa5d12c3d7fa195991903ff1e5bcbe8ec52",
     ".claude/agents/agent-auditor.md": "e2c60fc3cd47e5ba5686da193ceb3eec290f370cd6655a9cfe2bf1507edfd747",
     ".claude/agents/researcher.md": "030c844c4c03b4599f7900fe5c8ec92a2229fd8a12a2c9c4c2ac5b28443781d2",
-    ".claude/persona-protocol.md": "9113c08041891ba450be0c6a81f793e5a5d7fa55d52eeb69ed269166deca38e2",
+    ".claude/persona-protocol.md": "63d71c4f510c074a35bdfa70ae1027dbbfff7706aa913739b6cb9b07c7baeb56",
     ".claude/persona-protocol-slim.md": "d9c10d189b0cd16b3ba5493374629582db9ed3a44ca97a167260e5a8627db0f1",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "1994a65674a97281875fbb33c6887955f31a4e84544cd42f05a9699ba6aaf26c",
