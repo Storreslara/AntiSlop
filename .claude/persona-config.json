@@ -134,11 +134,6 @@
       "reason": "Shared core for protected-paths gate; hand-edited source for mirrors"
     },
     {
-      "pattern": "hooks/scripts/lib/stop-gate-core.sh",
-      "tag": "local-only",
-      "reason": "Shared core for stop gate; coordinates with multiple hooks"
-    },
-    {
       "pattern": "hooks/scripts/lib/reviewer-route-gate-core.sh",
       "tag": "local-only",
       "reason": "Shared core for reviewer routing gate"
@@ -232,11 +227,11 @@
     "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
     "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
     ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "207b8bfed92d50c98cee653fac76079c57c9393fea27fea9560ee49861961ecd",
-    ".claude/hooks/scripts/lib/stop-gate-core.sh": "ced3f5dcb666e30a1f5460c2d48f73db581113176033a58647e762a034ce3bcd",
+    ".claude/hooks/scripts/lib/stop-gate-core.sh": "97710fac30604f4c227a4852d02c39730ed22d90fe20d0813f6d8a2c4fc02367",
     "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "207b8bfed92d50c98cee653fac76079c57c9393fea27fea9560ee49861961ecd",
-    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "ced3f5dcb666e30a1f5460c2d48f73db581113176033a58647e762a034ce3bcd",
+    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "97710fac30604f4c227a4852d02c39730ed22d90fe20d0813f6d8a2c4fc02367",
     "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "207b8bfed92d50c98cee653fac76079c57c9393fea27fea9560ee49861961ecd",
-    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "ced3f5dcb666e30a1f5460c2d48f73db581113176033a58647e762a034ce3bcd",
+    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "97710fac30604f4c227a4852d02c39730ed22d90fe20d0813f6d8a2c4fc02367",
     ".claude/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
     "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
     "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
