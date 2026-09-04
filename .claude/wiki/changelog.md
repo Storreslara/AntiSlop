@@ -3,6 +3,56 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-09-04 (Step 6 of microworld-silo plan, Dispatch A of 2 — scribe, review pending)
+- **Dispatch A of unit gh332 (issue #332, Step 6 of `docs/plans/2026-08-11-microworld-silo.md`,
+  the plan's last step) — scribe recorded the institutional record for the silo reorg.**
+  Authored `docs/adr/0029-microworld-silo-namespaced-directories.md` (number re-derived live
+  from `ls docs/adr/`; highest pre-existing was `0028`, and the `0007` slot remains a preserved
+  hole, re-verified `0` both before and after). The ADR states the decision (namespaced silo plus
+  canonical index), two rejected alternatives — (b) a full physical silo, rejected because hooks
+  are located by `hooks.json` registration and moving them would desynchronize the hook's tracked
+  mirror and its two adapter mirrors; (c) leaving everything flat, rejected because a `microworld`
+  grep missed the old `bin/dashboard/` entirely — and the explicit consequence that historical
+  citations in `CHANGELOG.md`, `.claude/wiki/changelog.md`, `docs/plans/`, and `docs/adr/` are not
+  rewritten by this plan. Added one new `CONTEXT.md` glossary entry, **Microworld silo**,
+  cross-linked to **Microworld dashboard**, **Microworld bundle**, and **Reporter**, with an
+  `_Avoid_:` line for "the dashboard directory". Filed two follow-up issues for pre-existing,
+  deliberately out-of-scope drift this unit does not fix: the `CONTEXT.md` **Microworld dashboard**
+  entry's stale `README.md` line-number citation (re-measured live at `README.md:263`, not the
+  plan's stale `:177`/`:204`), and the four stale `tests/dashboard-*` citations left in
+  `bin/microworld-dashboard/index.html` (three) and `bin/microworld-dashboard/decision-block.js`
+  (one) — both tracked as OQ7 in the plan doc, both deliberately left alone by Step 2 (#328) to
+  avoid a rename unit growing teeth. **Review status:** pending — this is a two-dispatch unit
+  (task-master split it from the plan's single "Step 6" framing since scribe's write scope covers
+  only `docs/adr/`/`CONTEXT.md`/this wiki changelog, not `CHANGELOG.md`/`.claude-plugin/plugin.json`/
+  `package.json`); Dispatch B (lead-programmer) lands the version bump and root `CHANGELOG.md`
+  entry next, and one review covers both dispatches together. **Affected files:** 3
+  (`docs/adr/0029-microworld-silo-namespaced-directories.md` new, `CONTEXT.md`, this entry).
+  This is Step 6 of 6 (last step of the plan), Dispatch A of 2.
+
+## 2026-09-04 (Step 4 of microworld-silo plan, after reviewer PASS)
+- **Completed unit gh331 (issue #331, Step 4 of `docs/plans/2026-08-11-microworld-silo.md`) —
+  scribe authored docs/microworld/README.md canonical feature location index.**
+  Added `docs/microworld/README.md`, the canonical index naming every location the microworld
+  feature occupies to prevent `grep microworld` blind spots. Index covers five location categories:
+  the dashboard implementation (10 modules covering server, discovery, invocation, audit-log parser,
+  feedback formatter, source reader, markdown renderer, decision surface, D5 client); all fourteen
+  tests in `tests/microworld/` (verified live count); the Reporter hook and its adapter mirrors
+  sited under `hooks/scripts/` (location-by-registration principle, not feature area); two ADRs
+  (bundle gitignore rationale, dashboard superseding fixture-only approach); and CONTEXT.md glossary
+  home. Also documents three tests outside `tests/microworld/` that exercise session-start and
+  stop-gate hooks (deliberately sited outside silo per design). No runtime artifacts (bundles,
+  audit log, escalation packets) documented as per-repo working-tree scratch. **Reviewer notes:**
+  clean single-pass PASS on commit `d1f2399`. Non-blocking advisory items: (1) hook lib
+  dependencies (`microworld-rerun-core.sh`, `microworld-queue.sh`) and `tests/watch-map.json`
+  (also monitored by reporter) not mentioned in "every location" claim — plan-scope gap within
+  Step 6; (2) prose count/description looseness (nine descriptors for "ten modules"; fourteen
+  tests includes hook test outside dashboard modules) — counts accurate, characterization slightly
+  loose; (3) load-bearing term "silo" (lines 23, 41) awaits **Microworld silo** glossary entry
+  explicitly owned by Step 6 (gh332). **Affected files:** 1 new file (`docs/microworld/README.md`).
+  Step 6 (gh332) is being dispatched in parallel to mint the glossary entry and address
+  completeness gaps within its scope. This is Step 4 of 6.
+
 ## 2026-09-04 (Step 5 of microworld-silo plan, after reviewer PASS)
 - **Completed unit gh330 (issue #330, Step 5 of `docs/plans/2026-08-11-microworld-silo.md`) —
   scribe updated living reference docs with repointed path citations.**

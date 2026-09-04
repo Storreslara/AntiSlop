@@ -1659,6 +1659,27 @@ _Avoid_: "the dashboard" alone in glossary cross-references now that this
   **Microworld** entry (dashboard *entries*) and **D5 browser client**
   (the specific static-HTML implementation of this process's UI).
 
+**Microworld silo**:
+(plan `docs/plans/2026-08-11-microworld-silo.md`, Step 6, 2026-09-04) — the
+  namespaced-directories-plus-canonical-index shape the microworld feature
+  area occupies: code under `bin/microworld-dashboard/`, tests under
+  `tests/microworld/`, the reporter hook staying at
+  `hooks/scripts/microworld-rerun.sh` (hooks are located by `hooks.json`
+  registration, not by feature area), and docs/ADRs staying in their
+  standing homes, all tied together by the canonical index at
+  `docs/microworld/README.md`. Decided over two rejected alternatives — a
+  full physical silo (would desynchronize the hook's tracked and adapter
+  mirrors) and leaving everything flat (a `microworld` grep would still miss
+  the old *bin/dashboard/*) — see `docs/adr/0029-microworld-silo-namespaced-directories.md`.
+  Distinct from the **Microworld dashboard** (the process/UI the silo's code
+  half implements), the **Microworld bundle** (the gitignored per-unit
+  artifact the dashboard renders), and the **Reporter** (the hook that stays
+  outside the silo by design). See [[Microworld dashboard]], [[Microworld
+  bundle]], [[Reporter]].
+_Avoid_: "the dashboard directory" — ambiguous between the silo as a whole
+  and `bin/microworld-dashboard/` specifically; name the path or say "the
+  microworld silo".
+
 **confirmation code**:
 (unit #377, Step 7, 2026-08-31) — the per-decision, time-limited code delivered
   over the controlling terminal (`/dev/tty`) during a **Microworld dashboard**
