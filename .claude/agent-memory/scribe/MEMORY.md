@@ -3,6 +3,8 @@
 - [Verify plan premise freshness](feedback_verify_plan_premise_freshness.md) — gh354 FAIL: a plan's invariant is dated evidence; re-measure negative claims and check sibling glossary entries before minting
 - [gh354 FAIL fix](gh354_fail_fix_completion.md) — dashboard trust anchor is the confirmation code, not an absent write path; `.claude/milestone-audit/` gitignore + cleanup enforcement still open
 - [gh354 Dispatch A completion](project_gh354_dispatchA_completion.md) — ADR-0030 + 3 glossary entries (decision surface, milestone findings record, composed decision command); live-rederived ADR number caught a stale spec guess by 9 — SUPERSEDED in part by the FAIL fix above
+- [gh354 CRIT-5F residual completion](project_gh354_crit5f_residual_completion.md) — closed final gh354 item: issue #354 title/body corrected via `gh issue edit`, no repo file touched; found sibling agent's uncommitted plan-doc diff and left it alone
+- [Self-referential criterion quoting](feedback_self_referential_criterion_quoting.md) — copying a "must not contain X" grep pattern verbatim into the artifact it checks reintroduces X and self-poisons the check; break contiguity with `[…]`
 
 - [gh332 reviewer findings](project_gh332_reviewer_findings.md) — three pre-existing stale CONTEXT.md citations; criterion-5 spec-level grep defect; ubiquitous-language gaps; scope deviations noted
 - [Multifile sweep criterion defect](feedback_multifile_sweep_criterion_defect.md) — grep -o emits filename prefix; must handle bare trailing `:` not just `:<digits>` suffixes
