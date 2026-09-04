@@ -25,6 +25,14 @@ where the four human-facing decision points of this persona system can be
 read in full and answered, without hand-assembling a command from a template
 recited into chat scrollback. The dashboard **composes**; it never writes.
 
+> **The final clause above is FALSE as of 2026-08-15 and is superseded by
+> *Addendum A* (2026-09-04).** Three of the four touchpoints are compose-only;
+> the `ESCALATE-TO-HUMAN` resolution touchpoint gained a dashboard write path
+> in gh380 (`19a0cd0`), two days after this document was drafted. The sentence
+> is retained as the record of the premise as it stood. Anything derived from
+> it — R1, R2, and Step 5 — is corrected in *Addendum A*; Steps 1–4 are
+> unaffected and are not reopened.
+
 The four touchpoints, and what "routed through the dashboard" resolves to for
 each (the architectural determination this document exists to make):
 
@@ -355,10 +363,23 @@ Advisory only; did not affect dispatch.
   well-meaning change adding one. Step 1's zero-write criterion and Step 3's
   "no POST from the decision surface" criterion exist to make that regression
   loud.
+
+  > **Superseded by *Addendum A* (2026-09-04), section A.3.** The premise
+  > "under compose-only no endpoint accepts a decision" was true on
+  > 2026-08-13 and false from 2026-08-15 (gh380, `19a0cd0`). Retained as the
+  > record of the risk as it stood; the corrected R1 is in *Addendum A*.
+
 - **R2 — a shipped criterion in `docs/plans/2026-08-10-microworld-dashboard.md`
   is vacuous** (D8's `bin/dashboard/` greps). This document does not inherit
   it; Step 5 records the vacuity. Do not "fix" the path in that historical
   document as if the unit had passed a real check — it did not.
+
+  > **Superseded by *Addendum A* (2026-09-04), section A.4.** This risk is
+  > factually wrong: `bin/dashboard/` existed and D8's criterion was genuinely
+  > measured and passing when D8 shipped on 2026-08-10 (`f6ab291`). The
+  > criterion became *stale* on 2026-08-11 when `c276759` (gh327) renamed the
+  > directory. Retained as the record of the erroneous premise; the corrected
+  > R2 is in *Addendum A*.
 - **R3 — this code has a real defect history; it is not `haiku` territory.**
   The full `.claude/reviewed/` listing was enumerated (not sampled) on
   2026-08-13. Dashboard units `gh315`, `gh317`, `gh318`, `gh319`, `gh320`,
@@ -637,6 +658,16 @@ Per R4, the persona edits and their mirror regeneration are **one unit** —
 
 ### Step 5 — documentation, glossary, ADR, and the vacuity record (scribe)
 
+> **This step's Content paragraph and its 3rd and 4th acceptance criteria are
+> SUPERSEDED by *Addendum A* (2026-09-04), sections A.1 and A.2.** They assert
+> two claims that are provably false (the dashboard "never writes" for all four
+> touchpoints; D8's criterion was "vacuous as shipped"), and unit `gh354` FAILed
+> on documentation that faithfully reproduced them. The text below is retained
+> as the record of what was originally specified. **Dispatch and review `gh354`
+> against *Addendum A* section A.2, not against the criteria list below.** The
+> 1st, 2nd and 5th criteria (glossary entries, ADR numbering, `tests/validate.sh`)
+> are unchanged and still stand; they PASSed and are not reopened.
+
 **Affected files:** `README.md` (Microworld dashboard section + Dashboard-specific
 limitations), `CONTEXT.md` (glossary), `docs/adr/00NN-*.md` (new),
 `docs/plans/2026-08-10-microworld-dashboard.md` (the vacuity record).
@@ -747,3 +778,378 @@ compositions, one addressed to a shell and one to a conversation). An ADR is
 mandatory, not optional: this introduces a durable artifact and a write duty
 on a persona deliberately built without `Write`, and records a decision not
 to convert a synchronous gate.
+
+---
+
+## Addendum A (2026-09-04) — Step 5 factual corrections
+
+*Author: `spec-master`. Scope: **Step 5 / R1 / R2 only**, plus the tracker
+issue [#354](https://github.com/Storreslara/AntiSlop/issues/354) that mirrors
+them. **Steps 1–4 are untouched, unreopened and out of this addendum's scope**
+— they shipped and reviewer-PASSed. No new units are created; `gh354` remains
+one unit. Recorded as a dated addendum rather than an edit to the criteria
+above, per this repo's correction convention (cf. `2026-08-25-harness-ceremony-consolidation.md`
+Addendum A, `2026-09-01-advisory-note-channel-gh295.md` Addendum A). All
+figures measured 2026-09-04 at `ebc3d57` unless a commit is named.*
+
+**Why now.** `gh354` FAILed (`.claude/reviewed/gh354.fail`, 2026-09-04). The
+root defect is not in the shipped documentation — it is in *this document*.
+Step 5's own spec text and two of its five acceptance criteria require a
+scribe to assert two statements that are provably false, and the scribe
+correctly asserted them. A criterion that is only satisfiable by writing a
+falsehood is a plan defect, not a code defect. Both falsehoods have the same
+shape: a premise that was true when this document was drafted on 2026-08-13
+and was overtaken by a sibling feature before Step 5 ran.
+
+### The two false premises, verified
+
+**F1 — "the dashboard never writes, for any of the four touchpoints"**
+(`:26`, R1 at `:353-357`, Step 5's Content paragraph). False since
+2026-08-15. `gh380` (`19a0cd0`) shipped `POST /api/decision/arm`
+(`bin/microworld-dashboard/server.js:262`) and `POST /api/decision/run`
+(`:418`); `:507` writes the `ESCALATE-TO-HUMAN` resolution file with
+`flag: 'wx', mode: 0o600` and `:533` appends a `decision-write-via-dashboard`
+line to the shared review audit log. The trust anchor on that path is the
+terminal-delivered confirmation code compared with `crypto.timingSafeEqual`
+(`:488`) — **not** an absent write path. The other three touchpoints (pre-audit
+checkpoint, findings relay, pending-review `defer:`/`skip:`) are genuinely
+compose-only. The narrow claim that the composer module `decision-block.js`
+writes nothing remains true (measured: 0 write calls); the defect was
+generalizing it from that module to the dashboard as a whole.
+
+**F2 — "D8's decoupling criterion was vacuous as shipped"** (R2 at `:358-361`,
+Step 5's Content paragraph and its 3rd criterion). False as history.
+`git archive f6ab291 bin/` shows `bin/dashboard/` with seven real files at
+D8's ship commit (gh321, 2026-08-10); D8's grep genuinely measured them and
+genuinely passed. `c276759` (gh327, 2026-08-11) renamed the directory to
+`bin/microworld-dashboard/`. The criterion is **stale after a rename**, not
+**vacuous as shipped** — a materially different fact, because "vacuous"
+asserts the decoupling was never measured, and it was.
+
+### A.1 — Corrected Step 5 Content paragraph
+
+Replaces the Content paragraph at `:644-650`. Unchanged clauses are repeated
+so this reads as a whole:
+
+> Content: the Decisions section and what it composes for each of the four
+> touchpoints; that **three of the four touchpoints are compose-only, and the
+> fourth — the `ESCALATE-TO-HUMAN` resolution — has a dashboard write path
+> whose trust anchor is the terminal-delivered confirmation code checked with
+> `crypto.timingSafeEqual`, not the absence of a write path**; the two
+> deliberate deviations (R6, R7); glossary entries for **decision surface**,
+> **milestone findings record**, **composed decision command**; and an ADR
+> recording the one new durable artifact, the write duty on a `Write`-less
+> persona, and the decision *not* to convert touchpoint 2's answer. The ADR's
+> compose-only claim is scoped to `decision-block.js`, the composer module,
+> and must state that it does not generalize to the dashboard. **Record the
+> D8 decoupling criterion as a real, passing check at D8's 2026-08-10 ship
+> that became stale on 2026-08-11 when `c276759` renamed the directory — not
+> as vacuous.**
+
+### A.2 — Corrected Step 5 acceptance criteria
+
+Criteria 1, 2 and 5 of `:653-675` (three distinct glossary entries; ADR
+number is the next unused one with the 0007 hole preserved; `bash
+tests/validate.sh` exits 0) **stand unchanged and are not reopened** — they
+already PASSed. Criteria 3 and 4 are replaced by CRIT-5C through CRIT-5F
+below.
+
+Two normalizers are used, and a criterion is only satisfied when run through
+the one it names. They exist because both prior wordings were fragile in ways
+that would have let a check pass or fail for the wrong reason:
+
+```sh
+# norm  — collapse line wraps, so a criterion cannot fail merely because the
+#         sentence was re-wrapped by an editor.
+norm() { tr -s '[:space:]' ' ' < "$1"; }
+
+# nb    — drop blockquote lines, THEN collapse wraps. Blockquote lines are
+#         dropped so a dated correction note may quote the retracted wording
+#         verbatim (this repo's convention) without tripping a negative check.
+nb()   { grep -v '^[[:space:]]*>' "$1" | tr -s '[:space:]' ' '; }
+```
+
+**CRIT-5C — the D8 history note states the true history.**
+Let `P=docs/plans/2026-08-10-microworld-dashboard.md`. All five must hold:
+
+| # | check | required |
+|---|---|---|
+| a | `norm $P \| grep -c 'SUPERSEDED'` | ≥ 1 |
+| b | `norm $P \| grep -c 'vacuous as shipped'` | **0** |
+| c | `norm $P \| grep -c 'real and passing when D8 shipped'` | ≥ 1 |
+| d | `norm $P \| grep -c 'c276759'` | ≥ 1 |
+| e | `norm $P \| grep -c 'f6ab291'` | ≥ 1 |
+
+Wording in (c) is the anchor phrase; another wording may be substituted only
+if it asserts the same thing (the criterion was genuinely measured and
+passing at D8's ship) and the substitute is measured to be 0 at both
+baselines below. **Non-vacuity, measured:** (c), (d) and (e) each return
+**0** at `ce9c2eb` (before the unit) *and* **0** at `e01ef7b` (the FAILed
+text), so none can pass on either the old or the false text. (b) alone is
+satisfiable by deleting the note entirely — (a) and (c)–(e) forbid that, so
+the five are only jointly satisfiable by a note that is present, marked, and
+historically accurate.
+
+**CRIT-5D — no shipped artifact asserts the never-writes falsehood, and each
+states the real property.** Let `F` be the three files
+`README.md`, `CONTEXT.md`, and the Step 5 ADR
+(`docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md`).
+For **each** `f` in `F`:
+
+| # | check | required |
+|---|---|---|
+| a | `nb $f \| grep -c 'for any of the four touchpoints'` | **0** |
+| b | `nb $f \| grep -c 'not in the write path'` | **0** |
+| c | `nb $f \| grep -c 'timingSafeEqual'` | ≥ 1 |
+| d | `nb $f \| grep -c 'compose-only'` | ≥ 1 |
+| e | `nb $f \| grep -c 'Three of the four\|Three of those four'` | ≥ 1 |
+
+**Non-vacuity, measured:** (a) returns 1 for `README.md` at `e01ef7b` and 1
+for the ADR at `ea021c1` — the two artifacts that carried the falsehood — and
+0 for all three at `ebc3d57`, so it discriminates the FAILed text from the
+corrected text. (b) returns 1 for `README.md` at `e01ef7b`. (c) is the
+strongest positive: `timingSafeEqual` is **0** in all three files at
+`ce9c2eb` *and* **0** in all three at the FAILed commits, and 1 in all three
+now, so it cannot pass on pre-existing or false text. (d) and (e) are weaker
+individually (each already returned 1 in one file at the FAILed commits) and
+are required only in conjunction with (a)–(c), never on their own. `grep -c
+'/api/decision/arm'` was considered and **rejected as a criterion**: it
+already returns 1 in `README.md` and `CONTEXT.md` at `ce9c2eb` from gh380's
+own docs, so it would pass vacuously for two of the three files.
+
+The negatives are scoped to these three files deliberately. **This plan
+document is not in `F`** — its `:26` and R1/R2 text is retained verbatim as
+the record of the superseded premise, under the blockquote pointers added
+2026-09-04.
+
+**CRIT-5E — no regression criterion that is red at authoring time.**
+
+| # | check | required |
+|---|---|---|
+| a | `grep -rc 'writeFileSync\|appendFileSync\|createWriteStream\|mkdirSync' bin/microworld-dashboard/ \| grep -v ':0$' \| wc -l` | ≥ 1 |
+| b | `nb <ADR> \| grep -c 'red the moment it was written'` | ≥ 1 |
+| c | `grep -c 'writeFile\|appendFile\|mkdir\|createWriteStream' bin/microworld-dashboard/decision-block.js` | **0** |
+
+(a) is the standing measurement that makes (b) necessary: a directory-wide
+zero-write criterion over `bin/microworld-dashboard/` is *false today*
+(measured: 1 file matches, `server.js`), so asserting one as a passing guard
+produces a check indistinguishable from the regression it claims to detect.
+(b) requires the ADR to say so explicitly rather than silently omit it —
+measured 0 at `ea021c1`, 1 at `ebc3d57`. (c) is the narrower property that is
+actually true and worth guarding: the *composer module* writes nothing
+(measured 0). A future change is a regression if a resolution file can be
+written without passing the confirmation-code check, not if a write appears
+anywhere under `bin/microworld-dashboard/`.
+
+**CRIT-5F — the tracker issue stops mirroring the retracted claims.** Issue
+#354's title and body reproduce both falsehoods and are what a fresh dispatch
+retrieves, so correcting only this document would leave the defect live. With
+`T` = `gh issue view 354 --json title -q .title` and `B` = `gh issue view 354
+--json body -q .body | tr -s '[:space:]' ' '`:
+
+| # | check | required | measured 2026-09-04 |
+|---|---|---|---|
+| a | `T \| grep -c 'vacuity record'` | **0** | 1 |
+| b | `B \| grep -c 'vacuous as shipped'` | **0** | 1 |
+| c | `B \| grep -c 'that never existed'` | **0** | 1 |
+| d | `B \| grep -c 'composes and never writes'` | **0** | 1 |
+| e | `B \| grep -c 'c276759'` | ≥ 1 | 0 |
+| f | `B \| grep -c 'timingSafeEqual'` | ≥ 1 | 0 |
+
+Every one of the six is currently on the failing side, so none can pass
+vacuously. (a) requires retitling: "the D8 vacuity record" names a fact that
+does not exist.
+
+### A.3 — Corrected R1
+
+Replaces R1 at `:353-357`:
+
+> **R1 — the resolution touchpoint's trust anchor is a confirmation code, not
+> an absent write path, and that is what must be kept intact.** Three of the
+> four touchpoints are compose-only and no endpoint accepts a decision for
+> them; Step 1's zero-write criterion and Step 3's "no POST from the decision
+> surface" criterion keep the *composer* out of the write path and still
+> stand as written. The fourth touchpoint is different: since gh380
+> (`19a0cd0`, 2026-08-15) the dashboard does write the resolution file, after
+> a human reads a per-decision code off their own controlling terminal and
+> types it back. The standing risk is therefore **not** "a later change adds
+> an endpoint" — that already happened, deliberately, with a gate. It is a
+> later change that lets that write happen *without* passing the
+> confirmation-code comparison, or that widens the composer into a second
+> write path beside it. The residual risks of the terminal-code boundary (pty
+> allocation, tmux pane capture, process-memory inspection) are real and are
+> documented in `README.md`; an absent write path would not carry them, which
+> is exactly why the two must not be conflated.
+
+### A.4 — Corrected R2
+
+Replaces R2 at `:358-361`:
+
+> **R2 — a shipped criterion in `docs/plans/2026-08-10-microworld-dashboard.md`
+> is stale, not vacuous.** D8's `bin/dashboard/` greps were a real, passing
+> measurement at D8's ship (`f6ab291`, gh321, 2026-08-10, seven files
+> measured); `c276759` (gh327, 2026-08-11) renamed the directory and the greps
+> have had nothing to match since. This document does not inherit the stale
+> path, and Step 5 records the rename. Do **not** silently repoint the grep at
+> `bin/microworld-dashboard/` — the rename is the fact worth recording — and
+> do **not** describe the original check as having never measured anything;
+> it did.
+
+### A.5 — Status of the already-shipped fix
+
+`e100d64` (lead-programmer) and `cf82521` (scribe) were written before this
+addendum existed, in deliberate conflict with the criteria above them.
+Re-measured against CRIT-5C through CRIT-5F at `ebc3d57`:
+
+| criterion | verdict |
+|---|---|
+| CRIT-5C (a–e) | **satisfied** by `e100d64` — 1 / 0 / 1 / 1 / 1 |
+| CRIT-5D (a–e), `README.md` | **satisfied** by `e100d64` — 0 / 0 / 1 / 1 / 1 |
+| CRIT-5D (a–e), `CONTEXT.md` | **satisfied** by `cf82521` — 0 / 0 / 1 / 1 / 1 |
+| CRIT-5D (a–e), ADR-0030 | **satisfied** by `cf82521` — 0 / 0 / 1 / 1 / 1 |
+| CRIT-5E (a–c) | **satisfied** — 1 / 1 / 0 |
+| CRIT-5F (a–f) | **NOT satisfied** — all six on the failing side; no commit touches the tracker issue |
+
+So the shipped prose needs **no further adjustment**. The one open item is
+CRIT-5F, which is a tracker-issue edit, not a code or docs edit.
+
+### A.6 — Dispatch contract for the residual (CRIT-5F only)
+
+No new unit. This is the remainder of `gh354`, dispatched under the same
+task-id.
+
+**Unit:** `gh354`
+**Objective:** Bring tracker issue #354's title and body into agreement with
+Addendum A, so a fresh retrieval of the unit no longer instructs its executor
+to assert a falsehood. Prose only; no repository file changes.
+**Retrieval:** this document, Addendum A, sections A.1–A.2 and A.5. The
+tracker is GitHub; fetch with `gh issue view 354`.
+**Affected files:** none in the repository. GitHub issue #354 only.
+**Ordered edits:**
+1. Retitle: replace `the D8 vacuity record` with `the D8 staleness record`
+   (`gh issue edit 354 --title ...`).
+2. In the body's summary paragraph, replace `that it composes and never
+   writes, and why that is what keeps the DECISION file's trust anchor
+   mechanical` with the A.1 wording (three compose-only touchpoints; the
+   fourth's anchor is the terminal-delivered confirmation code checked with
+   `crypto.timingSafeEqual`).
+3. In the same paragraph, replace the `vacuous as shipped` / `a directory,
+   bin/dashboard/, that never existed` clause with the A.1 wording (real and
+   passing at `f6ab291` 2026-08-10; stale from `c276759` 2026-08-11).
+4. Replace the body's D8 and README acceptance-criteria checkboxes with
+   CRIT-5C and CRIT-5D verbatim, and append CRIT-5E and CRIT-5F.
+**Do NOT touch:** `README.md`, `CONTEXT.md`, `docs/adr/0030-*.md`,
+`docs/plans/2026-08-10-microworld-dashboard.md` — all four already satisfy
+CRIT-5C/5D/5E (A.5); re-editing them risks regressing a satisfied criterion.
+Do not touch Steps 1–4, their issues, or their shipped code.
+**Acceptance criteria:** CRIT-5F (a)–(f), all six. Plus CRIT-5C, 5D and 5E
+re-run unchanged, to prove step 4's checkbox rewrite did not disturb the
+files they measure.
+**Pre-resolved context:** all six CRIT-5F checks were measured 2026-09-04 and
+are on the failing side (table in A.2), so each discriminates. The commit
+history behind the corrected claims is `f6ab291` (D8 ship), `c276759`
+(rename), `19a0cd0` (gh380 write endpoints) — no further archaeology needed.
+**Escalation:** if `gh` cannot edit the issue (auth, permissions), stop and
+report; do not work around it by editing repository files instead, and do not
+close the issue to sidestep the title check.
+
+### Clarifications
+
+1. Functional scope & success criteria: Clear
+2. Domain entities / data model: Clear
+3. User interaction flow: Clear
+4. Non-functional attributes (perf, security, scale): Partial
+5. External dependencies & integrations: Clear
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Clear
+8. Terminology consistency: Clear
+9. Completion / acceptance signals: Partial
+
+- 2026-09-04 Non-functional attributes (perf, security, scale): Q Does
+  correcting the never-writes claim change the security posture this plan is
+  responsible for, or only the description of it? → A (self-resolved): only
+  the description. gh380 already shipped and reviewed the write path and its
+  confirmation-code gate; this addendum changes no code and asserts no new
+  security property. The correction's security value is that a false
+  "no write path exists" claim in `README.md` and `CONTEXT.md` would cause a
+  reader to under-weight the terminal-code residual risks that `README.md`
+  already documents correctly.
+- 2026-09-04 Edge cases / failure handling: Q How should a criterion behave
+  when a dated correction note legitimately quotes the retracted wording
+  verbatim? → A (self-resolved): negatives run through `nb`, which drops
+  blockquote lines. Measured directly — ADR-0030 quotes both retracted
+  phrases inside its correction blockquote at `:6-12`, and CRIT-5D (a)
+  returns 0 for it, while the same check returned 1 on the same file's
+  asserted text at `ea021c1`.
+- 2026-09-04 Completion / acceptance signals: Q Is `gh354` complete once the
+  repository files are correct? → A (self-resolved): no. Issue #354 is the
+  retrieval surface for the unit, and it mirrors both falsehoods; CRIT-5F
+  makes it part of the completion signal. A.5 records that this is the only
+  remaining item.
+
+### Constitution check (.claude/constitution.md v1.0.0)
+
+- P1 "Verify, don't assume": satisfied — every claim in this addendum was
+  re-measured independently of the `.fail` record: `git ls-tree f6ab291
+  bin/dashboard/` (seven files), `git log -1 c276759` / `19a0cd0`, the
+  `server.js` line numbers, and every criterion in A.2 run at `ebc3d57` and
+  at both pre-fix commits.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied — every
+  criterion is a `grep -c` bound or an exit code with its normalizer stated
+  as a shell function, and A.5's verdict is a table of measured counts rather
+  than a reading of the prose.
+- P3 "Version-stamp discipline": satisfied — no version-stamped file
+  (`agents/*.md`, templates) is touched by this addendum or by A.6, so the
+  bump triple does not fire. `e100d64` and `cf82521` likewise touched none.
+- P4 "Optional personas degrade gracefully" (SHOULD): satisfied — no persona
+  reference is added; A.6 dispatches under the existing `gh354` task-id.
+- P5 "`tests/validate.sh` is the merge gate": satisfied — Step 5's 5th
+  criterion (`bash tests/validate.sh` exits 0) is explicitly retained
+  unchanged in A.2 and is re-run as part of A.6's acceptance criteria.
+
+### Self-check
+
+- CHK-A1: Does the addendum state, for each of the two false premises,
+  the commit and date that made it false? — PASS (F1: `19a0cd0`,
+  2026-08-15; F2: `c276759`, 2026-08-11, against ship `f6ab291`, 2026-08-10).
+- CHK-A2: Is every replacement criterion accompanied by a measurement showing
+  it returns the failing value on the text it is meant to reject? — PASS
+  (CRIT-5C (c)–(e) at both `ce9c2eb` and `e01ef7b`; CRIT-5D (a)–(c) at
+  `e01ef7b`/`ea021c1`; CRIT-5E (b) at `ea021c1`; CRIT-5F all six at
+  `ebc3d57`).
+- CHK-A3: Do A.3's corrected R1 and A.1's corrected Content paragraph agree
+  on how many touchpoints are compose-only? — PASS (both say three of four,
+  with the `ESCALATE-TO-HUMAN` resolution as the exception).
+- CHK-A4: Is any replacement criterion satisfiable by deleting the text it
+  measures? — FAIL (missing, as first drafted: CRIT-5C (b) and CRIT-5D (a)–(b)
+  are pure negatives) — revised in place; each negative is now stated as
+  jointly-required with a positive in the same block (5C (a)/(c)–(e),
+  5D (c)–(e)), and A.2 says so explicitly.
+- CHK-A5: Does the addendum define whether this plan document itself is
+  subject to CRIT-5D's negatives, given that `:26` retains the false
+  sentence? — FAIL (ambiguous, as first drafted) — revised in place; CRIT-5D
+  names its three files and states that this document is deliberately
+  excluded because its original text is retained as the record.
+- CHK-A6: Does the addendum say whether the already-shipped fix satisfies the
+  corrected criteria, per criterion rather than in summary? — PASS (A.5's
+  table, per criterion and per file, with the one unsatisfied item named).
+- CHK-A7: Is a criterion rejected for vacuity anywhere, with the measurement
+  that rejected it? — PASS (CRIT-5D records `/api/decision/arm` as
+  considered and rejected: 1 at `ce9c2eb` for two of three files).
+- CHK-A8: Do the addendum and the retained Step 5 text agree on which of the
+  five original criteria still stand? — PASS (the Step 5 blockquote pointer
+  and A.2 both name criteria 1, 2 and 5 as unchanged and 3 and 4 as
+  replaced).
+- CHK-A9: Does the addendum add work beyond correcting the named falsehoods?
+  — PASS (A.6's only deliverable is the tracker-issue edit; "Do NOT touch"
+  lists every file A.5 found already satisfied, and Steps 1–4 are excluded in
+  the scope line, the `:26` pointer and the Step 5 pointer).
+
+### Scribe update hint
+
+No `CONTEXT.md` change is required by this addendum: the glossary entry at
+`CONTEXT.md:2350`+ already carries the corrected property, including the
+`Do not restate this surface as "never writes"` guard, and ADR-0030 already
+carries its dated correction note. If the tracker edit in A.6 lands, no wiki
+or ADR follow-up is triggered by it — an issue body is not a versioned
+artifact.
