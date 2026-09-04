@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+**0.31.70 — Close out the microworld silo plan: ADR, glossary entry, and version bump (gh332, Step 6 of docs/plans/2026-08-11-microworld-silo.md, final step).** Records why the silo layout exists in `docs/adr/0029-microworld-silo-namespaced-directories.md` (namespaced silo plus canonical index — code stays in `bin/microworld-dashboard/`, tests in `tests/microworld/`, the hook stays in `hooks/scripts/`, docs/ADRs stay put, all tied together by `docs/microworld/README.md`; rejects both a full physical silo — hooks are located by `hooks.json` registration, moving them would desynchronise the hook's mirrors — and leaving everything flat — a `microworld` grep misses `bin/dashboard/` entirely). Mints the **Microworld silo** glossary entry in `CONTEXT.md`, cross-linked to **Microworld dashboard**, **Microworld bundle**, and **Reporter**. Closes the plan; two follow-up issues (#426, #427) are filed but deliberately out of this unit's scope.
+
+### Changed
+- **`docs/adr/0029-microworld-silo-namespaced-directories.md`** (new): decision, rejected alternatives, and the explicit non-rewrite consequence for historical path citations in `CHANGELOG.md`, `.claude/wiki/changelog.md`, `docs/plans/`, and `docs/adr/`.
+- **`CONTEXT.md`**: new **Microworld silo** glossary entry.
+- **`.claude/wiki/changelog.md`**: entry for the silo reorg.
+- **`.claude-plugin/plugin.json`**, **`package.json`**: version bump 0.31.69 → 0.31.70.
+
 **0.31.69 — Wire the measured heavy-unit surface into the protocol and the reviewer (gh374, Step 13 of docs/plans/2026-07-28-microworlds-ubiquitous-language-human-review.md).** Amends the existing `## Fourth verdict: escalate-to-human` section of `templates/persona-protocol.md`, `agents/reviewer.md`'s ESCALATE-TO-HUMAN bullet, and both adapter ports to document that the reviewer runs `hooks/scripts/heavy-trigger.sh` (Step 12, #373) once per unit over its own review range before settling a verdict. `surface: heavy` is sufficient, never necessary, for the heavy-unit trigger — it mechanizes ADR-0004 criterion 1 only; `surface: light` means just that criterion 1 is unmet, criteria 2/3 remain reviewer judgment; `surface: unknown` is treated as `heavy`. A `heavy` reading the reviewer PASSes through anyway is recorded as `heavy-surface override: <reason>` appended to the `.pass` marker's notes, never its required first line. No new top-level `## ` heading; pointer discipline preserved (ADR-0004's thresholds are never restated). Adds a `measured heavy-unit surface` glossary entry to `CONTEXT.md`, cross-linked with `Measured reviewer tier`.
 
 ### Changed
