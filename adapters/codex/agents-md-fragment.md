@@ -141,6 +141,15 @@ heavy-unit trigger defined solely in
 `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit trigger"
 (as amended by ADR-0013) - referenced by pointer, never restated here.
 
+**Measured surface:** run `hooks/scripts/heavy-trigger.sh` once per unit, over
+its review range, before settling a verdict. `surface: heavy` is sufficient,
+not necessary, to fire the trigger - it mechanizes criterion 1 alone of the
+three ANY-of criteria, so `surface: light` means only that criterion 1 misses,
+never that criteria 2/3 are cleared; `surface: unknown` counts as `heavy`. A
+`heavy` reading you PASS anyway gets `heavy-surface override: <reason>`
+appended to the `.pass` marker's notes (not its first line); one you escalate
+feeds the `.escalated` marker's `trigger:` field instead.
+
 **Marker:** `.claude/reviewed/<task-id>.escalated`, first line exactly
 `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`,
 then the command to run the packet's `run.sh`, the escalation-time SHA as

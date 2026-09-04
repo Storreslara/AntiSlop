@@ -340,6 +340,21 @@ trigger", as amended by ADR-0013 — and is referenced here **by pointer on
 purpose**: restating its criteria would create a second copy that a later
 amendment could leave silently disagreeing with the first.
 
+**Measured heavy-unit surface.** Before settling its verdict, the reviewer
+runs `hooks/scripts/heavy-trigger.sh` once per unit, over the unit's own
+review range. Its `surface: heavy` result is **sufficient, never necessary**
+for the heavy-unit trigger above: it mechanizes one of the three ANY-of
+criteria the ADR-0004 pointer above defines — criterion 1, the changed-surface
+size — so `surface: light` means only that criterion 1 is not met; criteria 2
+(structural/cross-cutting) and 3 (security-sensitive) remain reviewer judgment
+and are never waived by a `light` reading. A `surface: unknown` result — the
+range was unmeasurable — is treated as `heavy`. When the script reports
+`surface: heavy` and the reviewer nonetheless returns PASS without escalating
+(a legitimate move), it records that call by appending
+`heavy-surface override: <reason>` to the `.pass` marker's notes, never on
+its required first line. When the reviewer does escalate instead, the
+script's output populates the `.escalated` marker's `trigger:` field above.
+
 **Marker.** The reviewer writes `.claude/reviewed/<task-id>.escalated` via
 Bash — the same named bookkeeping exception as the `.pass`/`.fail`/`.blocked`
 writes above, not a change to the code under review. Its first line reads

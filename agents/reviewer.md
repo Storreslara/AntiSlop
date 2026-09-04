@@ -200,7 +200,16 @@ with reasons.
   trigger of
   `docs/adr/0004-reviewer-roast-work-dual-model-routing.md` § "Heavy unit
   trigger" (as amended by ADR-0013) — read the thresholds there, never from a
-  local restatement. In a project that selected no `reviewer` persona the
+  local restatement. Before settling any verdict, run
+  `hooks/scripts/heavy-trigger.sh` once over the unit's own review range: its
+  `surface: heavy` is sufficient, never necessary, for that trigger — it
+  mechanizes criterion 1 only, so `surface: light` means just that criterion 1
+  is not met (criteria 2 and 3 stay your judgment) and `surface: unknown` is
+  treated as `heavy`. If it reports `surface: heavy` and you PASS without
+  escalating anyway, append `heavy-surface override: <reason>` to the `.pass`
+  marker's notes, never its required first line; if you do escalate instead,
+  its output becomes the `.escalated` marker's `trigger:` field. In a project
+  that selected no `reviewer` persona the
   whole escalation path is inert whatever the mode says — only the reviewer
   writes the `.escalated` marker, so there is no marker and no turn-end block.
   That is structural, not a gap. Write `.claude/reviewed/<task-id>.escalated` via Bash —

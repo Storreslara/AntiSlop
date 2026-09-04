@@ -682,6 +682,23 @@ the subset of `templates/persona-protocol.md`'s 19
   earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
   were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
 
+**Measured heavy-unit surface**:
+a measured heavy-unit surface is the reviewer's mechanized read of ADR-0004
+  criterion 1 (changed-surface size), computed by
+  `hooks/scripts/heavy-trigger.sh <git-range>` (issue #373/#374), which prints
+  `surface: heavy|light|unknown files: <n|-> lines: <n|->`. Run once per unit,
+  over the unit's own review range, before the reviewer settles a verdict.
+  `surface: heavy` is **sufficient, never necessary** for the escalate-to-human
+  heavy-unit trigger — it mechanizes only criterion 1 of ADR-0004's three
+  ANY-of criteria, so `surface: light` means just that criterion 1 is unmet;
+  criteria 2 (structural/cross-cutting) and 3 (security-sensitive) remain
+  reviewer judgment either way. `surface: unknown` (an unmeasurable range) is
+  treated as `heavy`. A `heavy` reading the reviewer PASSes through anyway is
+  recorded as `heavy-surface override: <reason>`, appended to the `.pass`
+  marker's notes. Contrast with **Measured reviewer tier** immediately below,
+  which is measured the same way (a deterministic script, fail-closed) but
+  picks the reviewer's *model*, never whether to escalate.
+
 **Measured reviewer tier**:
 the reviewer's `sonnet`/`opus` model is
   decided at reviewer-*dispatch* time (not pre-implementation) by

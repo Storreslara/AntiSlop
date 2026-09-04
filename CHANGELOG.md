@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+**0.31.69 — Wire the measured heavy-unit surface into the protocol and the reviewer (gh374, Step 13 of docs/plans/2026-07-28-microworlds-ubiquitous-language-human-review.md).** Amends the existing `## Fourth verdict: escalate-to-human` section of `templates/persona-protocol.md`, `agents/reviewer.md`'s ESCALATE-TO-HUMAN bullet, and both adapter ports to document that the reviewer runs `hooks/scripts/heavy-trigger.sh` (Step 12, #373) once per unit over its own review range before settling a verdict. `surface: heavy` is sufficient, never necessary, for the heavy-unit trigger — it mechanizes ADR-0004 criterion 1 only; `surface: light` means just that criterion 1 is unmet, criteria 2/3 remain reviewer judgment; `surface: unknown` is treated as `heavy`. A `heavy` reading the reviewer PASSes through anyway is recorded as `heavy-surface override: <reason>` appended to the `.pass` marker's notes, never its required first line. No new top-level `## ` heading; pointer discipline preserved (ADR-0004's thresholds are never restated). Adds a `measured heavy-unit surface` glossary entry to `CONTEXT.md`, cross-linked with `Measured reviewer tier`.
+
+### Changed
+- **`templates/persona-protocol.md`**: `## Fourth verdict: escalate-to-human` section — new `Measured heavy-unit surface` paragraph added after the existing Trigger paragraph.
+- **`agents/reviewer.md`**: "On ESCALATE-TO-HUMAN" bullet extended with the same script-invocation and override-recording rules.
+- **`adapters/cursor/rules/persona-protocol.mdc`**, **`adapters/codex/agents-md-fragment.md`**: independently worded condensed ports of the same three points.
+- **`CONTEXT.md`**: new `measured heavy-unit surface` glossary entry, cross-linked with `Measured reviewer tier`.
+- **`.claude-plugin/plugin.json`**, **`package.json`**: version bump 0.31.68 → 0.31.69.
+- **`.claude/agents/*.md`**, **`.claude/persona-protocol.md`**, **`.claude/protocol-digest.md`**, **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update`.
+
 **0.31.68 — Non-blocking notes channel: glossary entry, version bump, and render fixed point (gh295-3, Step 3 of docs/plans/2026-09-01-advisory-note-channel-gh295.md).** Adds a `## Language` glossary entry to `CONTEXT.md` defining the **non-blocking note** channel: the two tags (`NOTE[spec]:`/`NOTE[code]:`), the required `Non-blocking notes:` anchor, the deterministic sweep (`marker-verify.sh --notes` / `marker-audit.sh --notes`) as the read side, the gitignored best-effort store, and cross-links to the **state-artifact species** entry where `.pass` markers are already listed. Extends the AC2.1 branch-agreement check in `tests/marker-verify.test.sh` to include `CONTEXT.md` as a third file (AC3.3), ensuring all three literals stay synchronized across the parser (`marker-verify.sh`), reviewer duty (`agents/reviewer.md`), and glossary definition (`CONTEXT.md`). Final unit of the #295 plan (Steps 1, 1b, and 2 already PASSed); closes #295.
 
 ### Changed
