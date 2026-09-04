@@ -1,5 +1,7 @@
 # Memory index
 
+- [gh332 reviewer findings](project_gh332_reviewer_findings.md) — three pre-existing stale CONTEXT.md citations; criterion-5 spec-level grep defect; ubiquitous-language gaps; scope deviations noted
+- [Multifile sweep criterion defect](feedback_multifile_sweep_criterion_defect.md) — grep -o emits filename prefix; must handle bare trailing `:` not just `:<digits>` suffixes
 - [gh332 Dispatch A completion](project_gh332_dispatchA_completion.md) — ADR-0029 + Microworld silo glossary entry + 2 live-remeasured follow-ups (#426, #427); backtick-historical-path trap self-caught
 - [Source-artifact + render-step gating rule](spec_source_render_gating_rule.md) — source and render steps can never be independently gated; merge or pin intermediate failure set
 - [Vacuous sweep conversion pattern](project_vacuous_sweep_conversion_pattern.md) — unreachable differential sweeps convert to block-direction cases with allow-controls per Amendment A5

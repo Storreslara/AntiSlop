@@ -1,6 +1,6 @@
 # Microworld silo — namespaced code/test directories plus a canonical index
 
-**Status:** finalized, ready for `task-master` slicing
+**Status:** COMPLETE — all six units (gh327-gh332) reviewer-PASSed as of 2026-09-04. Two follow-up items tracked elsewhere: three pre-existing stale CONTEXT.md path citations (separate from #426/#427) and a spec-level criterion defect in issue #332 (multi-file grep with filename-prefix colon stripping).
 **Author:** spec-master, 2026-08-11
 **Plan slug (for the tracker label):** `plan/2026-08-11-microworld-silo`
 
