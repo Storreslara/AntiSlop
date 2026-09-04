@@ -12,7 +12,11 @@
       "Bash(git log*)",
       "Bash(code-review-graph update*)",
       "Bash(printf * > .claude/.pending-review.*)",
-      "Bash(sed -i *)"
+      "Bash(sed -i *)",
+      "Bash(printf * > .claude/reviewed/*)",
+      "Bash(printf * >> .claude/reviewed/*)",
+      "Bash(cat > .claude/reviewed/*)",
+      "Bash(cat >> .claude/reviewed/*)"
     ]
   },
   "hooks": {
