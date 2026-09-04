@@ -475,6 +475,29 @@ _Avoid_: clear-watermark
   than requiring inspection of `.claude/reviewed/` directory contents. Complements
   the `marker=MISSING unit=<U>` token for unsatisfied stamps.
 
+**non-blocking note**:
+(issue #295, gh295-1/1b/2/3) — a tagged, optional message attached to a
+  [[PASS marker]] by the reviewer, signaling a minor finding that does not prevent
+  approval. Each note carries one of two tags: `NOTE[spec]:` (a divergence between
+  code and documentation, undocumented load-bearing behaviour, or a warning about
+  a step not yet dispatched) or `NOTE[code]:` (everything else — style nits,
+  minor risks, or observations). Notes are written by the reviewer under a required
+  section anchor `Non-blocking notes:` (exact match, at column 0 if present), with
+  each note's tag prefixing its own line. The deterministic read side is a two-part
+  sweep: `bash hooks/scripts/marker-verify.sh --notes <unit-id>` (per-unit enumeration)
+  and `bash bin/marker-audit.sh . --notes [--tag=all|spec|code] [--surface=S ...]`
+  (aggregate across all markers), both advisory only (always exit 0, never execute
+  a marker's criteria, never block). The `.claude/reviewed/` directory storing markers
+  is gitignored (`.gitignore:12`), so the sweep is best-effort and never proof of
+  "swept, therefore clean" — an empty sweep may mean no note was written or may mean
+  the clone never held it. Tag classification tolerates markdown emphasis (`*`, `_`,
+  `` ` ``) and list-marker prefixes (`-`, `*`, `N.`, `N)`) on the tag line itself.
+  `spec-master` is obligated to run `marker-audit.sh . --notes --surface=<path>` before
+  writing any follow-up spec; found `NOTE[spec]:` and `untagged` lines naming undispatchable
+  steps are required inputs. See [[state-artifact species]] for the `.pass` marker's
+  role in the state model; this channel is the scoped variant for spec/code divergence
+  routing.
+
 **state-artifact species**:
 (unit gh413, 2026-08-31) — an individual marker type, flag file, log, or
   other filesystem artifact that encodes persistent state in the harness.

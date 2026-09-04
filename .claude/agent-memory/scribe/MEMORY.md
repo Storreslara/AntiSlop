@@ -16,3 +16,4 @@
 - [Verify each disk sink and field location](feedback_verify_each_disk_sink_and_field_location.md) — gh377-7 FAIL: don't generalize one confirmed write claim to adjacent unverified ones
 - [gh295-1 state-access.sh sourcing trap](gh295_state_access_sh_trap.md) — hook functions sourcing state-access.sh with set -euo pipefail must guard non-zero returns with `|| true` or fail silently
 - [gh295 "surface" term for Step 3](gh295_surface_term_for_step3.md) — marker-audit flag introduces fourth meaning of "surface"; Step 3 scribe should resolve via glossary entry or rename
+- [gh295-2 note classification feature](gh295_2_note_classification_feature.md) — reviewer now tags non-blocking notes NOTE[spec]/NOTE[code], spec-master sweeps them; five gaps flagged for future maintenance

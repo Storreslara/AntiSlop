@@ -68,6 +68,13 @@ content) and then the usual `git commit -- <paths>`, which still takes
 working-tree content for exactly those paths and leaves a sibling's staged
 work untouched. Hit on #132 (2026-08-10).
 
+**Exception: `.claude/persona-config.json` cannot use the pathspec form at
+all** — see [[harness-integrity-gate-persona-config-commit]]. `harness-integrity-gate.sh`'s
+Set A blocks any Bash command whose text names that path, including `git
+commit -- <paths>`/`-o <paths>`. When the file is in your regenerated set,
+verify a clean `git status --short` first, then `git add -A` + plain `git
+commit -m` instead.
+
 **RECURRED on #141** (2026-07-29, Step 2 of the namespace-gate plan) — the
 same mistake, with this note already written: I ran the verify-then-`git add`
 sequence anyway, and two `adapters/codex/**` files a parallel unit staged in

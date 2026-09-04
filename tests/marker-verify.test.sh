@@ -233,10 +233,11 @@ expect_exact "$(printf '%s\n' "$malformed_out" | tail -n 1)" "marker-notes-sweep
 
 check_literal_pair() {
   # $1=ERE pattern $2=label
-  if grep -qE "$1" "$script" && grep -qE "$1" agents/reviewer.md; then
-    echo "OK   (branch-agreement) AC2.1 $2 present in both files"
+  # AC3.3: extended to include CONTEXT.md as a third file
+  if grep -qE "$1" "$script" && grep -qE "$1" agents/reviewer.md && grep -qE "$1" CONTEXT.md; then
+    echo "OK   (branch-agreement) AC2.1/AC3.3 $2 present in all three files"
   else
-    echo "FAIL (branch-agreement) AC2.1 $2 missing from marker-verify.sh and/or agents/reviewer.md"
+    echo "FAIL (branch-agreement) AC2.1/AC3.3 $2 missing from marker-verify.sh, agents/reviewer.md, and/or CONTEXT.md"
     fail=1
   fi
 }

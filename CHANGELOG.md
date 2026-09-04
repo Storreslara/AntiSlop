@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+**0.31.68 — Non-blocking notes channel: glossary entry, version bump, and render fixed point (gh295-3, Step 3 of docs/plans/2026-09-01-advisory-note-channel-gh295.md).** Adds a `## Language` glossary entry to `CONTEXT.md` defining the **non-blocking note** channel: the two tags (`NOTE[spec]:`/`NOTE[code]:`), the required `Non-blocking notes:` anchor, the deterministic sweep (`marker-verify.sh --notes` / `marker-audit.sh --notes`) as the read side, the gitignored best-effort store, and cross-links to the **state-artifact species** entry where `.pass` markers are already listed. Extends the AC2.1 branch-agreement check in `tests/marker-verify.test.sh` to include `CONTEXT.md` as a third file (AC3.3), ensuring all three literals stay synchronized across the parser (`marker-verify.sh`), reviewer duty (`agents/reviewer.md`), and glossary definition (`CONTEXT.md`). Final unit of the #295 plan (Steps 1, 1b, and 2 already PASSed); closes #295.
+
+### Changed
+- **`.claude-plugin/plugin.json`**, **`package.json`**: version bump 0.31.67 → 0.31.68.
+- **`CHANGELOG.md`**: entry for 0.31.68.
+- **`CONTEXT.md`**: new `## Language` entry defining **non-blocking note** channel with tags, anchor, sweep contract, gitignored store, and marker cross-link.
+- **`tests/marker-verify.test.sh`**: AC2.1 branch-agreement check extended to include `CONTEXT.md` as a third file (AC3.3); mutation proof added to the suite.
+- **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update --force-render`.
+
 **Scoped marker relevance closes jammed-reviewer incident (gh425-1/-2/-3/-4, docs/plans/2026-09-02-blocked-marker-scoping-gh425.md).** A stray `.blocked` marker in `.claude/reviewed/` silently jammed every reviewer's pending-review flag-clearing, project-wide. Root cause: `stop-gate.sh` checked for `.blocked`/`.escalated` markers directory-wide rather than scoped to the stopping reviewer's own units. The fix (`gh425-3`) scopes the marker check to the reviewer's review-join stamps, falling back to the directory-wide check when no scoping information is available (zero stamps or all malformed). A stray marker for an unrelated unit is now logged as `marker-out-of-scope=<unit>` instead of silently blocking. Test-suite isolation is hardened (`gh425-2`) to prevent fixture-marker leaks; a standing guard asserts `.claude/reviewed/` entry list is unchanged across a `validate.sh` run. Leaked fixtures are removed and the corrupted marker is rewritten (`gh425-1`). See [ADR-0028](docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md) for the analysis (including the asymmetry between inert leaked stamps and absorbing leaked markers) and [gh425 plan](docs/plans/2026-09-02-blocked-marker-scoping-gh425.md) for implementation details.
 
 ### Changed

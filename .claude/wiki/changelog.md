@@ -3,6 +3,28 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-09-03 (Step 2 of advisory-note-channel plan, after reviewer PASS)
+- **Completed unit gh295-2 (issue #295, Step 2 of `docs/plans/2026-09-01-advisory-note-channel-gh295.md`) —
+  reviewer note classification and spec-master sweep duty.**
+  Amended reviewer.md's note-appending duty to require exact `Non-blocking notes:` heading and
+  `NOTE[spec]:`/`NOTE[code]:` tags (bare, unemphasized, at column 0 per form clause; indented lines
+  are continuations). Added three-line worked example. Widened spec-master.md's fail-record-screening
+  bullet to run `marker-audit.sh . --notes --surface=<path>` per touched file/dir before follow-up specs
+  (best-effort, per R2 caveat). Added AC2.1 (branch-agreement: three literals in both marker-verify.sh
+  and reviewer.md, tolerating script's bracket-escaping) and AC2.7 (worked example extraction and parsing)
+  to tests/marker-verify.test.sh. All criteria verified in pristine worktree per marker format v3 protocol.
+  Reviewed at 82139aa with 8 non-blocking notes across five technical gaps: (1) marker-audit.sh sweeps
+  `*.pass` only, not `.escalated` markers — consistent with R7 boundary but asymmetric; (2) no ordering
+  between attestation line and `Non-blocking notes:` section — if attestation comes first, classified
+  as untagged note; (3) prose/parser wording divergence on indented-line rule (unreachable for conforming
+  reviewer, harmless); (4) AC2.7 awk extractor fragility (keys on first "Worked example:" line);
+  (5) AC2.1 ERE asymmetry (tolerates optional backslash on both sides, intended for script only).
+  **Out-of-scope findings:** adapter ports (Cursor, Codex) do not carry note-writing duty — deliberate
+  scope decision per original plan (no parity probe matches it). **Glossary entries (routed to gh295-3):**
+  CONTEXT.md has no entries for "non-blocking note", "NOTE[spec]", "NOTE[code]", "emphasis wrapper",
+  or the note sweep; already flagged as Step 3 deliverable per Addendum A.4. Affected files: `agents/reviewer.md`,
+  `agents/spec-master.md`, `.claude/agents/` mirrors, tests/marker-verify.test.sh, `.claude/persona-config.json`.
+
 ## 2026-09-01 (Step 1 of advisory-note-channel plan, after reviewer PASS)
 - **Completed unit gh295-1 (issue #295, Step 1 of `docs/plans/2026-09-01-advisory-note-channel-gh295.md`) —
   advisory-only marker-note enumeration surface.**
