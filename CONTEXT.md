@@ -252,10 +252,10 @@ an append-only audit-log record class written to
 (unit #316, 2026-08-10) — a formal label for a wire contract or data format
   that is explicitly documented as being read/parsed by a downstream system.
   Example: the microworld audit-log line format (emitted by `microworld-rerun.sh`)
-  is a consumed interface because `bin/dashboard/audit-log.js` is a dedicated
+  is a consumed interface because `bin/microworld-dashboard/audit-log.js` is a dedicated
   parser on the other side of that contract. Naming a format as "consumed"
   surfaces the bidirectional coupling: changes to the emitter require coordinated
-  changes to the parser, and the test contract test (`tests/microworld-audit-contract.test.js`)
+  changes to the parser, and the test contract test (`tests/microworld/microworld-audit-contract.test.js`)
   exercises both sides to prevent drift. This term appears in protocol prose
   (e.g., `hooks/scripts/microworld-rerun.sh:10`) when a hook's header documents
   its output as a consumed interface, clarifying that the format is not arbitrary.
@@ -1230,7 +1230,7 @@ the collection of addressable **Agent** entities currently active in a
   from inside `microworlds/<unit-slug>/` or copied elsewhere (e.g. into a
   future escalation packet). File paths reach `run.sh` as a single positional
   parameter, never `eval`-interpolated, enforcing safe path injection. This
-  property is proven executably by test cases (gh132 `tests/microworld-rerun.test.sh`
+  property is proven executably by test cases (gh132 `tests/microworld/microworld-rerun.test.sh`
   cases (f)/(f2)), not merely assumed — a dependency for Step D8 (microworld escalation)
   in the separate dashboard plan.
 
@@ -1616,7 +1616,7 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   targets; `javascript:` and other schemes render as plain text with no anchor
   emitted. Non-string input fails closed (returns a string, never throws, never
   emits markup from coercion). Covers the construct set attested by
-  `tests/dashboard-markdown-lite.test.js`, not by design assumption — verify
+  `tests/microworld/dashboard-markdown-lite.test.js`, not by design assumption — verify
   against shipped test cases, not by re-reading this entry.
 
 **Microworld dashboard**:
@@ -1682,14 +1682,14 @@ _Avoid_: "the dashboard" alone in glossary cross-references now that this
   [[Escalation packet]]) — a distinct trust posture, since a packet is a
   snapshot written at review time, not a live bundle. A `source: "packet"`
   bundle's `status` is always `null` in `GET /api/bundles`: `discoverPackets()`
-  does not consult `bin/dashboard/audit-log.js`'s live rerun-status parsing,
+  does not consult `bin/microworld-dashboard/audit-log.js`'s live rerun-status parsing,
   so packets render as a static snapshot with no pass/fail/timeout indicator,
   unlike `source: "working"` bundles.
 _Avoid_: bundle origin (use "bundle source" for clarity); "working bundle" as
   a synonym for the gitignored `microworlds/<unit-slug>/` directory itself —
   that directory is the canonical **microworld bundle** (see entry above);
   "working" is only the `source` field's value when a bundle of that kind is
-  discovered. `tests/dashboard-packets.test.js`, `bin/dashboard/index.html`'s
+  discovered. `tests/microworld/dashboard-packets.test.js`, `bin/microworld-dashboard/index.html`'s
   "Working Bundles" section header, and `CHANGELOG.md` all use "working
   bundle" informally as UI/test shorthand for "a microworld bundle with
   `source: "working"`" — acceptable as a UI label, but do not treat it as a
@@ -1741,7 +1741,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   flagged as follow-up candidate for hardening via `fs.realpathSync` guard).
 
 **D5 browser client**:
-(unit #318, 2026-08-10) — the static single-file HTML client (`bin/dashboard/index.html`)
+(unit #318, 2026-08-10) — the static single-file HTML client (`bin/microworld-dashboard/index.html`)
   for the microworld dashboard. Rewritten from D2 placeholder into the real client with
   inline `<script type="module">` (no framework/build step/CDN). Consumes only existing
   `GET /api/bundles` (D3/D4) and `POST /api/invoke` (D4) routes. **Left rail:** one entry
