@@ -1,5 +1,7 @@
 # Memory index
 
+- [gh354 Dispatch A completion](project_gh354_dispatchA_completion.md) — ADR-0030 + 3 glossary entries (decision surface, milestone findings record, composed decision command); live-rederived ADR number caught a stale spec guess by 9
+
 - [gh332 reviewer findings](project_gh332_reviewer_findings.md) — three pre-existing stale CONTEXT.md citations; criterion-5 spec-level grep defect; ubiquitous-language gaps; scope deviations noted
 - [Multifile sweep criterion defect](feedback_multifile_sweep_criterion_defect.md) — grep -o emits filename prefix; must handle bare trailing `:` not just `:<digits>` suffixes
 - [gh332 Dispatch A completion](project_gh332_dispatchA_completion.md) — ADR-0029 + Microworld silo glossary entry + 2 live-remeasured follow-ups (#426, #427); backtick-historical-path trap self-caught

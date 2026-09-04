@@ -2347,3 +2347,50 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   document generally — restated here only to the extent needed to define
   the field itself, not forked.
 
+**decision surface**:
+(unit gh354, 2026-09-04) — the Decisions section of the Microworld dashboard
+  (`bin/microworld-dashboard/decisions.js` + `GET /api/decisions`) that reads
+  and renders the four human-facing decision touchpoints of this persona
+  system: the `ESCALATE-TO-HUMAN` DECISION file, the milestone pre-audit
+  checkpoint (read-only — see below), the milestone-auditor findings relay,
+  and the pending-review `defer:`/`skip:` flag. The decision surface
+  **composes; it never writes** — it is a distinct concept from the
+  **DECISION file** / **DECISION channel** (the artifact a human writes) and
+  is never used as a synonym for it. Not every touchpoint is fully routed:
+  the pre-audit checkpoint's *answer* deliberately stays in
+  `AskUserQuestion` (R6, `docs/plans/2026-08-13-dashboard-decision-approval-surface.md`)
+  because the decision is cheap to answer and expensive only to read, so
+  only the reading is worth moving. See [[composed decision command]] and
+  [[milestone findings record]].
+
+**milestone findings record**:
+(unit gh354, 2026-09-04) — the one new durable artifact this decision surface
+  introduces, at `.claude/milestone-audit/<plan-slug>/FINDINGS.md`, first line
+  exactly `FINDINGS <plan-slug> <UTC ISO-8601 timestamp> count: <n>` followed
+  by the findings list verbatim. Written by `milestone-auditor` itself via
+  `Bash`, as a **named bookkeeping exception** — the same carve-out the
+  reviewer already has for `.pass`/`.fail`/`.escalated` markers, for the same
+  reason: a record *about* the work, not a change *to* the work. This is
+  deliberate: `milestone-auditor` has no `Write`/`Edit` tool by design, and
+  does not gain one. See [ADR-0030](docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md).
+  Gitignored (joins the sibling operational markers); the orchestrator
+  deletes the directory once the human's decision on the findings has been
+  acted on — a stale record is a defect, not untidiness, for the same reason
+  a stale escalation packet is.
+
+**composed decision command**:
+(unit gh354, 2026-09-04) — a ready-to-run shell command, or (for the
+  milestone-findings touchpoint only) a copyable paste-back markdown block,
+  that the [[decision surface]]'s single composer module
+  (`bin/microworld-dashboard/decision-block.js`) renders but never executes
+  and never POSTs anywhere. Three of the four touchpoints compose a command
+  (`ESCALATE-TO-HUMAN` resolution; pending-review `defer:`; pending-review
+  `skip:`); the milestone-auditor findings relay composes a message instead
+  of a command — a deliberate deviation (R7) from the literal "compose the
+  exact ready-to-run command" request, because that touchpoint's recipient is
+  the conversation, not the filesystem. Composition safety is a correctness
+  requirement, not polish: no command substitution in composed content,
+  multi-line bodies use a single-quoted heredoc that refuses a body
+  containing a line equal to its own delimiter, and interpolated ids are
+  validated against the protocol's id grammar before use.
+
