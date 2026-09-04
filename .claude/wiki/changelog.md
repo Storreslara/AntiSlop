@@ -3,6 +3,19 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-09-04 (Step 5 of microworld-silo plan, after reviewer PASS)
+- **Completed unit gh330 (issue #330, Step 5 of `docs/plans/2026-08-11-microworld-silo.md`) —
+  scribe updated living reference docs with repointed path citations.**
+  Updated 6 stale path citations across 5 CONTEXT.md glossary entries and the architecture.md
+  audit-log paragraph to reflect Step 2's microworld test relocation from `tests/` to
+  `tests/microworld/`. Entries affected: "microworld-rerun interface contract", "Bundle source",
+  "microworld-rerun.sh landing", "dashboard-packets test contract", and one architecture.md
+  citation to "tests/dashboard-packets.test.js". All citations mechanically repointed and verified
+  against live glossary definitions. **Review outcome:** clean single-pass PASS on commit `3c0cfb3e`.
+  **Non-blocking advisory:** the issue's affected-files list undercounts the Bundle source entry
+  (stated 2 citations, live entry has 3 — correctly repointed all three). **Affected files:** 2
+  (CONTEXT.md and .claude/wiki/architecture.md). This is Step 5 of 6.
+
 ## 2026-09-04 (Step 3 of microworld-silo plan, after reviewer PASS)
 - **Completed unit gh329 (issue #329, Step 3 of `docs/plans/2026-08-11-microworld-silo.md`) —
   repointed microworld-rerun.sh header comment to relocated paths.**
