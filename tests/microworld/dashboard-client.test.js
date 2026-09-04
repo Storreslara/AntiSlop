@@ -9,9 +9,9 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const vm = require('vm');
-const { startServer } = require('../bin/microworld-dashboard/server');
+const { startServer } = require('../../bin/microworld-dashboard/server');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 // Executes the client's inline module script (extracted from index.html)
 // against a minimal stub DOM, with a stubbed /api/bundles response — proves

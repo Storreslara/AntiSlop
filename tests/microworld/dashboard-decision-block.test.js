@@ -5,7 +5,7 @@
 // four-kind decision composer. Covers acceptance cases (a)-(j) from
 // docs/plans/2026-08-13-dashboard-decision-approval-surface.md Step 2.
 
-const { composeDecisionBlock, composeEscalationDecisionBody } = require('../bin/microworld-dashboard/decision-block');
+const { composeDecisionBlock, composeEscalationDecisionBody } = require('../../bin/microworld-dashboard/decision-block');
 
 const failures = [];
 

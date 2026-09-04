@@ -10,9 +10,9 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
-const { parseAuditLog } = require('../bin/microworld-dashboard/audit-log');
+const { parseAuditLog } = require('../../bin/microworld-dashboard/audit-log');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 function makeFixtureProject(name) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `audit-contract-${name}-`));

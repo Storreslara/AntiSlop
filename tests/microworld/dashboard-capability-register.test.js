@@ -11,7 +11,7 @@ const fs = require('fs');
 const path = require('path');
 const assert = require('assert');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const SERVER_JS = path.join(REPO_ROOT, 'bin/microworld-dashboard/server.js');
 const CAPABILITIES_MD = path.join(REPO_ROOT, 'docs/microworld-dashboard-capabilities.md');
 

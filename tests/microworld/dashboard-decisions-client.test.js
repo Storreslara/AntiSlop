@@ -3,7 +3,7 @@
 
 // Test suite for the Decisions section of the microworld dashboard client
 // (index.html). Executes the client's inline module script under `vm`
-// against a stub DOM, following tests/dashboard-client.test.js's technique --
+// against a stub DOM, following tests/microworld/dashboard-client.test.js's technique --
 // asserts rendered output, never source-text presence.
 // Cases: (a) distinct section header + composed command, (b) absent when
 // empty, (c) no answer-submitting control in the briefing view, (d) skip
@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 function makeFakeDiv() {
   return {

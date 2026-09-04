@@ -9,11 +9,11 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const vm = require('vm');
-const { startServer } = require('../bin/microworld-dashboard/server');
-const { readSourceExcerpt } = require('../bin/microworld-dashboard/source');
-const { formatFeedbackBlock } = require('../bin/microworld-dashboard/feedback-block');
+const { startServer } = require('../../bin/microworld-dashboard/server');
+const { readSourceExcerpt } = require('../../bin/microworld-dashboard/source');
+const { formatFeedbackBlock } = require('../../bin/microworld-dashboard/feedback-block');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 function makeTestProject(name) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `dashboard-feedback-test-${name}-`));

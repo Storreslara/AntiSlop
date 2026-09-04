@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const http = require('http');
-const { startServer } = require('../bin/microworld-dashboard/server');
+const { startServer } = require('../../bin/microworld-dashboard/server');
 
 function makeTestProject(name) {
   return fs.mkdtempSync(path.join(os.tmpdir(), `dashboard-decisions-${name}-`));

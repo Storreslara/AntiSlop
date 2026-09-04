@@ -7,9 +7,9 @@
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { startServer } = require('../bin/microworld-dashboard/server');
+const { startServer } = require('../../bin/microworld-dashboard/server');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 function makeTestProject(name) {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), `dashboard-test-${name}-`));
@@ -505,7 +505,7 @@ async function runTests() {
   // the label logic is unaffected.
   console.log('Test (k): unverified label at exactly three render sites, stub-proof...');
   try {
-    const indexPath = path.join(__dirname, '..', 'bin', 'microworld-dashboard', 'index.html');
+    const indexPath = path.join(__dirname, '..', '..', 'bin', 'microworld-dashboard', 'index.html');
     const html = fs.readFileSync(indexPath, 'utf8');
 
     const siteCount = (html.match(/getStatusClass\(b\.status\)/g) || []).length;

@@ -5,7 +5,7 @@
 // Dual-environment markdown renderer (CommonJS-requirable and page-injectable).
 // Covers U1-C3 cases from docs/plans/2026-08-18-dashboard-usability-revision.md.
 
-const { renderMarkdown } = require('../bin/microworld-dashboard/markdown-lite');
+const { renderMarkdown } = require('../../bin/microworld-dashboard/markdown-lite');
 
 const failures = [];
 

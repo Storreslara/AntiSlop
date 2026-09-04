@@ -14,8 +14,8 @@
     },
     {
       "id": "gh351",
-      "watch": ["bin/microworld-dashboard/decision-block.js", "tests/dashboard-decision-block.test.js"],
-      "run": ["node tests/dashboard-decision-block.test.js"],
+      "watch": ["bin/microworld-dashboard/decision-block.js", "tests/microworld/dashboard-decision-block.test.js"],
+      "run": ["node tests/microworld/dashboard-decision-block.test.js"],
       "timeoutSeconds": 60
     },
     {

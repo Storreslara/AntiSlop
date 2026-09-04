@@ -431,10 +431,10 @@ fi
 
 echo
 echo "== microworld reactive rerun hook + relocation proof (Bash) =="
-if bash tests/microworld-rerun.test.sh; then
-  echo "OK   tests/microworld-rerun.test.sh"
+if bash tests/microworld/microworld-rerun.test.sh; then
+  echo "OK   tests/microworld/microworld-rerun.test.sh"
 else
-  echo "FAIL tests/microworld-rerun.test.sh"
+  echo "FAIL tests/microworld/microworld-rerun.test.sh"
   fail=1
 fi
 
@@ -467,10 +467,10 @@ fi
 
 echo
 echo "== microworld audit log contract test: bash hook ↔ Node parser (Node) =="
-if node tests/microworld-audit-contract.test.js; then
-  echo "OK   tests/microworld-audit-contract.test.js"
+if node tests/microworld/microworld-audit-contract.test.js; then
+  echo "OK   tests/microworld/microworld-audit-contract.test.js"
 else
-  echo "FAIL tests/microworld-audit-contract.test.js"
+  echo "FAIL tests/microworld/microworld-audit-contract.test.js"
   fail=1
 fi
 
@@ -739,108 +739,108 @@ fi
 
 echo
 echo "== microworld dashboard server (Node) =="
-if node tests/dashboard-server.test.js; then
-  echo "OK   tests/dashboard-server.test.js"
+if node tests/microworld/dashboard-server.test.js; then
+  echo "OK   tests/microworld/dashboard-server.test.js"
 else
-  echo "FAIL tests/dashboard-server.test.js"
+  echo "FAIL tests/microworld/dashboard-server.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard client (Node) =="
-if node tests/dashboard-client.test.js; then
-  echo "OK   tests/dashboard-client.test.js"
+if node tests/microworld/dashboard-client.test.js; then
+  echo "OK   tests/microworld/dashboard-client.test.js"
 else
-  echo "FAIL tests/dashboard-client.test.js"
+  echo "FAIL tests/microworld/dashboard-client.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard invoke (Node) =="
-if node tests/dashboard-invoke.test.js; then
-  echo "OK   tests/dashboard-invoke.test.js"
+if node tests/microworld/dashboard-invoke.test.js; then
+  echo "OK   tests/microworld/dashboard-invoke.test.js"
 else
-  echo "FAIL tests/dashboard-invoke.test.js"
+  echo "FAIL tests/microworld/dashboard-invoke.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard notebook (Node) =="
-if node tests/dashboard-notebook.test.js; then
-  echo "OK   tests/dashboard-notebook.test.js"
+if node tests/microworld/dashboard-notebook.test.js; then
+  echo "OK   tests/microworld/dashboard-notebook.test.js"
 else
-  echo "FAIL tests/dashboard-notebook.test.js"
+  echo "FAIL tests/microworld/dashboard-notebook.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard feedback (Node) =="
-if node tests/dashboard-feedback.test.js; then
-  echo "OK   tests/dashboard-feedback.test.js"
+if node tests/microworld/dashboard-feedback.test.js; then
+  echo "OK   tests/microworld/dashboard-feedback.test.js"
 else
-  echo "FAIL tests/dashboard-feedback.test.js"
+  echo "FAIL tests/microworld/dashboard-feedback.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard packets (Node) =="
-if node tests/dashboard-packets.test.js; then
-  echo "OK   tests/dashboard-packets.test.js"
+if node tests/microworld/dashboard-packets.test.js; then
+  echo "OK   tests/microworld/dashboard-packets.test.js"
 else
-  echo "FAIL tests/dashboard-packets.test.js"
+  echo "FAIL tests/microworld/dashboard-packets.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard decisions (Node) =="
-if node tests/dashboard-decisions.test.js; then
-  echo "OK   tests/dashboard-decisions.test.js"
+if node tests/microworld/dashboard-decisions.test.js; then
+  echo "OK   tests/microworld/dashboard-decisions.test.js"
 else
-  echo "FAIL tests/dashboard-decisions.test.js"
+  echo "FAIL tests/microworld/dashboard-decisions.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard decision-block (Node) =="
-if node tests/dashboard-decision-block.test.js; then
-  echo "OK   tests/dashboard-decision-block.test.js"
+if node tests/microworld/dashboard-decision-block.test.js; then
+  echo "OK   tests/microworld/dashboard-decision-block.test.js"
 else
-  echo "FAIL tests/dashboard-decision-block.test.js"
+  echo "FAIL tests/microworld/dashboard-decision-block.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard markdown-lite (Node) =="
-if node tests/dashboard-markdown-lite.test.js; then
-  echo "OK   tests/dashboard-markdown-lite.test.js"
+if node tests/microworld/dashboard-markdown-lite.test.js; then
+  echo "OK   tests/microworld/dashboard-markdown-lite.test.js"
 else
-  echo "FAIL tests/dashboard-markdown-lite.test.js"
+  echo "FAIL tests/microworld/dashboard-markdown-lite.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard decisions client (Node) =="
-if node tests/dashboard-decisions-client.test.js; then
-  echo "OK   tests/dashboard-decisions-client.test.js"
+if node tests/microworld/dashboard-decisions-client.test.js; then
+  echo "OK   tests/microworld/dashboard-decisions-client.test.js"
 else
-  echo "FAIL tests/dashboard-decisions-client.test.js"
+  echo "FAIL tests/microworld/dashboard-decisions-client.test.js"
   fail=1
 fi
 
 echo "== microworld dashboard decision-run (Node) =="
-if node tests/dashboard-decision-run.test.js; then
-  echo "OK   tests/dashboard-decision-run.test.js"
+if node tests/microworld/dashboard-decision-run.test.js; then
+  echo "OK   tests/microworld/dashboard-decision-run.test.js"
 else
-  echo "FAIL tests/dashboard-decision-run.test.js"
+  echo "FAIL tests/microworld/dashboard-decision-run.test.js"
   fail=1
 fi
 
 echo
 echo "== microworld dashboard capability register bijection (Node) =="
-if node tests/dashboard-capability-register.test.js; then
-  echo "OK   tests/dashboard-capability-register.test.js"
+if node tests/microworld/dashboard-capability-register.test.js; then
+  echo "OK   tests/microworld/dashboard-capability-register.test.js"
 else
-  echo "FAIL tests/dashboard-capability-register.test.js"
+  echo "FAIL tests/microworld/dashboard-capability-register.test.js"
   fail=1
 fi
 

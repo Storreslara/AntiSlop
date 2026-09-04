@@ -12,7 +12,7 @@
 # stop-gate.sh's deferred-result reporting (tests/stop-gate.test.sh) - it is
 # NOT re-asserted here.
 set -euo pipefail
-cd "$(dirname "$0")/.."
+cd "$(dirname "$0")/../.."
 fail=0
 
 tmproot="$(mktemp -d)"

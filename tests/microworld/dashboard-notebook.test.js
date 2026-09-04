@@ -13,10 +13,10 @@ const path = require('path');
 const os = require('os');
 const http = require('http');
 const vm = require('vm');
-const { startServer } = require('../bin/microworld-dashboard/server');
+const { startServer } = require('../../bin/microworld-dashboard/server');
 const { execSync } = require('child_process');
 
-const REPO_ROOT = path.resolve(__dirname, '..');
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 function makeFakeButton(attrs) {
   const listeners = [];
@@ -38,7 +38,7 @@ function makeFakeElement() {
 }
 
 // Stand-in for document.createElement('div'), used by escapeHtml() — mirrors
-// tests/dashboard-client.test.js's makeFakeDiv so textContent-escaping works.
+// tests/microworld/dashboard-client.test.js's makeFakeDiv so textContent-escaping works.
 function makeFakeDiv() {
   return {
     _text: '',
