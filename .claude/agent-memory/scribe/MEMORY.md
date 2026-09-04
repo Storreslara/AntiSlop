@@ -1,6 +1,8 @@
 # Memory index
 
-- [gh354 Dispatch A completion](project_gh354_dispatchA_completion.md) — ADR-0030 + 3 glossary entries (decision surface, milestone findings record, composed decision command); live-rederived ADR number caught a stale spec guess by 9
+- [Verify plan premise freshness](feedback_verify_plan_premise_freshness.md) — gh354 FAIL: a plan's invariant is dated evidence; re-measure negative claims and check sibling glossary entries before minting
+- [gh354 FAIL fix](gh354_fail_fix_completion.md) — dashboard trust anchor is the confirmation code, not an absent write path; `.claude/milestone-audit/` gitignore + cleanup enforcement still open
+- [gh354 Dispatch A completion](project_gh354_dispatchA_completion.md) — ADR-0030 + 3 glossary entries (decision surface, milestone findings record, composed decision command); live-rederived ADR number caught a stale spec guess by 9 — SUPERSEDED in part by the FAIL fix above
 
 - [gh332 reviewer findings](project_gh332_reviewer_findings.md) — three pre-existing stale CONTEXT.md citations; criterion-5 spec-level grep defect; ubiquitous-language gaps; scope deviations noted
 - [Multifile sweep criterion defect](feedback_multifile_sweep_criterion_defect.md) — grep -o emits filename prefix; must handle bare trailing `:` not just `:<digits>` suffixes
