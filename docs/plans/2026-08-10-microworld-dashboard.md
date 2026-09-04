@@ -1479,13 +1479,15 @@ the working tree has moved on.
   bin/dashboard/ | grep -v ':0$' | wc -l` is **0** and the same for
   `escalated` — executable proof that the dashboard is decoupled from the
   escalation machinery, which is the user's second fixed premise. This
-  criterion was vacuous as shipped: `bin/dashboard/` does not exist — the
-  real dashboard code lives at `bin/microworld-dashboard/` — so the `grep -r`
-  matched nothing and passed regardless of whether the code was actually
-  decoupled. This is not silently fixed by pointing the grep at the real
-  directory as if the check had ever passed; it is marked superseded because
-  the vacuity means the decoupling was never actually measured by this
-  criterion.
+  criterion was real and passing when D8 shipped on 2026-08-10 (commit
+  `f6ab291`): `bin/dashboard/` existed then, `grep -rc` produced a genuine
+  `:0` line for each of its seven files, and the decoupling was actually
+  measured. It became **stale** the following day — 2026-08-11, commit
+  `c276759` (gh327) — which renamed the directory to
+  `bin/microworld-dashboard/`. Since that rename the `grep -r` has had no
+  such path to match, so re-running it as written proves nothing about the
+  current layout. It is marked superseded, rather than silently repointed at
+  the new directory, so that the rename is recorded rather than papered over.
 - `git status --porcelain` is byte-identical before and after a packet
   discovery and invoke cycle.
 

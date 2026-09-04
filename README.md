@@ -321,17 +321,27 @@ decision points of this persona system: an `ESCALATE-TO-HUMAN` resolution
 (the DECISION file), the milestone pre-audit checkpoint, a milestone-auditor
 findings relay, and a pending-review `defer:`/`skip:` decision. For each, the
 dashboard reads the relevant state and composes what a human needs — a shell
-command, or (for the findings relay) a paste-back message. It **never runs**
-anything itself: it composes the command; you run it. That is true for every
-touchpoint, including the pre-audit checkpoint, where the dashboard only
-surfaces the reading and the answer stays in the native prompt rather than
-becoming a composed command.
+command, or (for the findings relay) a paste-back message.
 
-This composes-but-never-writes property is what keeps the DECISION file's
-trust anchor mechanical: the dashboard is not in the write path for any of
-the four touchpoints, so nothing about `human-decision-gate.sh`'s guarantee —
-that only a human, at their own terminal, can produce a DECISION-file write —
-changes by virtue of the dashboard existing.
+Three of the four touchpoints are **compose-only**: for the milestone
+pre-audit checkpoint, the milestone-auditor findings relay, and the
+pending-review `defer:`/`skip:` decision, the dashboard **never runs**
+anything itself — it composes the command; you run it. (At the pre-audit
+checkpoint it composes nothing at all: it only surfaces the reading, and the
+answer stays in the native prompt rather than becoming a composed command.)
+
+The fourth touchpoint — the `ESCALATE-TO-HUMAN` resolution — is **not**
+compose-only. The dashboard writes the DECISION file itself, via
+`POST /api/decision/arm` followed by `POST /api/decision/run` (see **Run
+command flow** above). So the DECISION file's trust anchor is not that the
+dashboard stays out of the write path; it is the terminal-delivered
+confirmation code, compared in constant time with `crypto.timingSafeEqual`.
+The write happens only after a human reads a per-decision code off their own
+controlling terminal and types it back — the same human-presence-at-decision-time
+property `human-decision-gate.sh` enforces, reached by a different mechanism.
+That is a narrower and different trust boundary than an absent write path,
+and it carries the **Residual risks** listed above, which an absent write
+path would not.
 
 ### Feedback blocks
 
