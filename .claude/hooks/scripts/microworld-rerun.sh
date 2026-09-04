@@ -8,8 +8,8 @@
 # problems and on success).
 #
 # The audit log line format (<timestamp> unit=<slug> result=<pass|fail|timeout|error> file=<path>)
-# is a consumed interface with a Node.js parser (bin/dashboard/audit-log.js) on the other side.
-# Contract test: tests/microworld-audit-contract.test.js. Do not change the separator or format
+# is a consumed interface with a Node.js parser (bin/microworld-dashboard/audit-log.js) on the other side.
+# Contract test: tests/microworld/microworld-audit-contract.test.js. Do not change the separator or format
 # without updating the parser and re-running the contract test.
 #
 # A bundle result line may additionally carry an optional trailing

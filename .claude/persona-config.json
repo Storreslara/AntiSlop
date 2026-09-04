@@ -68,7 +68,7 @@
     ".claude/hooks/scripts/task-gate.sh": "fab73cd9043dcb93beb23bca91ec2cc5cd1ac0c168caa17f226ff1ef2da27832",
     ".claude/hooks/scripts/human-decision-gate.sh": "ac3cd5e96e6703a9c6a02b221645078067280c9e45d0e15ee2595649a66c6a9f",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
-    ".claude/hooks/scripts/microworld-rerun.sh": "dda116e1806e124cfdadb0923ea997d83da4a6390192b3c89ca428528ee3b42c",
+    ".claude/hooks/scripts/microworld-rerun.sh": "6b0d33d1ef767b195e4d06d65a8aa497f9479bcf739d68f04e8d25d55fb1af6d",
     ".claude/hooks/scripts/heavy-trigger.sh": "b71a55d9cd6ebc5f379dc8b32006e1cf549d33f2d10d6a4d961bb5bac996fc3c",
     ".claude/hooks/scripts/marker-commit-check.sh": "e40364aa89243aac91fd36f7766258e7e227ed1f36f37af823c1946239c49687",
     ".claude/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
