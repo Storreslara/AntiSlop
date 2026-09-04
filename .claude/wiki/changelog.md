@@ -3,6 +3,54 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-09-04 (Step 3 of microworld-silo plan, after reviewer PASS)
+- **Completed unit gh329 (issue #329, Step 3 of `docs/plans/2026-08-11-microworld-silo.md`) —
+  repointed microworld-rerun.sh header comment to relocated paths.**
+  Comment-only edit in `hooks/scripts/microworld-rerun.sh`'s header: updated two paths in the
+  consumed-interface contract documentation to reflect Step 2's file relocations:
+  `bin/dashboard/audit-log.js` → `bin/microworld-dashboard/audit-log.js` and
+  `tests/microworld-audit-contract.test.js` → `tests/microworld/microworld-audit-contract.test.js`.
+  Regenerated the tracked managed mirror `.claude/hooks/scripts/microworld-rerun.sh` and updated
+  its content-hash entry in `.claude/persona-config.json` via `node bin/cli.js --update --force-render`.
+  Hook logic and behavior unchanged; purely documentation of the consumed-interface contract.
+  **Review outcome:** clean single-pass PASS on commit `bda5768`. **Advisory flag (out of this unit's
+  scope):** the committed `docs/plans/2026-08-11-microworld-silo.md` still describes Step 3 in its
+  PRE-amendment form (one-file unit, `hooks/scripts/microworld-rerun.sh:10-11`, five criteria, no mirror
+  or hash artifact). The R7 amendment that tripled the scope exists only in the GitHub issue body and
+  uncommitted working-tree copies. A sibling unit (Step 6, gh332, or the plan orchestrator) must land
+  this amendment before the plan is treated as spec of record. **Affected files:** 2 (both mirrors of
+  the same source: `hooks/scripts/microworld-rerun.sh` and `.claude/hooks/scripts/microworld-rerun.sh`)
+  plus 1 config update (`.claude/persona-config.json` hash entry). This is Step 3 of 6.
+
+## 2026-09-04 (Step 2 of microworld-silo plan, after reviewer PASS)
+- **Completed unit gh328 (issue #328, Step 2 of `docs/plans/2026-08-11-microworld-silo.md`) —
+  relocated the microworld test suite to `tests/microworld/` with path fixes.**
+  Moved all 14 test files (13 Node tests + 1 bash test) matching `^(dashboard-|microworld-)`
+  family from `tests/` to `tests/microworld/` via `git mv`, repointing all relative paths:
+  `__dirname`-relative REPO_ROOT walks in 9 of 13 Node tests incremented by one level
+  (`path.resolve(__dirname, '..')` → `path.resolve(__dirname, '..', '..')`); all 13 require
+  statements for `bin/microworld-dashboard/*` modules similarly incremented; bash test's
+  `cd "$(dirname "$0")/.."`  updated to `cd "$(dirname "$0")/../.."`; two sibling-naming
+  comments in moved files repointed to new paths (required fix per R9, added to criterion 7
+  allowlist); `tests/validate.sh` registration blocks (14 blocks × 3 lines each = 42 grep hits)
+  repointed; `tests/watch-map.json`'s `gh351` entry updated (R8, new requirement discovered
+  during 2026-09-04 baseline refresh). **Review outcome:** clean single-pass PASS on commit
+  `2dc3cb0`. **Non-blocking technical notes (spec/code divorces, not implementation defects):**
+  (1) Criterion 7 (the "no-drift" check) proved to be unsatisfiable as written — three
+  independent defects in the criterion command itself (pathspec filtering deletions before
+  rename detection; ERE dollar-anchor in mid-pattern; unclaimed stale paths in removed
+  halves of repoint comments) made the check report ~8700 vs actual ~52 changed lines; a
+  corrected equivalent command (both-sides pathspec, escaped `\$`, widened allowlist) reports
+  2 residual lines, both deliberately in scope per R9; no real drift exists. (2) Stale citation
+  inventory: five pre-existing stale test-path citations in prose (.claude/hooks/, CONTEXT.md,
+  architecture.md) remain out of scope per spec's Step 5 delineation (#330); four stale `bin/`
+  comment lines in source files (index.html, decision-block.js) deliberately not in Step 2 scope
+  per OQ7 recommendation. (3) No tier-A or bundle coverage exists for gh328 itself (no microworlds/gh328*
+  entries, no watch-map entry). **Affected files:** 14 test files + 3 file registrations
+  (tests/validate.sh, tests/watch-map.json, and the one bash test). **Deliberate scope
+  exclusions (per step delineation):** no edits to CONTEXT.md, .claude/wiki/architecture.md,
+  or docs/plans; all citation fixes deferred to Steps 3-5. This is Step 2 of 6.
+
 ## 2026-09-03 (Step 2 of advisory-note-channel plan, after reviewer PASS)
 - **Completed unit gh295-2 (issue #295, Step 2 of `docs/plans/2026-09-01-advisory-note-channel-gh295.md`) —
   reviewer note classification and spec-master sweep duty.**
