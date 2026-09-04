@@ -314,6 +314,25 @@ The terminal-code requirement and controlling-terminal gating provide the same s
 
 None of these risks are introduced by the dashboard; they all survive from the baseline. The trade-off is intentional: the terminal-code requirement is a real improvement over an unauthenticated HTTP endpoint, and it reaches parity with the existing DECISION-file protection bar (same-uid process boundary).
 
+### Decisions section
+
+The dashboard also has a **Decisions section** covering the four human-facing
+decision points of this persona system: an `ESCALATE-TO-HUMAN` resolution
+(the DECISION file), the milestone pre-audit checkpoint, a milestone-auditor
+findings relay, and a pending-review `defer:`/`skip:` decision. For each, the
+dashboard reads the relevant state and composes what a human needs — a shell
+command, or (for the findings relay) a paste-back message. It **never runs**
+anything itself: it composes the command; you run it. That is true for every
+touchpoint, including the pre-audit checkpoint, where the dashboard only
+surfaces the reading and the answer stays in the native prompt rather than
+becoming a composed command.
+
+This composes-but-never-writes property is what keeps the DECISION file's
+trust anchor mechanical: the dashboard is not in the write path for any of
+the four touchpoints, so nothing about `human-decision-gate.sh`'s guarantee —
+that only a human, at their own terminal, can produce a DECISION-file write —
+changes by virtue of the dashboard existing.
+
 ### Feedback blocks
 
 When exploring a function in a microworld bundle via the dashboard, you can annotate it with feedback and copy a feedback block — a fixed-shape markdown block that captures:

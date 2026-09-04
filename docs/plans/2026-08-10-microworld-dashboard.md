@@ -1475,10 +1475,17 @@ the working tree has moved on.
       and contains only working bundles.
 - `bash tests/validate.sh` exits 0 and its output includes an `OK` line for
   `tests/dashboard-packets.test.js`.
-- `grep -rc 'humanReviewMode' bin/dashboard/ | grep -v ':0$' | wc -l` is **0**
-  and the same for `escalated` — executable proof that the dashboard is
-  decoupled from the escalation machinery, which is the user's second fixed
-  premise.
+- **SUPERSEDED** (recorded 2026-09-04, gh354): `grep -rc 'humanReviewMode'
+  bin/dashboard/ | grep -v ':0$' | wc -l` is **0** and the same for
+  `escalated` — executable proof that the dashboard is decoupled from the
+  escalation machinery, which is the user's second fixed premise. This
+  criterion was vacuous as shipped: `bin/dashboard/` does not exist — the
+  real dashboard code lives at `bin/microworld-dashboard/` — so the `grep -r`
+  matched nothing and passed regardless of whether the code was actually
+  decoupled. This is not silently fixed by pointing the grep at the real
+  directory as if the check had ever passed; it is marked superseded because
+  the vacuity means the decoupling was never actually measured by this
+  criterion.
 - `git status --porcelain` is byte-identical before and after a packet
   discovery and invoke cycle.
 
