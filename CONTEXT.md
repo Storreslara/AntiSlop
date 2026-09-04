@@ -2353,11 +2353,25 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   and renders the four human-facing decision touchpoints of this persona
   system: the `ESCALATE-TO-HUMAN` DECISION file, the milestone pre-audit
   checkpoint (read-only — see below), the milestone-auditor findings relay,
-  and the pending-review `defer:`/`skip:` flag. The decision surface
-  **composes; it never writes** — it is a distinct concept from the
-  **DECISION file** / **DECISION channel** (the artifact a human writes) and
-  is never used as a synonym for it. Not every touchpoint is fully routed:
-  the pre-audit checkpoint's *answer* deliberately stays in
+  and the pending-review `defer:`/`skip:` flag. Three of those four — the
+  pre-audit checkpoint, the milestone-auditor findings relay, and the
+  pending-review `defer:`/`skip:` flag — are **compose-only**: the surface
+  renders command or message text for a human to run or paste, and has no
+  write path of its own. The fourth — `ESCALATE-TO-HUMAN` resolution — has a write
+  path *through the dashboard itself*: `POST /api/decision/arm` and
+  `POST /api/decision/run` (`server.js:262`, `:418`; added by gh380, commit
+  `19a0cd0`, 2026-08-15) write the DECISION file with `flag: 'wx'` and append a
+  `decision-write-via-dashboard` line to `.claude/review-audit.log`. The trust
+  anchor on that path is the terminal-delivered [[confirmation code]] compared
+  with `crypto.timingSafeEqual` — *not* the absence of a write path; see
+  [[dashboard-originated decision write]] for the full property and
+  [[read-only mode]], which refuses both endpoints outright. Do not restate
+  this surface as "never writes": that was true only before gh380 shipped, and
+  the composer module `decision-block.js` being a pure formatter does not
+  extend to the dashboard as a whole. The decision surface remains a distinct
+  concept from the **DECISION file** / **DECISION channel** (the artifact a
+  human's decision produces) and is never used as a synonym for it. Not every
+  touchpoint is fully routed: the pre-audit checkpoint's *answer* deliberately stays in
   `AskUserQuestion` (R6, `docs/plans/2026-08-13-dashboard-decision-approval-surface.md`)
   because the decision is cheap to answer and expensive only to read, so
   only the reading is worth moving. See [[composed decision command]] and
@@ -2373,10 +2387,14 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   reason: a record *about* the work, not a change *to* the work. This is
   deliberate: `milestone-auditor` has no `Write`/`Edit` tool by design, and
   does not gain one. See [ADR-0030](docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md).
-  Gitignored (joins the sibling operational markers); the orchestrator
-  deletes the directory once the human's decision on the findings has been
-  acted on — a stale record is a defect, not untidiness, for the same reason
-  a stale escalation packet is.
+  Intended to join the sibling operational markers as ignored working state,
+  but as of 2026-09-04 `.claude/milestone-audit/` has no `.gitignore` entry
+  (`git check-ignore` does not match it) — the intent is recorded, the
+  mechanism is not yet in place. The orchestrator deletes the directory once
+  the human's decision on the findings has been acted on; a stale record is a
+  defect, not untidiness, for the same reason a stale escalation packet is.
+  That cleanup duty is likewise **currently unenforced** — specified in prose
+  only, with no hook, test, or gate checking it.
 
 **composed decision command**:
 (unit gh354, 2026-09-04) — a ready-to-run shell command, or (for the
