@@ -1,5 +1,6 @@
 # Memory index
 
+- [gh332 Dispatch A completion](project_gh332_dispatchA_completion.md) — ADR-0029 + Microworld silo glossary entry + 2 live-remeasured follow-ups (#426, #427); backtick-historical-path trap self-caught
 - [Source-artifact + render-step gating rule](spec_source_render_gating_rule.md) — source and render steps can never be independently gated; merge or pin intermediate failure set
 - [Vacuous sweep conversion pattern](project_vacuous_sweep_conversion_pattern.md) — unreachable differential sweeps convert to block-direction cases with allow-controls per Amendment A5
 - [Dispatch hygiene: mutation-command escaping](feedback_dispatch_hygiene_mutation_commands.md) — extract mutation-control reproduction commands verbatim from spec docs, not by retyping
@@ -14,6 +15,7 @@
 - [gh413 state model documentation](gh413_state_model_documentation.md) — unit gh413 scribe dispatch added three CONTEXT.md glossary entries for 5-domain state model and unified state-access.sh seam
 - [gh424 spec 1 completion](project_gh424_spec1_completion.md) — 5 glossary terms all matched shipped code exactly; two distinct sanctioned-rotation call sites noted
 - [gh330 path citations completion](project_gh330_path_citations_completion.md) — Step 5 closed with 6 citations repointed across CONTEXT.md/architecture.md; Bundle-source undercount noted
+- [gh331 microworld index completion](project_gh331_microworld_index_completion.md) — canonical index delivered; step 6 owns **Microworld silo** glossary entry; hook lib/watch-map completeness gaps in step 6 scope
 - [Verify each disk sink and field location](feedback_verify_each_disk_sink_and_field_location.md) — gh377-7 FAIL: don't generalize one confirmed write claim to adjacent unverified ones
 - [gh295-1 state-access.sh sourcing trap](gh295_state_access_sh_trap.md) — hook functions sourcing state-access.sh with set -euo pipefail must guard non-zero returns with `|| true` or fail silently
 - [gh295 "surface" term for Step 3](gh295_surface_term_for_step3.md) — marker-audit flag introduces fourth meaning of "surface"; Step 3 scribe should resolve via glossary entry or rename
