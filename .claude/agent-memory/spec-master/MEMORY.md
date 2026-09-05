@@ -46,3 +46,4 @@
 - [gh295 advisory-note channel](project_gh295_advisory_note_channel.md) — 4 sub-items already closed; only the systemic half is live; PLUS the 2 shipped parser defects (indent mis-attribution, wrapper loss) and AC1.8's supersession.
 - [Reproduce advisory figures at defect scope](feedback_reproduce_advisory_figures_at_defect_scope.md) — a reviewer's "47 of 300" was whole-file, was 19 at the real scope, and the unmeasured sibling defect was 79.
 - [Protocol amendments don't propagate](project_protocol_amendments_do_not_propagate.md) — the inlined block is TRIMMED (escalation section reaches no persona); enumerate all 6 surfaces; bump version BEFORE `--update` or it no-ops.
+- [Persona-audit 11-findings spec (#428)](project_persona_audit_11_findings_spec.md) — settled .fail-append rationale + 4 premise corrections; marker-verify parses line 2 as a note; adapter hook libs ARE generated, protocol ports are not.

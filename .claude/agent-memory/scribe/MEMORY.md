@@ -1,5 +1,7 @@
 # Memory index
 
+- [gh429 advisory dispatch glossary](project_gh429_advisory_dispatch_glossary.md) — new Mode:advisory route-gate token defined in CONTEXT.md; split-dispatch pattern expected to recur in this batch (gh430+)
+
 - [Verify plan premise freshness](feedback_verify_plan_premise_freshness.md) — gh354 FAIL: a plan's invariant is dated evidence; re-measure negative claims and check sibling glossary entries before minting
 - [gh354 FAIL fix](gh354_fail_fix_completion.md) — dashboard trust anchor is the confirmation code, not an absent write path; `.claude/milestone-audit/` gitignore + cleanup enforcement still open
 - [gh354 Dispatch A completion](project_gh354_dispatchA_completion.md) — ADR-0030 + 3 glossary entries (decision surface, milestone findings record, composed decision command); live-rederived ADR number caught a stale spec guess by 9 — SUPERSEDED in part by the FAIL fix above

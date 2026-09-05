@@ -253,6 +253,36 @@ your step's subject, either add a probe or explicitly label the criterion an
 The generalization: a green test proves what it probes, and the burden is on me
 to know which.
 
+**Twelfth trap - a criterion the IMPLEMENTER is not permitted to run
+(2026-09-04, persona-audit spec).** I authored `grep -c 'mkdir -p
+.claude/reviewed' agents/reviewer.md` as a survival pin. Running it, my own
+Bash call was refused by `reviewed-path-gate.sh`: the gate scans command TEXT,
+and the marker directory appearing inside a quoted word is a write-position
+match for every non-reviewer identity. The criterion is perfectly correct and
+perfectly unrunnable by the lead-programmer who must verify its own work — the
+reviewer could run it (it holds the grant), so this would have surfaced as a
+mysterious mid-unit block rather than a clean failure. Distinct from every
+earlier trap: the command is right, the target is right, the measurement is
+right, and the AUTHOR'S OWN IDENTITY is what makes it unexecutable.
+
+**How to apply (executability by identity):** before shipping a criterion,
+ask "which identity runs this, and is that identity permitted to?" Never quote
+`.claude/reviewed/` (or any other gated path) inside a criterion — pin a
+neighbouring fragment instead (`mkdir -p` alone worked). The general rule: a
+criterion must be runnable by the persona that will be held to it, not merely
+by me. Running each criterion myself catches this for free, which is the whole
+argument for running them.
+
+Same session, **traps five/seven/wrapped-literal recurred together and all
+five defects were found ONLY by executing the commands**: two greps pinned
+`no append/rotation mechanism`, which WRAPS in both target files (returned 0,
+vacuous); `state_(append|write)_unit_marker` already matched twice
+(green before any work); and a port assertion greped a token both ports
+already contained. Five defective criteria in one authoring pass, zero
+detectable by re-reading. The measured lesson is not "be careful" — it is
+that re-reading a criterion has never once found one of these, and running it
+has found every one.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
 [[verify-deferred-issue-premises]],
 [[docs-units-need-claim-anchored-criteria]], and
