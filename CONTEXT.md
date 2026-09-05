@@ -1635,7 +1635,7 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   it in [[read-only mode]] — refusing both bundle invocation (`/api/invoke`) and
   decision writes (`/api/decision/*`). This launch-mode split exists because the
   launch token is an [[execution credential]], not a read credential. Documented in
-  `README.md`'s "Microworld dashboard" section (`README.md:177`). Distinct from
+  `README.md`'s "Microworld dashboard" section (`README.md:263`). Distinct from
   **Microworld** (an individual bundle's rendered dashboard entry a human
   explores) and **Microworld bundle** (the gitignored `microworlds/<unit-slug>/`
   directory the dashboard renders) — this entry is the process/UI as a whole,
