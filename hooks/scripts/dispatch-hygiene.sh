@@ -59,7 +59,13 @@
 # commit-anchored check narrows this only in the provably-safe direction: it
 # can decline to fire when a marker's `commit:` SHA is positively proven
 # unreachable from HEAD, never the reverse - anything it cannot verify (no
-# field, a malformed token, no git repo) still fires.
+# field, a malformed token, no git repo) still fires. H3 does not parse a
+# `Mode: advisory` second line (see reviewer-route-gate-core.sh and
+# agents/orchestrator.md's "Review routing" section): a legitimate advisory
+# reviewer dispatch onto an already-PASSed unit still trips H3 exactly like
+# any other re-dispatch, since H3's re-dispatch check runs independently of
+# the route-gate's stamp suppression. This is a documented interaction, not
+# a defect - H3's own matching/blocking logic is unchanged by `Mode: advisory`.
 #
 # H4 checks LABELS, plus a MINIMAL SUBSTANCE FLOOR (Step 7a). It forces a
 # well-LABELLED dispatch whose eight `## ` headings each carry at least one

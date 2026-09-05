@@ -128,6 +128,11 @@ coupling was lost. One deliberate exception, not an omission to fix: a
 second, advisory reviewer dispatch on a unit that already holds a
 format-valid PASS marker is not stamped at all, because that dispatch owns
 no verdict; it is expected to end its turn without writing any marker.
+The same exception applies when you deliberately want a report-only
+dispatch up front: add `Mode: advisory` as the **literal second non-blank
+line**, immediately after `Unit: <id>`. `reviewer-route-gate.sh` recognizes
+that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
+the review audit log instead.
 When you dispatch the reviewer as a background task, write
 `defer: reviewer dispatched (agent <id>), awaiting verdict` into the pending-
 review flag in that same turn. The pending-review flag's `defer:` is sticky

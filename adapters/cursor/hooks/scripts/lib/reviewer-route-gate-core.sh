@@ -70,6 +70,19 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
     case "$unit_id" in
       */*|*..*) ;;
       *)
+        second_line=""
+        seen_first=false
+        while IFS= read -r line; do
+          [ -n "${line//[[:space:]]/}" ] || continue
+          if [ "$seen_first" = true ]; then second_line="$line"; break; fi
+          seen_first=true
+        done <<< "$prompt"
+
+        if [[ $second_line =~ ^Mode:[[:space:]]+advisory[[:space:]]*$ ]]; then
+          audit_append "$review_audit" "advisory-dispatch=$unit_id"
+          exit 0
+        fi
+
         reviewed_dir="${dot}/reviewed"
         pass_marker="${reviewed_dir}/${unit_id}.pass"
         pass_valid=false

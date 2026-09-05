@@ -167,6 +167,31 @@ else
 fi
 
 
+# --- route-gate-advisory-mode-no-stamp: "Unit: <id>" first line + "Mode: advisory" second line -> no stamp, advisory-dispatch= audit line ---
+dir="$(make_project advisory-mode)"
+payload_advisory="$(reviewer_payload $'Unit: adv-1\nMode: advisory\n\nAdvisory look, no verdict expected.')"
+rc=0
+run_route_gate "$dir" "$payload_advisory" || rc=$?
+if [ "$rc" = 0 ] && [ "$(stamp_count "$dir")" = 0 ] \
+   && grep -q '^advisory-dispatch=adv-1$' "$dir/.claude/review-audit.log"; then
+  echo "OK   (route-gate-advisory-mode-no-stamp) Mode: advisory on line 2 -> no stamp, advisory-dispatch= logged"
+else
+  echo "FAIL (route-gate-advisory-mode-no-stamp) unexpected stamp, exit, or missing audit line (rc=$rc)"
+  fail=1
+fi
+
+# --- route-gate-advisory-mode-wrong-position: "Mode: advisory" on the third non-blank line -> stamp still written (must be positionally anchored to line 2) ---
+dir="$(make_project advisory-mode-wrong-position)"
+payload_advisory_wrong="$(reviewer_payload $'Unit: adv-2\nReview this.\nMode: advisory\n')"
+rc=0
+run_route_gate "$dir" "$payload_advisory_wrong" || rc=$?
+if [ "$rc" = 0 ] && [ "$(stamp_count "$dir")" = 1 ]; then
+  echo "OK   (route-gate-advisory-mode-wrong-position) Mode: advisory on line 3 -> not recognized, stamp still written"
+else
+  echo "FAIL (route-gate-advisory-mode-wrong-position) expected exit 0 and stamp (rc=$rc, stamp_count=$(stamp_count "$dir"))"
+  fail=1
+fi
+
 # --- route-gate-never-blocks: re-run all five payloads above (fresh project dirs); assert exit 0 across the board ---
 never_blocks_fail=0
 d1="$(make_project nb-1)"; rc=0; run_route_gate "$d1" "$payload1" || rc=$?; [ "$rc" = 0 ] || never_blocks_fail=1
