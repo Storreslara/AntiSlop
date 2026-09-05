@@ -28,3 +28,4 @@
 - [gh295-1 state-access.sh sourcing trap](gh295_state_access_sh_trap.md) — hook functions sourcing state-access.sh with set -euo pipefail must guard non-zero returns with `|| true` or fail silently
 - [gh295 "surface" term for Step 3](gh295_surface_term_for_step3.md) — marker-audit flag introduces fourth meaning of "surface"; Step 3 scribe should resolve via glossary entry or rename
 - [gh295-2 note classification feature](gh295_2_note_classification_feature.md) — reviewer now tags non-blocking notes NOTE[spec]/NOTE[code], spec-master sweeps them; five gaps flagged for future maintenance
+- [gh354 final PASS completion](gh354_final_pass_completion.md) — Step 5 terminal verdict 2026-09-04; 3 glossary entries + ADR-0030 + D8 staleness record + 5 reviewer non-blocking notes (self-ref pattern, scope tension, filename slug, gitignore/cleanup gaps, gate over-match)
