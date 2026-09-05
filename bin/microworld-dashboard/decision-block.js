@@ -89,7 +89,7 @@ function composeEscalationDecisionBody(context) {
   assertNoNewline(by, 'by');
   // reason legitimately supports multi-line free text on the terminal
   // copy-paste path (D-6 rule 2's heredoc wrapping exists precisely for
-  // this, and Test (e) in tests/dashboard-decision-block.test.js pins a
+  // this, and Test (e) in tests/microworld/dashboard-decision-block.test.js pins a
   // "line one\nline two" reason as intentional). The newline-injection
   // risk is specific to via: 'dashboard' -- the server-side write sink
   // (server.js POST /api/decision/arm) fed by untrusted HTTP JSON, where

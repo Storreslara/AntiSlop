@@ -114,7 +114,7 @@
   </div>
 
   <!-- Injected verbatim by server.js's GET / handler from feedback-block.js
-       (the pure formatter also required directly by tests/dashboard-feedback.test.js).
+       (the pure formatter also required directly by tests/microworld/dashboard-feedback.test.js).
        This is the ONE implementation of the feedback block shape; the module
        script below calls the resulting page-global `formatFeedbackBlock` by
        name rather than reimplementing the markdown shape inline. -->
@@ -122,14 +122,14 @@
 
   <!-- Injected verbatim by server.js's GET / handler from decision-block.js
        (the pure composer also required directly by
-       tests/dashboard-decision-block.test.js). Composes command/block text
+       tests/microworld/dashboard-decision-block.test.js). Composes command/block text
        only; the module script below calls the resulting page-global
        `composeDecisionBlock` by name. -->
   <script>/* __DECISION_BLOCK_SOURCE__ */</script>
 
   <!-- Injected verbatim by server.js's GET / handler from markdown-lite.js
        (the pure renderer also required directly by
-       tests/dashboard-markdown-lite.test.js). Renders markdown as HTML
+       tests/microworld/dashboard-markdown-lite.test.js). Renders markdown as HTML
        for document panes; the module script below calls the resulting
        page-global `renderMarkdown` by name. -->
   <script>/* __MARKDOWN_LITE_SOURCE__ */</script>
