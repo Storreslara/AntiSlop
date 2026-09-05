@@ -101,6 +101,15 @@ bash_case "case c3 jq -r .gatedAgents persona-config.json" allowed \
   "jq -r .gatedAgents .claude/persona-config.json"
 
 echo
+echo "-- Set A: glob-pattern bypass closed (glob metachars must not evade normalize_path substring match) --"
+bash_case "case h1 git add glob evading substring match (persona*.json)" blocked \
+  "git add .claude/persona*.json"
+bash_case "case h2 git add glob evading substring match (persona?config.json)" blocked \
+  "git add .claude/persona?config.json"
+bash_case "case h3 git add unrelated glob, no Set A match (agents/*.md)" allowed \
+  "git add .claude/agents/*.md"
+
+echo
 echo "-- Configless GUARD: denies even with no persona-config.json anywhere on disk (not even .claude/) --"
 bare="$tmproot/bare"
 mkdir -p "$bare"

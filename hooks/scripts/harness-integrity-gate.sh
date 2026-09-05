@@ -99,7 +99,7 @@ fi
 # neither hits) the per-word normalize_path fallback for obfuscated
 # spellings (doubled slashes, `.`/`..` segments).
 set_a_mentioned() {
-  local cmd="$1" rest chunk ws=$' \t\n'
+  local cmd="$1" rest chunk norm lit ws=$' \t\n'
   case "$cmd" in
     *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
       return 0 ;;
@@ -115,10 +115,23 @@ set_a_mentioned() {
     chunk="${rest%%[$ws]*}"
     case "$chunk" in
       *.claude*)
-        case "$(normalize_path "$chunk")" in
+        norm="$(normalize_path "$chunk")"
+        case "$norm" in
           *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
             return 0 ;;
         esac
+        # A glob-metachar chunk (*, ?, [...]) that CONTAINS no Set A literal
+        # as a substring can still MATCH one as a whole path (e.g. a
+        # `persona*.json` glob under .claude/ matches the real persona-config
+        # file without containing its name as a contiguous substring) -
+        # bash's own `[[ lit == pattern ]]` glob match against each literal,
+        # no fork/subshell needed.
+        for lit in "$persona_cfg" "$review_log" "$review_log.seal" \
+                   "$dispatch_log" "$dispatch_log.seal" \
+                   "$microworld_log" "$microworld_log.seal" \
+                   "$wip_log" "$wip_log.seal"; do
+          [[ "$lit" == $norm ]] && return 0
+        done
         ;;
     esac
     [ "$chunk" != "$rest" ] || return 1
