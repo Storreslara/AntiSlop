@@ -95,16 +95,17 @@ fi
 # number in tests/harness-integrity-gate.test.sh (C2.3), because this fires
 # on every Bash call in the session and a careless per-word fork is what
 # costs 9ms -> 6.0s on a crafted 3000-word command
-# (reviewed-path-gate.sh:63-71) - then a quote-stripped test, then (only if
-# neither hits) the per-word normalize_path fallback for obfuscated
-# spellings (doubled slashes, `.`/`..` segments).
+# (reviewed-path-gate.sh:63-71) - then a quote- and backslash-stripped
+# test, then (only if neither hits) the per-chunk normalize_path fallback
+# for obfuscated spellings (doubled slashes, `.`/`..` segments, globs,
+# brace groups).
 set_a_mentioned() {
-  local cmd="$1" rest chunk norm lit ws=$' \t\n'
+  local cmd="$1" rest chunk norm g lit pre post sep=$' \t\n;|&<>()`'
   case "$cmd" in
     *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
       return 0 ;;
   esac
-  rest="${cmd//$'\047'/}"; rest="${rest//$'\042'/}"
+  rest="${cmd//$'\047'/}"; rest="${rest//$'\042'/}"; rest="${rest//\\/}"
   case "$rest" in
     *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
       return 0 ;;
@@ -112,7 +113,7 @@ set_a_mentioned() {
     *) return 1 ;;
   esac
   while :; do
-    chunk="${rest%%[$ws]*}"
+    chunk="${rest%%[$sep]*}"
     case "$chunk" in
       *.claude*)
         norm="$(normalize_path "$chunk")"
@@ -125,12 +126,28 @@ set_a_mentioned() {
         # `persona*.json` glob under .claude/ matches the real persona-config
         # file without containing its name as a contiguous substring) -
         # bash's own `[[ lit == pattern ]]` glob match against each literal,
-        # no fork/subshell needed.
+        # no fork/subshell needed. Two normalizations keep this test as
+        # permissive-to-detect as the substring cases above, which match a
+        # literal ANYWHERE in the chunk while `==` anchors to all of it:
+        #   - the chunking above splits on shell metacharacters, not just
+        #     whitespace, so a flush `;`/`|`/`>`/`)` cannot ride along on the
+        #     right and defeat the match;
+        #   - every Set A literal starts with `.claude/`, so re-anchoring the
+        #     candidate at its first `.claude` discards left-side junk (an
+        #     absolute or `$VAR/`-prefixed path, a `F=` assignment).
+        # Brace groups are not glob syntax, so each `{...}` then collapses to
+        # `*` - a deliberate over-approximation (every path the expansion
+        # could produce is still covered, plus some that it could not),
+        # matching this gate's fail-closed stance everywhere else.
+        g=".claude${norm#*.claude}"
+        while [[ "$g" == *'{'*'}'* ]]; do
+          pre="${g%%\{*}"; post="${g#"$pre"\{}"; g="$pre*${post#*\}}"
+        done
         for lit in "$persona_cfg" "$review_log" "$review_log.seal" \
                    "$dispatch_log" "$dispatch_log.seal" \
                    "$microworld_log" "$microworld_log.seal" \
                    "$wip_log" "$wip_log.seal"; do
-          [[ "$lit" == $norm ]] && return 0
+          [[ "$lit" == $g ]] && return 0
         done
         ;;
     esac

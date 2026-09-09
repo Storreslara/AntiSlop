@@ -110,6 +110,69 @@ bash_case "case h3 git add unrelated glob, no Set A match (agents/*.md)" allowed
   "git add .claude/agents/*.md"
 
 echo
+echo "-- Set A: glob bypass stays closed for ALL nine literals when shell metacharacters sit flush against the pathspec --"
+# h1/h2 above only cover one literal, with the glob as the final token and no
+# adjacent punctuation. Chunking that splits on whitespace ALONE lets a single
+# flush metachar (`;` `|` `>` `(` `)` `&`) carry into the chunk and defeat the
+# glob match, so sweep every Set A literal x two glob spellings x six command
+# shapes. Both spellings are chosen to contain no Set A literal as a substring
+# (except the `.seal` members' tail-`?` form), so they exercise the glob path
+# rather than the cheap substring cases above.
+t_persona_cfg=".claude/persona-config.json"
+t_review_log=".claude/review-audit.log"
+t_dispatch_log=".claude/dispatch-audit.log"
+t_microworld_log=".claude/microworld-audit.log"
+t_wip_log=".claude/wip-audit.log"
+
+for lit in "$t_persona_cfg" "$t_review_log" "$t_review_log.seal" \
+           "$t_dispatch_log" "$t_dispatch_log.seal" \
+           "$t_microworld_log" "$t_microworld_log.seal" \
+           "$t_wip_log" "$t_wip_log.seal"; do
+  leaked=0; leaks=""; total=0
+  for g in "${lit%?}?" "${lit%%-*}*${lit##*.}"; do
+    for cmd in "git add $g" "git add $g; git commit -m x" "git add $g|cat" \
+               "git add $g>/dev/null" "(git add $g)" "rm -f $g && echo done"; do
+      total=$((total + 1))
+      run "$(jq -n --arg c "$cmd" '{tool_name:"Bash",tool_input:{command:$c}}')" "$proj"
+      if [ "$rc" != 2 ]; then leaked=$((leaked + 1)); leaks="$leaks {$cmd}"; fi
+    done
+  done
+  if [ "$leaked" = 0 ]; then
+    pass "case h4 [$lit] all $total glob+metachar spellings blocked"
+  else
+    bad "case h4 [$lit] $leaked/$total glob+metachar spellings ALLOWED:$leaks"
+  fi
+done
+
+echo
+echo "-- Set A: escape/expansion spellings that name a protected file without spelling it --"
+bash_case "case h5 backslash-escaped glob metachar (persona\\*.json)" blocked \
+  "git add .claude/persona\\*.json"
+bash_case "case h6 backslash-escaped glob, audit log" blocked \
+  "rm -f .claude/review-audit\\*.log"
+bash_case "case h7 brace expansion naming the protected config" blocked \
+  "git add .claude/{persona-config,other}.json"
+bash_case "case h8 brace expansion naming an audit log" blocked \
+  "rm -f .claude/{review-audit,other}.log"
+bash_case "case h9 brace expansion, no Set A match (agents/commands *.md)" allowed \
+  "git add .claude/{agents,commands}/*.md"
+
+echo
+echo "-- Set A: glob spellings with junk to the LEFT of the pathspec (the == test anchors; the substring cases above do not) --"
+bash_case "case h10 absolute-path glob" blocked \
+  "git add /home/u/repo/.claude/persona*.json"
+bash_case "case h11 absolute-path glob, audit log" blocked \
+  "rm -f /home/u/repo/.claude/review-audit*.log"
+bash_case "case h12 \$VAR-prefixed glob" blocked \
+  "git add \$CLAUDE_PROJECT_DIR/.claude/persona*.json"
+bash_case "case h13 assignment-prefixed glob" blocked \
+  "F=.claude/persona*.json; git add \$F"
+bash_case "case h14 absolute-path glob, no Set A match (agents/*.md)" allowed \
+  "git add /home/u/repo/.claude/agents/*.md"
+bash_case "case h15 .claude-lookalike directory, no Set A match" allowed \
+  "grep -rn TODO docs/.claude-notes/*.json"
+
+echo
 echo "-- Configless GUARD: denies even with no persona-config.json anywhere on disk (not even .claude/) --"
 bare="$tmproot/bare"
 mkdir -p "$bare"

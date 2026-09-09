@@ -42,14 +42,27 @@ the protected persona-config file via a glob spelling — e.g. `persona*.json`
 under `.claude/` — on the theory that the gate's Bash-branch check is a
 literal substring match, not glob-aware. That was true of the gate at the
 time, and the glob was in fact a genuine security-gate bypass: it evaded
-Set A detection by construction. It has been closed in this same batch of
-work (`hooks/scripts/harness-integrity-gate.sh`'s `set_a_mentioned()`
-function now also glob-matches each Set A literal against any
-`.claude`-containing chunk, so a glob that would match the real file no
-longer slips through — note there is no separate `lib/` copy of this
-function; it lives directly in the top-level dispatcher script). That
-section is retracted; do not use it, and do not invent any other workaround
-(glob, obfuscated spelling, or otherwise) that evades the gate's detection.
+Set A detection by construction. That section is retracted; do not use it,
+and do not invent any other workaround (glob, brace group, escape, or other
+obfuscated spelling) that evades the gate's detection.
+
+What the closing change actually covers, stated precisely (an earlier
+version of this paragraph over-claimed and drew a FAIL):
+`hooks/scripts/harness-integrity-gate.sh`'s `set_a_mentioned()` now
+glob-matches each Set A literal against any `.claude`-containing chunk,
+having first (a) chunked on shell metacharacters as well as whitespace, so
+flush trailing punctuation cannot ride into the pattern, (b) stripped
+backslashes alongside quotes, so an escaped metachar still reads as a glob,
+(c) re-anchored the candidate at its first `.claude`, so an absolute or
+`$VAR/`-prefixed spelling still matches, and (d) collapsed each `{...}`
+brace group to `*`. So: **any spelling that still contains the literal
+substring `.claude` and would expand to a protected file is detected.**
+That is the whole claim — it is NOT "no glob can slip through". A spelling
+that hides the `.claude` segment itself (e.g. a `.c*/` prefix glob) is
+still allowed, a known and deliberately out-of-scope residual of the
+`.claude` substring gate. Note there is no separate `lib/` copy of this
+function; it lives directly in the top-level dispatcher script, mirrored
+byte-identically to `.claude/hooks/scripts/harness-integrity-gate.sh`.
 
 The sanctioned technique remains ONLY what's described two paragraphs above:
 verify `git status --short` is clean of anything but your own unit's files,
