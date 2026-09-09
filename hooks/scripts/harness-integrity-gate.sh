@@ -126,23 +126,40 @@ set_a_mentioned() {
         # `persona*.json` glob under .claude/ matches the real persona-config
         # file without containing its name as a contiguous substring) -
         # bash's own `[[ lit == pattern ]]` glob match against each literal,
-        # no fork/subshell needed. Two normalizations keep this test as
-        # permissive-to-detect as the substring cases above, which match a
-        # literal ANYWHERE in the chunk while `==` anchors to all of it:
+        # no fork/subshell needed. `==` anchors to the whole candidate where
+        # the substring cases above match a literal anywhere in the chunk, so
+        # two normalizations run first:
         #   - the chunking above splits on shell metacharacters, not just
         #     whitespace, so a flush `;`/`|`/`>`/`)` cannot ride along on the
         #     right and defeat the match;
         #   - every Set A literal starts with `.claude/`, so re-anchoring the
         #     candidate at its first `.claude` discards left-side junk (an
         #     absolute or `$VAR/`-prefixed path, a `F=` assignment).
-        # Brace groups are not glob syntax, so each `{...}` then collapses to
-        # `*` - a deliberate over-approximation (every path the expansion
-        # could produce is still covered, plus some that it could not),
-        # matching this gate's fail-closed stance everywhere else.
+        # It stays narrower than the substring cases on the RIGHT-hand side:
+        # junk inside the anchored span still defeats it, so `git add
+        # .claude/persona*.json.bak` is allowed while the substring cases do
+        # catch the same path spelled out in full with a `.bak` tail. Which
+        # bypass families this fallback closes, and which it deliberately
+        # leaves open, are enumerated as a table - never as a universal - in
+        # the family table of tests/harness-integrity-gate.test.sh and in the
+        # matching table of the lead-programmer memory note.
+        # Brace groups are not glob syntax, so each `{...}` collapses to `*`
+        # first - a deliberate over-approximation (it covers every path the
+        # group could expand to, plus some it could not), matching this
+        # gate's fail-closed stance everywhere else. Collapse INNERMOST-FIRST
+        # to a fixpoint: consuming an outer `{` together with the inner `}`
+        # leaves a stray `}` behind on a nested group and breaks the match.
+        # Each pass removes exactly one `}`, so the loop terminates; the
+        # substitution after it is a fail-closed backstop for unpaired
+        # braces. The sentinels below are extracted verbatim by that suite's
+        # fixpoint property test - keep them.
         g=".claude${norm#*.claude}"
+        # >>> brace-collapse
         while [[ "$g" == *'{'*'}'* ]]; do
-          pre="${g%%\{*}"; post="${g#"$pre"\{}"; g="$pre*${post#*\}}"
+          pre="${g%%\}*}"; post="${g#*\}}"; pre="${pre%\{*}"; g="$pre*$post"
         done
+        g="${g//\{/*}"; g="${g//\}/*}"
+        # <<< brace-collapse
         for lit in "$persona_cfg" "$review_log" "$review_log.seal" \
                    "$dispatch_log" "$dispatch_log.seal" \
                    "$microworld_log" "$microworld_log.seal" \

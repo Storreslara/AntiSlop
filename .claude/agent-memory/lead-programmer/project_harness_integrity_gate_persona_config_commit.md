@@ -46,23 +46,57 @@ Set A detection by construction. That section is retracted; do not use it,
 and do not invent any other workaround (glob, brace group, escape, or other
 obfuscated spelling) that evades the gate's detection.
 
-What the closing change actually covers, stated precisely (an earlier
-version of this paragraph over-claimed and drew a FAIL):
-`hooks/scripts/harness-integrity-gate.sh`'s `set_a_mentioned()` now
-glob-matches each Set A literal against any `.claude`-containing chunk,
-having first (a) chunked on shell metacharacters as well as whitespace, so
-flush trailing punctuation cannot ride into the pattern, (b) stripped
-backslashes alongside quotes, so an escaped metachar still reads as a glob,
-(c) re-anchored the candidate at its first `.claude`, so an absolute or
-`$VAR/`-prefixed spelling still matches, and (d) collapsed each `{...}`
-brace group to `*`. So: **any spelling that still contains the literal
-substring `.claude` and would expand to a protected file is detected.**
-That is the whole claim — it is NOT "no glob can slip through". A spelling
-that hides the `.claude` segment itself (e.g. a `.c*/` prefix glob) is
-still allowed, a known and deliberately out-of-scope residual of the
-`.claude` substring gate. Note there is no separate `lib/` copy of this
-function; it lives directly in the top-level dispatcher script, mirrored
-byte-identically to `.claude/hooks/scripts/harness-integrity-gate.sh`.
+What the closing change actually covers, stated as a bounded table. Two
+earlier versions of this paragraph stated it as a universal with a single
+named exception; that is the same unbounded claim restated, one
+counterexample falsifies it, and it drew a FAIL both times. The table below
+is the claim — nothing broader is intended and nothing broader is true.
+
+`hooks/scripts/harness-integrity-gate.sh`'s `set_a_mentioned()` glob-matches
+each Set A literal against any `.claude`-containing chunk, having first
+(a) chunked on shell metacharacters as well as whitespace, so flush trailing
+punctuation cannot ride into the pattern, (b) stripped backslashes alongside
+quotes, so an escaped metachar still reads as a glob, (c) re-anchored the
+candidate at its first `.claude`, so an absolute or `$VAR/`-prefixed
+spelling still matches, and (d) collapsed brace groups to `*`
+innermost-first, repeating to a fixpoint, so a nested group cannot leave a
+stray brace behind. The guarantee, bounded: **a spelling is detected when a
+single chunk of the command both contains the literal `.claude` and
+glob-matches a Set A literal after those four normalizations.** A spelling
+outside that shape is not covered, and the residual table below names the
+two families that are known to sit outside it.
+
+The slugs are the shared token between this table and the family table in
+`tests/harness-integrity-gate.test.sh`, which machine-checks parity in both
+directions and re-derives each closed row's reachability — so this table
+cannot silently drift from the code the way the prose it replaced did.
+
+### Closed families (BLOCKED)
+
+| slug | representative spelling |
+|---|---|
+| `anchoring` | `git add .claude/persona*.json;` plus the pipe-to-`cat`, `>/dev/null` and `( )` shapes |
+| `backslash-escape` | `git add .claude/persona\*.json` (reachable via git's own pathspec globbing) |
+| `brace-depth1` | `git add .claude/{persona-config,x}.json` |
+| `prefixed-path` | `git add /abs/repo/.claude/persona*.json`, the `$CLAUDE_PROJECT_DIR/`-prefixed form, `F=.claude/persona*.json; git add $F` |
+| `brace-nested` | `git add .claude/{persona-config,{x,y}}.json` and `git add .claude/{{persona-config,q},x}.json` |
+
+### Documented residuals (ALLOWED on purpose — real, proven holes)
+
+| slug | representative spelling | why it is out of scope |
+|---|---|---|
+| `hidden-claude-segment` | `rm -f .c*/persona-config.json` | hides the `.claude` token the whole Bash branch keys on |
+| `wd-relative` | `cd .claude; rm -f persona-config.json`, `git -C .claude add persona*.json`, `a=.claude; b=…; git add $a/$b` | working-directory modelling, a different axis from glob detection; a text-scanning hook that fires on every Bash call would have to model `cd`/`pushd`/`-C`/subshell scoping to close it. Deferred deliberately by docs/plans/2026-09-09-debug-spec-harness-integrity-gate-hardening.md R1, with its own follow-up spec |
+
+### Accepted over-block (BLOCKED although it cannot reach this project's Set A)
+
+| slug | representative spelling |
+|---|---|
+| `foreign-claude-dir` | `rm -rf ~/.claude/*`, `rm -rf /tmp/x/.claude/*` |
+
+Note there is no separate `lib/` copy of `set_a_mentioned()`; it lives
+directly in the top-level dispatcher script, mirrored byte-identically to
+`.claude/hooks/scripts/harness-integrity-gate.sh`.
 
 The sanctioned technique remains ONLY what's described two paragraphs above:
 verify `git status --short` is clean of anything but your own unit's files,
