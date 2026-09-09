@@ -137,8 +137,10 @@ implementation work before it's reported done.
 **On by default.** When a `reviewer` is installed, a unit it would have passed
 is instead escalated to you if it meets the heavy-unit trigger: the reviewer
 snapshots the unit into `.claude/human-review/<task-id>/` (with `PACKET.md`,
-a literate `CHANGES.md`, and worked `EXAMPLES.md`) and turn-end blocks until
-you decide. The knob is `humanReviewMode` in `.claude/persona-config.json`:
+a literate `CHANGES.md`, and worked `EXAMPLES.md` — skipped, with a one-line
+reason recorded on the escalation marker, for pure docs/formatting/comment/
+rename changes with no behavioral surface) and turn-end blocks until you
+decide. The knob is `humanReviewMode` in `.claude/persona-config.json`:
 
 | Value | Behaviour |
 |---|---|
@@ -186,6 +188,16 @@ The dashboard is never a gate. Route inventory and the trust boundary:
 Residual risks, gate edge cases, and accepted trade-offs live in
 [`docs/design.md`](docs/design.md), [`docs/trust-model.md`](docs/trust-model.md),
 and the ADRs under [`docs/adr/`](docs/adr/).
+
+## What ships in the plugin vs. what setup writes per-project
+
+| Ships once (plugin) | Written per-project (setup) |
+|---|---|
+| Persona agents: orchestrator, explorer, lead-programmer (always); the rest (opt-in) | Persona selection + `.claude/persona-config.json` (commands, protected/gated paths, tracker, plugin version stamp) |
+| `coding-discipline` skill + the other vendored skills | The protocol inlined into each `.claude/agents/*.md` body + `.claude/protocol-digest.md` |
+| `install-antislop` skill (fresh install + `--update` fallback) and `bin/cli.js --update` (the normal resync path) | `.claude/settings.json` merge (plugins can't ship settings at all) |
+| 7 hooks (generic scripts reading runtime config) | wiki / `CONTEXT.md` / `docs/adr/` seeding (if `scribe` selected) |
+| `start-feature-team`, `update-antislop` commands | `.claude/constitution.md` (opt-in, never touched by `--update`) |
 
 ## Adding your own persona
 
