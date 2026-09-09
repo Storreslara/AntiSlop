@@ -169,6 +169,80 @@ a hook script that mechanically blocks an action rather than
   `reviewed-path-gate.sh`). Config-driven via `.claude/persona-config.json`.
 _Avoid_: marker-directory gate
 
+**Set A / Set B** (harness-integrity-gate sets):
+(unit harness-integrity-gate-hardening, 2026-09-09) — the two disjoint
+  categories of protected file paths in `hooks/scripts/harness-integrity-gate.sh`.
+  **Set A** (denied on both Write/Edit and Bash): the harness's own config and
+  audit-log surfaces (`.claude/persona-config.json`, `.claude/review-audit.log`,
+  `.claude/dispatch-audit.log`, `.claude/microworld-audit.log`,
+  `.claude/wip-audit.log`, and their `.seal` sidecars). **Set B** (denied on
+  Write/Edit only, deliberately absent from Bash): the gate's own registration
+  surface (`hooks/hooks.json`, `.claude/settings.json`,
+  `hooks/scripts/harness-integrity-gate.sh`). Set B is excluded from the Bash
+  branch by [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
+  because a text-only gate triggered by mere word presence in Bash commands would
+  necessarily fire on prose mentions, not just write attempts — the asymmetry is
+  ratified, not an oversight. Introduced together as a pair, not independently.
+
+**bypass family**:
+(unit harness-integrity-gate-hardening, 2026-09-09) — a class of obfuscation
+  techniques that could evade a textual-protection gate by disguising the true
+  form of a protected path. Examples: brace expansion (`{a,b}`), backslash escape
+  (`\*`), glob patterns (`*.json`), absolute/prefixed paths (`/abs/path/.claude/…`
+  or `$VAR/.claude/…`), variable indirection (`F=.claude/x; git add $F`), and
+  working-directory manipulation (`cd .claude; rm -f x`). A **family** is an
+  enumerated set of related spellings that share a common obfuscation principle.
+  Each family is either *closed* (all reachable instances blocked), *residual*
+  (deliberately left out of scope, documented as known limitation), or
+  *over-blocking* (blocked although unreachable in this project). See [[family table]],
+  [[documented residual]], [[accepted over-block]].
+
+**family table**:
+(unit harness-integrity-gate-hardening, 2026-09-09) — a frozen, machine-checked
+  enumeration of **bypass family** closure status (closed, residual, or over-block)
+  serving as the security gate's formal guarantee, replacing unbounded universal
+  claims ("detects everything") that were disproven by counterexamples. A **family table**
+  is specific to a particular gate and a particular unit; it names each family slug,
+  supplies a representative spelling that exhibits the obfuscation technique, and
+  documents why (if applicable) the family sits outside the gate's scope. The table's
+  slug tokens serve as shared identifiers between the gate's test suite (e.g.,
+  `tests/harness-integrity-gate.test.sh:187-194`) and its documentation (e.g.,
+  lead-programmer memory note `project_harness_integrity_gate_persona_config_commit.md:74-96`),
+  enabling machine-checked parity in both directions. Introduced by the principle
+  that a security gate cannot claim to prevent "everything" — instead it must
+  enumerate exactly which **bypass families** it does block, which it leaves residual,
+  and which it over-blocks. See [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md).
+
+**documented residual**:
+(unit harness-integrity-gate-hardening, 2026-09-09) — a known, deliberate, and
+  recorded **bypass family** that lies outside the scope of a particular security-gate
+  hardening unit, left as an accepted limitation rather than closed. Sits in the
+  **family table** as a row with slug, representative spelling, and a written
+  explanation of why the family sits out of scope (e.g., "requires modeling
+  working-directory state, a different axis from glob detection"). Distinguished
+  from a *false negative* (missed bypass) by being explicitly named in the table
+  and documented as intentional. Example: `wd-relative` in harness-integrity-gate's
+  family table (working-directory manipulation spellings like `cd .claude; rm -f x`)
+  is documented as residual because a text-scanning hook would require shell-state
+  modeling to close it, deferred to a follow-up spec. A documented residual is
+  *expected to pass* (ALLOWED verdicts) in the test suite, not treated as a test
+  failure. See [[accepted over-block]], [[bypass family]], [[family table]].
+
+**accepted over-block**:
+(unit harness-integrity-gate-hardening, 2026-09-09) — a **bypass family** that a
+  security gate blocks (returns BLOCKED verdict) even though the spellings in that
+  family cannot reach the protected file(s) in this specific project, hence the gate
+  is "over-blocking" in practice. Distinguished from a *false positive* (a legitimate
+  write incorrectly denied) by being intentional, documented in the **family table**,
+  and test-verified to actually reach the gate's trigger (the gate genuinely blocks
+  it). Justification: the gate's logic is simpler, more general, or more robust if
+  it treats the family identically to reachable bypasses, even though this project's
+  specific directory structure makes it unreachable. Example: `foreign-claude-dir`
+  in harness-integrity-gate's family table (`rm -rf ~/.claude/*`, `rm -rf /tmp/x/.claude/*`)
+  is blocked because it names a `.claude`-containing path, though this project's
+  Set A is confined to the repo's own `.claude/` directory, not `~/.claude/`. See
+  [[documented residual]], [[bypass family]], [[family table]].
+
 **Reporter**:
 (unit #132, 2026-08-10) — a hook script that observes and logs an
   action without blocking it; the formal antonym of **Gate**. Unlike a gate,

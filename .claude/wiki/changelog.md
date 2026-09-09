@@ -3,6 +3,10 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-09-09 (harness-integrity-gate-hardening-3 debug-spec closure — scribe duty)
+- **Completed unit harness-integrity-gate-hardening-3 (debug-spec, 2-FAIL cap escalation) — scribe recorded institutional knowledge after reviewer PASS.**
+  This debug spec closed a remaining bypass in `hooks/scripts/harness-integrity-gate.sh`'s glob-detection fallback (non-recursive brace-collapse at arbitrary nesting depth). Three new standing conventions for security-gate hardening codified: (1) **family table** replaces unbounded universal claims, documenting each **bypass family** as closed/residual/over-block with reasons; (2) **reachability precondition** — BLOCKED test rows credited only after independent proof the spelling reaches the protected file (not syntactic assertion); (3) **source-block extraction sentinels** — `# >>> … # <<<` marks source shipped verbatim to property tests. Six glossary entries added to `CONTEXT.md`: `Set A / Set B`, `bypass family`, `family table`, `documented residual`, `accepted over-block`. Two bypass families remain deliberately out of scope (documented residuals): `wd-relative` (working-directory modelling, different axis) and `hidden-claude-segment` (hides `.claude` token from Bash branch). **Affected files:** 1 (CONTEXT.md — glossary entries only; no source/test changes touched by scribe). Fixed commit `f52bec2`. Spec: `docs/plans/2026-09-09-debug-spec-harness-integrity-gate-hardening.md`. No tracker issue (debug-spec fast path).
+
 ## 2026-09-04 (Step 6 of microworld-silo plan, Dispatch A of 2 — scribe, review pending)
 - **Dispatch A of unit gh332 (issue #332, Step 6 of `docs/plans/2026-08-11-microworld-silo.md`,
   the plan's last step) — scribe recorded the institutional record for the silo reorg.**
