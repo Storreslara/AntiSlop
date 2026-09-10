@@ -385,9 +385,11 @@ _Avoid_: classifier result (use specific state names or "Marker classifier state
   `templates/persona-config.schema.json`, paths: `dispatchHygiene` sibling) controlling
   `stop-gate.sh`'s behavior when `marker-commit-check.sh` runs. Defined modes: `off`
   (no audit line written, classifier not invoked), `warn` (audit line written, classifier
-  runs but does not block), `block` (audit line written, classifier runs and blocks on
-  `mismatch` at stop-gate.sh:290). Parallel to [[Dispatch hygiene]]'s `dispatchHygiene.mode`
-  posture. Consumed by `stop-gate.sh:276,284` in its review-join validation loop.
+  runs but does not block), `block` (audit line written, classifier runs and blocks when
+  the verdict cites a commit that does not appear to belong to the unit). Parallel to
+  [[Dispatch hygiene]]'s `dispatchHygiene.mode` posture. Consumed by the marker-commit-check
+  classification in `stop-gate.sh`'s `review_join_state()` function after satisfied stamps
+  are identified in the review-join validation loop.
 
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
@@ -533,13 +535,21 @@ the **Gate** applied at the `PreToolUse`/`Agent`
 
 **review-join stamp**:
 (0.28.0+) `.claude/.review-join.<unit-id>`, one per
-  unit currently under review, written by `reviewer-route-gate.sh` when a
-  reviewer is dispatched and consumed by `stop-gate.sh` when that unit's verdict
-  marker is found. Contains a single line with timestamp, unit id, and optional
-  prior marker metadata for concurrency detection. Replaces the global
-  clear-watermark; enables per-unit verdict coupling without cross-dispatch
-  interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md) for design
-  and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
+  unit currently under review. Written unconditionally by `reviewer-route-gate.sh`
+  for any reviewer dispatch carrying a well-formed `Unit:` line, and consumed by
+  `stop-gate.sh`'s `review_join_state()` function when that unit's verdict marker
+  is found. When a valid PASS marker already exists, the stamp records `prior=pass`
+  and `prior_mtime=<marker-mtime>` for concurrency detection; this ensures a
+  re-dispatched reviewer must write a newer verdict or be blocked at `SubagentStop`.
+  Replaces the global clear-watermark; enables per-unit verdict coupling without
+  cross-dispatch interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md)
+  for design and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
+**advisory review-join stamp** (M2, Step 3): a variant `.claude/.review-join.<unit-id>.advisory`
+  written by the route gate when a `Mode: advisory` dispatch is made (no ordinary PASS).
+  First line carries `unit=<id> mode=advisory`. Distinct filename prevents overwriting
+  a real stamp for the same unit while matching the `.review-join.*` glob. Advisory
+  stamps count toward `JOIN_STAMP_COUNT` and enter the [[scoped unit set]], but are
+  never counted as "satisfied" for pending-review flag clearing (M3).
 _Avoid_: clear-watermark
 
 **scoped unit set** / **marker relevance scoping**:
