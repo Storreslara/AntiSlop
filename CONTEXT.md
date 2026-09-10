@@ -2226,6 +2226,25 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   contiguous non-whitespace run — if they span different words or sit in separate
   quoted regions, the id is allowed even if it contains both tokens.
 
+**unit-id charclass** / **unit-id grammar**:
+(unit gate-audit-step5, 2026-09-10) — the canonical character restrictions for
+  unit ids used by gate scripts (`dispatch-hygiene.sh`, `marker-write.sh`,
+  `reviewer-route-gate-core.sh`, `stop-gate-core.sh`, `human-decision-gate.sh`,
+  `task-gate.sh`, `reviewer-tier.sh`). The grammar is: first character
+  `[A-Za-z0-9]` (alphanumeric), remaining characters `[A-Za-z0-9._#-]` (plus
+  underscore, period, hash, and hyphen), maximum 64 characters total. The
+  **`UNIT_ID_CHARCLASS`** = `A-Za-z0-9._#-` is the canonical character class for
+  the tail; the **`UNIT_ID_RE`** = `^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$` is the
+  full regex. Deliberately includes **`#`** (the hash character) to permit ids
+  like `gh#348` without substitution. Defined as canonical helpers in
+  `hooks/scripts/lib/state-access.sh` (shared across all three adapter ports) and
+  exported via `unit_id_valid()` (traversal guard + regex validation),
+  `unit_id_sanitize()` (replace invalid chars with `_`), and `unit_id_marker_path()`
+  (derive marker file paths). Distinct from [[marker id charclass]] and
+  [[path-safe charclass]], which govern a different domain (the human-decision
+  gate's prose false-positive filtering for `.claude/human-review/` packet ids)
+  and are not interchangeable with this grammar.
+
 **path-shaped run**:
 (units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — a contiguous sequence of
   non-whitespace characters in the command text that contains both [[trigger
