@@ -51,6 +51,29 @@ if [ -f "$config" ] && [ -n "$target_type" ]; then
   fi
 fi
 
+# C1: unconditional dispatch-`name:` identity-forgery check. A `name:` field
+# resolving to a privileged persona must not be paired with a `subagent_type`
+# that doesn't match it - that's identity forgery, regardless of which
+# target_type-keyed block below would otherwise apply. Runs before every
+# target_type-keyed block; not gated on $config, unlike them. See
+# tests/reviewer-route-gate-caller.test.sh's derivation test for why this
+# array's membership is not a restatement to be edited freely.
+PRIVILEGED_PERSONAS=(reviewer orchestrator)
+if [ -n "$dispatch_name" ]; then
+  dispatch_persona="$(identity_persona_name "$dispatch_name")"
+  is_privileged=false
+  for p in "${PRIVILEGED_PERSONAS[@]}"; do
+    if [ "$dispatch_persona" = "$p" ]; then
+      is_privileged=true
+      break
+    fi
+  done
+  if [ "$is_privileged" = true ] && ! persona_matches_gate "$target_type" "$dispatch_persona"; then
+    echo "BLOCKED: this dispatch's \`name: \"$dispatch_name\"\` resolves to the privileged persona '$dispatch_persona', but its \`subagent_type\` ('$target_type') does not match it. A \`name:\` field cannot be used to forge a privileged identity. Fix: re-dispatch with a \`name\` matching the actual \`subagent_type\`, or drop \`name\` entirely." >&2
+    exit 2
+  fi
+fi
+
 if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
   if [ -n "$dispatch_name" ]; then
     dispatch_persona="$(identity_persona_name "$dispatch_name")"
