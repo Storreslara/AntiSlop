@@ -318,7 +318,7 @@ if [ "$is_gated" = true ]; then
     if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
   done <<< "$prompt"
 
-  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
+  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
     unit_id="${BASH_REMATCH[1]}"
     # Unreachable given the ERE above (no `/` in the class, and a leading
     # [A-Za-z0-9] rejects `..`), and kept deliberately: the ERE and the path
@@ -366,7 +366,7 @@ if [ "$is_gated" = true ]; then
   # paraphrase here would enforce something task-master never emits.
   if [ "$require_contract" = true ]; then
     missing=""
-    if [[ ! $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
+    if [[ ! $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
       missing="a 'Unit: <id>' first line"
     fi
     for heading in '## Objective' '## Retrieval' '## Affected files' \

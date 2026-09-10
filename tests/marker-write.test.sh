@@ -121,6 +121,16 @@ reject_case "malformed unit id (embedded space)" "" \
 reject_case "malformed unit id (65 chars, over the 64 cap)" "" \
   PASS "$(printf 'a%.0s' $(seq 1 65))" abc123 "criteria" \
   ".claude/reviewed/$(printf 'a%.0s' $(seq 1 65)).pass"
+echo
+echo "-- M5 drift reproduction: a unit id containing # round-trips (gate-audit-step5) --"
+rc=0
+run_helper FAIL 'gh#348' - 'defect' '.claude/reviewed/gh#348.fail' || rc=$?
+if [ "$rc" = 0 ] && [ -f "$proj/.claude/reviewed/gh#348.fail" ] && marker_format_valid "$proj/.claude/reviewed/gh#348.fail" 'gh#348' FAIL; then
+  pass "M5: marker-write.sh writes .claude/reviewed/gh#348.fail for a #-bearing unit id, unrewritten"
+else
+  bad "M5: marker-write.sh -> rc=$rc, expected a valid gh#348.fail marker"
+fi
+
 reject_case "PASS with a missing/empty commit" unitD.pass \
   PASS unitD "" "criteria" .claude/reviewed/unitD.pass
 reject_case "unknown verdict" unitE.pass \

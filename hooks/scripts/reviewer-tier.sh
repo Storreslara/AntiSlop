@@ -69,7 +69,7 @@ dot="${project_dir}/.claude"
 # marker directory anywhere, it cannot be evaluated either - unmeasurable, so
 # it fails closed like every other unmeasurable input.
 [ -n "$task_id" ] || opus
-safe_id="${task_id//[^a-zA-Z0-9._-]/_}"
+safe_id="$(unit_id_sanitize "$task_id")"
 [ -d "${dot}/reviewed" ] || opus
 if state_unit_marker_exists "$safe_id" fail; then
   opus

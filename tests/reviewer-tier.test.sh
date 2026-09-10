@@ -74,6 +74,8 @@ printf 'FAIL unit-fail 2026-08-01T00:00:00Z missing: constraint X\n' \
   > "$repo/.claude/reviewed/unit-fail.fail"
 printf 'PASS unit-pass 2026-08-01T00:00:00Z criteria: true\n' \
   > "$repo/.claude/reviewed/unit-pass.pass"
+printf 'FAIL gh#348 2026-08-01T00:00:00Z missing: constraint Y\n' \
+  > "$repo/.claude/reviewed/gh#348.fail"
 snap markers > /dev/null
 
 echo "-- required cases --"
@@ -86,6 +88,8 @@ run_case "(f) malformed range (unresolvable revs)"     opus   unit-1     "no-suc
 run_case "(g) malformed range (leading dash)"          opus   unit-1     "--output=/dev/null"
 run_case "(h) unit with an existing FAIL record"       opus   unit-fail  "$r_small"
 run_case "(i) a PASS record is not a disqualifier"     sonnet unit-pass  "$r_small"
+run_case "(ax) unit id with # matches its own FAIL record (M5 drift fix)" \
+                                                        opus   'gh#348'   "$r_small"
 
 echo "-- boundary sweep: MAX_CHANGED_LINES=40 --"
 run_case "(j) 39 changed lines (below the limit)"      sonnet unit-1     "$r_l39"

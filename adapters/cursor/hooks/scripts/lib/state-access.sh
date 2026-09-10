@@ -10,10 +10,37 @@ set -euo pipefail
 # Domain: Unit (keyed by unit id)
 # Markers: .pass, .fail, .blocked, .escalated, .directed, .review-join, human-review packet, DECISION
 
+# M5: the single unit-id grammar, shared by every hooks/scripts/ site that
+# validates, sanitizes or derives a marker path from a unit id. `#` is
+# accepted (five of the eight sites already accepted it and wrote real files
+# containing it before this consolidation).
+UNIT_ID_CHARCLASS='A-Za-z0-9._#-'
+UNIT_ID_RE="^[A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63}\$"
+
+unit_id_valid() {
+  local id="$1"
+  [[ "$id" =~ $UNIT_ID_RE ]] || return 1
+  case "$id" in
+    */*|*..*) return 1 ;;
+  esac
+  return 0
+}
+
+unit_id_sanitize() {
+  local raw="$1"
+  echo "${raw//[^${UNIT_ID_CHARCLASS}]/_}"
+}
+
+unit_id_marker_path() {
+  local unit_id="$1" ext="$2"
+  echo "${dot}/reviewed/${unit_id}.${ext}"
+}
+
 state_read_unit_marker() {
   local unit_id="$1"
   local marker_type="$2"  # pass, fail, blocked, escalated, directed
-  local marker_file="${dot}/reviewed/${unit_id}.${marker_type}"
+  local marker_file
+  marker_file="$(unit_id_marker_path "$unit_id" "$marker_type")"
 
   if [ -f "$marker_file" ]; then
     cat "$marker_file"
@@ -26,7 +53,8 @@ state_write_unit_marker() {
   local unit_id="$1"
   local marker_type="$2"  # pass, fail, blocked, escalated, directed
   local content="$3"
-  local marker_file="${dot}/reviewed/${unit_id}.${marker_type}"
+  local marker_file
+  marker_file="$(unit_id_marker_path "$unit_id" "$marker_type")"
 
   mkdir -p "$(dirname "$marker_file")"
   printf '%s\n' "$content" > "$marker_file"
@@ -35,7 +63,7 @@ state_write_unit_marker() {
 state_unit_marker_exists() {
   local unit_id="$1"
   local marker_type="$2"
-  [ -f "${dot}/reviewed/${unit_id}.${marker_type}" ]
+  [ -f "$(unit_id_marker_path "$unit_id" "$marker_type")" ]
 }
 
 state_read_review_join() {
@@ -297,6 +325,9 @@ state_init() {
 }
 
 # Export functions for sourcing scripts
+export -f unit_id_valid
+export -f unit_id_sanitize
+export -f unit_id_marker_path
 export -f state_read_unit_marker
 export -f state_write_unit_marker
 export -f state_unit_marker_exists

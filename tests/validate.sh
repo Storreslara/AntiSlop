@@ -592,6 +592,15 @@ else
 fi
 
 echo
+echo "== task-gate: TaskCompleted PASS-marker gate (Bash, gate-audit-step5) =="
+if bash tests/task-gate.test.sh; then
+  echo "OK   tests/task-gate.test.sh"
+else
+  echo "FAIL tests/task-gate.test.sh"
+  fail=1
+fi
+
+echo
 echo "== heavy-trigger: deterministic measured heavy-unit surface script (Bash) =="
 if bash tests/heavy-trigger.test.sh; then
   echo "OK   tests/heavy-trigger.test.sh"

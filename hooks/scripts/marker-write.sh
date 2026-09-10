@@ -26,10 +26,6 @@ set -euo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 : "${dot:=${CLAUDE_PROJECT_DIR:-.}/.claude}"
 
-# Same unit-id grammar dispatch-hygiene.sh already enforces elsewhere in this
-# repo: alphanumeric first character, then alphanumeric/`._#-`, <=64 chars.
-UNIT_ID_RE='^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$'
-
 usage_die() {
   echo "marker-write.sh: $1" >&2
   echo "Usage: marker-write.sh <PASS|FAIL|BLOCKED> <unit-id> <commit> <detail> <marker-path>" >&2

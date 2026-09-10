@@ -88,7 +88,7 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
     if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
   done <<< "$prompt"
 
-  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][A-Za-z0-9._#-]{0,63})[[:space:]]*$ ]]; then
+  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
     unit_id="${BASH_REMATCH[1]}"
     case "$unit_id" in
       */*|*..*) ;;

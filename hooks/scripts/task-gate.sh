@@ -53,7 +53,7 @@ case "$task_name" in
 esac
 
 [ -n "$raw_task_id" ] || exit 0
-task_id="${raw_task_id//[^a-zA-Z0-9._-]/_}"
+task_id="$(unit_id_sanitize "$raw_task_id")"
 marker="${project_dir}/.claude/reviewed/${task_id}.pass"
 
 marker_valid() {

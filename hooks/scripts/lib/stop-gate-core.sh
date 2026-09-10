@@ -258,7 +258,7 @@ review_join_state() {
     fi
 
     unit=""
-    if [[ $line =~ (^|[[:space:]])unit=([A-Za-z0-9][A-Za-z0-9._#-]{0,63})([[:space:]]|$) ]]; then
+    if [[ $line =~ (^|[[:space:]])unit=([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})([[:space:]]|$) ]]; then
       unit="${BASH_REMATCH[2]}"
     fi
     # Same traversal guard reviewer-route-gate.sh applies before it writes the

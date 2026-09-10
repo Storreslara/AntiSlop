@@ -379,6 +379,81 @@ test_fail_overwrites_cap() {
   [ "$entry_count" = "1" ] && pass "C10: exactly one directory entry regardless of overwrite count" || bad "C10: unexpected .fail entry count ($entry_count)"
 }
 
+# == M5: one shared unit-id grammar (gate-audit-step5, criteria 2, 3) ==
+# 2a/2b/2c are a file/line allowlist per spelling, not a bare count: a moved
+# line must not silently satisfy them (see docs/plans/2026-09-09-fable-gate-
+# audit-remediation.md Step 5, criterion 2). Scoped to hooks/scripts/ only -
+# never .claude/hooks/scripts/ or adapters/, which are generated (CC1).
+test_unit_id_grammar() {
+  local out
+
+  # 2a - spelling A (A-Za-z0-9._#-) has exactly one home: the
+  # UNIT_ID_CHARCLASS assignment itself.
+  out="$(git grep -c -F 'A-Za-z0-9._#-' -- hooks/scripts/ || true)"
+  if [ "$out" = "hooks/scripts/lib/state-access.sh:1" ]; then
+    pass "2a: spelling A has exactly one home (state-access.sh)"
+  else
+    bad "2a: expected exactly hooks/scripts/lib/state-access.sh:1, got: $out"
+  fi
+
+  # 2b - spelling B ([^a-zA-Z0-9._-]) survives only outside the unit-id
+  # domain: the agent_id/session_id sanitizers, asserted by file AND by the
+  # assigned-variable name on each line (not just a count) so that reaching
+  # "three remaining" by editing the wrong (non-unit-id) line still fails.
+  out="$(git grep -n -F '[^a-zA-Z0-9._-]' -- hooks/scripts/ || true)"
+  local b_lines
+  b_lines="$(echo "$out" | wc -l)"
+  if [ "$b_lines" = 3 ] \
+     && echo "$out" | grep -q '^hooks/scripts/lib/stop-gate-core.sh:.*agent_id=' \
+     && echo "$out" | grep -q '^hooks/scripts/lib/stop-gate-core.sh:.*session_id=' \
+     && echo "$out" | grep -q '^hooks/scripts/session-start.sh:.*session_id='; then
+    pass "2b: spelling B survives only at the agent_id/session_id sanitizers"
+  else
+    bad "2b: expected exactly the three agent_id/session_id lines, got: $out"
+  fi
+  if echo "$out" | grep -q 'state-access.sh'; then
+    bad "2b: state-access.sh must not appear (unit_id_sanitize spells its complement as [^\${UNIT_ID_CHARCLASS}])"
+  else
+    pass "2b: state-access.sh does not appear (complement is spelled via the variable)"
+  fi
+
+  # 2c - spelling C (A-Za-z0-9_#.-) is eliminated, but the allowance itself
+  # (human-decision-gate.sh's leading class and unbounded quantifier) stays -
+  # paired so this isn't satisfied by deleting the allowance outright.
+  out="$(git grep -l -F 'A-Za-z0-9_#.-' -- hooks/scripts/ || true)"
+  if [ -z "$out" ]; then
+    pass "2c: spelling C is eliminated"
+  else
+    bad "2c: spelling C still present in: $out"
+  fi
+  if grep -q '\[A-Za-z0-9_\]' hooks/scripts/human-decision-gate.sh \
+     && grep -q 'UNIT_ID_CHARCLASS' hooks/scripts/human-decision-gate.sh; then
+    pass "2c: human-decision-gate.sh's leading class and shared-charclass interpolation both still present"
+  else
+    bad "2c: human-decision-gate.sh no longer interpolates the shared charclass (allowance may have been deleted outright)"
+  fi
+
+  # 3 - traversal still rejected, and the per-site */*|*..* redundancy stays.
+  local id
+  for id in '../x' 'a/b' 'a..b' '.hidden' "$(printf 'a%.0s' $(seq 1 65))" ''; do
+    if unit_id_valid "$id"; then
+      bad "3: unit_id_valid incorrectly accepted [$id]"
+    else
+      pass "3: unit_id_valid rejects [$id]"
+    fi
+  done
+  if unit_id_valid 'gh#348' && unit_id_valid 'unit-1'; then
+    pass "3: unit_id_valid still accepts well-formed ids (incl. #)"
+  else
+    bad "3: unit_id_valid rejected a well-formed id"
+  fi
+  if git grep -q -F '*/*|*..*' -- hooks/scripts/dispatch-hygiene.sh; then
+    pass "3: dispatch-hygiene.sh's per-site */*|*..* redundancy is still present"
+  else
+    bad "3: dispatch-hygiene.sh's per-site traversal redundancy was removed"
+  fi
+}
+
 # == Run all tests ==
 test_consumed_before_rm
 test_review_join_ordering
@@ -390,5 +465,6 @@ test_escalated_timestamp_binding
 test_wip_handoff_empty_not_absent
 test_dispatch_consumed_epoch_embedded
 test_fail_overwrites_cap
+test_unit_id_grammar
 
 exit "$fail"

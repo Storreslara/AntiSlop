@@ -896,6 +896,19 @@ human: quoting .claude/human-review/u1/DECISION verbatim:
 EOF"
 
 echo
+echo "-- M5 site 8: not tightened - the pre-existing leading-_/length residual stays (N28-N29) --"
+bash_case "N28 leading-underscore id is still accepted (no tightening to UNIT_ID_RE)" allowed \
+  antislop:reviewer "cat > .claude/reviewed/_u1.pass <<'EOF'
+PASS _u1 2026-08-13T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+bash_case "N29 a 70-char id is still accepted (unit_id_valid's 64-cap does not apply here)" allowed \
+  antislop:reviewer "cat > .claude/reviewed/$(printf 'a%.0s' $(seq 1 70)).pass <<'EOF'
+PASS $(printf 'a%.0s' $(seq 1 70)) 2026-08-13T00:00:00Z commit: abc123 criteria: bash tests/validate.sh
+human: quoting .claude/human-review/u1/DECISION verbatim:
+EOF"
+
+echo
 echo "-- every block logs decision-gate-denied, reviewer included --"
 audit_log="$proj/.claude/review-audit.log"
 : > "$audit_log"

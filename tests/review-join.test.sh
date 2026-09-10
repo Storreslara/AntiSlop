@@ -508,6 +508,27 @@ else
   fail=1
 fi
 
+# --- M5 (gate-audit-step5): a unit id containing # round-trips through
+# review_join_state's unit= read-back (lib/stop-gate-core.sh:261) rather than
+# being discarded by the traversal guard. Same shape as stop-gate-m1-coupling,
+# with a #-bearing unit id.
+dir="$(make_project m5-hash-unit)"
+printf 'PASS gh#348 2026-08-07T00:00:00Z commit: abc1234 criteria: true\n' > "$dir/.claude/reviewed/gh#348.pass"
+payload_hash="$(reviewer_payload $'Unit: gh#348\n\nRe-review.')"
+rc=0
+run_route_gate "$dir" "$payload_hash" || rc=$?
+hash_stamp="$dir/.claude/.review-join.gh#348"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-hash"
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-hash" ] && [ -f "$hash_stamp" ] \
+   && grep -q 'marker=MISSING unit=gh#348' "$dir/.claude/review-audit.log"; then
+  echo "OK   (m5-hash-unit) unit=gh#348 survives review_join_state's traversal guard with the # intact"
+else
+  echo "FAIL (m5-hash-unit) expected a block naming gh#348, not discarded as a traversal violation (rc=$rc)"
+  fail=1
+fi
+
 # --- (3) stop-gate-m2-advisory-clears-nothing: an advisory-only reviewer turn must not fall into the bootstrap clear-all path ---
 dir="$(make_project m2-advisory-clears-nothing)"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
