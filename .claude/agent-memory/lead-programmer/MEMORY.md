@@ -44,4 +44,4 @@
 - [PATH-stripping fixture strips coreutils too](technique_path_stripping_fixture_strips_coreutils.md) — swap PATH AFTER sourcing the lib; a load failure's rc can impersonate the asserted verdict (gh441 FAIL)
 - [CC2 bare-add blocked by sibling dirt](feedback_cc2_bare_add_blocked_by_sibling_dirt.md) — no selective-add escape once CC1/CC2 apply; stop+sentinel on any unrelated dirty file; paraphrase Set A literals even in sentinel prose (gh441)
 - [gh442 review-join stamp semantics (M1+M2+M3)](project_gh442_review_join_stamp_semantics.md) — ls-glob pipefail abort trap, widen elif with OR not replace, Set A gate blocks read-only git diff too
-- [AC-C6 stale pin blocks reviewed-path-gate/human-decision-gate edits](project_ac_c6_stale_pin_blocks_rpg_hdg_edits.md) — tests/marker-write.test.sh pins both files' SHA to commit 33ac79b; any legit edit fails CC3, out-of-scope fix, report don't improvise
+- [AC-C6 stale pin — RESOLVED d3c4b02](project_ac_c6_stale_pin_blocks_rpg_hdg_edits.md) — retargeted to a commit-scoped, reachability-guarded check; a 33ac79b FAIL now means a pre-fix commit

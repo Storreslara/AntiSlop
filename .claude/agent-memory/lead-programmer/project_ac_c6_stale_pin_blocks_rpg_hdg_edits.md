@@ -1,9 +1,20 @@
 ---
 name: ac-c6-stale-pin-blocks-rpg-hdg-edits
-description: tests/marker-write.test.sh AC-C6 pins reviewed-path-gate.sh + human-decision-gate.sh SHA-256 to commit 33ac79b — breaks CC3 for ANY later commit editing either file
+description: RESOLVED (gate-audit-step4 part 2, commit d3c4b02) — AC-C6 no longer pins byte-identity; retargeted to a commit-scoped, reachability-guarded check
 metadata:
   type: project
 ---
+
+**Resolved 2026-09-10 (commit `d3c4b02`, plan R11).** `tests/marker-write.test.sh`'s
+AC-C6 no longer pins `reviewed-path-gate.sh`/`human-decision-gate.sh` byte-identical
+to a fixed commit. It now asserts the commit-scoped fact it was always meant to prove
+(`233c0fc` touched neither gate nor mirror), guarded by a `git cat-file -e` reachability
+precondition that SKIPs rather than FAILs when that commit is unreachable. If you hit
+`FAIL AC-C6: ... differs from pinned 33ac79b` again, you are on a commit predating
+`d3c4b02` (or the retarget regressed) — check `git log --oneline -- tests/marker-write.test.sh`
+before re-deriving the below from scratch.
+
+Original problem (kept for context, no longer live):
 
 `tests/marker-write.test.sh`'s AC-C6 section (~line 196-205) asserts
 `hooks/scripts/reviewed-path-gate.sh` and `hooks/scripts/human-decision-gate.sh`
