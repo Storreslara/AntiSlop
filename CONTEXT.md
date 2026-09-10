@@ -388,8 +388,8 @@ _Avoid_: classifier result (use specific state names or "Marker classifier state
   runs but does not block), `block` (audit line written, classifier runs and blocks when
   the verdict cites a commit that does not appear to belong to the unit). Parallel to
   [[Dispatch hygiene]]'s `dispatchHygiene.mode` posture. Consumed by the marker-commit-check
-  classification in `stop-gate.sh`'s `review_join_state()` function after satisfied stamps
-  are identified in the review-join validation loop.
+  classification block at `stop-gate-core.sh:401-424` (in the SubagentStop block) after
+  satisfied stamps are identified in the review-join validation loop.
 
 **Removed rather than inspected**:
 (unit #272, 2026-08-08, three-instance
@@ -536,14 +536,17 @@ the **Gate** applied at the `PreToolUse`/`Agent`
 **review-join stamp**:
 (0.28.0+) `.claude/.review-join.<unit-id>`, one per
   unit currently under review. Written unconditionally by `reviewer-route-gate.sh`
-  for any reviewer dispatch carrying a well-formed `Unit:` line, and consumed by
-  `stop-gate.sh`'s `review_join_state()` function when that unit's verdict marker
-  is found. When a valid PASS marker already exists, the stamp records `prior=pass`
+  for any non-advisory reviewer dispatch carrying a well-formed `Unit:` line, and
+  consumed at `stop-gate-core.sh:425` (in the SubagentStop block) when that unit's
+  verdict marker is found. The `review_join_state()` function (stop-gate-core.sh:239-330)
+  only deletes malformed and advisory stamps; satisfied stamps are consumed separately
+  at line 425. When a valid PASS marker already exists, the stamp records `prior=pass`
   and `prior_mtime=<marker-mtime>` for concurrency detection; this ensures a
   re-dispatched reviewer must write a newer verdict or be blocked at `SubagentStop`.
   Replaces the global clear-watermark; enables per-unit verdict coupling without
   cross-dispatch interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md)
   for design and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
+
 **advisory review-join stamp** (M2, Step 3): a variant `.claude/.review-join.<unit-id>.advisory`
   written by the route gate when a `Mode: advisory` dispatch is made (no ordinary PASS).
   First line carries `unit=<id> mode=advisory`. Distinct filename prevents overwriting
