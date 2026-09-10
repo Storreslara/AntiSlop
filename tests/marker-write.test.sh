@@ -12,9 +12,14 @@
 # own CLI invocation is BLOCKED for a non-reviewer identity exactly as the
 # raw printf write is today (reviewed-path-gate.test.sh cases 6/13) - proving
 # no new capability.
-# AC-C6: reviewed-path-gate.sh and human-decision-gate.sh are byte-identical
-# to the pinned commit 33ac79b (the last commit that touched either file),
-# proving this unit's own commit made no edit to either gate.
+# AC-C6: commit 233c0fc (this unit's own commit, feat(spec2-unitC): single-
+# call marker-write helper) touched neither reviewed-path-gate.sh nor
+# human-decision-gate.sh, nor either .claude/ mirror - an attestation about
+# that one frozen commit, not a byte-identity pin on the files themselves.
+# A byte pin of files those files' own maintainers keep editing is a freeze
+# with no owner (R11); this asserts the historical fact the pin was
+# chartered to prove instead, and declines (SKIP) rather than fails if
+# 233c0fc is ever unreachable (shallow clone or rewritten history).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 repo="$(pwd)"
@@ -193,18 +198,23 @@ else
 fi
 
 echo
-echo "-- AC-C6: scope guard - reviewed-path-gate.sh / human-decision-gate.sh unchanged --"
+echo "-- AC-C6: scope guard - spec2-unitC's own commit touched neither path gate --"
 
-pin=33ac79b
-for f in hooks/scripts/reviewed-path-gate.sh hooks/scripts/human-decision-gate.sh; do
-  pinned_hash="$(git show "$pin:$f" | sha256sum | cut -d' ' -f1)"
-  cur_hash="$(sha256sum "$f" | cut -d' ' -f1)"
-  if [ "$pinned_hash" = "$cur_hash" ]; then
-    pass "AC-C6: $f byte-identical to pinned $pin"
+unit_commit=233c0fc   # feat(spec2-unitC): single-call marker-write helper
+if git -C "$repo" cat-file -e "${unit_commit}^{commit}" 2>/dev/null; then
+  touched="$(git -C "$repo" show --name-only --format= "$unit_commit" -- \
+    hooks/scripts/reviewed-path-gate.sh \
+    hooks/scripts/human-decision-gate.sh \
+    .claude/hooks/scripts/reviewed-path-gate.sh \
+    .claude/hooks/scripts/human-decision-gate.sh)"
+  if [ -z "$touched" ]; then
+    pass "AC-C6: spec2-unitC commit $unit_commit edited neither path gate (nor either mirror)"
   else
-    bad "AC-C6: $f differs from pinned $pin (pinned=$pinned_hash cur=$cur_hash)"
+    bad "AC-C6: spec2-unitC commit $unit_commit edited: $(echo "$touched" | tr '\n' ' ')"
   fi
-done
+else
+  echo "SKIP AC-C6: commit $unit_commit is unreachable here (shallow or rewritten history)"
+fi
 
 echo
 exit "$fail"
