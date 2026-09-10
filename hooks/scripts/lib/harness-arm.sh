@@ -13,7 +13,8 @@
 # false-positive mitigation - a project mid-adapt can have the directories
 # before any agent file is written.
 #
-# The refusal names `git restore` and no self-service rebuild command, and it
+# The refusal names restoring the file from version control, not the
+# literal `git restore`, and no self-service rebuild command, and it
 # lives HERE ONLY, not copied into the six adopters (RD2a, C1.7). Every
 # rebuild route was measured and rejected: one cannot reconstruct a deleted
 # config at all, and the other writes protectedPaths empty, which would make
@@ -30,6 +31,21 @@ _harness_arm_lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd |
 HARNESS_ARM_WITNESSES=""
 HARNESS_ARM_STATE=""
 
+# A tracked-but-missing persona-config.json means .claude/ was deleted or
+# moved wholesale (rm -rf, mv .claude .claude.bak, git clean -fdx), taking
+# both witnesses above with it. D1 still holds: this reads the git index,
+# never the config's content.
+_harness_arm_git_witness() {
+  local project_dir="$1" dot_label="$2" config="$3"
+  [ -e "$config" ] && return 1
+  command -v git >/dev/null 2>&1 || return 1
+  git -C "$project_dir" ls-files --error-unmatch \
+    "${dot_label}/persona-config.json" >/dev/null 2>&1 || return 1
+  HARNESS_ARM_WITNESSES="the git index"
+  HARNESS_ARM_STATE="absent"
+  return 0
+}
+
 harness_armed() {
   local project_dir="$1" dot_label="${2:-.claude}" dot config agents second f
   dot="${project_dir}/${dot_label}"
@@ -45,7 +61,10 @@ harness_armed() {
   for f in "${dot}"/agents/*.md; do
     if [ -e "$f" ]; then agents="${dot_label}/agents/*.md"; break; fi
   done
-  [ -n "$agents" ] || return 1
+  if [ -z "$agents" ]; then
+    _harness_arm_git_witness "$project_dir" "$dot_label" "$config" && return 2
+    return 1
+  fi
 
   second=""
   if [ -d "${dot}/hooks/scripts" ]; then
@@ -53,7 +72,10 @@ harness_armed() {
   elif [ -d "${dot}/reviewed" ]; then
     second="${dot_label}/reviewed/"
   fi
-  [ -n "$second" ] || return 1
+  if [ -z "$second" ]; then
+    _harness_arm_git_witness "$project_dir" "$dot_label" "$config" && return 2
+    return 1
+  fi
 
   HARNESS_ARM_WITNESSES="${agents} and ${second}"
   if [ ! -e "$config" ]; then

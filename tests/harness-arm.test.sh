@@ -149,5 +149,98 @@ printf '# r\n' > "$d/.codex/agents/reviewer.md"
   || bad "harness_armed -> 2 on a .codex tree"
 rm -rf "$d"
 
+echo "== C2: git-index witness - deleting .claude/ is tampered, not unadapted =="
+git_c() { git -c user.email=t@t.example -c user.name=t "$@"; }
+
+# A git-tracked adapted project: agents + config committed to the index.
+mk_git_tracked() {
+  local d; d="$(mktemp -d)"
+  ( cd "$d" && git_c init -q &&
+    mkdir -p .claude/agents .claude/hooks/scripts &&
+    printf '# reviewer\n' > .claude/agents/reviewer.md &&
+    printf '{"gatedAgents":["lead-programmer"]}\n' > .claude/persona-config.json &&
+    git_c add .claude && git_c commit -q -m init ) >/dev/null 2>&1
+  printf '%s' "$d"
+}
+
+# PATH with every directory that resolves `git` stripped out, so `git` is
+# genuinely unreachable (not just made to fail) - dirname etc. still work.
+NO_GIT_PATH=""
+IFS=: read -ra _pd <<< "$PATH"
+for _d in "${_pd[@]}"; do
+  [ -x "$_d/git" ] && continue
+  NO_GIT_PATH="${NO_GIT_PATH}:${_d}"
+done
+NO_GIT_PATH="${NO_GIT_PATH#:}"
+
+# 1: bypass reproduction - config + agents/ deleted from the working tree but
+# still in the git index -> tampered (2), not unadapted (1).
+d="$(mk_git_tracked)"
+rm -rf "$d/.claude/agents" "$d/.claude/persona-config.json"
+[ "$(verdict "$d")" = 2 ] && ok "harness_armed -> 2, config+agents deleted but git-tracked" \
+  || bad "harness_armed -> 2, config+agents deleted but git-tracked"
+rm -rf "$d"
+
+# 2: downstream fail-closed - gates that previously waved this through now
+# refuse with the disarmed message.
+d="$(mk_git_tracked)"
+rm -rf "$d/.claude/agents" "$d/.claude/persona-config.json"
+for g in reviewed-path-gate reviewer-route-gate; do
+  rc="$(run_gate "$g" "$d")"
+  if [ "$rc" = 2 ] && grep -qF 'harness disarmed' "$err"; then
+    ok "$g fails closed on a git-tracked-but-deleted config"
+  else
+    bad "$g fails closed on a git-tracked-but-deleted config (got $rc)"
+  fi
+done
+rm -rf "$d"
+
+# 3: rm -rf .claude end-to-end (config, markers, agents, everything).
+d="$(mk_git_tracked)"
+rm -rf "$d/.claude"
+[ "$(verdict "$d")" = 2 ] && ok "harness_armed -> 2 after rm -rf .claude (git-tracked)" \
+  || bad "harness_armed -> 2 after rm -rf .claude (git-tracked)"
+rm -rf "$d"
+
+# 4: no false tamper - ls-files failing for any reason means "no witness".
+d="$(mktemp -d)"
+[ "$(verdict "$d")" = 1 ] && ok "harness_armed -> 1, no .git at all" \
+  || bad "harness_armed -> 1, no .git at all"
+rm -rf "$d"
+
+d="$(mktemp -d)"
+( cd "$d" && git_c init -q && mkdir -p .claude/agents &&
+  printf '# r\n' > .claude/agents/reviewer.md ) >/dev/null 2>&1
+[ "$(verdict "$d")" = 1 ] && ok "harness_armed -> 1, git repo but config never tracked" \
+  || bad "harness_armed -> 1, git repo but config never tracked"
+rm -rf "$d"
+
+d="$(mk_git_tracked)"
+rm -rf "$d/.claude/agents" "$d/.claude/persona-config.json"
+rc=$( (set +u; export PATH="$NO_GIT_PATH"; source hooks/scripts/lib/harness-arm.sh
+       harness_armed "$d" .claude) >/dev/null 2>&1; echo $? )
+[ "$rc" = 1 ] && ok "harness_armed -> 1 when git is not on PATH" \
+  || bad "harness_armed -> 1 when git is not on PATH (got $rc)"
+rm -rf "$d"
+
+# 5: still armed - a healthy config returns 0 without ever invoking git.
+gitshim="$(mktemp -d)"
+marker="$gitshim/called"
+cat > "$gitshim/git" <<SH
+#!/usr/bin/env bash
+echo called >> "$marker"
+exit 99
+SH
+chmod +x "$gitshim/git"
+d="$(mk_adapted)"
+rc=$( (set +u; export PATH="$gitshim:$PATH"; source hooks/scripts/lib/harness-arm.sh
+       harness_armed "$d" .claude) >/dev/null 2>&1; echo $? )
+if [ "$rc" = 0 ] && [ ! -e "$marker" ]; then
+  ok "harness_armed -> 0 for a healthy config, without invoking git"
+else
+  bad "harness_armed -> 0 for a healthy config, without invoking git (rc=$rc)"
+fi
+rm -rf "$gitshim" "$d"
+
 rm -f "$err"
 exit "$fail"
