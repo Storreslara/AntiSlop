@@ -1127,6 +1127,32 @@ normal FAIL routes the defect list to
   as the violation class that detection mechanisms (like A7 hook-block events)
   exist to observe.
 
+**Privileged persona**:
+(unit gh440, 2026-09-10) — a persona (`reviewer`, `orchestrator`) whose dispatch
+  name cannot be forged. The `PRIVILEGED_PERSONAS` array in
+  `hooks/scripts/lib/reviewer-route-gate-core.sh:55,61` enumerates these personas;
+  the reviewer-route-gate unconditionally checks every dispatch's `name:` field against
+  this set. If a `name:` resolves to a privileged persona (via `identity_persona_name`)
+  but the dispatch's `subagent_type` does not match it, the dispatch is denied (exit 2).
+  Membership is maintained by derivation test in `tests/reviewer-route-gate-caller.test.sh`
+  (grep-derived union of `persona_matches_grant`/`persona_matches_gate` call-site literals,
+  compared against the actual array), so a future grant or caller addition that omits
+  a privileged persona from the array will surface as a test mismatch. Known caveat:
+  derivation test anchors `\$[A-Za-z_]+`, so digit-suffixed or brace-form variable
+  spellings would be silently missed. See [[Identity forgery]].
+
+**Identity forgery**:
+(unit gh440, 2026-09-10) — an attack distinct from [[self-authorized bypass]]: forging
+  a dispatch's identity by supplying a `name:` field that names a [[Privileged persona]]
+  (e.g., `name: "reviewer"`) while pairing it with a `subagent_type` that doesn't match
+  that persona (e.g., `subagent_type: general-purpose`). The forger attempts to bypass
+  the gate's persona-identity checks, which are normally gated on the `subagent_type` field,
+  by creating a mismatch the gate can detect. Whereas [[self-authorized bypass]] happens
+  after a gate blocks (routing around the block without permission), identity forgery
+  happens at dispatch time, before any gate runs—it is the premise the privileged-persona
+  check in reviewer-route-gate-core.sh exists to prevent. Denied by `reviewer-route-gate.sh`
+  (exit 2) before target_type-keyed blocks, not gated on persona-config.json.
+
 **reviewer-dispatch caller allowlist**:
 (unit gh347, 2026-08-13) — the rule that only the main session (the
   `orchestrator`) may spawn the `reviewer` via the `Agent` tool, enforced in
