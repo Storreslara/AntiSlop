@@ -10,7 +10,7 @@
 - [ADR numbering: increment, never backfill](project_adr_numbering_increment_not_backfill.md) — the 0007 hole is not free (CONTEXT.md links it); re-derive ADR numbers at execution time, sibling specs collide.
 - [`grep` is wrapper-shadowed inline](project_grep_is_wrapper_shadowed_inline.md) — bare `grep` = ugrep inline but GNU inside `bash script.sh`; same text, two counts. Use `git grep`.
 - [Baselines expire](feedback_baselines_expire.md) — a baseline is a measurement with an expiry; untracked-file baselines need a recovery-source precondition; absolute byte-pins expire on legit reflow (gh348-13 C13.2).
-- [Verify own criteria are non-vacuous](feedback_verify_own_criteria_nonvacuous.md) — run every criterion you author before handoff; 9 traps, incl. signals attributable to the wrong file, and fixtures the tool self-repairs via backfill.
+- [Verify own criteria are non-vacuous](feedback_verify_own_criteria_nonvacuous.md) — run every criterion you author before handoff; 13 traps, incl. signals attributable to the wrong file, and fixtures the tool self-repairs via backfill.
 - [Finish interrupted plan docs by ref-sweep](technique_plan_doc_reference_sweep.md) — a cut-off session leaves dangling "see R13"/"see CHK25"; diff refs vs defs mechanically before calling a doc FINAL.
 - [Specs publish as per-step issues](project_specs_publish_as_per_step_issues.md) — step issues under `plan/<slug>` from task-master, PLUS an umbrella `[spec]` PRD-view issue (current again as of #324).
 - [ClaudeVoice design tokens](reference_claudevoice_design_tokens.md) — sibling repo's Gruvbox Material palette/scale/font stack and exactly which files hold them.
@@ -47,4 +47,5 @@
 - [Reproduce advisory figures at defect scope](feedback_reproduce_advisory_figures_at_defect_scope.md) — a reviewer's "47 of 300" was whole-file, was 19 at the real scope, and the unmeasured sibling defect was 79.
 - [Protocol amendments don't propagate](project_protocol_amendments_do_not_propagate.md) — the inlined block is TRIMMED (escalation section reaches no persona); enumerate all 6 surfaces; bump version BEFORE `--update` or it no-ops.
 - [Gate-hardening debug spec (2-FAIL cap)](project_harness_integrity_gate_debug_spec.md) — unbounded-universal criteria cause FAIL loops; freeze a family table. Nested-brace bypass hid behind 62 green examples.
+- [Fable gate-audit spec (#439)](project_fable_gate_audit_spec.md) — settled C1/C2/M1-M9/m1-m7 decisions + 7 premise corrections (7th = Step 5 census/#452); M8's two halves are unimplementable/vacuous as directed, M6 deletes 3 sanctioned escapes.
 - [Persona-audit 11-findings spec (#428)](project_persona_audit_11_findings_spec.md) — settled .fail-append rationale + 4 premise corrections; marker-verify parses line 2 as a note; adapter hook libs ARE generated, protocol ports are not.

@@ -11,4 +11,5 @@
 - [Recheck baseline counts live](feedback_recheck_baseline_counts_live.md) — a spec's stated grep/count baseline can be off; re-run the literal command live before dispatch and fold any real gap into Affected files.
 - [Gate unit on open question](feedback_gate_unit_on_open_question.md) — no ready-for-agent label + DO-NOT-DISPATCH banner + full contract underneath, when a step is gated on an unanswered spec Open Question.
 - [Glossary unit separate when spans future steps](feedback_glossary_unit_separate_when_spans_future_steps.md) — file a cross-step glossary hint as its own 10th unit blocked on all contributing steps, not attached to one step in an earlier wave.
+- [GitHub native issue dependencies](reference_github_native_issue_dependencies.md) — real blocking edges are available here; `gh api -F issue_id=<database id>`, never `-f`, never the issue number.
 - [Model tag default now sonnet](project_model_tag_default_now_sonnet.md) — ADR-0010 reversed haiku->sonnet; don't copy an old ticket's `haiku` tag as if it were still the live default.

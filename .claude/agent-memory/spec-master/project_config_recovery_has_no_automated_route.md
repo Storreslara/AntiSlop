@@ -22,8 +22,18 @@ Measured 2026-08-26 against `bin/cli.js` v0.31.65 on throwaway fixtures:
   fields — `protectedPaths: []`, `testAndLintCommand: ""`, `issueTracker: ""`,
   `humanReviewMode: "critical"` — with **no `fileHashes`, `substitutions`,
   `dispatchHygiene` or `markerCommitCheck` keys at all**. Against this repo's
-  live config that is 26 `protectedPaths` entries, both MCP substitutions and
+  live config that was 26 `protectedPaths` entries, both MCP substitutions and
   52 `fileHashes` rows gone.
+
+  **Correction, re-measured 2026-09-09: this repo's live `protectedPaths` is
+  now `[]`.** `jq -r '.protectedPaths | tojson' <config>` returns `[]` at
+  `915acec`. The 26-entry figure above is frozen at 2026-08-26 and must not be
+  planned against — a spec that assumes `hooks/**` is already protected by
+  `protectedPaths` is wrong today. The rest of this note (the scaffold path
+  writes a strictly weaker config, `--update` refuses, `git restore` is the
+  only lossless route) re-verified as still true. Re-measure the array before
+  citing a count; it is session-mutable (see the `gh419` note recording
+  entries being lifted and restored mid-session).
 - **It does not read `personaSelection` off disk.** A `--personas=reviewer`
   fixture (4 agent files) came back with all 7 optional personas selected and
   **6 agent files it had never selected newly written**. The blast radius is

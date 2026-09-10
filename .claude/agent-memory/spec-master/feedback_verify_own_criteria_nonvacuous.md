@@ -283,6 +283,53 @@ detectable by re-reading. The measured lesson is not "be careful" — it is
 that re-reading a criterion has never once found one of these, and running it
 has found every one.
 
+**Thirteenth trap - a COUNT pin is unsatisfiable when the literal serves more
+than one domain, and is satisfiable by the WRONG edit (2026-09-10, fable
+gate-audit Step 5 / issue #452).** I shipped "exactly **one** occurrence of
+`[A-Za-z0-9._#-]` and exactly **one** of the `[^a-zA-Z0-9._-]` sanitizer
+remain under `hooks/scripts/` (both in `lib/state-access.sh`)" as an M5
+single-source-of-truth check. `task-master` bounced it mid-flight. Three
+separate defects, all invisible to re-reading:
+- **Unsatisfiable.** The sanitizer literal has 5 occurrences and only 2 are
+  unit-id sanitizers; the other 3 sanitize `agent_id`/`session_id`
+  (`lib/stop-gate-core.sh:527`/`:548`, `session-start.sh:35`). A count of 1 is
+  unreachable without a behaviour change in a domain the step never scoped.
+- **Blind to its own scope.** A THIRD spelling existed —
+  `human-decision-gate.sh:76`'s `[A-Za-z0-9_][A-Za-z0-9_#.-]*` — matched by
+  neither grep behind the criterion. Neither count would have registered its
+  migration either way. Two call sites were also missing from the step
+  (`dispatch-hygiene.sh:369`, `lib/stop-gate-core.sh:260`): the real census
+  was 8 sites / 7 files / 3 spellings, not the "six sites" the prose claimed.
+- **Satisfiable backwards.** A bare count of 3 for the sanitizer is reachable
+  by editing an `agent_id` line instead of a unit-id line — the exact opposite
+  of the fix, passing the gate. Sibling of trap six (backwards), but the
+  mechanism is the count's *anonymity*, not a deletion.
+
+**How to apply (allowlist, never tally):** a "single source of truth" claim is
+a claim about WHICH lines survive, so express it as a file/line **allowlist**
+with a per-line discriminator (here: the assigned variable name), never as a
+total. Before pinning any such criterion, run the broad detector
+(`git grep -nE '\[\^?[^]]*[Aa]-[Zz][^]]*\]' -- <dir>`) and **classify every
+hit by domain** — the count of hits is never the count of in-scope sites. Then
+enumerate the out-of-scope hits in the plan as an explicit "do not touch"
+table, or the implementer will migrate them to make the number come out.
+Two corollaries: pin the allowlist as a standing TEST (here
+`tests/state-access-constraints.test.sh`, run by `validate.sh`, hence by every
+later step's merge gate) so a later unit cannot regress an already-PASSed pin;
+and require a mutation control naming specifically the sites the original
+criterion could not see.
+
+**Companion lesson - "interpolate the shared constant" can silently TIGHTEN a
+gate.** Step 5 said `human-decision-gate.sh` "interpolates `UNIT_ID_CHARCLASS`
+into that regex". Read as substituting the whole `UNIT_ID_RE`, that newly
+rejects a leading-`_` id and caps length at 64 — inside a *sanctioned-write
+allowance*, i.e. it denies a marker write that succeeds today. When a
+refactor unifies a grammar, say explicitly which PARTS unify (here: the tail
+character class only, leaving the leading class and quantifier alone) and pin
+the no-tightening property as a before/after-equal criterion. Grammar
+divergence is rarely only about the character set — check the anchor, the
+first-character class, and the length bound too.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
 [[verify-deferred-issue-premises]],
 [[docs-units-need-claim-anchored-criteria]], and
