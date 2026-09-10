@@ -43,3 +43,4 @@
 - [Glob-detection hole fix in set_a_mentioned()](project_gh_harness_integrity_gate_glob_hole_fix.md) — function lives in top-level script not lib/; Set B forces Bash-not-Edit to touch it; re-verify `git add -A` precondition live, not from memory
 - [PATH-stripping fixture strips coreutils too](technique_path_stripping_fixture_strips_coreutils.md) — swap PATH AFTER sourcing the lib; a load failure's rc can impersonate the asserted verdict (gh441 FAIL)
 - [CC2 bare-add blocked by sibling dirt](feedback_cc2_bare_add_blocked_by_sibling_dirt.md) — no selective-add escape once CC1/CC2 apply; stop+sentinel on any unrelated dirty file; paraphrase Set A literals even in sentinel prose (gh441)
+- [gh442 review-join stamp semantics (M1+M2+M3)](project_gh442_review_join_stamp_semantics.md) — ls-glob pipefail abort trap, widen elif with OR not replace, Set A gate blocks read-only git diff too
