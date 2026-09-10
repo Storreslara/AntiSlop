@@ -1,6 +1,7 @@
 # Memory index
 
 - [gh429 advisory dispatch glossary](project_gh429_advisory_dispatch_glossary.md) — new Mode:advisory route-gate token defined in CONTEXT.md; split-dispatch pattern expected to recur in this batch (gh430+)
+- [gh440 completion](gh440_completion.md) — PASS 2026-09-10; two glossary entries (Privileged persona, Identity forgery); issue #440 closed; part of fable-gate-audit-remediation Step 1
 
 - [Verify plan premise freshness](feedback_verify_plan_premise_freshness.md) — gh354 FAIL: a plan's invariant is dated evidence; re-measure negative claims and check sibling glossary entries before minting
 - [gh354 FAIL fix](gh354_fail_fix_completion.md) — dashboard trust anchor is the confirmation code, not an absent write path; `.claude/milestone-audit/` gitignore + cleanup enforcement still open
