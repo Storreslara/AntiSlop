@@ -181,7 +181,9 @@ copy.
 7. Technical constraints & tradeoffs: Partial
 8. Terminology consistency: Partial
 9. Completion / acceptance signals: Partial *(re-scored 2026-09-10 — was
-   Clear; Step 5's criterion 2 proved unsatisfiable, see issue `#452`)*
+   Clear; Step 5's criterion 2 proved unsatisfiable, see issue `#452`. Held
+   Partial 2026-09-10 for a second reason: CC3 was assumed to be a neutral
+   merge gate and was not, see R11 and issue `#453`)*
 
 - 2026-09-09 Domain entities / data model: Q Where does M5's shared unit-id
   helper live, given `bin/cli.js`'s `assertHookLibDeclarationComplete` throws
@@ -301,6 +303,26 @@ scorecard above is unchanged for every category the correction did not touch.
   makes all three standing tests rather than transcript assertions, and 2e
   requires a mutation control on the three sites the original criterion was
   blind to.
+- 2026-09-10 Edge cases / failure handling: Q Does `bash tests/validate.sh`
+  (CC3) contain any assertion that fails on a *correct* edit to a file this
+  plan authorizes editing? → A (self-resolved): **yes — one.**
+  `tests/marker-write.test.sh`'s AC-C6 section pins
+  `hooks/scripts/reviewed-path-gate.sh` and
+  `hooks/scripts/human-decision-gate.sh` byte-identical to commit `33ac79b`.
+  Five of this plan's fifteen steps (4, 5, 8, 10, 15) edit one of those two
+  files, so each would fail CC3 on a correct diff. Verified live at Step 4's
+  commit `9108c96`. Fix folded into Step 4; see R11 and Step 4's criteria
+  8-10. Scored against **Edge cases** rather than **Completion signals**
+  because the defect is a pre-existing gate mis-firing on a valid input, not a
+  criterion this plan wrote.
+- 2026-09-10 Completion / acceptance signals: Q Should the AC-C6 fix be its
+  own unit, or fold into Step 4? → A (self-resolved): **fold into Step 4.**
+  Step 4's own commit is already made, already correct, and already blocked by
+  the pin, and `master` is red at `9108c96` *right now*. A separate unit would
+  add a dispatch-plus-review round trip in front of a fix that is one
+  ~30-line edit to one test file, and would leave `master` red across that
+  round trip. Folding costs one new Sequencing edge (Step 4 ──► Steps 5, 8,
+  10, 15) whose upstream, Step 1, has already landed.
 
 ---
 
@@ -357,6 +379,27 @@ scorecard above is unchanged for every category the correction did not touch.
 - **R10 — `docs/trust-model.md` is bijection-guarded** with a pinned
   self-reported count of 9. M1 and M9 in particular may convert a row from
   self-reported to mechanically checked.
+- **R11 — CC3 itself contained a freeze on two of this plan's target files**
+  *(added 2026-09-10, mid-flight; discovered by `lead-programmer` on Step 4,
+  recorded at
+  `.claude/agent-memory/lead-programmer/project_ac_c6_stale_pin_blocks_rpg_hdg_edits.md`)*.
+  `tests/marker-write.test.sh`'s AC-C6 section — run by
+  `tests/validate.sh:560`, so binding on every unit via CC3 — asserted that
+  `hooks/scripts/reviewed-path-gate.sh` and
+  `hooks/scripts/human-decision-gate.sh` are **byte-identical to commit
+  `33ac79b`**. It was written to prove one narrow thing: that the
+  `marker-write.sh` unit's own commit (`233c0fc`, spec2-unitC) edited neither
+  gate. Nothing scoped it to expire or retarget, so an attestation about one
+  landed commit silently became an unbounded freeze on two actively-maintained
+  gates. **Steps 4, 5, 8, 10 and 15 all edit one of those two files** — a
+  third of this plan — and each fails CC3 on a *correct* diff until the pin is
+  retargeted. Confirmed live at Step 4's commit `9108c96`
+  (`FAIL AC-C6: hooks/scripts/reviewed-path-gate.sh differs from pinned
+  33ac79b`); `master` is red on that account alone. The retarget is folded
+  into **Step 4** (criteria 8-10) and gates the other four via the Sequencing
+  edge below. Generalization worth carrying: **a content pin of a file that is
+  still edited is a freeze with no owner.** Where the claim is really about a
+  commit, pin the commit.
 
 ---
 
@@ -431,7 +474,8 @@ scorecard above is unchanged for every category the correction did not touch.
 ```
 Step 1 (C1) ──► Step 4 (M4)          [hard dependency, R3]
 Step 3 (M1+M2+M3) ──► Step 5 (M5)    [file conflict, added 2026-09-10]
-Steps 2, 6, 8, 9, 10, 11, 12, 13, 14, 15      [independent]
+Step 4 (M4) ──► Steps 5, 8, 10, 15   [AC-C6 pin retarget, R11, added 2026-09-10]
+Steps 2, 6, 9, 11, 12, 13, 14        [independent]
                                    ...all of the above ──► Step 7 (M7)  [LAST]
 ```
 
@@ -451,6 +495,18 @@ the primary control and 2d is the backstop, not a substitute for it. This is
 an ordering constraint only: it does **not** change Step 3's own scope,
 affected files, or acceptance criteria, which are untouched by this
 correction.
+
+**Step 4 ──► Steps 5, 8, 10, 15 (added 2026-09-10, issue `#453`).** Each of
+those four edits `hooks/scripts/reviewed-path-gate.sh` or
+`hooks/scripts/human-decision-gate.sh`, both frozen by the AC-C6 pin in
+`tests/marker-write.test.sh` (R11). Step 4 retargets that pin, so until Step 4
+has a PASS marker, the other four cannot satisfy **CC3** no matter how correct
+their diffs are. This is an ordering constraint only: it does **not** change
+the scope, affected files, or acceptance criteria of Steps 5, 8, 10 or 15,
+none of which may edit `tests/marker-write.test.sh` themselves — a second
+retarget in a later step would race Step 4's. Step 4's own upstream (Step 1,
+R3) has already landed at `31d2321`, so this edge adds no further waiting.
+Step 5 is therefore gated by **both** Step 3 and Step 4.
 
 ---
 
@@ -671,13 +727,22 @@ this step does not change it.
 
 **Depends on Step 1** (R3). Do not dispatch before Step 1 has a PASS marker.
 
+**Scope extended 2026-09-10** (mid-flight, issue `#453`) with part 2 below —
+the AC-C6 pin retarget (R11). Part 1 is unchanged and **already landed** at
+commit `9108c96`, which is correct as-is and needs no further edit; it is
+blocked only by the pin.
+
 **Affected files**
-- `hooks/scripts/reviewed-path-gate.sh` (`:263`)
-- `tests/reviewed-path-gate.test.sh`
-- CC1 artifacts
+- `hooks/scripts/reviewed-path-gate.sh` (`:263`) — part 1
+- `tests/reviewed-path-gate.test.sh` — part 1
+- `tests/marker-write.test.sh` (the `AC-C6` header comment at `:15-17` and the
+  `AC-C6` section at `:196-207`) — part 2, added 2026-09-10
+- CC1 artifacts (part 1 only — `tests/**` is neither mirrored nor ported, so
+  part 2 adds no CC1 work)
 
 **What to build**
 
+**Part 1 — M4 (landed at `9108c96`).**
 Change the fallback condition at `:263` from `[ -z "$agent_type" ]` to
 `[ -z "$agent_type" ] || persona_matches_gate "$agent_type" orchestrator`.
 The liberal (gate) matcher is correct here and matches the existing comment's
@@ -685,6 +750,62 @@ reasoning at `:19-21`: a miss only makes the main session's write allowed.
 Everything inside the branch — the `personaSelection` reviewer probe and the
 standing-`.escalated` refusal at `:272-283` — is unchanged and now also
 applies to the `orchestrator` identity.
+
+**Part 2 — retarget the AC-C6 pin (R11, added 2026-09-10).**
+
+Replace `tests/marker-write.test.sh`'s AC-C6 section, which pins both path
+gates byte-identical to `33ac79b`, with the commit-scoped attestation it was
+always chartered to make: that `233c0fc` (`feat(spec2-unitC): single-call
+marker-write helper`) edited neither gate. Measured facts behind this choice:
+
+- `git show --name-only --format= 233c0fc` lists six files, none of them
+  either gate or either `.claude/` mirror — the attestation is **true**, and
+  being a statement about frozen history it cannot be invalidated by any later
+  authorized edit to either gate.
+- The *live* "marker-write.sh grants no new capability" property is already
+  covered, non-vacuously, by **AC-C5** and the gate-interaction block above:
+  `marker-write.sh:61-63` rejects any `marker-path` that is not exactly
+  `.claude/reviewed/<unit-id>.<ext>`, `:31`'s `UNIT_ID_RE` bars `/` in the unit
+  id, and `:68-76` passes `unit_id`/`ext` — never the caller's path — to
+  `state_write_unit_marker`. AC-C6 was never what protected that property;
+  removing the byte pin removes no live guard.
+- A "no commit may touch `marker-write.sh` and a gate together" formulation
+  was considered and **rejected**: Step 5 legitimately edits
+  `marker-write.sh:31` and `human-decision-gate.sh:76` in one commit, so that
+  form would reproduce the same disease one step later.
+
+The replacement block (verified — see criteria 8-10):
+
+```bash
+unit_commit=233c0fc   # feat(spec2-unitC): single-call marker-write helper
+if git -C "$repo" cat-file -e "${unit_commit}^{commit}" 2>/dev/null; then
+  touched="$(git -C "$repo" show --name-only --format= "$unit_commit" -- \
+    hooks/scripts/reviewed-path-gate.sh \
+    hooks/scripts/human-decision-gate.sh \
+    .claude/hooks/scripts/reviewed-path-gate.sh \
+    .claude/hooks/scripts/human-decision-gate.sh)"
+  if [ -z "$touched" ]; then
+    pass "AC-C6: spec2-unitC commit $unit_commit edited neither path gate (nor either mirror)"
+  else
+    bad "AC-C6: spec2-unitC commit $unit_commit edited: $(echo "$touched" | tr '\n' ' ')"
+  fi
+else
+  echo "SKIP AC-C6: commit $unit_commit is unreachable here (shallow or rewritten history)"
+fi
+```
+
+The `cat-file -e` guard is a **reachability precondition**, the same
+convention `dispatch-hygiene.sh`'s H3 already applies to a marker's `commit:`
+field: an assertion over history must decline, not fail, where that history is
+absent (shallow clone, rewritten branch). It must print a `SKIP` line and
+leave `fail` untouched — never call `bad`.
+
+Both the section banner and the file-header comment at `:15-17` must be
+rewritten to describe the commit-scoped claim, and the header must carry the
+reason the byte-pin form was wrong (an attestation about one commit is not a
+licence to freeze the files it names) so nobody re-freezes them. Edit with
+`Edit`, not a Bash heredoc: the surrounding file text spells the marker
+directory, which `reviewed-path-gate.sh` scans for in Bash command text (CC9).
 
 **Acceptance criteria**
 1. **Unreachable-path reproduction, now reachable.** Fixture:
@@ -705,6 +826,23 @@ applies to the `orchestrator` identity.
 6. `bash tests/reviewed-path-gate.test.sh` and
    `bash tests/reviewed-dir-leak-guard.test.sh` exit 0.
 7. CC1, CC3.
+8. **The retargeted AC-C6 passes, and CC3 is green at this unit's own
+   commit.** `bash tests/marker-write.test.sh` exits 0 and prints an
+   `OK   AC-C6:` line naming commit `233c0fc`; no line matching
+   `^FAIL AC-C6` and no occurrence of the string `33ac79b` remains anywhere in
+   `tests/marker-write.test.sh` (`git grep -c 33ac79b -- tests/marker-write.test.sh`
+   → `0`). `bash tests/validate.sh` exits 0 in a pristine detached worktree at
+   this unit's final commit (this is CC3, restated here because part 2 exists
+   only to restore it).
+9. **The new assertion is not vacuous.** Mutation control: with
+   `unit_commit=33ac79b` substituted for `unit_commit=233c0fc` — a commit that
+   *did* edit both gates — `bash tests/marker-write.test.sh` exits **1** and
+   prints a `FAIL AC-C6:` line naming the edited files. Revert the mutation
+   and re-run to exit 0. Record both runs in the ready-for-review report.
+10. **The reachability precondition declines rather than fails.** With
+    `unit_commit` substituted for an unreachable sha (e.g. `deadbee`),
+    `bash tests/marker-write.test.sh` exits **0** and prints a line beginning
+    `SKIP AC-C6:`. Revert and re-run to exit 0.
 
 ---
 
@@ -717,6 +855,12 @@ applies to the `orchestrator` identity.
 > unit-id / non-unit-id domain boundary is now stated explicitly. Steps 1-4
 > and 6-15 are unchanged; the only edit outside this step is the new
 > Step 3 → Step 5 edge in Sequencing.
+
+**Also depends on Step 4** (R11, added 2026-09-10): this step edits
+`human-decision-gate.sh:76`, which `tests/marker-write.test.sh`'s AC-C6 pin
+freezes until Step 4 retargets it. Do not edit `tests/marker-write.test.sh`
+here — that retarget belongs to Step 4 alone. Scope, affected files and
+acceptance criteria are otherwise unchanged by that edge.
 
 **Affected files**
 - `hooks/scripts/lib/state-access.sh` (the helpers)
@@ -1082,6 +1226,12 @@ the brace collapse **plus** a two-segment glob-match arm, accepting that this
 also closes the `F-1` glob-metacharacter residuals and reclassifies their
 pins.
 
+**Depends on Step 4** (R11, added 2026-09-10): this step edits
+`reviewed-path-gate.sh`, which `tests/marker-write.test.sh`'s AC-C6 pin
+freezes until Step 4 retargets it. Do not edit `tests/marker-write.test.sh`
+here — that retarget belongs to Step 4 alone. Scope, affected files and
+acceptance criteria are otherwise unchanged by that edge.
+
 **Affected files**
 - `hooks/scripts/reviewed-path-gate.sh` (`mentions_marker_dir`, and the
   header's STILL-OPEN enumeration at `:33-41`)
@@ -1225,6 +1375,13 @@ enforced, and add the three resolutions to the escalation section.
 One unit: both change *how a path is matched* in the same three gates, and
 splitting them would have Step 10a's new family-table rows immediately
 rewritten by Step 10b.
+
+**Depends on Step 4** (R11, added 2026-09-10): this step edits **both**
+`reviewed-path-gate.sh` and `human-decision-gate.sh`, which
+`tests/marker-write.test.sh`'s AC-C6 pin freezes until Step 4 retargets it. Do
+not edit `tests/marker-write.test.sh` here — that retarget belongs to Step 4
+alone. Scope, affected files and acceptance criteria are otherwise unchanged
+by that edge.
 
 **Affected files**
 - `hooks/scripts/lib/protected-paths-core.sh` (`:20-37`) — m1
@@ -1489,6 +1646,12 @@ apply — `jq` becomes an allowed *program*, not an allowed *command shape*.
 ---
 
 ## Step 15 — m7: `human-decision-gate.sh` fails closed on an empty `file_path`
+
+**Depends on Step 4** (R11, added 2026-09-10): this step edits
+`human-decision-gate.sh`, which `tests/marker-write.test.sh`'s AC-C6 pin
+freezes until Step 4 retargets it. Do not edit `tests/marker-write.test.sh`
+here — that retarget belongs to Step 4 alone. Scope, affected files and
+acceptance criteria are otherwise unchanged by that edge.
 
 **Affected files**
 - `hooks/scripts/human-decision-gate.sh` (`:311-323`)
@@ -1763,6 +1926,55 @@ against the corrected text — the `#`-accepted direction and the
   category-9 re-score, this Self-check append, and the Sequencing edge — all
   four are explicitly in the correction's remit).
 
+### Re-check, 2026-09-10 (Step 4 AC-C6 pin correction, issue `#453`)
+
+Scoped to Step 4's part 2, R11, the Sequencing edge, and the one-paragraph
+dependency notes on Steps 5, 8, 10 and 15. CHK1-CHK28 were **not** re-run; no
+step's *substantive* scope changed, and the four dependency notes add an
+ordering constraint only. CHK26 (machine-checkable criteria) was re-applied to
+the three new criteria and holds — see CHK30.
+
+- CHK29: Does the plan name every step the AC-C6 pin blocks, or only the ones
+  the field report happened to hit? — **FAIL (missing)** — the incoming report
+  named Steps 4, 8 and 10 (the `reviewed-path-gate.sh` editors); the pin
+  covers `human-decision-gate.sh` too, which Steps 5 (`:76`) and 15
+  (`:311-323`) also edit, so a third of the plan was affected rather than a
+  fifth — revised in place (R11, the Sequencing edge, and the notes on Steps
+  5 and 15).
+- CHK30: Is each of Step 4's three new criteria something a machine runs and
+  gets pass/fail from? — PASS (8 names two commands, an expected exit code, a
+  required `OK` substring and a `git grep -c` with its expected output; 9 and
+  10 each state a concrete substitution, the expected exit code, and the
+  required output prefix).
+- CHK31: Does the plan say what makes the *new* AC-C6 assertion non-vacuous,
+  rather than assuming it? — PASS (criterion 9's mutation control names
+  `33ac79b` as a commit that did edit both gates and requires exit 1; the plan
+  states plainly that the assertion is an attestation over frozen history and
+  points at AC-C5 as the live guard, so no reader mistakes it for one).
+- CHK32: Is the reachability guard's behaviour specified, or left to the
+  implementer? — **FAIL (ambiguous)** — the first draft said only "decline
+  where history is absent", which an implementer could satisfy with a `bad`
+  call or a nonzero exit — revised in place (Part 2 now requires a `SKIP` line
+  and forbids touching `fail`; criterion 10 pins exit 0 and the `SKIP AC-C6:`
+  prefix).
+- CHK33: Do Step 4 and Steps 5, 8, 10, 15 agree on who edits
+  `tests/marker-write.test.sh`? — PASS (Step 4 alone; each of the four states
+  it explicitly, so two units cannot race the same retarget).
+- CHK34: Does the plan say whether Step 4's already-landed commit `9108c96`
+  needs redoing? — PASS (Step 4's preamble states it is correct as-is,
+  blocked only by the pin, and that part 2 adds no CC1 work because `tests/**`
+  is neither mirrored nor ported).
+- CHK35: Does the plan record why the pin was retargeted rather than deleted,
+  and why the obvious alternative was rejected? — PASS (Part 2's three
+  measured bullets: the attestation is true; AC-C5 already holds the live
+  property; a "no commit touches both" formulation would break on Step 5,
+  which edits `marker-write.sh:31` and `human-decision-gate.sh:76` together).
+- CHK36: Are both FAIL items above represented, with no orphans in either
+  direction? — PASS (CHK29 and CHK32 each revised in place; this correction
+  opens no new Open Question — both gaps were resolvable by measurement, and
+  the fix was verified end-to-end in a detached worktree before the plan text
+  was written).
+
 ---
 
 ## Retrieval contract
@@ -1798,6 +2010,15 @@ After the plan lands, `scribe` should consider:
   membership changes in Steps 6 and 7, matching semantics change in Step 10.
 - Updating the **review-join stamp** entry (`CONTEXT.md:517-534`) — Step 3
   changes when a stamp is written and adds a variant.
+- A glossary entry for **content pin** (added 2026-09-10, R11). The word
+  "pin" is load-bearing across `tests/reviewed-path-gate.test.sh`'s
+  tracked-open pins, CC7's "residual pins", Step 5's spelling pins and the
+  former AC-C6 byte pin, and `CONTEXT.md` defines none of them. The
+  distinction R11 turns on is worth recording: a **content pin** asserts a
+  file's current bytes and expires the moment that file is legitimately
+  edited, whereas an assertion about a *commit* does not. Relate it to the
+  existing `unreachable baseline` entry (`CONTEXT.md:53`), whose
+  reachability-precondition shape the retargeted AC-C6 reuses.
 - Carrying forward the still-open glossary suggestions recorded in prior
   non-blocking notes and not addressed here: "survival pin", "STILL OPEN"
   header convention, "single-/double-quoted span", "skeleton" /
