@@ -215,12 +215,32 @@ d="$(mktemp -d)"
   || bad "harness_armed -> 1, git repo but config never tracked"
 rm -rf "$d"
 
+# The `source` must run BEFORE the PATH swap: the lib resolves its own dir
+# with `dirname`, which lives in the same /usr/bin that NO_GIT_PATH strips,
+# so sourcing under NO_GIT_PATH aborts the subshell at load time (rc 1) and
+# the case would pass without ever calling harness_armed. Swapping after the
+# source leaves only `command -v git` inside the witness looking at a
+# git-less PATH, which is the thing under test.
 d="$(mk_git_tracked)"
 rm -rf "$d/.claude/agents" "$d/.claude/persona-config.json"
-rc=$( (set +u; export PATH="$NO_GIT_PATH"; source hooks/scripts/lib/harness-arm.sh
+rc=$( (set +u; source hooks/scripts/lib/harness-arm.sh
+       export PATH="$NO_GIT_PATH"
        harness_armed "$d" .claude) >/dev/null 2>&1; echo $? )
 [ "$rc" = 1 ] && ok "harness_armed -> 1 when git is not on PATH" \
   || bad "harness_armed -> 1 when git is not on PATH (got $rc)"
+rm -rf "$d"
+
+# Residual: the tamper can be *undone* by dropping the config from the index
+# as well as the working tree, which takes the last witness away and returns
+# the verdict to 1 (unadapted). That is accepted, documented scope, not a
+# bug: with no config on disk and no index entry there is nothing left to
+# witness that this project was ever adapted, and `git rm --cached` is an
+# operator action indistinguishable from never having tracked the file.
+d="$(mk_git_tracked)"
+rm -rf "$d/.claude/agents" "$d/.claude/persona-config.json"
+( cd "$d" && git_c rm -q --cached .claude/persona-config.json ) >/dev/null 2>&1
+[ "$(verdict "$d")" = 1 ] && ok "harness_armed -> 1 once the config is git rm --cached" \
+  || bad "harness_armed -> 1 once the config is git rm --cached"
 rm -rf "$d"
 
 # 5: still armed - a healthy config returns 0 without ever invoking git.

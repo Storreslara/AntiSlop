@@ -5,13 +5,17 @@
 # parameter rather than a literal.
 #
 # harness_armed <project_dir> [dot_label] -> 0 armed, 1 unadapted, 2 tampered.
-# "Tampered" is two independent adaptation witnesses - agents/*.md, plus
-# hooks/scripts/ or reviewed/ - with the config absent, empty or unparseable
-# (spec 2026-08-25-harness-trust-gaps Step 1, R2). The witness test never
-# reads persona-config.json (D1): the file that may have been deleted cannot
-# also be the evidence that it should exist. Requiring agents/*.md is R2's
-# false-positive mitigation - a project mid-adapt can have the directories
-# before any agent file is written.
+# "Tampered" has two independently sufficient routes: two adaptation
+# witnesses - agents/*.md, plus hooks/scripts/ or reviewed/ - with the config
+# absent, empty or unparseable (spec 2026-08-25-harness-trust-gaps Step 1,
+# R2); OR, on its own with no directory witness left at all, the git-index
+# witness below, i.e. a config absent from the working tree but still tracked
+# (spec 2026-09-09-fable-gate-audit-remediation Step 2, C2).
+# The witness
+# test never reads persona-config.json (D1): the file that may have been
+# deleted cannot also be the evidence that it should exist. Requiring
+# agents/*.md is R2's false-positive mitigation - a project mid-adapt can
+# have the directories before any agent file is written.
 #
 # The refusal names restoring the file from version control, not the
 # literal `git restore`, and no self-service rebuild command, and it
@@ -41,7 +45,7 @@ _harness_arm_git_witness() {
   command -v git >/dev/null 2>&1 || return 1
   git -C "$project_dir" ls-files --error-unmatch \
     "${dot_label}/persona-config.json" >/dev/null 2>&1 || return 1
-  HARNESS_ARM_WITNESSES="the git index"
+  HARNESS_ARM_WITNESSES="a git index entry for ${dot_label}/persona-config.json"
   HARNESS_ARM_STATE="absent"
   return 0
 }
