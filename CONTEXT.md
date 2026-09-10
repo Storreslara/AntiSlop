@@ -184,6 +184,23 @@ _Avoid_: marker-directory gate
   necessarily fire on prose mentions, not just write attempts — the asymmetry is
   ratified, not an oversight. Introduced together as a pair, not independently.
 
+**git-index witness** (synonymous with **directory witness**):
+(unit gh441, 2026-09-10) — a detection mechanism in `harness_armed()` that
+  identifies when a project's configuration file (`.claude/persona-config.json`
+  or equivalent per dot-dir) is missing from the working tree but still tracked
+  in git (e.g., after `rm -rf .claude`, `git clean -fdx`, or `mv .claude .claude.bak`).
+  One of two independently-sufficient routes that lead to a "tampered" verdict
+  (verdict 2). The other route is: presence of **adaptation witnesses**
+  (agents/*.md files and either hooks/scripts/ or reviewed/ directories) combined
+  with config absent/empty/unparseable. Note: the terms "adaptation witnesses"
+  and "directory witness" are synonyms—both refer to the directory artifacts
+  checked by `harness_armed()` before invoking the git-index check; the code
+  comment at `hooks/scripts/lib/harness-arm.sh:8-19` uses both names across four
+  lines, an inconsistency noted for future cleanup but non-blocking. `harness_armed()`
+  returns: 0 (armed — config present and parseable), 1 (unadapted — no witnesses
+  found), 2 (tampered — adaptation witnesses found but config missing/bad, OR
+  git-index witness alone). See [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md).
+
 **bypass family**:
 (unit harness-integrity-gate-hardening, 2026-09-09) — a class of obfuscation
   techniques that could evade a textual-protection gate by disguising the true
