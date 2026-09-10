@@ -1980,7 +1980,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   file]] — reviewer included, empty/main-session `agent_type` included. Contrast
   with `reviewed-path-gate.sh`: that gate has a grant branch (the reviewer may
   write `.claude/reviewed/*.pass`, and a no-reviewer fallback exists for the main
-  session); this gate has no grant branch and no fallback — no identity may ever
+  session or the orchestrator persona); this gate has no grant branch and no fallback — no identity may ever
   write a DECISION file, full stop. **Reads are allowed** in both gates, including
   read-only commands (e.g. `grep`, file read, stat), [[prose mention]]s of the
   protected paths in commit messages, **single-quoted patterns** in grep and other
@@ -2049,12 +2049,12 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   `reviewer` from `.claude/persona-config.json`'s `personaSelection`) to
   unconditionally re-arm `reviewed-path-gate.sh`'s no-reviewer fallback for
   `.claude/reviewed/`, even while a standing `.escalated` marker exists — letting
-  the main session/team lead silently discard a pending `ESCALATE-TO-HUMAN`
+  the main session/team lead (or orchestrator persona) silently discard a pending `ESCALATE-TO-HUMAN`
   escalation with zero human artifact, since only the reviewer ever writes
   `.escalated` and a standing one under a reviewer-less config proves the
   deselection post-dates the escalation. Contrast with the legitimate no-reviewer
-  fallback (`reviewed-path-gate.sh:96-117`), which this unit preserves unchanged
-  when no `.escalated` marker stands. Closed by the branch at
+  fallback (unit #453, 2026-09-10: `reviewed-path-gate.sh:263`), which this unit preserves unchanged
+  when no `.escalated` marker stands and now extends to both the main session and orchestrator persona. Closed by the branch at
   `hooks/scripts/reviewed-path-gate.sh:105-116`: before the fallback's `exit 0`,
   it globs `.claude/reviewed/*.escalated` and blocks (`exit 2`) if any marker is
   found, naming the [[DECISION channel]] as the resolution route. Fixed at commit
