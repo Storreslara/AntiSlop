@@ -827,6 +827,19 @@ write_case "case n  antislop:reviewer Write, standing escalation (GRANT unaffect
   "antislop:reviewer" "$marker/u9.pass" "$proj_escalated"
 echo
 
+echo "-- gate-audit-step4/M4: orchestrator identity in the no-reviewer fallback --"
+for id in orchestrator antislop:orchestrator; do
+  bash_case "case o  $id write intent, no reviewer selected (now reachable)" allowed "$id" \
+    "printf x > $marker/9.pass" "$proj_none"
+done
+bash_case "case p  orchestrator write intent, standing escalation (still refused)" blocked \
+  orchestrator "printf x > $marker/9.pass" "$proj_escalated"
+bash_case "case q  orchestrator write intent, reviewer selected (no widening)" blocked \
+  orchestrator "printf x > $marker/9.pass" "$proj"
+bash_case "case r  lead-programmer write intent, no reviewer selected (no widening)" blocked \
+  lead-programmer "printf x > $marker/9.pass" "$proj_none"
+echo
+
 echo "-- case 38: spellings bash resolves to the marker dir (rpg-canon-2) --"
 # THIRD deliberate exception to this file's build-from-$marker rule (case 19 and
 # 37.3 are the others), and for the opposite reason: every payload here exists

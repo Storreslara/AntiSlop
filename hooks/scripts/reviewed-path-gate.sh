@@ -260,7 +260,7 @@ if [ -z "$write_tool" ] && write_with_commented_mention "$command"; then
   exit 0
 fi
 
-if [ -z "$agent_type" ]; then
+if [ -z "$agent_type" ] || persona_matches_gate "$agent_type" orchestrator; then
   has_reviewer=""
   personas="$(jq -r '.personaSelection[]? // empty' "$config" 2>/dev/null || true)"
   while IFS= read -r persona; do

@@ -60,7 +60,7 @@
     ".claude/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
     ".claude/hooks/scripts/lint-on-edit.sh": "b1db05986d2c553e32234934a524936b741f6fc3dab90eb0588e9c6d24f722d0",
     ".claude/hooks/scripts/protected-paths.sh": "3efc9097a0d915f725deb3a28ea482220dddafa7d83a56c93e8c42644fa51728",
-    ".claude/hooks/scripts/reviewed-path-gate.sh": "fc2f32b91830588ad0ecc52da44c3a6dddf978a51728a68e156df2d9163404db",
+    ".claude/hooks/scripts/reviewed-path-gate.sh": "34e4c9d05ae6cea369eb461e9f961ae3b4122b1e34a7ab48cd8969888a67c058",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
     ".claude/hooks/scripts/reviewer-tier.sh": "ac1b5126f9496e654552bb960a61b96349776cefc261728e489b286ca3354f6d",
     ".claude/hooks/scripts/session-start.sh": "72658463b95dc92db20166bc883974de85cbcb502876dc59dd79035c021c6391",
