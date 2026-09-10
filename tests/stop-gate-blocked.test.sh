@@ -586,7 +586,7 @@ mkdir -p "$mutant_scope"
 cp hooks/scripts/stop-gate.sh "$mutant_scope/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant_scope/lib"
 mutant_scope_core="$mutant_scope/lib/stop-gate-core.sh"
-scope_line='    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" )'
+scope_line='    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" "${JOIN_ADVISORY_UNITS[@]}" )'
 scope_before="$(grep -cxF "$scope_line" "$mutant_scope_core" || true)"
 sed -i 's/^    scoped_units=(.*$/    scoped_units=()/' "$mutant_scope_core"
 scope_after="$(grep -cxF '    scoped_units=()' "$mutant_scope_core" || true)"

@@ -75,16 +75,19 @@ else
   fail=1
 fi
 
-# --- route-gate-existing-pass-no-stamp: a format-valid PASS marker already exists for the unit -> no stamp ---
+# --- route-gate-existing-pass-still-stamps (M1): a format-valid PASS marker already exists -> stamp IS written, recording prior=pass ---
 dir="$(make_project existing-pass)"
 printf 'PASS 301 2026-08-07T00:00:00Z commit: abc1234 criteria: true\n' > "$dir/.claude/reviewed/301.pass"
+pass_mtime="$(stat -L --format=%Y "$dir/.claude/reviewed/301.pass" 2>/dev/null || date +%s)"
 payload3="$(reviewer_payload $'Unit: 301\n\nSecond look.')"
 rc=0
 run_route_gate "$dir" "$payload3" || rc=$?
-if [ "$rc" = 0 ] && [ "$(stamp_count "$dir")" = 0 ]; then
-  echo "OK   (route-gate-existing-pass-no-stamp) format-valid PASS marker already exists -> no stamp"
+stamp="$dir/.claude/.review-join.301"
+if [ "$rc" = 0 ] && [ -f "$stamp" ] \
+   && grep -qE "^[0-9TZ:-]+ unit=301 prior=pass prior_mtime=${pass_mtime}\$" "$stamp"; then
+  echo "OK   (route-gate-existing-pass-still-stamps) M1: a valid PASS marker no longer suppresses the stamp - prior=pass recorded"
 else
-  echo "FAIL (route-gate-existing-pass-no-stamp) unexpected stamp or nonzero exit (rc=$rc)"
+  echo "FAIL (route-gate-existing-pass-still-stamps) expected a stamp with prior=pass prior_mtime=$pass_mtime (rc=$rc)"
   fail=1
 fi
 
@@ -172,9 +175,11 @@ dir="$(make_project advisory-mode)"
 payload_advisory="$(reviewer_payload $'Unit: adv-1\nMode: advisory\n\nAdvisory look, no verdict expected.')"
 rc=0
 run_route_gate "$dir" "$payload_advisory" || rc=$?
-if [ "$rc" = 0 ] && [ "$(stamp_count "$dir")" = 0 ] \
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.review-join.adv-1" ] \
+   && [ -f "$dir/.claude/.review-join.adv-1.advisory" ] \
+   && grep -qE '^[0-9TZ:-]+ unit=adv-1 mode=advisory$' "$dir/.claude/.review-join.adv-1.advisory" \
    && grep -q '^advisory-dispatch=adv-1$' "$dir/.claude/review-audit.log"; then
-  echo "OK   (route-gate-advisory-mode-no-stamp) Mode: advisory on line 2 -> no stamp, advisory-dispatch= logged"
+  echo "OK   (route-gate-advisory-mode-no-stamp) Mode: advisory on line 2 -> no REAL stamp (M2 variant only), advisory-dispatch= logged"
 else
   echo "FAIL (route-gate-advisory-mode-no-stamp) unexpected stamp, exit, or missing audit line (rc=$rc)"
   fail=1
@@ -273,7 +278,7 @@ for port in codex cursor; do
     fail=1
   fi
 
-  # --- adapter-route-gate-existing-pass-no-stamp: a format-valid PASS already exists -> no stamp ---
+  # --- adapter-route-gate-existing-pass-still-stamps (M1): a format-valid PASS already exists -> stamp IS written, prior=pass ---
   dir="$(adapter_project "$port" existing-pass)"
   printf 'PASS 301 2026-08-07T12:00:00Z commit: abc criteria: bash tests/validate.sh\n' \
     > "$dir/$dot/reviewed/301.pass"
@@ -281,10 +286,11 @@ for port in codex cursor; do
   rc=0
   printf '%s' "$payload" | bash "$(adapter_script "$port")" || rc=$?
   [ "$rc" = 0 ] || adapter_never_blocked=false
-  if [ "$rc" = 0 ] && [ "$(adapter_stamp_count "$dir" "$port")" = 0 ]; then
-    echo "OK   (adapter-route-gate-existing-pass-no-stamp) $port: unit already holds a valid PASS -> no stamp"
+  if [ "$rc" = 0 ] && [ "$(adapter_stamp_count "$dir" "$port")" = 1 ] \
+     && grep -qE 'unit=301 prior=pass prior_mtime=[0-9]+$' "$dir/$dot/.review-join.301"; then
+    echo "OK   (adapter-route-gate-existing-pass-still-stamps) $port: M1 - a valid PASS marker no longer suppresses the stamp"
   else
-    echo "FAIL (adapter-route-gate-existing-pass-no-stamp) $port: unexpected stamp or nonzero exit (rc=$rc)"
+    echo "FAIL (adapter-route-gate-existing-pass-still-stamps) $port: expected a stamp with prior=pass (rc=$rc)"
     fail=1
   fi
 
@@ -454,6 +460,134 @@ if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-mcc" ] \
   echo "OK   (mcc-helper-unavailable) marker-commit-check.sh renamed away -> exit 0, logs marker-commit-check=unavailable, gate itself unaffected"
 else
   echo "FAIL (mcc-helper-unavailable) rc=$rc flag-exists=$([ -e "$dir/.claude/.pending-review.lp-mcc" ] && echo yes || echo no) audit=$(grep -c 'marker-commit-check=unavailable' "$dir/.claude/review-audit.log" 2>/dev/null || echo 0)"
+  fail=1
+fi
+
+# ============================================================================
+# REVIEW-JOIN STAMP SEMANTICS (gh442, spec Step 3: M1 + M2 + M3). Named cases
+# 1-7 per the plan's own acceptance-criteria numbering.
+# ============================================================================
+
+join_reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
+
+pending_flag_count() {
+  # $1 = project dir -> number of .claude/.pending-review.* flags standing
+  local dir="$1"
+  shopt -s nullglob
+  local flags=( "$dir"/.claude/.pending-review.* )
+  shopt -u nullglob
+  echo "${#flags[@]}"
+}
+
+# --- (2) stop-gate-m1-coupling: a stamp recording prior=pass couples the next SubagentStop to a NEWER verdict ---
+dir="$(make_project m1-coupling)"
+printf 'PASS m1-couple 2026-08-07T00:00:00Z commit: abc1234 criteria: true\n' > "$dir/.claude/reviewed/m1-couple.pass"
+payload_m1="$(reviewer_payload $'Unit: m1-couple\n\nRe-review.')"
+rc=0
+run_route_gate "$dir" "$payload_m1" || rc=$?
+m1_stamp="$dir/.claude/.review-join.m1-couple"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc=$?
+if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] && [ -f "$m1_stamp" ] \
+   && grep -q 'marker=MISSING unit=m1-couple' "$dir/.claude/review-audit.log"; then
+  echo "OK   (stop-gate-m1-coupling) unchanged PASS mtime -> SubagentStop blocks, naming m1-couple as owed a new verdict"
+else
+  echo "FAIL (stop-gate-m1-coupling) expected a block naming m1-couple (rc=$rc)"
+  fail=1
+fi
+future_mtime=$(( $(date +%s) + 10 ))
+printf 'PASS m1-couple 2026-08-07T13:00:00Z commit: def456 criteria: true\n' > "$dir/.claude/reviewed/m1-couple.pass"
+touch -d "@$future_mtime" "$dir/.claude/reviewed/m1-couple.pass"
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-1" ] && [ ! -e "$m1_stamp" ]; then
+  echo "OK   (stop-gate-m1-coupling) a NEWER PASS marker satisfies the stamp -> SubagentStop allows"
+else
+  echo "FAIL (stop-gate-m1-coupling) expected allow after rewriting the marker with a newer mtime (rc=$rc)"
+  fail=1
+fi
+
+# --- (3) stop-gate-m2-advisory-clears-nothing: an advisory-only reviewer turn must not fall into the bootstrap clear-all path ---
+dir="$(make_project m2-advisory-clears-nothing)"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-2"
+payload_adv="$(reviewer_payload $'Unit: m2-u\nMode: advisory\n\nAdvisory look.')"
+rc=0
+run_route_gate "$dir" "$payload_adv" || rc=$?
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] && [ -f "$dir/.claude/.pending-review.lp-2" ]; then
+  echo "OK   (stop-gate-m2-advisory-clears-nothing) an advisory-only turn clears zero flags; both stand"
+else
+  echo "FAIL (stop-gate-m2-advisory-clears-nothing) expected both flags to survive (rc=$rc)"
+  fail=1
+fi
+
+# --- (4) route-gate-advisory-no-clobber: an advisory dispatch must not overwrite a real stamp for the same unit ---
+dir="$(make_project m2-no-clobber)"
+seed_content="2026-08-07T12:00:00Z unit=m2-real prior=none prior_mtime=-"
+printf '%s\n' "$seed_content" > "$dir/.claude/.review-join.m2-real"
+payload_adv2="$(reviewer_payload $'Unit: m2-real\nMode: advisory\n\nAdvisory look.')"
+rc=0
+run_route_gate "$dir" "$payload_adv2" || rc=$?
+after_content="$(cat "$dir/.claude/.review-join.m2-real" 2>/dev/null)"
+if [ "$rc" = 0 ] && [ "$after_content" = "$seed_content" ] \
+   && [ -f "$dir/.claude/.review-join.m2-real.advisory" ]; then
+  echo "OK   (route-gate-advisory-no-clobber) advisory dispatch writes a distinct .advisory stamp, real stamp untouched"
+else
+  echo "FAIL (route-gate-advisory-no-clobber) real stamp clobbered or advisory stamp missing (rc=$rc)"
+  fail=1
+fi
+
+# --- (5) stop-gate-m2-scoping-preserved: a .blocked marker for a unit named only by an advisory stamp stays in-scope ---
+dir="$(make_project m2-scoping)"
+payload_adv3="$(reviewer_payload $'Unit: m2-scoped\nMode: advisory\n\nAdvisory look.')"
+rc=0
+run_route_gate "$dir" "$payload_adv3" || rc=$?
+printf 'BLOCKED m2-scoped 2026-08-07T12:00:00Z missing: constraint X\n' > "$dir/.claude/reviewed/m2-scoped.blocked"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+if [ "$rc" = 0 ] && [ -f "$dir/.claude/.pending-review.lp-1" ] \
+   && grep -q 'verdict=blocked flags-kept' "$dir/.claude/review-audit.log" \
+   && ! grep -q 'marker-out-of-scope=m2-scoped' "$dir/.claude/review-audit.log"; then
+  echo "OK   (stop-gate-m2-scoping-preserved) a .blocked marker for an advisory-only-stamped unit stays in-scope"
+else
+  echo "FAIL (stop-gate-m2-scoping-preserved) expected flags-kept + in-scope for m2-scoped (rc=$rc)"
+  fail=1
+fi
+
+# --- (6) stop-gate-m3-bounded-clear: two flags but only one satisfied stamp -> exactly one flag remains, remaining count logged ---
+dir="$(make_project m3-bounded)"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-2"
+printf '2026-08-07T12:00:00Z unit=m3-u prior=none prior_mtime=-\n' > "$dir/.claude/.review-join.m3-u"
+printf 'PASS m3-u 2026-08-07T12:00:00Z commit: abc123 criteria: bash tests/validate.sh\n' \
+  > "$dir/.claude/reviewed/m3-u.pass"
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+remaining_flags="$(pending_flag_count "$dir")"
+if [ "$rc" = 0 ] && [ "$remaining_flags" = 1 ] \
+   && grep -q 'cleared-by=reviewer cleared=1 remaining=1' "$dir/.claude/review-audit.log"; then
+  echo "OK   (stop-gate-m3-bounded-clear) one satisfied stamp clears exactly one of two flags, remaining count logged"
+else
+  echo "FAIL (stop-gate-m3-bounded-clear) expected exactly one flag remaining (rc=$rc remaining=$remaining_flags)"
+  fail=1
+fi
+
+# --- (7) stop-gate-m3-bootstrap-unchanged: zero stamps + two flags -> BOTH cleared, bootstrap fail-open kept verbatim ---
+dir="$(make_project m3-bootstrap)"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
+printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-2"
+rc=0
+printf '%s' "$join_reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || rc=$?
+remaining_flags="$(pending_flag_count "$dir")"
+if [ "$rc" = 0 ] && [ "$remaining_flags" = 0 ] \
+   && grep -q 'marker-check=bootstrap' "$dir/.claude/review-audit.log"; then
+  echo "OK   (stop-gate-m3-bootstrap-unchanged) zero stamps still clears ALL flags via the ratified bootstrap fail-open"
+else
+  echo "FAIL (stop-gate-m3-bootstrap-unchanged) expected both flags cleared (rc=$rc remaining=$remaining_flags)"
   fail=1
 fi
 

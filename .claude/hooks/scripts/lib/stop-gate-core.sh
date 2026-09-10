@@ -242,6 +242,7 @@ review_join_state() {
   JOIN_SATISFIED_STAMPS=()
   JOIN_SATISFIED_UNITS=()
   JOIN_UNSATISFIED_UNITS=()
+  JOIN_ADVISORY_UNITS=()
   JOIN_FAILOPEN=false
 
   shopt -s nullglob
@@ -269,6 +270,16 @@ review_join_state() {
         continue
         ;;
     esac
+
+    # M2: an advisory stamp (mode=advisory) counts toward JOIN_STAMP_COUNT and
+    # enters scoped_units below (gh425 marker scoping), but owns no verdict -
+    # it is consumed/deleted here like a satisfied stamp, and never enters
+    # JOIN_SATISFIED_STAMPS, so it can never justify clearing a flag (M3).
+    if [[ $line =~ (^|[[:space:]])mode=advisory([[:space:]]|$) ]]; then
+      JOIN_ADVISORY_UNITS+=( "$unit" )
+      rm -f "$stamp" 2>/dev/null || true
+      continue
+    fi
 
     prior_mtime=""
     if [[ $line =~ (^|[[:space:]])prior_mtime=([^[:space:]]+) ]]; then
@@ -329,7 +340,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     # was actually dispatched for (gh425): a stray marker belonging to no
     # stamped unit must not disable flag-clearing project-wide.
     review_join_state "$dot"
-    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" )
+    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" "${JOIN_ADVISORY_UNITS[@]}" )
 
     shopt -s nullglob
     if [ "${#scoped_units[@]}" -eq 0 ]; then
@@ -373,9 +384,17 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
 
     if [ "${JOIN_STAMP_COUNT:-0}" -eq 0 ]; then
       # Nothing joined this reviewer to a unit - an un-stamped dispatch, or a
-      # unit that already held a valid PASS. Fail OPEN, as bootstrap did.
+      # unit that already held a valid PASS. Fail OPEN, as bootstrap did -
+      # this ratified clear-all is unchanged by M3's bounded clearing below.
       state_append_audit_log "review-audit.log" "$(printf '%s marker-check=bootstrap' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
-    elif [ "${#JOIN_SATISFIED_STAMPS[@]}" -gt 0 ] || [ "${JOIN_FAILOPEN:-false}" = true ]; then
+      state_clear_all_pending_review
+      state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
+    elif [ "${#JOIN_SATISFIED_STAMPS[@]}" -gt 0 ] || [ "${JOIN_FAILOPEN:-false}" = true ] \
+         || [ "${#JOIN_UNSATISFIED_UNITS[@]}" -eq 0 ]; then
+      # The third disjunct covers an advisory-only turn (M2): no satisfied
+      # stamp, no fail-open, but nothing is left unsatisfied either - there is
+      # no verdict to demand, so fall through to consume (a no-op here) and
+      # bounded-clear (a no-op here too, since no satisfied stamp exists).
       # marker-commit-check: classify each satisfied unit's PASS marker
       # `commit:` field before its stamp is consumed. Advisory - see
       # docs/plans/2026-08-15-marker-commit-attribution.md Step 7.
@@ -408,6 +427,31 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
           "${JOIN_SATISFIED_UNITS[$idx]}")"
         idx=$(( idx + 1 ))
       done
+
+      # M3: bounded flag clearing - clear at most as many pending-review
+      # flags as satisfied stamps were just consumed, oldest first by mtime,
+      # rather than clearing every flag project-wide regardless of how many
+      # units this reviewer turn actually settled.
+      shopt -s nullglob
+      join_clear_candidates=( "${dot}"/.pending-review.* )
+      shopt -u nullglob
+      join_clear_bound="${#JOIN_SATISFIED_STAMPS[@]}"
+      join_cleared=0
+      if [ "${#join_clear_candidates[@]}" -gt 0 ] && [ "$join_clear_bound" -gt 0 ]; then
+        while IFS= read -r join_flag; do
+          [ -n "$join_flag" ] || continue
+          rm -f "$join_flag" 2>/dev/null || true
+          join_cleared=$(( join_cleared + 1 ))
+        done < <(
+          for join_flag in "${join_clear_candidates[@]}"; do
+            join_flag_mtime="$(stat -L -c %Y "$join_flag" 2>/dev/null || stat -L -f %m "$join_flag" 2>/dev/null || echo 0)"
+            printf '%s %s\n' "$join_flag_mtime" "$join_flag"
+          done | sort -n | head -n "$join_clear_bound" | cut -d' ' -f2-
+        )
+      fi
+      join_clear_remaining=$(( ${#join_clear_candidates[@]} - join_cleared ))
+      state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer cleared=%s remaining=%s' \
+        "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$join_cleared" "$join_clear_remaining")"
     else
       missing=""
       idx=0
@@ -422,8 +466,6 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
 The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround."
     fi
 
-    state_clear_all_pending_review
-    state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer' "$(date -u +%Y-%m-%dT%H:%M:%SZ)")"
     allow
   fi
   # Clearing review flags is a privilege granted only to this project's own

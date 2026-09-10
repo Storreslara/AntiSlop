@@ -102,6 +102,12 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
         done <<< "$prompt"
 
         if [[ $second_line =~ ^Mode:[[:space:]]+advisory[[:space:]]*$ ]]; then
+          # M2: a distinct filename (never ".review-join.<unit>") so an
+          # advisory dispatch can never clobber a real stamp for the same
+          # unit - it still matches the ".review-join.*" glob stop-gate-core.sh's
+          # review_join_state() iterates.
+          printf '%s unit=%s mode=advisory\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" \
+            > "${dot}/.review-join.${unit_id}.advisory" || true
           audit_append "$review_audit" "advisory-dispatch=$unit_id"
           exit 0
         fi
@@ -115,25 +121,31 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
             "PASS ${unit_id} "*) pass_valid=true ;;
           esac
         fi
-        if [ "$pass_valid" = false ]; then
-          prior=none
-          prior_mtime=-
+        # M1: the stamp is now written unconditionally for a well-formed
+        # `Unit:` line, even when a valid PASS already exists - recording
+        # prior=pass lets the existing consumer (stop-gate-core.sh) demand a
+        # marker strictly newer than this dispatch, closing the bypass where a
+        # forged or pre-existing PASS suppressed its own review-join stamp.
+        prior=none
+        prior_mtime=-
+        if [ "$pass_valid" = true ]; then
+          prior=pass
+          prior_mtime="$(stat -L -c %Y "$pass_marker" 2>/dev/null || stat -L -f %m "$pass_marker" 2>/dev/null || echo -)"
+        else
           fail_marker="${reviewed_dir}/${unit_id}.fail"
           blocked_marker="${reviewed_dir}/${unit_id}.blocked"
           if state_unit_marker_exists "$unit_id" fail; then
             prior=fail
-            fail_marker="${reviewed_dir}/${unit_id}.fail"
             prior_mtime="$(stat -L -c %Y "$fail_marker" 2>/dev/null || stat -L -f %m "$fail_marker" 2>/dev/null || echo -)"
           elif state_unit_marker_exists "$unit_id" blocked; then
             prior=blocked
-            blocked_marker="${reviewed_dir}/${unit_id}.blocked"
             prior_mtime="$(stat -L -c %Y "$blocked_marker" 2>/dev/null || stat -L -f %m "$blocked_marker" 2>/dev/null || echo -)"
           fi
-          stamp="${dot}/.review-join.${unit_id}"
-          printf '%s unit=%s prior=%s prior_mtime=%s\n' \
-            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp" || true
-          audit_append "$review_audit" "review-join=$unit_id"
         fi
+        stamp="${dot}/.review-join.${unit_id}"
+        printf '%s unit=%s prior=%s prior_mtime=%s\n' \
+          "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit_id" "$prior" "$prior_mtime" > "$stamp" || true
+        audit_append "$review_audit" "review-join=$unit_id"
         ;;
     esac
   fi
