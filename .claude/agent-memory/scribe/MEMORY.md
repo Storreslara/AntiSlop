@@ -1,5 +1,6 @@
 # Memory index
 
+- [gwd-1 completion](gwd-1_completion.md) — PASS 2026-09-11; recorded fm-noflag set now four skills + drift-tracked-skills glossary entry + dependencies.md vendored-skill list updated; ADR-0031 forward reference not yet extant (unit gwd-2)
 - [gh429 advisory dispatch glossary](project_gh429_advisory_dispatch_glossary.md) — new Mode:advisory route-gate token defined in CONTEXT.md; split-dispatch pattern expected to recur in this batch (gh430+)
 - [gh440 completion](gh440_completion.md) — PASS 2026-09-10; two glossary entries (Privileged persona, Identity forgery); issue #440 closed; part of fable-gate-audit-remediation Step 1
 

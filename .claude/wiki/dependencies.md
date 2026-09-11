@@ -15,10 +15,10 @@ None. `package.json` has no `dependencies`/`devDependencies` field.
   selected. Falls back to WebFetch/WebSearch if no working server is found
   at ADAPT time.
 - **mattpocock/skills (HISTORICAL, no longer a live dependency)** — As of
-  2026-07-15, all 11 mattpocock-derived skills used by antislop have been
+  2026-07-15, mattpocock-derived skills used by antislop have been
   vendored one-time into `skills/` (pinned at upstream commit
-  e9fcdf95b402d360f90f1db8d776d5dd450f9234). The 11 vendored skills are:
-  `grill-me`, `grilling`, `handoff`, `to-spec`, `to-tickets`, `tdd`,
+  e9fcdf95b402d360f90f1db8d776d5dd450f9234). The 12 vendored skills are:
+  `grill-me`, `grill-with-docs`, `grilling`, `handoff`, `to-spec`, `to-tickets`, `tdd`,
   `diagnosing-bugs`, `improve-codebase-architecture`, `codebase-design`,
   `domain-modeling`, `code-review` (see
   `skills/THIRD-PARTY-NOTICES.md`). The `<MATTPOCOCK:slot>` substitution
@@ -26,7 +26,7 @@ None. `package.json` has no `dependencies`/`devDependencies` field.
   (Tracks B–C of plan 2026-07-15-vendor-mattpocock-skills completed). The
   external `npx skills@latest add mattpocock/skills` install step is gone.
   These skills are now shipped first-party as `antislop:<name>` references in
-  every persona, with content versioned in this repo. Two of these vendored skills (`handoff` and `improve-codebase-architecture`) have an intentional deviation: the upstream `disable-model-invocation: true` flag is stripped to enable autonomous agent invocation, tracked as `fm-noflag` reconstruction type (architectural record: [ADR 0012](../../docs/adr/0012-vendored-skill-declared-deviations.md)). A periodic re-sync
+  every persona, with content versioned in this repo. Four of these vendored skills (`handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs`) have an intentional deviation: the upstream `disable-model-invocation: true` flag is stripped to enable autonomous agent invocation, tracked as `fm-noflag` reconstruction type (architectural record: [ADR 0012](../../docs/adr/0012-vendored-skill-declared-deviations.md), amended by [ADR 0031](../../docs/adr/0031-grill-with-docs-model-invocable.md)). A periodic re-sync
   process (`bash scripts/resync-vendored-skills.sh`) manages drift against
   upstream `main` — see `docs/maintenance/resync-vendored-skills.md`.
 

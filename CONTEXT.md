@@ -915,6 +915,16 @@ Code Review Graph, a third-party MCP server providing
   [ADR 0005](docs/adr/0005-vendor-mattpocock-skills.md) amended to reference it.
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
 
+**fm-noflag set now four skills**:
+(2026-09-11, unit gwd-1) — the [[`fm-noflag` declared-deviation class]] (stripping the
+  upstream `disable-model-invocation` flag from vendored skills) now applies to four
+  skills: `handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs`.
+  This supersedes the earlier framing that "`grill-me` is the control, deliberately left
+  alone" ([ADR 0012](docs/adr/0012-vendored-skill-declared-deviations.md) as of 2026-08-07).
+  The reversal is formally recorded in [ADR 0031](docs/adr/0031-grill-with-docs-model-invocable.md),
+  which amends ADR 0012. All four skills are byte-diffed by `scripts/resync-vendored-skills.sh --check`
+  as part of the [[drift-tracked skills]] set.
+
 **Upstream MCP tool naming gap**:
 (recorded 2026-08-06) — code-review-graph
   installer templates contain five MCP tool names lacking the `_tool` suffix
@@ -1034,6 +1044,18 @@ a hard, mode-independent skill
   operational mode; this flag is a blanket removal. See unit #254 (2026-08-07)
   for the correction to this repo's prior documentation, which had stated
   the weaker (false) version: "not in teams mode only."
+
+**drift-tracked skills**:
+(unit gwd-1, 2026-09-11) — the set of vendored mattpocock skills whose
+  content is byte-diffed against upstream by `scripts/resync-vendored-skills.sh`.
+  All drift-tracked skills are checked via either the `fm` (frontmatter) or
+  `fm-noflag` reconstruction type (see [[`fm-noflag` declared-deviation class]]).
+  As of unit gwd-1, there are 9 drift-tracked skills: `grill-me`, `grill-with-docs`,
+  `grilling`, `handoff`, `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`,
+  `codebase-design`, and `domain-modeling`. The `--check` flag on the resync script
+  reports per-skill status (`[OK]` for match, or drift details if changed). Distinct
+  from the separate [[REPOINT_SKILLS]] set (skills pulled from upstream via live
+  `skills@latest` rather than pinned to a specific commit). See `docs/maintenance/resync-vendored-skills.md`.
 
 **Preloaded skill**:
 a skill declared in a [[Persona]]'s `skills:` frontmatter, loaded into
