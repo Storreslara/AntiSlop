@@ -1,0 +1,40 @@
+suites:
+  - id: reviewer-verdict.gold.v1
+    cases_dir: eval/cases/reviewer-verdict/gold
+    fixture: toy-lib-template
+    task: feature-task
+    scoring:
+      - verdict-match
+      - model-graded
+    thresholds:
+      sonnet:
+        min_verdict_match: null
+        baseline_commit: null
+        baseline_date: null
+      opus:
+        min_verdict_match: null
+        baseline_commit: null
+        baseline_date: null
+    grader:
+      model: sonnet
+      schema: eval/harness/grader-schema.json
+
+  - id: reviewer-verdict.grader.v1
+    cases_dir: eval/cases/reviewer-verdict/grader
+    fixture: toy-lib-template
+    task: feature-task
+    scoring:
+      - verdict-match
+      - model-graded
+    thresholds:
+      sonnet:
+        min_verdict_match: null
+        baseline_commit: null
+        baseline_date: null
+      opus:
+        min_verdict_match: null
+        baseline_commit: null
+        baseline_date: null
+    grader:
+      model: sonnet
+      schema: eval/harness/grader-schema.json
