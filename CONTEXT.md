@@ -457,8 +457,10 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   delegates to `grilling` plus `domain-modeling` (`Run a /grilling session,
   using the /domain-modeling skill.`). Preloaded by `spec-master` as its
   interrogation entry point (unit gwd-4), pivoting the "Grill before
-  planning" step off bare `grilling` so interrogation also produces
-  `CONTEXT.md`/`docs/adr/` side effects. Model-invocable because the
+  planning" step off bare `grilling` so interrogation produces `CONTEXT.md`
+  glossary entries (written directly by `spec-master`) and drafts ADRs into
+  the plan document (with numbering and landing left to `scribe`, whose custody
+  of `docs/adr/` is unchanged). Model-invocable because the
   [[`disable-model-invocation` flag]] is stripped under the `fm-noflag`
   declared-deviation class, alongside `grill-me`. Recorded in
   [ADR-0031](docs/adr/0031-grill-with-docs-model-invocable.md). See also
