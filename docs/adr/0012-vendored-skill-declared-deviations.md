@@ -1,7 +1,7 @@
 # ADR 0012: Vendored-skill declared deviations (`fm-noflag`)
 
 Date: 2026-08-07
-Status: Accepted
+Status: Accepted (amended by ADR-0031)
 
 ## Context
 ADR-0005 vendors the mattpocock/skills closure byte-verbatim by default
@@ -82,3 +82,10 @@ scope.
 - Plan: `docs/plans/2026-08-04-skills-library-remediation.md`, Step 5 (spec
   #245, unit #248) and Convergence follow-ups → Step 11 (unit `245-CF1`,
   this ADR).
+- **Amended by ADR-0031:** the `| \`grill-me\` | no — still flagged | \`fm\`
+  (byte-verbatim) | yes |` row in the asymmetry table above (line 42) and
+  the "`grill-me` is the control … deliberately left alone" sentence (lines
+  53-54) were true when written (2026-08-07) but have since been reversed —
+  `grill-me` is now converted to `fm-noflag` alongside `grill-with-docs`.
+  This ADR's declared-deviation mechanism itself stands unamended; only that
+  one row and sentence are now stale.
