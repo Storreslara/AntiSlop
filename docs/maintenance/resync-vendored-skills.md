@@ -1,6 +1,6 @@
 # Re-syncing vendored mattpocock/skills content
 
-`skills/` vendors 11 skills from
+`skills/` vendors 12 skills from
 [mattpocock/skills](https://github.com/mattpocock/skills) (MIT licensed —
 see `skills/THIRD-PARTY-NOTICES.md`), pinned at a single upstream commit
 SHA recorded in that same NOTICES file. This doc is the runbook for
@@ -11,7 +11,8 @@ deciding whether/how to re-pin.
 
 | skill | upstream path | shape |
 |---|---|---|
-| `grill-me` | `skills/productivity/grill-me` | verbatim |
+| `grill-me` | `skills/productivity/grill-me` | verbatim (flag stripped) |
+| `grill-with-docs` | `skills/engineering/grill-with-docs` | verbatim (flag stripped) |
 | `grilling` | `skills/productivity/grilling` | verbatim |
 | `handoff` | `skills/productivity/handoff` | verbatim |
 | `tdd` (+ `tests.md`, `mocking.md`) | `skills/engineering/tdd` | verbatim |
@@ -23,7 +24,7 @@ deciding whether/how to re-pin.
 | `to-tickets` | `skills/engineering/to-tickets` | **repointed** (see below) |
 | `code-review` | `skills/engineering/code-review` | **repointed** (see below) |
 
-The first 8 are byte-verbatim aside from their provenance header (with two intentional deviations: `handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` flag stripped, tracked as `fm-noflag` reconstruction type). The last
+The first 9 are byte-verbatim aside from their provenance header, with four intentional deviations — `handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs` — that have the `disable-model-invocation: true` flag stripped, tracked as the `fm-noflag` reconstruction type. The last
 3 (`to-spec`, `to-tickets`, `code-review`) have their
 `/setup-matt-pocock-skills` references repointed to antislop's native setup
 flow (`install-antislop` + `persona-config.json` `issueTracker` + the
@@ -94,7 +95,7 @@ show a difference, so they need a human read of the diff around the
 
 | `--check` exit code | meaning |
 |---|---|
-| `0` | all 8 verbatim skills `[OK]` |
+| `0` | all 9 drift-tracked skills `[OK]` |
 | `1` | `DRIFT DETECTED` — genuine content drift or a missing file, and all fetches succeeded |
 | `2` | `FETCH ERRORS` (drift status unknown because an upstream fetch failed), an unrecognized argument, or another script error (e.g. missing pinned SHA) |
 
@@ -102,7 +103,7 @@ Exit 2 is deliberately distinct from exit 1: a transient network blip
 fetching upstream must never be mistaken for genuine drift in already-
 vendored content.
 
-If `--check` reports drift on one of the 8 verbatim skills where nobody
+If `--check` reports drift on one of the 9 drift-tracked skills where nobody
 has edited `skills/` locally, that means the previously-vendored content
 does not actually match what's claimed at the pinned SHA — a content
 defect in whichever step vendored it, not something to silence in the
@@ -128,10 +129,10 @@ script.
    commit SHA for `main`
    (`git ls-remote https://github.com/mattpocock/skills main`) and update
    the SHA in `skills/THIRD-PARTY-NOTICES.md` (both the prose sentence and
-   every per-file provenance header comment across all 11 skills — a
+   every per-file provenance header comment across all 12 skills — a
    project-wide find/replace of the old SHA for the new one).
 5. Run `bash scripts/resync-vendored-skills.sh --check` again — it should
-   report `[OK]` for all 8 verbatim skills against the new pin.
+   report `[OK]` for all 9 drift-tracked skills against the new pin.
 6. Run `bash tests/validate.sh` and commit the update with a message
    noting the old and new SHA.
 

@@ -452,6 +452,18 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   rather than bare "grilling"), since descriptions themselves cannot be used as a
   disambiguation surface.
 
+**`grill-with-docs` skill**:
+(unit gwd-1, 2026-09-11) — a vendored mattpocock skill whose entire body
+  delegates to `grilling` plus `domain-modeling` (`Run a /grilling session,
+  using the /domain-modeling skill.`). Preloaded by `spec-master` as its
+  interrogation entry point (unit gwd-4), pivoting the "Grill before
+  planning" step off bare `grilling` so interrogation also produces
+  `CONTEXT.md`/`docs/adr/` side effects. Model-invocable because the
+  [[`disable-model-invocation` flag]] is stripped under the `fm-noflag`
+  declared-deviation class, alongside `grill-me`. Recorded in
+  [ADR-0031](docs/adr/0031-grill-with-docs-model-invocable.md). See also
+  [[Preloaded skill]] and **description collision**.
+
 **Adapter behavioural parity**:
 (issue #202, 2026-08-01 efficiency pass 2,
   Step 4, refreshed unit #411) — a merge-gate check that verifies the
@@ -957,8 +969,8 @@ this repo self-hosts the plugin it
 
 **npm distribution strategy**:
 (unit #137, 2026-08-15, policy decision) — the project's `package.json`
-  `files` array intentionally ships only 2 of 17 skills to npm:
-  `skills/coding-discipline` and `skills/install-antislop`. All other
+  `files` array intentionally ships only `skills/coding-discipline` and
+  `skills/install-antislop`; every other skill is excluded. All other
   skills (vendored, optional, project-specific) are distributed via git
   clone or the plugin marketplace instead. See [ADR-0022](docs/adr/0022-npm-distribution-skills-excluded.md)
   for rationale and distribution paths.

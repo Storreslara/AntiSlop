@@ -222,7 +222,7 @@ Delete what setup wrote:
 
 ## Credits
 
-- **[mattpocock/skills](https://github.com/mattpocock/skills)** — 11 skills
+- **[mattpocock/skills](https://github.com/mattpocock/skills)** — 12 skills
   vendored first-party under `skills/` (MIT; see
   [`skills/THIRD-PARTY-NOTICES.md`](skills/THIRD-PARTY-NOTICES.md)).
   `skills/fail-triage` is derived from its `triage` skill.
