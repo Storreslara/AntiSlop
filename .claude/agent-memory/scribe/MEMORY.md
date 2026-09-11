@@ -1,5 +1,6 @@
 # Memory index
 
+- [gwd-3 completion](gwd-3_completion.md) — PASS 2026-09-11; vendored-skill count 11→12; drift-tracked-skills 8→9 correction; grill-with-docs glossary entry + npm-distribution reword; table-labeling inconsistency noted
 - [gwd-2 completion](gwd-2_completion.md) — PASS 2026-09-11; ADR-0031 + description collision glossary entry + ADR-0012 amendment; four-skill fm-noflag set now settled; spec-master/scribe glossary-ADR boundary established
 - [gwd-1 completion](gwd-1_completion.md) — PASS 2026-09-11; recorded fm-noflag set now four skills + drift-tracked-skills glossary entry + dependencies.md vendored-skill list updated; ADR-0031 forward reference not yet extant (unit gwd-2)
 - [gh429 advisory dispatch glossary](project_gh429_advisory_dispatch_glossary.md) — new Mode:advisory route-gate token defined in CONTEXT.md; split-dispatch pattern expected to recur in this batch (gh430+)
