@@ -193,6 +193,22 @@ for f in skills/*/SKILL.md; do
 done
 
 echo
+echo "== agents/*.md skills: frontmatter tokens resolve to skills/<x>/SKILL.md =="
+for f in agents/*.md; do
+  line=$(grep '^skills:' "$f" || true)
+  [ -z "$line" ] && continue
+  for t in $(echo "$line" | grep -oE 'antislop:[a-zA-Z0-9-]+'); do
+    slug="${t#antislop:}"
+    if [ -f "skills/$slug/SKILL.md" ]; then
+      echo "OK   $f: $t -> skills/$slug/SKILL.md"
+    else
+      echo "FAIL $f: $t has no skills/$slug/SKILL.md"
+      fail=1
+    fi
+  done
+done
+
+echo
 echo "== optional-persona references must be phrased conditionally =="
 # scribe/reviewer/researcher are opt-out (see README.md); a bare
 # unconditional reference to one of them is exactly the class of bug that
