@@ -49,4 +49,5 @@
 - [Gate-hardening debug spec (2-FAIL cap)](project_harness_integrity_gate_debug_spec.md) — unbounded-universal criteria cause FAIL loops; freeze a family table. Nested-brace bypass hid behind 62 green examples.
 - [Fable gate-audit spec (#439)](project_fable_gate_audit_spec.md) — settled C1/C2/M1-M9/m1-m7 decisions + 7 premise corrections (7th = Step 5 census/#452); M8's two halves are unimplementable/vacuous as directed, M6 deletes 3 sanctioned escapes.
 - [Reviewer behavior-regression eval spec (2026-09-11)](project_reviewer_behavior_regression_eval_spec.md) — settled PASS/FAIL-only + calibrated-grader decisions; eval/variants/ never existed; results.jsonl is gitignored; prove tier via modelUsage.
+- [grill-with-docs spec (2026-09-11)](project_grill_with_docs_spec.md) — settled fm-noflag/ADR-amendment/count decisions + measured baselines; the fm→fm-noflag header swap is a two-part edit, not one.
 - [Persona-audit 11-findings spec (#428)](project_persona_audit_11_findings_spec.md) — settled .fail-append rationale + 4 premise corrections; marker-verify parses line 2 as a note; adapter hook libs ARE generated, protocol ports are not.
