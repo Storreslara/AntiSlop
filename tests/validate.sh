@@ -936,6 +936,15 @@ else
 fi
 
 echo
+echo "== eval/harness/validate-cases.py: 13-reason case.yaml validator (Bash, gh-eval-step1) =="
+if bash tests/eval-cases.test.sh; then
+  echo "OK   tests/eval-cases.test.sh"
+else
+  echo "FAIL tests/eval-cases.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
