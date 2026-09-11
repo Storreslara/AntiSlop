@@ -437,6 +437,21 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   best-effort rather than provably airtight — but the silent no-marker-at-all
   failure mode #153 documented is now closed, not merely aspirational.
 
+**description collision**:
+(unit gwd-2, 2026-09-11, [ADR-0031](docs/adr/0031-grill-with-docs-model-invocable.md)) —
+  the condition where two or more [[Preloaded skill]]s with near-identical descriptions
+  are both model-invocable, creating ambiguity: a user request like "grill me" might invoke
+  either `grill-me` ("A relentless interview to sharpen a plan or design.") or `grill-with-docs`
+  ("A relentless interview to sharpen a plan or design, which also creates docs (ADR's and
+  glossary) as we go.") depending on the harness's selection order. The descriptions cannot
+  be edited to disambiguate because both are **drift-tracked skills** — their descriptions
+  are reconstructed byte-for-byte from upstream by the `fm-noflag` declared-deviation type,
+  and editing the descriptions would break the [[`fm-noflag` declared-deviation class]] check.
+  The only available mitigation is explicit prose naming of the intended skill in the persona
+  or dispatch context (e.g., in `agents/spec-master.md`'s instructions to use `grill-with-docs`
+  rather than bare "grilling"), since descriptions themselves cannot be used as a
+  disambiguation surface.
+
 **Adapter behavioural parity**:
 (issue #202, 2026-08-01 efficiency pass 2,
   Step 4, refreshed unit #411) — a merge-gate check that verifies the
