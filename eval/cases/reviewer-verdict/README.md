@@ -22,8 +22,8 @@ validator rejects any mismatch (`id-mismatch`).
 ```yaml
 id: <kebab-case, unique within the suite, == directory name>
 suite: reviewer-verdict.gold.v1
-fixture: toy-lib-template            # must exist under eval/fixtures/
-task: feature-task                   # must exist under eval/tasks/<task>.md
+fixture: toy-lib-template            # must exist under eval/fixtures/; a missing one surfaces as patch-does-not-apply
+task: feature-task                   # must exist under eval/tasks/<task>.md — authoring rule only, the validator checks just that the field is present
 patch: change.patch                  # relative; must `git apply --check` on a clean copy of the fixture
 packet: packet.md                    # relative; the dispatch packet text given to the reviewer
 gold:

@@ -91,7 +91,10 @@ assert_reason() {
   out="$(python3 "$VALIDATOR" --registry "$REGISTRY" --suite reviewer-verdict.gold.v1 --cases-dir "$root" 2>&1)"
   rc=$?
   set -e
-  if [ "$rc" -ne 0 ] && printf '%s\n' "$out" | command grep -q -- "$reason"; then
+  # Output lines are "<case.yaml path>: <reason>"; strip the path and match the
+  # reason field exactly, so a reason that also appears in the fixture path
+  # (e.g. "$WORK/mut-duplicate-id/...") cannot satisfy the assertion by itself.
+  if [ "$rc" -ne 0 ] && printf '%s\n' "$out" | sed 's/.*: //' | command grep -qxF -- "$reason"; then
     ok "$label -> $reason"
   else
     bad "$label -> $reason (rc=$rc out=$out)"
