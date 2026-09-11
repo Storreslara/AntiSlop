@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deterministic tests for eval/harness/validate-cases.py: runs the validator
 # over the (currently empty) registered suites, then proves each of the 13
-# named rejection reasons fires via a mutation set built from one hand-built
+# named rejection reasons fires via a mutation proof built from one hand-built
 # valid gold case (never committed under eval/cases/).
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -24,7 +24,7 @@ fi
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
-# --- build one valid gold case as the mutation baseline ---
+# --- build one valid gold case as the mutation-proof baseline ---
 
 VALID_ID="valid-case"
 VALID_DIR="$WORK/base/$VALID_ID"
@@ -57,7 +57,7 @@ cat > "$VALID_DIR/packet.md" <<PACKET
 Unit: eval-$VALID_ID
 
 ## Objective
-Synthetic case used only by tests/eval-cases.test.sh's mutation set.
+Synthetic case used only by tests/eval-cases.test.sh's mutation proof.
 
 ## Acceptance criteria
 npm test
@@ -102,7 +102,7 @@ assert_reason() {
 }
 
 echo
-echo "== mutation set: missing-field:<name> (each required gold field removed) =="
+echo "== mutation proof: missing-field:<name> (each required gold field removed) =="
 for field in id suite fixture task patch packet gold tags; do
   root="$(new_mutation_dir "missing-$field")"
   CASE_PATH="$root/$VALID_ID/case.yaml" FIELD="$field" python3 <<'PY'
@@ -116,7 +116,7 @@ PY
 done
 
 echo
-echo "== mutation set: remaining 12 named reasons =="
+echo "== mutation proof: remaining 12 named reasons =="
 
 root="$(new_mutation_dir "id-mismatch" "renamed-dir")"
 assert_reason "$root" "id-mismatch" "case.yaml id != directory name"

@@ -2573,3 +2573,100 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   distinct from every other reviewer dispatch shape, all of which end in a
   marker file under `.claude/reviewed/`.
 
+**eval registry**:
+(unit gh-eval-step1, 2026-09-11) — the YAML registry file at
+  `eval/registry/reviewer-verdict.yaml` defining all available evaluation
+  suites for reviewer behavior regression testing. Each entry names a suite id,
+  specifies the cases directory path, and maps to one or more suite definitions
+  (e.g. `reviewer-verdict.gold.v1`, `reviewer-verdict.grader.v1`). The suite id
+  uses OpenAI evals naming convention: `<name>.<split>.<version>` where the
+  `<split>` component encodes the suite type — `gold` for ground-truth labeled
+  cases, `grader` for calibration/grading cases. See [[gold split]], [[grader split]].
+
+**gold split**:
+(unit gh-eval-step1, 2026-09-11) — one of two suite types in the eval
+  registry, containing ground-truth labeled test cases with immutable gold
+  verdicts. A gold-split case (e.g. `reviewer-verdict.gold.v1`) is the
+  canonical oracle for reviewer behavior: each case specifies a code change
+  (`change.patch`), a dispatch packet (`packet.md`), and an authoritative
+  verdict (`gold.verdict`: PASS or FAIL) plus defect list. Gold labels are
+  immutable within a suite version — changes require a new `.v<n+1>` version.
+  See [[gold label immutability]], [[grader split]], [[eval registry]].
+
+**grader split**:
+(unit gh-eval-step1, 2026-09-11) — one of two suite types in the eval
+  registry, containing calibration cases paired with hand-written reviewer
+  messages for grading. A grader-split case (e.g. `reviewer-verdict.grader.v1`)
+  does not name a code fixture or patch (those live in the paired gold case);
+  instead it references a gold case's defects and captures an actual reviewer's
+  message and expected identification accuracy. Used to calibrate grader tools
+  and measure whether automated verdict assessment can match human judgment on
+  the same input. See [[gold split]], [[eval registry]].
+
+**class tag**:
+(unit gh-eval-step1, 2026-09-11) — one of the required metadata taxonomy labels
+  in a case's `tags` array, categorizing what kind of defect or behavioral case
+  it represents. Distinct from [[size tag]]. FAIL-class tags include:
+  `input-mutation`, `boundary`, `unmet-criterion`, `silent-behavior-change`,
+  `vacuous-test`, `security`, `unhandled-input`, `skipped-test`. PASS-class
+  tags include: `clean`, `style-decoy`, `robustness-decoy`, `refactor`,
+  `unrelated-touch`. Each case must carry at least one class tag; a case with
+  only size tags (e.g., `size:small`) is rejected (`tag-class-missing`).
+
+**size tag**:
+(unit gh-eval-step1, 2026-09-11) — one of the optional metadata taxonomy
+  labels in a case's `tags` array, classifying case scope by lines and files
+  changed. Defined values: `size:small` (≤40 lines, ≤3 files) and `size:large`
+  (larger). Distinct from [[class tag]], which is required and categorizes
+  defect/behavioral type. Size tags are purely advisory metadata; validator
+  never rejects a case for absent or misspelled size tags.
+
+**gold label immutability**:
+(unit gh-eval-step1, 2026-09-11) — the rule that a gold-split case's expected
+  verdict and defect list must never be edited in-place within a suite version;
+  the gold label is immutable within the version (e.g. `reviewer-verdict.gold.v1`).
+  Any correction or change to a gold verdict, defect, or patch semantics requires
+  publishing a new suite version (e.g. `.v2`) with a new case directory. This
+  discipline ensures reproducibility: anyone re-running `reviewer-verdict.gold.v1`
+  today or a year from now sees the same cases and verdicts. Enforced by the
+  validator as a documentation and audit requirement (not mechanically prevented
+  in the filesystem).
+
+**reason class**:
+(unit gh-eval-step1, 2026-09-11) — a categorization of validator rejection
+  reasons into two groups. The **missing-field family** (8 variants) is generated
+  by removing each required field (`id`, `suite`, `fixture`, `task`, `patch`,
+  `packet`, `gold`, `tags`) from a case, yielding 8 reasons of the form
+  `missing-field:<name>`. The **individually-named reasons** (12 variants)
+  cover all other rejection conditions: `id-mismatch`, `duplicate-id`,
+  `bad-suite`, `bad-verdict`, `defects-required`, `defects-forbidden`,
+  `defect-file-not-in-patch`, `patch-does-not-apply`, `packet-missing`,
+  `packet-lacks-unit-line`, `packet-leaks-gold`, `tag-class-missing`. Together,
+  these 8 + 12 = 20 distinct error conditions map to 13 distinct reason string
+  values: the 8 variants compress to the `missing-field:` pattern, yielding 1 +
+  12 = 13 canonical reasons. The distinction enables reason classification
+  without enumerating all 8 variants redundantly.
+
+**decoys**:
+(unit gh-eval-step1, 2026-09-11) — an optional metadata field in a gold-split
+  case's `case.yaml`, listing non-material nits present in a PASS case on
+  purpose. Each decoy is a one-line description (e.g., `- "naming inconsistency in helper function"`).
+  Decoys document intentional, acceptable shortcomings that a reviewer may or
+  may not flag — they are present to test reviewer judgment on material vs.
+  non-material findings. The `decoys` field is forbidden for FAIL cases (validator
+  rejects it as `defects-forbidden` if defects list is non-empty) and optional
+  for PASS cases. Known v1 gap: decoys are documented in the README but not yet
+  validator-enforced; full JSON-Schema validation is deferred to Step 3.
+
+**dispatch packet**:
+(unit gh-eval-step1, 2026-09-11) — in eval context, the `.md` file given to a
+  reviewer under test, containing a dispatch prompt with unit objective,
+  acceptance criteria, and related task metadata. Distinct from the operational
+  artifacts **Escalation packet** (human-review escalation bundle),
+  **Resolved packet** (archived escalation history), and **Pending packet**
+  (pending-review state artifact) in [[5 key domains]]. A dispatch packet in
+  eval cases (`eval/cases/reviewer-verdict/*/packet.md`) contains a `Unit: eval-<id>`
+  line and must not leak the `gold:` label that the case author knows but the
+  reviewer under test should not see. Prefer explicit "dispatch packet" phrasing
+  to distinguish this sense from existing packet terminology.
+
