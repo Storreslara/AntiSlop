@@ -56,6 +56,19 @@ family genuinely outside the protected set). Without that second assertion the
 equality check silently stops constraining anything the moment someone widens a
 condition.
 
+**The FIXTURE's own name can satisfy the assertion.** On gh-eval-step1 the
+assertion grepped a tool's whole stdout line (`"<path>: <reason>"`) for the
+expected reason, while every mutation fixture root was named `mut-<reason>` —
+so the reason was always present in the PATH and the assertion could never
+disagree with the code. It only looked alive because 12 of 13 mutants happened
+to emit nothing at all (rc=0 caught them); the 13th tripped a *second* real
+reason and was fully vacuous. Fix: anchor to the field, not the line
+(`sed 's/.*: //' | grep -qxF -- "$reason"`). Generalize: when an assertion
+greps tool output, ask what else in that output — paths, temp dirs, the
+command echo — could contain your needle. Then run the whole matrix (revert
+each detection individually) and require each mutant to fail EXACTLY its own
+assertion and no other; "the suite still passes" proves nothing.
+
 **Measurement hygiene: never baseline a sweep on `HEAD`.** A differential
 script doing `git show HEAD:<file>` re-baselines itself the moment you commit,
 and then cheerfully reports a tiny diff because it is comparing your work
