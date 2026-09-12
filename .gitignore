@@ -17,6 +17,7 @@ scratch/
 .claude/.review-join.*
 .claude/review-audit.log
 .claude/dispatch-audit.log
+.claude/orchestrator-rulings.log
 .claude/.dispatch-override
 .claude/.dispatch-override.consumed*
 .claude/.stop-loop-guard.*
