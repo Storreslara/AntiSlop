@@ -636,11 +636,13 @@ _Avoid_: clear-watermark
   other filesystem artifact that encodes persistent state in the harness.
   Examples: `.pass` markers, `.pending-review.<agent-id>` flags,
   `wip-handoff.<agent-id>` handoff files, `.session-baseline.<session-id>`
-  baseline commits, `.dispatch-override` escape hatches, the four audit logs
+  baseline commits, `.dispatch-override` escape hatches, the sealed audit logs
   (review-audit.log, wip-audit.log, microworld-audit.log, dispatch-audit.log),
   and the human-review packet. Prior to unit gh413, these species were
   individually manipulated throughout 12+ hook scripts; gh413 consolidated
-  them into a unified access layer organized by **5 key domains**.
+  them into a unified access layer organized by **5 key domains**. Note: the
+  **Rulings ledger** is a fifth advisory log, distinct from this sealed family
+  (see [[Rulings ledger]]).
 _Avoid_: state object, artifact type, marker type (be specific about what
   you're referring to; "state-artifact species" names the general taxonomy)
 
@@ -661,14 +663,16 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   (unkeyed/global): dispatch override (`.dispatch-override` single-use escape
   hatch) and its consumed marker (`.dispatch-override.consumed`, with
   content-embedded epoch and dispatch hash for lifecycle management).
-  **Log domain** (unkeyed, append-only): the four audit logs
+  **Log domain** (unkeyed, append-only): the sealed audit logs
   (review-audit.log, wip-audit.log, microworld-audit.log, dispatch-audit.log),
-  each with a `.seal` sidecar for integrity verification. Access across all
-  domains is provided by the [[state-access seam]]; glob/enumeration
-  operations (listing all pending reviews, sweeping old baselines, etc.)
-  remain in calling scripts, not in the seam itself. See
-  [ADR-0016](docs/adr/0016-per-unit-review-join.md) for the per-unit-keying
-  invariant that this model preserves.
+  each with a `.seal` sidecar for integrity verification. The orchestrator's
+  **Rulings ledger** (`.claude/orchestrator-rulings.log`) is a fifth log in the
+  Log domain, explicitly unhooked and advisory-only, distinct from the sealed
+  audit-log family (see [[Rulings ledger]]). Access across all domains is
+  provided by the [[state-access seam]]; glob/enumeration operations (listing
+  all pending reviews, sweeping old baselines, etc.) remain in calling scripts,
+  not in the seam itself. See [ADR-0016](docs/adr/0016-per-unit-review-join.md)
+  for the per-unit-keying invariant that this model preserves.
 
 **state-access seam**:
 (unit gh413, 2026-08-31) — the unified shell library at
@@ -887,6 +891,32 @@ the `.fail` disqualifier on the reviewer's own
   does not) preserves the core safety property: if a reviewer has once missed
   something on a cheaper tier, all future reviews run on the full-strength tier.
   Distinct from the implementer-tier ratchet.
+
+**Rulings ledger**:
+(unit orch-rulings-wait-heuristic, 2026-09-12) — the advisory log at
+  `.claude/orchestrator-rulings.log`, an append-only record where the orchestrator
+  documents self-authorized judgment calls (e.g., downgrade-only reviewer-tier
+  overrides). Format: `RULING <UTC ISO-8601 timestamp> unit=<task-id|n/a> decision=<summary>`.
+  This log is **not** a gate, **not** checked by any hook, and **not** a substitute
+  for PASS/FAIL markers (which remain authoritative). It records only decisions the
+  orchestrator was already authorized to make alone; it is never a substitute for
+  `AskUserQuestion` or `ESCALATE-TO-HUMAN` escalation paths. The log is a **fifth
+  member of the Log domain** (see [[5 key domains]]), explicitly distinct from the
+  sealed audit-log family (review-audit.log, wip-audit.log, microworld-audit.log,
+  dispatch-audit.log). Disambiguate from **ruling** (human operator's decision,
+  see [[ruling / rulings disambiguation]]).
+
+**ruling / rulings disambiguation**:
+(unit orch-rulings-wait-heuristic, 2026-09-12) — the term "ruling" appears in two
+  distinct senses in the codebase, referring to decisions by different actors.
+  (1) **Human ruling** — a judgment by a human operator on a unit (e.g., "unit #233,
+  OQ3 ruling" in the context of **Reviewer-gate ratchet**), made via the human-review
+  escalation process (see [[Escalation to human review]]). (2) **Orchestrator ruling**
+  — a self-authorized judgment call by the orchestrator, recorded in the **Rulings ledger**
+  and prefixed with the `RULING` token. The two senses refer to different actors
+  (human vs. orchestrator) and different recording mechanisms (escalation packet vs.
+  advisory log). Context determines which is meant; when ambiguous, prefix with
+  "human" or "orchestrator" to clarify.
 
 **Forward-verification rule**:
 (ADR-0026, unit spec2-unitD, 2026-08-25) — the pre-registered criterion for
