@@ -2751,3 +2751,19 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   reviewer under test should not see. Prefer explicit "dispatch packet" phrasing
   to distinguish this sense from existing packet terminology.
 
+**turn-end** / **natural turn boundaries**:
+(unit orch-rulings-followup-1, 2026-09-12) — two related but distinct concepts in
+  dispatch and polling guidance. **turn-end** is the specific protocol event marking
+  the conclusion of a dispatched turn, where control returns to a caller. This is the
+  subject of the **Terminal status line** section in the **Shared persona protocol**,
+  which requires every dispatched turn to end with a `STATUS:` line. **natural turn
+  boundaries** is a broader concept: natural transition points in ongoing work where
+  one activity concludes and another begins. This includes turn-ends, but also other
+  natural breaking points (e.g., completion of a task before moving to the next, or
+  any point where you're naturally pausing work). Used in `agents/orchestrator.md`'s
+  "Managing a long-running background dispatch" section to advise: "Space polls out
+  across your natural turn boundaries (e.g. after other work, or the next time
+  you're about to act) rather than checking in a tight loop." Every turn-end is a
+  natural turn boundary; the converse does not hold. When ambiguous in context,
+  clarify which sense is intended.
+
