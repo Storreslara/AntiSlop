@@ -41,3 +41,17 @@ block) recurs, do not try to restructure the command to evade the scan.
 Report the block to whoever dispatched the unit and wait - this is a
 known, named class of gate false positive, but working around it is still
 a bypass regardless of how narrowly framed the justification is.
+
+**Distinguish a gate-sanctioned escape from a self-authorized workaround
+(2026-09-11, orch-rulings-wait-heuristic):** hit this again when a
+`git commit -m "..."` whose message body merely *narrated* the marker
+directory (e.g. citing "per the FAIL record at .claude/reviewed/<id>.fail")
+was blocked. This time the gate's own refusal text explicitly named the
+sanctioned route: "To land a commit whose MESSAGE discusses this path, put
+the message in a file and use `git commit -F <file>`." Using `-F` here is
+NOT a bypass - it's the documented remediation printed by the gate itself,
+same category as `reviewed-path-gate.sh` granting `grep -r` for searching
+the directory. The rule from the rest of this memory (don't reword to evade
+a scan) still applies to any route the gate did NOT itself offer; always
+read the gate's full refusal text before picking a next step, since it may
+already contain the answer.
