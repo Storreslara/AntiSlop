@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.71 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.72 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -110,6 +110,25 @@ record, and never counts against the 2-FAIL cap.
 
 Gate: `dispatch-hygiene.sh`. Escape hatch:
 `printf 'override: <reason>\n' > .claude/.dispatch-override`.
+
+## Rulings ledger
+Whenever you make a judgment call mid-run that isn't already captured by an
+existing artifact (a PASS/FAIL marker, the `.claude/.dispatch-override` file,
+etc.) — for example a downgrade-only reviewer-tier override — append a
+one-line entry to `.claude/orchestrator-rulings.log` (`mkdir -p .claude`
+first if it doesn't exist yet), in this format:
+
+`RULING <UTC ISO-8601 timestamp> unit=<task-id|n/a> decision=<short summary>`
+
+This is a lightweight, append-only log for the human audit trail — it is
+**NOT** a gate, **NOT** checked by any hook, and **NOT** a substitute for the
+FAIL record or the `.claude/reviewed/` markers, which remain the
+authoritative record of verdicts. This project deliberately does not adopt
+the "never pause, just decide" philosophy some orchestration systems use —
+the ledger only records decisions you were already authorized to make on
+your own (e.g. a downgrade-only tier override); it is never a substitute for
+the `AskUserQuestion` / `ESCALATE-TO-HUMAN` escalation paths documented
+elsewhere in this file, which remain mandatory wherever they apply.
 
 ## Review routing — you are the single owner
 The lead-programmer never spawns the reviewer. When it reports
@@ -428,7 +447,11 @@ If a dispatched background task looks stalled, don't guess from file mtimes
 or `ps`, and don't abandon it and dispatch a duplicate (write-race risk).
 Poll first with `TaskOutput` (`block=false`); only `TaskStop` once polling
 confirms it's genuinely stuck — `TaskStop` is graceful and may not stop a
-wedged task immediately.
+wedged task immediately. Wait in bounded stretches of roughly 5-10 minutes
+between polls, rather than polling immediately/rapidly or waiting
+indefinitely. When you do poll, take the opportunity to reconcile against any
+other live children/dispatches you have outstanding at the same time, rather
+than checking each one in isolation.
 
 A subagent's own nested background `Bash` job (`run_in_background: true`, or
 a foreground call killed by the 600000 ms ceiling) is different: it has no
