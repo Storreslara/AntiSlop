@@ -46,4 +46,5 @@
 - [gh442 review-join stamp semantics (M1+M2+M3)](project_gh442_review_join_stamp_semantics.md) — ls-glob pipefail abort trap, widen elif with OR not replace, Set A gate blocks read-only git diff too
 - [AC-C6 stale pin — RESOLVED d3c4b02](project_ac_c6_stale_pin_blocks_rpg_hdg_edits.md) — retargeted to a commit-scoped, reachability-guarded check; a 33ac79b FAIL now means a pre-fix commit
 - [pgrep self-match polling trap](technique_pgrep_self_match_polling_trap.md) — an until-loop pgrep-ing for its own command text (e.g. "tests/validate.sh") matches itself via the eval wrapper and never exits; poll by PID/output file instead
+- [Protocol template derivation model](project_protocol_template_derivation_model.md) — template edits render into `.claude/persona-protocol.md` + config hash only (needs `--force-render`); agents/*.md and adapter ports are NOT generated; reviewer DROPS the Fourth-verdict section
 - [reviewed-path-gate: -F is sanctioned, not a bypass](feedback_reviewed_path_gate_false_positive_report_and_wait.md) — when the gate's OWN refusal names `git commit -F <file>` as the route, using it is the documented remediation, not a workaround
