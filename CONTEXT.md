@@ -779,6 +779,19 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   changes; prior to commit 194add2, the memoization was keyed on test path alone and
   defeated this mechanism. See [[drain loop]].
 
+**mutation-proof direction**:
+(unit rollout-preflight-bump-18, 2026-09-23) — a property of a test or criterion
+  that evaluates to `true` if the measurement genuinely *binds to* its baseline value
+  and responds to mutations of that value, and `false` if the measurement *derives*
+  its expected value (e.g., by computing `actual + 1`) and thus never registers
+  divergence. Exemplified in `tests/rollout-preflight.test.sh`: Test 1 hardcodes
+  baseline `17` and fails when mutated (mutation-proof direction holds); Test 2
+  derives expected value as `real+1`, so it passes regardless of whether the actual
+  count changed (mutation-proof direction does not hold). Core to [[mutation-proof]]
+  effectiveness — a bundle with a vacuous direction test will always pass, masking
+  regression, so the direction must be verified by reverting the criterion and
+  observing it flip. See [[mutation discipline]] in the spec governance context.
+
 **drain loop**:
 (unit A, 2026-08-25) — the async background process body that consumes queued
   microworld bundles and watch-map entries from **pending file**s and executes them,
