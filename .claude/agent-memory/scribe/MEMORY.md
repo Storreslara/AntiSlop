@@ -1,5 +1,6 @@
 # Memory index
 
+- [reviewer-changes-examples-lean-1 completion](reviewer_changes_examples_lean_1_completion.md) — PASS 2026-09-23; four-copy protocol section hand-sync pattern glossary entry + follow-up unit coordination note (reviewer-changes-examples-lean-2)
 - [gwd-3 completion](gwd-3_completion.md) — PASS 2026-09-11; vendored-skill count 11→12; drift-tracked-skills 8→9 correction; grill-with-docs glossary entry + npm-distribution reword; table-labeling inconsistency noted
 - [gwd-2 completion](gwd-2_completion.md) — PASS 2026-09-11; ADR-0031 + description collision glossary entry + ADR-0012 amendment; four-skill fm-noflag set now settled; spec-master/scribe glossary-ADR boundary established
 - [gwd-1 completion](gwd-1_completion.md) — PASS 2026-09-11; recorded fm-noflag set now four skills + drift-tracked-skills glossary entry + dependencies.md vendored-skill list updated; ADR-0031 forward reference not yet extant (unit gwd-2)

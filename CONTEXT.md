@@ -819,6 +819,27 @@ the subset of `templates/persona-protocol.md`'s 19
   earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
   were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
 
+**Inlined protocol section exclusion**:
+(unit reviewer-changes-examples-lean-1, 2026-09-23) — when a `templates/persona-protocol.md`
+  section is dropped from a persona's [[Protocol excerpt]] via
+  `PROTOCOL_SECTIONS_BY_PERSONA` (e.g., reviewer's "Fourth verdict: escalate-to-human"
+  in its `drop[]` list), that persona may instead carry its own hand-authored or
+  hand-adapted copy of that content as an independently-maintained source, not
+  generated from the template. Example: `agents/reviewer.md` (~lines 247-311)
+  maintains a hand-authored, second-person copy of CHANGES.md/EXAMPLES.md
+  authoring instructions; the adapter ports (`adapters/codex/agents-md-fragment.md`
+  and `adapters/cursor/rules/persona-protocol.mdc`) carry hand-adapted condensed
+  copies. This creates **four separately-maintained copies** of the same rules:
+  template (canonical but inlining-dropped), reviewer-local (hand-authored),
+  and two adapter fragments (hand-adapted). Editing the template section does
+  **not** update these persona-local or adapter-specific copies — coordinated
+  hand-sync across all N copies is required in follow-up units (e.g., unit
+  reviewer-changes-examples-lean-2). Not all dropped sections follow this pattern:
+  only sections whose content the persona's own documentation surface needs to
+  preserve; other drops are simply omitted entirely. Inlining occurs at
+  `bin/cli.js` ~line 755 during scaffold/`--update --force-render`. See
+  [[Protocol excerpt]].
+
 **Measured heavy-unit surface**:
 a measured heavy-unit surface is the reviewer's mechanized read of ADR-0004
   criterion 1 (changed-surface size), computed by
