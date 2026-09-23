@@ -63,14 +63,15 @@ the one-time per-project setup process that turns the
   based on an incomplete or empty changed-file list (see AC-B5d and [[microworld_skip_ok]]).
 
 **unmeasurable range**:
-(unit version-stamp-guard-1, 2026-09-23) — a git commit range for which a
+(unit version-stamp-guard-1, 2026-09-23; amended version-stamp-check-roast-1, 2026-09-23) — a git commit range for which a
   deterministic measurement cannot be derived, classified as the `unknown` verdict
   by `hooks/scripts/version-stamp-check.sh` and other reviewer-invoked measurement
   helpers (`heavy-trigger.sh`, `reviewer-tier.sh`). Causes: the range argument is
   malformed or missing, the range endpoints reference commits that do not exist in
   the working repository, a key artifact (`.claude-plugin/plugin.json`) is absent or
-  unparseable at one or both range endpoints, or the shallow clone or history
-  limitations prevent measurement. Handlers: `version-stamp-check.sh` and similar
+  unparseable at one or both range endpoints, a [[per-commit semantics]] comparison
+  at one or more commits within the range fails (e.g., missing parent, divergent
+  history), or the shallow clone or history limitations prevent measurement. Handlers: `version-stamp-check.sh` and similar
   measurement scripts exit 0 (fail-open) on unmeasurable ranges and output `unknown`
   (paired with placeholder dashes for derived fields), leaving the judgment to the
   reviewer. Contrast with [[unreachable baseline]], which is the analogous fail-closed
@@ -97,9 +98,10 @@ any ADAPT-copied file carrying a
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,
   which lets `bin/cli.js --update` tell "plugin's current version" from
   "what's on disk" and detect local edits via `fileHashes` without an LLM.
-  Distinct from **version-stamped path**, which refers to the source paths
-  (`agents/*.md`, `templates/`) that trigger a version-bump obligation under
-  the [[version-stamp discipline]].
+  Distinct from **version-stamped path** (a synonym used in the script and
+  some prose, referring to the canonical source paths `agents/*.md`, `templates/`
+  that trigger a version-bump obligation under the [[version-stamp discipline]] —
+  prefer the canonical term "version-stamped file" going forward).
 
 **`--update` semantics**:
 `bin/cli.js --update` is the mechanism for
@@ -184,6 +186,20 @@ the semantics of adding an
   lacks a bump — even when the range's overall endpoints show a bump happened
   somewhere in between (e.g. a later, unrelated commit). The endpoint `old`/`new`
   fields in the output remain informational only. See row 25 of `docs/trust-model.md`.
+
+**per-commit semantics**:
+(unit version-stamp-check-roast-1, 2026-09-23) — a measurement discipline where a
+  property or invariant is checked against each individual commit within a range
+  against its own immediate parent, rather than comparing only the range's two
+  endpoints. Applied to the [[version-stamp discipline]]: instead of checking whether
+  `.claude-plugin/plugin.json`'s version differs between the range's start and end,
+  the script checks *every* commit within the range that touches a version-stamped
+  path against that commit's immediate parent. This catches violations that endpoint-only
+  comparison could mask (e.g., an earlier commit lacks a version bump, but a later
+  unrelated commit bumps the version, hiding the violation). Per-commit semantics
+  enables `version-stamp-check.sh` to report a `violation` even when the overall range
+  endpoints show a bump happened somewhere in between, provided any one individual
+  commit within the range individually lacks a bump compared to its parent.
 
 **Substitution**:
 a placeholder in a shipped persona file (e.g.
