@@ -397,27 +397,16 @@ reverify_spec6() {
   echo "spec 6 end-state-sensitive criteria re-verification:"
   echo ""
 
-  # Baseline bumped 14 -> 15 (2026-08-26) once spec 1's Step 2 (gh418) landed
-  # hooks/scripts/harness-integrity-gate.sh, then 15 -> 16 (2026-08-26) once
-  # spec 1's Step 6 (gh420) landed hooks/scripts/marker-verify.sh, then
-  # 16 -> 17 (2026-08-27) once spec2-unitC landed hooks/scripts/marker-write.sh,
-  # then 17 -> 18 (2026-09-23) once version-stamp-guard-1 landed
-  # hooks/scripts/version-stamp-check.sh -- exactly the staleness the
-  # rollout-sequencing doc's own A24 discussion predicted ("the literal 14
-  # is stale even though nothing in spec 6 is wrong"). This snapshot must
-  # move again if a later unit adds or removes a top-level
-  # hooks/scripts/*.sh file; re-derive by counting rather than trusting this
-  # comment.
-  local hook_count=$(find hooks/scripts -maxdepth 1 -name '*.sh' -type f | wc -l)
-  echo "checked: A24 — hook script count"
-  echo "  Expected: 18, Actual: $hook_count"
-  if [ "$hook_count" -eq 18 ]; then
-    echo "  ✓ passing"
-  else
-    echo "  ✗ FAILING"
-    failed=1
-  fi
-  checked=$((checked + 1))
+  # A24's D0 "nothing is deleted" criterion is scoped to the not-yet-authored
+  # Phase 2 disablement-flip unit's own diff (docs/plans/2026-08-25-ci-shaped-
+  # review-architecture-d.md's A24 text): `git diff --diff-filter=D` for THAT
+  # unit. That unit doesn't exist yet -- structurally the same git-diff-range
+  # problem A13 has below -- so it is skipped rather than approximated by a
+  # script count that needed bumping every time hooks/scripts/*.sh gained a
+  # file (four times: gh418, gh420, spec2-unitC, version-stamp-guard-1).
+  echo "skipped: A24 — nothing-deleted diff (requires the flip unit's own commit)"
+  echo "  Reason: git-diff-range criterion; the Phase 2 disablement-flip unit not yet authored"
+  skipped=$((skipped + 1))
   echo ""
 
   echo "skipped: A13 — reporter scripts diff (requires phase-1-base commit)"

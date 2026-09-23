@@ -243,29 +243,30 @@ else
 fi
 
 # AC12: --reverify works and can fail
-# Test 1: On unmodified worktree, A24 should pass (18 scripts exist as of
-# version-stamp-guard-1 landing hooks/scripts/version-stamp-check.sh, 2026-09-23)
+# Test 1: A24 is a documented skip (the Phase 2 disablement-flip unit its
+# diff-filter=D criterion is scoped to doesn't exist yet), not a live script
+# count -- see rollout-a24-remechanize-1's investigation note in
+# reverify_spec6().
 reverify_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
-if echo "$reverify_output" | grep -q "A24" && echo "$reverify_output" | grep -q "passing"; then
-  pass_test "--reverify: A24 passes on unmodified worktree"
+if echo "$reverify_output" | grep -q "skipped: A24" && echo "$reverify_output" | grep -q "flip unit"; then
+  pass_test "--reverify: A24 reports skipped with flip-unit reason"
 else
-  fail_test "--reverify: A24 did not show passing on unmodified worktree"
+  fail_test "--reverify: A24 did not report skipped with the flip-unit reason"
 fi
 
-# Test 2: Create a temporary worktree with 19 scripts and verify A24 fails
+# Test 2: adding a hooks/scripts/*.sh file must not change A24's report --
+# this is the treadmill-ending property (no count left to bump).
 tmp_repo=$(mktemp -d)
 trap "rm -rf $tmp_repo" EXIT
 cp -r . "$tmp_repo"
-# Add an extra script
 touch "$tmp_repo/hooks/scripts/extra-test.sh"
-# Run --reverify in the temp repo
 cd "$tmp_repo"
-reverify_fail_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
+reverify_extra_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
 cd - >/dev/null
-if echo "$reverify_fail_output" | grep -q "A24" && echo "$reverify_fail_output" | grep -q "FAILING"; then
-  pass_test "--reverify: A24 fails with 19 scripts"
+if [ "$reverify_output" = "$reverify_extra_output" ]; then
+  pass_test "--reverify: A24 output unchanged after adding a hooks/scripts/*.sh file"
 else
-  fail_test "--reverify: A24 did not fail with 19 scripts"
+  fail_test "--reverify: A24 output changed after adding a hooks/scripts/*.sh file (treadmill not fixed)"
 fi
 
 # AC13: --reverify shows checked/skipped status without silent drops
