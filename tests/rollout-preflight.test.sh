@@ -242,8 +242,8 @@ else
   fail_test "sunset: not stated in header or help"
 fi
 
-# AC12: --reverify works and can fail
-# Test 1: A24 is a documented skip (the Phase 2 disablement-flip unit its
+# AC12: --reverify works; A24 is a documented skip (cannot fail anymore)
+# A24 is a documented skip (the Phase 2 disablement-flip unit its
 # diff-filter=D criterion is scoped to doesn't exist yet), not a live script
 # count -- see rollout-a24-remechanize-1's investigation note in
 # reverify_spec6().

@@ -803,13 +803,25 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   that evaluates to `true` if the measurement genuinely *binds to* its baseline value
   and responds to mutations of that value, and `false` if the measurement *derives*
   its expected value (e.g., by computing `actual + 1`) and thus never registers
-  divergence. Exemplified in `tests/rollout-preflight.test.sh`: Test 1 hardcodes
-  baseline `17` and fails when mutated (mutation-proof direction holds); Test 2
-  derives expected value as `real+1`, so it passes regardless of whether the actual
-  count changed (mutation-proof direction does not hold). Core to [[mutation-proof]]
+  divergence. Exemplified in `tests/rollout-preflight.test.sh` AC6b: `--owner reviewed-path-gate.sh`
+  hardcodes expected spec set `{1, 2, 3}` from the ownership table and fails when the table
+  is mutated (e.g., removing spec 1 from the entry). A vacuous counter-example would derive
+  `expected = all_specs - [spec_3]` from the output itself, passing regardless of whether
+  the ownership changed (mutation-proof direction does not hold). Core to [[mutation-proof]]
   effectiveness — a bundle with a vacuous direction test will always pass, masking
   regression, so the direction must be verified by reverting the criterion and
   observing it flip. See [[mutation discipline]] in the spec governance context.
+
+**flip unit**:
+(unit rollout-a24-remechanize-1, 2026-09-23) — the Phase 2 disablement-flip commit
+  specified in `docs/plans/2026-08-25-ci-shaped-review-architecture-d.md`'s A24 criterion,
+  which will assert "no scripts deleted from `hooks/scripts/`" via `git diff --diff-filter=D`
+  scoped to that commit. Used in `scripts/rollout-preflight.sh:407` as a **flip unit comment** (a spec-coupled contract string);
+  also appears in `tests/rollout-preflight.test.sh:251` where `--reverify 6` greps for the
+  literal phrase "flip unit" to verify A24's skip reason is correctly stated. Forward reference:
+  the flip unit does not yet exist in the repo (it is a future, authored-separately commit),
+  so A24 remains a documented skip (never approximated by a hardcoded script count that would
+  require bumping — see [[treadmill]]). See A24 in the rollout-sequencing spec.
 
 **drain loop**:
 (unit A, 2026-08-25) — the async background process body that consumes queued
@@ -876,6 +888,19 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   `assert_budget "stop-gate" 0.100 0.200 50 "$json" -- stop-gate.sh` measures 50 invocations
   and requires p50 ≤ 0.1s and p99 ≤ 0.2s, returning nonzero if either is exceeded. Gates used
   by AC-A1 (Unit A) and will be used by AC-B1 (Unit B).
+
+**treadmill** (maintenance burden):
+(unit rollout-a24-remechanize-1, 2026-09-23) — the recurring manual burden that arises
+  when a spec criterion measures a hardcoded baseline (e.g., "`hooks/scripts/` contains exactly
+  17 files") instead of deferring to a future commit's git-diff range. Each time new code adds
+  a matching item (a new `hooks/scripts/*.sh` file), the hardcoded baseline drifts and must be
+  manually bumped — this happened 4 times (gh418, gh420, spec2-unitC, version-stamp-guard-1).
+  A24's conversion to a documented skip (referencing the **flip unit**) permanently ends the
+  treadmill by eliminating the hardcoded count; cited in `scripts/rollout-preflight.sh:405`
+  (the skip reason) and `tests/rollout-preflight.test.sh:258` (the property being tested —
+  "adding a hooks/scripts/*.sh file must not change A24's report"). Contrast with measurements
+  that *can* derive fresh expectations (e.g., "count existing files now") — a treadmill is
+  specifically the cost of hardcoding baseline values that diverge from reality. See [[flip unit]].
 
 **Protocol excerpt**:
 the subset of `templates/persona-protocol.md`'s 19

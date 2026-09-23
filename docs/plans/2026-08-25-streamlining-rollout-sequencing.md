@@ -991,3 +991,28 @@ If a wave gate cannot be measured without invoking a sibling's not-yet-existing
 code, do **not** invent a placeholder that returns green. Report the wave and
 the missing dependency; a gate that cannot be measured must exit non-zero and
 say so, which is what W0 and W10 already do by design.
+
+---
+
+### Amendment A1 (2026-09-23, unit rollout-a24-remechanize-1)
+
+**AC12 deviation recorded.** AC12 (Step 1) demands: *"a `--reverify` that always
+passes, or always fails, is vacuous."* The spec measured two halves: (1) `--reverify 6`
+selects spec 6's end-state criteria and (2) on a mutated worktree seeded with 15 scripts
+instead of 14, reports A24 as failing. That second half is no longer measurable post this unit.
+
+**Reason for acceptance:** A24 itself has been converted from a hardcoded script-count
+assertion to a documented skip. A24's criterion is scoped to a not-yet-authored **flip unit**
+commit (the Phase 2 disablement-flip) whose own `git diff --diff-filter=D` will be the
+assertion; with no diff-range yet defined and no code in-tree to measure, A24 correctly
+reports "skipped" and cannot fail. The treadmill that motivated A24's redesign (manual
+baseline bumps each time a new `hooks/scripts/*.sh` landed: gh418, gh420, spec2-unitC,
+version-stamp-guard-1) is now permanently ended.
+
+**Implication for future measurement:** AC12's second half (--reverify response to mutation)
+becomes a deferred property: it will become measurable only after the flip unit lands and
+A24 transitions from skip to live assertion. The first half (--reverify exists and selects
+spec 6) remains live and verified. Per the "if a gate cannot be measured" rule in
+Escalation, a criterion that cannot be measured must report that state explicitly — A24's
+`skipped: flip unit` entry satisfies this; a gate that *stops skipping* after the flip unit
+lands will naturally re-measure the deviation at that time.
