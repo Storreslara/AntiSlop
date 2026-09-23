@@ -62,6 +62,20 @@ the one-time per-project setup process that turns the
   completed — this forces a fail-closed return (return 1) rather than granting a skip
   based on an incomplete or empty changed-file list (see AC-B5d and [[microworld_skip_ok]]).
 
+**unmeasurable range**:
+(unit version-stamp-guard-1, 2026-09-23) — a git commit range for which a
+  deterministic measurement cannot be derived, classified as the `unknown` verdict
+  by `hooks/scripts/version-stamp-check.sh` and other reviewer-invoked measurement
+  helpers (`heavy-trigger.sh`, `reviewer-tier.sh`). Causes: the range argument is
+  malformed or missing, the range endpoints reference commits that do not exist in
+  the working repository, a key artifact (`.claude-plugin/plugin.json`) is absent or
+  unparseable at one or both range endpoints, or the shallow clone or history
+  limitations prevent measurement. Handlers: `version-stamp-check.sh` and similar
+  measurement scripts exit 0 (fail-open) on unmeasurable ranges and output `unknown`
+  (paired with placeholder dashes for derived fields), leaving the judgment to the
+  reviewer. Contrast with [[unreachable baseline]], which is the analogous fail-closed
+  condition for different measurement contexts.
+
 **Persona**:
 a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
@@ -83,6 +97,9 @@ any ADAPT-copied file carrying a
   `<!-- antislop vX.Y.Z | source: ... | ADAPT-substituted -->` comment,
   which lets `bin/cli.js --update` tell "plugin's current version" from
   "what's on disk" and detect local edits via `fileHashes` without an LLM.
+  Distinct from **version-stamped path**, which refers to the source paths
+  (`agents/*.md`, `templates/`) that trigger a version-bump obligation under
+  the [[version-stamp discipline]].
 
 **`--update` semantics**:
 `bin/cli.js --update` is the mechanism for
@@ -142,21 +159,28 @@ the semantics of adding an
 **version-stamp discipline**:
 (constitution P3; unit reviewer-changes-examples-lean-2, 2026-09-23) — a
   merge-gate procedural rule requiring that any edit to an `agents/*.md` or
-  `templates/persona-protocol.md` file must be accompanied by a version bump
-  (incrementing `version` in both `.claude-plugin/plugin.json` and `package.json`)
-  and a CHANGELOG entry, all in the *same* commit. The rule exists because
-  `bin/cli.js --update` uses a version-stamp comparison for already-adapted
-  persona files (checking the `<!-- antislop vX.Y.Z | ... -->` comment in
-  each file) to determine whether a refresh is needed — it never performs a
-  content diff for version-stamped files (`bin/cli.js:1357`). Therefore, a
-  content-only edit with no version bump causes the stamp to remain unchanged,
-  and downstream projects running `--update` will silently skip the refresh,
-  never receiving the code change. This is a silent data-loss failure mode,
-  hence the discipline: version is the only signal `--update` observes for
-  already-adapted files. Violations are caught by reviewer inspection and
-  (candidate for future mechanization: a per-file `tests/validate.sh` guard
-  checking that if a commit touches `agents/*.md` or `templates/`, then
-  `.claude-plugin/plugin.json`'s version differs from HEAD^'s).
+  `templates/` file must be accompanied by a version bump (incrementing
+  `version` in `.claude-plugin/plugin.json`) and a CHANGELOG entry, all in
+  the *same* commit. The rule exists because `bin/cli.js --update` uses a
+  version-stamp comparison for already-adapted persona files (checking the
+  `<!-- antislop vX.Y.Z | ... -->` comment in each file) to determine whether
+  a refresh is needed — it never performs a content diff for version-stamped
+  files (`bin/cli.js:1357`). Therefore, a content-only edit with no version
+  bump causes the stamp to remain unchanged, and downstream projects running
+  `--update` will silently skip the refresh, never receiving the code change.
+  This is a silent data-loss failure mode, hence the discipline: version is
+  the only signal `--update` observes for already-adapted files. Mechanized by
+  `hooks/scripts/version-stamp-check.sh`, a reviewer-invoked helper (not
+  hook-registered, following the pattern of `heavy-trigger.sh` and
+  `reviewer-tier.sh`) that reads an explicit `<commit-range>` argument and
+  classifies outcomes as `ok`, `violation`, or [[`unknown`|unmeasurable range]],
+  exiting 0 always (fail-open). Sidesteps CI's shallow-clone limitations that
+  made a `HEAD~1`-based check unreliable. Mechanization covers the version-bump
+  half of the discipline only; the CHANGELOG-entry half remains reviewer-inspection-only.
+  Known limitation: the script compares `plugin.json` versions only at the range's
+  two endpoints, so a genuine violation can be masked if the reviewer widens the
+  range past the offending commit — must review against the unit's own actual range,
+  not an artificially widened one. See row 25 of `docs/trust-model.md`.
 
 **Substitution**:
 a placeholder in a shipped persona file (e.g.
