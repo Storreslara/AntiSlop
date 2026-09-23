@@ -139,6 +139,25 @@ the semantics of adding an
   `--overwrite --personas=` on an existing project to add one persona would
   silently drop every other already-selected one.
 
+**version-stamp discipline**:
+(constitution P3; unit reviewer-changes-examples-lean-2, 2026-09-23) — a
+  merge-gate procedural rule requiring that any edit to an `agents/*.md` or
+  `templates/persona-protocol.md` file must be accompanied by a version bump
+  (incrementing `version` in both `.claude-plugin/plugin.json` and `package.json`)
+  and a CHANGELOG entry, all in the *same* commit. The rule exists because
+  `bin/cli.js --update` uses a version-stamp comparison for already-adapted
+  persona files (checking the `<!-- antislop vX.Y.Z | ... -->` comment in
+  each file) to determine whether a refresh is needed — it never performs a
+  content diff for version-stamped files (`bin/cli.js:1357`). Therefore, a
+  content-only edit with no version bump causes the stamp to remain unchanged,
+  and downstream projects running `--update` will silently skip the refresh,
+  never receiving the code change. This is a silent data-loss failure mode,
+  hence the discipline: version is the only signal `--update` observes for
+  already-adapted files. Violations are caught by reviewer inspection and
+  (candidate for future mechanization: a per-file `tests/validate.sh` guard
+  checking that if a commit touches `agents/*.md` or `templates/`, then
+  `.claude-plugin/plugin.json`'s version differs from HEAD^'s).
+
 **Substitution**:
 a placeholder in a shipped persona file (e.g.
   `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`) resolved to a real
