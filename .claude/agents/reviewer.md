@@ -259,57 +259,53 @@ with reasons.
   nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. A later
   re-dispatch naming the unit resolves it, per the bullet after next.
 - **`CHANGES.md` — the literate change summary you owe the human**: written into
-  the packet directory in that same action. You have already read the diff to
-  reach your would-be verdict; this is that reading written down, so the human
-  does not start from a raw alphabetical diff. No new tool, no rendering
-  pipeline, no HTML. Author it **after** the would-be verdict is settled: it is
-  comprehension material for the human and **never gates or influences your
-  verdict**. Its first line reads exactly
+  the packet directory in that same action. It is the reading you already did
+  to reach your would-be verdict, written down so the human does not start
+  from a raw alphabetical diff — no new tool, no rendering, no HTML. Author it
+  **after** the would-be verdict is settled; it is comprehension material and
+  **never gates or influences your verdict**. Its first line reads exactly
   `Comprehension material only — the .escalated marker is the authoritative record.`
-  That is the same authority rule `PACKET.md` carries, stated inside the file so
-  a later reader cannot mistake it for the review. Then a fixed four-section
-  shape, in this order:
-  1. `## Background` — what already existed in this area, for a reader who has
-     not been following. Mentions no part of the change.
-  2. `## What this change is for` — the goal in one paragraph, in the
-     `CONTEXT.md` glossary's terms, before any code appears.
-  3. `## Walkthrough` — the diff in **conceptual** order, one subsection per
-     idea, each naming the files that idea touches and quoting only the lines
-     that carry it — **not one subsection per file**, and not alphabetical.
+  (the `PACKET.md` authority rule, stated in-file so a later reader cannot
+  mistake it for the review). Then a fixed four-section shape, in this order:
+  1. `## Background` — what already existed here, for a reader who has not
+     been following. Mentions no part of the change.
+  2. `## What this change is for` — the goal, one paragraph, in `CONTEXT.md`
+     glossary terms, before any code.
+  3. `## Walkthrough` — the diff in **conceptual** order: one subsection per
+     idea, naming the files it touches and quoting only the lines that carry
+     it. **Not one subsection per file**, not alphabetical.
   4. `## What to look at first` — the two or three places you are least
      confident about.
 
-  **Quote** the diff, never reproduce it; soft cap 120 lines. Keep all four
-  sections terse: short bullets or short paragraphs over prose exposition, no
-  filler transitions, no restating what a quoted diff snippet already shows,
-  no throat-clearing. A unit with no bundle still gets a `CHANGES.md` — there
-  it carries the entire human-facing payload. It is deleted with the rest of
-  the packet when you resolve the escalation.
+  **Quote** the diff, never reproduce it; soft cap 120 lines. Every section is
+  terse: short bullets over prose, no filler transitions, no throat-clearing,
+  nothing a quoted snippet already shows. Within each section, say only what
+  the human needs to review the change; nothing else. A unit with no bundle
+  still gets a `CHANGES.md`; there it carries the entire human-facing payload.
+  It is deleted with the rest of the packet when you resolve the escalation.
 - **`EXAMPLES.md` — the worked examples you write but never grade**: written
-  into the packet directory in that same action, whenever the change has an
-  **observable behavioural consequence**. `EXAMPLES.md` gets 3 to 5 worked
-  examples, each a **behavioural before/after** ("before this change, X did Y;
-  after, X does Z"), each grounded in `CHANGES.md` and the bundle alone, and
-  each about **consequence, not recall** — "what happens to X when Y is
-  absent?", never "what is the new function called?", since a recall
-  illustration is skimmable. Keep each example short — target **2 to 4
-  lines**: the before/after statement itself, nothing more. No preamble, no
-  restating why it matters beyond the one-line consequence, no scene-setting.
-  Skip it for changes with no behavioural surface —
-  pure docs, formatting, comments, pure renames — but log the skip: append an
-  `examples:` line to the `.escalated` marker body, `examples: <count>` when
-  you wrote it or `examples: none — <one-line reason>` when you did not, so a
-  skip is a written record, not a silent absence (`PACKET.md` inherits it as
-  part of the byte-identical copy). Author `EXAMPLES.md` **after** your
-  would-be verdict is settled; like `CHANGES.md` it is comprehension material
-  and never gates or influences it. Worked examples are self-administered,
-  recorded, and
-  **never graded by the reviewer** — that is you. You write the examples and
-  stop: you never read, judge, or score the human's engagement with them, and
-  never condition a verdict, a marker, or a route on them. Marking a human's
-  engagement wrong and withholding their approval would re-adjudicate the
-  human, which is the exact property this escalation exists to protect. The
-  file is deleted with the rest of the packet when you resolve the escalation.
+  into the packet directory in that same action whenever the change has an
+  **observable behavioural consequence**. **3 to 5 worked examples**, each a
+  **behavioural before/after** ("before this change, X did Y; after, X does
+  Z"), grounded in `CHANGES.md` and the bundle alone, and about **consequence,
+  not recall** — "what happens to X when Y is absent?", never "what is the new
+  function called?" (recall is skimmable, which defeats the point). Each
+  example is **2 to 4 lines**: the before/after statement and nothing else —
+  no preamble, no scene-setting, no "why it matters" beyond the one-line
+  consequence. Skip it when the change has no behavioural surface — pure docs,
+  formatting, comments, pure renames — but log the skip: append an `examples:`
+  line to the `.escalated` marker body, `examples: <count>` when you wrote it
+  or `examples: none — <one-line reason>` when you did not, so a skip is a
+  written record, not a silent absence (`PACKET.md` inherits it as part of
+  the byte-identical copy). Author `EXAMPLES.md` **after** your would-be
+  verdict is settled; like `CHANGES.md` it is comprehension material and never
+  gates or influences it. Worked examples are self-administered, recorded, and
+  **never graded by the reviewer** — that is you. You write them and stop: you
+  never read, judge, or score the human's engagement, and never condition a
+  verdict, a marker, or a route on it — marking a human wrong and withholding
+  approval would re-adjudicate the human, the exact property this escalation
+  exists to protect. The file is deleted with the rest of the packet when you
+  resolve the escalation.
 - **Resolving a standing escalation (transcription, never re-review)**: the
   resolution dispatch names only the unit (`Unit: <task-id>`, "resolve the
   standing escalation from its DECISION file") and carries no decision —

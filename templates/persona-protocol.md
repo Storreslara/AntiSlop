@@ -410,8 +410,8 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
 
   Quote the diff, never reproduce it; soft cap 120 lines. Every section is
   terse: short bullets over prose, no filler transitions, no throat-clearing,
-  nothing a quoted snippet already shows. Address what needs review; say
-  nothing else.
+  nothing a quoted snippet already shows. Within each section, say only what
+  the human needs to review the change; nothing else.
 - Write `EXAMPLES.md` into that directory too — **worked examples**, a speed
   regulator on the one route a human can complete without demonstrating
   engagement. **3 to 5 worked examples**, each a **behavioural before/after**

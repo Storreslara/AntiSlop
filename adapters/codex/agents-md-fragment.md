@@ -174,44 +174,41 @@ not fixed.
 
 **`CHANGES.md` (literate change summary):** the same action also writes
 `CHANGES.md` into the packet - the reading of the diff that produced the would-be
-verdict, written down for the human, so they do not start from a raw
-alphabetical diff. Authored AFTER the would-be verdict and never gating or
-influencing it. First line exactly
+verdict, written down so the human does not start from a raw alphabetical diff.
+Authored AFTER the would-be verdict and never gating or influencing it. First
+line exactly
 `Comprehension material only — the .escalated marker is the authoritative record.`
 - the same authority rule `PACKET.md` carries. Then a fixed four-section shape,
 in order: `## Background` (what already existed here, mentioning no part of the
-change), `## What this change is for` (the goal in one paragraph, in the
-project glossary's terms, before any code appears), `## Walkthrough` (the diff in
-CONCEPTUAL order, one subsection per idea, each naming the files that idea
-touches and quoting only the lines that carry it - **not one subsection per
-file**, and not alphabetical), and `## What to look at first` (the two or three
-places the reviewer is least confident about). It quotes the diff, it does not
-reproduce it; soft cap 120 lines. All four sections stay terse - short bullets
-or short paragraphs over prose exposition, no filler transitions, no restating
-what a quoted diff snippet already shows, no throat-clearing. A unit with no
-bundle still gets one, and that is the case where it carries the entire
-human-facing payload.
+change), `## What this change is for` (the goal, one paragraph, in the project
+glossary's terms, before any code), `## Walkthrough` (the diff in CONCEPTUAL
+order: one subsection per idea, naming the files it touches and quoting only
+the lines that carry it - **not one subsection per file**, not alphabetical),
+and `## What to look at first` (the two or three places the reviewer is least
+confident about). Quote the diff, never reproduce it; soft cap 120 lines. Every
+section is terse - short bullets over prose, no filler transitions, no
+throat-clearing, nothing a quoted snippet already shows. Within each section,
+say only what the human needs to review the change; nothing else. A unit with
+no bundle still gets one, and there it carries the entire human-facing payload.
 
 **`EXAMPLES.md` (worked examples):** the same action also writes it into the
-packet - 3 to 5 **behavioural before/after** illustrations ("before this
-change, X did Y; after, X does Z"), each grounded in `CHANGES.md` and the
-bundle alone and each about CONSEQUENCE rather than recall - a recall
-illustration is skimmable, which defeats the point. Each example is short -
-target 2 to 4 lines: the before/after statement itself, nothing more, no
-preamble and no scene-setting. **When needed:** written
-whenever the change has an observable behavioural consequence; skipped for
-changes with no behavioural surface (pure docs, formatting, comments, pure
-renames). **Auditable skip:** the `.escalated` marker body carries one
-`examples:` line - `examples: <count>` when written, or
-`examples: none - <one-line reason>` when not, so a skip is a written record
-rather than a silent absence; `PACKET.md` inherits this automatically. Authored
-AFTER the would-be verdict, like `CHANGES.md`, and never gating or influencing
-it. Worked examples are self-administered, recorded, and
-**never graded by the reviewer**, and they are **never a gate**: the reviewer
-writes the examples and stops - it never reads, judges, or scores the human's
-engagement with them, and never conditions a verdict, marker, or route on
-them. Grading them would re-adjudicate the human, which is the property the
-escalation exists to protect.
+packet - 3 to 5 **behavioural before/after** examples ("before this change, X
+did Y; after, X does Z"), each grounded in `CHANGES.md` and the bundle alone
+and about CONSEQUENCE rather than recall (recall is skimmable, which defeats
+the point). Each example is 2 to 4 lines: the before/after statement and
+nothing else - no preamble, no scene-setting. **When needed:** written whenever
+the change has an observable behavioural consequence; skipped when it has none
+(pure docs, formatting, comments, pure renames). **Auditable skip:** the
+`.escalated` marker body carries one `examples:` line - `examples: <count>`
+when written, `examples: none - <one-line reason>` when not - so a skip is a
+written record, not a silent absence; `PACKET.md` inherits it. Authored AFTER
+the would-be verdict, like `CHANGES.md`, and never gating or influencing it.
+Worked examples are self-administered, recorded, and
+**never graded by the reviewer**; they are **never a gate**: the reviewer
+writes them and stops - it never reads, judges, or scores the human's
+engagement, and never conditions a verdict, marker, or route on it. Grading
+them would re-adjudicate the human, the property the escalation exists to
+protect.
 
 Distinct from `.blocked` (reviewer *lacked context*; this one means policy wants
 human eyes on critical code) - separate marker files, separate audit-log tokens.
