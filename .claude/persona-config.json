@@ -105,7 +105,8 @@
     ".claude/hooks/scripts/marker-write.sh": "b65bd0f142347dca26e63197061a1908f3ad3fb10564deda1da2d950ea85215b",
     ".claude/hooks/scripts/lib/state-access.sh": "d5df04f051e3c2dc6bcb008b56a48e9dc6b8ee4a3ff20e590dfed9686dd72b9d",
     "adapters/codex/hooks/scripts/lib/state-access.sh": "d5df04f051e3c2dc6bcb008b56a48e9dc6b8ee4a3ff20e590dfed9686dd72b9d",
-    "adapters/cursor/hooks/scripts/lib/state-access.sh": "d5df04f051e3c2dc6bcb008b56a48e9dc6b8ee4a3ff20e590dfed9686dd72b9d"
+    "adapters/cursor/hooks/scripts/lib/state-access.sh": "d5df04f051e3c2dc6bcb008b56a48e9dc6b8ee4a3ff20e590dfed9686dd72b9d",
+    ".claude/hooks/scripts/version-stamp-check.sh": "d25f3182ce0cd690812417f09def1deec7dd0ea1b94f3ea97eac35bd7c517f5f"
   },
   "humanReviewMode": "off"
 }

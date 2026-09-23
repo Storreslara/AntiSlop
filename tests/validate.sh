@@ -626,6 +626,15 @@ else
 fi
 
 echo
+echo "== version-stamp-check: agents/templates diff requires a plugin.json version bump (Bash) =="
+if bash tests/version-stamp-check.test.sh; then
+  echo "OK   tests/version-stamp-check.test.sh"
+else
+  echo "FAIL tests/version-stamp-check.test.sh"
+  fail=1
+fi
+
+echo
 echo "== scribe issue-closing duty: trigger/never-close conditions (Bash) =="
 if bash tests/scribe-issue-closing.test.sh; then
   echo "OK   tests/scribe-issue-closing.test.sh"
