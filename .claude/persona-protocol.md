@@ -384,67 +384,61 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   the marker body**, not a re-summary, so the directory is self-contained for
   a human working outside the session. The **marker remains authoritative**
   wherever the two differ — `PACKET.md` is never an independent record.
-- Write `CHANGES.md` into that directory too — the **literate change summary**,
-  addressed to the human who must now read the change. Nothing else in the
-  packet describes *the change*: the marker carries the verdict, the bundle's
-  `README.md` describes *the piece*, and without this the human starts from a
-  raw alphabetical diff, which wastes most of what stopping the machine bought.
-  No new tool, no rendering pipeline, no HTML — the diff has already been read
-  to reach the would-be verdict, and this is that reading written down. It is
-  authored **after** that would-be verdict is reached and **never gates or
-  influences it**. Its first line reads exactly:
+- Write `CHANGES.md` into that directory too — the **literate change summary**
+  for the human who must now read the change. Nothing else in the packet
+  describes *the change*: the marker carries the verdict, the bundle's
+  `README.md` describes *the piece*; without this the human starts from a raw
+  alphabetical diff. It is the reading already done to reach the would-be
+  verdict, written down — no new tool, no rendering, no HTML. Authored
+  **after** that would-be verdict is reached; it **never gates or influences
+  it**. First line, exactly:
 
   `Comprehension material only — the .escalated marker is the authoritative record.`
 
-  That is the same authority rule `PACKET.md` carries, applied to a second
-  derived artifact and stated inside the file so a later reader cannot mistake
-  it for the review. Then a **fixed four-section shape**, in this order, so it
-  cannot decay into a restated diff:
+  (The `PACKET.md` authority rule, stated in-file so a later reader cannot
+  mistake it for the review.) Then a **fixed four-section shape**, in this
+  order:
 
-  1. `## Background` — what already existed in this area, for a reader who has
-     not been following. Mentions no part of the change.
-  2. `## What this change is for` — the goal in one paragraph, in the
-     `CONTEXT.md` glossary's terms, before any code appears.
-  3. `## Walkthrough` — the diff in **conceptual** order, one subsection per
-     idea, each naming the files that idea touches and quoting only the lines
-     that carry it — **not one subsection per file**, and not alphabetical.
+  1. `## Background` — what already existed here, for a reader who has not
+     been following. Mentions no part of the change.
+  2. `## What this change is for` — the goal, one paragraph, in `CONTEXT.md`
+     glossary terms, before any code.
+  3. `## Walkthrough` — the diff in **conceptual** order: one subsection per
+     idea, naming the files it touches and quoting only the lines that carry
+     it. **Not one subsection per file**, not alphabetical.
   4. `## What to look at first` — the two or three places the reviewer is
      least confident about.
 
-  It **quotes** the diff, it does not reproduce it; soft cap 120 lines. All
-  four sections are terse: short bullets or short paragraphs over prose
-  exposition, no filler transitions, no restating what a quoted diff snippet
-  already shows, no throat-clearing.
+  Quote the diff, never reproduce it; soft cap 120 lines. Every section is
+  terse: short bullets over prose, no filler transitions, no throat-clearing,
+  nothing a quoted snippet already shows. Address what needs review; say
+  nothing else.
 - Write `EXAMPLES.md` into that directory too — **worked examples**, a speed
   regulator on the one route a human can complete without demonstrating
-  engagement. `EXAMPLES.md` carries **3 to 5 worked examples**, each a
-  **behavioural before/after** ("before this change, X did Y; after, X does
-  Z"), each grounded in `CHANGES.md` and the bundle alone, and each about
-  **consequence rather than recall** — *"what happens to X when Y is
-  absent?"*, never *"what is the new function called?"*, because a recall
-  illustration is skimmable, which defeats the point. Each example is short —
-  target **2 to 4 lines**: the before/after statement itself, nothing more.
-  No preamble, no restating why it matters beyond the one-line consequence,
-  no scene-setting.
+  engagement. **3 to 5 worked examples**, each a **behavioural before/after**
+  ("before this change, X did Y; after, X does Z"), grounded in `CHANGES.md`
+  and the bundle alone, and about **consequence rather than recall** — *"what
+  happens to X when Y is absent?"*, never *"what is the new function
+  called?"* (recall is skimmable, which defeats the point). Each example is
+  **2 to 4 lines**: the before/after statement and nothing else — no preamble,
+  no scene-setting, no "why it matters" beyond the one-line consequence.
 
   **When needed.** Written whenever the change has an **observable
-  behavioural consequence**; skipped for changes with no behavioural surface —
-  pure docs, formatting, comments, pure renames. **Auditable skip:** the
-  `.escalated` marker body carries one `examples:` line — `examples: <count>`
-  when `EXAMPLES.md` was written, or `examples: none — <one-line reason>` when
-  it was not, so a skip is a written record rather than a silent absence.
-  `PACKET.md`, a byte-identical copy of the marker body, inherits this line
-  automatically.
+  behavioural consequence**; skipped when it has none — pure docs, formatting,
+  comments, pure renames. **Auditable skip:** the `.escalated` marker body
+  carries one `examples:` line — `examples: <count>` when `EXAMPLES.md` was
+  written, `examples: none — <one-line reason>` when not — so a skip is a
+  written record, not a silent absence. `PACKET.md`, a byte-identical copy of
+  the marker body, inherits it.
 
   Worked examples are self-administered, recorded, and **never graded by the
-  reviewer**, and they are **never a gate**. The reviewer writes the examples
-  and stops there: it never reads, judges, or scores the human's engagement
-  with them, and never conditions a verdict, a marker, or a route on them. A
-  reviewer that could mark a human's engagement wrong and withhold their
-  approval would re-adjudicate the human, destroying the property the whole
-  escalation exists to create. Like `CHANGES.md`, `EXAMPLES.md` is authored
-  **after** the would-be verdict is settled and **never gates or influences
-  it**.
+  reviewer**; they are **never a gate**. The reviewer writes them and stops:
+  it never reads, judges, or scores the human's engagement, and never
+  conditions a verdict, a marker, or a route on it — a reviewer that could
+  mark a human wrong and withhold approval would re-adjudicate the human,
+  destroying the property the escalation exists to create. Like `CHANGES.md`,
+  `EXAMPLES.md` is authored **after** the would-be verdict is settled and
+  **never gates or influences it**.
 - If the unit has **no** bundle: write `microworld: none` in the marker,
   create the packet directory anyway, and put `PACKET.md` and `CHANGES.md` in
   it alone. A human still gets the would-be verdict, the criteria, and the
