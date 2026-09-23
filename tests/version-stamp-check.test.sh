@@ -78,6 +78,43 @@ echo "#!/usr/bin/env bash" > "$repo/hooks/scripts/example.sh"
 r_hooks_only=$(snap hooks-only)
 run_case "hooks-scripts-only-not-gated" "ok" "$r_hooks_only"
 
+echo "-- python3 missing from PATH: unknown, not a crash (item 1) --"
+fakebin="$tmproot/fakebin-no-python3"
+mkdir -p "$fakebin"
+ln -s "$(command -v git)" "$fakebin/git"
+ln -s "$(command -v bash)" "$fakebin/bash"
+
+make_no_python3_wrapper() {
+  # <target-script> -> writes+echoes a wrapper that runs target-script with
+  # python3 hidden from PATH (git/bash still resolvable via $fakebin)
+  local target="$1" wrapper="$tmproot/no-python3-wrapper-$(basename "$1").sh"
+  cat > "$wrapper" <<EOF
+#!/usr/bin/env bash
+PATH="$fakebin" exec bash "$target" "\$@"
+EOF
+  echo "$wrapper"
+}
+
+nopython_wrapper="$(make_no_python3_wrapper "$SCRIPT")"
+run_case "python3-missing-reports-unknown" "unknown" "$r_agents_no_bump" "$nopython_wrapper"
+
+echo "-- widened range masks a per-commit violation without the fix (item 4) --"
+echo "content v3, no bump" > "$repo/agents/lead-programmer.md"
+r_violation_only=$(snap violation-commit-no-bump)
+run_case "violation-commit-alone" "violation" "$r_violation_only"
+
+echo "unrelated change, unrelated version bump" > "$repo/README.md"
+plugin_version 0.4.0
+snap unrelated-bump-after-violation > /dev/null
+widened_range="${r_violation_only%%..*}..$(git -C "$repo" rev-parse HEAD)"
+run_case "widened-range-still-catches-violation" "violation" "$widened_range"
+
+echo "-- plugin.json missing at one end of the range: unknown, not a crash (item 3) --"
+rm "$repo/.claude-plugin/plugin.json"
+echo "more content" > "$repo/agents/lead-programmer.md"
+r_plugin_missing=$(snap plugin-json-missing-at-new-end)
+run_case "plugin-json-missing-at-new-end" "unknown" "$r_plugin_missing"
+
 echo "-- unmeasurable ranges --"
 run_case "empty-range" "unknown" ""
 run_case "leading-dash" "unknown" "-U0"
@@ -107,6 +144,33 @@ fi
 if mutate compare-inverted 's/\[ "\$old_ver" = "\$new_ver" \]/[ "$old_ver" != "$new_ver" ]/'; then
   run_case "(mc2) version-equality check inverted: agents-with-bump should flip to" \
     "violation" "$r_agents_with_bump" "$MUTANT"
+fi
+
+if mutate python3-guard-disabled 's/if ! command -v python3 >\/dev\/null 2>&1; then/if false; then/'; then
+  nopython_wrapper_mutant="$(make_no_python3_wrapper "$MUTANT")"
+  rc=0
+  got="$(cd "$repo" && bash "$nopython_wrapper_mutant" "$r_agents_no_bump" 2>/dev/null)" || rc=$?
+  if [ "$rc" != 0 ] && [ -z "$got" ]; then
+    echo "OK   (mc3) python3 guard disabled: crashes instead of reporting unknown (rc=$rc), proving the guard is load-bearing"
+  else
+    echo "FAIL (mc3) python3 guard disabled: expected a crash (rc!=0, empty output), got rc=$rc output='$got'"
+    fail=1
+  fi
+fi
+
+if mutate percommit-check-disabled 's/elif \[ "\$cold" = "\$cnew" \]; then/elif false; then/'; then
+  run_case "(mc4) per-commit violation check disabled: widened-range should flip to" \
+    "ok" "$widened_range" "$MUTANT"
+fi
+
+if mutate unmeasurable-check-disabled 's/\[ -z "\$old_ver" \] || \[ -z "\$new_ver" \] || \[ "\$unmeasurable" = yes \]/false/'; then
+  got="$(cd "$repo" && bash "$MUTANT" "$r_plugin_missing" 2>/dev/null)"
+  if ! printf '%s\n' "$got" | grep -q '^version-stamp-check: unknown '; then
+    echo "OK   (mc5) unmeasurable/empty-version check disabled: plugin-json-missing no longer reports unknown -> $got"
+  else
+    echo "FAIL (mc5) unmeasurable/empty-version check disabled: still reports unknown, got '$got'"
+    fail=1
+  fi
 fi
 
 exit "$fail"

@@ -177,10 +177,13 @@ the semantics of adding an
   exiting 0 always (fail-open). Sidesteps CI's shallow-clone limitations that
   made a `HEAD~1`-based check unreliable. Mechanization covers the version-bump
   half of the discipline only; the CHANGELOG-entry half remains reviewer-inspection-only.
-  Known limitation: the script compares `plugin.json` versions only at the range's
-  two endpoints, so a genuine violation can be masked if the reviewer widens the
-  range past the offending commit — must review against the unit's own actual range,
-  not an artificially widened one. See row 25 of `docs/trust-model.md`.
+  (unit version-stamp-check-roast-1, 2026-09-23) Widening the reviewed range past
+  an offending commit no longer masks it: the script additionally checks every
+  commit *within* the range that itself touches a version-stamped path against
+  its own immediate parent, reporting `violation` if any one of them individually
+  lacks a bump — even when the range's overall endpoints show a bump happened
+  somewhere in between (e.g. a later, unrelated commit). The endpoint `old`/`new`
+  fields in the output remain informational only. See row 25 of `docs/trust-model.md`.
 
 **Substitution**:
 a placeholder in a shipped persona file (e.g.
