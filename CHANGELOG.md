@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+**0.31.78 — teach the shared persona protocol about the mechanical `bashOutputMaxChars` backstop (cost-governance-step3-protocol-prose, Step 3 of the cost-governance-output-cap-and-effort-tiers plan).** The "Scope Bash output before it enters context" section previously read as though self-discipline were the only control. It now also states that a configured `bashOutputMaxChars` cap bounds Bash output mechanically, that overflow past the cap is saved to a file with a short preview plus the path, and — the load-bearing addition — that the correct response on seeing overflow is a narrower re-query, never `Read`ing the persisted overflow file whole, which would re-incur the entire cost the cap just saved. The cap's numeric value (12,000, set in Step 2) is deliberately not repeated here, so the two never need to be kept in sync by hand.
+
+### Changed
+- **`templates/persona-protocol.md`**, **`templates/persona-protocol-slim.md`**, **`adapters/cursor/rules/persona-protocol.mdc`**, **`adapters/codex/agents-md-fragment.md`**: identical new paragraph appended to "Scope Bash output before it enters context".
+- **`tests/adapter-protocol-parity.test.js`**: the section's probe in both `codexMap` and `cursorMap` is now an array (original probe plus the new clause), matching the existing array-of-probes pattern.
+- **`.claude-plugin/plugin.json`**: version bump 0.31.77 → 0.31.78.
+- **`package.json`**: version bump 0.31.77 → 0.31.78.
+- **`.claude/persona-protocol.md`**, **`.claude/persona-protocol-slim.md`**, **`.claude/protocol-digest.md`**, **`.claude/agents/*.md`** (all ten): regenerated via `node bin/cli.js --update` to pick up the new clause and the version stamp.
+
 **0.31.77 — explicit `bashOutputMaxChars: 12000` cap, backfilled into already-adapted projects (cost-governance-step2-cap-backfill, Step 2 of the cost-governance-output-cap-and-effort-tiers plan).** `templates/settings-fragment.json` now sets `bashOutputMaxChars: 12000` (the user-locked value: just above the measured p99 of Bash-output overflow). The fragment alone is inert for a project already adapted before this key existed, so `runUpdate` gained a new backfill block (modeled on the existing hook-registration backfill) that adds the key to `.claude/settings.json` only when missing — `deepMerge`'s additive-only semantics mean a project that already set its own value is never overwritten. Also corrects `settings-fragment.json`'s `_comment`, which still stated the plugin's version pin as the stale `>=2.1.178` (now `>=2.1.248`, matching `.claude-plugin/plugin.json`). `bashOutputMaxChars`'s own introduction version could not be established: only Claude Code 2.1.277-2.1.281 are present locally under `~/.local/share/claude/versions/` (empty version-marker directories, not bisectable binaries), so there is nothing earlier to check against — same limitation as the sibling `effort:` frontmatter key (see 0.31.76's entry and R10 in the plan doc). This is a negative result, not a blocker.
 
 ### Added

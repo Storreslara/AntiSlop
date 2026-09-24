@@ -12,7 +12,7 @@ mcpServers:
       args:
         - arxiv-mcp-server
 ---
-<!-- antislop v0.31.77 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
+<!-- antislop v0.31.78 | source: templates/researcher.md.tmpl | ADAPT-substituted -->
 <!-- NOT shipped as a plugin agent: plugin subagents ignore the `mcpServers`
      frontmatter field entirely (Claude Code plugin security restriction), so
      this file only works as a PROJECT-scoped agent. The install-antislop
@@ -92,6 +92,12 @@ runs), pipe it through `head`/`tail`/`wc -l`/a targeted `grep` first, or pass
 the tool's own quiet/summary flag if it has one. If you need to inspect a
 large result in full after a summary looked interesting, fetch the narrower
 slice you actually need rather than re-running the same command unfiltered.
+
+A configured `bashOutputMaxChars` cap also bounds this mechanically: output
+past the cap is saved to a file and you receive a short preview plus the
+path, and the correct response is a narrower re-query, never `Read`ing that
+persisted file whole, which would re-incur the entire cost the cap just
+saved.
 
 ## Agent-teams mode (only relevant if you were spawned as a teammate)
 - `skills:`/`mcpServers:` frontmatter is NOT applied to a teammate; a skill

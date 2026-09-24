@@ -73,7 +73,7 @@ const ESCALATION_PROBES = [
 const codexMap = {
   'Structural questions go to the explorer': { probe: 'Structural questions go to the explorer' },
   'Answer shape': { probe: 'Answer shape' },
-  'Scope Bash output before it enters context': { probe: 'Scope Bash output before it enters context' },
+  'Scope Bash output before it enters context': { probe: ['Scope Bash output before it enters context', 'A configured `bashOutputMaxChars` cap also bounds this mechanically'] },
   'Agent-teams mode (only relevant if you were spawned as a teammate)': { deferred: 'agent-teams mode dropped for Codex v1 (no SendMessage/TaskCompleted) — see platform notes' },
   'Teammate Write/Edit fallback and gate rephrasing doctrine': { deferred: 'agent-teams mode dropped for Codex v1 (no SendMessage/TaskCompleted) — see platform notes' },
   'WIP sentinel (mid-task handoff, not a bypass)': { probe: 'WIP sentinel' },
@@ -95,7 +95,7 @@ const codexMap = {
 const cursorMap = {
   'Structural questions go to the explorer': { probe: 'Structural questions go to the explorer' },
   'Answer shape': { probe: 'Answer shape' },
-  'Scope Bash output before it enters context': { probe: 'Scope Bash output before it enters context' },
+  'Scope Bash output before it enters context': { probe: ['Scope Bash output before it enters context', 'A configured `bashOutputMaxChars` cap also bounds this mechanically'] },
   'Agent-teams mode (only relevant if you were spawned as a teammate)': { deferred: 'agent-teams mode dropped for Cursor v1 — see platform notes' },
   'Teammate Write/Edit fallback and gate rephrasing doctrine': { deferred: 'agent-teams mode dropped for Cursor v1 — see platform notes' },
   'WIP sentinel (mid-task handoff, not a bypass)': { probe: 'WIP sentinel' },
