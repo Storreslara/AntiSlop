@@ -64,7 +64,7 @@ teammates instead of sequential subagents — off by default.
 
 ## Requirements
 
-- **Claude Code ≥ 2.1.178** — a hard pin; no fallback for older versions.
+- **Claude Code ≥ 2.1.248** — a hard pin; no fallback for older versions.
 - **`jq`** — every hook depends on it. Without it, hooks silently no-op.
 - **Node.js / `npx`** — for the `mattpocock/skills` installer, if a selected
   persona uses one.

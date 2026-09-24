@@ -182,6 +182,22 @@ done
 rm -f /tmp/frontmatter_yaml_err
 
 echo
+echo "== reviewer/task-master: cacheTtl nested under experimental:, not top-level =="
+# Claude Code only recognizes this field under experimental: - a top-level
+# cacheTtl: is silently dropped (see cache-ttl-gapped-personas Defect 1).
+for f in agents/reviewer.md agents/task-master.md; do
+  if grep -qE '^cacheTtl:' "$f"; then
+    echo "FAIL $f (cacheTtl at top level of frontmatter - must nest under experimental:)"
+    fail=1
+  elif grep -qE '^experimental:' "$f" && grep -qE '^ +cacheTtl: 1h' "$f"; then
+    echo "OK   $f"
+  else
+    echo "FAIL $f (missing experimental:/cacheTtl: 1h nesting)"
+    fail=1
+  fi
+done
+
+echo
 echo "== skill frontmatter has name: and description: =="
 for f in skills/*/SKILL.md; do
   if grep -q '^name:' "$f" && grep -q '^description:' "$f"; then
