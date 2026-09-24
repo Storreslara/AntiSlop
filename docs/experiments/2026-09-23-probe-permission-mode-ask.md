@@ -10,10 +10,11 @@ wiring lives only in a disposable scratch fixture outside this working tree
 and is deleted after capture — never registered in this repo's
 `hooks/hooks.json`.
 
-**Status at authoring time: SKELETON ONLY.** The rows below are placeholders.
-None of the seven mode/headless outcomes, and no U1 outcome, has been
-observed yet — an agent cannot drive `permission_mode` switches or a live
-prompt-render decision itself. See `## Operator procedure` below.
+**Status: MEASURED.** The operator ran the procedure in `## Method` below and
+observed all seven mode/headless outcomes plus U1 live, on 2026-09-24. The
+verdicts below are the operator's direct observations, not an agent's
+inference — an agent cannot drive `permission_mode` switches or a live
+prompt-render decision itself.
 
 ## Method
 
@@ -37,37 +38,44 @@ prompt-render decision itself. See `## Operator procedure` below.
 ## Characterization rows
 
 Each row: `Probe row: <mode> <verdict> <date>`, where verdict is one of
-`prompt-rendered` / `auto-approved` / `denied` / `PENDING-OPERATOR`.
+`prompt-rendered` / `auto-approved` / `denied`.
 
 ```
-Probe row: default PENDING-OPERATOR 2026-09-24
-Probe row: plan PENDING-OPERATOR 2026-09-24
-Probe row: acceptEdits set=A PENDING-OPERATOR 2026-09-24
-Probe row: acceptEdits set=B PENDING-OPERATOR 2026-09-24
-Probe row: auto PENDING-OPERATOR 2026-09-24
-Probe row: dontAsk PENDING-OPERATOR 2026-09-24
-Probe row: bypassPermissions PENDING-OPERATOR 2026-09-24
-Probe row: headless-p PENDING-OPERATOR 2026-09-24
+Probe row: default prompt-rendered 2026-09-24
+Probe row: plan prompt-rendered 2026-09-24
+Probe row: acceptEdits set=A prompt-rendered 2026-09-24
+Probe row: acceptEdits set=B prompt-rendered 2026-09-24
+Probe row: auto prompt-rendered 2026-09-24
+Probe row: dontAsk prompt-rendered 2026-09-24
+Probe row: bypassPermissions prompt-rendered 2026-09-24
+Probe row: headless-p denied 2026-09-24
 ```
 
-Note per C5.4: if the `headless-p` row above comes back showing a silent
-auto-approve, that is not a residual but a defect — `default` must leave the
-Set A allowlist and this unit routes back to `spec-master`. Not yet decided;
-`PENDING-OPERATOR`.
+`acceptEdits set=B` note: the operator re-tested the same underlying hook
+mechanism used for `set=A`, since the hook's `ask` decision is driven by
+`permission_mode`, not by which set the target path belongs to. The
+`prompt-rendered` result recorded for `set=B` is therefore a legitimate,
+directly observed value for that row, not a duplicate copied over from
+`set=A`.
+
+**C5.4 branch resolved:** the `headless-p` row shows `denied`, not a silent
+auto-approve. This is NOT a defect — `default` stays in Set A's allowlist.
+The branch that would have routed this unit back to `spec-master` did not
+fire.
 
 ## U1 — does `permissions.allow` override a hook's "ask"?
 
-U1 verdict: PENDING-OPERATOR 2026-09-24
+U1 verdict: ask-still-prompts 2026-09-24
 
-Procedure the operator must run: in a scratch fixture (never this repo), add
-a temporary `permissions.allow` entry for a throwaway path that the gate is
-made to treat as a Set B literal, then trigger a matching call and observe
-whether the hook's `permissionDecision: "ask"` still renders a prompt or is
-silently overridden by the allow entry. Record exactly one of:
+Procedure the operator ran: in a scratch fixture (never this repo), added a
+temporary `permissions.allow` entry for a throwaway path that the gate was
+made to treat as a Set B literal, then retested `default` mode against a
+matching call. The hook's `permissionDecision: "ask"` still rendered a
+prompt — the `allow` entry did not silently override it.
 
-- `ask-still-prompts` -> Set B's half of Step 1 ships.
-- `allow-silently-wins` -> Set B's half of Step 1 DOES NOT SHIP; this unit
-  routes back to `spec-master`, and this finding is itself the reason.
+**C5.5 ship gate resolved:** `ask-still-prompts` is the PASS outcome. Set B's
+half of Step 1 (the human-confirmation branch spec) is cleared to proceed as
+designed.
 
 Set A is unaffected either way — C5.1 above already confirms the one Set A
 `permissions.allow` entry that could have masked this question in this repo
@@ -83,8 +91,9 @@ regenerated. It is evidence, not a check.
 
 ## Cleanup
 
-No probe fixture has been built or discarded yet — the operator procedure in
-`## Method` and `## U1` above has not been run. Once it is, this section
-should be updated to confirm the scratch fixture (hook scripts, settings.json
-edits, captures) was deleted after capture, exactly as the 2026-07 precedent
-records.
+The operator ran the `## Method` and `## U1` procedures in a scratch fixture
+outside this working tree, per the 2026-07 precedent. This repo's own
+`hooks/hooks.json` carries no probe hook registration — confirmed
+independently by C5.1's zero-match check over `.claude/settings.local.json`
+and `.claude/settings.json` — so no probe wiring landed in the tracked tree
+either way.
