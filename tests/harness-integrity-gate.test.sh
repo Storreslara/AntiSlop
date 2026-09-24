@@ -1064,6 +1064,40 @@ else
 fi
 
 echo
+echo "-- C7: registration-presence assertion - hooks.json still registers harness-integrity-gate.sh on all three event/matcher pairs (fixed literal table, not derived) --"
+
+# Fixed literal expectation table (C7.1). Hardcoded here, NOT read from
+# hooks/hooks.json - an implementation that derives these pairs from the file
+# under test reproduces expectedRegistrations()'s exact defect
+# (tests/cli-hook-propagation.test.js:147-159, R11): deleting a registration
+# would shrink the expectation in lockstep and this assertion would stay
+# green. Row 3's matcher word order ("Edit|Write") genuinely differs from
+# rows 1/2 ("Write|Edit") - live hooks.json state, not a typo.
+c7_events=(PreToolUse PreToolUse PostToolUse)
+c7_matchers=("Write|Edit" Bash "Edit|Write")
+
+if [ "${#c7_events[@]}" = 3 ] && [ "${#c7_matchers[@]}" = 3 ]; then
+  pass "[C7.1-guard] literal expectation table has exactly 3 rows"
+else
+  bad "[C7.1-guard] expected exactly 3 rows in the literal table, got events=${#c7_events[@]} matchers=${#c7_matchers[@]}"
+fi
+
+c7_i=0
+while [ "$c7_i" -lt 3 ]; do
+  c7_event="${c7_events[$c7_i]}"
+  c7_matcher="${c7_matchers[$c7_i]}"
+  c7_n="$(jq --arg e "$c7_event" --arg m "$c7_matcher" \
+    '[.hooks[$e][]? | select(.matcher==$m) | .hooks[]? | select(.command|test("harness-integrity-gate"))] | length' \
+    "$hooks_json_path")"
+  if [ "$c7_n" = 1 ]; then
+    pass "[C7.1/C7.2] $c7_event x $c7_matcher registers harness-integrity-gate.sh exactly once"
+  else
+    bad "[C7.1/C7.2] $c7_event x $c7_matcher expected exactly 1 registration, got $c7_n"
+  fi
+  c7_i=$((c7_i + 1))
+done
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All harness-integrity-gate tests passed."
 else
