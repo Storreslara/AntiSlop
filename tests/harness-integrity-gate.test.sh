@@ -733,8 +733,11 @@ mkdir -p "$p_mutant_dir/lib"
 cp hooks/scripts/lib/*.sh "$p_mutant_dir/lib/"
 
 unconditional_mutant="$p_mutant_dir/ask-unconditional.sh"
-sed '/^ask_allowed() {$/a\
-  return 0  # MUTATED-C1_3a-unconditional-pass
+# Replaces only the case/esac block with a no-op, leaving the trailing
+# agent_id check intact - narrower than stubbing the whole function, so this
+# mutant's kill set does not also subsume C1.4's agent_id kill set (C3.3).
+sed '/^  case "\$permission_mode" in$/,/^  esac$/c\
+  :  # MUTATED-C1_3a-unconditional-pass (case replaced with a no-op; agent_id check intact)
 ' hooks/scripts/harness-integrity-gate.sh > "$unconditional_mutant"
 chmod +x "$unconditional_mutant"
 if diff -q hooks/scripts/harness-integrity-gate.sh "$unconditional_mutant" >/dev/null; then
