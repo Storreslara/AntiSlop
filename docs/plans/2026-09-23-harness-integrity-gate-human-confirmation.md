@@ -20,9 +20,27 @@ annotated) is self-resolved against ratified ADR-0029 and is reversible by a
 one-row change — see the Clarifications line dated 2026-09-23 under *Technical
 constraints & tradeoffs*.
 
+**Amended 2026-09-24 (targeted, Step 3's C3.3 only).** The `hcb-regcheck`
+implementer reported a mid-flight tension while building C3.3: C3.3 demanded
+that all four mutation controls kill **pairwise disjoint** case sets, but
+C1.3(a)'s stated scope (*all* of Set B's 6 deny rows) necessarily contains
+C1.3(b)'s stated scope (*exactly* the Set B `acceptEdits` row), so the two can
+never be disjoint by the plan's own definitions. **Ruling: C3.3 was wrong,
+C1.3(a) and C1.3(b) were right.** The containment is not a flaw to be excepted
+— it is the load-bearing evidence that the tier boundary lives *inside* the
+frozen `case` and nowhere else, and asserting it positively is strictly stronger
+than the blanket disjointness it replaces. Closed by a frozen **kill-set
+relation table** over an explicitly-declared cell space — see the rewritten
+C3.3, new R14, CHK25–CHK27, and the three Clarifications lines dated 2026-09-24.
+**Nothing outside C3.3 is changed**: C1.3(a), C1.3(b), C1.4 and C2.2 keep their
+existing wording, `.claude/reviewed/hcb-branch.pass` stands unamended (see R14
+for why the narrowing commit `d598603` is a *correction toward* C1.3(a)'s
+wording, not a redefinition of it), and Steps 1, 2 and 4–7 are byte-unchanged.
+
 **Authoring commit:** `d807630` (2026-09-23); revised at the same tree. Every
 baseline below was measured there. Baselines expire — re-derive with the probe
-commands quoted inline rather than trusting the recorded numbers.
+commands quoted inline rather than trusting the recorded numbers. The
+2026-09-24 amendment above was authored at `d598603`.
 
 ---
 
@@ -363,8 +381,22 @@ OQ5, and a third time after the mid-flight sweep-closure gap. That third pass
 moved **Completion / acceptance signals** back to **Partial** — a criterion
 (C4.1) whose escape set could not classify its own sweep's output is not a
 usable completion signal — and it is resolved back to Clear by the rewritten
-C4.1 plus C4.9. The two dated lines closing it are the last two below. All nine
-categories are Clear; no category is deferred as an assumption.*
+C4.1 plus C4.9.*
+
+*Re-scored a fourth time 2026-09-24 after the `hcb-regcheck` kill-set tension.
+That pass moved three categories back to **Partial**: **Edge cases / failure
+handling** (a criterion that contradicted the two criteria it audited),
+**Domain entities / data model** (no declared unit for a "kill set"), and
+**Technical constraints & tradeoffs** (whether the fix may disturb an
+already-granted PASS). All three are resolved to Clear by the rewritten C3.3 and
+R14 — the three dated lines closing them are the last three below.
+**Terminology consistency** was re-checked in the same pass and stays Clear:
+`CONTEXT.md:219-225` already defines **two-tier allowlist** and already names
+C1.3(b) as its defender, which the ruling follows rather than contradicts; the
+two undefined load-bearing terms the amendment does introduce (**kill set**,
+**kill-set relation table**) are routed to `scribe` as advisory lens-3
+suggestions, not treated as blockers. All nine categories are Clear; no category
+is deferred as an assumption.*
 
 1. Functional scope & success criteria: Clear
 2. Domain entities / data model: Clear
@@ -531,6 +563,32 @@ categories are Clear; no category is deferred as an assumption.*
   headline claim and by C4.9's ADR supersession record; the alternative (a
   dated note at `CHANGELOG.md:102`) is a one-row change to the Cat 4 list if
   the operator prefers it.
+- 2026-09-24 Edge cases / failure handling: Q When one mutation control's scope
+  is a strict narrowing of another's, is the overlap a defect to eliminate or a
+  property to assert? → A (self-resolved): **a property to assert.** Verified
+  from `hooks/scripts/harness-integrity-gate.sh`'s `ask_allowed()` — under the
+  C1.3(a) mutant the `case` is a no-op, so `acceptEdits` + Set B +
+  `agent_id`-absent necessarily reaches `ask`; containment is a consequence of
+  the source's own structure, not of either mutant's construction. Eliminating it
+  would require weakening C1.3(a) or gutting C1.3(b) (R14). C3.3(d) therefore
+  asserts `K_b ⊊ K_a` positively and freezes the other five pairs as disjoint.
+- 2026-09-24 Domain entities / data model: Q What is the unit of measurement a
+  kill set is a set *of*? → A (self-resolved): a **cell**, the tuple
+  `(hook_event_name, tool_name, subject, permission_mode, agent_id-state)`, with
+  the universe declared once as a literal in the test and every control driven
+  from it. The old C3.3's "set of cases" admitted at least two accountings that
+  give different numbers for the same mutant — both are recorded in
+  `.claude/reviewed/hcb-branch.pass` — and a subset/disjointness claim is
+  meaningless until one is fixed. C3.3(a).
+- 2026-09-24 Technical constraints & tradeoffs: Q Does redefining C3.3
+  retroactively disturb `hcb-branch`'s already-granted PASS? → A (self-resolved):
+  **no, and deliberately not.** C1.3(a) and C1.3(b) keep their wording verbatim;
+  only C3.3 — a Step 3 criterion evaluated by `hcb-regcheck`, never by
+  `hcb-branch` — changes. The alternative considered and rejected was option (b)
+  of the implementer's report: narrowing C1.3(a) to "Set B's 5 *other* deny
+  rows", which would both weaken the mutant (a partial-allowlist mutation would
+  survive) and move an already-PASSed criterion's goalposts after the fact. See
+  R14 (ii) for why `d598603` needs no retroactive re-review.
 
 ---
 
@@ -672,6 +730,36 @@ categories are Clear; no category is deferred as an assumption.*
   *"no grant / branch"* is line-wrapped and therefore never matched, which
   C4.1(a)'s zero-hit arm would have failed on. Re-run the exact authoring
   pattern with `git grep -l`; do not reuse a neighbouring one.
+- **R14 — [2026-09-24] a mutation-control suite asserts a RELATION between kill
+  sets, and "all pairs disjoint" is the wrong relation whenever one control
+  narrows another.** The old C3.3 demanded four pairwise-disjoint kill sets. Two
+  of its four controls cannot satisfy that and should not: C1.3(b) mutates one
+  arm *of the very `case` block* C1.3(a) mutates wholesale, so `K_b ⊆ K_a` holds
+  by construction, and the only ways to force disjointness are to carve
+  `acceptEdits` out of C1.3(a) (leaving a partial-allowlist mutation that escapes
+  detection — a real coverage hole) or to make C1.3(b) kill something other than
+  the `acceptEdits` row (destroying its entire purpose). **The containment is
+  evidence, not noise**: it says the Set B `acceptEdits` deny is produced by the
+  frozen `case` and by nothing else, so a future unit that relocates that deny to
+  a separate check breaks C3.3 even while both mutants stay individually green.
+  Three further facts this risk records, each verified rather than assumed:
+  (i) **the pair that genuinely must be disjoint is C1.3(a) × C1.4**, and it was
+  genuinely violated — the mutant shipped by `hcb-branch` stubbed the *whole*
+  `ask_allowed()` function, subsuming C1.4's `agent_id` kill set; `d598603`
+  narrowed it to the `case`/`esac` block. (ii) **That narrowing is a correction
+  *toward* C1.3(a)'s wording, not a redefinition of it** — C1.3(a) says
+  "replacing the frozen `case`", the whole-function stub was already wider than
+  that, and `.claude/reviewed/hcb-branch.pass` records the reviewer's own
+  independent re-derivation using the *narrow* mutant ("the frozen case replaced
+  by a bare catch-all … Zero `agent_id`-present cells flipped, correct"). So
+  `hcb-branch`'s PASS stands unamended, on its original basis; `hcb-regcheck`
+  records the narrowing in its own marker so the audit trail links the two.
+  (iii) **the old C3.3 was also silently ambiguous about its unit of
+  measurement** — that same marker records two legitimate accountings of the same
+  mutant (29 probe cells, or 11 normalized `(set, mode)` rows), and a set relation
+  is only well-defined once one of them is fixed. C3.3(a) fixes it. Same family as
+  R5 and R13 — a claim wider than the check behind it — applied here to the
+  claim a criterion makes about *other criteria*.
 
 ---
 
@@ -967,11 +1055,54 @@ check, and `allowed` is precisely the outcome this gate must never produce.
 #       Proven non-vacuous by a deliberately-wrong fixture in the suite's own
 #       self-test, or by the C1.3 mutant.
 # C3.2  every criterion in Steps 1, 2 and 7 is realised as at least one case.
-# C3.3  the FOUR mutation controls (C1.3(a) allowlist, C1.3(b) tier-collapse,
-#       C1.4 agent_id, C2.2 hook_event_name) each kill a DISJOINT, NON-EMPTY set
-#       of cases. Kill counts recorded in the PASS marker as numbers. The
-#       disjointness requirement is what proves the two-tier allowlist is tested
-#       as two tiers rather than as one with extra rows.
+# C3.3  REWRITTEN 2026-09-24 (see the amendment note at the head of this doc and
+#       R14). The FOUR mutation controls (C1.3(a) allowlist, C1.3(b)
+#       tier-collapse, C1.4 agent_id, C2.2 hook_event_name) are compared in ONE
+#       declared cell space against a FROZEN relation table. Blanket pairwise
+#       disjointness is NOT the requirement and never was satisfiable: C1.3(b)'s
+#       kill set is contained in C1.3(a)'s by construction (R14).
+#   (a) CELL SPACE, declared once as a literal list in the test and used to drive
+#       all four mutants AND the shipped gate. A cell is the tuple
+#         (hook_event_name, tool_name, subject, permission_mode, agent_id-state)
+#       The subject list is the UNION of the subject lists the four controls
+#       already probe, plus one ordinary non-Set-A/B file as a control; the mode
+#       list is C1.2's 9 documented spellings; agent_id-state is {absent,
+#       non-empty}. A cell's VERDICT under a gate is exactly one of ask / deny /
+#       allowed, derived as C3.1 derives it (exit code AND stdout
+#       permissionDecision - never exit code alone). Cell c is KILLED by mutant M
+#       iff verdict_M(c) != verdict_shipped(c). Enumerate the space once; do not
+#       let each control define its own private accounting, which is what made
+#       the old C3.3 unanswerable.
+#   (b) NON-EMPTY: all four kill sets are non-empty. Counts recorded in the PASS
+#       marker as numbers, stating the cell space's own size alongside them so a
+#       later reader can tell a count from a coverage claim.
+#   (c) DISTINCT: no two of the four kill sets are equal. A control whose kill set
+#       merely duplicates another's is not a second control.
+#   (d) THE FROZEN RELATION TABLE - a literal in the test, one row per unordered
+#       pair, asserted for all SIX pairs. The expected relation is a hardcoded
+#       literal; DERIVING it from the measured sets reproduces R11's exact defect
+#       (an expectation computed from the thing under test) and is a FAIL:
+#         C1.3(a) x C1.3(b)  NESTED   K_b is a PROPER SUBSET of K_a, and K_b is
+#                                     exactly the Set B x acceptEdits x
+#                                     agent_id-absent cells - no Set A cell, no
+#                                     other Set B mode. Both halves asserted.
+#         C1.3(a) x C1.4     DISJOINT K_a is agent_id-absent only, K_id is
+#                                     agent_id-present only. This is the pair the
+#                                     over-broad mutant violated (R14).
+#         C1.3(b) x C1.4     DISJOINT same axis separation.
+#         C1.3(a) x C2.2     DISJOINT different hook_event_name.
+#         C1.3(b) x C2.2     DISJOINT different hook_event_name.
+#         C1.4    x C2.2     DISJOINT different hook_event_name.
+#       What the NESTED row proves is what the old disjointness clause was
+#       reaching for and could not express: the Set B acceptEdits deny is
+#       PRODUCED BY the frozen case, so neutering the whole case necessarily
+#       flips it too. Move that deny to a check outside the case and the
+#       containment breaks - which is the regression R1/R10 name.
+#   (e) TIER ISOLATION, stated separately because (d)'s NESTED row alone does not
+#       give it: K_b intersected with the Set A cells is EMPTY, and Set A's own
+#       ask/deny split is bit-identical under the tier-collapse mutant and under
+#       the shipped gate. This, not disjointness, is what proves the two-tier
+#       allowlist is tested as two tiers rather than as one with extra rows.
 # C3.4  the pre-existing mutation controls still hold: deleting the Write/Edit
 #       branch and deleting the Bash branch each kill a disjoint non-empty set;
 #       adding Set B to the Bash branch still makes the two Bash guards fail.
@@ -1589,6 +1720,34 @@ half specifically.*
   whole-file so `CHANGELOG.md`'s split is moot; Cat 3 carries this plan doc and
   any follow-up in the family; and the key is file, never line or count, because
   both shift when the remedy lands.
+- CHK25: Is C3.3's required relation between the four kill sets satisfiable at
+  all, given C1.3(a)'s and C1.3(b)'s own stated scopes? — FAIL (conflicting) —
+  it was not. C1.3(a) enumerates *"Set B's 6 deny rows"*, C1.3(b) targets
+  *"exactly the Set B `acceptEdits` row"*, and `acceptEdits` is one of those six,
+  so the old C3.3's pairwise-disjointness clause contradicted the two criteria it
+  was auditing. **Revised in place**: C3.3 is rewritten around a frozen relation
+  table in which that one pair is `NESTED` and the other five are `DISJOINT`, and
+  R14 records why the containment is stronger evidence than the disjointness it
+  replaces. Neither C1.3(a) nor C1.3(b) changes.
+- CHK26: Does the plan define the unit a kill set is a set of, precisely enough
+  that "disjoint" and "subset" are decidable? — FAIL (ambiguous) — *"a DISJOINT,
+  NON-EMPTY set of cases"* named no unit, and the same mutant is legitimately
+  countable as 29 probe cells or 11 normalized `(set, mode)` rows (both recorded
+  in `.claude/reviewed/hcb-branch.pass`). Under the first accounting the overlap
+  is 4 cells; under the second it is 1 row; a reviewer and an implementer could
+  agree on the property and still disagree on every number. **Revised in place**:
+  C3.3(a) declares the cell tuple, the verdict function, and the kill predicate,
+  and requires one shared enumeration to drive all four controls.
+- CHK27: Does C3.3, as rewritten, still deliver the thing the old clause claimed
+  to deliver — that the two-tier allowlist is tested as two tiers and not as one
+  with extra rows? — PASS, and not via the relation table. The table's `NESTED`
+  row alone would be satisfied by a tier-collapse mutant that flipped *every*
+  Set B deny row, which proves nothing about the tier; C3.3(e) is the clause that
+  carries the claim, asserting `K_b ∩ Set A = ∅` plus a bit-identical Set A split
+  under the mutant. `CONTEXT.md:219-225` independently assigns this job to
+  C1.3(b) — *"the exact point defended by acceptance criterion C1.3(b)"* — and
+  says nothing about C1.3(a)'s scope, which is the glossary agreeing with the
+  ruling rather than with the old clause.
 
 ## Scribe update hint
 
@@ -1611,6 +1770,18 @@ half specifically.*
   `docs/adr/`, per ADR-0029; corrections are appended, or recorded elsewhere and
   cross-referenced*). Both are load-bearing in R13 and C4.1. `scribe`'s call
   whether to add them; neither gates this spec.
+- **`CONTEXT.md` (added 2026-09-24, lens 3, advisory)**: two terms the C3.3
+  rewrite makes load-bearing, confirmed absent from the glossary today —
+  **kill set** (*the set of probe cells whose verdict differs between the shipped
+  artifact and one named mutant; meaningless until the cell space is declared,
+  since the same mutant is legitimately countable several ways*) and **kill-set
+  relation table** (*a frozen literal table asserting the expected relation —
+  disjoint, or nested with a named overlap — between every pair of a suite's
+  mutation controls, so that one over-broad mutant silently standing in for two
+  controls is red; the same discipline as a* [[family table]] *applied to mutants
+  instead of bypass families*). The existing **two-tier allowlist** entry needs
+  no change — it already assigns the tier defence to C1.3(b), which is what the
+  2026-09-24 ruling relies on. `scribe`'s call; neither gates this spec.
 - **`docs/adr/`**: one new ADR — next free number (`0032` at authoring time),
   re-derived at execution time. Subject: per-call consent belongs to the
   permission system; durable escalation consent belongs to the `DECISION` file;
