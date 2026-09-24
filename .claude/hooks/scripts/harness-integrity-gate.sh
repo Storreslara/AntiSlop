@@ -55,6 +55,42 @@ dispatch_log=".claude/dispatch-audit.log"
 microworld_log=".claude/microworld-audit.log"
 wip_log=".claude/wip-audit.log"
 
+# completed <set> <subject> - PostToolUse-only bookkeeping: records that a
+# write to a human-confirmable path completed. Never denies; the write
+# already succeeded by the time this runs. The gh418 newline-flattening idiom
+# is reused defensively on subject even though the caller's exact-match case
+# below already rules out an embedded newline reaching here.
+completed() {
+  audit_append "$audit" "$(printf '%s completed hook=harness-integrity-gate set=%s subject=%s' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$(printf '%s' "$2" | tr '\n\r' '  ')")"
+}
+
+# PostToolUse (Edit|Write): the only available evidence a human approved an
+# interactive permission prompt - no hook fires on approval itself. Must run
+# as the first executed decision, before the command= extraction below: a
+# PostToolUse payload has no .tool_input.command, so command comes back empty
+# and would otherwise fall into the Write/Edit deny path below and block a
+# write that already succeeded.
+hook_event_name="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
+if [ "$hook_event_name" = "PostToolUse" ]; then
+  has_path="$(echo "$input" | jq -r '(.tool_input|type) == "object" and (.tool_input|has("file_path"))' 2>/dev/null)" || exit 0
+  if [ "$has_path" = true ]; then
+    file_path="$(echo "$input" | jq -r '.tool_input.file_path // "" | tostring' 2>/dev/null || true)"
+    if [ -n "$file_path" ]; then
+      subject="$(normalize_path "$file_path")"
+      case "$subject" in
+        "$project_dir"/*) subject="${subject#"$project_dir"/}" ;;
+      esac
+      case "$subject" in
+        "$persona_cfg") completed A "$subject" ;;
+        hooks/hooks.json|.claude/settings.json|hooks/scripts/harness-integrity-gate.sh|\
+        .claude/hooks/scripts/harness-integrity-gate.sh) completed B "$subject" ;;
+      esac
+    fi
+  fi
+  exit 0
+fi
+
 deny() {
   # $1 set (A|B|unknown), $2 subject, $3 human-readable surface name
   audit_append "$audit" "$(printf '%s denied hook=harness-integrity-gate set=%s subject=%s' \
