@@ -82,6 +82,23 @@ the one-time per-project setup process that turns the
 **effort floor**:
 superseded terminology — see [[effort override / effort tier]].
 
+**guarded change**:
+(unit orchestrator-effort-policy-prose-fix, 2026-09-24) — an edit to a persona's 
+  definition file (`agents/<persona>.md`), particularly its frontmatter fields like 
+  `effort:`, `model:`, or `tools:`. This is a durable, definitional change that 
+  permanently alters the persona's traits and applies to all future dispatches of 
+  that persona. Contrasted with transient, per-invocation changes (e.g., per-dispatch 
+  runtime flags, which do not exist for effort). Currently enforced as a **normative 
+  convention only** (part of this project's discipline for persona definition edits), 
+  not mechanically: `agents/*.md` files are explicitly excluded from both Set A and 
+  Set B of [[Set A / Set B|harness-integrity-gate.sh]], and the project's 
+  `protectedPaths` configuration is empty, so no tool-layer gate currently blocks or 
+  logs persona-definition edits. This distinction (norm vs. mechanism) is load-bearing 
+  for future operator decisions: a gate that does not exist today is a deliberate 
+  design choice, not an oversight. See [[effort override / effort tier]] for the 
+  exemplar case and [ADR-0033](docs/adr/0033-effort-tiers-frontmatter-only-override.md) 
+  for the decision that effort is frontmatter-only.
+
 **overflow file**:
 (unit cost-governance-step3-protocol-prose, 2026-09-24) — the persisted file that 
   receives Bash tool output exceeding the [[bashOutputMaxChars / the Bash-output cap]] 
