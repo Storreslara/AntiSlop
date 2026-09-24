@@ -4,6 +4,7 @@ description: Independent, adversarial verifier - the Writer/Reviewer split. Did 
 model: opus
 experimental:
   cacheTtl: 1h
+effort: high
 color: red
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language

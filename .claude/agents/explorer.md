@@ -2,6 +2,7 @@
 name: explorer
 description: Use PROACTIVELY for any structural question - where is X defined, what calls Y, blast radius of a change to Z, inheritance chains, which tests cover a path, module dependency maps. Fast and cheap; returns distilled findings, not raw dumps.
 model: haiku
+effort: low
 color: orange
 tools: Read, Grep, Glob, Bash, Skill, SendMessage
 mcpServers:
@@ -14,7 +15,7 @@ mcpServers:
         - serve
 maxTurns: 10
 ---
-<!-- antislop v0.31.78 | source: agents/explorer.md | ADAPT-substituted -->
+<!-- antislop v0.31.79 | source: agents/explorer.md | ADAPT-substituted -->
 <!-- `mcpServers` is inlined here (not project-wide `.mcp.json`) so only the
      explorer connects; must stay a LIST of single-key dicts each with
      explicit `type:` — a flat map keyed by server name is SILENTLY ignored

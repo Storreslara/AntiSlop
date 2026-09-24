@@ -4,6 +4,7 @@ description: Reads a spec-master finalized spec and turns it into dispatch-ready
 model: sonnet
 experimental:
   cacheTtl: 1h
+effort: medium
 color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage

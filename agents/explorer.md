@@ -2,6 +2,7 @@
 name: explorer
 description: Use PROACTIVELY for any structural question - where is X defined, what calls Y, blast radius of a change to Z, inheritance chains, which tests cover a path, module dependency maps. Fast and cheap; returns distilled findings, not raw dumps.
 model: haiku
+effort: low
 color: orange
 tools: Read, Grep, Glob, Bash, Skill, SendMessage
 mcpServers:

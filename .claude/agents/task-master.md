@@ -4,13 +4,14 @@ description: Reads a spec-master finalized spec and turns it into dispatch-ready
 model: sonnet
 experimental:
   cacheTtl: 1h
+effort: medium
 color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 40
 ---
-<!-- antislop v0.31.78 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.79 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
