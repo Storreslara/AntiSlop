@@ -35,6 +35,18 @@ the one-time per-project setup process that turns the
   with `--dir` flag to specify the project root (defaults to git-toplevel-derived,
   not raw cwd). See [[transcript store]], [[nearest-rank convention]].
 
+**bashOutputMaxChars / the Bash-output cap**:
+(unit #478, 2026-09-23) — a user-facing settings key (`bashOutputMaxChars: 12000`) 
+  that enforces a hard truncation limit on Bash tool output (the "cap"), derived from 
+  the [[Bash-output census]]'s percentile analysis. The locked value of 12,000 characters 
+  represents the cost-governance threshold identified in Step 1. The cap is the mechanical 
+  enforcement half of the cost-governance work (Steps 3-5 implement the model tier and 
+  token-budget adjustments that adapt to this cap). Setup-time template value is in 
+  `templates/settings-fragment.json`; for already-adapted projects, the backfill mechanism 
+  in `bin/cli.js`'s `runUpdate` block additively merges `bashOutputMaxChars` into 
+  `.claude/settings.json` only when the key is absent (never clobbers an existing value).
+  See [[Bash-output census]] for the measurement authority.
+
 **baseline currency**:
 (unit spec2-unitE, 2026-08-26) — the property that a fileHashes baseline's
   recorded hashes remain synchronized with the actual mirror content on disk.
