@@ -947,6 +947,209 @@ else
 fi
 
 echo
+echo "-- C3.3(a): declared cell space - one tuple space driving all four mutation controls and the shipped gate (REWRITTEN 2026-09-24, issue #470 amendment; blanket pairwise disjointness is not the requirement) --"
+
+# Cell = (hook_event_name, subject, permission_mode, agent_id-state). tool_name
+# is fixed to Write throughout - C1.1 already asserts Write/Edit equivalence,
+# so varying it here would be redundant with an existing criterion. Subject
+# list is the UNION of the subject lists the four controls already probe
+# (C1.3(a)/(b): persona-config + hooks.json; C1.4: all 5 ask-eligible
+# literals; C2.2: those minus the mirror-adjacent ones plus the audit log and
+# the ordinary file), tagged by tier: A = Set A ask-eligible, B = Set B
+# ask-eligible, X = Set A hard-deny (not ask-eligible), O = ordinary/
+# unprotected. Mode list is C1.2's 9 documented spellings. agent_id-state is
+# {absent, nonempty}. PostToolUse cells don't vary by mode/agent_id (the
+# payload carries neither field), so each subject gets exactly one.
+c33_tiers="A:$t_persona_cfg
+B:$hooks_json_path
+B:$settings_path
+B:$gate_script_path
+B:$mirror_path
+X:$t_review_log
+O:hooks/scripts/lib/audit-log.sh"
+
+c33_modes="default plan acceptEdits auto dontAsk bypassPermissions __EMPTY__ someFutureMode __ABSENT__"
+
+c33_cells="$tmproot/c33-cells"
+: > "$c33_cells"
+while IFS=: read -r tier subj; do
+  [ -n "$tier" ] || continue
+  for mode in $c33_modes; do
+    for aid in absent nonempty; do
+      echo "PreToolUse|$tier|$subj|$mode|$aid" >> "$c33_cells"
+    done
+  done
+  echo "PostToolUse|$tier|$subj|NA|NA" >> "$c33_cells"
+done <<< "$c33_tiers"
+c33_cell_count="$(wc -l < "$c33_cells")"
+
+# cell_verdict <gate> <hook_event_name> <subject> <mode|NA> <agent_id-state|NA>
+# -> ask|deny|allowed, derived exactly as C3.1 derives it: exit code AND
+# stdout permissionDecision - never exit code alone.
+cell_verdict() {
+  local g="$1" hev="$2" subj="$3" mode="$4" aid="$5" payload pm_arg aid_arg save_g
+  if [ "$hev" = PostToolUse ]; then
+    payload="$(_pt_payload Write "$subj")"
+  else
+    case "$mode" in
+      __ABSENT__) pm_arg=__ABSENT__ ;;
+      __EMPTY__)  pm_arg="" ;;
+      *)          pm_arg="$mode" ;;
+    esac
+    [ "$aid" = absent ] && aid_arg=__ABSENT__ || aid_arg=subagent-1
+    payload="$(_pm_payload Write "$subj" "$pm_arg" "$aid_arg")"
+  fi
+  save_g="$gate"; gate="$g"
+  run "$payload" "$proj"
+  gate="$save_g"
+  if [ "$rc" = 2 ]; then
+    echo deny
+  elif [ "$rc" = 0 ] && jq -e . >/dev/null 2>&1 < "$outf" \
+       && [ "$(jq -r '.hookSpecificOutput.permissionDecision // empty' < "$outf")" = ask ]; then
+    echo ask
+  else
+    echo allowed
+  fi
+}
+
+# compute_verdicts <gate> <outfile> - one "cellID verdict" line per cell.
+compute_verdicts() {
+  local g="$1" outfile="$2" hev tier subj mode aid v
+  : > "$outfile"
+  while IFS='|' read -r hev tier subj mode aid; do
+    [ -n "$hev" ] || continue
+    v="$(cell_verdict "$g" "$hev" "$subj" "$mode" "$aid")"
+    echo "$hev|$tier|$subj|$mode|$aid $v" >> "$outfile"
+  done < "$c33_cells"
+}
+
+# Reuses the four mutants already built above (unconditional_mutant,
+# tier_collapse_mutant, agent_id_mutant, het_mutant) - no new mutants, same
+# regressions, now measured over one shared cell space instead of each
+# control's own private accounting.
+compute_verdicts "$gate" "$tmproot/v-shipped"
+compute_verdicts "$unconditional_mutant" "$tmproot/v-c13a"
+compute_verdicts "$tier_collapse_mutant" "$tmproot/v-c13b"
+compute_verdicts "$agent_id_mutant"      "$tmproot/v-c14"
+compute_verdicts "$het_mutant"           "$tmproot/v-c22"
+
+# kill_set <mutant-verdicts-file> <out-file> - cell IDs where the mutant's
+# verdict differs from the shipped gate's.
+kill_set() {
+  join -j1 <(sort "$tmproot/v-shipped") <(sort "$1") \
+    | awk '$2 != $3 {print $1}' > "$2"
+}
+kill_set "$tmproot/v-c13a" "$tmproot/k-c13a"
+kill_set "$tmproot/v-c13b" "$tmproot/k-c13b"
+kill_set "$tmproot/v-c14"  "$tmproot/k-c14"
+kill_set "$tmproot/v-c22"  "$tmproot/k-c22"
+
+k_c13a="$(wc -l < "$tmproot/k-c13a")"
+k_c13b="$(wc -l < "$tmproot/k-c13b")"
+k_c14="$(wc -l < "$tmproot/k-c14")"
+k_c22="$(wc -l < "$tmproot/k-c22")"
+
+echo "[C3.3a] cell space size: $c33_cell_count cells; kill counts: C1.3(a)=$k_c13a C1.3(b)=$k_c13b C1.4=$k_c14 C2.2=$k_c22"
+
+echo
+echo "-- C3.3(b): all four kill sets non-empty --"
+if [ "$k_c13a" -gt 0 ] && [ "$k_c13b" -gt 0 ] && [ "$k_c14" -gt 0 ] && [ "$k_c22" -gt 0 ]; then
+  pass "[C3.3b] all four kill sets non-empty (C1.3a=$k_c13a C1.3b=$k_c13b C1.4=$k_c14 C2.2=$k_c22)"
+else
+  bad "[C3.3b] expected all four kill sets non-empty, got C1.3a=$k_c13a C1.3b=$k_c13b C1.4=$k_c14 C2.2=$k_c22"
+fi
+
+echo
+echo "-- C3.3(c): no two kill sets are equal --"
+c33_distinct_ok=1
+for c33_pair in "c13a c13b" "c13a c14" "c13a c22" "c13b c14" "c13b c22" "c14 c22"; do
+  set -- $c33_pair
+  if diff -q <(sort "$tmproot/k-$1") <(sort "$tmproot/k-$2") >/dev/null; then
+    c33_distinct_ok=0
+    bad "[C3.3c] kill set $1 is identical to kill set $2"
+  fi
+done
+[ "$c33_distinct_ok" = 1 ] && pass "[C3.3c] all four kill sets are pairwise distinct"
+
+echo
+echo "-- C3.3(d): frozen relation table, hardcoded literal, all six pairs --"
+c33_subset_ok() { [ -z "$(comm -23 <(sort "$1") <(sort "$2"))" ]; }
+c33_disjoint_ok() { [ -z "$(comm -12 <(sort "$1") <(sort "$2"))" ]; }
+
+c33_expected_kb="$tmproot/expected-kb"
+: > "$c33_expected_kb"
+for subj in "$hooks_json_path" "$settings_path" "$gate_script_path" "$mirror_path"; do
+  echo "PreToolUse|B|$subj|acceptEdits|absent" >> "$c33_expected_kb"
+done
+
+c33_kfile() {
+  case "$1" in
+    "C1.3(a)") echo "$tmproot/k-c13a" ;;
+    "C1.3(b)") echo "$tmproot/k-c13b" ;;
+    "C1.4")    echo "$tmproot/k-c14" ;;
+    "C2.2")    echo "$tmproot/k-c22" ;;
+  esac
+}
+
+# The expected relation is a HARDCODED LITERAL - deriving it from the
+# measured sets would reproduce R11's exact defect (C7.2's rationale, same
+# family).
+c33_relation_table="C1.3(a):C1.3(b):NESTED
+C1.3(a):C1.4:DISJOINT
+C1.3(b):C1.4:DISJOINT
+C1.3(a):C2.2:DISJOINT
+C1.3(b):C2.2:DISJOINT
+C1.4:C2.2:DISJOINT"
+
+while IFS=: read -r c33_left c33_right c33_relation; do
+  [ -n "$c33_left" ] || continue
+  c33_lf="$(c33_kfile "$c33_left")"; c33_rf="$(c33_kfile "$c33_right")"
+  c33_ln="$(wc -l < "$c33_lf")"; c33_rn="$(wc -l < "$c33_rf")"
+  if [ "$c33_relation" = NESTED ]; then
+    if c33_subset_ok "$c33_rf" "$c33_lf" && [ "$c33_ln" -gt "$c33_rn" ] \
+       && diff -q <(sort "$c33_rf") <(sort "$c33_expected_kb") >/dev/null; then
+      pass "[C3.3d] $c33_left x $c33_right = NESTED ($c33_right's $c33_rn cells a proper subset of $c33_left's $c33_ln; $c33_right equals exactly the Set B x acceptEdits x agent_id-absent cells)"
+    else
+      bad "[C3.3d] $c33_left x $c33_right expected NESTED, got $c33_left=$c33_ln $c33_right=$c33_rn (subset=$(c33_subset_ok "$c33_rf" "$c33_lf" && echo yes || echo no), exact-match=$(diff -q <(sort "$c33_rf") <(sort "$c33_expected_kb") >/dev/null && echo yes || echo no))"
+    fi
+  else
+    if c33_disjoint_ok "$c33_lf" "$c33_rf"; then
+      pass "[C3.3d] $c33_left x $c33_right = DISJOINT"
+    else
+      bad "[C3.3d] $c33_left x $c33_right expected DISJOINT, found overlap: $(comm -12 <(sort "$c33_lf") <(sort "$c33_rf") | tr '\n' ' ')"
+    fi
+  fi
+done <<< "$c33_relation_table"
+
+echo
+echo "-- C3.3(e): tier isolation - K_b touches no Set A cell, and Set A's ask/deny split is bit-identical under the tier-collapse mutant --"
+c33_seta_in_kb="$(awk -F'|' '$2=="A"' "$tmproot/k-c13b" | wc -l)"
+if [ "$c33_seta_in_kb" = 0 ]; then
+  pass "[C3.3e] K_b (C1.3(b)'s kill set) contains zero Set A cells"
+else
+  bad "[C3.3e] K_b contains $c33_seta_in_kb Set A cell(s), expected 0"
+fi
+
+c33_join="$tmproot/join-shipped-c13b"
+join -j1 <(sort "$tmproot/v-shipped") <(sort "$tmproot/v-c13b") > "$c33_join"
+c33_seta_total=0; c33_seta_mismatch=0
+while IFS= read -r c33_line; do
+  c33_key="${c33_line%% *}"
+  c33_tier="$(printf '%s' "$c33_key" | cut -d'|' -f2)"
+  [ "$c33_tier" = A ] || continue
+  c33_rest="${c33_line#* }"
+  c33_vs="${c33_rest%% *}"
+  c33_vb="${c33_rest#* }"
+  c33_seta_total=$((c33_seta_total + 1))
+  [ "$c33_vs" = "$c33_vb" ] || c33_seta_mismatch=$((c33_seta_mismatch + 1))
+done < "$c33_join"
+if [ "$c33_seta_mismatch" = 0 ] && [ "$c33_seta_total" -gt 0 ]; then
+  pass "[C3.3e] Set A's ask/deny split is bit-identical under the tier-collapse mutant and the shipped gate, across all $c33_seta_total Set A cells"
+else
+  bad "[C3.3e] Set A split diverged on $c33_seta_mismatch of $c33_seta_total Set A cells under the tier-collapse mutant"
+fi
+
+echo
 echo "-- C2.3: exactly one 'completed' audit line per write, correct set= field, and fails closed on a newline-embedded file_path --"
 c23proj="$(mk c23)"
 c23_log="$c23proj/.claude/review-audit.log"
