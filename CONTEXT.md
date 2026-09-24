@@ -14,7 +14,7 @@ the one-time per-project setup process that turns the
   cost in the common case) and a judgment half
   (`skills/install-antislop/SKILL.md`).
 
-**ask-eligible**:
+**ask-eligible** (synonym: **human-confirmable path**):
 (unit hcb-branch, 2026-09-24) — the 5-path subset of Set A ∪ Set B in
   `harness-integrity-gate.sh` that can actually reach the `ask` branch when
   `agent_id` is absent and `permission_mode` is in the frozen [[permission-mode allowlist]].
@@ -24,7 +24,21 @@ the one-time per-project setup process that turns the
   (persona-config + 4 audit logs + their 4 `.seal` sidecars, of which only persona-config
   is ask-eligible; the other 8 stay unconditional deny even under an allowlisted mode)
   and the full 4-path Set B. The ask-eligible subset is the gate's exactly-five-paths-wide
-  surface pinned by acceptance criterion C1.7 in the unit spec.
+  surface pinned by acceptance criterion C1.7 in the unit spec. The term **human-confirmable path**
+  appears as an in-code synonym in `hooks/scripts/harness-integrity-gate.sh:59` (comment for
+  the `completed()` function).
+
+**asked audit record**:
+(unit hcb-branch, 2026-09-24) — the `PreToolUse` half of the `asked`/`completed` pair,
+  written by `harness-integrity-gate.sh`'s `ask()` function (line 126) when a human
+  confirms a permission prompt on one of the 5 [[ask-eligible]] paths. An `asked` line
+  has format `<timestamp> asked hook=harness-integrity-gate set=<A|B> subject=<path>`.
+  Together with a matching [[`completed` audit record]], the pair verifies that a human
+  approved a write (asked) and the write then succeeded (completed), keeping
+  `docs/trust-model.md` row 11 verifiable — a harness-integrity-gate write-deny is
+  functioning if the gate's registration surface remains unmodified. See also
+  [[U5 pairing ambiguity]] for the asymmetric interpretation of `asked` without
+  matching `completed` between Set A and Set B.
 
 **Attested commit**:
 (unit #386, 2026-08-15) — the commit recorded in a [[PASS marker]]'s
@@ -46,6 +60,17 @@ the one-time per-project setup process that turns the
   bundle** (which re-runs code and is memoized) by being a one-time measurement of live
   harness behavior under real conditions, recorded as prose/tables with self-attested
   verdicts. See **self-reported** for the evidence-label semantics.
+
+**completed audit record**:
+(unit hcb-posttool, 2026-09-24) — the `PostToolUse` half of the `asked`/`completed` pair,
+  written by `harness-integrity-gate.sh`'s `completed()` function (line 63) when a write
+  to one of the 5 [[ask-eligible]] paths succeeds and the `PostToolUse` hook fires.
+  A `completed` line has format `<timestamp> completed hook=harness-integrity-gate set=<A|B> subject=<path>`.
+  Together with a matching [[asked audit record]], the pair verifies that a human approved
+  a write (asked) and the write then succeeded (completed), keeping `docs/trust-model.md`
+  row 11 verifiable — a harness-integrity-gate write-deny is functioning if the gate's
+  registration surface remains unmodified. See also [[U5 pairing ambiguity]] for the
+  asymmetric interpretation of `asked` without matching `completed` between Set A and Set B.
 
 **self-reported** (as a formal evidence label, distinct from a mechanical check):
 (unit hcb-step5-measure, 2026-09-24) — a classification of evidence that explicitly
@@ -1312,6 +1337,21 @@ Code Review Graph, a third-party MCP server providing
   Root cause is upstream installer content bug, not antislop defect. Now that
   these SKILL.md files are tracked/shipped, the gap is more visible and should
   be fixed in the installer itself.
+
+**U5 pairing ambiguity**:
+(unit hcb-posttool, 2026-09-24) — the documented, deliberate asymmetry in interpreting
+  a missing [[`completed` audit record]] after an [[asked audit record]] for an [[ask-eligible]]
+  write. **For Set A** (persona-config path), an `asked` line with no matching `completed`
+  line means unambiguous denial — the user rejected the permission prompt, so the write
+  never reached `PostToolUse` and never logged completion. **For Set B** (gate-registration
+  paths), the same situation is AMBIGUOUS: an `asked` with no `completed` could mean denial
+  (user rejected), OR it could mean the write was approved and succeeded, but then the write
+  itself disabled the gate's own ability to log completion (e.g., by removing the hook's
+  `hooks.json` registration). The ambiguity is deliberate, not a bug — the test suite has an
+  enumerated-file-list assertion documenting that nothing in the repo claims otherwise. This
+  asymmetry exists because Set B is the gate's own registration surface: a successful write
+  to Set B can unregister the hook that logs the completion. Named "U5" after the unit number
+  scheme (`U` = unit finding, `5` = the fifth criterion affected by this pairing rule).
 
 **This repo's own ADAPT state**:
 this repo self-hosts the plugin it
