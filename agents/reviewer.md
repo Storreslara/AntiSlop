@@ -2,6 +2,7 @@
 name: reviewer
 description: Independent, adversarial verifier - the Writer/Reviewer split. Did not write the code under review; returns a PASS/FAIL verdict with reasons, never fixes anything itself. Invoke to review/verify a completed unit of work.
 model: opus
+cacheTtl: 1h
 color: red
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language

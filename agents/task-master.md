@@ -2,6 +2,7 @@
 name: task-master
 description: Reads a spec-master finalized spec and turns it into dispatch-ready work — slices it into independently-grabbable issues via `to-tickets`, tags each unit's model, states the retrieval contract, and writes detailed per-unit dispatch prompts for `lead-programmer` and `scribe`. Invoke once a spec is finalized and ready to execute; never interrogates the user and never revises the spec's substance — a mid-flight spec gap routes back up to `spec-master`.
 model: sonnet
+cacheTtl: 1h
 color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
