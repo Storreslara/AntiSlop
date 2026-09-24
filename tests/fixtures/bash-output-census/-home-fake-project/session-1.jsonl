@@ -1,0 +1,10 @@
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"echo a"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"AAAAAAAAAA"}]}}
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_2","name":"Bash","input":{"command":"echo b"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_2","content":[{"type":"text","text":"BBBBBBBBBBBB"},{"type":"text","text":"BBBBBBBB"}]}]}}
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_3","name":"Bash","input":{"command":"echo c"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_3","content":"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"}]}}
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_4","name":"Bash","input":{"command":"echo d"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_4","content":[{"type":"text","text":"DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD"}]}]}}
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_5","name":"Read","input":{"file_path":"/tmp/x"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_5","content":"this must not be counted"}]}}
