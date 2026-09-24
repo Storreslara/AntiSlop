@@ -47,6 +47,25 @@ the one-time per-project setup process that turns the
   `.claude/settings.json` only when the key is absent (never clobbers an existing value).
   See [[Bash-output census]] for the measurement authority.
 
+**effort override / effort tier**:
+(unit #480, 2026-09-24) — a frontmatter key (`effort:`) declared in `agents/*.md` files 
+  that overrides (pins) a dispatched persona's effort level independent of the ambient 
+  session effort setting. Valid values are `low`, `medium`, `high`, `xhigh`, `max`, or 
+  an integer. Current assignments in this project: `explorer` declares `effort: low` 
+  (mechanical traversal is cost-minimized), `task-master` declares `effort: medium` 
+  (mechanical slicing against an already-finalized spec), `reviewer` declares `effort: high` 
+  (adversarial judgment requires sustained engagement), and `milestone-auditor` deliberately 
+  carries no `effort:` key at all (its per-persona adversarial judgment is independent of 
+  the phase-scoped effort model, per 2026-09-23 user decision). Semantics: an `effort:` 
+  value in a persona definition supersedes ambient session effort in both directions — 
+  preventing weaker effort from a low-effort main session carrying into the persona, and 
+  preventing stronger effort from a high-effort main session accidentally inflating the 
+  persona's tier. This is an **override**, not a minimum/floor. Note: the term "tier" 
+  carries three senses in this glossary — here it refers to effort level (low/medium/high/…), 
+  distinct from [[Tier A / Tier B bundle classification]] (personas included in release 
+  artifacts) and the protocol delivery tiers (full vs. slim). See `tests/effort-tier-consistency.test.js` 
+  for the declared schema and mutation-proof assertions.
+
 **baseline currency**:
 (unit spec2-unitE, 2026-08-26) — the property that a fileHashes baseline's
   recorded hashes remain synchronized with the actual mirror content on disk.
