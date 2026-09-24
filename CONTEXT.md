@@ -79,6 +79,9 @@ the one-time per-project setup process that turns the
   no-per-dispatch-parameter decision and the corrected raise-never-lower direction for editing
   a persona's declared value over time.
 
+**effort floor**:
+superseded terminology — see [[effort override / effort tier]].
+
 **overflow file**:
 (unit cost-governance-step3-protocol-prose, 2026-09-24) — the persisted file that 
   receives Bash tool output exceeding the [[bashOutputMaxChars / the Bash-output cap]] 

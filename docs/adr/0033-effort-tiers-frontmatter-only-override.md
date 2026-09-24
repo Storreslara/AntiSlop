@@ -22,16 +22,18 @@ The brief's originating phrasing described the desired invariant as a
 "floor" — effort could be raised per dispatch but never lowered past a
 measured or default minimum. That framing does not fit what was found. A
 floor is a one-sided constraint (blocks going under, permits going over);
-what `effort:` frontmatter actually does is **pin** a persona's effort to a
-declared value, overriding ambient session effort in *both* directions —
-this also blocks a persona from getting *more* effort than declared when the
-ambient session runs hot (e.g. `explorer`'s `effort: low` is not inflated by
-a `high`-effort main session). "Floor" describes only the `reviewer`
-half-case (declared `high`, must never silently drop) and mischaracterizes
-the `explorer` half-case (declared `low`, must never silently rise). A
-just-landed sibling scribe unit (CONTEXT.md's **effort override / effort
-tier** entry, commit 6b76a6b) already corrected this in the glossary; this
-ADR's title and text use the same corrected term rather than
+what `effort:` frontmatter *declares* is a **pin** of a persona's effort to a
+stated value, with the intent to override ambient session effort in *both*
+directions — that is, to block a persona from getting *more* effort than
+declared when the ambient session runs hot (e.g. `explorer`'s `effort: low`
+is intended not to be inflated by a `high`-effort main session). "Floor"
+describes only the `reviewer` half-case (declared `high`, must never
+silently drop) and mischaracterizes the `explorer` half-case (declared
+`low`, must never silently rise). The actual end-to-end behavior across all
+six personas is confirmed in the Consequences section as an empirical pin
+(R7). A just-landed sibling scribe unit (CONTEXT.md's **effort override /
+effort tier** entry, commit 6b76a6b) already corrected this in the
+glossary; this ADR's title and text use the same corrected term rather than
 reintroducing "floor."
 
 ## Decision

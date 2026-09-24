@@ -20,11 +20,12 @@ downstream consumer) replaces the original command's exit code with the pipe
 consumer's own — `false | head` exits 0, not the caller's non-zero — and this
 repo's Bash tool does not set `pipefail`, so a `PreToolUse`-injected pipeline
 would silently convert a failing command into an apparently-successful one.
-Every reviewer/gate script in this repo (`stop-gate.sh`, `task-gate.sh`,
-`marker-write.sh`, and the rest) depends on exit-code fidelity from the
-commands it runs to decide PASS/FAIL; transparently rewriting the command
-text would corrupt that contract for any script whose output happened to
-exceed the cap.
+This repo's reviewer/gate scripts (`stop-gate.sh`, `task-gate.sh`,
+`marker-write.sh`, and the rest) adjudicate marker files by reading the exit
+codes of commands run through the Bash tool — e.g., an agent running
+`bash tests/validate.sh` or `node tests/*.js` and returning the exit status to
+indicate PASS/FAIL. Transparently rewriting the command text would corrupt
+that contract for any script output that happened to exceed the cap.
 
 ## Decision
 Reject `PreToolUse` + `updatedInput` command rewriting as the cost-control
