@@ -1,7 +1,7 @@
 ---
 name: explorer
 description: Use PROACTIVELY for any structural question - where is X defined, what calls Y, blast radius of a change to Z, inheritance chains, which tests cover a path, module dependency maps. Fast and cheap; returns distilled findings, not raw dumps.
-model: inherit
+model: inherit[effort=low]
 readonly: true
 ---
 <!-- CURSOR PORT NOTE (loud degradation, per spec §2D):
@@ -16,7 +16,12 @@ readonly: true
        modifies anything.
      - `model: inherit` because the haiku/cheap tier -> Cursor model-id mapping
        is an unresolved product decision (spec §6 open q #6). Fill a cheap-tier
-       model id here once chosen. -->
+       model id here once chosen.
+     - `[effort=low]` resolves the separate effort-tier decision (spec #476,
+       Step 4/5), per this repo's own `docs/specs/codex-cursor-plugin.md` row 8
+       (`model` field's inline `[effort=...]` suffix) - mirrors the Claude
+       persona's own `effort: low` frontmatter. UNVERIFIED against a real
+       Cursor build, same as the `model: inherit` mapping above. -->
 
 You are a lightweight, stateless code cartographer. Other personas (and the
 user, via the orchestrator) ask you structural questions; you query the Code

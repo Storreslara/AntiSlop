@@ -157,6 +157,36 @@ check('slim tier carries the terminal status line section', () => {
     'templates/persona-protocol-slim.md is missing the STATUS: complete grammar');
 });
 
+// agents/orchestrator.md's Effort-tier policy clause has no persona-protocol.md
+// mirror (it's orchestrator-specific prose, not part of the shared canonical
+// section list above), so it can't ride the canonicalHeaders()/portMap
+// mechanism. Its adjacent, hand-maintained TODO resolutions in the Codex and
+// Cursor reviewer/explorer ports are exactly the kind of clause R8 warns
+// drifts freely without a literal probe — probe them directly instead.
+check('orchestrator.md Effort-tier policy clause and its resolved adapter TODOs', () => {
+  const orchestrator = fs.readFileSync(path.join(REPO_ROOT, 'agents/orchestrator.md'), 'utf8');
+  assert.ok(/Effort[- ]tier policy/.test(orchestrator),
+    'agents/orchestrator.md is missing the Effort-tier policy heading');
+  assert.ok(orchestrator.includes('never lower it'),
+    'agents/orchestrator.md Effort-tier policy section is missing the never-lower rule');
+  assert.ok(orchestrator.includes('`reviewer` is a hard exclusion'),
+    'agents/orchestrator.md Effort-tier policy section is missing the reviewer hard-exclusion rule');
+
+  const codexReviewer = fs.readFileSync(path.join(REPO_ROOT, 'adapters/codex/agents/reviewer.toml'), 'utf8');
+  const codexExplorer = fs.readFileSync(path.join(REPO_ROOT, 'adapters/codex/agents/explorer.toml'), 'utf8');
+  assert.ok(codexReviewer.includes('model_reasoning_effort = "high"'),
+    'adapters/codex/agents/reviewer.toml did not resolve to the judgment (high) tier');
+  assert.ok(codexExplorer.includes('model_reasoning_effort = "low"'),
+    'adapters/codex/agents/explorer.toml did not resolve to the cheap (low) tier');
+
+  const cursorReviewer = fs.readFileSync(path.join(REPO_ROOT, 'adapters/cursor/agents/reviewer.md'), 'utf8');
+  const cursorExplorer = fs.readFileSync(path.join(REPO_ROOT, 'adapters/cursor/agents/explorer.md'), 'utf8');
+  assert.ok(cursorReviewer.includes('model: inherit[effort=high]'),
+    'adapters/cursor/agents/reviewer.md is missing the inherit[effort=high] annotation');
+  assert.ok(cursorExplorer.includes('model: inherit[effort=low]'),
+    'adapters/cursor/agents/explorer.md is missing the inherit[effort=low] annotation');
+});
+
 check('negative case: an UNMAPPED new canonical section is REJECTED (fail-closed on drift)', () => {
   const withExtra = canonicalHeaders().concat('Some brand-new canonical section');
   assert.throws(

@@ -14,12 +14,13 @@
 #  - No per-agent `maxTurns` primitive exists on Codex (spec §2B) - the old
 #    cap (10) is now a soft documented budget only, leaning on
 #    `agents.max_threads`/`agents.max_depth` as the global backstop.
-#  - model/model_reasoning_effort intentionally omitted (inherits) - set
-#    model_reasoning_effort to a cheap tier (e.g. "low") once the project's
-#    tier-mapping decision (spec §2 row 6) is made.
+#  - model_reasoning_effort = "low": resolves the prior deferred TODO with
+#    the project's tier-mapping decision (spec #476, Step 4/5) - the cheap
+#    tier, mirroring the Claude persona's own `effort: low` frontmatter.
 name = "explorer"
 description = "Use PROACTIVELY for any structural question - where is X defined, what calls Y, blast radius of a change to Z, inheritance chains, which tests cover a path, module dependency maps. Fast and cheap; returns distilled findings, not raw dumps."
 sandbox_mode = "read-only"
+model_reasoning_effort = "low"
 
 # developer_instructions MUST precede the MCP table header further down this
 # file - TOML assigns every bare key=value pair after a table header INTO

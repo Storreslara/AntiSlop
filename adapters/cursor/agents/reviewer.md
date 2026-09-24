@@ -1,7 +1,7 @@
 ---
 name: reviewer
 description: Independent, adversarial verifier - the Writer/Reviewer split. Did not write the code under review; returns a PASS/FAIL verdict with reasons, never fixes anything itself. Invoke to review/verify a completed unit of work.
-model: inherit
+model: inherit[effort=high]
 readonly: true
 ---
 <!-- CURSOR PORT NOTE (loud degradation, per spec §2A; and one UNVERIFIED
@@ -19,7 +19,12 @@ readonly: true
        reviewer having run, PASS or FAIL, independent of the marker).
      - `model: inherit` because the opus tier -> Cursor model-id mapping is an
        unresolved product decision (spec §6 open q #6). Fill an opus-tier model
-       id here once chosen so this persona gets the judgment tier it needs. -->
+       id here once chosen so this persona gets the judgment tier it needs.
+     - `[effort=high]` resolves the separate effort-tier decision (spec #476,
+       Step 4/5), per this repo's own `docs/specs/codex-cursor-plugin.md` row 8
+       (`model` field's inline `[effort=...]` suffix) - mirrors the Claude
+       persona's own pinned `effort: high` override. UNVERIFIED against a real Cursor
+       build, same as the `model: inherit` mapping above. -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
