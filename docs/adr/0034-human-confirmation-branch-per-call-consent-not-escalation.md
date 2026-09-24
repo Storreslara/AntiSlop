@@ -49,7 +49,7 @@ human at Claude Code's own permission prompt converts `ask` into a write.
 **Why not `AskUserQuestion`.** Not a judgment call — four measured/documented
 blockers, any one of which is disqualifying:
 
-1. `AskUserQuestion` is unavailable to subagents, so a hatch built on it could
+1. `AskUserQuestion` is unavailable to subagents, so a design built on it could
    never serve a `lead-programmer`, `scribe`, or `install-antislop` sub-dispatch.
    `PreToolUse` hooks, by contrast, fire inside subagents (and this design denies
    there regardless — see below).
@@ -70,7 +70,9 @@ blockers, any one of which is disqualifying:
 
 **The scope rule, stated once.** A path enters the human-confirmation branch if
 and only if a legitimate agent-authored write to it exists. The persona-selection
-config has one (`install-antislop` § 6); this admits **Set A**. The gate's own
+config has one (`install-antislop` § 6); this admits **Set A's persona-selection-config
+member**, not the whole of Set A (the four audit logs and their `.seal` sidecars
+are also Set A, and are excluded below). The gate's own
 registration surface has one — every maintenance unit on this gate, including the
 units that implemented this decision; this admits **Set B**. The four audit logs
 and their `.seal` sidecars have none — their content is produced by hook code via
@@ -136,7 +138,8 @@ carried here as an open item.
   persona-selection config plus Set B's four registration-surface literals);
   Claude Code's own permission prompt, not the agent, decides those five in
   allowlisted main-session shapes. The four audit logs, their `.seal` sidecars,
-  and the entire `Bash` branch keep today's unconditional deny, unchanged.
+  and the Bash branch's Set-A-only coverage, keep today's unconditional deny,
+  unchanged.
 - The gate's own header property — no grant branch, no identity exemption —
   stays literally true: the human-confirmation branch hands nobody a unilateral
   capability, and it never emits `ask` from a subagent. What changes is narrower:

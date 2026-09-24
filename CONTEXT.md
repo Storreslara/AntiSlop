@@ -452,8 +452,8 @@ _Avoid_: marker-directory gate
   on Write/Edit — the same [[human-confirmation branch]] mechanism — for exactly
   four paths when `agent_id` is absent and `permission_mode` is in the [[two-tier
   allowlist]] excluding `acceptEdits`; outside that allowlisted-mode-and-path
-  combination, denied on Write/Edit, and always
-  denied on Bash regardless of mode): the gate's own registration
+  combination, denied on Write/Edit; deliberately absent from the Bash branch
+  entirely (ADR-0025)): the gate's own registration
   surface (`hooks/hooks.json`, `.claude/settings.json`,
   `hooks/scripts/harness-integrity-gate.sh`, `.claude/hooks/scripts/harness-integrity-gate.sh`). Set B is excluded from the Bash
   branch by [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
