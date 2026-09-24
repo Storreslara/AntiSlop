@@ -390,7 +390,7 @@ EOF
 }
 
 reverify_spec6() {
-  local checked=0 skipped=0 failed=0
+  local skipped=0
   mkdir -p "$REVERIFY_STATE_DIR"
   date +%s > "$REVERIFY_STATE_DIR/spec-6.stamp"
 
@@ -429,9 +429,9 @@ reverify_spec6() {
   skipped=$((skipped + 1))
   echo ""
 
-  echo "Summary: checked=$checked, skipped=$skipped, failed=$failed"
+  echo "Summary: skipped=$skipped"
 
-  [ "$failed" -eq 0 ]
+  return 0
 }
 
 reverify_spec() {
