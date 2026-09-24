@@ -63,6 +63,40 @@ deny() {
   exit 2
 }
 
+# ask_allowed <set> - FROZEN two-tier allowlist, never a denylist. Every
+# branch here is a permission_mode this gate has decided to ask on, not one
+# it has decided to trust. An absent, empty, or unrecognised permission_mode
+# denies, as does any mode Claude Code adds later, for BOTH sets.
+ask_allowed() {
+  case "$permission_mode" in
+    default|plan|auto) ;;
+    acceptEdits) [ "$1" = A ] || return 1 ;;  # Set B stays deny (U2b).
+    *) return 1 ;;
+  esac
+  # agent_id is documented present only inside a subagent. This condition
+  # RESTRICTS the allowlist further, it does not exempt subagents from it -
+  # a subagent keeps today's deny for both sets, same as an unrecognised mode.
+  [ -z "$agent_id" ]
+}
+
+# The two frozen reason literals, selected by matched set - never one
+# constructed string (C1.6). Set A states the rule and the sanctioned route;
+# Set B additionally states what approval costs.
+reason_a='This write targets the harness persona-selection config, a protected path with no grant branch. The sanctioned route is node bin/cli.js --update (install-antislop section 6). Approve only if you intend to take that route right now.'
+reason_b='This write targets the harness gate registration surface: this gate script, its hooks.json registration, or the settings file that arms it. Approving this can disable every future prompt from this gate, including this one. Route changes through node bin/cli.js --update (install-antislop section 6).'
+
+# ask <set> <subject> - emits permissionDecision "ask" on stdout, exit 0.
+ask() {
+  audit_append "$audit" "$(printf '%s asked hook=harness-integrity-gate set=%s subject=%s' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2")"
+  if [ "$1" = A ]; then
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"%s"}}\n' "$reason_a"
+  else
+    printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"ask","permissionDecisionReason":"%s"}}\n' "$reason_b"
+  fi
+  exit 0
+}
+
 command="$(echo "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
 
 if [ -z "$command" ]; then
@@ -82,8 +116,21 @@ if [ -z "$command" ]; then
   case "$subject" in
     "$persona_cfg"|"$review_log"|"$review_log.seal"|"$dispatch_log"|"$dispatch_log.seal"|\
     "$microworld_log"|"$microworld_log.seal"|"$wip_log"|"$wip_log.seal")
+      if [ "$subject" = "$persona_cfg" ]; then
+        # OQ1: only the persona-selection config gets the human-confirmation
+        # branch (Set A's one ask-eligible member). The 4 audit logs and
+        # their .seal sidecars stay an unconditional deny - resolved (a)
+        # config only.
+        permission_mode="$(echo "$input" | jq -r '.permission_mode // empty' 2>/dev/null || true)"
+        agent_id="$(echo "$input" | jq -r '.agent_id // empty' 2>/dev/null || true)"
+        ask_allowed A && ask A "$subject"
+      fi
       deny A "$subject" "audit/config surface (Set A)" ;;
-    hooks/hooks.json|.claude/settings.json|hooks/scripts/harness-integrity-gate.sh)
+    hooks/hooks.json|.claude/settings.json|hooks/scripts/harness-integrity-gate.sh|\
+    .claude/hooks/scripts/harness-integrity-gate.sh)
+      permission_mode="$(echo "$input" | jq -r '.permission_mode // empty' 2>/dev/null || true)"
+      agent_id="$(echo "$input" | jq -r '.agent_id // empty' 2>/dev/null || true)"
+      ask_allowed B && ask B "$subject"
       deny B "$subject" "gate-registration surface (Set B)" ;;
   esac
   exit 0
