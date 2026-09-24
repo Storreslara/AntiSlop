@@ -44,5 +44,6 @@
         ]
       }
     ]
-  }
+  },
+  "bashOutputMaxChars": 12000
 }

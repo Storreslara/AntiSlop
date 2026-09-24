@@ -1262,6 +1262,11 @@ async function runUpdate(args) {
   } else if (hooksCollision && dedupeHooks) {
     const cleaned = stripStandaloneHookRegistrations(settings);
     fs.writeFileSync(settingsPath, JSON.stringify(cleaned, null, 2) + '\n');
+    // Keep the in-memory settings in sync with the write above — the
+    // bashOutputMaxChars backfill below reads `settings` directly, and a
+    // stale reference here would silently resurrect the just-removed
+    // standalone hook registrations when it re-writes the file.
+    settings = cleaned;
     console.log(
       `  Removed ${standaloneHooks.length} standalone antislop hook registration(s) from ` +
         `.claude/settings.json (the marketplace plugin, enabled per ${pluginState.source}, ` +
@@ -1303,6 +1308,28 @@ async function runUpdate(args) {
         `  .claude/settings.json: ${dryRun ? 'would add' : 'added'} ${added} missing antislop hook ` +
           'registration(s) — a hook script that ships with this version but was never registered ' +
           'by the original install would otherwise sit on disk and never fire.'
+      );
+    }
+  }
+
+  // bashOutputMaxChars backfill (issue #478): a project adapted before this
+  // cap existed in the settings fragment never got it, and the fragment
+  // merge that would otherwise add it only runs on a fresh scaffold, not
+  // --update. deepMerge's own additive-only semantics mean a project that
+  // already set its own value is never overwritten.
+  if (settings) {
+    const settingsFragment = JSON.parse(
+      fs.readFileSync(path.join(PKG_ROOT, 'templates', 'settings-fragment.json'), 'utf8')
+    );
+    const before = settings.bashOutputMaxChars;
+    deepMerge(settings, { bashOutputMaxChars: settingsFragment.bashOutputMaxChars });
+    if (settings.bashOutputMaxChars !== before) {
+      if (!dryRun) fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + '\n');
+      if (dryRun) wouldMutate = true;
+      console.log(
+        `  .claude/settings.json: ${dryRun ? 'would add' : 'added'} bashOutputMaxChars: ` +
+          `${settingsFragment.bashOutputMaxChars} (a project adapted before this cap existed ` +
+          'never got it).'
       );
     }
   }

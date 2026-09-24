@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+**0.31.77 — explicit `bashOutputMaxChars: 12000` cap, backfilled into already-adapted projects (cost-governance-step2-cap-backfill, Step 2 of the cost-governance-output-cap-and-effort-tiers plan).** `templates/settings-fragment.json` now sets `bashOutputMaxChars: 12000` (the user-locked value: just above the measured p99 of Bash-output overflow). The fragment alone is inert for a project already adapted before this key existed, so `runUpdate` gained a new backfill block (modeled on the existing hook-registration backfill) that adds the key to `.claude/settings.json` only when missing — `deepMerge`'s additive-only semantics mean a project that already set its own value is never overwritten. Also corrects `settings-fragment.json`'s `_comment`, which still stated the plugin's version pin as the stale `>=2.1.178` (now `>=2.1.248`, matching `.claude-plugin/plugin.json`). `bashOutputMaxChars`'s own introduction version could not be established: only Claude Code 2.1.277-2.1.281 are present locally under `~/.local/share/claude/versions/` (empty version-marker directories, not bisectable binaries), so there is nothing earlier to check against — same limitation as the sibling `effort:` frontmatter key (see 0.31.76's entry and R10 in the plan doc). This is a negative result, not a blocker.
+
+### Added
+- **`templates/settings-fragment.json`**: new top-level `"bashOutputMaxChars": 12000` key.
+- **`tests/cli-settings-backfill.test.js`** (new): fixture-project tests proving the backfill (a project whose `.claude/settings.json` lacks the key gets `12000`) and non-clobbering (a project that already set `4000` keeps it).
+
+### Changed
+- **`bin/cli.js`**: `runUpdate` backfills `bashOutputMaxChars` into `.claude/settings.json` when missing. Also fixes a latent bug the new backfill would otherwise have re-triggered: the `--dedupe-hooks` write path removed standalone hook registrations from disk but left the in-memory `settings` variable stale, which the new backfill (reading `settings` directly) would have silently resurrected on its own write — the dedupe branch now keeps `settings` in sync with what it just wrote.
+- **`.claude-plugin/plugin.json`**: version bump 0.31.76 → 0.31.77.
+- **`package.json`**: version bump 0.31.76 → 0.31.77.
+- **`.claude/settings.json`**: backfilled with `bashOutputMaxChars: 12000` via `node bin/cli.js --update` (this repo dogfoods its own backfill).
+
 **0.31.76 — `experimental.cacheTtl: 1h` frontmatter for the two personas dispatched across long human-review gaps (cache-ttl-gapped-personas).** Claude Code's subagent/Task-tool dispatches default to a 5-minute prompt-cache TTL (vs. 1 hour for the main conversation, per https://code.claude.com/docs/en/prompt-caching's "Subagents and the cache" section). `task-master` and `reviewer` are the two personas this project's own workflow routinely leaves waiting across genuine multi-minute gaps — a human-confirmation pause or an INSUFFICIENT-CONTEXT resume for `reviewer`, a spec-gap resolution round-trip for `task-master` — so both now declare `cacheTtl: 1h` nested under `experimental:`, alongside their existing `model:` field. No other persona gained the field. Resubmitted after a FAIL: the 0.31.75 attempt placed `cacheTtl` at the frontmatter top level, which Claude Code's strict agent-frontmatter schema silently drops (no error, no effect — confirmed against the installed 2.1.281 binary's schema, which accepts `cacheTtl` only under `experimental:`); this entry corrects the nesting and raises the plugin's declared compatibility floor to the version that introduced `experimental.cacheTtl` (2.1.248).
 
 ### Changed
