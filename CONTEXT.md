@@ -47,7 +47,10 @@ the one-time per-project setup process that turns the
   `templates/settings-fragment.json`; for already-adapted projects, the backfill mechanism 
   in `bin/cli.js`'s `runUpdate` block additively merges `bashOutputMaxChars` into 
   `.claude/settings.json` only when the key is absent (never clobbers an existing value).
-  See [[Bash-output census]] for the measurement authority.
+  See [[Bash-output census]] for the measurement authority, and
+  [ADR-0032](docs/adr/0032-bash-output-cap-not-command-rewriting.md) for why a
+  `PreToolUse`/`updatedInput` command-rewriting mechanism was rejected in
+  favor of this mechanical cap.
 
 **effort override / effort tier**:
 (unit #480, 2026-09-24) — a frontmatter key (`effort:`) declared in `agents/*.md` files 
@@ -66,7 +69,15 @@ the one-time per-project setup process that turns the
   carries three senses in this glossary — here it refers to effort level (low/medium/high/…), 
   distinct from [[Tier A / Tier B bundle classification]] (personas included in release 
   artifacts) and the protocol delivery tiers (full vs. slim). See `tests/effort-tier-consistency.test.js` 
-  for the declared schema and mutation-proof assertions.
+  for the declared schema and mutation-proof assertions. Terminology note: earlier spec drafts
+  called this an "effort floor" — a one-sided term (blocks going under, permits going over)
+  that fits only the `reviewer` half-case (declared `high`, must never silently drop) and
+  mischaracterizes the `explorer` half-case (declared `low`, must never silently rise, either).
+  "Override" is used throughout this project instead; "effort floor" is not a separate
+  glossary term and should not be reintroduced. See
+  [ADR-0033](docs/adr/0033-effort-tiers-frontmatter-only-override.md) for the frontmatter-only,
+  no-per-dispatch-parameter decision and the corrected raise-never-lower direction for editing
+  a persona's declared value over time.
 
 **overflow file**:
 (unit cost-governance-step3-protocol-prose, 2026-09-24) — the persisted file that 
