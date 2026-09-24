@@ -39,3 +39,28 @@ re-slicing after the fact.
 **How to apply:** any spec with a stated "Open Question, gates Step N" whose
 resolution is already being sought via a parallel channel (human relay,
 async decision, etc.) at task-master dispatch time.
+
+## Un-gating (the other half — confirmed 2026-09-23, gh473)
+
+When spec-master comes back with the gap/question resolved *in the spec
+itself*, the follow-up is an **in-place issue edit, never a re-slice** —
+unit boundaries, blocking edges and unit ids all stay put. Do all four,
+and say in the report that you did:
+
+1. Delete the banner **and** the `## Spec gap` section outright; don't
+   leave them as history. Replace them with a dated `## Amended <date>`
+   section listing what changed, so a reader who saw the old body can
+   diff it mentally.
+2. Strip `[BLOCKED: …]` from the title, and re-title if the old title
+   named the thing that was wrong (here: "no-stale-absolute sweep" was
+   the over-claim being fixed).
+3. **Add `ready-for-agent`** — the tracker's native blocking edges
+   already hold it behind its dependencies, so the label is about
+   spec-readiness, not ordering. Leaving it off after the gap closes
+   silently blocks the unit for no recorded reason.
+4. Re-run every baseline the amended spec quotes (`git grep -l` /
+   `git grep -c`) **live** before restating it, and mark it as expiring
+   — see [[recheck-baseline-counts-live]].
+
+Say explicitly in the report whether the banner stays or goes. "Silently
+leaving it in either state" is the failure mode the caller called out.
