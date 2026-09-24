@@ -439,19 +439,51 @@ a hook script that mechanically blocks an action rather than
 _Avoid_: marker-directory gate
 
 **Set A / Set B** (harness-integrity-gate sets):
-(unit harness-integrity-gate-hardening, 2026-09-09; amended unit hcb-branch, 2026-09-24) — the two disjoint
+(unit harness-integrity-gate-hardening, 2026-09-09; amended units hcb-branch and
+  hcb-prose-context, 2026-09-24) — the two disjoint
   categories of protected file paths in `hooks/scripts/harness-integrity-gate.sh`.
-  **Set A** (the persona-config path, can reach `ask` on Write/Edit when `agent_id` is absent and `permission_mode` is in [[permission-mode allowlist]]; otherwise denied on both Write/Edit and Bash): the harness's own config and
+  **Set A** (the persona-config path, can reach `ask` on Write/Edit — via the
+  [[human-confirmation branch]] — when `agent_id` is absent and `permission_mode`
+  is in [[permission-mode allowlist]]; otherwise denied on both Write/Edit and
+  Bash): the harness's own config and
   audit-log surfaces (`.claude/persona-config.json`, `.claude/review-audit.log`,
   `.claude/dispatch-audit.log`, `.claude/microworld-audit.log`,
-  `.claude/wip-audit.log`, and their `.seal` sidecars). **Set B** (can reach `ask` on Write/Edit for exactly four paths when `agent_id` is absent and `permission_mode` is in the [[two-tier allowlist]] excluding `acceptEdits`; otherwise denied on
-  Write/Edit only, deliberately absent from Bash): the gate's own registration
+  `.claude/wip-audit.log`, and their `.seal` sidecars). **Set B** (can reach `ask`
+  on Write/Edit — the same [[human-confirmation branch]] mechanism — for exactly
+  four paths when `agent_id` is absent and `permission_mode` is in the [[two-tier
+  allowlist]] excluding `acceptEdits`; outside that allowlisted-mode-and-path
+  combination, denied on Write/Edit, and always
+  denied on Bash regardless of mode): the gate's own registration
   surface (`hooks/hooks.json`, `.claude/settings.json`,
   `hooks/scripts/harness-integrity-gate.sh`, `.claude/hooks/scripts/harness-integrity-gate.sh`). Set B is excluded from the Bash
   branch by [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
   because a text-only gate triggered by mere word presence in Bash commands would
   necessarily fire on prose mentions, not just write attempts — the asymmetry is
   ratified, not an oversight. Introduced together as a pair, not independently. The frozen two-tier `permission_mode` allowlist gates ask-eligibility: see [[two-tier allowlist]] for the distinction between Set A's tier (includes `acceptEdits`) and Set B's tier (excludes it).
+  Beyond the allowlist, the two sets' shared [[human-confirmation branch]] differs
+  in prompt wording too: Set B carries its own fixed `permissionDecisionReason`
+  literal naming the cost of approving a write to the gate's own registration
+  surface, distinct from Set A's. So the two sets diverge in **allowlist and
+  prompt wording**, not only in the pre-existing ADR-0025 Bash-coverage asymmetry
+  described above. See [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md)
+  for why Set B is a narrower tier of the branch rather than a clone of Set A's.
+
+**human-confirmation branch**:
+(unit hcb-prose-context, 2026-09-24) — the branch of `harness-integrity-gate.sh`'s
+  `Write`/`Edit` path that, for the persona-selection config (Set A) and the gate's
+  own registration surface (Set B) — see [[Set A / Set B]] — and only within a
+  frozen per-set allowlist of session shapes (see [[two-tier allowlist]]), returns
+  `permissionDecision: "ask"` instead of exiting 2, so Claude Code's own permission
+  prompt decides, not the agent. The two sets share this one mechanism and differ
+  in their allowlist and their prompt wording, never in whether the mechanism
+  itself exists. It never returns `allow`, and it never emits `ask` from a
+  subagent. Distinct from a [[grant branch]] (an identity-scoped, unilateral
+  exemption — this branch hands nobody a unilateral capability) and from an
+  override artifact — a file such as `.claude/.dispatch-override` left behind on
+  disk — since this branch is a synchronous per-call prompt with no artifact of
+  its own. See
+  [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md).
+_Avoid_: escape hatch, grant branch
 
 **git-index witness** (synonymous with **directory witness**):
 (unit gh441, 2026-09-10) — a detection mechanism in `harness_armed()` that
