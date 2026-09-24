@@ -261,7 +261,7 @@ trap "rm -rf $tmp_repo" EXIT
 cp -r . "$tmp_repo"
 touch "$tmp_repo/hooks/scripts/extra-test.sh"
 cd "$tmp_repo"
-reverify_extra_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
+reverify_extra_output=$(bash "$tmp_repo/scripts/rollout-preflight.sh" --reverify 6 2>&1 || true)
 cd - >/dev/null
 if [ "$reverify_output" = "$reverify_extra_output" ]; then
   pass_test "--reverify: A24 output unchanged after adding a hooks/scripts/*.sh file"
