@@ -179,6 +179,22 @@ any ADAPT-copied file carrying a
   that trigger a version-bump obligation under the [[version-stamp discipline]] —
   prefer the canonical term "version-stamped file" going forward).
 
+**scaffold-only mirror**:
+(unit install-antislop-floor-sweep, 2026-09-24) — a `.claude/` mirror file
+  (e.g., `.claude/skills/install-antislop/SKILL.md`) that is copied from its
+  source (e.g., `skills/install-antislop/SKILL.md`) ONLY at one-time ADAPT
+  scaffold time by `copyDirRecursive()` in `bin/cli.js`'s `main()` function.
+  Contrasts with **version-stamped file** mirrors (e.g., `agents/*.md`,
+  `persona-protocol*.md`), which are regenerated on every `bin/cli.js --update`
+  run. Because scaffold-only mirrors are never automatically regenerated, any
+  edit to their source file must be manually hand-synced to the mirror, or the
+  mirror will silently drift out of sync. Currently in this category: all files
+  under `.claude/skills/` (mirrored from `skills/`). Operational implication:
+  treat edits to `skills/` as requiring a dual-site commit: the source file and
+  its `.claude/` mirror must be kept in sync, and parity is enforced only by
+  process (code review) rather than mechanically. See also [[version-stamped
+  file]], [[`--update` semantics]].
+
 **`--update` semantics**:
 `bin/cli.js --update` is the mechanism for
   refreshing ADAPT-stamped files. `--force-render` is the canonical
