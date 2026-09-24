@@ -108,3 +108,18 @@ must not spell the protected path as one contiguous string either, or
 writing/editing THIS FILE via Bash (not Write/Edit) would itself trip the
 gate - split it the same way the original note already did whenever
 documenting this technique.
+
+Narrow addendum (cache-ttl-gapped-personas retry, 2026-09-23): a concurrent
+agent's own in-flight files (a different persona's `agent-memory/` edits, an
+unrelated doc) were dirty in the tree from before this unit started, so
+plain `git add -A` would have swept them into my commit. Used
+`git add -A -- ':!<other-agent-path>' ':!<other-doc-path>'` instead — the
+exclude pathspecs never spell the protected path, so the gate does not fire,
+and this is a different axis from the retracted glob-bypass table above (it
+narrows what `-A` sweeps in, it does not obfuscate the protected literal).
+Verified `git status --porcelain` immediately before commit showed exactly
+my unit's file set staged and nothing else. Treat this as viable ONLY when
+that immediate pre-commit verification is crisp (the excluded paths are
+named exactly, not guessed); if the dirty set is ambiguous or you cannot
+enumerate it precisely, the default is still STOP and report, not a
+best-effort exclude list.
