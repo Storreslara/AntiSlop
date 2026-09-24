@@ -1,5 +1,6 @@
 # Memory index
 
+- [Unit #477 bash-output-census gaps](project_unit477_bashoutputcensus_gaps.md) — PASS 2026-09-23; three glossary entries added to CONTEXT.md (Bash-output census, Nearest-rank convention, Transcript store); validate.sh integration gap noted
 - [cache-ttl-gapped-personas advisory gaps](project_cache_ttl_gapped_personas_advisory_gaps.md) — PASS 2026-09-23; compatibility floor glossary entry added; three non-blocking gaps recorded (stale setup prose, adapt-time check lag, validate.sh fragility)
 - [reviewer-changes-examples-lean-1 completion](reviewer_changes_examples_lean_1_completion.md) — PASS 2026-09-23; four-copy protocol section hand-sync pattern glossary entry + follow-up unit coordination note (reviewer-changes-examples-lean-2)
 - [gwd-3 completion](gwd-3_completion.md) — PASS 2026-09-11; vendored-skill count 11→12; drift-tracked-skills 8→9 correction; grill-with-docs glossary entry + npm-distribution reword; table-labeling inconsistency noted

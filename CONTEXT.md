@@ -24,6 +24,17 @@ the one-time per-project setup process that turns the
   [[Dispatch hygiene]], [[Commit attribution]], [[`.escalated` marker]], and
   [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
 
+**Bash-output census**:
+(unit #477, 2026-09-23) — the re-runnable measurement tool at
+  `scripts/bash-output-census.js` that recursively walks the **transcript store**
+  (the nested `~/.claude/projects/<slug>/` layout), parses transcript `.jsonl` files,
+  pairs `tool_use`/`tool_result` by id, filters to `Bash` calls, and reports
+  count/totalChars/percentiles (using the **nearest-rank convention**) and a `caps`
+  array over candidate output-truncation thresholds. Authority for re-deriving the
+  output-truncation cap value used by Step 2 (issue #478). Invocable via command line
+  with `--dir` flag to specify the project root (defaults to git-toplevel-derived,
+  not raw cwd). See [[transcript store]], [[nearest-rank convention]].
+
 **baseline currency**:
 (unit spec2-unitE, 2026-08-26) — the property that a fileHashes baseline's
   recorded hashes remain synchronized with the actual mirror content on disk.
@@ -901,6 +912,24 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   `assert_budget "stop-gate" 0.100 0.200 50 "$json" -- stop-gate.sh` measures 50 invocations
   and requires p50 ≤ 0.1s and p99 ≤ 0.2s, returning nonzero if either is exceeded. Gates used
   by AC-A1 (Unit A) and will be used by AC-B1 (Unit B).
+
+**nearest-rank convention**:
+(unit #477, 2026-09-23) — the percentile calculation convention implemented independently
+  in two tools: the `percentile()` function in `tests/lib/timing-harness.sh` (shell) and the
+  percentile calculation in `scripts/bash-output-census.js` (Node). Both use the same
+  method to compute the p-th percentile of a sorted dataset, enabling consistent percentile
+  reporting across measurements. Readers grepping "percentile" will find both implementations
+  under this canonical term. See [[bash-output census]], [[timing harness]].
+
+**Transcript store**:
+(unit #477, 2026-09-23) — the nested directory layout at `~/.claude/projects/<slug>/`,
+  where a Claude Code session stores transcript `.jsonl` files. The layout is NESTED: the
+  majority (~88%) of transcript files are located at `<session-uuid>/subagents/*.jsonl`,
+  with only ~12% at the top level. This nesting structure is critical to understanding the
+  scope of transcript operations: single-directory scans miss the vast majority of
+  transcripts. The [[bash-output census]] tool walks this nested structure recursively
+  to enumerate and measure all bash output across the full transcript store. See
+  [[bash-output census]].
 
 **treadmill** (maintenance burden):
 (unit rollout-a24-remechanize-1, 2026-09-23) — the recurring manual burden that arises
