@@ -37,10 +37,37 @@ existing wording, `.claude/reviewed/hcb-branch.pass` stands unamended (see R14
 for why the narrowing commit `d598603` is a *correction toward* C1.3(a)'s
 wording, not a redefinition of it), and Steps 1, 2 and 4–7 are byte-unchanged.
 
+**Amended 2026-09-24 (second targeted amendment; Step 4's C4.2 only).** The
+`hcb-prose-gate` implementer reported that C4.2's acceptance-criterion snippet is
+**unsatisfiable**, made zero edits, and escalated rather than improvising.
+C4.2's *prose intent* was always right — the **deny message** must stop claiming
+"may not be written directly by any agent identity, ever" and stop saying "no
+exemption" — but the snippet mistranslated it into a **file-wide substring**
+count for `ever`, which three other mandatory requirements of this same step each
+independently guarantee a hit for (C4.3c's frozen ADR-0025 paragraph, C4.3b's
+required "never emits `ask` from a subagent", Do-NOT-touch's `reason_b`).
+**Ruling: the prose was right, the mechanism was wrong** — and two further
+defects were found while verifying the remedy, so the fix is not a bare scope
+narrowing: (i) whole-word narrowing alone is *also* wrong, because `:6` carries a
+still-true whole-word "ever" of exactly the lens-2 kind `:8-9` keeps; (ii) C4.2's
+second half was **vacuous** — its file-wide `grep -qF 'bin/cli.js'` is already
+satisfied by the two frozen `reason_a`/`reason_b` literals, so it passed even for
+a deleted message, the one failure its own prose claimed to prevent. Closed by a
+four-part C4.2 scoped to `deny()`'s body, with non-vacuity guards asserted first
+and one fixed-phrase file-wide arm retained so the absolute cannot be relocated
+instead of retired — see the rewritten C4.2, new R15, CHK28–CHK30, and the three
+Clarifications lines dated 2026-09-24 (second amendment). **Nothing outside C4.2
+is changed**: C4.1, C4.3, C4.3b, C4.3c, C4.4–C4.9 keep their wording verbatim,
+Steps 1–3 and 5–7 are byte-unchanged, and no marker is amended. The remedy was
+mutation-verified against seven mutants before being written down.
+
 **Authoring commit:** `d807630` (2026-09-23); revised at the same tree. Every
 baseline below was measured there. Baselines expire — re-derive with the probe
-commands quoted inline rather than trusting the recorded numbers. The
-2026-09-24 amendment above was authored at `d598603`.
+commands quoted inline rather than trusting the recorded numbers. The first
+2026-09-24 amendment above was authored at `d598603`; the second at `094a17e`,
+where the gate script's blob is identical to `8f85ce1`'s
+(`bbc17e78cdfe3fd84885b32d32c4a0c2b55d28de`) — only `CONTEXT.md` and
+`tests/harness-integrity-gate.test.sh` moved between them.
 
 ---
 
@@ -395,7 +422,22 @@ R14 — the three dated lines closing them are the last three below.
 C1.3(b) as its defender, which the ruling follows rather than contradicts; the
 two undefined load-bearing terms the amendment does introduce (**kill set**,
 **kill-set relation table**) are routed to `scribe` as advisory lens-3
-suggestions, not treated as blockers. All nine categories are Clear; no category
+suggestions, not treated as blockers.*
+
+*Re-scored a fifth time 2026-09-24 (second amendment) after the `hcb-prose-gate`
+implementer reported C4.2 unsatisfiable. That pass moved **Completion /
+acceptance signals** back to **Partial** for the second time in this spec's life,
+on the same underlying ground R13 raised and R15 now generalizes: a criterion
+that cannot go green against its own step's mandatory content is not an
+acceptance signal, and one whose second half is satisfied by untouchable frozen
+literals is not either. It is resolved back to **Clear** by the rewritten C4.2,
+whose four parts were mutation-verified red-and-green before being written down.
+**Edge cases / failure handling** was re-examined in the same pass and stays
+**Clear**: the scoping the fix introduces is itself a new failure surface
+(vanished span, run-to-EOF span, relocated absolute), and all three are covered
+by C4.2(a) and (c) rather than deferred. The one new load-bearing term the fix
+makes explicit (**over-scoped criterion**) is routed to `scribe` as an advisory
+lens-3 suggestion, not a blocker. All nine categories are Clear; no category
 is deferred as an assumption.*
 
 1. Functional scope & success criteria: Clear
@@ -589,6 +631,34 @@ is deferred as an assumption.*
   rows", which would both weaken the mutant (a partial-allowlist mutation would
   survive) and move an already-PASSed criterion's goalposts after the fact. See
   R14 (ii) for why `d598603` needs no retroactive re-review.
+- 2026-09-24 (second amendment) Completion / acceptance signals: Q C4.2's check
+  is file-wide but its prose names only the deny message — which scope governs? →
+  A (self-resolved): **the prose governs; the check was wrong and is rewritten.**
+  Not a judgment call in the end, because the two readings are not both available:
+  the file-wide reading is unsatisfiable (15 hits at `094a17e`, three of them
+  pinned by this step's own other criteria), so it cannot be a completion signal
+  at all. The narrow reading is satisfiable and is what every surrounding
+  artifact — the plan's row 3, issue #471's ordered edit 3 — already describes.
+  See R15 and CHK28.
+- 2026-09-24 (second amendment) Completion / acceptance signals: Q Does C4.2's
+  "still names the sanctioned route" half describe the baseline, or require a
+  change? → A (self-resolved): **it requires a change, and the word "still" was
+  inaccurate.** Measured: the baseline deny message names
+  `docs/plans/2026-08-25-harness-trust-gaps.md` Step 2 and no route; the only two
+  `bin/cli.js` mentions in the file are the frozen `reason_a`/`reason_b` literals
+  this unit may not touch. So the half was simultaneously mis-described *and*
+  vacuous. Resolved by scoping it to the span and stating plainly that the
+  implementer must add the route. Disclosure hygiene is unaffected — both reason
+  literals already name it, and a remedy is the rule, not the technique.
+- 2026-09-24 (second amendment) Edge cases / failure handling: Q Once a criterion
+  is scoped to a code region, what stops it going green because the region moved?
+  → A (self-resolved): **three guards asserted before the substantive arms, plus
+  one fixed-phrase file-wide arm.** Non-empty span, span ends on its closing `}`,
+  exactly one `BLOCKED:` line inside it — covering rename, unterminated-function
+  run-to-EOF, and message deletion respectively; and a file-wide zero for the
+  fixed phrase "any agent identity, ever" covering relocation out of the span.
+  All four failure modes were built as live mutants and confirmed red, not
+  reasoned about. See R15 (ii)-(iii) and CHK30.
 
 ---
 
@@ -760,6 +830,39 @@ is deferred as an assumption.*
   is only well-defined once one of them is fixed. C3.3(a) fixes it. Same family as
   R5 and R13 — a claim wider than the check behind it — applied here to the
   claim a criterion makes about *other criteria*.
+- **R15 — [2026-09-24, second amendment] a criterion whose GREP SCOPE is wider
+  than its PROSE SCOPE is not merely loose; on a file that legitimately contains
+  the banned token it is UNSATISFIABLE, and narrowing the token instead of the
+  scope does not fix it.** C4.2's prose said *the deny message*; its snippet
+  grepped *the file*, for the bare substring `ever`. Because this same step is
+  independently required to freeze a paragraph containing "Nearly every command"
+  (C4.3c), to add "never emits `ask` from a subagent" (C4.3b), and to leave
+  `reason_b`'s "every future prompt" alone (Do-NOT-touch), the file-wide count
+  can never reach zero: measured 15 at `094a17e`. This is R5's family inverted —
+  R5 is prose over-claiming relative to its check; R15 is a **check
+  over-claiming relative to its prose**, and it is the third member of the family
+  alongside R13's escape-set gap. Three further facts this risk records, each
+  measured rather than assumed. (i) **Narrowing the token is not a fix.** The
+  whole-word form is satisfiable (2 hits, not 15) but still wrong: `:6`'s "not
+  its review-gating mode switch - ever" is a still-TRUE claim, and a criterion
+  that reds on it steers the implementer into the true-clause deletion R5 and
+  Step 4's whole premise exist to prevent. The scope is what was wrong, and the
+  token narrowing is a secondary refinement, not the remedy. (ii) **Narrowing
+  the scope opens a relocation escape, so a scoped check needs a fixed-phrase
+  file-wide companion.** A `deny()`-scoped check passes if the absolute is moved
+  to the comment line above `deny()` — verified as a live mutant. The companion
+  arm greps a *fixed false phrase* ("any agent identity, ever"), which is safe
+  file-wide precisely because the bare substring never was. (iii) **A scoped
+  extraction is a new vacuity surface.** Rename `deny()` and the span is empty;
+  drop its closing `}` and the span silently runs to EOF, restoring the original
+  bug. Both are red only because (a)'s three guards are asserted *before* the
+  substantive arms. The same "a vacuous case is worse than a missing one"
+  principle `hcb-regcheck` records applies to a criterion's own scoping
+  machinery, not just to its mutants. **Generalization for later units on this
+  surface:** when a criterion's prose names a region and its check names a file,
+  the check is wrong until proven otherwise — and proving it means running it
+  against the tree plus a correct-edit mutant, which is how both of C4.2's
+  defects (the unsatisfiable half and the vacuous half) surfaced together.
 
 ---
 
@@ -1320,9 +1423,77 @@ ADR-0029's historical-citation rule. C4.9 asserts this.
 #       not a cleverer pattern. NOTE the asymmetry this creates and do not
 #       "tidy" it: a file can be Cat 1 for the sweep and still be edited by this
 #       step for reasons the sweep cannot see (CONTEXT.md, row 5).
-# C4.2  the deny message no longer contains "ever" or "no exemption", AND still
-#       names the sanctioned route. Both halves: (a) alone is satisfiable by
-#       deleting the message.
+# C4.2  REWRITTEN 2026-09-24 (targeted; see R15, CHK28–CHK30). The prose intent
+#       is unchanged and was always right — the DENY MESSAGE must stop claiming
+#       the write "may not be written directly by any agent identity, ever" and
+#       stop saying "no exemption", while still naming the sanctioned route. What
+#       changed is the mechanism, which mistranslated that intent into a
+#       FILE-WIDE substring count and was therefore UNSATISFIABLE: three other
+#       mandatory requirements of this same step each guarantee a file-wide
+#       "ever" hit — C4.3c freezes the ADR-0025 paragraph containing "Nearly
+#       every command", C4.3b requires adding "never emits `ask` from a
+#       subagent", and Do-NOT-touch pins reason_b's "every future prompt".
+#       Measured at `094a17e`: file-wide substring count is 15, not 0.
+#
+#       Narrowing the substring to the WHOLE WORD "ever" is necessary but NOT
+#       sufficient. Measured at `094a17e` the file carries exactly two whole-word
+#       hits, and one of them is `:6`'s "not its review-gating mode switch -
+#       ever" — a still-TRUE claim (the gate reads nothing from the config) of
+#       exactly the same lens-2 kind as `:8-9`'s surviving "no grant branch".
+#       Failing on it would push the implementer into the true-clause deletion
+#       this step exists to prevent. So the scope is the deny message, and the
+#       old single (a)/(b) split is superseded by four lettered parts:
+#
+#   (a) NON-VACUITY OF THE EXTRACTION, asserted FIRST. `deny()`'s body is
+#       extracted once; the span must be non-empty, must end on the closing `}`
+#       (so a missing terminator cannot silently widen it back to EOF), and must
+#       carry EXACTLY ONE `BLOCKED:` line. This is the arm that keeps "satisfy it
+#       by deleting the message" red, and it is why a scoped check is safe here:
+#       a scoped grep that returns nothing is green for the wrong reason.
+#   (b) the span contains no WHOLE-WORD "ever". Whole-word, per the `:6` finding
+#       above; a comment inside `deny()` using "never" or "every" is not an
+#       absoluteness claim and must not go red.
+#   (c) FILE-WIDE, two FIXED PHRASES — scope deliberately NOT narrowed. Zero
+#       "no exemption" (unchanged from the original; measured 1 today, the deny
+#       message, and the header's "no identity exemption" does not match this
+#       literal, so the TRUE clause survives). Plus, ADDED, zero "any agent
+#       identity, ever" (measured 1 today, the deny message; 0 in the frozen
+#       ADR-0025 span and 0 in `:1-9`). The added arm is what stops the absolute
+#       being RELOCATED out of `deny()` into an adjacent comment and still
+#       passing — narrowing (b)'s scope without it would open a fresh escape.
+#       A fixed false phrase is safe file-wide; the substring "ever" never was.
+#   (d) THE SPAN NAMES THE SANCTIONED ROUTE: `bin/cli.js`. STRENGTHENED, and the
+#       implementer must ADD it. Two corrections behind that: the baseline deny
+#       message names only `docs/plans/2026-08-25-harness-trust-gaps.md` Step 2 —
+#       a provenance citation, not a route — so the original's "still names" was
+#       inaccurate about the baseline; and the original's FILE-WIDE
+#       `grep -qF 'bin/cli.js'` was VACUOUS, because the two frozen reason
+#       literals (`:121-122`, Do-NOT-touch) already contain it, so the
+#       anti-deletion half passed even for a deleted message — precisely the
+#       failure its own prose said it prevented. Naming the route is
+#       disclosure-hygiene-clean (ADR-0025 / trust-gaps Step 5): reason_a and
+#       reason_b both name it, and a remedy is the rule, not the technique.
+#
+#       Satisfiability VERIFIED at `094a17e`, not assumed, against seven mutants
+#       of a scratch copy — correct edit; message deleted; route omitted;
+#       `deny()` renamed; a "never"/"every" comment added inside `deny()`; the
+#       message reflowed across three physical lines; and the absolute relocated
+#       to the line immediately above `deny()`. Verdicts: RED on the unedited
+#       baseline and on all five defect mutants, GREEN on the correct edit and on
+#       the reflow, identical under BOTH grep implementations this repo exposes
+#       (`ugrep` inline, GNU `grep` inside `bash <script>`). Under the correct
+#       edit the ADR-0025 span's sha256 is unchanged from `d807630`, so C4.2 and
+#       C4.3c do not collide, and `:6`'s true clause survives untouched:
+G=hooks/scripts/harness-integrity-gate.sh
+DENY="$(awk '/^deny\(\) \{/{f=1} f{print; if (/^\}/) exit}' "$G")"
+test -n "$DENY" || { echo "C4.2(a): deny() span not found"; exit 1; }
+test "$(printf '%s\n' "$DENY" | tail -n1)" = '}' || { echo "C4.2(a): span unterminated"; exit 1; }
+test "$(printf '%s\n' "$DENY" | grep -c 'BLOCKED:')" = 1 || { echo "C4.2(a): not exactly one BLOCKED: line"; exit 1; }
+printf '%s\n' "$DENY" | grep -qw 'ever' && { echo "C4.2(b): whole-word 'ever' survives in the deny message"; exit 1; }
+test "$(grep -cF 'any agent identity, ever' "$G")" = 0 || { echo "C4.2(c): the absolute was relocated, not retired"; exit 1; }
+test "$(grep -cF 'no exemption' "$G")" = 0 || { echo "C4.2(c): 'no exemption' survives"; exit 1; }
+printf '%s\n' "$DENY" | grep -qF 'bin/cli.js' || { echo "C4.2(d): deny message does not name the sanctioned route"; exit 1; }
+echo "C4.2 OK"
 # C4.3  the header still contains the literal "no grant branch" (the lens-2
 #       TRUE clause survives the edit) AND contains the new branch's bounded
 #       description naming BOTH tiers explicitly — Set A's 4 modes and Set B's
@@ -1749,6 +1920,38 @@ half specifically.*
   says nothing about C1.3(a)'s scope, which is the glossary agreeing with the
   ruling rather than with the old clause.
 
+*Three items added 2026-09-24 (second amendment), interrogating the rewritten
+C4.2 rather than the system.*
+
+- CHK28: Is C4.2, as rewritten, satisfiable against the rest of Step 4's own
+  mandatory content? — PASS, and this is the item the old wording failed. Checked
+  by construction against all four constraints that made the old one impossible:
+  the frozen ADR-0025 span (C4.3c) sits outside `deny()` and its sha256 is
+  unchanged under a correct edit; the required "never emits `ask` from a
+  subagent" (C4.3b) goes in the header, outside the span, and is not a whole-word
+  "ever" in any case; `reason_b` (`:122`, Do-NOT-touch) sits outside the span;
+  and `:6`'s still-true whole-word "ever" sits outside it too. The deny message,
+  once edited, is the only place any arm of C4.2 looks for `ever` — which is what
+  the escalation asked be confirmed rather than assumed.
+- CHK29: Does C4.2's anti-deletion half actually test anything? — FAIL
+  (ambiguous, in the machine-checkable sense: the criterion had no check behind
+  its stated claim) — **revised in place.** The original's file-wide
+  `grep -qF 'bin/cli.js'` is satisfied by `reason_a` and `reason_b`, which this
+  unit may not touch, so it returned green for a deleted message — the exact case
+  its own prose named. Now scoped to the span, and paired with (a)'s
+  exactly-one-`BLOCKED:` guard, so deletion is red twice over. Note the
+  consequence, stated so the implementer is not surprised: this **strengthens**
+  the requirement — the baseline message does not name `bin/cli.js` and must gain
+  it.
+- CHK30: Can the rewritten C4.2 be satisfied without the deny message actually
+  changing? — PASS, verified by mutation rather than by reading. RED on the
+  unedited baseline, RED on message-deleted, route-omitted, `deny()`-renamed and
+  absolute-relocated; GREEN only on a correct edit and on a correct edit reflowed
+  across three lines; identical verdicts under `ugrep` (inline) and GNU `grep`
+  (inside `bash <script>`), so the criterion does not depend on which `grep` the
+  implementer's shell resolves. A criterion this step could satisfy by doing
+  nothing would be worse than the unsatisfiable one it replaces.
+
 ## Scribe update hint
 
 - **`CONTEXT.md`**: add **human-confirmation branch** (lens 3, text drafted in
@@ -1782,6 +1985,20 @@ half specifically.*
   instead of bypass families*). The existing **two-tier allowlist** entry needs
   no change — it already assigns the tier defence to C1.3(b), which is what the
   2026-09-24 ruling relies on. `scribe`'s call; neither gates this spec.
+- **`CONTEXT.md` (added 2026-09-24, second amendment, lens 3, advisory)**: one
+  term the C4.2 rewrite makes load-bearing, confirmed absent from the glossary
+  today — **over-scoped criterion** (*an acceptance criterion whose mechanical
+  scope is wider than the prose intent it encodes — typically a file-wide grep
+  standing in for a claim about one region. On a file that legitimately contains
+  the banned token elsewhere it is not merely loose but* unsatisfiable*, and
+  narrowing the token rather than the scope does not fix it. The inverse of an*
+  unbounded universal*, which over-claims in prose relative to its check; both
+  are diagnosed the same way, by running the check against the tree plus a
+  correct-edit mutant. Narrowing the scope creates two fresh obligations: a
+  fixed-phrase file-wide companion arm, so the banned claim cannot be relocated
+  out of scope, and non-vacuity guards on the extraction itself*). Load-bearing
+  in R15 and C4.2, and the third instance of this family in this spec alone
+  (R5, R13, R15). `scribe`'s call; it does not gate this spec.
 - **`docs/adr/`**: one new ADR — next free number (`0032` at authoring time),
   re-derived at execution time. Subject: per-call consent belongs to the
   permission system; durable escalation consent belongs to the `DECISION` file;
