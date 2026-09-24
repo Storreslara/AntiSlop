@@ -14,6 +14,18 @@ the one-time per-project setup process that turns the
   cost in the common case) and a judgment half
   (`skills/install-antislop/SKILL.md`).
 
+**ask-eligible**:
+(unit hcb-branch, 2026-09-24) — the 5-path subset of Set A ∪ Set B in
+  `harness-integrity-gate.sh` that can actually reach the `ask` branch when
+  `agent_id` is absent and `permission_mode` is in the frozen [[permission-mode allowlist]].
+  Comprised of: 1 Set A path (`.claude/persona-config.json`) and 4 Set B paths
+  (`hooks/hooks.json`, `.claude/settings.json`, `hooks/scripts/harness-integrity-gate.sh`,
+  `.claude/hooks/scripts/harness-integrity-gate.sh`). Distinct from the full 9-path Set A
+  (persona-config + 4 audit logs + their 4 `.seal` sidecars, of which only persona-config
+  is ask-eligible; the other 8 stay unconditional deny even under an allowlisted mode)
+  and the full 4-path Set B. The ask-eligible subset is the gate's exactly-five-paths-wide
+  surface pinned by acceptance criterion C1.7 in the unit spec.
+
 **Attested commit**:
 (unit #386, 2026-08-15) — the commit recorded in a [[PASS marker]]'s
   `commit:` field (v3 format), representing the unit's own final commit — the
@@ -49,12 +61,11 @@ the one-time per-project setup process that turns the
   checked" (re-derived by test or criterion on every merge).
 
 **permission-mode allowlist**:
-(unit hcb-step5-measure, 2026-09-24) — the ordered list of `permission_mode` values
+(unit hcb-step5-measure, 2026-09-24; shipped in unit hcb-branch, 2026-09-24) — the ordered list of `permission_mode` values
   (`default`, `plan`, `acceptEdits`, `auto`; explicitly excluding `dontAsk`,
   `bypassPermissions`, and unrecognized modes) that `harness-integrity-gate.sh`'s
-  designed `ask_allowed()` branch (documented in
-  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`, unshipped as of
-  this unit) checks before emitting `ask` from a hook. Distinct from [[Set A / Set B]]
+  `ask_allowed()` branch (documented in
+  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`) checks before emitting `ask` from a hook. Distinct from [[Set A / Set B]]
   (the gate's protected *file-path* categories, keyed by path glob). The allowlist
   constrains *which permission modes* may reach an `ask` decision; Set A/B constraint
   *which paths* the gate protects. Terminology: this allowlist is not the permission
@@ -179,6 +190,16 @@ superseded terminology — see [[effort override / effort tier]].
   another clone where the commit is unreachable, the changed-file enumeration fails and
   `microworld_skip_ok` returns 1 (fail closed) rather than silently misrepresenting
   "couldn't compute" as "no changes" (see AC-B2 / [[unreachable baseline]]).
+
+**two-tier allowlist**:
+(unit hcb-branch, 2026-09-24) — the frozen `permission_mode` allowlist that gates ask-eligibility
+  differently per set in `harness-integrity-gate.sh`. **Set A's tier** includes `default`, `plan`, 
+  `acceptEdits`, and `auto`. **Set B's tier** includes `default`, `plan`, and `auto`, explicitly 
+  excluding `acceptEdits` (a silent auto-approve on Set B's write paths would cost the gate's own 
+  registration surface, so it must not be auto-eligible). The two-tier structure is the exact point 
+  defended by acceptance criterion C1.3(b) ("tier-collapse" mutation proof): collapsing the two tiers 
+  into one is the specific regression that proof exists to catch. See [[permission-mode allowlist]], 
+  [[ask-eligible]], and [[Set A / Set B]].
 
 **unreachable baseline**:
 (unit spec2-unitB, 2026-08-26) — the condition where a [[session baseline commit]]
@@ -378,19 +399,19 @@ a hook script that mechanically blocks an action rather than
 _Avoid_: marker-directory gate
 
 **Set A / Set B** (harness-integrity-gate sets):
-(unit harness-integrity-gate-hardening, 2026-09-09) — the two disjoint
+(unit harness-integrity-gate-hardening, 2026-09-09; amended unit hcb-branch, 2026-09-24) — the two disjoint
   categories of protected file paths in `hooks/scripts/harness-integrity-gate.sh`.
-  **Set A** (denied on both Write/Edit and Bash): the harness's own config and
+  **Set A** (the persona-config path, can reach `ask` on Write/Edit when `agent_id` is absent and `permission_mode` is in [[permission-mode allowlist]]; otherwise denied on both Write/Edit and Bash): the harness's own config and
   audit-log surfaces (`.claude/persona-config.json`, `.claude/review-audit.log`,
   `.claude/dispatch-audit.log`, `.claude/microworld-audit.log`,
-  `.claude/wip-audit.log`, and their `.seal` sidecars). **Set B** (denied on
+  `.claude/wip-audit.log`, and their `.seal` sidecars). **Set B** (can reach `ask` on Write/Edit for exactly four paths when `agent_id` is absent and `permission_mode` is in the [[two-tier allowlist]] excluding `acceptEdits`; otherwise denied on
   Write/Edit only, deliberately absent from Bash): the gate's own registration
   surface (`hooks/hooks.json`, `.claude/settings.json`,
-  `hooks/scripts/harness-integrity-gate.sh`). Set B is excluded from the Bash
+  `hooks/scripts/harness-integrity-gate.sh`, `.claude/hooks/scripts/harness-integrity-gate.sh`). Set B is excluded from the Bash
   branch by [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
   because a text-only gate triggered by mere word presence in Bash commands would
   necessarily fire on prose mentions, not just write attempts — the asymmetry is
-  ratified, not an oversight. Introduced together as a pair, not independently.
+  ratified, not an oversight. Introduced together as a pair, not independently. The frozen two-tier `permission_mode` allowlist gates ask-eligibility: see [[two-tier allowlist]] for the distinction between Set A's tier (includes `acceptEdits`) and Set B's tier (excludes it).
 
 **git-index witness** (synonymous with **directory witness**):
 (unit gh441, 2026-09-10) — a detection mechanism in `harness_armed()` that
