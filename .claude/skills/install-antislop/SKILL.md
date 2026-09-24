@@ -24,9 +24,10 @@ description: >
 
 ## 0. Version gate (no FLAT MODE fallback — this plugin targets one baseline)
 
-- Run `claude --version`. Require **v2.1.178+** (nested subagent spawning
-  works from v2.1.172, and TeamCreate/TeamDelete were removed in v2.1.178 —
-  the `start-feature-team` command assumes automatic cleanup). If the
+- Run `claude --version`. Require **v2.1.248+** (nested subagent spawning
+  works from v2.1.172, TeamCreate/TeamDelete were removed in v2.1.178 — the
+  `start-feature-team` command assumes automatic cleanup — and
+  `experimental.cacheTtl` frontmatter requires v2.1.248). If the
   installed version is older, STOP and tell the user to upgrade; do not
   attempt a degraded/flat wiring.
 - Plugin-provided agents are namespaced (`antislop:explorer`, not

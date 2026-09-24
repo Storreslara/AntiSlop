@@ -69,6 +69,6 @@ from its own transcript. Do NOT re-invoke `Agent` with its name to do this;
 that spawns an unrelated sibling instead of resuming it. Wait for teammates
 to finish, then synthesize.
 
-**Cleanup**: on Claude Code v2.1.178+ (the version this plugin targets), team
-cleanup is automatic — do not call `TeamCreate`/`TeamDelete` (removed in that
-version).
+**Cleanup**: on Claude Code v2.1.248+ (the version this plugin targets), team
+cleanup is automatic — do not call `TeamCreate`/`TeamDelete` (removed in
+v2.1.178).
