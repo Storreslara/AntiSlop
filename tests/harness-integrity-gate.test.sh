@@ -16,6 +16,13 @@ gate="${GATE_UNDER_TEST:-hooks/scripts/harness-integrity-gate.sh}"
 tmproot="$(mktemp -d)"
 trap 'rm -rf "$tmproot"' EXIT
 errf="$tmproot/stderr"
+outf="$tmproot/stdout"
+
+# Fixture literals for the two frozen permissionDecisionReason strings
+# (Step 1). Held here, not derived from the gate, so a reworded prompt is a
+# red test rather than a tautology.
+ASK_REASON_A="This write targets the harness persona-selection config, a protected path with no grant branch. The sanctioned route is node bin/cli.js --update (install-antislop section 6). Approve only if you intend to take that route right now."
+ASK_REASON_B="This write targets the harness gate registration surface: this gate script, its hooks.json registration, or the settings file that arms it. Approving this can disable every future prompt from this gate, including this one. Route changes through node bin/cli.js --update (install-antislop section 6)."
 
 pass() { echo "OK   $*"; }
 bad()  { echo "FAIL $*"; fail=1; }
@@ -30,7 +37,8 @@ proj="$(mk proj)"
 run() {
   rc=0
   : > "$errf"
-  printf '%s' "$1" | CLAUDE_PROJECT_DIR="$2" bash "$gate" >/dev/null 2>"$errf" || rc=$?
+  : > "$outf"
+  printf '%s' "$1" | CLAUDE_PROJECT_DIR="$2" bash "$gate" >"$outf" 2>"$errf" || rc=$?
 }
 
 check() {
@@ -43,11 +51,56 @@ check() {
   fi
 }
 
-# $1 label, $2 verdict, $3 file_path, $4 tool_name (Write|Edit), $5 project dir
+# ask_check <label> <expected set A|B> - asserts THREE conditions: exit 0,
+# stdout parses as JSON, and its permissionDecision/permissionDecisionReason
+# match the expected set exactly. Exit 0 alone is not sufficient - an
+# "allowed" result would pass that weaker check (C3.1).
+ask_check() {
+  local decision reason expected
+  if [ "$rc" != 0 ]; then
+    bad "$1 -> rc=$rc, expected 0 (ask)"
+    return
+  fi
+  if ! jq -e . >/dev/null 2>&1 < "$outf"; then
+    bad "$1 -> stdout did not parse as JSON: $(cat "$outf")"
+    return
+  fi
+  decision="$(jq -r '.hookSpecificOutput.permissionDecision // empty' < "$outf")"
+  if [ "$decision" != ask ]; then
+    bad "$1 -> permissionDecision='$decision', expected ask"
+    return
+  fi
+  [ "$2" = A ] && expected="$ASK_REASON_A" || expected="$ASK_REASON_B"
+  reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason // empty' < "$outf")"
+  if [ "$reason" = "$expected" ]; then
+    pass "$1 -> ask (set $2)"
+  else
+    bad "$1 -> permissionDecisionReason did not match set $2's fixture literal"
+  fi
+}
+
+# _pm_payload <tool_name> <file_path> <permission_mode|__ABSENT__> <agent_id|__ABSENT__>
+_pm_payload() {
+  jq -n --arg t "$1" --arg p "$2" --arg pm "$3" --arg aid "$4" '
+    {tool_name:$t, tool_input:{file_path:$p}}
+    + (if $pm  == "__ABSENT__" then {} else {permission_mode:$pm}  end)
+    + (if $aid == "__ABSENT__" then {} else {agent_id:$aid} end)
+  '
+}
+
+# $1 label, $2 verdict, $3 file_path, $4 tool_name (Write|Edit), $5 project dir,
+# $6 permission_mode (default: absent key), $7 agent_id (default: absent key)
 write_case() {
-  run "$(jq -n --arg t "$4" --arg p "$3" '{tool_name:$t,tool_input:{file_path:$p}}')" \
-      "${5:-$proj}"
+  run "$(_pm_payload "$4" "$3" "${6:-__ABSENT__}" "${7:-__ABSENT__}")" "${5:-$proj}"
   check "$1" "$2"
+}
+
+# $1 label, $2 file_path, $3 tool_name (Write|Edit), $4 expected set (A|B),
+# $5 permission_mode (default: "default"), $6 agent_id (default: absent key),
+# $7 project dir
+ask_case() {
+  run "$(_pm_payload "$3" "$2" "${5:-default}" "${6:-__ABSENT__}")" "${7:-$proj}"
+  ask_check "$1" "$4"
 }
 
 # $1 label, $2 verdict, $3 command, $4 project dir
@@ -452,6 +505,293 @@ if [ "$rc" = 2 ] && [ -f "$inj_log" ]; then
     || bad "case g1 embedded-newline Bash command -> expected exactly 1 log line, got $inj_lines"
 else
   bad "case g1 embedded-newline Bash command -> rc=$rc, log present=$( [ -f "$inj_log" ] && echo yes || echo no )"
+fi
+
+echo
+echo "-- Step 1: the human-confirmation branch --"
+mirror_path=".claude/hooks/scripts/harness-integrity-gate.sh"
+gate_script_path="hooks/scripts/harness-integrity-gate.sh"
+settings_path=".claude/settings.json"
+hooks_json_path="hooks/hooks.json"
+
+echo
+echo "-- C1.1 / C3.1: fires for both sets, both tool_name values (5 subjects x 2 tool_name = 10 minimum) --"
+ask_case "case p1 Write persona-config.json asks (Set A)" "$t_persona_cfg" Write A
+ask_case "case p2 Edit persona-config.json asks (Set A)" "$t_persona_cfg" Edit A
+ask_case "case p3 Write hooks.json asks (Set B)" "$hooks_json_path" Write B
+ask_case "case p4 Edit hooks.json asks (Set B)" "$hooks_json_path" Edit B
+ask_case "case p5 Write settings.json asks (Set B)" "$settings_path" Write B
+ask_case "case p6 Edit settings.json asks (Set B)" "$settings_path" Edit B
+ask_case "case p7 Write harness-integrity-gate.sh asks (Set B)" "$gate_script_path" Write B
+ask_case "case p8 Edit harness-integrity-gate.sh asks (Set B)" "$gate_script_path" Edit B
+ask_case "case p9 Write mirror asks (Set B)" "$mirror_path" Write B
+ask_case "case p10 Edit mirror asks (Set B)" "$mirror_path" Edit B
+
+# Non-vacuous (C3.1): a genuine Set A ask must NOT match Set B's fixture
+# literal - proves ask_check distinguishes the two reason literals rather
+# than just checking "is JSON" / "decision == ask".
+run "$(_pm_payload Write "$t_persona_cfg" default __ABSENT__)" "$proj"
+p_reason="$(jq -r '.hookSpecificOutput.permissionDecisionReason // empty' < "$outf")"
+if [ "$rc" = 0 ] && [ "$p_reason" = "$ASK_REASON_A" ] && [ "$p_reason" != "$ASK_REASON_B" ]; then
+  pass "[C3.1] ask_check is non-vacuous: a genuine Set A ask does not match Set B's fixture literal"
+else
+  bad "[C3.1] ask_check self-test failed to distinguish the two reason literals"
+fi
+
+echo
+echo "-- C1.2: FROZEN TWO-TIER ALLOWLIST, exhaustive over the 6-value set plus 3 degenerate spellings, asserted as counts per set --"
+_tally_ask_or_deny() {
+  # Tallies the outcome of the most recent run() into count_asks/count_denies.
+  if [ "$rc" = 0 ] && jq -e . >/dev/null 2>&1 < "$outf" \
+     && [ "$(jq -r '.hookSpecificOutput.permissionDecision // empty' < "$outf")" = ask ]; then
+    count_asks=$((count_asks + 1))
+  elif [ "$rc" = 2 ]; then
+    count_denies=$((count_denies + 1))
+  fi
+}
+
+count_allowlist() {
+  # $1 set (A|B), $2 subject. Sets count_asks/count_denies globals.
+  local subject="$2" pm
+  count_asks=0; count_denies=0
+  for pm in default plan acceptEdits auto dontAsk bypassPermissions "" someFutureMode; do
+    run "$(_pm_payload Write "$subject" "$pm" __ABSENT__)" "$proj"
+    _tally_ask_or_deny
+  done
+  run "$(_pm_payload Write "$subject" __ABSENT__ __ABSENT__)" "$proj"
+  _tally_ask_or_deny
+}
+
+count_allowlist A "$t_persona_cfg"
+if [ "$count_asks" = 4 ] && [ "$count_denies" = 5 ]; then
+  pass "[C1.2] Set A: exactly 4 ask / 5 deny across the 6-value set plus absent/empty/unrecognised"
+else
+  bad "[C1.2] Set A: expected 4 ask / 5 deny, got $count_asks ask / $count_denies deny"
+fi
+
+count_allowlist B "$hooks_json_path"
+if [ "$count_asks" = 3 ] && [ "$count_denies" = 6 ]; then
+  pass "[C1.2] Set B: exactly 3 ask / 6 deny across the 6-value set plus absent/empty/unrecognised (acceptEdits moves to deny)"
+else
+  bad "[C1.2] Set B: expected 3 ask / 6 deny, got $count_asks ask / $count_denies deny"
+fi
+
+echo
+echo "-- C1.4: no ask from a subagent, across every allowlisted mode of both sets and all 5 subjects --"
+allowlisted_a="default plan acceptEdits auto"
+allowlisted_b="default plan auto"
+c14_subjects="A:$t_persona_cfg
+B:$hooks_json_path
+B:$settings_path
+B:$gate_script_path
+B:$mirror_path"
+
+c14_run() {
+  # sets c14_total/c14_asked globals over $1 (subject list, "tier:subject" per line)
+  local tier subj modes pm
+  c14_total=0; c14_asked=0
+  while IFS=: read -r tier subj; do
+    [ -n "$tier" ] || continue
+    if [ "$tier" = A ]; then modes="$allowlisted_a"; else modes="$allowlisted_b"; fi
+    for pm in $modes; do
+      c14_total=$((c14_total + 1))
+      run "$(_pm_payload Write "$subj" "$pm" subagent-1)" "$proj"
+      if [ "$rc" = 0 ] && jq -e . >/dev/null 2>&1 < "$outf" \
+         && [ "$(jq -r '.hookSpecificOutput.permissionDecision // empty' < "$outf")" = ask ]; then
+        c14_asked=$((c14_asked + 1))
+      fi
+    done
+  done <<< "$1"
+}
+
+c14_run "$c14_subjects"
+if [ "$c14_asked" = 0 ]; then
+  pass "[C1.4] no ask from a subagent: all $c14_total allowlisted-mode x subject combinations still deny with agent_id present"
+else
+  bad "[C1.4] no ask from a subagent: $c14_asked/$c14_total combinations asked despite a non-empty agent_id"
+fi
+
+echo
+echo "-- C1.5: non-repudiation invariant — zero permission-decision allow anywhere in the gate source --"
+c15_hits="$(grep -cE '"permissionDecision"[[:space:]]*:[[:space:]]*"allow"|permissionDecision.*allow' "$gate" || true)"
+if [ "${c15_hits:-0}" = 0 ]; then
+  pass "[C1.5] zero permission-decision allow occurrences in $gate"
+else
+  bad "[C1.5] found $c15_hits permission-decision allow occurrence(s) in $gate"
+fi
+
+echo
+echo "-- C1.6: the two permissionDecisionReason literals are fixed, unconstructed, and Set B states the self-disablement cost --"
+c16a_count="$(grep -cE "^reason_[ab]='" "$gate" || true)"
+if [ "${c16a_count:-0}" = 2 ]; then
+  pass "[C1.6a] exactly 2 permissionDecisionReason literal assignments in $gate"
+else
+  bad "[C1.6a] expected exactly 2 reason literal assignments in $gate, found ${c16a_count:-0}"
+fi
+
+c16_line_a="$(grep -E "^reason_a='" "$gate" || true)"
+c16_line_b="$(grep -E "^reason_b='" "$gate" || true)"
+c16b_bad=""
+for _rl in "$c16_line_a" "$c16_line_b"; do
+  case "$_rl" in
+    *'$'*|*'`'*) c16b_bad="$c16b_bad {$_rl}" ;;
+  esac
+done
+if [ -z "$c16b_bad" ]; then
+  pass "[C1.6b] neither reason literal contains \$, a backtick, or \$("
+else
+  bad "[C1.6b] a reason literal contains \$ or a backtick:$c16b_bad"
+fi
+
+case "$ASK_REASON_B" in
+  *"registration surface"*"disable every future prompt from this gate, including this one"*)
+    pass "[C1.6c] Set B's reason names the registration surface and the self-disablement cost" ;;
+  *)
+    bad "[C1.6c] Set B's reason does not state both the registration-surface target and the self-disablement cost" ;;
+esac
+
+echo
+echo "-- C1.9: hot path unchanged — the new branch adds no work to the Bash path --"
+c19_src="$(awk '/^# Bash branch:/{f=1} f' "$gate")"
+c19_hits="$(printf '%s\n' "$c19_src" | grep -cE 'permission_mode|agent_id|ask_allowed|^ask\(' || true)"
+if [ "${c19_hits:-0}" = 0 ]; then
+  pass "[C1.9] the Bash branch contains no reference to permission_mode, agent_id, ask_allowed, or ask()"
+else
+  bad "[C1.9] the Bash branch references the new human-confirmation machinery ($c19_hits hit(s))"
+fi
+
+echo
+echo "-- C1.7: SCOPE GUARDS — the branch is exactly five paths wide (persona-config + 4 Set B literals); everything else stays a hard deny --"
+write_case "case p11 Write review-audit.log still denies under an allowlisted mode (OQ1: audit logs excluded)" \
+  blocked "$t_review_log" Write "$proj" default
+write_case "case p12 Write dispatch-audit.log still denies under an allowlisted mode" \
+  blocked "$t_dispatch_log" Write "$proj" default
+write_case "case p13 Write microworld-audit.log still denies under an allowlisted mode" \
+  blocked "$t_microworld_log" Write "$proj" default
+write_case "case p14 Write wip-audit.log still denies under an allowlisted mode" \
+  blocked "$t_wip_log" Write "$proj" default
+write_case "case p15 Write review-audit.log.seal still denies under an allowlisted mode" \
+  blocked "$t_review_log.seal" Write "$proj" default
+write_case "case p16 Write dispatch-audit.log.seal still denies under an allowlisted mode" \
+  blocked "$t_dispatch_log.seal" Write "$proj" default
+write_case "case p17 Write microworld-audit.log.seal still denies under an allowlisted mode" \
+  blocked "$t_microworld_log.seal" Write "$proj" default
+write_case "case p18 Write wip-audit.log.seal still denies under an allowlisted mode" \
+  blocked "$t_wip_log.seal" Write "$proj" default
+bash_case "case p19 Bash to settings.json still exit 0 (ADR-0025, unchanged)" allowed \
+  "sed -i s/x/y/ $settings_path"
+
+echo
+echo "-- C1.8: CONFIGLESS PRESERVED — ask reads only the two payload fields, nothing on disk --"
+noconf="$tmproot/noconf"
+mkdir -p "$noconf"
+run "$(_pm_payload Write "$t_persona_cfg" default __ABSENT__)" "$noconf"
+ask_check "case p20 ask still fires with no .claude/ directory present at all" A
+
+planted="$tmproot/planted"
+mkdir -p "$planted/.claude"
+printf 'reviewGating=false approved=true\n' > "$planted/.claude/persona-config.json"
+run "$(_pm_payload Write "$t_persona_cfg" default __ABSENT__)" "$planted"
+ask_check "case p21 ask is unchanged by a planted file claiming prior approval" A
+
+echo
+echo "-- C1.11: the mirror is Set B's fourth literal (baseline was exit 0 on Write/Edit at d807630) --"
+ask_case "case p22 Write mirror asks under default (Set B tier)" "$mirror_path" Write B default
+ask_case "case p23 Write mirror asks under plan (Set B tier)" "$mirror_path" Write B plan
+ask_case "case p24 Write mirror asks under auto (Set B tier)" "$mirror_path" Write B auto
+write_case "case p25 Write mirror denies under acceptEdits (Set B tier, not Set A)" \
+  blocked "$mirror_path" Write "$proj" acceptEdits
+write_case "case p26 Write mirror denies with a non-empty agent_id" \
+  blocked "$mirror_path" Write "$proj" default subagent-1
+
+baseline_dir="$tmproot/baseline"
+mkdir -p "$baseline_dir/lib"
+baseline_gate="$baseline_dir/harness-integrity-gate.sh"
+if git show d807630:hooks/scripts/harness-integrity-gate.sh > "$baseline_gate" 2>/dev/null \
+   && git show d807630:hooks/scripts/lib/audit-log.sh > "$baseline_dir/lib/audit-log.sh" 2>/dev/null \
+   && git show d807630:hooks/scripts/lib/benign-command.sh > "$baseline_dir/lib/benign-command.sh" 2>/dev/null; then
+  chmod +x "$baseline_gate"
+  save_gate="$gate"; gate="$baseline_gate"
+  write_case "case p27 baseline (d807630): Write mirror was exit 0 (no protection at all)" allowed "$mirror_path" Write
+  gate="$save_gate"
+else
+  bad "[C1.11] could not retrieve hooks/scripts/harness-integrity-gate.sh (or its libs) at d807630 for the before/after baseline"
+fi
+
+echo
+echo "-- C1.12: the mirror does not join the Bash branch (both fall-through arms, cheap and expensive, land on exit 0) --"
+bash_case "case p28 Bash naming the mirror exits 0 (expensive arm: the path contains .claude, same as .claude/settings.json)" allowed \
+  "sed -i s/x/y/ $mirror_path"
+# case f4 above (hooks/scripts/harness-integrity-gate.sh) is the cheap-arm
+# counterpart: no .claude substring, so set_a_mentioned() returns at its
+# early "*) return 1" arm before the per-chunk normalize loop ever runs.
+
+echo
+echo "-- Mutation proof C1.3(a): unconditional-pass allowlist flips every deny row to ask --"
+p_mutant_dir="$tmproot/p-mutant-bin"
+mkdir -p "$p_mutant_dir/lib"
+cp hooks/scripts/lib/*.sh "$p_mutant_dir/lib/"
+
+unconditional_mutant="$p_mutant_dir/ask-unconditional.sh"
+sed '/^ask_allowed() {$/a\
+  return 0  # MUTATED-C1_3a-unconditional-pass
+' hooks/scripts/harness-integrity-gate.sh > "$unconditional_mutant"
+chmod +x "$unconditional_mutant"
+if diff -q hooks/scripts/harness-integrity-gate.sh "$unconditional_mutant" >/dev/null; then
+  bad "[C1.3a] mutant sed produced no change - not actually mutated"
+else
+  save_gate="$gate"; gate="$unconditional_mutant"
+  count_allowlist A "$t_persona_cfg"; a_asks=$count_asks; a_denies=$count_denies
+  count_allowlist B "$hooks_json_path"; b_asks=$count_asks; b_denies=$count_denies
+  gate="$save_gate"
+  if [ "$a_asks" = 9 ] && [ "$a_denies" = 0 ] && [ "$b_asks" = 9 ] && [ "$b_denies" = 0 ]; then
+    pass "[C1.3a] unconditional-pass mutant flips Set A's 5 deny rows and Set B's 6 deny rows to ask (both sets: 9/0)"
+  else
+    bad "[C1.3a] expected both sets to flip fully to ask; got A=$a_asks/$a_denies B=$b_asks/$b_denies"
+  fi
+fi
+
+echo
+echo "-- Mutation proof C1.3(b): tier-collapse (accepting acceptEdits for Set B too) flips exactly that one row --"
+tier_collapse_mutant="$p_mutant_dir/ask-tier-collapse.sh"
+sed 's/^    acceptEdits) \[ "\$1" = A \] || return 1 ;;  # Set B stays deny (U2b)\.$/    acceptEdits) ;;  # MUTATED-C1_3b-tier-collapse/' \
+  hooks/scripts/harness-integrity-gate.sh > "$tier_collapse_mutant"
+chmod +x "$tier_collapse_mutant"
+if diff -q hooks/scripts/harness-integrity-gate.sh "$tier_collapse_mutant" >/dev/null; then
+  bad "[C1.3b] mutant sed produced no change - not actually mutated"
+else
+  save_gate="$gate"; gate="$tier_collapse_mutant"
+  run "$(_pm_payload Write "$hooks_json_path" acceptEdits __ABSENT__)" "$proj"
+  b_ae_flipped=0
+  [ "$rc" = 0 ] && [ "$(jq -r '.hookSpecificOutput.permissionDecision // empty' < "$outf")" = ask ] && b_ae_flipped=1
+  count_allowlist A "$t_persona_cfg"; a_asks=$count_asks; a_denies=$count_denies
+  count_allowlist B "$hooks_json_path"; b_asks=$count_asks; b_denies=$count_denies
+  gate="$save_gate"
+  if [ "$b_ae_flipped" = 1 ] && [ "$a_asks" = 4 ] && [ "$a_denies" = 5 ] \
+     && [ "$b_asks" = 4 ] && [ "$b_denies" = 5 ]; then
+    pass "[C1.3b] tier-collapse mutant flips exactly the Set B acceptEdits row (Set A unchanged 4/5, Set B moves 3/6 -> 4/5)"
+  else
+    bad "[C1.3b] tier-collapse mutant did not flip exactly one row (B acceptEdits flipped=$b_ae_flipped, A=$a_asks/$a_denies, B=$b_asks/$b_denies)"
+  fi
+fi
+
+echo
+echo "-- Mutation proof C1.4: deleting the agent_id check flips every subagent fail-closed case to ask --"
+agent_id_mutant="$p_mutant_dir/ask-no-agentid-check.sh"
+sed 's/^  \[ -z "\$agent_id" \]$/  return 0  # MUTATED-C1_4-agent-id-removed/' \
+  hooks/scripts/harness-integrity-gate.sh > "$agent_id_mutant"
+chmod +x "$agent_id_mutant"
+if diff -q hooks/scripts/harness-integrity-gate.sh "$agent_id_mutant" >/dev/null; then
+  bad "[C1.4] mutant sed produced no change - not actually mutated"
+else
+  save_gate="$gate"; gate="$agent_id_mutant"
+  c14_run "$c14_subjects"
+  gate="$save_gate"
+  if [ "$c14_asked" = "$c14_total" ] && [ "$c14_total" -gt 0 ]; then
+    pass "[C1.4] mutation control: deleting the agent_id check flips all $c14_total subagent cases to ask"
+  else
+    bad "[C1.4] mutation control: expected all $c14_total to flip, got $c14_asked"
+  fi
 fi
 
 echo
