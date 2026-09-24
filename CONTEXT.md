@@ -26,7 +26,10 @@ the one-time per-project setup process that turns the
   and the full 4-path Set B. The ask-eligible subset is the gate's exactly-five-paths-wide
   surface pinned by acceptance criterion C1.7 in the unit spec. The term **human-confirmable path**
   appears as an in-code synonym in `hooks/scripts/harness-integrity-gate.sh:59` (comment for
-  the `completed()` function).
+  the `completed()` function). Note: test code (`tests/harness-integrity-gate.test.sh`) uses
+  "Set A"/"Set B" labels loosely; future prose-reconciliation work should tighten these labels
+  to the canonical [[ask-eligible]] term where precision is needed (not in scribe's scope for
+  this unit — code-comment refinement owned by later prose-reconciliation step).
 
 **asked audit record**:
 (unit hcb-branch, 2026-09-24) — the `PreToolUse` half of the `asked`/`completed` pair,
@@ -60,6 +63,18 @@ the one-time per-project setup process that turns the
   bundle** (which re-runs code and is memoized) by being a one-time measurement of live
   harness behavior under real conditions, recorded as prose/tables with self-attested
   verdicts. See **self-reported** for the evidence-label semantics.
+
+**cell space**:
+(unit hcb-regcheck, 2026-09-24) — a literal, hardcoded enumeration of
+  `(hook_event_name, subject, permission_mode, agent_id-state)` tuples used to compare
+  multiple mutation-testing controls against a single shared coordinate system, rather
+  than each control inventing its own private accounting of what it tests. The cell space
+  serves as the fixed reference frame in [[kill-set relation table]]s: every cell is a
+  coordinate in this space, and a mutation control's behavior is characterized by its
+  kill set (the set of cells whose verdict differs from the shipped implementation).
+  Cells are derived from a literal matrix of all combinations, ensuring no measurement
+  gap where an untested coordinate is implicitly assumed correct. See [[kill set]],
+  [[kill-set relation table]], [[tier isolation]].
 
 **completed audit record**:
 (unit hcb-posttool, 2026-09-24) — the `PostToolUse` half of the `asked`/`completed` pair,
@@ -513,6 +528,46 @@ _Avoid_: marker-directory gate
   is blocked because it names a `.claude`-containing path, though this project's
   Set A is confined to the repo's own `.claude/` directory, not `~/.claude/`. See
   [[documented residual]], [[bypass family]], [[family table]].
+
+**kill set**:
+(unit hcb-regcheck, 2026-09-24) — for a given mutant and [[cell space]], the subset of
+  cells whose verdict differs between the mutant and the shipped (correct) implementation.
+  A cell's verdict is derived the same way a normal caller derives it: exit code AND
+  response body together (never exit code alone). Kill sets are the foundation of
+  [[kill-set relation table]]s: by comparing the kill sets of multiple mutation controls
+  within a shared cell space, a test proves that each control is orthogonal (disjoint) or
+  properly nested (one is a strict subset of another) according to the intended invariant.
+  Contrasted with "test killed a mutant" (casual language for "mutant failed"), kill set
+  is a formal technical term denoting the precise cells in the coordinate system where a
+  mutant's behavior diverges from baseline. See [[cell space]], [[tier isolation]].
+
+**kill-set relation table**:
+(unit hcb-regcheck, 2026-09-24) — a hardcoded literal table (not derived from measurement
+  — doing so reproduces R11's exact defect: deriving a test's own expected verdicts from
+  the code under test) stating the expected set-relation (DISJOINT, NESTED, EQUAL, etc.)
+  between every pair of a family of mutation controls. Used when blanket pairwise
+  disjointness is not the right invariant — for example, when one mutant's [[kill set]]
+  is a strict superset of another's by design, or when the scopes are properly hierarchical.
+  A [[kill-set relation table]] anchors the test's invariant claims to a fixed coordinate
+  system ([[cell space]]), making the relationship between controls provable rather than
+  implicit. Each row names two control identifiers and states their expected relation.
+  Entries use machine-checkable predicates (e.g., `{c1_kill_set} ⊂ {c2_kill_set}`, read
+  as "c1's cells are a proper subset of c2's cells"). See [ADR-0032](docs/adr/0032-bash-output-cap-not-command-rewriting.md) context for the history of why measurement-derived expectation is unsafe.
+
+**tier isolation**:
+(unit hcb-regcheck, 2026-09-24) — a property distinct from [[kill set]] containment: that
+  a narrower mutant's effect is confined to its intended tier/subset and does not leak into
+  cells outside it. Exemplified in test code: a Set-B-only tier-collapse mutant must leave
+  every Set A cell's verdict bit-identical to the shipped gate (proving the gate correctly
+  isolates tiers and doesn't accidentally cross-couple them). Tier isolation is proven via
+  positive assertion (all cells in the other tier remain green) rather than just absence
+  of regression. Distinct from the three other senses of "tier" in this glossary
+  ([[effort override / effort tier]], [[Tier A / Tier B bundle classification]]) — here
+  it refers to the conceptual boundary between functional layers or permission scopes (e.g.,
+  Set A vs. Set B in the harness-integrity-gate). Violations of tier isolation are caught
+  by mutation controls that have "narrower" scope in their title or comments but whose
+  [[kill set]] unexpectedly includes cells outside that scope. See [[cell space]],
+  [[kill set]], [[kill-set relation table]].
 
 **Reporter**:
 (unit #132, 2026-08-10) — a hook script that observes and logs an
