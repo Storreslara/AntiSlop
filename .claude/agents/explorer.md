@@ -15,7 +15,7 @@ mcpServers:
         - serve
 maxTurns: 10
 ---
-<!-- antislop v0.31.80 | source: agents/explorer.md | ADAPT-substituted -->
+<!-- antislop v0.31.81 | source: agents/explorer.md | ADAPT-substituted -->
 <!-- `mcpServers` is inlined here (not project-wide `.mcp.json`) so only the
      explorer connects; must stay a LIST of single-key dicts each with
      explicit `type:` — a flat map keyed by server name is SILENTLY ignored

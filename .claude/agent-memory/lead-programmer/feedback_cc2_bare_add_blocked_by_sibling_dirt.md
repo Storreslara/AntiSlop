@@ -1,6 +1,6 @@
 ---
 name: feedback_cc2_bare_add_blocked_by_sibling_dirt
-description: gh441 - a CC2-mandated 'git add -A' commit route has no way to exclude an unrelated concurrent agent's dirty files; when git status --short shows any, stop and report rather than improvise a workaround
+description: gh441 (recurred orchestrator-effort-policy-prose-fix) - a CC2-mandated 'git add -A' commit route has no way to exclude an unrelated concurrent agent's dirty files; when git status --short shows any, stop and report rather than improvise a workaround
 metadata:
   type: feedback
 ---
@@ -41,3 +41,16 @@ the literal in prose is denied the same as an edit would be. Paraphrase
 the reader doesn't already have from context. See
 [[project_decision_gate_blocks_approve_marker]] for the same pattern with a
 different gate.
+
+**Recurrence (orchestrator-effort-policy-prose-fix, 2026-09-24):** same
+shape, different sibling — a concurrent agent's WIP touched
+`tests/rollout-preflight.test.sh` and two `install-antislop` SKILL.md/command
+copies while I had my own `--update`-regenerated mirror diff (including the
+config-surface file) staged only in the working tree. Confirmed via a
+`ps`/`stat` cross-check that a sibling subagent's background
+`bash tests/validate.sh` had started ~80s prior and its dirty files'
+mtimes matched — evidence worth gathering before assuming it's stale WIP
+from an abandoned session. Wrote the sentinel and handed back without
+committing, exactly per this memory's prior guidance; no new technique
+needed, just confirms the pattern recurs under ordinary (non-agent-teams)
+concurrent dispatch too, not just gh441's original scenario.

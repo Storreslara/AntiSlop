@@ -19,6 +19,16 @@ files into the live tree and `git commit -- <paths>` there (never `git add
 concurrent unit in this repo actually lands on master, and it naturally
 excludes whatever other agents' uncommitted WIP sits in the live tree.
 
+This generalizes beyond debug-spec-mandated builds: any time `git status`
+shows a pile of unrelated dirty files from a concurrent agent (a version
+bump, agents/*.md edits, etc. that aren't yours) right when you need to run
+a full acceptance command like `bash tests/validate.sh`, `git worktree add
+-d <tmp> HEAD` + `git apply` your own diff there isolates the run from that
+noise — confirmed 2026-09-24 (install-antislop-floor-sweep) where a
+concurrent 0.31.80->0.31.81 bump was landing mid-task. Re-diff your target
+files against the live tree right before the final narrow commit to confirm
+nothing shifted underneath you.
+
 **Race to watch:** re-check `git rev-parse master` immediately before your
 final narrow commit. Mid-fix on mw-step3 (2026-08-25) a sibling unit
 (gh411, commit `cbd53d5`) landed on master *while I was working in the
