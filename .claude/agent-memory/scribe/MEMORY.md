@@ -1,5 +1,6 @@
 # Memory index
 
+- [Unit #479 cost-governance-step3-protocol-prose gaps](project_unit479_cost_governance_step3_prose_gaps.md) — PASS 2026-09-24; three CONTEXT.md corrections (bashOutputMaxChars spill-to-file mechanism, Steps 4-5 narrowed, two new Lens 3 entries overflow file/narrower re-query); templates/persona-protocol-slim.md drift gap noted; fileHashes regeneration gate block process issue flagged
 - [Unit #480 effort-override gaps](project_unit480_effortoverride_gaps.md) — PASS 2026-09-24; one glossary entry added to CONTEXT.md (effort override / effort tier); CHANGELOG.md wording corrected (floor → override); two non-blocking gaps recorded (column-0 regex limitation, missing non-tiered persona checks)
 - [Unit #478 bashOutputMaxChars backfill gaps](project_unit478_bashoutputcap_backfill_gaps.md) — PASS 2026-09-23; one glossary entry added to CONTEXT.md (bashOutputMaxChars / the Bash-output cap); two non-blocking gaps recorded (unguarded settings type check, incidental test coverage for --dedupe-hooks interaction)
 - [Unit #477 bash-output-census gaps](project_unit477_bashoutputcensus_gaps.md) — PASS 2026-09-23; three glossary entries added to CONTEXT.md (Bash-output census, Nearest-rank convention, Transcript store); validate.sh integration gap noted

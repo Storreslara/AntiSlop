@@ -37,11 +37,13 @@ the one-time per-project setup process that turns the
 
 **bashOutputMaxChars / the Bash-output cap**:
 (unit #478, 2026-09-23) — a user-facing settings key (`bashOutputMaxChars: 12000`) 
-  that enforces a hard truncation limit on Bash tool output (the "cap"), derived from 
-  the [[Bash-output census]]'s percentile analysis. The locked value of 12,000 characters 
-  represents the cost-governance threshold identified in Step 1. The cap is the mechanical 
-  enforcement half of the cost-governance work (Steps 3-5 implement the model tier and 
-  token-budget adjustments that adapt to this cap). Setup-time template value is in 
+  that mechanically bounds Bash tool output (the "cap") via spill-to-file: when output 
+  exceeds the cap, the [[overflow file]] is persisted and the model receives a short 
+  preview plus the file path instead of silent truncation, derived from the [[Bash-output 
+  census]]'s percentile analysis. The locked value of 12,000 characters represents the 
+  cost-governance threshold identified in Step 1. The cap is the mechanical enforcement 
+  half of the cost-governance work (Steps 4-5 implement the model tier and token-budget 
+  adjustments that adapt to this cap). Setup-time template value is in 
   `templates/settings-fragment.json`; for already-adapted projects, the backfill mechanism 
   in `bin/cli.js`'s `runUpdate` block additively merges `bashOutputMaxChars` into 
   `.claude/settings.json` only when the key is absent (never clobbers an existing value).
@@ -65,6 +67,24 @@ the one-time per-project setup process that turns the
   distinct from [[Tier A / Tier B bundle classification]] (personas included in release 
   artifacts) and the protocol delivery tiers (full vs. slim). See `tests/effort-tier-consistency.test.js` 
   for the declared schema and mutation-proof assertions.
+
+**overflow file**:
+(unit cost-governance-step3-protocol-prose, 2026-09-24) — the persisted file that 
+  receives Bash tool output exceeding the [[bashOutputMaxChars / the Bash-output cap]] 
+  limit. When the [[narrower re-query]] pattern is followed, the model receives a short 
+  preview plus the overflow file's path, enabling re-query with more targeted filtering 
+  rather than re-running the same command unfiltered, which would re-incur the same cost. 
+  The protocol explicitly forbids reading the overflow file whole, as this defeats the 
+  cost-governance purpose. Cross-linked to [[narrower re-query]].
+
+**narrower re-query**:
+(unit cost-governance-step3-protocol-prose, 2026-09-24) — the correct response pattern 
+  when a Bash tool call's output overflows the [[bashOutputMaxChars / the Bash-output cap]] 
+  limit and is spilled to an [[overflow file]]. Instead of reading the overflow file in 
+  whole (which re-incurs the full cost), the model issues a narrower command — using 
+  `head`/`tail`/`wc -l`/targeted `grep`, or the tool's own quiet/summary flag — to fetch 
+  only the portion actually needed. This pattern enforces the cost-governance principle: 
+  investigate the problem rather than re-running at full scale.
 
 **baseline currency**:
 (unit spec2-unitE, 2026-08-26) — the property that a fileHashes baseline's
