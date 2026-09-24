@@ -24,6 +24,43 @@ the one-time per-project setup process that turns the
   [[Dispatch hygiene]], [[Commit attribution]], [[`.escalated` marker]], and
   [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
 
+**characterization record**:
+(unit hcb-step5-measure, 2026-09-24) — the artifact class instantiated by
+  `docs/experiments/2026-09-23-probe-hook-payloads.md` and now
+  `docs/experiments/2026-09-23-probe-permission-mode-ask.md`: a dated,
+  **self-reported** probe record with greppable per-row verdict lines, used to make
+  live/observed harness behavior machine-checkable for acceptance criteria without
+  claiming the behavior is mechanically re-derivable. Distinguished from a **Microworld
+  bundle** (which re-runs code and is memoized) by being a one-time measurement of live
+  harness behavior under real conditions, recorded as prose/tables with self-attested
+  verdicts. See **self-reported** for the evidence-label semantics.
+
+**self-reported** (as a formal evidence label, distinct from a mechanical check):
+(unit hcb-step5-measure, 2026-09-24) — a classification of evidence that explicitly
+  marks a recorded artifact (e.g., a [[characterization record]]) as self-attested
+  by a human operator rather than mechanically re-derived by the repo's test suite.
+  Documented in `docs/trust-model.md`'s trust matrix (see row on self-report-vs-mechanical
+  distinction). When a record is labelled **self-reported**, it signals that no acceptance
+  criterion in the repo re-derives the recorded values — the record's verdicts are taken
+  as stated, not re-verified by continuous integration. This label prevents accidental
+  citation of a self-attested record as if it were mechanically checked. Exemplified by
+  `docs/experiments/2026-09-23-probe-permission-mode-ask.md`'s per-row verdicts (U1, R4, C5.4),
+  each marked as self-reported and dated. The counter-label is "mechanical" or "mechanically
+  checked" (re-derived by test or criterion on every merge).
+
+**permission-mode allowlist**:
+(unit hcb-step5-measure, 2026-09-24) — the ordered list of `permission_mode` values
+  (`default`, `plan`, `acceptEdits`, `auto`; explicitly excluding `dontAsk`,
+  `bypassPermissions`, and unrecognized modes) that `harness-integrity-gate.sh`'s
+  designed `ask_allowed()` branch (documented in
+  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`, unshipped as of
+  this unit) checks before emitting `ask` from a hook. Distinct from [[Set A / Set B]]
+  (the gate's protected *file-path* categories, keyed by path glob). The allowlist
+  constrains *which permission modes* may reach an `ask` decision; Set A/B constraint
+  *which paths* the gate protects. Terminology: this allowlist is not the permission
+  system's own `permissions.allow` field (which overrides individual grants); it is a
+  gate-internal filter on `permission_mode` values as a prerequisite to emitting `ask`.
+
 **Bash-output census**:
 (unit #477, 2026-09-23) — the re-runnable measurement tool at
   `scripts/bash-output-census.js` that recursively walks the **transcript store**
