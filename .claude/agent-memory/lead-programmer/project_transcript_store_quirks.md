@@ -41,6 +41,18 @@ frozen 2026-08-09 measurements. Relevant to anyone extending that script
   persona (`"reviewer"`) - always prefer `customAgentType // agentType`
   when resolving which persona a dispatch actually is, or every
   custom-named teammate false-positives as unregistered/undeclared.
+- **The store is deeply nested, and the top level is a small minority of
+  it.** Subagent transcripts live under
+  `<slug>/<session-uuid>/subagents/*.jsonl`; measured 2026-09-23 there were
+  30 `.jsonl` at the top level vs 531 recursively. A non-recursive
+  `fs.readdirSync(dir)` / `ls *.jsonl` over the store silently censuses
+  ~12% of the tool calls and ~8% of the chars, and the shortfall is
+  invisible without an external baseline to compare against - it cost
+  `scripts/bash-output-census.js` a FAIL. Always walk recursively
+  (`withFileTypes: true`, recurse on `isDirectory()`), and make a missing
+  or unreadable store directory a non-zero exit rather than an empty
+  result, so a misspelled path can never impersonate a real all-zero
+  census.
 - **One genuine anomaly surfaced by this calibration**: a `reviewer`
   dispatch wrote its own `.fail` marker via the `Write` tool instead of
   the documented `Bash` + `printf` convention (persona-protocol.md's
