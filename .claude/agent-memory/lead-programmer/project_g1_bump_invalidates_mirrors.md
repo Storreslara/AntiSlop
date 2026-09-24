@@ -73,3 +73,18 @@ the same mechanism from the other direction.
 - The code-review-graph's post-commit "Untested: <fn>" line is a **false
   negative** for bash hooks: it cannot see coverage that runs the script as a
   subprocess from a `.test.sh`. Do not treat it as a real test gap.
+- **Pre-editing a `.claude/agents/*.md` mirror by hand (to match a source edit)
+  before running `--update` leaves its stamp stale.** `runUpdate`'s per-file
+  branch (`bin/cli.js` ~line 1400) only refreshes the `<!-- antislop v... -->`
+  comment when the recorded hash still matches the on-disk file (normal drift
+  case). If you hand-add the same content to both `agents/X.md` and
+  `.claude/agents/X.md` yourself, the recorded hash is stale (doesn't match
+  your hand-edit) but the byte content now exactly equals a fresh render, so
+  it takes the silent "hash healed (content unchanged, hash was stale)" path
+  — it fixes `fileHashes` but does NOT touch the stamp, leaving that one
+  mirror at the old version while its 9 siblings get bumped normally. Fix:
+  run `node bin/cli.js --update --force-render` a **second time** — now that
+  the hash is healed, the file re-enters the normal "stamp refreshed" branch
+  and gets stamped correctly. Cheapest fix overall: don't hand-edit the
+  mirror at all — edit only the `agents/*.md` source and let `--update` copy
+  it over. Hit on cache-ttl-gapped-personas (2026-09-23).
