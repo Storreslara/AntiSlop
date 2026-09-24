@@ -1,0 +1,2 @@
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_top","name":"Bash","input":{"command":"echo top"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_top","content":"AAAAAAAAAA"}]}}

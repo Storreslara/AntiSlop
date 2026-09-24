@@ -1,0 +1,5 @@
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"echo a"}}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"AAAAAAAAAA"}]}}
+{"message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_no_such_use","content":"XXXXXXXXXXXXXXXXXXXX"}]}}
+{"message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_2",
+{ this line is not json at all }

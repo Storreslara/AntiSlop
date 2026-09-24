@@ -7,11 +7,15 @@
 // independently re-derivable. See that doc's Step 1 for the schema this
 // mirrors: pair each `tool_use` named "Bash" to its `tool_result` by
 // `tool_use_id` (may be on a different JSONL line), sum the resolved content
-// length, and report percentiles plus per-candidate-cap savings.
+// length, and report percentiles plus per-candidate-cap savings. The store is
+// walked recursively: most transcripts live under <session-uuid>/subagents/.
+// Percentiles use the nearest-rank convention: the value at ceil(p/100 * n),
+// 1-indexed, with no interpolation.
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { spawnSync } = require('child_process');
 
 // Candidate cap values mirroring the spec's Context table.
 const CAPS = [4000, 8000, 12000, 16000, 30000];
@@ -20,13 +24,24 @@ function parseArgs(argv) {
   const args = { json: false, dir: null };
   for (let i = 0; i < argv.length; i++) {
     if (argv[i] === '--json') args.json = true;
-    else if (argv[i] === '--dir') args.dir = argv[++i];
+    else if (argv[i] === '--dir') {
+      args.dir = argv[++i];
+      if (args.dir === undefined) throw new Error('--dir requires a directory path');
+    }
   }
   return args;
 }
 
+// The slug is derived from the repo root, not raw cwd, so the censused
+// population does not change when the script is run from a subdirectory.
+function projectRoot() {
+  const git = spawnSync('git', ['rev-parse', '--show-toplevel'], { encoding: 'utf8' });
+  if (git.status === 0 && git.stdout.trim()) return git.stdout.trim();
+  return process.cwd();
+}
+
 function defaultTranscriptDir() {
-  const slug = process.cwd().replace(/\//g, '-');
+  const slug = projectRoot().replace(/\//g, '-');
   return path.join(os.homedir(), '.claude', 'projects', slug);
 }
 
@@ -85,16 +100,29 @@ function bashResultLengthsInFile(filePath) {
   return lengths;
 }
 
-function collectBashResultLengths(dir) {
-  let files = [];
+// Throws on an unreadable directory: an all-zero census must never be
+// confusable with a misspelled path. A readable directory with no .jsonl
+// files legitimately yields [].
+function walkJsonlFiles(dir) {
+  let entries;
   try {
-    files = fs.readdirSync(dir).filter((f) => f.endsWith('.jsonl'));
+    entries = fs.readdirSync(dir, { withFileTypes: true });
   } catch (err) {
-    return [];
+    throw new Error(`cannot read transcript directory ${dir}: ${err.code || err.message}`);
   }
+  const files = [];
+  for (const entry of entries) {
+    const full = path.join(dir, entry.name);
+    if (entry.isDirectory()) files.push(...walkJsonlFiles(full));
+    else if (entry.name.endsWith('.jsonl')) files.push(full);
+  }
+  return files;
+}
+
+function collectBashResultLengths(dir) {
   const lengths = [];
-  for (const file of files) {
-    lengths.push(...bashResultLengthsInFile(path.join(dir, file)));
+  for (const file of walkJsonlFiles(dir)) {
+    lengths.push(...bashResultLengthsInFile(file));
   }
   return lengths;
 }
@@ -161,13 +189,20 @@ function formatText(result) {
 }
 
 function main() {
-  const args = parseArgs(process.argv.slice(2));
-  const result = census(args.dir || defaultTranscriptDir());
-  console.log(args.json ? JSON.stringify(result) : formatText(result));
+  let output;
+  try {
+    const args = parseArgs(process.argv.slice(2));
+    const result = census(args.dir || defaultTranscriptDir());
+    output = args.json ? JSON.stringify(result) : formatText(result);
+  } catch (err) {
+    console.error(`bash-output-census: ${err.message}`);
+    process.exit(1);
+  }
+  console.log(output);
 }
 
 if (require.main === module) {
   main();
 }
 
-module.exports = { census, percentile, resultContentLength };
+module.exports = { census, percentile, resultContentLength, defaultTranscriptDir };
