@@ -401,6 +401,19 @@ an append-only audit-log record class written to
   clarification and [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)
   for the technical mechanism.
 
+**compatibility floor**:
+(unit cache-ttl-gapped-personas, 2026-09-23) — the minimum Claude Code version
+  required by this plugin or project, stated in `.claude-plugin/plugin.json`'s
+  `description` field and `README.md`'s Requirements section (e.g.,
+  `>=2.1.248`). Raising the floor is a real compatibility decision, not merely
+  documentation, because a user running an older version will receive features
+  or configuration options that are silently dropped if the harness version is
+  below the floor. Frontmatter fields like `experimental.cacheTtl` depend on
+  specific platform versions — if the floor is not updated to match, users in
+  the gap range (e.g., 2.1.178–2.1.247) will pass setup checks but silently
+  miss the feature. The floor value is checked at ADAPT time by
+  `skills/install-antislop/SKILL.md` and enforced as a plugin-level constant.
+
 **Consumed interface**:
 (unit #316, 2026-08-10) — a formal label for a wire contract or data format
   that is explicitly documented as being read/parsed by a downstream system.
