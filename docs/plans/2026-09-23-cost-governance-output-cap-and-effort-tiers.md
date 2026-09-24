@@ -277,6 +277,22 @@ entries). No category remains open and no assumption is carried as a deferral.
   precedent at `bin/cli.js:1293-1303` rather than introducing a new pattern.
   Step 2's backfill is therefore **required**, not conditional; **settled, not
   to be re-litigated.**
+- 2026-09-24 Completion / acceptance signals: Q How many files must Step 3's
+  new protocol paragraph appear in — is `.claude/protocol-digest.md` one of
+  them? → A (self-resolved, mid-flight correction): **16, and no** — 4
+  hand-maintained sources + 12 generated mirrors (2 protocol files, 10 agent
+  files). The digest is a verbatim copy of the separate hand-written
+  `templates/protocol-digest.md` (`bin/cli.js:564-566`), is not fed by
+  `UNIVERSAL_PROTOCOL_CORE` (`bin/cli.js:676-683`), and carries zero `## `
+  sections, so it cannot hold protocol prose; adding the paragraph to its
+  template instead would make the total 18 and breach that file's own ~15-line
+  cap. Step 3 criterion 1 previously said 17 (4 + 13 including the digest),
+  which was **unsatisfiable as enumerated** — raised by the implementation
+  unit's commit message (`bd9e0ad`) and independently confirmed by the
+  reviewer; `git grep -l` over the landed sentence returns exactly 16.
+  Criterion 1 and Step 3's affected-files list are corrected accordingly. This
+  is a documentation correction to an already-implemented unit — the unit is
+  **not** re-opened or re-sliced, and no other step's criteria changed.
 
 ## Risks / dependencies
 
@@ -495,10 +511,19 @@ before it enters context*, line ~45), `templates/persona-protocol-slim.md`
 (line ~38), `adapters/cursor/rules/persona-protocol.mdc`,
 `adapters/codex/agents-md-fragment.md`,
 `tests/adapter-protocol-parity.test.js` (probes at lines ~76 and ~98),
-then all generated mirrors via `--update`: `.claude/persona-protocol.md`,
-`.claude/persona-protocol-slim.md`, `.claude/protocol-digest.md`, and all 10
-`.claude/agents/*.md`. Plus `CHANGELOG.md`,
+then the 12 generated mirrors that inherit `UNIVERSAL_PROTOCOL_CORE`, via
+`--update`: `.claude/persona-protocol.md`, `.claude/persona-protocol-slim.md`,
+and all 10 `.claude/agents/*.md`. Plus `CHANGELOG.md`,
 `.claude-plugin/plugin.json`, `package.json`.
+
+**Explicitly NOT a surface for this paragraph**: `.claude/protocol-digest.md`
+is a verbatim copy of the hand-written `templates/protocol-digest.md`
+(`bin/cli.js:564-566`) and is **not** derived from `UNIVERSAL_PROTOCOL_CORE`
+(only `templates/persona-protocol.md` feeds that, via `parseProtocolSections`,
+`bin/cli.js:676-683`). It carries one `#` heading and zero `## ` sections, so
+it structurally cannot carry a protocol-prose section at all; its own header
+directive also caps it at ~15 lines. `--update` still re-copies it, but
+byte-identically — it receives no edit from this step.
 
 The section currently reads as though self-policing is the only control. Amend
 it to state that a mechanical cap exists, what overflow looks like, and — the
@@ -516,8 +541,14 @@ sections outside that list.
    the 4 hand-maintained sources (`templates/persona-protocol.md`,
    `templates/persona-protocol-slim.md`,
    `adapters/cursor/rules/persona-protocol.mdc`,
-   `adapters/codex/agents-md-fragment.md`) **plus** the 13 generated mirrors
-   (2 protocol files, 1 digest, 10 agent files), and no others.
+   `adapters/codex/agents-md-fragment.md`) **plus** the 12 generated mirrors
+   (2 protocol files, 10 agent files) — **16 files total**, and no others.
+   `.claude/protocol-digest.md` is excluded and must **not** match: it is a
+   verbatim copy of the separate hand-written `templates/protocol-digest.md`,
+   not derived from `UNIVERSAL_PROTOCOL_CORE`, and carries zero `## ` sections,
+   so it structurally cannot hold protocol prose (corrected 2026-09-24; the
+   original "17 files / 13 mirrors including the digest" was unsatisfiable as
+   enumerated).
 2. A literal probe for the new clause is added to
    `tests/adapter-protocol-parity.test.js`'s probe table, and
    `node tests/adapter-protocol-parity.test.js` exits 0 (R8: a clause with no

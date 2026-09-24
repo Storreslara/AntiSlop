@@ -1,13 +1,14 @@
 ---
 name: protocol-amendments-do-not-propagate
-description: Amending templates/persona-protocol.md does NOT reach a persona's own body or the Codex port; scope all six approve-attestation surfaces explicitly, and bump the version BEFORE running --update or mirrors silently stay stale.
+description: Amending templates/persona-protocol.md does NOT reach a persona's own body or the Codex port; scope all six approve-attestation surfaces explicitly, never count .claude/protocol-digest.md as a protocol mirror (a UNIVERSAL_PROTOCOL_CORE section lands in 16 files, not 17), and bump the version BEFORE running --update or mirrors silently stay stale.
 metadata:
   type: project
 ---
 
-Two traps that fire together on any spec that amends
-`templates/persona-protocol.md`. Both were measured at `2b5b853` while writing
-Addendum A of `docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md`.
+Three traps that fire on any spec that amends `templates/persona-protocol.md`.
+Traps 1 and 2 were measured at `2b5b853` while writing Addendum A of
+`docs/plans/2026-08-15-dashboard-decision-run-and-pill-controls.md`; trap 3 was
+measured 2026-09-24 (see below).
 
 ## 1. The protocol block is TRIMMED — a template edit may reach nobody
 
@@ -56,3 +57,32 @@ asserts they are equal). If an implementer reports "already current", the bump
 did not land — that is an escalation, never something to work around. Related:
 [[project-config-recovery-has-no-automated-route]],
 [[project-validate-sh-is-a-mirror-parity-check]].
+
+## 3. `.claude/protocol-digest.md` is NOT a protocol mirror — never count it
+
+Measured 2026-09-24 correcting a shipped defective criterion (gh479 / Step 3 of
+`docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md`, which
+said "17 files: 4 sources + 13 mirrors including the digest"). The real count
+for a `UNIVERSAL_PROTOCOL_CORE` section is **16**:
+
+- 4 hand-maintained sources — `templates/persona-protocol{,-slim}.md`,
+  `adapters/cursor/rules/persona-protocol.mdc`,
+  `adapters/codex/agents-md-fragment.md`
+- 12 generated mirrors — `.claude/persona-protocol{,-slim}.md` + all 10
+  `.claude/agents/*.md`
+
+**Why:** `.claude/protocol-digest.md` is a **verbatim copy** of the separate
+hand-written `templates/protocol-digest.md` (`bin/cli.js:564-566`). Only
+`templates/persona-protocol.md` feeds `UNIVERSAL_PROTOCOL_CORE`, via
+`parseProtocolSections` (`bin/cli.js:676-683`). The digest carries one `#`
+heading and **zero `## ` sections**, so it structurally cannot hold protocol
+prose, and its own header caps it at ~15 lines. Adding the paragraph to its
+template to "make the count work" yields 18, not 17, and breaches that cap.
+
+**How to apply:** never write a file-count criterion from an assumed mirror
+list — run `git grep -l "<exact sentence>" | wc -l` against the landed text
+first, or on a sibling section already in the core. Note the digest DOES get
+re-copied by `--update` (byte-identically), so it legitimately appears in a
+"files touched by `--update`" list while never appearing in a grep-count
+criterion — two different lists, easily conflated. See
+[[feedback-verify-own-criteria-nonvacuous]].
