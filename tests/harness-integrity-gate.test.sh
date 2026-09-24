@@ -885,6 +885,185 @@ else
 fi
 
 echo
+echo "-- C2.1: PostToolUse (Edit|Write) registration - fourth hook on the existing matcher, not a new one --"
+c21_count="$(jq '[.hooks.PostToolUse[] | select(.matcher=="Edit|Write") | .hooks[] | select(.command|test("harness-integrity-gate"))] | length' hooks/hooks.json)"
+c21_total="$(jq '[.hooks.PostToolUse[] | select(.matcher=="Edit|Write") | .hooks[]] | length' hooks/hooks.json)"
+if [ "$c21_count" = 1 ] && [ "$c21_total" = 4 ]; then
+  pass "[C2.1] harness-integrity-gate registered exactly once on the Edit|Write PostToolUse matcher, which now carries 4 hooks"
+else
+  bad "[C2.1] expected 1 registration and 4 total hooks, got count=$c21_count total=$c21_total"
+fi
+
+# _pt_payload <tool_name> <file_path> - a PostToolUse payload: no
+# permission_mode/agent_id, matching what Claude Code actually sends after a
+# completed write.
+_pt_payload() {
+  jq -n --arg t "$1" --arg p "$2" '{hook_event_name:"PostToolUse", tool_name:$t, tool_input:{file_path:$p}}'
+}
+
+# posttool_case <label> <file_path> <tool_name> [project dir] - asserts exit 0.
+posttool_case() {
+  run "$(_pt_payload "$3" "$2")" "${4:-$proj}"
+  check "$1" allowed
+}
+
+echo
+echo "-- C2.2: PostToolUse regression guard - 7 subjects, every one exits 0 untouched --"
+posttool_case "case q1 PostToolUse Write persona-config.json exits 0" "$t_persona_cfg" Write
+posttool_case "case q2 PostToolUse Write review-audit.log exits 0" "$t_review_log" Write
+posttool_case "case q3 PostToolUse Write hooks.json exits 0" "$hooks_json_path" Write
+posttool_case "case q4 PostToolUse Write settings.json exits 0" "$settings_path" Write
+posttool_case "case q5 PostToolUse Write harness-integrity-gate.sh exits 0" "$gate_script_path" Write
+posttool_case "case q6 PostToolUse Write mirror exits 0" "$mirror_path" Write
+posttool_case "case q7 PostToolUse Write ordinary source file exits 0" "hooks/scripts/lib/audit-log.sh" Write
+
+echo
+echo "-- Mutation proof (hook_event_name branch, C2.2/C3.3): removing it flips 6 human-confirmable PostToolUse cases to exit 2, leaves the ordinary file at exit 0 --"
+het_mutant="$mutant_dir/posttooluse-branch-deleted.sh"
+sed 's/^if \[ "\$hook_event_name" = "PostToolUse" \]; then$/if [ "$hook_event_name" = "MUTATED-C2_2-hook-event-name-neutered" ]; then/' \
+  hooks/scripts/harness-integrity-gate.sh > "$het_mutant"
+chmod +x "$het_mutant"
+if diff -q hooks/scripts/harness-integrity-gate.sh "$het_mutant" >/dev/null; then
+  bad "[C2.2 mutation] mutant sed produced no change - not actually mutated"
+else
+  save_gate="$gate"; gate="$het_mutant"
+  het_flipped=0; het_total=0
+  for subj in "$t_persona_cfg" "$t_review_log" "$hooks_json_path" "$settings_path" "$gate_script_path" "$mirror_path"; do
+    het_total=$((het_total + 1))
+    run "$(_pt_payload Write "$subj")" "$proj"
+    [ "$rc" = 2 ] && het_flipped=$((het_flipped + 1))
+  done
+  run "$(_pt_payload Write "hooks/scripts/lib/audit-log.sh")" "$proj"
+  het_ordinary_ok=$([ "$rc" = 0 ] && echo 1 || echo 0)
+  gate="$save_gate"
+  if [ "$het_flipped" = "$het_total" ] && [ "$het_total" -gt 0 ] && [ "$het_ordinary_ok" = 1 ]; then
+    pass "[C2.2 mutation] hook_event_name mutant kills all $het_total human-confirmable PostToolUse cases (kill count: $het_total); ordinary file stays exit 0 - disjoint from C1.3(a)/C1.3(b)/C1.4's kill sets (different subjects, different code region)"
+  else
+    bad "[C2.2 mutation] expected $het_total flips to exit 2 and the ordinary file to stay 0; got flipped=$het_flipped ordinary_ok=$het_ordinary_ok"
+  fi
+fi
+
+echo
+echo "-- C2.3: exactly one 'completed' audit line per write, correct set= field, and fails closed on a newline-embedded file_path --"
+c23proj="$(mk c23)"
+c23_log="$c23proj/.claude/review-audit.log"
+
+run "$(_pt_payload Write "$t_persona_cfg")" "$c23proj"
+c23_last="$(tail -n1 "$c23_log" 2>/dev/null || true)"
+case "$c23_last" in
+  *"completed hook=harness-integrity-gate set=A subject=$t_persona_cfg"*)
+    [ "$(wc -l < "$c23_log")" = 1 ] && pass "[C2.3] case r1 PostToolUse persona-config.json -> exactly 1 completed line, set=A" \
+      || bad "[C2.3] case r1 expected exactly 1 log line" ;;
+  *) bad "[C2.3] case r1 completed line malformed or missing: $c23_last" ;;
+esac
+
+run "$(_pt_payload Write "$hooks_json_path")" "$c23proj"
+c23_last2="$(tail -n1 "$c23_log" 2>/dev/null || true)"
+case "$c23_last2" in
+  *"completed hook=harness-integrity-gate set=B subject=$hooks_json_path"*)
+    [ "$(wc -l < "$c23_log")" = 2 ] && pass "[C2.3] case r2 PostToolUse hooks.json -> one new line appended, set=B" \
+      || bad "[C2.3] case r2 expected exactly 2 total log lines" ;;
+  *) bad "[C2.3] case r2 completed line malformed or missing: $c23_last2" ;;
+esac
+
+# gh418 idiom, re-asserted here: a newline embedded in file_path cannot forge
+# a second audit line, because the subject is an EXACT case match against the
+# five literals - the injected newline defeats the match entirely, so nothing
+# is appended and the gate still exits 0 (fails closed, does not block).
+run "$(jq -n --arg t Write --arg p "$hooks_json_path
+2026-01-01T00:00:00Z defer: injected line" '{hook_event_name:"PostToolUse", tool_name:$t, tool_input:{file_path:$p}}')" "$c23proj"
+c23_lines3="$(wc -l < "$c23_log")"
+if [ "$rc" = 0 ] && [ "$c23_lines3" = 2 ]; then
+  pass "[C2.3] case r3 newline-embedded file_path matches no literal exactly -> no line appended, exit 0"
+else
+  bad "[C2.3] case r3 expected rc=0 and log to stay at 2 lines, got rc=$rc lines=$c23_lines3"
+fi
+
+echo
+echo "-- C2.4(a): Set A pairing - ask + PostToolUse = 2 new lines; a deny = 1 --"
+c24a_proj="$(mk c24a)"
+c24a_log="$c24a_proj/.claude/review-audit.log"
+run "$(_pm_payload Write "$t_persona_cfg" default __ABSENT__)" "$c24a_proj"
+run "$(_pt_payload Write "$t_persona_cfg")" "$c24a_proj"
+c24a_lines="$(wc -l < "$c24a_log")"
+c24a_last="$(tail -n1 "$c24a_log" 2>/dev/null || true)"
+case "$c24a_last" in
+  *"completed hook=harness-integrity-gate set=A subject=$t_persona_cfg"*)
+    [ "$c24a_lines" = 2 ] && pass "[C2.4a] Set A ask + PostToolUse -> exactly 2 new audit lines, the second reading 'completed'" \
+      || bad "[C2.4a] Set A ask + PostToolUse -> expected exactly 2 lines, got $c24a_lines" ;;
+  *) bad "[C2.4a] Set A ask + PostToolUse -> last line is not a 'completed' record: $c24a_last" ;;
+esac
+
+c24a_deny_proj="$(mk c24a-deny)"
+c24a_deny_log="$c24a_deny_proj/.claude/review-audit.log"
+run "$(_pm_payload Write "$t_persona_cfg" __ABSENT__ __ABSENT__)" "$c24a_deny_proj"
+c24a_deny_lines="$(wc -l < "$c24a_deny_log")"
+if [ "$rc" = 2 ] && [ "$c24a_deny_lines" = 1 ]; then
+  pass "[C2.4a] Set A deny -> exactly 1 audit line; a blocked write produces no PostToolUse completion"
+else
+  bad "[C2.4a] Set A deny -> expected rc=2 and 1 line, got rc=$rc lines=$c24a_deny_lines"
+fi
+
+echo
+echo "-- C2.4(b): Set B pairing is AMBIGUOUS BY DESIGN (U5) - never assert it distinguishes denial from approval --"
+c24b_proj="$(mk c24b)"
+c24b_log="$c24b_proj/.claude/review-audit.log"
+run "$(_pm_payload Write "$hooks_json_path" default __ABSENT__)" "$c24b_proj"
+run "$(_pt_payload Write "$hooks_json_path")" "$c24b_proj"
+c24b_lines="$(wc -l < "$c24b_log")"
+c24b_last="$(tail -n1 "$c24b_log" 2>/dev/null || true)"
+case "$c24b_last" in
+  *"completed hook=harness-integrity-gate set=B subject=$hooks_json_path"*)
+    [ "$c24b_lines" = 2 ] && pass "[C2.4b] Set B ask + PostToolUse, hook still armed -> exactly 2 new audit lines, the second reading 'completed'" \
+      || bad "[C2.4b] Set B ask + PostToolUse -> expected exactly 2 lines, got $c24b_lines" ;;
+  *) bad "[C2.4b] Set B ask + PostToolUse -> last line is not a 'completed' record: $c24b_last" ;;
+esac
+
+# Reachability proof for the ambiguity itself: the SAME one-line shape (an
+# 'asked' line with no 'completed' line after it) arises from an APPROVED
+# write that then disables its own registration - simulated here by simply
+# never issuing the PostToolUse call that a still-armed gate would receive.
+# This is not a denial; it demonstrates the pairing cannot tell the two apart.
+c24b_sd_proj="$(mk c24b-selfdisable)"
+c24b_sd_log="$c24b_sd_proj/.claude/review-audit.log"
+run "$(_pm_payload Write "$hooks_json_path" default __ABSENT__)" "$c24b_sd_proj"
+c24b_sd_lines="$(wc -l < "$c24b_sd_log")"
+if [ "$rc" = 0 ] && [ "$c24b_sd_lines" = 1 ]; then
+  pass "[C2.4b] a one-line 'asked'-only record is reachable via APPROVAL-and-self-disablement too, not only denial - the pair is ambiguous by design"
+else
+  bad "[C2.4b] expected rc=0 and 1 line for the self-disablement reachability case, got rc=$rc lines=$c24b_sd_lines"
+fi
+
+# Fixed, enumerated file list (never an unbounded "no file says X", per R5):
+# no artifact in this repo may claim the Set B asked/completed pair
+# distinguishes denial from approval.
+c24b_files="$gate docs/trust-model.md CONTEXT.md"
+for _f in docs/adr/*.md; do c24b_files="$c24b_files $_f"; done
+c24b_overclaim=""
+for _f in $c24b_files; do
+  [ -f "$_f" ] || continue
+  if grep -qi "distinguishes denial from approval" "$_f" 2>/dev/null \
+     || grep -qiE "asked.{0,60}(with no|without|but no).{0,20}completed.{0,40}(means|implies|indicates).{0,10}denied" "$_f" 2>/dev/null; then
+    c24b_overclaim="$c24b_overclaim $_f"
+  fi
+done
+if [ -z "$c24b_overclaim" ]; then
+  pass "[C2.4b] enumerated file list ($(echo $c24b_files | wc -w) files) - none claims the Set B pair distinguishes denial from approval"
+else
+  bad "[C2.4b] over-claim found in:$c24b_overclaim"
+fi
+
+echo
+echo "-- C2.5: exemptions re-run after Step 2's edit --"
+c25a="$(grep -cF 'persona-config.json' hooks/scripts/harness-integrity-gate.sh || true)"
+c25b="$(grep -cF 'reviewGating'        hooks/scripts/harness-integrity-gate.sh || true)"
+if [ "${c25a:-0}" = 0 ] && [ "${c25b:-0}" = 0 ]; then
+  pass "[C2.5] configless preserved: zero literal 'persona-config.json' or 'reviewGating' occurrences in the gate source"
+else
+  bad "[C2.5] expected zero occurrences of both, got persona-config.json=$c25a reviewGating=$c25b"
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All harness-integrity-gate tests passed."
 else
