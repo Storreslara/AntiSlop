@@ -8,6 +8,16 @@
 # precondition (spec 6 D0 names this exemption explicitly). No grant
 # branch, no identity exemption. Precedent: human-decision-gate.sh:2-5.
 #
+# Five of the paths below route through a human-confirmation branch instead
+# of an outright deny: the persona-selection config (Set A's one ask-eligible
+# member) and each of Set B's four registration-surface literals. That
+# branch always emits permissionDecision "ask", leaving the call to a
+# human; it never returns the terminal grant a bare "allow" would. The two
+# sets differ in which modes reach it: Set A asks in
+# default|plan|acceptEdits|auto (4 modes); Set B asks in default|plan|auto
+# (3 modes) - Set B excludes acceptEdits, unlike Set A. Both tiers never
+# emit ask from a subagent.
+#
 # SET A - denied on BOTH the Write/Edit and the Bash branch (exact path,
 # project-root-relative). Each audit log's `.seal` sidecar (gh415) is
 # included, since a denial the gate itself logs sits in Set A too:
@@ -17,13 +27,15 @@
 #   .claude/microworld-audit.log[.seal]
 #   .claude/wip-audit.log[.seal]
 #
-# SET B - denied on Write/Edit ONLY. This is the gate's own registration
-# surface: deregistering it (hooks/hooks.json), redefining it
-# (harness-integrity-gate.sh itself), or reaching it via the standalone
-# scaffold's registration file (.claude/settings.json).
+# SET B - denied on Write/Edit, except the human-confirmation branch (see
+# above). This is the gate's own registration surface: deregistering it
+# (hooks/hooks.json), redefining it (harness-integrity-gate.sh itself or its
+# regenerated mirror), or reaching it via the standalone scaffold's
+# registration file (.claude/settings.json).
 #   hooks/hooks.json
 #   .claude/settings.json
 #   hooks/scripts/harness-integrity-gate.sh
+#   .claude/hooks/scripts/harness-integrity-gate.sh
 #
 # Set B is DELIBERATELY absent from the Bash branch - a ratified ADR-0025
 # decision, not an oversight. The Bash branch is a text scan, and ADR-0025's
@@ -95,7 +107,7 @@ deny() {
   # $1 set (A|B|unknown), $2 subject, $3 human-readable surface name
   audit_append "$audit" "$(printf '%s denied hook=harness-integrity-gate set=%s subject=%s' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2")"
-  echo "BLOCKED: '$2' is part of the harness's own $3 and may not be written directly by any agent identity, ever - this gate is hardcoded and configless, with no grant branch and no exemption. Per docs/plans/2026-08-25-harness-trust-gaps.md Step 2." >&2
+  echo "BLOCKED: '$2' is part of the harness's own $3 and may not be written directly by any agent identity - this gate is hardcoded and configless, with no grant branch. Route changes through node bin/cli.js --update (install-antislop section 6). Per docs/plans/2026-08-25-harness-trust-gaps.md Step 2." >&2
   exit 2
 }
 

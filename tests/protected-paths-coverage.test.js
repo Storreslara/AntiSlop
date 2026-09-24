@@ -13,9 +13,14 @@ const configPath = path.join(projectDir, '.claude', 'persona-config.json');
 const exemptions = {
   'harness-integrity-gate.sh': 'Self-protecting instead: its own Write/Edit ' +
     'branch hardcodes a deny on writes to hooks/hooks.json, ' +
-    '.claude/settings.json, and itself (Set B). gh418\'s "Do NOT touch" ' +
-    'section reserves adding it to protectedPaths as an operator decision, ' +
-    'not something this unit bakes in.',
+    '.claude/settings.json, and itself (Set B) - though five of its ' +
+    'guarded paths (the persona-config literal plus Set B\'s four) now ' +
+    'route through a human-confirmation ask rather than an unconditional ' +
+    'deny (2026-09-24). gh418\'s "Do NOT touch" section reserves adding ' +
+    'it to protectedPaths as an operator decision, not something this ' +
+    'unit bakes in. Registration presence (hooks.json still wires this ' +
+    'gate up) is asserted separately by the C7 checks in ' +
+    'tests/harness-integrity-gate.test.sh.',
   'marker-verify.sh': 'Never registered in any hook (RD1\'s safety property, ' +
     'C6.1 GUARD in gh420) - it has no execution path in the harness for a ' +
     'protectedPaths entry to guard. gh420\'s "Do NOT touch" section reserves ' +

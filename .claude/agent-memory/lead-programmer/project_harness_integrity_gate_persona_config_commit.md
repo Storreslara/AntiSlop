@@ -9,18 +9,23 @@ metadata:
 `docs/plans/2026-08-25-harness-trust-gaps.md` Step 2) denies, hardcoded and
 configless with no grant branch, any Bash command whose text mentions
 `.claude/persona-config.json` (or the other Set A audit-log paths), unless
-the whole command is provably-benign (read-only) or a benign `jq` read. This
-directly conflicts with [[check-index-before-commit]]'s "ONLY commit form"
-rule (`git commit -- <paths>` / `-o <paths>`) whenever the regenerated
+the whole command is provably-benign (read-only) or a benign `jq` read. The
+Bash branch never asks — unlike the Write/Edit path, where the
+persona-config literal alone now routes through a human-confirmation branch
+(2026-09-24) — so this stays an unconditional deny for the scenario below.
+This directly conflicts with [[check-index-before-commit]]'s "ONLY commit
+form" rule (`git commit -- <paths>` / `-o <paths>`) whenever the regenerated
 mirror set includes `.claude/persona-config.json` — the standard pathspec
-form's own command text names the file and gets BLOCKED with "is part of the
-harness's own audit/config surface (Set A) and may not be written directly
-by any agent identity, ever."
+form's own command text names the file and gets BLOCKED, citing the
+harness's own audit/config surface (Set A) and naming the sanctioned
+`bin/cli.js --update` route.
 
 **Why:** Set A protects the harness's own config/audit surface from being
-tampered with by any agent identity — deliberately no exemption, not even
-for a legitimate `--update --force-render` regeneration commit that R1 of a
-plan pre-authorizes.
+tampered with via Bash commands — the Bash branch never asks, deliberately
+no exemption on this route, not even for a legitimate
+`--update --force-render` regeneration commit that R1 of a plan
+pre-authorizes. (The persona-config literal's Write/Edit path is different:
+it now routes through a human-confirmation ask, per the gate header.)
 
 **How to apply:** when a unit's regenerated file set includes
 `.claude/persona-config.json` (any Step touching `fileHashes`, i.e. almost
