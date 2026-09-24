@@ -316,6 +316,21 @@ behavior — it does NOT replace the "run testAndLintCommand once" check
 above; a schema-valid config can still contain a command that red-gates on
 turn one.
 
+**Writing this file is gated.** `harness-integrity-gate.sh` treats
+`.claude/persona-config.json` as a protected path. If you write it via
+`Write`/`Edit` from the main session, under one of its four allowlisted
+`permission_mode`s (`default`, `plan`, `auto`, `acceptEdits`), the gate
+returns `permissionDecision: "ask"` — Claude Code shows you its own
+permission prompt carrying the gate's reasoning text, and a human approves
+or rejects the write there; nothing in this step approves it for you. If
+this step instead runs inside a subagent dispatch, the gate still
+hard-denies the write with exit 2, because it never emits `ask` when the
+hook fires inside a subagent — regardless of `permission_mode` — so don't
+dispatch this step as a subagent expecting a prompt. In that case, fall
+back to `node bin/cli.js --update`, the sanctioned un-gated writer for the
+mechanical fields; the judgment call this step makes over the file's actual
+shape still needs a main-session run to land.
+
 ## 6.5 Project constitution (opt-in)
 
 Ask via `AskUserQuestion` whether this project wants a constitution — a
