@@ -123,6 +123,34 @@ the one-time per-project setup process that turns the
   with `--dir` flag to specify the project root (defaults to git-toplevel-derived,
   not raw cwd). See [[transcript store]], [[nearest-rank convention]].
 
+**sweep closure / Cat 1 / Cat 2 / Cat 3 / Cat 4**:
+(unit hcb-prose-history, 2026-09-24) — a repo-wide grep-based classification proving
+  every file matching a stale/superseded claim's search pattern has been accounted for,
+  in both directions: an unclassified [[hit-bearing file]] is red, and a classified file
+  with zero actual hits is also red (preventing the table from rotting into a stale
+  allowlist). The classification is keyed on FILE, not line number (line numbers shift
+  when amendment notes are added), making [[hit-bearing file]] the unit of classification.
+  Originated in `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`'s
+  "Sweep closure" subsection (1339–1557) and reused as a convention for prose-reconciliation
+  sweeps throughout this repo.
+  The four-category taxonomy classifies every hit-bearing file into exactly one of:
+  **Cat 1** — not about the thing being swept (a different gate/feature); **Cat 2** — the
+  claim was made false, needs a dated amendment note; **Cat 3** — the claim is still
+  literally true, gets NO note (annotating it would falsely imply it changed) — this
+  category must have a non-empty membership or the check is vacuous; **Cat 4** — the whole
+  file is excluded from the sweep by a separate, recorded ruling (e.g. ADR-0029's
+  historical-citation rule for CHANGELOG.md). See [[documented residual]] for how Cat 4
+  exclusions are recorded, and [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
+  for the ADR-driven exclusion precedent.
+
+**hit-bearing file**:
+(unit hcb-prose-history, 2026-09-24) — a file that matches a [[sweep closure]]'s search
+  pattern at least once; the unit of classification in a sweep-closure table (never keyed
+  on line number or hit count, since those shift when amendment notes are added or prose is
+  edited). Named as such to emphasize that the classification is file-scoped, not
+  line-scoped. A file with zero hits on a [[sweep closure]] table is red (indicating table
+  rot or stale exclusion), whereas a listed file with zero hits is treated as vacuous.
+
 **bashOutputMaxChars / the Bash-output cap**:
 (unit #478, 2026-09-23) — a user-facing settings key (`bashOutputMaxChars: 12000`) 
   that mechanically bounds Bash tool output (the "cap") via spill-to-file: when output 
@@ -1180,6 +1208,19 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   `assert_budget "stop-gate" 0.100 0.200 50 "$json" -- stop-gate.sh` measures 50 invocations
   and requires p50 ≤ 0.1s and p99 ≤ 0.2s, returning nonzero if either is exceeded. Gates used
   by AC-A1 (Unit A) and will be used by AC-B1 (Unit B).
+
+**lens-2** (finding):
+(unit hcb-prose-history, 2026-09-24) — from this repo's `antislop:ubiquitous-language`
+  terminology-check convention: a finding where an existing glossary term is used with its
+  correct canonical meaning, but the surrounding prose's OTHER claims about the same subject
+  have gone stale — distinct from **lens-1** (a term used with a wrong meaning) and
+  **lens-3** (a load-bearing term missing an entry). Originated in sweep-closure analysis
+  (e.g., row 1 of `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`
+  identifies *"no grant branch"* as still literally true even after the human-confirmation
+  branch ships; the amendment preserves this clause as lens-2 — the lens recognizes it is
+  still correct, so it must not be deleted). Used to distinguish prose that is correctly
+  stated but orphaned by surrounding changes, flagged for reconciliation to prevent false
+  deletions of still-true claims.
 
 **nearest-rank convention**:
 (unit #477, 2026-09-23) — the percentile calculation convention implemented independently
