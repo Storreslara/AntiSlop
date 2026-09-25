@@ -328,6 +328,18 @@ var > per-call param > frontmatter), if `CLAUDE_CODE_SUBAGENT_MODEL` is set
 it silently wins over any model routing in this section — check for it if
 routing ever appears to have no effect.
 
+**`defaultImplementerModel` config precedence.** Before falling back to that
+frontmatter default, check this project's `.claude/persona-config.json` for a
+`defaultImplementerModel` field — the full precedence is per-dispatch
+`Suggested model` tag > `defaultImplementerModel` config field > frontmatter
+default (CONTEXT.md's **Writer tier** entry). Read the raw value yourself: an
+absent key resolves to the frontmatter default, and so does any value that
+is not `sonnet` or `opus` — this fails toward **more** capability, never
+less, the same direction `humanReviewMode`'s own absent/unrecognised-value
+fallback fails toward escalation. Nothing backfills this key into an
+already-adapted project on its own; until a dedicated backfill step lands,
+this absent-key fallback is how such a project gets the default.
+
 **Implementer-tier fail ratchet expiry.** A fail record for unit `X` stops
 disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
 exists and is newer than the fail record. Until then it disqualifies

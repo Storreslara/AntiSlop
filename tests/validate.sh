@@ -761,6 +761,15 @@ else
 fi
 
 echo
+echo "== default-implementer-model: defaultImplementerModel field + precedence (Node) =="
+if node tests/default-implementer-model.test.js; then
+  echo "OK   tests/default-implementer-model.test.js"
+else
+  echo "FAIL tests/default-implementer-model.test.js"
+  fail=1
+fi
+
+echo
 echo "== effort-tier consistency: effort: frontmatter tiers stated consistently across source + mirror (Node) =="
 if node tests/effort-tier-consistency.test.js; then
   echo "OK   tests/effort-tier-consistency.test.js"

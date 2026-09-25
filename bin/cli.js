@@ -329,6 +329,23 @@ function migrateLegacyPersonaTokens(selection, { logNote } = {}) {
   return [...new Set(selection.flatMap(resolveLegacyToken))];
 }
 
+// Recognised `defaultImplementerModel` tier values. Only two tiers exist
+// today (see agents/lead-programmer.md's frontmatter), so "more capability"
+// resolves unambiguously to 'opus'.
+const IMPLEMENTER_MODEL_TIERS = ['sonnet', 'opus'];
+
+// Resolves persona-config.json's `defaultImplementerModel` field against a
+// frontmatter default, per docs/plans/2026-09-25-item18-default-implementer-
+// model-config.md Step 1: absent key -> frontmatter default; a recognised
+// tier -> itself; anything else -> 'opus' (fails toward MORE capability,
+// never less - mirrors humanReviewMode's own fail-toward-escalation rule).
+function resolveDefaultImplementerModel(config, frontmatterDefault) {
+  const raw = config && config.defaultImplementerModel;
+  if (raw === undefined) return frontmatterDefault;
+  if (IMPLEMENTER_MODEL_TIERS.includes(raw)) return raw;
+  return 'opus';
+}
+
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -2484,6 +2501,14 @@ async function main() {
       // agents/reviewer.md), which is what keeps that branch's
       // preserve-every-field contract intact.
       humanReviewMode: 'critical',
+      // Matches agents/lead-programmer.md's `model: sonnet` frontmatter today
+      // (see tests/default-implementer-model.test.js, asserted programmatically
+      // against that frontmatter, not hardcoded on both sides). Like
+      // humanReviewMode, an already-adapted project without this key gets the
+      // default from the consumer's absent-key fallback (agents/orchestrator.md)
+      // via resolveDefaultImplementerModel - a dedicated backfill step
+      // (item18-2, not yet landed) is what makes the key reach such a project.
+      defaultImplementerModel: 'sonnet',
       pluginVersion: version,
       personaSelection,
       issueTracker: '',
@@ -2656,4 +2681,5 @@ module.exports = {
   pruneStaleFileHashes,
   deepMerge,
   runDashboard,
+  resolveDefaultImplementerModel,
 };
