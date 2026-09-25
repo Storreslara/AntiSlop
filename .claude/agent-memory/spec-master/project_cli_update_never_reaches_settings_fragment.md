@@ -46,9 +46,12 @@ fragment**, only seed an absent one.
 
 ## Two constraints on who may do the write
 
-- `.claude/settings.json` is **Set B** of `harness-integrity-gate.sh`: denied
-  on `Write`/`Edit` for every identity, no grant branch. An implementer cannot
-  hand-edit it.
+- `.claude/settings.json` is **Set B** of `harness-integrity-gate.sh`, no grant branch.
+  **Corrected (2026-09-24):** it is no longer denied on `Write`/`Edit`
+  unconditionally — the main session, under an allowlisted permission mode,
+  now reaches a human-confirmation `ask` instead (never from a subagent). An
+  implementer still cannot hand-edit it either way; only a human approving
+  that prompt can.
 - Set B is **deliberately absent from the gate's Bash branch** (ADR-0025), so
   *running `bin/cli.js` via Bash is the sanctioned route*. Hand-editing would
   also break constitution P2 (prefer deterministic scripts over hand-edits).

@@ -1304,6 +1304,160 @@ while [ "$c7_i" -lt 3 ]; do
 done
 
 echo
+echo "-- C4.1: sweep closure - every hit-bearing file of the authoring sweep is classified into exactly one of four categories, both directions (docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md, Step 4) --"
+
+# Re-derive the hit set LIVE, via the authoring pattern verbatim. Never
+# transcribe a hit list - line-wrapped hits (e.g. the gate header's "no
+# grant" / "branch, no identity exemption") only surface this way, and a
+# wider/neighbouring grep pulls in false hits (R13 trap (ii)).
+c41_pattern='no grant branch\|no identity exemption\|no exemption\|any agent identity, ever'
+mapfile -t c41_sweep_files < <(git grep -l "$c41_pattern" | sort)
+
+# LITERAL, REVIEWED file -> category table (never line, never count - the
+# Cat 2 notes and Step 4's own prose edits shift both by construction).
+# Cat 1 = not about this gate; Cat 2 = about this gate, made false; Cat 3 =
+# about this gate, still literally true; Cat 4 = excluded whole-file.
+declare -A c41_cat=(
+  ["docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md"]=1
+  ["docs/plans/2026-08-11-human-decision-channel.md"]=1
+  ["CONTEXT.md"]=1
+  ["tests/human-decision-gate.test.sh"]=1
+  ["hooks/scripts/harness-integrity-gate.sh"]=2
+  [".claude/hooks/scripts/harness-integrity-gate.sh"]=2
+  [".claude/agent-memory/lead-programmer/project_harness_integrity_gate_persona_config_commit.md"]=2
+  ["docs/plans/2026-08-25-harness-trust-gaps.md"]=2
+  ["docs/plans/2026-08-25-harness-ceremony-consolidation.md"]=2
+  ["docs/plans/2026-09-09-fable-gate-audit-remediation.md"]=2
+  ["docs/plans/2026-08-11-microworld-silo.md"]=2
+  ["docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md"]=2
+  [".claude/agent-memory/spec-master/project_cli_update_never_reaches_settings_fragment.md"]=2
+  ["docs/plans/2026-09-02-blocked-marker-scoping-gh425.md"]=3
+  ["docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md"]=3
+  ["docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md"]=3
+  ["tests/harness-integrity-gate.test.sh"]=3
+  ["CHANGELOG.md"]=4
+)
+
+# (a) CLOSURE, BOTH DIRECTIONS, over FILES.
+c41_a_ok=1
+for c41_f in "${c41_sweep_files[@]}"; do
+  if [ -z "${c41_cat[$c41_f]+x}" ]; then
+    bad "[C4.1a] unlisted hit-bearing file (spec gap, not a silent omission): $c41_f"
+    c41_a_ok=0
+  fi
+done
+for c41_f in "${!c41_cat[@]}"; do
+  if ! printf '%s\n' "${c41_sweep_files[@]}" | grep -qxF "$c41_f"; then
+    bad "[C4.1a] table lists $c41_f but the live sweep has zero hits there"
+    c41_a_ok=0
+  fi
+done
+if [ "$c41_a_ok" = 1 ]; then
+  pass "[C4.1a] live sweep file set (${#c41_sweep_files[@]} files) equals the table's key set (${#c41_cat[@]}), both directions"
+fi
+
+# (b) Cat 2 files ONLY: every hit carries a dated amendment note within 5
+#     lines (inclusive, |note_first-hit|<=5), OR the stale text is already
+#     gone - the surviving text at that hit is a reviewed lens-2 true clause.
+#     Asserted per HIT.
+c41_date_re='20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+# hooks/scripts/harness-integrity-gate.sh + its mirror (#471) and the
+# lead-programmer memory note (#471) were corrected IN PLACE with no note
+# expected at every hit; these substrings pin the CURRENT correct text (not
+# line numbers, which drift) so a regression back to the retired absolutes
+# ("...any agent identity, ever", a bare "no exemption") still fails.
+c41_true_gate='no identity exemption
+with no grant branch'
+c41_true_leadmem='no exemption on this route'
+for c41_f in "${!c41_cat[@]}"; do
+  [ "${c41_cat[$c41_f]}" = 2 ] || continue
+  case "$c41_f" in
+    hooks/scripts/harness-integrity-gate.sh|.claude/hooks/scripts/harness-integrity-gate.sh)
+      c41_truesubs="$c41_true_gate" ;;
+    .claude/agent-memory/lead-programmer/project_harness_integrity_gate_persona_config_commit.md)
+      c41_truesubs="$c41_true_leadmem" ;;
+    *) c41_truesubs="" ;;
+  esac
+  while IFS=: read -r _c41_file c41_hline c41_htext; do
+    c41_hit_ok=0
+    c41_lo=$((c41_hline - 5)); [ "$c41_lo" -lt 1 ] && c41_lo=1
+    c41_hi=$((c41_hline + 5))
+    if awk -v lo="$c41_lo" -v hi="$c41_hi" 'NR>=lo && NR<=hi' "$c41_f" | grep -qE "$c41_date_re"; then
+      c41_hit_ok=1
+    elif [ -n "$c41_truesubs" ]; then
+      while IFS= read -r c41_sub; do
+        case "$c41_htext" in *"$c41_sub"*) c41_hit_ok=1 ;; esac
+      done <<< "$c41_truesubs"
+    fi
+    if [ "$c41_hit_ok" = 1 ]; then
+      pass "[C4.1b] $c41_f:$c41_hline satisfied (dated note nearby, or stale text gone)"
+    else
+      bad "[C4.1b] $c41_f:$c41_hline has no dated note within 5 lines and is not a reviewed surviving clause"
+    fi
+  done < <(git grep -n "$c41_pattern" -- "$c41_f")
+done
+
+# (c) Cat 3 files: NO hit carries an amendment note, and non-vacuity.
+# Per-file reason each is still literally true, verified untouched by THIS
+# unit rather than by scanning prose (this plan doc alone quotes amendment
+# language throughout, so a text-marker scan false-positives on itself):
+#  - gh425 doc :621 - subject is an audit log, unconditional deny kept
+#    (OQ1); "no grant branch" stays true regardless. Untouched since d807630.
+#  - ADR-0034 :18,143,157 - the ADR that RATIFIES the change; all three
+#    hits correctly describe the post-change state. Untouched by this unit
+#    since scribe's C4.9 fix (07faca7).
+#  - the plan doc itself, 37 hits - quotes the prose Cat 2 reconciles.
+#    NEVER edited by this unit (do-not-touch). Untouched since 39fca56.
+#  - this suite, :24 - the frozen ASK_REASON_A fixture, byte-compared
+#    against the gate; a note here would be actively harmful (C1.x reds).
+if git diff --quiet d807630 -- docs/plans/2026-09-02-blocked-marker-scoping-gh425.md; then
+  pass "[C4.1c] gh425 doc untouched (Cat 3, audit log, still true)"
+else
+  bad "[C4.1c] gh425 doc was modified - Cat 3 must carry no note"
+fi
+if git diff --quiet 07faca7 -- docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md; then
+  pass "[C4.1c] ADR-0034 untouched by this unit (Cat 3, ratifies the change)"
+else
+  bad "[C4.1c] ADR-0034 was modified by this unit - Cat 3 must carry no note"
+fi
+if git diff --quiet 39fca56 -- docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md; then
+  pass "[C4.1c] the spec plan doc itself is untouched by this unit (Cat 3)"
+else
+  bad "[C4.1c] the spec plan doc was modified by this unit - never edit the spec to pass a criterion"
+fi
+c41_line24_before="$(git show 9f79d8d:tests/harness-integrity-gate.test.sh | sed -n '24p')"
+c41_line24_now="$(sed -n '24p' tests/harness-integrity-gate.test.sh)"
+if [ "$c41_line24_before" = "$c41_line24_now" ]; then
+  pass "[C4.1c] tests/harness-integrity-gate.test.sh:24 ASK_REASON_A fixture unchanged (Cat 3)"
+else
+  bad "[C4.1c] tests/harness-integrity-gate.test.sh:24 was altered by this unit"
+fi
+c41_cat3_count=0
+for c41_f in "${!c41_cat[@]}"; do
+  [ "${c41_cat[$c41_f]}" = 3 ] && c41_cat3_count=$((c41_cat3_count + 1))
+done
+if [ "$c41_cat3_count" -ge 1 ]; then
+  pass "[C4.1c] Cat 3 is non-vacuous ($c41_cat3_count files)"
+else
+  bad "[C4.1c] Cat 3 has zero members - a suite that silently drops it is wrongly green"
+fi
+
+# (d) Cat 4 is EXACTLY ONE FILE and it is CHANGELOG.md.
+c41_cat4_count=0
+c41_cat4_name=""
+for c41_f in "${!c41_cat[@]}"; do
+  if [ "${c41_cat[$c41_f]}" = 4 ]; then
+    c41_cat4_count=$((c41_cat4_count + 1))
+    c41_cat4_name="$c41_f"
+  fi
+done
+if [ "$c41_cat4_count" = 1 ] && [ "$c41_cat4_name" = "CHANGELOG.md" ]; then
+  pass "[C4.1d] Cat 4 is exactly one file: CHANGELOG.md"
+else
+  bad "[C4.1d] Cat 4 must be exactly one file named CHANGELOG.md - got count=$c41_cat4_count name=$c41_cat4_name"
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All harness-integrity-gate tests passed."
 else

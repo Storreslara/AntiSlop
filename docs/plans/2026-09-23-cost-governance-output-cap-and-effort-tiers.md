@@ -347,6 +347,18 @@ entries). No category remains open and no assumption is carried as a deferral.
   via Bash* — which is exactly what Step 2 specifies. An implementer that tries
   to hand-edit the file will be blocked, and hand-editing would also violate
   constitution P2 (prefer deterministic scripts over hand-edits).
+- **Amended 2026-09-24** (partly superseded by
+  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`): R4's
+  parenthetical narrows to two claims. *"No grant branch"* stays true — the
+  human-confirmation branch hands nobody a unilateral capability. *"For any
+  identity"* is now false: `.claude/settings.json` is one of Set B's four
+  literals, and a `Write`/`Edit` to it from the main session, under an
+  allowlisted permission mode, now returns `ask` — a human decides at Claude
+  Code's own permission prompt, instead of an outright deny. **R4's
+  conclusion stays binding regardless:** the branch never emits `ask` from a
+  subagent, so an implementer dispatched to do this work is still
+  hard-denied, and running `bin/cli.js` via `Bash` remains the sanctioned
+  route Step 2 specifies.
 - **R5 — no new hook script lands in this spec, deliberately.** Consequently
   `docs/trust-model.md` needs **no new row** and
   `tests/trust-model-bijection.test.js`'s `EXPECTED_SELF_REPORTED_COUNT`
