@@ -150,8 +150,8 @@ carried here as an open item.
   trail, not a defect introduced by this decision, and it must never be
   characterized elsewhere as resolved or as distinguishing denial from approval.
 - **`CHANGELOG.md` supersession.** Per ADR-0029's historical-citation rule, the
-  `CHANGELOG.md` entry that introduced `harness-integrity-gate.sh` is left
-  exactly as written. Two of its claims are narrowed by this change: its
+  `CHANGELOG.md` entry that introduced `harness-integrity-gate.sh` is left exactly as written.
+  Two of its claims are narrowed by this change: its
   'hardcodes a deny' description (now `ask` for five paths in allowlisted
   main-session shapes) and its three-item Set B enumeration (four literals after
   OQ5). The 'no grant branch, no identity exemption' absolutes it carries are not
