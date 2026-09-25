@@ -10,29 +10,18 @@
 # content-validation precedent at stop-gate.sh:75-85): the marker must be
 # non-empty AND its first line must read exactly
 #   PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria: <acceptance-criteria command(s) run>
-# A bare `touch` (empty file) or a first line not matching that shape used to
-# be rejected outright as of v0.6.0's release (2026-07-13). Per Open Question
-# 4 (human decision, 2026-07-13): a two-week legacy-marker GRACE PERIOD softens
-# that instead of a hard cutover - see GRACE_PERIOD_END below. Existence alone
-# is still never sufficient once the grace period ends, closing the
+# A bare `touch` (empty file) or a first line not matching that shape is
+# rejected outright, as of v0.6.0's release (2026-07-13), closing the
 # anyone-with-Bash forgery gap a bare touch left open. On acceptance, an
 # audit line is appended to .claude/review-audit.log (sibling of
 # wip-audit.log) so accepted markers leave the same kind of trail the WIP
-# sentinel's honored path does; a grace-period warning is logged too, so its
-# use is reviewable, same rationale as every other audit log in this system.
+# sentinel's honored path does.
 #
 # A FAIL verdict writes a sibling `<task-id>.fail` record (agents/reviewer.md)
 # — this gate does not check it and never blocks on it; it exists purely as
 # a durable warning for future spec-master/orchestrator spawns (see
 # persona-protocol.md's "FAIL record" section), not a completion gate.
 set -euo pipefail
-
-# Two weeks from the v0.6.0 release date (2026-07-13). Before this date, a
-# legacy/missing/malformed marker gets a loud warning and is ALLOWED; on or
-# after this date, the same marker is REJECTED. Bump this only alongside a
-# future format change that needs its own grace window - it is not meant to
-# be extended for the v2 rollout itself.
-GRACE_PERIOD_END="2026-07-27"
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
@@ -71,18 +60,8 @@ reject() {
   echo "The reviewer (or the no-reviewer fallback lead) must write it in v3 format, first line exactly:" >&2
   echo "  mkdir -p \"$(dirname "$marker")\" && printf 'PASS ${task_id} %s commit: %s criteria: <acceptance-criteria command(s) run>\\n' \"\$(date -u +%Y-%m-%dT%H:%M:%SZ)\" \"<the unit's own final commit, not HEAD>\" > ${marker}" >&2
   echo "A bare 'touch' or an empty/malformed marker is rejected - existence alone is not enough." >&2
-  echo "The v0.6.0 legacy-marker grace period ended ${GRACE_PERIOD_END} - it no longer softens this block." >&2
   echo "If your copied reviewer.md predates plugin v0.6.0 (still teaches a bare touch), run /antislop:update-antislop to pick up the v3 format." >&2
   exit 2
-}
-
-warn_and_allow_legacy() {
-  echo "WARNING: Task '${task_name}' has no valid v2 reviewer PASS marker at ${marker}." >&2
-  echo "Allowed ONLY under the v0.6.0 legacy-marker grace period, which ends ${GRACE_PERIOD_END} (UTC) - after that date this will BLOCK." >&2
-  echo "Run /antislop:update-antislop now to pick up the v2 marker format before the grace period ends." >&2
-  audit_append "${project_dir}/.claude/review-audit.log" \
-    "$(printf '%s task=%s legacy-marker-grace-period-warning' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$task_id")"
-  exit 0
 }
 
 if marker_valid; then
@@ -91,9 +70,4 @@ if marker_valid; then
   exit 0
 fi
 
-today="$(date -u +%Y-%m-%d)"
-if [[ "$today" < "$GRACE_PERIOD_END" ]]; then
-  warn_and_allow_legacy
-else
-  reject
-fi
+reject
