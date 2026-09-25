@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 'use strict';
 
-// Coverage for item18-1-add-config-field
-// (docs/plans/2026-09-25-item18-default-implementer-model-config.md, Step 1):
-// `defaultImplementerModel` as a persona-config.json field, with the
-// precedence per-dispatch tag > config field > frontmatter default.
+// Coverage for item18-1-add-config-field and item18-2-backfill-existing-
+// configs (docs/plans/2026-09-25-item18-default-implementer-model-config.md,
+// Steps 1 and 2): `defaultImplementerModel` as a persona-config.json field,
+// with the precedence per-dispatch tag > config field > frontmatter default,
+// and `--update` backfilling the key into already-adapted projects.
 
 const assert = require('assert');
 const fs = require('fs');
@@ -110,6 +111,126 @@ check('agents/orchestrator.md restricts the frontmatter fallback to an absent ke
     !text.includes(stripWhitespace('and so does any value that')),
     'orchestrator.md still sends an unrecognised value to the frontmatter default (the cheaper tier)'
   );
+});
+
+// --- item18-2: --update backfill. Builds a fixture the same way
+// tests/cli-backfill.test.js's buildBaselineProject does: every current spec
+// rendered clean and stamped at the plugin's OWN version, so the version-
+// match fast-path is in play and the only drift the fixture introduces is
+// the one each check is about. A `--yes` scaffold-then-`--update` fixture was
+// tried first and rejected: it leaves explorer.md's MCP placeholder
+// unresolved (no --wire-graph-mcp in scripted mode), which fails `--update`
+// for a reason unrelated to this backfill.
+const PLUGIN_VERSION = JSON.parse(
+  fs.readFileSync(path.join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8')
+).version;
+const GRAPH_MCP_LAUNCH = { command: 'npx', args: ['code-review-graph-mcp'] };
+
+function stampBody(body, sourceRelPath) {
+  const stamp = `<!-- antislop v${PLUGIN_VERSION} | source: ${sourceRelPath} | ADAPT-substituted -->\n`;
+  const fmMatch = body.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/);
+  if (!fmMatch) return stamp + body;
+  const end = fmMatch[0].length;
+  return body.slice(0, end) + stamp + body.slice(end);
+}
+
+function buildBaselineProject(tmp) {
+  const specs = cli.buildFileSpecs([]);
+  const config = {
+    pluginVersion: PLUGIN_VERSION,
+    personaSelection: [],
+    substitutions: { graphMcpLaunch: GRAPH_MCP_LAUNCH },
+    fileHashes: {},
+    humanReviewMode: 'critical',
+    defaultImplementerModel: frontmatterModel(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'lead-programmer.md'), 'utf8')),
+  };
+  for (const spec of specs) {
+    const cleanBody = cli.renderCleanBody(spec, config);
+    const destAbsPath = path.join(tmp, spec.projectRelPath);
+    fs.mkdirSync(path.dirname(destAbsPath), { recursive: true });
+    fs.writeFileSync(destAbsPath, stampBody(cleanBody, spec.sourceRelPath));
+    config.fileHashes[spec.projectRelPath] = cli.sha256Hex(cleanBody);
+  }
+  for (const spec of cli.buildHookScriptSpecs()) {
+    const body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
+    const destAbsPath = path.join(tmp, spec.projectRelPath);
+    fs.mkdirSync(path.dirname(destAbsPath), { recursive: true });
+    fs.writeFileSync(destAbsPath, body);
+    config.fileHashes[spec.projectRelPath] = cli.sha256Hex(body);
+  }
+  fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true });
+  fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
+  return config;
+}
+
+function readConfig(tmp) {
+  return JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8'));
+}
+
+function writeConfig(tmp, config) {
+  fs.writeFileSync(path.join(tmp, '.claude', 'persona-config.json'), JSON.stringify(config, null, 2) + '\n');
+}
+
+check('--update backfills defaultImplementerModel for a config lacking it, without disturbing an unrelated field', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dim-backfill-missing-'));
+  try {
+    const before = buildBaselineProject(tmp);
+    delete before.defaultImplementerModel;
+    const humanReviewModeBefore = before.humanReviewMode;
+    writeConfig(tmp, before);
+
+    const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+    const after = readConfig(tmp);
+    const expected = frontmatterModel(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'lead-programmer.md'), 'utf8'));
+    assert.strictEqual(
+      after.defaultImplementerModel, expected,
+      `--update must backfill defaultImplementerModel: ${JSON.stringify(expected)}, got ${JSON.stringify(after.defaultImplementerModel)}`
+    );
+    // Non-vacuity: the backfill must not have touched an unrelated field.
+    assert.strictEqual(after.humanReviewMode, humanReviewModeBefore, 'humanReviewMode must be byte-identical before/after the backfill');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+check('--update is idempotent: a second run leaves the config unchanged after the first backfill', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dim-backfill-idempotent-'));
+  try {
+    const before = buildBaselineProject(tmp);
+    delete before.defaultImplementerModel;
+    writeConfig(tmp, before);
+
+    const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(first.status, 0, `first --update expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+    const afterFirst = fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8');
+
+    const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+    const afterSecond = fs.readFileSync(path.join(tmp, '.claude', 'persona-config.json'), 'utf8');
+
+    assert.strictEqual(afterSecond, afterFirst, 'a second --update must leave persona-config.json byte-identical to the first backfill');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+check('--update preserves a deliberately-set non-default defaultImplementerModel value', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dim-backfill-preserve-'));
+  try {
+    const before = buildBaselineProject(tmp);
+    before.defaultImplementerModel = 'opus';
+    writeConfig(tmp, before);
+
+    const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+    const after = readConfig(tmp);
+    assert.strictEqual(after.defaultImplementerModel, 'opus', 'a deliberately-set non-default value must survive --update untouched');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
 });
 
 console.log(failures === 0 ? '\nAll default-implementer-model checks passed.' : `\n${failures} check(s) failed.`);

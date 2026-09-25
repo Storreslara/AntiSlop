@@ -573,6 +573,15 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     fs.readFileSync(path.join(REPO_ROOT, '.claude-plugin', 'plugin.json'), 'utf8')
   ).version;
   const graphMcpLaunch = { command: 'npx', args: ['code-review-graph-mcp'] };
+  // A genuinely current project also carries defaultImplementerModel
+  // (item18-2) — without it, buildBaselineProject's fixture looks like a
+  // pre-item18 config and every --update below trips the item18-2 backfill,
+  // which is not what any of these checks are about.
+  const implementerModelDefault = (() => {
+    const text = fs.readFileSync(path.join(REPO_ROOT, 'agents', 'lead-programmer.md'), 'utf8');
+    const m = text.match(/^---\n[\s\S]*?\nmodel:\s*(\S+)\n[\s\S]*?\n---/);
+    return m ? m[1] : null;
+  })();
 
   // Mirrors bin/cli.js's insertStampAfterFrontmatter/versionStamp shape
   // (stamp right after frontmatter when present, else at the top) without
@@ -599,6 +608,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       personaSelection: selection || [],
       substitutions: { graphMcpLaunch },
       fileHashes: Object.assign({}, extraFileHashes),
+      defaultImplementerModel: implementerModelDefault,
     };
     for (const spec of specs) {
       const cleanBody = cli.renderCleanBody(spec, config);
@@ -1187,6 +1197,18 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
       if (entry === '.git' || entry === 'node_modules') continue;
       const copied = spawnSync('cp', ['-r', path.join(REPO_ROOT, entry), path.join(tmp, entry)], { encoding: 'utf8' });
       assert.strictEqual(copied.status, 0, `cp -r ${entry} failed: ${copied.stderr}`);
+    }
+    // This repo's OWN .claude/persona-config.json deliberately predates
+    // item18-2 (the backfill it is a fixture for), so a straight `cp -r`
+    // would trip that very backfill here and dirty the post-run tree these
+    // checks assert stays clean for an unrelated reason. Patch the copy so
+    // this fixture represents a genuinely current project, same fix as
+    // buildBaselineProject above.
+    const copiedConfigPath = path.join(tmp, '.claude', 'persona-config.json');
+    const copiedConfig = JSON.parse(fs.readFileSync(copiedConfigPath, 'utf8'));
+    if (copiedConfig.defaultImplementerModel == null) {
+      copiedConfig.defaultImplementerModel = implementerModelDefault;
+      fs.writeFileSync(copiedConfigPath, JSON.stringify(copiedConfig, null, 2) + '\n');
     }
     const git = (gitArgs) => spawnSync('git', gitArgs, { cwd: tmp, encoding: 'utf8' });
     const porcelain = () => git(['status', '--porcelain', '-uno']).stdout;

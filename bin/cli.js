@@ -351,6 +351,17 @@ function resolveDefaultImplementerModel(config, frontmatterDefault) {
   return 'opus';
 }
 
+// Reads the PACKAGED agents/lead-programmer.md (PKG_ROOT, never a project's
+// own copy) for its `model:` frontmatter value — the same default the
+// fresh-scaffold skeleton ships, and what item18-2's `--update` backfill
+// writes for a config predating this field.
+function implementerFrontmatterDefault() {
+  const text = fs.readFileSync(path.join(PKG_ROOT, 'agents', 'lead-programmer.md'), 'utf8');
+  const m = text.match(/^---\n[\s\S]*?\nmodel:\s*(\S+)\n[\s\S]*?\n---/);
+  if (!m) throw new Error('could not read agents/lead-programmer.md frontmatter model');
+  return m[1];
+}
+
 function escapeRegExp(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
@@ -1235,6 +1246,24 @@ async function runUpdate(args) {
     .map((s) => s.projectRelPath)
     .filter((rel) => fs.existsSync(path.join(CWD, rel)));
 
+  // Backfill `defaultImplementerModel` (item18-2, docs/plans/2026-09-25-
+  // item18-default-implementer-model-config.md Step 2): a config that
+  // predates this field would otherwise be permanently inert — the same
+  // defect class as the settings-fragment merge (a new key does nothing for
+  // an already-adapted project unless runUpdate explicitly writes it).
+  // "Absent" reuses resolveDefaultImplementerModel's own nullish check (a
+  // missing key or an explicit `null` "no opinion"), so the two paths agree;
+  // any other present value — including a deliberately-set non-default tier —
+  // is left untouched.
+  const needsImplementerModelBackfill = config.defaultImplementerModel == null;
+  if (needsImplementerModelBackfill) {
+    config.defaultImplementerModel = implementerFrontmatterDefault();
+    console.log(
+      `Note: persona-config.json was missing defaultImplementerModel (this project predates it) ` +
+        `— backfilled to "${config.defaultImplementerModel}" (agents/lead-programmer.md's frontmatter default).\n`
+    );
+  }
+
   const backfilledSubs = backfillSubstitutionsFromDisk(config, specs);
   const backfilledHashes = backfillFileHashesFromDisk(config, specs);
   const backfilled = backfilledSubs || backfilledHashes;
@@ -1409,7 +1438,7 @@ async function runUpdate(args) {
     }
   }
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !forceRender && !migratedClaudeMd && !needsRender) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !needsImplementerModelBackfill && !forceRender && !migratedClaudeMd && !needsRender) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
