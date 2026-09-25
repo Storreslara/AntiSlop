@@ -329,9 +329,11 @@ function migrateLegacyPersonaTokens(selection, { logNote } = {}) {
   return [...new Set(selection.flatMap(resolveLegacyToken))];
 }
 
-// Recognised `defaultImplementerModel` tier values. Only two tiers exist
-// today (see agents/lead-programmer.md's frontmatter), so "more capability"
-// resolves unambiguously to 'opus'.
+// Recognised `defaultImplementerModel` tier values — must stay in sync with
+// templates/persona-config.schema.json's `defaultImplementerModel` enum,
+// which (with CONTEXT.md's **Writer tier** entry) is what establishes that
+// only two tiers exist today, so "more capability" resolves unambiguously
+// to 'opus'.
 const IMPLEMENTER_MODEL_TIERS = ['sonnet', 'opus'];
 
 // Resolves persona-config.json's `defaultImplementerModel` field against a
@@ -340,8 +342,11 @@ const IMPLEMENTER_MODEL_TIERS = ['sonnet', 'opus'];
 // tier -> itself; anything else -> 'opus' (fails toward MORE capability,
 // never less - mirrors humanReviewMode's own fail-toward-escalation rule).
 function resolveDefaultImplementerModel(config, frontmatterDefault) {
-  const raw = config && config.defaultImplementerModel;
-  if (raw === undefined) return frontmatterDefault;
+  // Deliberate: "absent" means nullish — no config object at all, no key, or
+  // an explicit `null` spelling "no opinion". Every other unrecognised value
+  // is junk and escalates to 'opus'.
+  const raw = config == null ? undefined : config.defaultImplementerModel;
+  if (raw == null) return frontmatterDefault;
   if (IMPLEMENTER_MODEL_TIERS.includes(raw)) return raw;
   return 'opus';
 }

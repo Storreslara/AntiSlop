@@ -70,6 +70,14 @@ check('resolveDefaultImplementerModel: an unrecognised value resolves to opus (m
   assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: 'bogus-junk' }, 'sonnet'), 'opus');
 });
 
+// Pins the stated "absent means nullish" decision in bin/cli.js: an explicit
+// null (and a missing config object) is "no opinion", not junk.
+check('resolveDefaultImplementerModel: a null value and a missing config both count as absent', () => {
+  assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: null }, 'sonnet'), 'sonnet');
+  assert.strictEqual(cli.resolveDefaultImplementerModel(null, 'sonnet'), 'sonnet');
+  assert.strictEqual(cli.resolveDefaultImplementerModel(undefined, 'sonnet'), 'sonnet');
+});
+
 // Whitespace-stripped (not just collapsed) so a wrapped line break inside
 // the phrase can't evade the check (see writer-tier-consistency.test.js's
 // AC-D9 for the same pattern).
@@ -82,6 +90,25 @@ check('agents/orchestrator.md documents the per-dispatch tag > config field > fr
   assert.ok(
     text.includes(stripWhitespace('`Suggested model` tag > `defaultImplementerModel` config field > frontmatter default')),
     'orchestrator.md does not state the per-dispatch tag > config field > frontmatter precedence'
+  );
+});
+
+// The orchestrator prose is the production resolution path (it tells the
+// orchestrator to read the raw value itself), so the fallback rule it states
+// must match resolveDefaultImplementerModel's, not just the precedence chain.
+check('agents/orchestrator.md restricts the frontmatter fallback to an absent key and escalates any other unrecognised value to opus', () => {
+  const text = stripWhitespace(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'orchestrator.md'), 'utf8'));
+  assert.ok(
+    text.includes(stripWhitespace('Only an **absent** key resolves to that frontmatter default')),
+    'orchestrator.md does not restrict the frontmatter-default fallback to an absent key'
+  );
+  assert.ok(
+    text.includes(stripWhitespace("outside the recognised set (`templates/persona-config.schema.json`'s `defaultImplementerModel` enum) resolves to the **more** capable tier, `opus`")),
+    'orchestrator.md does not state that a present-but-unrecognised value resolves to `opus`'
+  );
+  assert.ok(
+    !text.includes(stripWhitespace('and so does any value that')),
+    'orchestrator.md still sends an unrecognised value to the frontmatter default (the cheaper tier)'
   );
 });
 
