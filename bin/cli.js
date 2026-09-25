@@ -357,7 +357,7 @@ function resolveDefaultImplementerModel(config, frontmatterDefault) {
 // writes for a config predating this field.
 function implementerFrontmatterDefault() {
   const text = fs.readFileSync(path.join(PKG_ROOT, 'agents', 'lead-programmer.md'), 'utf8');
-  const m = text.match(/^---\n[\s\S]*?\nmodel:\s*(\S+)\n[\s\S]*?\n---/);
+  const m = text.match(/^---\r?\n[\s\S]*?\r?\nmodel:\s*(\S+)\r?\n[\s\S]*?\r?\n---/);
   if (!m) throw new Error('could not read agents/lead-programmer.md frontmatter model');
   return m[1];
 }
@@ -1260,7 +1260,8 @@ async function runUpdate(args) {
     config.defaultImplementerModel = implementerFrontmatterDefault();
     console.log(
       `Note: persona-config.json was missing defaultImplementerModel (this project predates it) ` +
-        `— backfilled to "${config.defaultImplementerModel}" (agents/lead-programmer.md's frontmatter default).\n`
+        `— ${dryRun ? 'would backfill' : 'backfilled'} to "${config.defaultImplementerModel}" ` +
+        '(agents/lead-programmer.md\'s frontmatter default).\n'
     );
   }
 

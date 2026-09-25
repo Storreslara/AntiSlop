@@ -233,5 +233,32 @@ check('--update preserves a deliberately-set non-default defaultImplementerModel
   }
 });
 
+check('--update --dry-run against a config missing defaultImplementerModel reports the pending change without writing it', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dim-backfill-dryrun-'));
+  try {
+    const before = buildBaselineProject(tmp);
+    delete before.defaultImplementerModel;
+    writeConfig(tmp, before);
+    const configPath = path.join(tmp, '.claude', 'persona-config.json');
+    const bytesBefore = fs.readFileSync(configPath, 'utf8');
+
+    const result = spawnSync('node', [cliPath, '--update', '--dry-run'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(result.status, 3, `expected exit 3 (would mutate), got ${result.status}: ${result.stdout}${result.stderr}`);
+    assert.ok(
+      result.stdout.includes('would backfill to'),
+      `dry-run output must report the pending backfill in future tense, got: ${result.stdout}`
+    );
+    assert.ok(
+      !result.stdout.includes('— backfilled to'),
+      `dry-run output must not claim the backfill already happened, got: ${result.stdout}`
+    );
+
+    const bytesAfter = fs.readFileSync(configPath, 'utf8');
+    assert.strictEqual(bytesAfter, bytesBefore, '--dry-run must not write defaultImplementerModel to disk');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 console.log(failures === 0 ? '\nAll default-implementer-model checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
