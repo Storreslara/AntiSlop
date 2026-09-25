@@ -299,6 +299,14 @@ paths as they were at the time and are evidence, not documentation.
   hand-edited** — it is in `harness-integrity-gate.sh`'s Set A, which refuses
   writes from every agent identity with no exemption; regenerating via
   `node bin/cli.js --update --force-render` is the only sanctioned route.
+  **Partly superseded, 2026-09-24:**
+  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`
+  narrows the "refuses writes" predicate above for this config specifically:
+  in an allowlisted main-session shape (`agent_id` absent), a `Write`/`Edit`
+  there now reaches `permissionDecision: "ask"` — never `allow`, never from a
+  subagent — instead of an outright refusal. "With no exemption" stays true
+  (no identity gets a unilateral bypass); the `--force-render` sanctioned
+  route above is unaffected.
 - **R8 — [REVERSAL] Step 2 must update `tests/watch-map.json`, or it cannot
   pass its own criterion 1.** `tests/watch-map.json`'s `gh351` entry names
   `tests/dashboard-decision-block.test.js` in both `watch[]` and `run[]`. This
@@ -557,6 +565,13 @@ hook header, not a historical citation, so it is in scope.
 - `.claude/persona-config.json` — the `fileHashes` entry for that mirror.
   **Regenerated, never hand-edited** (Set A; `harness-integrity-gate.sh`
   refuses direct writes from every agent identity, with no exemption).
+
+**Partly superseded, 2026-09-24:**
+`docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md` narrows
+the "refuses direct writes" predicate above for this config specifically: in
+an allowlisted main-session shape (`agent_id` absent), a `Write`/`Edit` there
+now reaches `permissionDecision: "ask"` — never `allow`, never from a
+subagent — instead of an outright refusal. "With no exemption" stays true.
 
 **Method:** edit the source, then run `node bin/cli.js --update
 --force-render`, which rewrites the mirror and re-backfills the hash. This is

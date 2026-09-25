@@ -902,6 +902,11 @@ one-line fix:
   makes it unusable as-is for a directory with a legitimate writer. This needs
   the *"write-only-through-a-helper contract with the directory made
   non-writable"* shape M4's own text already predicted, not a Set A addition.
+  **Partly superseded, 2026-09-24:** the quoted absolute now holds for Set A's
+  audit-log paths only; its persona-selection-config member gained a
+  human-confirmation branch (`ask`, never `allow`, never from a subagent) in
+  allowlisted main-session shapes — see
+  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`.
 - Step 2's Bash branch **is a lexical text scan** that sources
   `benign-command.sh` and inherits *"every residual the existing gates
   disclose"* (spec 1, D2). Retiring a textual gate by adding a second textual

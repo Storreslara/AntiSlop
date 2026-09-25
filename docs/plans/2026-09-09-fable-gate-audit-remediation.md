@@ -118,6 +118,13 @@ matched the claim)
   `agents/orchestrator.md:111` prescribes. Adding those three to Set A
   (denied on the Bash branch, no exemption) removes three sanctioned exits and
   would push agents toward self-authorized bypasses. See **Open Question 3**.
+- **Partly superseded, 2026-09-24 (covers both this bullet and M7 below):**
+  `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md` (FINAL)
+  gives Set A's persona-selection-config member and Set B's four
+  registration-surface literals — five paths total — a human-confirmation
+  branch (`ask`, never `allow`, never from a subagent) in allowlisted
+  main-session shapes; the "no exemption" wording quoted above stays true for
+  the Bash branch and for every path outside that bounded set.
 - **M7 — `hooks/scripts/lib/*` in Set B is a real lockout, with precedent.**
   Set B denies `Write`/`Edit` for every identity with no exemption. After M7,
   the only route to a gate library is a surgical `Bash` edit — and for

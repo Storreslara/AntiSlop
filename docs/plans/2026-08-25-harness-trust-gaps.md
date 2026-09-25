@@ -993,6 +993,20 @@ write. Spec 3's M4 is blocked on precisely that, and its OQ2 doubts it is
 reachable. Whoever evaluates M4's precondition should test against this gate.
 **No part of M4 is in scope here.**
 
+**Partly superseded, 2026-09-24:** `docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md`
+(FINAL) narrows both rulings above, for a bounded set of five paths only — the
+persona-selection config (`.claude/persona-config.json`, Set A) plus Set B's
+four registration-surface literals (`hooks/hooks.json`, `.claude/settings.json`,
+`harness-integrity-gate.sh`, and its mirror). Across those five paths, within
+one of two frozen allowlisted-mode tiers, the gate now returns
+`permissionDecision: "ask"` — never `allow`, and never emitted from a subagent
+— in place of the outright deny. The Set A absolutes at `:976` (no config
+precondition, no grant branch, no identity exemption, no `reviewGating` read)
+stay true. The `.claude/settings.json` "intended trade" above is partially
+reversed for that same file: a legitimate permission edit there, in an
+allowlisted main-session shape, now reaches a human at Claude Code's own
+permission prompt instead of being refused outright.
+
 **Acceptance criteria**
 
 ```sh
