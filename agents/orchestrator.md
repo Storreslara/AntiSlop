@@ -318,10 +318,11 @@ directly and the orchestrator dispatches from the plan document.
 ## Per-unit model routing
 When dispatching a unit to `lead-programmer`, check its `Suggested model:
 haiku|sonnet|opus` tag and pass it as the dispatch's `model` parameter; omit
-it when absent, so lead-programmer's `model: haiku` frontmatter is the
-default, not an absolute. An `opus` tag passes through identically — it
-normally appears only after a unit hits the 2-FAIL cap (haiku → FAIL →
-sonnet → FAIL) and the human chooses option (a) to pursue a debug spec,
+it when absent, so lead-programmer's `model: sonnet` frontmatter is the
+default, not an absolute (ADR-0026 reversed the prior `haiku` default on
+2026-08-25). An `opus` tag passes through identically — it
+normally appears only after a unit hits the 2-FAIL cap (sonnet → FAIL →
+opus → FAIL) and the human chooses option (a) to pursue a debug spec,
 surfaced as a re-derived dispatch; treat it as expected when it appears. Per Claude Code's per-invocation model override (env
 var > per-call param > frontmatter), if `CLAUDE_CODE_SUBAGENT_MODEL` is set
 it silently wins over any model routing in this section — check for it if
