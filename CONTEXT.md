@@ -629,6 +629,21 @@ _Avoid_: escape hatch, grant branch
   [[kill set]] unexpectedly includes cells outside that scope. See [[cell space]],
   [[kill set]], [[kill-set relation table]].
 
+**registration-presence assertion**:
+(unit hcb-regcheck, 2026-09-24) — the fixed-literal-table test (criterion C7 in
+  `tests/harness-integrity-gate.test.sh`) that mechanically verifies `hooks/hooks.json`
+  still registers `harness-integrity-gate.sh` on all three event/matcher pairs
+  (`PreToolUse Write|Edit`, `PreToolUse Bash`, `PostToolUse Edit|Write`) as a standalone
+  check. Distinguished by being hardcoded in the test, NOT derived from `hooks/hooks.json`
+  itself, which would reproduce the vacuous-expectation defect (see test comment citing
+  `tests/cli-hook-propagation.test.js:147-159` and R11). This assertion is the out-of-band
+  reconciliation mechanism for the Set B [[U5 pairing ambiguity]]: when an `asked` audit
+  record exists but no matching `completed` record (because a Set B write suppressed its own
+  completion log), the registration-presence assertion proves whether the gate's surface
+  remains intact (write was denied) or vanished (write was approved and disabled the gate).
+  See [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md) and
+  `docs/trust-model.md` row 11 for the asymmetry bounded here.
+
 **Reporter**:
 (unit #132, 2026-08-10) — a hook script that observes and logs an
   action without blocking it; the formal antonym of **Gate**. Unlike a gate,
