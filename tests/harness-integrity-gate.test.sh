@@ -1321,6 +1321,7 @@ declare -A c41_cat=(
   ["docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md"]=1
   ["docs/plans/2026-08-11-human-decision-channel.md"]=1
   ["CONTEXT.md"]=1
+  ["docs/harness-glossary.md"]=1
   ["tests/human-decision-gate.test.sh"]=1
   ["hooks/scripts/harness-integrity-gate.sh"]=2
   [".claude/hooks/scripts/harness-integrity-gate.sh"]=2
