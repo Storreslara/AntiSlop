@@ -1369,6 +1369,48 @@ the lead-programmer's (implementer's) model tier, defaulting to
   applies when a unit fails: a `.fail` record forces `opus` on re-attempt.
   See [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
 
+**Suggested model vocabulary**:
+(units item06-3, 2026-09-25) — the canonical allowed-value list for the
+  `Suggested model:` tag emitted by `task-master` during dispatch (and historically
+  by `spec-master` before ADR-0009's reversal). Current vocabulary:
+  `Suggested model: sonnet|opus`. Pinned as a cross-file invariant by
+  tests/writer-tier-consistency.test.js AC-D9 (agreement guard between
+  `agents/orchestrator.md` and `agents/task-master.md`). Historically included
+  `haiku` (pre-ADR-0026); see [[Writer tier]] and [[Implementer-tier ratchet]]
+  for the escalation semantics those tags trigger.
+
+**defaultImplementerModel**:
+(unit item18, 2026-09-25) — a persona-config field (`defaultImplementerModel: "sonnet"|"opus"`) 
+  that sets the lead-programmer's model tier for a dispatch, subject to a fixed 
+  precedence order: (1) explicit per-dispatch `Suggested model:` tag (if present), 
+  (2) `defaultImplementerModel` config value (if present and recognized), (3) 
+  persona frontmatter default (from the persona file's `model:` key). Absent or 
+  unrecognized values in position (2) escalate to `opus` (higher capability), 
+  while truly absent/nullish values fall through to position (3). Introduced via 
+  `resolveDefaultImplementerModel(config, frontmatterDefault)` in `bin/cli.js`. 
+  For already-adapted projects, the field is backfilled via `runUpdate` when 
+  absent, using `implementerFrontmatterDefault()` to read the packaged 
+  `agents/lead-programmer.md` frontmatter (ensuring the current project's 
+  persona file override does not interfere). Cross-reference: [[inert-key defect]],
+  [[Writer tier]], [ADR-0010](docs/adr/0010-haiku-as-default-implementer-model.md),
+  [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
+
+**inert-key defect**:
+(unit item18-2, 2026-09-25; first instance resolved in unit #476) — a failure mode 
+  where a new persona-config or `.claude/settings.json` key is added to the 
+  `templates/` scaffold but remains permanently silent/inert in already-adapted 
+  projects because `bin/cli.js --update` branches before reaching the fragment 
+  merge step at line 2387 (the branch occurs at line 2188). A new key thus 
+  passes acceptance criteria for the fragment template (e.g., `git grep '<newKey>'`) 
+  and all scaffold tests, yet never reaches existing installations. **Prevention pattern:** 
+  any new config key must include (a) the template fragment change, (b) an explicit 
+  backfill in the `runUpdate` block using the additive-merge pattern (see 
+  [[bashOutputMaxChars]]), and (c) a mutation proof (revert the backfill hunk and 
+  re-run the test to verify it fails). Examples: `bashOutputMaxChars` (unit #478, 
+  backfill at `bin/cli.js:1293`), `humanReviewMode` (earlier precedent), 
+  `defaultImplementerModel` (unit item18-2, backfill at `bin/cli.js:349-353`). 
+  Glossary and precedent documented at `.claude/agent-memory/spec-master/cli-update-never-reaches-settings-fragment.md`.
+
 **Reviewer-gate ratchet**:
 the `.fail` disqualifier on the reviewer's own
   model eligibility. A unit's `.claude/reviewed/<task-id>.fail` record from the
@@ -2256,10 +2298,10 @@ _Avoid_: example, sample, demo, examples quiz (none of these name the
   ADR-0013). When `reviewer` is absent from `personaSelection`, the escalation
   path is inert regardless of the mode. The on-by-default posture is encoded
   as this absent-key fallback in the consumer, not in the `bin/cli.js`
-  `--update` backfill path — the backfill deliberately leaves an
-  already-adapted project's existing config untouched, so encoding the
-  default there instead would have silently left every existing user opted
-  out. This repo's own config ran the [[bootstrap window]] override
+  `--update` backfill path — the backfill additively merges new keys into
+  already-adapted projects' configs (see [[backfill]]); absent `humanReviewMode`
+  keys are seeded with their default values, but an already-present value is
+  never overwritten. This repo's own config ran the [[bootstrap window]] override
   (`humanReviewMode: "off"`) only until the human-decision resolution channel
   landed at unit #136; the live value returned to `critical`, the same as any
   other adapted project, at that point. **Superseded 2026-08-16** by Step 1
