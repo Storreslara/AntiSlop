@@ -9,7 +9,7 @@
 - [reviewed-path-gate behavior](project_reviewed_path_gate_blocks_bash.md) — bare ls/cat/grep work; it ignores gatedAgents and blocks by command TEXT; use the placeholder+sed pattern to author docs.
 - [ADR numbering: increment, never backfill](project_adr_numbering_increment_not_backfill.md) — the 0007 hole is not free (CONTEXT.md links it); re-derive ADR numbers at execution time, sibling specs collide.
 - [`grep` is wrapper-shadowed inline](project_grep_is_wrapper_shadowed_inline.md) — bare `grep` = ugrep inline but GNU inside `bash script.sh`; same text, two counts. Use `git grep`.
-- [Baselines expire](feedback_baselines_expire.md) — a baseline is a measurement with an expiry; untracked-file baselines need a recovery-source precondition; absolute byte-pins expire on legit reflow (gh348-13 C13.2).
+- [Baselines expire](feedback_baselines_expire.md) — untracked-file baselines, absolute byte-pins, AND live-sweep classification tables all expire; late arrival vs narrow-category look identical; remedy by artifact kind.
 - [Verify own criteria are non-vacuous](feedback_verify_own_criteria_nonvacuous.md) — run every criterion you author before handoff; 13 traps, incl. signals attributable to the wrong file, and fixtures the tool self-repairs via backfill.
 - [Finish interrupted plan docs by ref-sweep](technique_plan_doc_reference_sweep.md) — a cut-off session leaves dangling "see R13"/"see CHK25"; diff refs vs defs mechanically before calling a doc FINAL.
 - [Specs publish as per-step issues](project_specs_publish_as_per_step_issues.md) — step issues under `plan/<slug>` from task-master, PLUS an umbrella `[spec]` PRD-view issue (current again as of #324).

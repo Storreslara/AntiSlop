@@ -1,6 +1,6 @@
 ---
 name: baselines-expire
-description: A spec's pre-change baseline is a measurement with an expiry, not a fact — baselines resting on untracked files are the most perishable and need a recovery-source precondition.
+description: A spec's pre-change baseline is a measurement with an expiry, not a fact — untracked-file baselines, absolute byte-pins, and live-sweep classification tables are the most perishable; each needs a named re-derivation route, not a recorded number.
 metadata:
   type: feedback
 ---
@@ -82,6 +82,35 @@ authoring commit repairs internal date coherence for free, and lets a
 sibling measurement's stale count be restored rather than re-dated. Always
 add a non-vacuity control clause: substituting a different SHA must yield a
 different number, or the pin is decorative.
+
+**Fifth instance — a CLASSIFICATION expires, not just a count, and it has two
+failure modes that look identical (2026-09-24, hcb-prose-history / #473).** A
+criterion held a literal file-keyed table classifying every hit of a live
+`git grep` sweep, closed in both directions (unlisted hit-bearing file = red,
+listed zero-hit file = red). Authored against 13 files; **18** by dispatch, 19
+days of sibling commits later. Two distinct defects present as the same red:
+(a) *the category set is too narrow* — a hit no bucket admits, fixed by widening
+the escapes; (b) *the repo moved* — a hit every bucket admits but no row lists,
+whose correct remedy is emphatically **not** a new category. Here zero of four
+late arrivals needed one, and **two of the four came from the same slice's own
+sibling units** — a classification authored in one unit and asserted in another
+is a cross-unit coupling with a shelf life in commits, not weeks.
+
+**How to apply:** (1) never let a closure check over a live sweep ship without
+an explicit escalation route in the criterion text saying a new count is the
+criterion working and an unclassified member is a ruling to request, never a
+bucket to invent; (2) state the expected-count line as a *dated record, not a
+pin*, twice over if you re-measure at amendment time; (3) resist "it belongs to
+another spec" as a classification — it is a statement about **authority**, not
+category, and the fix is a ruling, not a deferral (check whether the other spec
+is even still in flight: here all six of its units had already passed, so there
+was nothing to defer *to*); (4) **choose the remedy by artifact kind, not by
+uniformity** — append-only dated notes protect *dated historical records* whose
+value is saying what was true then (ADR-0029's reasoning), while a living
+artifact (agent memory) must be **corrected in place**, because annotating it
+leaves a false sentence in force for the next reader. Two files carrying the
+identical stale clause correctly get different remedies, and a reviewer flagging
+that asymmetry as inconsistency has the rule backwards.
 
 Pairs with [[criteria-must-be-shell-validated]] and the sibling rule that every
 criterion needs a **negative control**: run it against the pre-change tree and
