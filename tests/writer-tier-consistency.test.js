@@ -87,5 +87,18 @@ check('AC-D8: ADR-0026 pins the pre-registered forward-verification rule by subs
   assert.ok(text.includes('must not materially worsen'), 'ADR-0026 does not state the spend-neutrality condition');
 });
 
+check('AC-D9: agents/orchestrator.md never names haiku as a default, tag value, or ladder rung', () => {
+  const text = read('agents/orchestrator.md');
+  assert.ok(!/`model: haiku`\s*frontmatter is the/.test(text), 'orchestrator.md still claims haiku frontmatter is the default');
+  assert.ok(!text.includes('haiku|sonnet|opus'), 'orchestrator.md still lists haiku in the Suggested model tag vocabulary');
+  assert.ok(!text.includes('haiku → FAIL'), 'orchestrator.md still states a haiku-first escalation ladder rung');
+  assert.ok(!/never dispatch on `haiku`/.test(text), 'orchestrator.md still contains the vacuous never-dispatch-on-haiku clause');
+});
+
+check('AC-D9: agents/spec-master.md never tags the re-scoped step for haiku', () => {
+  const text = read('agents/spec-master.md');
+  assert.ok(!text.includes('never tags the re-scoped step'), 'spec-master.md still contains the vacuous never-tags-the-re-scoped-step clause');
+});
+
 console.log(failures === 0 ? '\nAll writer-tier-consistency checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

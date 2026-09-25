@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.83 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.84 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -318,7 +318,7 @@ directly and the orchestrator dispatches from the plan document.
 
 ## Per-unit model routing
 When dispatching a unit to `lead-programmer`, check its `Suggested model:
-haiku|sonnet|opus` tag and pass it as the dispatch's `model` parameter; omit
+sonnet|opus` tag and pass it as the dispatch's `model` parameter; omit
 it when absent, so lead-programmer's `model: sonnet` frontmatter is the
 default, not an absolute (ADR-0026 reversed the prior `haiku` default on
 2026-08-25). An `opus` tag passes through identically — it
@@ -342,8 +342,10 @@ prior FAIL stops disqualifying.
 **Check for a prior `.fail` record before ANY per-unit dispatch**, not only
 right after an in-session FAIL — a fresh session has no memory of a prior
 one's FAIL. If `.claude/reviewed/<task-id>.fail` exists, treat it like an
-in-session FAIL: never dispatch on `haiku`, and include the prior defect
-history in the dispatch prompt. Ratchet expiry above still applies.
+in-session FAIL: the **Implementer-tier ratchet** (CONTEXT.md's **Writer tier**
+and **Implementer-tier ratchet** entries) still forbids a cheaper tier, and
+include the prior defect history in the dispatch prompt. Ratchet expiry
+above still applies.
 
 ### Dispatch-model routing for spec-master, milestone-auditor, and task-master
 Same mechanism as per-unit routing above — YOU choose the model at dispatch
