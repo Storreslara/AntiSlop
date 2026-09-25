@@ -65,7 +65,7 @@
     ".claude/hooks/scripts/reviewer-tier.sh": "44b1eace3d4022a4a3fbf27308e01d41cc0ed8d3443ba14845279695302d4e51",
     ".claude/hooks/scripts/session-start.sh": "72658463b95dc92db20166bc883974de85cbcb502876dc59dd79035c021c6391",
     ".claude/hooks/scripts/stop-gate.sh": "0b09f9c5cc7e580120757f0a9371b536fb54738779f419e7df622cacfd87619a",
-    ".claude/hooks/scripts/task-gate.sh": "f58021fa266a13e81558e04260cf6e358de1d734deb46dca51e54753a22c64fc",
+    ".claude/hooks/scripts/task-gate.sh": "3e69e223af153c000c7c76eb69e2d11631d342945d36da429a52f41d9ea647d2",
     ".claude/hooks/scripts/human-decision-gate.sh": "a7b110380a9c8705cb2e87b6c9100e80b1425f3eef4b7154269278474e27366c",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
     ".claude/hooks/scripts/microworld-rerun.sh": "6b0d33d1ef767b195e4d06d65a8aa497f9479bcf739d68f04e8d25d55fb1af6d",
@@ -108,5 +108,6 @@
     "adapters/cursor/hooks/scripts/lib/state-access.sh": "d5df04f051e3c2dc6bcb008b56a48e9dc6b8ee4a3ff20e590dfed9686dd72b9d",
     ".claude/hooks/scripts/version-stamp-check.sh": "bdff4bf9c209a41fbc8bada111c9927a86dca6445a75fceb3bc162f13b583971"
   },
-  "humanReviewMode": "off"
+  "humanReviewMode": "off",
+  "defaultImplementerModel": "sonnet"
 }
