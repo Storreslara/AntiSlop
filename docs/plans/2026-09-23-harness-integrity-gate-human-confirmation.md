@@ -61,6 +61,29 @@ is changed**: C4.1, C4.3, C4.3b, C4.3c, C4.4–C4.9 keep their wording verbatim,
 Steps 1–3 and 5–7 are byte-unchanged, and no marker is amended. The remedy was
 mutation-verified against seven mutants before being written down.
 
+**Amended 2026-09-24 (third targeted amendment; Step 4's sweep classification
+only).** The `hcb-prose-history` implementer re-derived C4.1's sweep **live**
+rather than trusting the recorded 13-file baseline — exactly what C4.1 demands —
+and found **18** hit-bearing files, four more than the 14 the *Sweep closure*
+section classifies. Two of the four (`docs/adr/0034-…`, the new ADR; and
+`tests/harness-integrity-gate.test.sh`, holding the frozen `ASK_REASON_A`
+fixture literal) are artifacts **this slice's own earlier units created** after
+the classification was written, and both land in **Cat 3** under its existing
+definition — no new category, no new work. The other two
+(`docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md`,
+`.claude/agent-memory/spec-master/project_cli_update_never_reaches_settings_fragment.md`)
+were introduced by `c416e5b`, an **unrelated** spec (#476), and carry the same
+stale absolute as row 13. The implementer refused both available shortcuts
+(silently omitting them, or unilaterally editing another spec's artifacts) and
+escalated. **Ruling: both are ordinary Cat 2 and both are this unit's** — recency
+relative to the slicing baseline is not a category, and rows 7–9 and 13 already
+annotate *other* finalized specs' plan documents. Closed by **new rows 14 and
+15**, a dated sub-amendment under *Sweep closure*, **new R16**, and
+**CHK31–CHK34**. **Nothing outside Step 4's classification is changed**: C4.1's
+four-category mechanism, C4.2 as rewritten above, C4.3–C4.9 and Steps 1–3 and
+5–7 are all byte-unchanged, the remedy adds exactly **one** append-only note and
+**one** in-place correction, and no marker is amended.
+
 **Authoring commit:** `d807630` (2026-09-23); revised at the same tree. Every
 baseline below was measured there. Baselines expire — re-derive with the probe
 commands quoted inline rather than trusting the recorded numbers. The first
@@ -659,6 +682,35 @@ is deferred as an assumption.*
   fixed phrase "any agent identity, ever" covering relocation out of the span.
   All four failure modes were built as live mutants and confirmed red, not
   reasoned about. See R15 (ii)-(iii) and CHK30.
+- 2026-09-24 (third amendment) Functional scope & success criteria: Q Two files
+  carrying this gate's stale absolute were introduced after the slicing baseline
+  by an unrelated, already-executed spec (#476) and are named nowhere in the
+  `hcb-prose-history` dispatch — does closing them belong to this unit, or to a
+  later one? → A (self-resolved): **this unit, as ordinary Cat 2, rows 14 and
+  15.** Deferring is not actually available (C4.1(a) closes over the *live* sweep,
+  so this unit must carry a row for them either way), there is nothing to defer
+  *to* (all six of #476's step units carry `.pass` markers), and recency relative
+  to a slicing baseline is not a classification axis — rows 7-9 and 13 already
+  annotate three other finalized specs' plan documents. See R16 (i)-(ii).
+- 2026-09-24 (third amendment) Domain entities / data model: Q Does the
+  append-only amendment-note convention apply to a `.claude/agent-memory/` file,
+  or does a different remedy fit? → A (self-resolved): **corrected in place, not
+  annotated** — row 10 already takes exactly that route for the sibling
+  `lead-programmer` memory file, and its landed correction (`2d16f91`) is the
+  template. The append-only convention protects **dated historical records**
+  (ADR-0029's reasoning; the `:R-B` precedent); agent memory is read as current
+  truth and its own standing instruction is to update a memory that has gone
+  stale, so annotating it would leave a false sentence in force. See R16 (iii).
+- 2026-09-24 (third amendment) Edge cases / failure handling: Q What stops a
+  corrected-in-place Cat 2 file from going red on C4.1, given that the step
+  elsewhere REQUIRES its lens-2 "no grant branch" clause to survive? → A
+  (self-resolved): **C4.1(b)'s existing "or the stale text is gone" arm, plus a
+  dated token kept adjacent to the surviving hit.** Verified against row 10's
+  landed state at `eec7d53`: both its hits (`:10`, `:25`) survive and are true,
+  and its `(2026-09-24)` marker sits inside the 5-line window of the first. Row
+  15 is specified to do the same on both arms, so it cannot hinge on which
+  reading an implementer picks. The window is clarified as inclusive in the same
+  pass, because row 14's note lands at exactly distance 5.
 
 ---
 
@@ -863,6 +915,45 @@ is deferred as an assumption.*
   the check is wrong until proven otherwise — and proving it means running it
   against the tree plus a correct-edit mutant, which is how both of C4.2's
   defects (the unsatisfiable half and the vacuous half) surfaced together.
+- **R16 — [2026-09-24, third amendment] a literal classification table over a
+  LIVE sweep has two distinct failure modes, and only one of them is R13.** R13
+  is *the category set is too narrow* — a hit that no bucket admits, a defect in
+  the table's design, fixed by widening the escapes. R16 is *the repo moved* — a
+  hit that every bucket admits but no row lists, because the file did not exist
+  when the table was written. The two look identical to C4.1(a) (both are
+  "unlisted hit-bearing file → RED") and they have **opposite** correct remedies:
+  R13's is a new category, R16's is emphatically **not** one. Measured here: of
+  four late arrivals between `d807630` and `eec7d53`, **zero** needed a new
+  category — two were already covered by Cat 3's explicitly open-ended definition
+  and two were ordinary Cat 2. Three consequences this risk records.
+  (i) **A file-keyed table over a live sweep has a shelf life measured in
+  commits, not weeks**, and every sibling unit in the same slice is a source of
+  new members — `docs/adr/0034-…` and `tests/harness-integrity-gate.test.sh`
+  arrived from units #472 and Step 3 *of this very slice*. A classification
+  authored in one unit and asserted in another is therefore a **cross-unit
+  coupling**, and the honest way to carry it is a dated re-measurement plus an
+  escalation route, which is what C4.1(a) now says in as many words.
+  (ii) **"It belongs to another spec" is not a classification.** The instinct to
+  leave another spec's finalized artifacts alone is right about *authority* and
+  wrong about *category*: the table classifies what a sentence CLAIMS, and rows
+  7–9 and 13 already annotate three other finalized specs' plan documents. What
+  the instinct correctly identifies is that the fix needs an **authorization**,
+  which is why the implementer escalating rather than editing was the right call
+  and is recorded as such — not a slower path to the same place, but the only
+  path that produces a ruling a reviewer can check.
+  (iii) **The remedy must be chosen by ARTIFACT KIND, not by uniformity.** Rows
+  14 and 15 carry the same stale clause and get **different** remedies —
+  append-only note vs. in-place correction — because a dated historical record and
+  a living memory file fail differently: annotating the memory leaves a false
+  sentence in force, and rewriting the plan document destroys the record. A
+  reviewer that flags the asymmetry as inconsistency has the rule backwards.
+  **Disposition of the two standing `NOTE[spec]` advisories on this plan document**
+  (swept 2026-09-24 via `bin/marker-audit.sh --notes`): `hcb-regcheck`'s
+  four-vs-five-component C3.3 tuple note and `hcb-step5-measure`'s unreferenced
+  experiment-record note are both **orthogonal to this amendment** — neither
+  touches the sweep classification, and neither is closed or reopened here. They
+  remain open for whichever later unit owns C3.3's prose and the Step 5
+  back-reference respectively.
 
 ---
 
@@ -1242,6 +1333,8 @@ this gate):
 | 11 | `tests/protected-paths-coverage.test.js:14` | The exemption rationale *"Self-protecting instead: its own Write/Edit …"* is now one branch weaker. Amend the comment so it does not read as an unconditional self-protection claim (R11). |
 | 12 | `docs/adr/00NN-*.md` | **New ADR.** Next free number — `0032` at authoring time (verified: `docs/adr/` tops out at `0031`); **re-derive at execution time**, never backfill the `0007` hole. |
 | 13 | `docs/plans/2026-08-11-microworld-silo.md:300,559` | **Added 2026-09-23** (see *Sweep closure*, below). Both lines describe **Set A's persona-selection config**: *"refuses writes from every agent identity with no exemption"* (`:300`) and *"refuses direct writes from every agent identity, with no exemption"* (`:559`). The predicate *"refuses writes"* becomes **false** for the main session under an allowlisted mode. The words *"no exemption"* stay **TRUE** (lens-2 — the branch exempts no identity) and **must not be deleted**, exactly the split row 1 makes for the header. FINALIZED historical plan → **two dated amendment notes, one per hit**; they are 259 lines apart, so C4.1's within-5-lines rule needs one at each site, not one for the file. The adjacent claim that `node bin/cli.js --update --force-render` is *"the only sanctioned route"* stays true and **must not be annotated** — `--update` writes through `fs` and is invisible to this gate by construction. |
+| 14 | `docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md:345` (R4) | **Added 2026-09-24** (third amendment; see *Sweep closure* sub-amendment and R16). FINALIZED, fully-executed historical plan of an **unrelated** spec (#476; all six step units carry `.pass` markers) → **one append-only dated amendment note, do not rewrite R4.** Same convention as rows 7–9 and 13. The stale clause is *"denied on `Write`/`Edit`, **for any identity**, with no grant branch"*: *"no grant branch"* stays **TRUE** (lens-2) and **must not be deleted**; *"for any identity"* becomes **false**, because `.claude/settings.json` is a Set B literal and a main-session `Write`/`Edit` under an allowlisted mode now returns `ask`. **The note must state that R4's conclusion is unchanged and still binding** — the branch never emits `ask` from a subagent, so a dispatched implementer is still hard-denied and running `bin/cli.js` via Bash remains the sanctioned route Step 2 specifies. A note that reads as *"hand-editing is now permitted"* is a **FAIL**, not a wording preference: it would invert live guidance in a worse direction than the stale absolute it replaces. The adjacent ADR-0025 Bash-absence claim and the P2 rationale both stay true and **must not be annotated**. **Placement:** the note's first line lands immediately after `:349` (R4's last line), i.e. **exactly 5 lines** below the hit — see the C4.1(b) window clarification. |
+| 15 | `.claude/agent-memory/spec-master/project_cli_update_never_reaches_settings_fragment.md:49-51` | **Added 2026-09-24** (third amendment). Agent-memory, i.e. **living operational guidance**, not a dated historical record → **corrected in place, not annotated**, the same remedy row 10 already takes for the sibling `lead-programmer` memory file. Grounds: the memory system's own standing instruction is to *update or remove memories that turn out to be wrong or outdated*, and the ADR-0029 / append-only reasoning that protects `CHANGELOG.md` (Cat 4) and rows 7–9/13/14 rests on *"this is a record of what was true then"* — which agent memory explicitly is not. Same lens-2 split as row 14: keep the literal *"no grant branch"* (it stays TRUE, and keeping it also keeps the file a legitimate non-empty member of C4.1(a)'s hit set), correct *"for every identity"*, and **preserve the `How to apply:` conclusion that an implementer cannot hand-edit the file** — the (c) clause requiring a `runUpdate` backfill is untouched. Carry a dated `(2026-09-24)` token inside the corrected sentence, mirroring row 10's landed `(2026-09-24)` marker, so C4.1(b) is satisfied on either arm. `description:` frontmatter makes no gate claim and is **do-not-touch**. |
 
 #### Sweep closure — every hit is classified, and the classification is closed
 
@@ -1257,7 +1350,11 @@ see R13.*
 
 **The classification is keyed on FILE, not on line, and is FILE-EXHAUSTIVE.**
 Measured at the amendment tree: the sweep returns **23 hits across 13 tracked
-files** (`git grep -c` per file: 3, 2, 3, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2). Line
+files** (`git grep -c` per file: 3, 2, 3, 1, 1, 2, 2, 1, 1, 1, 2, 2, 2).
+**Re-measured 2026-09-24 at `eec7d53`: 18 tracked files** — see the sub-amendment
+below for the four new ones and why the count moved. Both figures are dated
+records, not pins; C4.1 requires a **live** re-derivation and an implementer that
+transcribes either number has skipped the criterion. Line
 numbers are deliberately *not* the key — the Cat 2 amendment notes shift them by
 construction, so a line-keyed table would go red on its own remedy. Hit *counts*
 are deliberately not asserted either, for the same reason: Step 4's own prose
@@ -1273,18 +1370,24 @@ inside Cat 2 only.
   5** — those are not in conflict: row 5's target (`:234-247`, the *Set A / Set
   B* entry) contains none of the swept phrases and is therefore not a hit. A
   file may be reached by this step for reasons the sweep does not see.
-- **Cat 2 — about this gate and made false by this change.** Seven files.
+- **Cat 2 — about this gate and made false by this change.** **Nine files**
+  (seven at authoring; rows 14 and 15 added 2026-09-24 — sub-amendment below).
   Corrected in place — `hooks/scripts/harness-integrity-gate.sh` (rows 1–3),
   its mirror (row 4), `.claude/agent-memory/lead-programmer/project_harness_integrity_gate_persona_config_commit.md`
   (row 10) — or annotated with a dated amendment note:
   `docs/plans/2026-08-25-harness-trust-gaps.md` (row 7),
   `docs/plans/2026-08-25-harness-ceremony-consolidation.md` (row 8),
   `docs/plans/2026-09-09-fable-gate-audit-remediation.md` (row 9),
-  `docs/plans/2026-08-11-microworld-silo.md` (row 13). This is the **only**
-  category with a per-hit rule (C4.1(b)).
+  `docs/plans/2026-08-11-microworld-silo.md` (row 13),
+  `docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md`
+  (row 14, **added 2026-09-24**) — and corrected in place:
+  `.claude/agent-memory/spec-master/project_cli_update_never_reaches_settings_fragment.md`
+  (row 15, **added 2026-09-24**). This is the **only** category with a per-hit
+  rule (C4.1(b)).
 - **Cat 3 — about this gate and STILL LITERALLY TRUE after this change.** No
   action, and **no note** — annotating a true sentence would imply it had
-  changed. Two files:
+  changed. **Four files** (two at authoring; two added 2026-09-24 — sub-amendment
+  below):
   - `docs/plans/2026-09-02-blocked-marker-scoping-gh425.md` (1 hit, `:621`):
     *"the audit log is Set A with no grant branch — not even for the reviewer"*.
     True twice over — its subject is an **audit log**, which keeps today's
@@ -1358,6 +1461,77 @@ of the four grepped absolutes"* plus a *"now-false"* claim that Set B is
   the **three-item** Set B enumeration (four literals after OQ5). The ADR record
   required by C4.9 must name **those two**, not the absolutes.
 
+**Sub-amendment 2026-09-24 — four files the classification did not see, and the
+ruling on the two that belong to another spec.** The `hcb-prose-history`
+implementer ran C4.1's sweep live against `eec7d53` and got **18** files, not the
+14 this section classifies. That is the criterion working as designed: the
+classification was written at `d807630` and four hit-bearing files have appeared
+since. All four are classified here; **none** needs a new category, and the
+escape-set widening R13 warned against is not repeated.
+
+*Two are this slice's own output, and are Cat 3 under the existing definition* —
+which that definition already anticipated in as many words (*"the same applies to
+any follow-up plan doc in this family, which is why Cat 3 is a category and not a
+two-item allowlist"*):
+
+- `docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md`
+  (3 hits, introduced by `fa4f7b3`, unit #472). Verified at `eec7d53`: `:18`
+  quotes the header's absolutes as prior context, `:143` asserts they *"stay
+  literally true"*, and `:157` asserts they are **not** among the CHANGELOG
+  claims that went stale — which is C4.9(b)'s own requirement. All three are
+  correct descriptions of the post-change state. **Cat 3, no note.** Annotating
+  the ADR that ratifies the change would be incoherent.
+- `tests/harness-integrity-gate.test.sh` (1 hit at `:24`, introduced by
+  `dc93e8f`, Step 3). It is the frozen `ASK_REASON_A` fixture literal, held in
+  the suite *"not derived from the gate, so a reworded prompt is a red test
+  rather than a tautology."* It reproduces the gate's real shipped prompt, in
+  which *"no grant branch"* is the surviving true clause row 1 requires. **Cat 3,
+  no note** — and a note here would be actively harmful: the literal is
+  byte-compared against the gate, so editing it reds C1.x.
+
+*Two belong to spec #476 and are ordinary Cat 2 — rows 14 and 15.* Both were
+introduced by `c416e5b`, which landed the cost-governance spec, an unrelated
+change that postdates the `5b41dd2` slicing baseline. Verified at `eec7d53`: each
+carries one hit, and each is the **same** stale absolute as row 13's — *"denied
+on `Write`/`Edit` for every / for any identity, no grant branch"* — now false for
+`.claude/settings.json`, a Set B literal inside the five-path branch. Four
+reasons the ruling is *fold into this unit*, not *defer*:
+
+1. **Deferring is not available.** C4.1(a) is a both-directions closure check
+   over the **live** sweep. An unclassified hit-bearing file is RED. So this unit
+   must carry a row for each of them whatever the remedy is; the only question is
+   whether the row says *fixed* or *deferred*, and a deferred row would leave the
+   exact stale-absolute defect this step exists to retire — R5's failure class,
+   scored against the step that names it.
+2. **There is nothing to defer *to*.** #476 is not in flight: all six of its step
+   units carry `.pass` markers dated 2026-09-24 (`cost-governance-step1-bash-census`
+   through `…-step6-adrs-glossary`). Its plan document is a finalized,
+   fully-executed historical artifact — the *same class* as rows 7–9 and 13, each
+   of which annotates some other finalized spec's plan document. A later
+   maintenance unit that would own the fix does not exist and is not forecast.
+3. **Recency is not a category.** The only property distinguishing these two from
+   rows 7–9 and 13 is that they postdate the slicing baseline by days rather than
+   predating it by weeks. Admitting that as a classification axis would make the
+   table's categories depend on *when a unit was sliced* rather than on what the
+   prose claims — the table would then say something different on every re-slice,
+   which is precisely the rot C4.1(a)'s zero-hit direction exists to prevent.
+4. **The remedy is two edits.** One append-only dated note (row 14) and one
+   in-place correction (row 15), each bounded by a wording constraint recorded in
+   its row. The scope widening is exactly +2 files and no new criterion.
+
+**The `.claude/agent-memory/` remedy differs from the plan-doc remedy on
+purpose**, and this is settled by existing precedent rather than by a new rule:
+row 10 already places a `lead-programmer` agent-memory file in Cat 2 and takes
+the *corrected in place* route, and its landed correction (`2d16f91`) is the
+template — a dated parenthetical, the true lens-2 clause kept, the operational
+conclusion preserved. Row 15 follows it. The append-only convention exists to
+protect **dated historical records** whose value is that they say what was true
+then (ADR-0029's reasoning, and the `:R-B` precedent rows 7–9/13 cite); agent
+memory is the opposite artifact — it is read as current truth, and the memory
+system's own standing instruction is to update or remove a memory that has gone
+stale. Annotating it instead of correcting it would leave a false sentence in
+force for the next reader.
+
 `README.md` makes no claim about this gate (verified: zero `harness-integrity`
 matches), so it is outside the classification entirely rather than a Cat 1
 member. `harness-integrity-gate.sh:28-36` (the ADR-0025 Bash-asymmetry
@@ -1405,9 +1579,24 @@ ADR-0029's historical-citation rule. C4.9 asserts this.
 #       found mid-flight. A listed file with ZERO hits is ALSO red, so the table
 #       cannot rot into a stale allowlist. Baseline at the amendment tree: 13
 #       tracked files, 23 hits; 14 files once this plan doc is committed (Cat 3).
+#       RE-MEASURED 2026-09-24 at `eec7d53`: 18 tracked files (Cat 1 = 4,
+#       Cat 2 = 9, Cat 3 = 4, Cat 4 = 1) — see the *Sweep closure* sub-amendment
+#       for the four late arrivals. Both figures are DATED RECORDS, NOT PINS:
+#       re-derive live, and treat a third number as the criterion working, not as
+#       a defect. An unclassified hit-bearing file is an ESCALATION to
+#       spec-master, never a silent omission and never a new category.
 #   (b) Cat 2 files ONLY: EVERY hit carries a dated amendment note within 5
 #       lines, or the stale text is gone. Asserted per HIT — row 13's two hits
-#       are 259 lines apart and one note cannot cover both.
+#       are 259 lines apart and one note cannot cover both. CLARIFIED 2026-09-24:
+#       the 5-line window is INCLUSIVE and measured from the hit line to the
+#       note's FIRST line (|note_first - hit| <= 5), because row 14's note lands
+#       at exactly distance 5 — appending inside the bullet it annotates is the
+#       whole point of the window, and an exclusive reading would force the
+#       implementer to interleave the note mid-sentence in a finalized document.
+#       The "or the stale text is gone" arm is what greens a Cat 2 file corrected
+#       in place (rows 1-4, 10, 15) whose SURVIVING hits are the still-true
+#       lens-2 clauses the step elsewhere REQUIRES to survive; it is not a
+#       licence to delete a true clause to dodge a note.
 #   (c) Cat 3 files: NO hit carries an amendment note (annotating a still-true
 #       sentence would imply it changed), and the table records per file WHY it
 #       is still true. Non-vacuity: this arm must have at least one member, so a
@@ -1951,6 +2140,40 @@ C4.2 rather than the system.*
   (inside `bash <script>`), so the criterion does not depend on which `grep` the
   implementer's shell resolves. A criterion this step could satisfy by doing
   nothing would be worse than the unsatisfiable one it replaces.
+- CHK31: Do the amended category counts agree with the tree, or only with each
+  other? — PASS, enumerated file-by-file rather than summed. Live sweep at
+  `eec7d53` returns 18 files; the table's key set is Cat 1 = 4 (`CONTEXT.md`,
+  `docs/adr/0030-…`, `docs/plans/2026-08-11-human-decision-channel.md`,
+  `tests/human-decision-gate.test.sh`), Cat 2 = 9 (rows 1-4, 7-10, 13-15's
+  distinct files), Cat 3 = 4 (`…gh425.md`, this plan document, `docs/adr/0034-…`,
+  `tests/harness-integrity-gate.test.sh`), Cat 4 = 1 (`CHANGELOG.md`). Set
+  equality holds in **both** directions with no leftover on either side. Note
+  `CONTEXT.md`'s hit moved from `:2185` to `:2510` between the two measurements
+  while remaining the same human-decision-gate sentence — a live demonstration of
+  why the table is keyed on file rather than line.
+- CHK32: Does the plan specify, for each of rows 14 and 15, what the note must
+  NOT say? — PASS. Row 14 makes a note readable as *"hand-editing is now
+  permitted"* an explicit FAIL and requires the note to restate R4's still-binding
+  conclusion; row 15 requires the `How to apply:` conclusion preserved and marks
+  the `description:` frontmatter do-not-touch. Both also pin the lens-2 split
+  (keep *"no grant branch"*, correct the identity predicate), so neither remedy
+  can be satisfied by deleting a true clause — the failure mode R5, C4.2 and row
+  13 each independently guard against.
+- CHK33: Does this amendment add any work, criterion, or unit beyond the two
+  named files? — PASS. Zero new acceptance criteria (C4.1(a) gains a dated
+  re-measurement and an escalation route, C4.1(b) gains a window clarification;
+  neither adds an assertion), zero new units, zero criteria retired, and no marker
+  amended. The deliverable delta is one append-only note plus one in-place
+  correction. Rows 1-13's remedies, Steps 1-3 and 5-7, and C4.2 as rewritten in
+  the second amendment are byte-unchanged.
+- CHK34: Is the classification's route for a FUTURE late arrival stated, or does
+  this amendment only patch the four found today? — PASS, but only as of this
+  pass: C4.1(a) now states that a third file count is the criterion working and
+  that an unclassified hit-bearing file is an escalation to `spec-master`, never a
+  silent omission and never a new category. That is a **process** answer, not a
+  mechanical one — nothing stops a fifth file appearing between this amendment and
+  the implementing commit, and R16 (i) records that as an accepted, bounded
+  residual of asserting a classification across unit boundaries.
 
 ## Scribe update hint
 
