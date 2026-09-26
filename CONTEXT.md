@@ -167,6 +167,28 @@ the system's core safety property: the
   Enforced mechanically by `stop-gate.sh` and `reviewer-route-gate.sh`, not
   just by persona instruction.
 
+**unit-exclusivity axis**:
+(unit item10-1, 2026-09-26) — the invariant that at most one **unit** is
+  ever mid-review; see [[The Writer/Reviewer split]]. Enforced by
+  `reviewer-route-gate.sh`, which blocks the next gated dispatch while a
+  pending-review flag stands. Distinct from the [[advisory-reviewer axis]] —
+  the two govern different questions (how many units, vs. how many
+  reviewers on one unit) and are not in tension with each other.
+
+**advisory-reviewer axis**:
+(unit item10-1, 2026-09-26) — orthogonal to the [[unit-exclusivity axis]]:
+  the single unit under review may still carry a second, advisory reviewer
+  (e.g. a Roast-work pass) that owns no verdict and writes no marker.
+  [ADR-0016](docs/adr/0016-per-unit-review-join.md) names the liveness trap
+  this axis closes for that advisory second reviewer; the harness mechanism
+  admitting it is the [[review-join stamp]]. A 2026-09-25 adversarial review
+  misread the two axes as contradictory ("pick one: allow concurrent
+  reviews, or forbid them") — see
+  `docs/plans/2026-09-25-item10-review-join-stack.md` for the rebuttal.
+  [ADR-0028](docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md)'s
+  related scoped-marker-relevance fix was caused by leaked test fixtures,
+  not by concurrent reviewers, and is not evidence against this axis.
+
 **Gate**:
 a hook script that mechanically blocks an action rather than
   relying on a persona to comply (e.g. `stop-gate.sh`, `protected-paths.sh`,

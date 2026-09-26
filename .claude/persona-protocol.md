@@ -1,4 +1,4 @@
-<!-- antislop v0.31.90 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.91 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -239,6 +239,19 @@ or orphaned `.blocked` marker from an unrelated unit cannot jam unrelated
 reviewers' operations — this scoped-relevance mechanism (see
 [ADR-0028](../docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md)) is
 a complementary safety layer that works alongside the one-unit-at-a-time invariant.
+
+These are two different axes, stated explicitly so neither is misread as
+contradicting the other. The **unit-exclusivity axis** is the one-unit-at-a-
+time invariant just stated: at most one unit is ever mid-review. The
+**advisory-reviewer axis** is orthogonal: the same single unit may still
+carry a second, advisory reviewer (a Roast-style pass, if present, that owns
+no verdict and writes no marker — otherwise the unit has exactly one
+reviewer). [ADR-0016](../docs/adr/0016-per-unit-review-join.md) names this
+second axis's liveness trap for that advisory second reviewer directly.
+Neither axis's rule changes here: [ADR-0028](../docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md)'s
+scoped-relevance fix was caused by `tests/marker-write.test.sh` leaking
+fixture markers into the real marker directory — a test-hygiene defect, not
+a violation of unit-exclusivity or a concurrent-reviewer scenario.
 
 The reviewer writes the v3 PASS marker at `.claude/reviewed/<task-id>.pass`
 in BOTH modes, not only where a `TaskCompleted` hook exists to check it — a
