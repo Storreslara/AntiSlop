@@ -256,7 +256,7 @@ the subset of `templates/persona-protocol.md`'s 19
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
   `PROTOCOL_SECTIONS_BY_PERSONA` matrix (issue #190, 2026-08-01 efficiency
-  pass, finding F1). Distinct from the full/slim **tier** (which file a
+  pass, finding F1). Distinct from the [[Protocol tier]] (which file a
   persona gets): the excerpt is which sections *within* the full tier. Three
   fail-closed rules govern it: an unknown persona name gets every section;
   a matrix row naming a non-existent heading throws at load; any persona in
@@ -267,6 +267,22 @@ the subset of `templates/persona-protocol.md`'s 19
   reference copy a trimmed persona can read on demand (reversing the
   earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
   were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
+
+**Protocol tier**:
+(unit item04-3, 2026-09-26) — which of two canonical files `bin/cli.js`
+  inlines into a persona's rendered body at generation time: the **full
+  tier** (`templates/persona-protocol.md`, 19 `## `-delimited sections) or
+  the **slim tier** (`templates/persona-protocol-slim.md`, a 90-line, 7-section
+  subset). Full-tier personas: `orchestrator`, `lead-programmer`, `reviewer`,
+  `spec-master`, `task-master`, `milestone-auditor`. Slim-tier personas
+  (`SLIM_TIER_PERSONAS` in `bin/cli.js`): `explorer`, `researcher`, `scribe`,
+  `agent-auditor` — lightweight personas that run frequently and need only
+  the shared `UNIVERSAL_PROTOCOL_CORE`, not the full review/dispatch
+  discipline. Distinct from the [[Protocol excerpt]], which is a *further*
+  trim applied only within the full tier: this term picks the file, the
+  excerpt picks the subset of that file's sections a given full-tier persona
+  actually keeps. See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md)
+  for the rendering mechanics.
 
 **Mutation-proved**:
 (unit #305, 2026-08-09) — a test or acceptance
