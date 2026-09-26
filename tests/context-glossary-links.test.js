@@ -12,7 +12,9 @@
 // heading in lowercase mid-sentence.
 
 const assert = require('assert');
+const { spawnSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -90,52 +92,75 @@ function checkGlossaryLinks(contextText, harnessText) {
 }
 
 const contextText = fs.readFileSync(CONTEXT_PATH, 'utf8');
-const harnessText = fs.readFileSync(HARNESS_PATH, 'utf8');
+const harnessText = fs.existsSync(HARNESS_PATH) ? fs.readFileSync(HARNESS_PATH, 'utf8') : null;
 
-check('every [[link]] in CONTEXT.md / docs/harness-glossary.md resolves', () => {
-  const { dangling } = checkGlossaryLinks(contextText, harnessText);
-  assert.deepStrictEqual(dangling, [], `dangling link(s):\n${dangling.join('\n')}`);
-});
+if (harnessText == null) {
+  // P4: nothing below can be asserted without the second file, and its
+  // absence is not an error — see checkGlossaryLinks' contract above.
+  console.log('SKIP docs/harness-glossary.md absent — link-integrity checks skipped (P4)');
+} else {
+  check('every [[link]] in CONTEXT.md / docs/harness-glossary.md resolves', () => {
+    const { dangling } = checkGlossaryLinks(contextText, harnessText);
+    assert.deepStrictEqual(dangling, [], `dangling link(s):\n${dangling.join('\n')}`);
+  });
 
-check('no term is defined in both CONTEXT.md and docs/harness-glossary.md', () => {
-  const { duplicates } = checkGlossaryLinks(contextText, harnessText);
-  assert.deepStrictEqual(duplicates, [], `term(s) defined in both files: ${duplicates.join(', ')}`);
-});
+  check('no term is defined in both CONTEXT.md and docs/harness-glossary.md', () => {
+    const { duplicates } = checkGlossaryLinks(contextText, harnessText);
+    assert.deepStrictEqual(duplicates, [], `term(s) defined in both files: ${duplicates.join(', ')}`);
+  });
 
-check('non-vacuity: an injected [[deliberately-missing-term]] link is caught and named', () => {
-  const mutated = `${contextText}\n\nSee [[deliberately-missing-term]] for more.\n`;
-  const { dangling } = checkGlossaryLinks(mutated, harnessText);
-  assert.ok(
-    dangling.some((d) => d.includes('deliberately-missing-term')),
-    'mutation was not caught — the check is vacuous',
-  );
-});
+  check('non-vacuity: an injected [[deliberately-missing-term]] link is caught and named', () => {
+    const mutated = `${contextText}\n\nSee [[deliberately-missing-term]] for more.\n`;
+    const { dangling } = checkGlossaryLinks(mutated, harnessText);
+    assert.ok(
+      dangling.some((d) => d.includes('deliberately-missing-term')),
+      'mutation was not caught — the check is vacuous',
+    );
+  });
 
-check('non-vacuity: reverting the mutation passes again (same real content as above)', () => {
-  const { dangling } = checkGlossaryLinks(contextText, harnessText);
-  assert.deepStrictEqual(dangling, []);
-});
+  check('non-vacuity: reverting the mutation passes again (same real content as above)', () => {
+    const { dangling } = checkGlossaryLinks(contextText, harnessText);
+    assert.deepStrictEqual(dangling, []);
+  });
 
-check('duplicate-definition check: a term defined in both files is caught and named', () => {
-  const dupHeading = '\n\n**dup-test-term**: a synthetic duplicate for this test.\n';
-  const { duplicates } = checkGlossaryLinks(contextText + dupHeading, harnessText + dupHeading);
-  assert.ok(duplicates.includes('dup-test-term'), 'duplicate term was not caught');
-});
+  check('duplicate-definition check: a term defined in both files is caught and named', () => {
+    const dupHeading = '\n\n**dup-test-term**: a synthetic duplicate for this test.\n';
+    const { duplicates } = checkGlossaryLinks(contextText + dupHeading, harnessText + dupHeading);
+    assert.ok(duplicates.includes('dup-test-term'), 'duplicate term was not caught');
+  });
+}
 
-check('graceful degradation (P4): with docs/harness-glossary.md absent, the check exits 0', () => {
-  const tmpPath = `${HARNESS_PATH}.movedaway-for-test`;
-  fs.renameSync(HARNESS_PATH, tmpPath);
-  try {
-    assert.ok(!fs.existsSync(HARNESS_PATH), 'sanity: file is actually gone for this assertion');
-    const contextOnly = fs.readFileSync(CONTEXT_PATH, 'utf8');
-    const result = checkGlossaryLinks(contextOnly, undefined);
-    assert.strictEqual(result.skipped, true, 'expected the check to skip rather than partially validate');
-    assert.deepStrictEqual(result.dangling, []);
-    assert.deepStrictEqual(result.duplicates, []);
-  } finally {
-    fs.renameSync(tmpPath, HARNESS_PATH);
-  }
-});
+// Exercises the real entry point, not checkGlossaryLinks() directly: the
+// module-level read is the thing that breaks when the file is absent. Runs a
+// copy of this script from a sandbox repo root holding only CONTEXT.md, so
+// the live tracked docs/harness-glossary.md is never touched and an
+// interrupted run can strand nothing but a temp dir.
+if (!process.env.GLOSSARY_LINKS_SUBPROCESS) {
+  check('graceful degradation (P4): with docs/harness-glossary.md absent, this script exits 0', () => {
+    const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'glossary-links-'));
+    try {
+      fs.mkdirSync(path.join(sandbox, 'tests'));
+      fs.copyFileSync(CONTEXT_PATH, path.join(sandbox, 'CONTEXT.md'));
+      const scriptCopy = path.join(sandbox, 'tests', path.basename(__filename));
+      fs.copyFileSync(__filename, scriptCopy);
+      assert.ok(
+        !fs.existsSync(path.join(sandbox, 'docs/harness-glossary.md')),
+        'sanity: the sandbox repo root has no harness glossary',
+      );
+      const run = spawnSync(process.execPath, [scriptCopy], {
+        encoding: 'utf8',
+        env: { ...process.env, GLOSSARY_LINKS_SUBPROCESS: '1' },
+      });
+      assert.strictEqual(
+        run.status,
+        0,
+        `expected exit 0 with the glossary absent, got ${run.status}:\n${run.stdout}${run.stderr}`,
+      );
+    } finally {
+      fs.rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+}
 
 if (failures) {
   console.log(`\n${failures} context-glossary-links check(s) FAILED.`);
