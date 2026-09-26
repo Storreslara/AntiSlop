@@ -597,6 +597,15 @@ else
 fi
 
 echo
+echo "== fail-count: deterministic FAIL-block count command (Bash, item12-2) =="
+if bash tests/fail-count.test.sh; then
+  echo "OK   tests/fail-count.test.sh"
+else
+  echo "FAIL tests/fail-count.test.sh"
+  fail=1
+fi
+
+echo
 echo "== human-review-cleanup: resolved-packet sweep (Bash) =="
 if bash tests/human-review-cleanup.test.sh; then
   echo "OK   tests/human-review-cleanup.test.sh"
