@@ -54,4 +54,4 @@
 - [gh469 hcb-posttool: PostToolUse completion branch](project_gh469_hcb_posttool_completion.md) — hook_event_name branch before deny(); completed() subject is always exact-match-safe; count-only pairing asserts are vacuous, must check line content
 - [Heredoc anchor trips Set A](technique_heredoc_anchor_trips_set_a.md) — a python3 heredoc editing the gate script gets denied if its OWN anchor/context text spells a Set A literal path; anchor on a Set-A-free line instead
 - [item04 protocol-matrix-trimming plan tracking](project_item04_protocol_matrix_trimming.md) — all 3 units done; glossary-placement call overrode the packet's own guess, using precedent over a fresh classification
-- [context-glossary-links pre-existing red](project_context_glossary_prexisting_red.md) — validate.sh red at HEAD 9294196, unrelated to any given unit; verify via worktree before assuming it's yours
+- [context-glossary-links pre-existing red — RESOLVED](project_context_glossary_prexisting_red.md) — fixed 00ee21e; extractLinks() now excludes backtick-wrapped `[[...]]` examples
