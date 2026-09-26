@@ -774,12 +774,10 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       ...UNIVERSAL_PROTOCOL_CORE,
       'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Running acceptance-criteria commands (there is no self-wake)',
-      'Retrieval contract',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
-      'Third verdict: insufficient-context',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
@@ -787,6 +785,13 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'A note on `memory`',
       'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
+      // Reviewer never fetches sliced issues itself — constraints arrive
+      // pre-packaged (item04-2).
+      'Retrieval contract',
+      // reviewer.md:178-189 already substantively restates this section
+      // inline; the one paragraph it doesn't restate belongs to the
+      // orchestrator, which carries it independently (item04-2).
+      'Third verdict: insufficient-context',
     ],
   },
   'spec-master': {
@@ -813,7 +818,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
       'Teammate Write/Edit fallback and gate rephrasing doctrine',
-      'Running acceptance-criteria commands (there is no self-wake)',
       'Retrieval contract',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
@@ -827,16 +831,16 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Fourth verdict: escalate-to-human',
       'Continuing after a FAIL verdict',
       'Microworld bundles (format and the check contract)',
+      // task-master copies acceptance-criteria commands verbatim into
+      // dispatch prompts but never executes them itself (item04-2).
+      'Running acceptance-criteria commands (there is no self-wake)',
     ],
   },
   'milestone-auditor': {
     include: [
       ...UNIVERSAL_PROTOCOL_CORE,
-      'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
-      'FAIL record (durable warning for future spawns)',
-      'Continuing after a FAIL verdict',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',
@@ -847,6 +851,12 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Fourth verdict: escalate-to-human',
       'A note on `memory`',
       'Microworld bundles (format and the check contract)',
+      // No Write/Edit/memory grant ever, and milestone-auditor.md
+      // explicitly disclaims routing back to lead-programmer or dealing
+      // with .fail records (item04-2).
+      'Teammate Write/Edit fallback and gate rephrasing doctrine',
+      'FAIL record (durable warning for future spawns)',
+      'Continuing after a FAIL verdict',
     ],
   },
 };
