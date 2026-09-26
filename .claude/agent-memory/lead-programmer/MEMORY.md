@@ -57,3 +57,4 @@
 - [context-glossary-links pre-existing red — RESOLVED](project_context_glossary_prexisting_red.md) — fixed 00ee21e; extractLinks() now excludes backtick-wrapped `[[...]]` examples
 - [harness-integrity-gate scans commit message text too](project_harness_integrity_gate_commit_message_text.md) — a Set A literal (e.g. persona-config.json) in commit -m prose trips BLOCKED same as in a path arg; describe generically instead
 - [Worktree mutation-proof for gated marker dir](technique_worktree_mutation_proof_for_gated_marker_dir.md) — mutate/revert inside a scratch `git worktree` to avoid reviewed-path-gate.sh entirely; check git log first, a described historical bug may already be fixed (item10-2)
+- [Sibling function avoids shared-writer blast radius](technique_sibling_function_avoids_shared_writer_blast_radius.md) — add a new function instead of branching a shared truncating writer; keeps existing direct-call tests of the old behavior valid unmodified (item12-1)
