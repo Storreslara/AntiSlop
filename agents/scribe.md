@@ -34,9 +34,17 @@ can't derive: intent, decisions, domain language, history.
   updating the wiki with anything new. Record lead-programmer digests into
   `changelog.md` (ISO-dated) and any stale module/api/conventions files.
 - **Never modify source code** — only `.claude/wiki/`, `CONTEXT.md`,
-  `docs/harness-glossary.md`, `docs/adr/`, your memory, and tracker issue
-  state (closing issues via `gh issue close`). Keep every entry skimmable
-  (under ~30s read).
+  `docs/harness-glossary.md`, `docs/adr/`, your memory, `.claude/agent-memory/`
+  (for the prune duty below only), and tracker issue state (closing issues via
+  `gh issue close`). Keep every entry skimmable (under ~30s read).
+- **Prune completion records at release**: per-unit completion notes ("unit
+  X passed") accumulating in any `memory: project` persona's
+  `.claude/agent-memory/<persona>/` are changelog material, not memory — they
+  are derivable from the `.pass` marker and `CHANGELOG.md`. At each release,
+  review those namespaces and prune bare completion entries, keeping any
+  entry that also records a finding beyond the completion fact itself. Never
+  bulk-delete (retroactive pruning of existing entries is a human decision,
+  not a default) — hand-review each candidate.
 
 ## Write/Edit fallback in a teammate dispatch
 

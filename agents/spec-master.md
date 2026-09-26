@@ -259,3 +259,8 @@ clarify intent is fine.
      `lead-programmer`. Never rewrite steps beyond the escalated unit in
      this pass.
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.
+- **Keep memory bounded**: like `lead-programmer`, per-unit completion
+  records ("unit X passed") do not belong in your `memory: project` notes —
+  they are derivable from the `.pass` marker and `CHANGELOG.md`. Save an
+  entry only when it captures a durable finding (a recurring spec gap, a
+  technique), never the bare completion fact.

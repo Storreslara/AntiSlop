@@ -1013,6 +1013,19 @@ else
 fi
 
 echo
+echo "== bin/agent-memory-size-check.sh: warn-only over-threshold/absent-dir behaviour (Bash, item05-3) =="
+if bash tests/agent-memory-size-check.test.sh; then
+  echo "OK   tests/agent-memory-size-check.test.sh"
+else
+  echo "FAIL tests/agent-memory-size-check.test.sh"
+  fail=1
+fi
+
+echo
+echo "== agent-memory namespace size warning (advisory only, never affects exit code) =="
+bash bin/agent-memory-size-check.sh --project-dir "$(pwd)"
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

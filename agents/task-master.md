@@ -142,6 +142,11 @@ blocking edges, labels).
   dated `## Convergence follow-ups` heading, slice those the same way as any
   other step — `to-tickets`, model tag, dispatch prompt — never treat them
   differently just because they arrived after the original plan closed.
+- **Keep memory bounded**: like `lead-programmer`, per-unit completion
+  records ("unit X passed") do not belong in your `memory: project` notes —
+  they are derivable from the `.pass` marker and `CHANGELOG.md`. Save an
+  entry only when it captures a durable finding (a slicing pitfall, a
+  recurring spec gap), never the bare completion fact.
 
 ## Dispatch hygiene
 

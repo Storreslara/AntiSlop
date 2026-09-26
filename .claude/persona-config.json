@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.88",
+  "pluginVersion": "0.31.90",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -44,15 +44,15 @@
   "fileHashes": {
     ".claude/agents/orchestrator.md": "5ca6c8d926b0fc289a26e44cbfcc05884035109b1c16e2888eb2bca848f38652",
     ".claude/agents/explorer.md": "f43c2b08df72bcbabba2e360dc42d401ce322fff40c5b18568b388ccedad3cac",
-    ".claude/agents/lead-programmer.md": "f723bbfa3a49fd6a12ab01288ae4e2e441a9bc41fe554027ffafea714dd231d9",
-    ".claude/agents/spec-master.md": "e0024c7b542309ee46e82172926138bb3e194208573f7e5785cd5d84e8e4ac06",
-    ".claude/agents/task-master.md": "ad63b9b18d0ab8d19b4a3c9f71f5324d7a4d9c23bc355418ab19285f203edbb6",
-    ".claude/agents/scribe.md": "a5a14550d168ea6cf3d0e30028ee1ca6ade880d0776cd26fdb6274050fe137fc",
+    ".claude/agents/lead-programmer.md": "94bf410260206f3b0b8fe3d94d04c7f1255530809e7c5331207822141c3dc26d",
+    ".claude/agents/spec-master.md": "c018d7416483196fbd13ab92c96ce77bfab32e32f7848000a6b08bb035303a66",
+    ".claude/agents/task-master.md": "81431041828ee2130375d4bc4a20ae9008379c337a968e2e663dc395c5491d3c",
+    ".claude/agents/scribe.md": "50c23fdca1240dbdcf770293dc9f8f9bac370148ddea027f90334b78ce9282b2",
     ".claude/agents/reviewer.md": "4fb6b92de7e2481ddeac54f6f392b34a40cedcafd1cb1533c4ce852b3b4fcd6e",
     ".claude/agents/milestone-auditor.md": "253c847af96f7b4f210f82668a7aafc3e2524337d72c6fc97b39e9b4755bae59",
     ".claude/agents/agent-auditor.md": "4cae21029754ca6c6b54767556cbe184484be3085ef214583bf46e33387e42c5",
     ".claude/agents/researcher.md": "67a041af0cd45bc16f067158ac3ea3ae850b97e66fb1088f58173bd749c29301",
-    ".claude/persona-protocol.md": "09424df99bbf626639231f215c6a71fb602d15aa894277d74596b8c3930c7b03",
+    ".claude/persona-protocol.md": "a2a1b5a59411bdd18c35ae35fca20ef51bfcf57c877012164316fd129690433c",
     ".claude/persona-protocol-slim.md": "f914e86bfd012cfe87aa36e7672a342b4cd0f2422435a5f376de0764a4598fa2",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "866bb7e0562e34fb40b24fec2e57f55671c8a6db6154639b59b1e872a4526d4a",
