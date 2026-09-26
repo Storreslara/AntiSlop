@@ -55,3 +55,4 @@
 - [Heredoc anchor trips Set A](technique_heredoc_anchor_trips_set_a.md) — a python3 heredoc editing the gate script gets denied if its OWN anchor/context text spells a Set A literal path; anchor on a Set-A-free line instead
 - [item04 protocol-matrix-trimming plan tracking](project_item04_protocol_matrix_trimming.md) — all 3 units done; glossary-placement call overrode the packet's own guess, using precedent over a fresh classification
 - [context-glossary-links pre-existing red — RESOLVED](project_context_glossary_prexisting_red.md) — fixed 00ee21e; extractLinks() now excludes backtick-wrapped `[[...]]` examples
+- [harness-integrity-gate scans commit message text too](project_harness_integrity_gate_commit_message_text.md) — a Set A literal (e.g. persona-config.json) in commit -m prose trips BLOCKED same as in a path arg; describe generically instead
