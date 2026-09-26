@@ -312,8 +312,11 @@ the flag's existence, never its content.
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
 (both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
-followed by the defect list from the verdict, verbatim. This is a bookkeeping
-exception, same as the PASS marker — not a change to the code under review.
+followed by the defect list from the verdict, verbatim. The record
+appends a block per FAIL verdict rather than overwriting the previous
+one, so the FAIL count is readable across sessions. This is a
+bookkeeping exception, same as the PASS marker — not a change to the code
+under review.
 No hook gate depends on it (the pending-review flag already clears on any
 reviewer `SubagentStop`, PASS or FAIL alike); it exists purely so a
 completely fresh `spec-master` or orchestrator spawn — one with no memory of

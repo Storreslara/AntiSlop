@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.92 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.93 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -918,8 +918,11 @@ the flag's existence, never its content.
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
 (both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
-followed by the defect list from the verdict, verbatim. This is a bookkeeping
-exception, same as the PASS marker — not a change to the code under review.
+followed by the defect list from the verdict, verbatim. The record
+appends a block per FAIL verdict rather than overwriting the previous
+one, so the FAIL count is readable across sessions. This is a
+bookkeeping exception, same as the PASS marker — not a change to the code
+under review.
 No hook gate depends on it (the pending-review flag already clears on any
 reviewer `SubagentStop`, PASS or FAIL alike); it exists purely so a
 completely fresh `spec-master` or orchestrator spawn — one with no memory of

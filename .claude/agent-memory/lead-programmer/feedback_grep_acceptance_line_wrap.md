@@ -58,3 +58,15 @@ runtime stderr returned 0 until reworded onto one line. The sibling gate's
 same sentence sat inside a single long `echo "..."` string (never wrapped) and
 passed first try — wrapping risk is specific to hand-wrapped multi-line
 heredocs/prose, not long single-line strings.
+
+**Recurred writing NEW prose, not just porting it.** On item12-3, a freshly
+authored sentence for `templates/persona-protocol.md` § "FAIL record"
+("appends a block per FAIL verdict rather than overwriting the previous one,
+so the FAIL count is readable across sessions") wrapped its own key phrases
+across the paragraph's existing ~78-col hard-wrap the first time I wrote it —
+a wrap-tolerant (`tr '\n' ' ' | grep`) self-check caught the meaning was
+present but a plain single-line `grep` would still fail. Deliberately chose
+the wrap point (put a full short line before the break) rather than trusting
+prose flow, then re-verified with a plain `grep -c` after re-render. Apply
+this on every net-new sentence added to a hard-wrapped file, not just when
+porting an existing one.

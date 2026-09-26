@@ -731,6 +731,23 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   Sibling of the `.escalated` and `.directed` markers below, which cover the two
   other reviewer outcomes.
 
+**FAIL record**:
+(item12-1/item12-3/item12-4, 2026-09-26) — the file the reviewer writes at
+  `.claude/reviewed/<task-id>.fail` on a FAIL verdict. Unlike the [[PASS marker]],
+  this file can hold more than one [[FAIL block]]: each FAIL verdict for the
+  same task-id appends a new block rather than overwriting the previous one,
+  so the file is a chronological log of every fix attempt, not a single
+  latest-only snapshot. Read by `bin/fail-count.sh` and by `fail-triage`/debug
+  spec when a unit hits the 2-FAIL cap.
+
+**FAIL block**:
+(item12-1/item12-3/item12-4, 2026-09-26) — one FAIL verdict's contribution to
+  a [[FAIL record]]: first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
+  followed by the defect list verbatim, then a blank separator line.
+  `bin/fail-count.sh` counts blocks by grepping the task-id-qualified anchor
+  line (`^FAIL <task-id> `), which is what makes the 2-FAIL cap countable
+  across sessions instead of relying on one agent's in-session memory.
+
 **`.escalated` marker**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
   reviewer at `.claude/reviewed/<task-id>.escalated` when issuing an

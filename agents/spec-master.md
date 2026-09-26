@@ -227,10 +227,11 @@ clarify intent is fine.
   the orchestrator escalates a unit that hit the shared protocol's 2-FAIL
   cap ("Cap at 2 FAILs per unit") — a focused diagnostic artifact, never a
   from-scratch replan. Like the `.fail`-record check above, there is only
-  ever a single, most-recent `.fail` record per task-id at
-  `.claude/reviewed/<task-id>.fail` (a second FAIL overwrites the first at
-  that same path — no append/rotation mechanism exists); the difference is
-  purpose, not record count: that bullet screens one unit's latest record
+  ever a single `.fail` record per task-id at
+  `.claude/reviewed/<task-id>.fail` (each FAIL verdict appends a new block
+  to that same path, so the record can hold more than one attempt); the
+  difference is purpose, not record count: that bullet screens one unit's
+  latest record
   before you start fresh scoping work on a *different* unit, while a debug
   spec reads the *same* escalated unit's latest record together with
   `git log`/`git diff` over that unit's fix-attempt commits (one commit per

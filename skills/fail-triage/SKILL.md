@@ -15,9 +15,9 @@ Three steps, run in order:
 
 1. VERIFY — re-run the failing unit's acceptance-criteria command fresh;
    don't just read the `.fail` record's text. Debug spec already reads that
-   record (the single latest one at `.claude/reviewed/<task-id>.fail` — a
-   second FAIL overwrites the first, there is no append/rotation
-   mechanism) together with `git log`/`git diff` over the unit's fix-attempt
+   record (the single file at `.claude/reviewed/<task-id>.fail` — each FAIL
+   verdict appends a new block there rather than overwriting the previous
+   one) together with `git log`/`git diff` over the unit's fix-attempt
    commits. This step adds a live reproduction on top of that: report
    confirmed (with the failing command and its output) or could-not-
    reproduce.
