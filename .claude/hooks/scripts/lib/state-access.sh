@@ -60,6 +60,17 @@ state_write_unit_marker() {
   printf '%s\n' "$content" > "$marker_file"
 }
 
+state_append_unit_marker() {
+  local unit_id="$1"
+  local marker_type="$2"  # scoped to fail: append, never truncate
+  local content="$3"
+  local marker_file
+  marker_file="$(unit_id_marker_path "$unit_id" "$marker_type")"
+
+  mkdir -p "$(dirname "$marker_file")"
+  printf '%s\n\n' "$content" >> "$marker_file"
+}
+
 state_unit_marker_exists() {
   local unit_id="$1"
   local marker_type="$2"
@@ -330,6 +341,7 @@ export -f unit_id_sanitize
 export -f unit_id_marker_path
 export -f state_read_unit_marker
 export -f state_write_unit_marker
+export -f state_append_unit_marker
 export -f state_unit_marker_exists
 export -f state_read_review_join
 export -f state_write_review_join

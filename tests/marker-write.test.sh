@@ -91,6 +91,38 @@ case "$first" in
 esac
 
 echo
+echo "-- item12-1: FAIL blocks append, not truncate --------------------------"
+
+run_helper FAIL unitG - 'Defect A' .claude/reviewed/unitG.fail
+run_helper FAIL unitG - 'Defect B' .claude/reviewed/unitG.fail
+fail_file="$proj/.claude/reviewed/unitG.fail"
+anchor_count="$(grep -cE '^FAIL unitG ' "$fail_file" || true)"
+if [ "$anchor_count" = 2 ]; then
+  pass "item12-1: two FAILs for one unit yield 2 FAIL anchor lines"
+else
+  bad "item12-1: expected 2 FAIL anchor lines, got $anchor_count"
+fi
+first="$(head -n1 "$fail_file")"
+case "$first" in
+  "FAIL unitG "*) pass "item12-1: first line is still the first FAIL's anchor" ;;
+  *) bad "item12-1: unexpected first line [$first]" ;;
+esac
+if grep -q '^Defect A$' "$fail_file" && grep -q '^Defect B$' "$fail_file"; then
+  pass "item12-1: both defect lists persisted verbatim"
+else
+  bad "item12-1: a defect list was lost"
+fi
+
+run_helper PASS unitH abc123 "criteria one" .claude/reviewed/unitH.pass
+run_helper PASS unitH def456 "criteria two" .claude/reviewed/unitH.pass
+pass_anchor_count="$(grep -cE '^PASS unitH ' "$proj/.claude/reviewed/unitH.pass" || true)"
+if [ "$pass_anchor_count" = 1 ]; then
+  pass "item12-1: two PASSes for one unit still yield exactly 1 PASS anchor line (no leak into .pass)"
+else
+  bad "item12-1: expected 1 PASS anchor line, got $pass_anchor_count"
+fi
+
+echo
 echo "-- AC-C5: rejection (malformed id / missing commit / no write) -------"
 
 reject_case() {

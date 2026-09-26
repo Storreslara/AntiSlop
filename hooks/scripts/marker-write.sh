@@ -19,7 +19,9 @@
 #   PASS:    "PASS <unit-id> <ts> commit: <commit> criteria: <detail>".
 #            commit is required (a sha, or "none" for a non-git project).
 #   FAIL:    "FAIL <unit-id> <ts>", then <detail> verbatim on the lines that
-#            follow (the defect list). commit is unused - pass "-".
+#            follow (the defect list). commit is unused - pass "-". Appended
+#            as a new block, never overwriting a prior FAIL for the same
+#            unit-id, so the 2-FAIL cap stays countable across sessions.
 #   BLOCKED: "BLOCKED <unit-id> <ts> missing: <detail>". commit is unused -
 #            pass "-".
 set -euo pipefail
@@ -66,7 +68,7 @@ case "$verdict" in
   FAIL)
     fail_content="FAIL $unit_id $ts"
     [ -n "$detail" ] && fail_content="${fail_content}"$'\n'"$detail"
-    state_write_unit_marker "$unit_id" "$ext" "$fail_content"
+    state_append_unit_marker "$unit_id" "$ext" "$fail_content"
     ;;
   BLOCKED)
     state_write_unit_marker "$unit_id" "$ext" "BLOCKED $unit_id $ts missing: $detail"
