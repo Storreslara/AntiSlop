@@ -114,6 +114,15 @@ writing/editing THIS FILE via Bash (not Write/Edit) would itself trip the
 gate - split it the same way the original note already did whenever
 documenting this technique.
 
+Narrow addendum (item04-2-apply-drops, 2026-09-26): unrelated pre-existing
+untracked files (a batch of `docs/plans/*.md` spec drafts, not mine) were
+sitting in the tree from before the unit started. A plain directory exclude
+worked fine here since none of those foreign files lived under any path I
+touched: `git add -A -- ':!docs/plans'` swept in exactly my 18 changed files
+and left the plan drafts untracked. Verified with `git status --porcelain`
+immediately before committing. Simpler than the per-file exclude list below
+when the foreign files share one directory prefix you never write to.
+
 Narrow addendum (cache-ttl-gapped-personas retry, 2026-09-23): a concurrent
 agent's own in-flight files (a different persona's `agent-memory/` edits, an
 unrelated doc) were dirty in the tree from before this unit started, so
