@@ -268,17 +268,18 @@ the subset of `templates/persona-protocol.md`'s 19
   earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
   were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
 
-**Protocol tier**:
+**Protocol tier** (also called **protocol delivery tier**):
 (unit item04-3, 2026-09-26) — which of two canonical files `bin/cli.js`
   inlines into a persona's rendered body at generation time: the **full
-  tier** (`templates/persona-protocol.md`, 19 `## `-delimited sections) or
+  tier** (`templates/persona-protocol.md`, 685 lines, 19 `## `-delimited sections) or
   the **slim tier** (`templates/persona-protocol-slim.md`, a 90-line, 7-section
   subset). Full-tier personas: `orchestrator`, `lead-programmer`, `reviewer`,
   `spec-master`, `task-master`, `milestone-auditor`. Slim-tier personas
   (`SLIM_TIER_PERSONAS` in `bin/cli.js`): `explorer`, `researcher`, `scribe`,
   `agent-auditor` — lightweight personas that run frequently and need only
-  the shared `UNIVERSAL_PROTOCOL_CORE`, not the full review/dispatch
-  discipline. Distinct from the [[Protocol excerpt]], which is a *further*
+  the six sections of `UNIVERSAL_PROTOCOL_CORE` plus `## A note on \`memory\``,
+  hand-maintained in the slim template rather than derived from the constant.
+  Distinct from the [[Protocol excerpt]], which is a *further*
   trim applied only within the full tier: this term picks the file, the
   excerpt picks the subset of that file's sections a given full-tier persona
   actually keeps. See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md)
@@ -471,6 +472,31 @@ Claude Code the product — the IDE plugin and surrounding runtime
   `agent_type` privilege checks, or `Write`/`Edit` grant rejection at
   tool-call time), mitigation is via protocol documentation or harness
   upgrade, not repo-side code.
+
+**domain glossary** (vs. **harness glossary**):
+(unit consolidated-catch-up, 2026-09-26) — `CONTEXT.md` is the **domain glossary**,
+  a shared-language reference for this project's own domain concepts (personas,
+  gates, escalation workflow, model tiers, skills, spec language, dispatch
+  plumbing) that a user of the plugin would encounter. Owned by `scribe`.
+  Distinct from `docs/harness-glossary.md`, the **harness glossary**: a separate
+  reference for terminology whose meaning requires knowing this repo's internal
+  implementation (hooks, markers, gate-specific surfaces like Set A / Set B,
+  dispatch-hygiene checks, audit-log formats). Both are canonical alongside
+  `docs/adr/` and are kept current by `scribe`. Route terminology this way:
+  **harness** if understanding it requires knowing this repo's hooks, markers,
+  gates, or dispatch plumbing; **domain** if it describes the persona system's
+  concepts as a user of the plugin would meet them. See both files' preambles.
+
+**dangling link**:
+(unit item03-2, 2026-09-24) — an undefined cross-reference (indicated by
+  `[[term-not-yet-defined]]` or a reference to a term without a glossary entry)
+  in documentation prose. The `tests/context-glossary-links.test.js` guard
+  (item03-2's own test) flags these as defects during sweep closure: every
+  `[[…]]` bracket reference in a document must either resolve to an existing
+  glossary term or identify a term worth defining. A dangling link is distinct
+  from a *stale* link (a reference to a deleted term) — both are defects but
+  signal different problems. The guard enforces no orphaned `[[…]]` references
+  in narrative prose remain unresolved by the time a step ships.
 
 **default-unnamed dispatch rule**:
 the standing convention that `Agent` tool calls should dispatch without a `name:` parameter by default, causing their result to auto-return on completion. Named dispatch is reserved only for cases requiring **mid-flight addressability** — querying or re-tasking a long-running subagent mid-way through. The one exception is the 2-FAIL-cap / debug-spec scenario in "Nested dispatches", where explicit naming is mandatory. Deferred companion: a **mechanical report-loss backstop** to detect named agents completing without reporting (see `docs/adr/0021-mechanical-report-loss-backstop-deferred.md`).

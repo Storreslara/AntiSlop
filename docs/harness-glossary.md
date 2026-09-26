@@ -4,6 +4,17 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
 
 ## Language
 
+**achievable reduction**:
+(unit item04-1, 2026-09-26) — one of two classification grounds for determining 
+  whether a protocol section is a **candidate-for-drop** in the item04 matrix-trimming 
+  pass. An **achievable reduction** is when a section's presence in a persona's 
+  rendered mirror measurably saves tokens (e.g., the section is 200+ words of prose 
+  that a persona can execute its mandate without), making the removal viable and 
+  justified. Contrasted with "zero-value removal" — when a section simply does not 
+  apply to that persona at all — both are grounds for dropping, but only achievable 
+  reductions are tracked as deliberate cost-governance decisions. See also 
+  [[candidate-for-drop]].
+
 **ask-eligible** (synonym: **human-confirmable path**):
 (unit hcb-branch, 2026-09-24) — the 5-path subset of Set A ∪ Set B in
   `harness-integrity-gate.sh` that can actually reach the `ask` branch when
@@ -42,6 +53,20 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   attested commit is what dispatch-hygiene's H3 gate tests for reachability (see
   [[Dispatch hygiene]], [[Commit attribution]], [[`.escalated` marker]], and
   [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
+
+**candidate-for-drop**:
+(unit item04-1, 2026-09-26) — a protocol section proposed for removal from a 
+  full-tier persona's rendered body via a matrix entry in 
+  `PROTOCOL_SECTIONS_BY_PERSONA`. A section becomes a candidate for drop when 
+  either: (1) it provides zero value to that persona (the section's content simply 
+  does not apply), or (2) it represents an **achievable reduction** (the section's 
+  presence is correct but removable without breaking the persona's core mandate, 
+  saving tokens measurably). The two drop grounds are NOT interchangeable — dropping 
+  a zero-value section is cost-free clarity; dropping an achievable reduction is a 
+  deliberate speed/capability trade-off. Item04-1's methodology distinguishes both. 
+  Candidates are tested via mutation controls: a reversal of the `drop[]` entry 
+  (including the section when it would normally be dropped) must fail a mutation 
+  test to prove the drop is materially correct. See [[achievable reduction]].
 
 **characterization record**:
 (unit hcb-step5-measure, 2026-09-24) — the artifact class instantiated by
@@ -1780,6 +1805,23 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   because the launch token is an [[execution credential]], not a read credential. See
   [[confirmation code]], [[Microworld dashboard]], and [[DECISION file]].
 
+**dead-but-available text**:
+(unit item04-2, 2026-09-26) — a canonical protocol section (marked `## ` in 
+  `templates/persona-protocol.md`) that no persona row includes via 
+  `PROTOCOL_SECTIONS_BY_PERSONA`, making it "dead" — not inlined into any persona's 
+  final body at generation time. Distinguished from **Inlined protocol section exclusion** 
+  (a section that is inlined into SOME personas but not others) by being orphaned 
+  entirely: all persona rows have it in their `drop[]` lists, or no persona's mandate 
+  includes it at all. The section remains accessible on disk as part of the uncommitted 
+  `.claude/persona-protocol.md` reference copy (item04-3 restored it per `OQ11=DROP` 
+  reversal), but it is unreached at generation time. The term distinguishes from mere 
+  "unused" prose (which could mean anything) by precision: specifically a **protocol 
+  section** that is **canonically defined** but currently **inlined nowhere** because 
+  every persona dropped it. Today (item04-2, 2026-09-26), exactly 2 of 19 sections 
+  fall into this category: "Third verdict: insufficient-context" and "Fourth verdict: 
+  escalate-to-human". Distinct from the [[Inlined protocol section exclusion]] pattern, 
+  which names sections dropped selectively per persona but still inlined elsewhere.
+
 **execution credential**:
 (unit #377, Step 7, 2026-08-31) — a credential that authenticates to both
   read-only and write/execute endpoints, not merely to read-only endpoints. The
@@ -1956,6 +1998,18 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   [[path-safe charclass]], which govern a different domain (the human-decision
   gate's prose false-positive filtering for `.claude/human-review/` packet ids)
   and are not interchangeable with this grammar.
+
+**`UNIVERSAL_PROTOCOL_CORE`**:
+(unit item04-3, 2026-09-26) — a constant in `bin/cli.js` (line ~1344) naming 
+  the six canonical sections of the slim-tier protocol: "Structural questions → explorer", 
+  "Answer shape", "Scope Bash output", "Agent-teams mode", "Blocked by a gate you do not own", 
+  and "Terminal status line". The slim template (`templates/persona-protocol-slim.md`) 
+  hand-maintains these 6 sections plus `## A note on \`memory\`` (7 total), NOT derived 
+  from the constant itself — the constant is load-bearing in domain prose (`CONTEXT.md:280`) 
+  but is an informational reference, not a code-driven render source. Documented in this 
+  glossary entry because it appears in CONTEXT.md as a named anchor for the slim tier's 
+  content, and readers should understand that the 6-section set is fixed (not auto-minted 
+  at render time) and hand-maintained in the template.
 
 **path-shaped run**:
 (units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — a contiguous sequence of

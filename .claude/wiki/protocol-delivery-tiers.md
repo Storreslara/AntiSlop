@@ -11,7 +11,7 @@ section selection within the full tier" below.
 
 The protocol consists of shared rules (structural questions go to explorer, agent-teams mode semantics, terminal status lines, etc.) that apply to all personas. However:
 
-- **Explorer, researcher, and scribe** are lightweight personas that run frequently and must return distilled answers. A full protocol section on "how to write long documentation" or detailed review discipline is out-of-scope for them.
+- **Explorer, researcher, scribe, and agent-auditor** are lightweight personas that run frequently and must return distilled answers. A full protocol section on "how to write long documentation" or detailed review discipline is out-of-scope for them.
   
 - **Orchestrator, spec-master, task-master, lead-programmer, reviewer, milestone-auditor** carry full responsibility and need the complete shared ruleset.
 
@@ -19,7 +19,7 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 
 ## The two files
 
-**Full tier** (`templates/persona-protocol.md`): 300 lines
+**Full tier** (`templates/persona-protocol.md`): 685 lines
 - Target personas: `orchestrator`, `lead-programmer`, `spec-master`, `task-master`, `reviewer`, `milestone-auditor`
 - 19 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
 
@@ -28,15 +28,15 @@ Rather than having two separate protocols maintained in parallel (which defeats 
   *receives* them, not their substance), see
   [persona-handoff-mechanisms.md](persona-handoff-mechanisms.md).
 
-**Slim tier** (`templates/persona-protocol-slim.md`): 83 lines
-- Target personas: `explorer`, `researcher`, `scribe`
+**Slim tier** (`templates/persona-protocol-slim.md`): 90 lines
+- Target personas: `explorer`, `researcher`, `scribe`, `agent-auditor`
 - 7 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Blocked by a gate you do not own, Terminal status line, A note on `memory`
 
 ## How inlining works
 
 **No `@import`:** The protocol is not pulled via a Claude Code `@import` directive (that was proven not to resolve inside a subagent body in issue #121 Step 2). Instead:
 
-1. `bin/cli.js:34-38` defines `SLIM_TIER_PERSONAS` as `['explorer', 'researcher', 'scribe']`
+1. `bin/cli.js:34` defines `SLIM_TIER_PERSONAS` as `['explorer', 'researcher', 'scribe', 'agent-auditor']`
 2. At generation time (`cli.js:466-490`, `renderCleanBody` and `inlineProtocolBlock`), for each persona:
    - If it's in `SLIM_TIER_PERSONAS`, inline the contents of `templates/persona-protocol-slim.md`
    - Otherwise, inline the contents of `templates/persona-protocol.md`

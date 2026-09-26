@@ -47,14 +47,13 @@ debugging a surprising interaction.
   accepted marker is logged to `.claude/review-audit.log`. This closes the
   bare-`touch`-is-anyone-with-Bash forgery gap the v1 format left open. Setup
   pre-creates the directory so the first-ever marker write doesn't fail on a
-  missing path — a real bug found and fixed in v0.2.0. **v2 rollout had a
-  two-week legacy-marker grace period**, through 2026-07-27: a project whose
-  copied `reviewer.md` still writes the old bare `touch` gets a loud warning
-  (and is still allowed to complete) instead of an immediate block, logged to
-  `.claude/review-audit.log` as `legacy-marker-grace-period-warning`. On or
-  after 2026-07-27, `task-gate.sh` blocks unconditionally — run
-  `/antislop:update-antislop` before then. (See the README's
-  First-time setup section for the user-facing version of this deadline.)
+  missing path — a real bug found and fixed in v0.2.0. **v2 rollout carried a
+  two-week legacy-marker grace period** (through 2026-07-27): projects whose
+  copied `reviewer.md` still wrote the old bare `touch` received a loud warning
+  (and were still allowed to complete) instead of an immediate block, logged to
+  `.claude/review-audit.log` as `legacy-marker-grace-period-warning`. After
+  2026-07-27, `task-gate.sh` blocks unconditionally. (See the README's
+  First-time setup section for the user-facing version of that deadline.)
 - **`memory: <scope>` auto-grants Read/Write/Edit for memory management,
   regardless of a persona's declared `tools:` list.** hivemind's "never
   write production code" and researcher's restricted tool list are therefore
