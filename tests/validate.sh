@@ -606,6 +606,15 @@ else
 fi
 
 echo
+echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
+if bash tests/fail-marker-format-parity.test.sh; then
+  echo "OK   tests/fail-marker-format-parity.test.sh"
+else
+  echo "FAIL tests/fail-marker-format-parity.test.sh"
+  fail=1
+fi
+
+echo
 echo "== human-review-cleanup: resolved-packet sweep (Bash) =="
 if bash tests/human-review-cleanup.test.sh; then
   echo "OK   tests/human-review-cleanup.test.sh"

@@ -136,6 +136,23 @@ for id in reviewer antislop:reviewer; do
   bash_case "case 13 $id performing case 6's write (GRANT intact)" allowed "$id" \
     "printf x > $marker/9.pass"
 done
+# Case 13c/13d (item12-4, C4.4): the reviewer's documented appending .fail
+# literal is a write-intent command like any other on this gate - reviewer is
+# granted, lead-programmer is not. This is what makes case 13c non-vacuous.
+bash_case "case 13c antislop:reviewer performing the documented appending .fail heredoc (GRANT)" \
+  allowed antislop:reviewer \
+  "cat >> $marker/9.fail <<'EOF'
+FAIL 9 2026-01-01T00:00:00Z
+Defect one
+
+EOF"
+bash_case "case 13d antislop:lead-programmer performing the same heredoc (no widening)" \
+  blocked antislop:lead-programmer \
+  "cat >> $marker/9.fail <<'EOF'
+FAIL 9 2026-01-01T00:00:00Z
+Defect one
+
+EOF"
 # Case 14 (amended per A2): the command kind is load-bearing. Both halves use
 # case 6's WRITE-INTENT command, so what is being asserted is the no-reviewer
 # fallback itself, not the benign carve-out.

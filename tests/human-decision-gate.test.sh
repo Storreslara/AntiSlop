@@ -107,6 +107,12 @@ bash_case "N4 .fail target" allowed antislop:reviewer \
   "cat > .claude/reviewed/u1.fail <<'EOF'
 FAIL u1 - see .claude/human-review/u1/DECISION
 EOF"
+bash_case "N4b .fail target via >> append (item12-4's documented literal)" \
+  allowed antislop:reviewer \
+  "cat >> .claude/reviewed/u1.fail <<'EOF'
+FAIL u1 - see .claude/human-review/u1/DECISION
+
+EOF"
 bash_case "N5 .directed target" allowed antislop:reviewer \
   "cat > .claude/reviewed/u1.directed <<'EOF'
 DIRECTED u1 - fix per .claude/human-review/u1/DECISION
@@ -183,6 +189,11 @@ EOF"
 bash_case "N18 tee in place of cat" blocked antislop:reviewer \
   "tee .claude/reviewed/u1.pass <<'EOF'
 quoting .claude/human-review/u1/DECISION
+EOF"
+bash_case "N18b tee in place of cat, appending .fail (N4b's non-cat pair)" \
+  blocked antislop:reviewer \
+  "tee -a .claude/reviewed/u1.fail <<'EOF'
+FAIL u1 - see .claude/human-review/u1/DECISION
 EOF"
 bash_case "N19 unterminated heredoc" blocked antislop:reviewer \
   "cat > .claude/reviewed/u1.pass <<'EOF'

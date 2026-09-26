@@ -2047,19 +2047,25 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **sanctioned marker-write template**:
 (units gh345-1 note N6, hdg-prose-2, 2026-08-24, implemented in
-  `is_sanctioned_marker_write()` since 2026-08-12) — a narrowly-scoped
-  exception to [[The human-decision gate]]'s write block: the one command shape
-  that every agent identity may use to create a `.claude/reviewed/<id>.pass` or
-  `.claude/reviewed/<id>.fail` marker file. The template is a heredoc-based
-  marker creation: `cat > .claude/reviewed/<id>.pass <<'EOF' … EOF`, which reads
-  from standard input and writes to a single explicit marker file path. This is
-  the **only** write shape the gate allows, and it is unconditional across all
-  identities (reviewer, main session, orchestrator). The restriction to this
-  single shape (no piping, no redirection to other files, no `tee`, no `cp`)
-  closes a class of attacks that use marker-write privileges to access other
-  protected files. The gate recognizes the template syntactically (via a
-  dedicated function) and performs no capability delegation — a bare `cat >
-  .claude/reviewed/id.pass` (without the heredoc) is denied.
+  `is_sanctioned_marker_write()` since 2026-08-12; corrected item12-4,
+  2026-09-26) — a narrowly-scoped exception to [[The human-decision gate]]'s
+  write block: the one command shape that every agent identity may use to
+  create a `.claude/reviewed/<id>.pass` or `.claude/reviewed/<id>.fail`
+  marker file. The template is a heredoc-based marker creation, and the
+  redirect may be either the truncating `cat > .claude/reviewed/<id>.pass
+  <<'EOF' … EOF` or the appending `cat >> .claude/reviewed/<id>.fail <<'EOF'
+  … EOF` — `is_sanctioned_marker_write()`'s regex has permitted both since
+  the template's introduction. A `.fail` record uses the appending form, so a
+  second FAIL block is kept rather than destroying the first. Both forms
+  read from standard input and write to a single explicit marker file path.
+  This is the **only** pair of write shapes the gate allows, and it is
+  unconditional across all identities (reviewer, main session, orchestrator).
+  The restriction to these two shapes (no piping, no redirection to other
+  files, no `tee`, no `cp`) closes a class of attacks that use marker-write
+  privileges to access other protected files. The gate recognizes the
+  template syntactically (via a dedicated function) and performs no
+  capability delegation — a bare `cat > .claude/reviewed/id.pass` (without
+  the heredoc) is denied.
 
 **single-quoted span** / **double-quoted span**:
 (units hdg-lexer-1, 2026-08-24, refined in gate lexing via `command_skeleton()`

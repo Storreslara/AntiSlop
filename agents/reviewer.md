@@ -170,9 +170,15 @@ with reasons.
   covers the `.fail`/`.blocked` writes below (one `<task-id>`).
 - **On FAIL (both modes)**: also write a durable `.claude/reviewed/<task-id>.fail`
   record via Bash — the same named bookkeeping exception as the PASS marker,
-  not a change to the code under review. First line exactly
+  not a change to the code under review. Use the sanctioned marker-write
+  template's **appending** form, so a prior FAIL block for this unit is kept,
+  not destroyed: `cat >> .claude/reviewed/<task-id>.fail <<'EOF'` … `EOF`. The
+  heredoc body's first line must be exactly
   `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by the same defect list
-  you return in your verdict, verbatim. If a
+  you return in your verdict, verbatim, and ending with one blank line so
+  this block is separated on disk from any earlier one.
+  Append **exactly once per verdict** — a retry after an append already known
+  to have succeeded must not repeat it, or the FAIL count inflates. If a
   `.claude/reviewed/<task-id>.blocked` marker exists from a prior review of
   this unit, `rm -f` it as part of writing the `.fail` marker.
 - **On INSUFFICIENT-CONTEXT (both modes)**: a last resort — only after you

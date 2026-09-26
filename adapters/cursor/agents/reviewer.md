@@ -68,9 +68,11 @@ with reasons.
   `<task-id>` from the unit's slug as named in the dispatch prompt and say so
   in your verdict line - never skip the marker for lack of an id.
 - **On FAIL**: also write a durable `.cursor/reviewed/<task-id>.fail` record
-  via Bash - the same named bookkeeping exception as the PASS marker. First
-  line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by the same
-  defect list you return in your verdict, verbatim.
+  via Bash - the same named bookkeeping exception as the PASS marker. Append,
+  don't truncate: `cat >> .cursor/reviewed/<task-id>.fail <<'EOF'` ... `EOF`,
+  first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by
+  the same defect list you return in your verdict, verbatim, ending with one
+  blank line. Do this exactly once per verdict, or the FAIL count inflates.
 
 ## Shared protocol essentials (inlined backstop)
 On Cursor it is UNVERIFIED whether the always-apply persona-protocol rule
