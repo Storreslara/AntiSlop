@@ -167,7 +167,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   runtime flags, which do not exist for effort). Currently enforced as a **normative 
   convention only** (part of this project's discipline for persona definition edits), 
   not mechanically: `agents/*.md` files are explicitly excluded from both Set A and 
-  Set B of [[Set A / Set B|harness-integrity-gate.sh]], and the project's 
+  Set B of [[Set A / Set B]] in `harness-integrity-gate.sh`, and the project's 
   `protectedPaths` configuration is empty, so no tool-layer gate currently blocks or 
   logs persona-definition edits. This distinction (norm vs. mechanism) is load-bearing 
   for future operator decisions: a gate that does not exist today is a deliberate 
@@ -209,7 +209,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
 **session baseline commit**:
 (unit spec2-unitB, 2026-08-26) — the git commit SHA stored in `.claude/.session-baseline.<session_id>`
   that marks the starting point for this session's changed-file enumeration. Used by
-  [[microworld_skip_ok]] to compute `git diff` from that baseline to `HEAD`, in order to
+  `microworld_skip_ok` to compute `git diff` from that baseline to `HEAD`, in order to
   determine which files have been modified since the session began. Distinct from
   **session baselines** (see [[Sweep]]), which refers to `.claude/baseline-*.json`
   files that track fileHashes currency across different artifacts. The session baseline
@@ -239,7 +239,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   SHA. When a session baseline is unreachable, `_mw_changed_files` returns 1 (failure),
   signaling to `microworld_skip_ok` that the changed-file enumeration could not be
   completed — this forces a fail-closed return (return 1) rather than granting a skip
-  based on an incomplete or empty changed-file list (see AC-B5d and [[microworld_skip_ok]]).
+  based on an incomplete or empty changed-file list (see AC-B5d and `microworld_skip_ok`).
 
 **unmeasurable range**:
 (unit version-stamp-guard-1, 2026-09-23; amended version-stamp-check-roast-1, 2026-09-23) — a git commit range for which a
@@ -336,7 +336,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   prompt decides, not the agent. The two sets share this one mechanism and differ
   in their allowlist and their prompt wording, never in whether the mechanism
   itself exists. It never returns `allow`, and it never emits `ask` from a
-  subagent. Distinct from a [[grant branch]] (an identity-scoped, unilateral
+  subagent. Distinct from a grant branch (an identity-scoped, unilateral
   exemption — this branch hands nobody a unilateral capability) and from an
   override artifact — a file such as `.claude/.dispatch-override` left behind on
   disk — since this branch is a synchronous per-call prompt with no artifact of
@@ -506,7 +506,7 @@ an append-only audit-log record class written to
   monitored by the microworld reporter hook; the audit log records both
   in the same append-only format. Tier A enables committed, versioned
   reactive checks; Tier B enables explorer-driven escalations. See
-  [[watch-map]] and [[Microworld bundles]].
+  [[watch-map]] and [[Microworld bundle]]s.
 
 **Microworld audit log**:
 (unit #132, 2026-08-10) — an append-only log file at
@@ -646,7 +646,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   glossary) as we go.") depending on the harness's selection order. The descriptions cannot
   be edited to disambiguate because both are **drift-tracked skills** — their descriptions
   are reconstructed byte-for-byte from upstream by the `fm-noflag` declared-deviation type,
-  and editing the descriptions would break the [[`fm-noflag` declared-deviation class]] check.
+  and editing the descriptions would break the `fm-noflag` declared-deviation class check.
   The only available mitigation is explicit prose naming of the intended skill in the persona
   or dispatch context (e.g., in `agents/spec-master.md`'s instructions to use `grill-with-docs`
   rather than bare "grilling"), since descriptions themselves cannot be used as a
@@ -886,7 +886,7 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   via two channels: `stop-gate.sh` (primary, runs at Stop/SubagentStop events in the
   same session) and `session-start.sh` (backstop, runs once per session start for
   results from prior sessions). Both channels use the **results-reported cursor** to
-  avoid duplicate reporting. Implemented in [[microworld-queue.sh]], [[stop-gate-core.sh]],
+  avoid duplicate reporting. Implemented in `microworld-queue.sh`, `stop-gate-core.sh`,
   and `session-start.sh`. See [[drain loop]], [[coalescing]], [[pending file]].
 
 **mutation proof**:
@@ -908,10 +908,10 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   hardcodes expected spec set `{1, 2, 3}` from the ownership table and fails when the table
   is mutated (e.g., removing spec 1 from the entry). A vacuous counter-example would derive
   `expected = all_specs - [spec_3]` from the output itself, passing regardless of whether
-  the ownership changed (mutation-proof direction does not hold). Core to [[mutation-proof]]
-  effectiveness — a bundle with a vacuous direction test will always pass, masking
-  regression, so the direction must be verified by reverting the criterion and
-  observing it flip. See [[mutation discipline]] in the spec governance context.
+  the ownership changed (mutation-proof direction does not hold). Core to
+  [[Mutation-proved]] effectiveness — a bundle with a vacuous direction test will always
+  pass, masking regression, so the direction must be verified by reverting the criterion
+  and observing it flip. See mutation discipline in the spec governance context.
 
 **flip unit**:
 (unit rollout-a24-remechanize-1, 2026-09-23) — the Phase 2 disablement-flip commit
@@ -953,7 +953,7 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   (e.g., `.wm.check-1.pending`). Contains a single line: the relative path to the changed
   file that triggered the enqueue. Written by `enqueue_bundle()` and `enqueue_watchmap()`
   (overwriting on subsequent enqueues, implementing [[coalescing]]). Consumed by the **drain loop**'s
-  glob-based scan each iteration; files are deleted after processing. See [[microworld-queue.sh]].
+  glob-based scan each iteration; files are deleted after processing. See `microworld-queue.sh`.
 
 **suite-level memoization**:
 (memo-key-1, 2026-08-26; AC-A4 control, expanded memo-key-2) — the exported-`bash`-function
@@ -1114,7 +1114,7 @@ the reviewer's `sonnet`/`opus` model is
   distinct senses in the codebase, referring to decisions by different actors.
   (1) **Human ruling** — a judgment by a human operator on a unit (e.g., "unit #233,
   OQ3 ruling" in the context of **Reviewer-gate ratchet**), made via the human-review
-  escalation process (see [[Escalation to human review]]). (2) **Orchestrator ruling**
+  escalation process. (2) **Orchestrator ruling**
   — a self-authorized judgment call by the orchestrator, recorded in the **Rulings ledger**
   and prefixed with the `RULING` token. The two senses refer to different actors
   (human vs. orchestrator) and different recording mechanisms (escalation packet vs.
@@ -1142,8 +1142,8 @@ the reviewer's `sonnet`/`opus` model is
   `scripts/spend-accounting.sh` output. Coupled with the **Forward-verification
   rule** — both conditions must hold for the reversal to remain valid.
 
-**F9 convention (unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`:**:
-When
+**F9 convention**:
+(unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`: when
   a reviewer dispatch encounters a missing constraint and signals
   `INSUFFICIENT-CONTEXT`, the orchestrator resumes the same reviewer session by
   name via `SendMessage`, quoting the constraint, instead of spawning a fresh
@@ -1172,7 +1172,7 @@ When a
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
 
 **fm-noflag set now four skills**:
-(2026-09-11, unit gwd-1) — the [[`fm-noflag` declared-deviation class]] (stripping the
+(2026-09-11, unit gwd-1) — the `fm-noflag` declared-deviation class (stripping the
   upstream `disable-model-invocation` flag from vendored skills) now applies to four
   skills: `handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs`.
   This supersedes the earlier framing that "`grill-me` is the control, deliberately left
@@ -1223,12 +1223,12 @@ this repo self-hosts the plugin it
 (unit gwd-1, 2026-09-11) — the set of vendored mattpocock skills whose
   content is byte-diffed against upstream by `scripts/resync-vendored-skills.sh`.
   All drift-tracked skills are checked via either the `fm` (frontmatter) or
-  `fm-noflag` reconstruction type (see [[`fm-noflag` declared-deviation class]]).
+  `fm-noflag` reconstruction type (see `fm-noflag` declared-deviation class).
   As of unit gwd-1, there are 9 drift-tracked skills: `grill-me`, `grill-with-docs`,
   `grilling`, `handoff`, `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`,
   `codebase-design`, and `domain-modeling`. The `--check` flag on the resync script
   reports per-skill status (`[OK]` for match, or drift details if changed). Distinct
-  from the separate [[REPOINT_SKILLS]] set (skills pulled from upstream via live
+  from the separate `REPOINT_SKILLS` set (skills pulled from upstream via live
   `skills@latest` rather than pinned to a specific commit). See `docs/maintenance/resync-vendored-skills.md`.
 
 **hook block event**:
@@ -1417,7 +1417,7 @@ normal FAIL routes the defect list to
   that is unreadable, non-regular (e.g. a directory or FIFO), malformed, or mismatched
   (first line not matching `DECISION <task-id> ...`). Such packets are left
   untouched by the **sweep** operation `bin/human-review-cleanup.sh`,
-  which only deletes [[Resolved packet|resolved packets]]. Packets remain in this
+  which only deletes [[Resolved packet]]s. Packets remain in this
   state while awaiting human review and decision. Distinct from the reviewer's existing
   cleanup mechanism (which deletes both marker and packet when escalation is resolved
   via the [[DECISION channel]]); the sweep is a supplementary manual operation for
@@ -1427,7 +1427,7 @@ normal FAIL routes the defect list to
 (unit human-review-cleanup-1, 2026-08-24; broadened unit #409, 2026-08-25) — the
   operation performed by `bin/human-review-cleanup.sh`: a retention-gated pass
   over five artifact classes in `.claude/`, identifying and deleting stale items
-  in each. Sweeps: (1) [[Resolved packet|resolved packets]] from `.claude/human-review/`,
+  in each. Sweeps: (1) [[Resolved packet]]s from `.claude/human-review/`,
   (2) reviewed markers (`.claude/reviewed/*.pass`, `.claude/reviewed/*.fail`, etc.),
   (3) **session baselines** — `.claude/baseline-*.json` files, distinct from [[session baseline commit]] —
   (4) WIP handoffs (`.claude/wip-handoff-*.json` files), and (5) **log rotation** (see
@@ -1902,7 +1902,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   bash execution. In contrast, a command that targets the path for a write
   (`printf x > .claude/human-review/id/DECISION`, `sh -c 'printf x > DECISION'`)
   is denied unconditionally. Both [[The human-decision gate]] and
-  [[reviewed-path-gate.sh]] apply this distinction via gate-local allowances that
+  `reviewed-path-gate.sh` apply this distinction via gate-local allowances that
   check whether tokens survive into the command skeleton's CODE text (prose,
   single-quoted spans, and comments are masked and ignored). This is the design
   principle that closes false-positive denials of reads and inert narration while
@@ -1971,7 +1971,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **run scan** / **companion scan**:
 (units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24) — two tandem gate-logic
-  functions in `has_path_shaped_occurrence()` (see [[command skeleton]]) that
+  functions in `has_path_shaped_occurrence()` (see [[command_skeleton]]) that
   determine whether both [[trigger token]]s appear in a form that could name an
   actual file path. The **run scan** checks whether some contiguous run of
   non-whitespace characters holds both tokens (the [[marker id charclass]] proof).
@@ -2021,7 +2021,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **skeleton** / **command_skeleton**:
 (units hdg-lexer-1, earlier, implemented in `hooks/scripts/lib/benign-command.sh`
-  and used by both [[The human-decision gate]] and [[reviewed-path-gate.sh]]) —
+  and used by both [[The human-decision gate]] and `reviewed-path-gate.sh`) —
   a representation of a bash command that masks (replaces with whitespace) all
   quoted spans, comments, and variable expansions, leaving only the bare
   executable structure. The skeleton is what gate logic scans to determine whether
@@ -2178,7 +2178,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   re-authored it, and never a claim of authorship. Like every marker under
   `.claude/reviewed/`, it is not self-declarable: the directory's own
   write-identity grant (see [[The Writer/Reviewer split]],
-  [[reviewed-path-gate.sh]]) restricts who may write it, and RD5 records
+  `reviewed-path-gate.sh`) restricts who may write it, and RD5 records
   that its loss fails safe to the honest `self` default rather than silently
   granting authority. It is optional — an uncountersigned bundle simply
   stays at the honest default (see [[authority]]) — and it is **automatically

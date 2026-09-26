@@ -806,6 +806,15 @@ else
 fi
 
 echo
+echo "== CONTEXT.md / docs/harness-glossary.md: [[link]] integrity (Node) =="
+if node tests/context-glossary-links.test.js; then
+  echo "OK   tests/context-glossary-links.test.js"
+else
+  echo "FAIL tests/context-glossary-links.test.js"
+  fail=1
+fi
+
+echo
 echo "== microworld dashboard server (Node) =="
 if node tests/microworld/dashboard-server.test.js; then
   echo "OK   tests/microworld/dashboard-server.test.js"

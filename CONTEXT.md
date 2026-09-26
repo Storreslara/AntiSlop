@@ -142,7 +142,7 @@ the semantics of adding an
   `hooks/scripts/version-stamp-check.sh`, a reviewer-invoked helper (not
   hook-registered, following the pattern of `heavy-trigger.sh` and
   `reviewer-tier.sh`) that reads an explicit `<commit-range>` argument and
-  classifies outcomes as `ok`, `violation`, or [[`unknown`|unmeasurable range]],
+  classifies outcomes as `ok`, `violation`, or `unknown` (an [[unmeasurable range]]),
   exiting 0 always (fail-open). Sidesteps CI's shallow-clone limitations that
   made a `HEAD~1`-based check unreliable. Mechanization covers the version-bump
   half of the discipline only; the CHANGELOG-entry half remains reviewer-inspection-only.
@@ -659,6 +659,14 @@ the collection of addressable **Agent** entities currently active in a
   with reason, direct with a prescribed fix), each deleting the `.escalated`
   marker and its packet. Never consumes a 2-FAIL-cap slot.
 
+**PASS marker**:
+the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
+  on a PASS verdict, gating "done" for that unit (see [[The Writer/Reviewer split]]).
+  First line: `PASS <task-id> <UTC ISO-8601 timestamp> commit: <sha|none> criteria:
+  <acceptance-criteria command(s) run>`, optionally followed by [[non-blocking note]]s.
+  Sibling of the `.escalated` and `.directed` markers below, which cover the two
+  other reviewer outcomes.
+
 **`.escalated` marker**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
   reviewer at `.claude/reviewed/<task-id>.escalated` when issuing an
@@ -812,7 +820,7 @@ _Avoid_: example, sample, demo, examples quiz (none of these name the
   path is inert regardless of the mode. The on-by-default posture is encoded
   as this absent-key fallback in the consumer, not in the `bin/cli.js`
   `--update` backfill path — the backfill additively merges new keys into
-  already-adapted projects' configs (see [[backfill]]); absent `humanReviewMode`
+  already-adapted projects' configs (see `backfill`); absent `humanReviewMode`
   keys are seeded with their default values, but an already-present value is
   never overwritten. This repo's own config ran the [[bootstrap window]] override
   (`humanReviewMode: "off"`) only until the human-decision resolution channel
@@ -878,7 +886,7 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   escalation packets, and review artifacts, but cannot modify state. Exists because
   the launch token is an **execution credential**, not a read credential — a mode that
   restricts read-only access prevents exposing the execution capability to automation.
-  See [[Microworld dashboard]], [[execution credential]], and [[--dashboard-no-tty]].
+  See [[Microworld dashboard]], [[execution credential]], and [[read-only mode]] (`--dashboard-no-tty`).
 
 **DECISION channel**:
 (unit #326, 2026-08-11, named at Step 2 of #324; read and transcribed by the
