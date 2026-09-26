@@ -53,3 +53,4 @@
 - [gh468 hcb-branch: human-confirmation ask branch](project_gh468_hcb_branch_completion.md) — OQ1 splits Set A's case arm (persona-config only asks, audit logs stay hard-deny); mirror is Set B's 4th literal; git add -A + plain commit -m for persona-config.json (Set A self-block)
 - [gh469 hcb-posttool: PostToolUse completion branch](project_gh469_hcb_posttool_completion.md) — hook_event_name branch before deny(); completed() subject is always exact-match-safe; count-only pairing asserts are vacuous, must check line content
 - [Heredoc anchor trips Set A](technique_heredoc_anchor_trips_set_a.md) — a python3 heredoc editing the gate script gets denied if its OWN anchor/context text spells a Set A literal path; anchor on a Set-A-free line instead
+- [item04 protocol-matrix-trimming plan tracking](project_item04_protocol_matrix_trimming.md) — all 3 units done; glossary-placement call overrode the packet's own guess, using precedent over a fresh classification
