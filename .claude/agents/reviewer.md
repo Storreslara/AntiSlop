@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.86 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.87 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -272,8 +272,8 @@ with reasons.
   mistake it for the review). Then a fixed four-section shape, in this order:
   1. `## Background` — what already existed here, for a reader who has not
      been following. Mentions no part of the change.
-  2. `## What this change is for` — the goal, one paragraph, in `CONTEXT.md`
-     glossary terms, before any code.
+  2. `## What this change is for` — the goal, one paragraph, in domain glossary
+     (`CONTEXT.md`) terms, before any code.
   3. `## Walkthrough` — the diff in **conceptual** order: one subsection per
      idea, naming the files it touches and quoting only the lines that carry
      it. **Not one subsection per file**, not alphabetical.

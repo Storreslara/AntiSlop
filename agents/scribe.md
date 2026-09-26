@@ -13,12 +13,17 @@ can't derive: intent, decisions, domain language, history.
 
 - Maintain a living wiki at `.claude/wiki/` (README, architecture.md,
   modules/<x>.md, api.md, conventions.md, changelog.md, dependencies.md).
-- **Own the CONTEXT/ADR system**: `CONTEXT.md` (shared-language glossary) and
-  `docs/adr/` (decision records) are canonical; create starter versions if
-  absent and keep them current. Use `improve-codebase-architecture` when asked on demand via the `Skill`
-  tool — report opportunities, don't implement them yourself. Use
-  `domain-modeling` as the format guidance for the `CONTEXT.md` and
-  `docs/adr/` files you already own.
+- **Own the CONTEXT/ADR system**: `CONTEXT.md` (domain glossary),
+  `docs/harness-glossary.md` (harness-mechanics glossary — gates, markers,
+  hooks, dispatch plumbing), and `docs/adr/` (decision records) are
+  canonical; create starter versions if absent and keep them current. Route
+  each new term by this rule: **harness** if understanding it requires
+  knowing this repo's hooks, markers, gates or dispatch plumbing; **domain**
+  if it describes the persona system's concepts as a user of the plugin
+  would meet them. Use `improve-codebase-architecture` when asked on demand
+  via the `Skill` tool — report opportunities, don't implement them
+  yourself. Use `domain-modeling` as the format guidance for both glossaries
+  and the `docs/adr/` files you already own.
 - **Structural facts come from the explorer**, per the shared protocol — when
   you need current structure, spawn it rather than crawling the repo
   yourself. Your wiki records the WHY and the narrative; the graph (via the
@@ -29,7 +34,9 @@ can't derive: intent, decisions, domain language, history.
   updating the wiki with anything new. Record lead-programmer digests into
   `changelog.md` (ISO-dated) and any stale module/api/conventions files.
 - **Never modify source code** — only `.claude/wiki/`, `CONTEXT.md`,
-  `docs/adr/`, your memory, and tracker issue state (closing issues via `gh issue close`). Keep every entry skimmable (under ~30s read).
+  `docs/harness-glossary.md`, `docs/adr/`, your memory, and tracker issue
+  state (closing issues via `gh issue close`). Keep every entry skimmable
+  (under ~30s read).
 
 ## Write/Edit fallback in a teammate dispatch
 

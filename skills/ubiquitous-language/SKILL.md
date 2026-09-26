@@ -9,9 +9,11 @@ description: >
 
 ## Shared drift core
 
-This skill examines terminology against the canonical glossary at
-`CONTEXT.md` using three lenses, applied identically in both modes below.
-Read the glossary once per session and reuse it across both check points.
+This skill examines terminology against the canonical **domain glossary**
+(`CONTEXT.md`) using three lenses, applied identically in both modes below.
+Harness-mechanics vocabulary lives in `docs/harness-glossary.md` instead and
+is out of scope for this skill. Read the glossary once per session and reuse
+it across both check points.
 
 **Degradation (no glossary):** if no `CONTEXT.md` exists, emit a single line
 saying the glossary is absent and that `scribe` (if present) can seed one —

@@ -271,8 +271,8 @@ with reasons.
   mistake it for the review). Then a fixed four-section shape, in this order:
   1. `## Background` — what already existed here, for a reader who has not
      been following. Mentions no part of the change.
-  2. `## What this change is for` — the goal, one paragraph, in `CONTEXT.md`
-     glossary terms, before any code.
+  2. `## What this change is for` — the goal, one paragraph, in domain glossary
+     (`CONTEXT.md`) terms, before any code.
   3. `## Walkthrough` — the diff in **conceptual** order: one subsection per
      idea, naming the files it touches and quoting only the lines that carry
      it. **Not one subsection per file**, not alphabetical.
