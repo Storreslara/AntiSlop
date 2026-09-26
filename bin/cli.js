@@ -788,9 +788,10 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       // Reviewer never fetches sliced issues itself — constraints arrive
       // pre-packaged (item04-2).
       'Retrieval contract',
-      // reviewer.md:178-189 already substantively restates this section
-      // inline; the one paragraph it doesn't restate belongs to the
-      // orchestrator, which carries it independently (item04-2).
+      // reviewer.md:178-190 already substantively restates this section
+      // inline; the one paragraph it doesn't restate (the pending-review
+      // flag staying standing) is stated inline in the kept "Review
+      // ownership" section instead, not carried elsewhere (item04-2).
       'Third verdict: insufficient-context',
     ],
   },
