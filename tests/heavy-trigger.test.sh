@@ -101,11 +101,84 @@ run_case "gh137-shape-18f-116L" "heavy" "$r_gh137"
 run_case "gh299-shape-24f-328L" "heavy" "$r_gh299"
 
 echo "-- ADR-0004 threshold drift guard --"
-if grep -qF '1. Large surface: ≥~8 impacted files OR ≥~400 changed lines' docs/adr/0004-reviewer-roast-work-dual-model-routing.md; then
-  echo "OK   adr-threshold-drift-guard -> ADR line present"
+# Parses the "1. Large surface: ... impacted files OR ... changed lines"
+# bullet under ADR-0004's Decision > "Tension 2 (model routing)" >
+# "Heavy unit trigger" list, comparing PARSED INTEGERS against the script's
+# own MIN_CHANGED_* constants -- never comparing glyphs, so a `≥~8` vs
+# `≥ ~8` spacing change cannot flip the result.
+ADR_FILE="docs/adr/0004-reviewer-roast-work-dual-model-routing.md"
+
+drift_check() {
+  # <script-path> <adr-path> -> sets DRIFT_RESULT (PASS|FAIL) and DRIFT_DETAIL
+  local script_path="$1" adr_path="$2" aline afiles alines sfiles slines
+  aline="$(grep -F 'Large surface:' "$adr_path")"
+  afiles="$(printf '%s\n' "$aline" | grep -oE '[0-9]+ impacted files' | grep -oE '[0-9]+')"
+  alines="$(printf '%s\n' "$aline" | grep -oE '[0-9]+ changed lines' | grep -oE '[0-9]+')"
+  sfiles="$(grep -oE '^MIN_CHANGED_FILES=[0-9]+' "$script_path" | grep -oE '[0-9]+$')"
+  slines="$(grep -oE '^MIN_CHANGED_LINES=[0-9]+' "$script_path" | grep -oE '[0-9]+$')"
+  DRIFT_DETAIL="ADR files=$afiles lines=$alines vs script files=$sfiles lines=$slines"
+  if [ -n "$afiles" ] && [ -n "$alines" ] && [ -n "$sfiles" ] && [ -n "$slines" ] \
+     && [ "$afiles" = "$sfiles" ] && [ "$alines" = "$slines" ]; then
+    DRIFT_RESULT=PASS
+  else
+    DRIFT_RESULT=FAIL
+  fi
+}
+
+drift_check "$SCRIPT" "$ADR_FILE"
+if [ "$DRIFT_RESULT" = PASS ]; then
+  echo "OK   adr-threshold-drift-guard -> $DRIFT_DETAIL"
 else
-  echo "FAIL adr-threshold-drift-guard -> ADR line missing"
+  echo "FAIL adr-threshold-drift-guard -> $DRIFT_DETAIL"
   fail=1
+fi
+
+echo "-- ADR threshold drift guard is space-insensitive --"
+spaced_adr="$tmproot/adr-spaced.md"
+sed 's/≥~/≥ ~/g' "$ADR_FILE" > "$spaced_adr"
+if cmp -s "$spaced_adr" "$ADR_FILE"; then
+  echo "FAIL adr-threshold-drift-guard-space-insensitive: the sed matched nothing"
+  fail=1
+else
+  drift_check "$SCRIPT" "$spaced_adr"
+  if [ "$DRIFT_RESULT" = PASS ]; then
+    echo "OK   adr-threshold-drift-guard-space-insensitive -> $DRIFT_DETAIL"
+  else
+    echo "FAIL adr-threshold-drift-guard-space-insensitive -> $DRIFT_DETAIL"
+    fail=1
+  fi
+fi
+
+echo "-- ADR drift guard mutation control (a): script constant drifts --"
+mutant_script="$tmproot/heavy-trigger-mc-files.sh"
+sed 's/^MIN_CHANGED_FILES=8$/MIN_CHANGED_FILES=9/' "$SCRIPT" > "$mutant_script"
+if cmp -s "$mutant_script" "$SCRIPT"; then
+  echo "FAIL (mc7) mutation control: the sed matched nothing"
+  fail=1
+else
+  drift_check "$mutant_script" "$ADR_FILE"
+  if [ "$DRIFT_RESULT" = FAIL ]; then
+    echo "OK   (mc7) script MIN_CHANGED_FILES 8->9 flips drift guard to FAIL -> $DRIFT_DETAIL"
+  else
+    echo "FAIL (mc7) script MIN_CHANGED_FILES 8->9 should flip drift guard to FAIL -> $DRIFT_DETAIL"
+    fail=1
+  fi
+fi
+
+echo "-- ADR drift guard mutation control (b): ADR text drifts --"
+mutant_adr="$tmproot/adr-mc-files.md"
+sed 's/≥~8 impacted files/≥~9 impacted files/' "$ADR_FILE" > "$mutant_adr"
+if cmp -s "$mutant_adr" "$ADR_FILE"; then
+  echo "FAIL (mc8) mutation control: the sed matched nothing"
+  fail=1
+else
+  drift_check "$SCRIPT" "$mutant_adr"
+  if [ "$DRIFT_RESULT" = FAIL ]; then
+    echo "OK   (mc8) ADR threshold 8->9 flips drift guard to FAIL -> $DRIFT_DETAIL"
+  else
+    echo "FAIL (mc8) ADR threshold 8->9 should flip drift guard to FAIL -> $DRIFT_DETAIL"
+    fail=1
+  fi
 fi
 
 echo "-- mutation controls --"
