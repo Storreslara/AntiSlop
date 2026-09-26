@@ -645,8 +645,9 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   — checked by presence only, not content. Configured via
   `persona-config.json`'s `dispatchHygiene` (default mode `block`; this
   repo's own config runs `warn` as part of its [[solo-operator posture]] —
-  violations are logged, not blocked); single-use
-  escape hatch `.claude/.dispatch-override`. H3 is anchored by a `commit:`
+  violations are logged, not blocked); escape hatch
+  `.claude/.dispatch-override` (single use plus a bounded 10-second replay;
+  see [[replay window]]). H3 is anchored by a `commit:`
   field in the PASS marker (v3 format, see [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
   records the unit's own final commit (see [[Commit attribution]]): a marker from an
   unreachable commit is treated as void, allowing re-dispatch of units whose
@@ -661,6 +662,18 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   prove every written marker's id matches the unit being dispatched, so H3 is still
   best-effort rather than provably airtight — but the silent no-marker-at-all
   failure mode #153 documented is now closed, not merely aspirational.
+
+**replay window**:
+(unit item11-3, 2026-09-26) — the 10-second idempotency window in
+  `hooks/scripts/dispatch-hygiene.sh`'s dispatch-override escape hatch: after
+  `.claude/.dispatch-override` is read and its sentinel deleted once, a
+  second invocation whose payload key matches is honoured again as a replay
+  (logged `override-replay=`, the stamp not re-consumed) if it arrives within
+  the 10-second window of the first honouring. The payload key is a `cksum` over `subagent_type` plus the prompt.
+  Exists because a doubly-registered `PreToolUse` hook was measured
+  double-firing per tool call — 100% failure rate sequential, 15% (3/20)
+  parallel — before the window existed. See
+  [ADR-0011](docs/adr/0011-dispatch-override-idempotency-window.md).
 
 **description collision**:
 (unit gwd-2, 2026-09-11, [ADR-0031](docs/adr/0031-grill-with-docs-model-invocable.md)) —
@@ -848,8 +861,9 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   (`wip-handoff.<agent-id>`, consumed-on-read semantics). **Session domain**
   (keyed by session id): session baseline commits (`.session-baseline.<session-id>`,
   create-only-if-absent, used for changed-file enumeration). **One-shot domain**
-  (unkeyed/global): dispatch override (`.dispatch-override` single-use escape
-  hatch) and its consumed marker (`.dispatch-override.consumed`, with
+  (unkeyed/global): dispatch override (`.dispatch-override` escape hatch,
+  single use plus a bounded 10-second replay — see [[replay window]]) and its
+  consumed marker (`.dispatch-override.consumed`, with
   content-embedded epoch and dispatch hash for lifecycle management).
   **Log domain** (unkeyed, append-only): the sealed audit logs
   (review-audit.log, wip-audit.log, microworld-audit.log, dispatch-audit.log),

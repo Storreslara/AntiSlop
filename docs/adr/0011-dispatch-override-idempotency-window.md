@@ -117,6 +117,54 @@ units; no step fabricates a marker for the three historical gaps.
   (it was verified). The absence of a marker is now formally recorded as a
   disposition, not left as ambiguity that might invite later re-litigation.
 
+## Reconsidered 2026-09-26: id-keyed replacement parked
+
+A 2026-09-25 adversarial review proposed replacing this ADR's cksum-keyed,
+clock-based replay window with a unit-id-keyed override list, to remove
+clock-skew handling from a hook. `docs/plans/2026-09-25-item11-dispatch-override-replay-window.md`
+specced that replacement, then measured its own premise before implementing
+it. The measurement does not support the change:
+
+1. this repo runs `dispatchHygiene.mode: "warn"` since commit `0f6efa7`
+   (2026-08-16), per [ADR-0024](0024-ceremony-reduction-solo-operator.md);
+2. `warned=` is emitted only in `warn` mode
+   (`hooks/scripts/dispatch-hygiene.sh:390-396`), so an all-`warned=` log
+   proves the posture for every recorded event;
+3. the recorded `.claude/dispatch-audit.log` history contains zero
+   `override=`, zero `override-replay=` and zero `blocked=` entries — i.e.
+   **zero blocked dispatches**, so the hatch's trigger condition never
+   occurred and the zero is not evidence about the hatch;
+4. the record begins 2026-08-16 while the hook landed 2026-07-30
+   (`6829050`) and the override 2026-08-02 (`37fec4b`) — a ~2-week
+   unrecoverable blind window, no rotation archive;
+5. the log's line count is **not** an exposure denominator, because a clean
+   dispatch logs nothing (`:388`) and one dispatch can emit two lines;
+6. H1/H2 fire on non-gated targets (`:272`, `:299`) that carry no `Unit:`
+   line, so an id-keyed override cannot cover them — with the observed
+   instance (`2026-09-25T18:07:55Z warned=H1 target=spec-master`) named.
+
+**Decision: option (c) — park the id-keyed rework.** Keep the existing
+clock-based, `cksum`-keyed replay window and the escape hatch exactly as they
+are (this ADR's `Status:` remains `Accepted`, unchanged). Neither proceeding
+with the id-keyed design nor deleting the escape hatch is adopted.
+
+**Re-open triggers** (the park is conditional, not permanent):
+
+1. `dispatchHygiene.mode` in `.claude/persona-config.json` returns to
+   `"block"` in this repo, or a downstream install reports a real block.
+   That restores the hatch's trigger condition, and the first `override=` or
+   `blocked=` line in `.claude/dispatch-audit.log` makes the coverage
+   question measurable for the first time. Re-run the coverage measurement
+   against the newly recorded window before touching the design.
+2. A double-fire recurs (two `override=`/`override-replay=` lines for one
+   operator action, or a re-registration of the hook across
+   `.claude/settings.json` and the plugin's `hooks.json`). That is the only
+   condition under which the window's correctness is load-bearing again, and
+   the id-keyed design's idempotency-by-construction becomes worth its cost.
+
+See `docs/plans/2026-09-25-item11-dispatch-override-replay-window.md`,
+§ Scope reconsideration (2026-09-26), for the full reasoning.
+
 ## Related
 
 - **Issue #166** — the double-fire defect this ADR resolves.
@@ -128,3 +176,7 @@ units; no step fabricates a marker for the three historical gaps.
   (Steps 1–6, including this ADR as Step 6).
 - **ADR-0002** — reviewed-dir ownership and the Writer/Reviewer split this ADR
   serves.
+- **ADR-0024** — the solo-operator posture (`dispatchHygiene.mode: "warn"`)
+  that makes this ADR's window untriggered in this repo's own history.
+- **Plan:** `docs/plans/2026-09-25-item11-dispatch-override-replay-window.md`
+  — the id-keyed-replacement review this section responds to.
