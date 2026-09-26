@@ -330,7 +330,23 @@ the no-tightening property as a before/after-equal criterion. Grammar
 divergence is rarely only about the character set — check the anchor, the
 first-character class, and the length bound too.
 
+**Wrapped-literal recurrence #4, and the rule that finally follows from it
+(2026-09-26, item11 amendment).** I shipped `git grep -c "single-use escape
+hatch" -- docs/harness-glossary.md` is 0 as a "the false claim is gone" check.
+It returns **no match today**: the phrase wraps at *both* target sites
+(`:648-649`, `:851-852`), so it would have passed vacuously before any work, and
+the paired positive check I added alongside it was 0 too — both halves null.
+Fixed by grepping the single hyphenated token `single-use`, which occurs exactly
+twice in the whole file, both at the target sites, making 0 an exact target.
+**Default rule, not a caution: never grep a multi-word phrase in prose. Grep one
+hyphenated or backticked token, confirm its whole-file occurrence count first,
+and only pin a count you have measured.** Same session also caught a `git diff
+--quiet HEAD` cascade check that was unsatisfiable because another unit's work
+was uncommitted in the tree — see [[feedback-baselines-expire]]; the fix is a
+dispatch-time baseline delta, never a clean-tree assertion.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
+[[technique-zero-usage-is-not-evidence]],
 [[verify-deferred-issue-premises]],
 [[docs-units-need-claim-anchored-criteria]], and
 [[project-drift-check-idiom-broken]].
