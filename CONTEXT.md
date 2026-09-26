@@ -1006,3 +1006,23 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   role: do not read "operator" as narrower than, or different from, "human"
   anywhere in this document.
 
+**dispatch naming**:
+(item14, 2026-09-26, `docs/plans/2026-09-25-item14-gh304-roster-check.md`
+  Step 1) — the `name:` parameter on an `Agent` dispatch, omitted by
+  default. Distinct from **resume addressing** (below): naming is optional
+  on this path, so the unnamed-dispatch default has something to omit and
+  therefore something to fix. See "`Agent` naming vs `SendMessage`
+  addressing" in `agents/orchestrator.md`, and [[roster]] for the incident
+  this distinction was drawn to clarify (gh-304).
+
+**resume addressing**:
+(item14, 2026-09-26, `docs/plans/2026-09-25-item14-gh304-roster-check.md`
+  Step 1) — the mechanism `SendMessage` uses to reach an existing agent: by
+  name, by construction. Distinct from **dispatch naming** (above): there is
+  no "unnamed" `SendMessage`, so the unnamed-dispatch default that fixes the
+  `Agent` path cannot apply here even in principle — the [[roster]] check is
+  the only control on this path. Drawn out explicitly because a 2026-09-25
+  adversarial review conflated the two and proposed deleting the roster-check
+  paragraph on the false premise that the unnamed-dispatch default already
+  covered it; see `docs/plans/2026-09-25-item14-gh304-roster-check.md`'s
+  Context section for the verification that rejected the revert.
