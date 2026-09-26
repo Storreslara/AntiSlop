@@ -54,8 +54,13 @@ function extractHeadingKeys(text) {
   return keys;
 }
 
+// A `[[bracket]]` occurrence wrapped in backtick code-span delimiters
+// (`` `[[example]]` ``) is illustrative syntax, not a live cross-reference —
+// exclude it rather than flag it as dangling.
 function extractLinks(text) {
-  return [...text.matchAll(/\[\[([^\]]+)\]\]/g)].map((m) => m[1]);
+  return [...text.matchAll(/\[\[([^\]]+)\]\]/g)]
+    .filter((m) => text[m.index - 1] !== '`' || text[m.index + m[0].length] !== '`')
+    .map((m) => m[1]);
 }
 
 // contextText is required; harnessText may be null/undefined (P4: the
@@ -121,6 +126,24 @@ if (harnessText == null) {
   check('non-vacuity: reverting the mutation passes again (same real content as above)', () => {
     const { dangling } = checkGlossaryLinks(contextText, harnessText);
     assert.deepStrictEqual(dangling, []);
+  });
+
+  check('a backtick-wrapped [[bracket]] is illustrative syntax, not a dangling link', () => {
+    const mutated = `${contextText}\n\nSyntax looks like \`[[example-syntax-term]]\`.\n`;
+    const { dangling } = checkGlossaryLinks(mutated, harnessText);
+    assert.ok(
+      !dangling.some((d) => d.includes('example-syntax-term')),
+      'a code-span-wrapped example was flagged as a dangling link',
+    );
+  });
+
+  check('the same bracket text unwrapped is still caught as dangling', () => {
+    const mutated = `${contextText}\n\nSee [[example-syntax-term]] for more.\n`;
+    const { dangling } = checkGlossaryLinks(mutated, harnessText);
+    assert.ok(
+      dangling.some((d) => d.includes('example-syntax-term')),
+      'the exclusion is over-broad — it also skipped a plain (non-code-span) link',
+    );
   });
 
   check('duplicate-definition check: a term defined in both files is caught and named', () => {
