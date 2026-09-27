@@ -1,5 +1,5 @@
 # Project constitution
-Version: 1.0.0 | Ratified: 2026-07-14 | Last amended: 2026-07-14
+Version: 1.1.0 | Ratified: 2026-07-14 | Last amended: 2026-09-26
 
 ## Principles
 ### 1. Verify, don't assume (MUST)
@@ -19,7 +19,11 @@ hand-editing risks the exact traps those scripts exist to avoid.
 Any change to a version-stamped file (`agents/*.md`, templates) must bump
 `.claude-plugin/plugin.json`'s version and add a CHANGELOG entry, since the
 `--update` mechanism depends on the version actually changing when content
-does.
+does. This bump is required **per unit, not batched once per spec**: a
+consumer project's `--update` can run against any commit, not only a spec's
+final one, so a bump deferred until the spec's last unit would leave the
+version unchanged — and `--update` staleness-blind — across every commit in
+between where content had already changed.
 
 ### 4. Optional personas degrade gracefully (SHOULD)
 References to `spec-master`/`task-master`/`scribe`/`reviewer`/`researcher`/
@@ -35,3 +39,5 @@ very ADAPT run hit firsthand on `explorer.md`.
 
 ## Amendment log
 - 1.0.0 (2026-07-14): ratified.
+- 1.1.0 (2026-09-26): P3 clarified to require the version bump per unit,
+  not batched once per spec (item17-1).
