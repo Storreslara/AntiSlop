@@ -1794,7 +1794,10 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   command text never spells `DECISION`, so it clears the gate's substring
   early-exit; a per-file `rm .../DECISION` is blocked for every identity, reviewer
   included, by design. No adapter port exists, the same precedent already set by
-  `reviewed-path-gate.sh`.
+  `reviewed-path-gate.sh`. The decision to keep this gate as-is (no grant
+  branch, no size reduction) rather than narrow it further is recorded, with
+  its rationale, in `docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md`
+  (ADR-0036).
 
 **dashboard-originated decision write**:
 (unit #377, Step 7, 2026-08-31) — a **DECISION file** write that originates from

@@ -121,3 +121,42 @@ orchestrator, not a `humanReviewMode`-gated check.
   2-4. Step 1 (local config posture) and Step 5 (this release, including
   this ADR) are recorded in `CONTEXT.md`'s "solo-operator posture" glossary
   entry and `.claude/wiki/changelog.md` respectively.
+
+## Addendum 2026-09-27: flip-back evidence for the mode-off posture
+
+`docs/plans/2026-09-25-item20-humanreviewmode-policy.md` revisited whether
+`humanReviewMode` should stay off (Step 1 above) and required (its R3) that
+whichever posture is chosen record the observation that would justify
+reopening it, "so the next reversal is a measurement rather than a mood" —
+because [ADR-0018](0018-human-in-the-loop-review-on-by-default.md) → this
+ADR already reversed the same setting once, in two weeks, with no such
+record. The operator resolved item 20's Open Question 1 as **Option B: keep
+`humanReviewMode` off, accept the prompt cost as the price of a shipped
+feature** — recorded alongside the companion decision to keep
+`human-decision-gate.sh` at its current size in
+[ADR-0036](0036-human-decision-gate-keep-as-is-mode-off.md). This ADR's
+`Status:` is unchanged; the mode-off posture Step 1 established stands.
+
+**Re-open triggers** (naming the observation, not asserting either has
+occurred):
+
+1. **A specific committed change carries a defect a human review pass would
+   plausibly have caught.** Concretely: a unit whose only gate was the
+   automated reviewer's PASS (no human escalation, consistent with the mode
+   being off) is later found — via an incident, a bug report, or a
+   subsequent audit — to have shipped a genuine defect, and the defect's
+   nature is a judgment call about intent, scope, or risk tolerance rather
+   than something the reviewer's existing mechanical checks already run.
+   The first time such a case is identified and written up (e.g. in
+   `CHANGELOG.md` or a follow-up ADR), that is grounds to revisit item 20's
+   Option A (turn the mode on) — a named incident, not a mood shift.
+2. **Item 4 measures the token cost of the escalation prose.** Item 20's
+   decision held its Option C (conditional loading of the escalation
+   ceremony) back specifically because that option "should not be chosen
+   until item 4 has measured how much of the reviewer prompt it would
+   actually remove" — a measurement that does not exist yet. Once item 4
+   produces that number, it is grounds to revisit Option C, independent of
+   trigger 1.
+
+See `docs/plans/2026-09-25-item20-humanreviewmode-policy.md`, "The decision
+(Open Question 1)" and its R3, for the full reasoning.
