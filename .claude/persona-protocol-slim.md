@@ -1,4 +1,4 @@
-<!-- antislop v0.31.96 | source: templates/persona-protocol-slim.md | ADAPT-substituted -->
+<!-- antislop v0.31.97 | source: templates/persona-protocol-slim.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/persona-protocol-slim.md by
      install-antislop / `--update`, version-stamped like persona-protocol.md.
      Delivered to lightweight, stateless personas (explorer, researcher,
@@ -89,3 +89,8 @@ Write, and Edit so you can manage your memory files — this happens regardless
 of your declared `tools:` list. That is not license to edit source code if
 your role says you never do. The restriction in that case is enforced by
 instruction, not by the tool allowlist — treat it as a hard rule anyway.
+
+**Commit your own memory-scope writes before ending your turn.** Land the
+note file and its `MEMORY.md` index line in their own commit, staged by
+explicit path, before you stop — an uncommitted memory write is ambient dirt
+that blocks someone else's unrelated work.
