@@ -134,8 +134,11 @@ implementation work before it's reported done.
 
 ### Human review of critical units (`humanReviewMode`)
 
-**On by default.** When a `reviewer` is installed, a unit it would have passed
-is instead escalated to you if it meets the heavy-unit trigger: the reviewer
+**Defaults to `critical` (on) for a new project** — the plugin ships this
+value when the `humanReviewMode` key is absent; an individual project may set
+it explicitly instead (this repo currently sets it to `off`, per ADR-0024).
+When active, a unit the reviewer would have passed is instead escalated to
+you if it meets the heavy-unit trigger: the reviewer
 snapshots the unit into `.claude/human-review/<task-id>/` (with `PACKET.md`,
 a literate `CHANGES.md`, and worked `EXAMPLES.md` — skipped, with a one-line
 reason recorded on the escalation marker, for pure docs/formatting/comment/
@@ -144,7 +147,7 @@ decide. The knob is `humanReviewMode` in `.claude/persona-config.json`:
 
 | Value | Behaviour |
 |---|---|
-| `critical` | **Default.** Escalate only units meeting the heavy-unit trigger (ADR-0004, as amended by ADR-0013). |
+| `critical` | **Shipped default when the key is absent.** Escalate only units meeting the heavy-unit trigger (ADR-0004, as amended by ADR-0013). |
 | `all` | Escalate every would-be PASS. |
 | `off` | Never escalate. |
 
