@@ -41,6 +41,24 @@
       "watch": ["hooks/scripts/reviewed-path-gate.sh", "tests/reviewed-path-gate.test.sh"],
       "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
       "timeoutSeconds": 180
+    },
+    {
+      "id": "hdg-anchor-1",
+      "watch": ["hooks/scripts/human-decision-gate.sh", "tests/human-decision-gate.test.sh"],
+      "run": ["bash tests/human-decision-gate.test.sh", "bash tests/reviewed-path-gate.test.sh"],
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "rpg-canon-2",
+      "watch": ["hooks/scripts/reviewed-path-gate.sh", "tests/reviewed-path-gate.test.sh"],
+      "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
+      "timeoutSeconds": 180
+    }
+  ],
+  "retired": [
+    {
+      "id": "rev-gh377-5-probe",
+      "reason": "one-shot probe (item19); run.sh set to mode 644 (item19-3) to prevent dashboard invocation"
     }
   ]
 }
