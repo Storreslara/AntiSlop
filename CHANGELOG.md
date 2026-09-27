@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+**0.31.96 — correct the `ok`-verdict gloss added to `agents/lead-programmer.md` and `agents/scribe.md` by item17-3 (item17-3-fix-fail, FAIL-fix round on docs/plans/2026-09-25-item17-constitution-p3-rescope.md's Step 3).** Independent review found item17-3's new bullets overstated `hooks/scripts/version-stamp-check.sh`'s coverage: they read `ok` as clearing all of **version-stamp discipline**, but the script has no CHANGELOG logic at all (`grep -c CHANGELOG hooks/scripts/version-stamp-check.sh` → 0) — it checks only the version-bump half, exactly as `CONTEXT.md:147-148` already records honestly. `agents/scribe.md` additionally claimed `violation` could fire on a missing CHANGELOG entry, which the script cannot do. Both bullets now say `ok` clears only the version-bump half, name the CHANGELOG-entry half as unmechanized, attribute `violation` to the bump alone, and tell the reader to treat `unknown` as unverified and note it in their report (rather than merely warning not to read it as `ok`).
+
+### Changed
+- **`agents/lead-programmer.md`**, **`agents/scribe.md`**: corrected the `ok`/`violation`/`unknown` gloss to match the script's actual (bump-only) coverage.
+- **`.claude/agents/lead-programmer.md`**, **`.claude/agents/scribe.md`**, **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.95 → 0.31.96.
+
 **0.31.95 — wire the shipped version-stamp check into the two personas that commit version-stamped changes (item17-3-wire-p3-check, Step 3 of docs/plans/2026-09-25-item17-constitution-p3-rescope.md).** `hooks/scripts/version-stamp-check.sh` shipped 2026-09-23 but no persona instruction named it, so the detector never ran before review — the reviewer kept adjudicating the missing-bump class by hand (`reviewer-changes-examples-lean-1`, `-lean-2`). `agents/lead-programmer.md`'s ready-for-review bullet now tells the lead-programmer to run `bash hooks/scripts/version-stamp-check.sh baseline..HEAD` (reusing its packet's own range) before reporting whenever the range touched a **version-stamped file**, and to read `ok`/`violation`/`unknown` correctly (`unknown` is never `ok`). `agents/scribe.md` gains the equivalent conditional instruction, phrased so it does not depend on the `lead-programmer` persona existing (constitution P4). No new detector, no hook registration, and `agents/reviewer.md`/`templates/persona-protocol.md` are deliberately untouched — a reviewer-side check would recreate the exact FAIL cost this item removes.
 
 ### Changed
