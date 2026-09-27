@@ -375,6 +375,24 @@ else
 fi
 
 echo
+echo "== audit-log.sh: audit_append/audit_seal_verify/audit_rotate (Bash, item15-2) =="
+if bash tests/audit-seal.test.sh; then
+  echo "OK   tests/audit-seal.test.sh"
+else
+  echo "FAIL tests/audit-seal.test.sh"
+  fail=1
+fi
+
+echo
+echo "== bin/audit-seal-verify.sh: seal-verification consumer, mutation-proven (Bash, item15-2) =="
+if bash tests/audit-seal-verify.test.sh; then
+  echo "OK   tests/audit-seal-verify.test.sh"
+else
+  echo "FAIL tests/audit-seal-verify.test.sh"
+  fail=1
+fi
+
+echo
 echo "== bin/harness-integrity.sh --self-report tally, wired into session-start.sh (Bash) =="
 if bash tests/self-report-tally.test.sh; then
   echo "OK   tests/self-report-tally.test.sh"

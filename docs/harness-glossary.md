@@ -2199,7 +2199,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   self-report-vs-mechanical map this closes row 13 of.
 
 **audit seal**:
-(unit gh415, 2026-08-26) — the append-only sidecar `<log>.seal` maintained
+(unit gh415, 2026-08-26; consumer and severity mapping added by item15-2,
+  2026-09-26) — the append-only sidecar `<log>.seal` maintained
   alongside each of the four gitignored `.claude/*-audit.log` files by
   `hooks/scripts/lib/audit-log.sh`, holding a single line
   `lines=<N> sha256=<hash>` — `N` is the log's line count and `hash` is the
@@ -2217,10 +2218,31 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   library stops a determined agent from doing both. The seal prices that
   attack (turns a one-call truncation into a two-step operation that must
   also model the seal format) and catches accidents reliably; it is
-  evidence against carelessness, not a defense against intent. See
-  [[sanctioned rotation]] for the one operation that legitimately rewrites
-  a sealed log without tripping this detector, and `docs/trust-model.md`
-  row 12 for how this feeds the broader trust map.
+  evidence against carelessness, not a defense against intent. **The
+  guarantee in one sentence: seals detect modification of a log's already-
+  sealed content; deletion of the log itself is detected by its absence,
+  not by the seal.** See [[sanctioned rotation]] for the one operation that
+  legitimately rewrites a sealed log without tripping this detector, and
+  `docs/trust-model.md` row 12 for how this feeds the broader trust map.
+  `bin/harness-integrity.sh` maps `missing-seal` on an existing, non-empty
+  log to the same `tampered` severity as `truncated`/`absent` (item15-2):
+  deleting the sidecar is the cheaper first move in a truncate-and-reseal
+  attack, so it must not read as a weaker verdict than the truncation it
+  usually precedes. Item15-1 found `audit_seal_verify`'s result was
+  computed by `bin/harness-integrity.sh` but discarded by both its hook
+  call sites (`hooks/scripts/session-start.sh:167`,
+  `hooks/scripts/lib/stop-gate-core.sh:613` check only `config=drift`,
+  never `logs=`) — write-only. Item15-2 adds the first real consumer,
+  `bin/audit-seal-verify.sh`, wired into `tests/validate.sh`; it turns the
+  `logs=` field into a real exit code (0 intact, non-zero naming the bad
+  file) but does not change what the two hook call sites check, so a
+  drifted/tampered log still does not block a session today outside
+  `validate.sh`. `adapters/codex/` and `adapters/cursor/` each ship
+  `audit_seal_verify` in their own `hooks/scripts/lib/audit-log.sh` copy
+  with **no caller at all** — `bin/harness-integrity.sh` and
+  `bin/audit-seal-verify.sh` are not mirrored into either adapter port — so
+  the seal mechanism stays write-only-absolute there; a known,
+  separately-tracked gap, not silently left asymmetric.
 
 **sanctioned rotation**:
 (unit gh415, 2026-08-26) — a log rotation that ends by leaving the sealed

@@ -197,7 +197,11 @@ for name in $log_names; do
   [ "$state" = ok ] && continue
   bad_logs="${bad_logs:+$bad_logs,}${state}:${name}"
   case "$state" in
-    truncated|absent) worst=tampered ;;
+    # missing-seal joins truncated|absent (item15-2, required-scope item 3):
+    # deleting the sidecar is the cheaper first move in a truncate-and-
+    # reseal attack, so it must not read as a WEAKER verdict than the
+    # truncation it usually precedes.
+    truncated|absent|missing-seal) worst=tampered ;;
     *) [ "$worst" = tampered ] || worst=unverifiable ;;
   esac
 done
