@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+**0.31.98 — fix a vacuous grep in memdirt-1's own acceptance criterion 6 (memdirt-1-fix, FAIL-fix round on Step 1 of docs/plans/2026-09-27-agent-memory-dirt-blocks-pass.md).** Independent review found the literal substring `the exclusion` did not actually occur in `agents/reviewer.md`: the only near-miss was capitalized as a sentence-opener ("The exclusion is deliberate and narrow"), which `git grep -F`'s case-sensitive exact-substring match cannot see. Rejoined that sentence to the preceding one with a semicolon so the clause now reads "...uncommitted change; the exclusion is deliberate and narrow: ...", preserving meaning while making the lowercase literal appear. No other criterion's counts changed.
+
+### Changed
+- **`agents/reviewer.md`**: reworded the On-PASS bullet's exclusion-rationale sentence so `the exclusion` occurs as a literal, lowercase substring.
+- **`.claude/agents/*.md`**, **`.claude/persona-protocol.md`**, **`.claude/persona-protocol-slim.md`**, **`.claude/persona-config.json`**: regenerated via `node bin/cli.js --update --force-render`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.97 → 0.31.98.
+
 **0.31.97 — narrow the v3 clean-tree PASS-marker precondition to exclude `.claude/agent-memory/**`, and add a memory-commit discipline rule to both protocol sources (memdirt-1, Step 1 of docs/plans/2026-09-27-agent-memory-dirt-blocks-pass.md).** The reviewer's whole-tree `git diff --quiet HEAD` check let a stray uncommitted memory note from an unrelated persona's session block an otherwise-correct unit's PASS — measured at least 5 times in one orchestration session, and already diagnosed unactioned in a unit #257 PASS-note ~7 weeks ago. The check now runs `git diff --quiet HEAD -- ':/' ':(exclude,top).claude/agent-memory'` (root-anchored on both sides; the CWD-dependent `-- . ':(exclude)…'` form silently reports a clean tree from a subdirectory and must not be used), except when the unit's own affected files name a path under `.claude/agent-memory/`, in which case the unexcluded whole-tree form still applies because the memory file is then the deliverable. Both protocol sources (`templates/persona-protocol.md`, `templates/persona-protocol-slim.md` — the slim source is needed because `scribe` is slim-tier and also memory-granted) gain a byte-identical sentinel sentence instructing every memory-granted persona to commit its own memory-scope writes, in their own commit, before ending its turn, phrased without naming another protocol section header so `assertNoDanglingCrossReferences` cannot throw for a matrix row that drops one.
 
 ### Changed

@@ -116,7 +116,7 @@ with reasons.
   reviewed state is committed. Run
   `git diff --quiet HEAD -- ':/' ':(exclude,top).claude/agent-memory'` — it
   must exit 0, so no tracked file outside `.claude/agent-memory/` carries an
-  uncommitted change. The exclusion is deliberate and narrow: a persona's own
+  uncommitted change; the exclusion is deliberate and narrow: a persona's own
   memory-scope write is never part of a unit's reviewed deliverable, so
   another session's uncommitted memory note must not block this unit's PASS —
   but if this unit's own `## Affected files` names a path under
