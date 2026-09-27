@@ -122,6 +122,10 @@ check "AC-B3 mutation proof: disabling the freshness check makes the stale-pass 
   "before=$before_n after=${after_n:-1} parses=$parses rc2=$rc2"
 
 # --- AC-B4: the reviewer's independent run stays genuinely untouched -------
+# Pin re-based past 09cc304 to 01d2f7d (memdirt-1, 2026-09-27): that unit
+# made a separately-planned, sanctioned edit to this exact clause (narrowing
+# the clean-tree PASS precondition), so the original AC-B4 baseline no longer
+# reflects current content. This still guards against unrelated future drift.
 extract_clause() {
   awk '
     /^- \*\*Microworld bundles/{exit}
@@ -130,10 +134,10 @@ extract_clause() {
   ' "$1"
 }
 cur_clause="$(extract_clause agents/reviewer.md)"
-old_clause="$(git show 09cc304:agents/reviewer.md | extract_clause /dev/stdin)"
+old_clause="$(git show 01d2f7d:agents/reviewer.md | extract_clause /dev/stdin)"
 cur_hash="$(printf '%s' "$cur_clause" | sha256sum | cut -d' ' -f1)"
 old_hash="$(printf '%s' "$old_clause" | sha256sum | cut -d' ' -f1)"
-check "AC-B4a: reviewer.md's independent-verification clause is byte-identical to HEAD 09cc304" \
+check "AC-B4a: reviewer.md's independent-verification clause is byte-identical to HEAD 01d2f7d" \
   "$([ -n "$cur_clause" ] && [ "$cur_hash" = "$old_hash" ] && echo true || echo false)" \
   "cur=$cur_hash old=$old_hash"
 
