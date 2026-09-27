@@ -19,11 +19,15 @@ hand-editing risks the exact traps those scripts exist to avoid.
 Any change to a version-stamped file (`agents/*.md`, templates) must bump
 `.claude-plugin/plugin.json`'s version and add a CHANGELOG entry, since the
 `--update` mechanism depends on the version actually changing when content
-does. This bump is required **per unit, not batched once per spec**: a
-consumer project's `--update` can run against any commit, not only a spec's
-final one, so a bump deferred until the spec's last unit would leave the
-version unchanged — and `--update` staleness-blind — across every commit in
-between where content had already changed.
+does. The bump and CHANGELOG entry must land in the **same commit** as the
+content change — checked **per commit, not once per unit or once per
+spec**: `hooks/scripts/version-stamp-check.sh` verifies every commit that
+touches a version-stamped path against its own immediate parent, so a later
+commit's bump does not excuse an earlier commit in the same unit that lacks
+one. A consumer project's `--update` can run against any commit, not only a
+unit's or a spec's final one, so any intermediate commit shipping changed
+content under an unchanged version leaves `--update` staleness-blind for
+that commit.
 
 ### 4. Optional personas degrade gracefully (SHOULD)
 References to `spec-master`/`task-master`/`scribe`/`reviewer`/`researcher`/
@@ -39,5 +43,7 @@ very ADAPT run hit firsthand on `explorer.md`.
 
 ## Amendment log
 - 1.0.0 (2026-07-14): ratified.
-- 1.1.0 (2026-09-26): P3 clarified to require the version bump per unit,
-  not batched once per spec (item17-1).
+- 1.1.0 (2026-09-26): P3 clarified to require the version bump and
+  CHANGELOG entry in the same commit as the content change (per-commit
+  semantics, matching `hooks/scripts/version-stamp-check.sh`), not batched
+  once per unit or once per spec (item17-1).
