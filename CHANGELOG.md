@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+**Record the agent-memory-dirt-blocks-pass narrowing as ADR-0037, amend ADR-0015, and add its harness-glossary entries (memdirt-3, Step 3 of docs/plans/2026-09-27-agent-memory-dirt-blocks-pass.md).** Closes the spec: ADR-0037 records why memdirt-1/memdirt-2's narrowing of the v3 clean-tree precondition is sound — quoting ADR-0015's originating whole-tree rationale verbatim, explaining why the unit-exclusivity invariant it rests on never covered a persona's own memory-scope writes, restating the conditional exception (a memory path that is itself a unit's deliverable still gets the unexcluded whole-tree check), and recording the rejection of both gitignoring `.claude/agent-memory/` entirely (the harness-injected "shared … via version control" instruction is the deciding ground) and having the reviewer auto-commit stray memory dirt (an ADR-0002 custody breach and the measured shared-worktree stash race). ADR-0015 gains an `**Amended by**` pointer to ADR-0037, amending only the whole-tree check's rationale's reach, not its commit-anchoring mechanism. `docs/harness-glossary.md` gains two new entries, **clean-tree precondition** and **ambient dirt**, and folds **memory-scope write** into the existing **agent-memory write** entry as a synonym, updating that entry's closing parenthetical from a live problem statement to a historical one citing ADR-0037. `CONTEXT.md` is deliberately untouched — all three terms are harness mechanics per its own `:498-510` routing note. No version bump: none of `docs/adr/`, `docs/harness-glossary.md`, or `CHANGELOG.md` is a version-stamped path.
+
+### Added
+- **`docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md`** (new): records the narrowing decision, its rejected alternatives, and the conditional exception.
+- **`docs/harness-glossary.md`**: new **clean-tree precondition** and **ambient dirt** entries; **agent-memory write** entry gains a **memory-scope write** synonym and an updated, now-historical closing parenthetical citing ADR-0037.
+
+### Changed
+- **`docs/adr/0015-commit-anchored-pass-markers.md`**: adds an `**Amended by**` pointer to ADR-0037 (rationale's reach only; mechanism unchanged).
+
 **0.31.98 — fix a vacuous grep in memdirt-1's own acceptance criterion 6 (memdirt-1-fix, FAIL-fix round on Step 1 of docs/plans/2026-09-27-agent-memory-dirt-blocks-pass.md).** Independent review found the literal substring `the exclusion` did not actually occur in `agents/reviewer.md`: the only near-miss was capitalized as a sentence-opener ("The exclusion is deliberate and narrow"), which `git grep -F`'s case-sensitive exact-substring match cannot see. Rejoined that sentence to the preceding one with a semicolon so the clause now reads "...uncommitted change; the exclusion is deliberate and narrow: ...", preserving meaning while making the lowercase literal appear. No other criterion's counts changed.
 
 ### Changed

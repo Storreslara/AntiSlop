@@ -10,6 +10,8 @@ PASS markers (`.claude/reviewed/<task-id>.pass`) record reviewer verdicts and ga
 
 The v3 format adds a `commit:` field to anchor the marker to a specific commit in the repository, enabling detection of units whose work was lost to history (e.g. via git reset, force push, or rebase).
 
+**Amended by** [ADR-0037](0037-agent-memory-excluded-from-clean-tree-precondition.md) — narrows the reach of the whole-tree `git diff --quiet HEAD` clean-tree precondition this v3 format anchors to (originally justified on the unit-exclusivity invariant in `docs/plans/2026-08-07-commit-anchored-pass-markers.md:363-367`), excluding `.claude/agent-memory/**` conditionally. This amends the check's rationale's reach only; the commit-anchoring mechanism documented below is unchanged.
+
 ## Problem
 
 ### Failure Mode: Work Lost to History

@@ -831,16 +831,52 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   clarity. See [[core file]], [[payload-shape translation]], and [[Adapter
   behavioural parity]].
 
-**agent-memory write**:
+**agent-memory write** (synonym: **memory-scope write**):
 (unit #288, 2026-08-11) — a `Write` or `Edit` tool_use whose `file_path`
   targets the agent-memory directory tree: `.claude/agent-memory/` or
   `.claude/projects/*/memory/`. Distinct from general filesystem writes;
   specifically observes memories saved by agents during their work. Recorded
   by `scripts/agent-audit.sh`'s A8 section (Agent-memory writes) as an
-  informational audit event (never gating, never a finding). See [[gh-304
-  dual-marker incident]] for the concurrency defect that motivated tracking
-  memory writes (concurrent writes to `.claude/agent-memory/` can dirty the
-  git tree and fail marker preconditions).
+  informational audit event (never gating, never a finding). "Memory-scope
+  write" is the term used in the agent-memory-dirt-blocks-pass spec
+  (2026-09-27) for this same event; the two are synonyms, not distinct
+  concepts. See [[gh-304 dual-marker incident]] for the concurrency defect
+  that motivated tracking memory writes. **Historical:** concurrent writes to
+  `.claude/agent-memory/` used to dirty the git tree and fail the reviewer's
+  whole-tree clean-tree precondition, blocking an unrelated unit's PASS —
+  fixed by narrowing that precondition to exclude
+  `.claude/agent-memory/**` conditionally; see
+  [ADR-0037](docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
+  and [[clean-tree precondition]].
+
+**clean-tree precondition**:
+(unit memdirt-3, 2026-09-27) — the reviewer's On-PASS requirement, before
+  writing a `.pass` marker, that no tracked file carries an uncommitted
+  change: `git diff --quiet HEAD` must exit 0 (`agents/reviewer.md:57-58`,
+  `:115-116`). Named here for the first time even though it was implemented
+  by [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md) — that ADR
+  never defined the check as a standalone term. Narrowed by
+  [ADR-0037](docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
+  to exclude `.claude/agent-memory/**` conditionally: the exact command is
+  `git diff --quiet HEAD -- ':/' ':(exclude,top).claude/agent-memory'`, and
+  the exclusion does not apply when the reviewed unit's own affected-files
+  set names a path under `.claude/agent-memory/`, in which case the
+  unexcluded whole-tree form still applies. See [[agent-memory write]] and
+  [[ambient dirt]].
+
+**ambient dirt**:
+(unit memdirt-3, 2026-09-27) — uncommitted working-tree residue left behind
+  by a different persona's session (most commonly an
+  [[agent-memory write]]'s note file or `MEMORY.md` index line) that a
+  later, unrelated agent must notice, attribute to its true owner, and get
+  cleared before its own unit's review can be signed off. The
+  agent-memory-dirt-blocks-pass spec (2026-09-27) named and closed this: the
+  fix is not to sweep or stash someone else's ambient dirt (that recreates a
+  measured shared-worktree stash race), but for every memory-granted persona
+  to commit its own memory-scope writes before its turn ends, per the
+  protocol's `## A note on \`memory\`` section. See
+  [ADR-0037](docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
+  and [[clean-tree precondition]].
 
 **clear-watermark**:
 **[Retired in 0.28.0; see review-join stamp below.]**
