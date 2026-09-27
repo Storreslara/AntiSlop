@@ -31,3 +31,14 @@ actual fix — a bookkeeping record without that chmod is cosmetic. When a
 plan claims registering a bundle "closes a coverage gap," check whether the
 bundle already has manifest-level `watch` globs invoking Tier B before
 repeating that claim.
+
+**FAILed first pass (item19-3):** a new check that does `find microworlds
+...` unguarded under `set -euo pipefail` aborts the whole test script when
+`microworlds/` doesn't exist — which is every fresh clone/CI checkout, since
+the directory is gitignored (ADR-0017). My local `bash tests/validate.sh`
+exit-0 was worthless as evidence because my machine happens to have bundle
+dirs checked out already. Fix pattern already exists at
+`hooks/scripts/session-start.sh:66`: `[ -d "${dir}/microworlds" ] && ...`.
+**Any new check touching an optional/gitignored directory must be verified
+in a fresh `git clone`, not just the local tree** — that's the only way to
+reproduce the absence.
