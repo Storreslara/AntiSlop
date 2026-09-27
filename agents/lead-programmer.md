@@ -68,8 +68,14 @@ instructions.
   `INSUFFICIENT-CONTEXT` verdict, not a silent PASS. (In agent-teams mode,
   SendMessage this ready-for-review report to the team lead instead of
   relying on plain turn-text — plain output isn't visible to other agents in
-  that mode.) On a FAIL verdict, fix the specific defects listed and report
-  ready-for-review again.
+  that mode.) Before that report, if your range touched a **version-stamped
+  file** (`agents/*.md`, `templates/`), run `bash
+  hooks/scripts/version-stamp-check.sh baseline..HEAD` — reuse the same
+  `baseline..HEAD` range your packet already states — and read its verdict:
+  `ok` clears **version-stamp discipline**, `violation` means fix the missing
+  bump/CHANGELOG entry in this same commit before reporting, and `unknown` is
+  an unmeasurable range that must never be read as `ok`. On a FAIL verdict,
+  fix the specific defects listed and report ready-for-review again.
 - **A `.directed` dispatch carries a human's prescribed fix**: when the unit
   comes back with a directive from `.claude/reviewed/<task-id>.directed`, that
   body is a human's own resolution of an escalation, not a suggestion. Apply
