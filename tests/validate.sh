@@ -1062,6 +1062,39 @@ echo "== agent-memory namespace size warning (advisory only, never affects exit 
 bash bin/agent-memory-size-check.sh --project-dir "$(pwd)"
 
 echo
+echo "== memory-commit sentinel: header/sentence file-count parity (Guard 1) =="
+mem_scope="templates/ .claude/agents/ .claude/persona-protocol.md .claude/persona-protocol-slim.md"
+header_files=$(git grep -F -l '## A note on `memory`' -- $mem_scope | sort)
+sentence_files=$(git grep -F -l 'Commit your own memory-scope writes before ending your turn.' -- $mem_scope | sort)
+if [ -z "$header_files" ]; then header_count=0; else header_count=$(echo "$header_files" | wc -l); fi
+if [ -z "$sentence_files" ]; then sentence_count=0; else sentence_count=$(echo "$sentence_files" | wc -l); fi
+missing=$(comm -23 <(echo "$header_files") <(echo "$sentence_files"))
+if [ "$header_count" -eq "$sentence_count" ] && [ -z "$missing" ]; then
+  echo "OK   memory-note header and sentinel sentence both appear in $header_count file(s)"
+else
+  echo "FAIL memory-note header/sentinel-sentence count mismatch (header=$header_count sentence=$sentence_count)"
+  if [ -n "$missing" ]; then
+    echo "$missing" | sed 's/^/     header without sentinel: /'
+  fi
+  fail=1
+fi
+
+echo
+echo "== memory-commit sentinel: reviewer.md narrowed-command branch agreement (Guard 2) =="
+for f in agents/reviewer.md .claude/agents/reviewer.md; do
+  bare_count=$(git grep -F -c 'git diff --quiet HEAD' -- "$f" | cut -d: -f2)
+  narrowed_count=$(git grep -F -c 'exclude,top).claude/agent-memory' -- "$f" | cut -d: -f2)
+  bare_count=${bare_count:-0}
+  narrowed_count=${narrowed_count:-0}
+  if [ "$bare_count" -eq "$narrowed_count" ]; then
+    echo "OK   $f: 'git diff --quiet HEAD' count ($bare_count) matches narrowed-exclusion count ($narrowed_count)"
+  else
+    echo "FAIL $f: 'git diff --quiet HEAD' count ($bare_count) != narrowed-exclusion count ($narrowed_count)"
+    fail=1
+  fi
+done
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
