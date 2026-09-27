@@ -38,7 +38,7 @@ run_case() {
   local label="$1" expected="$2" range="$3" script="${4:-$SCRIPT}"
   local got rc=0
   got="$(cd "$repo" && bash "$script" "$range" 2>/dev/null)" || rc=$?
-  if [ "$rc" = 0 ] && printf '%s\n' "$got" | grep -Eq "^version-stamp-check: ${expected} touched: (yes|no|-) old: \S+ new: \S+\$"; then
+  if [ "$rc" = 0 ] && printf '%s\n' "$got" | grep -Eq "^version-stamp-check: ${expected} touched: (yes|no|-) old: \S+ new: \S+( offenders: \S+)?\$"; then
     echo "OK   $label -> $got"
   else
     echo "FAIL $label expected 'version-stamp-check: $expected ...', got '$got' (rc=$rc)"
@@ -169,6 +169,17 @@ if mutate unmeasurable-check-disabled 's/\[ -z "\$old_ver" \] || \[ -z "\$new_ve
     echo "OK   (mc5) unmeasurable/empty-version check disabled: plugin-json-missing no longer reports unknown -> $got"
   else
     echo "FAIL (mc5) unmeasurable/empty-version check disabled: still reports unknown, got '$got'"
+    fail=1
+  fi
+fi
+
+echo "-- offender collection is computed, not hardcoded (item 5) --"
+if mutate offender-collection-disabled 's|offenders="\${offenders:+\$offenders,}\$short:\$p"|true|'; then
+  got="$(bash "$MUTANT" "61ff35a~1..e9f07c2" 2>/dev/null)"
+  if ! printf '%s\n' "$got" | grep -q '61ff35a'; then
+    echo "OK   (mc6) offender-collection step disabled: real-history violation no longer names 61ff35a -> $got"
+  else
+    echo "FAIL (mc6) offender-collection step disabled: still names 61ff35a, got '$got'"
     fail=1
   fi
 fi

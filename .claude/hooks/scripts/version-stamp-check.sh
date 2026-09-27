@@ -28,7 +28,7 @@
 # validate.sh registers explicitly.
 set -euo pipefail
 
-unknown() { echo "version-stamp-check: unknown touched: - old: - new: -"; exit 0; }
+unknown() { echo "version-stamp-check: unknown touched: - old: - new: - offenders: -"; exit 0; }
 
 range="${1:-}"
 [ -n "$range" ] || unknown
@@ -64,12 +64,12 @@ while IFS= read -r f; do
 done <<< "$files"
 
 if [ "$touched" = no ]; then
-  echo "version-stamp-check: ok touched: no old: - new: -"
+  echo "version-stamp-check: ok touched: no old: - new: - offenders: -"
   exit 0
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "version-stamp-check: unknown touched: yes old: - new: -"
+  echo "version-stamp-check: unknown touched: yes old: - new: - offenders: -"
   exit 0
 fi
 
@@ -80,15 +80,17 @@ new_ver="$(version_at "$new")"
 # path against its own immediate parent (see "per-commit semantics" above).
 violation=no
 unmeasurable=no
+offenders=""
 commits="$(git rev-list "$range" 2>/dev/null)" || commits=""
 while IFS= read -r c; do
   [ -n "$c" ] || continue
   cfiles="$(git diff --no-renames --name-only "$c^" "$c" -- 2>/dev/null)" || continue
   c_touched=no
+  cpaths=""
   while IFS= read -r f; do
     [ -n "$f" ] || continue
     case "$f" in
-      agents/*.md|templates/*) c_touched=yes; break ;;
+      agents/*.md|templates/*) c_touched=yes; cpaths="${cpaths:+$cpaths,}$f" ;;
     esac
   done <<< "$cfiles"
   [ "$c_touched" = yes ] || continue
@@ -99,15 +101,21 @@ while IFS= read -r c; do
     unmeasurable=yes
   elif [ "$cold" = "$cnew" ]; then
     violation=yes
+    short="${c:0:7}"
+    IFS=',' read -ra cpath_arr <<< "$cpaths"
+    for p in "${cpath_arr[@]}"; do
+      [ -n "$p" ] || continue
+      offenders="${offenders:+$offenders,}$short:$p"
+    done
   fi
 done <<< "$commits"
 
 if [ "$violation" = yes ]; then
-  echo "version-stamp-check: violation touched: yes old: ${old_ver:--} new: ${new_ver:--}"
+  echo "version-stamp-check: violation touched: yes old: ${old_ver:--} new: ${new_ver:--} offenders: ${offenders:--}"
 elif [ -z "$old_ver" ] || [ -z "$new_ver" ] || [ "$unmeasurable" = yes ]; then
-  echo "version-stamp-check: unknown touched: yes old: ${old_ver:--} new: ${new_ver:--}"
+  echo "version-stamp-check: unknown touched: yes old: ${old_ver:--} new: ${new_ver:--} offenders: -"
 elif [ "$old_ver" = "$new_ver" ]; then
-  echo "version-stamp-check: violation touched: yes old: $old_ver new: $new_ver"
+  echo "version-stamp-check: violation touched: yes old: $old_ver new: $new_ver offenders: ${offenders:--}"
 else
-  echo "version-stamp-check: ok touched: yes old: $old_ver new: $new_ver"
+  echo "version-stamp-check: ok touched: yes old: $old_ver new: $new_ver offenders: -"
 fi
