@@ -54,4 +54,5 @@
 - [`--update` never reaches settings-fragment](project_cli_update_never_reaches_settings_fragment.md) — returns at cli.js:2188, fragment merges at 2387; a new key is inert without a runUpdate backfill. Set B blocks hand-edits.
 - [Cost-governance spec (#476)](project_cost_governance_spec.md) — LOCKED, 0 open questions (cap=12000, milestone-auditor undeclared, backfill approved); PLUS the frontmatter version-floor defect class and its 6 disagreeing surfaces.
 - [Zero usage is not evidence](technique_zero_usage_is_not_evidence.md) — check the gate's MODE first; in `warn` mode a zero-usage audit is a tautology. Plus: glossary `_Avoid_` is entry-scoped, and it is not alphabetical.
+- [Grep for the deliverable before speccing it](feedback_grep_for_the_deliverable_before_speccing_it.md) — a shipped detector can meet 6/7 criteria while the goal fails because NOTHING invokes it; also: enumerate the shipped set, don't trust the glob.
 - [Persona-audit 11-findings spec (#428)](project_persona_audit_11_findings_spec.md) — settled .fail-append rationale + 4 premise corrections; marker-verify parses line 2 as a note; adapter hook libs ARE generated, protocol ports are not.
