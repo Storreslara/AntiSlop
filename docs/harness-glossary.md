@@ -281,6 +281,21 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   reviewer. Contrast with [[unreachable baseline]], which is the analogous fail-closed
   condition for different measurement contexts.
 
+**offending commit** / the **`offenders:` field**:
+(unit item17-4-name-p3-offenders, 2026-09-25) — the commit(s)/path(s) named
+  by a `violation` verdict from `hooks/scripts/version-stamp-check.sh`.
+  Surfaced as a sixth, trailing, always-present field in the script's output
+  line (`offenders: <short-sha>:<path>[,<short-sha>:<path>...]`), computed
+  inside the existing per-commit loop from whichever commits it already finds
+  to have `cold == cnew` (touched a version-stamped path without a version
+  bump). Distinct from the five pre-existing positional fields (the
+  `ok`/`violation`/`unknown` verdict itself, `touched:`, `old:`, `new:`),
+  which the new field trails without displacing or renumbering. Reads `-` for
+  every `ok` and every `unknown` ([[unmeasurable range]]) verdict — populated
+  only on `violation`. Closes the one Step 2 criterion the shipped script
+  previously failed: a caller no longer has to hand-write a `rev-list` loop
+  to find which commit and path actually violated.
+
 **scaffold-only mirror**:
 (unit install-antislop-floor-sweep, 2026-09-24) — a `.claude/` mirror file
   (e.g., `.claude/skills/install-antislop/SKILL.md`) that is copied from its
@@ -368,6 +383,28 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   its own. See
   [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md).
 _Avoid_: escape hatch, grant branch
+
+**amortized / unamortized**:
+(unit item16-1-measure-ask-branch, 2026-09-25; disposition recorded in
+  [ADR-0035](docs/adr/0035-hcb-branch-measured-disposition-unamortized-but-not-dead.md),
+  amending [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md))
+  — the disposition pair item16-1 used to describe whether the
+  [[human-confirmation branch]]'s complexity (two mode tiers, the
+  [[asked audit record]]/[[completed audit record]] pairing, and the
+  [[registration-presence assertion]]) earns its footprint given how rarely
+  the branch actually fires. **amortized**: the branch fires often enough
+  that real usage repays its accounting overhead. **unamortized**: it rarely
+  or never fires — measured 2026-09-26: 21 `asked` audit records (all
+  confirmed synthetic/probe-generated, not organic), 0 `completed` records,
+  0 organic fires, across ~60 days of recorded history. **Important nuance —
+  do not read "unamortized" as "useless":** ADR-0035's critical reframing is
+  that a near-zero fire rate has two indistinguishable explanations: dead
+  weight nobody exercises, or a working deterrent that successfully keeps
+  agents on the sanctioned `bin/cli.js --update` route, which writes via a
+  child-process filesystem call that structurally bypasses `PreToolUse`
+  entirely and so never trips the branch at all. Fire-count alone cannot
+  distinguish the two, so "unamortized" here names the measurement, not a
+  verdict that the mechanism should be removed or shrunk.
 
 **git-index witness** (synonymous with **directory witness**):
 (unit gh441, 2026-09-10) — a detection mechanism in `harness_armed()` that
@@ -532,6 +569,39 @@ an append-only audit-log record class written to
   in the same append-only format. Tier A enables committed, versioned
   reactive checks; Tier B enables explorer-driven escalations. See
   [[watch-map]] and [[Microworld bundle]]s.
+
+**orphaned bundle**:
+(unit item19-1-classify-orphans, 2026-09-25) — a bundle directory under
+  `microworlds/` with no `tests/watch-map.json` entry and not recorded as a
+  [[retired bundle]] either — genuinely unregistered and unaccounted-for, so
+  nothing watches its files and nothing runs it. Item 19 began from a Fable
+  adversarial review's counting-error claim ("10 bundles, 1 watch-map entry",
+  a 10% utilization reading); the corrected count is 7 of 10 registered
+  (70%), leaving exactly 3 orphaned bundles at the time of measurement
+  (`hdg-anchor-1`, `rev-gh377-5-probe`, `rpg-canon-2`), all since dispositioned
+  by item19-3. **The counting trap that originated this term:**
+  `jq '.entries|length'` (correct — 7, the array nested under the top-level
+  `entries` key) vs. `jq 'keys|length'` (wrong — 1, because it counts the
+  single top-level `entries` key itself, not its contents). Any future
+  measurement of watch-map registration must use the former.
+
+**retired bundle**:
+(unit item19-3-close-registration-gap, 2026-09-25) — a bundle directory
+  under `microworlds/` deliberately excluded from the [[orphaned bundle]] /
+  registration-gap check by a recorded entry in `tests/watch-map.json`'s
+  top-level `retired[]` array (each entry: `{"id": "<bundle-slug>", "reason":
+  "<why>"}`). Used for `rev-gh377-5-probe`, retired with reason "one-shot
+  probe (item19); run.sh set to mode 644 (item19-3) to prevent dashboard
+  invocation". **Retirement is a bookkeeping label — it does NOT block
+  execution by itself.** `bin/microworld-dashboard/discover.js`'s invoke path
+  gates solely on whether a bundle's entry file (`run.sh`) is executable; it
+  performs no check against `tests/watch-map.json` or the `retired[]` array
+  at all. Actually disabling a retired bundle therefore requires a separate,
+  required action: stripping the executable bit (e.g. `chmod 644 run.sh`) —
+  a `retired[]` entry with no matching `chmod` is cosmetic only, per
+  item19-1/19-3's finding that the microworld dashboard's invoke path is
+  gated on the executable bit alone, not on watch-map or retired-list
+  membership.
 
 **Microworld audit log**:
 (unit #132, 2026-08-10) — an append-only log file at
@@ -1180,6 +1250,47 @@ the reviewer's `sonnet`/`opus` model is
   but a materiality judgment to be rendered at verification time using
   `scripts/spend-accounting.sh` output. Coupled with the **Forward-verification
   rule** — both conditions must hold for the reversal to remain valid.
+
+**threshold-crossing rate**:
+(unit item13-1-measure-split-cost, 2026-09-25) — the measured proportion of
+  specs in `docs/plans/` that cross the [[publish threshold]] (≥6
+  dispatchable units — see `CONTEXT.md`'s **publish threshold** and
+  **fast-path threshold** entries), the gate on whether `task-master` and
+  `to-tickets` are exercised at all. Measured 2026-09-25: 14/94
+  [[confirmed-crossing]] (≈14.9%), rising to a 23/94 ceiling (≈24.5%) once
+  [[ceiling-only]] specs are counted optimistically, and 6/48 (≈12.5%) when
+  restricted to [[post-era]] specs only. Produced to answer whether
+  `task-master`'s ≥6-unit gate is "rarely exercised", as a Fable adversarial
+  review claimed. See [[confirmed-crossing / ceiling-only]] and
+  [[pre-era / post-era]] for the two classification schemes behind these
+  numbers.
+
+**confirmed-crossing / ceiling-only**:
+(unit item13-1-measure-split-cost, 2026-09-25) — the two-bucket
+  classification item13-1 used to bound its [[threshold-crossing rate]]
+  measurement, since not every spec in `docs/plans/` states a countable unit
+  total. **confirmed-crossing**: a spec self-reports an explicit unit count
+  (e.g. a "Dispatchable units" line or a dispatch contract listing) that is
+  ≥6, so the crossing is directly countable from the document itself.
+  **ceiling-only**: a spec was merely routed to `task-master` — i.e. treated
+  as above the fast-path threshold — with no confirmable unit count stated
+  anywhere in the document; counted toward the upper ceiling bound only, not
+  the confirmed rate, since the actual count could sit anywhere at or above
+  the threshold. The split keeps the measurement honest about what is
+  verified versus merely assumed.
+
+**pre-era / post-era**:
+(unit item13-1-measure-split-cost, 2026-09-25) — the partition of
+  `docs/plans/` specs by the 2026-08-15 date the fast-path threshold moved
+  from ≥3 to ≥6 dispatchable units (per
+  `docs/plans/2026-08-15-ceremony-reduction-solo-operator.md:985`, Step 3,
+  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md)). **pre-era**
+  specs were written under the old ≥3 threshold and would misclassify if
+  measured against the current ≥6 line; **post-era** specs were written
+  after the move and are the only specs item13-1 could safely compare
+  against ≥6 without conflating two different rules under one count. Used to
+  produce the narrower, post-era-only 6/48 (≈12.5%) figure in
+  [[threshold-crossing rate]] alongside the repo-wide, mixed-era figure.
 
 **F9 convention**:
 (unit #241) — resume-by-name on `INSUFFICIENT-CONTEXT`: when

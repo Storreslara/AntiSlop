@@ -585,7 +585,10 @@ the collection of addressable **Agent** entities currently active in a
   recent holder of that name. Before re-using a name to message an existing
   agent, confirm its dispatch unit via direct query rather than via a disk
   lookup (review markers are keyed by unit id, not agent name). See
-  "Check the roster before dispatching" in `agents/orchestrator.md:139`.
+  "Check the roster before resuming one by name" in `agents/orchestrator.md:167`
+  (heading text and line corrected 2026-09-27, item14 catch-up batch — item14-1
+  reworded the heading from "before dispatching" and the line moved; see
+  `docs/plans/2026-09-25-item14-gh304-roster-check.md`).
 
 **Microworld bundles (format and the check contract)**:
 (unit #314, 2026-08-10) — the canonical protocol section defining
