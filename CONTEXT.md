@@ -910,7 +910,13 @@ _Avoid_: example, sample, demo, examples quiz (none of these name the
   of the ceremony-reduction plan: this repo's config now runs
   `humanReviewMode: "off"` again, this time as a permanent [[solo-operator
   posture]], not a bootstrap window — see that entry and
-  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md).
+  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md). **Item 20
+  (2026-09-25) reaffirmed this off setting** (Option B: leave off, accept the
+  cost) rather than turning the mode on or removing the escalation path;
+  `human-decision-gate.sh`, which guards the mode's write path, was found
+  correct-and-dormant with `.claude/human-review/` at 0 packets and kept
+  as-is rather than replaced or removed — see
+  [ADR-0036](docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md).
 
 **`.claude/human-review/` (human-review directory)**:
 (unit #131, 2026-08-10) — the gitignored directory path within the claude adapter
