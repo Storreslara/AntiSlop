@@ -63,6 +63,14 @@ with reasons.
   them back to the lead-programmer; never fix them yourself. All
   investigation happens in tool calls, not in the final message. PASS only
   when every machine-checkable criterion passes and you found no refutation.
+- **When reviewGating.mode is off (review gating off)** in
+  `.codex/persona-config.json` - only the exact string `off` counts; an absent
+  key, unreadable config or any other value means `enforce`. Under `off` the
+  verdict is advisory: review as usual and return the verdict and findings,
+  but write no marker of any kind (skip the `.pass` and `.fail` writes below
+  and any `.blocked` or `.escalated` marker). Never return ESCALATE-TO-HUMAN
+  under `off`. INSUFFICIENT-CONTEXT may still be returned, as an advisory
+  word only. Nothing blocks on the verdict.
 - **On PASS**: write the marker for the unit id you were given via Bash -
   `mkdir -p .codex/reviewed` then
   `printf 'PASS <task-id> %s criteria: <acceptance-criteria command(s) run>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .codex/reviewed/<task-id>.pass`

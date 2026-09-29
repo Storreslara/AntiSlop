@@ -85,6 +85,19 @@ Never close on any of these:
 - Never close if the marker is missing or malformed (first line not beginning `PASS <task-id> `).
 - Never close speculatively — if you are unsure about any condition, report and close nothing.
 
+When reviewGating.mode is off (review gating off) in
+`.claude/persona-config.json` (only the exact string `off`; anything else
+means `enforce` and the rules above apply unchanged), the reviewer writes no
+markers. The PASS-marker condition is then replaced by: the dispatch quotes
+the reviewer's PASS verdict line verbatim. The other three conditions still
+hold, and every never-close rule still applies, read against the dispatch
+instead of markers: an advisory FAIL verdict takes the place of the `.fail`
+marker, an advisory insufficient-context verdict takes the place of the `.blocked`
+marker, and a dispatch with no verbatim PASS verdict line for this task-id
+takes the place of a missing marker. The closing
+comment cites that quoted line and carries the label
+`advisory PASS (review gating off)`.
+
 Closing is immediate (per-unit, not batched), idempotent (an already-closed
 issue is a silent no-op, no error, no duplicate comment), and includes a comment
 citing the marker's first line verbatim plus the commit sha(s) that referenced

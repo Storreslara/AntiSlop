@@ -112,6 +112,17 @@ with reasons.
   never substitutes for running the command, and never adds a new FAIL ground
   — its findings live exclusively in the advisory sections appended after the
   verdict.
+- **When reviewGating.mode is off (review gating off)**: read the key from
+  `.claude/persona-config.json`; only the exact string `off` counts, and an
+  absent key, unreadable config or any other value means `enforce`. Under
+  `off` your verdict is advisory: review exactly as usual and return the
+  verdict and findings in the shape above, but run **no marker write of any
+  kind** — skip every `.pass`, `.fail`, `.blocked` and `.escalated` write in
+  the bullets below, and the escalation packet with them. Never return
+  ESCALATE-TO-HUMAN under `off`: the effective `humanReviewMode` is `off`
+  whatever the config says, so a unit you would otherwise escalate gets a
+  plain PASS. INSUFFICIENT-CONTEXT may still be returned, as an advisory
+  word only. Nothing blocks on your verdict; the orchestrator routes it.
 - **On PASS (marker format v3)**: before writing the marker, verify the
   reviewed state is committed. Run
   `git diff --quiet HEAD -- ':/' ':(exclude,top).claude/agent-memory'` — it

@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+**0.31.102 — describe review gating off in the persona prose and every hand-synced port (rgo-4, Step 4 of docs/plans/2026-09-29-gateless-mode.md).** Each surface gains one conditional paragraph opening `When reviewGating.mode is off (review gating off)` that restates the exact-`off` rule, makes the reviewer's verdict advisory (no `.pass`/`.fail`/`.blocked`/`.escalated` marker, no ESCALATE-TO-HUMAN), and names the inert and still-armed gates. Enforce-mode prose is unchanged.
+
+### Changed
+- **`templates/persona-protocol.md`**: paragraph at the end of "Review ownership" (no new section, so no protocol-matrix change); covers the loss of `.fail` history under `off`.
+- **`agents/orchestrator.md`**: advisory fix loop; at a unit's second advisory FAIL, list the rest under `Unresolved advisory findings` and move on, no human stop.
+- **`agents/reviewer.md`**: no marker writes, never ESCALATE-TO-HUMAN, INSUFFICIENT-CONTEXT advisory only.
+- **`agents/scribe.md`**: close on a verbatim reviewer PASS line, comment labelled `advisory PASS (review gating off)`.
+- **`adapters/codex/agents-md-fragment.md`**, **`adapters/cursor/rules/persona-protocol.mdc`**, **`adapters/{codex,cursor}` reviewer and orchestrator ports**: same content in each port's format, listing only the gates the port ships.
+- **`tests/adapter-protocol-parity.test.js`**: `reviewGating.mode is off` probe on the Review-ownership row for both ports.
+- **`.claude/agents/`**, **`.claude/persona-protocol*.md`**, **`.claude/protocol-digest.md`** and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.101 -> 0.31.102.
+
 **0.31.101 — add the review-gating operator surfaces: `session-start.sh` banner, `/antislop:gate` command, installer question and README section (rgo-3, Step 3 of docs/plans/2026-09-29-gateless-mode.md).** Under `reviewGating.mode` `off` (same canonical read: only the exact string `off`), `session-start.sh` adds one `additionalContext` line containing `review gating: off`; absent, `enforce` and junk print nothing. The new `commands/gate.md` changes the protected project config through the main session's `Edit` tool only (human-confirmation prompt, no CLI or Bash write route), lists standing pending-review flags and undecided escalation packets, warns rather than refuses, warns that stale flags and join stamps left by off mode apply again when flipping back to `enforce`, and explains the config-drift block until the human commits and starts a new session.
 
 ### Changed

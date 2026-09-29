@@ -72,6 +72,19 @@ reviewer" half is INSTRUCTION-ONLY - the subagentStart payload does not carry
 the calling agent's identity, so the hook cannot tell a lead-programmer spawn
 of the reviewer from a legitimate orchestrator one. See the hook's port note.)
 
+**When reviewGating.mode is off (review gating off)** in
+`.cursor/persona-config.json` - only the exact string `off` counts; an absent
+key, unreadable config or any other value means `enforce` and the routing
+above applies unchanged. Under `off`, still dispatch the reviewer once per
+unit, but treat its verdict as advisory: it writes no marker. On an
+advisory FAIL, route the defects back to lead-programmer as above, counting
+advisory FAILs per unit in this session (there are no `.fail` records). At
+the second advisory FAIL of a unit, do not stop for the human: list the
+remaining defects in your report under a heading containing `Unresolved
+advisory findings`, then move on to the next unit. The reviewer never
+returns ESCALATE-TO-HUMAN under `off`, and no marker check precedes the
+milestone audit gate.
+
 **If no reviewer persona exists**: you do a lightweight sanity check yourself
 instead of a real independent review - skim the diff against the acceptance
 criteria, run the unit's test command. Say so explicitly in your report every

@@ -292,6 +292,25 @@ carrying an operator-supplied correction. This does **not** count against the 2-
 - **(c) Park the unit** — stop work on it, leave the defect history standing, and move on. No
 marker is written and none is deleted.
 
+**When reviewGating.mode is off (review gating off)** — read the key from
+`.claude/persona-config.json`; only the exact string `off` counts, and an
+absent key, unreadable config or any other value means `enforce` and
+everything above applies unchanged. Under `off`, still dispatch the
+reviewer (if present) once per unit, `Unit: <task-id>` line first, but treat
+its verdict as advisory: it writes no marker. On an advisory FAIL, route the
+defects back to lead-programmer as above, counting advisory FAILs per unit
+in this session (there are no `.fail` records). At the second advisory FAIL
+of a unit, do **not** stop for the human and do not offer the options above:
+list the remaining defects in your report under a heading containing
+`Unresolved advisory findings`, then move on to the next unit. The
+reviewer never returns ESCALATE-TO-HUMAN under `off`, so the escalation
+path above does not arise. On an advisory INSUFFICIENT-CONTEXT, fetch the
+named constraint and resume the reviewer as above; there is no `.blocked`
+marker and no standing flag. The milestone audit gate
+needs no marker check either: every unit that got an advisory PASS or
+reached its second advisory FAIL counts as reviewed. The shared protocol's
+"Review ownership" section lists which hooks go inert and which stay armed.
+
 A mid-flight **"spec gap"** signal from `task-master` (per task-master's own
 file, it never fills a gap itself) routes the same way — straight to
 `spec-master`, never to task-master patching it locally. `task-master` is
