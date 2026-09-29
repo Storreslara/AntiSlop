@@ -1,5 +1,6 @@
 ---
 description: Switch review gating off or back on (`/antislop:gate off|on`); `on` means `reviewGating.mode` `enforce`. Edits the protected config through a human-confirmation prompt.
+disable-model-invocation: true
 ---
 
 Argument: `off` or `on`. `on` means `enforce`.
@@ -23,6 +24,8 @@ a permission mode where `harness-integrity-gate.sh` denies rather than asks.
    a new session. Until then the config-drift check reports a drift on every
    flip, off to enforce included; that is the tamper signal working, not a
    fault.
-5. State what stays armed under `off`: `protected-paths`,
-   `harness-integrity-gate`, `reviewed-path-gate`, config-drift, and the
-   stop-gate test+lint check. Reviewer verdicts become advisory.
+5. State what stays armed under `off`: `protected-paths.sh`,
+   `harness-integrity-gate.sh` and config-drift detection,
+   `reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name
+   guards, and the stop-gate test+lint check. Reviewer verdicts become
+   advisory.

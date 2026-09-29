@@ -174,9 +174,10 @@ the system's core safety property: the
 (unit rgo-5, 2026-09-29) — the project state where `reviewGating.mode` in
   `.claude/persona-config.json` is exactly `off`. Reviewer verdicts are
   advisory, and the review-enforcement and human-escalation gates are inert;
-  the protection gates (protected paths, harness integrity and config-drift,
-  reviewed-path, reviewer-dispatch privileged-name guard, stop-gate test and
-  lint) stay armed. Absent or junk values mean `enforce`. At a unit's second
+  the protection gates (`protected-paths.sh`, `harness-integrity-gate.sh` and
+  config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch
+  identity and privileged-name guards, and the stop-gate test+lint check)
+  stay armed. Absent or junk values mean `enforce`. At a unit's second
   advisory FAIL the orchestrator reports `Unresolved advisory findings` and
   carries on; scribe closes issues on a quoted reviewer PASS labelled
   `advisory PASS (review gating off)`. _Avoid_: "gateless" in technical

@@ -2337,7 +2337,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   including the absent → `"off"` transition on `reviewGating.mode` — does
   not get silently normalized away. `reviewGating.mode` is **live**
   (2026-09-29, ADR-0038) with values `enforce|off`; spec 6's `warn` was not
-  adopted, and absent or junk values resolve to `enforce`.
+  adopted, and absent or junk values resolve to `enforce` at the consuming
+  gates (`bin/harness-integrity.sh` compares a junk value as-is, so it shows
+  as drift).
   `fileHashes`/`pluginVersion`/`substitutions` are deliberately excluded:
   `--update` rewrites them routinely and they carry no gating authority.
   The comparison runs against the **session baseline commit** (D4, not live

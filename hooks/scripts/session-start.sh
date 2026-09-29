@@ -52,7 +52,7 @@ if [ -n "$adapted_version" ] && [ -n "$current_version" ] && [ "$adapted_version
 fi
 
 if [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
-  context_parts+=("review gating: off - reviewer verdicts are advisory; review-enforcement hooks are inert (protected-paths and test+lint stay armed).")
+  context_parts+=("review gating: off - reviewer verdicts are advisory; review-enforcement hooks are inert. Still armed: protected-paths.sh, harness-integrity-gate.sh and config-drift detection, reviewed-path-gate.sh, the reviewer-dispatch identity and privileged-name guards, and the stop-gate test+lint check.")
 fi
 
 source_type="$(echo "$input" | jq -r '.source // empty' 2>/dev/null || true)"

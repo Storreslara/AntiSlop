@@ -29,7 +29,7 @@ Under `off`:
 - The reviewer is still dispatched once per unit and returns a verdict, but
   the verdict is an **advisory verdict**: no `.pass`/`.fail`/`.blocked`/
   `.escalated` marker is written and nothing blocks on it.
-- Inert: the pending-review flags and reviewer-join check in `stop-gate.sh`,
+- Inert: the pending-review flags and review-join stamp in `stop-gate.sh`,
   unit stamping and unit-exclusivity in `reviewer-route-gate.sh`,
   `task-gate.sh`, the marker-based H3 check in `dispatch-hygiene.sh`, and
   `human-decision-gate.sh`.
@@ -37,9 +37,9 @@ Under `off`:
   escalation verdict, packet or marker. The fix loop stays; at a unit's
   second advisory FAIL the orchestrator lists `Unresolved advisory findings`
   in its report and carries on.
-- Still armed: `protected-paths.sh`, `harness-integrity-gate.sh` and its
+- Still armed: `protected-paths.sh`, `harness-integrity-gate.sh` and
   config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch
-  privileged-name guard, and the test-and-lint check in `stop-gate.sh`
+  identity and privileged-name guards, and the stop-gate test+lint check
   (the human's answer to the mixed-hook question: all three stay on).
 - Scribe closes an issue when the dispatch quotes the reviewer's PASS verdict
   line verbatim; the closing comment is labelled

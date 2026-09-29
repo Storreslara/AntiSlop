@@ -152,6 +152,12 @@ decision_hook() {
     | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/human-decision-gate.sh 2>/dev/null
 }
 
+decision_write_hook() {
+  jq -n --arg p '.claude/human-review/u1/DECISION' \
+    '{tool_name:"Write",agent_type:"lead-programmer",tool_input:{file_path:$p,content:"approve"}}' \
+    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/human-decision-gate.sh 2>/dev/null
+}
+
 audit_has() { grep -q "$2" "$1/.claude/dispatch-audit.log" 2>/dev/null; }
 
 for pair in 'off|"off"' 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
@@ -177,6 +183,10 @@ for pair in 'off|"off"' 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
   rc=0; decision_hook "$dir" || rc=$?
   r=fail; [ "$rc" = "$want" ] && r=pass
   check "(k) $label: Bash write to a human-review DECISION file exits $want (rc=$rc)" "$r"
+
+  rc=0; decision_write_hook "$dir" || rc=$?
+  r=fail; [ "$rc" = "$want" ] && r=pass
+  check "(k) $label: Write-tool write to a human-review DECISION file exits $want (rc=$rc)" "$r"
 done
 
 # (j) under "off" the audit line still lands: H4 (kept) fires on the same
@@ -197,5 +207,17 @@ for spec in 'off|"off"|0' 'enforce|"enforce"|1' 'absent||1' 'junk|"OFF "|1'; do
   [ "$got" = "$want" ] && r=pass
   check "(l) $label: session-start banner 'review gating: off' present=$((1-got))" "$r"
 done
+
+# (m) a non-object reviewGating makes jq error; the fallback is enforce, so no banner.
+dir="$tmproot/m-string"
+mkdir -p "$dir/.claude"
+printf '{"gatedAgents":["lead-programmer"],"reviewGating":"off"}\n' > "$dir/.claude/persona-config.json"
+out="$(printf '{"session_id":"s1","source":"startup"}' | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/session-start.sh 2>/dev/null || true)"
+r=pass; printf '%s' "$out" | grep -q 'review gating: off' && r=fail
+check "(m) string reviewGating: session-start banner absent" "$r"
+
+# (n) /antislop:gate edits only via the Edit tool: no CLI or Bash-redirect route.
+r=pass; grep -qE 'bin/cli\.js|>>? *[^ ]*persona-config' commands/gate.md && r=fail
+check "(n) commands/gate.md names no bin/cli.js or Bash-redirect write route" "$r"
 
 exit "$fail"

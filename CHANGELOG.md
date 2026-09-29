@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+**0.31.103 — fold in the non-blocking reviewer advisories from rgo-1..rgo-5 (rgo-6, cleanup for docs/plans/2026-09-29-gateless-mode.md).** Enforce-mode behaviour is unchanged.
+
+### Changed
+- **One "still armed under review gating off" list**: `commands/gate.md`, the `session-start.sh` banner, `CONTEXT.md` and ADR-0038 now all name `protected-paths.sh`, `harness-integrity-gate.sh` and config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name guards, and the stop-gate test+lint check.
+- **`adapters/codex/agents-md-fragment.md`**, **`adapters/cursor/rules/persona-protocol.mdc`**: name only the privileged-name guard as still armed (the ports leave the lead-programmer-spawns-reviewer half to instructions).
+- **`agents/orchestrator.md`** and its Codex/Cursor ports: under `off`, quote the reviewer's PASS line verbatim in the scribe dispatch.
+- **`agents/orchestrator.md`**, **`agents/reviewer.md`**: read the mode key with the `Read` tool (Bash naming the protected config is refused).
+- **`agents/reviewer.md`**: "(both modes)" bullet headings become "(both orchestration modes)".
+- **`commands/gate.md`**: `disable-model-invocation: true`.
+- **`hooks/scripts/human-decision-gate.sh`**: the `reviewGating.mode` read now runs only after a Write/Edit path or Bash text has hit a DECISION, not on every call.
+- **`tests/review-gating-off.test.sh`**: (k) Write-tool DECISION case, (m) string `reviewGating` shows no banner, (n) `commands/gate.md` names no CLI or Bash-redirect route.
+- **`docs/harness-glossary.md`**: junk values resolve to `enforce` at the consuming gates (`bin/harness-integrity.sh` shows them as drift); ADR-0038 says "review-join stamp".
+- **`.claude/`** mirrors and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.102 -> 0.31.103.
+
 **0.31.102 — describe review gating off in the persona prose and every hand-synced port (rgo-4, Step 4 of docs/plans/2026-09-29-gateless-mode.md).** Each surface gains one conditional paragraph opening `When reviewGating.mode is off (review gating off)` that restates the exact-`off` rule, makes the reviewer's verdict advisory (no `.pass`/`.fail`/`.blocked`/`.escalated` marker, no ESCALATE-TO-HUMAN), and names the inert and still-armed gates. Enforce-mode prose is unchanged.
 
 ### Changed

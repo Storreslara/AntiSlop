@@ -89,7 +89,9 @@ the second advisory FAIL of a unit, do not stop for the human: list the
 remaining defects in your report under a heading containing `Unresolved
 advisory findings`, then move on to the next unit. The reviewer never
 returns ESCALATE-TO-HUMAN under `off`, and no marker check precedes the
-milestone audit gate.
+milestone audit gate. When you dispatch scribe for a unit, quote the
+reviewer's PASS verdict line verbatim in that dispatch; scribe closes an
+issue only on that quoted line.
 
 **If no reviewer persona exists**: you do a lightweight sanity check yourself
 instead of a real independent review - skim the diff against the acceptance

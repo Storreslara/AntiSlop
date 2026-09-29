@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.102",
+  "pluginVersion": "0.31.103",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,13 +42,13 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "e802cf73bbb29e01bb5cce920b34ac1768c597ede36e87827ba033812161769b",
+    ".claude/agents/orchestrator.md": "e5247f50a95a1b3de506656d2355022055e999d01b3a603c95c57f4dd54b8f25",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "44c6408dff0410657571174fec5478a07bc5c2993944b0a228bd650091a7e8f6",
     ".claude/agents/spec-master.md": "616e084250dcad71105c5c98950a473bd3ed92af01b260e16867b3a21d648900",
     ".claude/agents/task-master.md": "bb5be621493414191d25ae5bf6fa11d5c09b29ab478b9bcac296a01526f393aa",
     ".claude/agents/scribe.md": "d22f6e0d985ce850b42537752b77bcdcfa51479446929391304831820a7930e7",
-    ".claude/agents/reviewer.md": "2762668fa2a2e4f912a748b15166e00d0b452810c5c3171fc1e00a5af87bf65e",
+    ".claude/agents/reviewer.md": "5e3d6750f83a9c8ccba1ac99fd2bb8f2e0865a407667efde723c9554a9f8dd3f",
     ".claude/agents/milestone-auditor.md": "e04d57c6b0f152641f2c9ecd7d233f30a2cdd865415c25ada0bfbef6b74fd48c",
     ".claude/agents/agent-auditor.md": "1925e8a20d699d106d43ad34932fd55140d4ef025fce961ad7f467ca1f10a3e1",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
@@ -63,10 +63,10 @@
     ".claude/hooks/scripts/reviewed-path-gate.sh": "34e4c9d05ae6cea369eb461e9f961ae3b4122b1e34a7ab48cd8969888a67c058",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
     ".claude/hooks/scripts/reviewer-tier.sh": "44b1eace3d4022a4a3fbf27308e01d41cc0ed8d3443ba14845279695302d4e51",
-    ".claude/hooks/scripts/session-start.sh": "7ddfcc6249a86d3fc101a8c53f0f5230f1eaaa5bd378fe9c4de675f583f01f3f",
+    ".claude/hooks/scripts/session-start.sh": "a8635bdc22b07cb031db979c8d8af03d3412994d86cea58e5b1749c2fd2fb238",
     ".claude/hooks/scripts/stop-gate.sh": "0b09f9c5cc7e580120757f0a9371b536fb54738779f419e7df622cacfd87619a",
     ".claude/hooks/scripts/task-gate.sh": "31ea0399f37eef3c1be9e2a22711a879c8800fa201125720d1029652d5fabeab",
-    ".claude/hooks/scripts/human-decision-gate.sh": "b1373aebee6f43698c9ab9f88d62bb5cba40ea66a387a064a3aee4e1e4882af2",
+    ".claude/hooks/scripts/human-decision-gate.sh": "0f46dd7a94b7f027c363898ac131347949f19b151ef7250a825dbbb1e112f0d4",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
     ".claude/hooks/scripts/microworld-rerun.sh": "6b0d33d1ef767b195e4d06d65a8aa497f9479bcf739d68f04e8d25d55fb1af6d",
     ".claude/hooks/scripts/heavy-trigger.sh": "b71a55d9cd6ebc5f379dc8b32006e1cf549d33f2d10d6a4d961bb5bac996fc3c",
