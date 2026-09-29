@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+**0.31.100 — make `task-gate.sh`, `dispatch-hygiene.sh`'s H3 check and `human-decision-gate.sh` inert under `reviewGating.mode` `off` (rgo-2, Step 2 of docs/plans/2026-09-29-gateless-mode.md).** Each reads the key with the same canonical expression as rgo-1 — only the exact string `off` disables; an absent key, missing or unreadable config, and any other value resolve to `enforce`, whose behaviour is unchanged. Under `off`: `task-gate.sh` exits 0 after its harness-arm and config-existence guards (no PASS marker is owed); `dispatch-hygiene.sh` skips only H3 (the re-dispatch-of-a-passed-unit check), while H1, H2, H4 and the dispatch-audit.log lines still run; `human-decision-gate.sh` exits 0 right after reading its input — its first and only config read, since under `off` there is no escalation and hence no human decision file to protect.
+
+### Changed
+- **`hooks/scripts/task-gate.sh`**, **`hooks/scripts/dispatch-hygiene.sh`**, **`hooks/scripts/human-decision-gate.sh`**: `reviewGating.mode` read, `off` makes the review-enforcement part inert.
+- **`tests/review-gating-off.test.sh`**: new cases (h)-(k) across `off`, `enforce`, absent and junk.
+- **`.claude/hooks/scripts/`** mirrors and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.99 → 0.31.100.
+
 **0.31.99 — add the `reviewGating.mode` config key (`enforce|off`, absent ⇒ `enforce`) and make stop-gate's and reviewer-route-gate's review-enforcement branches inert under `off` (rgo-1, Step 1 of docs/plans/2026-09-29-gateless-mode.md).** Reuses spec 6's reserved key (already a disarm-surface field in `bin/harness-integrity.sh`, so a flip stays visible as config-drift). Every consumer reads it with one canonical expression — only the exact string `off` disables; an absent key, missing or unreadable config, and any other value (junk such as `"OFF "` included) resolve to `enforce`. Under `off`: the reviewer SubagentStop's review-join verdict check allows, the main-session Stop pending-review block is skipped, a gated SubagentStop writes no pending-review flag, and reviewer-route-gate's unit-exclusivity block and `.review-join.*` stamping (including the advisory stamp) are skipped. Unchanged in both modes: the microworld deferred-result block, the WIP sentinel, the config-drift block, test+lint, the Claude entry script's identity guards, the reviewer `name:` check and the privileged-name guard. This repo's own config gains no key and stays `enforce`.
 
 ### Added

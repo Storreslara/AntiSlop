@@ -318,7 +318,9 @@ if [ "$is_gated" = true ]; then
     if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
   done <<< "$prompt"
 
-  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
+  # Review gating off: no marker is written, so H3 is skipped (H4 still runs).
+  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]] \
+     && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
     unit_id="${BASH_REMATCH[1]}"
     # Unreachable given the ERE above (no `/` in the class, and a leading
     # [A-Za-z0-9] rejects `..`), and kept deliberately: the ERE and the path

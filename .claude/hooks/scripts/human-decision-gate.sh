@@ -47,6 +47,9 @@
 # reading this file at leisure; the runtime denial states only the blocked
 # action, the sanctioned route, and one flat, technique-free prohibition on
 # everything else.
+#
+# The gate's only config read is reviewGating.mode: under exactly "off" there
+# is no escalation, hence no DECISION to protect, so the gate exits 0 at once.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
@@ -55,6 +58,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 input="$(cat)"
+config="${CLAUDE_PROJECT_DIR:-.}/.claude/persona-config.json"
+[ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ] && exit 0
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 audit="${project_dir}/.claude/review-audit.log"
 

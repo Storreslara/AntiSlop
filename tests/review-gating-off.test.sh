@@ -122,4 +122,69 @@ stop_hook "$dir" "$lp_stop" || rc=$?
 r=fail; [ "$rc" = 2 ] && r=pass
 check "(g) off: gated SubagentStop with a failing testAndLintCommand still exits 2 (rc=$rc)" "$r"
 
+# (h)-(k): task-gate, dispatch-hygiene H3, human-decision-gate.
+task_hook() {
+  printf '%s' "$(jq -n '{task:{subject:"impl:x",id:"x"}}')" \
+    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/task-gate.sh 2>/dev/null
+}
+
+hygiene_hook() {
+  # $1 = project dir, $2 = requireContract (true|false)
+  jq -n '{tool_name:"Agent",tool_input:{subagent_type:"lead-programmer",prompt:"Unit: u1"}}' \
+    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/dispatch-hygiene.sh 2>/dev/null
+}
+
+hygiene_project() {
+  # $1 = label, $2 = mode JSON ("" = absent), $3 = requireContract
+  local d mode_json=""
+  d="$tmproot/hyg-$1-$3"
+  mkdir -p "$d/.claude/reviewed"
+  [ -n "$2" ] && mode_json=",\"reviewGating\":{\"mode\":$2}"
+  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true","dispatchHygiene":{"mode":"block","requireContract":%s}%s}\n' \
+    "$3" "$mode_json" > "$d/.claude/persona-config.json"
+  printf 'PASS u1 2026-09-29T00:00:00Z commit: none criteria: true\n' > "$d/.claude/reviewed/u1.pass"
+  echo "$d"
+}
+
+decision_hook() {
+  jq -n --arg c 'printf approve > .claude/human-review/u1/DECISION' \
+    '{tool_name:"Bash",agent_type:"lead-programmer",tool_input:{command:$c}}' \
+    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/human-decision-gate.sh 2>/dev/null
+}
+
+audit_has() { grep -q "$2" "$1/.claude/dispatch-audit.log" 2>/dev/null; }
+
+for pair in 'off|"off"' 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
+  label="${pair%%|*}" mode="${pair#*|}"
+  want=2; [ "$label" = off ] && want=0
+
+  dir="$(make_project "h-$label" "$mode")"
+  rc=0; task_hook "$dir" || rc=$?
+  r=fail; [ "$rc" = "$want" ] && r=pass
+  check "(h) $label: TaskCompleted impl:x with no marker exits $want (rc=$rc)" "$r"
+
+  dir="$(hygiene_project "$label" "$mode" false)"
+  rc=0; hygiene_hook "$dir" || rc=$?
+  r=fail
+  if [ "$label" = off ]; then
+    [ "$rc" = 0 ] && ! audit_has "$dir" 'blocked=H3' && r=pass
+  else
+    [ "$rc" = 2 ] && audit_has "$dir" 'blocked=H3' && r=pass
+  fi
+  check "(i) $label: re-dispatch of passed unit u1 under dispatchHygiene block exits $want (rc=$rc)" "$r"
+
+  dir="$(make_project "k-$label" "$mode")"
+  rc=0; decision_hook "$dir" || rc=$?
+  r=fail; [ "$rc" = "$want" ] && r=pass
+  check "(k) $label: Bash write to a human-review DECISION file exits $want (rc=$rc)" "$r"
+done
+
+# (j) under "off" the audit line still lands: H4 (kept) fires on the same
+# contract-less dispatch and is logged, while H3 stays silent.
+dir="$(hygiene_project j-off '"off"' true)"
+rc=0; hygiene_hook "$dir" || rc=$?
+r=fail
+[ "$rc" = 2 ] && audit_has "$dir" 'blocked=H4 target=lead-programmer' && ! audit_has "$dir" 'blocked=H3' && r=pass
+check "(j) off: dispatch-audit.log line still appended (H4 kept, H3 absent) (rc=$rc)" "$r"
+
 exit "$fail"

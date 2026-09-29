@@ -32,6 +32,8 @@ project_dir="${CLAUDE_PROJECT_DIR:-.}"
 config="${project_dir}/.claude/persona-config.json"
 harness_arm_or_deny "$project_dir" ".claude"
 [ -f "$config" ] || exit 0
+# Review gating off: reviewer verdicts are advisory, so no marker is owed.
+[ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ] && exit 0
 
 task_name="$(echo "$input" | jq -r '.task.subject // .task.name // empty' 2>/dev/null || true)"
 raw_task_id="$(echo "$input" | jq -r '.task.id // .taskId // empty' 2>/dev/null || true)"
