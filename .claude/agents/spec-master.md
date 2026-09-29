@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 40
 ---
-<!-- antislop v0.31.103 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.104 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -561,7 +561,7 @@ off").
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
-(both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
+(both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
 followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL count is readable across sessions. This is a

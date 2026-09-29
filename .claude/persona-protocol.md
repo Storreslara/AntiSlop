@@ -1,4 +1,4 @@
-<!-- antislop v0.31.103 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.104 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -339,7 +339,7 @@ the flag's existence, never its content.
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
-(both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
+(both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
 followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL count is readable across sessions. This is a

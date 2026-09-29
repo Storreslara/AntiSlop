@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.103",
+  "pluginVersion": "0.31.104",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,17 +42,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "e5247f50a95a1b3de506656d2355022055e999d01b3a603c95c57f4dd54b8f25",
+    ".claude/agents/orchestrator.md": "08101f80ebd32d5bdcff26fb5b660adb9446534927f20ede16d21d99229f30cb",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "44c6408dff0410657571174fec5478a07bc5c2993944b0a228bd650091a7e8f6",
-    ".claude/agents/spec-master.md": "616e084250dcad71105c5c98950a473bd3ed92af01b260e16867b3a21d648900",
-    ".claude/agents/task-master.md": "bb5be621493414191d25ae5bf6fa11d5c09b29ab478b9bcac296a01526f393aa",
+    ".claude/agents/spec-master.md": "85e46aa35ce04ed38a646ad1a1e48becd3abbadd5590818ec7395e518822a502",
+    ".claude/agents/task-master.md": "856a5b9f5646f35f97df84ce38824b594492b7eaaecf33669ae8e8717d64a21e",
     ".claude/agents/scribe.md": "d22f6e0d985ce850b42537752b77bcdcfa51479446929391304831820a7930e7",
-    ".claude/agents/reviewer.md": "5e3d6750f83a9c8ccba1ac99fd2bb8f2e0865a407667efde723c9554a9f8dd3f",
+    ".claude/agents/reviewer.md": "479e96e5e7d390130e160f1e6bc65e5561176741b119463cf2a3bb5212640f5f",
     ".claude/agents/milestone-auditor.md": "e04d57c6b0f152641f2c9ecd7d233f30a2cdd865415c25ada0bfbef6b74fd48c",
     ".claude/agents/agent-auditor.md": "1925e8a20d699d106d43ad34932fd55140d4ef025fce961ad7f467ca1f10a3e1",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
-    ".claude/persona-protocol.md": "22dd7d384066ddc859da799c58db366e07c6861770fea2fcf4994b9e164a8253",
+    ".claude/persona-protocol.md": "52c9b73cd837911680562c4579ca56e8a7fd983cc4d3d5b6c415bffca2bbe965",
     ".claude/persona-protocol-slim.md": "6d03c9d18b85160c988f14caecb41e0c0740c661d1eb41bdd4d6c86bca823db9",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "c3131b4398fdf8c8c1c36ece8dabbf7d27469368af3a9403f9d56b6dbc96e0f9",

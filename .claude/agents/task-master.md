@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 40
 ---
-<!-- antislop v0.31.103 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.104 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -432,7 +432,7 @@ off").
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
-(both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
+(both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
 followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL count is readable across sessions. This is a

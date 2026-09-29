@@ -29,7 +29,7 @@ Under `off`:
 - The reviewer is still dispatched once per unit and returns a verdict, but
   the verdict is an **advisory verdict**: no `.pass`/`.fail`/`.blocked`/
   `.escalated` marker is written and nothing blocks on it.
-- Inert: the pending-review flags and review-join stamp in `stop-gate.sh`,
+- Inert: the pending-review flags and review-join verdict check in `stop-gate.sh`,
   unit stamping and unit-exclusivity in `reviewer-route-gate.sh`,
   `task-gate.sh`, the marker-based H3 check in `dispatch-hygiene.sh`, and
   `human-decision-gate.sh`.

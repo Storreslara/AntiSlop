@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.103 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.104 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -750,7 +750,7 @@ the flag's existence, never its content.
 
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
-(both modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
+(both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
 followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL count is readable across sessions. This is a

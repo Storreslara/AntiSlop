@@ -161,13 +161,13 @@ Set `reviewGating.mode` to `"off"` in `.claude/persona-config.json` (default
 `enforce`; an absent or unrecognised value means `enforce`). The reviewer still
 runs and returns a verdict, but it is advisory: no `.pass`/`.fail`/`.blocked`/
 `.escalated` marker, no human escalation, and the second FAIL no longer stops
-for you. Inert: the pending-review flags and reviewer-join check, the
+for you. Inert: the pending-review flags and review-join verdict check, the
 unit-exclusivity block, `task-gate.sh`, the marker-based H3 check, and
 `human-decision-gate.sh`.
 
-Still armed: `protected-paths`, `harness-integrity-gate`, `reviewed-path-gate`,
-config-drift detection, the stop-gate test+lint check, and the reviewer-dispatch
-identity guards.
+Still armed: `protected-paths.sh`, `harness-integrity-gate.sh` and
+config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch identity
+and privileged-name guards, and the stop-gate test+lint check.
 
 To flip it, run `/antislop:gate off` (or `on`) in the main session, or edit the
 file by hand (npx-route projects get no plugin commands). The file is

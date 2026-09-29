@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+**0.31.104 — fold in the non-blocking reviewer notes from rgo-6 (rgo-7).** Enforce-mode behaviour is unchanged.
+
+### Changed
+- **README.md** "Review gating off": the still-armed and inert lists now match `commands/gate.md`, the banner, `CONTEXT.md` and ADR-0038 ("review-join verdict check", adds "privileged-name").
+- **ADR-0038**: the inert item reads "review-join verdict check in `stop-gate.sh`" (the stamp is written by `reviewer-route-gate.sh`).
+- **`templates/persona-protocol.md`**: FAIL-record "(both modes)" becomes "(both orchestration modes)"; inlined copies re-rendered.
+- **`tests/review-gating-off.test.sh`**: case (l2) pins the banner's still-armed list.
+
 **0.31.103 — fold in the non-blocking reviewer advisories from rgo-1..rgo-5 (rgo-6, cleanup for docs/plans/2026-09-29-gateless-mode.md).** Enforce-mode behaviour is unchanged.
 
 ### Changed
