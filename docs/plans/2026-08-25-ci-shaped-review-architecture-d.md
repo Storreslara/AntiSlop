@@ -1256,3 +1256,6 @@ classify a route that is live product and dormant locally. *Recommended default:
 land spec 4's register first and add an `inert-locally` qualifier rather than
 reclassifying anything as speculative; delete nothing. `/api/invoke` is
 independently load-bearing for gate debugging and survives regardless.*
+
+
+**Superseded in part (D0) by `docs/plans/2026-09-29-gateless-mode.md` (2026-09-29).** That plan shipped `reviewGating.mode` with values `enforce|off` only (`warn` not adopted) and keeps `protected-paths.sh`, `harness-integrity-gate.sh`, `reviewed-path-gate.sh` and config-drift armed; see `docs/adr/0038-review-gating-runtime-switch.md`. The rest of this spec was not executed.

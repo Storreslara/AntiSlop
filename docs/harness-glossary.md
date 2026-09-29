@@ -2334,8 +2334,10 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   (an absent key maps to the same documented default its consuming gate
   already falls back to, per D6) before comparison, so an absent key and an
   explicit default-valued key compare equal while a genuine weakening —
-  including the absent → `"off"` transition on `reviewGating.mode` D
-  introduces — does not get silently normalized away.
+  including the absent → `"off"` transition on `reviewGating.mode` — does
+  not get silently normalized away. `reviewGating.mode` is **live**
+  (2026-09-29, ADR-0038) with values `enforce|off`; spec 6's `warn` was not
+  adopted, and absent or junk values resolve to `enforce`.
   `fileHashes`/`pluginVersion`/`substitutions` are deliberately excluded:
   `--update` rewrites them routinely and they carry no gating authority.
   The comparison runs against the **session baseline commit** (D4, not live

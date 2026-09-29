@@ -165,7 +165,29 @@ the system's core safety property: the
   `lead-programmer` writes code, but only the independent `reviewer`
   (which did not write the code) can mark a unit done (`.claude/reviewed/*.pass`).
   Enforced mechanically by `stop-gate.sh` and `reviewer-route-gate.sh`, not
-  just by persona instruction.
+  just by persona instruction — **when `reviewGating.mode` is `enforce`**
+  (the default). Under [[review gating off]] the split holds by persona
+  prose only and the reviewer's verdict is an [[advisory verdict]]; see
+  [ADR-0038](docs/adr/0038-review-gating-runtime-switch.md).
+
+**review gating off** (everyday name: *gateless mode*):
+(unit rgo-5, 2026-09-29) — the project state where `reviewGating.mode` in
+  `.claude/persona-config.json` is exactly `off`. Reviewer verdicts are
+  advisory, and the review-enforcement and human-escalation gates are inert;
+  the protection gates (protected paths, harness integrity and config-drift,
+  reviewed-path, reviewer-dispatch privileged-name guard, stop-gate test and
+  lint) stay armed. Absent or junk values mean `enforce`. At a unit's second
+  advisory FAIL the orchestrator reports `Unresolved advisory findings` and
+  carries on; scribe closes issues on a quoted reviewer PASS labelled
+  `advisory PASS (review gating off)`. _Avoid_: "gateless" in technical
+  prose, because some gates stay armed.
+
+**advisory verdict**:
+(unit rgo-5, 2026-09-29) — the reviewer's verdict under [[review gating off]]:
+  returned to the orchestrator, recorded in no marker, blocking nothing. It
+  is the *only* reviewer's verdict and is non-binding, which distinguishes it
+  from the [[advisory-reviewer axis]] (a *second* reviewer that owns no
+  verdict). _Avoid_: "advisory reviewer" for this meaning.
 
 **unit-exclusivity axis**:
 (unit item10-1, 2026-09-26) — the invariant that at most one **unit** is
@@ -920,6 +942,11 @@ _Avoid_: example, sample, demo, examples quiz (none of these name the
   correct-and-dormant with `.claude/human-review/` at 0 packets and kept
   as-is rather than replaced or removed — see
   [ADR-0036](docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md).
+  **Overridden by [[review gating off]] (2026-09-29):** when
+  `reviewGating.mode` is `off`, human escalation is dropped regardless of
+  this field and `human-decision-gate.sh` is inert; this field governs only
+  under `enforce`. See
+  [ADR-0038](docs/adr/0038-review-gating-runtime-switch.md).
 
 **`.claude/human-review/` (human-review directory)**:
 (unit #131, 2026-08-10) — the gitignored directory path within the claude adapter
