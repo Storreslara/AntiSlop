@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Fixture-driven test for persona-config.json's reviewGating.mode: only the
+# exact string "off" makes stop-gate's and reviewer-route-gate's
+# review-enforcement branches inert; "enforce", an absent key and junk all
+# keep today's blocking behaviour. Canned hook-input JSON, no real agents.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+fail=0
+
+tmproot="$(mktemp -d)"
+trap 'rm -rf "$tmproot"' EXIT
+
+make_project() {
+  # $1 = case name, $2 = mode JSON fragment ("" = key absent), $3 = test cmd
+  local dir="$tmproot/$1" mode_json=""
+  mkdir -p "$dir/.claude/reviewed"
+  [ -n "$2" ] && mode_json=",\"reviewGating\":{\"mode\":$2}"
+  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"%s"%s}\n' \
+    "${3:-true}" "$mode_json" > "$dir/.claude/persona-config.json"
+  echo "$dir"
+}
+
+stop_hook() {
+  # $1 = project dir, $2 = payload JSON
+  printf '%s' "$2" | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/stop-gate.sh 2>/dev/null
+}
+
+route_hook() {
+  printf '%s' "$2" | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/reviewer-route-gate.sh 2>/dev/null
+}
+
+check() {
+  # $1 = label, $2 = "pass"/"fail" condition result
+  if [ "$2" = pass ]; then echo "OK   $1"; else echo "FAIL $1"; fail=1; fi
+}
+
+lp_stop='{"hook_event_name":"SubagentStop","agent_type":"lead-programmer","agent_id":"lp-1","session_id":"s1"}'
+main_stop='{"hook_event_name":"Stop","session_id":"s1"}'
+rev_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
+lp_dispatch='{"agent_type":"orchestrator","tool_input":{"subagent_type":"lead-programmer","prompt":"Unit: u1"}}'
+rev_dispatch='{"agent_type":"orchestrator","tool_input":{"subagent_type":"reviewer","prompt":"Unit: u1\nreview it"}}'
+
+# run_matrix_case <case> <mode-json> <label> -> sets rc and dir
+run_case() {
+  local c="$1" mode="$2" label="$3"
+  dir="$(make_project "$c-$label" "$mode")"
+  rc=0
+  case "$c" in
+    a) stop_hook "$dir" "$lp_stop" || rc=$? ;;
+    b) printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.x"
+       stop_hook "$dir" "$main_stop" || rc=$? ;;
+    c) printf '2026-09-29T00:00:00Z unit=u1 prior=none prior_mtime=-\n' > "$dir/.claude/.review-join.u1"
+       stop_hook "$dir" "$rev_stop" || rc=$? ;;
+    d) printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.x"
+       route_hook "$dir" "$lp_dispatch" || rc=$? ;;
+    s) route_hook "$dir" "$rev_dispatch" || rc=$? ;;
+  esac
+}
+
+flag_written() { compgen -G "$1/.claude/.pending-review.*" >/dev/null; }
+stamp_written() { compgen -G "$1/.claude/.review-join.*" >/dev/null; }
+
+# (a)-(d) and the reviewer-dispatch stamp case (s) under "off": inert.
+run_case a '"off"' off
+r=fail; [ "$rc" = 0 ] && ! flag_written "$dir" && r=pass
+check "(a) off: gated lead-programmer SubagentStop writes no pending-review flag (rc=$rc)" "$r"
+
+run_case b '"off"' off
+r=fail; [ "$rc" = 0 ] && r=pass
+check "(b) off: main Stop with a standing flag exits 0 (rc=$rc)" "$r"
+
+run_case c '"off"' off
+r=fail; [ "$rc" = 0 ] && r=pass
+check "(c) off: reviewer SubagentStop with a stamp and no marker exits 0 (rc=$rc)" "$r"
+
+run_case d '"off"' off
+r=fail; [ "$rc" = 0 ] && ! stamp_written "$dir" && r=pass
+check "(d) off: lead-programmer dispatch with a standing flag exits 0, no stamp (rc=$rc)" "$r"
+
+run_case s '"off"' off
+r=fail; [ "$rc" = 0 ] && ! stamp_written "$dir" && r=pass
+check "(d') off: reviewer dispatch with a Unit: line writes no .review-join.* (rc=$rc)" "$r"
+
+# (e) identity guard kept under "off".
+dir="$(make_project e-off '"off"')"
+rc=0
+route_hook "$dir" '{"agent_type":"lead-programmer","tool_input":{"subagent_type":"reviewer","prompt":"Unit: u1"}}' || rc=$?
+r=fail; [ "$rc" = 2 ] && r=pass
+check "(e) off: lead-programmer dispatching the reviewer still exits 2 (rc=$rc)" "$r"
+
+# (f) enforce, absent and junk ("OFF ") all reproduce today's blocking.
+for pair in 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
+  label="${pair%%|*}" mode="${pair#*|}"
+
+  run_case a "$mode" "$label"
+  r=fail; [ "$rc" = 0 ] && flag_written "$dir" && r=pass
+  check "(f/a) $label: gated SubagentStop writes a pending-review flag (rc=$rc)" "$r"
+
+  run_case b "$mode" "$label"
+  r=fail; [ "$rc" = 2 ] && r=pass
+  check "(f/b) $label: main Stop with a standing flag exits 2 (rc=$rc)" "$r"
+
+  run_case c "$mode" "$label"
+  r=fail; [ "$rc" = 2 ] && r=pass
+  check "(f/c) $label: reviewer SubagentStop with a stamp and no marker exits 2 (rc=$rc)" "$r"
+
+  run_case d "$mode" "$label"
+  r=fail; [ "$rc" = 2 ] && r=pass
+  check "(f/d) $label: lead-programmer dispatch with a standing flag exits 2 (rc=$rc)" "$r"
+
+  run_case s "$mode" "$label"
+  r=fail; [ "$rc" = 0 ] && [ -f "$dir/.claude/.review-join.u1" ] && r=pass
+  check "(f/d') $label: reviewer dispatch with a Unit: line writes .review-join.u1 (rc=$rc)" "$r"
+done
+
+# (g) test+lint kept under "off": a dirty git fixture with a failing command.
+dir="$(make_project g-off '"off"' false)"
+git -C "$dir" init -q
+printf 'dirt\n' > "$dir/untracked.txt"
+rc=0
+stop_hook "$dir" "$lp_stop" || rc=$?
+r=fail; [ "$rc" = 2 ] && r=pass
+check "(g) off: gated SubagentStop with a failing testAndLintCommand still exits 2 (rc=$rc)" "$r"
+
+exit "$fail"

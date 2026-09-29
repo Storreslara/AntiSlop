@@ -132,6 +132,18 @@
           "description": "Posture on a mismatch classification: \"warn\" (one-line stderr warning, exit path unchanged), \"block\" (exit 2, pending-review flags left standing so the reviewer gets a second attempt), or \"off\" (skip the classifier call entirely - no audit line at all). \"ok\"/\"unverifiable\" states are always silent apart from the audit line, in every mode."
         }
       }
+    },
+    "reviewGating": {
+      "type": "object",
+      "description": "Review gating switch (user-facing name: gateless mode). \"off\" makes reviewer verdicts advisory and the review-enforcement gates inert (stop-gate.sh's pending-review flags and review-join verdict check, reviewer-route-gate.sh's unit-exclusivity block and .review-join.* stamps); protection gates and config-drift detection stay armed.",
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["enforce", "off"],
+          "default": "enforce",
+          "description": "Resolution rule: only the exact string off disables; absent, unreadable or any other value resolves to enforce."
+        }
+      }
     }
   },
   "required": ["testAndLintCommand"]
