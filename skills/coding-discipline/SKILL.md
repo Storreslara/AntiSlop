@@ -6,7 +6,7 @@ description: >
   and "make it work" goals with no verification. Bias toward caution over speed;
   use judgment on trivial tasks.
 ---
-Five principles:
+Seven principles:
 
 1. THINK BEFORE CODING — state assumptions explicitly; if uncertain, ask. If
    multiple interpretations exist, name them, don't silently pick. If a simpler
@@ -32,3 +32,15 @@ Five principles:
    and param-by-param docstrings; be blunt and straightforward, a single
    one-line purpose comment at most, only if the filename doesn't already
    say it.
+6. NO REACHING THROUGH — use only what you were handed, built, or own: one
+   hop into your own input is fine (`jq '.agent_type'` on hook stdin);
+   chaining into another unit's internals is not (`a().b.c`, jq-ing a
+   sibling script's private output, grepping a persona's prose). Read shared
+   formats via their owner: source `hooks/scripts/lib/state-access.sh`, don't
+   re-derive a marker path or unit-id regex inline.
+7. EXTEND, DON'T SPECIAL-CASE — if working code has an extension point (a
+   `case` table, config list, lib function), add a new entry beside it, not
+   an `if <special case>` inside working logic. Never build a seam
+   speculatively: inline the first case, extract on the second real caller
+   (principle 2 wins until then); any edit it still forces stays surgical
+   (principle 3).
