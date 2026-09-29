@@ -187,4 +187,15 @@ r=fail
 [ "$rc" = 2 ] && audit_has "$dir" 'blocked=H4 target=lead-programmer' && ! audit_has "$dir" 'blocked=H3' && r=pass
 check "(j) off: dispatch-audit.log line still appended (H4 kept, H3 absent) (rc=$rc)" "$r"
 
+# (l) session-start banner: printed only under "off".
+for spec in 'off|"off"|0' 'enforce|"enforce"|1' 'absent||1' 'junk|"OFF "|1'; do
+  IFS='|' read -r label mode want <<<"$spec"
+  dir="$(make_project "l-$label" "$mode")"
+  out="$(printf '{"session_id":"s1","source":"startup"}' | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/session-start.sh 2>/dev/null || true)"
+  r=fail
+  if printf '%s' "$out" | grep -q 'review gating: off'; then got=0; else got=1; fi
+  [ "$got" = "$want" ] && r=pass
+  check "(l) $label: session-start banner 'review gating: off' present=$((1-got))" "$r"
+done
+
 exit "$fail"

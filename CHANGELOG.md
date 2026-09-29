@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+**0.31.101 — add the review-gating operator surfaces: `session-start.sh` banner, `/antislop:gate` command, installer question and README section (rgo-3, Step 3 of docs/plans/2026-09-29-gateless-mode.md).** Under `reviewGating.mode` `off` (same canonical read: only the exact string `off`), `session-start.sh` adds one `additionalContext` line containing `review gating: off`; absent, `enforce` and junk print nothing. The new `commands/gate.md` changes the protected project config through the main session's `Edit` tool only (human-confirmation prompt, no CLI or Bash write route), lists standing pending-review flags and undecided escalation packets, warns rather than refuses, warns that stale flags and join stamps left by off mode apply again when flipping back to `enforce`, and explains the config-drift block until the human commits and starts a new session.
+
+### Changed
+- **`hooks/scripts/session-start.sh`**: `review gating: off` banner.
+- **`commands/gate.md`** (new), **`skills/install-antislop/SKILL.md`** (step 6 question; key written only for `off`), **`README.md`** ("Review gating off (gateless mode)").
+- **`tests/review-gating-off.test.sh`**: new case (l) across `off`, `enforce`, absent and junk.
+- **`.claude/hooks/scripts/`** mirror and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.100 -> 0.31.101.
+
 **0.31.100 — make `task-gate.sh`, `dispatch-hygiene.sh`'s H3 check and `human-decision-gate.sh` inert under `reviewGating.mode` `off` (rgo-2, Step 2 of docs/plans/2026-09-29-gateless-mode.md).** Each reads the key with the same canonical expression as rgo-1 — only the exact string `off` disables; an absent key, missing or unreadable config, and any other value resolve to `enforce`, whose behaviour is unchanged. Under `off`: `task-gate.sh` exits 0 after its harness-arm and config-existence guards (no PASS marker is owed); `dispatch-hygiene.sh` skips only H3 (the re-dispatch-of-a-passed-unit check), while H1, H2, H4 and the dispatch-audit.log lines still run; `human-decision-gate.sh` exits 0 right after reading its input — its first and only config read, since under `off` there is no escalation and hence no human decision file to protect.
 
 ### Changed
