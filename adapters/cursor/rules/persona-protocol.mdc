@@ -84,6 +84,24 @@ Mechanical enforcement (default subagent-orchestrator mode): the
 pending-review gate (`stop-gate.sh` / `reviewer-route-gate.sh`) blocks turn-end
 and the next implementation dispatch while a completed unit awaits review.
 
+When reviewGating.mode is off (review gating off) in `.cursor/persona-config.json`,
+review is advisory. Only the exact string `off` turns it off: an absent
+key, a missing or unreadable config, and any other value all resolve to
+`enforce`. The reviewer is still dispatched once per unit and still returns
+its verdict and findings, but the verdict is advisory: it writes no marker
+of any kind (no `.pass`, `.fail`, `.blocked` or `.escalated`), never returns
+ESCALATE-TO-HUMAN, and nothing blocks on it. On an advisory FAIL the fix
+loop runs as usual, counted in-session; at a unit's second advisory FAIL the
+orchestrator lists the remaining defects under `Unresolved advisory
+findings` and moves on instead of stopping for the human. Inert under `off`:
+the pending-review flags and review-join verdict check in `stop-gate.sh` and
+the unit-exclusivity block in `reviewer-route-gate.sh`. Still armed on
+Cursor: `protected-paths.sh`, `stop-gate.sh`'s test+lint check, and the
+reviewer-dispatch privileged-name guard in `reviewer-route-gate.sh`. No `.fail`
+records are written under `off`, so later readers of FAIL history see
+nothing for those units. Flags, stamps and markers left over from `enforce`
+are ignored, not deleted; clear stale ones before flipping back.
+
 ## Pending-review flag (review backstop)
 Whenever a gated agent (default `lead-programmer`) has a `subagentStop` that is
 NOT honored by a WIP sentinel, `stop-gate.sh` writes

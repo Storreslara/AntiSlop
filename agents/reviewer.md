@@ -112,6 +112,18 @@ with reasons.
   never substitutes for running the command, and never adds a new FAIL ground
   — its findings live exclusively in the advisory sections appended after the
   verdict.
+- **When reviewGating.mode is off (review gating off)**: read the key from
+  `.claude/persona-config.json` with the `Read` tool (a Bash command naming
+  that file is refused by `harness-integrity-gate.sh`); only the exact string `off` counts, and an
+  absent key, unreadable config or any other value means `enforce`. Under
+  `off` your verdict is advisory: review exactly as usual and return the
+  verdict and findings in the shape above, but run **no marker write of any
+  kind** — skip every `.pass`, `.fail`, `.blocked` and `.escalated` write in
+  the bullets below, and the escalation packet with them. Never return
+  ESCALATE-TO-HUMAN under `off`: the effective `humanReviewMode` is `off`
+  whatever the config says, so a unit you would otherwise escalate gets a
+  plain PASS. INSUFFICIENT-CONTEXT may still be returned, as an advisory
+  word only. Nothing blocks on your verdict; the orchestrator routes it.
 - **On PASS (marker format v3)**: before writing the marker, verify the
   reviewed state is committed. Run
   `git diff --quiet HEAD -- ':/' ':(exclude,top).claude/agent-memory'` — it
@@ -178,7 +190,7 @@ with reasons.
   `dispatch-hygiene.sh`'s H3 check reads that same first line, so a marker
   written under a different id leaves the unit re-dispatchable; same precedence
   covers the `.fail`/`.blocked` writes below (one `<task-id>`).
-- **On FAIL (both modes)**: also write a durable `.claude/reviewed/<task-id>.fail`
+- **On FAIL (both orchestration modes)**: also write a durable `.claude/reviewed/<task-id>.fail`
   record via Bash — the same named bookkeeping exception as the PASS marker,
   not a change to the code under review. Use the sanctioned marker-write
   template's **appending** form, so a prior FAIL block for this unit is kept,
@@ -191,7 +203,7 @@ with reasons.
   to have succeeded must not repeat it, or the FAIL count inflates. If a
   `.claude/reviewed/<task-id>.blocked` marker exists from a prior review of
   this unit, `rm -f` it as part of writing the `.fail` marker.
-- **On INSUFFICIENT-CONTEXT (both modes)**: a last resort — only after you
+- **On INSUFFICIENT-CONTEXT (both orchestration modes)**: a last resort — only after you
   have exhausted your own Read/Grep/Glob and explorer exploration and the
   constraint genuinely lives somewhere you cannot reach or authoritatively
   determine. Write `.claude/reviewed/<task-id>.blocked` via Bash — the same
@@ -204,7 +216,7 @@ with reasons.
   2-FAIL-cap slot. When a later review of the same unit resolves to PASS or
   FAIL, delete this `.blocked` marker as part of writing that new marker (see
   above).
-- **On ESCALATE-TO-HUMAN (both modes)**: a gate on PASS, never a substitute
+- **On ESCALATE-TO-HUMAN (both orchestration modes)**: a gate on PASS, never a substitute
   for FAIL — precedence is
   `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`, so only a
   unit you *would have passed* escalates. Read `humanReviewMode` from this

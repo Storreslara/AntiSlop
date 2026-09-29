@@ -68,3 +68,4 @@
 - [item19 microworld registration gap](project_item19_microworld_registration_gap.md) — watch-map registration is bookkeeping only (Tier B already runs manifest-watch bundles); dashboard invoke gates on the executable bit, not registration — chmod is the real retirement fix
 - [Hash-pinned test needs rebase](technique_hash_pinned_test_needs_rebase.md) — a sha256 pin against a historical commit is scoped to THAT unit's diff, not eternal; re-target the pin commit on a later sanctioned edit (memdirt-1)
 - [Header literal in prose inflates grep count](technique_header_literal_in_prose_inflates_grep_count.md) — a doc quoting a section-header literal in backticked prose matches an unscoped grep just like the real header; scope to the known file universe (memdirt-2)
+- [Slim-tier FULL_ONLY token](technique_slim_tier_full_only_token.md) — cli-backfill flags `INSUFFICIENT-CONTEXT` in slim-tier bodies (scribe etc.) as full-protocol inlining; write it lowercase (rgo-4)

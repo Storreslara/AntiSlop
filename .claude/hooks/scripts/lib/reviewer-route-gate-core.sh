@@ -33,7 +33,7 @@ if [ -f "$config" ] && [ -n "$target_type" ]; then
   shopt -s nullglob
   pending_flags=( "${dot}"/.pending-review.* )
   shopt -u nullglob
-  if [ "${#pending_flags[@]}" -gt 0 ]; then
+  if [ "${#pending_flags[@]}" -gt 0 ] && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
     gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
     [ -n "$gated" ] || gated="lead-programmer"
 
@@ -88,7 +88,10 @@ if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then
     if [ -n "${line//[[:space:]]/}" ]; then first_line="$line"; break; fi
   done <<< "$prompt"
 
-  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
+  # reviewGating.mode "off": no .review-join.* stamp (BASH_REMATCH survives
+  # the subshell read below).
+  if [[ $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]] \
+     && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
     unit_id="${BASH_REMATCH[1]}"
     case "$unit_id" in
       */*|*..*) ;;

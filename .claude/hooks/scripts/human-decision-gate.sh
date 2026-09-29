@@ -47,6 +47,10 @@
 # reading this file at leisure; the runtime denial states only the blocked
 # action, the sanctioned route, and one flat, technique-free prohibition on
 # everything else.
+#
+# The gate's only config read is reviewGating.mode: under exactly "off" there
+# is no escalation, hence no DECISION to protect, so the gate exits 0 - read
+# only once a Write/Edit path or the Bash text has already hit a DECISION.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
@@ -55,6 +59,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
 source "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 input="$(cat)"
+config="${CLAUDE_PROJECT_DIR:-.}/.claude/persona-config.json"
+gating_off() { [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; }
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
 audit="${project_dir}/.claude/review-audit.log"
 
@@ -318,7 +324,7 @@ if [ -z "$command" ]; then
     "$project_dir"/*) subject="${subject#"$project_dir"/}" ;;
   esac
   case "$subject" in
-    .claude/human-review/*/DECISION) deny ;;
+    .claude/human-review/*/DECISION) gating_off && exit 0; deny ;;
     *) exit 0 ;;
   esac
 fi
@@ -344,6 +350,7 @@ case "$joined" in
   *DECISION*) ;;
   *) exit 0 ;;
 esac
+gating_off && exit 0
 
 command_is_provably_benign "$command" && exit 0
 write_with_inert_triggers "$command" && exit 0

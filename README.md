@@ -155,6 +155,27 @@ An absent or unrecognised value resolves to `critical` — it fails toward
 asking you, never toward silently approving. The friction is the feature: this
 is the one place the system is designed to cost you time.
 
+### Review gating off (gateless mode)
+
+Set `reviewGating.mode` to `"off"` in `.claude/persona-config.json` (default
+`enforce`; an absent or unrecognised value means `enforce`). The reviewer still
+runs and returns a verdict, but it is advisory: no `.pass`/`.fail`/`.blocked`/
+`.escalated` marker, no human escalation, and the second FAIL no longer stops
+for you. Inert: the pending-review flags and reviewer-join check, the
+unit-exclusivity block, `task-gate.sh`, the marker-based H3 check, and
+`human-decision-gate.sh`.
+
+Still armed: `protected-paths`, `harness-integrity-gate`, `reviewed-path-gate`,
+config-drift detection, the stop-gate test+lint check, and the reviewer-dispatch
+identity guards.
+
+To flip it, run `/antislop:gate off` (or `on`) in the main session, or edit the
+file by hand (npx-route projects get no plugin commands). The file is
+protected, so the edit raises a human-confirmation prompt. You commit the
+config yourself and start a new session; until then every flip shows as config
+drift. Off mode does not clear existing `.pending-review.*` flags or
+`.review-join.*` stamps; delete stale ones before flipping back to `enforce`.
+
 ## Microworld bundles
 
 A **microworld bundle** is a per-unit runnable fixture under

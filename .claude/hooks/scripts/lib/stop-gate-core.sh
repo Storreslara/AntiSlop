@@ -334,6 +334,10 @@ identity_drift_log "$agent_type" "$hook_event" "$review_audit"
 if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ]; then
   if persona_matches_grant "$agent_type" reviewer; then
     [ -f "$config" ] || allow
+    # reviewGating.mode: only the exact string "off" makes the verdict advisory.
+    if [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
+      allow
+    fi
 
     # Per-unit review-join, evaluated BEFORE the .blocked/.escalated check
     # below so a marker's relevance can be scoped to the units this reviewer
@@ -502,7 +506,7 @@ if [ "$hook_event" = "Stop" ]; then
   shopt -s nullglob
   pending_flags=( "${dot}"/.pending-review.* )
   shopt -u nullglob
-  if [ "${#pending_flags[@]}" -gt 0 ]; then
+  if [ "${#pending_flags[@]}" -gt 0 ] && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
     blocked=false
     for flag in "${pending_flags[@]}"; do
       [ -f "$flag" ] || continue
@@ -580,7 +584,7 @@ if state_wip_handoff_exists "$agent_id"; then
   state_delete_wip_handoff "$agent_id"
 fi
 
-if [ "$hook_event" = "SubagentStop" ]; then
+if [ "$hook_event" = "SubagentStop" ] && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
   state_write_pending_review "$agent_id" "$(printf '%s agent=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id")"
 fi
 

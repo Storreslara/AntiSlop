@@ -2,6 +2,61 @@
 
 ## [Unreleased]
 
+**0.31.103 — fold in the non-blocking reviewer advisories from rgo-1..rgo-5 (rgo-6, cleanup for docs/plans/2026-09-29-gateless-mode.md).** Enforce-mode behaviour is unchanged.
+
+### Changed
+- **One "still armed under review gating off" list**: `commands/gate.md`, the `session-start.sh` banner, `CONTEXT.md` and ADR-0038 now all name `protected-paths.sh`, `harness-integrity-gate.sh` and config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name guards, and the stop-gate test+lint check.
+- **`adapters/codex/agents-md-fragment.md`**, **`adapters/cursor/rules/persona-protocol.mdc`**: name only the privileged-name guard as still armed (the ports leave the lead-programmer-spawns-reviewer half to instructions).
+- **`agents/orchestrator.md`** and its Codex/Cursor ports: under `off`, quote the reviewer's PASS line verbatim in the scribe dispatch.
+- **`agents/orchestrator.md`**, **`agents/reviewer.md`**: read the mode key with the `Read` tool (Bash naming the protected config is refused).
+- **`agents/reviewer.md`**: "(both modes)" bullet headings become "(both orchestration modes)".
+- **`commands/gate.md`**: `disable-model-invocation: true`.
+- **`hooks/scripts/human-decision-gate.sh`**: the `reviewGating.mode` read now runs only after a Write/Edit path or Bash text has hit a DECISION, not on every call.
+- **`tests/review-gating-off.test.sh`**: (k) Write-tool DECISION case, (m) string `reviewGating` shows no banner, (n) `commands/gate.md` names no CLI or Bash-redirect route.
+- **`docs/harness-glossary.md`**: junk values resolve to `enforce` at the consuming gates (`bin/harness-integrity.sh` shows them as drift); ADR-0038 says "review-join stamp".
+- **`.claude/`** mirrors and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.102 -> 0.31.103.
+
+**0.31.102 — describe review gating off in the persona prose and every hand-synced port (rgo-4, Step 4 of docs/plans/2026-09-29-gateless-mode.md).** Each surface gains one conditional paragraph opening `When reviewGating.mode is off (review gating off)` that restates the exact-`off` rule, makes the reviewer's verdict advisory (no `.pass`/`.fail`/`.blocked`/`.escalated` marker, no ESCALATE-TO-HUMAN), and names the inert and still-armed gates. Enforce-mode prose is unchanged.
+
+### Changed
+- **`templates/persona-protocol.md`**: paragraph at the end of "Review ownership" (no new section, so no protocol-matrix change); covers the loss of `.fail` history under `off`.
+- **`agents/orchestrator.md`**: advisory fix loop; at a unit's second advisory FAIL, list the rest under `Unresolved advisory findings` and move on, no human stop.
+- **`agents/reviewer.md`**: no marker writes, never ESCALATE-TO-HUMAN, INSUFFICIENT-CONTEXT advisory only.
+- **`agents/scribe.md`**: close on a verbatim reviewer PASS line, comment labelled `advisory PASS (review gating off)`.
+- **`adapters/codex/agents-md-fragment.md`**, **`adapters/cursor/rules/persona-protocol.mdc`**, **`adapters/{codex,cursor}` reviewer and orchestrator ports**: same content in each port's format, listing only the gates the port ships.
+- **`tests/adapter-protocol-parity.test.js`**: `reviewGating.mode is off` probe on the Review-ownership row for both ports.
+- **`.claude/agents/`**, **`.claude/persona-protocol*.md`**, **`.claude/protocol-digest.md`** and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.101 -> 0.31.102.
+
+**0.31.101 — add the review-gating operator surfaces: `session-start.sh` banner, `/antislop:gate` command, installer question and README section (rgo-3, Step 3 of docs/plans/2026-09-29-gateless-mode.md).** Under `reviewGating.mode` `off` (same canonical read: only the exact string `off`), `session-start.sh` adds one `additionalContext` line containing `review gating: off`; absent, `enforce` and junk print nothing. The new `commands/gate.md` changes the protected project config through the main session's `Edit` tool only (human-confirmation prompt, no CLI or Bash write route), lists standing pending-review flags and undecided escalation packets, warns rather than refuses, warns that stale flags and join stamps left by off mode apply again when flipping back to `enforce`, and explains the config-drift block until the human commits and starts a new session.
+
+### Changed
+- **`hooks/scripts/session-start.sh`**: `review gating: off` banner.
+- **`commands/gate.md`** (new), **`skills/install-antislop/SKILL.md`** (step 6 question; key written only for `off`), **`README.md`** ("Review gating off (gateless mode)").
+- **`tests/review-gating-off.test.sh`**: new case (l) across `off`, `enforce`, absent and junk.
+- **`.claude/hooks/scripts/`** mirror and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.100 -> 0.31.101.
+
+**0.31.100 — make `task-gate.sh`, `dispatch-hygiene.sh`'s H3 check and `human-decision-gate.sh` inert under `reviewGating.mode` `off` (rgo-2, Step 2 of docs/plans/2026-09-29-gateless-mode.md).** Each reads the key with the same canonical expression as rgo-1 — only the exact string `off` disables; an absent key, missing or unreadable config, and any other value resolve to `enforce`, whose behaviour is unchanged. Under `off`: `task-gate.sh` exits 0 after its harness-arm and config-existence guards (no PASS marker is owed); `dispatch-hygiene.sh` skips only H3 (the re-dispatch-of-a-passed-unit check), while H1, H2, H4 and the dispatch-audit.log lines still run; `human-decision-gate.sh` exits 0 right after reading its input — its first and only config read, since under `off` there is no escalation and hence no human decision file to protect.
+
+### Changed
+- **`hooks/scripts/task-gate.sh`**, **`hooks/scripts/dispatch-hygiene.sh`**, **`hooks/scripts/human-decision-gate.sh`**: `reviewGating.mode` read, `off` makes the review-enforcement part inert.
+- **`tests/review-gating-off.test.sh`**: new cases (h)-(k) across `off`, `enforce`, absent and junk.
+- **`.claude/hooks/scripts/`** mirrors and the project config's `fileHashes`: regenerated via `node bin/cli.js --update`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.99 → 0.31.100.
+
+**0.31.99 — add the `reviewGating.mode` config key (`enforce|off`, absent ⇒ `enforce`) and make stop-gate's and reviewer-route-gate's review-enforcement branches inert under `off` (rgo-1, Step 1 of docs/plans/2026-09-29-gateless-mode.md).** Reuses spec 6's reserved key (already a disarm-surface field in `bin/harness-integrity.sh`, so a flip stays visible as config-drift). Every consumer reads it with one canonical expression — only the exact string `off` disables; an absent key, missing or unreadable config, and any other value (junk such as `"OFF "` included) resolve to `enforce`. Under `off`: the reviewer SubagentStop's review-join verdict check allows, the main-session Stop pending-review block is skipped, a gated SubagentStop writes no pending-review flag, and reviewer-route-gate's unit-exclusivity block and `.review-join.*` stamping (including the advisory stamp) are skipped. Unchanged in both modes: the microworld deferred-result block, the WIP sentinel, the config-drift block, test+lint, the Claude entry script's identity guards, the reviewer `name:` check and the privileged-name guard. This repo's own config gains no key and stays `enforce`.
+
+### Added
+- **`templates/persona-config.schema.json`**: new optional `reviewGating` object with `mode` enum `["enforce","off"]`, default `"enforce"`.
+- **`tests/review-gating-off.test.sh`** (new, registered in `tests/validate.sh`): fixture matrix asserting the `off` cases are inert and that `enforce`, absent and junk all keep today's blocking, plus identity-guard and test+lint retention under `off`.
+
+### Changed
+- **`hooks/scripts/lib/stop-gate-core.sh`**, **`hooks/scripts/lib/reviewer-route-gate-core.sh`**: `reviewGating.mode` read inside the governed branches only.
+- **`.claude/hooks/scripts/lib/*`**, **`adapters/{codex,cursor}/hooks/scripts/lib/{stop-gate-core,reviewer-route-gate-core}.sh`**, and the project config's `fileHashes`: regenerated via `node bin/cli.js --update --force-render`.
+- **`package.json`**, **`.claude-plugin/plugin.json`**: version bump 0.31.98 → 0.31.99.
+
 **Record the agent-memory-dirt-blocks-pass narrowing as ADR-0037, amend ADR-0015, and add its harness-glossary entries (memdirt-3, Step 3 of docs/plans/2026-09-27-agent-memory-dirt-blocks-pass.md).** Closes the spec: ADR-0037 records why memdirt-1/memdirt-2's narrowing of the v3 clean-tree precondition is sound — quoting ADR-0015's originating whole-tree rationale verbatim, explaining why the unit-exclusivity invariant it rests on never covered a persona's own memory-scope writes, restating the conditional exception (a memory path that is itself a unit's deliverable still gets the unexcluded whole-tree check), and recording the rejection of both gitignoring `.claude/agent-memory/` entirely (the harness-injected "shared … via version control" instruction is the deciding ground) and having the reviewer auto-commit stray memory dirt (an ADR-0002 custody breach and the measured shared-worktree stash race). ADR-0015 gains an `**Amended by**` pointer to ADR-0037, amending only the whole-tree check's rationale's reach, not its commit-anchoring mechanism. `docs/harness-glossary.md` gains two new entries, **clean-tree precondition** and **ambient dirt**, and folds **memory-scope write** into the existing **agent-memory write** entry as a synonym, updating that entry's closing parenthetical from a live problem statement to a historical one citing ADR-0037. `CONTEXT.md` is deliberately untouched — all three terms are harness mechanics per its own `:498-510` routing note. No version bump: none of `docs/adr/`, `docs/harness-glossary.md`, or `CHANGELOG.md` is a version-stamped path.
 
 ### Added

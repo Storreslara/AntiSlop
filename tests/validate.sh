@@ -453,6 +453,15 @@ else
 fi
 
 echo
+echo "== reviewGating.mode off: stop-gate + reviewer-route-gate review enforcement inert (Bash) =="
+if bash tests/review-gating-off.test.sh; then
+  echo "OK   tests/review-gating-off.test.sh"
+else
+  echo "FAIL tests/review-gating-off.test.sh"
+  fail=1
+fi
+
+echo
 echo "== SessionStart microworld layer status reporting (Bash) =="
 if bash tests/session-start-microworld-status.test.sh; then
   echo "OK   tests/session-start-microworld-status.test.sh"
