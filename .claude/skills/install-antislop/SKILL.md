@@ -289,6 +289,11 @@ don't guess:
   the field the vendored `antislop:to-tickets` (task-master's ticket-slicing)
   and `antislop:to-spec` (spec-master's publish step) read to know where
   issues go — get it wrong and both break for this project.
+- `reviewGating.mode` — ask once (AskUserQuestion): review gating `enforce`
+  (recommended; reviewer verdicts gate turn-end and the next dispatch) or
+  `off` (verdicts advisory, review-enforcement hooks inert; `protected-paths`
+  and test+lint stay armed). Write the key only for `off`; `enforce` is the
+  absent default. Later changes go through `/antislop:gate`.
 - `personaSelection` — from step 1.
 - `pluginVersion` — this plugin's current version (same value used for the
   file stamps in step 2).
@@ -315,6 +320,21 @@ on — don't write it freehand and hope. This validation checks shape, not
 behavior — it does NOT replace the "run testAndLintCommand once" check
 above; a schema-valid config can still contain a command that red-gates on
 turn one.
+
+**Writing this file is gated.** `harness-integrity-gate.sh` treats
+`.claude/persona-config.json` as a protected path. If you write it via
+`Write`/`Edit` from the main session, under one of its four allowlisted
+`permission_mode`s (`default`, `plan`, `auto`, `acceptEdits`), the gate
+returns `permissionDecision: "ask"` — Claude Code shows you its own
+permission prompt carrying the gate's reasoning text, and a human approves
+or rejects the write there; nothing in this step approves it for you. If
+this step instead runs inside a subagent dispatch, the gate still
+hard-denies the write with exit 2, because it never emits `ask` when the
+hook fires inside a subagent — regardless of `permission_mode` — so don't
+dispatch this step as a subagent expecting a prompt. In that case, fall
+back to `node bin/cli.js --update`, the sanctioned un-gated writer for the
+mechanical fields; the judgment call this step makes over the file's actual
+shape still needs a main-session run to land.
 
 ## 6.5 Project constitution (opt-in)
 
