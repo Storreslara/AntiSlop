@@ -51,7 +51,7 @@ a subagent system prompt in `agents/*.md`. "Core" personas
   milestone-auditor, agent-auditor) are selected per-project during ADAPT. `spec-master`
   turns ambiguous goals into precise specs via grilling and publishes via
   `to-spec`; `task-master` reads finalized specs and writes dispatch
-  instructions for `lead-programmer`, owns `to-issues` slicing outright, tags
+  instructions for `lead-programmer`, owns `to-tickets` slicing outright, tags
   per-unit models. `scribe` maintains institutional knowledge (wiki, CONTEXT.md,
   ADRs). `reviewer` is the independent verifier (the Writer/Reviewer split).
   `researcher` bridges academic literature and spec authoring. `milestone-auditor`

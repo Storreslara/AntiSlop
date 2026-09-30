@@ -2,7 +2,7 @@
 name: pathfinder
 description: >
   Apply when slicing a finalized spec into dispatch-ready units (task-master's
-  `to-issues` job). Sizing, naming, and ordering guardrails adapted from
+  `to-tickets` job). Sizing, naming, and ordering guardrails adapted from
   mattpocock/skills `wayfinder` for reliable, unambiguous lead-programmer/scribe
   dispatch — not a planning or grilling skill.
 ---
