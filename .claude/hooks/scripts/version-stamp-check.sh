@@ -19,13 +19,12 @@
 # NOT A HOOK. This is a REVIEWER-INVOKED helper and is DELIBERATELY NOT
 # registered in hooks/hooks.json, matching heavy-trigger.sh/reviewer-tier.sh:
 # invoked deliberately against a specific unit's range, never self-derived.
-# CI's shallow clone (fetch-depth: 1 in .github/workflows/validate.yml) makes
-# a self-deriving HEAD~1-based check unreliable there; an explicit range
-# supplied by the reviewer, who already has the unit's commits locally,
-# sidesteps that entirely. It lives under hooks/scripts/ only so
-# tests/validate.sh's bash-syntax sweep covers it automatically; its
-# behaviour is covered by tests/version-stamp-check.test.sh, which
-# validate.sh registers explicitly.
+# The range is a per-unit input only the reviewer knows: a self-derived HEAD~1
+# sees only the last commit of a multi-commit unit. (Originally also motivated
+# by CI's shallow clone; validate.yml has fetched full history since 192624f.)
+# It lives under hooks/scripts/ only so tests/validate.sh's
+# bash-syntax sweep covers it automatically; its behaviour is covered by
+# tests/version-stamp-check.test.sh, which validate.sh registers explicitly.
 set -euo pipefail
 
 unknown() { echo "version-stamp-check: unknown touched: - old: - new: - offenders: -"; exit 0; }

@@ -143,8 +143,9 @@ the semantics of adding an
   hook-registered, following the pattern of `heavy-trigger.sh` and
   `reviewer-tier.sh`) that reads an explicit `<commit-range>` argument and
   classifies outcomes as `ok`, `violation`, or `unknown` (an [[unmeasurable range]]),
-  exiting 0 always (fail-open). Sidesteps CI's shallow-clone limitations that
-  made a `HEAD~1`-based check unreliable. Mechanization covers the version-bump
+  exiting 0 always (fail-open). Takes an explicit range because a unit's range is a per-unit input only the
+  reviewer knows (a self-derived `HEAD~1` sees only the last commit); originally
+  also motivated by CI's since-removed shallow clone. Mechanization covers the version-bump
   half of the discipline only; the CHANGELOG-entry half remains reviewer-inspection-only.
   (unit version-stamp-check-roast-1, 2026-09-23) Widening the reviewed range past
   an offending commit no longer masks it: the script additionally checks every

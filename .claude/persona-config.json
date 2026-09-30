@@ -106,7 +106,7 @@
     ".claude/hooks/scripts/lib/state-access.sh": "5746ddfe6f0c167364d21eb25d7dd79fa76668a015b14656c53d63b59ce07f2f",
     "adapters/codex/hooks/scripts/lib/state-access.sh": "5746ddfe6f0c167364d21eb25d7dd79fa76668a015b14656c53d63b59ce07f2f",
     "adapters/cursor/hooks/scripts/lib/state-access.sh": "5746ddfe6f0c167364d21eb25d7dd79fa76668a015b14656c53d63b59ce07f2f",
-    ".claude/hooks/scripts/version-stamp-check.sh": "8316a9a1b14bf7b83b5bfa81a0dccca4e7c273fa77f4bc2c54fbd79a73c8bf51"
+    ".claude/hooks/scripts/version-stamp-check.sh": "4a9997d55279acd0c16b5e3209ee4ffa655ddb7031a395687d2b10e83f73a7dc"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "sonnet"
