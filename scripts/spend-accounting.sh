@@ -2,7 +2,7 @@
 # Cost accounting script: reports per-model spend and per-period FAIL rate
 # from the transcript corpus and .claude/reviewed/ markers.
 #
-# Modeled on scripts/agent-audit.sh. Reads Claude Code's existing transcript
+# Modeled on hooks/scripts/agent-audit.sh. Reads Claude Code's existing transcript
 # store (~/.claude/projects/<slug>/) and .claude/reviewed/ markers; read-only,
 # no repo modification. Requires an explicit cutoff (--until <ISO-8601>) to
 # bound the corpus, since transcripts grow with every session.

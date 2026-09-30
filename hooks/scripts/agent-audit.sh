@@ -12,10 +12,12 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+# <repo>/hooks/scripts or <project>/.claude/hooks/scripts
+PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+[ "$(basename "$PROJECT_DIR")" = ".claude" ] && PROJECT_DIR="$(dirname "$PROJECT_DIR")"
 
 # shellcheck source=lib/agent-identity.sh
-source "$PROJECT_DIR/hooks/scripts/lib/agent-identity.sh"
+source "$SCRIPT_DIR/lib/agent-identity.sh"
 
 SESSIONS_N=1
 ALL=0
@@ -477,7 +479,7 @@ done
 # descriptions by substring (descriptions are read only for this in-process
 # comparison and are never printed). Reading the marker directory here is
 # legitimate per R8: this command's own invocation text is
-# "bash scripts/agent-audit.sh ...", which never spells the marker
+# "bash .claude/hooks/scripts/agent-audit.sh ...", which never spells the marker
 # directory's literal path.
 if [ -d "$MARKER_DIR" ]; then
   for marker in "$MARKER_DIR"/*.pass; do

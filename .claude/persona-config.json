@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.105",
+  "pluginVersion": "0.31.106",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -50,7 +50,7 @@
     ".claude/agents/scribe.md": "d22f6e0d985ce850b42537752b77bcdcfa51479446929391304831820a7930e7",
     ".claude/agents/reviewer.md": "479e96e5e7d390130e160f1e6bc65e5561176741b119463cf2a3bb5212640f5f",
     ".claude/agents/milestone-auditor.md": "e04d57c6b0f152641f2c9ecd7d233f30a2cdd865415c25ada0bfbef6b74fd48c",
-    ".claude/agents/agent-auditor.md": "1925e8a20d699d106d43ad34932fd55140d4ef025fce961ad7f467ca1f10a3e1",
+    ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
     ".claude/persona-protocol.md": "52c9b73cd837911680562c4579ca56e8a7fd983cc4d3d5b6c415bffca2bbe965",
     ".claude/persona-protocol-slim.md": "6d03c9d18b85160c988f14caecb41e0c0740c661d1eb41bdd4d6c86bca823db9",
@@ -106,7 +106,8 @@
     ".claude/hooks/scripts/lib/state-access.sh": "5746ddfe6f0c167364d21eb25d7dd79fa76668a015b14656c53d63b59ce07f2f",
     "adapters/codex/hooks/scripts/lib/state-access.sh": "5746ddfe6f0c167364d21eb25d7dd79fa76668a015b14656c53d63b59ce07f2f",
     "adapters/cursor/hooks/scripts/lib/state-access.sh": "5746ddfe6f0c167364d21eb25d7dd79fa76668a015b14656c53d63b59ce07f2f",
-    ".claude/hooks/scripts/version-stamp-check.sh": "4a9997d55279acd0c16b5e3209ee4ffa655ddb7031a395687d2b10e83f73a7dc"
+    ".claude/hooks/scripts/version-stamp-check.sh": "4a9997d55279acd0c16b5e3209ee4ffa655ddb7031a395687d2b10e83f73a7dc",
+    ".claude/hooks/scripts/agent-audit.sh": "1b6e1ea5a8173c198371b1867b15c2dfc70454af9bb79efce8596e3fa25e375a"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "sonnet"

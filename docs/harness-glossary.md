@@ -836,7 +836,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   targets the agent-memory directory tree: `.claude/agent-memory/` or
   `.claude/projects/*/memory/`. Distinct from general filesystem writes;
   specifically observes memories saved by agents during their work. Recorded
-  by `scripts/agent-audit.sh`'s A8 section (Agent-memory writes) as an
+  by `hooks/scripts/agent-audit.sh`'s A8 section (Agent-memory writes) as an
   informational audit event (never gating, never a finding). "Memory-scope
   write" is the term used in the agent-memory-dirt-blocks-pass spec
   (2026-09-27) for this same event; the two are synonyms, not distinct
@@ -1424,7 +1424,7 @@ this repo self-hosts the plugin it
   that a `PreToolUse` hook refused a tool call. Distinct from the existing
   **grant-denied** term, which is an append-only log record in
   `.claude/review-audit.log` (not a transcript event). Hook block events are
-  recorded by `scripts/agent-audit.sh`'s A7 section (Hook block events) as
+  recorded by `hooks/scripts/agent-audit.sh`'s A7 section (Hook block events) as
   informational audit observations (never gating, never a finding). Named in
   [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) as the event
   class that detection mechanisms exist to observe for bypass-detection.

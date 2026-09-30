@@ -56,7 +56,7 @@ a subagent system prompt in `agents/*.md`. "Core" personas
   ADRs). `reviewer` is the independent verifier (the Writer/Reviewer split).
   `researcher` bridges academic literature and spec authoring. `milestone-auditor`
   hunts premise gaps at milestone boundaries after all units reach PASS. `agent-auditor`
-  observes agent activity (tool calls, skills invoked) via `scripts/agent-audit.sh` and
+  observes agent activity (tool calls, skills invoked) via `hooks/scripts/agent-audit.sh` and
   surfaces observations; read-only and non-gating, it issues no verdict unlike `reviewer`
   and never audits the plan itself unlike `milestone-auditor`.
 

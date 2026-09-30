@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Fixture-driven test for scripts/agent-audit.sh (Step 3 of
+# Fixture-driven test for hooks/scripts/agent-audit.sh (Step 3 of
 # docs/plans/2026-08-09-agent-auditor-persona.md).
 #
 # Builds a synthetic AGENT_AUDIT_ROOT tree with one known-good and one
 # known-bad fixture per anomaly class (A1-A4, A6), plus an R5 privacy fixture,
-# then actually invokes scripts/agent-audit.sh against it and asserts on the
+# then actually invokes hooks/scripts/agent-audit.sh against it and asserts on the
 # real --json output. Non-vacuity for A1 is proven by mutation
 # testing: the detection call is neutralized in a scratch COPY of the script
 # (never the tracked file itself - matching the mutation-control pattern
@@ -180,7 +180,7 @@ echo '{"type":"user","timestamp":"2026-08-01T15:00:00Z","message":{"content":[{"
 # --- s7: A7 (hook block events) ---
 # A7_bad: has tool_result errors matching the PreToolUse hook error pattern.
 # tool_result nests under a user-role line's message.content[] in live
-# transcripts (see scripts/agent-audit.sh A7 comment) - not a top-level
+# transcripts (see hooks/scripts/agent-audit.sh A7 comment) - not a top-level
 # "type":"tool_result" entry, and the payload field is "content", not "text".
 echo '{"agentType":"lead-programmer","description":"test","model":"sonnet","spawnDepth":0,"taskKind":"normal"}' > \
   "$FIXTURE_ROOT/s7/subagents/agent-a7bad.meta.json"
@@ -287,7 +287,7 @@ echo '{"type":"user","timestamp":"2026-08-01T20:00:00Z","message":{"content":[{"
 
 # --- run the real script against the fixture tree, for real ---
 
-JSON_OUTPUT="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash scripts/agent-audit.sh --all --json)"
+JSON_OUTPUT="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash hooks/scripts/agent-audit.sh --all --json)"
 
 assert_agent_finding() {
   # $1 = anomaly id, $2 = agent id, $3 = present|absent
@@ -451,7 +451,7 @@ else
   echo "OK   --json output does not contain the privacy canary string"
 fi
 
-PLAIN_OUTPUT="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash scripts/agent-audit.sh --all)"
+PLAIN_OUTPUT="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash hooks/scripts/agent-audit.sh --all)"
 if printf '%s' "$PLAIN_OUTPUT" | grep -q "CANARY-PROMPT-BODY"; then
   echo "FAIL plain-text output leaked the privacy canary string"
   fail=1
@@ -559,7 +559,7 @@ echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth"
 echo '{"type":"user","timestamp":"2026-08-01T18:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
   > "$tolerance_test_root/tol.jsonl"
 
-tol_output="$(AGENT_AUDIT_ROOT="$tolerance_test_root" bash scripts/agent-audit.sh --all --json)"
+tol_output="$(AGENT_AUDIT_ROOT="$tolerance_test_root" bash hooks/scripts/agent-audit.sh --all --json)"
 tol_a7_count="$(printf '%s' "$tol_output" | jq '[.findings[] | select(.id=="A7")] | length')"
 if [ "$tol_a7_count" -eq 0 ]; then
   echo "OK   format-change tolerance: non-matching is_error=true produces no A7 row"
@@ -582,7 +582,7 @@ echo '{"agentType":"explorer","description":"test","model":"sonnet","spawnDepth"
 echo '{"type":"user","timestamp":"2026-08-01T19:00:00Z","message":{"content":[{"type":"text","text":"hello"}]}}' \
   > "$live_shape_root/ls.jsonl"
 
-live_shape_output="$(AGENT_AUDIT_ROOT="$live_shape_root" bash scripts/agent-audit.sh --all --json)"
+live_shape_output="$(AGENT_AUDIT_ROOT="$live_shape_root" bash hooks/scripts/agent-audit.sh --all --json)"
 live_shape_a7_count="$(printf '%s' "$live_shape_output" | jq '[.findings[] | select(.id=="A7")] | length')"
 if [ "$live_shape_a7_count" -gt 0 ]; then
   echo "OK   live-shaped nesting: correctly-shaped BLOCKED tool_result produces non-zero A7 (count=$live_shape_a7_count)"
@@ -593,16 +593,16 @@ fi
 
 # --- mutation proof (non-vacuity): A1 -----------------------------------------------
 # Neutralizes the anomaly's emit_finding call in a scratch COPY of the
-# script (never the tracked scripts/agent-audit.sh - matching the
+# script (never the tracked hooks/scripts/agent-audit.sh - matching the
 # mutation-control pattern in tests/stop-gate-blocked.test.sh), symlinking
 # in the unmutated lib/agents/.claude dirs the script also needs to resolve
 # personas and the gated-agents list. Re-runs the SAME fixtures/assertions
 # against the mutant and requires detection to have genuinely disappeared.
 
 MUTANT_DIR="$FIXTURE_ROOT/mutant"
-mkdir -p "$MUTANT_DIR/scripts"
-cp scripts/agent-audit.sh "$MUTANT_DIR/scripts/agent-audit.sh"
-ln -s "$(pwd)/hooks" "$MUTANT_DIR/hooks"
+mkdir -p "$MUTANT_DIR/hooks/scripts"
+cp hooks/scripts/agent-audit.sh "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
+ln -s "$(pwd)/hooks/scripts/lib" "$MUTANT_DIR/hooks/scripts/lib"
 ln -s "$(pwd)/agents" "$MUTANT_DIR/agents"
 ln -s "$(pwd)/.claude" "$MUTANT_DIR/.claude"
 ln -s "$(pwd)/templates" "$MUTANT_DIR/templates"
@@ -611,17 +611,17 @@ mutation_proof() {
   # $1 = anomaly id, $2 = agent id whose fixture should stop firing once mutated
   local id="$1" agent="$2" before after count
 
-  before="$(grep -c "emit_finding ${id} " "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+  before="$(grep -c "emit_finding ${id} " "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
   if [ "$before" -eq 0 ]; then
     echo "FAIL mutation proof for $id: no emit_finding ${id} call sites found to neutralize"
     fail=1
     return
   fi
 
-  sed -i "s/emit_finding ${id} /true # MUTATED-${id} /" "$MUTANT_DIR/scripts/agent-audit.sh"
-  after="$(grep -c "emit_finding ${id} " "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+  sed -i "s/emit_finding ${id} /true # MUTATED-${id} /" "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
+  after="$(grep -c "emit_finding ${id} " "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
 
-  count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json | \
+  count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/hooks/scripts/agent-audit.sh" --all --json | \
     jq --arg id "$id" --arg agent "$agent" '[.findings[] | select(.id==$id and .agent==$agent)] | length')"
 
   if [ "$after" -eq 0 ] && [ "$count" -eq 0 ]; then
@@ -641,22 +641,22 @@ echo "== mutation proof: A1 status join (Step 12, a1refused) =="
 # refused/executed join is itself load-bearing, not just riding on the
 # emit_finding call existing.
 MUTANT_STATUS_DIR="$FIXTURE_ROOT/mutant-status"
-mkdir -p "$MUTANT_STATUS_DIR/scripts"
-cp scripts/agent-audit.sh "$MUTANT_STATUS_DIR/scripts/agent-audit.sh"
-ln -s "$(pwd)/hooks" "$MUTANT_STATUS_DIR/hooks"
+mkdir -p "$MUTANT_STATUS_DIR/hooks/scripts"
+cp hooks/scripts/agent-audit.sh "$MUTANT_STATUS_DIR/hooks/scripts/agent-audit.sh"
+ln -s "$(pwd)/hooks/scripts/lib" "$MUTANT_STATUS_DIR/hooks/scripts/lib"
 ln -s "$(pwd)/agents" "$MUTANT_STATUS_DIR/agents"
 ln -s "$(pwd)/.claude" "$MUTANT_STATUS_DIR/.claude"
 ln -s "$(pwd)/templates" "$MUTANT_STATUS_DIR/templates"
 
-before_status="$(grep -c 'status="refused"' "$MUTANT_STATUS_DIR/scripts/agent-audit.sh" || true)"
+before_status="$(grep -c 'status="refused"' "$MUTANT_STATUS_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before_status" -eq 0 ]; then
   echo "FAIL mutation proof for A1 status: no status=\"refused\" assignment found to neutralize"
   fail=1
 else
-  sed -i 's/status="refused"/status="executed" # MUTATED-A1-STATUS/' "$MUTANT_STATUS_DIR/scripts/agent-audit.sh"
-  after_status="$(grep -c 'status="refused"' "$MUTANT_STATUS_DIR/scripts/agent-audit.sh" || true)"
+  sed -i 's/status="refused"/status="executed" # MUTATED-A1-STATUS/' "$MUTANT_STATUS_DIR/hooks/scripts/agent-audit.sh"
+  after_status="$(grep -c 'status="refused"' "$MUTANT_STATUS_DIR/hooks/scripts/agent-audit.sh" || true)"
 
-  mutant_status="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_STATUS_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+  mutant_status="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_STATUS_DIR/hooks/scripts/agent-audit.sh" --all --json 2>/dev/null | \
     jq -r '[.findings[] | select(.id=="A1" and .agent=="a1refused" and .tool=="Write")][0].status // "MISSING"')"
 
   if [ "$after_status" -eq 0 ] && [ "$mutant_status" = "executed" ]; then
@@ -673,22 +673,22 @@ echo "== mutation proof: A1 memory-path exclusion (C1.6, a8bad) =="
 # tools. Uses its own fresh mutant copy (not $MUTANT_DIR, whose emit_finding
 # A1 call was already neutralized by mutation_proof above).
 MUTANT_A1EXCL_DIR="$FIXTURE_ROOT/mutant-a1excl"
-mkdir -p "$MUTANT_A1EXCL_DIR/scripts"
-cp scripts/agent-audit.sh "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh"
-ln -s "$(pwd)/hooks" "$MUTANT_A1EXCL_DIR/hooks"
+mkdir -p "$MUTANT_A1EXCL_DIR/hooks/scripts"
+cp hooks/scripts/agent-audit.sh "$MUTANT_A1EXCL_DIR/hooks/scripts/agent-audit.sh"
+ln -s "$(pwd)/hooks/scripts/lib" "$MUTANT_A1EXCL_DIR/hooks/scripts/lib"
 ln -s "$(pwd)/agents" "$MUTANT_A1EXCL_DIR/agents"
 ln -s "$(pwd)/.claude" "$MUTANT_A1EXCL_DIR/.claude"
 ln -s "$(pwd)/templates" "$MUTANT_A1EXCL_DIR/templates"
 
-before_a1excl="$(grep -c '\*/\.claude/agent-memory/\*) continue ;;' "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh" || true)"
+before_a1excl="$(grep -c '\*/\.claude/agent-memory/\*) continue ;;' "$MUTANT_A1EXCL_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before_a1excl" -eq 0 ]; then
   echo "FAIL mutation proof for A1 memory exclusion: no continue clause found to neutralize"
   fail=1
 else
   sed -i '/\*\/\.claude\/projects\/\*\/memory\/\*) continue ;;/d;/\*\/\.claude\/agent-memory\/\*) continue ;;/d' \
-    "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh"
+    "$MUTANT_A1EXCL_DIR/hooks/scripts/agent-audit.sh"
 
-  mutant_a1excl_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_A1EXCL_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+  mutant_a1excl_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_A1EXCL_DIR/hooks/scripts/agent-audit.sh" --all --json 2>/dev/null | \
     jq '[.findings[] | select(.id=="A1" and .agent=="a8bad")] | length')"
 
   if [ "$mutant_a1excl_count" -gt 0 ]; then
@@ -702,7 +702,7 @@ fi
 echo "== mutation proof: A7 (hook block events) =="
 # For A7, neutralize the jq query that detects BLOCKED patterns by replacing
 # the test condition with false, so the query matches nothing.
-before_a7="$(grep -c 'test("PreToolUse:.*hook error:.*BLOCKED:")' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+before_a7="$(grep -c 'test("PreToolUse:.*hook error:.*BLOCKED:")' "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before_a7" -eq 0 ]; then
   echo "FAIL mutation proof for A7: no BLOCKED pattern test found to neutralize"
   fail=1
@@ -710,9 +710,9 @@ else
   # Replace the BLOCKED test with false to neutralize A7 detection. No trailing
   # `#` comment here - this line lives inside a single-line jq program string,
   # where `#` starts a jq comment and would swallow the rest of the pipeline.
-  sed -i 's/test("PreToolUse:\.\*hook error:\.\*BLOCKED:")/false/' "$MUTANT_DIR/scripts/agent-audit.sh"
+  sed -i 's/test("PreToolUse:\.\*hook error:\.\*BLOCKED:")/false/' "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
 
-  mutant_a7_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+  mutant_a7_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/hooks/scripts/agent-audit.sh" --all --json 2>/dev/null | \
     jq '[.findings[] | select(.id=="A7" and .agent=="a7bad")] | length')"
 
   if [ "$mutant_a7_count" -eq 0 ]; then
@@ -725,7 +725,7 @@ fi
 
 echo "== mutation proof: A8 (agent-memory writes) =="
 # For A8, we neutralize the logic that detects writes under .claude/agent-memory/ and .claude/projects/*/memory/
-before_a8="$(grep -c 'claude/agent-memory\|claude/projects.*memory' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+before_a8="$(grep -c 'claude/agent-memory\|claude/projects.*memory' "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before_a8" -eq 0 ]; then
   echo "FAIL mutation proof for A8: no memory path patterns found to neutralize"
   fail=1
@@ -736,9 +736,9 @@ else
   # replacement stays valid `case` syntax and the surrounding comment line is
   # left untouched.
   sed -i 's/\.claude\/agent-memory\/\*|\*\/\.claude\/agent-memory\/\*|\.claude\/projects\/\*\/memory\/\*|\*\/\.claude\/projects\/\*\/memory\/\*)/NEVER-MATCHES-A8-MUTANT)/' \
-    "$MUTANT_DIR/scripts/agent-audit.sh"
+    "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
 
-  mutant_a8_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+  mutant_a8_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/hooks/scripts/agent-audit.sh" --all --json 2>/dev/null | \
     jq '[.findings[] | select(.id=="A8" and .agent=="a8bad")] | length')"
 
   if [ "$mutant_a8_count" -eq 0 ]; then
@@ -752,14 +752,14 @@ fi
 echo "== mutation proof: A3 explorer exclusion (Step 13) =="
 # Drops the "$persona" = "explorer" suppression check, so a3sanctioned
 # should reappear as an A3 finding once mutated.
-before_a3excl="$(grep -c '\[ "\$persona" = "explorer" \]' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+before_a3excl="$(grep -c '\[ "\$persona" = "explorer" \]' "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before_a3excl" -eq 0 ]; then
   echo "FAIL mutation proof for A3 explorer exclusion: no persona==explorer check found to neutralize"
   fail=1
 else
-  sed -i 's/\[ "\$persona" = "explorer" \]/[ "\$persona" = "MUTATED-A3-NEVER-MATCH" ]/' "$MUTANT_DIR/scripts/agent-audit.sh"
+  sed -i 's/\[ "\$persona" = "explorer" \]/[ "\$persona" = "MUTATED-A3-NEVER-MATCH" ]/' "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
 
-  mutant_a3_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+  mutant_a3_count="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/hooks/scripts/agent-audit.sh" --all --json 2>/dev/null | \
     jq '[.findings[] | select(.id=="A3" and .agent=="a3sanctioned")] | length')"
 
   if [ "$mutant_a3_count" -gt 0 ]; then
@@ -773,15 +773,15 @@ fi
 echo "== mutation proof: A2 class emission (Step 13) =="
 # Neutralizes both class="teammate-name" and class="foreign-type"
 # assignments, so a2teammate/a2foreign should lose their class once mutated.
-before_a2class="$(grep -cE 'class="teammate-name"|class="foreign-type"' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+before_a2class="$(grep -cE 'class="teammate-name"|class="foreign-type"' "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before_a2class" -eq 0 ]; then
   echo "FAIL mutation proof for A2 class emission: no class assignment found to neutralize"
   fail=1
 else
   sed -i 's/class="teammate-name"/true # MUTATED-A2-CLASS/;s/class="foreign-type"/true # MUTATED-A2-CLASS/' \
-    "$MUTANT_DIR/scripts/agent-audit.sh"
+    "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
 
-  mutant_a2_classes="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/scripts/agent-audit.sh" --all --json 2>/dev/null | \
+  mutant_a2_classes="$(AGENT_AUDIT_ROOT="$FIXTURE_ROOT" bash "$MUTANT_DIR/hooks/scripts/agent-audit.sh" --all --json 2>/dev/null | \
     jq '[.findings[] | select(.id=="A2" and (.agent=="a2teammate" or .agent=="a2foreign") and .class)] | length')"
 
   if [ "$mutant_a2_classes" -eq 0 ]; then
@@ -817,7 +817,7 @@ echo 'not valid json' > "$PROBE_MALFORMED/s.jsonl"
 
 echo "== format-probe: five conditions render five distinct outputs =="
 n="$(for r in "$PROBE_LIVE" "$PROBE_NODISP" "$PROBE_EMPTY" "$PROBE_NOSTORE" "$PROBE_MALFORMED"; do
-      AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --format-probe
+      AGENT_AUDIT_ROOT="$r" bash hooks/scripts/agent-audit.sh --format-probe
     done | sort -u | wc -l)"
 if [ "$n" -eq 5 ]; then
   echo "OK   five distinct probe outputs across five store conditions"
@@ -826,11 +826,11 @@ else
   fail=1
 fi
 
-live_state="$(AGENT_AUDIT_ROOT="$PROBE_LIVE" bash scripts/agent-audit.sh --format-probe)"
-nodisp_state="$(AGENT_AUDIT_ROOT="$PROBE_NODISP" bash scripts/agent-audit.sh --format-probe)"
-empty_state="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash scripts/agent-audit.sh --format-probe)"
-nostore_state="$(AGENT_AUDIT_ROOT="$PROBE_NOSTORE" bash scripts/agent-audit.sh --format-probe)"
-malformed_state="$(AGENT_AUDIT_ROOT="$PROBE_MALFORMED" bash scripts/agent-audit.sh --format-probe)"
+live_state="$(AGENT_AUDIT_ROOT="$PROBE_LIVE" bash hooks/scripts/agent-audit.sh --format-probe)"
+nodisp_state="$(AGENT_AUDIT_ROOT="$PROBE_NODISP" bash hooks/scripts/agent-audit.sh --format-probe)"
+empty_state="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash hooks/scripts/agent-audit.sh --format-probe)"
+nostore_state="$(AGENT_AUDIT_ROOT="$PROBE_NOSTORE" bash hooks/scripts/agent-audit.sh --format-probe)"
+malformed_state="$(AGENT_AUDIT_ROOT="$PROBE_MALFORMED" bash hooks/scripts/agent-audit.sh --format-probe)"
 
 assert_probe_state() {
   # $1 = fixture label, $2 = actual state, $3 = expected state
@@ -867,7 +867,7 @@ else
 fi
 
 echo "== format-probe: --all is loud on a malformed store =="
-malformed_all="$(AGENT_AUDIT_ROOT="$PROBE_MALFORMED" bash scripts/agent-audit.sh --all)"
+malformed_all="$(AGENT_AUDIT_ROOT="$PROBE_MALFORMED" bash hooks/scripts/agent-audit.sh --all)"
 if printf '%s' "$malformed_all" | grep -q FORMAT-UNRECOGNIZED; then
   echo "OK   --all surfaces FORMAT-UNRECOGNIZED for a malformed store"
 else
@@ -876,8 +876,8 @@ else
 fi
 
 echo "== format-probe: empty-store --all render is unchanged =="
-empty_all="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash scripts/agent-audit.sh --all)"
-empty_all_json="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash scripts/agent-audit.sh --all --json)"
+empty_all="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash hooks/scripts/agent-audit.sh --all)"
+empty_all_json="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash hooks/scripts/agent-audit.sh --all --json)"
 if [ "$empty_all" = "no data for window" ] && [ "$empty_all_json" = "no data for window" ]; then
   echo "OK   empty-store --all/--all --json render exactly 'no data for window'"
 else
@@ -888,8 +888,8 @@ fi
 echo "== format-probe: exit codes stay 0 across all five conditions and both modes =="
 probe_exit_ok=1
 for r in "$PROBE_LIVE" "$PROBE_NODISP" "$PROBE_EMPTY" "$PROBE_NOSTORE" "$PROBE_MALFORMED"; do
-  AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --format-probe >/dev/null || probe_exit_ok=0
-  AGENT_AUDIT_ROOT="$r" bash scripts/agent-audit.sh --all          >/dev/null || probe_exit_ok=0
+  AGENT_AUDIT_ROOT="$r" bash hooks/scripts/agent-audit.sh --format-probe >/dev/null || probe_exit_ok=0
+  AGENT_AUDIT_ROOT="$r" bash hooks/scripts/agent-audit.sh --all          >/dev/null || probe_exit_ok=0
 done
 if [ "$probe_exit_ok" -eq 1 ]; then
   echo "OK   exit code 0 in every mode across all five store conditions"
@@ -901,16 +901,16 @@ fi
 # --- mutation proof (non-vacuity): FORMAT-EMPTY collapsed into
 # FORMAT-UNRECOGNIZED ---------------------------------------------------
 # Reuses the MUTANT_DIR scratch copy set up above for the A1 mutation
-# proofs (never the tracked scripts/agent-audit.sh itself).
+# proofs (never the tracked hooks/scripts/agent-audit.sh itself).
 
 echo "== mutation proof: FORMAT-EMPTY collapsed into FORMAT-UNRECOGNIZED =="
-before="$(grep -c 'echo "FORMAT-EMPTY"' "$MUTANT_DIR/scripts/agent-audit.sh" || true)"
+before="$(grep -c 'echo "FORMAT-EMPTY"' "$MUTANT_DIR/hooks/scripts/agent-audit.sh" || true)"
 if [ "$before" -eq 0 ]; then
   echo "FAIL mutation proof for FORMAT-EMPTY: no echo \"FORMAT-EMPTY\" call site found to neutralize"
   fail=1
 else
-  sed -i 's/echo "FORMAT-EMPTY"/echo "FORMAT-UNRECOGNIZED" # MUTATED-FORMAT-EMPTY/' "$MUTANT_DIR/scripts/agent-audit.sh"
-  mutant_empty_state="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash "$MUTANT_DIR/scripts/agent-audit.sh" --format-probe)"
+  sed -i 's/echo "FORMAT-EMPTY"/echo "FORMAT-UNRECOGNIZED" # MUTATED-FORMAT-EMPTY/' "$MUTANT_DIR/hooks/scripts/agent-audit.sh"
+  mutant_empty_state="$(AGENT_AUDIT_ROOT="$PROBE_EMPTY" bash "$MUTANT_DIR/hooks/scripts/agent-audit.sh" --format-probe)"
   if [ "$mutant_empty_state" = "FORMAT-UNRECOGNIZED" ]; then
     echo "OK   mutation proof: collapsing FORMAT-EMPTY into FORMAT-UNRECOGNIZED is detected (mutant now reports $mutant_empty_state, colliding with the malformed state) - detection was load-bearing"
   else

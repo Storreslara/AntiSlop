@@ -11,4 +11,4 @@ Options:
 - `--all` — analyze all available sessions
 - `--json` — emit machine-readable JSON instead of plain text
 
-Internally the persona runs `bash scripts/agent-audit.sh`, whose only other flags are `--format-probe` (debugging) and the `AGENT_AUDIT_ROOT` environment override (fixture-only); an unrecognized argument exits 1 rather than printing usage.
+Internally the persona runs `bash .claude/hooks/scripts/agent-audit.sh`, whose only other flags are `--format-probe` (debugging) and the `AGENT_AUDIT_ROOT` environment override (fixture-only); an unrecognized argument exits 1 rather than printing usage.
