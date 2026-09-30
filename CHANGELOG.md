@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Inlined skills in Codex/Cursor ports (saa-u5).** The `lead-programmer` and `reviewer` ports now inline the `coding-discipline`, `tdd` and `roast-work` SKILL.md bodies between `inlined-skill` sentinels; `tests/adapter-skill-parity.test.js` (wired into `tests/validate.sh`) enforces byte-parity.
+
 **Stale skill name fixed (saa-u6).** `skills/pathfinder/SKILL.md` and the task-master entry in `CONTEXT.md` now say `to-tickets` instead of `to-issues`. No version bump.
 
 **Direction-aware plugin-version message (saa-u4).** `hooks/scripts/session-start.sh` now tells the user to run `claude plugin update antislop@antislop-marketplace --scope <scope>` when the installed plugin is older than the adapted project version, instead of pointing at `/antislop:update-antislop` (which refuses a downgrade). No version bump.

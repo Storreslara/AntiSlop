@@ -810,6 +810,15 @@ else
 fi
 
 echo
+echo "== adapter inlined-skill byte-parity vs skills/ (Node) =="
+if node tests/adapter-skill-parity.test.js; then
+  echo "OK   tests/adapter-skill-parity.test.js"
+else
+  echo "FAIL tests/adapter-skill-parity.test.js"
+  fail=1
+fi
+
+echo
 echo "== protocol cross-references: no dangling section reference (Node) =="
 if node tests/protocol-cross-references.test.js; then
   echo "OK   tests/protocol-cross-references.test.js"
