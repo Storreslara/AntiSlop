@@ -58,7 +58,8 @@ and states the canonical term in one more.
 
 **Input:** a natural-language request or a draft spec.
 
-**Consumer:** `spec-master`.
+**Consumer:** `spec-master`, or `milestone-auditor` (if present), auditing a
+plan's prose.
 
 **Output:** advisory only. Findings inform the category-8 score but never
 block progression to `grill-with-docs`, `to-spec`, or `task-master` handoff. No new

@@ -248,7 +248,10 @@ clarify intent is fine.
      taxonomy/constitution/self-check machinery already defined above,
      using your existing Read/Grep/Glob/Bash tools; invoke `antislop:fail-triage`
      for the verify-then-categorize front-half before reasoning about the
-     deeper root cause. No new mattpocock slot is added for this.
+     deeper root cause. Invoke `antislop:diagnosing-bugs` on demand when
+     reproducing or narrowing a failure whose category may be a code defect.
+     It is referenced as a vendored `antislop:` skill per ADR-0005, not
+     preloaded.
   2. **Revised spec step(s)** — the specific failed step(s) rewritten with
      corrected acceptance criteria (or, if the diagnosis found the wrong
      approach entirely, a revised approach), re-checked against the

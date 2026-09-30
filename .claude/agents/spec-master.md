@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 40
 ---
-<!-- antislop v0.31.106 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.107 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -249,7 +249,10 @@ clarify intent is fine.
      taxonomy/constitution/self-check machinery already defined above,
      using your existing Read/Grep/Glob/Bash tools; invoke `antislop:fail-triage`
      for the verify-then-categorize front-half before reasoning about the
-     deeper root cause. No new mattpocock slot is added for this.
+     deeper root cause. Invoke `antislop:diagnosing-bugs` on demand when
+     reproducing or narrowing a failure whose category may be a code defect.
+     It is referenced as a vendored `antislop:` skill per ADR-0005, not
+     preloaded.
   2. **Revised spec step(s)** — the specific failed step(s) rewritten with
      corrected acceptance criteria (or, if the diagnosis found the wrong
      approach entirely, a revised approach), re-checked against the

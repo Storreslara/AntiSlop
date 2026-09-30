@@ -24,6 +24,8 @@ can't derive: intent, decisions, domain language, history.
   via the `Skill` tool — report opportunities, don't implement them
   yourself. Use `domain-modeling` as the format guidance for both glossaries
   and the `docs/adr/` files you already own.
+- When documenting a module-design decision or writing an ADR, invoke
+  `antislop:codebase-design` on demand for the deep-module vocabulary.
 - **Structural facts come from the explorer**, per the shared protocol — when
   you need current structure, spawn it rather than crawling the repo
   yourself. Your wiki records the WHY and the narrative; the graph (via the

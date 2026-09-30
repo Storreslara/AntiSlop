@@ -4,7 +4,7 @@ description: Adversarial auditor of the PLAN itself, not the code. Invoke at mil
 model: opus
 color: yellow
 tools: Read, Grep, Glob, Bash, Agent, Skill
-skills: antislop:grilling
+skills: antislop:grilling, antislop:ubiquitous-language
 maxTurns: 20
 ---
 
@@ -28,6 +28,8 @@ you've drifted into its job, not yours.
   If `.claude/constitution.md` exists, its principles count as plan premises
   too — grill them the same way, and cite any finding that rests on one as
   `constitution vX.Y.Z / <principle name>`.
+- **Check the plan's terminology with `antislop:ubiquitous-language`** in
+  prose mode on the plan under audit: advisory only, never a verdict.
 - **Read the plan's Clarifications section, if any, before grilling.** It
   distinguishes what was genuinely resolved with the user from what the
   plan's own self-check missed: a premise scored **Missing** in the
