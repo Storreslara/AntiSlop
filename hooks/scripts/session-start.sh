@@ -48,7 +48,11 @@ if [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -f "${CLAUDE_PLUGIN_ROOT}/.claude-plugi
 fi
 
 if [ -n "$adapted_version" ] && [ -n "$current_version" ] && [ "$adapted_version" != "$current_version" ]; then
-  context_parts+=("antislop plugin is v${current_version} but this project was adapted at v${adapted_version} - run /antislop:update-antislop to resync (cheap, deterministic).")
+  if [ "$(printf '%s\n%s\n' "$adapted_version" "$current_version" | sort -V | head -n1)" = "$current_version" ]; then
+    context_parts+=("antislop plugin is v${current_version}, OLDER than the v${adapted_version} this project was adapted at - --update will refuse the downgrade. Ask the user to run: claude plugin update antislop@antislop-marketplace --scope <scope>")
+  else
+    context_parts+=("antislop plugin is v${current_version} but this project was adapted at v${adapted_version} - run /antislop:update-antislop to resync (cheap, deterministic).")
+  fi
 fi
 
 if [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then

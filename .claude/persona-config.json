@@ -63,7 +63,7 @@
     ".claude/hooks/scripts/reviewed-path-gate.sh": "34e4c9d05ae6cea369eb461e9f961ae3b4122b1e34a7ab48cd8969888a67c058",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
     ".claude/hooks/scripts/reviewer-tier.sh": "44b1eace3d4022a4a3fbf27308e01d41cc0ed8d3443ba14845279695302d4e51",
-    ".claude/hooks/scripts/session-start.sh": "a8635bdc22b07cb031db979c8d8af03d3412994d86cea58e5b1749c2fd2fb238",
+    ".claude/hooks/scripts/session-start.sh": "17629506a81e36fddad73075e8fa51506fd45bda082484b0f46f21109c43bfa5",
     ".claude/hooks/scripts/stop-gate.sh": "0b09f9c5cc7e580120757f0a9371b536fb54738779f419e7df622cacfd87619a",
     ".claude/hooks/scripts/task-gate.sh": "31ea0399f37eef3c1be9e2a22711a879c8800fa201125720d1029652d5fabeab",
     ".claude/hooks/scripts/human-decision-gate.sh": "0f46dd7a94b7f027c363898ac131347949f19b151ef7250a825dbbb1e112f0d4",
