@@ -308,8 +308,8 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   mirror will silently drift out of sync. Currently in this category: all files
   under `.claude/skills/` (mirrored from `skills/`). Operational implication:
   treat edits to `skills/` as requiring a dual-site commit: the source file and
-  its `.claude/` mirror must be kept in sync, and parity is enforced only by
-  process (code review) rather than mechanically. See also [[version-stamped
+  its `.claude/` mirror must be kept in sync, and parity is enforced
+  mechanically by `tests/validate.sh` (skills mirror parity section). See also [[version-stamped
   file]], [[`--update` semantics]].
 
 **per-commit semantics**:

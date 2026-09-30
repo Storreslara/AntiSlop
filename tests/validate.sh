@@ -339,6 +339,20 @@ else
 fi
 
 echo
+echo "== .claude/skills mirrors are at parity with skills/ =="
+for d in .claude/skills/*/; do
+  d=$(basename "$d")
+  if [ ! -d "skills/$d" ]; then
+    echo "SKIP .claude/skills/$d (no skills/ source; graph-generated)"
+  elif diff -rq "skills/$d" ".claude/skills/$d"; then
+    echo "OK   .claude/skills/$d is byte-identical to skills/$d"
+  else
+    echo "FAIL .claude/skills/$d diverged from skills/$d (copy skills/$d over it and commit both)"
+    fail=1
+  fi
+done
+
+echo
 echo "== persona-config fileHashes baselines match on-disk content =="
 if node tests/filehashes-currency.test.js; then
   echo "OK   tests/filehashes-currency.test.js"
@@ -709,6 +723,14 @@ if bash tests/agent-auditor.test.sh; then
   echo "OK   tests/agent-auditor.test.sh"
 else
   echo "FAIL tests/agent-auditor.test.sh"
+  fail=1
+fi
+echo
+echo "== session-start.sh version-direction message =="
+if bash tests/session-start-version-direction.test.sh; then
+  echo "OK   tests/session-start-version-direction.test.sh"
+else
+  echo "FAIL tests/session-start-version-direction.test.sh"
   fail=1
 fi
 echo

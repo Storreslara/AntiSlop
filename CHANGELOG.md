@@ -2,10 +2,13 @@
 
 ## [Unreleased]
 
+**Direction-aware plugin-version message (saa-u4).** `hooks/scripts/session-start.sh` now tells the user to run `claude plugin update antislop@antislop-marketplace --scope <scope>` when the installed plugin is older than the adapted project version, instead of pointing at `/antislop:update-antislop` (which refuses a downgrade). No version bump.
+
 **CI fetches full history (192624f).** `.github/workflows/validate.yml` now sets `fetch-depth: 0` on checkout so history-dependent tests can resolve historical shas. No version bump.
 
 ### Changed
 - **`.github/workflows/validate.yml`**: `actions/checkout` uses `fetch-depth: 0`.
+- **`tests/validate.sh`**: new section FAILs when a `.claude/skills/<d>` mirror diverges from `skills/<d>` (saa-u1).
 
 **0.31.104 — fold in the non-blocking reviewer notes from rgo-6 (rgo-7).** Enforce-mode behaviour is unchanged.
 
