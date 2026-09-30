@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Skill, SendMessage
 mcpServers:
   - code-review-graph:
       type: stdio
-      <REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>
+      # <REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>
 maxTurns: 10
 ---
 <!-- `mcpServers` is inlined here (not project-wide `.mcp.json`) so only the

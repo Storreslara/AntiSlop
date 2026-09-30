@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**YAML-valid MCP placeholder (saa-u2, 0.31.105).** The `mcpServers` placeholder line in `agents/explorer.md` and `templates/researcher.md.tmpl` is now a YAML comment (token unchanged), so the shipped frontmatter parses and `antislop:explorer` gets its tool allowlist. `applyMcpPlaceholder` renders both the comment and legacy bare forms; `tests/validate.sh` no longer exempts explorer and also YAML-checks templates.
+
 **Inlined skills in Codex/Cursor ports (saa-u5).** The `lead-programmer` and `reviewer` ports now inline the `coding-discipline`, `tdd` and `roast-work` SKILL.md bodies between `inlined-skill` sentinels; `tests/adapter-skill-parity.test.js` (wired into `tests/validate.sh`) enforces byte-parity.
 
 **Stale skill name fixed (saa-u6).** `skills/pathfinder/SKILL.md` and the task-master entry in `CONTEXT.md` now say `to-tickets` instead of `to-issues`. No version bump.

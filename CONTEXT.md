@@ -159,7 +159,8 @@ the semantics of adding an
 a placeholder in a shipped persona file (e.g.
   `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`) resolved to a real
   value at ADAPT time and recorded in `.claude/persona-config.json`'s
-  `substitutions` field.
+  `substitutions` field. The placeholder sits on a YAML comment line (so the
+  shipped frontmatter parses) that the renderer replaces.
 
 **The Writer/Reviewer split**:
 the system's core safety property: the

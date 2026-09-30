@@ -367,6 +367,53 @@ check('deriveMcpLaunchFromDisk does not swallow a frontmatter key that follows m
   assert.ok(rendered.includes('\nmaxTurns: 10\n'), 'maxTurns: 10 got swallowed into the parsed/replaced block');
 });
 
+const MCP_TOKENS = {
+  explorer: '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>',
+  researcher: '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>',
+};
+const MCP_SOURCES = {
+  explorer: path.join(REPO_ROOT, 'agents', 'explorer.md'),
+  researcher: path.join(REPO_ROOT, 'templates', 'researcher.md.tmpl'),
+};
+
+check('applyMcpPlaceholder renders the comment form and the legacy bare form identically (both tokens)', () => {
+  const launch = { command: 'node', args: ['/s.js'], env: { K: 'v' } };
+  for (const persona of Object.keys(MCP_TOKENS)) {
+    const token = MCP_TOKENS[persona];
+    const commentForm = fs.readFileSync(MCP_SOURCES[persona], 'utf8');
+    assert.ok(commentForm.includes(`      # ${token}`), `${persona} source must carry the comment-form placeholder`);
+    const bareForm = commentForm.replace(`      # ${token}`, `      ${token}`);
+    assert.notStrictEqual(bareForm, commentForm);
+    const a = cli.applyMcpPlaceholder(commentForm, token, launch, persona);
+    const b = cli.applyMcpPlaceholder(bareForm, token, launch, persona);
+    assert.strictEqual(a, b);
+    assert.ok(!a.includes(token) && !a.includes('#  '), `${persona}: placeholder/comment marker left behind`);
+  }
+});
+
+check('rendered explorer frontmatter parses as YAML with the launch command', () => {
+  const src = fs.readFileSync(MCP_SOURCES.explorer, 'utf8');
+  const rendered = cli.applyMcpPlaceholder(src, MCP_TOKENS.explorer, { command: 'node', args: ['/s.js'] }, 'explorer.md');
+  const py =
+    "import re,sys,yaml,json;c=sys.stdin.read();m=re.match(r'^---\\n(.*?)\\n---\\n',c,re.S);" +
+    "print(json.dumps(yaml.safe_load(m.group(1))['mcpServers'][0]['code-review-graph']['command']))";
+  const r = spawnSync('python3', ['-c', py], { input: rendered, encoding: 'utf8' });
+  assert.strictEqual(r.status, 0, r.stderr);
+  assert.strictEqual(JSON.parse(r.stdout), 'node');
+});
+
+check('PLACEHOLDER_RE still matches the comment-form placeholder line', () => {
+  assert.ok(cli.PLACEHOLDER_RE.test(`      # ${MCP_TOKENS.explorer}`));
+  assert.ok(cli.PLACEHOLDER_RE.test(`      # ${MCP_TOKENS.researcher}`));
+});
+
+check('applyArxivFallback removes the comment-form mcpServers block', () => {
+  const src = fs.readFileSync(MCP_SOURCES.researcher, 'utf8');
+  const out = cli.applyArxivFallback(src);
+  const frontmatter = out.match(/^---\r?\n[\s\S]*?\r?\n---\r?\n/)[0];
+  assert.ok(!frontmatter.includes('mcpServers:') && !frontmatter.includes(MCP_TOKENS.researcher), 'comment-form block survived');
+});
+
 check('PLACEHOLDER_RE still matches real unresolved-placeholder shapes', () => {
   assert.ok(cli.PLACEHOLDER_RE.test('<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>'));
   assert.ok(cli.PLACEHOLDER_RE.test('<MATTPOCOCK:slot>'));

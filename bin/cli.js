@@ -385,7 +385,7 @@ function applyMcpPlaceholder(body, placeholder, launch, fileLabel) {
         '(or `--wire-arxiv-mcp=<server-key>`) to wire it, then re-run --update.'
     );
   }
-  const lineRe = new RegExp(`^([ \\t]*)${escapeRegExp(placeholder)}\\r?\\n?`, 'm');
+  const lineRe = new RegExp(`^([ \\t]*)(?:#[ \\t]*)?${escapeRegExp(placeholder)}\\r?\\n?`, 'm');
   const match = body.match(lineRe);
   const indent = match ? match[1] : '      ';
   return body.replace(lineRe, renderMcpBlock(launch, indent) + '\n');
