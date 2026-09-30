@@ -146,7 +146,7 @@ the semantics of adding an
   exiting 0 always (fail-open). Takes an explicit range because a unit's range is a per-unit input only the
   reviewer knows (a self-derived `HEAD~1` sees only the last commit); originally
   also motivated by CI's since-removed shallow clone. Mechanization covers the version-bump
-  half of the discipline only; the CHANGELOG-entry half remains reviewer-inspection-only.
+  half of the discipline only; the CHANGELOG-entry half remains reviewer-inspection-only, now with a runnable command in the `antislop:version-stamp-discipline` skill.
   (unit version-stamp-check-roast-1, 2026-09-23) Widening the reviewed range past
   an offending commit no longer masks it: the script additionally checks every
   commit *within* the range that itself touches a version-stamped path against

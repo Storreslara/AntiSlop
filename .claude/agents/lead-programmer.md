@@ -5,10 +5,10 @@ model: sonnet
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
+skills: antislop:coding-discipline, antislop:handoff, antislop:tdd, antislop:version-stamp-discipline
 maxTurns: 50
 ---
-<!-- antislop v0.31.108 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.31.109 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.

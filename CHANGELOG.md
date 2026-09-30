@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**`version-stamp-discipline` skill (saa-u9, 0.31.109).** New `skills/version-stamp-discipline/SKILL.md` covers both P3 halves: the `version-stamp-check.sh` verdicts (including `ok touched: no`) and a runnable CHANGELOG-entry command. `lead-programmer` preloads it; `reviewer` references it on demand in the body (frontmatter unchanged). G2 declined (install-antislop decision stands).
+
 **Reviewer on-demand `antislop:code-review` (saa-u8, 0.31.108).** `agents/reviewer.md` gains one body bullet: after the verdict is decided, and only when the unit names an originating spec/issue, the reviewer may run `antislop:code-review` as one advisory section (findings to the `.pass` notes) that never flips PASS/FAIL. Frontmatter unchanged; not added to `skills:`.
 
 **Skill access gaps closed (saa-u7, 0.31.107).** `milestone-auditor` preloads `antislop:ubiquitous-language` (advisory, prose mode; the skill now lists it as a prose-mode consumer), `task-master` gets an on-demand `antislop:handoff` cutoff bullet, `scribe` references `antislop:codebase-design` on demand (not preloaded), and `spec-master` references `antislop:diagnosing-bugs` on demand, replacing the stale "no new mattpocock slot" sentence.

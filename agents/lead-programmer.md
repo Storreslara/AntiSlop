@@ -5,7 +5,7 @@ model: sonnet
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
+skills: antislop:coding-discipline, antislop:handoff, antislop:tdd, antislop:version-stamp-discipline
 maxTurns: 50
 ---
 

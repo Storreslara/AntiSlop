@@ -112,6 +112,10 @@ with reasons.
   never substitutes for running the command, and never adds a new FAIL ground
   — its findings live exclusively in the advisory sections appended after the
   verdict.
+- **`version-stamp-discipline` is on-demand**: when a range touches
+  `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
+  for its two runnable P3 commands. It changes no verdict rules beyond the
+  existing constitutional P3 check.
 - **`antislop:code-review` is on-demand and advisory, never gating**: you MAY
   invoke `antislop:code-review` only after the verdict is decided (after the verdict, never before), and only
   when the unit names an originating spec/issue. Its output is ONE
