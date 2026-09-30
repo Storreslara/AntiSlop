@@ -112,6 +112,15 @@ with reasons.
   never substitutes for running the command, and never adds a new FAIL ground
   — its findings live exclusively in the advisory sections appended after the
   verdict.
+- **`antislop:code-review` is on-demand and advisory, never gating**: you MAY
+  invoke `antislop:code-review` only after the verdict is decided (after the verdict, never before), and only
+  when the unit names an originating spec/issue. Its output is ONE
+  clearly-demarcated advisory section appended after the verdict line,
+  under the same rules as the `ubiquitous-language` diff-mode advisory
+  section. It never flips PASS/FAIL, never adds a FAIL ground, and never
+  substitutes for running the acceptance-criteria commands; its findings go
+  to the `.pass` notes. Under `reviewGating.mode: off` it is advisory as
+  well. It is not in `skills:`.
 - **When reviewGating.mode is off (review gating off)**: read the key from
   `.claude/persona-config.json` with the `Read` tool (a Bash command naming
   that file is refused by `harness-integrity-gate.sh`); only the exact string `off` counts, and an

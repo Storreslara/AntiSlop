@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Reviewer on-demand `antislop:code-review` (saa-u8, 0.31.108).** `agents/reviewer.md` gains one body bullet: after the verdict is decided, and only when the unit names an originating spec/issue, the reviewer may run `antislop:code-review` as one advisory section (findings to the `.pass` notes) that never flips PASS/FAIL. Frontmatter unchanged; not added to `skills:`.
+
 **Skill access gaps closed (saa-u7, 0.31.107).** `milestone-auditor` preloads `antislop:ubiquitous-language` (advisory, prose mode; the skill now lists it as a prose-mode consumer), `task-master` gets an on-demand `antislop:handoff` cutoff bullet, `scribe` references `antislop:codebase-design` on demand (not preloaded), and `spec-master` references `antislop:diagnosing-bugs` on demand, replacing the stale "no new mattpocock slot" sentence.
 
 **Agent-audit script relocated to `hooks/scripts/` (saa-u3, 0.31.106).** `scripts/agent-audit.sh` moved to `hooks/scripts/agent-audit.sh` so it ships, installs and updates with the existing hook-script mechanism and the `agent-auditor` persona works in adapted projects (`bash .claude/hooks/scripts/agent-audit.sh`). The script now resolves the project dir in both the repo and `.claude/` layouts and sources its lib from its own directory. Not hook-registered.
