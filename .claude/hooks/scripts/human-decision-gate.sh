@@ -3,7 +3,11 @@
 # included, empty/main-session agent_type included - from writing
 # .claude/human-review/<task-id>/DECISION, the human's own resolution of a
 # pending ESCALATE-TO-HUMAN packet. No grant branch and no fallback: unlike
-# reviewed-path-gate.sh, no identity may ever write this file. Reads are
+# reviewed-path-gate.sh, no identity may ever write this file on its own
+# authority. The one exception is not a grant: for the main-session prompt
+# route, is_prompt_eligible_decision_write() below turns this gate's deny into
+# a permission "ask", so the file exists only if the human approves its exact
+# bytes at Claude Code's permission prompt. The gate never allows it. Reads are
 # allowed, a backslash inside a single-quoted span included. The shared lexer
 # once failed closed on EVERY backslash, inert or not, and this header used to
 # record that as a deliberately-open false positive; hdg-lexer-1 closed it
@@ -66,6 +70,8 @@ audit="${project_dir}/.claude/review-audit.log"
 
 command="$(echo "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
+agent_id="$(echo "$input" | jq -r '.agent_id // empty' 2>/dev/null || true)"
+permission_mode="$(echo "$input" | jq -r '.permission_mode // empty' 2>/dev/null || true)"
 
 # The one command shape allowed past command_is_provably_benign(): a marker
 # write whose heredoc body may quote the DECISION path as inert data. Safety
@@ -98,6 +104,88 @@ is_sanctioned_marker_write() {
     [ "$line" = "$delim" ] && return 1
     rest="${rest#*$'\n'}"
   done
+}
+
+# The one shape this gate ASKS on - it never allows (esc-chat-2,
+# docs/plans/2026-10-01-in-session-escalation-decision.md): the main session
+# recording the human's in-chat answer as the composer's exact heredoc
+# (decision-block.js composeHeredocCommand + composeEscalationDecisionBody,
+# via: 'prompt'). Claude Code renders the prompt from the tool call itself, so
+# the bytes the human approves are the file. Same parse discipline as
+# is_sanctioned_marker_write(): the first line is the only code and matches
+# end-to-end, only `>` (never `>>`), the delimiter is exactly 'EOF', and the
+# first line equal to it is the last line. Sets pg_id, pg_route and
+# pg_escalation for the two helpers below and for ask_decision().
+#
+# The mode allowlist is FROZEN, never a denylist: default, acceptEdits and auto
+# only (Amendment A1). plan is excluded because it is read-only, so there is
+# no write approval for a human to make there. bypassPermissions and dontAsk
+# are excluded because a silent auto-approve there would be an undetectable
+# fabricated approval. An empty, absent or unknown mode denies too.
+is_prompt_eligible_decision_write() {
+  local cmd="$1" first n i
+  local re='^cat[[:space:]]+>[[:space:]]*[.]claude/human-review/([A-Za-z0-9_]['"${UNIT_ID_CHARCLASS}"']*)/DECISION[[:space:]]+<<'\''EOF'\''$'
+  local -a lines
+  [ -z "$agent_id" ] || return 1
+  case "$permission_mode" in
+    default|acceptEdits|auto) ;;
+    *) return 1 ;;
+  esac
+  while [ "${cmd: -1}" = $'\n' ]; do cmd="${cmd%$'\n'}"; done
+  first="${cmd%%$'\n'*}"
+  [ "$first" != "$cmd" ] || return 1
+  [[ $first =~ $re ]] || return 1
+  pg_id="${BASH_REMATCH[1]}"
+  mapfile -t lines <<< "${cmd#*$'\n'}"
+  n=${#lines[@]}
+  [ "${lines[n-1]}" = EOF ] || return 1
+  for ((i = 0; i < n - 1; i++)); do
+    [ "${lines[i]}" != EOF ] || return 1
+  done
+  decision_body_ok "${lines[@]:0:n-1}" || return 1
+  decision_target_eligible
+}
+
+# The DECISION body grammar, one argument per body line (R4: no reserved key
+# may be forged inside a reason).
+decision_body_ok() {
+  local iso='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,3})?Z'
+  local head_re="^DECISION [^ ]+ ${iso} route: (approve|reject|direct) escalation: ${iso}\$"
+  local by_re='^by: [^[:cntrl:]]+$' reason_re='^reason: .+' bid line
+  local examples="$project_dir/.claude/human-review/$pg_id/EXAMPLES.md"
+  [ "$#" -ge 3 ] || return 1
+  [[ $1 =~ $head_re ]] || return 1
+  read -r _ bid _ _ pg_route _ pg_escalation <<< "$1"
+  [ "$bid" = "$pg_id" ] || return 1
+  [[ $2 =~ $by_re ]] || return 1
+  [ "$3" = 'via: prompt' ] || return 1
+  shift 3
+  if [ "$pg_route" = approve ]; then
+    [ "$#" -le 1 ] || return 1
+    case "${1-}" in
+      '') [ "$#" -eq 0 ] ;;
+      'examples: reviewed'|'examples: skipped') [ -e "$examples" ] ;;
+      'examples: none-offered') [ ! -e "$examples" ] ;;
+      *) return 1 ;;
+    esac
+    return
+  fi
+  [ "$#" -ge 1 ] && [[ $1 =~ $reason_re ]] || return 1
+  shift
+  for line in "$@"; do
+    case "$line" in 'DECISION '*|by:*|via:*|examples:*|reason:*) return 1 ;; esac
+  done
+}
+
+# Filesystem eligibility: the packet exists, holds no DECISION yet, and the
+# standing .escalated marker's first-line timestamp is the one the body cites.
+decision_target_eligible() {
+  local packet="$project_dir/.claude/human-review/$pg_id" marker_first marker_ts
+  [ -d "$packet" ] || return 1
+  [ ! -e "$packet/DECISION" ] && [ ! -L "$packet/DECISION" ] || return 1
+  marker_first="$(state_read_unit_marker "$pg_id" escalated 2>/dev/null | sed -n 1p)" || return 1
+  read -r _ _ marker_ts _ <<< "$marker_first"
+  [ -n "$marker_ts" ] && [ "$marker_ts" = "$pg_escalation" ]
 }
 
 # True when some run of the text spells BOTH trigger tokens with no whitespace
@@ -299,9 +387,12 @@ Rules: the delimiter must be single-quoted, the target a bare literal
 .claude/reviewed/<id>.{pass,fail,directed,blocked,escalated}, and the
 terminator the last line of the command. >> works in place of >.
 
-This path has one sanctioned route. Any other route to it is a
-self-authorized bypass whether or not this gate blocks it; if the sanctioned
-route does not fit, report and wait.
+The human records a decision in the terminal or the dashboard, or - from the
+main session only - by approving the exact decision heredoc at Claude Code's
+permission prompt, which this gate asks for and never grants by itself. Any
+other route to it is a
+self-authorized bypass whether or not this gate blocks it; if no sanctioned
+route fits, report and wait.
 
 That rule governs commands TARGETING this file. A mention that only narrates it
 is allowed outright and needs no workaround: prose inside a single 'git commit'
@@ -313,6 +404,18 @@ To discard a resolved packet, delete the whole directory with
 'rm -rf .claude/human-review/<task-id>'.
 MSG
   exit 2
+}
+
+# Logged BEFORE the human answers (R7): an asked line with no DECISION file
+# afterwards means the human declined. The reason is a frozen literal built
+# only from the parsed route enum and the task id.
+ask_decision() {
+  audit_append "$audit" "$(printf '%s decision-gate-asked identity=%s task=%s route=%s mode=%s' \
+      "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")" \
+      "$pg_id" "$pg_route" "$permission_mode")"
+  jq -n --arg r "This records route=$pg_route as YOUR decision on escalation $pg_id, exactly as shown in the command below. Approve only if it matches what you chose; otherwise choose No." \
+    '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"ask",permissionDecisionReason:$r}}'
+  exit 0
 }
 
 if [ -z "$command" ]; then
@@ -352,6 +455,7 @@ case "$joined" in
 esac
 gating_off && exit 0
 
+is_prompt_eligible_decision_write "$command" && ask_decision
 command_is_provably_benign "$command" && exit 0
 write_with_inert_triggers "$command" && exit 0
 is_prose_only_commit "$command" && exit 0

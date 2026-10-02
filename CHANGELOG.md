@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Prompt-gated in-session escalation decision write (esc-chat-2, 0.31.110).** `hooks/scripts/human-decision-gate.sh` gains one branch, `is_prompt_eligible_decision_write`: for the composer's exact decision heredoc carrying `via: prompt`, from the main session in mode `default`, `acceptEdits` or `auto` only (plan, bypassPermissions, dontAsk, empty and unknown modes deny), against a standing `.escalated` marker whose timestamp matches and a packet with no decision file yet, it emits `permissionDecision: "ask"` and logs `decision-gate-asked` before the human answers. It never allows; everything else keeps today's deny, and the Write/Edit branch is unchanged. `decision-block.js` admits `via: 'prompt'` and exports `composeHeredocCommand`. Pinned by cases PG1-PG12 plus a mutation control in `tests/human-decision-gate.test.sh`. This branch ships behind the pending esc-chat-1 Bash-ask measurement: the committed probe record and its ship gate are still owed before release.
+
 **`version-stamp-discipline` skill (saa-u9, 0.31.109).** New `skills/version-stamp-discipline/SKILL.md` covers both P3 halves: the `version-stamp-check.sh` verdicts (including `ok touched: no`) and a runnable CHANGELOG-entry command. `lead-programmer` preloads it; `reviewer` references it on demand in the body (frontmatter unchanged). G2 declined (install-antislop decision stands).
 
 **Reviewer on-demand `antislop:code-review` (saa-u8, 0.31.108).** `agents/reviewer.md` gains one body bullet: after the verdict is decided, and only when the unit names an originating spec/issue, the reviewer may run `antislop:code-review` as one advisory section (findings to the `.pass` notes) that never flips PASS/FAIL. Frontmatter unchanged; not added to `skills:`.

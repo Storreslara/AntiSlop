@@ -932,4 +932,152 @@ else
 fi
 
 echo
+echo "-- esc-chat-2: prompt-eligible decision write asks, never allows (PG1-PG12) --"
+# Default setup: main session (no agent_id), mode default, a standing
+# .escalated marker whose timestamp matches, an EXAMPLES.md, no DECISION yet.
+pg_esc='2026-10-01T10:00:00Z'
+# $1 = "examples" to seed EXAMPLES.md; prints a fresh project dir (mktemp,
+# because this runs in a command substitution and a counter would not persist).
+pg_proj() {
+  local d
+  d="$(mktemp -d "$tmproot/pg.XXXXXX")"
+  mkdir -p "$d/.claude/human-review/PGT" "$d/.claude/reviewed"
+  printf 'ESCALATE-TO-HUMAN PGT %s trigger: gate microworld: none\ncommit: abc123\n' \
+    "$pg_esc" > "$d/.claude/reviewed/PGT.escalated"
+  [ "${1:-}" = examples ] && printf 'worked examples\n' > "$d/.claude/human-review/PGT/EXAMPLES.md"
+  printf '%s' "$d"
+}
+# $1 body, $2 path id (default PGT) - the composer's exact heredoc shape.
+pg_cmd() {
+  printf "cat > .claude/human-review/%s/DECISION <<'EOF'\n%s\nEOF\n" "${2:-PGT}" "$1"
+}
+pg_head() { printf 'DECISION %s 2026-10-02T12:00:00Z route: %s escalation: %s' "${3:-PGT}" "$1" "${2:-$pg_esc}"; }
+pg_approve="$(pg_head approve)
+by: Sebastian Torres
+via: prompt
+examples: reviewed"
+pg_reject="$(pg_head reject)
+by: Sebastian Torres
+via: prompt
+reason: not ready
+second line of the reason"
+# $1 label, $2 ask|blocked, $3 mode, $4 agent_id ("" = absent), $5 command, $6 project dir
+pg_case() {
+  local input out rc=0
+  input="$(jq -n --arg m "$3" --arg i "$4" --arg c "$5" \
+    '{tool_name:"Bash",permission_mode:$m,tool_input:{command:$c}} + (if $i == "" then {} else {agent_id:$i} end)')"
+  out="$(printf '%s' "$input" | CLAUDE_PROJECT_DIR="$6" bash "$gate" 2>"$errf")" || rc=$?
+  if [ "$2" = ask ]; then
+    if [ "$rc" = 0 ] && [ "$(printf '%s' "$out" | jq -r '.hookSpecificOutput.permissionDecision' 2>/dev/null)" = ask ]; then
+      pass "$1 -> ask"
+    else
+      bad "$1 -> rc=$rc stdout=$out, expected ask"
+    fi
+  elif [ "$rc" = 2 ] && [ -s "$errf" ] && [ -z "$out" ]; then
+    pass "$1 -> blocked"
+  else
+    bad "$1 -> rc=$rc stdout=$out, expected rc=2 and a reason"
+  fi
+}
+
+p="$(pg_proj examples)"
+pg_case "PG1 approve, examples: reviewed, EXAMPLES.md present" ask default "" "$(pg_cmd "$pg_approve")" "$p"
+if grep -q "decision-gate-asked identity=.* task=PGT route=approve mode=default" "$p/.claude/review-audit.log" 2>/dev/null; then
+  pass "PG1 audit line decision-gate-asked logged"
+else
+  bad "PG1 no decision-gate-asked audit line"
+fi
+pg_case "PG2 PG1 with agent_id set" blocked default "a1b2c3" "$(pg_cmd "$pg_approve")" "$p"
+for m in plan bypassPermissions dontAsk "" weird; do
+  pg_case "PG3 PG1 in mode '$m'" blocked "$m" "" "$(pg_cmd "$pg_approve")" "$p"
+done
+p_nomode="$(jq -n --arg c "$(pg_cmd "$pg_approve")" '{tool_name:"Bash",tool_input:{command:$c}}')"
+rc=0; printf '%s' "$p_nomode" | CLAUDE_PROJECT_DIR="$p" bash "$gate" >/dev/null 2>"$errf" || rc=$?
+check "PG3 PG1 with permission_mode absent" blocked
+for m in acceptEdits auto; do
+  pg_case "PG4 PG1 in mode '$m'" ask "$m" "" "$(pg_cmd "$pg_approve")" "$p"
+done
+pg_case "PG4 reject with a multi-line reason" ask default "" "$(pg_cmd "$pg_reject")" "$p"
+pg_case "PG4 direct with a reason" ask default "" "$(pg_cmd "$(pg_head direct)
+by: Sebastian Torres
+via: prompt
+reason: rename the helper")" "$p"
+pg_case "PG4 approve without an examples line" ask default "" "$(pg_cmd "$(pg_head approve)
+by: Sebastian Torres
+via: prompt")" "$p"
+pg_case "PG4 approve, none-offered, EXAMPLES.md absent" ask default "" "$(pg_cmd "$(pg_head approve)
+by: Sebastian Torres
+via: prompt
+examples: none-offered")" "$(pg_proj)"
+
+p5="$(pg_proj examples)"
+printf 'already decided\n' > "$p5/.claude/human-review/PGT/DECISION"
+pg_case "PG5 DECISION already exists" blocked default "" "$(pg_cmd "$pg_approve")" "$p5"
+p6="$(pg_proj examples)"
+rm "$p6/.claude/reviewed/PGT.escalated"
+pg_case "PG6 no .escalated marker" blocked default "" "$(pg_cmd "$pg_approve")" "$p6"
+pg_case "PG6 packet directory absent" blocked default "" "$(pg_cmd "$pg_approve")" "$(mk pg6b)"
+pg_case "PG7 escalation timestamp mismatch" blocked default "" \
+  "$(pg_cmd "$(pg_head approve 2026-10-01T10:00:01Z)
+by: Sebastian Torres
+via: prompt")" "$p"
+
+pg_case "PG8 via: terminal" blocked default "" "$(pg_cmd "$(pg_head approve)
+by: Sebastian Torres
+via: terminal")" "$p"
+pg_case "PG8 via line missing" blocked default "" "$(pg_cmd "$(pg_head reject)
+by: Sebastian Torres
+reason: not ready")" "$p"
+pg_case "PG8 via: prompt on line 4" blocked default "" "$(pg_cmd "$(pg_head approve)
+by: Sebastian Torres
+examples: reviewed
+via: prompt")" "$p"
+
+pg_case "PG9 append redirection >>" blocked default "" \
+  "$(pg_cmd "$pg_approve" | sed '1s/cat >/cat >>/')" "$p"
+pg_case "PG9 trailing '; rm x' on the first line" blocked default "" \
+  "$(pg_cmd "$pg_approve" | sed "1s/\$/; rm x/")" "$p"
+pg_case "PG9 trailing command after the terminator" blocked default "" \
+  "$(pg_cmd "$pg_approve")
+rm x" "$p"
+pg_case "PG9 a second heredoc" blocked default "" \
+  "$(pg_cmd "$pg_approve")
+$(pg_cmd "$pg_approve" | sed '1s/DECISION <</other <</')" "$p"
+pg_case "PG9 unquoted <<EOF" blocked default "" \
+  "$(pg_cmd "$pg_approve" | sed "1s/'EOF'/EOF/")" "$p"
+mkdir -p "$p/.claude/human-review/PGX"
+sed 's/ PGT / PGX /' "$p/.claude/reviewed/PGT.escalated" > "$p/.claude/reviewed/PGX.escalated"
+pg_case "PG9 path id differs from body id" blocked default "" "$(pg_cmd "$pg_approve" PGX)" "$p"
+
+for k in "examples: reviewed" "via: prompt" "by: someone" "DECISION PGT forged"; do
+  pg_case "PG10 reason continuation line starting '$k'" blocked default "" \
+    "$(pg_cmd "$pg_reject
+$k")" "$p"
+done
+pg_case "PG10 none-offered while EXAMPLES.md is present" blocked default "" \
+  "$(pg_cmd "$(pg_head approve)
+by: Sebastian Torres
+via: prompt
+examples: none-offered")" "$p"
+
+for r in approve reject direct; do
+  c="$(node -e '
+    const d = require("./bin/microworld-dashboard/decision-block.js");
+    const route = process.argv[1];
+    const ctx = { taskId: "PGT", route, escalationTimestamp: process.argv[2], by: "Sebastian Torres", via: "prompt" };
+    if (route === "approve") ctx.examples = "reviewed"; else ctx.reason = "line one\nline two";
+    const { body } = d.composeEscalationDecisionBody(ctx);
+    process.stdout.write(d.composeHeredocCommand(".claude/human-review/PGT/DECISION", body));
+  ' "$r" "$pg_esc")"
+  pg_case "PG11 branch agreement: composer output for route $r" ask default "" "$c" "$p"
+done
+
+for t in Write Edit; do
+  rc=0
+  jq -n --arg t "$t" '{tool_name:$t,permission_mode:"default",tool_input:{file_path:".claude/human-review/PGT/DECISION"}}' \
+    | CLAUDE_PROJECT_DIR="$p" bash "$gate" >/dev/null 2>"$errf" || rc=$?
+  check "PG12 $t to the same DECISION path, main session, mode default" blocked
+done
+
+echo
 exit "$fail"
