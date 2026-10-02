@@ -59,7 +59,8 @@ classify() { # session -> prints verdict or nothing
 display_and_decline() { # mode session
   local m=$1 s=$2 d vis=yes l
   d="$(dialog "$s")"
-  for l in line-1 line-2 line-3 line-4 line-5 line-6-END EOF; do grep -qF "$l" <<<"$d" || vis=no; done
+  for l in line-1 line-2 line-3 line-4 line-5 line-6-END; do grep -qF "$l" <<<"$d" || vis=no; done
+  sed '1,/line-6-END/d' <<<"$d" | grep -qE '^[^[:alnum:]]*EOF[^[:alnum:]]*$' || vis=no   # closing EOF as its own line, after line-6-END
   row "Display row: $m full-heredoc-visible $vis $DATE observed"
   tm send-keys -t "$s" 2   # "2. No" in the numbered permission menu
   if ! wait_for "$s" 'Interrupted|What should Claude do instead' 20; then miss "$m decline (screen did not confirm the decline)"; return; fi
@@ -100,12 +101,13 @@ probe_headless() {
 }
 
 gate() { # prints GREEN or RED
-  local f=$1 m b
-  b="$(sed '/^## Appendix/,/^Cleanup check:/{/^Cleanup check:/!d}' "$f")"   # skip the raw-pane appendix
+  local f=$1 m b c
+  b="$(sed '/^## Appendix/,$d' "$f")"   # rows: everything before the raw-pane appendix
+  c="$(tail -n 3 "$f")"   # Cleanup checks: the last three lines, written after the appendix
   for m in default acceptEdits auto; do
     grep -qE "^Probe row: $m prompt-rendered .* observed$" <<<"$b" && grep -qE "^Display row: $m full-heredoc-visible yes .* observed$" <<<"$b" && grep -qE "^Decline row: $m file-absent yes .* observed$" <<<"$b" || { echo RED; return; }
   done
-  grep -qxF 'Cleanup check: scratch-removed yes' <<<"$b" && grep -qxF 'Cleanup check: repo-hooks-probe-free yes' <<<"$b" && grep -qxF 'Cleanup check: repo-hook-surface-clean yes' <<<"$b" || { echo RED; return; }
+  grep -qxF 'Cleanup check: scratch-removed yes' <<<"$c" && grep -qxF 'Cleanup check: repo-hooks-probe-free yes' <<<"$c" && grep -qxF 'Cleanup check: repo-hook-surface-clean yes' <<<"$c" || { echo RED; return; }
   echo GREEN
 }
 
@@ -136,7 +138,7 @@ finish_record() { # after cleanup: check, append the checks, then the gate
   porc="$(git -C "$ROOT" status --porcelain -- hooks .claude/settings.json)" || porc="git status failed"
   {
     printf '\nCleanup check: scratch-removed %s\n' "$(yn test ! -e "$SCRATCH")"
-    printf 'Cleanup check: repo-hooks-probe-free %s\n' "$(yn bash -c '! grep -qi probe "$1"' _ "$ROOT/hooks/hooks.json")"
+    printf 'Cleanup check: repo-hooks-probe-free %s\n' "$(yn bash -c 'test -f "$1" && ! grep -qi probe "$1"' _ "$ROOT/hooks/hooks.json")"
     printf 'Cleanup check: repo-hook-surface-clean %s\n' "$(yn test -z "$porc")"
   } >> "$REC"
   printf '\nShip gate: %s\n' "$(gate "$REC")" >> "$REC"
