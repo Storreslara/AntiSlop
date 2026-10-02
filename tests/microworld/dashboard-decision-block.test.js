@@ -501,6 +501,28 @@ checkOk('via: terminal emits via line after by:', () => {
   assert(viaLines.length === 1, `expected exactly one via: line, got ${viaLines.length}`);
 });
 
+// esc-chat-2: the main-session prompt route is a third legal via value; the
+// allowlist still rejects anything unlisted (the carrier-pigeon case above).
+checkOk('via: prompt is in the allowlist and keeps a multi-line reason', () => {
+  const result = composeEscalationDecisionBody({
+    taskId: 'gh379',
+    route: 'reject',
+    escalationTimestamp: '2026-08-15T10:00:00Z',
+    by: 'Sebastian',
+    via: 'prompt',
+    reason: 'line one\nline two',
+  });
+  const lines = result.body.split('\n');
+  assert(lines[2] === 'via: prompt', `expected via: prompt as body line 3, got "${lines[2]}"`);
+  assert(result.body.endsWith('reason: line one\nline two'), 'expected the multi-line reason to compose unchanged on via: prompt');
+});
+
+checkOk('composeHeredocCommand is exported', () => {
+  const { composeHeredocCommand } = require('../../bin/microworld-dashboard/decision-block');
+  assert(typeof composeHeredocCommand === 'function', 'expected composeHeredocCommand in module.exports');
+  assert(composeHeredocCommand('x', 'b') === "cat > x <<'EOF'\nb\nEOF\n", 'expected the heredoc shape unchanged');
+});
+
 checkOk('omitting via: produces no via line in body', () => {
   const result = composeEscalationDecisionBody({
     taskId: 'gh379',

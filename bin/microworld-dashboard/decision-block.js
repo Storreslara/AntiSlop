@@ -17,8 +17,11 @@ const HEREDOC_DELIM = 'EOF';
 // gh379 Step 2 advisory: legal via: authorship-route values, mirroring the
 // EXAMPLES_TOKENS allowlist pattern below. Closes the newline-injection
 // vector (an unvalidated via containing "\nexamples: reviewed" could forge
-// an examples attestation) since only these two exact literal strings pass.
-const VIA_ROUTES = ['terminal', 'dashboard'];
+// an examples attestation) since only these exact literal strings pass.
+// 'prompt' is the main-session prompt-confirmed route (esc-chat-2): like the
+// terminal path it keeps a multi-line reason, because the human previews the
+// full body at Claude Code's permission prompt.
+const VIA_ROUTES = ['terminal', 'dashboard', 'prompt'];
 // gh375 Step 14 (comprehension-check token retired in favor of worked
 // examples): the three legal examples-attestation tokens. R6 ("never
 // graded, never a gate") means this module never reads or judges
@@ -221,5 +224,5 @@ function composeDecisionBlock(kind, context) {
 }
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { composeDecisionBlock, composeEscalationDecisionBody, assertNoNewline, ID_RE };
+  module.exports = { composeDecisionBlock, composeEscalationDecisionBody, composeHeredocCommand, assertNoNewline, ID_RE };
 }
