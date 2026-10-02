@@ -78,7 +78,7 @@ probe_mode() {
   tm send-keys -t "$s" Enter
   v="$(classify "$s")"
   if [ -z "$v" ]; then unseen "$m" "verdict (no prompt, file or denial within 90s)"
-  elif [ "$m" = plan ]; then row "Info row: plan $v $DATE informational observed"
+  elif [ "$m" = plan ]; then row "Info row: plan $v $DATE observed informational"
   else
     row "Probe row: $m $v $DATE observed"
     [ "$v" = prompt-rendered ] && display_and_decline "$m" "$s"
@@ -100,16 +100,17 @@ probe_headless() {
 }
 
 gate() { # prints GREEN or RED
-  local f=$1 m
+  local f=$1 m b
+  b="$(sed '/^## Appendix/,/^Cleanup check:/{/^Cleanup check:/!d}' "$f")"   # skip the raw-pane appendix
   for m in default acceptEdits auto; do
-    grep -qE "^Probe row: $m prompt-rendered .* observed$" "$f" && grep -qE "^Display row: $m full-heredoc-visible yes .* observed$" "$f" && grep -qE "^Decline row: $m file-absent yes .* observed$" "$f" || { echo RED; return; }
+    grep -qE "^Probe row: $m prompt-rendered .* observed$" <<<"$b" && grep -qE "^Display row: $m full-heredoc-visible yes .* observed$" <<<"$b" && grep -qE "^Decline row: $m file-absent yes .* observed$" <<<"$b" || { echo RED; return; }
   done
-  grep -qxF 'Cleanup check: scratch-removed yes' "$f" && grep -qxF 'Cleanup check: repo-hooks-probe-free yes' "$f" && grep -qxF 'Cleanup check: repo-hook-surface-clean yes' "$f" || { echo RED; return; }
+  grep -qxF 'Cleanup check: scratch-removed yes' <<<"$b" && grep -qxF 'Cleanup check: repo-hooks-probe-free yes' <<<"$b" && grep -qxF 'Cleanup check: repo-hook-surface-clean yes' <<<"$b" || { echo RED; return; }
   echo GREEN
 }
 
 write_record() {
-  local tmp="$SCRATCH/record.md" status="complete: every non-informational mode was driven and classified from captured panes" m
+  local tmp="$SCRATCH/record.md" status="complete: every non-informational mode was driven and classified from captured panes (headless-p from its JSON output)" m
   [ -n "$MISSING" ] && status="INCOMPLETE: not driven or ambiguous ->$MISSING (rows absent, nothing inferred)"
   {
     echo "# Probe: Bash \`ask\` heredoc display across permission modes ($DATE)"
@@ -124,7 +125,7 @@ write_record() {
       [ -f "$RAW/$m.txt" ] && { printf '\n### %s\n\n```\n' "$m"; cat "$RAW/$m.txt"; printf '```\n'; }
     done
   } > "$tmp"
-  mkdir -p "$(dirname "$REC")"; cp "$tmp" "$REC"
+  mkdir -p "$(dirname "$REC")"; cp "$tmp" "$REC" || exit 2
 }
 
 yn() { if "$@"; then echo yes; else echo no; fi; }
@@ -132,7 +133,7 @@ yn() { if "$@"; then echo yes; else echo no; fi; }
 finish_record() { # after cleanup: check, append the checks, then the gate
   local porc
   cleanup
-  porc="$(git -C "$ROOT" status --porcelain -- hooks .claude/settings.json)"
+  porc="$(git -C "$ROOT" status --porcelain -- hooks .claude/settings.json)" || porc="git status failed"
   {
     printf '\nCleanup check: scratch-removed %s\n' "$(yn test ! -e "$SCRATCH")"
     printf 'Cleanup check: repo-hooks-probe-free %s\n' "$(yn bash -c '! grep -qi probe "$1"' _ "$ROOT/hooks/hooks.json")"
@@ -142,7 +143,7 @@ finish_record() { # after cleanup: check, append the checks, then the gate
 }
 
 main() {
-  command -v tmux >/dev/null && command -v claude >/dev/null || { echo "need tmux and claude on PATH" >&2; exit 2; }
+  command -v tmux >/dev/null && command -v claude >/dev/null && command -v jq >/dev/null || { echo "need tmux, claude and jq on PATH" >&2; exit 2; }
   setup
   local m; for m in $MODES; do echo "probing $m ..." >&2; probe_mode "$m"; done
   echo "probing headless-p ..." >&2; probe_headless
