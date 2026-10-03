@@ -1140,6 +1140,10 @@ else
 fi
 
 echo
+echo "== scripts/probe-hook-identity.sh: offline classify/outcome tests (Bash, esf-eid-probe) =="
+if bash tests/probe-hook-identity.test.sh; then echo "OK   tests/probe-hook-identity.test.sh"; else echo "FAIL tests/probe-hook-identity.test.sh"; fail=1; fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
