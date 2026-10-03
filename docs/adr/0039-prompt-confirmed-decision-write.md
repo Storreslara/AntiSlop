@@ -130,7 +130,8 @@ supersedes cbb918e.
 - headless `-p` (a one-line `printf`): the Bash call was denied
   (`permission_denials`).
 
-**Not measured:** the real gate's end-to-end behaviour in a live escalation,
+**Not measured:** the real gate's end-to-end behaviour in a live escalation
+(the measurement used a probe hook, not the real gate),
 any other CLI version (this re-run is single-version), and agent-teams
 teammate identity (Outcome D above; still unmeasured).
 
