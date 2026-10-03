@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.113",
+  "pluginVersion": "0.31.114",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,17 +42,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "08101f80ebd32d5bdcff26fb5b660adb9446534927f20ede16d21d99229f30cb",
+    ".claude/agents/orchestrator.md": "cf75e87a717df27cb2c19d1b421882e38c3671eabb17044a29eb142ece6bf1ab",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "00885539552f11c6536dee2b68872784cf1a489246838a1411ab5c7cc7903e9b",
     ".claude/agents/spec-master.md": "3202c5a524713fc374dcdee0a13b135c8ae755597441b368244dd4fc40b599ec",
     ".claude/agents/task-master.md": "21d26784b93c8553579667688f3b7bc1fae0d5d4b28b2d052d59301285e8b63f",
     ".claude/agents/scribe.md": "3bf0782a85c383e391494223efcf7af675f451e6e16205b8494892c97bbc2b81",
-    ".claude/agents/reviewer.md": "e793a6dde9474bf7a79ccc79f71ca8bf0d96370043bf4da50641f2580dd74cd6",
+    ".claude/agents/reviewer.md": "4fd83eba50acfb16de0c5d53f8728d24aa487fc1766b2c2dd16bb57d3b421bf3",
     ".claude/agents/milestone-auditor.md": "9cfe253b9fc481edadbfca7a352d3ed345a6e1dee1ac21c239e77a1c4b97d9aa",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
-    ".claude/persona-protocol.md": "52c9b73cd837911680562c4579ca56e8a7fd983cc4d3d5b6c415bffca2bbe965",
+    ".claude/persona-protocol.md": "fb2aacaec9558d3db9c0f2997dcddcbbbc6a70a36908c4542e8eb5570347a66c",
     ".claude/persona-protocol-slim.md": "6d03c9d18b85160c988f14caecb41e0c0740c661d1eb41bdd4d6c86bca823db9",
     ".claude/protocol-digest.md": "98db8657edc6236d6147778d95874f6a4c75e43133ab28bb33a92496f30419f9",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "c3131b4398fdf8c8c1c36ece8dabbf7d27469368af3a9403f9d56b6dbc96e0f9",

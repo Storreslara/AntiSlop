@@ -203,48 +203,98 @@ to PASS/FAIL.
 **On an `ESCALATE-TO-HUMAN` verdict** — this project's `reviewer` (if present)
 wrote `.claude/reviewed/<task-id>.escalated` plus a durable packet at
 `.claude/human-review/<task-id>/`, and turn-end stays blocked until the unit is
-resolved. Your whole job here is **surfacing, not deciding**:
+resolved. Your whole job here is **surfacing, not deciding**: the human reads
+the packet in this session, answers one question, and approves the exact bytes
+of their own decision at Claude Code's permission prompt.
 
-1. Surface the marker's contents to the human **verbatim** — including the
+1. Print the marker's contents in chat **verbatim** — including the
    packet path and the exact command to run the packet's `run.sh`. Re-read the
    marker with the **Read tool** (ungated) whenever the human comes back, which
    may be a later session, after a restart, or from their own terminal; the
    packet is untracked-but-persistent, so nothing about this assumes the human
    was available the moment escalation fired.
-2. Point the human at `CHANGES.md` in that packet directory **(if present)** —
-   the **literate change summary** this project's `reviewer` (if present) wrote
-   at escalation time. Tell them to read it **before the diff**: it walks the
-   change in conceptual order, which a raw alphabetical diff does not. It is
+2. Read `CHANGES.md` in that packet directory **(if present)** and print it in
+   chat **verbatim, in full** — no summary, no excerpt. It is the **literate
+   change summary** this project's `reviewer` (if present) wrote at escalation
+   time. Tell the human to read it **before the diff**: it walks the change in
+   conceptual order, which a raw alphabetical diff does not. It is
    comprehension material only — the `.escalated` marker stays the
    authoritative record, and `CHANGES.md` never carries a decision. A unit with
    no bundle still has one, and there it is the whole human-facing payload.
-3. Surface `EXAMPLES.md` in that packet directory **(if present)** — the
-   **worked examples** this project's `reviewer` (if present) wrote at
-   escalation time, 3 to 5 behavioural before/afters grounded in `CHANGES.md`
-   and the bundle. It is offered on the approve route only, never a gate, and
-   nobody grades it. **You must not author or extend the examples on the
-   human's behalf** — not a question, not a hint, not a "here's what I'd
-   add" — the exact analogue of the `run.sh` rule below. Doing it for them
-   restores the automation the escalation exists to interrupt, in the one
-   place designed to make the human slow down. A skipped `EXAMPLES.md` (a
-   change with no behavioural surface) is logged on the `.escalated` marker
-   and is legitimate; do not nag the human about its absence.
+3. Read `EXAMPLES.md` in that packet directory **(if present)** and print it in
+   chat **verbatim, in full** — the **worked examples** this project's
+   `reviewer` (if present) wrote at escalation time, 3 to 5 behavioural
+   before/afters grounded in `CHANGES.md` and the bundle. It is offered on the
+   approve route only, never a gate, and nobody grades it. **You must not
+   author or extend the examples on the human's behalf** — not a question, not
+   a hint, not a "here's what I'd add" — the exact analogue of the `run.sh`
+   rule below. Doing it for them restores the automation the escalation exists
+   to interrupt, in the one place designed to make the human slow down. A
+   skipped `EXAMPLES.md` (a change with no behavioural surface) is logged on
+   the `.escalated` marker and is legitimate; do not nag the human about its
+   absence.
 4. **Never run `run.sh` yourself and never pre-digest its result** — that would
    restore the automation the escalation exists to interrupt. You surface the
    command; the human runs it.
-5. Surface the decision command template beside it, and **never write the
-   `DECISION` file yourself, and never offer to** — `human-decision-gate.sh`
-   blocks every agent identity from writing it, this project's `reviewer` (if
-   present) included:
-   `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
-   where `<ts>` is the standing marker's own first-line timestamp. On the
-   **approve** route the template gains a third line, `examples: <token>`,
-   where the token is exactly one of `examples: reviewed`, `examples: skipped`,
-   or `examples: none-offered` (that last only when no `EXAMPLES.md` was
-   written). **Relay whichever the human states, verbatim**; never pick one for
-   them and never infer one from what they said. `examples: skipped` is a
+5. Make **one** `AskUserQuestion` call. Q1 is the route, with options
+   `approve`, `reject`, `direct` and `decide later`. Q2 is the examples answer,
+   asked **only if `EXAMPLES.md` exists**, with options labelled exactly
+   `reviewed` and `skipped`; its description says it is recorded on approve
+   only. **Relay the human's token verbatim**; never pick one for them and
+   never infer one from what they said. A free-text answer is never
+   interpreted as a route or a token: ask again. `examples: skipped` is a
    legitimate answer — do not push back on it, warn about it, or ask again.
-6. Once the human says they have written it, dispatch this project's `reviewer`
+   On approve, the body carries `examples: <token>` from Q2, or
+   `examples: none-offered` when no `EXAMPLES.md` exists, and no `examples:`
+   line if Q2 was left unanswered. For `reject` or `direct`, ask for the
+   reason or the prescribed fix in one plain chat follow-up and use the
+   human's words **verbatim**.
+6. Make the **prompt-confirmed decision write**: run exactly one Bash call
+   whose whole command is this heredoc and nothing else.
+
+   ```
+   cat > <$CLAUDE_PROJECT_DIR>/.claude/human-review/<task-id>/DECISION <<'EOF'
+   DECISION <task-id> <now> route: <approve|reject|direct> escalation: <ts>
+   by: <name>
+   via: prompt
+   examples: <token>          (approve only, as in step 5)
+   reason: <human's words>    (reject/direct only; continuation lines allowed)
+   EOF
+   ```
+
+   It is byte-for-byte what the plugin's
+   `composeDecisionBlock('escalation-decision', {..., via: 'prompt', projectDir})`
+   (`bin/microworld-dashboard/decision-block.js`) composes, and that composer
+   requires `context.projectDir`. The target is absolute: `projectDir` is the
+   literal value of `$CLAUDE_PROJECT_DIR`, spelled out in the command, never a
+   resolved-symlink path, never with a trailing slash — the gate compares that
+   prefix to `$CLAUDE_PROJECT_DIR` exactly and denies any other spelling.
+   `<ts>` is the standing marker's own first-line timestamp. Get `<now>` from
+   a separate `date -u +%Y-%m-%dT%H:%M:%SZ` call and `<name>` from
+   `git config user.name`; never put `$(...)` inside the heredoc. The reason
+   lines and `by:` must hold no control, zero-width or bidi character, and
+   each continuation line must start with an ASCII letter or digit and must
+   not start with `DECISION `, `by:`, `via:`, `examples:` or `reason:`; never
+   edit the human's words to fit — use the terminal route instead and say
+   why. **Write only from this session's answer, never on your own
+   initiative**, and run it once. `human-decision-gate.sh` answers this one
+   shape with Claude Code's permission prompt — never an allow — so the human
+   sees the exact bytes and only their Yes creates the file; it still blocks
+   every subagent, this project's `reviewer` (if present) included. It asks
+   only from the main session in permission modes `default`, `acceptEdits`
+   and `auto`. It denies in `plan`, because plan mode is read-only so there is
+   no write approval to make, in `bypassPermissions` and `dontAsk`, where a
+   silent auto-approve would be undetectable, and in an empty or unknown mode.
+   On No, on a gate deny, or on `decide later`, never retry or rephrase the
+   write. Instead surface the terminal template and the Microworld dashboard
+   route, say why, and leave the escalation standing. The terminal template:
+   `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
+   On the **approve** route it gains a third line, `examples: <token>`, where
+   the token is exactly one of `examples: reviewed`, `examples: skipped`, or
+   `examples: none-offered` (that last only when no `EXAMPLES.md` was
+   written).
+7. Once the write succeeds or the human says they have written the file,
+   dispatch this project's `reviewer`
    (if present) afresh, **with `subagent_type: reviewer` set explicitly** — first
    non-blank line `Unit: <task-id>`, body naming only "resolve the standing
    escalation from its DECISION file". **Do not relay the decision in the

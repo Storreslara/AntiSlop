@@ -525,18 +525,50 @@ packet as part of writing the successor marker — mirroring the existing rule
 that `.blocked` is deleted when the reviewer resolves the unit.
 
 ### Resolving an escalation: the DECISION file and the three routes
-**The decision travels as a file, never as a chat message.** The human writes
-`.claude/human-review/<task-id>/DECISION` **in their own terminal**, or may
-instead confirm the write via the Microworld dashboard, which requires a
-confirmation code delivered to the terminal;
+**The decision travels as a file, never as a chat message.** The file
+`.claude/human-review/<task-id>/DECISION` has three authoring paths: the human
+writes it **in their own terminal**; or confirms the write via the Microworld
+dashboard, which requires a confirmation code delivered to the terminal; or
+approves its exact bytes at Claude Code's permission prompt through the
+**prompt-confirmed decision write** below.
 `hooks/scripts/human-decision-gate.sh` blocks every agent identity — the
 reviewer included — from creating or modifying it, so a decision relayed in a
 dispatch prompt or any chat message is never a substitute for the file. The
-orchestrator surfaces the exact command template beside the packet's `run.sh`
-command — the same surface-don't-run rule, extended: it **never writes the file
-and never offers to**. Template shape:
+orchestrator surfaces the packet's `run.sh` command and never runs it. It
+**never writes the file on its own initiative and never offers to**, with one
+prompt-gated exception: the prompt-confirmed decision write, made only from
+the human's answer in the same session. Terminal template shape:
 
 `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
+
+**The prompt-confirmed decision write.** The orchestrator prints the
+`.escalated` marker, `CHANGES.md` and `EXAMPLES.md` verbatim in chat and asks
+one `AskUserQuestion` (the route, plus the `examples:` answer when
+`EXAMPLES.md` exists). It then runs exactly one Bash call whose whole command
+is this heredoc:
+
+```
+cat > <$CLAUDE_PROJECT_DIR>/.claude/human-review/<task-id>/DECISION <<'EOF'
+DECISION <task-id> <UTC ISO-8601> route: <approve|reject|direct> escalation: <timestamp>
+by: <name>
+via: prompt
+examples: <token>          (approve only)
+reason: <human's words>    (reject/direct only; continuation lines allowed)
+EOF
+```
+
+The target is absolute, and its prefix must equal `$CLAUDE_PROJECT_DIR`
+exactly (no resolved symlink, no trailing slash). `human-decision-gate.sh`
+answers this one shape with Claude Code's permission prompt and never with an
+allow, so the human sees the exact bytes and only their Yes creates the file.
+It asks only from the main session, and only in permission modes `default`,
+`acceptEdits` and `auto`. It denies by policy in three modes: `plan`, because
+plan mode is read-only so there is no write approval to make; and
+`bypassPermissions` and `dontAsk`, because a silent auto-approve there would be
+undetectable. An empty or unknown mode denies too. On a deny, a No, or a
+"decide later", the orchestrator never retries or rephrases the write: it
+falls back to the terminal template above (or the dashboard) and leaves the
+escalation standing.
 
 **Format.** First line exactly
 `DECISION <task-id> <UTC ISO-8601> route: approve|reject|direct escalation: <timestamp>`,
@@ -553,6 +585,7 @@ recording how the decision was composed and delivered. Exactly one of:
 - absent (hand-typed decision, pre-existing default — not a failure, no action required)
 - `via: terminal` (composed for the terminal copy/heredoc path)
 - `via: dashboard` (composed for the Microworld dashboard confirm-write path)
+- `via: prompt` (the prompt-confirmed decision write, approved at Claude Code's permission prompt)
 
 When present, the reviewer transcribes ` via: <value>` (space-prefixed, exactly as written)
 appended to the `human:` attestation line so an auditor can see how the decision was delivered.
