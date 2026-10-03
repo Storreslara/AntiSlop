@@ -13,6 +13,10 @@ Two traps hit in esc-chat-2b (2026-10-02):
    ("missing /"). `\u0085`, `\x1b`, `\x7f` survived as escapes.
    **How to apply:** after any Edit that types a Unicode escape, check with
    python (`s.count(' ')`) and re-escape via a python str.replace.
+   **Recurred esf-gate-bytes (2026-10-03), wider:** the WRITE tool does it too,
+   for EVERY typed unicode escape (U+0000, U+00A0, U+200B, U+FEFF, ...). Fix:
+   spell escapes as a placeholder (`@U200b@`) and have python re.sub it to
+   chr(92)+'u'+hex; then grep -nP for non-ASCII in the target.
 
 2. `node bin/cli.js --update` warns "unresolved placeholder(s)" for any
    `<[A-Z0-9_]{2,}>` in a shipped hook script, comments included (PLACEHOLDER_RE,
