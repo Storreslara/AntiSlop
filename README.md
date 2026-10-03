@@ -155,6 +155,19 @@ An absent or unrecognised value resolves to `critical` — it fails toward
 asking you, never toward silently approving. The friction is the feature: this
 is the one place the system is designed to cost you time.
 
+You record your decision in a `DECISION` file inside the packet: by typing it
+in your terminal, through the dashboard (below), or in the session itself.
+In-session, the orchestrator asks you in chat, then proposes one exact
+heredoc that writes the file, and `human-decision-gate.sh` turns that one
+command into Claude Code's permission prompt (it asks, never allows). The file
+exists only if you approve at that permission prompt. This route works only
+from the main session and only in the `default`, `acceptEdits` and `auto`
+modes (plan mode is read-only, so there is nothing to approve there); anywhere
+else you get the terminal template instead. The gate code has landed, but the
+route's ship gate is still owed: the premise that the prompt shows you the
+full command is pending an operator measurement (`scripts/probe-bash-ask.sh`,
+ADR-0039).
+
 ### Review gating off (gateless mode)
 
 Set `reviewGating.mode` to `"off"` in `.claude/persona-config.json` (default

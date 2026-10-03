@@ -38,7 +38,7 @@ This marks a completed unit awaiting review.
 - `reviewer-route-gate.sh` blocks dispatching the next gated-agent unit
 - Non-gated personas (like `explorer`) are still dispatchable
 
-**Clearing the flag:** The reviewer's own `SubagentStop` clears all pending-review flags (whether it's a PASS or FAIL verdict) and logs `cleared-by=reviewer` to `.claude/review-audit.log`.
+**Clearing the flag:** The reviewer's own `SubagentStop` clears one pending-review flag per satisfied review-join stamp, oldest first (logging `cleared-by=reviewer cleared=<n> remaining=<m>`); it clears all flags only on the zero-stamp bootstrap path (logging `marker-check=bootstrap` then `cleared-by=reviewer`). Each hook deletion leaves a flag tombstone (`.pending-review-cleared.<id>`); a flag re-created behind one is a resurrection and is dropped at the next `Stop` or `Agent` dispatch (`flag-resurrected-dropped=<id>`). See `docs/harness-glossary.md` (**flag tombstone**, **flag resurrection**). (Refreshed esc-chat-4, 2026-10-03.)
 
 **Identity-drift lines in the audit log:** Occasionally you may see lines in `.claude/review-audit.log` like:
 ```

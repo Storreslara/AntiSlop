@@ -1945,6 +1945,24 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   branch, no size reduction) rather than narrow it further is recorded, with
   its rationale, in `docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md`
   (ADR-0036).
+  **Amended (esc-chat-2/2b, esf-gate-bytes; recorded esc-chat-4, 2026-10-03,
+  [ADR-0039](docs/adr/0039-prompt-confirmed-decision-write.md)):** the gate
+  still has no grant branch, but it now has one **ask** branch. For the
+  [[prompt-confirmed decision write]] only, when [[prompt-eligible]] holds, it
+  emits `permissionDecision: "ask"` (never `allow`) and appends a
+  [[`decision-gate-asked` audit line]] first. Eligible modes are default,
+  acceptEdits and auto; plan denies because it is read-only, so there is no
+  write approval to make; bypassPermissions, dontAsk, an empty and an unknown
+  mode deny. "Main session only" means "no `agent_id`", a premise that is
+  unmeasured for agent-teams teammates
+  (`docs/plans/2026-10-02-escalation-followups.md` R4). The `Write`/`Edit`
+  branch always denies a DECISION target. Config: the gate reads exactly one
+  field, `reviewGating.mode`; under `off` it exits 0 (inert). Whether Claude
+  Code's Bash prompt shows the full heredoc is **pending the esc-chat-1
+  measurement** (see [[Ship gate]]). One pre-existing note, no security
+  impact: `is_sanctioned_marker_write`'s `[[:space:]]` between `cat` and `>`
+  may also match exotic Unicode spaces (U+3000, U+2000-200A) in a reviewer's
+  marker write; the reviewer already holds that grant.
 
 **dashboard-originated decision write**:
 (unit #377, Step 7, 2026-08-31) — a **DECISION file** write that originates from
@@ -1955,19 +1973,101 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   intentional; (2) the written **DECISION file** carries a `via: dashboard` line in
   the file body itself (`decision-block.js:126`, fed by `server.js:362`) — not in
   the audit log, which instead gets its own, separate `decision-write-via-dashboard`
-  line (`server.js:525`) with no `via:` token. Today only two `via:` states actually
-  occur: **absent** (both the hand-typed-in-terminal path and the copy/heredoc
+  line (`server.js:525`) with no `via:` token. **Update (esc-chat-4,
+  2026-10-03):** a third value, `via: prompt`, now occurs: it is in
+  `VIA_ROUTES`, `composeDecisionBlock` composes it when called with
+  `via: 'prompt'`, the orchestrator's in-session template writes it, and the
+  human-decision gate requires it, all for the [[prompt-confirmed decision
+  write]] (the in-session sibling of this path); the two-state
+  description that follows predates it. As of unit #377 only two `via:` states actually
+  occurred: **absent** (both the hand-typed-in-terminal path and the copy/heredoc
   dashboard path pass no `via` field, so `decision-block.js:122` omits the line
   entirely) and **`via: dashboard`** (the confirmed-write path above). `via:
   terminal` exists only as an unused entry in `decision-block.js`'s `VIA_ROUTES`
-  allowlist — no current code path emits it. Both authoring paths satisfy the [[DECISION file]]'s "unwritable by any
-  agent identity" property — the dashboard is not an agent identity, and the
+  allowlist — no current code path emits it. Both authoring paths satisfy the [[DECISION file]]'s
+  property that no agent can complete the write without a human — the dashboard is not an agent identity, and the
   confirmation-code gate and TTY delivery mechanism enforce the same human-presence
   requirement as the terminal path, just via a different channel. Exists only when
   the dashboard is started with a controlling terminal (not `--dashboard-no-tty`);
   [[read-only mode]] explicitly refuses `/api/decision/arm` and `/api/decision/run`
   because the launch token is an [[execution credential]], not a read credential. See
   [[confirmation code]], [[Microworld dashboard]], and [[DECISION file]].
+
+**prompt-eligible**:
+(esc-chat-2/2b, esf-gate-bytes; named esc-chat-4, 2026-10-03, ADR-0039) — the
+  predicate `is_prompt_eligible_decision_write` in `human-decision-gate.sh`:
+  true only when a Bash command is exactly the [[prompt-confirmed decision
+  write]] heredoc (`cat > <abs>/.claude/human-review/<ID>/DECISION <<'EOF'`,
+  `<abs>` equal to `$CLAUDE_PROJECT_DIR`, space/tab separators, `>` only, the
+  sole `EOF` line last), from a payload with no `agent_id`, in
+  `permission_mode` default, acceptEdits or auto, with a body that passes the
+  grammar (including the [[reserved-key screen]] and the
+  [[lookalike lead-in]] screen), a standing `.escalated` marker whose first
+  line names the same id and timestamp, no existing DECISION, and neither the
+  packet nor `human-review/` a symlink. True means `ask`, never `allow`.
+  Distinct from [[ask-eligible]] (the harness-integrity gate's five paths) and
+  from that gate's [[permission-mode allowlist]], which is a different list.
+
+**reserved-key screen**:
+(esc-chat-2b; named esc-chat-4, 2026-10-03) — the check that refuses a
+  reason continuation line starting with a body key (`DECISION `, `by:`,
+  `via:`, `examples:`, `reason:`), so a reason cannot forge a second key line.
+  ASCII case-insensitive, tolerating leading and pre-colon spaces; the gate's
+  `reserved_re` and the composer's `RESERVED_KEY_RE` match the same set.
+
+**lookalike lead-in**:
+(esf-gate-bytes; named esc-chat-4, 2026-10-03) — a non-ASCII byte before a
+  continuation line's first ASCII letter or digit (NBSP, U+3000 and similar),
+  which could render as an indent or key the file does not hold. Refused by
+  the gate's LEAD-NONASCII screen in `forbidden_bytes()` (run under
+  `LC_ALL=C`) and the composer's `LEAD_NONASCII_RE`; the refusal fails closed
+  to the terminal route. Non-ASCII text after an ASCII letter or digit still
+  asks. The `LC_ALL=C` setting only matters in a non-UTF-8 multibyte locale
+  (test case PG20-gb18030).
+
+**`decision-gate-asked` audit line**:
+(esc-chat-2; named esc-chat-4, 2026-10-03) — the line
+  `<ts> decision-gate-asked identity=<agent_type> task=<id> route=<route> mode=<permission_mode>`
+  that `human-decision-gate.sh`'s `ask_decision()` appends to
+  `.claude/review-audit.log` **before** the human answers the prompt. An asked
+  line with no DECISION file afterwards means the human declined (or the
+  approved write failed). There is no PostToolUse partner line; unlike the
+  harness-integrity gate's [[asked audit record]], the evidence of completion
+  is the DECISION file itself, whose body carries `via: prompt`.
+
+**Ship gate**:
+(esc-chat-1-fix; named esc-chat-4, 2026-10-03) — the final
+  `Ship gate: GREEN|RED` line that `scripts/probe-bash-ask.sh` writes into the
+  esc-chat-1 record (`docs/experiments/2026-10-01-probe-bash-ask.md`). GREEN
+  needs, for each of default, acceptEdits and auto, an observed prompt, an
+  observed fully visible heredoc and an observed decline that left no file,
+  plus three passing cleanup checks. **As of 2026-10-03 the operator has not
+  run the probe and the record does not exist**, so the
+  [[prompt-confirmed decision write]] is not released. RED in default (or a
+  heredoc that is not fully visible) returns the design to spec-master; RED
+  in acceptEdits or auto drops that mode (ADR-0039).
+
+**flag tombstone**:
+(esf-flag-fix; named esc-chat-4, 2026-10-03) — the file
+  `.pending-review-cleared.<agent-id>` that the hook writes whenever it
+  deletes that id's pending-review flag (reviewer clearing, an honoured
+  `skip:`). It
+  records that the hook, not something else, removed the flag. Re-arming the
+  flag through the hook's own writer removes the tombstone; nothing else ever
+  garbage-collects one. See [[flag resurrection]].
+
+**flag resurrection** / **resurrected-flag drop**:
+(esf-flag-fix; named esc-chat-4, 2026-10-03) — a pending-review flag that
+  stands at a path that also has a [[flag tombstone]], meaning something other
+  than the hook's own writer re-created it after the hook deleted it. The
+  drop (`state_drop_resurrected_flags`) deletes each such flag and logs
+  `flag-resurrected-dropped=<id>` to `.claude/review-audit.log`. It runs at
+  every main-session `Stop` and at every `Agent` dispatch the reviewer-route
+  gate sees (when the persona config exists and the dispatch names a
+  target), including under review gating off. Related, same unit:
+  the reviewer's `SubagentStop` clears one flag per satisfied review-join
+  stamp (oldest first) and clears all flags only on the zero-stamp bootstrap
+  path. Flags are not bound to units.
 
 **dead-but-available text**:
 (unit item04-2, 2026-09-26) — a canonical protocol section (marked `## ` in 
