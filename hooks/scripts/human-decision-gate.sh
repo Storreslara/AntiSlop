@@ -90,6 +90,8 @@ is_sanctioned_marker_write() {
 
   while [ "${cmd: -1}" = $'\n' ]; do cmd="${cmd%$'\n'}"; done
   first="${cmd%%$'\n'*}"
+  # [[:space:]] below also matches \v, \f and \r, which bash does not split on.
+  [[ $first == *[$'\v\f\r']* ]] && return 1  # MARKER-WS
   [ "$first" != "$cmd" ] || return 1
   [[ $first =~ $re ]] || return 1
   delim="${BASH_REMATCH[2]}"
@@ -163,7 +165,8 @@ is_prompt_eligible_decision_write() {
 # as by: does, since an ESC/CR sequence repaints the prompt into a line the file
 # does not hold. The reserved-key screen is ASCII case-insensitive and tolerates
 # leading and pre-colon spaces; the explicit [Vv] pairs keep it locale-free and
-# equal to decision-block.js RESERVED_KEY_RE.
+# equal to decision-block.js RESERVED_KEY_RE. forbidden_bytes() screens all
+# three line kinds bytewise, so the verdict does not depend on the locale.
 decision_body_ok() {
   local iso='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,3})?Z'
   local head_re="^DECISION [^ ]+ ${iso} route: (approve|reject|direct) escalation: ${iso}\$"
@@ -174,7 +177,7 @@ decision_body_ok() {
   [[ $1 =~ $head_re ]] || return 1
   read -r _ bid _ _ pg_route _ pg_escalation <<< "$1"
   [ "$bid" = "$pg_id" ] || return 1
-  [[ $2 =~ $by_re ]] || return 1
+  [[ $2 =~ $by_re ]] && ! forbidden_bytes "$2" || return 1
   [ "$3" = 'via: prompt' ] || return 1
   shift 3
   if [ "$pg_route" = approve ]; then
@@ -187,11 +190,33 @@ decision_body_ok() {
     esac
     return
   fi
-  [ "$#" -ge 1 ] && [[ $1 =~ $reason_re ]] || return 1
+  [ "$#" -ge 1 ] && [[ $1 =~ $reason_re ]] && ! forbidden_bytes "$1" || return 1
   shift
   for line in "$@"; do
-    [[ $line != *[[:cntrl:]]* ]] && [[ ! $line =~ $reserved_re ]] || return 1
+    [[ $line != *[[:cntrl:]]* ]] && [[ ! $line =~ $reserved_re ]] && ! forbidden_bytes "$line" || return 1
   done
+}
+
+# True when a body line holds a byte sequence the prompt route refuses
+# (esf-gate-bytes): C0 and DEL, C1 (U+009B CSI included), U+2028/9, and the
+# zero-width and bidi characters that let the approved prompt render text the
+# file does not hold. Matched BYTEWISE whatever locale the gate inherits - under
+# LC_ALL=C the reviewer measured 7 composer-refused bodies reaching ask. The
+# LEAD-NONASCII screen refuses a non-ASCII byte before the line's first ASCII
+# letter or digit (NBSP, U+3000 and other lookalike lead-ins); a by: or reason:
+# line leads with an ASCII letter, so it only ever bites a continuation line.
+# decision-block.js CONTROL_RE and LEAD_NONASCII_RE refuse exactly this set.
+forbidden_bytes() {
+  local LC_ALL=C
+  [[ $1 == *[[:cntrl:]]* ]] && return 0  # BYTE-C0
+  [[ $1 == *$'\xc2'[$'\x80'-$'\x9f']* ]] && return 0  # BYTE-C1
+  [[ $1 == *$'\xe2\x80'[$'\xa8\xa9']* ]] && return 0  # BYTE-LS
+  [[ $1 == *$'\xe2\x80'[$'\x8b'-$'\x8f'$'\xaa'-$'\xae']* ]] && return 0  # BYTE-BIDI
+  [[ $1 == *$'\xe2\x81'[$'\xa0'$'\xa6'-$'\xa9']* ]] && return 0  # BYTE-BIDI
+  [[ $1 == *$'\xef\xbb\xbf'* ]] && return 0  # BYTE-BIDI
+  [[ $1 == *$'\xd8\x9c'* ]] && return 0  # BYTE-BIDI
+  [[ ${1%%[A-Za-z0-9]*} == *[![:ascii:]]* ]] && return 0  # LEAD-NONASCII
+  return 1
 }
 
 # Filesystem eligibility: the packet exists, holds no DECISION yet, and the

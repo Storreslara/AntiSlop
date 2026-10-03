@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.112",
+  "pluginVersion": "0.31.113",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -66,7 +66,7 @@
     ".claude/hooks/scripts/session-start.sh": "17629506a81e36fddad73075e8fa51506fd45bda082484b0f46f21109c43bfa5",
     ".claude/hooks/scripts/stop-gate.sh": "0b09f9c5cc7e580120757f0a9371b536fb54738779f419e7df622cacfd87619a",
     ".claude/hooks/scripts/task-gate.sh": "31ea0399f37eef3c1be9e2a22711a879c8800fa201125720d1029652d5fabeab",
-    ".claude/hooks/scripts/human-decision-gate.sh": "b86c33429e204f73750ef5ba05ff8c5a981b163fae667df8343f0a792203c58f",
+    ".claude/hooks/scripts/human-decision-gate.sh": "282531f03022f3a6ed533674ea9aec13c784a777a69dda8ba28e7f1d3d40ab60",
     ".claude/hooks/scripts/lib/benign-command.sh": "81f902bf037021afb38ef7c0de2f05c1513dcafef796d73c32dbc9c99fa3011e",
     ".claude/hooks/scripts/microworld-rerun.sh": "6b0d33d1ef767b195e4d06d65a8aa497f9479bcf739d68f04e8d25d55fb1af6d",
     ".claude/hooks/scripts/heavy-trigger.sh": "b71a55d9cd6ebc5f379dc8b32006e1cf549d33f2d10d6a4d961bb5bac996fc3c",

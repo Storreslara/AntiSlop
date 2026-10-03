@@ -1083,8 +1083,9 @@ done
 
 # esc-chat-2b: hardening found by the esc-chat-2 review.
 pg_reason() { printf '%s\nby: Sebastian Torres\nvia: prompt\n%s' "$(pg_head reject)" "$1"; }
-for r in $'reason: no\e[2K\rreason: forged' $'reason: not ready\n\rvia: dashboard' \
-         $'reason: not\tready' $'reason: not ready\n\e[1Asecond' $'reason: x\x7f'; do
+pg13_r=($'reason: no\e[2K\rreason: forged' $'reason: not ready\n\rvia: dashboard' \
+        $'reason: not\tready' $'reason: not ready\n\e[1Asecond' $'reason: x\x7f')
+for r in "${pg13_r[@]}"; do
   pg_case "PG13 control character in a reason line $(printf '%q' "$r")" blocked default "" \
     "$(pg_cmd "$(pg_reason "$r")")" "$p"
 done
@@ -1128,42 +1129,137 @@ ln -s ../real-review "$p18b/.claude/human-review"
 pg_case "PG18 symlinked human-review directory" blocked default "" "$(pg_cmd "$pg_approve")" "$p18b"
 
 # PG19 composer/gate agreement over an adversarial corpus: whatever the
-# composer emits on via: 'prompt' the gate asks on; the rest the composer throws.
+# composer emits on via: 'prompt' the gate asks on; whatever it refuses is ALSO
+# built raw (the same heredoc shape, no screening) and the gate must block it.
+#
+# Exemption table - FROZEN at exactly one entry (tag in the corpus' 4th field):
+#   NUL: harmless — a NUL cannot reach the gate as part of a bash command string, so no DECISION file can carry it; gate acceptance of the NUL-truncated remainder is not a disagreement
+pg19_exempt=NUL
+pg19_js='
+  const d = require("./bin/microworld-dashboard/decision-block.js");
+  const corpus = [
+    ["direct", "plain reason", "Sebastian Torres"],
+    ["reject", "line one\nline two", "Sebastian Torres"],
+    ["direct", "café ünïcode", "Sébastien"],
+    ["reject", "via the prompt\nByline: x\n", "Sebastian Torres"],
+    ["reject", "no\u001b[2K\rreason: forged", "Sebastian Torres"],
+    ["reject", "x\n\rvia: dashboard", "Sebastian Torres"],
+    ["reject", "x\n via: dashboard", "Sebastian Torres"],
+    ["reject", "x\nVia: dashboard", "Sebastian Torres"],
+    ["reject", "x\n  EXAMPLES : reviewed", "Sebastian Torres"],
+    ["reject", "x\u2028via: dashboard", "Sebastian Torres"],
+    ["reject", "x\u0085y", "Sebastian Torres"],
+    ["reject", "x\ty", "Sebastian Torres"],
+    ["reject", "\nsecond", "Sebastian Torres"],
+    ["direct", "ok", "S\tT"],
+    ["direct", "ok", ""],
+    ["approve", "a reason", "Sebastian Torres"],
+    ["reject", "x\u0001y", "Sebastian Torres"],
+    ["reject", "x\u009by", "Sebastian Torres"],
+    ["reject", "x\u2029y", "Sebastian Torres"],
+    ["reject", "x\u200by", "Sebastian Torres"],
+    ["reject", "x\u202ey", "Sebastian Torres"],
+    ["reject", "x\u2066y", "Sebastian Torres"],
+    ["reject", "x\ufeffy", "Sebastian Torres"],
+    ["reject", "x\u061cy", "Sebastian Torres"],
+    ["direct", "ok", "Seb\u202eastian"],
+    ["reject", "x\n\u00a0via: dashboard", "Sebastian Torres"],
+    ["reject", "x\n\u3000via: dashboard", "Sebastian Torres"],
+    ["reject", "x\n\u202evia: dashboard", "Sebastian Torres"],
+    ["reject", "x\u0000y", "Sebastian Torres", "NUL"],
+  ];
+  const [mode, i, esc, proj] = process.argv.slice(1);
+  if (mode === "size") { process.stdout.write(String(corpus.length)); process.exit(0); }
+  const [route, reason, by, tag] = corpus[+i];
+  if (mode === "raw") {
+    if (tag) { process.stdout.write(tag); process.exit(4); }
+    const body = [`DECISION PGT 2026-10-02T12:00:00Z route: ${route} escalation: ${esc}`, `by: ${by}`, "via: prompt"];
+    if (reason) body.push(`reason: ${reason}`);
+    const target = [proj, ".claude", "human-" + "review", "PGT", "DEC" + "ISION"].join("/");
+    process.stdout.write(d.composeHeredocCommand(target, body.join("\n")));
+    process.exit(0);
+  }
+  try {
+    process.stdout.write(d.composeDecisionBlock("escalation-decision",
+      { taskId: "PGT", route, reason, by, escalationTimestamp: esc, via: "prompt", projectDir: proj }).text || "");
+  } catch (e) { process.exit(3); }
+'
+pg19_size="$(node -e "$pg19_js" size)"
 pg19_n=0
-for i in $(seq 0 15); do
+pg19_raw=0
+for i in $(seq 0 $((pg19_size - 1))); do
   rc=0
-  c="$(node -e '
-    const d = require("./bin/microworld-dashboard/decision-block.js");
-    const corpus = [
-      ["direct", "plain reason", "Sebastian Torres"],
-      ["reject", "line one\nline two", "Sebastian Torres"],
-      ["direct", "café ünïcode", "Sébastien"],
-      ["reject", "via the prompt\nByline: x\n", "Sebastian Torres"],
-      ["reject", "no\u001b[2K\rreason: forged", "Sebastian Torres"],
-      ["reject", "x\n\rvia: dashboard", "Sebastian Torres"],
-      ["reject", "x\n via: dashboard", "Sebastian Torres"],
-      ["reject", "x\nVia: dashboard", "Sebastian Torres"],
-      ["reject", "x\n  EXAMPLES : reviewed", "Sebastian Torres"],
-      ["reject", "x via: dashboard", "Sebastian Torres"],
-      ["reject", "x\u0085y", "Sebastian Torres"],
-      ["reject", "x\ty", "Sebastian Torres"],
-      ["reject", "\nsecond", "Sebastian Torres"],
-      ["direct", "ok", "S\tT"],
-      ["direct", "ok", ""],
-      ["approve", "a reason", "Sebastian Torres"],
-    ];
-    const [route, reason, by] = corpus[+process.argv[1]];
-    try {
-      process.stdout.write(d.composeDecisionBlock("escalation-decision",
-        { taskId: "PGT", route, reason, by, escalationTimestamp: process.argv[2], via: "prompt", projectDir: process.argv[3] }).text || "");
-    } catch (e) { process.exit(3); }
-  ' "$i" "$pg_esc" "$p")" || rc=$?
-  [ "$rc" = 3 ] && continue
+  c="$(node -e "$pg19_js" compose "$i" "$pg_esc" "$p")" || rc=$?
+  if [ "$rc" = 3 ]; then
+    rc=0
+    c="$(node -e "$pg19_js" raw "$i" "$pg_esc" "$p")" || rc=$?
+    if [ "$rc" = 4 ]; then
+      [ "$c" = "$pg19_exempt" ] || bad "PG19 corpus entry $i claims exemption '$c', not in the frozen table"
+      continue
+    fi
+    pg19_raw=$((pg19_raw + 1))
+    pg_case "PG19 composer-refused corpus entry $i built raw" blocked default "" "$c" "$p"
+    continue
+  fi
   pg19_n=$((pg19_n + 1))
   pg_case "PG19 composer-emitted corpus entry $i" ask default "" "$c" "$p"
 done
 [ "$pg19_n" = 4 ] && pass "PG19 composer emitted exactly the 4 benign corpus entries" \
   || bad "PG19 composer emitted $pg19_n corpus entries, expected the 4 benign ones"
+[ "$pg19_raw" = $((pg19_size - 4 - 1)) ] \
+  && pass "PG19 every refused corpus entry but the 1 exemption was built raw and checked ($pg19_raw)" \
+  || bad "PG19 checked $pg19_raw refused entries raw, expected $((pg19_size - 4 - 1)) (corpus $pg19_size - 4 emitted - 1 exempt)"
+
+# esf-gate-bytes PG20: the byte screen is bytewise whatever locale the gate
+# inherits. Every PG13 case plus one case per byte class, under each locale.
+pg20_r=($'reason: a\x01b' $'reason: a\xc2\x9bb' $'reason: a\xe2\x80\xa8b' \
+        $'reason: ok\na\xe2\x80\x8bb' $'reason: a\xe2\x80\xaeb' $'reason: a\xe2\x81\xa6b' \
+        $'reason: a\xef\xbb\xbfb' $'reason: a\xd8\x9cb')
+for loc in C POSIX C.UTF-8; do
+  for r in "${pg13_r[@]}" "${pg20_r[@]}"; do
+    LC_ALL=$loc pg_case "PG20 [$loc] $(printf '%q' "$r")" blocked default "" \
+      "$(pg_cmd "$(pg_reason "$r")")" "$p"
+  done
+  LC_ALL=$loc pg_case "PG20 [$loc] C1 byte in the by: line" blocked default "" \
+    "$(pg_cmd "$(pg_head reject)"$'\nby: Seb\xc2\x9bastian\nvia: prompt\nreason: x')" "$p"
+  LC_ALL=$loc pg_case "PG20 [$loc] a non-ASCII reason still asks" ask default "" \
+    "$(pg_cmd "$(pg_reason $'reason: caf\xc3\xa9 is fine\nsecond line')")" "$p"
+done
+
+# PG21: a continuation line whose lead-in (before its first ASCII letter or
+# digit) holds a non-ASCII character is refused - lookalike spaces and bidi
+# controls can make it render as a reserved key.
+for x in $'\xc2\xa0' $'\xe3\x80\x80' $'\xe2\x80\xae'; do
+  pg_case "PG21 continuation line led by $(printf '%q' "$x")" blocked default "" \
+    "$(pg_cmd "$(pg_reason "reason: ok"$'\n'"${x}via: dashboard")")" "$p"
+done
+pg_case "PG21 accepted false refusal: continuation starting with a non-ASCII letter" blocked default "" \
+  "$(pg_cmd "$(pg_reason $'reason: ok\n\xc3\x91and so on')")" "$p"
+pg_case "PG21 a continuation with non-ASCII after an ASCII letter still asks" ask default "" \
+  "$(pg_cmd "$(pg_reason $'reason: ok\nr\xc3\xa9sum\xc3\xa9 follows')")" "$p"
+
+# PG22: \v, \f and \r are [[:space:]] but bash does not split words on them, so
+# the sanctioned marker write refuses them; space and tab still pass. Both
+# trigger tokens are assembled at runtime.
+pg22_hr="human-""review"
+pg22_dn="DEC""ISION"
+pg22_body="human: quoted .claude/$pg22_hr/u1/$pg22_dn verbatim"
+for w in $'\v' $'\f' $'\r'; do
+  bash_case "PG22 $(printf '%q' "$w") after cat in a sanctioned marker write" blocked antislop:reviewer \
+    "cat$w> .claude/reviewed/u1.pass <<'EOF'
+$pg22_body
+EOF"
+  bash_case "PG22 $(printf '%q' "$w") before << in a sanctioned marker write" blocked antislop:reviewer \
+    "cat > .claude/reviewed/u1.pass$w<<'EOF'
+$pg22_body
+EOF"
+done
+for w in ' ' $'\t'; do
+  bash_case "PG22 $(printf '%q' "$w") after cat in a sanctioned marker write" allowed antislop:reviewer \
+    "cat$w> .claude/reviewed/u1.pass <<'EOF'
+$pg22_body
+EOF"
+done
 
 echo
 exit "$fail"
