@@ -13,7 +13,11 @@ removing `local LC_ALL=C` from human-decision-gate.sh forbidden_bytes() changed
 self-synchronising, so bytewise == charwise for valid patterns anyway.
 Only a non-UTF-8 multibyte locale differs: `localedef -i zh_CN -f GB18030
 <dir>/zh_CN.GB18030` then `LOCPATH=<dir> LC_ALL=zh_CN.GB18030` -> 53 diffs
-(e.g. bytes a2 a1 + `via` lead-in). `local LC_ALL=C` does take effect inside a
+(e.g. bytes a2 a1 + `via` lead-in). BUT hook input is JSON, and jq turns
+invalid UTF-8 into U+FFFD, so only valid-UTF-8 diffs reach the gate: of the 53
+just one, `a` U+2028 `b` (e2 80 is one GB18030 char, BYTE-LS misses). That is
+PG20-gb18030. A gate+suite run with a localedef build per run is slow: split a
+multi-suite acceptance script so each foreground call stays under 600 s. `local LC_ALL=C` does take effect inside a
 function and is restored on return.
 
 **Why:** the plan's locale mutation criterion assumed C.UTF-8 would kill it.
