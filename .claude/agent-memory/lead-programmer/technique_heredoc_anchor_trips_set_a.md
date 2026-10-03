@@ -28,3 +28,9 @@ variable assignment line. Verify the anchor is still unique in the file
 `git commit -- <path>` mentioning a Set A path in a COMMIT command) - this
 gotcha is about the EDIT command's own incidental context text tripping the
 same Bash-branch scan. Hit and fixed in gh469 (hcb-posttool).
+
+**Same trap, human-decision-gate.sh (esc-chat-3):** a python3 heredoc whose
+replacement prose spells the packet dir and the decision file name together
+is denied even when it only edits `agents/*.md`. For prose on that surface,
+use the Edit tool (gated by file_path only), or Write the new text to the
+scratchpad and splice it with a script whose command text names neither.
