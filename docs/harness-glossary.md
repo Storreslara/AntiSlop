@@ -1961,8 +1961,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   observed no genuine teammate, so no gate change followed. The `Write`/`Edit`
   branch always denies a DECISION target. Config: the gate reads exactly one
   field, `reviewGating.mode`; under `off` it exits 0 (inert). Whether Claude
-  Code's Bash prompt shows the full heredoc is **pending a re-measurement**
-  (see [[Ship gate]]). One pre-existing note, no security
+  Code's Bash prompt shows the full heredoc was measured with a probe hook,
+  not this gate, on claude 2.1.288 only (see [[Ship gate]]). One pre-existing note, no security
   impact: `is_sanctioned_marker_write`'s `[[:space:]]` between `cat` and `>`
   may also match exotic Unicode spaces in a reviewer's marker write (under
   C.UTF-8, U+3000 and U+2000-200A except U+2007 match; U+2007 does not); the
@@ -2046,20 +2046,39 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   esc-chat-1 record (`docs/experiments/2026-10-01-probe-bash-ask.md`). GREEN
   needs, for each of default, acceptEdits and auto, an observed prompt, an
   observed fully visible heredoc and an observed decline that left no file,
-  plus three passing cleanup checks. An operator run exists (commit cbb918e,
-  self-reported, using the probe's own always-ask hook, not
-  `human-decision-gate.sh`; the run spanned CLI 2.1.287 for default and plan
-  and 2.1.288 for the rest, though its Version line says 2.1.287) and the
-  script graded it `Ship gate: GREEN`. **Review FAILed that record on
-  evidence**: the prompt-rendered and decline rows are corroborated only by
-  off-record CLI transcripts, and the full-heredoc-visible rows have no
-  support in the record's own appendix, because the script saved each pane
-  only after the decline, when the dialog was gone. The ship gate therefore
-  awaits a re-run with a fixed script that saves the dialog text, and the
-  [[prompt-confirmed decision write]]'s full-heredoc premise stays pending.
-  RED in default (or a heredoc that is not fully visible) returns the design
-  to spec-master; RED in acceptEdits or auto drops that mode (ADR-0039). A
-  material CLI upgrade re-runs the probe.
+  plus three passing cleanup checks; the gate re-checks default, acceptEdits
+  and auto against each mode's own [[dialog block]]. **History:** the first
+  record (cbb918e) was graded GREEN by the script but review FAILed it on
+  evidence (no dialog text saved; the run spanned 2.1.287 and 2.1.288); it
+  is superseded. The fixed script (253106e) was re-run by the operator
+  (@ 39f0850); that record (229138e, self-reported) reads `Ship gate: GREEN`
+  and passed review. **Measured**, on claude 2.1.288 only: in default,
+  acceptEdits and auto, the probe's own always-`ask` hook (not
+  `human-decision-gate.sh`) on a Bash heredoc rendered a permission dialog
+  showing the full multi-line command, and declining created no file;
+  headless `-p` denied the call; dontAsk and bypassPermissions also prompted
+  and plan was not driven (all informational). **Not measured:** the real
+  gate end to end, other CLI versions, teammate identity. **Evidence
+  limits:** Decline is a filesystem check the record does not capture
+  (corroborated off-record by CLI transcripts); each dialog block has a
+  stray " settings.json to update hooks" render fragment (harmless); the
+  plan run wrote a plan file outside the scratch dir. The RED rules, which
+  this result did not trigger: RED in default (or a heredoc that is not
+  fully visible) returns the design to spec-master; RED in acceptEdits or
+  auto drops that mode (ADR-0039). A material CLI upgrade re-runs the probe.
+
+**dialog block**:
+(esc-chat-1-evidence; named esc-chat-5, 2026-10-03) — a block at the top of
+  the esc-chat-1 record's appendix holding one mode's permission dialog
+  text (from the ` Bash command` header to "Do you want to proceed?"),
+  captured by `scripts/probe-bash-ask.sh` before the decline key is sent.
+  Headed `### dialog: <mode> <N> lines, claude <version>`; the line count
+  is a length prefix, so the script's `gate()` reads each block by its
+  declared length and never parses the dialog text as record structure. The
+  Display row is graded from that text, and `gate()` re-checks default,
+  acceptEdits and auto against their own blocks. It exists because the
+  first record saved panes only after the decline, when the dialog was
+  gone (see [[Ship gate]]).
 
 **subagent-shaped**:
 (esf-eid-probe; named esc-chat-5, 2026-10-03) — the `Teammate check:` value
