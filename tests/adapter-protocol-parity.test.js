@@ -68,6 +68,8 @@ const ESCALATION_PROBES = [
   'Microworld dashboard',          // second DECISION-authoring path, gh377-6a
   'via: terminal',                 // via: transcription duty, gh377-6a
   'via: dashboard',                // via: transcription duty, gh377-6a
+  'via: prompt',                   // third DECISION-authoring path, esc-chat-3
+  'prompt-confirmed decision write', // its name, esc-chat-3
 ];
 
 const codexMap = {

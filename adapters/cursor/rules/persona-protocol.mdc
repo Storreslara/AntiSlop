@@ -270,8 +270,11 @@ verbatim for `direct`, an `examples: <token>` line for `approve`.
 
 The `via:` line may be present, recording how the decision was composed and delivered:
 absent (hand-typed, pre-existing default), `via: terminal` (terminal copy/heredoc path),
-or `via: dashboard` (Microworld dashboard confirm-write path). When present, the reviewer
-appends ` via: <value>` to the `human:` attestation line.
+`via: dashboard` (Microworld dashboard confirm-write path), or `via: prompt` (the
+prompt-confirmed decision write). When present, the reviewer appends ` via: <value>` to
+the `human:` attestation line. The prompt-confirmed decision write exists only under
+Claude Code, where `human-decision-gate.sh` is registered; elsewhere use the terminal or
+dashboard route.
 
 The resolution dispatch names only the unit and carries no decision. The reviewer
 verifies the file exists, parses its first line, checks the task-id and the
