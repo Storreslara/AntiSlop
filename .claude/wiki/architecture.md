@@ -29,9 +29,11 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
    `stop-gate.sh` (done = reviewer PASS, not "I think I'm done"),
    `reviewer-route-gate.sh` (lead-programmer can't route around the
    reviewer), `reviewed-path-gate.sh` (only the reviewer writes
-   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (no agent identity,
-   reviewer included, may ever write a human's `DECISION` file — see
-   "Agent-unwritable path as consent proof" below), `protected-paths.sh`
+   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (no agent can
+   complete a `DECISION` write without a human approving its bytes; its one
+   non-deny branch is an `ask` for the main session's prompt-confirmed
+   decision write — see "Agent-unwritable path as consent proof" below),
+   `protected-paths.sh`
    (migrations/lockfiles need human approval), `graph-update.sh` +
    `lint-on-edit.sh` (keep the graph and formatting current on every edit),
    `session-start.sh` (version drift check + protocol re-injection),
@@ -120,6 +122,17 @@ human's own word, never an agent's paraphrase of it. This is Step 1 of a
 3-unit fix (#324): the DECISION file isn't read by anything yet (that lands
 in Step 3, amended #136) — this unit only makes the consent boundary real
 before anything downstream can rely on it.
+
+**Narrowed by ADR-0039 (2026-10-03).** "No agent can write it" became "no
+agent can complete the write without a human approving its bytes": for one
+strictly parsed heredoc from the main session, the gate answers `ask`
+(never `allow`), so the orchestrator's Bash call writes the file only after
+the human says Yes at Claude Code's permission prompt. The operator's probe
+record (`docs/experiments/2026-10-01-probe-bash-ask.md`, `Ship gate: GREEN`)
+measured, with a probe hook rather than this gate, that the prompt shows the
+whole heredoc in default/acceptEdits/auto on one CLI run. Whether an
+agent-teams teammate can look like the main session is still unmeasured
+(`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`).
 
 ## MCP scoping (a recurring gotcha)
 
