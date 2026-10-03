@@ -127,11 +127,12 @@ before anything downstream can rely on it.
 agent can complete the write without a human approving its bytes": for one
 strictly parsed heredoc from the main session, the gate answers `ask`
 (never `allow`), so the orchestrator's Bash call writes the file only after
-the human says Yes at Claude Code's permission prompt. Whether that prompt
-shows the whole heredoc is pending a re-measurement: the operator's probe run
-(`docs/experiments/2026-10-01-probe-bash-ask.md`, a probe hook rather than
-this gate) was graded GREEN by its script, but review FAILed the record
-because its appendix never saved the dialog text. Whether an
+the human says Yes at Claude Code's permission prompt. The operator's probe
+re-run (`docs/experiments/2026-10-01-probe-bash-ask.md` at 229138e,
+`Ship gate: GREEN`, passed review; the first record failed review because it
+never saved the dialog text) measured, with a probe hook rather than this
+gate, on claude 2.1.288 only, that the dialog shows the whole heredoc in
+default/acceptEdits/auto and that declining creates no file. Whether an
 agent-teams teammate can look like the main session is still unmeasured
 (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`).
 
