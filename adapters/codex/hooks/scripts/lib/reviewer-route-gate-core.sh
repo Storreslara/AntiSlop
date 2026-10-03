@@ -30,6 +30,7 @@ set -euo pipefail
 if [ -f "$config" ] && [ -n "$target_type" ]; then
   identity_drift_log "$target_type" "$hook_event_label" "$review_audit"
 
+  state_drop_resurrected_flags  # RESURRECTION-GUARD
   shopt -s nullglob
   pending_flags=( "${dot}"/.pending-review.* )
   shopt -u nullglob

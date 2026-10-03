@@ -127,11 +127,34 @@ state_write_pending_review() {
   local content="$2"
   local flag_file="${dot}/.pending-review.${agent_id}"
 
-  # CONSTRAINT 3: create-only-if-absent
-  # Only write if the flag doesn't already exist
-  if [ ! -f "$flag_file" ]; then
+  # A tombstone means the hook itself deleted this id's flag, so whatever
+  # stands at the path now was re-created by a non-gate writer: re-arm with
+  # gate content. Otherwise, CONSTRAINT 3: create-only-if-absent.
+  if [ -f "${dot}/.pending-review-cleared.${agent_id}" ]; then
+    printf '%s\n' "$content" > "$flag_file"
+    rm -f "${dot}/.pending-review-cleared.${agent_id}"
+  elif [ ! -f "$flag_file" ]; then
     printf '%s\n' "$content" > "$flag_file"
   fi
+}
+
+# Flag tombstone: records that the hook deleted this id's flag, so a later
+# re-creation by anything but state_write_pending_review is a resurrection.
+state_tombstone_pending_review() {
+  local agent_id="$1"
+  date -u +%Y-%m-%dT%H:%M:%SZ > "${dot}/.pending-review-cleared.${agent_id}"
+}
+
+state_drop_resurrected_flags() {
+  local flag agent_id
+  for flag in "${dot}"/.pending-review.*; do
+    [ -f "$flag" ] || continue
+    agent_id="${flag##*/.pending-review.}"
+    [ -f "${dot}/.pending-review-cleared.${agent_id}" ] || continue
+    rm -f "$flag"
+    state_append_audit_log "review-audit.log" "$(printf '%s flag-resurrected-dropped=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id")"
+  done
+  return 0
 }
 
 state_delete_pending_review() {
@@ -144,7 +167,12 @@ state_delete_pending_review() {
 state_clear_all_pending_review() {
   # CONSTRAINT 2: reviewer's SubagentStop clears ALL pending-review flags
   # after review-join evaluation is satisfied
-  rm -f "${dot}"/.pending-review.*
+  local flag
+  for flag in "${dot}"/.pending-review.*; do
+    [ -f "$flag" ] || continue
+    state_tombstone_pending_review "${flag##*/.pending-review.}"
+    rm -f "$flag"
+  done
 }
 
 state_read_wip_handoff() {
@@ -351,6 +379,8 @@ export -f state_pending_review_exists
 export -f state_write_pending_review
 export -f state_delete_pending_review
 export -f state_clear_all_pending_review
+export -f state_tombstone_pending_review
+export -f state_drop_resurrected_flags
 export -f state_read_wip_handoff
 export -f state_wip_handoff_exists
 export -f state_write_wip_handoff

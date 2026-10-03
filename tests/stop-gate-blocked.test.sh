@@ -135,13 +135,15 @@ else
 fi
 
 # (h) only CONSECUTIVE duplicates are suppressed: an identical defer: separated
-#     from the earlier one by a cleared-by=reviewer line IS still appended
+#     from the earlier one by a cleared-by=reviewer line IS still appended.
+#     The second defer: targets a fresh flag lp-2: writing into the cleared
+#     lp-1 would be a flag resurrection (dropped; covered by R4).
 dir="$(make_project nonconsecutive)"
 flag="$dir/.claude/.pending-review.lp-1"
 ok=true
 printf 'defer: reviewer already dispatched\n' > "$flag"; run_stop "$dir" || ok=false
 printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh || ok=false
-printf 'defer: reviewer already dispatched\n' > "$flag"; run_stop "$dir" || ok=false
+printf 'defer: reviewer already dispatched\n' > "$dir/.claude/.pending-review.lp-2"; run_stop "$dir" || ok=false
 got="$(cut -d' ' -f2- < "$dir/.claude/review-audit.log" | tr '\n' '|')"
 # Expect: defer: | marker-check=bootstrap | cleared-by=reviewer | defer: (bootstrap line added by clear-watermark check)
 want='defer: reviewer already dispatched|marker-check=bootstrap|cleared-by=reviewer|defer: reviewer already dispatched|'

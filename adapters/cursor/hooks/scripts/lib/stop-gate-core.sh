@@ -444,6 +444,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       if [ "${#join_clear_candidates[@]}" -gt 0 ] && [ "$join_clear_bound" -gt 0 ]; then
         while IFS= read -r join_flag; do
           [ -n "$join_flag" ] || continue
+          state_tombstone_pending_review "${join_flag##*/.pending-review.}"
           rm -f "$join_flag" 2>/dev/null || true
           join_cleared=$(( join_cleared + 1 ))
         done < <(
@@ -484,7 +485,7 @@ The only two legal responses to this block are writing the genuine verdict you a
     state_append_audit_log "review-audit.log" "$(printf '%s grant-denied hook=stop-gate identity=%s' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
   fi
-  echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or per flag: 'printf \"defer: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id>' (keeps it, review still owed) or 'skip: <reason>' (deletes it, unit abandoned)." >&2
+  echo "Reviewer identity '${agent_type}' is not this project's reviewer (unrecognized namespace) - pending-review flags were NOT cleared. Recover by dispatching this project's own reviewer, or per flag: 'printf \"defer: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id>' (keeps it, review still owed) or 'skip: <reason>' (deletes it, unit abandoned). Flags are not bound to units (a reviewer clears one flag per satisfied stamp); write defer:/skip: only into a flag that currently exists." >&2
 fi
 
 # C2 also bites when the SubagentStop identity does not resolve to this
@@ -503,6 +504,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
 fi
 
 if [ "$hook_event" = "Stop" ]; then
+  state_drop_resurrected_flags  # RESURRECTION-GUARD
   shopt -s nullglob
   pending_flags=( "${dot}"/.pending-review.* )
   shopt -u nullglob
@@ -535,6 +537,7 @@ if [ "$hook_event" = "Stop" ]; then
           ;;
         "skip: "*)
           state_append_audit_log "review-audit.log" "$(printf '%s %s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$flag_content")"
+          state_tombstone_pending_review "${flag##*/.pending-review.}"
           rm -f "$flag"
           ;;
         *)
@@ -543,7 +546,7 @@ if [ "$hook_event" = "Stop" ]; then
       esac
     done
     if [ "$blocked" = true ]; then
-      block "Unit awaiting review. Dispatch reviewer, or: printf \"defer|skip: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected."
+      block "Unit awaiting review. Dispatch reviewer, or: printf \"defer|skip: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected. Flags are not bound to units (a reviewer clears one flag per satisfied stamp); write defer:/skip: only into a flag that currently exists."
     fi
     allow
   fi

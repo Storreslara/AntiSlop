@@ -553,6 +553,15 @@ else
 fi
 
 echo
+echo "== pending-review flag resurrection (Bash) =="
+if bash tests/pending-review-resurrection.test.sh; then
+  echo "OK   tests/pending-review-resurrection.test.sh"
+else
+  echo "FAIL tests/pending-review-resurrection.test.sh"
+  fail=1
+fi
+
+echo
 echo "== reviewer-route-gate caller allowlist (Bash) =="
 if bash tests/reviewer-route-gate-caller.test.sh; then
   echo "OK   tests/reviewer-route-gate-caller.test.sh"

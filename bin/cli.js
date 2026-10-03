@@ -158,6 +158,7 @@ const OPERATIONAL_GITIGNORE_PATTERNS = [
   '{{DOTDIR}}/.session-baseline.*',
   '{{DOTDIR}}/wip-audit.log',
   '{{DOTDIR}}/.pending-review.*',
+  '{{DOTDIR}}/.pending-review-cleared.*',
   '{{DOTDIR}}/.review-join.*',
   '{{DOTDIR}}/review-audit.log',
   '{{DOTDIR}}/dispatch-audit.log',
