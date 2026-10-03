@@ -100,7 +100,9 @@ Cursor: `protected-paths.sh`, `stop-gate.sh`'s test+lint check, and the
 reviewer-dispatch privileged-name guard in `reviewer-route-gate.sh`. No `.fail`
 records are written under `off`, so later readers of FAIL history see
 nothing for those units. Flags, stamps and markers left over from `enforce`
-are ignored, not deleted; clear stale ones before flipping back.
+are ignored, not deleted (one exception: the drop of a flag re-created
+after a hook deleted it still runs at `stop` and at every subagent dispatch
+under `off`); clear stale ones before flipping back.
 
 ## Pending-review flag (review backstop)
 Whenever a gated agent (default `lead-programmer`) has a `subagentStop` that is
@@ -109,10 +111,12 @@ NOT honored by a WIP sentinel, `stop-gate.sh` writes
 The reviewer's own `subagentStop` clears one flag per satisfied review-join
 stamp, oldest first (PASS or FAIL), and all flags only on the zero-stamp
 bootstrap path, and logs `cleared-by=reviewer`. Flags are not bound to units.
-A flag re-created after the hook deleted it is dropped and logged as
-`flag-resurrected-dropped=<id>`; tombstones are never garbage-collected. While any flag exists: the main-session `stop`
+Every hook-initiated delete leaves a tombstone, and a flag re-created after
+the hook deleted it is dropped on the next `stop` or subagent dispatch and
+logged as `flag-resurrected-dropped=<id>`; tombstones are never garbage-collected. While any flag exists: the main-session `stop`
 hook blocks turn-end, and `reviewer-route-gate.sh` blocks dispatching the next
-gated-agent unit - the orchestrator's correct next move (spawn the reviewer,
+gated-agent unit (a re-created flag never blocks it: that same dispatch drops
+it first) - the orchestrator's correct next move (spawn the reviewer,
 or spawn anything non-gated like `explorer`) is never blocked. Escape hatch,
 mirroring the WIP sentinel: overwrite the flag's content with `defer: <reason>`
 (logged, flag KEPT - this is sticky, not one-shot: it permits turn-end on every

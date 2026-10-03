@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.115 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.116 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -730,7 +730,7 @@ Because no `.fail` record is written, every later reader of FAIL history
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
 advisory FAILs in-session instead. Flags, stamps and markers left over from
 `enforce` are ignored, not deleted (one exception: the drop of a flag re-created
-after a hook deleted it still runs at `Stop` under `off`); clear stale `.pending-review.*` flags
+after a hook deleted it still runs at `Stop` and at every subagent dispatch under `off`); clear stale `.pending-review.*` flags
 and `.review-join.*` stamps before flipping back (README, "Review gating
 off").
 
@@ -746,7 +746,7 @@ to `.claude/review-audit.log`, but only once the unit it was dispatched for
 actually holds a verdict; it clears all flags only on the zero-stamp bootstrap
 path. Flags are not bound to units, so which flag goes is by age, not by unit.
 Every hook-initiated delete leaves a tombstone, and a flag re-created after the
-hook deleted it is dropped on the next `Stop` or reviewer dispatch and logged as
+hook deleted it is dropped on the next `Stop` or subagent dispatch (any `Agent` call) and logged as
 `flag-resurrected-dropped=<id>`; this drop also runs under review gating off.
 Tombstones are never garbage-collected (a known gap). That coupling is
 the **review-join stamp**: `reviewer-route-gate.sh` writes
@@ -760,7 +760,8 @@ running concurrently each clear only their own, and lets a second stop by the
 same reviewer — with nothing left owed — be allowed instead of stranded.
 While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 "a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
-dispatching the next gated-agent unit — the orchestrator's correct next move
+dispatching the next gated-agent unit (a re-created flag never blocks it: that
+same dispatch drops it first) — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
 blocked. Escape hatch, mirroring the WIP sentinel: overwrite a flag that
 currently exists with `defer: <reason>` (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not
