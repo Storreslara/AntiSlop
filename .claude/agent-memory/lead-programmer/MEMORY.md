@@ -74,3 +74,4 @@
 - [Existing test encodes the old bug](technique_existing_test_encodes_old_bug.md) — grep old suites for the scenario a fix changes; "no verdict changes" can be self-contradictory (esf-flag-fix (h))
 - [bash glob bytewise fallback vs locale](technique_bash_glob_bytewise_fallback_locale.md) — `local LC_ALL=C` mutant unkillable under C/POSIX/C.UTF-8; GB18030 via LOCPATH+localedef differs (esf-gate-bytes)
 - [Dangling xref / wrapped anchor in protocol prose](technique_protocol_dangling_xref_and_wrapped_anchor.md) — cli.js aborts on a kept section naming a dropped header; reflow anchors; re-render after re-edit (esf-flag-prose)
+- [Enumerate guard call sites for timing prose](technique_enumerate_guard_call_sites_for_timing_prose.md) — "dropped on next A or B" must come from grepping every call site + matcher + pre/post mode checks (esf-flag-prose FAIL)
