@@ -71,3 +71,4 @@
 - [Slim-tier FULL_ONLY token](technique_slim_tier_full_only_token.md) — cli-backfill flags `INSUFFICIENT-CONTEXT` in slim-tier bodies (scribe etc.) as full-protocol inlining; write it lowercase (rgo-4)
 - [Bash-tool grep is ugrep](technique_bash_tool_grep_is_ugrep.md) — mid-pattern `$` anchors in ugrep; run grep-based criteria/mutation controls from a script file (esc-chat-2)
 - [Edit-tool   + PLACEHOLDER_RE in comments](technique_edit_tool_unicode_escape_and_placeholder_re.md) — Edit writes literal U+2028 (breaks JS regex); `<VT>` in a hook comment trips --update placeholder warning (esc-chat-2b)
+- [Existing test encodes the old bug](technique_existing_test_encodes_old_bug.md) — grep old suites for the scenario a fix changes; "no verdict changes" can be self-contradictory (esf-flag-fix (h))
