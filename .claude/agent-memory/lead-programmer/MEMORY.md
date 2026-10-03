@@ -73,3 +73,4 @@
 - [Edit-tool   + PLACEHOLDER_RE in comments](technique_edit_tool_unicode_escape_and_placeholder_re.md) — Edit AND Write turn every typed `\uXXXX` into the literal char (breaks JS regex); `<VT>` in a hook comment trips --update placeholder warning (esc-chat-2b)
 - [Existing test encodes the old bug](technique_existing_test_encodes_old_bug.md) — grep old suites for the scenario a fix changes; "no verdict changes" can be self-contradictory (esf-flag-fix (h))
 - [bash glob bytewise fallback vs locale](technique_bash_glob_bytewise_fallback_locale.md) — `local LC_ALL=C` mutant unkillable under C/POSIX/C.UTF-8; GB18030 via LOCPATH+localedef differs (esf-gate-bytes)
+- [Dangling xref / wrapped anchor in protocol prose](technique_protocol_dangling_xref_and_wrapped_anchor.md) — cli.js aborts on a kept section naming a dropped header; reflow anchors; re-render after re-edit (esf-flag-prose)
