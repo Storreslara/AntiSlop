@@ -4,11 +4,11 @@ Date: 2026-10-03
 
 Status: Accepted (units esc-chat-2, esc-chat-2b, esf-gate-bytes, esc-chat-3,
 esc-chat-4; plan `docs/plans/2026-10-01-in-session-escalation-decision.md`,
-FINAL, amended 2026-10-02). An operator run of the esc-chat-1 probe exists
-and its script graded it `Ship gate: GREEN`, but review FAILed the record on
-evidence: the premise that the prompt shows the full heredoc is **pending a
-re-measurement** (see "Pending re-measurement" below). Nothing in this ADR
-claims that premise is measured.
+FINAL, amended 2026-10-02). The esc-chat-1 ship gate reads `Ship gate:
+GREEN` in a re-run record that passed review (229138e; the first record,
+cbb918e, failed review on evidence and is superseded). "Measurement (the
+esc-chat-1 ship gate)" below says exactly what was measured and what was
+not; nothing in this ADR claims more.
 
 ## Context
 
@@ -29,8 +29,7 @@ grounds. This ADR answers them; it does not reverse them:
   records U1 `ask-still-prompts`: a hook's `ask` is not overridden by
   `permissions.allow`.
 - **(b) Behaviour depends on the mode.** Answered by a frozen mode allowlist
-  (below) and, for Bash specifically, by the esc-chat-1 measurement, whose
-  re-run is pending (below).
+  (below) and, for Bash specifically, by the esc-chat-1 measurement (below).
 - **(c) A prompt lives inside one session.** The terminal and dashboard routes
   are unchanged, so a packet still outlives the session.
 
@@ -102,41 +101,54 @@ and the harness-integrity gate's Bash branch is unchanged.
 **Amending ADR-0036.** ADR-0036's "keep as-is" is superseded for this one
 branch only. The rest of the gate is still kept as-is.
 
-## Pending re-measurement (the esc-chat-1 ship gate)
+## Measurement (the esc-chat-1 ship gate)
 
-An operator run exists: `scripts/probe-bash-ask.sh` (@ b769d8e) wrote
-`docs/experiments/2026-10-01-probe-bash-ask.md` (commit cbb918e,
-self-reported), and the script graded it `Ship gate: GREEN`. The probe used
-its own always-`ask` PreToolUse hook in a scratch directory, not
-`human-decision-gate.sh`. Review of that record (unit esc-chat-1-record)
-FAILed it on evidence:
+**History.** The first operator run of `scripts/probe-bash-ask.sh`
+(@ b769d8e, record commit cbb918e) was graded GREEN by the script, but review
+(unit esc-chat-1-record) FAILed it on evidence: its appendix held no
+permission dialog, only post-decline panes, so nothing in the record backed
+the rows saying the full heredoc was visible; that run also spanned CLI
+2.1.287 and 2.1.288. The script was fixed (253106e) to save each mode's
+**dialog block** before the decline and to re-grade from it. The operator
+re-ran it (@ 39f0850); the new record,
+`docs/experiments/2026-10-01-probe-bash-ask.md` at 229138e (self-reported),
+reads `Ship gate: GREEN` and passed review (unit esc-chat-1-record2). It
+supersedes cbb918e.
 
-- **Probe and Decline rows** (default, acceptEdits, auto: a prompt rendered;
-  declining left no file) are corroborated, but only by off-record CLI
-  transcripts, which show the exact heredoc Bash call rejected with "The
-  user doesn't want to proceed".
-- **Display rows** (the full heredoc visible in the prompt) are **not
-  supported** by the record's own appendix: the script saves each pane only
-  after the decline, when the dialog has been replaced, so the dialog text
-  was never saved; the heredoc text in the appendix is the echoed request.
-- **Versions:** the record's Version line says 2.1.287, but the run spanned
-  two CLI versions: 2.1.287 for default and plan, 2.1.288 for the rest.
-- The headless `-p` row (a one-line `printf`, not the heredoc) is backed by
-  the appendix's JSON: the Bash call was denied (`permission_denials`).
+**Measured** (claude 2.1.288 for every mode):
 
-So the premise that Claude Code's Bash prompt shows the full heredoc in each
-allowlisted mode is **pending a re-run** with a fixed script that saves the
-dialog text. Until a record supports it, every statement that "the human sees
-the exact bytes" is the design premise, not a measured fact. Even a
-supporting re-run would cover one probe hook on the CLI version(s) it ran,
-not the real gate end to end, other versions, or agent-teams teammates.
+- a **probe** PreToolUse hook that always answers `permissionDecision: "ask"`
+  for Bash, in a scratch directory outside the repo; not
+  `human-decision-gate.sh` itself;
+- in **default, acceptEdits and auto**, a 7-line Bash heredoc rendered a
+  permission dialog showing the full multi-line command (` Bash command`
+  header, the whole `cat > out.txt <<'EOF'` … `EOF` box, "Do you want to
+  proceed?"), and declining created no file;
+- dontAsk and bypassPermissions also prompted (informational: this ADR
+  denies both by policy); plan was not driven (informational: read-only, the
+  model never reaches Bash there);
+- headless `-p` (a one-line `printf`): the Bash call was denied
+  (`permission_denials`).
 
-The decision rule for the re-run:
+**Not measured:** the real gate's end-to-end behaviour in a live escalation,
+any other CLI version (this re-run is single-version), and agent-teams
+teammate identity (Outcome D above; still unmeasured).
+
+**Evidence limits:** the Decline rows rest on a filesystem check the record
+does not capture (corroborated off-record by CLI transcripts showing the
+heredoc rejected with "The user doesn't want to proceed"); each dialog block
+carries a stray " settings.json to update hooks" render fragment outside the
+command box (harmless); the plan run wrote a plan file outside the scratch
+directory.
+
+The decision rule the re-run was judged against; GREEN triggered neither RED
+branch:
 
 - **RED in default, or a heredoc that is not fully visible**: the design
   returns to spec-master.
 - **RED in acceptEdits or auto only**: that mode is dropped from the allowlist.
-- A material Claude Code upgrade re-runs the probe (R2, drift).
+- A material Claude Code upgrade re-runs the probe (R2, drift). This still
+  applies.
 
 ## Consequences
 
@@ -156,7 +168,8 @@ The decision rule for the re-run:
   built only from the parsed route enum and task id.
 - **Headless runs** have no human to answer; Claude Code denies an `ask` in
   `-p` (measured for Write in the 2026-09-23 record; for Bash, with the probe
-  hook, by the esc-chat-1 run's headless row, which its JSON appendix backs).
+  hook, by the esc-chat-1 record's headless row, which its JSON appendix
+  backs).
 - **Residual, shared by every route:** an agent can add a hook in the
   unguarded `.claude/settings.local.json`. Documented, not fixed.
 - **Known, non-security notes:** the composer's older command-substitution
@@ -185,7 +198,8 @@ The decision rule for the re-run:
 - [ADR-0036](0036-human-decision-gate-keep-as-is-mode-off.md) (amended here for one branch)
 - `docs/plans/2026-08-11-human-decision-channel.md` (the original objections)
 - `docs/experiments/2026-09-23-probe-permission-mode-ask.md` (U1 `ask-still-prompts`)
-- [`docs/experiments/2026-10-01-probe-bash-ask.md`](../experiments/2026-10-01-probe-bash-ask.md) (the esc-chat-1 record, produced by `scripts/probe-bash-ask.sh`: operator run, review FAILED on evidence; re-run pending)
+- [`docs/experiments/2026-10-01-probe-bash-ask.md`](../experiments/2026-10-01-probe-bash-ask.md) (the esc-chat-1 record at 229138e, produced by `scripts/probe-bash-ask.sh` @ 39f0850: `Ship gate: GREEN`, passed review)
+- `git show cbb918e:docs/experiments/2026-10-01-probe-bash-ask.md` (the first esc-chat-1 record: review FAILED on evidence; **superseded** by 229138e)
 - [`docs/experiments/2026-10-03-probe-hook-identity.md`](../experiments/2026-10-03-probe-hook-identity.md) (the identity record, `Outcome: D`, produced by `scripts/probe-hook-identity.sh`)
 - `docs/plans/2026-10-01-in-session-escalation-decision.md` (this decision's plan)
 - `docs/plans/2026-10-02-escalation-followups.md` (R4: the unmeasured teammate premise)
