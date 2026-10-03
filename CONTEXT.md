@@ -991,8 +991,8 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   main session may make the [[prompt-confirmed decision write]], which the
   gate only ever *asks* about, so on that path the orchestrator's Bash call
   writes the file only after a human's Yes at Claude Code's permission
-  prompt (whether that prompt shows the full heredoc is pending a
-  re-measurement; see that entry). On a later re-dispatch the reviewer
+  prompt (whether that prompt shows the full heredoc is
+  pending a re-measurement; see that entry). On a later re-dispatch the reviewer
   verifies it exists at the packet path, parses its first line, checks the
   task-id matches and the [[Staleness binding]] holds, then **transcribes** it
   — never re-reviews it — into one of three terminal routes (see [[DECISION
@@ -1037,8 +1037,8 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   bypassPermissions and dontAsk deny because a silent auto-approve there
   would go undetected), and only against a standing `.escalated` marker with
   no DECISION file yet. Any deny falls back to the terminal route. The
-  premise that the human sees the exact bytes at the prompt is **pending a
-  re-measurement**: an operator run of the esc-chat-1 probe exists
+  premise that the human sees the exact bytes at the prompt is
+  **pending a re-measurement**: an operator run of the esc-chat-1 probe exists
   (`docs/experiments/2026-10-01-probe-bash-ask.md`, self-reported, a probe
   hook that always asks, not this gate; the run spanned CLI 2.1.287 and
   2.1.288) and its script graded it `Ship gate: GREEN`, but review FAILed
