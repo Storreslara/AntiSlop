@@ -86,6 +86,8 @@ permission_mode="$(echo "$input" | jq -r '.permission_mode // empty' 2>/dev/null
 # without which a body could close the heredoc early and run whatever follows.
 is_sanctioned_marker_write() {
   local cmd="$1" first delim rest line
+  # Under a UTF-8 locale [[:space:]] also matches Unicode spaces (U+3000 etc.).
+  local LC_ALL=C
   local re='^cat[[:space:]]+>>?[[:space:]]*[.]claude/reviewed/[A-Za-z0-9_]['"${UNIT_ID_CHARCLASS}"']*[.](pass|fail|directed|blocked|escalated|countersign)[[:space:]]+<<'\''([A-Za-z0-9_]+)'\''$'
 
   while [ "${cmd: -1}" = $'\n' ]; do cmd="${cmd%$'\n'}"; done

@@ -1279,5 +1279,28 @@ $pg22_body
 EOF"
 done
 
+# PG23: under a UTF-8 locale [[:space:]] also matches Unicode spaces, which bash
+# does not split words on either (U+3000, U+2000, U+200A, U+1680, U+205F and
+# U+2028, spelled as bytes so this script's own locale cannot alter them); the
+# marker regex is evaluated in the C locale.
+for loc in C.UTF-8 C; do
+  for w in $'\xe3\x80\x80' $'\xe2\x80\x80' $'\xe2\x80\x8a' $'\xe1\x9a\x80' $'\xe2\x81\x9f' $'\xe2\x80\xa8'; do
+    LC_ALL=$loc bash_case "PG23 [$loc] 0x$(printf '%s' "$w" | od -An -tx1 | tr -d ' \n') after cat in a sanctioned marker write" blocked antislop:reviewer \
+      "cat$w> .claude/reviewed/u1.pass <<'EOF'
+$pg22_body
+EOF"
+    LC_ALL=$loc bash_case "PG23 [$loc] 0x$(printf '%s' "$w" | od -An -tx1 | tr -d ' \n') before << in a sanctioned marker write" blocked antislop:reviewer \
+      "cat > .claude/reviewed/u1.pass$w<<'EOF'
+$pg22_body
+EOF"
+  done
+  for w in ' ' $'\t'; do
+    LC_ALL=$loc bash_case "PG23 [$loc] $(printf '%q' "$w") separators in a sanctioned marker write" allowed antislop:reviewer \
+      "cat$w>$w.claude/reviewed/u1.pass$w<<'EOF'
+$pg22_body
+EOF"
+  done
+done
+
 echo
 exit "$fail"

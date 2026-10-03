@@ -166,7 +166,8 @@ state_delete_pending_review() {
 
 state_clear_all_pending_review() {
   # CONSTRAINT 2: reviewer's SubagentStop clears ALL pending-review flags
-  # after review-join evaluation is satisfied
+  # only on the zero-stamp bootstrap path (its sole caller); a stamped stop
+  # clears one flag per satisfied review-join stamp, oldest first, instead
   local flag
   for flag in "${dot}"/.pending-review.*; do
     [ -f "$flag" ] || continue
