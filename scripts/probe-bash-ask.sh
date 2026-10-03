@@ -10,6 +10,7 @@ TS="bash-ask-probe-$$"
 DATE="$(date +%F)"
 MODES="default plan acceptEdits auto dontAsk bypassPermissions"
 ROWS="" ; MISSING="" ; VERSION="" ; HL_CLASSIFIER="none (no denial classified)"
+PLANS="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plans"
 
 cleanup() { tmux -L "$TS" kill-server 2>/dev/null; rm -rf "$SCRATCH"; }
 trap cleanup EXIT
@@ -27,7 +28,7 @@ EOS
   printf '{"hooks":{"PreToolUse":[{"matcher":"Bash","hooks":[{"type":"command","command":"%s/.claude/ask.sh"}]}]}}\n' "$PWD" > .claude/settings.json
   printf '%s\n' 'Run exactly this Bash command and nothing else:' "cat > out.txt <<'EOF'" \
     line-1 line-2 line-3 line-4 line-5 line-6-END EOF > "$RAW/request.txt"
-  VERSION="$(claude --version 2>&1 | head -1)"
+  VERSION="$(claude_ver)"
 }
 
 # poll the pane until a pattern appears; returns 1 on timeout
@@ -41,8 +42,10 @@ wait_for() { # session grep-ere timeout-seconds
 dialog() { pane "$1" | awk '/^ Bash command$/ {buf=""; on=1} on {buf = buf $0 "\n"} /Do you want to proceed\?/ {on=0; last=buf} END {printf "%s", last}'; }
 
 row() { ROWS="$ROWS$1"$'\n'; }
-mode_version() { local v; v="$(claude --version 2>/dev/null | head -1)"; printf '%s\n' "${v:-unreadable}" > "$RAW/$1.version"; }
+claude_ver() { local v; v="$(claude --version 2>/dev/null | head -1)"; printf '%s\n' "${v:-unreadable}"; }
+mode_version() { claude_ver > "$RAW/$1.version"; }
 ver_of() { cat "$RAW/$1.version" 2>/dev/null || echo unreadable; }
+plans_ls() { { [ ! -e "$PLANS" ] || ls -Aq "$PLANS"; } > "$RAW/plans.$1" 2>/dev/null || rm -f "$RAW/plans.$1"; }
 miss() { MISSING="$MISSING $1"; echo "AMBIGUOUS/UNDRIVEN: $1" >&2; }
 # plan is informational by policy (Amendment A1): never a miss, never gated
 unseen() { # mode reason
@@ -68,8 +71,9 @@ display_and_decline() { # mode session
   tm send-keys -t "$s" 2   # "2. No" in the numbered permission menu
   if ! wait_for "$s" 'Interrupted|What should Claude do instead' 20; then miss "$m decline (screen did not confirm the decline)"; return; fi
   sleep 2
-  if [ -e "$SCRATCH/out.txt" ]; then row "Decline row: $m file-absent no $DATE observed"
-  else row "Decline row: $m file-absent yes $DATE observed"; fi
+  { if [ -e "$SCRATCH/out.txt" ]; then echo 'out.txt: present'; else echo 'out.txt: absent'; fi; echo 'ls -Aq scratch dir:'; ls -Aq "$SCRATCH"; } > "$RAW/$m.decline" 2>/dev/null   # the decline evidence; the row is derived from this saved text
+  if grep -qx 'out.txt: absent' "$RAW/$m.decline"; then row "Decline row: $m file-absent yes $DATE observed"
+  else row "Decline row: $m file-absent no $DATE observed"; fi
 }
 
 probe_mode() {
@@ -95,6 +99,7 @@ probe_headless() {
   local out v
   rm -f "$SCRATCH/out.txt"; mode_version headless
   out="$(cd "$SCRATCH" && timeout 120 claude -p "run: printf x > out.txt" --permission-mode default --output-format json 2>"$RAW/headless.err")" ; echo "rc=$?" >> "$RAW/headless.txt"
+  out="$(jq -c 'with_entries(select(.key == "permission_denials" or .key == "result"))' <<<"$out" 2>/dev/null)" || out="(output was not a JSON object; not saved)"   # keep only what the classifier reads
   printf '%s\n' "$out" >> "$RAW/headless.txt"
   if [ -e "$SCRATCH/out.txt" ]; then v=auto-approved
   elif jq -e '(.permission_denials // []) | map(select(.tool_name=="Bash")) | length > 0' <<<"$out" >/dev/null 2>&1; then v=denied; HL_CLASSIFIER='the JSON `permission_denials` list naming a Bash tool'
@@ -104,25 +109,28 @@ probe_headless() {
 }
 
 gate() { # prints GREEN or RED
-  local f=$1 m n b c d
+  local f=$1 m n b c d e p
   b="$(sed '/^## Appendix/,$d' "$f")"   # rows: everything before the raw-pane appendix
   if grep -qx '## Cleanup checks' "$f"; then c="$(awk '/^## Cleanup checks$/{blk=""; next} {blk=blk $0 "\n"} END{printf "%s", blk}' "$f")"   # block after the LAST marker
     ! grep -q '^```' <<<"$c" || { echo RED; return; }   # a fence after it means the marker sits inside the appendix, not a real block
   else c="$b"; fi   # no marker: only the pre-appendix text counts, so appendix lines never grade
-  for m in default acceptEdits auto; do
-    grep -qE "^Probe row: $m prompt-rendered .* observed$" <<<"$b" && grep -qE "^Display row: $m full-heredoc-visible yes .* observed$" <<<"$b" && grep -qE "^Decline row: $m file-absent yes .* observed$" <<<"$b" || { echo RED; return; }
-    # m's own dialog block: the leading run of blocks after the first Appendix heading, each skipped by its declared line count so its text is never read as structure
-    d="$(awk -v want="$m" '
+  # want's own block of one kind: the leading run of blocks after the first Appendix heading, each skipped by its declared line count so its text is never read as structure
+  p='
       !a { a = /^## Appendix/; next }
       st == 0 && /^$/ { next }
-      st == 0 && /^### dialog: [^ ]+ [0-9]+ lines/ { md = $3; n = $4 + 0; st = 1; next }
+      st == 0 && /^### (dialog|decline): [^ ]+ [0-9]+ lines/ { kd = $2; md = $3; n = $4 + 0; st = 1; next }
       st == 0 { exit }
       st == 1 { if ($0 != "```") { bad = 1; exit } st = n ? 2 : 3; k = 0; next }
-      st == 2 { if (md == want) buf = buf $0 "\n"; if (++k == n) st = 3; next }
-      st == 3 { if ($0 != "```") { bad = 1; exit } cnt[md]++; st = 0; next }
-      END { if (bad || st != 0 || cnt[want] != 1) exit 1; printf "%s", buf }' "$f")" || { echo RED; return; }
+      st == 2 { if (kd == kind && md == want) buf = buf $0 "\n"; if (++k == n) st = 3; next }
+      st == 3 { if ($0 != "```") { bad = 1; exit } cnt[kd md]++; st = 0; next }
+      END { if (bad || st != 0 || cnt[kind want] != 1) exit 1; printf "%s", buf }'
+  for m in default acceptEdits auto; do
+    grep -qE "^Probe row: $m prompt-rendered .* observed$" <<<"$b" && grep -qE "^Display row: $m full-heredoc-visible yes .* observed$" <<<"$b" && grep -qE "^Decline row: $m file-absent yes .* observed$" <<<"$b" || { echo RED; return; }
+    d="$(awk -v want="$m" -v kind=dialog: "$p" "$f")" || { echo RED; return; }
     for n in 'Do you want to proceed?' line-1 line-2 line-3 line-4 line-5 line-6-END; do grep -qF -- "$n" <<<"$d" || { echo RED; return; }; done
     sed '1,/line-6-END/d' <<<"$d" | grep -qE '^[^[:alnum:]]*EOF[^[:alnum:]]*$' || { echo RED; return; }   # closing EOF as its own line, after line-6-END
+    e="$(awk -v want="$m" -v kind=decline: "$p" "$f")" || { echo RED; return; }
+    grep -qx 'out.txt: absent' <<<"$e" && ! grep -qxE 'out\.txt(: present)?' <<<"$e" || { echo RED; return; }   # the check says absent; no line says present, no listing shows out.txt
   done
   for n in scratch-removed repo-hooks-probe-free repo-hook-surface-clean; do   # each check exactly once in the block, and yes
     [ "$(grep -cE "^Cleanup check: $n " <<<"$c")" = 1 ] && grep -qxF "Cleanup check: $n yes" <<<"$c" || { echo RED; return; }
@@ -136,8 +144,8 @@ write_record() {
   {
     echo "# Probe: Bash \`ask\` heredoc display across permission modes ($DATE)"
     printf '\nRecord for spec esc-chat-1 (docs/plans/2026-10-01-in-session-escalation-decision.md). Generated by `scripts/probe-bash-ask.sh`.\nScript: scripts/probe-bash-ask.sh @ %s\n' "$(git -C "$ROOT" rev-parse --short HEAD)"
-    printf '\n## Method\n\nThe script builds a scratch dir outside the repo with a PreToolUse hook that always returns `ask` for Bash. For each mode it starts `claude --permission-mode <mode>` in a detached tmux session, pastes a 7-line heredoc request, and polls the pane. A prompt is `prompt-rendered` when "Do you want to proceed?" appears; `auto-approved` when `out.txt` appears with no prompt; `denied` when denial text appears. Visibility is checked only inside the last permission dialog, with no expansion keystroke sent: `line-1`..`line-6-END` must all be present, followed by a closing `EOF` on its own line. The prompt is declined with key `2` (the "No" entry of the numbered menu), then `out.txt` is checked absent. The `plan` mode is attempted but informational by policy (Amendment A1: plan is read-only, so there is no write approval for a human to make); it is written as an `Info row`, never gates, and its absence is not a miss. Headless is `claude -p "run: printf x > out.txt" --permission-mode default --output-format json`; `denied` is classified only when `out.txt` is absent and the evidence is %s. A mode that cannot be classified from the captured screen gets no row.\n' "$HL_CLASSIFIER"
-    printf '\nEvidence per row. For each `prompt-rendered` mode, the permission dialog text (from the ` Bash command` header to "Do you want to proceed?") is captured before the decline key is sent and saved as that mode'"'"'s dialog block at the top of the appendix, headed `### dialog: <mode> <N> lines, claude <version>`. The Display row is graded from exactly that text, and the ship gate re-checks default, acceptEdits and auto each against its own block (the marker, `line-1`..`line-6-END`, a closing `EOF` line), so those Probe and Display rows can be re-graded from this record. A Probe verdict other than `prompt-rendered` comes from the live pane (denial text) or the filesystem (`auto-approved`), and only the post-run pane is saved for it. The Decline row is the filesystem check of `out.txt` after the decline, not pane text; the post-decline pane in the appendix is context only. Headless is graded from its JSON output, saved under its own appendix heading.\n'
+    printf '\n## Method\n\nThe script builds a scratch dir outside the repo with a PreToolUse hook that always returns `ask` for Bash. For each mode it starts `claude --permission-mode <mode>` in a detached tmux session, pastes a 7-line heredoc request, and polls the pane. A prompt is `prompt-rendered` when "Do you want to proceed?" appears; `auto-approved` when `out.txt` appears with no prompt; `denied` when denial text appears. Visibility is checked only inside the last permission dialog, with no expansion keystroke sent: `line-1`..`line-6-END` must all be present, followed by a closing `EOF` on its own line. The prompt is declined with key `2` (the "No" entry of the numbered menu), then `out.txt` is checked absent. The `plan` mode is attempted but informational by policy (Amendment A1: plan is read-only, so there is no write approval for a human to make); it is written as an `Info row`, never gates, and its absence is not a miss. The `plan` run can also write a plan file under `~/.claude/plans/` (`$CLAUDE_CONFIG_DIR/plans/` when that is set), outside the scratch dir, and no Cleanup check covers it: the script lists that directory (`ls -Aq`) before and after each mode run and writes each new file name as a `Side effect:` line under Side effects, or says the listing was not possible; it never infers one. Headless is `claude -p "run: printf x > out.txt" --permission-mode default --output-format json`; `denied` is classified only when `out.txt` is absent and the evidence is %s. A mode that cannot be classified from the captured screen gets no row.\n' "$HL_CLASSIFIER"
+    printf '\nEvidence per row. For each mode with a `prompt-rendered` Probe row (plan never has one: it gets only an `Info row` and is never declined), the permission dialog text (from the ` Bash command` header to "Do you want to proceed?") is captured before the decline key is sent and saved as that mode'"'"'s dialog block at the top of the appendix (dialog blocks first, then decline blocks), headed `### dialog: <mode> <N> lines, claude <version>`. The Display row is graded from exactly that text, and the ship gate re-checks default, acceptEdits and auto each against its own block (the marker, `line-1`..`line-6-END`, a closing `EOF` line), so those Probe and Display rows can be re-graded from this record. A Probe verdict other than `prompt-rendered` comes from the live pane (denial text) or the filesystem (`auto-approved`), and only the post-run pane is saved for it. The Decline row is the filesystem check of `out.txt` after the decline, not pane text: its output (`out.txt: absent` or `out.txt: present`, then the `ls -Aq` listing of the scratch dir) is saved as that mode'"'"'s decline block, headed `### decline: <mode> <N> lines`, the Decline row is derived from that saved text, and the ship gate re-checks default, acceptEdits and auto each against its own decline block (an `out.txt: absent` line, no `out.txt: present` line, no `out.txt` in the listing); the post-decline pane in the appendix is context only. Headless is graded from its JSON output, filtered with jq to its `permission_denials` and `result` fields (the only fields the classifier reads) and saved in that form under its own appendix heading.\n'
     printf '\n## Version\n\n`claude --version` reports `%s` at setup. Each mode'"'"'s own reading, taken at that mode'"'"'s start, is on its appendix block headers.\n' "$VERSION"
     vs="$(for m in $MODES headless; do printf '%s=%s\n' "$m" "$(ver_of "$m")"; done)"
     if [ "$( { echo "$VERSION"; sed 's/^[^=]*=//' <<<"$vs"; } | sort -u | wc -l)" -gt 1 ]; then
@@ -146,6 +154,7 @@ write_record() {
     printf '\n## Status\n\n**self-reported**: this record was produced by the script run by the operator in their own session; `observed` means the script classified the row during this run, from the evidence named under Method. Run result: %s.\n' "$status"
     printf '\n## Rows\n\n```\n%s```\n' "$ROWS"
     printf '\n## Cleanup\n\nAfter this record body is written the script runs its cleanup, then checks exactly three things, recorded as `Cleanup check:` lines before the ship gate: `%s` is gone, `hooks/hooks.json` exists, is readable, and contains no `probe`, and `git status --porcelain -- hooks .claude/settings.json` is empty. Any `no` forces the gate RED.\n' "$SCRATCH"
+    printf '\n## Side effects\n\n'; side_effect
     write_appendix
   } > "$tmp"
   mkdir -p "$(dirname "$REC")"; cp "$tmp" "$REC" || exit 2
@@ -155,11 +164,24 @@ write_appendix() { # dialog blocks first (length-prefixed, read by gate()), then
   local m
   printf '\n## Appendix: dialog blocks and raw captured panes\n'
   for m in $MODES; do
-    [ -f "$RAW/$m.dialog" ] && { printf '\n### dialog: %s %s lines, claude %s\n```\n' "$m" "$(wc -l < "$RAW/$m.dialog")" "$(ver_of "$m")"; cat "$RAW/$m.dialog"; printf '```\n'; }
+    [ -f "$RAW/$m.dialog" ] && { printf '\n### dialog: %s %s lines, claude %s\n```\n' "$m" "$(( $(wc -l < "$RAW/$m.dialog") ))" "$(ver_of "$m")"; cat "$RAW/$m.dialog"; printf '```\n'; }
+  done
+  for m in $MODES; do
+    [ -f "$RAW/$m.decline" ] && { printf '\n### decline: %s %s lines\n```\n' "$m" "$(( $(wc -l < "$RAW/$m.decline") ))"; cat "$RAW/$m.decline"; printf '```\n'; }
   done
   for m in $MODES headless; do
     [ -f "$RAW/$m.txt" ] && { printf '\n### %s (claude %s)\n\n```\n' "$m" "$(ver_of "$m")"; cat "$RAW/$m.txt"; printf '```\n'; }
   done
+}
+
+side_effect() { # Side effect: lines from the plans-dir listings taken before and after each mode run
+  local m f new out="" p="${PLANS/#$HOME/\~}"
+  for m in $MODES; do
+    if [ ! -f "$RAW/plans.$m.before" ] || [ ! -f "$RAW/plans.$m.after" ]; then out="${out}Side effect: $m run: not detectable ($p could not be listed before and after it)"$'\n'; continue; fi
+    new="$(comm -13 <(sort "$RAW/plans.$m.before") <(sort "$RAW/plans.$m.after"))"
+    [ -z "$new" ] || while IFS= read -r f; do out="${out}Side effect: $m run: new file $p/$f"$'\n'; done <<<"$new"
+  done
+  if [ -n "$out" ]; then printf '%s' "$out"; else echo "Side effect: none: no new file under $p during any mode run"; fi
 }
 
 yn() { if "$@"; then echo yes; else echo no; fi; }
@@ -180,7 +202,7 @@ finish_record() { # after cleanup: check, append the checks, then the gate
 main() {
   command -v tmux >/dev/null && command -v claude >/dev/null && command -v jq >/dev/null || { echo "need tmux, claude and jq on PATH" >&2; exit 2; }
   setup
-  local m; for m in $MODES; do echo "probing $m ..." >&2; probe_mode "$m"; done
+  local m; for m in $MODES; do echo "probing $m ..." >&2; plans_ls "$m.before"; probe_mode "$m"; plans_ls "$m.after"; done
   echo "probing headless-p ..." >&2; probe_headless
   write_record
   finish_record

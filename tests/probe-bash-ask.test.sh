@@ -14,26 +14,36 @@ chk() { # label expected actual
 }
 skp() { echo "SKIP (${1%% *}) ${1#* } $2"; skip=$((skip + 1)); }
 
-for f in gate display_and_decline finish_record unseen write_record write_appendix; do eval "$(extract "$f")"; done
-for f in row miss yn mode_version ver_of; do eval "$(oneline "$f")"; done
+# hermetic: stubs exist before any function is loaded; the real claude, tmux and sleep never run
+claude() { echo "claude stub: the real claude never runs here" >&2; return 1; }
+tmux() { echo "tmux stub: the real tmux never runs here" >&2; return 1; }
+timeout() { shift; "$@"; }   # keeps `timeout N claude` on the claude stub
+sleep() { :; }
+for f in gate display_and_decline finish_record unseen write_record write_appendix probe_headless side_effect; do eval "$(extract "$f")"; done
+for f in row miss yn mode_version ver_of claude_ver plans_ls; do eval "$(oneline "$f")"; done
 tm() { printf '%s\n' "$*" >> "$T/tm.log"; }
 wait_for() { return "${WAIT_RC:-0}"; }
-sleep() { :; }
 cleanup() { :; }
 dialog() { printf '%s\n' "$DIALOG"; }
 
-DATE=2026-10-02
+DATE=2026-10-02; PLANS="$T/plans"
 rows_for() { printf 'Probe row: %s prompt-rendered %s observed\nDisplay row: %s full-heredoc-visible yes %s observed\nDecline row: %s file-absent yes %s observed\n' "$1" "$DATE" "$1" "$DATE" "$1" "$DATE"; }
 good_dialog() { printf '%s\n' ' Bash command' '' "   cat > out.txt <<'EOF'" '   line-1' '   line-2' '   line-3' '   line-4' '   line-5' '   line-6-END' '   EOF' '' ' Do you want to proceed?'; }
 dblock() { # mode [content] : one length-prefixed dialog block
   local c; c=${2-$(good_dialog)}
   printf '\n### dialog: %s %s lines, claude 2.1.288 (Claude Code)\n```\n%s\n```\n' "$1" "$(printf '%s\n' "$c" | wc -l)" "$c"
 }
-pre() { # modes... : rows for the modes, dialog blocks for $DM (default: the same modes), then an open raw pane
+good_decline() { printf '%s\n' 'out.txt: absent' 'ls -Aq scratch dir:' .claude raw; }
+lblock() { # mode [content] : one length-prefixed decline-evidence block
+  local c; c=${2-$(good_decline)}
+  printf '\n### decline: %s %s lines\n```\n%s\n```\n' "$1" "$(printf '%s\n' "$c" | wc -l)" "$c"
+}
+pre() { # modes... : rows for the modes, dialog blocks for $DM and decline blocks for $DL (default: the same modes), then an open raw pane
   local m; printf '# Probe\n\n## Rows\n\n```\n'
   for m in "$@"; do rows_for "$m"; done
   printf 'Info row: plan not-driven %s informational\n```\n\n## Cleanup\n\nprose\n\n## Appendix: dialog blocks and raw captured panes\n' "$DATE"
   for m in ${DM-$@}; do dblock "$m"; done
+  for m in ${DL-$@}; do lblock "$m"; done
   printf '\n### default (claude 2.1.288 (Claude Code))\n\n```\npane text\n'
 }
 yes3() { printf 'Cleanup check: scratch-removed yes\nCleanup check: repo-hooks-probe-free yes\nCleanup check: repo-hook-surface-clean yes\n'; }
@@ -44,11 +54,11 @@ own() { grep '^Ship gate:' "$1" | tail -1 | sed 's/^Ship gate: //'; }
 { pre default acceptEdits auto; printf '```\n\n## Cleanup checks\n\n'; yes3; printf '\nShip gate: GREEN\n'; } > "$T/r1.md"
 chk "T1 full-layout record" GREEN "$(grade "$T/r1.md")"
 chk "T1 equals own Ship gate" "$(own "$T/r1.md")" "$(grade "$T/r1.md")"
-# (T1b) committed record: compared only once it is new-format (has dialog blocks); an old-format record SKIPs, never passes
+# (T1b) committed record: compared only once it is new-format (dialog and decline blocks); an old-format record SKIPs, never passes
 REC1=docs/experiments/2026-10-01-probe-bash-ask.md
 if [ ! -f "$REC1" ]; then skp "T1b record" "no committed record"
-elif ! grep -qx '## Appendix: dialog blocks and raw captured panes' "$REC1"; then
-  skp "T1b committed record" "OLD FORMAT: no dialog blocks, so it cannot be re-graded (the new gate grades it RED); superseded by the operator's re-run"
+elif ! grep -qx '## Appendix: dialog blocks and raw captured panes' "$REC1" || ! grep -qF 'decline block' "$REC1"; then
+  skp "T1b committed record" "OLD FORMAT: no dialog or no decline-evidence blocks, so it cannot be re-graded (the new gate grades it RED); superseded by the operator's re-run"
 else chk "T1b committed record (new format) equals own Ship gate" "$(own "$REC1")" "$(grade "$REC1")"; fi
 
 # (T2) no-heading appendix tail
@@ -126,9 +136,12 @@ dec() { grep -o 'Decline row: default file-absent [a-z]*' <<<"$ROWS" | sed 's/.*
 DIALOG="$(lines; echo EOF)"
 rm -f "$SCRATCH/out.txt"; ROWS=""; MISSING=""; display_and_decline default s 2>/dev/null
 chk "T9 out.txt absent -> yes" yes "$(dec)"
+chk "T9 decline evidence saved: absent" "$(printf '%s\n' 'out.txt: absent' 'ls -Aq scratch dir:')" "$(cat "$RAW/default.decline" 2>/dev/null)"
 : > "$SCRATCH/out.txt"; ROWS=""; MISSING=""; display_and_decline default s 2>/dev/null
 chk "T9 out.txt present -> no" no "$(dec)"
-rm -f "$SCRATCH/out.txt"; ROWS=""; MISSING=""; WAIT_RC=1 display_and_decline default s 2>/dev/null
+chk "T9 decline evidence saved: present" "$(printf '%s\n' 'out.txt: present' 'ls -Aq scratch dir:' out.txt)" "$(cat "$RAW/default.decline" 2>/dev/null)"
+rm -f "$SCRATCH/out.txt" "$RAW/default.decline"; ROWS=""; MISSING=""; WAIT_RC=1 display_and_decline default s 2>/dev/null
+chk "T9 WAIT_RC=1 no decline evidence" missing "$([ -e "$RAW/default.decline" ] && echo present || echo missing)"
 chk "T9 WAIT_RC=1 no Decline row" "" "$(dec)"
 chk "T9 WAIT_RC=1 MISSING non-empty" y "$([ -n "$MISSING" ] && echo y || echo n)"
 
@@ -173,7 +186,7 @@ MODES="default plan acceptEdits auto dontAsk bypassPermissions"; HL_CLASSIFIER=x
 cleanup() { rm -rf "$SCRATCH"; }
 run12() { # version-per-mode...: writes and grades a record
   local m v; rm -rf "$SCRATCH"; mkdir -p "$RAW"; ROWS=""; VERSION="2.1.287 (Claude Code)"
-  for m in default acceptEdits auto; do ROWS="$ROWS$(rows_for "$m")"$'\n'; good_dialog > "$RAW/$m.dialog"; done
+  for m in default acceptEdits auto; do ROWS="$ROWS$(rows_for "$m")"$'\n'; good_dialog > "$RAW/$m.dialog"; good_decline > "$RAW/$m.decline"; done
   for m in $MODES headless; do v=$1; shift; [ "$v" = - ] || printf '%s\n' "$v" > "$RAW/$m.version"; printf 'pane %s\n' "$m" > "$RAW/$m.txt"; done
   write_record; finish_record 2>/dev/null
 }
@@ -182,24 +195,107 @@ run12 "$same" "$same" "$same" "$same" "$same" "$same" "$same"
 chk "T12 written record grades GREEN" "Ship gate: GREEN" "$(tail -n 1 "$REC")"
 chk "T12 same versions: no Version note" 0 "$(grep -c '^Version note:' "$REC")"
 chk "T12 dialog block header carries the mode's version" 1 "$(grep -cxF "### dialog: auto 12 lines, claude $same" "$REC")"
+chk "T12 decline block header" 1 "$(grep -cxF "### decline: auto 4 lines" "$REC")"
 run12 "$same" "$same" "$other" "$other" "$other" "$other" "$other"
 chk "T12 differing versions: Version note" 1 "$(grep -c '^Version note: .*acceptEdits=2\.1\.288 (Claude Code)' "$REC")"
 chk "T12 top-level Version stays the setup reading" 1 "$(grep -cF "reports \`$same\`" "$REC")"
 chk "T12 raw pane header carries the mode's version" 1 "$(grep -cxF "### dontAsk (claude $other)" "$REC")"
 run12 "$same" - "$same" "$same" "$same" "$same" "$same"
 chk "T12 unreadable version said, never inferred" 1 "$(grep -cxF "### plan (claude unreadable)" "$REC")"
-rm -rf "$SCRATCH"; mkdir -p "$RAW"; ROWS=""; for m in default acceptEdits auto; do ROWS="$ROWS$(rows_for "$m")"$'\n'; good_dialog > "$RAW/$m.dialog"; done
+rm -rf "$SCRATCH"; mkdir -p "$RAW"; ROWS=""; for m in default acceptEdits auto; do ROWS="$ROWS$(rows_for "$m")"$'\n'; good_dialog > "$RAW/$m.dialog"; good_decline > "$RAW/$m.decline"; done
 good_dialog | grep -v line-6-END > "$RAW/acceptEdits.dialog"; write_record; finish_record 2>/dev/null
 chk "T12 written record with a bad acceptEdits dialog grades RED" "Ship gate: RED" "$(tail -n 1 "$REC")"
+rm -rf "$SCRATCH"; mkdir -p "$RAW"; ROWS=""; for m in default acceptEdits auto; do ROWS="$ROWS$(rows_for "$m")"$'\n'; good_dialog > "$RAW/$m.dialog"; good_decline > "$RAW/$m.decline"; done
+printf '%s\n' 'out.txt: present' 'ls -Aq scratch dir:' out.txt > "$RAW/auto.decline"; write_record; finish_record 2>/dev/null
+chk "T12 written record whose auto decline evidence says present grades RED" "Ship gate: RED" "$(tail -n 1 "$REC")"
 claude() { return 1; }; RAW="$T/raw12v"; mkdir -p "$RAW"; mode_version default
 chk "T12 mode_version unreadable when claude fails" unreadable "$(cat "$RAW/default.version")"
 claude() { echo "9.9.9 (Claude Code)"; }; mode_version default
 chk "T12 mode_version records the reading" "9.9.9 (Claude Code)" "$(cat "$RAW/default.version")"
-unset -f claude; cleanup() { :; }
+claude() { echo "claude stub: the real claude never runs here" >&2; return 1; }; cleanup() { :; }
 
 # (T13) Method and Status say only what the script verifies
 if grep -qF 'rows are `observed` only where derived from the captured pane text in the appendix' "$P"; then chk "T13 old over-claiming sentence gone" y n; else chk "T13 old over-claiming sentence gone" y y; fi
 if grep -qF 'dialog block' "$P" && grep -qF 'after the decline' "$P" && grep -qF 'JSON output' "$P"; then chk "T13 Method names each row's evidence" y y; else chk "T13 Method names each row's evidence" y n; fi
+if grep -qF 'For each `prompt-rendered` mode' "$P"; then chk "T13 dialog-block sentence no longer claims every prompt-rendered mode" y n; else chk "T13 dialog-block sentence no longer claims every prompt-rendered mode" y y; fi
+if grep -qF 'decline block' "$P" && grep -qF '~/.claude/plans/' "$P"; then chk "T13 Method names the decline block and the plans side effect" y y; else chk "T13 Method names the decline block and the plans side effect" y n; fi
+
+# (T14) gate: each gated mode's own decline block must show out.txt absent
+chk "T14 good record with decline blocks" GREEN "$(g11 pre default acceptEdits auto)"
+chk "T14a no acceptEdits decline block" RED "$(DL="default auto" g11 pre default acceptEdits auto)"
+chk "T14a no decline blocks at all" RED "$(DL="" g11 pre default acceptEdits auto)"
+chk "T14b default's decline block cannot back acceptEdits" RED "$(DL="default default auto" g11 pre default acceptEdits auto)"
+withdl() { DL="default auto" pre default acceptEdits auto | sed '/^### default (/,$d'; lblock acceptEdits "$1"; printf '\n### default\n\n```\npane\n'; }
+chk "T14 control: acceptEdits decline block via the same builder" GREEN "$(g11 withdl "$(good_decline)")"
+chk "T14c acceptEdits decline evidence says present" RED "$(g11 withdl "$(printf '%s\n' 'out.txt: present' 'ls -Aq scratch dir:' .claude out.txt raw)")"
+chk "T14c absent line but the listing shows out.txt" RED "$(g11 withdl "$(printf '%s\n' 'out.txt: absent' 'ls -Aq scratch dir:' .claude out.txt raw)")"
+chk "T14c both absent and present lines" RED "$(g11 withdl "$(printf '%s\n' 'out.txt: absent' 'out.txt: present' 'ls -Aq scratch dir:' raw)")"
+chk "T14c no absent line" RED "$(g11 withdl "$(printf '%s\n' 'ls -Aq scratch dir:' .claude raw)")"
+forged_decl() { DL="default auto" pre default acceptEdits auto; lblock acceptEdits; }
+chk "T14d forged decline block inside a raw pane" RED "$(g11 forged_decl)"
+forged_decl_break() { DL="default auto" pre default acceptEdits auto; printf '```\n'; lblock acceptEdits; }
+chk "T14d forged decline block after a fence break in a raw pane" RED "$(g11 forged_decl_break)"
+inner_decl() { DL="default auto" pre default acceptEdits auto | sed '/^### default (/,$d'; lblock dontAsk "$(good_decline; printf '```\n\n### decline: acceptEdits 4 lines\n```\n'; good_decline)"; printf '\n### default\n\n```\npane\n'; }
+chk "T14e forged acceptEdits decline block inside dontAsk's decline text" RED "$(g11 inner_decl)"
+dialog_as_decl() { DL="default auto" pre default acceptEdits auto | sed '/^### default (/,$d'; printf '\n### decline: acceptEdits 12 lines\n```\n'; good_dialog; printf '```\n\n### default\n\n```\npane\n'; }
+chk "T14f a dialog's text under a decline header is no evidence" RED "$(g11 dialog_as_decl)"
+
+# (T15) headless JSON is saved filtered to result and permission_denials, and classified from that
+SCRATCH="$T/scr15"; RAW="$T/raw15"; mkdir -p "$SCRATCH" "$RAW"
+claude() { case "$1" in --version) echo "2.1.288 (Claude Code)";; *) printf '%s\n' "$HL_JSON";; esac; }
+hl() { rm -f "$RAW/headless.txt"; ROWS=""; MISSING=""; HL_CLASSIFIER=none; HL_JSON="$1"; probe_headless 2>/dev/null; }
+hl '{"session_id":"s-123","total_cost_usd":0.07,"usage":{"input_tokens":6},"result":"need approval","permission_denials":[{"tool_name":"Bash","tool_input":{"command":"printf x > out.txt"}}]}'
+chk "T15 denied from the filtered permission_denials" "Probe row: headless-p denied $DATE observed" "${ROWS%$'\n'}"
+chk "T15 saved JSON holds only result and permission_denials" "$(printf '%s\n' rc=0 '{"result":"need approval","permission_denials":[{"tool_name":"Bash","tool_input":{"command":"printf x > out.txt"}}]}')" "$(cat "$RAW/headless.txt")"
+hl '{"session_id":"s-123","total_cost_usd":0.07,"result":"Permission to run that was denied."}'
+chk "T15 no permission_denials field: regex fallback still classifies" "Probe row: headless-p denied $DATE observed" "${ROWS%$'\n'}"
+chk "T15 fallback names the regex classifier" y "$(case "$HL_CLASSIFIER" in *'no `permission_denials` field'*) echo y;; *) echo n;; esac)"
+chk "T15 absent field stays absent after filtering" "$(printf '%s\n' rc=0 '{"result":"Permission to run that was denied."}')" "$(cat "$RAW/headless.txt")"
+hl '{"session_id":"s-123","result":"done","permission_denials":[]}'
+chk "T15 no denial evidence: no row" "" "$ROWS"
+chk "T15 no denial evidence: a miss" y "$([ -n "$MISSING" ] && echo y || echo n)"
+claude() { echo "claude stub: the real claude never runs here" >&2; return 1; }
+
+# (T16) Side effect: new files under the plans dir, from listings taken before and after each mode run
+RAW="$T/raw16"; PLANS="$T/plans"; MODES="default plan"; mkdir -p "$RAW"
+plans_ls default.before; plans_ls default.after; plans_ls plan.before; mkdir -p "$PLANS"; : > "$PLANS/crispy-beacon.md"; plans_ls plan.after
+chk "T16 new plan file named with its path" "$(printf '%s\n' "Side effect: plan run: new file $PLANS/crispy-beacon.md")" "$(side_effect)"
+chk "T16 home-relative path printed with ~" "Side effect: plan run: new file ~/plans/crispy-beacon.md" "$(HOME="$T"; side_effect)"
+plans_ls plan.before
+chk "T16 no new file" "Side effect: none: no new file under $PLANS during any mode run" "$(side_effect)"
+rm -f "$RAW/plans.plan.before"
+chk "T16 missing listing: not detectable, never inferred" "Side effect: plan run: not detectable ($PLANS could not be listed before and after it)" "$(side_effect)"
+chmod 000 "$PLANS"
+if [ "$(id -u)" = 0 ]; then skp "T16 unlistable plans dir" "running as root"
+else plans_ls plan.before; chk "T16 unlistable plans dir leaves no listing" missing "$([ -e "$RAW/plans.plan.before" ] && echo present || echo missing)"; fi
+chmod 755 "$PLANS"
+if grep -qF 'plans_ls "$m.before"; probe_mode "$m"; plans_ls "$m.after"' "$P" && grep -qF 'side_effect' <(extract write_record); then chk "T16 main brackets each mode run and the record prints it" y y; else chk "T16 main brackets each mode run and the record prints it" y n; fi
+MODES="default plan acceptEdits auto dontAsk bypassPermissions"
+
+# (T17) block headers carry an unpadded line count even where wc pads (BSD)
+RAW="$T/raw17"; mkdir -p "$RAW"; good_dialog > "$RAW/auto.dialog"; good_decline > "$RAW/auto.decline"
+wc() { printf '%8s\n' "$(command wc "$@")"; }
+hdr=$(write_appendix | grep -E '^### (dialog|decline): ')
+unset -f wc
+chk "T17 padded wc: single-space headers" "$(printf '%s\n' '### dialog: auto 12 lines, claude unreadable' '### decline: auto 4 lines')" "$hdr"
+
+# (T18) two gate() safeguards: the opening fence after a block header, and only the first Appendix heading starts the run
+nofence() { DM="default auto" pre default acceptEdits auto | sed '/^### default (/,$d'; printf '\n### dialog: acceptEdits 11 lines, claude x\n'; good_dialog; printf '```\n\n### default\n\n```\npane\n'; }
+chk "T18 dialog header not followed by its opening fence" RED "$(g11 nofence)"
+second() { DM="default auto" pre default acceptEdits auto | sed '/^### default (/,$d'; printf '\n## Appendix: dialog blocks and raw captured panes\n'; dblock acceptEdits; printf '\n### default\n\n```\npane\n'; }
+chk "T18 a second Appendix heading does not restart the block run" RED "$(g11 second)"
+second_ok() { DM="default auto" pre default acceptEdits auto | sed '/^### default (/,$d'; dblock acceptEdits; printf '\n### default\n\n```\npane\n'; }
+chk "T18 control: the same block without the second heading" GREEN "$(g11 second_ok)"
+
+# (T19) setup and each mode read claude --version the same way (stdout only)
+claude() { echo "update available: 2.1.300" >&2; echo "2.1.288 (Claude Code)"; }
+chk "T19 claude_ver ignores stderr" "2.1.288 (Claude Code)" "$(claude_ver 2>&1)"
+RAW="$T/raw19"; mkdir -p "$RAW"; mode_version auto
+chk "T19 mode_version uses the same reading" "2.1.288 (Claude Code)" "$(cat "$RAW/auto.version")"
+claude() { return 1; }
+chk "T19 claude_ver unreadable when claude fails" unreadable "$(claude_ver)"
+claude() { echo "claude stub: the real claude never runs here" >&2; return 1; }
+if grep -qF 'VERSION="$(claude_ver)"' "$P" && ! grep -qF 'claude --version 2>&1' "$P"; then chk "T19 setup reads the version via claude_ver" y y; else chk "T19 setup reads the version via claude_ver" y n; fi
 
 echo "probe-bash-ask tests: $ok ok, $bad failed, $skip skipped (a skip is not a pass)"
 [ "$bad" -eq 0 ]
