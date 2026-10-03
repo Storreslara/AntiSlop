@@ -164,12 +164,11 @@ exists only if you approve at that permission prompt. This route works only
 from the main session and only in the `default`, `acceptEdits` and `auto`
 modes (plan mode is read-only, so there is nothing to approve there); anywhere
 else you get the terminal template instead. The premise that the prompt shows
-you the full command was measured once by the operator
-(`docs/experiments/2026-10-01-probe-bash-ask.md`, `Ship gate: GREEN`, Claude
-Code 2.1.287): with a probe hook that always asks, in those three modes, a
-7-line heredoc showed in full at the prompt and declining left no file, and a
-headless `-p` run was denied. That probe did not exercise the real gate end to
-end or any other Claude Code version (ADR-0039). "Only from the main session"
+you the full command is still pending a re-measurement: an operator run exists
+(`docs/experiments/2026-10-01-probe-bash-ask.md`, a probe hook rather than the
+real gate, Claude Code 2.1.287 and 2.1.288) and its script graded it GREEN,
+but review found that its own appendix does not show the full command in the
+prompt, so a re-run with a fixed script is pending (ADR-0039). "Only from the main session"
 means "no `agent_id`"; whether an agent-teams teammate can also lack one is
 unmeasured (`docs/plans/2026-10-02-escalation-followups.md` R4): the identity
 probe (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`)
