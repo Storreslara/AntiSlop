@@ -63,6 +63,7 @@ bash -n "$s"
 bash tests/probe-bash-ask.test.sh >/dev/null
 grep -qF '## Appendix: dialog blocks and raw captured panes' "$s"
 grep -qF 'Version note:' "$s"
+# SUPERSEDED by Amendment A3 (2026-10-03): this block grades its GREEN fixture RED under the decline-evidence gate; run A3's block instead
 # Synthetic gate() check (Amendment A2): the shapes of tests/probe-bash-ask.test.sh rows_for/good_dialog/dblock/pre
 d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
 dlg() { printf '%s\n' ' Bash command' '' "   cat > out.txt <<'EOF'" '   line-1' '   line-2' '   line-3' '   line-4' '   line-5' '   line-6-END' '   EOF' '' ' Do you want to proceed?'; }
@@ -120,6 +121,98 @@ echo "record criteria pass"
 appendix heading, as intended. A synthetic record with two versions and no
 note fails the Version-note line; adding a `Version note:` line makes it
 pass.
+
+### Amendment A3 (2026-10-03): decline evidence; the A2 synthetic block is replaced
+
+Unit `esc-chat-1-evidence2` (`6d30470`) changed the probe in three ways:
+- `display_and_decline` saves each mode's post-decline evidence: `out.txt:
+  absent` or `present`, then `ls -Aq scratch dir:` and the listing;
+- `write_appendix` writes that evidence as length-prefixed
+  `### decline: <mode> <N> lines` blocks, after the dialog blocks;
+- `gate()` grades GREEN only if each of default, acceptEdits and auto has
+  exactly one decline block of its own, and that block contains an
+  `out.txt: absent` line, no `out.txt: present` line and no `out.txt` in its
+  listing. Every A2 rule still applies.
+
+**1. The A2 synthetic block is superseded.** Its GREEN line now grades RED,
+because its fixture has no decline blocks. Under `set -e` the block stops
+there, and r1-r5 would be RED only because the decline blocks are missing.
+The block below replaces A2's block.
+
+Every fixture now carries a good dialog block **and** a good decline block for
+all three modes. Each RED variant then has exactly the one defect named in its
+comment. The shapes follow `tests/probe-bash-ask.test.sh` (`good_dialog`,
+`dblock`, `good_decline`, `lblock`, `pre`). Save the block as a file and run
+it with `bash`:
+```sh
+set -e
+s=scripts/probe-bash-ask.sh
+bash -n "$s"
+bash tests/probe-bash-ask.test.sh >/dev/null
+# Synthetic gate() check (Amendment A3): shapes of tests/probe-bash-ask.test.sh rows_for/good_dialog/dblock/good_decline/lblock/pre
+d=$(mktemp -d); trap 'rm -rf "$d"' EXIT
+dlg() { printf '%s\n' ' Bash command' '' "   cat > out.txt <<'EOF'" '   line-1' '   line-2' '   line-3' '   line-4' '   line-5' '   line-6-END' '   EOF' '' ' Do you want to proceed?'; }
+blk() { local c; c=${2-$(dlg)}; printf '\n### dialog: %s %s lines, claude 2.1.288 (Claude Code)\n```\n%s\n```\n' "$1" "$(printf '%s\n' "$c" | wc -l)" "$c"; }
+dcl() { printf '%s\n' 'out.txt: absent' 'ls -Aq scratch dir:' .claude raw; }
+lblk() { local c; c=${2-$(dcl)}; printf '\n### decline: %s %s lines\n```\n%s\n```\n' "$1" "$(printf '%s\n' "$c" | wc -l)" "$c"; }
+all="default acceptEdits auto"
+rec() { # rows-modes ; DM/DL = modes given a good dialog/decline block (default: all three) ; X = extra dialog block(s), Y = extra decline block(s)
+  local m; printf '# Probe\n\n## Rows\n\n```\n'
+  for m in $1; do printf 'Probe row: %s prompt-rendered 2026-10-03 observed\nDisplay row: %s full-heredoc-visible yes 2026-10-03 observed\nDecline row: %s file-absent yes 2026-10-03 observed\n' $m $m $m; done
+  printf '```\n\n## Appendix: dialog blocks and raw captured panes\n'
+  for m in ${DM-$all}; do blk "$m"; done
+  printf '%s' "${X-}"
+  for m in ${DL-$all}; do lblk "$m"; done
+  printf '%s' "${Y-}"
+  printf '\n### default (claude 2.1.288 (Claude Code))\n\n```\npane text\n```\n\n## Cleanup checks\n\nCleanup check: scratch-removed yes\nCleanup check: repo-hooks-probe-free yes\nCleanup check: repo-hook-surface-clean yes\n'
+}
+gr() { bash -c "source <(sed -n '/^gate()/,/^}/p' $s); gate $1"; }
+v() { local n=$1 want=$2; shift 2; "$@" > "$d/$n.md"; test "$(gr "$d/$n.md")" = "$want" || { echo "$n: expected $want"; exit 1; }; }
+v g  GREEN rec "$all"
+v r1 RED   rec "default auto"                                                                 # acceptEdits rows removed (blocks present for all three)
+DM="default auto" v r2 RED rec "$all"                                                         # acceptEdits dialog block missing
+DM="default auto" X="$(blk acceptEdits "$(dlg | grep -v line-6-END)")" v r3 RED rec "$all"   # dialog lacks line-6-END
+DM="default auto" X="$(blk acceptEdits "$(dlg | grep -v '^   EOF$')")" v r4 RED rec "$all"    # dialog lacks closing EOF
+DM="default default auto" v r5 RED rec "$all"                                                 # default's dialog block cannot back acceptEdits
+DL="default auto" v r6 RED rec "$all"                                                         # acceptEdits decline block missing
+DL="default default auto" v r7 RED rec "$all"                                                 # default's decline block cannot back acceptEdits
+DL="default auto" Y="$(lblk acceptEdits "$(printf '%s\n' 'out.txt: absent' 'out.txt: present' 'ls -Aq scratch dir:' .claude raw)")" v r8 RED rec "$all"   # decline block has an out.txt: present line
+DL="default auto" Y="$(lblk acceptEdits "$(printf '%s\n' 'out.txt: absent' 'ls -Aq scratch dir:' .claude out.txt raw)")" v r9 RED rec "$all"            # listing shows out.txt
+echo "A3 synthetic gate checks done"
+```
+*Measured on 2026-10-03, from a script file:*
+- **Against HEAD's script** (`45dc9ca`, whose probe script is unchanged since
+  `6d30470`): every line passes. `g` is GREEN and r1-r9 are RED.
+- **Against `253106e`'s `gate()`**, which has the dialog rule but no decline
+  rule: `g` and r1-r5 grade exactly as at HEAD, so r1-r5 are RED for the
+  dialog or row defect they name, not for missing decline evidence. r6-r9 grade
+  **GREEN**, so the four new variants fail on a gate without the decline
+  check.
+
+**2. The committed record is superseded again.**
+`docs/experiments/2026-10-01-probe-bash-ask.md` (`229138e`, which says
+`Ship gate: GREEN`) has no decline blocks. It grades **RED** under the current
+`gate()` by design (measured 2026-10-03). The esc-chat-1 ship gate was met on
+the earlier record format. **It is not met by the repo's committed record now,
+and will not be until the operator's next re-run is committed.** Until then
+the record is not ship-gate evidence.
+
+**3. Additions to the esc-chat-1 record criteria** (on top of A2's additions):
+```sh
+f=docs/experiments/2026-10-01-probe-bash-ask.md
+for m in default acceptEdits auto; do
+  test "$(grep -cE "^### decline: $m [0-9]+ lines$" "$f")" = 1 || { echo "decline block for $m not exactly once"; exit 1; }
+done
+```
+*Measured 2026-10-03:*
+- against `229138e`'s record the block fails ("decline block for default not
+  exactly once"), as intended;
+- against the A3 synthetic GREEN fixture it passes.
+
+**The record may also carry a `## Side effects` section.** It lists new plan
+files under `${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plans`, or says the listing was
+not possible. It is optional, informational and read by no gate, and no
+criterion grades it.
 
 ## Goal
 
