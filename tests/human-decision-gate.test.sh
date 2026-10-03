@@ -1226,6 +1226,24 @@ for loc in C POSIX C.UTF-8; do
     "$(pg_cmd "$(pg_reason $'reason: caf\xc3\xa9 is fine\nsecond line')")" "$p"
 done
 
+# PG20-gb18030 (Amendment C2): the one locale reachable here in which
+# `local LC_ALL=C` changes a verdict. In GB18030 the bytes e2 80 form one
+# two-byte character, so without the C locale the BYTE-LS pattern misses U+2028
+# and the gate asks (measured). Needs localedef and the GB18030 charmap; the
+# locale is built under $tmproot, which the EXIT trap removes.
+if command -v localedef >/dev/null 2>&1 && [ -e /usr/share/i18n/charmaps/GB18030.gz ]; then
+  pg20_loc="$(mktemp -d "$tmproot/loc.XXXXXX")"
+  localedef -f GB18030 -i zh_CN "$pg20_loc/zh_CN.GB18030" >/dev/null 2>&1 || true
+  if [ -d "$pg20_loc/zh_CN.GB18030" ]; then
+    LOCPATH="$pg20_loc" LC_ALL=zh_CN.GB18030 pg_case "PG20-gb18030 U+2028 in a reason line under zh_CN.GB18030" \
+      blocked default "" "$(pg_cmd "$(pg_reason $'reason: a\xe2\x80\xa8b')")" "$p"
+  else
+    bad "PG20-gb18030 localedef could not build zh_CN.GB18030"
+  fi
+else
+  echo "SKIP locale (no localedef)"
+fi
+
 # PG21: a continuation line whose lead-in (before its first ASCII letter or
 # digit) holds a non-ASCII character is refused - lookalike spaces and bidi
 # controls can make it render as a reserved key.
