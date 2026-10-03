@@ -78,3 +78,4 @@
 - [Denied compound call never made its -F file](technique_commit_msgfile_must_exist.md) — recreate the msg file with Write before retrying git commit -F (esc-chat-1-record)
 - [Length-prefixed evidence blocks](technique_length_prefixed_evidence_blocks.md) — forgery-proof raw-text blocks in a graded record; host forged blocks in a NON-gated block or the mutant survives (esc-chat-1-evidence)
 - [Locale fix keeps prior mutant live](technique_locale_fix_keeps_prior_mutant_live.md) — `local LC_ALL=C` over `[ \t]` keeps MARKER-WS killable; scratchpad is shared with concurrent agents, mktemp worktree names (esf-hardening-3)
+- [jq filter keeps absent keys absent](technique_jq_filter_preserve_absent_keys.md) — `{a,b}` nulls absent keys and breaks `has()`; use with_entries(select); new block kind hides appended fixtures from the old gate (esc-chat-1-evidence2)
