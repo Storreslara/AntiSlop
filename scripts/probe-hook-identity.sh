@@ -52,7 +52,7 @@ actor_line() { # capture actor -> first line for that actor's marker
 }
 
 # a subagent/teammate marker is attributable only if no reference main transcript shows the lead running it
-transcript_has() { # transcript cmd -> 0 found, 1 absent, 2 unreadable
+transcript_has() { # transcript cmd -> 0 found, 1 absent, 2 missing or empty (the -s test below) or unreadable/unparsable (jq's own error)
   local rc
   [ -s "$1" ] || return 2 # BR-tx-unreadable
   jq -e --arg c "$2" 'select(any(..|objects; .type=="tool_use" and .name=="Bash" and .input.command? == $c))' "$1" >/dev/null 2>&1; rc=$?
@@ -92,8 +92,9 @@ looks_like_subagent() { # capture teammate-line main-teams-line
   jq -e --argjson s "${sk:-[]}" '(.keys - $s) | length == 0' <<<"$2" >/dev/null 2>&1
 }
 
-teammate_check() { # capture teammate-line main-teams-line -> genuine | teams-off | subagent-shaped
+teammate_check() { # capture teammate-line its-own-run's-main-line -> genuine | teams-off | no-lead | subagent-shaped
   [ "$(jq -r '.teams_env // ""' <<<"$2")" = 1 ] || { echo teams-off; return; } # BR-teams-off
+  [ -n "$(jq -r '.session_id // empty' <<<"${3:-null}" 2>/dev/null)" ] || { echo no-lead; return; } # BR-no-lead
   if looks_like_subagent "$1" "$2" "$3"; then echo subagent-shaped; return; fi # BR-subagent-shaped
   echo genuine
 }
@@ -141,7 +142,7 @@ separable() { # rows-file: does any teammate field differ from every main row?
   return 1
 }
 
-outcome() { # rows-file -> exactly one of A B C C' D U X
+outcome() { # rows-file -> exactly one of A B C D U X (no C': a teammate row requires teams_env=1)
   local f=$1
   has_row "$f" main && has_row "$f" main-teams || { echo U; return; }
   has_row "$f" subagent || { echo U; return; } # BR-sub-missing
@@ -155,10 +156,8 @@ outcome() { # rows-file -> exactly one of A B C C' D U X
   fi
   if separable "$f"; then
     echo B
-  elif [ "$(rf "$f" teammate teams_env)" = 1 ]; then
-    echo C
   else
-    echo "C'"
+    echo C
   fi
 }
 
@@ -174,8 +173,8 @@ pane_state() { # pane-text -> ready | trust | wait
   else echo wait; fi
 }
 
-teammate_done() { # capture [run-prefix]: teammate marker's PreToolUse followed by a Stop/SubagentStop with the same session_id and agent_id
-  jq -se --arg c 'echo probe-teammate' --arg r "${2:-}" '. as $a | any(range(0; length); . as $i | $a[$i] as $m | $m.event=="PreToolUse" and $m.cmd==$c and ((($m.run // "")|startswith($r))) and any($a[$i+1:][]; (.event=="Stop" or .event=="SubagentStop") and .session_id==$m.session_id and .agent_id==$m.agent_id))' "$1" >/dev/null 2>&1
+teammate_done() { # capture [run-prefix]: teammate marker's PreToolUse, not the lead's own (null agent_id in a probe-main session), followed by a Stop/SubagentStop with the same session_id and agent_id
+  jq -se --arg c 'echo probe-teammate' --arg r "${2:-}" '. as $a | [$a[] | select(.event=="PreToolUse" and .cmd=="echo probe-main") | .session_id] as $ms | any(range(0; length); . as $i | $a[$i] as $m | $m.event=="PreToolUse" and $m.cmd==$c and ((($m.run // "")|startswith($r))) and ($m.agent_id != null or (any($ms[]; . == $m.session_id) | not)) and any($a[$i+1:][]; (.event=="Stop" or .event=="SubagentStop") and .session_id==$m.session_id and .agent_id==$m.agent_id))' "$1" >/dev/null 2>&1
 }
 
 retry_teammate_tmux() {
@@ -197,7 +196,7 @@ retry_teammate_tmux() {
 }
 
 method_text() {
-  printf 'The script builds a scratch dir outside the repo. Its `.claude/settings.json` registers one capture hook on `PreToolUse` (matcher `Bash|Agent`), `Stop` and `SubagentStop`, and sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` per run (project settings beat user settings; the `teams_env` column reports what the hook actually saw and is never used to pick a row). The hook appends one JSON line per event to `capture.jsonl`: `event`, sorted payload `keys`, `agent_id`, `agent_type`, `session_id`, `permission_mode`, `transcript_path`, the command `cmd`, the Agent-tool `name`, `teams_env`, and `run` (`run1`, `run2` or `run2-tmux`, read from a file the script rewrites before each run). It prints nothing and always exits 0. Run 1 is `claude -p` with `--allowedTools '"'"'%s'"'"' Agent` and teams off: the main session runs `echo probe-main` and dispatches one unnamed subagent that runs `echo probe-subagent`. Run 2 is the same with teams on and a request to create an agent team with one teammate `probe-mate` that runs `echo probe-teammate`; its main marker is the `main-teams` control. Rows are picked by run, not by `teams_env`: `main` and `subagent` from `run1`, `main-teams` and `teammate` from `run2*`. A row is written only when a PreToolUse(Bash) line has a command exactly equal to the marker. For subagent and teammate the row is also withheld unless every reference main transcript (`main` for subagent, `main-teams` for teammate) is readable and holds no Bash `tool_use` of that marker, because otherwise the lead may have run it itself. `stop_event` is the `Stop`/`SubagentStop` line with the same `session_id` and `agent_id`, else `none`. A teammate row is written only when `Teammate check:` is `genuine`: `teams-off` when the teammate hook did not see `teams_env=1`; `subagent-shaped` when it has an `agent_id`, the lead'"'"'s `session_id`, a `SubagentStop` with that `agent_id` and `session_id`, and only keys the subagent control also has; `genuine` otherwise. Honest limit: a real in-process teammate that carries an `agent_id` and a lead-session `SubagentStop` cannot be told from a subagent, so it is classified `subagent-shaped` and the outcome is D; that is conservative because both gates already deny any non-empty `agent_id`. Whether a teammate can be spawned headless at all is not known; the script reports what the check saw and infers nothing. If run 2 yields no `genuine` teammate the script retries once in a detached tmux interactive session (run `run2-tmux`), accepting a workspace-trust prompt once if one appears, and waits up to 180 s for the teammate marker followed by a stop line. `Outcome:` is the pure `outcome()` function over the rows: `U` if the main, main-teams or subagent row is missing (the run is incomplete, nothing is inferred); `X` if a control row that exists disagrees (main or main-teams `agent_id` not absent, subagent not present); `D` with no teammate row; `A` if the teammate `agent_id` is present; `B` if it is absent/empty but `agent_type` differs from every main row or a payload key appears that no main row has; else `C`. All payload-derived values are sanitized to `[A-Za-z0-9:._-]` before they are written.\n' "$ALLOWED"
+  printf 'The script builds a scratch dir outside the repo. Its `.claude/settings.json` registers one capture hook on `PreToolUse` (matcher `Bash|Agent`), `Stop` and `SubagentStop`, and sets `env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` per run (project settings beat user settings; the `teams_env` column reports what the hook actually saw and is never used to pick a row). The hook appends one JSON line per event to `capture.jsonl`: `event`, sorted payload `keys`, `agent_id`, `agent_type`, `session_id`, `permission_mode`, `transcript_path`, the command `cmd`, the Agent-tool `name`, `teams_env`, and `run` (`run1`, `run2` or `run2-tmux`, read from a file the script rewrites before each run). It prints nothing and always exits 0. Run 1 is `claude -p` with `--allowedTools '"'"'%s'"'"' Agent` and teams off: the main session runs `echo probe-main` and dispatches one unnamed subagent that runs `echo probe-subagent`. Run 2 is the same with teams on and a request to create an agent team with one teammate `probe-mate` that runs `echo probe-teammate`; its main marker is the `main-teams` control. Rows are picked by run, not by `teams_env`: `main` and `subagent` from `run1`, `main-teams` and `teammate` from `run2*`. A row is written only when a PreToolUse(Bash) line has a command exactly equal to the marker. For subagent and teammate the row is also withheld unless every reference main transcript (`main` for subagent; for teammate every `run2*` main-teams transcript, which always includes the lead of the teammate'"'"'s own run because the check below requires one) is readable, non-empty and holds no Bash `tool_use` of that marker, because otherwise the lead may have run it itself. `stop_event` is the `Stop`/`SubagentStop` line with the same `session_id` and `agent_id`, else `none`. A teammate row is written only when `Teammate check:` is `genuine`. Each teammate candidate is judged against the first `echo probe-main` line of its own `run`: `teams-off` when the teammate hook did not see `teams_env=1`; `no-lead` when its run has no main line or that line has no `session_id`, so the lead session cannot be judged; `subagent-shaped` when it has an `agent_id`, the lead'"'"'s `session_id`, a `SubagentStop` with that `agent_id` and `session_id`, and only keys the subagent control also has; `genuine` otherwise. Honest limit: a real in-process teammate that carries an `agent_id` and a lead-session `SubagentStop` cannot be told from a subagent, so it is classified `subagent-shaped` and the outcome is D; that is conservative because both gates already deny any non-empty `agent_id`. Whether a teammate can be spawned headless at all is not known; the script reports what the check saw and infers nothing. If run 2 yields no `genuine` teammate the script retries once in a detached tmux interactive session (run `run2-tmux`), accepting a workspace-trust prompt once if one appears, and waits up to 180 s for a teammate marker that is not the lead'"'"'s own (null `agent_id` in a probe-main session) followed by a stop line with its `session_id` and `agent_id`; the wait only bounds time and never feeds classification. `Outcome:` is the pure `outcome()` function over the rows: `U` if the main, main-teams or subagent row is missing (the run is incomplete, nothing is inferred); `X` if a control row that exists disagrees (main or main-teams `agent_id` not absent, subagent not present); `D` with no teammate row; `A` if the teammate `agent_id` is present; `B` if it is absent/empty but `agent_type` differs from every main row or a payload key appears that no main row has; else `C`. `C'"'"'` (as C, but the hook cannot see the env var) cannot arise here: a teammate row requires `teams_env=1`, and a teammate without it is `teams-off`, so D. All payload-derived values are sanitized to `[A-Za-z0-9:._-]` before they are written.\n' "$ALLOWED"
 }
 
 write_record() {

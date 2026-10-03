@@ -28,14 +28,14 @@ tline() { jq -nc --arg c "$1" '{type:"assistant",message:{content:[{type:"tool_u
 te() { printf '%s' "${ALLTE-$1}"; }
 
 # scen <teammate agent_id json> <teammate agent_type json> <teammate teams_env> <teammate keys json>
-# knobs: MAIN_AID MAINT_AID SUB_AID MATE_CMD MATE_SID MATE_STOP NOMATE NOSUB NOMT LEAD_RAN_MATE T2(unreadable|empty) ALLTE
+# knobs: NOMAIN MAIN_AID MAINT_AID SUB_AID MATE_CMD MATE_SID MATE_STOP NOMATE NOSUB NOMT LEAD_RAN_MATE T2(unreadable|empty) ALLTE
 scen() {
   W="$(mktemp -d "$T/w.XXXXXX")"
   tline 'echo probe-main' > "$W/t1.jsonl"; tline 'echo probe-main' > "$W/t2.jsonl"
   [ -n "${LEAD_RAN_MATE:-}" ] && tline 'echo probe-teammate' >> "$W/t2.jsonl"
   case "${T2:-}" in unreadable) chmod 000 "$W/t2.jsonl" ;; empty) : > "$W/t2.jsonl" ;; esac
   {
-    cap PreToolUse s1 "${MAIN_AID:-null}" null 'echo probe-main' "$(te '')" "$W/t1.jsonl" "$KM" run1
+    [ -z "${NOMAIN:-}" ] && cap PreToolUse s1 "${MAIN_AID:-null}" null 'echo probe-main' "$(te '')" "$W/t1.jsonl" "$KM" run1
     [ -z "${NOSUB:-}" ] && cap PreToolUse s1 "${SUB_AID:-\"sa1\"}" '"general-purpose"' 'echo probe-subagent' "$(te '')" "$W/t1.jsonl" "$KS" run1
     cap SubagentStop s1 '"sa1"' '"general-purpose"' "" "$(te '')" "$W/t1.jsonl" "$KS" run1
     cap Stop s1 null null "" "$(te '')" "$W/t1.jsonl" "$KM" run1
@@ -119,6 +119,8 @@ noteam "(I17)"
 eq "(I17) missing main-teams row -> U" "$OUTC" U
 printf 'Identity row: main-teams agent_id=absent agent_type=absent teams_env=1 stop_event=Stop d observed\nIdentity row: subagent agent_id=present agent_type=g teams_env=unset stop_event=none d observed\n' > "$T/nomain.txt"
 eq "(I14) missing main row -> U" "$(outcome "$T/nomain.txt")" U
+NOMAIN=1 scen null null 1 "$KM"
+has_row "$W/rows" subagent && bad "(I17b) no run1 main line -> subagent row withheld" || ok "(I17b) no run1 main line -> subagent row withheld"
 
 eq "(I18) pane_state trust prompt" "$(pane_state $'Do you trust this folder?\n❯ 1. Yes')" trust
 eq "(I18) pane_state ready" "$(pane_state '❯')" ready
@@ -134,6 +136,11 @@ teammate_done "$T/d3"; eq "(I19) stop with another agent_id -> 1" "$?" 1
 teammate_done "$T/d4"; eq "(I19) stop before the marker -> 1" "$?" 1
 teammate_done "$T/d2" run2; eq "(I19) run filter matches -> 0" "$?" 0
 teammate_done "$T/d2" run1; eq "(I19) run filter excludes -> 1" "$?" 1
+L="$(cap PreToolUse s9 null null 'echo probe-main' 1 x "$KM" run2-tmux)"
+LM="$(cap PreToolUse s9 null null 'echo probe-teammate' 1 x "$KM" run2-tmux)"
+LS="$(cap Stop s9 null null '' 1 x "$KM" run2-tmux)"
+printf '%s\n%s\n%s\n' "$L" "$LM" "$LS" > "$T/d5"
+teammate_done "$T/d5" run2-tmux; eq "(I19) lead's own marker then the lead's Stop -> 1" "$?" 1
 
 mkdir "$T/other"
 eq "(I20) relative record path becomes absolute" "$(cd "$T/other"; source "$SRC" rel.md; echo "$REC")" "$T/other/rel.md"
@@ -171,5 +178,54 @@ eq "(I24) extra key the subagent control lacks -> genuine" "$TCHECK" genuine
   cap PreToolUse s9 null null 'echo probe-main' 1 x "$KM" run2-tmux; } > "$T/r25"
 teammate_choose "$T/r25"
 eq "(I25) a later genuine candidate beats an earlier subagent-shaped one" "$TCHECK" genuine
+
+# (I26-I31) tmux-retry runs: headless run2 gives a subagent-shaped teammate (the retry trigger); <fn> adds the run2-tmux lines
+tmuxscen() { # fn
+  W="$(mktemp -d "$T/w.XXXXXX")"
+  tline 'echo probe-main' > "$W/t1.jsonl"; tline 'echo probe-main' > "$W/t2.jsonl"; tline 'echo probe-main' > "$W/t9.jsonl"
+  [ -n "${LEAD_RAN_MATE:-}" ] && tline 'echo probe-teammate' >> "$W/t9.jsonl"
+  { cap PreToolUse s1 null null 'echo probe-main' "" "$W/t1.jsonl" "$KM" run1
+    cap PreToolUse s1 '"sa1"' '"general-purpose"' 'echo probe-subagent' "" "$W/t1.jsonl" "$KS" run1
+    cap SubagentStop s1 '"sa1"' '"general-purpose"' "" "" "$W/t1.jsonl" "$KS" run1
+    cap PreToolUse s2 null null 'echo probe-main' 1 "$W/t2.jsonl" "$KM" run2
+    cap PreToolUse s2 '"ta1"' '"general-purpose"' 'echo probe-teammate' 1 "$W/t2.jsonl" "$KS" run2
+    cap SubagentStop s2 '"ta1"' '"general-purpose"' "" 1 "$W/t2.jsonl" "$KS" run2
+    "$1"
+  } > "$W/cap.jsonl"
+  classify_rows "$W/cap.jsonl" > "$W/rows"
+  OUTC="$(outcome "$W/rows")"
+  TC="$(sed -n 's/^Teammate check: //p' "$W/rows")"
+}
+lead_main() { cap PreToolUse s9 null null 'echo probe-main' 1 "$W/t9.jsonl" "$KM" run2-tmux; }
+lead_mate() { cap PreToolUse s9 null null 'echo probe-teammate' 1 "$W/t9.jsonl" "$KM" run2-tmux; }
+sub_mate() { cap PreToolUse s9 '"tb"' '"general-purpose"' 'echo probe-teammate' 1 "$W/t9.jsonl" "$KS" run2-tmux
+  cap SubagentStop s9 '"tb"' '"general-purpose"' "" 1 "$W/t9.jsonl" "$KS" run2-tmux; }
+x_i() { lead_mate; }
+x_ic() { lead_main; lead_mate; }
+x_ii() { sub_mate; }
+x_pair() { lead_main; sub_mate; }
+x_nullsid() { lead_main | jq -c '.session_id=null'; sub_mate; }
+x_real() { lead_main; cap PreToolUse s8 '"tc"' '"general-purpose"' 'echo probe-teammate' 1 "$W/t8.jsonl" "$KS" run2-tmux; }
+LEAD_RAN_MATE=1 tmuxscen x_i
+[ "$TC" != genuine ] && ok "(I26) tmux lead runs the marker, its run has no main line -> not genuine" || bad "(I26) tmux lead runs the marker, its run has no main line -> not genuine"
+noteam "(I26)"; eq "(I26) -> D" "$OUTC" D
+LEAD_RAN_MATE=1 tmuxscen x_ic
+noteam "(I26c) control: tmux run has its main line, the lead's transcript shows the marker"; eq "(I26c) -> D" "$OUTC" D
+tmuxscen x_ii
+[ "$TC" != genuine ] && ok "(I27) subagent in s9, tmux run has no main line -> not genuine" || bad "(I27) subagent in s9, tmux run has no main line -> not genuine"
+noteam "(I27)"; eq "(I27) -> D" "$OUTC" D
+tmuxscen x_pair
+eq "(I28) tmux teammate is paired with its own run's lead -> check" "$TC" subagent-shaped
+noteam "(I28)"; eq "(I28) -> D" "$OUTC" D
+tmuxscen x_nullsid
+[ "$TC" != genuine ] && ok "(I29) own run's lead line has no session_id -> not genuine" || bad "(I29) own run's lead line has no session_id -> not genuine"
+noteam "(I29)"; eq "(I29) -> D" "$OUTC" D
+tmuxscen x_real
+eq "(I30) genuine tmux teammate in its own session -> check" "$TC" genuine
+eq "(I30) -> A" "$OUTC" A
+NOMT=1 scen null null 1 "$KM"
+eq "(I31b) no main-teams line -> no-lead" "$TC" no-lead
+MATE_STOP=1 scen null null 1 "$KM"
+eq "(I31) no agent_id is never subagent-shaped, even beside a null-agent SubagentStop" "$TC" genuine
 
 [ "$fails" -eq 0 ]
