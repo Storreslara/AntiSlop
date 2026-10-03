@@ -1,6 +1,6 @@
 # Memory index
 
-- [esc-chat-4 completion](project_esc_chat_4_completion.md) — ADR-0039; Bash-ask record review-FAILed (Display unsupported), premise pending re-run; identity Outcome D
+- [esc-chat-4 completion](project_esc_chat_4_completion.md) — ADR-0039; Bash-ask re-run 229138e PASS (2.1.288 only, probe hook), cbb918e superseded; identity Outcome D
 
 - [hcb-prose-history completion](project_hcb_prose_history_completion.md) — PASS 2026-09-24; four glossary entries added to CONTEXT.md: sweep closure / Cat 1/2/3/4 (repo-wide file-keyed classification for prose reconciliation with both-directions closure assertion), hit-bearing file (unit of classification in sweep-closure table), lens-2 (existing term correct but surrounding prose stale); origin citation: docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md "Sweep closure" section for reuse convention
 - [hcb-step5-measure completion](project_hcb_step5_measure_completion.md) — PASS 2026-09-24; three glossary entries added to CONTEXT.md: characterization record (dated self-reported probe artifacts), self-reported (formal evidence label vs. mechanical check), permission-mode allowlist (gate-internal permission_mode filter distinct from Set A/B); U1 verdict: ask-still-prompts (permissions.allow does not override hook's ask)
