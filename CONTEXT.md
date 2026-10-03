@@ -982,15 +982,17 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
 (unit #325, 2026-08-11, Step 1 of the human-decision-channel fix, issue #324;
   read and transcribed by the reviewer, Step 3/amended #136, 2026-08-11;
   refreshed esc-chat-4, 2026-10-03, ADR-0039) —
-  the human-written file at `.claude/human-review/<task-id>/DECISION`, inside an
+  the file at `.claude/human-review/<task-id>/DECISION`, inside an
   [[Escalation packet]] directory, carrying the human's resolution of a pending
-  `ESCALATE-TO-HUMAN` escalation. **No subagent can write it**: **the
+  `ESCALATE-TO-HUMAN` escalation; no agent can complete the write without a
+  human approving its bytes. **No subagent can write it**: **the
   human-decision gate** (see below) denies every Write/Edit to it and every
   Bash command that targets it, for every identity, with one exception: the
   main session may make the [[prompt-confirmed decision write]], which the
-  gate only ever *asks* about, so the file appears only after a human's Yes
-  at Claude Code's permission prompt (that route is pending the esc-chat-1
-  measurement). On a later re-dispatch the reviewer
+  gate only ever *asks* about, so on that path the orchestrator's Bash call
+  writes the file only after a human's Yes at Claude Code's permission
+  prompt (the esc-chat-1 record measured that prompt with a probe hook; see
+  that entry). On a later re-dispatch the reviewer
   verifies it exists at the packet path, parses its first line, checks the
   task-id matches and the [[Staleness binding]] holds, then **transcribes** it
   — never re-reviews it — into one of three terminal routes (see [[DECISION
@@ -1020,21 +1022,29 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   locations: (1) the gate appends a `decision-gate-asked` line to
   `.claude/review-audit.log` **when it asks, before the human answers**, so
   the line is there for a decline too, and an asked line with no DECISION
-  file afterwards means the human declined (or the approved write
-  failed); (2) the DECISION file itself,
+  file afterwards means the human declined, the ask was denied (including
+  in a headless run, where no human answers), or the approved write
+  failed; (2) the DECISION file itself,
   written by the orchestrator's Bash call only after the human's Yes. `via:
   prompt` lives in the file body, never in the audit line. Eligible only from
   the main session (no `agent_id`; whether an agent-teams teammate can also
   lack one is unmeasured, see `docs/plans/2026-10-02-escalation-followups.md`
-  R4), only in the default, acceptEdits and auto permission modes (plan
+  R4: the identity probe record,
+  `docs/experiments/2026-10-03-probe-hook-identity.md`, reads `Outcome: D`
+  because no genuine teammate was observed), only in the default,
+  acceptEdits and auto permission modes (plan
   denies because it is read-only, so there is no write approval to make;
   bypassPermissions and dontAsk deny because a silent auto-approve there
   would go undetected), and only against a standing `.escalated` marker with
   no DECISION file yet. Any deny falls back to the terminal route. The
-  premise that the human sees the exact bytes at the prompt is **pending the
-  esc-chat-1 measurement** (`scripts/probe-bash-ask.sh`); the route is not
-  released until that record reads `Ship gate: GREEN`. See [[The
-  human-decision gate]] and [[prompt-eligible]].
+  premise that the human sees the exact bytes at the prompt was measured by
+  the operator-run esc-chat-1 probe
+  (`docs/experiments/2026-10-01-probe-bash-ask.md`, self-reported, CLI
+  2.1.287): with a probe hook that always asks, in default, acceptEdits and
+  auto, a 7-line Bash heredoc showed in full at the prompt and declining left
+  no file; a headless `-p` run was denied. The record reads `Ship gate:
+  GREEN`. It did not exercise the real gate end to end, other CLI versions,
+  or teammates. See [[The human-decision gate]] and [[prompt-eligible]].
 _Avoid_: prompt-gated in-session escalation decision write, main-session
   prompt route, prompt route, in-session decision write (all name this same
   path; use "prompt-confirmed decision write", and `via: prompt` only for the
