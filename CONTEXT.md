@@ -944,7 +944,10 @@ _Avoid_: example, sample, demo, examples quiz (none of these name the
   `human-decision-gate.sh`, which guards the mode's write path, was found
   correct-and-dormant with `.claude/human-review/` at 0 packets and kept
   as-is rather than replaced or removed — see
-  [ADR-0036](docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md).
+  [ADR-0036](docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md),
+  since amended for one branch by
+  [ADR-0039](docs/adr/0039-prompt-confirmed-decision-write.md) (the
+  [[prompt-confirmed decision write]]).
   **Overridden by [[review gating off]] (2026-09-29):** when
   `reviewGating.mode` is `off`, human escalation is dropped regardless of
   this field and `human-decision-gate.sh` is inert; this field governs only
@@ -977,24 +980,65 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
 
 **DECISION file**:
 (unit #325, 2026-08-11, Step 1 of the human-decision-channel fix, issue #324;
-  read and transcribed by the reviewer, Step 3/amended #136, 2026-08-11) —
+  read and transcribed by the reviewer, Step 3/amended #136, 2026-08-11;
+  refreshed esc-chat-4, 2026-10-03, ADR-0039) —
   the human-written file at `.claude/human-review/<task-id>/DECISION`, inside an
   [[Escalation packet]] directory, carrying the human's resolution of a pending
-  `ESCALATE-TO-HUMAN` escalation. The file is made agent-unwritable by **the
-  human-decision gate** (see below); on a later re-dispatch the reviewer
+  `ESCALATE-TO-HUMAN` escalation. **No subagent can write it**: **the
+  human-decision gate** (see below) denies every Write/Edit to it and every
+  Bash command that targets it, for every identity, with one exception: the
+  main session may make the [[prompt-confirmed decision write]], which the
+  gate only ever *asks* about, so the file appears only after a human's Yes
+  at Claude Code's permission prompt (that route is pending the esc-chat-1
+  measurement). On a later re-dispatch the reviewer
   verifies it exists at the packet path, parses its first line, checks the
   task-id matches and the [[Staleness binding]] holds, then **transcribes** it
   — never re-reviews it — into one of three terminal routes (see [[DECISION
-  channel]]). The DECISION file is the consent artifact: its unwritability by
-  any agent identity is what makes its contents trustworthy as the human's own
-  word, not an agent's paraphrase. A second, sanctioned authoring path exists via
-  the **Microworld dashboard**: a human-driven, terminal-confirmed **dashboard-originated
+  channel]]). The DECISION file is the consent artifact: no agent can
+  complete the write without a human approving its bytes, which is what makes
+  its contents trustworthy as the human's own word, not an agent's
+  paraphrase. There are three authoring paths: the human typing it in the
+  terminal (no `via:` line), the dashboard (`via: dashboard`), and the
+  prompt-confirmed decision write (`via: prompt`). The dashboard path is
+  the **Microworld dashboard**'s human-driven, terminal-confirmed **dashboard-originated
   decision write** (see [[dashboard-originated decision write]]) that delivers
   the **confirmation code** over `/dev/tty` and writes the file with a `via:
   dashboard` line in the file body itself distinguishing it from the
   typed-terminal path (which carries no `via:` line at all); the write
   separately appends its own `decision-write-via-dashboard` line to the
   review audit log, which contains no `via:` token.
+
+**prompt-confirmed decision write**:
+(esc-chat-2/2b/3, landed 2026-10-02..03; named esc-chat-4, 2026-10-03,
+  [ADR-0039](docs/adr/0039-prompt-confirmed-decision-write.md)) — the third
+  authoring path for a [[DECISION file]], sibling of the
+  [[dashboard-originated decision write]]: after the human answers an
+  escalation in chat, the main session runs one exact Bash heredoc that
+  writes the file with a `via: prompt` line in its body, and the
+  human-decision gate answers that one shape with Claude Code's permission
+  prompt (`ask`, never `allow`). It has **two disk effects**, at two
+  locations: (1) the gate appends a `decision-gate-asked` line to
+  `.claude/review-audit.log` **when it asks, before the human answers**, so
+  the line is there for a decline too, and an asked line with no DECISION
+  file afterwards means the human declined (or the approved write
+  failed); (2) the DECISION file itself,
+  written by the orchestrator's Bash call only after the human's Yes. `via:
+  prompt` lives in the file body, never in the audit line. Eligible only from
+  the main session (no `agent_id`; whether an agent-teams teammate can also
+  lack one is unmeasured, see `docs/plans/2026-10-02-escalation-followups.md`
+  R4), only in the default, acceptEdits and auto permission modes (plan
+  denies because it is read-only, so there is no write approval to make;
+  bypassPermissions and dontAsk deny because a silent auto-approve there
+  would go undetected), and only against a standing `.escalated` marker with
+  no DECISION file yet. Any deny falls back to the terminal route. The
+  premise that the human sees the exact bytes at the prompt is **pending the
+  esc-chat-1 measurement** (`scripts/probe-bash-ask.sh`); the route is not
+  released until that record reads `Ship gate: GREEN`. See [[The
+  human-decision gate]] and [[prompt-eligible]].
+_Avoid_: prompt-gated in-session escalation decision write, main-session
+  prompt route, prompt route, in-session decision write (all name this same
+  path; use "prompt-confirmed decision write", and `via: prompt` only for the
+  body line's value)
 
 **read-only mode**:
 (unit #377, Step 7, 2026-08-31) — the operational mode of the **Microworld dashboard**
@@ -1012,8 +1056,9 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
 (unit #326, 2026-08-11, named at Step 2 of #324; read and transcribed by the
   reviewer, Step 3/amended #136, 2026-08-11) — compact name for the resolution
   route [[DECISION file]] provides: `.claude/human-review/<task-id>/DECISION`,
-  guarded unwritable-by-any-agent by [[The human-decision gate]] (`human-decision-gate.sh`,
-  Step 1/#325). Named explicitly in `reviewed-path-gate.sh:113`'s block message
+  guarded by [[The human-decision gate]] (`human-decision-gate.sh`,
+  Step 1/#325) so that no agent can complete a write to it without a human
+  approving its bytes (see [[prompt-confirmed decision write]]). Named explicitly in `reviewed-path-gate.sh:113`'s block message
   as "the only route that resolves an escalation" once the no-reviewer fallback is
   suspended by a standing `.escalated` marker (see [[Escalation-laundering]]) — i.e.
   the fallback's block message points a human at this channel rather than leaving
