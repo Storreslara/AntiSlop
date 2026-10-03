@@ -1131,6 +1131,15 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
 done
 
 echo
+echo "== scripts/probe-bash-ask.sh: offline gate/extraction tests (Bash, esf-probe-tests) =="
+if bash tests/probe-bash-ask.test.sh; then
+  echo "OK   tests/probe-bash-ask.test.sh"
+else
+  echo "FAIL tests/probe-bash-ask.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
