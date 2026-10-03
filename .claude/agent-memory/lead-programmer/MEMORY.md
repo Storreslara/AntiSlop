@@ -76,3 +76,4 @@
 - [Dangling xref / wrapped anchor in protocol prose](technique_protocol_dangling_xref_and_wrapped_anchor.md) — cli.js aborts on a kept section naming a dropped header; reflow anchors; re-render after re-edit (esf-flag-prose)
 - [Enumerate guard call sites for timing prose](technique_enumerate_guard_call_sites_for_timing_prose.md) — "dropped on next A or B" must come from grepping every call site + matcher + pre/post mode checks (esf-flag-prose FAIL)
 - [Denied compound call never made its -F file](technique_commit_msgfile_must_exist.md) — recreate the msg file with Write before retrying git commit -F (esc-chat-1-record)
+- [Length-prefixed evidence blocks](technique_length_prefixed_evidence_blocks.md) — forgery-proof raw-text blocks in a graded record; host forged blocks in a NON-gated block or the mutant survives (esc-chat-1-evidence)
