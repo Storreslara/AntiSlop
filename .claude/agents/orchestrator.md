@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.114 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.115 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -155,7 +155,9 @@ that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
 the review audit log instead.
 When you dispatch the reviewer as a background task, write
 `defer: reviewer dispatched (agent <id>), awaiting verdict` into the pending-
-review flag in that same turn. The pending-review flag's `defer:` is sticky
+review flag in that same turn, but only into a flag that currently exists
+(check with `ls .claude/.pending-review.*` first; never recreate a deleted
+one, because the hook drops a re-created flag and logs it). The pending-review flag's `defer:` is sticky
 (persists across every subsequent turn-end until the reviewer's own
 `SubagentStop` clears it), so this is a **one-time** write per unit, not
 something to repeat next turn — that repetition is exactly the churn this
@@ -269,13 +271,17 @@ of their own decision at Claude Code's permission prompt.
    requires `context.projectDir`. The target is absolute: `projectDir` is the
    literal value of `$CLAUDE_PROJECT_DIR`, spelled out in the command, never a
    resolved-symlink path, never with a trailing slash — the gate compares that
-   prefix to `$CLAUDE_PROJECT_DIR` exactly and denies any other spelling.
+   prefix to `$CLAUDE_PROJECT_DIR` exactly and denies any other spelling. Get
+   the value by running `printf '%s' "$CLAUDE_PROJECT_DIR"` in the main
+   session's Bash; if it prints empty, use the terminal route instead.
    `<ts>` is the standing marker's own first-line timestamp. Get `<now>` from
    a separate `date -u +%Y-%m-%dT%H:%M:%SZ` call and `<name>` from
    `git config user.name`; never put `$(...)` inside the heredoc. The reason
    lines and `by:` must hold no control, zero-width or bidi character, and
-   each continuation line must start with an ASCII letter or digit and must
-   not start with `DECISION `, `by:`, `via:`, `examples:` or `reason:`; never
+   no continuation line may hold a non-ASCII character before its first ASCII
+   letter or digit, and none may start with `DECISION `, `by:`, `via:`,
+   `examples:` or `reason:` (leading spaces and any letter case are screened
+   too); never
    edit the human's words to fit — use the terminal route instead and say
    why. **Write only from this session's answer, never on your own
    initiative**, and run it once. `human-decision-gate.sh` answers this one
@@ -980,7 +986,8 @@ Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
 advisory FAILs in-session instead. Flags, stamps and markers left over from
-`enforce` are ignored, not deleted; clear stale `.pending-review.*` flags
+`enforce` are ignored, not deleted (one exception: the drop of a flag re-created
+after a hook deleted it still runs at `Stop` under `off`); clear stale `.pending-review.*` flags
 and `.review-join.*` stamps before flipping back (README, "Review gating
 off").
 
@@ -989,10 +996,16 @@ In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
 `stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
 (default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
 sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
-no reviewer run yet. The reviewer's own `SubagentStop` clears every such flag
-(PASS or FAIL — a reviewer having run is what the flag tracks, not the
-verdict) and logs `cleared-by=reviewer` to `.claude/review-audit.log`, but only
-once the unit it was dispatched for actually holds a verdict. That coupling is
+no reviewer run yet. The reviewer's own `SubagentStop` clears
+one flag per satisfied review-join stamp, oldest first (PASS or FAIL — a
+reviewer having run is what the flag tracks, not the verdict), and logs `cleared-by=reviewer`
+to `.claude/review-audit.log`, but only once the unit it was dispatched for
+actually holds a verdict; it clears all flags only on the zero-stamp bootstrap
+path. Flags are not bound to units, so which flag goes is by age, not by unit.
+Every hook-initiated delete leaves a tombstone, and a flag re-created after the
+hook deleted it is dropped on the next `Stop` or reviewer dispatch and logged as
+`flag-resurrected-dropped=<id>`; this drop also runs under review gating off.
+Tombstones are never garbage-collected (a known gap). That coupling is
 the **review-join stamp**: `reviewer-route-gate.sh` writes
 `.claude/.review-join.<unit-id>` when it sees a reviewer dispatch whose first
 non-blank line is `Unit: <id>`, and the stop consumes that stamp only when a
@@ -1006,8 +1019,8 @@ While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 "a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
 dispatching the next gated-agent unit — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
-blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
-content with `defer: <reason>` (logged, flag KEPT — this is **sticky**, not
+blocked. Escape hatch, mirroring the WIP sentinel: overwrite a flag that
+currently exists with `defer: <reason>` (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not
 one-shot: it permits turn-end on every subsequent `Stop` until the reviewer's
 `SubagentStop` clears the flag or a `skip:` deletes it; the review is still
 owed the whole time) or `skip: <reason>` (logged, flag DELETED, unit

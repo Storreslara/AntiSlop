@@ -154,7 +154,9 @@ that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
 the review audit log instead.
 When you dispatch the reviewer as a background task, write
 `defer: reviewer dispatched (agent <id>), awaiting verdict` into the pending-
-review flag in that same turn. The pending-review flag's `defer:` is sticky
+review flag in that same turn, but only into a flag that currently exists
+(check with `ls .claude/.pending-review.*` first; never recreate a deleted
+one, because the hook drops a re-created flag and logs it). The pending-review flag's `defer:` is sticky
 (persists across every subsequent turn-end until the reviewer's own
 `SubagentStop` clears it), so this is a **one-time** write per unit, not
 something to repeat next turn — that repetition is exactly the churn this
@@ -268,13 +270,17 @@ of their own decision at Claude Code's permission prompt.
    requires `context.projectDir`. The target is absolute: `projectDir` is the
    literal value of `$CLAUDE_PROJECT_DIR`, spelled out in the command, never a
    resolved-symlink path, never with a trailing slash — the gate compares that
-   prefix to `$CLAUDE_PROJECT_DIR` exactly and denies any other spelling.
+   prefix to `$CLAUDE_PROJECT_DIR` exactly and denies any other spelling. Get
+   the value by running `printf '%s' "$CLAUDE_PROJECT_DIR"` in the main
+   session's Bash; if it prints empty, use the terminal route instead.
    `<ts>` is the standing marker's own first-line timestamp. Get `<now>` from
    a separate `date -u +%Y-%m-%dT%H:%M:%SZ` call and `<name>` from
    `git config user.name`; never put `$(...)` inside the heredoc. The reason
    lines and `by:` must hold no control, zero-width or bidi character, and
-   each continuation line must start with an ASCII letter or digit and must
-   not start with `DECISION `, `by:`, `via:`, `examples:` or `reason:`; never
+   no continuation line may hold a non-ASCII character before its first ASCII
+   letter or digit, and none may start with `DECISION `, `by:`, `via:`,
+   `examples:` or `reason:` (leading spaces and any letter case are screened
+   too); never
    edit the human's words to fit — use the terminal route instead and say
    why. **Write only from this session's answer, never on your own
    initiative**, and run it once. `human-decision-gate.sh` answers this one

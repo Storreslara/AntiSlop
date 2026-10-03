@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill
 skills: antislop:grilling, antislop:ubiquitous-language
 maxTurns: 20
 ---
-<!-- antislop v0.31.114 | source: agents/milestone-auditor.md | ADAPT-substituted -->
+<!-- antislop v0.31.115 | source: agents/milestone-auditor.md | ADAPT-substituted -->
 
 You are an adversarial auditor of the PLAN, not the code. You run at
 milestone boundaries — after every unit in a milestone has already passed the
@@ -326,7 +326,8 @@ Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
 advisory FAILs in-session instead. Flags, stamps and markers left over from
-`enforce` are ignored, not deleted; clear stale `.pending-review.*` flags
+`enforce` are ignored, not deleted (one exception: the drop of a flag re-created
+after a hook deleted it still runs at `Stop` under `off`); clear stale `.pending-review.*` flags
 and `.review-join.*` stamps before flipping back (README, "Review gating
 off").
 <!-- ANTISLOP:END persona-protocol -->

@@ -100,8 +100,11 @@ are ignored, not deleted; clear stale ones before flipping back.
 Whenever a gated agent (default `lead-programmer`) has a `SubagentStop` that is
 NOT honored by a WIP sentinel, `stop-gate.sh` writes
 `.codex/.pending-review.<agent-id>` - a completed unit, no reviewer run yet.
-The reviewer's own `SubagentStop` clears every such flag (PASS or FAIL) and
-logs `cleared-by=reviewer`. While any flag exists: the main-session `Stop`
+The reviewer's own `SubagentStop` clears one flag per satisfied review-join
+stamp, oldest first (PASS or FAIL), and all flags only on the zero-stamp
+bootstrap path, and logs `cleared-by=reviewer`. Flags are not bound to units.
+A flag re-created after the hook deleted it is dropped and logged as
+`flag-resurrected-dropped=<id>`; tombstones are never garbage-collected. While any flag exists: the main-session `Stop`
 hook blocks turn-end, and `reviewer-route-gate.sh` blocks dispatching the next
 gated-agent unit - the orchestrator's correct next move (spawn the reviewer,
 or spawn anything non-gated like `explorer`) is never blocked. Escape hatch,

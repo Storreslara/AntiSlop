@@ -300,7 +300,8 @@ Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
 advisory FAILs in-session instead. Flags, stamps and markers left over from
-`enforce` are ignored, not deleted; clear stale `.pending-review.*` flags
+`enforce` are ignored, not deleted (one exception: the drop of a flag re-created
+after a hook deleted it still runs at `Stop` under `off`); clear stale `.pending-review.*` flags
 and `.review-join.*` stamps before flipping back (README, "Review gating
 off").
 
@@ -309,10 +310,16 @@ In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
 `stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
 (default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
 sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
-no reviewer run yet. The reviewer's own `SubagentStop` clears every such flag
-(PASS or FAIL — a reviewer having run is what the flag tracks, not the
-verdict) and logs `cleared-by=reviewer` to `.claude/review-audit.log`, but only
-once the unit it was dispatched for actually holds a verdict. That coupling is
+no reviewer run yet. The reviewer's own `SubagentStop` clears
+one flag per satisfied review-join stamp, oldest first (PASS or FAIL — a
+reviewer having run is what the flag tracks, not the verdict), and logs `cleared-by=reviewer`
+to `.claude/review-audit.log`, but only once the unit it was dispatched for
+actually holds a verdict; it clears all flags only on the zero-stamp bootstrap
+path. Flags are not bound to units, so which flag goes is by age, not by unit.
+Every hook-initiated delete leaves a tombstone, and a flag re-created after the
+hook deleted it is dropped on the next `Stop` or reviewer dispatch and logged as
+`flag-resurrected-dropped=<id>`; this drop also runs under review gating off.
+Tombstones are never garbage-collected (a known gap). That coupling is
 the **review-join stamp**: `reviewer-route-gate.sh` writes
 `.claude/.review-join.<unit-id>` when it sees a reviewer dispatch whose first
 non-blank line is `Unit: <id>`, and the stop consumes that stamp only when a
@@ -326,8 +333,8 @@ While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 "a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
 dispatching the next gated-agent unit — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
-blocked. Escape hatch, mirroring the WIP sentinel: overwrite the flag's
-content with `defer: <reason>` (logged, flag KEPT — this is **sticky**, not
+blocked. Escape hatch, mirroring the WIP sentinel: overwrite a flag that
+currently exists with `defer: <reason>` (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not
 one-shot: it permits turn-end on every subsequent `Stop` until the reviewer's
 `SubagentStop` clears the flag or a `skip:` deletes it; the review is still
 owed the whole time) or `skip: <reason>` (logged, flag DELETED, unit
@@ -531,7 +538,7 @@ writes it **in their own terminal**; or confirms the write via the Microworld
 dashboard, which requires a confirmation code delivered to the terminal; or
 approves its exact bytes at Claude Code's permission prompt through the
 **prompt-confirmed decision write** below.
-`hooks/scripts/human-decision-gate.sh` blocks every agent identity — the
+`hooks/scripts/human-decision-gate.sh` blocks every subagent — the
 reviewer included — from creating or modifying it, so a decision relayed in a
 dispatch prompt or any chat message is never a substitute for the file. The
 orchestrator surfaces the packet's `run.sh` command and never runs it. It
