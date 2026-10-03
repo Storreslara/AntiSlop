@@ -1927,8 +1927,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   file]] — reviewer included, empty/main-session `agent_type` included. Contrast
   with `reviewed-path-gate.sh`: that gate has a grant branch (the reviewer may
   write `.claude/reviewed/*.pass`, and a no-reviewer fallback exists for the main
-  session or the orchestrator persona); this gate has no grant branch and no fallback — no identity may ever
-  write a DECISION file, full stop. **Reads are allowed** in both gates, including
+  session or the orchestrator persona); this gate has no grant branch and no fallback — no identity
+  is ever allowed to write a DECISION file; the single exception, an `ask` that leaves the
+  write to a human at Claude Code's permission prompt, is in the amendment below. **Reads are allowed** in both gates, including
   read-only commands (e.g. `grep`, file read, stat), [[prose mention]]s of the
   protected paths in commit messages, **single-quoted patterns** in grep and other
   read commands, and trailing shell comments — but only when these represent
@@ -1955,14 +1956,17 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   write approval to make; bypassPermissions, dontAsk, an empty and an unknown
   mode deny. "Main session only" means "no `agent_id`", a premise that is
   unmeasured for agent-teams teammates
-  (`docs/plans/2026-10-02-escalation-followups.md` R4). The `Write`/`Edit`
+  (`docs/plans/2026-10-02-escalation-followups.md` R4): the identity probe
+  (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`)
+  observed no genuine teammate, so no gate change followed. The `Write`/`Edit`
   branch always denies a DECISION target. Config: the gate reads exactly one
   field, `reviewGating.mode`; under `off` it exits 0 (inert). Whether Claude
-  Code's Bash prompt shows the full heredoc is **pending the esc-chat-1
-  measurement** (see [[Ship gate]]). One pre-existing note, no security
+  Code's Bash prompt shows the full heredoc was measured with a probe hook,
+  not this gate (see [[Ship gate]]). One pre-existing note, no security
   impact: `is_sanctioned_marker_write`'s `[[:space:]]` between `cat` and `>`
-  may also match exotic Unicode spaces (U+3000, U+2000-200A) in a reviewer's
-  marker write; the reviewer already holds that grant.
+  may also match exotic Unicode spaces in a reviewer's marker write (under
+  C.UTF-8, U+3000 and U+2000-200A except U+2007 match; U+2007 does not); the
+  reviewer already holds that grant.
 
 **dashboard-originated decision write**:
 (unit #377, Step 7, 2026-08-31) — a **DECISION file** write that originates from
@@ -2030,8 +2034,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   `<ts> decision-gate-asked identity=<agent_type> task=<id> route=<route> mode=<permission_mode>`
   that `human-decision-gate.sh`'s `ask_decision()` appends to
   `.claude/review-audit.log` **before** the human answers the prompt. An asked
-  line with no DECISION file afterwards means the human declined (or the
-  approved write failed). There is no PostToolUse partner line; unlike the
+  line with no DECISION file afterwards means the human declined, the ask
+  was denied (including in a headless run, where no human answers), or the
+  approved write failed. There is no PostToolUse partner line; unlike the
   harness-integrity gate's [[asked audit record]], the evidence of completion
   is the DECISION file itself, whose body carries `via: prompt`.
 
@@ -2041,11 +2046,16 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   esc-chat-1 record (`docs/experiments/2026-10-01-probe-bash-ask.md`). GREEN
   needs, for each of default, acceptEdits and auto, an observed prompt, an
   observed fully visible heredoc and an observed decline that left no file,
-  plus three passing cleanup checks. **As of 2026-10-03 the operator has not
-  run the probe and the record does not exist**, so the
-  [[prompt-confirmed decision write]] is not released. RED in default (or a
-  heredoc that is not fully visible) returns the design to spec-master; RED
-  in acceptEdits or auto drops that mode (ADR-0039).
+  plus three passing cleanup checks. **The committed record (operator-run,
+  self-reported, CLI 2.1.287; later pane banners show v2.1.288) reads
+  `Ship gate: GREEN`**: all three modes met all three conditions, using the
+  probe's own always-ask hook, not `human-decision-gate.sh`. dontAsk and
+  bypassPermissions also prompted (informational), plan was not driven
+  (informational), and headless `-p` was denied. Not covered: the real gate
+  end to end, other CLI versions, teammates. The RED rules, which this
+  result did not trigger, were: RED in default (or a heredoc that is not
+  fully visible) returns the design to spec-master; RED in acceptEdits or
+  auto drops that mode (ADR-0039). A material CLI upgrade re-runs the probe.
 
 **flag tombstone**:
 (esf-flag-fix; named esc-chat-4, 2026-10-03) — the file
@@ -2062,7 +2072,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   than the hook's own writer re-created it after the hook deleted it. The
   drop (`state_drop_resurrected_flags`) deletes each such flag and logs
   `flag-resurrected-dropped=<id>` to `.claude/review-audit.log`. It runs at
-  every main-session `Stop` and at every `Agent` dispatch the reviewer-route
+  every main-session `Stop` except a re-entrant one (`stop_hook_active`
+  true, which `stop-gate.sh` allows early, before the drop's
+  `stop-gate-core.sh` is sourced) and at every `Agent` dispatch the reviewer-route
   gate sees (when the persona config exists and the dispatch names a
   target), including under review gating off. Related, same unit:
   the reviewer's `SubagentStop` clears one flag per satisfied review-join
