@@ -75,11 +75,15 @@ function assertNoNewline(value, label) {
 // esc-chat-2b: the via: 'prompt' body must be one the gate's
 // is_prompt_eligible_decision_write() accepts, so the composer can never put a
 // command in front of the human that the gate then refuses. Control characters
-// are the superset of [[:cntrl:]] across C and glibc UTF-8 locales (C0, DEL,
-// C1, U+2028/9), since the gate inherits its locale. The reserved-key screen is
-// ASCII case-insensitive (no `u` flag, matching the gate's [Vv][Ii][Aa] form).
-const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
+// are C0, DEL, C1 and U+2028/9, plus the zero-width and bidi characters
+// (esf-gate-bytes): exactly the gate's forbidden_bytes() set. The reserved-key
+// screen is ASCII case-insensitive (no `u` flag, matching the gate's
+// [Vv][Ii][Aa] form). A continuation line may not hold a non-ASCII character
+// before its first ASCII letter or digit (gate LEAD-NONASCII): a lookalike
+// space or a bidi control there could render the line as a reserved key.
+const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029\u200b-\u200f\u202a-\u202e\u2060\u2066-\u2069\ufeff\u061c]/;
 const RESERVED_KEY_RE = /^ *(decision |(by|via|examples|reason) *:)/i;
+const LEAD_NONASCII_RE = /^[^A-Za-z0-9]*[^\x00-\x7f]/;
 // The gate compares this prefix to $CLAUDE_PROJECT_DIR exactly; the class
 // keeps the unquoted redirect target free of whitespace, globs and expansions.
 const PROJECT_DIR_RE = /^(\/[A-Za-z0-9_.-]+)+$/;
@@ -97,6 +101,7 @@ function assertPromptBody(route, by, reason) {
   lines.forEach((line, i) => {
     if (CONTROL_RE.test(line)) throw new Error(`reason line ${i + 1} holds a control character: ${JSON.stringify(line)}`);
     if (i > 0 && RESERVED_KEY_RE.test(line)) throw new Error(`reason continuation line may not start with a reserved key: ${JSON.stringify(line)}`);
+    if (i > 0 && LEAD_NONASCII_RE.test(line)) throw new Error(`reason continuation line may not hold a non-ASCII character before its first ASCII letter or digit: ${JSON.stringify(line)}`);
   });
 }
 

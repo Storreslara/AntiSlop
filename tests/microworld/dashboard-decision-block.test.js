@@ -626,6 +626,44 @@ function promptCtx(over) { return Object.assign({}, PROMPT_BASE, over); }
   });
 });
 
+// esf-gate-bytes: zero-width and bidi characters are refused like controls,
+// and a continuation line may not lead with a non-ASCII character before its
+// first ASCII letter or digit (gate: forbidden_bytes, LEAD-NONASCII).
+[
+  ['C1 CSI', 'not ready\u009bvia'],
+  ['U+2029 paragraph separator', 'not ready\u2029via'],
+  ['U+200B zero-width space', 'not\u200bready'],
+  ['U+200D zero-width joiner', 'not\u200dready'],
+  ['U+200E LRM', 'not\u200eready'],
+  ['U+200F RLM', 'not\u200fready'],
+  ['U+202A LRE', 'not\u202aready'],
+  ['U+202E RLO', 'not\u202eready'],
+  ['U+2060 word joiner', 'not\u2060ready'],
+  ['U+2066 LRI', 'not\u2066ready'],
+  ['U+2069 PDI', 'not\u2069ready'],
+  ['U+FEFF BOM', 'not\ufeffready'],
+  ['U+061C ALM', 'not\u061cready'],
+].forEach(([label, reason]) => {
+  checkOk(`prompt: reason with ${label} rejected`, () => {
+    throws(() => composeEscalationDecisionBody(promptCtx({ route: 'reject', reason })), `expected a ${label} reason to throw on via: prompt`);
+  });
+});
+
+checkOk('prompt: by with U+202E RLO rejected', () => {
+  throws(() => composeEscalationDecisionBody(promptCtx({ route: 'reject', reason: 'x', by: 'Seb\u202eastian' })), 'expected a bidi by to throw on via: prompt');
+});
+
+[['NBSP', '\u00a0'], ['U+3000', '\u3000'], ['U+202E', '\u202e'], ['a non-ASCII letter', '\u00d1']].forEach(([label, lead]) => {
+  checkOk(`prompt: continuation led by ${label} rejected`, () => {
+    throws(() => composeEscalationDecisionBody(promptCtx({ route: 'direct', reason: `do this\n${lead}via: dashboard` })), `expected a continuation led by ${label} to throw on via: prompt`);
+  });
+});
+
+checkOk('prompt: non-ASCII text after an ASCII letter still composes', () => {
+  const { body } = composeEscalationDecisionBody(promptCtx({ route: 'direct', reason: 'do this\nr\u00e9sum\u00e9 follows' }));
+  assert(body.endsWith('reason: do this\nr\u00e9sum\u00e9 follows'), 'expected the non-ASCII continuation to compose unchanged');
+});
+
 checkOk('prompt: an ordinary continuation mentioning via still composes', () => {
   const { body } = composeEscalationDecisionBody(promptCtx({ route: 'direct', reason: 'do this\nvia the prompt, by hand\nByline: n/a' }));
   assert(body.endsWith('reason: do this\nvia the prompt, by hand\nByline: n/a'), 'expected the benign continuation to compose unchanged');
