@@ -135,6 +135,7 @@ gate, on claude 2.1.288 only, that the dialog shows the whole heredoc in
 default/acceptEdits/auto and that declining creates no file. Whether an
 agent-teams teammate can look like the main session is still unmeasured
 (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`).
+Limits of the record at 229138e (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block has a stray " settings.json to update hooks" fragment, and the plan run left a file outside the scratch dir.
 
 ## MCP scoping (a recurring gotcha)
 

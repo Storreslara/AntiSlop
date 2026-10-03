@@ -50,3 +50,4 @@
 - [gh354 final PASS completion](gh354_final_pass_completion.md) — Step 5 terminal verdict 2026-09-04; 3 glossary entries + ADR-0030 + D8 staleness record + 5 reviewer non-blocking notes (self-ref pattern, scope tension, filename slug, gitignore/cleanup gaps, gate over-match)
 - [gh426 closure](gh426_microworld_citation_closure.md) — CONTEXT.md "Microworld dashboard" glossary entry corrected: README.md:177 → README.md:263 (live line confirmed); verified no other stale README.md:NNN citations remain
 - [gh427 closure](gh427_dashboard_comment_citations_closure.md) — bin/microworld-dashboard/ test-path comment citations repointed: tests/dashboard-*.test.js → tests/microworld/dashboard-*.test.js (4 total: 2 in decision-block.js, 2 in index.html); repo-wide grep confirms no lingering old-path references in code
+- [esc-chat-6 completion](project_esc_chat_6_completion.md) — docs cleanup; U+2028/2029 also match [[:space:]]; validate.sh flaked twice then green

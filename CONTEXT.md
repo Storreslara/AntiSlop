@@ -1047,7 +1047,7 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   multi-line command, and declining created no file; headless `-p` denied
   the call. The record reads `Ship gate: GREEN`. Not measured: the real
   gate end to end in a live escalation, other CLI versions, teammate
-  identity. See [[The human-decision gate]] and [[prompt-eligible]].
+  identity. Limits of the record at 229138e (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block has a stray " settings.json to update hooks" fragment, and the plan run left a file outside the scratch dir. See [[The human-decision gate]] and [[prompt-eligible]].
 _Avoid_: prompt-gated in-session escalation decision write, main-session
   prompt route, prompt route, in-session decision write (all name this same
   path; use "prompt-confirmed decision write", and `via: prompt` only for the

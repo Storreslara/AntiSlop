@@ -171,7 +171,7 @@ that passed review after a first record failed it on evidence): on Claude Code
 gate) on a Bash heredoc rendered a permission dialog showing the full
 multi-line command, declining created no file, and a headless `-p` run was
 denied. It did not exercise the real gate end to end in a live escalation or
-any other Claude Code version (ADR-0039). "Only from the main session"
+any other Claude Code version (ADR-0039). Evidence limits of the current record (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block carries a stray " settings.json to update hooks" fragment, and the plan run left a file outside the scratch dir. "Only from the main session"
 means "no `agent_id`"; whether an agent-teams teammate can also lack one is
 unmeasured (`docs/plans/2026-10-02-escalation-followups.md` R4): the identity
 probe (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`)

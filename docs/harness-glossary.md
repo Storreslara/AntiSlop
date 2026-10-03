@@ -1928,8 +1928,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   with `reviewed-path-gate.sh`: that gate has a grant branch (the reviewer may
   write `.claude/reviewed/*.pass`, and a no-reviewer fallback exists for the main
   session or the orchestrator persona); this gate has no grant branch and no fallback — no identity
-  is ever allowed to write a DECISION file; the single exception, an `ask` that leaves the
-  write to a human at Claude Code's permission prompt, is in the amendment below. **Reads are allowed** in both gates, including
+  is ever granted a DECISION write; the single exception, an `ask` that leaves the
+  write to a human approving its exact bytes at Claude Code's permission prompt (never an `allow`), is in the amendment below. **Reads are allowed** in both gates, including
   read-only commands (e.g. `grep`, file read, stat), [[prose mention]]s of the
   protected paths in commit messages, **single-quoted patterns** in grep and other
   read commands, and trailing shell comments — but only when these represent
@@ -1965,7 +1965,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   not this gate, on claude 2.1.288 only (see [[Ship gate]]). One pre-existing note, no security
   impact: `is_sanctioned_marker_write`'s `[[:space:]]` between `cat` and `>`
   may also match exotic Unicode spaces in a reviewer's marker write (under
-  C.UTF-8, U+3000 and U+2000-200A except U+2007 match; U+2007 does not); the
+  C.UTF-8, U+1680, U+2000-200A except U+2007, U+2028, U+2029, U+205F and U+3000 match; U+2007 does not, measured in bash); the
   reviewer already holds that grant.
 
 **dashboard-originated decision write**:
@@ -2257,12 +2257,12 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   raw text contains both [[trigger token]]s, because these contexts are inert to
   bash execution. In contrast, a command that targets the path for a write
   (`printf x > .claude/human-review/id/DECISION`, `sh -c 'printf x > DECISION'`)
-  is denied unconditionally. Both [[The human-decision gate]] and
+  is denied (a lone strictly parsed heredoc from the main session is the one case this gate turns into an `ask`, see [[Ship gate]]; every other write form stays hard-denied). Both [[The human-decision gate]] and
   `reviewed-path-gate.sh` apply this distinction via gate-local allowances that
   check whether tokens survive into the command skeleton's CODE text (prose,
   single-quoted spans, and comments are masked and ignored). This is the design
   principle that closes false-positive denials of reads and inert narration while
-  preserving the invariant that no agent can write the protected paths.
+  preserving the invariant that no agent can complete a protected-path write without a human approving its bytes (for the DECISION file, ADR-0039; every other protected path stays hard-denied).
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings

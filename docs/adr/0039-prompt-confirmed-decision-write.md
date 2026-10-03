@@ -120,7 +120,7 @@ supersedes cbb918e.
 - a **probe** PreToolUse hook that always answers `permissionDecision: "ask"`
   for Bash, in a scratch directory outside the repo; not
   `human-decision-gate.sh` itself;
-- in **default, acceptEdits and auto**, a 7-line Bash heredoc rendered a
+- in **default, acceptEdits and auto**, an 8-line heredoc command (the `cat > out.txt <<'EOF'` line, six body lines, the closing `EOF`) rendered a
   permission dialog showing the full multi-line command (` Bash command`
   header, the whole `cat > out.txt <<'EOF'` … `EOF` box, "Do you want to
   proceed?"), and declining created no file;
