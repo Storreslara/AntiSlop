@@ -991,8 +991,8 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   main session may make the [[prompt-confirmed decision write]], which the
   gate only ever *asks* about, so on that path the orchestrator's Bash call
   writes the file only after a human's Yes at Claude Code's permission
-  prompt (the esc-chat-1 record measured that prompt with a probe hook; see
-  that entry). On a later re-dispatch the reviewer
+  prompt (whether that prompt shows the full heredoc is pending a
+  re-measurement; see that entry). On a later re-dispatch the reviewer
   verifies it exists at the packet path, parses its first line, checks the
   task-id matches and the [[Staleness binding]] holds, then **transcribes** it
   — never re-reviews it — into one of three terminal routes (see [[DECISION
@@ -1037,14 +1037,16 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   bypassPermissions and dontAsk deny because a silent auto-approve there
   would go undetected), and only against a standing `.escalated` marker with
   no DECISION file yet. Any deny falls back to the terminal route. The
-  premise that the human sees the exact bytes at the prompt was measured by
-  the operator-run esc-chat-1 probe
-  (`docs/experiments/2026-10-01-probe-bash-ask.md`, self-reported, CLI
-  2.1.287): with a probe hook that always asks, in default, acceptEdits and
-  auto, a 7-line Bash heredoc showed in full at the prompt and declining left
-  no file; a headless `-p` run was denied. The record reads `Ship gate:
-  GREEN`. It did not exercise the real gate end to end, other CLI versions,
-  or teammates. See [[The human-decision gate]] and [[prompt-eligible]].
+  premise that the human sees the exact bytes at the prompt is **pending a
+  re-measurement**: an operator run of the esc-chat-1 probe exists
+  (`docs/experiments/2026-10-01-probe-bash-ask.md`, self-reported, a probe
+  hook that always asks, not this gate; the run spanned CLI 2.1.287 and
+  2.1.288) and its script graded it `Ship gate: GREEN`, but review FAILed
+  the record on evidence: its prompt-rendered and decline rows are
+  corroborated only by off-record CLI transcripts, and its rows saying the
+  full heredoc was visible are not supported by its own appendix. A re-run with a fixed
+  script that saves the dialog text is pending. See [[The human-decision
+  gate]] and [[prompt-eligible]].
 _Avoid_: prompt-gated in-session escalation decision write, main-session
   prompt route, prompt route, in-session decision write (all name this same
   path; use "prompt-confirmed decision write", and `via: prompt` only for the
