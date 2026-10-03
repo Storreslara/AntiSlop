@@ -29,10 +29,10 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
    `stop-gate.sh` (done = reviewer PASS, not "I think I'm done"),
    `reviewer-route-gate.sh` (lead-programmer can't route around the
    reviewer), `reviewed-path-gate.sh` (only the reviewer writes
-   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (no agent can
-   complete a `DECISION` write without a human approving its bytes; its one
+   `.claude/reviewed/*.pass`), `human-decision-gate.sh` (with review gating
+   on, no agent can complete a `DECISION` write without a human approving its bytes; its one
    non-deny branch is an `ask` for the main session's prompt-confirmed
-   decision write — see "Agent-unwritable path as consent proof" below),
+   decision write — see "Human-approved path as consent proof" below),
    `protected-paths.sh`
    (migrations/lockfiles need human approval), `graph-update.sh` +
    `lint-on-edit.sh` (keep the graph and formatting current on every edit),
@@ -108,7 +108,9 @@ The dashboard (`node bin/cli.js --dashboard`) is the plugin's first long-running
 
 **Root-confined source read:** The **Source excerpt** pane renders code snippets for function **Location** fields declared in `manifest.json`. The `location.file` path is validated (no `../` traversal, must be inside the repo root) before reading. File paths are author-declared in gitignored manifests; this is an accepted authorship-unverifiability cost (R1), mitigated by path-traversal validation at read time.
 
-## Agent-unwritable path as consent proof
+## Human-approved path as consent proof
+
+(Agent-unwritable until ADR-0039 narrowed it, 2026-10-03; see below.)
 
 Every gate before `human-decision-gate.sh` (issue #325, 2026-08-11) followed
 the same shape: block most callers, **grant** one privileged identity through
@@ -135,7 +137,7 @@ gate, on claude 2.1.288 only, that the dialog shows the whole heredoc in
 default/acceptEdits/auto and that declining creates no file. Whether an
 agent-teams teammate can look like the main session is still unmeasured
 (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`).
-Limits of the record at 229138e (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block has a stray " settings.json to update hooks" fragment, and the plan run left a file outside the scratch dir.
+Limits of the record at 229138e (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block has a stray " settings.json to update hooks" fragment, and, a limit the record does not document, the plan run left a file outside the scratch dir.
 
 ## MCP scoping (a recurring gotcha)
 

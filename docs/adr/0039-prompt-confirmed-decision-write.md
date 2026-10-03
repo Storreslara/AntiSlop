@@ -120,7 +120,7 @@ supersedes cbb918e.
 - a **probe** PreToolUse hook that always answers `permissionDecision: "ask"`
   for Bash, in a scratch directory outside the repo; not
   `human-decision-gate.sh` itself;
-- in **default, acceptEdits and auto**, an 8-line heredoc command (the `cat > out.txt <<'EOF'` line, six body lines, the closing `EOF`) rendered a
+- in **default, acceptEdits and auto**, an 8-line heredoc command (the `cat > out.txt <<'EOF'` line, six body lines, the closing `EOF`; the record's Method text counts the request as a 7-line heredoc: the dialog box shows 8 lines) rendered a
   permission dialog showing the full multi-line command (` Bash command`
   header, the whole `cat > out.txt <<'EOF'` … `EOF` box, "Do you want to
   proceed?"), and declining created no file;
@@ -139,8 +139,8 @@ teammate identity (Outcome D above; still unmeasured).
 does not capture (corroborated off-record by CLI transcripts showing the
 heredoc rejected with "The user doesn't want to proceed"); each dialog block
 carries a stray " settings.json to update hooks" render fragment outside the
-command box (harmless); the plan run wrote a plan file outside the scratch
-directory.
+command box (harmless); and, a limit the record does not document, the
+plan run wrote a plan file outside the scratch directory.
 
 The decision rule the re-run was judged against; GREEN triggered neither RED
 branch:

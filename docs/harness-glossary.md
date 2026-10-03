@@ -1962,11 +1962,14 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   branch always denies a DECISION target. Config: the gate reads exactly one
   field, `reviewGating.mode`; under `off` it exits 0 (inert). Whether Claude
   Code's Bash prompt shows the full heredoc was measured with a probe hook,
-  not this gate, on claude 2.1.288 only (see [[Ship gate]]). One pre-existing note, no security
-  impact: `is_sanctioned_marker_write`'s `[[:space:]]` between `cat` and `>`
-  may also match exotic Unicode spaces in a reviewer's marker write (under
-  C.UTF-8, U+1680, U+2000-200A except U+2007, U+2028, U+2029, U+205F and U+3000 match; U+2007 does not, measured in bash); the
-  reviewer already holds that grant.
+  not this gate, on claude 2.1.288 only (see [[Ship gate]]). A closed note:
+  at 60b454f, `is_sanctioned_marker_write`'s `[[:space:]]` separators also
+  matched Unicode spaces under a UTF-8 locale (under C.UTF-8: U+1680,
+  U+2000-200A except U+2007, U+2028, U+2029, U+205F and U+3000; measured in
+  bash), so a reviewer's marker write spelled with one reached allow. 9b98f10
+  (esf-hardening-3) closed it with `local LC_ALL=C` in that function; only
+  space and tab still reach allow, and PG23 in `tests/human-decision-gate.test.sh` is
+  the regression test.
 
 **dashboard-originated decision write**:
 (unit #377, Step 7, 2026-08-31) — a **DECISION file** write that originates from
@@ -2061,7 +2064,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   gate end to end, other CLI versions, teammate identity. **Evidence
   limits:** Decline is a filesystem check the record does not capture
   (corroborated off-record by CLI transcripts); each dialog block has a
-  stray " settings.json to update hooks" render fragment (harmless); the
+  stray " settings.json to update hooks" render fragment (harmless); and, a limit the record does not document, the
   plan run wrote a plan file outside the scratch dir. The RED rules, which
   this result did not trigger: RED in default (or a heredoc that is not
   fully visible) returns the design to spec-master; RED in acceptEdits or
@@ -2257,12 +2260,22 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   raw text contains both [[trigger token]]s, because these contexts are inert to
   bash execution. In contrast, a command that targets the path for a write
   (`printf x > .claude/human-review/id/DECISION`, `sh -c 'printf x > DECISION'`)
-  is denied (a lone strictly parsed heredoc from the main session is the one case this gate turns into an `ask`, see [[Ship gate]]; every other write form stays hard-denied). Both [[The human-decision gate]] and
+  is denied. In [[The human-decision gate]], with review gating on, the one
+  exception is a lone strictly parsed DECISION heredoc from the main session,
+  which the gate turns into an `ask`, see [[prompt-eligible]]; every other
+  command whose text carries both [[trigger token]]s and that no allowance
+  clears is denied (the F-1 residual class never spells a trigger token, so
+  it never arms the gate). Under `reviewGating.mode: off` that gate exits 0
+  and denies nothing. Both [[The human-decision gate]] and
   `reviewed-path-gate.sh` apply this distinction via gate-local allowances that
   check whether tokens survive into the command skeleton's CODE text (prose,
   single-quoted spans, and comments are masked and ignored). This is the design
   principle that closes false-positive denials of reads and inert narration while
-  preserving the invariant that no agent can complete a protected-path write without a human approving its bytes (for the DECISION file, ADR-0039; every other protected path stays hard-denied).
+  preserving each gate's own write rule: with review gating on, no agent can
+  complete a DECISION write without a human approving its bytes (ADR-0039);
+  `.claude/reviewed/` is not human-approved but granted, since
+  `reviewed-path-gate.sh` lets the reviewer write there, and the main session
+  too when no reviewer persona is selected (see [[The human-decision gate]]).
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings
