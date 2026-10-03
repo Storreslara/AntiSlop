@@ -1961,8 +1961,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   observed no genuine teammate, so no gate change followed. The `Write`/`Edit`
   branch always denies a DECISION target. Config: the gate reads exactly one
   field, `reviewGating.mode`; under `off` it exits 0 (inert). Whether Claude
-  Code's Bash prompt shows the full heredoc was measured with a probe hook,
-  not this gate (see [[Ship gate]]). One pre-existing note, no security
+  Code's Bash prompt shows the full heredoc is **pending a re-measurement**
+  (see [[Ship gate]]). One pre-existing note, no security
   impact: `is_sanctioned_marker_write`'s `[[:space:]]` between `cat` and `>`
   may also match exotic Unicode spaces in a reviewer's marker write (under
   C.UTF-8, U+3000 and U+2000-200A except U+2007 match; U+2007 does not); the
@@ -2046,16 +2046,35 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   esc-chat-1 record (`docs/experiments/2026-10-01-probe-bash-ask.md`). GREEN
   needs, for each of default, acceptEdits and auto, an observed prompt, an
   observed fully visible heredoc and an observed decline that left no file,
-  plus three passing cleanup checks. **The committed record (operator-run,
-  self-reported, CLI 2.1.287; later pane banners show v2.1.288) reads
-  `Ship gate: GREEN`**: all three modes met all three conditions, using the
-  probe's own always-ask hook, not `human-decision-gate.sh`. dontAsk and
-  bypassPermissions also prompted (informational), plan was not driven
-  (informational), and headless `-p` was denied. Not covered: the real gate
-  end to end, other CLI versions, teammates. The RED rules, which this
-  result did not trigger, were: RED in default (or a heredoc that is not
-  fully visible) returns the design to spec-master; RED in acceptEdits or
-  auto drops that mode (ADR-0039). A material CLI upgrade re-runs the probe.
+  plus three passing cleanup checks. An operator run exists (commit cbb918e,
+  self-reported, using the probe's own always-ask hook, not
+  `human-decision-gate.sh`; the run spanned CLI 2.1.287 for default and plan
+  and 2.1.288 for the rest, though its Version line says 2.1.287) and the
+  script graded it `Ship gate: GREEN`. **Review FAILed that record on
+  evidence**: the prompt-rendered and decline rows are corroborated only by
+  off-record CLI transcripts, and the full-heredoc-visible rows have no
+  support in the record's own appendix, because the script saved each pane
+  only after the decline, when the dialog was gone. The ship gate therefore
+  awaits a re-run with a fixed script that saves the dialog text, and the
+  [[prompt-confirmed decision write]]'s full-heredoc premise stays pending.
+  RED in default (or a heredoc that is not fully visible) returns the design
+  to spec-master; RED in acceptEdits or auto drops that mode (ADR-0039). A
+  material CLI upgrade re-runs the probe.
+
+**subagent-shaped**:
+(esf-eid-probe; named esc-chat-5, 2026-10-03) — the `Teammate check:` value
+  that `scripts/probe-hook-identity.sh` gives a would-be teammate whose hook
+  payload looks exactly like a subagent's: it has an `agent_id`, the lead's
+  `session_id`, a `SubagentStop` with that `agent_id` and `session_id`, and
+  no payload key the subagent control lacks. Such a candidate is not counted
+  as a genuine agent-teams teammate, so the record's outcome is D (no gate
+  change). The 2026-10-03 identity record
+  (`docs/experiments/2026-10-03-probe-hook-identity.md`) reads
+  `Teammate check: subagent-shaped`, `Outcome: D`. Limit, stated by the
+  script: a real in-process teammate that carries those same fields cannot
+  be told from a subagent, which is conservative because both gates already
+  deny any non-empty `agent_id`. Not evidence about whether a teammate can
+  lack an `agent_id` (that premise stays unmeasured; followups plan R4).
 
 **flag tombstone**:
 (esf-flag-fix; named esc-chat-4, 2026-10-03) — the file
