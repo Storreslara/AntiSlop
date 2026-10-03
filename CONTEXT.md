@@ -991,8 +991,8 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   main session may make the [[prompt-confirmed decision write]], which the
   gate only ever *asks* about, so on that path the orchestrator's Bash call
   writes the file only after a human's Yes at Claude Code's permission
-  prompt (whether that prompt shows the full heredoc is
-  pending a re-measurement; see that entry). On a later re-dispatch the reviewer
+  prompt (that the prompt shows the full heredoc was measured with a probe
+  hook on one CLI version; see that entry). On a later re-dispatch the reviewer
   verifies it exists at the packet path, parses its first line, checks the
   task-id matches and the [[Staleness binding]] holds, then **transcribes** it
   — never re-reviews it — into one of three terminal routes (see [[DECISION
@@ -1037,16 +1037,17 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   bypassPermissions and dontAsk deny because a silent auto-approve there
   would go undetected), and only against a standing `.escalated` marker with
   no DECISION file yet. Any deny falls back to the terminal route. The
-  premise that the human sees the exact bytes at the prompt is
-  **pending a re-measurement**: an operator run of the esc-chat-1 probe exists
-  (`docs/experiments/2026-10-01-probe-bash-ask.md`, self-reported, a probe
-  hook that always asks, not this gate; the run spanned CLI 2.1.287 and
-  2.1.288) and its script graded it `Ship gate: GREEN`, but review FAILed
-  the record on evidence: its prompt-rendered and decline rows are
-  corroborated only by off-record CLI transcripts, and its rows saying the
-  full heredoc was visible are not supported by its own appendix. A re-run with a fixed
-  script that saves the dialog text is pending. See [[The human-decision
-  gate]] and [[prompt-eligible]].
+  premise that the human sees the exact bytes at the prompt was measured by
+  the operator's re-run of the esc-chat-1 probe
+  (`docs/experiments/2026-10-01-probe-bash-ask.md` at 229138e,
+  self-reported, passed review; it supersedes a first record that failed
+  review on evidence): on claude 2.1.288 only, in default, acceptEdits and
+  auto, a probe hook answering `ask` on a Bash heredoc (not the
+  human-decision gate itself) rendered a permission dialog showing the full
+  multi-line command, and declining created no file; headless `-p` denied
+  the call. The record reads `Ship gate: GREEN`. Not measured: the real
+  gate end to end in a live escalation, other CLI versions, teammate
+  identity. See [[The human-decision gate]] and [[prompt-eligible]].
 _Avoid_: prompt-gated in-session escalation decision write, main-session
   prompt route, prompt route, in-session decision write (all name this same
   path; use "prompt-confirmed decision write", and `via: prompt` only for the
