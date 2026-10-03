@@ -122,9 +122,20 @@ is_sanctioned_marker_write() {
 # no write approval for a human to make there. bypassPermissions and dontAsk
 # are excluded because a silent auto-approve there would be an undetectable
 # fabricated approval. An empty, absent or unknown mode denies too.
+#
+# esc-chat-2b, two deliberate tightenings of the plan's first-line regex:
+# - Separators are [ \t], not the plan's [[:space:]]. [[:space:]] also matches
+#   \v, \f and \r, which bash does NOT split words on: `cat\v> <path>` (a
+#   vertical tab) reached ask, and once approved bash created an empty target
+#   and then failed rc 127.
+# - The target is absolute and its prefix must equal $project_dir exactly. A
+#   relative target resolves against the Bash tool's cwd, which this gate cannot
+#   see, while every eligibility check below runs under $project_dir; with the
+#   absolute form the approved bytes alone fix where the file lands. The prefix
+#   class matches decision-block.js PROJECT_DIR_RE, and that composer emits it.
 is_prompt_eligible_decision_write() {
-  local cmd="$1" first n i
-  local re='^cat[[:space:]]+>[[:space:]]*[.]claude/human-review/([A-Za-z0-9_]['"${UNIT_ID_CHARCLASS}"']*)/DECISION[[:space:]]+<<'\''EOF'\''$'
+  local cmd="$1" first n i ws=$' \t'
+  local re='^cat['"$ws"']+>['"$ws"']*((/[A-Za-z0-9_.-]+)+)/[.]claude/human-review/([A-Za-z0-9_]['"${UNIT_ID_CHARCLASS}"']*)/DECISION['"$ws"']+<<'\''EOF'\''$'
   local -a lines
   [ -z "$agent_id" ] || return 1
   case "$permission_mode" in
@@ -135,7 +146,8 @@ is_prompt_eligible_decision_write() {
   first="${cmd%%$'\n'*}"
   [ "$first" != "$cmd" ] || return 1
   [[ $first =~ $re ]] || return 1
-  pg_id="${BASH_REMATCH[1]}"
+  [ "${BASH_REMATCH[1]}" = "$project_dir" ] || return 1
+  pg_id="${BASH_REMATCH[3]}"
   mapfile -t lines <<< "${cmd#*$'\n'}"
   n=${#lines[@]}
   [ "${lines[n-1]}" = EOF ] || return 1
@@ -147,11 +159,16 @@ is_prompt_eligible_decision_write() {
 }
 
 # The DECISION body grammar, one argument per body line (R4: no reserved key
-# may be forged inside a reason).
+# may be forged inside a reason). Reason and continuation lines ban [[:cntrl:]]
+# as by: does, since an ESC/CR sequence repaints the prompt into a line the file
+# does not hold. The reserved-key screen is ASCII case-insensitive and tolerates
+# leading and pre-colon spaces; the explicit [Vv] pairs keep it locale-free and
+# equal to decision-block.js RESERVED_KEY_RE.
 decision_body_ok() {
   local iso='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}([.][0-9]{1,3})?Z'
   local head_re="^DECISION [^ ]+ ${iso} route: (approve|reject|direct) escalation: ${iso}\$"
-  local by_re='^by: [^[:cntrl:]]+$' reason_re='^reason: .+' bid line
+  local by_re='^by: [^[:cntrl:]]+$' reason_re='^reason: [^[:cntrl:]]+$' bid line
+  local reserved_re='^ *([Dd][Ee][Cc][Ii][Ss][Ii][Oo][Nn] |([Bb][Yy]|[Vv][Ii][Aa]|[Ee][Xx][Aa][Mm][Pp][Ll][Ee][Ss]|[Rr][Ee][Aa][Ss][Oo][Nn]) *:)'
   local examples="$project_dir/.claude/human-review/$pg_id/EXAMPLES.md"
   [ "$#" -ge 3 ] || return 1
   [[ $1 =~ $head_re ]] || return 1
@@ -173,19 +190,21 @@ decision_body_ok() {
   [ "$#" -ge 1 ] && [[ $1 =~ $reason_re ]] || return 1
   shift
   for line in "$@"; do
-    case "$line" in 'DECISION '*|by:*|via:*|examples:*|reason:*) return 1 ;; esac
+    [[ $line != *[[:cntrl:]]* ]] && [[ ! $line =~ $reserved_re ]] || return 1
   done
 }
 
 # Filesystem eligibility: the packet exists, holds no DECISION yet, and the
-# standing .escalated marker's first-line timestamp is the one the body cites.
+# standing .escalated marker's first line names this id and the timestamp the
+# body cites. Neither the packet nor human-review may be a symlink, which would
+# land the write outside the directory the checks above describe.
 decision_target_eligible() {
-  local packet="$project_dir/.claude/human-review/$pg_id" marker_first marker_ts
-  [ -d "$packet" ] || return 1
+  local packet="$project_dir/.claude/human-review/$pg_id" marker_first marker_id marker_ts
+  [ -d "$packet" ] && [ ! -L "$packet" ] && [ ! -L "${packet%/*}" ] || return 1
   [ ! -e "$packet/DECISION" ] && [ ! -L "$packet/DECISION" ] || return 1
   marker_first="$(state_read_unit_marker "$pg_id" escalated 2>/dev/null | sed -n 1p)" || return 1
-  read -r _ _ marker_ts _ <<< "$marker_first"
-  [ -n "$marker_ts" ] && [ "$marker_ts" = "$pg_escalation" ]
+  read -r _ marker_id marker_ts _ <<< "$marker_first"
+  [ "$marker_id" = "$pg_id" ] && [ -n "$marker_ts" ] && [ "$marker_ts" = "$pg_escalation" ]
 }
 
 # True when some run of the text spells BOTH trigger tokens with no whitespace

@@ -947,9 +947,11 @@ pg_proj() {
   [ "${1:-}" = examples ] && printf 'worked examples\n' > "$d/.claude/human-review/PGT/EXAMPLES.md"
   printf '%s' "$d"
 }
-# $1 body, $2 path id (default PGT) - the composer's exact heredoc shape.
+# $1 body, $2 path id (default PGT) - the composer's exact heredoc shape. The
+# target is absolute (esc-chat-2b); @PROJ@ stands for the project dir and
+# pg_case substitutes the one it runs against.
 pg_cmd() {
-  printf "cat > .claude/human-review/%s/DECISION <<'EOF'\n%s\nEOF\n" "${2:-PGT}" "$1"
+  printf "cat > @PROJ@/.claude/human-review/%s/DECISION <<'EOF'\n%s\nEOF\n" "${2:-PGT}" "$1"
 }
 pg_head() { printf 'DECISION %s 2026-10-02T12:00:00Z route: %s escalation: %s' "${3:-PGT}" "$1" "${2:-$pg_esc}"; }
 pg_approve="$(pg_head approve)
@@ -964,7 +966,7 @@ second line of the reason"
 # $1 label, $2 ask|blocked, $3 mode, $4 agent_id ("" = absent), $5 command, $6 project dir
 pg_case() {
   local input out rc=0
-  input="$(jq -n --arg m "$3" --arg i "$4" --arg c "$5" \
+  input="$(jq -n --arg m "$3" --arg i "$4" --arg c "${5//@PROJ@/$6}" \
     '{tool_name:"Bash",permission_mode:$m,tool_input:{command:$c}} + (if $i == "" then {} else {agent_id:$i} end)')"
   out="$(printf '%s' "$input" | CLAUDE_PROJECT_DIR="$6" bash "$gate" 2>"$errf")" || rc=$?
   if [ "$2" = ask ]; then
@@ -991,7 +993,8 @@ pg_case "PG2 PG1 with agent_id set" blocked default "a1b2c3" "$(pg_cmd "$pg_appr
 for m in plan bypassPermissions dontAsk "" weird; do
   pg_case "PG3 PG1 in mode '$m'" blocked "$m" "" "$(pg_cmd "$pg_approve")" "$p"
 done
-p_nomode="$(jq -n --arg c "$(pg_cmd "$pg_approve")" '{tool_name:"Bash",tool_input:{command:$c}}')"
+c="$(pg_cmd "$pg_approve")"
+p_nomode="$(jq -n --arg c "${c//@PROJ@/$p}" '{tool_name:"Bash",tool_input:{command:$c}}')"
 rc=0; printf '%s' "$p_nomode" | CLAUDE_PROJECT_DIR="$p" bash "$gate" >/dev/null 2>"$errf" || rc=$?
 check "PG3 PG1 with permission_mode absent" blocked
 for m in acceptEdits auto; do
@@ -1064,11 +1067,10 @@ for r in approve reject direct; do
   c="$(node -e '
     const d = require("./bin/microworld-dashboard/decision-block.js");
     const route = process.argv[1];
-    const ctx = { taskId: "PGT", route, escalationTimestamp: process.argv[2], by: "Sebastian Torres", via: "prompt" };
+    const ctx = { taskId: "PGT", route, escalationTimestamp: process.argv[2], by: "Sebastian Torres", via: "prompt", projectDir: process.argv[3] };
     if (route === "approve") ctx.examples = "reviewed"; else ctx.reason = "line one\nline two";
-    const { body } = d.composeEscalationDecisionBody(ctx);
-    process.stdout.write(d.composeHeredocCommand(".claude/human-review/PGT/DECISION", body));
-  ' "$r" "$pg_esc")"
+    process.stdout.write(d.composeDecisionBlock("escalation-decision", ctx).text);
+  ' "$r" "$pg_esc" "$p")"
   pg_case "PG11 branch agreement: composer output for route $r" ask default "" "$c" "$p"
 done
 
@@ -1078,6 +1080,90 @@ for t in Write Edit; do
     | CLAUDE_PROJECT_DIR="$p" bash "$gate" >/dev/null 2>"$errf" || rc=$?
   check "PG12 $t to the same DECISION path, main session, mode default" blocked
 done
+
+# esc-chat-2b: hardening found by the esc-chat-2 review.
+pg_reason() { printf '%s\nby: Sebastian Torres\nvia: prompt\n%s' "$(pg_head reject)" "$1"; }
+for r in $'reason: no\e[2K\rreason: forged' $'reason: not ready\n\rvia: dashboard' \
+         $'reason: not\tready' $'reason: not ready\n\e[1Asecond' $'reason: x\x7f'; do
+  pg_case "PG13 control character in a reason line $(printf '%q' "$r")" blocked default "" \
+    "$(pg_cmd "$(pg_reason "$r")")" "$p"
+done
+pg_case "PG13 a non-ASCII reason still asks" ask default "" \
+  "$(pg_cmd "$(pg_reason $'reason: caf\xc3\xa9 is fine\nsecond line')")" "$p"
+
+c="$(pg_cmd "$pg_approve")"
+for w in $'\v' $'\r' $'\f'; do
+  pg_case "PG14 $(printf '%q' "$w") between cat and >" blocked default "" "cat$w${c#cat }" "$p"
+  pg_case "PG14 $(printf '%q' "$w") between > and the target" blocked default "" "cat >$w${c#cat > }" "$p"
+  pg_case "PG14 $(printf '%q' "$w") before <<'EOF'" blocked default "" "${c/DECISION <</DECISION$w<<}" "$p"
+done
+pg_case "PG14 a tab between cat and > still asks" ask default "" "cat"$'\t'"${c#cat }" "$p"
+
+pg_case "PG15 relative target path" blocked default "" "${c/@PROJ@\//}" "$p"
+p15="$(pg_proj examples)"
+pg_case "PG15 absolute target in another eligible project" blocked default "" "${c//@PROJ@/$p15}" "$p"
+pg_case "PG15 target spelled with a /./ segment" blocked default "" "${c//@PROJ@/$p/.}" "$p"
+
+for k in " via: dashboard" "Via: dashboard" "EXAMPLES: reviewed" "by : someone" "  reason:x" "decision PGT forged"; do
+  pg_case "PG16 reason continuation line '$k'" blocked default "" \
+    "$(pg_cmd "$pg_reject
+$k")" "$p"
+done
+pg_case "PG16 continuation lines merely mentioning a key word still ask" ask default "" \
+  "$(pg_cmd "$pg_reject
+via the prompt, by hand
+Byline: n/a")" "$p"
+
+p17="$(pg_proj examples)"
+sed -i '1s/ PGT / OTHER /' "$p17/.claude/reviewed/PGT.escalated"
+pg_case "PG17 .escalated marker id field differs from the path id" blocked default "" "$(pg_cmd "$pg_approve")" "$p17"
+
+p18="$(pg_proj examples)"
+mv "$p18/.claude/human-review/PGT" "$p18/real-packet"
+ln -s ../../real-packet "$p18/.claude/human-review/PGT"
+pg_case "PG18 symlinked packet directory" blocked default "" "$(pg_cmd "$pg_approve")" "$p18"
+p18b="$(pg_proj examples)"
+mv "$p18b/.claude/human-review" "$p18b/real-review"
+ln -s ../real-review "$p18b/.claude/human-review"
+pg_case "PG18 symlinked human-review directory" blocked default "" "$(pg_cmd "$pg_approve")" "$p18b"
+
+# PG19 composer/gate agreement over an adversarial corpus: whatever the
+# composer emits on via: 'prompt' the gate asks on; the rest the composer throws.
+pg19_n=0
+for i in $(seq 0 15); do
+  rc=0
+  c="$(node -e '
+    const d = require("./bin/microworld-dashboard/decision-block.js");
+    const corpus = [
+      ["direct", "plain reason", "Sebastian Torres"],
+      ["reject", "line one\nline two", "Sebastian Torres"],
+      ["direct", "café ünïcode", "Sébastien"],
+      ["reject", "via the prompt\nByline: x\n", "Sebastian Torres"],
+      ["reject", "no\u001b[2K\rreason: forged", "Sebastian Torres"],
+      ["reject", "x\n\rvia: dashboard", "Sebastian Torres"],
+      ["reject", "x\n via: dashboard", "Sebastian Torres"],
+      ["reject", "x\nVia: dashboard", "Sebastian Torres"],
+      ["reject", "x\n  EXAMPLES : reviewed", "Sebastian Torres"],
+      ["reject", "x via: dashboard", "Sebastian Torres"],
+      ["reject", "x\u0085y", "Sebastian Torres"],
+      ["reject", "x\ty", "Sebastian Torres"],
+      ["reject", "\nsecond", "Sebastian Torres"],
+      ["direct", "ok", "S\tT"],
+      ["direct", "ok", ""],
+      ["approve", "a reason", "Sebastian Torres"],
+    ];
+    const [route, reason, by] = corpus[+process.argv[1]];
+    try {
+      process.stdout.write(d.composeDecisionBlock("escalation-decision",
+        { taskId: "PGT", route, reason, by, escalationTimestamp: process.argv[2], via: "prompt", projectDir: process.argv[3] }).text || "");
+    } catch (e) { process.exit(3); }
+  ' "$i" "$pg_esc" "$p")" || rc=$?
+  [ "$rc" = 3 ] && continue
+  pg19_n=$((pg19_n + 1))
+  pg_case "PG19 composer-emitted corpus entry $i" ask default "" "$c" "$p"
+done
+[ "$pg19_n" = 4 ] && pass "PG19 composer emitted exactly the 4 benign corpus entries" \
+  || bad "PG19 composer emitted $pg19_n corpus entries, expected the 4 benign ones"
 
 echo
 exit "$fail"
