@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
-# Offline tests for scripts/probe-hook-identity.sh classify_rows/outcome; never runs claude or tmux.
+# Offline tests for scripts/probe-hook-identity.sh; claude, tmux and sleep are PATH stubs installed before the first source.
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
+T="$(mktemp -d)"; trap 'chmod -R u+rwx "$T" 2>/dev/null; rm -rf "$T"' EXIT
+mkdir "$T/bin"
+printf '#!/bin/sh\ntouch "%s/ran-claude"\necho "claude 0.0.0-stub"\n' "$T" > "$T/bin/claude"
+printf '#!/bin/sh\ntouch "%s/ran-tmux"\nexit 0\n' "$T" > "$T/bin/tmux"
+printf '#!/bin/sh\nexit 0\n' > "$T/bin/sleep"
+chmod +x "$T/bin/"*
+export PATH="$T/bin:$PATH" PROBE_SCRATCH="$T/scratch"
 SRC="${PROBE_UNDER_TEST:-scripts/probe-hook-identity.sh}"
+case $SRC in /*) ;; *) SRC="$PWD/$SRC" ;; esac
 # shellcheck disable=SC1090
-source "$SRC"
+source "$SRC" "$T/first-rec.md"
 set +e
 fails=0
 ok() { echo "ok   $1"; }
@@ -12,32 +20,42 @@ eq() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1: got [$2] want [$3]"; fi; 
 
 KM='["cwd","hook_event_name","session_id","tool_input","tool_name","transcript_path"]'
 KS='["agent_id","agent_type","cwd","hook_event_name","session_id","tool_input","tool_name","transcript_path"]'
-cap() { # event session agent_id_json agent_type_json cmd teams transcript keys_json
-  jq -nc --arg e "$1" --arg s "$2" --argjson a "$3" --argjson t "$4" --arg c "$5" --arg te "$6" --arg tp "$7" --argjson k "$8" \
-    '{event:$e,keys:$k,agent_id:$a,agent_type:$t,session_id:$s,permission_mode:"default",cmd:(if $c=="" then null else $c end),name:null,transcript_path:$tp,teams_env:$te}'
+cap() { # event session agent_id_json agent_type_json cmd teams transcript keys_json run
+  jq -nc --arg e "$1" --arg s "$2" --argjson a "$3" --argjson t "$4" --arg c "$5" --arg te "$6" --arg tp "$7" --argjson k "$8" --arg r "$9" \
+    '{event:$e,keys:$k,agent_id:$a,agent_type:$t,session_id:$s,permission_mode:"default",cmd:(if $c=="" then null else $c end),name:null,transcript_path:$tp,teams_env:$te,run:$r}'
 }
 tline() { jq -nc --arg c "$1" '{type:"assistant",message:{content:[{type:"tool_use",name:"Bash",input:{command:$c}}]}}'; }
+te() { printf '%s' "${ALLTE-$1}"; }
 
-# scen <teammate agent_id json> <teammate agent_type json> <teammate teams_env> <teammate keys json>; knobs: MAIN_AID, MATE_CMD, NOMATE, LEAD_RAN_MATE
+# scen <teammate agent_id json> <teammate agent_type json> <teammate teams_env> <teammate keys json>
+# knobs: MAIN_AID MAINT_AID SUB_AID MATE_CMD MATE_SID MATE_STOP NOMATE NOSUB NOMT LEAD_RAN_MATE T2(unreadable|empty) ALLTE
 scen() {
-  W="$(mktemp -d)"
+  W="$(mktemp -d "$T/w.XXXXXX")"
   tline 'echo probe-main' > "$W/t1.jsonl"; tline 'echo probe-main' > "$W/t2.jsonl"
   [ -n "${LEAD_RAN_MATE:-}" ] && tline 'echo probe-teammate' >> "$W/t2.jsonl"
+  case "${T2:-}" in unreadable) chmod 000 "$W/t2.jsonl" ;; empty) : > "$W/t2.jsonl" ;; esac
   {
-    cap PreToolUse s1 "${MAIN_AID:-null}" null 'echo probe-main' "" "$W/t1.jsonl" "$KM"
-    cap PreToolUse s1 '"sa1"' '"general-purpose"' 'echo probe-subagent' "" "$W/t1.jsonl" "$KS"
-    cap SubagentStop s1 '"sa1"' '"general-purpose"' "" "" "$W/t1.jsonl" "$KS"
-    cap Stop s1 null null "" "" "$W/t1.jsonl" "$KM"
-    cap PreToolUse s2 null null 'echo probe-main' 1 "$W/t2.jsonl" "$KM"
-    [ -z "${NOMATE:-}" ] && cap PreToolUse s2 "$1" "$2" "${MATE_CMD:-echo probe-teammate}" "$3" "$W/t2.jsonl" "$4"
-    cap Stop s2 null null "" "" "$W/t2.jsonl" "$KM"
+    cap PreToolUse s1 "${MAIN_AID:-null}" null 'echo probe-main' "$(te '')" "$W/t1.jsonl" "$KM" run1
+    [ -z "${NOSUB:-}" ] && cap PreToolUse s1 "${SUB_AID:-\"sa1\"}" '"general-purpose"' 'echo probe-subagent' "$(te '')" "$W/t1.jsonl" "$KS" run1
+    cap SubagentStop s1 '"sa1"' '"general-purpose"' "" "$(te '')" "$W/t1.jsonl" "$KS" run1
+    cap Stop s1 null null "" "$(te '')" "$W/t1.jsonl" "$KM" run1
+    [ -z "${NOMT:-}" ] && cap PreToolUse s2 "${MAINT_AID:-null}" null 'echo probe-main' "$(te 1)" "$W/t2.jsonl" "$KM" run2
+    [ -z "${NOMATE:-}" ] && cap PreToolUse "${MATE_SID:-s2}" "$1" "$2" "${MATE_CMD:-echo probe-teammate}" "$(te "$3")" "$W/t2.jsonl" "$4" run2
+    [ -n "${MATE_STOP:-}" ] && cap SubagentStop "${MATE_SID:-s2}" "$1" "$2" "" "$(te "$3")" "$W/t2.jsonl" "$KS" run2
+    cap Stop s2 null null "" "$(te 1)" "$W/t2.jsonl" "$KM" run2
   } > "$W/cap.jsonl"
   classify_rows "$W/cap.jsonl" > "$W/rows"
   OUTC="$(outcome "$W/rows")"
+  TC="$(sed -n 's/^Teammate check: //p' "$W/rows")"
 }
+noteam() { grep -q '^Identity row: teammate' "$W/rows" && bad "$1 no teammate row" || ok "$1 no teammate row"; }
 
-scen '"ta1"' '"general-purpose"' 1 "$KS"
-eq "(I1) teammate agent_id present -> A" "$OUTC" A
+# (I8) the first source ran neither claude nor tmux
+if [ -e "$T/ran-claude" ] || [ -e "$T/ran-tmux" ]; then bad "(I8) sourcing called claude or tmux"; else ok "(I8) sourcing called neither claude nor tmux"; fi
+
+MATE_SID=s3 MATE_STOP=1 scen '"ta1"' '"general-purpose"' 1 "$KS"
+eq "(I1) genuine teammate (own session) with agent_id present -> A" "$OUTC" A
+eq "(I1) teammate check genuine" "$TC" genuine
 grep -qF 'Identity row: subagent agent_id=present agent_type=general-purpose teams_env=unset stop_event=SubagentStop' "$W/rows" && ok "(I1) subagent control row" || bad "(I1) subagent control row"
 grep -qF 'Identity row: main agent_id=absent agent_type=absent teams_env=unset stop_event=Stop' "$W/rows" && ok "(I1) main control row" || bad "(I1) main control row"
 
@@ -48,27 +66,110 @@ eq "(I2b) absent agent_id, teammate-only key -> B" "$OUTC" B
 scen null null 1 "$KM"
 eq "(I3) indistinguishable, teams_env=1 -> C" "$OUTC" C
 scen null null "" "$KM"
-eq "(I4) indistinguishable, teams_env unset -> C'" "$OUTC" "C'"
+eq "(I4) teammate hook did not see teams_env=1 -> D (teams-off; C' folded into D)" "$OUTC" D
+eq "(I4) teammate check teams-off" "$TC" teams-off
 
 NOMATE=1 scen null null 1 "$KM"
 eq "(I5) no teammate marker line -> D" "$OUTC" D
-grep -q '^Identity row: teammate' "$W/rows" && bad "(I5) no teammate row" || ok "(I5) no teammate row"
+noteam "(I5)"
 
 MAIN_AID='"weird"' scen null null 1 "$KM"
 eq "(I6) main carries agent_id -> X" "$OUTC" X
 
 LEAD_RAN_MATE=1 scen null null 1 "$KM"
 eq "(I7) marker in main transcript -> D" "$OUTC" D
-grep -q '^Identity row: teammate' "$W/rows" && bad "(I7) no teammate row" || ok "(I7) no teammate row"
+noteam "(I7)"
 
 MATE_CMD='echo probe-teammate; true' scen null null 1 "$KM"
 eq "(I9) non-exact cmd -> D" "$OUTC" D
-grep -q '^Identity row: teammate' "$W/rows" && bad "(I9) no teammate row" || ok "(I9) no teammate row"
+noteam "(I9)"
 
-# (I8) sourcing runs neither claude nor tmux
-S8="$(mktemp -d)"; mkdir "$S8/bin"
-for b in claude tmux; do printf '#!/bin/sh\ntouch "%s/ran"\n' "$S8" > "$S8/bin/$b"; chmod +x "$S8/bin/$b"; done
-( PATH="$S8/bin:$PATH"; source "$SRC" "$S8/rec.md" ) >/dev/null 2>&1
-if [ -e "$S8/ran" ]; then bad "(I8) sourcing called claude or tmux"; else ok "(I8) sourcing called neither claude nor tmux"; fi
+scen null '"x agent_id=present"' 1 "$KM"
+[ "$OUTC" != A ] && ok "(I10) hostile agent_type is not A" || bad "(I10) hostile agent_type is not A"
+grep -qF 'agent_type=x_agent_id_present ' "$W/rows" && ok "(I10) hostile agent_type sanitized" || bad "(I10) hostile agent_type sanitized"
+printf 'Identity row: teammate agent_id=absent agent_type=y teams_env=1 x agent_id=present\n' > "$T/rf.txt"
+eq "(I10b) rf reads the first key=value token" "$(rf "$T/rf.txt" teammate agent_id)" absent
+
+ALLTE=0 scen null null 1 "$KM"
+eq "(I11) accidental run (teams_env 0 everywhere) -> D" "$OUTC" D
+eq "(I11) teammate check teams-off" "$TC" teams-off
+has_row "$W/rows" main && has_row "$W/rows" main-teams && ok "(I11) main and main-teams rows found by run" || bad "(I11) main and main-teams rows found by run"
+
+MAINT_AID='"weird"' scen null null 1 "$KM"
+eq "(I12) main-teams carries agent_id -> X" "$OUTC" X
+
+MATE_STOP=1 scen '"ta1"' '"general-purpose"' 1 "$KS"
+eq "(I13) subagent-shaped teammate -> check" "$TC" subagent-shaped
+noteam "(I13)"
+eq "(I13) subagent-shaped teammate -> D" "$OUTC" D
+
+NOSUB=1 scen null null 1 "$KM"
+eq "(I14) no subagent row -> U" "$OUTC" U
+
+SUB_AID=null scen null null 1 "$KM"
+eq "(I15) subagent agent_id absent -> X" "$OUTC" X
+
+if [ "$(id -u)" = 0 ]; then echo "SKIP (I16) chmod 000 is readable as root"; else
+  T2=unreadable scen null null 1 "$KM"; noteam "(I16)"
+fi
+T2=empty scen null null 1 "$KM"; noteam "(I16)"
+
+NOMT=1 scen null null 1 "$KM"
+noteam "(I17)"
+eq "(I17) missing main-teams row -> U" "$OUTC" U
+printf 'Identity row: main-teams agent_id=absent agent_type=absent teams_env=1 stop_event=Stop d observed\nIdentity row: subagent agent_id=present agent_type=g teams_env=unset stop_event=none d observed\n' > "$T/nomain.txt"
+eq "(I14) missing main row -> U" "$(outcome "$T/nomain.txt")" U
+
+eq "(I18) pane_state trust prompt" "$(pane_state $'Do you trust this folder?\n❯ 1. Yes')" trust
+eq "(I18) pane_state ready" "$(pane_state '❯')" ready
+eq "(I18) pane_state empty" "$(pane_state '')" wait
+
+M="$(cap PreToolUse s2 '"ta1"' null 'echo probe-teammate' 1 x "$KS" run2-tmux)"
+S="$(cap SubagentStop s2 '"ta1"' null '' 1 x "$KS" run2-tmux)"
+O="$(cap SubagentStop s2 '"other"' null '' 1 x "$KS" run2-tmux)"
+printf '%s\n' "$M" > "$T/d1"; printf '%s\n%s\n' "$M" "$S" > "$T/d2"; printf '%s\n%s\n' "$M" "$O" > "$T/d3"; printf '%s\n%s\n' "$S" "$M" > "$T/d4"
+teammate_done "$T/d1"; eq "(I19) marker with no stop -> 1" "$?" 1
+teammate_done "$T/d2"; eq "(I19) marker then matching stop -> 0" "$?" 0
+teammate_done "$T/d3"; eq "(I19) stop with another agent_id -> 1" "$?" 1
+teammate_done "$T/d4"; eq "(I19) stop before the marker -> 1" "$?" 1
+teammate_done "$T/d2" run2; eq "(I19) run filter matches -> 0" "$?" 0
+teammate_done "$T/d2" run1; eq "(I19) run filter excludes -> 1" "$?" 1
+
+mkdir "$T/other"
+eq "(I20) relative record path becomes absolute" "$(cd "$T/other"; source "$SRC" rel.md; echo "$REC")" "$T/other/rel.md"
+
+mt="$(method_text)"
+for w in permission_mode '`name`' '`run`' subagent-shaped; do
+  case $mt in *"$w"*) ok "(I21) method_text names $w" ;; *) bad "(I21) method_text names $w" ;; esac
+done
+mkdir -p "$SCRATCH"; : > "$SCRATCH/rows.txt"; : > "$CAP"
+REC="$T/rec21/r.md"; TMUX_RETRY="ran (subagent-shaped)"; ROWS=$'Teammate check: subagent-shaped\n'; OUT=D
+write_record
+eq "(I21) record has exactly one Tmux retry line" "$(grep -c '^Tmux retry:' "$REC")" 1
+grep -qF 'Teammate check: subagent-shaped.' "$REC" && ok "(I21) Status names the check value" || bad "(I21) Status names the check value"
+
+(setup && setup_run run2 1 && echo '{"hook_event_name":"Stop","session_id":"z"}' | .claude/capture.sh) >/dev/null 2>&1
+eq "(I22) setup_run sets env teams=1 in project settings" "$(jq -r '.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS' "$SCRATCH/.claude/settings.json" 2>/dev/null)" 1
+eq "(I22) capture hook stamps the run id" "$(jq -r '.run' "$CAP" 2>/dev/null)" run2
+
+# (I23-I25) genuineness edges on a raw capture: teammate line in the lead's session, with/without its stop, extra keys
+KX='["agent_id","agent_type","cwd","hook_event_name","session_id","team_name","tool_input","tool_name","transcript_path"]'
+rawcap() { # file teammate-keys with-stop(0|1) [extra pre-lines file]
+  { cap PreToolUse s1 null null 'echo probe-main' "" x "$KM" run1
+    cap PreToolUse s1 '"sa1"' '"g"' 'echo probe-subagent' "" x "$KS" run1
+    cap PreToolUse s2 null null 'echo probe-main' 1 x "$KM" run2
+    cap PreToolUse s2 '"ta1"' '"g"' 'echo probe-teammate' 1 x "$2" run2
+    [ "$3" = 1 ] && cap SubagentStop s2 '"ta1"' '"g"' "" 1 x "$KS" run2
+  } > "$1"
+}
+rawcap "$T/r23" "$KS" 0; teammate_choose "$T/r23"
+eq "(I23) agent_id in lead session without a stop line -> genuine" "$TCHECK" genuine
+rawcap "$T/r24" "$KX" 1; teammate_choose "$T/r24"
+eq "(I24) extra key the subagent control lacks -> genuine" "$TCHECK" genuine
+{ rawcap "$T/r25a" "$KS" 1; cat "$T/r25a"
+  cap PreToolUse s9 '"tb"' '"g"' 'echo probe-teammate' 1 x "$KS" run2-tmux
+  cap PreToolUse s9 null null 'echo probe-main' 1 x "$KM" run2-tmux; } > "$T/r25"
+teammate_choose "$T/r25"
+eq "(I25) a later genuine candidate beats an earlier subagent-shaped one" "$TCHECK" genuine
 
 [ "$fails" -eq 0 ]
