@@ -72,6 +72,20 @@ const ESCALATION_PROBES = [
   'prompt-confirmed decision write', // its name, esc-chat-3
 ];
 
+// The pending-review flag fix (esf-flag-prose): the reviewer clears one flag
+// per satisfied stamp, not every flag, and a re-created flag is dropped on the
+// next Stop OR subagent dispatch. `absent` is the negative half: the old
+// over-claim must not come back into the template or either port.
+const PENDING_REVIEW_RULE = {
+  probe: [
+    'Pending-review flag',
+    'one flag per satisfied review-join',
+    'leaves a tombstone',
+    'or subagent dispatch',
+  ],
+  absent: ['clears every such flag'],
+};
+
 const codexMap = {
   'Structural questions go to the explorer': { probe: 'Structural questions go to the explorer' },
   'Answer shape': { probe: 'Answer shape' },
@@ -85,7 +99,7 @@ const codexMap = {
   'Retrieval contract': { probe: 'Retrieval contract' },
   'Machine-checkable criteria': { probe: 'Machine-checkable criteria' },
   'Review ownership — one unit, one review, single owner': { probe: ['Review ownership', 'reviewGating.mode is off'] },
-  'Pending-review flag (default-mode review backstop)': { probe: 'Pending-review flag' },
+  'Pending-review flag (default-mode review backstop)': PENDING_REVIEW_RULE,
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
   'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
@@ -107,7 +121,7 @@ const cursorMap = {
   'Retrieval contract': { probe: 'Retrieval contract' },
   'Machine-checkable criteria': { probe: 'Machine-checkable criteria' },
   'Review ownership — one unit, one review, single owner': { probe: ['Review ownership', 'reviewGating.mode is off'] },
-  'Pending-review flag (default-mode review backstop)': { probe: 'Pending-review flag' },
+  'Pending-review flag (default-mode review backstop)': PENDING_REVIEW_RULE,
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
   'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
@@ -133,6 +147,9 @@ function checkPort(headers, portText, portMap, portName) {
       for (const probe of [].concat(rule.probe)) {
         assert.ok(portText.includes(probe), `${portName}: section "${header}" expected present (probe ${JSON.stringify(probe)}) but missing`);
       }
+      for (const phrase of [].concat(rule.absent || [])) {
+        assert.ok(!portText.includes(phrase), `${portName}: section "${header}" must not contain ${JSON.stringify(phrase)}`);
+      }
     } else if (!rule.deferred) {
       throw new Error(`${portName}: map entry for "${header}" must set probe or deferred`);
     }
@@ -145,6 +162,13 @@ check('Codex port: every canonical section is present or explicitly deferred', (
 
 check('Cursor port: every canonical section is present or explicitly deferred', () => {
   checkPort(canonicalHeaders(), fs.readFileSync(CURSOR_PORT, 'utf8'), cursorMap, 'cursor');
+});
+
+check('canonical template omits every absent-phrase the ports are held to', () => {
+  const canon = fs.readFileSync(CANONICAL, 'utf8');
+  for (const phrase of PENDING_REVIEW_RULE.absent) {
+    assert.ok(!canon.includes(phrase), `templates/persona-protocol.md must not contain ${JSON.stringify(phrase)}`);
+  }
 });
 
 // The slim tier is not a port, but it IS the other half of the fan-out: four
@@ -202,6 +226,14 @@ check('negative case: a present-probe absent from the port is REJECTED (not a si
     () => checkPort(canonicalHeaders(), '', codexMap, 'codex'),
     /expected present.*but missing/,
     'a probe whose content is missing from the port must throw');
+});
+
+check('negative case: an absent-phrase present in the port is REJECTED', () => {
+  const port = fs.readFileSync(CODEX_PORT, 'utf8') + '\nclears every such flag\n';
+  assert.throws(
+    () => checkPort(canonicalHeaders(), port, codexMap, 'codex'),
+    /must not contain/,
+    'a forbidden phrase in the port must throw');
 });
 
 if (failures) {
