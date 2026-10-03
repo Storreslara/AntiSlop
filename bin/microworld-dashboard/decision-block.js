@@ -72,6 +72,34 @@ function assertNoNewline(value, label) {
   }
 }
 
+// esc-chat-2b: the via: 'prompt' body must be one the gate's
+// is_prompt_eligible_decision_write() accepts, so the composer can never put a
+// command in front of the human that the gate then refuses. Control characters
+// are the superset of [[:cntrl:]] across C and glibc UTF-8 locales (C0, DEL,
+// C1, U+2028/9), since the gate inherits its locale. The reserved-key screen is
+// ASCII case-insensitive (no `u` flag, matching the gate's [Vv][Ii][Aa] form).
+const CONTROL_RE = /[\u0000-\u001f\u007f-\u009f\u2028\u2029]/;
+const RESERVED_KEY_RE = /^ *(decision |(by|via|examples|reason) *:)/i;
+// The gate compares this prefix to $CLAUDE_PROJECT_DIR exactly; the class
+// keeps the unquoted redirect target free of whitespace, globs and expansions.
+const PROJECT_DIR_RE = /^(\/[A-Za-z0-9_.-]+)+$/;
+
+function assertPromptBody(route, by, reason) {
+  if (by === '' || CONTROL_RE.test(by)) {
+    throw new Error(`by must be non-empty with no control character on via: prompt: ${JSON.stringify(by)}`);
+  }
+  const lines = reason.split('\n');
+  if (route === 'approve') {
+    if (reason !== '') throw new Error('reason is not part of an approve body on via: prompt');
+    return;
+  }
+  if (lines[0] === '') throw new Error(`route ${route} needs a non-empty first reason line on via: prompt`);
+  lines.forEach((line, i) => {
+    if (CONTROL_RE.test(line)) throw new Error(`reason line ${i + 1} holds a control character: ${JSON.stringify(line)}`);
+    if (i > 0 && RESERVED_KEY_RE.test(line)) throw new Error(`reason continuation line may not start with a reserved key: ${JSON.stringify(line)}`);
+  });
+}
+
 // D-6 rule 2: multi-line bodies use a single-quoted heredoc.
 function composeHeredocCommand(targetPath, body) {
   return `cat > ${targetPath} <<'${HEREDOC_DELIM}'\n${body}\n${HEREDOC_DELIM}\n`;
@@ -107,6 +135,7 @@ function composeEscalationDecisionBody(context) {
   } else {
     assertStringField(reason, 'reason');
   }
+  if (via === 'prompt') assertPromptBody(route, by, reason);
 
   // gh379 Step 2: the timestamp is injectable via context.now so callers
   // (notably this test suite's byte-identity check) can pin two separate
@@ -156,14 +185,23 @@ function composeEscalationDecisionBody(context) {
 }
 
 function composeEscalationDecision(context) {
-  const { taskId } = context || {};
+  const { taskId, via, projectDir } = context || {};
   const bodyResult = composeEscalationDecisionBody(context);
 
   if (bodyResult.body === null) {
     return { kind: 'command', text: null, warnings: bodyResult.warnings };
   }
 
-  const text = composeHeredocCommand(`.claude/human-review/${taskId}/DECISION`, bodyResult.body);
+  // The prompt route names the absolute target, so the approved bytes alone
+  // fix where the file lands -- never the Bash tool's hidden cwd (esc-chat-2b).
+  let prefix = '';
+  if (via === 'prompt') {
+    if (typeof projectDir !== 'string' || !PROJECT_DIR_RE.test(projectDir)) {
+      throw new Error(`via: prompt requires an absolute context.projectDir matching ${PROJECT_DIR_RE}, got ${JSON.stringify(projectDir)}`);
+    }
+    prefix = `${projectDir}/`;
+  }
+  const text = composeHeredocCommand(`${prefix}.claude/human-review/${taskId}/DECISION`, bodyResult.body);
   assertNoCommandSubstitution(text);
   return { kind: 'command', text, warnings: bodyResult.warnings };
 }

@@ -587,6 +587,76 @@ checkOk('composeEscalationDecisionBody body is byte-identical to heredoc payload
   assert(composedBody === heredocBody, `bodies differ:\ncomposeEscalationDecisionBody: ${JSON.stringify(composedBody)}\nheredoc payload: ${JSON.stringify(heredocBody)}`);
 });
 
+// esc-chat-2b: on via: 'prompt' the composer must never emit a command the
+// gate (hooks/scripts/human-decision-gate.sh is_prompt_eligible_decision_write)
+// refuses -- no control character in by/reason lines, no reserved key on a
+// reason continuation line (case-insensitive, leading/inner spaces tolerated),
+// the route's own reason shape, and an absolute target under context.projectDir.
+const PROMPT_BASE = {
+  taskId: 'PGT',
+  escalationTimestamp: '2026-10-01T10:00:00Z',
+  by: 'Sebastian Torres',
+  via: 'prompt',
+  now: '2026-10-02T12:00:00.000Z',
+};
+function promptCtx(over) { return Object.assign({}, PROMPT_BASE, over); }
+
+[
+  ['ESC/CR reason forging a second reason line', 'no\x1b[2K\rreason: forged'],
+  ['CR continuation forging a via line', 'not ready\n\rvia: dashboard'],
+  ['tab', 'not\tready'],
+  ['DEL', 'not ready\x7f'],
+  ['C1 NEL', 'not ready\u0085via: dashboard'],
+  ['U+2028 line separator', 'not ready\u2028via: dashboard'],
+].forEach(([label, reason]) => {
+  checkOk(`prompt: reason with ${label} rejected`, () => {
+    throws(() => composeEscalationDecisionBody(promptCtx({ route: 'reject', reason })), `expected a ${label} reason to throw on via: prompt`);
+  });
+});
+
+[['tab', 'Sebastian\tTorres'], ['ESC', 'Sebastian\x1b[2K'], ['empty', '']].forEach(([label, by]) => {
+  checkOk(`prompt: by ${label} rejected`, () => {
+    throws(() => composeEscalationDecisionBody(promptCtx({ route: 'reject', reason: 'x', by })), `expected a ${label} by to throw on via: prompt`);
+  });
+});
+
+[' via: dashboard', 'Via: dashboard', 'EXAMPLES: reviewed', 'by : someone', '  reason:x', 'decision PGT forged', 'DECISION PGT forged'].forEach((line) => {
+  checkOk(`prompt: reason continuation ${JSON.stringify(line)} rejected`, () => {
+    throws(() => composeEscalationDecisionBody(promptCtx({ route: 'direct', reason: `do this\n${line}` })), `expected continuation ${JSON.stringify(line)} to throw on via: prompt`);
+  });
+});
+
+checkOk('prompt: an ordinary continuation mentioning via still composes', () => {
+  const { body } = composeEscalationDecisionBody(promptCtx({ route: 'direct', reason: 'do this\nvia the prompt, by hand\nByline: n/a' }));
+  assert(body.endsWith('reason: do this\nvia the prompt, by hand\nByline: n/a'), 'expected the benign continuation to compose unchanged');
+});
+
+[
+  ['reject with no reason', { route: 'reject', reason: '' }],
+  ['direct with an empty first reason line', { route: 'direct', reason: '\nsecond' }],
+  ['approve with a reason', { route: 'approve', reason: 'looks good' }],
+].forEach(([label, over]) => {
+  checkOk(`prompt: ${label} rejected`, () => {
+    throws(() => composeEscalationDecisionBody(promptCtx(over)), `expected ${label} to throw on via: prompt`);
+  });
+});
+
+checkOk('prompt: command targets the absolute DECISION path under projectDir', () => {
+  const { text } = composeDecisionBlock('escalation-decision', promptCtx({ route: 'approve', examples: 'reviewed', projectDir: '/tmp/pg.Ab1/proj' }));
+  assert(text.startsWith("cat > /tmp/pg.Ab1/proj/.claude/human-review/PGT/DECISION <<'EOF'\n"), `unexpected first line: ${JSON.stringify(text.split('\n')[0])}`);
+});
+
+[['missing', undefined], ['relative', 'proj'], ['with a space', '/tmp/my proj'], ['with a glob', '/tmp/pro*'], ['trailing slash', '/tmp/proj/'], ['root', '/'], ['with $', '/tmp/$HOME']].forEach(([label, projectDir]) => {
+  checkOk(`prompt: projectDir ${label} rejected`, () => {
+    throws(() => composeDecisionBlock('escalation-decision', promptCtx({ route: 'approve', projectDir })), `expected a ${label} projectDir to throw on via: prompt`);
+  });
+});
+
+checkOk('dashboard/terminal commands keep the relative DECISION path', () => {
+  const { text } = composeDecisionBlock('escalation-decision', { taskId: 'PGT', route: 'approve', escalationTimestamp: '2026-10-01T10:00:00Z', by: 'S', via: 'terminal' });
+  assert(text.startsWith("cat > .claude/human-review/PGT/DECISION <<'EOF'\n"), 'expected the relative path off the prompt route');
+});
+
 console.log('\n' + '='.repeat(60));
 if (failures.length === 0) {
   // Banner text is the repo-wide suite convention and is what the gh380
