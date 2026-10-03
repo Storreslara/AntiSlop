@@ -1,6 +1,6 @@
 # Memory index
 
-- [esc-chat-4 completion](project_esc_chat_4_completion.md) — ADR-0039 + 7 terms; esc-chat-1 ship gate and teammate premise written as PENDING; update when operator records land
+- [esc-chat-4 completion](project_esc_chat_4_completion.md) — ADR-0039; esc-chat-5 recorded Ship gate GREEN (probe hook) + identity Outcome D; teammate premise still unmeasured
 
 - [hcb-prose-history completion](project_hcb_prose_history_completion.md) — PASS 2026-09-24; four glossary entries added to CONTEXT.md: sweep closure / Cat 1/2/3/4 (repo-wide file-keyed classification for prose reconciliation with both-directions closure assertion), hit-bearing file (unit of classification in sweep-closure table), lens-2 (existing term correct but surrounding prose stale); origin citation: docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md "Sweep closure" section for reuse convention
 - [hcb-step5-measure completion](project_hcb_step5_measure_completion.md) — PASS 2026-09-24; three glossary entries added to CONTEXT.md: characterization record (dated self-reported probe artifacts), self-reported (formal evidence label vs. mechanical check), permission-mode allowlist (gate-internal permission_mode filter distinct from Set A/B); U1 verdict: ask-still-prompts (permissions.allow does not override hook's ask)
