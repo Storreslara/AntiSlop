@@ -416,6 +416,211 @@ is_prose_only_commit() {
   [ "$first" = git ] && [ "$sub" = commit ]
 }
 
+# F-1 (esc-left-3, docs/plans/2026-10-04-escalation-leftovers.md): sets glob_h /
+# glob_d when an unquoted glob, extglob or brace word could expand to the
+# human-review directory / the DECISION file, though the text never spells it.
+# Quotedness comes from command_skeleton(): a masked character is literal, a
+# kept quote character only joins fragments, and a quoted `/` still separates
+# components. When the skeleton cannot lex, the raw text is scanned with every
+# metacharacter live (fail closed), minus only the bodies of heredocs whose
+# delimiter is quoted, which bash never expands. Matching assumes the worst
+# shell options (A2): nocasematch and extglob are switched on here and restored
+# before returning. Locale: LC_ALL=C - both tokens are ASCII, and C keeps the
+# byte-oriented pattern operations below locale-independent.
+glob_names_tokens() {
+  local cmd="$1" skel had_ext=0 had_nc=0
+  glob_h=0 glob_d=0
+  case "$cmd" in *[\*\?\[\{]*|*[@+!]\(*) ;; *) return 0 ;; esac
+  local LC_ALL=C
+  shopt -q extglob && had_ext=1
+  shopt -q nocasematch && had_nc=1
+  shopt -s extglob nocasematch
+  if skel="$(command_skeleton "$cmd")"; then
+    glob_scan_words "$cmd" "$skel"
+  else
+    glob_strip_quoted_heredoc_bodies "$cmd"
+    glob_text="${glob_text//[\'\"]/}"
+    glob_scan_words "$glob_text" "$glob_text"
+  fi
+  [ "$had_ext" = 1 ] || shopt -u extglob
+  [ "$had_nc" = 1 ] || shopt -u nocasematch
+  return 0
+}
+
+# Splits $1 into words at unquoted metacharacters, read off the aligned skeleton
+# $2, and hands every word holding an unquoted glob to glob_word(). An extglob
+# group - `(` straight after an unquoted ?*+@! - stays inside its word.
+glob_scan_words() {
+  local text="$1" skel="$2" rest chunk sep start=0 off=0 depth r c
+  local metas=$' \t\n;&|<>()'
+  rest="$skel"
+  while :; do
+    chunk="${rest%%[$metas]*}"
+    off=$((off + ${#chunk}))
+    if [ "$chunk" = "$rest" ]; then
+      glob_maybe_word "${text:start:off-start}" "${skel:start:off-start}"
+      return 0
+    fi
+    sep="${rest:${#chunk}:1}"
+    if [ "$sep" = '(' ] && [ "$off" -gt "$start" ] && [[ ${skel:off-1:1} == [\?\*+@!] ]]; then
+      depth=1 r="${rest:${#chunk}+1}"
+      off=$((off + 1))
+      while [ "$depth" -gt 0 ]; do
+        c="${r%%[()]*}"
+        if [ "$c" = "$r" ]; then off=$((off + ${#r})); r=""; break; fi
+        [ "${r:${#c}:1}" = '(' ] && depth=$((depth + 1)) || depth=$((depth - 1))
+        off=$((off + ${#c} + 1))
+        r="${r:${#c}+1}"
+      done
+      rest="$r"
+      continue
+    fi
+    glob_maybe_word "${text:start:off-start}" "${skel:start:off-start}"
+    off=$((off + 1))
+    start=$off
+    rest="${rest:${#chunk}+1}"
+  done
+}
+
+# $1 one word's text, $2 its skeleton. Builds the pattern word - unquoted
+# characters live, masked ones escaped, quote characters dropped - with quoted
+# `{` `}` `,` held as \001 \002 \003 so brace parsing sees only unquoted ones.
+glob_maybe_word() {
+  local t="$1" s="$2" out="" run seg c
+  case "$s" in *[\*\?\[\{]*|*[@+!]\(*) ;; *) return 0 ;; esac
+  while [ -n "$s" ]; do
+    run="${s%%[X\'\"]*}"
+    out="$out$run"
+    s="${s:${#run}}" t="${t:${#run}}"
+    [ -n "$s" ] || break
+    if [ "${s:0:1}" = X ]; then
+      run="${s%%[!X]*}"
+      seg="${t:0:${#run}}"
+      seg="${seg//\\/\\\\}"
+      for c in '*' '?' '[' ']' '(' ')' '|' '@' '!' '+'; do seg="${seg//"$c"/\\$c}"; done
+      seg="${seg//\{/$'\001'}" seg="${seg//\}/$'\002'}" seg="${seg//,/$'\003'}"
+      out="$out$seg"
+      s="${s:${#run}}" t="${t:${#run}}"
+    else
+      s="${s:1}" t="${t:1}"
+    fi
+  done
+  glob_word "$out"
+}
+
+# Brace groups, innermost first, until none is left: a group with a top-level
+# comma expands to its alternatives (no eval), `${...}` and every other group
+# collapse to `*`, except a comma-free group holding `/`, which names both
+# tokens. More than 256 expansions names both too.
+glob_word() {
+  local -a queue=("$1")
+  local w pre left inner alt n=1
+  while [ "${#queue[@]}" -gt 0 ]; do
+    w="${queue[0]}"
+    queue=("${queue[@]:1}")
+    pre="${w%%\}*}"
+    if [ "$pre" = "$w" ]; then glob_match_path "$w"; continue; fi
+    left="${pre%\{*}"
+    if [ "$left" = "$pre" ]; then queue+=("$pre"$'\002'"${w:${#pre}+1}"); continue; fi
+    inner="${pre:${#left}+1}"
+    w="${w:${#pre}+1}"
+    if [ "${left: -1}" = '$' ]; then
+      queue+=("${left%\$}*$w")
+    elif [[ $inner == *,* ]]; then
+      while :; do
+        alt="${inner%%,*}"
+        queue+=("$left$alt$w")
+        n=$((n + 1))
+        [ "$alt" != "$inner" ] || break
+        inner="${inner#*,}"
+      done
+    elif [[ $inner == */* && $inner != *..* ]]; then
+      glob_h=1 glob_d=1
+      return 0
+    else
+      queue+=("$left*$w")
+    fi
+    if [ "$n" -gt 256 ]; then glob_h=1 glob_d=1; return 0; fi
+  done
+}
+
+# $1 one expanded pattern word: the last component that can match DECISION
+# names the file, any earlier one that can match human-review the directory.
+glob_match_path() {
+  local rest="$1" comp
+  rest="${rest//$'\001'/\{}" rest="${rest//$'\002'/\}}" rest="${rest//$'\003'/,}"
+  while :; do
+    comp="${rest%%/*}"
+    if [ "$comp" = "$rest" ]; then
+      [[ DECISION == $comp ]] && glob_d=1
+      return 0
+    fi
+    [[ human-review == $comp ]] && glob_h=1
+    rest="${rest#*/}"
+  done
+}
+
+# Sets glob_text to $1 without the body lines of every heredoc whose delimiter
+# is quoted (from the operator line up to the first line equal to the
+# delimiter). If any code line does not lex, or a terminator is never found,
+# glob_text is $1 unchanged: nothing is narrowed unless it is fully modelled.
+glob_strip_quoted_heredoc_bodies() {
+  local cmd="$1" line cmp out=""
+  local -a lines
+  glob_hd=()
+  glob_text="$cmd"
+  case "$cmd" in *'<<'*) ;; *) return 0 ;; esac
+  mapfile -t lines <<< "$cmd"
+  for line in "${lines[@]}"; do
+    if [ "${#glob_hd[@]}" -gt 0 ]; then
+      cmp="$line"
+      if [ "${glob_hd[0]:0:1}" = - ]; then
+        while [ "${cmp:0:1}" = $'\t' ]; do cmp="${cmp:1}"; done
+      fi
+      if [ "$cmp" = "${glob_hd[0]:2}" ]; then
+        glob_hd=("${glob_hd[@]:1}")
+      elif [ "${glob_hd[0]:1:1}" = u ]; then
+        out="$out$line"$'\n'
+      fi
+      continue
+    fi
+    out="$out$line"$'\n'
+    glob_heredoc_ops "$line" || return 0
+  done
+  [ "${#glob_hd[@]}" -eq 0 ] || return 0
+  glob_text="$out"
+}
+
+# Appends one entry per real heredoc operator on code line $1 to glob_hd:
+# <dash|.><q|u><delimiter>. Fails when the line does not lex. Each `<<` is
+# re-spelled `<;` (same length, same word-start behaviour) so the skeleton
+# shows which ones sit outside quotes and comments.
+glob_heredoc_ops() {
+  local line="$1" sk pre real a s dash word ws q
+  local metas=$' \t\n;&|<>()'
+  case "$line" in *'<<'*) ;; *) return 0 ;; esac
+  sk="$(command_skeleton "${line//<</<;}")" || return 1
+  while :; do
+    pre="${line%%<<*}"
+    [ "$pre" != "$line" ] || return 0
+    real=0
+    [ "${sk:${#pre}:2}" != '<;' ] || real=1
+    line="${line:${#pre}+2}" sk="${sk:${#pre}+2}"
+    # `<<<` is a here-string, not a heredoc
+    if [ "${line:0:1}" = '<' ]; then line="${line:1}" sk="${sk:1}"; continue; fi
+    [ "$real" = 1 ] || continue
+    a="$line" s="$sk"
+    dash=.
+    if [ "${a:0:1}" = - ]; then dash=- a="${a:1}" s="${s:1}"; fi
+    while [[ ${a:0:1} == [$' \t'] ]]; do a="${a:1}" s="${s:1}"; done
+    ws="${s%%[$metas]*}"
+    word="${a:0:${#ws}}"
+    [ -n "$word" ] || return 1
+    case "$word" in *[\'\"]*) q=q ;; *) q=u ;; esac
+    glob_hd+=("$dash$q${word//[\'\"]/}")
+  done
+}
+
 deny() {
   audit_append "$audit" "$(printf '%s decision-gate-denied identity=%s' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
@@ -482,27 +687,35 @@ fi
 # concatenates adjacent fragments, so `.claude/human-rev'iew'/u1/DECISION` and
 # `"DEC"'IS'"ION"` each spell a trigger token the raw text does not, and each
 # really writes the file. Deleting the quote characters can only ADD occurrences
-# - neither token contains one - so this subsumes the raw test. It does NOT
-# close the residual CLASS of the same family, whose members reach the real file
-# because the raw text never spells a trigger token at all. R-4's split variable
-# and R-5's `DECISIO\N` are two examples of it, not the whole enumeration: the
-# glob-metacharacter sub-class is wider and is tracked separately as F-1
-# (docs/plans/2026-08-24-debug-hdg-prose-2-whitespace-id.md Part 4, pinned as
-# F1a-F1d in the suite and deferred rather than accepted).
+# - neither token contains one - so this subsumes the raw test. A token also
+# counts as present when glob_names_tokens() finds an unquoted glob, extglob or
+# brace word that could expand to it, which closes F-1 for the frozen family
+# table of docs/plans/2026-10-04-escalation-leftovers.md (esc-left-3, pinned as
+# F1a-F1d and FG-* in the suite); such a command then fails closed - past the
+# prompt route and command_is_provably_benign(), only is_sanctioned_marker_write()
+# may allow it. Residuals that remain, because the text names neither token even
+# as a pattern: a write from a cwd inside the packet directory with
+# `human-review` never spelled anywhere (A3), R-4's split variable, R-5's
+# `DECISIO\N`, and NL1's newline in the id (A4).
 joined="${command//$'\047'/}"
 joined="${joined//$'\042'/}"
+glob_names_tokens "$command"
 case "$joined" in
   *human-review*) ;;
-  *) exit 0 ;;
+  *) [ "$glob_h" = 1 ] || exit 0 ;;
 esac
 case "$joined" in
   *DECISION*) ;;
-  *) exit 0 ;;
+  *) [ "$glob_d" = 1 ] || exit 0 ;;
 esac
 gating_off && exit 0
 
 is_prompt_eligible_decision_write "$command" && ask_decision
 command_is_provably_benign "$command" && exit 0
+if [ "$glob_h" = 1 ] || [ "$glob_d" = 1 ]; then
+  is_sanctioned_marker_write "$command" && exit 0
+  deny
+fi
 write_with_inert_triggers "$command" && exit 0
 is_prose_only_commit "$command" && exit 0
 is_sanctioned_marker_write "$command" && exit 0

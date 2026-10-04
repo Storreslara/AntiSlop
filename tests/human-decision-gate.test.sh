@@ -524,11 +524,12 @@ bash_case "Q18 brace expansion around the filename (not expanded by bash)" block
   antislop:reviewer "printf x > .claude/human-review/u1/{DECISION}"
 bash_case "Q19 brace expansion with a comma (measured: ambiguous redirect)" blocked \
   antislop:reviewer "printf x > .claude/human-review/u1/{DECISION,zz}"
-# Q20 is R-5's class, not a new hole: the raw text spells DECISIO{N,}, never
-# DECISION, so the substring early-exit fires before any recognizer runs. Bash
-# expands it to two words and refuses the redirect as ambiguous (measured), so
-# the ALLOW costs nothing. Pinned as an accepted residual, same as R5.
-bash_case "Q20 brace expansion splitting the filename (accepted residual)" allowed \
+# Q20 was pinned ALLOW as an accepted residual: the raw text never spells
+# DECISION, and bash refuses the two-word redirect as ambiguous (measured), so
+# it wrote nothing. esc-left-3's brace expansion (family F-1f) now sees the
+# DECISION alternative and fails closed; the same spelling as a `tee` argument
+# (FG-f-3) really writes, and the gate does not tell a redirect from an argument.
+bash_case "Q20 brace expansion splitting the filename (denied since esc-left-3)" blocked \
   antislop:reviewer "printf x > .claude/human-review/u1/DECISIO{N,}"
 
 echo
@@ -832,8 +833,8 @@ echo "-- newline in the packet id: ALLOW, TRACKED-OPEN (not accepted) --"
 # It is NOT closable here: arm 2's newline exclusion is exactly what keeps C11 -
 # a multi-line commit message naming the two tokens on different lines - allowed,
 # which is the false positive the parent units exist to remove. The two criteria
-# are in genuine tension, so this is reported rather than patched around. Like
-# F-1 below it is tracked-open, NOT accepted; a later unit that closes it is
+# are in genuine tension, so this is reported rather than patched around. It
+# is tracked-open, NOT accepted; a later unit that closes it is
 # EXPECTED to flip this pin and delete this comment.
 bash_case "NL1 newline in the packet id (branch disagreement, tracked-open)" allowed \
   antislop:reviewer "printf x > '.claude/human-review/a
@@ -864,24 +865,155 @@ bash_case "PD3 the same prose without the slash stays allowed" allowed antislop:
   "git commit -m 'note human-review, u1: /DECISION file'"
 
 echo
-echo "-- F-1 glob metacharacters: ALLOW, TRACKED-OPEN (not accepted) --"
-# Unlike R5/N21/Q20 above, these are NOT ratified as acceptable. They are
-# deferred with their own scope (docs/plans/2026-08-24-debug-hdg-prose-2-
-# whitespace-id.md Part 4). Bash expands the glob against the filesystem and
-# OVERWRITES a decision the human has already made, but the raw text never
-# spells a trigger token, so the substring early-exit returns before any
-# recognizer runs. Measured byte-identical at f6d2923, e7deb42 and HEAD, so the
-# class is no unit's regression and is not this unit's to close. A later unit
-# that closes F-1 is EXPECTED to break these four pins: flip them to `blocked`
-# and delete this comment rather than working around them.
-bash_case "F1a bracket around the first letter of the filename" allowed antislop:reviewer \
+echo "-- F-1 glob metacharacters: BLOCKED (closed by esc-left-3) --"
+bash_case "F1a bracket around the first letter of the filename" blocked antislop:reviewer \
   "printf x > .claude/human-review/u1/[D]ECISION"
-bash_case "F1b ? in place of the first letter" allowed antislop:reviewer \
+bash_case "F1b ? in place of the first letter" blocked antislop:reviewer \
   "printf x > .claude/human-review/u1/?ECISION"
-bash_case "F1c a trailing * on the filename" allowed antislop:reviewer \
+bash_case "F1c a trailing * on the filename" blocked antislop:reviewer \
   "printf x > .claude/human-review/u1/DEC*"
-bash_case "F1d the bracket in the directory component instead" allowed antislop:reviewer \
+bash_case "F1d the bracket in the directory component instead" blocked antislop:reviewer \
   "printf x > .claude/human-rev[i]ew/u1/DECISION"
+
+echo
+echo "-- F-1 frozen family table (FG-<family>-<n>): reachable, and BLOCKED --"
+# The frozen family table of docs/plans/2026-10-04-escalation-leftovers.md,
+# Context "Item 4" - one row per example, plus FG-c-6, the comment-carried
+# spelling whose literal tokens sit only in a `#` comment. Each spelling is
+# credited only after the reachability check: real bash, run in a fixture whose
+# DECISION already holds a sentinel, must really overwrite it. A spelling
+# outside this table is out of scope for these rows (plan R2).
+hr=.claude/human-review/u1
+fg_rows=(
+  "a-1|printf x > $hr/[D]ECISION"
+  "a-2|printf x > $hr/?ECISION"
+  "a-3|printf x > $hr/DEC*"
+  "a-4|printf x > $hr/*"
+  "a-5|printf x > $hr/[A-Z]ECISION"
+  "a-6|printf x > $hr/[!a]ECISION"
+  "a-7|printf x > $hr/[^a]ECISION"
+  "a-8|printf x > $hr/[[:upper:]]ECISION"
+  "b-1|printf x > .claude/human-rev[i]ew/u1/DECISION"
+  "b-2|printf x > .claude/*-review/u1/DECISIO?"
+  "c-1|printf x > .claude/h*/u1/D*"
+  "c-2|printf x > .claude/*/*/DECISION"
+  "c-3|printf x > .c*/h*/u*/D*"
+  "c-4|printf x > .claude/human-rev[i]ew/u1/[D]ECISION"
+  "c-5|printf x > .claude/human-review/*/D*"
+  "c-6|printf x > .claude/h*/u1/[D]ECISION # human-review DECISION"
+  "d-1|printf x > '$hr/'[D]'ECISION'"
+  "d-2|printf x > \".claude/human-rev\"[i]\"ew/u1/DECISION\""
+  "d-3|printf x > .claude/'human-rev'[i]'ew'/u1/D*"
+  "e-1|tee $hr/[D]ECISION < /dev/null"
+  "e-2|cp /dev/null $hr/D*"
+  "e-3|truncate -s0 $hr/D*"
+  "f-1|tee $hr/{D,X}ECISION < /dev/null"
+  "f-2|tee .claude/human-rev{i,}ew/u1/DECISION < /dev/null"
+  "f-3|tee $hr/D{E,}CISION < /dev/null"
+  "g-1|cd $hr && printf x > [D]ECISION"
+  "g-2|cd .claude && printf x > human-review/u1/[D]ECISION"
+)
+# $1 a bash command; succeeds when running it really changed DECISION's bytes
+fg_overwrites() {
+  local d
+  d="$(mktemp -d "$tmproot/reach.XXXXXX")"
+  mkdir -p "$d/$hr"
+  printf 'ORIG-SENTINEL' > "$d/$hr/DECISION"
+  (cd "$d" && bash -c "$1") >/dev/null 2>&1 || true
+  [ "$(cat "$d/$hr/DECISION" 2>/dev/null)" != 'ORIG-SENTINEL' ]
+}
+for fg_row in "${fg_rows[@]}"; do
+  fg_id="${fg_row%%|*}"
+  fg_cmd="${fg_row#*|}"
+  if fg_overwrites "$fg_cmd"; then
+    pass "FG-$fg_id reachability: real bash overwrites DECISION"
+  else
+    bad "FG-$fg_id reachability: real bash did NOT overwrite DECISION, row not credited"
+  fi
+  bash_case "FG-$fg_id [$fg_cmd]" blocked antislop:reviewer "$fg_cmd"
+done
+
+echo
+echo "-- F-1 narrowings: what each one may and may not hide (FN1-FN6) --"
+# A quoted-delimiter heredoc body is inert to bash, so its lines are left out of
+# the fail-closed glob scan; a brace group holding `/` is expanded to its
+# alternatives rather than naming both tokens. Each narrowing has a row proving
+# the write it must NOT hide is still denied.
+bash_case "FN1 glob path inside a quoted heredoc body stays allowed" allowed antislop:reviewer \
+  "cat > /tmp/hdg-notes.txt <<'EOF'
+printf x > .claude/h*/u1/D*
+EOF"
+bash_case "FN2 a glob write AFTER the heredoc terminator is still denied" blocked antislop:reviewer \
+  "cat > /tmp/hdg-notes.txt <<'EOF'
+notes
+EOF
+printf x > $hr/[D]ECISION"
+bash_case "FN3 an UNQUOTED heredoc body is never narrowed" blocked antislop:reviewer \
+  "cat > /tmp/hdg-notes.txt <<EOF
+printf x > .claude/h*/u1/D*
+EOF"
+bash_case "FN4 a quoted operator spelling hides nothing after it" blocked antislop:reviewer \
+  "echo \"<<'X'\"
+printf x > .claude/h*/u1/D*
+X"
+bash_case "FN5 a brace group with / is expanded, and the write alternative is denied" \
+  blocked antislop:reviewer "tee {/tmp/hdg-a,$hr/[D]ECISION} < /dev/null"
+bash_case "FN6 a brace group with / that names neither token stays allowed" allowed \
+  antislop:reviewer "sha256sum {.claude,adapters/codex}/hooks/scripts/*.sh > /tmp/hdg-sums # human-review DECISION"
+
+echo
+echo "-- F-1 controls: quoted or read-only globs stay ALLOWED --"
+bash_case "FC1 the quoted glob is a literal filename" allowed antislop:reviewer \
+  "printf x > '$hr/[D]ECISION'"
+bash_case "FC2 reading through a glob" allowed antislop:reviewer "cat $hr/D*"
+bash_case "FC3 listing the packet dirs" allowed antislop:reviewer "ls .claude/human-review/*/"
+bash_case "FC4 an unrelated glob delete" allowed antislop:reviewer "rm -f build/*.o"
+bash_case "FC5 a bare listing glob" allowed antislop:reviewer "ls *"
+bash_case "FC6 a quoted glob in a commit message is inert" allowed antislop:reviewer \
+  "git commit -m 'note human-review [D]ECISION'"
+
+echo
+echo "-- accepted over-blocks from the esc-left-3 differential sweep (OB-1..OB-13) --"
+# Each JSON line below is one real command from the sweep corpus that the gate
+# before esc-left-3 allowed and this one denies (tests/hdg-differential-sweep.sh,
+# corpus and counts in the esc-left-3 commit message). None writes the protected
+# file; each is the price of a fail-closed rule, named in its reason. Pinned
+# `blocked`, so a later narrowing that frees one shows up here.
+ob_reasons=(
+  "heredoc fails the lexer; the raw scan reads a code line's quoted brace group holding / as live"
+  "unquoted adapters/*/agents/* can name both tokens; the git grep segment is not provably benign"
+  "heredoc and backslash fail the lexer; raw scan: a quoted brace group holding / and a bare *"
+  "backslash fails the lexer; raw scan: ~/.claude/plugins/cache/*/antislop/* and a bare *"
+  "backslash fails the lexer; raw * names the file, human-review spelled in a find read"
+  "backslash in a double-quoted pattern fails the lexer; raw */bin/* names both"
+  "backslash fails the lexer; raw */.git/* names both"
+  "heredoc and backslash fail the lexer; raw **/ and **On name both"
+  "a dollar-single-quote span fails the lexer; raw adapters/*/agents/* names both"
+  "unquoted adapters/*/rules/* can name both tokens; the cut segment is not provably benign"
+  "backslash fails the lexer; raw adapters/*/* names both"
+  "heredoc fails the lexer; the raw scan reads a code line's single-quoted JSON brace group as live"
+  "heredoc fails the lexer; the raw scan reads a code line's single-quoted JSON brace group as live"
+)
+mapfile -t ob_cmds <<'OBEOF'
+"SC=/tmp/claude-1000/-home-sebas-AntiSlop/7ea80ba2-0d01-42db-863e-631de8a2e87d/scratchpad && rm -rf $SC/mw && mkdir -p $SC/mw && cp -a hooks/scripts $SC/mw/ && G=$SC/mw/scripts/harness-integrity-gate.sh && cp \"$G\" $SC/mw/scripts/mut_a.sh && cp \"$G\" $SC/mw/scripts/mut_b.sh\npython3 - \"$SC/mw/scripts/mut_a.sh\" \"$SC/mw/scripts/mut_b.sh\" <<'PY'\nimport sys\na,b=sys.argv[1],sys.argv[2]\ns=open(a).read()\nold='''  case \"$permission_mode\" in\n    default|plan|auto) ;;\n    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).\n    *) return 1 ;;\n  esac'''\nassert s.count(old)==1\nopen(a,'w').write(s.replace(old,'''  case \"$permission_mode\" in\n    *) ;;\n  esac'''))\nt=open(b).read()\nold2='''    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).'''\nassert t.count(old2)==1\nopen(b,'w').write(t.replace(old2,'''    acceptEdits) ;;'''))\nprint(\"mutants written\")\nPY\necho \"--- sanity: mutants run at all ---\"\nd=\".clau\"\"de\"; FP=$SC/fp\nprintf '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"hooks/hooks.json\"},\"permission_mode\":\"dontAsk\"}' | CLAUDE_PROJECT_DIR=$FP bash $SC/mw/scripts/mut_a.sh >/dev/null 2>&1; echo \"mut_a dontAsk exit=$?\""
+"cd /home/sebas/AntiSlop; head -12 adapters/cursor/agents/lead-programmer.md; wc -l adapters/*/agents/*; head -8 adapters/codex/agents/reviewer.toml; git grep -n -i 'skill\\|tdd\\|roast\\|coding-discipline' adapters/*/agents | head; ls adapters/cursor adapters/codex; wc -l skills/tdd/SKILL.md skills/coding-discipline/SKILL.md skills/roast-work/SKILL.md; ls skills/tdd"
+"d=/tmp/bap2; rm -rf $d; mkdir -p $d/.claude; cd $d\nprintf '#!/usr/bin/env bash\\ncat >/dev/null\\nprintf %s\\n' \"'{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"ask\\\",\\\"permissionDecisionReason\\\":\\\"probe\\\"}}'\" > .claude/ask.sh; chmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\nprintf '%s\\n' 'Call the Bash tool right now with exactly this command. Do not write a plan, do not call ExitPlanMode:' \"cat > out.txt <<'EOF'\" line-1 line-2 line-3 line-4 line-5 line-6-END EOF > req.txt\ntmux new-session -d -s pp -x 200 -y 60 -c $d \"claude --permission-mode plan\"; sleep 8\ntmux load-buffer -b r req.txt; tmux paste-buffer -p -b r -t pp; sleep 1; tmux send-keys -t pp Enter; sleep 25; tmux capture-pane -p -t pp | cat -s | grep -v '^[╌─]' | tail -25; ls; tmux kill-session -t pp"
+"echo \"## plugin cache\"; ls ~/.claude/plugins/ 2>&1 | head; ls ~/.claude/plugins/cache 2>&1 | head; for p in ~/.claude/plugins/cache/*/antislop/*/.claude-plugin/plugin.json ~/.claude/plugins/marketplaces/*/.claude-plugin/plugin.json; do [ -f \"$p\" ] && echo \"$p: $(grep -o '\"version\": *\"[^\"]*\"' $p)\"; done; ls -la ~/.claude/plugins/marketplaces/ 2>&1 | head; echo; echo \"## researcher tmpl\"; awk 'NR==1{next} /^---$/{exit} {print}' templates/researcher.md.tmpl; grep -nE 'researcher\\.md\\.tmpl|researcher' bin/cli.js | head -12"
+"echo \"== wip-handoff litter (size: count) ==\"; find .claude -maxdepth 1 -name 'wip-handoff.*' -printf '%s\\n' | sort -n | uniq -c; echo; echo \"== human-review packets ==\"; find .claude/human-review -maxdepth 1 -mindepth 1 | wc -l; echo; echo \"== rulings ledger lines ==\"; wc -l < .claude/orchestrator-rulings.log; echo \"== audit logs ==\"; wc -l .claude/review-audit.log .claude/dispatch-audit.log .claude/wip-audit.log .claude/microworld-audit.log; echo; echo \"== agent-memory ==\"; find .claude/agent-memory -type f | wc -l; du -sh .claude/agent-memory; find .claude/agent-memory -maxdepth 1 -mindepth 1 -type d -exec sh -c 'echo \"$(find \"$1\" -type f | wc -l) $1\"' _ {} \\;; echo; echo \"== CHANGELOG versions ==\"; grep -cE '^## \\[?[0-9]+\\.[0-9]+\\.[0-9]+' CHANGELOG.md; grep -E '^## \\[?[0-9]+\\.[0-9]+\\.[0-9]+' CHANGELOG.md | head -3; grep -E '^## \\[?[0-9]+\\.[0-9]+\\.[0-9]+' CHANGELOG.md | awk 'NR==30'"
+"find . -name \"*.js\" -path \"*/bin/*\" -o -name \"*.js\" -path \"*/lib/*\" | xargs grep -l \"toml\\|TOML\" 2>/dev/null"
+"find /home/sebas/AntiSlop -type f \\( -name \"*.sh\" -o -name \"validate*\" -o -name \"*test*\" -o -name \"*check*\" \\) ! -path \"*/docs/experiments/*\" ! -path \"*/.git/*\" | head -50"
+"for f in adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md; do python3 - \"$f\" <<'EOF'\nimport sys\np=sys.argv[1]; s=open(p).read()\nold=\"\"\"returns ESCALATE-TO-HUMAN under `off`, and no marker check precedes the\nmilestone audit gate.\n\"\"\"\nnew=\"\"\"returns ESCALATE-TO-HUMAN under `off`, and no marker check precedes the\nmilestone audit gate. When you dispatch scribe for a unit, quote the\nreviewer's PASS verdict line verbatim in that dispatch; scribe closes an\nissue only on that quoted line.\n\"\"\"\nassert s.count(old)==1\nopen(p,'w').write(s.replace(old,new))\nEOF\ndone; sed -i 's/^- \\*\\*On FAIL (both modes)\\*\\*/- **On FAIL (both orchestration modes)**/; s/^- \\*\\*On INSUFFICIENT-CONTEXT (both modes)\\*\\*/- **On INSUFFICIENT-CONTEXT (both orchestration modes)**/; s/^- \\*\\*On ESCALATE-TO-HUMAN (both modes)\\*\\*/- **On ESCALATE-TO-HUMAN (both orchestration modes)**/' agents/reviewer.md; grep -n \"both modes\\|both orchestration\" agents/reviewer.md; git diff --stat"
+"git diff --numstat c1bcc44 e5b4d2a; git diff c1bcc44 e5b4d2a -- adapters | grep -c '^-[^-]'; git diff c1bcc44 e5b4d2a -- adapters/codex/agents/reviewer.toml | head -20; grep -n 'verdict' adapters/codex/agents/reviewer.toml | head -8; file adapters/*/agents/*; grep -c $'\\r' adapters/*/agents/lead-programmer.* adapters/*/agents/reviewer.*"
+"grep -n 'both modes\\|reviewer-join' templates/persona-protocol.md README.md agents/*.md adapters/*/agents/* adapters/*/rules/* adapters/codex/agents-md-fragment.md CONTEXT.md docs/adr/0038* commands/gate.md 2>/dev/null | cut -c1-220"
+"grep -n \"every agent identity\\|every subagent\" templates/persona-protocol.md agents/reviewer.md adapters/*/agents/* adapters/*/* 2>/dev/null | cut -c1-220; sed -n 546,566p templates/persona-protocol.md; echo ---; sed -n 255,268p agents/orchestrator.md; echo ---; sed -n 98,112p adapters/codex/agents-md-fragment.md; echo ---; sed -n 104,118p adapters/cursor/rules/persona-protocol.mdc; echo; sed -n 495,515p hooks/scripts/stop-gate-core.sh; grep -n \"tombstone\\|resurrected\" hooks/scripts/lib/state-access.sh | head -20"
+"mkdir -p /tmp/bash-ask-probe/.claude && cd /tmp/bash-ask-probe && cat > .claude/ask.sh <<'EOS'\n#!/usr/bin/env bash\ncat >/dev/null\nprintf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"probe: approve only if the full heredoc below is visible\"}}\\n'\nEOS\nchmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\ntmux kill-session -t probe-x 2>/dev/null\ntmux new-session -d -s probe-x -x 200 -y 60 -c /tmp/bash-ask-probe \"claude --permission-mode default\"\nsleep 8; tmux capture-pane -p -t probe-x | cat -s | head -50"
+"tmux kill-session -t probe-x; rm -rf /tmp/bash-ask-probe; mkdir -p /tmp/bash-ask-probe/.claude && cd /tmp/bash-ask-probe && cat > .claude/ask.sh <<'EOS'\n#!/usr/bin/env bash\ncat >/dev/null\nprintf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"probe\"}}\\n'\nEOS\nchmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\ntmux new-session -d -s probe-x -x 200 -y 60 -c /tmp/bash-ask-probe \"claude --permission-mode bypassPermissions\"\nsleep 8; tmux capture-pane -p -t probe-x | cat -s | head -30"
+OBEOF
+for ob_i in "${!ob_cmds[@]}"; do
+  run "$(jq -n --arg a antislop:reviewer --argjson c "${ob_cmds[ob_i]}" \
+    '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$proj"
+  check "OB-$((ob_i + 1)) ${ob_reasons[ob_i]}" blocked
+done
 
 echo
 echo "-- widened charclass: dots and hashes in id (N24-N27) --"
