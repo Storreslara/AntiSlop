@@ -437,6 +437,7 @@ glob_names_tokens() {
   shopt -s extglob nocasematch
   if skel="$(command_skeleton "$cmd")"; then
     glob_scan_words "$cmd" "$skel"
+    glob_scan_shell_payloads "$cmd" "$skel"
   else
     glob_strip_quoted_heredoc_bodies "$cmd"
     glob_text="${glob_text//[\'\"]/}"
@@ -445,6 +446,33 @@ glob_names_tokens() {
   [ "$had_ext" = 1 ] || shopt -u extglob
   [ "$had_nc" = 1 ] || shopt -u nocasematch
   return 0
+}
+
+# qp-1 (docs/plans/2026-10-04-quoted-payload-closure.md): a quoted string handed
+# to a second shell is re-parsed there, so its globs are live. Frozen rule, read
+# off the skeleton $2 of $1: an unquoted shell name - sh, bash or dash - at a
+# word start or after a `/`, then zero or more unquoted option words, the last a
+# short-option cluster holding `c` (-c, -ec); the next word is the payload. Each
+# payload in the command is scanned with its quote characters deleted and every
+# metacharacter live, as the lex-failure branch scans raw text. It only ever
+# sets glob_h/glob_d. Declared residuals, a list that claims no completeness:
+# (R-QP-a) a pattern expanded by a program that is not a second shell
+# re-parsing a string, and (R-QP-b) a second-shell invocation this rule does not
+# recognise from the text (another shell name, a quoted name, a non-option word
+# before -c, input piped to a shell).
+glob_scan_shell_payloads() {
+  local text="$1" skel="$2" pre end w p metas=$' \t\n;&|<>()'
+  local re='(^|[^[:alnum:]_.-])(sh|bash|dash)([ \t]+-[^ \t\n;&|()<>]*)*[ \t]+-[[:alpha:]]*c[[:alpha:]]*[ \t]+'
+  while [[ $skel =~ $re ]]; do
+    pre="${skel%%"${BASH_REMATCH[0]}"*}"
+    end=$((${#pre} + ${#BASH_REMATCH[0]}))
+    w="${skel:end}"
+    w="${w%%[$metas]*}"
+    p="${text:end:${#w}}"
+    p="${p//[\'\"]/}"
+    glob_scan_words "$p" "$p"
+    text="${text:end}" skel="${skel:end}"
+  done
 }
 
 # Splits $1 into words at unquoted metacharacters, read off the aligned skeleton
@@ -693,12 +721,16 @@ fi
 # table of docs/plans/2026-10-04-escalation-leftovers.md (esc-left-3, pinned as
 # F1a-F1d and FG-* in the suite); such a command then fails closed - past the
 # prompt route and command_is_provably_benign(), only is_sanctioned_marker_write()
-# may allow it. Known residuals, because the text names neither token even as a
-# pattern - not the whole enumeration: a write from a cwd inside the packet
-# directory with `human-review` never spelled anywhere (A3), R-4's split
-# variable, R-5's `DECISIO\N`, NL1's newline in the id (A4), and a glob inside a
-# quoted payload that a second shell re-parses (`bash -c '...'`), pinned as
-# QP-1/QP-2 (docs/plans/2026-10-04-escalation-followups.md).
+# may allow it. Since qp-1 (docs/plans/2026-10-04-quoted-payload-closure.md,
+# QP-1..QP-3 and QPF-* in the suite) the early exit fires when the text does not
+# name both tokens, counting as patterns only unquoted globs and globs in a
+# quoted string handed to a second shell (glob_scan_shell_payloads()). Known
+# residuals of that rule - not the whole enumeration: a write from a cwd inside
+# the packet directory with `human-review` never spelled anywhere (A3), R-4's
+# split variable, R-5's `DECISIO\N`, NL1's newline in the id (A4), (R-QP-a) a
+# pattern expanded by a program that is not a second shell re-parsing a string,
+# and (R-QP-b) a second-shell invocation the rule does not recognise from the
+# text.
 joined="${command//$'\047'/}"
 joined="${joined//$'\042'/}"
 glob_names_tokens "$command"

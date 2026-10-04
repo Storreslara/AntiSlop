@@ -997,41 +997,88 @@ bash_case "FP-br-1 a comma-free brace group holding / fails closed" blocked \
   antislop:reviewer "tee x{a/b}y < /dev/null"
 
 echo
-echo "-- quoted payload re-parsed by a second shell: ALLOWED, TRACKED-OPEN (not accepted) --"
-# The gate masks a quoted payload, so neither token is spelled in the joined
-# text and the early exit fires; a second shell then re-parses the payload and
-# expands its glob. QP-1 and QP-2 are genuine allowed overwrites, tracked-open
-# by Open Question 1 of docs/plans/2026-10-04-escalation-followups.md; a later
-# unit that closes them is EXPECTED to flip them to blocked.
+echo "-- quoted payload re-parsed by a second shell: BLOCKED (closed by qp-1) --"
+# `joined` deletes only the quote characters, so these commands DO spell
+# human-review. The early exit used to fire because DECISION is never spelled
+# and the skeleton-based glob scan skipped the quoted D*; a second shell then
+# re-parsed the payload and expanded its glob. qp-1 makes a glob in a quoted
+# string handed to a second shell count as a pattern
+# (docs/plans/2026-10-04-quoted-payload-closure.md), so all three fail closed.
 #
-# QP-3 is not a bypass: POSIX sh (dash, and bash --posix) does not
-# pathname-expand a non-interactive redirect word, so it writes a literal file
-# named D* instead. QP-1 is the same text under bash, the control proving the
-# reachability check discriminates.
+# QP-3 writes nothing: POSIX sh (dash, and bash --posix) does not
+# pathname-expand a non-interactive redirect word, so it creates a literal file
+# named D* instead. It is pinned blocked as an accepted fail-closed over-block.
+# QP-1 is the same text under bash, the control proving the reachability check
+# discriminates.
 qp_rows=(
   "1|yes|bash -c 'printf x > .claude/human-review/u1/D*'"
   "2|yes|sh -c 'tee .claude/human-review/u1/D* < /dev/null'"
   "3|no|sh -c 'printf x > .claude/human-review/u1/D*'"
 )
+# $1 a bash command, run once in a fresh fixture whose DECISION holds a
+# sentinel. Sets qp_got=yes when DECISION's bytes changed, and qp_lit=yes when a
+# literal file named D* exists in the packet directory.
+qp_reach() {
+  local d
+  d="$(mktemp -d "$tmproot/reach.XXXXXX")"
+  mkdir -p "$d/$hr"
+  printf 'ORIG-SENTINEL' > "$d/$hr/DECISION"
+  (cd "$d" && bash -c "$1") >/dev/null 2>&1 || true
+  qp_got=yes qp_lit=no
+  [ "$(cat "$d/$hr/DECISION" 2>/dev/null)" != 'ORIG-SENTINEL' ] || qp_got=no
+  if [ -e "$d/$hr/D*" ]; then qp_lit=yes; fi
+}
 for qp_row in "${qp_rows[@]}"; do
   qp_id="${qp_row%%|*}"
   qp_want="${qp_row#*|}"; qp_want="${qp_want%%|*}"
   qp_cmd="${qp_row#*|*|}"
-  if fg_overwrites "$qp_cmd"; then qp_got=yes; else qp_got=no; fi
+  qp_reach "$qp_cmd"
   if [ "$qp_got" = "$qp_want" ]; then
     pass "QP-$qp_id reachability: overwrite=$qp_got, as measured"
   else
     bad "QP-$qp_id reachability: overwrite=$qp_got, expected $qp_want"
   fi
-  bash_case "QP-$qp_id [$qp_cmd]" allowed antislop:reviewer "$qp_cmd"
+  if [ "$qp_id" = 3 ]; then
+    if [ "$qp_lit" = yes ]; then
+      pass "QP-3 literal: POSIX sh created a literal file named D*, so the payload ran"
+    else
+      bad "QP-3 literal: no literal file named D*, so the payload may never have run"
+    fi
+  fi
+  bash_case "QP-$qp_id [$qp_cmd]" blocked antislop:reviewer "$qp_cmd"
 done
 
 echo
-echo "-- accepted over-blocks from the esc-left-3 differential sweep (OB-1..OB-13) --"
+echo "-- quoted-payload family table (QPF-*): reachable, and BLOCKED --"
+# One row per condition of glob_scan_shell_payloads() that QP-1/QP-2 do not
+# pin alone (sh and bash names, a bare -c, the first payload). Each is killed by
+# its own single-branch mutant (qp-1 commit message). The table is frozen; a
+# spelling outside it is a declared residual (R-QP-a, R-QP-b), never a row.
+qpf_rows=(
+  "1|/bin/sh -c 'tee $hr/D* < /dev/null'"
+  "2|bash -e -c 'printf x > $hr/D*'"
+  "3|bash -ec 'printf x > $hr/D*'"
+  "4|bash -c 'true' && bash -c 'printf x > $hr/D*'"
+  "5|dash -c 'tee $hr/D* < /dev/null'"
+)
+for qpf_row in "${qpf_rows[@]}"; do
+  qpf_id="${qpf_row%%|*}"
+  qpf_cmd="${qpf_row#*|}"
+  if fg_overwrites "$qpf_cmd"; then
+    pass "QPF-$qpf_id reachability: real bash overwrites DECISION"
+  else
+    bad "QPF-$qpf_id reachability: real bash did NOT overwrite DECISION, row not credited"
+  fi
+  bash_case "QPF-$qpf_id [$qpf_cmd]" blocked antislop:reviewer "$qpf_cmd"
+done
+
+echo
+echo "-- accepted over-blocks from the esc-left-3 and qp-1 differential sweeps (OB-1..OB-14) --"
 # Each JSON line below is one real command from the sweep corpus that the gate
 # before esc-left-3 allowed and this one denies (tests/hdg-differential-sweep.sh,
 # corpus and counts in the esc-left-3 commit message). None writes the protected
-# file; each is the price of a fail-closed rule, named in its reason. Pinned
+# file; each is the price of a fail-closed rule, named in its reason. OB-14 is
+# from the qp-1 sweep (same tool, gate before qp-1 against qp-1). Pinned
 # `blocked`, so a later narrowing that frees one shows up here.
 ob_reasons=(
   "heredoc fails the lexer; the raw scan reads a code line's quoted brace group holding / as live"
@@ -1047,6 +1094,7 @@ ob_reasons=(
   "backslash fails the lexer; raw adapters/*/* names both"
   "heredoc fails the lexer; the raw scan reads a code line's single-quoted JSON brace group as live"
   "heredoc fails the lexer; the raw scan reads a code line's single-quoted JSON brace group as live"
+  "a sh -c / bash -c payload is scanned live; its scratch path a/h*/D* can name both tokens"
 )
 mapfile -t ob_cmds <<'OBEOF'
 "SC=/tmp/claude-1000/-home-sebas-AntiSlop/7ea80ba2-0d01-42db-863e-631de8a2e87d/scratchpad && rm -rf $SC/mw && mkdir -p $SC/mw && cp -a hooks/scripts $SC/mw/ && G=$SC/mw/scripts/harness-integrity-gate.sh && cp \"$G\" $SC/mw/scripts/mut_a.sh && cp \"$G\" $SC/mw/scripts/mut_b.sh\npython3 - \"$SC/mw/scripts/mut_a.sh\" \"$SC/mw/scripts/mut_b.sh\" <<'PY'\nimport sys\na,b=sys.argv[1],sys.argv[2]\ns=open(a).read()\nold='''  case \"$permission_mode\" in\n    default|plan|auto) ;;\n    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).\n    *) return 1 ;;\n  esac'''\nassert s.count(old)==1\nopen(a,'w').write(s.replace(old,'''  case \"$permission_mode\" in\n    *) ;;\n  esac'''))\nt=open(b).read()\nold2='''    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).'''\nassert t.count(old2)==1\nopen(b,'w').write(t.replace(old2,'''    acceptEdits) ;;'''))\nprint(\"mutants written\")\nPY\necho \"--- sanity: mutants run at all ---\"\nd=\".clau\"\"de\"; FP=$SC/fp\nprintf '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"hooks/hooks.json\"},\"permission_mode\":\"dontAsk\"}' | CLAUDE_PROJECT_DIR=$FP bash $SC/mw/scripts/mut_a.sh >/dev/null 2>&1; echo \"mut_a dontAsk exit=$?\""
@@ -1062,6 +1110,7 @@ mapfile -t ob_cmds <<'OBEOF'
 "grep -n \"every agent identity\\|every subagent\" templates/persona-protocol.md agents/reviewer.md adapters/*/agents/* adapters/*/* 2>/dev/null | cut -c1-220; sed -n 546,566p templates/persona-protocol.md; echo ---; sed -n 255,268p agents/orchestrator.md; echo ---; sed -n 98,112p adapters/codex/agents-md-fragment.md; echo ---; sed -n 104,118p adapters/cursor/rules/persona-protocol.mdc; echo; sed -n 495,515p hooks/scripts/stop-gate-core.sh; grep -n \"tombstone\\|resurrected\" hooks/scripts/lib/state-access.sh | head -20"
 "mkdir -p /tmp/bash-ask-probe/.claude && cd /tmp/bash-ask-probe && cat > .claude/ask.sh <<'EOS'\n#!/usr/bin/env bash\ncat >/dev/null\nprintf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"probe: approve only if the full heredoc below is visible\"}}\\n'\nEOS\nchmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\ntmux kill-session -t probe-x 2>/dev/null\ntmux new-session -d -s probe-x -x 200 -y 60 -c /tmp/bash-ask-probe \"claude --permission-mode default\"\nsleep 8; tmux capture-pane -p -t probe-x | cat -s | head -50"
 "tmux kill-session -t probe-x; rm -rf /tmp/bash-ask-probe; mkdir -p /tmp/bash-ask-probe/.claude && cd /tmp/bash-ask-probe && cat > .claude/ask.sh <<'EOS'\n#!/usr/bin/env bash\ncat >/dev/null\nprintf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"probe\"}}\\n'\nEOS\nchmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\ntmux new-session -d -s probe-x -x 200 -y 60 -c /tmp/bash-ask-probe \"claude --permission-mode bypassPermissions\"\nsleep 8; tmux capture-pane -p -t probe-x | cat -s | head -30"
+"S=/tmp/claude-1000/-home-sebas-AntiSlop/74132c4b-fe3f-4a87-85fc-d5c06728bf25/scratchpad/shsem; rm -rf $S; mkdir -p $S/a/hdir; cd $S; reset(){ printf ORIG > a/hdir/Dfile; }; \nreset; sh -c 'printf x > a/h*/D*' 2>&1; echo \"dash-redirect: $(cat a/hdir/Dfile)\"; \nreset; bash -c 'printf x > a/h*/D*'; echo \"bash-redirect: $(cat a/hdir/Dfile)\"; \nreset; sh -c 'tee a/h*/D* < /dev/null'; echo \"dash-tee: [$(cat a/hdir/Dfile)]\""
 OBEOF
 for ob_i in "${!ob_cmds[@]}"; do
   run "$(jq -n --arg a antislop:reviewer --argjson c "${ob_cmds[ob_i]}" \
