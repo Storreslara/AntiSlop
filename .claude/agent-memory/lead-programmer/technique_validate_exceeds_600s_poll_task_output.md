@@ -15,3 +15,10 @@ a task output file under `.../tasks/<id>.output`. The run keeps going.
 backgrounded, run a foreground poll in a new call: `for i in $(seq 1 100); do grep -q validate-exit= <task.output> && break; sleep 3; done`
 with timeout 400000. That gives the full-run exit code without falling back to "final section
 only". Poll the output FILE, never pgrep (see [[pgrep-self-match-polling-trap]]).
+
+**Superseded by a split (qp-1 fix, 2026-10-04):** the orchestrator banned the background route —
+a backgrounded run ignores SIGINT and probe-hook-identity I41 fails spuriously. Instead run
+`timeout 580 bash tests/validate.sh` foreground, note the last `== ` header reached, then run
+prologue (lines 1-9) + `sed -n '<that section line - 1>,$p'` as a tail script. The tail script MUST
+live in the worktree's `tests/` dir: validate.sh does `cd "$(dirname "$0")/.."`, so a copy in
+`/tmp` cds to `/` and every suite FAILs.

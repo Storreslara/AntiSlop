@@ -79,4 +79,5 @@
 - [Length-prefixed evidence blocks](technique_length_prefixed_evidence_blocks.md) — forgery-proof raw-text blocks in a graded record; host forged blocks in a NON-gated block or the mutant survives (esc-chat-1-evidence)
 - [Locale fix keeps prior mutant live](technique_locale_fix_keeps_prior_mutant_live.md) — `local LC_ALL=C` over `[ \t]` keeps MARKER-WS killable; scratchpad is shared with concurrent agents, mktemp worktree names (esf-hardening-3)
 - [jq filter keeps absent keys absent](technique_jq_filter_preserve_absent_keys.md) — `{a,b}` nulls absent keys and breaks `has()`; use with_entries(select); new block kind hides appended fixtures from the old gate (esc-chat-1-evidence2)
-- [validate.sh exceeds 600 s](technique_validate_exceeds_600s_poll_task_output.md) — 672 s at qp-1; auto-backgrounded, poll the task output file for `validate-exit=` in a fresh foreground call
+- [validate.sh exceeds 600 s](technique_validate_exceeds_600s_poll_task_output.md) — 672 s at qp-1; now split: `timeout 580` part 1 + tail script kept inside `tests/` (cd dirname/..)
+- [Single-quoted ERE bracket escapes](technique_single_quoted_ere_bracket_escapes.md) — `[ \t]` in a '...' ERE is literal backslash+t; use [[:blank:]]; vary every char dimension in the row table (qp-1 FAIL)
