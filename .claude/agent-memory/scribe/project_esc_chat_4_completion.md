@@ -1,6 +1,6 @@
 ---
 name: esc-chat-4 completion
-description: ADR-0039 premises after esc-chat-5 (2026-10-03) — Bash-ask re-run 229138e passed review (GREEN, 2.1.288 only, probe hook); first record cbb918e failed and is superseded; identity Outcome D, teammate premise unmeasured
+description: ADR-0039 premises — Bash-ask record now 7e04acd (esc-chat-7, GREEN, per-mode versions 2.1.288/2.1.289, decline blocks on-record); 229138e and cbb918e superseded; teammate premise unmeasured
 metadata:
   type: project
 ---
@@ -10,3 +10,5 @@ esc-chat-4 landed ADR-0039 (prompt-confirmed decision write) with two premises P
 **Why:** a dispatch saying a record is "verified" is a dated claim; a script-graded GREEN is not evidence unless the record's own appendix backs each row and review has passed the record commit. Same lesson as [[feedback_verify_plan_premise_freshness]].
 
 **How to apply:** before flipping "pending" to "measured", check the record's appendix shows each row's evidence and that a reviewer PASS exists for the record commit. A material CLI upgrade re-runs the probe (R2); a genuine-teammate observation (Outcome A/B/C) reopens the "main session only" caveat. On C2.4b in `tests/harness-integrity-gate.test.sh`: it targets the harness-integrity gate's Set B asked/completed pair, a different gate's; write the decision gate's asked-line meaning accurately ("declined, denied (including headless), or the approved write failed") and report any over-match rather than rewording. See [[feedback_verify_each_disk_sink_and_field_location]].
+
+**Update esc-chat-7 (2026-10-03):** a third record, 7e04acd (script fix 6d30470: decline blocks + Side effects), passed review and superseded 229138e. Docs now cite 7e04acd. Version is per mode (default 2.1.288; acceptEdits/auto 2.1.289). Never restate it as one version. Commit 9b4afd9.
