@@ -58,3 +58,10 @@ pass never reopened the two files at all.
 
 See [[baselines-expire]] for the sibling failure in the same unit (stale packet
 assertions) and [[feedback-no-forced-changes]].
+
+**4th case (rnc-1, 2026-10-04):** my own edit text said "the only spellings
+claimed blocked are pinned ones: X and Y"; the suite pinned more (Q20,
+FP-nc-1). A phrase-presence check cannot catch an incomplete enumeration.
+**How to apply:** in spec-authored prose, state the rule plus "such as"
+examples, and have the check fail on any `only[^.:;]*:` form and verify each
+named row id against the suite.
