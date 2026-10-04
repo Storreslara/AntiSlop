@@ -5,6 +5,11 @@ units): this document holds the dispatch contracts. There is no task-master
 slicing and no tracker issue. Base: HEAD `d7c4242`. Spec only; nothing here
 is implemented.
 
+Amended 2026-10-04 (spec-master) after reviewer FAIL #1 on rnc-1 (commit
+`09eb34d`, record `.claude/reviewed/rnc-1.fail`). Only rnc-1's edits A, B
+and D, its check script, its model tag and the bookkeeping that names them
+changed. rnc-2 is untouched. See "Fix after FAIL #1" under rnc-1.
+
 ## Goal
 
 Close the deferred non-blocking review notes from esc-fu-1, esc-fu-2,
@@ -60,7 +65,15 @@ these surfaces were read:
   that claimed more than the code. Hence rnc-1's claim-anchored,
   entry-scoped check script.
 - Neither esc-fu-2, esc-fu-3 nor qp-2 has a `.fail`. The Implementer-tier
-  ratchet does not apply to either unit.
+  ratchet did not apply to either unit at spec time.
+- `rnc-1.fail` (added 2026-10-04, FAIL #1 on `09eb34d`): edit A's
+  sentence "the only spellings claimed blocked are pinned ones: FP-ext-1
+  and the qp-1 rows below" was a closed list, and false. The same entry
+  names Q20 as blocked, and FP-nc-1 is pinned blocked with a real-bash
+  reachability line. Neither was in the list. The spec's check only
+  tested that the phrase was present. This was a spec defect, not an
+  implementer one, so the fix needs this amendment. The ratchet now
+  applies: the re-dispatch is tagged opus.
 
 ### Marker-audit `--notes` sweep (run 2026-10-04 at d7c4242)
 
@@ -144,6 +157,25 @@ bump, no CHANGELOG entry, no `--update`.
   outside the table the entry claims only *pinned* spellings blocked
   (FP-ext-1 and the qp-1 rows). "Closed by qp-1" becomes "Since qp-1",
   and residual R-QP-a/b stay named.
+- 2026-10-04 Terminology consistency: Q After FAIL #1, may the entry list
+  the pinned spellings outside the table as a closed list? → A
+  (self-resolved): no. The suite pins many blocked rows outside `fg_rows`
+  (Q17-Q20, FN2-FN5, FP-ext-1, FP-nc-1, FP-br-1, QP, QPF, OB). The entry
+  states the rule ("claimed blocked only where a suite row pins it") and
+  gives examples after "such as", naming FP-ext-1, FP-nc-1, Q20 and the
+  qp-1 rows. The check fails on any "only ...:" list in the four entries.
+- 2026-10-04 Terminology consistency: Q Should the second-shell wording
+  keep "at a word start or after a `/`" and "a quoted glob names nothing
+  unless its quoted string is a second shell's payload"? → A
+  (self-resolved): no, both are narrower than the gate. Measured
+  2026-10-04 against `hooks/scripts/human-decision-gate.sh` at HEAD,
+  commands fed from a scratch file, each but the `=` case with a trailing
+  `> /tmp/zz-out` so the benign-command check cannot allow it. A shell name after `=`,
+  `$`, `/` or a closing quote is matched (rc 2), and after a letter it is
+  not (rc 0). `echo sh -c` before a quoted glob arms the gate (rc 2)
+  although no second shell runs, and the same command without `sh -c` is
+  allowed (rc 0). The regex boundary is `(^|[^[:alnum:]_.-])`. Both
+  widenings can only over-block. The wording now says that.
 
 ## Assumptions
 
@@ -183,11 +215,21 @@ bump, no CHANGELOG entry, no `--update`.
   I42 mutrun 40 and 39 depend on them (`assert count==1`).
 - R5. The two units are independent. They can run in either order, each in
   its own commit or commits.
+- R6. (FAIL #1 on rnc-1.) Glossary prose that enumerates what is blocked
+  goes stale as soon as the suite grows a row. The amended edits state a
+  rule plus "such as" examples, and the check fails on any "only ...:"
+  form in the four entries. It also checks that every Q, FN or FP row id
+  the frozen family table and expansion-named token entries name is
+  pinned `blocked` in `tests/human-decision-gate.test.sh`. Unlike R1, the
+  amended edits were dry-run proven in a scratch copy (criterion 1). The
+  replacement texts were applied by a Python file written with the Write
+  tool, never by Bash text naming both trigger tokens.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied. Every item was verified at
-  d7c4242. Both failure modes of item 10/11 were reproduced. rnc-1's check
-  script was run at the base and fails 14 checks there (non-vacuous). Each
+  d7c4242. Both failure modes of item 10/11 were reproduced. rnc-1's
+  amended check script fails 24 checks at the base and 15 at `09eb34d`
+  (the FAIL #1 commit), and passes on the amended text (non-vacuous). Each
   rnc-2 behaviour change has a revert or mutant criterion.
 - P2 "Prefer deterministic scripts": satisfied. No script-driven file
   (`fileHashes`, `--wire-*`) is touched.
@@ -200,7 +242,12 @@ bump, no CHANGELOG entry, no `--update`.
 ## Steps (dispatch contracts)
 
 ### Unit: rnc-1
-Suggested model: sonnet. Depends on: none.
+Suggested model: opus (was sonnet). Depends on: none.
+The next dispatch is a lead-programmer fix after FAIL #1 on rnc-1 (commit
+`09eb34d`, `.claude/reviewed/rnc-1.fail`). Under the Implementer-tier
+ratchet a sonnet unit with a FAIL on record escalates to opus, so the fix
+is tagged `model: opus`. The fix applies "Fix after FAIL #1" (below) to
+HEAD. It does not redo edits A to E from `d7c4242`.
 
 ## Objective
 Make four `docs/harness-glossary.md` entries accurate to qp-1, and rewrap
@@ -224,11 +271,13 @@ A. Frozen family table (item 4). Replace
   did). A spelling outside the table is not claimed closed, and the
   reviewer did not independently probe beyond it. **Declared residuals**,
 ```
-with
+with (amended after FAIL #1; the first version was a false closed list)
 ```
-  did). Outside the table, the only spellings claimed blocked are pinned
-  ones: FP-ext-1 and the qp-1 rows below. No other spelling outside it is
-  claimed closed, and the esc-left-3 reviewer did not probe beyond it.
+  did). Outside the table, a spelling is claimed blocked only where a
+  suite row pins it, such as FP-ext-1, FP-nc-1, Q20 and the qp-1 rows
+  below; that list is not exhaustive. No unpinned spelling outside the
+  table is claimed closed, and the esc-left-3 reviewer did not probe
+  beyond it.
   **Declared residuals**,
 ```
 
@@ -239,16 +288,20 @@ B. Frozen family table (item 6). Replace
   option) now counts as a pattern, so the gate reads that payload with
   its quotes removed.
 ```
-with
+with (amended after FAIL #1; the first version described the name
+boundary as "a word start or after a `/`", narrower than the regex)
 ```
   breaks the gate's path recognizers. Since qp-1, a glob inside a quoted
   string handed to a second shell counts as a pattern, so the gate reads
-  that payload with its quotes removed. The rule recognises a second
-  shell as an unquoted `sh`, `bash` or `dash` name at a word start or
-  after a `/`, then any option words that start with `-` or `+`, the last
-  a short-option cluster holding `c` (`-c`, `-ec`); it matches
-  case-insensitively, an over-block only, and the next word is the
-  payload.
+  that payload with its quotes removed. The rule reads the command text
+  alone. It recognises a second shell as an unquoted `sh`, `bash` or
+  `dash` name whose preceding character, if any, is not a letter, digit,
+  `_`, `.` or `-` (so a blank, `/`, `=`, `$` or a quote qualifies), then
+  any option words that start with `-` or `+`, the last a short-option
+  cluster holding `c` (`-c`, `-ec`); the next word is the payload. It
+  matches case-insensitively, and it also matches a name that is only an
+  argument, as in `echo sh -c` before a quoted glob; both can only
+  over-block.
 ```
 
 C. Accepted over-block (OB row), rewrap only. Replace
@@ -277,13 +330,21 @@ with
 and replace
 ```
   marker-write recognizer may allow it. When the command lexes, a quoted glob is literal and names
-  nothing.
+  nothing. Coverage is claimed only for the [[frozen family table]]; the
+  gate also reads extglob words, pinned by FP-ext-1 rather than by a table
+  row.
 ```
-with
+with (amended after FAIL #1; the first version kept a table-only coverage
+claim and said a quoted glob names tokens only as a second shell's payload)
 ```
   marker-write recognizer may allow it. When the command lexes, a quoted
-  glob names nothing unless its quoted string is a second shell's
-  payload.
+  glob names nothing unless it is in the word that follows text the
+  second-shell rule recognises (see [[frozen family table]]). That rule
+  reads the text alone, so `echo sh -c` before a quoted glob names its
+  tokens too, although no second shell runs. Coverage is claimed for the
+  [[frozen family table]], the qp-1 rows and other rows pinned outside
+  the table, such as FP-ext-1 (extglob words) and FP-nc-1 (a lowercase
+  glob under nocaseglob); no unpinned spelling is claimed.
 ```
 
 E. Trigger token (item 6b plus wrap). Keep the `**trigger token**:` line and
@@ -306,6 +367,51 @@ unchanged. Replace the body that follows with
 Commit: `docs(rnc-1): glossary entries agree with qp-1, closed vs pinned,
 78-column wrap`.
 
+### Fix after FAIL #1 (lead-programmer, model: opus)
+Edits A to E landed in `09eb34d`. The fix makes three Edit-tool
+replacements in `docs/harness-glossary.md` at HEAD. Each `old` is the
+`09eb34d` text and occurs exactly once. Each `new` is the amended text
+from edit A, B or D above. Use the Edit tool only; do not write the
+glossary through Bash (R1).
+
+F1 (frozen family table, edit A). Replace
+```
+  did). Outside the table, the only spellings claimed blocked are pinned
+  ones: FP-ext-1 and the qp-1 rows below. No other spelling outside it is
+  claimed closed, and the esc-left-3 reviewer did not probe beyond it.
+  **Declared residuals**,
+```
+with edit A's amended block.
+
+F2 (frozen family table, edit B). Replace
+```
+  that payload with its quotes removed. The rule recognises a second
+  shell as an unquoted `sh`, `bash` or `dash` name at a word start or
+  after a `/`, then any option words that start with `-` or `+`, the last
+  a short-option cluster holding `c` (`-c`, `-ec`); it matches
+  case-insensitively, an over-block only, and the next word is the
+  payload. QP-1
+```
+with edit B's amended block from its third line ("that payload with its
+quotes removed. The rule reads the command text") to its end, followed by
+` QP-1` on the same last line, so the line reads `  over-block. QP-1`.
+
+F3 (expansion-named token, edit D). Replace
+```
+  marker-write recognizer may allow it. When the command lexes, a quoted
+  glob names nothing unless its quoted string is a second shell's
+  payload. Coverage is claimed only for the [[frozen family table]]; the
+  gate also reads extglob words, pinned by FP-ext-1 rather than by a table
+  row.
+```
+with edit D's amended second block.
+
+Edits C and E are unchanged and are not redone. Commit:
+`docs(rnc-1): fix FAIL #1, pinned list is open-ended, second-shell rule
+as the gate reads it`. Then run all four acceptance criteria. The plan
+amendment commit sits between `09eb34d` and the fix, so criterion 3 counts
+only the unit's own `docs(rnc-1)` commits.
+
 ## Do NOT touch
 `hooks/`, `.claude/hooks/`, `tests/`, `scripts/`, `agents/`, `templates/`,
 `CONTEXT.md`, any other glossary entry, `CHANGELOG.md`, version files.
@@ -315,12 +421,20 @@ Run in a clean worktree at the unit's final commit
 (`git worktree add --detach /tmp/rnc-1-ac <sha>`; `cd /tmp/rnc-1-ac`).
 `$S` is a scratch dir.
 
-1. Save this script as `$S/rnc1-check.py`, then
+1. Save this script as `$S/rnc1-check.py` (amended after FAIL #1), then
    `python3 $S/rnc1-check.py docs/harness-glossary.md d7c4242; echo rc=$?`
-   gives **rc=0** and zero `FAIL` lines. **Revert proof:** `git show
-   d7c4242:docs/harness-glossary.md > $S/base.md && python3
-   $S/rnc1-check.py $S/base.md d7c4242` gives **rc=1** with 14 `FAIL`
-   lines (measured at spec time).
+   gives **rc=0** and zero `FAIL` lines. Run it from the worktree root: it
+   reads `tests/human-decision-gate.test.sh` to confirm that each Q, FN or
+   FP row id the frozen family table and expansion-named token entries
+   name is pinned `blocked`. It also fails on any "only ...:" list in the
+   four entries, the FAIL #1 shape. **Revert proofs** (measured
+   2026-10-04): `git show d7c4242:docs/harness-glossary.md > $S/base.md &&
+   python3 $S/rnc1-check.py $S/base.md d7c4242` gives **rc=1** with 24
+   `FAIL` lines. `git show 09eb34d:docs/harness-glossary.md > $S/at09.md
+   && python3 $S/rnc1-check.py $S/at09.md d7c4242` gives **rc=1** with 15
+   `FAIL` lines, the first being `FAIL frozen family table: no closed
+   "only ...:" list`. The amended texts F1-F3, applied to `$S/at09.md` in
+   a scratch copy, give **rc=0** with 50 `ok` lines and no `FAIL`.
    ```python
    import re, subprocess, sys
    path, base = sys.argv[1], sys.argv[2]
@@ -344,6 +458,7 @@ Run in a clean worktree at the unit's final commit
    new = open(path, encoding='utf-8').read().split('\n')
    old = subprocess.run(['git', 'show', base + ':docs/harness-glossary.md'],
                         capture_output=True, text=True, check=True).stdout.split('\n')
+   suite = open('tests/human-decision-gate.test.sh', encoding='utf-8').read()
    fails = []
    def chk(cond, msg):
        print(('ok   ' if cond else 'FAIL ') + msg)
@@ -357,14 +472,35 @@ Run in a clean worktree at the unit's final commit
        longl = [i + 1 + k for k, x in enumerate(new[i:j]) if k >= 2 and len(x) > 78]
        chk(not longl, f'{n}: no body line over 78 columns {longl}')
    F, O, X, G = (T.get(n, '') for n in NAMES)
+   # closed-list form: "only ... :" inside one sentence, in any of the four
+   for n, t in T.items():
+       hits = re.findall(r'\bonly\b[^.:;]*:', t)
+       chk(not hits, f'{n}: no closed "only ...:" list {hits}')
    chk('not claimed closed' not in F, 'F: old "not claimed closed" sentence gone')
    chk('Closed by qp-1' not in F, 'F: "Closed by qp-1" gone')
-   chk('only spellings claimed blocked are pinned' in F, 'F: pinned-only claim present')
+   m = re.search(r'Outside the table, a spelling is claimed blocked only where a '
+                 r'suite row pins it, such as ([^.;]*)', F)
+   chk(m is not None, 'F: open-ended pinned-only claim present ("such as")')
+   lst = m.group(1) if m else ''
+   for s in ['FP-ext-1', 'FP-nc-1', 'Q20', 'qp-1 rows']:
+       chk(s in lst, f'F: pinned example list names {s}')
+   # every row id the four entries name outside the FG/OB/QP families is pinned blocked
+   ids = set(re.findall(r'\b(Q\d+|FP-[a-z]+-\d+|FN\d+)\b', F + ' ' + X))
+   for rid in sorted(ids):
+       pinned = re.search(r'bash_case "' + re.escape(rid) + r' [^"]*"\s*(\\\s*)?blocked', suite)
+       chk(pinned is not None, f'named row {rid} is pinned blocked in the suite')
    chk('with a `-c` option' not in F, 'F: narrow "-c option" wording gone')
-   for s in ['`-ec`', '`+`', 'case-insensitiv', 'after a `/`']:
+   chk('at a word start or after a `/`' not in F, 'F: narrow boundary wording gone')
+   for s in ['`-ec`', '`+`', 'case-insensitiv', 'not a letter, digit', '`=`',
+             'echo sh -c', 'over-block']:
        chk(s in F, f'F: recognition wording names {s}')
    chk('a quoted glob is literal and names nothing' not in X, 'X: false "names nothing" sentence gone')
+   chk("its quoted string is a second shell's payload" not in X, 'X: inexact payload claim gone')
+   chk('echo sh -c' in X, 'X: names the argument-position match')
    chk('second shell' in X, 'X: expansion-named token covers the second-shell payload')
+   chk('Coverage is claimed only for the [[frozen family table]];' not in X, 'X: coverage no longer table-only')
+   for s in ['qp-1 rows', 'FP-ext-1', 'FP-nc-1', 'such as']:
+       chk(s in X, f'X: coverage sentence names {s}')
    chk('second shell' in G, 'G: trigger token covers the second-shell payload')
    for s in ['QP-1', 'QP-2', 'QP-3', 'QPF-1 to QPF-8', 'R-QP-a', 'R-QP-b', 'FP-ext-1']:
        chk(s in F, f'F: still names {s}')
@@ -375,9 +511,11 @@ Run in a clean worktree at the unit's final commit
    ```
 2. `node tests/context-glossary-links.test.js && node
    tests/protocol-doc-drift.test.js; echo rc=$?` gives rc=0.
-3. `git diff --name-only <unit-base>..HEAD` prints exactly
-   `docs/harness-glossary.md`. `<unit-base>` is the parent of the unit's
-   first commit.
+3. `git log --format= --name-only --grep='^docs(rnc-1)' 218b7d2..HEAD |
+   sort -u | grep -v '^$'` prints exactly `docs/harness-glossary.md`
+   (`218b7d2` is the parent of the unit's first commit, `09eb34d`). The
+   grep keeps the plan amendment commit, a `docs(plans)` commit, out of
+   the count.
 4. `bash tests/validate.sh` passes in that worktree, foreground, using R2's
    split if `timeout 580` returns 124. Zero `FAIL` lines across all parts,
    and the tail rc is 0.
@@ -387,6 +525,13 @@ Run in a clean worktree at the unit's final commit
   2398. Their long body lines are listed in Context row 5.
 - The edit texts are the spec's own. Width was hand-counted at 74 columns
   or less. The script-based dry run was blocked by human-decision-gate (R1).
+- FAIL #1 fix: F1-F3, applied to `git show 09eb34d:docs/harness-glossary.md`
+  in a scratch copy, make the amended check pass (rc 0, 50 `ok`, widths
+  included). That was dry-run proven by Python files written with the
+  Write tool (R6). The F1-F3 `old` blocks each occur once at `09eb34d`.
+- Gate facts behind F2/F3 (measured 2026-10-04, Clarifications): the
+  name boundary is `(^|[^[:alnum:]_.-])`, and `echo sh -c` before a
+  quoted glob with an output redirect is denied (rc 2).
 - No test greps these sentences (Blast radius).
 
 ## Escalation
@@ -560,6 +705,11 @@ classification functions to make a criterion pass.
   payloads). `hooks/scripts/lib`. reviewed-path-gate F-1. The
   teammate-premise measurement, including esf-eid-probe's user-settings env
   note. CONTEXT.md. The item05-3 untagged glossary notes.
+- The gate's own header comment (`hooks/scripts/human-decision-gate.sh`,
+  above `glob_scan_shell_payloads()`) still says "at a word start or after
+  a `/`", the boundary wording F2 corrects in the glossary. It is a code
+  comment under `hooks/`, which rnc-1 may not touch. It is a later
+  cleanup note, not part of this fix.
 - Making `tests/validate.sh` faster or splitting it permanently.
 
 ## Open Questions
@@ -589,8 +739,9 @@ classification functions to make a criterion pass.
   FAIL (ambiguous) — revised in place. Added criterion 2's `ok (I41) INT
   exits 130` = 1 and SKIP = 0, plus M11b and MT.
 - CHK5: Do edit B's wording and the rnc-1 check agree on the required
-  substrings (`-ec`, `+`, case-insensitiv, after a `/`, the pinned-only
-  claim)? — PASS
+  substrings (`-ec`, `+`, case-insensitiv, not a letter, digit, `=`,
+  echo sh -c, the open-ended pinned claim)? — PASS (re-checked after the
+  FAIL #1 amendment; the amended texts pass the amended script)
 - CHK6: Is the P3 verdict grounded in version-stamp-check.sh's scope, not
   assumed? — PASS
 - CHK7: Does the plan say how to run validate.sh within 600 s without
@@ -599,12 +750,27 @@ classification functions to make a criterion pass.
   — PASS (Open Question 1)
 - CHK9: Does rnc-2 keep the literals the in-suite I42 mutants depend on? —
   FAIL (missing) — revised in place: R4 plus criterion 1's `mktemp` count.
-- CHK10: Is rnc-1's check script proven non-vacuous? — PASS (rc 1 with 14
-  FAILs at the base). Satisfiability by the given edits is hand-checked
-  only (R1). That is a disclosed limit, not a failed item.
+- CHK10: Is rnc-1's check script proven non-vacuous? — PASS. After the
+  FAIL #1 amendment: rc 1 with 24 FAILs at the base, rc 1 with 15 at
+  `09eb34d`, rc 0 on the amended text. Satisfiability is now dry-run
+  proven (R6), not only hand-checked.
 - CHK11 (ubiquitous-language, advisory): any drift between the plan and
   the glossary? — PASS. No CONTEXT.md term is used with a new meaning.
   "second shell" stays without an entry (A1).
+- CHK12 (FAIL #1): Does any of rnc-1's amended entry texts state a closed
+  "only ...:" list of blocked spellings? — PASS. Each now states a rule
+  plus "such as" examples. Criterion 1 fails on that form, and it does
+  fail at `09eb34d`.
+- CHK13 (FAIL #1): Is every row id the amended frozen family table and
+  expansion-named token entries name pinned `blocked` in the suite? —
+  PASS (criterion 1 checks Q20, FP-ext-1 and FP-nc-1 against
+  `tests/human-decision-gate.test.sh`).
+- CHK14 (FAIL #1): Do edits A, B and D and fixes F1-F3 give the same
+  final text? — PASS. Applying the plan's F1-F3 blocks to `09eb34d` was
+  checked byte-equal to the dry-run fixed copy.
+- CHK15 (FAIL #1): Is the fix's model tag stated with its ratchet
+  reason? — PASS (rnc-1 header and "Fix after FAIL #1": opus, a sonnet
+  unit with a FAIL on record).
 
 ## Scribe update hint
 
