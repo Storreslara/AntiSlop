@@ -693,10 +693,12 @@ fi
 # table of docs/plans/2026-10-04-escalation-leftovers.md (esc-left-3, pinned as
 # F1a-F1d and FG-* in the suite); such a command then fails closed - past the
 # prompt route and command_is_provably_benign(), only is_sanctioned_marker_write()
-# may allow it. Residuals that remain, because the text names neither token even
-# as a pattern: a write from a cwd inside the packet directory with
-# `human-review` never spelled anywhere (A3), R-4's split variable, R-5's
-# `DECISIO\N`, and NL1's newline in the id (A4).
+# may allow it. Known residuals, because the text names neither token even as a
+# pattern - not the whole enumeration: a write from a cwd inside the packet
+# directory with `human-review` never spelled anywhere (A3), R-4's split
+# variable, R-5's `DECISIO\N`, NL1's newline in the id (A4), and a glob inside a
+# quoted payload that a second shell re-parses (`bash -c '...'`), pinned as
+# QP-1/QP-2 (docs/plans/2026-10-04-escalation-followups.md).
 joined="${command//$'\047'/}"
 joined="${joined//$'\042'/}"
 glob_names_tokens "$command"

@@ -204,7 +204,7 @@ quoting .claude/human-review/u1/DECISION
 EOF and then some"
 
 echo
-echo "-- pinned residual R-2: split-variable target stays ALLOWED, deliberately --"
+echo "-- pinned residual R-4: split-variable target stays ALLOWED, deliberately --"
 bash_case "N21 split-variable write to the DECISION path (documented residual)" allowed \
   antislop:reviewer "d=human-rev; e=iew; printf x > .claude/\$d\$e/u1/DECISION"
 
@@ -971,6 +971,60 @@ bash_case "FC4 an unrelated glob delete" allowed antislop:reviewer "rm -f build/
 bash_case "FC5 a bare listing glob" allowed antislop:reviewer "ls *"
 bash_case "FC6 a quoted glob in a commit message is inert" allowed antislop:reviewer \
   "git commit -m 'note human-review [D]ECISION'"
+
+echo
+echo "-- F-1 predicate-branch pins (FP-*) --"
+# One row per glob_scan_words() branch no other row pins alone; each is killed
+# by its own single-branch mutant (plan 2026-10-04-escalation-followups.md).
+# The shopt sits on its own line: bash parses a whole line before running any
+# of it, so a `;`-joined extglob write is a syntax error and writes nothing.
+fp_ext=$'shopt -s extglob\nprintf x > '"$hr"'/@(X|D)ECISION'
+fp_nc=$'shopt -s nocaseglob\nprintf x > '"$hr"'/d*'
+for fp_row in "ext-1|$fp_ext" "nc-1|$fp_nc"; do
+  if fg_overwrites "${fp_row#*|}"; then
+    pass "FP-${fp_row%%|*} reachability: real bash overwrites DECISION"
+  else
+    bad "FP-${fp_row%%|*} reachability: real bash did NOT overwrite DECISION, row not credited"
+  fi
+done
+bash_case "FP-ext-1 an extglob group names the filename" blocked antislop:reviewer "$fp_ext"
+bash_case "FP-nc-1 a lowercase glob under nocaseglob names the filename" blocked \
+  antislop:reviewer "$fp_nc"
+# FP-br-1 writes nothing: a comma-free brace group is literal to bash. The row
+# pins the fail-closed comma-free-`/` branch (a `/` inside a brace group names
+# both tokens), so it carries no reachability line.
+bash_case "FP-br-1 a comma-free brace group holding / fails closed" blocked \
+  antislop:reviewer "tee x{a/b}y < /dev/null"
+
+echo
+echo "-- quoted payload re-parsed by a second shell: ALLOWED, TRACKED-OPEN (not accepted) --"
+# The gate masks a quoted payload, so neither token is spelled in the joined
+# text and the early exit fires; a second shell then re-parses the payload and
+# expands its glob. QP-1 and QP-2 are genuine allowed overwrites, tracked-open
+# by Open Question 1 of docs/plans/2026-10-04-escalation-followups.md; a later
+# unit that closes them is EXPECTED to flip them to blocked.
+#
+# QP-3 is not a bypass: POSIX sh (dash, and bash --posix) does not
+# pathname-expand a non-interactive redirect word, so it writes a literal file
+# named D* instead. QP-1 is the same text under bash, the control proving the
+# reachability check discriminates.
+qp_rows=(
+  "1|yes|bash -c 'printf x > .claude/human-review/u1/D*'"
+  "2|yes|sh -c 'tee .claude/human-review/u1/D* < /dev/null'"
+  "3|no|sh -c 'printf x > .claude/human-review/u1/D*'"
+)
+for qp_row in "${qp_rows[@]}"; do
+  qp_id="${qp_row%%|*}"
+  qp_want="${qp_row#*|}"; qp_want="${qp_want%%|*}"
+  qp_cmd="${qp_row#*|*|}"
+  if fg_overwrites "$qp_cmd"; then qp_got=yes; else qp_got=no; fi
+  if [ "$qp_got" = "$qp_want" ]; then
+    pass "QP-$qp_id reachability: overwrite=$qp_got, as measured"
+  else
+    bad "QP-$qp_id reachability: overwrite=$qp_got, expected $qp_want"
+  fi
+  bash_case "QP-$qp_id [$qp_cmd]" allowed antislop:reviewer "$qp_cmd"
+done
 
 echo
 echo "-- accepted over-blocks from the esc-left-3 differential sweep (OB-1..OB-13) --"
