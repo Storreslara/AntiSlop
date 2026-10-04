@@ -265,4 +265,73 @@ if [ -z "${PROBE_MUTANT:-}" ]; then
   case $MOUT in *'FAIL (I32a)'*) ok "(I37) mutant ran (\$TCHECK) fails case (I32a)" ;; *) bad "(I37) mutant survives" ;; esac
 fi
 
+# (I38-I41) main() wiring, pane fence, temp under SCRATCH, interrupt cleanup
+mkdir -p "$T/c"
+cat > "$T/c/main.sh" <<'EOC'
+source "$SRC" "$REC38"
+run_headless() { printf '{"run":"%s","event":"Stop"}\n' "$2" >> "$CAP"; }
+retry_teammate_tmux() { printf '{"run":"run2-tmux","event":"Stop"}\n{"run":"run2-tmux","event":"Stop"}\n' >> "$CAP"; }
+main
+EOC
+REC38="$T/rec38/r.md" SRC="$SRC" PROBE_SCRATCH="$T/s38" bash "$T/c/main.sh" >/dev/null 2>&1
+grep -qF 'Tmux retry: ran: 2 run2-tmux capture lines' "$T/rec38/r.md" 2>/dev/null && ok "(I38) main assigns TMUX_RETRY after the retry" || bad "(I38) main assigns TMUX_RETRY after the retry"
+
+mkdir -p "$SCRATCH"; : > "$SCRATCH/rows.txt"; : > "$CAP"; REC="$T/rec39/r.md"
+printf 'a\n```\nb\n````\nc\n' > "$RAW/teammate-tmux.txt"; write_record
+fence="$(awk '/^### tmux retry pane$/ {getline; getline; print; exit}' "$REC")"
+last="$(tail -n 1 "$REC")"
+inner="$(awk -v f="$fence" '/^### tmux retry pane$/ {s=1; getline; getline; next} s && $0 != f' "$REC" | grep -cE '^`{5,}$')"
+case $fence in
+  '`````'*) [ "$fence" = "$last" ] && [ "$inner" = 0 ] && ok "(I39) pane fence is longer than any run in the pane and closes identically" || bad "(I39) fence [$fence] last [$last] inner [$inner]" ;;
+  *) bad "(I39) pane fence [$fence] shorter than 5 backticks" ;;
+esac
+rm -f "$RAW/teammate-tmux.txt"
+
+mkdir -p "$SCRATCH" "$T/tmp40"; tmuxscen x_pair
+( teammate_choose() { case $1 in "$SCRATCH"/tmux-retry.*) echo scratch > "$T/seen40" ;; *) ls -A "$T/tmp40" | wc -l > "$T/seen40" ;; esac; TCHECK=none; }
+  TMPDIR="$T/tmp40" tmux_retry_summary "$W/cap.jsonl" >/dev/null )
+eq "(I40) summary temp file lives under SCRATCH, TMPDIR stays empty" "$(cat "$T/seen40")$(ls -A "$T/tmp40" | wc -l)" scratch0
+
+cat > "$T/c/int.sh" <<'EOC'
+source "$SRC" "$REC41"
+run_headless() { :; }
+retry_teammate_tmux() { printf '{"run":"run2-tmux","event":"Stop"}\n' >> "$CAP"; }
+teammate_choose() { case $1 in "$SCRATCH"/tmux-retry.*) : > "$READY"; /bin/sleep 5 ;; *) TCHECK=none ;; esac; }
+main
+EOC
+int41() { # signal expected-rc
+  local d="$T/i41$1" pid i rc
+  mkdir -p "$d/tmp"; set -m
+  REC41="$d/r.md" SRC="$SRC" PROBE_SCRATCH="$d/s" TMPDIR="$d/tmp" READY="$d/ready" bash "$T/c/int.sh" > "$d/out" 2>&1 &
+  pid=$!
+  for ((i = 0; i < 100; i++)); do [ -e "$d/ready" ] && break; /bin/sleep 0.1; done
+  kill -"$1" "$pid"; wait "$pid"; rc=$?; set +m
+  eq "(I41) $1 exits $2" "$rc" "$2"
+  if [ ! -e "$d/s" ] && [ -z "$(ls -A "$d/tmp")" ]; then ok "(I41) $1 leaves no scratch and no TMPDIR file"; else bad "(I41) $1 left scratch or temp file"; fi
+}
+int41 TERM 143
+int41 INT 130
+
+# (I42) mutants: TMUX_RETRY assigned before the retry (I38); fixed triple-backtick fence (I39); temp outside SCRATCH (I40)
+mutrun() { # id old new: exact-once string replace in a copy of the script, then the suite against it
+  mkdir -p "$T/mut$1/scripts"
+  python3 - "$PWD/scripts/probe-hook-identity.sh" "$T/mut$1/scripts/p.sh" "$2" "$3" <<'PYM'
+import sys
+s=open(sys.argv[1]).read()
+assert s.count(sys.argv[3])==1
+open(sys.argv[2],'w').write(s.replace(sys.argv[3],sys.argv[4]))
+PYM
+  PROBE_MUTANT=1 PROBE_UNDER_TEST="$T/mut$1/scripts/p.sh" bash "$PWD/tests/probe-hook-identity.test.sh" 2>&1
+}
+if [ -z "${PROBE_MUTANT:-}" ]; then
+  MOUT="$(mutrun 38 'retry_teammate_tmux
+    TMUX_RETRY="$(tmux_retry_summary "$CAP")"' 'TMUX_RETRY="$(tmux_retry_summary "$CAP")"
+    retry_teammate_tmux')"
+  case $MOUT in *'FAIL (I38)'*) ok "(I42) mutant assigning TMUX_RETRY before the retry fails (I38)" ;; *) bad "(I42) I38 mutant survives" ;; esac
+  MOUT="$(mutrun 39 'f="$(pane_fence "$RAW/teammate-tmux.txt")"' 'f="```"')"
+  case $MOUT in *'FAIL (I39)'*) ok "(I42) mutant with a fixed triple-backtick fence fails (I39)" ;; *) bad "(I42) I39 mutant survives" ;; esac
+  MOUT="$(mutrun 40 'mktemp "$SCRATCH/tmux-retry.XXXXXX"' 'mktemp')"
+  case $MOUT in *'FAIL (I40)'*) ok "(I42) mutant with temp outside SCRATCH fails (I40)" ;; *) bad "(I42) I40 mutant survives" ;; esac
+fi
+
 [ "$fails" -eq 0 ]
