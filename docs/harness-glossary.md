@@ -2316,8 +2316,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   [[expansion-named token]] (families F-1a to F-1g, in
   `docs/plans/2026-10-04-escalation-leftovers.md`, Context Item 4). It is a
   [[family table]] with one rule: it is closed only for what it lists. The
-  gate also reads extglob words, but no table row pins them and they were
-  not independently probed.
+  gate also reads extglob words, pinned by FP-ext-1 rather than by a table
+  row.
   Each row is a `FG-<family>-<n>` case in
   `tests/human-decision-gate.test.sh` (FG-c-6 is the comment-carried
   spelling), and is credited as blocked only after a real-bash check in a
@@ -2326,12 +2326,13 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   reviewer did not independently probe beyond it. **Declared residuals**,
   each still allowed: a cwd-relative write that never spells
   `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
-  N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id, the
-  one `TRACKED-OPEN` pin); A4 groups R-4, R-5 and NL1. A3, R-4 and R-5
+  N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id; one of
+  three `TRACKED-OPEN` pins, with QP-1 and QP-2); A4 groups R-4, R-5 and NL1. A3, R-4 and R-5
   escape the early exit because one token is neither spelled nor
   expansion-named; NL1 spells both and is missed later, because newline
-  breaks the gate's path recognizers. Also allowed at d331be9 (gate rc 0)
-  with no pin: a glob inside a quoted `sh -c` payload, such as
+  breaks the gate's path recognizers. Also allowed (gate rc 0), and pinned by
+  esc-fu-1 as QP-1 (`bash -c`, writes), QP-2 (`sh -c` with `tee`, writes) and
+  QP-3 (`sh -c` redirect, writes nothing): a glob inside a quoted `sh -c` payload, such as
   `sh -c 'printf x > .claude/h*/u1/D*'`, since the gate masks the quoted
   span. That exact form writes nothing (`/bin/sh` here is dash, which does
   not glob a redirect target non-interactively); the overwrite is real for
@@ -2380,15 +2381,15 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   `hooks/scripts/human-decision-gate.sh`), so `printf x > .claude/h*/u1/D*`
   arms the gate with neither token spelled (pin FG-c-1, blocked), and
   `printf x > .claude/human-review/u1/[D]ECISION` with one spelled (FG-a-1,
-  blocked). A command whose tokens are expansion-named fails closed: past
+  blocked). A command with either token expansion-named fails closed: past
   the prompt route and the benign-command check, only the sanctioned
-  marker-write recognizer may allow it. A quoted glob is literal and names
+  marker-write recognizer may allow it. When the command lexes, a quoted glob is literal and names
   nothing. Coverage is claimed only for the [[frozen family table]]; the
-  gate also reads extglob words, but none is pinned or independently
-  probed.
+  gate also reads extglob words, pinned by FP-ext-1 rather than by a table
+  row.
 
 **trigger token**:
-(units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings
+(units hdg-lexer-1, hdg-prose-2, 2026-08-24; esc-left-3, 2026-10-04) — one of two strings
   whose co-occurrence arms [[The human-decision gate]] and (in asymmetric form)
   other text-protection gates. In `human-decision-gate.sh`, the two triggers are
   `human-review` and `DECISION`. A token counts as present when the
@@ -2396,7 +2397,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   brace word could expand to it (an [[expansion-named token]], since
   esc-left-3). The gate exits early, allowing the command, unless both
   tokens are present in one of those forms. This "both tokens must appear"
-  rule is the gate's substring early-exit (a fast check before deeper gate
+  rule is the gate's early exit (a fast check before deeper gate
   logic). See [[narrate-versus-target
   distinction]] for when a command carrying both tokens is allowed anyway (when
   they are inert to execution).
