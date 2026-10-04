@@ -2075,7 +2075,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   under Side effects (not cleaned up, not gated). The RED rules, which
   this result did not trigger: RED in default (or a heredoc that is not
   fully visible) returns the design to spec-master; RED in acceptEdits or
-  auto drops that mode (ADR-0039). A material CLI upgrade re-runs the probe.
+  auto drops that mode (ADR-0039). The second "Interrupted" line in the auto post-decline pane is analysed in
+  `docs/experiments/2026-10-04-auto-double-interrupt.md` (cause not
+  determined; grading unaffected). A material CLI upgrade re-runs the probe.
 
 **dialog block**:
 (esc-chat-1-evidence; named esc-chat-5, 2026-10-03) — a block at the top of
@@ -2098,8 +2100,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   listing of the scratch dir. Headed `### decline: <mode> <N> lines`, the
   line count again a length prefix. The Decline row is derived from that
   saved text, and `gate()` re-checks default, acceptEdits and auto against
-  their own blocks; it requires exactly one decline block per mode, so a
-  missing or duplicate block gives RED. It is not pane text: the post-decline pane in the
+  their own blocks; it requires exactly one decline block per gated mode (default,
+  acceptEdits, auto), so a missing or duplicate block gives RED; the
+  dontAsk and bypassPermissions blocks are written but not graded. It is not pane text: the post-decline pane in the
   appendix is context only. It exists because the 229138e record graded
   Decline from a check it never saved (see [[Ship gate]]).
 
