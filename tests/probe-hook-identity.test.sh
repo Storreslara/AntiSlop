@@ -228,4 +228,41 @@ eq "(I31b) no main-teams line -> no-lead" "$TC" no-lead
 MATE_STOP=1 scen null null 1 "$KM"
 eq "(I31) no agent_id is never subagent-shaped, even beside a null-agent SubagentStop" "$TC" genuine
 
+# (I32-I36) tmux_retry_summary reports the tmux run's own capture, never the headless run2 check
+x_none() { :; }
+tmuxscen x_none
+S="$(tmux_retry_summary "$W/cap.jsonl")"
+case $S in *'0 run2-tmux capture lines'*) ok "(I32a) no run2-tmux lines -> says 0 run2-tmux capture lines" ;; *) bad "(I32a) got [$S]" ;; esac
+case $S in *subagent-shaped*) bad "(I32a) run2's subagent-shaped leaked into the summary: [$S]" ;; *) ok "(I32a) run2's subagent-shaped not reported" ;; esac
+eq "(I32) zero-capture summary text" "$S" "ran: 0 run2-tmux capture lines; nothing captured"
+tmuxscen x_pair
+eq "(I33) pair: own count and check" "$(tmux_retry_summary "$W/cap.jsonl")" "ran: 3 run2-tmux capture lines; teammate check: subagent-shaped"
+tmuxscen x_real
+eq "(I34) genuine tmux teammate: own count and check" "$(tmux_retry_summary "$W/cap.jsonl")" "ran: 2 run2-tmux capture lines; teammate check: genuine"
+tmuxscen lead_main
+eq "(I35) tmux lines but no teammate candidate -> check none" "$(tmux_retry_summary "$W/cap.jsonl")" "ran: 1 run2-tmux capture lines; teammate check: none"
+tmuxscen x_real
+TCHECK=sentinel; tmux_retry_summary "$W/cap.jsonl" >/dev/null
+eq "(I35b) summary does not clobber TCHECK" "$TCHECK" sentinel
+mkdir -p "$RAW" "$SCRATCH"; : > "$SCRATCH/rows.txt"; : > "$CAP"; printf 'PANE-LINE-XYZ\n' > "$RAW/teammate-tmux.txt"
+REC="$T/rec36/r.md"; write_record
+grep -qF '### tmux retry pane' "$REC" && grep -qF 'PANE-LINE-XYZ' "$REC" && ok "(I36) record appendix carries the tmux pane" || bad "(I36) record appendix carries the tmux pane"
+rm -f "$RAW/teammate-tmux.txt"; REC="$T/rec36b/r.md"; write_record
+grep -qF '### tmux retry pane' "$REC" && bad "(I36b) no pane file -> no pane section" || ok "(I36b) no pane file -> no pane section"
+
+# (I37) mutation: the old pre-run text ran ($TCHECK) must fail the zero-capture case
+MUT="$T/mut/scripts/probe-hook-identity.sh"; mkdir -p "$T/mut/scripts"
+python3 - "$PWD/scripts/probe-hook-identity.sh" "$MUT" <<'PY'
+import re,sys
+s=open(sys.argv[1]).read()
+m=re.search(r'tmux_retry_summary\(\) \{.*?\n\}\n', s, re.S)
+assert m
+s=s[:m.start()]+'tmux_retry_summary() { printf "ran (%s)" "$TCHECK"; }\n'+s[m.end():]
+open(sys.argv[2],'w').write(s)
+PY
+if [ -z "${PROBE_MUTANT:-}" ]; then
+  MOUT="$(PROBE_MUTANT=1 PROBE_UNDER_TEST="$MUT" bash "$PWD/tests/probe-hook-identity.test.sh" 2>&1)"
+  case $MOUT in *'FAIL (I32a)'*) ok "(I37) mutant ran (\$TCHECK) fails case (I32a)" ;; *) bad "(I37) mutant survives" ;; esac
+fi
+
 [ "$fails" -eq 0 ]

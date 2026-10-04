@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Operator probe for esc-followups item 1: which identity fields does a PreToolUse hook see for main, subagent and teammate? Run: bash scripts/probe-hook-identity.sh
+# Operator runbook (teammate premise):
+# - A genuine teammate needs an interactive agent-teams session the operator starts (skill antislop:start-feature-team, CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1).
+# - A named Agent-tool spawn ("Async agent launched") is a background agent, not a teammate.
+# - Re-run this script, or capture a teammate's PreToolUse payload by hand.
+# - Until a `genuine` check is recorded, Outcome D stands and the teammate premise is unmeasured.
 set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -110,6 +115,15 @@ teammate_choose() { # capture -> sets TCHECK/TLINE: the first genuine candidate,
   done < <(pick "$1" 'echo probe-teammate' 2)
 }
 
+tmux_retry_summary() { # capture -> one line about the run2-tmux capture lines only, never the headless run2 check
+  local f n c
+  f="$(mktemp)"; jq -c 'select(.run=="run2-tmux")' "$1" > "$f" 2>/dev/null; n=$(($(wc -l < "$f")))
+  jq -c 'select((.run // "")|startswith("run2")|not)' "$1" 2>/dev/null >> "$f" # references from other runs, never run2 candidates
+  if [ "$n" -eq 0 ]; then echo "ran: 0 run2-tmux capture lines; nothing captured"
+  else c="$(teammate_choose "$f"; echo "$TCHECK")"; echo "ran: $n run2-tmux capture lines; teammate check: $c"; fi
+  rm -f "$f"
+}
+
 classify_rows() { # capture.jsonl -> Identity/Keys rows for every attributable actor, plus the teammate genuineness check
   local a l cmd ref
   for a in main main-teams subagent; do
@@ -215,6 +229,7 @@ write_record() {
     printf '\n## Rows\n\n```\n%s```\n\nOutcome: %s\n' "$ROWS" "$OUT"
     printf '\n## Cleanup\n\nAfter this body is written the script removes `%s`, then records two `Cleanup check:` lines: that directory is gone, and `git status --porcelain -- hooks .claude/settings.json` is empty.\n' "$SCRATCH"
     printf '\n## Appendix: raw capture.jsonl\n\n```\n'; cat "$CAP" 2>/dev/null; printf '```\n'
+    [ -s "$RAW/teammate-tmux.txt" ] && { printf '\n### tmux retry pane\n\n```\n'; cat "$RAW/teammate-tmux.txt"; printf '```\n'; }
   } > "$SCRATCH/record.md"
   mkdir -p "$(dirname "$REC")"; cp "$SCRATCH/record.md" "$REC" || exit 2
 }
@@ -242,8 +257,9 @@ main() {
   if [ "$TCHECK" = genuine ]; then
     TMUX_RETRY="not-run (genuine teammate captured headless)"
   else
-    TMUX_RETRY="ran ($TCHECK)"; echo "no genuine teammate ($TCHECK); retrying in tmux ..." >&2
+    echo "no genuine teammate ($TCHECK); retrying in tmux ..." >&2
     setup_run run2-tmux 1; retry_teammate_tmux
+    TMUX_RETRY="$(tmux_retry_summary "$CAP")"
   fi
   ROWS="$(classify_rows "$CAP")"; printf '%s\n' "$ROWS" > "$SCRATCH/rows.txt"
   OUT="$(outcome "$SCRATCH/rows.txt")"
