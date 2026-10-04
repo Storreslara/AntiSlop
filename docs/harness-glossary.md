@@ -2322,9 +2322,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   `tests/human-decision-gate.test.sh` (FG-c-6 is the comment-carried
   spelling), and is credited as blocked only after a real-bash check in a
   fixture shows that spelling overwrites an existing DECISION (27 of 27
-  did). Outside the table, the only spellings claimed blocked are pinned
-  ones: FP-ext-1 and the qp-1 rows below. No other spelling outside it is
-  claimed closed, and the esc-left-3 reviewer did not probe beyond it.
+  did). Outside the table, a spelling is claimed blocked only where a
+  suite row pins it, such as FP-ext-1, FP-nc-1, Q20 and the qp-1 rows
+  below; that list is not exhaustive. No unpinned spelling outside the
+  table is claimed closed, and the esc-left-3 reviewer did not probe
+  beyond it.
   **Declared residuals**,
   each still allowed: a cwd-relative write that never spells
   `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
@@ -2334,12 +2336,15 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   expansion-named; NL1 spells both and is missed later, because newline
   breaks the gate's path recognizers. Since qp-1, a glob inside a quoted
   string handed to a second shell counts as a pattern, so the gate reads
-  that payload with its quotes removed. The rule recognises a second
-  shell as an unquoted `sh`, `bash` or `dash` name at a word start or
-  after a `/`, then any option words that start with `-` or `+`, the last
-  a short-option cluster holding `c` (`-c`, `-ec`); it matches
-  case-insensitively, an over-block only, and the next word is the
-  payload. QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
+  that payload with its quotes removed. The rule reads the command text
+  alone. It recognises a second shell as an unquoted `sh`, `bash` or
+  `dash` name whose preceding character, if any, is not a letter, digit,
+  `_`, `.` or `-` (so a blank, `/`, `=`, `$` or a quote qualifies), then
+  any option words that start with `-` or `+`, the last a short-option
+  cluster holding `c` (`-c`, `-ec`); the next word is the payload. It
+  matches case-insensitively, and it also matches a name that is only an
+  argument, as in `echo sh -c` before a quoted glob; both can only
+  over-block. QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
   `tee`, writes) are `blocked`; QP-3 (`sh -c` redirect) is `blocked` as
   an accepted fail-closed over-block that writes nothing (`/bin/sh` here
   is dash, which does not glob a redirect target non-interactively; the
@@ -2399,10 +2404,13 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   blocked). A command with either token expansion-named fails closed: past
   the prompt route and the benign-command check, only the sanctioned
   marker-write recognizer may allow it. When the command lexes, a quoted
-  glob names nothing unless its quoted string is a second shell's
-  payload. Coverage is claimed only for the [[frozen family table]]; the
-  gate also reads extglob words, pinned by FP-ext-1 rather than by a table
-  row.
+  glob names nothing unless it is in the word that follows text the
+  second-shell rule recognises (see [[frozen family table]]). That rule
+  reads the text alone, so `echo sh -c` before a quoted glob names its
+  tokens too, although no second shell runs. Coverage is claimed for the
+  [[frozen family table]], the qp-1 rows and other rows pinned outside
+  the table, such as FP-ext-1 (extglob words) and FP-nc-1 (a lowercase
+  glob under nocaseglob); no unpinned spelling is claimed.
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24; esc-left-3, 2026-10-04) — one of two strings
