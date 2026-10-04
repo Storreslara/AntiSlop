@@ -992,7 +992,8 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   gate only ever *asks* about, so on that path the orchestrator's Bash call
   writes the file only after a human's Yes at Claude Code's permission
   prompt (that the prompt shows the full heredoc was measured with a probe
-  hook on one CLI version; see that entry). On a later re-dispatch the reviewer
+  hook on two CLI versions, default 2.1.288 and acceptEdits/auto 2.1.289;
+  see that entry). On a later re-dispatch the reviewer
   verifies it exists at the packet path, parses its first line, checks the
   task-id matches and the [[Staleness binding]] holds, then **transcribes** it
   — never re-reviews it — into one of three terminal routes (see [[DECISION

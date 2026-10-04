@@ -2098,7 +2098,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   listing of the scratch dir. Headed `### decline: <mode> <N> lines`, the
   line count again a length prefix. The Decline row is derived from that
   saved text, and `gate()` re-checks default, acceptEdits and auto against
-  their own blocks. It is not pane text: the post-decline pane in the
+  their own blocks; it requires exactly one decline block per mode, so a
+  missing or duplicate block gives RED. It is not pane text: the post-decline pane in the
   appendix is context only. It exists because the 229138e record graded
   Decline from a check it never saved (see [[Ship gate]]).
 
@@ -2294,7 +2295,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   F-1 aside: the open glob-spelling residual never arms the gate);
   `.claude/reviewed/` is not human-approved but granted, since
   `reviewed-path-gate.sh` lets the reviewer write there, and the main session
-  or the orchestrator persona too when no reviewer persona is selected (see [[The human-decision gate]]).
+  or the orchestrator persona too when no reviewer persona is selected,
+  unless a `.escalated` marker stands (see [[The human-decision gate]]).
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings

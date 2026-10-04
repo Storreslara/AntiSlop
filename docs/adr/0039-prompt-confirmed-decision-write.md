@@ -150,7 +150,7 @@ update hooks" render fragment outside the command box (harmless); the plan
 run wrote a plan file outside the scratch directory, which the record lists
 under Side effects (no cleanup check covers it); and the run spans two CLI
 versions (above). A non-blocking observation: auto's post-decline pane shows
-two "Interrupted" lines where every other mode shows one; it is unexplained,
+two "Interrupted" lines where every other declined mode shows one; it is unexplained,
 and the pane is context only, not graded.
 
 The decision rule the re-run was judged against; GREEN triggered neither RED

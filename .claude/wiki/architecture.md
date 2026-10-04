@@ -115,7 +115,8 @@ The dashboard (`node bin/cli.js --dashboard`) is the plugin's first long-running
 Every gate before `human-decision-gate.sh` (issue #325, 2026-08-11) followed
 the same shape: block most callers, **grant** one privileged identity through
 (`reviewed-path-gate.sh` grants the reviewer, and, when no reviewer persona
-is selected, the main session or the orchestrator persona; `stop-gate.sh`'s SubagentStop
+is selected and no `.escalated` marker stands, the main session or the
+orchestrator persona; `stop-gate.sh`'s SubagentStop
 branch grants a reviewer-with-verdict). `human-decision-gate.sh` breaks that
 shape on purpose — it blocks every agent identity, including the reviewer,
 from writing `.claude/human-review/<task-id>/DECISION`, and has no grant
