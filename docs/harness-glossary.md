@@ -2326,18 +2326,24 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   reviewer did not independently probe beyond it. **Declared residuals**,
   each still allowed: a cwd-relative write that never spells
   `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
-  N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id; one of
-  three `TRACKED-OPEN` pins, with QP-1 and QP-2); A4 groups R-4, R-5 and NL1. A3, R-4 and R-5
+  N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id; the only
+  `TRACKED-OPEN` pin); A4 groups R-4, R-5 and NL1. A3, R-4 and R-5
   escape the early exit because one token is neither spelled nor
   expansion-named; NL1 spells both and is missed later, because newline
-  breaks the gate's path recognizers. Also allowed (gate rc 0), and pinned by
-  esc-fu-1 as QP-1 (`bash -c`, writes), QP-2 (`sh -c` with `tee`, writes) and
-  QP-3 (`sh -c` redirect, writes nothing): a glob inside a quoted `sh -c` payload, such as
-  `sh -c 'printf x > .claude/h*/u1/D*'`, since the gate masks the quoted
-  span. That exact form writes nothing (`/bin/sh` here is dash, which does
-  not glob a redirect target non-interactively); the overwrite is real for
-  the `bash -c` form and for a glob in argument position, such as
-  `sh -c 'tee .claude/h*/u1/D* < /dev/null'`. Q20 (`DECISIO{N,}`)
+  breaks the gate's path recognizers. Closed by qp-1: a glob inside a quoted
+  string handed to a second shell (`sh`, `bash` or `dash` with a `-c`
+  option) now counts as a pattern, so the gate reads that payload with
+  its quotes removed. QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
+  `tee`, writes) are `blocked`; QP-3 (`sh -c` redirect) is `blocked` as
+  an accepted fail-closed over-block that writes nothing (`/bin/sh` here
+  is dash, which does not glob a redirect target non-interactively; the
+  suite's `QP-3 literal:` check shows it created a literal file named
+  `D*`). Rows QPF-1 to QPF-8 pin the branches of that rule, each
+  reachable by real bash and `blocked`. **Declared residuals of that
+  rule**, no completeness claim: R-QP-a (a pattern expanded by a program
+  that is not a second shell re-parsing a string) and R-QP-b (a
+  second-shell invocation the rule cannot recognise from the command
+  text). Q20 (`DECISIO{N,}`)
   moved from accepted residual to blocked, because the gate cannot tell a
   redirect target (ambiguous, writes nothing) from a `tee` argument
   (FG-f-3, writes). The `reviewed-path-gate.sh` variant of F-1 is
@@ -2348,11 +2354,12 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (esc-left-3, esc-left-4, 2026-10-04) — a `blocked` row named `OB-<n>` in
   `tests/human-decision-gate.test.sh` that pins one real command the
   esc-left-3 predicate denies although it writes nothing to DECISION.
-  There are 13 (OB-1 to OB-13), each with a one-line reason: mostly
+  There are 14 (OB-1 to OB-14), each with a one-line reason: mostly
   heredoc or backslash text that fails the lexer so the raw scan reads
   every metacharacter as live, plus unquoted `adapters/*/agents/*`-style
   globs that name both tokens while the surrounding segment is not
-  provably benign. The cap was 25 new denials outside the table. It is the
+  provably benign; OB-14 (added by qp-1) is a `sh -c` / `bash -c`
+  payload whose scratch path can name both tokens. The cap was 25 new denials outside the table. It is the
   per-command form of [[accepted over-block]]; narrowing it is a later
   unit's choice, not a defect. The reviewer's own rebuilt corpus gave 14
   new denials, the 14th an over-block that is not a write; still under the
