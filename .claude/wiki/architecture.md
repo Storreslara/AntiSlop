@@ -30,7 +30,8 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
    `reviewer-route-gate.sh` (lead-programmer can't route around the
    reviewer), `reviewed-path-gate.sh` (only the reviewer writes
    `.claude/reviewed/*.pass`), `human-decision-gate.sh` (with review gating
-   on, no agent can complete a `DECISION` write without a human approving its bytes; its one
+   on, no agent can complete a `DECISION` write without a human approving its bytes, within the
+   residuals declared in the glossary's "frozen family table" entry; its one
    non-deny branch for a `DECISION` write is an `ask` for the main session's prompt-confirmed
    decision write — see "Human-approved path as consent proof" below),
    `protected-paths.sh`

@@ -2075,7 +2075,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   under Side effects (not cleaned up, not gated). The RED rules, which
   this result did not trigger: RED in default (or a heredoc that is not
   fully visible) returns the design to spec-master; RED in acceptEdits or
-  auto drops that mode (ADR-0039). The second "Interrupted" line in the auto post-decline pane is analysed in
+  auto drops that mode (ADR-0039). The second "Interrupted" line in the
+  auto post-decline pane is analysed in
   `docs/experiments/2026-10-04-auto-double-interrupt.md` (cause not
   determined; grading unaffected). A material CLI upgrade re-runs the probe.
 
@@ -2100,10 +2101,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   listing of the scratch dir. Headed `### decline: <mode> <N> lines`, the
   line count again a length prefix. The Decline row is derived from that
   saved text, and `gate()` re-checks default, acceptEdits and auto against
-  their own blocks; it requires exactly one decline block per gated mode (default,
-  acceptEdits, auto), so a missing or duplicate block gives RED; the
-  dontAsk and bypassPermissions blocks are written but not graded. It is not pane text: the post-decline pane in the
-  appendix is context only. It exists because the 229138e record graded
+  their own blocks; it requires exactly one decline block per gated mode
+  (default, acceptEdits, auto), so a missing or duplicate block gives RED;
+  the dontAsk and bypassPermissions blocks are written but not graded
+  (parsed for structure only). It is not pane text: the post-decline pane
+  in the appendix is context only. It exists because the 229138e record graded
   Decline from a check it never saved (see [[Ship gate]]).
 
 **subagent-shaped**:
@@ -2286,20 +2288,73 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   exception is a lone strictly parsed DECISION heredoc from the main session,
   which the gate turns into an `ask`, see [[prompt-eligible]]; every other
   command whose text carries both [[trigger token]]s and that no allowance
-  clears is denied (the F-1 residual class never spells a trigger token, so
-  it never arms the gate). Under `reviewGating.mode: off` that gate exits 0
+  clears is denied (a spelling that never spells either token cannot arm the
+  gate; the declared ones are listed under [[frozen family table]]). Under `reviewGating.mode: off` that gate exits 0
   and denies nothing. Both [[The human-decision gate]] and
   `reviewed-path-gate.sh` apply this distinction via gate-local allowances that
   check whether tokens survive into the command skeleton's CODE text (prose,
   single-quoted spans, and comments are masked and ignored). This is the design
   principle that closes false-positive denials of reads and inert narration while
   preserving each gate's own write rule: with review gating on, no agent can
-  complete a DECISION write without a human approving its bytes (ADR-0039;
-  F-1 aside: the open glob-spelling residual never arms the gate);
+  complete a DECISION write without a human approving its bytes (ADR-0039),
+  within the residuals declared under [[frozen family table]];
   `.claude/reviewed/` is not human-approved but granted, since
   `reviewed-path-gate.sh` lets the reviewer write there, and the main session
   or the orchestrator persona too when no reviewer persona is selected,
   unless a `.escalated` marker stands (see [[The human-decision gate]]).
+
+**frozen family table**:
+(esc-left-3, esc-left-4, 2026-10-04) — the fixed list of F-1 spellings that
+  [[The human-decision gate]] closed in esc-left-3: unquoted glob, extglob
+  and brace words that expand to the `human-review` directory or the
+  DECISION file without the text spelling them (families F-1a to F-1g, in
+  `docs/plans/2026-10-04-escalation-leftovers.md`, Context Item 4). It is a
+  [[family table]] with one rule: it is closed only for what it lists.
+  Each row is a `FG-<family>-<n>` case in
+  `tests/human-decision-gate.test.sh` (FG-c-6 is the comment-carried
+  spelling), and is credited as blocked only after a real-bash check in a
+  fixture shows that spelling overwrites an existing DECISION (27 of 27
+  did). A spelling outside the table is not claimed closed, and the
+  reviewer did not independently probe beyond it. **Declared residuals**,
+  each still allowed: a cwd-relative write that never spells
+  `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
+  N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id, the
+  one `TRACKED-OPEN` pin); A4 groups R-4, R-5 and NL1. Also measured ALLOW
+  at d331be9 with no pin: a glob inside a quoted `sh -c` payload (the gate
+  masks the quoted span; the shell inside expands it). Q20 (`DECISIO{N,}`)
+  moved from accepted residual to blocked, because the gate cannot tell a
+  redirect target (ambiguous, writes nothing) from a `tee` argument
+  (FG-f-3, writes). The `reviewed-path-gate.sh` variant of F-1 is
+  deferred. See [[accepted over-block (OB row)]],
+  [[differential sweep]].
+
+**accepted over-block (OB row)**:
+(esc-left-3, esc-left-4, 2026-10-04) — a `blocked` row named `OB-<n>` in
+  `tests/human-decision-gate.test.sh` that pins one real command the
+  esc-left-3 predicate denies although it writes nothing to DECISION.
+  There are 13 (OB-1 to OB-13), each with a one-line reason: mostly
+  heredoc or backslash text that fails the lexer so the raw scan reads
+  every metacharacter as live, plus unquoted `adapters/*/agents/*`-style
+  globs that name both tokens while the surrounding segment is not
+  provably benign. The cap was 25 new denials outside the table. It is the
+  per-command form of [[accepted over-block]]; narrowing it is a later
+  unit's choice, not a defect. The reviewer's own rebuilt corpus gave 14
+  new denials, the 14th an over-block that is not a write; still under the
+  cap.
+
+**differential sweep**:
+(esc-left-3, esc-left-4, 2026-10-04) — running an old and a new gate over
+  the same corpus of real commands and comparing verdicts, via
+  `tests/hdg-differential-sweep.sh <old-gate> <new-gate> <corpus.jsonl>`,
+  which prints `total=N new_denials=D new_allowances=A`. The corpus is the
+  Bash commands in the last 20 days of local transcripts (10,194 at
+  esc-left-3). The acceptance rule: `new_allowances=0`, and every new
+  denial is a [[frozen family table]] member or an OB row. The result was
+  `new_denials=13 new_allowances=0`. It is a review tool, not wired into
+  `tests/validate.sh`, and it feeds each command as lead-programmer, so it
+  never exercises the main-session `ask` route (the PG rows cover that).
+  The corpus is machine-local and may be pruned; the committed result is
+  the summary line.
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings
