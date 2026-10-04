@@ -2322,18 +2322,24 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   `tests/human-decision-gate.test.sh` (FG-c-6 is the comment-carried
   spelling), and is credited as blocked only after a real-bash check in a
   fixture shows that spelling overwrites an existing DECISION (27 of 27
-  did). A spelling outside the table is not claimed closed, and the
-  reviewer did not independently probe beyond it. **Declared residuals**,
+  did). Outside the table, the only spellings claimed blocked are pinned
+  ones: FP-ext-1 and the qp-1 rows below. No other spelling outside it is
+  claimed closed, and the esc-left-3 reviewer did not probe beyond it.
+  **Declared residuals**,
   each still allowed: a cwd-relative write that never spells
   `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
   N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id; the only
   `TRACKED-OPEN` pin); A4 groups R-4, R-5 and NL1. A3, R-4 and R-5
   escape the early exit because one token is neither spelled nor
   expansion-named; NL1 spells both and is missed later, because newline
-  breaks the gate's path recognizers. Closed by qp-1: a glob inside a quoted
-  string handed to a second shell (`sh`, `bash` or `dash` with a `-c`
-  option) now counts as a pattern, so the gate reads that payload with
-  its quotes removed. QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
+  breaks the gate's path recognizers. Since qp-1, a glob inside a quoted
+  string handed to a second shell counts as a pattern, so the gate reads
+  that payload with its quotes removed. The rule recognises a second
+  shell as an unquoted `sh`, `bash` or `dash` name at a word start or
+  after a `/`, then any option words that start with `-` or `+`, the last
+  a short-option cluster holding `c` (`-c`, `-ec`); it matches
+  case-insensitively, an over-block only, and the next word is the
+  payload. QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
   `tee`, writes) are `blocked`; QP-3 (`sh -c` redirect) is `blocked` as
   an accepted fail-closed over-block that writes nothing (`/bin/sh` here
   is dash, which does not glob a redirect target non-interactively; the
@@ -2359,9 +2365,10 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   every metacharacter as live, plus unquoted `adapters/*/agents/*`-style
   globs that name both tokens while the surrounding segment is not
   provably benign; OB-14 (added by qp-1) is a `sh -c` / `bash -c`
-  payload whose scratch path can name both tokens. The cap was 25 new denials outside the table. It is the
-  per-command form of [[accepted over-block]]; narrowing it is a later
-  unit's choice, not a defect. The reviewer's own rebuilt corpus gave 14
+  payload whose scratch path can name both tokens. The cap was 25 new
+  denials outside the table. It is the per-command form of
+  [[accepted over-block]]; narrowing it is a later unit's choice, not a
+  defect. The reviewer's own rebuilt corpus gave 14
   new denials, the 14th an over-block that is not a write; still under the
   cap.
 
@@ -2382,32 +2389,34 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 **expansion-named token**:
 (esc-left-3, esc-left-4, 2026-10-04) — a [[trigger token]] the command
   text does not spell but names as a pattern: an unquoted glob or brace
-  word that could expand to it, such as `h*` for `human-review` or `D*` and
-  `D{E,}CISION` for DECISION. Since esc-left-3, [[The human-decision gate]]
-  counts it as present (`glob_names_tokens()` in
+  word that could expand to it, or, since qp-1, a glob in a quoted string
+  handed to a second shell (see [[frozen family table]]), such as `h*` for
+  `human-review` or `D*` and `D{E,}CISION` for DECISION. Since esc-left-3,
+  [[The human-decision gate]] counts it as present (`glob_names_tokens()` in
   `hooks/scripts/human-decision-gate.sh`), so `printf x > .claude/h*/u1/D*`
   arms the gate with neither token spelled (pin FG-c-1, blocked), and
   `printf x > .claude/human-review/u1/[D]ECISION` with one spelled (FG-a-1,
   blocked). A command with either token expansion-named fails closed: past
   the prompt route and the benign-command check, only the sanctioned
-  marker-write recognizer may allow it. When the command lexes, a quoted glob is literal and names
-  nothing. Coverage is claimed only for the [[frozen family table]]; the
+  marker-write recognizer may allow it. When the command lexes, a quoted
+  glob names nothing unless its quoted string is a second shell's
+  payload. Coverage is claimed only for the [[frozen family table]]; the
   gate also reads extglob words, pinned by FP-ext-1 rather than by a table
   row.
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24; esc-left-3, 2026-10-04) — one of two strings
-  whose co-occurrence arms [[The human-decision gate]] and (in asymmetric form)
-  other text-protection gates. In `human-decision-gate.sh`, the two triggers are
-  `human-review` and `DECISION`. A token counts as present when the
-  quote-joined text contains it as a substring, or when an unquoted glob or
-  brace word could expand to it (an [[expansion-named token]], since
-  esc-left-3). The gate exits early, allowing the command, unless both
-  tokens are present in one of those forms. This "both tokens must appear"
-  rule is the gate's early exit (a fast check before deeper gate
-  logic). See [[narrate-versus-target
-  distinction]] for when a command carrying both tokens is allowed anyway (when
-  they are inert to execution).
+  whose co-occurrence arms [[The human-decision gate]] and (in asymmetric
+  form) other text-protection gates. In `human-decision-gate.sh`, the two
+  triggers are `human-review` and `DECISION`. A token counts as present
+  when the quote-joined text contains it as a substring, or when it is an
+  [[expansion-named token]] (since esc-left-3; since qp-1 that includes a
+  glob in a quoted string handed to a second shell). The gate exits early,
+  allowing the command, unless both tokens are present in one of those
+  forms. This "both tokens must appear" rule is the gate's early exit (a
+  fast check before deeper gate logic). See [[narrate-versus-target
+  distinction]] for when a command carrying both tokens is allowed anyway
+  (when they are inert to execution).
 
 **marker id charclass**:
 (units hdg-prose-2, hdg-prose-2-fix2, 2026-08-24, defined in
