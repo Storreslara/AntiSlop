@@ -451,18 +451,22 @@ glob_names_tokens() {
 # qp-1 (docs/plans/2026-10-04-quoted-payload-closure.md): a quoted string handed
 # to a second shell is re-parsed there, so its globs are live. Frozen rule, read
 # off the skeleton $2 of $1: an unquoted shell name - sh, bash or dash - at a
-# word start or after a `/`, then zero or more unquoted option words, the last a
-# short-option cluster holding `c` (-c, -ec); the next word is the payload. Each
-# payload in the command is scanned with its quote characters deleted and every
+# word start or after a `/`, then zero or more unquoted option words (any word
+# starting with - or +), the last a short-option cluster holding `c` (-c, -ec);
+# the next word is the payload. Words are separated by blanks (space or tab).
+# Matching is case-insensitive (nocasematch), an over-block only. Each payload
+# in the command is scanned with its quote characters deleted and every
 # metacharacter live, as the lex-failure branch scans raw text. It only ever
 # sets glob_h/glob_d. Declared residuals, a list that claims no completeness:
 # (R-QP-a) a pattern expanded by a program that is not a second shell
 # re-parsing a string, and (R-QP-b) a second-shell invocation this rule does not
 # recognise from the text (another shell name, a quoted name, a non-option word
-# before -c, input piped to a shell).
+# before -c, an option word or `--` after the c-cluster - `-c --` takes `--` as
+# the payload - input piped to a shell).
 glob_scan_shell_payloads() {
   local text="$1" skel="$2" pre end w p metas=$' \t\n;&|<>()'
-  local re='(^|[^[:alnum:]_.-])(sh|bash|dash)([ \t]+-[^ \t\n;&|()<>]*)*[ \t]+-[[:alpha:]]*c[[:alpha:]]*[ \t]+'
+  local s='[[:blank:]]+' o='[^[:space:];&|()<>]*'
+  local re="(^|[^[:alnum:]_.-])(sh|bash|dash)(${s}[-+]${o})*${s}-[[:alpha:]]*c[[:alpha:]]*${s}"
   while [[ $skel =~ $re ]]; do
     pre="${skel%%"${BASH_REMATCH[0]}"*}"
     end=$((${#pre} + ${#BASH_REMATCH[0]}))

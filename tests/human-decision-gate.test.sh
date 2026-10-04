@@ -1060,6 +1060,9 @@ qpf_rows=(
   "3|bash -ec 'printf x > $hr/D*'"
   "4|bash -c 'true' && bash -c 'printf x > $hr/D*'"
   "5|dash -c 'tee $hr/D* < /dev/null'"
+  "6|bash --noediting -c 'printf x > $hr/D*'"
+  "7|bash"$'\t'"-e"$'\t'"-c"$'\t'"'printf x > $hr/D*'"
+  "8|bash +e -c 'printf x > $hr/D*'"
 )
 for qpf_row in "${qpf_rows[@]}"; do
   qpf_id="${qpf_row%%|*}"
