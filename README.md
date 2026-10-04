@@ -165,13 +165,13 @@ from the main session and only in the `default`, `acceptEdits` and `auto`
 modes (plan mode is read-only, so there is nothing to approve there); anywhere
 else you get the terminal template instead. The premise that the prompt shows
 you the full command was measured by the operator
-(`docs/experiments/2026-10-01-probe-bash-ask.md`, `Ship gate: GREEN`, a re-run
-that passed review after a first record failed it on evidence): on Claude Code
-2.1.288 only, in those three modes, a probe hook answering `ask` (not the real
+(`docs/experiments/2026-10-01-probe-bash-ask.md`, `Ship gate: GREEN`, a third
+run that passed review and supersedes two earlier records): on Claude Code
+2.1.288 (default) and 2.1.289 (acceptEdits, auto), in those three modes, a probe hook answering `ask` (not the real
 gate) on a Bash heredoc rendered a permission dialog showing the full
 multi-line command, declining created no file, and a headless `-p` run was
 denied. It did not exercise the real gate end to end in a live escalation or
-any other Claude Code version (ADR-0039). Evidence limits of the current record (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block carries a stray " settings.json to update hooks" fragment, and, a limit the record does not document, the plan run left a file outside the scratch dir. "Only from the main session"
+any other Claude Code version (ADR-0039). Evidence limits of the current record (ADR-0039 "Evidence limits"): each dialog block carries a stray " settings.json to update hooks" fragment, and the plan run left a plan file outside the scratch dir, which the record lists under Side effects. "Only from the main session"
 means "no `agent_id`"; whether an agent-teams teammate can also lack one is
 unmeasured (`docs/plans/2026-10-02-escalation-followups.md` R4): the identity
 probe (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`)

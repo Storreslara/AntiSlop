@@ -1039,15 +1039,20 @@ _Avoid_: review directory, human review folder (use "human-review directory" wit
   no DECISION file yet. Any deny falls back to the terminal route. The
   premise that the human sees the exact bytes at the prompt was measured by
   the operator's re-run of the esc-chat-1 probe
-  (`docs/experiments/2026-10-01-probe-bash-ask.md` at 229138e,
-  self-reported, passed review; it supersedes a first record that failed
-  review on evidence): on claude 2.1.288 only, in default, acceptEdits and
-  auto, a probe hook answering `ask` on a Bash heredoc (not the
+  (`docs/experiments/2026-10-01-probe-bash-ask.md` at 7e04acd,
+  self-reported, passed review; it supersedes two earlier records, cbb918e
+  and 229138e): in default (claude 2.1.288) and acceptEdits and auto
+  (claude 2.1.289; the record's Version note gives each mode's own
+  reading), a probe hook answering `ask` on a Bash heredoc (not the
   human-decision gate itself) rendered a permission dialog showing the full
-  multi-line command, and declining created no file; headless `-p` denied
-  the call. The record reads `Ship gate: GREEN`. Not measured: the real
-  gate end to end in a live escalation, other CLI versions, teammate
-  identity. Limits of the record at 229138e (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block has a stray " settings.json to update hooks" fragment, and, a limit the record does not document, the plan run left a file outside the scratch dir. See [[The human-decision gate]] and [[prompt-eligible]].
+  multi-line command, and declining created no file, as each mode's saved
+  decline block shows; headless `-p` denied the call. The record reads
+  `Ship gate: GREEN`. Not measured: the real gate end to end in a live
+  escalation, any other CLI version, teammate identity. Limits of the
+  record at 7e04acd (ADR-0039 "Evidence limits"): each dialog block has a
+  stray " settings.json to update hooks" fragment, and the plan run left a
+  plan file outside the scratch dir, which the record lists under Side
+  effects. See [[The human-decision gate]] and [[prompt-eligible]].
 _Avoid_: prompt-gated in-session escalation decision write, main-session
   prompt route, prompt route, in-session decision write (all name this same
   path; use "prompt-confirmed decision write", and `via: prompt` only for the

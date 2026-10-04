@@ -5,8 +5,9 @@ Date: 2026-10-03
 Status: Accepted (units esc-chat-2, esc-chat-2b, esf-gate-bytes, esc-chat-3,
 esc-chat-4; plan `docs/plans/2026-10-01-in-session-escalation-decision.md`,
 FINAL, amended 2026-10-02). The esc-chat-1 ship gate reads `Ship gate:
-GREEN` in a re-run record that passed review (229138e; the first record,
-cbb918e, failed review on evidence and is superseded). "Measurement (the
+GREEN` in a re-run record that passed review (7e04acd; it supersedes
+cbb918e, which failed review on evidence, and 229138e, whose Decline rows
+had no on-record evidence). "Measurement (the
 esc-chat-1 ship gate)" below says exactly what was measured and what was
 not; nothing in this ADR claims more.
 
@@ -112,10 +113,18 @@ the rows saying the full heredoc was visible; that run also spanned CLI
 **dialog block** before the decline and to re-grade from it. The operator
 re-ran it (@ 39f0850); the new record,
 `docs/experiments/2026-10-01-probe-bash-ask.md` at 229138e (self-reported),
-reads `Ship gate: GREEN` and passed review (unit esc-chat-1-record2). It
-supersedes cbb918e.
+read `Ship gate: GREEN` and passed review (unit esc-chat-1-record2), but its
+Decline rows rested on a filesystem check it did not capture, and its plan
+run left a file it did not document. The script was fixed again (6d30470)
+to save each mode's **decline block** (`out.txt: absent|present` plus the
+scratch-dir listing) and gate on it, and to list new plan files under Side
+effects. The operator's third run produced the current record, at 7e04acd
+(self-reported): `Ship gate: GREEN`, passed review (unit
+esc-chat-7-record). It supersedes cbb918e and 229138e.
 
-**Measured** (claude 2.1.288 for every mode):
+**Measured** (per-mode CLI readings, from the record's Version note:
+default and plan on claude 2.1.288; acceptEdits, auto, dontAsk,
+bypassPermissions and headless on 2.1.289):
 
 - a **probe** PreToolUse hook that always answers `permissionDecision: "ask"`
   for Bash, in a scratch directory outside the repo; not
@@ -123,7 +132,8 @@ supersedes cbb918e.
 - in **default, acceptEdits and auto**, an 8-line heredoc command (the `cat > out.txt <<'EOF'` line, six body lines, the closing `EOF`; the record's Method text counts the request as a 7-line heredoc: the dialog box shows 8 lines) rendered a
   permission dialog showing the full multi-line command (` Bash command`
   header, the whole `cat > out.txt <<'EOF'` … `EOF` box, "Do you want to
-  proceed?"), and declining created no file;
+  proceed?"), and declining created no file (each mode's decline block
+  reads `out.txt: absent`, and `out.txt` is not in its listing);
 - dontAsk and bypassPermissions also prompted (informational: this ADR
   denies both by policy); plan was not driven (informational: read-only, the
   model never reaches Bash there);
@@ -132,15 +142,16 @@ supersedes cbb918e.
 
 **Not measured:** the real gate's end-to-end behaviour in a live escalation
 (the measurement used a probe hook, not the real gate),
-any other CLI version (this re-run is single-version), and agent-teams
+any CLI version other than the two the record reads, and agent-teams
 teammate identity (Outcome D above; still unmeasured).
 
-**Evidence limits:** the Decline rows rest on a filesystem check the record
-does not capture (corroborated off-record by CLI transcripts showing the
-heredoc rejected with "The user doesn't want to proceed"); each dialog block
-carries a stray " settings.json to update hooks" render fragment outside the
-command box (harmless); and, a limit the record does not document, the
-plan run wrote a plan file outside the scratch directory.
+**Evidence limits:** each dialog block carries a stray " settings.json to
+update hooks" render fragment outside the command box (harmless); the plan
+run wrote a plan file outside the scratch directory, which the record lists
+under Side effects (no cleanup check covers it); and the run spans two CLI
+versions (above). A non-blocking observation: auto's post-decline pane shows
+two "Interrupted" lines where every other mode shows one; it is unexplained,
+and the pane is context only, not graded.
 
 The decision rule the re-run was judged against; GREEN triggered neither RED
 branch:
@@ -199,8 +210,9 @@ branch:
 - [ADR-0036](0036-human-decision-gate-keep-as-is-mode-off.md) (amended here for one branch)
 - `docs/plans/2026-08-11-human-decision-channel.md` (the original objections)
 - `docs/experiments/2026-09-23-probe-permission-mode-ask.md` (U1 `ask-still-prompts`)
-- [`docs/experiments/2026-10-01-probe-bash-ask.md`](../experiments/2026-10-01-probe-bash-ask.md) (the esc-chat-1 record at 229138e, produced by `scripts/probe-bash-ask.sh` @ 39f0850: `Ship gate: GREEN`, passed review)
-- `git show cbb918e:docs/experiments/2026-10-01-probe-bash-ask.md` (the first esc-chat-1 record: review FAILED on evidence; **superseded** by 229138e)
+- [`docs/experiments/2026-10-01-probe-bash-ask.md`](../experiments/2026-10-01-probe-bash-ask.md) (the esc-chat-1 record at 7e04acd, produced by `scripts/probe-bash-ask.sh` @ c01464a: `Ship gate: GREEN`, passed review)
+- `git show cbb918e:docs/experiments/2026-10-01-probe-bash-ask.md` (the first esc-chat-1 record: review FAILED on evidence; **superseded**)
+- `git show 229138e:docs/experiments/2026-10-01-probe-bash-ask.md` (the second record: passed review, but Decline rows had no on-record evidence; **superseded** by 7e04acd)
 - [`docs/experiments/2026-10-03-probe-hook-identity.md`](../experiments/2026-10-03-probe-hook-identity.md) (the identity record, `Outcome: D`, produced by `scripts/probe-hook-identity.sh`)
 - `docs/plans/2026-10-01-in-session-escalation-decision.md` (this decision's plan)
 - `docs/plans/2026-10-02-escalation-followups.md` (R4: the unmeasured teammate premise)

@@ -31,7 +31,7 @@ and `docs/maintenance/resync-vendored-skills.md` for the re-sync runbook.
    reviewer), `reviewed-path-gate.sh` (only the reviewer writes
    `.claude/reviewed/*.pass`), `human-decision-gate.sh` (with review gating
    on, no agent can complete a `DECISION` write without a human approving its bytes; its one
-   non-deny branch is an `ask` for the main session's prompt-confirmed
+   non-deny branch for a `DECISION` write is an `ask` for the main session's prompt-confirmed
    decision write — see "Human-approved path as consent proof" below),
    `protected-paths.sh`
    (migrations/lockfiles need human approval), `graph-update.sh` +
@@ -114,7 +114,8 @@ The dashboard (`node bin/cli.js --dashboard`) is the plugin's first long-running
 
 Every gate before `human-decision-gate.sh` (issue #325, 2026-08-11) followed
 the same shape: block most callers, **grant** one privileged identity through
-(`reviewed-path-gate.sh` grants the reviewer; `stop-gate.sh`'s SubagentStop
+(`reviewed-path-gate.sh` grants the reviewer, and, when no reviewer persona
+is selected, the main session or the orchestrator persona; `stop-gate.sh`'s SubagentStop
 branch grants a reviewer-with-verdict). `human-decision-gate.sh` breaks that
 shape on purpose — it blocks every agent identity, including the reviewer,
 from writing `.claude/human-review/<task-id>/DECISION`, and has no grant
@@ -130,14 +131,16 @@ agent can complete the write without a human approving its bytes": for one
 strictly parsed heredoc from the main session, the gate answers `ask`
 (never `allow`), so the orchestrator's Bash call writes the file only after
 the human says Yes at Claude Code's permission prompt. The operator's probe
-re-run (`docs/experiments/2026-10-01-probe-bash-ask.md` at 229138e,
-`Ship gate: GREEN`, passed review; the first record failed review because it
-never saved the dialog text) measured, with a probe hook rather than this
-gate, on claude 2.1.288 only, that the dialog shows the whole heredoc in
-default/acceptEdits/auto and that declining creates no file. Whether an
+re-run (`docs/experiments/2026-10-01-probe-bash-ask.md` at 7e04acd,
+`Ship gate: GREEN`, passed review; it supersedes cbb918e, which never saved
+the dialog text, and 229138e, which never saved the Decline evidence)
+measured, with a probe hook rather than this gate, on claude 2.1.288
+(default) and 2.1.289 (acceptEdits, auto), that the dialog shows the whole
+heredoc in default/acceptEdits/auto and that declining creates no file
+(each mode's saved decline block). Whether an
 agent-teams teammate can look like the main session is still unmeasured
 (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`).
-Limits of the record at 229138e (ADR-0039 "Evidence limits"): Decline rests on a filesystem check the record does not capture, each dialog block has a stray " settings.json to update hooks" fragment, and, a limit the record does not document, the plan run left a file outside the scratch dir.
+Limits of the record at 7e04acd (ADR-0039 "Evidence limits"): each dialog block has a stray " settings.json to update hooks" fragment, and the plan run left a plan file outside the scratch dir, which the record lists under Side effects.
 
 ## MCP scoping (a recurring gotcha)
 

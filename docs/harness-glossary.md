@@ -1962,7 +1962,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   branch always denies a DECISION target. Config: the gate reads exactly one
   field, `reviewGating.mode`; under `off` it exits 0 (inert). Whether Claude
   Code's Bash prompt shows the full heredoc was measured with a probe hook,
-  not this gate, on claude 2.1.288 only (see [[Ship gate]]). A closed note:
+  not this gate, on claude 2.1.288 (default) and 2.1.289 (acceptEdits,
+  auto) (see [[Ship gate]]). A closed note:
   at 60b454f, `is_sanctioned_marker_write`'s `[[:space:]]` separators also
   matched Unicode spaces under a UTF-8 locale (under C.UTF-8: U+1680,
   U+2000-200A except U+2007, U+2028, U+2029, U+205F and U+3000; measured in
@@ -2050,22 +2051,28 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   needs, for each of default, acceptEdits and auto, an observed prompt, an
   observed fully visible heredoc and an observed decline that left no file,
   plus three passing cleanup checks; the gate re-checks default, acceptEdits
-  and auto against each mode's own [[dialog block]]. **History:** the first
-  record (cbb918e) was graded GREEN by the script but review FAILed it on
-  evidence (no dialog text saved; the run spanned 2.1.287 and 2.1.288); it
-  is superseded. The fixed script (253106e) was re-run by the operator
-  (@ 39f0850); that record (229138e, self-reported) reads `Ship gate: GREEN`
-  and passed review. **Measured**, on claude 2.1.288 only: in default,
-  acceptEdits and auto, the probe's own always-`ask` hook (not
-  `human-decision-gate.sh`) on a Bash heredoc rendered a permission dialog
-  showing the full multi-line command, and declining created no file;
-  headless `-p` denied the call; dontAsk and bypassPermissions also prompted
-  and plan was not driven (all informational). **Not measured:** the real
-  gate end to end, other CLI versions, teammate identity. **Evidence
-  limits:** Decline is a filesystem check the record does not capture
-  (corroborated off-record by CLI transcripts); each dialog block has a
-  stray " settings.json to update hooks" render fragment (harmless); and, a limit the record does not document, the
-  plan run wrote a plan file outside the scratch dir. The RED rules, which
+  and auto against each mode's own [[dialog block]] and each mode's own
+  [[decline block]] (an `out.txt: absent` line, no `out.txt: present` line,
+  no `out.txt` in the listing). **History:** the first record (cbb918e) was
+  graded GREEN by the script but review FAILed it on evidence (no dialog
+  text saved; the run spanned 2.1.287 and 2.1.288). The fixed script
+  (253106e) was re-run (@ 39f0850); that record (229138e) read GREEN and
+  passed review, but its Decline rows had no on-record evidence. The script
+  was fixed again (6d30470) to save and gate on decline blocks and to list
+  plan files under Side effects; the operator's third record (7e04acd,
+  self-reported) reads `Ship gate: GREEN` and passed review. Both earlier
+  records are superseded. **Measured**, per the record's Version note
+  (default 2.1.288; acceptEdits and auto 2.1.289; never restate it as one
+  version): in default, acceptEdits and auto, the probe's own always-`ask`
+  hook (not `human-decision-gate.sh`) on a Bash heredoc rendered a
+  permission dialog showing the full multi-line command, and declining
+  created no file; headless `-p` denied the call; dontAsk and
+  bypassPermissions also prompted and plan was not driven (all
+  informational). **Not measured:** the real gate end to end, other CLI
+  versions, teammate identity. **Evidence limits:** each dialog block has a
+  stray " settings.json to update hooks" render fragment (harmless); the
+  plan run wrote a plan file outside the scratch dir, which the record lists
+  under Side effects (not cleaned up, not gated). The RED rules, which
   this result did not trigger: RED in default (or a heredoc that is not
   fully visible) returns the design to spec-master; RED in acceptEdits or
   auto drops that mode (ADR-0039). A material CLI upgrade re-runs the probe.
@@ -2082,6 +2089,18 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   acceptEdits and auto against their own blocks. It exists because the
   first record saved panes only after the decline, when the dialog was
   gone (see [[Ship gate]]).
+
+**decline block**:
+(esc-chat-1-evidence2; named esc-chat-7, 2026-10-03) — a block in the
+  esc-chat-1 record's appendix, after the [[dialog block]]s, holding one
+  mode's Decline evidence: the filesystem check made after the decline key
+  is sent, `out.txt: absent` or `out.txt: present`, then the `ls -Aq`
+  listing of the scratch dir. Headed `### decline: <mode> <N> lines`, the
+  line count again a length prefix. The Decline row is derived from that
+  saved text, and `gate()` re-checks default, acceptEdits and auto against
+  their own blocks. It is not pane text: the post-decline pane in the
+  appendix is context only. It exists because the 229138e record graded
+  Decline from a check it never saved (see [[Ship gate]]).
 
 **subagent-shaped**:
 (esf-eid-probe; named esc-chat-5, 2026-10-03) — the `Teammate check:` value
@@ -2259,8 +2278,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   > other.pass # avoid touching .claude/reviewed/`) may be allowed even if the
   raw text contains both [[trigger token]]s, because these contexts are inert to
   bash execution. In contrast, a command that targets the path for a write
-  (`printf x > .claude/human-review/id/DECISION`, `sh -c 'printf x > DECISION'`)
-  is denied. In [[The human-decision gate]], with review gating on, the one
+  (`printf x > .claude/human-review/id/DECISION`) is denied. In [[The human-decision gate]], with review gating on, the one
   exception is a lone strictly parsed DECISION heredoc from the main session,
   which the gate turns into an `ask`, see [[prompt-eligible]]; every other
   command whose text carries both [[trigger token]]s and that no allowance
@@ -2272,10 +2290,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   single-quoted spans, and comments are masked and ignored). This is the design
   principle that closes false-positive denials of reads and inert narration while
   preserving each gate's own write rule: with review gating on, no agent can
-  complete a DECISION write without a human approving its bytes (ADR-0039);
+  complete a DECISION write without a human approving its bytes (ADR-0039;
+  F-1 aside: the open glob-spelling residual never arms the gate);
   `.claude/reviewed/` is not human-approved but granted, since
   `reviewed-path-gate.sh` lets the reviewer write there, and the main session
-  too when no reviewer persona is selected (see [[The human-decision gate]]).
+  or the orchestrator persona too when no reviewer persona is selected (see [[The human-decision gate]]).
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings
