@@ -58,3 +58,4 @@
 - [In-session escalation decision spec (2026-10-01)](project_in_session_escalation_decision_spec.md) — prompt-gated heredoc `ask`, not an AskUserQuestion hook (answers ride updatedInput; writer = oracle).
 - [Pending-review flag resurrection](project_pending_review_flag_resurrection.md) — stale flag after PASS = defer printf re-creates an M3-cleared flag; 3 gates assume no agent_id = main.
 - [Persona-audit 11-findings spec (#428)](project_persona_audit_11_findings_spec.md) — settled .fail-append rationale + 4 premise corrections; marker-verify parses line 2 as a note; adapter hook libs ARE generated, protocol ports are not.
+- [hdg quoted-payload bypass](project_hdg_quoted_payload_bypass.md) — bash -c / sh -c tee glob payloads bypass the gate (real overwrite); sh redirect globs write nothing; bg child ignores SIGINT.
