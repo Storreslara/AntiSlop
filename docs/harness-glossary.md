@@ -480,7 +480,9 @@ _Avoid_: escape hatch, grant branch
   in harness-integrity-gate's family table (`rm -rf ~/.claude/*`, `rm -rf /tmp/x/.claude/*`)
   is blocked because it names a `.claude`-containing path, though this project's
   Set A is confined to the repo's own `.claude/` directory, not `~/.claude/`. See
-  [[documented residual]], [[bypass family]], [[family table]].
+  [[documented residual]], [[bypass family]], [[family table]]; the
+  per-command form, one pinned real command per row, is
+  [[accepted over-block (OB row)]].
 
 **kill set**:
 (unit hcb-regcheck, 2026-09-24) — for a given mutant and [[cell space]], the subset of
@@ -2284,12 +2286,15 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   > other.pass # avoid touching .claude/reviewed/`) may be allowed even if the
   raw text contains both [[trigger token]]s, because these contexts are inert to
   bash execution. In contrast, a command that targets the path for a write
-  (`printf x > .claude/human-review/id/DECISION`) is denied. In [[The human-decision gate]], with review gating on, the one
-  exception is a lone strictly parsed DECISION heredoc from the main session,
-  which the gate turns into an `ask`, see [[prompt-eligible]]; every other
-  command whose text carries both [[trigger token]]s and that no allowance
-  clears is denied (a spelling that never spells either token cannot arm the
-  gate; the declared ones are listed under [[frozen family table]]). Under `reviewGating.mode: off` that gate exits 0
+  (`printf x > .claude/human-review/id/DECISION`) is denied. In
+  [[The human-decision gate]], with review gating on, the one exception is a
+  lone strictly parsed DECISION heredoc from the main session, which the gate
+  turns into an `ask`, see [[prompt-eligible]]; every other command that
+  carries both [[trigger token]]s, spelled or as an
+  [[expansion-named token]], and that no allowance clears is denied. A
+  command arms the gate only when both tokens are present in one of those
+  two forms; the declared residuals that escape are listed under
+  [[frozen family table]]. Under `reviewGating.mode: off` that gate exits 0
   and denies nothing. Both [[The human-decision gate]] and
   `reviewed-path-gate.sh` apply this distinction via gate-local allowances that
   check whether tokens survive into the command skeleton's CODE text (prose,
@@ -2305,11 +2310,14 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **frozen family table**:
 (esc-left-3, esc-left-4, 2026-10-04) — the fixed list of F-1 spellings that
-  [[The human-decision gate]] closed in esc-left-3: unquoted glob, extglob
-  and brace words that expand to the `human-review` directory or the
-  DECISION file without the text spelling them (families F-1a to F-1g, in
+  [[The human-decision gate]] closed in esc-left-3: unquoted glob and brace
+  words that expand to the `human-review` directory or the DECISION file
+  without the text spelling them, so each token is an
+  [[expansion-named token]] (families F-1a to F-1g, in
   `docs/plans/2026-10-04-escalation-leftovers.md`, Context Item 4). It is a
-  [[family table]] with one rule: it is closed only for what it lists.
+  [[family table]] with one rule: it is closed only for what it lists. The
+  gate also reads extglob words, but no table row pins them and they were
+  not independently probed.
   Each row is a `FG-<family>-<n>` case in
   `tests/human-decision-gate.test.sh` (FG-c-6 is the comment-carried
   spelling), and is credited as blocked only after a real-bash check in a
@@ -2319,9 +2327,16 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   each still allowed: a cwd-relative write that never spells
   `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
   N21), R-5 (backslash, pin R5), and NL1 (newline in the packet id, the
-  one `TRACKED-OPEN` pin); A4 groups R-4, R-5 and NL1. Also measured ALLOW
-  at d331be9 with no pin: a glob inside a quoted `sh -c` payload (the gate
-  masks the quoted span; the shell inside expands it). Q20 (`DECISIO{N,}`)
+  one `TRACKED-OPEN` pin); A4 groups R-4, R-5 and NL1. A3, R-4 and R-5
+  escape the early exit because one token is neither spelled nor
+  expansion-named; NL1 spells both and is missed later, because newline
+  breaks the gate's path recognizers. Also allowed at d331be9 (gate rc 0)
+  with no pin: a glob inside a quoted `sh -c` payload, such as
+  `sh -c 'printf x > .claude/h*/u1/D*'`, since the gate masks the quoted
+  span. That exact form writes nothing (`/bin/sh` here is dash, which does
+  not glob a redirect target non-interactively); the overwrite is real for
+  the `bash -c` form and for a glob in argument position, such as
+  `sh -c 'tee .claude/h*/u1/D* < /dev/null'`. Q20 (`DECISIO{N,}`)
   moved from accepted residual to blocked, because the gate cannot tell a
   redirect target (ambiguous, writes nothing) from a `tee` argument
   (FG-f-3, writes). The `reviewed-path-gate.sh` variant of F-1 is
@@ -2356,14 +2371,33 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   The corpus is machine-local and may be pruned; the committed result is
   the summary line.
 
+**expansion-named token**:
+(esc-left-3, esc-left-4, 2026-10-04) — a [[trigger token]] the command
+  text does not spell but names as a pattern: an unquoted glob or brace
+  word that could expand to it, such as `h*` for `human-review` or `D*` and
+  `D{E,}CISION` for DECISION. Since esc-left-3, [[The human-decision gate]]
+  counts it as present (`glob_names_tokens()` in
+  `hooks/scripts/human-decision-gate.sh`), so `printf x > .claude/h*/u1/D*`
+  arms the gate with neither token spelled (pin FG-c-1, blocked), and
+  `printf x > .claude/human-review/u1/[D]ECISION` with one spelled (FG-a-1,
+  blocked). A command whose tokens are expansion-named fails closed: past
+  the prompt route and the benign-command check, only the sanctioned
+  marker-write recognizer may allow it. A quoted glob is literal and names
+  nothing. Coverage is claimed only for the [[frozen family table]]; the
+  gate also reads extglob words, but none is pinned or independently
+  probed.
+
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24) — one of two literal substrings
   whose co-occurrence arms [[The human-decision gate]] and (in asymmetric form)
   other text-protection gates. In `human-decision-gate.sh`, the two triggers are
-  `human-review` and `DECISION`. A command is blocked only if its raw text
-  contains both substrings anywhere; either trigger alone allows the command
-  through. This "both tokens must appear" rule is the gate's substring early-exit
-  (a fast check before deeper gate logic). See [[narrate-versus-target
+  `human-review` and `DECISION`. A token counts as present when the
+  quote-joined text contains it as a substring, or when an unquoted glob or
+  brace word could expand to it (an [[expansion-named token]], since
+  esc-left-3). The gate exits early, allowing the command, unless both
+  tokens are present in one of those forms. This "both tokens must appear"
+  rule is the gate's substring early-exit (a fast check before deeper gate
+  logic). See [[narrate-versus-target
   distinction]] for when a command carrying both tokens is allowed anyway (when
   they are inert to execution).
 

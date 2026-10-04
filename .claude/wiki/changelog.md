@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-04 (esc-left-4 FAIL 1 fix — arming rule and extglob overclaim)
+- Review FAIL 1: the glossary still said a spelling that names neither token cannot arm the gate, and **trigger token** still said both literal substrings must appear. Both are false since esc-left-3 (FG-c-1 and FG-a-1..a-8 are blocked). Both entries now say a token also counts when an unquoted glob or brace word could expand to it. New harness term **expansion-named token**.
+- "extglob" is dropped from the frozen family table and the ADR-0039 bullet. The gate reads extglob words, but no row pins them and they were not independently probed.
+- The `sh -c` quoted-glob finding is restated. The gate allows it (rc 0, no pin). The `sh -c` redirect form writes nothing, because dash does not glob a redirect target. The `bash -c` form and a glob in argument position do overwrite. The ADR "Still allowed" list now includes it and is marked non-exhaustive. **accepted over-block** now cross-references its OB-row form.
+
 ## 2026-10-04 (esc-left-4 — F-1 prose brought to the post-fix state)
 - Glossary, ADR-0039 and `architecture.md` now state F-1 as closed for the **frozen family table only** (esc-left-3, d331be9; reviewer PASS). Declared residuals: a cwd-relative write that never spells `human-review` (A3), R-4 (N21), R-5 (R5), NL1; a glob in a quoted `sh -c` payload was measured ALLOW with no pin. Spellings outside the table were not independently probed. Q20 flipped to blocked.
 - Differential sweep: `new_denials=13 new_allowances=0`, the 13 pinned as OB-1..OB-13 (reviewer's own corpus: 14, the 14th not a write; cap 25). The sweep runs as lead-programmer, so the main-session ask route is covered by the PG rows only.

@@ -171,10 +171,13 @@ branch:
   without a human approving its bytes; an agent can still *propose* one.
   No subagent can reach the ask (it carries an `agent_id`).
 - **The guarantee has declared residuals.** esc-left-3 (d331be9) closed the
-  glob, extglob and brace spellings of the frozen family table, and only
-  those. Still allowed: a cwd-relative write that never spells
-  `human-review`, R-4, R-5 and NL1; spellings outside the table were not
-  independently probed. The teammate premise stays unmeasured (Outcome D).
+  glob and brace spellings of the frozen family table, and only those; the
+  gate also reads extglob words, but no table row pins them and they were
+  not independently probed. Still allowed, a non-exhaustive list: a
+  cwd-relative write that never spells `human-review`, R-4, R-5, NL1, and a
+  glob inside a quoted `sh -c` payload (no pin); spellings outside the
+  table were not independently probed. The teammate premise stays
+  unmeasured (Outcome D).
   See the glossary entry "frozen family table".
 - **Audit before answer.** The gate appends a `decision-gate-asked` line to
   `.claude/review-audit.log` when it asks, before the human answers. An asked
