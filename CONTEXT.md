@@ -1154,6 +1154,23 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   followed by a totals line (`suites=<n> failed=<m>`). Implemented as `tests/run-all.sh`
   for the OutcomeCI Design A prototype (`prototype/outcomeci-series-gate/`).
 
+**operator check**:
+(unit ocigf-3, 2026-10-05) — a manual verification task run by the trial operator
+  during the live OutcomeCI trial, not as part of repo CI. Distinct from automated
+  acceptance criteria: the operator verifies conditions manually (e.g., AC4.5 checks
+  token spend via `token-usage.sh --cap`, AC4.6 counts static guards with grep).
+  Documented in the README for the OutcomeCI series-gate trial
+  (`prototype/outcomeci-series-gate/README.md`).
+
+**token cap**:
+(unit ocigf-3, 2026-10-05) — the maximum allowable total token spend (input +
+  output) for a trial run, enforced via `token-usage.sh --cap <n>`. Exit codes:
+  0 = within cap, 1 = over cap or zero records, 2 = invalid field (non-integer,
+  negative, or > 2^53-1), 64 = cap out of range or missing argument. The cap
+  parameter is bounded to 15 decimal digits (0–999999999999999). The environment
+  variable `OCI_TOKEN_CAP` is the operator-supplied placeholder for the cap value
+  (e.g., `OCI_TOKEN_CAP=60000`). See [[operator check]] AC4.5.
+
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
   at the 2-FAIL cap (see [[FAIL routing (post-reviewer)]]): the orchestrator
