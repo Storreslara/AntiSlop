@@ -37,6 +37,19 @@ ucase U7-missing-file 2 - "$bin" "$work/nope.json"
 ucase U8-no-arg 64 - "$bin"
 ucase U9-missing-field 0 'records=1 input=7 output=0 cache_read=0 cache_write=0 total=7' "$bin" "$work/u9.json"
 
+# Off-schema token fields must be rejected (exit 2) before any shell arithmetic sees them.
+bad() { printf '{"records":[{"input_tokens":%s,"output_tokens":1}]}\n' "$2" > "$work/$1.json"; }
+bad u10 '"x"'; bad u11 '"n[$(touch${IFS}'"$work"'/pwned)]"'; bad u12 1.5; bad u13 1e300
+bad u14 '"5"'; bad u15 -500
+ucase U10-string-field 2 - "$bin" "$work/u10.json"
+ucase U11-injection 2 - "$bin" "$work/u11.json"
+[ ! -e "$work/pwned" ] || fail U11-injection "payload executed"
+ucase U12-float 2 - "$bin" "$work/u12.json"
+ucase U13-huge-float 2 - "$bin" "$work/u13.json"
+ucase U14-numeric-string 2 - "$bin" "$work/u14.json"
+ucase U15-negative 2 - "$bin" --cap 10 "$work/u15.json"
+ucase U16-cap-too-large 64 - "$bin" --cap 99999999999999999999 "$work/u1.json"
+
 # Mutant: neutralise the cap check; U3 must then fail.
 mut="$work/mut-token-usage.sh"
 sed '/# CHECK:CAP/s/.*/:/' "$bin" > "$mut"
