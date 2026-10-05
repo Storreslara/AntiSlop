@@ -89,3 +89,10 @@ the same mechanism from the other direction.
   **second time**: now that the hash is healed, the file re-enters the normal
   "stamp refreshed" branch and gets stamped correctly. Hit on
   cache-ttl-gapped-personas (2026-09-23).
+- **Contract "stop if --update drifts other files" vs the bump footprint**
+  (ocig-3, 2026-10-05): a plain `--update` after a bump rewrites 11 extra
+  files by one stamp line each (8 other `.claude/agents/*`, persona-protocol,
+  -slim, protocol-digest) plus the config hashes. That is not unrelated drift.
+  Prove it with `git diff -U0 | grep -v <old|new version>` showing 0 other
+  lines, and compare to the prior bump commit's `--stat` (`git log -S'"version":
+  "<old>"' -- package.json`). Proceed and flag it in the report; don't stop.
