@@ -35,3 +35,4 @@ for n in 2 3 4 5 6; do
 done
 
 printf 'mutants=%s killed=%s\n' "$mutants" "$killed"
+[ "$killed" -eq "$mutants" ]
