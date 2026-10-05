@@ -4,6 +4,8 @@ Local, read-only trial of `oci-series-gate.sh` around `oci workflow run`. The wo
 
 Never pass `--cloud` to `oci`. This trial is local only.
 
+Before any live run, from the repo root: `bash prototype/outcomeci-series-gate/tests/run-all.sh` must exit 0 and end with `failed=0`. It runs every prototype suite plus `mutation-proof.sh`; `tests/validate.sh` does not run them.
+
 1. Install: `pipx install outcomeci-cli==0.50.1`. The CLI pins `outcomeci-connectors>=0.8,<0.9`, so the trial runs connectors 0.8.x, not 0.10.0 (PC1).
 2. Copy the workflow outside this repo, into a directory with no `.claude/` in it (A2):
    `export OCI_TRIAL_DIR=$(mktemp -d) && cp -a prototype/outcomeci-series-gate/workflow/. "$OCI_TRIAL_DIR"/`
