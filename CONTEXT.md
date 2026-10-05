@@ -1152,7 +1152,19 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
 (unit ocigf-1, 2026-10-05) — a test harness script that runs multiple acceptance
   test suites sequentially and reports a summary line for each (`<suite>: ok|FAIL`),
   followed by a totals line (`suites=<n> failed=<m>`). Implemented as `tests/run-all.sh`
-  for the OutcomeCI Design A prototype (`prototype/outcomeci-series-gate/`).
+  for the OutcomeCI Design A prototype (`prototype/outcomeci-series-gate/`). Related tool: [[preflight]].
+
+**preflight**:
+(unit ocigf-4, 2026-10-05) — a zero-API Step 4 validation tool run before OutcomeCI
+  workflow execution. Command: `preflight.sh [--unit <id>] [--project-dir <dir>]`.
+  Prints `check <name>=<value>` lines; exit code is first failing check (tools 2, oci 3,
+  version 4, validate 5, docker 6, token 7; bad usage/empty/non-dir args 64). Outputs
+  `next:` block of operator commands and final `preflight=ready|blocked reason=<check>`.
+  Implements zero-API pattern: oci only called with `--version` or `validate --dir <temp copy>`,
+  `docker info` under `timeout 10`, marker read via file-existence check. Token never
+  printed. Defined in `prototype/outcomeci-series-gate/preflight.sh`. Test suites:
+  `tests/preflight.test.sh` (P0-P19, 25s outer timeout), `tests/preflight-mutation.test.sh`
+  (M1-M5 mutation proof, 5 killed 5).
 
 **operator check**:
 (unit ocigf-3, 2026-10-05) — a manual verification task run by the trial operator
