@@ -33,7 +33,7 @@ line="$(head -n 1 "$marker" 2>/dev/null)"
 rest="${line#"PASS $unit "}"
 [ "$rest" != "$line" ] && [[ $rest =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\ commit:\ [0-9a-f]{7,40}\ criteria:\ .+$ ]] || refuse 66 marker-invalid  # CHECK:R3
 
-attribution="$(bash "$hooks/marker-commit-check.sh" "$unit" "$proj")"
+attribution="$(bash "$hooks/marker-commit-check.sh" "$unit" "$proj" 2>/dev/null)"
 [[ $attribution == "marker-commit-check=ok "* ]] || refuse 67 commit-attribution  # CHECK:R4
 
 cited="${line#* commit: }"
@@ -42,7 +42,7 @@ full_cited="$(git -C "$proj" rev-parse -q --verify "${cited}^{commit}")"
 full_sha="$(git -C "$proj" rev-parse -q --verify "${sha}^{commit}")"
 [ -n "$full_cited" ] && [ "$full_cited" = "$full_sha" ] || refuse 68 sha-mismatch  # CHECK:R5
 
-verify="$(bash "$hooks/marker-verify.sh" "$unit" "$proj" --execute)"
+verify="$(bash "$hooks/marker-verify.sh" "$unit" "$proj" --execute 2>/dev/null)"
 case "$verify" in "marker-verify=ok "*) ;; "marker-verify=mismatch "*) refuse 69 criteria-mismatch ;; *) refuse 69 criteria-unverifiable ;; esac  # CHECK:R6
 
 printf 'series-gate=allow unit=%s commit=%s\n' "$unit" "$full_cited" >&2

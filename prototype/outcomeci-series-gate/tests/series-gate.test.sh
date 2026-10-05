@@ -70,6 +70,13 @@ check_no_oci() { # <case>
   fi
 }
 
+check_oci_called() { # <case>
+  if [ ! -s "$log" ]; then
+    printf 'FAIL %s: oci was not invoked\n' "$1"
+    failures=$((failures + 1))
+  fi
+}
+
 refusal() { printf 'series-gate=refuse unit=%s reason=%s' "$1" "$2"; }
 
 good="$(new_fixture good "feat($id): fixture commit (also ocig-t6)")"
@@ -111,7 +118,7 @@ git -C "$adv" commit -q --allow-empty -m "docs: later commit"
 run "$adv" --unit "$id" -- workflow run wf.yaml
 check T5 68 "$(refusal "$id" sha-mismatch)"; check_no_oci T5
 run "$adv" --unit "$id" --sha "$adv_sha" -- workflow run wf.yaml
-check T5b 0 "series-gate=allow unit=$id commit=$adv_sha"
+check T5b 0 "series-gate=allow unit=$id commit=$adv_sha"; check_oci_called T5b
 
 # T6: criteria fail on re-run
 write_marker "$good" ocig-t6 "$(pass_line ocig-t6 "$good_sha" false)"
@@ -128,7 +135,20 @@ fi
 
 # T8: oci's exit code passes through
 STUB_RC=7 run "$good" --unit "$id" -- workflow run wf.yaml
-check T8 7
+check T8 7 "series-gate=allow unit=$id commit=$good_sha"; check_oci_called T8
+
+# T9: helper stderr noise must not reach the wrapper's stderr (hooks dir swapped for noisy shims)
+nz="$work/noise"
+mkdir -p "$nz/prototype/outcomeci-series-gate" "$nz/hooks/scripts"
+cp "$bin" "$nz/prototype/outcomeci-series-gate/oci-series-gate.sh"
+real_hooks="$(cd "$here/../../../hooks/scripts" && pwd)"
+ln -s "$real_hooks/lib" "$nz/hooks/scripts/lib"
+for h in marker-commit-check.sh marker-verify.sh; do
+  printf '#!/usr/bin/env bash\necho helper-noise >&2\nexec bash "%s/%s" "$@"\n' "$real_hooks" "$h" > "$nz/hooks/scripts/$h"
+done
+bin="$nz/prototype/outcomeci-series-gate/oci-series-gate.sh"
+run "$good" --unit "$id" -- workflow run wf.yaml
+check T9 0 "series-gate=allow unit=$id commit=$good_sha"; check_oci_called T9
 
 printf 'failures=%s\n' "$failures"
 [ "$failures" -eq 0 ]
