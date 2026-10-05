@@ -1134,6 +1134,19 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   a read-only workflow that exercises the trial's gate and state-checking tools
   without external dependencies (`prototype/outcomeci-series-gate/workflow/outcome.yml`).
 
+**external run journal**:
+(unit ocig-3, 2026-10-05) — alias for [[broker journal]]. Persona prose in
+  `agents/orchestrator.md` and `agents/reviewer.md` uses this term to refer to
+  the per-call record presented to reviewers as non-authoritative evidence. See
+  [[external workflow runner]] for the agent that produces it.
+
+**external workflow runner**:
+(unit ocig-3, 2026-10-05) — a workflow automation system (such as OutcomeCI) that
+  executes a unit's operations in an isolated environment and records each call's
+  status and outcome in an [[external run journal]]. The journal is shown to
+  reviewers as non-authoritative evidence only, never as a substitute for
+  acceptance-criterion verification.
+
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
   at the 2-FAIL cap (see [[FAIL routing (post-reviewer)]]): the orchestrator
