@@ -20,8 +20,14 @@ Before any live run, from the repo root: `bash prototype/outcomeci-series-gate/t
 6. Limits:
    - At most 3 live runs (A4); each uses the `CLAUDE_CODE_OAUTH_TOKEN` subscription.
    - The wrapper considers only `.pass` markers (A3). A unit with only `.escalated` or `.directed`, or none, is refused. Under `reviewGating.mode=off` no markers are written, so every unit is refused.
+   - Model: the workflow uses `claude-haiku-4-5`. If run 1 fails on the model, re-run with `--model claude-sonnet-5-5` after `workflow run`; that re-run counts against the 3-run cap.
    - Negative check: this must print `rc=65` and leave `oci` unexecuted (no new directory under `$OCI_TRIAL_DIR/.outcomeci/outcomes/`):
      `bash prototype/outcomeci-series-gate/oci-series-gate.sh --unit no-such-unit -- workflow run --dir "$OCI_TRIAL_DIR"; echo rc=$?`
-7. Licensing (R4): OutcomeCI declares Apache-2.0 but ships no LICENSE file, and the connectors license is unconfirmed. Never copy OutcomeCI code into this MIT repo, `prototype/` included. A fork lives outside the repo; before redistributing one, add the Apache-2.0 text, keep any NOTICE, and mark modified files.
+7. Operator checks for the live run (not repo CI):
+   - AC4.5, token spend. The `usage.json` path is UNVERIFIED until the first live run; the second lookup is the fallback. The cap is a placeholder to set after run 1. Must exit 0:
+     `f=$(ls -d "$OCI_TRIAL_DIR"/.outcomeci/outcomes/*/transcripts/summarize/usage.json 2>/dev/null | head -1); [ -n "$f" ] || f=$(find "$OCI_TRIAL_DIR/.outcomeci" -name usage.json | head -1); bash prototype/outcomeci-series-gate/token-usage.sh --cap "${OCI_TOKEN_CAP:-60000}" "$f"`
+   - AC4.6, static guard, must print `0`:
+     `grep -cE '^[[:space:]]+(converse|await):|fallback:' prototype/outcomeci-series-gate/workflow/outcome.yml`
+8. Licensing (R4): OutcomeCI declares Apache-2.0 but ships no LICENSE file, and the connectors license is unconfirmed. Never copy OutcomeCI code into this MIT repo, `prototype/` included. A fork lives outside the repo; before redistributing one, add the Apache-2.0 text, keep any NOTICE, and mark modified files.
 
 If `oci validate` rejects the workflow schema, stop and report; that routes back to spec-master (D3).
