@@ -1110,9 +1110,22 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
 
 **policy decision**:
 (unit ocig-1, 2026-10-05) — the outcome from OutcomeCI policy review: `allow`,
-  `revise`, or `deny`. It is never a [[verdict]], and it never counts toward the
+  `revise`, or `deny`. It is never a verdict, and it never counts toward the
   2-FAIL cap. Orthogonal to and distinct from the reviewer's verdict on code
   completeness and correctness. Recorded in the [[broker journal]].
+
+**state snapshot**:
+(unit ocig-2, 2026-10-05) — a before/after digest of marker and flag-file state,
+  recording the sha256 hash and relative path of each file in `.claude/reviewed/`,
+  `.claude/human-review/`, and `.claude/` flag files (`.pending-review*`, `.review-join.*`,
+  `wip-handoff.*`). Used by the OutcomeCI series-gate trial to verify that a run
+  does not alter marker state unexpectedly (`prototype/outcomeci-series-gate/state-snapshot.sh`).
+
+**terminal status set**:
+(unit ocig-2, 2026-10-05) — the set of journal call statuses that count as finished
+  in OutcomeCI's [[broker journal]]: `confirmed`, `denied`, `unsent`, and `uncertain`.
+  Checked by the series-gate trial to confirm all brokered calls have reached a
+  terminal state (`prototype/outcomeci-series-gate/check-journal.sh`).
 
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
