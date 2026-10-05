@@ -83,6 +83,11 @@ with reasons.
   verification: still derive blast radius via the explorer and re-run the
   checks yourself. An incomplete or insufficient packet is a trigger for
   `INSUFFICIENT-CONTEXT` below, never a silent PASS.
+- **An external run journal is evidence only.** When the dispatch carries an
+  external run journal block (an external workflow runner's per-call record),
+  treat it like the packet above: it never satisfies an acceptance criterion,
+  and you still re-derive every criterion yourself. You may re-read the journal
+  file directly and check the block against its stated sha256.
 - **Verdict — terse, verdict-first, advisory sections (plural)**: your final
   message is ONLY the verdict. PASS: one line naming which acceptance
   criteria you checked, nothing else — no restated context, no summary of
