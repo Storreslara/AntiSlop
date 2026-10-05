@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Disables each R2-R6 guard in a temp copy of the wrapper and checks the suite kills it.
+# Disables each R2-R7 guard in a temp copy of the wrapper and checks the suite kills it.
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 root="$(cd "$here/../../.." && pwd)"
@@ -19,7 +19,7 @@ if ! SERIES_GATE_BIN="$copy" bash "$suite" >/dev/null 2>&1; then
 fi
 
 mutants=0 killed=0
-for n in 2 3 4 5 6; do
+for n in 2 3 4 5 6 7; do
   sed "s/^.*# CHECK:R$n\$/:/" "$here/../oci-series-gate.sh" > "$copy"
   if cmp -s "$copy" "$here/../oci-series-gate.sh"; then
     printf 'R%s: no guard line found\n' "$n"
@@ -35,4 +35,4 @@ for n in 2 3 4 5 6; do
 done
 
 printf 'mutants=%s killed=%s\n' "$mutants" "$killed"
-[ "$killed" -eq "$mutants" ]
+[ "$mutants" -eq 6 ] && [ "$killed" -eq "$mutants" ]

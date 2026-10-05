@@ -27,9 +27,13 @@ set +e
 [ -n "$unit" ] && [ "$sep" -eq 1 ] && unit_id_valid "$unit" || refuse 64 usage  # CHECK:R1
 
 marker="$(unit_id_marker_path "$unit" pass)"
-[ -s "$marker" ] || refuse 65 marker-missing  # CHECK:R2
+# The marker is read once; R3-R5 use this copy, and R7 refuses if the file no longer hashes to it (D-F).
+content="$(cat -- "$marker" 2>/dev/null && printf x)"
+content="${content%x}"
+read_hash="$(printf '%s' "$content" | sha256sum | cut -d' ' -f1)"
+[ -n "$content" ] || refuse 65 marker-missing  # CHECK:R2
 
-line="$(head -n 1 "$marker" 2>/dev/null)"
+line="${content%%$'\n'*}"
 rest="${line#"PASS $unit "}"
 [ "$rest" != "$line" ] && [[ $rest =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z\ commit:\ [0-9a-f]{7,40}\ criteria:\ .+$ ]] || refuse 66 marker-invalid  # CHECK:R3
 
@@ -44,6 +48,8 @@ full_sha="$(git -C "$proj" rev-parse -q --verify "${sha}^{commit}")"
 
 verify="$(bash "$hooks/marker-verify.sh" "$unit" "$proj" --execute 2>/dev/null)"
 case "$verify" in "marker-verify=ok "*) ;; "marker-verify=mismatch "*) refuse 69 criteria-mismatch ;; *) refuse 69 criteria-unverifiable ;; esac  # CHECK:R6
+
+[ "$(sha256sum < "$marker" 2>/dev/null | cut -d' ' -f1)" = "$read_hash" ] || refuse 70 marker-changed  # CHECK:R7
 
 printf 'series-gate=allow unit=%s commit=%s\n' "$unit" "$full_cited" >&2
 exec oci "$@"

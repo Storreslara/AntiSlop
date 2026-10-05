@@ -137,11 +137,29 @@ fi
 STUB_RC=7 run "$good" --unit "$id" -- workflow run wf.yaml
 check T8 7 "series-gate=allow unit=$id commit=$good_sha"; check_oci_called T8
 
+real_hooks="$(cd "$here/../../../hooks/scripts" && pwd)"
+
+# T10: a marker swapped after R2's read is refused at R7 (stub marker-verify swaps it, then reports ok)
+t10="$(new_fixture t10 "feat(ocig-t10): fixture commit")"
+write_marker "$t10" ocig-t10 "$(pass_line ocig-t10 "$(git -C "$t10" rev-parse HEAD)" true)"
+tt="$work/swap"
+mkdir -p "$tt/prototype/outcomeci-series-gate" "$tt/hooks/scripts"
+cp "$bin" "$tt/prototype/outcomeci-series-gate/oci-series-gate.sh"
+ln -s "$real_hooks/lib" "$tt/hooks/scripts/lib"
+printf '#!/usr/bin/env bash\nexec bash "%s/marker-commit-check.sh" "$@"\n' "$real_hooks" > "$tt/hooks/scripts/marker-commit-check.sh"
+cat > "$tt/hooks/scripts/marker-verify.sh" <<EOF
+#!/usr/bin/env bash
+m="\$2/.claude/$rv/\$1.pass"
+{ head -n 1 "\$m"; echo swapped; } > "\$m.new" && mv "\$m.new" "\$m"
+echo "marker-verify=ok unit=\$1"
+EOF
+bin="$tt/prototype/outcomeci-series-gate/oci-series-gate.sh" run "$t10" --unit ocig-t10 -- workflow run wf.yaml
+check T10 70 "$(refusal ocig-t10 marker-changed)"; check_no_oci T10
+
 # T9: helper stderr noise must not reach the wrapper's stderr (hooks dir swapped for noisy shims)
 nz="$work/noise"
 mkdir -p "$nz/prototype/outcomeci-series-gate" "$nz/hooks/scripts"
 cp "$bin" "$nz/prototype/outcomeci-series-gate/oci-series-gate.sh"
-real_hooks="$(cd "$here/../../../hooks/scripts" && pwd)"
 ln -s "$real_hooks/lib" "$nz/hooks/scripts/lib"
 for h in marker-commit-check.sh marker-verify.sh; do
   printf '#!/usr/bin/env bash\necho helper-noise >&2\nexec bash "%s/%s" "$@"\n' "$real_hooks" "$h" > "$nz/hooks/scripts/$h"
