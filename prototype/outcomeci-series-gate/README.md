@@ -6,7 +6,7 @@ Never pass `--cloud` to `oci`. This trial is local only.
 
 Before any live run, from the repo root: `bash prototype/outcomeci-series-gate/tests/run-all.sh` must exit 0 and end with `failed=0`. It runs every prototype suite plus `mutation-proof.sh`; `tests/validate.sh` does not run them.
 
-0. Preflight, from the repo root (host-only, no API call): `bash prototype/outcomeci-series-gate/preflight.sh [--unit <unit>]`. It checks the tools, `oci` and its version, `oci validate` on a temp copy of the workflow, docker and the token (never printed), prints the commands to run next, and ends with `preflight=ready` or `preflight=blocked reason=<check>`. Exit codes: 2 tools, 3 oci, 4 version, 5 validate, 6 docker, 7 token.
+0. Preflight, from the repo root (host-only, no API call): `bash prototype/outcomeci-series-gate/preflight.sh [--unit <unit>] [--project-dir <dir>]`. It checks the tools, `oci` and its version, `oci validate` on a temp copy of the workflow, docker (`docker info` times out after 10 s and counts as a failure) and the token (never printed), prints the commands to run next, and ends with `preflight=ready` or `preflight=blocked reason=<check>`. `--project-dir` is passed on to the wrapper and both snapshot commands it prints. Exit codes: 2 tools, 3 oci, 4 version, 5 validate, 6 docker, 7 token.
 1. Install: `pipx install outcomeci-cli==0.50.1`. The CLI pins `outcomeci-connectors>=0.8,<0.9`, so the trial runs connectors 0.8.x, not 0.10.0 (PC1).
 2. Copy the workflow outside this repo, into a directory with no `.claude/` in it (A2):
    `export OCI_TRIAL_DIR=$(mktemp -d) && cp -a prototype/outcomeci-series-gate/workflow/. "$OCI_TRIAL_DIR"/`
