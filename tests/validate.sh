@@ -7,6 +7,24 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 fail=0
+# >>> skip-summary wrapper (hyg-1): re-run this script with its output teed to
+# a temp file, then count the lines that start with SKIP. Advisory only: the
+# count never changes the exit code. Lines a suite captures and discards never
+# reach this output and are not counted.
+if [ -z "${ANTISLOP_VALIDATE_INNER:-}" ]; then
+  skip_log="$(mktemp)" || { echo "FAIL could not create the SKIP-summary temp file"; exit 1; }
+  trap 'rm -f "$skip_log"' EXIT
+  trap 'exit 143' TERM
+  trap 'exit 130' INT
+  ANTISLOP_VALIDATE_INNER=1 bash "tests/$(basename "$0")" "$@" 2>&1 | tee "$skip_log"
+  inner_rc=${PIPESTATUS[0]}
+  echo
+  echo "== skipped checks (advisory, never affects the exit code) =="
+  echo "Skipped checks: $(grep -c '^SKIP' "$skip_log")"
+  grep '^SKIP' "$skip_log" | sed 's/^/     /'
+  exit "$inner_rc"
+fi
+# <<< skip-summary wrapper
 
 echo "== bash syntax =="
 for f in hooks/scripts/*.sh hooks/scripts/lib/*.sh; do
@@ -1138,6 +1156,48 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
     fail=1
   fi
 done
+
+echo
+echo "== docs/harness-glossary.md: frozen family table residual pins exist (Python, hyg-1) =="
+if python3 -c "
+import re, sys
+g = open('docs/harness-glossary.md', encoding='utf-8').read().split('\n')
+suite = open('tests/human-decision-gate.test.sh', encoding='utf-8').read()
+i = next((k for k, l in enumerate(g) if l.startswith('**frozen family table**:')), None)
+if i is None:
+    print('FAIL frozen family table entry not found'); sys.exit(1)
+j = i
+while j < len(g) and g[j].strip():
+    j += 1
+t = re.sub(r'\s+', ' ', ' '.join(g[i:j]))
+def verdict(rid):
+    m = re.search(r'^(?:bash|write)_case \"' + re.escape(rid) + r' [^\"\n]*\" (allowed|blocked)\b', suite, re.M)
+    return m.group(1) if m else None
+bad = 0
+pins = re.findall(r'\bpin ([A-Z][A-Za-z0-9-]*)', t)
+for need in ('N21', 'R5'):
+    if need not in pins:
+        print('FAIL entry no longer names pin ' + need); bad = 1
+for rid in pins:
+    v = verdict(rid)
+    if v == 'allowed':
+        print('OK   residual pin ' + rid + ' is an allowed suite row')
+    else:
+        print('FAIL residual pin ' + rid + ': suite verdict ' + str(v) + ', want allowed'); bad = 1
+m = re.search(r'\b([A-Z][A-Za-z0-9-]*) \([^)]*the only \x60TRACKED-OPEN\x60 pin\)', t)
+if m:
+    rows = re.findall(r'^(?:bash|write)_case \"(\S+) [^\"\n]*tracked-open', suite, re.M | re.I)
+    if rows == [m.group(1)] and verdict(m.group(1)) == 'allowed':
+        print('OK   ' + m.group(1) + ' is the only tracked-open suite row')
+    else:
+        print('FAIL only-TRACKED-OPEN claim for ' + m.group(1) + ': tracked-open rows ' + str(rows)); bad = 1
+sys.exit(bad)
+"; then
+  echo "OK   frozen family table residual pins"
+else
+  echo "FAIL frozen family table residual pins"
+  fail=1
+fi
 
 echo
 echo "== scripts/probe-bash-ask.sh: offline gate/extraction tests (Bash, esf-probe-tests) =="
