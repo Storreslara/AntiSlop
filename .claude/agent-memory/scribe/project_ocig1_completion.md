@@ -5,7 +5,7 @@ metadata:
   type: project
 ---
 
-**ocig-1 (OutcomeCI Series-Gate Trial Phase 0)**: PASS 2026-10-05. Lead-programmer unit to build the externalization precondition wrapper and test/mutation suites for the OutcomeCI Design A series-gate trial.
+**ocig-1b (OutcomeCI Series-Gate Trial Phase 0 — Scribe Post-Review)**: PASS 2026-10-05. Reviewer PASS line: "PASS ocig-1b (commit 2c14072924ffc6a2ec0f4e9ab74af326a9e42ac9)". Lead-programmer unit built the externalization precondition wrapper and test/mutation suites for the OutcomeCI Design A series-gate trial. Scribe task updates completion record with final findings.
 
 ## Scribe completion
 
@@ -17,12 +17,22 @@ Four glossary entries added to CONTEXT.md:
 
 All entries cross-linked and in existing glossary style. No version-stamp requirement (CONTEXT.md not a version-stamped file).
 
+## Gaps closed by ocig-1b
+
+These three gaps from the original ocig-1 trial are now resolved:
+- **mutation-proof.sh exit code**: now exits non-zero when a mutant survives (mutation-proof exit code mutation test in T9 verifies this)
+- **helper script stderr**: wrapper's stderr contract is now exactly one `series-gate=refuse|allow ...` line, plus `oci`'s own output on the allow path (measured in T9 with noisy-shim hooks dir)
+- **weak T5b/T8 assertions**: assertions strengthened to verify `oci` was called and `allow` line present in the wrapper's output
+
 ## Known gaps (reviewer notes, non-blocking — do not fix)
+
+These gaps are acknowledged non-blocking findings suitable for future maintenance or design refinement, not blockers for the trial's Phase 0 completion.
 
 - **AC1.5**: marker directory (`.claude/reviewed/`) is gitignored, making marker-check weakness observable (structural weakness in the check itself, not the trial's code)
 - **AC1.6**: spec uses `..HEAD` syntax; should clarify whether this means `git diff --name-only <base>..HEAD` or another interpretation
-- **mutation-proof.sh exit code**: exits 0 even when a mutant survives (does not fail on mutant survival, only on suite failure)
-- **helper script stderr**: helper scripts invoked by the wrapper may write extra stderr lines beyond the one-line spec (series-gate=allow/refuse line)
 - **marker line 1 TOCTOU**: marker line 1 is read three times (R2 existence check, R3 format validation, R6 execute), creating time-of-check vs time-of-use risk if another session edits the marker between checks (documented as R1/R7 residual in the spec)
 
-These gaps are acknowledged non-blocking findings suitable for future maintenance or design refinement, not blockers for the trial's Phase 0 completion.
+## Reviewer advisory notes (cosmetic, non-blocking)
+
+- **check_oci_called timing**: `check_oci_called` runs after `check` has printed "ok", creating a cosmetic double-report on failure when both checks detect failure. Harmless because error path terminates immediately.
+- **T9 bin reassignment**: T9 reassigns the `bin` variable without restoring it afterward. Harmless only because T9 is the last test in the suite and no code runs after it.
