@@ -26,13 +26,16 @@ cap() { # event session agent_id_json agent_type_json cmd teams transcript keys_
 }
 tline() { jq -nc --arg c "$1" '{type:"assistant",message:{content:[{type:"tool_use",name:"Bash",input:{command:$c}}]}}'; }
 te() { printf '%s' "${ALLTE-$1}"; }
+P2MARK='Create an agent team with one teammate named probe-mate'
+uline() { jq -nc --arg c "Do exactly this and nothing else. 2) $P2MARK. Its only task is to run a marker." '{type:"user",message:{content:$c}}'; }
 
 # scen <teammate agent_id json> <teammate agent_type json> <teammate teams_env> <teammate keys json>
-# knobs: NOMAIN MAIN_AID MAINT_AID SUB_AID MATE_CMD MATE_SID MATE_STOP NOMATE NOSUB NOMT LEAD_RAN_MATE T2(unreadable|empty) ALLTE
+# knobs: NOMAIN MAIN_AID MAINT_AID SUB_AID MATE_CMD MATE_SID MATE_STOP NOMATE NOSUB NOMT LEAD_RAN_MATE LEAD_PROMPT T2(unreadable|empty) ALLTE
 scen() {
   W="$(mktemp -d "$T/w.XXXXXX")"
   tline 'echo probe-main' > "$W/t1.jsonl"; tline 'echo probe-main' > "$W/t2.jsonl"
   [ -n "${LEAD_RAN_MATE:-}" ] && tline 'echo probe-teammate' >> "$W/t2.jsonl"
+  [ -n "${LEAD_PROMPT:-}" ] && uline >> "$W/t2.jsonl"
   case "${T2:-}" in unreadable) chmod 000 "$W/t2.jsonl" ;; empty) : > "$W/t2.jsonl" ;; esac
   {
     [ -z "${NOMAIN:-}" ] && cap PreToolUse s1 "${MAIN_AID:-null}" null 'echo probe-main' "$(te '')" "$W/t1.jsonl" "$KM" run1
@@ -184,6 +187,7 @@ tmuxscen() { # fn
   W="$(mktemp -d "$T/w.XXXXXX")"
   tline 'echo probe-main' > "$W/t1.jsonl"; tline 'echo probe-main' > "$W/t2.jsonl"; tline 'echo probe-main' > "$W/t9.jsonl"
   [ -n "${LEAD_RAN_MATE:-}" ] && tline 'echo probe-teammate' >> "$W/t9.jsonl"
+  [ -n "${LEAD_PROMPT:-}" ] && { uline >> "$W/t2.jsonl"; uline >> "$W/t9.jsonl"; }
   { cap PreToolUse s1 null null 'echo probe-main' "" "$W/t1.jsonl" "$KM" run1
     cap PreToolUse s1 '"sa1"' '"general-purpose"' 'echo probe-subagent' "" "$W/t1.jsonl" "$KS" run1
     cap SubagentStop s1 '"sa1"' '"general-purpose"' "" "" "$W/t1.jsonl" "$KS" run1
@@ -345,6 +349,34 @@ if [ -z "${PROBE_MUTANT:-}" ]; then
   case $MOUT in *'FAIL (I39)'*) ok "(I42) mutant with a fixed triple-backtick fence fails (I39)" ;; *) bad "(I42) I39 mutant survives" ;; esac
   MOUT="$(mutrun 40 'mktemp "$SCRATCH/tmux-retry.XXXXXX"' 'mktemp')"
   case $MOUT in *'FAIL (I40)'*) ok "(I42) mutant with temp outside SCRATCH fails (I40)" ;; *) bad "(I42) I40 mutant survives" ;; esac
+fi
+
+# (I44-I49) a lead whose own transcript holds the run-2 prompt is a reference, even when another session ran probe-main
+x_c44() { tline 'echo probe-main' > "$W/t8.jsonl"; cap PreToolUse s8 null null 'echo probe-main' 1 "$W/t8.jsonl" "$KM" run2-tmux; lead_mate; }
+x_c44b() { tline 'echo probe-main' > "$W/t8.jsonl"; cap PreToolUse s8 '"tc"' '"general-purpose"' 'echo probe-main' 1 "$W/t8.jsonl" "$KS" run2-tmux; lead_mate; }
+x_real46() { lead_main; tline 'echo probe-teammate' > "$W/t8.jsonl"; cap PreToolUse s8 '"tc"' '"general-purpose"' 'echo probe-teammate' 1 "$W/t8.jsonl" "$KS" run2-tmux; }
+LEAD_PROMPT=1 LEAD_RAN_MATE=1 tmuxscen x_c44
+noteam "(I44) lead s9 runs the marker, run2-tmux main line from null-agent s8"; eq "(I44) -> D" "$OUTC" D
+LEAD_PROMPT=1 LEAD_RAN_MATE=1 tmuxscen x_c44b
+noteam "(I44b) lead s9 runs the marker, run2-tmux main line from s8 agent_id tc"; eq "(I44b) -> D" "$OUTC" D
+LEAD_PROMPT=1 scen null null 1 "$KM"
+eq "(I45) control: in-process teammate, lead transcript holds the prompt but not the marker -> C" "$OUTC" C
+LEAD_PROMPT=1 tmuxscen x_real46
+eq "(I46) control: own-session teammate whose transcript holds the marker but not the prompt -> A" "$OUTC" A
+(setup && setup_run run2 1) >/dev/null 2>&1
+grep -qF "$P2MARK" "$RAW/prompt-mate.txt" && ! grep -qF "$P2MARK" "$RAW/prompt-sub.txt" && ok "(I47) run-2 prompt holds the lead-prompt mark, run-1 prompt does not" || bad "(I47) run-2 prompt holds the lead-prompt mark, run-1 prompt does not"
+eq "(I47) script mark equals the suite's literal" "${LEAD_PROMPT_MARK-unset}" "$P2MARK"
+mt="$(method_text)"
+for w in "the teammate line's own transcript" 'a false A' "$P2MARK"; do
+  case $mt in *"$w"*) ok "(I49) method_text names $w" ;; *) bad "(I49) method_text names $w" ;; esac
+done
+if [ -z "${PROBE_MUTANT:-}" ]; then
+  MOUT="$(mutrun 48a 'transcript_holds_prompt "$5"' 'false')"
+  case $MOUT in *'FAIL (I44)'*) ok "(I48) mutant ignoring the candidate transcript fails (I44)" ;; *) bad "(I48) false mutant survives" ;; esac
+  MOUT="$(mutrun 48b "main-teams \"\$(jq -r '.transcript_path // empty' <<<\"\$TLINE\")\"" 'main-teams')"
+  case $MOUT in *'FAIL (I44)'*) ok "(I48) mutant not passing the candidate transcript fails (I44)" ;; *) bad "(I48) unpassed-transcript mutant survives" ;; esac
+  MOUT="$(mutrun 48c 'transcript_holds_prompt "$5"' 'true')"
+  case $MOUT in *'FAIL (I46)'*) ok "(I48) mutant adding every candidate transcript fails (I46)" ;; *) bad "(I48) true mutant survives" ;; esac
 fi
 
 [ "$fails" -eq 0 ]
