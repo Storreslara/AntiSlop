@@ -1,5 +1,11 @@
 # Memory index
 
+- [poc-1 completion](project_poc1_completion.md) — PASS 2026-10-05; transcript_holds_prompt verifies teammate; three known limits (truncated lead, tmux placeholder, first-candidate shadowing)
+- [hyg-1 completion](project_hyg1_completion.md) — PASS 2026-10-05; skip-summary wrapper + frozen-family-table residual-pin check in validate.sh
+- [hyg-2 completion](project_hyg2_completion.md) — PASS 2026-10-05; fence_case check (c) fix + sigint_ignored job-control guard; row ID collision I44→I50
+- [hyg-3 completion](project_hyg3_completion.md) — PASS 2026-10-05; second shell glossary entry; reviewer note on quoted-heredoc bodies precision
+- [cmdsub-1/2 pending work](project_cmdsub_blocked_status.md) — blocked on human-written bypass example rows; safety classifier prevents agent authorship
+
 - [esc-chat-4 completion](project_esc_chat_4_completion.md) — ADR-0039; Bash-ask record now 7e04acd (esc-chat-7; per-mode versions), 229138e/cbb918e superseded; identity Outcome D
 
 - [hcb-prose-history completion](project_hcb_prose_history_completion.md) — PASS 2026-09-24; four glossary entries added to CONTEXT.md: sweep closure / Cat 1/2/3/4 (repo-wide file-keyed classification for prose reconciliation with both-directions closure assertion), hit-bearing file (unit of classification in sweep-closure table), lens-2 (existing term correct but surrounding prose stale); origin citation: docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md "Sweep closure" section for reuse convention
