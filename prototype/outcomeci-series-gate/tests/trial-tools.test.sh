@@ -53,7 +53,8 @@ run_journal_cases() {
   jcase J8-multi-doc nz 'journal=invalid calls=0 bad=0' "$t" multi
   mkdir -p "$t/.outcomeci/.broker/zero"; : > "$t/.outcomeci/.broker/zero/journal.json"
   jcase J9-zero-byte nz 'journal=invalid calls=0 bad=0' "$t" zero
-  [ -z "$(bash "$chk" "$t" zero 2>&1 >/dev/null)" ] || fail J9b-zero-byte-stderr "stderr not empty"
+  # LC_ALL=C: an unusable inherited locale makes bash itself warn on stderr, which is not the checker's output.
+  [ -z "$(LC_ALL=C bash "$chk" "$t" zero 2>&1 >/dev/null)" ] || fail J9b-zero-byte-stderr "stderr not empty"
   journal "$t" arrstat '{"calls":{"a":{"status":["confirmed"]}}}'
   jcase J10-array-status nz 'journal=invalid calls=1 bad=1' "$t" arrstat
   mkdir -p "$t/.outcomeci/.broker/dir/journal.json"
