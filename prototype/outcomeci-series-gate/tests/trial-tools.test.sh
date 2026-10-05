@@ -115,6 +115,34 @@ run_snapshot_cases() {
   [ "$a" = "$(printf '%s\n' "$a" | LC_ALL=C sort)" ] || fail S4-sorted "paths not LC_ALL=C sorted"
   mkdir -p "$work/noclaude"
   if bash "$snap" "$work/noclaude" >/dev/null 2>&1; then fail S5-no-claude "rc=0 with no .claude/"; fi
+  run_snapshot_symlink_cases "$p"
+}
+
+# S6-S6c: symlinks are recorded as link:<sha256 of target string> lines and never followed.
+# The spec's regex reads '\./?\.claude/'; '(\./)?' is its evident intent for the plain relpath format.
+run_snapshot_symlink_cases() {
+  local p="$1" a b n0 n1 h
+  b="$(bash "$snap" "$p")"
+  cp "$p/.claude/reviewed/u1.pass" "$work/u1.copy"
+  rm "$p/.claude/reviewed/u1.pass"
+  ln -s "$work/u1.copy" "$p/.claude/reviewed/u1.pass"
+  a="$(bash "$snap" "$p")"
+  [ "$a" != "$b" ] || fail S6-symlink "same-content symlink swap not detected"
+  printf '%s\n' "$a" | grep -qE '^link:[0-9a-f]{64}  (\./)?\.claude/reviewed/' || fail S6-symlink "no link: line"
+  n0="$(printf '%s\n' "$a" | tail -1 | cut -d= -f2)"
+  ln -s "$work/no-such-file" "$p/.claude/reviewed/dangling.pass"
+  n1="$(bash "$snap" "$p" | tail -1 | cut -d= -f2)"
+  [ "$n1" -eq $((n0 + 1)) ] || fail S6b-dangling "snapshot-files $n0 -> $n1, want +1"
+  printf 'outside content\n' > "$work/outside.txt"
+  ln -s "$work/outside.txt" "$p/.claude/reviewed/out.pass"
+  h="$(sha256sum < "$work/outside.txt" | cut -d' ' -f1)"
+  a="$(bash "$snap" "$p")"
+  if printf '%s\n' "$a" | grep -q "$h"; then fail S6c-no-follow "link target content hashed"; fi
+  mkdir -p "$work/linkproj/.claude"
+  ln -s "$p/.claude/reviewed" "$work/linkproj/.claude/reviewed"
+  a="$(bash "$snap" "$work/linkproj")"
+  printf '%s\n' "$a" | grep -qE '^link:[0-9a-f]{64}  \.claude/reviewed$' \
+    || fail S6d-symlinked-start "a symlinked marker directory is not recorded as one link line"
 }
 
 run_journal_cases
