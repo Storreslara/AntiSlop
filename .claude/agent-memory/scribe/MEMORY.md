@@ -1,5 +1,6 @@
 # Memory index
 
+- [ocig-1 completion](project_ocig1_completion.md) — PASS 2026-10-05; four glossary entries added to CONTEXT.md (externalization, externalization precondition wrapper, broker journal, policy decision); five known gaps recorded (marker gitignore weakness, AC1.6 spec clarity, mutant-survive exit code, helper stderr overflow, marker line 1 TOCTOU)
 - [poc-1 completion](project_poc1_completion.md) — PASS 2026-10-05; transcript_holds_prompt verifies teammate; three known limits (truncated lead, tmux placeholder, first-candidate shadowing)
 - [hyg-1 completion](project_hyg1_completion.md) — PASS 2026-10-05; skip-summary wrapper + frozen-family-table residual-pin check in validate.sh
 - [hyg-2 completion](project_hyg2_completion.md) — PASS 2026-10-05; fence_case check (c) fix + sigint_ignored job-control guard; row ID collision I44→I50
