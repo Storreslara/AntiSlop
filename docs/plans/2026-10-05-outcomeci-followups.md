@@ -27,7 +27,7 @@ blocks a trustworthy Step 4 live run, then prepare that run:
 | The trial's only LLM step runs on a cheaper model | ocigf-3 | AC-3.1 |
 | The operator gets token totals without hand-written `jq` | ocigf-3 | AC-3.4, AC-3.6 |
 | The workflow keeps no converse/await/fallback steps (static guard) | ocigf-3 | AC-3.2 |
-| A host-only preflight confirms `oci`, validates the workflow and prints the next commands | ocigf-4 | AC-4.2 to AC-4.4 |
+| A host-only preflight confirms `oci`, validates the workflow and prints the next commands | ocigf-4 | AC-4.2 to AC-4.4, AC-4.9 to AC-4.13 |
 
 ## Context
 
@@ -99,6 +99,15 @@ Facts from the repo:
     `export -f` BASH_FUNC leak, ocig-1b "ok then FAIL" output ordering, and
     the T9 global-variable restore.
   - The sweep is best-effort. `.claude/reviewed/` is untracked state.
+- Post-FAIL (2026-10-05): `ocigf-4` has one FAIL record (FAIL 1 of 2,
+  commit `954b693`). AC-4.3 was a spec defect, not a code defect: it ran
+  under `PATH=/usr/bin:/bin`, but jq is only in `~/.local/bin` on this host,
+  so the D-J `tools` check exits 2 first. The reviewer's non-blocking code
+  findings are folded into Step 4 as AC-4.2 cases P0 and P11-P19 and as
+  AC-4.9 to AC-4.13. The fix attempt goes to opus under the Implementer-tier
+  ratchet. A re-run of the notes sweep over the prototype surface returned
+  no `ocigf` note (`spec=1 code=1 untagged=0`; both are the ocig notes
+  above).
 
 ### Decisions (self-resolved; the brief delegated them)
 
@@ -218,6 +227,27 @@ Facts from the repo:
   `run-all.sh`, document it, and leave the merge-gate scope alone (D-G).
   Running a prototype in the plugin's merge gate would couple shipped
   releases to unshipped code.
+- 2026-10-05 Technical constraints & tradeoffs: Q (post-FAIL, ocigf-4) How
+  can the live smoke prove `oci=missing` on any host, when jq can live
+  outside `/usr/bin:/bin`? → A (self-resolved): run it on a PATH made only
+  of symlinks to `bash`, `git`, `jq`, `dirname` and `cat`. That PATH holds
+  no `oci` on any host, so the precondition disappears (AC-4.3). The
+  tools-fail path gets its own smoke without the jq symlink (AC-4.9).
+- 2026-10-05 Edge cases / failure handling: Q (post-FAIL, ocigf-4) What
+  does preflight do when `docker info` hangs, `mktemp` fails, the marker is
+  missing or a FIFO, or line 1 names another unit? → A (self-resolved):
+  `docker info` runs under `timeout 10` (a healthy daemon answers in under
+  2 s, and 10 s tolerates a cold WSL start), and a timeout reports
+  `docker=fail`. A failed `mktemp` reports `validate=fail` and `oci validate`
+  does not run. A marker that is not a regular file is not opened. A
+  line-1 task-id field other than `--unit` falls back to `<sha>`
+  (AC-4.2 P13-P18).
+- 2026-10-05 Domain entities / data model: Q (post-FAIL, ocigf-4) Keep or
+  remove `--project-dir`? → A (self-resolved): keep it. A value that is
+  empty or not a directory exits 64. The printed wrapper command passes it
+  on after `--sha <sha>`, and both `state-snapshot.sh` lines snapshot that
+  directory instead of `.`. The value is `printf %q`-quoted. README step 0
+  documents it (AC-4.2 P15, P19; AC-4.13).
 
 ## Risks / dependencies
 
@@ -466,18 +496,60 @@ Acceptance criteria:
 
 ## Step 4 (unit `ocigf-4`): Step 4 preflight (item G)
 
+> **Post-FAIL amendment (2026-10-05, FAIL 1 of 2 at `954b693`):** AC-4.3
+> was host-dependent: jq is only in `~/.local/bin` here. AC-4.3 is
+> rewritten, and AC-4.9 to AC-4.13 and cases P0 and P11-P19 are added. The
+> D-J exit codes and check order do not change.
+
 Affected files (under `prototype/outcomeci-series-gate/`):
 - `preflight.sh` (new)
 - `tests/preflight.test.sh` (new)
+- `tests/preflight-mutation.test.sh` (new in the fix attempt)
 - `README.md`: a step 0 that runs the preflight.
 
-Behaviour per D-J. Test fixtures prepend a stub directory to `PATH` that
-holds:
-- `oci`: logs its argv, answers `--version` with `$STUB_OCI_VERSION`
-  (default `oci 0.50.1`), and answers `validate` with
-  `$STUB_VALIDATE_OUT` (default `{"valid": true, "workflow_revision": "x"}`);
-- `docker`: exits `$STUB_DOCKER_RC`;
+Behaviour per D-J, plus these rules from the fix attempt:
+- `docker info` runs as `timeout 10 docker info`. A timeout (exit 124) or
+  a missing `timeout` reports `check docker=fail`. `timeout` is not added
+  to the `tools` check.
+- If `mktemp -d` or the copy fails, `check validate=fail` and `oci validate`
+  is not invoked.
+- The temp copy is removed by exactly one `rm -rf "$tmp"` statement. It
+  may sit inside a trap.
+- The marker is opened only if it is a regular file, for example
+  `[ -f "$m" ] && read -r line < "$m"`. A missing marker writes nothing to
+  stderr, and a FIFO is never opened.
+- The commit is used only if line 1 matches
+  `PASS <id> <ts> commit: <hex> criteria:`, where `<hex>` is
+  `[0-9a-f]{7,40}` and `<id>` equals `--unit` as a literal string, not a
+  regex.
+- `--unit ''`, `--project-dir ''` and a `--project-dir` that is not a
+  directory each exit 64.
+- With `--project-dir <d>`, the wrapper line reads
+  `oci-series-gate.sh --unit <uid> --sha <sha> --project-dir <q> -- workflow run ...`,
+  where `<q>` is `printf %q` of `<d>`. Both `state-snapshot.sh` lines use
+  `<q>` in place of `.`. Without `--project-dir`, the printed commands are
+  as at `954b693`.
+
+The test fixtures put a stub directory and a tools directory on `PATH`,
+and nothing else. The tools directory holds symlinks to `bash`, `git`, `jq`,
+`mktemp`, `cp`, `rm`, `cat`, `dirname`, `grep`, `cut`, `env`, `sed`,
+`timeout` and `sleep`. The stub directory holds:
+- `oci`: logs its argv. It answers `--version` with `$STUB_OCI_VERSION`
+  (default `oci 0.50.1`). It answers `validate` with `$STUB_VALIDATE_OUT`
+  (default `{"valid": true, "workflow_revision": "x"}`). On `validate` it
+  also logs its `--dir` value and whether `outcome.yml` and `.outcomeci`
+  exist in that directory at call time.
+- `docker`: exits `$STUB_DOCKER_RC`. A hang variant runs `exec sleep 60`.
 - `curl`, `wget`, `pip` and `pipx`: each logs any call.
+
+Suite rules from the fix attempt:
+- Every `preflight.sh` invocation runs under the host's `timeout 25`,
+  resolved to an absolute path before `PATH` is narrowed. Exit 124 fails
+  the case.
+- Every invocation gets `TMPDIR=$work/tmpd` (created empty) unless the
+  case overrides it.
+- Each failure line starts `FAIL <case id>`, with the uppercase ID listed
+  below (for example `FAIL P13: ...`).
 
 Acceptance criteria:
 - AC-4.1: `bash -n $P/preflight.sh && bash -n $P/tests/preflight.test.sh`
@@ -485,6 +557,10 @@ Acceptance criteria:
 - AC-4.2:
   `bash $P/tests/preflight.test.sh 2>&1 | tail -1 | grep -qx 'failures=0'`
   exits 0. Cases:
+  - P0 (added post-FAIL): the tools directory has no `jq` symlink, and every
+    stub is healthy with the token set. The exit is 2, the output has a line
+    `check tools=fail`, and the last line is `preflight=blocked reason=tools`.
+    This kills mutants M1 and M2 (AC-4.11).
   - P1: every stub is healthy and the token is set. The exit is 0, the
     last line is `preflight=ready`, and the `next:` block contains
     `oci-series-gate.sh --unit` and `state-snapshot.sh`.
@@ -501,18 +577,109 @@ Acceptance criteria:
   - P8: no line of the `next:` block contains `--cloud`.
   - P9: `--unit` naming a fixture project's `.pass` marker substitutes its
     cited commit into the `--sha` of the wrapper command.
+  - P9e (amended post-FAIL): three fixtures, each with line-1 task-id field
+    equal to `--unit`. If the ID did not match, the fallback would happen
+    for the wrong reason and M3 would survive. The commit fields are
+    `$(touch <work>/pwned)` (kept), `zzzzzzz` and `$(id)abcdef`. The last
+    two contain no space. Each prints `--sha <sha>`, and `<work>/pwned`
+    never exists. This kills M3.
   - P10: `git status --porcelain` of the repo is unchanged across the
     suite.
-- AC-4.3 (live host smoke; this host has no `oci`):
-  `PATH=/usr/bin:/bin bash $P/preflight.sh; echo rc=$?` prints a line
-  `check oci=missing` and ends with `rc=3`, provided `oci` is absent from
-  `/usr/bin:/bin`. If the host gains `oci`, this criterion is replaced by
-  AC-4.2 P1 alone, and the reviewer notes the fact.
+  - P11 (cleanup): after a P1-style run, `$work/tmpd` is empty. This kills
+    M4.
+  - P12 (temp copy): in a P1-style run, the logged `validate --dir` value
+    starts with `$work/tmpd/`, and `outcome.yml` and `.outcomeci` both
+    existed there at call time. This kills M5.
+  - P13 (mktemp failure): `TMPDIR=$work/missing` (does not exist), with
+    every stub healthy, gives exit 5 and `check validate=fail`. The oci log
+    has no line starting `validate`.
+  - P14 (task-id mismatch): a marker `ocig-fx2` whose line 1 reads
+    `PASS ocig-other <ts> commit: abc1234 criteria: true`, run with
+    `--unit ocig-fx2`, prints `--sha <sha>` and not `abc1234`.
+  - P15 (empty arguments): `--unit ''`, `--project-dir ''` and
+    `--project-dir $work/nonexistent` each exit 64.
+  - P16 (missing marker): `--unit ocig-absent --project-dir <fx>`, with
+    stderr captured apart from stdout, leaves stderr at 0 bytes, and the
+    exit is 0.
+  - P17 (FIFO marker): with a FIFO made by `mkfifo` at the `ocig-ff`
+    `.pass` path, `--unit ocig-ff` exits 0 (not 124) and prints
+    `--sha <sha>`.
+  - P18 (docker hang): with the hang `docker` stub, every other stub
+    healthy and the token set, the exit is 6 and the output has
+    `check docker=fail`. Elapsed wall time, measured with `$SECONDS`, is
+    under 20 s.
+  - P19 (`--project-dir` passthrough): `--unit ocig-fx --project-dir "$fx2"`,
+    where `fx2="$work/fx sp"` (a space in the name) holds a valid `ocig-fx`
+    marker. The output has `--sha abc1234 --project-dir $(printf %q "$fx2") --`
+    and two `state-snapshot.sh $(printf %q "$fx2")` lines. A run without
+    `--project-dir` has no `--project-dir` in its output and two
+    `state-snapshot.sh .` lines.
+- AC-4.3 (live smoke, host-independent; replaced post-FAIL): from the repo
+  root, with `P=prototype/outcomeci-series-gate`:
+  `d=$(mktemp -d) && for t in bash git jq dirname cat; do ln -s "$(command -v $t)" "$d/$t"; done && PATH="$d" bash $P/preflight.sh > "$d/out"; echo rc=$?; grep -cx 'check oci=missing' "$d/out"; tail -1 "$d/out"; rm -rf "$d"`
+  prints exactly three lines: `rc=3`, `1`, and
+  `preflight=blocked reason=oci`. That PATH has no `oci` on any host, so
+  there is no precondition. Verified 2026-10-05 at `954b693`.
 - AC-4.4: `grep -c 'preflight.sh' $P/README.md` is at least 1.
 - AC-4.5: AC-1.12 holds, with N counting `preflight.test.sh`.
 - AC-4.6: `bash $P/tests/run-all.sh` leaves the AC-1.15 `cmp` clean.
 - AC-4.7: path scope as in AC-1.14, for this unit's range.
 - AC-4.8: `bash tests/validate.sh` exits 0 (chunked runs allowed).
+- AC-4.9 (tools-fail smoke, added post-FAIL): the AC-4.3 command with `jq`
+  removed from the `for` list prints exactly `rc=2`, `1` and
+  `preflight=blocked reason=tools`. Its `grep` pattern is
+  `'check tools=fail'`. Verified 2026-10-05 at `954b693`.
+- AC-4.10 (new behaviour cases are red on the FAILed code): from the repo
+  root:
+  `w=$(mktemp -d) && mkdir -p "$w/$P" && ln -s "$PWD/hooks" "$w/hooks" && ln -s "$PWD/$P/workflow" "$w/$P/workflow" && git show 954b693:$P/preflight.sh > "$w/$P/preflight.sh" && PREFLIGHT_BIN="$w/$P/preflight.sh" bash $P/tests/preflight.test.sh 2>&1 | grep -oE '^FAIL P1[3-9]' | sort -u | wc -l; rm -rf "$w"`
+  prints `7`. The run takes about a minute, because P17 and P18 hit the
+  25 s outer timeout on the old code. Each of P13-P19 was probed red on
+  `954b693` on 2026-10-05: the stderr leak, rc 124 on a FIFO, `--sha
+  abc1234` on a mismatch, rc 0 on `--unit ''` and on `--project-dir ''`,
+  `validate=ok` with `validate --dir ` on mktemp failure, and rc 124 on a
+  docker hang. Today the command prints `0`, because the cases do not exist
+  yet.
+- AC-4.11 (mutation proof, added post-FAIL):
+  `bash $P/tests/preflight-mutation.test.sh | tail -1 | grep -qx 'mutants=5 killed=5'`
+  exits 0, and so does the script itself. The script works like
+  `tests/mutation-proof.sh`:
+  - It builds a temp tree `$w/prototype/outcomeci-series-gate/` with
+    `$w/hooks` and `.../workflow` symlinked to the real ones.
+  - It requires the unmutated copy to pass `preflight.test.sh` via
+    `PREFLIGHT_BIN`. If the copy fails, it prints `baseline=fail` and exits
+    1.
+  - It applies each `sed` expression below to a fresh copy. A copy that
+    `cmp` shows unchanged is reported `M<n>: nosite` and not counted.
+  - It prints `M<n>: killed` or `M<n>: survived` for each mutant, and the
+    last line `mutants=<m> killed=<k>`.
+  - It exits 0 only if m = k = 5.
+
+  | id | mutant | `sed` expression |
+  |---|---|---|
+  | M1 | tools check always passes | `s/\|\| have=1/\|\| :/` |
+  | M2 | tools exit 2 becomes 9 | `s/report tools "\$have" 2 /report tools "$have" 9 /` |
+  | M3 | hex check removed | `s/\[0-9a-f\]{7,40}/[^[:space:]]+/` |
+  | M4 | temp-dir cleanup removed | `s/rm -rf "\$tmp"/:/` |
+  | M5 | validate runs on the real workflow dir | `s/--dir "\$tmp"/--dir "$here\/workflow"/` |
+
+  In the table, `\|` stands for a plain `|`. The script's own `sed`
+  arguments use plain `|`, as in `s/|| have=1/|| :/`.
+  Verified 2026-10-05: on `954b693` with the current suite, every
+  expression hits exactly one site, the result passes `bash -n`, and all
+  five mutants survive. The new cases are therefore required.
+- AC-4.12 (mutation sites and timeout are pinned): each of these
+  `grep -cF -- '<s>' $P/preflight.sh` commands prints `1`, for `<s>` in:
+  - `|| have=1`
+  - `report tools "$have" 2 `
+  - `[0-9a-f]{7,40}`
+  - `rm -rf "$tmp"`
+  - `--dir "$tmp"`
+  - `timeout 10 docker info`
+- AC-4.13 (README step 0): `grep -E '^0\. ' $P/README.md | wc -l` prints
+  `1`. On that line, `grep -cF -- '--project-dir'` and `grep -cF '10 s'`
+  each print `1`. The line states that `--project-dir` is passed on to the
+  wrapper and snapshot commands, and that `docker info` times out after
+  10 s.
 
 ## Open Questions
 
@@ -563,8 +730,29 @@ during dispatch:
   and AC-2.2 flatten with `tr -s '\n' ' '`)
 - CHK11: Is it defined that preflight never calls the network or `--cloud`?
   — PASS (AC-4.2 P7, P8)
-- CHK12: Does every criterion that depends on the host say so? — PASS
-  (AC-4.3 states its precondition)
+- CHK12: Does every criterion that depends on the host say so? — FAIL
+  (conflicting; found by the ocigf-4 reviewer, 2026-10-05). AC-4.3 named
+  only the `oci` precondition, but it also needed jq in `/usr/bin:/bin`,
+  and this host does not meet that. Revised in place: AC-4.3 and AC-4.9
+  now build their own symlink PATH and have no host precondition. AC-4.2
+  resolves `timeout` by absolute path.
+- CHK13 (post-FAIL): Is every new behaviour case shown red on the FAILed
+  code, and every pre-existing behaviour shown to be guarded by a killed
+  mutant? — PASS. AC-4.10 covers P13-P19, and AC-4.11 covers M1-M5 through
+  P0, P9e, P11 and P12. Every probe was run on 2026-10-05.
+- CHK14 (post-FAIL): Do P9's expected substring and P19's wrapper-line
+  order agree? — PASS. `--project-dir` follows `--sha <sha>`, so
+  `--unit ocig-fx --sha abc1234` still matches.
+- CHK15 (post-FAIL): Can the P9e fixtures fall back for a reason other than
+  the hex check, which would leave M3 alive? — PASS. P9e requires each
+  fixture's task-id to equal `--unit`.
+- CHK16 (post-FAIL): Do the mutation sites (AC-4.12) and the cleanup rule
+  agree, given that a second `rm -rf "$tmp"` would hide M4? — PASS. Step 4
+  says exactly one, and AC-4.12 pins the count at 1.
+- CHK17 (post-FAIL): Does the ordered-edit sequence let each step's own
+  check pass when that step runs? — FAIL (conflicting) — revised in place.
+  The draft put the mutation script before the `preflight.sh` change, but
+  that script's baseline requires a green suite. It now comes after.
 
 Ubiquitous-language prose check (advisory), against CONTEXT.md:
 - Lens 1 (a glossary term used with another meaning): none. "external run
@@ -679,29 +867,61 @@ runner passes the model through unvalidated.
 If `oci` is somehow available and `oci validate` rejects the model, stop
 and report.
 
-### Unit: ocigf-4 (Suggested model: sonnet; not stamped)
+### Unit: ocigf-4 (Suggested model: opus, Implementer-tier ratchet after FAIL 1; not stamped)
 ## Objective
 A host-only Step 4 preflight that checks the tools, `oci` and its version,
 `oci validate`, Docker and the token, then prints the next commands
-(Step 4).
+(Step 4). Fix attempt (FAIL slot 2 of 2): start from `954b693` and close
+the post-FAIL rules and cases in Step 4. Do not re-plan.
 ## Retrieval
-This file, Step 4 and D-J; the parent's Step 4 and README runbook.
+This file, Step 4 (including its post-FAIL amendment) and D-J; the
+`ocigf-4` FAIL record in the review-marker directory (read-only); the
+parent's Step 4 and README runbook; `tests/mutation-proof.sh` as the
+template for AC-4.11.
 ## Affected files
-The Step 4 list.
+The Step 4 list: `preflight.sh`, `tests/preflight.test.sh`,
+`tests/preflight-mutation.test.sh` (new) and `README.md`. Nothing else.
 ## Ordered edits
-1. Write the suite with PATH stubs (P1-P10 red).
-2. Implement `preflight.sh`. `oci validate` runs on a `mktemp -d` copy of
-   `workflow/`.
-3. Add README step 0.
-4. Run AC-4.1 to AC-4.8 and commit by explicit path.
+1. Suite first. Add P0, the amended P9e, and P11-P19, with the
+   suite rules: absolute outer `timeout 25`, default `TMPDIR`, `FAIL <id>`
+   lines, and the extra tools `timeout` and `sleep`. Run AC-4.10 now. It
+   must print `7`.
+2. Change `preflight.sh` for the Step 4 post-FAIL rules: `--unit ''` and
+   `--project-dir` validation, `timeout 10 docker info`, the mktemp-failure
+   path, the regular-file guard, the task-id equality check, and the
+   `--project-dir` passthrough with `%q`. Keep the AC-4.12 literals intact.
+   The suite is now green.
+3. Add `tests/preflight-mutation.test.sh` (AC-4.11). Its baseline needs the
+   green suite from edit 2, so it cannot come earlier. Confirm M1-M5 are
+   killed.
+4. README step 0: document `--project-dir` and the 10 s docker timeout
+   (AC-4.13).
+5. Run AC-4.1 to AC-4.13 and commit by explicit path.
 ## Do NOT touch
-Any other prototype script. Do not install `oci`.
+Any other prototype script; `tests/run-all.sh` (it already picks up
+`*.test.sh`); `hooks/`; the review-marker directory. Do not install `oci`.
+Do not change the D-J exit codes or check order.
 ## Acceptance criteria
-AC-4.1 to AC-4.8, as written in Step 4.
+AC-4.1 to AC-4.13, as written in Step 4. AC-4.3 and AC-4.9 run as written
+on this host. Do not substitute another PATH.
 ## Pre-resolved context
-- `oci` is not installed on this host.
+- `oci` is not installed on this host. `jq` is `~/.local/bin/jq`. `timeout`,
+  `mkfifo`, `git` and `bash` are in `/usr/bin`.
 - `oci --version` prints `oci <ver>`.
 - `oci validate --dir D` prints `{"valid": true, ...}`.
+- `workflow/` holds `outcome.yml` and `.outcomeci`.
+- At `954b693`:
+  - AC-4.3 and AC-4.9 already pass as written.
+  - The five AC-4.11 mutants all survive the current suite.
+  - P13-P19 are each red.
+- In bash, `read < missing` reports its error before a trailing
+  `2>/dev/null` takes effect, because redirections apply left to right.
+  That is the stderr leak P16 catches.
+- A Bash command whose text spells the review-marker directory is refused
+  by `reviewed-path-gate.sh`. The existing suite builds fixture paths with
+  `rv=reviewed` and `.claude/$rv`. Keep doing that.
 ## Escalation
 If a check cannot be done host-only, drop it to a printed manual step and
-report. Never add a network call.
+report. Never add a network call. If an AC in Step 4 cannot be met by any
+implementation consistent with D-J, stop and report it as a spec defect,
+naming the AC. This is the last FAIL slot.
