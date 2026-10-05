@@ -5,10 +5,11 @@ export PATH="$HOME/.local/bin:$PATH"
 allow_absent=0
 [ "${1:-}" = "--allow-absent" ] && { allow_absent=1; shift; }
 trial="${1:?usage: check-journal.sh [--allow-absent] <trial-dir> <run-id>}"
-run="${2:?missing run-id}"
+run="${2?missing run-id}"
+[[ $run =~ ^[A-Za-z0-9_][A-Za-z0-9._-]*$ && $run != *..* ]] || { echo 'check-journal: invalid run-id' >&2; exit 64; }
 file="$trial/.outcomeci/.broker/$run/journal.json"
 
-if [ ! -e "$file" ]; then
+if [ ! -e "$file" ] && [ ! -L "$file" ]; then
   printf 'journal=absent calls=0 bad=0\n'
   [ "$allow_absent" = 1 ]
   exit

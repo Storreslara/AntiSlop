@@ -4,6 +4,7 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 snap="${SNAPSHOT_BIN:-$here/../state-snapshot.sh}"
 chk="${CHECK_JOURNAL_BIN:-$here/../check-journal.sh}"
+fmt="${JOURNAL_EVIDENCE_BIN:-$here/../journal-evidence.sh}"
 export PATH="$HOME/.local/bin:$PATH"
 failures=0
 work="$(mktemp -d)"
@@ -57,6 +58,34 @@ run_journal_cases() {
   jcase J10-array-status nz 'journal=invalid calls=1 bad=1' "$t" arrstat
   mkdir -p "$t/.outcomeci/.broker/dir/journal.json"
   jcase J11-dir-journal nz 'journal=invalid calls=0 bad=0' "$t" dir --allow-absent
+  mkdir -p "$t/.outcomeci/.broker/dangle"; ln -s "$work/no-such-file" "$t/.outcomeci/.broker/dangle/journal.json"
+  jcase J12-dangling-symlink nz 'journal=invalid calls=0 bad=0' "$t" dangle --allow-absent
+  bash "$fmt" "$t" dangle >/dev/null 2>&1; rc=$?
+  [ "$rc" -eq 1 ] || fail J12b-dangling-symlink-evidence "rc=$rc, want 1"
+}
+
+# runid_case <name> <script> <run-id>: exit 64, empty stdout, one stderr line naming the invalid run-id.
+runid_case() {
+  local out err rc
+  out="$(LC_ALL=C bash "$2" "$work/trial" "$3" 2>"$work/err")"; rc=$?
+  err="$(cat "$work/err")"
+  [ "$rc" -eq 64 ] || fail "$1" "rc=$rc, want 64"
+  [ -z "$out" ] || fail "$1" "stdout not empty"
+  [ "$(printf '%s\n' "$err" | wc -l)" -eq 1 ] && [[ $err == *"invalid run-id"* ]] \
+    || fail "$1" "stderr is not one 'invalid run-id' line: '$err'"
+}
+
+run_runid_cases() {
+  local r i=0 rc
+  for r in ../x a/b .. a..b ''; do
+    i=$((i + 1))
+    runid_case "R$i-check-journal" "$chk" "$r"
+    runid_case "R$i-journal-evidence" "$fmt" "$r"
+  done
+  journal "$work/trial" run_01.a-b '{"calls":{}}'
+  jcase R6-valid-check-journal 0 'journal=ok calls=0 bad=0' "$work/trial" run_01.a-b
+  bash "$fmt" "$work/trial" run_01.a-b >/dev/null 2>&1; rc=$?
+  [ "$rc" -eq 0 ] || fail R6-valid-journal-evidence "rc=$rc, want 0"
 }
 
 run_snapshot_cases() {
@@ -89,6 +118,7 @@ run_snapshot_cases() {
 }
 
 run_journal_cases
+run_runid_cases
 # The mutation run re-enters this suite with a mutated checker; it must not recurse.
 if [ -z "${TRIAL_TOOLS_MUTANT:-}" ]; then
   run_snapshot_cases
