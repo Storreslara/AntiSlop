@@ -288,7 +288,8 @@ fence_case() { # id fence-length printf-format-of-pane
   want="$(printf '%*s' "$n" '' | tr ' ' '`')"
   fence="$(awk '/^### tmux retry pane$/ {getline; getline; print; exit}' "$REC")"
   last="$(tail -n 1 "$REC")"
-  inner="$(awk -v f="$fence" '/^### tmux retry pane$/ {s=1; getline; getline; next} s && $0 != f' "$REC" | awk -v n="$n" '/^`+$/ && length >= n' | wc -l)"
+  # (c) every pane line between the fences; only the last line (the closing fence, see (b)) is dropped
+  inner="$(awk '/^### tmux retry pane$/ {s=1; getline; getline; next} s' "$REC" | sed '$d' | awk -v n="$n" '/^`+$/ && length >= n' | wc -l)"
   [ "$fence" = "$want" ] && [ "$fence" = "$last" ] && [ "$inner" = 0 ] && ok "($id) pane fence is $n backticks, closes identically, no inner run that long" || bad "($id) fence [$fence] want [$want] last [$last] inner [$inner]"
   rm -f "$RAW/teammate-tmux.txt"
 }
@@ -325,7 +326,14 @@ int41() { # signal expected-rc
   if [ ! -e "$d/s" ] && [ -z "$(ls -A "$d/tmp")" ]; then ok "(I41) $1 leaves no scratch and no TMPDIR file"; else bad "(I41) $1 left scratch or temp file"; fi
 }
 int41 TERM 143
-sigint_ignored() { bash -c 'kill -INT $$' 2>/dev/null; [ "$?" -eq 0 ]; }
+# sigint_ignored is safe only with job control off: a monitor-mode (set -m)
+# shell aborts its command list when a foreground child dies of SIGINT. int41
+# turns job control off again before returning; keep this call outside any
+# set -m region. The guard fails visibly instead of probing.
+sigint_ignored() {
+  case $- in *m*) bad "(I50) sigint_ignored called with job control on (set -m); probe not run"; return 1 ;; esac
+  bash -c 'kill -INT $$' 2>/dev/null; [ "$?" -eq 0 ]
+}
 if sigint_ignored; then echo "SKIP (I41) INT: SIGINT is ignored in this shell (started as a background job); run the suite in the foreground to check it"
 else int41 INT 130; fi
 
