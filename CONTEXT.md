@@ -1127,6 +1127,13 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   Checked by the series-gate trial to confirm all brokered calls have reached a
   terminal state (`prototype/outcomeci-series-gate/check-journal.sh`).
 
+**zero-API workflow**:
+(unit ocig-2, 2026-10-05) — an OutcomeCI workflow design with no `secrets`, `apis`,
+  `can`, or `policy` declarations, so no broker call is made and no provider is
+  contacted. Used in the series-gate trial as the [[state snapshot]] baseline —
+  a read-only workflow that exercises the trial's gate and state-checking tools
+  without external dependencies (`prototype/outcomeci-series-gate/workflow/outcome.yml`).
+
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
   at the 2-FAIL cap (see [[FAIL routing (post-reviewer)]]): the orchestrator
