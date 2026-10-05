@@ -2315,18 +2315,16 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   without the text spelling them, so each token is an
   [[expansion-named token]] (families F-1a to F-1g, in
   `docs/plans/2026-10-04-escalation-leftovers.md`, Context Item 4). It is a
-  [[family table]] with one rule: it is closed only for what it lists. The
-  gate also reads extglob words, pinned by FP-ext-1 rather than by a table
-  row.
+  [[family table]] with one rule: it is closed only for what it lists.
   Each row is a `FG-<family>-<n>` case in
   `tests/human-decision-gate.test.sh` (FG-c-6 is the comment-carried
   spelling), and is credited as blocked only after a real-bash check in a
   fixture shows that spelling overwrites an existing DECISION (27 of 27
   did). Outside the table, a spelling is claimed blocked only where a
-  suite row pins it, such as FP-ext-1, FP-nc-1, Q20 and the qp-1 rows
-  below; that list is not exhaustive. No unpinned spelling outside the
-  table is claimed closed, and the esc-left-3 reviewer did not probe
-  beyond it.
+  suite row pins it, such as FP-ext-1 (extglob words), FP-nc-1, Q20 and
+  the qp-1 rows below; that list is not exhaustive. No unpinned spelling
+  outside the table is claimed closed, and the esc-left-3 reviewer did
+  not probe beyond it.
   **Declared residuals**,
   each still allowed: a cwd-relative write that never spells
   `human-review` (assumption A3, no suite pin), R-4 (split variable, pin
@@ -2335,16 +2333,8 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   escape the early exit because one token is neither spelled nor
   expansion-named; NL1 spells both and is missed later, because newline
   breaks the gate's path recognizers. Since qp-1, a glob inside a quoted
-  string handed to a second shell counts as a pattern, so the gate reads
-  that payload with its quotes removed. The rule reads the command text
-  alone. It recognises a second shell as an unquoted `sh`, `bash` or
-  `dash` name whose preceding character, if any, is not a letter, digit,
-  `_`, `.` or `-` (so a blank, `/`, `=`, `$` or a quote qualifies), then
-  any option words that start with `-` or `+`, the last a short-option
-  cluster holding `c` (`-c`, `-ec`); the next word is the payload. It
-  matches case-insensitively, and it also matches a name that is only an
-  argument, as in `echo sh -c` before a quoted glob; both can only
-  over-block. QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
+  string handed to a [[second shell]] counts as a pattern (that entry
+  gives the rule). QP-1 (`bash -c`, writes) and QP-2 (`sh -c` with
   `tee`, writes) are `blocked`; QP-3 (`sh -c` redirect) is `blocked` as
   an accepted fail-closed over-block that writes nothing (`/bin/sh` here
   is dash, which does not glob a redirect target non-interactively; the
@@ -2395,7 +2385,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (esc-left-3, esc-left-4, 2026-10-04) — a [[trigger token]] the command
   text does not spell but names as a pattern: an unquoted glob or brace
   word that could expand to it, or, since qp-1, a glob in a quoted string
-  handed to a second shell (see [[frozen family table]]), such as `h*` for
+  handed to a [[second shell]], such as `h*` for
   `human-review` or `D*` and `D{E,}CISION` for DECISION. Since esc-left-3,
   [[The human-decision gate]] counts it as present (`glob_names_tokens()` in
   `hooks/scripts/human-decision-gate.sh`), so `printf x > .claude/h*/u1/D*`
@@ -2405,12 +2395,37 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   the prompt route and the benign-command check, only the sanctioned
   marker-write recognizer may allow it. When the command lexes, a quoted
   glob names nothing unless it is in the word that follows text the
-  second-shell rule recognises (see [[frozen family table]]). That rule
+  second-shell rule recognises (see [[second shell]]). That rule
   reads the text alone, so `echo sh -c` before a quoted glob names its
   tokens too, although no second shell runs. Coverage is claimed for the
   [[frozen family table]], the qp-1 rows and other rows pinned outside
   the table, such as FP-ext-1 (extglob words) and FP-nc-1 (a lowercase
   glob under nocaseglob); no unpinned spelling is claimed.
+
+**second shell**:
+(qp-1, qp-2, 2026-10-04) — a shell that [[The human-decision gate]]
+  assumes will re-parse a quoted string: an unquoted `sh`, `bash` or
+  `dash` name with a `-c` option, whose next word is its payload. The
+  gate recognises one from the command text alone
+  (`glob_scan_shell_payloads()` in `hooks/scripts/human-decision-gate.sh`),
+  reading the text with quoted strings masked, so a quoted name is not
+  recognised. The name's preceding character, if any, is not a letter,
+  digit, `_`, `.` or `-` (so a blank, `/`, `=`, `$` or a quote
+  qualifies); then come any option words that start with `-` or `+`, the
+  last a short-option cluster holding `c` (`-c`, `-ec`); words are
+  separated by blanks, and matching is case-insensitive. It also matches
+  a name that is only an argument, as in `echo sh -c` before a quoted
+  glob, although no second shell runs; both widenings can only
+  over-block. The gate's glob scan reads the payload with its quote
+  characters deleted and every metacharacter live, so a glob there can
+  make an [[expansion-named token]]. The rule decides which globs count,
+  not which tokens are spelled: the quote-joined text deletes only quote
+  characters, so a token spelled inside any quoted string is present
+  whether or not a second shell is recognised. The rule applies when the
+  command lexes; when it does not, the gate scans the raw text with every
+  glob live anyway. Suite rows pin it, such as QP-1, QP-2 and QPF-1 to
+  QPF-8; its declared residuals, R-QP-a and R-QP-b, carry no completeness
+  claim (see [[frozen family table]]).
 
 **trigger token**:
 (units hdg-lexer-1, hdg-prose-2, 2026-08-24; esc-left-3, 2026-10-04) — one of two strings
