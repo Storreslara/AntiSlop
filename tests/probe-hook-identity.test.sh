@@ -276,21 +276,32 @@ EOC
 REC38="$T/rec38/r.md" SRC="$SRC" PROBE_SCRATCH="$T/s38" bash "$T/c/main.sh" >/dev/null 2>&1
 grep -qF 'Tmux retry: ran: 2 run2-tmux capture lines' "$T/rec38/r.md" 2>/dev/null && ok "(I38) main assigns TMUX_RETRY after the retry" || bad "(I38) main assigns TMUX_RETRY after the retry"
 
-mkdir -p "$SCRATCH"; : > "$SCRATCH/rows.txt"; : > "$CAP"; REC="$T/rec39/r.md"
-printf 'a\n```\nb\n````\nc\n' > "$RAW/teammate-tmux.txt"; write_record
-fence="$(awk '/^### tmux retry pane$/ {getline; getline; print; exit}' "$REC")"
-last="$(tail -n 1 "$REC")"
-inner="$(awk -v f="$fence" '/^### tmux retry pane$/ {s=1; getline; getline; next} s && $0 != f' "$REC" | grep -cE '^`{5,}$')"
-case $fence in
-  '`````'*) [ "$fence" = "$last" ] && [ "$inner" = 0 ] && ok "(I39) pane fence is longer than any run in the pane and closes identically" || bad "(I39) fence [$fence] last [$last] inner [$inner]" ;;
-  *) bad "(I39) pane fence [$fence] shorter than 5 backticks" ;;
-esac
-rm -f "$RAW/teammate-tmux.txt"
+fence_case() { # id fence-length printf-format-of-pane
+  local id="$1" n="$2" fence last inner want
+  mkdir -p "$SCRATCH"; : > "$SCRATCH/rows.txt"; : > "$CAP"; REC="$T/rec$id/r.md"
+  # shellcheck disable=SC2059
+  printf "$3" > "$RAW/teammate-tmux.txt"; write_record
+  want="$(printf '%*s' "$n" '' | tr ' ' '`')"
+  fence="$(awk '/^### tmux retry pane$/ {getline; getline; print; exit}' "$REC")"
+  last="$(tail -n 1 "$REC")"
+  inner="$(awk -v f="$fence" '/^### tmux retry pane$/ {s=1; getline; getline; next} s && $0 != f' "$REC" | awk -v n="$n" '/^`+$/ && length >= n' | wc -l)"
+  [ "$fence" = "$want" ] && [ "$fence" = "$last" ] && [ "$inner" = 0 ] && ok "($id) pane fence is $n backticks, closes identically, no inner run that long" || bad "($id) fence [$fence] want [$want] last [$last] inner [$inner]"
+  rm -f "$RAW/teammate-tmux.txt"
+}
+fence_case I39 5 'a\n```\nb\n````\nc\n'
+fence_case I39c 8 'x\n```````\ny\n'
+fence_case I39b 3 'a\nlast-no-newline'
+case "$(tail -n 2 "$REC" | head -n 1)" in last-no-newline) ok "(I39b) pane without trailing newline: line before the closing fence is the pane's last line" ;; *) bad "(I39b) line before the closing fence is [$(tail -n 2 "$REC" | head -n 1)]" ;; esac
 
 mkdir -p "$SCRATCH" "$T/tmp40"; tmuxscen x_pair
 ( teammate_choose() { case $1 in "$SCRATCH"/tmux-retry.*) echo scratch > "$T/seen40" ;; *) ls -A "$T/tmp40" | wc -l > "$T/seen40" ;; esac; TCHECK=none; }
   TMPDIR="$T/tmp40" tmux_retry_summary "$W/cap.jsonl" >/dev/null )
 eq "(I40) summary temp file lives under SCRATCH, TMPDIR stays empty" "$(cat "$T/seen40")$(ls -A "$T/tmp40" | wc -l)" scratch0
+
+S43="$T/no-such-dir43"
+O43="$(SCRATCH="$S43" tmux_retry_summary "$W/cap.jsonl" 2>/dev/null)"; R43=$?
+eq "(I43) failed mktemp: rc" "$R43" 1
+eq "(I43) failed mktemp: output names the failure" "$O43" "failed: could not create a temp file under $S43; nothing summarized"
 
 cat > "$T/c/int.sh" <<'EOC'
 source "$SRC" "$REC41"
@@ -305,12 +316,14 @@ int41() { # signal expected-rc
   REC41="$d/r.md" SRC="$SRC" PROBE_SCRATCH="$d/s" TMPDIR="$d/tmp" READY="$d/ready" bash "$T/c/int.sh" > "$d/out" 2>&1 &
   pid=$!
   for ((i = 0; i < 100; i++)); do [ -e "$d/ready" ] && break; /bin/sleep 0.1; done
-  kill -"$1" "$pid"; wait "$pid"; rc=$?; set +m
+  kill -"$1" "$pid"; wait "$pid" 2>/dev/null; rc=$?; set +m
   eq "(I41) $1 exits $2" "$rc" "$2"
   if [ ! -e "$d/s" ] && [ -z "$(ls -A "$d/tmp")" ]; then ok "(I41) $1 leaves no scratch and no TMPDIR file"; else bad "(I41) $1 left scratch or temp file"; fi
 }
 int41 TERM 143
-int41 INT 130
+sigint_ignored() { bash -c 'kill -INT $$' 2>/dev/null; [ "$?" -eq 0 ]; }
+if sigint_ignored; then echo "SKIP (I41) INT: SIGINT is ignored in this shell (started as a background job); run the suite in the foreground to check it"
+else int41 INT 130; fi
 
 # (I42) mutants: TMUX_RETRY assigned before the retry (I38); fixed triple-backtick fence (I39); temp outside SCRATCH (I40)
 mutrun() { # id old new: exact-once string replace in a copy of the script, then the suite against it

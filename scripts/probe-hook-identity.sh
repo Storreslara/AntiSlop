@@ -123,7 +123,8 @@ pane_fence() { # file -> a backtick run longer than any backtick run in the file
 
 tmux_retry_summary() { # capture -> one line about the run2-tmux capture lines only, never the headless run2 check; N counts every run2-tmux line of any event (PreToolUse, Stop, SubagentStop), not only teammate candidates
   local f n c
-  f="$(mktemp "$SCRATCH/tmux-retry.XXXXXX")"; jq -c 'select(.run=="run2-tmux")' "$1" > "$f" 2>/dev/null; n=$(($(wc -l < "$f")))
+  f="$(mktemp "$SCRATCH/tmux-retry.XXXXXX")" || { echo "failed: could not create a temp file under $SCRATCH; nothing summarized"; return 1; }
+  jq -c 'select(.run=="run2-tmux")' "$1" > "$f" 2>/dev/null; n=$(($(wc -l < "$f")))
   jq -c 'select((.run // "")|startswith("run2")|not)' "$1" 2>/dev/null >> "$f" # references from other runs, never run2 candidates
   if [ "$n" -eq 0 ]; then echo "ran: 0 run2-tmux capture lines; nothing captured"
   else c="$(teammate_choose "$f"; echo "$TCHECK")"; echo "ran: $n run2-tmux capture lines; teammate check: $c"; fi
@@ -235,7 +236,7 @@ write_record() {
     printf '\n## Rows\n\n```\n%s```\n\nOutcome: %s\n' "$ROWS" "$OUT"
     printf '\n## Cleanup\n\nAfter this body is written the script removes `%s`, then records two `Cleanup check:` lines: that directory is gone, and `git status --porcelain -- hooks .claude/settings.json` is empty.\n' "$SCRATCH"
     printf '\n## Appendix: raw capture.jsonl\n\n```\n'; cat "$CAP" 2>/dev/null; printf '```\n'
-    [ -s "$RAW/teammate-tmux.txt" ] && { f="$(pane_fence "$RAW/teammate-tmux.txt")"; printf '\n### tmux retry pane\n\n%s\n' "$f"; cat "$RAW/teammate-tmux.txt"; printf '%s\n' "$f"; }
+    [ -s "$RAW/teammate-tmux.txt" ] && { f="$(pane_fence "$RAW/teammate-tmux.txt")"; printf '\n### tmux retry pane\n\n%s\n' "$f"; cat "$RAW/teammate-tmux.txt"; [ -z "$(tail -c 1 "$RAW/teammate-tmux.txt")" ] || echo; printf '%s\n' "$f"; }
   } > "$SCRATCH/record.md"
   mkdir -p "$(dirname "$REC")"; cp "$SCRATCH/record.md" "$REC" || exit 2
 }
