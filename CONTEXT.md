@@ -1088,6 +1088,32 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   carrying the human's prescribed fix verbatim. Defined in
   `templates/persona-protocol.md`'s "Resolving an escalation" section.
 
+**broker journal**:
+(unit ocig-1, 2026-10-05) — OutcomeCI's per-run record of every brokered call
+  and its status. Located at `.outcomeci/.broker/<run>/journal.json` under the
+  workflow's `--dir`. Captured and shown to the reviewer as non-authoritative
+  evidence only (see [[policy decision]] and the [[externalization precondition wrapper]]).
+
+**externalization**:
+(unit ocig-1, 2026-10-05) — an action that makes a unit's effects leave the
+  machine (push, PR, issue close, chat post). Controlled by the [[externalization
+  precondition wrapper]] in the OutcomeCI Design A series-gate trial (Phase 0,
+  `prototype/outcomeci-series-gate/`).
+
+**externalization precondition wrapper**:
+(unit ocig-1, 2026-10-05) — a host script that refuses to start an externalizing
+  run unless the unit's PASS marker is valid and bound to the commit
+  (`prototype/outcomeci-series-gate/oci-series-gate.sh`). Not a [[Gate]]: it is
+  not a hook, and it can be bypassed by calling the tool directly. Implements
+  Design A's separation of concerns: the reviewer owns "done" (PASS marker), and
+  policy review owns "may this leave the machine" ([[policy decision]]).
+
+**policy decision**:
+(unit ocig-1, 2026-10-05) — the outcome from OutcomeCI policy review: `allow`,
+  `revise`, or `deny`. It is never a [[verdict]], and it never counts toward the
+  2-FAIL cap. Orthogonal to and distinct from the reviewer's verdict on code
+  completeness and correctness. Recorded in the [[broker journal]].
+
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
   at the 2-FAIL cap (see [[FAIL routing (post-reviewer)]]): the orchestrator
