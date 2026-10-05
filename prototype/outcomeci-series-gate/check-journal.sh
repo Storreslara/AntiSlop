@@ -8,17 +8,17 @@ trial="${1:?usage: check-journal.sh [--allow-absent] <trial-dir> <run-id>}"
 run="${2:?missing run-id}"
 file="$trial/.outcomeci/.broker/$run/journal.json"
 
-if [ ! -f "$file" ]; then
+if [ ! -e "$file" ]; then
   printf 'journal=absent calls=0 bad=0\n'
   [ "$allow_absent" = 1 ]
   exit
 fi
 
 terminal='["confirmed","denied","unsent","uncertain"]'
-bad_filter='[.calls[] | select(.status as $s | $ok | index($s) | not)] | length'  # CHECK:STATUS
+bad_filter='[.calls[] | select((.status | type) != "string" or (.status as $s | $ok | index($s) | not))] | length'  # CHECK:STATUS
 
-if counts="$(jq -r --argjson ok "$terminal" \
-  "if (.calls | type) == \"object\" then \"\\(.calls | length) \\($bad_filter)\" else error(\"calls not object\") end" \
+if counts="$(jq -rs --argjson ok "$terminal" \
+  "if length == 1 and (.[0].calls | type) == \"object\" then .[0] | \"\\(.calls | length) \\($bad_filter)\" else error(\"not one object with calls object\") end" \
   "$file" 2>/dev/null)"; then
   read -r calls bad <<< "$counts"
 else

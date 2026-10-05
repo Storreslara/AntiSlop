@@ -3,6 +3,7 @@
 set -uo pipefail
 dir="${1:?usage: state-snapshot.sh <project-dir>}"
 cd "$dir" || exit 2
+[ -d .claude ] || { echo "state-snapshot: no .claude/ in $dir" >&2; exit 2; }
 
 lines="$(
   {

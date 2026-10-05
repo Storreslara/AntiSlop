@@ -37,6 +37,8 @@ run_journal_cases() {
   jcase J3-unknown nz 'journal=invalid calls=1 bad=1' "$t" unk
   journal "$t" nostatus '{"calls":{"a":{}}}'
   jcase J3b-nostatus nz 'journal=invalid calls=1 bad=1' "$t" nostatus
+  journal "$t" pend '{"calls":{"a":{"status":"pending"}}}'
+  jcase J3c-pending nz 'journal=invalid calls=1 bad=1' "$t" pend
   journal "$t" bad '{"calls":'
   jcase J4-malformed nz 'journal=invalid calls=0 bad=0' "$t" bad
   journal "$t" arr '{"calls":[]}'
@@ -45,6 +47,16 @@ run_journal_cases() {
   jcase J6-absent-allowed 0 'journal=absent calls=0 bad=0' "$t" nope --allow-absent
   journal "$t" empty '{"calls":{}}'
   jcase J7-empty-calls 0 'journal=ok calls=0 bad=0' "$t" empty
+  journal "$t" multi '{"calls":{}}
+{"calls":{"a":{"status":"bogus"}}}'
+  jcase J8-multi-doc nz 'journal=invalid calls=0 bad=0' "$t" multi
+  mkdir -p "$t/.outcomeci/.broker/zero"; : > "$t/.outcomeci/.broker/zero/journal.json"
+  jcase J9-zero-byte nz 'journal=invalid calls=0 bad=0' "$t" zero
+  [ -z "$(bash "$chk" "$t" zero 2>&1 >/dev/null)" ] || fail J9b-zero-byte-stderr "stderr not empty"
+  journal "$t" arrstat '{"calls":{"a":{"status":["confirmed"]}}}'
+  jcase J10-array-status nz 'journal=invalid calls=1 bad=1' "$t" arrstat
+  mkdir -p "$t/.outcomeci/.broker/dir/journal.json"
+  jcase J11-dir-journal nz 'journal=invalid calls=0 bad=0' "$t" dir --allow-absent
 }
 
 run_snapshot_cases() {
@@ -68,6 +80,12 @@ run_snapshot_cases() {
   [ "$a" != "$b" ] || fail S2-detects "new fixture file not detected"
   printf 'x\n' > "$p/.claude/reviewed/u2.pass"
   [ "$(bash "$snap" "$p")" != "$b" ] || fail S2b-detects-edit "content change not detected"
+  printf 'B\n' > "$p/.claude/reviewed/B.pass"
+  printf 'a\n' > "$p/.claude/reviewed/a.pass"
+  a="$(bash "$snap" "$p" | sed '$d' | cut -d' ' -f3-)"
+  [ "$a" = "$(printf '%s\n' "$a" | LC_ALL=C sort)" ] || fail S4-sorted "paths not LC_ALL=C sorted"
+  mkdir -p "$work/noclaude"
+  if bash "$snap" "$work/noclaude" >/dev/null 2>&1; then fail S5-no-claude "rc=0 with no .claude/"; fi
 }
 
 run_journal_cases

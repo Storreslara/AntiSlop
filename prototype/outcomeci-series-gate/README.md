@@ -18,7 +18,8 @@ Never pass `--cloud` to `oci`. This trial is local only.
 6. Limits:
    - At most 3 live runs (A4); each uses the `CLAUDE_CODE_OAUTH_TOKEN` subscription.
    - The wrapper considers only `.pass` markers (A3). A unit with only `.escalated` or `.directed`, or none, is refused. Under `reviewGating.mode=off` no markers are written, so every unit is refused.
-   - Negative check: `--unit no-such-unit` must print `rc=65` and leave `oci` unexecuted.
+   - Negative check: this must print `rc=65` and leave `oci` unexecuted (no new directory under `$OCI_TRIAL_DIR/.outcomeci/outcomes/`):
+     `bash prototype/outcomeci-series-gate/oci-series-gate.sh --unit no-such-unit -- workflow run --dir "$OCI_TRIAL_DIR"; echo rc=$?`
 7. Licensing (R4): OutcomeCI declares Apache-2.0 but ships no LICENSE file, and the connectors license is unconfirmed. Never copy OutcomeCI code into this MIT repo, `prototype/` included. A fork lives outside the repo; before redistributing one, add the Apache-2.0 text, keep any NOTICE, and mark modified files.
 
 If `oci validate` rejects the workflow schema, stop and report; that routes back to spec-master (D3).
