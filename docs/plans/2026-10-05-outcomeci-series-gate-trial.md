@@ -438,9 +438,14 @@ Acceptance criteria:
 - AC1.5: `git status --porcelain -- .claude` gives byte-identical output
   before and after running AC1.2. The lead captures both outputs, and the
   reviewer re-runs the same comparison.
+  *(Amended 2026-10-05, see A1 below: the marker directory is gitignored, so
+  this check is blind to it; follow-up units use the `state-snapshot.sh`
+  comparison instead.)*
 - AC1.6:
   `git diff --name-only <base>..HEAD | grep -v '^prototype/outcomeci-series-gate/'`
   prints nothing.
+  *(Amended 2026-10-05, see A2 below: `HEAD` means the unit's own last
+  commit, not the branch tip at review time.)*
 - AC1.7: `bash tests/validate.sh` exits 0.
 
 ## Step 2 (unit `ocig-2`): read-only workflow, state snapshot, journal checker, runbook
@@ -504,6 +509,8 @@ Acceptance criteria:
     - a missing file with `--allow-absent` gives exit 0.
 - AC2.3: the check-journal mutation, in which the status-set test is
   replaced with `true` in a temp copy, makes AC2.2's suite exit non-zero.
+  *(Amended 2026-10-05, see A3 below: the shipped mutant M1 replaces the
+  `# CHECK:STATUS` line with `bad_filter=0`; either mutant is acceptable.)*
   The suite runs this itself and counts it as a case.
 - AC2.4:
   `grep -cE '^(secrets|apis):|^[[:space:]]+(can|policy):' prototype/outcomeci-series-gate/workflow/outcome.yml`
@@ -540,6 +547,9 @@ in place of the table.
 
 The policy decision and the reviewer verdict are separate by construction:
 the formatter never emits the verdict vocabulary.
+*(Amended 2026-10-05, see A4 below: this holds for the formatter's own text
+only. Cells are copied from the journal, so a journal field can contain any
+word. The follow-up makes every cell single-line and pipe-free.)*
 
 Acceptance criteria:
 - AC3.1:
@@ -556,6 +566,9 @@ Acceptance criteria:
 - AC3.3: a mutation in which the banner line is deleted in a temp copy
   makes the suite fail. The suite asserts this itself.
 - AC3.4: AC1.6's path-scope check holds for this unit's range.
+  *(Amended 2026-10-05, see A5 below: the range is commit A only, that is
+  `<parent of A>..A`. Step 3b's stamped files land in commit B of the same
+  unit, per D4.)*
 - AC3.5: `bash tests/validate.sh` exits 0.
 
 ### 3b (dispatched per D4, in the same unit as 3a, after 3a's criteria are green)
@@ -946,3 +959,25 @@ _Avoid_ "series gate" for the artifact itself.
 
 ADR candidate only on graduation: "OutcomeCI policy review is authoritative
 for externalization only, never for done."
+
+## Post-PASS amendments (2026-10-05)
+
+Criterion-text corrections raised as `NOTE[spec]` items in the ocig-1, ocig-2
+and ocig-3 review records. None of them changes a verdict. The follow-up
+spec is `docs/plans/2026-10-05-outcomeci-followups.md`.
+
+- A1 (AC1.5): `git status --porcelain -- .claude` cannot see the marker
+  directory, because it is gitignored (`.gitignore:12`). A re-run uses
+  `bash prototype/outcomeci-series-gate/state-snapshot.sh .` before and
+  after, then `cmp` on the two outputs.
+- A2 (AC1.6, AC2.5, AC3.4): `<base>..HEAD` means `<parent of the unit's first
+  commit>..<unit's last commit>`. Commits by other agents in the window
+  (agent-memory, scribe) are not part of the unit's range.
+- A3 (AC2.3): the mutant named in the text (`true`) and the shipped M1
+  (`bad_filter=0`) are both acceptable. The reviewer verified that both are
+  killed.
+- A4 (Step 3a prose, and the 0.31.121 CHANGELOG entry): "never emits the
+  verdict vocabulary" covers the formatter's own text only. Copied cells are
+  neutralized by follow-up unit ocigf-1. The CHANGELOG correction lands with
+  ocigf-2.
+- A5 (AC3.4): AC3.4 is evaluated on commit A only. The reviewer did this.
