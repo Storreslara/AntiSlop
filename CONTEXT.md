@@ -1118,7 +1118,8 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
 (unit ocig-2, 2026-10-05) — a before/after digest of marker and flag-file state,
   recording the sha256 hash and relative path of each file in `.claude/reviewed/`,
   `.claude/human-review/`, and `.claude/` flag files (`.pending-review*`, `.review-join.*`,
-  `wip-handoff.*`). Used by the OutcomeCI series-gate trial to verify that a run
+  `wip-handoff.*`). Symlinks are recorded as `link:<sha256 of readlink string>  <relpath>` 
+  lines, never followed. Used by the OutcomeCI series-gate trial to verify that a run
   does not alter marker state unexpectedly (`prototype/outcomeci-series-gate/state-snapshot.sh`).
 
 **terminal status set**:
@@ -1146,6 +1147,12 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   status and outcome in an [[external run journal]]. The journal is shown to
   reviewers as non-authoritative evidence only, never as a substitute for
   acceptance-criterion verification.
+
+**prototype suite runner**:
+(unit ocigf-1, 2026-10-05) — a test harness script that runs multiple acceptance
+  test suites sequentially and reports a summary line for each (`<suite>: ok|FAIL`),
+  followed by a totals line (`suites=<n> failed=<m>`). Implemented as `tests/run-all.sh`
+  for the OutcomeCI Design A prototype (`prototype/outcomeci-series-gate/`).
 
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
