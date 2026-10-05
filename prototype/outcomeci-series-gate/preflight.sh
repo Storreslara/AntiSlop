@@ -4,12 +4,12 @@
 set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 proj="$here/../.."
-unit=""
+unit="" pdir=""
 usage() { echo 'usage: preflight.sh [--unit <task-id>] [--project-dir <dir>]' >&2; exit 64; }
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --unit) unit="${2:-}"; shift 2 || usage ;;
-    --project-dir) proj="${2:-}"; shift 2 || usage ;;
+    --unit) [ "$#" -ge 2 ] && [ -n "$2" ] || usage; unit="$2"; shift 2 ;;
+    --project-dir) [ "$#" -ge 2 ] && [ -d "$2" ] || usage; proj="$2" pdir="$2"; shift 2 ;;
     *) usage ;;
   esac
 done
@@ -37,8 +37,10 @@ if [ "$have_oci" -eq 0 ]; then
   ver="$(oci --version 2>/dev/null)"
   [ "$ver" = 'oci 0.50.1' ]; rc=$?
   report oci-version "$rc" 4 "$([ "$rc" -eq 0 ] && echo ok || echo bad)"
-  tmp="$(mktemp -d)" && cp -a "$here/workflow/." "$tmp"/
-  vout="$(oci validate --dir "$tmp" 2>/dev/null)"
+  tmp="" vout=""
+  if tmp="$(mktemp -d 2>/dev/null)" && cp -a "$here/workflow/." "$tmp"/; then
+    vout="$(oci validate --dir "$tmp" 2>/dev/null)"
+  fi
   rm -rf "$tmp"
   [[ $vout == *'"valid": true'* ]]; rc=$?
   report validate "$rc" 5 "$([ "$rc" -eq 0 ] && echo ok || echo fail)"
@@ -47,28 +49,32 @@ else
   report validate 0 5 skipped
 fi
 
-docker info >/dev/null 2>&1; rc=$?
+timeout 10 docker info >/dev/null 2>&1; rc=$?
 report docker "$rc" 6 "$([ "$rc" -eq 0 ] && echo ok || echo fail)"
 
 [ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]; rc=$?
 report token "$rc" 7 "$([ "$rc" -eq 0 ] && echo set || echo unset)"
 
-# The commit comes from the marker's first line, hex-validated; nothing else from the file is used.
+# The commit comes from a regular-file marker's first line, naming this unit and hex-validated; nothing else is used.
 sha='<sha>' uid="${unit:-<unit>}"
 if [ -n "$unit" ]; then
-  line=""
-  read -r line < "$(unit_id_marker_path "$unit" pass)" 2>/dev/null
-  [[ $line =~ ^PASS\ [^\ ]+\ [^\ ]+\ commit:\ ([0-9a-f]{7,40})\ criteria: ]] && sha="${BASH_REMATCH[1]}"
+  line="" m="$(unit_id_marker_path "$unit" pass)"
+  [ -f "$m" ] && read -r line < "$m"
+  if [[ $line =~ ^PASS\ ([^\ ]+)\ [^\ ]+\ commit:\ ([0-9a-f]{7,40})\ criteria: ]] && [ "${BASH_REMATCH[1]}" = "$unit" ]; then
+    sha="${BASH_REMATCH[2]}"
+  fi
 fi
+snap=. pdopt=""
+if [ -n "$pdir" ]; then snap="$(printf %q "$pdir")" pdopt=" --project-dir $snap"; fi
 
 p=prototype/outcomeci-series-gate
 echo 'next:'
 [ "$have_oci" -eq 0 ] || echo '  pipx install outcomeci-cli==0.50.1'
 cat <<NEXT
   export OCI_TRIAL_DIR=\$(mktemp -d) && cp -a $p/workflow/. "\$OCI_TRIAL_DIR"/
-  bash $p/state-snapshot.sh . > "\$OCI_TRIAL_DIR/before.txt"
-  bash $p/oci-series-gate.sh --unit $uid --sha $sha -- workflow run --dir "\$OCI_TRIAL_DIR" --auto-continue 2> "\$OCI_TRIAL_DIR/gate.log"
-  bash $p/state-snapshot.sh . > "\$OCI_TRIAL_DIR/after.txt"
+  bash $p/state-snapshot.sh $snap > "\$OCI_TRIAL_DIR/before.txt"
+  bash $p/oci-series-gate.sh --unit $uid --sha $sha$pdopt -- workflow run --dir "\$OCI_TRIAL_DIR" --auto-continue 2> "\$OCI_TRIAL_DIR/gate.log"
+  bash $p/state-snapshot.sh $snap > "\$OCI_TRIAL_DIR/after.txt"
   diff "\$OCI_TRIAL_DIR/before.txt" "\$OCI_TRIAL_DIR/after.txt"
   bash $p/check-journal.sh --allow-absent "\$OCI_TRIAL_DIR" <run-id>
 NEXT
