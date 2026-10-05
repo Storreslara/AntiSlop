@@ -21,7 +21,7 @@ metadata:
 
 2. **Zero-byte and missing-key error handling**: A 0-byte `journal.json` prints "integer expression expected" error. A journal file with no `.calls` key is reported as "journal absent" — both cases lack explicit user-facing error messages.
 
-3. **Persona phrasing inconsistency** (orchestrator vs. reviewer): `agents/orchestrator.md:177` says the reviewer "checks against the journal file itself", while `agents/reviewer.md:89-90` says "may re-read". Both should say "may" (permission, not obligation). Would require a stamped-persona edit, version bump, and CHANGELOG entry.
+3. **Persona phrasing inconsistency** (orchestrator vs. reviewer): `agents/orchestrator.md:177` says the reviewer "checks against the journal file itself", while `agents/reviewer.md:89-90` says "may re-read". Both should say "may" (permission, not obligation). Would require a stamped-persona edit, version bump, and CHANGELOG entry. **CLOSED by ocigf-2**: orchestrator.md now aligns with reviewer.md, both say "may check against the journal file and its stated sha256" (evidence-only optional re-read); version 0.31.122.
 
 4. **AC3.4 scope ambiguity**: The spec wording "this unit's range" should be explicitly scoped to commit A (the prototype formatter), not the full range including Commit B.
 
