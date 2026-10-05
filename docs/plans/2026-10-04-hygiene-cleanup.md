@@ -93,9 +93,14 @@ The whole review-marker directory was listed. Records on these surfaces:
 
 ### Marker-audit `--notes` sweep
 
-`bash bin/marker-audit.sh . --notes --surface=<path>` was started for the
-three touched files and did not finish inside 120 s in this session. The
-dispositions here rest on the four `.pass` markers read in full
+`bash bin/marker-audit.sh . --notes --surface=<path>`, run at fcfcc47 for
+the three touched files (it finished after the first draft):
+`tests/validate.sh` 140 notes (spec 14, code 29, untagged 97);
+`tests/probe-hook-identity.test.sh` 6 (spec 1, code 5, untagged 0);
+`docs/harness-glossary.md` 58 (spec 31, code 25, untagged 2). Every
+untagged line names an older PASSed unit (mw-step3/4/5, spec2-unitD/E,
+stop-gate-msg-1, item05-3), not a step awaiting dispatch, so all are out
+of scope. The dispositions here rest on the four `.pass` markers read in full
 (esc-chat-7-record, esc-fu-1, rnc-1, rnc-2) and rnc-1's own sweep at
 d7c4242 (`docs/plans/2026-10-04-review-note-cleanup.md:78-97`). Notes
 consumed: rnc-1 NOTE[code] x2 (items 3, 5), rnc-2 NOTE[spec] (item 2),
