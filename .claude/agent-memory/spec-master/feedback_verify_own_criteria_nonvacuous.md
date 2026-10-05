@@ -345,6 +345,8 @@ and only pin a count you have measured.** Same session also caught a `git diff
 was uncommitted in the tree — see [[feedback-baselines-expire]]; the fix is a
 dispatch-time baseline delta, never a clean-tree assertion.
 
+Trap 14 (ocigf-4, 2026-10-05): a smoke criterion that narrows PATH to `/usr/bin:/bin` is host-dependent, because tools like jq can live in ~/.local/bin and an earlier check fails first. Build a PATH from symlinks to `command -v` of exactly the tools you need; that also guarantees the absent tool is absent on any host. Run it on THIS host before handoff. CHK12 claimed coverage and was wrong.
+
 See [[feedback-no-forced-changes]], [[feedback-baselines-expire]],
 [[technique-zero-usage-is-not-evidence]],
 [[verify-deferred-issue-premises]],
