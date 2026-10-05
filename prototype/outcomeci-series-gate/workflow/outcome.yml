@@ -1,0 +1,14 @@
+# Zero-API trial workflow (D3): no secrets, apis, can or policy, so no broker call is made.
+apiVersion: outcomeci.workflow/v1
+name: series-gate-trial
+trigger: manual
+
+reasoning:
+  default: {runner: claude, model: claude-opus-5-5}
+
+steps:
+  - summarize:
+      reason: summarize.md
+      from: trigger
+      returns:
+        summary: string
