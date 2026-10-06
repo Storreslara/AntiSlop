@@ -127,12 +127,29 @@ function baselineOf(id, log, opt) {
   } catch (e) { return null; }
 }
 
+// The `~~~` block under `## Dispatch contract`, fences excluded; null when absent.
+function contractBlock(body) {
+  const lines = body.split('\n');
+  const h = lines.findIndex((l) => l.trim() === '## Dispatch contract');
+  const open = lines.findIndex((l, k) => k > h && /^~~~/.test(l));
+  if (h < 0 || open < 0) return null;
+  const close = lines.findIndex((l, k) => k > open && l.trim() === '~~~');
+  return close < 0 ? null : lines.slice(open + 1, close).join('\n');
+}
+
+// An issue belongs to a unit only if its contract's Unit: token or its title's first word is the exact id.
+function issueIsUnit(issue, id) {
+  const block = contractBlock(issue.body || '');
+  const u = block && /^Unit:\s*(\S+)/m.exec(block);
+  return (u && u[1] === id) || (issue.title || '').split(/\s+/)[0] === id;
+}
+
 function ghIssue(id, opt) {
   try {
     const out = cp.execFileSync(process.env.GH_BIN || 'gh', ['issue', 'list', '--search', `${id} in:title`,
-      '--state', 'all', '--json', 'number,body,labels', '--limit', '1'],
+      '--state', 'all', '--json', 'number,title,body,labels', '--limit', '20'],
     { cwd: opt.repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return JSON.parse(out)[0] || null;
+    return JSON.parse(out).find((i) => issueIsUnit(i, id)) || null;
   } catch (e) { return null; }
 }
 
@@ -157,7 +174,8 @@ function contractFor(id, recs, opt) {
   if (issue) {
     const label = (issue.labels || []).map((l) => l.name).find((n) => n.startsWith('plan/'));
     const author = issue.body.includes('## Dispatch contract') ? 'task-master' : 'unknown';
-    return { source: `issue#${issue.number}`, author, plan: label ? label.slice(5) : null, text: issue.body };
+    return { source: `issue#${issue.number}`, author, plan: label ? label.slice(5) : null,
+      text: contractBlock(issue.body) ?? issue.body };
   }
   const p = planBlock(id, opt);
   if (p) return { source: `plan:${p.path}`, author: 'spec-master', plan: p.plan, text: p.text };
