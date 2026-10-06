@@ -376,7 +376,12 @@ baseline, final_commit, range_source, implementer_tiers [{tier, source:
 observed|frontmatter-inferred|era-inferred}], attempts (= FAIL blocks + 1),
 reviewer_tiers [..same shape..], fail_classes [subset of: mirror, version,
 vacuous, spec-gap, scope, host, unverified]` (the class regexes are research
-§8.2's substrings), `cap_hit, task_master_cutoff (true|false|null)`. Contract
+§8.2's substrings), `cap_hit, task_master_cutoff (true|false|null)`,
+`pass_ts` (the PASS marker's first-line timestamp, or null), `terminal_ts`
+(`pass_ts`, or for a cap unit without a PASS the second FAIL block's header
+timestamp; the same value `--until` filters on), and `fail_blocks` (integer)
+(gap E, 2026-10-06). These are content timestamps, never mtime, and are not
+wall-clock fields. Contract
 text comes from transcripts first, then `gh issue view` bodies, then the plan's
 `### Unit:` block. The output carries ids and labels only, never prompt or
 defect prose.
@@ -386,6 +391,7 @@ Acceptance criteria:
 - AC0-2.1 `node tests/unit-outcomes.test.js` exit 0. The fixtures cover: a unit with 2 FAIL blocks (`attempts` 3, `cap_hit` true), a meta with `model` (`observed`), one without (`frontmatter-inferred`), a commit-scope baseline, and no-range (`range_source` `none`).
 - AC0-2.2 Non-vacuity: the test asserts `fail_classes` on a fixture `.fail` containing "vacuous" and "CHANGELOG" equals `["version","vacuous"]` (sorted), and a fixture with neither yields `[]`.
 - AC0-2.3 Privacy: the test asserts that no output line contains any 40-character substring of a fixture prompt or defect text.
+- AC0-2.3c Timestamp fields: for a fixture PASS marker whose first line reads `PASS fx-1 2026-09-01T10:00:00Z commit: ...`, the output has `pass_ts` "2026-09-01T10:00:00Z" and an equal `terminal_ts`. For the cap fixture, `pass_ts` is null, `terminal_ts` equals its second FAIL header timestamp, and `fail_blocks` is 2.
 - AC0-2.3b `--until` fixtures: a unit whose PASS timestamp is after the cutoff is absent; a cap unit (2 FAIL blocks, no PASS) is present with `cap_hit` true, `attempts` 2 and `final_commit` null; a unit whose PASS file mtime is before the cutoff but whose content timestamp is after it is absent (proves content, not mtime).
 - AC0-2.4 Read-only: the test snapshots `git status --porcelain` and the fixture dir checksums before and after the run, and asserts both are unchanged.
 - AC0-2.5 `bash tests/validate.sh` exit 0.
@@ -400,6 +406,7 @@ dictionary, the coverage window, and the coverage table).
 Acceptance criteria:
 - AC0-3.1 `git ls-files docs/audits/unit-outcomes | wc -l` ≥ 2.
 - AC0-3.2 Reproducibility: the README states the exact command, including `--until=<cutoff>`. Re-running that command to a scratch file and comparing `jq -cS 'del(.contract_score, .contract_source)'` of both files gives identical output (`diff` exit 0). `contract_score` must also match for every unit whose `contract_source` is not `issue#N` (issue bodies are live and can be edited after the cutoff, e.g. #496/#497).
+- AC0-3.3b `jq -e 'has("pass_ts") and has("terminal_ts") and has("fail_blocks")'` holds for every line of the snapshot (`jq -s 'all(has("terminal_ts"))'` prints `true`).
 - AC0-3.3 Each count in the README coverage table (units total; with contract text; with observed tier; with a range) equals `jq` over the committed JSONL, and the README lists those jq commands verbatim.
 - AC0-3.4 `git diff --name-only <B>..HEAD` lists only `docs/audits/unit-outcomes/` paths.
 
@@ -452,8 +459,22 @@ Acceptance criteria:
 
 Affected files: `docs/audits/2026-10-NN-adr0026-forward-rule.md` (new).
 Contents: the rule quoted from ADR-0026 lines 79-85. Sonnet-era FAIL rate from
-the U0-3 snapshot (units with PASS after 2026-08-25, implementer default sonnet)
-with n, and the same rate from `scripts/spend-accounting.sh --until=<cutoff>`
+the U0-3 snapshot, with n, defined as follows (gap E, 2026-10-06):
+- **Population:** units with `terminal_ts >= "2026-08-25T00:00:00Z"` (the
+  ADR-0026 ratification date; the default was `sonnet` from then on). That is
+  `jq -s '[.[] | select(.terminal_ts >= "2026-08-25T00:00:00Z")]'` over the
+  snapshot. Cap units without a PASS are included and count as FAIL. The audit
+  states that a unit dispatched before 08-25 and finished after it is counted in
+  the sonnet era (the same boundary effect ADR-0026's mtime basis had).
+- **FAIL rate:** units with ≥1 FAIL block, divided by units in the population
+  (`fail_blocks >= 1`). It is NOT FAIL blocks per attempt. This is the basis of
+  the 32.5% threshold: ADR-0026 line 22 reads "203 units, 66 with FAIL records,
+  32.5% FAIL rate" (66/203 = units with a FAIL record / units), and research
+  §8.1's 133/424 uses the same basis. The comparison is therefore like-for-like
+  in definition. The audit notes it is not like-for-like in timestamp source:
+  ADR-0026 used marker mtimes, this uses content timestamps.
+- The audit additionally reports the same rate from
+  `scripts/spend-accounting.sh --until=<cutoff>` `scripts/spend-accounting.sh --until=<cutoff>`
 by subtraction (research §8.1 item 4). A letter verdict (`met|not-met|
 insufficient (n<60)`). The spend half: `unverifiable`, with the pruning reason
 and the failing command. Then the line `spirit-ruling: PENDING-HUMAN`. The
@@ -462,6 +483,7 @@ author records numbers only; the spirit ruling is the user's (OQ2).
 Acceptance criteria:
 - AC1-1.1 `grep -cE '^spirit-ruling: (PENDING-HUMAN|met|not-met)$' <file>` = 1.
 - AC1-1.2 `grep -cE '^letter-verdict: (met|not-met|insufficient)' <file>` = 1, and `grep -c '^n-units: ' <file>` = 1.
+- AC1-1.2b The `n-units:` and `fail-rate:` values equal `jq -s '[.[] | select(.terminal_ts >= "2026-08-25T00:00:00Z")] | length'` and `jq -s '[.[] | select(.terminal_ts >= "2026-08-25T00:00:00Z")] | (map(select(.fail_blocks >= 1)) | length) / length'` over the committed snapshot. The file contains the line `fail-rate-basis: units-with-any-FAIL / units (as ADR-0026: 66/203)`.
 - AC1-1.3 Every numeric claim has a `reproduce:` line beneath it. The reviewer runs each one, and each must print the stated number.
 - AC1-1.4 `node tests/writer-tier-consistency.test.js` exit 0 (AC-D8 still pins the rule; ADR-0026 is untouched: `git diff --quiet <B>..HEAD -- docs/adr` exit 0).
 
@@ -619,7 +641,9 @@ Affected files: `agents/lead-programmer.md` (after the "If the plan itself is
 wrong, STOP" bullet, near line 28), bump files, CHANGELOG, mirror via `--update`,
 AND the hand-maintained adapter ports `adapters/cursor/agents/lead-programmer.md`
 (same anchor, line 32) and `adapters/codex/agents/lead-programmer.toml` (same
-anchor, line 33, inside its prompt string). The same paragraph goes into each
+anchor text on line 33 per `grep -n`; the bullet's wrapped text ends on line
+34, so the insertion goes after line 34; inside its prompt string; anchor on
+the text, not the number). The same paragraph goes into each
 port, because cursor/codex consumers run those ports. Adapters are not
 version-stamped and not regenerated by `--update`, so they are edited by hand,
 in the same commit as the source. Neither the orchestrator ports nor any
