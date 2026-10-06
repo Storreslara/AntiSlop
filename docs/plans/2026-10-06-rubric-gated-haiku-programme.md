@@ -1,6 +1,6 @@
 # Rubric-gated haiku programme: outcome export, contract rubric, replay gate (2026-10-06)
 
-Status: FINAL (standard path, 18 units in 6 stages, including addendum unit U0-4; Stage 5 is gated and must
+Status: FINAL (standard path, 19 units in 6 stages, including addendum unit U0-4 and follow-up U0-2b; Stage 5 is gated and must
 not be sliced until gate G4 opens). Input artifact:
 `docs/research/dream-irs-taskmaster-specmaster.md` (cited by section, not
 repeated; §8.2 census, §8.3 rubric R1-R7 and policies pi-0/pi-1/pi-2, §8.4
@@ -396,6 +396,48 @@ Acceptance criteria:
 - AC0-2.4 Read-only: the test snapshots `git status --porcelain` and the fixture dir checksums before and after the run, and asserts both are unchanged.
 - AC0-2.5 `bash tests/validate.sh` exit 0.
 - OQ1 delta: if the user chooses per-clone, the default `--out` becomes `.claude/unit-outcomes/<date>.jsonl`, the path is added to every gitignore scaffold list in `bin/cli.js` (and the unit becomes an opus-review SENSITIVE_PATHS unit), and AC0-3.1 changes to `git check-ignore` exit 0.
+
+### U0-2b: exporter semantics amendments (2026-10-06, from #498 review notes)
+
+These amendments supersede the conflicting U0-2 text above. They ship as a
+follow-up unit **U0-2b**, dispatched after #498's PASS and before U0-3 (#504),
+so the in-flight FAIL fix on #498 stays limited to its two listed code defects.
+- **As-of-cutoff semantics (note 1).** Every event later than `--until` is
+  ignored before anything is derived. `pass_ts` is the PASS first-line timestamp
+  only if it is ≤ cutoff, else null. `fail_blocks` counts the FAIL headers
+  ≤ cutoff. `terminal_ts` is the **earlier** of `pass_ts` and the second FAIL
+  header (both ≤ cutoff), so a unit capped on 09-03 that passes on 09-20 has
+  `terminal_ts` 09-03 at every cutoff ≥ 09-03. Inclusion is therefore monotone
+  in the cutoff, and a fixed cutoff gives the same row before and after the
+  PASS lands. `attempts` = `fail_blocks` + (1 if `pass_ts` is non-null);
+  `cap_hit` = `fail_blocks` ≥ 2; `final_commit` = null when `pass_ts` is null.
+  - AC0-2b.1 Fixture (FAIL 09-02, FAIL 09-03, PASS 09-20). At `--until=2026-09-10`: present, `pass_ts` null, `terminal_ts` 09-03, `fail_blocks` 2, `attempts` 2, `cap_hit` true. At `--until=2026-09-30`: `pass_ts` 09-20, `terminal_ts` 09-03, `attempts` 3. The 09-10 row is byte-identical whether or not the PASS file exists in the fixture.
+- **Contract source order (note 2).** (1) The `~~~`-fenced block under
+  `## Dispatch contract` in the unit's issue body gives `contract_author:
+  task-master`. (2) Otherwise, the plan's `### Unit:` block gives
+  `spec-master`. (3) Otherwise, a transcript prompt counts only if it contains
+  `## Ordered edits`, with author `unknown`. A pointer dispatch ("Retrieval
+  contract: gh issue view N") is never scored, and gives `contract_source: none`
+  and score null. G3's "contract score" is the score of source (1): the contract
+  as task-master wrote it.
+  - AC0-2b.2 A fixture unit with both an issue Dispatch-contract block and a pointer transcript gets `contract_source` `issue#N`, author `task-master`, and the block's score. A pointer-only transcript gives `contract_source` `none`.
+- **New field `contract_ts`.** The issue's `createdAt` for source (1), the
+  plan block's first-commit date for (2), null otherwise.
+- **G3 tightened (note 3).** Population: `contract_author == "task-master"` and
+  `contract_ts` > U3-4's `pass_ts` (replacing the terminal_ts superset). The
+  output must print the FAIL-class mix (count per class) for this population
+  and for the pre-rubric sonnet era (`terminal_ts` ≥ 2026-08-25 and
+  `contract_ts` ≤ U3-4's `pass_ts`). It prints `task_master_cutoffs=unmeasured`
+  when every value is null, otherwise the count.
+  - AC0-2b.3 Fixtures assert the `G3 open`/`G3 closed` boundary at exactly 60/20, the presence of both class-mix lines, and `unmeasured` when all cutoffs are null.
+- **`era-inferred` rule (note 4).** Used for the implementer tier only when no
+  transcript meta exists. The era is taken from the unit's earliest FAIL/PASS
+  timestamp: before 2026-08-02 -> `sonnet`; 2026-08-02 up to (not including)
+  2026-08-25 -> `haiku` (ADR-0010); from 2026-08-25 -> `sonnet` (ADR-0026). The
+  reviewer tier is never inferred: with no meta it is null.
+  - AC0-2b.4 Three fixtures, one per era, assert the inferred tier and `source: "era-inferred"`, and a fixture with no meta asserts `reviewer_tiers` is `[]`.
+- Note only: the extra fixture file fixed in #498's commit 2 is accepted; no
+  criterion change.
 
 ## Step U0-3: first outcome snapshot (measurement unit)
 
@@ -839,7 +881,13 @@ If the user answers OQ3 "block", this unit adds instead a `node bin/cli.js
 ## Scribe update hint
 After U3-1: a `docs/harness-glossary.md` entry **dispatch contract (content-typed)**,
 and **contract rubric / contract score** with R1-R7 pointing to
-`bin/contract-score.js`. After U0-2: **unit-outcome export**. After U3-2:
+`bin/contract-score.js`. After U0-2/U0-2b: **unit-outcome export**,
+**contract score** (if not already added after U3-1), and **terminal event**
+(`terminal_ts`: the earlier of the PASS timestamp and the second FAIL header,
+read as of the cutoff). These go in `docs/harness-glossary.md` (harness
+vocabulary). The **terminal event** entry must state that it is distinct from
+CONTEXT.md's **terminal status set** (CONTEXT.md:1125, OutcomeCI journal
+statuses). After U3-2:
 **slice state**. After U5-2 only: CONTEXT.md **Writer tier**,
 **Implementer-tier ratchet**, **Suggested model vocabulary** (in U5-2 itself,
 because of the AC-D5 coupling). Avoid "dispatch packet" (eval sense,
