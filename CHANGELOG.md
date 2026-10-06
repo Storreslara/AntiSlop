@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**spec-master Self-check replays recorded FAIL classes (rgh-u2-1, 0.31.124).** `agents/spec-master.md`'s Self-check bullet gains a **Replay source** rule: when `docs/audits/unit-outcomes/` exists, spec-master adds one CHK item per step whose affected files appear in a recorded unit with FAIL class `vacuous` or `host`, asking whether the step's criterion still fails under the mutation recorded for that unit, and citing the unit id. An absent or empty export adds no item. No hook or gate changes.
+
 **Planning personas get maxTurns 120 and write-early guidance (rgh-u0-4, 0.31.123).** `agents/spec-master.md` and `agents/task-master.md` raise `maxTurns` from 40 to 120; every other persona keeps its cap. Each gains a **Write early, in few large writes** bullet: spec-master writes the plan skeleton to `docs/plans/` early and fills it in a few large writes, task-master does the same for dispatch contracts, so a turn cutoff still leaves a usable artifact. No hook or gate changes.
 
 **Journal re-read is optional in the orchestrator prose; 0.31.121 overclaim corrected (ocigf-2, 0.31.122).** `agents/orchestrator.md` now says the reviewer, if present, may check the pasted external run journal block against the journal file and its stated sha256, matching `agents/reviewer.md`'s "You may re-read" wording; the block still never counts as a met acceptance criterion. Correction to the 0.31.121 entry: the "no reviewer-verdict vocabulary" claim holds only for the formatter's own text; cells copied from the journal are neutralized to one line and pipe-free (ocigf-1) and are otherwise verbatim, so they can carry any wording the journal holds. The 0.31.121 entry is left as written. No hook or gate changes.

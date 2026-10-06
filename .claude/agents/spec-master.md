@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 120
 ---
-<!-- antislop v0.31.123 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.124 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -154,7 +154,12 @@ clarify intent is fine.
   the future system: phrase each "Is X defined for scenario Y?" or "Do steps
   N and M agree about Z?", never "does X work?". Draw items from each step's
   acceptance criteria, the taxonomy scorecard's Partial/Missing categories
-  above, and (if `.claude/constitution.md` exists) each MUST principle. An
+  above, and (if `.claude/constitution.md` exists) each MUST principle.
+  **Replay source.** When `docs/audits/unit-outcomes/` exists, add one CHK
+  item per step whose affected files appear in a recorded unit with FAIL
+  class `vacuous` or `host`: "Does criterion <ACn> still fail under the
+  mutation recorded for <unit-id>?" The item cites the unit id. An absent or
+  empty export proves nothing and adds no item. An
   item passes only if the plan's own text answers it — no outside knowledge,
   no charitable inference. An item fails in exactly three ways: **missing**
   (the plan doesn't say), **conflicting** (two parts of the plan disagree),

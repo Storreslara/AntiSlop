@@ -153,7 +153,12 @@ clarify intent is fine.
   the future system: phrase each "Is X defined for scenario Y?" or "Do steps
   N and M agree about Z?", never "does X work?". Draw items from each step's
   acceptance criteria, the taxonomy scorecard's Partial/Missing categories
-  above, and (if `.claude/constitution.md` exists) each MUST principle. An
+  above, and (if `.claude/constitution.md` exists) each MUST principle.
+  **Replay source.** When `docs/audits/unit-outcomes/` exists, add one CHK
+  item per step whose affected files appear in a recorded unit with FAIL
+  class `vacuous` or `host`: "Does criterion <ACn> still fail under the
+  mutation recorded for <unit-id>?" The item cites the unit id. An absent or
+  empty export proves nothing and adds no item. An
   item passes only if the plan's own text answers it — no outside knowledge,
   no charitable inference. An item fails in exactly three ways: **missing**
   (the plan doesn't say), **conflicting** (two parts of the plan disagree),
