@@ -648,6 +648,12 @@ an append-only audit-log record class written to
   (e.g., `hooks/scripts/microworld-rerun.sh:10`) when a hook's header documents
   its output as a consumed interface, clarifying that the format is not arbitrary.
 
+**contract score**:
+(unit rgh-u0-2b, 2026-10-06) — the R1-R7 lead / S1-S5 scribe rubric score
+  computed by `bin/contract-score.js` for a dispatch contract. The scorer is
+  read-only; it is not the responsibility of `scripts/unit-outcomes.js` to verify
+  or adjust scores, only to record them. See [[unit-outcome export]].
+
 **marker-commit-check**:
 (unit #385, 2026-08-15) — the executable script at `hooks/scripts/marker-commit-check.sh`
   (mode 755) that reads a [[PASS marker]]'s `commit:` field and classifies it as one of
@@ -1267,6 +1273,24 @@ the reviewer's `sonnet`/`opus` model is
   (human vs. orchestrator) and different recording mechanisms (escalation packet vs.
   advisory log). Context determines which is meant; when ambiguous, prefix with
   "human" or "orchestrator" to clarify.
+
+**rubric era**:
+(unit rgh-u0-2b, 2026-10-06) — the set of task-master-authored units whose
+  `contract_ts` is after U3-4's `pass_ts` (units created after the rubric-contract
+  protocol was implemented). Distinguished from [[pre-rubric sonnet era]] (units
+  predating rubric adoption) to segregate rubric-era dispatch patterns (includes
+  contract score, **era-inferred** tier when transcript missing) from pre-rubric
+  patterns. The two are disjoint and together cover every sonnet-era unit. See
+  [[pre-rubric sonnet era]], [[era-inferred]], [[unit-outcome export]].
+
+**pre-rubric sonnet era**:
+(unit rgh-u0-2b, 2026-10-06) — the complement of the [[rubric era]] within the
+  sonnet era of this repo: units whose `contract_ts` is absent, null, or before
+  U3-4's `pass_ts` (units predating the rubric-contract protocol implementation).
+  Distinguished from [[rubric era]] (units authored after rubric adoption) to
+  segregate pre-rubric dispatch patterns (no contract score, **era-inferred** tier)
+  from rubric-era patterns. The two are disjoint and together cover every sonnet-era
+  unit. See [[rubric era]], [[era-inferred]], [[unit-outcome export]].
 
 **Forward-verification rule**:
 (ADR-0026, unit spec2-unitD, 2026-08-25) — the pre-registered criterion for
@@ -2196,6 +2220,14 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   `8803252`, tests at `a828742` (cases (j)-(n) in `tests/reviewed-path-gate.test.sh`),
   PASSed at `13841aa`. See `.claude/reviewed/gh326.pass`.
 
+**era-inferred**:
+(unit rgh-u0-2b, 2026-10-06) — the implementer-tier source used when no
+  transcript record exists. Applied to units in the [[rubric era]] and
+  [[pre-rubric sonnet era]] when the unit-outcomes exporter cannot find a
+  lead-programmer or reviewer transcript entry to determine tier. Populated via
+  era-based heuristics in `scripts/unit-outcomes.js` rather than transcript
+  inspection. See [[rubric era]], [[pre-rubric sonnet era]], [[unit-outcome export]].
+
 **Mode assertion**:
 (units gh273-1/gh273-2, 2026-08-14, issue #273) — a merge-gate
   check that a file's executable bit matches its invocation contract: `755`
@@ -2478,6 +2510,15 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   [[path-safe charclass]], which govern a different domain (the human-decision
   gate's prose false-positive filtering for `.claude/human-review/` packet ids)
   and are not interchangeable with this grammar.
+
+**unit-outcome export**:
+(unit rgh-u0-2b, 2026-10-06) — the read-only per-unit JSONL produced by
+  `scripts/unit-outcomes.js`: structured records of `id`, `tiers` (lead/scribe
+  pair, **era-inferred** when no transcript), `attempts` (attempt count for
+  scoring), FAIL classes, PASS/terminal timestamps, contract source/score/timestamp,
+  and `terminal_ts`. Privacy: no prompt text is included. Invocable via
+  `node scripts/unit-outcomes.js --until <ISO8601-ts>`. See [[contract score]],
+  [[rubric era]], [[pre-rubric sonnet era]], [[terminal event]].
 
 **`UNIVERSAL_PROTOCOL_CORE`**:
 (unit item04-3, 2026-09-26) — a constant in `bin/cli.js` (line ~1344) naming 
@@ -2851,6 +2892,14 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   distinct from every other reviewer dispatch shape, all of which end in a
   marker file under `.claude/reviewed/`.
 
+**pointer dispatch**:
+(unit rgh-u0-2b, 2026-10-06) — an orchestrator dispatch that only points at the
+  issue contract instead of containing it (the dispatch prompt is generated
+  only as a pointer to the issue's dispatch contract, not by copying it).
+  Pointer dispatches are never scored by `bin/contract-score.js`; they exist
+  only for routing and issue correlation, not for contract assessment. See
+  [[contract score]], [[unit-outcome export]].
+
 **eval registry**:
 (unit gh-eval-step1, 2026-09-11) — the YAML registry file at
   `eval/registry/reviewer-verdict.yaml` defining all available evaluation
@@ -2947,6 +2996,16 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   line and must not leak the `gold:` label that the case author knows but the
   reviewer under test should not see. Prefer explicit "dispatch packet" phrasing
   to distinguish this sense from existing packet terminology.
+
+**terminal event**:
+(unit rgh-u0-2b, 2026-10-06) — a unit's PASS timestamp, or for a unit that hit
+  the 2-FAIL cap without a PASS, the second FAIL block's header timestamp.
+  `terminal_ts` in the [[unit-outcome export]] is the earlier of `pass_ts` and
+  the second FAIL header, evaluated as of the `--until` cutoff timestamp. Distinct
+  from **terminal status set** (CONTEXT.md, OutcomeCI journal statuses `confirmed`,
+  `denied`, `unsent`, `uncertain`) — this term refers to a unit's own lifecycle
+  event timestamp, not a workflow status. See `scripts/unit-outcomes.js` source
+  and unit-outcomes test fixtures for timestamp derivation.
 
 **turn-end** / **natural turn boundaries**:
 (unit orch-rulings-followup-1, 2026-09-12) — two related but distinct concepts in
