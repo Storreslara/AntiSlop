@@ -426,15 +426,21 @@ so the in-flight FAIL fix on #498 stays limited to its two listed code defects.
 - **G3 tightened (note 3).** Population: `contract_author == "task-master"` and
   `contract_ts` > U3-4's `pass_ts` (replacing the terminal_ts superset). The
   output must print the FAIL-class mix (count per class) for this population
-  and for the pre-rubric sonnet era (`terminal_ts` ≥ 2026-08-25 and
-  `contract_ts` ≤ U3-4's `pass_ts`). It prints `task_master_cutoffs=unmeasured`
-  when every value is null, otherwise the count.
-  - AC0-2b.3 Fixtures assert the `G3 open`/`G3 closed` boundary at exactly 60/20, the presence of both class-mix lines, and `unmeasured` when all cutoffs are null.
+  and for the pre-rubric sonnet era. The **pre-rubric sonnet era** is a
+  complement (gap G, 2026-10-06): every unit with `terminal_ts` ≥
+  "2026-08-25T00:00:00Z" that is NOT in the rubric-era population, including
+  units whose `contract_ts` or `contract_author` is null or unknown. In jq:
+  `select(.terminal_ts >= "2026-08-25T00:00:00Z" and ((.contract_author == "task-master" and .contract_ts != null and .contract_ts > $u34) | not))`.
+  The two populations are disjoint, and their union is every sonnet-era unit.
+  G3 prints `task_master_cutoffs=unmeasured` when every value is null,
+  otherwise the count.
+  - AC0-2b.3 Fixtures assert the `G3 open`/`G3 closed` boundary at exactly 60/20 and `unmeasured` when all cutoffs are null. For the class-mix lines, a fixture set holding one rubric-era unit (FAIL class `vacuous`), one sonnet-era unit with `contract_ts` null (class `version`), one sonnet-era unit with a task-master `contract_ts` before U3-4's PASS (class `scope`), and one pre-08-25 unit (class `host`) must print `rubric_classes=` containing only `vacuous=1`, and `pre_rubric_classes=` containing exactly `version=1` and `scope=1` (no `host`).
 - **`era-inferred` rule (note 4).** Used for the implementer tier only when no
   transcript meta exists. The era is taken from the unit's earliest FAIL/PASS
   timestamp: before 2026-08-02 -> `sonnet`; 2026-08-02 up to (not including)
   2026-08-25 -> `haiku` (ADR-0010); from 2026-08-25 -> `sonnet` (ADR-0026). The
-  reviewer tier is never inferred: with no meta it is null.
+  reviewer tier is never inferred: with no meta, `reviewer_tiers` is the empty
+  array `[]` (AC0-2b.4 is authoritative).
   - AC0-2b.4 Three fixtures, one per era, assert the inferred tier and `source: "era-inferred"`, and a fixture with no meta asserts `reviewer_tiers` is `[]`.
 - Note only: the extra fixture file fixed in #498's commit 2 is accepted; no
   criterion change.
