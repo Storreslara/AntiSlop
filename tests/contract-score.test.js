@@ -52,6 +52,8 @@ for (const k of R) {
 
 check('minus-R1-command', () => onlyFalse(score('minus-R1-command.md'), R, 'R1'));
 
+check('mixed-do-not-touch-r6', () => onlyFalse(score('minus-R6-mixed.md'), R, 'R6'));
+
 check('pointer-body scores R1 false', () => {
   assert.strictEqual(score('pointer-body.md').rows.R1, false);
 });

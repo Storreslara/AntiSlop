@@ -108,7 +108,8 @@ function r5(text) {
 
 function r6(text) {
   const sec = section(text, 'Do NOT touch') || [];
-  return sec.filter((l) => /^\s*[-*] `[^`]+`/.test(l)).length >= 2;
+  const bullets = sec.filter((l) => /^\s*[-*] /.test(l));
+  return bullets.length >= 2 && bullets.every((l) => /^\s*[-*] `[^`]+`/.test(l));
 }
 
 function r7(text) {
