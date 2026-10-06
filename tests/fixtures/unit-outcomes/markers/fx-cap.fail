@@ -1,0 +1,5 @@
+FAIL fx-cap 2026-09-04T09:00:00Z
+Attempt one returned the wrong ordering for ties between equal keys in the sorted output listing.
+
+FAIL fx-cap 2026-09-04T12:00:00Z
+Attempt two fixed ties but dropped the trailing record whenever the input length was an exact multiple of eight.

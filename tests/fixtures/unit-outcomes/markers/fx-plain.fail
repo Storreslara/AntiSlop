@@ -1,0 +1,2 @@
+FAIL fx-plain 2026-09-05T09:00:00Z
+The parser rejected a perfectly valid empty list and printed a stack trace instead of the documented usage banner.

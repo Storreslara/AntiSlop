@@ -1,0 +1,5 @@
+FAIL fx-cap3 2026-09-02T09:00:00Z
+The first attempt left the retry loop without a bounded back-off, so the harness spun forever on a flaky socket.
+
+FAIL fx-cap3 2026-09-02T11:00:00Z
+The second attempt bounded the loop but swallowed the socket error and returned a stale cached answer silently.

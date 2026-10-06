@@ -1,0 +1,2 @@
+#!/bin/sh
+echo '[{"number":7,"body":"## Dispatch contract\nfixture issue body","labels":[{"name":"plan/fx-plan"}]}]'
