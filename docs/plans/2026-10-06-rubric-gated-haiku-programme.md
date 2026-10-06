@@ -71,7 +71,7 @@ written by task-master after U3-1's PASS commit.
   (tests/default-implementer-model.test.js:70).
 - Version-stamped paths (hooks/scripts/version-stamp-check.sh:61,92):
   `agents/*.md`, `templates/*`. Every commit touching one bumps
-  `.claude-plugin/plugin.json` **and** `package.json` (validate.sh:80 asserts
+  `.claude-plugin/plugin.json` **and** `package.json` (validate.sh:92 asserts
   equality; `.fail` spec2-unitD defect 1) and adds a CHANGELOG `[Unreleased]`
   entry, same commit (constitution P3, v1.1.0). Current version 0.31.122.
 - Mirrors `.claude/agents/*.md` and `.claude/persona-config.json` `fileHashes`
@@ -221,7 +221,28 @@ Reviewer-tier gate (ADR-0009) and the reviewer-gate ratchet are unchanged.
 | 4 pi-2 replay | U4-1, U4-2, U4-3 | G4: `docs/audits/<date>-pi2-replay.md` line `verdict: favourable` AND G1 ruling is not PENDING-HUMAN |
 | 5 (GATED) Tier change | U5-1, U5-2, U5-3 | none: programme end |
 
-Dispatch order: U0-4 (independent; dispatch first or whenever, as an addendum slice) ; U0-1 -> U0-2 -> U0-3 -> {U1-1, U2-1 -> U2-2} -> U3-1 -> U3-2 ->
+Persona-file serial order and version strings (fixed 2026-10-06; assumes HEAD
+is at 0.31.122 and nothing else bumps in between). U0-4 goes FIRST and shifts
+the others by one:
+
+| Order | Unit | Sets version |
+|---|---|---|
+| 1 | U0-4 | 0.31.123 |
+| 2 | U2-1 | 0.31.124 |
+| 3 | U2-2 | 0.31.125 |
+| 4 | U3-1 | 0.31.126 |
+| 5 | U3-2 | 0.31.127 |
+| 6 | U3-3 | 0.31.128 |
+| 7 | U3-4 | 0.31.129 |
+
+U2-1 and U3-1 each depend on U0-4. If any other unit bumps the version first,
+each later unit's literal becomes (HEAD version + 1), and the orchestrator
+re-derives it in the contract before dispatch. The already-published #496
+(U2-1) and #497 (U2-2) must be amended from 0.31.123/0.31.124 to
+0.31.124/0.31.125 and gain `Depends on: U0-4`.
+Non-persona units (U0-1, U0-2, U0-3, U1-1) set no version and can interleave.
+
+Dispatch order: U0-4 -> U0-1 -> U0-2 -> U0-3 -> {U1-1, U2-1 -> U2-2} -> U3-1 -> U3-2 ->
 U3-3 -> U3-4 -> [wait G3] -> U4-1 -> U4-2 -> U4-3 -> [wait G4] -> U5-1 -> U5-2 ->
 U5-3. task-master slices Stages 0-3 now; it is re-invoked for Stage 4 at G3
 and for Stage 5 at G4. Same-file units are serialized by `Depends on` edges
@@ -248,7 +269,11 @@ and exit 0. Exit 2 when the input is unreadable. Sections are located by
 - R1: every `^\d+\. ` item under `## Ordered edits` carries `file:` with a
   backticked path, `anchor:` non-empty, and one payload form: `before:`+`after:`,
   `insert-after:`+text, or `delete:`+text. Each payload is inline code or a fenced
-  block. R1 is false if the section matches
+  block. **Command items (Gap B, 2026-10-06):** an item may instead carry
+  `command:` (inline code) plus `expect:` (an integer exit code, optionally
+  followed by `stdout:` with a fragment); it needs no `file:`/`anchor:`. This
+  form is how the contract orders `node bin/cli.js --update`, `git commit -F`,
+  and the like. A command item that lacks `expect:` makes R1 false. R1 is false if the section matches
   `/as specified|see the (plan|issue|spec)|to reflect|as appropriate|as needed|update accordingly/i`.
 - R2: if any `## Affected files` path matches `^agents/[^/]+\.md$|^templates/`,
   the contract contains `.claude-plugin/plugin.json` and `package.json` each on a
@@ -274,6 +299,7 @@ true out of 5.
 Acceptance criteria:
 - AC0-1.1 `node tests/contract-score.test.js` exit 0, with last line `All contract-score checks passed.`
 - AC0-1.2 Mutation-proof inside the test: `tests/fixtures/contract-score/all-pass.md` scores 7. For each row Rn there is a fixture `minus-Rn.md` that differs from all-pass by one edit and scores 6 with only `Rn` false (7 assertions; reverting any one rule to `true` fails the suite). Same for the scribe shape (5 fixtures).
+- AC0-1.3b `all-pass.md` contains a command item (`command:` `node bin/cli.js --update`, `expect: 0`); a fixture `minus-R1-command.md` drops only its `expect:`, and its R1 is false.
 - AC0-1.3 A fixture whose Ordered edits read "as specified in the plan" scores R1 false (critic 1's pointer-body case).
 - AC0-1.4 `node bin/contract-score.js tests/fixtures/contract-score/oversize.md` prints `"sizeOver":true` (a 31000-byte fixture with an 81-line block).
 - AC0-1.5 `bash tests/validate.sh` exit 0 and `grep -c 'contract-score.test.js' tests/validate.sh` ≥ 1.
@@ -287,7 +313,17 @@ Affected files: `scripts/unit-outcomes.js` (new; maintainer-only, not shipped),
 
 Behaviour: read-only. Flags `--markers=<dir>` and `--transcripts=<dir>` default
 to the repo's marker dir and `~/.claude/projects/<slug>/`; `--repo=<dir>`
-defaults to cwd; `--out=<file>`; `--gate=G3`. One JSON line per unit:
+defaults to cwd; `--out=<file>`; `--gate=G3`; `--until=<ISO-8601 UTC>` (Gap A).
+`--until` semantics: a unit is included only if its **terminal event** is at or
+before the cutoff. The terminal event is the first-line timestamp of its PASS
+marker; for a unit with no PASS and ≥2 FAIL blocks (cap), it is the header
+timestamp of the second FAIL block. Timestamps come from file content, never
+from mtime. Units with neither (in flight) are excluded. For included units,
+FAIL blocks, transcript records and commits after the cutoff are ignored.
+Cap handling: `cap_hit` = FAIL-block count ≥ 2 (counted up to the cutoff);
+`attempts` = FAIL blocks + (1 if a PASS exists at or before the cutoff);
+`final_commit` = null when there is no PASS. Output is sorted by `id` and
+carries no wall-clock field. `--until` defaults to the current time. One JSON line per unit:
 `id, plan, contract_author (task-master|spec-master|unknown), contract_source
 (issue#N|plan:<path>|transcript|none), contract_score (U0-1 output or null),
 baseline, final_commit, range_source, implementer_tiers [{tier, source:
@@ -304,6 +340,7 @@ Acceptance criteria:
 - AC0-2.1 `node tests/unit-outcomes.test.js` exit 0. The fixtures cover: a unit with 2 FAIL blocks (`attempts` 3, `cap_hit` true), a meta with `model` (`observed`), one without (`frontmatter-inferred`), a commit-scope baseline, and no-range (`range_source` `none`).
 - AC0-2.2 Non-vacuity: the test asserts `fail_classes` on a fixture `.fail` containing "vacuous" and "CHANGELOG" equals `["version","vacuous"]` (sorted), and a fixture with neither yields `[]`.
 - AC0-2.3 Privacy: the test asserts that no output line contains any 40-character substring of a fixture prompt or defect text.
+- AC0-2.3b `--until` fixtures: a unit whose PASS timestamp is after the cutoff is absent; a cap unit (2 FAIL blocks, no PASS) is present with `cap_hit` true, `attempts` 2 and `final_commit` null; a unit whose PASS file mtime is before the cutoff but whose content timestamp is after it is absent (proves content, not mtime).
 - AC0-2.4 Read-only: the test snapshots `git status --porcelain` and the fixture dir checksums before and after the run, and asserts both are unchanged.
 - AC0-2.5 `bash tests/validate.sh` exit 0.
 - OQ1 delta: if the user chooses per-clone, the default `--out` becomes `.claude/unit-outcomes/<date>.jsonl`, the path is added to every gitignore scaffold list in `bin/cli.js` (and the unit becomes an opus-review SENSITIVE_PATHS unit), and AC0-3.1 changes to `git check-ignore` exit 0.
@@ -316,7 +353,7 @@ dictionary, the coverage window, and the coverage table).
 
 Acceptance criteria:
 - AC0-3.1 `git ls-files docs/audits/unit-outcomes | wc -l` ≥ 2.
-- AC0-3.2 Reproducibility: the README states the exact command and the `--until` cutoff. Re-running it with that cutoff gives a byte-identical file (`cmp` exit 0) for every unit whose PASS predates the cutoff.
+- AC0-3.2 Reproducibility: the README states the exact command, including `--until=<cutoff>`. Re-running that command to a scratch file and comparing `jq -cS 'del(.contract_score, .contract_source)'` of both files gives identical output (`diff` exit 0). `contract_score` must also match for every unit whose `contract_source` is not `issue#N` (issue bodies are live and can be edited after the cutoff, e.g. #496/#497).
 - AC0-3.3 Each count in the README coverage table (units total; with contract text; with observed tier; with a range) equals `jq` over the committed JSONL, and the README lists those jq commands verbatim.
 - AC0-3.4 `git diff --name-only <B>..HEAD` lists only `docs/audits/unit-outcomes/` paths.
 
@@ -384,9 +421,10 @@ Acceptance criteria:
 
 ## Step U2-1: spec-master S1, criteria replay against FAIL classes
 
-Affected files: `agents/spec-master.md` (Self-check bullet, after the sentence
-ending "draw items from each step's acceptance criteria" - anchor resolved by
-task-master to a SHA-qualified line range), `.claude-plugin/plugin.json`,
+Affected files: `agents/spec-master.md` (Self-check bullet: insert directly
+after the hard-wrapped sentence that ends "each MUST principle." at
+agents/spec-master.md:156 at 7bf93d9, before "An item passes"; the line number
+is unchanged by U0-4, whose edits sit at line 9 and after line 265), `.claude-plugin/plugin.json`,
 `package.json`, `CHANGELOG.md`, then `.claude/agents/spec-master.md` and the
 config `fileHashes` via `node bin/cli.js --update`.
 
@@ -404,8 +442,10 @@ Acceptance criteria:
 
 ## Step U2-2: spec-master S2, incumbent non-regression for debug specs and convergence follow-ups
 
-Affected files: as U2-1 (anchor: the "Revised spec step(s)" item of the debug-spec
-bullet, and the Convergence follow-ups bullet). Depends on U2-1.
+Affected files: as U2-1. Single insertion, in item 2 ("Revised spec step(s)") of
+the debug-spec bullet. The pinned text's last sentence already covers
+Convergence follow-ups, so the `**Convergence follow-ups**` bullet goes under
+Do NOT touch (confirmed 2026-10-06). Depends on U2-1.
 
 Text to insert (pinned): "**Incumbent baseline.** The revised step carries a
 table with one row per defect block in `.claude/reviewed/<task-id>.fail`
@@ -446,15 +486,19 @@ that cannot reach 7 is split or reported as a spec gap. (e) Replace lines 109-11
 with a reconciliation (critic 1/14): literal edit payloads are required;
 artifact bodies (whole files, logs, specs) stay banned; an edit payload over
 `maxInlineBlockLines` splits into consecutive edits; a contract over
-`maxPromptBytes` splits the unit. (f) Worked example: a 7/7 contract between
-`<!-- contract-example:begin -->` and `<!-- contract-example:end -->`, ≤80 lines.
+`maxPromptBytes` splits the unit. (f) Worked example: a 7/7 contract between the lines
+`<!-- lead-contract-example:begin -->` and `<!-- lead-contract-example:end -->`
+(each on a line of its own), ≤80 lines. The example includes a command item
+(R1 command form) for `node bin/cli.js --update`. Gap C: the marker is
+`lead-` prefixed, and every extraction is anchored to whole lines, so U3-3's
+`scribe-contract-example` markers can never match it.
 This is tier-neutral: no tag vocabulary change.
 
 Acceptance criteria:
-- AC3-1.1 `sed -n '/contract-example:begin/,/contract-example:end/p' agents/task-master.md | sed '1d;$d' | sed '1{/^```/d};${/^```/d}' | node bin/contract-score.js -` prints `"score":7`.
+- AC3-1.1 `sed -n '/^<!-- lead-contract-example:begin -->$/,/^<!-- lead-contract-example:end -->$/p' agents/task-master.md | sed '1d;$d' | sed '1{/^```/d};${/^```/d}' | node bin/contract-score.js -` prints `"score":7`.
 - AC3-1.2 Flattened grep of `agents/task-master.md` for each of `before:`, `mutation:`, `diagnosis: none`, `node bin/contract-score.js`, and `artifact bodies` returns ≥1. At `<B>` the counts for `mutation:` and `diagnosis: none` are 0.
 - AC3-1.3 Flattened grep of `agents/task-master.md` for `never from pasting artifact bodies` = 0 (the conflicting sentence is gone), and for `splits into consecutive edits` = 1.
-- AC3-1.4 Example block size: `sed -n '/contract-example:begin/,/contract-example:end/p' agents/task-master.md | wc -l` ≤ 82.
+- AC3-1.4 Example block size: `sed -n '/^<!-- lead-contract-example:begin -->$/,/^<!-- lead-contract-example:end -->$/p' agents/task-master.md | wc -l` ≤ 82, and `grep -c '^<!-- lead-contract-example:begin -->$' agents/task-master.md` = 1.
 - AC3-1.5 Mirror: flattened grep of `.claude/agents/task-master.md` for `diagnosis: none` ≥ 1.
 - AC3-1.6 `node tests/writer-tier-consistency.test.js` exit 0 (AC-D5 literal intact; no "looks mechanical"; vocabulary still `sonnet|opus`).
 - AC3-1.7 `version-stamp-check.sh <B>..HEAD` prints `ok`, and `bash tests/validate.sh` exit 0.
@@ -502,7 +546,7 @@ Depends on U3-2.
 Content: task-master.md defines the scribe contract (`Unit:`, `## Objective`,
 `## Retrieval`, `## Glossary edits`, `## ADR`, `## Close conditions`,
 `## Do NOT touch`, `## Acceptance criteria`, `## Escalation`) with a worked
-example between `<!-- scribe-contract-example:begin/end -->` that scores 5/5
+example between the whole-line markers `<!-- scribe-contract-example:begin -->` and `<!-- scribe-contract-example:end -->` that scores 5/5
 under `--shape=scribe`. It states that the nine-element lead contract does not
 apply to scribe (closes the gh-209 note). scribe.md gains a pinned paragraph:
 "**Contract precedence.** When your dispatch carries a scribe dispatch contract
@@ -511,7 +555,7 @@ conditions as written; your own judgment applies only where the contract is
 silent. If an item cannot be applied exactly, STOP and report a spec gap."
 
 Acceptance criteria:
-- AC3-3.1 The scribe example extracted as in AC3-1.1, with `--shape=scribe`, prints `"score":5`.
+- AC3-3.1 The scribe example, extracted with `sed -n '/^<!-- scribe-contract-example:begin -->$/,/^<!-- scribe-contract-example:end -->$/p'` and the same fence stripping as AC3-1.1, prints `"score":5` under `--shape=scribe`. AC3-1.1 and AC3-1.4 are re-run after U3-3 and still pass (no cross-match).
 - AC3-3.2 Flattened grep of `agents/scribe.md` for `**Contract precedence.**` = 1, and for `your own judgment applies only where the contract is silent` = 1.
 - AC3-3.3 The same greps in `.claude/agents/scribe.md` = 1, and in `.claude/agents/task-master.md` for `scribe-contract-example:begin` = 1.
 - AC3-3.4 `frontmatter model` of `agents/scribe.md` is still `haiku`: `sed -n '1,12p' agents/scribe.md | grep -c '^model: haiku$'` = 1.
@@ -521,7 +565,15 @@ Acceptance criteria:
 ## Step U3-4: lead-programmer contract precedence (critic 3)
 
 Affected files: `agents/lead-programmer.md` (after the "If the plan itself is
-wrong, STOP" bullet, near line 28), bump files, CHANGELOG, mirror via `--update`.
+wrong, STOP" bullet, near line 28), bump files, CHANGELOG, mirror via `--update`,
+AND the hand-maintained adapter ports `adapters/cursor/agents/lead-programmer.md`
+(same anchor, line 32) and `adapters/codex/agents/lead-programmer.toml` (same
+anchor, line 33, inside its prompt string). The same paragraph goes into each
+port, because cursor/codex consumers run those ports. Adapters are not
+version-stamped and not regenerated by `--update`, so they are edited by hand,
+in the same commit as the source. Neither the orchestrator ports nor any
+spec-master/task-master/scribe port carries the text touched by other units
+(checked 2026-10-06), so only U3-4 touches adapters.
 
 Pinned paragraph: "**Contract precedence.** When your dispatch is a dispatch
 contract (written by task-master, if present, or by spec-master on the fast
@@ -534,7 +586,7 @@ report a spec gap."
 
 Acceptance criteria:
 - AC3-4.1 Flattened grep of `agents/lead-programmer.md` for `**Contract precedence.**` = 1, and for `decisions already made` = 1 (0 at `<B>`).
-- AC3-4.2 Mirror greps = 1 each in `.claude/agents/lead-programmer.md`.
+- AC3-4.2 Mirror greps = 1 each in `.claude/agents/lead-programmer.md`, `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml`; `node tests/adapter-protocol-parity.test.js` exit 0.
 - AC3-4.3 `node tests/writer-tier-consistency.test.js` exit 0 (`model: sonnet` source and mirror kept; no "looks mechanical").
 - AC3-4.4 P4: flattened grep for `task-master, if present` = 1.
 - AC3-4.5 `version-stamp-check` `ok`, `validate.sh` exit 0.
