@@ -1,0 +1,9 @@
+[
+ {
+  "number": 901,
+  "title": "fx-src (Step X): issue block fixture",
+  "createdAt": "2026-09-01T09:00:00Z",
+  "body": "## Acceptance criteria\n- prose\n\n## Dispatch contract\n\n~~~markdown\nUnit: demo-1\n\n## Objective\n`agents/demo.md` carries the new line and the version is bumped. Done = every criterion below passes.\n\n## Retrieval\nGitHub issues, repo example/demo. This unit: `gh issue view 1 --repo example/demo`.\n\n## Affected files\n- `agents/demo.md` (anchor: the line `old line`)\n- `CHANGELOG.md` (anchor: top of the file)\n\n## Ordered edits\n1. file: `agents/demo.md`\n   anchor: the line `old line`\n   before: `old line`\n   after: `new line`\n2. file: `CHANGELOG.md`\n   anchor: the first heading\n   insert-after: `- demo: new line in the demo persona (0.2.0)`\n3. command: `node bin/cli.js --update`\n   expect: 0\n\n## Do NOT touch\n- `docs/` (any file)\n- `skills/` (any file)\n\n## Acceptance criteria\n1. run: `grep -c 'new line' agents/demo.md`\n   exit: 0\n   stdout: `1`\n   mutation: revert edit 1; stdout becomes `0`.\n2. run: `bash hooks/scripts/version-stamp-check.sh HEAD~1..HEAD`\n   exit: 0\n   stdout: `ok`\n   mutation: drop the version bump; stdout shows `violation`.\n\n## Pre-resolved context\ntdd: no documentation-only change\nblast-radius: agents/demo.md:1 (the edited line)\nversion: `.claude-plugin/plugin.json` 0.1.0 to 0.2.0\nversion: `package.json` 0.1.0 to 0.2.0\ncommit-message: docs(demo): add the new line\ndiagnosis: none\n~~~\n",
+  "labels": []
+ }
+]

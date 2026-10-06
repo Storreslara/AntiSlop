@@ -183,6 +183,114 @@ check('read-only checksums', () => {
   assert.strictEqual(checksums(), before);
 });
 
+function runWith(markers, repo, extra, env) {
+  return cp.execFileSync('node', [SCRIPT, `--repo=${repo}`, `--markers=${markers}`,
+    `--transcripts=${path.join(markers, 'no-transcripts')}`, ...extra],
+  { cwd: REPO_ROOT, encoding: 'utf8', env: { ...process.env, GH_BIN: path.join(FIX, 'bin', 'gh'), ...env } });
+}
+function asofLine(markers, until) {
+  return runWith(markers, scratch.dir, [`--until=${until}`]).split('\n').find((l) => l.startsWith('{"id":"fx-asof"'));
+}
+const AS_OF_10 = rows(scratch.dir, '2026-09-10').map['fx-asof'];
+check('asof 09-10 row', () => {
+  assert.ok(AS_OF_10, 'fx-asof absent');
+  assert.strictEqual(AS_OF_10.pass_ts, null);
+  assert.strictEqual(AS_OF_10.terminal_ts, '2026-09-03T10:00:00Z');
+  assert.strictEqual(AS_OF_10.fail_blocks, 2);
+  assert.strictEqual(AS_OF_10.attempts, 2);
+  assert.strictEqual(AS_OF_10.cap_hit, true);
+});
+check('asof 09-30 row', () => {
+  const r = rows(scratch.dir, '2026-09-30').map['fx-asof'];
+  assert.strictEqual(r.pass_ts, '2026-09-20T10:00:00Z');
+  assert.strictEqual(r.terminal_ts, '2026-09-03T10:00:00Z');
+  assert.strictEqual(r.attempts, 3);
+});
+check('asof row stable without PASS file', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uo-asof-'));
+  fs.cpSync(path.join(FIX, 'markers'), dir, { recursive: true });
+  fs.rmSync(path.join(dir, 'fx-asof.pass'));
+  const without = asofLine(dir, '2026-09-10');
+  const withPass = asofLine(path.join(FIX, 'markers'), '2026-09-10');
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.ok(withPass);
+  assert.strictEqual(without, withPass);
+});
+check('source issue block wins', () => {
+  assert.strictEqual(R['fx-src'].contract_source, 'issue#901');
+  assert.strictEqual(R['fx-src'].contract_author, 'task-master');
+  assert.strictEqual(R['fx-src'].contract_score, 7);
+});
+check('source pointer-only none', () => {
+  assert.strictEqual(R['fx-ptr'].contract_source, 'none');
+  assert.strictEqual(R['fx-ptr'].contract_score, null);
+});
+check('source contract_ts issue', () => {
+  assert.strictEqual(R['fx-src'].contract_ts, '2026-09-01T09:00:00Z');
+});
+check('source contract_ts null', () => {
+  assert.strictEqual(R['fx-ptr'].contract_ts, null);
+});
+
+const ALL_PASS = fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'contract-score', 'all-pass.md'), 'utf8');
+const MINUS_R1 = fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'contract-score', 'minus-R1.md'), 'utf8');
+const U34_PASS = '2026-09-01T00:00:00Z';
+// units: {id, pass, fails: [[ts, text]], issue: [createdAt, bodyText] | null}
+function g3Set(units) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uo-g3-'));
+  const stub = {};
+  const all = [{ id: 'rgh-u3-4', pass: U34_PASS, fails: [], issue: null }, ...units];
+  all.forEach((u) => {
+    fs.writeFileSync(path.join(dir, `${u.id}.pass`), `PASS ${u.id} ${u.pass} commit: none criteria: fixture\n`);
+    if (u.fails.length) {
+      fs.writeFileSync(path.join(dir, `${u.id}.fail`), u.fails.map(([ts, t]) => `FAIL ${u.id} ${ts}\n${t}\n`).join('\n'));
+    }
+    if (u.issue) stub[u.id] = { createdAt: u.issue[0], body: `## Dispatch contract\n\n~~~markdown\n${u.issue[1]}\n~~~\n` };
+  });
+  const stubFile = path.join(dir, 'stub.json');
+  fs.writeFileSync(stubFile, JSON.stringify(stub));
+  const out = runWith(dir, dir, ['--until=2026-09-15T00:00:00Z', '--gate=G3'], { UO_GH_STUB: stubFile });
+  fs.rmSync(dir, { recursive: true, force: true });
+  return out;
+}
+function boundary(total, sevens) {
+  const units = [];
+  for (let i = 0; i < total; i++) {
+    units.push({ id: `g3-${i}`, pass: '2026-09-05T10:00:00Z', fails: [], issue: ['2026-09-02T09:00:00Z', i < sevens ? ALL_PASS : MINUS_R1] });
+  }
+  return g3Set(units);
+}
+check('g3 open at 60/20', () => { assert.ok(/^G3 open\n/.test(boundary(60, 20))); });
+check('g3 closed at 59/20', () => { assert.ok(/^G3 closed: /.test(boundary(59, 20))); });
+check('g3 closed at 60/19', () => { assert.ok(/^G3 closed: /.test(boundary(60, 19))); });
+const MIX = g3Set([
+  { id: 'g3-rub', pass: '2026-09-04T10:00:00Z', fails: [['2026-09-03T10:00:00Z', 'The assertion was vacuous.']], issue: ['2026-09-02T09:00:00Z', ALL_PASS] },
+  { id: 'g3-ver', pass: '2026-09-04T10:00:00Z', fails: [['2026-09-03T10:00:00Z', 'The changelog entry is missing.']], issue: null },
+  { id: 'g3-scp', pass: '2026-09-04T10:00:00Z', fails: [['2026-09-03T10:00:00Z', 'The edit was out of scope.']], issue: ['2026-08-30T09:00:00Z', ALL_PASS] },
+  { id: 'g3-host', pass: '2026-08-10T10:00:00Z', fails: [['2026-08-09T10:00:00Z', 'A precondition was not met.']], issue: null },
+]);
+check('g3 rubric classes only vacuous', () => {
+  assert.ok(MIX.split('\n').includes('rubric_classes=vacuous=1'), MIX);
+});
+check('g3 pre-rubric classes version+scope', () => {
+  assert.ok(MIX.split('\n').includes('pre_rubric_classes=version=1,scope=1'), MIX);
+});
+check('g3 cutoffs unmeasured', () => {
+  assert.ok(MIX.includes('task_master_cutoffs=unmeasured'), MIX);
+});
+check('era before 08-02 sonnet', () => {
+  assert.deepStrictEqual(R['fx-era-1'].implementer_tiers, [{ tier: 'sonnet', source: 'era-inferred' }]);
+});
+check('era 08-02 to 08-25 haiku', () => {
+  assert.deepStrictEqual(R['fx-era-2'].implementer_tiers, [{ tier: 'haiku', source: 'era-inferred' }]);
+});
+check('era from 08-25 sonnet', () => {
+  assert.deepStrictEqual(R['fx-era-3'].implementer_tiers, [{ tier: 'sonnet', source: 'era-inferred' }]);
+});
+check('era reviewer empty', () => {
+  assert.deepStrictEqual(R['fx-era-1'].reviewer_tiers, []);
+});
+
 fs.utimesSync(mtimeFile, mtimeOrig, mtimeOrig);
 fs.rmSync(scratch.dir, { recursive: true, force: true });
 

@@ -1,1 +1,1 @@
-{"timestamp":"2026-08-31T09:00:00Z","type":"user","message":{"role":"user","content":"Unit: fx-1\n\n## Objective\nImplement the frobnicator so that it reverses every incoming widget before the second pass begins."}}
+{"timestamp":"2026-08-31T09:00:00Z","type":"user","message":{"role":"user","content":"Unit: fx-1\n\n## Objective\nImplement the frobnicator so that it reverses every incoming widget before the second pass begins.\n\n## Ordered edits\n1. file: `x`"}}

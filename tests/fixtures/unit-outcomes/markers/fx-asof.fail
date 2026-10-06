@@ -1,0 +1,5 @@
+FAIL fx-asof 2026-09-02T10:00:00Z
+The first attempt returned the items in reverse order for every even-sized input collection.
+
+FAIL fx-asof 2026-09-03T10:00:00Z
+The second attempt fixed the order but still skipped the last element whenever the list was empty.

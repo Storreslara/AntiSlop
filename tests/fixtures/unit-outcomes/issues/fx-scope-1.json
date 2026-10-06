@@ -1,3 +1,8 @@
 [
- {"number": 12, "title": "fx-scope-1 (Step S): titled unit", "body": "no contract here\n", "labels": []}
+ {
+  "number": 12,
+  "title": "fx-scope-1 (Step S): titled unit",
+  "labels": [],
+  "body": "no contract here\n\n## Dispatch contract\n\n~~~markdown\nUnit: fx-scope-1\n\n## Ordered edits\n1. file: `x`\n~~~\n"
+ }
 ]
