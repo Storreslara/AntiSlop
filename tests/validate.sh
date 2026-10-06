@@ -1222,6 +1222,15 @@ else
 fi
 
 echo
+echo "== scripts/unit-outcomes.js: read-only unit-outcome export (Node, rgh-u0-2) =="
+if node tests/unit-outcomes.test.js; then
+  echo "OK   tests/unit-outcomes.test.js"
+else
+  echo "FAIL tests/unit-outcomes.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
