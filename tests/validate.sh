@@ -1213,6 +1213,15 @@ echo "== scripts/probe-hook-identity.sh: offline classify/outcome tests (Bash, e
 if bash tests/probe-hook-identity.test.sh; then echo "OK   tests/probe-hook-identity.test.sh"; else echo "FAIL tests/probe-hook-identity.test.sh"; fail=1; fi
 
 echo
+echo "== bin/contract-score.js: dispatch contract rubric R1-R7 + scribe shape (Node, rgh-u0-1) =="
+if node tests/contract-score.test.js; then
+  echo "OK   tests/contract-score.test.js"
+else
+  echo "FAIL tests/contract-score.test.js"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
