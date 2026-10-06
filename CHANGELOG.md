@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Debug specs and convergence follow-ups keep the incumbent criterion as a baseline (rgh-u2-2, 0.31.125).** `agents/spec-master.md`'s debug-spec "Revised spec step(s)" item gains an **Incumbent baseline** rule: the revised step carries one table row per defect block in the escalated unit's FAIL record (block timestamp, defect, the revised criterion that detects it, the original criterion kept as a baseline). A row with no detecting criterion is a Self-check FAIL, and convergence follow-ups carry the same table for each named finding. No hook or gate changes.
+
 **spec-master Self-check replays recorded FAIL classes (rgh-u2-1, 0.31.124).** `agents/spec-master.md`'s Self-check bullet gains a **Replay source** rule: when `docs/audits/unit-outcomes/` exists, spec-master adds one CHK item per step whose affected files appear in a recorded unit with FAIL class `vacuous` or `host`, asking whether the step's criterion still fails under the mutation recorded for that unit, and citing the unit id. An absent or empty export adds no item. No hook or gate changes.
 
 **Planning personas get maxTurns 120 and write-early guidance (rgh-u0-4, 0.31.123).** `agents/spec-master.md` and `agents/task-master.md` raise `maxTurns` from 40 to 120; every other persona keeps its cap. Each gains a **Write early, in few large writes** bullet: spec-master writes the plan skeleton to `docs/plans/` early and fills it in a few large writes, task-master does the same for dispatch contracts, so a turn cutoff still leaves a usable artifact. No hook or gate changes.

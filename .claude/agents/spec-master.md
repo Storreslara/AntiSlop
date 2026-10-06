@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 120
 ---
-<!-- antislop v0.31.124 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.125 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -268,6 +268,12 @@ clarify intent is fine.
      goes to `task-master`, which re-dispatches the corrected spec to
      `lead-programmer`. Never rewrite steps beyond the escalated unit in
      this pass.
+     **Incumbent baseline.** The revised step carries a table with one row
+     per defect block in `.claude/reviewed/<task-id>.fail` (columns: block
+     timestamp, defect, revised criterion that detects it, original
+     criterion kept as baseline). A row with no detecting criterion is a
+     Self-check FAIL. Convergence follow-ups carry the same table for each
+     named finding.
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.
 - **Write early, in few large writes.** Write the plan skeleton to `docs/plans/` early in the session, then fill it in a few large writes rather than many small edits, so a turn cutoff still leaves a usable plan.
 - **Keep memory bounded**: like `lead-programmer`, per-unit completion
