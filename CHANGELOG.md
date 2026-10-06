@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**task-master dispatch contracts are content-typed and self-checked (rgh-u3-1, 0.31.126).** `agents/task-master.md`'s dispatch-prompts bullet now types each element (R1 edit items `file:`/`anchor:`/`before:`/`after:` and command items `command:`/`expect:`; R2 version, CHANGELOG and `node bin/cli.js --update` obligations; R3 `run:`/`exit:`/`stdout:`/`mutation:`; R5 `tdd:`/`blast-radius:`/`commit-message:`; R6 path bullets; R7 `diagnosis: none`), adds a pre-dispatch self-check with `node bin/contract-score.js`, replaces the ban on pasting with "literal edit payloads required, artifact bodies banned", and carries a 7/7 worked example. Tier-neutral; no tag vocabulary change.
+
 **Debug specs and convergence follow-ups keep the incumbent criterion as a baseline (rgh-u2-2, 0.31.125).** `agents/spec-master.md`'s debug-spec "Revised spec step(s)" item gains an **Incumbent baseline** rule: the revised step carries one table row per defect block in the escalated unit's FAIL record (block timestamp, defect, the revised criterion that detects it, the original criterion kept as a baseline). A row with no detecting criterion is a Self-check FAIL, and convergence follow-ups carry the same table for each named finding. No hook or gate changes.
 
 **spec-master Self-check replays recorded FAIL classes (rgh-u2-1, 0.31.124).** `agents/spec-master.md`'s Self-check bullet gains a **Replay source** rule: when `docs/audits/unit-outcomes/` exists, spec-master adds one CHK item per step whose affected files appear in a recorded unit with FAIL class `vacuous` or `host`, asking whether the step's criterion still fails under the mutation recorded for that unit, and citing the unit id. An absent or empty export adds no item. No hook or gate changes.
