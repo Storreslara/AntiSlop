@@ -91,10 +91,18 @@ function frontmatterModel(repo, agent) {
   } catch (e) { return 'unknown'; }
 }
 
-function tiers(recs, agent, opt) {
+// Implementer tier by era when no transcript meta exists (ADR-0010, ADR-0026).
+function eraTier(ts) {
+  const t = Date.parse(ts);
+  return t >= Date.parse('2026-08-02') && t < Date.parse('2026-08-25') ? 'haiku' : 'sonnet';
+}
+
+function tiers(recs, agent, opt, eraTs) {
   const seen = new Set();
   const out = [];
-  recs.filter((r) => r.agent === agent).forEach((r) => {
+  const mine = recs.filter((r) => r.agent === agent);
+  if (!mine.length && agent === 'lead-programmer' && eraTs) return [{ tier: eraTier(eraTs), source: 'era-inferred' }];
+  mine.forEach((r) => {
     const t = r.model
       ? { tier: r.model, source: 'observed' }
       : { tier: frontmatterModel(opt.repo, agent), source: 'frontmatter-inferred' };
@@ -147,7 +155,7 @@ function issueIsUnit(issue, id) {
 function ghIssue(id, opt) {
   try {
     const out = cp.execFileSync(process.env.GH_BIN || 'gh', ['issue', 'list', '--search', `${id} in:title`,
-      '--state', 'all', '--json', 'number,title,body,labels', '--limit', '20'],
+      '--state', 'all', '--json', 'number,title,body,labels,createdAt', '--limit', '20'],
     { cwd: opt.repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     return JSON.parse(out).find((i) => issueIsUnit(i, id)) || null;
   } catch (e) { return null; }
@@ -167,19 +175,29 @@ function planBlock(id, opt) {
   return null;
 }
 
+// Committer date of the oldest commit that introduced the unit's plan block; null when unknown.
+function planTs(id, p, opt) {
+  try {
+    const out = cp.execFileSync('git', ['log', '-S', `### Unit: ${id}`, '--format=%cI', '--', p.path],
+      { cwd: opt.repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return out.split('\n').filter(Boolean).pop() || null;
+  } catch (e) { return null; }
+}
+
+// Source order: issue Dispatch-contract block, plan block, transcript with `## Ordered edits`, none.
 function contractFor(id, recs, opt) {
-  const t = recs.find((r) => r.unit === id && r.agent === 'lead-programmer');
-  if (t) return { source: 'transcript', author: 'unknown', plan: null, text: t.text };
   const issue = ghIssue(id, opt);
-  if (issue) {
+  const block = issue && contractBlock(issue.body || '');
+  if (block !== null) {
     const label = (issue.labels || []).map((l) => l.name).find((n) => n.startsWith('plan/'));
-    const author = issue.body.includes('## Dispatch contract') ? 'task-master' : 'unknown';
-    return { source: `issue#${issue.number}`, author, plan: label ? label.slice(5) : null,
-      text: contractBlock(issue.body) ?? issue.body };
+    return { source: `issue#${issue.number}`, author: 'task-master', plan: label ? label.slice(5) : null,
+      text: block, ts: issue.createdAt || null };
   }
   const p = planBlock(id, opt);
-  if (p) return { source: `plan:${p.path}`, author: 'spec-master', plan: p.plan, text: p.text };
-  return { source: 'none', author: 'unknown', plan: null, text: null };
+  if (p) return { source: `plan:${p.path}`, author: 'spec-master', plan: p.plan, text: p.text, ts: planTs(id, p, opt) };
+  const t = recs.find((r) => r.unit === id && r.agent === 'lead-programmer' && /^## Ordered edits\s*$/m.test(r.text));
+  if (t) return { source: 'transcript', author: 'unknown', plan: null, text: t.text, ts: null };
+  return { source: 'none', author: 'unknown', plan: null, text: null, ts: null };
 }
 
 function scoreOf(text) {
@@ -188,11 +206,15 @@ function scoreOf(text) {
   try { return JSON.parse(r.stdout).score; } catch (e) { return null; }
 }
 
-// Terminal event per the --until rule; null when the unit is excluded.
+// As-of-cutoff: events after the cutoff are dropped before anything is derived; null when no terminal event.
 function terminalOf(u, cutoff) {
   const fails = u.blocks.filter((b) => Date.parse(b.ts) <= cutoff);
-  if (u.passTs) return Date.parse(u.passTs) <= cutoff ? { ts: u.passTs, fails, pass: true } : null;
-  return fails.length >= 2 ? { ts: fails[1].ts, fails, pass: false } : null;
+  const passTs = u.passTs && Date.parse(u.passTs) <= cutoff ? u.passTs : null;
+  const cands = [passTs, fails.length >= 2 ? fails[1].ts : null].filter(Boolean);
+  if (!cands.length) return null;
+  const ts = cands.reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b));
+  const first = [passTs, ...fails.map((f) => f.ts)].filter(Boolean).reduce((a, b) => (Date.parse(a) <= Date.parse(b) ? a : b));
+  return { ts, fails, passTs, first };
 }
 
 function buildRow(id, u, term, ctx) {
@@ -205,16 +227,17 @@ function buildRow(id, u, term, ctx) {
     contract_author: c.author,
     contract_source: c.source,
     contract_score: scoreOf(c.text),
+    contract_ts: c.ts,
     baseline: base,
-    final_commit: term.pass && u.commit !== 'none' ? u.commit : null,
+    final_commit: term.passTs && u.commit !== 'none' ? u.commit : null,
     range_source: base ? 'commit-scope' : 'none',
-    implementer_tiers: tiers(recs, 'lead-programmer', ctx.opt),
-    attempts: term.fails.length + (term.pass ? 1 : 0),
+    implementer_tiers: tiers(recs, 'lead-programmer', ctx.opt, term.first),
+    attempts: term.fails.length + (term.passTs ? 1 : 0),
     reviewer_tiers: tiers(recs, 'reviewer', ctx.opt),
     fail_classes: failClasses(term.fails),
     cap_hit: term.fails.length >= 2,
     task_master_cutoff: null,
-    pass_ts: term.pass ? u.passTs : null,
+    pass_ts: term.passTs,
     terminal_ts: term.ts,
     fail_blocks: term.fails.length,
   };
@@ -229,14 +252,24 @@ function exportRows(opt) {
   });
 }
 
+function classMix(rows) {
+  return CLASSES.map(([c]) => [c, rows.filter((r) => r.fail_classes.includes(c)).length])
+    .filter(([, n]) => n > 0).map(([c, n]) => `${c}=${n}`).join(',');
+}
+
 function gateG3(rows) {
   const u34 = rows.find((r) => r.id === 'rgh-u3-4');
   if (!u34 || !u34.pass_ts) return 'G3 closed: rgh-u3-4 has no PASS yet (rubric era not started)';
-  const era = rows.filter((r) => r.contract_author === 'task-master' && Date.parse(r.terminal_ts) > Date.parse(u34.pass_ts));
+  const inEra = (r) => r.contract_author === 'task-master' && r.contract_ts !== null
+    && Date.parse(r.contract_ts) > Date.parse(u34.pass_ts);
+  const era = rows.filter(inEra);
+  const pre = rows.filter((r) => Date.parse(r.terminal_ts) >= Date.parse('2026-08-25T00:00:00Z') && !inEra(r));
   const seven = era.filter((r) => r.contract_score === 7).length;
-  const cutoffs = era.filter((r) => r.task_master_cutoff === true).length;
+  const flagged = era.filter((r) => r.task_master_cutoff !== null);
+  const cutoffs = flagged.length ? flagged.filter((r) => r.task_master_cutoff === true).length : 'unmeasured';
   const counts = `rubric_era=${era.length} scored7=${seven} task_master_cutoffs=${cutoffs}`;
-  return era.length >= 60 && seven >= 20 ? `G3 open\n${counts}` : `G3 closed: ${counts}`;
+  const head = era.length >= 60 && seven >= 20 ? `G3 open\n${counts}` : `G3 closed: ${counts}`;
+  return `${head}\nrubric_classes=${classMix(era)}\npre_rubric_classes=${classMix(pre)}`;
 }
 
 function main() {
