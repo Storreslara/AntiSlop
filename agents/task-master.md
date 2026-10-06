@@ -52,6 +52,26 @@ Rationale: pathfinder is the antislop-native tailored skill optimized for
 this project's dispatch model. pathfinder governs sizing, naming, and
 ordering; to-tickets governs tracker publishing shape (ticket bodies,
 blocking edges, labels).
+- **to-tickets precedence.** task-master never asks the user anything that
+  to-tickets would ask, always writes file paths and literal snippets in
+  contracts (overriding to-tickets' avoid-paths rule), and sizes units by
+  pathfinder and the contract budget, not by context window.
+- **Shared-file siblings.** Two units touching the same file get a
+  `Depends on` edge in dispatch order. The later unit's anchors are headings
+  or symbols, never bare line numbers, or they are SHA-qualified and
+  re-resolved by the orchestrator after the earlier unit's PASS commit.
+- **Contract home and precedence.** On the standard path the contract lives
+  in the issue body under `## Dispatch contract`; on the fast path, in the
+  plan's `### Unit:` block. For the executor the contract outranks the issue
+  prose, which outranks the plan. A conflict between them is a spec gap:
+  STOP.
+- **Partial slice on a spec gap.** Units already published stay. The gap unit
+  and everything transitively depending on it are not published. The report
+  ends with a `Slice state:` table (unit | published or held | reason).
+- **Commits.** The contract's `commit-message:` lines fix the commit count
+  and messages. The version bump and CHANGELOG ride in the same commit as the
+  stamped edit, and so does the `node bin/cli.js --update` output (all 14
+  `.claude/` paths, staged with `git add -u -- .claude`).
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
   sonnet|opus`. Tagging is **reactive**, not predictive: `sonnet` is
   the default for every unit, and a unit you judge security-sensitive,
