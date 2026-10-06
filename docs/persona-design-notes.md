@@ -31,7 +31,7 @@ namespaced names from the mattpocock/skills plugin, resolved and
 substituted by ADAPT (which copies a corrected copy of this file into the
 project's .claude/agents/, since project agents override plugin agents).
 `Skill` is in tools; however, when a skill carries `disable-model-invocation:
-true`, it is removed from context entirely and cannot be invoked. `maxTurns: 40` —
+true`, it is removed from context entirely and cannot be invoked. `maxTurns: 120` —
 raised from 30 after a live cutoff was observed in this persona on
 2026-07-28 (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`); not
 re-measured, see `docs/self-improvement-loops.md`'s E6 note. `model: opus`
@@ -60,7 +60,7 @@ task-master's dispatch prompts and sliced-issue bodies are its TEXT OUTPUT
 through `gh` via Bash) — the same "produce the text, the
 tracker/orchestrator persists it" shape `spec-master` uses for the plan doc
 itself. `Skill` is in tools; however, when a skill carries `disable-model-invocation:
-true`, it is removed from context entirely and cannot be invoked. `maxTurns: 40` —
+true`, it is removed from context entirely and cannot be invoked. `maxTurns: 120` —
 raised from 30 alongside `spec-master`'s, after the same 2026-07-28 cutoff
 observation (see `docs/plans/2026-07-28-maxturns-cutoff-handoff.md`); not
 re-measured, see `docs/self-improvement-loops.md`'s E6 note. `model:
