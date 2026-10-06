@@ -672,14 +672,14 @@ an append-only audit-log record class written to
 (unit rgh-u3-1, 2026-10-06) — the pre-dispatch verification task task-master runs
   via `node bin/contract-score.js <contract>` to confirm a dispatch contract reaches
   `"score":7` and `"sizeOver":false` before handing off to `lead-programmer`. Distinct
-  from [[spec-master]]'s Self-check step (which replays recorded FAIL classes); this
+  from spec-master's Self-check step (which replays recorded FAIL classes); this
   term refers specifically to task-master's mechanical validation of the nine-element
   dispatch contract's structure. Documented in `agents/task-master.md:127-132` ("`Pre-dispatch
   self-check.`" section). Run via CLI invocation requiring every `run:` criterion to
   pass at current HEAD or already pass-correctly at baseline, and every `anchor:` to
   be grep-verifiable.
 
-**edit item and command item**:
+**edit item / command item**:
 (unit rgh-u3-1, 2026-10-06) — the two types of numbered items under the
   `## Ordered edits` (R1) section of a [[content-typed contract]]. An **edit item**
   carries `file:` (a backticked path), `anchor:` (non-empty prose description of
@@ -713,7 +713,7 @@ an append-only audit-log record class written to
   agents CHANGELOG.md package.json .claude-plugin && git add -u -- .claude && git commit`.
   The acceptance-criteria set must include one run of `bash hooks/scripts/version-stamp-check.sh`
   verifying the range is `ok`. Defined in `agents/task-master.md:106-110`. See
-  [[content-typed contract]], [[edit item and command item]].
+  [[content-typed contract]], [[edit item / command item]].
 
 **marker-commit-check**:
 (unit #385, 2026-08-15) — the executable script at `hooks/scripts/marker-commit-check.sh`
