@@ -473,11 +473,18 @@ the U0-3 snapshot, with n, defined as follows (gap E, 2026-10-06):
   §8.1's 133/424 uses the same basis. The comparison is therefore like-for-like
   in definition. The audit notes it is not like-for-like in timestamp source:
   ADR-0026 used marker mtimes, this uses content timestamps.
-- The audit additionally reports the same rate from
-  `scripts/spend-accounting.sh --until=<cutoff>` `scripts/spend-accounting.sh --until=<cutoff>`
-by subtraction (research §8.1 item 4). A letter verdict (`met|not-met|
-insufficient (n<60)`). The spend half: `unverifiable`, with the pruning reason
-and the failing command. Then the line `spirit-ruling: PENDING-HUMAN`. The
+- For context only, the audit also reports `spend-accounting-rate:`, the
+  `from 2026-08-02` row of `bash scripts/spend-accounting.sh --until=<cutoff>`
+  (at `--until=2026-10-07T00:00:00Z`: 424 units, 133 FAIL, 31.4%). It is
+  labelled as a **2026-08-02 boundary**, not 08-25, because the script splits
+  only at 08-02. It is not compared against 32.5%. No subtraction is attempted
+  (gap F, 2026-10-06). The 08-25 snapshot the research note subtracted cannot be
+  regenerated: `--until=2026-08-25T00:00:00Z` returns
+  `{"error": "no usage records found in corpus ..."}` because transcripts are
+  pruned. The letter verdict uses only the exporter-based rate above.
+A letter verdict (`met|not-met|insufficient (n<60)`). The spend half:
+`spend-verdict: unverifiable`, with a `failing-command:` line giving the 08-25
+run verbatim and its error output. Then the line `spirit-ruling: PENDING-HUMAN`. The
 author records numbers only; the spirit ruling is the user's (OQ2).
 
 Acceptance criteria:
