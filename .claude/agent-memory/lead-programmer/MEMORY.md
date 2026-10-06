@@ -82,4 +82,5 @@
 - [validate.sh exceeds 600 s](technique_validate_exceeds_600s_poll_task_output.md) — 672 s at qp-1; now split: `timeout 580` part 1 + tail script kept inside `tests/` (cd dirname/..)
 - [Single-quoted ERE bracket escapes](technique_single_quoted_ere_bracket_escapes.md) — `[ \t]` in a '...' ERE is literal backslash+t; use [[:blank:]]; vary every char dimension in the row table (qp-1 FAIL)
 - [Sourcing state-access.sh sets -e](technique_sourcing_state_access_sets_e.md) — non-hook callers inherit set -euo pipefail; set dot first, then set +e (ocig-1)
+- [Decision-gate glob over-block](technique_decision_gate_glob_overblock.md) — `${2%% *}` in a Bash heredoc trips human-decision-gate's glob scan; author scripts with Write first (rgh-u0-2)
 - [pipefail + grep -q SIGPIPE](technique_pipefail_grep_q_sigpipe.md) — `producer | grep -q` under pipefail fails on a match (or masks a fail); capture to a var first (ocigf-1)
