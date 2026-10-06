@@ -1,0 +1,3 @@
+[
+ {"number": 426, "title": "CONTEXT.md: stale line (README.md:177 -> fx-class)", "body": "## Dispatch contract\n\n~~~markdown\nUnit: fx-other\n~~~\n", "labels": [{"name": "plan/fx-wrong"}]}
+]

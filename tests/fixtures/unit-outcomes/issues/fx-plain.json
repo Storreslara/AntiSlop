@@ -1,0 +1,3 @@
+[
+ {"number": 11, "title": "fx-plain (Step P): scored unit", "body": "## Acceptance criteria\n- prose criterion\n\n## Dispatch contract\n\n~~~markdown\nUnit: fx-plain\n\n## Acceptance criteria\n1. run: `true`\n   exit: 0\n   stdout: `ok`\n   mutation: make it false; exit 1.\n~~~\n", "labels": []}
+]

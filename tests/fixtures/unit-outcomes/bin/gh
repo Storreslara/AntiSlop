@@ -1,4 +1,8 @@
 #!/bin/sh
-cat <<'JSON'
-[{"number":7,"body":"## Dispatch contract\nfixture issue body","labels":[{"name":"plan/fx-plan"}]}]
-JSON
+# Stub: answers `gh issue list --search "<id> in:title"` from issues/<id>.json, else [].
+while [ $# -gt 0 ]; do
+  if [ "$1" = "--search" ]; then id=${2%% *}; fi
+  shift
+done
+f="$(dirname "$0")/../issues/$id.json"
+if [ -f "$f" ]; then cat "$f"; else echo '[]'; fi

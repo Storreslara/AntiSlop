@@ -1,0 +1,4 @@
+[
+ {"number": 9, "title": "Deferred from fx-cap review: tidy", "body": "## Dispatch contract\n\n~~~markdown\nUnit: fx-other\n~~~\n", "labels": []},
+ {"number": 7, "title": "fixture issue", "body": "## Dispatch contract\n\n~~~markdown\nUnit: fx-cap\n\nfixture issue body\n~~~\n", "labels": [{"name": "plan/fx-plan"}]}
+]

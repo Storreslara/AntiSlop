@@ -112,6 +112,27 @@ check('contract source gh stub', () => {
   assert.strictEqual(R['fx-cap'].plan, 'fx-plan');
   assert.strictEqual(R['fx-1'].contract_source, 'transcript');
 });
+function scoreText(text) {
+  const out = cp.execFileSync('node', [path.join(REPO_ROOT, 'bin', 'contract-score.js'), '-'], { input: text, encoding: 'utf8' });
+  return JSON.parse(out).score;
+}
+check('issue attribution rejects mention-only title', () => {
+  assert.strictEqual(R['fx-class'].contract_source, 'none');
+  assert.strictEqual(R['fx-class'].contract_author, 'unknown');
+  assert.strictEqual(R['fx-class'].plan, null);
+  assert.strictEqual(R['fx-class'].contract_score, null);
+});
+check('issue attribution accepts verified hit', () => {
+  assert.strictEqual(R['fx-cap'].contract_source, 'issue#7');
+  assert.strictEqual(R['fx-scope-1'].contract_source, 'issue#12');
+});
+check('issue score uses dispatch-contract block', () => {
+  const block = fs.readFileSync(path.join(FIX, 'issues', 'fx-plain.block.md'), 'utf8');
+  const body = JSON.parse(fs.readFileSync(path.join(FIX, 'issues', 'fx-plain.json'), 'utf8'))[0].body;
+  assert.ok(body.includes(block) && scoreText(body) !== scoreText(block), 'fixture must discriminate');
+  assert.strictEqual(R['fx-plain'].contract_source, 'issue#11');
+  assert.strictEqual(R['fx-plain'].contract_score, scoreText(block));
+});
 check('privacy 40-char', () => {
   const texts = walk(FIX).filter((f) => /\.(fail|jsonl)$/.test(f)).map((f) => fs.readFileSync(f, 'utf8'));
   const prose = texts.flatMap((t) => t.split('\n'));
