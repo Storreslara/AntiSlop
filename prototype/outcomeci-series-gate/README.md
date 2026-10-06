@@ -32,3 +32,8 @@ Before any live run, from the repo root: `bash prototype/outcomeci-series-gate/t
 8. Licensing (R4): OutcomeCI declares Apache-2.0 but ships no LICENSE file, and the connectors license is unconfirmed. Never copy OutcomeCI code into this MIT repo, `prototype/` included. A fork lives outside the repo; before redistributing one, add the Apache-2.0 text, keep any NOTICE, and mark modified files.
 
 If `oci validate` rejects the workflow schema, stop and report; that routes back to spec-master (D3).
+
+## Trial unit note
+
+Unit ocitrial-1 exists only to exercise the series gate's positive path.
+It carries no behavior.
