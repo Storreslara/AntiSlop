@@ -648,11 +648,72 @@ an append-only audit-log record class written to
   (e.g., `hooks/scripts/microworld-rerun.sh:10`) when a hook's header documents
   its output as a consumed interface, clarifying that the format is not arbitrary.
 
+**content-typed contract**:
+(unit rgh-u3-1, 2026-10-06) — a dispatch contract whose elements carry literal
+  content rather than pointers: [[edit item]]s supply inline `before:`/`after:` or
+  `insert-after:` payloads, [[command item]]s supply expected `exit:` and optional
+  `stdout:`, and **Acceptance criteria** items name explicit [[mutation proof]]s
+  (e.g., "skip edit 3"; the edit that makes the check fail). Contrasted with a
+  pointer dispatch, which references steps or sections without reproducing their
+  content (e.g., "as specified in the plan", now banned). The term originates in
+  `agents/task-master.md` line 87: "Each element is content-typed, and
+  `node bin/contract-score.js` scores a contract against rows R1-R7." See
+  [[edit payload / artifact body]] for the payload vs. body distinction, [[contract
+  score]], and [[mechanical obligations (R2)]].
+
 **contract score**:
 (unit rgh-u0-2b, 2026-10-06) — the R1-R7 lead / S1-S5 scribe rubric score
   computed by `bin/contract-score.js` for a dispatch contract. The scorer is
   read-only; it is not the responsibility of `scripts/unit-outcomes.js` to verify
-  or adjust scores, only to record them. See [[unit-outcome export]].
+  or adjust scores, only to record them. See [[unit-outcome export]], [[content-typed
+  contract]].
+
+**contract self-check**:
+(unit rgh-u3-1, 2026-10-06) — the pre-dispatch verification task task-master runs
+  via `node bin/contract-score.js <contract>` to confirm a dispatch contract reaches
+  `"score":7` and `"sizeOver":false` before handing off to `lead-programmer`. Distinct
+  from [[spec-master]]'s Self-check step (which replays recorded FAIL classes); this
+  term refers specifically to task-master's mechanical validation of the nine-element
+  dispatch contract's structure. Documented in `agents/task-master.md:127-132` ("`Pre-dispatch
+  self-check.`" section). Run via CLI invocation requiring every `run:` criterion to
+  pass at current HEAD or already pass-correctly at baseline, and every `anchor:` to
+  be grep-verifiable.
+
+**edit item and command item**:
+(unit rgh-u3-1, 2026-10-06) — the two types of numbered items under the
+  `## Ordered edits` (R1) section of a [[content-typed contract]]. An **edit item**
+  carries `file:` (a backticked path), `anchor:` (non-empty prose description of
+  a heading, symbol name, or line range qualified by commit SHA), and one payload
+  form: `before:` + `after:`, `insert-after:`, or `delete:`, each holding the
+  literal text inline or in a fenced block (see [[edit payload / artifact body]]).
+  A **command item** carries `command:` (inline code) and `expect:` (exit code
+  integer, optionally `stdout:` fragment or `empty`), with no `file:`, `anchor:`,
+  or payload fields. Neither form allows pointer bodies such as "as specified".
+  Documented in `agents/task-master.md:99-104`.
+
+**edit payload / artifact body**:
+(unit rgh-u3-1, 2026-10-06) — a critical distinction in [[content-typed contract]]
+  authoring. An **edit payload** is the literal, required text of one [[edit item]],
+  either inline or in a fenced block (`before:`, `after:`, `insert-after:`, or
+  `delete:` field contents). An **artifact body** is a whole source file, log dump,
+  spec section, or similar large artifact pasted into the prompt — now banned from
+  dispatch contracts (reference by path instead). The payload must be inline-sized,
+  and any payload exceeding `maxInlineBlockLines` (default 80 interior lines) splits
+  into consecutive edit items. Documented in `agents/task-master.md:134-139` (`"Edit
+  payloads versus artifact bodies."` section).
+
+**mechanical obligations (R2)**:
+(unit rgh-u3-1, 2026-10-06) — the version-stamped-path sub-rules within R2 of a
+  [[content-typed contract]]'s `## Ordered edits` section. When an affected file is
+  `agents/*.md` or under `templates/`, R2 obligates the contract to include five
+  numbered items: (1) update `.claude-plugin/plugin.json`'s `version` field to the
+  exact new version; (2) update `package.json`'s `version` field to match; (3) add
+  a `CHANGELOG.md` entry under the `## [Unreleased]` heading; (4) run
+  `node bin/cli.js --update` as a [[command item]]; (5) stage and commit via `git add -A
+  agents CHANGELOG.md package.json .claude-plugin && git add -u -- .claude && git commit`.
+  The acceptance-criteria set must include one run of `bash hooks/scripts/version-stamp-check.sh`
+  verifying the range is `ok`. Defined in `agents/task-master.md:106-110`. See
+  [[content-typed contract]], [[edit item and command item]].
 
 **marker-commit-check**:
 (unit #385, 2026-08-15) — the executable script at `hooks/scripts/marker-commit-check.sh`
