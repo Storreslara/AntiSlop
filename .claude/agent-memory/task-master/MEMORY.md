@@ -13,4 +13,5 @@
 - [Amendment criterion spans two units](feedback_amendment_criterion_spans_two_units.md) — a new criterion asserting over a sibling unit's artifact: conditional hand-off on the verifier, stale sibling body flagged upward, never silently edited.
 - [Glossary unit separate when spans future steps](feedback_glossary_unit_separate_when_spans_future_steps.md) — file a cross-step glossary hint as its own 10th unit blocked on all contributing steps, not attached to one step in an earlier wave.
 - [GitHub native issue dependencies](reference_github_native_issue_dependencies.md) — real blocking edges are available here; `gh api -F issue_id=<database id>`, never `-f`, never the issue number.
+- [Set A name in Bash; --update porcelain](feedback_set_a_name_in_bash_and_update_porcelain.md) — config name in any Bash text is refused; --update after a bump touches 14 .claude paths.
 - [Model tag default now sonnet](project_model_tag_default_now_sonnet.md) — ADR-0010 reversed haiku->sonnet; don't copy an old ticket's `haiku` tag as if it were still the live default.
