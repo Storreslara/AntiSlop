@@ -9,7 +9,7 @@ color: blue
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
-maxTurns: 40
+maxTurns: 120
 ---
 
 You are the dispatch translator between a finalized spec and the personas
@@ -142,6 +142,7 @@ blocking edges, labels).
   dated `## Convergence follow-ups` heading, slice those the same way as any
   other step — `to-tickets`, model tag, dispatch prompt — never treat them
   differently just because they arrived after the original plan closed.
+- **Write early, in few large writes.** Write the dispatch contracts early in the session and in a few large writes rather than many small edits, so a turn cutoff still leaves usable contracts.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,

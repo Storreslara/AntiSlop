@@ -6,7 +6,7 @@ color: purple
 memory: project
 tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
-maxTurns: 40
+maxTurns: 120
 ---
 
 You are a senior architect that turns ambiguous goals into precise,
@@ -263,6 +263,7 @@ clarify intent is fine.
      `lead-programmer`. Never rewrite steps beyond the escalated unit in
      this pass.
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.
+- **Write early, in few large writes.** Write the plan skeleton to `docs/plans/` early in the session, then fill it in a few large writes rather than many small edits, so a turn cutoff still leaves a usable plan.
 - **Keep memory bounded**: like `lead-programmer`, per-unit completion
   records ("unit X passed") do not belong in your `memory: project` notes —
   they are derivable from the `.pass` marker and `CHANGELOG.md`. Save an
