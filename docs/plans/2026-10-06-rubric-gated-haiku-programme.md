@@ -1,6 +1,6 @@
 # Rubric-gated haiku programme: outcome export, contract rubric, replay gate (2026-10-06)
 
-Status: FINAL (standard path, 17 units in 6 stages; Stage 5 is gated and must
+Status: FINAL (standard path, 18 units in 6 stages, including addendum unit U0-4; Stage 5 is gated and must
 not be sliced until gate G4 opens). Input artifact:
 `docs/research/dream-irs-taskmaster-specmaster.md` (cited by section, not
 repeated; §8.2 census, §8.3 rubric R1-R7 and policies pi-0/pi-1/pi-2, §8.4
@@ -22,6 +22,7 @@ score favours pi-2 over the incumbent.
 | Goal clause | Unit(s) | Criterion |
 |---|---|---|
 | Unit outcomes are replayable (range, tiers, attempts, reviewer tier, FAIL classes, contract score) | U0-1, U0-2, U0-3 | AC0-1.*, AC0-2.*, AC0-3.* |
+| (addendum 2026-10-06) spec-master and task-master run with `maxTurns: 120` and are told to write early, in few large writes | U0-4 | AC0-4.* |
 | ADR-0026 forward rule is closed as an audit record | U1-1 | AC1-1.* |
 | spec-master's criteria are replayed against recorded FAIL classes (S1) | U2-1 | AC2-1.* |
 | Debug specs / convergence follow-ups keep the incumbent criterion as a non-regression baseline (S2) | U2-2 | AC2-2.* |
@@ -153,7 +154,8 @@ Reviewer-tier gate (ADR-0009) and the reviewer-gate ratchet are unchanged.
 - 2026-10-06 Domain entities / data model: Q are outcome exports tracked or per-clone? → A (self-resolved default, confirm via Open Question 1): tracked, derived-only snapshot under `docs/audits/unit-outcomes/`, carrying class labels and ids and no prompt or defect prose. Transcripts prune at ~30 days, so a per-clone export loses the replay pool for good
 - 2026-10-06 Domain entities / data model: Q what is the unit's commit range when no packet recorded it? → A (self-resolved): baseline = parent of the oldest commit whose subject scope is `(<task-id>)`; `range_source` records `commit-scope|none`
 - 2026-10-06 Non-functional attributes: Q do literal before/after payloads break H1/H2 budgets (critic 14)? → A (self-resolved): H2 is per fenced block, so an edit over 80 lines is split into several edits; H1 (30000 bytes) is the binding limit. A contract that cannot fit is a split signal (pathfinder), and the scorer reports bytes and the largest block
-- 2026-10-06 Non-functional attributes: Q is task-master's 40 turns / effort medium enough for literal contracts at ≥6 units (critic 13)? → A (self-resolved): measure, don't guess. U0-2 exports task-master cutoffs (missing STATUS line); gate G3 reports them; if any rubric-era slice was cut off, a Convergence follow-up raises the budget. The frontmatter is not changed on inference
+- 2026-10-06 Non-functional attributes: Q is task-master's 40 turns / effort medium enough for literal contracts at ≥6 units (critic 13)? → A (self-resolved, SUPERSEDED same day): measure at G3 and raise only after a cutoff
+- 2026-10-06 Non-functional attributes: Q what is the turn cap for the planning personas? → A: raise to 120 unconditionally, per user (addendum). Scope default: BOTH spec-master and task-master, and no other persona (the user named no persona; one-line confirmation point, Open Question 5). `effort` is unchanged. G3 still reports task-master cutoffs, as information only
 - 2026-10-06 External dependencies & integrations: Q may the vendored `to-tickets` skill be edited (critic 5)? → A (self-resolved): no (vendored verbatim). task-master.md states its precedence over to-tickets' user interaction, its no-paths rule and its context-window sizing
 - 2026-10-06 Edge cases / failure handling: Q what state does a spec gap leave a partial slice in (critic 10)? → A (self-resolved): published issues stay; the gap unit and every unit transitively depending on it are not published; task-master's report ends with a `Slice state:` table (unit, published|held, reason). Re-invocation resumes from that table
 - 2026-10-06 Edge cases / failure handling: Q who closes the ADR-0026 forward check, and is ≈30% vs 32.5% "fallen below" in spirit? → A (default, Open Question 2): U1-1 records the measured numbers and the letter result; the line `spirit-ruling: PENDING-HUMAN` stays until the user rules. Stage 5 cannot open while it reads PENDING-HUMAN
@@ -200,7 +202,7 @@ Reviewer-tier gate (ADR-0009) and the reviewer-gate ratchet are unchanged.
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied. Every measurement criterion re-derives its numbers from a committed command, and the replay stage includes a real re-execution arm.
 - P2 "Prefer deterministic scripts": satisfied. Mirrors and `fileHashes` change only via `node bin/cli.js --update`, the Set A config is never hand-edited, and scoring and export are scripts, not LLM re-derivation.
-- P3 "Version-stamp discipline": satisfied. Every unit touching `agents/*.md` (U2-1, U2-2, U3-1..U3-4, U5-2, U5-3) bumps plugin.json and package.json and adds a CHANGELOG entry in the same commit, checked by `version-stamp-check.sh <baseline>..HEAD` = `ok`.
+- P3 "Version-stamp discipline": satisfied. Every unit touching `agents/*.md` (U0-4, U2-1, U2-2, U3-1..U3-4, U5-2, U5-3) bumps plugin.json and package.json and adds a CHANGELOG entry in the same commit, checked by `version-stamp-check.sh <baseline>..HEAD` = `ok`.
 - P4 "Optional personas degrade gracefully" (SHOULD): satisfied. New prose naming task-master, scribe or reviewer in shipped persona files is conditionally phrased ("if present"); AC3-3.5 and AC3-4.4 check it.
 - P5 "tests/validate.sh is the merge gate": satisfied. Every code or persona unit's criteria include `bash tests/validate.sh` exit 0, and new tests are registered there.
 
@@ -208,18 +210,18 @@ Reviewer-tier gate (ADR-0009) and the reviewer-gate ratchet are unchanged.
 
 | Stage | Units | Gate to leave the stage |
 |---|---|---|
-| 0 Outcome export | U0-1, U0-2, U0-3 | G0: all three PASS; snapshot committed (or per-clone, per OQ1) |
+| 0 Outcome export (+ addendum) | U0-1, U0-2, U0-3, U0-4 | G0: all four PASS; snapshot committed (or per-clone, per OQ1). U0-4 has no dependency on the exporter or on any gate |
 | 1 Forward-rule audit | U1-1 | G1: audit committed. Does not block Stages 2-4; blocks Stage 5 while `spirit-ruling: PENDING-HUMAN` |
 | 2 spec-master S1+S2 | U2-1, U2-2 | G2: both PASS (prerequisite for R3 criteria quality) |
 | 3 Tier-neutral contract rubric | U3-1..U3-4 | G3: `node scripts/unit-outcomes.js --gate=G3` prints `G3 open` (≥60 rubric-era task-master-authored units at PASS or cap, ≥20 of them scoring 7/7, task-master cutoffs reported) |
 | 4 pi-2 replay | U4-1, U4-2, U4-3 | G4: `docs/audits/<date>-pi2-replay.md` line `verdict: favourable` AND G1 ruling is not PENDING-HUMAN |
 | 5 (GATED) Tier change | U5-1, U5-2, U5-3 | none: programme end |
 
-Dispatch order: U0-1 -> U0-2 -> U0-3 -> {U1-1, U2-1 -> U2-2} -> U3-1 -> U3-2 ->
+Dispatch order: U0-4 (independent; dispatch first or whenever, as an addendum slice) ; U0-1 -> U0-2 -> U0-3 -> {U1-1, U2-1 -> U2-2} -> U3-1 -> U3-2 ->
 U3-3 -> U3-4 -> [wait G3] -> U4-1 -> U4-2 -> U4-3 -> [wait G4] -> U5-1 -> U5-2 ->
 U5-3. task-master slices Stages 0-3 now; it is re-invoked for Stage 4 at G3
 and for Stage 5 at G4. Same-file units are serialized by `Depends on` edges
-(U2-1/U2-2 on spec-master.md; U3-1/U3-2/U3-3 on task-master.md; U5-2/U5-3 on
+(U0-4 before U2-1 on spec-master.md and before U3-1 on task-master.md, since all touch the same files; U2-1/U2-2 on spec-master.md; U3-1/U3-2/U3-3 on task-master.md; U5-2/U5-3 on
 orchestrator.md).
 
 Every criterion below runs from the repo root. `<B>` is the unit's baseline SHA
@@ -313,6 +315,51 @@ Acceptance criteria:
 - AC0-3.2 Reproducibility: the README states the exact command and the `--until` cutoff. Re-running it with that cutoff gives a byte-identical file (`cmp` exit 0) for every unit whose PASS predates the cutoff.
 - AC0-3.3 Each count in the README coverage table (units total; with contract text; with observed tier; with a range) equals `jq` over the committed JSONL, and the README lists those jq commands verbatim.
 - AC0-3.4 `git diff --name-only <B>..HEAD` lists only `docs/audits/unit-outcomes/` paths.
+
+## Step U0-4 (addendum 2026-10-06): turn caps to 120 and write-early guidance
+
+Tier-neutral, independent of G3/G4 and of the exporter. The unit id is U0-4 so
+the U0-1..U0-3 ids already being sliced do not change. Scope default (OQ5):
+spec-master AND task-master only. Other personas keep their caps
+(lead-programmer 50, reviewer 50, milestone-auditor 20, explorer 10,
+agent-auditor 10).
+
+Pinning survey (`git grep -n maxTurns`, 2026-10-06): the value 40 is pinned only
+by `agents/spec-master.md:9`, `agents/task-master.md:12` and their mirrors.
+`tests/cli-backfill.test.js:357-367` pins explorer's `maxTurns: 10` (a fixture
+assumption), which is not touched. No schema, README, CONTEXT.md, glossary or
+ADR cites 40 or the planning caps. `templates/persona-protocol.md:159` mentions
+turn caps generically, and it stays unchanged.
+
+Affected files: `agents/spec-master.md` (frontmatter `maxTurns:` line, plus one
+guidance bullet after "Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`"),
+`agents/task-master.md` (frontmatter `maxTurns:` line, plus one guidance bullet
+after the "Handoff on cutoff" bullet), `.claude-plugin/plugin.json` and
+`package.json` (same version bump), `CHANGELOG.md` (`[Unreleased]` entry), all in
+ONE commit. Then, in its own commit, `.claude/agents/spec-master.md`,
+`.claude/agents/task-master.md` and the config `fileHashes`, via
+`node bin/cli.js --update` (never hand-edited; Set A).
+Ordered edits (all mandatory, exact text; per the user's follow-up the
+spec-master line is a firm requirement):
+1. `agents/spec-master.md`, anchor: frontmatter line 9. before: `maxTurns: 40`, after: `maxTurns: 120`.
+2. `agents/spec-master.md`, insert-after the line
+   `` - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`. `` (line 265 at b2da3cc), as one line:
+   `` - **Write early, in few large writes.** Write the plan skeleton to `docs/plans/` early in the session, then fill it in a few large writes rather than many small edits, so a turn cutoff still leaves a usable plan. ``
+3. `agents/task-master.md`, anchor: frontmatter line 12. before: `maxTurns: 40`, after: `maxTurns: 120`.
+4. `agents/task-master.md`, insert-before the line starting `- **Handoff on cutoff**:` (line 145 at b2da3cc), as one line:
+   `` - **Write early, in few large writes.** Write the dispatch contracts early in the session and in a few large writes rather than many small edits, so a turn cutoff still leaves usable contracts. ``
+Do NOT touch: any other persona's `maxTurns`, `effort:` lines, `model:` lines,
+the AC-D5 literal in task-master.md, `tests/cli-backfill.test.js`.
+
+Acceptance criteria:
+- AC0-4.1 `grep -c '^maxTurns: 120$' agents/spec-master.md agents/task-master.md .claude/agents/spec-master.md .claude/agents/task-master.md` prints `:1` for all four files. At `<B>` each prints `:0`.
+- AC0-4.2 `grep -c '^maxTurns: 40$'` over the same four files prints `:0` for each.
+- AC0-4.3 Other caps unchanged: `git diff <B>..HEAD -- agents .claude/agents | grep -cE '^[-+]maxTurns'` = 8, and `git diff --name-only <B>..HEAD -- agents .claude/agents` lists exactly the four spec-master/task-master files.
+- AC0-4.4 spec-master sentence (mandatory): `grep -cF 'Write the plan skeleton to `docs/plans/` early in the session, then fill it in a few large writes' agents/spec-master.md .claude/agents/spec-master.md` prints `:1` for both (`:0` at `<B>`). The line sits directly after the anchor: `grep -A1 -F 'Suggest saving plans to' agents/spec-master.md | grep -c 'Write early, in few large writes'` = 1.
+- AC0-4.4b task-master sentence: `grep -cF 'Write the dispatch contracts early in the session and in a few large writes' agents/task-master.md .claude/agents/task-master.md` prints `:1` for both.
+- AC0-4.5 `bash hooks/scripts/version-stamp-check.sh <B>..HEAD` prints a line starting `version-stamp-check: ok`. plugin.json and package.json carry the same new version (`bash tests/validate.sh` asserts equality).
+- AC0-4.6 `node tests/writer-tier-consistency.test.js` exit 0, `node tests/cli-backfill.test.js` exit 0, `bash tests/validate.sh` exit 0.
+- AC0-4.7 `grep -c 'maxTurns' CHANGELOG.md` is higher than at `<B>` (an entry names the change).
 
 ## Step U1-1: ADR-0026 forward-rule audit (measurement unit)
 
@@ -493,9 +540,9 @@ Acceptance criteria:
 units whose contract_author is task-master and whose contract was written after
 U3-4's PASS commit, ≥60 reached PASS or cap, and ≥20 of those scored 7/7.
 The output also lists the rubric-era FAIL-class mix next to the pre-rubric
-sonnet era (the contract effect) and the task-master cutoff count (critic 13).
-A cutoff count > 0 triggers a Convergence follow-up on task-master's
-maxTurns/effort before Stage 4.
+sonnet era (the contract effect) and the task-master cutoff count. That count is
+informational: the turn cap was already raised to 120 by U0-4, per the user. A
+cutoff count > 0 at G3 is reported to the user and changes nothing on its own.
 
 ## Step U4-1: shadow re-execution harness `scripts/shadow-replay.sh`
 
@@ -614,7 +661,7 @@ If the user answers OQ3 "block", this unit adds instead a `node bin/cli.js
 | 10 | partial slice on spec gap | U3-2 |
 | 11 | commit granularity | U0-1 R5 `commit-message:`, U3-2 |
 | 12 | scribe has no contract | U0-1 scribe shape, U3-3 |
-| 13 | task-master budget | measured at G3; Convergence follow-up only if cutoffs > 0 |
+| 13 | task-master budget | U0-4: `maxTurns: 120` for task-master (and spec-master), unconditional, per the user's addendum. Supersedes the earlier "raise only if G3 shows cutoffs". G3 still reports cutoffs, for information only |
 | 14 | maxInlineBlockLines vs literal payloads | U0-1 `sizeOver`, U3-1 (e) |
 | 15 | R2/R3/R6/R7 missing in task-master | U3-1 |
 
@@ -624,6 +671,7 @@ If the user answers OQ3 "block", this unit adds instead a `node bin/cli.js
 2. (blocks G4 only) Who rules on the ADR-0026 forward check's spirit, and does ≈30% vs 32.5% count as "fallen below"? Recommended default: **the user rules** after reading U1-1. Options: met / not-met. Until then `spirit-ruling: PENDING-HUMAN` holds Stage 5 closed. Origin: Clarifications cat. 6.
 3. (blocks U5-3 only) Should H4 move from warn to block before any haiku dispatch? Recommended default: **no global flip; fail-closed scorer gate on haiku routing only** (U5-3). Alternative: block via a `--update`-routed config change plus an H4 substance test. Origin: Clarifications cat. 7, critic 8.
 4. (blocks U4-2 only) The Stage 4 evidence standard. Recommended default: **pi-2 must beat the better of pi-0 and pi-0'; shadow re-execution included; N ≥ 20; non-inferiority margin 5 points; G3 at ≥60 rubric-era units.** Alternatives: compare against pi-0 only (as literally briefed), or drop the shadow arm (Stage 4 will then very likely return `insufficient-evidence`, R1). Origin: Clarifications cat. 9, CHK5.
+5. (one-line confirmation; blocks U0-4 only if the answer differs) Does the 120 turn cap apply to both spec-master and task-master? Recommended default: **both, and no other persona**. Origin: Clarifications cat. 4 (addendum), CHK14.
 
 ## Self-check
 - CHK1: Does every Goal-table clause map to a unit criterion or a gate? — PASS
@@ -638,6 +686,7 @@ If the user answers OQ3 "block", this unit adds instead a `node bin/cli.js
 - CHK10: Do any criteria spell the reviewed-marker dir or Set A log names in Bash text? — FAIL (conflicting: U2-2's pinned text names the marker path) — revised in place (the path appears only in inserted prose; the authoring note forbids it in `run:`)
 - CHK11: Is the H4/H2 interaction with literal payloads defined? — PASS (U3-1 (e), U0-1 `sizeOver`)
 - CHK12: Is the `fable` exclusion for task-master kept? — PASS (AC5-2.3)
+- CHK14: Is the 120 turn cap's persona scope defined? — FAIL (ambiguous: the user named no persona) — converted to Open Question 5 (default: spec-master and task-master)
 - CHK13: Are fast-path (spec-master) contracts in or out of the rubric measurement? — PASS (R7: out; `contract_author` filter)
 
 ## Out of scope / parked
