@@ -198,10 +198,12 @@ Reviewer-tier gate (ADR-0009) and the reviewer-gate ratchet are unchanged.
   2-FAIL-cap precedent. task-master must not tag them below the default tier.
 - R9 `docs/research/dream-irs-taskmaster-specmaster.md` is untracked; whoever
   owns it commits it before Stage 0 (not done here: not this persona's file).
-- R10 Any unit editing agents/*.md lands, in one commit: the edit, the
-  plugin.json + package.json bump, and a CHANGELOG entry. In the following
-  commit of the same unit it lands `node bin/cli.js --update` (mirror +
-  `fileHashes`). Bump before `--update`.
+- R10 Any unit editing agents/*.md lands, in ONE commit: the edit, the
+  plugin.json + package.json bump, a CHANGELOG entry, and the
+  `node bin/cli.js --update` output (precedent 712b23b; revised 2026-10-06, gap
+  D). Bump before `--update`. Stage the output with `git add -u -- .claude`,
+  never by spelling the config's file name in Bash. See "Persona-unit scope
+  rule".
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied. Every measurement criterion re-derives its numbers from a committed command, and the replay stage includes a real re-execution arm.
@@ -253,6 +255,50 @@ Every criterion below runs from the repo root. `<B>` is the unit's baseline SHA
 (the commit before its first commit). "Flattened grep" means
 `tr '\n' ' ' < FILE | tr -s ' ' | grep -cF 'PHRASE'`, so a hard wrap cannot
 make a phrase check pass vacuously.
+
+## Persona-unit scope rule (uniform; gap D, 2026-10-06)
+
+Applies to every unit that edits `agents/*.md`: U0-4, U2-1, U2-2, U3-1, U3-2,
+U3-3, U3-4, U5-2, U5-3. It replaces every "only these files changed" check in
+those units.
+
+After a version bump, `node bin/cli.js --update` re-stamps every mirror. Its
+complete expected output set is these 14 `.claude/` paths. task-master lists
+them verbatim in each contract's Affected files, but never spells the config's
+name inside a `run:`/`command:`, because harness-integrity-gate refuses any Bash
+text naming it:
+`.claude/agents/agent-auditor.md`, `.claude/agents/explorer.md`,
+`.claude/agents/lead-programmer.md`, `.claude/agents/milestone-auditor.md`,
+`.claude/agents/orchestrator.md`, `.claude/agents/researcher.md`,
+`.claude/agents/reviewer.md`, `.claude/agents/scribe.md`,
+`.claude/agents/spec-master.md`, `.claude/agents/task-master.md`,
+`.claude/persona-config.json`, `.claude/persona-protocol.md`,
+`.claude/persona-protocol-slim.md`, `.claude/protocol-digest.md`.
+Only the unit's OWN mirrors change in content. The other mirrors change only
+their first-line stamp (`<!-- antislop vX.Y.Z | source: ... -->`), and the
+config changes `pluginVersion` and `fileHashes`.
+
+Three checks, with `<OWN>` = the unit's own source files (table below):
+- AC-SCOPE-1 (non-.claude files): `git diff --name-only <B>..HEAD | grep -v '^\.claude/' | sort` equals, line for line, the sorted list of `<OWN>` + `.claude-plugin/plugin.json` + `CHANGELOG.md` + `package.json` + the unit's extra files from the table.
+- AC-SCOPE-2 (.claude count): `git diff --name-only <B>..HEAD -- .claude | wc -l` = 14.
+- AC-SCOPE-3 (the others are stamp-only): `git diff -U0 <B>..HEAD -- .claude/agents .claude/persona-protocol.md .claude/persona-protocol-slim.md .claude/protocol-digest.md ':(exclude).claude/agents/<name>.md' [one exclude per own mirror] | grep -E '^[-+]' | grep -vE '^(\+\+\+|---) ' | grep -cvE '^[-+]<!-- antislop v[0-9]+\.[0-9]+\.[0-9]+ \| source: '` prints `0`.
+  Proven on 712b23b (ocigf-2): with `':(exclude).claude/agents/orchestrator.md'`
+  it prints 0, and without the exclusion it prints 5 (non-vacuous). The config
+  is not diffed line-wise, since naming it in Bash is refused; its `fileHashes`
+  are covered by `bash tests/validate.sh`'s mirror-parity checks.
+
+| Unit | `<OWN>` | Extra non-.claude files |
+|---|---|---|
+| U0-4 | `agents/spec-master.md`, `agents/task-master.md` | none |
+| U2-1, U2-2 | `agents/spec-master.md` | none |
+| U3-1, U3-2 | `agents/task-master.md` | none |
+| U3-3 | `agents/task-master.md`, `agents/scribe.md` | none |
+| U3-4 | `agents/lead-programmer.md` | `adapters/codex/agents/lead-programmer.toml`, `adapters/cursor/agents/lead-programmer.md` |
+| U5-2 | `agents/task-master.md`, `agents/orchestrator.md` | `CONTEXT.md`, `tests/writer-tier-consistency.test.js` |
+| U5-3 | `agents/orchestrator.md` | none (unless OQ3 = block) |
+
+If a unit spans several commits, the checks run over the whole `<B>..HEAD`
+range, and AC-SCOPE-2 still expects 14.
 
 ## Step U0-1: contract scorer `bin/contract-score.js`
 
@@ -377,9 +423,9 @@ guidance bullet after "Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`
 `agents/task-master.md` (frontmatter `maxTurns:` line, plus one guidance bullet
 after the "Handoff on cutoff" bullet), `.claude-plugin/plugin.json` and
 `package.json` (same version bump), `CHANGELOG.md` (`[Unreleased]` entry), all in
-ONE commit. Then, in its own commit, `.claude/agents/spec-master.md`,
-`.claude/agents/task-master.md` and the config `fileHashes`, via
-`node bin/cli.js --update` (never hand-edited; Set A).
+ONE commit, together with the full 14-path `node bin/cli.js --update` output
+listed in the "Persona-unit scope rule" (staged with `git add -u -- .claude`,
+never hand-edited; Set A).
 Ordered edits (all mandatory, exact text; per the user's follow-up the
 spec-master line is a firm requirement):
 1. `agents/spec-master.md`, anchor: frontmatter line 9. before: `maxTurns: 40`, after: `maxTurns: 120`.
@@ -395,7 +441,7 @@ the AC-D5 literal in task-master.md, `tests/cli-backfill.test.js`.
 Acceptance criteria:
 - AC0-4.1 `grep -c '^maxTurns: 120$' agents/spec-master.md agents/task-master.md .claude/agents/spec-master.md .claude/agents/task-master.md` prints `:1` for all four files. At `<B>` each prints `:0`.
 - AC0-4.2 `grep -c '^maxTurns: 40$'` over the same four files prints `:0` for each.
-- AC0-4.3 Other caps unchanged: `git diff <B>..HEAD -- agents .claude/agents | grep -cE '^[-+]maxTurns'` = 8, and `git diff --name-only <B>..HEAD -- agents .claude/agents` lists exactly the four spec-master/task-master files.
+- AC0-4.3 Other caps unchanged: `git diff <B>..HEAD -- agents .claude/agents | grep -cE '^[-+]maxTurns'` = 8. Scope: AC-SCOPE-1/2/3 with the U0-4 row (AC-SCOPE-3 excludes `.claude/agents/spec-master.md` and `.claude/agents/task-master.md`).
 - AC0-4.4 spec-master sentence (mandatory): `grep -cF 'Write the plan skeleton to `docs/plans/` early in the session, then fill it in a few large writes' agents/spec-master.md .claude/agents/spec-master.md` prints `:1` for both (`:0` at `<B>`). The line sits directly after the anchor: `grep -A1 -F 'Suggest saving plans to' agents/spec-master.md | grep -c 'Write early, in few large writes'` = 1.
 - AC0-4.4b task-master sentence: `grep -cF 'Write the dispatch contracts early in the session and in a few large writes' agents/task-master.md .claude/agents/task-master.md` prints `:1` for both.
 - AC0-4.5 `bash hooks/scripts/version-stamp-check.sh <B>..HEAD` prints a line starting `version-stamp-check: ok`. plugin.json and package.json carry the same new version (`bash tests/validate.sh` asserts equality).
@@ -439,6 +485,7 @@ Acceptance criteria:
 - AC2-1.2 `cmp agents/spec-master.md .claude/agents/spec-master.md` is not used (the mirror carries the inlined block). Instead: flattened grep of `.claude/agents/spec-master.md` for `**Replay source.**` = 1.
 - AC2-1.3 `bash hooks/scripts/version-stamp-check.sh <B>..HEAD` prints a line starting `version-stamp-check: ok`.
 - AC2-1.4 `node tests/writer-tier-consistency.test.js` exit 0, and `bash tests/validate.sh` exit 0.
+- AC2-1.5 AC-SCOPE-1/2/3 (U2-1 row).
 
 ## Step U2-2: spec-master S2, incumbent non-regression for debug specs and convergence follow-ups
 
@@ -459,7 +506,7 @@ Bash text.)
 Acceptance criteria:
 - AC2-2.1 Flattened grep of `agents/spec-master.md` for `**Incumbent baseline.**` = 1, and for `A row with no detecting criterion is a Self-check FAIL` = 1.
 - AC2-2.2 The same two greps against `.claude/agents/spec-master.md` = 1 each.
-- AC2-2.3, AC2-2.4 as AC2-1.3, AC2-1.4.
+- AC2-2.3, AC2-2.4, AC2-2.5 as AC2-1.3, AC2-1.4, AC2-1.5 (U2-2 row).
 
 ## Step U3-1: task-master contract rubric, tier-neutral (critic 1, 2, 7, 14, 15)
 
@@ -502,6 +549,7 @@ Acceptance criteria:
 - AC3-1.5 Mirror: flattened grep of `.claude/agents/task-master.md` for `diagnosis: none` ≥ 1.
 - AC3-1.6 `node tests/writer-tier-consistency.test.js` exit 0 (AC-D5 literal intact; no "looks mechanical"; vocabulary still `sonnet|opus`).
 - AC3-1.7 `version-stamp-check.sh <B>..HEAD` prints `ok`, and `bash tests/validate.sh` exit 0.
+- AC3-1.8 AC-SCOPE-1/2/3 (U3-1 row).
 
 ## Step U3-2: task-master slicing rules (critic 5, 6, 9, 10, 11)
 
@@ -527,7 +575,8 @@ Pinned rule labels and content:
   (critic 10)
 - `**Commits.**` The contract's `commit-message:` lines fix the commit count and
   messages. The version bump and CHANGELOG ride in the same commit as the
-  stamped edit; the `--update` mirror refresh is its own commit. (critic 11)
+  stamped edit, and so does the `--update` output (all 14 `.claude/` paths,
+  staged with `git add -u -- .claude`). (critic 11)
 
 Acceptance criteria:
 - AC3-2.1 Flattened grep of `agents/task-master.md` for each of the five bold labels = 1 each (0 at `<B>`).
@@ -535,6 +584,7 @@ Acceptance criteria:
 - AC3-2.3 `git diff --quiet <B>..HEAD -- skills/to-tickets` exit 0 (vendored skill untouched).
 - AC3-2.4 Mirror greps for the five labels = 1 each in `.claude/agents/task-master.md`.
 - AC3-2.5 `writer-tier-consistency` exit 0, `version-stamp-check` `ok`, `validate.sh` exit 0.
+- AC3-2.6 AC-SCOPE-1/2/3 (U3-2 row).
 
 ## Step U3-3: scribe contract and scribe precedence (critic 12, 3, gh-209 note)
 
@@ -561,6 +611,7 @@ Acceptance criteria:
 - AC3-3.4 `frontmatter model` of `agents/scribe.md` is still `haiku`: `sed -n '1,12p' agents/scribe.md | grep -c '^model: haiku$'` = 1.
 - AC3-3.5 P4: the new scribe.md paragraph contains `if task-master is present` (flattened grep = 1).
 - AC3-3.6 `version-stamp-check` `ok` (two stamped files, one commit), `validate.sh` exit 0, `writer-tier-consistency` exit 0.
+- AC3-3.7 AC-SCOPE-1/2/3 (U3-3 row; AC-SCOPE-3 excludes both own mirrors).
 
 ## Step U3-4: lead-programmer contract precedence (critic 3)
 
@@ -590,6 +641,7 @@ Acceptance criteria:
 - AC3-4.3 `node tests/writer-tier-consistency.test.js` exit 0 (`model: sonnet` source and mirror kept; no "looks mechanical").
 - AC3-4.4 P4: flattened grep for `task-master, if present` = 1.
 - AC3-4.5 `version-stamp-check` `ok`, `validate.sh` exit 0.
+- AC3-4.6 AC-SCOPE-1/2/3 (U3-4 row; the adapter ports are in the extra-files column).
 
 ### Gate G3 (no unit; checked by the orchestrator)
 `node scripts/unit-outcomes.js --gate=G3` prints `G3 open`. The rule: counting
@@ -686,7 +738,7 @@ via `--update`. Not changed: lead-programmer frontmatter (`sonnet`),
 - AC5-2.1 `node tests/writer-tier-consistency.test.js` exit 0. Mutation: re-inserting `` `haiku` is the default`` into orchestrator.md makes it exit 1.
 - AC5-2.2 `node tests/default-implementer-model.test.js` and `node tests/cli-backfill.test.js` exit 0, and `git diff --quiet <B>..HEAD -- bin/cli.js templates/persona-config.schema.json` exit 0.
 - AC5-2.3 Flattened grep of `agents/orchestrator.md` for `Haiku units escalate on first FAIL` = 1, and for `` **`fable` is excluded for `task-master`**`` = 1.
-- AC5-2.4 Mirrors carry the same greps; `version-stamp-check` `ok`; `validate.sh` exit 0.
+- AC5-2.4 Mirrors carry the same greps; `version-stamp-check` `ok`; `validate.sh` exit 0; AC-SCOPE-1/2/3 (U5-2 row).
 
 ### Step U5-3: fail-closed haiku routing; hook and scribe gating (critic 8)
 Affected: `agents/orchestrator.md` (before passing `model: haiku`, write the
@@ -699,7 +751,7 @@ If the user answers OQ3 "block", this unit adds instead a `node bin/cli.js
 --update`-routed config change (Set A) plus an H4 substance test in
 `tests/dispatch-hygiene.test.sh` (`hooks/` is SENSITIVE_PATHS: opus review).
 - AC5-3.1 Flattened grep of `agents/orchestrator.md` for `node bin/contract-score.js` ≥ 1, and for `dispatch \`sonnet\`` in the same paragraph ≥ 1.
-- AC5-3.2 `version-stamp-check` `ok`, `validate.sh` exit 0, `writer-tier-consistency` exit 0.
+- AC5-3.2 `version-stamp-check` `ok`, `validate.sh` exit 0, `writer-tier-consistency` exit 0; AC-SCOPE-1/2/3 (U5-3 row).
 
 ## Critic-finding placement
 
