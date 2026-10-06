@@ -116,6 +116,10 @@ written by task-master after U3-1's PASS commit.
   it applies to scribe" is adopted by U3-3; the rest are historical and need no
   action. The sweep over the remaining surfaces did not finish in 120 s; it is
   best-effort, and an empty result proves nothing.
+  The completed sweep found one `NOTE[spec]` (item06-3-ac-d9-hardening): AC-D9's
+  banned-literal checks deliberately use stripWhitespace (strip-all, not
+  collapse). Disposition: U5-2 keeps stripWhitespace for every rewritten AC-D9
+  assertion, and no new banned-literal check may use collapse-to-space.
 
 ### Draft ADR (for Stage 5; scribe numbers and lands it in U5-1)
 
