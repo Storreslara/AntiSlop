@@ -14,6 +14,8 @@
 - [hyg-3 completion](project_hyg3_completion.md) — PASS 2026-10-05; second shell glossary entry; reviewer note on quoted-heredoc bodies precision
 - [cmdsub-1/2 pending work](project_cmdsub_blocked_status.md) — blocked on human-written bypass example rows; safety classifier prevents agent authorship
 
+- [rgh-u1-1 completion](project_rgh_u1_1_reviewer_advisory.md) — PASS 2026-10-06; issue #505 closed; audit file 2026-10-06-adr0026-forward-rule.md (205-unit population composition not disclosed, spirit-ruling PENDING-HUMAN, letter-verdict rate-only label); possible glossary entries (letter-verdict, spirit-ruling)
+
 - [esc-chat-4 completion](project_esc_chat_4_completion.md) — ADR-0039; Bash-ask record now 7e04acd (esc-chat-7; per-mode versions), 229138e/cbb918e superseded; identity Outcome D
 
 - [hcb-prose-history completion](project_hcb_prose_history_completion.md) — PASS 2026-09-24; four glossary entries added to CONTEXT.md: sweep closure / Cat 1/2/3/4 (repo-wide file-keyed classification for prose reconciliation with both-directions closure assertion), hit-bearing file (unit of classification in sweep-closure table), lens-2 (existing term correct but surrounding prose stale); origin citation: docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md "Sweep closure" section for reuse convention
