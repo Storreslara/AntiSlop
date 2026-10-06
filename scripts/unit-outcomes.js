@@ -135,13 +135,15 @@ function baselineOf(id, log, opt) {
   } catch (e) { return null; }
 }
 
-// The `~~~` block under `## Dispatch contract`, fences excluded; null when absent.
+// The first `~~~`+ block under `## Dispatch contract`, fences excluded; null when absent.
+// Closes on a tilde-only line at least as long as the opening run (CommonMark).
 function contractBlock(body) {
   const lines = body.split('\n');
   const h = lines.findIndex((l) => l.trim() === '## Dispatch contract');
-  const open = lines.findIndex((l, k) => k > h && /^~~~/.test(l));
+  const open = lines.findIndex((l, k) => k > h && /^~{3,}/.test(l));
   if (h < 0 || open < 0) return null;
-  const close = lines.findIndex((l, k) => k > open && l.trim() === '~~~');
+  const run = /^~+/.exec(lines[open])[0].length;
+  const close = lines.findIndex((l, k) => k > open && /^~+$/.test(l.trim()) && l.trim().length >= run);
   return close < 0 ? null : lines.slice(open + 1, close).join('\n');
 }
 

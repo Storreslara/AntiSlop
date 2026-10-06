@@ -231,6 +231,15 @@ check('source contract_ts issue', () => {
 check('source contract_ts null', () => {
   assert.strictEqual(R['fx-ptr'].contract_ts, null);
 });
+check('fence five-tilde block, inner three-tilde line kept', () => {
+  const body = JSON.parse(fs.readFileSync(path.join(FIX, 'issues', 'fx-tilde5.json'), 'utf8'))[0].body;
+  const block = body.slice(body.indexOf('\n', body.indexOf('~~~~~')) + 1, body.lastIndexOf('~~~~~'));
+  assert.ok(scoreText(block) === 7 && scoreText(block.slice(0, block.indexOf('~~~'))) !== 7, 'fixture must discriminate');
+  assert.strictEqual(R['fx-tilde5'].contract_source, 'issue#902');
+  assert.strictEqual(R['fx-tilde5'].contract_author, 'task-master');
+  assert.strictEqual(R['fx-tilde5'].contract_ts, '2026-09-02T09:00:00Z');
+  assert.strictEqual(R['fx-tilde5'].contract_score, 7);
+});
 
 const ALL_PASS = fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'contract-score', 'all-pass.md'), 'utf8');
 const MINUS_R1 = fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'contract-score', 'minus-R1.md'), 'utf8');
