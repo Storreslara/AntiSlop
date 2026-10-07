@@ -681,18 +681,32 @@ an append-only audit-log record class written to
   be grep-verifiable.
 
 **contract precedence**:
-(unit rgh-u3-3, 2026-10-07) — the rule stated in `agents/scribe.md` 
-  **Contract precedence** section that when a [[scribe dispatch contract]] is 
-  present in a dispatch, scribe applies its written glossary text, ADR number and 
-  close conditions as written rather than exercising independent judgment; scribe's 
-  own judgment applies only where the contract is silent. If any item in the 
-  contract cannot be applied exactly, scribe stops and reports a spec gap. Note: 
-  the shipped text does not state whether the four hard issue-closing conditions 
-  (valid PASS marker, commit references issue, issue currently OPEN, both issue 
-  number and task-id named) and the never-close rules (FAIL verdict, .blocked 
-  marker, malformed marker, speculatively) still apply on top of the contract's 
-  close conditions — that hierarchical relationship is unstated. See 
-  [[scribe dispatch contract]] and the `agents/scribe.md` text itself.
+(unit rgh-u3-3, 2026-10-07; amended unit rgh-u3-4, 2026-10-07) — the rule 
+  that when a dispatch carries a contract, the contract's specified elements 
+  take precedence over the persona's own judgment; the persona's judgment applies 
+  only where the contract is silent. If any item cannot be applied exactly as 
+  written, the persona stops and reports a spec gap. The rule applies differently 
+  to each persona:
+  
+  **For scribe** (per `agents/scribe.md` **Contract precedence**): 
+  apply the [[scribe dispatch contract]]'s written glossary text, ADR number, and 
+  close conditions as written. Note: the shipped text does not state whether the 
+  four hard issue-closing conditions (valid PASS marker, commit references issue, 
+  issue currently OPEN, both issue number and task-id named) and the never-close 
+  rules (FAIL verdict, .blocked marker, malformed marker, speculatively) still 
+  apply on top of the contract's close conditions — that hierarchical relationship 
+  is unstated.
+  
+  **For lead-programmer** (per `agents/lead-programmer.md` **Contract precedence**): 
+  its `tdd:`, `blast-radius:`, `commit-message:`, and version lines are decisions 
+  already made — follow them without re-deriving (no explorer spawn, no TDD 
+  re-decision, no version choice). The text says "Fill the ready-for-review packet 
+  template the contract supplies," but no current contract supplies this element 
+  (the nine-element contract at `agents/task-master.md:110-145` contains no packet 
+  template). On FAIL re-dispatch, the orchestrator sends a defect list, not a 
+  contract — whether contract precedence applies to FAIL fixes is unstated.
+  
+  See [[scribe dispatch contract]] and the shipped texts themselves.
 
 **scribe dispatch contract**:
 (unit rgh-u3-3, 2026-10-07) — a dispatch contract structure written when task-master 
@@ -746,6 +760,31 @@ an append-only audit-log record class written to
   verifying the range is `ok`. Defined in the `agents/task-master.md` **Mechanical
   obligations (R2)** section within **Per-unit dispatch prompts**. See
   [[content-typed contract]], [[edit item / command item]].
+
+**spec gap**:
+(unit rgh-u3-4, 2026-10-07) — a dispatch instruction that cannot be applied 
+  exactly as written. When [[contract precedence]] is in effect, a persona 
+  encountering a spec gap stops and reports it upward rather than substituting 
+  an alternative approach or re-interpreting the instruction. Examples: a 
+  glossary entry pointing to a nonexistent heading, a commit-message template 
+  that names a variable the contract does not supply, an ordered edit whose 
+  anchor prose does not match any text in the target file. Documented in 
+  `agents/scribe.md` and `agents/lead-programmer.md` **Contract precedence** 
+  sections (both end with "If any item cannot be applied exactly, STOP and 
+  report a spec gap").
+
+**judgment duties**:
+(unit rgh-u3-4, 2026-10-07) — the normal, unrestricted decision-making 
+  authority a persona exercises when no [[contract precedence]] constraint 
+  applies. Examples for lead-programmer: choosing TDD strategy, deciding whether 
+  to spawn explorer, determining per-step commit cadence, editing memory. 
+  Examples for scribe: selecting which glossary entries to add, choosing ADR 
+  placement and cross-references, deciding what constitutes a stale description. 
+  When [[contract precedence]] is in effect, judgment duties apply only where 
+  the contract is silent (per `agents/scribe.md` and `agents/lead-programmer.md`). 
+  On a FAIL verdict, the orchestrator routes a defect list (not a contract) back 
+  to the implementer for re-dispatch; whether the original contract's precedence 
+  over judgment duties carries forward into the fix attempt is unstated.
 
 **marker-commit-check**:
 (unit #385, 2026-08-15) — the executable script at `hooks/scripts/marker-commit-check.sh`
