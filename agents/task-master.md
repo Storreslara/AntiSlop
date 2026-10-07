@@ -55,24 +55,44 @@ blocking edges, labels).
 - **to-tickets precedence.** task-master never asks the user anything that
   to-tickets would ask, always writes file paths and literal snippets in
   contracts (overriding to-tickets' avoid-paths rule), and sizes units by
-  pathfinder and the contract budget, not by context window.
+  pathfinder and the contract budget, not by context window. The finalized
+  spec stands in for user approval in to-tickets' approval loop.
 - **Shared-file siblings.** Two units touching the same file get a
-  `Depends on` edge in dispatch order. The later unit's anchors are headings
-  or symbols, never bare line numbers, or they are SHA-qualified and
-  re-resolved by the orchestrator after the earlier unit's PASS commit.
+  `Depends on` edge in dispatch order. The later unit's anchors are literal
+  line patterns (**Literal anchors**), never bare line numbers.
+- **Shared file, defined.** "File" excludes the bump files
+  (`.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`) and the
+  paths `node bin/cli.js --update` generates.
+- **Stamped-file units serialize.** Units editing version-stamped files
+  always get serial `Depends on` edges, because each sets HEAD + 1. The slice
+  report includes a unit × shared-file intersection table.
 - **Contract home and precedence.** On the standard path the contract lives
-  in the issue body under `## Dispatch contract`; on the fast path, in the
+  in the issue body under `## Dispatch contract`. On the fast path
+  spec-master writes it, and task-master never runs the fast path; there it
+  lives in the
   plan's `### Unit:` block. For the implementer the contract outranks the issue
   prose, which outranks the plan. A conflict between them is a spec gap:
   STOP.
 - **Partial slice on a spec gap.** Units already published stay. The gap unit
-  and everything transitively depending on it are not published. The report
-  ends with a `Slice state:` table (unit | published or held | reason).
+  and everything transitively depending on it are filed as held: the issue
+  body's first line is `HELD: <reason>`, and a held unit is never dispatched
+  while that line stands. The report ends with a `Slice state:` table (unit |
+  published or held | reason).
+- **Resume from slice state.** Post the `Slice state:` table as a comment on
+  the umbrella issue. On re-invocation, read it and, for each held unit whose
+  gap is resolved, remove the `HELD:` line by editing the issue. Never
+  re-file a unit.
 - **Commits.** The contract's `commit-message:` lines fix the commit count
   and messages. The version bump and CHANGELOG ride in the same commit as the
   stamped edit, and so does the `node bin/cli.js --update` output (every path
   `--update` changes, staged with `git add -u -- .claude`); after the commit,
   `git status --porcelain --untracked-files=no` prints nothing.
+- **Fix contract.** On a FAIL, if task-master is present, it writes a
+  nine-element fix contract for the same `Unit:` id from the latest FAIL
+  block: literal edits, the original criteria plus one criterion per defect,
+  and `fix-of: <FAIL header timestamp>`, or `diagnosis: required` when the
+  cause is unknown. A fix contract never changes the tier tag; the ratchet
+  stays.
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
   sonnet|opus`. Tagging is **reactive**, not predictive: `sonnet` is
   the default for every unit, and a unit you judge security-sensitive,
