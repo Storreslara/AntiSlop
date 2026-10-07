@@ -1,6 +1,6 @@
 # Contract hardening: a stage after Stages 0-3 of the rubric-gated haiku programme (2026-10-06)
 
-Status: FINAL (standard path, 10 units, so task-master slices them). Parent:
+Status: FINAL (standard path, 11 units incl. follow-up H1b, so task-master slices them). Parent:
 `docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (cited by path and not
 restated). Stages 0-3 of the parent are reviewer-PASSed at HEAD 325f51d, version
 0.31.129. **Stages 4-5 and gates G3/G4 of the parent are untouched** by this plan.
@@ -228,6 +228,85 @@ The JSON output gains `"rubric":"v1"|"v2"`.
   - `~~~~~` and CRLF fixtures that score 7 under v2 and lower under v1.
 - AC-H1.2 Mutation proof inside the suite: reverting any v2 rule to v1 behaviour fails ≥1 named assertion (the suite prints the assertion name).
 - AC-H1.3 `node bin/contract-score.js --rubric=v3 x` exits 2.
+
+**Correction (2026-10-06, after H1's review).**
+- AC-H1.1's list of changed rules ("R1-indent, R5-packet, R6-col, R6-path, S3,
+  S6, S7") was incomplete. Ruling H-B also changes S1 (a single `none`) and S2
+  (the ADR form). R2, R3, R4, R7, S4 and S5 differ from v1 through v2's fence
+  and section handling.
+- H1's mutation clause "each other v2 rule reverted to v1 likewise fails its
+  named check" was false for eight rows. Measured at 08eb23a: swapping each of
+  R2, R3, R4, R7, S1, S2, S4 and S5 in `SHAPES_V2` back to its v1 function
+  leaves `node tests/contract-score.test.js` at exit 0, while the R1 and R6
+  swaps exit 1.
+- H1b closes this.
+
+### H1b: scorer v2 lock-in fixtures and lookup hardening (non-persona)
+Scope `rgh-h1b`. Affected: `tests/contract-score.test.js`,
+`tests/fixtures/contract-score/`, `bin/contract-score.js`. No version bump.
+- Two commits:
+  - **red:** fixtures and checks, `test(rgh-h1b): ... (#<issue>)`;
+  - **green:** code, `fix(rgh-h1b): ... (#<issue>)`.
+- Dispatch after H1. H2 does NOT depend on H1b: the files are disjoint, and H2's
+  examples contain no fenced Do-NOT-touch lines.
+
+**Fixtures.** Each is derived by one literal edit from `v2-all-pass.md` (L) or
+`v2-scribe-all-pass.md` (Sc). I prototyped each one at 08eb23a; the observed
+rows are recorded below.
+
+| Fixture | Derivation | v2 | v1 |
+|---|---|---|---|
+| `v2-fenced-heading-R2.md` | L: append a `~~~` block holding `## Affected files` and `## End` to the Objective paragraph, and delete acceptance criterion 2 (the `version-stamp-check.sh` item) | R2 false | R2 true |
+| `v2-fenced-heading-R3.md` | L: insert a `~~~` block holding `## Note` right after the `## Acceptance criteria` heading | R3 true | R3 false |
+| `v2-tilde-run-R4.md` | L: append a `~~~` block holding ``run: `cat /tmp/x` `` to the Objective | R4 true | R4 false |
+| `v2-indented-diagnosis.md` | L: `diagnosis: none` becomes `  diagnosis: none` | R7 true | R7 false |
+| `v2-S1-none.md` | Sc: the Glossary edits item becomes the single line `none` | S1 true | S1 false |
+| `v2-minus-S2-bare-title.md` | Sc: the ADR body becomes `0042 Demo decision` | S2 false | S2 true |
+| `v2-minus-S2-backticked-none.md` | Sc: the ADR body becomes `` `none` `` | S2 false | S2 true |
+| `v2-fenced-heading-S4.md` | Sc: append a `~~~` block holding `## Do NOT touch` and `## End` to the Objective | S4 true | S4 false |
+| `v2-fenced-heading-S5.md` | Sc: insert a `~~~` block holding `## Note` after `## Acceptance criteria` | S5 true | S5 false |
+| `v2-r1-pointer-in-anchor.md` | L: edit 1's anchor becomes ``line matching `see the plan old line` `` | R1 true | (n/a) |
+| `v2-fence-len.md` | L: edit 1's `after:` fence becomes a 4-tilde `~~~~` fence holding the lines `~~~` and `as needed` (3-space indent) | R1 true | (n/a) |
+| `v2-fence-char.md` | L: edit 1's `after:` `~~~` fence holds the lines `` ``` `` and `as needed` (3-space indent) | R1 true | (n/a) |
+| `v2-minus-S6-prune-not-last.md` | Sc: the Doc edits lines are swapped (`prune: none` first) | S6 false | (n/a) |
+| `v2-r6-nested.md` | L: insert `  - nested prose note` (column 2) after the first Do NOT touch bullet | R6 true | R6 false |
+| `v2-r6-fenced.md` | L: append a `~~~` block holding `- x` to Do NOT touch | R6 true (after green; false at 08eb23a) | R6 false |
+
+**Remove** `v2-crlf.md`. It is an LF decoy: `.gitattributes` `eol=lf` strips
+its CRs, so its blob holds 0 CR bytes. Its check is rebuilt in the test: read
+`v2-all-pass.md`, `.replace(/\n/g, '\r\n')`, assert the input contains `\r`,
+and pipe it to `node bin/contract-score.js - --rubric=v2`, which must give
+score 7. Under `--rubric=v1` it must score below 7 (measured: 4 and 4). The
+check keeps the name `v2-crlf`. `.gitattributes` is not touched.
+
+**Code (green commit).**
+- Both table lookups in `main()` use `Object.hasOwn` (`{v1,v2}` and
+  `table[shape]`). `--rubric=__proto__` or `--shape=toString` then exits 2 with
+  the usage line. At 08eb23a they exit 0 with score 0 (measured).
+- `r6v2` drops lines whose `fenceFlags` value is non-null before counting
+  bullets, as `r5v2` does. This is defensible hardening, included, and proven
+  by `v2-r6-fenced`.
+
+**Named checks.** One per new fixture, named by its file stem, asserting the v2
+row above. For the eight rows (R2, R3, R4, R7, S1, S2 ×2, S4, S5) the check also
+asserts that the v1 row differs on the same file. Plus `v2-usage-proto-rubric`
+and `v2-usage-proto-shape` (exit 2).
+
+**Acceptance criteria.**
+- AC-H1b.1 `ls tests/fixtures/contract-score/v2-*.md | wc -l` prints `37` (23 − 1 + 15), and `test -e tests/fixtures/contract-score/v2-crlf.md` exits 1.
+- AC-H1b.2 `node tests/contract-score.test.js | /usr/bin/grep -c '^OK   v2'` prints `40` (23 + 15 + 2), and the suite exits 0.
+- AC-H1b.3 Red commit: at the red commit, the suite exits 1, and its failing checks are exactly `v2-r6-fenced`, `v2-usage-proto-rubric` and `v2-usage-proto-shape` (every other new check passes, because the behaviour already exists and is being locked in).
+- AC-H1b.4 Mutation proofs, all measured by spec-master at 08eb23a in a scratch copy:
+  - each of the eight `SHAPES_V2` row swaps (R2→r2, R3→r3, R4→r4, R7→r7, S1→s1, S2→s2, S4→s4, S5→s5) now fails the check of that row's fixture;
+  - **M3b** (delete the `anchor: line matching` literal strip at bin/contract-score.js:239) makes R1 false on `v2-r1-pointer-in-anchor`;
+  - **FLEN** (close a fence on any same-char run of 3 or more) and **FCHAR** (close on any fence run) make R1 false on `v2-fence-len` and `v2-fence-char`;
+  - **PRUNE** (accept `prune: none` anywhere) makes S6 true on `v2-minus-S6-prune-not-last`;
+  - **R6N** (count bullets at any indent) makes R6 false on `v2-r6-nested`;
+  - removing CRLF normalisation (bin/contract-score.js:400) scores the generated CRLF input 4, failing `v2-crlf`.
+
+  The implementer re-runs each mutation in a scratch copy and lists the failing check name per mutant in the review packet.
+- AC-H1b.5 The v1 regression still holds: every pre-H1 fixture's `--rubric=v1` output is unchanged (H1's AC-H1.1 check stays green).
+- AC-H1b.6 Commit subjects: `git log --format=%s <B>..HEAD | /usr/bin/grep -vcE '^(test|fix)\(rgh-h1b\): .* \(#[0-9]+\)$'` prints `0`.
 
 ### H2: task-master contract content (`agents/task-master.md`, 0.31.130)
 OWN: `agents/task-master.md`. Extra: `tests/contract-examples.test.js` (new),
@@ -604,7 +683,9 @@ on H3 and H5, because its replacement text cites their shipped labels.
 | A3 scribe judgment | H1 (S1-S7), H2(d), H4 (contract passing + placeholder), H6; prune duty parked (release-only) via OQ2 |
 | A4 version derivation / mutations / staging / indentation / anchors / split / `git add -A` | H2(b) |
 | A5 shared-file rule, table, banner, resume | H3 |
-| A6 scorer vs persona | H1 (code), H2(c) (wording), H7 (exporter items) |
+| A6 scorer vs persona | H1 (code), H1b (lock-in fixtures, CRLF in-test, `Object.hasOwn`, fenced R6), H2(c) (wording), H7 (exporter items) |
+| H1 review: 8 rows indistinguishable from v1, survivors M3b/fence/prune/R6-nested, vacuous CRLF fixture, prototype-key lookups, fenced R6 lines | H1b |
+| H1 review: glossary "instruction text"; "rubric" sense collision (CONTEXT.md:451 is roast-work's critique rubric) | H10 scribe contract adds a harness-glossary entry **instruction text** (the v2 pointer test's scope: text outside fenced payloads and outside the backticked `before:`/`after:`/`insert-after:`/`delete:`/`anchor: line matching` values). The **rubric v1/v2** entry stays in `docs/harness-glossary.md` and notes it is distinct from CONTEXT.md's roast-work rubric |
 | A6 H2 hook counts only backtick fences | parked: hook change (`hooks/`, guarded); scorer `sizeOver` covers it for contracts |
 | B false mutations, computed counts, indentation, validate.sh runtime | Contract-quality rules B1-B7, applied to every H contract; B6 and gate HG |
 | C explorer conflict, commit cadence | H5 |
