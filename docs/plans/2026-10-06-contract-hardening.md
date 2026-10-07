@@ -502,7 +502,21 @@ test. No version bump.
 
 **Acceptance criteria:**
 - AC-H11.1 `node tests/unit-outcomes.test.js | /usr/bin/grep -c '^OK   g3v2'` prints `4`. The total `^OK` count is 50 (46 + 4). The existing 6 `g3` checks still pass, and the suite exits 0.
-- AC-H11.2 Red commit (corrected 2026-10-06, ruling H-G): exactly three checks fail, `g3v2 field`, `g3v2 v2-counts` and `g3v2 v1-not-v2`. Every other check passes, including `g3v2 v2-not-v1`. That check is a regression guard: its expected `scored7=10` is already what the v1-only rule prints, and it stays green across red and green so that the v2 path never counts v2 contracts while `rgh-h2` has no PASS. Measured by task-master on a clone of f1422db.
+- AC-H11.2 (runnable form, ruling H-M, 2026-10-07; supersedes any `git archive`
+  form). Run the red commit's suite in a real checkout, because
+  `tests/unit-outcomes.test.js`'s `read-only porcelain` check runs
+  `git status --porcelain` and fails in any `.git`-less extract. Nothing is
+  filtered out, so a real failure stays visible.
+  - run: `R=$(git log --format=%H --grep='^test(rgh-h11)' | tail -1); git worktree add --detach ../h11-red "$R" >/dev/null 2>&1 && (cd ../h11-red && node tests/unit-outcomes.test.js | /usr/bin/grep '^FAIL' | sed -E 's/^FAIL ([^:]*):.*/\1/' | sort | tr '\n' ';'; echo " exit=${PIPESTATUS[0]}"); git worktree remove --force ../h11-red`
+  - exit: 0
+  - stdout: `g3v2 field;g3v2 v1-not-v2;g3v2 v2-counts; exit=1`
+  - The red SHA is derived by the command's first part (the oldest commit whose
+    subject starts `test(rgh-h11)`; currently 4dcdf1c). Measured by spec-master
+    on 2026-10-07 against 4dcdf1c, it printed exactly that stdout. The worktree
+    is removed afterwards (`git worktree list` count unchanged).
+  - mutation: running the same command at the green commit (`fa8aba7`) prints
+    ` exit=0` with no names.
+- AC-H11.2 (meaning; superseded wording kept for history) Red commit (corrected 2026-10-06, ruling H-G): exactly three checks fail, `g3v2 field`, `g3v2 v2-counts` and `g3v2 v1-not-v2`. Every other check passes, including `g3v2 v2-not-v1`. That check is a regression guard: its expected `scored7=10` is already what the v1-only rule prints, and it stays green across red and green so that the v2 path never counts v2 contracts while `rgh-h2` has no PASS. Measured by task-master on a clone of f1422db.
 - AC-H11.2b Helpers: the new checks use their own five-tilde wrapper (`wrap5`, `g3v2Run`), because the existing `g3Set` wraps issue bodies in a three-tilde fence that cuts v2 contracts off at their own `~~~` lines. `g3Set` is not modified: `git diff <B>..HEAD -- tests/unit-outcomes.test.js | /usr/bin/grep -c '^-.*g3Set'` prints `0`.
 - AC-H11.3 Mutation proofs (the implementer runs each in a scratch copy and names the failing check):
   - **M-v1only** (`gateG3` counts `contract_score === 7` for every unit, the shipped behaviour) fails `g3v2 v2-counts` (prints `scored7=10`).
