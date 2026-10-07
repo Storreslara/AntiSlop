@@ -488,14 +488,15 @@ test. No version bump.
 
 **Acceptance criteria:**
 - AC-H11.1 `node tests/unit-outcomes.test.js | /usr/bin/grep -c '^OK   g3v2'` prints `4`. The total `^OK` count is 50 (46 + 4). The existing 6 `g3` checks still pass, and the suite exits 0.
-- AC-H11.2 Red commit: the four `g3v2` checks fail and every other check passes.
+- AC-H11.2 Red commit (corrected 2026-10-06, ruling H-G): exactly three checks fail, `g3v2 field`, `g3v2 v2-counts` and `g3v2 v1-not-v2`. Every other check passes, including `g3v2 v2-not-v1`. That check is a regression guard: its expected `scored7=10` is already what the v1-only rule prints, and it stays green across red and green so that the v2 path never counts v2 contracts while `rgh-h2` has no PASS. Measured by task-master on a clone of f1422db.
+- AC-H11.2b Helpers: the new checks use their own five-tilde wrapper (`wrap5`, `g3v2Run`), because the existing `g3Set` wraps issue bodies in a three-tilde fence that cuts v2 contracts off at their own `~~~` lines. `g3Set` is not modified: `git diff <B>..HEAD -- tests/unit-outcomes.test.js | /usr/bin/grep -c '^-.*g3Set'` prints `0`.
 - AC-H11.3 Mutation proofs (the implementer runs each in a scratch copy and names the failing check):
   - **M-v1only** (`gateG3` counts `contract_score === 7` for every unit, the shipped behaviour) fails `g3v2 v2-counts` (prints `scored7=10`).
   - **M-v2only** (counts `contract_score_v2 === 7` for every unit) fails `g3v2 v1-not-v2` (prints `scored7=20`, `G3 open`).
   - **M-field** (compute `contract_score_v2` with the v1 default) fails `g3v2 field`.
 
   The premise of all three (the same text scoring 6 and 7 under the two rubrics) was measured by spec-master on the two fixtures named above.
-- AC-H11.4 `node scripts/unit-outcomes.js --until=2026-10-06T00:00:00Z | jq -s 'all(has("contract_score_v2"))'` prints `true`.
+- AC-H11.4 `node scripts/unit-outcomes.js --until=2026-10-06T00:00:00Z | jq -s 'length > 0 and all(has("contract_score_v2"))'` prints `true` (`length > 0` added in ruling H-G, because `all()` is vacuously true on empty input).
 - AC-H11.5 Commit subjects: `git log --format=%s <B>..HEAD | /usr/bin/grep -vcE '^(test|feat)\(rgh-h11\): .* \(#[0-9]+\)$'` prints `0`.
 - AC-H11.6 `git diff --name-only <B>..HEAD` lists only `scripts/unit-outcomes.js`, `tests/unit-outcomes.test.js` and files under `tests/fixtures/`. The committed snapshot `docs/audits/unit-outcomes/2026-10-06.jsonl` is NOT regenerated: it is the 2026-10-06 historical record, and nothing automated re-runs U0-3's reproduction (no test or script references the snapshot, checked with `git grep -l 2026-10-06.jsonl -- tests bin scripts hooks`). The README's comparison note, extended by H10 (AC-H10.14), excludes the post-snapshot fields `rubric_version` and `contract_score_v2`.
 
@@ -665,7 +666,7 @@ stripped.
   - L35 becomes ``- `task_master_cutoff`: always null in this snapshot; the exporter does not yet measure cutoffs, and G3 prints `task_master_cutoffs=unmeasured`.``. Measured: 0 non-null values.
     - AC-H10.10: `/usr/bin/grep -c 'always null in this snapshot' README` prints `1`.
   - New line after L38: ``- `rubric_version`: `v1`, `v2` or null; see `RUBRIC_V2_UNIT` in `scripts/unit-outcomes.js`.``.
-  - New line after that (added with H11): ``- `contract_score_v2`: the `score` under `bin/contract-score.js --rubric=v2`, or null when there is no real contract; G3 uses it for `rubric_version` `v2` units.``. AC-H10.13: `/usr/bin/grep -c 'contract_score_v2' README` = 1.
+  - New line after that (added with H11): ``- `contract_score_v2`: the `score` under `bin/contract-score.js --rubric=v2`, or null when there is no real contract; G3 uses it for `rubric_version` `v2` units.``. AC-H10.13 (corrected 2026-10-06, ruling H-H): `/usr/bin/grep -cE '^- .contract_score_v2.: ' README` = 1. The bare-name grep prints 2, because the AC-H10.14 note also names the field (measured). This anchored form counts the field-dictionary line only.
   - L8, append (prose only; the machine-read lines stay unchanged): " Fields added after this snapshot (`rubric_version`, `contract_score_v2`) are absent from the committed file and are excluded from the comparison too." AC-H10.14: flattened grep `are excluded from the comparison too` = 1. AC-H10.12 still holds.
     - AC-H10.11: `/usr/bin/grep -c 'RUBRIC_V2_UNIT' README` prints `1`.
   - Machine-read lines unchanged:
