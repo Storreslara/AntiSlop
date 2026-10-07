@@ -18,13 +18,20 @@ const CLASSES = [
   ['unverified', ['did not run', 'unverified', 'no evidence']],
 ];
 
+// H-D: the unit whose PASS opens rubric v2 (contract-hardening H2).
+const RUBRIC_V2_UNIT = 'rgh-h2';
+const FLAGS = ['repo', 'markers', 'transcripts', 'out', 'gate', 'until', 'help'];
+const USAGE = 'usage: unit-outcomes.js [--repo=<dir>] [--markers=<dir>] [--transcripts=<dir>] [--until=<ISO-8601>] [--out=<file>] [--gate=G3] [--help]\n';
+
 function parseArgs(argv) {
   const o = {};
   argv.forEach((a) => {
     const m = /^--([a-z]+)(?:=(.*))?$/.exec(a);
     if (!m) { process.stderr.write(`unit-outcomes.js: unrecognized argument: ${a}\n`); process.exit(2); }
+    if (!FLAGS.includes(m[1])) { process.stderr.write(`unknown flag: ${a}\n`); process.exit(2); }
     o[m[1]] = m[2] === undefined ? true : m[2];
   });
+  if (o.help) { process.stdout.write(USAGE); process.exit(0); }
   o.repo = path.resolve(o.repo || process.cwd());
   o.markers = o.markers || path.join(o.repo, '.claude/reviewed');
   o.transcripts = o.transcripts || path.join(os.homedir(), '.claude', 'projects', o.repo.replace(/\//g, '-'));
@@ -150,7 +157,7 @@ function contractBlock(body) {
 // An issue belongs to a unit only if its contract's Unit: token or its title's first word is the exact id.
 function issueIsUnit(issue, id) {
   const block = contractBlock(issue.body || '');
-  const u = block && /^Unit:\s*(\S+)/m.exec(block);
+  const u = block && /^Unit:\s*(\S+)/.exec(block);
   return (u && u[1] === id) || (issue.title || '').split(/\s+/)[0] === id;
 }
 
@@ -230,6 +237,7 @@ function buildRow(id, u, term, ctx) {
     contract_source: c.source,
     contract_score: scoreOf(c.text),
     contract_ts: c.ts,
+    rubric_version: rubricVersion(c.ts, ctx.h2Pass),
     baseline: base,
     final_commit: term.passTs && u.commit !== 'none' ? u.commit : null,
     range_source: base ? 'commit-scope' : 'none',
@@ -245,9 +253,18 @@ function buildRow(id, u, term, ctx) {
   };
 }
 
+// H-D: null without a contract; v1 until RUBRIC_V2_UNIT has a PASS as of the cutoff; then by contract_ts.
+function rubricVersion(contractTs, h2Pass) {
+  if (contractTs === null || contractTs === undefined) return null;
+  if (!h2Pass) return 'v1';
+  return Date.parse(contractTs) <= Date.parse(h2Pass) ? 'v1' : 'v2';
+}
+
 function exportRows(opt) {
   const units = readMarkers(opt.markers);
   const ctx = { opt, recs: readTranscripts(opt.transcripts), log: gitLog(opt) };
+  const h2 = units[RUBRIC_V2_UNIT] ? terminalOf(units[RUBRIC_V2_UNIT], opt.cutoff) : null;
+  ctx.h2Pass = h2 && h2.passTs ? h2.passTs : null;
   return Object.keys(units).sort().flatMap((id) => {
     const term = terminalOf(units[id], opt.cutoff);
     return term ? [buildRow(id, units[id], term, ctx)] : [];
