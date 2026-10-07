@@ -1,8 +1,10 @@
 #!/bin/sh
 # Stub: answers `gh issue list --search "<id> in:title"` from issues/<id>.json, else [].
 # When UO_GH_STUB names a JSON file {"<id>": {"body", "createdAt"}}, serve from it instead.
+limit=30
 while [ $# -gt 0 ]; do
   if [ "$1" = "--search" ]; then id=${2%% *}; fi
+  if [ "$1" = "--limit" ]; then limit=$2; fi
   shift
 done
 if [ -n "$UO_GH_STUB" ]; then
@@ -12,4 +14,7 @@ if [ -n "$UO_GH_STUB" ]; then
   ' "$UO_GH_STUB" "$id"
 fi
 f="$(dirname "$0")/../issues/$id.json"
-if [ -f "$f" ]; then cat "$f"; else echo '[]'; fi
+if [ -f "$f" ]; then
+  exec node -e 'const a = JSON.parse(require("fs").readFileSync(0, "utf8")); console.log(JSON.stringify(a.slice(0, Number(process.argv[1]))));' "$limit" < "$f"
+fi
+echo '[]'

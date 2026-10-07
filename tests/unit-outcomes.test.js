@@ -300,6 +300,72 @@ check('era reviewer empty', () => {
   assert.deepStrictEqual(R['fx-era-1'].reviewer_tiers, []);
 });
 
+// --- H7 (rgh-h7): exporter strictness and rubric_version ---
+function cli(args) {
+  return cp.spawnSync('node', [SCRIPT, ...args], { cwd: REPO_ROOT, encoding: 'utf8', timeout: 5000 });
+}
+check('strict help exits 0 with usage', () => {
+  const r = cli(['--help']);
+  assert.strictEqual(r.status, 0);
+  assert.ok(r.stdout.startsWith('usage:'), r.stdout);
+});
+check('strict unknown flag exits 2', () => {
+  const r = cli(['--bogus']);
+  assert.strictEqual(r.status, 2);
+  assert.ok(r.stderr.includes('unknown flag: --bogus'), r.stderr);
+});
+// A private copy of the gh stub, so its issues/ dir can hold synthetic answers without touching FIX.
+function stubDir(issues) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uo-h7-'));
+  fs.mkdirSync(path.join(dir, 'bin'));
+  fs.mkdirSync(path.join(dir, 'issues'));
+  fs.copyFileSync(path.join(FIX, 'bin', 'gh'), path.join(dir, 'bin', 'gh'));
+  fs.chmodSync(path.join(dir, 'bin', 'gh'), 0o755);
+  for (const [id, list] of Object.entries(issues)) fs.writeFileSync(path.join(dir, 'issues', `${id}.json`), JSON.stringify(list));
+  return dir;
+}
+check('strict gh stub limit', () => {
+  const dir = stubDir({ 'h7-lim': [{ number: 1, title: 'a' }, { number: 2, title: 'b' }] });
+  const out = cp.execFileSync(path.join(dir, 'bin', 'gh'), ['issue', 'list', '--search', 'h7-lim in:title', '--limit', '1'], { encoding: 'utf8' });
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.strictEqual(JSON.parse(out).length, 1);
+});
+check('strict unit first line', () => {
+  const dir = stubDir({ 'h7-unit': [{ number: 7, title: 'other title', labels: [], createdAt: '2026-09-02T09:00:00Z',
+    body: '## Dispatch contract\n\n~~~markdown\nnote line\nUnit: h7-unit\n~~~\n' }] });
+  fs.writeFileSync(path.join(dir, 'h7-unit.pass'), 'PASS h7-unit 2026-09-05T10:00:00Z commit: none criteria: fixture\n');
+  const out = cp.execFileSync('node', [SCRIPT, `--repo=${dir}`, `--markers=${dir}`, `--transcripts=${path.join(dir, 'none')}`, '--until=2026-09-15T00:00:00Z'],
+    { cwd: REPO_ROOT, encoding: 'utf8', env: { ...process.env, GH_BIN: path.join(dir, 'bin', 'gh') } });
+  fs.rmSync(dir, { recursive: true, force: true });
+  assert.strictEqual(JSON.parse(out.trim()).contract_source, 'none');
+});
+// units: {id, pass, issue: createdAt | null}; returns id -> row.
+function rvSet(units) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uo-rv-'));
+  const stub = {};
+  units.forEach((u) => {
+    fs.writeFileSync(path.join(dir, `${u.id}.pass`), `PASS ${u.id} ${u.pass} commit: none criteria: fixture\n`);
+    if (u.issue) stub[u.id] = { createdAt: u.issue, body: `## Dispatch contract\n\n~~~markdown\n${ALL_PASS}\n~~~\n` };
+  });
+  const stubFile = path.join(dir, 'stub.json');
+  fs.writeFileSync(stubFile, JSON.stringify(stub));
+  const out = runWith(dir, dir, ['--until=2026-09-15T00:00:00Z'], { UO_GH_STUB: stubFile });
+  fs.rmSync(dir, { recursive: true, force: true });
+  const map = {};
+  out.split('\n').filter(Boolean).forEach((l) => { const o = JSON.parse(l); map[o.id] = o; });
+  return map;
+}
+const RV_NO_H2 = rvSet([{ id: 'rv-null', pass: '2026-09-04T10:00:00Z', issue: null },
+  { id: 'rv-early', pass: '2026-09-04T10:00:00Z', issue: '2026-09-08T09:00:00Z' }]);
+const RV_H2 = rvSet([{ id: 'rgh-h2', pass: '2026-09-05T10:00:00Z', issue: null },
+  { id: 'rv-before', pass: '2026-09-06T10:00:00Z', issue: '2026-09-03T09:00:00Z' },
+  { id: 'rv-after', pass: '2026-09-09T10:00:00Z', issue: '2026-09-07T09:00:00Z' }]);
+check('rubric_version null without contract_ts', () => { assert.strictEqual(RV_NO_H2['rv-null'].rubric_version, null); });
+check('rubric_version v1 without rgh-h2 PASS', () => { assert.strictEqual(RV_NO_H2['rv-early'].rubric_version, 'v1'); });
+check('rubric_version v1 before rgh-h2 PASS', () => { assert.strictEqual(RV_H2['rv-before'].rubric_version, 'v1'); });
+check('rubric_version v2 after rgh-h2 PASS', () => { assert.strictEqual(RV_H2['rv-after'].rubric_version, 'v2'); });
+
+
 fs.utimesSync(mtimeFile, mtimeOrig, mtimeOrig);
 fs.rmSync(scratch.dir, { recursive: true, force: true });
 
