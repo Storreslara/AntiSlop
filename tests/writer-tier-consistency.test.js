@@ -62,7 +62,9 @@ check('AC-D5: CONTEXT.md Implementer-tier ratchet reads sonnet→opus on re-atte
 });
 
 check('AC-D6: no surface instructs pre-emptive "looks mechanical" tier tagging', () => {
-  for (const rel of ['agents/task-master.md', 'agents/orchestrator.md', 'agents/lead-programmer.md']) {
+  for (const rel of ['agents/task-master.md', 'agents/orchestrator.md', 'agents/lead-programmer.md',
+    'adapters/cursor/agents/lead-programmer.md', 'adapters/codex/agents/lead-programmer.toml',
+    '.claude/agents/task-master.md', '.claude/agents/orchestrator.md', '.claude/agents/lead-programmer.md']) {
     const text = stripWhitespace(read(rel));
     assert.ok(!/looksmechanical/i.test(text),`${rel} contains a "looks mechanical" pre-emptive tagging reference`);
   }
@@ -132,14 +134,23 @@ check('AC-D9b: agents/orchestrator.md Suggested model vocabulary agrees with age
 });
 
 // AC-T1 / AC-A1 (rgh-h8, contract-hardening H8).
+// fc-4 G1: read a key from the frontmatter block only (shaped like default-implementer-model's frontmatterModel).
+function frontmatterKey(text, key) {
+  const fm = text.match(/^---\n([\s\S]*?)\n---/);
+  const m = fm && fm[1].match(new RegExp(`^${key}:\\s*(\\S+)$`, 'm'));
+  return m ? m[1] : null;
+}
+
 check('AC-T1: spec-master and task-master run with maxTurns: 120', () => {
   for (const rel of ['agents/spec-master.md', 'agents/task-master.md']) {
-    assert.ok(/^maxTurns: 120$/m.test(read(rel)), `${rel} does not pin maxTurns: 120`);
+    assert.strictEqual(frontmatterKey(read(rel), 'maxTurns'), '120', `${rel} frontmatter does not pin maxTurns: 120`);
   }
 });
 
 function contractPrecedence(rel) {
   const lines = read(rel).split('\n');
+  // fc-4 G2: exactly one Contract precedence bullet.
+  assert.strictEqual(lines.filter((l) => l.startsWith('- **Contract precedence.**')).length, 1, `${rel} must have exactly one Contract precedence bullet`);
   const start = lines.findIndex((l) => l.startsWith('- **Contract precedence.**'));
   assert.ok(start >= 0, `${rel} has no Contract precedence bullet`);
   let end = lines.findIndex((l, i) => i > start && l.startsWith('- **'));
@@ -149,9 +160,30 @@ function contractPrecedence(rel) {
 
 check('AC-A1: Contract precedence paragraph is identical in lead-programmer and its two ports', () => {
   const src = contractPrecedence('agents/lead-programmer.md');
-  for (const rel of ['adapters/cursor/agents/lead-programmer.md', 'adapters/codex/agents/lead-programmer.toml']) {
+  for (const rel of ['adapters/cursor/agents/lead-programmer.md', 'adapters/codex/agents/lead-programmer.toml', '.claude/agents/lead-programmer.md']) {
     assert.strictEqual(contractPrecedence(rel), src, `${rel} differs from agents/lead-programmer.md`);
   }
+});
+
+// fc-4 G4: presence pins, matched with all whitespace stripped (the item06-3 NOTE[spec] convention).
+function hasAll(rel, needles) {
+  const text = stripWhitespace(read(rel));
+  for (const n of needles) assert.ok(text.includes(stripWhitespace(n)), `${rel} lacks ${n}`);
+}
+
+check('AC-P1: orchestrator.md keeps its guarded text and the fc-2 rules', () => {
+  hasAll('agents/orchestrator.md', ['At the 2-FAIL cap', 'Sonnet units escalate on first FAIL',
+    '**`fable` is excluded for `task-master`**', '## Milestone audit gate', 'starts with neither', 'Gate for item 3']);
+});
+
+check('AC-P2: task-master.md names the nine dispatch-contract markers H4 checks', () => {
+  hasAll('agents/task-master.md', ['Unit:', '## Objective', '## Retrieval', '## Affected files', '## Ordered edits',
+    '## Do NOT touch', '## Acceptance criteria', '## Pre-resolved context', '## Escalation']);
+});
+
+check('AC-P3: scribe and lead-programmer keep their contract bullets', () => {
+  hasAll('agents/scribe.md', ['**Contract-only doc edits.**']);
+  hasAll('agents/lead-programmer.md', ['- **Contract precedence.**']);
 });
 
 console.log(failures === 0 ? '\nAll writer-tier-consistency checks passed.' : `\n${failures} check(s) failed.`);

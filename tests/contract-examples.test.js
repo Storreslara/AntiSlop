@@ -50,5 +50,16 @@ check('scribe example scores 7 under v2', () => {
   assert.strictEqual(j.score, 7, JSON.stringify(j.rows));
 });
 
+// fc-4 D7: catch a revert of H12's E3 (anchor form) and E6 (separate proof: line).
+check('lead example anchors all use line matching', () => {
+  const anchors = example('lead-contract-example').split('\n').filter((l) => /anchor:/.test(l));
+  assert.ok(anchors.length > 0, 'the lead example has no anchors');
+  for (const l of anchors) assert.ok(/anchor: line matching /.test(l), `not a line matching anchor: ${l}`);
+});
+
+check('scribe example has a separate proof: line', () => {
+  assert.ok(example('scribe-contract-example').split('\n').some((l) => l.startsWith('   proof: ')), 'no separate proof: line');
+});
+
 console.log(failures === 0 ? '\nAll contract-examples checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
