@@ -286,10 +286,14 @@ at :55-74):
 - **Stamped-file units serialize.** Units editing version-stamped files always
   get serial `Depends on` edges, because each sets HEAD + 1.
 - The slice report includes a unit × shared-file intersection table.
-- Held units' issue bodies open with `HELD: <reason>`.
+- Held units are filed, and their issue body's first line is `HELD: <reason>`.
+  They are never dispatched while that line stands. This replaces "are not
+  published" in **Partial slice on a spec gap**, matching current practice; see
+  ruling H-E(ii).
 - **Resume from slice state.** The Slice state table is posted as a comment on
-  the umbrella issue. Re-invocation reads it and publishes held units only, never
-  re-filing published ones.
+  the umbrella issue. On re-invocation task-master reads it and, for each held
+  unit whose gap is resolved, removes the `HELD:` line by editing the issue. It
+  never re-files a unit.
 - Remove "re-resolved by the orchestrator" (anchors are literal patterns per H2).
 - The fast-path sentence becomes "On the fast path spec-master writes it;
   task-master never runs the fast path".
@@ -408,6 +412,131 @@ one unit id).
 ### Gate HG (stage end; main session)
 Run the full suite per B6: `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
 The last line must be `exit=0`. Then mark the stage done.
+
+## Spec-gap rulings (task-master, 2026-10-06)
+
+These rulings supersede any conflicting text above. Each regex was run against
+the fixtures named, on 2026-10-06.
+
+**H-A (H1 R5 v2, review-packet placeholders).** Applied only to the fenced block
+after `review-packet:`:
+- Blank: `/<FILL:[^<>\n]*[^<>\s][^<>\n]*>/g` (`<FILL:` plus ≥1 non-space
+  character, no nested `<>`).
+- Forbidden other placeholder, tested after removing every blank:
+  `/<FILL:\s*>|<(?!FILL:)[A-Za-z][^<>\n]*>|\b(?:TODO|TBD|FIXME|XXX)\b/`.
+- Allowed non-blank text: everything else, including `->`, `a < b` and
+  `<!-- ... -->`. There is no allowed `<name>` token: task-master writes the
+  literal task-id, issue number and file paths, because it knows them.
+- R5 v2 holds iff blanks ≥ 1 and the forbidden test is false.
+- `<PASS-VERDICT-LINE>` is NOT subject to this rule. It is legal only in the
+  scribe shape, only inside `## Close conditions` (S3), and spelled exactly
+  `<PASS-VERDICT-LINE>`. The scribe shape has no review-packet.
+- Fixtures (in tests/fixtures/contract-score/):
+
+  | Fixture | Content | R5 |
+  |---|---|---|
+  | `v2-r5-pass.md` | `<FILL: changed files>` | true |
+  | `v2-r5-tokens-ok.md` | `<FILL: a>` plus `x -> y, a < b, <!-- c -->` | true |
+  | `v2-r5-name-token.md` | `<task-id> <FILL: x>` | false |
+  | `v2-r5-todo.md` | `<FILL: a> TBD` | false |
+  | `v2-r5-empty-fill.md` | `<FILL: a> <FILL:>` | false |
+  | `v2-r5-no-blank.md` | no `<FILL:` | false |
+
+  All six were measured on the final regexes above (node, 2026-10-06). The
+  empty-fill row needs the `<FILL:\s*>` arm; without it `<FILL:>` is silently
+  ignored.
+
+**H-B (S7 heading order, `prune:`, ADR body).** The v2 scribe contract is, in
+this exact order:
+- `Unit: <task-id>` as line 1, written as the literal id;
+- `## Objective`, `## Retrieval`, `## Glossary edits`, `## Doc edits`, `## ADR`,
+  `## Close conditions`, `## Do NOT touch`, `## Acceptance criteria`,
+  `## Escalation`.
+
+S7 holds iff line 1 matches `^Unit: \S+$` and the sequence of `^## (.+)$`
+headings equals that list exactly: no extras, none missing, same order.
+- `## Glossary edits`: items `file:`/`heading:`/`text:`, or the single line
+  `none`.
+- `## Doc edits`: items `file:`/`heading:`/`text:`, or the line
+  `none — make no other doc changes` (regex `^none [—-] make no other doc changes$`).
+  Its last line is always `prune: none`, at column 0, spelled exactly so (S6
+  requires it). A release-time scribe dispatch would instead carry
+  `prune: release <version>`, which is out of scope here.
+- `## ADR`: either the single line `none`, or three parts: a line
+  `NNNN <title>`, a line `file: docs/adr/NNNN-<slug>.md`, and a line `body:`
+  followed by an `indent: N` line and a fenced block holding the full ADR text.
+
+**H-C (R1 v2 indentation).** Lines inside a fenced payload that are empty or
+whitespace-only are exempt from the `indent: N` check. They denote an empty line
+in the payload: the implementer writes them as empty lines, with no trailing
+spaces. All other payload lines must start with ≥N spaces, and exactly N are
+stripped.
+- Fixtures: `v2-r1-blank-line.md` (payload with an empty line and a
+  spaces-only line) gives R1 true. `v2-r1-short-indent.md` (one non-blank line
+  with N-1 spaces) gives R1 false.
+
+**H-D (H7 `rubric_version`).**
+- The constant is `const RUBRIC_V2_UNIT = 'rgh-h2';`, at the top level of
+  `scripts/unit-outcomes.js`, next to the other module constants, and documented
+  in the README field dictionary (H10).
+- Values:
+  - `contract_ts` null gives `rubric_version` null;
+  - no PASS for `RUBRIC_V2_UNIT` as of the cutoff gives `v1` for every unit
+    with a non-null `contract_ts`;
+  - otherwise `v1` when `contract_ts` ≤ that PASS's `pass_ts`, and `v2` after.
+- AC-H7.3: fixtures cover all four cases (null contract_ts; no rgh-h2 PASS;
+  before; after), each asserted by name.
+
+**H-E (H10 exact text and criteria).**
+- (i) Section-anchor citations. A "line-number citation" is a match of
+  `/[A-Za-z0-9_\/.-]+\.(md|js|sh|json|toml):[0-9]+/` inside a glossary entry
+  whose header line contains `(unit rgh-`. A "section anchor" is a backticked
+  path followed by a bold bullet label or a heading name, with no `:<digits>`.
+  At ff3651f there is exactly one, at docs/harness-glossary.md:705
+  (`agents/task-master.md:110-145`). Its two sentences, from "The text says" to
+  "is unstated.", are replaced with:
+  "Under a contract, lead-programmer fills only the `<FILL:` blanks of the
+  advisory review packet template in `review-packet:` (`agents/task-master.md`
+  **Per-unit dispatch prompts**, element 8). A FAIL re-dispatch carries a
+  **fix contract**, to which the same precedence applies (`agents/lead-programmer.md`
+  **Fix turns**)."
+  - AC-H10.4: `awk '/\(unit rgh-/{f=1} /^$/{f=0} f' docs/harness-glossary.md | /usr/bin/grep -cE '[A-Za-z0-9_/.-]+\.(md|js|sh|json|toml):[0-9]+'` prints `0` (it prints `1` at ff3651f, measured).
+- (ii) **held unit** entry. The sentence "When a spec gap is encountered,
+  task-master publishes all already-sliced units and halts; the gap unit and
+  everything transitively depending on it remain unpublished (held) and are
+  reported in the **`Slice state:` table** with state "held" and the gap
+  reason." becomes:
+  "When a spec gap is encountered, task-master files every unit, but the gap
+  unit and everything transitively depending on it are filed with a
+  `HELD: <reason>` first body line and are not dispatched while it stands; the
+  report's **`Slice state:` table** lists them as held, with the gap reason."
+  In **Slice state: table**, "units in the "held" state are retained for re-work
+  after the spec gap is resolved" becomes:
+  "units in the "held" state keep their `HELD:` line until the gap is resolved;
+  on re-invocation task-master reads the table from the umbrella-issue comment
+  and removes the `HELD:` line from those units only (**Resume from slice state**)."
+  - AC-H10.5: `/usr/bin/grep -c 'halts' docs/harness-glossary.md` prints `0` (1 at ff3651f, measured), and a flattened grep of `retained for re-work` prints `0`.
+  - AC-H10.6: a flattened grep of `removes the \`HELD:\` line from those units only` prints `1`.
+- (iii) README (`docs/audits/unit-outcomes/README.md`), exact line replacements:
+  - L3 "…so this file is the replay pool." becomes "…so this file is the durable
+    copy of outcome history that later replays read." ("Replay pool" is the
+    research note's term and is undefined in this repo.)
+    - AC-H10.7: `/usr/bin/grep -c 'replay pool' README` prints `0` (1 at ff3651f).
+  - L22 becomes ``- `plan`: the plan stem (the `docs/plans/` file name without directory or `.md`), or null.`` (measured: values read like `2026-10-01-in-session-escalation-decision`).
+    - AC-H10.8: `/usr/bin/grep -c 'the plan stem' README` prints `1`.
+  - L28 becomes ``- `final_commit`: the PASS marker's `commit:` value as written (48 are short SHAs in this snapshot), or null when the unit has no PASS or its marker reads `commit: none`.``. 48 was measured with `jq -s '[.[]|select(.final_commit!=null and (.final_commit|length)<40)]|length'`.
+    - AC-H10.9: `/usr/bin/grep -c 'commit: none' README` prints ≥ 1, and the README's stated number equals that jq output.
+  - L35 becomes ``- `task_master_cutoff`: always null in this snapshot; the exporter does not yet measure cutoffs, and G3 prints `task_master_cutoffs=unmeasured`.``. Measured: 0 non-null values.
+    - AC-H10.10: `/usr/bin/grep -c 'always null in this snapshot' README` prints `1`.
+  - New line after L38: ``- `rubric_version`: `v1`, `v2` or null; see `RUBRIC_V2_UNIT` in `scripts/unit-outcomes.js`.``.
+    - AC-H10.11: `/usr/bin/grep -c 'RUBRIC_V2_UNIT' README` prints `1`.
+  - Machine-read lines unchanged:
+    - AC-H10.12: `git diff <B>..HEAD -- docs/audits/unit-outcomes/README.md | /usr/bin/grep -cE '^[-+](cutoff:|reproduce-command:|count:)'` prints `0`. Mutation: editing any `count:` line prints ≥ 2.
+  - (In these criteria, README = `docs/audits/unit-outcomes/README.md`.)
+
+Unit gating after these rulings: H1, H2, H3 (with the HELD reconciliation
+above), H4, H5, H6, H7, H8, H9 and H10 are un-gated by these specs. H10 depends
+on H3 and H5, because its replacement text cites their shipped labels.
 
 ## Placement table
 
