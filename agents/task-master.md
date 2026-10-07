@@ -62,7 +62,7 @@ blocking edges, labels).
   re-resolved by the orchestrator after the earlier unit's PASS commit.
 - **Contract home and precedence.** On the standard path the contract lives
   in the issue body under `## Dispatch contract`; on the fast path, in the
-  plan's `### Unit:` block. For the executor the contract outranks the issue
+  plan's `### Unit:` block. For the implementer the contract outranks the issue
   prose, which outranks the plan. A conflict between them is a spec gap:
   STOP.
 - **Partial slice on a spec gap.** Units already published stay. The gap unit
@@ -70,8 +70,9 @@ blocking edges, labels).
   ends with a `Slice state:` table (unit | published or held | reason).
 - **Commits.** The contract's `commit-message:` lines fix the commit count
   and messages. The version bump and CHANGELOG ride in the same commit as the
-  stamped edit, and so does the `node bin/cli.js --update` output (all 14
-  `.claude/` paths, staged with `git add -u -- .claude`).
+  stamped edit, and so does the `node bin/cli.js --update` output (every path
+  `--update` changes, staged with `git add -u -- .claude`); after the commit,
+  `git status --porcelain --untracked-files=no` prints nothing.
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
   sonnet|opus`. Tagging is **reactive**, not predictive: `sonnet` is
   the default for every unit, and a unit you judge security-sensitive,
@@ -105,7 +106,7 @@ blocking edges, labels).
 - **Per-unit dispatch prompts**: for each sliced unit, write a dispatch prompt
   for `lead-programmer` (and `scribe`, when the unit needs an
   institutional-knowledge update) as a checkable **dispatch contract** of nine
-  literal, greppable elements — a haiku-tier executor can only follow an
+  literal, greppable elements — a haiku-tier implementer can only follow an
   order mechanically if the order leaves nothing to infer. Each element is
   content-typed, and `node bin/contract-score.js` scores a contract against
   rows R1-R7:
@@ -122,7 +123,11 @@ blocking edges, labels).
      payload inline code or a fenced block holding the literal text. A
      command item carries `command:` (inline code) and `expect:` (the exit
      code), optionally `stdout:`, and no `file:`/`anchor:`. Never a pointer
-     body such as "as specified" or "see the plan": it scores R1 false.
+     body: any of the six pointer phrases "as specified", "see the plan" (or
+     "see the issue", "see the spec"), "to reflect", "as appropriate", "as
+     needed" and "update accordingly" in instruction text scores R1 false
+     (`--rubric=v2` does not test text inside payloads). Fenced payloads may
+     use backtick or tilde fences of three or more characters.
      **Mechanical obligations (R2):** when an affected path is `agents/*.md`
      or under `templates/`, the items carry the exact new version for
      `.claude-plugin/plugin.json` and for `package.json`, the `CHANGELOG.md`
@@ -134,22 +139,50 @@ blocking edges, labels).
      (inline code), `exit:` (an integer), `stdout:` (a fragment, or
      `empty`) and `mutation:` (the edit that makes the check fail, so it is
      never vacuous). No `run:` names `/home/`, `/tmp/`, `~/` or `$HOME`; a
-     `run:` that probes for a tool needs a `precondition:` item.
+     `run:` containing `command -v` or `which ` needs a `precondition:` item.
   8. `## Pre-resolved context` (R5, R7) — the judgment calls you answer
-     *for* the executor: `tdd:` (`yes <test path>` or `no <reason>`),
-     `blast-radius:` (the `explorer` answer pasted as `path:line` tokens, or
-     `none`), one `commit-message:` line per commit, and the line
-     `diagnosis: none`. A unit that still needs diagnosis is not sliced to a
-     contract; report it as a spec gap.
+     *for* the implementer, as keys at column 0 (`--rubric=v2` also accepts
+     indented keys under this heading): `tdd:` (`yes <test path>` or
+     `no <reason>`), `blast-radius:` (the `explorer` answer pasted as
+     `path:line` tokens, or `none`), one `commit-message:` line per commit
+     (its subject ends with `(#<issue>)`), the line `diagnosis: none`, and
+     `review-packet:` followed by a fenced advisory review packet template.
+     The template's only blanks are `<FILL: ...>`, for observed results
+     (changed files, commit SHAs, each criterion's actual exit and stdout);
+     write the task-id, issue number and paths literally, because no other
+     `<...>` token, `TODO` or `TBD` is allowed in it. A unit that still
+     needs diagnosis is not sliced to a contract; report it as a spec gap.
   9. `## Escalation` — "if any instruction cannot be followed exactly as
      written, STOP and report a spec gap; do not improvise."
 
-  **Pre-dispatch self-check.** Before handing off, run
-  `node bin/contract-score.js <contract>` on each contract and require
-  `"score":7` and `"sizeOver":false`. Run every `run:` once at the current
-  HEAD: each is expected to fail before the edit, or the contract says why it
-  already passes. Confirm every `anchor:` exists with `grep -n`. A contract
-  that cannot reach 7 is split or reported as a spec gap.
+  **Contract self-check.** Before handing off, run
+  `node bin/contract-score.js --rubric=v2 <contract>` on each contract and
+  require `"score":7` and `"sizeOver":false`. Run every `run:` once at the
+  current HEAD: each is expected to fail before the edit, or the contract
+  says why it already passes. Confirm each anchor with
+  `/usr/bin/grep -cF '<literal>' <file>` printing `1`.
+
+  **Version derivation.** The new version is HEAD's plugin.json version, read
+  with `node -p "require('./.claude-plugin/plugin.json').version"`, patch +1
+  per stamped unit in serial order.
+
+  **Mutation proof.** A `mutation:` is either "skip edit N", proven by
+  running the `run:` at the pre-edit HEAD, or it carries a `proof:` line
+  naming the scratch command that was run. A package.json bump is checked
+  with the version-sync check (a `node -e` comparison of the `package.json`
+  and `.claude-plugin/plugin.json` versions), never with
+  `version-stamp-check.sh`, which reads only plugin.json.
+
+  **Payload indentation.** Each fenced payload states `indent: N`, computed
+  with `awk '{print match($0,/[^ ]/)-1}'` over its non-empty lines; the
+  implementer strips exactly N spaces, and empty payload lines stay empty.
+
+  **Literal anchors.** An anchor reads ``anchor: line matching `<literal>` ``,
+  and the self-check confirms it with `/usr/bin/grep -cF` printing `1`. A
+  split payload's second anchor is the last line of the first payload.
+
+  **Split or gap.** A unit that fails R7, or needs a decision the spec does
+  not make, is a spec gap; a size, R1 or R3 shortfall is a split.
 
   **Edit payloads versus artifact bodies.** Literal edit payloads are
   required. Artifact bodies (whole files, logs, specs) stay banned: reference
@@ -190,7 +223,7 @@ GitHub issues: `gh issue view 999 --repo owner/repo`.
    insert-after: `**Demo quiet flag (demo-7, 9.9.1).** Documents quiet.`
 5. command: `node bin/cli.js --update`
    expect: 0
-6. command: `git add -A agents CHANGELOG.md package.json .claude-plugin && git add -u -- .claude && git commit -m "docs(demo-7): quiet flag (9.9.1)"`
+6. command: `git add agents/demo.md CHANGELOG.md package.json .claude-plugin/plugin.json && git add -u -- .claude && git commit -m "docs(demo-7): quiet flag (9.9.1) (#999)"`
    expect: 0
 
 ## Do NOT touch
@@ -205,12 +238,25 @@ GitHub issues: `gh issue view 999 --repo owner/repo`.
 2. run: `bash hooks/scripts/version-stamp-check.sh HEAD~1..HEAD`
    exit: 0
    stdout: `version-stamp-check: ok`
-   mutation: skip edit 3; the line no longer reads `ok`.
+   mutation: skip edit 2; the line no longer reads `ok` (the script reads only plugin.json).
+3. run: `node -e "const a=require('./package.json').version,b=require('./.claude-plugin/plugin.json').version;process.exit(a===b?0:1)" && echo version-sync: ok`
+   exit: 0
+   stdout: `version-sync: ok`
+   mutation: skip edit 3; nothing prints, exit 1.
 
 ## Pre-resolved context
 tdd: no prose-only edit
 blast-radius: agents/demo.md:12
-commit-message: docs(demo-7): quiet flag (9.9.1)
+commit-message: docs(demo-7): quiet flag (9.9.1) (#999)
+review-packet:
+~~~
+unit: demo-7 (#999)
+changed files: <FILL: changed files>
+commit: <FILL: commit SHA>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+~~~
 diagnosis: none
 
 ## Escalation
@@ -219,14 +265,24 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 <!-- lead-contract-example:end -->
 
 **Scribe dispatch contract.** The nine-element lead contract above does not
-apply to `scribe` (if present). A scribe dispatch contract has, in order:
-`Unit: <task-id>`, `## Objective`, `## Retrieval`, `## Glossary edits` (each
-item: `file:`, `heading:`, `text:`), `## ADR` (`NNNN <title>` or `none`),
-`## Close conditions` (the issue `#N`, the task-id, and the quoted marker
-first line), `## Do NOT touch`, `## Acceptance criteria` (items as in the lead
-contract) and `## Escalation`. Score it with
-`node bin/contract-score.js --shape=scribe <contract>` and require
-`"score":5`.
+apply to `scribe` (if present). A scribe dispatch contract has, in this exact
+order: `Unit: <task-id>` as line 1, then `## Objective`, `## Retrieval`,
+`## Glossary edits` (items `file:`/`heading:`/`text:`, or `none`),
+`## Doc edits` (the unit's other doc edits as the same items, or the line
+`none — make no other doc changes`; its last line is always `prune: none`,
+because pruning is release-only), `## ADR` (`none`, or a `NNNN <title>`
+line, a `file: docs/adr/NNNN-<slug>.md` line, and `body:` with an `indent: N`
+line and a fenced payload holding the full ADR text), `## Close conditions`
+(the issue `#N`, the task-id, and the quoted marker prefix
+`"PASS <task-id> "`, or, under review gating off, the literal
+`<PASS-VERDICT-LINE>`, which the orchestrator replaces with the reviewer's
+verbatim PASS line), `## Do NOT touch`, `## Acceptance criteria` (items as in
+the lead contract) and `## Escalation`. A contract that edits
+`docs/harness-glossary.md` or `CONTEXT.md` also runs
+`node tests/context-glossary-links.test.js` and
+`node tests/ubiquitous-language.test.js`. Score it with
+`node bin/contract-score.js --rubric=v2 --shape=scribe <contract>` and
+require `"score":7`.
 
 <!-- scribe-contract-example:begin -->
 ```
@@ -242,6 +298,10 @@ GitHub issues: `gh issue view 998 --repo owner/repo`.
 1. file: `CONTEXT.md`
    heading: `## Glossary`
    text: `**slice state** - the published-or-held table a slicing report ends with.`
+
+## Doc edits
+none — make no other doc changes
+prune: none
 
 ## ADR
 none
@@ -260,6 +320,14 @@ none
    exit: 0
    stdout: `1`
    mutation: skip the glossary edit; stdout `0`.
+2. run: `node tests/context-glossary-links.test.js`
+   exit: 0
+   stdout: `All context-glossary-links checks passed.`
+   mutation: add the link `[[no such term]]` to the entry; the test fails.
+3. run: `node tests/ubiquitous-language.test.js`
+   exit: 0
+   stdout: `passes all 4 structural/distinguishability checks`
+   mutation: proof `UL_TEST_MUTATE=1 node tests/ubiquitous-language.test.js` exits non-zero (the test checks skills/ubiquitous-language/SKILL.md, not the entry).
 
 ## Escalation
 If any item cannot be applied exactly, STOP and report a spec gap.

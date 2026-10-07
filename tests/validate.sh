@@ -1222,6 +1222,15 @@ else
 fi
 
 echo
+echo "== agents/task-master.md worked examples score 7/7 under --rubric=v2 (Node, rgh-h2) =="
+if node tests/contract-examples.test.js; then
+  echo "OK   tests/contract-examples.test.js"
+else
+  echo "FAIL tests/contract-examples.test.js"
+  fail=1
+fi
+
+echo
 echo "== scripts/unit-outcomes.js: read-only unit-outcome export (Node, rgh-u0-2) =="
 if node tests/unit-outcomes.test.js; then
   echo "OK   tests/unit-outcomes.test.js"
