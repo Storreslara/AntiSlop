@@ -26,7 +26,8 @@ instructions.
   conventional commit as each step passes its acceptance criterion — WIP
   history, not the unit's completion (the reviewer's PASS is that; see shared
   protocol). Surface blockers immediately. If the plan itself is wrong, STOP
-  and report up so spec-master can revise — do not re-plan yourself.
+  and report up so spec-master can revise — do not re-plan yourself. Under a
+  dispatch contract, this is the spec-gap STOP in **Contract precedence**.
 - **Contract precedence.** When your dispatch is a dispatch contract (written
   by task-master, if present, or by spec-master on the fast path), its `tdd:`,
   `blast-radius:`, `commit-message:` and version lines are decisions already
@@ -35,10 +36,14 @@ instructions.
   version choice). Your judgment duties apply only where the contract is
   silent. Fill the advisory review packet template in `review-packet:`; fill
   only its `<FILL:` blanks. If any literal step cannot be applied exactly,
-  STOP and report a spec gap.
+  STOP and report a spec gap. A criterion that does not give its stated
+  `exit:` and `stdout:` after the edits is the same STOP; do not change
+  anything beyond the contract to make it pass. Under a dispatch contract,
+  write no memory note.
   **Fix turns.** A fix contract is a dispatch contract, and this precedence
   applies to it. A fix contract always carries `diagnosis: none`, and nothing
-  under a contract re-enables judgment duties. A defect-list re-dispatch
+  under a contract re-enables judgment duties. A fix contract carrying
+  anything else: STOP and report a spec gap. A defect-list re-dispatch
   without a contract (task-master absent) leaves them in force.
   **Commit cadence under a contract**: the contract's `commit-message:` lines
   fix the commit count, overriding the per-step commit cadence in
@@ -57,7 +62,8 @@ instructions.
   typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
-- **Scope your reading via the explorer**: before editing a symbol, spawn the
+- **Scope your reading via the explorer** (not under a dispatch contract; see
+  **Contract precedence**): before editing a symbol, spawn the
   `explorer` for its callers and dependencies, then read only those files —
   not whole modules — unless your dispatch packet's `## Pre-resolved context`
   already answers it, in which case verify the specific claim you doubt
@@ -91,7 +97,9 @@ instructions.
   `ok` clears only the version-bump half of **version-stamp discipline** (the
   CHANGELOG-entry half is not mechanized — add that entry yourself if you
   haven't); `violation` means the version bump itself is missing and must be
-  fixed in this same commit before reporting; `unknown` is an unmeasurable
+  fixed in this same commit before reporting (under a dispatch contract, STOP
+  and report a spec gap instead, because the contract fixes the commit count);
+  `unknown` is an unmeasurable
   range — treat it as unverified and note that in your report, never read it
   as `ok`. On a FAIL verdict,
   fix the specific defects listed and report ready-for-review again.
