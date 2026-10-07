@@ -311,7 +311,8 @@ function r5v2(text) {
 
 function r6v2(text) {
   const sec = sectionV2(text, 'Do NOT touch') || [];
-  const bullets = sec.filter((l) => /^ ?[-*+] /.test(l));
+  const flags = fenceFlags(sec);
+  const bullets = sec.filter((l, k) => flags[k] === null && /^ ?[-*+] /.test(l));
   return bullets.length >= 2 && bullets.every((l) => /^ ?[-*+] `[^`]*[/.][^`]*`/.test(l));
 }
 
@@ -391,9 +392,10 @@ function main() {
   const shape = shapeArg ? shapeArg.slice(8) : 'lead';
   const rubricArg = args.find((a) => a.startsWith('--rubric='));
   const rubric = rubricArg ? rubricArg.slice(9) : 'v1';
-  const table = { v1: SHAPES, v2: SHAPES_V2 }[rubric];
+  const tables = { v1: SHAPES, v2: SHAPES_V2 };
+  const table = Object.hasOwn(tables, rubric) ? tables[rubric] : null;
   const file = args.find((a) => !a.startsWith('--') || a === '-');
-  if (!table || !table[shape] || !file) { process.stderr.write('usage: contract-score.js <path|-> [--shape=lead|scribe] [--rubric=v1|v2]\n'); process.exit(2); }
+  if (!table || !Object.hasOwn(table, shape) || !file) { process.stderr.write('usage: contract-score.js <path|-> [--shape=lead|scribe] [--rubric=v1|v2]\n'); process.exit(2); }
   let buf;
   try { buf = fs.readFileSync(file === '-' ? 0 : file); } catch (e) { process.stderr.write(`unreadable: ${e.message}\n`); process.exit(2); }
   const raw = buf.toString('utf8');
