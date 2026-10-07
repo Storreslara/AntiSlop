@@ -879,6 +879,57 @@ No other ruling's before-text has vanished. Re-measured as unique at 243a8a5:
 G1, G2, G3, "The executor…", the scribe-entry sentence pair, and both entry
 bodies.
 
+### Ruling H-L (2026-10-07): H10 re-measured at a4934c2
+
+This supersedes G1 and AC-H10.19 and amends AC-H10.4. Scribe commit a4934c2
+rewrote the scribe paragraph of **contract precedence**; bf19ad7 added clauses
+to the FAIL-routing and **judgment duties** entries, which H10 does not edit, so
+there is no overlap.
+
+**G1 (re-ruled).**
+- Before (flattened, occurs once at a4934c2): from
+  ``**For scribe** (per `agents/scribe.md` **Contract precedence**):`` through
+  ``conditions per `agents/scribe.md:102`.``
+- After: "**For scribe**, the rule is `agents/scribe.md` **Contract-only doc
+  edits**: scribe makes exactly the contract's Glossary edits, Doc edits and ADR
+  body and no other doc change. The four close conditions and every never-close
+  rule still apply on top of the contract. If an item cannot be applied exactly,
+  scribe stops and reports a spec gap."
+- Each sentence is literally in `agents/scribe.md` at a4934c2 (each phrase
+  measured once).
+
+**AC-H10.19 (replaced; the old phrase is already 0, so it was vacuous):**
+flattened greps of ``conditions per `agents/scribe.md:102` `` and of
+``(per `agents/scribe.md` **Contract precedence**)`` print `0` (both 1 at
+a4934c2).
+
+**AC-H10.4:** at a4934c2 the awk span selects two line-number citations (:701
+`agents/scribe.md:102` and :708 `agents/task-master.md:165-169`). The G1 and
+H-E(i) edits remove both, so the check prints `0` afterwards (`2` now).
+
+Re-measured at a4934c2:
+
+| Before-text / count | Now | After H10 |
+|---|---|---|
+| G1 before (above) | 1 | replaced |
+| H-E(i) ``(the nine-element contract at `agents/task-master.md:165-169` supplies this element)`` | 1 | replaced (H-J row) |
+| held unit body start / end anchors | 1 / 1 | replaced (H-J) |
+| Slice state body start / end anchors | 1 / 1 | replaced (H-J) |
+| `The executor consults the contract according to its home` | 1 | replaced |
+| G2 sentence ("When present, invokes [[contract precedence]]: …") | 1 | replaced |
+| G3 sentence ("Documented in `agents/scribe.md` and `agents/lead-programmer.md` **Contract precedence** sections …") | 1 | replaced |
+| scribe-entry pair (``containing nine elements in order: …`` / ``requiring `"score":5` (the [[contract score]] S1-S5 rubric).``) | 1 / 1 | replaced (H-J) |
+| `halts` (AC-H10.5) | 1 | 0 |
+| `retained for re-work` (AC-H10.5) | 1 | 0 |
+| `published or held` (AC-H10.17) | 2 | 0 |
+| `"score":5` (AC-H10.23) | 1 | 0 |
+| `scribe's own judgment applies only where the contract is silent` (AC-H10.20) | 1 | 0 |
+| `` `agents/scribe.md` **Contract precedence** `` (AC-H10.21's "= 0" half) | 1 | 0 |
+| the 10 new entries, anchored count (AC-H10.18 + AC-H10.22) | 0 | 7 + 3 |
+| line-number citations in `rgh-` entries (AC-H10.4) | 2 | 0 |
+
+No other before-text vanished.
+
 ### Gate HG (stage end; main session)
 Run the full suite per B6: `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
 The last line must be `exit=0`. Then mark the stage done.
