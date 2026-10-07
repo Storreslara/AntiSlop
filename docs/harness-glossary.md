@@ -663,11 +663,15 @@ an append-only audit-log record class written to
   score]], and [[mechanical obligations (R2)]].
 
 **contract score**:
-(unit rgh-u0-2b, 2026-10-06) — the R1-R7 lead / S1-S5 scribe rubric score
-  computed by `bin/contract-score.js` for a dispatch contract. The scorer is
-  read-only; it is not the responsibility of `scripts/unit-outcomes.js` to verify
-  or adjust scores, only to record them. See [[unit-outcome export]], [[content-typed
-  contract]].
+(unit rgh-u0-2b, 2026-10-06; amended unit rgh-h1, 2026-10-07) — the R1-R7 lead 
+  / S1-S5 scribe rubric score computed by `bin/contract-score.js` for a dispatch 
+  contract, via `node bin/contract-score.js [--rubric=v1|v2] [--shape=lead|scribe] <path>`. 
+  The `--rubric=v1` (default, unchanged) grades both lead and scribe rubrics at their 
+  v1 shapes (R1-R7 lead, S1-S5 scribe); `--rubric=v2` uses the v2 scribe shape 
+  (S1-S7) and enforces additional formatting rules (fenced payloads, CRLF normalization, 
+  indentation directives, review-packet fills). The scorer is read-only; it is not 
+  the responsibility of `scripts/unit-outcomes.js` to verify or adjust scores, only 
+  to record them. See [[unit-outcome export]], [[content-typed contract]].
 
 **contract self-check**:
 (unit rgh-u3-1, 2026-10-06) — the pre-dispatch verification task task-master runs
