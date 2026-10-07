@@ -218,6 +218,54 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 ```
 <!-- lead-contract-example:end -->
 
+**Scribe dispatch contract.** The nine-element lead contract above does not
+apply to `scribe` (if present). A scribe dispatch contract has, in order:
+`Unit: <task-id>`, `## Objective`, `## Retrieval`, `## Glossary edits` (each
+item: `file:`, `heading:`, `text:`), `## ADR` (`NNNN <title>` or `none`),
+`## Close conditions` (the issue `#N`, the task-id, and the quoted marker
+first line), `## Do NOT touch`, `## Acceptance criteria` (items as in the lead
+contract) and `## Escalation`. Score it with
+`node bin/contract-score.js --shape=scribe <contract>` and require
+`"score":5`.
+
+<!-- scribe-contract-example:begin -->
+```
+Unit: demo-8
+
+## Objective
+CONTEXT.md defines "slice state".
+
+## Retrieval
+GitHub issues: `gh issue view 998 --repo owner/repo`.
+
+## Glossary edits
+1. file: `CONTEXT.md`
+   heading: `## Glossary`
+   text: `**slice state** - the published-or-held table a slicing report ends with.`
+
+## ADR
+none
+
+## Close conditions
+- issue #998
+- task-id: demo-8
+- marker first line: "PASS demo-8 "
+
+## Do NOT touch
+- `agents/`
+- `docs/adr/`
+
+## Acceptance criteria
+1. run: `grep -c 'slice state' CONTEXT.md`
+   exit: 0
+   stdout: `1`
+   mutation: skip the glossary edit; stdout `0`.
+
+## Escalation
+If any item cannot be applied exactly, STOP and report a spec gap.
+```
+<!-- scribe-contract-example:end -->
+
 - **Spec gaps surface upward, never get filled here**: if writing a dispatch
   prompt exposes an ambiguity the spec should have resolved but didn't
   (missing acceptance criterion, contradictory affected-files lists, a step

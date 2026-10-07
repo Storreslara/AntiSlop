@@ -87,6 +87,11 @@ Never close on any of these:
 - Never close if the marker is missing or malformed (first line not beginning `PASS <task-id> `).
 - Never close speculatively — if you are unsure about any condition, report and close nothing.
 
+**Contract precedence.** When your dispatch carries a scribe dispatch contract
+(if task-master is present), apply its glossary text, ADR number and close
+conditions as written; your own judgment applies only where the contract is
+silent. If an item cannot be applied exactly, STOP and report a spec gap.
+
 When reviewGating.mode is off (review gating off) in
 `.claude/persona-config.json` (only the exact string `off`; anything else
 means `enforce` and the rules above apply unchanged), the reviewer writes no
