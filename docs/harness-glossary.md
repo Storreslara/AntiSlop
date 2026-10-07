@@ -675,14 +675,96 @@ an append-only audit-log record class written to
 
 **contract self-check**:
 (unit rgh-u3-1, 2026-10-06) — the pre-dispatch verification task task-master runs
-  via `node bin/contract-score.js <contract>` to confirm a dispatch contract reaches
+  via `node bin/contract-score.js --rubric=v2 <contract>` to confirm a dispatch contract reaches
   `"score":7` and `"sizeOver":false` before handing off to `lead-programmer`. Distinct
   from spec-master's Self-check step (which replays recorded FAIL classes); this
   term refers specifically to task-master's mechanical validation of the nine-element
-  dispatch contract's structure. Documented in the `agents/task-master.md` **Pre-dispatch
-  self-check** section. Run via CLI invocation requiring every `run:` criterion to
+  dispatch contract's structure. Documented in the `agents/task-master.md` **Contract self-check** paragraph. Run via CLI invocation requiring every `run:` criterion to
   pass at current HEAD or already pass-correctly at baseline, and every `anchor:` to
   be grep-verifiable.
+
+**fix contract**:
+(unit rgh-h10, 2026-10-07) — a nine-element dispatch contract that task-master,
+  if present, writes for the same `Unit:` id from the latest FAIL block: literal
+  edits, the original criteria plus one criterion per defect,
+  `fix-of: <FAIL header timestamp>`, and `diagnosis: none`. task-master does the
+  diagnosis itself; if it cannot determine the cause, it writes no fix contract
+  and reports a spec gap. The orchestrator dispatches task-master between the FAIL
+  verdict and the fix dispatch (`agents/orchestrator.md` **Fix-contract
+  re-dispatch**), and lead-programmer applies [[contract precedence]] to it
+  (`agents/lead-programmer.md` **Fix turns**). Defined in `agents/task-master.md`
+  bullet **Fix contract**.
+
+**review-packet**:
+(unit rgh-h10, 2026-10-07) — the `review-packet:` key in a dispatch contract's
+  `## Pre-resolved context`, followed by a fenced advisory review packet template
+  whose only blanks are `<FILL: ...>` for observed results (changed files, commit
+  SHAs, each criterion's actual exit and stdout); the task-id, issue number and
+  paths are written literally. lead-programmer fills only those blanks
+  ([[contract precedence]]); `bin/contract-score.js --rubric=v2` row R5 requires
+  it. Defined in `agents/task-master.md` **Per-unit dispatch prompts**, element 8.
+
+**shared file**:
+(unit rgh-h10, 2026-10-07) — for slicing, a file that two units both edit, which
+  gives them a `Depends on` edge in dispatch order. The bump files
+  (`.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`) and the paths
+  `node bin/cli.js --update` changes are excluded. Defined in
+  `agents/task-master.md` bullet **Shared file, defined**. See
+  [[intersection table]].
+
+**umbrella issue**:
+(unit rgh-h10, 2026-10-07) — the spec's `[spec]` PRD issue that the sliced units
+  name as their parent. task-master posts the `Slice state:` table to it as a
+  comment, and a held unit's gap counts as resolved once the umbrella issue's body
+  names that gap's ruling. Defined in `agents/task-master.md` bullet **Resume from
+  slice state**. See [[held unit]].
+
+**intersection table**:
+(unit rgh-h10, 2026-10-07) — the table in a slice report with the columns
+  `unit | shared files | depends on`, one row per unit, shared files as backticked
+  paths or `none`. Defined in `agents/task-master.md` bullet **Stamped-file units
+  serialize**. See [[shared file]].
+
+**version-sync check**:
+(unit rgh-h10, 2026-10-07) — the `node -e` comparison of the `package.json` and
+  `.claude-plugin/plugin.json` versions that a contract uses to detect a skipped
+  package.json bump; `version-stamp-check.sh` reads only plugin.json and cannot.
+  Defined in `agents/task-master.md` **Mutation proof**.
+
+**pointer phrase**:
+(unit rgh-h10, 2026-10-07) — one of the six phrases listed in element 5 of
+  `agents/task-master.md` **Per-unit dispatch prompts** (the `POINTER` pattern of
+  `bin/contract-score.js`). In [[instruction text]] it makes rubric row R1 false.
+  This entry does not repeat the phrases.
+
+**instruction text**:
+(unit rgh-h10, 2026-10-07) — the parts of a contract's `## Ordered edits` that
+  tell the implementer what to do: item text, `file:` lines, `command:` and
+  `expect:` lines, and any text after a payload's closing backtick. Under
+  `--rubric=v2` the [[pointer phrase]] test reads instruction text only and skips
+  payloads (fenced blocks, the backticked `before:`/`after:`/`insert-after:`/`delete:`
+  values and `anchor: line matching` literals). Defined in `agents/task-master.md`
+  element 5 and in `bin/contract-score.js` (`instructionText`).
+
+**advisory review packet**:
+(unit rgh-h10, 2026-10-07) — the structured report lead-programmer ends a unit
+  with when reporting "ready-for-review": changed files, the commit/diff range,
+  the acceptance-criteria commands, the unit id and a scribe digest. Under a
+  contract it is the template in `review-packet:`, filled only at its `<FILL:`
+  blanks. Defined in `agents/lead-programmer.md` **Don't grade your own work**.
+  See [[review-packet]].
+
+**fix turns**:
+(unit rgh-h10, 2026-10-07) — lead-programmer's rule that a [[fix contract]] is a
+  dispatch contract, so [[contract precedence]] applies to it, and that a fix
+  contract always carries `diagnosis: none`. Defined in
+  `agents/lead-programmer.md` **Fix turns**.
+
+**commit cadence under a contract**:
+(unit rgh-h10, 2026-10-07) — lead-programmer's rule that a contract's
+  `commit-message:` lines fix the commit count, overriding the per-step commit
+  cadence of its **Execution** bullet. Defined in `agents/lead-programmer.md`
+  **Commit cadence under a contract**.
 
 **contract precedence**:
 (unit rgh-u3-3, 2026-10-07; amended unit rgh-u3-4, 2026-10-07) — the rule 
@@ -692,20 +774,13 @@ an append-only audit-log record class written to
   written, the persona stops and reports a spec gap. The rule applies differently 
   to each persona:
   
-  **For scribe** (per `agents/scribe.md` **Contract precedence**): 
-  apply the [[scribe dispatch contract]]'s written glossary text, ADR number, and 
-  close conditions as written. The four hard issue-closing conditions (valid PASS 
-  marker, commit references issue, issue currently OPEN, both issue number and 
-  task-id named) and the never-close rules (FAIL verdict, .blocked marker, 
-  malformed marker, speculatively) still apply on top of the contract's close 
-  conditions per `agents/scribe.md:102`.
+  **For scribe**, the rule is `agents/scribe.md` **Contract-only doc edits**: scribe makes exactly the contract's Glossary edits, Doc edits and ADR body and no other doc change. The four close conditions and every never-close rule still apply on top of the contract. If an item cannot be applied exactly, scribe stops and reports a spec gap.
   
   **For lead-programmer** (per `agents/lead-programmer.md` **Contract precedence**): 
   its `tdd:`, `blast-radius:`, `commit-message:`, and version lines are decisions 
   already made — follow them without re-deriving (no explorer spawn, no TDD 
   re-decision, no version choice). Fill the advisory review packet template in 
-  `review-packet:`; fill only its `<FILL:` blanks (the nine-element contract at 
-  `agents/task-master.md:165-169` supplies this element). A fix contract is a 
+  `review-packet:`; fill only its `<FILL:` blanks (element 8, `## Pre-resolved context`, of the nine-element contract in `agents/task-master.md` **Per-unit dispatch prompts** supplies this element). A fix contract is a 
   dispatch contract, and this precedence applies to it: a fix contract always 
   carries `diagnosis: none`, and nothing under a contract re-enables judgment 
   duties. On FAIL re-dispatch, when task-master is present, the orchestrator 
@@ -716,16 +791,9 @@ an append-only audit-log record class written to
 
 **scribe dispatch contract**:
 (unit rgh-u3-3, 2026-10-07) — a dispatch contract structure written when task-master 
-  includes a scribe unit, containing nine elements in order: `Unit: <task-id>`, 
-  `## Objective`, `## Retrieval`, `## Glossary edits` (each item: `file:`, `heading:`, 
-  `text:`), `## ADR` (`NNNN <title>` or `none`), `## Close conditions` (the issue 
-  number, the task-id, and the marker first-line prefix), `## Do NOT touch`, 
-  `## Acceptance criteria` (items matching [[edit item / command item]] format), 
-  and `## Escalation`. Scored with `node bin/contract-score.js --shape=scribe 
-  <contract>` requiring `"score":5` (the [[contract score]] S1-S5 rubric). Distinct 
+  includes a scribe unit, with, in this exact order: `Unit: <task-id>` as line 1, then `## Objective`, `## Retrieval`, `## Glossary edits` (items `file:`/`heading:`/`text:`, or `none`), `## Doc edits` (the same items, or `none — make no other doc changes`; its last line is always `prune: none`), `## ADR` (`none`, or a `NNNN <title>` line, a `file:` line and a `body:` payload), `## Close conditions` (the issue `#N`, the task-id, and the quoted marker prefix `"PASS <task-id> "`, or `<PASS-VERDICT-LINE>` under review gating off), `## Do NOT touch`, `## Acceptance criteria` (items matching [[edit item / command item]] format) and `## Escalation`. Scored with `node bin/contract-score.js --rubric=v2 --shape=scribe <contract>` requiring `"score":7`. Distinct 
   from the nine-element lead contract (which applies to lead-programmer). When 
-  present, invokes [[contract precedence]]: scribe's own judgment applies only where 
-  the contract is silent, and any item that cannot be applied exactly routes to a 
+  present, scribe follows `agents/scribe.md` **Contract-only doc edits**: it makes exactly the contract's edits and no other doc change, and any item that cannot be applied exactly routes to a 
   spec gap. Documented in `agents/task-master.md` **Scribe dispatch contract** 
   section with example(s) between whole-line scribe-contract-example markers.
 
@@ -775,9 +843,7 @@ an append-only audit-log record class written to
   glossary entry pointing to a nonexistent heading, a commit-message template 
   that names a variable the contract does not supply, an ordered edit whose 
   anchor prose does not match any text in the target file. Documented in 
-  `agents/scribe.md` and `agents/lead-programmer.md` **Contract precedence** 
-  sections (both end with "If any item cannot be applied exactly, STOP and 
-  report a spec gap").
+  `agents/lead-programmer.md` **Contract precedence** and `agents/scribe.md` **Contract-only doc edits**.
 
 **judgment duties**:
 (unit rgh-u3-4, 2026-10-07) — the normal, unrestricted decision-making 
@@ -3174,25 +3240,10 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   **Shared-file siblings** within the task-master input section.
 
 **held unit**:
-(unit rgh-u3-2, 2026-10-06) — a unit that is not published in the sliced dispatch
-  because it is behind a **spec gap** (an ambiguity or under-specified part of the
-  finalized spec). When a spec gap is encountered, task-master publishes all
-  already-sliced units and halts; the gap unit and everything transitively
-  depending on it remain unpublished (held) and are reported in the
-  **`Slice state:` table** with state "held" and the gap reason. The table format
-  is: unit | published or held | reason. Defined in `agents/task-master.md` bullet
-  **Partial slice on a spec gap** within the task-master input section. See
-  **Slice state: table**, **spec gap**.
+(unit rgh-u3-2, 2026-10-06; corrected rgh-h10) — a unit filed behind a **spec gap**. When a spec gap is encountered, the gap unit and everything transitively depending on it are filed with a `HELD: <reason>` first body line, and a held unit is never dispatched while that line stands. The report's **`Slice state:` table** lists them as held, in the format unit | dispatchable or held | reason. Defined in `agents/task-master.md` bullet **Partial slice on a spec gap**. See **Slice state: table**, **spec gap**.
 
 **Slice state: table**:
-(unit rgh-u3-2, 2026-10-06) — the summary table that task-master appends to its
-  report when a partial slice occurs (i.e., when a spec gap prevents publishing
-  all units). The table rows correspond to units with columns: `unit` (task-id),
-  `state` (published or held), and `reason` (explanation if held). Units in
-  the "published" state are routed to dispatch; units in the "held" state are
-  retained for re-work after the spec gap is resolved. Defined in
-  `agents/task-master.md` bullet **Partial slice on a spec gap** within the
-  task-master input section. See **held unit**, **partial slice**.
+(unit rgh-u3-2, 2026-10-06; corrected rgh-h10) — the table that ends task-master's slicing report when a spec gap holds units, with columns `unit`, `dispatchable or held` and `reason`. task-master posts it as a comment on the umbrella issue; on re-invocation it reads it and, for each held unit whose gap is resolved (the umbrella issue's body has a line naming that gap's ruling), removes the `HELD:` line by editing the issue, and never re-files a unit. Defined in `agents/task-master.md` bullets **Partial slice on a spec gap** and **Resume from slice state**. See **held unit**.
 
 **standard path**:
 (unit rgh-u3-2, 2026-10-06) — the execution path task-master takes when a
@@ -3201,7 +3252,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   task-master entirely and has spec-master emit the contract directly). The
   dispatch contract lives in the issue body under `## Dispatch contract` on the
   standard path, whereas on the fast path it lives in the plan's `### Unit:`
-  block. Counterpart to [[fast-path threshold]] in CONTEXT.md. The executor
+  block. Counterpart to [[fast-path threshold]] in CONTEXT.md. The implementer
   consults the contract according to its home: the contract outranks the issue
   prose, which outranks the plan. A conflict between them is a spec gap. Defined
   in `agents/task-master.md` bullet **Contract home and precedence** within the
