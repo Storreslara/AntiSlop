@@ -663,10 +663,42 @@ v1 is untouched.
     `score-exception: R1 pointer phrase in payload (H-F); v2 7/7` in its
     `## Pre-resolved context` and scores 7/7 under v2.
   - Any other shortfall is not excepted.
-  - Such contracts are task-master-authored after U3-4's PASS, so they enter the
-    G3 population with a v1 score of 6. They do not count toward G3's "≥20 at
-    7/7". This is recorded, not corrected, because G3's definition stays
-    unchanged.
+  - **Exact condition (H-F2, 2026-10-06; applies whenever written, before or
+    after H1's PASS).** A contract is excepted from the v1 7/7 requirement iff
+    all five hold:
+    (1) it scores `"score":7` under `--rubric=v2` with the merged scorer;
+    (2) under `--rubric=v1` its only false row is R1;
+    (3) with every pointer phrase inside payload spans (the H-F rule's three span
+        kinds) replaced by `x`, it scores 7 under v1. This proves the shortfall
+        is solely payload text;
+    (4) its `## Pre-resolved context` carries the line
+        `score-exception: R1 pointer phrase in payload (H-F); v2 7/7`;
+    (5) its unit is listed in the exception list below.
+    The reviewer checks (1), (2) and (4) by running the scorer and grepping, and
+    checks (5) against this list.
+  - **Exception list (H-F2):**
+
+    | Unit | Why its payload must quote a pointer phrase |
+    |---|---|
+    | H2 | H2(c) lists all six pointer phrases in task-master.md |
+    | H1b | fixtures `v2-r1-pointer-in-anchor.md` ("see the plan") and `v2-fence-len.md` ("as needed") |
+
+    Checked for the other units, against their specified payloads:
+    - H3, H4, H5, H6, H7, H9: no pointer phrase.
+    - H8: quotes "looks mechanical", which is not a `POINTER` phrase.
+    - H10: its **instruction text** glossary entry describes the scope without
+      quoting the phrases, and must keep doing so.
+
+    A new entry needs a spec-master ruling.
+  - **The v1 7/7 requirement does not lapse** for contracts written after H1's
+    PASS. task-master's self-check still requires v1 7/7 (the shipped rule)
+    until H2 switches the self-check to v2. After H2's PASS, contracts must score
+    7/7 under v2, and v1 is informational.
+  - **G3 effect (intended).** Excepted contracts are task-master-authored after
+    U3-4's PASS, so they enter the G3 population with a v1 score of 6 and do not
+    count toward G3's "≥20 at 7/7". This is intended: G3's definition (v1 scores)
+    stays unchanged. Switching G3 to v2 for post-H1 contracts would change the
+    programme plan's gate, so it is Open Question 5 and is not applied.
 - **H2(c) wording kept:** "list all six pointer phrases" stands, written
   literally inside the payload. No obfuscation.
 
@@ -706,6 +738,7 @@ on H3 and H5, because its replacement text cites their shipped labels.
 2. Do scribe's doc-update duties move into the contract? Default: **yes for per-unit doc edits (`## Doc edits`); prune duty parked (release-only)**. Origin: Clarifications cat. 1.
 3. Include an optional unit hardening `hooks/scripts/version-stamp-check.sh` to read package.json? Default: **no** (the version-sync check in contracts covers it; guarded hook). Origin: Clarifications cat. 7.
 4. G3 confound: pool v1 and v2 contracts as rubric era (recorded via `rubric_version`), or pause G3 counting until the hardening stage ends? Default: **pool and record**. Origin: Clarifications cat. 9, CHK5.
+5. Should the programme plan's G3 count v2 scores for contracts written after H2's PASS (v1 cannot score the hardened format's payload-quoting contracts at 7)? Default: **yes, score each G3 unit with its own `rubric_version` (v1 for v1-era, v2 for v2-era contracts)**, applied only on the user's approval as an amendment to `docs/plans/2026-10-06-rubric-gated-haiku-programme.md`'s G3. Evidence: v1 is fence-blind to `~~~`. `v2-all-pass.md`, the canonical hardened contract, scores R1 false under v1 (measured 2026-10-06), so after H2 almost no contract can reach v1 7/7, and G3's "≥20 at 7/7" would stall regardless of contract quality. Until the user rules, G3 stays on v1 as defined, and nothing is applied. Origin: ruling H-F2.
 
 ## Self-check
 - CHK1: Does every reviewer item A1-A6, B, C appear in the placement table? — PASS
