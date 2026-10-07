@@ -534,6 +534,63 @@ stripped.
     - AC-H10.12: `git diff <B>..HEAD -- docs/audits/unit-outcomes/README.md | /usr/bin/grep -cE '^[-+](cutoff:|reproduce-command:|count:)'` prints `0`. Mutation: editing any `count:` line prints ≥ 2.
   - (In these criteria, README = `docs/audits/unit-outcomes/README.md`.)
 
+**H-F (pointer test versus payloads; option (a)).** The pointer test exists to
+catch an *instruction* that points elsewhere instead of carrying content. A
+payload that quotes a pointer phrase as data is content, so v2 skips payloads.
+v1 is untouched.
+- **Rule (H1, v2 R1 only).** The pointer regex (`POINTER`, unchanged) is tested
+  against the `## Ordered edits` section with these payload spans removed first:
+  1. every line inside a fenced block (``` or `~~~`, per the v2 fence rule),
+     fence lines included;
+  2. the backticked inline-code span that is the value of `before:`, `after:`,
+     `insert-after:` or `delete:`;
+  3. the backticked literal of an `anchor: line matching \`...\`` value.
+
+  Everything else is instruction text and is still tested. That includes item
+  text, `file:` lines, `command:`/`expect:` lines, and any text after a
+  payload's closing backtick on the same line.
+- **Fixtures (tests/fixtures/contract-score/):**
+
+  | Fixture | Content | v2 R1 | v1 R1 |
+  |---|---|---|---|
+  | `v2-r1-pointer-in-payload.md` | "as specified" inside a fenced payload, and "see the plan" inside an `after:` inline-code value | true | false |
+  | `v2-r1-pointer-in-instruction.md` | an otherwise-valid edit item whose `file:` line reads `` file: `agents/x.md` as specified in the plan `` (the phrase is instruction text after the path) | false | n/a |
+
+  The instruction fixture must be structurally valid apart from the phrase:
+  with the phrase deleted it scores R1 true. The suite asserts this, so mutant
+  M2 truly flips it.
+  | `v2-r1-pointer-after-payload.md` | `` after: `x` as needed `` | false | n/a |
+
+- **Mutation proofs** (the suite names each assertion):
+  - Mutant M1 (apply the test to payloads too, i.e. v1 behaviour) makes the
+    payload fixture's v2 R1 false, failing `v2-r1-pointer-in-payload`.
+  - Mutant M2 (skip the pointer test entirely) makes both the instruction
+    fixture and the after-payload fixture R1 true, failing
+    `v2-r1-pointer-in-instruction` and `v2-r1-pointer-after-payload`.
+  - Mutant M3 (treat the whole `after:` line as payload) fails
+    `v2-r1-pointer-after-payload`.
+- **Scribe shape.** No S row runs a pointer test (s1/s6 check only
+  `file:`/`heading:`/`text:` presence), so nothing changes. If a later S row adds
+  a pointer test, `text:` values count as payload under the same rule.
+- **G3 and v1.** v1 output is byte-identical (AC-H1.1's v1 regression). G3 keeps
+  scoring with the v1 default, so no historical score changes.
+- **Accepted scores.**
+  - H2's own contract must score **7/7 under v2**. task-master checks this with
+    its scratch copy of H1 v2 until H1 lands; after that the reviewer re-scores
+    with the landed `bin/contract-score.js --rubric=v2`.
+  - Any contract written before H1's PASS, or scored with v1, that falls short of
+    7 under v1 **only** because R1's pointer test matched payload text is accepted
+    at 6/7, provided it carries the line
+    `score-exception: R1 pointer phrase in payload (H-F); v2 7/7` in its
+    `## Pre-resolved context` and scores 7/7 under v2.
+  - Any other shortfall is not excepted.
+  - Such contracts are task-master-authored after U3-4's PASS, so they enter the
+    G3 population with a v1 score of 6. They do not count toward G3's "≥20 at
+    7/7". This is recorded, not corrected, because G3's definition stays
+    unchanged.
+- **H2(c) wording kept:** "list all six pointer phrases" stands, written
+  literally inside the payload. No obfuscation.
+
 Unit gating after these rulings: H1, H2, H3 (with the HELD reconciliation
 above), H4, H5, H6, H7, H8, H9 and H10 are un-gated by these specs. H10 depends
 on H3 and H5, because its replacement text cites their shipped labels.
