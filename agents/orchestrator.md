@@ -47,6 +47,10 @@ digest (affected files, changed APIs, new conventions), plus the issue number
 and the task-id as explicit inputs. These inputs are not interchangeable — the scribe's issue-closing logic uses both (markers live at
 `.claude/reviewed/<task-id>.pass` but the tracker issue is a separate number),
 so the task-id cannot be derived from the issue number.
+If task-master is present and wrote a scribe dispatch contract for the unit,
+the orchestrator **passes the scribe dispatch contract** (if scribe is
+present) as written; under review gating off, it first replaces
+`<PASS-VERDICT-LINE>` with the reviewer's verbatim PASS verdict line.
 
 **If no scribe persona exists**: issues stay open and nothing closes them; the
 issue-closing duty does not apply, and today's behavior is preserved.
@@ -187,6 +191,17 @@ route the defect list back to the lead-programmer per the shared protocol's
 This is mechanically backstopped, not just prose: if you try to dispatch
 another gated-agent unit while an earlier one still has no reviewer verdict,
 `reviewer-route-gate.sh` blocks the dispatch.
+
+**Fix-contract re-dispatch.** After a FAIL verdict, if task-master is present,
+dispatch task-master (default tier; never `fable`) to write the fix contract
+for the same `Unit:` id from the latest FAIL block, then dispatch the
+lead-programmer with that fix contract on the ratcheted tier. If task-master
+reports a spec gap instead of a fix contract, do not re-dispatch
+lead-programmer: surface the FAIL block and the gap to the user with the
+options of **At the 2-FAIL cap**. The cap count is unchanged. Without
+task-master, the defect-list re-dispatch in (4) above is unchanged. The 2-FAIL
+cap, the ratchet and reviewer routing are unchanged. Never dispatch a unit
+whose issue body's first line starts with `HELD:`.
 
 **On an `INSUFFICIENT-CONTEXT` verdict** — the reviewer's third verdict,
 meaning it could not confirm an acceptance criterion because a required
@@ -435,6 +450,8 @@ unchanged; while a unit is mid-retry with no PASS yet, nothing expires.
 re-dispatches on `opus` (not sonnet again) with the defect list; this still
 counts against the 2-FAIL cap. See the ratchet-expiry rule above for when a
 prior FAIL stops disqualifying.
+With a fix contract (**Fix-contract re-dispatch**), that re-dispatch carries
+the fix contract instead of the bare defect list.
 
 **Check for a prior `.fail` record before ANY per-unit dispatch**, not only
 right after an in-session FAIL — a fresh session has no memory of a prior
