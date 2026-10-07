@@ -790,7 +790,7 @@ an append-only audit-log record class written to
   When [[contract precedence]] is in effect, judgment duties apply only where 
   the contract is silent (per `agents/scribe.md` and `agents/lead-programmer.md`). 
   On a FAIL verdict, when task-master is present, the orchestrator dispatches 
-  task-master to write a fix contract for re-dispatch; when task-master is absent, 
+  task-master to write a fix contract for re-dispatch (if that fix contract signals a spec gap, it routes to the user rather than back to spec-master); when task-master is absent, 
   the orchestrator routes a defect list back to the implementer. Whether the 
   original contract's precedence over judgment duties carries forward into the 
   fix attempt is unstated.
@@ -1653,7 +1653,7 @@ normal FAIL routes the defect list to
   operator-supplied correction (this option does not count against the 2-FAIL
   cap). **(c) Park the unit** — stop work on it and move on without modifying
   the defect-history marker (see [[parked unit]]). `task-master` is never a re-plan owner. Mid-flight
-  "spec gap" signals also route back to `spec-master`.
+  "spec gap" signals also route back to `spec-master` (except on fix contracts, which go to the user).
 
 **Privileged persona**:
 (unit gh440, 2026-09-10) — a persona (`reviewer`, `orchestrator`) whose dispatch
