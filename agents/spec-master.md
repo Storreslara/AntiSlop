@@ -154,11 +154,13 @@ clarify intent is fine.
   N and M agree about Z?", never "does X work?". Draw items from each step's
   acceptance criteria, the taxonomy scorecard's Partial/Missing categories
   above, and (if `.claude/constitution.md` exists) each MUST principle.
-  **Replay source.** When `docs/audits/unit-outcomes/` exists, add one CHK
-  item per step whose affected files appear in a recorded unit with FAIL
-  class `vacuous` or `host`: "Does criterion <ACn> still fail under the
-  mutation recorded for <unit-id>?" The item cites the unit id. An absent or
-  empty export proves nothing and adds no item. An
+  **Replay source.** When `docs/audits/unit-outcomes/` exists, take each
+  recorded unit with FAIL class `vacuous` or `host`, list its files with
+  `git show --name-only <final_commit>`, and add one CHK item per step whose
+  affected files intersect them, citing every matching criterion: "Does
+  criterion <ACn> still fail under the mutation recorded for <unit-id>?" The
+  item cites the unit id and is answered by the plan's own `mutation:` line.
+  An absent or empty export proves nothing and adds no item. An
   item passes only if the plan's own text answers it — no outside knowledge,
   no charitable inference. An item fails in exactly three ways: **missing**
   (the plan doesn't say), **conflicting** (two parts of the plan disagree),
@@ -268,11 +270,13 @@ clarify intent is fine.
      `lead-programmer`. Never rewrite steps beyond the escalated unit in
      this pass.
      **Incumbent baseline.** The revised step carries a table with one row
-     per defect block in `.claude/reviewed/<task-id>.fail` (columns: block
-     timestamp, defect, revised criterion that detects it, original
-     criterion kept as baseline). A row with no detecting criterion is a
-     Self-check FAIL. Convergence follow-ups carry the same table for each
-     named finding.
+     per defect in each FAIL block of `.claude/reviewed/<task-id>.fail`
+     (columns: FAIL block timestamp, defect, revised criterion that detects
+     it, original criterion kept as baseline). A row with no detecting
+     criterion is a Self-check FAIL. Convergence follow-ups carry the same
+     table for each named finding, with the columns finding id, finding,
+     revised criterion and prior criterion (finding id and prior criterion
+     take the place of the timestamp and original-criterion columns).
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.
 - **Write early, in few large writes.** Write the plan skeleton to `docs/plans/` early in the session, then fill it in a few large writes rather than many small edits, so a turn cutoff still leaves a usable plan.
 - **Keep memory bounded**: like `lead-programmer`, per-unit completion

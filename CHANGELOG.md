@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**spec-master replay source and incumbent baseline made precise (rgh-h9, 0.31.135).** `agents/spec-master.md` **Replay source** now lists each recorded unit's files with `git show --name-only <final_commit>`, cites every matching criterion, and is answered by the plan's own `mutation:` line. **Incumbent baseline** has one row per defect in each FAIL block (the glossary term), and convergence follow-ups use the columns finding id, finding, revised criterion and prior criterion.
+
 **scribe decides nothing under a contract (rgh-h6, 0.31.134).** `agents/scribe.md` replaces its contract-precedence paragraph with **Contract-only doc edits**: with a scribe dispatch contract (if task-master is present) scribe makes exactly the contract's Glossary edits, Doc edits and ADR body and no other doc change, skips the prune duty unless the contract says otherwise, and the four close conditions and every never-close rule still apply. The wiki/changelog duty and the prune duty now apply only to dispatches without a contract. `model: haiku` is unchanged.
 
 **lead-programmer under contracts: fix turns, review packet, commit cadence (rgh-h5, 0.31.133).** `agents/lead-programmer.md` **Contract precedence** now says to fill only the `<FILL:` blanks of the advisory review packet template in `review-packet:`, that "no explorer spawn" holds even to verify a doubted claim (report a spec gap instead), **Fix turns** (a fix contract is a dispatch contract and always carries `diagnosis: none`; nothing under a contract re-enables judgment duties), and **Commit cadence under a contract** (the `commit-message:` lines fix the count). The cursor and codex lead-programmer ports carry the same text.
