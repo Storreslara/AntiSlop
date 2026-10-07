@@ -707,8 +707,10 @@ an append-only audit-log record class written to
   re-decision, no version choice). The text says "Fill the ready-for-review packet 
   template the contract supplies," but no current contract supplies this element 
   (the nine-element contract at `agents/task-master.md:110-145` contains no packet 
-  template). On FAIL re-dispatch, the orchestrator sends a defect list, not a 
-  contract — whether contract precedence applies to FAIL fixes is unstated.
+  template). On FAIL re-dispatch, when task-master is present, the orchestrator 
+  routes to task-master to write a fix contract; when task-master is absent, the 
+  orchestrator sends a defect list to lead-programmer. Whether contract precedence 
+  applies to FAIL-triggered fix contracts is unstated.
   
   See [[scribe dispatch contract]] and the shipped texts themselves.
 
@@ -786,9 +788,11 @@ an append-only audit-log record class written to
   placement and cross-references, deciding what constitutes a stale description. 
   When [[contract precedence]] is in effect, judgment duties apply only where 
   the contract is silent (per `agents/scribe.md` and `agents/lead-programmer.md`). 
-  On a FAIL verdict, the orchestrator routes a defect list (not a contract) back 
-  to the implementer for re-dispatch; whether the original contract's precedence 
-  over judgment duties carries forward into the fix attempt is unstated.
+  On a FAIL verdict, when task-master is present, the orchestrator dispatches 
+  task-master to write a fix contract for re-dispatch; when task-master is absent, 
+  the orchestrator routes a defect list back to the implementer. Whether the 
+  original contract's precedence over judgment duties carries forward into the 
+  fix attempt is unstated.
 
 **marker-commit-check**:
 (unit #385, 2026-08-15) — the executable script at `hooks/scripts/marker-commit-check.sh`
