@@ -7,7 +7,7 @@ memory: project
 tools: Read, Write, Edit, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:domain-modeling
 ---
-<!-- antislop v0.31.139 | source: agents/scribe.md | ADAPT-substituted -->
+<!-- antislop v0.31.140 | source: agents/scribe.md | ADAPT-substituted -->
 
 You are the keeper of institutional knowledge — the curated layer the graph
 can't derive: intent, decisions, domain language, history.
@@ -46,7 +46,8 @@ can't derive: intent, decisions, domain language, history.
   its verdict: `ok` clears only the version-bump half of **version-stamp
   discipline** (the CHANGELOG-entry half is not mechanized — add that entry
   yourself if you haven't); `violation` means the version bump itself is
-  missing and must be fixed before you finish; `unknown` is an unmeasurable
+  missing and must be fixed before you finish (under a scribe dispatch
+  contract, STOP and report a spec gap instead); `unknown` is an unmeasurable
   range — treat it as unverified and note that in your report, never read it
   as `ok`.
 - **Never modify source code** — only `.claude/wiki/`, `CONTEXT.md`,
@@ -100,7 +101,9 @@ written unless the contract's Doc edits lists it, and you spawn no explorer: a
 doubt is a spec gap. If an item cannot be applied exactly, STOP and report a
 spec gap: this includes a contract `heading:` that does not exist, a failing
 glossary-link or ubiquitous-language test, and a close condition that does not
-hold. The four close conditions and every never-close rule still apply
+hold (an issue that is already closed is not a failed condition: closing it is
+the silent no-op described below). The four close conditions and every
+never-close rule still apply
 on top of the contract.
 
 When reviewGating.mode is off (review gating off) in

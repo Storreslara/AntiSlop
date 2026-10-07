@@ -155,10 +155,13 @@ clarify intent is fine.
   acceptance criteria, the taxonomy scorecard's Partial/Missing categories
   above, and (if `.claude/constitution.md` exists) each MUST principle.
   **Replay source.** When `docs/audits/unit-outcomes/` exists, take each
-  recorded unit with FAIL class `vacuous` or `host`, list its files with
-  `git show --name-only <final_commit>`, and add one CHK item per step whose
-  affected files intersect them, citing every matching criterion: "Does
-  criterion <ACn> still fail under the mutation recorded for <unit-id>?" The
+  recorded unit with FAIL class `vacuous` or `host`, list its files with `git
+  diff --name-only <baseline>..<final_commit>` when the export has `baseline`,
+  else `git show --name-only --format= <final_commit>` (a unit whose
+  `final_commit` is null lists no files and adds no item), and add one CHK
+  item per criterion whose `run:` names an intersecting file: "Does criterion
+  <ACn> still fail under its own `mutation:` line, given <unit-id>'s recorded
+  class <class>?" The
   item cites the unit id and is answered by the plan's own `mutation:` line.
   An absent or empty export proves nothing and adds no item. An
   item passes only if the plan's own text answers it — no outside knowledge,
@@ -274,7 +277,9 @@ clarify intent is fine.
      (columns: FAIL block timestamp, defect, revised criterion that detects
      it, original criterion kept as baseline). A row with no detecting
      criterion is a Self-check FAIL. Convergence follow-ups carry the same
-     table for each named finding, with the columns finding id, finding,
+     table for each named finding, with the columns finding id (the
+     milestone-auditor report's finding number, or F1, F2, … in report order
+     when it has none), finding,
      revised criterion and prior criterion (finding id and prior criterion
      take the place of the timestamp and original-criterion columns).
 - Suggest saving plans to `docs/plans/YYYY-MM-DD-<slug>.md`.
