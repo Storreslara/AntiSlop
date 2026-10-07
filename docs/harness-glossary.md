@@ -704,13 +704,14 @@ an append-only audit-log record class written to
   **For lead-programmer** (per `agents/lead-programmer.md` **Contract precedence**): 
   its `tdd:`, `blast-radius:`, `commit-message:`, and version lines are decisions 
   already made — follow them without re-deriving (no explorer spawn, no TDD 
-  re-decision, no version choice). The text says "Fill the ready-for-review packet 
-  template the contract supplies," but no current contract supplies this element 
-  (the nine-element contract at `agents/task-master.md:110-145` contains no packet 
-  template). On FAIL re-dispatch, when task-master is present, the orchestrator 
+  re-decision, no version choice). Fill the advisory review packet template in 
+  `review-packet:`; fill only its `<FILL:` blanks (the nine-element contract at 
+  `agents/task-master.md:165-169` supplies this element). A fix contract is a 
+  dispatch contract, and this precedence applies to it: a fix contract always 
+  carries `diagnosis: none`, and nothing under a contract re-enables judgment 
+  duties. On FAIL re-dispatch, when task-master is present, the orchestrator 
   routes to task-master to write a fix contract; when task-master is absent, the 
-  orchestrator sends a defect list to lead-programmer. Whether contract precedence 
-  applies to FAIL-triggered fix contracts is unstated.
+  orchestrator sends a defect list to lead-programmer.
   
   See [[scribe dispatch contract]] and the shipped texts themselves.
 
