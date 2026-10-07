@@ -727,7 +727,9 @@ Criteria (all measured 0 or 1 at 00af477 as stated):
 
   And `under a dispatch contract, STOP and report a spec gap instead` = 1 in `agents/lead-programmer.md` only.
 - AC-H13.2 Flattened greps = 1 in `agents/scribe.md`:
-  - `under a contract the prune duty never runs`
+  - `Under a contract the prune duty never runs` (capital U, matching S1's text,
+    where the phrase opens a sentence; corrected by ruling H-K. Case-sensitive
+    `grep -F` would otherwise count 4 of 5)
   - `you spawn no explorer`
   - ``a contract `heading:` that does not exist``
   - `Only when no scribe dispatch contract is present`
@@ -832,6 +834,50 @@ amended; H10 runs after H13 because it cites H13's labels).**
     under a contract**.
 
   AC-H10.22: the anchored entry grep for these three prints `3` (0 at 00af477). AC-H10.1's link and terminology tests must still pass (G1/G2 keep `[[scribe dispatch contract]]`, and G2 drops one `[[contract precedence]]` link, which does not break the target).
+
+### Ruling H-J (2026-10-07): H10 glossary edits re-measured at 243a8a5
+
+This table supersedes every earlier H10 glossary before-text (H-E(i), H-E(ii),
+"The executor", the scribe dispatch contract entry, "published or held", G1-G3).
+Scribe commits c7aa4bc and earlier rewrote parts of the file.
+
+| Edit | Status at 243a8a5 | Before (flattened, occurs exactly once) | After |
+|---|---|---|---|
+| H-E(i) | **stale**: "The text says … is unstated." no longer exists | ``(the nine-element contract at `agents/task-master.md:165-169` supplies this element)`` | ``(element 8, `## Pre-resolved context`, of the nine-element contract in `agents/task-master.md` **Per-unit dispatch prompts** supplies this element)`` |
+| held unit (H-E(ii) + "halts" + "published or held") | **stale wording**; replaced as a whole entry body | from ``(unit rgh-u3-2, 2026-10-06) — a unit that is not published in the sliced dispatch because it is behind a **spec gap**`` through ``See **Slice state: table**, **spec gap**.`` (the whole body) | ``(unit rgh-u3-2, 2026-10-06; corrected rgh-h10) — a unit filed behind a **spec gap**. When a spec gap is encountered, the gap unit and everything transitively depending on it are filed with a `HELD: <reason>` first body line, and a held unit is never dispatched while that line stands. The report's **`Slice state:` table** lists them as held, in the format unit \| dispatchable or held \| reason. Defined in `agents/task-master.md` bullet **Partial slice on a spec gap**. See **Slice state: table**, **spec gap**.`` |
+| Slice state: table (H-E(ii) + "retained for re-work" + "published or held") | **stale wording**; whole entry body | from ``(unit rgh-u3-2, 2026-10-06) — the summary table that task-master appends to its report`` through ``See **held unit**, **partial slice**.`` | ``(unit rgh-u3-2, 2026-10-06; corrected rgh-h10) — the table that ends task-master's slicing report when a spec gap holds units, with columns `unit`, `dispatchable or held` and `reason`. task-master posts it as a comment on the umbrella issue; on re-invocation it reads it and, for each held unit whose gap is resolved (the umbrella issue's body has a line naming that gap's ruling), removes the `HELD:` line by editing the issue, and never re-files a unit. Defined in `agents/task-master.md` bullets **Partial slice on a spec gap** and **Resume from slice state**. See **held unit**.`` |
+| "The executor" | present | `The executor consults the contract according to its home` | `The implementer consults the contract according to its home` |
+| scribe dispatch contract entry (v2 shape) | present | ``containing nine elements in order: … requiring `"score":5` (the [[contract score]] S1-S5 rubric).`` (the full sentence pair, from "containing nine elements" to "S1-S5 rubric).") | ``with, in this exact order: `Unit: <task-id>` as line 1, then `## Objective`, `## Retrieval`, `## Glossary edits` (items `file:`/`heading:`/`text:`, or `none`), `## Doc edits` (the same items, or `none — make no other doc changes`; its last line is always `prune: none`), `## ADR` (`none`, or a `NNNN <title>` line, a `file:` line and a `body:` payload), `## Close conditions` (the issue `#N`, the task-id, and the quoted marker prefix `"PASS <task-id> "`, or `<PASS-VERDICT-LINE>` under review gating off), `## Do NOT touch`, `## Acceptance criteria` (items matching [[edit item / command item]] format) and `## Escalation`. Scored with `node bin/contract-score.js --rubric=v2 --shape=scribe <contract>` requiring `"score":7`.`` |
+| G1 | present (1) | unchanged from the H10 amendments | unchanged |
+| G2 | present (1) | unchanged | unchanged |
+| G3 | present (1) | unchanged | unchanged |
+| 10 new entries (fix contract, shared file, umbrella issue, intersection table, version-sync check, pointer phrase, instruction text, advisory review packet, fix turns, commit cadence under a contract) | none exists (anchored count 0) | (new) | as specified in the H10 additions and amendments; each cites its shipped bold label, never a line number |
+
+Each "after" text is literally supported by the shipped text:
+- `agents/task-master.md` **Partial slice on a spec gap**, **Resume from slice
+  state** (after H12 E13/E14), **Scribe dispatch contract** and element 8;
+- `agents/lead-programmer.md` **Contract precedence** / **Fix turns**.
+
+The link targets kept (`[[edit item / command item]]` at glossary :733,
+`[[contract score]]` at :665) exist. The current file passes
+`tests/context-glossary-links.test.js` (run at 243a8a5).
+
+Criteria changes:
+- AC-H10.4 is now satisfiable. The only line-number citation inside an
+  `rgh-` entry at 243a8a5 is :709 (`agents/task-master.md:165-169`), removed by
+  the H-E(i) row, so the awk/grep prints `0`.
+- AC-H10.6 becomes a flattened grep of
+  ``removes the `HELD:` line by editing the issue`` = 1.
+- AC-H10.5 (`halts` = 0; `retained for re-work` = 0) and AC-H10.17
+  (`published or held` = 0; 2 at 243a8a5) hold after the two whole-body
+  replacements.
+- New AC-H10.23: `/usr/bin/grep -c '"score":5' docs/harness-glossary.md` prints `0` (1 at 243a8a5).
+- AC-H10.18 and AC-H10.22 (anchored entry counts 7 and 3) are unchanged; both
+  are 0 at 243a8a5.
+
+No other ruling's before-text has vanished. Re-measured as unique at 243a8a5:
+G1, G2, G3, "The executor…", the scribe-entry sentence pair, and both entry
+bodies.
 
 ### Gate HG (stage end; main session)
 Run the full suite per B6: `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
