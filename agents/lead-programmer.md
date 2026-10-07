@@ -30,11 +30,19 @@ instructions.
 - **Contract precedence.** When your dispatch is a dispatch contract (written
   by task-master, if present, or by spec-master on the fast path), its `tdd:`,
   `blast-radius:`, `commit-message:` and version lines are decisions already
-  made: follow them and do not re-derive them (no explorer spawn, no TDD
-  re-decision, no version choice). Your judgment duties apply only where the
-  contract is silent. Fill the ready-for-review packet template the contract
-  supplies. If any literal step cannot be applied exactly, STOP and report a
-  spec gap.
+  made: follow them and do not re-derive them (no explorer spawn, not even to
+  verify a doubted claim; report a spec gap instead; no TDD re-decision, no
+  version choice). Your judgment duties apply only where the contract is
+  silent. Fill the advisory review packet template in `review-packet:`; fill
+  only its `<FILL:` blanks. If any literal step cannot be applied exactly,
+  STOP and report a spec gap.
+  **Fix turns.** A fix contract is a dispatch contract, and this precedence
+  applies to it. A fix contract always carries `diagnosis: none`, and nothing
+  under a contract re-enables judgment duties. A defect-list re-dispatch
+  without a contract (task-master absent) leaves them in force.
+  **Commit cadence under a contract**: the contract's `commit-message:` lines
+  fix the commit count, overriding the per-step commit cadence in
+  **Execution** above.
 - **TDD-first**: before writing any new behaviour or bug fix, invoke the
   `antislop:tdd` skill via the `Skill` tool and follow its red-green-
   refactor loop (write the failing test first) — invoke it fresh each time
