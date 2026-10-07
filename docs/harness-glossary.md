@@ -656,8 +656,9 @@ an append-only audit-log record class written to
   (e.g., "skip edit 3"; the edit that makes the check fail). Contrasted with a
   pointer dispatch, which references steps or sections without reproducing their
   content (e.g., "as specified in the plan", now banned). The term originates in
-  `agents/task-master.md` line 87: "Each element is content-typed, and
-  `node bin/contract-score.js` scores a contract against rows R1-R7." See
+  the `agents/task-master.md` **Per-unit dispatch prompts** section: "Each element is
+  content-typed, and `node bin/contract-score.js` scores a contract against rows R1-R7."
+  See
   [[edit payload / artifact body]] for the payload vs. body distinction, [[contract
   score]], and [[mechanical obligations (R2)]].
 
@@ -674,8 +675,8 @@ an append-only audit-log record class written to
   `"score":7` and `"sizeOver":false` before handing off to `lead-programmer`. Distinct
   from spec-master's Self-check step (which replays recorded FAIL classes); this
   term refers specifically to task-master's mechanical validation of the nine-element
-  dispatch contract's structure. Documented in `agents/task-master.md:127-132` ("`Pre-dispatch
-  self-check.`" section). Run via CLI invocation requiring every `run:` criterion to
+  dispatch contract's structure. Documented in the `agents/task-master.md` **Pre-dispatch
+  self-check** section. Run via CLI invocation requiring every `run:` criterion to
   pass at current HEAD or already pass-correctly at baseline, and every `anchor:` to
   be grep-verifiable.
 
@@ -689,7 +690,8 @@ an append-only audit-log record class written to
   A **command item** carries `command:` (inline code) and `expect:` (exit code
   integer, optionally `stdout:` fragment or `empty`), with no `file:`, `anchor:`,
   or payload fields. Neither form allows pointer bodies such as "as specified".
-  Documented in `agents/task-master.md:99-104`.
+  Documented in the `agents/task-master.md` **Per-unit dispatch prompts** section
+  under the "5. `## Ordered edits` (R1)" subheading.
 
 **edit payload / artifact body**:
 (unit rgh-u3-1, 2026-10-06) — a critical distinction in [[content-typed contract]]
@@ -699,8 +701,8 @@ an append-only audit-log record class written to
   spec section, or similar large artifact pasted into the prompt — now banned from
   dispatch contracts (reference by path instead). The payload must be inline-sized,
   and any payload exceeding `maxInlineBlockLines` (default 80 interior lines) splits
-  into consecutive edit items. Documented in `agents/task-master.md:134-139` (`"Edit
-  payloads versus artifact bodies."` section).
+  into consecutive edit items. Documented in the `agents/task-master.md` **Edit
+  payloads versus artifact bodies** section within **Per-unit dispatch prompts**.
 
 **mechanical obligations (R2)**:
 (unit rgh-u3-1, 2026-10-06) — the version-stamped-path sub-rules within R2 of a
@@ -712,7 +714,8 @@ an append-only audit-log record class written to
   `node bin/cli.js --update` as a [[command item]]; (5) stage and commit via `git add -A
   agents CHANGELOG.md package.json .claude-plugin && git add -u -- .claude && git commit`.
   The acceptance-criteria set must include one run of `bash hooks/scripts/version-stamp-check.sh`
-  verifying the range is `ok`. Defined in `agents/task-master.md:106-110`. See
+  verifying the range is `ok`. Defined in the `agents/task-master.md` **Mechanical
+  obligations (R2)** section within **Per-unit dispatch prompts**. See
   [[content-typed contract]], [[edit item / command item]].
 
 **marker-commit-check**:
@@ -3083,4 +3086,48 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   you're about to act) rather than checking in a tight loop." Every turn-end is a
   natural turn boundary; the converse does not hold. When ambiguous in context,
   clarify which sense is intended.
+
+**shared-file siblings**:
+(unit rgh-u3-2, 2026-10-06) — the term in task-master for two or more units in a
+  dispatch that touch the same file. Units that are siblings are serialized in
+  dispatch order via `Depends on` edges: the later unit waits for the earlier
+  unit's completion before running. The later sibling unit's anchors in the
+  dispatch contract must be stable (headings or symbol names, never bare line
+  numbers), or they must be SHA-qualified and re-resolved by the orchestrator
+  after the earlier unit's PASS commit. Defined in `agents/task-master.md` bullet
+  **Shared-file siblings** within the task-master input section.
+
+**held unit**:
+(unit rgh-u3-2, 2026-10-06) — a unit that is not published in the sliced dispatch
+  because it is behind a **spec gap** (an ambiguity or under-specified part of the
+  finalized spec). When a spec gap is encountered, task-master publishes all
+  already-sliced units and halts; the gap unit and everything transitively
+  depending on it remain unpublished (held) and are reported in the
+  **`Slice state:` table** with state "held" and the gap reason. The table format
+  is: unit | published or held | reason. Defined in `agents/task-master.md` bullet
+  **Partial slice on a spec gap** within the task-master input section. See
+  **Slice state: table**, **spec gap**.
+
+**Slice state: table**:
+(unit rgh-u3-2, 2026-10-06) — the summary table that task-master appends to its
+  report when a partial slice occurs (i.e., when a spec gap prevents publishing
+  all units). The table rows correspond to units with columns: `unit` (task-id),
+  `state` (published or held), and `reason` (explanation if held). Units in
+  the "published" state are routed to dispatch; units in the "held" state are
+  retained for re-work after the spec gap is resolved. Defined in
+  `agents/task-master.md` bullet **Partial slice on a spec gap** within the
+  task-master input section. See **held unit**, **partial slice**.
+
+**standard path**:
+(unit rgh-u3-2, 2026-10-06) — the execution path task-master takes when a
+  finalized spec contains ≥6 dispatchable units or any `## Convergence follow-ups`
+  slice. On this path, task-master runs (the fast path with ≤5 units bypasses
+  task-master entirely and has spec-master emit the contract directly). The
+  dispatch contract lives in the issue body under `## Dispatch contract` on the
+  standard path, whereas on the fast path it lives in the plan's `### Unit:`
+  block. Counterpart to [[fast-path threshold]] in CONTEXT.md. The executor
+  consults the contract according to its home: the contract outranks the issue
+  prose, which outranks the plan. A conflict between them is a spec gap. Defined
+  in `agents/task-master.md` bullet **Contract home and precedence** within the
+  task-master input section.
 
