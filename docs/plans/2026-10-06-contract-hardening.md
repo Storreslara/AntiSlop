@@ -1,6 +1,6 @@
 # Contract hardening: a stage after Stages 0-3 of the rubric-gated haiku programme (2026-10-06)
 
-Status: FINAL (standard path, 12 units incl. follow-ups H1b and H11, so task-master slices them). Parent:
+Status: FINAL (standard path, 13 units incl. follow-ups H1b, H11 and H12, so task-master slices them). Parent:
 `docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (cited by path and not
 restated). Stages 0-3 of the parent are reviewer-PASSed at HEAD 325f51d, version
 0.31.129. **Stages 4-5 and gates G3/G4 of the parent are untouched** by this plan.
@@ -149,7 +149,7 @@ with `--rubric=v2`.
 - 2026-10-06 Functional scope & success criteria: Q who writes a FAIL re-dispatch contract? → A (default, Open Question 1): task-master writes a **fix contract** from the latest FAIL block. The orchestrator dispatches task-master between the FAIL verdict and the fix dispatch. The 2-FAIL cap, the implementer-tier ratchet and reviewer routing are unchanged. Without task-master, today's defect-list re-dispatch stands
 - 2026-10-06 Functional scope & success criteria: Q do scribe's wiki/changelog/prune duties move into the contract? → A (default, Open Question 2): per-unit doc edits move into a `## Doc edits` element (items, or the literal `none — make no other doc changes`). The prune duty is release-only and stays out of per-unit contracts, as `prune: none`
 - 2026-10-06 Non-functional attributes: Q how is validate.sh run given its 10-12 min runtime? → A (self-resolved): a targeted check set per unit plus one full run at gate HG by the main session (rule B6)
-- 2026-10-06 Edge cases / failure handling: Q what if a fix needs diagnosis? → A (self-resolved): the fix contract carries `diagnosis: required`, the one declared case in which lead-programmer's judgment duties apply. The tier ratchet already sends that attempt to opus
+- 2026-10-06 Edge cases / failure handling: Q what if a fix needs diagnosis? → A (SUPERSEDED by ruling H-I: task-master diagnoses; if it cannot, a spec gap goes to the user; a fix contract always says `diagnosis: none`) (self-resolved): the fix contract carries `diagnosis: required`, the one declared case in which lead-programmer's judgment duties apply. The tier ratchet already sends that attempt to opus
 - 2026-10-06 Technical constraints & tradeoffs: Q add a 10th contract element for the packet template? → A (self-resolved): no. The nine-element shape is pinned by H4's dispatch-hygiene check (hooks/scripts/dispatch-hygiene.sh:366) and its tests, so the template goes inside `## Pre-resolved context` as a `review-packet:` fenced block
 - 2026-10-06 Technical constraints & tradeoffs: Q harden version-stamp-check.sh to read package.json? → A (default, Open Question 3): no unit. The version-sync check covers it in contracts, and the hook is guarded (`hooks/`, SENSITIVE_PATHS, mirrored with `fileHashes`)
 - 2026-10-06 Terminology consistency: Q "ready-for-review packet template", "defect block", "Pre-dispatch self-check", "executor"? → A (self-resolved): **advisory review packet** (template), **FAIL block** (CONTEXT.md:771), **contract self-check** (already in the harness glossary), **implementer**
@@ -190,6 +190,7 @@ HEAD + 1):
 | H5 | 0.31.133 |
 | H6 | 0.31.134 |
 | H9 | 0.31.135 |
+| H12 | 0.31.136 |
 
 H1, H7, H8 and H10 set no version and may interleave (H1 must precede H2).
 "Flattened grep" means `tr '\n' ' ' < F | tr -s ' ' | /usr/bin/grep -cF 'P'`.
@@ -399,6 +400,15 @@ OWN: `agents/orchestrator.md`. Depends on H3. Pinned:
 - AC-H4.3 P4: flattened grep `if task-master is present` ≥ 1, and `if scribe is present` ≥ 1, in agents/orchestrator.md.
 - AC-H4.4 Guarded text unchanged: `git diff <B>..HEAD -- agents/orchestrator.md | /usr/bin/grep -cE '^-.*(At the 2-FAIL cap|Sonnet units escalate on first FAIL|fable. is excluded)'` = 0, and `node tests/writer-tier-consistency.test.js` exit 0 (AC-D7, D9, D9b).
 - AC-H4.5 Persona baseline.
+- **Addition (ruling H-I, 2026-10-06; #512's contract must be amended).** Two
+  pinned sentences go in the same Fix-contract re-dispatch paragraph:
+  - "If task-master reports a spec gap instead of a fix contract, do not
+    re-dispatch lead-programmer: surface the FAIL block and the gap to the user
+    with the options of **At the 2-FAIL cap**. The cap count is unchanged."
+  - "Never dispatch a unit whose issue body's first line starts with `HELD:`."
+  - AC-H4.6 Flattened greps of `agents/orchestrator.md` = 1 each: `reports a spec gap instead of a fix contract` and `first line starts with \`HELD:\``. Both are 0 at 20907b3 (measured).
+  - A hook check enforcing the `HELD:` rule is parked as an optional future unit
+    (`hooks/` is guarded and a SENSITIVE_PATHS file).
 
 ### H5: lead-programmer under contracts (`agents/lead-programmer.md`, 0.31.133)
 OWN: `agents/lead-programmer.md`. Extra:
@@ -406,8 +416,11 @@ OWN: `agents/lead-programmer.md`. Extra:
 `adapters/codex/agents/lead-programmer.toml` (hand-maintained ports; same text,
 same commit). Pinned, in the Contract precedence bullet (:30-36):
 - **Fix turns.** A fix contract is a dispatch contract and precedence applies.
-  Only `diagnosis: required` re-enables judgment duties. A defect-list
-  re-dispatch without a contract (task-master absent) leaves them in force.
+  A fix contract always carries `diagnosis: none`, and nothing under a contract
+  re-enables judgment duties. A defect-list re-dispatch without a contract
+  (task-master absent) leaves them in force. (Amended by ruling H-I; #513's
+  contract must drop "Only `diagnosis: required` re-enables judgment duties".)
+  - AC-H5.1b Flattened grep of `diagnosis: required` = 0 in all three files.
 - Replace "ready-for-review packet template the contract supplies" with "the
   advisory review packet template in `review-packet:`; fill only its `<FILL:`
   blanks".
@@ -531,6 +544,103 @@ OWN: `agents/spec-master.md`.
 - AC-H9.2 Flattened grep `defect block` = 0 (1 at 325f51d).
 - AC-H9.3 Mirror greps. Persona baseline (AC-D9 spec-master check intact).
 
+### Ruling H-I (2026-10-06): a fix contract never delegates diagnosis
+
+The defect: the shipped **Fix contract** bullet (agents/task-master.md:90-95 at
+20907b3) allows `diagnosis: required`. That contradicts:
+- element 8 (:168), which requires `diagnosis: none`;
+- :173-174 ("A unit that still needs diagnosis is not sliced to a contract;
+  report it as a spec gap");
+- the scorer, where both rubrics accept only `diagnosis: none`, so such a fix
+  contract scores R7 false and fails its own Contract self-check.
+
+Letting the implementer diagnose would also break the goal. **Ruling:**
+- a fix contract always carries `diagnosis: none`, and task-master does the
+  diagnosis itself from the FAIL block's defect list and its own `explorer`
+  lookups;
+- when it cannot determine the cause, it writes no fix contract and reports a
+  spec gap, which the orchestrator surfaces to the user with the 2-FAIL-cap
+  options, the cap count unchanged (H4 addition).
+
+Contracts referencing `diagnosis: required`:
+- #511 (H3, merged; the text is fixed by H12);
+- #513 (H5; amend per the H5 change above);
+- #512 (H4; gains the two sentences above).
+
+#517 (H10) gains the glossary items below. #500 and #508 match the search only on
+the words, not the phrase (verified by title; task-master re-checks each body
+with `gh issue view N | /usr/bin/grep -c 'diagnosis: required'`).
+
+### H12: task-master cleanup (`agents/task-master.md`, 0.31.136)
+OWN: `agents/task-master.md`; no extra files.
+- Version 0.31.136, last in the persona chain (after H9 at 0.31.135). It must
+  follow H3 (merged) and H9. No H4-H9 unit edits `agents/task-master.md`, so
+  there are no anchor collisions.
+- Commit subject: `feat(rgh-h12): … (0.31.136) (#<issue>)`.
+- All edits are exact replacements. Anchors are the before-texts below, unique
+  at 20907b3. Lines are hard-wrapped at the current wrap, and the implementer
+  edits the flattened phrase across its line breaks. task-master gives each edit
+  as a `before:`/`after:` fenced payload copied from the file at the unit's `<B>`.
+
+| # | Finding | Before (exact, flattened) | After (exact) |
+|---|---|---|---|
+| E1 | H-I | `and \`fix-of: <FAIL header timestamp>\`, or \`diagnosis: required\` when the cause is unknown. A fix contract never changes the tier tag; the ratchet stays.` | `` `fix-of: <FAIL header timestamp>`, and `diagnosis: none`: task-master does the diagnosis itself, from the FAIL block's defect list and its own `explorer` lookups. If it cannot determine the cause, it writes no fix contract and reports a spec gap. A fix contract never changes the tier tag; the ratchet stays. `` |
+| E2 | anchors (element 4) | `**anchor** (a heading, a symbol name, or a line range qualified by a named commit SHA). A bare path is not sufficient.` | ``**anchor** written as ``line matching `<literal>` `` (**Literal anchors**). A bare path is not sufficient.`` |
+| E3 | lead example anchors | the six example anchors: `(anchor: heading \`## Flags\`)`, `(anchor: key \`"version"\`)`, `(anchor: heading \`## [Unreleased]\`)`, `anchor: heading \`## Flags\``, `anchor: key \`"version"\`` (×2), `anchor: heading \`## [Unreleased]\`` | ``line matching `## Flags` ``, ``line matching `"version": "9.9.0",` ``, ``line matching `## [Unreleased]` `` in the same seven places |
+| E4 | indentation minimum | `over its non-empty lines; the implementer strips exactly N spaces` | `over its non-empty lines, and N is the minimum of those outputs; the implementer strips exactly N spaces` |
+| E5 | mutation proof | `either "skip edit N", proven by running the \`run:\` at the pre-edit HEAD, or it carries` | `either "skip edit N", proven by running the \`run:\` in a scratch copy of the finished change with only edit N reverted, or it carries` |
+| E6 | scribe example `proof:` alignment | ``   mutation: proof `UL_TEST_MUTATE=1 node tests/ubiquitous-language.test.js` exits non-zero (the test checks skills/ubiquitous-language/SKILL.md, not the entry).`` | two lines: ``   mutation: set `UL_TEST_MUTATE=1`; the test exits non-zero (it checks skills/ubiquitous-language/SKILL.md, not the entry).`` and ``   proof: `UL_TEST_MUTATE=1 node tests/ubiquitous-language.test.js` exits non-zero.`` |
+| E7 | other row shortfalls | `a size, R1 or R3 shortfall is a split.` | `a size, R1 or R3 shortfall is a split. Any other row shortfall (R2, R4, R5, R6) is fixed in the contract itself.` |
+| E8 | precondition placement | `` a `run:` containing `command -v` or `which ` needs a `precondition:` item. `` | `` a `run:` containing `command -v` or `which ` needs a `precondition:` line inside that same criterion item. `` |
+| E9 | packet ban | ``because no other `<...>` token, `TODO` or `TBD` is allowed in it.`` | ``because no other `<...>` token, no empty `<FILL:>`, and no `TODO`, `TBD`, `FIXME` or `XXX` is allowed in it.`` |
+| E10 | wrapped phrases | `Confirm each anchor with \`/usr/bin/grep -cF '<literal>' <file>\` printing \`1\`.` | ``Confirm each anchor with `/usr/bin/grep -cF '<literal>' <file>` printing `1`. A criterion that counts a phrase which may wrap across lines flattens whitespace first (`tr '\n' ' ' < F \| tr -s ' ' \| /usr/bin/grep -cF '<phrase>'`); a single-line `grep` or `sed` cannot match a wrapped phrase.`` |
+| E11 | generated paths | `and the paths \`node bin/cli.js --update\` generates.` | ``and the paths `node bin/cli.js --update` changes, listed by `git status --porcelain -- .claude` right after running it.`` |
+| E12 | intersection table format | `The slice report includes a unit × shared-file intersection table.` | ``The slice report includes an intersection table with columns `unit \| shared files \| depends on`, one row per unit, shared files as backticked paths or `none`.`` |
+| E13 | "gap is resolved" | `for each held unit whose gap is resolved, remove the \`HELD:\` line` | ``for each held unit whose gap is resolved (the umbrella issue's body has a line naming that gap's ruling, which spec-master adds per ruling), remove the `HELD:` line`` |
+| E14 | column rename | `` `Slice state:` table (unit \| published or held \| reason) `` and the scribe example's `the published-or-held table` | `` `Slice state:` table (unit \| dispatchable or held \| reason) `` and `the dispatchable-or-held table` |
+
+Parked:
+- a hook check for `HELD:` (guarded `hooks/`; H4 adds the orchestrator sentence
+  instead).
+
+Term rule for this plan and its contracts: **`HELD:` line**, never "banner".
+This plan's two "banner" uses (Context A5 and the placement row) are historical
+quotes of the reviewer's finding.
+
+Criteria (all phrases measured at 20907b3; "added" phrases are 0 there and
+"removed" phrases are 1):
+- AC-H12.1 Flattened greps of `agents/task-master.md` = 1 each:
+  - `task-master does the diagnosis itself`
+  - `N is the minimum of those outputs`
+  - `with only edit N reverted`
+  - `Any other row shortfall (R2, R4, R5, R6) is fixed in the contract`
+  - `inside that same criterion item`
+  - `` no empty `<FILL:>` ``
+  - `` `FIXME` or `XXX` ``
+  - `flattens whitespace first`
+  - `git status --porcelain -- .claude`
+  - `` `unit | shared files | depends on` ``
+  - `a line naming that gap's ruling`
+  - `dispatchable or held`
+  - `` line matching `## Flags` ``
+- AC-H12.2 Flattened greps = 0:
+  - `diagnosis: required`
+  - `published or held`
+  - `published-or-held`
+  - `a heading, a symbol name, or a line range`
+  - `` proven by running the `run:` at the pre-edit HEAD ``
+  - `anchor: heading`
+  - `anchor: key`
+  - `mutation: proof`
+  - `unit × shared-file intersection table`
+- AC-H12.3 `node tests/contract-examples.test.js` exits 0 and prints `All contract-examples checks passed.`. Spec-master applied E3, E6 and E14 to a scratch copy at 20907b3 and ran this test: both examples still score 7 under v2.
+- AC-H12.4 Mutations, run by spec-master:
+  - deleting the new `proof:` line from E6 leaves the scribe example at 7, so it is not a scorer check; AC-H12.1/2 cover it instead;
+  - a `command -v` criterion with its `precondition:` line inside the item scores R4 true, and with that line deleted scores R4 false (proving E8's placement is accepted by the scorer);
+  - `UL_TEST_MUTATE=1 node tests/ubiquitous-language.test.js` exits 1 (E6's proof is true).
+- AC-H12.5 The mirror `.claude/agents/task-master.md` gives the same AC-H12.1/2 results.
+- AC-H12.6 Persona baseline (AC-SCOPE row: OWN `agents/task-master.md`, no extras), `node tests/writer-tier-consistency.test.js` exit 0 (the AC-D5 literal and the vocabulary line are untouched), and the version-sync check.
+
 ### H10: glossary and README accuracy (scribe contract, non-persona)
 Affected: `docs/harness-glossary.md`, and `docs/audits/unit-outcomes/README.md`
 (written by the implementer if scribe's custody excludes `docs/audits`; default:
@@ -545,6 +655,35 @@ one unit id).
 - AC-H10.1 `node tests/context-glossary-links.test.js` exit 0, and `node tests/ubiquitous-language.test.js` exit 0.
 - AC-H10.2 `/usr/bin/grep -c 'halts' docs/harness-glossary.md` is one lower than at `<B>` (computed at slicing time). Flattened grep `**fix contract**` = 1.
 - AC-H10.3 `git diff --name-only <B>..HEAD` lists only the two affected files.
+
+**H10 additions (2026-10-06, from the H2/H3 reviews; #517's scribe contract
+must be amended).** Each definition must be literally supported by shipped
+text. H10 therefore runs after H12, because several definitions cite H12's
+wording.
+- **scribe dispatch contract** entry (docs/harness-glossary.md:715-725): replace
+  the v1 description (`"score":5`, S1-S5, no Doc edits) with the v2 shape from
+  ruling H-B. That is: the heading order `Objective, Retrieval, Glossary edits,
+  Doc edits, ADR, Close conditions, Do NOT touch, Acceptance criteria,
+  Escalation`; `prune: none` as the last line of Doc edits; and
+  `node bin/contract-score.js --rubric=v2 --shape=scribe` requiring
+  `"score":7`.
+  - AC-H10.15: awk-extract that entry and grep it; it holds `"score":7` and no `"score":5`.
+- docs/harness-glossary.md:3200 "The executor" becomes "The implementer".
+  - AC-H10.16: `/usr/bin/grep -c 'The executor' docs/harness-glossary.md` prints `0` (1 at 20907b3).
+- **held unit** / **Slice state: table**: already covered by H-E(ii). The column
+  name becomes "dispatchable or held" (H12 E14).
+  - AC-H10.17: a flattened grep of `published or held` in docs/harness-glossary.md prints `0`.
+- New entries, each citing its shipped source by bullet label:
+  - **fix contract**: task-master.md **Fix contract**, after H12 E1;
+  - **shared file**: **Shared file, defined**;
+  - **umbrella issue**: the spec's `[spec]` PRD issue that task-master posts the
+    Slice state table to (**Resume from slice state**);
+  - **intersection table**: **Stamped-file units serialize**, after H12 E12;
+  - **version-sync check**: **Mutation proof**;
+  - **pointer phrase**: element 5's six phrases;
+  - **instruction text**: already listed.
+
+  AC-H10.18: `/usr/bin/grep -cE '^\*\*(fix contract|shared file|umbrella issue|intersection table|version-sync check|pointer phrase|instruction text)\*\*:' docs/harness-glossary.md` prints `7` (0 at 20907b3). AC-H10.1's two tests must pass.
 
 ### Gate HG (stage end; main session)
 Run the full suite per B6: `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
@@ -781,6 +920,10 @@ on H3 and H5, because its replacement text cites their shipped labels.
 | A4 version derivation / mutations / staging / indentation / anchors / split / `git add -A` | H2(b) |
 | A5 shared-file rule, table, banner, resume | H3 |
 | A6 scorer vs persona | H1 (code), H1b (lock-in fixtures, CRLF in-test, `Object.hasOwn`, fenced R6), H2(c) (wording), H7 (exporter items) |
+| H3 review: diagnosis contradiction (ruling H-I) | H12 E1, H4 addition (#512), H5 amendment (#513) |
+| H2/H3 review leftovers: anchors, indent minimum, skip-edit proof, proof: line, other shortfalls, precondition placement, packet ban, wrapped phrases, generated paths, table format, gap resolved, column rename | H12 E2-E14 |
+| `HELD:` line never enforced | H4 orchestrator sentence; hook check parked (guarded) |
+| Glossary leftovers (scribe contract entry v2, "executor", held column, 7 new entries) | H10 additions (#517) |
 | OQ5 answered by the user: G3 scores each unit under its own `rubric_version` | H11 (exporter `contract_score_v2` + `gateG3`); programme plan Gate G3 amended in text; README notes in H10 |
 | H1 review: 8 rows indistinguishable from v1, survivors M3b/fence/prune/R6-nested, vacuous CRLF fixture, prototype-key lookups, fenced R6 lines | H1b |
 | H1 review: glossary "instruction text"; "rubric" sense collision (CONTEXT.md:451 is roast-work's critique rubric) | H10 scribe contract adds a harness-glossary entry **instruction text** (the v2 pointer test's scope: text outside fenced payloads and outside the backticked `before:`/`after:`/`insert-after:`/`delete:`/`anchor: line matching` values). The **rubric v1/v2** entry stays in `docs/harness-glossary.md` and notes it is distinct from CONTEXT.md's roast-work rubric |
