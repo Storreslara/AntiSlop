@@ -680,6 +680,35 @@ an append-only audit-log record class written to
   pass at current HEAD or already pass-correctly at baseline, and every `anchor:` to
   be grep-verifiable.
 
+**contract precedence**:
+(unit rgh-u3-3, 2026-10-07) — the rule stated in `agents/scribe.md` 
+  **Contract precedence** section that when a [[scribe dispatch contract]] is 
+  present in a dispatch, scribe applies its written glossary text, ADR number and 
+  close conditions as written rather than exercising independent judgment; scribe's 
+  own judgment applies only where the contract is silent. If any item in the 
+  contract cannot be applied exactly, scribe stops and reports a spec gap. Note: 
+  the shipped text does not state whether the four hard issue-closing conditions 
+  (valid PASS marker, commit references issue, issue currently OPEN, both issue 
+  number and task-id named) and the never-close rules (FAIL verdict, .blocked 
+  marker, malformed marker, speculatively) still apply on top of the contract's 
+  close conditions — that hierarchical relationship is unstated. See 
+  [[scribe dispatch contract]] and the `agents/scribe.md` text itself.
+
+**scribe dispatch contract**:
+(unit rgh-u3-3, 2026-10-07) — a dispatch contract structure written when task-master 
+  includes a scribe unit, containing nine elements in order: `Unit: <task-id>`, 
+  `## Objective`, `## Retrieval`, `## Glossary edits` (each item: `file:`, `heading:`, 
+  `text:`), `## ADR` (`NNNN <title>` or `none`), `## Close conditions` (the issue 
+  number, the task-id, and the marker first-line prefix), `## Do NOT touch`, 
+  `## Acceptance criteria` (items matching [[edit item / command item]] format), 
+  and `## Escalation`. Scored with `node bin/contract-score.js --shape=scribe 
+  <contract>` requiring `"score":5` (the [[contract score]] S1-S5 rubric). Distinct 
+  from the nine-element lead contract (which applies to lead-programmer). When 
+  present, invokes [[contract precedence]]: scribe's own judgment applies only where 
+  the contract is silent, and any item that cannot be applied exactly routes to a 
+  spec gap. Documented in `agents/task-master.md` **Scribe dispatch contract** 
+  section with example(s) between whole-line scribe-contract-example markers.
+
 **edit item / command item**:
 (unit rgh-u3-1, 2026-10-06) — the two types of numbered items under the
   `## Ordered edits` (R1) section of a [[content-typed contract]]. An **edit item**
