@@ -2,6 +2,10 @@ Unit: demo-2
 
 ## Objective
 `agents/demo.md` carries the new line and the version is bumped. Done = every criterion below passes.
+~~~
+## Affected files
+## End
+~~~
 
 ## Retrieval
 GitHub issues, repo example/demo. This unit: `gh issue view 2 --repo example/demo`.
@@ -37,10 +41,6 @@ GitHub issues, repo example/demo. This unit: `gh issue view 2 --repo example/dem
    exit: 0
    stdout: `1`
    mutation: revert edit 1; stdout becomes `0`.
-2. run: `bash hooks/scripts/version-stamp-check.sh HEAD~1..HEAD`
-   exit: 0
-   stdout: `ok`
-   mutation: skip the plugin.json bump; stdout shows `violation`.
 
 ## Pre-resolved context
 tdd: no documentation-only change

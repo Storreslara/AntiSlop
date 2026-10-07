@@ -129,7 +129,7 @@ for (const f of ['v2-r5-name-token', 'v2-r5-todo', 'v2-r5-empty-fill', 'v2-r5-no
   check(`${f} scores R5 false`, () => onlyFalse(scoreAs('v2', `${f}.md`), R, 'R5'));
 }
 
-for (const f of ['v2-tilde', 'v2-crlf']) {
+for (const f of ['v2-tilde']) {
   check(`${f} scores 7 under v2 and lower under v1`, () => {
     assert.strictEqual(scoreAs('v2', `${f}.md`).score, 7);
     assert.ok(scoreAs('v1', `${f}.md`).score < 7);
@@ -160,6 +160,53 @@ check('v2-r1-pointer-in-instruction', () => {
 
 check('v2-r1-pointer-after-payload', () => {
   assert.strictEqual(scoreAs('v2', 'v2-r1-pointer-after-payload.md').rows.R1, false);
+});
+
+// --- rgh-h1b: lock in every v2 row that differs from v1, and the lookup hardening ---
+// [fixture stem, scribe shape?, row, v2 value, v1 value or null when the row is n/a under v1]
+const LOCK = [
+  ['v2-fenced-heading-R2', false, 'R2', false, true],
+  ['v2-fenced-heading-R3', false, 'R3', true, false],
+  ['v2-tilde-run-R4', false, 'R4', true, false],
+  ['v2-indented-diagnosis', false, 'R7', true, false],
+  ['v2-S1-none', true, 'S1', true, false],
+  ['v2-minus-S2-bare-title', true, 'S2', false, true],
+  ['v2-minus-S2-backticked-none', true, 'S2', false, true],
+  ['v2-fenced-heading-S4', true, 'S4', true, false],
+  ['v2-fenced-heading-S5', true, 'S5', true, false],
+  ['v2-r1-pointer-in-anchor', false, 'R1', true, null],
+  ['v2-fence-len', false, 'R1', true, null],
+  ['v2-fence-char', false, 'R1', true, null],
+  ['v2-minus-S6-prune-not-last', true, 'S6', false, null],
+  ['v2-r6-nested', false, 'R6', true, false],
+  ['v2-r6-fenced', false, 'R6', true, false],
+];
+for (const [f, scribe, row, v2, v1] of LOCK) {
+  check(f, () => {
+    assert.strictEqual(scoreAs('v2', `${f}.md`, scribe).rows[row], v2, `v2 ${row}`);
+    if (v1 !== null) assert.strictEqual(scoreAs('v1', `${f}.md`, scribe).rows[row], v1, `v1 ${row}`);
+  });
+}
+
+check('v2-crlf scores 7 under v2 and lower under v1', () => {
+  const text = fs.readFileSync(path.join(REPO_ROOT, FIX, 'v2-all-pass.md'), 'utf8').replace(/\n/g, '\r\n');
+  assert.ok(text.includes('\r'), 'generated input carries no CR');
+  assert.strictEqual(JSON.parse(run(['-', '--rubric=v2'], text).stdout.trim()).score, 7);
+  const v1 = JSON.parse(run(['-', '--rubric=v1'], text).stdout.trim()).score;
+  assert.ok(v1 < 7, `v1 scored ${v1}`);
+});
+
+check('v2-usage-proto-rubric', () => {
+  // toString exists on Object.prototype, so only the rubric lookup can reject this call.
+  const r = run([`${FIX}/v2-all-pass.md`, '--rubric=__proto__', '--shape=toString']);
+  assert.strictEqual(r.status, 2);
+  assert.ok(r.stderr.startsWith('usage:'), r.stderr);
+});
+
+check('v2-usage-proto-shape', () => {
+  const r = run([`${FIX}/v2-all-pass.md`, '--rubric=v2', '--shape=toString']);
+  assert.strictEqual(r.status, 2);
+  assert.ok(r.stderr.startsWith('usage:'), r.stderr);
 });
 
 check('unknown rubric exits 2', () => {
