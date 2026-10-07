@@ -366,6 +366,57 @@ check('rubric_version v1 before rgh-h2 PASS', () => { assert.strictEqual(RV_H2['
 check('rubric_version v2 after rgh-h2 PASS', () => { assert.strictEqual(RV_H2['rv-after'].rubric_version, 'v2'); });
 
 
+// --- H11 (rgh-h11): G3 scores each rubric-era unit under its own rubric_version ---
+const V2_ALL_PASS = fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'contract-score', 'v2-all-pass.md'), 'utf8');
+const H2_PASS = { id: 'rgh-h2', pass: '2026-09-03T00:00:00Z', issue: null };
+// v2-format contracts hold `~~~` payload fences, so the issue body wraps them in a five-tilde fence.
+const wrap5 = (text) => `## Dispatch contract\n\n~~~~~markdown\n${text}\n~~~~~\n`;
+// units: {id, issue: [createdAt, text] | null}; every unit PASSes at 2026-09-05 unless `pass` is given.
+function g3v2Run(units, extra) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'uo-g3v2-'));
+  const stub = {};
+  [{ id: 'rgh-u3-4', pass: U34_PASS, issue: null }, ...units].forEach((u) => {
+    fs.writeFileSync(path.join(dir, `${u.id}.pass`), `PASS ${u.id} ${u.pass || '2026-09-05T10:00:00Z'} commit: none criteria: fixture\n`);
+    if (u.issue) stub[u.id] = { createdAt: u.issue[0], body: wrap5(u.issue[1]) };
+  });
+  const stubFile = path.join(dir, 'stub.json');
+  fs.writeFileSync(stubFile, JSON.stringify(stub));
+  const out = runWith(dir, dir, ['--until=2026-09-15T00:00:00Z', ...extra], { UO_GH_STUB: stubFile });
+  fs.rmSync(dir, { recursive: true, force: true });
+  return out;
+}
+// 60 rubric-era units: 10 "a" (contract before rgh-h2's PASS), 10 "b" (after it, v2-format), 40 "c" below 7.
+function g3v2Set(withH2, aText) {
+  const units = withH2 ? [H2_PASS] : [];
+  for (let i = 0; i < 10; i++) units.push({ id: `g3v2-a${i}`, issue: ['2026-09-02T09:00:00Z', aText] });
+  for (let i = 0; i < 10; i++) units.push({ id: `g3v2-b${i}`, issue: ['2026-09-04T09:00:00Z', V2_ALL_PASS] });
+  for (let i = 0; i < 40; i++) units.push({ id: `g3v2-c${i}`, issue: ['2026-09-02T09:00:00Z', MINUS_R1] });
+  return g3v2Run(units, ['--gate=G3']);
+}
+check('g3v2 field', () => {
+  const out = g3v2Run([{ id: 'g3v2-f1', issue: ['2026-09-02T09:00:00Z', V2_ALL_PASS] }, { id: 'g3v2-f2', issue: null }], []);
+  const byId = {};
+  out.split('\n').filter(Boolean).forEach((l) => { const o = JSON.parse(l); byId[o.id] = o; });
+  assert.strictEqual(byId['g3v2-f1'].contract_score, 6);
+  assert.strictEqual(byId['g3v2-f1'].contract_score_v2, 7);
+  assert.strictEqual(byId['g3v2-f2'].contract_score, null);
+  assert.strictEqual(byId['g3v2-f2'].contract_score_v2, null);
+});
+check('g3v2 v2-counts', () => {
+  const out = g3v2Set(true, ALL_PASS);
+  assert.ok(/^G3 open\n/.test(out), out);
+  assert.ok(out.includes(' scored7=20 '), out);
+});
+check('g3v2 v1-not-v2', () => {
+  const out = g3v2Set(true, V2_ALL_PASS);
+  assert.ok(/^G3 closed: /.test(out), out);
+  assert.ok(out.includes(' scored7=10 '), out);
+});
+check('g3v2 v2-not-v1', () => {
+  const out = g3v2Set(false, ALL_PASS);
+  assert.ok(out.includes(' scored7=10 '), out);
+});
+
 fs.utimesSync(mtimeFile, mtimeOrig, mtimeOrig);
 fs.rmSync(scratch.dir, { recursive: true, force: true });
 
