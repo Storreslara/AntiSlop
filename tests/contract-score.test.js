@@ -193,7 +193,7 @@ check('v2-crlf scores 7 under v2 and lower under v1', () => {
   assert.ok(text.includes('\r'), 'generated input carries no CR');
   assert.strictEqual(JSON.parse(run(['-', '--rubric=v2'], text).stdout.trim()).score, 7);
   const v1 = JSON.parse(run(['-', '--rubric=v1'], text).stdout.trim()).score;
-  assert.ok(v1 < 7, `v1 scored ${v1}`);
+  assert.strictEqual(v1, 4, `v1 scored ${v1}`);
 });
 
 check('v2-usage-proto-rubric', () => {
@@ -207,6 +207,10 @@ check('v2-usage-proto-shape', () => {
   const r = run([`${FIX}/v2-all-pass.md`, '--rubric=v2', '--shape=toString']);
   assert.strictEqual(r.status, 2);
   assert.ok(r.stderr.startsWith('usage:'), r.stderr);
+});
+
+check('v2-r6-plus', () => {
+  assert.strictEqual(scoreAs('v2', 'v2-r6-plus.md').rows.R6, true);
 });
 
 check('unknown rubric exits 2', () => {

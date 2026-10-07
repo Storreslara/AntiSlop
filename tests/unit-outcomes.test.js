@@ -326,18 +326,24 @@ function stubDir(issues) {
 }
 check('strict gh stub limit', () => {
   const dir = stubDir({ 'h7-lim': [{ number: 1, title: 'a' }, { number: 2, title: 'b' }] });
-  const out = cp.execFileSync(path.join(dir, 'bin', 'gh'), ['issue', 'list', '--search', 'h7-lim in:title', '--limit', '1'], { encoding: 'utf8' });
-  fs.rmSync(dir, { recursive: true, force: true });
-  assert.strictEqual(JSON.parse(out).length, 1);
+  try {
+    const out = cp.execFileSync(path.join(dir, 'bin', 'gh'), ['issue', 'list', '--search', 'h7-lim in:title', '--limit', '1'], { encoding: 'utf8' });
+    assert.strictEqual(JSON.parse(out).length, 1);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 check('strict unit first line', () => {
   const dir = stubDir({ 'h7-unit': [{ number: 7, title: 'other title', labels: [], createdAt: '2026-09-02T09:00:00Z',
     body: '## Dispatch contract\n\n~~~markdown\nnote line\nUnit: h7-unit\n~~~\n' }] });
-  fs.writeFileSync(path.join(dir, 'h7-unit.pass'), 'PASS h7-unit 2026-09-05T10:00:00Z commit: none criteria: fixture\n');
-  const out = cp.execFileSync('node', [SCRIPT, `--repo=${dir}`, `--markers=${dir}`, `--transcripts=${path.join(dir, 'none')}`, '--until=2026-09-15T00:00:00Z'],
-    { cwd: REPO_ROOT, encoding: 'utf8', env: { ...process.env, GH_BIN: path.join(dir, 'bin', 'gh') } });
-  fs.rmSync(dir, { recursive: true, force: true });
-  assert.strictEqual(JSON.parse(out.trim()).contract_source, 'none');
+  try {
+    fs.writeFileSync(path.join(dir, 'h7-unit.pass'), 'PASS h7-unit 2026-09-05T10:00:00Z commit: none criteria: fixture\n');
+    const out = cp.execFileSync('node', [SCRIPT, `--repo=${dir}`, `--markers=${dir}`, `--transcripts=${path.join(dir, 'none')}`, '--until=2026-09-15T00:00:00Z'],
+      { cwd: REPO_ROOT, encoding: 'utf8', env: { ...process.env, GH_BIN: path.join(dir, 'bin', 'gh') } });
+    assert.strictEqual(JSON.parse(out.trim()).contract_source, 'none');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 // units: {id, pass, issue: createdAt | null}; returns id -> row.
 function rvSet(units) {
@@ -349,8 +355,12 @@ function rvSet(units) {
   });
   const stubFile = path.join(dir, 'stub.json');
   fs.writeFileSync(stubFile, JSON.stringify(stub));
-  const out = runWith(dir, dir, ['--until=2026-09-15T00:00:00Z'], { UO_GH_STUB: stubFile });
-  fs.rmSync(dir, { recursive: true, force: true });
+  let out;
+  try {
+    out = runWith(dir, dir, ['--until=2026-09-15T00:00:00Z'], { UO_GH_STUB: stubFile });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
   const map = {};
   out.split('\n').filter(Boolean).forEach((l) => { const o = JSON.parse(l); map[o.id] = o; });
   return map;
@@ -415,6 +425,20 @@ check('g3v2 v1-not-v2', () => {
 check('g3v2 v2-not-v1', () => {
   const out = g3v2Set(false, ALL_PASS);
   assert.ok(out.includes(' scored7=10 '), out);
+});
+
+// --- fc-1: rubric_version boundaries, the cutoff on rgh-h2's PASS, and an unparseable contract_ts ---
+const RV_CUT = rvSet([{ id: 'rgh-h2', pass: '2026-09-20T10:00:00Z', issue: null },
+  { id: 'rv-h2-after-cutoff', pass: '2026-09-12T10:00:00Z', issue: '2026-09-22T09:00:00Z' }]);
+check('rv-h2-after-cutoff', () => { assert.strictEqual(RV_CUT['rv-h2-after-cutoff'].rubric_version, 'v1'); });
+const RV_EQ = rvSet([{ id: 'rgh-h2', pass: '2026-09-05T10:00:00Z', issue: null },
+  { id: 'rv-equal-boundary', pass: '2026-09-06T10:00:00Z', issue: '2026-09-05T10:00:00Z' }]);
+check('rv-equal-boundary', () => { assert.strictEqual(RV_EQ['rv-equal-boundary'].rubric_version, 'v1'); });
+check('rv-nan', () => {
+  const units = [{ id: 'rgh-h2', pass: '2026-08-30T10:00:00Z', issue: null }, { id: 'rv-nan', issue: ['not-a-date', ALL_PASS] }];
+  const row = JSON.parse(g3v2Run(units, []).split('\n').find((l) => l.startsWith('{"id":"rv-nan"')));
+  assert.strictEqual(row.rubric_version, null);
+  assert.ok(g3v2Run(units, ['--gate=G3']).includes(' rubric_era=0 '), 'rv-nan counted in rubric_era');
 });
 
 fs.utimesSync(mtimeFile, mtimeOrig, mtimeOrig);
