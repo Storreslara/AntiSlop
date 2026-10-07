@@ -259,6 +259,7 @@ function buildRow(id, u, term, ctx) {
 // H-D: null without a contract; v1 until RUBRIC_V2_UNIT has a PASS as of the cutoff; then by contract_ts.
 function rubricVersion(contractTs, h2Pass) {
   if (contractTs === null || contractTs === undefined) return null;
+  if (Number.isNaN(Date.parse(contractTs))) return null;
   if (!h2Pass) return 'v1';
   return Date.parse(contractTs) <= Date.parse(h2Pass) ? 'v1' : 'v2';
 }
