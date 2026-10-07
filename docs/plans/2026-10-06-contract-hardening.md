@@ -1,6 +1,6 @@
 # Contract hardening: a stage after Stages 0-3 of the rubric-gated haiku programme (2026-10-06)
 
-Status: FINAL (standard path, 11 units incl. follow-up H1b, so task-master slices them). Parent:
+Status: FINAL (standard path, 12 units incl. follow-ups H1b and H11, so task-master slices them). Parent:
 `docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (cited by path and not
 restated). Stages 0-3 of the parent are reviewer-PASSed at HEAD 325f51d, version
 0.31.129. **Stages 4-5 and gates G3/G4 of the parent are untouched** by this plan.
@@ -447,6 +447,63 @@ Affected: `scripts/unit-outcomes.js`, `tests/unit-outcomes.test.js`, fixtures.
 - AC-H7.1 `node tests/unit-outcomes.test.js` exit 0, with assertions for each item. A mutation of each (removing the check) fails a named assertion.
 - AC-H7.2 `node scripts/unit-outcomes.js --help` prints `usage:` and exits 0 within 5 s (`timeout 5`). `node scripts/unit-outcomes.js --bogus` exits 2.
 
+### H11: G3 scores each unit under its own rubric_version (non-persona)
+Scope `rgh-h11`. Affected: `scripts/unit-outcomes.js`,
+`tests/unit-outcomes.test.js`, and fixtures under `tests/fixtures/` used by that
+test. No version bump.
+- Two commits: `test(rgh-h11): … (#<issue>)` (red), then `feat(rgh-h11): … (#<issue>)` (green).
+- Dispatch after H7 (#509, passed at cfe6790). It does NOT depend on H2: the
+  fixtures supply their own v2 contracts and their own `rgh-h2` PASS marker.
+
+**Behaviour:**
+- `contract_score` keeps its meaning: the v1 score, unchanged, for G3 history
+  and snapshot comparability.
+- A new field `contract_score_v2` holds the `score` from
+  `bin/contract-score.js - --rubric=v2` over the same contract text, or null
+  when `contract_score` is null.
+- `gateG3` counts a rubric-era unit toward `scored7` iff its per-version score
+  is 7. The per-version score is `contract_score` when `rubric_version` is `v1`,
+  and `contract_score_v2` when it is `v2`. Units with null `rubric_version` are
+  outside the population already.
+- The `G3 open`/`G3 closed` line format is unchanged.
+- Discriminator (measured 2026-10-06): `tests/fixtures/contract-score/v2-all-pass.md`
+  scores 6 under v1 and 7 under v2. `all-pass.md` (v1-format) scores 7 under v1
+  and 6 under v2.
+
+**New checks, prefix `g3v2`** (does not collide with `g3` 6, `asof` 3,
+`source` 4, `era` 4, `strict` 4, `rubric_version` 4, `until` 3, `issue` 3,
+`timestamps` 2, `read-only` 2; 46 `^OK` lines at cfe6790):
+- `g3v2 field`: a fixture unit whose issue contract is `v2-all-pass.md` has
+  `contract_score` 6 and `contract_score_v2` 7. A no-contract unit has both null.
+- `g3v2 v2-counts`: a G3 fixture set has 60 rubric-era units. 10 are v1 with v1
+  score 7, 10 are v2 (after the fixture's `rgh-h2` PASS) with v2 score 7 and v1
+  score 6, and 40 score below 7 under their own version. It prints `G3 open` and
+  `scored7=20`.
+- `g3v2 v1-not-v2`: the same set, except the 10 v1 units carry v1-format
+  contracts scoring 6 under v1 and 7 under v2. It prints `G3 closed` and
+  `scored7=10`.
+- `g3v2 v2-not-v1`: the same set as `v2-counts`, but `rgh-h2` has no PASS, so
+  all 20 are `v1`. It prints `scored7=10`, because the v2 contracts score 6
+  under v1.
+
+**Acceptance criteria:**
+- AC-H11.1 `node tests/unit-outcomes.test.js | /usr/bin/grep -c '^OK   g3v2'` prints `4`. The total `^OK` count is 50 (46 + 4). The existing 6 `g3` checks still pass, and the suite exits 0.
+- AC-H11.2 Red commit: the four `g3v2` checks fail and every other check passes.
+- AC-H11.3 Mutation proofs (the implementer runs each in a scratch copy and names the failing check):
+  - **M-v1only** (`gateG3` counts `contract_score === 7` for every unit, the shipped behaviour) fails `g3v2 v2-counts` (prints `scored7=10`).
+  - **M-v2only** (counts `contract_score_v2 === 7` for every unit) fails `g3v2 v1-not-v2` (prints `scored7=20`, `G3 open`).
+  - **M-field** (compute `contract_score_v2` with the v1 default) fails `g3v2 field`.
+
+  The premise of all three (the same text scoring 6 and 7 under the two rubrics) was measured by spec-master on the two fixtures named above.
+- AC-H11.4 `node scripts/unit-outcomes.js --until=2026-10-06T00:00:00Z | jq -s 'all(has("contract_score_v2"))'` prints `true`.
+- AC-H11.5 Commit subjects: `git log --format=%s <B>..HEAD | /usr/bin/grep -vcE '^(test|feat)\(rgh-h11\): .* \(#[0-9]+\)$'` prints `0`.
+- AC-H11.6 `git diff --name-only <B>..HEAD` lists only `scripts/unit-outcomes.js`, `tests/unit-outcomes.test.js` and files under `tests/fixtures/`. The committed snapshot `docs/audits/unit-outcomes/2026-10-06.jsonl` is NOT regenerated: it is the 2026-10-06 historical record, and nothing automated re-runs U0-3's reproduction (no test or script references the snapshot, checked with `git grep -l 2026-10-06.jsonl -- tests bin scripts hooks`). The README's comparison note, extended by H10 (AC-H10.14), excludes the post-snapshot fields `rubric_version` and `contract_score_v2`.
+
+**G3 snapshot refresh:** none needed. The orchestrator evaluates G3 live with
+`node scripts/unit-outcomes.js --gate=G3`, which reads markers, issues and
+transcripts directly. A refreshed snapshot, if one is ever wanted for Stage 4,
+belongs to U4-3.
+
 ### H8: invariant tests (non-persona)
 Affected: `tests/writer-tier-consistency.test.js`.
 - AC-D6 uses `stripWhitespace` (strip-all; the item06-3 NOTE[spec] convention).
@@ -608,6 +665,8 @@ stripped.
   - L35 becomes ``- `task_master_cutoff`: always null in this snapshot; the exporter does not yet measure cutoffs, and G3 prints `task_master_cutoffs=unmeasured`.``. Measured: 0 non-null values.
     - AC-H10.10: `/usr/bin/grep -c 'always null in this snapshot' README` prints `1`.
   - New line after L38: ``- `rubric_version`: `v1`, `v2` or null; see `RUBRIC_V2_UNIT` in `scripts/unit-outcomes.js`.``.
+  - New line after that (added with H11): ``- `contract_score_v2`: the `score` under `bin/contract-score.js --rubric=v2`, or null when there is no real contract; G3 uses it for `rubric_version` `v2` units.``. AC-H10.13: `/usr/bin/grep -c 'contract_score_v2' README` = 1.
+  - L8, append (prose only; the machine-read lines stay unchanged): " Fields added after this snapshot (`rubric_version`, `contract_score_v2`) are absent from the committed file and are excluded from the comparison too." AC-H10.14: flattened grep `are excluded from the comparison too` = 1. AC-H10.12 still holds.
     - AC-H10.11: `/usr/bin/grep -c 'RUBRIC_V2_UNIT' README` prints `1`.
   - Machine-read lines unchanged:
     - AC-H10.12: `git diff <B>..HEAD -- docs/audits/unit-outcomes/README.md | /usr/bin/grep -cE '^[-+](cutoff:|reproduce-command:|count:)'` prints `0`. Mutation: editing any `count:` line prints ≥ 2.
@@ -694,11 +753,16 @@ v1 is untouched.
     PASS. task-master's self-check still requires v1 7/7 (the shipped rule)
     until H2 switches the self-check to v2. After H2's PASS, contracts must score
     7/7 under v2, and v1 is informational.
-  - **G3 effect (intended).** Excepted contracts are task-master-authored after
-    U3-4's PASS, so they enter the G3 population with a v1 score of 6 and do not
-    count toward G3's "≥20 at 7/7". This is intended: G3's definition (v1 scores)
-    stays unchanged. Switching G3 to v2 for post-H1 contracts would change the
-    programme plan's gate, so it is Open Question 5 and is not applied.
+  - **G3 effect (superseded 2026-10-06 by the user's answer to Open Question 5).**
+    G3 now scores each unit under its own `rubric_version` (programme plan,
+    Gate G3; implemented by H11). The `score-exception:` line is informational
+    for G3, which reads `rubric_version` and the scores, never the line. H2 and
+    H1b have `rubric_version` `v1` (written before `rgh-h2`'s PASS), so with a v1
+    score of 6 they still do not count toward the 20.
+  - **The H-F2 mechanism is still needed** for the per-unit self-check:
+    task-master's shipped self-check requires v1 7/7 until H2 switches it to
+    `--rubric=v2`. After H2's PASS the exception list stops growing, because v2
+    has no payload pointer shortfall.
 - **H2(c) wording kept:** "list all six pointer phrases" stands, written
   literally inside the payload. No obfuscation.
 
@@ -716,6 +780,7 @@ on H3 and H5, because its replacement text cites their shipped labels.
 | A4 version derivation / mutations / staging / indentation / anchors / split / `git add -A` | H2(b) |
 | A5 shared-file rule, table, banner, resume | H3 |
 | A6 scorer vs persona | H1 (code), H1b (lock-in fixtures, CRLF in-test, `Object.hasOwn`, fenced R6), H2(c) (wording), H7 (exporter items) |
+| OQ5 answered by the user: G3 scores each unit under its own `rubric_version` | H11 (exporter `contract_score_v2` + `gateG3`); programme plan Gate G3 amended in text; README notes in H10 |
 | H1 review: 8 rows indistinguishable from v1, survivors M3b/fence/prune/R6-nested, vacuous CRLF fixture, prototype-key lookups, fenced R6 lines | H1b |
 | H1 review: glossary "instruction text"; "rubric" sense collision (CONTEXT.md:451 is roast-work's critique rubric) | H10 scribe contract adds a harness-glossary entry **instruction text** (the v2 pointer test's scope: text outside fenced payloads and outside the backticked `before:`/`after:`/`insert-after:`/`delete:`/`anchor: line matching` values). The **rubric v1/v2** entry stays in `docs/harness-glossary.md` and notes it is distinct from CONTEXT.md's roast-work rubric |
 | A6 H2 hook counts only backtick fences | parked: hook change (`hooks/`, guarded); scorer `sizeOver` covers it for contracts |
@@ -738,7 +803,7 @@ on H3 and H5, because its replacement text cites their shipped labels.
 2. Do scribe's doc-update duties move into the contract? Default: **yes for per-unit doc edits (`## Doc edits`); prune duty parked (release-only)**. Origin: Clarifications cat. 1.
 3. Include an optional unit hardening `hooks/scripts/version-stamp-check.sh` to read package.json? Default: **no** (the version-sync check in contracts covers it; guarded hook). Origin: Clarifications cat. 7.
 4. G3 confound: pool v1 and v2 contracts as rubric era (recorded via `rubric_version`), or pause G3 counting until the hardening stage ends? Default: **pool and record**. Origin: Clarifications cat. 9, CHK5.
-5. Should the programme plan's G3 count v2 scores for contracts written after H2's PASS (v1 cannot score the hardened format's payload-quoting contracts at 7)? Default: **yes, score each G3 unit with its own `rubric_version` (v1 for v1-era, v2 for v2-era contracts)**, applied only on the user's approval as an amendment to `docs/plans/2026-10-06-rubric-gated-haiku-programme.md`'s G3. Evidence: v1 is fence-blind to `~~~`. `v2-all-pass.md`, the canonical hardened contract, scores R1 false under v1 (measured 2026-10-06), so after H2 almost no contract can reach v1 7/7, and G3's "≥20 at 7/7" would stall regardless of contract quality. Until the user rules, G3 stays on v1 as defined, and nothing is applied. Origin: ruling H-F2.
+5. Should the programme plan's G3 count v2 scores for contracts written after H2's PASS (v1 cannot score the hardened format's payload-quoting contracts at 7)? Default: **yes, score each G3 unit with its own `rubric_version` (v1 for v1-era, v2 for v2-era contracts)**, applied only on the user's approval as an amendment to `docs/plans/2026-10-06-rubric-gated-haiku-programme.md`'s G3. Evidence: v1 is fence-blind to `~~~`. `v2-all-pass.md`, the canonical hardened contract, scores R1 false under v1 (measured 2026-10-06), so after H2 almost no contract can reach v1 7/7, and G3's "≥20 at 7/7" would stall regardless of contract quality. Origin: ruling H-F2. **ANSWERED 2026-10-06 by the user: each unit is scored under its own `rubric_version` (v1 for v1-era, v2 for v2-era); not "keep v1", not "v2 for everything".** Applied to the programme plan's Gate G3, stage table and U0-2b note; implemented by H11.
 
 ## Self-check
 - CHK1: Does every reviewer item A1-A6, B, C appear in the placement table? — PASS

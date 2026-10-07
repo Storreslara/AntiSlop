@@ -219,7 +219,7 @@ Reviewer-tier gate (ADR-0009) and the reviewer-gate ratchet are unchanged.
 | 0 Outcome export (+ addendum) | U0-1, U0-2, U0-3, U0-4 | G0: all four PASS; snapshot committed (or per-clone, per OQ1). U0-4 has no dependency on the exporter or on any gate |
 | 1 Forward-rule audit | U1-1 | G1: audit committed. Does not block Stages 2-4; blocks Stage 5 while `spirit-ruling: PENDING-HUMAN` |
 | 2 spec-master S1+S2 | U2-1, U2-2 | G2: both PASS (prerequisite for R3 criteria quality) |
-| 3 Tier-neutral contract rubric | U3-1..U3-4 | G3: `node scripts/unit-outcomes.js --gate=G3` prints `G3 open` (≥60 rubric-era task-master-authored units at PASS or cap, ≥20 of them scoring 7/7, task-master cutoffs reported) |
+| 3 Tier-neutral contract rubric | U3-1..U3-4 | G3: `node scripts/unit-outcomes.js --gate=G3` prints `G3 open` (≥60 rubric-era task-master-authored units at PASS or cap, ≥20 of them scoring 7/7 under their own `rubric_version`, task-master cutoffs reported; amended 2026-10-06 by the user's ruling, see Gate G3) |
 | 4 pi-2 replay | U4-1, U4-2, U4-3 | G4: `docs/audits/<date>-pi2-replay.md` line `verdict: favourable` AND G1 ruling is not PENDING-HUMAN |
 | 5 (GATED) Tier change | U5-1, U5-2, U5-3 | none: programme end |
 
@@ -419,7 +419,9 @@ so the in-flight FAIL fix on #498 stays limited to its two listed code defects.
   `## Ordered edits`, with author `unknown`. A pointer dispatch ("Retrieval
   contract: gh issue view N") is never scored, and gives `contract_source: none`
   and score null. G3's "contract score" is the score of source (1): the contract
-  as task-master wrote it.
+  as task-master wrote it. Since the 2026-10-06 user ruling it is scored under
+  the unit's own `rubric_version` (see Gate G3; implemented by hardening unit
+  H11).
   - AC0-2b.2 A fixture unit with both an issue Dispatch-contract block and a pointer transcript gets `contract_source` `issue#N`, author `task-master`, and the block's score. A pointer-only transcript gives `contract_source` `none`.
 - **New field `contract_ts`.** The issue's `createdAt` for source (1), the
   plan block's first-commit date for (2), null otherwise.
@@ -726,6 +728,21 @@ Acceptance criteria:
 `node scripts/unit-outcomes.js --gate=G3` prints `G3 open`. The rule: counting
 units whose contract_author is task-master and whose contract was written after
 U3-4's PASS commit, ≥60 reached PASS or cap, and ≥20 of those scored 7/7.
+**Amended 2026-10-06 (user ruling on hardening-plan Open Question 5).** The "≥20
+scored 7/7" count uses, for each unit, its score under that unit's own
+`rubric_version`: `v1` uses the v1 score (`contract_score`), and `v2` uses the
+v2 score (`contract_score_v2`, added by hardening unit H11).
+- A unit whose `rubric_version` is null has no contract (`contract_ts` null), so
+  it is outside the population anyway.
+- The population (task-master-authored, `contract_ts` after U3-4's `pass_ts`),
+  the 60/20 thresholds, Stages 4-5 and the spirit-ruling gate are unchanged.
+- Reason: v1 cannot parse `~~~` fences (`v2-all-pass.md` scores 6 under v1 and
+  7 under v2, measured), so hardened contracts could never count otherwise.
+- The hardening plan's `score-exception:` lines (rulings H-F and H-F2) are
+  informational for G3: G3 reads `rubric_version` and the scores, never the
+  exception line. The excepted contracts so far (H2, H1b) were written before
+  `rgh-h2`'s PASS, so their `rubric_version` is `v1`. They keep their v1 score
+  of 6 and do not count toward the 20.
 The output also lists the rubric-era FAIL-class mix next to the pre-rubric
 sonnet era (the contract effect) and the task-master cutoff count. That count is
 informational: the turn cap was already raised to 120 by U0-4, per the user. A
