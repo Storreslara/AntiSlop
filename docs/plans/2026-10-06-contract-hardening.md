@@ -1,0 +1,462 @@
+# Contract hardening: a stage after Stages 0-3 of the rubric-gated haiku programme (2026-10-06)
+
+Status: FINAL (standard path, 10 units, so task-master slices them). Parent:
+`docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (cited by path and not
+restated). Stages 0-3 of the parent are reviewer-PASSed at HEAD 325f51d, version
+0.31.129. **Stages 4-5 and gates G3/G4 of the parent are untouched** by this plan.
+
+## Goal
+
+task-master does all the thinking. lead-programmer and scribe (target tier:
+haiku) follow orders and never need to reason. This stage closes the gaps where
+Stage 3's shipped text still leaves a decision to the implementer or scribe.
+Units are ordered by importance for that goal.
+
+| Goal clause | Unit | Criterion |
+|---|---|---|
+| The scorer measures exactly what the persona text demands (A6, A2 scorer half) | H1 | AC-H1.* |
+| Every contract element is fully literal: review-packet template, version derivation, mutation proofs, indentation, anchors, split rule (A2, A3 content, A4, A6 wording) | H2 | AC-H2.* |
+| A FAIL re-dispatch carries a contract; sibling and held units serialize and resume deterministically (A1 author side, A5) | H3 | AC-H3.* |
+| The orchestrator routes FAILs through a fix contract, passes the scribe contract, and fills the PASS-line placeholder (A1, A3, C) | H4 | AC-H4.* |
+| lead-programmer follows fix contracts and the packet template with no judgment left (A1, A2, C) | H5 | AC-H5.* |
+| scribe decides nothing beyond its hard close rules (A3) | H6 | AC-H6.* |
+| The exporter's CLI and parsing are strict (A6 exporter half), and `rubric_version` is recorded | H7 | AC-H7.* |
+| Tier and turn-cap invariants are pinned and robust to line wrapping (C) | H8 | AC-H8.* |
+| spec-master's Replay source / Incumbent baseline rules are well-defined (C) | H9 | AC-H9.* |
+| Glossary and outcome README text matches what shipped (C) | H10 | AC-H10.* |
+
+## Context
+
+### Verified evidence (HEAD 325f51d)
+
+- **A1.** On FAIL, the orchestrator "route[s] the defect list back to the
+  lead-programmer" (agents/orchestrator.md:185-186; ladder at :434-437). The cap
+  options at :337-352 re-dispatch with a debug spec or a human directive.
+  lead-programmer's precedence applies only "When your dispatch is a dispatch
+  contract" (agents/lead-programmer.md:30-36). So a fix turn runs with full
+  judgment.
+- **A2.** agents/lead-programmer.md:35 "Fill the ready-for-review packet template
+  the contract supplies". No element supplies one (agents/task-master.md:112-145).
+  The canonical term is **advisory review packet** (agents/lead-programmer.md:68).
+- **A3.** agents/scribe.md:91-94 ("your own judgment applies only where the
+  contract is silent"). scribe still owns wiki, changelog and stale
+  module/api/conventions updates (:34-37) and the prune duty (:49-56).
+  agents/task-master.md:224-226: `## ADR` is a number and title only, and
+  `## Close conditions` holds "the quoted marker first line", while the example
+  quotes only a prefix. Under review gating off, the PASS verdict line cannot be
+  known when the contract is written (agents/scribe.md:96-101).
+- **A4.**
+  - agents/task-master.md:126-130 gives no version derivation.
+  - The example's AC2 (:205-208) names the mutation "skip edit 3" (package.json),
+    which `hooks/scripts/version-stamp-check.sh` cannot detect: it reads only
+    `.claude-plugin/plugin.json` (:43). The version-sync block in
+    `tests/validate.sh:92` catches it.
+  - :72-74 hard-codes "all 14 `.claude/` paths", which is repo-specific in a
+    shipped persona.
+  - :193 uses `git add -A agents`.
+  - :147-152: the self-check never proves its mutations, "Confirm every `anchor:`
+    exists with `grep -n`" has no pattern, and "split or reported" is a choice.
+- **A5.** agents/task-master.md:59-62: "Two units touching the same file" makes
+  every persona unit collide on the bump files. There is no intersection table,
+  held banner or resume rule. Its "re-resolved by the orchestrator" step has no
+  counterpart in agents/orchestrator.md.
+- **A6.** In bin/contract-score.js:
+  - the POINTER regex holds 6 phrases (:6), while the persona names 2 (:124-125);
+  - only backtick fences are recognised (:26, :34, :89, :150);
+  - the tool probe is `command -v|which ` (:94);
+  - context keys must start at column 0 (:98);
+  - R6 counts any indented `-`/`*` line as a bullet and any backticked token as
+    a path (:111-112);
+  - `split('\n')` with no CR normalisation (:12, :69, :88, :149);
+  - the scribe rows s1-s5 (:118-140) do not check `Unit:`, `## Objective`,
+    `## Retrieval`, `## Escalation` or element order.
+
+  scripts/unit-outcomes.js:21-30 `parseArgs` silently accepts unknown flags.
+- **C (selected).**
+  - agents/lead-programmer.md:33 "no explorer spawn" conflicts with :55-56
+    "verify the specific claim you doubt".
+  - :25-27 is the per-step commit cadence.
+  - tests/writer-tier-consistency.test.js:67 does not strip whitespace (AC-D9 at
+    :95-105 does).
+  - docs/harness-glossary.md:3172 "halts" and :3185 "retained for re-work".
+  - docs/persona-design-notes.md:34,63 already read `maxTurns: 120`, so no unit
+    is needed there.
+  - The parent plan's line 55 said task-master `maxTurns: 40`. It is corrected in
+    this commit, because the plan doc is spec-master's own file.
+- In the Bash tool `grep` is a shell function (ugrep) that does not reach
+  sub-shells. Criteria use `/usr/bin/grep`.
+
+### Measurement note (G3 confound)
+
+The parent's G3 window opened at U3-4's PASS. H2 changes what contracts look
+like inside that window. Default (Open Question 4): **pool** both as rubric
+era, because hardened contracts are what haiku would receive. H7 adds a
+`rubric_version` field (`v1` when `contract_ts` is at or before H2's PASS
+`pass_ts`, `v2` after) so Stage 4 can stratify. The scorer keeps `--rubric=v1`
+as its default, so G3 scores do not shift retroactively. task-master self-checks
+with `--rubric=v2`.
+
+### Contract-quality rules for every H contract (lesson B)
+
+1. Every criterion's `mutation:` must demonstrably flip its check.
+   - For phrase checks, this plan recorded each phrase's HEAD count (all 0 for
+     added phrases; 1 for removed phrases such as `all 14`, `git add -A`,
+     `defect block`), so "skip edit N" is demonstrated.
+   - For anything else, task-master runs the mutation in a scratch copy and
+     records a `proof:` line.
+2. Never name `version-stamp-check.sh` as the detector of a skipped package.json
+   bump. Use the **version-sync check** below. Its mutation was run 2026-10-06:
+   bumping only plugin.json prints `version-sync: mismatch` and exits 1.
+   ```
+   node -e "const a=require('./package.json').version,b=require('./.claude-plugin/plugin.json').version;console.log(a===b?'version-sync: ok':'version-sync: mismatch');process.exit(a===b?0:1)"
+   ```
+3. Line counts and indentation numbers are computed with a command quoted in the
+   contract (`wc -l`, `awk '{print match($0,/[^ ]/)-1}'`), never written from
+   memory.
+4. No `run:`/`command:` names the reviewed-marker directory or the persona config
+   file (both gates refuse it). Stage the `--update` output with
+   `git add -u -- .claude`.
+5. Every commit subject ends with `(#<issue>)` so scribe can close the issue.
+   Contracts carry this in `commit-message:`, and a criterion checks it:
+   `git log --format=%s <B>..HEAD | /usr/bin/grep -vc '(#<issue>)$'` prints `0`.
+6. **validate.sh runtime (10-12 min, above the 600000 ms foreground ceiling).**
+   - Unit criteria use a **targeted check set**: the named `node tests/*.test.js`
+     files, `bash -n` on changed shell, the version-sync check, AC-SCOPE-1/2/3,
+     and `version-stamp-check.sh`.
+   - The full `bash tests/validate.sh` runs once at gate **HG**, by the main
+     session (which, unlike a subagent, is re-woken when a background job ends).
+     It writes output to a scratch file and reads the real exit code from that
+     file's last line, via `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
+   - A non-zero result at HG becomes a FAIL routed to the latest unit touching
+     the failing check.
+7. Any scribe contract editing `docs/harness-glossary.md` or `CONTEXT.md` runs
+   `node tests/context-glossary-links.test.js` and
+   `node tests/ubiquitous-language.test.js` (exit 0) before committing.
+   Lesson: a9ecb19 broke the link test.
+
+## Clarifications
+
+1. Functional scope & success criteria: Partial
+2. Domain entities / data model: Clear
+3. User interaction flow: Clear
+4. Non-functional attributes (perf, security, scale): Partial
+5. External dependencies & integrations: Clear
+6. Edge cases / failure handling: Partial
+7. Technical constraints & tradeoffs: Partial
+8. Terminology consistency: Partial
+9. Completion / acceptance signals: Partial
+
+- 2026-10-06 Functional scope & success criteria: Q who writes a FAIL re-dispatch contract? → A (default, Open Question 1): task-master writes a **fix contract** from the latest FAIL block. The orchestrator dispatches task-master between the FAIL verdict and the fix dispatch. The 2-FAIL cap, the implementer-tier ratchet and reviewer routing are unchanged. Without task-master, today's defect-list re-dispatch stands
+- 2026-10-06 Functional scope & success criteria: Q do scribe's wiki/changelog/prune duties move into the contract? → A (default, Open Question 2): per-unit doc edits move into a `## Doc edits` element (items, or the literal `none — make no other doc changes`). The prune duty is release-only and stays out of per-unit contracts, as `prune: none`
+- 2026-10-06 Non-functional attributes: Q how is validate.sh run given its 10-12 min runtime? → A (self-resolved): a targeted check set per unit plus one full run at gate HG by the main session (rule B6)
+- 2026-10-06 Edge cases / failure handling: Q what if a fix needs diagnosis? → A (self-resolved): the fix contract carries `diagnosis: required`, the one declared case in which lead-programmer's judgment duties apply. The tier ratchet already sends that attempt to opus
+- 2026-10-06 Technical constraints & tradeoffs: Q add a 10th contract element for the packet template? → A (self-resolved): no. The nine-element shape is pinned by H4's dispatch-hygiene check (hooks/scripts/dispatch-hygiene.sh:366) and its tests, so the template goes inside `## Pre-resolved context` as a `review-packet:` fenced block
+- 2026-10-06 Technical constraints & tradeoffs: Q harden version-stamp-check.sh to read package.json? → A (default, Open Question 3): no unit. The version-sync check covers it in contracts, and the hook is guarded (`hooks/`, SENSITIVE_PATHS, mirrored with `fileHashes`)
+- 2026-10-06 Terminology consistency: Q "ready-for-review packet template", "defect block", "Pre-dispatch self-check", "executor"? → A (self-resolved): **advisory review packet** (template), **FAIL block** (CONTEXT.md:771), **contract self-check** (already in the harness glossary), **implementer**
+- 2026-10-06 Completion / acceptance signals: Q how is the G3 confound handled? → A (default, Open Question 4): pool both eras, record `rubric_version`, and keep scorer default v1
+
+## Risks / dependencies
+
+- HR1 H2 is the largest unit. Its contract must stay under 30000 bytes. If it
+  cannot, task-master splits it by the plan's sub-bullets (a)-(d), each a separate
+  version bump.
+- HR2 H1 before H2 (the examples must score under v2). H2 before H3 (H3 cites the
+  v2 elements). H3 before H4 and H5 (they reference the fix contract).
+- HR3 Prior FAIL history: the Stage 0-3 persona units carried false mutation
+  claims (lesson B). These are new units, but task-master tags none of them below
+  the default tier.
+- HR4 H4 edits the orchestrator, which carries the guarded 2-FAIL-cap section and
+  the AC-D7/D9/D9b pins. AC-H4.4 proves them unchanged.
+
+## Constitution check (.claude/constitution.md v1.1.0)
+- P1 "Verify, don't assume": satisfied. Every pinned phrase's HEAD count and the version-sync mutation were run before publishing.
+- P2 "Prefer deterministic scripts": satisfied. Mirrors and `fileHashes` change only via `node bin/cli.js --update`, staged with `git add -u -- .claude`.
+- P3 "Version-stamp discipline": satisfied. H2, H3, H4, H5, H6 and H9 bump plugin.json and package.json and add a CHANGELOG entry in the same commit; checked by `version-stamp-check.sh` = `ok` plus the version-sync check.
+- P4 "Optional personas degrade gracefully" (SHOULD): satisfied. The fix-contract routing and scribe-contract passing are phrased "if task-master is present" / "if scribe is present" (AC-H4.3, AC-H5.3).
+- P5 "tests/validate.sh is the merge gate": satisfied via gate HG (rule B6); new tests are registered in validate.sh.
+
+## Units (dispatch order)
+
+Persona-file units follow the parent's **Persona-unit scope rule**
+(AC-SCOPE-1/2/3; parent plan section of that name) with the OWN/extra files
+named per unit. Version chain, serial, assuming no interleaved bump (otherwise
+HEAD + 1):
+
+| Unit | Sets version |
+|---|---|
+| H2 | 0.31.130 |
+| H3 | 0.31.131 |
+| H4 | 0.31.132 |
+| H5 | 0.31.133 |
+| H6 | 0.31.134 |
+| H9 | 0.31.135 |
+
+H1, H7, H8 and H10 set no version and may interleave (H1 must precede H2).
+"Flattened grep" means `tr '\n' ' ' < F | tr -s ' ' | /usr/bin/grep -cF 'P'`.
+"Persona baseline" means: version-sync check prints `version-sync: ok`;
+`bash hooks/scripts/version-stamp-check.sh <B>..HEAD` starts
+`version-stamp-check: ok`; `node tests/writer-tier-consistency.test.js` exit 0;
+AC-SCOPE-1/2/3; commit-subject check (B5).
+
+### H1: scorer v2 (`bin/contract-score.js`, non-persona)
+Affected: `bin/contract-score.js`, `tests/contract-score.test.js`,
+`tests/fixtures/contract-score/v2-*.md`. Behaviour: `--rubric=v1` (default,
+current behaviour byte-for-byte) and `--rubric=v2`. v2 changes:
+- fences are ``` or `~~~`, of any length ≥3, closed by the same char and length;
+- CRLF is normalised to LF;
+- context keys may be indented, provided they sit under `## Pre-resolved context`;
+- R5 additionally requires a `review-packet:` key followed by a fenced block
+  containing ≥1 `<FILL:` blank and no other placeholder;
+- R6 counts only lines whose marker `-`, `*` or `+` sits at column 0 or 1, and
+  the backticked token must contain `/` or `.`;
+- R1 fenced payloads require an `indent: N` line, and every payload line must
+  start with ≥N spaces;
+- the scribe shape becomes 7 rows:
+  - S1 Glossary edits;
+  - S2 ADR (`none`, or `NNNN <title>` plus a `body:` fenced payload);
+  - S3 Close conditions (`#N`, task-id, and the prefix `"PASS <task-id> "` or the literal `<PASS-VERDICT-LINE>`);
+  - S4 Do NOT touch;
+  - S5 criteria;
+  - S6 `## Doc edits` (file/heading/text items, or the literal `none — make no other doc changes`);
+  - S7 skeleton (`Unit:` first line, and all required headings present in order).
+
+The JSON output gains `"rubric":"v1"|"v2"`.
+- AC-H1.1 `node tests/contract-score.test.js` exit 0. The suite covers:
+  - v1 regression: all existing fixtures give the same output;
+  - a v2 all-pass fixture (score 7);
+  - one `v2-minus-<row>.md` per changed rule (R1-indent, R5-packet, R6-col, R6-path, S3, S6, S7), each differing from all-pass by one edit and flipping only that row;
+  - `~~~~~` and CRLF fixtures that score 7 under v2 and lower under v1.
+- AC-H1.2 Mutation proof inside the suite: reverting any v2 rule to v1 behaviour fails ≥1 named assertion (the suite prints the assertion name).
+- AC-H1.3 `node bin/contract-score.js --rubric=v3 x` exits 2.
+
+### H2: task-master contract content (`agents/task-master.md`, 0.31.130)
+OWN: `agents/task-master.md`. Extra: `tests/contract-examples.test.js` (new),
+`tests/validate.sh` (register it). Pinned edits, each a bold-label rule in the
+contract section (anchors: the elements list at :112-145, the self-check at
+:147-152, the examples at :161-260):
+- (a) A2: element 8 gains `review-packet:`, a fenced advisory review packet
+  template whose only blanks are `<FILL: ...>` for observed results (changed
+  files, commit SHAs, each criterion's actual exit/stdout).
+- (b) A4:
+  - **Version derivation.** The new version is HEAD's plugin.json version, patch
+    +1 per stamped unit in serial order, read with
+    `node -p "require('./.claude-plugin/plugin.json').version"`.
+  - **Mutation proof.** A `mutation:` is either "skip edit N", proven by running
+    the `run:` at the pre-edit HEAD, or carries a `proof:` line naming the scratch
+    command run. A package.json bump is checked with the version-sync check, never
+    `version-stamp-check.sh`.
+  - "all 14 `.claude/` paths" becomes "every path `--update` changes", and the
+    commit is followed by `git status --porcelain --untracked-files=no` = empty.
+  - **Payload indentation.** Each fenced payload states `indent: N` (computed),
+    and N spaces are stripped.
+  - **Literal anchors.** `anchor: line matching \`<literal>\``, which the
+    self-check confirms with `/usr/bin/grep -cF` = 1. A split payload's second
+    anchor is the last line of the first payload.
+  - **Split or gap.** R7 or a missing decision is a spec gap; size or R1/R3
+    shortfall is a split.
+  - The example's `git add -A agents` becomes explicit paths.
+- (c) A6 wording: list all six pointer phrases; tool probe = `command -v` or
+  `which `; context keys start at column 0 (or as v2 allows); `~~~` fences
+  allowed. Rename "Pre-dispatch self-check" to **Contract self-check**, which runs
+  `node bin/contract-score.js --rubric=v2`. "executor" becomes "implementer".
+- (d) A3 scribe contract:
+  - `## Doc edits` (S6);
+  - `## ADR` with a `body:` payload;
+  - Close conditions quote the prefix `"PASS <task-id> "`, or `<PASS-VERDICT-LINE>` under review gating off (the orchestrator fills it, H4);
+  - `prune: none`;
+  - any contract editing a glossary carries the two link and terminology tests (B7).
+
+  The scribe example is updated to 7/7.
+- AC-H2.1 `node tests/contract-examples.test.js` exit 0. It extracts the whole-line-anchored lead and scribe examples and asserts `"score":7` for each under `--rubric=v2`. Mutation: delete the example's `review-packet:` block; the lead score drops to 6 (proof: the H1 fixture `v2-minus-R5-packet`).
+- AC-H2.2 Flattened greps of `agents/task-master.md` = 1 each: `review-packet:`, `Version derivation`, `Mutation proof`, `every path \`--update\` changes`, `Payload indentation`, `Literal anchors`, `Split or gap`, `Contract self-check`, `Doc edits`, `PASS-VERDICT-LINE`, `prune: none`. All are 0 at 325f51d.
+- AC-H2.3 Flattened greps = 0: `all 14`, `Pre-dispatch self-check`. Plus `/usr/bin/grep -c 'git add -A' agents/task-master.md` = 0. All are 1 at 325f51d.
+- AC-H2.4 The same AC-H2.2 greps against `.claude/agents/task-master.md` = 1 each.
+- AC-H2.5 Persona baseline. AC-SCOPE extras: the two test files.
+
+### H3: task-master slicing and fix contracts (`agents/task-master.md`, 0.31.131)
+OWN: `agents/task-master.md`. Depends on H2. Pinned rules (anchor: the bullets
+at :55-74):
+- **Fix contract.** On a FAIL, if task-master is present, it writes a nine-element
+  fix contract for the same `Unit:` id from the latest FAIL block. The edits are
+  literal. The criteria are the original ones, plus one per defect. It carries
+  `fix-of: <FAIL header timestamp>`, or `diagnosis: required` when the cause is
+  unknown. It never changes the tier tag; the ratchet stays.
+- **Shared file, defined.** "File" excludes the bump files (plugin.json,
+  package.json, CHANGELOG.md) and paths generated by `--update`.
+- **Stamped-file units serialize.** Units editing version-stamped files always
+  get serial `Depends on` edges, because each sets HEAD + 1.
+- The slice report includes a unit × shared-file intersection table.
+- Held units' issue bodies open with `HELD: <reason>`.
+- **Resume from slice state.** The Slice state table is posted as a comment on
+  the umbrella issue. Re-invocation reads it and publishes held units only, never
+  re-filing published ones.
+- Remove "re-resolved by the orchestrator" (anchors are literal patterns per H2).
+- The fast-path sentence becomes "On the fast path spec-master writes it;
+  task-master never runs the fast path".
+- Add "the finalized spec stands in for user approval" for to-tickets' approval
+  loop.
+- AC-H3.1 Flattened greps = 1 each: `Fix contract`, `fix-of:`, `diagnosis: required`, `Shared file, defined`, `Stamped-file units serialize`, `HELD:`, `Resume from slice state`, `never runs the fast path`, `stands in for user approval`. All are 0 at 325f51d (measured).
+- AC-H3.2 Flattened grep `re-resolved by the orchestrator` = 0 (1 at 325f51d).
+- AC-H3.3 Mirror greps for AC-H3.1 = 1 each.
+- AC-H3.4 Persona baseline (AC-D5's literal `` `sonnet` is\n  the default for every unit`` intact).
+
+### H4: orchestrator routing (`agents/orchestrator.md`, 0.31.132)
+OWN: `agents/orchestrator.md`. Depends on H3. Pinned:
+- **Fix-contract re-dispatch.** After a FAIL verdict, if task-master is present,
+  dispatch task-master (default tier; never `fable`) to write the fix contract,
+  then dispatch lead-programmer with it on the ratcheted tier. Without
+  task-master, the defect-list re-dispatch is unchanged. Inserted after :185-186
+  and referenced from :434-437, without editing the "Sonnet units escalate on
+  first FAIL" sentence or the "At the 2-FAIL cap" section.
+- Scribe convention (:41-50): the orchestrator **passes the scribe dispatch
+  contract** (if scribe is present) and, under review gating off, replaces
+  `<PASS-VERDICT-LINE>` with the reviewer's verbatim PASS line.
+- AC-H4.1 Flattened greps of `agents/orchestrator.md` = 1 each: `Fix-contract re-dispatch`, `passes the scribe dispatch contract`, `<PASS-VERDICT-LINE>`. All are 0 at 325f51d.
+- AC-H4.2 Mirror greps = 1 each.
+- AC-H4.3 P4: flattened grep `if task-master is present` ≥ 1, and `if scribe is present` ≥ 1, in agents/orchestrator.md.
+- AC-H4.4 Guarded text unchanged: `git diff <B>..HEAD -- agents/orchestrator.md | /usr/bin/grep -cE '^-.*(At the 2-FAIL cap|Sonnet units escalate on first FAIL|fable. is excluded)'` = 0, and `node tests/writer-tier-consistency.test.js` exit 0 (AC-D7, D9, D9b).
+- AC-H4.5 Persona baseline.
+
+### H5: lead-programmer under contracts (`agents/lead-programmer.md`, 0.31.133)
+OWN: `agents/lead-programmer.md`. Extra:
+`adapters/cursor/agents/lead-programmer.md`,
+`adapters/codex/agents/lead-programmer.toml` (hand-maintained ports; same text,
+same commit). Pinned, in the Contract precedence bullet (:30-36):
+- **Fix turns.** A fix contract is a dispatch contract and precedence applies.
+  Only `diagnosis: required` re-enables judgment duties. A defect-list
+  re-dispatch without a contract (task-master absent) leaves them in force.
+- Replace "ready-for-review packet template the contract supplies" with "the
+  advisory review packet template in `review-packet:`; fill only its `<FILL:`
+  blanks".
+- "no explorer spawn, not even to verify a doubted claim; report a spec gap
+  instead".
+- **Commit cadence under a contract**: the `commit-message:` lines fix the count,
+  overriding the per-step cadence at :25-27.
+- AC-H5.1 Flattened greps = 1 each, in all three files: `Fix turns`, `advisory review packet template`, `not even to verify`, `Commit cadence under a contract`. All are 0 at 325f51d.
+- AC-H5.2 Flattened grep `ready-for-review packet template` = 0 in all three files (1 in agents/lead-programmer.md at 325f51d).
+- AC-H5.3 P4: `task-master, if present` is still ≥1. `node tests/adapter-protocol-parity.test.js` exit 0.
+- AC-H5.4 Persona baseline (`model: sonnet` intact).
+
+### H6: scribe decides nothing (`agents/scribe.md`, 0.31.134)
+OWN: `agents/scribe.md`. Pinned, replacing the Contract precedence paragraph
+(:91-94):
+- "**Contract-only doc edits.** With a scribe dispatch contract (if task-master
+  is present), make exactly the contract's Glossary edits, Doc edits and ADR body,
+  and no other doc change; skip the prune duty unless the contract says otherwise.
+  The four close conditions and every never-close rule still apply on top of the
+  contract."
+- The judgment duties at :34-37 and :49-56 apply only to dispatches without a
+  contract.
+- `model: haiku` is kept.
+- AC-H6.1 Flattened greps = 1: `Contract-only doc edits`, `every never-close rule still apply`. Both are 0 at 325f51d.
+- AC-H6.2 Flattened grep `your own judgment applies only where the contract is silent` = 0 (1 at 325f51d).
+- AC-H6.3 Mirror greps = 1. `sed -n '1,12p' agents/scribe.md | /usr/bin/grep -c '^model: haiku$'` = 1.
+- AC-H6.4 Persona baseline.
+
+### H7: exporter strictness (`scripts/unit-outcomes.js`, non-persona)
+Affected: `scripts/unit-outcomes.js`, `tests/unit-outcomes.test.js`, fixtures.
+- `--help` prints usage and exits 0 without exporting.
+- An unknown flag prints `unknown flag: <f>` and exits 2.
+- The `Unit:` match is anchored to the contract's first line.
+- The test's `gh` stub honours `--limit`.
+- A new field `rubric_version` (see Measurement note).
+- G3 output is otherwise unchanged.
+- AC-H7.1 `node tests/unit-outcomes.test.js` exit 0, with assertions for each item. A mutation of each (removing the check) fails a named assertion.
+- AC-H7.2 `node scripts/unit-outcomes.js --help` prints `usage:` and exits 0 within 5 s (`timeout 5`). `node scripts/unit-outcomes.js --bogus` exits 2.
+
+### H8: invariant tests (non-persona)
+Affected: `tests/writer-tier-consistency.test.js`.
+- AC-D6 uses `stripWhitespace` (strip-all; the item06-3 NOTE[spec] convention).
+- A new AC-T1 asserts `^maxTurns: 120$` in `agents/spec-master.md` and
+  `agents/task-master.md`.
+- A new AC-A1 asserts that the Contract precedence paragraph's normalised text is
+  identical across lead-programmer source and its two ports, after H5.
+- AC-H8.1 `node tests/writer-tier-consistency.test.js` exit 0.
+- AC-H8.2 Mutation proofs, run by the implementer in a scratch copy and recorded in the packet:
+  - inserting `looks\nmechanical` into a copy of task-master.md fails AC-D6;
+  - setting `maxTurns: 40` fails AC-T1;
+  - altering one port's paragraph fails AC-A1.
+
+### H9: spec-master rule fixes (`agents/spec-master.md`, 0.31.135)
+OWN: `agents/spec-master.md`.
+- **Replay source** (inserted by U2-1): the lookup uses each recorded unit's
+  `final_commit` with `git show --name-only` for files, cites every matching
+  criterion, and is "answered by the plan's own `mutation:` line".
+- **Incumbent baseline** (U2-2): "one row per defect in each FAIL block".
+  "defect block" becomes "FAIL block". Convergence follow-ups use the columns
+  finding id, finding, revised criterion, prior criterion ("finding id and prior
+  criterion").
+- AC-H9.1 Flattened greps = 1: `` plan's own `mutation:` line ``, `one row per defect in each FAIL block`, `finding id and prior criterion`. All are 0 at 325f51d.
+- AC-H9.2 Flattened grep `defect block` = 0 (1 at 325f51d).
+- AC-H9.3 Mirror greps. Persona baseline (AC-D9 spec-master check intact).
+
+### H10: glossary and README accuracy (scribe contract, non-persona)
+Affected: `docs/harness-glossary.md`, and `docs/audits/unit-outcomes/README.md`
+(written by the implementer if scribe's custody excludes `docs/audits`; default:
+lead-programmer for the README, scribe for the glossary, as two contracts under
+one unit id).
+- Glossary :3172 "halts" becomes "stops slicing the gap unit".
+- Glossary :3185 "retained for re-work…" is cut to the shipped behaviour.
+- Glossary link citations use section anchors.
+- New entries: **fix contract**, **contract self-check** (update), **review-packet**.
+- README: "plan stem"; `task_master_cutoff` is always null until measured;
+  `final_commit` is null also for `commit: none`; short SHAs; the replay-pool term.
+- AC-H10.1 `node tests/context-glossary-links.test.js` exit 0, and `node tests/ubiquitous-language.test.js` exit 0.
+- AC-H10.2 `/usr/bin/grep -c 'halts' docs/harness-glossary.md` is one lower than at `<B>` (computed at slicing time). Flattened grep `**fix contract**` = 1.
+- AC-H10.3 `git diff --name-only <B>..HEAD` lists only the two affected files.
+
+### Gate HG (stage end; main session)
+Run the full suite per B6: `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
+The last line must be `exit=0`. Then mark the stage done.
+
+## Placement table
+
+| Item | Placed |
+|---|---|
+| A1 FAIL re-dispatch carries no contract | H3 (author), H4 (routing), H5 (lead-programmer side); OQ1 |
+| A2 packet template | H1 (R5 v2), H2(a), H5 wording |
+| A3 scribe judgment | H1 (S1-S7), H2(d), H4 (contract passing + placeholder), H6; prune duty parked (release-only) via OQ2 |
+| A4 version derivation / mutations / staging / indentation / anchors / split / `git add -A` | H2(b) |
+| A5 shared-file rule, table, banner, resume | H3 |
+| A6 scorer vs persona | H1 (code), H2(c) (wording), H7 (exporter items) |
+| A6 H2 hook counts only backtick fences | parked: hook change (`hooks/`, guarded); scorer `sizeOver` covers it for contracts |
+| B false mutations, computed counts, indentation, validate.sh runtime | Contract-quality rules B1-B7, applied to every H contract; B6 and gate HG |
+| C explorer conflict, commit cadence | H5 |
+| C orchestrator scribe-contract passing | H4 |
+| C SHA re-resolve step | H3 (clause removed) |
+| C fast-path home, to-tickets approval loop, self-check rename, "executor" | H3, H2(c) |
+| C Replay source / Incumbent baseline | H9 |
+| C README wording, glossary over-statements, link citations | H10 |
+| C AC-D6 strip, maxTurns pin, adapter parity | H8 |
+| C version-stamp-check.sh package.json | parked as optional; OQ3 (default: no unit) |
+| C persona-design-notes caps 120 | already true (docs/persona-design-notes.md:34,63); no unit |
+| C parent plan line 55, #494 body | done in this commit (spec-master's own docs) |
+| Process: glossary tests in scribe contracts, `/usr/bin/grep`, gate-refused names | B4, B7, the persona baseline |
+
+## Open Questions
+
+1. Who writes FAIL re-dispatch contracts? Default: **task-master (fix contract), dispatched by the orchestrator between FAIL and re-dispatch; cap/ratchet/routing unchanged**. Alternative: the orchestrator keeps the original contract plus a fixed-shape defect block (no extra dispatch, but the fix edits are not literal). Origin: Clarifications cat. 1, CHK2.
+2. Do scribe's doc-update duties move into the contract? Default: **yes for per-unit doc edits (`## Doc edits`); prune duty parked (release-only)**. Origin: Clarifications cat. 1.
+3. Include an optional unit hardening `hooks/scripts/version-stamp-check.sh` to read package.json? Default: **no** (the version-sync check in contracts covers it; guarded hook). Origin: Clarifications cat. 7.
+4. G3 confound: pool v1 and v2 contracts as rubric era (recorded via `rubric_version`), or pause G3 counting until the hardening stage ends? Default: **pool and record**. Origin: Clarifications cat. 9, CHK5.
+
+## Self-check
+- CHK1: Does every reviewer item A1-A6, B, C appear in the placement table? — PASS
+- CHK2: Is the author of a fix contract defined? — FAIL (missing: needs the user) — converted to Open Question 1
+- CHK3: Does any criterion name version-stamp-check.sh as the package.json detector? — PASS (rule B2; version-sync check, mutation run)
+- CHK4: Do all pinned-phrase criteria have a recorded HEAD count proving the mutation? — PASS (Context, rule B1)
+- CHK5: Is the effect of H1/H2 on the parent's G3 measurement defined? — FAIL (ambiguous) — revised in place (Measurement note) and converted to Open Question 4
+- CHK6: Do H4's edits leave the 2-FAIL cap, the ratchet, reviewer routing and the fable exclusion unchanged, checkably? — PASS (AC-H4.4)
+- CHK7: Does every persona unit have a distinct version with no collisions? — PASS (version table)
+- CHK8: Is the validate.sh runtime problem resolved without backgrounding a subagent's acceptance command? — PASS (B6, gate HG in the main session)
+- CHK9: Are Stages 4-5 and G3/G4 untouched? — PASS (no unit edits the parent plan's Stage 4-5 text or gate definitions; H7 only adds a field)
+
+## Out of scope
+- The parent's Stage 4-5 units and G3/G4 definitions.
+- Hook changes: H2 fence parity, version-stamp-check.sh (OQ3).
+- `dispatchHygiene.mode` and `gatedAgents` (parent OQ3).
+
+## Scribe update hint
+After H2: **review-packet** and **contract self-check** (renamed). After H3:
+**fix contract**, **held unit** / **slice state** (corrected per H10). Avoid
+"ready-for-review packet template", "defect block" and "executor".

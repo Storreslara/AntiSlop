@@ -52,7 +52,7 @@ written by task-master after U3-1's PASS commit.
   `.claude/persona-config.json` has `defaultImplementerModel: "sonnet"`,
   `dispatchHygiene.mode: "warn"`, `gatedAgents: ["lead-programmer"]` (scribe is
   not gated, so H4 never inspects a scribe dispatch).
-- Frontmatter: task-master `model: sonnet`, `effort: medium`, `maxTurns: 40`;
+- Frontmatter (at b2da3cc; U0-4 later raised spec-master and task-master to `maxTurns: 120`): task-master `model: sonnet`, `effort: medium`, `maxTurns: 40`;
   lead-programmer `model: sonnet`, `maxTurns: 50`; scribe `model: haiku`;
   spec-master `model: opus`. `agents/orchestrator.md:454` excludes `fable` for
   task-master (kept by this plan; see Constitution check and Stage 5).
