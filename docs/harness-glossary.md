@@ -664,7 +664,7 @@ an append-only audit-log record class written to
 
 **contract score**:
 (unit rgh-u0-2b, 2026-10-06; amended unit rgh-h1, 2026-10-07) — the R1-R7 lead 
-  / S1-S5 scribe rubric score computed by `bin/contract-score.js` for a dispatch 
+  / S1-S5 scribe (v1) rubric score computed by `bin/contract-score.js` for a dispatch 
   contract, via `node bin/contract-score.js [--rubric=v1|v2] [--shape=lead|scribe] <path>`. 
   The `--rubric=v1` (default, unchanged) grades both lead and scribe rubrics at their 
   v1 shapes (R1-R7 lead, S1-S5 scribe); `--rubric=v2` uses the v2 scribe shape 
@@ -695,6 +695,14 @@ an append-only audit-log record class written to
   (`agents/lead-programmer.md` **Fix turns**). Defined in `agents/task-master.md`
   bullet **Fix contract**.
 
+**SPEC-GAP: token**:
+(unit fc-5, 2026-10-07) — the literal prefix of a spec-gap report: its first line
+  starts `SPEC-GAP: <unit-id> <what is missing>`. task-master writes it when it
+  stops slicing a unit (`agents/task-master.md` **Spec gaps surface upward**) and
+  when it cannot write a fix contract (**Fix contract**). The orchestrator routes
+  on it, and treats a report that starts with neither `Unit:` nor `SPEC-GAP:` as a
+  spec gap (`agents/orchestrator.md` **Fix-contract re-dispatch**).
+
 **review-packet**:
 (unit rgh-h10, 2026-10-07) — the `review-packet:` key in a dispatch contract's
   `## Pre-resolved context`, followed by a fenced advisory review packet template
@@ -709,12 +717,11 @@ an append-only audit-log record class written to
   gives them a `Depends on` edge in dispatch order. The bump files
   (`.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`) and the paths
   `node bin/cli.js --update` changes are excluded. Defined in
-  `agents/task-master.md` bullet **Shared file, defined**. See
+  `agents/task-master.md` bullets **Shared file, defined** and **Shared-file siblings** (the `Depends on` edge). See
   [[intersection table]].
 
 **umbrella issue**:
-(unit rgh-h10, 2026-10-07) — the spec's `[spec]` PRD issue that the sliced units
-  name as their parent. task-master posts the `Slice state:` table to it as a
+(unit rgh-h10, 2026-10-07) — the issue task-master posts the `Slice state:` table to as a comment, and whose body names each gap's ruling (one line starting `- <ruling-id>:` per ruling). task-master posts the `Slice state:` table to it as a
   comment, and a held unit's gap counts as resolved once the umbrella issue's body
   names that gap's ruling. Defined in `agents/task-master.md` bullet **Resume from
   slice state**. See [[held unit]].
@@ -1801,7 +1808,7 @@ normal FAIL routes the defect list to
   write a conflicting marker for a different unit. Motivated the "Reviewer
   re-tasking discipline" rule: a different unit always requires a fresh `Agent`
   dispatch (writing its own review-join stamp), never a message-resume. See
-  `agents/orchestrator.md:137` and the history at commit `b9764de` (unit #311).
+  `agents/orchestrator.md` **Reviewer re-tasking discipline** (in **Review routing**) and the history at commit `b9764de` (unit #311).
 
 **Function location**:
 (unit #323, 2026-08-11) — a **function entry**'s optional `location`
