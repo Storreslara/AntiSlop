@@ -63,8 +63,8 @@ check('AC-D5: CONTEXT.md Implementer-tier ratchet reads sonnet→opus on re-atte
 
 check('AC-D6: no surface instructs pre-emptive "looks mechanical" tier tagging', () => {
   for (const rel of ['agents/task-master.md', 'agents/orchestrator.md', 'agents/lead-programmer.md']) {
-    const text = read(rel);
-    assert.ok(!/looks mechanical/i.test(text), `${rel} contains a "looks mechanical" pre-emptive tagging reference`);
+    const text = stripWhitespace(read(rel));
+    assert.ok(!/looksmechanical/i.test(text),`${rel} contains a "looks mechanical" pre-emptive tagging reference`);
   }
 });
 
@@ -129,6 +129,29 @@ check('AC-D9b: agents/orchestrator.md Suggested model vocabulary agrees with age
     taskMasterVocab,
     `orchestrator.md states "${orchestratorVocab}" but task-master.md's actual vocabulary is "${taskMasterVocab}"`,
   );
+});
+
+// AC-T1 / AC-A1 (rgh-h8, contract-hardening H8).
+check('AC-T1: spec-master and task-master run with maxTurns: 120', () => {
+  for (const rel of ['agents/spec-master.md', 'agents/task-master.md']) {
+    assert.ok(/^maxTurns: 120$/m.test(read(rel)), `${rel} does not pin maxTurns: 120`);
+  }
+});
+
+function contractPrecedence(rel) {
+  const lines = read(rel).split('\n');
+  const start = lines.findIndex((l) => l.startsWith('- **Contract precedence.**'));
+  assert.ok(start >= 0, `${rel} has no Contract precedence bullet`);
+  let end = lines.findIndex((l, i) => i > start && l.startsWith('- **'));
+  if (end < 0) end = lines.length;
+  return stripWhitespace(lines.slice(start, end).join('\n'));
+}
+
+check('AC-A1: Contract precedence paragraph is identical in lead-programmer and its two ports', () => {
+  const src = contractPrecedence('agents/lead-programmer.md');
+  for (const rel of ['adapters/cursor/agents/lead-programmer.md', 'adapters/codex/agents/lead-programmer.toml']) {
+    assert.strictEqual(contractPrecedence(rel), src, `${rel} differs from agents/lead-programmer.md`);
+  }
 });
 
 console.log(failures === 0 ? '\nAll writer-tier-consistency checks passed.' : `\n${failures} check(s) failed.`);
