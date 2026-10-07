@@ -1,6 +1,6 @@
 # Contract hardening: a stage after Stages 0-3 of the rubric-gated haiku programme (2026-10-06)
 
-Status: FINAL (standard path, 13 units incl. follow-ups H1b, H11 and H12, so task-master slices them). Parent:
+Status: FINAL (standard path, 14 units incl. follow-ups H1b, H11, H12 and H13, so task-master slices them). Parent:
 `docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (cited by path and not
 restated). Stages 0-3 of the parent are reviewer-PASSed at HEAD 325f51d, version
 0.31.129. **Stages 4-5 and gates G3/G4 of the parent are untouched** by this plan.
@@ -191,6 +191,7 @@ HEAD + 1):
 | H6 | 0.31.134 |
 | H9 | 0.31.135 |
 | H12 | 0.31.136 |
+| H13 | 0.31.137 (H13b 0.31.138 only if split on size) |
 
 H1, H7, H8 and H10 set no version and may interleave (H1 must precede H2).
 "Flattened grep" means `tr '\n' ' ' < F | tr -s ' ' | /usr/bin/grep -cF 'P'`.
@@ -641,6 +642,121 @@ Criteria (all phrases measured at 20907b3; "added" phrases are 0 there and
 - AC-H12.5 The mirror `.claude/agents/task-master.md` gives the same AC-H12.1/2 results.
 - AC-H12.6 Persona baseline (AC-SCOPE row: OWN `agents/task-master.md`, no extras), `node tests/writer-tier-consistency.test.js` exit 0 (the AC-D5 literal and the vocabulary line are untouched), and the version-sync check.
 
+**H12 addition (2026-10-07, for H13's spec-gap token).** H12 (which edits
+`agents/task-master.md`; its issue's contract must be amended) gains:
+- **E1 after-text:** "reports a spec gap." becomes "reports a spec gap; the
+  report's first line starts with `SPEC-GAP:`."
+- **E15:** in **Spec gaps surface upward**, before: `report a **"spec gap"** signal
+  back up (via`, after: ``report a **"spec gap"** signal back up, with the report's
+  first line starting with `SPEC-GAP: <unit-id> <what is missing>` (via``.
+- **AC-H12.7:** `tr '\n' ' ' < agents/task-master.md | tr -s ' ' | /usr/bin/grep -oF 'SPEC-GAP:' | wc -l` prints `2` (0 at 00af477, measured).
+
+E1's line (the Fix contract bullet) and E15's line (:361) do not overlap, so no
+H13 edit touches `agents/task-master.md`.
+
+### H13: implementers and orchestrator decide nothing (three personas, 0.31.137)
+- **Scope** `rgh-h13`, one persona-file unit with one version bump, 0.31.137,
+  after H12 (0.31.136) in the chain.
+- **OWN:** `agents/orchestrator.md`, `agents/lead-programmer.md`, `agents/scribe.md`.
+- **Extra:** `adapters/cursor/agents/lead-programmer.md` and
+  `adapters/codex/agents/lead-programmer.toml` (hand-edited, same commit).
+- **Split rule (decided, not left open):** if the contract fails the self-check
+  on size (`"sizeOver":true`), split it into H13a (orchestrator, 0.31.137) and
+  H13b (lead-programmer, its ports and scribe, 0.31.138). Otherwise keep one
+  unit, because each unit costs a bump plus a 12-minute validate run.
+- **Commit subject:** `feat(rgh-h13): … (0.31.137) (#<issue>)`.
+
+All before-texts were measured at 00af477 (flattened) as occurring exactly once
+in every file listed for them; all added phrases count 0 there.
+
+**lead-programmer** (L1, L2, L4 also go in both ports; L3 and L5 are source-only
+because the ports lack the text):
+
+| # | Finding | Before | After |
+|---|---|---|---|
+| L1 | plan-wrong link | source: `If the plan itself is wrong, STOP and report up so spec-master can revise — do not re-plan yourself.`; ports: `If the plan itself is wrong, STOP and report up so it can be revised - do not re-plan yourself.` | append to each: ` Under a dispatch contract, this is the spec-gap STOP in **Contract precedence**.` |
+| L2 | fix contract carrying anything else | `A fix contract always carries \`diagnosis: none\`, and nothing under a contract re-enables judgment duties.` | append: ` A fix contract carrying anything else: STOP and report a spec gap.` |
+| L3 | explorer bullet | `**Scope your reading via the explorer**: before editing a symbol, spawn` | `**Scope your reading via the explorer** (not under a dispatch contract; see **Contract precedence**): before editing a symbol, spawn` (all three files; the before-text is 1/1/1) |
+| L4 | failing criterion, memory | `If any literal step cannot be applied exactly, STOP and report a spec gap.` (inside Contract precedence) | append: ` A criterion that does not give its stated \`exit:\` and \`stdout:\` after the edits is the same STOP; do not change anything beyond the contract to make it pass. Under a dispatch contract, write no memory note.` |
+| L5 | version-stamp violation | `must be fixed in this same commit before reporting;` | `must be fixed in this same commit before reporting (under a dispatch contract, STOP and report a spec gap instead, because the contract fixes the commit count);` (source only) |
+
+L4 keeps the Contract precedence paragraph identical across source and ports, so
+H8's AC-A1 holds.
+
+**scribe** (`model: haiku` stays):
+
+| # | Finding | Before | After |
+|---|---|---|---|
+| S1 | regression + prune + memory + explorer | `and no other doc change; skip the prune duty unless the contract says otherwise.` | ``and no other doc change. Under a contract the prune duty never runs (every contract's Doc edits ends with `prune: none`), no memory note is written unless the contract's Doc edits lists it, and you spawn no explorer: a doubt is a spec gap. If an item cannot be applied exactly, STOP and report a spec gap: this includes a contract `heading:` that does not exist, a failing glossary-link or ubiquitous-language test, and a close condition that does not hold.`` |
+| S2 | prune bullet | `(only without a scribe dispatch contract, or when the contract says otherwise)` | `(only without a scribe dispatch contract)` |
+| S3 | starter/routing | `canonical; create starter versions if absent and keep them current. Route each new term by this rule:` | `canonical; keep them current. Only when no scribe dispatch contract is present, create starter versions if absent and route each new term by this rule:` |
+| S4 | explorer | `**Structural facts come from the explorer**, per the shared protocol` | `**Structural facts come from the explorer** (not under a scribe dispatch contract), per the shared protocol` |
+
+**orchestrator** (the 2-FAIL cap, the ratchet, reviewer routing, the milestone
+audit gate, the `fable` line and the pinned `sonnet` text stay byte-identical):
+
+| # | Finding | Before | After |
+|---|---|---|---|
+| O1 | (4) pointer | `"continuing after a FAIL verdict" section — unchanged.` | `"continuing after a FAIL verdict" section — unchanged when task-master is absent; with task-master present, see **Fix-contract re-dispatch** below.` |
+| O2 | fix-contract dispatch shape | `to write the fix contract for the same \`Unit:\` id from the latest FAIL block,` | ``with a fixed-shape prompt: first line `Unit: <task-id>`, then the latest FAIL block copied verbatim from the `.fail` record, the original contract's issue number, and the line "write a fix contract or report a spec gap";`` |
+| O3 | spec-gap token | `If task-master reports a spec gap instead of a fix contract,` | ``If task-master's report starts with `SPEC-GAP:` instead of a fix contract starting with `Unit:`,`` |
+| O4 | options before the cap | `options of **At the 2-FAIL cap**. The cap count is unchanged.` | `options of **At the 2-FAIL cap**, even though the cap has not been reached; the cap count is unchanged.` |
+| O5 | move the HELD rule | `cap, the ratchet and reviewer routing are unchanged. Never dispatch a unit whose issue body's first line starts with \`HELD:\`.` | `cap, the ratchet and reviewer routing are unchanged.`; and after `≤64 chars.` in **Dispatch hygiene** add a new item: ``4. **No `HELD:` dispatch.** Never dispatch a unit whose issue body's first line starts with `HELD:`. No hook enforces this.`` |
+| O6 | scribe contract source | `present) as written;` | ``present) as written: the `~~~`-fenced block under the issue body's `## Dispatch contract` heading that names scribe, sent together with the three post-PASS inputs (digest, issue number, task-id);`` |
+| O7 | spec-gap routing exception | `routes the same way — straight to \`spec-master\`,` | ``routes the same way — straight to `spec-master` (except a spec gap on a fix contract, which goes to the user per **Fix-contract re-dispatch**),`` |
+
+Parked, with reasons:
+- the inlined protocol's "verify the specific claim you doubt" (source
+  `templates/persona-protocol.md` "Reuse over re-derivation", with
+  `-slim`/digest variants and hand-maintained adapter protocol ports). It is a
+  guarded, six-surface protocol file, and L3's persona-body exception is more
+  specific and governs;
+- scratch-worktree and long-`validate.sh` rules for lead-programmer: the
+  contracts already state the exact mutation and test commands (rules B1, B6), so
+  a persona rule would duplicate them;
+- the "ratcheted tier" paraphrase: harmless;
+- a hook for the `HELD:` rule: guarded `hooks/`.
+
+Criteria (all measured 0 or 1 at 00af477 as stated):
+- AC-H13.1 Flattened greps = 1 in each of the three lead-programmer files:
+  - `this is the spec-gap STOP in **Contract precedence**`
+  - `A fix contract carrying anything else: STOP and report a spec gap.`
+  - `(not under a dispatch contract; see **Contract precedence**)`
+  - `is the same STOP; do not change anything beyond the contract`
+  - `Under a dispatch contract, write no memory note.`
+
+  And `under a dispatch contract, STOP and report a spec gap instead` = 1 in `agents/lead-programmer.md` only.
+- AC-H13.2 Flattened greps = 1 in `agents/scribe.md`:
+  - `under a contract the prune duty never runs`
+  - `you spawn no explorer`
+  - ``a contract `heading:` that does not exist``
+  - `Only when no scribe dispatch contract is present`
+  - `(not under a scribe dispatch contract)`
+
+  And `or when the contract says otherwise` = 0 (1 at 00af477). `sed -n '1,12p' agents/scribe.md | /usr/bin/grep -c '^model: haiku$'` = 1.
+- AC-H13.3 Flattened greps = 1 in `agents/orchestrator.md`:
+  - `see **Fix-contract re-dispatch** below`
+  - `write a fix contract or report a spec gap`
+  - `` starts with `SPEC-GAP:` ``
+  - `even though the cap has not been reached`
+  - ``**No `HELD:` dispatch.**``
+  - `the three post-PASS inputs`
+  - `except a spec gap on a fix contract`
+
+  And `` first line starts with `HELD:` `` is still = 1 (it moved; AC-H4.6 still holds).
+- AC-H13.4 Guardrails:
+  - `git diff <B>..HEAD -- agents/orchestrator.md | /usr/bin/grep -cE '^-.*(At the 2-FAIL cap\*\*:|Sonnet units escalate on first FAIL|fable. is excluded|## Milestone audit gate)'` = 0;
+  - `node tests/writer-tier-consistency.test.js` exit 0;
+  - `node tests/contract-examples.test.js` exit 0;
+  - `node tests/adapter-protocol-parity.test.js` exit 0.
+- AC-H13.5 Mirrors (`.claude/agents/{orchestrator,lead-programmer,scribe}.md`) give the same AC-H13.1-3 results for their sources.
+- AC-H13.6 Persona baseline. AC-SCOPE row: OWN = the three `agents/` files; extras = the two adapter ports.
+- AC-H13.7 Mutations: each "= 1" check flips to 0 if its edit is skipped (the baselines above prove it). AC-H13.4's first grep prints ≥1 if any guarded line is deleted. Verify by deleting the `## Milestone audit gate` heading in a scratch copy: the grep prints 1.
+
+H-F2: no H13 payload contains a pointer phrase (checked: "as needed" and the
+others are absent from L1-L5, S1-S4 and O1-O7), so the exception list is not
+extended.
+
 ### H10: glossary and README accuracy (scribe contract, non-persona)
 Affected: `docs/harness-glossary.md`, and `docs/audits/unit-outcomes/README.md`
 (written by the implementer if scribe's custody excludes `docs/audits`; default:
@@ -684,6 +800,38 @@ wording.
   - **instruction text**: already listed.
 
   AC-H10.18: `/usr/bin/grep -cE '^\*\*(fix contract|shared file|umbrella issue|intersection table|version-sync check|pointer phrase|instruction text)\*\*:' docs/harness-glossary.md` prints `7` (0 at 20907b3). AC-H10.1's two tests must pass.
+
+**H10 amendments (2026-10-07, from the H4/H5/H6 reviews; #517 must be
+amended; H10 runs after H13 because it cites H13's labels).**
+- G1. In `docs/harness-glossary.md` **contract precedence**, the scribe paragraph
+  (from `**For scribe** (per \`agents/scribe.md\` **Contract precedence**):`
+  through `is unstated.`) becomes:
+  "**For scribe**, the rule is `agents/scribe.md` **Contract-only doc edits**:
+  scribe makes exactly the contract's Glossary edits, Doc edits and ADR body
+  and no other doc change. The four close conditions and every never-close
+  rule still apply on top of the contract. If an item cannot be applied
+  exactly, scribe stops and reports a spec gap."
+  - AC-H10.19: flattened grep `that hierarchical relationship is unstated` = 0 (1 at 00af477).
+- G2. In **scribe dispatch contract**, "When present, invokes [[contract
+  precedence]]: scribe's own judgment applies only where the contract is
+  silent, and any item that cannot be applied exactly routes to a spec gap."
+  becomes "When present, scribe follows `agents/scribe.md` **Contract-only doc
+  edits**: it makes exactly the contract's edits and no other doc change, and
+  any item that cannot be applied exactly routes to a spec gap."
+  - AC-H10.20: flattened grep `scribe's own judgment applies only where the contract is silent` = 0.
+- G3. In the **spec gap** entry, "Documented in `agents/scribe.md` and
+  `agents/lead-programmer.md` **Contract precedence** sections (both end with
+  "If any item cannot be applied exactly, STOP and report a spec gap")." becomes
+  "Documented in `agents/lead-programmer.md` **Contract precedence** and
+  `agents/scribe.md` **Contract-only doc edits**."
+  - AC-H10.21: flattened grep `` `agents/scribe.md` **Contract-only doc edits** `` ≥ 1, and `` `agents/scribe.md` **Contract precedence** `` = 0.
+- New entries, each literally supported by the shipped text:
+  - **advisory review packet**: lead-programmer.md **Don't grade your own work**;
+  - **fix turns**: lead-programmer.md **Fix turns**;
+  - **commit cadence under a contract**: lead-programmer.md **Commit cadence
+    under a contract**.
+
+  AC-H10.22: the anchored entry grep for these three prints `3` (0 at 00af477). AC-H10.1's link and terminology tests must still pass (G1/G2 keep `[[scribe dispatch contract]]`, and G2 drops one `[[contract precedence]]` link, which does not break the target).
 
 ### Gate HG (stage end; main session)
 Run the full suite per B6: `bash tests/validate.sh > $F 2>&1; echo "exit=$?" >> $F`.
@@ -920,6 +1068,10 @@ on H3 and H5, because its replacement text cites their shipped labels.
 | A4 version derivation / mutations / staging / indentation / anchors / split / `git add -A` | H2(b) |
 | A5 shared-file rule, table, banner, resume | H3 |
 | A6 scorer vs persona | H1 (code), H1b (lock-in fixtures, CRLF in-test, `Object.hasOwn`, fenced R6), H2(c) (wording), H7 (exporter items) |
+| H6 review: scribe lost its spec-gap STOP (regression); prune "unless" never fires; memory notes; starter/routing; explorer | H13 S1-S4 |
+| H5 review: explorer under contract, non-`none` fix contract, plan-wrong link, version violation under contract, failing criterion, memory | H13 L1-L5; inlined protocol "verify the specific claim" parked (guarded six-surface protocol file); scratch-worktree/validate rules parked (contracts carry them) |
+| H4 review: fix-contract dispatch shape, spec-gap token, scribe contract source, (4) pointer, options before cap, HELD rule placement | H13 O1-O7, H12 E1/E15 (`SPEC-GAP:`); "ratcheted tier" paraphrase parked |
+| Glossary: false scribe paragraph (:695), scribe-contract precedence link (:728), spec-gap citation (:779); three new entries | H10 amendments G1-G3, AC-H10.19-22 (#517) |
 | H3 review: diagnosis contradiction (ruling H-I) | H12 E1, H4 addition (#512), H5 amendment (#513) |
 | H2/H3 review leftovers: anchors, indent minimum, skip-edit proof, proof: line, other shortfalls, precondition placement, packet ban, wrapped phrases, generated paths, table format, gap resolved, column rename | H12 E2-E14 |
 | `HELD:` line never enforced | H4 orchestrator sentence; hook check parked (guarded) |
