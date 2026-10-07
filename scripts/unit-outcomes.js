@@ -209,9 +209,11 @@ function contractFor(id, recs, opt) {
   return { source: 'none', author: 'unknown', plan: null, text: null, ts: null };
 }
 
-function scoreOf(text) {
+function scoreOf(text, rubric) {
   if (text === null) return null;
-  const r = cp.spawnSync('node', [path.join(__dirname, '..', 'bin', 'contract-score.js'), '-'], { input: text, encoding: 'utf8' });
+  const args = [path.join(__dirname, '..', 'bin', 'contract-score.js'), '-'];
+  if (rubric) args.push(`--rubric=${rubric}`);
+  const r = cp.spawnSync('node', args, { input: text, encoding: 'utf8' });
   try { return JSON.parse(r.stdout).score; } catch (e) { return null; }
 }
 
@@ -236,6 +238,7 @@ function buildRow(id, u, term, ctx) {
     contract_author: c.author,
     contract_source: c.source,
     contract_score: scoreOf(c.text),
+    contract_score_v2: scoreOf(c.text, 'v2'),
     contract_ts: c.ts,
     rubric_version: rubricVersion(c.ts, ctx.h2Pass),
     baseline: base,
@@ -283,7 +286,8 @@ function gateG3(rows) {
     && Date.parse(r.contract_ts) > Date.parse(u34.pass_ts);
   const era = rows.filter(inEra);
   const pre = rows.filter((r) => Date.parse(r.terminal_ts) >= Date.parse('2026-08-25T00:00:00Z') && !inEra(r));
-  const seven = era.filter((r) => r.contract_score === 7).length;
+  // H11: each rubric-era unit is scored under its own rubric_version.
+  const seven = era.filter((r) => (r.rubric_version === 'v2' ? r.contract_score_v2 : r.contract_score) === 7).length;
   const flagged = era.filter((r) => r.task_master_cutoff !== null);
   const cutoffs = flagged.length ? flagged.filter((r) => r.task_master_cutoff === true).length : 'unmeasured';
   const counts = `rubric_era=${era.length} scored7=${seven} task_master_cutoffs=${cutoffs}`;
