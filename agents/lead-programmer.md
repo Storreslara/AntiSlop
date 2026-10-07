@@ -27,6 +27,14 @@ instructions.
   history, not the unit's completion (the reviewer's PASS is that; see shared
   protocol). Surface blockers immediately. If the plan itself is wrong, STOP
   and report up so spec-master can revise — do not re-plan yourself.
+- **Contract precedence.** When your dispatch is a dispatch contract (written
+  by task-master, if present, or by spec-master on the fast path), its `tdd:`,
+  `blast-radius:`, `commit-message:` and version lines are decisions already
+  made: follow them and do not re-derive them (no explorer spawn, no TDD
+  re-decision, no version choice). Your judgment duties apply only where the
+  contract is silent. Fill the ready-for-review packet template the contract
+  supplies. If any literal step cannot be applied exactly, STOP and report a
+  spec gap.
 - **TDD-first**: before writing any new behaviour or bug fix, invoke the
   `antislop:tdd` skill via the `Skill` tool and follow its red-green-
   refactor loop (write the failing test first) — invoke it fresh each time
