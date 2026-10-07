@@ -694,12 +694,11 @@ an append-only audit-log record class written to
   
   **For scribe** (per `agents/scribe.md` **Contract precedence**): 
   apply the [[scribe dispatch contract]]'s written glossary text, ADR number, and 
-  close conditions as written. Note: the shipped text does not state whether the 
-  four hard issue-closing conditions (valid PASS marker, commit references issue, 
-  issue currently OPEN, both issue number and task-id named) and the never-close 
-  rules (FAIL verdict, .blocked marker, malformed marker, speculatively) still 
-  apply on top of the contract's close conditions — that hierarchical relationship 
-  is unstated.
+  close conditions as written. The four hard issue-closing conditions (valid PASS 
+  marker, commit references issue, issue currently OPEN, both issue number and 
+  task-id named) and the never-close rules (FAIL verdict, .blocked marker, 
+  malformed marker, speculatively) still apply on top of the contract's close 
+  conditions per `agents/scribe.md:102`.
   
   **For lead-programmer** (per `agents/lead-programmer.md` **Contract precedence**): 
   its `tdd:`, `blast-radius:`, `commit-message:`, and version lines are decisions 
