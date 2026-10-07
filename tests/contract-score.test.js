@@ -88,5 +88,83 @@ check('unreadable exits 2', () => {
   assert.strictEqual(run([`${FIX}/does-not-exist.md`]).status, 2);
 });
 
+// --- Rubric v2 (rgh-h1): one named check per v2 rule, so reverting a rule to v1 fails a named check. ---
+const S7 = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7'];
+
+function scoreAs(rubric, file, scribe) {
+  const args = [`${FIX}/${file}`, `--rubric=${rubric}`];
+  if (scribe) args.push('--shape=scribe');
+  const r = run(args);
+  assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
+  return JSON.parse(r.stdout.trim());
+}
+
+check('v1 regression: --rubric=v1 equals the default for every v1 fixture', () => {
+  for (const f of fs.readdirSync(path.join(REPO_ROOT, FIX)).filter((n) => !n.startsWith('v2-'))) {
+    const scribe = f.startsWith('scribe-');
+    const plain = run(scribe ? [`${FIX}/${f}`, '--shape=scribe'] : [`${FIX}/${f}`]).stdout;
+    const v1 = run(scribe ? [`${FIX}/${f}`, '--shape=scribe', '--rubric=v1'] : [`${FIX}/${f}`, '--rubric=v1']).stdout;
+    assert.strictEqual(v1, plain, f);
+    assert.strictEqual(JSON.parse(plain).rubric, 'v1', f);
+  }
+});
+
+check('v2 all-pass scores 7', () => {
+  const j = scoreAs('v2', 'v2-all-pass.md');
+  assert.strictEqual(j.score, 7);
+  assert.strictEqual(j.rubric, 'v2');
+});
+
+const v2Minus = { 'v2-minus-R1-indent': 'R1', 'v2-r1-short-indent': 'R1', 'v2-minus-R5-packet': 'R5',
+  'v2-minus-R6-col': 'R6', 'v2-minus-R6-path': 'R6' };
+for (const [f, k] of Object.entries(v2Minus)) {
+  check(f, () => onlyFalse(scoreAs('v2', `${f}.md`), R, k));
+}
+
+for (const f of ['v2-r1-blank-line', 'v2-indented-context-keys', 'v2-r5-pass', 'v2-r5-tokens-ok']) {
+  check(`${f} scores 7`, () => assert.strictEqual(scoreAs('v2', `${f}.md`).score, 7));
+}
+
+for (const f of ['v2-r5-name-token', 'v2-r5-todo', 'v2-r5-empty-fill', 'v2-r5-no-blank']) {
+  check(`${f} scores R5 false`, () => onlyFalse(scoreAs('v2', `${f}.md`), R, 'R5'));
+}
+
+for (const f of ['v2-tilde', 'v2-crlf']) {
+  check(`${f} scores 7 under v2 and lower under v1`, () => {
+    assert.strictEqual(scoreAs('v2', `${f}.md`).score, 7);
+    assert.ok(scoreAs('v1', `${f}.md`).score < 7);
+  });
+}
+
+check('v2 scribe all-pass scores 7', () => {
+  const j = scoreAs('v2', 'v2-scribe-all-pass.md', true);
+  assert.strictEqual(j.score, 7);
+  for (const k of S7) assert.strictEqual(j.rows[k], true, k);
+});
+
+for (const [f, k] of Object.entries({ 'v2-minus-S3': 'S3', 'v2-minus-S6': 'S6', 'v2-minus-S7': 'S7' })) {
+  check(f, () => onlyFalse(scoreAs('v2', `${f}.md`, true), S7, k));
+}
+
+check('v2-r1-pointer-in-payload', () => {
+  assert.strictEqual(scoreAs('v2', 'v2-r1-pointer-in-payload.md').rows.R1, true);
+  assert.strictEqual(scoreAs('v1', 'v2-r1-pointer-in-payload.md').rows.R1, false);
+});
+
+check('v2-r1-pointer-in-instruction', () => {
+  assert.strictEqual(scoreAs('v2', 'v2-r1-pointer-in-instruction.md').rows.R1, false);
+  const text = fs.readFileSync(path.join(REPO_ROOT, FIX, 'v2-r1-pointer-in-instruction.md'), 'utf8')
+    .replace(' as specified in the plan', '');
+  assert.strictEqual(JSON.parse(run(['-', '--rubric=v2'], text).stdout.trim()).rows.R1, true);
+});
+
+check('v2-r1-pointer-after-payload', () => {
+  assert.strictEqual(scoreAs('v2', 'v2-r1-pointer-after-payload.md').rows.R1, false);
+});
+
+check('unknown rubric exits 2', () => {
+  assert.strictEqual(run([`${FIX}/all-pass.md`, '--rubric=v3']).status, 2);
+});
+
 console.log(failures === 0 ? '\nAll contract-score checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
