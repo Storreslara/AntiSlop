@@ -1515,6 +1515,9 @@ the reviewer's `sonnet`/`opus` model is
   rule is recorded in the decision record itself, not as a post-hoc intention.
   Verified via `scripts/spend-accounting.sh --until=<cutoff>`. Coupled with
   **spend-neutrality** — both conditions must hold for the reversal to remain valid.
+  ADR-0040 (2026-10-08, `docs/adr/0040-implementer-tier-haiku-default.md`)
+  pre-registers a successor rule for the `haiku` default: three rate
+  thresholds from 60 units and an early tripwire for 20 to 59 units.
 
 **Spend-neutrality**:
 (ADR-0026, unit spec2-unitD, 2026-08-25) — the cost-accounting condition for
@@ -1525,9 +1528,6 @@ the reviewer's `sonnet`/`opus` model is
   but a materiality judgment to be rendered at verification time using
   `scripts/spend-accounting.sh` output. Coupled with the **Forward-verification
   rule** — both conditions must hold for the reversal to remain valid.
-  ADR-0040 (2026-10-08, `docs/adr/0040-implementer-tier-haiku-default.md`)
-  pre-registers a successor rule for the `haiku` default: three rate
-  thresholds from 60 units and an early tripwire for 20 to 59 units.
 
 **threshold-crossing rate**:
 (unit item13-1-measure-split-cost, 2026-09-25) — the measured proportion of
