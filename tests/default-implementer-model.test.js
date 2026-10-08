@@ -266,7 +266,32 @@ check('--update applies migrateDefaultImplementerModel to an old-version "sonnet
 
     const frontmatter = frontmatterModel(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'lead-programmer.md'), 'utf8'));
     const expected = cli.migrateDefaultImplementerModel('sonnet', '0.31.0', cli.IMPLEMENTER_HAIKU_DEFAULT_SINCE, frontmatter) || 'sonnet';
+    if (frontmatter === 'haiku') {
+      assert.strictEqual(expected, 'haiku', 'lead-programmer ships model: haiku, so an old-version "sonnet" must migrate; IMPLEMENTER_HAIKU_DEFAULT_SINCE is disabled');
+    }
     assert.strictEqual(readConfig(tmp).defaultImplementerModel, expected);
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+check('--update after the haiku migration is a no-op: a second run leaves the config byte-identical and prints no migration note', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dim-migrate-twice-'));
+  try {
+    const before = buildBaselineProject(tmp);
+    before.defaultImplementerModel = 'sonnet';
+    before.pluginVersion = '0.31.0';
+    writeConfig(tmp, before);
+    const configPath = path.join(tmp, '.claude', 'persona-config.json');
+
+    const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(first.status, 0, `first --update expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
+    const afterFirst = fs.readFileSync(configPath, 'utf8');
+
+    const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+    assert.strictEqual(fs.readFileSync(configPath, 'utf8'), afterFirst, 'a second --update must leave persona-config.json byte-identical to the first');
+    assert.ok(!second.stdout.includes('predates the haiku default'), `a second --update must not print the migration note again, got: ${second.stdout}`);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

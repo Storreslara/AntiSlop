@@ -302,6 +302,32 @@ check('era from the haiku-default cutover haiku', () => {
   assert.deepStrictEqual(later['fx-era-3'].implementer_tiers, [{ tier: 'sonnet', source: 'era-inferred' }]);
 });
 
+check('era null cutover falls back to the pre-haiku eras', () => {
+  for (const withOrchestrator of [true, false]) {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'unit-outcomes-nocutover-'));
+    try {
+      fs.mkdirSync(path.join(tmp, 'scripts'));
+      fs.copyFileSync(SCRIPT, path.join(tmp, 'scripts', 'unit-outcomes.js'));
+      if (withOrchestrator) {
+        fs.mkdirSync(path.join(tmp, 'agents'));
+        fs.writeFileSync(path.join(tmp, 'agents', 'orchestrator.md'), '# orchestrator\nno cutover line here\n');
+      }
+      const out = cp.execFileSync('node', [
+        path.join(tmp, 'scripts', 'unit-outcomes.js'),
+        `--repo=${scratch.dir}`,
+        `--markers=${path.join(FIX, 'markers')}`,
+        `--transcripts=${path.join(FIX, 'transcripts')}`,
+        '--until=2027-01-01T00:00:00Z',
+      ], { cwd: REPO_ROOT, encoding: 'utf8', env: { ...process.env, GH_BIN: path.join(FIX, 'bin', 'gh') } });
+      const map = {};
+      out.split('\n').filter(Boolean).forEach((l) => { const o = JSON.parse(l); map[o.id] = o; });
+      assert.deepStrictEqual(map['fx-era-4'].implementer_tiers, [{ tier: 'sonnet', source: 'era-inferred' }]);
+    } finally {
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+  }
+});
+
 check('era reviewer empty', () => {
   assert.deepStrictEqual(R['fx-era-1'].reviewer_tiers, []);
 });
