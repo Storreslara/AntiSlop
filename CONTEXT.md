@@ -356,24 +356,44 @@ the lead-programmer's (implementer's) model tier, defaulting to
   Synonym for "implementer tier" in the context of the writer/implementer
   executing a spec. The reactive escalation rule (the **Implementer-tier ratchet**)
   applies when a unit fails: each tier gets two attempts before the next (the [[Escalation ladder]]).
-  See [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
+  See [ADR-0040](docs/adr/0040-implementer-tier-haiku-default.md) and [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
 
 **Escalation ladder**:
 (ADR-0040, 2026-10-08) — the order of implementer tiers a unit moves
   through on FAIL: the tiers from the default tier upward (`haiku`, `sonnet`,
   `opus`), two attempts each. The next tier is a function of the unit's
-  FAIL-block count alone, so a session with no memory of earlier FAILs
-  computes the same tier. A unit with a FAIL block older than the
-  haiku-default cutover starts its ladder at `sonnet`. See [[ladder
-  exhaustion]] and [[Implementer-tier ratchet]].
+  FAIL-block count, its [[default tier]] and whether any block predates the
+  [[Haiku-default cutover]], so a session with no memory of earlier FAILs
+  computes the same tier. A unit with a FAIL block older than the cutover
+  starts its ladder at the more capable of `sonnet` and its default tier. See
+  [[ladder exhaustion]] and [[Implementer-tier ratchet]].
 _Avoid_: handoff (names the cutoff handoff), first-FAIL escalation (the ADR-0026 rule this replaced)
 
 **ladder exhaustion**:
-(ADR-0040, 2026-10-08) — a unit's second FAIL on the top tier of its
-  [[Escalation ladder]]: the only point at which the orchestrator stops
+(ADR-0040, 2026-10-08) — a unit's FAIL-block count reaching or exceeding the
+  length of its [[Escalation ladder]] (the second FAIL on its top tier, or any
+  later FAIL after a human-directed re-dispatch): the only point at which the orchestrator stops
   re-dispatching and asks the human, offering the options of the 2-FAIL cap.
   A lower tier's second FAIL moves the unit up automatically.
 _Avoid_: "the 2-FAIL cap" for this stop alone (the 2-FAIL cap is per tier)
+
+**default tier**:
+(ADR-0040, unit hdc-5, 2026-10-08) — the implementer tier a unit's
+  [[Escalation ladder]] starts from: the project's [[defaultImplementerModel]]
+  value when present (any unrecognised value counts as `opus`), else
+  lead-programmer's frontmatter `model:` (`haiku` as shipped). A `Suggested
+  model` tag can raise a unit above it, never below it.
+_Avoid_: base tier, starting model
+
+**Haiku-default cutover**:
+(ADR-0040, unit hdc-5, 2026-10-08) — the timestamp, stated once in
+  `agents/orchestrator.md`, at which the shipped [[default tier]] moved from
+  `sonnet` to `haiku`. A FAIL block older than it was written under ADR-0026's
+  `sonnet` default, so a unit holding one starts its [[Escalation ladder]] at
+  the more capable of `sonnet` and its default tier. The [[unit-outcome export]]
+  reads the same timestamp to infer the `haiku` era, and ADR-0040's forward
+  rule counts units whose [[terminal event]] falls at or after it.
+_Avoid_: cutover unit (the commit that set it), flip commit
 
 **Suggested model vocabulary**:
 (units item06-3, 2026-09-25) — the canonical allowed-value list for the
@@ -783,7 +803,7 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   same task-id appends a new block rather than overwriting the previous one,
   so the file is a chronological log of every fix attempt, not a single
   latest-only snapshot. Read by `bin/fail-count.sh` and by `fail-triage`/debug
-  spec when a unit hits the 2-FAIL cap.
+  spec when a unit reaches [[ladder exhaustion]].
 
 **FAIL block**:
 (item12-1/item12-3/item12-4, 2026-09-26) — one FAIL verdict's contribution to

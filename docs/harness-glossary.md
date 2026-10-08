@@ -1525,6 +1525,9 @@ the reviewer's `sonnet`/`opus` model is
   but a materiality judgment to be rendered at verification time using
   `scripts/spend-accounting.sh` output. Coupled with the **Forward-verification
   rule** — both conditions must hold for the reversal to remain valid.
+  ADR-0040 (2026-10-08, `docs/adr/0040-implementer-tier-haiku-default.md`)
+  pre-registers a successor rule for the `haiku` default: three rate
+  thresholds from 60 units and an early tripwire for 20 to 59 units.
 
 **threshold-crossing rate**:
 (unit item13-1-measure-split-cost, 2026-09-25) — the measured proportion of
@@ -3212,8 +3215,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   to distinguish this sense from existing packet terminology.
 
 **terminal event**:
-(unit rgh-u0-2b, 2026-10-06) — a unit's PASS timestamp, or for a unit that hit
-  the 2-FAIL cap without a PASS, the second FAIL block's header timestamp.
+(unit rgh-u0-2b, 2026-10-06; reworded hdc-5, 2026-10-08) — the earlier of a
+  unit's PASS timestamp and its second FAIL block's header timestamp. Under
+  ADR-0026 the second FAIL was the 2-FAIL cap stop; under the [[Escalation
+  ladder]] (ADR-0040) it ends the unit's first tier and is not a stop, and
+  `fail_blocks` still counts every later FAIL block up to the cutoff.
   `terminal_ts` in the [[unit-outcome export]] is the earlier of `pass_ts` and
   the second FAIL header, evaluated as of the `--until` cutoff timestamp. Distinct
   from **terminal status set** (CONTEXT.md, OutcomeCI journal statuses `confirmed`,
