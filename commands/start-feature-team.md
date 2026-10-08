@@ -45,7 +45,11 @@ completed unit; on FAIL, the LEAD routes defects back to the lead-programmer
 shared protocol's "continuing after a FAIL verdict" section, including its
 2-FAIL cap, which is per implementer tier: a tier's second FAIL moves the unit up
 the orchestrator's Escalation ladder, and only at ladder exhaustion do you stop
-re-delegating and surface the full defect history to the user instead. "Done" is enforced
+re-delegating and surface the full defect history to the user instead. The ladder
+is the **Escalation ladder** paragraph in the **Per-unit model routing** section
+of `.claude/agents/orchestrator.md`: compute the unit's next tier there from its
+FAIL-block count, and pass that tier as the `model` parameter of the `Agent` call
+that spawns the lead-programmer teammate for the unit's next attempt. "Done" is enforced
 mechanically here: when routing a unit to the reviewer, include its exact
 task id — the reviewer creates `.claude/reviewed/<task-id>.pass` via Bash on
 PASS using that id, and the TaskCompleted hook blocks any task named

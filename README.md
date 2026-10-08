@@ -182,7 +182,7 @@ observed no genuine teammate.
 Set `reviewGating.mode` to `"off"` in `.claude/persona-config.json` (default
 `enforce`; an absent or unrecognised value means `enforce`). The reviewer still
 runs and returns a verdict, but it is advisory: no `.pass`/`.fail`/`.blocked`/
-`.escalated` marker, no human escalation, and the second FAIL no longer stops
+`.escalated` marker, no human escalation, and ladder exhaustion no longer stops
 for you. Inert: the pending-review flags and review-join verdict check, the
 unit-exclusivity block, `task-gate.sh`, the marker-based H3 check, and
 `human-decision-gate.sh`.

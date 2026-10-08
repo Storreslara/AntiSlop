@@ -14,8 +14,9 @@
   Only the orchestrator/team lead routes between them. "Done" means the
   reviewer returned PASS, not "looks finished" - and on a critical unit PASS
   may first route through ESCALATE-TO-HUMAN.
-- FAIL cap: 2 FAILs on the same unit -> stop re-delegating fixes; surface the
-  full defect history to the user instead of attempting a third pass.
+- FAIL cap: 2 FAILs per implementer tier -> move the unit up the Escalation
+  ladder; only at ladder exhaustion (the top tier's second FAIL) stop
+  re-delegating and surface the full defect history to the user instead.
 - The WIP sentinel (`.claude/wip-handoff.<agent-id>`) is for a genuine
   mid-task pause only - never to dodge a red suite you could otherwise fix.
   It must contain a stated reason; an empty sentinel is ignored.

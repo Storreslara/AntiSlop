@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**FAIL-cap wording outside the orchestrator (hdc-2, 0.31.146).** `templates/protocol-digest.md` (re-injected on resume and compact): two FAILs per implementer tier, stop only at ladder exhaustion. `commands/start-feature-team.md` names where the team lead reads the Escalation ladder and that it passes the ladder's tier as the teammate spawn's `model` parameter. README's review-gating-off paragraph says ladder exhaustion.
+
 **Escalation ladder edge cases (hdc-1, 0.31.145).** `agents/orchestrator.md`: ladder exhaustion is n reaching or exceeding the ladder's length, so a FAIL after a human-directed re-dispatch still stops; a unit with a FAIL block older than the haiku-default cutover starts its ladder at the more capable of `sonnet` and the default tier, so an `opus`-default project keeps its `opus` ladder; the precedence sentence says a `Suggested model` tag can only raise the ladder tier. `agents/task-master.md`: `haiku` is the default unless the project's `defaultImplementerModel` names another tier.
 
 **Implementer tier defaults to haiku (htd-4, 0.31.144).** `agents/lead-programmer.md` frontmatter is `model: haiku` and the `defaultImplementerModel` schema default is `"haiku"` (ADR 0040, amending ADR-0026). `--update` migrates a recorded `"sonnet"` from before this version to `"haiku"` once and says so; set it back to keep a `sonnet`-first ladder. `agents/orchestrator.md` records the haiku-default cutover: FAIL blocks older than it start the unit's ladder at `sonnet`.
