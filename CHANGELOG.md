@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Escalation ladder: two attempts per implementer tier (htd-3, 0.31.142).** `agents/orchestrator.md`: "Sonnet units escalate on first FAIL" is replaced by the Escalation ladder (the tiers from the default tier upward, two attempts each); a tier's second FAIL moves the unit up automatically and only ladder exhaustion asks the human; the tier is recomputed from the FAIL-block count, and an unreadable count dispatches `opus`. `agents/task-master.md`: `Suggested model: haiku|sonnet|opus`, tagged from the ladder. The default tier is unchanged (`sonnet`).
+
 **haiku is a recognised implementer tier (htd-2, 0.31.141).** `bin/cli.js` `IMPLEMENTER_MODEL_TIERS` and the `defaultImplementerModel` schema enum gain `haiku`; any other unrecognised value still resolves to `opus`. A one-time `--update` migration of a pre-cutover `"sonnet"` to `"haiku"` is added but disabled (`IMPLEMENTER_HAIKU_DEFAULT_SINCE = null`) until the cutover unit.
 
 **lead-programmer, scribe and spec-master close their last judgment gaps (fc-3, 0.31.140).** `agents/lead-programmer.md` and both ports: no `researcher` spawn under a dispatch contract; in the source, the contract's CHANGELOG edit is the CHANGELOG half of version-stamp discipline (a missing one is a spec gap). `agents/scribe.md`: an already-closed issue is not a failed close condition, and a version violation under a scribe dispatch contract is a spec gap. `agents/spec-master.md`: **Replay source** lists a unit's files from `<baseline>..<final_commit>` (or `git show --name-only --format=`), skips a null `final_commit`, and asks one CHK item per matching criterion against its own `mutation:` line; convergence follow-ups number findings by the milestone-auditor report, or F1, F2, … in order.

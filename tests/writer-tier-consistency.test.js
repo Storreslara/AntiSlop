@@ -70,16 +70,11 @@ check('AC-D6: no surface instructs pre-emptive "looks mechanical" tier tagging',
   }
 });
 
-check('AC-D7: orchestrator.md escalation ladder starts sonnet -> opus, not haiku -> sonnet', () => {
+check('AC-D7: orchestrator.md states the two-attempts-per-tier Escalation ladder, not a first-FAIL escalation', () => {
   const text = read('agents/orchestrator.md');
-  assert.ok(
-    /Sonnet units escalate on first FAIL/.test(text),
-    'orchestrator.md does not state the sonnet-first-FAIL escalation rule',
-  );
-  assert.ok(
-    !/Haiku units escalate on first FAIL/.test(text),
-    'orchestrator.md still states the stale haiku-first-FAIL escalation rule',
-  );
+  assert.ok(/\*\*Escalation ladder\.\*\* Each implementer tier gets two attempts/.test(text), 'orchestrator.md does not state the Escalation ladder rule');
+  assert.ok(!/Sonnet units escalate on first FAIL/.test(text), 'orchestrator.md still states the stale sonnet-first-FAIL escalation rule');
+  assert.ok(!/Haiku units escalate on first FAIL/.test(text), 'orchestrator.md still states the stale haiku-first-FAIL escalation rule');
 });
 
 check('AC-D8: ADR-0026 pins the pre-registered forward-verification rule by substring', () => {
@@ -87,6 +82,18 @@ check('AC-D8: ADR-0026 pins the pre-registered forward-verification rule by subs
   assert.ok(text.includes('≥60 units'), 'ADR-0026 does not state the >=60 units threshold');
   assert.ok(text.includes('32.5%'), 'ADR-0026 does not state the 32.5% FAIL-rate threshold');
   assert.ok(text.includes('must not materially worsen'), 'ADR-0026 does not state the spend-neutrality condition');
+});
+
+check('AC-D8b: the haiku-default ADR pins its forward rule, and ADR-0026 names it', () => {
+  const dir = path.join(REPO_ROOT, 'docs', 'adr');
+  const hits = fs.readdirSync(dir).filter((f) => /^\d{4}-implementer-tier-haiku-default\.md$/.test(f));
+  assert.strictEqual(hits.length, 1, `expected exactly one *-implementer-tier-haiku-default.md ADR, got ${hits.length}`);
+  const text = fs.readFileSync(path.join(dir, hits[0]), 'utf8');
+  for (const s of ['Amends: ADR-0026', '≥60 units dispatched under the `haiku` default', 'fail-rate ≤ 0.35',
+    'escalation-rate ≤ 0.15', 'exhaustion-rate ≤ 0.02', 'tripwire']) {
+    assert.ok(text.includes(s), `${hits[0]} does not state ${s}`);
+  }
+  assert.ok(/^Superseded-in-part-by: ADR-\d{4} /m.test(read('docs/adr/0026-writer-tier-reversed-to-sonnet.md')), 'ADR-0026 lacks its Superseded-in-part-by line');
 });
 
 // AC-D9 checks match with ALL whitespace stripped (not just collapsed) from
@@ -98,11 +105,11 @@ function stripWhitespace(text) {
   return text.replace(/\s+/g, '');
 }
 
-check('AC-D9: agents/orchestrator.md never names haiku as a default, tag value, or ladder rung', () => {
+check('AC-D9: agents/orchestrator.md states the three-tier vocabulary and no stale default or ladder', () => {
   const text = stripWhitespace(read('agents/orchestrator.md'));
-  assert.ok(!text.includes(stripWhitespace('`model: haiku` frontmatter is the')), 'orchestrator.md still claims haiku frontmatter is the default');
-  assert.ok(!text.includes(stripWhitespace('haiku|sonnet|opus')), 'orchestrator.md still lists haiku in the Suggested model tag vocabulary');
-  assert.ok(!text.includes(stripWhitespace('haiku → FAIL')), 'orchestrator.md still states a haiku-first escalation ladder rung');
+  assert.ok(!text.includes(stripWhitespace('`model: sonnet` frontmatter is the')), 'orchestrator.md still claims sonnet frontmatter is the default');
+  assert.ok(text.includes(stripWhitespace('`Suggested model: haiku|sonnet|opus`')), 'orchestrator.md does not list the haiku|sonnet|opus Suggested model vocabulary');
+  assert.ok(!text.includes(stripWhitespace('sonnet → FAIL → opus → FAIL')), 'orchestrator.md still states the ADR-0026 sonnet-first cap path');
   assert.ok(!text.includes(stripWhitespace('never dispatch on `haiku`')), 'orchestrator.md still contains the vacuous never-dispatch-on-haiku clause');
 });
 
@@ -172,7 +179,7 @@ function hasAll(rel, needles) {
 }
 
 check('AC-P1: orchestrator.md keeps its guarded text and the fc-2 rules', () => {
-  hasAll('agents/orchestrator.md', ['At the 2-FAIL cap', 'Sonnet units escalate on first FAIL',
+  hasAll('agents/orchestrator.md', ['At the 2-FAIL cap', '**Escalation ladder.**',
     '**`fable` is excluded for `task-master`**', '## Milestone audit gate', 'starts with neither', 'Gate for item 3']);
 });
 
