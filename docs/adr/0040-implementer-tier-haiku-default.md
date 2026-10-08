@@ -40,7 +40,9 @@ tests it.
    stops and asks the human. The next tier is computed from the unit's FAIL-block
    count, so a fresh session needs no record of which tier failed; an unreadable
    count dispatches `opus`. FAIL blocks older than the haiku-default cutover start
-   the unit's ladder at `sonnet`.
+   the unit's ladder at the more capable of `sonnet` and the default tier.
+   Ladder exhaustion is a FAIL-block count that reaches or exceeds the ladder's
+   length.
 4. The reviewer-gate ratchet (`hooks/scripts/reviewer-tier.sh`, ADR-0009) is
    unchanged. The exporter, the contract rubric and the audits stay.
 
@@ -48,20 +50,23 @@ tests it.
 
 **After ≥60 units dispatched under the `haiku` default** (units in a fresh
 `node scripts/unit-outcomes.js` export with `terminal_ts` at or after the
-**Haiku-default cutover** timestamp in `agents/orchestrator.md`), all three must
-hold:
+**Haiku-default cutover** timestamp in `agents/orchestrator.md`, except the
+`htd-` units of the haiku-default programme itself, which were dispatched on
+`sonnet` before the flip and closed after the cutover), all three must hold:
 
 - fail-rate ≤ 0.35 (units with at least one FAIL block / units)
 - escalation-rate ≤ 0.15 (units with at least two FAIL blocks, i.e. that left
   `haiku` / units)
 - exhaustion-rate ≤ 0.02 (units with at least six FAIL blocks / units)
 
-Early tripwire: from 20 units, an escalation-rate above 0.30 or two exhausted
-units ends the trial early with the same consequence.
+Early tripwire: while the population holds 20 to 59 units, an escalation-rate
+above 0.30 or two exhausted units ends the trial early with the same
+consequence. From 60 units only the three rates above decide; two exhausted
+units then fail the rule only through the exhaustion-rate.
 
 Audit command (`<F>` the export file, `<T0>` the cutover timestamp):
 
-    jq -rs --arg t0 "<T0>" '[.[] | select(.terminal_ts >= $t0)] as $p | ($p|length) as $n | ($p|map(select(.fail_blocks>=1))|length) as $f1 | ($p|map(select(.fail_blocks>=2))|length) as $f2 | ($p|map(select(.fail_blocks>=6))|length) as $f6 | if $n < 20 then "insufficient" elif $n < 60 then (if ($f2/$n) > 0.30 or $f6 >= 2 then "tripwire" else "insufficient" end) elif ($f1/$n) <= 0.35 and ($f2/$n) <= 0.15 and ($f6/$n) <= 0.02 then "met" else "not-met" end' <F>
+    jq -rs --arg t0 "<T0>" '[.[] | select(.terminal_ts >= $t0 and (.id | startswith("htd-") | not))] as $p | ($p|length) as $n | ($p|map(select(.fail_blocks>=1))|length) as $f1 | ($p|map(select(.fail_blocks>=2))|length) as $f2 | ($p|map(select(.fail_blocks>=6))|length) as $f6 | if $n < 20 then "insufficient" elif $n < 60 then (if ($f2/$n) > 0.30 or $f6 >= 2 then "tripwire" else "insufficient" end) elif ($f1/$n) <= 0.35 and ($f2/$n) <= 0.15 and ($f6/$n) <= 0.02 then "met" else "not-met" end' <F>
 
 **If the rule prints `not-met` or `tripwire`,** the pre-committed action is to
 restore ADR-0026's `sonnet` default (`model: sonnet` in lead-programmer's
@@ -85,3 +90,12 @@ implementer, and transcripts are pruned after about 30 days.
 - ADR-0026 (amended here: tier and ladder), ADR-0010 (the first `haiku`
   default, with first-FAIL escalation), ADR-0009 (reviewer tier, unchanged).
 - Plan: `docs/plans/2026-10-08-haiku-default-tier.md`.
+
+## Amendments
+
+- 2026-10-08 (hdc-4, `docs/plans/2026-10-08-haiku-default-cleanup.md`): the
+  legacy ladder starts at the more capable of `sonnet` and the default tier;
+  ladder exhaustion is a count that reaches or exceeds the ladder length; the
+  early tripwire is bounded to 20-59 units, matching the audit command; the
+  forward-rule population excludes the `htd-` units, which ran on `sonnet` and
+  closed after the cutover. No threshold changed.
