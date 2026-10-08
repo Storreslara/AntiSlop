@@ -3,6 +3,7 @@
 Date: 2026-08-25
 Status: Accepted (amends ADR-0010)
 Ratified by: user (repo owner), 2026-08-25
+Superseded-in-part-by: ADR-0040 (implementer tier defaults to haiku, two attempts per tier)
 
 ## Context
 
