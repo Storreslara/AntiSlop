@@ -15,3 +15,4 @@
 - [GitHub native issue dependencies](reference_github_native_issue_dependencies.md) — real blocking edges are available here; `gh api -F issue_id=<database id>`, never `-f`, never the issue number.
 - [Set A name in Bash; --update porcelain](feedback_set_a_name_in_bash_and_update_porcelain.md) — config name in any Bash text is refused; --update after a bump touches 14 .claude paths.
 - [Model tag default now sonnet](project_model_tag_default_now_sonnet.md) — ADR-0010 reversed haiku->sonnet; don't copy an old ticket's `haiku` tag as if it were still the live default.
+- [Flip a default: replay units first](feedback_flip_default_run_suites_first.md) — a spec flipping a shipped default can miss a hard-coded copy (cli.js skeleton); replay in a scratch worktree, file HELD.
