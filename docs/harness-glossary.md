@@ -1712,8 +1712,9 @@ _Avoid_: persona name (only the persona-derived form is a persona name; named di
 
 **FAIL routing (post-reviewer)**:
 normal FAIL routes the defect list to
-  `lead-programmer` (unchanged). At the 2-FAIL cap, the orchestrator surfaces
-  the two-attempt defect history and asks the human (via `AskUserQuestion`) how
+  `lead-programmer` (unchanged); a tier's second FAIL moves the unit up the
+  Escalation ladder. At ladder exhaustion, the orchestrator surfaces
+  the full defect history and asks the human (via `AskUserQuestion`) how
   to proceed, offering three discrete options: **(a) Debug spec** — dispatch
   `spec-master` to produce a diagnostic artifact (diagnosis using the latest
   `.fail` record plus git log/git diff over fix-attempt commits, revised steps),

@@ -55,10 +55,10 @@ check('AC-D5: agents/task-master.md default tag is haiku, not sonnet', () => {
   assert.ok(!text.includes('`sonnet` is\n  the default'), 'task-master.md still states sonnet as the default tag');
 });
 
-check('AC-D5: CONTEXT.md Implementer-tier ratchet reads sonnet→opus on re-attempt, not haiku→sonnet', () => {
+check('AC-D5: CONTEXT.md Implementer-tier ratchet reads two attempts per tier, haiku→sonnet→opus', () => {
   const text = read('CONTEXT.md');
-  assert.ok(text.includes('`sonnet`→`opus` on re-attempt'), 'CONTEXT.md does not state the sonnet→opus re-attempt ratchet');
-  assert.ok(!text.includes('`haiku`→`sonnet` on re-attempt'), 'CONTEXT.md still states the stale haiku→sonnet re-attempt ratchet');
+  assert.ok(text.includes('two attempts per tier, `haiku`→`sonnet`→`opus`'), 'CONTEXT.md does not state the two-attempts-per-tier ratchet');
+  assert.ok(!text.includes('`sonnet`→`opus` on re-attempt'), 'CONTEXT.md still states the stale sonnet→opus re-attempt ratchet');
 });
 
 check('AC-D6: no surface instructs pre-emptive "looks mechanical" tier tagging', () => {

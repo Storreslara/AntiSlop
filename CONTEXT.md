@@ -179,8 +179,8 @@ the system's core safety property: the
   the protection gates (`protected-paths.sh`, `harness-integrity-gate.sh` and
   config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch
   identity and privileged-name guards, and the stop-gate test+lint check)
-  stay armed. Absent or junk values mean `enforce`. At a unit's second
-  advisory FAIL the orchestrator reports `Unresolved advisory findings` and
+  stay armed. Absent or junk values mean `enforce`. At a unit's [[ladder exhaustion]]
+  on advisory FAILs the orchestrator reports `Unresolved advisory findings` and
   carries on; scribe closes issues on a quoted reviewer PASS labelled
   `advisory PASS (review gating off)`. _Avoid_: "gateless" in technical
   prose, because some gates stay armed.
@@ -344,32 +344,49 @@ _Avoid_: vacuous test, untested criterion
 
 **Implementer-tier ratchet**:
 the `.fail` disqualifier on lead-programmer
-  tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from a
-  prior FAIL verdict) permanently removes access to cheaper tiers, forcing
-  `sonnet`→`opus` on re-attempt. This ratchet expires on a
+  tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from prior
+  FAIL verdicts) forbids any tier cheaper than the [[Escalation ladder]] gives
+  for its FAIL-block count: two attempts per tier, `haiku`→`sonnet`→`opus`. This ratchet expires on a
   subsequent verified PASS marker for that unit (unit #233). Distinct from the
   reviewer-gate ratchet.
 
 **Writer tier**:
 the lead-programmer's (implementer's) model tier, defaulting to
-  `sonnet` as of ADR-0026 (reversing ADR-0010's earlier `haiku` default).
+  `haiku` as of ADR-0040 (amending ADR-0026's `sonnet`, which had reversed ADR-0010's `haiku`).
   Synonym for "implementer tier" in the context of the writer/implementer
   executing a spec. The reactive escalation rule (the **Implementer-tier ratchet**)
-  applies when a unit fails: a `.fail` record forces `opus` on re-attempt.
+  applies when a unit fails: each tier gets two attempts before the next (the [[Escalation ladder]]).
   See [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
+
+**Escalation ladder**:
+(ADR-0040, 2026-10-08) — the order of implementer tiers a unit moves
+  through on FAIL: the tiers from the default tier upward (`haiku`, `sonnet`,
+  `opus`), two attempts each. The next tier is a function of the unit's
+  FAIL-block count alone, so a session with no memory of earlier FAILs
+  computes the same tier. A unit with a FAIL block older than the
+  haiku-default cutover starts its ladder at `sonnet`. See [[ladder
+  exhaustion]] and [[Implementer-tier ratchet]].
+_Avoid_: handoff (names the cutoff handoff), first-FAIL escalation (the ADR-0026 rule this replaced)
+
+**ladder exhaustion**:
+(ADR-0040, 2026-10-08) — a unit's second FAIL on the top tier of its
+  [[Escalation ladder]]: the only point at which the orchestrator stops
+  re-dispatching and asks the human, offering the options of the 2-FAIL cap.
+  A lower tier's second FAIL moves the unit up automatically.
+_Avoid_: "the 2-FAIL cap" for this stop alone (the 2-FAIL cap is per tier)
 
 **Suggested model vocabulary**:
 (units item06-3, 2026-09-25) — the canonical allowed-value list for the
   `Suggested model:` tag emitted by `task-master` during dispatch (and historically
   by `spec-master` before ADR-0009's reversal). Current vocabulary:
-  `Suggested model: sonnet|opus`. Pinned as a cross-file invariant by
+  `Suggested model: haiku|sonnet|opus`. Pinned as a cross-file invariant by
   tests/writer-tier-consistency.test.js AC-D9 (agreement guard between
   `agents/orchestrator.md` and `agents/task-master.md`). Historically included
-  `haiku` (pre-ADR-0026); see [[Writer tier]] and [[Implementer-tier ratchet]]
+  `haiku` before ADR-0026 and was `sonnet|opus` under it; see [[Writer tier]] and [[Implementer-tier ratchet]]
   for the escalation semantics those tags trigger.
 
 **defaultImplementerModel**:
-(unit item18, 2026-09-25) — a persona-config field (`defaultImplementerModel: "sonnet"|"opus"`) 
+(unit item18, 2026-09-25) — a persona-config field (`defaultImplementerModel: "haiku"|"sonnet"|"opus"`) 
   that sets the lead-programmer's model tier for a dispatch, subject to a fixed 
   precedence order: (1) explicit per-dispatch `Suggested model:` tag (if present), 
   (2) `defaultImplementerModel` config value (if present and recognized), (3) 
@@ -382,7 +399,7 @@ the lead-programmer's (implementer's) model tier, defaulting to
   `agents/lead-programmer.md` frontmatter (ensuring the current project's 
   persona file override does not interfere). Cross-reference: [[inert-key defect]],
   [[Writer tier]], [ADR-0010](docs/adr/0010-haiku-as-default-implementer-model.md),
-  [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md).
+  [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md). A recorded `"sonnet"` from before the haiku default shipped is migrated once to `"haiku"` by `--update` (ADR-0040).
 
 **Reviewer-gate ratchet**:
 the `.fail` disqualifier on the reviewer's own
@@ -1185,9 +1202,9 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
 
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
-  at the 2-FAIL cap (see [[FAIL routing (post-reviewer)]]): the orchestrator
+  at [[ladder exhaustion]] (see [[FAIL routing (post-reviewer)]]): the orchestrator
   stops re-dispatching `lead-programmer` on the unit and moves on, leaving
-  the two-attempt defect history standing. No marker is written and none is
+  the full defect history standing. No marker is written and none is
   deleted — a parked unit is distinguishable from any other unit only by the
   absence of further dispatch, never by a dedicated marker state. Contrast
   with (a) debug spec and (b) human-directed re-dispatch, the other two
