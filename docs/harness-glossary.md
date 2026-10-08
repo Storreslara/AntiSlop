@@ -3218,7 +3218,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (unit rgh-u0-2b, 2026-10-06; reworded hdc-5, 2026-10-08) — the earlier of a
   unit's PASS timestamp and its second FAIL block's header timestamp. Under
   ADR-0026 the second FAIL was the 2-FAIL cap stop; under the [[Escalation
-  ladder]] (ADR-0040) it ends the unit's first tier and is not a stop, and
+  ladder]] (ADR-0040) it ends the unit's first tier and is not a stop unless
+  that tier is the ladder's last (an `opus` default tier gives a one-tier
+  `opus` ladder, where the second FAIL is ladder exhaustion), and
   `fail_blocks` still counts every later FAIL block up to the cutoff.
   `terminal_ts` in the [[unit-outcome export]] is the earlier of `pass_ts` and
   the second FAIL header, evaluated as of the `--until` cutoff timestamp. Distinct

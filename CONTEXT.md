@@ -382,7 +382,10 @@ _Avoid_: "the 2-FAIL cap" for this stop alone (the 2-FAIL cap is per tier)
   [[Escalation ladder]] starts from: the project's [[defaultImplementerModel]]
   value when present (any unrecognised value counts as `opus`), else
   lead-programmer's frontmatter `model:` (`haiku` as shipped). A `Suggested
-  model` tag can raise a unit above it, never below it.
+  model` tag can raise a unit's tier above its ladder's entry, never below
+  that entry (the default tier, or for a unit with a FAIL block older than
+  the [[Haiku-default cutover]], the more capable of `sonnet` and the default
+  tier).
 _Avoid_: base tier, starting model
 
 **Haiku-default cutover**:
@@ -392,7 +395,8 @@ _Avoid_: base tier, starting model
   `sonnet` default, so a unit holding one starts its [[Escalation ladder]] at
   the more capable of `sonnet` and its default tier. The [[unit-outcome export]]
   reads the same timestamp to infer the `haiku` era, and ADR-0040's forward
-  rule counts units whose [[terminal event]] falls at or after it.
+  rule counts units whose [[terminal event]] falls at or after it, except
+  the `htd-` units of the haiku-default programme itself.
 _Avoid_: cutover unit (the commit that set it), flip commit
 
 **Suggested model vocabulary**:
