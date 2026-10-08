@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Implementer tier defaults to haiku (htd-4, 0.31.144).** `agents/lead-programmer.md` frontmatter is `model: haiku` and the `defaultImplementerModel` schema default is `"haiku"` (ADR 0040, amending ADR-0026). `--update` migrates a recorded `"sonnet"` from before this version to `"haiku"` once and says so; set it back to keep a `sonnet`-first ladder. `agents/orchestrator.md` records the haiku-default cutover: FAIL blocks older than it start the unit's ladder at `sonnet`.
+
 **Shared protocol: the 2-FAIL cap is per implementer tier (htd-5, 0.31.143).** `templates/persona-protocol.md`: "Cap at 2 FAILs per tier" — a tier's second FAIL moves the unit up the Escalation ladder; only ladder exhaustion reaches the human. Same wording in `commands/start-feature-team.md`; `agents/spec-master.md` quotes the new label. The codex and cursor ports keep their per-unit cap (no per-dispatch model routing there).
 
 **Escalation ladder: two attempts per implementer tier (htd-3, 0.31.142).** `agents/orchestrator.md`: "Sonnet units escalate on first FAIL" is replaced by the Escalation ladder (the tiers from the default tier upward, two attempts each); a tier's second FAIL moves the unit up automatically and only ladder exhaustion asks the human; the tier is recomputed from the FAIL-block count, and an unreadable count dispatches `opus`. `agents/task-master.md`: `Suggested model: haiku|sonnet|opus`, tagged from the ladder. The default tier is unchanged (`sonnet`).

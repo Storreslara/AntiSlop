@@ -102,7 +102,7 @@ blocking edges, labels).
   `SPEC-GAP: <unit-id> <what is missing>`. A fix contract never changes the
   tier tag; the ratchet stays.
 - **Per-unit model tag**: tag every sliced unit `Suggested model:
-  haiku|sonnet|opus`. Tagging is **reactive**, not predictive: `sonnet` is
+  haiku|sonnet|opus`. Tagging is **reactive**, not predictive: `haiku` is
   the default for every unit, and a unit you judge security-sensitive,
   structural, or otherwise hard-judgment still starts on the default tier —
   you never pre-emptively tag a unit above it, no matter how risky it looks.

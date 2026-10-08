@@ -50,7 +50,7 @@ and the rest are opt-in per project. A new project costs one short setup run.
 |---|---|---|---|
 | `orchestrator` | inherit | Always | Thin router / main agent. Never implements; routes to the right persona and summarizes. |
 | `explorer` | haiku | Always | Stateless code cartographer: where is X, what calls Y, blast radius of Z. Uses the Code Review Graph. |
-| `lead-programmer` | sonnet | Always | Executes an approved plan TDD-first with surgical diffs and small commits. Never grades its own work. |
+| `lead-programmer` | haiku | Always | Executes an approved plan TDD-first with surgical diffs and small commits. Never grades its own work. |
 | `spec-master` | opus | Opt-in | Turns ambiguous goals into specs with machine-checkable acceptance criteria. Never writes production code. |
 | `task-master` | sonnet | Opt-in | Slices a finalized spec into dispatch-ready issues with per-unit prompts. |
 | `scribe` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs. Never touches source. |

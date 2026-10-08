@@ -340,7 +340,7 @@ const IMPLEMENTER_MODEL_TIERS = ['haiku', 'sonnet', 'opus'];
 // frontmatter reads `model: haiku` (docs/plans/2026-10-08-haiku-default-tier.md).
 // null disables the migration below; the cutover unit sets it in the same
 // commit as the frontmatter flip.
-const IMPLEMENTER_HAIKU_DEFAULT_SINCE = null;
+const IMPLEMENTER_HAIKU_DEFAULT_SINCE = '0.31.144';
 
 // A recorded "sonnet" older than IMPLEMENTER_HAIKU_DEFAULT_SINCE is the old
 // shipped default (scaffold or item18-2 backfill) as far as this code can
@@ -2579,14 +2579,14 @@ async function main() {
       // agents/reviewer.md), which is what keeps that branch's
       // preserve-every-field contract intact.
       humanReviewMode: 'critical',
-      // Matches agents/lead-programmer.md's `model: sonnet` frontmatter today
+      // Matches agents/lead-programmer.md's `model: haiku` frontmatter today
       // (see tests/default-implementer-model.test.js, asserted programmatically
       // against that frontmatter, not hardcoded on both sides). Like
       // humanReviewMode, an already-adapted project without this key gets the
       // default from the consumer's absent-key fallback (agents/orchestrator.md)
       // via resolveDefaultImplementerModel - a dedicated backfill step
       // (item18-2, not yet landed) is what makes the key reach such a project.
-      defaultImplementerModel: 'sonnet',
+      defaultImplementerModel: 'haiku',
       pluginVersion: version,
       personaSelection,
       issueTracker: '',

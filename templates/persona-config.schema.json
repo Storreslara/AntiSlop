@@ -54,7 +54,7 @@
     "defaultImplementerModel": {
       "type": "string",
       "enum": ["haiku", "sonnet", "opus"],
-      "default": "sonnet",
+      "default": "haiku",
       "description": "The lead-programmer model tier the orchestrator dispatches on when a unit carries no per-dispatch `Suggested model` tag. Precedence is per-dispatch tag > this config field > agents/lead-programmer.md's frontmatter default. Already-adapted projects have this field backfilled by `runUpdate` when absent, using the packaged agents/lead-programmer.md frontmatter default (unit item18-2). An ABSENT key resolves to the packaged frontmatter default - only after backfill skips or for projects predating the backfill. An unrecognised value also resolves toward MORE capability, never less (i.e. \"opus\") - same fail-toward-more-capability direction as humanReviewMode's own absent/unrecognised-value fallback. A \"sonnet\" value recorded before the haiku default shipped is migrated once to \"haiku\" by --update (bin/cli.js migrateDefaultImplementerModel)."
     },
     "pluginVersion": {

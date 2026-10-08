@@ -479,6 +479,12 @@ bare defect list. The **Implementer-tier ratchet** (CONTEXT.md's **Writer
 tier** and **Implementer-tier ratchet** entries) is this rule: never a tier
 cheaper than the ladder's entry.
 
+**Haiku-default cutover: 2026-10-08T17:28:48Z.** FAIL blocks whose header timestamp is
+earlier than this were written under ADR-0026's `sonnet` default, and the
+count alone cannot say which tier wrote them. Fail closed: a unit with any
+such block uses the ladder that starts at `sonnet` (`sonnet`, `sonnet`,
+`opus`, `opus`), whatever the default tier.
+
 **Implementer-tier fail ratchet expiry.** A fail record for unit `X` stops
 disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
 exists and is newer than the fail record. Until then it disqualifies

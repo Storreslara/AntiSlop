@@ -34,25 +34,25 @@ function frontmatterModel(text) {
   return m ? m[1] : null;
 }
 
-check('AC-D5: agents/lead-programmer.md frontmatter reads model: sonnet', () => {
-  assert.strictEqual(frontmatterModel(read('agents/lead-programmer.md')), 'sonnet');
+check('AC-D5: agents/lead-programmer.md frontmatter reads model: haiku', () => {
+  assert.strictEqual(frontmatterModel(read('agents/lead-programmer.md')), 'haiku');
 });
 
-check('AC-D5: .claude/agents/lead-programmer.md mirror reads model: sonnet', () => {
-  assert.strictEqual(frontmatterModel(read('.claude/agents/lead-programmer.md')), 'sonnet');
+check('AC-D5: .claude/agents/lead-programmer.md mirror reads model: haiku', () => {
+  assert.strictEqual(frontmatterModel(read('.claude/agents/lead-programmer.md')), 'haiku');
 });
 
-check('AC-D5: README.md persona table lists lead-programmer as sonnet', () => {
+check('AC-D5: README.md persona table lists lead-programmer as haiku', () => {
   const text = read('README.md');
   const row = text.split('\n').find((l) => l.includes('`lead-programmer`'));
   assert.ok(row, 'lead-programmer row not found in README.md');
-  assert.ok(/\|\s*sonnet\s*\|/.test(row), `expected sonnet in README row, got: ${row}`);
+  assert.ok(/\|\s*haiku\s*\|/.test(row), `expected haiku in README row, got: ${row}`);
 });
 
-check('AC-D5: agents/task-master.md default tag is sonnet, not haiku', () => {
+check('AC-D5: agents/task-master.md default tag is haiku, not sonnet', () => {
   const text = read('agents/task-master.md');
-  assert.ok(text.includes('`sonnet` is\n  the default for every unit'), 'task-master.md does not state sonnet as the default tag');
-  assert.ok(!text.includes('`haiku` is\n  the default'), 'task-master.md still states haiku as the default tag');
+  assert.ok(text.includes('`haiku` is\n  the default for every unit'), 'task-master.md does not state haiku as the default tag');
+  assert.ok(!text.includes('`sonnet` is\n  the default'), 'task-master.md still states sonnet as the default tag');
 });
 
 check('AC-D5: CONTEXT.md Implementer-tier ratchet reads sonnet→opus on re-attempt, not haiku→sonnet', () => {
@@ -94,6 +94,18 @@ check('AC-D8b: the haiku-default ADR pins its forward rule, and ADR-0026 names i
     assert.ok(text.includes(s), `${hits[0]} does not state ${s}`);
   }
   assert.ok(/^Superseded-in-part-by: ADR-\d{4} /m.test(read('docs/adr/0026-writer-tier-reversed-to-sonnet.md')), 'ADR-0026 lacks its Superseded-in-part-by line');
+});
+
+check('AC-D10: this repo\'s own defaultImplementerModel resolves to the lead-programmer frontmatter default', () => {
+  const cli = require(path.join(REPO_ROOT, 'bin', 'cli.js'));
+  const config = JSON.parse(read(path.join('.claude', 'persona-config.json')));
+  const fm = frontmatterModel(read('agents/lead-programmer.md'));
+  assert.strictEqual(cli.resolveDefaultImplementerModel(config, fm), fm);
+});
+
+check('AC-D11: orchestrator.md states exactly one Haiku-default cutover timestamp', () => {
+  const hits = read('agents/orchestrator.md').match(/\*\*Haiku-default cutover: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.\*\*/g) || [];
+  assert.strictEqual(hits.length, 1, `expected one cutover line, got ${hits.length}`);
 });
 
 // AC-D9 checks match with ALL whitespace stripped (not just collapsed) from
