@@ -1,6 +1,6 @@
 # Haiku-default cleanup (2026-10-08)
 
-Status: FINAL (fast path, 5 units, contracts below). Follow-up to
+Status: FINAL (fast path, 5 units, contracts below; follow-up unit hdc-6 added 2026-10-08, see `## Follow-up unit (2026-10-08)`). Follow-up to
 `docs/plans/2026-10-08-haiku-default-tier.md` (htd-1..htd-7, all reviewer-PASSed,
 HEAD 5f91df7, version 0.31.144, umbrella #529). ADR: `docs/adr/0040-implementer-tier-haiku-default.md`.
 
@@ -80,6 +80,7 @@ Assumptions: A1, the `Agent` tool's `model` parameter applies to a teammate spaw
 - R3 `bash tests/validate.sh` takes about 11 minutes and fails in a fresh worktree for environment reasons; run it in the main checkout (htd contracts note).
 - R4 Unproven mutations: the permission classifier refused the scratch-worktree mutation runs for T1 and part of hdc-1/hdc-2 late in this session. Every such criterion is marked `proof: not run by spec-master`; the reviewer must run those mutations.
 - R5 Residuals not edited: `cap_hit` field name in the exporter (misnomer, schema change); CONTEXT.md **defaultImplementerModel** entry's "(1) explicit per-dispatch tag (if present)" still lacks the raise-only qualifier (its lines carry trailing spaces, which makes literal edits fragile for a haiku executor; candidate for a later scribe pass); the codex/cursor ports keep their per-unit cap (deliberate since htd-5); the old plan's D6 text is history and is not edited.
+- R7 hdc-6 edits the `**default tier**:` and `**Haiku-default cutover**:` entries hdc-5 created and the `**terminal event**:` entry hdc-5 reworded. It runs only after hdc-5's PASS. Its edit 3 keeps the phrase `first tier and is not a stop`, so hdc-5 criterion 2 still prints `0 1 1 ` after hdc-6 (measured in a scratch clone); hdc-5 criterion 1 still prints `0 1 1 1 1 1 1 1 0 `.
 - R6 Scratch worktree `/tmp/claude-1000/-home-sebas-AntiSlop/59f5acf3-e86d-43dc-8f42-a743bd6c33c3/scratchpad/hdc-wt` (detached at 5f91df7, uncommitted prototype edits) is still registered; spec-master could not remove it (Bash refused). The orchestrator should run `git worktree remove --force` on it.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
@@ -98,6 +99,7 @@ Assumptions: A1, the `Agent` tool's `model` parameter applies to a teammate spaw
 | hdc-3 | lead-programmer | T1, T2, T4 | tests/default-implementer-model.test.js, tests/unit-outcomes.test.js | none | none |
 | hdc-4 | scribe | F1, S7, F2/F3 in the ADR | docs/adr/0040-implementer-tier-haiku-default.md | none | hdc-1 |
 | hdc-5 | scribe | F2/F3/S6/S9/G1 in glossaries | CONTEXT.md, docs/harness-glossary.md | none | hdc-1, hdc-4 |
+| hdc-6 | scribe | N1, N2, N3 (hdc-5 FAIL-record advisory notes) | CONTEXT.md, docs/harness-glossary.md | none | hdc-5 PASS |
 
 Step acceptance criteria are the contract criteria below. Tags: no `hdc-*.fail` exists, so every unit dispatches on the default tier (`haiku`); no `Suggested model` tag. The reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over each unit's actual diff.
 
@@ -115,11 +117,30 @@ Step acceptance criteria are the contract criteria below. Tags: no `hdc-*.fail` 
 - CHK7: Does the Goal clause "S8" map to a step? — PASS (Context row S8: note only, no step by design)
 - CHK8: Do hdc-1 and hdc-2 agree on the version chain and order? — PASS
 
+- CHK9: Does every commit-trailer criterion (hdc-3 criterion 6, hdc-4 criterion 7, hdc-5 criterion 7) still pass when a fix round adds a commit, and fail when any one commit lacks its trailer? — FAIL (conflicting) — revised in place (2026-10-08 Ruling; the old `grep -c` form expected `1` and printed `2` at 082ec3c)
+- CHK10: Is each hdc-6 edit's mutation measured, and does hdc-6 leave hdc-5's criteria 1 and 2 unchanged? — PASS (scratch clone, R7)
+- CHK11: Does hdc-6's tag-floor wording agree with `agents/orchestrator.md` ("never a tier cheaper than the ladder's entry")? — PASS
+
 Ubiquitous-language (prose mode, advisory): lens 1 none; lens 2 "cutover unit" and "flip commit" are synonyms for the commit that set the Haiku-default cutover, routed to its `_Avoid_` line; lens 3 **default tier** and **Haiku-default cutover** were load-bearing with no entry, added by hdc-5.
 
 ## Scribe update hint
 
-hdc-4 and hdc-5 are the scribe work. After hdc-5, nothing else is pending for scribe; R5's **defaultImplementerModel** qualifier is a candidate for a later pass.
+hdc-4 and hdc-5 are the scribe work. After hdc-5, hdc-6 is the last scribe unit; R5's **defaultImplementerModel** qualifier is a candidate for a later pass.
+
+## Ruling (2026-10-08): per-commit trailer criteria
+
+- **Contract defect, not an implementer failure.** hdc-5's second FAIL (`.claude/reviewed/hdc-5.fail`, block 2026-10-08T21:34:42Z) rests only on criterion 7. It counted trailer lines over the whole `(hdc-5)` range and expected `1`. The FAIL-1 fix round correctly added a second commit (082ec3c after b3cdba8), so the count became `2`. The old form also caught nothing once the unit had two commits: dropping one commit's trailer printed `1`, the expected value. Rule P5 (`docs/plans/2026-10-07-final-cleanup.md`, P5) already says the trailer count equals the unit's commit count; this plan's criteria did not follow it. The reviewer verified everything else.
+- **User-directed remedy:** amend the criterion. No history rewrite (no squash of b3cdba8/082ec3c), no tier change, and the FAIL does not count as a defect of the implementer.
+- **Amended:** hdc-3 criterion 6, hdc-4 criterion 7 and hdc-5 criterion 7 now print the distinct per-commit trailer-line counts over the unit's range; expected stdout `1 ` for any number of commits. This is stricter than P5's equal-count form: a commit with two trailers cannot hide one with none (measured: `0 2 `). The regex stays model-agnostic, not P5's `-xF` exact line, because a unit that climbs the Escalation ladder commits its fix rounds under a different model's trailer (hdc-5 already carries Haiku 4.5 and Sonnet 5.5).
+- **Also amended:** hdc-5's Objective and `commit:` close condition now allow one commit per fix round; hdc-3's Objective likewise. hdc-3, not yet executed, gets the P5-exact trailer line `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`. The landed units' (hdc-1, hdc-2, hdc-4, hdc-5) trailer instruction text is left as it was. hdc-1 criterion 10 and hdc-2 criterion 11 keep the old form; both landed as one commit and passed review.
+- **Re-review of hdc-5:** criteria 5-8 only, as the reviewer stated. Criteria 1-4 and the edits are unchanged by this ruling. Criterion 9 (validate.sh) is unchanged and was not part of either FAIL.
+
+## Follow-up unit (2026-10-08)
+
+hdc-5's FAIL record carries three advisory spec notes, all small enough for one glossary-only scribe unit (hdc-6):
+- N1: `docs/harness-glossary.md` **terminal event** says the second FAIL "ends the unit's first tier and is not a stop". That is false for an `opus` default tier, whose ladder is `opus` alone: the second FAIL there is ladder exhaustion.
+- N2: CONTEXT.md **Haiku-default cutover** says ADR-0040's forward rule counts every unit whose terminal event is at or after the cutover, but it leaves out the `htd-` exclusion hdc-4 added.
+- N3: CONTEXT.md **default tier** says a `Suggested model` tag cannot lower a unit below the default tier. The floor is the ladder's entry, which is `sonnet` or above for a unit with a pre-cutover FAIL block (`agents/orchestrator.md`: "never a tier cheaper than the ladder's entry").
 
 ---
 
@@ -497,7 +518,7 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 Unit: hdc-3
 
 ## Objective
-Three tests: a second `--update` after the haiku migration is a no-op; the migrate check fails if the migration is disabled while the frontmatter ships `haiku`; the exporter falls back to the pre-haiku eras when the orchestrator has no cutover line or is absent. Test-only, one commit, no version bump.
+Three tests: a second `--update` after the haiku migration is a no-op; the migrate check fails if the migration is disabled while the frontmatter ships `haiku`; the exporter falls back to the pre-haiku eras when the orchestrator has no cutover line or is absent. Test-only, one commit (plus one per fix round after a FAIL), no version bump.
 
 ## Retrieval
 Plan file: `docs/plans/2026-10-08-haiku-default-cleanup.md`, `## Unit hdc-3`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
@@ -593,9 +614,9 @@ check('era null cutover falls back to the pre-haiku eras', () => {
 
 check('era reviewer empty', () => {
 ```
-4. command: `git add tests/default-implementer-model.test.js tests/unit-outcomes.test.js && git commit -m "test(hdc-3): migrate-twice no-op, migration-disabled guard, null cutover fallback (#529)" -m "Co-Authored-By: Claude <your model name> <noreply@anthropic.com>"`
+4. command: `git add tests/default-implementer-model.test.js tests/unit-outcomes.test.js && git commit -m "test(hdc-3): migrate-twice no-op, migration-disabled guard, null cutover fallback (#529)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
-   (write your own model's name in the trailer)
+   (use this trailer line exactly, per rule P5 of `docs/plans/2026-10-07-final-cleanup.md`; a fix round after a FAIL commits again with the same trailer line)
 5. command: `git status --porcelain --untracked-files=no | wc -l`
    expect: 0
    stdout: `0`
@@ -630,10 +651,12 @@ check('era reviewer empty', () => {
    exit: 1
    stdout: `0`
    mutation: commit with a subject lacking ` (#529)`; prints `1`, exit 0.
-6. run: `git log --format=%B "$(git log --format=%H -F --grep='(hdc-3)' | tail -1)~1".."$(git log --format=%H -F --grep='(hdc-3)' | head -1)" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'`
+6. run: `R="$(git log --format=%H -F --grep='(hdc-3)' | tail -1)~1..$(git log --format=%H -F --grep='(hdc-3)' | head -1)"; for c in $(git rev-list "$R"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
    exit: 0
-   stdout: `1`
-   mutation: drop the trailer; prints `0`, exit 1.
+   stdout: `1 `
+   check: prints the distinct per-commit counts of trailer lines over the unit's range, so `1 ` means every commit in the range (the original and each fix-round commit) carries exactly one trailer line, whatever the commit count. Empty stdout (no `(hdc-3)` commit) fails. Amended 2026-10-08, see `## Ruling (2026-10-08): per-commit trailer criteria`.
+   mutation: drop one commit's trailer; prints `0 1 ` (or `0 ` for a one-commit unit).
+   proof: the hdc-3 range does not exist yet; the same `run:` shape is proven on hdc-4 and hdc-5 (see hdc-5 criterion 7).
 7. run: `git status --porcelain --untracked-files=no | wc -l`
    exit: 0
    stdout: `0`
@@ -790,10 +813,12 @@ none
    exit: 1
    stdout: `0`
    mutation: commit with a subject lacking ` (#529)`; prints `1`, exit 0.
-7. run: `git log --format=%B "$(git log --format=%H -F --grep='(hdc-4)' | tail -1)~1".."$(git log --format=%H -F --grep='(hdc-4)' | head -1)" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'`
+7. run: `R="$(git log --format=%H -F --grep='(hdc-4)' | tail -1)~1..$(git log --format=%H -F --grep='(hdc-4)' | head -1)"; for c in $(git rev-list "$R"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
    exit: 0
-   stdout: `1`
-   mutation: drop the trailer; prints `0`, exit 1.
+   stdout: `1 `
+   check: prints the distinct per-commit counts of trailer lines over the unit's range, so `1 ` means every commit in the range (the original and each fix-round commit) carries exactly one trailer line, whatever the commit count. Empty stdout (no `(hdc-4)` commit) fails. Amended 2026-10-08, see `## Ruling (2026-10-08): per-commit trailer criteria`.
+   mutation: drop one commit's trailer; prints `0 1 ` (or `0 ` for a one-commit unit).
+   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
 8. run: `git status --porcelain --untracked-files=no | wc -l`
    exit: 0
    stdout: `0`
@@ -814,7 +839,7 @@ If any item cannot be applied exactly, STOP and report a spec gap.
 Unit: hdc-5
 
 ## Objective
-CONTEXT.md and docs/harness-glossary.md agree with hdc-1 and hdc-4: the Escalation ladder entry names the default tier and the cutover as inputs and the more-capable legacy start; ladder exhaustion is reaching or exceeding the ladder length; Writer tier links ADR-0040; the FAIL record entry says ladder exhaustion; new entries **default tier** and **Haiku-default cutover**; the terminal event entry no longer calls the second FAIL a stop; the Forward-verification rule entry points to ADR-0040. One commit.
+CONTEXT.md and docs/harness-glossary.md agree with hdc-1 and hdc-4: the Escalation ladder entry names the default tier and the cutover as inputs and the more-capable legacy start; ladder exhaustion is reaching or exceeding the ladder length; Writer tier links ADR-0040; the FAIL record entry says ladder exhaustion; new entries **default tier** and **Haiku-default cutover**; the terminal event entry no longer calls the second FAIL a stop; the Forward-verification rule entry points to ADR-0040. One commit, plus one per fix round after a FAIL (amended 2026-10-08, see the Ruling).
 
 ## Retrieval
 Plan file: `docs/plans/2026-10-08-haiku-default-cleanup.md`, `## Unit hdc-5`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
@@ -921,7 +946,7 @@ none
 - issue #529 is the umbrella [spec] issue and no per-unit issue exists: close nothing, and never close #529
 - task-id: hdc-5
 - marker first line: "PASS hdc-5 "
-- commit: one commit of the two files, subject `docs(hdc-5): glossary states default tier, Haiku-default cutover and ladder edge cases (#529)`, then a second `-m` argument holding exactly one `Co-Authored-By: Claude <your model name> <noreply@anthropic.com>` line; stage with `git add CONTEXT.md docs/harness-glossary.md`
+- commit: one commit of the two files (plus one per fix round after a FAIL; amended 2026-10-08, see the Ruling), subject `docs(hdc-5): glossary states default tier, Haiku-default cutover and ladder edge cases (#529)`, then a second `-m` argument holding exactly one `Co-Authored-By: Claude <your model name> <noreply@anthropic.com>` line; stage with `git add CONTEXT.md docs/harness-glossary.md`
 - precondition: hdc-1 and hdc-4 have landed (`git log --format=%H -F --grep='(hdc-1)' | wc -l` and the same for `(hdc-4)` each print `1`); `(hdc-5)` prints `0`; every `before:` payload and `insert-after:` line appears verbatim exactly once inside the entry its `heading:` names (the same text may recur in other entries; edit only the named entry). Anything else: STOP and report.
 
 ## Do NOT touch
@@ -956,10 +981,12 @@ none
    exit: 1
    stdout: `0`
    mutation: commit with a subject lacking ` (#529)`; prints `1`, exit 0.
-7. run: `git log --format=%B "$(git log --format=%H -F --grep='(hdc-5)' | tail -1)~1".."$(git log --format=%H -F --grep='(hdc-5)' | head -1)" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'`
+7. run: `R="$(git log --format=%H -F --grep='(hdc-5)' | tail -1)~1..$(git log --format=%H -F --grep='(hdc-5)' | head -1)"; for c in $(git rev-list "$R"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
    exit: 0
-   stdout: `1`
-   mutation: drop the trailer; prints `0`, exit 1.
+   stdout: `1 `
+   check: prints the distinct per-commit counts of trailer lines over the unit's range, so `1 ` means every commit in the range (the original and each fix-round commit) carries exactly one trailer line, whatever the commit count. Empty stdout (no `(hdc-5)` commit) fails. Amended 2026-10-08, see `## Ruling (2026-10-08): per-commit trailer criteria`.
+   mutation: drop one commit's trailer; prints `0 1 ` (or `0 ` for a one-commit unit).
+   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
 8. run: `git status --porcelain --untracked-files=no | wc -l`
    exit: 0
    stdout: `0`
@@ -972,4 +999,126 @@ none
 
 ## Escalation
 If any item cannot be applied exactly, STOP and report a spec gap. If the glossary tests reject the new entries' shape, STOP and report the failing check verbatim; do not reshape the entries.
+~~~~~
+
+## Unit hdc-6
+
+~~~~~markdown
+Unit: hdc-6
+
+## Objective
+Three glossary corrections: CONTEXT.md **default tier** says a `Suggested model` tag's floor is the ladder's entry, not the default tier (N3); CONTEXT.md **Haiku-default cutover** says ADR-0040's forward rule leaves out the `htd-` units (N2); `docs/harness-glossary.md` **terminal event** says the second FAIL is a stop for a one-tier `opus` ladder (N1). One commit, plus one per fix round after a FAIL.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-08-haiku-default-cleanup.md`, `## Unit hdc-6`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Glossary edits
+Each `before:` is one whole line (two leading spaces); replace that line with the `text:` lines.
+1. file: `CONTEXT.md`
+   heading: `**default tier**:`
+   before:
+```
+  model` tag can raise a unit above it, never below it.
+```
+   text:
+```
+  model` tag can raise a unit's tier above its ladder's entry, never below
+  that entry (the default tier, or for a unit with a FAIL block older than
+  the [[Haiku-default cutover]], the more capable of `sonnet` and the default
+  tier).
+```
+2. file: `CONTEXT.md`
+   heading: `**Haiku-default cutover**:`
+   before:
+```
+  rule counts units whose [[terminal event]] falls at or after it.
+```
+   text:
+```
+  rule counts units whose [[terminal event]] falls at or after it, except
+  the `htd-` units of the haiku-default programme itself.
+```
+3. file: `docs/harness-glossary.md`
+   heading: `**terminal event**:`
+   before:
+```
+  ladder]] (ADR-0040) it ends the unit's first tier and is not a stop, and
+```
+   text:
+```
+  ladder]] (ADR-0040) it ends the unit's first tier and is not a stop unless
+  that tier is the ladder's last (an `opus` default tier gives a one-tier
+  `opus` ladder, where the second FAIL is ladder exhaustion), and
+```
+
+## Doc edits
+none — make no other doc changes
+prune: none
+
+## ADR
+none
+
+## Close conditions
+- issue #529 is the umbrella [spec] issue and no per-unit issue exists: close nothing, and never close #529
+- task-id: hdc-6
+- marker first line: "PASS hdc-6 "
+- commit: one commit of the two files (plus one per fix round after a FAIL), subject `docs(hdc-6): glossary tag floor is the ladder entry, cutover htd exclusion, one-tier opus stop (#529)`, then a second `-m` argument holding exactly the line `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`; stage with `git add CONTEXT.md docs/harness-glossary.md`
+- precondition: hdc-5 has PASSed (the orchestrator confirms the hdc-5 PASS marker before dispatch); `git log --format=%H -F --grep='(hdc-6)' | wc -l` prints `0`; each `before:` line matches exactly once as a whole line (`/usr/bin/grep -cxF -- '<before line>' <file>` prints `1`). Anything else: STOP and report.
+
+## Do NOT touch
+- every other entry in both files (in particular **Escalation ladder**, **ladder exhaustion**, **Implementer-tier ratchet**, **defaultImplementerModel**, **Forward-verification rule**, **Spend-neutrality**)
+- `docs/adr/`, `agents/`, `tests/`, `scripts/`
+
+## Acceptance criteria
+1. run: `C=CONTEXT.md; for p in 'raise a unit above it, never below it' 'never below that entry' 'the more capable of `sonnet` and the default tier).' 'falls at or after it, except the `htd-` units of the haiku-default programme itself.'; do tr '\n' ' ' < $C | tr -s ' ' | /usr/bin/grep -oF -- "$p" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `0 1 1 1 `
+   mutation: skip edit 1; prints `1 0 0 1 `. Skip edit 2; prints `0 1 1 0 `.
+   proof: spec-master applied the three edits in a scratch clone at 082ec3c: full `0 1 1 1 `, skip-1 `1 0 0 1 `, skip-2 `0 1 1 0 `, before any edit `1 0 0 0 `.
+2. run: `H=docs/harness-glossary.md; for p in 'is not a stop, and' "is not a stop unless that tier is the ladder's last" 'first tier and is not a stop' 'where the second FAIL is ladder exhaustion), and'; do tr '\n' ' ' < $H | tr -s ' ' | /usr/bin/grep -oF -- "$p" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `0 1 1 1 `
+   mutation: skip edit 3; prints `1 0 1 0 `.
+   proof: measured in the same scratch clone (full `0 1 1 1 `, skip-3 `1 0 1 0 `).
+3. run: `node tests/context-glossary-links.test.js > /dev/null && node tests/ubiquitous-language.test.js > /dev/null && echo glossary-tests-ok`
+   exit: 0
+   stdout: `glossary-tests-ok`
+   mutation: in edit 1 write `[[Haiku-default cutovers]]`; the dangling-link check fails, prints nothing, exit 1.
+   proof: measured in the scratch clone (passes with the edits; the mutation fails the link test).
+4. run: `node tests/writer-tier-consistency.test.js > /dev/null && echo wtc-ok`
+   exit: 0
+   stdout: `wtc-ok`
+   mutation: change the Implementer-tier ratchet entry's two-attempts-per-tier phrase; AC-D5 fails, prints nothing, exit 1.
+   proof: passes with the edits in the scratch clone; the mutation is as in hdc-5 criterion 4.
+5. run: `git diff --name-only "$(git log --format=%H -F --grep='(hdc-6)' | tail -1)~1".."$(git log --format=%H -F --grep='(hdc-6)' | head -1)" | sort | tr '\n' ' '`
+   exit: 0
+   stdout: `CONTEXT.md docs/harness-glossary.md `
+   mutation: also commit an edit to the ADR; the list gains it.
+6. run: `git log --format=%s "$(git log --format=%H -F --grep='(hdc-6)' | tail -1)~1".."$(git log --format=%H -F --grep='(hdc-6)' | head -1)" | /usr/bin/grep -vc '(#529)$'`
+   exit: 1
+   stdout: `0`
+   mutation: commit with a subject lacking ` (#529)`; prints `1`, exit 0.
+7. run: `R="$(git log --format=%H -F --grep='(hdc-6)' | tail -1)~1..$(git log --format=%H -F --grep='(hdc-6)' | head -1)"; for c in $(git rev-list "$R"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   check: every commit in the range carries exactly one trailer line (see the 2026-10-08 Ruling).
+   mutation: drop one commit's trailer; prints `0 ` or `0 1 `.
+   proof: shape proven on hdc-4 and hdc-5 (hdc-5 criterion 7).
+8. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave CONTEXT.md unstaged at commit time; prints `1`.
+9. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: add a `[[deliberately-missing-term]]` link to CONTEXT.md; prints `validate-exit=1`.
+   proof: not run (about 11 minutes; run it in the main checkout).
+
+## Pre-resolved context
+blast-radius: CONTEXT.md:385, CONTEXT.md:395, docs/harness-glossary.md:3221 (line numbers at 082ec3c; anchor on the `before:` text, not the number)
+note: edit 3 keeps the phrase `first tier and is not a stop`, so hdc-5 criterion 2 still prints `0 1 1 ` afterwards.
+note: the tag-floor wording mirrors `agents/orchestrator.md` ("never a tier cheaper than the ladder's entry"); do not edit the orchestrator.
+
+## Escalation
+If any item cannot be applied exactly, STOP and report a spec gap. If the glossary tests reject the new text, STOP and report the failing check verbatim; do not reshape the entries.
 ~~~~~
