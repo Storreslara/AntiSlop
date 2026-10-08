@@ -444,7 +444,9 @@ routing ever appears to have no effect.
 frontmatter default, check this project's `.claude/persona-config.json` for a
 `defaultImplementerModel` field — the full precedence is per-dispatch
 `Suggested model` tag > `defaultImplementerModel` config field > frontmatter
-default (CONTEXT.md's **Writer tier** entry). Read the raw value yourself.
+default (CONTEXT.md's **Writer tier** entry), except that the tag can only
+raise the tier the **Escalation ladder** below gives, never lower it. Read the
+raw value yourself.
 Only an **absent** key resolves to that frontmatter default; a value present
 but outside the recognised set (`templates/persona-config.schema.json`'s
 `defaultImplementerModel` enum) resolves to the **more** capable tier,
@@ -467,9 +469,10 @@ right after an in-session FAIL — a fresh session has no memory of a prior
 one's FAIL. Count the unit's FAIL blocks, n: n is 0 when
 `test -f .claude/reviewed/<task-id>.fail` fails, and otherwise
 `grep -c '^FAIL <task-id> ' .claude/reviewed/<task-id>.fail`. Dispatch
-attempt n+1 on the ladder's entry n+1. When n equals the ladder's length,
-that is **ladder exhaustion**: dispatch nothing and go to **At the 2-FAIL
-cap**. The ladder depends only on n and the default tier, so a fresh session
+attempt n+1 on the ladder's entry n+1. When n reaches or exceeds the ladder's
+length, that is **ladder exhaustion**: dispatch nothing and go to **At the 2-FAIL
+cap**. The ladder depends only on n, the default tier and whether any block
+predates the **Haiku-default cutover** below, so a fresh session
 computes the same tier the session that saw the FAIL would have; which tier
 wrote a block is never needed. Fail closed: if n cannot be read (the grep
 errors, or the file exists and no line matches), dispatch on `opus`. Every
@@ -482,8 +485,9 @@ cheaper than the ladder's entry.
 **Haiku-default cutover: 2026-10-08T17:28:48Z.** FAIL blocks whose header timestamp is
 earlier than this were written under ADR-0026's `sonnet` default, and the
 count alone cannot say which tier wrote them. Fail closed: a unit with any
-such block uses the ladder that starts at `sonnet` (`sonnet`, `sonnet`,
-`opus`, `opus`), whatever the default tier.
+such block uses the ladder that starts at the more capable of `sonnet` and the
+default tier: `sonnet`, `sonnet`, `opus`, `opus` when the default tier is
+`haiku` or `sonnet`, and `opus`, `opus` when it is `opus`.
 
 **Implementer-tier fail ratchet expiry.** A fail record for unit `X` stops
 disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
