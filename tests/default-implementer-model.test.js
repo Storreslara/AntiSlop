@@ -66,9 +66,29 @@ check('resolveDefaultImplementerModel: a recognised value passes through', () =>
   assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: 'opus' }, 'sonnet'), 'opus');
 });
 
+check('resolveDefaultImplementerModel: haiku is a recognised tier and passes through', () => {
+  assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: 'haiku' }, 'sonnet'), 'haiku');
+});
+
 check('resolveDefaultImplementerModel: an unrecognised value resolves to opus (more capability, never less)', () => {
-  assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: 'haiku' }, 'sonnet'), 'opus');
   assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: 'bogus-junk' }, 'sonnet'), 'opus');
+  assert.strictEqual(cli.resolveDefaultImplementerModel({ defaultImplementerModel: 'fable' }, 'haiku'), 'opus');
+});
+
+check('IMPLEMENTER_MODEL_TIERS equals the schema enum', () => {
+  const schema = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'templates', 'persona-config.schema.json'), 'utf8'));
+  assert.deepStrictEqual(cli.IMPLEMENTER_MODEL_TIERS, schema.properties.defaultImplementerModel.enum);
+});
+
+check('migrateDefaultImplementerModel: only an old-version "sonnet" moves, only to haiku, only when enabled', () => {
+  const m = cli.migrateDefaultImplementerModel;
+  assert.strictEqual(m('sonnet', '0.31.140', '0.31.143', 'haiku'), 'haiku');
+  assert.strictEqual(m('sonnet', '0.31.143', '0.31.143', 'haiku'), null);
+  assert.strictEqual(m('sonnet', undefined, '0.31.143', 'haiku'), 'haiku');
+  assert.strictEqual(m('opus', '0.31.140', '0.31.143', 'haiku'), null);
+  assert.strictEqual(m('haiku', '0.31.140', '0.31.143', 'haiku'), null);
+  assert.strictEqual(m('sonnet', '0.31.140', null, 'haiku'), null);
+  assert.strictEqual(m('sonnet', '0.31.140', '0.31.143', 'sonnet'), null);
 });
 
 // Pins the stated "absent means nullish" decision in bin/cli.js: an explicit
@@ -228,6 +248,25 @@ check('--update preserves a deliberately-set non-default defaultImplementerModel
 
     const after = readConfig(tmp);
     assert.strictEqual(after.defaultImplementerModel, 'opus', 'a deliberately-set non-default value must survive --update untouched');
+  } finally {
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
+check('--update applies migrateDefaultImplementerModel to an old-version "sonnet" config', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'antislop-dim-migrate-'));
+  try {
+    const before = buildBaselineProject(tmp);
+    before.defaultImplementerModel = 'sonnet';
+    before.pluginVersion = '0.31.0';
+    writeConfig(tmp, before);
+
+    const result = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(result.status, 0, `expected exit 0, got ${result.status}: ${result.stdout}${result.stderr}`);
+
+    const frontmatter = frontmatterModel(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'lead-programmer.md'), 'utf8'));
+    const expected = cli.migrateDefaultImplementerModel('sonnet', '0.31.0', cli.IMPLEMENTER_HAIKU_DEFAULT_SINCE, frontmatter) || 'sonnet';
+    assert.strictEqual(readConfig(tmp).defaultImplementerModel, expected);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

@@ -330,12 +330,42 @@ function migrateLegacyPersonaTokens(selection, { logNote } = {}) {
   return [...new Set(selection.flatMap(resolveLegacyToken))];
 }
 
-// Recognised `defaultImplementerModel` tier values — must stay in sync with
-// templates/persona-config.schema.json's `defaultImplementerModel` enum,
-// which (with CONTEXT.md's **Writer tier** entry) is what establishes that
-// only two tiers exist today, so "more capability" resolves unambiguously
-// to 'opus'.
-const IMPLEMENTER_MODEL_TIERS = ['sonnet', 'opus'];
+// Recognised `defaultImplementerModel` tier values, cheapest first — must
+// stay in sync with templates/persona-config.schema.json's
+// `defaultImplementerModel` enum. 'opus' is the most capable, so "more
+// capability" for an unrecognised value still resolves to 'opus'.
+const IMPLEMENTER_MODEL_TIERS = ['haiku', 'sonnet', 'opus'];
+
+// The first plugin version whose packaged agents/lead-programmer.md
+// frontmatter reads `model: haiku` (docs/plans/2026-10-08-haiku-default-tier.md).
+// null disables the migration below; the cutover unit sets it in the same
+// commit as the frontmatter flip.
+const IMPLEMENTER_HAIKU_DEFAULT_SINCE = null;
+
+// A recorded "sonnet" older than IMPLEMENTER_HAIKU_DEFAULT_SINCE is the old
+// shipped default (scaffold or item18-2 backfill) as far as this code can
+// tell, so --update moves it to "haiku" once. Returns the new value, or null
+// for no change.
+function migrateDefaultImplementerModel(value, oldPluginVersion, since, frontmatterDefault) {
+  if (since == null || value !== 'sonnet' || frontmatterDefault !== 'haiku') return null;
+  if (oldPluginVersion && compareSemver(oldPluginVersion, since) >= 0) return null;
+  return 'haiku';
+}
+
+// Applies the migration above to a config in place and prints the Note. Called
+// from runUpdate after the item18-2 backfill; kept at column 0 so the edit that
+// calls it is a single line.
+function applyImplementerModelMigration(config, dryRun) {
+  const migratedImplementerModel = migrateDefaultImplementerModel(
+    config.defaultImplementerModel, config.pluginVersion, IMPLEMENTER_HAIKU_DEFAULT_SINCE, implementerFrontmatterDefault());
+  if (migratedImplementerModel) {
+    config.defaultImplementerModel = migratedImplementerModel;
+    console.log(
+      `Note: persona-config.json defaultImplementerModel "sonnet" predates the haiku default (v${IMPLEMENTER_HAIKU_DEFAULT_SINCE}) ` +
+        `— ${dryRun ? 'would migrate' : 'migrated'} to "haiku". Set it back to "sonnet" by hand to keep the old default.\n`
+    );
+  }
+}
 
 // Resolves persona-config.json's `defaultImplementerModel` field against a
 // frontmatter default, per docs/plans/2026-09-25-item18-default-implementer-
@@ -1280,6 +1310,7 @@ async function runUpdate(args) {
   const backfilledSubs = backfillSubstitutionsFromDisk(config, specs);
   const backfilledHashes = backfillFileHashesFromDisk(config, specs);
   const backfilled = backfilledSubs || backfilledHashes;
+  applyImplementerModelMigration(config, dryRun);
   if (backfilled) {
     console.log(
       'Note: persona-config.json was missing some substitutions/fileHashes entries ' +
@@ -2729,4 +2760,7 @@ module.exports = {
   deepMerge,
   runDashboard,
   resolveDefaultImplementerModel,
+  migrateDefaultImplementerModel,
+  IMPLEMENTER_MODEL_TIERS,
+  IMPLEMENTER_HAIKU_DEFAULT_SINCE,
 };
