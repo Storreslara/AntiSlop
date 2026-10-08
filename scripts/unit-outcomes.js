@@ -98,9 +98,23 @@ function frontmatterModel(repo, agent) {
   } catch (e) { return 'unknown'; }
 }
 
-// Implementer tier by era when no transcript meta exists (ADR-0010, ADR-0026).
+// The haiku-default cutover (ADR-0040), read from the orchestrator's own
+// literal so the two cannot drift; null if the line is absent.
+const HAIKU_CUTOVER = (() => {
+  try {
+    const text = fs.readFileSync(path.join(__dirname, '..', 'agents', 'orchestrator.md'), 'utf8');
+    const m = text.match(/\*\*Haiku-default cutover: (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\.\*\*/);
+    return m ? m[1] : null;
+  } catch (_) {
+    return null;
+  }
+})();
+
+// Implementer tier by era when no transcript meta exists (ADR-0010, ADR-0026, ADR-0040).
+// Only the default tier of the era: a laddered unit's later tiers are not inferred.
 function eraTier(ts) {
   const t = Date.parse(ts);
+  if (HAIKU_CUTOVER && t >= Date.parse(HAIKU_CUTOVER)) return 'haiku';
   return t >= Date.parse('2026-08-02') && t < Date.parse('2026-08-25') ? 'haiku' : 'sonnet';
 }
 

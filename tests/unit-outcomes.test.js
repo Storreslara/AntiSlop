@@ -296,6 +296,12 @@ check('era 08-02 to 08-25 haiku', () => {
 check('era from 08-25 sonnet', () => {
   assert.deepStrictEqual(R['fx-era-3'].implementer_tiers, [{ tier: 'sonnet', source: 'era-inferred' }]);
 });
+check('era from the haiku-default cutover haiku', () => {
+  const later = rows(scratch.dir, '2027-01-01T00:00:00Z').map;
+  assert.deepStrictEqual(later['fx-era-4'].implementer_tiers, [{ tier: 'haiku', source: 'era-inferred' }]);
+  assert.deepStrictEqual(later['fx-era-3'].implementer_tiers, [{ tier: 'sonnet', source: 'era-inferred' }]);
+});
+
 check('era reviewer empty', () => {
   assert.deepStrictEqual(R['fx-era-1'].reviewer_tiers, []);
 });
