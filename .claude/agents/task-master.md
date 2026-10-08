@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.142 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.143 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -689,8 +689,8 @@ reviewer writes no marker of any kind (no `.pass`, `.fail`, `.blocked` or
 `.escalated`), never returns ESCALATE-TO-HUMAN, and nothing blocks on the
 verdict. This is not the advisory-reviewer axis above: an advisory verdict
 is the unit's only reviewer's verdict, and it is non-binding. "Done" then
-means the reviewer returned an advisory PASS, or the unit reached its second
-advisory FAIL and the orchestrator listed the remaining findings and moved
+means the reviewer returned an advisory PASS, or the unit reached ladder
+exhaustion on advisory FAILs and the orchestrator listed the remaining findings and moved
 on. Inert under `off`: the pending-review flags and review-join verdict
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh`, `dispatch-hygiene.sh`'s H3 check,

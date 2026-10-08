@@ -43,8 +43,9 @@ the code) independently runs the checks and returns PASS/FAIL on each
 completed unit; on FAIL, the LEAD routes defects back to the lead-programmer
 (single review owner, same rule as the always-on orchestrator), following the
 shared protocol's "continuing after a FAIL verdict" section, including its
-2-FAIL cap: on a second FAIL for the same unit, stop re-delegating and
-surface the full defect history to the user instead. "Done" is enforced
+2-FAIL cap, which is per implementer tier: a tier's second FAIL moves the unit up
+the orchestrator's Escalation ladder, and only at ladder exhaustion do you stop
+re-delegating and surface the full defect history to the user instead. "Done" is enforced
 mechanically here: when routing a unit to the reviewer, include its exact
 task id — the reviewer creates `.claude/reviewed/<task-id>.pass` via Bash on
 PASS using that id, and the TaskCompleted hook blocks any task named

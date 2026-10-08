@@ -1,4 +1,4 @@
-<!-- antislop v0.31.142 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.143 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -288,8 +288,8 @@ reviewer writes no marker of any kind (no `.pass`, `.fail`, `.blocked` or
 `.escalated`), never returns ESCALATE-TO-HUMAN, and nothing blocks on the
 verdict. This is not the advisory-reviewer axis above: an advisory verdict
 is the unit's only reviewer's verdict, and it is non-binding. "Done" then
-means the reviewer returned an advisory PASS, or the unit reached its second
-advisory FAIL and the orchestrator listed the remaining findings and moved
+means the reviewer returned an advisory PASS, or the unit reached ladder
+exhaustion on advisory FAILs and the orchestrator listed the remaining findings and moved
 on. Inert under `off`: the pending-review flags and review-join verdict
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh`, `dispatch-hygiene.sh`'s H3 check,
@@ -371,8 +371,8 @@ whose first line reads exactly `BLOCKED <task-id> <UTC ISO-8601 timestamp>
 missing: <one-line description>`, followed by specifics: which criterion
 could not be verified, what constraint or doc is missing, and where the
 reviewer looked for it. This marker **never consumes a 2-FAIL-cap slot** —
-the 2-FAIL cap (a unit stops being re-dispatched to `lead-programmer` after
-its second `.fail` record) counts `.fail` records only, unchanged. When the reviewer
+the 2-FAIL cap (two FAILs per implementer tier, after which the unit moves up
+the orchestrator's Escalation ladder, stopping only at ladder exhaustion) counts `.fail` records only, unchanged. When the reviewer
 later resolves the same unit to PASS or FAIL, it deletes the `.blocked`
 marker as part of writing the new one.
 
@@ -524,8 +524,8 @@ to verify; `.escalated` means policy requires *human eyes on critical code*.
 Separate marker files, separate audit-log tokens.
 
 **Cap accounting.** `.escalated` **never** consumes a 2-FAIL-cap slot — the
-2-FAIL cap (a unit stops being re-dispatched to `lead-programmer` after its
-second `.fail` record) counts `.fail` records only, unchanged.
+2-FAIL cap (two FAILs per implementer tier, after which the unit moves up the
+orchestrator's Escalation ladder, stopping only at ladder exhaustion) counts `.fail` records only, unchanged.
 
 **Resolution.** Always resolved by the reviewer, on a later re-dispatch that
 names the unit and points it at the unit's `DECISION` file, into exactly one of
@@ -702,16 +702,19 @@ reviewer's `.claude/reviewed/<task-id>.fail` record (first line exactly `FAIL
 <task-id> <UTC ISO-8601 timestamp>`, then the defect list verbatim) is what
 bridges it for a session with no memory at all.
 
-**Cap at 2 FAILs per unit.** If the same unit FAILs a second time, the
-orchestrator (or team lead) stops re-dispatching `lead-programmer` — it
-surfaces the full defect history across both attempts to the human and asks
-how to proceed, rather than spawning a third fix attempt on its own
-authority. Which choices the human is offered, and what each one does, are
-defined in one place only — the orchestrator's own "At the 2-FAIL cap"
-section — and are pointed at from here rather than restated, so a later
-amendment cannot leave two copies disagreeing. A unit that fails twice
-usually means the plan itself has a gap, not that one more automated pass
-will close it.
+**Cap at 2 FAILs per tier.** Each implementer tier gets two attempts at a
+unit. A unit's second FAIL on one tier hands it, automatically, to the next
+tier of the orchestrator's **Escalation ladder** (the tiers from the default
+tier upward: `haiku`, `sonnet`, `opus`), with the full defect history; no
+human stop happens there. Only the second FAIL on the ladder's top tier,
+ladder exhaustion, stops re-dispatch: the orchestrator (or team lead) then
+surfaces the full defect history to the human and asks how to proceed,
+rather than spawning a further attempt on its own authority. Which choices
+the human is offered, and what each one does, are defined in one place
+only — the orchestrator's own "At the 2-FAIL cap" section — and are pointed
+at from here rather than restated, so a later amendment cannot leave two
+copies disagreeing. A unit that exhausts the ladder usually means the plan
+itself has a gap, not that one more automated pass will close it.
 
 ## A note on `memory`
 If your persona has a `memory` field set, Claude Code auto-grants you Read,

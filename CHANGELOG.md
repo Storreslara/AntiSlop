@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Shared protocol: the 2-FAIL cap is per implementer tier (htd-5, 0.31.143).** `templates/persona-protocol.md`: "Cap at 2 FAILs per tier" — a tier's second FAIL moves the unit up the Escalation ladder; only ladder exhaustion reaches the human. Same wording in `commands/start-feature-team.md`; `agents/spec-master.md` quotes the new label. The codex and cursor ports keep their per-unit cap (no per-dispatch model routing there).
+
 **Escalation ladder: two attempts per implementer tier (htd-3, 0.31.142).** `agents/orchestrator.md`: "Sonnet units escalate on first FAIL" is replaced by the Escalation ladder (the tiers from the default tier upward, two attempts each); a tier's second FAIL moves the unit up automatically and only ladder exhaustion asks the human; the tier is recomputed from the FAIL-block count, and an unreadable count dispatches `opus`. `agents/task-master.md`: `Suggested model: haiku|sonnet|opus`, tagged from the ladder. The default tier is unchanged (`sonnet`).
 
 **haiku is a recognised implementer tier (htd-2, 0.31.141).** `bin/cli.js` `IMPLEMENTER_MODEL_TIERS` and the `defaultImplementerModel` schema enum gain `haiku`; any other unrecognised value still resolves to `opus`. A one-time `--update` migration of a pre-cutover `"sonnet"` to `"haiku"` is added but disabled (`IMPLEMENTER_HAIKU_DEFAULT_SINCE = null`) until the cutover unit.

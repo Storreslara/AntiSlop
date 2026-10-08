@@ -235,7 +235,7 @@ clarify intent is fine.
   like any other step.
 - **Debug spec on 2-FAIL-cap escalation**: produce this artifact only when
   the orchestrator escalates a unit that hit the shared protocol's 2-FAIL
-  cap ("Cap at 2 FAILs per unit") — a focused diagnostic artifact, never a
+  cap ("Cap at 2 FAILs per tier") — a focused diagnostic artifact, never a
   from-scratch replan. Like the `.fail`-record check above, there is only
   ever a single `.fail` record per task-id at
   `.claude/reviewed/<task-id>.fail` (each FAIL verdict appends a new block
