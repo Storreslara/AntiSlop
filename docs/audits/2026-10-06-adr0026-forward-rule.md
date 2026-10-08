@@ -28,4 +28,5 @@ reproduce: bash scripts/spend-accounting.sh --until=2026-10-06T00:00:00Z | jq -r
 Context only: spend-accounting-rate is NOT compared against 32.5% and nothing is subtracted; the letter verdict uses only fail-rate.
 spend-verdict: unverifiable (transcripts before 2026-09-01 are pruned, so spend before and after the reversal cannot be compared)
 failing-command: bash scripts/spend-accounting.sh --until=2026-08-25T00:00:00Z (prints "no usage records found in corpus")
-spirit-ruling: PENDING-HUMAN
+spirit-ruling: not-met
+spirit-ruled-by: user (repo owner), 2026-10-08: "it doesn't, we need more testing and long-term evidence"

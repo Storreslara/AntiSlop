@@ -9,6 +9,8 @@ Note: that file is untracked at the time of writing (`?? docs/research/`); it
 must be committed before Stage 0 dispatch or every citation below dangles in a
 fresh clone (R9).
 
+Superseded in part (2026-10-08): Stage 5 (U5-1..U5-3 and the Draft ADR) is superseded by docs/plans/2026-10-08-haiku-default-tier.md and its ADR (*-implementer-tier-haiku-default.md); Stage 4 (U4-1..U4-3) is parked and not dispatched; gate G4 was overridden by the user on 2026-10-08. Stages 0-3, the exporter, the contract rubric and gate G3's query stay in force.
+
 ## Goal
 
 The user's goal: task-master does all the thinking; lead-programmer and scribe
