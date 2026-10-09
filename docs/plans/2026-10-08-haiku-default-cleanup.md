@@ -818,7 +818,7 @@ none
    stdout: `1 `
    check: prints the distinct per-commit counts of trailer lines over the unit's range, so `1 ` means every commit in the range (the original and each fix-round commit) carries exactly one trailer line, whatever the commit count. Empty stdout (no `(hdc-4)` commit) fails. Amended 2026-10-08, see `## Ruling (2026-10-08): per-commit trailer criteria`.
    mutation: drop one commit's trailer; prints `0 1 ` (or `0 ` for a one-commit unit).
-   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's trailer printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
+   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
 8. run: `git status --porcelain --untracked-files=no | wc -l`
    exit: 0
    stdout: `0`
