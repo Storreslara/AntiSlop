@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Contract-score guard (csg-2, 0.31.147).** `agents/orchestrator.md`: before every dispatch of a unit whose Escalation ladder starts at `haiku`, the orchestrator runs `node bin/contract-guard.js` over the unit's contract of record (the cited `docs/plans/` file, or the issue body piped in). Unless it prints a `contract-guard: haiku ` line, the unit uses the ladder that starts at `sonnet`, the user is told, and a `decision=contract-guard sonnet:` line goes to the rulings ledger. Scribe dispatches that carry a scribe dispatch contract are checked with `--shape=scribe`. `dispatchHygiene.mode` stays `warn`.
+
 **FAIL-cap wording outside the orchestrator (hdc-2, 0.31.146).** `templates/protocol-digest.md` (re-injected on resume and compact): two FAILs per implementer tier, stop only at ladder exhaustion. `commands/start-feature-team.md` names where the team lead reads the Escalation ladder and that it passes the ladder's tier as the teammate spawn's `model` parameter. README's review-gating-off paragraph says ladder exhaustion.
 
 **Escalation ladder edge cases (hdc-1, 0.31.145).** `agents/orchestrator.md`: ladder exhaustion is n reaching or exceeding the ladder's length, so a FAIL after a human-directed re-dispatch still stops; a unit with a FAIL block older than the haiku-default cutover starts its ladder at the more capable of `sonnet` and the default tier, so an `opus`-default project keeps its `opus` ladder; the precedence sentence says a `Suggested model` tag can only raise the ladder tier. `agents/task-master.md`: `haiku` is the default unless the project's `defaultImplementerModel` names another tier.

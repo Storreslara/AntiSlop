@@ -489,6 +489,27 @@ such block uses the ladder that starts at the more capable of `sonnet` and the
 default tier: `sonnet`, `sonnet`, `opus`, `opus` when the default tier is
 `haiku` or `sonnet`, and `opus`, `opus` when it is `opus`.
 
+**Contract-score guard.** When the ladder above starts at `haiku`, run the
+guard before every dispatch of the unit: `node bin/contract-guard.js
+<plan-file> --unit=<task-id>` on the fast path (the `docs/plans/` file the
+dispatch cites), or the retrieval contract's `gh issue view <N>` command with
+`--json body -q .body` piped into `node bin/contract-guard.js - --unit=<task-id>`
+on the standard path. Unless it exits 0 and its first stdout line starts with
+`contract-guard: haiku `, the unit uses the ladder that starts at `sonnet`
+(`sonnet`, `sonnet`, `opus`, `opus`, so ladder exhaustion comes at n = 4): a
+**guard demotion**. A contract held in no file or issue body, a missing script
+and a scorer error all count the same. On a guard demotion, tell the user in
+one line that quotes the guard's line, and append `RULING <UTC ISO-8601
+timestamp> unit=<task-id> decision=contract-guard sonnet: <guard line>` to
+`.claude/orchestrator-rulings.log` (**Rulings ledger** above). Scoring is pure,
+so the guard re-runs on every dispatch and a fresh session computes the same
+ladder from n and the contract; it can only move a unit onto a more capable
+ladder, and a `Suggested model` tag can still raise the tier. It scores the
+unit's contract of record, never a fix contract. A scribe dispatch that
+carries a scribe dispatch contract and would go on `haiku` runs the same check
+with `--shape=scribe`, and goes on `sonnet` when it fails. `dispatchHygiene.mode`
+stays `warn` and scribe stays out of `gatedAgents`.
+
 **Implementer-tier fail ratchet expiry.** A fail record for unit `X` stops
 disqualifying `X` from a cheaper implementer tier once a pass marker for `X`
 exists and is newer than the fail record. Until then it disqualifies
