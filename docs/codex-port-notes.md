@@ -187,3 +187,14 @@ which the orchestrator stops and asks the user. Port the ladder only once the
 model-tier mapping is decided.
 
 The Codex agent files omit `model` (adapters/codex/agents/lead-programmer.toml).
+
+## Escalation ladder (not ported)
+
+The Claude Code orchestrator moves a failing unit up an Escalation ladder of
+implementer tiers (`haiku`, `sonnet`, `opus`), two attempts per tier. This
+port does not: its agents inherit the session's model, so there are no
+implementer tiers to climb. It keeps the older cap of 2 FAILs per unit, after
+which the orchestrator stops and asks the user. Port the ladder only once the
+model-tier mapping is decided.
+
+The Codex agent files omit `model` (adapters/codex/agents/lead-programmer.toml).
