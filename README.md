@@ -37,8 +37,7 @@
 
 A persona-based Claude Code plugin: a thin orchestrator routes each request to
 a specialised agent, an independent reviewer gates every unit of code, and
-hooks enforce what prompts alone can't. Good at not producing slop, heavy on
-tokens, still in development — raise an issue if it misbehaves.
+hooks enforce what prompts alone can't. 
 
 ## Install
 
