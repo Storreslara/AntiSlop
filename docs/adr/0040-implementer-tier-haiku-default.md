@@ -45,6 +45,13 @@ tests it.
    length.
 4. The reviewer-gate ratchet (`hooks/scripts/reviewer-tier.sh`, ADR-0009) is
    unchanged. The exporter, the contract rubric and the audits stay.
+5. Contract-score guard (amendment, csg-3): before every dispatch of a unit
+   whose ladder starts at `haiku`, the orchestrator scores the unit's contract
+   of record with `node bin/contract-guard.js` (rubric v2). Unless every row
+   passes (lead shape: and the contract is not oversize), the unit uses the
+   ladder that starts at `sonnet`. Scoring is pure, so the check re-runs on
+   every dispatch; each demotion appends a `decision=contract-guard sonnet:`
+   line to `.claude/orchestrator-rulings.log`.
 
 ## Forward rule (pre-registered)
 
@@ -52,7 +59,9 @@ tests it.
 `node scripts/unit-outcomes.js` export with `terminal_ts` at or after the
 **Haiku-default cutover** timestamp in `agents/orchestrator.md`, except the
 `htd-` units of the haiku-default programme itself, which were dispatched on
-`sonnet` before the flip and closed after the cutover), all three must hold:
+`sonnet` before the flip and closed after the cutover, and except units with a
+`decision=contract-guard sonnet:` line in `.claude/orchestrator-rulings.log`,
+which the contract-score guard kept off `haiku`), all three must hold:
 
 - fail-rate ≤ 0.35 (units with at least one FAIL block / units)
 - escalation-rate ≤ 0.15 (units with at least two FAIL blocks, i.e. that left
@@ -64,9 +73,14 @@ above 0.30 or two exhausted units ends the trial early with the same
 consequence. From 60 units only the three rates above decide; two exhausted
 units then fail the rule only through the exhaustion-rate.
 
-Audit command (`<F>` the export file, `<T0>` the cutover timestamp):
+Audit command, run from the repository root (`<F>` the export file, `<T0>` the
+cutover timestamp). It reads `.claude/orchestrator-rulings.log`, a per-clone
+file, so it runs in the clone that dispatched the units; a missing log stops it
+rather than counting guard-demoted units. The number of units it leaves out for
+the guard is reported alongside, for information:
+`grep -oE 'unit=[^ ]+ decision=contract-guard sonnet:' .claude/orchestrator-rulings.log | sort -u | wc -l`.
 
-    jq -rs --arg t0 "<T0>" '[.[] | select(.terminal_ts >= $t0 and (.id | startswith("htd-") | not))] as $p | ($p|length) as $n | ($p|map(select(.fail_blocks>=1))|length) as $f1 | ($p|map(select(.fail_blocks>=2))|length) as $f2 | ($p|map(select(.fail_blocks>=6))|length) as $f6 | if $n < 20 then "insufficient" elif $n < 60 then (if ($f2/$n) > 0.30 or $f6 >= 2 then "tripwire" else "insufficient" end) elif ($f1/$n) <= 0.35 and ($f2/$n) <= 0.15 and ($f6/$n) <= 0.02 then "met" else "not-met" end' <F>
+    jq -rs --arg t0 "<T0>" --rawfile r .claude/orchestrator-rulings.log '[$r | scan("(?m)^RULING \\S+ unit=(\\S+) decision=contract-guard sonnet:") | .[0]] as $g | [.[] | select(.terminal_ts >= $t0 and (.id | startswith("htd-") | not) and (.id as $i | $g | index([$i]) | not))] as $p | ($p|length) as $n | ($p|map(select(.fail_blocks>=1))|length) as $f1 | ($p|map(select(.fail_blocks>=2))|length) as $f2 | ($p|map(select(.fail_blocks>=6))|length) as $f6 | if $n < 20 then "insufficient" elif $n < 60 then (if ($f2/$n) > 0.30 or $f6 >= 2 then "tripwire" else "insufficient" end) elif ($f1/$n) <= 0.35 and ($f2/$n) <= 0.15 and ($f6/$n) <= 0.02 then "met" else "not-met" end' <F>
 
 **If the rule prints `not-met` or `tripwire`,** the pre-committed action is to
 restore ADR-0026's `sonnet` default (`model: sonnet` in lead-programmer's
@@ -99,3 +113,7 @@ implementer, and transcripts are pruned after about 30 days.
   early tripwire is bounded to 20-59 units, matching the audit command; the
   forward-rule population excludes the `htd-` units, which ran on `sonnet` and
   closed after the cutover. No threshold changed.
+- 2026-10-08 (csg-3, `docs/plans/2026-10-08-contract-score-guard.md`): Decision
+  item 5 adds the contract-score guard; the forward-rule population also
+  excludes the units the guard kept off `haiku`, which the audit command reads
+  from `.claude/orchestrator-rulings.log`. No threshold changed.
