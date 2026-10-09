@@ -1,29 +1,23 @@
-<!-- antislop v0.31.148 | source: templates/protocol-digest.md | ADAPT-substituted -->
+<!-- antislop v0.31.149 | source: templates/protocol-digest.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/protocol-digest.md by install-antislop,
      version-stamped like persona-protocol.md. Re-injected verbatim by
      session-start.sh's SessionStart hook, ONLY on `source: resume`/`compact`
-     - never `startup`/`clear`. Keep this under ~15 lines - if it grows,
+     - never `startup`/`clear`. Keep the body to at most 15 non-empty lines (tested) - if it grows,
      mechanize the rule (a hook) instead of making the digest longer. -->
 
 # Protocol digest (post-compaction/resume reminder)
 
-- Structural questions (where something's defined, what calls it, blast
-  radius, test coverage): spawn `explorer`. Don't invoke the
-  code-review-graph skill directly.
-- Review ownership: lead-programmer never spawns or messages the reviewer
-  directly, and the reviewer never spawns or messages the lead-programmer.
-  Only the orchestrator/team lead routes between them. "Done" means the
-  reviewer returned PASS, not "looks finished" - and on a critical unit PASS
-  may first route through ESCALATE-TO-HUMAN.
-- FAIL cap: 2 FAILs per implementer tier -> move the unit up the Escalation
-  ladder; only at ladder exhaustion (the top tier's second FAIL) stop
-  re-delegating and surface the full defect history to the user instead.
-- The WIP sentinel (`.claude/wip-handoff.<agent-id>`) is for a genuine
-  mid-task pause only - never to dodge a red suite you could otherwise fix.
-  It must contain a stated reason; an empty sentinel is ignored.
-- A gated agent's stop without review sets `.claude/.pending-review.<id>` -
-  it blocks turn-end and the next implementation dispatch until the reviewer
-  runs (clearing it) or you write `defer: <reason>`/`skip: <reason>` into it.
-- `memory: <scope>` auto-grants Read/Write/Edit for memory files regardless
-  of your declared `tools:` - that is not license to edit source code (or
-  any file outside your role's stated scope) if your role says you never do.
+- Structural questions (definitions, callers, blast radius, coverage): spawn
+  `explorer`; never invoke the code-review-graph skill directly.
+- Only the orchestrator/team lead routes between lead-programmer and reviewer.
+  "Done" = reviewer PASS (a critical unit may first route through
+  ESCALATE-TO-HUMAN).
+- 2 FAILs per implementer tier move the unit up the Escalation ladder; only
+  ladder exhaustion (FAIL count reaching or exceeding the ladder's length)
+  stops re-delegation and surfaces the full defect history to the user.
+- WIP sentinel `.claude/wip-handoff.<agent-id>`: genuine mid-task pause only,
+  with a stated reason (empty is ignored); never to dodge a fixable red suite.
+- `.claude/.pending-review.<id>` blocks turn-end and the next implementation
+  dispatch until the reviewer runs or it holds `defer: <reason>`/`skip: <reason>`.
+- `memory:` auto-grants Read/Write/Edit; that is not license to edit outside
+  your role's stated scope.

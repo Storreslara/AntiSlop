@@ -82,6 +82,14 @@ check('wiki "Slim tier" bullet count matches templates/persona-protocol-slim.md'
   );
 });
 
+check('templates/protocol-digest.md stays within its budget: at most 15 non-empty lines after the header comment', () => {
+  const text = fs.readFileSync(path.join(REPO_ROOT, 'templates', 'protocol-digest.md'), 'utf8');
+  const end = text.indexOf('-->');
+  assert.ok(end >= 0, 'the digest must keep its header comment');
+  const body = text.slice(end + 3).split('\n').filter((l) => l.trim() !== '');
+  assert.ok(body.length <= 15, `digest body has ${body.length} non-empty lines; trim it or mechanize the rule (a hook) instead`);
+});
+
 if (failures) {
   console.log(`\n${failures} protocol-doc-drift check(s) FAILED.`);
   process.exit(1);

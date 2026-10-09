@@ -359,7 +359,7 @@ then route the unit back for re-review as usual. This does **not** count against
 the 2-FAIL cap (which counts `.fail` records only) — a rejection-with-reason
 does, a human-directed correction does not.
 
-**At the 2-FAIL cap**: a tier's second FAIL below the top of the **Escalation ladder** is not a stop: dispatch the ladder's next entry automatically, with the full defect history, and do not ask the human. At **ladder exhaustion** (the second FAIL on the ladder's top tier), stop re-dispatching lead-programmer on this unit. Surface the full
+**At the 2-FAIL cap**: a tier's second FAIL below the top of the **Escalation ladder** is not a stop: dispatch the ladder's next entry automatically, with the full defect history, and do not ask the human. At **ladder exhaustion** (the unit's FAIL-block count reaching or exceeding the ladder's length: normally the second FAIL on the ladder's top tier, or any later FAIL after a human-directed re-dispatch), stop re-dispatching lead-programmer on this unit. Surface the full
 defect history to the user (every FAIL block in the `.fail` record and every fix-attempt commit), then ask the human how to proceed via `AskUserQuestion`. The orchestrator waits for the user's choice before proceeding:
 
 - **(a) Debug spec** — dispatch `spec-master` to produce a focused diagnostic artifact (a root-cause
@@ -503,7 +503,9 @@ one line that quotes the guard's line, and append `RULING <UTC ISO-8601
 timestamp> unit=<task-id> decision=contract-guard sonnet: <guard line>` to
 `.claude/orchestrator-rulings.log` (**Rulings ledger** above). Scoring is pure,
 so the guard re-runs on every dispatch and a fresh session computes the same
-ladder from n and the contract; it can only move a unit onto a more capable
+ladder from n and the contract of record, provided it is unchanged (a plan
+file revised between dispatches can demote a unit that passed earlier, even
+mid-ladder); it can only move a unit onto a more capable
 ladder, and a `Suggested model` tag can still raise the tier. It scores the
 unit's contract of record, never a fix contract. A scribe dispatch that
 carries a scribe dispatch contract and would go on `haiku` runs the same check
