@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.149 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.150 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -198,17 +198,21 @@ blocking edges, labels).
   /usr/bin/grep -cF '<phrase>'`); a single-line `grep` or `sed` cannot match a
   wrapped phrase.
 
-  **Range criteria.** A criterion over a commit range binds its start and
-  end to the unit's own first and last commits, found with `git log
-  --format=%H -E --grep='^[a-z]+\(<unit-id>\): '` (`tail -1`, `head -1`), never
-  `HEAD`; the anchored pattern matches only a subject whose scope is the unit,
-  never a later commit that merely mentions it. That end holds only if every
-  commit of the unit, fix rounds included, carries `(<unit-id>)` as its subject
-  scope, so every `commit-message:` line of a contract or fix contract does,
-  and every range contract adds one untagged-tail criterion, run at review
-  time over the unit's content files (never the version files or `.claude/`):
-  `git log --format=%s <end>..HEAD -- <content files> | grep -vcE
-  '^[a-z]+\(<unit-id>\): '`, `exit: 1`, `stdout: 0`. A red-set criterion over
+  **Range criteria.** A unit's own commits are listed by subject only: `git log
+  --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(<unit-id>\): ' | cut -d' ' -f1`,
+  newest first (`tail -1` is the unit's first commit, `head -1` its last), never
+  `HEAD` and never `git log --grep`, whose `^` also matches a body line of a
+  later commit. In `<unit-id>` write each `.` as `\.`; no other character of the
+  unit-id grammar is special in the pattern. A criterion over a unit's commits
+  iterates that list (`for c in <list>; do … "$c~1..$c"; done`), never a
+  `<first>~1..<last>` span, which also takes in any other unit's commit landed
+  between them. That list is complete only if every commit of the unit, fix
+  rounds included, carries `(<unit-id>)` as its subject scope, so every
+  `commit-message:` line of a contract or fix contract does, and every range
+  contract adds one untagged-tail criterion, run at review time over the unit's
+  content files (never the version files or `.claude/`): `git log --format=%s
+  <end>..HEAD -- <content files> | grep -vcE '^[a-z]+\(<unit-id>\): '`,
+  `exit: 1`, `stdout: 0`. A red-set criterion over
   a test file that runs git uses a `git worktree add --detach` checkout,
   never a `git archive` extract. `version-stamp-check.sh` exits 0 even on
   `violation`: check its stdout. Each `commit-message:` is followed by the
