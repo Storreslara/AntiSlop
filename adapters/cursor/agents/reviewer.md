@@ -78,7 +78,9 @@ with reasons.
 - **On FAIL**: also write a durable `.cursor/reviewed/<task-id>.fail` record
   via Bash - the same named bookkeeping exception as the PASS marker. Append,
   don't truncate: `cat >> .cursor/reviewed/<task-id>.fail <<'EOF'` ... `EOF`,
-  first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by
+  first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`, then a second
+  line `tier: <haiku|sonnet|opus|unknown>` (`unknown` when the dispatch names no
+  implementer tier), followed by
   the same defect list you return in your verdict, verbatim, ending with one
   blank line. Do this exactly once per verdict, or the FAIL count inflates.
 
