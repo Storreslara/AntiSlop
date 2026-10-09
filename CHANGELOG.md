@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Reviewer dispatch names the implementer tier (blf-8, 0.31.153).** `agents/orchestrator.md` (Dispatch hygiene rule 3): a reviewer dispatch's second line is `Implementer tier: <t>`, the `model` the unit's latest implementer dispatch ran on; the reviewer copies it into the `tier:` line of a FAIL block (`unknown` when the line is missing: agent-teams, manual dispatch, the ports). The Escalation ladder text now says a block's `tier:` line is for the human reader and the ladder never reads it. Mirrors refreshed by `node bin/cli.js --update`.
+
 **FAIL blocks name the failed attempt's tier (blf-6, 0.31.152).** `agents/reviewer.md` and `templates/persona-protocol.md` (FAIL record; Continuing after a FAIL): a FAIL block's second line is `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran on, copied from the reviewer dispatch's `Implementer tier:` line (`unknown` when the dispatch has none, until `agents/orchestrator.md` sends it in blf-8). `bin/fail-count.sh` counts header lines only and no hook reads block content, so the Escalation ladder never reads it. Mirrors refreshed by `node bin/cli.js --update`.
 
 **Ladder-exhaustion wording; 0.31.148 entry corrected (blf-3, 0.31.151).** `templates/persona-protocol.md` wraps the ladder-exhaustion sentence on three lines, and it and `templates/protocol-digest.md` say "FAIL-block count" (the count of `FAIL <task-id> ` header lines in the FAIL record) instead of "FAIL count". The 0.31.148 entry is corrected to match the blc-5 contract: `agents/lead-programmer.md` and its Cursor and Codex ports commit every fix with the unit scope, with or without a contract. Mirrors refreshed by `node bin/cli.js --update`.

@@ -112,7 +112,8 @@ record, and never counts against the 2-FAIL cap.
    `.claude/reviewed/<task-id>.pass`. `dispatch-hygiene.sh` reads only that
    first line; elsewhere it's ignored, and quoting one in the body is
    harmless. Grammar: alphanumeric first char, then `A-Za-z0-9._#-`, no `/`,
-   ≤64 chars.
+   ≤64 chars. A reviewer dispatch's second line is `Implementer tier: <t>`: the
+   `model` the unit's latest implementer dispatch ran on.
 4. **No `HELD:` dispatch.** Never dispatch a unit whose issue body's first line starts with `HELD:`. No hook enforces this.
 
 Gate for item 3: `dispatch-hygiene.sh`. Escape hatch:
@@ -474,7 +475,8 @@ length, that is **ladder exhaustion**: dispatch nothing and go to **At the 2-FAI
 cap**. The ladder depends only on n, the default tier and whether any block
 predates the **Haiku-default cutover** below, so a fresh session
 computes the same tier the session that saw the FAIL would have; which tier
-wrote a block is never needed. Fail closed: if n cannot be read (the grep
+wrote a block is never needed (a block's `tier:` line is for the human reader;
+the ladder never reads it). Fail closed: if n cannot be read (the grep
 errors, or the file exists and no line matches), dispatch on `opus`. Every
 re-dispatch carries the prior defect history; with a fix contract
 (**Fix-contract re-dispatch**), it carries the fix contract instead of the
