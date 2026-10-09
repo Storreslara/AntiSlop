@@ -671,7 +671,7 @@ an append-only audit-log record class written to
   (S1-S7) and enforces additional formatting rules (fenced payloads, CRLF normalization, 
   indentation directives, review-packet fills). The scorer is read-only; it is not 
   the responsibility of `scripts/unit-outcomes.js` to verify or adjust scores, only 
-  to record them. See [[unit-outcome export]], [[content-typed contract]].
+  to record them. See [[unit-outcome export]], [[content-typed contract]]. See [[rubric v2]].
 
 **contract self-check**:
 (unit rgh-u3-1, 2026-10-06) — the pre-dispatch verification task task-master runs
@@ -1473,7 +1473,7 @@ the reviewer's `sonnet`/`opus` model is
   member of the Log domain** (see [[5 key domains]]), explicitly distinct from the
   sealed audit-log family (review-audit.log, wip-audit.log, microworld-audit.log,
   dispatch-audit.log). Disambiguate from **ruling** (human operator's decision,
-  see [[ruling / rulings disambiguation]]).
+  see [[ruling / rulings disambiguation]]). Each [[guard demotion]] is recorded here.
 
 **ruling / rulings disambiguation**:
 (unit orch-rulings-wait-heuristic, 2026-09-12) — the term "ruling" appears in two

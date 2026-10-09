@@ -377,6 +377,22 @@ _Avoid_: handoff (names the cutoff handoff), first-FAIL escalation (the ADR-0026
   A lower tier's second FAIL moves the unit up automatically.
 _Avoid_: "the 2-FAIL cap" for this stop alone (the 2-FAIL cap is per tier)
 
+**FAIL-block count**:
+(unit blf-4, 2026-10-09) — the number of `FAIL <task-id> ` header lines in a
+  unit's [[FAIL record]], one per FAIL verdict, as `bin/fail-count.sh` prints it;
+  the count the [[Escalation ladder]] and [[ladder exhaustion]] read. Under
+  review gating off no FAIL record is written and the orchestrator counts
+  advisory FAILs in the session: that is a FAIL count, never a FAIL-block count.
+_Avoid_: FAIL count (when the record is meant)
+
+**fix round** (synonym: **fix turn**):
+(unit blf-4, 2026-10-09) — one re-dispatch of a unit to the implementer after a
+  FAIL verdict, with a fix contract or with the bare defect list, and the commits
+  it lands. Each of its commits carries the unit's scope, and its trailer names
+  the model of its own tier. lead-programmer's **Fix turns** section is the
+  implementer's side of the same round.
+_Avoid_: fix attempt
+
 **default tier**:
 (ADR-0040, unit hdc-5, 2026-10-08) — the implementer tier a unit's
   [[Escalation ladder]] starts from: the project's [[defaultImplementerModel]]
@@ -430,8 +446,31 @@ _Avoid_: contract (alone: a fix contract is a different artifact), dispatch prom
   criteria carry `exit:`, `stdout:` and `mutation:`, no host paths, a
   pre-resolved context with a review-packet template, a Do NOT touch list, and
   `diagnosis: none`); a scribe contract on rows S1-S7. The [[Contract-score
-  guard]] scores under rubric v2 only; v1 stays for older contracts.
+  guard]] scores under rubric v2 only; v1 stays for older contracts. See [[contract score]] for the v1 table.
 _Avoid_: rubric (alone), contract score (the number it yields)
+
+**guard demotion**:
+(unit blf-4, 2026-10-09) — the [[Contract-score guard]] moving a unit to the
+  ladder that starts at `sonnet`: every outcome other than an exit-0
+  `contract-guard: haiku ` line, whether a row failed, the contract is oversize,
+  no contract block was found, or the script or scorer errored. "Fails safe to
+  sonnet" names the error cases only; all of them are guard demotions and each
+  gets a line in the [[Rulings ledger]].
+_Avoid_: escalation (that is FAIL-driven), downgrade
+
+**untagged-tail criterion**:
+(unit blc-5, 2026-10-09) — the criterion every range contract adds, run at review
+  time: no commit after the unit's last commit touches the unit's content files
+  without the unit's scope in its subject. Unrelated to the `untagged` lines of
+  the reviewer note channel (a note line with no NOTE tag).
+_Avoid_: untagged (alone)
+
+**trailer sweep**:
+(unit blc-4, 2026-10-09) — a one-off edit of landed plan contracts that replaced
+  a model-name placeholder in each contract's trailer line with the trailer the
+  unit's first commit carries, measured with `git log`. It changes plan records
+  only and never rewrites a commit.
+_Avoid_: trailer fix
 
 **Suggested model vocabulary**:
 (units item06-3, 2026-09-25) — the canonical allowed-value list for the
