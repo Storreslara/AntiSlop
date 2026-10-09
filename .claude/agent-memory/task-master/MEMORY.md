@@ -17,3 +17,4 @@
 - [Model tag default now sonnet](project_model_tag_default_now_sonnet.md) — ADR-0010 reversed haiku->sonnet; don't copy an old ticket's `haiku` tag as if it were still the live default.
 - [Flip a default: replay units first](feedback_flip_default_run_suites_first.md) — a spec flipping a shipped default can miss a hard-coded copy (cli.js skeleton); replay in a scratch worktree, file HELD.
 - [Persona paragraph edit needs port parity](feedback_persona_paragraph_edit_needs_port_parity.md) — Fix-turns/Contract-precedence edits must hit both lead-programmer ports (AC-A1); missing = spec gap, HELD.
+- [Replay contracts with an applier](feedback_replay_contracts_with_applier.md) — backticks can't sit in `run:`; empty-loop criteria pass vacuously; replay every edit and skip-mutation in a scratch worktree.
