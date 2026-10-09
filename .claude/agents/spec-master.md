@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 120
 ---
-<!-- antislop v0.31.150 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.151 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -614,7 +614,9 @@ bridges it for a session with no memory at all.
 unit. A unit's second FAIL on one tier hands it, automatically, to the next
 tier of the orchestrator's **Escalation ladder** (the tiers from the default
 tier upward: `haiku`, `sonnet`, `opus`), with the full defect history; no
-human stop happens there. Only ladder exhaustion (the unit's FAIL count reaching or exceeding the ladder's length: normally the second FAIL on its top tier) stops re-dispatch: the orchestrator (or team lead) then
+human stop happens there. Only ladder exhaustion (the unit's FAIL-block count
+reaching or exceeding the ladder's length: normally the second FAIL on its top
+tier) stops re-dispatch: the orchestrator (or team lead) then
 surfaces the full defect history to the human and asks how to proceed,
 rather than spawning a further attempt on its own authority. Which choices
 the human is offered, and what each one does, are defined in one place

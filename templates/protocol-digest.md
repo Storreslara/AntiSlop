@@ -12,7 +12,7 @@
   "Done" = reviewer PASS (a critical unit may first route through
   ESCALATE-TO-HUMAN).
 - 2 FAILs per implementer tier move the unit up the Escalation ladder; only
-  ladder exhaustion (FAIL count reaching or exceeding the ladder's length)
+  ladder exhaustion (FAIL-block count reaching or exceeding the ladder's length)
   stops re-delegation and surfaces the full defect history to the user.
 - WIP sentinel `.claude/wip-handoff.<agent-id>`: genuine mid-task pause only,
   with a stated reason (empty is ignored); never to dodge a fixable red suite.

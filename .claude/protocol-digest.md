@@ -1,4 +1,4 @@
-<!-- antislop v0.31.150 | source: templates/protocol-digest.md | ADAPT-substituted -->
+<!-- antislop v0.31.151 | source: templates/protocol-digest.md | ADAPT-substituted -->
 <!-- Copied into the project as .claude/protocol-digest.md by install-antislop,
      version-stamped like persona-protocol.md. Re-injected verbatim by
      session-start.sh's SessionStart hook, ONLY on `source: resume`/`compact`
@@ -13,7 +13,7 @@
   "Done" = reviewer PASS (a critical unit may first route through
   ESCALATE-TO-HUMAN).
 - 2 FAILs per implementer tier move the unit up the Escalation ladder; only
-  ladder exhaustion (FAIL count reaching or exceeding the ladder's length)
+  ladder exhaustion (FAIL-block count reaching or exceeding the ladder's length)
   stops re-delegation and surfaces the full defect history to the user.
 - WIP sentinel `.claude/wip-handoff.<agent-id>`: genuine mid-task pause only,
   with a stated reason (empty is ignored); never to dodge a fixable red suite.
