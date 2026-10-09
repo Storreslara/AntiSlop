@@ -35,250 +35,106 @@
 </pre>
 </td></tr></table>
 
-This is the Claude Code setup I use for work and personal projects. It's
-pretty decent at not generating slop, but it's a token hog. Still very much in
-development — if you hit weird behavior, please raise an issue.
-
-AntiSlop is a persona-based Claude Code system packaged as a reusable plugin.
-Three always-on personas form the core loop — **orchestrator** (routes
-requests), **explorer** (maps the code), and **lead-programmer** (writes it) —
-and the rest are opt-in per project. A new project costs one short setup run.
-
-## Personas
-
-| Persona | Model | Required? | What it does |
-|---|---|---|---|
-| `orchestrator` | inherit | Always | Thin router / main agent. Never implements; routes to the right persona and summarizes. |
-| `explorer` | haiku | Always | Stateless code cartographer: where is X, what calls Y, blast radius of Z. Uses the Code Review Graph. |
-| `lead-programmer` | haiku | Always | Executes an approved plan TDD-first with surgical diffs and small commits. Never grades its own work. |
-| `spec-master` | opus | Opt-in | Turns ambiguous goals into specs with machine-checkable acceptance criteria. Never writes production code. |
-| `task-master` | sonnet | Opt-in | Slices a finalized spec into dispatch-ready issues with per-unit prompts. |
-| `scribe` | haiku | Opt-in | Maintains the wiki, `CONTEXT.md`, and ADRs. Never touches source. |
-| `reviewer` | opus | Opt-in | Independent adversarial verifier — returns PASS/FAIL, can't edit the code. **The core safety property**; skipping it needs explicit confirmation at setup. |
-| `milestone-auditor` | opus | Opt-in | Audits the *plan*, not the code, at milestone boundaries. Findings only — no verdict, no override. |
-| `researcher` | sonnet | Opt-in, project-scoped | Literature search and technique briefs via an arXiv MCP (or WebSearch). Not a plugin agent — plugin agents ignore `mcpServers`. |
-| `agent-auditor` | haiku | Opt-in | Read-only observability over agent activity. Flags anomalies; never gates or fixes. |
-
-The `start-feature-team` command runs the same personas as concurrent
-teammates instead of sequential subagents — off by default.
-
-## Requirements
-
-- **Claude Code ≥ 2.1.248** — a hard pin; no fallback for older versions.
-- **`jq`** — every hook depends on it. Without it, hooks silently no-op.
-- **Node.js / `npx`** — for the `mattpocock/skills` installer, if a selected
-  persona uses one.
-- **`git`**, plus **`gh`** if you pick GitHub Issues as your tracker.
-- **`pipx`** (or `pip`) — only for the optional Code Review Graph MCP.
-
-With a local clone, `bin/install-deps.sh` installs the two conditional
-dependencies idempotently.
+A persona-based Claude Code plugin: a thin orchestrator routes each request to
+a specialised agent, an independent reviewer gates every unit of code, and
+hooks enforce what prompts alone can't. Good at not producing slop, heavy on
+tokens, still in development — raise an issue if it misbehaves.
 
 ## Install
 
-### Claude Code
+Requires Claude Code >= 2.1.248, `jq` (every hook needs it), `git`, and `gh`
+if GitHub Issues is your tracker. Node.js runs `bin/cli.js`; `pipx` is only
+for the optional Code Review Graph MCP (`bin/install-deps.sh` installs it).
 
-Marketplace (recommended):
 ```
 /plugin marketplace add Storreslara/AntiSlop
 /plugin install antislop@antislop-marketplace
-```
-Public repo, no auth needed. Confirm with `/agents` — you should see
-`antislop:explorer`, `antislop:lead-programmer`, etc.
-
-Local-clone alternative:
-```
-claude --plugin-dir /path/to/your/clone
-```
-
-Plugin agents load under namespaced names (`antislop:explorer`); setup copies
-every selected agent into the project's `.claude/agents/`, which are not.
-
-### Codex
-
-```
-git clone https://github.com/Storreslara/AntiSlop.git
-node AntiSlop/bin/cli.js --target=codex
-```
-Run from your project root. Scaffolds `.codex/` with the MVP four personas
-(`orchestrator`, `explorer`, `lead-programmer`, `reviewer`).
-
-### Cursor
-
-```
-git clone https://github.com/Storreslara/AntiSlop.git
-node AntiSlop/bin/cli.js --target=cursor
-```
-Run from your project root. Scaffolds `.cursor/` with the same MVP four.
-
-## First-time setup
-
-Once per project (Claude Code target):
-```
 /antislop:install-antislop
 ```
-It asks which personas the project needs, wires hooks and config, and verifies
-the safety hooks on a throwaway branch (everything reverted afterwards). It
-does not install third-party skills for you — it tells you which to pick and
-asks you to run `npx skills@latest add mattpocock/skills` yourself.
 
-Re-sync after plugin updates with `/antislop:update-antislop` (deterministic,
-near-zero token cost). Full flow: `skills/install-antislop/SKILL.md`.
+`install-antislop` runs once per project: it asks which personas you want,
+writes `.claude/agents/`, `.claude/persona-config.json` and a
+`.claude/settings.json` merge, and verifies the hooks. Confirm with `/agents`.
+A local clone works too: `claude --plugin-dir /path/to/clone`. After a plugin
+upgrade, resync with `/antislop:update-antislop` (deterministic, no LLM cost).
 
-## Using AntiSlop
+Codex and Cursor: `node /path/to/AntiSlop/bin/cli.js --target=codex` (or
+`--target=cursor`) from your project root scaffolds the four core personas.
 
-Just prompt your main session as usual. It runs as `orchestrator`, which
-routes your request to the right persona and reports back — you don't address
-personas by name. If a `reviewer` is installed, expect a PASS/FAIL cycle after
-implementation work before it's reported done.
+## Personas and workflow
 
-### Human review of critical units (`humanReviewMode`)
+Prompt the main session as usual. It runs as the orchestrator, which routes to
+the right persona and reports back; you never address personas by name.
 
-**Defaults to `critical` (on) for a new project** — the plugin ships this
-value when the `humanReviewMode` key is absent; an individual project may set
-it explicitly instead (this repo currently sets it to `off`, per ADR-0024).
-When active, a unit the reviewer would have passed is instead escalated to
-you if it meets the heavy-unit trigger: the reviewer
-snapshots the unit into `.claude/human-review/<task-id>/` (with `PACKET.md`,
-a literate `CHANGES.md`, and worked `EXAMPLES.md` — skipped, with a one-line
-reason recorded on the escalation marker, for pure docs/formatting/comment/
-rename changes with no behavioral surface) and turn-end blocks until you
-decide. The knob is `humanReviewMode` in `.claude/persona-config.json`:
+| Persona | Model | Role |
+|---|---|---|
+| `orchestrator` | inherit | Always on. Main agent; routes, never implements. |
+| `explorer` | haiku | Always on. Structural lookups via the Code Review Graph. |
+| `lead-programmer` | haiku | Always on. Implements a dispatched unit TDD-first. |
+| `reviewer` | opus | Independent PASS/FAIL verdict; cannot edit code. The core safety property. |
+| `spec-master` | opus | Ambiguous goal to spec with machine-checkable criteria. |
+| `task-master` | sonnet | Spec to dispatch-ready units, each with a content-typed contract. |
+| `scribe` | haiku | Wiki, `CONTEXT.md`, ADRs; never touches source. |
+| `milestone-auditor` | opus | Audits the plan, not the code; findings only, no verdict. |
+| `agent-auditor` | haiku | Read-only observability over agent activity (`/antislop:audit-agents`). |
+| `researcher` | sonnet | Literature search via an arXiv MCP; project-scoped, not a plugin agent. |
 
-| Value | Behaviour |
-|---|---|
-| `critical` | **Shipped default when the key is absent.** Escalate only units meeting the heavy-unit trigger (ADR-0004, as amended by ADR-0013). |
-| `all` | Escalate every would-be PASS. |
-| `off` | Never escalate. |
+The first three are mandatory; the rest are chosen at install. Skipping
+`reviewer` removes the only independent check on implementer output and needs
+explicit confirmation.
 
-An absent or unrecognised value resolves to `critical` — it fails toward
-asking you, never toward silently approving. The friction is the feature: this
-is the one place the system is designed to cost you time.
+A unit's path: spec-master writes the spec; task-master slices it into units,
+each with a dispatch contract scored by `node bin/contract-score.js
+--rubric=v2` before handoff; the orchestrator dispatches lead-programmer;
+reviewer returns PASS or FAIL. Implementation starts on `haiku` and climbs an
+escalation ladder (`haiku`, `sonnet`, `opus`, two attempts per tier): a tier's
+second FAIL moves the unit up automatically, and only the second FAIL on
+`opus` stops to ask you (ADR-0040). `/antislop:start-feature-team` runs the
+personas as concurrent teammates instead; off by default.
 
-You record your decision in a `DECISION` file inside the packet: by typing it
-in your terminal, through the dashboard (below), or in the session itself.
-In-session, the orchestrator asks you in chat, then proposes one exact
-heredoc that writes the file, and `human-decision-gate.sh` turns that one
-command into Claude Code's permission prompt (it asks, never allows). The file
-exists only if you approve at that permission prompt. This route works only
-from the main session and only in the `default`, `acceptEdits` and `auto`
-modes (plan mode is read-only, so there is nothing to approve there); anywhere
-else you get the terminal template instead. The premise that the prompt shows
-you the full command was measured by the operator
-(`docs/experiments/2026-10-01-probe-bash-ask.md`, `Ship gate: GREEN`, a third
-run that passed review and supersedes two earlier records): on Claude Code
-2.1.288 (default) and 2.1.289 (acceptEdits, auto), in those three modes, a probe hook answering `ask` (not the real
-gate) on a Bash heredoc rendered a permission dialog showing the full
-multi-line command, declining created no file, and a headless `-p` run was
-denied. It did not exercise the real gate end to end in a live escalation or
-any other Claude Code version (ADR-0039). Evidence limits of the current record (ADR-0039 "Evidence limits"): each dialog block carries a stray " settings.json to update hooks" fragment, and the plan run left a plan file outside the scratch dir, which the record lists under Side effects. "Only from the main session"
-means "no `agent_id`"; whether an agent-teams teammate can also lack one is
-unmeasured (`docs/plans/2026-10-02-escalation-followups.md` R4): the identity
-probe (`docs/experiments/2026-10-03-probe-hook-identity.md`, `Outcome: D`)
-observed no genuine teammate.
+## Configuration
 
-### Review gating off (gateless mode)
+`.claude/persona-config.json`, validated against
+`templates/persona-config.schema.json`:
 
-Set `reviewGating.mode` to `"off"` in `.claude/persona-config.json` (default
-`enforce`; an absent or unrecognised value means `enforce`). The reviewer still
-runs and returns a verdict, but it is advisory: no `.pass`/`.fail`/`.blocked`/
-`.escalated` marker, no human escalation, and ladder exhaustion no longer stops
-for you. Inert: the pending-review flags and review-join verdict check, the
-unit-exclusivity block, `task-gate.sh`, the marker-based H3 check, and
-`human-decision-gate.sh`.
+| Key | Default | Meaning |
+|---|---|---|
+| `testAndLintCommand` | — | Command the stop-gate runs; non-zero exit blocks the turn. |
+| `protectedPaths` | — | Globs that need human approval before Write/Edit. |
+| `gatedAgents` | `["lead-programmer"]` | Personas the stop-gate's test+lint check applies to. |
+| `defaultImplementerModel` | `haiku` | Tier the escalation ladder starts from. |
+| `humanReviewMode` | `critical` | `critical`: heavy units are escalated to you before PASS; `all`: every PASS; `off`: never. |
+| `reviewGating.mode` | `enforce` | `off` makes reviewer verdicts advisory and the review gates inert. Flip with `/antislop:gate off` or `on`. |
 
-Still armed: `protected-paths.sh`, `harness-integrity-gate.sh` and
-config-drift detection, `reviewed-path-gate.sh`, the reviewer-dispatch identity
-and privileged-name guards, and the stop-gate test+lint check.
+`pluginVersion`, `personaSelection`, `substitutions` and `fileHashes` are
+written by install and update; leave them alone. The file is protected: an
+edit prompts for confirmation and shows as config drift until committed. An
+escalated unit lands in `.claude/human-review/<task-id>/`; you resolve it with
+a `DECISION` file from the terminal, the dashboard
+(`node bin/cli.js --dashboard`), or the orchestrator's proposed heredoc at the
+permission prompt (ADR-0004, ADR-0013, ADR-0039).
 
-To flip it, run `/antislop:gate off` (or `on`) in the main session, or edit the
-file by hand (npx-route projects get no plugin commands). The file is
-protected, so the edit raises a human-confirmation prompt. You commit the
-config yourself and start a new session; until then every flip shows as config
-drift. Off mode does not clear existing `.pending-review.*` flags or
-`.review-join.*` stamps; delete stale ones before flipping back to `enforce`.
+## Docs
 
-## Microworld bundles
+- `CONTEXT.md` — domain glossary. `docs/harness-glossary.md` — gates,
+  markers, hooks, dispatch plumbing. `docs/adr/` — decision records.
+- `docs/design.md`, `docs/trust-model.md` — residual risks and trust boundary.
+- `docs/microworld/README.md`, `docs/microworld-dashboard-capabilities.md` —
+  per-unit runnable fixtures and the dashboard.
+- `skills/install-antislop/SKILL.md` — full install flow. `CONTRIBUTING.md` —
+  contributing; for odd behaviour try `/antislop:update-antislop` first.
 
-A **microworld bundle** is a per-unit runnable fixture under
-`microworlds/<unit-slug>/`: a `manifest.json` (`unit`, `watch` globs,
-`description`, `timeoutSeconds`), a `run.sh` (exit 0 = pass — the only
-execution contract), plus `inputs/`, `expected/`, and a one-screen `README.md`.
-`lead-programmer` produces one alongside a unit; `reviewer` runs it.
-
-Bundles are gitignored working-tree scratch — never committed, not part of the
-reviewed diff, and expected to be absent in a fresh clone. A `PostToolUse` hook
-reruns `run.sh` on edits matching `watch` and surfaces failures as feedback,
-never a block. Results are advisory unless a spec step's acceptance criteria
-names the `run.sh` explicitly. More in `docs/microworld/README.md`.
-
-## Microworld dashboard
-
-A browser-based workbench for exploring bundles, invoking their declared
-functions, and resolving escalation decisions:
-
-```
-node bin/cli.js --dashboard
-```
-
-It binds to loopback on an ephemeral port and prints a per-launch token to
-your terminal; every request needs it (`?t=<token>` or `X-Antislop-Token`).
-Writing a DECISION file requires a confirmation code delivered to your
-controlling terminal, so a human must be present at decision time. For CI or
-containers without a terminal, `--dashboard-no-tty` starts a read-only mode.
-The dashboard is never a gate. Route inventory and the trust boundary:
-`docs/microworld-dashboard-capabilities.md`, `docs/trust-model.md`.
-
-## Known limitations
-
-Residual risks, gate edge cases, and accepted trade-offs live in
-[`docs/design.md`](docs/design.md), [`docs/trust-model.md`](docs/trust-model.md),
-and the ADRs under [`docs/adr/`](docs/adr/).
-
-## What ships in the plugin vs. what setup writes per-project
-
-| Ships once (plugin) | Written per-project (setup) |
-|---|---|
-| Persona agents: orchestrator, explorer, lead-programmer (always); the rest (opt-in) | Persona selection + `.claude/persona-config.json` (commands, protected/gated paths, tracker, plugin version stamp) |
-| `coding-discipline` skill + the other vendored skills | The protocol inlined into each `.claude/agents/*.md` body + `.claude/protocol-digest.md` |
-| `install-antislop` skill (fresh install + `--update` fallback) and `bin/cli.js --update` (the normal resync path) | `.claude/settings.json` merge (plugins can't ship settings at all) |
-| 7 hooks (generic scripts reading runtime config) | wiki / `CONTEXT.md` / `docs/adr/` seeding (if `scribe` selected) |
-| `start-feature-team`, `update-antislop` commands | `.claude/constitution.md` (opt-in, never touched by `--update`) |
-
-## Adding your own persona
-
-- Drop a new `.md` file in `.claude/agents/` with a clear `description:` —
-  auto-delegation picks it up.
-- If it writes code, add its name to `gatedAgents` in
-  `.claude/persona-config.json` so the stop-gate checks its work.
-- To route to it by name, add one line to the project's `orchestrator.md`
-  routing table.
-
-## Removing AntiSlop
-
-Delete what setup wrote:
-- `.claude/agents/*.md`, `.claude/protocol-digest.md`,
-  `.claude/persona-config.json`, `.claude/constitution.md` (if created)
-- `.claude/wiki/`, `CONTEXT.md`, `docs/adr/` (if `scribe` was selected)
-- `.claude/settings.json`'s `"agent": "orchestrator"` key, the
-  `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` env entry, and the permissions it added
-- `.claude/reviewed/`, `.claude/wip-handoff.*`, `.claude/.session-baseline.*`,
-  `.claude/wip-audit.log`, `.claude/.pending-review.*`, `.claude/review-audit.log`
-- `/plugin uninstall antislop` for the plugin itself
+Add a persona by dropping a `.md` with a clear `description:` into
+`.claude/agents/` (add it to `gatedAgents` if it writes code). To remove
+AntiSlop, delete what setup wrote under `.claude/` and `docs/adr/`, revert the
+`agent` key and env entry in `.claude/settings.json`, then
+`/plugin uninstall antislop`.
 
 ## Credits
 
-- **[mattpocock/skills](https://github.com/mattpocock/skills)** — 12 skills
-  vendored first-party under `skills/` (MIT; see
-  [`skills/THIRD-PARTY-NOTICES.md`](skills/THIRD-PARTY-NOTICES.md)).
-  `skills/fail-triage` is derived from its `triage` skill.
-- **[code-review-graph](https://github.com/tirth8205/code-review-graph)** — the
-  structural graph MCP `explorer` queries; setup scopes it to `explorer` alone.
-- **[andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)**
-  — the `coding-discipline` skill is adapted from it.
-- **arXiv MCP** — powers `researcher`; not pinned, wired in at setup time.
-
-## Contributing / issues
-
-See `CONTRIBUTING.md`. Version drift between plugin and project is the likely
-root cause of many reports — try `/antislop:update-antislop` first.
+- [mattpocock/skills](https://github.com/mattpocock/skills) — 12 skills vendored
+  under `skills/` (MIT; see `skills/THIRD-PARTY-NOTICES.md`).
+- [code-review-graph](https://github.com/tirth8205/code-review-graph) — the
+  structural graph MCP `explorer` queries.
+- [andrej-karpathy-skills](https://github.com/multica-ai/andrej-karpathy-skills)
+  — `coding-discipline` is adapted from it.
