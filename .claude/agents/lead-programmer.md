@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:handoff, antislop:tdd, antislop:version-stamp-discipline
 maxTurns: 50
 ---
-<!-- antislop v0.31.147 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.31.148 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.
@@ -46,6 +46,9 @@ instructions.
   under a contract re-enables judgment duties. A fix contract carrying
   anything else: STOP and report a spec gap. A defect-list re-dispatch
   without a contract (task-master absent) leaves them in force.
+  Every fix commit's subject carries `(<task-id>)` as its scope, like the
+  unit's first commit, with or without a contract, so the unit's range
+  criteria see it.
   **Commit cadence under a contract**: the contract's `commit-message:` lines
   fix the commit count, overriding the per-step commit cadence in
   **Execution** above.

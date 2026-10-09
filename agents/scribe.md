@@ -104,6 +104,8 @@ hold (an issue that is already closed is not a failed condition: closing it is
 the silent no-op described below). The four close conditions and every
 never-close rule still apply
 on top of the contract.
+Without a contract, every commit of a unit, fix rounds included, carries
+`(<task-id>)` as its subject scope.
 
 When reviewGating.mode is off (review gating off) in
 `.claude/persona-config.json` (only the exact string `off`; anything else

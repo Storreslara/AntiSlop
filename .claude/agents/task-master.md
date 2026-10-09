@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.147 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.148 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -98,7 +98,8 @@ blocking edges, labels).
   block: literal edits, the original criteria plus one criterion per defect,
   `fix-of: <FAIL header timestamp>`, and `diagnosis: none`: task-master does
   the diagnosis itself, from the FAIL block's defect list and its own
-  `explorer` lookups. If it cannot determine the cause, it writes no fix
+  `explorer` lookups. Its `commit-message:` subject carries
+  `(<unit-id>)` as its scope, like the original contract's. If it cannot determine the cause, it writes no fix
   contract and reports a spec gap; the report's first line starts with
   `SPEC-GAP: <unit-id> <what is missing>`. A fix contract never changes the
   tier tag; the ratchet stays.
@@ -197,13 +198,21 @@ blocking edges, labels).
   /usr/bin/grep -cF '<phrase>'`); a single-line `grep` or `sed` cannot match a
   wrapped phrase.
 
-  **Range criteria.** A criterion over a commit range binds its end to the
-  unit's own last commit, `git log --format=%H -F --grep='(<unit-id>)' | head
-  -1`, never `HEAD`. A red-set criterion over a test file that runs git uses a
-  `git worktree add --detach` checkout, never a `git archive` extract.
-  `version-stamp-check.sh` exits 0 even on `violation`: check its stdout. Each
-  `commit-message:` is followed by the exact trailer line the dispatch gives,
-  and a criterion greps it.
+  **Range criteria.** A criterion over a commit range binds its start and
+  end to the unit's own first and last commits, found with `git log
+  --format=%H -E --grep='^[a-z]+\(<unit-id>\): '` (`tail -1`, `head -1`), never
+  `HEAD`; the anchored pattern matches only a subject whose scope is the unit,
+  never a later commit that merely mentions it. That end holds only if every
+  commit of the unit, fix rounds included, carries `(<unit-id>)` as its subject
+  scope, so every `commit-message:` line of a contract or fix contract does,
+  and every range contract adds one untagged-tail criterion, run at review
+  time over the unit's content files (never the version files or `.claude/`):
+  `git log --format=%s <end>..HEAD -- <content files> | grep -vcE
+  '^[a-z]+\(<unit-id>\): '`, `exit: 1`, `stdout: 0`. A red-set criterion over
+  a test file that runs git uses a `git worktree add --detach` checkout,
+  never a `git archive` extract. `version-stamp-check.sh` exits 0 even on
+  `violation`: check its stdout. Each `commit-message:` is followed by the
+  exact trailer line the dispatch gives, and a criterion greps it.
 
   **Version derivation.** The new version is HEAD's plugin.json version, read
   with `node -p "require('./.claude-plugin/plugin.json').version"`, patch +1
