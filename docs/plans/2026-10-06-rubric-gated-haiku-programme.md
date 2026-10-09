@@ -1,6 +1,6 @@
 # Rubric-gated haiku programme: outcome export, contract rubric, replay gate (2026-10-06)
 
-Status: FINAL (standard path, 19 units in 6 stages, including addendum unit U0-4 and follow-up U0-2b; Stage 5 is gated and must
+Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (standard path, 19 units in 6 stages, including addendum unit U0-4 and follow-up U0-2b; Stage 5 is gated and must
 not be sliced until gate G4 opens). Input artifact:
 `docs/research/dream-irs-taskmaster-specmaster.md` (cited by section, not
 repeated; §8.2 census, §8.3 rubric R1-R7 and policies pi-0/pi-1/pi-2, §8.4
@@ -917,3 +917,7 @@ statuses). After U3-2:
 **Implementer-tier ratchet**, **Suggested model vocabulary** (in U5-2 itself,
 because of the AC-D5 coupling). Avoid "dispatch packet" (eval sense,
 harness-glossary:2939) and "haiku-safe".
+
+## Status update (2026-10-09)
+
+Closed. Stages 0-3 are reviewer-PASSed (rgh-u0-1, rgh-u0-2, rgh-u0-2b, rgh-u0-3, rgh-u0-4, rgh-u1-1, rgh-u2-1, rgh-u2-2, rgh-u3-1 .. rgh-u3-4). Stage 4 (U4-1..U4-3) is parked and Stage 5 is superseded, as the 2026-10-08 note under the status line says. No unit of this plan is left to dispatch.

@@ -1,6 +1,6 @@
 # Implementer tier defaults to haiku, with a two-attempts-per-tier escalation ladder (2026-10-08)
 
-Status: FINAL (standard path: 7 units, so task-master slices it; no unit is
+Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (standard path: 7 units, so task-master slices it; no unit is
 gated). Supersedes Stage 5 of `docs/plans/2026-10-06-rubric-gated-haiku-programme.md`
 and parks its Stage 4 (see "Reconciliation with the rubric-gated programme").
 
@@ -1125,3 +1125,7 @@ into issues under `plan/2026-10-08-haiku-default-tier`, tags each unit's
 `Suggested model` (never below the default tier; R1), writes the nine-element
 contracts (scribe shape for U1), and re-derives `<V*>`, `<NNNN>`, `<B>` and
 `<T0>` literals at dispatch per R3 and U4's pre-dispatch derivation.
+
+## Status update (2026-10-09)
+
+Closed. htd-1 .. htd-7 are reviewer-PASSed. Follow-ups: docs/plans/2026-10-08-haiku-default-cleanup.md, docs/plans/2026-10-08-contract-score-guard.md and docs/plans/2026-10-09-backlog-cleanup.md.

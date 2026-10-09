@@ -1,6 +1,6 @@
 # Final cleanup stage after the rubric-gated haiku programme and its hardening (2026-10-07)
 
-Status: FINAL (standard path, 5 units, so task-master slices them). This is the
+Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (standard path, 5 units, so task-master slices them). This is the
 **last** cleanup stage. Findings after it go to the backlog table at the end of
 this plan, not to another stage, unless the user asks for one.
 
@@ -373,3 +373,7 @@ information only the user has.
 ## Scribe update hint
 All glossary work is in fc-5 (P3). Scribe close-outs for fc-1..fc-4 make no
 glossary edits; they record any glossary finding for fc-5 to batch.
+
+## Status update (2026-10-09)
+
+Closed. fc-1 .. fc-5 are reviewer-PASSed. It was not the last cleanup stage after all: docs/plans/2026-10-08-haiku-default-cleanup.md and docs/plans/2026-10-09-backlog-cleanup.md followed at the user's request. Rule P1's `-F --grep` range form is replaced by the anchored form of docs/plans/2026-10-09-backlog-cleanup.md, D3.

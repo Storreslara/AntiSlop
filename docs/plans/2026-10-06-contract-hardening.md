@@ -1,6 +1,6 @@
 # Contract hardening: a stage after Stages 0-3 of the rubric-gated haiku programme (2026-10-06)
 
-Status: FINAL (standard path, 14 units incl. follow-ups H1b, H11, H12 and H13, so task-master slices them). Parent:
+Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (standard path, 14 units incl. follow-ups H1b, H11, H12 and H13, so task-master slices them). Parent:
 `docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (cited by path and not
 restated). Stages 0-3 of the parent are reviewer-PASSed at HEAD 325f51d, version
 0.31.129. **Stages 4-5 and gates G3/G4 of the parent are untouched** by this plan.
@@ -1232,3 +1232,7 @@ on H3 and H5, because its replacement text cites their shipped labels.
 After H2: **review-packet** and **contract self-check** (renamed). After H3:
 **fix contract**, **held unit** / **slice state** (corrected per H10). Avoid
 "ready-for-review packet template", "defect block" and "executor".
+
+## Status update (2026-10-09)
+
+Closed. Every unit is reviewer-PASSed (rgh-h1, rgh-h1b, rgh-h2 .. rgh-h12; H13 ran as rgh-h13a and rgh-h13b). The status line's 'Stages 4-5 and gates G3/G4 of the parent are untouched' was true when written; since 2026-10-08 the parent's Stage 4 is parked and its Stage 5 is superseded by docs/plans/2026-10-08-haiku-default-tier.md.

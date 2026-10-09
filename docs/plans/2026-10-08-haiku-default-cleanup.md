@@ -1,6 +1,6 @@
 # Haiku-default cleanup (2026-10-08)
 
-Status: FINAL (fast path, 5 units, contracts below; follow-up unit hdc-6 added 2026-10-08, see `## Follow-up unit (2026-10-08)`). Follow-up to
+Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (fast path, 5 units, contracts below; follow-up unit hdc-6 added 2026-10-08, see `## Follow-up unit (2026-10-08)`). Follow-up to
 `docs/plans/2026-10-08-haiku-default-tier.md` (htd-1..htd-7, all reviewer-PASSed,
 HEAD 5f91df7, version 0.31.144, umbrella #529). ADR: `docs/adr/0040-implementer-tier-haiku-default.md`.
 
@@ -248,7 +248,7 @@ default tier: `sonnet`, `sonnet`, `opus`, `opus` when the default tier is
 9. command: `git status --porcelain --untracked-files=no -- .claude | wc -l`
    expect: 0
    stdout: `14`
-10. command: `git add agents/orchestrator.md agents/task-master.md .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude && git commit -m "feat(hdc-1): escalation ladder edge cases and tag precedence (0.31.145) (#529)" -m "Co-Authored-By: Claude <your model name> <noreply@anthropic.com>"`
+10. command: `git add agents/orchestrator.md agents/task-master.md .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude && git commit -m "feat(hdc-1): escalation ladder edge cases and tag precedence (0.31.145) (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
    expect: 0
    (write your own model's name in the trailer, e.g. `Claude Haiku 4.5`)
 11. command: `git status --porcelain --untracked-files=no | wc -l`
@@ -420,7 +420,7 @@ that spawns the lead-programmer teammate for the unit's next attempt. "Done" is 
 8. command: `git status --porcelain --untracked-files=no -- .claude | wc -l`
    expect: 0
    stdout: `14`
-9. command: `git add templates/protocol-digest.md commands/start-feature-team.md README.md .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude && git commit -m "feat(hdc-2): digest, team command and README state the per-tier cap (0.31.146) (#529)" -m "Co-Authored-By: Claude <your model name> <noreply@anthropic.com>"`
+9. command: `git add templates/protocol-digest.md commands/start-feature-team.md README.md .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude && git commit -m "feat(hdc-2): digest, team command and README state the per-tier cap (0.31.146) (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
    expect: 0
    (write your own model's name in the trailer)
 10. command: `git status --porcelain --untracked-files=no | wc -l`
@@ -777,7 +777,7 @@ none
 - issue #529 is the umbrella [spec] issue and no per-unit issue exists: close nothing, and never close #529
 - task-id: hdc-4
 - marker first line: "PASS hdc-4 "
-- commit: one commit of the one file, subject `docs(hdc-4): ADR-0040 tripwire bound, htd exclusion, legacy ladder start (#529)`, then a second `-m` argument holding exactly one `Co-Authored-By: Claude <your model name> <noreply@anthropic.com>` line; stage with `git add docs/adr/0040-implementer-tier-haiku-default.md`
+- commit: one commit of the one file, subject `docs(hdc-4): ADR-0040 tripwire bound, htd exclusion, legacy ladder start (#529)`, then a second `-m` argument holding exactly one `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` line; stage with `git add docs/adr/0040-implementer-tier-haiku-default.md`
 - precondition: hdc-1 has landed (`git log --format=%H -F --grep='(hdc-1)' | wc -l` prints `1`) and `git log --format=%H -F --grep='(hdc-4)' | wc -l` prints `0`; every `before:` payload appears verbatim exactly once in the ADR. Anything else: STOP and report.
 
 ## Do NOT touch
@@ -818,7 +818,7 @@ none
    stdout: `1 `
    check: prints the distinct per-commit counts of trailer lines over the unit's range, so `1 ` means every commit in the range (the original and each fix-round commit) carries exactly one trailer line, whatever the commit count. Empty stdout (no `(hdc-4)` commit) fails. Amended 2026-10-08, see `## Ruling (2026-10-08): per-commit trailer criteria`.
    mutation: drop one commit's trailer; prints `0 1 ` (or `0 ` for a one-commit unit).
-   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
+   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's trailer printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
 8. run: `git status --porcelain --untracked-files=no | wc -l`
    exit: 0
    stdout: `0`
@@ -946,7 +946,7 @@ none
 - issue #529 is the umbrella [spec] issue and no per-unit issue exists: close nothing, and never close #529
 - task-id: hdc-5
 - marker first line: "PASS hdc-5 "
-- commit: one commit of the two files (plus one per fix round after a FAIL; amended 2026-10-08, see the Ruling), subject `docs(hdc-5): glossary states default tier, Haiku-default cutover and ladder edge cases (#529)`, then a second `-m` argument holding exactly one `Co-Authored-By: Claude <your model name> <noreply@anthropic.com>` line; stage with `git add CONTEXT.md docs/harness-glossary.md`
+- commit: one commit of the two files (plus one per fix round after a FAIL; amended 2026-10-08, see the Ruling), subject `docs(hdc-5): glossary states default tier, Haiku-default cutover and ladder edge cases (#529)`, then a second `-m` argument holding exactly one `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` line; stage with `git add CONTEXT.md docs/harness-glossary.md`
 - precondition: hdc-1 and hdc-4 have landed (`git log --format=%H -F --grep='(hdc-1)' | wc -l` and the same for `(hdc-4)` each print `1`); `(hdc-5)` prints `0`; every `before:` payload and `insert-after:` line appears verbatim exactly once inside the entry its `heading:` names (the same text may recur in other entries; edit only the named entry). Anything else: STOP and report.
 
 ## Do NOT touch
@@ -986,7 +986,7 @@ none
    stdout: `1 `
    check: prints the distinct per-commit counts of trailer lines over the unit's range, so `1 ` means every commit in the range (the original and each fix-round commit) carries exactly one trailer line, whatever the commit count. Empty stdout (no `(hdc-5)` commit) fails. Amended 2026-10-08, see `## Ruling (2026-10-08): per-commit trailer criteria`.
    mutation: drop one commit's trailer; prints `0 1 ` (or `0 ` for a one-commit unit).
-   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, dropping 789725d's printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
+   proof: spec-master ran this `run:` in a scratch clone at 082ec3c: hdc-5 printed `1 ` (2 commits) and hdc-4 printed `1 ` (1 commit); dropping 082ec3c's trailer printed `0 1 `, dropping b3cdba8's printed `0 1 `, both trailers on one commit and none on the other printed `0 2 `, and over hdc-4's one-commit range (the same `run:` with `(hdc-4)` in place of `(hdc-5)`) dropping 789725d's trailer printed `0 `. The old form (`grep -c` over the whole range) printed `1` with 082ec3c's trailer dropped, so it caught nothing.
 8. run: `git status --porcelain --untracked-files=no | wc -l`
    exit: 0
    stdout: `0`
@@ -1122,3 +1122,7 @@ note: the tag-floor wording mirrors `agents/orchestrator.md` ("never a tier chea
 ## Escalation
 If any item cannot be applied exactly, STOP and report a spec gap. If the glossary tests reject the new text, STOP and report the failing check verbatim; do not reshape the entries.
 ~~~~~
+
+## Status update (2026-10-09)
+
+Closed. hdc-1 .. hdc-6 are reviewer-PASSed; hdc-5 passed after two FAILs, the second a contract defect (see the Ruling). The reviewers' remaining notes are carried by docs/plans/2026-10-09-backlog-cleanup.md. Trailer sweep (blc-4): the hdc-1, hdc-2, hdc-4 and hdc-5 contracts gave a placeholder instead of a model name in their trailer line; each now names the trailer its first commit carries (Claude Haiku 4.5 for all four, measured with git log). hdc-5's fix-round commit 082ec3c carries the Claude Sonnet 5.5 trailer: a fix round's trailer names the model of its own tier. No other docs/plans contract held the placeholder.
