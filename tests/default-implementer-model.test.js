@@ -266,9 +266,8 @@ check('--update applies migrateDefaultImplementerModel to an old-version "sonnet
 
     const frontmatter = frontmatterModel(fs.readFileSync(path.join(REPO_ROOT, 'agents', 'lead-programmer.md'), 'utf8'));
     const expected = cli.migrateDefaultImplementerModel('sonnet', '0.31.0', cli.IMPLEMENTER_HAIKU_DEFAULT_SINCE, frontmatter) || 'sonnet';
-    if (frontmatter === 'haiku') {
-      assert.strictEqual(expected, 'haiku', 'lead-programmer ships model: haiku, so an old-version "sonnet" must migrate; IMPLEMENTER_HAIKU_DEFAULT_SINCE is disabled');
-    }
+    assert.strictEqual(frontmatter, 'haiku', 'agents/lead-programmer.md must ship model: haiku; if the shipped default tier changed on purpose, rewrite this check together with IMPLEMENTER_HAIKU_DEFAULT_SINCE');
+    assert.strictEqual(expected, 'haiku', 'an old-version "sonnet" must migrate to "haiku"; if it does not, IMPLEMENTER_HAIKU_DEFAULT_SINCE is disabled');
     assert.strictEqual(readConfig(tmp).defaultImplementerModel, expected);
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
@@ -287,9 +286,13 @@ check('--update after the haiku migration is a no-op: a second run leaves the co
     const first = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
     assert.strictEqual(first.status, 0, `first --update expected exit 0, got ${first.status}: ${first.stdout}${first.stderr}`);
     const afterFirst = fs.readFileSync(configPath, 'utf8');
+    assert.strictEqual(JSON.parse(afterFirst).defaultImplementerModel, 'haiku', 'the first --update must apply the migration');
 
-    const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    // --force-render skips runUpdate's "already current" early return, so a
+    // change the second run makes to the config is written and seen below.
+    const second = spawnSync('node', [cliPath, '--update', '--force-render'], { cwd: tmp, encoding: 'utf8' });
     assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+    assert.ok(second.stdout.includes('update complete'), `the second --update must run the full render loop, got: ${second.stdout}`);
     assert.strictEqual(fs.readFileSync(configPath, 'utf8'), afterFirst, 'a second --update must leave persona-config.json byte-identical to the first');
     assert.ok(!second.stdout.includes('predates the haiku default'), `a second --update must not print the migration note again, got: ${second.stdout}`);
   } finally {
