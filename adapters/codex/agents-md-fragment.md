@@ -161,6 +161,9 @@ The `.fail` record above is what bridges this for a session with no memory.
 orchestrator stops re-delegating - it surfaces the full defect history across
 both attempts to the user and asks how to proceed, rather than spawning a third
 fix attempt. A unit that fails twice usually means the plan itself has a gap.
+This port keeps the cap per unit, not per implementer tier: its agents inherit
+the session's model, so there are no implementer tiers to climb and the
+Escalation ladder is not ported (see docs/codex-port-notes.md).
 
 ## Fourth verdict: escalate-to-human
 `ESCALATE-TO-HUMAN` is a gate on PASS, never a replacement for FAIL. Precedence:

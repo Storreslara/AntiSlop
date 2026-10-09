@@ -125,6 +125,7 @@ they reach you regardless:
   neither spawns the other. "Done" = reviewer returned PASS.
 - FAIL cap: 2 FAILs on the same unit -> stop re-delegating; surface the full
   defect history to the user instead of a third pass.
+  (Per unit: agents here inherit the session's model, so there are no implementer tiers to climb.)
 - Answer shape: lead with the direct answer, then compact supporting facts;
   never dump raw tool output or whole files.
 - Third verdict: on INSUFFICIENT-CONTEXT the reviewer couldn't verify a
