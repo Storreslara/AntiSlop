@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**FAIL blocks name the failed attempt's tier (blf-6, 0.31.152).** `agents/reviewer.md` and `templates/persona-protocol.md` (FAIL record; Continuing after a FAIL): a FAIL block's second line is `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran on, copied from the reviewer dispatch's `Implementer tier:` line (`unknown` when the dispatch has none, until `agents/orchestrator.md` sends it in blf-8). `bin/fail-count.sh` counts header lines only and no hook reads block content, so the Escalation ladder never reads it. Mirrors refreshed by `node bin/cli.js --update`.
+
 **Ladder-exhaustion wording; 0.31.148 entry corrected (blf-3, 0.31.151).** `templates/persona-protocol.md` wraps the ladder-exhaustion sentence on three lines, and it and `templates/protocol-digest.md` say "FAIL-block count" (the count of `FAIL <task-id> ` header lines in the FAIL record) instead of "FAIL count". The 0.31.148 entry is corrected to match the blc-5 contract: `agents/lead-programmer.md` and its Cursor and Codex ports commit every fix with the unit scope, with or without a contract. Mirrors refreshed by `node bin/cli.js --update`.
 
 **Range criteria list a unit's commits by subject (blf-2, 0.31.150).** `agents/task-master.md` **Range criteria**: a unit's own commits are listed with `git log --format='%H %s'` filtered by the anchored subject pattern, never `git log --grep` (whose `^` also matches a body line of a later commit); each `.` of the unit id is written `\.` in the pattern; a criterion over a unit's commits iterates that list instead of spanning `<first>~1..<last>`, which also takes in any other unit's commit landed between them. Mirrors refreshed by `node bin/cli.js --update`.

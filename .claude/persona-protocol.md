@@ -1,4 +1,4 @@
-<!-- antislop v0.31.151 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.152 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -348,7 +348,9 @@ the flag's existence, never its content.
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
 (both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
-followed by the defect list from the verdict, verbatim. The record
+second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran on,
+copied from the reviewer dispatch's `Implementer tier:` line (the Escalation
+ladder never reads it), followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL count is readable across sessions. This is a
 bookkeeping exception, same as the PASS marker — not a change to the code
@@ -699,7 +701,7 @@ self-contained prompt with the original plan step, a one-line diff summary
 verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
 is for durable conventions, not the live state of an in-progress fix; the
 reviewer's `.claude/reviewed/<task-id>.fail` record (first line exactly `FAIL
-<task-id> <UTC ISO-8601 timestamp>`, then the defect list verbatim) is what
+<task-id> <UTC ISO-8601 timestamp>`, then its `tier:` line and the defect list verbatim) is what
 bridges it for a session with no memory at all.
 
 **Cap at 2 FAILs per tier.** Each implementer tier gets two attempts at a

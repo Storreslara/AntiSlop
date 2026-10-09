@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.151 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.152 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -215,7 +215,10 @@ with reasons.
   template's **appending** form, so a prior FAIL block for this unit is kept,
   not destroyed: `cat >> .claude/reviewed/<task-id>.fail <<'EOF'` … `EOF`. The
   heredoc body's first line must be exactly
-  `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by the same defect list
+  `FAIL <task-id> <UTC ISO-8601 timestamp>`, its second line exactly `tier: <t>`,
+  where `<t>` is the dispatch's `Implementer tier:` value (`haiku`, `sonnet` or
+  `opus`), or `unknown` when the dispatch has no such line, followed by the
+  same defect list
   you return in your verdict, verbatim, and ending with one blank line so
   this block is separated on disk from any earlier one.
   Append **exactly once per verdict** — a retry after an append already known
@@ -781,7 +784,9 @@ the flag's existence, never its content.
 ## FAIL record (durable warning for future spawns)
 On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail`
 (both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
-followed by the defect list from the verdict, verbatim. The record
+second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran on,
+copied from the reviewer dispatch's `Implementer tier:` line (the Escalation
+ladder never reads it), followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL count is readable across sessions. This is a
 bookkeeping exception, same as the PASS marker — not a change to the code

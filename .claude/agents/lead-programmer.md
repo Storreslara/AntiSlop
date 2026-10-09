@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:handoff, antislop:tdd, antislop:version-stamp-discipline
 maxTurns: 50
 ---
-<!-- antislop v0.31.151 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.31.152 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.
@@ -475,7 +475,7 @@ self-contained prompt with the original plan step, a one-line diff summary
 verbatim. Don't rely on `memory: project` alone to bridge this gap — memory
 is for durable conventions, not the live state of an in-progress fix; the
 reviewer's `.claude/reviewed/<task-id>.fail` record (first line exactly `FAIL
-<task-id> <UTC ISO-8601 timestamp>`, then the defect list verbatim) is what
+<task-id> <UTC ISO-8601 timestamp>`, then its `tier:` line and the defect list verbatim) is what
 bridges it for a session with no memory at all.
 
 **Cap at 2 FAILs per tier.** Each implementer tier gets two attempts at a

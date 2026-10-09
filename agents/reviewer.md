@@ -214,7 +214,10 @@ with reasons.
   template's **appending** form, so a prior FAIL block for this unit is kept,
   not destroyed: `cat >> .claude/reviewed/<task-id>.fail <<'EOF'` … `EOF`. The
   heredoc body's first line must be exactly
-  `FAIL <task-id> <UTC ISO-8601 timestamp>`, followed by the same defect list
+  `FAIL <task-id> <UTC ISO-8601 timestamp>`, its second line exactly `tier: <t>`,
+  where `<t>` is the dispatch's `Implementer tier:` value (`haiku`, `sonnet` or
+  `opus`), or `unknown` when the dispatch has no such line, followed by the
+  same defect list
   you return in your verdict, verbatim, and ending with one blank line so
   this block is separated on disk from any earlier one.
   Append **exactly once per verdict** — a retry after an append already known
