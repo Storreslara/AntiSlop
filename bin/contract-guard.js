@@ -6,6 +6,13 @@
 // matching contract block scores every row true under --rubric=v2 (lead shape: and not sizeOver).
 // Exit 0 with a decision, exit 2 on a usage or read error; the orchestrator treats any output
 // other than a `contract-guard: haiku ` line, and any non-zero exit, as `sonnet`.
+//
+// Any argument other than one <path|-> and the --unit=<id> / --shape=<lead|scribe> flags is a usage
+// error (exit 2, empty stdout), for example `--shape scribe` written with a space.
+//
+// A fenced block opens on a run of three or more backticks or tildes and closes only on a line that
+// holds exactly the same run. A longer closing fence therefore leaves the block open, it is never
+// returned, and the unit falls to `reason=no-contract`, which fails safe to sonnet.
 
 const fs = require('fs');
 const path = require('path');
@@ -62,7 +69,9 @@ function main() {
   };
   const id = opt('unit');
   const shape = opt('shape') || 'lead';
-  const file = args.find((a) => !a.startsWith('--') || a === '-');
+  const rest = args.filter((a) => !/^--(unit|shape)=/.test(a));
+  if (rest.length > 1) usage(`unexpected argument(s): ${rest.slice(1).join(' ')}`);
+  const file = rest[0];
   if (!id || !UNIT_ID.test(id)) usage('bad or missing --unit');
   if (!Object.hasOwn(SHAPE_HEADING, shape)) usage('bad --shape');
   if (!file) usage('missing <path|->');

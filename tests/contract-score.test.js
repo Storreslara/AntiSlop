@@ -294,8 +294,23 @@ check('guard-usage', () => {
   }
 });
 
+check('guard-usage-extra-args', () => {
+  for (const args of [['-', '--unit=demo-2', '--shape', 'scribe'], ['-', '--unit=demo-2', '--bogus'], ['-', 'extra', '--unit=demo-2']]) {
+    const r = guard(args, G_LEAD);
+    assert.strictEqual(r.status, 2, `${args.join(' ')}: exit ${r.status}`);
+    assert.strictEqual(r.stdout, '', `${args.join(' ')}: stdout ${r.stdout}`);
+  }
+});
+
+check('guard-longer-closing-fence-leaves-block-open', () => {
+  const doc = `~~~~~markdown\n${G_LEAD.trimEnd()}\n~~~~~~\n`;
+  const line = gLine(guard(['-', '--unit=demo-2'], doc));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead reason=no-contract');
+});
+
 check('guard-plan-files', () => {
-  const plan = 'docs/plans/2026-10-08-haiku-default-cleanup.md';
+  // A fixture copy of the hdc-1 and hdc-6 contracts (the plans directory is export-ignored, so a git archive lacks the live plan).
+  const plan = `${FIX}/guard-plan-hdc.md`;
   assert.strictEqual(gLine(guard([plan, '--unit=hdc-1'])), 'contract-guard: haiku unit=hdc-1 shape=lead score=7/7');
   assert.strictEqual(gLine(guard([plan, '--unit=hdc-6', '--shape=scribe'])), 'contract-guard: sonnet unit=hdc-6 shape=scribe score=6/7 failed=S7');
 });
