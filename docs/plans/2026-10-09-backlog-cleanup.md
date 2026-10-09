@@ -494,7 +494,9 @@ Acceptance criteria:
 ### Step 5 (blc-5): unit commits carry their scope; anchored range pattern (item 3)
 
 Affected files: `agents/task-master.md`, `agents/lead-programmer.md`,
-`agents/scribe.md`; plus `.claude-plugin/plugin.json` and `package.json`
+`adapters/cursor/agents/lead-programmer.md`,
+`adapters/codex/agents/lead-programmer.toml` (hand-maintained ports; added by
+ruling H-BLC5), `agents/scribe.md`; plus `.claude-plugin/plugin.json` and `package.json`
 (0.31.148), `CHANGELOG.md`, and the `.claude/` mirrors via `node bin/cli.js
 --update` (staged with `git add -u -- .claude`), all in one commit (P3).
 
@@ -518,7 +520,12 @@ Affected files: `agents/task-master.md`, `agents/lead-programmer.md`,
   re-dispatch without a contract (task-master absent) leaves them in force."
   add "Every fix commit's subject carries `(<task-id>)` as its scope, like the
   unit's first commit, with or without a contract, so the unit's range
-  criteria see it."
+  criteria see it." The same sentence goes, at the same anchor, into
+  `adapters/cursor/agents/lead-programmer.md` and
+  `adapters/codex/agents/lead-programmer.toml`: the Fix-turns sentence sits
+  inside the **Contract precedence** bullet, which
+  `tests/writer-tier-consistency.test.js` AC-A1 requires to read identically in
+  `agents/lead-programmer.md` and both ports (ruling H-BLC5).
 - 5.4 `agents/scribe.md`, after `on top of the contract.` (end of the
   **Contract-only doc edits** paragraph) add the sentence "Without a contract,
   every commit of a unit, fix rounds included, carries `(<task-id>)` as its
@@ -530,8 +537,9 @@ Acceptance criteria:
 - AC5.2 run: `grep -cF -- "-F --grep='(<unit-id>)'" agents/task-master.md`; exit 1; stdout `0`; mutation: skip 5.1, prints `1`, exit 0.
 - AC5.3 run: `tr '\n' ' ' < agents/task-master.md | tr -s ' ' | grep -oF 'as its scope, like the original contract' | wc -l`; exit 0; stdout `1`; mutation: skip 5.2, prints `0`.
 - AC5.4 run: `for f in agents/lead-programmer.md agents/scribe.md; do tr '\n' ' ' < "$f" | tr -s ' ' | grep -oE "Every fix commit's subject carries|fix rounds included, carries" | wc -l; done | tr '\n' ' '`; exit 0; stdout `1 1 `; mutation: skip 5.3 or 5.4, its position prints `0`.
-- AC5.5 run: `node tests/writer-tier-consistency.test.js > /dev/null 2>&1; echo exit=$?`; exit 0; stdout `exit=0` (AC-P2/AC-P3 pins kept); mutation: drop `- **Contract precedence.**` from lead-programmer.md, prints `exit=1`.
+- AC5.5 run: `node tests/writer-tier-consistency.test.js > /dev/null 2>&1; echo exit=$?`; exit 0; stdout `exit=0` (AC-P2/AC-P3 pins and AC-A1 port parity kept); mutation: drop `- **Contract precedence.**` from lead-programmer.md, prints `exit=1`; skip the Cursor-port half of 5.3, prints `exit=1` (AC-A1).
 - AC5.6 run: `for f in .claude/agents/task-master.md .claude/agents/scribe.md .claude/agents/lead-programmer.md; do tr '\n' ' ' < "$f" | tr -s ' ' | grep -oE "fix rounds included, carries|Every fix commit's subject carries" | wc -l; done | tr '\n' ' '`; exit 0; stdout `1 1 1 `; mutation: skip `--update`, prints `0 0 0 `.
+- AC5.7 run: `for f in adapters/cursor/agents/lead-programmer.md adapters/codex/agents/lead-programmer.toml; do tr '\n' ' ' < "$f" | tr -s ' ' | grep -oF "Every fix commit's subject carries" | wc -l; done | tr '\n' ' '`; exit 0; stdout `1 1 `; mutation: skip either port half of 5.3, its position prints `0` (and AC5.5 fails on AC-A1). Added by ruling H-BLC5.
 - S1-S10 (S7-S10 with 0.31.148; S9 `14`, see Step 6).
 
 ### Step 6 (blc-6): digest within budget; one definition of ladder exhaustion (items 4, 5)
@@ -552,7 +560,7 @@ check('templates/protocol-digest.md stays within its budget: at most 15 non-empt
   assert.ok(body.length <= 15, `digest body has ${body.length} non-empty lines; trim it or mechanize the rule (a hook) instead`);
 });
 ```
-- 6.2 `templates/protocol-digest.md`: header line 4 "Keep this under ~15 lines - if it grows," becomes "Keep the body under 15 non-empty lines (tested) - if it grows,"; everything after the header comment becomes exactly
+- 6.2 `templates/protocol-digest.md`: header line 4 "Keep this under ~15 lines - if it grows," becomes "Keep the body to at most 15 non-empty lines (tested) - if it grows," (at most, not under: the test allows 15 and the new body has exactly 15); everything after the header comment becomes exactly
 ```
 
 # Protocol digest (post-compaction/resume reminder)
@@ -743,8 +751,8 @@ Every unit is tagged `Suggested model: haiku`: no `blc-*.fail` record exists, an
 | blc-2 | lead-programmer | haiku | none | lead |
 | blc-3 | lead-programmer | haiku | none | lead |
 | blc-4 | lead-programmer | haiku | none | lead |
-| blc-5 | lead-programmer | haiku | csg-2 (PASS recorded); HELD until ruling H-BLC5 | lead, stamped 0.31.148 |
-| blc-6 | lead-programmer | haiku | blc-5 (PASS), csg-2 (PASS recorded); HELD with blc-5 | lead, stamped 0.31.149 |
+| blc-5 | lead-programmer | haiku | csg-2 (PASS recorded) | lead, stamped 0.31.148 |
+| blc-6 | lead-programmer | haiku | blc-5 (PASS), csg-2 (PASS recorded) | lead, stamped 0.31.149 |
 | blc-7 | scribe | haiku | csg-4 (PASS recorded) | scribe |
 | blc-8 | lead-programmer | haiku | none | lead |
 | blc-h1, blc-h2, blc-h3 | human-only | n/a | none (outside the blc-5 to blc-6 window, R2) | none |
@@ -762,19 +770,19 @@ Intersection table (shared files are content files that two units edit; the bump
 | blc-7 | none | none (csg-4 PASSed) |
 | blc-8 | none | none |
 
-blc-6 is the only unit that edits `agents/orchestrator.md` (the At the 2-FAIL cap line and the Contract-score guard caveat), so it is the only orchestrator.md unit and is already serialized after blc-5. **Dispatchable in parallel now: blc-1, blc-2, blc-3, blc-4, blc-7 and blc-8** (mutually file-disjoint; none runs `node bin/cli.js --update`). blc-5 and then blc-6 are HELD (see Slice state); once released they run serially and alone (R2).
+blc-6 is the only unit that edits `agents/orchestrator.md` (the At the 2-FAIL cap line and the Contract-score guard caveat), so it is the only orchestrator.md unit and is already serialized after blc-5. **Dispatchable in parallel now: blc-1, blc-2, blc-3, blc-4, blc-7 and blc-8** (mutually file-disjoint; none runs `node bin/cli.js --update`). blc-5 is dispatchable too (H-BLC5 ruled) and blc-6 waits for blc-5 PASS (see Slice state); they run serially and alone (R2).
 
 ## Slice state
 
 | unit | state | reason |
 |---|---|---|
 | blc-1, blc-2, blc-3, blc-4 | dispatchable | none |
-| blc-5 | **held** | SPEC-GAP H-BLC5: Step 5's file list omits `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml`, so AC5.5 (`node tests/writer-tier-consistency.test.js` exits 0) cannot pass: its AC-A1 pins the Contract precedence paragraph identical across `agents/lead-programmer.md` and both ports |
-| blc-6 | **held** | depends on blc-5 (serial stamped edit; blc-6 starts at 0.31.148) |
+| blc-5 | dispatchable | none (H-BLC5 ruled) |
+| blc-6 | waiting | dispatch after blc-5 PASS (serial stamped edit) |
 | blc-7, blc-8 | dispatchable | none |
 | blc-h1, blc-h2, blc-h3 | human-only (not sliced) | reports for the hook owner; Open Questions 1 and 2 stay open |
 
-Two units are held on one spec gap; every other unit is dispatchable. The held contracts below are complete and score 7/7: they already carry the two port edits as the scratch fix that made AC5.5 pass (blc-5 edits 4 and 5), so the release is only the ruling. Slicing notes for spec-master (the spec text above is untouched):
+No unit is held (H-BLC5 ruled 2026-10-09): blc-5 is dispatchable and blc-6 waits for blc-5 PASS. The contracts below are complete and score 7/7: they already carry the two port edits as the scratch fix that made AC5.5 pass (blc-5 edits 4 and 5). Slicing notes for spec-master (the spec text above is untouched):
 
 1. Reviewer notes folded in (requested at slicing time). (a) `bin/contract-guard.js` exit 2 on extra arguments or unknown flags, the header note that a longer closing fence leaves a block open, and the `guard-plan-files` check reading a fixture copy: new unit **blc-8** (no existing unit touches those files). (b) The Contract-score guard caveat that "scoring is pure" assumes an unchanged contract of record, and a pin test for the guard paragraph: folded into **blc-6** as edits 8 and 9 (blc-6 already edits `agents/orchestrator.md`; the pin lives in `tests/writer-tier-consistency.test.js`). (c) Glossary: **contract of record** and **rubric v2** entries, and the **Rulings ledger** link, folded into **blc-7** as items 2-6 (the **Rulings ledger** entry already exists in `docs/harness-glossary.md`, so a `[[Rulings ledger]]` link in CONTEXT.md resolves; no duplicate entry is added).
 2. **Spec gap H-BLC5 (blocks blc-5 and blc-6).** Step 5 omits two files. Replaying blc-5 in a scratch worktree of 5720c5b, `tests/writer-tier-consistency.test.js` AC-A1 (the Contract precedence paragraph must read the same in `agents/lead-programmer.md` and both ports) failed with only the files Step 5 lists; it passed once `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml` got the same Fix-turns sentence. Ruling needed from spec-master: add those two files to Step 5 (affected files, edit 5.3, AC5.4) or rule otherwise. The plan's AC5.5 only cites AC-P2/AC-P3. Release: spec-master adds a line starting `- H-BLC5:` under `## Rulings` below; task-master then deletes the `HELD:` line of blc-5 and blc-6 (it never re-files a unit).
@@ -784,7 +792,9 @@ Two units are held on one spec gap; every other unit is dispatchable. The held c
 
 ## Rulings
 
-(spec-master adds one line per resolved gap, starting `- <ruling-id>:`. None yet.)
+(spec-master adds one line per resolved gap, starting `- <ruling-id>:`.)
+
+- H-BLC5: (2026-10-09, spec-master) Amend, not overrule. Step 5 now lists `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml`; edit 5.3 puts the same Fix-turns sentence into both ports; AC5.5's mutation names AC-A1 and the new AC5.7 checks both ports. Verified at HEAD accec4c: the sentence's anchor (`without a contract (task-master absent) leaves them in force.`) sits inside the Contract precedence bullet in all three files (agents/lead-programmer.md:47, cursor port :51, codex port :52), and `tests/writer-tier-consistency.test.js:180` (AC-A1) requires that bullet to be identical across them, so the omission was a spec defect, not a contract overreach. The blc-5 contract of record (edits 4 and 5, Affected files, criteria 7, 10 and 11, commit `git add` list) already matches the amended Step 5 and is unchanged; blc-6's Do NOT touch now names the two ports (blc-5's files). The Step 6 wording gap is fixed in the same pass: edit 6.2 now reads "at most 15", matching blc-6 edit 3. blc-5 and blc-6 are released: task-master deletes both `HELD:` lines and flips their Slice state and Dispatch table rows; the only contract text this ruling changed is the one added blc-6 Do NOT touch line, and that edit is already made.
 
 ## Unit blc-1
 
@@ -1417,8 +1427,6 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 
 ## Unit blc-5
 
-HELD: SPEC-GAP H-BLC5 - Step 5's file list omits `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml`; with only the listed files, AC5.5 fails on writer-tier-consistency AC-A1. Do not dispatch while this line stands (ruling needed from spec-master; this contract already carries the port edits as edits 4 and 5).
-
 ~~~~~~~markdown
 Unit: blc-5
 
@@ -1679,8 +1687,6 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 
 ## Unit blc-6
 
-HELD: depends on blc-5 (SPEC-GAP H-BLC5). Do not dispatch while this line stands.
-
 ~~~~~~~markdown
 Unit: blc-6
 
@@ -1877,6 +1883,7 @@ check('AC-P4: orchestrator.md keeps the Contract-score guard paragraph and its u
 - `CONTEXT.md` and `docs/harness-glossary.md` (unit blc-7; scribe owns them)
 - `docs/adr/0040-implementer-tier-haiku-default.md`
 - `agents/task-master.md`, `agents/lead-programmer.md`, `agents/scribe.md` (unit blc-5)
+- `adapters/cursor/agents/lead-programmer.md`, `adapters/codex/agents/lead-programmer.toml` (unit blc-5, ruling H-BLC5)
 - `.claude/` (mirrors are regenerated only by `node bin/cli.js --update`)
 
 ## Acceptance criteria
