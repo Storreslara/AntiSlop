@@ -404,15 +404,34 @@ _Avoid_: cutover unit (the commit that set it), flip commit
 **Contract-score guard**:
 (ADR-0040 amendment, unit csg-4, 2026-10-08) — the check the orchestrator runs
   before every dispatch of a unit whose [[Escalation ladder]] would start at
-  `haiku`: the unit's contract of record (its `Unit:` contract block in the
+  `haiku`: the unit's [[contract of record]] (its `Unit:` contract block in the
   plan file or issue body the dispatch cites, never a fix contract) is scored
-  under rubric v2, and unless every row passes (and, for a lead-programmer
+  under [[rubric v2]], and unless every row passes (and, for a lead-programmer
   contract, it is not oversize) the unit starts its ladder at `sonnet`
   instead. That move is a guard demotion. Scoring is pure, so the guard
   re-runs on every dispatch instead of being remembered; each guard demotion
-  is recorded in the orchestrator's Rulings ledger, and ADR-0040's forward rule
+  is recorded in the orchestrator's [[Rulings ledger]], and ADR-0040's forward rule
   leaves those units out of its population because they never ran on `haiku`.
 _Avoid_: escalation (that is FAIL-driven), haiku gate
+
+**contract of record**:
+(unit blc-7, 2026-10-09) — the one contract block the [[Contract-score guard]]
+  scores for a unit: its `Unit: <id>` dispatch contract in the plan file or
+  issue body the dispatch cites, never a fix contract. Because the guard
+  re-runs on every dispatch, a revision of that plan file between two
+  dispatches replaces the contract of record, and the next run can score a
+  different block than the one before it did.
+_Avoid_: contract (alone: a fix contract is a different artifact), dispatch prompt
+
+**rubric v2**:
+(unit blc-7, 2026-10-09) — the second scoring table of `bin/contract-score.js`,
+  selected with `--rubric=v2`. A lead-programmer contract is scored on rows
+  R1-R7 (ordered edits carry literal payloads, version-stamp obligations,
+  criteria carry `exit:`, `stdout:` and `mutation:`, no host paths, a
+  pre-resolved context with a review-packet template, a Do NOT touch list, and
+  `diagnosis: none`); a scribe contract on rows S1-S7. The [[Contract-score
+  guard]] scores under rubric v2 only; v1 stays for older contracts.
+_Avoid_: rubric (alone), contract score (the number it yields)
 
 **Suggested model vocabulary**:
 (units item06-3, 2026-09-25) — the canonical allowed-value list for the
@@ -427,7 +446,7 @@ _Avoid_: escalation (that is FAIL-driven), haiku gate
 **defaultImplementerModel**:
 (unit item18, 2026-09-25) — a persona-config field (`defaultImplementerModel: "haiku"|"sonnet"|"opus"`) 
   that sets the lead-programmer's model tier for a dispatch, subject to a fixed 
-  precedence order: (1) explicit per-dispatch `Suggested model:` tag (if present), 
+  precedence order: (1) explicit per-dispatch `Suggested model:` tag (if present), which can only raise a unit's tier above its ladder's entry, never lower it (see [[default tier]]), 
   (2) `defaultImplementerModel` config value (if present and recognized), (3) 
   persona frontmatter default (from the persona file's `model:` key). Absent or 
   unrecognized values in position (2) escalate to `opus` (higher capability), 
