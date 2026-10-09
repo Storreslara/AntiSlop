@@ -385,7 +385,8 @@ _Avoid_: "the 2-FAIL cap" for this stop alone (the 2-FAIL cap is per tier)
   model` tag can raise a unit's tier above its ladder's entry, never below
   that entry (the default tier, or for a unit with a FAIL block older than
   the [[Haiku-default cutover]], the more capable of `sonnet` and the default
-  tier).
+  tier, or `sonnet` for a unit the [[Contract-score guard]] keeps off
+  `haiku`).
 _Avoid_: base tier, starting model
 
 **Haiku-default cutover**:
@@ -396,8 +397,22 @@ _Avoid_: base tier, starting model
   the more capable of `sonnet` and its default tier. The [[unit-outcome export]]
   reads the same timestamp to infer the `haiku` era, and ADR-0040's forward
   rule counts units whose [[terminal event]] falls at or after it, except
-  the `htd-` units of the haiku-default programme itself.
+  the `htd-` units of the haiku-default programme itself and the units the
+  [[Contract-score guard]] kept off `haiku`.
 _Avoid_: cutover unit (the commit that set it), flip commit
+
+**Contract-score guard**:
+(ADR-0040 amendment, unit csg-4, 2026-10-08) — the check the orchestrator runs
+  before every dispatch of a unit whose [[Escalation ladder]] would start at
+  `haiku`: the unit's contract of record (its `Unit:` contract block in the
+  plan file or issue body the dispatch cites, never a fix contract) is scored
+  under rubric v2, and unless every row passes (and, for a lead-programmer
+  contract, it is not oversize) the unit starts its ladder at `sonnet`
+  instead. That move is a guard demotion. Scoring is pure, so the guard
+  re-runs on every dispatch instead of being remembered; each guard demotion
+  is recorded in the orchestrator's Rulings ledger, and ADR-0040's forward rule
+  leaves those units out of its population because they never ran on `haiku`.
+_Avoid_: escalation (that is FAIL-driven), haiku gate
 
 **Suggested model vocabulary**:
 (units item06-3, 2026-09-25) — the canonical allowed-value list for the
