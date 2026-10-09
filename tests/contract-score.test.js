@@ -217,5 +217,88 @@ check('unknown rubric exits 2', () => {
   assert.strictEqual(run([`${FIX}/all-pass.md`, '--rubric=v3']).status, 2);
 });
 
+// --- Contract-score guard (csg-1): bin/contract-guard.js ---
+
+function guard(args, input) {
+  return spawnSync('node', ['bin/contract-guard.js', ...args], { cwd: REPO_ROOT, encoding: 'utf8', input });
+}
+
+const G_LEAD = fs.readFileSync(path.join(REPO_ROOT, FIX, 'v2-all-pass.md'), 'utf8');
+const G_SCRIBE = fs.readFileSync(path.join(REPO_ROOT, FIX, 'v2-scribe-all-pass.md'), 'utf8');
+const G_MINUS = fs.readFileSync(path.join(REPO_ROOT, FIX, 'v2-minus-R5-packet.md'), 'utf8');
+const gWrap = (text) => `## Unit x\n\n~~~~~markdown\n${text.trimEnd()}\n~~~~~\n\n`;
+const gLine = (r) => {
+  assert.strictEqual(r.status, 0, `exit ${r.status}: ${r.stderr}`);
+  const lines = r.stdout.split('\n').filter(Boolean);
+  assert.strictEqual(lines.length, 1, 'expected exactly one output line');
+  return lines[0];
+};
+
+check('guard-haiku-lead', () => {
+  const line = gLine(guard(['-', '--unit=demo-2'], `# Plan\n\n${gWrap(G_LEAD)}`));
+  assert.strictEqual(line, 'contract-guard: haiku unit=demo-2 shape=lead score=7/7');
+});
+
+check('guard-sonnet-below-pass-mark', () => {
+  const line = gLine(guard(['-', '--unit=demo-2'], gWrap(G_MINUS)));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead score=6/7 failed=R5');
+});
+
+check('guard-no-contract', () => {
+  const line = gLine(guard(['-', '--unit=demo-9'], gWrap(G_LEAD)));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-9 shape=lead reason=no-contract');
+});
+
+check('guard-ambiguous', () => {
+  const line = gLine(guard(['-', '--unit=demo-2'], gWrap(G_LEAD) + gWrap(G_LEAD)));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead reason=ambiguous-contract(2)');
+});
+
+check('guard-shape-filter', () => {
+  const doc = gWrap(G_LEAD.replace(/^Unit: demo-2$/m, 'Unit: demo-3')) + gWrap(G_SCRIBE);
+  assert.strictEqual(gLine(guard(['-', '--unit=demo-3'], doc)), 'contract-guard: haiku unit=demo-3 shape=lead score=7/7');
+  assert.strictEqual(gLine(guard(['-', '--unit=demo-3', '--shape=scribe'], doc)), 'contract-guard: haiku unit=demo-3 shape=scribe score=7/7');
+});
+
+check('guard-nested-block-ignored', () => {
+  const doc = `~~~~~~markdown\nUnit: other\n\n## Ordered edits\n~~~~\n${G_LEAD.trimEnd()}\n~~~~\n~~~~~~\n`;
+  const line = gLine(guard(['-', '--unit=demo-2'], doc));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead reason=no-contract');
+});
+
+check('guard-unclosed-block', () => {
+  const line = gLine(guard(['-', '--unit=demo-2'], `~~~~~markdown\n${G_LEAD}`));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead reason=no-contract');
+});
+
+check('guard-whole-input', () => {
+  assert.strictEqual(gLine(guard(['-', '--unit=demo-2'], G_LEAD)), 'contract-guard: haiku unit=demo-2 shape=lead score=7/7');
+});
+
+check('guard-crlf', () => {
+  const line = gLine(guard(['-', '--unit=demo-2'], gWrap(G_LEAD).replace(/\n/g, '\r\n')));
+  assert.strictEqual(line, 'contract-guard: haiku unit=demo-2 shape=lead score=7/7');
+});
+
+check('guard-size-over', () => {
+  const big = `${G_LEAD.trimEnd()}\n\n\`\`\`\n${'x\n'.repeat(81)}\`\`\`\n`;
+  const line = gLine(guard(['-', '--unit=demo-2'], gWrap(big)));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead score=7/7 reason=sizeOver');
+});
+
+check('guard-usage', () => {
+  for (const args of [['-'], ['-', '--unit=demo-2', '--shape=toString'], ['--unit=demo-2'], ['-', '--unit=a/b']]) {
+    const r = guard(args, G_LEAD);
+    assert.strictEqual(r.status, 2, `${args.join(' ')}: exit ${r.status}`);
+    assert.strictEqual(r.stdout, '', `${args.join(' ')}: stdout ${r.stdout}`);
+  }
+});
+
+check('guard-plan-files', () => {
+  const plan = 'docs/plans/2026-10-08-haiku-default-cleanup.md';
+  assert.strictEqual(gLine(guard([plan, '--unit=hdc-1'])), 'contract-guard: haiku unit=hdc-1 shape=lead score=7/7');
+  assert.strictEqual(gLine(guard([plan, '--unit=hdc-6', '--shape=scribe'])), 'contract-guard: sonnet unit=hdc-6 shape=scribe score=6/7 failed=S7');
+});
+
 console.log(failures === 0 ? '\nAll contract-score checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
