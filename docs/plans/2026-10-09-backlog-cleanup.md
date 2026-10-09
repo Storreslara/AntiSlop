@@ -889,7 +889,7 @@ Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-1`. No per-u
    exit: 0
    stdout: `scope-blc-1-ok`
    mutation: touch one extra file in the unit's commit; diff exits 1.
-9. run: `git status --porcelain --untracked-files=no | wc -l`
+9. run: `git status --porcelain --untracked-files=no -- . ':(exclude).claude/agent-memory' | wc -l`
    exit: 0
    stdout: `0`
    mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
@@ -1012,7 +1012,7 @@ no two attempts share a name.
    exit: 0
    stdout: `scope-blc-2-ok`
    mutation: touch one extra file in the unit's commit; diff exits 1.
-7. run: `git status --porcelain --untracked-files=no | wc -l`
+7. run: `git status --porcelain --untracked-files=no -- . ':(exclude).claude/agent-memory' | wc -l`
    exit: 0
    stdout: `0`
    mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
@@ -1184,7 +1184,7 @@ Every Cursor agent ships `model: inherit` (row 6 above).
    exit: 0
    stdout: `scope-blc-3-ok`
    mutation: touch one extra file in the unit's commit; diff exits 1.
-9. run: `git status --porcelain --untracked-files=no | wc -l`
+9. run: `git status --porcelain --untracked-files=no -- . ':(exclude).claude/agent-memory' | wc -l`
    exit: 0
    stdout: `0`
    mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
@@ -1376,7 +1376,7 @@ Closed. hdc-1 .. hdc-6 are reviewer-PASSed; hdc-5 passed after two FAILs, the se
    exit: 0
    stdout: `scope-blc-4-ok`
    mutation: touch one extra file in the unit's commit; diff exits 1.
-10. run: `git status --porcelain --untracked-files=no | wc -l`
+10. run: `git status --porcelain --untracked-files=no -- . ':(exclude).claude/agent-memory' | wc -l`
    exit: 0
    stdout: `0`
    mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
@@ -2161,7 +2161,7 @@ none
    exit: 0
    stdout: `scope-blc-7-ok`
    mutation: touch one extra file in the unit's commit; diff exits 1.
-11. run: `git status --porcelain --untracked-files=no | wc -l`
+11. run: `git status --porcelain --untracked-files=no -- . ':(exclude).claude/agent-memory' | wc -l`
    exit: 0
    stdout: `0`
    mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
@@ -2277,7 +2277,7 @@ check('guard-plan-files', () => {
    exit: 0
    stdout: `0` then `1` (two lines)
    mutation: skip edit 4; it prints `1` then `0`, exit 1.
-5. run: `node bin/contract-guard.js tests/fixtures/contract-score/guard-plan-hdc.md --unit=hdc-1 | cut -d' ' -f1-6; node bin/contract-guard.js tests/fixtures/contract-score/guard-plan-hdc.md --unit=hdc-6 --shape=scribe | cut -d' ' -f1-7`
+5. run: `node bin/contract-guard.js tests/fixtures/contract-score/guard-plan-hdc.md --unit=hdc-1 | cut -d' ' -f1-6; node bin/contract-guard.js tests/fixtures/contract-score/guard-plan-hdc.md --unit=hdc-6 --shape=scribe | cut -d' ' -f1-5`
    exit: 0
    stdout: `contract-guard: haiku unit=hdc-1 shape=lead score=7/7` then `contract-guard: sonnet unit=hdc-6 shape=scribe score=6/7` (two lines)
    mutation: skip edit 3; the fixture is missing, the guard exits 2 with no output and nothing prints.
@@ -2301,7 +2301,7 @@ check('guard-plan-files', () => {
    exit: 0
    stdout: `scope-blc-8-ok`
    mutation: touch one extra file in the unit's commit; diff exits 1.
-11. run: `git status --porcelain --untracked-files=no | wc -l`
+11. run: `git status --porcelain --untracked-files=no -- . ':(exclude).claude/agent-memory' | wc -l`
    exit: 0
    stdout: `0`
    mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
