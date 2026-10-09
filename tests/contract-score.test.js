@@ -4,6 +4,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 const { spawnSync } = require('child_process');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -313,6 +314,28 @@ check('guard-plan-files', () => {
   const plan = `${FIX}/guard-plan-hdc.md`;
   assert.strictEqual(gLine(guard([plan, '--unit=hdc-1'])), 'contract-guard: haiku unit=hdc-1 shape=lead score=7/7');
   assert.strictEqual(gLine(guard([plan, '--unit=hdc-6', '--shape=scribe'])), 'contract-guard: sonnet unit=hdc-6 shape=scribe score=6/7 failed=S7');
+});
+
+check('guard-usage-repeated-flag', () => {
+  for (const args of [['-', '--unit=demo-2', '--unit=demo-2'], ['-', '--unit=demo-2', '--shape=lead', '--shape=lead']]) {
+    const r = guard(args, G_LEAD);
+    assert.strictEqual(r.status, 2, `${args.join(' ')}: exit ${r.status}`);
+    assert.strictEqual(r.stdout, '', `${args.join(' ')}: stdout ${r.stdout}`);
+  }
+});
+
+check('guard-usage-lone-unknown-flag', () => {
+  // A file named `--bogus` exists in the CWD: an unknown flag must be refused, never opened as the input.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'guard-flag-'));
+  try {
+    fs.writeFileSync(path.join(dir, '--bogus'), G_LEAD);
+    const r = spawnSync('node', [path.join(REPO_ROOT, 'bin', 'contract-guard.js'), '--unit=demo-2', '--bogus'], { cwd: dir, encoding: 'utf8' });
+    assert.strictEqual(r.status, 2, `exit ${r.status}`);
+    assert.strictEqual(r.stdout, '', `stdout ${r.stdout}`);
+    assert.ok(r.stderr.includes('unknown flag: --bogus'), `stderr ${r.stderr}`);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 console.log(failures === 0 ? '\nAll contract-score checks passed.' : `\n${failures} check(s) failed.`);

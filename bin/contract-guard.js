@@ -7,8 +7,11 @@
 // Exit 0 with a decision, exit 2 on a usage or read error; the orchestrator treats any output
 // other than a `contract-guard: haiku ` line, and any non-zero exit, as `sonnet`.
 //
-// Any argument other than one <path|-> and the --unit=<id> / --shape=<lead|scribe> flags is a usage
-// error (exit 2, empty stdout), for example `--shape scribe` written with a space.
+// Arguments: exactly `-`, or one other word that does not start with `-`, is the <path|->;
+// `--unit=<id>` and `--shape=<lead|scribe>` are flags, each allowed once (a repeat is a usage
+// error); any other argument that starts with `-`, including `--`, is an unknown flag. Every such
+// case exits 2 with empty stdout, for example `--shape scribe` written with a space. A file whose
+// name starts with `-` is passed as `./-name`.
 //
 // A fenced block opens on a run of three or more backticks or tildes and closes only on a line that
 // holds exactly the same run. A longer closing fence therefore leaves the block open, it is never
@@ -63,13 +66,21 @@ function headings(block) {
 
 function main() {
   const args = process.argv.slice(2);
-  const opt = (k) => {
-    const a = args.find((x) => x.startsWith(`--${k}=`));
-    return a ? a.slice(k.length + 3) : null;
-  };
-  const id = opt('unit');
-  const shape = opt('shape') || 'lead';
-  const rest = args.filter((a) => !/^--(unit|shape)=/.test(a));
+  const flags = {};
+  const rest = [];
+  for (const a of args) {
+    const m = /^--(unit|shape)=(.*)$/.exec(a);
+    if (m) {
+      if (Object.hasOwn(flags, m[1])) usage(`repeated --${m[1]}`);
+      flags[m[1]] = m[2];
+    } else if (a !== '-' && a.startsWith('-')) {
+      usage(`unknown flag: ${a}`);
+    } else {
+      rest.push(a);
+    }
+  }
+  const id = flags.unit || null;
+  const shape = flags.shape || 'lead';
   if (rest.length > 1) usage(`unexpected argument(s): ${rest.slice(1).join(' ')}`);
   const file = rest[0];
   if (!id || !UNIT_ID.test(id)) usage('bad or missing --unit');
