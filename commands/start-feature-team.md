@@ -48,12 +48,22 @@ the orchestrator's Escalation ladder, and only at ladder exhaustion do you stop
 re-delegating and surface the full defect history to the user instead. The ladder
 is the **Escalation ladder** paragraph in the **Per-unit model routing** section
 of `.claude/agents/orchestrator.md`: compute the unit's next tier there from its
-FAIL-block count, and pass that tier as the `model` parameter of the `Agent` call
-that spawns the lead-programmer teammate for the unit's next attempt. "Done" is enforced
+FAIL-block count, and, when the next attempt needs a new teammate (**Same-tier retry** below), pass that tier
+as the `model` parameter of the `Agent` call that spawns it. "Done" is enforced
 mechanically here: when routing a unit to the reviewer, include its exact
 task id — the reviewer creates `.claude/reviewed/<task-id>.pass` via Bash on
 PASS using that id, and the TaskCompleted hook blocks any task named
 `impl:*` from completing without a matching marker.
+
+**Same-tier retry.** A teammate's model is fixed when it spawns, so the next
+attempt reuses or replaces the lead-programmer teammate by tier. When the
+unit's next tier is the tier of the teammate that made the failed attempt (a
+first FAIL on that tier), resume that teammate with `SendMessage`, carrying the
+defect list or the fix contract; do not spawn a new one. When the tier changes,
+or that teammate is gone (crashed or shut down), spawn a fresh lead-programmer
+teammate with the new tier as the `model` parameter, named
+`lead-programmer-<task-id>-<n+1>`, where n is the unit's FAIL-block count, so
+no two attempts share a name.
 
 If there's no reviewer (deselected, or a teammate that crashed mid-run): the
 lead's sanity-check fallback above must itself write the marker in v3
