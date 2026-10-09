@@ -164,9 +164,6 @@ fix attempt. A unit that fails twice usually means the plan itself has a gap.
 This port keeps the cap per unit, not per implementer tier: its agents inherit
 the session's model, so there are no implementer tiers to climb and the
 Escalation ladder is not ported (see docs/codex-port-notes.md).
-This port keeps the cap per unit, not per implementer tier: its agents inherit
-the session's model, so there are no implementer tiers to climb and the
-Escalation ladder is not ported (see docs/codex-port-notes.md).
 
 ## Fourth verdict: escalate-to-human
 `ESCALATE-TO-HUMAN` is a gate on PASS, never a replacement for FAIL. Precedence:
