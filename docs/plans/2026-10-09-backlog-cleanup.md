@@ -722,3 +722,1622 @@ shape for blc-1..blc-6, scribe shape for blc-7) scoring 7/7 under
 (none needed: no `blc-*.fail` exists), and states the retrieval contract.
 blc-h1..blc-h3 are filed as human-only issues (no `ready-for-agent` label)
 or, if filing is denied (R5), left in this plan for the user.
+
+---
+
+# Dispatch contracts (standard path; the plan file is the retrieval contract)
+
+Written by task-master on 2026-10-09 at HEAD 5720c5b, version 0.31.147, after the spec above was FINAL. Nothing above this rule is changed by the contracts.
+
+## Retrieval contract
+
+No per-unit issues exist (R5: none was filed; `gh issue create` was not attempted). The retrieval contract for every unit is this file, `docs/plans/2026-10-09-backlog-cleanup.md`, under `## Unit blc-<n>`: read the unit's `~~~~~~~markdown` block (its first line is `Unit: blc-<n>`), and the orchestrator's guard reads it with `node bin/contract-guard.js docs/plans/2026-10-09-backlog-cleanup.md --unit=blc-<n>` (add `--shape=scribe` for blc-7). The contract block outranks the plan prose above; a conflict is a spec gap: STOP. Every commit subject ends `(#529)`, the umbrella issue of the haiku-default and contract-score-guard stages (it is CLOSED; reused as hdc and csg did, so one `sed` replaces it if a new umbrella is wanted); scribe closes nothing and never closes #529.
+
+## Dispatch table
+
+Every unit is tagged `Suggested model: haiku`: no `blc-*.fail` record exists, and the tag is reactive. The reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over the unit's actual diff. `blc-h1`, `blc-h2` and `blc-h3` are human-only: they are recorded in Steps 8-10 above, have no contract and are never dispatched.
+
+| unit | persona | Suggested model | Depends on | contract shape |
+|---|---|---|---|---|
+| blc-1 | lead-programmer | haiku | none | lead |
+| blc-2 | lead-programmer | haiku | none | lead |
+| blc-3 | lead-programmer | haiku | none | lead |
+| blc-4 | lead-programmer | haiku | none | lead |
+| blc-5 | lead-programmer | haiku | csg-2 (PASS recorded); HELD until ruling H-BLC5 | lead, stamped 0.31.148 |
+| blc-6 | lead-programmer | haiku | blc-5 (PASS), csg-2 (PASS recorded); HELD with blc-5 | lead, stamped 0.31.149 |
+| blc-7 | scribe | haiku | csg-4 (PASS recorded) | scribe |
+| blc-8 | lead-programmer | haiku | none | lead |
+| blc-h1, blc-h2, blc-h3 | human-only | n/a | none (outside the blc-5 to blc-6 window, R2) | none |
+
+Intersection table (shared files are content files that two units edit; the bump files and the paths `node bin/cli.js --update` changes are excluded by definition, and stamped units serialize on those):
+
+| unit | shared files | depends on |
+|---|---|---|
+| blc-1 | none | none |
+| blc-2 | none | none |
+| blc-3 | none | none |
+| blc-4 | none | none |
+| blc-5 | none | none (first stamped unit; csg-2 PASSed) |
+| blc-6 | none | blc-5 (serial stamped edit: each sets HEAD + 1) |
+| blc-7 | none | none (csg-4 PASSed) |
+| blc-8 | none | none |
+
+blc-6 is the only unit that edits `agents/orchestrator.md` (the At the 2-FAIL cap line and the Contract-score guard caveat), so it is the only orchestrator.md unit and is already serialized after blc-5. **Dispatchable in parallel now: blc-1, blc-2, blc-3, blc-4, blc-7 and blc-8** (mutually file-disjoint; none runs `node bin/cli.js --update`). blc-5 and then blc-6 are HELD (see Slice state); once released they run serially and alone (R2).
+
+## Slice state
+
+| unit | state | reason |
+|---|---|---|
+| blc-1, blc-2, blc-3, blc-4 | dispatchable | none |
+| blc-5 | **held** | SPEC-GAP H-BLC5: Step 5's file list omits `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml`, so AC5.5 (`node tests/writer-tier-consistency.test.js` exits 0) cannot pass: its AC-A1 pins the Contract precedence paragraph identical across `agents/lead-programmer.md` and both ports |
+| blc-6 | **held** | depends on blc-5 (serial stamped edit; blc-6 starts at 0.31.148) |
+| blc-7, blc-8 | dispatchable | none |
+| blc-h1, blc-h2, blc-h3 | human-only (not sliced) | reports for the hook owner; Open Questions 1 and 2 stay open |
+
+Two units are held on one spec gap; every other unit is dispatchable. The held contracts below are complete and score 7/7: they already carry the two port edits as the scratch fix that made AC5.5 pass (blc-5 edits 4 and 5), so the release is only the ruling. Slicing notes for spec-master (the spec text above is untouched):
+
+1. Reviewer notes folded in (requested at slicing time). (a) `bin/contract-guard.js` exit 2 on extra arguments or unknown flags, the header note that a longer closing fence leaves a block open, and the `guard-plan-files` check reading a fixture copy: new unit **blc-8** (no existing unit touches those files). (b) The Contract-score guard caveat that "scoring is pure" assumes an unchanged contract of record, and a pin test for the guard paragraph: folded into **blc-6** as edits 8 and 9 (blc-6 already edits `agents/orchestrator.md`; the pin lives in `tests/writer-tier-consistency.test.js`). (c) Glossary: **contract of record** and **rubric v2** entries, and the **Rulings ledger** link, folded into **blc-7** as items 2-6 (the **Rulings ledger** entry already exists in `docs/harness-glossary.md`, so a `[[Rulings ledger]]` link in CONTEXT.md resolves; no duplicate entry is added).
+2. **Spec gap H-BLC5 (blocks blc-5 and blc-6).** Step 5 omits two files. Replaying blc-5 in a scratch worktree of 5720c5b, `tests/writer-tier-consistency.test.js` AC-A1 (the Contract precedence paragraph must read the same in `agents/lead-programmer.md` and both ports) failed with only the files Step 5 lists; it passed once `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml` got the same Fix-turns sentence. Ruling needed from spec-master: add those two files to Step 5 (affected files, edit 5.3, AC5.4) or rule otherwise. The plan's AC5.5 only cites AC-P2/AC-P3. Release: spec-master adds a line starting `- H-BLC5:` under `## Rulings` below; task-master then deletes the `HELD:` line of blc-5 and blc-6 (it never re-files a unit).
+3. AC4.3 as written counts the old proof phrase over the whole hdc plan, but hdc-4's own criterion 7 carries the identical sentence at line 821 (correct for hdc-4's one-commit range, so it stays). The contract scopes the count to the hdc-5 block (`sed -n '/^Unit: hdc-5$/,$p'`) and edits line 989 by number behind a precondition; the expected output `0` then `1` is the plan's.
+4. Step 6 prose says the digest header becomes "under 15 non-empty lines" while the test allows 15 and the new body has 15; the contract writes "at most 15".
+5. The plan's shared S1 and S3 criteria pass vacuously before the unit's first commit (an empty range prints `0`); the contracts add a guard that exits 3 with `no-unit-commit` when the unit has no commit.
+
+## Rulings
+
+(spec-master adds one line per resolved gap, starting `- <ruling-id>:`. None yet.)
+
+## Unit blc-1
+
+~~~~~markdown
+Unit: blc-1
+
+## Objective
+`tests/default-implementer-model.test.js` fails loudly when `agents/lead-programmer.md` does not ship `model: haiku`, and its migrate-twice test runs the second `--update` through the full render loop (`--force-render`) instead of the "already current" early return.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-1`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Affected files
+- `tests/default-implementer-model.test.js` (anchors below)
+
+## Ordered edits
+1. file: `tests/default-implementer-model.test.js`
+   anchor: line matching `if (frontmatter === 'haiku') {`
+   indent: 4
+   before:
+```
+    if (frontmatter === 'haiku') {
+      assert.strictEqual(expected, 'haiku', 'lead-programmer ships model: haiku, so an old-version "sonnet" must migrate; IMPLEMENTER_HAIKU_DEFAULT_SINCE is disabled');
+    }
+```
+   after:
+```
+    assert.strictEqual(frontmatter, 'haiku', 'agents/lead-programmer.md must ship model: haiku; if the shipped default tier changed on purpose, rewrite this check together with IMPLEMENTER_HAIKU_DEFAULT_SINCE');
+    assert.strictEqual(expected, 'haiku', 'an old-version "sonnet" must migrate to "haiku"; if it does not, IMPLEMENTER_HAIKU_DEFAULT_SINCE is disabled');
+```
+2. file: `tests/default-implementer-model.test.js`
+   anchor: line matching `const afterFirst = fs.readFileSync(configPath, 'utf8');`
+   indent: 4
+   before:
+```
+    const afterFirst = fs.readFileSync(configPath, 'utf8');
+
+    const second = spawnSync('node', [cliPath, '--update'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+```
+   after:
+```
+    const afterFirst = fs.readFileSync(configPath, 'utf8');
+    assert.strictEqual(JSON.parse(afterFirst).defaultImplementerModel, 'haiku', 'the first --update must apply the migration');
+
+    // --force-render skips runUpdate's "already current" early return, so a
+    // change the second run makes to the config is written and seen below.
+    const second = spawnSync('node', [cliPath, '--update', '--force-render'], { cwd: tmp, encoding: 'utf8' });
+    assert.strictEqual(second.status, 0, `second --update expected exit 0, got ${second.status}: ${second.stdout}${second.stderr}`);
+    assert.ok(second.stdout.includes('update complete'), `the second --update must run the full render loop, got: ${second.stdout}`);
+```
+3. command: `git add tests/default-implementer-model.test.js && git commit -m "test(blc-1): migration guard fails loud; migrate-twice runs the full render loop (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+   expect: 0
+
+## Do NOT touch
+- `bin/cli.js` (the mutation in criterion 1 is made in a scratch copy only)
+- `tests/contract-score.test.js`
+- `agents/` and `templates/` (no version bump is needed)
+- `.claude/` (mirrors are regenerated only by `node bin/cli.js --update`, which this unit never runs)
+
+## Acceptance criteria
+1. run: `node tests/default-implementer-model.test.js > /dev/null 2>&1; echo exit=$?`
+   exit: 0
+   stdout: `exit=0`
+   mutation: in a scratch copy of the finished change insert `if (config.defaultImplementerModel === 'haiku') config.defaultImplementerModel = 'opus';` as the first statement of `applyImplementerModelMigration` in `bin/cli.js`; it prints `exit=1`. With edit 2 skipped the same scratch mutation still prints `exit=0` (the early return discards it).
+   proof: task-master ran the finished edits plus that insert in a scratch worktree of 5720c5b and got `exit=1`; the skip-edit-2 side is plan fact F1 (spec-master). This criterion already passes at HEAD; it must stay green after the edits.
+2. run: `D=$(mktemp -d) && git worktree add --detach -q "$D" HEAD && sed -i 's/^model: haiku$/model: sonnet/' "$D/agents/lead-programmer.md" && node "$D/tests/default-implementer-model.test.js" | /usr/bin/grep -c '^FAIL --update applies migrateDefaultImplementerModel to an old-version'; git worktree remove --force "$D"`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 1; it prints `0` (measured, plan fact F2). It prints `0` at HEAD.
+3. run: `/usr/bin/grep -c "'--update', '--force-render'" tests/default-implementer-model.test.js`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2; it prints `0`, exit 1.
+4. run: `/usr/bin/grep -c "if (frontmatter === 'haiku')" tests/default-implementer-model.test.js`
+   exit: 1
+   stdout: `0`
+   mutation: skip edit 1; it prints `1`, exit 0.
+5. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-1\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+6. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+7. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- tests/default-implementer-model.test.js | /usr/bin/grep -vcE '^[a-z]+\(blc-1\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+8. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' tests/default-implementer-model.test.js | sort) && echo scope-blc-1-ok`
+   exit: 0
+   stdout: `scope-blc-1-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+9. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+10. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-1\): ' | wc -l` prints `0`. Anything else: STOP.
+precondition: FIRST, for every `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1` and every `before:` payload appears verbatim in its file. On any mismatch STOP and report; do not adapt the text.
+tdd: yes tests/default-implementer-model.test.js (the edit is the test; its red state is shown by the mutations of criteria 1 and 2)
+blast-radius: tests/default-implementer-model.test.js:269, tests/default-implementer-model.test.js:289, bin/cli.js:1486
+note: payload fences sit at column 0 and hold the file's literal text, leading spaces included; `indent: N` is the smallest leading-space count of the payload's non-empty lines, so nothing is stripped or added.
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-1)` as its subject scope.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: test(blc-1): migration guard fails loud; migrate-twice runs the full render loop (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-1 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~
+
+## Unit blc-2
+
+~~~~~markdown
+Unit: blc-2
+
+## Objective
+`commands/start-feature-team.md` says that a same-tier retry resumes the lead-programmer teammate that made the failed attempt with `SendMessage`, and that a tier change or a gone teammate gets a fresh spawn named `lead-programmer-<task-id>-<n+1>`.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-2`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Affected files
+- `commands/start-feature-team.md` (anchors below)
+
+## Ordered edits
+1. file: `commands/start-feature-team.md`
+   anchor: line matching `FAIL-block count, and pass that tier as the`
+   indent: 0
+   before:
+```
+FAIL-block count, and pass that tier as the `model` parameter of the `Agent` call
+that spawns the lead-programmer teammate for the unit's next attempt. "Done" is enforced
+```
+   after:
+```
+FAIL-block count, and, when the next attempt needs a new teammate (**Same-tier
+retry** below), pass that tier as the `model` parameter of the `Agent` call that
+spawns it. "Done" is enforced
+```
+2. file: `commands/start-feature-team.md`
+   anchor: line matching `from completing without a matching marker.`
+   indent: 0
+   insert-after:
+```
+
+**Same-tier retry.** A teammate's model is fixed when it spawns, so the next
+attempt reuses or replaces the lead-programmer teammate by tier. When the
+unit's next tier is the tier of the teammate that made the failed attempt (a
+first FAIL on that tier), resume that teammate with `SendMessage`, carrying the
+defect list or the fix contract; do not spawn a new one. When the tier changes,
+or that teammate is gone (crashed or shut down), spawn a fresh lead-programmer
+teammate with the new tier as the `model` parameter, named
+`lead-programmer-<task-id>-<n+1>`, where n is the unit's FAIL-block count, so
+no two attempts share a name.
+```
+3. command: `git add commands/start-feature-team.md && git commit -m "docs(blc-2): agent-teams same-tier retry resumes the teammate, fresh spawn naming (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+   expect: 0
+
+## Do NOT touch
+- `agents/orchestrator.md` (its Escalation ladder paragraph is the source of the tier rule and stays as it is)
+- `agents/lead-programmer.md`
+- `templates/persona-protocol.md`
+- `.claude/` (this file has no mirror; no `--update` is needed and no version bump applies)
+
+## Acceptance criteria
+1. run: `for p in '**Same-tier retry.**' 'resume that teammate with' 'lead-programmer-<task-id>-<n+1>' 'needs a new teammate'; do tr '\n' ' ' < commands/start-feature-team.md | tr -s ' ' | /usr/bin/grep -oF -- "$p" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 1 1 `
+   mutation: skip edit 2; it prints `0 0 0 1 `. Skip edit 1; it prints `1 1 1 0 `. At HEAD it prints `0 0 0 0 `.
+2. run: `tr '\n' ' ' < commands/start-feature-team.md | tr -s ' ' | /usr/bin/grep -cF "call that spawns the lead-programmer teammate for the unit's next attempt"`
+   exit: 1
+   stdout: `0`
+   mutation: skip edit 1; it prints `1`, exit 0.
+3. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-2\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+4. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+5. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- commands/start-feature-team.md | /usr/bin/grep -vcE '^[a-z]+\(blc-2\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+6. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' commands/start-feature-team.md | sort) && echo scope-blc-2-ok`
+   exit: 0
+   stdout: `scope-blc-2-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+7. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+8. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-2\): ' | wc -l` prints `0`. Anything else: STOP.
+precondition: FIRST, for every `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1` and every `before:` payload appears verbatim in its file. On any mismatch STOP and report; do not adapt the text.
+tdd: no prose-only edit in a command file; the checks are flattened-phrase greps and the validate.sh conditional-phrasing check (P4, line 255) over this file
+blast-radius: commands/start-feature-team.md:51, commands/start-feature-team.md:56, tests/validate.sh:255
+note: payload fences sit at column 0 and hold the file's literal text, leading spaces included; `indent: N` is the smallest leading-space count of the payload's non-empty lines, so nothing is stripped or added. Edit 2's payload begins with one empty line, which is part of the text.
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-2)` as its subject scope.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: docs(blc-2): agent-teams same-tier retry resumes the teammate, fresh spawn naming (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-2 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~
+
+## Unit blc-3
+
+~~~~~markdown
+Unit: blc-3
+
+## Objective
+The Codex and Cursor ports keep the per-unit cap of 2 FAILs and say why: their agents inherit the session's model, so there are no implementer tiers to climb. Four cap sites gain one sentence each and both port-notes documents gain an `## Escalation ladder (not ported)` section.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-3`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Affected files
+- `adapters/codex/agents-md-fragment.md` (anchor: line matching `fix attempt. A unit that fails twice usually means the plan itself has a gap.`)
+- `adapters/cursor/rules/persona-protocol.mdc` (anchor: line matching `fix attempt. A unit that fails twice usually means the plan itself has a gap.`)
+- `adapters/codex/agents/orchestrator.toml` (anchor: line matching `defect history to the user instead of a third pass.`)
+- `adapters/cursor/agents/orchestrator.md` (anchor: line matching `defect history to the user instead of a third pass.`)
+- `docs/codex-port-notes.md` (anchor: line matching `replace the self-tracked counter in`)
+- `docs/cursor-port-notes.md` (anchor: line matching `installs.`)
+
+## Ordered edits
+1. file: `adapters/codex/agents-md-fragment.md`
+   anchor: line matching `fix attempt. A unit that fails twice usually means the plan itself has a gap.`
+   indent: 0
+   insert-after:
+```
+This port keeps the cap per unit, not per implementer tier: its agents inherit
+the session's model, so there are no implementer tiers to climb and the
+Escalation ladder is not ported (see docs/codex-port-notes.md).
+```
+2. file: `adapters/cursor/rules/persona-protocol.mdc`
+   anchor: line matching `fix attempt. A unit that fails twice usually means the plan itself has a gap.`
+   indent: 0
+   insert-after:
+```
+This port keeps the cap per unit, not per implementer tier: its agents inherit
+the session's model, so there are no implementer tiers to climb and the
+Escalation ladder is not ported (see docs/cursor-port-notes.md).
+```
+3. file: `adapters/codex/agents/orchestrator.toml`
+   anchor: line matching `defect history to the user instead of a third pass.`
+   indent: 2
+   insert-after:
+```
+  (Per unit: agents here inherit the session's model, so there are no
+  implementer tiers to climb.)
+```
+4. file: `adapters/cursor/agents/orchestrator.md`
+   anchor: line matching `defect history to the user instead of a third pass.`
+   indent: 2
+   insert-after:
+```
+  (Per unit: agents here inherit the session's model, so there are no
+  implementer tiers to climb.)
+```
+5. file: `docs/codex-port-notes.md`
+   anchor: line matching `replace the self-tracked counter in`
+   indent: 0
+   insert-after:
+```
+
+## Escalation ladder (not ported)
+
+The Claude Code orchestrator moves a failing unit up an Escalation ladder of
+implementer tiers (`haiku`, `sonnet`, `opus`), two attempts per tier. This
+port does not: its agents inherit the session's model, so there are no
+implementer tiers to climb. It keeps the older cap of 2 FAILs per unit, after
+which the orchestrator stops and asks the user. Port the ladder only once the
+model-tier mapping is decided.
+
+The Codex agent files omit `model` (adapters/codex/agents/lead-programmer.toml).
+```
+6. file: `docs/cursor-port-notes.md`
+   anchor: line matching `installs.`
+   indent: 0
+   insert-after:
+```
+
+## Escalation ladder (not ported)
+
+The Claude Code orchestrator moves a failing unit up an Escalation ladder of
+implementer tiers (`haiku`, `sonnet`, `opus`), two attempts per tier. This
+port does not: its agents inherit the session's model, so there are no
+implementer tiers to climb. It keeps the older cap of 2 FAILs per unit, after
+which the orchestrator stops and asks the user. Port the ladder only once the
+model-tier mapping is decided.
+
+Every Cursor agent ships `model: inherit` (row 6 above).
+```
+7. command: `git add adapters/codex/agents-md-fragment.md adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md adapters/cursor/rules/persona-protocol.mdc docs/codex-port-notes.md docs/cursor-port-notes.md && git commit -m "docs(blc-3): ports record why the cap stays per unit (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+   expect: 0
+
+## Do NOT touch
+- `agents/orchestrator.md` (the Claude Code ladder is not ported)
+- `templates/persona-protocol.md`
+- `tests/adapter-protocol-parity.test.js` (it must pass unchanged)
+- `.claude/` (none of these six files has a mirror; no `--update` and no version bump apply)
+
+## Acceptance criteria
+1. run: `for f in adapters/codex/agents-md-fragment.md adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md adapters/cursor/rules/persona-protocol.mdc docs/codex-port-notes.md docs/cursor-port-notes.md; do tr '\n' ' ' < "$f" | tr -s ' ' | /usr/bin/grep -oF 'no implementer tiers to climb' | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 1 1 1 1 `
+   mutation: skip any one of edits 1-6; its position prints `0`. At HEAD it prints `0 0 0 0 0 0 `.
+2. run: `cat docs/codex-port-notes.md docs/cursor-port-notes.md | /usr/bin/grep -c '^## Escalation ladder (not ported)$'`
+   exit: 0
+   stdout: `2`
+   mutation: skip edit 5; it prints `1`.
+3. run: `node tests/adapter-protocol-parity.test.js > /dev/null 2>&1; echo exit=$?`
+   exit: 0
+   stdout: `exit=0`
+   mutation: delete a probe string that the parity test pins from a port file; it prints `exit=1`. This already passes at HEAD and must stay green.
+4. run: `/usr/bin/grep -c 'Cap at 2 FAILs per unit' adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc | tr '\n' ' '`
+   exit: 0
+   stdout: `adapters/codex/agents-md-fragment.md:1 adapters/cursor/rules/persona-protocol.mdc:1 `
+   mutation: rewrite either heading to `Cap at 2 FAILs per tier`; that file prints `:0`. The cap itself is unchanged, so this passes at HEAD as well.
+5. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-3\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+6. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+7. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- adapters/codex/agents-md-fragment.md adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md adapters/cursor/rules/persona-protocol.mdc docs/codex-port-notes.md docs/cursor-port-notes.md | /usr/bin/grep -vcE '^[a-z]+\(blc-3\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+8. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' adapters/codex/agents-md-fragment.md adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md adapters/cursor/rules/persona-protocol.mdc docs/codex-port-notes.md docs/cursor-port-notes.md | sort) && echo scope-blc-3-ok`
+   exit: 0
+   stdout: `scope-blc-3-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+9. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+10. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-3\): ' | wc -l` prints `0`. Anything else: STOP.
+precondition: FIRST, for every `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1`. On any mismatch STOP and report; do not adapt the text.
+tdd: no prose-only edits to port documents; the checks are flattened-phrase greps plus the existing tests/adapter-protocol-parity.test.js
+blast-radius: adapters/codex/agents-md-fragment.md:163, adapters/cursor/rules/persona-protocol.mdc:169, adapters/codex/agents/orchestrator.toml:127, adapters/cursor/agents/orchestrator.md:123, tests/adapter-protocol-parity.test.js:1
+note: payload fences sit at column 0 and hold the file's literal text, leading spaces included; `indent: N` is the smallest leading-space count of the payload's non-empty lines, so nothing is stripped or added. Edits 5 and 6 begin with one empty line, which is part of the text. The port notes use the term "cap of 2 FAILs per unit", never "the 2-FAIL cap" (that glossary term is per tier).
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-3)` as its subject scope.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: docs(blc-3): ports record why the cap stays per unit (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-3 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~
+
+## Unit blc-4
+
+~~~~~~~markdown
+Unit: blc-4
+
+## Objective
+The hdc-5 proof line stops attributing hdc-4's measurement to hdc-5; the four landed hdc contracts name the trailer their first commit carries instead of a model-name placeholder; and the five finished stage plans of the haiku programme carry a closed status, with no existing line moved.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-4`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Affected files
+- `docs/plans/2026-10-08-haiku-default-cleanup.md` (anchors below)
+- `docs/plans/2026-10-06-rubric-gated-haiku-programme.md` (anchors below)
+- `docs/plans/2026-10-06-contract-hardening.md` (anchors below)
+- `docs/plans/2026-10-07-final-cleanup.md` (anchors below)
+- `docs/plans/2026-10-08-haiku-default-tier.md` (anchors below)
+
+## Ordered edits
+1. command: `sed -i '989s/, dropping 789725d.s printed /, and over hdc-4\x27s one-commit range (the same \x60run:\x60 with \x60(hdc-4)\x60 in place of \x60(hdc-5)\x60) dropping 789725d\x27s trailer printed /' docs/plans/2026-10-08-haiku-default-cleanup.md`
+   expect: 0
+2. command: `sed -i 's/Co-Authored-By: Claude <your model name> <noreply@anthropic.com>/Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>/' docs/plans/2026-10-08-haiku-default-cleanup.md`
+   expect: 0
+3. file: `docs/plans/2026-10-08-haiku-default-cleanup.md`
+   anchor: line matching `Status: FINAL (`
+   before: `Status: FINAL (`
+   after: `Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (`
+4. file: `docs/plans/2026-10-06-rubric-gated-haiku-programme.md`
+   anchor: line matching `Status: FINAL (`
+   before: `Status: FINAL (`
+   after: `Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (`
+5. file: `docs/plans/2026-10-06-contract-hardening.md`
+   anchor: line matching `Status: FINAL (`
+   before: `Status: FINAL (`
+   after: `Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (`
+6. file: `docs/plans/2026-10-07-final-cleanup.md`
+   anchor: line matching `Status: FINAL (`
+   before: `Status: FINAL (`
+   after: `Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (`
+7. file: `docs/plans/2026-10-08-haiku-default-tier.md`
+   anchor: line matching `Status: FINAL (`
+   before: `Status: FINAL (`
+   after: `Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (`
+8. file: `docs/plans/2026-10-06-rubric-gated-haiku-programme.md`
+   anchor: line matching `harness-glossary:2939) and "haiku-safe".`
+   indent: 0
+   insert-after:
+```
+
+## Status update (2026-10-09)
+
+Closed. Stages 0-3 are reviewer-PASSed (rgh-u0-1, rgh-u0-2, rgh-u0-2b, rgh-u0-3, rgh-u0-4, rgh-u1-1, rgh-u2-1, rgh-u2-2, rgh-u3-1 .. rgh-u3-4). Stage 4 (U4-1..U4-3) is parked and Stage 5 is superseded, as the 2026-10-08 note under the status line says. No unit of this plan is left to dispatch.
+```
+9. file: `docs/plans/2026-10-06-contract-hardening.md`
+   anchor: line matching `"ready-for-review packet template", "defect block" and "executor".`
+   indent: 0
+   insert-after:
+```
+
+## Status update (2026-10-09)
+
+Closed. Every unit is reviewer-PASSed (rgh-h1, rgh-h1b, rgh-h2 .. rgh-h12; H13 ran as rgh-h13a and rgh-h13b). The status line's 'Stages 4-5 and gates G3/G4 of the parent are untouched' was true when written; since 2026-10-08 the parent's Stage 4 is parked and its Stage 5 is superseded by docs/plans/2026-10-08-haiku-default-tier.md.
+```
+10. file: `docs/plans/2026-10-07-final-cleanup.md`
+   anchor: line matching `glossary finding for fc-5 to batch.`
+   indent: 0
+   insert-after:
+```
+
+## Status update (2026-10-09)
+
+Closed. fc-1 .. fc-5 are reviewer-PASSed. It was not the last cleanup stage after all: docs/plans/2026-10-08-haiku-default-cleanup.md and docs/plans/2026-10-09-backlog-cleanup.md followed at the user's request. Rule P1's `-F --grep` range form is replaced by the anchored form of docs/plans/2026-10-09-backlog-cleanup.md, D3.
+```
+11. file: `docs/plans/2026-10-08-haiku-default-tier.md`
+   anchor: line matching `literals at dispatch per R3 and U4's pre-dispatch derivation.`
+   indent: 0
+   insert-after:
+```
+
+## Status update (2026-10-09)
+
+Closed. htd-1 .. htd-7 are reviewer-PASSed. Follow-ups: docs/plans/2026-10-08-haiku-default-cleanup.md, docs/plans/2026-10-08-contract-score-guard.md and docs/plans/2026-10-09-backlog-cleanup.md.
+```
+12. file: `docs/plans/2026-10-08-haiku-default-cleanup.md`
+   anchor: line matching `If any item cannot be applied exactly, STOP and report a spec gap. If the glossary tests reject the new text, STOP and report the failing check verbatim; do not reshape the entries.`
+   indent: 0
+   before:
+```
+If any item cannot be applied exactly, STOP and report a spec gap. If the glossary tests reject the new text, STOP and report the failing check verbatim; do not reshape the entries.
+~~~~~
+```
+   after:
+```
+If any item cannot be applied exactly, STOP and report a spec gap. If the glossary tests reject the new text, STOP and report the failing check verbatim; do not reshape the entries.
+~~~~~
+
+## Status update (2026-10-09)
+
+Closed. hdc-1 .. hdc-6 are reviewer-PASSed; hdc-5 passed after two FAILs, the second a contract defect (see the Ruling). The reviewers' remaining notes are carried by docs/plans/2026-10-09-backlog-cleanup.md. Trailer sweep (blc-4): the hdc-1, hdc-2, hdc-4 and hdc-5 contracts gave a placeholder instead of a model name in their trailer line; each now names the trailer its first commit carries (Claude Haiku 4.5 for all four, measured with git log). hdc-5's fix-round commit 082ec3c carries the Claude Sonnet 5.5 trailer: a fix round's trailer names the model of its own tier. No other docs/plans contract held the placeholder.
+```
+13. command: `git add docs/plans/2026-10-06-rubric-gated-haiku-programme.md docs/plans/2026-10-06-contract-hardening.md docs/plans/2026-10-07-final-cleanup.md docs/plans/2026-10-08-haiku-default-tier.md docs/plans/2026-10-08-haiku-default-cleanup.md && git commit -m "docs(blc-4): proof line, closed stage statuses, trailer sweep (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+   expect: 0
+
+## Do NOT touch
+- `docs/plans/2026-10-09-backlog-cleanup.md` (this plan and its contracts; AC1 excludes it from the placeholder sweep because it spells the placeholder)
+- `docs/plans/2026-10-08-contract-score-guard.md`
+- `agents/` and `templates/` (no version bump applies)
+- `.claude/` (no mirror exists for a plan file)
+
+## Acceptance criteria
+1. run: `git grep -c 'your model name' -- docs/plans ':!docs/plans/2026-10-09-backlog-cleanup.md' | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: skip one substitution of edit 2 (leave one occurrence); it prints `1`. It prints `1` at HEAD.
+2. run: `/usr/bin/grep -c 'Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>' docs/plans/2026-10-08-haiku-default-cleanup.md`
+   exit: 0
+   stdout: `4`
+   mutation: skip one substitution of edit 2; it prints `3`. It prints `0` at HEAD.
+3. run: `sed -n '/^Unit: hdc-5$/,$p' docs/plans/2026-10-08-haiku-default-cleanup.md | /usr/bin/grep -cF "dropping 789725d's printed"; sed -n '/^Unit: hdc-5$/,$p' docs/plans/2026-10-08-haiku-default-cleanup.md | /usr/bin/grep -cF "one-commit range (the same"`
+   exit: 0
+   stdout: `0` then `1` (two lines)
+   mutation: skip edit 1; it prints `1` then `0`, exit 1.
+   proof: the count is scoped to the hdc-5 block (from its `Unit: hdc-5` line to the end of the file) because hdc-4's own criterion 7 carries the same proof sentence at line 821, which is correct for hdc-4's one-commit range and stays; a whole-file count would print `1` after the edit.
+4. run: `for f in docs/plans/2026-10-06-rubric-gated-haiku-programme.md docs/plans/2026-10-06-contract-hardening.md docs/plans/2026-10-07-final-cleanup.md docs/plans/2026-10-08-haiku-default-tier.md docs/plans/2026-10-08-haiku-default-cleanup.md; do /usr/bin/grep -c '^Status: CLOSED 2026-10-09 (see the Status update at the end). FINAL (' "$f"; /usr/bin/grep -c '^## Status update (2026-10-09)$' "$f"; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 1 1 1 1 1 1 1 1 `
+   mutation: skip any one of edits 3-12 for one file; a `0` appears at that file's position.
+5. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | tail -1)~1; git diff --numstat "$B..$U" | sort -k3 | awk '{print $1"/"$2}' | tr '\n' ' '`
+   exit: 0
+   stdout: `5/1 5/1 5/1 10/6 5/1 `
+   mutation: wrap an appended paragraph over two lines, or insert a line above the end of a file; a count changes (for example `6/1`). Path order after `sort -k3`: contract-hardening, rubric-gated, final-cleanup, haiku-default-cleanup, haiku-default-tier.
+   proof: spec-master measured that each file ends with a newline and that each appended section is four lines (blank, heading, blank, one-line paragraph); the hdc file also swaps the proof line (1 added, 1 deleted) and four trailer lines (4 added, 4 deleted), giving deleted 6, added 10. Not run end to end by task-master.
+6. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-4\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+7. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+8. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- docs/plans/2026-10-06-rubric-gated-haiku-programme.md docs/plans/2026-10-06-contract-hardening.md docs/plans/2026-10-07-final-cleanup.md docs/plans/2026-10-08-haiku-default-tier.md docs/plans/2026-10-08-haiku-default-cleanup.md | /usr/bin/grep -vcE '^[a-z]+\(blc-4\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+9. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' docs/plans/2026-10-06-rubric-gated-haiku-programme.md docs/plans/2026-10-06-contract-hardening.md docs/plans/2026-10-07-final-cleanup.md docs/plans/2026-10-08-haiku-default-tier.md docs/plans/2026-10-08-haiku-default-cleanup.md | sort) && echo scope-blc-4-ok`
+   exit: 0
+   stdout: `scope-blc-4-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+10. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+11. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-4\): ' | wc -l` prints `0`. Anything else: STOP.
+precondition: FIRST, for every edit item that has an `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1` and its `before:` payload appears verbatim in its file exactly once. Edits 1, 2 and 13 are commands and carry no anchor. On any mismatch STOP and report; do not adapt the text.
+precondition: `sed -n 989p docs/plans/2026-10-08-haiku-default-cleanup.md | /usr/bin/grep -cF "dropping 789725d's printed"` prints `1` and `sed -n 984p docs/plans/2026-10-08-haiku-default-cleanup.md | /usr/bin/grep -cF "(hdc-5)"` prints `1`. Anything else: STOP (edit 1 addresses hdc-5's criterion 7 proof line by number because the identical hdc-4 sentence at line 821 must stay).
+precondition: `/usr/bin/grep -o 'Co-Authored-By: Claude <your model name> <noreply@anthropic.com>' docs/plans/2026-10-08-haiku-default-cleanup.md | wc -l` prints `4`. Anything else: STOP.
+tdd: no prose-only edits to plan documents; the checks are greps and a numstat shape that fixes every line count
+blast-radius: docs/plans/2026-10-08-haiku-default-cleanup.md:3, docs/plans/2026-10-08-haiku-default-cleanup.md:989, docs/plans/2026-10-06-rubric-gated-haiku-programme.md:3, docs/plans/2026-10-06-contract-hardening.md:3, docs/plans/2026-10-07-final-cleanup.md:3, docs/plans/2026-10-08-haiku-default-tier.md:3
+note: no edit may insert or delete a line above an existing line, because reviewer notes and plans cite line numbers in these files (for example docs/plans/2026-10-07-final-cleanup.md:114-118, docs/plans/2026-10-08-haiku-default-cleanup.md:958-962). Every edit here is a same-line substitution or an append at the end of the file.
+note: payload fences sit at column 0 and hold the file's literal text; `indent: N` is the smallest leading-space count of the payload's non-empty lines (0 throughout), so nothing is stripped or added. Appended payloads begin with one empty line, which is part of the text, and each paragraph is ONE line.
+note: edit 12 matches the last two lines of the hdc plan (a text line, then the closing fence `~~~~~`) because the closing fence line alone is not unique in that file.
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-4)` as its subject scope. Gate friction on prose: commit with `git commit -F <file>` if a message scan blocks `-m`; never rephrase to dodge a gate.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: docs(blc-4): proof line, closed stage statuses, trailer sweep (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-4 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~~~
+
+## Unit blc-5
+
+HELD: SPEC-GAP H-BLC5 - Step 5's file list omits `adapters/cursor/agents/lead-programmer.md` and `adapters/codex/agents/lead-programmer.toml`; with only the listed files, AC5.5 fails on writer-tier-consistency AC-A1. Do not dispatch while this line stands (ruling needed from spec-master; this contract already carries the port edits as edits 4 and 5).
+
+~~~~~~~markdown
+Unit: blc-5
+
+## Objective
+Every commit of a unit, fix rounds included, carries `(<unit-id>)` as its subject scope; `agents/task-master.md` finds a unit's first and last commits with the anchored pattern `^[a-z]+\(<unit-id>\): ` instead of `-F --grep='(<unit-id>)'`, and every range contract adds an untagged-tail criterion. Version 0.31.148; mirrors refreshed.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-5`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Affected files
+- `agents/task-master.md` (anchors below)
+- `agents/lead-programmer.md` (anchor: line matching `without a contract (task-master absent) leaves them in force.`)
+- `adapters/cursor/agents/lead-programmer.md`, `adapters/codex/agents/lead-programmer.toml` (anchor: line matching `without a contract (task-master absent) leaves them in force.`)
+- `agents/scribe.md` (anchor: line matching `on top of the contract.`)
+- `.claude-plugin/plugin.json`, `package.json` (anchor: line matching `"version": "0.31.147",`)
+- `CHANGELOG.md` (anchor: line matching `## [Unreleased]`)
+- the 14 `.claude/` paths that `node bin/cli.js --update` rewrites; never edit them by hand
+
+## Ordered edits
+1. file: `agents/task-master.md`
+   anchor: line matching `**Range criteria.** A criterion over a commit range binds its end to the`
+   indent: 2
+   before:
+```
+  **Range criteria.** A criterion over a commit range binds its end to the
+  unit's own last commit, `git log --format=%H -F --grep='(<unit-id>)' | head
+  -1`, never `HEAD`. A red-set criterion over a test file that runs git uses a
+```
+   after:
+```
+  **Range criteria.** A criterion over a commit range binds its start and end
+  to the unit's own first and last commits, found with `git log --format=%H -E
+  --grep='^[a-z]+\(<unit-id>\): '` (`tail -1`, `head -1`), never `HEAD`; the
+  anchored pattern matches only a subject whose scope is the unit, never a later
+  commit that merely mentions it. That end holds only if every commit of the
+  unit, fix rounds included, carries `(<unit-id>)` as its subject scope, so
+  every `commit-message:` line of a contract or fix contract does, and every
+  range contract adds one untagged-tail criterion, run at review time over the
+  unit's content files (never the version files or `.claude/`): `git log
+  --format=%s <end>..HEAD -- <content files> | grep -vcE
+  '^[a-z]+\(<unit-id>\): '`, `exit: 1`, `stdout: 0`. A red-set criterion over a
+  test file that runs git uses a
+```
+2. file: `agents/task-master.md`
+   anchor: line matching `lookups. If it cannot determine the cause, it writes no fix`
+   indent: 2
+   before:
+```
+  `explorer` lookups. If it cannot determine the cause, it writes no fix
+```
+   after:
+```
+  `explorer` lookups. Its `commit-message:` subject carries `(<unit-id>)` as
+  its scope, like the original contract's. If it cannot determine the cause, it
+  writes no fix
+```
+3. file: `agents/lead-programmer.md`
+   anchor: line matching `without a contract (task-master absent) leaves them in force.`
+   indent: 2
+   before:
+```
+  without a contract (task-master absent) leaves them in force.
+```
+   after:
+```
+  without a contract (task-master absent) leaves them in force. Every fix
+  commit's subject carries `(<task-id>)` as its scope, like the unit's first
+  commit, with or without a contract, so the unit's range criteria see it.
+```
+4. file: `adapters/cursor/agents/lead-programmer.md`
+   anchor: line matching `without a contract (task-master absent) leaves them in force.`
+   indent: 2
+   before:
+```
+  without a contract (task-master absent) leaves them in force.
+```
+   after:
+```
+  without a contract (task-master absent) leaves them in force. Every fix
+  commit's subject carries `(<task-id>)` as its scope, like the unit's first
+  commit, with or without a contract, so the unit's range criteria see it.
+```
+5. file: `adapters/codex/agents/lead-programmer.toml`
+   anchor: line matching `without a contract (task-master absent) leaves them in force.`
+   indent: 2
+   before:
+```
+  without a contract (task-master absent) leaves them in force.
+```
+   after:
+```
+  without a contract (task-master absent) leaves them in force. Every fix
+  commit's subject carries `(<task-id>)` as its scope, like the unit's first
+  commit, with or without a contract, so the unit's range criteria see it.
+```
+6. file: `agents/scribe.md`
+   anchor: line matching `on top of the contract.`
+   indent: 0
+   before:
+```
+on top of the contract.
+```
+   after:
+```
+on top of the contract. Without a contract, every commit of a unit, fix rounds
+included, carries `(<task-id>)` as its subject scope.
+```
+7. file: `.claude-plugin/plugin.json` (version 0.31.148)
+   anchor: line matching `"version": "0.31.147",`
+   before: `  "version": "0.31.147",`
+   after: `  "version": "0.31.148",`
+8. file: `package.json` (version 0.31.148)
+   anchor: line matching `"version": "0.31.147",`
+   before: `  "version": "0.31.147",`
+   after: `  "version": "0.31.148",`
+9. file: `CHANGELOG.md`
+   anchor: line matching `## [Unreleased]`
+   indent: 0
+   insert-after:
+```
+
+**Unit commits carry their scope (blc-5, 0.31.148).** `agents/task-master.md`: a unit's range criteria find its first and last commits with the anchored `git log --format=%H -E --grep='^[a-z]+\(<unit-id>\): '`, which no later commit that merely mentions the unit id can match, and every range contract adds an untagged-tail criterion (`exit: 1`, `stdout: 0`) so a fix-round commit outside the unit's scope is caught at review time; a fix contract's `commit-message:` carries the unit scope. `agents/lead-programmer.md` and its Cursor and Codex ports: every fix commit's subject carries `(<task-id>)`, with or without a contract. `agents/scribe.md`: without a contract, every commit of a unit, fix rounds included, carries `(<task-id>)`. No hook is added. Mirrors refreshed by `node bin/cli.js --update`.
+```
+10. command: `node bin/cli.js --update`
+   expect: 0
+11. command: `git status --porcelain --untracked-files=no -- .claude | wc -l`
+   expect: 0
+   stdout: `14`
+12. command: `git add agents/task-master.md agents/lead-programmer.md adapters/cursor/agents/lead-programmer.md adapters/codex/agents/lead-programmer.toml agents/scribe.md .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude && git commit -m "feat(blc-5): unit commits carry their scope; anchored range pattern (0.31.148) (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+    expect: 0
+13. command: `git status --porcelain --untracked-files=no | wc -l`
+    expect: 0
+    stdout: `0`
+
+## Do NOT touch
+- `agents/orchestrator.md` (unit blc-6 edits it, serially after this unit)
+- `templates/` (unit blc-6)
+- `tests/` (the pinned substrings stay as they are)
+- `hooks/` (no hook is added; `dispatchHygiene` stays `warn`)
+- `docs/adr/` and `CONTEXT.md`
+
+## Acceptance criteria
+1. run: `for p in "fix rounds included, carries" "untagged-tail criterion" "merely mentions it"; do tr '\n' ' ' < agents/task-master.md | tr -s ' ' | /usr/bin/grep -oF -- "$p" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 1 `
+   mutation: skip edit 1; it prints `0 0 0 `. It prints `0 0 0 ` at HEAD.
+2. run: `/usr/bin/grep -cF -- "-F --grep='(<unit-id>)'" agents/task-master.md`
+   exit: 1
+   stdout: `0`
+   mutation: skip edit 1; it prints `1`, exit 0.
+3. run: `tr '\n' ' ' < agents/task-master.md | tr -s ' ' | /usr/bin/grep -oF 'as its scope, like the original contract' | wc -l`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2; it prints `0`.
+4. run: `for f in agents/lead-programmer.md agents/scribe.md; do tr '\n' ' ' < "$f" | tr -s ' ' | /usr/bin/grep -oE "Every fix commit's subject carries|fix rounds included, carries" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 `
+   mutation: skip edit 3 or edit 6; that file's position prints `0`.
+5. run: `node tests/writer-tier-consistency.test.js > /dev/null 2>&1; echo exit=$?`
+   exit: 0
+   stdout: `exit=0`
+   mutation: skip edit 4; it prints `exit=1` (AC-A1: the Contract precedence paragraph must read the same in agents/lead-programmer.md and both ports). Deleting the line `- **Contract precedence.**` from agents/lead-programmer.md also prints `exit=1` (AC-P3). This already passes at HEAD and must stay green.
+6. run: `for f in .claude/agents/task-master.md .claude/agents/scribe.md .claude/agents/lead-programmer.md; do tr '\n' ' ' < "$f" | tr -s ' ' | /usr/bin/grep -oE "fix rounds included, carries|Every fix commit's subject carries" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 1 `
+   mutation: skip edit 10 (`node bin/cli.js --update`); it prints `0 0 0 `.
+7. run: `for f in adapters/cursor/agents/lead-programmer.md adapters/codex/agents/lead-programmer.toml; do tr '\n' ' ' < "$f" | tr -s ' ' | /usr/bin/grep -oF "Every fix commit's subject carries" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 `
+   mutation: skip edit 4 or edit 5; that port's position prints `0` and criterion 5 fails on AC-A1.
+8. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-5\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+9. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+10. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- agents/task-master.md agents/lead-programmer.md agents/scribe.md adapters/cursor/agents/lead-programmer.md adapters/codex/agents/lead-programmer.toml | /usr/bin/grep -vcE '^[a-z]+\(blc-5\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+11. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' agents/task-master.md agents/lead-programmer.md agents/scribe.md adapters/cursor/agents/lead-programmer.md adapters/codex/agents/lead-programmer.toml .claude-plugin/plugin.json CHANGELOG.md package.json | sort) && echo scope-blc-5-ok`
+   exit: 0
+   stdout: `scope-blc-5-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+12. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | tail -1)~1; bash hooks/scripts/version-stamp-check.sh "$B..$U" | /usr/bin/grep -c '^version-stamp-check: ok'`
+   exit: 0
+   stdout: `1`
+   mutation: skip the plugin.json bump; the line no longer reads `ok` and it prints `0`, exit 1 (the script itself exits 0 on a violation, so this gates on stdout).
+13. run: `node -e "const a=require('./package.json').version,b=require('./.claude-plugin/plugin.json').version;const ok=a===b&&a==='0.31.148';console.log(ok?'version-sync: ok':'version-sync: mismatch');process.exit(ok?0:1)"`
+   exit: 0
+   stdout: `version-sync: ok`
+   mutation: skip the package.json bump; it prints `version-sync: mismatch`, exit 1.
+14. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | tail -1)~1; git diff --name-only "$B..$U" -- .claude | wc -l`
+   exit: 0
+   stdout: `14`
+   mutation: skip `node bin/cli.js --update`; it prints `0`.
+   proof: ten agent mirrors, three protocol files and `.claude/persona-config.json`, as csg-2 measured; re-measure if a mirror is added.
+15. run: `node bin/cli.js --update | /usr/bin/grep -c 'already current'`
+   exit: 0
+   stdout: `1`
+   mutation: leave a `.claude/` mirror stale; `--update` rewrites it and the line is absent (prints `0`, exit 1).
+16. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+17. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `node -p "require('./.claude-plugin/plugin.json').version"` and `node -p "require('./package.json').version"` both print `0.31.147`. Anything else: STOP; the orchestrator re-derives every version literal as HEAD version + 1 and rewrites this contract's version lines before dispatch.
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | wc -l` prints `0`. Anything else: STOP.
+precondition: FIRST, for every edit item that has an `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1` and its `before:` payload appears verbatim in its file. On any mismatch STOP and report; do not adapt the text.
+precondition: no other unit that runs `node bin/cli.js --update` is in flight (blc-6 starts after this unit's PASS), and the tree is clean.
+tdd: no prose-only edits to persona instructions; the checks are flattened-phrase greps, the existing tests/writer-tier-consistency.test.js pins, and validate.sh mirror parity
+blast-radius: agents/task-master.md:199, agents/task-master.md:98, agents/lead-programmer.md:46, adapters/cursor/agents/lead-programmer.md:51, adapters/codex/agents/lead-programmer.toml:52, agents/scribe.md:106, tests/writer-tier-consistency.test.js:180
+note: payload fences sit at column 0 and hold the file's literal text, leading spaces included; `indent: N` is the smallest leading-space count of the payload's non-empty lines, so nothing is stripped or added. The CHANGELOG payload begins with one empty line, which is part of the text; its entry is ONE line.
+note: edits 4 and 5 (the two lead-programmer ports) are not in the plan's Step 5 file list; replaying the unit in a scratch worktree of 5720c5b showed tests/writer-tier-consistency.test.js AC-A1 fails without them (the Contract precedence paragraph must be identical in agents/lead-programmer.md and both ports), so they are folded in here. Spec-master should add them to Step 5.
+note: edit 1's after-text ends mid-sentence ("uses a") on purpose: the next original line, which stays, starts with the code span `git worktree add --detach`.
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-5)` as its subject scope; this unit is the first to state that rule, and its own range criteria already use the anchored pattern.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: feat(blc-5): unit commits carry their scope; anchored range pattern (0.31.148) (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-5 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
+criterion 14: <FILL: exit and stdout>
+criterion 15: <FILL: exit and stdout>
+criterion 16: <FILL: exit and stdout>
+criterion 17: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~~~
+
+## Unit blc-6
+
+HELD: depends on blc-5 (SPEC-GAP H-BLC5). Do not dispatch while this line stands.
+
+~~~~~~~markdown
+Unit: blc-6
+
+## Objective
+`templates/protocol-digest.md` keeps all six rules in at most 15 non-empty body lines and `tests/protocol-doc-drift.test.js` enforces that budget; `agents/orchestrator.md` (At the 2-FAIL cap), the digest and `templates/persona-protocol.md` define ladder exhaustion with the same phrase ("reaching or exceeding the ladder's length"); the orchestrator's Contract-score guard paragraph says its "scoring is pure" claim assumes an unchanged contract of record, and `tests/writer-tier-consistency.test.js` pins that paragraph. Version 0.31.149; mirrors refreshed.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-6`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Affected files
+- `tests/protocol-doc-drift.test.js` (anchor: line matching `if (failures) {`)
+- `templates/protocol-digest.md` (anchors below)
+- `templates/persona-protocol.md` (anchor: line matching `human stop happens there. Only the second FAIL on the ladder's top tier,`)
+- `agents/orchestrator.md` (anchors below)
+- `tests/writer-tier-consistency.test.js` (anchor: line matching `hasAll('agents/lead-programmer.md', ['- **Contract precedence.**']);`)
+- `.claude-plugin/plugin.json`, `package.json` (anchor: line matching `"version": "0.31.148",`)
+- `CHANGELOG.md` (anchor: line matching `## [Unreleased]`)
+- the 14 `.claude/` paths that `node bin/cli.js --update` rewrites; never edit them by hand
+
+## Ordered edits
+1. file: `tests/protocol-doc-drift.test.js`
+   anchor: line matching `if (failures) {`
+   indent: 0
+   before:
+```
+if (failures) {
+  console.log(`\n${failures} protocol-doc-drift check(s) FAILED.`);
+```
+   after:
+```
+check('templates/protocol-digest.md stays within its budget: at most 15 non-empty lines after the header comment', () => {
+  const text = fs.readFileSync(path.join(REPO_ROOT, 'templates', 'protocol-digest.md'), 'utf8');
+  const end = text.indexOf('-->');
+  assert.ok(end >= 0, 'the digest must keep its header comment');
+  const body = text.slice(end + 3).split('\n').filter((l) => l.trim() !== '');
+  assert.ok(body.length <= 15, `digest body has ${body.length} non-empty lines; trim it or mechanize the rule (a hook) instead`);
+});
+
+if (failures) {
+  console.log(`\n${failures} protocol-doc-drift check(s) FAILED.`);
+```
+2. command: `node tests/protocol-doc-drift.test.js > /dev/null 2>&1; echo exit=$?`
+   expect: 0
+   stdout: `exit=1`
+3. file: `templates/protocol-digest.md`
+   anchor: line matching `Keep this under ~15 lines - if it grows,`
+   indent: 0
+   before:
+```
+Keep this under ~15 lines - if it grows,
+```
+   after:
+```
+Keep the body to at most 15 non-empty lines (tested) - if it grows,
+```
+4. file: `templates/protocol-digest.md`
+   anchor: line matching `# Protocol digest (post-compaction/resume reminder)`
+   indent: 0
+   before:
+```
+# Protocol digest (post-compaction/resume reminder)
+
+- Structural questions (where something's defined, what calls it, blast
+  radius, test coverage): spawn `explorer`. Don't invoke the
+  code-review-graph skill directly.
+- Review ownership: lead-programmer never spawns or messages the reviewer
+  directly, and the reviewer never spawns or messages the lead-programmer.
+  Only the orchestrator/team lead routes between them. "Done" means the
+  reviewer returned PASS, not "looks finished" - and on a critical unit PASS
+  may first route through ESCALATE-TO-HUMAN.
+- FAIL cap: 2 FAILs per implementer tier -> move the unit up the Escalation
+  ladder; only at ladder exhaustion (the top tier's second FAIL) stop
+  re-delegating and surface the full defect history to the user instead.
+- The WIP sentinel (`.claude/wip-handoff.<agent-id>`) is for a genuine
+  mid-task pause only - never to dodge a red suite you could otherwise fix.
+  It must contain a stated reason; an empty sentinel is ignored.
+- A gated agent's stop without review sets `.claude/.pending-review.<id>` -
+  it blocks turn-end and the next implementation dispatch until the reviewer
+  runs (clearing it) or you write `defer: <reason>`/`skip: <reason>` into it.
+- `memory: <scope>` auto-grants Read/Write/Edit for memory files regardless
+  of your declared `tools:` - that is not license to edit source code (or
+  any file outside your role's stated scope) if your role says you never do.
+```
+   after:
+```
+# Protocol digest (post-compaction/resume reminder)
+
+- Structural questions (definitions, callers, blast radius, coverage): spawn
+  `explorer`; never invoke the code-review-graph skill directly.
+- Only the orchestrator/team lead routes between lead-programmer and reviewer.
+  "Done" = reviewer PASS (a critical unit may first route through
+  ESCALATE-TO-HUMAN).
+- 2 FAILs per implementer tier move the unit up the Escalation ladder; only
+  ladder exhaustion (FAIL count reaching or exceeding the ladder's length)
+  stops re-delegation and surfaces the full defect history to the user.
+- WIP sentinel `.claude/wip-handoff.<agent-id>`: genuine mid-task pause only,
+  with a stated reason (empty is ignored); never to dodge a fixable red suite.
+- `.claude/.pending-review.<id>` blocks turn-end and the next implementation
+  dispatch until the reviewer runs or it holds `defer: <reason>`/`skip: <reason>`.
+- `memory:` auto-grants Read/Write/Edit; that is not license to edit outside
+  your role's stated scope.
+```
+5. command: `node tests/protocol-doc-drift.test.js > /dev/null 2>&1; echo exit=$?`
+   expect: 0
+   stdout: `exit=0`
+6. file: `agents/orchestrator.md`
+   anchor: line matching `At **ladder exhaustion** (the second FAIL on the ladder's top tier), stop`
+   indent: 0
+   before:
+```
+(the second FAIL on the ladder's top tier), stop
+```
+   after:
+```
+(the unit's FAIL-block count reaching or exceeding the ladder's length: normally the second FAIL on the ladder's top tier, or any later FAIL after a human-directed re-dispatch), stop
+```
+7. file: `templates/persona-protocol.md`
+   anchor: line matching `human stop happens there. Only the second FAIL on the ladder's top tier,`
+   indent: 0
+   before:
+```
+human stop happens there. Only the second FAIL on the ladder's top tier,
+ladder exhaustion, stops re-dispatch: the orchestrator (or team lead) then
+```
+   after:
+```
+human stop happens there. Only ladder exhaustion (the unit's FAIL count
+reaching or exceeding the ladder's length: normally the second FAIL on its top
+tier) stops re-dispatch: the orchestrator (or team lead) then
+```
+8. file: `agents/orchestrator.md`
+   anchor: line matching `ladder from n and the contract; it can only move a unit onto a more capable`
+   indent: 0
+   before:
+```
+ladder from n and the contract; it can only move a unit onto a more capable
+```
+   after:
+```
+ladder from n and the contract of record, provided it is unchanged (a plan
+file revised between dispatches can demote a unit that passed earlier, even
+mid-ladder); it can only move a unit onto a more capable
+```
+9. file: `tests/writer-tier-consistency.test.js`
+   anchor: line matching `hasAll('agents/lead-programmer.md', ['- **Contract precedence.**']);`
+   indent: 0
+   before:
+```
+  hasAll('agents/lead-programmer.md', ['- **Contract precedence.**']);
+});
+```
+   after:
+```
+  hasAll('agents/lead-programmer.md', ['- **Contract precedence.**']);
+});
+
+check('AC-P4: orchestrator.md keeps the Contract-score guard paragraph and its unchanged-contract caveat', () => {
+  hasAll('agents/orchestrator.md', ['**Contract-score guard.**', 'node bin/contract-guard.js', 'contract-guard: haiku',
+    '**guard demotion**', 'decision=contract-guard sonnet:', '--shape=scribe', 'provided it is unchanged']);
+});
+```
+10. file: `.claude-plugin/plugin.json` (version 0.31.149)
+   anchor: line matching `"version": "0.31.148",`
+   before: `  "version": "0.31.148",`
+   after: `  "version": "0.31.149",`
+11. file: `package.json` (version 0.31.149)
+   anchor: line matching `"version": "0.31.148",`
+   before: `  "version": "0.31.148",`
+   after: `  "version": "0.31.149",`
+12. file: `CHANGELOG.md`
+   anchor: line matching `## [Unreleased]`
+   indent: 0
+   insert-after:
+```
+
+**Digest within budget; one definition of ladder exhaustion (blc-6, 0.31.149).** `templates/protocol-digest.md` keeps all six rules in 15 non-empty body lines and `tests/protocol-doc-drift.test.js` now fails when the body grows past 15. `agents/orchestrator.md` (At the 2-FAIL cap), the digest and `templates/persona-protocol.md` define ladder exhaustion the same way: the unit's FAIL count reaching or exceeding the ladder's length, normally the second FAIL on the top tier. `agents/orchestrator.md`: the Contract-score guard paragraph now says that its "scoring is pure" claim assumes an unchanged contract of record, and `tests/writer-tier-consistency.test.js` (AC-P4) pins that paragraph. Mirrors refreshed by `node bin/cli.js --update`.
+```
+13. command: `node tests/writer-tier-consistency.test.js > /dev/null 2>&1; echo exit=$?`
+   expect: 0
+   stdout: `exit=0`
+14. command: `node bin/cli.js --update`
+   expect: 0
+15. command: `git status --porcelain --untracked-files=no -- .claude | wc -l`
+   expect: 0
+   stdout: `14`
+16. command: `git add agents/orchestrator.md templates/protocol-digest.md templates/persona-protocol.md tests/protocol-doc-drift.test.js tests/writer-tier-consistency.test.js .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude && git commit -m "feat(blc-6): digest within budget; one definition of ladder exhaustion; guard paragraph pinned (0.31.149) (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+   expect: 0
+17. command: `git status --porcelain --untracked-files=no | wc -l`
+   expect: 0
+   stdout: `0`
+
+## Do NOT touch
+- `bin/contract-guard.js` and `tests/contract-score.test.js` (unit blc-8)
+- `CONTEXT.md` and `docs/harness-glossary.md` (unit blc-7; scribe owns them)
+- `docs/adr/0040-implementer-tier-haiku-default.md`
+- `agents/task-master.md`, `agents/lead-programmer.md`, `agents/scribe.md` (unit blc-5)
+- `.claude/` (mirrors are regenerated only by `node bin/cli.js --update`)
+
+## Acceptance criteria
+1. run: `node tests/protocol-doc-drift.test.js > /dev/null 2>&1; echo exit=$?`
+   exit: 0
+   stdout: `exit=0`
+   mutation: skip edit 4 (the digest body is 21 non-empty lines today); it prints `exit=1`. Skip edit 1 as well and it prints `exit=0` (no budget check), which is why edit 2 shows the red state first.
+2. run: `awk 'f && NF; /-->/{f=1}' templates/protocol-digest.md | wc -l`
+   exit: 0
+   stdout: `15`
+   mutation: skip edit 4; it prints `21` (measured at 5720c5b).
+3. run: `for t in explorer code-review-graph ESCALATE-TO-HUMAN 'Escalation ladder' 'ladder exhaustion' wip-handoff .pending-review 'defer:' 'skip:' 'memory:'; do tr '\n' ' ' < templates/protocol-digest.md | tr -s ' ' | /usr/bin/grep -oF -- "$t" | wc -l; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop the `memory:` rule from the digest; it prints `0 1 `.
+4. run: `for f in agents/orchestrator.md templates/persona-protocol.md templates/protocol-digest.md; do tr '\n' ' ' < "$f" | tr -s ' ' | /usr/bin/grep -oF "reaching or exceeding the ladder's length" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 1 `
+   mutation: skip edit 6, 7 or 4; that file's position prints `0`.
+5. run: `/usr/bin/grep -cF "(the second FAIL on the ladder's top tier), stop" agents/orchestrator.md`
+   exit: 1
+   stdout: `0`
+   mutation: skip edit 6; it prints `1`, exit 0.
+6. run: `node tests/writer-tier-consistency.test.js > /dev/null 2>&1 && /usr/bin/grep -c 'Contract-score guard' agents/orchestrator.md`
+   exit: 0
+   stdout: `1`
+   mutation: delete the Contract-score guard paragraph from agents/orchestrator.md; the AC-P4 pin fails and nothing prints, exit 1.
+7. run: `for f in .claude/protocol-digest.md .claude/persona-protocol.md; do tr '\n' ' ' < "$f" | tr -s ' ' | /usr/bin/grep -oF "reaching or exceeding the ladder's length" | wc -l; done | tr '\n' ' '`
+   exit: 0
+   stdout: `1 1 `
+   mutation: skip edit 14 (`node bin/cli.js --update`); it prints `0 0 `.
+8. run: `node tests/writer-tier-consistency.test.js 2>&1 | /usr/bin/grep -c '^OK   AC-P4: orchestrator.md keeps the Contract-score guard paragraph'`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 9; it prints `0`, exit 1.
+9. run: `tr '\n' ' ' < agents/orchestrator.md | tr -s ' ' | /usr/bin/grep -oF 'provided it is unchanged (a plan file revised between dispatches can demote a unit that passed earlier, even mid-ladder)' | wc -l`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 8; it prints `0`. With edit 9 applied and edit 8 skipped, criterion 8 also prints `0`, so the pin is not vacuous.
+10. run: `tr '\n' ' ' < .claude/agents/orchestrator.md | tr -s ' ' | /usr/bin/grep -oF 'provided it is unchanged (a plan file revised between dispatches' | wc -l`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 14; it prints `0`.
+11. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-6\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+12. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+13. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- templates/protocol-digest.md templates/persona-protocol.md agents/orchestrator.md tests/protocol-doc-drift.test.js tests/writer-tier-consistency.test.js | /usr/bin/grep -vcE '^[a-z]+\(blc-6\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+14. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' templates/protocol-digest.md templates/persona-protocol.md agents/orchestrator.md tests/protocol-doc-drift.test.js tests/writer-tier-consistency.test.js .claude-plugin/plugin.json CHANGELOG.md package.json | sort) && echo scope-blc-6-ok`
+   exit: 0
+   stdout: `scope-blc-6-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+15. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | tail -1)~1; bash hooks/scripts/version-stamp-check.sh "$B..$U" | /usr/bin/grep -c '^version-stamp-check: ok'`
+   exit: 0
+   stdout: `1`
+   mutation: skip the plugin.json bump; the line no longer reads `ok` and it prints `0`, exit 1 (the script itself exits 0 on a violation, so this gates on stdout).
+16. run: `node -e "const a=require('./package.json').version,b=require('./.claude-plugin/plugin.json').version;const ok=a===b&&a==='0.31.149';console.log(ok?'version-sync: ok':'version-sync: mismatch');process.exit(ok?0:1)"`
+   exit: 0
+   stdout: `version-sync: ok`
+   mutation: skip the package.json bump; it prints `version-sync: mismatch`, exit 1.
+17. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | tail -1)~1; git diff --name-only "$B..$U" -- .claude | wc -l`
+   exit: 0
+   stdout: `14`
+   mutation: skip `node bin/cli.js --update`; it prints `0`.
+   proof: ten agent mirrors, three protocol files and `.claude/persona-config.json`, as csg-2 measured; re-measure if a mirror is added.
+18. run: `node bin/cli.js --update | /usr/bin/grep -c 'already current'`
+   exit: 0
+   stdout: `1`
+   mutation: leave a `.claude/` mirror stale; `--update` rewrites it and the line is absent (prints `0`, exit 1).
+19. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+20. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `node -p "require('./.claude-plugin/plugin.json').version"` and `node -p "require('./package.json').version"` both print `0.31.148` (unit blc-5 has landed). Anything else: STOP; the orchestrator re-derives every version literal as HEAD version + 1 and rewrites this contract's version lines before dispatch.
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-6\): ' | wc -l` prints `0`, and `git log --format=%H -E --grep='^[a-z]+\(blc-5\): ' | wc -l` is at least `1` (the orchestrator confirms the blc-5 PASS marker before dispatch). Anything else: STOP.
+precondition: FIRST, for every edit item that has an `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1` and its `before:` payload appears verbatim in its file. On any mismatch STOP and report; do not adapt the text.
+precondition: no other unit that runs `node bin/cli.js --update` is in flight, and the tree is clean.
+tdd: yes tests/protocol-doc-drift.test.js (edit 1 adds the budget check, edit 2 shows it red against the 21-line digest, edit 5 shows it green); tests/writer-tier-consistency.test.js gains the AC-P4 pin
+blast-radius: tests/protocol-doc-drift.test.js:1, templates/protocol-digest.md:7, templates/persona-protocol.md:708, agents/orchestrator.md:362, agents/orchestrator.md:503, tests/writer-tier-consistency.test.js:203, hooks/scripts/session-start.sh:63
+note: payload fences sit at column 0 and hold the file's literal text, leading spaces included; `indent: N` is the smallest leading-space count of the payload's non-empty lines, so nothing is stripped or added. Edit 12's payload begins with one empty line, which is part of the text and its entry is ONE line. Edit 4's before-text is the whole old digest body from its heading to its last line; the blank line before the heading stays.
+note: edit 3 writes "at most 15 non-empty lines" where the plan's prose says "under 15", because the test allows 15 and the new body has exactly 15. Edits 8 and 9 (the guard caveat and its pin) were requested by the reviewers of csg-2 and are folded in here; the plan's Step 6 does not list them.
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-6)` as its subject scope.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: feat(blc-6): digest within budget; one definition of ladder exhaustion; guard paragraph pinned (0.31.149) (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-6 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
+criterion 14: <FILL: exit and stdout>
+criterion 15: <FILL: exit and stdout>
+criterion 16: <FILL: exit and stdout>
+criterion 17: <FILL: exit and stdout>
+criterion 18: <FILL: exit and stdout>
+criterion 19: <FILL: exit and stdout>
+criterion 20: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~~~
+
+## Unit blc-7
+
+~~~~~~~markdown
+Unit: blc-7
+
+## Objective
+CONTEXT.md says a `Suggested model` tag can only raise a unit's tier (entry **defaultImplementerModel**), defines **contract of record** and **rubric v2**, and links the **Contract-score guard** entry to them and to the **Rulings ledger** entry that docs/harness-glossary.md already defines.
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-7`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP.
+
+## Glossary edits
+Items 1, 2, 3 and 4 replace a substring of one line: each `before:` is that substring (no leading or trailing spaces, so the line's own spaces stay), and `text:` replaces exactly that substring. Items 5 and 6 add a new entry: insert one empty line and then the `text:` lines directly after the `_Avoid_:` line of the entry named by `heading:`; the empty line that already follows that entry stays after the new entry. Do items in the order given.
+1. file: `CONTEXT.md`
+   heading: `**defaultImplementerModel**:`
+   before:
+```
+tag (if present),
+```
+   text:
+```
+tag (if present), which can only raise a unit's tier above its ladder's entry, never lower it (see [[default tier]]),
+```
+2. file: `CONTEXT.md`
+   heading: `**Contract-score guard**:`
+   before:
+```
+the unit's contract of record (its
+```
+   text:
+```
+the unit's [[contract of record]] (its
+```
+3. file: `CONTEXT.md`
+   heading: `**Contract-score guard**:`
+   before:
+```
+under rubric v2, and unless
+```
+   text:
+```
+under [[rubric v2]], and unless
+```
+4. file: `CONTEXT.md`
+   heading: `**Contract-score guard**:`
+   before:
+```
+is recorded in the orchestrator's Rulings ledger,
+```
+   text:
+```
+is recorded in the orchestrator's [[Rulings ledger]],
+```
+5. file: `CONTEXT.md`
+   heading: `**Contract-score guard**:`
+   text:
+```
+**contract of record**:
+(unit blc-7, 2026-10-09) — the one contract block the [[Contract-score guard]]
+  scores for a unit: its `Unit: <id>` dispatch contract in the plan file or
+  issue body the dispatch cites, never a fix contract. Because the guard
+  re-runs on every dispatch, a revision of that plan file between two
+  dispatches replaces the contract of record, and the next run can score a
+  different block than the one before it did.
+_Avoid_: contract (alone: a fix contract is a different artifact), dispatch prompt
+```
+6. file: `CONTEXT.md`
+   heading: `**contract of record**:`
+   text:
+```
+**rubric v2**:
+(unit blc-7, 2026-10-09) — the second scoring table of `bin/contract-score.js`,
+  selected with `--rubric=v2`. A lead-programmer contract is scored on rows
+  R1-R7 (ordered edits carry literal payloads, version-stamp obligations,
+  criteria carry `exit:`, `stdout:` and `mutation:`, no host paths, a
+  pre-resolved context with a review-packet template, a Do NOT touch list, and
+  `diagnosis: none`); a scribe contract on rows S1-S7. The [[Contract-score
+  guard]] scores under rubric v2 only; v1 stays for older contracts.
+_Avoid_: rubric (alone), contract score (the number it yields)
+```
+
+## Doc edits
+none — make no other doc changes
+prune: none
+
+## ADR
+none
+
+## Close conditions
+- issue #529 is the umbrella [spec] issue and no per-unit issue exists: close nothing, and never close #529
+- task-id: blc-7
+- marker first line: "PASS blc-7 "
+- commit: one commit of CONTEXT.md (plus one per fix round after a FAIL), subject `docs(blc-7): glossary defaultImplementerModel tag, contract of record, rubric v2, Rulings ledger link (#529)`, then a second `-m` argument holding exactly the line `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` (a fix round on another tier names that tier's model). Every commit of this unit carries `(blc-7)` as its subject scope.
+- precondition: the csg-4 PASS marker exists (the orchestrator confirms it before dispatch); `git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | wc -l` prints `0`; each `before:` substring appears in CONTEXT.md exactly once (`/usr/bin/grep -cF -- '<before text>' CONTEXT.md` prints `1`, or `tr` the file flat first for a wrapped one); the headings `**contract of record**:` and `**rubric v2**:` appear in neither CONTEXT.md nor docs/harness-glossary.md. Anything else: STOP and report a spec gap.
+- if a glossary test rejects the new text, STOP and report the failing check verbatim; do not reshape the entries. If a message scan blocks `-m`, commit with `git commit -F <file>`; never rephrase to dodge a gate.
+- the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+
+## Do NOT touch
+- every other entry of `CONTEXT.md` (in particular **default tier**, **Haiku-default cutover**, **Escalation ladder**, **ladder exhaustion**, **Suggested model vocabulary**)
+- `docs/harness-glossary.md` (the **Rulings ledger** entry is already defined there and stays)
+- `docs/adr/`, `agents/`, `templates/`, `tests/`, `bin/`
+
+## Acceptance criteria
+1. run: `awk '/^\*\*defaultImplementerModel\*\*:/,/^$/' CONTEXT.md | tr '\n' ' ' | tr -s ' ' | /usr/bin/grep -oF 'can only raise a unit' | wc -l`
+   exit: 0
+   stdout: `1`
+   mutation: put the sentence in the **default tier** entry instead; it prints `0` (the class of the hdc-5 FAIL: wrong entry). It prints `0` at HEAD.
+2. run: `/usr/bin/grep -c '^\*\*contract of record\*\*:$' CONTEXT.md; /usr/bin/grep -c '^\*\*rubric v2\*\*:$' CONTEXT.md`
+   exit: 0
+   stdout: `1` then `1` (two lines)
+   mutation: skip item 5; it prints `0` then `1`, exit 1. Skip item 6; `1` then `0`.
+3. run: `awk '/^\*\*Contract-score guard\*\*:/,/^_Avoid_/' CONTEXT.md | tr '\n' ' ' | tr -s ' ' | /usr/bin/grep -oE '\[\[(contract of record|rubric v2|Rulings ledger)\]\]' | sort | tr '\n' ' '`
+   exit: 0
+   stdout: `[[Rulings ledger]] [[contract of record]] [[rubric v2]] `
+   mutation: skip item 4; the first link is missing. It prints nothing at HEAD.
+4. run: `node tests/context-glossary-links.test.js 2>&1 | tail -n 1`
+   exit: 0
+   stdout: `All context-glossary-links checks passed.`
+   mutation: write `[[default-tier]]` in item 1; the link check names it as dangling and the last line changes.
+5. run: `node tests/ubiquitous-language.test.js 2>&1 | tail -n 1`
+   exit: 0
+   stdout: `passes all 4 structural/distinguishability checks`
+   mutation: set `UL_TEST_MUTATE=1`; the test exits non-zero (it checks skills/ubiquitous-language/SKILL.md, not the entries).
+   proof: `UL_TEST_MUTATE=1 node tests/ubiquitous-language.test.js` exits non-zero. This criterion already passes at HEAD and must stay green.
+6. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | tail -1)~1; git diff --name-only "$B..$U" | tr '\n' ' '; git diff -U0 "$B..$U" -- CONTEXT.md | /usr/bin/grep -c '^@@'`
+   exit: 0
+   stdout: `CONTEXT.md 5` (the file list, a space, then the hunk count)
+   mutation: also edit another entry; the hunk count becomes `6`. Skip item 5 or item 6; it becomes `4`.
+7. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-7\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+8. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+9. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- CONTEXT.md | /usr/bin/grep -vcE '^[a-z]+\(blc-7\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+10. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-7\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' CONTEXT.md | sort) && echo scope-blc-7-ok`
+   exit: 0
+   stdout: `scope-blc-7-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+11. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+12. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Escalation
+If any item cannot be applied exactly, STOP and report a spec gap; do not improvise.
+~~~~~~~
+
+## Unit blc-8
+
+~~~~~~~markdown
+Unit: blc-8
+
+## Objective
+`bin/contract-guard.js` exits 2 on any extra argument or unknown flag (for example `--shape scribe` with a space) and documents in its header that a longer closing fence leaves a block open (the unit then falls to sonnet); `tests/contract-score.test.js` pins both, and its `guard-plan-files` check reads a fixture copy under `tests/fixtures/contract-score/` instead of the live plan (docs/plans is export-ignored, so it is absent from a `git archive`).
+
+## Retrieval
+Plan file: `docs/plans/2026-10-09-backlog-cleanup.md`, `## Unit blc-8`. No per-unit issue exists. Umbrella: `gh issue view 529 --repo Storreslara/AntiSlop`. The contract outranks the plan prose; a conflict is a spec gap: STOP. This unit folds in three reviewer notes (csg-1 and csg-2 PASS notes) that no plan unit covered.
+
+## Affected files
+- `bin/contract-guard.js` (anchors below)
+- `tests/contract-score.test.js` (anchor: line matching `check('guard-plan-files', () => {`)
+- `tests/fixtures/contract-score/guard-plan-hdc.md` (new file, created by a command item)
+
+## Ordered edits
+1. file: `bin/contract-guard.js`
+   anchor: line matching `const file = args.find((a) => !a.startsWith('--') || a === '-');`
+   indent: 2
+   before:
+```
+  const file = args.find((a) => !a.startsWith('--') || a === '-');
+```
+   after:
+```
+  const rest = args.filter((a) => !/^--(unit|shape)=/.test(a));
+  if (rest.length > 1) usage(`unexpected argument(s): ${rest.slice(1).join(' ')}`);
+  const file = rest[0];
+```
+2. file: `bin/contract-guard.js`
+   anchor: line matching `and any non-zero exit, as`
+   indent: 0
+   insert-after:
+```
+//
+// Any argument other than one <path|-> and the --unit=<id> / --shape=<lead|scribe> flags is a usage
+// error (exit 2, empty stdout), for example `--shape scribe` written with a space.
+//
+// A fenced block opens on a run of three or more backticks or tildes and closes only on a line that
+// holds exactly the same run. A longer closing fence therefore leaves the block open, it is never
+// returned, and the unit falls to `reason=no-contract`, which fails safe to sonnet.
+```
+3. command: `git show 5720c5b:docs/plans/2026-10-08-haiku-default-cleanup.md | awk '/^## Unit hdc-(1|6)$/{p=1} /^## Unit hdc-(2|3|4|5)$/{p=0} p' > tests/fixtures/contract-score/guard-plan-hdc.md`
+   expect: 0
+4. file: `tests/contract-score.test.js`
+   anchor: line matching `check('guard-plan-files', () => {`
+   indent: 0
+   before:
+```
+check('guard-plan-files', () => {
+  const plan = 'docs/plans/2026-10-08-haiku-default-cleanup.md';
+```
+   after:
+```
+check('guard-usage-extra-args', () => {
+  for (const args of [['-', '--unit=demo-2', '--shape', 'scribe'], ['-', '--unit=demo-2', '--bogus'], ['-', 'extra', '--unit=demo-2']]) {
+    const r = guard(args, G_LEAD);
+    assert.strictEqual(r.status, 2, `${args.join(' ')}: exit ${r.status}`);
+    assert.strictEqual(r.stdout, '', `${args.join(' ')}: stdout ${r.stdout}`);
+  }
+});
+
+check('guard-longer-closing-fence-leaves-block-open', () => {
+  const doc = `~~~~~markdown\n${G_LEAD.trimEnd()}\n~~~~~~\n`;
+  const line = gLine(guard(['-', '--unit=demo-2'], doc));
+  assert.strictEqual(line, 'contract-guard: sonnet unit=demo-2 shape=lead reason=no-contract');
+});
+
+check('guard-plan-files', () => {
+  // A fixture copy of the hdc-1 and hdc-6 contracts (the plans directory is export-ignored, so a git archive lacks the live plan).
+  const plan = `${FIX}/guard-plan-hdc.md`;
+```
+5. command: `node tests/contract-score.test.js > /dev/null 2>&1; echo exit=$?`
+   expect: 0
+   stdout: `exit=0`
+6. command: `git add bin/contract-guard.js tests/contract-score.test.js tests/fixtures/contract-score/guard-plan-hdc.md && git commit -m "fix(blc-8): contract guard rejects extra arguments; fence rule documented; plan-files check reads a fixture (#529)" -m "Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>"`
+   expect: 0
+
+## Do NOT touch
+- `bin/contract-score.js` (the scorer is unchanged)
+- `agents/orchestrator.md` (the guard paragraph is unit blc-6's; its call lines already pass only valid arguments)
+- `docs/plans/2026-10-08-haiku-default-cleanup.md` (the fixture is a copy taken at 5720c5b; the plan itself stays as it is, unit blc-4 edits it)
+- `.claude/` (bin/ and tests/ have no mirror; no `--update` and no version bump apply)
+
+## Acceptance criteria
+1. run: `node tests/contract-score.test.js > /dev/null 2>&1; echo exit=$?`
+   exit: 0
+   stdout: `exit=0`
+   mutation: skip edit 1; the new guard-usage-extra-args check fails and it prints `exit=1`. It prints `exit=0` at HEAD, and must stay green.
+2. run: `node bin/contract-guard.js - --unit=demo-2 --shape scribe < tests/fixtures/contract-score/v2-all-pass.md > /dev/null 2>&1; echo exit=$?`
+   exit: 0
+   stdout: `exit=2`
+   mutation: skip edit 1; it prints `exit=0` (the stray words are ignored). It prints `exit=0` at HEAD.
+3. run: `tr '\n' ' ' < bin/contract-guard.js | tr -s ' ' | /usr/bin/grep -oF -e 'A longer closing fence therefore leaves the block open' -e 'which fails safe to sonnet' | wc -l`
+   exit: 0
+   stdout: `2`
+   mutation: skip edit 2; it prints `0`. It prints `0` at HEAD.
+4. run: `/usr/bin/grep -c 'docs/plans' tests/contract-score.test.js; /usr/bin/grep -c 'guard-plan-hdc.md' tests/contract-score.test.js`
+   exit: 0
+   stdout: `0` then `1` (two lines)
+   mutation: skip edit 4; it prints `1` then `0`, exit 1.
+5. run: `node bin/contract-guard.js tests/fixtures/contract-score/guard-plan-hdc.md --unit=hdc-1 | cut -d' ' -f1-6; node bin/contract-guard.js tests/fixtures/contract-score/guard-plan-hdc.md --unit=hdc-6 --shape=scribe | cut -d' ' -f1-7`
+   exit: 0
+   stdout: `contract-guard: haiku unit=hdc-1 shape=lead score=7/7` then `contract-guard: sonnet unit=hdc-6 shape=scribe score=6/7` (two lines)
+   mutation: skip edit 3; the fixture is missing, the guard exits 2 with no output and nothing prints.
+6. run: `D=$(mktemp -d) && git worktree add --detach -q "$D" HEAD && rm -rf "$D/docs/plans" && node "$D/tests/contract-score.test.js" > /dev/null 2>&1; echo exit=$?; git worktree remove --force "$D"`
+   exit: 0
+   stdout: `exit=0`
+   mutation: skip edit 4; the guard-plan-files check reads the missing live plan and it prints `exit=1`. It prints `exit=1` at HEAD.
+7. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | tail -1)~1; git log --format=%s "$B..$U" | /usr/bin/grep -vcE '^[a-z]+\(blc-8\): .+ \(#529\)$'`
+   exit: 1
+   stdout: `0`
+   mutation: a unit commit whose subject lacks ` (#529)` makes it print `1` and exit 0; before the unit's first commit it prints `no-unit-commit` and exits 3.
+8. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | tail -1)~1; for c in $(git rev-list "$B..$U"); do git log -1 --format=%B "$c" | /usr/bin/grep -cE '^Co-Authored-By: Claude .+ <noreply@anthropic\.com>$'; done | sort -u | tr '\n' ' '`
+   exit: 0
+   stdout: `1 `
+   mutation: drop one commit's trailer; it prints `0 1 ` (or `0 `).
+9. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | tail -1)~1; git log --format=%s "$U"..HEAD -- bin/contract-guard.js tests/contract-score.test.js tests/fixtures/contract-score/guard-plan-hdc.md | /usr/bin/grep -vcE '^[a-z]+\(blc-8\): '`
+   exit: 1
+   stdout: `0`
+   mutation: run at review time: a later commit that touches a content file with the subject `fix: x` prints `1` and exits 0; before the unit's first commit it exits 3.
+10. run: `U=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | head -1); test -n "$U" || { echo no-unit-commit; exit 3; }; B=$(git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | tail -1)~1; diff <(git diff --name-only "$B..$U" | /usr/bin/grep -v '^\.claude/' | sort) <(printf '%s\n' bin/contract-guard.js tests/contract-score.test.js tests/fixtures/contract-score/guard-plan-hdc.md | sort) && echo scope-blc-8-ok`
+   exit: 0
+   stdout: `scope-blc-8-ok`
+   mutation: touch one extra file in the unit's commit; diff exits 1.
+11. run: `git status --porcelain --untracked-files=no | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: leave one tracked file modified or unstaged; it prints `1`. It already passes on the clean tree before the unit; it guards the commit.
+12. run: `bash tests/validate.sh > /dev/null 2>&1; echo validate-exit=$?`
+   exit: 0
+   stdout: `validate-exit=0`
+   mutation: hand-edit one line of a `.claude/agents/*.md` mirror; the mirror-parity checks fail and it prints `validate-exit=1`.
+   proof: not run by task-master (about 11 minutes); the orchestrator runs it in the main checkout.
+
+## Pre-resolved context
+precondition: `git log --format=%H -E --grep='^[a-z]+\(blc-8\): ' | wc -l` prints `0`, and `git cat-file -t 5720c5b` prints `commit`. Anything else: STOP.
+precondition: FIRST, for every edit item that has an `anchor:`, `/usr/bin/grep -cF '<literal>' <file>` prints `1` and its `before:` payload appears verbatim in its file. On any mismatch STOP and report; do not adapt the text.
+tdd: yes tests/contract-score.test.js (edit 4 adds the red-first checks guard-usage-extra-args and guard-longer-closing-fence-leaves-block-open; edit 1 turns the first one green; the second already passes because the guard fails safe)
+blast-radius: bin/contract-guard.js:65, bin/contract-guard.js:7, tests/contract-score.test.js:297, tests/contract-score.test.js:289
+note: payload fences sit at column 0 and hold the file's literal text, leading spaces included; `indent: N` is the smallest leading-space count of the payload's non-empty lines, so nothing is stripped or added. Edit 2's payload is the lines to add after the anchor line; its first line is `//`.
+note: edit 3 pins the source commit 5720c5b on purpose: the fixture must not move when blc-4 later edits the live plan. It keeps both contracts the existing check needs (hdc-1 lead, hdc-6 scribe) and nothing else.
+note: the trailer names the implementing model; a fix round dispatched on another tier writes that tier's model name (for example `Claude Sonnet 5.5`).
+note: the reviewer tier is decided at dispatch time by the orchestrator running `hooks/scripts/reviewer-tier.sh` over this unit's diff.
+note: every commit of this unit, fix rounds included, carries `(blc-8)` as its subject scope.
+explorer: not needed (provenance: grep and read by task-master at 5720c5b; grep-derived, not graph-derived).
+commit-message: fix(blc-8): contract guard rejects extra arguments; fence rule documented; plan-files check reads a fixture (#529)
+trailer: Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>
+review-packet:
+```
+unit: blc-8 (#529)
+changed files: <FILL: changed files>
+commits: <FILL: commit SHA and subject>
+criterion 1: <FILL: exit and stdout>
+criterion 2: <FILL: exit and stdout>
+criterion 3: <FILL: exit and stdout>
+criterion 4: <FILL: exit and stdout>
+criterion 5: <FILL: exit and stdout>
+criterion 6: <FILL: exit and stdout>
+criterion 7: <FILL: exit and stdout>
+criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
+```
+diagnosis: none
+
+## Escalation
+If any instruction cannot be followed exactly as written, STOP and report a spec gap; do not improvise.
+~~~~~~~
+
