@@ -1240,6 +1240,15 @@ else
 fi
 
 echo
+echo "== agents/orchestrator.md pins the reviewer dispatch line order (Node, rnf-5) =="
+if node tests/reviewer-dispatch-line-order.test.js; then
+  echo "OK   tests/reviewer-dispatch-line-order.test.js"
+else
+  echo "FAIL tests/reviewer-dispatch-line-order.test.js"
+  fail=1
+fi
+
+echo
 echo "== agents/task-master.md worked examples score 7/7 under --rubric=v2 (Node, rgh-h2) =="
 if node tests/contract-examples.test.js; then
   echo "OK   tests/contract-examples.test.js"

@@ -23,7 +23,14 @@ const PHRASES = [
 
 let failures = 0;
 for (const rel of PORTS) {
-  const flat = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').replace(/\s+/g, ' ');
+  let flat;
+  try {
+    flat = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').replace(/\s+/g, ' ');
+  } catch (e) {
+    console.log(`FAIL ${rel}: unreadable (${e.code || e.message})`);
+    failures++;
+    continue;
+  }
   for (const phrase of PHRASES) {
     if (flat.includes(phrase)) {
       console.log(`OK   ${rel}: ${phrase}`);
