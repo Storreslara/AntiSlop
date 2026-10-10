@@ -150,10 +150,10 @@ advisory (below), its second non-blank line is `Implementer tier: <t>`, where
 `<t>` is the tier (`haiku`, `sonnet` or `opus`) of the `model` the unit's latest
 implementer dispatch ran on; omit the line when that dispatch passed no `model`
 (the reviewer then writes `tier: unknown`).
-`reviewer-route-gate.sh` reads exactly that line to write the per-unit
+`reviewer-route-gate.sh` reads exactly the `Unit:` line to write the per-unit
 review-join stamp (`.claude/.review-join.<task-id>`) that `stop-gate.sh`
 later consumes as proof a verdict was actually produced, so a dispatch that
-omits the line leaves the marker-coupling check inert for that unit — the
+omits the `Unit:` line leaves the marker-coupling check inert for that unit — the
 stop fails open rather than erroring, and nothing announces that the
 coupling was lost. One deliberate exception, not an omission to fix: a
 second, advisory reviewer dispatch on a unit that already holds a
