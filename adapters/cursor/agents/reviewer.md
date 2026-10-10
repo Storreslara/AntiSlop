@@ -82,7 +82,7 @@ with reasons.
   line `tier: <haiku|sonnet|opus|unknown>` (`unknown` when the dispatch names no
   implementer tier), followed by
   the same defect list you return in your verdict, verbatim, ending with one
-  blank line. Do this exactly once per verdict, or the FAIL count inflates.
+  blank line. Do this exactly once per verdict, or the FAIL-block count inflates.
 
 <!-- BEGIN inlined-skill: roast-work -->
 This skill produces ONE advisory section, appended after the reviewer's

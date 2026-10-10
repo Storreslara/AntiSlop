@@ -1231,6 +1231,15 @@ else
 fi
 
 echo
+echo "== adapter ports pin the FAIL block tier line (Node, rnf-2) =="
+if node tests/adapter-fail-tier-pin.test.js; then
+  echo "OK   tests/adapter-fail-tier-pin.test.js"
+else
+  echo "FAIL tests/adapter-fail-tier-pin.test.js"
+  fail=1
+fi
+
+echo
 echo "== agents/task-master.md worked examples score 7/7 under --rubric=v2 (Node, rgh-h2) =="
 if node tests/contract-examples.test.js; then
   echo "OK   tests/contract-examples.test.js"
