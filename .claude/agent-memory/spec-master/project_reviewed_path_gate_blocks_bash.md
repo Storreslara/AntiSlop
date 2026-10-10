@@ -34,6 +34,12 @@ spec-master tooling-access quirk, and
 [[adr-numbering-increment-not-backfill]] for a numbering trap this directory's
 task-id convention (bare numbers, e.g. `243.pass`) helps cross-check.
 
+**The persona's own note sweep is blocked too** (2026-10-09): `bash bin/marker-audit.sh .
+--notes --surface=<path>` is refused (it runs a program, so the gate cannot prove it
+read-only), and so is a `for f in ...; do cat $f; done` loop. Read each `<id>.pass` with
+the Read tool instead (Read is not a Bash call, so this gate never sees it). Record in the
+plan that the sweep was replaced by a whole-marker read.
+
 ## `gatedAgents` does NOT scope this gate
 
 `.claude/persona-config.json` lists `gatedAgents: ["lead-programmer"]`, which
