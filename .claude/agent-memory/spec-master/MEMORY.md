@@ -61,3 +61,4 @@
 - [hdg quoted-payload bypass](project_hdg_quoted_payload_bypass.md) — bash -c / sh -c tee glob payloads bypass the gate (real overwrite); sh redirect globs write nothing; bg child ignores SIGINT.
 - [Flatten wrapped prose for phrase greps](technique_flatten_wrapped_prose_for_phrase_greps.md) — per-line grep misses a phrase split by the hard wrap, so an "absent" check passes vacuously; use tr -s first.
 - [Haiku-default tier spec (2026-10-08)](project_haiku_default_tier_spec.md) — a frontmatter tier flip is INERT here (config pins "sonnet", outranks it); ladder/fail-closed/migration decisions.
+- [Contract-guard R6 bullet shape](technique_contract_guard_r6_bullet_shape.md) — every Do NOT touch bullet must OPEN with a backticked path, or haiku drops to sonnet; run the guard per unit.
