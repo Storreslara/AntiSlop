@@ -11,9 +11,9 @@
 - Only the orchestrator/team lead routes between lead-programmer and reviewer.
   "Done" = reviewer PASS (a critical unit may first route through
   ESCALATE-TO-HUMAN).
-- 2 FAILs per implementer tier move the unit up the Escalation ladder; only
-  ladder exhaustion (FAIL-block count reaching or exceeding the ladder's length)
-  stops re-delegation and surfaces the full defect history to the user.
+- 2 FAILs per implementer tier climb the Escalation ladder; ladder exhaustion
+  (FAIL-block count >= its length, or any later FAIL after a human-directed
+  re-dispatch) alone stops re-delegation and shows the user the defect history.
 - WIP sentinel `.claude/wip-handoff.<agent-id>`: genuine mid-task pause only,
   with a stated reason (empty is ignored); never to dodge a fixable red suite.
 - `.claude/.pending-review.<id>` blocks turn-end and the next implementation

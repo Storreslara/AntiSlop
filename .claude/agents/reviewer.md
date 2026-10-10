@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.153 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.154 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -222,7 +222,7 @@ with reasons.
   you return in your verdict, verbatim, and ending with one blank line so
   this block is separated on disk from any earlier one.
   Append **exactly once per verdict** — a retry after an append already known
-  to have succeeded must not repeat it, or the FAIL count inflates. If a
+  to have succeeded must not repeat it, or the FAIL-block count inflates. If a
   `.claude/reviewed/<task-id>.blocked` marker exists from a prior review of
   this unit, `rm -f` it as part of writing the `.fail` marker.
 - **On INSUFFICIENT-CONTEXT (both orchestration modes)**: a last resort — only after you
@@ -788,7 +788,7 @@ second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran
 copied from the reviewer dispatch's `Implementer tier:` line (the Escalation
 ladder never reads it), followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
-one, so the FAIL count is readable across sessions. This is a
+one, so the FAIL-block count is readable across sessions. This is a
 bookkeeping exception, same as the PASS marker — not a change to the code
 under review.
 No hook gate depends on it (the pending-review flag already clears on any

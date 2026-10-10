@@ -211,7 +211,8 @@ blocking edges, labels).
   contract adds one untagged-tail criterion, run at review time over the unit's
   content files (never the version files or `.claude/`): `git log --format=%s
   <end>..HEAD -- <content files> | grep -vcE '^[a-z]+\(<unit-id>\): '`,
-  `exit: 1`, `stdout: 0`. A red-set criterion over
+  `exit: 1`, `stdout: 0`, where `<end>` is the unit's last commit (the list's
+  `head -1`). A red-set criterion over
   a test file that runs git uses a `git worktree add --detach` checkout,
   never a `git archive` extract. `version-stamp-check.sh` exits 0 even on
   `violation`: check its stdout. Each `commit-message:` is followed by the

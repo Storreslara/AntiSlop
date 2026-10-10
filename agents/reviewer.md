@@ -221,7 +221,7 @@ with reasons.
   you return in your verdict, verbatim, and ending with one blank line so
   this block is separated on disk from any earlier one.
   Append **exactly once per verdict** — a retry after an append already known
-  to have succeeded must not repeat it, or the FAIL count inflates. If a
+  to have succeeded must not repeat it, or the FAIL-block count inflates. If a
   `.claude/reviewed/<task-id>.blocked` marker exists from a prior review of
   this unit, `rm -f` it as part of writing the `.fail` marker.
 - **On INSUFFICIENT-CONTEXT (both orchestration modes)**: a last resort — only after you

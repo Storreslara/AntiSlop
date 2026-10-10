@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:to-tickets, antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.153 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.154 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -212,7 +212,8 @@ blocking edges, labels).
   contract adds one untagged-tail criterion, run at review time over the unit's
   content files (never the version files or `.claude/`): `git log --format=%s
   <end>..HEAD -- <content files> | grep -vcE '^[a-z]+\(<unit-id>\): '`,
-  `exit: 1`, `stdout: 0`. A red-set criterion over
+  `exit: 1`, `stdout: 0`, where `<end>` is the unit's last commit (the list's
+  `head -1`). A red-set criterion over
   a test file that runs git uses a `git worktree add --detach` checkout,
   never a `git archive` extract. `version-stamp-check.sh` exits 0 even on
   `violation`: check its stdout. Each `commit-message:` is followed by the
@@ -728,7 +729,7 @@ second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran
 copied from the reviewer dispatch's `Implementer tier:` line (the Escalation
 ladder never reads it), followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
-one, so the FAIL count is readable across sessions. This is a
+one, so the FAIL-block count is readable across sessions. This is a
 bookkeeping exception, same as the PASS marker — not a change to the code
 under review.
 No hook gate depends on it (the pending-review flag already clears on any

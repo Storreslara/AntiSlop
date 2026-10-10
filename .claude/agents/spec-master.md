@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grill-with-docs, antislop:grilling, antislop:domain-modeling, antislop:to-spec, antislop:fail-triage, antislop:ubiquitous-language
 maxTurns: 120
 ---
-<!-- antislop v0.31.153 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.154 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -591,7 +591,7 @@ second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran
 copied from the reviewer dispatch's `Implementer tier:` line (the Escalation
 ladder never reads it), followed by the defect list from the verdict, verbatim. The record
 appends a block per FAIL verdict rather than overwriting the previous
-one, so the FAIL count is readable across sessions. This is a
+one, so the FAIL-block count is readable across sessions. This is a
 bookkeeping exception, same as the PASS marker — not a change to the code
 under review.
 No hook gate depends on it (the pending-review flag already clears on any
@@ -618,7 +618,8 @@ tier of the orchestrator's **Escalation ladder** (the tiers from the default
 tier upward: `haiku`, `sonnet`, `opus`), with the full defect history; no
 human stop happens there. Only ladder exhaustion (the unit's FAIL-block count
 reaching or exceeding the ladder's length: normally the second FAIL on its top
-tier) stops re-dispatch: the orchestrator (or team lead) then
+tier, or any later FAIL after a human-directed re-dispatch) stops re-dispatch:
+the orchestrator (or team lead) then
 surfaces the full defect history to the human and asks how to proceed,
 rather than spawning a further attempt on its own authority. Which choices
 the human is offered, and what each one does, are defined in one place

@@ -112,8 +112,7 @@ record, and never counts against the 2-FAIL cap.
    `.claude/reviewed/<task-id>.pass`. `dispatch-hygiene.sh` reads only that
    first line; elsewhere it's ignored, and quoting one in the body is
    harmless. Grammar: alphanumeric first char, then `A-Za-z0-9._#-`, no `/`,
-   ≤64 chars. A reviewer dispatch's second line is `Implementer tier: <t>`: the
-   `model` the unit's latest implementer dispatch ran on.
+   ≤64 chars. **Review routing** below sets a reviewer dispatch's later lines.
 4. **No `HELD:` dispatch.** Never dispatch a unit whose issue body's first line starts with `HELD:`. No hook enforces this.
 
 Gate for item 3: `dispatch-hygiene.sh`. Escape hatch:
@@ -146,7 +145,11 @@ stable unit id (the plan step / issue id) for the PASS marker — never omit
 the id; the reviewer needs it to write `.claude/reviewed/<task-id>.pass`.
 That dispatch opens with `Unit: <task-id>` as its
 **literal first non-blank line**, the same shape rule 3 above imposes on a
-gated dispatch — not merely somewhere in the body.
+gated dispatch — not merely somewhere in the body. Unless the dispatch is
+advisory (below), its second non-blank line is `Implementer tier: <t>`, where
+`<t>` is the tier (`haiku`, `sonnet` or `opus`) of the `model` the unit's latest
+implementer dispatch ran on; omit the line when that dispatch passed no `model`
+(the reviewer then writes `tier: unknown`).
 `reviewer-route-gate.sh` reads exactly that line to write the per-unit
 review-join stamp (`.claude/.review-join.<task-id>`) that `stop-gate.sh`
 later consumes as proof a verdict was actually produced, so a dispatch that
@@ -158,7 +161,8 @@ format-valid PASS marker is not stamped at all, because that dispatch owns
 no verdict; it is expected to end its turn without writing any marker.
 The same exception applies when you deliberately want a report-only
 dispatch up front: add `Mode: advisory` as the **literal second non-blank
-line**, immediately after `Unit: <id>`. `reviewer-route-gate.sh` recognizes
+line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line
+to third. `reviewer-route-gate.sh` recognizes
 that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
 the review audit log instead.
 When you dispatch the reviewer as a background task, write
