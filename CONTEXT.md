@@ -692,7 +692,11 @@ the standing convention that `Agent` tool calls should dispatch without a `name:
   — Every reviewer dispatch must open with `Unit: <task-id>` as its literal
   first non-blank line. `reviewer-route-gate.sh` reads exactly that line for
   task-id extraction; omitting it causes silent open-fail (the gate accepts the
-  dispatch but router routing breaks). Disciplined by lead-programmer dispatch
+  dispatch but router routing breaks). The opening lines go in order:
+  `Unit: <task-id>` first; then `Implementer tier: <t>` for a verdict-owning
+  dispatch, or `Mode: advisory` and then the tier line for an
+  [[advisory dispatch]]; the tier line is omitted when the implementer
+  dispatch passed no `model`. Disciplined by lead-programmer dispatch
   instruction template, checked by `dispatch-hygiene.sh` H4.
 
 **Guidance-only**:

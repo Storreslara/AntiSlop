@@ -3103,7 +3103,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   text report, not a PASS/FAIL/INSUFFICIENT-CONTEXT/ESCALATE-TO-HUMAN
   judgment. Declared by a `Mode: advisory` second non-blank line (the
   machine-readable form `reviewer-route-gate-core.sh` reads), immediately
-  after the dispatch's `Unit: <id>` first line. On recognizing this token
+  after the dispatch's `Unit: <id>` first line. Its `Implementer tier: <t>`
+  line, when present, goes third (a verdict-owning dispatch has it second).
+  On recognizing this token
   the route gate writes no [[review-join stamp]], logs
   `advisory-dispatch=$unit_id` to the review audit log, and exits 0 —
   distinct from every other reviewer dispatch shape, all of which end in a
