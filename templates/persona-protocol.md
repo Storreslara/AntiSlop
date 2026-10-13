@@ -423,13 +423,30 @@ exactly:
 
 `microworld:` names the **durable packet directory**, never the working
 `microworlds/<unit-slug>/` path — the working copy is gitignored scratch and
-may be gone by the time a human reads the marker. After that first line, in
-order: the exact command to run the microworld (a project-root-relative
-invocation of the **packet's** `run.sh`); the commit SHA at escalation time,
-as `commit: <sha>` — the commit the review was performed against, the value the `approve` route copies verbatim — so a human arriving later can tell what the bundle was run
-against; a one-line description of the inputs and the expected outputs; the
-reviewer's own would-be verdict and the criteria it checked; and its
-non-blocking notes.
+may be gone by the time a human reads the marker. After that unchanged first line, the body is a fixed **card**, one `---` fold
+line, then the **record**, exactly as below. Card lines are one line each. The
+record lists criteria as identifiers with flagged exceptions only, and keeps
+every non-blocking note, at most 2 lines each. Its `commit:` line is the commit
+the review was performed against, the value the `approve` route copies
+verbatim, so a human arriving later can tell what the bundle was run against.
+
+<!-- escalated-card:begin -->
+```text
+why: <one line - what about this unit requires human eyes>
+would-be verdict: <PASS|FAIL> - <one line>
+look first: <file:line> - <what to check there>
+decide: <the one question the human answers, in plain words>
+run: <command to run the packet's run.sh, or "none - no bundle">
+packet: .claude/human-review/<task-id>/ - view: sh .claude/human-review/<task-id>/view.sh
+---
+commit: <sha at escalation>
+inputs/outputs: <one line>
+criteria checked: <id>, <id>, ... ; exceptions: <id> - <one line> | none
+examples: <count> | examples: none - <one-line reason>
+Non-blocking notes:
+- NOTE[spec|code]: <at most 2 lines each>
+```
+<!-- escalated-card:end -->
 
 **Durable escalation packet.** In the **same action** that writes the marker,
 the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
@@ -493,7 +510,7 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   **When needed.** Written whenever the change has an **observable
   behavioural consequence**; skipped when it has none — pure docs, formatting,
   comments, pure renames. **Auditable skip:** the `.escalated` marker body
-  carries one `examples:` line — `examples: <count>` when `EXAMPLES.md` was
+  record, below the `---` fold, carries one `examples:` line — `examples: <count>` when `EXAMPLES.md` was
   written, `examples: none — <one-line reason>` when not — so a skip is a
   written record, not a silent absence. `PACKET.md`, a byte-identical copy of
   the marker body, inherits it.
@@ -651,9 +668,13 @@ On a missing, malformed, or stale `DECISION`: report and wait.
 
 | Human decision | Reviewer writes | `.escalated` | Packet | Cap slot | Next move |
 |---|---|---|---|---|---|
-| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601> examples: <token>` attestation line, plus optional ` via: <value>` appended if present in the `DECISION` file, quoting the `DECISION` file, after the required first line | deleted | deleted | — | unit done |
+| **Approve** | `.pass`, with an appended `human: approved by <name> <UTC ISO-8601> examples: <token>` attestation line, plus optional ` via: <value>` appended if present in the `DECISION` file, quoting the `DECISION` file, after the required first line; the record's non-blocking notes ride along under the exact `Non-blocking notes:` anchor line | deleted | deleted | — | unit done |
 | **Reject with reason** | `.fail`, with the human's reason **verbatim** from the body as the defect list | deleted | deleted | **consumes one** | back to `lead-programmer`, normal FAIL route |
 | **Fixable a specific way** | `.directed`, first line exactly `DIRECTED <task-id> <UTC ISO-8601 timestamp> fix: <one-line human directive>`, then the human's full prescribed fix **verbatim** from the body | deleted | deleted | **does NOT consume one** | dispatch `lead-programmer` with the directive, then re-review |
+
+On approve, carry the record's non-blocking notes into the `.pass` verbatim
+under the exact `Non-blocking notes:` anchor line, after the `human:`
+attestation line.
 
 **The `examples:` token on the approve attestation line.** The approve row's
 attestation line carries one required `examples:` token, recording what the

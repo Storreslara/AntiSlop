@@ -268,10 +268,31 @@ with reasons.
   the same named bookkeeping exception as the writes above — first line
   exactly
   `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`,
-  followed by the command to run the packet's `run.sh`, `commit: <sha>` at
-  escalation time, a one-line inputs/expected-outputs description, your
-  would-be verdict and the criteria you checked, and your non-blocking notes.
-  In the **same action**, snapshot the unit's bundle to
+  followed by a body that is a fixed **card**, one `---` fold line, then the
+  **record**, exactly as below. Card lines are one line each. The record lists
+  criteria as identifiers with flagged exceptions only, and keeps every
+  non-blocking note, at most 2 lines each. Its `commit:` line is the commit the
+  review was performed against, the value the `approve` route copies verbatim.
+
+<!-- escalated-card:begin -->
+```text
+why: <one line - what about this unit requires human eyes>
+would-be verdict: <PASS|FAIL> - <one line>
+look first: <file:line> - <what to check there>
+decide: <the one question the human answers, in plain words>
+run: <command to run the packet's run.sh, or "none - no bundle">
+packet: .claude/human-review/<task-id>/ - view: sh .claude/human-review/<task-id>/view.sh
+---
+commit: <sha at escalation>
+inputs/outputs: <one line>
+criteria checked: <id>, <id>, ... ; exceptions: <id> - <one line> | none
+examples: <count> | examples: none - <one-line reason>
+Non-blocking notes:
+- NOTE[spec|code]: <at most 2 lines each>
+```
+<!-- escalated-card:end -->
+
+In the **same action**, snapshot the unit's bundle to
   `.claude/human-review/<task-id>/` — copy `microworlds/<unit-slug>/` wholesale
   with `run.sh`'s executable bit preserved (`cp -a`), and write `PACKET.md`
   there as a byte-identical copy of the marker body; the marker stays
@@ -350,8 +371,9 @@ with reasons.
   consequence. **Layout:** each example is a `### <n>. <one-phrase title>`
   heading, then a `**Before:**` line and an `**After:**` line, plus at
   most one consequence line. Skip it when the change has no behavioural surface — pure docs,
-  formatting, comments, pure renames — but log the skip: append an `examples:`
-  line to the `.escalated` marker body, `examples: <count>` when you wrote it
+  formatting, comments, pure renames — but log the skip: fill the record's
+  `examples:` line, below the `---` fold, in the `.escalated` marker body,
+  `examples: <count>` when you wrote it
   or `examples: none — <one-line reason>` when you did not, so a skip is a
   written record, not a silent absence (`PACKET.md` inherits it as part of
   the byte-identical copy). Author `EXAMPLES.md` **after** your would-be
@@ -418,7 +440,10 @@ exit 0
     the `commit:` field is copied verbatim from the standing `.escalated`
     marker's own `commit:` line. Never re-derive it.** Then append a
     `human: approved by <name> <UTC ISO-8601> examples: <token>` attestation
-    line quoting the decision file, after the required first line. The
+    line quoting the decision file, after the required first line. On approve,
+    carry the record's non-blocking notes into the `.pass` verbatim
+    under the exact `Non-blocking notes:` anchor line, after the `human:`
+    attestation line. The
     `examples:` token is required and is exactly one of `examples: reviewed`,
     `examples: skipped`, or `examples: none-offered` (that last only when you
     wrote no `EXAMPLES.md`); take it verbatim from the `DECISION` body's

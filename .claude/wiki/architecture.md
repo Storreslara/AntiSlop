@@ -76,9 +76,10 @@ When a unit escalates under `humanReviewMode` (defaults to `critical`, on-by-def
 shipped by unit #135; unit #138 documented it), the
 reviewer writes `.escalated` marker at `.claude/reviewed/<task-id>.escalated` and
 snapshots the microworld bundle to `.claude/human-review/<task-id>/` (the escalation packet).
-The `.escalated` marker carries: the trigger criterion (heavy-unit trigger), commit
-SHA, the packet's `run.sh` invocation, inputs/expected-outputs description, and
-the reviewer's would-be verdict. The packet contains the bundle's `run.sh`,
+The `.escalated` marker carries: the trigger criterion (heavy-unit trigger) on line 1,
+then a six-line card (why, would-be verdict, look first, decide, run, packet), a
+`---` fold, and the record (commit SHA, inputs/outputs, criteria, examples, notes);
+the orchestrator prints only through the fold. The packet contains the bundle's `run.sh`,
 manifest, fixtures, and `PACKET.md` (byte-identical copy of marker body, marker
 authoritative on divergence).
 

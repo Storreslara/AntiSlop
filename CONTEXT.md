@@ -914,9 +914,12 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   reviewer at `.claude/reviewed/<task-id>.escalated` when issuing an
   `ESCALATE-TO-HUMAN` verdict, carrying the marker body as fixed-shape text.
   First line: `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger:
-  <criterion> microworld: <packet path or "none">`. Followed by the packet's
-  `run.sh` invocation, `commit: <sha>` (see [[Commit attribution]] — this field is copied verbatim during approval), inputs/expected-outputs description,
-  the would-be verdict and criteria checked, and non-blocking notes. Distinct
+  <criterion> microworld: <packet path or "none">`. Below it the body is an
+  **escalation card**, one `---` fold line, then the record: `commit: <sha>`
+  (see [[Commit attribution]] — this field is copied verbatim during approval),
+  inputs/outputs, criteria checked as identifiers with flagged exceptions,
+  the `examples:` line, and every non-blocking note under the exact
+  `Non-blocking notes:` anchor (carried into the `.pass` on approve). Distinct
   from `.blocked` (reviewer *lacked context* to verify a criterion) — this
   marker means *policy requires human eyes* on critical code instead: separate
   marker files, **distinct audit tokens** (`.blocked` logs `verdict=blocked
@@ -924,6 +927,16 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   over the paired [[PACKET.md]] on divergence. Kept standing until a human
   decision via the **DECISION channel** resolves the escalation, at which
   point both marker and packet are deleted in the same reviewer action.
+
+**escalation card**:
+(epa-4, 2026-10-12) — the fixed six-line top of an `.escalated` marker body,
+  below line 1: `why:`, `would-be verdict:`, `look first:`, `decide:`, `run:`
+  and `packet:`, in that order, one line each. A single `---` fold line
+  separates it from the record. The orchestrator prints only marker lines 1
+  through the fold, plus one pointer line to the full record; Q1's description
+  is the card's `decide:` text. The card is part of the marker body, so
+  `PACKET.md` carries it byte-for-byte.
+  _Avoid_: marker summary, header (line 1 is the header; use "escalation card")
 
 **`.directed` marker**:
 (unit #136, 2026-08-11, Step 7 of the human-decision-channel fix, issue #324) —

@@ -243,11 +243,13 @@ resolved. Your whole job here is **surfacing, not deciding**: the human reads
 the packet in this session, answers one question, and approves the exact bytes
 of their own decision at Claude Code's permission prompt.
 
-1. Print the marker's contents in chat **verbatim** — including the
-   packet path and the exact command to run the packet's `run.sh`. Then print
-   the command `sh .claude/human-review/<task-id>/view.sh` when that file
-   exists — it shows `CHANGES.md` and `EXAMPLES.md` in colour in the human's
-   own terminal. Re-read the
+1. Print the marker's lines 1 through the `---` fold line in chat
+   **verbatim** — the card carries the packet path, the `run.sh` command
+   and the viewer command — then exactly one pointer line:
+   `Full record (criteria, notes): .claude/reviewed/<task-id>.escalated, same text in the packet's PACKET.md`.
+   Never summarize the record. The card's `packet:` line already carries the
+   viewer command `sh .claude/human-review/<task-id>/view.sh`; do not print it
+   a second time. Re-read the
    marker with the **Read tool** (ungated) whenever the human comes back, which
    may be a later session, after a restart, or from their own terminal; the
    packet is untracked-but-persistent, so nothing about this assumes the human
@@ -281,7 +283,8 @@ of their own decision at Claude Code's permission prompt.
    restore the automation the escalation exists to interrupt. You surface the
    command; the human runs it.
 5. Make **one** `AskUserQuestion` call. Q1 is the route, with options
-   `approve`, `reject`, `direct` and `decide later`. Q2 is the examples answer,
+   `approve`, `reject`, `direct` and `decide later`.
+   Q1's description is the text after `decide: ` on the card, verbatim. Q2 is the examples answer,
    asked **only if `EXAMPLES.md` exists**, with options labelled exactly
    `reviewed` and `skipped`; its description says it is recorded on approve
    only. **Relay the human's token verbatim**; never pick one for them and

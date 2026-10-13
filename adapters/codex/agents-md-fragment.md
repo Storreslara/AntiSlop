@@ -188,10 +188,32 @@ feeds the `.escalated` marker's `trigger:` field instead.
 
 **Marker:** `.claude/reviewed/<task-id>.escalated`, first line exactly
 `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <which criterion> microworld: <packet path or "none">`,
-then the command to run the packet's `run.sh`, the escalation-time SHA as
-`commit: <sha>` — the commit the review was performed against, the value the `approve` route copies verbatim — a one-line inputs/expected-outputs description, the would-be
-verdict and the criteria checked, and non-blocking notes. `microworld:` names the
-durable packet, not the gitignored working `microworlds/<unit-slug>/`.
+then a body that is a fixed **card**, one `---` fold line, then the **record**,
+exactly as below. Card lines are one line each. The record lists criteria as
+identifiers with flagged exceptions only, and keeps every non-blocking note, at
+most 2 lines each. Its `commit:` line is the commit the review was performed
+against, the value the `approve` route copies verbatim.
+
+<!-- escalated-card:begin -->
+```text
+why: <one line - what about this unit requires human eyes>
+would-be verdict: <PASS|FAIL> - <one line>
+look first: <file:line> - <what to check there>
+decide: <the one question the human answers, in plain words>
+run: <command to run the packet's run.sh, or "none - no bundle">
+packet: .claude/human-review/<task-id>/ - view: sh .claude/human-review/<task-id>/view.sh
+---
+commit: <sha at escalation>
+inputs/outputs: <one line>
+criteria checked: <id>, <id>, ... ; exceptions: <id> - <one line> | none
+examples: <count> | examples: none - <one-line reason>
+Non-blocking notes:
+- NOTE[spec|code]: <at most 2 lines each>
+```
+<!-- escalated-card:end -->
+
+`microworld:` names the durable packet, not the gitignored working
+`microworlds/<unit-slug>/`.
 
 **Packet:** in the same action, snapshot the bundle to
 `.claude/human-review/<task-id>/` - whole directory, executable bit on `run.sh`
@@ -241,7 +263,8 @@ nothing else - no preamble, no scene-setting. **Layout:** each example is a
 `**After:**` line, plus at most one consequence line. **When needed:** written whenever
 the change has an observable behavioural consequence; skipped when it has none
 (pure docs, formatting, comments, pure renames). **Auditable skip:** the
-`.escalated` marker body carries one `examples:` line - `examples: <count>`
+`.escalated` marker body's record, below the `---` fold, carries one
+`examples:` line - `examples: <count>`
 when written, `examples: none - <one-line reason>` when not - so a skip is a
 written record, not a silent absence; `PACKET.md` inherits it. Authored AFTER
 the would-be verdict, like `CHANGES.md`, and never gating or influencing it.

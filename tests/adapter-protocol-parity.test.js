@@ -74,6 +74,13 @@ const ESCALATION_PROBES = [
   '**Before:**',                      // epa-2
   'no wrapped paragraph longer than two lines', // epa-2
   'view.sh',  // epa-3
+  'why: <one line',  // epa-4
+  'would-be verdict: <PASS|FAIL>',  // epa-4
+  'look first: <file:line>',  // epa-4
+  'decide: <the one question',  // epa-4
+  'run: <command to run',  // epa-4
+  'packet: .claude/human-review/<task-id>/',  // epa-4
+  '\n---\ncommit: <sha at escalation>',  // epa-4: the fold, directly followed by commit:
 ];
 
 // The pending-review flag fix (esf-flag-prose): the reviewer clears one flag
@@ -238,6 +245,28 @@ check('negative case: an absent-phrase present in the port is REJECTED', () => {
     () => checkPort(canonicalHeaders(), port, codexMap, 'codex'),
     /must not contain/,
     'a forbidden phrase in the port must throw');
+});
+
+// epa-4: the canonical escalation card-and-record block must be byte-identical
+// in every source and generated mirror; it is the reviewer-prose drift check.
+function cardBlock(rel) {
+  const lines = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').split('\n');
+  const b = lines.indexOf('<!-- escalated-card:begin -->');
+  const e = lines.indexOf('<!-- escalated-card:end -->');
+  assert.ok(b >= 0 && e > b, `${rel}: escalated-card markers missing or out of order`);
+  return lines.slice(b + 1, e).filter((l) => !l.startsWith('```')).join('\n');
+}
+
+check('escalated card block is byte-identical across reviewer.md, the template, both ports and both mirrors', () => {
+  const files = ['agents/reviewer.md', 'templates/persona-protocol.md',
+    'adapters/codex/agents-md-fragment.md', 'adapters/cursor/rules/persona-protocol.mdc',
+    '.claude/agents/reviewer.md', '.claude/persona-protocol.md'];
+  const blocks = files.map(cardBlock);
+  blocks.forEach((b, i) => assert.ok(b.length > 0, `${files[i]}: card block is empty`));
+  blocks.forEach((b, i) => assert.strictEqual(b, blocks[0], `${files[i]}: card block differs from ${files[0]}`));
+  const lines = blocks[0].split('\n');
+  assert.ok(lines[0].startsWith('why: '), 'card block line 1 must start "why: "');
+  assert.strictEqual(lines[6], '---', 'card block line 7 must be exactly the --- fold');
 });
 
 if (failures) {
