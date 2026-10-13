@@ -974,7 +974,7 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   unit with `microworld: none` still receives one, and there it is the entire
   human-facing payload. Deleted with the rest of the packet in all three
   terminal routes of the **DECISION channel**, in the same reviewer action.
-  Laid out for a terminal reader, with short lines and a `>` callout plus a
+  Laid out for a terminal reader, with short lines, a `>` blockquote line and a
   `| Where | What to check |` table in `## What to look at first`.
   Defined in `templates/persona-protocol.md`'s
   "Fourth verdict: escalate-to-human" section.
@@ -992,6 +992,15 @@ _Avoid_: change summary, walkthrough doc, CHANGES doc (use "literate change
   of both documents' content. Never conflate with authoritative decision records;
   comprehension material is explanatory only.
 _Avoid_: reference material, explanatory material, supporting material (use "comprehension material")
+
+**terminal reader**:
+(unit epa-2, 2026-10-12, escalation packet aesthetics) — the human who reads an
+  escalation packet document as plain text in a terminal. Documents laid out for
+  one use short lines, one point per line, no wrapped paragraph longer than two
+  lines, and fenced code for quoted code, inside the fixed shapes of the
+  [[literate change summary]] and the [[worked example]]. The plain text is the
+  contract: a viewer may colour the document for the reader, but it falls back to
+  plain output, so the layout must read correctly with no renderer at all.
 
 **worked example**:
 (units #299/#300 renamed 2026-08-20, examples-1/2/3 of the
@@ -1032,7 +1041,7 @@ _Avoid_: reference material, explanatory material, supporting material (use "com
   [[Escalation packet]] in all three terminal routes, in the same reviewer
   action. Defined in `templates/persona-protocol.md`'s "Fourth verdict:
   escalate-to-human" section. Each example sits under its own heading with
-  `**Before:**` / `**After:**` lead-ins.
+  a `**Before:**` line and an `**After:**` line.
 _Avoid_: example, sample, demo, examples quiz (none of these name the
   behavioural-illustration concept precisely — use "worked example", or name
   `EXAMPLES.md` directly)

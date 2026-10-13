@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-12 (epa-2 post-PASS — glossary wording aligned, terminal reader minted)
+- Reviewer PASS epa-2 at 60ff302 (0.31.157). The `CHANGELOG.md` entry was already in place; no version bump from this pass (CONTEXT.md and the wiki are not version-stamped).
+- CONTEXT.md: **literate change summary** and **worked example** now say "`>` blockquote line" and "`**Before:**` line and an `**After:**` line", matching the sources. New term **terminal reader**: the layout is the contract for epa-3's `view.sh`, which falls back to plain output.
+- Carry-forward gaps for the next unit are recorded in the scribe memory note `project_epa2_completion.md`, not in the plan or tests.
+
 ## 2026-10-04 (esc-left-4 FAIL 1 fix — arming rule and extglob overclaim)
 - Review FAIL 1: the glossary still said a spelling that names neither token cannot arm the gate, and **trigger token** still said both literal substrings must appear. Both are false since esc-left-3 (FG-c-1 and FG-a-1..a-8 are blocked). Both entries now say a token also counts when an unquoted glob or brace word could expand to it. New harness term **expansion-named token**.
 - "extglob" is dropped from the frozen family table and the ADR-0039 bullet. The gate reads extglob words, but no row pins them and they were not independently probed.
