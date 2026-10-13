@@ -40,12 +40,14 @@ Carry-forward items a-h from the epf reviewers were closed by the epfb run below
 - **i** (contract wording defects): handled by the plan's Contract hygiene rule.
 - **j** (validate.sh exited 1 under ~5 concurrent runs): still unreproduced; gate G passed clean at HEAD da2fb37. Keep open as a watch item, not a defect.
 
-## Live carry-forward (epfb reviewers' non-blocking notes, opened 2026-10-13)
+## epfc closure (epfc-1..5, PASS 2026-10-13; 04f3862, 2bcf0c8, f71f5c8, 52ac70b, c9e1578; no version bump)
 
-1. **`* ` list branch of mdStartsBlock is untested (epfb-3).** Deleting the `* ` branch leaves the suite green. Fix: add a TB case where a `* item | x` line ends the table body.
-2. **epfb4-ac3.sh mutations miss F4 cases 3 and 4 (epfb-4).** The mutation script does not exercise the two F4 cases. Fix: add mutants for those cases.
-3. **parseProtocolSections does not round-trip a text that opens with `## ` and has no preamble (epfb-4; pre-existing).** Unreachable today because every escalation block carries a preamble. Latent, out of scope for epfb-4.
-4. **EB1 cannot tell prose from a fenced example (epfb-2).** The ASCII-hyphen skip-token check matches the token in any line, including one inside a fenced example. Candidate: scope EB1 to outside fences.
-5. **CONTEXT.md alias sentence says "the template" without naming templates/persona-protocol.md (epfb-1).** Prose clarity only; the glossary is correct. Not changed by this scribe pass because reviewers found no glossary change warranted beyond epfb-1's.
+Closed epfb notes 1-5: 1 by epfc-1 (TB18 pins the `* ` branch of mdStartsBlock); 2 by epfc-2 (mutants (d)/(e) in docs/plans/epfb-criteria/epfb4-ac3.sh for F4 cases 3, 4); 3 by epfc-3 (no-preamble `## ` case is a documented non-goal, comment in bin/cli.js, check F5); 4 by epfc-4 (EB1 uses a local splitFences: skip token required in prose and inside the card fence); 5 by epfc-5 (CONTEXT.md Escalation packet alias names templates/persona-protocol.md; epfb1-ac3.sh pin updated). No glossary change by the scribe pass. Do not re-check these.
 
-**Why:** these are the reviewers' non-blocking notes for epa-2 through epfb-5, which the plan does not record anywhere else. **How to apply:** before any follow-up that touches the escalation layout, the viewer tests, or the parity probes, re-check the live items (j and 1-5 above) against current sources; closed items are listed above and need no re-check.
+## Live carry-forward (opened 2026-10-13)
+
+- **j** (validate.sh exited 1 once under concurrency): unreproduced; merge gate passed clean at HEAD after epfc. Watch item, not a defect.
+- **epfc-2 mutant (d)** locates its target line via `text.indexOf(line)`, which could hit an earlier duplicate line in the file. Harden if the script is touched again.
+- **F5 (epfc-3)** pins one input only (no trailing-newline case, no `## `-only-line case) and overlaps F2.
+
+**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** before any follow-up touching the escalation layout, viewer tests, or parity probes, re-check only the items above; everything else in this file is closed.
