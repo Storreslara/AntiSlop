@@ -67,3 +67,4 @@
 - [gh426 closure](gh426_microworld_citation_closure.md) — CONTEXT.md "Microworld dashboard" glossary entry corrected: README.md:177 → README.md:263 (live line confirmed); verified no other stale README.md:NNN citations remain
 - [gh427 closure](gh427_dashboard_comment_citations_closure.md) — bin/microworld-dashboard/ test-path comment citations repointed: tests/dashboard-*.test.js → tests/microworld/dashboard-*.test.js (4 total: 2 in decision-block.js, 2 in index.html); repo-wide grep confirms no lingering old-path references in code
 - [esc-chat-6 completion](project_esc_chat_6_completion.md) — FAIL 1: measured the pre-fix gate, over-broad invariant; fixed b2bc789
+- [epa-1 completion](project_epa1_completion.md) — PASS 2026-10-12 (e6fdc8c, 0.31.156); no glossary change (pastes/reproduce are synonyms); step 3 of orchestrator.md lacks the line-number-prefix clause (carry into next orchestrator.md unit)
