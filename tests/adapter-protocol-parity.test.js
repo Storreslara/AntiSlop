@@ -289,14 +289,40 @@ check('orchestrator escalation steps handle a marker with no fold line or no dec
 
 // epfb-2: the skip token keeps its ASCII hyphen in every prose copy, and the
 // reviewer's escalation card is followed by a list item, never a column-0 paragraph.
-check('EB1 skip token is `examples: none - <one-line reason>` with an ASCII hyphen in every prose copy', () => {
+// epfc-4: split markdown into prose lines and fenced-block interior lines
+// (CommonMark backtick or tilde fences; the fence delimiter lines are in neither).
+function splitFences(text) {
+  const prose = [];
+  const fenced = [];
+  let fence = null;
+  for (const line of text.split('\n')) {
+    if (fence) {
+      const close = /^ {0,3}(`{3,}|~{3,})[ \t\r]*$/.exec(line);
+      if (close && close[1][0] === fence.ch && close[1].length >= fence.len) fence = null;
+      else fenced.push(line);
+    } else {
+      const open = /^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/.exec(line);
+      if (open) fence = { ch: open[1][0], len: open[1].length };
+      else prose.push(line);
+    }
+  }
+  return { prose, fenced };
+}
+
+check('EB1 skip token is `examples: none - <one-line reason>` with an ASCII hyphen in every prose copy, in prose and in the card fence', () => {
   const files = ['agents/reviewer.md', 'templates/persona-protocol.md', '.claude/agents/reviewer.md',
     '.claude/persona-protocol.md', 'CONTEXT.md', 'adapters/codex/agents-md-fragment.md',
     'adapters/cursor/rules/persona-protocol.mdc'];
+  const NO_CARD = ['CONTEXT.md'];
+  const token = 'examples: none - <one-line reason>';
   for (const rel of files) {
     const t = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
     assert.ok(!t.includes('examples: none \u2014'), `${rel}: em-dash skip token`);
-    assert.ok(t.includes('examples: none - <one-line reason>'), `${rel}: no ASCII-hyphen skip token`);
+    const { prose, fenced } = splitFences(t);
+    assert.ok(prose.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in prose`);
+    if (!NO_CARD.includes(rel)) {
+      assert.ok(fenced.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in the card fence`);
+    }
   }
 });
 
