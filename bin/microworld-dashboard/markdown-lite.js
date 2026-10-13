@@ -30,6 +30,29 @@ function isValidLinkScheme(href) {
   return false;
 }
 
+// Tables. Cells are never escaped here: every cell goes through renderInline,
+// the one escape site on the inline path, and the emitted tags carry no attributes.
+function mdSplitRow(row) {
+  let s = row.trim();
+  if (s.startsWith('|')) s = s.slice(1);
+  if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
+  const cells = [];
+  let cur = '';
+  for (let k = 0; k < s.length; k++) {
+    if (s[k] === '\\' && s[k + 1] === '|') { cur += '|'; k++; }
+    else if (s[k] === '|') { cells.push(cur.trim()); cur = ''; }
+    else cur += s[k];
+  }
+  cells.push(cur.trim());
+  return cells;
+}
+
+function mdIsDelimiterRow(row, width) {
+  if (!row.includes('|')) return false;
+  const cells = mdSplitRow(row);
+  return cells.length === width && cells.every((c) => /^:?-+:?$/.test(c));
+}
+
 function renderMarkdown(input) {
   // Fail closed: non-string input returns empty escaped string
   if (typeof input !== 'string') {
@@ -109,6 +132,25 @@ function renderMarkdown(input) {
       }
       html += '<ol>' + listItems.map(item => '<li>' + item + '</li>').join('') + '</ol>';
       continue;
+    }
+
+    // Table: a header row, then a delimiter row with the same cell count.
+    if (trimmed.includes('|') && i + 1 < lines.length) {
+      const head = mdSplitRow(trimmed);
+      if (mdIsDelimiterRow(lines[i + 1], head.length)) {
+        i += 2;
+        let rows = '';
+        while (i < lines.length && lines[i].trim() !== '' && lines[i].includes('|')) {
+          const cells = mdSplitRow(lines[i]);
+          let tr = '';
+          for (let c = 0; c < head.length; c++) tr += '<td>' + renderInline(cells[c] || '') + '</td>';
+          rows += '<tr>' + tr + '</tr>';
+          i++;
+        }
+        html += '<table><thead><tr>' + head.map((c) => '<th>' + renderInline(c) + '</th>').join('') + '</tr></thead>' +
+          (rows ? '<tbody>' + rows + '</tbody>' : '') + '</table>';
+        continue;
+      }
     }
 
     // Paragraph (non-empty line that's not special)

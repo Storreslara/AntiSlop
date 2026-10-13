@@ -227,7 +227,7 @@ check('Array input returns string and is safe', () => {
 // as measured in docs/plans/2026-08-18-dash-ux-1-debug-spec-escape-first.md --
 // a looser anchor pattern stops detecting an injected <a>, and asserting on a
 // bare 'javascript:' substring false-positives on correctly escaped text.
-const ALLOWED_TAG = /<\/?(?:h[1-6]|p|strong|em|code|pre|ul|ol|li|blockquote)>|<hr \/>|<br \/>|<a href="[^"<>]*" rel="noopener noreferrer" target="_blank">|<\/a>/g;
+const ALLOWED_TAG = /<\/?(?:h[1-6]|p|strong|em|code|pre|ul|ol|li|blockquote|table|thead|tbody|tr|th|td)>|<hr \/>|<br \/>|<a href="[^"<>]*" rel="noopener noreferrer" target="_blank">|<\/a>/g;
 const JS_HREF     = /href="\s*javascript:/i;
 
 function unsafe(out) {
@@ -239,7 +239,9 @@ function unsafe(out) {
 const CONTEXTS = [
   { name: 'paragraph', wrap: (s) => s },
   { name: 'ul item', wrap: (s) => '- ' + s },
-  { name: 'ol item', wrap: (s) => '1. ' + s }
+  { name: 'ol item', wrap: (s) => '1. ' + s },
+  { name: 'table header cell', wrap: (s) => '| ' + s + ' |\n|---|' },
+  { name: 'table body cell', wrap: (s) => '| h |\n|---|\n| ' + s + ' |' }
 ];
 
 // U1-C3 (c): the five adjacency payloads, each in all three block contexts.
@@ -324,6 +326,32 @@ check('U1-C4 property test: generated cross-product holds the escape-first invar
     unsafeCases.length === 0,
     `${unsafeCases.length} of ${generated} generated cases unsafe; first: ${unsafeCases[0]}`
   );
+});
+
+// --- Tables (epf-4): exact output, and no card line ever becomes a table ---
+const T_AB = '<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td>2</td></tr></tbody></table>';
+const TABLE_CASES = [
+  ['TB1 basic', '| Where | What to check |\n|---|---|\n| `a.js:1` | the guard |',
+    '<table><thead><tr><th>Where</th><th>What to check</th></tr></thead><tbody><tr><td><code>a.js:1</code></td><td>the guard</td></tr></tbody></table>'],
+  ['TB2 aligned', '| a | b |\n| :--- | ---: |\n| 1 | 2 |', T_AB],
+  ['TB3 no outer pipes', 'a | b\n--- | ---\n1 | 2', T_AB],
+  ['TB4 no delimiter', '| a | b |\n| 1 | 2 |', '<p>| a | b |</p><p>| 1 | 2 |</p>'],
+  ['TB5 card', 'why: x\ncriteria checked: AC1 ; exceptions: none | none\nexamples: 3 | examples: none - x\n---\ncommit: abc',
+    '<p>why: x</p><p>criteria checked: AC1 ; exceptions: none | none</p><p>examples: 3 | examples: none - x</p><hr /><p>commit: abc</p>'],
+  ['TB6 width mismatch', '| a | b |\n|---|---|---|', '<p>| a | b |</p><p>|---|---|---|</p>'],
+  ['TB7 ragged rows', '| a | b |\n|---|---|\n| 1 |\n| 1 | 2 | 3 |',
+    '<table><thead><tr><th>a</th><th>b</th></tr></thead><tbody><tr><td>1</td><td></td></tr><tr><td>1</td><td>2</td></tr></tbody></table>'],
+  ['TB8 escaped pipe', '| h |\n|---|\n| x \\| y |',
+    '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>x | y</td></tr></tbody></table>'],
+  ['TB9 ends at blank line', '| a | b |\n|---|---|\n| 1 | 2 |\n\nafter', T_AB + '<p>after</p>'],
+  ['TB10 header only', '| a | b |\n|---|---|', '<table><thead><tr><th>a</th><th>b</th></tr></thead></table>']
+];
+
+TABLE_CASES.forEach(([label, input, expected]) => {
+  check(label, () => {
+    const out = renderMarkdown(input);
+    assert(out === expected, `expected ${expected}, got ${out}`);
+  });
 });
 
 // Test exit on failures
