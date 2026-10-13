@@ -712,13 +712,25 @@ function buildAdapterLibSpecs() {
 }
 
 // Splits the canonical protocol into its leading header comment (which is NOT
-// a section) plus one entry per `## ` heading, in template order. Joining the
-// preamble and every section text with '\n' reproduces the file byte-for-byte.
+// a section) plus one entry per `## ` heading, in template order. A `## ` line
+// inside a fenced code block (CommonMark backtick or tilde fences) starts no section.
+// Joining the preamble and every section text with '\n' reproduces the file
+// byte-for-byte.
 function parseProtocolSections(text) {
   const preamble = [];
   const sections = [];
+  let fence = null; // { ch, len } while inside a fenced code block
   for (const line of text.split('\n')) {
-    if (line.startsWith('## ')) {
+    let isHeader = false;
+    if (fence) {
+      const close = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line);
+      if (close && close[1][0] === fence.ch && close[1].length >= fence.len) fence = null;
+    } else {
+      const open = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      if (open) fence = { ch: open[1][0], len: open[1].length };
+      else isHeader = line.startsWith('## ');
+    }
+    if (isHeader) {
       sections.push({ header: line.slice(3).trim(), lines: [line] });
     } else if (sections.length) {
       sections[sections.length - 1].lines.push(line);
@@ -2744,6 +2756,7 @@ module.exports = {
   renderCleanBody,
   protocolTierFor,
   selectProtocolSections,
+  parseProtocolSections,
   assertProtocolMatrixComplete,
   assertNoDanglingCrossReferences,
   assertGatedSectionsCanonical,

@@ -117,6 +117,39 @@ check('C2.3 non-vacuity: PROTOCOL_SECTIONS_BY_PERSONA itself passes the guard (b
   assert.ok(cli.PROTOCOL_SECTIONS_BY_PERSONA['lead-programmer'], 'sanity: the real matrix is reachable from the loaded module');
 });
 
+// epf-5: a `## ` line inside a fenced code block must not start a section.
+check('F1 fenced ## line stays inside its section', () => {
+  const cases = [
+    ['pre\n## A\n```\n## not a header\n```\n## B\nx', ['A', 'B']],
+    ['pre\n## A\n~~~\n## not a header\n~~~\n## B', ['A', 'B']],
+    ['pre\n## A\n````\n```\n## still fenced\n````\n## B', ['A', 'B']],
+    ['pre\n## A\n  ```sh\n## inside an indented fence\n  ```\n## B', ['A', 'B']],
+  ];
+  for (const [t, want] of cases) {
+    const r = cli.parseProtocolSections(t);
+    assert.deepStrictEqual(r.sections.map((s) => s.header), want, `headers for ${JSON.stringify(t)}`);
+    assert.strictEqual([r.preamble, ...r.sections.map((s) => s.text)].join('\n'), t, `round-trip for ${JSON.stringify(t)}`);
+  }
+});
+
+const LIVE_TEMPLATES = ['templates/persona-protocol.md', 'templates/persona-protocol-slim.md'];
+
+check('F2 live templates round-trip byte-for-byte', () => {
+  for (const rel of LIVE_TEMPLATES) {
+    const text = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+    const r = cli.parseProtocolSections(text);
+    assert.strictEqual([r.preamble, ...r.sections.map((s) => s.text)].join('\n'), text, `${rel}: round-trip differs`);
+  }
+});
+
+check(`F3 no ## line inside a fence in ${LIVE_TEMPLATES.join(' or ')}`, () => {
+  for (const rel of LIVE_TEMPLATES) {
+    const text = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+    const naive = (text.match(/^## /gm) || []).length;
+    assert.strictEqual(cli.parseProtocolSections(text).sections.length, naive, `${rel}: a ## line sits inside a fence`);
+  }
+});
+
 if (failures) {
   console.log(`\n${failures} protocol-cross-references check(s) FAILED.`);
   process.exit(1);
