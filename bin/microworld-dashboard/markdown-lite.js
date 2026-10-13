@@ -32,19 +32,30 @@ function isValidLinkScheme(href) {
 
 // Tables. Cells are never escaped here: every cell goes through renderInline,
 // the one escape site on the inline path, and the emitted tags carry no attributes.
+// A backslash escapes a following `|` or `\\`; an unescaped `|` that ends the
+// row closes it and adds no empty cell.
 function mdSplitRow(row) {
   let s = row.trim();
   if (s.startsWith('|')) s = s.slice(1);
-  if (s.endsWith('|') && !s.endsWith('\\|')) s = s.slice(0, -1);
   const cells = [];
   let cur = '';
+  let endedOnPipe = false;
   for (let k = 0; k < s.length; k++) {
-    if (s[k] === '\\' && s[k + 1] === '|') { cur += '|'; k++; }
-    else if (s[k] === '|') { cells.push(cur.trim()); cur = ''; }
+    endedOnPipe = false;
+    if (s[k] === '\\' && (s[k + 1] === '|' || s[k + 1] === '\\')) { cur += s[k + 1]; k++; }
+    else if (s[k] === '|') { cells.push(cur.trim()); cur = ''; endedOnPipe = true; }
     else cur += s[k];
   }
-  cells.push(cur.trim());
+  if (!endedOnPipe) cells.push(cur.trim());
   return cells;
+}
+
+// True when a line opens another block (fence, heading, rule, blockquote or
+// list item), so a table body stops before it even if it contains a `|`.
+function mdStartsBlock(trimmed) {
+  return trimmed.startsWith('```') || /^#+\s/.test(trimmed) || trimmed === '---' || trimmed === '***' ||
+    trimmed === '___' || trimmed.startsWith('> ') || trimmed.startsWith('- ') || trimmed.startsWith('* ') ||
+    /^\d+\.\s/.test(trimmed);
 }
 
 function mdIsDelimiterRow(row, width) {
@@ -140,7 +151,7 @@ function renderMarkdown(input) {
       if (mdIsDelimiterRow(lines[i + 1], head.length)) {
         i += 2;
         let rows = '';
-        while (i < lines.length && lines[i].trim() !== '' && lines[i].includes('|')) {
+        while (i < lines.length && lines[i].trim() !== '' && lines[i].includes('|') && !mdStartsBlock(lines[i].trim())) {
           const cells = mdSplitRow(lines[i]);
           let tr = '';
           for (let c = 0; c < head.length; c++) tr += '<td>' + renderInline(cells[c] || '') + '</td>';

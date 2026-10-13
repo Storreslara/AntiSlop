@@ -344,8 +344,36 @@ const TABLE_CASES = [
   ['TB8 escaped pipe', '| h |\n|---|\n| x \\| y |',
     '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>x | y</td></tr></tbody></table>'],
   ['TB9 ends at blank line', '| a | b |\n|---|---|\n| 1 | 2 |\n\nafter', T_AB + '<p>after</p>'],
-  ['TB10 header only', '| a | b |\n|---|---|', '<table><thead><tr><th>a</th><th>b</th></tr></thead></table>']
+  ['TB10 header only', '| a | b |\n|---|---|', '<table><thead><tr><th>a</th><th>b</th></tr></thead></table>'],
+  ['TB11 list item ends the body', '| a | b |\n|---|---|\n| 1 | 2 |\n- item | x', T_AB + '<ul><li>item | x</li></ul>'],
+  ['TB12 heading ends the body', '| a | b |\n|---|---|\n| 1 | 2 |\n# h | x', T_AB + '<h1>h | x</h1>'],
+  ['TB13 fence ends the body', '| a | b |\n|---|---|\n| 1 | 2 |\n```text | info\nq | r\n```', T_AB + '<pre><code>q | r</code></pre>'],
+  ['TB14 blockquote ends the body', '| a | b |\n|---|---|\n| 1 | 2 |\n> q | r', T_AB + '<blockquote><p>q | r</p></blockquote>'],
+  ['TB15 ordered item ends the body', '| a | b |\n|---|---|\n| 1 | 2 |\n1. one | two', T_AB + '<ol><li>one | two</li></ol>'],
+  ['TB16 escaped backslash before the closing pipe', '| h |\n|---|\n| a \\\\|',
+    '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>a \\</td></tr></tbody></table>'],
+  ['TB17 escaped backslash then escaped pipe', '| h |\n|---|\n| x \\\\\\| y |',
+    '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>x \\| y</td></tr></tbody></table>']
 ];
+
+// epfb-3: the page loads markdown-lite.js as an injected classic <script>, not via require().
+check('VM1 injected client script is markdown-lite.js verbatim and defines a working renderMarkdown global', () => {
+  const vm = require('vm');
+  const fs = require('fs');
+  const path = require('path');
+  const dir = path.join(__dirname, '../../bin/microworld-dashboard');
+  const src = fs.readFileSync(path.join(dir, 'markdown-lite.js'), 'utf8');
+  const html = fs.readFileSync(path.join(dir, 'index.html'), 'utf8').replace('/* __MARKDOWN_LITE_SOURCE__ */', src);
+  const injected = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1])
+    .find((s) => s.includes('function renderMarkdown('));
+  assert(injected === src, 'the injected <script> body is not markdown-lite.js verbatim');
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(injected, sandbox);
+  assert(typeof sandbox.renderMarkdown === 'function', 'renderMarkdown is not a page global');
+  const out = sandbox.renderMarkdown(TABLE_CASES[0][1]);
+  assert(out === TABLE_CASES[0][2], `vm render of TB1: ${out}`);
+});
 
 TABLE_CASES.forEach(([label, input, expected]) => {
   check(label, () => {
