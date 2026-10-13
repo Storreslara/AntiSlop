@@ -715,7 +715,10 @@ function buildAdapterLibSpecs() {
 // a section) plus one entry per `## ` heading, in template order. A `## ` line
 // inside a fenced code block (CommonMark backtick or tilde fences) starts no section.
 // Joining the preamble and every section text with '\n' reproduces the file
-// byte-for-byte.
+// byte-for-byte, except a text that opens with a `## ` line: it has no
+// preamble, and the join adds a leading '\n'. That case is a non-goal, kept
+// unreachable because every live template opens with a header comment (F2 and
+// F5 in tests/protocol-cross-references.test.js).
 function parseProtocolSections(text) {
   const preamble = [];
   const sections = [];

@@ -166,6 +166,22 @@ check(`F3 no ## line inside a fence in ${LIVE_TEMPLATES.join(' or ')}`, () => {
   }
 });
 
+// epfc-3: text that opens with a `## ` line has no preamble, so the
+// preamble-plus-sections join gains a leading '\n'. A documented non-goal
+// (see the comment above parseProtocolSections); this pins the behaviour and
+// keeps every live template's first line off `## `.
+check('F5 no-preamble text: empty preamble, the join adds a leading newline (non-goal, pinned)', () => {
+  const t = '## A\nx\n## B';
+  const r = cli.parseProtocolSections(t);
+  assert.deepStrictEqual(r.sections.map((s) => s.header), ['A', 'B'], 'headers for a no-preamble text');
+  assert.strictEqual(r.preamble, '', 'a no-preamble text has an empty-string preamble');
+  assert.strictEqual([r.preamble, ...r.sections.map((s) => s.text)].join('\n'), '\n' + t, 'the join adds exactly one leading newline');
+  for (const rel of LIVE_TEMPLATES) {
+    const first = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').split('\n')[0];
+    assert.ok(!first.startsWith('## '), `${rel}: opens with a ## line, so its preamble join would gain a leading newline`);
+  }
+});
+
 if (failures) {
   console.log(`\n${failures} protocol-cross-references check(s) FAILED.`);
   process.exit(1);
