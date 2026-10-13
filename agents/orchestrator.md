@@ -243,28 +243,29 @@ resolved. Your whole job here is **surfacing, not deciding**: the human reads
 the packet in this session, answers one question, and approves the exact bytes
 of their own decision at Claude Code's permission prompt.
 
-1. Print the marker's lines 1 through the `---` fold line in chat
-   **verbatim** — the card carries the packet path, the `run.sh` command
-   and the viewer command — then exactly one pointer line:
+1. Print the marker's lines 1 through the `---` fold line in chat **verbatim**
+   — the card carries the packet path, the `run.sh` command and the viewer
+   command — then exactly one pointer line:
    `Full record (criteria, notes): .claude/reviewed/<task-id>.escalated, same text in the packet's PACKET.md`.
-   Never summarize the record. The card's `packet:` line already carries the
-   viewer command `sh .claude/human-review/<task-id>/view.sh`; do not print it
-   a second time. Re-read the
-   marker with the **Read tool** (ungated) whenever the human comes back, which
-   may be a later session, after a restart, or from their own terminal; the
-   packet is untracked-but-persistent, so nothing about this assumes the human
-   was available the moment escalation fired.
-2. Read `CHANGES.md` in that packet directory **(if present)** with the
-   Read tool, then reproduce it as your own message text, outside any code
-   fence, so the chat renders its markdown — **verbatim, in full**, no
-   summary, no excerpt, without the Read tool's line-number prefixes. A tool
-   result alone is not printing it: the human sees that as raw text. It is the **literate
-   change summary** this project's `reviewer` (if present) wrote at escalation
-   time. Tell the human to read it **before the diff**: it walks the change in
-   conceptual order, which a raw alphabetical diff does not. It is
-   comprehension material only — the `.escalated` marker stays the
-   authoritative record, and `CHANGES.md` never carries a decision. A unit with
-   no bundle still has one, and there it is the whole human-facing payload.
+   Never summarize the record. A marker with no `---` fold line was written
+   before the card format: print the whole marker verbatim instead, with no
+   pointer line. The card's `packet:` line already carries the viewer command
+   `sh .claude/human-review/<task-id>/view.sh`; do not print it a second time.
+   Re-read the marker with the **Read tool** (ungated) whenever the human comes
+   back, which may be a later session, after a restart, or from their own
+   terminal; the packet is untracked-but-persistent, so nothing about this
+   assumes the human was available the moment escalation fired.
+2. Read `CHANGES.md` in that packet directory **(if present)** with the Read
+   tool, then reproduce it as your own message text, outside any code fence, so
+   the chat renders its markdown — **verbatim, in full**, no summary, no
+   excerpt, without the Read tool's line-number prefixes. A tool result alone is
+   not printing it: the human sees that as raw text. It is the **literate change
+   summary** this project's `reviewer` (if present) wrote at escalation time.
+   Tell the human to read it **before the diff**: it walks the change in
+   conceptual order, which a raw alphabetical diff does not. It is comprehension
+   material only — the `.escalated` marker stays the authoritative record, and
+   `CHANGES.md` never carries a decision. A unit with no bundle still has one,
+   and there it is the whole human-facing payload.
 3. Read `EXAMPLES.md` in that packet directory **(if present)** with the Read
    tool, then reproduce it as your own message text, outside any code fence, so
    the chat renders its markdown — **verbatim, in full**, without the Read
@@ -279,22 +280,23 @@ of their own decision at Claude Code's permission prompt.
    skipped `EXAMPLES.md` (a change with no behavioural surface) is logged on
    the `.escalated` marker and is legitimate; do not nag the human about its
    absence.
-4. **Never run `run.sh` or `view.sh` yourself and never pre-digest a result** — that would
-   restore the automation the escalation exists to interrupt. You surface the
-   command; the human runs it.
-5. Make **one** `AskUserQuestion` call. Q1 is the route, with options
-   `approve`, `reject`, `direct` and `decide later`.
-   Q1's description is the text after `decide: ` on the card, verbatim. Q2 is the examples answer,
-   asked **only if `EXAMPLES.md` exists**, with options labelled exactly
-   `reviewed` and `skipped`; its description says it is recorded on approve
-   only. **Relay the human's token verbatim**; never pick one for them and
-   never infer one from what they said. A free-text answer is never
-   interpreted as a route or a token: ask again. `examples: skipped` is a
-   legitimate answer — do not push back on it, warn about it, or ask again.
-   On approve, the body carries `examples: <token>` from Q2, or
-   `examples: none-offered` when no `EXAMPLES.md` exists, and no `examples:`
-   line if Q2 was left unanswered. For `reject` or `direct`, ask for the
-   reason or the prescribed fix in one plain chat follow-up and use the
+4. **Never run `run.sh` or `view.sh` yourself and never pre-digest a result**
+   — that would restore the automation the escalation exists to interrupt. You
+   surface the command; the human runs it.
+5. Make **one** `AskUserQuestion` call. Q1 is the route, with options `approve`,
+   `reject`, `direct` and `decide later`. Q1's description is the text after
+   `decide: ` on the card, verbatim. When the marker has no `decide: ` line,
+   Q1's description is exactly `How should this escalation be resolved?`. Q2 is
+   the examples answer, asked **only if `EXAMPLES.md` exists**, with options
+   labelled exactly `reviewed` and `skipped`; its description says it is
+   recorded on approve only. **Relay the human's token verbatim**;
+   never pick one for them and never infer one from what they said. A free-text
+   answer is never interpreted as a route or a token: ask again.
+   `examples: skipped` is a legitimate answer — do not push back on it, warn
+   about it, or ask again. On approve, the body carries `examples: <token>` from
+   Q2, or `examples: none-offered` when no `EXAMPLES.md` exists, and no
+   `examples:` line if Q2 was left unanswered. For `reject` or `direct`, ask for
+   the reason or the prescribed fix in one plain chat follow-up and use the
    human's words **verbatim**.
 6. Make the **prompt-confirmed decision write**: run exactly one Bash call
    whose whole command is this heredoc and nothing else.

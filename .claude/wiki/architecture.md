@@ -79,7 +79,7 @@ snapshots the microworld bundle to `.claude/human-review/<task-id>/` (the escala
 The `.escalated` marker carries: the trigger criterion (heavy-unit trigger) on line 1,
 then a six-line card (why, would-be verdict, look first, decide, run, packet), a
 `---` fold, and the record (commit SHA, inputs/outputs, criteria, examples, notes);
-the orchestrator prints only through the fold. The packet contains the bundle's `run.sh`,
+the orchestrator prints only through the fold; a marker with no fold is printed whole. The packet contains the bundle's `run.sh`,
 manifest, fixtures, and `PACKET.md` (byte-identical copy of marker body, marker
 authoritative on divergence).
 

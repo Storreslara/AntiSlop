@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.159",
+  "pluginVersion": "0.31.160",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,7 +42,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "3567b08c2899174062bf55932103df3850157a5bf03b0348a7daf2721c97e206",
+    ".claude/agents/orchestrator.md": "94bf5dbcf11a954fe384daa2a2a979e4efecdf5f2ccaf9eee7ac776decb15c2b",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "ef8a93c09a1846c75d16a3052e08fade997f43dfaa9e87d516ca9623d639e015",
     ".claude/agents/spec-master.md": "5e37803cf37b49c05753267cf6275500c469d0f132496a1142cbb4efa0b66f36",
@@ -52,7 +52,7 @@
     ".claude/agents/milestone-auditor.md": "32888f6806e4c1830bb5e620eb6907826136e4e2edaf26895df59b3cf29cbd8b",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
-    ".claude/persona-protocol.md": "0e1234324176a9589a3b4c64fe078a10d1d86f576bdfcdbf6cc711117cde330b",
+    ".claude/persona-protocol.md": "c4c9b161e6d7178f47563366b80f01198cba969f5960377139415c7fd9c7dd6b",
     ".claude/persona-protocol-slim.md": "6d03c9d18b85160c988f14caecb41e0c0740c661d1eb41bdd4d6c86bca823db9",
     ".claude/protocol-digest.md": "aa0a0b315f07fa440c59056d82b56483826e2b754a22cb10eccdad2a00554638",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "c3131b4398fdf8c8c1c36ece8dabbf7d27469368af3a9403f9d56b6dbc96e0f9",

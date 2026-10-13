@@ -1,4 +1,4 @@
-<!-- antislop v0.31.159 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.160 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -607,8 +607,7 @@ the human's answer in the same session. Terminal template shape:
 
 `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
 
-**The prompt-confirmed decision write.** The orchestrator prints the
-`.escalated` marker verbatim in chat, pastes `CHANGES.md` and `EXAMPLES.md`
+**The prompt-confirmed decision write.** The orchestrator prints marker lines 1 through the `---` fold line verbatim in chat (the whole marker when it has no fold line), reproduces `CHANGES.md` and `EXAMPLES.md`
 verbatim as its own message text, outside any code fence, so they render, and asks
 one `AskUserQuestion` (the route, plus the `examples:` answer when
 `EXAMPLES.md` exists). It then runs exactly one Bash call whose whole command

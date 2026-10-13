@@ -269,6 +269,20 @@ check('escalated card block is byte-identical across reviewer.md, the template, 
   assert.strictEqual(lines[6], '---', 'card block line 7 must be exactly the --- fold');
 });
 
+// epf-1: the orchestrator escalation steps also handle a marker written before the card format.
+check('orchestrator escalation steps handle a marker with no fold line or no decide: line', () => {
+  const flat = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').replace(/\s+/g, ' ');
+  const foldRule = 'A marker with no `---` fold line was written before the card format: print the whole marker verbatim instead, with no pointer line.';
+  const decideRule = "When the marker has no `decide: ` line, Q1's description is exactly `How should this escalation be resolved?`.";
+  for (const rel of ['agents/orchestrator.md', '.claude/agents/orchestrator.md']) {
+    const t = flat(rel);
+    assert.ok(t.includes(foldRule), `${rel}: missing the no-fold-line rule`);
+    assert.ok(t.includes(decideRule), `${rel}: missing the no-decide-line rule`);
+  }
+  assert.ok(flat('templates/persona-protocol.md').includes('prints marker lines 1 through the `---` fold line verbatim in chat (the whole marker when it has no fold line)'),
+    'templates/persona-protocol.md: missing the whole-marker clause');
+});
+
 if (failures) {
   console.log(`\n${failures} adapter-protocol-parity check(s) FAILED.`);
   process.exit(1);
