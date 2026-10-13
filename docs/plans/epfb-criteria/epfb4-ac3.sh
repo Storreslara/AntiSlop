@@ -22,7 +22,8 @@ perl -0pi -e 's/\[ \\t\\r\]\*\$/[ \\t]*\$/' "$wt/bin/cli.js"
 out=$(cd "$wt" && node "$T" 2>&1) && { echo "(b) old closer survived"; exit 1; }
 printf '%s\n' "$out" | grep -q '^FAIL F4' || { echo "(b) no FAIL F4"; exit 1; }
 ( cd "$wt" && git checkout -q -- bin/cli.js )
-perl -0pi -e 's/if \(open\) fence =/if (open && \/^ {0,3}(`{3,}|~{3,})[ \\t\\r]*\$\/m.test(text.slice(text.indexOf(line) + line.length + 1))) fence =/' "$wt/bin/cli.js"
+perl -0pi -e 's/for \(const line of text\.split\(\x27\\n\x27\)\) \{/for (const [li, line] of text.split(\x27\\n\x27).entries()) {/; s/if \(open\) fence =/if (open && \/^ {0,3}(`{3,}|~{3,})[ \\t\\r]*\$\/m.test(text.split(\x27\\n\x27).slice(li + 1).join(\x27\\n\x27))) fence =/' "$wt/bin/cli.js"
+grep -q 'const \[li, line\] of text.split' "$wt/bin/cli.js" || { echo "(d) loop index not added"; exit 1; }
 ( cd "$wt" && git diff --quiet -- bin/cli.js ) && { echo "(d) changed nothing"; exit 1; }
 out=$(cd "$wt" && node "$T" 2>&1) && { echo "(d) unclosed-fence mutant survived"; exit 1; }
 printf '%s\n' "$out" | grep -q '^FAIL F4 .*also swallowed' || { echo "(d) no FAIL F4 on case 3"; exit 1; }
