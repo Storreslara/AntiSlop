@@ -1,8 +1,8 @@
 # Escalation packet aesthetics: rendered chat, terminal-friendly layout, packet viewer
 
-Status: FINAL for parts 1-3 (units epa-1, epa-2, epa-3). Part 4 is a placeholder
-whose approach is still pending the Fable design review. Fast path: 3
-dispatchable units, so no task-master and no `to-tickets`.
+Status: FINAL, 4 units (epa-1..epa-4). Part 4 (epa-4) was a placeholder until
+2026-10-12, when the user chose Approach C from the Fable design review. Fast
+path: 4 dispatchable units, so no task-master and no `to-tickets`.
 
 ## Goal
 
@@ -25,8 +25,11 @@ the escalation packet's `CHANGES.md` and `EXAMPLES.md` quickly:
    `bat`/`batcat`, then `rich`, and falls back to plain `cat`, so it works with
    none of them installed. The orchestrator prints the command and never runs
    it (epa-3).
-4. **Marker format redesign:** PLACEHOLDER. The approach is pending the Fable
-   review (see "Part 4" below). Nothing here is dispatchable.
+4. **Marker card (Approach C).** Line 1 of the `.escalated` marker is
+   byte-unchanged. Below it, the body becomes a six-line card (why /
+   would-be verdict / look first / decide / run / packet), a `---` fold
+   line, then the record. The orchestrator prints only lines 1 through the
+   fold, plus one pointer line (epa-4).
 
 Out of scope: the Microworld dashboard, the DECISION / `AskUserQuestion` flow,
 and anything the reviewer *decides*.
@@ -144,7 +147,8 @@ results for the remaining surfaces.
   `.claude/human-review/<task-id>/`, so the orchestrator prints
   `sh .claude/human-review/<task-id>/view.sh` next to the marker's `run.sh`
   command when that file exists. Using `sh …` means a lost executable bit
-  cannot break it. Part 4 may later add a marker line for it.
+  cannot break it. (Superseded by epa-4: the card's `packet:` line now
+  carries the command.)
 - **D4 — Fallback order.**
   1. `glow <file>`
   2. `bat --paging=never -l md <file>`
@@ -239,6 +243,21 @@ exit 0
   "colour viewer" and the "packet builder"? → A (self-resolved): "packet
   viewer" is a new CONTEXT.md entry (epa-3). The "packet builder" is the
   reviewer itself, so no new term is needed.
+- 2026-10-12 User interaction flow: Q Which marker design replaces the
+  wall-of-text body? → A: Approach C (card / `---` fold / record; the
+  orchestrator prints through the fold plus one pointer line), per the user
+  via `AskUserQuestion`, relayed by the coordinator
+- 2026-10-12 Domain entities / data model: Q Where do the notes go on
+  approve, now that they sit below the fold? → A: carried verbatim into
+  `.pass` under the exact `Non-blocking notes:` anchor, per the user's
+  Approach C brief
+- 2026-10-12 Edge cases / failure handling: Q Can a card naming the packet
+  directory (and possibly the word DECISION) be written past
+  `human-decision-gate.sh`? → A (self-resolved): yes, via the sanctioned
+  single-quoted heredoc marker template; measured rc=0 in both cases
+- 2026-10-12 Terminology consistency: Q What are the card and the record
+  called? → A (self-resolved): new CONTEXT.md entry "escalation card";
+  "record" is described inside it, with no separate term
 
 ## Risks / dependencies
 
@@ -258,9 +277,14 @@ exit 0
 - **R5 — The orchestrator may still paste inside a fence.** epa-1 changes
   instructions only, and no test can observe live orchestrator output. The
   criteria pin the instruction text, not the runtime behaviour.
-- **R6 — Part 4 will reshape the `.escalated` body.** epa-3 deliberately
-  adds no marker line, so part 4 has no merge conflict with parts 1-3 beyond
-  the files they share.
+- **R6 — epa-4 reshapes the `.escalated` body below line 1.** epa-3 adds no
+  marker line, so the two units do not conflict beyond their shared files.
+  The machine readers parse line 1 only (`decisions.js:37`, `server.js:346`,
+  `human-decision-gate.sh:232-234`); this was measured and is guarded by
+  AC4.6 and AC4.7.
+- **R7 — Dashboard display of the card.** `markdown-lite` renders the card
+  in `PACKET.md` as plain lines with an `<hr>` at the fold. That is
+  acceptable; the dashboard is out of scope.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied. Every criterion is a runnable
@@ -544,68 +568,226 @@ the template, and ASCII `-` instead of em dashes in the ports (house style).
 - **AC3.10** (merge gate)
   - run: `bash tests/validate.sh` exits 0.
 
-## Part 4 — marker format redesign: approach pending Fable review
+## Step 4 — epa-4: `.escalated` marker body as card, fold, record (Approach C)
 
-**PLACEHOLDER. Not dispatchable.** A separate Fable design review is
-producing 3-4 candidate approaches. They redesign the `.escalated` marker
-body (header, run command, inputs/outputs, would-be verdict, notes) to show
-leanly *why* the unit escalated. spec-master did not design this part. It
-gets filled in, with Steps, criteria and dispatch contracts, once the user
-picks an approach. It must run **after** epa-3, because it shares every
-source file.
+Dispatchable. Runs **after epa-3**, because it shares every source file. The
+user chose Approach C from the Fable design review via `AskUserQuestion`
+(relayed by the coordinator on 2026-10-12). Shortening `trigger:` is
+explicitly out of scope.
 
-### Hand-synced copies of the marker format (every one must move together)
+### Design (fixed by the user's choice; restated here so the criteria have one source)
 
-**Instruction sources:**
-- `agents/reviewer.md:267-273`: first line, body order, the `examples:` line at `:347-350`, and the approve route's verbatim `commit:` copy around `:390`.
-- `templates/persona-protocol.md:418-432`: canonical format and body order. Also `:486-490` (`examples:` line).
-- `adapters/codex/agents-md-fragment.md:189-194`.
-- `adapters/cursor/rules/persona-protocol.mdc:197-204`.
-- `agents/orchestrator.md` step 1: prints the marker verbatim and re-reads it on return. Step 6 copies `<ts>` from its first line.
+- **Line 1 stays byte-identical:**
+  `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger: <...> microworld: <packet path or "none">`.
+  Each source's own spelling of that format line is left untouched, so
+  AC3.6 and AC4.6 stay true.
+- **The body below line 1** is a fixed **card** of six labelled lines, then
+  one `---` **fold line**, then the **record**.
+- **Canonical card-and-record block.** It is ASCII and byte-identical in all
+  four sources and both generated mirrors. It sits at column 0 between HTML
+  comment lines with a ```` ```text ```` fence inside:
 
-**Generated mirrors** (regenerated by `node bin/cli.js --update --force-render`, never hand-edited):
-- `.claude/agents/reviewer.md`
-- `.claude/agents/orchestrator.md`
-- `.claude/persona-protocol.md`
+````
+<!-- escalated-card:begin -->
+```text
+why: <one line - what about this unit requires human eyes>
+would-be verdict: <PASS|FAIL> - <one line>
+look first: <file:line> - <what to check there>
+decide: <the one question the human answers, in plain words>
+run: <command to run the packet's run.sh, or "none - no bundle">
+packet: .claude/human-review/<task-id>/ - view: sh .claude/human-review/<task-id>/view.sh
+---
+commit: <sha at escalation>
+inputs/outputs: <one line>
+criteria checked: <id>, <id>, ... ; exceptions: <id> - <one line> | none
+examples: <count> | examples: none - <one-line reason>
+Non-blocking notes:
+- NOTE[spec|code]: <at most 2 lines each>
+```
+<!-- escalated-card:end -->
+````
 
-**Glossary:**
-- `CONTEXT.md`: the **Escalation packet**, `.escalated` / ESCALATE-TO-HUMAN, **PACKET.md** and **worked example** (`examples:` line) entries.
-- `docs/harness-glossary.md`: escalation entries.
+- **Record rules:**
+  - `commit:` stays a body line beginning `commit: `, and the approve route
+    still copies it verbatim.
+  - `criteria checked:` lists identifiers only. Only criteria that passed
+    with a caveat are flagged, under `exceptions:`.
+  - The `examples:` line moves into the record; its token grammar is
+    unchanged.
+  - The notes keep the full list, each note terse (at most 2 lines), opened
+    by the exact `Non-blocking notes:` anchor with `NOTE[spec]:` /
+    `NOTE[code]:` prefixes.
+  - Omit the `Non-blocking notes:` line when there are none.
+- **On approve**, the reviewer carries the record's notes verbatim into the
+  `.pass` marker. They go under the exact `Non-blocking notes:` anchor line,
+  after the `human:` attestation line. Nothing in the `.pass` v3 first line
+  changes. `hooks/scripts/marker-verify.sh:55-66` finds the anchor anywhere
+  in the body, so this layout parses.
+- **`PACKET.md`** stays a byte-identical copy of the marker body.
+- **Gate check (measured).** The reviewer writes the marker with the gate's
+  sanctioned single-quoted heredoc template
+  (`cat > .claude/reviewed/<task-id>.escalated <<'EOF'`). I piped a
+  reviewer-identity payload into `human-decision-gate.sh` with a card body
+  naming `.claude/human-review/u1/` and the `view:` command. It was allowed
+  (rc=0), both with and without the word `DECISION` in `decide:`.
+- **Orchestrator step 1** prints marker lines 1 through the `---` fold
+  verbatim, then exactly one pointer line:
+  `Full record (criteria, notes): .claude/reviewed/<task-id>.escalated, same text in the packet's PACKET.md`.
+  It never summarizes the record.
+  - epa-3's separate "print the `view.sh` command" sentence becomes: "The
+    card's `packet:` line already carries the viewer command
+    `sh .claude/human-review/<task-id>/view.sh`; do not print it a second
+    time."
+  - That sentence keeps the literal epa-3's AC3.4 greps for.
+- **Orchestrator step 5:** Q1's description is the text after `decide: ` on
+  the card, verbatim.
+- **Orchestrator step 6** needs no edit, because `<ts>` still comes from
+  line 1. AC4.6 checks it.
 
-**Parity:** `tests/adapter-protocol-parity.test.js` `ESCALATION_PROBES`.
+### Affected files (the user's copy list, verified at 27fdcb9)
 
-### Machine-read format: stability constraints (any approach must preserve these, or change the readers in the same unit)
+**Sources:**
+- `agents/reviewer.md`: marker format at about 267-273; the `examples:` rule at about 347-351; the approve route at about 384-388.
+- `templates/persona-protocol.md`: about 417-432; the `examples:` rule at about 486-490; the no-bundle bullet at about 500-502; the approve row at about 612.
+- `adapters/codex/agents-md-fragment.md`: about 189-196, and the `examples:` sentence at about 236-238.
+- `adapters/cursor/rules/persona-protocol.mdc`: about 196-205, and the matching `examples:` sentence.
+- `agents/orchestrator.md`: steps 1 and 5. Step 6 is checked unchanged.
 
-- **First line, byte format:**
-  `ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601> trigger: <…> microworld: <packet path|none>`.
-  Its readers:
-  - `bin/microworld-dashboard/decisions.js:37` and `bin/microworld-dashboard/server.js:346` parse it with
-    `/^ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$/`.
-    The dashboard is out of scope, so this line must not change.
-  - `hooks/scripts/human-decision-gate.sh:232` reads line 1 for the
-    task-id and timestamp, the staleness binding that `DECISION`'s
-    `escalation:` field must match.
-  - `hooks/scripts/stop-gate.sh` keys on the marker's presence.
-- **`commit: <sha>` body line.** The approve route copies it **verbatim**
-  into the `.pass` marker's `commit:` field. It must stay a line starting
-  `commit: `.
-- **`examples: <count>` / `examples: none — <reason>` body line.** It is
-  the auditable skip record; the orchestrator's Q2 and the reviewer's
-  `examples:` transcription depend on it.
-- **`PACKET.md` is a byte-identical copy of the marker body.** Any redesign
-  changes both at once by construction.
-- **Tests that build or parse markers:**
-  - `tests/stop-gate-escalated.test.sh`
-  - `tests/human-decision-gate.test.sh`
-  - `tests/state-access-constraints.test.sh`
-  - `tests/state-access-capability-regression.test.sh`
-  - `tests/session-start-microworld-status.test.sh`
-  - `tests/microworld/dashboard-decisions.test.js`
-  - `tests/microworld/dashboard-decision-run.test.js`
-- **View command.** epa-3 put no viewer line in the marker. Part 4 may add
-  one, for example `view: sh <packet>/view.sh`. If it does, the
-  orchestrator's step 1 surfacing sentence (epa-3 edit 5) should be
-  re-pointed at it.
+**Documentation:**
+- `CONTEXT.md`: the `.escalated` marker entry at about 899-915, plus a new **escalation card** entry.
+- `.claude/wiki/architecture.md:80`: tracked and hand-maintained; `bin/cli.js` does not manage it.
+
+**Tests:** `tests/adapter-protocol-parity.test.js`.
+
+**Release:** `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`.
+
+**Mirrors:** only via `node bin/cli.js --update --force-render`.
+
+### Must stay byte-stable (each one guarded by a criterion)
+
+1. The line-1 regex `/^ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$/` at `bin/microworld-dashboard/decisions.js:37` and `server.js:346` (AC4.6, AC4.7).
+2. `hooks/scripts/human-decision-gate.sh:232-234`, which reads line 1 fields 2-3 (task-id, timestamp) (AC4.7).
+3. The filenames `.escalated` and `.claude/human-review/<task-id>/` (AC4.7).
+4. The `commit:` body line (block line `commit: <sha at escalation>`; AC4.1).
+5. `PACKET.md` byte-identical to the body: the existing sentence is kept (AC4.5).
+6. The `.pass` v3 first line and the exact `Non-blocking notes:` anchor (AC4.4; `tests/marker-verify.test.sh` runs inside validate.sh).
+7. Every existing `ESCALATION_PROBES` string (AC4.3).
+
+### Ordered edits
+
+1. **All four sources: replace the body description.** Replace the
+   sentence after the first-line format (reviewer.md "followed by the
+   command to run the packet's `run.sh`, `commit: <sha>` at escalation
+   time, ... and your non-blocking notes."; the template's "After that
+   first line, in order: ..."; and the ports' equivalents). Use this
+   prose, in each source's own voice:
+   > After that unchanged first line, the body is a fixed **card**, one
+   > `---` fold line, then the **record**, exactly as below. Card lines are
+   > one line each. The record lists criteria as identifiers with flagged
+   > exceptions only, and keeps every non-blocking note, at most 2 lines
+   > each.
+
+   Follow it with the canonical block, byte-exact at column 0. The
+   `microworld:` explanation sentences stay.
+2. **`examples:` rule, all four sources.** Change "append an `examples:`
+   line to the `.escalated` marker body" (template and ports: "the
+   `.escalated` marker body carries one `examples:` line") so that the line
+   is named as the record's `examples:` line, below the `---` fold. The
+   token grammar is unchanged.
+3. **Approve route, `agents/reviewer.md` and `templates/persona-protocol.md`
+   (prose, plus the template's approve table row).** Add this sentence:
+   > On approve, carry the record's non-blocking notes into the `.pass`
+   > verbatim under the exact `Non-blocking notes:` anchor line, after the
+   > `human:` attestation line.
+
+   This must sit on ONE physical line from "under the exact" through
+   "anchor".
+4. **`agents/orchestrator.md` step 1.** Replace "Print the marker's contents
+   in chat **verbatim** — including the packet path and the exact command
+   to run the packet's `run.sh`." with:
+   > Print the marker's lines 1 through the `---` fold line in chat
+   > **verbatim** — the card carries the packet path, the `run.sh` command
+   > and the viewer command — then exactly one pointer line:
+   > `Full record (criteria, notes): .claude/reviewed/<task-id>.escalated, same text in the packet's PACKET.md`.
+   > Never summarize the record.
+
+   The pointer literal must sit on one physical line. Apply the epa-3
+   viewer-sentence rewrite from the Design section. Keep the Read-tool
+   re-read sentence.
+5. **`agents/orchestrator.md` step 5.** Add after "Q1 is the route, with
+   options …": "Q1's description is the text after `decide: ` on the card,
+   verbatim."
+6. **`tests/adapter-protocol-parity.test.js`.**
+   - **Probes.** Append these to `ESCALATION_PROBES`, each commented
+     `// epa-4`:
+     - `'why: <one line'`
+     - `'would-be verdict: <PASS|FAIL>'`
+     - `'look first: <file:line>'`
+     - `'decide: <the one question'`
+     - `'run: <command to run'`
+     - `'packet: .claude/human-review/<task-id>/'`
+     - `'\n---\ncommit: <sha at escalation>'` (the fold, which must be
+       followed directly by `commit:`)
+   - **New check** `'escalated card block is byte-identical across reviewer.md, the template, both ports and both mirrors'`:
+     - Extract the lines strictly between `<!-- escalated-card:begin -->`
+       and `<!-- escalated-card:end -->`, minus fence lines, from
+       `agents/reviewer.md`, `templates/persona-protocol.md`, both ports,
+       `.claude/agents/reviewer.md` and `.claude/persona-protocol.md`.
+     - Assert all six are non-empty and equal.
+     - Assert the block's first line starts `why: ` and its line 7 is
+       exactly `---`. This is the reviewer-prose drift check.
+     - It must use the existing `check(name, fn)` helper (`:30`) so a
+       failure exits 1.
+7. **`CONTEXT.md`.**
+   - Rewrite the `.escalated` marker entry's body sentence ("Followed by
+     the packet's `run.sh` invocation, ... and non-blocking notes.") to
+     describe card, `---` fold and record. Keep the "copied verbatim during
+     approval" clause on `commit:`.
+   - Add a new entry `**escalation card**:` covering the six labels in
+     order, the fold, and that the orchestrator prints only lines 1 through
+     the fold plus one pointer line.
+   - Close the new entry with `_Avoid_: marker summary, header (line 1 is
+     the header; use "escalation card")`.
+8. **`.claude/wiki/architecture.md:80`.** Rewrite "The `.escalated` marker
+   carries: ..." to name the card (why, would-be verdict, look first,
+   decide, run, packet), the `---` fold and the record (commit, inputs/outputs,
+   criteria, examples, notes).
+9. **Version, CHANGELOG, mirrors.** As in Step 1, with
+   `(epa-4, <version>).**`, then `node bin/cli.js --update --force-render`.
+   One commit, with a subject starting `feat(epa-4):`.
+
+### Acceptance criteria
+
+`F`/`L` per "Shared criterion idioms", with `epa-4`.
+
+- **AC4.1** (canonical block present, byte-identical, fold well-formed)
+  - run: `node tests/adapter-protocol-parity.test.js && for f in agents/reviewer.md templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc .claude/agents/reviewer.md .claude/persona-protocol.md; do grep -qxF '<!-- escalated-card:begin -->' $f && grep -qxF 'commit: <sha at escalation>' $f && grep -qxF -- '---' $f || { echo $f; exit 1; }; done`
+  - mutation: in the cursor port's block, change `look first:` to `look:` → the byte-identity check exits 1. At baseline the block is absent → exit 1.
+- **AC4.2** (record rules stated)
+  - run: `for f in agents/reviewer.md templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc; do t=$(tr -s ' \n' ' ' < $f); echo "$t" | grep -qF 'identifiers with flagged exceptions only' && echo "$t" | grep -qF 'at most 2 lines each' || { echo $f; exit 1; }; done`
+  - mutation: drop "flagged exceptions only" from the template → exit 1.
+- **AC4.3** (old probes kept, new probes added)
+  - run: `B="$F^"; git show "$B:tests/adapter-protocol-parity.test.js" | sed -n '/^const ESCALATION_PROBES/,/^];/p' | grep -oE "^  '[^']+'" | while read -r p; do grep -qF -- "$p" tests/adapter-protocol-parity.test.js || { echo "LOST $p"; exit 1; }; done && [ "$(grep -c '// epa-4' tests/adapter-protocol-parity.test.js)" -ge 7 ]`
+  - mutation: delete the `'via: prompt'` probe → `LOST` → exit 1.
+- **AC4.4** (approve carries notes under the exact anchor)
+  - run: `for f in agents/reviewer.md templates/persona-protocol.md .claude/agents/reviewer.md .claude/persona-protocol.md; do grep -qF 'under the exact `Non-blocking notes:` anchor' $f || { echo $f; exit 1; }; done && grep -qF 'exactly `Non-blocking notes:`' agents/reviewer.md`
+  - mutation: hard-wrap the sentence between "exact" and the anchor → exit 1. The second clause guards the existing anchor rule at `agents/reviewer.md:181`.
+- **AC4.5** (orchestrator step 1, step 5 and pointer; `PACKET.md` byte-identical rule kept)
+  - run: `grep -qF 'Full record (criteria, notes): .claude/reviewed/<task-id>.escalated, same text in the packet'"'"'s PACKET.md' agents/orchestrator.md && o=$(tr -s ' \n' ' ' < agents/orchestrator.md) && echo "$o" | grep -qF 'lines 1 through the `---` fold line' && echo "$o" | grep -qF 'Never summarize the record' && echo "$o" | grep -qF 'the text after `decide: ` on the card, verbatim' && echo "$o" | grep -qF 'sh .claude/human-review/<task-id>/view.sh' && for f in agents/reviewer.md templates/persona-protocol.md; do tr -s ' \n' ' ' < $f | grep -qiF 'byte-identical' || exit 1; done && grep -qF 'Full record (criteria, notes)' .claude/agents/orchestrator.md`
+  - mutation: revert edit 5 → exit 1.
+- **AC4.6** (line 1 and step 6 untouched)
+  - run: `[ "$(git diff -U0 "$F^" "$L" -- agents/reviewer.md templates/persona-protocol.md adapters/ | grep -cE '^[-+].*ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger:')" -eq 0 ] && git show "$F^:agents/orchestrator.md" | awk '/^6\. Make the \*\*prompt-confirmed/,/^7\. /' > "${a:=$(mktemp)}" && awk '/^6\. Make the \*\*prompt-confirmed/,/^7\. /' agents/orchestrator.md > "${b:=$(mktemp)}" && [ -s "$a" ] && cmp -s "$a" "$b"`
+  - mutation: edit any word of step 6 → `cmp` fails → exit 1.
+- **AC4.7** (machine readers untouched)
+  - run: `git diff --quiet "$F^" "$L" -- bin/ hooks/ && grep -qF 'ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$' bin/microworld-dashboard/decisions.js && grep -qF 'ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$' bin/microworld-dashboard/server.js && bash tests/stop-gate-escalated.test.sh && bash tests/human-decision-gate.test.sh && node tests/microworld/dashboard-decisions.test.js`
+  - mutation: touch `hooks/scripts/human-decision-gate.sh` → exit 1.
+- **AC4.8** (glossary and wiki)
+  - run: `grep -q '^\*\*escalation card\*\*:' CONTEXT.md && awk 'f&&/^\*\*/{exit} /^\*\*`\.escalated` marker\*\*:/{f=1;next} f' CONTEXT.md | grep -qF -- '---' && awk 'f&&/^\*\*/{exit} /^\*\*`\.escalated` marker\*\*:/{f=1;next} f' CONTEXT.md | grep -qF 'copied verbatim' && sed -n '76,90p' .claude/wiki/architecture.md | tr -s ' \n' ' ' | grep -qF 'look first'`
+  - mutation: omit edit 8 → exit 1.
+- **AC4.9** (mirror and P3)
+  - run: as in AC1.6, with `(epa-4, `.
+- **AC4.10** (merge gate)
+  - run: `bash tests/validate.sh` exits 0. It runs `tests/marker-verify.test.sh`, which pins the `.pass` anchor parse.
 
 ## Open Questions
 
@@ -618,9 +800,9 @@ source file.
    drop the table in favour of `file:line — what` bullets. That departs
    from the user-approved design, so it was not chosen. Originates from
    CHK6.
-2. **(blocking for Part 4 only)** Which of the Fable review's candidate
-   marker designs should be adopted? This is pending the user's choice and
-   blocks nothing in epa-1..3.
+2. **RESOLVED 2026-10-12.** Which of the Fable review's candidate marker
+   designs to adopt? Answer: Approach C, chosen by the user via
+   `AskUserQuestion` and relayed by the coordinator; now Step 4 (epa-4).
 
 ## Self-check
 - CHK1: Is "print verbatim in chat" defined precisely enough to say what the
@@ -632,7 +814,8 @@ source file.
 - CHK3: Is it defined whether `view.sh` exists in a no-bundle packet? —
   PASS (D2; epa-3 edit 2; AC3.5)
 - CHK4: Do the marker-format plans agree, with epa-3 adding no marker line
-  and Part 4 owning it? — PASS (D3; AC3.6; Part 4 last bullet)
+  and epa-4 owning it? — PASS (D3; AC3.6; epa-4 puts `view:` on the card's
+  `packet:` line)
 - CHK5: Is the viewer's behaviour with no renderer installed covered by a
   runnable check? — PASS (T3 in AC3.1)
 - CHK6: Is the dashboard's handling of the new tables defined? — FAIL
@@ -675,6 +858,24 @@ source file.
   class vacuous): Do AC1.6 / AC2.6 / AC3.9 fail under their mutations,
   given those units touched CHANGELOG.md? — PASS (`version-stamp-check`
   reports `violation`)
+- CHK20: Do epa-3 (orchestrator prints `view.sh` separately) and epa-4
+  (the card carries it) agree? — FAIL (conflicting) — revised in place
+  (epa-4 rewrites epa-3's sentence, keeping the literal AC3.4 greps for)
+- CHK21: Is it defined where the notes land in `.pass` on approve, and is
+  that layout parseable by `marker-verify.sh`? — PASS (Design;
+  marker-verify.sh:55-66 searches for the anchor anywhere; AC4.4)
+- CHK22: Is line-1 stability machine-checked, not only asserted? — PASS
+  (AC4.6 diff count, AC4.7 regex and reader tests)
+- CHK23: Is the reviewer-prose drift check a runnable assertion over all
+  copies, including the mirrors? — PASS (edit 6 byte-identity check; AC4.1)
+- CHK24: Are the pre-existing parity probes protected from removal? — PASS
+  (AC4.3 replays the baseline list)
+- CHK25 (replay, gh429, class vacuous / host): Does AC4.5 still fail under
+  its own `mutation:` line, given gh429 touched `agents/orchestrator.md`? —
+  PASS
+- CHK26 (replay, spec2-unitB / gh354, class vacuous): Does AC4.8 fail under
+  its mutation, given those units touched CONTEXT.md? — PASS (entry-scoped
+  awk plus a wiki line-range)
 
 Ubiquitous-language (prose mode, advisory, against CONTEXT.md):
 - Lens 1, a term used with a different meaning: nothing found. "Escalation
@@ -684,7 +885,8 @@ Ubiquitous-language (prose mode, advisory, against CONTEXT.md):
   the new concept. It is canonicalised to "packet viewer" and listed under
   `_Avoid_`. "Packet builder" (from the brief) means the reviewer; the plan
   avoids the term.
-- Lens 3, a new load-bearing term: "packet viewer". Added by epa-3 edit 9.
+- Lens 3, a new load-bearing term: "packet viewer" (added by epa-3 edit
+  9) and "escalation card" (added by epa-4 edit 7).
 
 ## Scribe update hint
 
@@ -695,7 +897,7 @@ Ubiquitous-language (prose mode, advisory, against CONTEXT.md):
   `tests/packet-view-script.test.sh`. This is optional and not part of any
   unit.
 
-## Dispatch contracts (fast path, 3 units)
+## Dispatch contracts (fast path, 4 units)
 
 Every contract's retrieval line: **Retrieval:** read
 `docs/plans/2026-10-12-escalation-packet-aesthetics.md`, the Context section
@@ -764,7 +966,7 @@ use ASCII `-`, not em dashes. One commit, with a subject starting
 - `.claude/agents/reviewer.md` and `.claude/persona-protocol.md` by hand; regenerate them only.
 - `bin/microworld-dashboard/markdown-lite.js`: out of scope (Open Question 1).
 - `agents/orchestrator.md`: epa-1/epa-3 own it.
-- The `.escalated` marker first-line format in every source: Part 4 owns it.
+- The `.escalated` marker first-line format and body in every source: epa-4 owns the body, and line 1 never changes.
 ## Acceptance criteria
 AC2.1-AC2.7 exactly as written in Step 2. Define `F`/`L` with `epa-2`.
 ## Pre-resolved context
@@ -803,7 +1005,7 @@ column 0. One commit, with a subject starting `feat(epa-3):`.
 ## Do NOT touch
 - `hooks/scripts/human-decision-gate.sh`: the gate already allows the write (measured rc=0); T9 pins that.
 - `bin/`: no cli.js or dashboard change.
-- The `.escalated` marker first-line format and body order: Part 4 owns them (AC3.6).
+- The `.escalated` marker first-line format and body order: epa-4 owns the body (AC3.6).
 - `.claude/` mirrors by hand.
 ## Acceptance criteria
 AC3.1-AC3.10 exactly as written in Step 3. Define `F`/`L` with `epa-3`.
@@ -815,3 +1017,48 @@ AC3.1-AC3.10 exactly as written in Step 3. Define `F`/`L` with `epa-3`.
 ## Escalation
 If the cli.js render alters the embedded block, so T1 fails on a mirror
 only, stop and report. Do not change cli.js.
+
+### Unit: epa-4
+## Objective
+Turn the `.escalated` marker body into a six-line card, a `---` fold, then
+the record (Approach C), keeping line 1 byte-identical. The orchestrator
+prints only lines 1 through the fold plus one pointer line. On approve, the
+notes carry into `.pass` under the exact `Non-blocking notes:` anchor.
+## Retrieval
+Read `docs/plans/2026-10-12-escalation-packet-aesthetics.md`: "Step 4 —
+epa-4" (Design, the canonical block, the byte-stable list, edits 1-9) and
+"Shared criterion idioms".
+## Affected files
+- `agents/reviewer.md`
+- `templates/persona-protocol.md`
+- `adapters/codex/agents-md-fragment.md`
+- `adapters/cursor/rules/persona-protocol.mdc`
+- `agents/orchestrator.md`
+- `tests/adapter-protocol-parity.test.js`
+- `CONTEXT.md`
+- `.claude/wiki/architecture.md`
+- `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`
+- The `.claude/` mirrors and the config's fileHashes, via `node bin/cli.js --update --force-render` only
+## Ordered edits
+Step 4 edits 1-9. The card block is copied byte-exact from the plan at
+column 0. One commit, with a subject starting `feat(epa-4):`.
+## Do NOT touch
+- `bin/microworld-dashboard/decisions.js` and `bin/microworld-dashboard/server.js`: they parse line 1 only, which is unchanged.
+- `hooks/scripts/human-decision-gate.sh`: its line-1 read at 232-234 must keep working unchanged.
+- `hooks/scripts/marker-verify.sh`: it already finds the anchor anywhere.
+- `agents/orchestrator.md` step 6 (the prompt-confirmed decision write): AC4.6 compares it byte-for-byte.
+- The line-1 format line in each source: AC4.6.
+- `.claude/` mirrors by hand.
+## Acceptance criteria
+AC4.1-AC4.10 exactly as written in Step 4. Define `F`/`L` with `epa-4`.
+## Pre-resolved context
+- Only line 1 is machine-parsed (measured). `PACKET.md` is read whole by
+  the dashboard but never parsed.
+- The gate allows the sanctioned heredoc marker write with a card naming
+  the packet directory (measured rc=0).
+- The baseline `ESCALATION_PROBES` has 12 entries before epa-2.
+- `trigger:` shortening is out of scope.
+## Escalation
+If a canonical-block line cannot be made ASCII and byte-identical in all
+six copies (for example, the cli.js render alters it), stop and report. Do
+not edit cli.js. Commit your own agent-memory notes before ending your turn.
