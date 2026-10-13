@@ -58,11 +58,15 @@ a and j → no criterion (closed / non-goal).
   precedent. `dash-ux-1` (escape-first XSS) is why epfb-3 keeps the `escapeHtml(`
   count and the attribute-free tags as criteria.
 - The `bin/marker-audit.sh . --notes --surface=<path>` sweep (2026-10-13) returned
-  the same population for every surface checked: 24 `NOTE[spec]` and 53
-  `untagged` lines. None names an epfb step (the prefix is new). Filtered for
-  this plan's topics (markdown, table, fence, parseProtocol, view.sh, raw, skip
-  token, Durable, escalation card, epf), one line matches: epa-2's "markdown-lite
-  has no table support". epf-4 already closed it. **Disposition:** no note
+  these `NOTE[spec]`/`untagged` counts per surface: template 24/53, reviewer.md
+  24/53, CONTEXT.md 141/301, parity test 2/14, markdown-lite.js 1/2, its test
+  0/1, bin/cli.js 15/188, cross-references test 0/2, packet-view test 1/1. None
+  names an epfb step (the prefix is new). Filtering for this plan's topics
+  (markdown, table, fence, parseProtocol, view.sh, raw, skip token, Durable,
+  escalation card, epf) on the markdown-lite, parity, packet-view and cli.js
+  surfaces gives two matches. epa-2's "markdown-lite has no table support" was
+  closed by epf-4. epf-5's "the opener regex also matches a line that starts
+  with an inline code span" is item g, which epfb-4 fixes. **Disposition:** no note
   changes this plan. The sweep is best-effort, because the records are
   gitignored, per-clone state.
 
