@@ -68,5 +68,5 @@
 - [gh427 closure](gh427_dashboard_comment_citations_closure.md) — bin/microworld-dashboard/ test-path comment citations repointed: tests/dashboard-*.test.js → tests/microworld/dashboard-*.test.js (4 total: 2 in decision-block.js, 2 in index.html); repo-wide grep confirms no lingering old-path references in code
 - [esc-chat-6 completion](project_esc_chat_6_completion.md) — FAIL 1: measured the pre-fix gate, over-broad invariant; fixed b2bc789
 - [epa-1 completion](project_epa1_completion.md) — PASS 2026-10-12 (e6fdc8c, 0.31.156); no glossary change (pastes/reproduce are synonyms); step 3 gap closed by epa-3
-- [escalation-packet follow-ups](project_epa2_completion.md) — epa-2..4 items 1-14 all CLOSED by epf-1..6 (PASS 2026-10-13); live carry-forward is items a-j (f: markdown-lite table loop, g: fence parser edge cases)
+- [escalation-packet follow-ups](project_epa2_completion.md) — epa 1-14 closed by epf-1..6; epfb-1..5 (2026-10-13) closed a-i; live carry-forward is j plus epfb notes 1-5 (mdStartsBlock `* ` untested, F4 mutants, latent `## ` round-trip, EB1 fence blindness, "the template" alias)
 - [epa-4 completion](project_epa4_completion.md) — PASS 2026-10-12 (d5b479f, 0.31.159); FINAL unit, escalation-packet aesthetics plan complete; one glossary entry added (fold line)
