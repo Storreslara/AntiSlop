@@ -9,4 +9,4 @@ PASS 2026-10-12, fast path from docs/plans/2026-10-12-escalation-packet-aestheti
 
 **Why:** the reviewer flagged a non-blocking gap: orchestrator.md step 3 (~263-265) lacks the "without line-number prefixes" clause that step 2 carries.
 
-**How to apply:** when a later unit touches agents/orchestrator.md escalation steps, bring step 3 into line with step 2. Do not fix it in an unrelated doc pass.
+**Closed by epa-3 (ac1e511, 0.31.158):** step 3 now carries the line-number-prefix clause. **How to apply:** nothing further; the epa-2/epa-3 follow-ups note holds the live carry-forward items.

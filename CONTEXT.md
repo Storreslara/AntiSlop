@@ -858,8 +858,8 @@ the collection of addressable **Agent** entities currently active in a
   instruction sources. It renders the literate change summary and worked
   examples (`CHANGES.md`, `EXAMPLES.md`) in the human's own terminal, in
   colour with `glow`, else `bat`/`batcat`, else `rich`, falling back to plain
-  `cat`; no renderer is required. Comprehension tooling only: read-only, never
-  run by an agent (the orchestrator surfaces the `sh` command and the human
+  `cat`; no renderer is required. A viewer for **comprehension material**
+  only: read-only, never run by an agent (the orchestrator surfaces the `sh` command and the human
   runs it), and no gate consults it.
   _Avoid_: colour viewer, packet renderer (use "packet viewer", or name `view.sh`)
 
