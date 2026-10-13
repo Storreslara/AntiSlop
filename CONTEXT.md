@@ -1047,7 +1047,7 @@ _Avoid_: reference material, explanatory material, supporting material (use "com
   behavioural consequence**; skipped for changes with no behavioural surface —
   pure docs, formatting, comments, pure renames. **Auditable skip:** the
   `.escalated` marker body carries one `examples:` line — `examples: <count>`
-  when `EXAMPLES.md` was written, or `examples: none — <one-line reason>`
+  when `EXAMPLES.md` was written, or `examples: none - <one-line reason>`
   when it was not, so a skip is a written record rather than a silent
   absence. [[PACKET.md]], a byte-identical copy of the marker body, inherits
   this line automatically.

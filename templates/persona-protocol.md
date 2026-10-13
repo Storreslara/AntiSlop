@@ -511,7 +511,7 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   behavioural consequence**; skipped when it has none — pure docs, formatting,
   comments, pure renames. **Auditable skip:** the `.escalated` marker body
   record, below the `---` fold, carries one `examples:` line — `examples: <count>` when `EXAMPLES.md` was
-  written, `examples: none — <one-line reason>` when not — so a skip is a
+  written, `examples: none - <one-line reason>` when not — so a skip is a
   written record, not a silent absence. `PACKET.md`, a byte-identical copy of
   the marker body, inherits it.
 

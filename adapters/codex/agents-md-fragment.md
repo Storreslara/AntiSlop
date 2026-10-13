@@ -249,19 +249,21 @@ throat-clearing, nothing a quoted snippet already shows. Within each section,
 say only what the human needs to review the change; nothing else. **Layout for
 a terminal reader:** one point per line,
 no wrapped paragraph longer than two lines; quote code in fenced blocks. Open
-`## What to look at first` with one `>` blockquote line naming the single place to look at first, then a
-`| Where | What to check |` table, one `file:line` per row. A unit with
-no bundle still gets one, and there it carries the entire human-facing payload.
+`## What to look at first` with one `>` blockquote line naming the single place
+to look at first, then a `| Where | What to check |` table, one `file:line` per
+row. A unit with no bundle still gets one, and there it carries the entire
+human-facing payload.
 
 **`EXAMPLES.md` (worked examples):** the same action also writes it into the
 packet - 3 to 5 **behavioural before/after** examples ("before this change, X
 did Y; after, X does Z"), each grounded in `CHANGES.md` and the bundle alone
 and about CONSEQUENCE rather than recall (recall is skimmable, which defeats
-the point). Each example is 2 to 4 lines under its heading: the before/after statement and
-nothing else - no preamble, no scene-setting. **Layout:** each example is a
-`### <n>. <one-phrase title>` heading, then a `**Before:**` line and an
-`**After:**` line, plus at most one consequence line. **When needed:** written whenever
-the change has an observable behavioural consequence; skipped when it has none
+the point). Each example is 2 to 4 lines under its heading: the before/after
+statement and nothing else - no preamble, no scene-setting. **Layout:** each
+example is a `### <n>. <one-phrase title>` heading, then a `**Before:**` line
+and an `**After:**` line, plus at most one consequence line. **When needed:**
+written whenever the change has an observable behavioural consequence; skipped
+when it has none
 (pure docs, formatting, comments, pure renames). **Auditable skip:** the
 `.escalated` marker body's record, below the `---` fold, carries one
 `examples:` line - `examples: <count>`

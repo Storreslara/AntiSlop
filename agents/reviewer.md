@@ -292,7 +292,8 @@ Non-blocking notes:
 ```
 <!-- escalated-card:end -->
 
-In the **same action**, snapshot the unit's bundle to
+- **Durable escalation packet**: in the **same action** that writes the marker,
+  snapshot the unit's bundle to
   `.claude/human-review/<task-id>/` — copy `microworlds/<unit-slug>/` wholesale
   with `run.sh`'s executable bit preserved (`cp -a`), and write `PACKET.md`
   there as a byte-identical copy of the marker body; the marker stays
@@ -356,9 +357,10 @@ In the **same action**, snapshot the unit's bundle to
   reader:** one point per line, no wrapped paragraph longer than two lines;
   quote code in fenced blocks. Open `## What to look at first` with
   one `>` blockquote line naming the single place to look at first, then a
-  `| Where | What to check |` table, one `file:line` per row. A unit with no bundle
-  still gets a `CHANGES.md`; there it carries the entire human-facing payload.
-  It is deleted with the rest of the packet when you resolve the escalation.
+  `| Where | What to check |` table, one `file:line` per row. A unit with no
+  bundle still gets a `CHANGES.md`; there it carries the entire human-facing
+  payload. It is deleted with the rest of the packet when you resolve the
+  escalation.
 - **`EXAMPLES.md` — the worked examples you write but never grade**: written
   into the packet directory in that same action whenever the change has an
   **observable behavioural consequence**. **3 to 5 worked examples**, each a
@@ -366,15 +368,15 @@ In the **same action**, snapshot the unit's bundle to
   Z"), grounded in `CHANGES.md` and the bundle alone, and about **consequence,
   not recall** — "what happens to X when Y is absent?", never "what is the new
   function called?" (recall is skimmable, which defeats the point). Each
-  example is **2 to 4 lines under its heading**: the before/after statement and nothing else —
-  no preamble, no scene-setting, no "why it matters" beyond the one-line
-  consequence. **Layout:** each example is a `### <n>. <one-phrase title>`
-  heading, then a `**Before:**` line and an `**After:**` line, plus at
-  most one consequence line. Skip it when the change has no behavioural surface — pure docs,
-  formatting, comments, pure renames — but log the skip: fill the record's
-  `examples:` line, below the `---` fold, in the `.escalated` marker body,
-  `examples: <count>` when you wrote it
-  or `examples: none — <one-line reason>` when you did not, so a skip is a
+  example is **2 to 4 lines under its heading**: the before/after statement
+  and nothing else — no preamble, no scene-setting, no "why it matters" beyond
+  the one-line consequence. **Layout:** each example is a
+  `### <n>. <one-phrase title>` heading, then a `**Before:**` line and an
+  `**After:**` line, plus at most one consequence line. Skip it when the change
+  has no behavioural surface — pure docs, formatting, comments, pure renames —
+  but log the skip: fill the record's `examples:` line, below the `---` fold,
+  in the `.escalated` marker body, `examples: <count>` when you wrote it
+  or `examples: none - <one-line reason>` when you did not, so a skip is a
   written record, not a silent absence (`PACKET.md` inherits it as part of
   the byte-identical copy). Author `EXAMPLES.md` **after** your would-be
   verdict is settled; like `CHANGES.md` it is comprehension material and never

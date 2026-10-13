@@ -81,6 +81,10 @@ const ESCALATION_PROBES = [
   'run: <command to run',  // epa-4
   'packet: .claude/human-review/<task-id>/',  // epa-4
   '\n---\ncommit: <sha at escalation>',  // epa-4: the fold, directly followed by commit:
+  '**After:**',  // epf-2
+  '### <n>. <one-phrase title>',  // epf-2
+  'one `>` blockquote line',  // epf-2
+  '`run.sh` and `view.sh` commands',  // epf-2: the prose probe; the view.sh block's own comments cannot satisfy it
 ];
 
 // The pending-review flag fix (esf-flag-prose): the reviewer clears one flag
