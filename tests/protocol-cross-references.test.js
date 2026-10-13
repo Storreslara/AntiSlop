@@ -132,6 +132,22 @@ check('F1 fenced ## line stays inside its section', () => {
   }
 });
 
+// epfb-4: an inline code span opens no fence, a CRLF closer closes one, and an
+// unclosed fence runs to the end of the text (CommonMark).
+check('F4 fence edge cases: inline code span, CRLF closer, unclosed fence, tilde info string', () => {
+  const cases = [
+    ['pre\n## A\n```x``` is inline code\n## B', ['A', 'B']],
+    ['pre\r\n## A\r\n```\r\n## not a header\r\n```\r\n## B\r\n', ['A', 'B']],
+    ['pre\n## A\n```\n## swallowed\n## also swallowed', ['A']],
+    ['pre\n## A\n~~~ `tilde info may hold backticks`\n## not a header\n~~~\n## B', ['A', 'B']],
+  ];
+  for (const [t, want] of cases) {
+    const r = cli.parseProtocolSections(t);
+    assert.deepStrictEqual(r.sections.map((s) => s.header), want, `headers for ${JSON.stringify(t)}`);
+    assert.strictEqual([r.preamble, ...r.sections.map((s) => s.text)].join('\n'), t, `round-trip for ${JSON.stringify(t)}`);
+  }
+});
+
 const LIVE_TEMPLATES = ['templates/persona-protocol.md', 'templates/persona-protocol-slim.md'];
 
 check('F2 live templates round-trip byte-for-byte', () => {

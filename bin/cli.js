@@ -723,10 +723,10 @@ function parseProtocolSections(text) {
   for (const line of text.split('\n')) {
     let isHeader = false;
     if (fence) {
-      const close = /^ {0,3}(`{3,}|~{3,})[ \t]*$/.exec(line);
+      const close = /^ {0,3}(`{3,}|~{3,})[ \t\r]*$/.exec(line);
       if (close && close[1][0] === fence.ch && close[1].length >= fence.len) fence = null;
     } else {
-      const open = /^ {0,3}(`{3,}|~{3,})/.exec(line);
+      const open = /^ {0,3}(`{3,}(?=[^`]*$)|~{3,})/.exec(line);
       if (open) fence = { ch: open[1][0], len: open[1].length };
       else isHeader = line.startsWith('## ');
     }
