@@ -625,6 +625,15 @@ else
 fi
 
 echo
+echo "== packet viewer: view.sh six-copy identity + soft-fallback behaviour (Bash, epa-3) =="
+if bash tests/packet-view-script.test.sh; then
+  echo "OK   tests/packet-view-script.test.sh"
+else
+  echo "FAIL tests/packet-view-script.test.sh"
+  fail=1
+fi
+
+echo
 echo "== marker-commit-check classifier: ok/mismatch/unverifiable states (Bash) =="
 if bash tests/marker-commit-check.test.sh; then
   echo "OK   tests/marker-commit-check.test.sh"

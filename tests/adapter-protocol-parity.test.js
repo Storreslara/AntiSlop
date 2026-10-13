@@ -73,6 +73,7 @@ const ESCALATION_PROBES = [
   '| Where | What to check |',        // epa-2
   '**Before:**',                      // epa-2
   'no wrapped paragraph longer than two lines', // epa-2
+  'view.sh',  // epa-3
 ];
 
 // The pending-review flag fix (esf-flag-prose): the reviewer clears one flag

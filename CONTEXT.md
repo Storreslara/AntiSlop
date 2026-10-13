@@ -828,14 +828,15 @@ the collection of addressable **Agent** entities currently active in a
   microworld bundle (if any) plus a durable `PACKET.md` file, a
   `CHANGES.md` **literate change summary** (unit #299), and `EXAMPLES.md`'s
   **worked example** illustrations (unit #300, renamed from the retired
-  **comprehension quiz** in the 2026-08-20 quiz-to-worked-examples plan).
+  **comprehension quiz** in the 2026-08-20 quiz-to-worked-examples plan), and
+  `view.sh`, the **packet viewer** (epa-3).
   Written by the
   reviewer in the same action as the `.escalated` marker, sited at
   `.claude/human-review/<task-id>/` (distinct from the reviewed-markers
   directory). The `PACKET.md` is a byte-identical copy of the `.escalated`
   marker body (marker remains authoritative on divergence); a unit with no
-  bundle still receives a packet directory containing `PACKET.md` and
-  `CHANGES.md` alone.
+  bundle still receives a packet directory containing `PACKET.md`,
+  `CHANGES.md` and `view.sh` alone.
   Packets sit outside the reviewed-markers directory by design:
   `hooks/scripts/reviewed-path-gate.sh` blocks execution of anything under
   that path for non-reviewer callers, making a packet sited there unrunnable
@@ -850,6 +851,17 @@ the collection of addressable **Agent** entities currently active in a
   #326 escalation-laundering close, unit #136/#324 reviewer transcription) to
   route units to human review — landed, not a forward-looking mechanism.
   Deleted by the reviewer in the same action that resolves the escalation.
+
+**packet viewer**:
+(epa-3, 2026-10-12) — the `view.sh` the reviewer writes into every
+  **escalation packet**, byte-for-byte from the block embedded in the
+  instruction sources. It renders the literate change summary and worked
+  examples (`CHANGES.md`, `EXAMPLES.md`) in the human's own terminal, in
+  colour with `glow`, else `bat`/`batcat`, else `rich`, falling back to plain
+  `cat`; no renderer is required. Comprehension tooling only: read-only, never
+  run by an agent (the orchestrator surfaces the `sh` command and the human
+  runs it), and no gate consults it.
+  _Avoid_: colour viewer, packet renderer (use "packet viewer", or name `view.sh`)
 
 **ESCALATE-TO-HUMAN**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — the fourth reviewer

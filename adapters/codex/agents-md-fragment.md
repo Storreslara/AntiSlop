@@ -197,7 +197,7 @@ durable packet, not the gitignored working `microworlds/<unit-slug>/`.
 `.claude/human-review/<task-id>/` - whole directory, executable bit on `run.sh`
 preserved - plus `PACKET.md`, a byte-identical copy of the marker body; the
 marker stays authoritative wherever the two differ. With no bundle, still create
-the directory with `PACKET.md` and `CHANGES.md` alone and write
+the directory with `PACKET.md`, `CHANGES.md` and `view.sh` alone and write
 `microworld: none` - escalation is
 never skipped for want of a bundle. The packet is NOT under `.claude/reviewed/`
 because `reviewed-path-gate.sh` only lets a non-reviewer caller's command
@@ -252,6 +252,34 @@ engagement, and never conditions a verdict, marker, or route on it. Grading
 them would re-adjudicate the human, the property the escalation exists to
 protect.
 
+**`view.sh` (packet viewer):** the same action also writes it into the packet,
+in every packet (bundle or `microworld: none`), after the bundle copy so it
+replaces any bundle file of that name. Write it byte-for-byte from the block
+below with a quoted heredoc, then `chmod +x` it. It renders `CHANGES.md` and
+`EXAMPLES.md` in colour in the human's own terminal with `glow`, else
+`bat`/`batcat`, else `rich`, falling back to plain `cat`; none is required.
+Never edit it per unit and never run it.
+
+<!-- view.sh:begin -->
+```sh
+#!/bin/sh
+# Escalation packet viewer: renders CHANGES.md and EXAMPLES.md in colour when
+# glow, bat or rich is installed, else prints them plain. Read-only.
+dir=$(cd "$(dirname "$0")" && pwd)
+for f in CHANGES.md EXAMPLES.md; do
+  p="$dir/$f"
+  [ -f "$p" ] || continue
+  if command -v glow >/dev/null 2>&1 && glow "$p"; then :
+  elif command -v bat >/dev/null 2>&1 && bat --paging=never -l md "$p"; then :
+  elif command -v batcat >/dev/null 2>&1 && batcat --paging=never -l md "$p"; then :
+  elif command -v rich >/dev/null 2>&1 && rich --markdown "$p"; then :
+  else cat "$p"
+  fi
+done
+exit 0
+```
+<!-- view.sh:end -->
+
 Distinct from `.blocked` (reviewer *lacked context*; this one means policy wants
 human eyes on critical code) - separate marker files, separate audit-log tokens.
 `.escalated` never consumes a 2-FAIL-cap slot. Resolved only by the reviewer, on a
@@ -266,7 +294,7 @@ confirmation code delivered to the terminal;
 `human-decision-gate.sh` blocks every agent identity, reviewer included, from
 creating or modifying it, so a decision relayed in a dispatch prompt or any chat
 message is never a substitute for the file. The orchestrator surfaces the command
-template beside the packet's `run.sh` command and never writes the file itself:
+template beside the packet's `run.sh` and `view.sh` commands and never writes the file itself:
 `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
 
 First line exactly
@@ -313,7 +341,7 @@ harmonise the three routes. The token rides on the appended `human:` line,
 never the marker's required first line, so it cannot affect `marker_valid()`.
 
 All three delete `.escalated` and the packet - `PACKET.md`, `CHANGES.md`,
-`EXAMPLES.md`, and the
+`EXAMPLES.md`, `view.sh`, and the
 bundle copy together, no route exempt - in the same action, via
 `rm -rf .claude/human-review/<task-id>` - the decision gate's sanctioned deletion
 path, which is also what removes the decision file, since no identity may `rm` it

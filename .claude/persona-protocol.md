@@ -1,4 +1,4 @@
-<!-- antislop v0.31.157 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.158 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -507,9 +507,38 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   destroying the property the escalation exists to create. Like `CHANGES.md`,
   `EXAMPLES.md` is authored **after** the would-be verdict is settled and
   **never gates or influences it**.
+- **`view.sh` — the packet viewer**: the reviewer writes it into the packet
+  directory in that same action, in every packet (bundle or
+  `microworld: none`), **after** the bundle copy so it replaces any bundle
+  file of that name. It writes it byte-for-byte from the block below with a quoted
+  heredoc, then `chmod +x` it. It renders `CHANGES.md` and `EXAMPLES.md` in
+  colour in the human's own terminal with `glow`, else `bat`/`batcat`, else
+  `rich`, falling back to plain `cat`; none is required. It is never edited
+  per unit and never run by an agent.
+
+<!-- view.sh:begin -->
+```sh
+#!/bin/sh
+# Escalation packet viewer: renders CHANGES.md and EXAMPLES.md in colour when
+# glow, bat or rich is installed, else prints them plain. Read-only.
+dir=$(cd "$(dirname "$0")" && pwd)
+for f in CHANGES.md EXAMPLES.md; do
+  p="$dir/$f"
+  [ -f "$p" ] || continue
+  if command -v glow >/dev/null 2>&1 && glow "$p"; then :
+  elif command -v bat >/dev/null 2>&1 && bat --paging=never -l md "$p"; then :
+  elif command -v batcat >/dev/null 2>&1 && batcat --paging=never -l md "$p"; then :
+  elif command -v rich >/dev/null 2>&1 && rich --markdown "$p"; then :
+  else cat "$p"
+  fi
+done
+exit 0
+```
+<!-- view.sh:end -->
+
 - If the unit has **no** bundle: write `microworld: none` in the marker,
-  create the packet directory anyway, and put `PACKET.md` and `CHANGES.md` in
-  it alone. A human still gets the would-be verdict, the criteria, and the
+  create the packet directory anyway, and put `PACKET.md`, `CHANGES.md` and `view.sh`
+  in it alone. A human still gets the would-be verdict, the criteria, and the
   walkthrough of the change; they simply have nothing to run — that is the
   case where the literate change summary carries the entire human-facing
   payload. **Escalation is never skipped for want of a bundle.**
@@ -523,8 +552,8 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   through the session. `.claude/human-review/` is ungated by design. Do not
   "tidy" the packet under the marker directory; that quietly breaks the whole
   feature.
-- Lifecycle: the packet — bundle copy, `PACKET.md`, `CHANGES.md`, and
-  `EXAMPLES.md` alike —
+- Lifecycle: the packet — bundle copy, `PACKET.md`, `CHANGES.md`,
+  `EXAMPLES.md`, and `view.sh` alike —
   is deleted by the reviewer at the same moment it
   deletes `.escalated`. Both are untracked, so `git clean -fdx` or a fresh
   clone destroys a pending escalation unrecoverably — documented, not fixed;
@@ -554,7 +583,7 @@ approves its exact bytes at Claude Code's permission prompt through the
 `hooks/scripts/human-decision-gate.sh` blocks every subagent — the
 reviewer included — from creating or modifying it, so a decision relayed in a
 dispatch prompt or any chat message is never a substitute for the file. The
-orchestrator surfaces the packet's `run.sh` command and never runs it. It
+orchestrator surfaces the packet's `run.sh` and `view.sh` commands and never runs either. It
 **never writes the file on its own initiative and never offers to**, with one
 prompt-gated exception: the prompt-confirmed decision write, made only from
 the human's answer in the same session. Terminal template shape:
@@ -667,7 +696,7 @@ invalidate a marker.
 
 In all three routes the packet is deleted in the **same reviewer action** that
 deletes `.escalated` — the whole directory, so `PACKET.md`, `CHANGES.md`,
-`EXAMPLES.md`, and
+`EXAMPLES.md`, `view.sh`, and
 the bundle copy all go together, on the same rule and with no route exempt —
 via `rm -rf .claude/human-review/<task-id>` — the decision
 gate's sanctioned deletion path, and what removes the decision file too, since

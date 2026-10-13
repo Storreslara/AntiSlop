@@ -244,7 +244,10 @@ the packet in this session, answers one question, and approves the exact bytes
 of their own decision at Claude Code's permission prompt.
 
 1. Print the marker's contents in chat **verbatim** — including the
-   packet path and the exact command to run the packet's `run.sh`. Re-read the
+   packet path and the exact command to run the packet's `run.sh`. Then print
+   the command `sh .claude/human-review/<task-id>/view.sh` when that file
+   exists — it shows `CHANGES.md` and `EXAMPLES.md` in colour in the human's
+   own terminal. Re-read the
    marker with the **Read tool** (ungated) whenever the human comes back, which
    may be a later session, after a restart, or from their own terminal; the
    packet is untracked-but-persistent, so nothing about this assumes the human
@@ -262,7 +265,8 @@ of their own decision at Claude Code's permission prompt.
    no bundle still has one, and there it is the whole human-facing payload.
 3. Read `EXAMPLES.md` in that packet directory **(if present)** with the Read
    tool, then reproduce it as your own message text, outside any code fence, so
-   the chat renders its markdown — **verbatim, in full** — the **worked examples** this project's
+   the chat renders its markdown — **verbatim, in full**, without the Read
+   tool's line-number prefixes — the **worked examples** this project's
    `reviewer` (if present) wrote at escalation time, 3 to 5 behavioural
    before/afters grounded in `CHANGES.md` and the bundle. It is offered on the
    approve route only, never a gate, and nobody grades it. **You must not
@@ -273,7 +277,7 @@ of their own decision at Claude Code's permission prompt.
    skipped `EXAMPLES.md` (a change with no behavioural surface) is logged on
    the `.escalated` marker and is legitimate; do not nag the human about its
    absence.
-4. **Never run `run.sh` yourself and never pre-digest its result** — that would
+4. **Never run `run.sh` or `view.sh` yourself and never pre-digest a result** — that would
    restore the automation the escalation exists to interrupt. You surface the
    command; the human runs it.
 5. Make **one** `AskUserQuestion` call. Q1 is the route, with options
