@@ -44,10 +44,12 @@ Carry-forward items a-h from the epf reviewers were closed by the epfb run below
 
 Closed epfb notes 1-5: 1 by epfc-1 (TB18 pins the `* ` branch of mdStartsBlock); 2 by epfc-2 (mutants (d)/(e) in docs/plans/epfb-criteria/epfb4-ac3.sh for F4 cases 3, 4); 3 by epfc-3 (no-preamble `## ` case is a documented non-goal, comment in bin/cli.js, check F5); 4 by epfc-4 (EB1 uses a local splitFences: skip token required in prose and inside the card fence); 5 by epfc-5 (CONTEXT.md Escalation packet alias names templates/persona-protocol.md; epfb1-ac3.sh pin updated). No glossary change by the scribe pass. Do not re-check these.
 
-## Live carry-forward (opened 2026-10-13)
+## epfd closure (epfd-1..3, PASS 2026-10-13; 5f98e4c, 02b131c, 4f3055b; no version bump)
 
-- **j** (validate.sh exited 1 once under concurrency): unreproduced; merge gate passed clean at HEAD after epfc. Watch item, not a defect.
-- **epfc-2 mutant (d)** locates its target line via `text.indexOf(line)`, which could hit an earlier duplicate line in the file. Harden if the script is touched again.
-- **F5 (epfc-3)** pins one input only (no trailing-newline case, no `## `-only-line case) and overlaps F2.
+Closed the epfc open items: epfd-1 made mutant (d) in docs/plans/epfb-criteria/epfb4-ac3.sh position-exact (line index, lookahead from li + 1, plus a guard line), replacing the `indexOf` lookup. epfd-2 added a bare `## ` input to F5 in tests/protocol-cross-references.test.js; a trailing-newline input was deliberately not added because F2/F4 already catch it. epfd-3 added SF1 (six direct cases) for the local splitFences helper in tests/adapter-protocol-parity.test.js; nothing exported from bin/. No glossary change. Do not re-check these.
 
-**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** before any follow-up touching the escalation layout, viewer tests, or parity probes, re-check only the items above; everything else in this file is closed.
+## Live carry-forward
+
+- **j** (validate.sh exited 1 once under concurrency): unreproduced and a documented non-goal; merge gate passed clean at HEAD after epfd. Watch item, not a defect. Nothing else is open.
+
+**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** before any follow-up touching the escalation layout, viewer tests, or parity probes, re-check only item j; everything else in this file is closed.
