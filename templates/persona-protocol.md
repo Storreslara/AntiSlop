@@ -552,7 +552,8 @@ the human's answer in the same session. Terminal template shape:
 `printf 'DECISION <task-id> %s route: approve escalation: <ts>\nby: <name>\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > .claude/human-review/<task-id>/DECISION`
 
 **The prompt-confirmed decision write.** The orchestrator prints the
-`.escalated` marker, `CHANGES.md` and `EXAMPLES.md` verbatim in chat and asks
+`.escalated` marker verbatim in chat, pastes `CHANGES.md` and `EXAMPLES.md`
+verbatim as its own message text, outside any code fence, so they render, and asks
 one `AskUserQuestion` (the route, plus the `examples:` answer when
 `EXAMPLES.md` exists). It then runs exactly one Bash call whose whole command
 is this heredoc:
