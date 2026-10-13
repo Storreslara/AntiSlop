@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.161 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.162 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -331,7 +331,8 @@ Non-blocking notes:
   conceptually read-only — and running a packet's `run.sh` is never on that
   allowlist, so a packet there could not be run by anyone but you. Write neither `.pass`
   nor `.fail` for this verdict; it never consumes a 2-FAIL-cap slot. A later
-  re-dispatch naming the unit resolves it, per the bullet after next.
+  re-dispatch naming the unit resolves it, per the "Resolving a standing
+  escalation" bullet below.
 - **`CHANGES.md` — the literate change summary you owe the human**: written into
   the packet directory in that same action. It is the reading you already did
   to reach your would-be verdict, written down so the human does not start

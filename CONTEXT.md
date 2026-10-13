@@ -829,7 +829,9 @@ the collection of addressable **Agent** entities currently active in a
   `CHANGES.md` **literate change summary** (unit #299), and `EXAMPLES.md`'s
   **worked example** illustrations (unit #300, renamed from the retired
   **comprehension quiz** in the 2026-08-20 quiz-to-worked-examples plan), and
-  `view.sh`, the **packet viewer** (epa-3).
+  `view.sh`, the **packet viewer** (epa-3). The protocol's own heading for
+  it, **Durable escalation packet** (`agents/reviewer.md` and the template),
+  names this same term, not a second concept.
   Written by the
   reviewer in the same action as the `.escalated` marker, sited at
   `.claude/human-review/<task-id>/` (distinct from the reviewed-markers
