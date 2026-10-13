@@ -68,3 +68,4 @@
 - [gh427 closure](gh427_dashboard_comment_citations_closure.md) — bin/microworld-dashboard/ test-path comment citations repointed: tests/dashboard-*.test.js → tests/microworld/dashboard-*.test.js (4 total: 2 in decision-block.js, 2 in index.html); repo-wide grep confirms no lingering old-path references in code
 - [esc-chat-6 completion](project_esc_chat_6_completion.md) — FAIL 1: measured the pre-fix gate, over-broad invariant; fixed b2bc789
 - [epa-1 completion](project_epa1_completion.md) — PASS 2026-10-12 (e6fdc8c, 0.31.156); no glossary change (pastes/reproduce are synonyms); step 3 of orchestrator.md lacks the line-number-prefix clause (carry into next orchestrator.md unit)
+- [epa-2 completion](project_epa2_completion.md) — PASS 2026-10-12 (60ff302, 0.31.157); glossary wording aligned, **terminal reader** minted (5a26e69); carry-forward: AC2.3 loop masks earlier-file failures, ports lack `**After:**`/heading/`>` probes, Open Question 1 needs a follow-up issue
