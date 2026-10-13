@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # epfb-4 AC4.3 (item g): mutation proof in a scratch worktree of HEAD.
 # (a) the old opener regex fails F4; (b) the old closer regex fails F4;
-# (c) rendering is unchanged: --update --dry-run exits 0.
+# (c) rendering is unchanged: --update --dry-run exits 0; (d) an opener that
+# needs a later closer (so an unclosed fence opens nothing) fails F4 case 3;
+# (e) a tilde opener that rejects backticks in its info string fails F4 case 4.
 D=$(cd "$(dirname "$0")" && pwd); . "$D/../epf-criteria/lib.sh"
 need_unit epfb-4
 root=$(git rev-parse --show-toplevel); wt=$(mktemp -d)/wt
@@ -19,4 +21,14 @@ perl -0pi -e 's/\[ \\t\\r\]\*\$/[ \\t]*\$/' "$wt/bin/cli.js"
 ( cd "$wt" && git diff --quiet -- bin/cli.js ) && { echo "(b) changed nothing"; exit 1; }
 out=$(cd "$wt" && node "$T" 2>&1) && { echo "(b) old closer survived"; exit 1; }
 printf '%s\n' "$out" | grep -q '^FAIL F4' || { echo "(b) no FAIL F4"; exit 1; }
+( cd "$wt" && git checkout -q -- bin/cli.js )
+perl -0pi -e 's/if \(open\) fence =/if (open && \/^ {0,3}(`{3,}|~{3,})[ \\t\\r]*\$\/m.test(text.slice(text.indexOf(line) + line.length + 1))) fence =/' "$wt/bin/cli.js"
+( cd "$wt" && git diff --quiet -- bin/cli.js ) && { echo "(d) changed nothing"; exit 1; }
+out=$(cd "$wt" && node "$T" 2>&1) && { echo "(d) unclosed-fence mutant survived"; exit 1; }
+printf '%s\n' "$out" | grep -q '^FAIL F4 .*also swallowed' || { echo "(d) no FAIL F4 on case 3"; exit 1; }
+( cd "$wt" && git checkout -q -- bin/cli.js )
+perl -0pi -e 's/\(`\{3,\}\(\?=\[\^`\]\*\$\)\|~\{3,\}\)\/\.exec/((?:`{3,}|~{3,})(?=[^`]*\$))\/.exec/' "$wt/bin/cli.js"
+( cd "$wt" && git diff --quiet -- bin/cli.js ) && { echo "(e) changed nothing"; exit 1; }
+out=$(cd "$wt" && node "$T" 2>&1) && { echo "(e) tilde-backtick mutant survived"; exit 1; }
+printf '%s\n' "$out" | grep -q '^FAIL F4 .*tilde info may hold backticks' || { echo "(e) no FAIL F4 on case 4"; exit 1; }
 echo "epfb-4 mutations killed"
