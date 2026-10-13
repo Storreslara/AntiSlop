@@ -337,6 +337,25 @@ check('EB2 the line after the reviewer escalation card is the Durable escalation
   }
 });
 
+// epfd-3: splitFences is a local copy of parseProtocolSections' fence rules, so
+// test it directly: backtick and tilde fences, an info string, an unclosed
+// fence, and closers that do not match the opener.
+check('SF1 splitFences: backtick and tilde fences, info string, unclosed fence, mismatched closers', () => {
+  const cases = [
+    ['backtick fence', 'a\n```\nb\n```\nc', ['a', 'c'], ['b']],
+    ['tilde fence', 'a\n~~~\nb\n~~~\nc', ['a', 'c'], ['b']],
+    ['info string', 'a\n```js\nb\n```\nc', ['a', 'c'], ['b']],
+    ['unclosed fence runs to the end', 'a\n```\nb\nc', ['a'], ['b', 'c']],
+    ['a tilde line does not close a backtick fence', 'a\n```\nb\n~~~\nc\n```\nd', ['a', 'd'], ['b', '~~~', 'c']],
+    ['a shorter closer does not close', 'a\n````\nb\n```\nc\n````\nd', ['a', 'd'], ['b', '```', 'c']],
+  ];
+  for (const [name, t, prose, fenced] of cases) {
+    const r = splitFences(t);
+    assert.deepStrictEqual(r.prose, prose, `${name}: prose lines`);
+    assert.deepStrictEqual(r.fenced, fenced, `${name}: fenced lines`);
+  }
+});
+
 if (failures) {
   console.log(`\n${failures} adapter-protocol-parity check(s) FAILED.`);
   process.exit(1);
