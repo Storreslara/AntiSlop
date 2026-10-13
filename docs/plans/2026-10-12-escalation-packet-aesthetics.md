@@ -273,7 +273,7 @@ exit 0
   and `.claude/persona-config.json` fileHashes are generated. Hand-editing
   them is a P2 violation (packet-brevity-1 history).
 - **R4 — Dashboard tables render as pipe text.** This is deferred, see Open
-  Question 1.
+  Question 1. Resolved 2026-10-13 by epf-4 (table support in markdown-lite.js).
 - **R5 — The orchestrator may still paste inside a fence.** epa-1 changes
   instructions only, and no test can observe live orchestrator output. The
   criteria pin the instruction text, not the runtime behaviour.
@@ -358,7 +358,8 @@ flat() { tr -s ' \n' ' ' < "$1"; }   # joins hard-wrapped prose before phrase gr
   - run: `f=agents/orchestrator.md; [ "$(tr -s ' \n' ' ' < $f | grep -o '\*\*verbatim, in full\*\*' | wc -l)" -eq 2 ] && [ "$(tr -s ' \n' ' ' < $f | grep -o 'no summary, no excerpt' | wc -l)" -ge 1 ] && [ "$(tr -s ' \n' ' ' < $f | grep -o 'You must not author or extend the examples' | wc -l)" -eq 1 ]`
   - mutation: remove `**verbatim, in full**` from step 3 → exit 1.
 - **AC1.3** (prefix-stripping instruction)
-  - run: `for f in agents/orchestrator.md .claude/agents/orchestrator.md; do tr -s ' \n' ' ' < $f | grep -qF "without the Read tool's line-number prefixes" || exit 1; done`
+  - run: `for f in agents/orchestrator.md .claude/agents/orchestrator.md; do [ "$(tr -s ' \n' ' ' < $f | grep -oF "without the Read tool's line-number prefixes" | wc -l)" -eq 2 ] || exit 1; done`
+  - erratum (2026-10-13, epf-6): a presence check (`grep -qF`) is vacuous for step 3; the count of the prefix clause must be 2 (steps 2 and 3).
   - mutation: drop the clause → exit 1.
 - **AC1.4** (template and its mirror)
   - run: `for f in templates/persona-protocol.md .claude/persona-protocol.md; do [ "$(tr -s ' \n' ' ' < $f | grep -o 'as its own message text, outside any code fence' | wc -l)" -eq 1 ] || exit 1; done`
@@ -427,11 +428,13 @@ the template, and ASCII `-` instead of em dashes in the ports (house style).
   - run: `for f in agents/reviewer.md templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc .claude/agents/reviewer.md .claude/persona-protocol.md; do for s in '| Where | What to check |' '**Before:**' '**After:**' 'no wrapped paragraph longer than two lines' 'blockquote line'; do grep -qF -- "$s" "$f" || { echo "$f :: $s"; exit 1; }; done; done`
   - mutation: hard-wrap "no wrapped paragraph longer than two lines" across two lines in the cursor port → exit 1. At baseline all are absent → exit 1.
 - **AC2.2** (content rules unchanged: no load-bearing string lost)
-  - run: `B="$F^"; for f in agents/reviewer.md templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc; do for s in 'Comprehension material only' '## Background' '## What this change is for' '## Walkthrough' '## What to look at first' 'not one subsection per file' 'soft cap 120 lines' '3 to 5' 'consequence' 'never graded by the reviewer' 'examples: none' 'nothing else'; do a=$(git show "$B:$f" | tr -s ' \n' ' ' | grep -oiF -- "$s" | wc -l); b=$(tr -s ' \n' ' ' < "$f" | grep -oiF -- "$s" | wc -l); [ "$b" -ge "$a" ] || { echo "LOST $f :: $s"; exit 1; }; done; done`
+  - run: `B="$F^"; for f in agents/reviewer.md templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc; do for s in 'Comprehension material only' '## Background' '## What this change is for' '## Walkthrough' '## What to look at first' 'not one subsection per file' 'soft cap 120 lines' '3 to 5' 'one-line consequence' 'never graded by the reviewer' 'examples: none' 'nothing else'; do a=$(git show "$B:$f" | tr -s ' \n' ' ' | grep -oiF -- "$s" | wc -l); b=$(tr -s ' \n' ' ' < "$f" | grep -oiF -- "$s" | wc -l); [ "$b" -ge "$a" ] || { echo "LOST $f :: $s"; exit 1; }; done; done`
+  - erratum (2026-10-13, epf-6): the monotone count for the bare word `consequence` is weak; `one-line consequence` pins the rule's own phrase.
   - mutation: delete the `## Background` line from the codex port → `LOST` → exit 1.
   - The idiom was verified to run and exit 0 at baseline with B=HEAD.
 - **AC2.3** (contradiction removed)
-  - run: `for f in agents/reviewer.md templates/persona-protocol.md .claude/agents/reviewer.md .claude/persona-protocol.md; do ! tr -s ' \n' ' ' < $f | grep -qF 'no new tool, no rendering'; done && tr -s ' \n' ' ' < agents/reviewer.md | grep -qF 'plain markdown, no HTML'`
+  - run: `for f in agents/reviewer.md templates/persona-protocol.md .claude/agents/reviewer.md .claude/persona-protocol.md; do ! tr -s ' \n' ' ' < $f | grep -qF 'no new tool, no rendering' || exit 1; done && tr -s ' \n' ' ' < agents/reviewer.md | grep -qF 'plain markdown, no HTML'`
+  - erratum (2026-10-13, epf-6): the `for` loop's exit status was only the last iteration's, so an early hit passed; each iteration now ends in `|| exit 1`.
   - mutation: leave the old phrase in the template → exit 1.
 - **AC2.4** (parity probes gate the ports)
   - run: `node tests/adapter-protocol-parity.test.js && [ "$(grep -cE "'(\| Where \| What to check \||\*\*Before:\*\*|no wrapped paragraph longer than two lines)'" tests/adapter-protocol-parity.test.js)" -eq 3 ]`
@@ -543,10 +546,12 @@ the template, and ASCII `-` instead of em dashes in the ports (house style).
   - run: `bash tests/packet-view-script.test.sh`
   - mutation: in `agents/reviewer.md`'s block, replace `else cat "$p"` with `else :` → T1 (identity) and T3 fail → exit 1. Before the edit the file is absent → exit 127.
 - **AC3.2** (registered in the merge gate)
-  - run: `[ "$(grep -c 'tests/packet-view-script.test.sh' tests/validate.sh)" -ge 2 ]`
+  - run: `grep -qx 'if bash tests/packet-view-script.test.sh; then' tests/validate.sh`
+  - erratum (2026-10-13, epf-6): the count of the filename in `tests/validate.sh` was met by the `echo` lines; the registration is the `if` line.
   - mutation: drop the registration → exit 1.
 - **AC3.3** (ports probed)
-  - run: `node tests/adapter-protocol-parity.test.js && grep -qF "'view.sh'" tests/adapter-protocol-parity.test.js`
+  - run: `node tests/adapter-protocol-parity.test.js && grep -F '// epf-2' tests/adapter-protocol-parity.test.js | grep -qF 'and `view.sh` commands'`
+  - erratum (2026-10-13, epf-6): the old probe `view.sh` was met by the viewer block's own comments in both ports; the epf-2 probe `run.sh` and `view.sh` commands is prose only.
   - mutation: delete `view.sh` from the cursor port → the parity test exits 1.
 - **AC3.4** (surfacing and never-run prose)
   - run: `o=$(tr -s ' \n' ' ' < agents/orchestrator.md); echo "$o" | grep -qF 'sh .claude/human-review/<task-id>/view.sh' && echo "$o" | grep -qF 'Never run `run.sh` or `view.sh` yourself' && tr -s ' \n' ' ' < templates/persona-protocol.md | grep -qF '`run.sh` and `view.sh` commands and never runs either' && for p in adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc; do tr -s ' \n' ' ' < $p | grep -qF 'beside the packet'"'"'s `run.sh` and `view.sh` commands' || exit 1; done`
@@ -770,13 +775,15 @@ Non-blocking notes:
   - run: `B="$F^"; git show "$B:tests/adapter-protocol-parity.test.js" | sed -n '/^const ESCALATION_PROBES/,/^];/p' | grep -oE "^  '[^']+'" | while read -r p; do grep -qF -- "$p" tests/adapter-protocol-parity.test.js || { echo "LOST $p"; exit 1; }; done && [ "$(grep -c '// epa-4' tests/adapter-protocol-parity.test.js)" -ge 7 ]`
   - mutation: delete the `'via: prompt'` probe → `LOST` → exit 1.
 - **AC4.4** (approve carries notes under the exact anchor)
-  - run: `for f in agents/reviewer.md templates/persona-protocol.md .claude/agents/reviewer.md .claude/persona-protocol.md; do grep -qF 'under the exact `Non-blocking notes:` anchor' $f || { echo $f; exit 1; }; done && grep -qF 'exactly `Non-blocking notes:`' agents/reviewer.md`
+  - run: `for f in agents/reviewer.md templates/persona-protocol.md .claude/agents/reviewer.md .claude/persona-protocol.md; do grep -qF 'under the exact `Non-blocking notes:` anchor' $f || { echo $f; exit 1; }; done && for f in templates/persona-protocol.md .claude/persona-protocol.md; do [ "$(grep -cF 'under the exact `Non-blocking notes:` anchor' $f)" -ge 2 ] || { echo "prose sentence lost: $f"; exit 1; }; done && grep -qF 'exactly `Non-blocking notes:`' agents/reviewer.md`
+  - erratum (2026-10-13, epf-6): the template table row alone satisfied the old loop; the prose sentence must also appear (two occurrences in each template file).
   - mutation: hard-wrap the sentence between "exact" and the anchor → exit 1. The second clause guards the existing anchor rule at `agents/reviewer.md:181`.
 - **AC4.5** (orchestrator step 1, step 5 and pointer; `PACKET.md` byte-identical rule kept)
   - run: `grep -qF 'Full record (criteria, notes): .claude/reviewed/<task-id>.escalated, same text in the packet'"'"'s PACKET.md' agents/orchestrator.md && o=$(tr -s ' \n' ' ' < agents/orchestrator.md) && echo "$o" | grep -qF 'lines 1 through the `---` fold line' && echo "$o" | grep -qF 'Never summarize the record' && echo "$o" | grep -qF 'the text after `decide: ` on the card, verbatim' && echo "$o" | grep -qF 'sh .claude/human-review/<task-id>/view.sh' && for f in agents/reviewer.md templates/persona-protocol.md; do tr -s ' \n' ' ' < $f | grep -qiF 'byte-identical' || exit 1; done && grep -qF 'Full record (criteria, notes)' .claude/agents/orchestrator.md`
   - mutation: revert edit 5 → exit 1.
 - **AC4.6** (line 1 and step 6 untouched)
-  - run: `[ "$(git diff -U0 "$F^" "$L" -- agents/reviewer.md templates/persona-protocol.md adapters/ | grep -cE '^[-+].*ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger:')" -eq 0 ] && git show "$F^:agents/orchestrator.md" | awk '/^6\. Make the \*\*prompt-confirmed/,/^7\. /' > "${a:=$(mktemp)}" && awk '/^6\. Make the \*\*prompt-confirmed/,/^7\. /' agents/orchestrator.md > "${b:=$(mktemp)}" && [ -s "$a" ] && cmp -s "$a" "$b"`
+  - run: `a=$(mktemp); b=$(mktemp); [ "$(git diff -U0 "$F^" "$L" -- agents/reviewer.md templates/persona-protocol.md adapters/ | grep -cE '^[-+].*ESCALATE-TO-HUMAN <task-id> <UTC ISO-8601 timestamp> trigger:')" -eq 0 ] && git show "$F^:agents/orchestrator.md" | awk '/^6\. Make the \*\*prompt-confirmed/,/^7\. /' > "$a" && awk '/^6\. Make the \*\*prompt-confirmed/,/^7\. /' agents/orchestrator.md > "$b" && [ -s "$a" ] && cmp -s "$a" "$b"`
+  - erratum (2026-10-13, epf-6): the old `${a:=$(mktemp)}` inside a pipeline assigned in a subshell, so `$a` was empty and `cmp` always returned 1; the temp files are created up front.
   - mutation: edit any word of step 6 → `cmp` fails → exit 1.
 - **AC4.7** (machine readers untouched)
   - run: `git diff --quiet "$F^" "$L" -- bin/ hooks/ && grep -qF 'ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$' bin/microworld-dashboard/decisions.js && grep -qF 'ESCALATE-TO-HUMAN (\S+) (\S+) trigger: (.*) microworld: (\S+)$' bin/microworld-dashboard/server.js && bash tests/stop-gate-escalated.test.sh && bash tests/human-decision-gate.test.sh && node tests/microworld/dashboard-decisions.test.js`
@@ -789,6 +796,18 @@ Non-blocking notes:
 - **AC4.10** (merge gate)
   - run: `bash tests/validate.sh` exits 0. It runs `tests/marker-verify.test.sh`, which pins the `.pass` anchor parse.
 
+## Errata (2026-10-13, epf-6)
+
+Seven acceptance criteria above were defective as written. Each now carries the corrected `run:` line and an `erratum` sub-bullet; git keeps the originals.
+
+- AC1.3: a presence check (`grep -qF`) is vacuous for step 3; the count of the prefix clause must be 2 (steps 2 and 3).
+- AC2.2: the monotone count for the bare word `consequence` is weak; `one-line consequence` pins the rule's own phrase.
+- AC2.3: the `for` loop's exit status was only the last iteration's, so an early hit passed; each iteration now ends in `|| exit 1`.
+- AC3.2: the count of the filename in `tests/validate.sh` was met by the `echo` lines; the registration is the `if` line.
+- AC3.3: the old probe `view.sh` was met by the viewer block's own comments in both ports; the epf-2 probe `run.sh` and `view.sh` commands is prose only.
+- AC4.4: the template table row alone satisfied the old loop; the prose sentence must also appear (two occurrences in each template file).
+- AC4.6: the old `${a:=$(mktemp)}` inside a pipeline assigned in a subshell, so `$a` was empty and `cmp` always returned 1; the temp files are created up front.
+
 ## Open Questions
 
 1. **(non-blocking; default applied)** The Microworld dashboard's
@@ -799,7 +818,7 @@ Non-blocking notes:
    issue for table support in `markdown-lite.js`. The alternative is to
    drop the table in favour of `file:line — what` bullets. That departs
    from the user-approved design, so it was not chosen. Originates from
-   CHK6.
+   CHK6. Resolved 2026-10-13 by epf-4 (table support in markdown-lite.js).
 2. **RESOLVED 2026-10-12.** Which of the Fable review's candidate marker
    designs to adopt? Answer: Approach C, chosen by the user via
    `AskUserQuestion` and relayed by the coordinator; now Step 4 (epa-4).

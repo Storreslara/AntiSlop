@@ -925,7 +925,7 @@ Read `agents/orchestrator.md:203-264`, `agents/reviewer.md:352-427` and
 ```sh
 BASE=<HEAD at dispatch>   # task-master/orchestrator fills this in
 for f in agents/reviewer.md templates/persona-protocol.md adapters/cursor/rules/persona-protocol.mdc adapters/codex/agents-md-fragment.md .claude/agents/reviewer.md .claude/persona-protocol.md; do grep -q 'via: prompt' "$f" || { echo "missing in $f"; exit 1; }; done
-for f in agents/orchestrator.md .claude/agents/orchestrator.md; do grep -q 'AskUserQuestion' "$f" && grep -q 'via: prompt' "$f" && grep -q 'Never run `run.sh` yourself' "$f" && grep -q 'never pick one for them' "$f" || { echo "orchestrator gap in $f"; exit 1; }; done
+for f in agents/orchestrator.md .claude/agents/orchestrator.md; do grep -q 'AskUserQuestion' "$f" && grep -q 'via: prompt' "$f" && grep -q 'Never run `run.sh`' "$f" && grep -q 'never pick one for them' "$f" || { echo "orchestrator gap in $f"; exit 1; }; done # erratum 2026-10-13 (epf-6)
 ! grep -q 'never write the `DECISION` file yourself, and never offer to' agents/orchestrator.md
 grep -q 'The decision travels as a file, never as a chat message' templates/persona-protocol.md
 for m in default acceptEdits auto plan bypassPermissions dontAsk; do grep -q "$m" templates/persona-protocol.md || exit 1; done
