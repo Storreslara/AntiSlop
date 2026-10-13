@@ -353,7 +353,8 @@ const TABLE_CASES = [
   ['TB16 escaped backslash before the closing pipe', '| h |\n|---|\n| a \\\\|',
     '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>a \\</td></tr></tbody></table>'],
   ['TB17 escaped backslash then escaped pipe', '| h |\n|---|\n| x \\\\\\| y |',
-    '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>x \\| y</td></tr></tbody></table>']
+    '<table><thead><tr><th>h</th></tr></thead><tbody><tr><td>x \\| y</td></tr></tbody></table>'],
+  ['TB18 star list item ends the body', '| a | b |\n|---|---|\n| 1 | 2 |\n* item | x', T_AB + '<ul><li>item | x</li></ul>']
 ];
 
 // epfb-3: the page loads markdown-lite.js as an injected classic <script>, not via require().
