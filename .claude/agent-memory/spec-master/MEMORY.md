@@ -62,3 +62,4 @@
 - [Flatten wrapped prose for phrase greps](technique_flatten_wrapped_prose_for_phrase_greps.md) — per-line grep misses a phrase split by the hard wrap, so an "absent" check passes vacuously; use tr -s first.
 - [Haiku-default tier spec (2026-10-08)](project_haiku_default_tier_spec.md) — a frontmatter tier flip is INERT here (config pins "sonnet", outranks it); ladder/fail-closed/migration decisions.
 - [Contract-guard row shapes](technique_contract_guard_r6_bullet_shape.md) — R1/R2/R5/R6/R7 literal shapes a 7/7 contract needs; run the guard per unit; never splice by inline heading text.
+- [Parallel contracts + escape drift](technique_parallel_contracts_and_escape_drift.md) — parallel units: path-staged commit + `git diff --quiet`; `\u2014` typed becomes a literal em dash; apply plan text verbatim.
