@@ -28,6 +28,27 @@ done
 [ -s "$tmp/ref" ] || { echo "FAIL no reference block; cannot run T2-T9"; exit 1; }
 script="$tmp/ref"
 
+# T1b - the copies equal the canonical viewer
+cat > "$tmp/canon" <<'VIEW_SH_CANONICAL'
+#!/bin/sh
+# Escalation packet viewer: renders CHANGES.md and EXAMPLES.md in colour when
+# glow, bat or rich is installed, else prints them plain. Read-only.
+dir=$(cd "$(dirname "$0")" && pwd)
+for f in CHANGES.md EXAMPLES.md; do
+  p="$dir/$f"
+  [ -f "$p" ] || continue
+  if command -v glow >/dev/null 2>&1 && glow "$p"; then :
+  elif command -v bat >/dev/null 2>&1 && bat --paging=never -l md "$p"; then :
+  elif command -v batcat >/dev/null 2>&1 && batcat --paging=never -l md "$p"; then :
+  elif command -v rich >/dev/null 2>&1 && rich --markdown "$p"; then :
+  else cat "$p"
+  fi
+done
+exit 0
+VIEW_SH_CANONICAL
+if cmp -s "$tmp/ref" "$tmp/canon"; then pass "T1b copies equal the canonical viewer"
+else bad "T1b copies differ from the canonical viewer"; fi
+
 # T2 - shebang, ASCII, no forbidden tokens
 [ "$(head -n1 "$script")" = '#!/bin/sh' ] && pass "T2 shebang" || bad "T2 shebang"
 if LC_ALL=C grep -q '[^ -~	]' "$script"; then bad "T2 non-ASCII byte"; else pass "T2 ASCII only"; fi
@@ -49,7 +70,7 @@ printf '# changes raw\nline c\n' > "$pkt/CHANGES.md"
 printf '# examples raw\nline e\n' > "$pkt/EXAMPLES.md"
 runv() { # $1 bindir ; sets out, rc
   rc=0
-  out="$(cd "$tmp/elsewhere" && env -i PATH="$tmp/$1" "$sh_bin" "$pkt/view.sh")" || rc=$?
+  out="$(cd "$tmp/elsewhere" && env -i PATH="$tmp/$1" "$sh_bin" "$pkt/view.sh" 2>"$tmp/err")" || rc=$?
 }
 
 # T3 - no renderers -> plain cat of both files, rc 0
@@ -77,10 +98,25 @@ mkbin rich; stub rich rich 0; runv rich
 [ "$(printf '%s\n' "$out" | grep -c '^RICH:--markdown ')" = 2 ] \
   && pass "T7 rich --markdown used" || bad "T7 rich: $out"
 
+# O1-O4 - fallback order: with two renderers on PATH only the earlier one may run
+cnt() { printf '%s\n' "$out" | grep -c "^$1:"; }
+mkbin o1; stub o1 glow 0; stub o1 bat 0; runv o1
+[ "$(cnt GLOW)" = 2 ] && [ "$(cnt BAT)" = 0 ] \
+  && pass "O1 glow before bat" || bad "O1 glow before bat: $out"
+mkbin o2; stub o2 bat 0; stub o2 batcat 0; runv o2
+[ "$(cnt BAT)" = 2 ] && [ "$(cnt BATCAT)" = 0 ] \
+  && pass "O2 bat before batcat" || bad "O2 bat before batcat: $out"
+mkbin o3; stub o3 batcat 0; stub o3 rich 0; runv o3
+[ "$(cnt BATCAT)" = 2 ] && [ "$(cnt RICH)" = 0 ] \
+  && pass "O3 batcat before rich" || bad "O3 batcat before rich: $out"
+mkbin o4; stub o4 rich 0; runv o4
+[ "$(cnt RICH)" = 2 ] && ! printf '%s' "$out" | grep -q 'raw' \
+  && pass "O4 rich before cat" || bad "O4 rich before cat: $out"
+
 # T8 - EXAMPLES.md absent, other cwd, absolute path
 rm "$pkt/EXAMPLES.md"; runv none
-[ "$out" = "$(cat "$pkt/CHANGES.md")" ] && [ "$rc" = 0 ] \
-  && pass "T8 missing EXAMPLES.md skipped, rc 0" || bad "T8 missing EXAMPLES.md (rc=$rc)"
+[ "$out" = "$(cat "$pkt/CHANGES.md")" ] && [ "$rc" = 0 ] && [ ! -s "$tmp/err" ] \
+  && pass "T8 missing EXAMPLES.md skipped, rc 0, stderr empty" || bad "T8 missing EXAMPLES.md (rc=$rc, stderr=$(cat "$tmp/err"))"
 
 # T9 - the decision gate lets a reviewer heredoc-write the viewer
 proj="$tmp/proj"; mkdir -p "$proj/.claude/human-review/u1"
