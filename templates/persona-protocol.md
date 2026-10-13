@@ -447,7 +447,7 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   describes *the change*: the marker carries the verdict, the bundle's
   `README.md` describes *the piece*; without this the human starts from a raw
   alphabetical diff. It is the reading already done to reach the would-be
-  verdict, written down — no new tool, no rendering, no HTML. Authored
+  verdict, written down — plain markdown, no HTML. Authored
   **after** that would-be verdict is reached; it **never gates or influences
   it**. First line, exactly:
 
@@ -471,6 +471,12 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   terse: short bullets over prose, no filler transitions, no throat-clearing,
   nothing a quoted snippet already shows. Within each section, say only what
   the human needs to review the change; nothing else.
+
+  **Layout for a terminal reader:** one point per line,
+  no wrapped paragraph longer than two lines; quote code in fenced blocks. Open
+  `## What to look at first` with one `>` blockquote line naming the single
+  place to look at first, then a `| Where | What to check |` table, one
+  `file:line` per row.
 - Write `EXAMPLES.md` into that directory too — **worked examples**, a speed
   regulator on the one route a human can complete without demonstrating
   engagement. **3 to 5 worked examples**, each a **behavioural before/after**
@@ -478,8 +484,11 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
   and the bundle alone, and about **consequence rather than recall** — *"what
   happens to X when Y is absent?"*, never *"what is the new function
   called?"* (recall is skimmable, which defeats the point). Each example is
-  **2 to 4 lines**: the before/after statement and nothing else — no preamble,
-  no scene-setting, no "why it matters" beyond the one-line consequence.
+  **2 to 4 lines under its heading**: the before/after statement and nothing
+  else — no preamble, no scene-setting, no "why it matters" beyond the one-line
+  consequence. **Layout:** each example is a `### <n>. <one-phrase title>`
+  heading, then a `**Before:**` line and an `**After:**` line, plus at most one
+  consequence line.
 
   **When needed.** Written whenever the change has an **observable
   behavioural consequence**; skipped when it has none — pure docs, formatting,

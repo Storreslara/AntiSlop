@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**CHANGES.md / EXAMPLES.md laid out for a terminal reader (epa-2, 0.31.157).** `agents/reviewer.md`, `templates/persona-protocol.md` and both adapter ports: `CHANGES.md` is plain markdown with one point per line, fenced code, and `## What to look at first` opening with a `>` blockquote line and a `| Where | What to check |` table; `EXAMPLES.md` examples sit under a numbered heading with `**Before:**` / `**After:**` lines. The `no new tool, no rendering` claim is gone. Content rules are unchanged; `tests/adapter-protocol-parity.test.js` gains three probes and `CONTEXT.md` the two glossary sentences. Mirrors refreshed by `node bin/cli.js --update --force-render`.
+
 **Orchestrator pastes CHANGES.md / EXAMPLES.md as rendered message text (epa-1, 0.31.156).** `agents/orchestrator.md` (escalation steps 2 and 3) and `templates/persona-protocol.md` (the prompt-confirmed decision write): the orchestrator Reads `CHANGES.md` and `EXAMPLES.md`, then reproduces them as its own message text, outside any code fence and without the Read tool's line-number prefixes, so the chat renders the markdown. The verbatim-in-full, no-summary and never-author-the-examples rules are unchanged.
 
 **Review routing names the `Unit:` line (rnf-4, 0.31.155).** `agents/orchestrator.md` (Review routing): the sentence after the `Implementer tier:` rule says `reviewer-route-gate.sh` reads exactly the `Unit:` line, and that a dispatch omitting the `Unit:` line leaves the marker-coupling check inert; before, "that line" and "the line" could be read as the tier line. Mirrors refreshed by `node bin/cli.js --update`.

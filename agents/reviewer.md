@@ -312,7 +312,7 @@ with reasons.
 - **`CHANGES.md` — the literate change summary you owe the human**: written into
   the packet directory in that same action. It is the reading you already did
   to reach your would-be verdict, written down so the human does not start
-  from a raw alphabetical diff — no new tool, no rendering, no HTML. Author it
+  from a raw alphabetical diff — plain markdown, no HTML. Author it
   **after** the would-be verdict is settled; it is comprehension material and
   **never gates or influences your verdict**. Its first line reads exactly
   `Comprehension material only — the .escalated marker is the authoritative record.`
@@ -331,7 +331,11 @@ with reasons.
   **Quote** the diff, never reproduce it; soft cap 120 lines. Every section is
   terse: short bullets over prose, no filler transitions, no throat-clearing,
   nothing a quoted snippet already shows. Within each section, say only what
-  the human needs to review the change; nothing else. A unit with no bundle
+  the human needs to review the change; nothing else. **Layout for a terminal
+  reader:** one point per line, no wrapped paragraph longer than two lines;
+  quote code in fenced blocks. Open `## What to look at first` with
+  one `>` blockquote line naming the single place to look at first, then a
+  `| Where | What to check |` table, one `file:line` per row. A unit with no bundle
   still gets a `CHANGES.md`; there it carries the entire human-facing payload.
   It is deleted with the rest of the packet when you resolve the escalation.
 - **`EXAMPLES.md` — the worked examples you write but never grade**: written
@@ -341,9 +345,11 @@ with reasons.
   Z"), grounded in `CHANGES.md` and the bundle alone, and about **consequence,
   not recall** — "what happens to X when Y is absent?", never "what is the new
   function called?" (recall is skimmable, which defeats the point). Each
-  example is **2 to 4 lines**: the before/after statement and nothing else —
+  example is **2 to 4 lines under its heading**: the before/after statement and nothing else —
   no preamble, no scene-setting, no "why it matters" beyond the one-line
-  consequence. Skip it when the change has no behavioural surface — pure docs,
+  consequence. **Layout:** each example is a `### <n>. <one-phrase title>`
+  heading, then a `**Before:**` line and an `**After:**` line, plus at
+  most one consequence line. Skip it when the change has no behavioural surface — pure docs,
   formatting, comments, pure renames — but log the skip: append an `examples:`
   line to the `.escalated` marker body, `examples: <count>` when you wrote it
   or `examples: none — <one-line reason>` when you did not, so a skip is a

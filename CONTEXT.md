@@ -974,6 +974,8 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   unit with `microworld: none` still receives one, and there it is the entire
   human-facing payload. Deleted with the rest of the packet in all three
   terminal routes of the **DECISION channel**, in the same reviewer action.
+  Laid out for a terminal reader, with short lines and a `>` callout plus a
+  `| Where | What to check |` table in `## What to look at first`.
   Defined in `templates/persona-protocol.md`'s
   "Fourth verdict: escalate-to-human" section.
 _Avoid_: change summary, walkthrough doc, CHANGES doc (use "literate change
@@ -1029,7 +1031,8 @@ _Avoid_: reference material, explanatory material, supporting material (use "com
   carry evidence of engagement. `EXAMPLES.md` is deleted with the rest of the
   [[Escalation packet]] in all three terminal routes, in the same reviewer
   action. Defined in `templates/persona-protocol.md`'s "Fourth verdict:
-  escalate-to-human" section.
+  escalate-to-human" section. Each example sits under its own heading with
+  `**Before:**` / `**After:**` lead-ins.
 _Avoid_: example, sample, demo, examples quiz (none of these name the
   behavioural-illustration concept precisely — use "worked example", or name
   `EXAMPLES.md` directly)

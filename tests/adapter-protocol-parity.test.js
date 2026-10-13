@@ -70,6 +70,9 @@ const ESCALATION_PROBES = [
   'via: dashboard',                // via: transcription duty, gh377-6a
   'via: prompt',                   // third DECISION-authoring path, esc-chat-3
   'prompt-confirmed decision write', // its name, esc-chat-3
+  '| Where | What to check |',        // epa-2
+  '**Before:**',                      // epa-2
+  'no wrapped paragraph longer than two lines', // epa-2
 ];
 
 // The pending-review flag fix (esf-flag-prose): the reviewer clears one flag
