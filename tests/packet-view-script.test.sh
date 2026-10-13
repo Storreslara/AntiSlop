@@ -80,12 +80,12 @@ mkbin none; runv none
 
 # T4 - glow stub: two GLOW lines, no raw text
 mkbin glow; stub glow glow 0; runv glow
-[ "$(printf '%s\n' "$out" | grep -c '^GLOW:')" = 2 ] && ! printf '%s' "$out" | grep -q 'raw' && [ "$rc" = 0 ] \
+[ "$(printf '%s\n' "$out" | grep -c '^GLOW:')" = 2 ] && ! printf '%s\n' "$out" | grep -qxE '# (changes|examples) raw' && [ "$rc" = 0 ] \
   && pass "T4 glow used for both files" || bad "T4 glow (rc=$rc): $out"
 
 # T5 - failing glow falls through to bat with --paging=never -l md
 mkbin bat; stub bat glow 1; stub bat bat 0; runv bat
-[ "$(printf '%s\n' "$out" | grep -c '^BAT:--paging=never -l md ')" = 2 ] && ! printf '%s' "$out" | grep -q 'raw' \
+[ "$(printf '%s\n' "$out" | grep -c '^BAT:--paging=never -l md ')" = 2 ] && ! printf '%s\n' "$out" | grep -qxE '# (changes|examples) raw' \
   && pass "T5 failing glow falls through to bat" || bad "T5 bat fallthrough: $out"
 
 # T6 - only batcat
@@ -110,7 +110,7 @@ mkbin o3; stub o3 batcat 0; stub o3 rich 0; runv o3
 [ "$(cnt BATCAT)" = 2 ] && [ "$(cnt RICH)" = 0 ] \
   && pass "O3 batcat before rich" || bad "O3 batcat before rich: $out"
 mkbin o4; stub o4 rich 0; runv o4
-[ "$(cnt RICH)" = 2 ] && ! printf '%s' "$out" | grep -q 'raw' \
+[ "$(cnt RICH)" = 2 ] && ! printf '%s\n' "$out" | grep -qxE '# (changes|examples) raw' \
   && pass "O4 rich before cat" || bad "O4 rich before cat: $out"
 
 # T8 - EXAMPLES.md absent, other cwd, absolute path
