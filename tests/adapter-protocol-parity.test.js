@@ -287,6 +287,30 @@ check('orchestrator escalation steps handle a marker with no fold line or no dec
     'templates/persona-protocol.md: missing the whole-marker clause');
 });
 
+// epfb-2: the skip token keeps its ASCII hyphen in every prose copy, and the
+// reviewer's escalation card is followed by a list item, never a column-0 paragraph.
+check('EB1 skip token is `examples: none - <one-line reason>` with an ASCII hyphen in every prose copy', () => {
+  const files = ['agents/reviewer.md', 'templates/persona-protocol.md', '.claude/agents/reviewer.md',
+    '.claude/persona-protocol.md', 'CONTEXT.md', 'adapters/codex/agents-md-fragment.md',
+    'adapters/cursor/rules/persona-protocol.mdc'];
+  for (const rel of files) {
+    const t = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
+    assert.ok(!t.includes('examples: none \u2014'), `${rel}: em-dash skip token`);
+    assert.ok(t.includes('examples: none - <one-line reason>'), `${rel}: no ASCII-hyphen skip token`);
+  }
+});
+
+check('EB2 the line after the reviewer escalation card is the Durable escalation packet list item', () => {
+  for (const rel of ['agents/reviewer.md', '.claude/agents/reviewer.md']) {
+    const lines = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').split('\n');
+    const end = lines.indexOf('<!-- escalated-card:end -->');
+    assert.ok(end >= 0, `${rel}: no escalated-card:end line`);
+    const next = lines.slice(end + 1).find((l) => l.trim() !== '');
+    assert.ok(next !== undefined && next.startsWith('- **Durable escalation packet**: '),
+      `${rel}: line after the card is not the list item: ${next}`);
+  }
+});
+
 if (failures) {
   console.log(`\n${failures} adapter-protocol-parity check(s) FAILED.`);
   process.exit(1);
