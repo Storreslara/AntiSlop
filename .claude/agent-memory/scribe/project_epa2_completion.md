@@ -1,6 +1,6 @@
 ---
-name: escalation-packet follow-ups (epa-2, epa-3)
-description: epa-2 (60ff302, 0.31.157), epa-3 (ac1e511, 0.31.158) and epa-4 (d5b479f, 0.31.159) carry-forward gaps for the escalation layout, card/fold marker, viewer tests, and parity probes, kept in one place
+name: escalation-packet follow-ups (epa, epf)
+description: epa-2 (60ff302, 0.31.157), epa-3 (ac1e511, 0.31.158) and epa-4 (d5b479f, 0.31.159) carry-forward gaps for the escalation layout, card/fold marker, viewer tests, and parity probes, and the epf run that closed them (epf-1..6, 2026-10-13) with its new carry-forward items, kept in one place
 metadata:
   type: project
 ---
@@ -28,6 +28,28 @@ metadata:
 13. **Dash drift in the card (epa-4).** The card writes `examples: none - <reason>` with a hyphen. reviewer.md (~377) and the template (~514) use an em dash. Candidate: align the card to the em dash, then re-run the six-copy byte-identity check.
 14. **Card bullet renders wrong (epa-4, cosmetic).** In agents/reviewer.md the card block at column 0 ends the bullet, so the "In the same action" text renders as a separate paragraph.
 
+## epf closure (epf-1..6, PASS 2026-10-13; 1f261e7, 4b56fb7, 811449d, 11919a8, 6c994d5, 1b14288)
+
+Items 1-14 above are closed; do not re-check them:
+- 1, 6(partly), 7, 10, 11 (plan criteria AC1.3, AC2.2, AC2.3, AC3.2, AC3.3, AC4.4, AC4.6): epf-6 erratum on the 2026-10-12 plan. Item 3 (OQ1/R4) resolved by epf-4 + epf-6.
+- 2: epf-2 added 4 `// epf-2` parity probes. 4, 5: epf-3 (O1-O4 order cases, stderr-empty T8). 6: epf-3 T1b golden copy.
+- 3: epf-4 (markdown-lite pipe tables, TB1-TB10). 8: epf-5 (parseProtocolSections ignores fenced `## `, F1-F3).
+- 9: epf-6 fixed the stale line at 2026-10-01 plan :928.
+- 12: epf-1 (old marker printed whole; default Q1 text; parity-pinned). 13: epf-2 (skip token is now ASCII hyphen `examples: none - <reason>`). 14: epf-2 (card follow-on is a list item).
+
+### New carry-forward (epf reviewers' non-blocking notes)
+
+a. CONTEXT.md escalation card entry lacked the no-fold clause: FIXED by this scribe pass (also added "old-format marker" as a parenthetical alias under **fold line**).
+b. templates/persona-protocol.md ~609 is a ~200-column line.
+c. agents/reviewer.md:333 "per the bullet after next" is wrong; should name the "Resolving a standing escalation" bullet (~418).
+d. No validate.sh test checks the hyphen-only skip token or the list-item-after-card (only epf2-ac1/ac2).
+e. "Durable escalation packet" in reviewer.md restates the glossary term "Escalation packet".
+f. markdown-lite: the table body loop absorbs any following pipe-containing line (`- item | x`, `# h | x`, fences); no vm-load test of the injected client script; mdSplitRow misparses an escaped backslash before a trailing pipe; briefing and auditor panes now render tables too.
+g. parseProtocolSections: a line with an inline code span is treated as a fence opener; no unclosed-fence fixture; trailing `\r` rejects the closer.
+h. tests/packet-view-script.test.sh:113 O4 `grep -q raw` could match a random mktemp suffix.
+i. Contract wording defects: epf3-ac2 and epf6-ac2 print several lines; range.sh prints `1 `; contract trailers named Sonnet though haiku ran.
+j. epf-4 reviewer's full validate.sh once exited 1 under ~5 concurrent runs (not reproduced; gate G passed clean at HEAD).
+
 **Closed:** the epa-1 gap (orchestrator.md step 3 lacked the "without the Read tool's line-number prefixes" clause) was closed by epa-3.
 
-**Why:** these are the reviewers' non-blocking notes for epa-2 and epa-3, which the plan does not record anywhere else. **How to apply:** before any follow-up that touches the escalation layout or the viewer tests, re-check each item against current sources; items 1 and 2 may already be fixed.
+**Why:** these are the reviewers' non-blocking notes for epa-2 and epa-3, which the plan does not record anywhere else. **How to apply:** before any follow-up that touches the escalation layout or the viewer tests, re-check each item against current sources; items a-j above are the live list.

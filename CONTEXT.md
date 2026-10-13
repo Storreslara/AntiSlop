@@ -933,7 +933,8 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   below line 1: `why:`, `would-be verdict:`, `look first:`, `decide:`, `run:`
   and `packet:`, in that order, one line each. A single `---` fold line
   separates it from the record. The orchestrator prints only marker lines 1
-  through the fold, plus one pointer line to the full record; Q1's description
+  through the fold, plus one pointer line to the full record; an older marker
+  with no fold line is printed whole, with no pointer line; Q1's description
   is the card's `decide:` text, or a fixed generic question when the marker has
   no `decide:` line. The card is part of the marker body, so
   `PACKET.md` carries it byte-for-byte.
@@ -942,7 +943,8 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
 **fold line**:
 (epa-4, 2026-10-12) — the single `---` line inside an `.escalated` marker body
   that ends the escalation card and starts the record. The orchestrator
-  prints marker lines 1 through the fold line and no further. A marker with no fold line is printed whole.
+  prints marker lines 1 through the fold line and no further. A marker with no fold line (an "old-format marker", written
+  before the card existed) is printed whole.
   _Avoid_: separator, divider, horizontal rule
 
 **`.directed` marker**:
