@@ -1,6 +1,6 @@
 ---
 name: escalation-packet follow-ups (epa-2, epa-3)
-description: epa-2 PASS (60ff302, 0.31.157) and epa-3 PASS (ac1e511, 0.31.158) carry-forward gaps for the escalation layout, viewer tests, and parity probes, kept in one place
+description: epa-2 (60ff302, 0.31.157), epa-3 (ac1e511, 0.31.158) and epa-4 (d5b479f, 0.31.159) carry-forward gaps for the escalation layout, card/fold marker, viewer tests, and parity probes, kept in one place
 metadata:
   type: project
 ---
@@ -22,6 +22,11 @@ metadata:
 7. **AC3.2 counts echo lines only; AC3.3 probe is weak (epa-3).** The `view.sh` probe is satisfied by the block's own comment lines. Candidate probe: a prose string such as "`run.sh` and `view.sh` commands".
 8. **Latent parser issue (epa-3, out of unit scope).** bin/cli.js:720-729 `parseProtocolSections` splits on `## ` and ignores code fences, so a `## ` line inside a fenced block would split a section. Latent, not triggered by the current block.
 9. **Stale criterion text (epa-3 note).** docs/plans/2026-10-01-in-session-escalation-decision.md:928 holds an old criterion whose phrase no longer matches orchestrator step 4. Nothing live reads it.
+10. **AC4.6 as written returns rc=1 (epa-4 note, plan 2026-10-12-escalation-packet-aesthetics.md).** `${a:=$(mktemp)}` inside a pipeline-element redirect leaves `a`/`b` empty in the parent shell. Fix in the plan: `a=$(mktemp); b=$(mktemp)`.
+11. **AC4.4 is met by the wrong text (epa-4).** It is satisfied by the template's approve table row (~templates/persona-protocol.md:671), not the prose sentence. Fix: `grep -c` threshold of at least 2.
+12. **No rule for older `.escalated` markers (epa-4).** Markers written before epa-4 have no `---` fold line or `decide:` line, but orchestrator steps 1 and 5 assume both. Candidate fix: print the whole marker, and use a default Q1 description when the fold is absent.
+13. **Dash drift in the card (epa-4).** The card writes `examples: none - <reason>` with a hyphen. reviewer.md (~377) and the template (~514) use an em dash. Candidate: align the card to the em dash, then re-run the six-copy byte-identity check.
+14. **Card bullet renders wrong (epa-4, cosmetic).** In agents/reviewer.md the card block at column 0 ends the bullet, so the "In the same action" text renders as a separate paragraph.
 
 **Closed:** the epa-1 gap (orchestrator.md step 3 lacked the "without the Read tool's line-number prefixes" clause) was closed by epa-3.
 

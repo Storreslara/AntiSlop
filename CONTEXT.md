@@ -938,6 +938,12 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   `PACKET.md` carries it byte-for-byte.
   _Avoid_: marker summary, header (line 1 is the header; use "escalation card")
 
+**fold line**:
+(epa-4, 2026-10-12) — the single `---` line inside an `.escalated` marker body
+  that ends the escalation card and starts the record. The orchestrator
+  prints marker lines 1 through the fold line and no further.
+  _Avoid_: separator, divider, horizontal rule
+
 **`.directed` marker**:
 (unit #136, 2026-08-11, Step 7 of the human-decision-channel fix, issue #324) —
   file written by the reviewer at `.claude/reviewed/<task-id>.directed` when
