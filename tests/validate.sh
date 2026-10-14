@@ -928,6 +928,24 @@ else
 fi
 
 echo
+echo "== docs: relative markdown links resolve to tracked files (Node, sfu-5) =="
+if node tests/doc-relative-links.test.js; then
+  echo "OK   tests/doc-relative-links.test.js"
+else
+  echo "FAIL tests/doc-relative-links.test.js"
+  fail=1
+fi
+
+echo
+echo "== scripts/resync-vendored-skills.sh: offline FILES/SKILL_ORDER checks (sfu-5) =="
+if bash tests/resync-vendored-skills-offline.test.sh; then
+  echo "OK   tests/resync-vendored-skills-offline.test.sh"
+else
+  echo "FAIL tests/resync-vendored-skills-offline.test.sh"
+  fail=1
+fi
+
+echo
 echo "== microworld dashboard server (Node) =="
 if node tests/microworld/dashboard-server.test.js; then
   echo "OK   tests/microworld/dashboard-server.test.js"

@@ -499,7 +499,7 @@ _Avoid_: trailer fix
   absent, using `implementerFrontmatterDefault()` to read the packaged 
   `agents/lead-programmer.md` frontmatter (ensuring the current project's 
   persona file override does not interfere). Cross-reference: [[inert-key defect]],
-  [[Writer tier]], [ADR-0010](docs/adr/0010-haiku-as-default-implementer-model.md),
+  [[Writer tier]], [ADR-0010](docs/adr/0010-implementer-haiku-default.md),
   [ADR-0026](docs/adr/0026-writer-tier-reversed-to-sonnet.md). A recorded `"sonnet"` from before the haiku default shipped is migrated once to `"haiku"` by `--update` (ADR-0040).
 
 **Reviewer-gate ratchet**:

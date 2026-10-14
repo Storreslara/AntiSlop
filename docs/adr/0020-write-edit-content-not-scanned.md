@@ -73,8 +73,8 @@ Together, A7 + A8 render the incident's exact shape — "this dispatch took N ga
 
 - [Issue #288](https://github.com/Storreslara/AntiSlop/issues/288) documents the asymmetry report.
 - Commit `1be4ca1` and its remediation `4eeb3a2` hold the incident's verdict markers:
-  - [`.claude/reviewed/gh-281-detection.fail`](../../.claude/reviewed/gh-281-detection.fail) — reviewer's finding that the incident file contained an unsafe bypass technique
-  - [`.claude/reviewed/gh-281-detection.pass`](../../.claude/reviewed/gh-281-detection.pass) — reviewer's approval of the remediation
+  - `.claude/reviewed/gh-281-detection.fail` (per-clone review state, not tracked) — reviewer's finding that the incident file contained an unsafe bypass technique
+  - `.claude/reviewed/gh-281-detection.pass` (per-clone review state, not tracked) — reviewer's approval of the remediation
 - [ADR-0015](0015-commit-anchored-pass-markers.md) and related prior decisions establish the verdict-marker discipline that A7/A8 audit.
 
 ---

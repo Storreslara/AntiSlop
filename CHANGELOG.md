@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Offline resync table test and relative-link test (sfu-5).** `tests/resync-vendored-skills-offline.test.sh` checks the FILES/SKILL_ORDER table of `scripts/resync-vendored-skills.sh` without the network; `tests/doc-relative-links.test.js` checks that every relative markdown link in the maintained docs resolves to a tracked file. Both are registered in `tests/validate.sh`. The 55 broken links it found are fixed: `docs/harness-glossary.md` links are now relative to `docs/`, `.claude/wiki/modules/hooks.md` climbs three levels and names ADR-0023, `CONTEXT.md` names the real ADR-0010 file, and ADR-0020's two per-clone review-record links become plain code spans.
+
 **version-stamp-check CHANGELOG match hardened (sfu-4).** `hooks/scripts/version-stamp-check.sh` reads the CHANGELOG diff with `--no-color --no-ext-diff`, counts added lines only, and matches the version literally as a whole version (0.31.16 is no longer named by 0.31.166 or 10.31.16; `v0.31.16` still is); `tests/version-stamp-check.test.sh` gains cases (e)-(i) and mutation controls mc8-mc13, which pin every mutant the skr-5 review found surviving except the `+++`-exclusion one, an equivalent mutant.
 
 **Agent-teams TDD fallback, CHANGELOG entry wording, MIT credit (sfu-3, 0.31.168).** `agents/lead-programmer.md` tells a teammate (no `skills:` preload) to read the `tdd` skill's `SKILL.md` before the first test; `agents/lead-programmer.md`, `agents/scribe.md`, `agents/reviewer.md`, `skills/version-stamp-discipline/SKILL.md` and `CONTEXT.md` say "CHANGELOG entry", the canonical term; `agents/spec-master.md`'s PRD-template credit carries the MIT copyright line.

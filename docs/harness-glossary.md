@@ -52,7 +52,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   time the marker is consulted (e.g., after a rebase or force push). The
   attested commit is what dispatch-hygiene's H3 gate tests for reachability (see
   [[Dispatch hygiene]], [[Commit attribution]], [[`.escalated` marker]], and
-  [ADR-0023](docs/adr/0023-marker-commit-attribution.md)).
+  [ADR-0023](adr/0023-marker-commit-attribution.md)).
 
 **candidate-for-drop**:
 (unit item04-1, 2026-09-26) — a protocol section proposed for removal from a 
@@ -155,7 +155,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   category must have a non-empty membership or the check is vacuous; **Cat 4** — the whole
   file is excluded from the sweep by a separate, recorded ruling (e.g. ADR-0029's
   historical-citation rule for CHANGELOG.md). See [[documented residual]] for how Cat 4
-  exclusions are recorded, and [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
+  exclusions are recorded, and [ADR-0025](adr/0025-textual-gate-protection-requires-structural-triggers.md)
   for the ADR-driven exclusion precedent.
 
 **hit-bearing file**:
@@ -179,7 +179,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   in `bin/cli.js`'s `runUpdate` block additively merges `bashOutputMaxChars` into 
   `.claude/settings.json` only when the key is absent (never clobbers an existing value).
   See [[Bash-output census]] for the measurement authority, and
-  [ADR-0032](docs/adr/0032-bash-output-cap-not-command-rewriting.md) for why a
+  [ADR-0032](adr/0032-bash-output-cap-not-command-rewriting.md) for why a
   `PreToolUse`/`updatedInput` command-rewriting mechanism was rejected in
   favor of this mechanical cap.
 
@@ -197,7 +197,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   logs persona-definition edits. This distinction (norm vs. mechanism) is load-bearing 
   for future operator decisions: a gate that does not exist today is a deliberate 
   design choice, not an oversight. See [[effort override / effort tier]] for the 
-  exemplar case and [ADR-0033](docs/adr/0033-effort-tiers-frontmatter-only-override.md) 
+  exemplar case and [ADR-0033](adr/0033-effort-tiers-frontmatter-only-override.md) 
   for the decision that effort is frontmatter-only.
 
 **overflow file**:
@@ -357,7 +357,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   entirely (ADR-0025)): the gate's own registration
   surface (`hooks/hooks.json`, `.claude/settings.json`,
   `hooks/scripts/harness-integrity-gate.sh`, `.claude/hooks/scripts/harness-integrity-gate.sh`). Set B is excluded from the Bash
-  branch by [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md)
+  branch by [ADR-0025](adr/0025-textual-gate-protection-requires-structural-triggers.md)
   because a text-only gate triggered by mere word presence in Bash commands would
   necessarily fire on prose mentions, not just write attempts — the asymmetry is
   ratified, not an oversight. Introduced together as a pair, not independently. The frozen two-tier `permission_mode` allowlist gates ask-eligibility: see [[two-tier allowlist]] for the distinction between Set A's tier (includes `acceptEdits`) and Set B's tier (excludes it).
@@ -366,7 +366,7 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   literal naming the cost of approving a write to the gate's own registration
   surface, distinct from Set A's. So the two sets diverge in **allowlist and
   prompt wording**, not only in the pre-existing ADR-0025 Bash-coverage asymmetry
-  described above. See [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md)
+  described above. See [ADR-0034](adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md)
   for why Set B is a narrower tier of the branch rather than a clone of Set A's.
 
 **human-confirmation branch**:
@@ -383,13 +383,13 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   override artifact — a file such as `.claude/.dispatch-override` left behind on
   disk — since this branch is a synchronous per-call prompt with no artifact of
   its own. See
-  [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md).
+  [ADR-0034](adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md).
 _Avoid_: escape hatch, grant branch
 
 **amortized / unamortized**:
 (unit item16-1-measure-ask-branch, 2026-09-25; disposition recorded in
-  [ADR-0035](docs/adr/0035-hcb-branch-measured-disposition-unamortized-but-not-dead.md),
-  amending [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md))
+  [ADR-0035](adr/0035-hcb-branch-measured-disposition-unamortized-but-not-dead.md),
+  amending [ADR-0034](adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md))
   — the disposition pair item16-1 used to describe whether the
   [[human-confirmation branch]]'s complexity (two mode tiers, the
   [[asked audit record]]/[[completed audit record]] pairing, and the
@@ -423,7 +423,7 @@ _Avoid_: escape hatch, grant branch
   lines, an inconsistency noted for future cleanup but non-blocking. `harness_armed()`
   returns: 0 (armed — config present and parseable), 1 (unadapted — no witnesses
   found), 2 (tampered — adaptation witnesses found but config missing/bad, OR
-  git-index witness alone). See [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md).
+  git-index witness alone). See [ADR-0015](adr/0015-commit-anchored-pass-markers.md).
 
 **bypass family**:
 (unit harness-integrity-gate-hardening, 2026-09-09) — a class of obfuscation
@@ -452,7 +452,7 @@ _Avoid_: escape hatch, grant branch
   enabling machine-checked parity in both directions. Introduced by the principle
   that a security gate cannot claim to prevent "everything" — instead it must
   enumerate exactly which **bypass families** it does block, which it leaves residual,
-  and which it over-blocks. See [ADR-0025](docs/adr/0025-textual-gate-protection-requires-structural-triggers.md).
+  and which it over-blocks. See [ADR-0025](adr/0025-textual-gate-protection-requires-structural-triggers.md).
 
 **documented residual**:
 (unit harness-integrity-gate-hardening, 2026-09-09) — a known, deliberate, and
@@ -509,7 +509,7 @@ _Avoid_: escape hatch, grant branch
   system ([[cell space]]), making the relationship between controls provable rather than
   implicit. Each row names two control identifiers and states their expected relation.
   Entries use machine-checkable predicates (e.g., `{c1_kill_set} ⊂ {c2_kill_set}`, read
-  as "c1's cells are a proper subset of c2's cells"). See [ADR-0032](docs/adr/0032-bash-output-cap-not-command-rewriting.md) context for the history of why measurement-derived expectation is unsafe.
+  as "c1's cells are a proper subset of c2's cells"). See [ADR-0032](adr/0032-bash-output-cap-not-command-rewriting.md) context for the history of why measurement-derived expectation is unsafe.
 
 **tier isolation**:
 (unit hcb-regcheck, 2026-09-24) — a property distinct from [[kill set]] containment: that
@@ -538,7 +538,7 @@ _Avoid_: escape hatch, grant branch
   record exists but no matching `completed` record (because a Set B write suppressed its own
   completion log), the registration-presence assertion proves whether the gate's surface
   remains intact (write was denied) or vanished (write was approved and disabled the gate).
-  See [ADR-0034](docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md) and
+  See [ADR-0034](adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md) and
   `docs/trust-model.md` row 11 for the asymmetry bounded here.
 
 **grant-denied**:
@@ -634,8 +634,8 @@ an append-only audit-log record class written to
   commits allow re-dispatch; reachable commits remain protected). On
   escalation approval, the field is copied verbatim from the standing
   [[`.escalated` marker]] rather than re-derived. See
-  [ADR-0023](docs/adr/0023-marker-commit-attribution.md) for the semantic
-  clarification and [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)
+  [ADR-0023](adr/0023-marker-commit-attribution.md) for the semantic
+  clarification and [ADR-0015](adr/0015-commit-anchored-pass-markers.md)
   for the technical mechanism.
 
 **Consumed interface**:
@@ -941,7 +941,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   violations are logged, not blocked); escape hatch
   `.claude/.dispatch-override` (single use plus a bounded 10-second replay;
   see [[replay window]]). H3 is anchored by a `commit:`
-  field in the PASS marker (v3 format, see [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md)) that
+  field in the PASS marker (v3 format, see [ADR-0015](adr/0015-commit-anchored-pass-markers.md)) that
   records the unit's own final commit (see [[Commit attribution]]): a marker from an
   unreachable commit is treated as void, allowing re-dispatch of units whose
   work was lost to history. H3 is only as good as the reviewer's marker id
@@ -949,7 +949,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   that discipline as unreliable; the specific gap #153 named — a reviewer
   clearing pending-review flags with no marker written at all — is now
   mechanically closed by the review-join stamp mechanism
-  ([ADR-0016](docs/adr/0016-per-unit-review-join.md), `hooks/scripts/stop-gate.sh`),
+  ([ADR-0016](adr/0016-per-unit-review-join.md), `hooks/scripts/stop-gate.sh`),
   which blocks a reviewer's flag-clear when no verdict marker is found for that
   unit (`marker=MISSING`, `hooks/scripts/stop-gate.sh`). That does not itself
   prove every written marker's id matches the unit being dispatched, so H3 is still
@@ -966,10 +966,10 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   Exists because a doubly-registered `PreToolUse` hook was measured
   double-firing per tool call — 100% failure rate sequential, 15% (3/20)
   parallel — before the window existed. See
-  [ADR-0011](docs/adr/0011-dispatch-override-idempotency-window.md).
+  [ADR-0011](adr/0011-dispatch-override-idempotency-window.md).
 
 **description collision**:
-(unit gwd-2, 2026-09-11, [ADR-0031](docs/adr/0031-grill-with-docs-model-invocable.md)) —
+(unit gwd-2, 2026-09-11, [ADR-0031](adr/0031-grill-with-docs-model-invocable.md)) —
   the condition where two or more [[Preloaded skill]]s with near-identical descriptions
   are both model-invocable, creating ambiguity: a user request like "grill me" might invoke
   either `grill-me` ("A relentless interview to sharpen a plan or design.") or `grill-with-docs`
@@ -1004,8 +1004,8 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   canonical protocol *sections* are accounted for in the Codex/Cursor doc
   ports — presence, not runtime behaviour). See [[thin entry script]],
   [[core file]], [[payload-shape translation]], [[declared-shared set]],
-  [modules/adapters.md](.claude/wiki/modules/adapters.md) and
-  [modules/hooks.md](.claude/wiki/modules/hooks.md).
+  [modules/adapters.md](../.claude/wiki/modules/adapters.md) and
+  [modules/hooks.md](../.claude/wiki/modules/hooks.md).
 
 **core file**:
 (unit #411, 2026-08-25) — a reusable, port-invariant logic module at
@@ -1071,7 +1071,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   whole-tree clean-tree precondition, blocking an unrelated unit's PASS —
   fixed by narrowing that precondition to exclude
   `.claude/agent-memory/**` conditionally; see
-  [ADR-0037](docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
+  [ADR-0037](adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
   and [[clean-tree precondition]].
 
 **clean-tree precondition**:
@@ -1079,9 +1079,9 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   writing a `.pass` marker, that no tracked file carries an uncommitted
   change: `git diff --quiet HEAD` must exit 0 (`agents/reviewer.md:57-58`,
   `:115-116`). Named here for the first time even though it was implemented
-  by [ADR-0015](docs/adr/0015-commit-anchored-pass-markers.md) — that ADR
+  by [ADR-0015](adr/0015-commit-anchored-pass-markers.md) — that ADR
   never defined the check as a standalone term. Narrowed by
-  [ADR-0037](docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
+  [ADR-0037](adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
   to exclude `.claude/agent-memory/**` conditionally: the exact command is
   `git diff --quiet HEAD -- ':/' ':(exclude,top).claude/agent-memory'`, and
   the exclusion does not apply when the reviewed unit's own affected-files
@@ -1100,7 +1100,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   measured shared-worktree stash race), but for every memory-granted persona
   to commit its own memory-scope writes before its turn ends, per the
   protocol's `## A note on \`memory\`` section. See
-  [ADR-0037](docs/adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
+  [ADR-0037](adr/0037-agent-memory-excluded-from-clean-tree-precondition.md)
   and [[clean-tree precondition]].
 
 **clear-watermark**:
@@ -1113,7 +1113,7 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   returned 2 on bootstrap (no watermark), 0 when a PASS or FAIL marker was newer
   than the watermark, and 1 otherwise. The mechanism was defer-immune by design
   (immune to the dispatch-time `defer:` convention). In 0.28.0, it was replaced
-  by the **review-join stamp** (see below, and [ADR-0016](docs/adr/0016-per-unit-review-join.md))
+  by the **review-join stamp** (see below, and [ADR-0016](adr/0016-per-unit-review-join.md))
   to close concurrency defects and unify marker validation. The old file becomes
   inert once nothing reads it and requires no migration.
 
@@ -1128,8 +1128,8 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   and `prior_mtime=<marker-mtime>` for concurrency detection; this ensures a
   re-dispatched reviewer must write a newer verdict or be blocked at `SubagentStop`.
   Replaces the global clear-watermark; enables per-unit verdict coupling without
-  cross-dispatch interference. See [ADR-0016](docs/adr/0016-per-unit-review-join.md)
-  for design and [modules/hooks.md](.claude/wiki/modules/hooks.md) for implementation.
+  cross-dispatch interference. See [ADR-0016](adr/0016-per-unit-review-join.md)
+  for design and [modules/hooks.md](../.claude/wiki/modules/hooks.md) for implementation.
 
 **advisory review-join stamp** (M2, Step 3): a variant `.claude/.review-join.<unit-id>.advisory`
   written by the route gate when a `Mode: advisory` dispatch is made (no ordinary PASS).
@@ -1150,7 +1150,7 @@ _Avoid_: clear-watermark
   all stamps are malformed), the marker check falls back to the directory-wide
   glob to preserve the original safety semantics for reviewers dispatched without
   a `Unit:` line. Introduced to close the gap identified in
-  [ADR-0028](docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md) where
+  [ADR-0028](adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md) where
   a stray `.blocked` marker for an unrelated unit could jam unrelated reviewers'
   operations.
 
@@ -1204,7 +1204,7 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   audit-log family (see [[Rulings ledger]]). Access across all domains is
   provided by the [[state-access seam]]; glob/enumeration operations (listing
   all pending reviews, sweeping old baselines, etc.) remain in calling scripts,
-  not in the seam itself. See [ADR-0016](docs/adr/0016-per-unit-review-join.md)
+  not in the seam itself. See [ADR-0016](adr/0016-per-unit-review-join.md)
   for the per-unit-keying invariant that this model preserves.
 
 **state-access seam**:
@@ -1446,8 +1446,8 @@ the reviewer's `sonnet`/`opus` model is
   `sonnet`; `fable` stays permanently excluded from the gate (ADR-0004) and
   a prior `.fail` record still forces `opus`. Measured on 2026-08-03 at 8/60
   commits (13.3%), inside the predicted band. See
-  [ADR 0009](docs/adr/0009-reviewer-tier-measured-eligibility.md), which
-  amends [ADR 0006](docs/adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
+  [ADR 0009](adr/0009-reviewer-tier-measured-eligibility.md), which
+  amends [ADR 0006](adr/0006-reviewer-gate-sonnet-for-mechanical-units.md).
 
 **inert-key defect**:
 (unit item18-2, 2026-09-25; first instance resolved in unit #476) — a failure mode 
@@ -1567,7 +1567,7 @@ the reviewer's `sonnet`/`opus` model is
   `docs/plans/` specs by the 2026-08-15 date the fast-path threshold moved
   from ≥3 to ≥6 dispatchable units (per
   `docs/plans/2026-08-15-ceremony-reduction-solo-operator.md:985`, Step 3,
-  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md)). **pre-era**
+  [ADR-0024](adr/0024-ceremony-reduction-solo-operator.md)). **pre-era**
   specs were written under the old ≥3 threshold and would misclassify if
   measured against the current ≥6 line; **post-era** specs were written
   after the move and are the only specs item13-1 could safely compare
@@ -1600,8 +1600,8 @@ When a
   v0.25.0 and reachability verified live post-restart. **All reachability claims
   (Steps 4/5) are now verified live, not just by file-content grep.** The `fm-noflag`
   declared-deviation class (stripping the model-invocation flag from `handoff` and
-  `improve-codebase-architecture`) is now formally documented in [ADR 0012](docs/adr/0012-vendored-skill-declared-deviations.md);
-  [ADR 0005](docs/adr/0005-vendor-mattpocock-skills.md) amended to reference it.
+  `improve-codebase-architecture`) is now formally documented in [ADR 0012](adr/0012-vendored-skill-declared-deviations.md);
+  [ADR 0005](adr/0005-vendor-mattpocock-skills.md) amended to reference it.
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
   `grill-me` was later retired (skr-2); original: `docs/archive/skills/grill-me/`.
   `to-spec` was later retired (skr-3); original: `docs/archive/skills/to-spec/`.
@@ -1612,8 +1612,8 @@ When a
   upstream `disable-model-invocation` flag from vendored skills) now applies to four
   skills: `handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs`.
   This supersedes the earlier framing that "`grill-me` is the control, deliberately left
-  alone" ([ADR 0012](docs/adr/0012-vendored-skill-declared-deviations.md) as of 2026-08-07).
-  The reversal is formally recorded in [ADR 0031](docs/adr/0031-grill-with-docs-model-invocable.md),
+  alone" ([ADR 0012](adr/0012-vendored-skill-declared-deviations.md) as of 2026-08-07).
+  The reversal is formally recorded in [ADR 0031](adr/0031-grill-with-docs-model-invocable.md),
   which amends ADR 0012. All four skills are byte-diffed by `scripts/resync-vendored-skills.sh --check`
   as part of the [[drift-tracked skills]] set.
   Superseded 2026-10-14 (skr-2): `grill-me` and `grill-with-docs` were retired; originals:
@@ -1656,7 +1656,7 @@ this repo self-hosts the plugin it
   `files` array intentionally ships only `skills/coding-discipline` and
   `skills/install-antislop`; every other skill is excluded. All other
   skills (vendored, optional, project-specific) are distributed via git
-  clone or the plugin marketplace instead. See [ADR-0022](docs/adr/0022-npm-distribution-skills-excluded.md)
+  clone or the plugin marketplace instead. See [ADR-0022](adr/0022-npm-distribution-skills-excluded.md)
   for rationale and distribution paths.
 
 **drift-tracked skills**:
@@ -1666,7 +1666,7 @@ this repo self-hosts the plugin it
   diffed. The **fork-and-own** skills `grilling`, `tdd`, `diagnosing-bugs` and `improve-codebase-architecture`
   carry antislop edits and a "Derived from" header in the live file; their FILES rows name the archived
   byte-verbatim copy under `docs/archive/skills/<name>/` as the local path, so only the archived copy is
-  drift-tracked ([ADR-0041](docs/adr/0041-retire-skills-fork-and-own-archive-originals.md)). That differs from a
+  drift-tracked ([ADR-0041](adr/0041-retire-skills-fork-and-own-archive-originals.md)). That differs from a
   declared deviation (the `fm-noflag` class, ADR-0012): a declared deviation keeps the live file drift-tracked
   against reconstructed upstream text, a forked skill's live file is not. The retired `grill-me` and
   `grill-with-docs` keep archived originals at `docs/archive/skills/grill-me/` and
@@ -1691,7 +1691,7 @@ this repo self-hosts the plugin it
   `.claude/review-audit.log` (not a transcript event). Hook block events are
   recorded by `hooks/scripts/agent-audit.sh`'s A7 section (Hook block events) as
   informational audit observations (never gating, never a finding). Named in
-  [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) as the event
+  [ADR-0020](adr/0020-write-edit-content-not-scanned.md) as the event
   class that detection mechanisms exist to observe for bypass-detection.
 
 **JSON type confusion**:
@@ -1711,7 +1711,7 @@ this repo self-hosts the plugin it
   allowlist inheritance path need explicit type+content contracts precisely
   because they cannot borrow type-safety from field-level constraints. See
   `docs/plans/2026-08-15-gh380-debug-spec-type-confusion.md` for the worked
-  instance and [ADR-0020](docs/adr/0020-write-edit-content-not-scanned.md) for
+  instance and [ADR-0020](adr/0020-write-edit-content-not-scanned.md) for
   the related security audit context.
 
 **Agent identity**:
@@ -2214,7 +2214,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   its rationale, in `docs/adr/0036-human-decision-gate-keep-as-is-mode-off.md`
   (ADR-0036).
   **Amended (esc-chat-2/2b, esf-gate-bytes; recorded esc-chat-4, 2026-10-03,
-  [ADR-0039](docs/adr/0039-prompt-confirmed-decision-write.md)):** the gate
+  [ADR-0039](adr/0039-prompt-confirmed-decision-write.md)):** the gate
   still has no grant branch, but it now has one **ask** branch. For the
   [[prompt-confirmed decision write]] only, when [[prompt-eligible]] holds, it
   emits `permissionDecision: "ask"` (never `allow`) and appends a
@@ -2518,7 +2518,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   unchanged; this is a change in *when* the gate fires, not what it does.
   Distinct from `agent-auditor`, which was already on-demand before this
   change and needed no edit. See
-  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md).
+  [ADR-0024](adr/0024-ceremony-reduction-solo-operator.md).
 
 **solo-operator posture**:
 (unit gh401, 2026-08-16, Step 1 of the ceremony-reduction plan) — this
@@ -2534,7 +2534,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   every other adapted project. Risks R1 (no forced human pause) and R3 (H3
   coverage loss under `warn`) are accepted deliberately, stated plainly in
   `CHANGELOG.md`, not softened. See
-  [ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md).
+  [ADR-0024](adr/0024-ceremony-reduction-solo-operator.md).
 
 **Operational ignore list**:
 (unit #408, 2026-08-25) — the canonical, single-sourced array of operational
@@ -3095,7 +3095,7 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   reviewer already has for `.pass`/`.fail`/`.escalated` markers, for the same
   reason: a record *about* the work, not a change *to* the work. This is
   deliberate: `milestone-auditor` has no `Write`/`Edit` tool by design, and
-  does not gain one. See [ADR-0030](docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md).
+  does not gain one. See [ADR-0030](adr/0030-decision-surface-composes-milestone-findings-write-duty.md).
   Intended to join the sibling operational markers as ignored working state,
   but as of 2026-09-04 `.claude/milestone-audit/` has no `.gitignore` entry
   (`git check-ignore` does not match it) — the intent is recorded, the

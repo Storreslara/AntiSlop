@@ -14,7 +14,7 @@ happens on the npx/non-plugin scaffold path).
 | `lint-on-edit.sh` | PostToolUse (Edit\|Write) | Runs the project's configured formatter/linter (`persona-config.json`'s `lintCommand`) on the changed file only; no-ops if unconfigured. |
 | `marker-commit-check.sh` | Called from stop-gate.sh | Advisory classifier for PASS marker `commit:` field attribution — invoked at reviewer turn-end to verify the marker names the unit's own commit, not a sibling's. Prints `marker-commit-check=ok\|mismatch\|unverifiable` and **always exits 0** (never blocks). Configurable via `markerCommitCheck.mode`. See "Marker commit attribution verification" section below. |
 | `protected-paths.sh` | PreToolUse (Write\|Edit) | Blocks writes to configured `protectedPaths` (migrations, lockfiles, this repo's `.claude-plugin/*` etc.) pending human approval. Advisory only — covers Write/Edit, not Bash (`sed -i` bypasses it). |
-| `reviewed-path-gate.sh` | PreToolUse (Bash \| Write\|Edit) | Two matchers, one script: on Bash, allows a command mentioning `.claude/reviewed` only if it's provably read-only or text-only (an allowlist), blocking write-intent commands; on Write\|Edit, blocks any write to the path outright. Both defer to the caller's `agent_type` (`reviewer`, or the main session only in the no-reviewer fallback). Hit live during this repo's own ADAPT — see [ADR 0002](../../docs/adr/0002-reviewed-dir-owned-by-reviewer.md). |
+| `reviewed-path-gate.sh` | PreToolUse (Bash \| Write\|Edit) | Two matchers, one script: on Bash, allows a command mentioning `.claude/reviewed` only if it's provably read-only or text-only (an allowlist), blocking write-intent commands; on Write\|Edit, blocks any write to the path outright. Both defer to the caller's `agent_type` (`reviewer`, or the main session only in the no-reviewer fallback). Hit live during this repo's own ADAPT — see [ADR 0002](../../../docs/adr/0002-reviewed-dir-owned-by-reviewer.md). |
 | `reviewer-route-gate.sh` | PreToolUse (Agent) | Mechanically enforces "lead-programmer never spawns/messages reviewer directly"; also blocks dispatching the next gated unit while an earlier one awaits review. |
 | `session-start.sh` | SessionStart | Records session-start HEAD sha for `stop-gate.sh`; drift-checks `persona-config.json`'s stamped `pluginVersion` vs. the installed plugin version; re-injects `protocol-digest.md` as additionalContext on resume/compact only. |
 | `stop-gate.sh` | Stop + SubagentStop | Core "done = reviewer PASS" enforcement — checks commits/PASS markers before allowing a gated agent (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) to stop. Invokes `marker-commit-check.sh` during the review-join loop. |
@@ -22,7 +22,7 @@ happens on the npx/non-plugin scaffold path).
 
 ## Wiki changelog — Semantic change in marker `commit:` field (milestone 2026-08-15)
 
-The required-first-line `commit:` field in `.pass` markers changed semantics at this milestone (issues #385–#392). **Prior to 2026-08-15**, the field recorded the commit at which the marker was written (nominally `HEAD` at that time). **From 2026-08-15 onward**, it records the unit's own final commit — the tip of the range the reviewer actually reviewed. These are the same commit only when nothing lands on top between units. This distinction is **not recoverable from the markers themselves** — a marker written before this milestone cannot be retroactively reclassified without human re-review. All markers remain valid; only the meaning of the `commit:` value changed. Markers written before this date: `commit:` is when-written. Markers from this date onward: `commit:` is unit-authored. See [ADR-00NN](../../docs/adr/00NN-marker-commit-attribution.md) and [issue #385](https://github.com/Storreslara/AntiSlop/issues/385) for the full rationale.
+The required-first-line `commit:` field in `.pass` markers changed semantics at this milestone (issues #385–#392). **Prior to 2026-08-15**, the field recorded the commit at which the marker was written (nominally `HEAD` at that time). **From 2026-08-15 onward**, it records the unit's own final commit — the tip of the range the reviewer actually reviewed. These are the same commit only when nothing lands on top between units. This distinction is **not recoverable from the markers themselves** — a marker written before this milestone cannot be retroactively reclassified without human re-review. All markers remain valid; only the meaning of the `commit:` value changed. Markers written before this date: `commit:` is when-written. Markers from this date onward: `commit:` is unit-authored. See [ADR-00NN](../../../docs/adr/0023-marker-commit-attribution.md) and [issue #385](https://github.com/Storreslara/AntiSlop/issues/385) for the full rationale.
 
 ## Historical issues resolved before plan 2026-08-02
 
@@ -44,7 +44,7 @@ is blocked (✓ correct), real write as `reviewer` is allowed (✓ correct). Two
 residuals remain and are ratified (not oversights): `git commit -m` naming the
 path stays blocked by ADR-0002's ratified ruling (git consults out-of-band
 config), and the `${var}`-split path obfuscation still under-blocks (recorded
-in [README](../../README.md)'s "Known limitations"). Recommend closing #155
+in [README](../../../README.md)'s "Known limitations"). Recommend closing #155
 with a pointer to #177–#182 and #185.
 
 ## Sticky `defer:` semantics and the audit-log dedupe (issue #190, F3)
@@ -165,8 +165,8 @@ scripts above but is **deliberately absent from `hooks/hooks.json`** — it
 is an orchestrator-invoked helper (`reviewer-tier.sh <task-id> <git-range>`
 → prints `sonnet` or `opus`), not a lifecycle hook. It lives under
 `hooks/scripts/` only so `tests/validate.sh`'s bash-syntax sweep covers it
-automatically. See the glossary entry in [CONTEXT.md](../../CONTEXT.md)
-and [ADR 0009](../../docs/adr/0009-reviewer-tier-measured-eligibility.md)
+automatically. See the glossary entry in [CONTEXT.md](../../../CONTEXT.md)
+and [ADR 0009](../../../docs/adr/0009-reviewer-tier-measured-eligibility.md)
 for what it decides and why.
 
 ## Config-driven, not hardcoded
@@ -295,9 +295,9 @@ begin `PASS <unit-id> ` or `FAIL <unit-id> ` (matching `task-gate.sh`'s
 - Ports to `adapters/codex/hooks/scripts/stop-gate.sh` and
   `adapters/cursor/hooks/scripts/stop-gate.sh` are verified by
   `tests/adapter-stop-gate-parity.test.sh` (see "Adapter behavioural parity"
-  under [CONTEXT.md](../../CONTEXT.md)).
+  under [CONTEXT.md](../../../CONTEXT.md)).
 - In codex, the block path routes through `block()`, preserving the loop-guard
-  escape; claude and cursor keep bare `exit 2`. See [ADR-0016](../../docs/adr/0016-per-unit-review-join.md).
+  escape; claude and cursor keep bare `exit 2`. See [ADR-0016](../../../docs/adr/0016-per-unit-review-join.md).
 
 ## dispatch-hygiene.sh: idempotency window for escape-hatch replay (issue #166)
 
