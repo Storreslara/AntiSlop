@@ -48,8 +48,8 @@ handoff:fm-noflag:skills/handoff/SKILL.md:skills/productivity/handoff/SKILL.md
 tdd:fm:docs/archive/skills/tdd/SKILL.md:skills/engineering/tdd/SKILL.md
 tdd:doc:docs/archive/skills/tdd/tests.md:skills/engineering/tdd/tests.md
 tdd:doc:docs/archive/skills/tdd/mocking.md:skills/engineering/tdd/mocking.md
-diagnosing-bugs:fm:skills/diagnosing-bugs/SKILL.md:skills/engineering/diagnosing-bugs/SKILL.md
-diagnosing-bugs:raw:skills/diagnosing-bugs/scripts/hitl-loop.template.sh:skills/engineering/diagnosing-bugs/scripts/hitl-loop.template.sh
+diagnosing-bugs:fm:docs/archive/skills/diagnosing-bugs/SKILL.md:skills/engineering/diagnosing-bugs/SKILL.md
+diagnosing-bugs:raw:docs/archive/skills/diagnosing-bugs/scripts/hitl-loop.template.sh:skills/engineering/diagnosing-bugs/scripts/hitl-loop.template.sh
 improve-codebase-architecture:fm-noflag:docs/archive/skills/improve-codebase-architecture/SKILL.md:skills/engineering/improve-codebase-architecture/SKILL.md
 improve-codebase-architecture:doc:docs/archive/skills/improve-codebase-architecture/HTML-REPORT.md:skills/engineering/improve-codebase-architecture/HTML-REPORT.md
 codebase-design:fm:skills/codebase-design/SKILL.md:skills/engineering/codebase-design/SKILL.md

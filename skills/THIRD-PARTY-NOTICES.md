@@ -20,7 +20,7 @@ script remains directly runnable/copyable.
 | 4 | `to-spec` (archived at `docs/archive/skills/to-spec/`; template carried in `agents/spec-master.md`) | `skills/engineering/to-spec` |
 | 5 | `to-tickets` (merged into `skills/pathfinder`; archived at `docs/archive/skills/to-tickets/`) | `skills/engineering/to-tickets` |
 | 6 | `tdd` (forked: the live file is derived and edited; original archived at `docs/archive/skills/tdd/`) | `skills/engineering/tdd` |
-| 7 | `diagnosing-bugs` | `skills/engineering/diagnosing-bugs` |
+| 7 | `diagnosing-bugs` (forked: the live file is derived and edited; original archived at `docs/archive/skills/diagnosing-bugs/`) | `skills/engineering/diagnosing-bugs` |
 | 8 | `improve-codebase-architecture` (forked: the live file is derived and edited, `HTML-REPORT.md` is dropped; originals archived at `docs/archive/skills/improve-codebase-architecture/`) | `skills/engineering/improve-codebase-architecture` |
 | 9 | `codebase-design` | `skills/engineering/codebase-design` |
 | 10 | `domain-modeling` | `skills/engineering/domain-modeling` |

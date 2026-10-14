@@ -1,18 +1,9 @@
 ---
 name: install-antislop
 description: >
-  Adapt the antislop plugin (persona system + hooks + coding-discipline
-  skill) to THIS repository. Run once per new project after installing the
-  plugin. Covers only what genuinely can't be pre-baked: version check,
-  persona selection, the Code Review Graph, the
-  arXiv MCP for researcher, repo-specific commands/paths, CLAUDE.md wiring,
-  settings merge, wiki seeding, and sandboxed hook verification. Resyncing an
-  already-adapted project against a newer plugin version (`--update`) is now
-  a deterministic script (`bin/cli.js --update`, zero LLM cost, including for
-  projects adapted before this existed — it auto-backfills what it needs from
-  disk) — this skill is invoked with `--update` only as that script's
-  fallback, and even then only for the one specific gap it names, not a full
-  re-adapt.
+  Adapt the antislop plugin (personas, hooks, coding-discipline skill) to THIS repository. Run once per
+  new project after installing the plugin: version check, personas, Code Review Graph, researcher MCP,
+  repo config, CLAUDE.md, settings, wiki, hook checks. `--update` resync is a separate script.
 ---
 <!-- This skill is the entire "ADAPT-PROMPT" that replaces sections 0, 1, 7,
      and 8 of the original monolithic setup prompt. Everything else (the
@@ -25,13 +16,15 @@ description: >
 ## 0. Version gate (no FLAT MODE fallback — this plugin targets one baseline)
 
 - Run `claude --version`. Require **v2.1.248+** (nested subagent spawning
-  works from v2.1.172, TeamCreate/TeamDelete were removed in v2.1.178 — the
+  arrived in v2.1.172, was off by default in v2.1.217-v2.1.218 and has defaulted to depth 3 since
+  v2.1.219, with `CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH` setting the depth;
+  TeamCreate/TeamDelete were removed in v2.1.178 — the
   `start-feature-team` command assumes automatic cleanup — and
   `experimental.cacheTtl` frontmatter requires v2.1.248). If the
   installed version is older, STOP and tell the user to upgrade; do not
   attempt a degraded/flat wiring.
 - Plugin-provided agents are namespaced (`antislop:explorer`, not
-  `explorer`) — confirmed on Claude Code 2.1.201, a bare-name spawn
+  `explorer`) — a bare-name spawn
   hard-errors (`Agent type 'explorer' not found`), it does not fall back to
   fuzzy/description-based resolution. This is WHY step 2 below copies every
   selected persona file into the project's `.claude/agents/` as its first
@@ -45,7 +38,7 @@ description: >
 Skip this section entirely if invoked with `--update` (that path is already
 handled — go to section 11). Otherwise, before starting section 1:
 
-- Check whether `.claude/persona-config.json` already exists.
+- Check whether `.claude/persona-config.json` already exists (use `Glob` or the `Read` tool; a Bash command naming that file can be refused by `harness-integrity-gate.sh`).
 - If it does NOT exist: this is a genuine fresh install — proceed to
   section 1, nothing to do here.
 - If it DOES exist: read its `pluginVersion` and compare to this plugin's
@@ -62,7 +55,7 @@ handled — go to section 11). Otherwise, before starting section 1:
     1. **Resume** — inspect which outputs already exist
        (`.claude/agents/*.md`, `.claude/persona-protocol.md`,
        `.claude/protocol-digest.md`, `.claude/settings.json`,
-       `.claude/persona-config.json`) to infer how far the prior run got,
+       `.claude/persona-config.json`; check it with `Glob` or `Read`, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`) to infer how far the prior run got,
        and continue from the first incomplete section.
     2. **Patch gaps only** — run the step 12 placeholder sweep now, then
        re-run only the sections whose output is missing or still contains
@@ -104,7 +97,7 @@ about them). Ask individually about the rest:
 
 Record the selection as `personaSelection` in `.claude/persona-config.json`
 (step 6) — `--update` mode (section 11) reads this to know which files to
-re-derive.
+re-derive. To read it yourself, use the `Read` tool (a Bash command naming that file can be refused by `harness-integrity-gate.sh`).
 
 ## 2. Copy selected personas into the project
 
@@ -158,7 +151,7 @@ accurate forever):
   inlines its launch command into the project's copy of `explorer.md`'s
   `mcpServers:` frontmatter, removes the project-wide `.mcp.json` entry so
   only the explorer connects to it, and records `substitutions.graphMcpLaunch`
-  in `.claude/persona-config.json` (creating the file with just that field if
+  in `.claude/persona-config.json` (inspect it with the `Read` tool, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`; the file is created with just that field if
   step 6 hasn't run yet — step 6 must MERGE into it, not overwrite it, so
   this survives). Skipping this and doing it by hand risks the exact trap the
   script exists to avoid: `mcpServers` must be a LIST of single-key dicts,
@@ -175,7 +168,7 @@ accurate forever):
 - Build the index once (`code-review-graph build` or equivalent — check the
   tool's current CLI). Identify the incremental-update command and its
   file-argument syntax — this becomes `graphUpdateCommand` in
-  `.claude/persona-config.json` (see step 6).
+  `.claude/persona-config.json` (see step 6; read the file with the `Read` tool, not Bash).
 - Add the persistent store (SQLite db / index dir) to `.gitignore` unless you
   deliberately want a shared prebuilt index (if so, commit it and say so in
   your report).

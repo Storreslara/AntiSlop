@@ -11,7 +11,7 @@ On a throwaway branch:
   (check the graph index timestamp / lint output).
 - Confirm the stop-gate does **NOT** block a trivial explorer or
   scribe turn even with a dirty tree — proof that `gatedAgents`
-  scoping (read from `persona-config.json`, not hardcoded in `hooks.json`) is
+  scoping (read from `persona-config.json` by the hook, not hardcoded in `hooks.json`; to inspect the file yourself use the `Read` tool, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`) is
   working and won't strangle the cheap, high-frequency personas.
   Additionally confirm the stop-gate does NOT block a trivial main-session
   (orchestrator) Stop even with a dirty tree from an in-flight subagent —

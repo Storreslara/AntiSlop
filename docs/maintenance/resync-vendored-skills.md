@@ -14,13 +14,13 @@ deciding whether/how to re-pin.
 | `grilling` | `skills/productivity/grilling` | verbatim |
 | `handoff` | `skills/productivity/handoff` | verbatim |
 | `tdd` (+ `tests.md`, `mocking.md`) | `skills/engineering/tdd` | verbatim |
-| `diagnosing-bugs` (+ `scripts/hitl-loop.template.sh`) | `skills/engineering/diagnosing-bugs` | verbatim |
+| `diagnosing-bugs` (+ `scripts/hitl-loop.template.sh`) | `skills/engineering/diagnosing-bugs` | forked (rows diff the archived copy) |
 | `improve-codebase-architecture` (+ `HTML-REPORT.md`, archived copy only) | `skills/engineering/improve-codebase-architecture` | forked (rows diff the archived copy) |
 | `codebase-design` (+ `DEEPENING.md`, `DESIGN-IT-TWICE.md`) | `skills/engineering/codebase-design` | verbatim |
 | `domain-modeling` (+ `ADR-FORMAT.md`, `CONTEXT-FORMAT.md`) | `skills/engineering/domain-modeling` | verbatim |
 
 The first 7 are byte-verbatim aside from their provenance header, with two intentional deviations — `handoff` and `improve-codebase-architecture` — that have the `disable-model-invocation: true` flag stripped, tracked as the `fm-noflag` reconstruction type. Forked skills
-(currently `tdd`, `grilling` and `improve-codebase-architecture`) are the exception: the live file carries antislop edits and a "Derived from" header, and the FILES rows name the archived original
+(currently `tdd`, `grilling`, `improve-codebase-architecture` and `diagnosing-bugs`) are the exception: the live file carries antislop edits and a "Derived from" header, and the FILES rows name the archived original
 (`docs/archive/skills/<name>/`) as the local path, so `--check` diffs the archived copy and still reports upstream drift. Full
 table with exact upstream paths: `skills/THIRD-PARTY-NOTICES.md`.
 `grill-me` and `grill-with-docs` were retired by the skills audit (originals: `docs/archive/skills/`).
