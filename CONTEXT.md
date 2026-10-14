@@ -49,9 +49,10 @@ a subagent system prompt in `agents/*.md`. "Core" personas
   (orchestrator, explorer, lead-programmer) are always installed; "optional"
   personas (spec-master, task-master, scribe, reviewer, researcher,
   milestone-auditor, agent-auditor) are selected per-project during ADAPT. `spec-master`
-  turns ambiguous goals into precise specs via grilling and publishes via
-  `to-spec`; `task-master` reads finalized specs and writes dispatch
-  instructions for `lead-programmer`, owns `to-tickets` slicing outright, tags
+  turns ambiguous goals into precise specs via grilling and publishes through
+  its own [[PRD template]] appendix (formerly the `to-spec` skill); `task-master`
+  reads finalized specs and writes dispatch instructions for `lead-programmer`,
+  owns slicing through the `pathfinder` skill, tags
   per-unit models. `scribe` maintains institutional knowledge (wiki, CONTEXT.md,
   ADRs). `reviewer` is the independent verifier (the Writer/Reviewer split).
   `researcher` bridges academic literature and spec authoring. `milestone-auditor`
@@ -518,15 +519,15 @@ Code Review Graph, a third-party MCP server providing
   [ADR 0001](docs/adr/0001-mcp-scoped-to-single-persona.md).
 
 **`to-spec` skill**:
-vendored first-party skill (originally from Matt
-  Pocock's `skills` repo, see `skills/THIRD-PARTY-NOTICES.md`), wired to
-  `spec-master` via `antislop:to-spec`. Turns a finalized spec
+a retired vendored skill (originally from Matt
+  Pocock's `skills` repo, see `skills/THIRD-PARTY-NOTICES.md`) that was wired to
+  `spec-master` via `antislop:to-spec`. It turned a finalized spec
   conversation into a single published spec (Problem Statement / Solution /
   User Stories / Implementation Decisions / Testing Decisions / Out of Scope)
-  on the issue tracker, no further interview. Complements `grill-me`
-  sequentially: grill to resolve ambiguity, then to-spec to synthesize and
-  publish. The template LAYERS on top of the v0.9.0 spec-kit format (Goal →
-  Context → Clarifications → …), not replacing it.
+  on the issue tracker, with no further interview, after `grill-me` had
+  resolved the ambiguity. The template layered on top of the v0.9.0 spec-kit
+  format (Goal → Context → Clarifications → …), not replacing it; it lives
+  on as the [[PRD template]].
   Its sibling `grill-me` was retired 2026-10-14 (skr-2); the original is kept at
   `docs/archive/skills/grill-me/`.
   Retired 2026-10-14 (skills audit, skr-3): merged into `agents/spec-master.md`, whose
@@ -535,7 +536,7 @@ vendored first-party skill (originally from Matt
 **fast-path threshold**:
 ≤5 dispatchable units in a finalized spec. Below
   it, `spec-master` emits the nine-element dispatch contract directly from
-  the `docs/plans/` document — `task-master` and `to-tickets` are bypassed,
+  the `docs/plans/` document — `task-master` and its `pathfinder` slicing are bypassed,
   and the `docs/plans/` document is itself the retrieval contract. Raised
   from ≤2 to ≤5 by Step 3 of the 2026-08-16 ceremony-reduction plan
   ([ADR-0024](docs/adr/0024-ceremony-reduction-solo-operator.md), amending
@@ -549,7 +550,7 @@ vendored first-party skill (originally from Matt
 **publish threshold**:
 ≥6 dispatchable units in a finalized spec (or any
   multi-milestone spec). At or above it, `spec-master` maps the finished
-  plan onto the `to-spec` PRD template and publishes it to the issue
+  plan onto its [[PRD template]] and publishes it to the issue
   tracker with the `ready-for-agent` label. Below it (≤5), publishing is
   optional and the `docs/plans/` document remains the canonical artifact
   either way. Also spelled `tracker-publish threshold` (`CHANGELOG.md`,
@@ -638,10 +639,77 @@ a skill declared in a [[Persona]]'s `skills:` frontmatter, loaded into
 **Archived skill**:
 a skill whose original files are kept, byte-identical, under
   `docs/archive/skills/<name>/` with an index row naming its origin
-  directory and commit. Nothing loads, lists, mirrors, hashes or ships it.
+  directory and commit. No skill loader discovers it and nothing lists,
+  mirrors or hashes it; the npm package ships no `docs/` path, while a git
+  clone or plugin install carries it as inert files.
   It exists so a retired or rewritten skill's original stays readable
   without git archaeology. _Avoid_: "deprecated skill" (a deprecated skill is
   still live).
+
+**Retired skill**:
+a skill removed from every discovery root: no persona preloads or invokes it
+  and no skill menu lists it. Its original is kept as an [[Archived skill]].
+  The archive index's disposition column records what became of each archived
+  original: `retired` (gone; a successor is named, or none), `merged away` (its
+  content now lives in a persona or another skill), `rewritten` or `trimmed`
+  (still live, edited), `forked` (still live, see [[Forked skill]]).
+
+**Forked skill** (synonym: **fork-and-own**):
+a vendored skill whose live file antislop now edits. The live file carries a
+  "Derived from" header instead of the byte-verbatim vendoring header, and
+  upstream drift is tracked on its byte-verbatim original under
+  `docs/archive/skills/<name>/`, not on the live file, so upstream fixes are
+  ported by hand. A declared deviation, by contrast, keeps the live file
+  drift-tracked against reconstructed upstream text. Current set: `grilling`,
+  `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`
+  ([ADR-0041](docs/adr/0041-retire-skills-fork-and-own-archive-originals.md)).
+
+**PRD template**:
+the section layout `spec-master` maps a finished plan onto when it publishes
+  to the issue tracker: Problem Statement, Solution, User Stories,
+  Implementation Decisions, Testing Decisions, Out of Scope, Further Notes. It
+  lives in `agents/spec-master.md` under `## Appendix: PRD template` and layers
+  on top of the plan format (Goal, Context, Clarifications, ...) without
+  replacing it; the `docs/plans/` document stays the canonical artifact. See
+  [[publish threshold]].
+
+**debug spec**:
+the focused artifact `spec-master` writes when the orchestrator escalates a
+  unit that hit the 2-FAIL cap: after re-running the failing criterion fresh,
+  a root-cause read of the plan (a plan gap, an unverifiable criterion, missing
+  context or the wrong approach), then the failed steps rewritten with
+  corrected acceptance criteria and a table mapping every recorded defect to a
+  criterion that detects it. Never a from-scratch replan. Formerly the
+  `fail-triage` skill (original: `docs/archive/skills/fail-triage/`).
+
+**self-grill**:
+the `grilling` mode with no one to ask, for example when auditing a plan's
+  premises: the agent answers each question itself from evidence in the repo
+  (files, tests, history, tools), and a question the evidence cannot settle,
+  including an undecided decision, becomes a finding rather than a guess.
+  Compare [[Open Questions]], the mode for a dispatched agent whose answers
+  come from the user through the orchestrator.
+
+**Open Questions**:
+the section a one-shot dispatched agent (typically `spec-master` while
+  grilling) returns when a decision needs the user: up to 4 questions per
+  round, ordered by impact x uncertainty, each with a recommended default and
+  options where the answer space is discrete. The agent stops; the
+  orchestrator relays the questions and re-dispatches with the answers, and
+  rounds repeat until every question converges. Returning Open Questions is a
+  finished turn, not a failure.
+
+**work the frontier**:
+the order in which the units of a `pathfinder` slice are dispatched: next is
+  any unit whose blockers are all done; for a purely linear chain that is top
+  to bottom.
+
+**expand-contract**:
+the `pathfinder` sequencing for a wide refactor, one mechanical change whose
+  blast radius fans across the whole codebase so no single vertical slice can
+  land green: first expand (add the new form beside the old), then migrate the
+  call sites in batches, each its own unit blocked by the expand, then contract
+  (delete the old form) in a unit blocked by every migrate batch.
 
 **Harness**:
 Claude Code the product — the IDE plugin and surrounding runtime
@@ -917,8 +985,9 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   this file can hold more than one [[FAIL block]]: each FAIL verdict for the
   same task-id appends a new block rather than overwriting the previous one,
   so the file is a chronological log of every failed attempt, not a single
-  latest-only snapshot. Read by `bin/fail-count.sh` and by `fail-triage`/debug
-  spec when a unit reaches [[ladder exhaustion]].
+  latest-only snapshot. Read by `bin/fail-count.sh` and by `spec-master`'s
+  [[debug spec]] when a unit reaches [[ladder exhaustion]] (formerly the
+  `fail-triage` skill).
   Archived originals (skills audit, 2026-10-14): `docs/archive/skills/fail-triage/`.
 
 **FAIL block**:

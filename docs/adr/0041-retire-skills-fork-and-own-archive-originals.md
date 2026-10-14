@@ -1,4 +1,4 @@
-# ADR 0041: Retire five skills, fork-and-own the edited vendored skills, archive originals under `docs/archive/skills/`
+# ADR 0041: Retire ten skills, fork-and-own the edited vendored skills, archive originals under `docs/archive/skills/`
 
 Date: 2026-10-14
 Status: Accepted
@@ -13,7 +13,7 @@ The skills audit (plan `docs/plans/2026-10-14-skills-audit-implementation.md`) f
 
 1. Retire the five vendored skills `grill-me`, `grill-with-docs`, `code-review`, `to-spec` and `to-tickets`, the first-party `fail-triage`, and the four graph-generated local skills (`debug-issue`, `explore-codebase`, `refactor-safely`, `review-changes`). `to-spec` and `fail-triage` are merged into `agents/spec-master.md`, `to-tickets` into `skills/pathfinder`.
 2. The vendored skills whose text antislop now edits (`grilling`, `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`) are **fork-and-own**: the live file carries a "Derived from" header, and drift tracking moves to the archived byte-verbatim copy, so `scripts/resync-vendored-skills.sh --check` still reports upstream drift. This is not a declared deviation (ADR-0012): a declared deviation keeps the live file drift-tracked against reconstructed upstream text; a forked skill's live file is not drift-tracked, only its archived copy is.
-3. Every pre-change original of a skill that was deleted, merged away or rewritten is kept byte-identical under `docs/archive/skills/<name>/`, with an index row in `docs/archive/skills/README.md` naming its origin path and commit. Nothing loads, lists, mirrors, hashes or ships that directory.
+3. Every pre-change original of a skill that was deleted, merged away or rewritten is kept byte-identical under `docs/archive/skills/<name>/`, with an index row in `docs/archive/skills/README.md` naming its origin path and commit. No skill loader discovers that directory and nothing lists, mirrors or hashes it; the npm package ships no `docs/` path, while a git clone or plugin install carries it as inert files (ADR-0022).
 
 ## Consequences
 
@@ -33,3 +33,7 @@ The skills audit (plan `docs/plans/2026-10-14-skills-audit-implementation.md`) f
 - ADR-0005, ADR-0012 and ADR-0031: amended by this ADR (reciprocal `Amended by ADR-0041` bullets).
 - ADR-0003 and ADR-0022: this ADR changes their `to-spec` / `to-tickets` wording and skill count in substance; they are historical and are not edited in place.
 - `docs/archive/skills/README.md`: the archive index.
+
+## Corrections
+
+- 2026-10-14 (unit sfu-1): the title said five skills while Decision 1 retires ten, and Decision 3 said nothing ships the archive, overstating ADR-0022's npm-only exclusion. Both corrected in place; the decision is unchanged.

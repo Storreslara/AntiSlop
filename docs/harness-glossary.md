@@ -974,13 +974,13 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   are both model-invocable, creating ambiguity: a user request like "grill me" might invoke
   either `grill-me` ("A relentless interview to sharpen a plan or design.") or `grill-with-docs`
   ("A relentless interview to sharpen a plan or design, which also creates docs (ADR's and
-  glossary) as we go.") depending on the harness's selection order. The descriptions cannot
-  be edited to disambiguate because both are **drift-tracked skills** — their descriptions
-  are reconstructed byte-for-byte from upstream by the `fm-noflag` declared-deviation type,
-  and editing the descriptions would break the `fm-noflag` declared-deviation class check.
-  The only available mitigation is explicit prose naming of the intended skill in the persona
+  glossary) as we go.") depending on the harness's selection order. The descriptions could not
+  be edited to disambiguate because both were then **drift-tracked skills** — their descriptions
+  were reconstructed byte-for-byte from upstream by the `fm-noflag` declared-deviation type,
+  and editing the descriptions would have broken the `fm-noflag` declared-deviation class check.
+  The only available mitigation was explicit prose naming of the intended skill in the persona
   or dispatch context (e.g., in `agents/spec-master.md`'s instructions to use `grill-with-docs`
-  rather than bare "grilling"), since descriptions themselves cannot be used as a
+  rather than bare "grilling"), since descriptions themselves could not be used as a
   disambiguation surface.
   Resolved 2026-10-14 (skills audit, skr-2): `grill-me` and `grill-with-docs` were retired, so the
   collision no longer exists; originals: `docs/archive/skills/grill-me/`, `docs/archive/skills/grill-with-docs/`.
@@ -1625,9 +1625,9 @@ When a
   that the live MCP server actually exposes: `get_flow`, `list_graph_stats`,
   `get_community`, `list_flows`, `find_large_functions`. Seven occurrences in
   shipped SKILL.md files (`debug-issue`, `explore-codebase`, `refactor-safely`).
-  Root cause is upstream installer content bug, not antislop defect. Now that
-  these SKILL.md files are tracked/shipped, the gap is more visible and should
-  be fixed in the installer itself.
+  Root cause is upstream installer content bug, not antislop defect. While
+  these SKILL.md files were tracked/shipped, the gap was more visible; any fix
+  belongs in the installer itself.
   The SKILL.md files named here are retired; their originals are kept under
   `docs/archive/skills/` (see **Archived skill** in CONTEXT.md).
 
@@ -1672,6 +1672,15 @@ this repo self-hosts the plugin it
   `grill-with-docs` keep archived originals at `docs/archive/skills/grill-me/` and
   `docs/archive/skills/grill-with-docs/`. The `--check` flag reports per-skill status (`[OK]` for match, or drift
   details if changed). No `REPOINT_SKILLS` remain. See `docs/maintenance/resync-vendored-skills.md`.
+
+**skill base directory**:
+(unit sfu-1, 2026-10-14) — the directory a loaded skill's files live in. The
+  harness announces it as a "Base directory for this skill: <path>" line when
+  the skill loads; for a plugin skill it is the plugin cache, not the
+  consumer's repo. A skill names its companion files relative to it (for
+  example `diagnosing-bugs`'s `scripts/hitl-loop.template.sh`), because the
+  same relative path read from the working directory finds nothing in a
+  consumer project.
 
 **hook block event**:
 (unit #288, 2026-08-11) — a transcript event (a `tool_result` entry in
@@ -1843,7 +1852,7 @@ normal FAIL routes the defect list to
   and nothing revalidates it automatically. Mitigation, not a fix: a copied
   feedback block carries the commit SHA at copy time, so a receiving agent can
   re-derive the real location.
-  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/code-review/`.
+  Not the retired `code-review` skill, a different tool (original: `docs/archive/skills/code-review/`).
 
 **Resolved packet**:
 (unit human-review-cleanup-1, 2026-08-24) — a state of an [[Escalation packet]]
