@@ -48,8 +48,18 @@ Closed epfb notes 1-5: 1 by epfc-1 (TB18 pins the `* ` branch of mdStartsBlock);
 
 Closed the epfc open items: epfd-1 made mutant (d) in docs/plans/epfb-criteria/epfb4-ac3.sh position-exact (line index, lookahead from li + 1, plus a guard line), replacing the `indexOf` lookup. epfd-2 added a bare `## ` input to F5 in tests/protocol-cross-references.test.js; a trailing-newline input was deliberately not added because F2/F4 already catch it. epfd-3 added SF1 (six direct cases) for the local splitFences helper in tests/adapter-protocol-parity.test.js; nothing exported from bin/. No glossary change. Do not re-check these.
 
+## vtmp closure (vtmp-1, PASS 2026-10-14; 1e915f7; no version bump)
+
+tests/validate.sh sections 5, 6, 7, 10 and 67 now write scratch files via per-run `mktemp` (npm_pack_err, marketplace_err, claude_plugin_tag_out, frontmatter_yaml_err, codex_toml_err) instead of fixed /tmp names; each section's existing `rm -f` cleans them. Messages and behaviour unchanged. Fast path, no issue. No glossary change.
+
+**Corrected reasoning for j:** the vtmp plan measured that the fixed /tmp names cannot change an exit code (30/30 exit 0 with six concurrent runs), so vtmp-1 is hygiene and does NOT explain j. Remaining unverified candidates for j: shared `.claude/` marker state, git `index.lock`, fixed ports in the dashboard sections.
+
+**Timing profile (explorer report, not a unit):** serial validate.sh is about 435 s; 29 sections take >=1 s and total 419 s. Top costs: section 109 (136 s, probe-hook-identity tests), 115 (83 s, unit-outcomes.js), 49 (62 s, human-decision gate), 25 and 48 (about 21 s each).
+
+**Not-started follow-up:** run validate.sh in three parallel lanes (about 60% saving). Prerequisite: isolate `.claude/` marker state and the git index first (same shared state is a j suspect). No unit or spec exists yet.
+
 ## Live carry-forward
 
-- **j** (validate.sh exited 1 once under concurrency): unreproduced and a documented non-goal; merge gate passed clean at HEAD after epfd. Watch item, not a defect. Nothing else is open.
+- **j** (validate.sh exited 1 once under concurrency): unreproduced and a documented non-goal; merge gate passed clean at HEAD after epfd. Watch item, not a defect. vtmp-1 ruled out the fixed /tmp names as the cause (see vtmp closure); other candidates unverified. Only other open item: the parallel-lanes speedup idea (not started).
 
 **Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** before any follow-up touching the escalation layout, viewer tests, or parity probes, re-check only item j; everything else in this file is closed.
