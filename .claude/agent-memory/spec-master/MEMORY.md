@@ -5,7 +5,7 @@
 - [cli.js --update flag surface spec (#335)](project_cli_update_flag_surface_spec.md) — settled #289/#291 decisions, 11 write sites, and the open question gating unit 2.
 - [--update dedupe-hooks spec (#74)](project_update_dedupe_hooks_spec.md) — extends #66-73 guard to --update; warn-only default + opt-in --dedupe-hooks, claude-only, no new marker.
 - [No forced changes](feedback_no_forced_changes.md) — "no change warranted" is a valid finalized answer; ground any change in a grep-verifiable gap, never manufacture a diff.
-- [to-spec flag state changed](project_to_spec_slash_only.md) — was slash-only; unit #252 un-flagged it 2026-08-06. Check your live skills list before assuming either state.
+- [to-spec/grill-me retired](project_to_spec_slash_only.md) — both gone since 2026-10-14 (ADR-0041); publish via your own PRD-template appendix, grill with grilling.
 - [reviewed-path-gate behavior](project_reviewed_path_gate_blocks_bash.md) — bare ls/cat/grep work; it ignores gatedAgents and blocks by command TEXT; use the placeholder+sed pattern to author docs.
 - [ADR numbering: increment, never backfill](project_adr_numbering_increment_not_backfill.md) — the 0007 hole is not free (CONTEXT.md links it); re-derive ADR numbers at execution time, sibling specs collide.
 - [`grep` is wrapper-shadowed inline](project_grep_is_wrapper_shadowed_inline.md) — bare `grep` = ugrep inline but GNU inside `bash script.sh`; same text, two counts. Use `git grep`.

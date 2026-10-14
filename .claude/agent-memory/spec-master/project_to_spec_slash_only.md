@@ -1,33 +1,27 @@
 ---
 name: to-spec-slash-only
-description: to-spec WAS slash-only but unit #252 un-flagged it (2026-08-06); verify against your live skills list before assuming either state.
+description: to-spec and grill-me no longer exist as skills (retired 2026-10-14, skr-2/skr-3); the PRD template lives in spec-master's own appendix. Historical note on the disable-model-invocation flag kept.
 metadata:
   type: project
 ---
 
-**CORRECTED 2026-08-06 — this memory was written before unit #252 landed.**
-`to-spec` and `to-tickets` were un-flagged by commit `1eb4627` ("fix: un-flag
-to-spec and to-tickets, remove /implement reference (unit #252)"), and
-`antislop:to-spec` now appears in a dispatched spec-master's available-skills
-list. Treat the "slash-only" claim below as **historical**.
+**SUPERSEDED 2026-10-14 (skills audit, ADR-0041).** `to-spec` was merged into
+`agents/spec-master.md` (skr-3) and `grill-me` was retired (skr-2); neither is a
+skill any more, so never look for `antislop:to-spec` or `antislop:grill-me`.
+Originals: `docs/archive/skills/to-spec/`, `docs/archive/skills/grill-me/`.
 
-**Check before relying on either state:** look for `antislop:to-spec` in your
-own available-skills listing. Per the skills-library spec's R7, skills resolve
-from the versioned *plugin cache*, not the working tree — so a repo-side
-un-flagging does not take effect until the cache is refreshed and the session
-restarts. The two can legitimately disagree.
+**How to apply:** to publish, map the finished plan onto your own
+`## Appendix: PRD template` (Problem Statement / Solution / User Stories /
+Implementation Decisions / Testing Decisions / Out of Scope / Further Notes)
+and publish to the tracker named by `issueTracker` (read the persona config
+with the Read tool, never Bash). Grill with `antislop:grilling` plus
+`antislop:domain-modeling`. Tracker here: GitHub issues, repo
+Storreslara/AntiSlop, `ready-for-agent` label exists; when the spec targets an
+existing source issue, posting the PRD as a comment on it plus the label avoids
+a near-duplicate issue.
 
-Historical detail, still accurate about what the flag does: a skill carrying
-`disable-model-invocation: true` is not merely blocked from the `Skill` tool —
-it is removed from the agent entirely (absent from the skills list, body not
-preloaded), in every mode, not just agent-teams.
-
-**How to apply:** When spec-master runs as a subagent and the task says
-"publish via to-spec," read the skill's SKILL.md for its PRD template + process
-and apply them manually — map the finalized plan onto Problem Statement /
-Solution / User Stories / Implementation Decisions / Testing Decisions / Out of
-Scope / Further Notes, then publish to the tracker yourself. Same applies to
-`grill-me` if it is also disable-model-invocation. Issue tracker for this repo:
-GitHub issues, repo Storreslara/AntiSlop, `ready-for-agent` label exists. When
-the spec targets an existing source issue, posting the PRD as a comment on that
-issue + adding the label avoids duplicating it as a near-identical new issue.
+Still-true history about the flag: a skill carrying
+`disable-model-invocation: true` is removed from the agent entirely (absent
+from the skills list, body not preloaded) in every mode, and skills resolve
+from the versioned plugin cache, so a repo-side change reaches a session only
+after a plugin update and restart.

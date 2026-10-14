@@ -8,7 +8,7 @@ metadata:
 When re-delegated to finalize a plan a *previous* spec-master session
 authored, treat the saved `docs/plans/YYYY-MM-DD-<slug>.md` as the sole
 source of truth and continue from it. Do **not** re-run the 9-category
-ambiguity taxonomy, do not re-invoke `grill-me`, and do not re-derive the
+ambiguity taxonomy, do not re-run the `grilling` session, and do not re-derive the
 Context section's findings.
 
 **Why:** prior sessions are not resumable (no live transcript), and this repo
