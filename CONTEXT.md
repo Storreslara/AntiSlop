@@ -544,6 +544,7 @@ vendored first-party skill (originally from Matt
   (see this glossary's `--force-render` / `--dry-run` entries) — an
   unrelated mechanism that happens to share the words "fast path". See
   [[publish threshold]].
+  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/to-tickets/`.
 
 **publish threshold**:
 ≥6 dispatchable units in a finalized spec (or any
@@ -567,6 +568,8 @@ first-party skill for `task-master`, derived from
   decision/one unit per ticket, refer-by-name, explicit blocking/ordering
   edges, precise acceptance criteria (enforces the machine-checkable-criteria
   rule). Ships via plugin-source `skills/pathfinder/SKILL.md` path.
+  Since 2026-10-14 (skills audit, skr-4) it also publishes the sliced units (merged from
+  `to-tickets`; original: `docs/archive/skills/to-tickets/`).
 
 **`roast-work` skill**:
 first-party skill for `reviewer`, a detail-driven

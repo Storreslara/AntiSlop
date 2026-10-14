@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**to-tickets merged into pathfinder (skr-4, 0.31.165).** `skills/to-tickets` moves to `docs/archive/skills/` (the pre-change `skills/pathfinder` is archived there too); `skills/pathfinder/SKILL.md` gains a Publishing section (local files or tracker issues with native blocking links, label `ready-for-agent`, frontier, expand-contract for wide refactors) and drops the quiz, the avoid-file-paths rule and the context-window sizing; `agents/task-master.md` preloads only `antislop:pathfinder` and its precedence block collapses to one sentence; `agents/spec-master.md`, install-antislop, the resync script, NOTICES and the runbook follow.
+
 **to-spec and fail-triage merged into spec-master (skr-3, 0.31.164).** `skills/to-spec` and `skills/fail-triage` move to `docs/archive/skills/`; `agents/spec-master.md` publishes to the tracker directly (PRD template kept as `## Appendix: PRD template`) and its debug-spec bullet carries the VERIFY, CATEGORIZE and BRIEF steps inline; `agents/task-master.md`, the plugin description, `skills/install-antislop/SKILL.md`, the resync script, NOTICES and the runbook no longer name the retired skills.
 
 **Grill skills retired (skr-2, 0.31.163).** `skills/grill-me` and `skills/grill-with-docs` move to `docs/archive/skills/`; `agents/spec-master.md` names `grilling` with `domain-modeling` instead, `agents/milestone-auditor.md` invokes `antislop:grilling`, `skills/ubiquitous-language/SKILL.md` prose mode no longer names the retired skills (original archived); the resync script, NOTICES and runbook drop both skills (7 drift-tracked skills).

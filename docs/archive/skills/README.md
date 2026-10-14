@@ -14,3 +14,5 @@ Byte-identical originals of skills that were retired, merged away or rewritten. 
 | ubiquitous-language | skills/ubiquitous-language | 7adddc1cfadfdbdeff4d2bd0adc8598c1787cecc | trimmed (stays live) | skills/ubiquitous-language |
 | to-spec | skills/to-spec | e9a2bf3ef412ca57cf11c573a53263540edf5245 | merged away | agents/spec-master.md (## Appendix: PRD template) |
 | fail-triage | skills/fail-triage | e9a2bf3ef412ca57cf11c573a53263540edf5245 | merged away | agents/spec-master.md (debug-spec bullet) |
+| pathfinder | skills/pathfinder | 0df0d84c197a0f136a68738e6d036eac1965544b | rewritten (stays live) | skills/pathfinder |
+| to-tickets | skills/to-tickets | 0df0d84c197a0f136a68738e6d036eac1965544b | merged away | skills/pathfinder (Publishing section) |

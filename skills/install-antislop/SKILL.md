@@ -289,7 +289,7 @@ don't guess:
   or for a files-based tracker:
   `Local files under docs/plans/<slug>/issues/; file by adding a numbered .md, fetch by listing that dir.`
   This is the exact line personas resolve "wherever issues live" against, and
-  the field the vendored `antislop:to-tickets` (task-master's ticket-slicing)
+  the field `antislop:pathfinder` (task-master's ticket-slicing)
   and spec-master's publish step read to know where
   issues go — get it wrong and both break for this project.
 - `reviewGating.mode` — ask once (AskUserQuestion): review gating `enforce`

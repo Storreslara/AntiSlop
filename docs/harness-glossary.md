@@ -1546,6 +1546,7 @@ the reviewer's `sonnet`/`opus` model is
   review claimed. See [[confirmed-crossing / ceiling-only]] and
   [[pre-era / post-era]] for the two classification schemes behind these
   numbers.
+  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/to-tickets/`.
 
 **confirmed-crossing / ceiling-only**:
 (unit item13-1-measure-split-cost, 2026-09-25) — the two-bucket
@@ -1604,6 +1605,7 @@ When a
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
   `grill-me` was later retired (skr-2); original: `docs/archive/skills/grill-me/`.
   `to-spec` was later retired (skr-3); original: `docs/archive/skills/to-spec/`.
+  `to-tickets` was later retired (skr-4); original: `docs/archive/skills/to-tickets/`.
 
 **fm-noflag set now four skills**:
 (2026-09-11, unit gwd-1) — the `fm-noflag` declared-deviation class (stripping the

@@ -1,6 +1,6 @@
 # Re-syncing vendored mattpocock/skills content
 
-`skills/` vendors 9 skills from
+`skills/` vendors 8 skills from
 [mattpocock/skills](https://github.com/mattpocock/skills) (MIT licensed —
 see `skills/THIRD-PARTY-NOTICES.md`), pinned at a single upstream commit
 SHA recorded in that same NOTICES file. This doc is the runbook for
@@ -18,17 +18,17 @@ deciding whether/how to re-pin.
 | `improve-codebase-architecture` (+ `HTML-REPORT.md`) | `skills/engineering/improve-codebase-architecture` | verbatim |
 | `codebase-design` (+ `DEEPENING.md`, `DESIGN-IT-TWICE.md`) | `skills/engineering/codebase-design` | verbatim |
 | `domain-modeling` (+ `ADR-FORMAT.md`, `CONTEXT-FORMAT.md`) | `skills/engineering/domain-modeling` | verbatim |
-| `to-tickets` | `skills/engineering/to-tickets` | **repointed** (see below) |
 | `code-review` | `skills/engineering/code-review` | **repointed** (see below) |
 
 The first 7 are byte-verbatim aside from their provenance header, with two intentional deviations — `handoff` and `improve-codebase-architecture` — that have the `disable-model-invocation: true` flag stripped, tracked as the `fm-noflag` reconstruction type. The last
-2 (`to-tickets`, `code-review`) have their
+1 (`code-review`) has its
 `/setup-matt-pocock-skills` references repointed to antislop's native setup
 flow (`install-antislop` + `persona-config.json` `issueTracker` + the
-retrieval contract) — everything else in those 2 files is verbatim. Full
+retrieval contract) — everything else in that file is verbatim. Full
 table with exact upstream paths: `skills/THIRD-PARTY-NOTICES.md`.
 `grill-me` and `grill-with-docs` were retired by the skills audit (originals: `docs/archive/skills/`).
 `to-spec` and `fail-triage` were merged into `agents/spec-master.md` (originals: `docs/archive/skills/`).
+`to-tickets` was merged into `skills/pathfinder` (original: `docs/archive/skills/to-tickets/`).
 
 The pinned SHA lives in `skills/THIRD-PARTY-NOTICES.md`, in the sentence
 "pinned at upstream commit `<sha>`". That file is the single source of
@@ -77,7 +77,7 @@ bash scripts/resync-vendored-skills.sh --check   # same report; see exit
 The script fetches each vendored file's upstream counterpart at the pinned
 SHA from `raw.githubusercontent.com`, reconstructs the expected local
 content per the shape rules above, and diffs it against what's actually
-checked into `skills/`. The 2 repointed skills are listed for awareness
+checked into `skills/`. The 1 repointed skill is listed for awareness
 (vendored or still pending Step A.3) but are never diffed by `--check` —
 their repoint edits mean a byte diff against raw upstream is expected to
 show a difference, so they need a human read of the diff around the
@@ -121,14 +121,14 @@ script.
    doesn't want).
 3. To apply an update to a given file: replace its body with the new
    upstream content, keeping the provenance header in the same position
-   documented above (and keeping the repoint edit, if it's one of the 2
-   repointed skills — re-apply the `/setup-matt-pocock-skills` →
+   documented above (and keeping the repoint edit, if it's the 1
+   repointed skill — re-apply the `/setup-matt-pocock-skills` →
    antislop-native substitution on top of the new upstream text).
 4. Once all desired files are updated, re-pin: fetch upstream's current
    commit SHA for `main`
    (`git ls-remote https://github.com/mattpocock/skills main`) and update
    the SHA in `skills/THIRD-PARTY-NOTICES.md` (both the prose sentence and
-   every per-file provenance header comment across all 9 skills — a
+   every per-file provenance header comment across all 8 skills — a
    project-wide find/replace of the old SHA for the new one).
 5. Run `bash scripts/resync-vendored-skills.sh --check` again — it should
    report `[OK]` for all 7 drift-tracked skills against the new pin.
