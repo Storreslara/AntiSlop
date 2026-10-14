@@ -1843,6 +1843,7 @@ normal FAIL routes the defect list to
   and nothing revalidates it automatically. Mitigation, not a fix: a copied
   feedback block carries the commit SHA at copy time, so a receiving agent can
   re-derive the real location.
+  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/code-review/`.
 
 **Resolved packet**:
 (unit human-review-cleanup-1, 2026-08-24) — a state of an [[Escalation packet]]

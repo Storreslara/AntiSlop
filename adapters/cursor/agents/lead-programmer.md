@@ -123,7 +123,7 @@ Seven principles:
    (principle 3).
 <!-- END inlined-skill: coding-discipline -->
 <!-- BEGIN inlined-skill: tdd -->
-<!-- Vendored verbatim from mattpocock/skills skills/engineering/tdd/SKILL.md @ e9fcdf95b402d360f90f1db8d776d5dd450f9234. MIT © 2026 Matt Pocock — see skills/THIRD-PARTY-NOTICES.md. -->
+<!-- Derived from mattpocock/skills skills/engineering/tdd/SKILL.md @ e9fcdf9 (MIT, see skills/THIRD-PARTY-NOTICES.md); vendored original archived at docs/archive/skills/tdd/ -->
 
 # Test-Driven Development
 
@@ -141,9 +141,7 @@ See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking g
 
 A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
 
-**Test only at pre-agreed seams.** Before writing any test, write down the seams under test and confirm them with the user. No test is written at an unconfirmed seam. You can't test everything — agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
-
-Ask: "What's the public interface, and which seams should we test?"
+Test at the seams your plan or dispatch names. If it names none, pick the highest public seam that exercises the behaviour and name it in your report.
 
 ## Anti-patterns
 
@@ -155,7 +153,7 @@ Ask: "What's the public interface, and which seams should we test?"
 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
-- **Refactoring is not part of the loop.** It belongs to the review stage (see the `code-review` skill), not the red → green implementation cycle.
+- **Refactoring is not part of the loop.** It belongs to the review stage, not the red → green implementation cycle.
 <!-- END inlined-skill: tdd -->
 NOTE: the tdd skill's companion files tests.md and mocking.md are NOT shipped with this port (only SKILL.md is inlined, matching the Claude preload); do not assume their guidance is available.
 

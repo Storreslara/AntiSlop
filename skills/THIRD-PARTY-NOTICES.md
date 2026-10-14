@@ -19,18 +19,14 @@ script remains directly runnable/copyable.
 | 3 | `handoff` | `skills/productivity/handoff` |
 | 4 | `to-spec` (archived at `docs/archive/skills/to-spec/`; template carried in `agents/spec-master.md`) | `skills/engineering/to-spec` |
 | 5 | `to-tickets` (merged into `skills/pathfinder`; archived at `docs/archive/skills/to-tickets/`) | `skills/engineering/to-tickets` |
-| 6 | `tdd` | `skills/engineering/tdd` |
+| 6 | `tdd` (forked: the live file is derived and edited; original archived at `docs/archive/skills/tdd/`) | `skills/engineering/tdd` |
 | 7 | `diagnosing-bugs` | `skills/engineering/diagnosing-bugs` |
 | 8 | `improve-codebase-architecture` | `skills/engineering/improve-codebase-architecture` |
 | 9 | `codebase-design` | `skills/engineering/codebase-design` |
 | 10 | `domain-modeling` | `skills/engineering/domain-modeling` |
-| 11 | `code-review` | `skills/engineering/code-review` |
+| 11 | `code-review` (retired; archived at `docs/archive/skills/code-review/`) | `skills/engineering/code-review` |
 
-`handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). `grill-me` and `grill-with-docs` were retired by the skills audit; their originals are kept, byte-identical, under `docs/archive/skills/` (see its README). Additionally, `code-review` has its
-`/setup-matt-pocock-skills` references repointed to antislop's native setup
-flow (`install-antislop` + `persona-config.json` `issueTracker` + the
-retrieval contract); this is noted in that skill's own provenance
-header. `skills/pathfinder` is first-party (derived from `wayfinder`; `to-tickets` original: `docs/archive/skills/to-tickets/`). All other vendored skills are byte-verbatim aside from the
+`handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). `grill-me` and `grill-with-docs` were retired by the skills audit; their originals are kept, byte-identical, under `docs/archive/skills/` (see its README). `code-review` was retired by the skills audit (original: `docs/archive/skills/code-review/`). `tdd` is forked: its live file carries a "Derived from" header and antislop edits, and its drift tracking moves to the archived original. `skills/pathfinder` is first-party (derived from `wayfinder`; `to-tickets` original: `docs/archive/skills/to-tickets/`). All other vendored skills are byte-verbatim aside from the
 provenance header itself.
 
 ## License

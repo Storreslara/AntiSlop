@@ -17,3 +17,5 @@ Byte-identical originals of skills that were retired, merged away or rewritten. 
 | pathfinder | skills/pathfinder | 0df0d84c197a0f136a68738e6d036eac1965544b | rewritten (stays live) | skills/pathfinder |
 | to-tickets | skills/to-tickets | 0df0d84c197a0f136a68738e6d036eac1965544b | merged away | skills/pathfinder (Publishing section) |
 | version-stamp-discipline | skills/version-stamp-discipline | afdbd5be825949a96615cff5e4c6755d088cdff3 | rewritten (stays live) | skills/version-stamp-discipline |
+| tdd | skills/tdd | 64245e07a49c62cba7141b32d5ce6f365ed58592 | forked (stays live) | skills/tdd |
+| code-review | skills/code-review | 64245e07a49c62cba7141b32d5ce6f365ed58592 | retired | the reviewer persona |

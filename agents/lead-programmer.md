@@ -5,7 +5,7 @@ model: haiku
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
+skills: antislop:coding-discipline, antislop:tdd
 maxTurns: 50
 ---
 
@@ -51,18 +51,14 @@ instructions.
   **Commit cadence under a contract**: the contract's `commit-message:` lines
   fix the commit count, overriding the per-step commit cadence in
   **Execution** above.
-- **TDD-first**: before writing any new behaviour or bug fix, invoke the
-  `antislop:tdd` skill via the `Skill` tool and follow its red-green-
-  refactor loop (write the failing test first) — invoke it fresh each time
-  rather than relying on remembered choreography. For hard bugs, invoke
+- **TDD-first**: before writing any new behaviour or bug fix, follow the
+  preloaded `antislop:tdd` red-green-refactor loop (write the failing test
+  first). For hard bugs, invoke
   `antislop:diagnosing-bugs` instead (reproduce → minimise → hypothesise →
   instrument → fix → regression-test). Never leave a red suite at final
   handoff — the WIP sentinel is for mid-task pauses and blocked reports, not
-  for calling work done. (`antislop:tdd` is preloaded in subagent dispatches
-  now — re-reading it here reasserts the loop's discipline rather than
-  loading it; `antislop:diagnosing-bugs` is still not preloaded, so invoking
-  it on demand costs nothing on tasks that don't need it, e.g. a one-line
-  typo fix.)
+  for calling work done. (`antislop:diagnosing-bugs` is not preloaded, so invoking it on
+  demand costs nothing on tasks that don't need it, e.g. a one-line typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
 - **Scope your reading via the explorer** (not under a dispatch contract; see

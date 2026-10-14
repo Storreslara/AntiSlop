@@ -40,12 +40,14 @@ RAW_BASE="https://raw.githubusercontent.com/mattpocock/skills/$SHA"
 #                   stripped from the expected content before diffing (ADR-0012)
 #       doc = markdown companion, no frontmatter (header + blank at line 1-2)
 #       raw = no header at all (e.g. the .sh companion); compare whole file
+# A forked skill (fork-and-own) keeps its upstream_path but names its archived
+# original under docs/archive/skills/ as local_path, so --check still reports upstream drift.
 FILES="
 grilling:fm:skills/grilling/SKILL.md:skills/productivity/grilling/SKILL.md
 handoff:fm-noflag:skills/handoff/SKILL.md:skills/productivity/handoff/SKILL.md
-tdd:fm:skills/tdd/SKILL.md:skills/engineering/tdd/SKILL.md
-tdd:doc:skills/tdd/tests.md:skills/engineering/tdd/tests.md
-tdd:doc:skills/tdd/mocking.md:skills/engineering/tdd/mocking.md
+tdd:fm:docs/archive/skills/tdd/SKILL.md:skills/engineering/tdd/SKILL.md
+tdd:doc:docs/archive/skills/tdd/tests.md:skills/engineering/tdd/tests.md
+tdd:doc:docs/archive/skills/tdd/mocking.md:skills/engineering/tdd/mocking.md
 diagnosing-bugs:fm:skills/diagnosing-bugs/SKILL.md:skills/engineering/diagnosing-bugs/SKILL.md
 diagnosing-bugs:raw:skills/diagnosing-bugs/scripts/hitl-loop.template.sh:skills/engineering/diagnosing-bugs/scripts/hitl-loop.template.sh
 improve-codebase-architecture:fm-noflag:skills/improve-codebase-architecture/SKILL.md:skills/engineering/improve-codebase-architecture/SKILL.md
@@ -59,9 +61,9 @@ domain-modeling:doc:skills/domain-modeling/CONTEXT-FORMAT.md:skills/engineering/
 "
 SKILL_ORDER="grilling handoff tdd diagnosing-bugs improve-codebase-architecture codebase-design domain-modeling"
 
-# code-review is the 1 repoint skill Step A.3 lands.
-# Report-only: not gated by --check since they don't exist until A.3 lands.
-REPOINT_SKILLS="code-review"
+# No repoint skills remain (all three were retired); the list is kept empty so the
+# report block below prints none.
+REPOINT_SKILLS=""
 
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -150,7 +152,7 @@ for skill in $SKILL_ORDER; do
 done
 
 echo
-echo "-- 1 repoint skill (Step A.3, may not be vendored yet) --"
+echo "-- repoint skills: none remain --"
 for skill in $REPOINT_SKILLS; do
   if [ -f "skills/$skill/SKILL.md" ]; then
     echo "[VENDORED] $skill (not diffed by this script; repointed content, see docs/maintenance/resync-vendored-skills.md)"

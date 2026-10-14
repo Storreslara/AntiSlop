@@ -629,8 +629,8 @@ a skill declared in a [[Persona]]'s `skills:` frontmatter, loaded into
   The distinction is **mode-sensitive**: `skills:` frontmatter preloading
   applies in normal subagent dispatch but NOT in agent-teams mode (see the
   "Agent-teams mode" section of `.claude/persona-protocol.md`). **Example:**
-  `lead-programmer` preloads `antislop:coding-discipline`,
-  `antislop:handoff`, and `antislop:tdd`; it invokes `antislop:diagnosing-bugs`
+  `lead-programmer` preloads `antislop:coding-discipline`
+  and `antislop:tdd`; it invokes `antislop:handoff` and `antislop:diagnosing-bugs`
   on demand only. Contrast with [[`disable-model-invocation` flag]], which
   removes a skill from all contexts regardless of mode — preloading is
   context-dependent, not absolute.
