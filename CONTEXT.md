@@ -148,7 +148,7 @@ the semantics of adding an
   exiting 0 always (fail-open). Takes an explicit range because a unit's range is a per-unit input only the
   reviewer knows (a self-derived `HEAD~1` sees only the last commit); originally
   also motivated by CI's since-removed shallow clone. Mechanization covers both halves of the
-  discipline: for every touching commit that bumps the version the script also requires a same-commit CHANGELOG line naming it (unit skr-5, 2026-10-14).
+  discipline: for every touching commit that bumps the version the script also requires a same-commit CHANGELOG entry naming it (detected as an added CHANGELOG.md line that names the version) (unit skr-5, 2026-10-14).
   (unit version-stamp-check-roast-1, 2026-09-23) Widening the reviewed range past
   an offending commit no longer masks it: the script additionally checks every
   commit *within* the range that itself touches a version-stamped path against

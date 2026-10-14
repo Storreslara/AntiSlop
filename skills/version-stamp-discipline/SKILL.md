@@ -27,9 +27,9 @@ The script checks both halves of the rule for every commit in the range that tou
 `.claude-plugin/plugin.json` and add a `CHANGELOG.md` line naming the new version. It prints
 `version-stamp-check: <verdict> touched: <yes|no|-> old: <ver|-> new: <ver|-> offenders: <list|->`.
 
-- `ok touched: yes` - every touching commit bumped the version and added its CHANGELOG line. Clears the whole P3 rule.
+- `ok touched: yes` - every touching commit bumped the version and added its CHANGELOG entry. Clears the whole P3 rule.
 - `ok touched: no` - the range touches no `agents/*.md` or `templates/*`; P3 does not apply and nothing is owed.
-- `violation` - a touching commit did not bump the version or did not add a CHANGELOG line naming it; `offenders` lists `sha:path`, and `sha:CHANGELOG.md` for a missing CHANGELOG line. Fix it in the same commit.
+- `violation` - a touching commit did not bump the version or did not add a CHANGELOG entry naming it; `offenders` lists `sha:path`, and `sha:CHANGELOG.md` for a missing CHANGELOG entry. Fix it in the same commit.
 - `unknown` - unmeasurable (bad range, shallow clone, missing `python3`, unreadable `plugin.json`). Treat as unverified and say so; never read it as `ok`.
 
 A reviewer applying this changes no verdict beyond what the existing P3 check already does.

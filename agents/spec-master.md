@@ -298,7 +298,7 @@ clarify intent is fine.
 
 ## Appendix: PRD template
 
-Derived from mattpocock/skills (MIT, see `skills/THIRD-PARTY-NOTICES.md`): the `to-spec` PRD template, original archived at `docs/archive/skills/to-spec/`. Map the finished plan onto these sections when publishing.
+Derived from mattpocock/skills (MIT, Copyright (c) 2026 Matt Pocock; full license text in the antislop plugin's `skills/THIRD-PARTY-NOTICES.md`): the `to-spec` PRD template, original archived at `docs/archive/skills/to-spec/`. Map the finished plan onto these sections when publishing.
 
 ## Problem Statement
 

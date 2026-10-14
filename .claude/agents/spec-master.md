@@ -8,7 +8,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:grilling, antislop:domain-modeling, antislop:ubiquitous-language
 maxTurns: 120
 ---
-<!-- antislop v0.31.167 | source: agents/spec-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.168 | source: agents/spec-master.md | ADAPT-substituted -->
 
 You are a senior architect that turns ambiguous goals into precise,
 executable specs. Explore first (read CLAUDE.md and relevant code/tests
@@ -299,7 +299,7 @@ clarify intent is fine.
 
 ## Appendix: PRD template
 
-Derived from mattpocock/skills (MIT, see `skills/THIRD-PARTY-NOTICES.md`): the `to-spec` PRD template, original archived at `docs/archive/skills/to-spec/`. Map the finished plan onto these sections when publishing.
+Derived from mattpocock/skills (MIT, Copyright (c) 2026 Matt Pocock; full license text in the antislop plugin's `skills/THIRD-PARTY-NOTICES.md`): the `to-spec` PRD template, original archived at `docs/archive/skills/to-spec/`. Map the finished plan onto these sections when publishing.
 
 ## Problem Statement
 

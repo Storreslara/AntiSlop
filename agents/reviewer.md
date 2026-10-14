@@ -119,7 +119,7 @@ with reasons.
   verdict.
 - **`version-stamp-discipline` is on-demand**: when a range touches
   `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
-  for its runnable P3 check (`ok` clears both the version bump and the CHANGELOG line). It changes no verdict rules beyond the
+  for its runnable P3 check (`ok` clears both the version bump and the CHANGELOG entry). It changes no verdict rules beyond the
   existing constitutional P3 check.
 - **When reviewGating.mode is off (review gating off)**: read the key from
   `.claude/persona-config.json` with the `Read` tool (a Bash command naming

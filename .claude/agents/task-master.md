@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.167 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.168 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
