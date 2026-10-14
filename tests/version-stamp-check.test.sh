@@ -128,6 +128,60 @@ r_chg_d="${r_chg_d1%%..*}..$(git -C "$repo" rev-parse HEAD)"
 run_case "(d) earlier bumping commit lacks its line, HEAD version differs" "violation" "$r_chg_d"
 expect_offender "(d) names the earlier commit" "$r_chg_d" "$(git -C "$repo" rev-parse --short=7 "${r_chg_d1##*..}"):CHANGELOG.md"
 
+echo "-- CHANGELOG half hardening (sfu-4) --"
+run_case_color() {
+  # run_case with color.ui=always forced on every git call the script makes
+  if ! ( export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=color.ui GIT_CONFIG_VALUE_0=always; fail=0; run_case "$@"; exit "$fail" ); then
+    fail=1
+  fi
+}
+
+echo "chg e1" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.6
+changelog_line 0.3.6
+r_chg_e1=$(snap chglog-e1-own-line)
+echo "chg e2" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.7
+changelog_line 0.3.7
+snap chglog-e2-own-line > /dev/null
+r_chg_e="${r_chg_e1%%..*}..$(git -C "$repo" rev-parse HEAD)"
+run_case "(e) two compliant bumps, each line names only its own version" "ok" "$r_chg_e"
+
+changelog_line 0.3.8
+echo "notes" > "$repo/README.md"
+snap chglog-f-line-before-bump > /dev/null
+echo "chg f" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.8
+changelog_line unrelated
+r_chg_f=$(snap chglog-f-context-only)
+run_case "(f) version only on a context line" "violation" "$r_chg_f"
+
+echo "chg g" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.9
+printf '**entry (0x3y9).**\n' >> "$repo/CHANGELOG.md"
+r_chg_g=$(snap chglog-g-dots-literal)
+run_case "(g) 0x3y9 does not name 0.3.9" "violation" "$r_chg_g"
+
+echo "chg h1" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.10
+changelog_line 0.3.100
+r_chg_h1=$(snap chglog-h1-longer-right)
+run_case "(h1) 0.3.100 does not name 0.3.10" "violation" "$r_chg_h1"
+
+echo "chg h2" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.11
+changelog_line 10.3.11
+r_chg_h2=$(snap chglog-h2-longer-left)
+run_case "(h2) 10.3.11 does not name 0.3.11" "violation" "$r_chg_h2"
+
+echo "chg h3" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.12
+changelog_line v0.3.12
+r_chg_h3=$(snap chglog-h3-v-prefix)
+run_case "(h3) v0.3.12 names 0.3.12" "ok" "$r_chg_h3"
+
+run_case_color "(i) color.ui=always, compliant bump" "ok" "$r_chg_ok"
+
 echo "-- python3 missing from PATH: unknown, not a crash (item 1) --"
 fakebin="$tmproot/fakebin-no-python3"
 mkdir -p "$fakebin"
@@ -227,6 +281,30 @@ if mutate changelog-check-disabled 's/&& ! changelog_adds_version/\&\& false \&\
   run_case "(mc7) CHANGELOG check disabled: (b) should flip to" "ok" "$r_chg_missing" "$MUTANT"
   run_case "(mc7) CHANGELOG check disabled: (c) should flip to" "ok" "$r_chg_wrong" "$MUTANT"
   run_case "(mc7) CHANGELOG check disabled: (d) should flip to" "ok" "$r_chg_d" "$MUTANT"
+fi
+
+if mutate added-line-filter-removed 's/l.startswith("+") and not l.startswith("+++")/not l.startswith("+++")/'; then
+  run_case "(mc8) added-line filter removed: (f) should flip to" "ok" "$r_chg_f" "$MUTANT"
+fi
+
+if mutate escape-removed 's/re.escape(sys.argv\[1\])/sys.argv[1]/'; then
+  run_case "(mc9) re.escape removed: (g) should flip to" "ok" "$r_chg_g" "$MUTANT"
+fi
+
+if mutate right-boundary-removed 's/ + r"(?!\[0-9\])"//'; then
+  run_case "(mc10) right boundary removed: (h1) should flip to" "ok" "$r_chg_h1" "$MUTANT"
+fi
+
+if mutate left-boundary-removed 's/r"(?<!\[0-9.\])" + //'; then
+  run_case "(mc11) left boundary removed: (h2) should flip to" "ok" "$r_chg_h2" "$MUTANT"
+fi
+
+if mutate half2-endpoint-version 's/changelog_adds_version "\$c" "\$cnew"/changelog_adds_version "$c" "$new_ver"/'; then
+  run_case "(mc12) range-endpoint version passed: (e) should flip to" "violation" "$r_chg_e" "$MUTANT"
+fi
+
+if mutate no-color-removed 's/git diff --no-color --no-ext-diff --no-renames/git diff --no-renames/'; then
+  run_case_color "(mc13) --no-color removed: (i) should flip to" "violation" "$r_chg_ok" "$MUTANT"
 fi
 
 echo "-- offender collection is computed, not hardcoded (item 5) --"

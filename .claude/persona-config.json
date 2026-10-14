@@ -106,7 +106,7 @@
     ".claude/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
     "adapters/codex/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
     "adapters/cursor/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
-    ".claude/hooks/scripts/version-stamp-check.sh": "83bd70b93e1347218f41635dadf007349a882730f0bc59282842836688613600",
+    ".claude/hooks/scripts/version-stamp-check.sh": "eda6a2612b8744b1aeb0dfb0bcdc6e55330aa931e96ad89e6e3c86736e1a8251",
     ".claude/hooks/scripts/agent-audit.sh": "1b6e1ea5a8173c198371b1867b15c2dfc70454af9bb79efce8596e3fa25e375a"
   },
   "humanReviewMode": "off",

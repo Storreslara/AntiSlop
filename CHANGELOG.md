@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**version-stamp-check CHANGELOG match hardened (sfu-4).** `hooks/scripts/version-stamp-check.sh` reads the CHANGELOG diff with `--no-color --no-ext-diff`, counts added lines only, and matches the version literally as a whole version (0.31.16 is no longer named by 0.31.166 or 10.31.16; `v0.31.16` still is); `tests/version-stamp-check.test.sh` gains cases (e)-(i) and mutation controls mc8-mc13, which pin every mutant the skr-5 review found surviving except the `+++`-exclusion one, an equivalent mutant.
+
 **Agent-teams TDD fallback, CHANGELOG entry wording, MIT credit (sfu-3, 0.31.168).** `agents/lead-programmer.md` tells a teammate (no `skills:` preload) to read the `tdd` skill's `SKILL.md` before the first test; `agents/lead-programmer.md`, `agents/scribe.md`, `agents/reviewer.md`, `skills/version-stamp-discipline/SKILL.md` and `CONTEXT.md` say "CHANGELOG entry", the canonical term; `agents/spec-master.md`'s PRD-template credit carries the MIT copyright line.
 
 **Skills and docs prose follow-ups to the skills audit (sfu-2).** `skills/grilling`, `skills/install-antislop` (and its `.claude/skills` mirror), `skills/pathfinder`, `skills/roast-work` and `skills/improve-codebase-architecture` fix the contradictions the skr reviewers recorded (the roast-work sentence also lands in the Codex and Cursor reviewer ports, which inline that skill); `docs/persona-design-notes.md`, `docs/trust-model.md` row 25, `skills/THIRD-PARTY-NOTICES.md` (four forked skills, rows renumbered 1-10), the resync runbook (forked shapes, re-pin limits) and the archive README are brought up to date.

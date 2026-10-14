@@ -18,7 +18,7 @@
 #
 # CHANGELOG half: every touching commit that bumps the version must also add,
 # in that same commit, a CHANGELOG.md line (a `+` line, not the `+++` header)
-# containing, as a fixed string, the version read from that commit's own
+# naming, as a whole version (see changelog_adds_version), the version read from that commit's own
 # .claude-plugin/plugin.json; a miss reports `violation` with the offender
 # <short-sha>:CHANGELOG.md. The output format is unchanged.
 #
@@ -57,13 +57,22 @@ except Exception:
 }
 
 # changelog_adds_version <commit> <version>: succeeds iff <commit> adds a CHANGELOG.md
-# line (not the +++ header) containing <version> as a fixed string. The diff is
-# taken against the first parent, like version_at "$c^", so a merge commit counts
-# the lines its branch added. The last grep reads all of its input (no -q), so
+# line (a `+` line, not the +++ header) naming <version> as a whole version: the
+# dots are literal, and the match may not continue into a digit on the right or
+# into a digit or dot on the left, so 0.31.16 is not named by 0.31.166 or 10.31.16,
+# while v0.31.16 and (0.31.16) are. The diff is taken against the first parent,
+# like version_at "$c^", so a merge commit counts the lines its branch added.
+# --no-color and --no-ext-diff keep a user's color.ui=always or diff.external
+# from rewriting the lines this parses. python3 reads all of its input, so
 # pipefail never sees a SIGPIPE from an early exit.
 changelog_adds_version() {
-  git diff --no-renames "$1^" "$1" -- CHANGELOG.md 2>/dev/null \
-    | grep '^+' | grep -v '^+++' | grep -F -- "$2" > /dev/null
+  git diff --no-color --no-ext-diff --no-renames "$1^" "$1" -- CHANGELOG.md 2>/dev/null \
+    | python3 -c '
+import re, sys
+pat = re.compile(r"(?<![0-9.])" + re.escape(sys.argv[1]) + r"(?![0-9])")
+lines = sys.stdin.read().splitlines()
+sys.exit(0 if any(l.startswith("+") and not l.startswith("+++") and pat.search(l[1:]) for l in lines) else 1)
+' "$2"
 }
 
 if ! files="$(git -c core.quotepath=false diff --no-renames --name-only "$range" -- 2>/dev/null)"; then
