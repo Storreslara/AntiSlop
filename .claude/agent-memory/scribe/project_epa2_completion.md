@@ -1,6 +1,6 @@
 ---
 name: escalation-packet follow-ups (epa, epf, epfb)
-description: epa-2..4 carry-forward gaps for the escalation layout, card/fold marker, viewer tests and parity probes; the epf run (epf-1..6, 2026-10-13) that closed items 1-14; the epfb run (epfb-1..5, 2026-10-13) that closed a-i; and the live carry-forward list (j, plus epfb notes 1-5)
+description: lgc-1 closure (leak guard sandbox, j closed by likely cause); epa-2..4 carry-forward gaps for the escalation layout, card/fold marker, viewer tests and parity probes; the epf run (epf-1..6, 2026-10-13) that closed items 1-14; the epfb run (epfb-1..5, 2026-10-13) that closed a-i; and the live carry-forward list (j, plus epfb notes 1-5)
 metadata:
   type: project
 ---
@@ -58,8 +58,21 @@ tests/validate.sh sections 5, 6, 7, 10 and 67 now write scratch files via per-ru
 
 **Not-started follow-up:** run validate.sh in three parallel lanes (about 60% saving). Prerequisite: isolate `.claude/` marker state and the git index first (same shared state is a j suspect). No unit or spec exists yet.
 
+## lgc closure (lgc-1, PASS 2026-10-14; 67b3a26; no version bump; fast path, no issue)
+
+tests/reviewed-dir-leak-guard.test.sh (validate.sh section 101) no longer lists the live reviewed-marker directory. It runs the nested validate.sh with `CLAUDE_PROJECT_DIR` pointing at a fresh `mktemp` sandbox holding an empty marker directory, and FAILs if any entry appears or the directory is removed; an EXIT trap cleans the sandbox. This removes false FAILs from legitimate concurrent reviewer/implementer marker writes. It still catches the gh425 leak route (via `CLAUDE_PROJECT_DIR`) and now also overwrites of existing names.
+
+- **gh425-2 note 3 (overwrite of an existing name): closed** by lgc-1.
+- **j: closed by likely cause** (leak guard false FAIL on concurrent reviewer writes). Reopen if it recurs. The original failing run's output was not kept, so this is unconfirmed.
+- **Gate usage:** merge-gate vsec runs with `REVIEWED_DIR_LEAK_GUARD_NESTED=1` make section 101 a no-op. Run `vsec 101 101` WITHOUT that variable to exercise the real guard through the sandbox (done at HEAD, exit 0).
+- **Open note 1:** the guard discards the nested run's exit code, so an early-aborting nested suite would silently shrink what the guard sees.
+- **Open note 2 (accepted gap, plan Open Question 1 default):** a suite or hook that writes the marker path relative to the repo root or via an explicit repo-root argument (marker-commit-check.sh, marker-verify.sh) while ignoring `CLAUDE_PROJECT_DIR` is not caught.
+- **Open note 3:** parallel-lanes speedup for validate.sh (about 60%) is still not started; needs `.claude/` marker and git-index isolation first. The tmp-name (vtmp-1) and leak-guard hazards are now fixed.
+- **CONTEXT.md left alone:** "leak guard" and "watch item" are test-suite/process vocabulary, explained in the test file and here; no domain or harness-mechanics reader needs them defined, so a glossary entry is not load-bearing.
+
 ## Live carry-forward
 
-- **j** (validate.sh exited 1 once under concurrency): unreproduced and a documented non-goal; merge gate passed clean at HEAD after epfd. Watch item, not a defect. vtmp-1 ruled out the fixed /tmp names as the cause (see vtmp closure); other candidates unverified. Only other open item: the parallel-lanes speedup idea (not started).
+- **j:** closed by likely cause (see lgc closure); reopen only if validate.sh exits 1 under concurrency again.
+- **Open lgc notes 1-3** above (nested exit code discarded; repo-root-relative writers uncaught; parallel-lanes speedup not started).
 
-**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** before any follow-up touching the escalation layout, viewer tests, or parity probes, re-check only item j; everything else in this file is closed.
+**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** everything above is closed except the lgc open notes; start validate.sh concurrency work from those.
