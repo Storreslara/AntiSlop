@@ -1,0 +1,24 @@
+if mutate added-line-filter-removed 's/l.startswith("+") and not l.startswith("+++")/not l.startswith("+++")/'; then
+  run_case "(mc8) added-line filter removed: (f) should flip to" "ok" "$r_chg_f" "$MUTANT"
+fi
+
+if mutate escape-removed 's/re.escape(sys.argv\[1\])/sys.argv[1]/'; then
+  run_case "(mc9) re.escape removed: (g) should flip to" "ok" "$r_chg_g" "$MUTANT"
+fi
+
+if mutate right-boundary-removed 's/ + r"(?!\[0-9\])"//'; then
+  run_case "(mc10) right boundary removed: (h1) should flip to" "ok" "$r_chg_h1" "$MUTANT"
+fi
+
+if mutate left-boundary-removed 's/r"(?<!\[0-9.\])" + //'; then
+  run_case "(mc11) left boundary removed: (h2) should flip to" "ok" "$r_chg_h2" "$MUTANT"
+fi
+
+if mutate half2-endpoint-version 's/changelog_adds_version "\$c" "\$cnew"/changelog_adds_version "$c" "$new_ver"/'; then
+  run_case "(mc12) range-endpoint version passed: (e) should flip to" "violation" "$r_chg_e" "$MUTANT"
+fi
+
+if mutate no-color-removed 's/git diff --no-color --no-ext-diff --no-renames/git diff --no-renames/'; then
+  run_case_color "(mc13) --no-color removed: (i) should flip to" "violation" "$r_chg_ok" "$MUTANT"
+fi
+

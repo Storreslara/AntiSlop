@@ -1,0 +1,9 @@
+# changelog_adds_version <commit> <version>: succeeds iff <commit> adds a CHANGELOG.md
+# line (not the +++ header) containing <version> as a fixed string. The diff is
+# taken against the first parent, like version_at "$c^", so a merge commit counts
+# the lines its branch added. The last grep reads all of its input (no -q), so
+# pipefail never sees a SIGPIPE from an early exit.
+changelog_adds_version() {
+  git diff --no-renames "$1^" "$1" -- CHANGELOG.md 2>/dev/null \
+    | grep '^+' | grep -v '^+++' | grep -F -- "$2" > /dev/null
+}
