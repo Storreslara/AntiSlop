@@ -43,7 +43,7 @@ RAW_BASE="https://raw.githubusercontent.com/mattpocock/skills/$SHA"
 # A forked skill (fork-and-own) keeps its upstream_path but names its archived
 # original under docs/archive/skills/ as local_path, so --check still reports upstream drift.
 FILES="
-grilling:fm:skills/grilling/SKILL.md:skills/productivity/grilling/SKILL.md
+grilling:fm:docs/archive/skills/grilling/SKILL.md:skills/productivity/grilling/SKILL.md
 handoff:fm-noflag:skills/handoff/SKILL.md:skills/productivity/handoff/SKILL.md
 tdd:fm:docs/archive/skills/tdd/SKILL.md:skills/engineering/tdd/SKILL.md
 tdd:doc:docs/archive/skills/tdd/tests.md:skills/engineering/tdd/tests.md

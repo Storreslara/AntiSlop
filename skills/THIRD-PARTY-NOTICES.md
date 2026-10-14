@@ -15,7 +15,7 @@ script remains directly runnable/copyable.
 
 | # | skill | upstream path |
 |---|---|---|
-| 2 | `grilling` | `skills/productivity/grilling` |
+| 2 | `grilling` (forked: the live file is derived and edited; original archived at `docs/archive/skills/grilling/`) | `skills/productivity/grilling` |
 | 3 | `handoff` | `skills/productivity/handoff` |
 | 4 | `to-spec` (archived at `docs/archive/skills/to-spec/`; template carried in `agents/spec-master.md`) | `skills/engineering/to-spec` |
 | 5 | `to-tickets` (merged into `skills/pathfinder`; archived at `docs/archive/skills/to-tickets/`) | `skills/engineering/to-tickets` |

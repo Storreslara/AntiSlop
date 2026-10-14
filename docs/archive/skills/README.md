@@ -19,3 +19,4 @@ Byte-identical originals of skills that were retired, merged away or rewritten. 
 | version-stamp-discipline | skills/version-stamp-discipline | afdbd5be825949a96615cff5e4c6755d088cdff3 | rewritten (stays live) | skills/version-stamp-discipline |
 | tdd | skills/tdd | 64245e07a49c62cba7141b32d5ce6f365ed58592 | forked (stays live) | skills/tdd |
 | code-review | skills/code-review | 64245e07a49c62cba7141b32d5ce6f365ed58592 | retired | the reviewer persona |
+| grilling | skills/grilling | 35496ab14f05b81d0f9be538ed52d2146bf63da6 | rewritten (stays live) | skills/grilling |

@@ -20,7 +20,7 @@ deciding whether/how to re-pin.
 | `domain-modeling` (+ `ADR-FORMAT.md`, `CONTEXT-FORMAT.md`) | `skills/engineering/domain-modeling` | verbatim |
 
 The first 7 are byte-verbatim aside from their provenance header, with two intentional deviations — `handoff` and `improve-codebase-architecture` — that have the `disable-model-invocation: true` flag stripped, tracked as the `fm-noflag` reconstruction type. Forked skills
-(currently `tdd`) are the exception: the live file carries antislop edits and a "Derived from" header, and the FILES rows name the archived original
+(currently `tdd` and `grilling`) are the exception: the live file carries antislop edits and a "Derived from" header, and the FILES rows name the archived original
 (`docs/archive/skills/<name>/`) as the local path, so `--check` diffs the archived copy and still reports upstream drift. Full
 table with exact upstream paths: `skills/THIRD-PARTY-NOTICES.md`.
 `grill-me` and `grill-with-docs` were retired by the skills audit (originals: `docs/archive/skills/`).
