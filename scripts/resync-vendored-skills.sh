@@ -50,8 +50,8 @@ tdd:doc:docs/archive/skills/tdd/tests.md:skills/engineering/tdd/tests.md
 tdd:doc:docs/archive/skills/tdd/mocking.md:skills/engineering/tdd/mocking.md
 diagnosing-bugs:fm:skills/diagnosing-bugs/SKILL.md:skills/engineering/diagnosing-bugs/SKILL.md
 diagnosing-bugs:raw:skills/diagnosing-bugs/scripts/hitl-loop.template.sh:skills/engineering/diagnosing-bugs/scripts/hitl-loop.template.sh
-improve-codebase-architecture:fm-noflag:skills/improve-codebase-architecture/SKILL.md:skills/engineering/improve-codebase-architecture/SKILL.md
-improve-codebase-architecture:doc:skills/improve-codebase-architecture/HTML-REPORT.md:skills/engineering/improve-codebase-architecture/HTML-REPORT.md
+improve-codebase-architecture:fm-noflag:docs/archive/skills/improve-codebase-architecture/SKILL.md:skills/engineering/improve-codebase-architecture/SKILL.md
+improve-codebase-architecture:doc:docs/archive/skills/improve-codebase-architecture/HTML-REPORT.md:skills/engineering/improve-codebase-architecture/HTML-REPORT.md
 codebase-design:fm:skills/codebase-design/SKILL.md:skills/engineering/codebase-design/SKILL.md
 codebase-design:doc:skills/codebase-design/DEEPENING.md:skills/engineering/codebase-design/DEEPENING.md
 codebase-design:doc:skills/codebase-design/DESIGN-IT-TWICE.md:skills/engineering/codebase-design/DESIGN-IT-TWICE.md

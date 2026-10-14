@@ -3,7 +3,7 @@
 This directory vendors content from [mattpocock/skills](https://github.com/mattpocock/skills),
 pinned at upstream commit `e9fcdf95b402d360f90f1db8d776d5dd450f9234` (fetched
 2026-07-15). Each vendored `SKILL.md` and its markdown companions (e.g.
-`tests.md`, `mocking.md`, `HTML-REPORT.md`) carry their own provenance header
+`tests.md`, `mocking.md`, `DEEPENING.md`) carry their own provenance header
 pointing back to this file — placed immediately after the closing `---` of
 the YAML frontmatter block for files that have one (every `SKILL.md`), or at
 the top of the file for companions that don't. The one non-markdown
@@ -21,7 +21,7 @@ script remains directly runnable/copyable.
 | 5 | `to-tickets` (merged into `skills/pathfinder`; archived at `docs/archive/skills/to-tickets/`) | `skills/engineering/to-tickets` |
 | 6 | `tdd` (forked: the live file is derived and edited; original archived at `docs/archive/skills/tdd/`) | `skills/engineering/tdd` |
 | 7 | `diagnosing-bugs` | `skills/engineering/diagnosing-bugs` |
-| 8 | `improve-codebase-architecture` | `skills/engineering/improve-codebase-architecture` |
+| 8 | `improve-codebase-architecture` (forked: the live file is derived and edited, `HTML-REPORT.md` is dropped; originals archived at `docs/archive/skills/improve-codebase-architecture/`) | `skills/engineering/improve-codebase-architecture` |
 | 9 | `codebase-design` | `skills/engineering/codebase-design` |
 | 10 | `domain-modeling` | `skills/engineering/domain-modeling` |
 | 11 | `code-review` (retired; archived at `docs/archive/skills/code-review/`) | `skills/engineering/code-review` |
