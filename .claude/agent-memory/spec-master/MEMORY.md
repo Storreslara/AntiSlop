@@ -64,3 +64,4 @@
 - [Contract-guard row shapes](technique_contract_guard_r6_bullet_shape.md) — R1/R2/R5/R6/R7 literal shapes a 7/7 contract needs; run the guard per unit; never splice by inline heading text.
 - [Parallel contracts + escape drift](technique_parallel_contracts_and_escape_drift.md) — parallel units: path-staged commit + `git diff --quiet`; `\u2014` typed becomes a literal em dash; apply plan text verbatim.
 - [Read-only /tmp namespace probe](technique_readonly_tmp_namespace_probe.md) — fixed /tmp names flip exit only when unwritable, not under concurrency; `unshare -rm` ro-/tmp probe.
+- [Throwaway tree for gated-dir tests](technique_throwaway_tree_for_gated_dir_tests.md) — run a dir-touching test in a mktemp copy with a stub validate.sh; marker-write leak set is now unitA/B/C/G.
