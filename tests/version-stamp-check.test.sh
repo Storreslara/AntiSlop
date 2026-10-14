@@ -22,6 +22,11 @@ plugin_version() {
   printf '{"name": "antislop", "version": "%s"}\n' "$1" > "$repo/.claude-plugin/plugin.json"
 }
 
+changelog_line() {
+  # <version> -> appends a CHANGELOG.md line naming that version
+  printf '**entry (%s).**\n' "$1" >> "$repo/CHANGELOG.md"
+}
+
 plugin_version 0.1.0
 git -C "$repo" add -A
 git -C "$repo" commit -qm base
@@ -59,6 +64,7 @@ run_case "agents-touched-no-bump" "violation" "$r_agents_no_bump"
 echo "-- agents/*.md touched, WITH a version bump: OK --"
 echo "content v2" > "$repo/agents/lead-programmer.md"
 plugin_version 0.2.0
+changelog_line 0.2.0
 r_agents_with_bump=$(snap agents-with-bump)
 run_case "agents-touched-with-bump" "ok" "$r_agents_with_bump"
 
@@ -70,6 +76,7 @@ run_case "templates-touched-no-bump" "violation" "$r_templates_no_bump"
 echo "-- templates/* touched, WITH a version bump: OK --"
 echo "tmpl v2" > "$repo/templates/persona-protocol.md"
 plugin_version 0.3.0
+changelog_line 0.3.0
 r_templates_with_bump=$(snap templates-with-bump)
 run_case "templates-touched-with-bump" "ok" "$r_templates_with_bump"
 
@@ -77,6 +84,49 @@ echo "-- hooks/scripts touched only: OK, not a version-stamped path --"
 echo "#!/usr/bin/env bash" > "$repo/hooks/scripts/example.sh"
 r_hooks_only=$(snap hooks-only)
 run_case "hooks-scripts-only-not-gated" "ok" "$r_hooks_only"
+
+echo "-- CHANGELOG half (skr-5): a bump needs a same-commit CHANGELOG line naming it --"
+expect_offender() {
+  # <label> <range> <substring>: the offenders field of the verdict must contain the substring
+  local label="$1" range="$2" want="$3" got
+  got="$(cd "$repo" && bash "$SCRIPT" "$range" 2>/dev/null)" || true
+  if printf '%s\n' "$got" | grep -q "offenders: .*${want}"; then
+    echo "OK   $label -> $got"
+  else
+    echo "FAIL $label expected offenders containing '$want', got '$got'"
+    fail=1
+  fi
+}
+
+echo "chg a" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.1
+changelog_line 0.3.1
+r_chg_ok=$(snap chglog-ok)
+run_case "(a) bump plus matching CHANGELOG line" "ok" "$r_chg_ok"
+
+echo "chg b" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.2
+r_chg_missing=$(snap chglog-missing)
+run_case "(b) bump, no CHANGELOG hunk" "violation" "$r_chg_missing"
+expect_offender "(b) offenders name CHANGELOG.md" "$r_chg_missing" ":CHANGELOG.md"
+
+echo "chg c" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.3
+changelog_line 9.9.9
+r_chg_wrong=$(snap chglog-wrong-version)
+run_case "(c) CHANGELOG line names a different version" "violation" "$r_chg_wrong"
+expect_offender "(c) offenders name CHANGELOG.md" "$r_chg_wrong" ":CHANGELOG.md"
+
+echo "chg d1" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.4
+r_chg_d1=$(snap chglog-d1-no-line)
+echo "chg d2" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.5
+changelog_line 0.3.5
+snap chglog-d2-with-line > /dev/null
+r_chg_d="${r_chg_d1%%..*}..$(git -C "$repo" rev-parse HEAD)"
+run_case "(d) earlier bumping commit lacks its line, HEAD version differs" "violation" "$r_chg_d"
+expect_offender "(d) names the earlier commit" "$r_chg_d" "$(git -C "$repo" rev-parse --short=7 "${r_chg_d1##*..}"):CHANGELOG.md"
 
 echo "-- python3 missing from PATH: unknown, not a crash (item 1) --"
 fakebin="$tmproot/fakebin-no-python3"
@@ -171,6 +221,12 @@ if mutate unmeasurable-check-disabled 's/\[ -z "\$old_ver" \] || \[ -z "\$new_ve
     echo "FAIL (mc5) unmeasurable/empty-version check disabled: still reports unknown, got '$got'"
     fail=1
   fi
+fi
+
+if mutate changelog-check-disabled 's/&& ! changelog_adds_version/\&\& false \&\& ! changelog_adds_version/'; then
+  run_case "(mc7) CHANGELOG check disabled: (b) should flip to" "ok" "$r_chg_missing" "$MUTANT"
+  run_case "(mc7) CHANGELOG check disabled: (c) should flip to" "ok" "$r_chg_wrong" "$MUTANT"
+  run_case "(mc7) CHANGELOG check disabled: (d) should flip to" "ok" "$r_chg_d" "$MUTANT"
 fi
 
 echo "-- offender collection is computed, not hardcoded (item 5) --"

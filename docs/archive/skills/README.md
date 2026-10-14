@@ -16,3 +16,4 @@ Byte-identical originals of skills that were retired, merged away or rewritten. 
 | fail-triage | skills/fail-triage | e9a2bf3ef412ca57cf11c573a53263540edf5245 | merged away | agents/spec-master.md (debug-spec bullet) |
 | pathfinder | skills/pathfinder | 0df0d84c197a0f136a68738e6d036eac1965544b | rewritten (stays live) | skills/pathfinder |
 | to-tickets | skills/to-tickets | 0df0d84c197a0f136a68738e6d036eac1965544b | merged away | skills/pathfinder (Publishing section) |
+| version-stamp-discipline | skills/version-stamp-discipline | afdbd5be825949a96615cff5e4c6755d088cdff3 | rewritten (stays live) | skills/version-stamp-discipline |

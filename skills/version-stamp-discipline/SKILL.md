@@ -16,31 +16,20 @@ cannot excuse an earlier commit in the range.
 Applicability: only repos that ship version-stamped files. If the repo has no
 `agents/*.md` or `templates/`, there is nothing to do.
 
-## Half 1: version bump
+## Run the check
 
 ```
 bash hooks/scripts/version-stamp-check.sh <baseline>..HEAD
 ```
 
-Prints `version-stamp-check: <verdict> touched: <yes|no|-> old: <ver|-> new: <ver|-> offenders: <list|->`.
+The script checks both halves of the rule for every commit in the range that touches
+`agents/*.md` or `templates/*`: that commit must bump `version` in
+`.claude-plugin/plugin.json` and add a `CHANGELOG.md` line naming the new version. It prints
+`version-stamp-check: <verdict> touched: <yes|no|-> old: <ver|-> new: <ver|-> offenders: <list|->`.
 
-- `ok touched: yes` - every touching commit bumped the version. Clears this half only.
+- `ok touched: yes` - every touching commit bumped the version and added its CHANGELOG line. Clears the whole P3 rule.
 - `ok touched: no` - the range touches no `agents/*.md` or `templates/*`; P3 does not apply and nothing is owed.
-- `violation` - a touching commit did not bump the version; `offenders` lists `sha:path`. Fix it in the same commit.
-- `unknown` - unmeasurable (bad range, missing `python3`, unreadable `plugin.json`). Treat as unverified and say so; never read it as `ok`.
+- `violation` - a touching commit did not bump the version or did not add a CHANGELOG line naming it; `offenders` lists `sha:path`, and `sha:CHANGELOG.md` for a missing CHANGELOG line. Fix it in the same commit.
+- `unknown` - unmeasurable (bad range, shallow clone, missing `python3`, unreadable `plugin.json`). Treat as unverified and say so; never read it as `ok`.
 
-## Half 2: CHANGELOG entry
-
-The script does not check this. For each touching commit `<sha>`, run:
-
-```
-git show <sha> -- CHANGELOG.md | grep -q "^+.*$(jq -r .version .claude-plugin/plugin.json)"
-```
-
-Exit 0 means the commit added a CHANGELOG line naming the current version;
-non-zero means the entry is missing (or a commit without a CHANGELOG hunk).
-For the final commit of a unit, `<sha>` is `HEAD`; for a bump made earlier in
-the range, substitute that version for the `jq` expression.
-
-Both halves must pass. A reviewer applying this changes no verdict beyond what
-the existing P3 check already does.
+A reviewer applying this changes no verdict beyond what the existing P3 check already does.

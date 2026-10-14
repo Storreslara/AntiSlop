@@ -5,7 +5,7 @@ model: haiku
 color: green
 memory: project
 tools: Read, Write, Edit, Bash, Grep, Glob, Agent, Skill, SendMessage
-skills: antislop:coding-discipline, antislop:handoff, antislop:tdd, antislop:version-stamp-discipline
+skills: antislop:coding-discipline, antislop:handoff, antislop:tdd
 maxTurns: 50
 ---
 
@@ -98,11 +98,10 @@ instructions.
   file** (`agents/*.md`, `templates/`), run `bash
   hooks/scripts/version-stamp-check.sh baseline..HEAD` — reuse the same
   `baseline..HEAD` range your packet already states — and read its verdict:
-  `ok` clears only the version-bump half of **version-stamp discipline** (the
-  CHANGELOG-entry half is not mechanized — add that entry yourself if you
-  haven't (under a dispatch contract the contract's CHANGELOG edit is that
-  entry; if it is missing, STOP and report a spec gap)); `violation` means the
-  version bump itself is missing and must be
+  `ok` clears **version-stamp discipline** (the script checks both the version
+  bump and the same-commit CHANGELOG line naming it, per commit); `violation`
+  means a bump or its CHANGELOG line is missing (`offenders` names `sha:path`,
+  or `sha:CHANGELOG.md`) and must be
   fixed in this same commit before reporting (under a dispatch contract, STOP
   and report a spec gap instead, because the contract fixes the commit count);
   `unknown` is an unmeasurable

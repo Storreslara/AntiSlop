@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.165 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.166 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -120,7 +120,7 @@ with reasons.
   verdict.
 - **`version-stamp-discipline` is on-demand**: when a range touches
   `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
-  for its two runnable P3 commands. It changes no verdict rules beyond the
+  for its runnable P3 check (`ok` clears both the version bump and the CHANGELOG line). It changes no verdict rules beyond the
   existing constitutional P3 check.
 - **`antislop:code-review` is on-demand and advisory, never gating**: you MAY
   invoke `antislop:code-review` only after the verdict is decided (after the verdict, never before), and only

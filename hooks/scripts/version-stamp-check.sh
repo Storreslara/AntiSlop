@@ -16,6 +16,12 @@
 # regardless of what the range's endpoints show. `old`/`new` in the output
 # remain the range endpoints' versions (informational), not one commit's.
 #
+# CHANGELOG half: every touching commit that bumps the version must also add,
+# in that same commit, a CHANGELOG.md line (a `+` line, not the `+++` header)
+# containing, as a fixed string, the version read from that commit's own
+# .claude-plugin/plugin.json; a miss reports `violation` with the offender
+# <short-sha>:CHANGELOG.md. The output format is unchanged.
+#
 # NOT A HOOK. This is a REVIEWER-INVOKED helper and is DELIBERATELY NOT
 # registered in hooks/hooks.json, matching heavy-trigger.sh/reviewer-tier.sh:
 # invoked deliberately against a specific unit's range, never self-derived.
@@ -48,6 +54,16 @@ try:
 except Exception:
     print("")
 '
+}
+
+# changelog_adds_version <commit> <version>: succeeds iff <commit> adds a CHANGELOG.md
+# line (not the +++ header) containing <version> as a fixed string. The diff is
+# taken against the first parent, like version_at "$c^", so a merge commit counts
+# the lines its branch added. The last grep reads all of its input (no -q), so
+# pipefail never sees a SIGPIPE from an early exit.
+changelog_adds_version() {
+  git diff --no-renames "$1^" "$1" -- CHANGELOG.md 2>/dev/null \
+    | grep '^+' | grep -v '^+++' | grep -F -- "$2" > /dev/null
 }
 
 if ! files="$(git -c core.quotepath=false diff --no-renames --name-only "$range" -- 2>/dev/null)"; then
@@ -106,6 +122,10 @@ while IFS= read -r c; do
       [ -n "$p" ] || continue
       offenders="${offenders:+$offenders,}$short:$p"
     done
+  elif [ "$cold" != "$cnew" ] && ! changelog_adds_version "$c" "$cnew"; then
+    violation=yes
+    short="${c:0:7}"
+    offenders="${offenders:+$offenders,}$short:CHANGELOG.md"
   fi
 done <<< "$commits"
 
