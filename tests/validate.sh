@@ -101,6 +101,7 @@ fi
 
 echo
 echo "== npm pack: dev-scratch dirs excluded, shipped dirs included =="
+npm_pack_err=$(mktemp)
 if npm pack --dry-run --json 2>/dev/null | python3 -c "
 import json, sys
 files = [f['path'] for f in json.load(sys.stdin)[0]['files']]
@@ -111,16 +112,17 @@ missing = [d for d in included if not any(f.startswith(d) for f in files)]
 if present or missing:
     sys.stderr.write('excluded-dirs-present=%s included-dirs-missing=%s\n' % (present, missing))
     sys.exit(1)
-" 2>/tmp/npm_pack_err; then
+" 2>"$npm_pack_err"; then
   echo "OK   npm pack tarball excludes dev-scratch dirs, includes shipped dirs"
 else
-  echo "FAIL npm pack tarball composition ($(cat /tmp/npm_pack_err))"
+  echo "FAIL npm pack tarball composition ($(cat "$npm_pack_err"))"
   fail=1
 fi
-rm -f /tmp/npm_pack_err
+rm -f "$npm_pack_err"
 
 echo
 echo "== marketplace.json / plugin.json consistency =="
+marketplace_err=$(mktemp)
 if python3 -c "
 import json
 plugin = json.load(open('.claude-plugin/plugin.json'))
@@ -128,20 +130,21 @@ marketplace = json.load(open('.claude-plugin/marketplace.json'))
 entries = [p for p in marketplace['plugins'] if p.get('name') == plugin['name']]
 assert entries, 'no marketplace entry named %r' % plugin['name']
 assert entries[0].get('source') == './', 'marketplace entry source is %r, expected \"./\"' % entries[0].get('source')
-" 2>/tmp/marketplace_err; then
+" 2>"$marketplace_err"; then
   echo "OK   marketplace.json plugin entry matches plugin.json name and source"
 else
-  echo "FAIL marketplace.json / plugin.json mismatch ($(cat /tmp/marketplace_err | tail -1))"
+  echo "FAIL marketplace.json / plugin.json mismatch ($(cat "$marketplace_err" | tail -1))"
   fail=1
 fi
-rm -f /tmp/marketplace_err
+rm -f "$marketplace_err"
 
 echo
 echo "== claude plugin tag (advisory - cross-validates plugin.json vs marketplace entry; run manually before release) =="
 source tests/lib/claude-tag-filter.sh
+claude_plugin_tag_out=$(mktemp)
 if command -v claude >/dev/null 2>&1; then
-  claude plugin tag --dry-run >/tmp/claude_plugin_tag_out 2>&1
-  claude_tag_residual=$(filter_known_claude_tag_noise </tmp/claude_plugin_tag_out)
+  claude plugin tag --dry-run >"$claude_plugin_tag_out" 2>&1
+  claude_tag_residual=$(filter_known_claude_tag_noise <"$claude_plugin_tag_out")
   if [ -z "$claude_tag_residual" ]; then
     echo "OK   claude plugin tag --dry-run (known-permanent notices suppressed)"
   else
@@ -151,7 +154,7 @@ if command -v claude >/dev/null 2>&1; then
 else
   echo "SKIP (claude CLI not on PATH - run \`claude plugin tag --dry-run\` manually before release)"
 fi
-rm -f /tmp/claude_plugin_tag_out
+rm -f "$claude_plugin_tag_out"
 
 echo
 echo "== claude plugin tag noise-filter fixture test (Bash) =="
@@ -175,6 +178,7 @@ done
 
 echo
 echo "== agent frontmatter parses as valid YAML =="
+frontmatter_yaml_err=$(mktemp)
 # Catches an unquoted plain scalar containing a ": " (colon-space) sequence,
 # which YAML's grammar treats as a nested mapping key and fails to parse -
 # e.g. an unescaped 'description: ... ("agent": "orchestrator") ...' (#276).
@@ -186,14 +190,14 @@ c = open('$f').read()
 m = re.match(r'^---\n(.*?)\n---\n', c, re.S)
 assert m, 'no frontmatter block found'
 yaml.safe_load(m.group(1))
-" 2>/tmp/frontmatter_yaml_err; then
+" 2>"$frontmatter_yaml_err"; then
     echo "OK   $f"
   else
-    echo "FAIL $f ($(cat /tmp/frontmatter_yaml_err | tail -1))"
+    echo "FAIL $f ($(cat "$frontmatter_yaml_err" | tail -1))"
     fail=1
   fi
 done
-rm -f /tmp/frontmatter_yaml_err
+rm -f "$frontmatter_yaml_err"
 
 echo
 echo "== reviewer/task-master: cacheTtl nested under experimental:, not top-level =="
@@ -781,6 +785,7 @@ done
 echo
 echo "== Codex adapter: TOML validity + name/description present =="
 if python3 -c "import tomllib" >/dev/null 2>&1; then
+  codex_toml_err=$(mktemp)
   for f in adapters/codex/agents/*.toml; do
     if python3 -c "
 import sys, tomllib
@@ -789,14 +794,14 @@ with open('$f', 'rb') as fh:
 assert 'name' in d and d['name'], 'missing name'
 assert 'description' in d and d['description'], 'missing description'
 assert 'developer_instructions' in d and d['developer_instructions'].strip(), 'missing developer_instructions'
-" 2>/tmp/codex_toml_err; then
+" 2>"$codex_toml_err"; then
       echo "OK   $f"
     else
-      echo "FAIL $f ($(cat /tmp/codex_toml_err | tail -1))"
+      echo "FAIL $f ($(cat "$codex_toml_err" | tail -1))"
       fail=1
     fi
   done
-  rm -f /tmp/codex_toml_err
+  rm -f "$codex_toml_err"
 else
   echo "SKIP (no python3 tomllib available - needs Python 3.11+; TOML validity not checked this run)"
 fi
