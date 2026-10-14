@@ -89,3 +89,8 @@ scope.
   `grill-me` is now converted to `fm-noflag` alongside `grill-with-docs`.
   This ADR's declared-deviation mechanism itself stands unamended; only that
   one row and sentence are now stale.
+- **Amended by ADR-0041:** the `fm-noflag` class now has two members: `handoff` (live file diffed) and
+  `improve-codebase-architecture` (fork-and-own, so its row diffs the archived original under
+  `docs/archive/skills/improve-codebase-architecture/`). `grill-me` and `grill-with-docs` were retired (originals under
+  `docs/archive/skills/`). A forked skill's live file is not drift-tracked, which makes it different from a
+  declared deviation; the mechanism itself stands unamended.

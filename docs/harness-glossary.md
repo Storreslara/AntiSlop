@@ -1660,18 +1660,18 @@ this repo self-hosts the plugin it
   for rationale and distribution paths.
 
 **drift-tracked skills**:
-(unit gwd-1, 2026-09-11) — the set of vendored mattpocock skills whose
-  content is byte-diffed against upstream by `scripts/resync-vendored-skills.sh`.
-  All drift-tracked skills are checked via either the `fm` (frontmatter) or
-  `fm-noflag` reconstruction type (see `fm-noflag` declared-deviation class).
-  As of unit gwd-1, there are 9 drift-tracked skills: `grill-me`, `grill-with-docs`,
-  `grilling`, `handoff`, `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`,
-  `codebase-design`, and `domain-modeling`. The `--check` flag on the resync script
-  reports per-skill status (`[OK]` for match, or drift details if changed). Distinct
-  from the separate `REPOINT_SKILLS` set (skills pulled from upstream via live
-  `skills@latest` rather than pinned to a specific commit). See `docs/maintenance/resync-vendored-skills.md`.
-  As of 2026-10-14 (skr-2) `grill-me` and `grill-with-docs` are retired (originals: `docs/archive/skills/grill-me/`,
-  `docs/archive/skills/grill-with-docs/`) and the set is 7 skills.
+(unit gwd-1, 2026-09-11; reworked unit skr-11, 2026-10-14) — the set of vendored mattpocock skills whose
+  content is byte-diffed against upstream by `scripts/resync-vendored-skills.sh --check`, 7 skills. The live
+  files of `handoff` (`fm-noflag` reconstruction type), `codebase-design` and `domain-modeling` (`fm`) are
+  diffed. The **fork-and-own** skills `grilling`, `tdd`, `diagnosing-bugs` and `improve-codebase-architecture`
+  carry antislop edits and a "Derived from" header in the live file; their FILES rows name the archived
+  byte-verbatim copy under `docs/archive/skills/<name>/` as the local path, so only the archived copy is
+  drift-tracked ([ADR-0041](docs/adr/0041-retire-skills-fork-and-own-archive-originals.md)). That differs from a
+  declared deviation (the `fm-noflag` class, ADR-0012): a declared deviation keeps the live file drift-tracked
+  against reconstructed upstream text, a forked skill's live file is not. The retired `grill-me` and
+  `grill-with-docs` keep archived originals at `docs/archive/skills/grill-me/` and
+  `docs/archive/skills/grill-with-docs/`. The `--check` flag reports per-skill status (`[OK]` for match, or drift
+  details if changed). No `REPOINT_SKILLS` remain. See `docs/maintenance/resync-vendored-skills.md`.
 
 **hook block event**:
 (unit #288, 2026-08-11) — a transcript event (a `tool_result` entry in

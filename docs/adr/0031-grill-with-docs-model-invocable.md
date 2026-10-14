@@ -85,3 +85,6 @@ ADR-0012 recorded (`grill-me` as the un-converted control) is amended.
   Step 2 (unit `gwd-2`, this ADR).
 - `docs/maintenance/resync-vendored-skills.md`: the re-sync runbook,
   including the `fm-noflag` reconstruction type and the deviation callout.
+- **Amended by ADR-0041:** `grill-with-docs` and `grill-me` were retired (originals:
+  `docs/archive/skills/grill-with-docs/` and `docs/archive/skills/grill-me/`); `spec-master` runs `grilling` with
+  `domain-modeling`, so the description collision this ADR addressed no longer exists. The decision stands as history.

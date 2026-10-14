@@ -15,18 +15,21 @@ None. `package.json` has no `dependencies`/`devDependencies` field.
   selected. Falls back to WebFetch/WebSearch if no working server is found
   at ADAPT time.
 - **mattpocock/skills (HISTORICAL, no longer a live dependency)** — As of
-  2026-07-15, mattpocock-derived skills used by antislop have been
-  vendored one-time into `skills/` (pinned at upstream commit
-  e9fcdf95b402d360f90f1db8d776d5dd450f9234). The 12 vendored skills are:
-  `grill-me`, `grill-with-docs`, `grilling`, `handoff`, `to-spec`, `to-tickets`, `tdd`,
-  `diagnosing-bugs`, `improve-codebase-architecture`, `codebase-design`,
-  `domain-modeling`, `code-review` (see
-  `skills/THIRD-PARTY-NOTICES.md`). The `<MATTPOCOCK:slot>` substitution
-  machinery that resolved these to externally-installed names is deleted
-  (Tracks B–C of plan 2026-07-15-vendor-mattpocock-skills completed). The
-  external `npx skills@latest add mattpocock/skills` install step is gone.
-  These skills are now shipped first-party as `antislop:<name>` references in
-  every persona, with content versioned in this repo. Four of these vendored skills (`handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs`) have an intentional deviation: the upstream `disable-model-invocation: true` flag is stripped to enable autonomous agent invocation, tracked as `fm-noflag` reconstruction type (architectural record: [ADR 0012](../../docs/adr/0012-vendored-skill-declared-deviations.md), amended by [ADR 0031](../../docs/adr/0031-grill-with-docs-model-invocable.md)). A periodic re-sync
+  2026-07-15, mattpocock-derived skills used by antislop were vendored one-time into `skills/` (pinned at upstream
+  commit e9fcdf95b402d360f90f1db8d776d5dd450f9234). The skills audit of 2026-10-14
+  ([ADR 0041](../../docs/adr/0041-retire-skills-fork-and-own-archive-originals.md)) retired six of the vendored or
+  derived skills and four graph-generated local skills; their originals are kept byte-identical under
+  `docs/archive/skills/` (see its README). Seven vendored skills remain drift-tracked by
+  `scripts/resync-vendored-skills.sh`: `handoff`, `codebase-design` and `domain-modeling` (live files diffed) and
+  the fork-and-own skills `grilling`, `tdd`, `diagnosing-bugs` and `improve-codebase-architecture` (only the archived
+  original is diffed); see `skills/THIRD-PARTY-NOTICES.md`. The `<MATTPOCOCK:slot>` substitution machinery that
+  resolved these to externally-installed names is deleted (Tracks B–C of plan 2026-07-15-vendor-mattpocock-skills
+  completed). The external `npx skills@latest add mattpocock/skills` install step is gone. These skills are shipped
+  first-party as `antislop:<name>` references in every persona, with content versioned in this repo. The
+  `disable-model-invocation: true` flag is stripped from `handoff` and from the archived original of
+  `improve-codebase-architecture`, tracked as the `fm-noflag` reconstruction type (architectural record:
+  [ADR 0012](../../docs/adr/0012-vendored-skill-declared-deviations.md), amended by
+  [ADR 0031](../../docs/adr/0031-grill-with-docs-model-invocable.md) and ADR 0041). A periodic re-sync
   process (`bash scripts/resync-vendored-skills.sh`) manages drift against
   upstream `main` — see `docs/maintenance/resync-vendored-skills.md`.
 

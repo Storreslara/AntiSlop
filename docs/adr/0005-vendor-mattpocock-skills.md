@@ -98,3 +98,7 @@ supersedes).
   has since been established — twice, by ADR-0004's and ADR-0006's own
   `## Related` `Amended by ADR-NNNN` bullets — which is why this note is
   recorded in place rather than by editing the Consequences text.
+- **Amended by ADR-0041:** the vendored-skill set and its drift tracking changed. `grill-me`, `grill-with-docs`,
+  `code-review`, `to-spec` and `to-tickets` were retired or merged away, and the edited skills `grilling`, `tdd`,
+  `diagnosing-bugs` and `improve-codebase-architecture` became fork-and-own, with drift tracking moved to their
+  archived originals under `docs/archive/skills/`. Decision 1's vendoring decision stands for the rest.
