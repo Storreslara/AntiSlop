@@ -1,7 +1,7 @@
 # Skills audit implementation: retire, merge, fork-and-own, archive originals
 
-Status: DRAFT, Open Questions round 1 pending (4 questions). Steps are written
-to the recommended defaults; Step 10 is held until Open Question 1 is answered.
+Status: FINAL (2026-10-14). Open Questions round 1 answered by the user (all
+four resolved; see Clarifications). 11 units → `task-master` (standard path).
 Unit prefix: `skr`. Baseline: `12227b4`. Plugin version at baseline: `0.31.162`.
 Criteria scripts: `docs/plans/skr-criteria/` (each was run red at baseline, or
 mutation-proven in a scratch worktree, by spec-master on 2026-10-14).
@@ -21,8 +21,8 @@ Implement the skills audit's approved scope:
   `improve-codebase-architecture` (no HTML, CDN, `xdg-open` or ask-user).
 - G4. Trim `tdd` (no "confirm seams with the user", no `code-review`
   reference, no lead-programmer double load), and `coding-discipline`,
-  `roast-work`, `ubiquitous-language`, `domain-modeling`, `codebase-design`
-  (held, Open Question 1).
+  `roast-work`, `ubiquitous-language` (Step 10); `domain-modeling` and
+  `codebase-design` are re-derived as KEEP, unchanged (Clarifications).
 - G5. Keep with fixes: `diagnosing-bugs` (hitl template path), `handoff`
   (on demand, not preloaded), `install-antislop` (shorter description,
   re-verified 2.1.x claims).
@@ -42,7 +42,7 @@ Goal-to-criterion map (every clause has a runnable check):
 | G1 | 1, 2, 6 | `skr-discovery.sh` exact skill sets; `skr-live-refs.sh grill-me grill-with-docs code-review` |
 | G2 | 3, 4 | `skr-discovery.sh`; `skr-live-refs.sh to-spec to-tickets fail-triage`; appendix and VERIFY/CATEGORIZE/BRIEF greps |
 | G3 | 5, 7, 8 | new `tests/version-stamp-check.test.sh` cases; `skr-live-refs.sh vsd-preload`; grilling and ICA content greps |
-| G4 | 6, 10 | `skr-live-refs.sh seams-confirm code-review tdd-skill-invoke`; `tests/adapter-skill-parity.test.js`; Step 10 TBD |
+| G4 | 6, 10 | `skr-live-refs.sh seams-confirm code-review tdd-skill-invoke`; `tests/adapter-skill-parity.test.js`; AC10.1-AC10.6 |
 | G5 | 6, 9 | `skr-live-refs.sh handoff-preload`; hitl path grep; description length and version-floor checks |
 | G6 | every step | `skr-core.sh`; `skr-glossary.sh`; `resync-vendored-skills.sh --check` |
 | G7 | every step | `skr-archive-verify.sh <names>` |
@@ -58,8 +58,9 @@ over `/tmp/claude-1000` found no audit report anywhere. This plan is built
 from the approved-scope list in the dispatch, with every claim it depends on
 re-verified against the tree. The per-skill TRIM detail for
 `coding-discipline`, `roast-work`, `ubiquitous-language`, `domain-modeling`
-and `codebase-design` was only in the report, so Step 10 is held (Open
-Question 1).
+and `codebase-design` was only in the report. The user answered by having it
+re-derived (Clarifications, category 1); Step 10 is built from that
+re-derivation after spec-master re-verified it.
 
 ### Verified facts (2026-10-14, at 12227b4)
 
@@ -196,15 +197,16 @@ but sibling specs may take it first.
 - Decision: (1) retire `grill-me`, `grill-with-docs`, `code-review`,
   `to-spec`, `to-tickets`, `fail-triage` and the four graph-generated local
   skills; (2) the vendored skills whose text antislop now edits (`grilling`,
-  `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`, and any Step 10
-  trims) are fork-and-own: the live file carries a "Derived from" header,
+  `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`) are
+  fork-and-own: the live file carries a "Derived from" header,
   and drift tracking moves to the archived byte-verbatim copy, so
   `--check` still reports upstream drift; (3) every pre-change original is
   kept byte-identical under `docs/archive/skills/<name>/` with an index row
   naming its origin path and commit.
 - Consequences: upstream fixes no longer flow into forked skills
   automatically; `--check` on the archived copy tells a maintainer when to
-  port one by hand. `handoff` is the only skill still vendored verbatim.
+  port one by hand. `handoff`, `domain-modeling` and `codebase-design` stay
+  vendored verbatim.
   Consumers lose six skills on their next plugin update.
 - Why the three ADR tests hold: hard to reverse (consumer-visible skill
   removals and a changed drift-tracking target); surprising without context
@@ -227,8 +229,22 @@ but sibling specs may take it first.
 
 - 2026-10-14 Functional scope & success criteria: Q What does TRIM mean for
   coding-discipline, roast-work, ubiquitous-language, domain-modeling and
-  codebase-design, given the audit report file does not exist? → A pending,
-  Open Question 1
+  codebase-design, given the audit report file does not exist? → A: per
+  user (Open Question 1), re-derived by a fresh read-only pass
+  (`trim-recommendations.md`, model output; spec-master re-verified its
+  file:line claims and re-ran its ubiquitous-language replacement through an
+  unmodified copy of `tests/ubiquitous-language.test.js`: exit 0, and exit 1
+  with `UL_TEST_MUTATE=1`). Result: trim `coding-discipline` (principle 6
+  genericized), `roast-work` (delete `:10-15` only) and
+  `ubiquitous-language` (lens 2 names `_Avoid_`, both mode sections
+  halved); KEEP `domain-modeling` and `codebase-design` unchanged. Its claim
+  that the coding-discipline skill caused the largest test bloat is
+  unconfirmed and is not cited.
+- 2026-10-14 Functional scope & success criteria: Q Does the rewritten
+  improve-codebase-architecture keep the design-it-twice pointer (ICA
+  `:71`)? → A (self-resolved): yes. `codebase-design/DESIGN-IT-TWICE.md` is
+  kept, so the pointer does not dangle; it is reworded as an optional later
+  dispatch (AC8.4).
 - 2026-10-14 Domain entities / data model: Q Where do archived originals
   live, and what identifies one? → A (self-resolved):
   `docs/archive/skills/<name>/`, the whole pre-change skill directory,
@@ -251,12 +267,14 @@ but sibling specs may take it first.
   orchestrator's merge-gate run covers the full file (R4, P5 deviation).
 - 2026-10-14 External dependencies & integrations: Q How do edits to
   vendored text coexist with ADR-0005/0012/0031 byte-pinning and
-  `resync-vendored-skills.sh --check`? → A pending, Open Question 2 (steps
-  written to the default: fork-and-own, drift tracking moved to the archived
-  copy).
+  `resync-vendored-skills.sh --check`? → A: fork-and-own, drift tracking
+  moved to the archived copy, recorded in a new ADR (user, Open Question 2).
 - 2026-10-14 External dependencies & integrations: Q Will re-running
   `code-review-graph install` regenerate the four deleted local skills, and
-  what should consumers be told? → A pending, Open Question 4.
+  what should consumers be told? → A: install-antislop must ASK the
+  consumer whether to delete the four directories, and delete them only on
+  yes; never auto-delete, never keep them silently (user, Open Question 4;
+  Step 1).
 - 2026-10-14 Edge cases / failure handling: Q The Set A string
   `persona-config.json` `issueTracker` says "to-tickets' own default
   (ready-for-agent)"; no agent may edit that file. → A (self-resolved): the
@@ -266,7 +284,7 @@ but sibling specs may take it first.
   `resync --check` cannot reach GitHub? → A (self-resolved): exit 2 is an
   environment gap, reported as such, never a pass; exit 1 is a FAIL.
 - 2026-10-14 Technical constraints & tradeoffs: Q What is the merged
-  slicing skill called? → A pending, Open Question 3 (default `pathfinder`).
+  slicing skill called? → A: `pathfinder` (user, Open Question 3).
 - 2026-10-14 Technical constraints & tradeoffs: Q Which "lead-programmer
   double load" does the tdd item mean? → A (self-resolved): lead-programmer
   preloads `antislop:tdd` and its prose also says to invoke it again via the
@@ -295,9 +313,9 @@ but sibling specs may take it first.
   retirements reach a session only after `/plugin update` (or reinstall).
   Unit criteria check the repo, not the cache.
 - R2. **code-review-graph regeneration.** `code-review-graph install`
-  re-creates the four `.claude/skills` directories. Open Question 4 decides
-  the consumer guidance; for this repo, re-running the installer brings them
-  back and they must be deleted again.
+  re-creates the four `.claude/skills` directories. install-antislop now
+  asks the consumer whether to delete them (Step 1). For this repo,
+  re-running the installer brings them back and they must be deleted again.
 - R3. **Self-editing persona.** Steps 2-4 edit `agents/spec-master.md` and
   `agents/task-master.md`. A spec-master or task-master spawned mid-plan
   loads whichever body is on disk. Units run strictly in order.
@@ -326,8 +344,8 @@ but sibling specs may take it first.
   `tests/fixtures/contract-score/*` keep `skills/to-tickets/SKILL.md` as
   inert sample text; `.claude/wiki/changelog.md` is history.
 - R10. **The `to-spec` publish step for this plan.** It resolves to more than 6
-  units, so spec-master must publish it. That happens after Open Questions
-  converge, through `to-spec` (still live until Step 3 lands).
+  units, so it must be published to the tracker. `to-spec` is still live
+  until Step 3 lands, so that publish has to happen before Step 3.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied. Every claim in Context was measured
@@ -361,7 +379,7 @@ but sibling specs may take it first.
   as it is at the unit's base commit. Then append one index row with
   `archived-from` = the unit's base commit (full or 7+ char sha). The
   `.claude/skills` dirs use origin `.claude/skills/<name>`.
-- **Drift rows (Open Question 2 default).** A forked skill's FILES rows in
+- **Drift rows (fork-and-own, Open Question 2).** A forked skill's FILES rows in
   `scripts/resync-vendored-skills.sh` keep their upstream paths but point
   the local path at `docs/archive/skills/<name>/...`. A retired vendored
   skill's rows (and REPOINT entries) are removed. SKILL_ORDER and the "9
@@ -403,15 +421,27 @@ Affected files: `docs/archive/skills/README.md` (new: purpose paragraph,
 (git mv from `.claude/skills/`); `docs/harness-glossary.md` (`:1617` entry
 and the **scaffold-only mirror** entry at `:299`); `CONTEXT.md` (new
 **Archived skill** entry, see Scribe hint); `skills/install-antislop/SKILL.md`
-`:149-171` per Open Question 4, plus the byte-identical
-`.claude/skills/install-antislop/` copy and the install-antislop archive
-(first change); `CHANGELOG.md`.
+`:149-153` (drop "(all query interfaces, not workflow commands)") and the
+`:167-171` bullet replaced by this text (wrapping free):
+
+> The generated `.claude/skills/debug-issue/`, `.claude/skills/explore-codebase/`,
+> `.claude/skills/refactor-safely/` and `.claude/skills/review-changes/`
+> directories call graph MCP tools that, after the rescoping step above,
+> only the `explorer` can reach, so antislop does not use them. Ask the user
+> whether to delete these four directories (use `AskUserQuestion` if it is
+> available; otherwise ask in plain text and wait for the answer). Delete
+> them only if the user says yes. If the user says no, leave them in place,
+> and don't wire them into `explorer.md` either way.
+
+plus the byte-identical `.claude/skills/install-antislop/` copy and the
+install-antislop archive (first change); `CHANGELOG.md`.
 Acceptance criteria:
 - AC1.1 run: `bash docs/plans/skr-criteria/skr-discovery.sh "$(ls -d skills/*/ | xargs -n1 basename | tr '\n' ' ')" "coding-discipline install-antislop"` expect: exit 0. mutation: restore `.claude/skills/debug-issue` → exit 1.
 - AC1.2 run: `bash docs/plans/skr-criteria/skr-archive-verify.sh debug-issue explore-codebase refactor-safely review-changes install-antislop` expect: exit 0. mutation: append a byte to any archived file → exit 1.
 - AC1.3 run: `bash docs/plans/skr-criteria/skr-glossary.sh debug-issue explore-codebase refactor-safely review-changes` expect: exit 0. mutation: at baseline the harness-glossary `:1617` entry has no archive pointer → exit 1.
 - AC1.4 run: `grep -c '^\*\*Archived skill\*\*:' CONTEXT.md` expect: `1`. And `node tests/context-glossary-links.test.js` exit 0.
-- AC1.5 run: `bash docs/plans/skr-criteria/skr-core.sh` expect: exit 0.
+- AC1.5 run: `tr -s '\n ' ' ' < skills/install-antislop/SKILL.md | grep -c 'Ask the user whether to delete these four directories'` expect `1`; same pipe with `'Delete them only if the user says yes'` expect `1`; `grep -c 'legitimate and can stay' skills/install-antislop/SKILL.md` expect `0`; `grep -c 'review-changes' skills/install-antislop/SKILL.md` expect ≥1. mutation: baseline gives 0, 0, 1 (observed).
+- AC1.6 run: `diff -rq skills/install-antislop .claude/skills/install-antislop` exit 0; `bash docs/plans/skr-criteria/skr-core.sh` expect: exit 0.
 
 ### Step 2 (skr-2): retire grill-me and grill-with-docs
 Stamped: yes (R5).
@@ -477,7 +507,7 @@ Acceptance criteria:
 - AC3.8 run: `bash hooks/scripts/version-stamp-check.sh <base>..HEAD` expect: `ok touched: yes`.
 - AC3.9 run: `bash docs/plans/skr-criteria/skr-core.sh` and `skr-discovery.sh` (table) expect: exit 0.
 
-### Step 4 (skr-4): merge to-tickets into pathfinder (name per Open Question 3)
+### Step 4 (skr-4): merge to-tickets into pathfinder
 Stamped: yes (R5).
 Affected files: archive `skills/pathfinder/` (cp, first change) and
 `skills/to-tickets/` (git mv); `skills/pathfinder/SKILL.md` rewritten: new
@@ -593,11 +623,16 @@ the final message as a markdown list (Files, Problem, Solution, Benefits,
 Recommendation strength) plus a Top recommendation. No file is written, no
 browser is opened, no CDN is used, no question is asked. Grilling a chosen
 candidate is a later, separate dispatch using `grilling` and
-`domain-modeling`. Resync rows → archive; NOTICES; runbook; CHANGELOG.
+`domain-modeling`. The design-it-twice pointer (old `:71`) stays, reworded:
+to compare alternative interfaces for a chosen candidate, a later dispatch
+can use `codebase-design`'s design-it-twice pattern
+(`DESIGN-IT-TWICE.md`, kept). Resync rows → archive; NOTICES; runbook;
+CHANGELOG.
 Acceptance criteria:
 - AC8.1 run: `grep -ciE 'xdg-open|CDN|Tailwind|Mermaid|HTML|subagent_type=Explore|Which of these would you like' skills/improve-codebase-architecture/SKILL.md` expect: `0`. mutation: baseline >0.
 - AC8.2 run: `test ! -e skills/improve-codebase-architecture/HTML-REPORT.md && test -f docs/archive/skills/improve-codebase-architecture/HTML-REPORT.md` exit 0.
 - AC8.3 run: `skr-archive-verify.sh improve-codebase-architecture`, `resync --check` (`[OK] improve-codebase-architecture`), `skr-core.sh` exit 0.
+- AC8.4 run: `grep -c 'design-it-twice' skills/improve-codebase-architecture/SKILL.md` expect ≥1 and `test -f skills/codebase-design/DESIGN-IT-TWICE.md` exit 0. mutation: drop the pointer → 0.
 
 ### Step 9 (skr-9): diagnosing-bugs path; install-antislop description and version claims
 Stamped: no.
@@ -621,21 +656,82 @@ Acceptance criteria:
 - AC9.3 run: `grep -c '2\.1\.201' skills/install-antislop/SKILL.md` expect `0`; `grep -c '2\.1\.219' skills/install-antislop/SKILL.md` ≥1; the floor matches the plugin: `grep -o '>=2\.1\.[0-9]*' .claude-plugin/plugin.json | tr -d '>='` equals the `v2.1.NNN+` in the SKILL.md.
 - AC9.4 run: `diff -rq skills/install-antislop .claude/skills/install-antislop` exit 0; `skr-archive-verify.sh diagnosing-bugs install-antislop`, `resync --check` (`[OK] diagnosing-bugs`), `skr-core.sh` exit 0.
 
-### Step 10 (skr-10): remaining trims, HELD on Open Question 1
-Stamped: no for skills alone. `coding-discipline` changes also touch the
-`.claude/skills` copy and both adapter lead-programmer ports; `roast-work`
-changes touch both reviewer ports.
-Under default (b) of Open Question 1: `coding-discipline` principle 6 loses
-its repo-only example (`hooks/scripts/lib/state-access.sh`, `jq
-'.agent_type'`, grepping persona prose) for generic wording, because the
-skill ships to every consumer; `roast-work`, `ubiquitous-language`,
-`domain-modeling` and `codebase-design` are unchanged (no grep-verifiable
-defect found, so no change is manufactured).
-Acceptance criteria (under (b)):
-- AC10.1 run: `grep -cE 'state-access\.sh|agent_type' skills/coding-discipline/SKILL.md` expect `0`. mutation: baseline 2.
-- AC10.2 run: `node tests/adapter-skill-parity.test.js`, `diff -rq skills/coding-discipline .claude/skills/coding-discipline`, `skr-archive-verify.sh coding-discipline`, `skr-core.sh` all exit 0.
-Under (a) the criteria are rewritten from the re-supplied report before
-dispatch; under (c) this step is dropped.
+### Step 10 (skr-10): trim coding-discipline, roast-work, ubiquitous-language
+Stamped: no (skills and adapters only).
+Each skill is archived at its first change: `coding-discipline` and
+`roast-work` here; `ubiquitous-language` was already archived by Step 2 and
+is not re-archived (CHK6). `domain-modeling` and `codebase-design` are not
+touched.
+Affected files and edits:
+- `skills/coding-discipline/SKILL.md`: principle 6 (`:35-40`) replaced by
+  exactly:
+  ```
+  6. NO REACHING THROUGH — use only what you were handed, built, or own: one
+     hop into your own input is fine (reading one field off the argument you
+     were passed); chaining into another unit's internals is not (`a().b.c`,
+     parsing a sibling module's private output, grepping another file's prose
+     for a value). Read shared formats via their owner: call the helper that
+     defines a path, pattern, or layout; don't re-derive it inline.
+  ```
+  The same body goes byte-identically into `.claude/skills/coding-discipline/SKILL.md`
+  (copied by hand) and the inlined `coding-discipline` blocks of
+  `adapters/codex/agents/lead-programmer.toml` and
+  `adapters/cursor/agents/lead-programmer.md`.
+- `skills/roast-work/SKILL.md`: delete `:10-15` (the "This skill produces
+  ONE advisory section ..." paragraph and the blank line after it); keep the
+  rest verbatim. `:41-45` ("Output shape ... appended AFTER the verdict
+  line ... none of its entries are blocking defects") stays, because the
+  Codex and Cursor reviewer ports state the advisory-only rule only inside
+  their inlined block (ADR-0004 Tension 1, kept by ADR-0013). Mirror the
+  change into the inlined `roast-work` blocks of
+  `adapters/codex/agents/reviewer.toml` and `adapters/cursor/agents/reviewer.md`.
+- `skills/ubiquitous-language/SKILL.md` (on top of Step 2's text): lens 2
+  replaced by
+  ```
+  2. **A new synonym for an already-defined term.** The input introduces a new
+     way to say something already defined in the glossary — including any
+     word listed under an entry's `_Avoid_:` line. Name the canonical term,
+     state the new synonym, and note that both refer to the same thing.
+  ```
+  and everything from `## Diff mode` to the end of the file replaced by
+  ```
+  ## Diff mode
+
+  **Input:** a diff. **Consumer:** `reviewer`.
+
+  **Output:** ONE clearly-demarcated advisory section appended AFTER the
+  verdict line; never flips PASS/FAIL, never adds a FAIL ground, never
+  substitutes for the acceptance-criteria command. Findings go to the
+  `.pass` marker's non-blocking notes.
+
+  **Anchor:** every finding names `file:line`, states the drift in one
+  sentence, and the canonical term in one more. Check identifiers,
+  type/module names, comments, and docs the diff introduces or renames.
+
+  ## Prose mode
+
+  **Input:** a natural-language request or a draft spec. **Consumer:**
+  `spec-master`, or `milestone-auditor` (if present).
+
+  **Output:** advisory only; informs the category-8 score but never blocks
+  progression to grilling, spec publication, or `task-master` handoff. No
+  new gate, no new hook.
+
+  **Anchor:** a quoted span from the input, or the plan's own step/heading
+  number (e.g. "Step 3"). State the drift, name the canonical term (or
+  suggest one for `scribe` if the term is new).
+  ```
+  (Applied to a scratch copy on 2026-10-14: 75 → 64 lines;
+  `tests/ubiquitous-language.test.js` exit 0, mutated run exit 1.)
+- `docs/archive/skills/README.md` rows for `coding-discipline` and
+  `roast-work`; `CHANGELOG.md`.
+Acceptance criteria:
+- AC10.1 run: `grep -cE 'state-access\.sh|agent_type' skills/coding-discipline/SKILL.md` expect `0`. mutation: baseline 2 (observed).
+- AC10.2 run: `node tests/adapter-skill-parity.test.js` expect exit 0. mutation: edit one adapter block → exit 1.
+- AC10.3 run: `diff -rq skills/coding-discipline .claude/skills/coding-discipline` expect exit 0.
+- AC10.4 run: `grep -c 'This skill produces ONE advisory section' skills/roast-work/SKILL.md` expect `0`; `grep -c 'appended AFTER the verdict line' skills/roast-work/SKILL.md` expect `1`; `grep -c '^[1-4]\. [A-Z]' skills/roast-work/SKILL.md` expect `4`. mutation: baseline 1, 1, 4.
+- AC10.5 run: `node tests/ubiquitous-language.test.js` exit 0 and `UL_TEST_MUTATE=1 node tests/ubiquitous-language.test.js` exit 1; `grep -c '_Avoid_' skills/ubiquitous-language/SKILL.md` expect ≥1 (baseline 0); `wc -l < skills/ubiquitous-language/SKILL.md` expect ≤ 66.
+- AC10.6 run: `bash docs/plans/skr-criteria/skr-archive-verify.sh coding-discipline roast-work ubiquitous-language` exit 0; `git diff --quiet <unit-base> HEAD -- skills/domain-modeling skills/codebase-design` exit 0; `bash scripts/resync-vendored-skills.sh --check` exit 0 (`[OK] domain-modeling`, `[OK] codebase-design`); `bash docs/plans/skr-criteria/skr-core.sh` exit 0.
 
 ### Step 11 (skr-11, scribe): land the ADR; wiki; final sweep
 Affected files: `docs/adr/NNNN-...md` (from the draft in Context, number
@@ -646,57 +742,32 @@ entry (new set and the fork-and-own distinction); CHANGELOG.
 Acceptance criteria:
 - AC11.1 run: `grep -l 'docs/archive/skills' docs/adr/*.md | wc -l` expect ≥1, and `grep -l 'Amended by ADR-' docs/adr/0005-*.md docs/adr/0012-*.md docs/adr/0031-*.md | wc -l` expect `3`.
 - AC11.2 run: `bash docs/plans/skr-criteria/skr-live-refs.sh grill-me grill-with-docs code-review to-spec to-tickets fail-triage vsd-preload handoff-preload tdd-skill-invoke seams-confirm` expect exit 0; `bash docs/plans/skr-criteria/skr-glossary.sh grill-me grill-with-docs code-review to-spec to-tickets fail-triage` exit 0; `git grep -c -E 'grill-me|to-tickets|to-spec' -- .claude/wiki/dependencies.md` no output.
-- AC11.3 run: `bash docs/plans/skr-criteria/skr-archive-verify.sh debug-issue explore-codebase refactor-safely review-changes grill-me grill-with-docs to-spec fail-triage to-tickets pathfinder version-stamp-discipline tdd code-review grilling improve-codebase-architecture diagnosing-bugs install-antislop ubiquitous-language` exit 0; `node tests/context-glossary-links.test.js` exit 0.
+- AC11.3 run: `bash docs/plans/skr-criteria/skr-archive-verify.sh debug-issue explore-codebase refactor-safely review-changes grill-me grill-with-docs to-spec fail-triage to-tickets pathfinder version-stamp-discipline tdd code-review grilling improve-codebase-architecture diagnosing-bugs install-antislop ubiquitous-language coding-discipline roast-work` exit 0; `node tests/context-glossary-links.test.js` exit 0.
 
 ## Open Questions
 
-1. **The audit report is missing, so what do the remaining TRIMs mean?**
-   (impact: Step 10's content; Steps 1-9 do not depend on it). Recommended:
-   (a).
-   - (a) Re-supply the audit report (a path that exists). Step 10's criteria
-     are rewritten from it before dispatch; Steps 1-9 can start now.
-   - (b) Accept spec-master's reading: genericize `coding-discipline`
-     principle 6's repo-only example; leave `roast-work`,
-     `ubiquitous-language`, `domain-modeling` and `codebase-design`
-     unchanged.
-   - (c) Drop Step 10 from this plan.
-2. **Policy for antislop edits to vendored text** (`grilling`, `tdd`,
-   `diagnosing-bugs`, `improve-codebase-architecture`; ADR-0005/0012/0031).
-   Recommended: (a).
-   - (a) Fork-and-own: the live file is "Derived from" upstream, and drift
-     tracking moves to the byte-verbatim archived copy, so `--check` still
-     reports upstream changes. New ADR (Step 11).
-   - (b) A per-edit declared-deviation class (a patch file per skill that
-     the resync script applies before diffing). Keeps the live file tracked,
-     but adds machinery.
-   - (c) Keep the vendored text verbatim and skip those rewrites; put the
-     antislop corrections in persona prose instead.
-3. **Name of the merged slicing skill.** Recommended: (a).
-   - (a) `pathfinder` (the base the audit named; `to-tickets` wording in
-     spec-master and task-master is renamed).
-   - (b) `to-tickets` (keeps the widely used verb; `pathfinder` is retired
-     instead).
-   - (c) A new name, `slice-and-dispatch`.
-4. **What install-antislop tells consumers about code-review-graph's four
-   generated skills** (they call graph MCP tools that only the `explorer`
-   can reach, per ADR-0001). Recommended: (a).
-   - (a) Say antislop does not use them and they should be deleted after
-     `code-review-graph install`; the explorer is the graph interface.
-   - (b) Leave the consumer guidance ("can stay") unchanged; only this
-     repo's copies go.
+None open. Round 1 (2026-10-14), answered by the user:
+1. TRIM scope → re-derived (Step 10: coding-discipline, roast-work,
+   ubiquitous-language; domain-modeling and codebase-design KEEP).
+2. Vendored-text policy → (a) fork-and-own, with a new ADR (Step 11).
+3. Merged slicing skill name → (a) `pathfinder`.
+4. Graph-generated local skills → install-antislop asks the consumer
+   whether to delete them (Step 1, AC1.5).
 
 ## Self-check
 - CHK1: Is the TRIM content for coding-discipline, roast-work,
-  ubiquitous-language, domain-modeling and codebase-design defined? — FAIL
-  (missing) — converted to Open Question 1
+  ubiquitous-language, domain-modeling and codebase-design defined? — PASS
+  (was FAIL (missing), converted to Open Question 1; answered, Step 10
+  revised in place with literal replacement text)
 - CHK2: Is the policy for editing vendored text defined, and do Steps 6-9
-  agree on it? — FAIL (missing) — converted to Open Question 2 (Steps
-  6-9 are all written to its default (a))
+  agree on it? — PASS (was FAIL (missing), converted to Open Question 2;
+  answered (a), which Steps 6-9 and Common rules already use)
 - CHK3: Is the merged slicing skill's name defined consistently in Steps 4
-  and 11 and the expected-set table? — FAIL (missing) — converted to Open
-  Question 3
+  and 11 and the expected-set table? — PASS (was FAIL (missing), converted
+  to Open Question 3; answered `pathfinder`)
 - CHK4: Is the consumer guidance for the four graph-generated skills
-  defined? — FAIL (missing) — converted to Open Question 4
+  defined? — PASS (was FAIL (missing), converted to Open Question 4;
+  answered "ask the consumer"; Step 1 wording plus AC1.5)
 - CHK5: Is the archive location defined so that no enumerator loads, lists,
   mirrors, hashes or ships it? — PASS (Context, verified facts;
   `skr-discovery.sh`)
@@ -710,7 +781,7 @@ Acceptance criteria:
   config? — FAIL (conflicting) — revised in place (R6 plus AC4.5 keep the
   string true in substance; no agent edit)
 - CHK9: Is every Goal clause mapped to a runnable criterion? — PASS
-  (Goal-to-criterion map; G4's trims are held under Open Question 1)
+  (Goal-to-criterion map; G4 maps to AC10.1-AC10.6)
 - CHK10: Is the merge gate defined under the 600 s cap? — PASS (R4, P5)
 - CHK11: Do the steps agree on version numbers? — PASS (next patch at
   execution time, none pinned; R5)
@@ -744,6 +815,21 @@ Acceptance criteria:
   spec2-unitB's recorded class vacuous (`tests/filehashes-currency.test.js`)?
   — PASS (no skill is in fileHashes; the stamped-unit mirrors are checked
   by the same aggregate run, mutation observed)
+- CHK20: Does the improve-codebase-architecture rewrite (Step 8) keep or
+  drop the design-it-twice pointer, and does it agree with keeping
+  codebase-design (Step 10)? — PASS (kept and reworded; AC8.4 checks the
+  pointer and the target file)
+- CHK21: Do Steps 2 and 10 agree on ubiquitous-language's prose-mode
+  progression wording? — PASS (Step 10's replacement text repeats Step 2's
+  "grilling, spec publication, or `task-master` handoff")
+- CHK22: Does the roast-work trim leave the Codex/Cursor reviewer ports
+  without an advisory-only statement? — PASS (`:41-45` kept; AC10.4 checks
+  "appended AFTER the verdict line" survives, and parity carries it into
+  both ports)
+- CHK23: Is install-antislop's delete decision defined so it can neither
+  auto-delete nor silently keep? — PASS (Step 1 literal text; AC1.5 checks
+  both the ask and the "only if the user says yes" sentences, and that
+  "can stay" is gone)
 
 Advisory ubiquitous-language (prose mode) on this plan: lens 1, nothing
 found ("preload" matches **Preloaded skill**; "mirror" matches
@@ -753,8 +839,9 @@ found ("preload" matches **Preloaded skill**; "mirror" matches
 
 ## Handoff
 
-11 units, so this goes to `task-master` (standard path), after Open
-Questions converge and the plan is published with `to-spec` (R10).
+The plan resolves to 11 units, so it goes to `task-master` (standard path).
+It is published to the tracker with `to-spec` before Step 3 retires that
+skill (R10).
 Milestones: M1 = Steps 1-4 (retirements and merges), M2 = Steps 5-9
 (mechanize and rewrite), M3 = Steps 10-11.
 
@@ -766,8 +853,8 @@ Milestones: M1 = Steps 1-4 (retirements and merges), M2 = Steps 5-9
   It exists so a retired or rewritten skill's original stays readable
   without git archaeology. _Avoid_: "deprecated skill" (a deprecated skill is
   still live).
-- harness-glossary **drift-tracked skills**: after Step 9, the set is
-  `handoff` (live, `fm-noflag`) plus the archived copies of `grilling`,
-  `tdd`, `diagnosing-bugs`, `improve-codebase-architecture`,
-  `codebase-design` and `domain-modeling`.
+- harness-glossary **drift-tracked skills**: after Step 9, the set is the
+  live `handoff` (`fm-noflag`), `codebase-design` and `domain-modeling`
+  (`fm`), plus the archived copies of `grilling`, `tdd`, `diagnosing-bugs`
+  and `improve-codebase-architecture` (7 skills).
 - ADR per the draft in Context (Step 11).
