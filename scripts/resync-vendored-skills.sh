@@ -6,7 +6,7 @@
 # Usage:
 #   scripts/resync-vendored-skills.sh          # print a per-skill drift report
 #   scripts/resync-vendored-skills.sh --check  # same report; exit 1 if any of
-#                                               # the 9 drift-tracked skills
+#                                               # the 7 drift-tracked skills
 #                                               # has genuine content
 #                                               # drift (all fetches ok); exit
 #                                               # 2 if any upstream fetch
@@ -41,8 +41,6 @@ RAW_BASE="https://raw.githubusercontent.com/mattpocock/skills/$SHA"
 #       doc = markdown companion, no frontmatter (header + blank at line 1-2)
 #       raw = no header at all (e.g. the .sh companion); compare whole file
 FILES="
-grill-me:fm-noflag:skills/grill-me/SKILL.md:skills/productivity/grill-me/SKILL.md
-grill-with-docs:fm-noflag:skills/grill-with-docs/SKILL.md:skills/engineering/grill-with-docs/SKILL.md
 grilling:fm:skills/grilling/SKILL.md:skills/productivity/grilling/SKILL.md
 handoff:fm-noflag:skills/handoff/SKILL.md:skills/productivity/handoff/SKILL.md
 tdd:fm:skills/tdd/SKILL.md:skills/engineering/tdd/SKILL.md
@@ -59,7 +57,7 @@ domain-modeling:fm:skills/domain-modeling/SKILL.md:skills/engineering/domain-mod
 domain-modeling:doc:skills/domain-modeling/ADR-FORMAT.md:skills/engineering/domain-modeling/ADR-FORMAT.md
 domain-modeling:doc:skills/domain-modeling/CONTEXT-FORMAT.md:skills/engineering/domain-modeling/CONTEXT-FORMAT.md
 "
-SKILL_ORDER="grill-me grill-with-docs grilling handoff tdd diagnosing-bugs improve-codebase-architecture codebase-design domain-modeling"
+SKILL_ORDER="grilling handoff tdd diagnosing-bugs improve-codebase-architecture codebase-design domain-modeling"
 
 # to-spec/to-tickets/code-review are the 3 repoint skills Step A.3 lands.
 # Report-only: not gated by --check since they don't exist until A.3 lands.
@@ -169,7 +167,7 @@ if [ "$CHECK" -eq 1 ]; then
   fi
   if [ "$drifted" -eq 1 ]; then
     echo
-    echo "DRIFT DETECTED among the 9 drift-tracked skills." >&2
+    echo "DRIFT DETECTED among the 7 drift-tracked skills." >&2
     exit 1
   fi
 fi

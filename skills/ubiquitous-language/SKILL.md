@@ -62,7 +62,7 @@ and states the canonical term in one more.
 plan's prose.
 
 **Output:** advisory only. Findings inform the category-8 score but never
-block progression to `grill-with-docs`, `to-spec`, or `task-master` handoff. No new
+block progression to grilling, spec publication, or `task-master` handoff. No new
 gate, no new hook.
 
 **Anchor:** findings anchor on a quoted span from the input or the plan's own

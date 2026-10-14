@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Grill skills retired (skr-2, 0.31.163).** `skills/grill-me` and `skills/grill-with-docs` move to `docs/archive/skills/`; `agents/spec-master.md` names `grilling` with `domain-modeling` instead, `agents/milestone-auditor.md` invokes `antislop:grilling`, `skills/ubiquitous-language/SKILL.md` prose mode no longer names the retired skills (original archived); the resync script, NOTICES and runbook drop both skills (7 drift-tracked skills).
+
 **Skills archive scaffold (skr-1).** `docs/archive/skills/` holds byte-identical originals (index: `docs/archive/skills/README.md`); the four graph-generated `.claude/skills` directories (`debug-issue`, `explore-codebase`, `refactor-safely`, `review-changes`) are moved there; `skills/install-antislop/SKILL.md` now asks the consumer whether to delete them; `CONTEXT.md` defines **Archived skill**.
 
 **Escalation prose follow-ups (epfb-1, 0.31.162).** `templates/persona-protocol.md`: the prompt-confirmed decision write paragraph is re-flowed to 80 columns (its first line was 211). `agents/reviewer.md`: the ESCALATE-TO-HUMAN paragraph names the "Resolving a standing escalation" bullet instead of "the bullet after next". `CONTEXT.md`: the **Escalation packet** entry names the protocol heading **Durable escalation packet** as the same term. Mirrors refreshed by `node bin/cli.js --update --force-render`.

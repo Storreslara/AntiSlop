@@ -15,7 +15,6 @@ script remains directly runnable/copyable.
 
 | # | skill | upstream path |
 |---|---|---|
-| 1 | `grill-me` | `skills/productivity/grill-me` |
 | 2 | `grilling` | `skills/productivity/grilling` |
 | 3 | `handoff` | `skills/productivity/handoff` |
 | 4 | `to-spec` | `skills/engineering/to-spec` |
@@ -26,9 +25,8 @@ script remains directly runnable/copyable.
 | 9 | `codebase-design` | `skills/engineering/codebase-design` |
 | 10 | `domain-modeling` | `skills/engineering/domain-modeling` |
 | 11 | `code-review` | `skills/engineering/code-review` |
-| 12 | `grill-with-docs` | `skills/engineering/grill-with-docs` |
 
-`handoff`, `improve-codebase-architecture`, `grill-me`, and `grill-with-docs` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). Additionally, `to-spec`, `to-tickets`, and `code-review` have their
+`handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). `grill-me` and `grill-with-docs` were retired by the skills audit; their originals are kept, byte-identical, under `docs/archive/skills/` (see its README). Additionally, `to-spec`, `to-tickets`, and `code-review` have their
 `/setup-matt-pocock-skills` references repointed to antislop's native setup
 flow (`install-antislop` + `persona-config.json` `issueTracker` + the
 retrieval contract); this is noted in each of those skills' own provenance

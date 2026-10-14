@@ -261,6 +261,8 @@ _Avoid_: marker-directory gate
   declared-deviation class, alongside `grill-me`. Recorded in
   [ADR-0031](docs/adr/0031-grill-with-docs-model-invocable.md). See also
   [[Preloaded skill]] and **description collision**.
+  Retired 2026-10-14 (skills audit, skr-2): `spec-master` now runs `grilling` with
+  `domain-modeling`; the original is kept at `docs/archive/skills/grill-with-docs/`.
 
 **non-blocking note**:
 (issue #295, gh295-1/1b/2/3) — a tagged, optional message attached to a
@@ -524,6 +526,8 @@ vendored first-party skill (originally from Matt
   sequentially: grill to resolve ambiguity, then to-spec to synthesize and
   publish. The template LAYERS on top of the v0.9.0 spec-kit format (Goal →
   Context → Clarifications → …), not replacing it.
+  Its sibling `grill-me` was retired 2026-10-14 (skr-2); the original is kept at
+  `docs/archive/skills/grill-me/`.
 
 **fast-path threshold**:
 ≤5 dispatchable units in a finalized spec. Below
@@ -587,7 +591,7 @@ input mode for the `ubiquitous-language` skill,
   operating on natural-language requests or draft specs. Consumes the input,
   applies the three drift lenses, and reports findings anchored on quoted
   spans or step/heading references. Advisory only; never blocks progression
-  through `grill-me`, `to-spec`, or handoff to `task-master`. Used by
+  through grilling, spec publication, or handoff to `task-master`. Used by
   `spec-master` at two pipeline points: category-8 ("Terminology
   consistency") grilling and Self-check on the draft plan. Complementary to
   **Diff mode**.

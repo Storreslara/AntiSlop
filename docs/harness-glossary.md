@@ -982,6 +982,8 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   or dispatch context (e.g., in `agents/spec-master.md`'s instructions to use `grill-with-docs`
   rather than bare "grilling"), since descriptions themselves cannot be used as a
   disambiguation surface.
+  Resolved 2026-10-14 (skills audit, skr-2): `grill-me` and `grill-with-docs` were retired, so the
+  collision no longer exists; originals: `docs/archive/skills/grill-me/`, `docs/archive/skills/grill-with-docs/`.
 
 **Adapter behavioural parity**:
 (issue #202, 2026-08-01 efficiency pass 2,
@@ -1600,6 +1602,7 @@ When a
   `improve-codebase-architecture`) is now formally documented in [ADR 0012](docs/adr/0012-vendored-skill-declared-deviations.md);
   [ADR 0005](docs/adr/0005-vendor-mattpocock-skills.md) amended to reference it.
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
+  `grill-me` was later retired (skr-2); original: `docs/archive/skills/grill-me/`.
 
 **fm-noflag set now four skills**:
 (2026-09-11, unit gwd-1) — the `fm-noflag` declared-deviation class (stripping the
@@ -1610,6 +1613,8 @@ When a
   The reversal is formally recorded in [ADR 0031](docs/adr/0031-grill-with-docs-model-invocable.md),
   which amends ADR 0012. All four skills are byte-diffed by `scripts/resync-vendored-skills.sh --check`
   as part of the [[drift-tracked skills]] set.
+  Superseded 2026-10-14 (skr-2): `grill-me` and `grill-with-docs` were retired; originals:
+  `docs/archive/skills/grill-me/`, `docs/archive/skills/grill-with-docs/`. Two skills remain in the class.
 
 **Upstream MCP tool naming gap**:
 (recorded 2026-08-06) — code-review-graph
@@ -1662,6 +1667,8 @@ this repo self-hosts the plugin it
   reports per-skill status (`[OK]` for match, or drift details if changed). Distinct
   from the separate `REPOINT_SKILLS` set (skills pulled from upstream via live
   `skills@latest` rather than pinned to a specific commit). See `docs/maintenance/resync-vendored-skills.md`.
+  As of 2026-10-14 (skr-2) `grill-me` and `grill-with-docs` are retired (originals: `docs/archive/skills/grill-me/`,
+  `docs/archive/skills/grill-with-docs/`) and the set is 7 skills.
 
 **hook block event**:
 (unit #288, 2026-08-11) — a transcript event (a `tool_result` entry in

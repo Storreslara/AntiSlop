@@ -9,3 +9,6 @@ Byte-identical originals of skills that were retired, merged away or rewritten. 
 | refactor-safely | .claude/skills/refactor-safely | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | retired | none (graph MCP tools are reachable only by explorer) |
 | review-changes | .claude/skills/review-changes | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | retired | none (graph MCP tools are reachable only by explorer) |
 | install-antislop | skills/install-antislop | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | rewritten (stays live) | skills/install-antislop |
+| grill-me | skills/grill-me | 7adddc1cfadfdbdeff4d2bd0adc8598c1787cecc | retired | grilling |
+| grill-with-docs | skills/grill-with-docs | 7adddc1cfadfdbdeff4d2bd0adc8598c1787cecc | retired | grilling with domain-modeling |
+| ubiquitous-language | skills/ubiquitous-language | 7adddc1cfadfdbdeff4d2bd0adc8598c1787cecc | trimmed (stays live) | skills/ubiquitous-language |
