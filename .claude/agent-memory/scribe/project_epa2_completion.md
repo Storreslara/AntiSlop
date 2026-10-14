@@ -70,9 +70,15 @@ tests/reviewed-dir-leak-guard.test.sh (validate.sh section 101) no longer lists 
 - **Open note 3:** parallel-lanes speedup for validate.sh (about 60%) is still not started; needs `.claude/` marker and git-index isolation first. The tmp-name (vtmp-1) and leak-guard hazards are now fixed.
 - **CONTEXT.md left alone:** "leak guard" and "watch item" are test-suite/process vocabulary, explained in the test file and here; no domain or harness-mechanics reader needs them defined, so a glossary entry is not load-bearing.
 
+## vlg closure (vlg-1..3, PASS 2026-10-14; 7adddc1, 4ed8fc9, 5178319; no version bump)
+
+vlg-1: the leak guard (validate.sh section 101) judges the nested run by exit code plus last non-blank line (0 + "All checks passed." OK; 1 + "One or more checks FAILED." NOTE only; else FAIL "did not finish") and sets `ANTISLOP_VALIDATE_INNER=1`; repo-root-relative writers remain a documented accepted gap in the serial guard. vlg-2: opt-in `tests/validate-lanes.sh` (lane copies; closes the repo-root-relative gap there). vlg-3: `tests/validate-lanes.test.sh` is section 116, CONTRIBUTING.md bullet. Closed lgc notes 1-3. Glossary: **lane runner** and **lane copy** added to docs/harness-glossary.md only.
+
+**Open reviewer notes (non-blocking):** the EXIT trap kills only lane subshells (tar/bash children survive TERM/INT); tar "file changed as we read it" reddens a busy-tree run (run on a quiet tree); the vlg-3 test lacks mutants for L1/L6/L9 and `tree()` ignores git setup failure; the guard header says "item 2" where the plan says "Note 2"; nested.out lives inside the sandbox; the plan's measured timings are stale.
+
 ## Live carry-forward
 
-- **j:** closed by likely cause (see lgc closure); reopen only if validate.sh exits 1 under concurrency again.
-- **Open lgc notes 1-3** above (nested exit code discarded; repo-root-relative writers uncaught; parallel-lanes speedup not started).
+- **j:** closed by likely cause; reopen only if validate.sh exits 1 under concurrency again.
+- **lgc notes 1-3:** closed by vlg. Only the vlg open reviewer notes above remain.
 
-**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** everything above is closed except the lgc open notes; start validate.sh concurrency work from those.
+**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** everything above is closed except the vlg open notes.

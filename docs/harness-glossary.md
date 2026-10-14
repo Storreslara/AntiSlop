@@ -3290,3 +3290,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   in `agents/task-master.md` bullet **Contract home and precedence** within the
   task-master input section.
 
+
+**lane runner**:
+(units vlg-1..3, 2026-10-14) — `tests/validate-lanes.sh [--lanes N]` (default 3, max 8), an opt-in parallel runner for `tests/validate.sh`. It splits the suite's sections across N **lane copies** and merges the results. Serial `tests/validate.sh` remains the merge gate; the lane runner is a speed aid (3 lanes, 116 sections: about 162 s against about 476 s serial). Regression-tested by `tests/validate-lanes.test.sh` (validate.sh section 116). See **lane copy**.
+
+**lane copy**:
+(unit vlg-2, 2026-10-14) — one lane's private tar copy of the checkout, with its own `.claude/` marker state and git index, so concurrent lanes cannot collide on shared marker or index files. The lane runner fingerprints each lane's marker directory per section, which catches writers that use repo-root-relative paths (the gap the serial leak guard in `tests/reviewed-dir-leak-guard.test.sh` documents as accepted). Run it on a quiet tree: tar "file changed as we read it" turns a run red. See **lane runner**.
