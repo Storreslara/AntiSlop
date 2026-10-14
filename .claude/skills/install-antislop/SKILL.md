@@ -210,7 +210,7 @@ plugin agent at all — it only lives as a template.
   mechanics as step 4's `--wire-graph-mcp`: inlines the launch command into
   `researcher.md`'s `mcpServers:` frontmatter, removes the project-wide
   `.mcp.json` entry, and records `substitutions.arxivMcpLaunch` in
-  `persona-config.json` (creating it with just that field if step 6 hasn't
+  `persona-config.json` (inspect it with the `Read` tool, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`; the file is created with just that field if step 6 hasn't
   run yet — step 6 must merge into it, not overwrite it). Hand-editing risks
   the same flattening trap step 4 warns about.
 - Verify with the same provenance-self-report requirement as step 4 (fallback
@@ -310,8 +310,10 @@ don't guess:
   `bin/cli.js --update` diffs future runs against to detect local edits
   without an LLM.
 
-Validate the file against `templates/persona-config.schema.json` (a `jq`
-check that every required key is present and typed correctly) before moving
+Validate the file against `templates/persona-config.schema.json` (read it
+with the `Read` tool and check that every required key is present and typed
+correctly; a Bash command such as `jq` naming that file can be refused by
+`harness-integrity-gate.sh`) before moving
 on — don't write it freehand and hope. This validation checks shape, not
 behavior — it does NOT replace the "run testAndLintCommand once" check
 above; a schema-valid config can still contain a command that red-gates on

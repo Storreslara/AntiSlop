@@ -11,9 +11,9 @@ deciding whether/how to re-pin.
 
 | skill | upstream path | shape |
 |---|---|---|
-| `grilling` | `skills/productivity/grilling` | verbatim |
+| `grilling` | `skills/productivity/grilling` | forked (rows diff the archived copy) |
 | `handoff` | `skills/productivity/handoff` | verbatim |
-| `tdd` (+ `tests.md`, `mocking.md`) | `skills/engineering/tdd` | verbatim |
+| `tdd` (+ `tests.md`, `mocking.md`) | `skills/engineering/tdd` | forked (rows diff the archived copy) |
 | `diagnosing-bugs` (+ `scripts/hitl-loop.template.sh`) | `skills/engineering/diagnosing-bugs` | forked (rows diff the archived copy) |
 | `improve-codebase-architecture` (+ `HTML-REPORT.md`, archived copy only) | `skills/engineering/improve-codebase-architecture` | forked (rows diff the archived copy) |
 | `codebase-design` (+ `DEEPENING.md`, `DESIGN-IT-TWICE.md`) | `skills/engineering/codebase-design` | verbatim |
@@ -121,9 +121,14 @@ script.
 4. Once all desired files are updated, re-pin: fetch upstream's current
    commit SHA for `main`
    (`git ls-remote https://github.com/mattpocock/skills main`) and update
-   the SHA in `skills/THIRD-PARTY-NOTICES.md` (both the prose sentence and
-   every per-file provenance header comment across all 7 skills — a
-   project-wide find/replace of the old SHA for the new one).
+   the SHA in `skills/THIRD-PARTY-NOTICES.md` (the prose sentence) and in the
+   provenance header of every file the FILES table names under `skills/`.
+   Do not run a project-wide find/replace: archived originals under
+   `docs/archive/skills/` stay byte-identical to the commit their README row
+   names, and a forked skill's live "Derived from" header (short SHA) changes
+   only when an upstream change is ported by hand (step 3). Re-pinning while
+   forked skills exist is not covered by this runbook (their archived copies
+   would then drift against the new pin); stop and raise it.
 5. Run `bash scripts/resync-vendored-skills.sh --check` again — it should
    report `[OK]` for all 7 drift-tracked skills against the new pin.
 6. Run `bash tests/validate.sh` and commit the update with a message

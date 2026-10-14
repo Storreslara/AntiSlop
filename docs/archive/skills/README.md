@@ -1,6 +1,6 @@
 # Archived skills
 
-Byte-identical originals of skills that were retired, merged away or rewritten. Nothing loads, lists, mirrors, hashes or ships this directory: it is outside every discovery root and package.json ships no docs/ path. Read it for history; do not edit it. Each directory is verified against git by docs/plans/skr-criteria/skr-archive-verify.sh.
+Byte-identical originals of skills that were retired, merged away or rewritten. No skill loader discovers this directory and nothing lists, mirrors or hashes it: it is outside every discovery root, and package.json ships no docs/ path (a git clone or plugin install carries it as inert files). Read it for history; do not edit it. Each directory is verified against git by docs/plans/skr-criteria/skr-archive-verify.sh.
 
 | skill | origin dir | archived-from sha | disposition | successor |
 |---|---|---|---|---|

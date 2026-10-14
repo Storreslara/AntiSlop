@@ -44,8 +44,9 @@ section is authoritative): spec-master and milestone-auditor always dispatch
 on their `opus` frontmatter default — fable was removed entirely as an
 eligible tier for either persona (issue #348).
 
-spec-master owns the spec through Open Questions relay and publishing via
-`to-spec`; ticket-slicing (`to-issues`), per-unit model tagging, the
+spec-master owns the spec through Open Questions relay and publishing
+through its own PRD-template appendix; ticket-slicing (the `pathfinder`
+skill), per-unit model tagging, the
 retrieval-contract line, and per-unit dispatch-prompt authoring for
 lead-programmer/scribe belong to `task-master`, a separate persona split
 out of what used to be a single planning persona (see
@@ -69,12 +70,13 @@ discretion (orchestrator.md) — fable is EXCLUDED for this persona, the
 judgment needed to write accurate dispatch boundaries doesn't fit fable's
 light/mechanical profile. Never change the tier here.
 
-task-master owns `to-issues`/`to-tickets` slicing outright, per-unit model
+task-master owns slicing through the `pathfinder` skill, per-unit model
 tagging, the retrieval-contract line, and per-unit dispatch-prompt
 authoring for lead-programmer/scribe — split, alongside `spec-master`, out
 of what used to be a single planning persona (see agents/spec-master.md),
 which owns everything upstream of a finalized spec (taxonomy scorecard,
-interrogation, Open Questions, Self-check, publishing via `to-spec`).
+interrogation, Open Questions, Self-check, publishing through its
+PRD-template appendix).
 
 ## lead-programmer
 

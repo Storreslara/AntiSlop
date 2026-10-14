@@ -18,5 +18,5 @@ Grill the plan, decision or idea until every branch of its decision tree is reso
 ## In every context
 
 - If a *fact* can be found by exploring the environment (filesystem, tools, etc.), look it up instead of asking.
-- The *decisions* belong to the user: put each one to the user (or return it as an Open Question) and do not decide it yourself.
+- The *decisions* belong to the user: put each one to the user (or return it as an Open Question) and do not decide it yourself. In a self-grill there is no one to ask, so an undecided decision becomes a finding, like an unanswerable question.
 - Take no action on the plan until the questions converge on a shared understanding.

@@ -117,7 +117,9 @@ Output shape: a single, clearly-demarcated section (e.g. a `Roast:` or
 `Advisory critique:` heading) appended AFTER the verdict line — never before
 it, never interleaved with it. This section is additive detail, not a second
 opinion: it must not restate or contradict the verdict, and none of its
-entries are blocking defects, no matter how sharply worded.
+entries are blocking defects, no matter how sharply worded. It never determines
+PASS/FAIL: the acceptance-criteria commands and the materiality filter remain
+the only gate.
 <!-- END inlined-skill: roast-work -->
 
 ## Shared protocol essentials (inlined backstop)

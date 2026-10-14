@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Skills and docs prose follow-ups to the skills audit (sfu-2).** `skills/grilling`, `skills/install-antislop` (and its `.claude/skills` mirror), `skills/pathfinder`, `skills/roast-work` and `skills/improve-codebase-architecture` fix the contradictions the skr reviewers recorded (the roast-work sentence also lands in the Codex and Cursor reviewer ports, which inline that skill); `docs/persona-design-notes.md`, `docs/trust-model.md` row 25, `skills/THIRD-PARTY-NOTICES.md` (four forked skills, rows renumbered 1-10), the resync runbook (forked shapes, re-pin limits) and the archive README are brought up to date.
+
 **Glossary and ADR-0041 follow-ups to the skills audit (sfu-1).** `CONTEXT.md` drops stale `to-spec`/`to-tickets`/`fail-triage` wording and gains eight entries (Retired skill, Forked skill / fork-and-own, PRD template, debug spec, self-grill, Open Questions, work the frontier, expand-contract); `docs/harness-glossary.md` gains **skill base directory** and fixes three stale passages; ADR-0041's title and Decision 3 are corrected in place, recorded under its new `## Corrections` section.
 
 **ADR-0041 and wiki for the skills audit (skr-11).** `docs/adr/0041-retire-skills-fork-and-own-archive-originals.md` records retiring `grill-me`, `grill-with-docs`, `code-review`, `to-spec`, `to-tickets`, `fail-triage` and the four graph-generated local skills, fork-and-own for the edited vendored skills (drift tracking moves to the archived original) and the byte-identical archive under `docs/archive/skills/`; ADR-0005, ADR-0012 and ADR-0031 gain `Amended by ADR-0041` bullets; `.claude/wiki/dependencies.md` and the harness-glossary **drift-tracked skills** entry state the new set of 7.

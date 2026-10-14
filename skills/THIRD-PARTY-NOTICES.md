@@ -15,18 +15,18 @@ script remains directly runnable/copyable.
 
 | # | skill | upstream path |
 |---|---|---|
-| 2 | `grilling` (forked: the live file is derived and edited; original archived at `docs/archive/skills/grilling/`) | `skills/productivity/grilling` |
-| 3 | `handoff` | `skills/productivity/handoff` |
-| 4 | `to-spec` (archived at `docs/archive/skills/to-spec/`; template carried in `agents/spec-master.md`) | `skills/engineering/to-spec` |
-| 5 | `to-tickets` (merged into `skills/pathfinder`; archived at `docs/archive/skills/to-tickets/`) | `skills/engineering/to-tickets` |
-| 6 | `tdd` (forked: the live file is derived and edited; original archived at `docs/archive/skills/tdd/`) | `skills/engineering/tdd` |
-| 7 | `diagnosing-bugs` (forked: the live file is derived and edited; original archived at `docs/archive/skills/diagnosing-bugs/`) | `skills/engineering/diagnosing-bugs` |
-| 8 | `improve-codebase-architecture` (forked: the live file is derived and edited, `HTML-REPORT.md` is dropped; originals archived at `docs/archive/skills/improve-codebase-architecture/`) | `skills/engineering/improve-codebase-architecture` |
-| 9 | `codebase-design` | `skills/engineering/codebase-design` |
-| 10 | `domain-modeling` | `skills/engineering/domain-modeling` |
-| 11 | `code-review` (retired; archived at `docs/archive/skills/code-review/`) | `skills/engineering/code-review` |
+| 1 | `grilling` (forked: the live file is derived and edited; original archived at `docs/archive/skills/grilling/`) | `skills/productivity/grilling` |
+| 2 | `handoff` | `skills/productivity/handoff` |
+| 3 | `to-spec` (archived at `docs/archive/skills/to-spec/`; template carried in `agents/spec-master.md`) | `skills/engineering/to-spec` |
+| 4 | `to-tickets` (merged into `skills/pathfinder`; archived at `docs/archive/skills/to-tickets/`) | `skills/engineering/to-tickets` |
+| 5 | `tdd` (forked: the live file is derived and edited; original archived at `docs/archive/skills/tdd/`) | `skills/engineering/tdd` |
+| 6 | `diagnosing-bugs` (forked: the live file is derived and edited; original archived at `docs/archive/skills/diagnosing-bugs/`) | `skills/engineering/diagnosing-bugs` |
+| 7 | `improve-codebase-architecture` (forked: the live file is derived and edited, `HTML-REPORT.md` is dropped; originals archived at `docs/archive/skills/improve-codebase-architecture/`) | `skills/engineering/improve-codebase-architecture` |
+| 8 | `codebase-design` | `skills/engineering/codebase-design` |
+| 9 | `domain-modeling` | `skills/engineering/domain-modeling` |
+| 10 | `code-review` (retired; archived at `docs/archive/skills/code-review/`) | `skills/engineering/code-review` |
 
-`handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). `grill-me` and `grill-with-docs` were retired by the skills audit; their originals are kept, byte-identical, under `docs/archive/skills/` (see its README). `code-review` was retired by the skills audit (original: `docs/archive/skills/code-review/`). `tdd` is forked: its live file carries a "Derived from" header and antislop edits, and its drift tracking moves to the archived original. `skills/pathfinder` is first-party (derived from `wayfinder`; `to-tickets` original: `docs/archive/skills/to-tickets/`). All other vendored skills are byte-verbatim aside from the
+`handoff` and `improve-codebase-architecture` have the `disable-model-invocation: true` frontmatter flag stripped (tracked as `fm-noflag` reconstruction type in the drift check). `grill-me` and `grill-with-docs` were retired by the skills audit; their originals are kept, byte-identical, under `docs/archive/skills/` (see its README). `code-review` was retired by the skills audit (original: `docs/archive/skills/code-review/`). `grilling`, `tdd`, `diagnosing-bugs` and `improve-codebase-architecture` are forked: each live file carries a "Derived from" header and antislop edits, and drift tracking moves to the archived original. `skills/pathfinder` is first-party (derived from `wayfinder`; `to-tickets` original: `docs/archive/skills/to-tickets/`). All other vendored skills are byte-verbatim aside from the
 provenance header itself.
 
 ## License
