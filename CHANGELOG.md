@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Skills archive scaffold (skr-1).** `docs/archive/skills/` holds byte-identical originals (index: `docs/archive/skills/README.md`); the four graph-generated `.claude/skills` directories (`debug-issue`, `explore-codebase`, `refactor-safely`, `review-changes`) are moved there; `skills/install-antislop/SKILL.md` now asks the consumer whether to delete them; `CONTEXT.md` defines **Archived skill**.
+
 **Escalation prose follow-ups (epfb-1, 0.31.162).** `templates/persona-protocol.md`: the prompt-confirmed decision write paragraph is re-flowed to 80 columns (its first line was 211). `agents/reviewer.md`: the ESCALATE-TO-HUMAN paragraph names the "Resolving a standing escalation" bullet instead of "the bullet after next". `CONTEXT.md`: the **Escalation packet** entry names the protocol heading **Durable escalation packet** as the same term. Mirrors refreshed by `node bin/cli.js --update --force-render`.
 
 **Reviewer prose consistency and parity probes (epf-2, 0.31.161).** `agents/reviewer.md`, `templates/persona-protocol.md`, `CONTEXT.md` and both adapter ports: the skip token is spelled `examples: none - <one-line reason>` with an ASCII hyphen everywhere; the paragraph after the escalation card is a list item (`Durable escalation packet`), so it no longer renders as a loose paragraph; every layout-anchor line is 80 columns or less. `tests/adapter-protocol-parity.test.js` gains four probes (`**After:**`, the example heading, the `>` blockquote line, the `run.sh` and `view.sh` commands). Mirrors refreshed by `node bin/cli.js --update --force-render`.

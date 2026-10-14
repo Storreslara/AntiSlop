@@ -624,6 +624,14 @@ a skill declared in a [[Persona]]'s `skills:` frontmatter, loaded into
   removes a skill from all contexts regardless of mode — preloading is
   context-dependent, not absolute.
 
+**Archived skill**:
+a skill whose original files are kept, byte-identical, under
+  `docs/archive/skills/<name>/` with an index row naming its origin
+  directory and commit. Nothing loads, lists, mirrors, hashes or ships it.
+  It exists so a retired or rewritten skill's original stays readable
+  without git archaeology. _Avoid_: "deprecated skill" (a deprecated skill is
+  still live).
+
 **Harness**:
 Claude Code the product — the IDE plugin and surrounding runtime
   infrastructure that hosts all personas, hook scripts, and agent dispatches.

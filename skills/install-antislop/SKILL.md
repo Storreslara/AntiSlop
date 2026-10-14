@@ -150,7 +150,7 @@ accurate forever):
   PROJECT-WIDE `.mcp.json` MCP server entry (every persona would inherit it
   by default) AND generates four skill directories at `.claude/skills/debug-issue/`,
   `.claude/skills/explore-codebase/`, `.claude/skills/refactor-safely/`, and
-  `.claude/skills/review-changes/` (all query interfaces, not workflow commands).
+  `.claude/skills/review-changes/`.
 - **Rescope it to the explorer alone, mechanically — do not hand-edit this.**
   Run `node "${CLAUDE_PLUGIN_ROOT}/bin/cli.js" --wire-graph-mcp` (npx-scaffolded
   projects: `node <your-clone>/bin/cli.js --wire-graph-mcp`). This reads the
@@ -165,10 +165,13 @@ accurate forever):
   each with an explicit `type:` — a flattened bare map connects to nothing
   with no error at all.
 - The generated `.claude/skills/debug-issue/`, `.claude/skills/explore-codebase/`,
-  `.claude/skills/refactor-safely/`, and `.claude/skills/review-changes/` skill
-  directories are legitimate and can stay — they're just not what the explorer
-  calls; leave them for the user/other personas to invoke directly if wanted, and
-  don't wire them into `explorer.md`.
+  `.claude/skills/refactor-safely/` and `.claude/skills/review-changes/`
+  directories call graph MCP tools that, after the rescoping step above,
+  only the `explorer` can reach, so antislop does not use them. Ask the user
+  whether to delete these four directories (use `AskUserQuestion` if it is
+  available; otherwise ask in plain text and wait for the answer). Delete
+  them only if the user says yes. If the user says no, leave them in place,
+  and don't wire them into `explorer.md` either way.
 - Build the index once (`code-review-graph build` or equivalent — check the
   tool's current CLI). Identify the incremental-update command and its
   file-argument syntax — this becomes `graphUpdateCommand` in

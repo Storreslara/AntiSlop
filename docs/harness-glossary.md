@@ -306,7 +306,9 @@ Harness-mechanics vocabulary for this repo's own hooks, markers, gates, and disp
   run. Because scaffold-only mirrors are never automatically regenerated, any
   edit to their source file must be manually hand-synced to the mirror, or the
   mirror will silently drift out of sync. Currently in this category: all files
-  under `.claude/skills/` (mirrored from `skills/`). Operational implication:
+  under `.claude/skills/` that have a `skills/` source (mirrored from `skills/`;
+  the four graph-generated directories were retired, see `docs/archive/skills/`).
+  Operational implication:
   treat edits to `skills/` as requiring a dual-site commit: the source file and
   its `.claude/` mirror must be kept in sync, and parity is enforced
   mechanically by `tests/validate.sh` (skills mirror parity section). See also [[version-stamped
@@ -1618,6 +1620,8 @@ When a
   Root cause is upstream installer content bug, not antislop defect. Now that
   these SKILL.md files are tracked/shipped, the gap is more visible and should
   be fixed in the installer itself.
+  The SKILL.md files named here are retired; their originals are kept under
+  `docs/archive/skills/` (see **Archived skill** in CONTEXT.md).
 
 **U5 pairing ambiguity**:
 (unit hcb-posttool, 2026-09-24) — the documented, deliberate asymmetry in interpreting

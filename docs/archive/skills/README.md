@@ -1,0 +1,11 @@
+# Archived skills
+
+Byte-identical originals of skills that were retired, merged away or rewritten. Nothing loads, lists, mirrors, hashes or ships this directory: it is outside every discovery root and package.json ships no docs/ path. Read it for history; do not edit it. Each directory is verified against git by docs/plans/skr-criteria/skr-archive-verify.sh.
+
+| skill | origin dir | archived-from sha | disposition | successor |
+|---|---|---|---|---|
+| debug-issue | .claude/skills/debug-issue | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | retired | none (graph MCP tools are reachable only by explorer) |
+| explore-codebase | .claude/skills/explore-codebase | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | retired | none (graph MCP tools are reachable only by explorer) |
+| refactor-safely | .claude/skills/refactor-safely | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | retired | none (graph MCP tools are reachable only by explorer) |
+| review-changes | .claude/skills/review-changes | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | retired | none (graph MCP tools are reachable only by explorer) |
+| install-antislop | skills/install-antislop | 67b3a260455810b7f0a9c7abc4bbad81fcc03c10 | rewritten (stays live) | skills/install-antislop |
