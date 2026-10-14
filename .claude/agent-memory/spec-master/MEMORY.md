@@ -66,3 +66,4 @@
 - [Read-only /tmp namespace probe](technique_readonly_tmp_namespace_probe.md) — fixed /tmp names flip exit only when unwritable, not under concurrency; `unshare -rm` ro-/tmp probe.
 - [Throwaway tree for gated-dir tests](technique_throwaway_tree_for_gated_dir_tests.md) — run a dir-touching test in a mktemp copy with a stub validate.sh; marker-write leak set is now unitA/B/C/G.
 - [Protocol marker is render-only](project_protocol_marker_render_only.md) — agents/*.md sources have no ANTISLOP:BEGIN marker; only the .claude mirror does. Anchor on the source end.
+- [Monotonic timing; no backticks in command parentheticals](technique_monotonic_timing_and_command_backticks.md) — WSL date +%s jumps; use /proc/uptime. A backtick after a `command:` broke extraction.
