@@ -112,11 +112,11 @@ Seven principles:
    one-line purpose comment at most, only if the filename doesn't already
    say it.
 6. NO REACHING THROUGH — use only what you were handed, built, or own: one
-   hop into your own input is fine (`jq '.agent_type'` on hook stdin);
-   chaining into another unit's internals is not (`a().b.c`, jq-ing a
-   sibling script's private output, grepping a persona's prose). Read shared
-   formats via their owner: source `hooks/scripts/lib/state-access.sh`, don't
-   re-derive a marker path or unit-id regex inline.
+   hop into your own input is fine (reading one field off the argument you
+   were passed); chaining into another unit's internals is not (`a().b.c`,
+   parsing a sibling module's private output, grepping another file's prose
+   for a value). Read shared formats via their owner: call the helper that
+   defines a path, pattern, or layout; don't re-derive it inline.
 7. EXTEND, DON'T SPECIAL-CASE — if working code has an extension point (a
    `case` table, config list, lib function), add a new entry beside it, not
    an `if <special case>` inside working logic. Never build a seam

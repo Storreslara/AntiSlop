@@ -7,12 +7,6 @@ description: >
   reviewer's materiality filter already catches, with feedback specific
   enough to act on.
 ---
-This skill produces ONE advisory section, appended after the reviewer's
-verdict line — it never determines PASS/FAIL. The acceptance-criteria
-command plus the existing materiality filter (correctness / security /
-unmet-acceptance-criteria) remains the only gate; this rubric only adds
-detail on top of a verdict already reached.
-
 Four critique lenses — work through all four, not just the first one that
 turns something up:
 

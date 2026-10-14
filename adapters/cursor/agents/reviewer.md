@@ -85,12 +85,6 @@ with reasons.
   blank line. Do this exactly once per verdict, or the FAIL-block count inflates.
 
 <!-- BEGIN inlined-skill: roast-work -->
-This skill produces ONE advisory section, appended after the reviewer's
-verdict line — it never determines PASS/FAIL. The acceptance-criteria
-command plus the existing materiality filter (correctness / security /
-unmet-acceptance-criteria) remains the only gate; this rubric only adds
-detail on top of a verdict already reached.
-
 Four critique lenses — work through all four, not just the first one that
 turns something up:
 

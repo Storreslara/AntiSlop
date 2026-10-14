@@ -22,3 +22,5 @@ Byte-identical originals of skills that were retired, merged away or rewritten. 
 | grilling | skills/grilling | 35496ab14f05b81d0f9be538ed52d2146bf63da6 | rewritten (stays live) | skills/grilling |
 | improve-codebase-architecture | skills/improve-codebase-architecture | 864bfc7c2c7cafc95975d0c5b2a3e9e1f8d47c9a | rewritten (stays live) | skills/improve-codebase-architecture |
 | diagnosing-bugs | skills/diagnosing-bugs | 404f04fee9419904ef67745cd0ade97076c4f9d0 | forked (stays live) | skills/diagnosing-bugs |
+| coding-discipline | skills/coding-discipline | d5bd74a985c859901850117336611865d5190d89 | trimmed (stays live) | skills/coding-discipline |
+| roast-work | skills/roast-work | d5bd74a985c859901850117336611865d5190d89 | trimmed (stays live) | skills/roast-work |

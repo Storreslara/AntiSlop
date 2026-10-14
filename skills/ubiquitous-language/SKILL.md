@@ -26,8 +26,9 @@ The three lenses:
    and the canonical definition, then state the divergent meaning you found.
 
 2. **A new synonym for an already-defined term.** The input introduces a new
-   way to say something already defined in the glossary. Name the canonical
-   term, state the new synonym, and note that both refer to the same thing.
+   way to say something already defined in the glossary — including any
+   word listed under an entry's `_Avoid_:` line. Name the canonical term,
+   state the new synonym, and note that both refer to the same thing.
 
 3. **A load-bearing new domain term with no glossary entry.** The input
    introduces a new concept the glossary does not define. Report it as a
@@ -38,38 +39,26 @@ reader can tell it ran.
 
 ## Diff mode
 
-**Input:** a diff (file changes).
+**Input:** a diff. **Consumer:** `reviewer`.
 
-**Consumer:** `reviewer`.
+**Output:** ONE clearly-demarcated advisory section appended AFTER the
+verdict line; never flips PASS/FAIL, never adds a FAIL ground, never
+substitutes for the acceptance-criteria command. Findings go to the
+`.pass` marker's non-blocking notes.
 
-**Output:** ONE clearly-demarcated advisory section, appended AFTER the
-verdict line. Never flips PASS/FAIL, never adds a FAIL ground, never
-substitutes for running the acceptance-criteria command. Findings append to
-the `.pass` marker with the reviewer's other non-blocking notes.
-
-**Anchor:** findings name `file:line`.
-
-Work through all three lenses systematically, checking identifiers, type/module
-names, comments, and docs introduced or renamed by the diff against the
-glossary. Every finding names `file:line`, states the drift in one sentence,
-and states the canonical term in one more.
+**Anchor:** every finding names `file:line`, states the drift in one
+sentence, and the canonical term in one more. Check identifiers,
+type/module names, comments, and docs the diff introduces or renames.
 
 ## Prose mode
 
-**Input:** a natural-language request or a draft spec.
+**Input:** a natural-language request or a draft spec. **Consumer:**
+`spec-master`, or `milestone-auditor` (if present).
 
-**Consumer:** `spec-master`, or `milestone-auditor` (if present), auditing a
-plan's prose.
+**Output:** advisory only; informs the category-8 score but never blocks
+progression to grilling, spec publication, or `task-master` handoff. No
+new gate, no new hook.
 
-**Output:** advisory only. Findings inform the category-8 score but never
-block progression to grilling, spec publication, or `task-master` handoff. No new
-gate, no new hook.
-
-**Anchor:** findings anchor on a quoted span from the input or the plan's own
-step/heading number (e.g., "Step 3" or "## Context").
-
-Apply the same three lenses to the prose, looking for terminology that
-diverges from the glossary, overlaps with defined terms, or introduces new
-domain concepts worth recording. State the drift, name the canonical term
-(or suggest one for `scribe` if the term is new), and cite the anchor (span
-or step number).
+**Anchor:** a quoted span from the input, or the plan's own step/heading
+number (e.g. "Step 3"). State the drift, name the canonical term (or
+suggest one for `scribe` if the term is new).
