@@ -1281,6 +1281,15 @@ else
 fi
 
 echo
+echo "== tests/validate-lanes.sh: opt-in parallel lane runner (Bash, vlg-3) =="
+if bash tests/validate-lanes.test.sh; then
+  echo "OK   tests/validate-lanes.test.sh"
+else
+  echo "FAIL tests/validate-lanes.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

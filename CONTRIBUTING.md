@@ -31,6 +31,12 @@ usual for this repo:
   JSON validity, agent/skill frontmatter, conditional phrasing of
   optional-persona references, npm pack tarball composition, and
   marketplace.json/plugin.json consistency.
+- `bash tests/validate-lanes.sh` is an opt-in parallel run of the same
+  sections (default 3 lanes, `--lanes N` for 1-8). Each lane works in a
+  private copy of the checkout, and any section that changes the lane's
+  `.claude/reviewed/` FAILs, including a write relative to the repository
+  root, which the serial leak guard cannot see. It skips the leak guard's
+  nested run, so `bash tests/validate.sh` stays the merge gate.
 - If you touch a hook script, a persona body, or `install-antislop`, re-run the
   empirical smoke test described in README.md's Install section
   (`claude --plugin-dir`) — this plugin has already had real bugs that only
