@@ -59,9 +59,9 @@ domain-modeling:doc:skills/domain-modeling/CONTEXT-FORMAT.md:skills/engineering/
 "
 SKILL_ORDER="grilling handoff tdd diagnosing-bugs improve-codebase-architecture codebase-design domain-modeling"
 
-# to-spec/to-tickets/code-review are the 3 repoint skills Step A.3 lands.
+# to-tickets/code-review are the 2 repoint skills Step A.3 lands.
 # Report-only: not gated by --check since they don't exist until A.3 lands.
-REPOINT_SKILLS="to-spec to-tickets code-review"
+REPOINT_SKILLS="to-tickets code-review"
 
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
@@ -150,7 +150,7 @@ for skill in $SKILL_ORDER; do
 done
 
 echo
-echo "-- 3 repoint skills (Step A.3, may not be vendored yet) --"
+echo "-- 2 repoint skills (Step A.3, may not be vendored yet) --"
 for skill in $REPOINT_SKILLS; do
   if [ -f "skills/$skill/SKILL.md" ]; then
     echo "[VENDORED] $skill (not diffed by this script; repointed content, see docs/maintenance/resync-vendored-skills.md)"

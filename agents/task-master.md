@@ -22,7 +22,7 @@ mandatory for specs resolving to ≥6 dispatchable units and any
 spec-master emits the dispatch contract directly.**
 
 - **Input**: read the finalized spec `spec-master` produced (the
-  `docs/plans/` document and/or its `to-spec` tracker publication). Treat it
+  `docs/plans/` document and/or its tracker publication). Treat it
   as settled — you never interrogate the request, never ask Open Questions,
   and never add an "Open Questions" section of your own. **You run only when
   the spec resolves to ≥6 dispatchable units or any

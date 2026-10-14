@@ -59,6 +59,7 @@ a subagent system prompt in `agents/*.md`. "Core" personas
   observes agent activity (tool calls, skills invoked) via `hooks/scripts/agent-audit.sh` and
   surfaces observations; read-only and non-gating, it issues no verdict unlike `reviewer`
   and never audits the plan itself unlike `milestone-auditor`.
+  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/to-spec/`.
 
 **Version-stamped file**:
 any ADAPT-copied file carrying a
@@ -528,6 +529,8 @@ vendored first-party skill (originally from Matt
   Context → Clarifications → …), not replacing it.
   Its sibling `grill-me` was retired 2026-10-14 (skr-2); the original is kept at
   `docs/archive/skills/grill-me/`.
+  Retired 2026-10-14 (skills audit, skr-3): merged into `agents/spec-master.md`, whose
+  `## Appendix: PRD template` carries the template; original: `docs/archive/skills/to-spec/`.
 
 **fast-path threshold**:
 ≤5 dispatchable units in a finalized spec. Below
@@ -555,6 +558,7 @@ vendored first-party skill (originally from Matt
   OQ-3): the two thresholds move together, never independently — a
   decoupled pair would let a 4-unit spec skip `task-master` while still
   filing a tracker issue nobody slices from.
+  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/to-spec/`.
 
 **`pathfinder` skill**:
 first-party skill for `task-master`, derived from
@@ -912,6 +916,7 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   so the file is a chronological log of every failed attempt, not a single
   latest-only snapshot. Read by `bin/fail-count.sh` and by `fail-triage`/debug
   spec when a unit reaches [[ladder exhaustion]].
+  Archived originals (skills audit, 2026-10-14): `docs/archive/skills/fail-triage/`.
 
 **FAIL block**:
 (item12-1/item12-3/item12-4, 2026-09-26) — one FAIL verdict's contribution to

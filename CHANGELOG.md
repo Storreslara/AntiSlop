@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**to-spec and fail-triage merged into spec-master (skr-3, 0.31.164).** `skills/to-spec` and `skills/fail-triage` move to `docs/archive/skills/`; `agents/spec-master.md` publishes to the tracker directly (PRD template kept as `## Appendix: PRD template`) and its debug-spec bullet carries the VERIFY, CATEGORIZE and BRIEF steps inline; `agents/task-master.md`, the plugin description, `skills/install-antislop/SKILL.md`, the resync script, NOTICES and the runbook no longer name the retired skills.
+
 **Grill skills retired (skr-2, 0.31.163).** `skills/grill-me` and `skills/grill-with-docs` move to `docs/archive/skills/`; `agents/spec-master.md` names `grilling` with `domain-modeling` instead, `agents/milestone-auditor.md` invokes `antislop:grilling`, `skills/ubiquitous-language/SKILL.md` prose mode no longer names the retired skills (original archived); the resync script, NOTICES and runbook drop both skills (7 drift-tracked skills).
 
 **Skills archive scaffold (skr-1).** `docs/archive/skills/` holds byte-identical originals (index: `docs/archive/skills/README.md`); the four graph-generated `.claude/skills` directories (`debug-issue`, `explore-codebase`, `refactor-safely`, `review-changes`) are moved there; `skills/install-antislop/SKILL.md` now asks the consumer whether to delete them; `CONTEXT.md` defines **Archived skill**.

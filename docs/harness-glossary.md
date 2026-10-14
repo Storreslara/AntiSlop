@@ -1603,6 +1603,7 @@ When a
   [ADR 0005](docs/adr/0005-vendor-mattpocock-skills.md) amended to reference it.
   See `docs/plans/2026-08-04-skills-library-remediation.md` Revision 5.
   `grill-me` was later retired (skr-2); original: `docs/archive/skills/grill-me/`.
+  `to-spec` was later retired (skr-3); original: `docs/archive/skills/to-spec/`.
 
 **fm-noflag set now four skills**:
 (2026-09-11, unit gwd-1) — the `fm-noflag` declared-deviation class (stripping the
