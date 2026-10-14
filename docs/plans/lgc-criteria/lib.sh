@@ -17,7 +17,10 @@ mktree() {
   local t="$LGC_ROOT/$1"
   mkdir -p "$t/tests" "$t/.claude/reviewed" "$t/tmp"
   cp "$GUARD_SRC" "$t/tests/reviewed-dir-leak-guard.test.sh"
-  printf '#!/usr/bin/env bash\ncd "$(dirname "$0")/.."\n%s\n' "$2" > "$t/tests/validate.sh"
+  # The stub ends with validate.sh's own closing summary line (added
+  # 2026-10-14 by the vlg plan): after vlg-1 the guard FAILs a nested run
+  # that does not reach it, and these criteria are about leaks, not aborts.
+  printf '#!/usr/bin/env bash\ncd "$(dirname "$0")/.."\n%s\necho "All checks passed."\n' "$2" > "$t/tests/validate.sh"
   printf 'PASS old 2026-01-01T00:00:00Z commit: none criteria: none\n' > "$t/.claude/reviewed/old.pass"
   printf '%s\n' "$t"
 }
