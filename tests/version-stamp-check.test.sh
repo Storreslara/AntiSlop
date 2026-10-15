@@ -85,7 +85,7 @@ echo "#!/usr/bin/env bash" > "$repo/hooks/scripts/example.sh"
 r_hooks_only=$(snap hooks-only)
 run_case "hooks-scripts-only-not-gated" "ok" "$r_hooks_only"
 
-echo "-- CHANGELOG half (skr-5): a bump needs a same-commit CHANGELOG line naming it --"
+echo "-- CHANGELOG half (skr-5): a bump needs a same-commit CHANGELOG entry naming it --"
 expect_offender() {
   # <label> <range> <substring>: the offenders field of the verdict must contain the substring
   local label="$1" range="$2" want="$3" got
@@ -102,7 +102,7 @@ echo "chg a" > "$repo/agents/lead-programmer.md"
 plugin_version 0.3.1
 changelog_line 0.3.1
 r_chg_ok=$(snap chglog-ok)
-run_case "(a) bump plus matching CHANGELOG line" "ok" "$r_chg_ok"
+run_case "(a) bump plus matching CHANGELOG entry" "ok" "$r_chg_ok"
 
 echo "chg b" > "$repo/agents/lead-programmer.md"
 plugin_version 0.3.2
@@ -114,7 +114,7 @@ echo "chg c" > "$repo/agents/lead-programmer.md"
 plugin_version 0.3.3
 changelog_line 9.9.9
 r_chg_wrong=$(snap chglog-wrong-version)
-run_case "(c) CHANGELOG line names a different version" "violation" "$r_chg_wrong"
+run_case "(c) CHANGELOG entry names a different version" "violation" "$r_chg_wrong"
 expect_offender "(c) offenders name CHANGELOG.md" "$r_chg_wrong" ":CHANGELOG.md"
 
 echo "chg d1" > "$repo/agents/lead-programmer.md"
@@ -181,6 +181,40 @@ r_chg_h3=$(snap chglog-h3-v-prefix)
 run_case "(h3) v0.3.12 names 0.3.12" "ok" "$r_chg_h3"
 
 run_case_color "(i) color.ui=always, compliant bump" "ok" "$r_chg_ok"
+
+
+echo "-- CHANGELOG half hardening, second pass (lov-2) --"
+run_case_git_config() {
+  # <key> <value> <run_case args...>: run_case with one git config pair forced on every git call
+  local key="$1" value="$2"
+  shift 2
+  if ! ( export GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0="$key" GIT_CONFIG_VALUE_0="$value"; fail=0; run_case "$@"; exit "$fail" ); then
+    fail=1
+  fi
+}
+run_case_textconv() {
+  # run_case with a textconv driver bound to CHANGELOG.md that turns every digit into N
+  printf 'CHANGELOG.md diff=lovtc\n' > "$tmproot/lov-attributes"
+  if ! ( export GIT_CONFIG_COUNT=2 GIT_CONFIG_KEY_0=core.attributesFile GIT_CONFIG_VALUE_0="$tmproot/lov-attributes" \
+           GIT_CONFIG_KEY_1=diff.lovtc.textconv GIT_CONFIG_VALUE_1='sed s/[0-9]/N/g'; fail=0; run_case "$@"; exit "$fail" ); then
+    fail=1
+  fi
+}
+
+echo "chg h4" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.13
+changelog_line x.0.3.13
+r_chg_h4=$(snap chglog-h4-dot-on-left)
+run_case "(h4) x.0.3.13 does not name 0.3.13" "violation" "$r_chg_h4"
+
+echo "chg h5" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.14
+printf '**Bumped to 0.3.14.**\n' >> "$repo/CHANGELOG.md"
+r_chg_h5=$(snap chglog-h5-dot-on-right)
+run_case "(h5) 0.3.14 at the end of a sentence names 0.3.14" "ok" "$r_chg_h5"
+
+run_case_textconv "(j) textconv driver on CHANGELOG.md, compliant bump" "ok" "$r_chg_ok"
+run_case_git_config diff.external false "(k) diff.external set, compliant bump" "ok" "$r_chg_ok"
 
 echo "-- python3 missing from PATH: unknown, not a crash (item 1) --"
 fakebin="$tmproot/fakebin-no-python3"
@@ -303,9 +337,31 @@ if mutate half2-endpoint-version 's/changelog_adds_version "\$c" "\$cnew"/change
   run_case "(mc12) range-endpoint version passed: (e) should flip to" "violation" "$r_chg_e" "$MUTANT"
 fi
 
-if mutate no-color-removed 's/git diff --no-color --no-ext-diff --no-renames/git diff --no-renames/'; then
+if mutate no-color-removed 's/git diff --no-color /git diff /'; then
   run_case_color "(mc13) --no-color removed: (i) should flip to" "violation" "$r_chg_ok" "$MUTANT"
 fi
+
+if mutate no-ext-diff-removed 's/git diff --no-color --no-ext-diff /git diff --no-color /'; then
+  run_case_git_config diff.external false "(mc14) --no-ext-diff removed: (k) should flip to" "violation" "$r_chg_ok" "$MUTANT"
+fi
+
+if mutate no-textconv-removed 's/--no-ext-diff --no-textconv /--no-ext-diff /'; then
+  run_case_textconv "(mc15) --no-textconv removed: (j) should flip to" "violation" "$r_chg_ok" "$MUTANT"
+fi
+
+if mutate left-boundary-digit-only 's/(?<!\[0-9.\])/(?<![0-9])/'; then
+  run_case "(mc16) left boundary without the dot: (h4) should flip to" "ok" "$r_chg_h4" "$MUTANT"
+fi
+
+if mutate right-boundary-with-dot 's/(?!\[0-9\])/(?![0-9.])/'; then
+  run_case "(mc17) right boundary with the dot: (h5) should flip to" "violation" "$r_chg_h5" "$MUTANT"
+fi
+
+# Not pinned on purpose: dropping the +++ exclusion. The header line
+# `+++ b/CHANGELOG.md` never names a version, but an added line whose text
+# starts with "++" also renders as "+++..."; the shipped code skips such a
+# line and that mutant counts it, so the mutant is not equivalent. A fixture
+# would pin that old false violation, so none is added (unit lov-2).
 
 echo "-- offender collection is computed, not hardcoded (item 5) --"
 if mutate offender-collection-disabled 's|offenders="\${offenders:+\$offenders,}\$short:\$p"|true|'; then

@@ -62,11 +62,12 @@ except Exception:
 # into a digit or dot on the left, so 0.31.16 is not named by 0.31.166 or 10.31.16,
 # while v0.31.16 and (0.31.16) are. The diff is taken against the first parent,
 # like version_at "$c^", so a merge commit counts the lines its branch added.
-# --no-color and --no-ext-diff keep a user's color.ui=always or diff.external
-# from rewriting the lines this parses. python3 reads all of its input, so
-# pipefail never sees a SIGPIPE from an early exit.
+# --no-color, --no-ext-diff and --no-textconv keep a user's color.ui=always,
+# diff.external or .gitattributes textconv driver from rewriting the lines this
+# parses. python3 reads all of its input, so pipefail never sees a SIGPIPE from
+# an early exit.
 changelog_adds_version() {
-  git diff --no-color --no-ext-diff --no-renames "$1^" "$1" -- CHANGELOG.md 2>/dev/null \
+  git diff --no-color --no-ext-diff --no-textconv --no-renames "$1^" "$1" -- CHANGELOG.md 2>/dev/null \
     | python3 -c '
 import re, sys
 pat = re.compile(r"(?<![0-9.])" + re.escape(sys.argv[1]) + r"(?![0-9])")
