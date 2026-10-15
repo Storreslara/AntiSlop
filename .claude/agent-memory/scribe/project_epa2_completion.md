@@ -1,6 +1,6 @@
 ---
 name: escalation-packet follow-ups (epa, epf, epfb)
-description: lgc-1 closure (leak guard sandbox, j closed by likely cause); epa-2..4 carry-forward gaps for the escalation layout, card/fold marker, viewer tests and parity probes; the epf run (epf-1..6, 2026-10-13) that closed items 1-14; the epfb run (epfb-1..5, 2026-10-13) that closed a-i; and the live carry-forward list (j, plus epfb notes 1-5)
+description: vln-1..4 closure (lane runner process groups and busy-tree retry; open items: KILL escalation, stale plan range, exit-99 handling, vlg3-ac1 116 pin); lgc-1 closure (leak guard sandbox, j closed by likely cause); epa-2..4 carry-forward gaps for the escalation layout, card/fold marker, viewer tests and parity probes; the epf run (epf-1..6, 2026-10-13) that closed items 1-14; the epfb run (epfb-1..5, 2026-10-13) that closed a-i; and the live carry-forward list (j, plus epfb notes 1-5)
 metadata:
   type: project
 ---
@@ -76,9 +76,24 @@ vlg-1: the leak guard (validate.sh section 101) judges the nested run by exit co
 
 **Open reviewer notes (non-blocking):** the EXIT trap kills only lane subshells (tar/bash children survive TERM/INT); tar "file changed as we read it" reddens a busy-tree run (run on a quiet tree); the vlg-3 test lacks mutants for L1/L6/L9 and `tree()` ignores git setup failure; the guard header says "item 2" where the plan says "Note 2"; nested.out lives inside the sandbox; the plan's measured timings are stale.
 
+## vln closure (vln-1..4, PASS 2026-10-14; 31dc1a6, 3efa204, 7278604, 912e2b3; criterion amendment 4894be2; no version bump; no issue)
+
+- **vln-1** (`tests/validate-lanes.sh`): lanes run in their own process groups with stdin from /dev/null; the EXIT/TERM/INT trap sends TERM to each group, waits, then removes the work dir. A lane copy retries up to 3 times only when tar create exits 1 and extract exits 0 (a `NOTE lane k:` line each time); any other status or a third failure is FAIL naming the tar exits. Closes the vlg notes "trap kills only lane subshells" and "busy tree reddens the run" (the latter partly: a third failure still FAILs by design).
+- **vln-2** (`tests/validate-lanes.test.sh`, 106 to 152 lines): `tree()` exits 99 on git setup failure; new L10 (SIGTERM leaves no surviving process) and L11 (busy-tree copy retried); L9 moved last; mutants for L1/L6/L9 live in criterion vln2-ac2. Closes the vlg notes on test mutants and ignored `tree()` failure.
+- **vln-3** (`tests/reviewed-dir-leak-guard.test.sh`): `nested.out` is a second mktemp outside the sandbox, removed by the same EXIT trap; header "item 2" now "Note 2". Closes the vlg notes on the header and on `nested.out` inside the sandbox.
+- **vln-4**: vlg plan's vlg-3 `measured:` line now reads about 0.35 s / about 3 s. Closes the stale-timings note.
+- **4894be2**: spec-master amended criterion vln2-ac1 (it no longer pins the validate.sh section count).
+
+**Open after vln (non-blocking, carried forward):**
+1. vln-1: the bare `wait` has no KILL escalation; a process that leaves its group (setsid) or ignores TERM is not reached (documented in a runner comment).
+2. vln-2 plan: its Pre-resolved context still cites `tests/validate-lanes.test.sh:1-106` (the file is now 1-152).
+3. `tests/validate.sh` treats exit 99 (test-setup failure) like any other FAIL; no distinct message.
+4. `docs/plans/vlg-criteria/vlg3-ac1.sh` pins 116 sections; `tests/validate.sh` has 118 (implementer digest, not re-counted here). Stale criterion.
+
 ## Live carry-forward
 
 - **j:** closed by likely cause; reopen only if validate.sh exits 1 under concurrency again.
-- **lgc notes 1-3:** closed by vlg. Only the vlg open reviewer notes above remain.
+- **lgc notes 1-3** and **all vlg open notes:** closed by vln (see above).
+- **Open:** vln items 1-4 only.
 
-**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** everything above is closed except the vlg open notes.
+**Why:** reviewers' non-blocking notes the plan does not record elsewhere. **How to apply:** everything above is closed except vln open items 1-4; check those before re-raising any lane-runner note.
