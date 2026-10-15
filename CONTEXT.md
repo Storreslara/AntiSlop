@@ -363,6 +363,14 @@ _Avoid_: vacuous test, untested criterion
   `version-stamp-check.sh` was first misdescribed this way. See
   [[Mutation-proved]].
 
+**surviving mutant**:
+(unit lo2-1, 2026-10-14) — a mutant that the suite does not kill: every
+  check still passes with the mutation in place. It is either a gap in the
+  suite, when some input tells it apart from the original and a check could
+  be added, or an [[equivalent mutant]], when no input can; calling it the
+  latter needs proof. A surviving mutant may be left unpinned on purpose, but
+  the plan or test must say so and why.
+
 **Implementer-tier ratchet**:
 the `.fail` disqualifier on lead-programmer
   tier scaling. A unit's `.claude/reviewed/<task-id>.fail` record (from prior
@@ -578,6 +586,15 @@ a retired vendored skill (originally from Matt
   decoupled pair would let a 4-unit spec skip `task-master` while still
   filing a tracker issue nobody slices from.
   Archived originals (skills audit, 2026-10-14): `docs/archive/skills/to-spec/`.
+
+**spec publication**:
+(unit lo2-1, 2026-10-14) — `spec-master`'s step, after its Self-check
+  passes, of mapping a finished plan onto its [[PRD template]] and filing it
+  to the issue tracker with the `ready-for-agent` label. Required at or above
+  the [[publish threshold]], optional below it; additive either way, since the
+  `docs/plans/` document stays the canonical artifact. A synthesis step, not a
+  second interview. Distinct from `task-master` publishing the sliced units as
+  per-unit issues.
 
 **`pathfinder` skill**:
 first-party skill for `task-master`, derived from

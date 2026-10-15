@@ -806,6 +806,18 @@ an append-only audit-log record class written to
   spec gap. Documented in `agents/task-master.md` **Scribe dispatch contract** 
   section with example(s) between whole-line scribe-contract-example markers.
 
+**issue-body layout**:
+(unit lo2-1, 2026-10-14) — the arrangement of a published unit's tracker issue
+  body that lets `bin/contract-guard.js` find its contracts: prose first, then
+  the contracts last, the lead one under `## Dispatch contract` and, when the
+  unit has one, the [[scribe dispatch contract]] after it under
+  `## Dispatch contract (scribe)`. Each contract is one tilde-fenced block whose
+  first interior line is `Unit: <task-id>`, with a fence longer than any fence
+  inside it (`~~~~` around `~~~` payloads). An unfenced contract scores
+  `reason=no-contract`, a guard demotion to `sonnet`. Documented by the marked
+  issue-body example in `agents/task-master.md` and pinned by
+  `tests/contract-examples.test.js`.
+
 **edit item / command item**:
 (unit rgh-u3-1, 2026-10-06) — the two types of numbered items under the
   `## Ordered edits` (R1) section of a [[content-typed contract]]. An **edit item**
@@ -1128,12 +1140,17 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   and `prior_mtime=<marker-mtime>` for concurrency detection; this ensures a
   re-dispatched reviewer must write a newer verdict or be blocked at `SubagentStop`.
   Replaces the global clear-watermark and couples each verdict to its own unit.
-  Residual (unit lov-5, 2026-10-14): A stamp names no owner, and every
-  reviewer's SubagentStop classifies every stamp in the directory, so a
-  reviewer whose own stamp was already consumed (a resumed or second turn) is
-  blocked while another unit's freshly dispatched review is unsatisfied. The
-  block message says so; that reviewer reports and waits, and never writes a
-  marker for a unit it did not review. See [ADR-0016](adr/0016-per-unit-review-join.md)
+  Residual (unit lov-5, 2026-10-14; widened by lo2-1): A stamp names no owner,
+  and every reviewer's SubagentStop classifies every stamp in the directory, so
+  any reviewer that stops while no stamp is satisfied is blocked as long as
+  another unit's stamp is unsatisfied. That covers a reviewer whose own stamp
+  was already consumed (a resumed or second turn), a reviewer dispatched without
+  a `Unit:` line (it has no stamp), and an advisory pass (its advisory stamp is
+  never satisfied). Conversely, a reviewer that wrote no verdict is let through
+  when another unit's stamp happens to be satisfied, and that stamp is consumed
+  on its behalf. The block message says so; a blocked reviewer reports and
+  waits, and never writes a marker for a unit it did not review, and an advisory
+  pass never writes one at all. See [ADR-0016](adr/0016-per-unit-review-join.md)
   for design and [modules/hooks.md](../.claude/wiki/modules/hooks.md) for implementation.
 
 **advisory review-join stamp** (M2, Step 3): a variant `.claude/.review-join.<unit-id>.advisory`
@@ -1146,8 +1163,9 @@ _Avoid_: clear-watermark
 
 **scoped unit set** / **marker relevance scoping**:
 (ADR-0028, gh425-3) — the set of unit ids that a stopping reviewer is
-  responsible for, derived from that reviewer's own [[review-join stamp]]
-  files at stop time. Used to determine which `.blocked` / `.escalated` markers
+  treated as responsible for, derived from every [[review-join stamp]] file
+  present at stop time; stamps name no owner, so this includes units other
+  reviewers are reviewing (corrected by lo2-1). Used to determine which `.blocked` / `.escalated` markers
   are relevant to this reviewer's flag-clear operation. When the scoped unit set
   is non-empty, only markers for units in that set can hold pending-review flags;
   markers for units outside the set are logged as `marker-out-of-scope` instead
