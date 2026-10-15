@@ -63,7 +63,7 @@ The EXIT trap then sends TERM to each lane's whole group
 - Residual (accepted, stated in the new comment): a process that leaves its
   lane's group (`setsid`, or its own `set -m` jobs) or ignores TERM is not
   reached. No section of `tests/validate.sh` does that today (all 116
-  sections ran green in lanes, Verification record).
+  sections at the time ran green in lanes, Verification record).
 
 Rejected alternative: walking the tree with `pkill -P` / `ps --ppid`. It races
 with processes that fork while the walk runs, and it needs a recursive
@@ -93,8 +93,8 @@ failure real, not mocked. It switches commit signing on through git's
 with `gpg.program=false`. Before the fix the test exits 1 after
 running cases against unborn trees.
 
-vln-2 also adds two regression cases, so that the serial merge gate (section
-116 runs this test) covers vln-1's behaviour: L10 (SIGTERM mid-section
+vln-2 also adds two regression cases, so that the serial merge gate (its lane runner
+section runs this test) covers vln-1's behaviour: L10 (SIGTERM mid-section
 leaves no survivor) and L11 (a tar create exit 1 is retried and the run is
 green). The L9 TMPDIR check moves to the end so it covers them too. The file
 is rewritten whole with the Write tool. It spells the marker directory
@@ -233,11 +233,22 @@ twice and then FAILs as before, which is just as loud.
 - R7: Timing. Every deadline in the criteria and in L10 uses `/proc/uptime`
   (monotonic). On WSL the wall clock was seen to jump (vlg R7). The runner's
   `wall:` line stays informational.
+- R8 (amended 2026-10-14, after vln-2's commit 3efa204): Section count is
+  not stable. sfu-5 (1f50346, another plan) took `tests/validate.sh` from
+  116 to 118 sections, and `vln2-ac1.sh` pinned 116, so it went red on a
+  file the unit never touches. The criterion now asserts that exactly one
+  section header names `opt-in parallel lane runner` and exactly one line
+  runs `bash tests/validate-lanes.test.sh`, then runs that section with
+  `vrun`. Prose that called it "section 116" now says "the lane runner
+  section". Counts quoted from the vlg plan (vln-4's anchor) and the
+  historical "all 116 sections" record stay as measured.
+  `docs/plans/vlg-criteria/vlg3-ac1.sh` pins 116 the same way; it belongs to
+  the vlg plan and is not changed here.
 
 **G: merge gate for this plan** (orchestrator, after all four PASS; one Bash
 call per item, each `timeout: 600000`):
-(1) `bash docs/plans/vlg-criteria/vlg2-ac4.sh`. It runs all 116 sections in 3
-lanes with the new runner, and section 116 runs the new test; want exit 0
+(1) `bash docs/plans/vlg-criteria/vlg2-ac4.sh`. It runs every section in 3
+lanes with the new runner, and the lane runner section runs the new test; want exit 0
 and one `wall: Ns` line.
 (2) `bash tests/reviewed-dir-leak-guard.test.sh` on its own, with
 `REVIEWED_DIR_LEAK_GUARD_NESTED` unset. Want exit 0 and the `OK` line
@@ -255,7 +266,7 @@ and one `wall: Ns` line.
 - P4 "Optional personas degrade gracefully" (SHOULD): satisfied. No persona
   prose changes.
 - P5 "`tests/validate.sh` is the merge gate": satisfied. `tests/validate.sh`
-  is not edited at all. Its section 116 keeps running the (extended) lane
+  is not edited at all. Its lane runner section keeps running the (extended) lane
   test, and the serial run stays the gate.
 
 ## Steps
@@ -270,8 +281,8 @@ survivor, exit 143/130, TMPDIR clean; a section's stdin is `/dev/null`);
 
 ### Step 2: vln-2, lane runner test: setup hard-exit, L10, L11
 **Affected files:** `tests/validate-lanes.test.sh` only.
-**Acceptance:** `vln2-ac1.sh` (test green with an ok line per case, section 116
-green through `vrun`); `vln2-ac2.sh` (mutants for L1, L6, L9, L10, L11);
+**Acceptance:** `vln2-ac1.sh` (test green with an ok line per case, the lane runner
+section present once and green through `vrun`); `vln2-ac2.sh` (mutants for L1, L6, L9, L10, L11);
 `vln2-ac3.sh` (real signing failure gives exit 99 and no case run); `vlg3-ac2`
 (the old five mutants still red); `bash -n`; scope; trailer; tail.
 
@@ -514,7 +525,7 @@ wait
 
 ## Pre-resolved context
 tdd: no tests/validate-lanes.sh (criteria 1-2 are the tests for this change and are red before it; vln-2 adds regression cases L10/L11 to tests/validate-lanes.test.sh)
-blast-radius: tests/validate-lanes.sh:52-55,81-86,108-110,113-115 (the four edit sites); only caller tests/validate-lanes.test.sh (validate.sh section 116 runs it); docs/plans/vlg-criteria/vlg3-ac2.sh anchors on five other lines (R5).
+blast-radius: tests/validate-lanes.sh:52-55,81-86,108-110,113-115 (the four edit sites); only caller tests/validate-lanes.test.sh (validate.sh's lane runner section runs it); docs/plans/vlg-criteria/vlg3-ac2.sh anchors on five other lines (R5).
 commit-message: fix(vln-1): lane runner kills whole lanes on interrupt, retries a busy-tree copy
 trailer: the trailer names the model you actually ran on.
 gate: the file's text spells the marker directory path, so apply edits 1-4 with the Edit tool only (path-checked). Never put its content in a Bash heredoc; reviewed-path-gate.sh blocks that by text, and rewording to get past it is a bypass. If Edit is unavailable, STOP and report.
@@ -726,7 +737,7 @@ exit 1
 
 ## Do NOT touch
 - `tests/validate-lanes.sh`: vln-1's file; criterion 2 mutates copies of it, never the file.
-- `tests/validate.sh`: unchanged; section 116 keeps calling this test as it does today.
+- `tests/validate.sh`: unchanged; its lane runner section (header `opt-in parallel lane runner`) keeps calling this test as it does today.
 - `tests/reviewed-dir-leak-guard.test.sh`, `docs/plans/2026-10-14-validate-lanes-and-guard-followups.md`: sibling units' files.
 - `docs/plans/vln-criteria/`, `docs/plans/vlg-criteria/` and `docs/plans/epf-criteria/`: read-only.
 - `agents/` and `templates/`: no version-stamped file changes in this plan.
@@ -735,7 +746,7 @@ exit 1
 1. run: `bash docs/plans/vln-criteria/vln2-ac1.sh`
    exit: 0
    stdout: empty
-   mutation: delete the L11 block (from `t=$(tree busy` through its `check L11` call); prints `no ok line for L11`, exit 1 (observed). Before the unit it prints `no ok line for L10` (observed).
+   mutation: delete the L11 block (from `t=$(tree busy` through its `check L11` call); prints `no ok line for L11`, exit 1 (observed). Before the unit it prints `no ok line for L10` (observed). Duplicate the lane runner section header in a copy of `tests/validate.sh`; prints `lane runner section headers: 2, want 1`, exit 1 (observed, amended 2026-10-14).
 2. run: `bash docs/plans/vln-criteria/vln2-ac2.sh`
    exit: 0
    stdout: empty
@@ -768,7 +779,7 @@ exit 1
 
 ## Pre-resolved context
 tdd: yes tests/validate-lanes.test.sh (it is the regression test; criterion 2 proves L1, L6, L9, L10 and L11 red against runner mutants, criterion 4 the other five)
-blast-radius: tests/validate-lanes.test.sh:1-106 (whole file, replaced); only caller tests/validate.sh section 116 (`bash tests/validate-lanes.test.sh`); no shipped file names it.
+blast-radius: tests/validate-lanes.test.sh:1-106 (whole file, replaced); only caller tests/validate.sh's lane runner section (`bash tests/validate-lanes.test.sh`); no shipped file names it.
 commit-message: test(vln-2): lane runner test stops on setup failure, covers interrupt and copy retry
 trailer: the trailer names the model you actually ran on.
 gate: the file's text spells the marker directory path, so write it with the Write tool only (path-checked). Never put its content in a Bash heredoc; reviewed-path-gate.sh blocks that by text, and rewording to get past it is a bypass. If Write is unavailable, STOP and report.
