@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Agent-memory index-size warning (ptr-u4b).** `bin/agent-memory-size-check.sh` also warns on stderr, for each `.claude/agent-memory/*/MEMORY.md` over 4096 bytes or 40 lines, with a `WARN agent-memory index <path> is <bytes> B / <lines> lines (cap 4096 B / 40 lines)` line; the caps are `--index-cap-bytes N` and `--index-cap-lines N`, and the script still always exits 0. `tests/agent-memory-size-check.test.sh` covers the at-cap, over-lines, over-bytes and override cases. No version bump: neither file is version-stamped.
+
 **Skills-audit leftovers 2: stamped wording and protocol links (lo2-5, 0.31.171).** `agents/lead-programmer.md` says the `tdd` skill is also `skills/tdd/SKILL.md` in the antislop repo itself; `agents/orchestrator.md` calls the scribe contract tilde-fenced; `agents/task-master.md` puts the contracts last, the lead contract and then the scribe contract, and says a `stdout:` fragment is text the command prints, never a description; `templates/persona-protocol.md` names ADR-0016 and ADR-0028 by path instead of by a relative link that broke in every rendered `.claude/agents/*.md`; `tests/doc-relative-links.test.js` also scans `.claude/agents`. A double blank line under `[Unreleased]` is removed.
 
 **Review-join block text: advisory passes and per-port pins (lo2-4).** The SubagentStop join block in `hooks/scripts/lib/stop-gate-core.sh` (and its `.claude` and adapter copies) tells an advisory pass that it owns no verdict and writes no marker. `tests/adapter-stop-gate-parity.test.sh` case (f5) pins the block text, with a two-unit list, on the Claude, Codex and Cursor ports. Exit codes and the join logic are unchanged.
