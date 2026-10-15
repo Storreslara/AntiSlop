@@ -12,16 +12,37 @@ fail=0
 # count never changes the exit code. Lines a suite captures and discards never
 # reach this output and are not counted.
 if [ -z "${ANTISLOP_VALIDATE_INNER:-}" ]; then
+  # Quiet by default (ptr-u1): --verbose or ANTISLOP_VALIDATE_VERBOSE=1 prints the
+  # full stream. Either way the exit code is the inner script's.
+  verbose=""
+  [ "${ANTISLOP_VALIDATE_VERBOSE:-}" = "1" ] && verbose=1
+  pass_args=()
+  for a in "$@"; do
+    case "$a" in
+      --verbose) verbose=1 ;;
+      *) pass_args+=("$a") ;;
+    esac
+  done
   skip_log="$(mktemp)" || { echo "FAIL could not create the SKIP-summary temp file"; exit 1; }
-  trap 'rm -f "$skip_log"' EXIT
+  # Quiet mode keeps the full log and prints its path; verbose mode removes it.
+  if [ -n "$verbose" ]; then trap 'rm -f "$skip_log"' EXIT; fi
   trap 'exit 143' TERM
   trap 'exit 130' INT
-  ANTISLOP_VALIDATE_INNER=1 bash "tests/$(basename "$0")" "$@" 2>&1 | tee "$skip_log"
+  if [ -n "$verbose" ]; then
+    ANTISLOP_VALIDATE_INNER=1 bash "tests/$(basename "$0")" ${pass_args[@]+"${pass_args[@]}"} 2>&1 | tee "$skip_log"
+  else
+    . tests/lib/validate-quiet.sh
+    ANTISLOP_VALIDATE_INNER=1 bash "tests/$(basename "$0")" ${pass_args[@]+"${pass_args[@]}"} 2>&1 | tee "$skip_log" | validate_quiet_filter
+  fi
   inner_rc=${PIPESTATUS[0]}
   echo
   echo "== skipped checks (advisory, never affects the exit code) =="
   echo "Skipped checks: $(grep -c '^SKIP' "$skip_log")"
   grep '^SKIP' "$skip_log" | sed 's/^/     /'
+  if [ -z "$verbose" ]; then
+    echo "Counts: OK=$(grep -c '^OK ' "$skip_log") FAIL=$(grep -c '^FAIL' "$skip_log") WARN=$(grep -c '^WARN' "$skip_log") SKIP=$(grep -c '^SKIP' "$skip_log")"
+    echo "Full log: $skip_log"
+  fi
   exit "$inner_rc"
 fi
 # <<< skip-summary wrapper
@@ -1304,6 +1325,15 @@ if node tests/unit-outcomes.test.js; then
   echo "OK   tests/unit-outcomes.test.js"
 else
   echo "FAIL tests/unit-outcomes.test.js"
+  fail=1
+fi
+
+echo
+echo "== tests/lib/validate-quiet.sh: quiet-output filter of this script (Bash, ptr-u1) =="
+if bash tests/validate-quiet.test.sh; then
+  echo "OK   tests/validate-quiet.test.sh"
+else
+  echo "FAIL tests/validate-quiet.test.sh"
   fail=1
 fi
 

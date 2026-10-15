@@ -1,0 +1,40 @@
+preamble line before any header SHOWME
+== keep-section SHOWHDR ==
+OK   plain ok line DROPME
+  ✓ check mark line DROPME
+ok 1 - tap ok line DROPME
+Test (y): announcement above a passing result DROPME
+  ✓ passing result under test y DROPME
+Test (x): announcement above a failing result CTXME SHOWME
+  ✗ failing result under test x SHOWME
+hint: git hint line DROPME
+All tests passed! DROPME
+[master abc1234] feat commit line DROPME
+[detached HEAD abc1234] commit line DROPME
+ create mode 100644 f.txt DROPME
+ delete mode 100644 g.txt DROPME
+ 2 files changed, 1 insertion(+) DROPME
+editing hooks/x.sh: p50=0.1s (budget p50<=2.0s) DROPME
+Switched to a new branch 'b' DROPME
+Preparing worktree (detached HEAD abc1234) DROPME
+HEAD is now at abc1234 msg DROPME
+Initialized empty Git repository in /x/.git/ DROPME
+-- sub-section title DROPME --
+--
+
+FAIL a failing check SHOWME
+WARN a warning SHOWME
+SKIP a skipped check SHOWME
+⚠ a warning symbol line SHOWME
+not ok 3 - tap failure SHOWME
+the run FAILED here SHOWME
+Error: boom SHOWME
+ERROR: boom two SHOWME
+Test Error: keep overrides drop SHOWME
+unclassified stderr line SHOWME
+== all-dropped section DROPHDR ==
+OK   only ok lines DROPME
+  ✓ only check marks DROPME
+
+== second-keep-section SHOWHDR ==
+FAIL another failing check SHOWME

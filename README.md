@@ -113,6 +113,10 @@ a `DECISION` file from the terminal, the dashboard
 (`node bin/cli.js --dashboard`), or the orchestrator's proposed heredoc at the
 permission prompt (ADR-0004, ADR-0013, ADR-0039).
 
+`bash tests/validate.sh`, the usual `testAndLintCommand`, prints only failures,
+warnings, skips and unclassified output, then a `Full log:` path; pass
+`--verbose` or set `ANTISLOP_VALIDATE_VERBOSE=1` for every line (CI does).
+
 ## Docs
 
 - `CONTEXT.md` — domain glossary. `docs/harness-glossary.md` — gates,
