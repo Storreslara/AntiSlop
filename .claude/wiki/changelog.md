@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-15 (ptr-u1 post-PASS — quiet validate.sh, #543 closed)
+- Reviewer PASS ptr-u1 at 720b542. Issue #543 closed (completed) with the marker's first line cited. Commits referencing it: 720b542, 69e3d1c, ad20305. The `CHANGELOG.md` entry shipped with the unit.
+- `docs/harness-glossary.md`: new harness terms **quiet mode** (default output of `tests/validate.sh`; `--verbose` restores the stream), **keep override** (`VALIDATE_QUIET_KEEP` tested before DROP), **Full log** (the mktemp file, no EXIT trap). No existing synonym was found.
+- Non-blocking follow-ups (EXIT trap and TMPDIR accumulation, stub ignores args, vacuous `miss=0`, DROP `^Test ` hides a failing announcement, serial gate never run end to end) are recorded in the scribe memory note `project_ptr_u1_completion.md`.
+
 ## 2026-10-12 (epa-2 post-PASS — glossary wording aligned, terminal reader minted)
 - Reviewer PASS epa-2 at 60ff302 (0.31.157). The `CHANGELOG.md` entry was already in place; no version bump from this pass (CONTEXT.md and the wiki are not version-stamped).
 - CONTEXT.md: **literate change summary** and **worked example** now say "`>` blockquote line" and "`**Before:**` line and an `**After:**` line", matching the sources. New term **terminal reader**: the layout is the contract for epa-3's `view.sh`, which falls back to plain output.
