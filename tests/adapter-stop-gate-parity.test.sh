@@ -183,8 +183,29 @@ f2_case() {
     "$([ "$rc" = 0 ] && [ "$cleared" = 1 ] && [ "$consumed" = 1 ] && [ "$gone" = true ] && [ "$flagx" = false ] && echo true || echo false)" \
     "rc=$rc cleared=$cleared consumed=$consumed stamp-gone=$gone flag=$flagx"
 }
+# f5 (lo2-4): the join block's text, pinned on every port (the copies are byte-identical, but
+#     this proves each entry script delivers the core's message): two unsatisfied stamps are
+#     listed in glob order, and the block carries the ownerless-stamp and advisory-pass guidance.
+f5_case() {
+  local port="$1" dot dir rc=0 err
+  dot="$(dotdir_for "$port")"
+  dir="$(make_project "$port" f5-text)"
+  run_gated_stop "$port" "$dir" 2>/dev/null || true
+  seed_join_stamp "$dir" "$port" unit-f5a none -
+  seed_join_stamp "$dir" "$port" unit-f5b none -
+  err="$(run_reviewer_stop "$port" "$dir" 2>&1 >/dev/null)" || rc=$?
+  check "(f5) $port: the join block lists both units and carries the ownerless-stamp and advisory-pass guidance" \
+    "$([ "$rc" = 2 ] \
+       && grep -qF 'No verdict is recorded for the stamped unit(s): unit-f5a, unit-f5b.' <<< "$err" \
+       && grep -qF 'A review-join stamp names no owner' <<< "$err" \
+       && grep -qF 'report this block to your dispatcher and wait' <<< "$err" \
+       && grep -qF 'unless you are an advisory pass (which owns no verdict and writes no marker)' <<< "$err" \
+       && echo true || echo false)" \
+    "rc=$rc"
+}
 f0_case claude
 f2_case claude
+for port in $PORTS; do f5_case "$port"; done
 # f1: an unsatisfied stamp blocks with marker=MISSING, keeps flag and stamp
 dir="$(make_project claude f1-missing)"
 run_gated_stop claude "$dir" 2>/dev/null || true
