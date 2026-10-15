@@ -1015,7 +1015,7 @@ blast-radius: tests/validate.sh:1275-1282 (the last section, unit-outcomes; the 
 commit-message: test(vlg-3): lane runner regression test, registered in validate.sh
 trailer: the trailer names the model you actually ran on.
 gate: the test file's text spells the marker directory path, so author it with the Write tool only (path-checked), and apply edits 2-3 with Edit. Never put the content in a Bash heredoc; reviewed-path-gate.sh blocks that by text, and rewording to get past it is a bypass. If Write/Edit are unavailable, STOP and report.
-measured: at e13447a each anchor occurs once and validate.sh has 115 sections (116 after edit 2); the test takes about 5 s; criteria 1-3 about 40 s together; do NOT run the full tests/validate.sh (the merge gate G covers section 116 through `vsec 111 999`).
+measured: at e13447a each anchor occurs once and validate.sh has 115 sections (116 after edit 2); the test takes about 0.35 s; criteria 1-3 about 3 s together (re-measured with /proc/uptime at 5178319 on 2026-10-14; the first estimate, 5 s and 40 s, was stale); do NOT run the full tests/validate.sh (the merge gate G covers section 116 through `vsec 111 999`).
 diagnosis: none
 review-packet:
 ~~~
