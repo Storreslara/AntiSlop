@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Issue-body contracts are fenced so contract-guard finds them (lov-4, 0.31.170).** `agents/task-master.md` requires the issue-body dispatch contract, lead or scribe, to be one tilde-fenced block whose first interior line is `Unit: <task-id>`, last in the body, and documents the layout as a marked example; `skills/pathfinder/SKILL.md` says the same for a real tracker. Every skr issue body had an unfenced contract after its prose, which `bin/contract-guard.js` scores `reason=no-contract` (a guard demotion to sonnet). `tests/contract-examples.test.js` runs the guard over the documented layout (haiku 7/7) and over the same body unfenced (no-contract). The guard is unchanged.
+
 **Resync offline test and relative-link test hardened (lov-3).** `tests/resync-vendored-skills-offline.test.sh` now fails when a skill's FILES rows miss a tracked file under its drift-tracked root, or when a row's upstream path names a different file than its local copy. `tests/doc-relative-links.test.js` now fails on a SCOPE entry that matches no tracked file, checks links with a title and `<angle>` destinations, and reports an unparsable destination or a malformed percent escape as broken.
 
 

@@ -60,10 +60,15 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   report includes an intersection table with columns `unit | shared files |
   depends on`, one row per unit, shared files as backticked paths or `none`.
 - **Contract home and precedence.** On the standard path the contract lives
-  in the issue body under `## Dispatch contract`. On the fast path
-  spec-master writes it, and task-master never runs the fast path; there it
-  lives in the
-  plan's `### Unit:` block. For the implementer the contract outranks the issue
+  in the issue body under `## Dispatch contract`, last, as one fenced block
+  whose first interior line is `Unit: <task-id>`. Use a tilde fence longer
+  than any fence inside the contract (`~~~~` around `~~~` payloads):
+  `bin/contract-guard.js` finds a contract only as such a block, so an
+  unfenced contract after the issue's prose scores `reason=no-contract`, a
+  guard demotion to `sonnet`. See the issue-body example below. On the fast
+  path spec-master writes it, and task-master never runs the fast path;
+  there it lives in the plan's fenced `Unit:` block, fenced the same way.
+  For the implementer the contract outranks the issue
   prose, which outranks the plan. A conflict between them is a spec gap:
   STOP.
 - **Partial slice on a spec gap.** Units already published stay. The gap unit
@@ -314,6 +319,26 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 ```
 <!-- lead-contract-example:end -->
 
+**Issue-body layout.** A published unit's issue body keeps its prose first and
+the contract last, fenced; `tests/contract-examples.test.js` substitutes the
+lead example above for the placeholder line and runs `bin/contract-guard.js`
+over the result.
+
+<!-- issue-body-layout-example:begin -->
+```
+Step 3 of the demo slice (umbrella #998). Stamped: yes.
+
+Suggested model: haiku
+
+Depends on / blocked by: #997.
+
+## Dispatch contract
+~~~~
+<the lead contract above, `Unit: demo-7` first>
+~~~~
+```
+<!-- issue-body-layout-example:end -->
+
 **Scribe dispatch contract.** The nine-element lead contract above does not
 apply to `scribe` (if present). A scribe dispatch contract has, in this exact
 order: `Unit: <task-id>` as line 1, then `## Objective`, `## Retrieval`,
@@ -331,7 +356,8 @@ the lead contract) and `## Escalation`. A contract that edits
 `docs/harness-glossary.md` or `CONTEXT.md` also runs
 `node tests/context-glossary-links.test.js` and
 `node tests/ubiquitous-language.test.js`. In the issue body it sits under the
-heading `## Dispatch contract (scribe)`, exactly. Score it with
+heading `## Dispatch contract (scribe)`, exactly, fenced the same way as the
+lead contract. Score it with
 `node bin/contract-score.js --rubric=v2 --shape=scribe <contract>` and
 require `"score":7`.
 

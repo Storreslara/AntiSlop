@@ -61,5 +61,25 @@ check('scribe example has a separate proof: line', () => {
   assert.ok(example('scribe-contract-example').split('\n').some((l) => l.startsWith('   proof: ')), 'no separate proof: line');
 });
 
+// lov-4: the issue-body layout task-master documents is one bin/contract-guard.js accepts.
+function guard(text, id) {
+  const r = spawnSync('node', ['bin/contract-guard.js', '-', `--unit=${id}`], { cwd: REPO_ROOT, encoding: 'utf8', input: text });
+  return r.stdout.trim();
+}
+function issueBody() {
+  const lead = example('lead-contract-example');
+  return example('issue-body-layout-example').split('\n')
+    .map((l) => (l === '<the lead contract above, `Unit: demo-7` first>' ? lead : l)).join('\n');
+}
+
+check('issue-body layout example scores haiku through contract-guard', () => {
+  assert.strictEqual(guard(issueBody(), 'demo-7'), 'contract-guard: haiku unit=demo-7 shape=lead score=7/7');
+});
+
+check('issue-body layout without its ~~~~ fence lines scores no-contract', () => {
+  const unfenced = issueBody().split('\n').filter((l) => l !== '~~~~').join('\n');
+  assert.strictEqual(guard(unfenced, 'demo-7'), 'contract-guard: sonnet unit=demo-7 shape=lead reason=no-contract');
+});
+
 console.log(failures === 0 ? '\nAll contract-examples checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
