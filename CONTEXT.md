@@ -1483,7 +1483,10 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   negative, or > 2^53-1), 64 = cap out of range or missing argument. The cap
   parameter is bounded to 15 decimal digits (0–999999999999999). The environment
   variable `OCI_TOKEN_CAP` is the operator-supplied placeholder for the cap value
-  (e.g., `OCI_TOKEN_CAP=60000`). See [[operator check]] AC4.5.
+  (e.g., `OCI_TOKEN_CAP=60000`). See [[operator check]] AC4.5. Not to be confused
+  with `scripts/token-usage/`, the per-persona measurement tooling behind the
+  [[token-usage baseline]] (unit ptr-u0): that is a different tool, and the
+  shared word `token-usage` is only a name collision.
 
 **parked unit**:
 (unit gh404, 2026-08-16, Step 4 of the ceremony-reduction plan) — option (c)
