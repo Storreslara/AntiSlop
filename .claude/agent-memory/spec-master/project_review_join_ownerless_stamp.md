@@ -1,12 +1,17 @@
 ---
 name: review-join-ownerless-stamp
-description: Review-join stamps name no owner, so a reviewer whose own stamp was consumed is blocked on another unit's stamp; lov-5 (2026-10-14) only documented it. Fix design options and the measured primitives.
+description: Review-join stamps name no owner; lov-5 documented it, lo2 (2026-10-14) held the fix on an OQ because SubagentStart carries NO unit id (measured). Fix design options and the measured primitives.
 metadata:
   type: project
 ---
 
-A `.claude/.review-join.<unit>` stamp holds `<ts> unit= prior= prior_mtime=`, no owner. `review_join_state` (stop-gate-core.sh) classifies EVERY stamp on ANY reviewer's SubagentStop, so reviewer A (own stamp already consumed, resumed/second turn) stops while unit B's fresh stamp is unsatisfied -> exit 2 naming B. Reproduced with the real hooks in a scratch project (route-gate A, PASS A, stop A = 0, route-gate B, stop A = 2).
+A `.claude/.review-join.<unit>` stamp holds `<ts> unit= prior= prior_mtime=`, no owner. `review_join_state` (stop-gate-core.sh) classifies EVERY stamp on ANY reviewer's SubagentStop. Blocked: any reviewer stopping while NO stamp is satisfied and another is unsatisfied (consumed reviewer, un-stamped reviewer, advisory pass). Converse (by code, :396 + :408-433): a reviewer that wrote no verdict is LET THROUGH when another unit's stamp is satisfied, and consumes that stamp. Test case `residual-ownerless-stamp` in tests/review-join.test.sh pins the residual; a real fix must flip it to rc 0.
 
-**Why:** slice `lov` (docs/plans/2026-10-14-skills-audit-leftovers.md) chose the documented-only option: lov-5 rewrites the block text (no "you were dispatched for"; report and wait) and pins the residual as test case `residual-ownerless-stamp` in tests/review-join.test.sh, which a real fix must flip to rc 0.
+**Why:** lov-5 chose documented-only; slice lo2 (docs/plans/2026-10-14-skills-audit-leftovers-2.md, Step 6 + Open Question 1) was asked to spec "Design B, bind at SubagentStart" but measured that it cannot.
 
-**How to apply:** when the fix is specced (Open Question 1 of that plan), the measured primitives are: Claude Code 2.1.300 has a `SubagentStart` hook event and an `agent_transcript_path` payload field (strings-probed). Option B binds `owner=<agent_id>` at SubagentStart; option C reads the stopping agent's own `Unit:` line from its transcript. Both touch the gate core, its two GENERATED adapter copies (bin/cli.js SHARED_HOOK_LIB_FILES, refreshed by `--update --force-render`) and ADR-0016, whose "per-agent keying is provably wrong" section is about the old watermark, not stamps; read it before proposing B. Related: [[pending-review-flag-resurrection]], [[review-join-null-only-covered-zero-stamp]].
+**How to apply (measured on Claude Code 2.1.300 binary, re-probe on newer):**
+- `SubagentStart` payload = base + `agent_id`, `agent_type` ONLY. No prompt, no `tool_use_id`. Binding at start can only guess ("newest unbound stamp"), and a mis-bind makes another unit fail OPEN.
+- `SubagentStop` = base + `agent_id`, `agent_transcript_path` (empty in some mode), `agent_type`, `last_assistant_message`. The transcript's first JSONL record is `type:"user"` whose `message.content` starts with the dispatch prompt (`Unit: lov-5\n...`). That is option C: read own `Unit:` at stop, fall back to all-stamps when unattributable.
+- PreToolUse(Agent) carries `tool_use_id`; `subagents/agent-<id>.meta.json` carries `toolUseId` (option B'), but whether meta.json exists when SubagentStart fires is NOT measured.
+- Until fixed, reviews must be SEQUENTIAL (concurrent reviewers block or let each other through).
+Related: [[pending-review-flag-resurrection]], [[review-join-null-only-covered-zero-stamp]], [[parallel-contracts-and-escape-drift]].

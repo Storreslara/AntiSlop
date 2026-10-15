@@ -62,10 +62,10 @@
 - [Flatten wrapped prose for phrase greps](technique_flatten_wrapped_prose_for_phrase_greps.md) — per-line grep misses a phrase split by the hard wrap, so an "absent" check passes vacuously; use tr -s first.
 - [Haiku-default tier spec (2026-10-08)](project_haiku_default_tier_spec.md) — a frontmatter tier flip is INERT here (config pins "sonnet", outranks it); ladder/fail-closed/migration decisions.
 - [Contract-guard row shapes](technique_contract_guard_r6_bullet_shape.md) — R1/R2/R5/R6/R7 literal shapes a 7/7 contract needs; run the guard per unit; never splice by inline heading text.
-- [Parallel contracts + escape drift](technique_parallel_contracts_and_escape_drift.md) — parallel units: path-staged commit + `git diff --quiet`; `\u2014` typed becomes a literal em dash; apply plan text verbatim.
+- [Parallel contracts + escape drift](technique_parallel_contracts_and_escape_drift.md) — parallel units: never git add, `git commit -- <paths>`; `\u2014` typed becomes a literal em dash.
 - [Read-only /tmp namespace probe](technique_readonly_tmp_namespace_probe.md) — fixed /tmp names flip exit only when unwritable, not under concurrency; `unshare -rm` ro-/tmp probe.
 - [Throwaway tree for gated-dir tests](technique_throwaway_tree_for_gated_dir_tests.md) — run a dir-touching test in a mktemp copy with a stub validate.sh; marker-write leak set is now unitA/B/C/G.
 - [Protocol marker is render-only](project_protocol_marker_render_only.md) — agents/*.md sources have no ANTISLOP:BEGIN marker; only the .claude mirror does. Anchor on the source end.
 - [Monotonic timing; no backticks in command parentheticals](technique_monotonic_timing_and_command_backticks.md) — WSL date +%s jumps; use /proc/uptime. A backtick after a `command:` broke extraction.
-- [Review-join ownerless stamp](project_review_join_ownerless_stamp.md) — stamps name no owner; lov-5 only documented it; SubagentStart / agent_transcript_path exist for a fix.
+- [Review-join ownerless stamp](project_review_join_ownerless_stamp.md) — stamps name no owner; SubagentStart carries NO unit id (measured), so fix held on lo2 OQ1; transcript first line has Unit:.
 - [Interrupt criterion + subshell-exit trap](technique_process_tree_interrupt_criterion.md) — set -m launch, pid file, zombie-aware alive(), reap on EXIT; exit in $(...) is not a hard exit.

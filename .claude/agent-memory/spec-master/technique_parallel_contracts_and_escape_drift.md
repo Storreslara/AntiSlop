@@ -21,6 +21,13 @@ Two traps hit while writing the epfc (round-3) plan, 2026-10-13.
    it first and B's stated message is never printed. Two of my first-draft lines were wrong this way;
    observe every non-obvious `mutation:` line in the prototype.
 
+4. **Shared-index race (lo2, 2026-10-14).** Explicit-path `git add` is NOT enough under parallel units: a
+   sibling's bare `git commit` takes everything staged. Never `git add`; commit with
+   `git commit -m .. -- <own paths>` (--only semantics ignore other staged paths; tracked files only). For
+   rendered `.claude` files use the pathspec `.claude ':(exclude).claude/agent-memory'`, which avoids naming
+   the persona config (gate) and keeps memory writes out. Pin the commit with
+   `files=$(..wc -l) other=$(..grep -cvxF -e own..)`. Measure render reach with the other batch files dirty.
+
 **Why:** both are silent until a unit runs. A contract whose before-block holds the wrong byte makes a haiku
 implementer stop on "spec gap".
 
