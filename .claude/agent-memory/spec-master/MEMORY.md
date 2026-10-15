@@ -67,4 +67,5 @@
 - [Throwaway tree for gated-dir tests](technique_throwaway_tree_for_gated_dir_tests.md) — run a dir-touching test in a mktemp copy with a stub validate.sh; marker-write leak set is now unitA/B/C/G.
 - [Protocol marker is render-only](project_protocol_marker_render_only.md) — agents/*.md sources have no ANTISLOP:BEGIN marker; only the .claude mirror does. Anchor on the source end.
 - [Monotonic timing; no backticks in command parentheticals](technique_monotonic_timing_and_command_backticks.md) — WSL date +%s jumps; use /proc/uptime. A backtick after a `command:` broke extraction.
+- [Review-join ownerless stamp](project_review_join_ownerless_stamp.md) — stamps name no owner; lov-5 only documented it; SubagentStart / agent_transcript_path exist for a fix.
 - [Interrupt criterion + subshell-exit trap](technique_process_tree_interrupt_criterion.md) — set -m launch, pid file, zombie-aware alive(), reap on EXIT; exit in $(...) is not a hard exit.
