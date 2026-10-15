@@ -15,7 +15,7 @@ This skill is _informed_ by the project's domain model and built on a shared des
 - Use the `codebase-design` skill for the architecture vocabulary (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and its principles (the deletion test, "the interface is the test surface", "one adapter = hypothetical seam, two = real"). Use these terms exactly in every suggestion — don't drift into "component," "service," "API," or "boundary."
 - The domain language in `CONTEXT.md` gives names to good seams; ADRs in `docs/adr/` record decisions this skill should not re-litigate.
 
-Whether you run as a one-shot subagent or are invoked through the `Skill` tool inside another persona's turn, you cannot ask a question, open a browser or wait for a reply. Do the exploration, then return the result as your final message.
+Whether you run as a one-shot subagent or are invoked through the `Skill` tool inside another persona's turn, you cannot ask a question, open a browser or wait for a reply. Do the exploration, then return the ranked list: as your final message when you run as a subagent, or as your reply inside the invoking persona's turn when it loaded you through the `Skill` tool.
 
 ## Process
 

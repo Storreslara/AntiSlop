@@ -157,6 +157,14 @@ the semantics of adding an
   somewhere in between (e.g. a later, unrelated commit). The endpoint `old`/`new`
   fields in the output remain informational only. See row 25 of `docs/trust-model.md`.
 
+**whole version**:
+(unit lov-1, 2026-10-14) — how a CHANGELOG entry must name a version for
+  [[version-stamp discipline]] to count it: the version's dots are literal,
+  and the match may not run into a digit on the right or into a digit or dot
+  on the left. `0.31.16` is named by `v0.31.16`, by `(0.31.16)` and by
+  `0.31.16.` at the end of a sentence, but not by `0.31.166`, `10.31.16` or
+  `x.0.31.16`.
+
 **Substitution**:
 a placeholder in a shipped persona file (e.g.
   `<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_4>`) resolved to a real
@@ -345,6 +353,15 @@ the subset of `templates/persona-protocol.md`'s 19
   lineage (commits `028bc23`, `8cedabd`, `22f5bb2`) where prior tests passed
   without catching actual failures.
 _Avoid_: vacuous test, untested criterion
+
+**equivalent mutant**:
+(unit lov-1, 2026-10-14) — a mutant that no input can tell apart from the
+  original, so no test can kill it and leaving it alive is not a gap in the
+  suite. Calling a mutant equivalent is a claim that needs proof like any
+  other: a mutant that differs from the original on even one rare input is a
+  surviving mutant, not an equivalent one. The `+++`-exclusion mutant of
+  `version-stamp-check.sh` was first misdescribed this way. See
+  [[Mutation-proved]].
 
 **Implementer-tier ratchet**:
 the `.fail` disqualifier on lead-programmer
@@ -639,8 +656,10 @@ a skill declared in a [[Persona]]'s `skills:` frontmatter, loaded into
 **Archived skill**:
 a skill whose original files are kept, byte-identical, under
   `docs/archive/skills/<name>/` with an index row naming its origin
-  directory and commit. No skill loader discovers it and nothing lists,
-  mirrors or hashes it; the npm package ships no `docs/` path, while a git
+  directory and commit. No skill loader discovers it and nothing mirrors or
+  hashes it; `scripts/resync-vendored-skills.sh` lists the archived originals
+  of the forked skills as the local side of its upstream drift check. The npm
+  package ships no `docs/` path, while a git
   clone or plugin install carries it as inert files.
   It exists so a retired or rewritten skill's original stays readable
   without git archaeology. _Avoid_: "deprecated skill" (a deprecated skill is
@@ -970,6 +989,13 @@ the collection of addressable **Agent** entities currently active in a
   #325/#326/#136) through one of three terminal transitions (approve, reject
   with reason, direct with a prescribed fix), each deleting the `.escalated`
   marker and its packet. Never consumes a 2-FAIL-cap slot.
+
+**per-clone review state**:
+(unit lov-1, 2026-10-14) — the [[PASS marker]]s, [[FAIL record]]s and other
+  verdict files under `.claude/reviewed/`, which git ignores: each clone has
+  its own, nothing pushes or restores them, and a fresh clone starts with
+  none. A link to one from a tracked document is broken by construction, and
+  an empty directory proves only that this clone recorded nothing.
 
 **PASS marker**:
 the file the reviewer writes at `.claude/reviewed/<task-id>.pass`

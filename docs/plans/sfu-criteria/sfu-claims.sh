@@ -53,7 +53,7 @@ checks = {
   ('skills/grilling/SKILL.md', 'In a self-grill there is no one to ask', 1),
   ('skills/install-antislop/SKILL.md', 'a `jq` check', 0),
   ('skills/install-antislop/SKILL.md', '`persona-config.json` (inspect it with the `Read` tool', 1),
-  ('skills/pathfinder/SKILL.md', 'under the directory the `issueTracker` line names', 1),
+  ('skills/pathfinder/SKILL.md', 'under the directory the `issueTracker` field names', 1),
   ('skills/roast-work/SKILL.md', 'It never determines PASS/FAIL', 1),
   ('skills/improve-codebase-architecture/SKILL.md', 'You run as a one-shot subagent:', 0),
   ('skills/improve-codebase-architecture/SKILL.md', 'invoked through the `Skill` tool', 1),

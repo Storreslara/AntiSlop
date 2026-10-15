@@ -54,7 +54,9 @@ instructions.
 - **TDD-first**: before writing any new behaviour or bug fix, follow the
   preloaded `antislop:tdd` red-green-refactor loop (write the failing test
   first; in agent-teams mode, where `skills:` preloads are not applied, read
-  the `tdd` skill's `SKILL.md` once before the first test). For hard bugs, invoke
+  the `tdd` skill's `SKILL.md` once before the first test; in an installed
+  project that is `skills/tdd/SKILL.md` under the antislop plugin's install
+  directory, not a path in the project's own tree). For hard bugs, invoke
   `antislop:diagnosing-bugs` instead (reproduce → minimise → hypothesise →
   instrument → fix → regression-test). Never leave a red suite at final
   handoff — the WIP sentinel is for mid-task pauses and blocked reports, not

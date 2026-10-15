@@ -312,8 +312,9 @@ don't guess:
 
 Validate the file against `templates/persona-config.schema.json` (read it
 with the `Read` tool and check that every required key is present and typed
-correctly; a Bash command such as `jq` naming that file can be refused by
-`harness-integrity-gate.sh`) before moving
+correctly; `harness-integrity-gate.sh` allows a lone read-only `jq` query of
+that file but can refuse any other Bash command naming it, such as a `jq` in
+a pipe or with a redirection) before moving
 on — don't write it freehand and hope. This validation checks shape, not
 behavior — it does NOT replace the "run testAndLintCommand once" check
 above; a schema-valid config can still contain a command that red-gates on

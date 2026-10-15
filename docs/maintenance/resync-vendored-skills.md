@@ -19,7 +19,7 @@ deciding whether/how to re-pin.
 | `codebase-design` (+ `DEEPENING.md`, `DESIGN-IT-TWICE.md`) | `skills/engineering/codebase-design` | verbatim |
 | `domain-modeling` (+ `ADR-FORMAT.md`, `CONTEXT-FORMAT.md`) | `skills/engineering/domain-modeling` | verbatim |
 
-The first 7 are byte-verbatim aside from their provenance header, with two intentional deviations — `handoff` and `improve-codebase-architecture` — that have the `disable-model-invocation: true` flag stripped, tracked as the `fm-noflag` reconstruction type. Forked skills
+The 3 verbatim skills (`handoff`, `codebase-design`, `domain-modeling`) are byte-verbatim aside from their provenance header, except that `handoff` has the `disable-model-invocation: true` flag stripped, tracked as the `fm-noflag` reconstruction type (the archived `improve-codebase-architecture` original is compared the same way). Forked skills
 (currently `tdd`, `grilling`, `improve-codebase-architecture` and `diagnosing-bugs`) are the exception: the live file carries antislop edits and a "Derived from" header, and the FILES rows name the archived original
 (`docs/archive/skills/<name>/`) as the local path, so `--check` diffs the archived copy and still reports upstream drift. Full
 table with exact upstream paths: `skills/THIRD-PARTY-NOTICES.md`.
@@ -129,6 +129,10 @@ script.
    only when an upstream change is ported by hand (step 3). Re-pinning while
    forked skills exist is not covered by this runbook (their archived copies
    would then drift against the new pin); stop and raise it.
+   The live `skills/tdd/tests.md` and `skills/tdd/mocking.md` keep a full-SHA
+   "Vendored verbatim" header although the FILES table names only their
+   archived copies, so step 4 does not reach them; they belong to the forked
+   `tdd` skill and fall under the same stop.
 5. Run `bash scripts/resync-vendored-skills.sh --check` again — it should
    report `[OK]` for all 7 drift-tracked skills against the new pin.
 6. Run `bash tests/validate.sh` and commit the update with a message
