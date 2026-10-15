@@ -50,7 +50,11 @@ if [ "$count" -lt 1 ] || [ -z "$end_line" ]; then
 fi
 
 work="$(mktemp -d)" || exit 2
-trap 'kill $(jobs -p) 2>/dev/null; rm -rf "$work"' EXIT
+# Every lane is started in a process group of its own (set -m around the
+# spawn loop below), so on exit, TERM or INT the whole lane goes: its tar
+# copy, its section's bash and their children. A process that leaves its
+# lane's group (setsid) or ignores TERM is not reached.
+trap 'for p in $(jobs -p); do kill -TERM -- "-$p" 2>/dev/null; done; wait; rm -rf "$work"' EXIT
 trap 'exit 143' TERM
 trap 'exit 130' INT
 # When TMPDIR lies inside the checkout, keep the work dir out of the copies.
@@ -79,10 +83,21 @@ fingerprint() { # <lane-root>: name, type, size and mtime of every entry
 }
 
 lane() { # <k>
-  local k="$1" l="$work/lane$1" i before after rc
-  mkdir -p "$l"
-  tar -C "$root" --exclude=./.claude/worktrees ${work_rel:+"--exclude=./$work_rel"} -cf - . \
-    | tar -C "$l" -xf - || { echo 2 > "$work/lane$k.copyfail"; return; }
+  local k="$1" l="$work/lane$1" i before after rc try st
+  for try in 1 2 3; do
+    rm -rf "$l"; mkdir -p "$l"
+    tar -C "$root" --exclude=./.claude/worktrees ${work_rel:+"--exclude=./$work_rel"} -cf - . \
+      | tar -C "$l" -xf -
+    st="${PIPESTATUS[0]} ${PIPESTATUS[1]}"
+    [ "$st" = "0 0" ] && break
+    # GNU tar's create side exits 1 when a file changed while it was read (a
+    # busy checkout). Copy again rather than run sections on a torn copy.
+    if [ "$st" = "1 0" ] && [ "$try" -lt 3 ]; then
+      echo "NOTE lane $k: a file changed during copy attempt $try; copying again" >> "$work/lane$k.note"
+      continue
+    fi
+    echo "$st" > "$work/lane$k.copyfail"; return
+  done
   rm -f "$l/.git/index.lock"
   for i in $order; do
     mkdir "$work/claim/$i" 2>/dev/null || continue
@@ -106,12 +121,15 @@ lane() { # <k>
 }
 
 start=$(date +%s)
-for k in $(seq 1 "$lanes"); do lane "$k" & done
+set -m
+for k in $(seq 1 "$lanes"); do lane "$k" < /dev/null & done
+set +m
 wait
 
 fail=0
 for k in $(seq 1 "$lanes"); do
-  [ -e "$work/lane$k.copyfail" ] && { echo "FAIL lane $k: could not copy the checkout"; fail=1; }
+  [ -e "$work/lane$k.note" ] && cat "$work/lane$k.note"
+  [ -e "$work/lane$k.copyfail" ] && { echo "FAIL lane $k: could not copy the checkout (tar exits: $(cat "$work/lane$k.copyfail"))"; fail=1; }
 done
 for i in $(seq 1 "$count"); do
   if [ ! -f "$work/out/$i" ]; then echo "FAIL section $i never ran"; fail=1; continue; fi
