@@ -49,7 +49,7 @@ and the task-id as explicit inputs. These inputs are not interchangeable — the
 so the task-id cannot be derived from the issue number.
 If task-master is present and wrote a scribe dispatch contract for the unit,
 the orchestrator **passes the scribe dispatch contract** (if scribe is
-present) as written: the `~~~`-fenced block under the issue body's `##
+present) as written: the tilde-fenced block under the issue body's `##
 Dispatch contract (scribe)` heading, sent together with the three
 post-PASS inputs (digest, issue number, task-id); under review gating off, it
 first replaces

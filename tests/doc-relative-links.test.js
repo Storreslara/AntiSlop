@@ -21,7 +21,8 @@ const { execFileSync } = require('child_process');
 const ROOT = process.env.DOC_LINKS_ROOT || path.resolve(__dirname, '..');
 const SCOPE = process.env.DOC_LINKS_SCOPE ? process.env.DOC_LINKS_SCOPE.split(',')
   : ['CONTEXT.md', 'docs/harness-glossary.md', 'docs/trust-model.md', 'docs/adr',
-    '.claude/wiki', 'docs/maintenance', 'docs/archive/skills/README.md', 'skills', 'templates'];
+    '.claude/wiki', 'docs/maintenance', 'docs/archive/skills/README.md', 'skills', 'templates',
+    '.claude/agents'];
 
 const git = (args) => execFileSync('git', args, { cwd: ROOT, encoding: 'utf8' }).split('\0').filter(Boolean);
 const tracked = new Set(git(['ls-files', '-z']));

@@ -56,7 +56,8 @@ instructions.
   first; in agent-teams mode, where `skills:` preloads are not applied, read
   the `tdd` skill's `SKILL.md` once before the first test; in an installed
   project that is `skills/tdd/SKILL.md` under the antislop plugin's install
-  directory, not a path in the project's own tree). For hard bugs, invoke
+  directory, not a path in the project's own tree; in the antislop repo
+  itself it is also `skills/tdd/SKILL.md` at the repo root). For hard bugs, invoke
   `antislop:diagnosing-bugs` instead (reproduce → minimise → hypothesise →
   instrument → fix → regression-test). Never leave a red suite at final
   handoff — the WIP sentinel is for mid-task pauses and blocked reports, not

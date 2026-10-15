@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.170 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.171 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -61,8 +61,10 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   report includes an intersection table with columns `unit | shared files |
   depends on`, one row per unit, shared files as backticked paths or `none`.
 - **Contract home and precedence.** On the standard path the contract lives
-  in the issue body under `## Dispatch contract`, last, as one fenced block
-  whose first interior line is `Unit: <task-id>`. Use a tilde fence longer
+  in the issue body under `## Dispatch contract`, as one fenced block
+  whose first interior line is `Unit: <task-id>`. The contracts go last in the
+  body, the lead contract first and the scribe contract (if any) after it,
+  under its own heading (see **Scribe dispatch contract**). Use a tilde fence longer
   than any fence inside the contract (`~~~~` around `~~~` payloads):
   `bin/contract-guard.js` finds a contract only as such a block, so an
   unfenced contract after the issue's prose scores `reason=no-contract`, a
@@ -162,7 +164,9 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
      backticked path.
   7. `## Acceptance criteria` (R3, R4) — numbered items, each with `run:`
      (inline code), `exit:` (an integer), `stdout:` (a fragment, or
-     `empty`) and `mutation:` (the edit that makes the check fail, so it is
+     `empty`; a fragment is text the command prints, such as
+     `All checks passed.`, never a description such as "no FAIL line") and
+     `mutation:` (the edit that makes the check fail, so it is
      never vacuous). No `run:` names `/home/`, `/tmp/`, `~/` or `$HOME`; a
      `run:` containing `command -v` or `which ` needs a `precondition:` line
      inside that same criterion item.
@@ -321,7 +325,8 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 <!-- lead-contract-example:end -->
 
 **Issue-body layout.** A published unit's issue body keeps its prose first and
-the contract last, fenced; `tests/contract-examples.test.js` substitutes the
+the contracts last, fenced, the lead contract and then the scribe contract (if
+any); `tests/contract-examples.test.js` substitutes the
 lead example above for the placeholder line and runs `bin/contract-guard.js`
 over the result.
 
@@ -669,8 +674,8 @@ is never a second unit's flag to confuse with the blocked one. The marker check
 is scoped to the stopping reviewer's own stamped units (falling back to a
 directory-wide check when scoping information is unavailable) so that a stray
 or orphaned `.blocked` marker from an unrelated unit cannot jam unrelated
-reviewers' operations — this scoped-relevance mechanism (see
-[ADR-0028](../docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md)) is
+reviewers' operations — this scoped-relevance mechanism (see ADR-0028,
+`docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md`) is
 a complementary safety layer that works alongside the one-unit-at-a-time invariant.
 
 These are two different axes, stated explicitly so neither is misread as
@@ -679,9 +684,9 @@ time invariant just stated: at most one unit is ever mid-review. The
 **advisory-reviewer axis** is orthogonal: the same single unit may still
 carry a second, advisory reviewer (a Roast-style pass, if present, that owns
 no verdict and writes no marker — otherwise the unit has exactly one
-reviewer). [ADR-0016](../docs/adr/0016-per-unit-review-join.md) names this
+reviewer). ADR-0016 (`docs/adr/0016-per-unit-review-join.md`) names this
 second axis's liveness trap for that advisory second reviewer directly.
-Neither axis's rule changes here: [ADR-0028](../docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md)'s
+Neither axis's rule changes here: ADR-0028's
 scoped-relevance fix was caused by `tests/marker-write.test.sh` leaking
 fixture markers into the real marker directory — a test-hygiene defect, not
 a violation of unit-exclusivity or a concurrent-reviewer scenario.

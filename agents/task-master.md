@@ -60,8 +60,10 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   report includes an intersection table with columns `unit | shared files |
   depends on`, one row per unit, shared files as backticked paths or `none`.
 - **Contract home and precedence.** On the standard path the contract lives
-  in the issue body under `## Dispatch contract`, last, as one fenced block
-  whose first interior line is `Unit: <task-id>`. Use a tilde fence longer
+  in the issue body under `## Dispatch contract`, as one fenced block
+  whose first interior line is `Unit: <task-id>`. The contracts go last in the
+  body, the lead contract first and the scribe contract (if any) after it,
+  under its own heading (see **Scribe dispatch contract**). Use a tilde fence longer
   than any fence inside the contract (`~~~~` around `~~~` payloads):
   `bin/contract-guard.js` finds a contract only as such a block, so an
   unfenced contract after the issue's prose scores `reason=no-contract`, a
@@ -161,7 +163,9 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
      backticked path.
   7. `## Acceptance criteria` (R3, R4) — numbered items, each with `run:`
      (inline code), `exit:` (an integer), `stdout:` (a fragment, or
-     `empty`) and `mutation:` (the edit that makes the check fail, so it is
+     `empty`; a fragment is text the command prints, such as
+     `All checks passed.`, never a description such as "no FAIL line") and
+     `mutation:` (the edit that makes the check fail, so it is
      never vacuous). No `run:` names `/home/`, `/tmp/`, `~/` or `$HOME`; a
      `run:` containing `command -v` or `which ` needs a `precondition:` line
      inside that same criterion item.
@@ -320,7 +324,8 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 <!-- lead-contract-example:end -->
 
 **Issue-body layout.** A published unit's issue body keeps its prose first and
-the contract last, fenced; `tests/contract-examples.test.js` substitutes the
+the contracts last, fenced, the lead contract and then the scribe contract (if
+any); `tests/contract-examples.test.js` substitutes the
 lead example above for the placeholder line and runs `bin/contract-guard.js`
 over the result.
 
