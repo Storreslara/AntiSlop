@@ -266,6 +266,29 @@ persona's dispatch path; surprising without context; a real trade-off.
   this plan pre-registers per-wave targets and no-regression rules (see
   "Measurement and no-regression"). The rules are checked at the milestone
   audit, never as a unit's acceptance criterion.
+- 2026-10-15 Edge cases / failure handling: Q (task-master SPEC-GAP 1, #543)
+  U1's exclusion filter leaves 694 lines / 47 KB on the real run, so AC1.2
+  cannot pass. Relax the bounds, or widen the drop list? → A (self-resolved):
+  widen the drop list. It is frozen as KEEP/DROP regexes plus a context rule
+  that preserves a failing case's announcement line. Simulated on the saved
+  run: 102 lines / 13,050 bytes. The bounds are set at 220 lines / 26,000
+  bytes, and AC1.3's set-inclusion uses the full KEEP regex.
+- 2026-10-15 Domain entities / data model: Q (SPEC-GAP 2a, #544)
+  lead-programmer's 56 kept lines cannot meet the 40-line / 4 KB cap. Change
+  the cap or the keep rule? → A (self-resolved): change the keep rule; the cap
+  stays. Only `feedback_` lines stay; technique/reference lines move verbatim
+  to `TECHNIQUES.md`, the rest to `ARCHIVE.md`, and feedback hooks are
+  shortened where needed. Nothing is deleted (item05's no-bulk-delete
+  ruling).
+- 2026-10-15 User interaction flow: Q (SPEC-GAP 2b, #544) Does a scribe
+  contract's `prune: none` or the prune duty at `agents/scribe.md:57-62`
+  govern U4a? → A (self-resolved): the contract governs. U4a is a listed index
+  reorganization under a scribe contract, not the release prune duty, and
+  task-master's own index is added to its scope.
+- 2026-10-15 Technical constraints & tradeoffs: Q (SPEC-GAP 3, #546) May U0
+  precede U1, given both edit `tests/validate.sh`? → A (self-resolved): yes.
+  They edit different regions, each passes in either order, and the route
+  gate serializes them anyway.
 
 ## Risks / dependencies
 
@@ -395,8 +418,8 @@ Affected files: `tests/validate.sh` (outer wrapper, lines 14-26 only),
 `tests/lib/validate-quiet.sh` (new: the filter as a sourced function),
 `tests/validate-quiet.test.sh` (new) plus its registration in
 `tests/validate.sh`, `tests/fixtures/validate-quiet/sample.log` (new: one line
-of each shape measured in a real run: `OK `, `✓`, `ok `, `Test ...`, blank,
-`--`, `== ` header, `hint:`, `⚠`, `FAIL`, `WARN`, `SKIP`, `not ok`),
+of each DROP and KEEP shape below, plus a `Test (x): ...` announcement
+followed by a `✗` result line),
 `.github/workflows/validate.yml` (add `--verbose`), `README.md` (one line
 documenting the flag), `CHANGELOG.md` (entry; no version bump required,
 since `tests/` is not version-stamped).
@@ -405,25 +428,53 @@ Design: the wrapper already re-runs the script with
 `ANTISLOP_VALIDATE_INNER=1` and tees to a `mktemp` file. In quiet mode it keeps
 that file (no `rm` on EXIT), prints the inner stream through the filter, and
 ends with exactly the existing SKIP summary plus two new lines:
-`Counts: OK=<n> FAIL=<n> WARN=<n> SKIP=<n>` and `Full log: <path>`. The filter
-is an **exclusion** filter: it drops only lines matching the measured OK shapes
-(`^OK `, `^\s*✓`, `^ok `, `^Test .*(pass|ok)`, blank, `^--$`) and drops an
-`== ` header only when no surviving line follows it before the next header.
-Every other line prints. The inner script and the exit code are unchanged.
-`--verbose` prints the inner stream unfiltered (today's behaviour).
+`Counts: OK=<n> FAIL=<n> WARN=<n> SKIP=<n>` and `Full log: <path>`. The inner
+script and the exit code are unchanged. `--verbose` prints the inner stream
+unfiltered (today's behaviour).
+
+The filter (revised 2026-10-15, ruling on task-master SPEC-GAP 1 for #543) is
+an exclusion filter with a keep override. Both regexes are frozen; they are
+applied per line, as ERE (PCRE `\d`/`\s` spelled `[0-9]`/`[[:space:]]` in the
+bash implementation):
+
+- **KEEP** (always printed, overrides DROP):
+  `^(FAIL|WARN|SKIP)|⚠|✗|not ok|FAILED|Error|ERROR`
+- **DROP** (printed only if KEEP also matches):
+  `^(OK |ok |Test |hint:|All .*(passed|pass)|\[master|\[detached| create mode| delete mode| [0-9]+ files? changed|editing .*budget|Switched to|Preparing worktree|HEAD is now|Initialized empty Git)`,
+  `^[[:space:]]*✓`, `^[[:space:]]*$`, and `^--( .* --)?$` (the `-- sub-section --`
+  titles);
+- **context rule:** when a line matches KEEP and the line just before it was
+  dropped and is not blank, print that previous line first, so a failing
+  case's `Test (x): ...` announcement survives with its result;
+- **headers:** an `== ` header prints only when at least one line of its
+  section prints.
+
+Measured on the saved real run (the Fable scratchpad `validate.out`, 4,209
+lines, 251,857 bytes; task-master's figures re-derived with a Python model
+of exactly these rules), the filtered stream is **102 lines, 13,050 bytes**.
+Of that, the 17 `⚠ hooks/hooks.json` warning lines are about 6 KB, and the
+rest is unclassified stderr from passing suites, which correctly still prints
+because it matches neither list. The AC1.2 bounds below are about twice
+those figures, leaving room for growth. The earlier draft's list (no `Test `,
+titles, `hint:` or git-noise drops) measured 694 lines and 47,175 bytes and
+could not meet any sensible bound; that list is superseded.
 
 Acceptance criteria:
 - AC1.1 `bash tests/validate-quiet.test.sh` → exit 0. It asserts, on the
-  fixture: every input line matching `^(FAIL|WARN|SKIP)|⚠|not ok` is present
-  in the output; no `^OK ` line is; a header with only OK lines under it is
-  absent; a header with a FAIL under it is present. mutation: change the filter
-  to drop `^FAIL` → exit 1.
+  fixture: every input line matching the KEEP regex is present in the output;
+  no line matching DROP-but-not-KEEP is; a `Test (x): ...` line directly above
+  a `✗` line is present (context rule) while a `Test (y): ...` line above a
+  `✓` line is absent; a header with only dropped lines under it is absent; a
+  header with a FAIL under it is present. mutation: remove `✗` from KEEP →
+  exit 1.
 - AC1.2 `bash tests/validate.sh > <T>/q.out; echo $?` on a clean HEAD tree →
-  `0`; `wc -c < <T>/q.out` ≤ 25000 and `wc -l < <T>/q.out` ≤ 400 (baseline:
-  251,857 bytes and 4,209 lines).
+  `0`; `wc -c < <T>/q.out` ≤ 26000 and `wc -l < <T>/q.out` ≤ 220 (baseline:
+  251,857 bytes and 4,209 lines; the frozen filter simulated on the saved run
+  gives 102 lines and 13,050 bytes, and the wrapper adds the SKIP summary,
+  `Counts:` and `Full log:` lines).
 - AC1.3 Using the `Full log:` path printed by AC1.2's run:
   `grep -c '^OK ' <log>` ≥ 2000, AND
-  `comm -23 <(grep -E '^(FAIL|WARN|SKIP)|⚠|not ok' <log> | sort -u) <(sort -u <T>/q.out) | wc -l`
+  `comm -23 <(grep -E '^(FAIL|WARN|SKIP)|⚠|✗|not ok|FAILED|Error|ERROR' <log> | sort -u) <(sort -u <T>/q.out) | wc -l`
   → `0`.
 - AC1.4 `bash tests/validate.sh --verbose | grep -c '^OK '` ≥ 2000.
 - AC1.5 (mutation, exit-code equivalence, quiet) in a throwaway worktree of
@@ -435,38 +486,79 @@ Acceptance criteria:
 - AC1.7 `bash tests/validate-lanes.test.sh` → exit 0.
 - CC-gate.
 
-### Step U4a — Archive closed-plan lines out of three memory indexes (item 4, scribe)
+### Step U4a — Move index lines out of four memory indexes (item 4, scribe)
 
 Recommended model: haiku (scribe, ungated). Sensitive: no.
-Executor: `scribe` under its prune-on-release duty (`agents/scribe.md:57-62`),
-with no other dispatch in flight.
-Affected files: `.claude/agent-memory/{lead-programmer,scribe,spec-master}/MEMORY.md`
-and a new `ARCHIVE.md` in each of those three directories. Topic files are
-**not** edited, renamed or deleted.
+Revised 2026-10-15 (ruling on task-master SPEC-GAP 2 for #544).
 
-Rule (deterministic, so the review can check it): keep in `MEMORY.md`
-every line whose target file name starts with `feedback_`, `technique_`,
-`review_technique_` or `reference_`, plus any `project_` line whose hook
-states a still-live constraint. Every
-other line moves verbatim to `ARCHIVE.md` (same format; one header line
-`# <persona> memory archive — index lines moved from MEMORY.md on <date>; topic files unchanged`).
-`MEMORY.md` gains one line:
-`- [Archive](ARCHIVE.md) — closed-plan and completion notes; grep it before concluding none exists`.
-Kept hooks may be shortened to fit the cap; their link targets stay the same.
+**Executor and governing text (ruling on gap 2b).** U4a is dispatched to
+`scribe` **with** a scribe dispatch contract. That contract's Doc edits list
+the eight index files below by path and end with `prune: none`, as every
+scribe contract does. The contract governs. U4a is a **listed index
+reorganization**, not the release prune duty at `agents/scribe.md:57-62`:
+that duty (hand-reviewing and pruning completion entries) does **not** run,
+no topic file is deleted, and no persona text changes. This also respects
+the "no bulk delete" ruling (item05, 2026-09-25), since every index line is
+moved verbatim, never deleted. Run U4a only when no other dispatch is in
+flight, so no persona appends to a MEMORY.md mid-move.
 
-Acceptance criteria (per persona P in the three):
+**Scope (ruling on task-master's MEMORY.md).** Four indexes:
+`.claude/agent-memory/{lead-programmer,scribe,spec-master,task-master}/MEMORY.md`.
+task-master is added (4,560 bytes, over the byte cap) because a warning
+that never clears trains everyone to ignore it. The `antislop-*` namespaces
+are already under the cap and are not touched.
+Affected files: those four `MEMORY.md` files, plus a new `TECHNIQUES.md` and
+`ARCHIVE.md` in each of the four directories, only where at least one line
+moves there. Topic files are **not** edited, renamed or deleted.
+
+**Rule (ruling on gap 2a; deterministic, one rule for all four).** The cap
+stays at 4096 bytes and 40 lines for every index.
+1. Lines whose target starts `feedback_` stay in `MEMORY.md`.
+2. Lines whose target starts `technique_`, `review_technique_` or
+   `reference_` move verbatim to `TECHNIQUES.md`.
+3. Every other line (`project_`, `cross_plan_`, anything else) moves verbatim
+   to `ARCHIVE.md`.
+4. `MEMORY.md` gains exactly these pointer lines, each only if its file
+   exists:
+   `- [Techniques](TECHNIQUES.md) — how-to notes (bash, gates, tests); grep it by keyword before solving a mechanics problem`
+   `- [Archive](ARCHIVE.md) — closed-plan and project notes; grep it before concluding none exists`
+5. Each new file opens with one header line:
+   `# <persona> memory <techniques|archive> — index lines moved from MEMORY.md on 2026-10-15; topic files unchanged`.
+6. If `MEMORY.md` is still over the cap, shorten the **hooks** (the text
+   after ` — `) of the kept `feedback_` lines, never their `[title](target)`
+   part, until it fits. lead-programmer (19 feedback lines, 4,337 B) and
+   task-master (19 lines, 4,006 B) need it once the two pointer lines (about
+   230 B) are added: about 500 B and 150 B must come off respectively.
+7. Optional fill: if room remains under the cap, scribe may move individual
+   lines back from `TECHNIQUES.md` (verbatim) and must list each one in its
+   report.
+`MEMORY.md` is not auto-trimmed after this. U4b's warning reports regrowth.
+
+Measured fit (2026-10-15 sizes of the feedback lines alone): lead-programmer
+19 lines / 4,337 B; task-master 19 / 4,006 B; spec-master 12 / 2,578 B (plus 2
+non-link lines); scribe 7 / 1,397 B (plus 7 non-link lines). Every result
+has 23 lines or fewer, so the line cap is never binding. The byte cap is met
+by step 6 for lead-programmer and task-master.
+
+Acceptance criteria. Let `<pre>` be the parent of U4a's commit, **not** the
+plan baseline: memory indexes change between the two, for example
+spec-master's on 2026-10-15. Each criterion is run for each persona P of the
+four.
 - AC4a.1 `wc -c < .claude/agent-memory/P/MEMORY.md` ≤ 4096 and
   `wc -l < .claude/agent-memory/P/MEMORY.md` ≤ 40.
-- AC4a.2 No link lost: the multiset of `](...)` link targets in
-  `MEMORY.md` + `ARCHIVE.md` at HEAD, minus `ARCHIVE.md` itself, equals the
-  set in `MEMORY.md` at the baseline:
-  `diff <(git show <baseline>:.claude/agent-memory/P/MEMORY.md | grep -oE '\]\([^)]+\)' | sort) <(cat .claude/agent-memory/P/MEMORY.md .claude/agent-memory/P/ARCHIVE.md | grep -oE '\]\([^)]+\)' | grep -v 'ARCHIVE.md' | sort)`
-  → empty, exit 0.
-- AC4a.3 Every `feedback_` link at the baseline is still in `MEMORY.md`:
-  `comm -23 <(git show <baseline>:.claude/agent-memory/P/MEMORY.md | grep -oE '\(feedback_[^)]+\)' | sort -u) <(grep -oE '\(feedback_[^)]+\)' .claude/agent-memory/P/MEMORY.md | sort -u) | wc -l`
+- AC4a.2 No link lost:
+  `diff <(git show <pre>:.claude/agent-memory/P/MEMORY.md | grep -oE '\]\([^)]+\)' | sort) <(cat .claude/agent-memory/P/MEMORY.md .claude/agent-memory/P/TECHNIQUES.md .claude/agent-memory/P/ARCHIVE.md 2>/dev/null | grep -oE '\]\([^)]+\)' | grep -vE '\]\((TECHNIQUES|ARCHIVE)\.md\)' | sort)`
+  → empty, exit 0. mutation: delete one moved line from `ARCHIVE.md` → one
+  diff line.
+- AC4a.3 Every `feedback_` link at `<pre>` is still in `MEMORY.md`:
+  `comm -23 <(git show <pre>:.claude/agent-memory/P/MEMORY.md | grep -oE '\(feedback_[^)]+\)' | sort -u) <(grep -oE '\(feedback_[^)]+\)' .claude/agent-memory/P/MEMORY.md | sort -u) | wc -l`
   → `0`.
-- AC4a.4 Topic files untouched:
-  `git diff --name-only <baseline>..HEAD -- .claude/agent-memory/ | grep -vE '/(MEMORY|ARCHIVE)\.md$' | wc -l`
+- AC4a.4 Moved lines are verbatim: every line of `TECHNIQUES.md` and
+  `ARCHIVE.md` except the header occurs in `<pre>`'s `MEMORY.md`:
+  `comm -23 <(tail -n +2 -q .claude/agent-memory/P/TECHNIQUES.md .claude/agent-memory/P/ARCHIVE.md 2>/dev/null | sort -u) <(git show <pre>:.claude/agent-memory/P/MEMORY.md | sort -u) | wc -l`
+  → `0`.
+- AC4a.5 Topic files untouched:
+  `git diff --name-only <pre>..HEAD -- .claude/agent-memory/ | grep -vE '/(MEMORY|ARCHIVE|TECHNIQUES)\.md$' | wc -l`
   → `0`.
 
 ### Step U4b — Advisory index-size rule (item 4)
@@ -977,7 +1069,7 @@ CC-mirror, CC-parity, CC-gate.
 |---|---|---|
 | U0 | `scripts/token-usage/*`, `tests/token-usage.test.sh`, fixtures, `docs/audits/…baseline.md`, ✱`tests/validate.sh` | yes |
 | U1 | ✱`tests/validate.sh`, `tests/lib/validate-quiet.sh`, `tests/validate-quiet.test.sh`, `.github/workflows/validate.yml`, README, CHANGELOG | yes |
-| U4a | 3× `MEMORY.md`, 3× `ARCHIVE.md` | **no** (scribe) |
+| U4a | 4× `MEMORY.md`, ≤ 4× `TECHNIQUES.md`, ≤ 4× `ARCHIVE.md` (agent-memory of lead-programmer, scribe, spec-master, task-master) | **no** (scribe, under a scribe contract) |
 | U4b | `bin/agent-memory-size-check.sh`, its test | yes |
 | U7c | ✱`agents/reviewer.md`, ✱mirror, reviewer ports, `tests/harness-integrity-gate.test.sh`, ✱plugin.json, CHANGELOG | yes |
 | U6 | ✱`agents/reviewer.md`, ✱`templates/persona-protocol.md` (+3 surfaces), `tests/packet-view-script.test.sh`, ✱plugin.json, CHANGELOG | yes |
@@ -999,8 +1091,9 @@ CC-mirror, CC-parity, CC-gate.
   needs contract files); U8 → U9 (`orchestrator.md`); U12 also
   touches `orchestrator.md` and goes after U5 and before U3 (Wave 3); U7a → U7b (gate test files); U0, U2, U9, U7b all
   register in `tests/validate.sh` (one line each, rebase-trivial but still
-  serial); U1 edits the `tests/validate.sh` wrapper, so it goes first among
-  them.
+  serial); U1 edits the `tests/validate.sh` wrapper and the others add
+  registration lines in other regions, so their order is free (U0 may
+  precede U1).
 - **File-disjoint except for `plugin.json`/`CHANGELOG.md`:** U2 vs
   {U7c, U6}; U4b vs everything; U0 vs everything except its
   `tests/validate.sh` line; U7a/U7b vs all persona units.
@@ -1026,10 +1119,16 @@ renumbered at merge. **Not proposed.** This plan does not weaken that gate.
 
 ### Recommended order
 
-- **Wave 1 (minimal, fully reversible; Fable's first wave):** U1, then U4a
-  (overlapping U1's review) and U4b. U1 and U4a are each one commit and
-  revert cleanly; U4b is optional within the wave. Then U0, which must land
-  before Wave 1's after-measurement is read.
+- **Wave 1 (minimal, fully reversible; Fable's first wave):** U1, U4a, U4b
+  and U0. Within the wave, **U0 may precede U1** (ruling on task-master
+  SPEC-GAP 3 for #546). The two touch different regions of
+  `tests/validate.sh`: U1 the wrapper at lines 14-26, U0 one registration
+  line. Each criterion passes on either order, and the route gate serializes
+  them anyway. So the U0 → U1 edge is not required, and task-master may drop
+  the native GitHub blocking edge and release U0. U4b can be dispatched now.
+  U4a (ungated) can run while any gated unit is in review, provided no other
+  agent is writing agent memory. U0 must land before Wave 1's
+  after-measurement is read.
 - **Wave 2 (reviewer and scribe bodies):** U7c → U6 → U2.
 - **Wave 3 (protocol and lead-programmer):** U5 → U12 (U12 after U5 on
   `lead-programmer.md`, and before U3 on `orchestrator.md`).
@@ -1153,6 +1252,18 @@ None. Round 1 (four questions, items 1, 10, 11 and 12) was answered on
 - CHK15: Replay source: does any `docs/audits/unit-outcomes/` vacuous/host
   unit's files intersect a criterion's `run:`? — PASS (directory not present
   at baseline; adds no item)
+- CHK16: Can U1's AC1.2 bounds be met by U1's own filter? — FAIL
+  (conflicting; task-master SPEC-GAP 1) — revised in place: filter frozen and
+  simulated (102 lines / 13,050 B against bounds of 220 / 26,000)
+- CHK17: Can every U4a persona meet the cap under the keep rule? — FAIL
+  (conflicting; SPEC-GAP 2a) — revised in place: feedback-only keep rule,
+  `TECHNIQUES.md`, hook shortening
+- CHK18: Is U4a's governing text (contract vs prune duty) defined? — FAIL
+  (missing; SPEC-GAP 2b) — revised in place: the contract governs
+- CHK19: Do U4a's criteria compare against the right baseline, given that
+  memory indexes change after the plan baseline? — FAIL (conflicting) —
+  revised in place: `<pre>` is the parent of U4a's commit
+
 
 ## Scribe update hint
 
