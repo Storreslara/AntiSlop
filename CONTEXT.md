@@ -1526,3 +1526,20 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   paragraph on the false premise that the unnamed-dispatch default already
   covered it; see `docs/plans/2026-09-25-item14-gh304-roster-check.md`'s
   Context section for the verification that rejected the revert.
+
+**agent-memory index**:
+(unit ptr-u4b, 2026-10-15) — a persona's `MEMORY.md`, the one-line-per-entry
+  index under `.claude/agent-memory/<persona>/` that points at that persona's
+  topic files and is always loaded into the persona's context. It holds
+  pointers only; the content lives in the topic files. Its size is advisory
+  (see [[index-size cap]]). The write path is the harness-glossary term
+  **agent-memory write**.
+
+**index-size cap**:
+(unit ptr-u4b, 2026-10-15) — the advisory limit on an [[agent-memory index]]:
+  4096 bytes and 40 lines by default. An index over either limit draws a
+  stderr `WARN agent-memory index` line from `bin/agent-memory-size-check.sh`;
+  the limits are overridden with `--index-cap-bytes N` and `--index-cap-lines N`.
+  Warn-only: crossing the cap never fails the check, which still exits 0. Not
+  the same as the per-namespace size warning (512K by default), which measures
+  the whole persona namespace rather than its index.
