@@ -937,6 +937,15 @@ else
 fi
 
 echo
+echo "== docs/archive/skills: archived originals are byte-identical to git (Bash, skr-archive-verify, lo2-3) =="
+if bash docs/plans/skr-criteria/skr-archive-verify.sh; then
+  echo "OK   docs/plans/skr-criteria/skr-archive-verify.sh"
+else
+  echo "FAIL docs/plans/skr-criteria/skr-archive-verify.sh"
+  fail=1
+fi
+
+echo
 echo "== scripts/resync-vendored-skills.sh: offline FILES/SKILL_ORDER checks (sfu-5) =="
 if bash tests/resync-vendored-skills-offline.test.sh; then
   echo "OK   tests/resync-vendored-skills-offline.test.sh"

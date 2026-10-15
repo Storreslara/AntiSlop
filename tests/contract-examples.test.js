@@ -81,5 +81,33 @@ check('issue-body layout without its ~~~~ fence lines scores no-contract', () =>
   assert.strictEqual(guard(unfenced, 'demo-7'), 'contract-guard: sonnet unit=demo-7 shape=lead reason=no-contract');
 });
 
+// lo2-3: an issue body carrying both contracts, the lead one and then the scribe one under
+// `## Dispatch contract (scribe)`, each fenced; the guard finds each by its own shape.
+function guardShape(text, id, shape) {
+  const r = spawnSync('node', ['bin/contract-guard.js', '-', `--unit=${id}`, `--shape=${shape}`], { cwd: REPO_ROOT, encoding: 'utf8', input: text });
+  return r.stdout.trim();
+}
+function bothBody() {
+  return `${issueBody()}\n\n## Dispatch contract (scribe)\n~~~~\n${example('scribe-contract-example')}\n~~~~\n`;
+}
+
+check('issue-body layout example ends with its fenced contract', () => {
+  const lines = example('issue-body-layout-example').split('\n').filter((l) => l.trim() !== '');
+  assert.strictEqual(lines[lines.length - 1], '~~~~');
+});
+
+check('issue body with both contracts: the scribe one scores haiku through contract-guard --shape=scribe', () => {
+  assert.strictEqual(guardShape(bothBody(), 'demo-8', 'scribe'), 'contract-guard: haiku unit=demo-8 shape=scribe score=7/7');
+});
+
+check('issue body with both contracts: the lead one still scores haiku', () => {
+  assert.strictEqual(guardShape(bothBody(), 'demo-7', 'lead'), 'contract-guard: haiku unit=demo-7 shape=lead score=7/7');
+});
+
+check('issue body with both contracts, unfenced: the scribe one scores no-contract', () => {
+  const unfenced = bothBody().split('\n').filter((l) => l !== '~~~~').join('\n');
+  assert.strictEqual(guardShape(unfenced, 'demo-8', 'scribe'), 'contract-guard: sonnet unit=demo-8 shape=scribe reason=no-contract');
+});
+
 console.log(failures === 0 ? '\nAll contract-examples checks passed.' : `\n${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
