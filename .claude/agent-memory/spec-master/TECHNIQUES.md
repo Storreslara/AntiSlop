@@ -1,0 +1,16 @@
+# spec-master memory techniques — index lines moved from MEMORY.md on 2026-10-15; topic files unchanged
+- [Finish interrupted plan docs by ref-sweep](technique_plan_doc_reference_sweep.md) — a cut-off session leaves dangling "see R13"/"see CHK25"; diff refs vs defs mechanically before calling a doc FINAL.
+- [ClaudeVoice design tokens](reference_claudevoice_design_tokens.md) — sibling repo's Gruvbox Material palette/scale/font stack and exactly which files hold them.
+- [Claude transcript store](reference_claude_transcript_store.md) — agent activity is ALREADY on disk under ~/.claude/projects/; also: hook payloads carry caller `agent_type` but NOT spawnDepth/parentAgentId.
+- [Measure unread files in a debug spec](technique_debug_spec_measure_unread_files.md) — count per-round tool calls naming the file the false claim is about; zero = retrieval gap, not capacity gap.
+- [/dev/tty is a real out-of-band channel](technique_dev_tty_out_of_band_channel.md) — agent gets ENXIO, human doesn't; test openability not stdout.isTTY; a page-embedded nonce is never a boundary.
+- [Sentinel-stub single-impl proof](technique_sentinel_stub_single_impl_proof.md) — stub the injected module, assert a sentinel at every intended site and none of the others; kills gh320 D4's vacuous-criteria class.
+- [Branch-agreement criterion](technique_branch_agreement_criterion.md) — assert a textual guard AGREES with its structural sibling; character enumerations kept missing one more dimension (630/670 → 0/670).
+- [Zero usage is not evidence](technique_zero_usage_is_not_evidence.md) — check the gate's MODE first; in `warn` mode a zero-usage audit is a tautology. Plus: glossary `_Avoid_` is entry-scoped, and it is not alphabetical.
+- [Flatten wrapped prose for phrase greps](technique_flatten_wrapped_prose_for_phrase_greps.md) — per-line grep misses a phrase split by the hard wrap, so an "absent" check passes vacuously; use tr -s first.
+- [Contract-guard row shapes](technique_contract_guard_r6_bullet_shape.md) — R1/R2/R5/R6/R7 literal shapes a 7/7 contract needs; run the guard per unit; never splice by inline heading text.
+- [Parallel contracts + escape drift](technique_parallel_contracts_and_escape_drift.md) — parallel units: never git add, `git commit -- <paths>`; `\u2014` typed becomes a literal em dash.
+- [Read-only /tmp namespace probe](technique_readonly_tmp_namespace_probe.md) — fixed /tmp names flip exit only when unwritable, not under concurrency; `unshare -rm` ro-/tmp probe.
+- [Throwaway tree for gated-dir tests](technique_throwaway_tree_for_gated_dir_tests.md) — run a dir-touching test in a mktemp copy with a stub validate.sh; marker-write leak set is now unitA/B/C/G.
+- [Monotonic timing; no backticks in command parentheticals](technique_monotonic_timing_and_command_backticks.md) — WSL date +%s jumps; use /proc/uptime. A backtick after a `command:` broke extraction.
+- [Interrupt criterion + subshell-exit trap](technique_process_tree_interrupt_criterion.md) — set -m launch, pid file, zombie-aware alive(), reap on EXIT; exit in $(...) is not a hard exit.
