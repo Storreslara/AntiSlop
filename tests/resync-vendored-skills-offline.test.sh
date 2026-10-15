@@ -38,5 +38,20 @@ for s in $FORKED; do
   grep -q "^<!-- Derived from mattpocock/skills " "skills/$s/SKILL.md" && ok "skills/$s/SKILL.md has a Derived from header" || no "skills/$s/SKILL.md lacks a Derived from header"
 done
 
+# lov-3: every tracked file under a skill's drift-tracked root has a FILES row, and
+# each row's upstream path ends in the same skill-relative path as its local copy.
+root_of() { case " $FORKED " in *" $1 "*) echo "docs/archive/skills/$1/" ;; *) echo "skills/$1/" ;; esac; }
+for s in $order; do
+  root="$(root_of "$s")"
+  want_files="$(git ls-files -- "$root" | sort | tr '\n' ' ')"
+  have_files="$(printf '%s\n' "$rows" | awk -F: -v s="$s" '$1 == s {print $3}' | sort | tr '\n' ' ')"
+  [ "$want_files" = "$have_files" ] && ok "$s: FILES rows cover every tracked file under $root" || no "$s: FILES rows '$have_files' differ from the tracked files '$want_files' under $root"
+done
+while IFS=: read -r skill type local upstream extra; do
+  [ -n "$skill" ] || continue
+  rel="${local#"$(root_of "$skill")"}"
+  case "$upstream" in */"$skill/$rel") ok "$skill $rel: upstream path names the same file" ;; *) no "$skill $rel: upstream path '$upstream' does not end in $skill/$rel" ;; esac
+done <<< "$rows"
+
 [ "$fail" -eq 0 ] && echo "resync-vendored-skills-offline: ok" || echo "resync-vendored-skills-offline: FAIL"
 exit "$fail"

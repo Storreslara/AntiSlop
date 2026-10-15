@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Resync offline test and relative-link test hardened (lov-3).** `tests/resync-vendored-skills-offline.test.sh` now fails when a skill's FILES rows miss a tracked file under its drift-tracked root, or when a row's upstream path names a different file than its local copy. `tests/doc-relative-links.test.js` now fails on a SCOPE entry that matches no tracked file, checks links with a title and `<angle>` destinations, and reports an unparsable destination or a malformed percent escape as broken.
+
 
 **version-stamp-check: --no-textconv and four more pinned mutants (lov-2).** `hooks/scripts/version-stamp-check.sh` also reads the CHANGELOG diff with `--no-textconv`, so a `.gitattributes` textconv driver cannot rewrite the lines it parses. `tests/version-stamp-check.test.sh` gains cases (h4) `x.0.3.13`, (h5) a version at the end of a sentence, (j) a textconv driver and (k) `diff.external`, with mutation controls mc14-mc17; its case labels say CHANGELOG entry, and a comment records why the `+++`-exclusion mutant stays unpinned.
 
