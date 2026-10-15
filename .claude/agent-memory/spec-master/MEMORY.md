@@ -69,3 +69,4 @@
 - [Monotonic timing; no backticks in command parentheticals](technique_monotonic_timing_and_command_backticks.md) — WSL date +%s jumps; use /proc/uptime. A backtick after a `command:` broke extraction.
 - [Review-join ownerless stamp](project_review_join_ownerless_stamp.md) — stamps name no owner; SubagentStart carries NO unit id (measured), so fix held on lo2 OQ1; transcript first line has Unit:.
 - [Interrupt criterion + subshell-exit trap](technique_process_tree_interrupt_criterion.md) — set -m launch, pid file, zombie-aware alive(), reap on EXIT; exit in $(...) is not a hard exit.
+- [Token-reduction spec (2026-10-15)](project_token_reduction_spec.md) — lone jq read of config passes gates; ADR-0040 rule `met`; packet prose duplicates protocol §Fourth verdict.
