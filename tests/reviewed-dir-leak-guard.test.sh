@@ -20,7 +20,7 @@
 # only a NOTE, because the outer run already reports those checks.
 #
 # Accepted blind spot (docs/plans/2026-10-14-validate-lanes-and-guard-followups.md,
-# item 2): a writer that ignores CLAUDE_PROJECT_DIR and writes the marker
+# Note 2): a writer that ignores CLAUDE_PROJECT_DIR and writes the marker
 # directory relative to the repository root, or under an explicit repo-root
 # argument, is not seen here.
 set -uo pipefail
@@ -34,7 +34,11 @@ if [ -n "${REVIEWED_DIR_LEAK_GUARD_NESTED:-}" ]; then
 fi
 
 sandbox="$(mktemp -d)" || exit 1
-trap 'rm -rf "$sandbox"' EXIT
+# The nested run's output is kept OUTSIDE the sandbox (vln-3): a suite that
+# removes or rewrites its project directory must not also destroy the
+# evidence of whether the nested run finished.
+nested_out="$(mktemp)" || { rm -rf "$sandbox"; exit 1; }
+trap 'rm -rf "$sandbox" "$nested_out"' EXIT
 mkdir -p "$sandbox/.claude/reviewed"
 
 # The nested run's failing checks are not this guard's business: the outer
@@ -43,7 +47,6 @@ mkdir -p "$sandbox/.claude/reviewed"
 # silently stops observing the suites after the abort point (vlg-1).
 # ANTISLOP_VALIDATE_INNER=1 skips validate.sh's skip-summary wrapper, so the
 # closing summary line is the last line of the nested output.
-nested_out="$sandbox/nested.out"
 CLAUDE_PROJECT_DIR="$sandbox" REVIEWED_DIR_LEAK_GUARD_NESTED=1 ANTISLOP_VALIDATE_INNER=1 \
   bash tests/validate.sh >"$nested_out" 2>&1
 nested_rc=$?
