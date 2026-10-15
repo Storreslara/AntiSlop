@@ -1,0 +1,8 @@
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Agent","id":"toolu_01","input":{"subagent_type":"reviewer"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_01","content":"agentId: a1b2c3d4e5f6"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Agent","id":"toolu_02","input":{"subagent_type":"reviewer"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_02","content":"agentId: b1b2c3d4e5f6"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Agent","id":"toolu_03","input":{"subagent_type":"reviewer"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_03","content":"agentId: c1b2c3d4e5f6"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Agent","id":"toolu_04","input":{"subagent_type":"lead-programmer"}}]}}
+{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_04","content":"agentId: d1b2c3d4e5f6"}]}}

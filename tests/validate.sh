@@ -1320,6 +1320,19 @@ else
 fi
 
 echo
+echo "== scripts/token-usage: per-persona token-usage measurement (Bash and Python, ptr-u0) =="
+if command -v python3 > /dev/null 2>&1; then
+  if bash tests/token-usage.test.sh; then
+    echo "OK   tests/token-usage.test.sh"
+  else
+    echo "FAIL tests/token-usage.test.sh"
+    fail=1
+  fi
+else
+  echo "SKIP tests/token-usage.test.sh (python3 not found)"
+fi
+
+echo
 echo "== scripts/unit-outcomes.js: read-only unit-outcome export (Node, rgh-u0-2) =="
 if node tests/unit-outcomes.test.js; then
   echo "OK   tests/unit-outcomes.test.js"
