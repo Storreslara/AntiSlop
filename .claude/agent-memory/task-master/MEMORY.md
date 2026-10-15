@@ -1,22 +1,21 @@
-- [Cross-plan version coordination](cross_plan_version_coordination.md) — slice version-bump steps with explicit cross-plan deps, never a hardcoded target version.
 - [Scribe write scope](feedback_scribe_write_scope.md) — scribe only writes .claude/wiki/, CONTEXT.md, docs/adr/; README.md/CHANGELOG.md go to lead-programmer.
 - [GitHub label length cap](feedback_github_label_length_cap.md) — `plan/<date>-<slug>` labels cap at 50 chars; shorten slug, keep prefix+date.
-- [Content reference vs hard dependency](feedback_content_reference_vs_hard_dependency.md) — only hard-`Depends on` a step whose acceptance criteria actually read another step's output; a mere textual reference isn't a sequencing dependency.
-- [Reviewed-path Bash block](feedback_reviewed_path_bash_blocked.md) — task-master's Bash can't ls/cat `.claude/reviewed/`; trust the spec's own statement on prior `.fail` records, or use Read on a known filename.
+- [Content reference vs hard dependency](feedback_content_reference_vs_hard_dependency.md) — only hard-`Depends on` a step whose acceptance criteria actually read another step's output; a mere textual reference isn't a…
+- [Reviewed-path Bash block](feedback_reviewed_path_bash_blocked.md) — task-master's Bash can't ls/cat `.claude/reviewed/`; trust the spec's own statement on prior `.fail` records, or use Read on a…
 - [Write tool unavailable in dispatch](feedback_write_tool_unavailable_in_dispatch.md) — Write tool may be rejected at call time despite frontmatter; fall back to Bash heredoc.
 - [Verify ordering against criteria](feedback_verify_ordering_against_criteria.md) — a spec's Handoff parallelism claim can understate real deps; re-derive Depends-on from actual acceptance-criteria commands.
-- [Fable roast-pass removed](feedback_fable_roast_pass_removed.md) — ADR-0013 removed the separate fable dispatch; never tag `Roast pass: fable`, flag heavy surfaces to the reviewer's inline roast-work skill instead.
-- [Split unit across persona scopes](feedback_split_unit_across_persona_scopes.md) — when a unit's files span scribe + lead-programmer write scopes, write two dispatch prompts under one shared unit id, don't escalate a spec gap.
-- [Area-wide FAIL evidence for model tag](feedback_area_wide_fail_evidence_for_model_tag.md) — a plan-wide "no haiku" directive from spec-master is legitimate if spot-verified against sibling units' FAIL history and file overlap, not on faith.
-- [Recheck baseline counts live](feedback_recheck_baseline_counts_live.md) — a spec's stated grep/count baseline can be off; re-run the literal command live before dispatch and fold any real gap into Affected files.
-- [Gate unit on open question](feedback_gate_unit_on_open_question.md) — no ready-for-agent label + DO-NOT-DISPATCH banner when a step is gated on a spec Open Question; plus the un-gating checklist once spec-master resolves it.
-- [Amendment criterion spans two units](feedback_amendment_criterion_spans_two_units.md) — a new criterion asserting over a sibling unit's artifact: conditional hand-off on the verifier, stale sibling body flagged upward, never silently edited.
+- [Fable roast-pass removed](feedback_fable_roast_pass_removed.md) — ADR-0013 removed the separate fable dispatch; never tag `Roast pass: fable`, flag heavy surfaces to the reviewer's inline…
+- [Split unit across persona scopes](feedback_split_unit_across_persona_scopes.md) — when a unit's files span scribe + lead-programmer write scopes, write two dispatch prompts under one shared unit id, don't escalate…
+- [Area-wide FAIL evidence for model tag](feedback_area_wide_fail_evidence_for_model_tag.md) — a plan-wide "no haiku" directive from spec-master is legitimate if spot-verified against sibling units' FAIL history and file…
+- [Recheck baseline counts live](feedback_recheck_baseline_counts_live.md) — a spec's stated grep/count baseline can be off; re-run the literal command live before dispatch and fold any real gap into Affected…
+- [Gate unit on open question](feedback_gate_unit_on_open_question.md) — no ready-for-agent label + DO-NOT-DISPATCH banner when a step is gated on a spec Open Question; plus the un-gating checklist once…
+- [Amendment criterion spans two units](feedback_amendment_criterion_spans_two_units.md) — a new criterion asserting over a sibling unit's artifact: conditional hand-off on the verifier, stale sibling body flagged upward…
 - [Glossary unit separate when spans future steps](feedback_glossary_unit_separate_when_spans_future_steps.md) — file a cross-step glossary hint as its own 10th unit blocked on all contributing steps, not attached to one step in an earlier wave.
-- [GitHub native issue dependencies](reference_github_native_issue_dependencies.md) — real blocking edges are available here; `gh api -F issue_id=<database id>`, never `-f`, never the issue number.
 - [Set A name in Bash; --update porcelain](feedback_set_a_name_in_bash_and_update_porcelain.md) — config name in any Bash text is refused; --update after a bump touches 14 .claude paths.
-- [Model tag default now sonnet](project_model_tag_default_now_sonnet.md) — ADR-0010 reversed haiku->sonnet; don't copy an old ticket's `haiku` tag as if it were still the live default.
 - [Flip a default: replay units first](feedback_flip_default_run_suites_first.md) — a spec flipping a shipped default can miss a hard-coded copy (cli.js skeleton); replay in a scratch worktree, file HELD.
 - [Persona paragraph edit needs port parity](feedback_persona_paragraph_edit_needs_port_parity.md) — Fix-turns/Contract-precedence edits must hit both lead-programmer ports (AC-A1); missing = spec gap, HELD.
 - [Replay contracts with an applier](feedback_replay_contracts_with_applier.md) — backticks can't sit in `run:`; empty-loop criteria pass vacuously; replay every edit and skip-mutation in a scratch worktree.
 - [Re-wrap and external-write pitfalls](feedback_rewrap_and_external_writes_pitfalls.md) — re-wrapping can split a phrase an older plan greps per line; gh issue create may be denied, fall back to plan-file contracts.
 - [Simulate spec numeric bounds](feedback_simulate_spec_numeric_bounds.md) — run a spec's filter/keep rule on real data; unreachable bound = HELD SPEC-GAP, not a contract.
+- [Techniques](TECHNIQUES.md) — how-to notes (bash, gates, tests); grep it by keyword before solving a mechanics problem
+- [Archive](ARCHIVE.md) — closed-plan and project notes; grep it before concluding none exists
