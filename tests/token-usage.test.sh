@@ -45,5 +45,8 @@ check "--until drops the dispatch that began after it" "$?"
 printf '%s\n' "$all" | grep -q '1st-ctx med'
 check "the header keeps the 1st-ctx med column" "$?"
 
+python3 -I scripts/token-usage/agg2.py --root "$root" 36500 > /dev/null && python3 -I scripts/token-usage/cache.py --root "$root" 36500 > /dev/null
+check "agg2.py and cache.py run on the fixture" "$?"
+
 echo "token-usage: $passed/$total passed"
 [ "$passed" -eq "$total" ]

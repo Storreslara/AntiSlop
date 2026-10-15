@@ -5,6 +5,8 @@ Measured on 2026-10-15 over a 21-day window (963 subagent transcripts) at HEAD `
 Command lines, run from the repository root (the default `--root` is `~/.claude/projects/-home-sebas-AntiSlop`, expanded at run time):
 
 - `python3 -I scripts/token-usage/agg.py 21`
+- `python3 -I scripts/token-usage/agg2.py 21`
+- `python3 -I scripts/token-usage/cache.py 21`
 
 After a wave lands, repeat with `--since <ISO-8601 time of the wave's landing commit>`. A target is read only at the minimum sample: lead-programmer 20 dispatches, reviewer 20, scribe 10, spec-master 5, task-master 3. The after-measurement is confounded by workload mix, so read medians with that caution.
 
