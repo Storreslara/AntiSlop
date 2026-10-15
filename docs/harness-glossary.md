@@ -1127,8 +1127,13 @@ the **Gate** applied at the `PreToolUse`/`Agent`
   at line 425. When a valid PASS marker already exists, the stamp records `prior=pass`
   and `prior_mtime=<marker-mtime>` for concurrency detection; this ensures a
   re-dispatched reviewer must write a newer verdict or be blocked at `SubagentStop`.
-  Replaces the global clear-watermark; enables per-unit verdict coupling without
-  cross-dispatch interference. See [ADR-0016](adr/0016-per-unit-review-join.md)
+  Replaces the global clear-watermark and couples each verdict to its own unit.
+  Residual (unit lov-5, 2026-10-14): A stamp names no owner, and every
+  reviewer's SubagentStop classifies every stamp in the directory, so a
+  reviewer whose own stamp was already consumed (a resumed or second turn) is
+  blocked while another unit's freshly dispatched review is unsatisfied. The
+  block message says so; that reviewer reports and waits, and never writes a
+  marker for a unit it did not review. See [ADR-0016](adr/0016-per-unit-review-join.md)
   for design and [modules/hooks.md](../.claude/wiki/modules/hooks.md) for implementation.
 
 **advisory review-join stamp** (M2, Step 3): a variant `.claude/.review-join.<unit-id>.advisory`

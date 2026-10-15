@@ -466,7 +466,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
         missing="${missing:+$missing, }${JOIN_UNSATISFIED_UNITS[$idx]}"
         idx=$(( idx + 1 ))
       done
-      block "No verdict is recorded for the unit(s) you were dispatched for: ${missing}. A v3 PASS or FAIL marker must be written for each, first line exactly:
+      block "No verdict is recorded for the stamped unit(s): ${missing}. A review-join stamp names no owner, so a unit another reviewer is reviewing right now is listed here too: if you were not dispatched for one of them, do not write its marker; report this block to your dispatcher and wait. For each unit you did review, a v3 PASS or FAIL marker must be written, first line exactly:
   printf 'PASS <unit-id> %s commit: %s criteria: bash tests/validate.sh\\n' '$(date -u +%Y-%m-%dT%H:%M:%SZ)' '<the unit's own final commit, not HEAD>' > ${dot_label}/reviewed/<unit-id>.pass
 The only two legal responses to this block are writing the genuine verdict you actually reached, or reporting the situation and waiting; touching a file's mtime - or writing a marker you do not believe - to satisfy this check is a violation, not a workaround."
     fi

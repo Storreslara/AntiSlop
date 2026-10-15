@@ -612,4 +612,28 @@ else
   fail=1
 fi
 
+# --- (residual-ownerless-stamp, lov-5): a stamp names no owner. Reviewer rev-a's own
+# stamp is consumed on its first stop; a second unit is dispatched; rev-a stops again
+# and is blocked on the other unit's stamp. Pinned as a known residual (see the
+# review-join stamp entry in docs/harness-glossary.md); a fix that attributes stamps
+# to their reviewer flips rc2 to 0, and this case must then be rewritten.
+dir="$(make_project residual-ownerless)"
+run_route_gate "$dir" "$(reviewer_payload $'Unit: own-a\n\nReview.')" || true
+printf 'PASS own-a 2026-10-14T00:00:00Z commit: abc1234 criteria: true\n' > "$dir/.claude/reviewed/own-a.pass"
+stop_a='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-a","session_id":"s-a"}'
+rc1=0
+printf '%s' "$stop_a" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>/dev/null || rc1=$?
+run_route_gate "$dir" "$(reviewer_payload $'Unit: other-b\n\nReview.')" || true
+rc2=0
+err="$(printf '%s' "$stop_a" | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh 2>&1 >/dev/null)" || rc2=$?
+if [ "$rc1" = 0 ] && [ "$rc2" = 2 ] \
+   && grep -q 'marker=MISSING unit=other-b' "$dir/.claude/review-audit.log" \
+   && printf '%s' "$err" | grep -q 'A review-join stamp names no owner' \
+   && printf '%s' "$err" | grep -q 'report this block to your dispatcher and wait'; then
+  echo "OK   (residual-ownerless-stamp) a consumed reviewer is blocked on another unit's stamp, and the block tells it to report and wait"
+else
+  echo "FAIL (residual-ownerless-stamp) expected rc1=0, rc2=2 and the ownerless-stamp guidance (rc1=$rc1 rc2=$rc2)"
+  fail=1
+fi
+
 exit "$fail"
