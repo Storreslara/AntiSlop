@@ -1528,12 +1528,16 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   Context section for the verification that rejected the revert.
 
 **agent-memory index**:
-(unit ptr-u4b, 2026-10-15) — a persona's `MEMORY.md`, the one-line-per-entry
-  index under `.claude/agent-memory/<persona>/` that points at that persona's
-  topic files and is always loaded into the persona's context. It holds
-  pointers only; the content lives in the topic files. Its size is advisory
-  (see [[index-size cap]]). The write path is the harness-glossary term
-  **agent-memory write**.
+(unit ptr-u4b, 2026-10-15; amended unit ptr-u4a, 2026-10-15) — a persona's
+  `MEMORY.md`, the one-line-per-entry index under
+  `.claude/agent-memory/<persona>/` that is always loaded into the persona's
+  context. It holds pointers only; the content lives in the topic files. Since
+  the ptr-u4a split it keeps only `feedback_` lines and pointer lines to its
+  second-level indexes, [[memory techniques]] and [[memory archive]], which
+  hold the other index lines. Most topic files are therefore reached through
+  the [[memory archive]], not from `MEMORY.md` directly. Its size is advisory
+  (see [[index-size cap]]), and that check reads `MEMORY.md` only. The write
+  path is the harness-glossary term **agent-memory write**.
 
 **index-size cap**:
 (unit ptr-u4b, 2026-10-15) — the advisory limit on an [[agent-memory index]]:
@@ -1543,3 +1547,18 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   Warn-only: crossing the cap never fails the check, which still exits 0. Not
   the same as the per-namespace size warning (512K by default), which measures
   the whole persona namespace rather than its index.
+
+**memory techniques**:
+(unit ptr-u4a, 2026-10-15) — the second-level file `TECHNIQUES.md` in a
+  persona's `.claude/agent-memory/<persona>/` directory. It holds that
+  persona's `technique_`, `review_technique_` and `reference_` index lines,
+  moved verbatim out of [[agent-memory index]]. A persona with no such lines
+  has no `TECHNIQUES.md` (the scribe does not). Pointer lines only, like its
+  parent index.
+
+**memory archive**:
+(unit ptr-u4a, 2026-10-15) — the second-level file `ARCHIVE.md` in a persona's
+  `.claude/agent-memory/<persona>/` directory. It holds every other index line
+  moved verbatim out of [[agent-memory index]] (for example `project_` lines),
+  so the split deleted nothing. Its topic files are reachable from `MEMORY.md`
+  only through this file.
