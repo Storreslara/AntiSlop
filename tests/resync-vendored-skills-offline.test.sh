@@ -4,7 +4,7 @@
 # tree, so a renamed or deleted local copy fails here without a fetch.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-SCRIPT=scripts/resync-vendored-skills.sh
+SCRIPT="${RESYNC_SCRIPT:-scripts/resync-vendored-skills.sh}"
 FORKED="grilling tdd diagnosing-bugs improve-codebase-architecture"
 fail=0
 ok() { echo "OK   $1"; }
@@ -52,6 +52,28 @@ while IFS=: read -r skill type local upstream extra; do
   rel="${local#"$(root_of "$skill")"}"
   case "$upstream" in */"$skill/$rel") ok "$skill $rel: upstream path names the same file" ;; *) no "$skill $rel: upstream path '$upstream' does not end in $skill/$rel" ;; esac
 done <<< "$rows"
+
+# lo2-2 self-test: mutated copies of the resync script, one planted defect each, that the checks
+# above must reject. Skipped in the child runs (RESYNC_SELFTEST is set there), so it never recurses.
+if [ -z "${RESYNC_SELFTEST:-}" ]; then
+  st="$(mktemp -d)"
+  st_case() { # <label> <sed expression> <fragment the child's output must contain>
+    sed "$2" "$SCRIPT" > "$st/resync.sh"
+    if cmp -s "$SCRIPT" "$st/resync.sh"; then no "($1) sed matched nothing"; return; fi
+    st_out="$(RESYNC_SELFTEST=1 RESYNC_SCRIPT="$st/resync.sh" bash "$0" 2>&1)"
+    st_rc=$?
+    case "$st_out" in
+      *"$3"*) if [ "$st_rc" = 1 ]; then ok "($1) rejected: $3"; else no "($1) exit $st_rc, want 1"; fi ;;
+      *) no "($1) no output line contains: $3" ;;
+    esac
+  }
+  st_case dropped-row '/^tdd:doc:docs\/archive\/skills\/tdd\/mocking.md:/d' "tdd: FILES rows"
+  st_case upstream-typo 's#engineering/tdd/mocking.md$#engineering/tdd/mockng.md#' "upstream path 'skills/engineering/tdd/mockng.md' does not end in tdd/mocking.md"
+  st_case unknown-type 's#^handoff:fm-noflag:#handoff:fmx:#' "handoff row type 'fmx' unknown"
+  st_case untracked-local 's#^handoff:fm-noflag:skills/handoff/SKILL.md:#handoff:fm-noflag:skills/handoff/SKILLX.md:#' "skills/handoff/SKILLX.md is not tracked"
+  st_case order-mismatch 's#^SKILL_ORDER="grilling #SKILL_ORDER="#' "differ from SKILL_ORDER"
+  rm -rf "$st"
+fi
 
 [ "$fail" -eq 0 ] && echo "resync-vendored-skills-offline: ok" || echo "resync-vendored-skills-offline: FAIL"
 exit "$fail"
