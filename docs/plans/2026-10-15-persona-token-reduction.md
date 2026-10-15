@@ -273,6 +273,13 @@ persona's dispatch path; surprising without context; a real trade-off.
   that preserves a failing case's announcement line. Simulated on the saved
   run: 102 lines / 13,050 bytes. The bounds are set at 220 lines / 26,000
   bytes, and AC1.3's set-inclusion uses the full KEEP regex.
+- 2026-10-15 Technical constraints & tradeoffs: Q (ptr-u1 second gap) The
+  fixture `sample.log` is gitignored (`.gitignore:3`), and the serial gate
+  takes 14 minutes, which is over the foreground ceiling. Fix how? → A
+  (self-resolved): rename the fixture to `sample.txt` (no `.gitignore` edit,
+  no `git add -f`). The wrapper criteria become stub-tree cases, the bounds
+  and set-inclusion run on the `validate-lanes.sh` stream, and CC-gate is
+  ruled plan-wide (see Common criteria).
 - 2026-10-15 Domain entities / data model: Q (SPEC-GAP 2a, #544)
   lead-programmer's 56 kept lines cannot meet the 40-line / 4 KB cap. Change
   the cap or the keep rule? → A (self-resolved): change the keep rule; the cap
@@ -353,6 +360,17 @@ persona's dispatch path; surprising without context; a real trade-off.
 ## Common criteria (referenced by steps)
 
 - **CC-gate:** `bash tests/validate.sh` (Bash timeout 600000 ms). exit: 0.
+  Ruling 2026-10-15 (ptr-u1): the serial gate measured 14 minutes of real time,
+  which is over the 600000 ms tool ceiling, and criteria always run in the
+  foreground (never `run_in_background`; protocol "Running acceptance-criteria
+  commands"). When the serial run cannot finish inside the ceiling, CC-gate is
+  met by `bash tests/validate-lanes.sh --lanes 4` (exit: 0) in the foreground.
+  That runner executes the same sections with the same per-section exit
+  semantics, pinned by `tests/validate-lanes.test.sh`. The serial
+  `bash tests/validate.sh` remains the merge gate (constitution P5) and still
+  runs at stop-gate as `testAndLintCommand`. If the lane run also exceeds the
+  ceiling, the only legal turn-end is the WIP sentinel, whose reason says
+  there is no autonomous wake-up.
 - **CC-P3** (any unit touching `agents/*.md` or `templates/*`):
   `bash hooks/scripts/version-stamp-check.sh <baseline>..HEAD`. stdout line 1
   starts `version-stamp-check: ok touched: yes`. exit: 0. mutation: drop the
@@ -417,7 +435,8 @@ Quiet is the default (user ruling 2026-10-15); `--verbose` or
 Affected files: `tests/validate.sh` (outer wrapper, lines 14-26 only),
 `tests/lib/validate-quiet.sh` (new: the filter as a sourced function),
 `tests/validate-quiet.test.sh` (new) plus its registration in
-`tests/validate.sh`, `tests/fixtures/validate-quiet/sample.log` (new: one line
+`tests/validate.sh`, `tests/fixtures/validate-quiet/sample.txt` (new; `.txt`
+because `.gitignore:3` ignores `*.log`, ruling 2026-10-15; one line
 of each DROP and KEEP shape below, plus a `Test (x): ...` announcement
 followed by a `✗` result line),
 `.github/workflows/validate.yml` (add `--verbose`), `README.md` (one line
@@ -467,22 +486,30 @@ Acceptance criteria:
   `✓` line is absent; a header with only dropped lines under it is absent; a
   header with a FAIL under it is present. mutation: remove `✗` from KEEP →
   exit 1.
-- AC1.2 `bash tests/validate.sh > <T>/q.out; echo $?` on a clean HEAD tree →
-  `0`; `wc -c < <T>/q.out` ≤ 26000 and `wc -l < <T>/q.out` ≤ 220 (baseline:
-  251,857 bytes and 4,209 lines; the frozen filter simulated on the saved run
-  gives 102 lines and 13,050 bytes, and the wrapper adds the SKIP summary,
-  `Counts:` and `Full log:` lines).
-- AC1.3 Using the `Full log:` path printed by AC1.2's run:
-  `grep -c '^OK ' <log>` ≥ 2000, AND
-  `comm -23 <(grep -E '^(FAIL|WARN|SKIP)|⚠|✗|not ok|FAILED|Error|ERROR' <log> | sort -u) <(sort -u <T>/q.out) | wc -l`
+- AC1.2 (revised 2026-10-15) `bash tests/validate-lanes.sh --lanes 4 > <T>/full.out 2>&1`
+  → exit 0, run in the foreground. The stream is then piped through
+  `validate_quiet_filter` (sourced from `tests/lib/validate-quiet.sh`) into
+  `<T>/q.out`, and `wc -c < <T>/q.out` ≤ 26000 and `wc -l < <T>/q.out` ≤ 220.
+  Baseline: 251,857 bytes and 4,209 lines. The filter simulated on the saved
+  run gives 102 lines / 13,050 bytes, and the implementer's first real serial
+  run measured 101 lines / 13,085 bytes.
+- AC1.3 `grep -c '^OK ' <T>/full.out` ≥ 2000, AND
+  `comm -23 <(grep -E '^(FAIL|WARN|SKIP)|⚠|✗|not ok|FAILED|Error|ERROR' <T>/full.out | sort -u) <(sort -u <T>/q.out) | wc -l`
   → `0`.
-- AC1.4 `bash tests/validate.sh --verbose | grep -c '^OK '` ≥ 2000.
-- AC1.5 (mutation, exit-code equivalence, quiet) in a throwaway worktree of
-  HEAD with `hooks/hooks.json` overwritten by the single character `{`:
-  `bash tests/validate.sh` → exit 1, and stdout contains at least one line
-  starting `FAIL` that names `hooks.json`.
-- AC1.6 (same worktree) `bash tests/validate.sh --verbose` → exit 1. Remove
-  the worktree by name.
+- AC1.4 to AC1.6 (revised 2026-10-15) are stub-tree cases inside
+  `tests/validate-quiet.test.sh`, run by AC1.1. A throwaway tree holds the real
+  wrapper (every line of `tests/validate.sh` up to the wrapper's closing `fi`)
+  followed by a stub body that prints a FAIL line and then an OK line and exits
+  `$STUB_RC`. The cases assert, with `ANTISLOP_VALIDATE_INNER` unset:
+  - quiet mode returns rc 1 and rc 0 as given, prints the FAIL line, drops the
+    OK line, and prints a `Full log:` path whose file holds the OK line;
+  - `--verbose` and `ANTISLOP_VALIDATE_VERBOSE=1` print the OK line and
+    return rc 1;
+  - `--verbose` prints no `Full log:` line.
+  mutation: `exit 0` in place of `exit "$inner_rc"`. Measured by spec-master
+  on a scratch copy of the first attempt's wrapper: 3 FAIL lines. These cases
+  replace the full-gate runs of the earlier draft, which cannot finish inside
+  the 600000 ms ceiling.
 - AC1.7 `bash tests/validate-lanes.test.sh` → exit 0.
 - CC-gate.
 
