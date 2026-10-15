@@ -19,3 +19,4 @@
 - [Persona paragraph edit needs port parity](feedback_persona_paragraph_edit_needs_port_parity.md) — Fix-turns/Contract-precedence edits must hit both lead-programmer ports (AC-A1); missing = spec gap, HELD.
 - [Replay contracts with an applier](feedback_replay_contracts_with_applier.md) — backticks can't sit in `run:`; empty-loop criteria pass vacuously; replay every edit and skip-mutation in a scratch worktree.
 - [Re-wrap and external-write pitfalls](feedback_rewrap_and_external_writes_pitfalls.md) — re-wrapping can split a phrase an older plan greps per line; gh issue create may be denied, fall back to plan-file contracts.
+- [Simulate spec numeric bounds](feedback_simulate_spec_numeric_bounds.md) — run a spec's filter/keep rule on real data; unreachable bound = HELD SPEC-GAP, not a contract.
