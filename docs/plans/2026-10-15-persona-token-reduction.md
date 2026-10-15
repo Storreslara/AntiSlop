@@ -1,9 +1,10 @@
 # Persona token reduction: twelve changes to the heavyweight personas
 
-Status: **DRAFT, awaiting Open Questions 1-4** (round 1, 2026-10-15). Steps
-whose shape depends on an answer are marked *(conditional on OQn)* and are
-written against the recommended default, so accepting the defaults
-finalizes the spec unchanged.
+Status: **FINAL** (2026-10-15). Open Questions round 1 (four questions) was
+answered by the user via AskUserQuestion on 2026-10-15, taking the
+recommended option each time; the answers are in Clarifications. Item 10 is
+not built (no U10), item 11 is an audit record only (U11), item 12 is in
+(U12), and validate.sh is quiet by default (U1).
 Baseline: `3dfdf2f`, plugin `0.31.171`. Source review: the read-only Fable
 review of HEAD 0.31.171 (transcript-measured, ~4 chars/token).
 Unit labels keep the Fable numbering (U1-U12); U0 is the measurement unit;
@@ -70,7 +71,7 @@ vendors them so the after-measurement is reproducible.
    frontmatter-only (not settable per dispatch, orchestrator.md "Effort-tier
    policy"), and that policy says a persona's effort may be raised, never
    lowered. So "effort medium for follow-up specs only" cannot be built as
-   stated (see OQ2).
+   stated. Neither part of item 10 is built (user ruling, Clarifications).
 4. **Item 6 needs no render-time conditional.** The packet machinery in
    `agents/reviewer.md` (lines ~286-492, 13.2 KB; ~16.5 KB counting the
    ESCALATE-TO-HUMAN bullet at 231) largely repeats the protocol's
@@ -133,7 +134,7 @@ vendors them so the after-measurement is reproducible.
 
 - `docs/plans/2026-08-25-agent-throughput-performance-dampeners.md`: §B3 denial
   word counts feed U7a's budget. §B4 pricing (Opus $5/$25, Sonnet $3/$15, Haiku
-  $1/$5 per MTok; cache read 0.1x) and its confound disclosure feed OQ1/OQ2.
+  $1/$5 per MTok; cache read 0.1x) and its confound disclosure informed the item 10/11 rulings.
   §B2's "the reviewer's run is the only trusted run" supports U1 (quiet output,
   same exit code).
 - `docs/plans/2026-09-25-item04-protocol-matrix-trimming.md`: the matrix
@@ -141,7 +142,7 @@ vendors them so the after-measurement is reproducible.
   and its "keep when unsure" rule govern U5.
 - `docs/plans/2026-09-25-item05-agent-memory-dedup.md`: no bulk delete;
   scribe prune duty (U4a).
-- ADR-0040 forward rule (OQ1), `hooks/scripts/reviewer-tier.sh` (OQ2).
+- ADR-0040 forward rule (U11), `hooks/scripts/reviewer-tier.sh` (item 10, not built).
 
 ### Prior FAIL history and spec notes on the touched surfaces
 
@@ -168,7 +169,7 @@ history.
   - `agents/orchestrator.md` (blc-6: "FAIL-block count" vs "FAIL count"): U9
     uses "FAIL-block count".
   - `agents/orchestrator.md` (cost-governance-step5: the effort one-way rule
-    reads as dispatch-time): feeds OQ2b.
+    reads as dispatch-time): moot, since item 10b is not built.
   - `hooks/scripts/lib/benign-command.sh` (item19-2: plain reads are not
     blocked by harness-integrity-gate): consistent with premise 1.
   - `skills/ubiquitous-language` (item03-3: the skill is NOT vendored, so no
@@ -210,8 +211,11 @@ persona's dispatch path; surprising without context; a real trade-off.
 9. Completion / acceptance signals: Partial
 
 - 2026-10-15 Functional scope & success criteria: Q Are items 10, 11 and 12
-  in scope as changes, or only as decisions? → A: pending, Open Questions 1-3;
-  each step is written against its recommended default.
+  in scope as changes, or only as decisions? → A: per user (2026-10-15,
+  Open Questions round 1). Item 11: record the forward-rule audit and change
+  nothing (U11 only). Item 10: build neither part, so there is no docs-only
+  reviewer size class and no spec-master `effort:` change. Item 12: drop
+  `Agent` from lead-programmer (U12).
 - 2026-10-15 Domain entities / data model: Q Where does a unit's contract of
   record live once item 3 lands, and does the standard path keep the
   issue-body copy? → A (self-resolved): in a per-unit contract file on both
@@ -243,9 +247,10 @@ persona's dispatch path; surprising without context; a real trade-off.
   implemented concurrently? → A (self-resolved): not the gated ones. See
   "Parallelism and waves".
 - 2026-10-15 Technical constraints & tradeoffs: Q Should quiet be validate.sh's
-  default or opt-in? → A: pending, Open Question 4. Agents cannot edit
-  `testAndLintCommand` (persona config is Set A), so opt-in needs a human
-  config edit.
+  default or opt-in? → A: per user (2026-10-15): quiet by default, with
+  `--verbose` (and `ANTISLOP_VALIDATE_VERBOSE=1`) restoring full output; CI
+  passes `--verbose`. `testAndLintCommand` is therefore unchanged and no
+  persona-config edit is needed.
 - 2026-10-15 Terminology consistency: Q The review says "contract-of-record
   files", "checkpoint" and "quiet mode". Are these glossary terms? → A
   (self-resolved): "contract of record" (CONTEXT.md:462) stays the name of
@@ -253,8 +258,7 @@ persona's dispatch path; surprising without context; a real trade-off.
   checkpoint" is new and distinct from the WIP sentinel (a file a *gated*
   agent writes before pausing; task-master and spec-master are not gated).
   "Quiet mode" is harness vocabulary for `docs/harness-glossary.md`. None are
-  written into the glossaries yet: they name artifacts that do not exist, and
-  OQ4 may change one of them. Scribe adds them at landing (see the Scribe
+  written into the glossaries yet: they name artifacts that do not exist yet. Scribe adds them at landing (see the Scribe
   update hint).
 - 2026-10-15 Completion / acceptance signals: Q How is "tokens went down
   without quality loss" decided when it needs future dispatches? → A
@@ -294,7 +298,7 @@ persona's dispatch path; surprising without context; a real trade-off.
   or packet, or when the dispatch asks you to resolve a standing escalation",
   so the trigger is in the rule the agent is already executing.
 - **R6 Shared files force serial order.** `agents/orchestrator.md`: U3, U8,
-  U9, U10. `agents/reviewer.md`: U6, U7c. `agents/task-master.md` and
+  U9, U12. `agents/reviewer.md`: U6, U7c. `agents/task-master.md` and
   `agents/spec-master.md`: U3, U8. `agents/lead-programmer.md`: U5, U12.
   `templates/persona-protocol.md`: U5, U6. `bin/cli.js`: U5 only (U6 does
   not need it). Every agents/templates unit also touches `plugin.json` and
@@ -385,8 +389,8 @@ Acceptance criteria:
 ### Step U1 — validate.sh quiet output (item 1)
 
 Recommended model: sonnet. Sensitive: yes (`tests/validate.sh`).
-*(conditional on OQ4; written for the recommended default: quiet is the
-default and `--verbose` / `ANTISLOP_VALIDATE_VERBOSE=1` restores full output.)*
+Quiet is the default (user ruling 2026-10-15); `--verbose` or
+`ANTISLOP_VALIDATE_VERBOSE=1` restores full output.
 Affected files: `tests/validate.sh` (outer wrapper, lines 14-26 only),
 `tests/lib/validate-quiet.sh` (new: the filter as a sourced function),
 `tests/validate-quiet.test.sh` (new) plus its registration in
@@ -925,27 +929,10 @@ Acceptance criteria:
   `bash tests/harness-integrity-gate.test.sh` → exit 0 each.
 - CC-gate.
 
-### Step U10 — Docs-only reviewer size class *(conditional on OQ2a)*
-
-Recommended model: sonnet. Sensitive: yes (`hooks/`, `agents/`).
-Written for OQ2a's **recommended default: do not build**. If the user picks
-"build", the step is: `hooks/scripts/reviewer-tier.sh` gains a
-docs-only class (every changed path matches `^docs/(?!adr/)`, `^CHANGELOG\.md$`
-or `^\.claude/wiki/`), and only that class uses the size caps of 300 lines / 8
-files. The `SENSITIVE_PATHS`, ratchet, downgrade-only and no-Fable rules are
-unchanged. `tests/reviewer-tier.test.sh` gets fixture ranges for: docs-only
-under the caps → `sonnet`; docs-only plus one `agents/` file → `opus`;
-`docs/adr/` → falls back to the 40/3 caps; a live `.fail` → `opus`. The
-orchestrator text at "Reviewer gate model selection" is updated. Criteria:
-`bash tests/reviewer-tier.test.sh` exits 0 (mutation: drop the `docs/adr/`
-exclusion and that case fails), plus CC-P3, CC-mirror, CC-gate.
-OQ2b (spec-master `effort:`) is a policy amendment, not a step, unless the
-user picks it.
-
-### Step U11 — Implementer-tier evidence record *(conditional on OQ1)*
+### Step U11 — Implementer-tier evidence record (item 11)
 
 Recommended model: haiku (scribe or spec-master, docs-only). Sensitive: no.
-Recommended default: record, do not flip.
+User ruling (2026-10-15): record the audit, change nothing.
 Affected files: `docs/audits/2026-10-15-adr0040-forward-rule.md` (new).
 Content: the export command, the audit command verbatim from ADR-0040, its
 output (`met`, n=77 f1=6 f2=2 f6=0, the 13 guard demotions excluded), the
@@ -956,11 +943,8 @@ proposal starts from data. No config, ADR or persona change.
 Criteria: `grep -c '^met$' docs/audits/2026-10-15-adr0040-forward-rule.md` → `1`;
 re-running the recorded commands reproduces the recorded counts (the doc
 pins the export file's `--until` timestamp so the counts are stable).
-If the user instead picks a flip, this step is replaced by a spec
-round: an ADR amending ADR-0040, a human config edit (the persona config is
-Set A), and the lead-programmer frontmatter change with CC-P3.
 
-### Step U12 — Drop `Agent` from lead-programmer *(conditional on OQ3)*
+### Step U12 — Drop `Agent` from lead-programmer (item 12)
 
 Recommended model: haiku. Sensitive: yes (`agents/`).
 Depends on: U5 (same file).
@@ -1004,7 +988,6 @@ CC-mirror, CC-parity, CC-gate.
 | U9 | `bin/ladder-tier.sh`, `bin/escalation-card.sh`, tests, ✱`tests/validate.sh`, ✱`agents/orchestrator.md`, ✱mirror, ✱plugin.json, CHANGELOG | yes |
 | U7a | ✱`hooks/scripts/{reviewed-path,human-decision}-gate.sh`, gate tests, `docs/harness-glossary.md`, CHANGELOG | yes |
 | U7b | ✱`hooks/scripts/lib/benign-command.sh` + ✱adapter copies, harvest script, corpus, audit doc, new test, ✱`tests/validate.sh`, CHANGELOG | yes |
-| U10 | ✱`hooks/scripts/reviewer-tier.sh`, its test, ✱`agents/orchestrator.md`, ✱plugin.json, CHANGELOG | yes (if built) |
 | U11 | `docs/audits/…adr0040-forward-rule.md` | **no** (docs) |
 | U12 | ✱`agents/lead-programmer.md`, lead-programmer ports, ✱`agents/orchestrator.md`, ✱plugin.json, CHANGELOG | yes |
 
@@ -1013,9 +996,8 @@ CC-mirror, CC-parity, CC-gate.
 - **Dependent pairs (shared files, strict order):** U7c → U6 (`reviewer.md`);
   U6 → U5 (`persona-protocol.md`); U5 → U12 (`lead-programmer.md`);
   U3 → U8 (`task-master.md`, `spec-master.md`, `orchestrator.md`, and U8
-  needs contract files); U8 → U9 → U10 (`orchestrator.md`); U12 also
-  touches `orchestrator.md`, so it goes after U9 if it is late, or anywhere
-  before U3 if it is early; U7a → U7b (gate test files); U0, U2, U9, U7b all
+  needs contract files); U8 → U9 (`orchestrator.md`); U12 also
+  touches `orchestrator.md` and goes after U5 and before U3 (Wave 3); U7a → U7b (gate test files); U0, U2, U9, U7b all
   register in `tests/validate.sh` (one line each, rebase-trivial but still
   serial); U1 edits the `tests/validate.sh` wrapper, so it goes first among
   them.
@@ -1048,21 +1030,20 @@ renumbered at merge. **Not proposed.** This plan does not weaken that gate.
   (overlapping U1's review) and U4b. U1 and U4a are each one commit and
   revert cleanly; U4b is optional within the wave. Then U0, which must land
   before Wave 1's after-measurement is read.
-- **Wave 2 (reviewer and scribe bodies):** U7c → U6 → U2. U12 joins at the end
-  of this wave if OQ3 is answered "drop", moving its orchestrator sentence
-  ahead of U3.
-- **Wave 3 (protocol):** U5.
+- **Wave 2 (reviewer and scribe bodies):** U7c → U6 → U2.
+- **Wave 3 (protocol and lead-programmer):** U5 → U12 (U12 after U5 on
+  `lead-programmer.md`, and before U3 on `orchestrator.md`).
 - **Wave 4 (dispatch artifacts):** U3 → U8. Dispatch task-master for this
   plan one wave at a time from now on: that is U8's own rule, applied by hand
   before it lands.
 - **Wave 5:** U9.
 - **Wave 6 (gate surfaces, highest risk last):** U7a → U7b.
-- **Decision-dependent:** U11 any time (ungated); U10 after U9, only if OQ2a
-  is "build".
+- **Any time (ungated):** U11.
 
-Units: 15 dispatchable (U0, U1, U2, U3, U4a, U4b, U5, U6, U7a, U7b, U7c, U8,
-U9, U10 if built, U11, U12 if approved). **That is ≥ 6, so this spec goes to
-`task-master`** (standard path) once the Open Questions are answered.
+Units: **15 dispatchable** (U0, U1, U2, U3, U4a, U4b, U5, U6, U7a, U7b,
+U7c, U8, U9, U11, U12). Of these, 13 are gated lead-programmer units, and
+U4a (scribe) and U11 (docs audit) are ungated. **That is ≥ 6, so this spec
+goes to `task-master`** (standard path).
 
 ## Measurement and no-regression (pre-registered 2026-10-15)
 
@@ -1099,7 +1080,7 @@ revert candidate, never an automatic revert):
 ## Version bump / CHANGELOG / validate.sh obligations
 
 - Units touching `agents/*.md` or `templates/*` (U2, U3, U5, U6, U7c, U8, U9,
-  U10, U12): bump `.claude-plugin/plugin.json` and add a CHANGELOG entry **in
+  U12): bump `.claude-plugin/plugin.json` and add a CHANGELOG entry **in
   each such commit** (constitution P3 v1.1.0, per commit). Run
   `node bin/cli.js --update` after the bump and commit the regenerated
   mirrors in the same commit.
@@ -1111,6 +1092,10 @@ revert candidate, never an automatic revert):
 
 ## Out of scope
 
+- Item 10 (user ruling 2026-10-15): no docs-only reviewer size class in
+  `reviewer-tier.sh`, and no `effort:` change for spec-master.
+- Item 11 beyond the audit record (user ruling 2026-10-15): no tier flip, no
+  path-based sonnet floor, no ADR-0040 amendment.
 - A context-meter hook (PostToolUse reading the agent's transcript usage):
   it needs a `hooks/hooks.json` registration, which is Set B and human only.
   Follow-up candidate if U8's work-size trigger misses its target.
@@ -1124,38 +1109,8 @@ revert candidate, never an automatic revert):
 
 ## Open Questions
 
-1. **(item 11) ADR-0040's forward rule now prints `met` (n=77, fail-rate
-   0.078, escalation 0.026, exhaustion 0). Should anything change about the
-   haiku default?**
-   Options: (a) **[recommended]** record the audit (U11) and change nothing.
-   The rule's pre-committed consequence of `met` is to keep haiku, and the
-   32.5% figure behind item 11 is from August. (b) Add a sonnet floor for
-   units whose contract touches `hooks/|agents/|templates/`, behind an ADR
-   amending ADR-0040, after U11's per-path breakdown shows a gap. (c) Flip
-   `defaultImplementerModel` to sonnet now, which overrides `met`; this needs
-   your explicit ruling and a human config edit (Set A).
-2. **(item 10) Two cost levers: a) larger sonnet-review size caps for
-   docs-only diffs; b) `effort: medium` for spec-master.**
-   a) Options: (i) **[recommended]** do not build it: sonnet review already
-   applies to docs diffs of 40 lines / 3 files or less, and three docs units
-   have FAILed on claim accuracy (prose accuracy is the deliverable). (ii)
-   Build U10 (docs/ except docs/adr/, CHANGELOG.md and .claude/wiki/, caps 300
-   lines / 8 files). b) Options: (i) **[recommended]** no change: effort is
-   frontmatter-only, so it cannot be "follow-ups only", and the orchestrator's
-   effort policy says raise, never lower. (ii) Declare `effort: medium` on
-   spec-master for all dispatches and amend the effort policy (an ADR).
-3. **(item 12) Drop the `Agent` tool from lead-programmer?** It is unused in
-   the measured window and removes the doubled agent roster from its context.
-   The cost: a no-contract dispatch can no longer self-scope with `explorer`.
-   Options: (a) **[recommended]** drop it; for no-contract lead-programmer
-   dispatches the orchestrator spawns `explorer` first and pastes the answer
-   (U12). (b) Keep it.
-4. **(item 1) Should validate.sh output be quiet by default?**
-   (a) **[recommended]** quiet by default, with `--verbose` (CI passes it).
-   Every agent that types `bash tests/validate.sh` benefits, and no persona
-   config edit is needed. (b) Opt-in `--quiet`: you then change
-   `testAndLintCommand` yourself (agents cannot edit the persona config), and
-   each dispatch contract's `run:` lines must spell `--quiet`.
+None. Round 1 (four questions, items 1, 10, 11 and 12) was answered on
+2026-10-15; the answers are recorded in Clarifications.
 
 ## Self-check
 
@@ -1168,15 +1123,14 @@ revert candidate, never an automatic revert):
   first marked sensitive although it no longer edits `tests/validate.sh` —
   revised in place
 - CHK4: Is the U1 quiet/opt-in choice defined for both answers? — FAIL
-  (missing) — converted to Open Question 4 (the step is written for the
-  recommended default, and the alternative is stated in the OQ)
+  (missing) — converted to Open Question 4; answered 2026-10-15 (quiet by default), U1 revised
 - CHK5: Is item 10's "spec-master effort medium for follow-ups" buildable as
   stated? — FAIL (conflicting with the effort-tier policy and the
-  frontmatter-only fact) — converted to Open Question 2
+  frontmatter-only fact) — converted to Open Question 2; answered 2026-10-15 (not built), U10 removed
 - CHK6: Is the item 11 flip decided by the plan rather than the user? — FAIL
-  (missing: a policy decision) — converted to Open Question 1
+  (missing: a policy decision) — converted to Open Question 1; answered 2026-10-15 (record only), U11 revised
 - CHK7: Is the no-contract explorer case for U12 defined? — FAIL (missing) —
-  converted to Open Question 3 (the default's mechanism is written into U12)
+  converted to Open Question 3; answered 2026-10-15 (drop), U12 unconditional
 - CHK8: Do U3 and U8 agree on where task-master flushes its output? — PASS
   (both use `docs/plans/<slug>/contracts/<unit-id>.md`)
 - CHK9: Is every Goal clause mapped to a step or an out-of-scope line ("not
@@ -1193,9 +1147,9 @@ revert candidate, never an automatic revert):
   the persona config)
 - CHK13: Do the after-measurement targets have a minimum sample and an
   owner? — PASS (minimum per persona; checked at the milestone audit)
-- CHK14: Does the 15-unit count match the step list? — PASS (U0, U1, U2, U3,
-  U4a, U4b, U5, U6, U7a, U7b, U7c, U8, U9, U10, U11, U12 = 16 headings, of
-  which U10 only if built: 15 by default)
+- CHK14: Does the unit count match the step list? — PASS (15 step headings
+  after U10's removal: U0, U1, U2, U3, U4a, U4b, U5, U6, U7a, U7b, U7c, U8,
+  U9, U11, U12)
 - CHK15: Replay source: does any `docs/audits/unit-outcomes/` vacuous/host
   unit's files intersect a criterion's `run:`? — PASS (directory not present
   at baseline; adds no item)
@@ -1210,12 +1164,18 @@ At landing, not now:
   anchor terms U7a adds, and the F1-F3 **read-only families**.
 - Number and land the draft ADR in Context (contract files). Do not reuse the
   0007 hole: re-derive the next ADR number at landing time.
-- Record U11's audit in ADR-0040's history line if OQ1 = (a).
+- Record U11's audit in ADR-0040's history line (user ruling: record, no change).
 
 ## Publication
 
-Not yet published. The spec has ≥ 6 units, so once the Open Questions are
-answered it is published to the tracker named by `issueTracker` (GitHub
-issues, `gh issue create`, label `ready-for-agent`) as a PRD mapped from this
-document, and handed to `task-master`. This file stays the canonical
-artifact.
+Published 2026-10-15 as GitHub issue #542 (`[spec] Persona token reduction
+(15 units)`, label `ready-for-agent`), a PRD mapped from this document. This
+file stays the canonical artifact; where the two differ, this file wins.
+
+**Retrieval contract (for task-master):** the spec is
+`docs/plans/2026-10-15-persona-token-reduction.md` at the commit that marks it
+FINAL; the umbrella PRD is issue #542 (`gh issue view 542`). task-master
+slices it into per-step issues under label `plan/persona-token-reduction`
+(fetch with `gh issue list --label plan/persona-token-reduction`), one wave
+(5 or fewer units) per task-master dispatch, in the order given in
+"Recommended order".
