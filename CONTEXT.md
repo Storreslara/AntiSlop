@@ -1107,7 +1107,8 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   with no fold line is printed whole, with no pointer line; Q1's description
   is the card's `decide:` text, or a fixed generic question when the marker has
   no `decide:` line. The card is part of the marker body, so
-  `PACKET.md` carries it byte-for-byte.
+  `PACKET.md` carries it byte-for-byte. Not the output of `bin/escalation-card.sh`,
+  which prints a unit's FAIL history at the 2-FAIL cap and is not part of any marker.
   _Avoid_: marker summary, header (line 1 is the header; use "escalation card")
 
 **fold line**:

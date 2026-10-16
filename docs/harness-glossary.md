@@ -3363,3 +3363,6 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **grep-first recipe**:
 (unit ptr-u2, 2026-10-16) — the access convention for the two large glossaries (`CONTEXT.md`, `docs/harness-glossary.md`): print the **glossary index** (every term line and every `_Avoid_:` line, with line numbers) via one `grep -nE`, read only the matching entry by line range, and read a whole glossary only when the input matches more than 15 entries. The recipe block sits between `glossary-index:begin`/`end` markers, byte-identical in `skills/ubiquitous-language/SKILL.md` and `agents/scribe.md`. The **glossary index** is the grep output itself, not a file; `tests/glossary-index.test.sh` bounds it at 10% of each glossary's size. Known gap: the `^\s*_Avoid_:` anchor misses avoid clauses that sit mid-line.
+
+**census**:
+(unit ptr-u9a, 2026-10-16) — `bin/ladder-tier.sh --census`: one `<unit-id> `-prefixed line per `.fail` record, carrying the raw block count with no expiry window and no contract-guard demotion. Audits the real FAIL records; single-unit mode (no flag) applies expiry, so the two counts can differ by design. Not the **Bash-output census**, which measures transcripts.
