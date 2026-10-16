@@ -1638,6 +1638,17 @@ dispatch-section link with each contract. (b) Nothing stores the
 previous-checkpoint commit hash, so a fresh orchestrator session has no
 baseline. (c) `agents/orchestrator.md:470-471` has a cosmetic short line.
 
+Open follow-ups from ptr-u13c PASS (added 2026-10-16, for spec-master; no
+spec substance changed): (a) `templates/persona-protocol-slim.md:58` still says
+"You CAN spawn foreground subagents" unconditionally, which is false for
+explorer, researcher and agent-auditor (no Agent tool); out of scope by
+contract ruling 4. (b) No test pins the exception sentence in the codex and
+cursor protocol ports, nor the new "Reuse over re-derivation" clause. (c) The
+contract's skip-edit mutations for edits 2, 4 and 5 only bite from the pre-unit
+mirrors (stamp 0.31.180); replayed at HEAD, `node bin/cli.js --update` says
+"already current" and they falsely stay green. (d) `templates/persona-protocol.md:89`
+is one over-long reflowed line (cosmetic).
+
 ### Step U13a — Script fixes: ladder default, contract files in the export, agg2 window (items a, e, f)
 
 Recommended model: sonnet. Sensitive: no (`bin/ladder-tier.sh` and
