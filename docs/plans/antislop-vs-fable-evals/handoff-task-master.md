@@ -23,19 +23,19 @@ Umbrella issue #567 (label `plan/antislop-vs-fable-evals`). Spec `docs/plans/ant
 | abt-u13 --probe-isolation / --probe-model in run-matrix.sh + tests/abtest-probe.test.sh | #582 | contracts/abt-u13.md | abt-u12 (#581) |
 | abt-u14 eval/abtest/score.py + tests/abtest-score.test.sh | #583 | contracts/abt-u14.md | abt-u03 (#571) |
 | abt-u15 eval/abtest/blind.sh + lib/blind.py + tests/abtest-blind.test.sh | #584 | contracts/abt-u15.md | none (reads the u12 run-dir layout, imports nothing) |
+| abt-u16 pre-registration `docs/experiments/abtest-2026-10.md` | #585 | contracts/abt-u16.md | abt-u14 (#583) |
+| abt-u17 register eight abtest suites in validate.sh + eval/abtest/README.md | #586 | contracts/abt-u17.md | abt-u01 (#569), u02 (#570), u03 (#571), u04 (#572), u12 (#581), u13 (#582), u14 (#583), u15 (#584) |
+| abt-u18 scribe: six CONTEXT.md entries + wiki section | #587 | contracts/abt-u18.md | abt-u14 (#583) |
+| abt-u21a eval/abtest/report.py (fill-log, tickets) + test + validate.sh registration | #588 | contracts/abt-u21a.md | abt-u14 (#583), abt-u17 (#586) |
+| abt-u19 OPERATOR-RUN pilot smoke gate | #589 | contracts/abt-u19.md | u07-u11 (#575-#579), u11b (#580), u12 (#581), u13 (#582), u14 (#583), u16 (#585), u17 (#586), u18 (#587) |
+| abt-u20 OPERATOR-RUN full N=5 | #590 | contracts/abt-u20.md | abt-u19 (#589) |
+| abt-u21 OPERATOR-RUN report, experiment log, eval-finding tickets | #591 | contracts/abt-u21.md | abt-u20 (#590), abt-u21a (#588), abt-u15 (#584) |
 
-## Next unit to write: abt-u16, then in this order (abt-u03..u15 are done and removed from this table) (each: issue first, then contract, replay, commit)
+## Slicing complete (2026-10-16)
 
-| unit | content | depends on |
-|---|---|---|
-| abt-u16 | `docs/experiments/abtest-2026-10.md` pre-registration (hypothesis, prediction in direction + the 4.4 thresholds, baseline, the 4.5 text, the OD amendments) | abt-u14 |
-| abt-u17 | `eval/abtest/README.md` (operator run guide) + register every `tests/abtest-*.test.sh` in `tests/validate.sh` + `bash tests/validate.sh` green | abt-u01, u02, u03, u04, u12, u13, u14, u15, u16 |
-| abt-u18 | scribe: CONTEXT.md entries (Arm A / Arm B, holdout check, out-of-scope lines, overhead ratio, completion status incl. usage-limit, model policy) + `.claude/wiki/modules/eval-harness.md` paragraph | abt-u14 |
-| abt-u19 | OPERATOR-RUN pilot N=1 per arm per eval (10 runs), smoke gate: isolation probe, model probe, verify-checks --all for E1-E5, no Arm B headless stall | abt-u17, abt-u18, abt-u07..u11, abt-u11b, abt-u12 |
-| abt-u20 | OPERATOR-RUN full N=5 for E1-E5, resumable; rerun the command after every usage-limit stop until 50 non-usage-limit rows exist | abt-u19 |
-| abt-u21 | report + experiment-log result + `eval-finding` tickets for every not-superior eval (lead-programmer on local rows; ticket filing by the orchestrator) | abt-u20 |
+No unit remains to be written. Final dispatch order is in the umbrella issue #567 comment `Final dispatch order`. Waves (units in a wave can run in any order): (1) u00, u01, u02, u04, u05, u15; (2) u03, u06, u07, u08; (3) u09, u10, u11, u12, u14; (4) u11b, u13, u16, u18; (5) u17; (6) u21a and the OPERATOR-RUN pilot u19; (7) OPERATOR-RUN u20; (8) OPERATOR-RUN u21.
 
-`operator-run` units (abt-u19, abt-u20) get label `operator-run`, no `ready-for-agent`, and a first body line `OPERATOR-RUN UNIT: launched by the operator/orchestrator, never dispatched to lead-programmer.`
+`operator-run` units (abt-u19, abt-u20, abt-u21) got label `operator-run`, no `ready-for-agent`, and a first body line `OPERATOR-RUN UNIT: launched by the operator/orchestrator, never dispatched to lead-programmer.`
 
 ## Decisions taken that are not in a contract
 
