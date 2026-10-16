@@ -36,9 +36,11 @@ wall time; the ratios are `R_tokens`, `R_wall` and `R_turns` over complete runs.
 
 - **Hypothesis**: H3. Spec grilling resolves the tax ambiguity from `CONTEXT.md` and the README
   before code is written.
-- **Prediction**: the premise check (ASSUMPTIONS.md recorded) passes in at least 4 of 5 Arm B runs;
-  the two defect checks are a likely tie at 5/5 in both arms; `run_pass` favours B by at least 2 runs
-  (WIN_B) only if Arm A misses the premise check twice. If the arms tie, `R_tokens` is expected above 2.
+- **Prediction**: `run_pass` is a likely tie at 5/5 in both arms, since E1 has three required checks
+  (`tax-after-discount`, `existing-behaviour`, `scope-outside-allowed`); the differentiator is the
+  blinded `assumptions_cites_glossary` grade (abt-u15), where Arm B is expected to cite the glossary in
+  at least 4 of 5 runs; `assumptions-file-present` is reported but not required. If the arms tie,
+  `R_tokens` is expected above 2.
 - **Change**: none (a comparison, not a variant).
 - **Baseline**: Arm A rows for `e01-ambiguous-tax`, same rep count.
 - **Result**: pending
