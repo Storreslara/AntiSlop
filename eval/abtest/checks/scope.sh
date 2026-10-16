@@ -10,7 +10,7 @@ start="${2:?missing START_SHA}"
 allowed="${3:?missing ALLOWED_PATHS_FILE}"
 mode="${4:?missing mode}"
 specs=('.' ':(exclude).claude' ':(exclude)docs/plans')
-while IFS= read -r p; do
+while IFS= read -r p || [ -n "$p" ]; do
   [ -n "$p" ] && specs+=(":(exclude)$p")
 done < "$allowed"
 case "$mode" in

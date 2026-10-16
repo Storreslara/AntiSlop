@@ -54,6 +54,7 @@ for id in "${ids[@]}"; do
   ref_json="$(bash "$ck/check.sh" "$T/$id-b" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r ref_fail ref_total < <(rows "$ref_json")
   echo "verify: $id baseline-required-failures=$base_fail/$base_total reference-required-failures=$ref_fail/$ref_total"
+  [[ "$base_fail" =~ ^[0-9]+$ && "$base_total" =~ ^[0-9]+$ && "$ref_fail" =~ ^[0-9]+$ && "$ref_total" =~ ^[0-9]+$ ]] || { echo "verify: $id check.sh printed no valid JSON checks"; bad=1; continue; }
   if [ "$base_total" -eq 0 ] || [ "$base_fail" -lt 1 ] || [ "$ref_fail" -ne 0 ]; then
     bad=1
   fi

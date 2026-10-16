@@ -49,6 +49,18 @@ has "the build rule is named" "$out" "nondeterministic build"
 out="$(ABT_FIXTURES_DIR="$T/none" ABT_CHECKS_ROOT="$T/none" bash "$VERIFY" absent)"; rc=$?
 check "a missing fixture is rejected" "$rc" "1"
 
+cp -r "$SYN/fixtures/syn-ok" "$T/fx/syn-silent"
+mkdir -p "$T/ck/syn-silent"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$T/ck/syn-silent/check.sh"
+out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-silent 2>/dev/null)"; rc=$?
+check "a check.sh that prints no JSON is rejected" "$rc" "1"
+has "the silent check is named" "$out" "printed no valid JSON checks"
+cp -r "$SYN/fixtures/syn-ok" "$T/fx/syn-upper"
+mkdir -p "$T/ck/syn-upper"
+printf '#!/usr/bin/env bash\n. "$ABT_CHECKS_LIB"\nabt_init "$1" "$2" "$3" "$4"\nabt_check x defect TRUE true\nabt_emit\n' > "$T/ck/syn-upper/check.sh"
+out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-upper 2>/dev/null)"; rc=$?
+check "a check.sh with an uppercase required value is rejected" "$rc" "1"
+
 # lib.sh: run checks against a hand-built tree.
 R="$T/repo"
 ABT_REPO_ROOT="$REPO_ROOT" bash "$SYN/fixtures/syn-ok/build.sh" "$R" > "$T/sha"
@@ -89,6 +101,8 @@ printf 'z\n' > "$S/docs/plans/p.md"
 git -C "$S" add -A && git -C "$S" -c user.name=t -c user.email=t@t.invalid commit -q -m work
 check "scope lines count only the outside edit" "$(bash "$SCOPE" "$S" "$START" "$T/allowed" lines)" "3"
 check "scope files count only the outside file" "$(bash "$SCOPE" "$S" "$START" "$T/allowed" files)" "1"
+printf 'answer.txt' > "$T/allowed-nonl"
+check "scope lines honor a last allowed path with no trailing newline" "$(bash "$SCOPE" "$S" "$START" "$T/allowed-nonl" lines)" "3"
 check "scope.sh rejects an unknown mode" "$(bash "$SCOPE" "$S" "$START" "$T/allowed" bogus >/dev/null 2>&1; echo $?)" "2"
 
 echo "abtest-checks: $pass passed, $fail failed"
