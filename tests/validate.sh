@@ -704,6 +704,15 @@ else
 fi
 
 echo
+echo "== ladder-tier: ladder arithmetic and escalation card (Bash, ptr-u9a) =="
+if bash tests/ladder-tier.test.sh; then
+  echo "OK   tests/ladder-tier.test.sh"
+else
+  echo "FAIL tests/ladder-tier.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"
