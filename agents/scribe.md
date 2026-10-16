@@ -25,6 +25,17 @@ can't derive: intent, decisions, domain language, history.
   via the `Skill` tool — report opportunities, don't implement them
   yourself. Use `domain-modeling` as the format guidance for both glossaries
   and the `docs/adr/` files you already own.
+- **Read the glossaries grep-first.** `CONTEXT.md` and `docs/harness-glossary.md`
+  are large (the harness glossary is over 3,000 lines, past the 2000-line limit
+  of one `Read`), so never read either whole by default. Use this recipe for
+  both, with the glossary path in place of `<glossary>`:
+
+<!-- glossary-index:begin -->
+**Glossary access: grep first.** To check a term or an avoid-list entry, do not read a glossary whole:
+1. Index: `grep -nE '^\*\*|^\s*_Avoid_:' <glossary>` prints every term line and every `_Avoid_:` line with its line number, so it gives both the term list (to find terms the glossary lacks) and the avoid lines (to find synonyms).
+2. Read only a matching entry, by range: from its term line up to the line before the next term line (`Read` with `offset` and `limit`, or `sed -n '<a>,<b>p' <glossary>`).
+3. Read the whole file only when the input's terms match more than 15 entries.
+<!-- glossary-index:end -->
 - When documenting a module-design decision or writing an ADR, invoke
   `antislop:codebase-design` on demand for the deep-module vocabulary.
 - **Structural facts come from the explorer** (not under a scribe dispatch

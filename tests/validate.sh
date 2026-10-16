@@ -940,6 +940,15 @@ else
 fi
 
 echo
+echo "== glossary grep-first recipe: SKILL.md block equals scribe.md block and indexes both glossaries (Bash, ptr-u2) =="
+if bash tests/glossary-index.test.sh; then
+  echo "OK   tests/glossary-index.test.sh"
+else
+  echo "FAIL tests/glossary-index.test.sh"
+  fail=1
+fi
+
+echo
 echo "== CONTEXT.md / docs/harness-glossary.md: [[link]] integrity (Node) =="
 if node tests/context-glossary-links.test.js; then
   echo "OK   tests/context-glossary-links.test.js"

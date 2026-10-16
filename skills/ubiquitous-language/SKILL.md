@@ -12,12 +12,19 @@ description: >
 This skill examines terminology against the canonical **domain glossary**
 (`CONTEXT.md`) using three lenses, applied identically in both modes below.
 Harness-mechanics vocabulary lives in `docs/harness-glossary.md` instead and
-is out of scope for this skill. Read the glossary once per session and reuse
-it across both check points.
+is out of scope for this skill. Read the glossary through the grep-first recipe
+below, never whole by default, and reuse what you read across both check points.
 
 **Degradation (no glossary):** if no `CONTEXT.md` exists, emit a single line
 saying the glossary is absent and that `scribe` (if present) can seed one —
 then stop. Not a finding, not an error.
+
+<!-- glossary-index:begin -->
+**Glossary access: grep first.** To check a term or an avoid-list entry, do not read a glossary whole:
+1. Index: `grep -nE '^\*\*|^\s*_Avoid_:' <glossary>` prints every term line and every `_Avoid_:` line with its line number, so it gives both the term list (to find terms the glossary lacks) and the avoid lines (to find synonyms).
+2. Read only a matching entry, by range: from its term line up to the line before the next term line (`Read` with `offset` and `limit`, or `sed -n '<a>,<b>p' <glossary>`).
+3. Read the whole file only when the input's terms match more than 15 entries.
+<!-- glossary-index:end -->
 
 The three lenses:
 
