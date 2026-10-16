@@ -1405,6 +1405,15 @@ else
 fi
 
 echo
+echo "== tests/persona-prose-pins.test.sh: wave-7 prose pins for persona sources, mirrors and ports (Bash, ptr-u13b) =="
+if bash tests/persona-prose-pins.test.sh > /dev/null; then
+  echo "OK   tests/persona-prose-pins.test.sh"
+else
+  echo "FAIL tests/persona-prose-pins.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
