@@ -110,7 +110,7 @@ assert_new_files_clean "hdg" "$before" "$after"
 assert_absent "$hdg_err" "hdg BANNED named technique"    'Splitting the path across shell variables'
 assert_absent "$hdg_err" "hdg BANNED cross-reference"    'reviewed-path-gate.sh'
 assert_absent "$hdg_err" "hdg BANNED rationale clause"   'never spells DECISION'
-assert_present "$hdg_err" "hdg REQUIRED marker template delimiter rule" 'the delimiter is single-quoted'
+assert_present "$hdg_err" "hdg REQUIRED marker template name" 'sanctioned marker-write template'
 assert_present "$hdg_err" "hdg REQUIRED rm -rf discard route"           'rm -rf .claude/human-review/'
 assert_present "$hdg_err" "hdg REQUIRED new prohibition sentence" \
   'self-authorized bypass whether or not this gate blocks it'

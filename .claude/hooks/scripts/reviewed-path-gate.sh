@@ -289,11 +289,15 @@ fi
 if [ -n "$write_tool" ]; then
   audit_append "$review_audit" "$(printf '%s grant-denied hook=reviewed-path-gate identity=%s' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
-  echo "BLOCKED: '${agent_type}' may not write '${subject}' - only the reviewer creates .pass/.fail/.blocked records in .claude/reviewed/ (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Every Write/Edit into that directory is a write by definition, so the read-only exemption that applies to Bash commands does not apply here." >&2
+  echo "BLOCKED: '${agent_type}' may not write '${subject}'; only the reviewer creates records in .claude/reviewed/ (the no-reviewer fallback excepted)." >&2
+  echo "Remedy: route the unit to the reviewer; Bash can search with 'grep -r' and commit with 'git commit -F <file>'. Any other route is a self-authorized bypass whether or not this gate blocks it; report and wait." >&2
+  echo "More: docs/harness-glossary.md — \"reviewed-path denial\"" >&2
   exit 2
 fi
 audit_append "$review_audit" "$(printf '%s grant-denied hook=reviewed-path-gate identity=%s' \
     "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
 
-echo "BLOCKED: '${agent_type}' may not write to .claude/reviewed/ via Bash - only the reviewer writes the PASS marker there (or the main session/team lead, ONLY in the documented no-reviewer fallback where no reviewer persona is selected). Per persona-protocol.md's Review Ownership section. Read-only inspection (ls, cat, grep, test ...) and text-only mentions of the path in a gh issue/pr comment ARE allowed; this command was recognized as neither, because it redirects, substitutes, runs a program that could write, or could not be lexed at all (an unbalanced quote, a backslash escape and a heredoc are never assumed benign). Note that 'git' and 'rg' are NOT allowlisted at all, whatever the subcommand - see program_allowed() for why. To land a commit whose MESSAGE discusses this path, put the message in a file and use 'git commit -F <file>'; to search the directory, use 'grep -r'. Any other route to this path is a self-authorized bypass whether or not this gate blocks it; if the sanctioned route does not fit, report the block and wait. A mention that only NARRATES the directory is allowed outright and needs no workaround: a trailing '#' comment naming it passes provided the rest of the command is itself allowlisted, since bash discards the comment but still runs everything else. What you hit is narrower - this command's text spells the path where bash would act on it (in code, in a quoted word, or as a redirection target), or it could not be lexed at all. A comment on a line of its OWN still fails closed; that is a ratified residual (issue #183), so keep the comment on the same line as the command." >&2
+echo "BLOCKED: '${agent_type}' may not write .claude/reviewed/ via Bash; this command redirects, substitutes, runs a writer, or cannot be lexed." >&2
+echo "Remedy: search with 'grep -r'; commit a message naming the path with 'git commit -F <file>'; narrate it in a trailing '#' comment. Any other route is a self-authorized bypass whether or not this gate blocks it; report and wait." >&2
+echo "More: docs/harness-glossary.md — \"reviewed-path denial\"" >&2
 exit 2

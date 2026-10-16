@@ -656,35 +656,10 @@ glob_heredoc_ops() {
 deny() {
   audit_append "$audit" "$(printf '%s decision-gate-denied identity=%s' \
       "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$(_identity_sanitize "$agent_type")")"
-  printf "BLOCKED: '%s' may not write .claude/human-review/<task-id>/DECISION - that file records the human's own resolution of a pending escalation and no agent identity may create or modify it, reviewer included.\n" "$agent_type" >&2
+  printf "BLOCKED: '%s' may not write .claude/human-review/<task-id>/DECISION; only the human records that decision.\n" "$agent_type" >&2
   cat >&2 <<'MSG'
-
-If you are writing a review marker whose body must quote that path verbatim,
-use the sanctioned marker-write template - this gate allows it:
-
-cat > .claude/reviewed/<task-id>.pass <<'EOF'
-<marker body; the delimiter is single-quoted, so nothing here expands>
-EOF
-
-Rules: the delimiter must be single-quoted, the target a bare literal
-.claude/reviewed/<id>.{pass,fail,directed,blocked,escalated}, and the
-terminator the last line of the command. >> works in place of >.
-
-The human records a decision in the terminal or the dashboard, or - from the
-main session only - by approving the exact decision heredoc at Claude Code's
-permission prompt, which this gate asks for and never grants by itself. Any
-other route to it is a
-self-authorized bypass whether or not this gate blocks it; if no sanctioned
-route fits, report and wait.
-
-That rule governs commands TARGETING this file. A mention that only narrates it
-is allowed outright and needs no workaround: prose inside a single 'git commit'
-message, a single-quoted read pattern, and a trailing '#' comment all pass. What
-you hit is narrower - this command's text spells the path itself, or a mention
-sits where bash would execute it.
-
-To discard a resolved packet, delete the whole directory with
-'rm -rf .claude/human-review/<task-id>'.
+Remedy: quote that path in a review marker via the sanctioned marker-write template; discard a packet with 'rm -rf .claude/human-review/<task-id>'. Any other route is a self-authorized bypass whether or not this gate blocks it; report and wait.
+More: docs/harness-glossary.md — "decision-gate denial"
 MSG
   exit 2
 }

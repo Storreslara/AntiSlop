@@ -214,10 +214,10 @@ bash_case "N22/N23 setup: a denied DECISION-targeting write" blocked antislop:re
   "cat > .claude/human-review/u1/DECISION <<'EOF'
 approved
 EOF"
-if grep -qF "cat > .claude/reviewed/<task-id>.pass <<'EOF'" "$errf"; then
-  pass "N22 deny message prints the sanctioned template literally"
+if grep -qF 'sanctioned marker-write template' "$errf"; then
+  pass "N22 deny message names the sanctioned marker-write template"
 else
-  bad "N22 deny message does not print the sanctioned template line"
+  bad "N22 deny message does not name the sanctioned marker-write template"
 fi
 if grep -qF 'self-authorized bypass' "$errf"; then
   pass "N23 deny message names the self-authorized bypass class"
@@ -229,10 +229,10 @@ if grep -qF 'rm -rf .claude/human-review/<task-id>' "$errf"; then
 else
   bad "N23b deny message dropped the rm -rf guidance"
 fi
-if grep -qF 'needs no workaround' "$errf"; then
-  pass "N23c deny message scopes the rule to commands TARGETING the path"
+if grep -qF 'More: docs/harness-glossary.md — "decision-gate denial"' "$errf"; then
+  pass "N23c deny message points at the glossary term"
 else
-  bad "N23c deny message dropped the clarifying sentence"
+  bad "N23c deny message dropped the glossary pointer"
 fi
 
 echo
@@ -1541,4 +1541,31 @@ EOF"
 done
 
 echo
+echo
+echo "-- denial message shape (ptr-u7a): at most 70 words, remedy tokens, glossary pointer --"
+denial_shape() { # $1 label, $2 hook-input JSON, $3 newline-separated fixed-string tokens
+  local words first tok
+  run "$2" "$proj"
+  words="$(wc -w < "$errf")"
+  first="$(head -n 1 "$errf" | wc -w)"
+  [ "$rc" = 2 ] && pass "$1 exit code 2" || bad "$1 exit code -> $rc, expected 2"
+  [ "$(wc -l < "$errf")" = 3 ] && pass "$1 is 3 lines" || bad "$1 is not 3 lines"
+  [ "$first" -le 25 ] && pass "$1 line 1 is $first words (<= 25)" || bad "$1 line 1 is $first words, expected <= 25"
+  [ "$words" -le 70 ] && pass "$1 is $words words (<= 70)" || bad "$1 is $words words, expected <= 70"
+  while IFS= read -r tok; do
+    if grep -qF -- "$tok" "$errf"; then pass "$1 carries: $tok"; else bad "$1 lacks: $tok"; fi
+  done <<< "$3"
+}
+hdg_toks='sanctioned marker-write template
+rm -rf .claude/human-review/<task-id>
+self-authorized bypass whether or not this gate blocks it
+More: docs/harness-glossary.md — "decision-gate denial"'
+denial_shape "write branch denial" "$(jq -n --arg a antislop:reviewer --arg p ".claude/human-review/u1/DECISION" '{tool_name:"Write",agent_type:$a,tool_input:{file_path:$p}}')" "$hdg_toks"
+denial_shape "bash branch denial" "$(jq -n --arg a antislop:reviewer --arg c "printf x > .claude/human-review/u1/DECISION" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$hdg_toks"
+if grep -qF '**decision-gate denial**:' docs/harness-glossary.md; then
+  pass "glossary carries the decision-gate denial term"
+else
+  bad "docs/harness-glossary.md has no **decision-gate denial** entry"
+fi
+
 exit "$fail"

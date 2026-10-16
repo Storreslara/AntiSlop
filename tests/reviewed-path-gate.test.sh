@@ -1013,4 +1013,32 @@ done
 # path or every case reads rc=127, and lib/ must sit beside the copy or the gate
 # dies sourcing lib/agent-identity.sh and every case reads rc=1.
 echo
+echo
+echo "-- denial message shape (ptr-u7a): at most 70 words, remedy tokens, glossary pointer --"
+denial_shape() { # $1 label, $2 hook-input JSON, $3 newline-separated fixed-string tokens
+  local words first tok
+  run "$2" "$proj"
+  words="$(wc -w < "$errf")"
+  first="$(head -n 1 "$errf" | wc -w)"
+  [ "$rc" = 2 ] && pass "$1 exit code 2" || bad "$1 exit code -> $rc, expected 2"
+  [ "$(wc -l < "$errf")" = 3 ] && pass "$1 is 3 lines" || bad "$1 is not 3 lines"
+  [ "$first" -le 25 ] && pass "$1 line 1 is $first words (<= 25)" || bad "$1 line 1 is $first words, expected <= 25"
+  [ "$words" -le 70 ] && pass "$1 is $words words (<= 70)" || bad "$1 is $words words, expected <= 70"
+  while IFS= read -r tok; do
+    if grep -qF -- "$tok" "$errf"; then pass "$1 carries: $tok"; else bad "$1 lacks: $tok"; fi
+  done <<< "$3"
+}
+rpg_toks='grep -r
+git commit -F
+self-authorized bypass whether or not this gate blocks it
+More: docs/harness-glossary.md — "reviewed-path denial"'
+denial_shape "bash branch denial" "$(jq -n --arg a lead-programmer --arg c "printf x > $marker/9.pass" '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$rpg_toks
+trailing '#' comment"
+denial_shape "write branch denial" "$(jq -n --arg a lead-programmer --arg p "$marker/9.pass" '{tool_name:"Write",agent_type:$a,tool_input:{file_path:$p}}')" "$rpg_toks"
+if grep -qF '**reviewed-path denial**:' docs/harness-glossary.md; then
+  pass "glossary carries the reviewed-path denial term"
+else
+  bad "docs/harness-glossary.md has no **reviewed-path denial** entry"
+fi
+
 exit "$fail"
