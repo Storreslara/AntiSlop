@@ -23,13 +23,47 @@ def sha256_file(path):
 
 
 def load(path):
-    with open(path) as f:
-        return json.load(f)
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except (OSError, ValueError) as e:
+        fail(f"cannot read {path}: {e}")
+
+def fail(msg):
+    raise SystemExit(f"make-row: {msg}")
+
+
+def validate_checks(checks, expected):
+    """Fail closed: a checks array that is not exactly what the verified fixture produces never yields a row."""
+    if expected < 1:
+        fail("--expected-required must be at least 1")
+    if not isinstance(checks, list):
+        fail("checks must be a JSON array")
+    for i, c in enumerate(checks):
+        where = f"check {i}"
+        if not isinstance(c, dict):
+            fail(f"{where} is not an object")
+        for key in ("required", "pass"):
+            if key not in c:
+                fail(f"{where} lacks '{key}'")
+            if not isinstance(c[key], bool):
+                fail(f"{where}: '{key}' must be a boolean")
+        if "exit" in c:
+            if isinstance(c["exit"], bool) or not isinstance(c["exit"], int):
+                fail(f"{where}: 'exit' must be an integer")
+            if c["pass"] != (c["exit"] == 0):
+                fail(f"{where}: pass disagrees with exit")
+    found = sum(1 for c in checks if c["required"])
+    if found != expected:
+        fail(f"expected {expected} required checks, found {found}")
 
 
 def build(a):
     summary = load(a.summary)
     checks = load(a.checks)
+    validate_checks(checks, a.expected_required)
+    if a.arm == "B" and not a.process:
+        fail("arm B needs --process")
     status = summary["completion_status"]
     if status not in STATUSES:
         raise SystemExit(f"make-row: unknown completion_status {status!r}")
@@ -107,6 +141,7 @@ def main(argv):
     p.add_argument("--prompt-file", required=True)
     p.add_argument("--persona-config-sha", default="null")
     p.add_argument("--wall-clock-ms", type=int, required=True)
+    p.add_argument("--expected-required", type=int, required=True)
     p.add_argument("--commits", type=int, default=0)
     p.add_argument("--out-of-scope-lines", type=int, default=0)
     p.add_argument("--out-of-scope-files", type=int, default=0)
