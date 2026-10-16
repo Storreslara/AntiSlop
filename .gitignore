@@ -4,6 +4,8 @@
 node_modules/
 eval/.runs/
 eval/results.jsonl
+eval/abtest/.runs/
+eval/abtest/results.jsonl
 scratch/
 # Added by code-review-graph
 .code-review-graph/
