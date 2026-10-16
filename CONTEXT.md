@@ -453,8 +453,9 @@ _Avoid_: cutover unit (the commit that set it), flip commit
 **Contract-score guard**:
 (ADR-0040 amendment, unit csg-4, 2026-10-08) — the check the orchestrator runs
   before every dispatch of a unit whose [[Escalation ladder]] would start at
-  `haiku`: the unit's [[contract of record]] (its `Unit:` contract block in the
-  plan file or issue body the dispatch cites, never a fix contract) is scored
+  `haiku`: the unit's [[contract of record]] (its [[contract file]], or for a unit
+  sliced before contract files the `Unit:` block in the plan file or issue body
+  the dispatch cites; never a fix contract) is scored
   under [[rubric v2]], and unless every row passes (and, for a lead-programmer
   contract, it is not oversize) the unit starts its ladder at `sonnet`
   instead. That move is a guard demotion. Scoring is pure, so the guard
@@ -464,13 +465,25 @@ _Avoid_: cutover unit (the commit that set it), flip commit
 _Avoid_: escalation (that is FAIL-driven), haiku gate
 
 **contract of record**:
-(unit blc-7, 2026-10-09) — the one contract block the [[Contract-score guard]]
-  scores for a unit: its `Unit: <id>` dispatch contract in the plan file or
-  issue body the dispatch cites, never a fix contract. Because the guard
-  re-runs on every dispatch, a revision of that plan file between two
-  dispatches replaces the contract of record, and the next run can score a
-  different block than the one before it did.
+(unit blc-7, 2026-10-09; amended ptr-u3b, 2026-10-16) — the one contract the
+  [[Contract-score guard]] scores for a unit: its `Unit: <id>` dispatch contract,
+  never a fix contract. Its home is the unit's [[contract file]]. For a unit
+  sliced before contract files existed the legacy layout applies: a `Unit:`
+  block in the plan file or issue body the dispatch cites, where a revision of
+  that plan file between two dispatches replaces the contract of record and the
+  next guard run can score a different block than the one before it did.
 _Avoid_: contract (alone: a fix contract is a different artifact), dispatch prompt
+
+**contract file**:
+(unit ptr-u3b, 2026-10-16) — the per-unit file
+  `docs/plans/<plan-slug>/contracts/<unit-id>.md` that holds a unit's dispatch
+  contract and nothing else: line 1 is `Unit: <unit-id>`, the contract is
+  unfenced, and it is committed before dispatch. The tracker issue body ends
+  with a `Contract file: <path>` line and holds no copy, and the plan's dispatch
+  section links to it, so the [[contract of record]] has a single source. The
+  **legacy layout** (contract embedded in the plan file or in a fenced issue-body
+  block) remains a fallback only for units sliced before this change.
+_Avoid_: dispatch prompt, contract block (the legacy embedded form)
 
 **rubric v2**:
 (unit blc-7, 2026-10-09) — the second scoring table of `bin/contract-score.js`,

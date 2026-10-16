@@ -807,7 +807,7 @@ an append-only audit-log record class written to
   section with example(s) between whole-line scribe-contract-example markers.
 
 **issue-body layout**:
-(unit lo2-1, 2026-10-14) — the arrangement of a published unit's tracker issue
+(unit lo2-1, 2026-10-14; legacy layout since ptr-u3b, 2026-10-16: a unit now holds a [[contract file]] and its issue body ends with a `Contract file: <path>` line instead) — the arrangement of a published unit's tracker issue
   body that lets `bin/contract-guard.js` find its contracts: prose first, then
   the contracts last, the lead one under `## Dispatch contract` and, when the
   unit has one, the [[scribe dispatch contract]] after it under
@@ -3314,10 +3314,11 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (unit rgh-u3-2, 2026-10-06) — the execution path task-master takes when a
   finalized spec contains ≥6 dispatchable units or any `## Convergence follow-ups`
   slice. On this path, task-master runs (the fast path with ≤5 units bypasses
-  task-master entirely and has spec-master emit the contract directly). The
-  dispatch contract lives in the issue body under `## Dispatch contract` on the
-  standard path, whereas on the fast path it lives in the plan's `### Unit:`
-  block. Counterpart to [[fast-path threshold]] in CONTEXT.md. The implementer
+  task-master entirely and has spec-master emit the contract directly). Since
+  ptr-u3b (2026-10-16) the dispatch contract lives in the unit's [[contract file]]
+  on both paths (the issue body links to it; the older issue-body
+  `## Dispatch contract` and plan `### Unit:` block homes are the legacy
+  layout). Counterpart to [[fast-path threshold]] in CONTEXT.md. The implementer
   consults the contract according to its home: the contract outranks the issue
   prose, which outranks the plan. A conflict between them is a spec gap. Defined
   in `agents/task-master.md` bullet **Contract home and precedence** within the
