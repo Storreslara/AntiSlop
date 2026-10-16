@@ -23,3 +23,4 @@
 - [ptr-u3b completion](project_ptr_u3b_completion.md) — PASS 07bbbbc closed #557; ADR-0042 + contract file term; 6 open follow-ups (unit-outcomes.js blind to contract files)
 - [ptr-u8 completion](project_ptr_u8_completion.md) — PASS c8cee04 closed #558; dispatch checkpoint/handoff note terms; 7 open follow-ups (cutoff wording, no cap, no commit rule)
 - [ptr-u9a completion](project_ptr_u9a_completion.md) — PASS 018f95e closed #559; census term, escalation-card name collision, empty-defaultImplementerModel bug open
+- [ptr-u9b completion](project_ptr_u9b_completion.md) — PASS 5e2444e closed #560; 4 behaviour narrowings in orchestrator move + 2 more open; reason-word glossary term

@@ -3366,3 +3366,6 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **census**:
 (unit ptr-u9a, 2026-10-16) — `bin/ladder-tier.sh --census`: one `<unit-id> `-prefixed line per `.fail` record, carrying the raw block count with no expiry window and no contract-guard demotion. Audits the real FAIL records; single-unit mode (no flag) applies expiry, so the two counts can differ by design. Not the **Bash-output census**, which measures transcripts.
+
+**ladder-tier reason word**:
+(unit ptr-u9b, 2026-10-16) — the `reason=<word>` field of the `ladder-tier:` line `bin/ladder-tier.sh` prints, naming why the tier came out as it did; the first that applies of `fail-closed` (any read error: opus, n unknown), `guard-demotion` (the contract guard did not return haiku: sonnet ladder), `no-contract` (no `--contract` given: sonnet ladder, scored as no guard pass), `pre-cutover` (a FAIL block predates the Haiku-default cutover: more capable of sonnet and the default), `expired` (a PASS marker newer than the `.fail` record reset n to 0), `guard-pass` (haiku start, guard returned haiku), `default` (none of the above). The orchestrator routes on these words; only `guard-demotion` is currently told to record a ruling.
