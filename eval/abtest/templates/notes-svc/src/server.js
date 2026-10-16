@@ -23,8 +23,8 @@ function createServer(store = createStore()) {
   return http.createServer(async (req, res) => {
     const user = requireUser(req);
     if (!user) return send(res, 401, { error: 'unauthorized' });
-    const url = new URL(req.url, 'http://localhost');
     try {
+      const url = new URL(req.url, 'http://localhost');
       if (req.method === 'GET' && url.pathname === '/notes') {
         const title = url.searchParams.get('title');
         if (title !== null) {

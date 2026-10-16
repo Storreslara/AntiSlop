@@ -9,7 +9,7 @@ function requireUser(req) {
   const header = req.headers.authorization || '';
   const match = /^Bearer (\S+)$/.exec(header);
   if (!match) return null;
-  return USERS[match[1]] || null;
+  return Object.hasOwn(USERS, match[1]) ? USERS[match[1]] : null;
 }
 
 module.exports = { requireUser, USERS };
