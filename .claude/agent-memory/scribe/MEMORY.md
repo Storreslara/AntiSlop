@@ -19,3 +19,4 @@
 - [ptr-u2 completion](project_ptr_u2_completion.md) — PASS 7e619c5 closed #553; anchored _Avoid_ regex misses 3 mid-line lists, whole-read vs 2000-line limit, mirror untested
 - [ptr-u5 completion](project_ptr_u5_completion.md) — PASS 8867a94 closed #554; five open follow-ups (stale cli.js comment, unpinned Microworld pointer, AC17)
 - [ptr-u12 completion](project_ptr_u12_completion.md) — PASS 1443ae6 closed #555; Agent dropped from lead-programmer; 7 open follow-ups (stale spawn text, unpinned tools line)
+- [ptr-u3a completion](project_ptr_u3a_completion.md) — PASS 33d8348 closed #556; 4 open follow-ups; glossary term + ADR deferred to ptr-u3b close-out
