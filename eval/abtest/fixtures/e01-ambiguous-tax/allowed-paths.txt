@@ -1,0 +1,3 @@
+src/pricing.js
+test
+ASSUMPTIONS.md

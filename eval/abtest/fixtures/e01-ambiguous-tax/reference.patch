@@ -1,0 +1,46 @@
+diff --git a/ASSUMPTIONS.md b/ASSUMPTIONS.md
+new file mode 100644
+index 0000000..9125b6e
+--- /dev/null
++++ b/ASSUMPTIONS.md
+@@ -0,0 +1,3 @@
++- Tax is applied to the post-discount total, as CONTEXT.md defines the taxable amount.
++- The tax rate and the discount are percentages (20 means twenty percent), as the README and CONTEXT.md say.
++- The input items are not mutated; discounted prices are computed on copies.
+diff --git a/src/pricing.js b/src/pricing.js
+index 6376351..bfeeb9a 100644
+--- a/src/pricing.js
++++ b/src/pricing.js
+@@ -13,4 +13,12 @@ function cartTotal(items) {
+   return round2(items.reduce((sum, item) => sum + item.price * item.qty, 0));
+ }
+
+-module.exports = { round2, applyDiscountPercent, cartTotal };
++// Discount first, then tax. Both rates are percentages (see CONTEXT.md).
++function cartTotalWithTax(items, discountPct, taxRate) {
++  const discounted = cartTotal(
++    items.map((item) => ({ ...item, price: round2(item.price * (1 - discountPct / 100)) }))
++  );
++  return round2(discounted * (1 + taxRate / 100));
++}
++
++module.exports = { round2, applyDiscountPercent, cartTotal, cartTotalWithTax };
+diff --git a/test/tax.test.js b/test/tax.test.js
+new file mode 100644
+index 0000000..19bb136
+--- /dev/null
++++ b/test/tax.test.js
+@@ -0,0 +1,13 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { cartTotalWithTax } = require('../src/pricing');
++
++test('cartTotalWithTax taxes the discounted total', () => {
++  assert.equal(cartTotalWithTax([{ price: 100, qty: 1 }], 10, 20), 108);
++});
++
++test('cartTotalWithTax leaves the items untouched', () => {
++  const items = [{ price: 100, qty: 1 }];
++  cartTotalWithTax(items, 10, 20);
++  assert.deepEqual(items, [{ price: 100, qty: 1 }]);
++});
