@@ -1,7 +1,7 @@
 Unit: abt-u11b
 
 ## Objective
-The E5 hidden checks exist (check.sh with nine required checks, lib.holdout.js and four hidden tests); bash eval/abtest/verify-checks.sh e05-tags-feature prints baseline-required-failures=7/9 reference-required-failures=0/9 and verify-checks: ok. One commit.
+The E5 hidden checks exist (check.sh with eight required checks and one reported, non-required docs check (readme-data-format-v2), lib.holdout.js and four hidden tests); bash eval/abtest/verify-checks.sh e05-tags-feature prints baseline-required-failures=6/8 reference-required-failures=0/8 and verify-checks: ok. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 580 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -32,7 +32,7 @@ abt_check tag-filter-http-and-cli defect true "$(printf "$T" filter.holdout.test
 abt_check tags-counts defect true "$(printf "$T" counts.holdout.test.js counts.holdout.test.js)"
 abt_check migration defect true "$(printf "$T" migration.holdout.test.js migration.holdout.test.js)"
 abt_check readme-tags-route defect true 'grep -q "/tags" README.md'
-abt_check readme-data-format-v2 defect true 'grep -qi "version.*2" README.md'
+abt_check readme-data-format-v2 docs false 'grep -qi "version.*2" README.md'
 abt_check original-tests-still-pass defect true 'node --test test/store.test.js test/server.test.js test/cli.test.js' test/store.test.js test/server.test.js test/cli.test.js
 abt_check commits-at-least-four process true 'n=$(git rev-list --count "$ABT_START..HEAD"); [ $((n - ${ABT_SNAPSHOT:-0})) -ge 4 ]'
 abt_check_scope scope-outside-allowed true
@@ -238,8 +238,8 @@ test('[holdout] migrate-v1 converts the sample dump to a valid v2 dump', () => {
    mutation: skip edit 7 (migration.holdout.test.js); the migration check fails on the reference, verify prints FAILED and exits 1.
 2. run: `bash eval/abtest/verify-checks.sh e05-tags-feature`
    exit: 0
-   stdout: `baseline-required-failures=7/9 reference-required-failures=0/9`
-   mutation: skip edit 3 (lib.holdout.js); four checks cannot load their helper and fail on the reference, so the fragment reads 4/9.
+   stdout: `baseline-required-failures=6/8 reference-required-failures=0/8`
+   mutation: skip edit 3 (lib.holdout.js); four checks cannot load their helper and fail on the reference, so the fragment reads 4/8.
 3. run: `grep -c '^abt_check' eval/abtest/checks/e05-tags-feature/check.sh`
    exit: 0
    stdout: `9`
@@ -248,20 +248,24 @@ test('[holdout] migrate-v1 converts the sample dump to a valid v2 dump', () => {
    exit: 0
    stdout: `check.sh counts.holdout.test.js filter.holdout.test.js lib.holdout.js migration.holdout.test.js validation.holdout.test.js`
    mutation: skip edit 5 (filter.holdout.test.js); the listing lacks it.
-5. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u11b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
+5. run: `grep -c 'readme-data-format-v2 docs false' eval/abtest/checks/e05-tags-feature/check.sh`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2 (check.sh); grep exits 2 on the missing file and prints nothing.
+6. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u11b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `eval/abtest/checks/e05-tags-feature/check.sh eval/abtest/checks/e05-tags-feature/counts.holdout.test.js eval/abtest/checks/e05-tags-feature/filter.holdout.test.js eval/abtest/checks/e05-tags-feature/lib.holdout.js eval/abtest/checks/e05-tags-feature/migration.holdout.test.js eval/abtest/checks/e05-tags-feature/validation.holdout.test.js`
    mutation: skip edit 8 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
-6. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u11b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
+7. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u11b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
    mutation: skip edit 8; no unit commit exists and the exit is 3.
-7. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u11b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/checks/e05-tags-feature/check.sh eval/abtest/checks/e05-tags-feature/lib.holdout.js eval/abtest/checks/e05-tags-feature/validation.holdout.test.js eval/abtest/checks/e05-tags-feature/filter.holdout.test.js eval/abtest/checks/e05-tags-feature/counts.holdout.test.js eval/abtest/checks/e05-tags-feature/migration.holdout.test.js | grep -vcE "^[a-z]+\(abt-u11b\): "`
+8. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u11b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/checks/e05-tags-feature/check.sh eval/abtest/checks/e05-tags-feature/lib.holdout.js eval/abtest/checks/e05-tags-feature/validation.holdout.test.js eval/abtest/checks/e05-tags-feature/filter.holdout.test.js eval/abtest/checks/e05-tags-feature/counts.holdout.test.js eval/abtest/checks/e05-tags-feature/migration.holdout.test.js | grep -vcE "^[a-z]+\(abt-u11b\): "`
    exit: 1
    stdout: `0`
    mutation: add a commit with subject `fix: x` touching one content file after the unit commit; stdout 1.
    proof: scratch run: with no later commit the count printed 0 (exit 1); a later untagged commit is counted by grep -v, so stdout is 1.
-8. run: `git status --porcelain -- eval/abtest/checks/e05-tags-feature/`
+9. run: `git status --porcelain -- eval/abtest/checks/e05-tags-feature/`
    exit: 0
    stdout: empty
    mutation: skip edit 8; the new files stay untracked and are listed.
@@ -271,7 +275,7 @@ tdd: no hidden checks; criterion 1 is the red-then-green check (verify fails at 
 blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
-already-green: criterion 8 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
+already-green: criterion 9 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
 depends-on: abt-u04 (verifier with reference.d support) and abt-u11 (the E5 fixture and reference series) must have landed; edit 1 checks for them and STOPs otherwise.
 no-real-claude: no command in this contract runs the real claude CLI. The hidden tests start local servers on port 0.
 commit-message: feat(abt-u11b): E5 hidden checks (#580)
@@ -290,6 +294,7 @@ criterion 5: <FILL: exit and stdout>
 criterion 6: <FILL: exit and stdout>
 criterion 7: <FILL: exit and stdout>
 criterion 8: <FILL: exit and stdout>
+criterion 9: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
