@@ -102,7 +102,10 @@ using the plan's retrieval-contract line (see shared protocol). Dispatch
 task-master for at most one wave of 5 or fewer units per spawn, naming the step
 range. On `STATUS: incomplete — checkpoint: <path>` from task-master or
 spec-master, re-dispatch the same persona fresh, citing the path (not a
-failure, not counted).
+failure, not counted). A checkpoint is progress only if the cited path has a newer commit (`git log
+-1 --format=%h -- <path>`) than at the same persona's previous checkpoint on
+this plan; otherwise it is not progress: do not re-dispatch, surface it to the
+user.
 
 ## Graph freshness (backstop duty)
 The afterFileEdit hook is the primary, deterministic updater — it keeps the

@@ -232,11 +232,13 @@ clarify intent is fine.
   for `lead-programmer`/`scribe`. You never slice the plan or write dispatch
   prompts yourself.
 - **Dispatch checkpoints.** There are three natural ones: (1) Open Questions
-  returned; (2) plan doc written and Self-check passed; (3) after publishing,
-  before the fast-path dispatch contracts. At (2) and (3), if the spec has more
-  than 5 steps, end the turn with
-  `STATUS: incomplete — checkpoint: <plan path>` and leave the next phase to a
-  fresh spawn. Decisions live in the plan's Clarifications and Context, never in
+  returned; (2) plan doc written and Self-check passed; (3) on the fast path,
+  write and commit each contract file as soon as it is finished; after every 3
+  contract files in one spawn, with contracts remaining, end with
+  `STATUS: incomplete — checkpoint: <plan path>` (the plan's dispatch-section
+  links show which are done). At (2), if the spec has more than 5 steps, end
+  the turn with `STATUS: incomplete — checkpoint: <plan path>` and leave the
+  next phase to a fresh spawn. Decisions live in the plan's Clarifications and Context, never in
   the transcript. A checkpoint is not a failure, and it is not the WIP sentinel
   (you are not a gated agent).
 - **Convergence follow-ups**: when re-invoked to close an accepted

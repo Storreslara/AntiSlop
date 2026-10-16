@@ -430,7 +430,8 @@ needs no marker check either: every unit that got an advisory PASS or
 reached ladder exhaustion counts as reviewed. When you dispatch
 scribe for a unit, quote the reviewer's PASS verdict line verbatim in that
 dispatch; scribe closes an issue only on that quoted line. The shared protocol's
-"Review ownership" section lists which hooks go inert and which stay armed.
+"Review markers and gate mechanics (owner-facing)" section lists which hooks go
+inert and which stay armed.
 
 A mid-flight **"spec gap"** signal from `task-master` (per task-master's own
 file, it never fills a gap itself) routes the same way — straight to
@@ -464,9 +465,12 @@ and waves" list if it has one; otherwise consecutive steps.
 
 ## Per-unit model routing
 Before every per-unit `lead-programmer` dispatch, run `bash bin/ladder-tier.sh
-<task-id> --contract <contract file>` and pass its tier as the dispatch's `model`
-parameter. A `Suggested model: haiku|sonnet|opus` tag can raise that tier, never
-lower it. On `EXHAUSTED`, dispatch nothing: run `bash bin/escalation-card.sh
+<task-id> --contract <contract file>` (the contract of record, never a fix
+contract: a fix contract can score back onto `haiku`) and pass its tier as the
+dispatch's `model` parameter. A `Suggested model: haiku|sonnet|opus` tag can
+raise that tier, never
+lower it. On `EXHAUSTED`, dispatch nothing, except a human-chosen (a)/(b)
+re-dispatch from **At the 2-FAIL cap**: run `bash bin/escalation-card.sh
 <task-id>` and go to **At the 2-FAIL cap**. A set `CLAUDE_CODE_SUBAGENT_MODEL`
 silently wins over this routing.
 
@@ -491,7 +495,10 @@ sliced before contract files, save its issue body to a file and pass that. On
 `reason=guard-demotion`, rerun the guard for its line, tell the user in one line
 quoting it, and append `RULING <UTC ISO-8601 timestamp> unit=<task-id>
 decision=contract-guard sonnet: <guard line>` to `.claude/orchestrator-rulings.log`
-(**Rulings ledger**); the script never writes. Scoring is pure, so a fresh session
+(**Rulings ledger**); the script never writes. `reason=no-contract` is a guard
+demotion too (CONTEXT.md **guard demotion**): tell the user in one line that the
+unit had no contract, and append `RULING <UTC ISO-8601 timestamp>
+unit=<task-id> decision=contract-guard sonnet: no-contract`. Scoring is pure, so a fresh session
 computes the same ladder, provided it is unchanged (the contract of record). A
 scribe dispatch with a scribe contract that would go on `haiku` runs the guard with
 `--shape=scribe` and goes on `sonnet` when it fails.
@@ -511,7 +518,10 @@ checkpoint with work remaining: the path is the handoff note
 (`docs/plans/<plan-slug>/handoff-task-master.md`) or the plan. Re-dispatch the
 same persona fresh (a new `Agent` dispatch, not `SendMessage`), citing that
 path. This is not a failure and is not counted toward anything: no FAIL
-record, no 2-FAIL cap, no ladder step.
+record, no 2-FAIL cap, no ladder step. A checkpoint is progress only if the
+cited path has a newer commit (`git log -1 --format=%h -- <path>`) than at the
+same persona's previous checkpoint on this plan; otherwise it is not progress:
+do not re-dispatch, surface it to the user.
 
 ### Reviewer gate model selection (measured at dispatch time)
 `task-master` doesn't tag a reviewer tier — it slices before the diff
@@ -655,7 +665,7 @@ unless noted:
 - **Killed** (output absent/partial, no process) — nothing to finish; resume
   to retry with a longer `timeout` or narrower scope.
 - **Cut off** (no `STATUS:` line, or `STATUS: incomplete` other than a
-  checkpoint) — resume; for a
+  task-master or spec-master checkpoint) — resume; for a
   *missing* line resume at most once, then accept the result and say so; an
   explicit `STATUS: incomplete` has no such bound.
 

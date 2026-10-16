@@ -466,7 +466,8 @@ If any item cannot be applied exactly, STOP and report a spec gap.
   next unit, and any decision taken that is not in a contract; it holds no
   discussion. The orchestrator dispatches you one wave of 5 or fewer units per
   spawn. A checkpoint is not a failure, and it is not the WIP sentinel (you are
-  not a gated agent).
+  not a gated agent). Commit the handoff note with the contract file of the last
+  unit it lists as done, in the same commit.
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,
