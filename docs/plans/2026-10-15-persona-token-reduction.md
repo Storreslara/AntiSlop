@@ -1317,3 +1317,8 @@ slices it into per-step issues under label `plan/persona-token-reduction`
 (fetch with `gh issue list --label plan/persona-token-reduction`), one wave
 (5 or fewer units) per task-master dispatch, in the order given in
 "Recommended order".
+
+**Dispatch contracts (task-master).** Contract files live under
+`docs/plans/2026-10-15-persona-token-reduction/contracts/`. Wave 5 split U9 in
+two, because its new-file payloads exceed the 30000-byte contract budget:
+- U9 part 1 (scripts, test, registration): [ptr-u9a](2026-10-15-persona-token-reduction/contracts/ptr-u9a.md), issue #559.
