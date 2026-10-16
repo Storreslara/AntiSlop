@@ -3359,6 +3359,3 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **escalation probe list**:
 (unit ptr-u6, 2026-10-15) — the fixture `tests/fixtures/reviewer-escalation-probes.txt`: 22 phrases, one per line, naming directives that moved out of `agents/reviewer.md` into the `## Fourth verdict: escalate-to-human` section of `templates/persona-protocol.md`. Grepping each phrase in that section proves the move dropped nothing. Currently only the unit's acceptance loop reads it; no committed test does, so a later template edit can drop a probed phrase with the lanes gate green.
-
-**staleness binding**:
-(unit ptr-u6, 2026-10-15) — the `escalation: <timestamp>` field on a human `DECISION` first line, carrying the standing `.escalated` marker's own first-line timestamp (`templates/persona-protocol.md`, Format paragraph). A decision left over from an earlier escalation of the same unit carries an older timestamp and so cannot resolve a later one. Related: [[Escalation packet]].
