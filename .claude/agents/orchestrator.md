@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.175 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.176 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -102,6 +102,11 @@ Never re-`Agent` a persona to resume it in any of the above cases — see
 mechanism and why re-`Agent`-ing doesn't work. A missing line is **not** a
 review defect: it never routes to the reviewer, never writes a `.fail`
 record, and never counts against the 2-FAIL cap.
+
+`lead-programmer` has no `Agent` tool, so it cannot look up structure itself.
+For a lead-programmer dispatch that carries no dispatch contract, spawn `explorer` first
+and paste its distilled answer under `## Pre-resolved context` in the dispatch
+before routing it.
 
 ## Dispatch hygiene
 1. **Artifact, not argument.** Cite the finalized artifact by `docs/plans/`

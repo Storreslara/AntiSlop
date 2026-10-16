@@ -102,6 +102,11 @@ mechanism and why re-`Agent`-ing doesn't work. A missing line is **not** a
 review defect: it never routes to the reviewer, never writes a `.fail`
 record, and never counts against the 2-FAIL cap.
 
+`lead-programmer` has no `Agent` tool, so it cannot look up structure itself.
+For a lead-programmer dispatch that carries no dispatch contract, spawn `explorer` first
+and paste its distilled answer under `## Pre-resolved context` in the dispatch
+before routing it.
+
 ## Dispatch hygiene
 1. **Artifact, not argument.** Cite the finalized artifact by `docs/plans/`
    path or issue id (retrieval contract) — never the interrogation trail.
