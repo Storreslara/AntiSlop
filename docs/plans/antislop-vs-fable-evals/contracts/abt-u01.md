@@ -201,7 +201,7 @@ with open(cfg_path, "w") as f:
     f.write("\n")
 PYEOF
 
-( cd "$wt" && git add -A && git commit -q -m "arm-b scaffold" )
+( cd "$wt" && git add -A && git -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m "arm-b scaffold" )
 sha="$(git -C "$wt" rev-parse HEAD)"
 
 abtest_trust_path "$ABTEST_CONFIG_DIR" "$wt"
@@ -224,7 +224,8 @@ abtest_run_claude "$wt" "$pf" "$out" "$err" --plugin-dir "$plugin" --agent orche
 # FAKE_CLAUDE_LOG, then prints canned output. No network, no usage.
 # Env: FAKE_CLAUDE_LOG (dir, required), FAKE_CLAUDE_STREAM (file to print as
 #      stdout), FAKE_CLAUDE_STDERR (text for stderr), FAKE_CLAUDE_SLEEP
-#      (seconds), FAKE_CLAUDE_EXIT (exit code, default 0).
+#      (seconds), FAKE_CLAUDE_EXIT (exit code, default 0), FAKE_CLAUDE_TOUCH
+#      (a file name to create in the working directory, to mimic an edit).
 set -u
 log="${FAKE_CLAUDE_LOG:?FAKE_CLAUDE_LOG required}"
 mkdir -p "$log"
@@ -236,6 +237,7 @@ printf '%s\0' "$@" > "$log/argv.$n"
   printf 'PWD=%s\n' "$PWD"
 } > "$log/env.$n"
 if [ -n "${FAKE_CLAUDE_SLEEP:-}" ]; then sleep "$FAKE_CLAUDE_SLEEP"; fi
+if [ -n "${FAKE_CLAUDE_TOUCH:-}" ]; then printf 'x\n' > "$FAKE_CLAUDE_TOUCH"; fi
 if [ -n "${FAKE_CLAUDE_STDERR:-}" ]; then printf '%s\n' "$FAKE_CLAUDE_STDERR" >&2; fi
 if [ -n "${FAKE_CLAUDE_STREAM:-}" ]; then
   cat "$FAKE_CLAUDE_STREAM"
