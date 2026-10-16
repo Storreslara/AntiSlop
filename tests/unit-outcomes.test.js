@@ -38,6 +38,9 @@ function buildScratchRepo() {
   git(dir, ['config', 'user.name', 'T']);
   fs.mkdirSync(path.join(dir, 'agents'));
   fs.writeFileSync(path.join(dir, 'agents', 'lead-programmer.md'), '---\nname: lead-programmer\nmodel: sonnet\n---\nbody\n');
+  fs.mkdirSync(path.join(dir, 'docs', 'plans', 'fx-plan', 'contracts'), { recursive: true });
+  ['fx-cfile', 'fx-cfile2'].forEach((n) => fs.copyFileSync(path.join(FIX, 'contracts', `${n}.md`),
+    path.join(dir, 'docs', 'plans', 'fx-plan', 'contracts', `${n}.md`)));
   git(dir, ['add', '-A']);
   git(dir, ['commit', '-q', '-m', 'chore: base'], env);
   const base = git(dir, ['rev-parse', 'HEAD']);
@@ -239,6 +242,16 @@ check('fence five-tilde block, inner three-tilde line kept', () => {
   assert.strictEqual(R['fx-tilde5'].contract_author, 'task-master');
   assert.strictEqual(R['fx-tilde5'].contract_ts, '2026-09-02T09:00:00Z');
   assert.strictEqual(R['fx-tilde5'].contract_score, 7);
+});
+check('contract file named by the issue body wins over a qualified line and the legacy block', () => {
+  assert.strictEqual(R['fx-cfile'].contract_source, 'file:docs/plans/fx-plan/contracts/fx-cfile.md');
+  assert.notStrictEqual(R['fx-cfile'].contract_score, null);
+});
+check('contract file found by plan scan when no issue exists', () => {
+  assert.strictEqual(R['fx-cfile2'].contract_source, 'file:docs/plans/fx-plan/contracts/fx-cfile2.md');
+  assert.strictEqual(R['fx-cfile2'].contract_author, 'spec-master');
+  assert.strictEqual(R['fx-cfile2'].plan, 'fx-plan');
+  assert.notStrictEqual(R['fx-cfile2'].contract_score, null);
 });
 
 const ALL_PASS = fs.readFileSync(path.join(REPO_ROOT, 'tests', 'fixtures', 'contract-score', 'all-pass.md'), 'utf8');

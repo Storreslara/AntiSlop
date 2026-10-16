@@ -1,0 +1,9 @@
+[
+ {
+  "number": 903,
+  "title": "[fx-cfile] contract file fixture",
+  "createdAt": "2026-09-03T09:00:00Z",
+  "body": "Fixture unit.\n\nContract file (scribe, dispatch first): docs/plans/fx-plan/contracts/fx-cfile.scribe.md\nContract file: docs/plans/fx-plan/contracts/fx-cfile.md\n",
+  "labels": []
+ }
+]

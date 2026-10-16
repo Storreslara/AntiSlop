@@ -168,11 +168,49 @@ function contractBlock(body) {
   return close < 0 ? null : lines.slice(open + 1, close).join('\n');
 }
 
-// An issue belongs to a unit only if its contract's Unit: token or its title's first word is the exact id.
-function issueIsUnit(issue, id) {
+// The contract file an issue body names: its first unqualified `Contract file: <path>` line, resolved
+// against --repo, when the file exists and its line 1 is exactly `Unit: <id>`; else null.
+function fileContract(body, id, opt) {
+  const m = /^Contract file: (\S+)[ \t]*$/m.exec(body || '');
+  return m ? readContract(m[1], id, opt) : null;
+}
+
+function readContract(rel, id, opt) {
+  const abs = path.resolve(opt.repo, rel);
+  if (!abs.startsWith(opt.repo + path.sep)) return null;
+  try {
+    const text = fs.readFileSync(abs, 'utf8');
+    return text.split('\n')[0] === `Unit: ${id}` ? { rel: path.relative(opt.repo, abs), text } : null;
+  } catch (e) { return null; }
+}
+
+// docs/plans/*/contracts/<id>.md (sorted, first) whose line 1 is `Unit: <id>`; null when none.
+function planContract(id, opt) {
+  const dir = path.join(opt.repo, 'docs', 'plans');
+  if (!fs.existsSync(dir)) return null;
+  for (const d of fs.readdirSync(dir).sort()) {
+    const c = readContract(path.join('docs', 'plans', d, 'contracts', `${id}.md`), id, opt);
+    if (c) return c;
+  }
+  return null;
+}
+
+// Committer date of the oldest commit that touched the contract file; null when unknown.
+function fileTs(rel, opt) {
+  try {
+    const out = cp.execFileSync('git', ['log', '--format=%cI', '--', rel],
+      { cwd: opt.repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+    return out.split('\n').filter(Boolean).pop() || null;
+  } catch (e) { return null; }
+}
+
+// An issue belongs to a unit only if its contract's Unit: token, its title's first word (the exact id,
+// or `[<id>]`) or the contract file its body names is the exact id.
+function issueIsUnit(issue, id, opt) {
   const block = contractBlock(issue.body || '');
   const u = block && /^Unit:\s*(\S+)/.exec(block);
-  return (u && u[1] === id) || (issue.title || '').split(/\s+/)[0] === id;
+  const first = (issue.title || '').split(/\s+/)[0];
+  return (u && u[1] === id) || first === id || first === `[${id}]` || fileContract(issue.body, id, opt) !== null;
 }
 
 function ghIssue(id, opt) {
@@ -180,7 +218,7 @@ function ghIssue(id, opt) {
     const out = cp.execFileSync(process.env.GH_BIN || 'gh', ['issue', 'list', '--search', `${id} in:title`,
       '--state', 'all', '--json', 'number,title,body,labels,createdAt', '--limit', '20'],
     { cwd: opt.repo, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
-    return JSON.parse(out).find((i) => issueIsUnit(i, id)) || null;
+    return JSON.parse(out).find((i) => issueIsUnit(i, id, opt)) || null;
   } catch (e) { return null; }
 }
 
@@ -207,12 +245,23 @@ function planTs(id, p, opt) {
   } catch (e) { return null; }
 }
 
-// Source order: issue Dispatch-contract block, plan block, transcript with `## Ordered edits`, none.
+// Source order: the contract file the issue body names, docs/plans/*/contracts/<id>.md, the issue
+// Dispatch-contract block, plan block, transcript with `## Ordered edits`, none.
 function contractFor(id, recs, opt) {
   const issue = ghIssue(id, opt);
+  const label = issue && (issue.labels || []).map((l) => l.name).find((n) => n.startsWith('plan/'));
+  const named = issue && fileContract(issue.body, id, opt);
+  if (named) {
+    return { source: `file:${named.rel}`, author: 'task-master', plan: label ? label.slice(5) : null,
+      text: named.text, ts: issue.createdAt || null };
+  }
+  const found = planContract(id, opt);
+  if (found) {
+    return { source: `file:${found.rel}`, author: 'spec-master', plan: found.rel.split(path.sep)[2],
+      text: found.text, ts: fileTs(found.rel, opt) };
+  }
   const block = issue && contractBlock(issue.body || '');
   if (block !== null) {
-    const label = (issue.labels || []).map((l) => l.name).find((n) => n.startsWith('plan/'));
     return { source: `issue#${issue.number}`, author: 'task-master', plan: label ? label.slice(5) : null,
       text: block, ts: issue.createdAt || null };
   }
