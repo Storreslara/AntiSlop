@@ -13,7 +13,7 @@ GitHub issues: `gh issue view 591 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/reports/tickets/` (anchor: new files)
 
 ## Ordered edits
-1. command: `bash -c '! bash eval/abtest/run-matrix.sh --dry-run | grep -q " run$"' && test -f eval/abtest/report.py && test -f eval/abtest/blind.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `bash -c '! bash eval/abtest/run-matrix.sh --dry-run | grep -q " run$"' && test -f eval/abtest/report.py && test -f eval/abtest/blind.sh && grep -q "wiki|adr" eval/abtest/lib/blind.py && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. command: `mkdir -p eval/reports`
    expect: 0
