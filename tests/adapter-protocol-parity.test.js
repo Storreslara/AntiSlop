@@ -314,25 +314,28 @@ check('EB1 skip token is `examples: none - <one-line reason>` with an ASCII hyph
     '.claude/persona-protocol.md', 'CONTEXT.md', 'adapters/codex/agents-md-fragment.md',
     'adapters/cursor/rules/persona-protocol.mdc'];
   const NO_CARD = ['CONTEXT.md'];
+  const NO_PROSE = ['agents/reviewer.md', '.claude/agents/reviewer.md']; // ptr-u6: the prose lives in the protocol section now; the card fence stays pinned
   const token = 'examples: none - <one-line reason>';
   for (const rel of files) {
     const t = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
     assert.ok(!t.includes('examples: none \u2014'), `${rel}: em-dash skip token`);
     const { prose, fenced } = splitFences(t);
-    assert.ok(prose.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in prose`);
+    if (!NO_PROSE.includes(rel)) {
+      assert.ok(prose.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in prose`);
+    }
     if (!NO_CARD.includes(rel)) {
       assert.ok(fenced.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in the card fence`);
     }
   }
 });
 
-check('EB2 the line after the reviewer escalation card is the Durable escalation packet list item', () => {
+check('EB2 the line after the reviewer escalation card is the Escalation packet pointer list item', () => {
   for (const rel of ['agents/reviewer.md', '.claude/agents/reviewer.md']) {
     const lines = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').split('\n');
     const end = lines.indexOf('<!-- escalated-card:end -->');
     assert.ok(end >= 0, `${rel}: no escalated-card:end line`);
     const next = lines.slice(end + 1).find((l) => l.trim() !== '');
-    assert.ok(next !== undefined && next.startsWith('- **Durable escalation packet**: '),
+    assert.ok(next !== undefined && next.startsWith('- **Escalation packet and resolution (read on demand):** '),
       `${rel}: line after the card is not the list item: ${next}`);
   }
 });

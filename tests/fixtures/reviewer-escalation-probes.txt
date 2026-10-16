@@ -1,0 +1,22 @@
+cp -a
+byte-identical copy of the marker body
+verifiedBy
+startLine
+examples:
+view.sh:begin
+chmod +x
+transcription, never re-review
+Correct any stale range **in the packet copy only**
+Author `functions[]` outright when the escalating unit has none
+functionsAuthoredBy
+Write neither `.pass` nor `.fail` for this verdict
+Never re-derive it.
+there is no `via:` token on the `reject` or `direct` routes
+report and wait
+deliberately does NOT live under
+mandatory, not tidiness
+first-class, legitimate outcome
+never gates or influences
+never edited per unit
+staleness binding
+if the `.escalated` marker carries no parseable `commit:` line

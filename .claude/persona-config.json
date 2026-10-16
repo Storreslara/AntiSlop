@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.172",
+  "pluginVersion": "0.31.173",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -48,11 +48,11 @@
     ".claude/agents/spec-master.md": "64ee505e37aa2a99d7fdc0e3fa97c5097cd3ca1ec6fb326b5c06b9943f141fd4",
     ".claude/agents/task-master.md": "4018ef381af6266c41a1f465c37791b5971f19fbb8ed6cfd43c1cfe563ca3a55",
     ".claude/agents/scribe.md": "daceb1fcaebc3629573ce1df25863609baf27607d2e2ca4fdd47d24eeec14fe3",
-    ".claude/agents/reviewer.md": "adee321c6f2ed1c722fc42bfa146e410bbfc4c71acdcfa684bdff29849a52c82",
+    ".claude/agents/reviewer.md": "690a597dac1970eb8c62ccfb9b4170e8afe476194d38298acf73d60cff81c6bf",
     ".claude/agents/milestone-auditor.md": "8a6e02ea5bd26c280abd4be981d139e98d4a73967eac8d5e2887a077db4f44f1",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
-    ".claude/persona-protocol.md": "c893e48054ef20df732acd7e860e7f75597b32806a14dde08c289d12adbbd48d",
+    ".claude/persona-protocol.md": "43bec777cf090ad7f7ef7785395e372ecc99b6b0bd5ab78962368e42007cd7da",
     ".claude/persona-protocol-slim.md": "6d03c9d18b85160c988f14caecb41e0c0740c661d1eb41bdd4d6c86bca823db9",
     ".claude/protocol-digest.md": "aa0a0b315f07fa440c59056d82b56483826e2b754a22cb10eccdad2a00554638",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "c3131b4398fdf8c8c1c36ece8dabbf7d27469368af3a9403f9d56b6dbc96e0f9",

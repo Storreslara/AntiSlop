@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# epa-3: the escalation packet viewer (view.sh) embedded in four instruction
-# sources + two mirrors. Hermetic: stubs and fixtures live under mktemp -d.
+# epa-3: the escalation packet viewer (view.sh) embedded in three instruction
+# sources + one mirror (the reviewer body points at the protocol section instead
+# of carrying a copy, ptr-u6). Hermetic: stubs and fixtures live under mktemp -d.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 fail=0
@@ -10,13 +11,13 @@ bad()  { echo "FAIL $*"; fail=1; }
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-copies="agents/reviewer.md templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc .claude/agents/reviewer.md .claude/persona-protocol.md"
+copies="templates/persona-protocol.md adapters/codex/agents-md-fragment.md adapters/cursor/rules/persona-protocol.mdc .claude/persona-protocol.md"
 
 extract() {
   awk '/^<!-- view.sh:end -->$/{f=0} f&&!/^```/{print} /^<!-- view.sh:begin -->$/{f=1}' "$1"
 }
 
-# T1 - six copies, non-empty, byte-identical
+# T1 - four copies, non-empty, byte-identical
 ref=""
 for f in $copies; do
   extract "$f" > "$tmp/ext"

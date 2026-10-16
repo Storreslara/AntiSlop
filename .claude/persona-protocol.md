@@ -1,4 +1,4 @@
-<!-- antislop v0.31.172 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.173 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -454,12 +454,37 @@ the reviewer snapshots the unit's bundle to `.claude/human-review/<task-id>/`:
 
 - Copy `microworlds/<unit-slug>/` wholesale — `run.sh`, `manifest.json`,
   `inputs/`, `expected/`, `README.md` — **preserving the executable bit on
-  `run.sh`**. The relocatability requirement on `run.sh` is what makes the
+  `run.sh`** (`cp -a`). The relocatability requirement on `run.sh` is what makes the
   copy runnable at its new path.
 - Write `PACKET.md` into that directory: a **byte-identical verbatim copy of
   the marker body**, not a re-summary, so the directory is self-contained for
   a human working outside the session. The **marker remains authoritative**
   wherever the two differ — `PACKET.md` is never an independent record.
+- **Manifest verification and the `verifiedBy` stamp.** After copying, verify the
+  escalation manifest: for each `functions[]` entry in the packet's
+  `manifest.json`, verify `location.file` exists at the escalation commit and
+  `startLine`/`endLine` lie within that file's line count and still bracket the
+  named `group`. Correct any stale range **in the packet copy only** — the
+  working-tree bundle is never modified. Author `functions[]` outright when the
+  escalating unit has none. Stamp into the packet `manifest.json` a `verifiedBy`
+  block:
+
+  ```json
+  "verifiedBy": {
+    "agent": "reviewer",
+    "timestamp": "<ISO-8601 UTC>",
+    "commit": "<40-hex sha at escalation>",
+    "functionsAuthoredBy": "<reviewer|implementer-verified>",
+    "locationsChecked": "<N>/<N>",
+    "locationsCorrected": <count>
+  }
+  ```
+
+  `functionsAuthoredBy` is `"reviewer"` when the reviewer authored the array
+  outright because the escalating unit had none, or `"implementer-verified"`
+  when it was carried over from the unit and the reviewer verified/corrected
+  its locations. Write neither `.pass` nor `.fail` for this verdict; it never
+  consumes a 2-FAIL-cap slot.
 - Write `CHANGES.md` into that directory too — the **literate change summary**
   for the human who must now read the change. Nothing else in the packet
   describes *the change*: the marker carries the verdict, the bundle's
@@ -667,6 +692,21 @@ at the packet path, parses its first line, checks the task-id matches and the
 re-reviews** — the reviewer is an AI, and re-adjudicating a human's decision
 quietly undoes the human-in-the-loop property the escalation exists to create.
 On a missing, malformed, or stale `DECISION`: report and wait.
+
+**Resolving a standing escalation (transcription, never re-review).** On the
+`approve` route the reviewer writes `.pass` per the PASS rules above, **with one
+exception: the `commit:` field is copied verbatim from the standing `.escalated`
+marker's own `commit:` line. Never re-derive it.** Rationale for the `commit:`
+exception: resolution is a transcription, not a re-review — the escalated
+marker already records the commit the review was actually performed against,
+and by the time a human decides, `HEAD` has normally moved on to other units'
+work; a marker written from `HEAD` here would name a different unit's commit.
+Fallback: if the `.escalated` marker carries no parseable `commit:` line, fall
+back to the Step 2 (gh385-2) derivation — derive from the unit's own reviewed
+range, verify via `git log -1 --format=%s` — and record on a note line that you
+did. Like `examples:`, the `via:` value rides only on the appended `human:`
+attestation line, never the marker's required first line, so it cannot affect
+`marker_valid()`; there is no `via:` token on the `reject` or `direct` routes.
 
 | Human decision | Reviewer writes | `.escalated` | Packet | Cap slot | Next move |
 |---|---|---|---|---|---|
