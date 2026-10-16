@@ -1,7 +1,7 @@
 Unit: abt-u11
 
 ## Objective
-The E5 fixture exists: build.sh (template T2 plus data/dump-v1.json and a README Data format v1 section), allowed-paths.txt, the six-part tags prompt, and a five-patch reference series reference.d/01..05 that, applied commit by commit, leaves the notes-svc suite at 19 passing tests. One commit.
+The E5 fixture exists: build.sh (template T2 plus data/dump-v1.json and a README Data format v1 section), allowed-paths.txt, the six-part tags prompt, and a five-patch reference series reference.d/01..05 that, applied commit by commit, leaves the notes-svc suite at 22 passing tests. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 579 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -19,7 +19,7 @@ GitHub issues: `gh issue view 579 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/tasks/e05-tags-feature.prompt.md` (anchor: new file)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/fixtures/e05-tags-feature/ && test -f eval/abtest/templates/notes-svc/src/server.js && test -f eval/abtest/fixtures/lib.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/fixtures/e05-tags-feature/ && test -f eval/abtest/templates/notes-svc/src/server.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && test -f eval/abtest/fixtures/lib.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/fixtures/e05-tags-feature/build.sh`
    anchor: new file
@@ -428,8 +428,8 @@ you finish.
 ## Acceptance criteria
 1. run: `d=$(mktemp -d); bash eval/abtest/fixtures/e05-tags-feature/build.sh "$d/w" > /dev/null && for p in eval/abtest/fixtures/e05-tags-feature/reference.d/*.patch; do git -C "$d/w" apply --recount "$PWD/$p" && git -C "$d/w" add -A && git -C "$d/w" -c user.name=t -c user.email=t@t.invalid commit -q -m x || exit 1; done; cd "$d/w" && npm test 2>&1 | grep -E "^# (pass|fail)" | paste -sd" "`
    exit: 0
-   stdout: `# pass 19 # fail 0`
-   mutation: skip edit 9 (the counts patch); the series still applies but the suite runs 17 tests, so the fragment reads # pass 17.
+   stdout: `# pass 22 # fail 0`
+   mutation: skip edit 9 (the counts patch); the series still applies but the suite runs 21 tests, so the fragment reads # pass 21.
 2. run: `ls eval/abtest/fixtures/e05-tags-feature/reference.d/ | paste -sd" "`
    exit: 0
    stdout: `01-tag-validation.patch 02-tag-filter.patch 03-tag-counts.patch 04-migrate-v1.patch 05-docs.patch`
@@ -479,7 +479,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 11 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u04 (eval/abtest/fixtures/lib.sh) and abt-u06 (template T2) must have landed; edit 1 checks for it and STOPs otherwise. The checks that use this fixture are abt-u11b.
+depends-on: abt-u04 (eval/abtest/fixtures/lib.sh), abt-u05b (the T2 baseline fixes) and abt-u06 (template T2) must have landed; edit 1 checks for them and STOPs otherwise. The checks that use this fixture are abt-u11b.
 no-real-claude: no command in this contract runs the real claude CLI. Criterion 1 runs the template tests, which start local servers on port 0.
 patch-files: every reference.d patch is applied with git apply --recount, so a context line that holds a single space may be an empty line; do not add trailing spaces to a payload.
 commit-message: feat(abt-u11): E5 tags-feature fixture, prompt and reference series (#579)

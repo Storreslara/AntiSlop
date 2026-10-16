@@ -23,7 +23,7 @@ GitHub issues: `gh issue view 577 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/checks/e03-rename-query/where.holdout.test.js` (anchor: new file)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/fixtures/e03-rename-query && test ! -e eval/abtest/checks/e03-rename-query && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/templates/notes-svc/scripts/export.js && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/fixtures/e03-rename-query && test ! -e eval/abtest/checks/e03-rename-query && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/templates/notes-svc/scripts/export.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/fixtures/e03-rename-query/build.sh`
    anchor: new file
@@ -409,7 +409,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 11 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u04 (verifier) and abt-u06 (template T2 with tests and scripts/export.js) must have landed; edit 1 checks for verify-checks.sh and the template and STOPs otherwise.
+depends-on: abt-u04 (verifier), abt-u05b (the T2 baseline fixes: own-keys auth lookup, URL parse inside the try, cli main guard) and abt-u06 (template T2 with tests and scripts/export.js) must have landed; edit 1 checks for verify-checks.sh, the template and the abt-u05b auth fix and STOPs otherwise. The abt-u05b fixes change no output the E3 snapshots record (valid tokens and URLs only).
 no-real-claude: no command in this contract runs the real claude CLI.
 commit-message: feat(abt-u09): E3 rename-query fixture, prompt, checks and reference (#577)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
