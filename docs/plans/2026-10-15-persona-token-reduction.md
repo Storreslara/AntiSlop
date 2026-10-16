@@ -12,6 +12,11 @@ SPEC-GAPs #562/#563 and a U7a review finding): U7b-1 drops the adapter lib
 copies and replaces the `sort` denylist with option allowlists (20 frozen
 negatives); U7b-2's real-store harvest becomes human step H7b2; U13c gains
 edit 6 (protocol refusal-text sentence). Still 19 units.
+Revised a third time 2026-10-16 (ruling H-U7B3 on task-master's second
+SPEC-GAP in #562): U7b-1 also edits two existing gate-test pins that F1/F3
+correctly free (`[U7c]` cd-prefix control, `OB-10`), each replaced by a
+still-refused pin; F1 is accepted at segment level. OQ2 answered (a): the
+user will run H7b2. Still 19 units.
 Baseline: `3dfdf2f`, plugin `0.31.171`. Source review: the read-only Fable
 review of HEAD 0.31.171 (transcript-measured, ~4 chars/token).
 Unit labels keep the Fable numbering (U1-U12); U0 is the measurement unit;
@@ -393,6 +398,26 @@ persona's dispatch path; surprising without context; a real trade-off.
   short remedy plus a `More:` pointer to a glossary entry. → A
   (self-resolved, H-U13C): U13c edit 6 rewords the sentence and pins the old
   wording out.
+- 2026-10-16 Edge cases / failure handling: Q (second SPEC-GAP, #562) Two
+  existing pins expect a refusal for commands that a correct F1/F3 makes
+  benign: the `[U7c]` negative control `cd /tmp; <reviewer jq read>` in
+  `tests/harness-integrity-gate.test.sh`, and `OB-10` (`grep … | cut -c1-220`)
+  in `tests/human-decision-gate.test.sh`. Drop them, or replace them? → A
+  (self-resolved, H-U7B3): neither pin is deleted. Each freed command becomes
+  an `allowed` pin (it documents the narrowing), and each gets a still-refused
+  companion of equal strength, measured refused under an F1/F3 superset lib:
+  `touch /tmp/u7c-armed; <jq read>` and `cd /tmp; touch u7c-armed; <jq read>`
+  for U7c, and OB-10's command with `cut -c1-220` replaced by
+  `tee /tmp/ob15.out` as new pin OB-15. U7b-1 gains the two test files.
+- 2026-10-16 Technical constraints & tradeoffs: Q (second SPEC-GAP, #562) F1
+  as implemented allows a `cd <word>` segment anywhere (`ls && cd docs`,
+  `cd x | ls`), wider than the frozen "leading segment joined by `&&` or `;`".
+  Accept, or constrain? → A (self-resolved, H-U7B3): accept. `cd` writes no
+  file and runs no program, every other segment must still be benign, and a
+  benign command is read-only wherever its cwd is. The two-word and
+  banned-character rules of H-U7B1 still apply. New criterion AC7b1.6 pins it.
+- 2026-10-16 User interaction flow: Q (OQ2) Will the user run human step H7b2
+  after U7b-2 PASS? → A: (a) yes, per user (relayed by the orchestrator).
 
 ## Risks / dependencies
 
@@ -1162,6 +1187,9 @@ Acceptance criteria:
 Recommended model: sonnet (ratchet history on gate hardening). Sensitive:
 yes (`hooks/`, `tests/validate.sh`).
 Depends on: U7a (shared gate test files, which it runs and does not edit).
+(Revised by H-U7B3: U7b-1 now edits two pins in
+`tests/harness-integrity-gate.test.sh` and `tests/human-decision-gate.test.sh`;
+U7a and U7c have PASSed, so the order is unchanged.)
 Affected files: `hooks/scripts/lib/benign-command.sh` and its mirror
 `.claude/hooks/scripts/lib/benign-command.sh` (refreshed by
 `node bin/cli.js --update`, never hand-edited; revised by H-U7B1: the lib is
@@ -1285,6 +1313,88 @@ Acceptance criteria:
   `bash tests/harness-integrity-gate.test.sh` → exit 0 each.
 - AC7b1.5 `grep -c 'tests/benign-command-families.test.sh' tests/validate.sh` ≥ 1.
 - CC-gate.
+
+**Ruling H-U7B3 (2026-10-16; task-master's second SPEC-GAP in #562).** Two
+existing pins expect a refusal for a command that a correct F1/F3 makes
+benign, so AC7b1.4 and CC-gate cannot pass as the plan stood. Measured in a
+scratch clone of `b1f013b` with a **superset** lib (`program_allowed` given
+`cd|du|sort|uniq|cut|tr|nl|jq` with any arguments, which contains every
+command the real F1/F3 allows): across all 17 test files that name the lib
+or one of its three consuming gates (`harness-integrity-gate.sh`,
+`human-decision-gate.sh`, `reviewed-path-gate.sh` are its only consumers),
+exactly these two checks fail, and all five suites pass on the unpatched
+clone. No third pin exists. A literal grep of the three gate suites for the
+eight programs in refusal-expecting lines found nothing more.
+- **Affected files (added):** `tests/harness-integrity-gate.test.sh` and
+  `tests/human-decision-gate.test.sh`. Only the two edits below; nothing else
+  in either file changes.
+- **Edit A, `[U7c]` in `tests/harness-integrity-gate.test.sh`.** The
+  `cd /tmp; $u7c_cmd` check flips to expect exit 0, with pass label
+  `[U7c] harness-integrity-gate allows the cd-prefixed form (F1+F3, U7b-1)`.
+  Two negative controls are added, each expecting exit 2, built from the same
+  extracted `$u7c_cmd`: `touch /tmp/u7c-armed; $u7c_cmd` (pass label
+  `[U7c] harness-integrity-gate refuses the touch-prefixed compound form`) and
+  `cd /tmp; touch u7c-armed; $u7c_cmd` (pass label
+  `[U7c] harness-integrity-gate refuses the cd-then-touch compound form`).
+  The first keeps the old control's job (the gate is armed, and the jq
+  carve-out never covers a compound); the second proves an F1 prefix does
+  not launder a non-benign segment. Why they are refused, from the source:
+  `touch` is in no allowlist before or after U7b-1, so
+  `command_is_provably_benign` returns 1; `is_benign_jq_read` returns 1 on
+  the `;` in the skeleton; `set_a_mentioned` is true (the command names the
+  persona config), so the gate reaches `deny A` (`harness-integrity-gate.sh`
+  lines 288-295). Measured: exit 2 for both, on the current lib and on the
+  superset lib. Update the comment above the control to match.
+- **Edit B, OB block in `tests/human-decision-gate.test.sh`.** The OB rows
+  are accepted **over-blocks** (real read-only commands that write nothing
+  protected), not bypass attempts, and the block's own comment says a
+  narrowing that frees one "shows up here". So OB-10 is not deleted and not
+  renumbered: it stays at index 10 and is pinned `allowed`, reason text
+  `freed by F3 (U7b-1): the cut segment is now provably benign`. What OB-10
+  carried as a blocking pin (an unquoted `adapters/*/rules/*` glob that can
+  name both tokens, plus one non-benign segment, is refused) moves to new pin
+  **OB-15**, pinned `blocked`: OB-10's exact command with its trailing
+  ` | cut -c1-220` replaced by ` | tee /tmp/ob15.out`, reason text
+  `OB-10's shape with cut replaced by tee: unquoted adapters/*/rules/* can name both tokens; the tee segment is not provably benign`.
+  Measured: OB-15 is refused (rc 2) on the current lib and on the superset
+  lib. How the loop learns OB-10's expectation is the lead's choice (for
+  example a parallel `ob_expect` array); the observable output is frozen by
+  AC7b1.8. The section header becomes `(OB-1..OB-15)`, and its comment notes
+  that OB-10 is pinned `allowed` since U7b-1 and that OB-15 is derived, not
+  from the sweep corpus.
+- **F1 at segment level is accepted.** A segment that is exactly `cd <word>`
+  (two words, H-U7B1's banned characters absent) is benign in any position
+  and after any separator, not only as a leading `&&`/`;` prefix. This
+  amends the frozen F1 wording above. Reason: `cd` writes no file and runs no
+  program, every other segment must still be benign, and a benign command is
+  read-only wherever its working directory is.
+- **Unchanged:** `positive.jsonl` (16) and `negative.jsonl` (20), so
+  AC7b1.1's counts (16 and 20) and AC7b1.2's 13 stand; AC7b1.3-AC7b1.5 and
+  CC-gate stand.
+- **Trap (pre-resolved context for the contract).** The C4.1 sweep in
+  `tests/harness-integrity-gate.test.sh` (pattern at its line 1312) fails
+  CC-gate if any newly hit-bearing file appears. No file U7b-1 creates or
+  edits outside that test's own table may contain any of the four phrases in
+  `c41_pattern` (read them there; this plan does not spell them, so that it
+  stays out of the sweep itself). CC-gate's `[C4.1a]` lines enforce it.
+
+Added acceptance criteria (H-U7B3), each run against the finished lib:
+- AC7b1.6 (F1 at segment level)
+  `bash -c '. hooks/scripts/lib/benign-command.sh; command_is_provably_benign "ls && cd docs" && command_is_provably_benign "cd docs | wc -l f" && ! command_is_provably_benign "cd a b && ls" && ! command_is_provably_benign "cd && ls" && ! command_is_provably_benign "ls; cd docs; touch z"'`
+  → exit 0. It exits 1 against the `<pre>` lib of AC7b1.2 (no F1).
+  mutations, each on its own → exit 1: (e) allow `cd` only in the first
+  segment; (f) drop the two-word rule for the `cd` segment.
+- AC7b1.7 (`[U7c]` pins)
+  `bash tests/harness-integrity-gate.test.sh | grep -cE '^OK +\[U7c\] harness-integrity-gate (allows the cd-prefixed form \(F1\+F3, U7b-1\)|refuses the touch-prefixed compound form|refuses the cd-then-touch compound form)$'`
+  → `3`. Fails closed: a missing or reworded label, or a control that is not
+  refused, lowers the count. mutation: add `touch` to `program_allowed` in the
+  lib → count `1`, and the suite exits 1.
+- AC7b1.8 (OB pins)
+  `bash tests/human-decision-gate.test.sh | grep -cE '^OK +OB-([1-9]|1[0-5]) .* -> blocked$'`
+  → `14`; `... | grep -cE '^OK +OB-10 .* -> allowed$'` → `1`;
+  `... | grep -c '^FAIL OB-'` → `0`. mutation: add `tee` to `program_allowed`
+  in the lib → the `blocked` count is `13`, a `FAIL OB-15` line appears, and
+  the suite exits 1.
 
 ### Step U7b-2 — Measure the families' share of real gate blocks, aggregates only (item 7b, ruling H-U7B)
 
@@ -1721,7 +1831,7 @@ Acceptance criteria:
 | U9 | `bin/ladder-tier.sh`, `bin/escalation-card.sh`, tests, ✱`tests/validate.sh`, ✱`agents/orchestrator.md`, ✱mirror, ✱plugin.json, CHANGELOG | yes |
 | U7a | ✱`hooks/scripts/{reviewed-path,human-decision}-gate.sh`, gate tests, `docs/harness-glossary.md`, CHANGELOG | yes |
 | U7b | superseded by U7b-1/U7b-2 (H-U7B) | - |
-| U7b-1 | ✱`hooks/scripts/lib/benign-command.sh` + ✱its `.claude/` mirror (no adapter copies, H-U7B1), `tests/fixtures/gate-fp-corpus/{positive,negative}.jsonl`, new test, ✱`tests/validate.sh`, CHANGELOG | yes |
+| U7b-1 | ✱`hooks/scripts/lib/benign-command.sh` + ✱its `.claude/` mirror (no adapter copies, H-U7B1), `tests/fixtures/gate-fp-corpus/{positive,negative}.jsonl`, new test, ✱`tests/validate.sh`, CHANGELOG; two pins in `tests/{harness-integrity,human-decision}-gate.test.sh` (H-U7B3) | yes |
 | U7b-2 | `scripts/gate-fp-harvest.py`, its test and synthetic fixtures, `docs/audits/…gate-fp-corpus.md` (skeleton), ✱`tests/validate.sh`, CHANGELOG | yes |
 | H7b2 | `docs/audits/…gate-fp-corpus.md` marker span (human step, user's terminal; not a unit, H-U7B2) | **no** (human) |
 | U11 | `docs/audits/…adr0040-forward-rule.md` | **no** (docs) |
@@ -1802,6 +1912,8 @@ U13a, U13b and U13c added). 17 are gated lead-programmer units; U4a and U11
 stay ungated. Still the standard path.
 Re-checked 2026-10-16 after H-U7B1, H-U7B2 and H-U13C: still **19**. H7b2 is
 a human step, not a unit, and U13c's edit 6 adds no unit.
+Re-checked 2026-10-16 after H-U7B3: still **19**. H-U7B3 adds two files and
+three criteria to U7b-1, and no unit; waves and order are unchanged.
 
 ## Measurement and no-regression (pre-registered 2026-10-15)
 
@@ -1895,6 +2007,8 @@ PASS):
    in-window sessions as they age. Options: (a) yes (default); (b) no: the doc
    stays PENDING and the families' real share is recorded as unmeasured.
    (From CHK33.)
+   **Resolved 2026-10-16: (a) yes.** The user will run H7b2 after U7b-2
+   passes review (recorded in Clarifications). OQ1 stands (aggregates only).
 
 ## Self-check
 
@@ -2021,6 +2135,36 @@ PASS):
   not this plan's inputs. The template notes (units 125, 137, 188, 189, 202,
   236) belong to units dispatched long ago. The one NOTE[spec]
   (item19-2-measure-skip-rate) concerns another plan's surface.
+- CHK39 (H-U7B3): Can AC7b1.4 and CC-gate pass on a correct F1/F3? — PASS
+  (revised in place). Before the ruling: FAIL (conflicting), the `[U7c]`
+  control and OB-10 pinned freed commands. Edits A and B change both pins,
+  and a superset-lib sweep of all 17 test files naming the lib or its three
+  gates finds no third.
+- CHK40: Is every dropped refusal replaced by one of equal strength? — PASS.
+  No pin is deleted: the cd-prefixed control and OB-10 become `allowed`
+  pins; two U7c refusals (touch-prefixed, cd-then-touch) and OB-15 are added,
+  each measured refused on the current and the superset lib, and frozen by
+  AC7b1.7 (count 3) and AC7b1.8 (14 `blocked`, 1 `allowed`).
+- CHK41: Is the F1 segment-level reading decided, with a criterion behind
+  it? — PASS (accepted; AC7b1.6, exit 1 on the `<pre>` lib, mutations (e)
+  and (f)).
+- CHK42: Do AC7b1.1 and AC7b1.2 still agree with the frozen data? — PASS
+  (H-U7B3 adds no corpus line: 16 and 20 `ok`, 13 `FAIL` on `<pre>`).
+- CHK43: Can a U7b-1 edit trip the C4.1 sweep in
+  `tests/harness-integrity-gate.test.sh`? — PASS (revised in place: the ruling
+  names the trap, and this plan was checked to contain none of the four
+  phrases, `git grep -l` → no output).
+- CHK44: Are the marker-audit notes on the two newly touched test files
+  disposed? — PASS. Swept 2026-10-16. NOTE[spec] hcb-prose-history (C4.1
+  classification) is what CHK43 handles. NOTE[spec] item19-1: six local,
+  gitignored microworld bundles (hdg-anchor-1, hdg-prose-2, hdg-prose-2-fix2,
+  hdg-lexer-1, rpg-comment-3, rpg-canon-2) run the human-decision suite; on
+  the superset lib each fails only on OB-10, so Edit B turns them green and
+  none needs an edit. The other notes (hcb-regcheck, esc-chat-6, esc-fu-1,
+  esc-left-4, rnc-1, gh325, gh418) concern other pins and are not this
+  ruling's inputs.
+- CHK45: Is OQ2's answer recorded? — PASS (Clarifications, and OQ2 marked
+  resolved (a)).
 
 
 ## Scribe update hint
@@ -2074,3 +2218,9 @@ two, because its new-file payloads exceed the 30000-byte contract budget:
   removes the `HELD:` lines from #562 and #563 and writes their contract files
   (U7b-1 first). U13c's issue, when sliced in Wave 7, carries edit 6.
 - Resume 2026-10-16 (task-master): U7b-1 (#562) and U7b-2 (#563) stay HELD, no contract files. Replaying the revised U7b-1 in a scratch clone met a second spec gap: AC7b1.4 and CC-gate cannot pass on any correct F1/F3 implementation, because `tests/harness-integrity-gate.test.sh` (`[U7c]` cd-prefix negative control) and `tests/human-decision-gate.test.sh` (pin `OB-10`) assert commands that F1/F3 now make benign. #563 is held behind #562. See the #562 body for the measured failures and a proposed ruling.
+- Ruling H-U7B3 (2026-10-16, spec-master), answering the second SPEC-GAP in
+  #562: U7b-1 adds `tests/harness-integrity-gate.test.sh` and
+  `tests/human-decision-gate.test.sh` (Edits A and B in Step U7b-1), with
+  AC7b1.6-AC7b1.8; F1 at segment level is accepted. task-master removes the
+  `HELD:` lines from #562 and #563 and writes their contract files (U7b-1
+  first). OQ2 answered (a): the user will run H7b2.
