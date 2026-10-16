@@ -3398,3 +3398,12 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **ladder-tier reason word**:
 (unit ptr-u9b, 2026-10-16) — the `reason=<word>` field of the `ladder-tier:` line `bin/ladder-tier.sh` prints, naming why the tier came out as it did; the first that applies of `fail-closed` (any read error: opus, n unknown), `guard-demotion` (the contract guard did not return haiku: sonnet ladder), `no-contract` (no `--contract` given: sonnet ladder, scored as no guard pass), `pre-cutover` (a FAIL block predates the Haiku-default cutover: more capable of sonnet and the default), `expired` (a PASS marker newer than the `.fail` record reset n to 0), `guard-pass` (haiku start, guard returned haiku), `default` (none of the above). The orchestrator routes on these words; only `guard-demotion` is currently told to record a ruling.
+
+**flipped command**:
+(unit ptr-u7b-2, 2026-10-16) — a command in the `scripts/gate-fp-harvest.py` harvest that the baseline benign-command lib (`--baseline-lib`) still blocks but the new lib (`--lib`) classifies benign. The audit doc `docs/audits/2026-10-15-gate-fp-corpus.md` reports their count against the blocked total; the harvest never prints the command text itself. A command that cannot be passed to bash (NUL, lone surrogate) counts as still-blocked under both libs, so it never flips. See [[frozen corpus]].
+
+**oversize**:
+(unit ptr-u7b-2, 2026-10-16) — a command the `scripts/gate-fp-harvest.py` harvest skips instead of classifying because it exceeds the harvest's size limit; it is excluded from the counts, unlike an unencodable command, which counts as still-blocked. Distinct from an oversize prompt (the stop-gate H1 check) and an oversize contract (the contract guard).
+
+**human step H7b2**:
+(unit ptr-u7b-2, 2026-10-16) — the one step of unit ptr-u7b-2 only the user can run: execute `scripts/gate-fp-harvest.py` against the real transcript store and fill the doc's result span with `--fill-doc`. Until then the audit doc's result is PENDING and the real share of read-only families is unmeasured. Known limits: `default_root()` maps only `/` to `-` (pass `--root` if the project key differs); `--check-doc` catches only commands of 20 or more characters quoted in full, and tracebacks on a missing file; `--since` later than `--until` is unchecked.
