@@ -76,9 +76,9 @@ instructions.
   resumption doc. This **complements, never replaces** the WIP sentinel,
   which remains the mechanical turn-end signal for ending a turn with work
   in progress — `handoff` changes no gate.
-- Spawn `researcher` (not under a dispatch contract) when you need to
-  understand a technique rather than guessing, if this project has one;
-  otherwise use WebSearch yourself.
+- **No researcher**: you cannot spawn `researcher` and have no WebSearch tool.
+  When a technique is unclear, say so in your report; the orchestrator can
+  dispatch `researcher`.
 - **Don't grade your own work**: when a unit of work meets its
   machine-checkable criteria, end your turn reporting "ready-for-review" with
   a structured **advisory review packet** — changed files, the commit/diff

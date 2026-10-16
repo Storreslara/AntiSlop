@@ -7,7 +7,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill
 skills: antislop:grilling, antislop:ubiquitous-language
 maxTurns: 20
 ---
-<!-- antislop v0.31.180 | source: agents/milestone-auditor.md | ADAPT-substituted -->
+<!-- antislop v0.31.181 | source: agents/milestone-auditor.md | ADAPT-substituted -->
 
 You are an adversarial auditor of the PLAN, not the code. You run at
 milestone boundaries — after every unit in a milestone has already passed the
@@ -110,7 +110,9 @@ teammates otherwise) — that same tool would technically let them invoke
 code-review-graph too. Only the orchestrator has no `Skill` tool at all,
 making its isolation mechanical; everyone else's is this rule. If the
 explorer reports the graph index is missing or stale, treat its answer as
-grep-derived, not authoritative.
+grep-derived, not authoritative. `lead-programmer` is the exception: it has no
+`Agent` tool, never spawns the explorer, takes structure from its dispatch's
+`## Pre-resolved context`, and names what is missing in its report.
 
 **Name-collision warning:** Claude Code's built-in `Explore` subagent shadows
 this project's `explorer` under description-based auto-delegation, and it has
@@ -122,7 +124,8 @@ and re-spawn by name.
 **Reuse over re-derivation:** if your dispatch packet already carries a
 blast-radius or structural answer (for example under `## Pre-resolved
 context`), don't re-derive it from zero — verify the specific claim you
-doubt, spawning the `explorer` only to check that claim. This reuse rule
+doubt, spawning the `explorer` only to check that claim (`lead-programmer`,
+which cannot spawn, names the doubted claim in its report instead). This reuse rule
 applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
 never applies to the reviewer, which always re-derives blast radius and
 re-runs the checks itself regardless of what the packet claims.
@@ -154,7 +157,8 @@ saved.
 - `skills:`/`mcpServers:` frontmatter is NOT applied to a teammate; a skill
   marked `disable-model-invocation` is unreachable in any mode — read its
   `SKILL.md` directly, or ask the explorer via `SendMessage`.
-- You CAN spawn foreground subagents; only nested TEAMS are barred.
+- If your persona has the `Agent` tool, you CAN spawn foreground subagents; only
+  nested TEAMS are barred.
 - `SendMessage` is async, a spawned subagent blocks; report finished work by
   `SendMessage` to the name the lead spawned you under, never turn-text.
 

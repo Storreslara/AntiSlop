@@ -16,7 +16,9 @@ the Code Review Graph MCP directly. On Codex the graph MCP IS scoped to the
 explorer alone (`mcp_servers` in `explorer.toml` - the one platform where this
 isolation is mechanical, not just a convention), so routing through the
 explorer keeps noisy traversal out of every other persona's context on
-purpose, not just by discipline.
+purpose, not just by discipline. `lead-programmer` is the exception: it has no
+`Agent` tool, never spawns the explorer, takes structure from its dispatch's
+`## Pre-resolved context`, and names what is missing in its report.
 
 **Name-collision warning:** if a built-in Codex agent shadows this project's
 `explorer` under description-based auto-delegation, it has no graph MCP
@@ -27,7 +29,8 @@ assume a built-in ran and re-spawn by name.
 **Reuse over re-derivation:** if your dispatch packet already carries a
 blast-radius or structural answer (for example under `## Pre-resolved
 context`), don't re-derive it from zero - verify the specific claim you
-doubt, spawning the `explorer` only to check that claim. This reuse rule
+doubt, spawning the `explorer` only to check that claim (`lead-programmer`,
+which cannot spawn, names the doubted claim in its report instead). This reuse rule
 applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
 never applies to the reviewer, which always re-derives blast radius and
 re-runs the checks itself regardless of what the packet claims.
