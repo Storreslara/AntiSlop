@@ -66,7 +66,7 @@ closed() { emit opus unknown opus fail-closed; }
 resolve_default() {
   local cfg="${project}/.claude/persona-config.json" v
   if [ -f "$cfg" ]; then
-    v="$(jq -r '.defaultImplementerModel // empty' "$cfg" 2>/dev/null)" || return 1
+    v="$(jq -r 'if has("defaultImplementerModel") then (.defaultImplementerModel | if . == "haiku" or . == "sonnet" or . == "opus" then . else "opus" end) else "" end' "$cfg" 2>/dev/null)" || return 1
   else
     v=""
   fi

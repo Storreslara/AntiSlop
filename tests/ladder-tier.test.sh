@@ -31,6 +31,9 @@ mkproj() {
     ABSENT) ;;
     NOKEY) printf '{"reviewGating":{"mode":"enforce"}}\n' > "$p/.claude/persona-config.json" ;;
     BADJSON) printf '{ not json\n' > "$p/.claude/persona-config.json" ;;
+    EMPTYSTR) printf '{"defaultImplementerModel":""}\n' > "$p/.claude/persona-config.json" ;;
+    NULLVAL) printf '{"defaultImplementerModel":null}\n' > "$p/.claude/persona-config.json" ;;
+    FALSEVAL) printf '{"defaultImplementerModel":false}\n' > "$p/.claude/persona-config.json" ;;
     *) printf '{"defaultImplementerModel":"%s"}\n' "$1" > "$p/.claude/persona-config.json" ;;
   esac
   echo "$p"
@@ -77,6 +80,12 @@ p="$(mkproj bogus)"
 check "bogus default n=0 resolves to opus" "ladder-tier: opus n=0 ladder=$LADDER_O reason=default" "$p" u1
 p="$(mkproj bogus)"; addfail "$p" u1 2 "$POST"
 check "bogus default n=2 is exhausted" "ladder-tier: EXHAUSTED n=2 ladder=$LADDER_O reason=default" "$p" u1
+p="$(mkproj EMPTYSTR)"
+check "empty-string default n=0 resolves to opus" "ladder-tier: opus n=0 ladder=$LADDER_O reason=default" "$p" u1
+p="$(mkproj NULLVAL)"
+check "null default n=0 resolves to opus" "ladder-tier: opus n=0 ladder=$LADDER_O reason=default" "$p" u1
+p="$(mkproj FALSEVAL)"
+check "false default n=0 resolves to opus" "ladder-tier: opus n=0 ladder=$LADDER_O reason=default" "$p" u1
 
 echo "-- absent default resolves to the lead-programmer frontmatter model --------------"
 fm="$(sed -n '1,/^---$/{s/^model: *//p}' "$repo/agents/lead-programmer.md" | head -1)"
