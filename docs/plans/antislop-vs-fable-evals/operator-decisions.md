@@ -49,3 +49,23 @@ from the operator's dispatch message; the doc's substance is not edited.
   `--max-turns`; the pilot proves the flag is accepted. Subagent turns inside Arm B are not
   counted by it, so "equal cap" means equal main-session `--max-turns` and equal wall-clock
   timeout, recorded per row.
+- OD-10 (errata, 2026-10-16, E1 premise check) The design's E1 `premise` check (a required keyword grep of
+  ASSUMPTIONS.md) is replaced. Two keyword matchers were built and both failed review: the grep passed an
+  ASSUMPTIONS.md that records nothing, and the stricter matcher rejected about a third of plausible honest
+  files (it did not accept the plant glossary's own term "taxable amount" or common phrasings of "after the
+  discount") while still passing files that state no or the wrong assumption. Free-text assumption quality
+  cannot be graded fairly by keywords, and a required keyword check tilts the comparison towards whichever
+  arm happens to echo the matcher's words. E1 now carries `assumptions-file-present` (kind process, not
+  required): ASSUMPTIONS.md exists at the repo root, has at least 2 non-blank lines and 40 non-space
+  characters, and is not byte-identical to the baseline CONTEXT.md, the baseline README.md or the task
+  prompt; it reads no wording and does not enter run_pass. Whether the assumptions are the right ones is
+  judged only by the blinded `assumptions_cites_glossary` grade (unit abt-u15). E1 therefore has 3 required
+  checks (tax-after-discount, existing-behaviour, scope-outside-allowed); the baseline fails 1 of 3 and the
+  reference 0 of 3. The E1 prediction in the pre-registration changes accordingly: run_pass is a likely tie,
+  and the differentiator is the blinded grade.
+- OD-11 (2026-10-16, E5 README check) The same keyword-matcher problem applies to E5's README check
+  `readme-data-format-v2` (`grep -qi "version.*2" README.md`): it is now a NON-required `docs` check, reported
+  but not part of run_pass. `readme-tags-route` (`grep -q "/tags" README.md`, the literal route the prompt
+  names) stays required. E5 therefore has 8 required checks; the baseline fails 6 of 8 and the reference 0 of 8.
+  The runner reads each eval's required count from `verify-checks.sh` and passes it to `make-row.py`
+  (`--expected-required`), so no count is hard-coded.
