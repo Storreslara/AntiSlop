@@ -1622,6 +1622,13 @@ rgh-h10, fc-1, htd-1) are out of scope and unchanged. The ptr-u0b note on
 `agents/orchestrator.md` (units 125, 137, 148, 194) belong to units that were
 dispatched long ago and are not this plan's inputs.
 
+Open follow-up from ptr-u13a PASS (added 2026-10-16, for spec-master; no
+spec substance changed): a plan-scan contract (rule (e)(2)) is reported with
+`contract_author` spec-master, which `gateG3`/`inEra` in
+`scripts/unit-outcomes.js` leaves out of the rubric era; when `gh` is
+unreachable every contract-file unit therefore drops out. Settle this at spec
+level before the final NR2 measurement.
+
 ### Step U13a — Script fixes: ladder default, contract files in the export, agg2 window (items a, e, f)
 
 Recommended model: sonnet. Sensitive: no (`bin/ladder-tier.sh` and

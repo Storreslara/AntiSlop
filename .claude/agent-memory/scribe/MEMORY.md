@@ -25,3 +25,4 @@
 - [ptr-u9a completion](project_ptr_u9a_completion.md) — PASS 018f95e closed #559; census term, escalation-card name collision, empty-defaultImplementerModel bug open
 - [ptr-u7a completion](project_ptr_u7a_completion.md) — PASS b21b3ee closed #561; persona-protocol.md stale remediation claim (U13c) + 4 more open
 - [ptr-u9b completion](project_ptr_u9b_completion.md) — PASS 5e2444e closed #560; 4 behaviour narrowings in orchestrator move + 2 more open; reason-word glossary term
+- [ptr-u13a completion](project_ptr_u13a_completion.md) — PASS 05bee1f closed #564; inEra vs plan-scan contract_author must be settled before NR2
