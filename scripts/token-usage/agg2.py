@@ -117,15 +117,16 @@ print('main-session (orchestrator) transcripts, window:')
 rows = []
 for pf in glob.glob(root + '/*.jsonl'):
     if os.path.getmtime(pf) < cut: continue
-    ctxs = []; n = 0
+    ctxs = []; n = 0; t0 = None
     for ln in open(pf):
         if '"usage"' not in ln: continue
         try: r = json.loads(ln)
         except Exception: continue
         if r.get('type') != 'assistant': continue
         u = (r.get('message') or {}).get('usage') or {}
+        if u and t0 is None: t0 = r.get('timestamp')
         ctxs.append(u.get('input_tokens', 0) + u.get('cache_read_input_tokens', 0) + u.get('cache_creation_input_tokens', 0))
-    if ctxs: rows.append((ctxs[0], med(ctxs), max(ctxs), len(ctxs), sum(ctxs)))
+    if ctxs and in_range([{'timestamp': t0}], SINCE, UNTIL): rows.append((ctxs[0], med(ctxs), max(ctxs), len(ctxs), sum(ctxs)))
 rows.sort(key=lambda r: -r[4])
 if not rows:
     print('  sessions=0')

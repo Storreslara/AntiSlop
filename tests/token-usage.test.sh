@@ -48,5 +48,17 @@ check "the header keeps the 1st-ctx med column" "$?"
 python3 -I scripts/token-usage/agg2.py --root "$root" 36500 > /dev/null && python3 -I scripts/token-usage/cache.py --root "$root" 36500 > /dev/null
 check "agg2.py and cache.py run on the fixture" "$?"
 
+mroot=tests/fixtures/token-usage-main
+agg2m() { python3 -I scripts/token-usage/agg2.py --root "$mroot" 36500 "$@"; }
+
+agg2m --since 2026-01-02T00:00:00Z | grep -q 'sessions=0'
+check "agg2 main-session section: --since after the session's first usage record drops it" "$?"
+
+agg2m --since 2025-12-31T00:00:00Z | grep -q 'sessions=1 '
+check "agg2 main-session section: --since before the first usage record keeps it" "$?"
+
+agg2m --until 2026-01-01T00:00:00Z | grep -q 'sessions=0'
+check "agg2 main-session section: --until at the first usage record drops it" "$?"
+
 echo "token-usage: $passed/$total passed"
 [ "$passed" -eq "$total" ]

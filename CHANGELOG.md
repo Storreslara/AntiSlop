@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Main-session window in agg2.py (ptr-u13a).** The main-session section of `scripts/token-usage/agg2.py` now applies the same `[since, until)` window as its subagent section, using the timestamp of the session's first assistant record that carries `usage`; with `--since` or `--until` given, a session with no such timestamp is excluded, and the mtime day cut is unchanged. `tests/token-usage.test.sh` gains three rows over the new `tests/fixtures/token-usage-main` root. Closes the ptr-u0b spec note on `agg2.py`. No version bump.
+
 **Unit-outcomes export reads contract files (ptr-u13a).** `scripts/unit-outcomes.js` now takes a unit's contract from the file its issue body names (the first unqualified `Contract file: <path>` line, resolved against `--repo`) or else from `docs/plans/*/contracts/<id>.md`, before the legacy `## Dispatch contract` block; the row's `contract_source` reads `file:<path>`, and an issue titled `[<id>] ...` now counts as the unit's issue. Closes the ptr-u3b spec note on `scripts/unit-outcomes.js`. No version bump.
 
 **Ladder-tier default read tells a missing key from a bad value (ptr-u13a).** `bin/ladder-tier.sh` now reads `defaultImplementerModel` with one `jq` call that tells an absent key (the lead-programmer frontmatter model, as before) from a present key whose value is not the string `haiku`, `sonnet` or `opus` (`""`, `null`, `false`, a number), which resolves to `opus` as the orchestrator prose already says; `tests/ladder-tier.test.sh` gains three rows. Closes the ptr-u9a spec note on `bin/ladder-tier.sh`. No version bump.
