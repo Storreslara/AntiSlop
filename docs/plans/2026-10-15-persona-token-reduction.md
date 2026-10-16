@@ -5,6 +5,8 @@ answered by the user via AskUserQuestion on 2026-10-15, taking the
 recommended option each time; the answers are in Clarifications. Item 10 is
 not built (no U10), item 11 is an audit record only (U11), item 12 is in
 (U12), and validate.sh is quiet by default (U1).
+Revised 2026-10-16 (append-only): ruling H-U7B splits U7b into U7b-1 and
+U7b-2, and Wave 7 adds the cleanup units U13a-U13c (19 units in total).
 Baseline: `3dfdf2f`, plugin `0.31.171`. Source review: the read-only Fable
 review of HEAD 0.31.171 (transcript-measured, ~4 chars/token).
 Unit labels keep the Fable numbering (U1-U12); U0 is the measurement unit;
@@ -129,6 +131,17 @@ vendors them so the after-measurement is reproducible.
     tool_result bytes in the window show no `Agent` entry (Read 31.6 KB, Bash
     16.0 KB, Edit, Write, SubagentHandback). The body already forbids explorer
     spawns under a contract (`agents/lead-programmer.md:34`, `:68`).
+12. **Item 7b, F2 already exists (measured 2026-10-16, ruling H-U7B).**
+    `mask_inert_redirections` (`hooks/scripts/lib/benign-command.sh` ~140-168)
+    already masks `2>&1`, `2>/dev/null` and `>/dev/null`. Sourcing the lib at
+    HEAD `adb9795` and calling `command_is_provably_benign`: `ls 2>&1`,
+    `grep -c x f 2>/dev/null`, `wc -l f >/dev/null` and `ls 2>&1 | head -5`
+    return benign. `cd /tmp && ls`, `du -sh .`, `sort f`, `cut -d: -f1 f`,
+    `tr a b < f`, `nl f`, `jq .a f.json` and `uniq -c f` return non-benign.
+    Every frozen negative returns non-benign. So F1 and F3 are the only new
+    families, and F2 gets regression pins only (U7b-1). This spec-master
+    session was itself blocked twice by exactly F1 (`cd <repo>; …`) and F3
+    (`… | cut`) shapes.
 
 ### Prior plans reused, not redone
 
@@ -203,7 +216,7 @@ persona's dispatch path; surprising without context; a real trade-off.
 1. Functional scope & success criteria: Partial
 2. Domain entities / data model: Partial
 3. User interaction flow: Partial
-4. Non-functional attributes (perf, security, scale): Clear
+4. Non-functional attributes (perf, security, scale): Partial
 5. External dependencies & integrations: Partial
 6. Edge cases / failure handling: Partial
 7. Technical constraints & tradeoffs: Partial
@@ -280,6 +293,48 @@ persona's dispatch path; surprising without context; a real trade-off.
   no `git add -f`). The wrapper criteria become stub-tree cases, the bounds
   and set-inclusion run on the `validate-lanes.sh` stream, and CC-gate is
   ruled plan-wide (see Common criteria).
+- 2026-10-16 Completion / acceptance signals: Q (task-master SPEC-GAP, #562
+  HELD) Who or what classifies a harvested blocked command as "F1-F3-only"
+  for AC7b.1? → A (self-resolved, ruling H-U7B): nobody does, for the lib
+  unit. U7b-1's criteria read only frozen, hand-written files (a positive set
+  and the negative corpus, both listed literally in the step), so the input
+  is not circular. In U7b-2 the classifier is the lib itself: a harvested
+  command is **flipped** when the pre-U7b-1 lib returns non-benign and the
+  post-U7b-1 lib returns benign. Family attribution is a fixed syntactic rule
+  (see U7b-2), not a second classifier, and a command may count in more than
+  one family.
+- 2026-10-16 Domain entities / data model: Q What is the harvested corpus:
+  window, cap, dedupe and denominator? → A (self-resolved, H-U7B): this
+  repository's transcript-store project directory only, the window
+  `[2026-09-25T00:00:00Z, 2026-10-16T00:00:00Z)` on the Bash tool_use
+  timestamp, deduplicated to distinct exact command strings, commands over
+  4,096 characters counted in an `oversize` row and not classified. The
+  denominator for every share is distinct in-window commands that are not
+  oversize.
+- 2026-10-16 Non-functional attributes (security/privacy): Q May raw
+  harvested commands be committed? → A (self-resolved default, H-U7B): no. The
+  dispatcher's instruction defaults to not committing raw private commands,
+  and that is the conservative choice. Committed artifacts hold aggregate
+  counts and the hand-written examples of U7b-1 only, and U7b-2 proves this
+  with a sentinel fixture and a `--check-doc` leak count. `blocked.jsonl` is
+  dropped. A user override is Open Question 1 (non-blocking).
+- 2026-10-16 Edge cases / failure handling: Q (wave-1-6 reviewer
+  follow-up d) Is a missing `--contract` (`reason=no-contract`) a guard
+  demotion? → A (self-resolved): yes. CONTEXT.md **guard demotion** already
+  counts "no contract block was found" as a guard demotion that "gets a line
+  in the Rulings ledger", so the orchestrator prose is the drift and U13b
+  fixes the prose to match the glossary. The script stays as is.
+- 2026-10-16 User interaction flow: Q (follow-up g) spec-master checkpoint
+  (3) fires only for specs over 5 steps, but it sits before the fast path's
+  contracts, and the fast path only runs for 5 or fewer units, so it can
+  never fire. How do these reconcile? → A (self-resolved): checkpoint (2)
+  keeps its step-count trigger (it bounds plan-writing). Checkpoint (3)
+  becomes the task-master rule applied to the fast path: write and commit
+  each contract file as it is finished, and after every 3 contract files in
+  one spawn, with contracts remaining, end with
+  `STATUS: incomplete — checkpoint: <plan path>`. The plan's dispatch
+  section links show what is done. A re-dispatch is progress only if the
+  cited path has a newer commit than at the previous checkpoint (U13b).
 - 2026-10-15 Domain entities / data model: Q (SPEC-GAP 2a, #544)
   lead-programmer's 56 kept lines cannot meet the 40-line / 4 KB cap. Change
   the cap or the keep rule? → A (self-resolved): change the keep rule; the cap
@@ -1000,6 +1055,11 @@ Acceptance criteria:
 
 ### Step U7b — Corpus-first read-only allowlist families (item 7b)
 
+**Superseded 2026-10-16 by U7b-1 and U7b-2 (ruling H-U7B).** Kept below
+unedited, as history. Do not slice or dispatch this step: its AC7b.1 and
+AC7b.2 have no classifier and no committable corpus (task-master
+SPEC-GAP, issue #562), and F2 already exists (premise 12).
+
 Recommended model: sonnet (ratchet history on gate hardening). Sensitive:
 yes (`hooks/`).
 Depends on: U7a (shared test files).
@@ -1048,6 +1108,154 @@ Acceptance criteria:
   `bash tests/harness-integrity-gate.test.sh` → exit 0 each.
 - CC-gate.
 
+### Step U7b-1 — Add read-only families F1 and F3 to the benign-command lib (item 7b, ruling H-U7B)
+
+Recommended model: sonnet (ratchet history on gate hardening). Sensitive:
+yes (`hooks/`, `tests/validate.sh`).
+Depends on: U7a (shared gate test files, which it runs and does not edit).
+Affected files: `hooks/scripts/lib/benign-command.sh`, its byte-identical
+adapter copies `adapters/{codex,cursor}/hooks/scripts/lib/benign-command.sh`,
+`tests/fixtures/gate-fp-corpus/positive.jsonl` (new),
+`tests/fixtures/gate-fp-corpus/negative.jsonl` (new),
+`tests/benign-command-families.test.sh` (new) plus one registration in
+`tests/validate.sh`, and `CHANGELOG.md`. No version bump is needed (P3 covers
+only `agents/` and `templates/`).
+Not in this unit: any harvest script, `blocked.jsonl`, or audit doc (see
+U7b-2). Nothing harvested from a transcript store is read or committed.
+
+**Families (frozen; the U7b table with F2 corrected by premise 12):** add F1
+(a leading `cd <word>` segment joined by `&&` or `;`, where `<word>` has no
+metacharacter, `$`, backtick or glob, and the rest is itself benign) and F3
+(`du`, `sort` rejecting `-o`, `--output*` and any `-o` cluster, `uniq` with at
+most one operand, `cut`, `tr`, `nl`, and `jq` rejecting `-f`/`--from-file`
+when the next word is not a literal path). F2 (`2>&1`, `2>/dev/null`,
+`>/dev/null`) already exists in `mask_inert_redirections`: do not change it,
+only pin it. The "explicitly not added" list of U7b stands unchanged.
+
+**Frozen test data.** Each line of the two files is one JSON object.
+`positive.jsonl` holds exactly these 16 objects `{"family":"<F>","cmd":"<cmd>"}`:
+- F1: `cd /tmp && ls` · `cd docs; wc -l README.md` · `cd hooks && grep -c x f 2>/dev/null`
+- F2: `ls 2>&1 | head -5` · `grep -c x f 2>/dev/null` · `wc -l f >/dev/null`
+- F3: `du -sh .` · `sort f` · `grep x f | sort | uniq -c` · `cut -d: -f1 f` ·
+  `tr a b < f` · `nl f` · `jq .a f.json` · `jq -r .a f.json 2>/dev/null` ·
+  `sort -u f | uniq` · `uniq -c f`
+
+`negative.jsonl` holds exactly the ten frozen negatives of U7b as
+`{"cmd":"<cmd>"}` objects: `sort -o x y`, `sort --output=x y`, `uniq a b`,
+`jq . f > g`, `cd x && rm -f y`, `cd $(pwd) && ls`, `ls 2>x`,
+`cut -f1 f >> g`, `du -sh . ; touch z`, `tr a b < f > g`. The gates' existing
+bypass cases are not copied into the file. AC7b1.4 covers them by running
+their suites.
+
+**Test shape.** `tests/benign-command-families.test.sh` sources the lib named
+by `$BENIGN_LIB` (default `hooks/scripts/lib/benign-command.sh`) and calls
+`command_is_provably_benign` directly for every line, passing the command as
+an argument and never through `eval`. It prints one line per case,
+`ok|FAIL <positive|negative> <family|-> <cmd>`, and exits 0 only when there
+are no `FAIL` lines. A positive case passes when the command is benign, and a
+negative case passes when it is not.
+
+Acceptance criteria:
+- AC7b1.1 `bash tests/benign-command-families.test.sh` → exit 0;
+  `bash tests/benign-command-families.test.sh | grep -c '^ok positive '` → `16`
+  and `... | grep -c '^ok negative '` → `10`. mutation: drop the `sort -o`
+  rejection → a `FAIL negative - sort -o x y` line, exit 1.
+- AC7b1.2 (the families are new; this proves every F1/F3 positive
+  non-vacuous) with `<pre>` = the parent of U7b-1's first commit:
+  `t="$(mktemp)"; git show <pre>:hooks/scripts/lib/benign-command.sh > "$t"; BENIGN_LIB="$t" bash tests/benign-command-families.test.sh`
+  → exit 1. Its stdout has exactly 13 lines matching `^FAIL positive F[13] `
+  and exactly 13 lines matching `^FAIL ` (F2 positives and all negatives pass
+  on the old lib; measured on HEAD `adb9795`, premise 12).
+- AC7b1.3 `cmp hooks/scripts/lib/benign-command.sh adapters/codex/hooks/scripts/lib/benign-command.sh && cmp hooks/scripts/lib/benign-command.sh adapters/cursor/hooks/scripts/lib/benign-command.sh`
+  → exit 0.
+- AC7b1.4 `bash tests/reviewed-path-gate.test.sh`,
+  `bash tests/human-decision-gate.test.sh` and
+  `bash tests/harness-integrity-gate.test.sh` → exit 0 each.
+- AC7b1.5 `grep -c 'tests/benign-command-families.test.sh' tests/validate.sh` ≥ 1.
+- CC-gate.
+
+### Step U7b-2 — Measure the families' share of real gate blocks, aggregates only (item 7b, ruling H-U7B)
+
+Recommended model: sonnet. Sensitive: yes (`tests/validate.sh`).
+Depends on: U7b-1 (it compares the libs before and after U7b-1).
+Affected files: `scripts/gate-fp-harvest.py` (new),
+`tests/gate-fp-harvest.test.sh` (new) plus one registration in
+`tests/validate.sh`, `tests/fixtures/gate-fp-harvest/**` (new, synthetic
+only), `docs/audits/2026-10-15-gate-fp-corpus.md` (new, filename kept from
+U7b), `CHANGELOG.md`.
+
+**Privacy rule (default, Clarifications 2026-10-16; OQ1 may override).** No
+harvested command text is committed anywhere: not in the doc, not in
+fixtures, not in a commit message. The script has **no** mode or flag that
+prints a command; its only outputs are counts. Fixtures are synthetic. Any
+example in the doc is copied from U7b-1's `positive.jsonl`/`negative.jsonl`.
+
+**Script contract.**
+`python3 -I scripts/gate-fp-harvest.py [--root <dir>] --since <iso> --until <iso> --lib <path> --baseline-lib <path> [--check-doc <path>]`.
+- Root: `--root`, defaulting to `~/.claude/projects/<cwd with every / replaced by ->`
+  (this repository's project directory only). Files read: `<root>/*.jsonl`
+  and `<root>/*/subagents/*.jsonl`.
+- **Hit:** a `Bash` tool_use whose paired tool_result (same `tool_use_id`)
+  has `is_error: true` and content containing `BLOCKED`, with the tool_use
+  record's `timestamp` in `[since, until)`.
+- **Gate:** the first of `reviewed-path-gate`, `human-decision-gate` and
+  `harness-integrity-gate` found in the result text, else `other`.
+- **Dedupe and cap:** distinct exact command strings. A command over 4,096
+  characters is counted as `oversize` and not classified. D (the denominator)
+  is the number of distinct commands that are not oversize.
+- **Classifier = the lib:** each counted command goes to a `bash` subprocess
+  that sources the lib and calls `command_is_provably_benign "$1"` with the
+  command as an argument. **flipped** means non-benign under `--baseline-lib`
+  and benign under `--lib`.
+- **Family attribution of flipped commands (frozen syntactic rule; a command
+  may count in several families):** F1 if it matches
+  `^\s*cd\s+[^\s;&|$`*?\[]+\s*(&&|;)`; F2 if it contains `2>&1`,
+  `2>/dev/null` or `>/dev/null`; F3 if any segment (split on `|`, `;`, `&&`
+  and `||`) starts with one of `du sort uniq cut tr nl jq`.
+- **stdout** is exactly one markdown table, header `| row | count | share |`,
+  with these rows in this order: `hits`, `distinct`, `oversize`, `classified`
+  (= D), `F1`, `F2`, `F3`, `flipped`, `still-blocked`, then one `gate:<name>`
+  row per gate (hit counts). share is count/D to 3 decimals for the
+  F rows, flipped and still-blocked, and `-` otherwise.
+- `--check-doc <path>` prints exactly one line, `leaks=<n>`: the number of
+  distinct in-window commands of 20 characters or more that occur verbatim in
+  the file. It never prints which ones.
+
+**Audit doc.** It records the exact command line run (window
+`--since 2026-09-25T00:00:00Z --until 2026-10-16T00:00:00Z`, `--lib` = the
+working-tree lib, `--baseline-lib` = the `<pre>` lib of AC7b1.2 extracted to
+a temp file, with the extraction command written out), the commit both
+were taken at, and the script's stdout verbatim between
+`<!-- harvest:begin -->` and `<!-- harvest:end -->`. It also states that
+reproduction is per-machine and best-effort (the store is local and
+transcript cleanup can delete in-window sessions).
+
+Acceptance criteria:
+- AC7b2.1 `bash tests/gate-fp-harvest.test.sh` → exit 0. The synthetic store
+  holds: two identical blocked hits, one out-of-window hit, one
+  `is_error: false` result containing `BLOCKED`, one `is_error: true` result
+  without `BLOCKED`, one oversize command, one F1 flip, one F3 flip, one
+  still-blocked `rm -f x`, and one blocked command containing
+  `ZZ-PRIVATE-SENTINEL-42`. Two stub libs under the fixture dir define
+  `command_is_provably_benign` deterministically. The test asserts the
+  literal expected table, asserts that `ZZ-PRIVATE-SENTINEL-42` appears in no
+  output, and asserts that `--check-doc` prints `leaks=1` on a fixture doc
+  holding the sentinel command and `leaks=0` on a clean one. mutation: remove
+  the dedupe → the `distinct` row changes, exit 1.
+- AC7b2.2 `grep -c 'tests/gate-fp-harvest.test.sh' tests/validate.sh` ≥ 1.
+- AC7b2.3 `grep -cE '^\| F[123] \|' docs/audits/2026-10-15-gate-fp-corpus.md`
+  → `3`; `grep -c 'harvest:begin' docs/audits/2026-10-15-gate-fp-corpus.md`
+  → `1`; `grep -c -- '--since 2026-09-25T00:00:00Z --until 2026-10-16T00:00:00Z' docs/audits/2026-10-15-gate-fp-corpus.md`
+  ≥ 1.
+- AC7b2.4 (privacy, on the measuring machine) the recorded command with
+  `--check-doc docs/audits/2026-10-15-gate-fp-corpus.md` appended → stdout
+  `leaks=0`.
+- AC7b2.5 (reproduction, on the measuring machine) re-running the recorded
+  command and `diff`-ing its stdout against the lines between the doc's
+  harvest markers → exit 0.
+- AC7b2.6 `git ls-files tests/fixtures/gate-fp-corpus/blocked.jsonl | wc -l` → `0`.
+- CC-gate.
+
 ### Step U11 — Implementer-tier evidence record (item 11)
 
 Recommended model: haiku (scribe or spec-master, docs-only). Sensitive: no.
@@ -1088,6 +1296,193 @@ Criteria: `sed -n '1,12p' agents/lead-programmer.md | grep -E '^tools:' | grep -
 `grep -c 'spawn .explorer. first' agents/orchestrator.md` ≥ 1; CC-P3,
 CC-mirror, CC-parity, CC-gate.
 
+### Wave-7 cleanup U13a-U13c: shared notes (added 2026-10-16)
+
+One cleanup item set, split three ways. Two reasons: a contract is capped at
+30000 bytes and 80 lines (`bin/contract-score.js:413`), which nine items with
+their literal payloads cannot fit, and scripts and persona prose stay in
+separately reviewable units, as the dispatcher asked. Items: (a) ladder-tier
+default read, (b) the EXHAUSTED exception, (c) contract of record for the
+ladder, (d) no-contract as guard demotion, (e) unit-outcomes contract files,
+(f) agg2 main-session window, (g) checkpoint wording, commit and progress
+rule, (h) leftover spawn language after U12, (i) prose pins. **None dropped.**
+(e) and (f) feed the final measurement (NR2 and the before/after windows),
+(a) is the open NOTE[spec] from ptr-u9a, and the prose items are each one
+sentence. Spec-note dispositions: the ptr-u9a note on `bin/ladder-tier.sh:63`
+is closed by (a). The ptr-u3b note on `scripts/unit-outcomes.js:159-163` is
+closed by (e), including its "plan fallback also ignores contract files"
+half. The README-drift notes on `scripts/unit-outcomes.js` (rgh-u0-3,
+rgh-h10, fc-1, htd-1) are out of scope and unchanged. The ptr-u0b note on
+`scripts/token-usage/agg2.py:114-133` is closed by (f). The untagged notes on
+`agents/orchestrator.md` (units 125, 137, 148, 194) belong to units that were
+dispatched long ago and are not this plan's inputs.
+
+### Step U13a — Script fixes: ladder default, contract files in the export, agg2 window (items a, e, f)
+
+Recommended model: sonnet. Sensitive: no (`bin/ladder-tier.sh` and
+`scripts/` are not in `SENSITIVE_PATHS`, and the three suites are already
+registered in `tests/validate.sh` at ~708, ~1343 and ~1354, so that file is
+not edited). Depends on: U9a, U0 (landed).
+Affected files: `bin/ladder-tier.sh` (`resolve_default` ~66-80),
+`tests/ladder-tier.test.sh`; `scripts/unit-outcomes.js` (`issueIsUnit` ~172,
+`ghIssue` ~178, `contractFor` ~211), `tests/unit-outcomes.test.js`,
+`tests/fixtures/unit-outcomes/**` (new `fx-cfile` issue, marker and contract
+file); `scripts/token-usage/agg2.py` (main-session section ~114-133),
+`tests/token-usage.test.sh`, `tests/fixtures/token-usage-main/m1.jsonl`
+(new; a separate root so the existing `tests/fixtures/token-usage` pins do
+not move); `CHANGELOG.md`. One commit per item (three commits), each with
+its CHANGELOG line. No version bump (P3 does not apply).
+- (a) `resolve_default` uses one lone `jq` read that tells a missing
+  `defaultImplementerModel` key apart from a present one
+  (`has("defaultImplementerModel")`). Absent key or absent config file → the
+  frontmatter model, as today. Present key whose value is not the string
+  `haiku`, `sonnet` or `opus` (including `""`, `null`, `false` and numbers) →
+  `opus`. A jq error → fail-closed, as today.
+- (e) Contract source order in `contractFor`: (1) the issue body's first line
+  matching `^Contract file: (\S+)\s*$` (unqualified; a qualified line such as
+  `Contract file (scribe, dispatch first): …` is ignored), resolved against
+  `--repo`, when that file exists and its line 1 is exactly `Unit: <id>` →
+  `source: file:<repo-relative path>`, `text` = the whole file,
+  `ts` = the issue's `createdAt`; (2) else `docs/plans/*/contracts/<id>.md`
+  (sorted, first) whose line 1 is `Unit: <id>` → the same `file:` source with
+  `ts` = the file's first commit time (the fast path has no issue); (3) the
+  legacy `## Dispatch contract` block; (4) the plan block; (5) the transcript;
+  (6) none. `issueIsUnit` also accepts a title whose first word is
+  `[<id>]` (task-master's title form, e.g. `[ptr-u7a] …`) and an issue whose
+  body passes rule (1).
+- (f) The main-session section applies the subagent section's `[since,
+  until)` window, using the `timestamp` of the session's first assistant
+  record that carries `usage`. When `--since` or `--until` is given, a session
+  with no such timestamp is excluded, matching `in_range`. The mtime day cut
+  is unchanged.
+
+Acceptance criteria:
+- AC13a.1 `bash tests/ladder-tier.test.sh` → exit 0, with three new literal
+  rows: config `{"defaultImplementerModel":""}`, `{"defaultImplementerModel":null}`
+  and `{"defaultImplementerModel":false}`, each at n=0 →
+  `ladder-tier: opus n=0 ladder=opus,opus reason=default`. The existing
+  absent-key and absent-file rows are unchanged. mutation: restore
+  `.defaultImplementerModel // empty` → the three new rows FAIL (they print
+  the haiku ladder), exit 1.
+- AC13a.2 `node tests/unit-outcomes.test.js` → exit 0, with new checks:
+  `fx-cfile` (issue title `[fx-cfile] …`, body holding a qualified
+  `Contract file (scribe, dispatch first): …` line before the unqualified
+  `Contract file: <fixture contract path>` line, and no `## Dispatch contract`
+  block) → `contract_source` is `file:<fixture contract path>` and
+  `contract_score` is not null. The existing `issue#7`, `issue#11`,
+  `issue#12`, `issue#901` and `none` assertions are unchanged (the legacy
+  fallback). mutation: delete branch (1) and branch (2) → `fx-cfile`
+  reports `none`, exit non-zero.
+- AC13a.3 `bash tests/token-usage.test.sh` → exit 0, with new checks on
+  `tests/fixtures/token-usage-main` (`m1.jsonl` = one assistant record,
+  `timestamp` `2026-01-01T00:00:00Z`, `usage.input_tokens` 10):
+  `python3 -I scripts/token-usage/agg2.py --root tests/fixtures/token-usage-main 36500 --since 2026-01-02T00:00:00Z`
+  prints `sessions=0`; with `--since 2025-12-31T00:00:00Z` it prints
+  `sessions=1`; with `--until 2026-01-01T00:00:00Z` it prints `sessions=0`.
+  mutation: drop the window test → the first check prints `sessions=1`
+  (measured 2026-10-16 at `adb9795` on an identical scratch fixture), exit 1.
+- CC-gate.
+
+### Step U13b — Orchestration prose: ladder and checkpoint wording (items b, c, d, g, and h's pointer)
+
+Recommended model: sonnet. Sensitive: yes (`agents/`, `tests/validate.sh`).
+Depends on: U13a (wave order only; no shared file).
+Affected files: `agents/orchestrator.md`, `agents/task-master.md`,
+`agents/spec-master.md`, the orchestrator ports
+`adapters/codex/agents/orchestrator.toml` (~110) and
+`adapters/cursor/agents/orchestrator.md` (~103) (their checkpoint sentence
+gains the progress rule), `.claude/agents/*` (regenerated),
+`tests/persona-prose-pins.test.sh` (new) plus one registration in
+`tests/validate.sh`, `.claude-plugin/plugin.json`, `CHANGELOG.md`.
+The agents/ports edits go in one commit with one bump. The test can be a
+second commit that touches no agents/templates file.
+Edits (the quoted text is the literal target):
+1. (b) "Per-unit model routing" ~469: `On \`EXHAUSTED\`, dispatch nothing:` →
+   `On \`EXHAUSTED\`, dispatch nothing, except a human-chosen (a)/(b) re-dispatch from **At the 2-FAIL cap**:`.
+2. (c) ~466-467: after `--contract <contract file>` insert
+   `(the contract of record, never a fix contract: a fix contract can score back onto \`haiku\`)`.
+3. (d) "Contract-score guard" ~485-495, after the guard-demotion ledger
+   sentence: `\`reason=no-contract\` is a guard demotion too (CONTEXT.md **guard demotion**): tell the user in one line that the unit had no contract, and append \`RULING <UTC ISO-8601 timestamp> unit=<task-id> decision=contract-guard sonnet: no-contract\`.`
+   The phrases pinned by `tests/writer-tier-consistency.test.js:210` stay
+   verbatim.
+4. (g) "Cut off" bullet ~656: `or \`STATUS: incomplete\` other than a checkpoint`
+   → `or \`STATUS: incomplete\` other than a task-master or spec-master checkpoint`.
+5. (g) "Dispatch checkpoints" ~508-514, appended:
+   `A checkpoint is progress only if the cited path has a newer commit (\`git log -1 --format=%h -- <path>\`) than at the same persona's previous checkpoint on this plan; otherwise it is not progress: do not re-dispatch, surface it to the user.`
+   The same sentence goes after the checkpoint sentence in both orchestrator
+   ports.
+6. (h) ~433: `"Review ownership" section lists` →
+   `"Review markers and gate mechanics (owner-facing)" section lists`.
+7. (g) `agents/task-master.md` "Flush each unit, checkpoint every 3" ~460-470,
+   appended: `Commit the handoff note with the contract file of the last unit it lists as done, in the same commit.`
+8. (g) `agents/spec-master.md` "Dispatch checkpoints" ~234-241: checkpoint (3)
+   becomes `(3) on the fast path, write and commit each contract file as soon as it is finished; after every 3 contract files in one spawn, with contracts remaining, end with \`STATUS: incomplete — checkpoint: <plan path>\` (the plan's dispatch-section links show which are done).`
+   The "more than 5 steps" condition then applies to (2) only.
+`tests/persona-prose-pins.test.sh` flattens each file (`tr -s ' \n' ' '`)
+and prints `ok|FAIL <file> <phrase>`, exiting 0 only with no FAIL. It
+checks that `agents/orchestrator.md` and `.claude/agents/orchestrator.md`
+each contain the phrases `except a human-chosen (a)/(b) re-dispatch`,
+`the contract of record, never a fix contract`,
+`decision=contract-guard sonnet: no-contract`,
+`other than a task-master or spec-master checkpoint`, `is not progress` and
+`"Review markers and gate mechanics (owner-facing)" section lists`, and do
+not contain `"Review ownership" section lists`. It checks that both
+task-master copies contain `Commit the handoff note with`, that both
+spec-master copies contain `after every 3 contract files`, and that both
+orchestrator ports contain `is not progress`. The checkpoint parity row
+checks that orchestrator, task-master and spec-master (source and mirror)
+all contain `STATUS: incomplete — checkpoint:`.
+
+Acceptance criteria:
+- AC13b.1 `bash tests/persona-prose-pins.test.sh` → exit 0. mutation: delete
+  edit 5's sentence from `agents/orchestrator.md` → a FAIL line, exit 1.
+- AC13b.2 `grep -c 'tests/persona-prose-pins.test.sh' tests/validate.sh` ≥ 1.
+- AC13b.3 `node tests/writer-tier-consistency.test.js` → exit 0.
+- CC-P3, CC-mirror, CC-gate.
+
+### Step U13c — Lead-programmer surface: no spawn language, tools pin (items h, i)
+
+Recommended model: sonnet. Sensitive: yes (`templates/persona-protocol.md`,
+`agents/`). Depends on: U13b (it appends rows to U13b's new test).
+Affected files: `templates/persona-protocol.md` (three sentences), protocol
+ports `adapters/codex/agents-md-fragment.md` and
+`adapters/cursor/rules/persona-protocol.mdc` (the same three),
+`agents/lead-programmer.md` (~79-81), lead-programmer ports
+`adapters/codex/agents/lead-programmer.toml` and
+`adapters/cursor/agents/lead-programmer.md`, `.claude/agents/*.md` and
+`.claude/persona-protocol.md` (regenerated), `tests/persona-prose-pins.test.sh`
+(rows appended), `.claude-plugin/plugin.json`, `CHANGELOG.md`. `bin/cli.js`
+is not touched: the fix is a one-clause exception in the shared text, not a
+matrix change (U5's matrix trims have FAIL history).
+Edits:
+1. Protocol "Structural questions go to the explorer", appended to its first
+   paragraph: `\`lead-programmer\` is the exception: it has no \`Agent\` tool, never spawns the explorer, takes structure from its dispatch's \`## Pre-resolved context\`, and names what is missing in its report.`
+2. Protocol "Reuse over re-derivation": after
+   `spawning the \`explorer\` only to check that claim` insert
+   ` (\`lead-programmer\`, which cannot spawn, names the doubted claim in its report instead)`.
+3. Protocol "Agent-teams mode":
+   `- You CAN spawn foreground subagents; only nested TEAMS are barred.` →
+   `- If your persona has the \`Agent\` tool, you CAN spawn foreground subagents; only nested TEAMS are barred.`
+4. `agents/lead-programmer.md` and both lead-programmer ports: the
+   `Spawn \`researcher\`` bullet → `- **No researcher**: you cannot spawn \`researcher\` and have no WebSearch tool. When a technique is unclear, say so in your report; the orchestrator can dispatch \`researcher\`.`
+5. Both lead-programmer ports: delete the `**Scribe updates (batched,
+   blocking-but-brief)**` bullet (it is absent from `agents/lead-programmer.md`).
+Rows appended to `tests/persona-prose-pins.test.sh`:
+- the `^tools:` line within lines 1-12 of `agents/lead-programmer.md` and of
+  `.claude/agents/lead-programmer.md` exists and does not contain `Agent`
+  (the tools pin);
+- no hits for `Spawn \`researcher\``, `Scribe updates` or
+  `You CAN spawn foreground` in the lead-programmer source, mirror and ports;
+- `.claude/agents/lead-programmer.md` contains
+  `is the exception: it has no` and `If your persona has the`.
+
+Acceptance criteria:
+- AC13c.1 `bash tests/persona-prose-pins.test.sh` → exit 0. mutation: append
+  `, Agent` to the `tools:` line of `agents/lead-programmer.md` → a FAIL line,
+  exit 1.
+- AC13c.2 `node tests/protocol-cross-references.test.js` → exit 0.
+- CC-P3, CC-mirror, CC-parity, CC-gate.
+
 ## Parallelism and waves
 
 ### File map (✱ = sensitive, opus review)
@@ -1106,9 +1501,14 @@ CC-mirror, CC-parity, CC-gate.
 | U8 | ✱`agents/{spec-master,task-master,orchestrator}.md`, ✱mirrors, ✱plugin.json, CHANGELOG | yes |
 | U9 | `bin/ladder-tier.sh`, `bin/escalation-card.sh`, tests, ✱`tests/validate.sh`, ✱`agents/orchestrator.md`, ✱mirror, ✱plugin.json, CHANGELOG | yes |
 | U7a | ✱`hooks/scripts/{reviewed-path,human-decision}-gate.sh`, gate tests, `docs/harness-glossary.md`, CHANGELOG | yes |
-| U7b | ✱`hooks/scripts/lib/benign-command.sh` + ✱adapter copies, harvest script, corpus, audit doc, new test, ✱`tests/validate.sh`, CHANGELOG | yes |
+| U7b | superseded by U7b-1/U7b-2 (H-U7B) | - |
+| U7b-1 | ✱`hooks/scripts/lib/benign-command.sh` + ✱adapter copies, `tests/fixtures/gate-fp-corpus/{positive,negative}.jsonl`, new test, ✱`tests/validate.sh`, CHANGELOG | yes |
+| U7b-2 | `scripts/gate-fp-harvest.py`, its test and synthetic fixtures, `docs/audits/…gate-fp-corpus.md`, ✱`tests/validate.sh`, CHANGELOG | yes |
 | U11 | `docs/audits/…adr0040-forward-rule.md` | **no** (docs) |
 | U12 | ✱`agents/lead-programmer.md`, lead-programmer ports, ✱`agents/orchestrator.md`, ✱plugin.json, CHANGELOG | yes |
+| U13a | `bin/ladder-tier.sh`, `scripts/unit-outcomes.js`, `scripts/token-usage/agg2.py`, their three tests and fixtures, CHANGELOG | yes |
+| U13b | ✱`agents/{orchestrator,task-master,spec-master}.md`, ✱mirrors, orchestrator ports, `tests/persona-prose-pins.test.sh`, ✱`tests/validate.sh`, ✱plugin.json, CHANGELOG | yes |
+| U13c | ✱`templates/persona-protocol.md`, protocol ports, ✱`agents/lead-programmer.md`, lead-programmer ports, ✱mirrors, `tests/persona-prose-pins.test.sh`, ✱plugin.json, CHANGELOG | yes |
 
 ### Disjointness
 
@@ -1116,7 +1516,7 @@ CC-mirror, CC-parity, CC-gate.
   U6 → U5 (`persona-protocol.md`); U5 → U12 (`lead-programmer.md`);
   U3 → U8 (`task-master.md`, `spec-master.md`, `orchestrator.md`, and U8
   needs contract files); U8 → U9 (`orchestrator.md`); U12 also
-  touches `orchestrator.md` and goes after U5 and before U3 (Wave 3); U7a → U7b (gate test files); U0, U2, U9, U7b all
+  touches `orchestrator.md` and goes after U5 and before U3 (Wave 3); U7a → U7b-1 (gate test files) → U7b-2 (compares the libs before and after U7b-1); U13b → U13c (`tests/persona-prose-pins.test.sh`, mirrors); U0, U2, U9, U7b-1, U7b-2, U13b all
   register in `tests/validate.sh` (one line each, rebase-trivial but still
   serial); U1 edits the `tests/validate.sh` wrapper and the others add
   registration lines in other regions, so their order is free (U0 may
@@ -1163,13 +1563,21 @@ renumbered at merge. **Not proposed.** This plan does not weaken that gate.
   plan one wave at a time from now on: that is U8's own rule, applied by hand
   before it lands.
 - **Wave 5:** U9.
-- **Wave 6 (gate surfaces, highest risk last):** U7a → U7b.
+- **Wave 6 (gate surfaces, highest risk last):** U7a → U7b-1 → U7b-2
+  (ruling H-U7B; U7b is superseded).
+- **Wave 7 (cleanup, after everything else):** U13a → U13b → U13c. Then the
+  final before/after measurement runs (U0's `agg.py`/`agg2.py` with U13a's
+  `agg2` window fix, and a fresh `scripts/unit-outcomes.js` export with
+  U13a's contract-file source for NR2).
 - **Any time (ungated):** U11.
 
 Units: **15 dispatchable** (U0, U1, U2, U3, U4a, U4b, U5, U6, U7a, U7b,
 U7c, U8, U9, U11, U12). Of these, 13 are gated lead-programmer units, and
 U4a (scribe) and U11 (docs audit) are ungated. **That is ≥ 6, so this spec
 goes to `task-master`** (standard path).
+Revised 2026-10-16: **19 dispatchable** (U7b replaced by U7b-1 and U7b-2;
+U13a, U13b and U13c added). 17 are gated lead-programmer units; U4a and U11
+stay ungated. Still the standard path.
 
 ## Measurement and no-regression (pre-registered 2026-10-15)
 
@@ -1186,7 +1594,7 @@ dispatches, reviewer ≥ 20, scribe ≥ 10, spec-master ≥ 5, task-master ≥ 3
 | scribe | cumulative median | 1.48M | ≤ 1.0M | U2, U4a |
 | spec-master | cumulative median | 12.0M | ≤ 8M | U1, U4a, U8 |
 | task-master | cumulative median | 38.3M | ≤ 15M | U3, U8 |
-| reviewer / spec-master | gate blocks per dispatch | 1.09 / 3.00 | ≤ 0.6 / ≤ 1.5 | U7a, U7b |
+| reviewer / spec-master | gate blocks per dispatch | 1.09 / 3.00 | ≤ 0.6 / ≤ 1.5 | U7a, U7b-1 |
 
 **No-regression rules** (checked at the milestone audit after each wave; a
 breach sends that wave's units to a milestone-auditor review and becomes a
@@ -1198,7 +1606,7 @@ revert candidate, never an automatic revert):
 - **NR2 contract quality:** the guard-demotion rate over those units is
   ≤ 0.20 (baseline 13/90 = 0.14), and U3's AC3.1 equivalence holds.
 - **NR3 per-unit:** each step's own mutation-proved criteria (the probe lists
-  for U5/U6, set inclusion for U1, the frozen corpora for U7b).
+  for U5/U6, set inclusion for U1, the frozen corpora for U7b-1).
 - **NR4 target miss:** a persona whose target is missed by more than half the
   expected saving at the minimum sample is investigated before the next wave
   that targets the same persona.
@@ -1211,8 +1619,14 @@ revert candidate, never an automatic revert):
   `node bin/cli.js --update` after the bump and commit the regenerated
   mirrors in the same commit.
 - Units touching only `hooks/`, `tests/`, `bin/` (not cli.js) or `scripts/`
-  (U0, U1, U4b, U7a, U7b): a CHANGELOG entry per repo convention. No bump is
-  required by P3.
+  (U0, U1, U4b, U7a, U7b-1, U7b-2, U13a): a CHANGELOG entry per repo
+  convention. No bump is required by P3.
+- Added 2026-10-16: U13b and U13c touch `agents/*.md` (and U13c
+  `templates/persona-protocol.md`), so each bumps `.claude-plugin/plugin.json`,
+  adds a CHANGELOG entry in the same commit and regenerates mirrors after the
+  bump (CC-P3, CC-mirror). U13a splits into one commit per item, U13b's agents
+  commit is separate from its test commit, and every touching commit carries
+  its own bump.
 - Every new test is registered in `tests/validate.sh` (P5), and every unit
   ends on CC-gate.
 
@@ -1237,6 +1651,16 @@ revert candidate, never an automatic revert):
 
 None. Round 1 (four questions, items 1, 10, 11 and 12) was answered on
 2026-10-15; the answers are recorded in Clarifications.
+
+Added 2026-10-16 (non-blocking; the default applies and U7b-2 is
+dispatchable as written):
+1. Should U7b-2 also commit raw harvested commands (redacted), rather than
+   aggregate counts only? Recommended default: **no**, aggregates only, with
+   the examples taken from U7b-1's hand-written files. Options: (a) no,
+   aggregates only (default); (b) yes, a capped sample (at most 50 distinct
+   commands, each at most 300 characters, `$HOME` → `~`, issue numbers and
+   quoted strings replaced by placeholders). Choosing (b) adds a criterion to
+   U7b-2 and needs no new unit. (From CHK22.)
 
 ## Self-check
 
@@ -1290,6 +1714,42 @@ None. Round 1 (four questions, items 1, 10, 11 and 12) was answered on
 - CHK19: Do U4a's criteria compare against the right baseline, given that
   memory indexes change after the plan baseline? — FAIL (conflicting) —
   revised in place: `<pre>` is the parent of U4a's commit
+- CHK20 (2026-10-16): Is the input classified for U7b's AC7b.1 defined, and
+  not circular? — FAIL (missing; task-master SPEC-GAP #562) — revised in
+  place: U7b-1 reads only the frozen hand-written files, and U7b-2's
+  classifier is the lib itself, with a frozen syntactic family rule
+- CHK21: Are the corpus window, cap, dedupe and denominator defined for the
+  share figures? — FAIL (missing) — revised in place: U7b-2 script contract
+  (window, 4,096-character cap, distinct strings, D = classified)
+- CHK22: Is the privacy rule for harvested commands decided, and is it
+  machine-checked? — FAIL (missing) — revised in place (default: aggregates
+  only, proven by the sentinel fixture, `--check-doc` `leaks=0` and AC7b2.6)
+  and converted to Open Question 1 for a possible user override
+- CHK23: Does each F1/F3 positive fail on the pre-U7b-1 lib, so that AC7b1.1
+  is not vacuous? — PASS (AC7b1.2 asserts exactly 13 FAIL lines on the old
+  lib; all 13 commands were probed non-benign at `adb9795`)
+- CHK24: Do premise 12 and U7b-1 agree that F2 is pinned and not changed?
+  — PASS (U7b-1 "Families" and AC7b1.2's count, which excludes F2)
+- CHK25: Do the step list, file map, wave list and unit count agree after the
+  revision? — PASS (19 = the 15 headings minus U7b plus U7b-1, U7b-2,
+  U13a, U13b, U13c; every one has a file-map row; Wave 6 is U7a → U7b-1 →
+  U7b-2 and Wave 7 is U13a → U13b → U13c)
+- CHK26: Do U13b's no-contract ledger line and CONTEXT.md **guard demotion**
+  agree? — PASS (both make no-contract a guard demotion with a ledger line;
+  `decision=contract-guard` is reused, so `writer-tier-consistency` pins hold)
+- CHK27: Do spec-master checkpoint (3) and the ≤ 5-unit fast path agree? —
+  FAIL (conflicting: (3) could never fire) — revised in place: U13b edit 8
+  makes (3) an every-3-contracts flush on the fast path
+- CHK28: Does every U13 item carry a mutation-proved criterion? — PASS
+  (AC13a.1-3, AC13b.1, AC13c.1; (b), (c), (d), (g) and (h) are pinned by
+  `tests/persona-prose-pins.test.sh`, whose mutation is AC13b.1/AC13c.1)
+- CHK29: Do U13b and U13c both bump, and stay serial on their shared test
+  file? — PASS (version obligations, Disjointness)
+- CHK30 (glossary, advisory): Does "handoff note" match the spec-master
+  checkpoint path? — FAIL (conflicting: CONTEXT.md **dispatch checkpoint**
+  says the path is the handoff note, while spec-master cites the plan path) —
+  revised in place: routed to scribe in the update hint (advisory only,
+  never blocking)
 
 
 ## Scribe update hint
@@ -1303,6 +1763,13 @@ At landing, not now:
 - Number and land the draft ADR in Context (contract files). Do not reuse the
   0007 hole: re-derive the next ADR number at landing time.
 - Record U11's audit in ADR-0040's history line (user ruling: record, no change).
+- Added 2026-10-16. At U7b-1 landing: **read-only families** lists F1 and F3
+  as added, with F2 already present (premise 12). At U7b-2 landing:
+  **flipped command** (non-benign under the baseline lib, benign under the new
+  one) in `docs/harness-glossary.md`. At U13b landing: amend CONTEXT.md
+  **dispatch checkpoint** (the spec-master path is the plan doc, not a
+  handoff note, and the progress-only re-dispatch rule) and **guard demotion**
+  (`reason=no-contract` is named explicitly).
 
 ## Publication
 
@@ -1326,3 +1793,8 @@ two, because its new-file payloads exceed the 30000-byte contract budget:
 - Wave 6, U7a part 1 (scribe contract, dispatch FIRST; lands the two glossary terms the lead contract reads): [ptr-u7a.scribe](2026-10-15-persona-token-reduction/contracts/ptr-u7a.scribe.md), issue #561.
 - Wave 6, U7a part 2 (lead contract, dispatched after the scribe contract; no version bump): [ptr-u7a](2026-10-15-persona-token-reduction/contracts/ptr-u7a.md), issue #561.
 - Wave 6, U7b: issue #562 is HELD on a spec gap (classification rule, reproducible corpus, privacy); it has no contract file, see the issue body for the gap and a proposed ruling.
+- Ruling H-U7B (2026-10-16, spec-master): the split is accepted, with changes.
+  U7b is superseded by Step U7b-1 (lib families F1+F3, frozen hand-written
+  positive and negative files, no harvested data) and Step U7b-2 (harvest
+  script, aggregate counts only, sentinel-proved privacy). task-master
+  re-slices #562 as U7b-1 and opens U7b-2, then U13a-U13c for Wave 7.
