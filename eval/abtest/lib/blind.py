@@ -16,11 +16,15 @@ import re
 import secrets
 import sys
 
-PERSONAS = r"orchestrator|spec-master|task-master|lead-programmer|reviewer|scribe|explorer|milestone-auditor|researcher|agent-auditor"
+PERSONAS = r"orchestrator|spec[- ]master|task[- ]master|lead[- ]programmer|reviewer|scribe|explorer|milestone[- ]auditor|researcher|agent[- ]auditor"
 REDACT = [
-    (re.compile(rf"\b(?:{PERSONAS})\b", re.IGNORECASE), "[agent]"),
-    (re.compile(r"^Unit: .*$", re.MULTILINE), "[line removed]"),
-    (re.compile(r"^STATUS: .*$", re.MULTILINE), "[line removed]"),
+    (re.compile(r"\.claude(?:/\S*)?"), "[path]"),
+    (re.compile(r"^.*\b(?:Unit|STATUS):.*$", re.MULTILINE), "[line removed]"),
+    (re.compile(rf"\b(?:{PERSONAS})[A-Za-z]*", re.IGNORECASE), "[agent]"),
+    (re.compile(r"anti-?slop", re.IGNORECASE), "[tool]"),
+    (re.compile(r"\b(?:Arm [AB]|arm-[ab])\b"), "[arm]"),
+    (re.compile(r"\b(?:PASS|FAIL) (?=\S*[A-Za-z])\S*\d\S*"), "[marker]"),
+    (re.compile(r"\((?:#\d+|[A-Za-z]{1,6}\d+)\)"), "(scope)"),
     (re.compile(r"\([A-Za-z0-9]+(?:-[A-Za-z0-9._#]+)+\)"), "(scope)"),
 ]
 DROP = (re.compile(r"\.(pass|fail)$"), re.compile(r"^\.claude/"), re.compile(r"^docs/plans/"))
@@ -33,7 +37,7 @@ def redact(text):
 
 
 def filter_diff(diff):
-    keep, drop = [], False
+    keep = []
     for chunk in re.split(r"(?m)^(?=diff --git )", diff):
         m = re.match(r"diff --git a/(\S+) b/", chunk)
         if m and any(p.search(m.group(1)) for p in DROP):
@@ -46,15 +50,24 @@ def build(rows_path, out, eval_id):
     with open(rows_path) as f:
         rows = [json.loads(l) for l in f if l.strip()]
     rows = [r for r in rows if r["eval_id"] == eval_id and r["completion_status"] != "usage-limit"]
+    if not rows:
+        print(f"blind: no usable runs of {eval_id} in {rows_path}", file=sys.stderr)
+        return 1
     blind_dir = os.path.join(out, "blind")
+    if os.path.exists(os.path.join(out, "sealed-map.json")) or (os.path.isdir(blind_dir) and os.listdir(blind_dir)):
+        print(f"blind: refusing to build into {out}: it already holds a blind set; use a fresh directory", file=sys.stderr)
+        return 1
     os.makedirs(blind_dir, exist_ok=True)
-    sealed, used = {}, set()
+    sealed, items = {}, {}
     for r in rows:
         while True:
             item = secrets.token_hex(4)
-            if item not in used:
-                used.add(item)
+            if item not in items:
+                items[item] = r
                 break
+    # Item directories are created in id order, so their timestamps never show the run order.
+    for item in sorted(items):
+        r = items[item]
         run_dir = os.path.dirname(r["artifacts"]["stream"])
         with open(r["artifacts"]["diff"]) as f:
             diff = filter_diff(f.read())
