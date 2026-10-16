@@ -325,12 +325,16 @@ the subset of `templates/persona-protocol.md`'s 20
   `.claude/persona-protocol.md` exists on disk as the full, untrimmed
   reference copy a trimmed persona can read on demand (reversing the
   earlier `OQ11=DROP` decision, whose premise stopped holding once excerpts
-  were trimmed). See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
+  were trimmed). The canonical section "Review markers and gate mechanics
+  (owner-facing)" (ptr-u5) is the excerpt carried by the personas that own
+  or act on review gating (orchestrator, reviewer, spec-master, task-master,
+  milestone-auditor) and not by lead-programmer, which delivers work rather
+  than gating it. See [protocol-delivery-tiers.md](.claude/wiki/protocol-delivery-tiers.md).
 
 **Protocol tier** (also called **protocol delivery tier**):
 (unit item04-3, 2026-09-26) — which of two canonical files `bin/cli.js`
   inlines into a persona's rendered body at generation time: the **full
-  tier** (`templates/persona-protocol.md`, 685 lines, 20 `## `-delimited sections) or
+  tier** (`templates/persona-protocol.md`, about 895 lines, 20 `## `-delimited sections) or
   the **slim tier** (`templates/persona-protocol-slim.md`, a 90-line, 7-section
   subset). Full-tier personas: `orchestrator`, `lead-programmer`, `reviewer`,
   `spec-master`, `task-master`, `milestone-auditor`. Slim-tier personas

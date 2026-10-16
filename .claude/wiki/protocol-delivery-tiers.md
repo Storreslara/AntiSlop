@@ -19,7 +19,7 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 
 ## The two files
 
-**Full tier** (`templates/persona-protocol.md`): 685 lines
+**Full tier** (`templates/persona-protocol.md`): about 895 lines
 - Target personas: `orchestrator`, `lead-programmer`, `spec-master`, `task-master`, `reviewer`, `milestone-auditor`
 - 20 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Review markers and gate mechanics, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
 
@@ -71,8 +71,9 @@ document regardless of role.
   narrowed its row too, dropping the sections it never executes on (Third
   verdict, Fourth verdict, Microworld bundles, the teammate Write/Edit
   fallback doctrine, and the memory note — orchestrator carries no
-  `memory:` frontmatter). It still carries 14 of the 19 canonical sections,
-  the largest share of any full-tier persona.
+  `memory:` frontmatter). It carried 14 of the 19 canonical sections at that point (15 of the
+  current 20 after ptr-u5 added the owner-facing markers section), the
+  largest share of any full-tier persona.
 - Measured, currently-shipped savings (words dropped from the full
   19-section total, measured directly from the generated
   `.claude/agents/*.md` mirrors against the current
