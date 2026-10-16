@@ -2073,3 +2073,4 @@ two, because its new-file payloads exceed the 30000-byte contract budget:
   SPEC-GAPs in #562 and #563 and the U7a reviewer finding. task-master
   removes the `HELD:` lines from #562 and #563 and writes their contract files
   (U7b-1 first). U13c's issue, when sliced in Wave 7, carries edit 6.
+- Resume 2026-10-16 (task-master): U7b-1 (#562) and U7b-2 (#563) stay HELD, no contract files. Replaying the revised U7b-1 in a scratch clone met a second spec gap: AC7b1.4 and CC-gate cannot pass on any correct F1/F3 implementation, because `tests/harness-integrity-gate.test.sh` (`[U7c]` cd-prefix negative control) and `tests/human-decision-gate.test.sh` (pin `OB-10`) assert commands that F1/F3 now make benign. #563 is held behind #562. See the #562 body for the measured failures and a proposed ruling.
