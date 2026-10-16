@@ -1,4 +1,5 @@
 # spec-master memory techniques — index lines moved from MEMORY.md on 2026-10-15; topic files unchanged
+- [Survey .claude/reviewed without pipes](technique_reviewed_dir_survey_without_pipes.md) — one plain `grep -rl '^FAIL '` per Bash call; any pipe/wc/ls/`;` on the same line is BLOCKED by reviewed-path-gate.
 - [Finish interrupted plan docs by ref-sweep](technique_plan_doc_reference_sweep.md) — a cut-off session leaves dangling "see R13"/"see CHK25"; diff refs vs defs mechanically before calling a doc FINAL.
 - [ClaudeVoice design tokens](reference_claudevoice_design_tokens.md) — sibling repo's Gruvbox Material palette/scale/font stack and exactly which files hold them.
 - [Claude transcript store](reference_claude_transcript_store.md) — agent activity is ALREADY on disk under ~/.claude/projects/; also: hook payloads carry caller `agent_type` but NOT spawnDepth/parentAgentId.
