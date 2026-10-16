@@ -16,3 +16,4 @@
 - [Archive](ARCHIVE.md) — closed-plan and project notes; grep it before concluding none exists
 - [ptr-u7c completion](project_ptr_u7c_completion.md) — PASS cb62b9c closed #551; orchestrator.md stale 'Bash refused' claim and unpinned default semantics open
 - [ptr-u6 completion](project_ptr_u6_completion.md) — PASS c9313b3 closed #552; probes fixture has no committed consumer, Codex/Cursor port claim overstated
+- [ptr-u2 completion](project_ptr_u2_completion.md) — PASS 7e619c5 closed #553; anchored _Avoid_ regex misses 3 mid-line lists, whole-read vs 2000-line limit, mirror untested

@@ -3359,3 +3359,6 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **escalation probe list**:
 (unit ptr-u6, 2026-10-15) — the fixture `tests/fixtures/reviewer-escalation-probes.txt`: 22 phrases, one per line, naming directives that moved out of `agents/reviewer.md` into the `## Fourth verdict: escalate-to-human` section of `templates/persona-protocol.md`. Grepping each phrase in that section proves the move dropped nothing. Currently only the unit's acceptance loop reads it; no committed test does, so a later template edit can drop a probed phrase with the lanes gate green.
+
+**grep-first recipe**:
+(unit ptr-u2, 2026-10-16) — the access convention for the two large glossaries (`CONTEXT.md`, `docs/harness-glossary.md`): print the **glossary index** (every term line and every `_Avoid_:` line, with line numbers) via one `grep -nE`, read only the matching entry by line range, and read a whole glossary only when the input matches more than 15 entries. The recipe block sits between `glossary-index:begin`/`end` markers, byte-identical in `skills/ubiquitous-language/SKILL.md` and `agents/scribe.md`. The **glossary index** is the grep output itself, not a file; `tests/glossary-index.test.sh` bounds it at 10% of each glossary's size. Known gap: the `^\s*_Avoid_:` anchor misses avoid clauses that sit mid-line.
