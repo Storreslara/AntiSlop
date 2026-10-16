@@ -2651,7 +2651,10 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (esc-left-3, esc-left-4, 2026-10-04) — a `blocked` row named `OB-<n>` in
   `tests/human-decision-gate.test.sh` that pins one real command the
   esc-left-3 predicate denies although it writes nothing to DECISION.
-  There are 14 (OB-1 to OB-14), each with a one-line reason: mostly
+  There are 15 (OB-1 to OB-15), each with a one-line reason; all pin
+  `blocked` except OB-10, which ptr-u7b-1 turned into an allowed pin once
+  the read-only families covered it (OB-15, a `tee` write, is new and
+  blocked). Mostly
   heredoc or backslash text that fails the lexer so the raw scan reads
   every metacharacter as live, plus unquoted `adapters/*/agents/*`-style
   globs that name both tokens while the surrounding segment is not
@@ -2662,6 +2665,26 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
   defect. The reviewer's own rebuilt corpus gave 14
   new denials, the 14th an over-block that is not a write; still under the
   cap.
+
+**read-only families (F1/F3)**:
+(ptr-u7b-1, 2026-10-16) — the two families of benign Bash segments that
+  `hooks/scripts/lib/benign-command.sh` now allows without a prompt: F1,
+  read-only programs (`program_allowed` gains `du`, `cut`, `tr`, `nl`) and
+  F3, a plain `cd` / `sort` / `uniq` / `jq` segment checked by its own
+  helper (`cd_segment_allowed` and siblings, sharing `segment_is_plain`).
+  F2 is unchanged. Known residuals, recorded not fixed: a lone `cd` into a
+  protected dir is allowed, the later relative-path write in a separate
+  Bash call being the [[documented residual]] (`reviewed-path-gate.sh`
+  line 37); `segment_is_plain` does not block the extended-glob openers
+  `@(`, `+(`, `!(`, inert unless `extglob` is on. See [[frozen corpus]].
+
+**frozen corpus**:
+(ptr-u7b-1, 2026-10-16) — a committed, never-regenerated JSONL of real
+  commands used to measure a gate's false-positive rate:
+  `tests/fixtures/gate-fp-corpus/positive.jsonl` (16 must-allow) and
+  `negative.jsonl` (20 must-block), run by
+  `tests/benign-command-families.test.sh`. Unlike the machine-local corpus
+  of a [[differential sweep]], it is stable, so the test is repeatable.
 
 **differential sweep**:
 (esc-left-3, esc-left-4, 2026-10-04) — running an old and a new gate over
