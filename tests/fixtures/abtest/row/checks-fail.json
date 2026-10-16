@@ -1,0 +1,1 @@
+[{"id":"hold-a","kind":"defect","required":true,"cmd":"x","exit":0,"pass":true},{"id":"hold-b","kind":"security","required":true,"cmd":"z","exit":1,"pass":false}]
