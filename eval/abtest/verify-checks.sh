@@ -2,10 +2,11 @@
 # Non-vacuity proof for the holdout checks (spec C2.1, C2.2).
 # Usage: verify-checks.sh --all | EVAL_ID
 # For each fixture: two builds agree on the baseline sha; on the baseline at
-# least one required check fails; after applying reference.patch every
-# required check passes; no check.sh names a fixture or run path. The patch is
-# applied with --recount because a contract payload turns a context line that
-# holds one space into an empty line.
+# least one required check fails; after applying the reference (reference.patch,
+# or every reference.d/*.patch in name order, one commit each) every patch
+# applies and every required check passes; no check.sh names a fixture or run
+# path. Patches are applied with --recount because a contract payload turns a
+# context line that holds one space into an empty line.
 # Env: ABT_FIXTURES_DIR, ABT_CHECKS_ROOT override the default directories.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,7 +34,7 @@ bad=0
 # count commits). Patches go in with --recount because a contract payload turns
 # a context line that holds one space into an empty line.
 apply_reference() {
-  local fx="$1" repo="$2" p
+  local fx="$1" repo="$2" p LC_ALL=C
   local -a patches
   if [ -d "$fx/reference.d" ]; then patches=("$fx"/reference.d/*.patch); else patches=("$fx/reference.patch"); fi
   for p in "${patches[@]}"; do
@@ -63,11 +64,14 @@ for id in "${ids[@]}"; do
   fi
   base_json="$(bash "$ck/check.sh" "$T/$id-a" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r base_fail base_total < <(rows "$base_json")
-  apply_reference "$fx" "$T/$id-b" || echo "verify: $id reference did not apply"
+  if ! apply_reference "$fx" "$T/$id-b"; then
+    echo "verify: $id reference did not apply"; bad=1; continue
+  fi
   ref_json="$(bash "$ck/check.sh" "$T/$id-b" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r ref_fail ref_total < <(rows "$ref_json")
   echo "verify: $id baseline-required-failures=$base_fail/$base_total reference-required-failures=$ref_fail/$ref_total"
   [[ "$base_fail" =~ ^[0-9]+$ && "$base_total" =~ ^[0-9]+$ && "$ref_fail" =~ ^[0-9]+$ && "$ref_total" =~ ^[0-9]+$ ]] || { echo "verify: $id check.sh printed no valid JSON checks"; bad=1; continue; }
+  [ "$ref_total" -eq "$base_total" ] || { echo "verify: $id reference ran $ref_total required checks, baseline $base_total"; bad=1; continue; }
   if [ "$base_total" -eq 0 ] || [ "$base_fail" -lt 1 ] || [ "$ref_fail" -ne 0 ]; then
     bad=1
   fi

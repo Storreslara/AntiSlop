@@ -64,6 +64,63 @@ printf '#!/usr/bin/env bash\n. "$ABT_CHECKS_LIB"\nabt_init "$1" "$2" "$3" "$4"\n
 out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-upper 2>/dev/null)"; rc=$?
 check "a check.sh with an uppercase required value is rejected" "$rc" "1"
 
+cp -r "$SYN/fixtures/syn-series" "$T/fx/syn-half"
+mkdir -p "$T/ck/syn-half"
+grep -v two-commits "$SYN/checks/syn-series/check.sh" > "$T/ck/syn-half/check.sh"
+cat > "$T/fx/syn-half/reference.d/02-extra.patch" << 'EOS'
+--- a/missing.txt
++++ b/missing.txt
+@@ -1 +1 @@
+-x
++y
+EOS
+out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-half 2>/dev/null)"; rc=$?
+check "a series that stops applying midway is rejected" "$rc" "1"
+has "the half-applied series is named" "$out" "syn-half reference did not apply"
+has "a half-applied series never ends ok" "$out" "verify-checks: FAILED"
+
+cp -r "$SYN/fixtures/syn-series" "$T/fx/syn-order"
+mkdir -p "$T/ck/syn-order"
+cat > "$T/fx/syn-order/reference.d/02-extra.patch" << 'EOS'
+--- a/answer.txt
++++ b/answer.txt
+@@ -1 +1 @@
+-2
++3
+EOS
+cat > "$T/ck/syn-order/check.sh" << 'EOS'
+#!/usr/bin/env bash
+. "${ABT_CHECKS_LIB:-$(dirname "$0")/../lib.sh}"
+abt_init "$1" "$2" "$3" "$4"
+abt_check answer-is-three defect true 'grep -qx 3 answer.txt'
+abt_check_scope scope-outside-allowed true
+abt_emit
+EOS
+out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-order 2>/dev/null)"; rc=$?
+check "a series whose second patch needs the first applies in name order" "$rc" "0"
+has "the ordered series passes every required check" "$out" "verify: syn-order baseline-required-failures=1/2 reference-required-failures=0/2"
+
+cp -r "$SYN/fixtures/syn-ok" "$T/fx/syn-empty"
+cp -r "$SYN/checks/syn-ok" "$T/ck/syn-empty"
+mkdir "$T/fx/syn-empty/reference.d"
+out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-empty 2>/dev/null)"; rc=$?
+check "an empty reference.d is rejected" "$rc" "1"
+has "the empty series is named" "$out" "syn-empty reference did not apply"
+
+cp -r "$SYN/fixtures/syn-series" "$T/fx/syn-count"
+mkdir -p "$T/ck/syn-count"
+cat > "$T/ck/syn-count/check.sh" << 'EOS'
+#!/usr/bin/env bash
+. "${ABT_CHECKS_LIB:-$(dirname "$0")/../lib.sh}"
+abt_init "$1" "$2" "$3" "$4"
+abt_check answer-is-two defect true 'grep -qx 2 answer.txt'
+[ -f "$1/extra.txt" ] || abt_check extra-file-exists defect true 'test -f extra.txt'
+abt_emit
+EOS
+out="$(ABT_FIXTURES_DIR="$T/fx" ABT_CHECKS_ROOT="$T/ck" bash "$VERIFY" syn-count 2>/dev/null)"; rc=$?
+check "a reference that runs fewer required checks than the baseline is rejected" "$rc" "1"
+has "the check-count mismatch is named" "$out" "syn-count reference ran 1 required checks, baseline 2"
+
 # lib.sh: run checks against a hand-built tree.
 R="$T/repo"
 ABT_REPO_ROOT="$REPO_ROOT" bash "$SYN/fixtures/syn-ok/build.sh" "$R" > "$T/sha"
