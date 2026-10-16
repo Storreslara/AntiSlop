@@ -1324,3 +1324,5 @@ two, because its new-file payloads exceed the 30000-byte contract budget:
 - U9 part 1 (scripts, test, registration): [ptr-u9a](2026-10-15-persona-token-reduction/contracts/ptr-u9a.md), issue #559.
 - U9 part 2 (orchestrator routing section, version 0.31.179): [ptr-u9b](2026-10-15-persona-token-reduction/contracts/ptr-u9b.md), issue #560.
 - Wave 6, U7a part 1 (scribe contract, dispatch FIRST; lands the two glossary terms the lead contract reads): [ptr-u7a.scribe](2026-10-15-persona-token-reduction/contracts/ptr-u7a.scribe.md), issue #561.
+- Wave 6, U7a part 2 (lead contract, dispatched after the scribe contract; no version bump): [ptr-u7a](2026-10-15-persona-token-reduction/contracts/ptr-u7a.md), issue #561.
+- Wave 6, U7b: issue #562 is HELD on a spec gap (classification rule, reproducible corpus, privacy); it has no contract file, see the issue body for the gap and a proposed ruling.
