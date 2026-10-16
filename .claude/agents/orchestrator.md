@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.176 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.177 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -50,8 +50,9 @@ and the task-id as explicit inputs. These inputs are not interchangeable — the
 so the task-id cannot be derived from the issue number.
 If task-master is present and wrote a scribe dispatch contract for the unit,
 the orchestrator **passes the scribe dispatch contract** (if scribe is
-present) as written: the tilde-fenced block under the issue body's `##
-Dispatch contract (scribe)` heading, sent together with the three
+present) as written: its contract file (for a unit sliced before contract
+files, the tilde-fenced block under the issue body's `##
+Dispatch contract (scribe)` heading), sent together with the three
 post-PASS inputs (digest, issue number, task-id); under review gating off, it
 first replaces
 `<PASS-VERDICT-LINE>` with the reviewer's verbatim PASS verdict line.
@@ -110,9 +111,12 @@ before routing it.
 
 ## Dispatch hygiene
 1. **Artifact, not argument.** Cite the finalized artifact by `docs/plans/`
-   path or issue id (retrieval contract) — never the interrogation trail.
+   path or issue id (retrieval contract), and a unit's dispatch contract by its
+   contract file, `docs/plans/<plan-slug>/contracts/<unit-id>.md` — never the
+   interrogation trail, and never the contract body pasted.
 2. **One brief, many siblings.** Sibling units from the same spec cite one
-   artifact path; never re-derive or re-paste shared source per unit.
+   artifact path, each adding its own contract file path; never re-derive or
+   re-paste shared source per unit.
 3. **`Unit: <id>` first line.** Every dispatch to a gated agent opens with
    `Unit: <task-id>` as its literal first line — the id the reviewer uses for
    `.claude/reviewed/<task-id>.pass`. `dispatch-hygiene.sh` reads only that
@@ -516,10 +520,12 @@ default tier: `sonnet`, `sonnet`, `opus`, `opus` when the default tier is
 
 **Contract-score guard.** When the ladder above starts at `haiku`, run the
 guard before every dispatch of the unit: `node bin/contract-guard.js
-<plan-file> --unit=<task-id>` on the fast path (the `docs/plans/` file the
-dispatch cites), or the retrieval contract's `gh issue view <N>` command with
-`--json body -q .body` piped into `node bin/contract-guard.js - --unit=<task-id>`
-on the standard path. Unless it exits 0 and its first stdout line starts with
+docs/plans/<plan-slug>/contracts/<unit-id>.md --unit=<task-id>` on both paths
+(the contract file the dispatch cites). A unit sliced before contract files is
+scored from its plan file (`node bin/contract-guard.js <plan-file>
+--unit=<task-id>`, the fast path) or from the retrieval contract's
+`gh issue view <N>` command with `--json body -q .body` piped into
+`node bin/contract-guard.js - --unit=<task-id>` (the standard path). Unless it exits 0 and its first stdout line starts with
 `contract-guard: haiku `, the unit uses the ladder that starts at `sonnet`
 (`sonnet`, `sonnet`, `opus`, `opus`, so ladder exhaustion comes at n = 4): a
 **guard demotion**. A contract held in no file or issue body, a missing script

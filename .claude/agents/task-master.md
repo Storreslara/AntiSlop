@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.176 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.177 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -60,20 +60,25 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   always get serial `Depends on` edges, because each sets HEAD + 1. The slice
   report includes an intersection table with columns `unit | shared files |
   depends on`, one row per unit, shared files as backticked paths or `none`.
-- **Contract home and precedence.** On the standard path the contract lives
-  in the issue body under `## Dispatch contract`, as one fenced block
-  whose first interior line is `Unit: <task-id>`. The contracts go last in the
-  body, the lead contract first and the scribe contract (if any) after it,
-  under its own heading (see **Scribe dispatch contract**). Use a tilde fence longer
-  than any fence inside the contract (`~~~~` around `~~~` payloads):
-  `bin/contract-guard.js` finds a contract only as such a block, so an
-  unfenced contract after the issue's prose scores `reason=no-contract`, a
-  guard demotion to `sonnet`. See the issue-body example below. On the fast
-  path spec-master writes it, and task-master never runs the fast path;
-  there it lives in the plan's fenced `Unit:` block, fenced the same way.
-  For the implementer the contract outranks the issue
-  prose, which outranks the plan. A conflict between them is a spec gap:
-  STOP.
+- **Contract home and precedence.** Every dispatch contract, lead or scribe
+  shape, is written to its **contract file**,
+  `docs/plans/<plan-slug>/contracts/<unit-id>.md`. Line 1 is `Unit: <task-id>`;
+  the file is unfenced and holds nothing but the contract (**Scribe dispatch
+  contract** gives the scribe shape). You commit it before the unit is
+  dispatched, with a subject scoped to the plan and never to the unit-id
+  (`docs(<plan-slug>): contract file <unit-id> (#<issue>)`), because a unit's
+  own commits are listed by its unit-id scope. The tracker issue body ends with
+  the line `Contract file: <path>` and holds no copy; a copy anywhere else is a
+  spec gap. The dispatch's retrieval line cites the path, never the body. Score
+  it with `node bin/contract-guard.js
+  docs/plans/<plan-slug>/contracts/<unit-id>.md --unit=<task-id>`. A unit
+  sliced before contract files keeps its fenced block in the issue body (the
+  legacy layout below) and is scored with the `gh issue view` form. On the fast
+  path spec-master writes the file, and task-master never runs the fast path.
+  The implementer reads the contract file, plus a plan section only when its
+  Pre-resolved context names one by heading. For the implementer the contract
+  outranks the issue prose, which outranks the plan. A conflict between them is
+  a spec gap: STOP.
 - **Partial slice on a spec gap.** Units already published stay. The gap unit
   and everything transitively depending on it are filed as held: the issue
   body's first line is `HELD: <reason>`, and a held unit is never dispatched
@@ -325,8 +330,10 @@ If any instruction cannot be followed exactly as written, STOP and report a spec
 <!-- lead-contract-example:end -->
 
 **Issue-body layout.** A published unit's issue body keeps its prose first and
-the contracts last, fenced, the lead contract and then the scribe contract (if
-any); `tests/contract-examples.test.js` substitutes the
+ends with the line `Contract file: docs/plans/<plan-slug>/contracts/<unit-id>.md`,
+with no copy of the contract. The layout below, with the contracts fenced in the
+body, is the legacy form for units sliced before contract files;
+`tests/contract-examples.test.js` substitutes the
 lead example above for the placeholder line and runs `bin/contract-guard.js`
 over the result.
 
@@ -361,9 +368,10 @@ verbatim PASS line), `## Do NOT touch`, `## Acceptance criteria` (items as in
 the lead contract) and `## Escalation`. A contract that edits
 `docs/harness-glossary.md` or `CONTEXT.md` also runs
 `node tests/context-glossary-links.test.js` and
-`node tests/ubiquitous-language.test.js`. In the issue body it sits under the
-heading `## Dispatch contract (scribe)`, exactly, fenced the same way as the
-lead contract. Score it with
+`node tests/ubiquitous-language.test.js`. It is written to the contract file
+of its own `Unit:` id, like the lead contract; in the legacy issue-body form it
+sits under the heading `## Dispatch contract (scribe)`, exactly, fenced the same
+way as the lead contract. Score it with
 `node bin/contract-score.js --rubric=v2 --shape=scribe <contract>` and
 require `"score":7`.
 

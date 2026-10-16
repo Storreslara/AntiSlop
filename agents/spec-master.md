@@ -217,8 +217,11 @@ clarify intent is fine.
   five or fewer independently-grabbable units, emit the nine-element dispatch
   contract for each unit directly (`Unit: <task-id>`, `## Objective`,
   `## Retrieval`, `## Affected files`, `## Ordered edits`, `## Do NOT touch`,
-  `## Acceptance criteria`, `## Pre-resolved context`, `## Escalation`), and
-  the orchestrator dispatches from the `docs/plans/` document. You never run
+  `## Acceptance criteria`, `## Pre-resolved context`, `## Escalation`) into
+  its contract file `docs/plans/<plan-slug>/contracts/<unit-id>.md` (line 1
+  `Unit: <task-id>`, unfenced, nothing else in the file), commit each file
+  before dispatch, and keep only a link to it in the plan's dispatch section,
+  never a copy; the orchestrator dispatches from the contract file. You never run
   `pathfinder` on any path (ADR-0003 preserved); on the fast path no tracker
   issue exists, the retrieval contract points at the `docs/plans/` path, and
   `scribe`'s issue-closing duty correctly does not fire (it requires an issue
