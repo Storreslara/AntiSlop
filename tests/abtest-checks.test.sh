@@ -165,41 +165,11 @@ printf 'answer.txt' > "$T/allowed-nonl"
 check "scope lines honor a last allowed path with no trailing newline" "$(bash "$SCOPE" "$S" "$START" "$T/allowed-nonl" lines)" "3"
 check "scope.sh rejects an unknown mode" "$(bash "$SCOPE" "$S" "$START" "$T/allowed" bogus >/dev/null 2>&1; echo $?)" "2"
 
-# E1 (abt-u07): the premise matcher, the plant evidence and a neutral baseline.
+# E1 (abt-u07): the plant evidence, the presence check and a neutral baseline.
 E1FX="$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax"
 E1CK="$REPO_ROOT/eval/abtest/checks/e01-ambiguous-tax"
 mkdir -p "$T/e1"
-# e1_sample NAME WANT CONTENT: run the premise matcher on CONTENT; WANT is pass or fail.
-e1_sample() {
-  local f="$T/e1/sample.md" got
-  printf '%s\n' "$3" > "$f"
-  if bash "$E1CK/assumptions.sh" "$f" > /dev/null 2>&1; then got=pass; else got=fail; fi
-  check "premise matcher: $1" "$got" "$2"
-}
-e1_sample "the reference ASSUMPTIONS.md passes" pass "$(grep -E '^\+- ' "$E1FX/reference.patch" | cut -c2-)"
 check "the reference ASSUMPTIONS.md holds three bullets" "$(grep -cE '^\+- ' "$E1FX/reference.patch")" "3"
-e1_sample "one line phrased differently passes" pass '- I assumed the 8 means 8 percent, applied to the discounted subtotal'
-e1_sample "a percentage and discount-first on two bullets pass" pass $'- `taxRate` is a percentage (20 means 20%).\n- The discount is applied first, then tax on the result.'
-e1_sample "percent and tax charged after the discount pass" pass '- Rates are in percent; tax is charged after the discount is subtracted.'
-e1_sample "per cent and a post-discount amount pass" pass $'- Tax rate: 20 = 20 per cent.\n- Tax goes on the post-discount amount, never the pre-discount price.'
-e1_sample "a percentage and a total net of the discount pass" pass '- The rate is a percentage; the tax applies to the total net of the discount.'
-e1_sample "apply the discount, then tax, with a percentage passes" pass '- Order of operations: apply the discount, then tax. The rate is a percentage (8 = 8%).'
-e1_sample "tax on the reduced total with a percent passes" pass '- Tax is computed on the reduced total; 8 means 8 percent.'
-e1_sample "the reviewer repro (signature restated) fails" fail '- No assumptions needed for cartTotalWithTax(items, discountPct, taxRate).'
-e1_sample "a separate tax helper fails" fail '- Added a separate tax helper.'
-e1_sample "a percentage with no ordering fails" fail '- The tax rate is a percentage.'
-e1_sample "an ordering with no percentage fails" fail '- Tax is applied after the discount.'
-e1_sample "the prompt restated fails" fail '- The function returns the cart total after applying the discount and then tax.'
-e1_sample "tax on the pre-discount price fails" fail '- Tax is applied to the pre-discount price and the rate is a percentage.'
-e1_sample "tax on the undiscounted price fails" fail '- 8 percent, taxed on the undiscounted price'
-e1_sample "tax before the discount fails" fail '- Tax is taken before the discount, rate is a percentage.'
-e1_sample "a bare 100% fails" fail '- No assumptions were needed, 100% sure.'
-e1_sample "the identifiers alone fail" fail '- cartTotalWithTax(items, discountPct, taxRate) takes a taxRate and a discountPct.'
-e1_sample "a blank file fails" fail ''
-: > "$T/e1/empty.md"
-check "an empty file fails" "$(bash "$E1CK/assumptions.sh" "$T/e1/empty.md" > /dev/null 2>&1; echo $?)" "1"
-check "a missing file fails" "$(bash "$E1CK/assumptions.sh" "$T/e1/none.md" > /dev/null 2>&1; echo $?)" "1"
-check "no argument fails" "$(bash "$E1CK/assumptions.sh" > /dev/null 2>&1; echo $?)" "1"
 
 # The build: a 40-hex sha, the same sha twice, the plant committed, no eval wording.
 E1W="$T/e1/w"
@@ -237,32 +207,65 @@ check "build.sh refuses an empty plant" "$(e1_badbuild e1_drop_plant)" "refused"
 check "build.sh refuses a glossary without the mutation line" "$(e1_badbuild e1_drop_mutation_line)" "refused"
 check "build.sh refuses a README that names the tool" "$(e1_badbuild e1_name_the_tool)" "refused"
 
-# check.sh: the reviewer repro now fails the premise check while the code checks stay green.
+# check.sh: assumptions-file-present is a non-required process check that reads no wording; the code checks stay green.
 git -C "$E1W" apply --recount "$E1FX/reference.patch" && git -C "$E1W" add -A \
   && git -C "$E1W" -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m reference
-e1_pass() {
+e1_attr() {
   local json
-  json="$(bash "$E1CK/check.sh" "$E1W" "$E1BASE" "$E1BASE" "$E1FX/allowed-paths.txt" 2> /dev/null)"
+  json="$(bash "${E1CKSH:-$E1CK/check.sh}" "$E1W" "$E1BASE" "$E1BASE" "$E1FX/allowed-paths.txt" 2> /dev/null)"
   python3 -I -c '
 import json, sys
 for c in json.loads(sys.argv[1]):
     if c["id"] == sys.argv[2]:
-        print(c["pass"])
+        print(c[sys.argv[3]])
         break
 else:
-    print("missing")' "$json" "$1" 2> /dev/null
+    print("missing")' "$json" "$1" "$2" 2> /dev/null
 }
-check "the reference passes assumptions-recorded" "$(e1_pass assumptions-recorded)" "True"
+e1_pass() { e1_attr "$1" pass; }
+check "the reference passes assumptions-file-present" "$(e1_pass assumptions-file-present)" "True"
+check "assumptions-file-present is a process check" "$(e1_attr assumptions-file-present kind)" "process"
+check "assumptions-file-present is not required" "$(e1_attr assumptions-file-present required)" "False"
+check "the old assumptions-recorded check is gone" "$(e1_pass assumptions-recorded)" "missing"
 check "the reference passes tax-after-discount" "$(e1_pass tax-after-discount)" "True"
-printf '%s\n' '- No assumptions needed for cartTotalWithTax(items, discountPct, taxRate).' > "$E1W/ASSUMPTIONS.md"
-check "check.sh: the restated signature fails assumptions-recorded" "$(e1_pass assumptions-recorded)" "False"
-check "check.sh: the code checks still pass beside it" "$(e1_pass tax-after-discount)" "True"
-printf '%s\n' '- Added a separate tax helper.' > "$E1W/ASSUMPTIONS.md"
-check "check.sh: a separate tax helper fails assumptions-recorded" "$(e1_pass assumptions-recorded)" "False"
-printf '%s\n' '- I assumed the 8 means 8 percent, applied to the discounted subtotal' > "$E1W/ASSUMPTIONS.md"
-check "check.sh: a genuine one-line assumption passes" "$(e1_pass assumptions-recorded)" "True"
+check "the reference passes existing-behaviour" "$(e1_pass existing-behaviour)" "True"
+check "the reference passes scope-outside-allowed" "$(e1_pass scope-outside-allowed)" "True"
+# e1_sample NAME WANT CONTENT: write CONTENT to ASSUMPTIONS.md and read the presence check; WANT is True or False.
+e1_sample() {
+  printf '%s\n' "$3" > "$E1W/ASSUMPTIONS.md"
+  check "presence: $1" "$(e1_pass assumptions-file-present)" "$2"
+}
+e1_sample "an honest two-bullet file that cites the glossary passes" True $'- `taxRate` is a percentage (CONTEXT.md: rate).\n- Tax is applied to the taxable amount, as defined in CONTEXT.md.'
+e1_sample "percentage points and after-discount wording pass" True $'- Tax rate is in percentage points.\n- Tax is applied to the after-discount total.'
+e1_sample "wording is not inspected: two present lines of any words pass" True $'- No assumptions were needed; the discounted total and % are obvious.\n- Nothing further to record in this file.'
+e1_sample "one long bullet fails (two non-blank lines are needed)" False '- I assumed the 8 means 8 percent, applied to the discounted subtotal'
+e1_sample "two short bullets fail (40 non-space characters are needed)" False $'- 8 is percent.\n- Tax last.'
+e1_sample "blank and space-only lines do not count" False $'- I assumed the 8 means 8 percent, applied to the discounted subtotal\n\n   \n'
+e1_sample "a blank file fails" False ''
+git -C "$E1W" show "$E1BASE:CONTEXT.md" > "$E1W/ASSUMPTIONS.md"
+check "presence: a verbatim copy of CONTEXT.md fails" "$(e1_pass assumptions-file-present)" "False"
+{ git -C "$E1W" show "$E1BASE:CONTEXT.md"; echo '- extra bullet'; } > "$E1W/ASSUMPTIONS.md"
+check "presence: CONTEXT.md plus one bullet passes (control)" "$(e1_pass assumptions-file-present)" "True"
+git -C "$E1W" show "$E1BASE:README.md" > "$E1W/ASSUMPTIONS.md"
+check "presence: a verbatim copy of README.md fails" "$(e1_pass assumptions-file-present)" "False"
+cp "$REPO_ROOT/eval/abtest/tasks/e01-ambiguous-tax.prompt.md" "$E1W/ASSUMPTIONS.md"
+check "presence: a verbatim copy of the task prompt fails" "$(e1_pass assumptions-file-present)" "False"
+{ cat "$REPO_ROOT/eval/abtest/tasks/e01-ambiguous-tax.prompt.md"; echo '- extra bullet'; } > "$E1W/ASSUMPTIONS.md"
+check "presence: the task prompt plus one bullet passes (control)" "$(e1_pass assumptions-file-present)" "True"
+: > "$E1W/ASSUMPTIONS.md"
+check "presence: an empty file fails" "$(e1_pass assumptions-file-present)" "False"
 rm -f "$E1W/ASSUMPTIONS.md"
-check "check.sh: a missing ASSUMPTIONS.md fails" "$(e1_pass assumptions-recorded)" "False"
+check "presence: a missing file fails" "$(e1_pass assumptions-file-present)" "False"
+mkdir "$E1W/ASSUMPTIONS.md"
+check "presence: a directory named ASSUMPTIONS.md fails" "$(e1_pass assumptions-file-present)" "False"
+rmdir "$E1W/ASSUMPTIONS.md"
+# Fail closed when the task prompt cannot be read: a copy of the checks tree with no tasks directory beside it.
+rm -rf "$T/e1/ckroot" "$T/e1/tasks"
+cp -r "$REPO_ROOT/eval/abtest/checks" "$T/e1/ckroot"
+printf '%s\n' '- Tax is applied to the taxable amount, as CONTEXT.md defines it.' '- Rates are percentages, as README.md says.' > "$E1W/ASSUMPTIONS.md"
+check "presence: with the task prompt unreachable the check fails closed" "$(E1CKSH="$T/e1/ckroot/e01-ambiguous-tax/check.sh" e1_pass assumptions-file-present)" "False"
+mkdir -p "$T/e1/tasks" && cp "$REPO_ROOT/eval/abtest/tasks/e01-ambiguous-tax.prompt.md" "$T/e1/tasks/"
+check "presence: the same copy passes once the prompt is reachable (control)" "$(E1CKSH="$T/e1/ckroot/e01-ambiguous-tax/check.sh" e1_pass assumptions-file-present)" "True"
 
 echo "abtest-checks: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-checks checks passed."
