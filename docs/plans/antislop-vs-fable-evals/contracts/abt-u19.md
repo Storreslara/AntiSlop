@@ -51,30 +51,38 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
    exit: 0
    stdout: `1`
    mutation: skip edit 4; probe.txt does not exist and the exit is 2.
-5. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["arm"]=="B" and x["completion_status"]=="stalled-human"))'`
+5. run: `grep -c '^probe: A root_claude_md=not-loaded$' eval/abtest/.runs/probe.txt`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 4; probe.txt does not exist and the exit is 2.
+6. run: `grep -c '^probe: mention-case ok A=complete B=complete$' eval/abtest/.runs/probe.txt`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 4; probe.txt does not exist and the exit is 2.
+7. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["arm"]=="B" and x["completion_status"]=="stalled-human"))'`
    exit: 0
    stdout: `0`
    mutation: skip edit 5; results.jsonl does not exist and the exit is 1.
    proof: read-only check; a pilot in which an Arm B run stalls prints a number above 0 and the gate fails.
-6. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["completion_status"]=="error"))'`
+8. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["completion_status"]=="error"))'`
    exit: 0
    stdout: `0`
    mutation: skip edit 5; results.jsonl does not exist and the exit is 1.
    proof: read-only check; a pilot with a harness error row prints a number above 0 and the gate fails.
-7. run: `bash eval/abtest/verify-checks.sh --all | tail -n 1`
+9. run: `bash eval/abtest/verify-checks.sh --all | tail -n 1`
    exit: 0
    stdout: `verify-checks: ok`
    mutation: break one reference patch; the last line reads verify-checks: FAILED.
    proof: abt-u04 and the fixture units replayed this: a reference that fails a required check prints FAILED and exits 1.
-8. run: `grep -c '^## Pilot findings' docs/experiments/abtest-2026-10.md`
+10. run: `grep -c '^## Pilot findings' docs/experiments/abtest-2026-10.md`
    exit: 0
    stdout: `1`
    mutation: skip edit 7 (the findings append); stdout 0 and the exit is 1.
-9. run: `git log -1 --format=%s -- docs/experiments/abtest-2026-10.md`
+11. run: `git log -1 --format=%s -- docs/experiments/abtest-2026-10.md`
    exit: 0
    stdout: `docs(abt-u19): pilot findings (#589)`
    mutation: skip edit 8 (the commit); the newest commit on the file is abt-u16's.
-10. run: `git status --porcelain --untracked-files=no -- docs eval tests`
+12. run: `git status --porcelain --untracked-files=no -- docs eval tests`
    exit: 0
    stdout: empty
    mutation: skip edit 8; the findings stay uncommitted and are listed.
@@ -85,9 +93,9 @@ blast-radius: none
 executor: OPERATOR (or the orchestrator on the operator's word). Never dispatch this unit to lead-programmer; it starts commands that use the operator's Max subscription.
 usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset and run the same command again; do not edit results.jsonl by hand.
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
-stop-rule: if criteria 2, 3 or 4 fail, the isolation or flag assumption is wrong: STOP and report the probe-detail lines. If criterion 5 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 10 passes only after edit 8.
+stop-rule: if criteria 2 to 6 fail, the isolation or flag assumption is wrong (a root_claude_md=loaded line means the CLAUDE.md of this repository reached Arm A, a mention-case failure means a reply that mentions rate limits was mistaken for a limit hit or never exercised): STOP and report the probe-detail lines. If criterion 7 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 12 passes only after edit 8.
 cost: about 2 probe runs plus 10 pilot runs; the pilot rows are reused as rep 1 by abt-u20, so do not delete results.jsonl afterwards.
-proof-lines: criteria 5, 6 and 7 are read-only guards; their proof lines say what a failing pilot prints.
+proof-lines: criteria 7, 8 and 9 are read-only guards; their proof lines say what a failing pilot prints.
 commit-message: docs(abt-u19): pilot findings (#589)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 diagnosis: none
@@ -106,6 +114,8 @@ criterion 7: <FILL: exit and stdout>
 criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
