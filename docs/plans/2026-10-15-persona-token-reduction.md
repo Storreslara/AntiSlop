@@ -1322,3 +1322,4 @@ slices it into per-step issues under label `plan/persona-token-reduction`
 `docs/plans/2026-10-15-persona-token-reduction/contracts/`. Wave 5 split U9 in
 two, because its new-file payloads exceed the 30000-byte contract budget:
 - U9 part 1 (scripts, test, registration): [ptr-u9a](2026-10-15-persona-token-reduction/contracts/ptr-u9a.md), issue #559.
+- U9 part 2 (orchestrator routing section, version 0.31.179): [ptr-u9b](2026-10-15-persona-token-reduction/contracts/ptr-u9b.md), issue #560.
