@@ -159,6 +159,11 @@ def fresh(repo, base):
         src, dst = pair.split(':')
         os.makedirs(os.path.dirname(os.path.join(d, dst)) or d, exist_ok=True)
         shutil.copy(src, os.path.join(d, dst))
+    for pre in filter(None, os.environ.get('REPLAY_PRE', '').split(',')):
+        plines = open(pre).read().split('\n')
+        for it in items(section(plines, 'Ordered edits')):
+            if not apply_edit(it, d, []):
+                print('  (pre-contract edit failed: ' + pre + ')')
     return d
 
 
