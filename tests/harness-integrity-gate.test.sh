@@ -1486,14 +1486,20 @@ else
       bad "[U7c] $u7c_g exit $u7c_got on the documented jq read, expected 0"
     fi
   done
-  # Negative control: the same read behind a cd prefix is a compound command, which
-  # the integrity gate refuses. It proves the gate is armed in this fixture.
-  u7c_got="$(u7c_rc hooks/scripts/harness-integrity-gate.sh "cd /tmp; $u7c_cmd")"
-  if [ "$u7c_got" = 2 ]; then
-    pass "[U7c] harness-integrity-gate refuses the cd-prefixed compound form"
-  else
-    bad "[U7c] harness-integrity-gate exit $u7c_got on the cd-prefixed form, expected 2"
-  fi
+  # Behind a cd prefix the lone jq read is benign since F1 and F3 (U7b-1). The two
+  # touch forms stay refused: touch is in no allowlist, and a cd prefix launders no
+  # other segment.
+  u7c_expect() {  # $1 expected exit, $2 prefix, $3 pass label
+    u7c_got="$(u7c_rc hooks/scripts/harness-integrity-gate.sh "$2$u7c_cmd")"
+    if [ "$u7c_got" = "$1" ]; then
+      pass "[U7c] harness-integrity-gate $3"
+    else
+      bad "[U7c] harness-integrity-gate exit $u7c_got behind '$2', expected $1"
+    fi
+  }
+  u7c_expect 0 "cd /tmp; " "allows the cd-prefixed form (F1+F3, U7b-1)"
+  u7c_expect 2 "touch /tmp/u7c-armed; " "refuses the touch-prefixed compound form"
+  u7c_expect 2 "cd /tmp; touch u7c-armed; " "refuses the cd-then-touch compound form"
 fi
 
 echo

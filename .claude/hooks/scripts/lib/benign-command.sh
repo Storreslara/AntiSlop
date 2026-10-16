@@ -38,6 +38,13 @@ program_allowed() {
     ls|cat|head|tail|wc|stat|file|test|'['|grep|diff|cmp) return 0 ;;
     sha256sum|md5sum|basename|dirname|readlink|realpath) return 0 ;;
     echo|printf) return 0 ;;
+    # F1/F3 (ptr-u7b-1): du/cut/tr/nl take no option rule; cd, sort, uniq and jq
+    # go through the allowlist helpers defined below.
+    du|cut|tr|nl) return 0 ;;
+    cd) cd_segment_allowed "$1"; return $? ;;
+    sort) sort_segment_allowed "$1"; return $? ;;
+    uniq) uniq_segment_allowed "$1"; return $? ;;
+    jq) jq_segment_allowed "$1"; return $? ;;
     # `gh` needs a subcommand allowlist of its own: `run`/`release download`
     # write into a directory of their choosing, with no redirection involved.
     # `api` is excluded on the same denylist-fails-open ground as `git`/`rg`
@@ -166,6 +173,91 @@ mask_inert_redirections() {
       rest="$tail"
     fi
   done
+}
+
+# Allowlist helpers for the families F1 and F3 (ptr-u7b-1): each takes the whole
+# REAL segment and returns 0 only if every word is recognised. A quote, `$`, brace
+# or glob can spell an option word a word scan never sees, so sort/uniq refuse them.
+segment_is_plain() {
+  case "$1" in
+    *\'*|*\"*|*'$'*|*'{'*|*'}'*|*'*'*|*'?'*|*'['*|*']'*) return 1 ;;
+  esac
+  return 0
+}
+
+# sort: listed options only, so -o, --output, -T, --compress-program and every
+# abbreviation of them are not benign.
+sort_segment_allowed() {
+  local -a w
+  local i=1 x key='^[0-9]+(\.[0-9]+)?[bdfghiMnRrV]*(,[0-9]+(\.[0-9]+)?[bdfghiMnRrV]*)?$'
+  segment_is_plain "$1" || return 1
+  read -ra w <<< "$1"
+  while [ "$i" -lt "${#w[@]}" ]; do
+    x="${w[i]}"
+    i=$((i + 1))
+    case "$x" in
+      -k) [[ "${w[i]:-}" =~ $key ]] || return 1; i=$((i + 1)) ;;
+      -k*) [[ "${x#-k}" =~ $key ]] || return 1 ;;
+      --key=*) [[ "${x#--key=}" =~ $key ]] || return 1 ;;
+      -t) [[ "${w[i]:-}" =~ ^.$ ]] || return 1; i=$((i + 1)) ;;
+      -t?|--field-separator=?) ;;
+      --reverse|--unique|--numeric-sort|--general-numeric-sort|--human-numeric-sort) ;;
+      --version-sort|--month-sort|--random-sort|--ignore-case|--ignore-leading-blanks) ;;
+      --dictionary-order|--ignore-nonprinting|--stable|--check|--zero-terminated) ;;
+      --*) return 1 ;;
+      -?*) [[ "$x" =~ ^-[bdfghiMnRrsuVcCz]+$ ]] || return 1 ;;
+    esac
+  done
+  return 0
+}
+
+# uniq: listed options only, at most one operand (a second is the output file) and
+# no option word after it (POSIXLY_CORRECT makes it an operand).
+uniq_segment_allowed() {
+  local -a w
+  local i=1 x ops=0 dig='^[0-9]+$' rd='^[0-9]*>(&[0-9]+|/dev/null)$'
+  segment_is_plain "$1" || return 1
+  read -ra w <<< "$1"
+  while [ "$i" -lt "${#w[@]}" ]; do
+    x="${w[i]}"
+    i=$((i + 1))
+    [[ "$x" =~ $rd ]] && continue
+    [ "$ops" = 0 ] || case "$x" in -?*) return 1 ;; esac
+    case "$x" in
+      -f|-s|-w) [[ "${w[i]:-}" =~ $dig ]] || return 1; i=$((i + 1)) ;;
+      -[fsw][0-9]*) [[ "${x:2}" =~ $dig ]] || return 1 ;;
+      --count|--repeated|--unique|--ignore-case|--zero-terminated) ;;
+      --skip-fields=*|--skip-chars=*|--check-chars=*) [[ "${x#*=}" =~ $dig ]] || return 1 ;;
+      --*) return 1 ;;
+      -?*) [[ "$x" =~ ^-[cdDiuz]+$ ]] || return 1 ;;
+      *) ops=$((ops + 1)) ;;
+    esac
+  done
+  [ "$ops" -le 1 ]
+}
+
+# jq: -f / --from-file takes the next word as a program file; benign only for a literal path.
+jq_segment_allowed() {
+  local -a w
+  local i=1 x lit='^[-[:alnum:]_./]+$'
+  read -ra w <<< "$1"
+  while [ "$i" -lt "${#w[@]}" ]; do
+    x="${w[i]}"
+    i=$((i + 1))
+    case "$x" in
+      -f|--from-file|-[!-]*f) [[ "${w[i]:-}" =~ $lit ]] || return 1; i=$((i + 1)) ;;
+    esac
+  done
+  return 0
+}
+
+# F1: a segment that is exactly `cd <plain word>` is benign in any position (cd
+# writes nothing and runs nothing; every other segment is checked on its own).
+cd_segment_allowed() {
+  local -a w
+  read -ra w <<< "$1"
+  [ "${#w[@]}" = 2 ] || return 1
+  [[ "${w[1]}" =~ ^[-[:alnum:]_./~+@%,:=]+$ ]]
 }
 
 # $1 is one REAL (un-skeletonized) segment: the allowlist reads real text, since

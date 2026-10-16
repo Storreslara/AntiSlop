@@ -1076,13 +1076,16 @@ for qpf_row in "${qpf_rows[@]}"; do
 done
 
 echo
-echo "-- accepted over-blocks from the esc-left-3 and qp-1 differential sweeps (OB-1..OB-14) --"
+echo "-- accepted over-blocks from the esc-left-3 and qp-1 differential sweeps (OB-1..OB-15) --"
 # Each JSON line below is one real command from the sweep corpus that the gate
 # before esc-left-3 allowed and this one denies (tests/hdg-differential-sweep.sh,
 # corpus and counts in the esc-left-3 commit message). None writes the protected
 # file; each is the price of a fail-closed rule, named in its reason. OB-14 is
 # from the qp-1 sweep (same tool, gate before qp-1 against qp-1). Pinned
 # `blocked`, so a later narrowing that frees one shows up here.
+# Exception: OB-10 is pinned `allowed` since U7b-1 (F3 makes its cut segment
+# provably benign), and OB-15 is derived from it (cut replaced by tee), not
+# from the sweep corpus.
 ob_reasons=(
   "heredoc fails the lexer; the raw scan reads a code line's quoted brace group holding / as live"
   "unquoted adapters/*/agents/* can name both tokens; the git grep segment is not provably benign"
@@ -1093,11 +1096,12 @@ ob_reasons=(
   "backslash fails the lexer; raw */.git/* names both"
   "heredoc and backslash fail the lexer; raw **/ and **On name both"
   "a dollar-single-quote span fails the lexer; raw adapters/*/agents/* names both"
-  "unquoted adapters/*/rules/* can name both tokens; the cut segment is not provably benign"
+  "freed by F3 (U7b-1): the cut segment is now provably benign"
   "backslash fails the lexer; raw adapters/*/* names both"
   "heredoc fails the lexer; the raw scan reads a code line's single-quoted JSON brace group as live"
   "heredoc fails the lexer; the raw scan reads a code line's single-quoted JSON brace group as live"
   "a sh -c / bash -c payload is scanned live; its scratch path a/h*/D* can name both tokens"
+  "OB-10's shape with cut replaced by tee: unquoted adapters/*/rules/* can name both tokens; the tee segment is not provably benign"
 )
 mapfile -t ob_cmds <<'OBEOF'
 "SC=/tmp/claude-1000/-home-sebas-AntiSlop/7ea80ba2-0d01-42db-863e-631de8a2e87d/scratchpad && rm -rf $SC/mw && mkdir -p $SC/mw && cp -a hooks/scripts $SC/mw/ && G=$SC/mw/scripts/harness-integrity-gate.sh && cp \"$G\" $SC/mw/scripts/mut_a.sh && cp \"$G\" $SC/mw/scripts/mut_b.sh\npython3 - \"$SC/mw/scripts/mut_a.sh\" \"$SC/mw/scripts/mut_b.sh\" <<'PY'\nimport sys\na,b=sys.argv[1],sys.argv[2]\ns=open(a).read()\nold='''  case \"$permission_mode\" in\n    default|plan|auto) ;;\n    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).\n    *) return 1 ;;\n  esac'''\nassert s.count(old)==1\nopen(a,'w').write(s.replace(old,'''  case \"$permission_mode\" in\n    *) ;;\n  esac'''))\nt=open(b).read()\nold2='''    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).'''\nassert t.count(old2)==1\nopen(b,'w').write(t.replace(old2,'''    acceptEdits) ;;'''))\nprint(\"mutants written\")\nPY\necho \"--- sanity: mutants run at all ---\"\nd=\".clau\"\"de\"; FP=$SC/fp\nprintf '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"hooks/hooks.json\"},\"permission_mode\":\"dontAsk\"}' | CLAUDE_PROJECT_DIR=$FP bash $SC/mw/scripts/mut_a.sh >/dev/null 2>&1; echo \"mut_a dontAsk exit=$?\""
@@ -1114,11 +1118,14 @@ mapfile -t ob_cmds <<'OBEOF'
 "mkdir -p /tmp/bash-ask-probe/.claude && cd /tmp/bash-ask-probe && cat > .claude/ask.sh <<'EOS'\n#!/usr/bin/env bash\ncat >/dev/null\nprintf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"probe: approve only if the full heredoc below is visible\"}}\\n'\nEOS\nchmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\ntmux kill-session -t probe-x 2>/dev/null\ntmux new-session -d -s probe-x -x 200 -y 60 -c /tmp/bash-ask-probe \"claude --permission-mode default\"\nsleep 8; tmux capture-pane -p -t probe-x | cat -s | head -50"
 "tmux kill-session -t probe-x; rm -rf /tmp/bash-ask-probe; mkdir -p /tmp/bash-ask-probe/.claude && cd /tmp/bash-ask-probe && cat > .claude/ask.sh <<'EOS'\n#!/usr/bin/env bash\ncat >/dev/null\nprintf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"probe\"}}\\n'\nEOS\nchmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\ntmux new-session -d -s probe-x -x 200 -y 60 -c /tmp/bash-ask-probe \"claude --permission-mode bypassPermissions\"\nsleep 8; tmux capture-pane -p -t probe-x | cat -s | head -30"
 "S=/tmp/claude-1000/-home-sebas-AntiSlop/74132c4b-fe3f-4a87-85fc-d5c06728bf25/scratchpad/shsem; rm -rf $S; mkdir -p $S/a/hdir; cd $S; reset(){ printf ORIG > a/hdir/Dfile; }; \nreset; sh -c 'printf x > a/h*/D*' 2>&1; echo \"dash-redirect: $(cat a/hdir/Dfile)\"; \nreset; bash -c 'printf x > a/h*/D*'; echo \"bash-redirect: $(cat a/hdir/Dfile)\"; \nreset; sh -c 'tee a/h*/D* < /dev/null'; echo \"dash-tee: [$(cat a/hdir/Dfile)]\""
+"grep -n 'both modes\\|reviewer-join' templates/persona-protocol.md README.md agents/*.md adapters/*/agents/* adapters/*/rules/* adapters/codex/agents-md-fragment.md CONTEXT.md docs/adr/0038* commands/gate.md 2>/dev/null | tee /tmp/ob15.out"
 OBEOF
 for ob_i in "${!ob_cmds[@]}"; do
   run "$(jq -n --arg a antislop:reviewer --argjson c "${ob_cmds[ob_i]}" \
     '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')" "$proj"
-  check "OB-$((ob_i + 1)) ${ob_reasons[ob_i]}" blocked
+  ob_verdict=blocked
+  [ "$ob_i" = 9 ] && ob_verdict=allowed
+  check "OB-$((ob_i + 1)) ${ob_reasons[ob_i]}" "$ob_verdict"
 done
 
 echo

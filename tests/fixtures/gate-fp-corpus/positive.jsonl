@@ -1,0 +1,16 @@
+{"family":"F1","cmd":"cd /tmp && ls"}
+{"family":"F1","cmd":"cd docs; wc -l README.md"}
+{"family":"F1","cmd":"cd hooks && grep -c x f 2>/dev/null"}
+{"family":"F2","cmd":"ls 2>&1 | head -5"}
+{"family":"F2","cmd":"grep -c x f 2>/dev/null"}
+{"family":"F2","cmd":"wc -l f >/dev/null"}
+{"family":"F3","cmd":"du -sh ."}
+{"family":"F3","cmd":"sort f"}
+{"family":"F3","cmd":"grep x f | sort | uniq -c"}
+{"family":"F3","cmd":"cut -d: -f1 f"}
+{"family":"F3","cmd":"tr a b < f"}
+{"family":"F3","cmd":"nl f"}
+{"family":"F3","cmd":"jq .a f.json"}
+{"family":"F3","cmd":"jq -r .a f.json 2>/dev/null"}
+{"family":"F3","cmd":"sort -u f | uniq"}
+{"family":"F3","cmd":"uniq -c f"}

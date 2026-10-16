@@ -1,0 +1,20 @@
+{"cmd":"sort -o x y"}
+{"cmd":"sort --output=x y"}
+{"cmd":"uniq a b"}
+{"cmd":"jq . f > g"}
+{"cmd":"cd x && rm -f y"}
+{"cmd":"cd $(pwd) && ls"}
+{"cmd":"ls 2>x"}
+{"cmd":"cut -f1 f >> g"}
+{"cmd":"du -sh . ; touch z"}
+{"cmd":"tr a b < f > g"}
+{"cmd":"sort --ou=x y"}
+{"cmd":"sort --compress-program=sh y"}
+{"cmd":"sort -T d y"}
+{"cmd":"sort -uo x y"}
+{"cmd":"sort '-o' x y"}
+{"cmd":"sort -{o,x} y"}
+{"cmd":"sort -[o] x y"}
+{"cmd":"sort $O x y"}
+{"cmd":"uniq -- -c b"}
+{"cmd":"uniq f -c"}
