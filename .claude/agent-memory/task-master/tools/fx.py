@@ -7,7 +7,7 @@ W = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'wt') + '/'
 rd = lambda p: open(W + p).read()
 
 
-def fixture_unit(unit, issue, eval_id, files, subject, objective, extra_crit, prompt_sha, deps_note, precond='', dont_extra=(), tdd='no fixture and check files; the verifier is the red-then-green check (every required check set must fail on the baseline and pass on baseline plus reference.patch)', extra_ctx=()):
+def fixture_unit(unit, issue, eval_id, files, subject, objective, extra_crit, prompt_sha, deps_note, precond='', ref_path=None, dont_extra=(), tdd='no fixture and check files; the verifier is the red-then-green check (every required check set must fail on the baseline and pass on baseline plus reference.patch)', extra_ctx=()):
     """files: list of repo-relative paths in edit order (all new). extra_crit: list of (run, exit, stdout, mutation_template_or_None, key_path) built by caller as callables (n_of) -> markdown."""
     U, I = unit, issue
     e = Edits()
@@ -17,7 +17,7 @@ def fixture_unit(unit, issue, eval_id, files, subject, objective, extra_crit, pr
     n_commit = e.command(commit_cmd(files, subject), 0)
     crit = ''
     k = 1
-    ref = f'{fx}/reference.patch'
+    ref = ref_path or f'{fx}/reference.patch'
     crit += criterion(k, f'bash eval/abtest/verify-checks.sh {eval_id}', 0, 'verify-checks: ok',
                       f'skip edit {N[ref]} (reference.patch); verify reports reference failures, prints FAILED and exits 1.'); k += 1
     prompt = f'eval/abtest/tasks/{eval_id}.prompt.md'
