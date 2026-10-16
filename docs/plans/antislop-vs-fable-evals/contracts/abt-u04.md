@@ -183,7 +183,9 @@ esac
 # Usage: verify-checks.sh --all | EVAL_ID
 # For each fixture: two builds agree on the baseline sha; on the baseline at
 # least one required check fails; after applying reference.patch every
-# required check passes; no check.sh names a fixture or run path.
+# required check passes; no check.sh names a fixture or run path. The patch is
+# applied with --recount because a contract payload turns a context line that
+# holds one space into an empty line.
 # Env: ABT_FIXTURES_DIR, ABT_CHECKS_ROOT override the default directories.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -227,7 +229,7 @@ for id in "${ids[@]}"; do
   fi
   base_json="$(bash "$ck/check.sh" "$T/$id-a" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r base_fail base_total < <(rows "$base_json")
-  git -C "$T/$id-b" apply "$fx/reference.patch" && git -C "$T/$id-b" add -A \
+  git -C "$T/$id-b" apply --recount "$fx/reference.patch" && git -C "$T/$id-b" add -A \
     && git -C "$T/$id-b" -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m reference
   ref_json="$(bash "$ck/check.sh" "$T/$id-b" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r ref_fail ref_total < <(rows "$ref_json")
