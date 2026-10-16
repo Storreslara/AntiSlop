@@ -23,6 +23,10 @@ LIMIT_RE = re.compile(
     re.IGNORECASE,
 )
 SUBAGENT_TOOLS = ("Agent", "Task")
+LIMIT_TEXT_RE = re.compile(
+    r"(claude ai usage limit reached|usage limit reached|you(?:'|\u2019)ve hit your (?:usage |weekly |5-hour )?limit|5-hour limit reached|weekly limit reached)",
+    re.IGNORECASE,
+)
 
 
 def read_records(path):
@@ -94,7 +98,10 @@ def summarize(path, exit_code, stderr_text, escalated):
     if exit_code != 0 and LIMIT_RE.search(stderr_text):
         limited = True
     if result is None or result.get("is_error"):
-        if LIMIT_RE.search(str((result or {}).get("result", "")) + "\n" + noise):
+        # Only the CLI's own limit phrasing at the start of a text counts; a result that merely
+        # mentions 429 or rate limits (an eval about rate limiting) is an ordinary error.
+        texts = [str((result or {}).get("result", "")).strip()] + [n.strip() for n in noise.split("\n")]
+        if any(LIMIT_TEXT_RE.match(t) for t in texts):
             limited = True
 
     subtype = (result or {}).get("subtype")
