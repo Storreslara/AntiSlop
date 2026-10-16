@@ -14,3 +14,4 @@
 - [Verify each disk sink and field location](feedback_verify_each_disk_sink_and_field_location.md) — gh377-7 FAIL: don't generalize one confirmed write claim to adjacent unverified ones
 - [ptr-u1 completion](project_ptr_u1_completion.md) — PASS 720b542 closed #543; five carry-forward gaps (no EXIT trap, vacuous miss=0, serial gate never run end to end)
 - [Archive](ARCHIVE.md) — closed-plan and project notes; grep it before concluding none exists
+- [ptr-u7c completion](project_ptr_u7c_completion.md) — PASS cb62b9c closed #551; orchestrator.md stale 'Bash refused' claim and unpinned default semantics open
