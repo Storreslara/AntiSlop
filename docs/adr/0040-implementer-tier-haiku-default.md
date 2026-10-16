@@ -117,3 +117,4 @@ implementer, and transcripts are pruned after about 30 days.
   item 5 adds the contract-score guard; the forward-rule population also
   excludes the units the guard kept off `haiku`, which the audit command reads
   from `.claude/orchestrator-rulings.log`. No threshold changed.
+- 2026-10-16 (ptr-u11, `docs/audits/2026-10-15-adr0040-forward-rule.md`): forward-rule audit recorded at `--until=2026-10-15T06:00:00Z`: `met`, n=77 f1=6 f2=2 f6=0, 13 guard demotions excluded, all-units 6/90. Record only by user ruling (2026-10-15); no rule, threshold, config or persona change.
