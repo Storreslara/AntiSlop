@@ -27,6 +27,9 @@ has "the vacuous fixture reports no baseline failure" "$out" "baseline-required-
 out="$(bash "$VERIFY" syn-badref)"; rc=$?
 check "a reference that does not satisfy a check is rejected" "$rc" "1"
 has "the bad reference reports a reference failure" "$out" "reference-required-failures=1/2"
+out="$(bash "$VERIFY" syn-series)"; rc=$?
+check "a reference series applies one commit per patch" "$rc" "0"
+has "the series reference passes every required check" "$out" "verify: syn-series baseline-required-failures=2/3 reference-required-failures=0/3"
 out="$(bash "$VERIFY" --all)"; rc=$?
 check "--all fails when any fixture fails" "$rc" "1"
 

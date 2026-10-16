@@ -28,6 +28,20 @@ T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 bad=0
 
+# apply_reference FIXTURE_DIR REPO: apply reference.patch as one commit, or every
+# reference.d/*.patch in name order as one commit each (for evals whose checks
+# count commits). Patches go in with --recount because a contract payload turns
+# a context line that holds one space into an empty line.
+apply_reference() {
+  local fx="$1" repo="$2" p
+  local -a patches
+  if [ -d "$fx/reference.d" ]; then patches=("$fx"/reference.d/*.patch); else patches=("$fx/reference.patch"); fi
+  for p in "${patches[@]}"; do
+    git -C "$repo" apply --recount "$p" && git -C "$repo" add -A \
+      && git -C "$repo" -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m reference || return 1
+  done
+}
+
 # rows CHECKS_JSON: print "<required failed> <required total>".
 rows() {
   python3 -I -c 'import json,sys;c=[x for x in json.loads(sys.argv[1]) if x["required"]];print(sum(1 for x in c if not x["pass"]),len(c))' "$1"
@@ -36,8 +50,8 @@ rows() {
 for id in "${ids[@]}"; do
   fx="$FIX/$id"
   ck="$CHK/$id"
-  if [ ! -f "$fx/build.sh" ] || [ ! -f "$ck/check.sh" ] || [ ! -f "$fx/reference.patch" ] || [ ! -f "$fx/allowed-paths.txt" ]; then
-    echo "verify: $id missing build.sh, check.sh, reference.patch or allowed-paths.txt"; bad=1; continue
+  if [ ! -f "$fx/build.sh" ] || [ ! -f "$ck/check.sh" ] || { [ ! -f "$fx/reference.patch" ] && [ ! -d "$fx/reference.d" ]; } || [ ! -f "$fx/allowed-paths.txt" ]; then
+    echo "verify: $id missing build.sh, check.sh, reference.patch (or reference.d) or allowed-paths.txt"; bad=1; continue
   fi
   if grep -qE 'fixtures/|\.runs/' "$ck/check.sh"; then
     echo "verify: $id check.sh names a fixture or run path"; bad=1; continue
@@ -49,8 +63,7 @@ for id in "${ids[@]}"; do
   fi
   base_json="$(bash "$ck/check.sh" "$T/$id-a" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r base_fail base_total < <(rows "$base_json")
-  git -C "$T/$id-b" apply --recount "$fx/reference.patch" && git -C "$T/$id-b" add -A \
-    && git -C "$T/$id-b" -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m reference
+  apply_reference "$fx" "$T/$id-b" || echo "verify: $id reference did not apply"
   ref_json="$(bash "$ck/check.sh" "$T/$id-b" "$a" "$a" "$fx/allowed-paths.txt")"
   read -r ref_fail ref_total < <(rows "$ref_json")
   echo "verify: $id baseline-required-failures=$base_fail/$base_total reference-required-failures=$ref_fail/$ref_total"
