@@ -2224,3 +2224,5 @@ two, because its new-file payloads exceed the 30000-byte contract budget:
   AC7b1.6-AC7b1.8; F1 at segment level is accepted. task-master removes the
   `HELD:` lines from #562 and #563 and writes their contract files (U7b-1
   first). OQ2 answered (a): the user will run H7b2.
+- Wave 6, U7b-1 (lead contract, no version bump; the `HELD:` line is removed after ruling H-U7B3): [ptr-u7b-1](2026-10-15-persona-token-reduction/contracts/ptr-u7b-1.md), issue #562.
+- Wave 6, U7b-2 (lead contract, dispatched after U7b-1 PASS; human step H7b2 follows its PASS): [ptr-u7b-2](2026-10-15-persona-token-reduction/contracts/ptr-u7b-2.md), issue #563.
