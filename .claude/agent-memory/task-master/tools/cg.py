@@ -82,6 +82,32 @@ class Edits:
         self.n += 1
         return self.n - 1
 
+    def insert_chunked(self, path, anchor, text, existing, maxn=MAXN):
+        lines = text.rstrip('\n').split('\n')
+        everything = existing.split('\n') + lines
+        i = 0
+        while i < len(lines):
+            if len(lines) - i <= maxn:
+                j = len(lines)
+            else:
+                j = i + maxn
+                while j > i + 10:
+                    cand = lines[j - 1]
+                    if cand.strip() and '`' not in cand and len(cand.strip()) >= 8 and _unique(cand, everything):
+                        break
+                    j -= 1
+                else:
+                    raise SystemExit('no unique split line')
+            chunk = lines[i:j]
+            self.out.append(f'{self.n}. file: `{path}`')
+            self.out.append(f'   anchor: line matching `{anchor}`')
+            self.out.append('   indent: 0')
+            self._payload('insert-after', chunk)
+            self.n += 1
+            anchor = chunk[-1]
+            i = j
+        return self.n - 1
+
     def replace(self, path, anchor, before, after):
         assert '`' not in anchor
         self.out.append(f'{self.n}. file: `{path}`')
