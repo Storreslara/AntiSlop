@@ -1396,6 +1396,15 @@ else
 fi
 
 echo
+echo "== tests/gate-fp-harvest.test.sh: synthetic-store test for scripts/gate-fp-harvest.py (Bash, ptr-u7b-2) =="
+if bash tests/gate-fp-harvest.test.sh > /dev/null; then
+  echo "OK   tests/gate-fp-harvest.test.sh"
+else
+  echo "FAIL tests/gate-fp-harvest.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
