@@ -9,15 +9,15 @@ Umbrella issue #567 (label `plan/antislop-vs-fable-evals`). Spec `docs/plans/ant
 | abt-u00 commit the design doc | #568 | contracts/abt-u00.md | none |
 | abt-u01 arm scripts + common.sh + fake claude + test + .gitignore | #569 | contracts/abt-u01.md | none |
 | abt-u02 eval/abtest/lib/stream.py + 9 canned captures + test | #570 | contracts/abt-u02.md | none |
+| abt-u03 eval/abtest/lib/make-row.py + row fixtures + test | #571 | contracts/abt-u03.md | abt-u02 (#570) |
+| abt-u04 checks/lib.sh, checks/scope.sh, fixtures/lib.sh, verify-checks.sh, 3 synthetic fixtures, tests/abtest-checks.test.sh | #572 | contracts/abt-u04.md | none |
+| abt-u05 T2 notes-svc template code (package.json, src/*) | #573 | contracts/abt-u05.md | none |
+| abt-u06 T2 template tests, scripts/export.js, README, CONTEXT.md, CLAUDE.md, ADR | #574 | contracts/abt-u06.md | abt-u05 (#573) |
 
-## Next unit to write: abt-u03, then in this order (each: issue first, then contract, replay, commit)
+## Next unit to write: abt-u07, then in this order (abt-u03..u06 are done and removed from this table) (each: issue first, then contract, replay, commit)
 
 | unit | content | depends on |
 |---|---|---|
-| abt-u03 | `eval/abtest/lib/make-row.py`: stream summary + check results + git facts -> one row (spec 4.3 as amended by OD-4/OD-5: completion_status enum, tokens_* columns, `usage-limit` rows kept) + test | abt-u02 |
-| abt-u04 | check conventions: `eval/abtest/checks/lib.sh` (emits the `checks` JSON array; `scope_lines` excludes `.claude/` and `docs/plans/`; commits counted from START not BASE), `eval/abtest/verify-checks.sh` (`<eval-id>` or `--all`: baseline must have >=1 required FAIL, baseline+reference.patch must have all PASS; fails on a check naming a path), a synthetic fixture under `tests/fixtures/abtest/`, `tests/abtest-checks.test.sh` | none |
-| abt-u05 | T2 `notes-svc` template part 1: `eval/abtest/templates/notes-svc/{package.json,src/*}` (store with `query(filterString)` via `new Function`, auth, server, cli, format) | none |
-| abt-u06 | T2 part 2: tests, `scripts/export.js` (string-keyed `store[fn]` caller), README route table, `CONTEXT.md` with `_Avoid_:` lines, `CLAUDE.md`, `docs/adr/0001-in-memory-store.md` | abt-u05 |
 | abt-u07 | E1 `e01-ambiguous-tax`: T1 + plant, `build.sh`, prompt, checks, `reference.patch`, `allowed-paths.txt` | abt-u04 |
 | abt-u08 | E2 `e02-preview-mutation`: T1 + per-line-rounding plant, prompt = `eval/tasks/feature-task.md` byte for byte, checks (reuse `feature-task.holdout.test.js` + rounding test), reference | abt-u04 |
 | abt-u09 | E3 `e03-rename-query` | abt-u04, abt-u06 |
@@ -43,5 +43,7 @@ Umbrella issue #567 (label `plan/antislop-vs-fable-evals`). Spec `docs/plans/ant
 - The persona-config file name is built from two parts inside scripts and tests so no Bash text names it; contracts tell executors to use Write/Edit, not heredocs.
 - Fixture `build.sh DEST` must set fixed `GIT_AUTHOR_DATE`/`GIT_COMMITTER_DATE` and identity so two builds agree on the baseline sha (spec C2.1); its last stdout line is the sha.
 - Counts from the doc are scaled to E1-E5 (5 fixtures/prompts/check dirs/references; 50 uniform rows).
+- Contract-writing interfaces fixed by abt-u04 (fixture units must match): fixture dir `eval/abtest/fixtures/<eval-id>/{build.sh,reference.patch,allowed-paths.txt}` (build.sh sources `$ABT_REPO_ROOT/eval/abtest/fixtures/lib.sh`, `build.sh DEST` prints the baseline sha last); `eval/abtest/checks/<eval-id>/check.sh` called as `check.sh WORKTREE BASE START ALLOWED_FILE`, starts with `. "${ABT_CHECKS_LIB:-$(dirname "$0")/../lib.sh}"`, uses abt_init/abt_check/abt_check_scope/abt_emit; verify with `bash eval/abtest/verify-checks.sh <eval-id>`. Template T2 lives at `eval/abtest/templates/notes-svc/` (abt-u05/u06): `NOTES_SEED=<json array file>` seeds CLI and export; tokens tok-alice/tok-bob; store.query via new Function; direct callers server.js (GET /notes?title=) and cli.js (list --title); string-keyed caller scripts/export.js; E3's plant adds test/helpers.js.
+- Replay tooling: `REPLAY_PRE=<contract,...>` applies earlier contracts first (needed when a unit builds on an unlanded dependency).
 - Open risks to flag to the operator, not gaps: `--max-turns` is not listed in `claude --help` 2.1.300 (the pilot, abt-u19, must prove it is accepted); the stream-json hook-event and rate-limit record shapes in stream.py are guesses the pilot confirms; `--plugin-dir` plus the scaffolded settings hooks may register hooks twice (the isolation probe shows hook-event counts); the E4 critical-mode sub-run and the E2/E5 shipped replicates are deferred (OD-7).
 - Tools used to author and replay contracts (scratch applier + generator) are saved under `.claude/agent-memory/task-master/tools/`.
