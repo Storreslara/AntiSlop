@@ -26,3 +26,4 @@
 - [ptr-u7a completion](project_ptr_u7a_completion.md) — PASS b21b3ee closed #561; persona-protocol.md stale remediation claim (U13c) + 4 more open
 - [ptr-u9b completion](project_ptr_u9b_completion.md) — PASS 5e2444e closed #560; 4 behaviour narrowings in orchestrator move + 2 more open; reason-word glossary term
 - [ptr-u13a completion](project_ptr_u13a_completion.md) — PASS 05bee1f closed #564; inEra vs plan-scan contract_author must be settled before NR2
+- [ptr-u13b completion](project_ptr_u13b_completion.md) — PASS 9ba5a1d closed #565; checkpoint-progress gaps (plan path vs contract commits, no baseline hash) open

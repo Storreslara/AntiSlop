@@ -1629,6 +1629,15 @@ spec substance changed): a plan-scan contract (rule (e)(2)) is reported with
 unreachable every contract-file unit therefore drops out. Settle this at spec
 level before the final NR2 measurement.
 
+Open follow-ups from ptr-u13b PASS (added 2026-10-16, for spec-master; no
+spec substance changed): (a) spec-master checkpoint (3) cites the plan path
+but commits only contract files, while the orchestrator progress rule checks
+`git log -1 -- <plan path>`, so a spawn that writes contracts without
+touching the plan reads as no progress; fix is to commit the plan's
+dispatch-section link with each contract. (b) Nothing stores the
+previous-checkpoint commit hash, so a fresh orchestrator session has no
+baseline. (c) `agents/orchestrator.md:470-471` has a cosmetic short line.
+
 ### Step U13a — Script fixes: ladder default, contract files in the export, agg2 window (items a, e, f)
 
 Recommended model: sonnet. Sensitive: no (`bin/ladder-tier.sh` and

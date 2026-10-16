@@ -488,9 +488,13 @@ _Avoid_: dispatch prompt, contract block (the legacy embedded form)
 **dispatch checkpoint**:
 (unit ptr-u8, 2026-10-16) — a deliberate turn-end of `task-master` or
   `spec-master` whose last line is `STATUS: incomplete — checkpoint: <path>`,
-  where the path is the [[handoff note]]. `task-master` ends a turn this way
-  after every 3 units, or at wave end while units remain; the orchestrator
-  re-dispatches the same persona fresh, citing the path. It is neither a
+  where the path is the [[handoff note]] for `task-master` and the plan doc
+  for `spec-master` (which checkpoints the fast path after every 3 contract
+  files). `task-master` ends a turn this way after every 3 units, or at wave
+  end while units remain; the orchestrator re-dispatches the same persona
+  fresh, citing the path, but only on checkpoint progress: the cited path has
+  a newer commit than at that persona's previous checkpoint, otherwise the
+  orchestrator surfaces to the user. It is neither a
   cutoff nor a failure: it counts toward no FAIL record, 2-FAIL cap or ladder
   step, and it is distinct from the WIP sentinel (`touch .claude/.wip`), which
   marks work in progress rather than a planned turn boundary.
@@ -519,7 +523,9 @@ _Avoid_: rubric (alone), contract score (the number it yields)
   `contract-guard: haiku ` line, whether a row failed, the contract is oversize,
   no contract block was found, or the script or scorer errored. "Fails safe to
   sonnet" names the error cases only; all of them are guard demotions and each
-  gets a line in the [[Rulings ledger]].
+  gets a line in the [[Rulings ledger]]. The `reason=no-contract` outcome is a
+  guard demotion: the orchestrator tells the user in one line and appends
+  `decision=contract-guard sonnet: no-contract` to the ledger.
 _Avoid_: escalation (that is FAIL-driven), downgrade
 
 **untagged-tail criterion**:
