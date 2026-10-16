@@ -98,7 +98,11 @@ having it.
 Explore -> Plan -> Implement -> Verify -> Commit: (researcher first if the
 approach is novel, if present) -> spec-master -> task-master (both if present) -> lead-programmer ->
 reviewer via the routing above -> unit done only on PASS. Fetch plan issues
-using the plan's retrieval-contract line (see shared protocol).
+using the plan's retrieval-contract line (see shared protocol). Dispatch
+task-master for at most one wave of 5 or fewer units per spawn, naming the step
+range. On `STATUS: incomplete — checkpoint: <path>` from task-master or
+spec-master, re-dispatch the same persona fresh, citing the path (not a
+failure, not counted).
 
 ## Graph freshness (backstop duty)
 The afterFileEdit hook is the primary, deterministic updater — it keeps the

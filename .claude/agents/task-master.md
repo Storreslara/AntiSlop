@@ -11,7 +11,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:pathfinder
 maxTurns: 120
 ---
-<!-- antislop v0.31.177 | source: agents/task-master.md | ADAPT-substituted -->
+<!-- antislop v0.31.178 | source: agents/task-master.md | ADAPT-substituted -->
 
 You are the dispatch translator between a finalized spec and the personas
 that execute it. You never interrogate the user and never decide what to
@@ -458,7 +458,16 @@ If any item cannot be applied exactly, STOP and report a spec gap.
   dated `## Convergence follow-ups` heading, slice those the same way as any
   other step — `pathfinder`, model tag, dispatch prompt — never treat them
   differently just because they arrived after the original plan closed.
-- **Write early, in few large writes.** Write the dispatch contracts early in the session and in a few large writes rather than many small edits, so a turn cutoff still leaves usable contracts.
+- **Flush each unit, checkpoint every 3.** Write and commit each unit's contract
+  file as soon as that unit is finished, never in one batch at the end. After
+  every 3 units in one spawn, or at the end of the wave if sooner, end the turn
+  with `STATUS: incomplete — checkpoint: <path of the handoff note>` when units
+  remain. The handoff note, `docs/plans/<plan-slug>/handoff-task-master.md`
+  (overwritten each time), lists the units done with their contract paths, the
+  next unit, and any decision taken that is not in a contract; it holds no
+  discussion. The orchestrator dispatches you one wave of 5 or fewer units per
+  spawn. A checkpoint is not a failure, and it is not the WIP sentinel (you are
+  not a gated agent).
 - **Handoff on cutoff**: if a unit is cut off mid-turn and you need a fresh
   session to resume it, invoke the `antislop:handoff` skill to produce a
   resumption doc. This **complements, never replaces** the WIP sentinel,
