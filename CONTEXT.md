@@ -485,6 +485,24 @@ _Avoid_: contract (alone: a fix contract is a different artifact), dispatch prom
   block) remains a fallback only for units sliced before this change.
 _Avoid_: dispatch prompt, contract block (the legacy embedded form)
 
+**dispatch checkpoint**:
+(unit ptr-u8, 2026-10-16) — a deliberate turn-end of `task-master` or
+  `spec-master` whose last line is `STATUS: incomplete — checkpoint: <path>`,
+  where the path is the [[handoff note]]. `task-master` ends a turn this way
+  after every 3 units, or at wave end while units remain; the orchestrator
+  re-dispatches the same persona fresh, citing the path. It is neither a
+  cutoff nor a failure: it counts toward no FAIL record, 2-FAIL cap or ladder
+  step, and it is distinct from the WIP sentinel (`touch .claude/.wip`), which
+  marks work in progress rather than a planned turn boundary.
+_Avoid_: partial turn, soft cutoff
+
+**handoff note**:
+(unit ptr-u8, 2026-10-16) — the file `docs/plans/<plan-slug>/handoff-task-master.md`
+  that `task-master` overwrites at each [[dispatch checkpoint]] so the fresh
+  re-dispatch can resume from it. It is a resume aid, not a [[contract file]];
+  it is unrelated to the escalation-ladder "cutoff handoff".
+_Avoid_: checkpoint file
+
 **rubric v2**:
 (unit blc-7, 2026-10-09) — the second scoring table of `bin/contract-score.js`,
   selected with `--rubric=v2`. A lead-programmer contract is scored on rows

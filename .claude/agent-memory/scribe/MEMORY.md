@@ -21,3 +21,4 @@
 - [ptr-u12 completion](project_ptr_u12_completion.md) — PASS 1443ae6 closed #555; Agent dropped from lead-programmer; 7 open follow-ups (stale spawn text, unpinned tools line)
 - [ptr-u3a completion](project_ptr_u3a_completion.md) — PASS 33d8348 closed #556; 4 open follow-ups; glossary term + ADR deferred to ptr-u3b close-out
 - [ptr-u3b completion](project_ptr_u3b_completion.md) — PASS 07bbbbc closed #557; ADR-0042 + contract file term; 6 open follow-ups (unit-outcomes.js blind to contract files)
+- [ptr-u8 completion](project_ptr_u8_completion.md) — PASS c8cee04 closed #558; dispatch checkpoint/handoff note terms; 7 open follow-ups (cutoff wording, no cap, no commit rule)
