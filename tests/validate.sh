@@ -1369,6 +1369,15 @@ else
 fi
 
 echo
+echo "== tests/contract-files.test.sh: contract file and plan form give one guard line and score (Bash, ptr-u3a) =="
+if bash tests/contract-files.test.sh; then
+  echo "OK   tests/contract-files.test.sh"
+else
+  echo "FAIL tests/contract-files.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
