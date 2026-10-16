@@ -12,12 +12,13 @@ Umbrella issue #567 (label `plan/antislop-vs-fable-evals`). Spec `docs/plans/ant
 | abt-u03 eval/abtest/lib/make-row.py + row fixtures + test | #571 | contracts/abt-u03.md | abt-u02 (#570) |
 | abt-u04 checks/lib.sh, checks/scope.sh, fixtures/lib.sh, verify-checks.sh, 3 synthetic fixtures, tests/abtest-checks.test.sh | #572 | contracts/abt-u04.md | none |
 | abt-u05 T2 notes-svc template code (package.json, src/*) | #573 | contracts/abt-u05.md | none |
-| abt-u06 T2 template tests, scripts/export.js, README, CONTEXT.md, CLAUDE.md, ADR | #574 | contracts/abt-u06.md | abt-u05 (#573) |
+| abt-u05b T2 baseline fixes: own-keys auth lookup, URL parse inside the try, cli.js require.main guard (extends landed u05, based on a3b79a03; no test file) | #593 | contracts/abt-u05b.md | abt-u05 (#573, landed) |
+| abt-u06 T2 template tests (now 15 tests incl. test/hardening.test.js), scripts/export.js, README, CONTEXT.md, CLAUDE.md, ADR | #574 | contracts/abt-u06.md | abt-u05 (#573), abt-u05b (#593) |
 | abt-u07 E1 fixture/prompt/checks/reference | #575 | contracts/abt-u07.md | abt-u04 (#572) |
 | abt-u08 E2 fixture/prompt/checks/reference | #576 | contracts/abt-u08.md | abt-u04 (#572) |
-| abt-u09 E3 fixture/prompt/checks/reference | #577 | contracts/abt-u09.md | abt-u04 (#572), abt-u06 (#574) |
-| abt-u10 E4 fixture/prompt/checks/reference + vulnerable proof + arm-b.overrides.json | #578 | contracts/abt-u10.md | abt-u04 (#572), abt-u06 (#574) |
-| abt-u11 E5 fixture/prompt/reference series (reference.d/01..05) | #579 | contracts/abt-u11.md | abt-u04 (#572), abt-u04b (#592), abt-u06 (#574) |
+| abt-u09 E3 fixture/prompt/checks/reference | #577 | contracts/abt-u09.md | abt-u04 (#572), abt-u05b (#593), abt-u06 (#574) |
+| abt-u10 E4 fixture/prompt/checks/reference + vulnerable proof + arm-b.overrides.json | #578 | contracts/abt-u10.md | abt-u04 (#572), abt-u05b (#593), abt-u06 (#574) |
+| abt-u11 E5 fixture/prompt/reference series (reference.d/01..05) | #579 | contracts/abt-u11.md | abt-u04 (#572), abt-u04b (#592), abt-u05b (#593), abt-u06 (#574) |
 | abt-u11b E5 hidden checks (9 required) | #580 | contracts/abt-u11b.md | abt-u04 (#572), abt-u04b (#592), abt-u11 (#579) |
 | abt-u04b verify-checks.sh reference.d series support + syn-series fixture + 2 test rows (extends landed u04, based on master 1136ef08) | #592 | contracts/abt-u04b.md | abt-u04 (#572) |
 | abt-u12 eval/abtest/run-matrix.sh + tests/abtest-runner.test.sh | #581 | contracts/abt-u12.md | abt-u01 (#569), abt-u02 (#570), abt-u03 (#571), abt-u04 (#572), abt-u07 (#575) |
@@ -34,7 +35,7 @@ Umbrella issue #567 (label `plan/antislop-vs-fable-evals`). Spec `docs/plans/ant
 
 ## Slicing complete (2026-10-16)
 
-No unit remains to be written. Final dispatch order is in the umbrella issue #567 comment `Final dispatch order`. Waves (units in a wave can run in any order): (1) u00, u01, u02, u04, u05, u15; (2) u03, u04b, u06, u07, u08; (3) u09, u10, u11, u12, u14; (4) u11b, u13, u16, u18; (5) u17; (6) u21a and the OPERATOR-RUN pilot u19; (7) OPERATOR-RUN u20; (8) OPERATOR-RUN u21.
+No unit remains to be written. Final dispatch order is in the umbrella issue #567 comment `Final dispatch order`. Waves (units in a wave can run in any order). REVISED 2026-10-16 after abt-u05b (#593): (1) u00, u01, u02, u04, u05 (landed), u15; (2) u03, u04b (landed), u05b, u07, u08; (3) u06, u12, u14; (4) u09, u10, u11, u13, u16, u18; (5) u11b, u17; (6) u21a and the OPERATOR-RUN pilot u19; (7) OPERATOR-RUN u20; (8) OPERATOR-RUN u21. u05b is the new gate: u06 (and through it u09, u10, u11, u11b) must not be dispatched before u05b lands.
 
 `operator-run` units (abt-u19, abt-u20, abt-u21) got label `operator-run`, no `ready-for-agent`, and a first body line `OPERATOR-RUN UNIT: launched by the operator/orchestrator, never dispatched to lead-programmer.`
 
@@ -56,3 +57,4 @@ No unit remains to be written. Final dispatch order is in the umbrella issue #56
 - Coordinator note for abt-u21: the report must state that process.persona_tokens is null in every row (arms run with --no-session-persistence) and that per-persona token attribution was not produced; do not add a unit for it.
 - Open risks to flag to the operator, not gaps: `--max-turns` is not listed in `claude --help` 2.1.300 (the pilot, abt-u19, must prove it is accepted); the stream-json hook-event and rate-limit record shapes in stream.py are guesses the pilot confirms; `--plugin-dir` plus the scaffolded settings hooks may register hooks twice (the isolation probe shows hook-event counts); the E4 critical-mode sub-run and the E2/E5 shipped replicates are deferred (OD-7).
 - Tools used to author and replay contracts (scratch applier + generator) are saved under `.claude/agent-memory/task-master/tools/`.
+- abt-u05b (2026-10-16, #593): follow-up to the landed u05 (a3b79a03) from the u05 reviewer's baseline findings. Three one-line fixes that keep each file's line count (auth.js 15, server.js 63, cli.js 25), so the u09/u10/u11 patch hunks on src/server.js and src/cli.js keep their context (replayed with u05b and u06 applied: u09, u10, u11, u11b all green). No test file in u05b. Left alone on purpose: a negative ?limit is a 400, the CLI list caps at 50, format.date throws on an invalid timestamp. u06 gained test/hardening.test.js (3 tests: prototype-key tokens 401 on GET and POST; malformed absolute-form request line is a 400 and the server keeps serving, run in a child process so a regression fails one test; requiring cli.js runs no main), so the template suite is 15 tests (was 12) and u11's E5 suite is 22 (was 19); u06's criterion 13 proves the hardening tests go red on the u05 commit (# pass 0 # fail 3). u09, u10, u11 edit 1 now also check src/auth.js for Object.hasOwn(USERS and their depends-on lines name u05b. u07, u08, u11b: no change needed.
