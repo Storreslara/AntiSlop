@@ -1,7 +1,7 @@
 Unit: abt-u06
 
 ## Objective
-eval/abtest/templates/notes-svc/ gains test/{store,server,cli}.test.js (12 passing node:test tests), scripts/export.js (store[fn] string-keyed caller), README.md route table, CONTEXT.md (3 glossary entries with _Avoid_ lines), CLAUDE.md and docs/adr/0001-in-memory-store.md. One commit.
+eval/abtest/templates/notes-svc/ gains test/{store,server,cli,hardening}.test.js (15 passing node:test tests, 3 of them in hardening.test.js covering the abt-u05b fixes), scripts/export.js (store[fn] string-keyed caller), README.md route table, CONTEXT.md (3 glossary entries with _Avoid_ lines), CLAUDE.md and docs/adr/0001-in-memory-store.md. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 574 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -10,6 +10,7 @@ GitHub issues: `gh issue view 574 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/templates/notes-svc/test/store.test.js` (anchor: new file)
 - `eval/abtest/templates/notes-svc/test/server.test.js` (anchor: new file)
 - `eval/abtest/templates/notes-svc/test/cli.test.js` (anchor: new file)
+- `eval/abtest/templates/notes-svc/test/hardening.test.js` (anchor: new file)
 - `eval/abtest/templates/notes-svc/scripts/export.js` (anchor: new file)
 - `eval/abtest/templates/notes-svc/README.md` (anchor: new file)
 - `eval/abtest/templates/notes-svc/CONTEXT.md` (anchor: new file)
@@ -17,7 +18,7 @@ GitHub issues: `gh issue view 574 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md` (anchor: new file)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/templates/notes-svc/src/store.js && test ! -e eval/abtest/templates/notes-svc/test && test ! -e eval/abtest/templates/notes-svc/README.md && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f eval/abtest/templates/notes-svc/src/store.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && test ! -e eval/abtest/templates/notes-svc/test && test ! -e eval/abtest/templates/notes-svc/README.md && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/templates/notes-svc/test/store.test.js`
    anchor: new file
@@ -260,11 +261,86 @@ Status: accepted
 
 The service keeps notes in a `Map` inside the process. There is no database and no file persistence; a restart empties the store. This keeps the service dependency-free and the tests fast. A durable store would be a new decision.
 ~~~~
-10. command: `git add eval/abtest/templates/notes-svc/test/store.test.js eval/abtest/templates/notes-svc/test/server.test.js eval/abtest/templates/notes-svc/test/cli.test.js eval/abtest/templates/notes-svc/scripts/export.js eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md && git commit -m "feat(abt-u06): notes-svc template tests, export script and docs (#574)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+10. file: `eval/abtest/templates/notes-svc/test/hardening.test.js`
+   anchor: new file
+   indent: 0
+   insert-after:
+~~~~
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const net = require('node:net');
+const path = require('node:path');
+const { spawn, spawnSync } = require('node:child_process');
+const { createServer } = require('../src/server');
+
+const SRC = path.join(__dirname, '..', 'src');
+
+test('prototype-key tokens are rejected on every route', async () => {
+  const server = createServer();
+  await new Promise((resolve) => server.listen(0, resolve));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  try {
+    for (const token of ['toString', 'constructor', 'valueOf', 'hasOwnProperty', '__proto__']) {
+      const headers = { authorization: `Bearer ${token}`, 'content-type': 'application/json' };
+      assert.equal((await fetch(`${base}/notes`, { headers })).status, 401, token);
+      const body = JSON.stringify({ title: 'x' });
+      assert.equal((await fetch(`${base}/notes`, { method: 'POST', headers, body })).status, 401, token);
+    }
+    const good = await fetch(`${base}/notes`, { headers: { authorization: 'Bearer tok-alice' } });
+    assert.equal(good.status, 200);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+// The server runs in a child process so a crash is a failed test, not a dead runner.
+const SERVE = `const { createServer } = require(${JSON.stringify(path.join(SRC, 'server'))});
+const server = createServer();
+server.listen(0, () => console.log(server.address().port));`;
+
+function rawRequest(port, text) {
+  return new Promise((resolve) => {
+    let buf = '';
+    const socket = net.connect(port, '127.0.0.1', () => socket.write(text));
+    socket.on('data', (d) => { buf += d; });
+    socket.on('close', () => resolve(buf));
+    socket.on('error', () => resolve(buf));
+  });
+}
+
+test('a malformed request URL is a 400 and the server keeps serving', async () => {
+  const child = spawn(process.execPath, ['-e', SERVE], { stdio: ['ignore', 'pipe', 'ignore'] });
+  let exited = false;
+  child.on('exit', () => { exited = true; });
+  try {
+    const port = await new Promise((resolve, reject) => {
+      child.stdout.once('data', (d) => resolve(Number(String(d).trim())));
+      child.once('exit', () => reject(new Error('server exited before it listened')));
+    });
+    const head = 'GET http://[ HTTP/1.1\r\nHost: x\r\nAuthorization: Bearer tok-alice\r\nConnection: close\r\n\r\n';
+    assert.match(await rawRequest(port, head), /^HTTP\/1\.1 400 /);
+    assert.equal(exited, false);
+    const after = await fetch(`http://127.0.0.1:${port}/notes`, { headers: { authorization: 'Bearer tok-alice' } });
+    assert.equal(after.status, 200);
+  } finally {
+    child.kill();
+  }
+});
+
+test('requiring cli.js does not run main', () => {
+  const code = `require(${JSON.stringify(path.join(SRC, 'cli.js'))}); console.log('exitCode=' + process.exitCode);`;
+  const out = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8' });
+  assert.equal(out.stdout, 'exitCode=undefined\n');
+  assert.equal(out.stderr, '');
+  assert.equal(out.status, 0);
+});
+~~~~
+11. command: `git add eval/abtest/templates/notes-svc/test/store.test.js eval/abtest/templates/notes-svc/test/server.test.js eval/abtest/templates/notes-svc/test/cli.test.js eval/abtest/templates/notes-svc/test/hardening.test.js eval/abtest/templates/notes-svc/scripts/export.js eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md && git commit -m "feat(abt-u06): notes-svc template tests, export script and docs (#574)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
-- `eval/abtest/templates/notes-svc/src/` and `eval/abtest/templates/notes-svc/package.json` (unit abt-u05 owns the code half)
+- `eval/abtest/templates/notes-svc/src/` and `eval/abtest/templates/notes-svc/package.json` (units abt-u05 and abt-u05b own the code half; the hardening tests assert its fixed behaviour, never edit it to make them pass)
 - `eval/abtest/arms/`, `eval/abtest/lib/`, `eval/abtest/checks/`, `eval/abtest/fixtures/`, `eval/abtest/verify-checks.sh` (other units own them)
 - `eval/harness/` (the one-arm pilot harness stays untouched)
 - `tests/validate.sh` (merge-gate registration is unit abt-u17)
@@ -274,11 +350,11 @@ The service keeps notes in a `Map` inside the process. There is no database and 
 ## Acceptance criteria
 1. run: `cd eval/abtest/templates/notes-svc/ && npm test 2>&1 | grep -E '^# (pass|fail)' | paste -sd' '`
    exit: 0
-   stdout: `# pass 12 # fail 0`
-   mutation: skip edit 2 (store.test.js); the suite runs 8 tests and prints # pass 8 # fail 0.
+   stdout: `# pass 15 # fail 0`
+   mutation: skip edit 2 (store.test.js); the suite runs 11 tests and prints # pass 11 # fail 0.
 2. run: `ls eval/abtest/templates/notes-svc/test | paste -sd" "`
    exit: 0
-   stdout: `cli.test.js server.test.js store.test.js`
+   stdout: `cli.test.js hardening.test.js server.test.js store.test.js`
    mutation: skip edit 3 (server.test.js); the listing lacks server.test.js.
 3. run: `grep -c '_Avoid_' eval/abtest/templates/notes-svc/CONTEXT.md`
    exit: 0
@@ -302,13 +378,13 @@ The service keeps notes in a `Map` inside the process. There is no database and 
    mutation: skip edit 9 (the ADR); nothing prints and the exit is 1.
 8. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u06\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
-   stdout: `eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md eval/abtest/templates/notes-svc/scripts/export.js eval/abtest/templates/notes-svc/test/cli.test.js eval/abtest/templates/notes-svc/test/server.test.js eval/abtest/templates/notes-svc/test/store.test.js`
-   mutation: skip edit 10 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
+   stdout: `eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md eval/abtest/templates/notes-svc/scripts/export.js eval/abtest/templates/notes-svc/test/cli.test.js eval/abtest/templates/notes-svc/test/hardening.test.js eval/abtest/templates/notes-svc/test/server.test.js eval/abtest/templates/notes-svc/test/store.test.js`
+   mutation: skip edit 11 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
 9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u06\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
-   mutation: skip edit 10; no unit commit exists and the exit is 3.
-10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u06\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/templates/notes-svc/test/store.test.js eval/abtest/templates/notes-svc/test/server.test.js eval/abtest/templates/notes-svc/test/cli.test.js eval/abtest/templates/notes-svc/scripts/export.js eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md | grep -vcE "^[a-z]+\(abt-u06\): "`
+   mutation: skip edit 11; no unit commit exists and the exit is 3.
+10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u06\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/templates/notes-svc/test/store.test.js eval/abtest/templates/notes-svc/test/server.test.js eval/abtest/templates/notes-svc/test/cli.test.js eval/abtest/templates/notes-svc/test/hardening.test.js eval/abtest/templates/notes-svc/scripts/export.js eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/docs/adr/0001-in-memory-store.md | grep -vcE "^[a-z]+\(abt-u06\): "`
    exit: 1
    stdout: `0`
    mutation: add a commit with subject `fix: x` touching one content file after the unit commit; stdout 1.
@@ -316,7 +392,16 @@ The service keeps notes in a `Map` inside the process. There is no database and 
 11. run: `git status --porcelain -- eval/abtest/templates/notes-svc/test eval/abtest/templates/notes-svc/scripts eval/abtest/templates/notes-svc/README.md eval/abtest/templates/notes-svc/CONTEXT.md eval/abtest/templates/notes-svc/CLAUDE.md eval/abtest/templates/notes-svc/docs`
    exit: 0
    stdout: empty
-   mutation: skip edit 10; the new files stay untracked and are listed.
+   mutation: skip edit 11; the new files stay untracked and are listed.
+12. run: `cd eval/abtest/templates/notes-svc/ && node --test test/hardening.test.js 2>&1 | grep -E '^# (pass|fail)' | paste -sd' '`
+   exit: 0
+   stdout: `# pass 3 # fail 0`
+   mutation: skip edit 10 (hardening.test.js); node reports a missing test file, the grep matches nothing and the stdout is empty.
+13. run: `d=$(mktemp -d); L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u05\): ' | cut -d' ' -f1); b=$(echo "$L" | tail -1); test -n "$b" || { echo no-baseline; exit 3; }; git worktree add --detach -q "$d/w" "$b" && mkdir -p "$d/w/eval/abtest/templates/notes-svc/test" && cp eval/abtest/templates/notes-svc/test/hardening.test.js "$d/w/eval/abtest/templates/notes-svc/test/" && (cd "$d/w/eval/abtest/templates/notes-svc/" && node --test test/hardening.test.js 2>&1 | grep -E '^# (pass|fail)' | paste -sd' '); git worktree remove --force "$d/w"; rm -rf "$d"`
+   exit: 0
+   stdout: `# pass 0 # fail 3`
+   mutation: skip edit 10 (hardening.test.js); the cp fails, nothing is run and the stdout is empty.
+   proof: non-vacuity: the file is run against the abt-u05 commit (before the abt-u05b fixes); all three tests fail there and pass at HEAD (criterion 12). Scratch run printed # pass 0 # fail 3.
 
 ## Pre-resolved context
 tdd: yes eval/abtest/templates/notes-svc/test/store.test.js (and the two other test files; criterion 1 is the red-then-green check, red at HEAD because no test exists)
@@ -324,7 +409,8 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 11 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u05 must have landed (src/ and package.json exist) before this unit runs; edit 1 checks for src/store.js and STOPs otherwise.
+depends-on: abt-u05 and abt-u05b must have landed before this unit runs (src/ exists and src/auth.js uses Object.hasOwn); edit 1 checks both and STOPs otherwise.
+amended-2026-10-16: test/hardening.test.js covers the three abt-u05b fixes (prototype-key tokens, malformed request URL, cli.js require guard); its server crash test runs the server in a child process so a regression fails one test instead of killing the runner. The suite total is 15 tests.
 no-real-claude: no command in this contract runs the real claude CLI. The server tests listen on port 0 and close the server.
 commit-message: feat(abt-u06): notes-svc template tests, export script and docs (#574)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
@@ -345,6 +431,8 @@ criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
