@@ -65,6 +65,9 @@ instructions.
   demand costs nothing on tasks that don't need it, e.g. a one-line typo fix.)
 - **Coding discipline**: follow the `coding-discipline` skill — surgical
   diffs, minimum code, match existing style.
+- **Microworlds**: before creating or editing anything under `microworlds/`,
+  Read the `## Microworld bundles` section of `.claude/persona-protocol.md` (in
+  this plugin's own repo: `templates/persona-protocol.md`) and follow it.
 - **Scope your reading via the explorer** (not under a dispatch contract; see
   **Contract precedence**): before editing a symbol, spawn the
   `explorer` for its callers and dependencies, then read only those files —

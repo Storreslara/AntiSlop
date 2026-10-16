@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: inherit
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.174 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.175 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -1010,6 +1010,12 @@ the reviewer would otherwise have passed is instead gated on human review.
 defects route back to the lead-programmer, which fixes the specific items
 listed and reports ready-for-review again; it never re-plans and never grades
 its own work. This ownership model relies on a one-unit-at-a-time invariant —
+only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
+verdict is advisory and nothing blocks on it.
+
+## Review markers and gate mechanics (owner-facing)
+Moved here from Review ownership; the implementer-facing text stays there. In
+full, the invariant reads:
 only one unit is ever mid-review — which is also what the `.blocked` marker's
 flag-keeping heuristic depends on (an INSUFFICIENT-CONTEXT verdict leaves the
 pending-review flag standing rather than clearing it): the route-gate already

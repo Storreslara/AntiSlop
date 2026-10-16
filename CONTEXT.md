@@ -311,7 +311,7 @@ _Avoid_: marker-directory gate
   deletions of still-true claims.
 
 **Protocol excerpt**:
-the subset of `templates/persona-protocol.md`'s 19
+the subset of `templates/persona-protocol.md`'s 20
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
   `PROTOCOL_SECTIONS_BY_PERSONA` matrix (issue #190, 2026-08-01 efficiency
@@ -330,7 +330,7 @@ the subset of `templates/persona-protocol.md`'s 19
 **Protocol tier** (also called **protocol delivery tier**):
 (unit item04-3, 2026-09-26) — which of two canonical files `bin/cli.js`
   inlines into a persona's rendered body at generation time: the **full
-  tier** (`templates/persona-protocol.md`, 685 lines, 19 `## `-delimited sections) or
+  tier** (`templates/persona-protocol.md`, 685 lines, 20 `## `-delimited sections) or
   the **slim tier** (`templates/persona-protocol-slim.md`, a 90-line, 7-section
   subset). Full-tier personas: `orchestrator`, `lead-programmer`, `reviewer`,
   `spec-master`, `task-master`, `milestone-auditor`. Slim-tier personas

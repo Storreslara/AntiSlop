@@ -783,6 +783,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Retrieval contract',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
+      'Review markers and gate mechanics (owner-facing)',
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Continuing after a FAIL verdict',
@@ -806,9 +807,13 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Review ownership — one unit, one review, single owner',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
-      'Microworld bundles (format and the check contract)',
     ],
     drop: [
+      // Owner-facing marker and gate mechanics, and the Microworld section (0 of
+      // the last 566 commits touched microworlds/): lead-programmer.md points at
+      // the Microworld section instead (ptr-u5).
+      'Review markers and gate mechanics (owner-facing)',
+      'Microworld bundles (format and the check contract)',
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
@@ -822,6 +827,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Running acceptance-criteria commands (there is no self-wake)',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
+      'Review markers and gate mechanics (owner-facing)',
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
     ],
@@ -849,6 +855,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Retrieval contract',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
+      'Review markers and gate mechanics (owner-facing)',
       'FAIL record (durable warning for future spawns)',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
@@ -868,6 +875,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Retrieval contract',
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
+      'Review markers and gate mechanics (owner-facing)',
       'FAIL record (durable warning for future spawns)',
       'A note on `memory`',
     ],
@@ -888,6 +896,7 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       ...UNIVERSAL_PROTOCOL_CORE,
       'Machine-checkable criteria',
       'Review ownership — one unit, one review, single owner',
+      'Review markers and gate mechanics (owner-facing)',
     ],
     drop: [
       'WIP sentinel (mid-task handoff, not a bypass)',

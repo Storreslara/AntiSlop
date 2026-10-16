@@ -121,6 +121,7 @@ const codexMap = {
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Codex has no per-agent memory primitive (file convention only) — see platform notes' },
   'Microworld bundles (format and the check contract)': { probe: ['Microworld bundles', 'authority=reviewer'] },
+  'Review markers and gate mechanics (owner-facing)': { probe: ['Review markers and gate mechanics', 'reviewGating.mode is off'] },
 };
 
 const cursorMap = {
@@ -143,6 +144,7 @@ const cursorMap = {
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Cursor has no per-agent memory primitive (file convention only) — see platform notes' },
   'Microworld bundles (format and the check contract)': { probe: ['Microworld bundles', 'authority=reviewer'] },
+  'Review markers and gate mechanics (owner-facing)': { probe: ['Review markers and gate mechanics', 'reviewGating.mode is off'] },
 };
 
 // Throws on any drift: an unmapped canonical section, a stale map key, or a

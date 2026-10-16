@@ -1,4 +1,4 @@
-<!-- antislop v0.31.174 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.175 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -228,6 +228,12 @@ the reviewer would otherwise have passed is instead gated on human review.
 defects route back to the lead-programmer, which fixes the specific items
 listed and reports ready-for-review again; it never re-plans and never grades
 its own work. This ownership model relies on a one-unit-at-a-time invariant —
+only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
+verdict is advisory and nothing blocks on it.
+
+## Review markers and gate mechanics (owner-facing)
+Moved here from Review ownership; the implementer-facing text stays there. In
+full, the invariant reads:
 only one unit is ever mid-review — which is also what the `.blocked` marker's
 flag-keeping heuristic depends on (an INSUFFICIENT-CONTEXT verdict leaves the
 pending-review flag standing rather than clearing it): the route-gate already

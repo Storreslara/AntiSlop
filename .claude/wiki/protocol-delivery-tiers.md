@@ -21,7 +21,7 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 
 **Full tier** (`templates/persona-protocol.md`): 685 lines
 - Target personas: `orchestrator`, `lead-programmer`, `spec-master`, `task-master`, `reviewer`, `milestone-auditor`
-- 19 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
+- 20 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Review markers and gate mechanics, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
 
   For what the WIP sentinel, pending-review flag, and terminal status line
   sections actually say and enforce (this page only tracks which persona
@@ -51,7 +51,7 @@ The full/slim split answers "which canonical file does this persona get";
 it does not answer "which sections of that file". Since issue #190 (the
 2026-08-01 efficiency-remediation pass, finding F1), `bin/cli.js` answers
 the second question too, for full-tier personas only: each one inlines
-just the subset of `templates/persona-protocol.md`'s 19 `## `-delimited
+just the subset of `templates/persona-protocol.md`'s 20 `## `-delimited
 sections that mechanically applies to its role, instead of the full
 document regardless of role.
 

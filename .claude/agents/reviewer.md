@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.174 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.175 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -522,6 +522,12 @@ the reviewer would otherwise have passed is instead gated on human review.
 defects route back to the lead-programmer, which fixes the specific items
 listed and reports ready-for-review again; it never re-plans and never grades
 its own work. This ownership model relies on a one-unit-at-a-time invariant —
+only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
+verdict is advisory and nothing blocks on it.
+
+## Review markers and gate mechanics (owner-facing)
+Moved here from Review ownership; the implementer-facing text stays there. In
+full, the invariant reads:
 only one unit is ever mid-review — which is also what the `.blocked` marker's
 flag-keeping heuristic depends on (an INSUFFICIENT-CONTEXT verdict leaves the
 pending-review flag standing rather than clearing it): the route-gate already

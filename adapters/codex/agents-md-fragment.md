@@ -67,6 +67,7 @@ not that the work looks finished. On FAIL, defects route back to the
 lead-programmer, which fixes the specific items listed and reports
 ready-for-review again; it never re-plans and never grades its own work.
 
+## Review markers and gate mechanics (owner-facing)
 The reviewer writes the PASS marker at `.codex/reviewed/<task-id>.pass` on a
 PASS verdict: the file must be non-empty and its first line must read exactly
 `PASS <task-id> <UTC ISO-8601 timestamp> criteria: <acceptance-criteria
