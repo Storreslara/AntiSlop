@@ -7,6 +7,11 @@ not built (no U10), item 11 is an audit record only (U11), item 12 is in
 (U12), and validate.sh is quiet by default (U1).
 Revised 2026-10-16 (append-only): ruling H-U7B splits U7b into U7b-1 and
 U7b-2, and Wave 7 adds the cleanup units U13a-U13c (19 units in total).
+Revised again 2026-10-16 (rulings H-U7B1, H-U7B2, H-U13C on task-master's
+SPEC-GAPs #562/#563 and a U7a review finding): U7b-1 drops the adapter lib
+copies and replaces the `sort` denylist with option allowlists (20 frozen
+negatives); U7b-2's real-store harvest becomes human step H7b2; U13c gains
+edit 6 (protocol refusal-text sentence). Still 19 units.
 Baseline: `3dfdf2f`, plugin `0.31.171`. Source review: the read-only Fable
 review of HEAD 0.31.171 (transcript-measured, ~4 chars/token).
 Unit labels keep the Fable numbering (U1-U12); U0 is the measurement unit;
@@ -351,6 +356,43 @@ persona's dispatch path; surprising without context; a real trade-off.
   precede U1, given both edit `tests/validate.sh`? → A (self-resolved): yes.
   They edit different regions, each passes in either order, and the route
   gate serializes them anyway.
+- 2026-10-16 External dependencies & integrations: Q (SPEC-GAP #562) U7b-1
+  names adapter copies of `benign-command.sh`, but `bin/cli.js:671` declares
+  the lib `CLAUDE_ONLY_HOOK_LIB_FILES` and no adapter copy ever existed. Create
+  them, or drop them? → A (self-resolved, H-U7B1): drop them. Creating them
+  would reclassify the lib, a design change outside this plan. The only copy
+  is the `.claude/hooks/scripts/lib/` mirror that `node bin/cli.js --update`
+  refreshes, and AC7b1.3 now compares against that.
+- 2026-10-16 Edge cases / failure handling: Q (SPEC-GAP #562) The frozen
+  `sort` rule ("rejecting `--output*`") lets `sort --ou=x y` write `x`
+  (getopt_long abbreviation, measured with coreutils 9.4), and
+  `--compress-program`, `-T`, quoted, brace and glob option words, `$`
+  expansions and uniq's `--` all get past a word denylist. Patch the
+  denylist or switch to an allowlist? → A (self-resolved, H-U7B1): switch
+  `sort` and `uniq` to frozen option allowlists (exact long names, never
+  prefixes), ban quote, `$`, brace and glob characters in their segments,
+  require uniq options before its single operand, and add 10 frozen
+  negatives (20 in total). This follows the lib's own rule that a denylist
+  fails open (`benign-command.sh:9-27`). `du`, `cut`, `tr`, `nl` and `jq` need
+  no option rule: none of their options writes a file or runs a program
+  (checked against `--help` for coreutils 9.4 and jq 1.8.2). `cd` takes only
+  `-L -P -e -@`, so F1 gets the same banned-character word rule and no new
+  negative. AC7b1.2 stays at 13, because the positives are unchanged and every
+  new negative is already non-benign on the old lib (it allowlists neither
+  `sort` nor `uniq`).
+- 2026-10-16 Completion / acceptance signals: Q (SPEC-GAP #563) Who produces
+  the real-store numbers for AC7b2.3-5, given that the environment refuses to
+  let an agent read private session transcripts? → A (self-resolved,
+  H-U7B2): the user, in their own terminal, as human step H7b2 after U7b-2
+  PASS. The lead builds the script (with a new `--fill-doc` mode), its test,
+  the fixtures, the registration and a doc skeleton whose marker span is a
+  PENDING line. AC7b2.3-5 move out of the lead's contract and into H7b2.
+  U7b-2's PASS certifies only the synthetic-store behaviour and the skeleton.
+- 2026-10-16 Terminology consistency: Q (U7a reviewer finding) The protocol
+  says both gates "print their complete remediation"; after U7a they print a
+  short remedy plus a `More:` pointer to a glossary entry. → A
+  (self-resolved, H-U13C): U13c edit 6 rewords the sentence and pins the old
+  wording out.
 
 ## Risks / dependencies
 
@@ -371,7 +413,14 @@ persona's dispatch path; surprising without context; a real trade-off.
   table.
 - **R3 Gate-surface changes (U7a/U7b) are a hardening risk.** Frozen family
   table, negative corpus, isolated gate-function harness. Adapter copies of
-  `lib/benign-command.sh` must stay byte-identical.
+  `lib/benign-command.sh` must stay byte-identical. (Corrected 2026-10-16,
+  H-U7B1: no adapter copy exists; the lib is `CLAUDE_ONLY_HOOK_LIB_FILES`, and
+  its only copy is the `.claude/` mirror refreshed by `node bin/cli.js
+  --update`.) Accepted residuals, not in U7b-1's scope: `TMPDIR` (out-of-band
+  environment) can make `sort` put its temporary files, which it deletes, in
+  another directory; and the already-allowlisted `file` has `-C`, which writes
+  a compiled `.mgc` magic file (a follow-up candidate for the existing
+  `program_allowed` list, not a U7b-1 item).
 - **R4 U1 changes what every agent sees from the merge gate.** Exit code is
   unchanged; `stop-gate`/`task-gate` read only the exit code. CI
   (`.github/workflows/validate.yml:17`) keeps full output via `--verbose`.
@@ -1113,8 +1162,11 @@ Acceptance criteria:
 Recommended model: sonnet (ratchet history on gate hardening). Sensitive:
 yes (`hooks/`, `tests/validate.sh`).
 Depends on: U7a (shared gate test files, which it runs and does not edit).
-Affected files: `hooks/scripts/lib/benign-command.sh`, its byte-identical
-adapter copies `adapters/{codex,cursor}/hooks/scripts/lib/benign-command.sh`,
+Affected files: `hooks/scripts/lib/benign-command.sh` and its mirror
+`.claude/hooks/scripts/lib/benign-command.sh` (refreshed by
+`node bin/cli.js --update`, never hand-edited; revised by H-U7B1: the lib is
+`CLAUDE_ONLY_HOOK_LIB_FILES` in `bin/cli.js:671`, so no adapter copy exists
+and none is created),
 `tests/fixtures/gate-fp-corpus/positive.jsonl` (new),
 `tests/fixtures/gate-fp-corpus/negative.jsonl` (new),
 `tests/benign-command-families.test.sh` (new) plus one registration in
@@ -1132,6 +1184,45 @@ when the next word is not a literal path). F2 (`2>&1`, `2>/dev/null`,
 `>/dev/null`) already exists in `mask_inert_redirections`: do not change it,
 only pin it. The "explicitly not added" list of U7b stands unchanged.
 
+**Family rules, sharpened (ruling H-U7B1, 2026-10-16; these replace the
+`sort`/`uniq` clauses above and govern where the two differ).** The `sort`
+and `uniq` rules become allowlists, because a word denylist fails open
+(`sort --ou=x y` writes `x` through getopt_long abbreviation, measured), which
+is the lib's own reason for being allowlist-shaped (`benign-command.sh:9-27`).
+- **Banned characters.** The real text of a `sort` or `uniq` segment contains
+  none of `'` `"` `$` `{` `}` `*` `?` `[` `]`. Quoted, expanded, brace and glob
+  words can turn into option words that a word scan never sees. The F1 `cd`
+  word also contains none of them (in addition to whitespace, `;&|<>()` and
+  backtick), and its segment is exactly two words.
+- **Option allowlists.** In a `sort` or `uniq` segment, every word that starts
+  with `-` must match the program's list below. Anything else is non-benign,
+  including the bare `--`, any abbreviation, and any option not listed. Long
+  options match the whole name exactly, never a prefix.
+  - `sort`: a single-dash cluster of characters from `bdfghiMnRrsuVcCz`;
+    `-k<keydef>`, `-k <keydef>` or `--key=<keydef>`, where `<keydef>` matches
+    `^[0-9]+(\.[0-9]+)?[bdfghiMnRrV]*(,[0-9]+(\.[0-9]+)?[bdfghiMnRrV]*)?$`;
+    `-t<c>`, `-t <c>` or `--field-separator=<c>`, where `<c>` is exactly one
+    character other than a banned one or whitespace; and the long options
+    `--reverse --unique --numeric-sort --general-numeric-sort
+    --human-numeric-sort --version-sort --month-sort --random-sort
+    --ignore-case --ignore-leading-blanks --dictionary-order
+    --ignore-nonprinting --stable --check --zero-terminated`. So `-o`,
+    `--output`, `-T`, `--temporary-directory`, `--compress-program` (runs a
+    program) and every abbreviation of them are non-benign.
+  - `uniq`: a single-dash cluster of characters from `cdDiuz`; `-f`, `-s` and
+    `-w` followed by digits in the same word or the next one; and the long
+    options `--count --repeated --unique --ignore-case --zero-terminated`, plus
+    `--skip-fields=<digits>`, `--skip-chars=<digits>` and
+    `--check-chars=<digits>`. At most one operand, and no word starting with
+    `-` after it (with `POSIXLY_CORRECT` set such a word is a second operand,
+    and a second operand is an output file).
+- `du`, `cut`, `tr`, `nl` and `jq` get no option rule beyond jq's frozen `-f`
+  clause. None of their options writes a file or runs a program (checked
+  2026-10-16 against `--help` of GNU coreutils 9.4 and jq 1.8.2), so
+  abbreviations and quoting cannot reach a writer. The generic checks still
+  apply to them: no `>` other than F2, no substitution, and every segment
+  allowlisted.
+
 **Frozen test data.** Each line of the two files is one JSON object.
 `positive.jsonl` holds exactly these 16 objects `{"family":"<F>","cmd":"<cmd>"}`:
 - F1: `cd /tmp && ls` · `cd docs; wc -l README.md` · `cd hooks && grep -c x f 2>/dev/null`
@@ -1146,6 +1237,11 @@ only pin it. The "explicitly not added" list of U7b stands unchanged.
 `cut -f1 f >> g`, `du -sh . ; touch z`, `tr a b < f > g`. The gates' existing
 bypass cases are not copied into the file. AC7b1.4 covers them by running
 their suites.
+**Revised by H-U7B1: `negative.jsonl` holds exactly 20 objects**, the ten above
+followed by these ten, in this order: `sort --ou=x y`,
+`sort --compress-program=sh y`, `sort -T d y`, `sort -uo x y`,
+`sort '-o' x y`, `sort -{o,x} y`, `sort -[o] x y`, `sort $O x y`,
+`uniq -- -c b`, `uniq f -c`. `positive.jsonl` is unchanged (16 objects).
 
 **Test shape.** `tests/benign-command-families.test.sh` sources the lib named
 by `$BENIGN_LIB` (default `hooks/scripts/lib/benign-command.sh`) and calls
@@ -1160,14 +1256,30 @@ Acceptance criteria:
   `bash tests/benign-command-families.test.sh | grep -c '^ok positive '` → `16`
   and `... | grep -c '^ok negative '` → `10`. mutation: drop the `sort -o`
   rejection → a `FAIL negative - sort -o x y` line, exit 1.
+  **Revised by H-U7B1:** the negative count is `20`
+  (`... | grep -c '^ok negative '` → `20`). Mutations, each run on its own
+  against the finished lib, and each must give exit 1 with the named line:
+  (a) add `o` to `sort`'s short-option characters →
+  `FAIL negative - sort -o x y`; (b) replace `sort`'s long-option allowlist
+  with the old denylist (reject `--output*`, accept every other `--` word) →
+  `FAIL negative - sort --ou=x y`; (c) drop the banned-character check →
+  `FAIL negative - sort '-o' x y`; (d) drop uniq's options-before-operand
+  rule → `FAIL negative - uniq f -c`.
 - AC7b1.2 (the families are new; this proves every F1/F3 positive
   non-vacuous) with `<pre>` = the parent of U7b-1's first commit:
   `t="$(mktemp)"; git show <pre>:hooks/scripts/lib/benign-command.sh > "$t"; BENIGN_LIB="$t" bash tests/benign-command-families.test.sh`
   → exit 1. Its stdout has exactly 13 lines matching `^FAIL positive F[13] `
   and exactly 13 lines matching `^FAIL ` (F2 positives and all negatives pass
-  on the old lib; measured on HEAD `adb9795`, premise 12).
-- AC7b1.3 `cmp hooks/scripts/lib/benign-command.sh adapters/codex/hooks/scripts/lib/benign-command.sh && cmp hooks/scripts/lib/benign-command.sh adapters/cursor/hooks/scripts/lib/benign-command.sh`
-  → exit 0.
+  on the old lib; measured on HEAD `adb9795`, premise 12). Unchanged by
+  H-U7B1 (still 13 = 3 F1 + 10 F3): the positives are unchanged, and all ten
+  new negatives are non-benign on the old lib, which allowlists neither `sort`
+  nor `uniq`.
+- AC7b1.3 (replaced by H-U7B1; the old adapter `cmp` can never pass)
+  `cmp hooks/scripts/lib/benign-command.sh .claude/hooks/scripts/lib/benign-command.sh`
+  → exit 0, and
+  `git ls-files adapters/codex/hooks/scripts/lib/benign-command.sh adapters/cursor/hooks/scripts/lib/benign-command.sh | wc -l`
+  → `0`. mutation: skip `node bin/cli.js --update` after the lib edit → `cmp`
+  exits 1.
 - AC7b1.4 `bash tests/reviewed-path-gate.test.sh`,
   `bash tests/human-decision-gate.test.sh` and
   `bash tests/harness-integrity-gate.test.sh` → exit 0 each.
@@ -1228,7 +1340,9 @@ a temp file, with the extraction command written out), the commit both
 were taken at, and the script's stdout verbatim between
 `<!-- harvest:begin -->` and `<!-- harvest:end -->`. It also states that
 reproduction is per-machine and best-effort (the store is local and
-transcript cleanup can delete in-window sessions).
+transcript cleanup can delete in-window sessions). (Revised by H-U7B2 below:
+both libs are extracted from fixed commits, `--lib` included, and the
+user fills the marker span in human step H7b2; the lead writes the skeleton.)
 
 Acceptance criteria:
 - AC7b2.1 `bash tests/gate-fp-harvest.test.sh` → exit 0. The synthetic store
@@ -1255,6 +1369,87 @@ Acceptance criteria:
   harvest markers → exit 0.
 - AC7b2.6 `git ls-files tests/fixtures/gate-fp-corpus/blocked.jsonl | wc -l` → `0`.
 - CC-gate.
+
+**Ruling H-U7B2 (2026-10-16; task-master SPEC-GAP #563).** An agent cannot read
+the real transcript store here (the environment refuses private session
+transcripts), so the real harvest is **human step H7b2**, run by the user in
+their own terminal after U7b-2 PASS. H7b2 is not a unit: it is not gated, not
+dispatched, and not in the unit count. The changes to U7b-2:
+- **Lead's contract = AC7b2.1, AC7b2.2, AC7b2.6, AC7b2.7, AC7b2.8, CC-gate.**
+  AC7b2.3, AC7b2.4 and AC7b2.5 move out of it into H7b2, unchanged in
+  substance. Nothing in the lead's contract reads `~/.claude/projects`.
+- **New script mode** `--fill-doc <path>`: compute the same table as stdout
+  mode, replace every line strictly between `<!-- harvest:begin -->` and
+  `<!-- harvest:end -->` in `<path>` with that table, leave every other line
+  of the file byte-identical, print exactly `filled <path>`, and exit 0. If
+  the file does not hold exactly one of each marker, in that order, exit 2
+  and leave the file unchanged. Like every other mode, it never prints or
+  writes a command.
+- **Doc skeleton (lead).** `docs/audits/2026-10-15-gate-fp-corpus.md` holds
+  the method (the script contract summary, the family rule, the privacy rule,
+  the per-machine best-effort note); the two concrete commit hashes `<pre>`
+  (the parent of U7b-1's first commit) and `<u7b1>` (U7b-1's final commit),
+  each written as a full 40-hex hash; the H7b2 command block below with both
+  hashes filled in; and between the markers exactly one line,
+  `PENDING: real-store harvest, human step H7b2`. It holds no count from any
+  store, synthetic or real.
+- Added criteria for the lead:
+  - AC7b2.7 `bash tests/gate-fp-harvest.test.sh` (the same suite as AC7b2.1)
+    also covers `--fill-doc`. On a copy of a fixture doc it asserts the span
+    between the markers equals the literal expected table, every line outside
+    the span is unchanged (`diff` of the outside lines → exit 0), stdout is
+    `filled <path>`, and the sentinel `ZZ-PRIVATE-SENTINEL-42` is absent from
+    the file. On a fixture doc with two begin markers it asserts exit 2 and an
+    unchanged file (`cmp`). mutation: make `--fill-doc` append the table after
+    the end marker instead of replacing the span → the span assertion fails,
+    exit 1.
+  - AC7b2.8 on the skeleton:
+    `grep -c '^PENDING: real-store harvest, human step H7b2$' docs/audits/2026-10-15-gate-fp-corpus.md`
+    → `1`; `grep -c 'harvest:begin' …` → `1`; `grep -c 'harvest:end' …` → `1`;
+    `grep -cE 'git show [0-9a-f]{40}:hooks/scripts/lib/benign-command.sh' …`
+    → `2`; `grep -c -- '--fill-doc docs/audits/2026-10-15-gate-fp-corpus.md' …`
+    ≥ 1; and with `p` and `u` set to the first and second hash printed by
+    `grep -oE '[0-9a-f]{40}:hooks' docs/audits/2026-10-15-gate-fp-corpus.md | cut -c1-40`,
+    `git merge-base --is-ancestor "$p" "$u" && test "$p" != "$u"` → exit 0. mutation: write `<u7b1>` as an abbreviated
+    hash → the `{40}` count drops to 1.
+
+**Human step H7b2 (the user, in their own terminal, from the repo root, after
+U7b-2 PASS).** The doc holds this block with `<pre>` and `<u7b1>` already
+filled in:
+
+```
+b="$(mktemp)"; n="$(mktemp)"
+git show <pre>:hooks/scripts/lib/benign-command.sh > "$b"
+git show <u7b1>:hooks/scripts/lib/benign-command.sh > "$n"
+python3 -I scripts/gate-fp-harvest.py --since 2026-09-25T00:00:00Z --until 2026-10-16T00:00:00Z --lib "$n" --baseline-lib "$b" --fill-doc docs/audits/2026-10-15-gate-fp-corpus.md
+python3 -I scripts/gate-fp-harvest.py --since 2026-09-25T00:00:00Z --until 2026-10-16T00:00:00Z --lib "$n" --baseline-lib "$b" --check-doc docs/audits/2026-10-15-gate-fp-corpus.md
+```
+
+Both libs come from fixed commits, not the working tree, so a later lib edit
+cannot change a re-run. The user reports the `leaks=<n>` line. Then the user,
+or the main session on the user's word, commits the doc by explicit path
+(`git add docs/audits/2026-10-15-gate-fp-corpus.md`). The doc then holds only
+counts, so no scribe or gated dispatch is needed. H7b2's criteria, checked at
+that point:
+- AC7b2.3 (as written above; any agent can run it on the committed doc), plus
+  `grep -c '^PENDING: real-store harvest' docs/audits/2026-10-15-gate-fp-corpus.md`
+  → `0`.
+- AC7b2.4 the `--check-doc` line in the user's terminal prints `leaks=0`. A
+  value above 0 means: do not commit; `git checkout -- docs/audits/2026-10-15-gate-fp-corpus.md`
+  and report it.
+- AC7b2.5 (reproduction, the user's machine) re-run the `--fill-doc` line,
+  then `git diff --exit-code -- docs/audits/2026-10-15-gate-fp-corpus.md` →
+  exit 0.
+
+**What U7b-2's PASS means.** The script, its modes, the privacy properties,
+dedupe, cap, family attribution and `--fill-doc` are proved on the synthetic
+store, and the doc skeleton is correct and ready for H7b2. It does **not**
+certify any real-store count. Until H7b2 is done, the families' real share is
+**unmeasured**. The Wave-6 milestone audit records it that way, the item-7b
+share claim stays open, and nothing else is blocked: the per-dispatch
+gate-block target in "Measurement and no-regression" uses U0's `agg.py`, not
+this doc. If the user declines H7b2, the doc stays PENDING. That is a valid
+end state, and the PENDING line says so.
 
 ### Step U11 — Implementer-tier evidence record (item 11)
 
@@ -1444,7 +1639,8 @@ Acceptance criteria:
 
 Recommended model: sonnet. Sensitive: yes (`templates/persona-protocol.md`,
 `agents/`). Depends on: U13b (it appends rows to U13b's new test).
-Affected files: `templates/persona-protocol.md` (three sentences), protocol
+Affected files: `templates/persona-protocol.md` (four sentences: edits 1-3,
+and edit 6 added by H-U13C), protocol
 ports `adapters/codex/agents-md-fragment.md` and
 `adapters/cursor/rules/persona-protocol.mdc` (the same three),
 `agents/lead-programmer.md` (~79-81), lead-programmer ports
@@ -1467,6 +1663,20 @@ Edits:
    `Spawn \`researcher\`` bullet → `- **No researcher**: you cannot spawn \`researcher\` and have no WebSearch tool. When a technique is unclear, say so in your report; the orchestrator can dispatch \`researcher\`.`
 5. Both lead-programmer ports: delete the `**Scribe updates (batched,
    blocking-but-brief)**` bullet (it is absent from `agents/lead-programmer.md`).
+6. (added 2026-10-16, ruling H-U13C; U7a reviewer finding) Protocol "Teammate
+   Write/Edit fallback and gate rephrasing doctrine", the bullet that starts
+   `If either \`reviewed-path-gate.sh\` or \`human-decision-gate.sh\` refuses a heredoc`
+   (~82-86): replace
+   `read its refusal text before doing anything else: both gates print their complete remediation — the sanctioned heredoc template, when rephrasing a path is allowed, and when it isn't — at the moment they refuse.`
+   with
+   `read its refusal text and the glossary entry its \`More:\` line names before doing anything else: the refusal names the sanctioned route, and the entry (\`reviewed-path denial\` or \`decision-gate denial\` in \`docs/harness-glossary.md\`) holds the full remediation, including when rephrasing a path is allowed and when it isn't.`
+   The next sentence (`Rewording a command to dodge …`) stays. Since U7a the
+   gates print a three-line denial whose last line is
+   `More: docs/harness-glossary.md — "<entry>"`. The protocol ports carry no
+   copy of this bullet (measured 2026-10-16), so this edit touches only the
+   template, and `node bin/cli.js --update` regenerates
+   `.claude/persona-protocol.md` and the four mirrors whose trimmed protocol
+   carries the section: `.claude/agents/{lead-programmer,reviewer,spec-master,task-master}.md`.
 Rows appended to `tests/persona-prose-pins.test.sh`:
 - the `^tools:` line within lines 1-12 of `agents/lead-programmer.md` and of
   `.claude/agents/lead-programmer.md` exists and does not contain `Agent`
@@ -1475,12 +1685,21 @@ Rows appended to `tests/persona-prose-pins.test.sh`:
   `You CAN spawn foreground` in the lead-programmer source, mirror and ports;
 - `.claude/agents/lead-programmer.md` contains
   `is the exception: it has no` and `If your persona has the`.
+- (edit 6) each of `templates/persona-protocol.md`, `.claude/persona-protocol.md`
+  and `.claude/agents/{lead-programmer,reviewer,spec-master,task-master}.md`,
+  flattened, does not contain `print their complete remediation` and does
+  contain `the glossary entry its \`More:\` line names`.
 
 Acceptance criteria:
 - AC13c.1 `bash tests/persona-prose-pins.test.sh` → exit 0. mutation: append
   `, Agent` to the `tools:` line of `agents/lead-programmer.md` → a FAIL line,
-  exit 1.
+  exit 1. Second mutation (edit 6): restore the old sentence in
+  `templates/persona-protocol.md` and run `node bin/cli.js --update` → FAIL
+  lines for the template and the regenerated copies, exit 1.
 - AC13c.2 `node tests/protocol-cross-references.test.js` → exit 0.
+- AC13c.3 (edit 6) `for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/*.md; do tr -s ' \n' ' ' < "$f" | grep -c 'print their complete remediation'; done | grep -vc '^0$'`
+  → `0` (no file carries the old sentence, including mirrors the row list
+  does not name).
 - CC-P3, CC-mirror, CC-parity, CC-gate.
 
 ## Parallelism and waves
@@ -1502,8 +1721,9 @@ Acceptance criteria:
 | U9 | `bin/ladder-tier.sh`, `bin/escalation-card.sh`, tests, ✱`tests/validate.sh`, ✱`agents/orchestrator.md`, ✱mirror, ✱plugin.json, CHANGELOG | yes |
 | U7a | ✱`hooks/scripts/{reviewed-path,human-decision}-gate.sh`, gate tests, `docs/harness-glossary.md`, CHANGELOG | yes |
 | U7b | superseded by U7b-1/U7b-2 (H-U7B) | - |
-| U7b-1 | ✱`hooks/scripts/lib/benign-command.sh` + ✱adapter copies, `tests/fixtures/gate-fp-corpus/{positive,negative}.jsonl`, new test, ✱`tests/validate.sh`, CHANGELOG | yes |
-| U7b-2 | `scripts/gate-fp-harvest.py`, its test and synthetic fixtures, `docs/audits/…gate-fp-corpus.md`, ✱`tests/validate.sh`, CHANGELOG | yes |
+| U7b-1 | ✱`hooks/scripts/lib/benign-command.sh` + ✱its `.claude/` mirror (no adapter copies, H-U7B1), `tests/fixtures/gate-fp-corpus/{positive,negative}.jsonl`, new test, ✱`tests/validate.sh`, CHANGELOG | yes |
+| U7b-2 | `scripts/gate-fp-harvest.py`, its test and synthetic fixtures, `docs/audits/…gate-fp-corpus.md` (skeleton), ✱`tests/validate.sh`, CHANGELOG | yes |
+| H7b2 | `docs/audits/…gate-fp-corpus.md` marker span (human step, user's terminal; not a unit, H-U7B2) | **no** (human) |
 | U11 | `docs/audits/…adr0040-forward-rule.md` | **no** (docs) |
 | U12 | ✱`agents/lead-programmer.md`, lead-programmer ports, ✱`agents/orchestrator.md`, ✱plugin.json, CHANGELOG | yes |
 | U13a | `bin/ladder-tier.sh`, `scripts/unit-outcomes.js`, `scripts/token-usage/agg2.py`, their three tests and fixtures, CHANGELOG | yes |
@@ -1564,7 +1784,9 @@ renumbered at merge. **Not proposed.** This plan does not weaken that gate.
   before it lands.
 - **Wave 5:** U9.
 - **Wave 6 (gate surfaces, highest risk last):** U7a → U7b-1 → U7b-2
-  (ruling H-U7B; U7b is superseded).
+  (ruling H-U7B; U7b is superseded). After U7b-2 PASS comes human step H7b2
+  (H-U7B2): the user runs it in their own terminal, at any time before the
+  Wave-6 milestone audit. It is not a unit and does not hold Wave 7.
 - **Wave 7 (cleanup, after everything else):** U13a → U13b → U13c. Then the
   final before/after measurement runs (U0's `agg.py`/`agg2.py` with U13a's
   `agg2` window fix, and a fresh `scripts/unit-outcomes.js` export with
@@ -1578,6 +1800,8 @@ goes to `task-master`** (standard path).
 Revised 2026-10-16: **19 dispatchable** (U7b replaced by U7b-1 and U7b-2;
 U13a, U13b and U13c added). 17 are gated lead-programmer units; U4a and U11
 stay ungated. Still the standard path.
+Re-checked 2026-10-16 after H-U7B1, H-U7B2 and H-U13C: still **19**. H7b2 is
+a human step, not a unit, and U13c's edit 6 adds no unit.
 
 ## Measurement and no-regression (pre-registered 2026-10-15)
 
@@ -1661,6 +1885,16 @@ dispatchable as written):
    commands, each at most 300 characters, `$HOME` → `~`, issue numbers and
    quoted strings replaced by placeholders). Choosing (b) adds a criterion to
    U7b-2 and needs no new unit. (From CHK22.)
+
+Added 2026-10-16 (non-blocking; nothing waits on the answer before U7b-2
+PASS):
+2. Will you run human step H7b2 (five commands in your own terminal, from the
+   repo root, after U7b-2 PASS; the exact block is in Step U7b-2 and will be in
+   the audit doc with both hashes filled in)? Recommended default: **yes**,
+   soon after U7b-2 PASS, because Claude Code's transcript cleanup can delete
+   in-window sessions as they age. Options: (a) yes (default); (b) no: the doc
+   stays PENDING and the families' real share is recorded as unmeasured.
+   (From CHK33.)
 
 ## Self-check
 
@@ -1750,6 +1984,43 @@ dispatchable as written):
   says the path is the handoff note, while spec-master cites the plan path) —
   revised in place: routed to scribe in the update hint (advisory only,
   never blocking)
+- CHK31 (2026-10-16, H-U7B1): Can AC7b1.3 pass, given the files it names? —
+  FAIL (conflicting with `bin/cli.js:671`; task-master SPEC-GAP #562) —
+  revised in place: AC7b1.3 compares against the `.claude/` mirror and pins
+  that the adapter copies stay absent; the affected files, file map and R3
+  are corrected to match
+- CHK32: Does every frozen `sort`/`uniq` negative fail under at least one
+  named mutation, and does the frozen rule cover abbreviation, quoting, brace,
+  glob, `$`, `--compress-program`, `-T`, `--` and the POSIXLY_CORRECT operand
+  case? — FAIL (missing; the `--output*` rule is bypassable) — revised in
+  place: option allowlists, banned characters, 10 new negatives, mutations
+  (a)-(d)
+- CHK33 (H-U7B2): Is it defined who produces the real-store numbers that
+  AC7b2.3-5 need, and what U7b-2's PASS means without them? — FAIL (missing;
+  SPEC-GAP #563) — revised in place: human step H7b2 with the exact commands,
+  and a PASS-meaning paragraph; whether the user will run it is converted to
+  Open Question 2 (non-blocking)
+- CHK34: Do AC7b1.2's count of 13 and the revised data agree? — PASS (the
+  positives are unchanged; all 20 negatives are non-benign on the old lib,
+  which has no `sort` or `uniq` in `program_allowed`)
+- CHK35: Is every lead criterion of U7b-2 runnable without the real
+  transcript store? — PASS (AC7b2.1/7 use the synthetic store; AC7b2.2/6/8 are
+  greps and git commands on the repo)
+- CHK36 (H-U13C): Is U13c edit 6 pinned so that the old sentence cannot
+  return, including in mirrors? — PASS (the prose-pins rows, AC13c.3 measured
+  at `6` files today and expected `0` after, and AC13c.1's second mutation)
+- CHK37: Do the step list, file map, wave list and unit count still agree?
+  — PASS (19 units; H7b2 has a file-map row marked human and a Wave-6
+  sentence, and it is excluded from the count in both places)
+- CHK38: Are the marker-audit notes on the touched surfaces disposed? — PASS.
+  `bin/marker-audit.sh --notes` was run 2026-10-16 on
+  `hooks/scripts/lib/benign-command.sh` and `templates/persona-protocol.md`.
+  gh345-1 N5 ("the lib has no direct test file") is closed by U7b-1's new
+  test. hdg-lexer-1 (quoted-span vocabulary) and gh325 (the human-decision
+  suite is now registered: `tests/validate.sh` has 4 hits) are unchanged and
+  not this plan's inputs. The template notes (units 125, 137, 188, 189, 202,
+  236) belong to units dispatched long ago. The one NOTE[spec]
+  (item19-2-measure-skip-rate) concerns another plan's surface.
 
 
 ## Scribe update hint
@@ -1798,3 +2069,7 @@ two, because its new-file payloads exceed the 30000-byte contract budget:
   positive and negative files, no harvested data) and Step U7b-2 (harvest
   script, aggregate counts only, sentinel-proved privacy). task-master
   re-slices #562 as U7b-1 and opens U7b-2, then U13a-U13c for Wave 7.
+- Rulings H-U7B1, H-U7B2, H-U13C (2026-10-16, spec-master), answering the
+  SPEC-GAPs in #562 and #563 and the U7a reviewer finding. task-master
+  removes the `HELD:` lines from #562 and #563 and writes their contract files
+  (U7b-1 first). U13c's issue, when sliced in Wave 7, carries edit 6.
