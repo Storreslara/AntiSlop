@@ -36,7 +36,12 @@ The tests under `tests/abtest-*.test.sh` use a fake `claude` and spend no usage;
 `bash tests/validate.sh`. Everything below that starts a real `claude` is launched by the operator
 (or the orchestrator on the operator's word), never by a lead-programmer unit, and never in CI.
 The runs use your Claude Max subscription, so there is no dollar cap; the caps are `MAX_TURNS`
-(default 100, main-session turns) and `TIMEOUT_MIN` (default 45), equal for both arms.
+(default 100) and `TIMEOUT_MIN` (default 45), equal for both arms.
+
+Each run is built as a standalone repository under `ABT_WORK` (default `/tmp/antislop-abtest-work`),
+outside this checkout: Claude Code loads a parent directory's `CLAUDE.md`, so a run inside the
+checkout would give Arm A this repository's. The runner refuses a work root with a `CLAUDE.md` in it
+or above it. Run artifacts (stream, summary, checks, diff) stay under `eval/abtest/.runs/`.
 
 ## Order of operations
 
@@ -45,7 +50,10 @@ The runs use your Claude Max subscription, so there is no dollar cap; the caps a
    events and a subagent spawn, and both arms ran on a model whose name contains `fable`. Read the
    `probe-detail:` lines too: whether `--max-turns` was accepted, the stream record types, and the
    hook census in `eval/abtest/.runs/probe/B/hook-names.txt` (a hook listed twice may be registered
-   by both the plugin and the scaffolded settings).
+   by both the plugin and the scaffolded settings). The probe also asks Arm A whether its instructions
+   mention this repository's code-review-graph section (`probe: A root_claude_md=not-loaded` is
+   required) and makes both arms write the phrase "rate limit 429" (`probe: mention-case ok`), so a
+   reply that merely mentions rate limits cannot be mistaken for a limit hit.
 2. Check the fixtures: `bash eval/abtest/verify-checks.sh --all` must print `verify-checks: ok`.
 3. Pilot, one run per arm per eval: `bash eval/abtest/run-matrix.sh --pilot`. Look at
    `eval/abtest/results.jsonl` and at `eval/abtest/.runs/<run>/` before going on. Pilot rows are valid
@@ -63,6 +71,9 @@ A subscription usage or rate limit is recorded as `completion_status: usage-limi
 it is excluded from every count and verdict, and the runner stops with exit 75. Wait for the limit to
 reset and run the same command again: a run is done once a row exists for it whose status is not
 `usage-limit`, so only the unfinished runs repeat. `--dry-run` prints the plan (`run` or `skip` per run).
+If one run id is classified `usage-limit` three times, the runner stops with exit 76 instead of looping:
+read that run's `stream.jsonl` under `eval/abtest/.runs/` before retrying (`ABT_MAX_LIMIT_HITS` raises
+the cap). Each arm also runs under an outer `timeout -k`, so a `claude` that ignores SIGTERM is ended.
 
 ## What a row holds
 
@@ -70,7 +81,9 @@ One JSON line per run: arm, policy, rep, fixture and plugin commits, `completion
 (`complete`, `stalled-human`, `turn-cap`, `timeout`, `usage-limit`, `error`), the holdout `checks`,
 `run_pass`, `defects_escaped`, `out_of_scope_lines`, token columns (`tokens_in`, `tokens_out`,
 `tokens_cache_write`, `tokens_cache_read`, `tokens_total`), `num_turns`, `wall_clock_ms`, and a
-`process` block for Arm B. `total_cost_usd` is stored when the CLI reports it and is never used.
+`process` block for Arm B. A row is only written when the number of required checks equals the count
+`verify-checks.sh` proved for that eval (`make-row.py --expected-required`), so an empty or all-optional
+checks array can never give a passing row. `total_cost_usd` is stored when the CLI reports it and is never used.
 `process.persona_tokens` is null: the arms run with `--no-session-persistence`, so no transcript exists
 for per-persona attribution.
 
@@ -206,20 +219,28 @@ if [ "$fail" -eq 0 ]; then
    exit: 0
    stdout: `8`
    mutation: skip edit 3; no abtest section runs, so stdout is 0.
-7. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
+7. run: `grep -c 'exit 76' eval/abtest/README.md`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2; grep exits 2 on the missing file and prints nothing.
+8. run: `grep -c 'ABT_WORK' eval/abtest/README.md`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2; grep exits 2 on the missing file and prints nothing.
+9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `eval/abtest/README.md tests/validate.sh`
    mutation: skip edit 4 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
-8. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
+10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
    mutation: skip edit 4; no unit commit exists and the exit is 3.
-9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/README.md tests/validate.sh | grep -vcE "^[a-z]+\(abt-u17\): "`
+11. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/README.md tests/validate.sh | grep -vcE "^[a-z]+\(abt-u17\): "`
    exit: 1
    stdout: `0`
    mutation: add a commit with subject `fix: x` touching one content file after the unit commit; stdout 1.
    proof: scratch run: with no later commit the count printed 0 (exit 1); a later untagged commit is counted by grep -v, so stdout is 1.
-10. run: `git status --porcelain -- eval/abtest/README.md tests/validate.sh`
+12. run: `git status --porcelain -- eval/abtest/README.md tests/validate.sh`
    exit: 0
    stdout: empty
    mutation: skip edit 4; the new files stay untracked and are listed.
@@ -229,8 +250,8 @@ tdd: no registration lines and a README; the registered tests already exist and 
 blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
-already-green: criterion 10 (the scoped clean-tree check) passes at HEAD by design; it turns red only when the commit step is skipped.
-depends-on: abt-u01, u02, u03, u04, u12, u13, u14 and u15 must have landed; edit 1 counts the eight tests and STOPs unless exactly eight exist.
+already-green: criterion 12 (the scoped clean-tree check) passes at HEAD by design; it turns red only when the commit step is skipped.
+depends-on: abt-u01, u02, u03, u04, u12, u12b, u13, u14 and u15 must have landed; edit 1 counts the eight tests and STOPs unless exactly eight exist.
 gate-run: criterion 6 runs the lanes gate in the foreground (about 3 minutes; pass the 600000 ms timeout; never background it; it refuses a linked worktree, so use the normal checkout). If it fails only in tests/rollout-preflight.test.sh or tests/microworld/dashboard-decision-run.test.js (both timing-flaky), rerun that test alone and the lanes once more and report both runs.
 no-real-claude: the registered tests use a fake claude; nothing here spends subscription usage.
 commit-message: test(abt-u17): register the abtest suites in the merge gate and add the operator README (#586)
@@ -251,6 +272,8 @@ criterion 7: <FILL: exit and stdout>
 criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
