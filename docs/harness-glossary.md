@@ -3356,3 +3356,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **lone jq read**:
 (unit ptr-u7c, 2026-10-15) — a Bash command that is exactly one `jq` invocation with no `cd` prefix, pipe, separator, redirection or substitution, which `hooks/scripts/harness-integrity-gate.sh` admits through `is_benign_jq_read` even when it names the persona config. The reviewer uses one (`jq -r '.reviewGating.mode // "enforce", .humanReviewMode // "critical"'`) to read both config keys instead of the Read tool; any compound form is still refused. The `jq` carve-out is local to this gate because adding `jq` to the shared `benign-command.sh` allowlist would loosen `reviewed-path-gate.sh` and `human-decision-gate.sh` too.
+
+**escalation probe list**:
+(unit ptr-u6, 2026-10-15) — the fixture `tests/fixtures/reviewer-escalation-probes.txt`: 22 phrases, one per line, naming directives that moved out of `agents/reviewer.md` into the `## Fourth verdict: escalate-to-human` section of `templates/persona-protocol.md`. Grepping each phrase in that section proves the move dropped nothing. Currently only the unit's acceptance loop reads it; no committed test does, so a later template edit can drop a probed phrase with the lanes gate green.
+
+**staleness binding**:
+(unit ptr-u6, 2026-10-15) — the `escalation: <timestamp>` field on a human `DECISION` first line, carrying the standing `.escalated` marker's own first-line timestamp (`templates/persona-protocol.md`, Format paragraph). A decision left over from an earlier escalation of the same unit carries an older timestamp and so cannot resolve a later one. Related: [[Escalation packet]].
