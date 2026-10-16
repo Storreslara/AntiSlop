@@ -1459,6 +1459,44 @@ else
 fi
 
 echo
+echo "-- U7c: the reviewer's documented lone jq read passes all three Bash gates --"
+# The command is extracted from agents/reviewer.md, never retyped, so a reworded
+# mandate that a gate would refuse turns this suite red.
+u7c_bt='`'
+u7c_cmd="$(grep -m1 -oE "jq -r '[.]reviewGating[.]mode[^${u7c_bt}]*" agents/reviewer.md || true)"
+u7c_proj="$(mk u7c)"
+printf '{}\n' > "$u7c_proj/.claude/persona-config.json"
+
+# u7c_rc <gate script> <command> -> the gate's exit status for a reviewer Bash call
+u7c_rc() {
+  local g_rc=0
+  jq -n --arg c "$2" '{tool_name:"Bash",agent_type:"reviewer",tool_input:{command:$c}}' \
+    | CLAUDE_PROJECT_DIR="$u7c_proj" bash "$1" >/dev/null 2>&1 || g_rc=$?
+  echo "$g_rc"
+}
+
+if [ -z "$u7c_cmd" ]; then
+  bad "[U7c] no lone jq command found in agents/reviewer.md"
+else
+  for u7c_g in harness-integrity-gate reviewed-path-gate human-decision-gate; do
+    u7c_got="$(u7c_rc "hooks/scripts/$u7c_g.sh" "$u7c_cmd")"
+    if [ "$u7c_got" = 0 ]; then
+      pass "[U7c] $u7c_g allows the documented jq read"
+    else
+      bad "[U7c] $u7c_g exit $u7c_got on the documented jq read, expected 0"
+    fi
+  done
+  # Negative control: the same read behind a cd prefix is a compound command, which
+  # the integrity gate refuses. It proves the gate is armed in this fixture.
+  u7c_got="$(u7c_rc hooks/scripts/harness-integrity-gate.sh "cd /tmp; $u7c_cmd")"
+  if [ "$u7c_got" = 2 ]; then
+    pass "[U7c] harness-integrity-gate refuses the cd-prefixed compound form"
+  else
+    bad "[U7c] harness-integrity-gate exit $u7c_got on the cd-prefixed form, expected 2"
+  fi
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All harness-integrity-gate tests passed."
 else

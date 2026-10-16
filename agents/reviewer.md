@@ -121,10 +121,13 @@ with reasons.
   `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
   for its runnable P3 check (`ok` clears both the version bump and the CHANGELOG entry). It changes no verdict rules beyond the
   existing constitutional P3 check.
-- **When reviewGating.mode is off (review gating off)**: read the key from
-  `.claude/persona-config.json` with the `Read` tool (a Bash command naming
-  that file is refused by `harness-integrity-gate.sh`); only the exact string `off` counts, and an
-  absent key, unreadable config or any other value means `enforce`. Under
+- **When reviewGating.mode is off (review gating off)**: read both keys with
+  this one Bash command, run alone (a lone `jq` read is allowed; a `cd` prefix,
+  pipe or redirect makes it compound, and `harness-integrity-gate.sh` refuses it):
+  `jq -r '.reviewGating.mode // "enforce", .humanReviewMode // "critical"' .claude/persona-config.json`
+  Line 1 is `reviewGating.mode`, line 2 `humanReviewMode`. Only the exact string
+  `off` counts; an absent key, a non-zero exit or any other value means
+  `enforce` (`critical` for `humanReviewMode`). Under
   `off` your verdict is advisory: review exactly as usual and return the
   verdict and findings in the shape above, but run **no marker write of any
   kind** — skip every `.pass`, `.fail`, `.blocked` and `.escalated` write in
@@ -231,8 +234,8 @@ with reasons.
 - **On ESCALATE-TO-HUMAN (both orchestration modes)**: a gate on PASS, never a substitute
   for FAIL — precedence is
   `FAIL` > `INSUFFICIENT-CONTEXT` > `ESCALATE-TO-HUMAN` > `PASS`, so only a
-  unit you *would have passed* escalates. Read `humanReviewMode` from this
-  project's `.claude/persona-config.json`: **an absent key resolves to
+  unit you *would have passed* escalates. Read `humanReviewMode` from line 2 of
+  the `jq` read above (non-zero exit: `critical`): **an absent key resolves to
   `critical`, and so does any unrecognised value** — the shipped default is
   on, and this fails toward escalation, never toward silent auto-approval.
   Only `off`, spelled exactly, disables escalation. Nothing backfills the key
