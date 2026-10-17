@@ -31,6 +31,9 @@ COUNT_FIELDS = ("tokens_in", "tokens_out", "tokens_cache_write", "tokens_cache_r
                 "defects_escaped", "out_of_scope_lines")
 TEN = tuple(f"e{n:02d}" for n in range(1, 11))
 COST_EVALS = ("e05-tags-feature", "e08-stable-cursor", "e09-typo")
+# OD-14: the rows of one arm of one eval must come from one harness, one plugin checkout, one prompt and one fixture.
+PROVENANCE = ("harness_commit", "plugin_commit", "prompt_sha", "fixture_commit")
+CORE_PREFIXES = ("e02", "e04", "e07")
 
 
 def load_rows(path):
@@ -174,10 +177,19 @@ def outcome(rows_a, rows_b):
     return "TIE", ka, kb, p, "gap", None
 
 
+def mixed_provenance(rows_a, rows_b):
+    """The PROVENANCE fields on which the rows of one arm disagree (null counts as one value)."""
+    return [k for k in PROVENANCE
+            if any(len({json.dumps(r.get(k)) for r in rows}) > 1 for rows in (rows_a, rows_b))]
+
+
 def summarize_eval(eval_id, rows):
     ra = [r for r in rows if r["arm"] == "A"]
     rb = [r for r in rows if r["arm"] == "B"]
     out, ka, kb, p, rule, reason = outcome(ra, rb)
+    mixed = mixed_provenance(ra, rb)
+    if mixed:
+        out, rule, reason = "INCONCLUSIVE", None, "mixed provenance: " + ",".join(mixed)
     q = {
         "defects_median_A": med([r["defects_escaped"] for r in ra]),
         "defects_median_B": med([r["defects_escaped"] for r in rb]),
@@ -237,6 +249,10 @@ def score(rows, policy):
     by_eval = {}
     for r in used:
         by_eval.setdefault(r["eval_id"], []).append(r)
+    for prefix in CORE_PREFIXES:
+        clash = sorted(e for e in by_eval if e[:3] == prefix)
+        if len(clash) > 1:
+            raise SystemExit(f"score: eval ids {clash} share the prefix {prefix!r}; the core condition needs one id per eval")
     evals = {e: summarize_eval(e, rs) for e, rs in sorted(by_eval.items())}
     present = {e[:3] for e in evals}
     core = {e: (evals[e]["outcome"] != "WIN_A") for e in evals if e[:3] in ("e02", "e04", "e07")}

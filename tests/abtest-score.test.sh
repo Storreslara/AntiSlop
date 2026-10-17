@@ -3,6 +3,7 @@
 # the stall override, the N=10 Fisher rule, the aggregate line and the row
 # validator, over synthetic rows built here.
 set -u
+export PYTHONDONTWRITEBYTECODE=1
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCORE="$REPO_ROOT/eval/abtest/score.py"
 T="$(mktemp -d)"
@@ -137,6 +138,44 @@ sadd(rows, "x-wina-edge", "PPPPf", "Pffff", A14, dict(defects=0, oos=0, tokens=1
 # Cost evals: a won or inconclusive cost eval carries no measured-overhead label.
 sadd(rows, "e08-stable-cursor", "fffff", "PPPPf")
 sadd(rows, "e09-typo", "P", "P")
+# Provenance (OD-14): the rows of one arm share one value of each provenance field; null is one value; usage-limit rows are exempt.
+def patch(ev, arm, rep, **kw):
+    for r in rows:
+        if r["eval_id"] == ev and r["arm"] == arm and r["rep"] == rep:
+            r.update(kw)
+
+def patch_arm(ev, arm, **kw):
+    for r in rows:
+        if r["eval_id"] == ev and r["arm"] == arm:
+            r.update(kw)
+
+sadd(rows, "y-prov-ok", "fffff", "PPPPf")
+sadd(rows, "y-prov-harness", "fffff", "PPPPf")
+patch("y-prov-harness", "A", 1, harness_commit="old")
+sadd(rows, "y-prov-harness-b", "fffff", "PPPPf")
+patch("y-prov-harness-b", "B", 3, harness_commit="old")
+sadd(rows, "y-prov-plugin", "fffff", "PPPPf")
+patch_arm("y-prov-plugin", "B", plugin_commit="p1")
+patch("y-prov-plugin", "B", 1, plugin_commit="p0")
+sadd(rows, "y-prov-plugin-null", "fffff", "PPPPf")
+patch_arm("y-prov-plugin-null", "B", plugin_commit="p1")
+patch("y-prov-plugin-null", "B", 2, plugin_commit=None)
+sadd(rows, "y-prov-plugin-a", "fffff", "PPPPf")
+patch("y-prov-plugin-a", "A", 2, plugin_commit="p9")
+sadd(rows, "y-prov-prompt", "fffff", "PPPPf")
+patch("y-prov-prompt", "A", 1, prompt_sha="q")
+sadd(rows, "y-prov-fixture", "fffff", "PPPPf")
+patch("y-prov-fixture", "B", 2, fixture_commit="g")
+sadd(rows, "y-prov-two", "fffff", "PPPPf")
+patch("y-prov-two", "A", 1, harness_commit="old", prompt_sha="q")
+sadd(rows, "y-prov-stall", "fffff", "PPPPs")
+patch("y-prov-stall", "B", 1, harness_commit="old")
+# Survivors of the abt-u14 re-review: one arm absent, no complete Arm A run, a stall on an undecided outcome.
+sadd(rows, "y-only-b", "", "PPPPP")
+sadd(rows, "y-only-a", "PPPPP", "")
+sadd(rows, "y-no-complete-a", "sssss", "fffff", dict(defects=1, oos=4), dict(defects=0, oos=0, tokens=150))
+sadd(rows, "y-pilot-stall", "P", "s")
+sadd(rows, "y-diff1-stall", "PPPff", "PPPPs")
 # end of the N-rule scenarios
 with open(sys.argv[1], "w") as f:
     for r in rows:
@@ -408,6 +447,7 @@ tally "$T/c2.txt" "$?" "the boundary checker"
 # 5/10 vs 5/10: no table is likelier than the central one at 10 successes in 20 runs, so p=1.
 python3 -I - "$SCORE" << 'PYEOF' > "$T/f.txt" 2>&1
 import importlib.util, sys
+sys.dont_write_bytecode = True
 from fractions import Fraction as F
 spec = importlib.util.spec_from_file_location("score", sys.argv[1])
 m = importlib.util.module_from_spec(spec)
@@ -439,6 +479,113 @@ head -n 1 "$T/rows.jsonl" | sed 's/"completion_status": "complete"/"completion_s
 python3 "$SCORE" --validate-rows "$T/bad2.jsonl" > "$T/vbad2.txt"; rc=$?
 check "the retired budget status is rejected" "$rc" "1"
 check "the retired budget status is named" "$(grep -c "bad completion_status 'budget'" "$T/vbad2.txt")" "1"
+# --- provenance, the re-review survivors and bytecode (abt-u14b) ---
+check "the test exports PYTHONDONTWRITEBYTECODE" "${PYTHONDONTWRITEBYTECODE:-}" "1"
+python3 -I - "$SCORE" "$T" << 'PYEOF' > "$T/c3.txt" 2>&1
+import copy, json, subprocess, sys
+SCORE, T = sys.argv[1:3]
+d = json.load(open(T + "/r.json"))
+md = open(T + "/r.md").read().splitlines()
+V = d["evals"]
+
+def chk(name, got, want):
+    print(("ok   " + name) if got == want else f"FAIL {name} (want {want!r}, got {got!r})")
+
+def ev(name, eval_id, expr, want):
+    chk(name, eval(expr, {"v": V[eval_id]}), want)
+
+MIXED = '(v["outcome"], v["verdict"], v["outcome_reason"], v["outcome_rule"])'
+def mixed(name, eval_id, fields, verdict="inconclusive"):
+    ev(name, eval_id, MIXED, ("INCONCLUSIVE", verdict, "mixed provenance: " + fields, None))
+
+ev("rows that share their provenance still decide", "y-prov-ok", '(v["outcome"], v["outcome_reason"])', ("WIN_B", None))
+mixed("a stale harness commit in arm A is mixed provenance", "y-prov-harness", "harness_commit")
+mixed("a stale harness commit in arm B is mixed provenance", "y-prov-harness-b", "harness_commit")
+mixed("a stale plugin commit in arm B is mixed provenance", "y-prov-plugin", "plugin_commit")
+mixed("a null plugin commit next to a real one is mixed provenance", "y-prov-plugin-null", "plugin_commit")
+mixed("a plugin commit on one arm A row is mixed provenance", "y-prov-plugin-a", "plugin_commit")
+mixed("a different prompt hash is mixed provenance", "y-prov-prompt", "prompt_sha")
+mixed("a different fixture commit is mixed provenance", "y-prov-fixture", "fixture_commit")
+mixed("two stale fields are both named, in field order", "y-prov-two", "harness_commit,prompt_sha")
+mixed("mixed provenance does not lift a stall override", "y-prov-stall", "harness_commit", verdict="not-superior")
+ev("mixed provenance keeps the pass counts", "y-prov-harness", '(v["k_A"], v["k_B"], v["n_A"], v["n_B"])', (0, 4, 5, 5))
+chk("the markdown shows the mixed provenance reason", sum(1 for l in md if l.startswith("| y-prov-harness |") and "INCONCLUSIVE (mixed provenance: harness_commit)" in l), 1)
+chk("the markdown shows a decided provenance control as decided", sum(1 for l in md if l.startswith("| y-prov-ok |") and "WIN_B" in l and "mixed" not in l), 1)
+
+# The six survivors of the abt-u14 re-review.
+ev("an eval with only arm B rows does not crash and is short N", "y-only-b", '(v["outcome"], v["outcome_reason"], v["verdict"], v["quality"]["edge"])', ("INCONCLUSIVE", "short N: A=0 B=5", "inconclusive", False))
+ev("an eval with only arm A rows does not crash and is short N", "y-only-a", '(v["outcome"], v["outcome_reason"], v["verdict"], v["quality"]["edge"])', ("INCONCLUSIVE", "short N: A=5 B=0", "inconclusive", False))
+ev("a tie with an edge and no complete arm A run is mixed, never superior", "y-no-complete-a", '(v["outcome"], v["overhead"]["R_tokens"], v["quality"]["edge"], v["verdict"])', ("TIE", None, True, "mixed"))
+# OD-13: the stall override applies to an undecided outcome too; the outcome itself stays INCONCLUSIVE.
+ev("a pilot with a stalled arm B row is not-superior while the outcome stays INCONCLUSIVE", "y-pilot-stall", '(v["outcome"], v["outcome_reason"], v["verdict"], v["stalled_human_B"])', ("INCONCLUSIVE", "short N: A=1 B=1", "not-superior", 1))
+ev("a 1-run gap with a stalled arm B row is not-superior while the outcome stays INCONCLUSIVE", "y-diff1-stall", '(v["outcome"], v["outcome_reason"], v["verdict"])', ("INCONCLUSIVE", "1-run gap", "not-superior"))
+ev("a pilot with no stall stays inconclusive", "x-n-pilot", '(v["outcome"], v["verdict"])', ("INCONCLUSIVE", "inconclusive"))
+
+base = [json.loads(l) for l in open(T + "/rows.jsonl")]
+def clone(src, new):
+    out = []
+    for r in base:
+        if r["eval_id"] == src:
+            c = copy.deepcopy(r)
+            c["eval_id"] = new
+            c["run_id"] = c["run_id"].replace(src, new, 1)
+            out.append(c)
+    return out
+
+def write(name, rows):
+    with open(T + "/" + name, "w") as f:
+        for r in rows:
+            f.write(json.dumps(r) + "\n")
+
+def run(name):
+    p = subprocess.run([sys.executable, SCORE, T + "/" + name, "--out-json", T + "/" + name + ".json"], capture_output=True, text=True)
+    rep = None
+    try:
+        rep = json.load(open(T + "/" + name + ".json"))
+    except (OSError, ValueError):
+        pass
+    return p, rep
+
+tie = "x-tie-noedge"
+ul = clone("x-winb", "y-pu")
+extra = copy.deepcopy(ul[0])
+extra.update(rep=90, run_id="y-pu/A/uniform/90", completion_status="usage-limit", run_pass=False, harness_commit="old")
+write("p-usage.jsonl", ul + [extra])
+p, rep = run("p-usage.jsonl")
+chk("a usage-limit row from another harness is exempt from the provenance rule", (p.returncode, rep["evals"]["y-pu"]["outcome"], rep["evals"]["y-pu"]["outcome_reason"], rep["evals"]["y-pu"]["n_A"], rep["usage_limit_rows_excluded"]), (0, "WIN_B", None, 5, 1))
+write("p-cost.jsonl", clone(tie, "e08-stable-cursor") + clone(tie, "e09-typo") + clone(tie, "e05-tags-feature") + clone(tie, "y-plain-tie"))
+p, rep = run("p-cost.jsonl")
+chk("the cost-eval file scores", p.returncode, 0)
+labels = {e: v["label"] for e, v in rep["evals"].items()} if rep else {}
+chk("a tied e05, e08 and e09 carry the measured-overhead label, a plain tie none", labels,
+    {"e05-tags-feature": "measured-overhead", "e08-stable-cursor": "measured-overhead", "e09-typo": "measured-overhead", "y-plain-tie": None})
+
+write("p-e2.jsonl", clone(tie, "e02-preview-mutation"))
+write("p-e4.jsonl", clone(tie, "e04-search-injection"))
+write("p-both.jsonl", clone(tie, "e02-preview-mutation") + clone(tie, "e04-search-injection"))
+for name, want in (("p-e2.jsonl", None), ("p-e4.jsonl", None), ("p-both.jsonl", True)):
+    p, rep = run(name)
+    chk(f"core_no_win_a_e2_e4 for {name}", (p.returncode, rep["aggregate"]["core_no_win_a_e2_e4"] if rep else "no report"), (0, want))
+
+write("p-clash.jsonl", clone(tie, "e02-preview-mutation") + clone(tie, "e02-other"))
+p, rep = run("p-clash.jsonl")
+chk("two e02 ids stop the scorer with exit 1", p.returncode, 1)
+chk("the clash is named on stderr", "share the prefix 'e02'" in p.stderr, True)
+write("p-clash4.jsonl", clone(tie, "e04-search-injection") + clone(tie, "e04-other"))
+p, rep = run("p-clash4.jsonl")
+chk("two e04 ids stop the scorer with exit 1", (p.returncode, "share the prefix 'e04'" in p.stderr), (1, True))
+write("p-clash7.jsonl", clone(tie, "e07-first") + clone(tie, "e07-second"))
+p, rep = run("p-clash7.jsonl")
+chk("two e07 ids stop the scorer with exit 1", (p.returncode, "share the prefix 'e07'" in p.stderr), (1, True))
+
+cache = clone(tie, "y-cache")[:1]
+cache[0]["tokens_cache_read"] = 7
+write("p-cache.jsonl", cache)
+p = subprocess.run([sys.executable, SCORE, "--validate-rows", T + "/p-cache.jsonl"], capture_output=True, text=True)
+chk("tokens_cache_read is not part of tokens_total", (p.returncode, p.stdout.strip()), (0, "rows ok: 1"))
+PYEOF
+tally "$T/c3.txt" "$?" "the provenance checker"
+check "the score test leaves no bytecode behind" "$(ls "$REPO_ROOT"/eval/abtest/__pycache__/score.* 2> /dev/null | wc -l | tr -d ' ')" "0"
 
 echo "abtest-score: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && [ "$pass" -gt 0 ] && echo "All abtest-score checks passed."
