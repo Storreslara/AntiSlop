@@ -3451,3 +3451,13 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **fail-closed arm start**:
 (unit abt-u12, 2026-10-17) — the rule that a run whose arm never really started writes no row. An arm whose scaffold sha is missing stops the runner with exit 1 (internal error) and appends nothing, so resume repeats that run instead of treating a non-run as data. Distinct from the usage-limit stop (exit 75), which does keep a row.
+
+**harness root (checkout sense)**:
+(unit abt-u01b, 2026-10-17) — in `eval/abtest/arms/common.sh` (`ABTEST_HARNESS_ROOT`) and the arm scripts, the root directory of this repository's checkout, which an [[arm]] must never load from, run in or read. Not the glossary's "Harness" (Claude Code, the product): here "harness" means the A/B test tooling's own checkout. `abtest_outside` refuses any path inside it (arm scripts exit 2).
+_Avoid_: harness (alone) for the checkout.
+
+**pruned plugin copy**:
+(unit abt-u01b, 2026-10-17) — the plugin tree arm B loads: `abtest_plugin_copy` takes a `git archive` of HEAD limited to `.claude-plugin agents bin commands hooks skills templates`, extracted under `TMPDIR` and removed on exit, so the arm sees no tests, eval fixtures, docs or working-tree edits. arm-b exits 3 if it cannot be built. Because it is HEAD, a dirty checkout's uncommitted edits are not what arm B loads.
+
+**per-run HOME**:
+(unit abt-u01b, 2026-10-17) — the throwaway `HOME` that `abtest_make_home` builds for one arm run (`ABTEST_HOME`), holding only a neutral `.gitconfig`; `abtest_run_claude` runs `claude` with `HOME` and `GIT_CONFIG_GLOBAL` pointing at it, plus deny flags built from `ABTEST_DENY_PATHS`, so the arm cannot read the operator's real home or git config.
