@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "notes": [
+    { "id": "n1", "owner": "alice", "title": "first", "body": "hello", "createdAt": 1700000000001 },
+    { "id": "n2", "owner": "bob", "title": "second", "body": "", "createdAt": 1700000000002 },
+    { "id": "n3", "owner": "alice", "title": "third", "body": "x", "createdAt": 1700000000003 }
+  ]
+}

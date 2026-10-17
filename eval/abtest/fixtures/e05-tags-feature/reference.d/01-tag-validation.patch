@@ -1,0 +1,87 @@
+diff --git a/src/server.js b/src/server.js
+index 6d68217..cd4f517 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -4,6 +4,13 @@ const http = require('node:http');
+ const { requireUser } = require('./auth');
+ const { createStore } = require('./store');
+ 
++const SLUG = /^[a-z0-9-]{1,20}$/;
++
++// Zero to five lowercase slugs.
++function validTags(tags) {
++  return Array.isArray(tags) && tags.length <= 5 && tags.every((t) => typeof t === 'string' && SLUG.test(t));
++}
++
+ function send(res, status, payload) {
+   res.writeHead(status, { 'content-type': 'application/json' });
+   res.end(JSON.stringify(payload));
+@@ -40,7 +47,9 @@ function createServer(store = createStore()) {
+         if (typeof body.title !== 'string' || body.title === '') {
+           return send(res, 400, { error: 'title required' });
+         }
+-        return send(res, 201, store.add({ owner: user, title: body.title, body: body.body || '' }));
++        const tags = body.tags === undefined ? [] : body.tags;
++        if (!validTags(tags)) return send(res, 400, { error: 'tags must be 0-5 lowercase slugs' });
++        return send(res, 201, store.add({ owner: user, title: body.title, body: body.body || '', tags }));
+       }
+       const del = /^\/notes\/([\w-]+)$/.exec(url.pathname);
+       if (req.method === 'DELETE' && del) {
+diff --git a/src/store.js b/src/store.js
+index 88575da..5457121 100644
+--- a/src/store.js
++++ b/src/store.js
+@@ -5,13 +5,14 @@ function createStore() {
+   const notes = new Map();
+   let counter = 0;
+ 
+-  function add({ owner, title, body = '', id, createdAt }) {
++  function add({ owner, title, body = '', tags = [], id, createdAt }) {
+     counter += 1;
+     const note = {
+       id: id || `n${counter}`,
+       owner,
+       title,
+       body,
++      tags,
+       createdAt: createdAt || 1700000000000 + counter,
+     };
+     notes.set(note.id, note);
+diff --git a/test/tags-validation.test.js b/test/tags-validation.test.js
+new file mode 100644
+index 0000000..b84dddb
+--- /dev/null
++++ b/test/tags-validation.test.js
+@@ -0,0 +1,32 @@
++'use strict';
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { createServer } = require('../src/server');
++
++async function post(body) {
++  const server = createServer();
++  await new Promise((resolve) => server.listen(0, resolve));
++  try {
++    return await fetch(`http://127.0.0.1:${server.address().port}/notes`, {
++      method: 'POST',
++      headers: { authorization: 'Bearer tok-alice', 'content-type': 'application/json' },
++      body: JSON.stringify(body),
++    });
++  } finally {
++    await new Promise((resolve) => server.close(resolve));
++  }
++}
++
++test('valid tags are stored', async () => {
++  const res = await post({ title: 't', tags: ['a', 'b-1'] });
++  assert.equal(res.status, 201);
++  assert.deepEqual((await res.json()).tags, ['a', 'b-1']);
++});
++
++test('more than five tags is a 400', async () => {
++  assert.equal((await post({ title: 't', tags: ['a', 'b', 'c', 'd', 'e', 'f'] })).status, 400);
++});
++
++test('a bad slug is a 400', async () => {
++  assert.equal((await post({ title: 't', tags: ['Bad Tag'] })).status, 400);
++});

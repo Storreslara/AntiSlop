@@ -1,0 +1,49 @@
+diff --git a/scripts/migrate-v1.js b/scripts/migrate-v1.js
+new file mode 100644
+index 0000000..2460e76
+--- /dev/null
++++ b/scripts/migrate-v1.js
+@@ -0,0 +1,23 @@
++#!/usr/bin/env node
++'use strict';
++
++// Usage: node scripts/migrate-v1.js <in> <out>
++// Converts a version 1 dump to version 2: every note gains tags: [].
++const fs = require('node:fs');
++
++function migrate(dump) {
++  if (dump.version !== 1) throw new Error('expected a version 1 dump');
++  return { ...dump, version: 2, notes: dump.notes.map((n) => ({ ...n, tags: [] })) };
++}
++
++if (require.main === module) {
++  const [input, output] = process.argv.slice(2);
++  if (!input || !output) {
++    console.error('usage: migrate-v1.js <in> <out>');
++    process.exit(2);
++  }
++  const dump = JSON.parse(fs.readFileSync(input, 'utf8'));
++  fs.writeFileSync(output, `${JSON.stringify(migrate(dump), null, 2)}\n`);
++}
++
++module.exports = { migrate };
+diff --git a/test/migrate-v1.test.js b/test/migrate-v1.test.js
+new file mode 100644
+index 0000000..ac72a10
+--- /dev/null
++++ b/test/migrate-v1.test.js
+@@ -0,0 +1,14 @@
++'use strict';
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { migrate } = require('../scripts/migrate-v1');
++
++test('migrate adds empty tags and bumps the version', () => {
++  const out = migrate({ version: 1, notes: [{ id: 'n1', title: 't' }] });
++  assert.equal(out.version, 2);
++  assert.deepEqual(out.notes, [{ id: 'n1', title: 't', tags: [] }]);
++});
++
++test('migrate rejects a dump that is not version 1', () => {
++  assert.throws(() => migrate({ version: 2, notes: [] }));
++});

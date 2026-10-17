@@ -1,0 +1,44 @@
+diff --git a/src/server.js b/src/server.js
+index 5a29f0f..e0ee02e 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -43,6 +43,13 @@ function createServer(store = createStore()) {
+         const tag = url.searchParams.get('tag');
+         return send(res, 200, store.list({ owner: user, limit, cursor, tag }));
+       }
++      if (req.method === 'GET' && url.pathname === '/tags') {
++        const counts = {};
++        for (const note of store.list({ owner: user, limit: Infinity }).items) {
++          for (const tag of note.tags) counts[tag] = (counts[tag] || 0) + 1;
++        }
++        return send(res, 200, counts);
++      }
+       if (req.method === 'POST' && url.pathname === '/notes') {
+         const body = await readBody(req);
+         if (typeof body.title !== 'string' || body.title === '') {
+diff --git a/test/tags-counts.test.js b/test/tags-counts.test.js
+new file mode 100644
+index 0000000..ff1e0c1
+--- /dev/null
++++ b/test/tags-counts.test.js
+@@ -0,0 +1,20 @@
++'use strict';
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { createServer } = require('../src/server');
++const { createStore } = require('../src/store');
++
++test('GET /tags counts the caller tags', async () => {
++  const store = createStore();
++  store.add({ owner: 'alice', title: 'one', tags: ['a', 'b'] });
++  store.add({ owner: 'alice', title: 'two', tags: ['a'] });
++  store.add({ owner: 'bob', title: 'three', tags: ['a'] });
++  const server = createServer(store);
++  await new Promise((resolve) => server.listen(0, resolve));
++  try {
++    const res = await fetch(`http://127.0.0.1:${server.address().port}/tags`, { headers: { authorization: 'Bearer tok-alice' } });
++    assert.deepEqual(await res.json(), { a: 2, b: 1 });
++  } finally {
++    await new Promise((resolve) => server.close(resolve));
++  }
++});

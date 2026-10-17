@@ -1,0 +1,31 @@
+diff --git a/README.md b/README.md
+index e70e421..abbb76f 100644
+--- a/README.md
++++ b/README.md
+@@ -6,8 +6,9 @@ A zero-dependency notes service (Node 18 or newer, no install step).
+ 
+ | Method | Path | Behaviour |
+ |---|---|---|
+-| GET | `/notes` | The caller's notes, paged with `limit` and `cursor`; `title=<text>` keeps exact matches |
+-| POST | `/notes` | Create a note from a JSON body `{title, body}`; 400 without a title |
++| GET | `/notes` | The caller's notes, paged with `limit` and `cursor`; `title=<text>` keeps exact matches; `tag=<slug>` keeps notes with that tag |
++| GET | `/tags` | `{tag: count}` over the caller's notes |
++| POST | `/notes` | Create a note from a JSON body `{title, body, tags}` (0 to 5 slugs matching `[a-z0-9-]{1,20}`); 400 without a title or with bad tags |
+ | DELETE | `/notes/:id` | Delete one of the caller's notes; 404 for any other id |
+ 
+ Every route needs `Authorization: Bearer <token>`; a missing or unknown token is a 401.
+@@ -16,9 +17,13 @@ Every route needs `Authorization: Bearer <token>`; a missing or unknown token is
+ 
+ - `npm test` runs the test suite.
+ - `node src/server.js` serves on `PORT` (default 3000).
+-- `node src/cli.js list [--title <text>]` lists notes; `NOTES_SEED=<file>` seeds the store from a JSON array.
++- `node src/cli.js list [--title <text> | --tag <slug>]` lists notes; `NOTES_SEED=<file>` seeds the store from a JSON array.
+ - `node scripts/export.js` prints all notes as JSON.
+ 
+ ## Data format v1
+ 
+ A dump file is JSON: `{"version": 1, "notes": [...]}` where each note holds `id`, `owner`, `title`, `body` and `createdAt`. `data/dump-v1.json` is a sample.
++
++## Data format v2
++
++Version 2 adds `tags` (an array of slugs) to every note and sets `"version": 2`. Convert a v1 dump with `node scripts/migrate-v1.js <in> <out>`.
