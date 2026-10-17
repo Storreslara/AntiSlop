@@ -109,7 +109,7 @@ if [ "$PROBE_ISO" -eq 1 ] || [ -n "$PROBE_MODEL" ]; then
     exit 2
   fi
   export ABTEST_POLICY=uniform
-  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$RUNS/config"
+  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"
   export ABTEST_CONFIG_DIR
   abtest_make_config_dir "$ABTEST_CONFIG_DIR"
   probe_arm A
@@ -398,7 +398,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criteria 2 and 5 (regression guards on the finished runner) and criterion 10 (the scoped clean-tree check) pass at HEAD by design; criterion 2 turns red only if the probe edits break the runner, criterion 5 only if a dollar flag is added, criterion 10 only when the commit step is skipped.
-depends-on: abt-u12 (its final contract, with the work directory and outer timeout) must have landed; edit 1 checks for run-matrix.sh and check_work_root and STOPs otherwise.
+depends-on: abt-u12 (its final contract, with the work directory and outer timeout) must have landed; edit 1 checks for run-matrix.sh and check_work_root and STOPs otherwise; abt-u12c (the config dir is made under the work root) and abt-u01b (the arms refuse a config dir inside the harness) must also have landed.
 no-real-claude: no command in this contract runs the real claude CLI; the test uses a fake claude wrapper, canned captures built inside the test, and a temp HOME.
 insertion-order: edits 5 onward insert the probe block after the line mkdir -p "$RUNS" "$WORK"; it runs before the normal config-dir setup and creates its own config dir.
 fail-closed: every row compares an explicit expected value; a probe whose Arm A answer is missing, whose cwd is outside the work root or whose mention case did not run exits 1, and a usage-limit verdict on a run that wrote the phrase "rate limit 429" is a false positive and exits 1.
