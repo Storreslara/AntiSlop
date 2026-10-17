@@ -243,6 +243,22 @@ bash "$RUN" --pilot --evals $E > /dev/null
 check "a usage-limit row of the same run id stays when the stale row is superseded" "$(ids "$ABT_RESULTS")|$(ids "$SUP")|$(col "$SUP" 1 completion_status)" "$E/A/uniform/1 $E/B/uniform/1 $E/A/uniform/1|$E/A/uniform/1|complete"
 fresh
 restamp "$E/A/uniform/1" harness_commit stale
+python3 -I - "$ABT_RESULTS" "$E" << 'PYEOF'
+import json, sys
+
+with open(sys.argv[1], "a") as f:
+    for _ in range(3):
+        f.write(json.dumps({"run_id": f"{sys.argv[2]}/A/uniform/1", "completion_status": "usage-limit"}) + "\n")
+PYEOF
+held="$(cksum < "$ABT_RESULTS")"
+rm -rf "$T/flog"
+bash "$RUN" --pilot --evals $E > /dev/null 2>&1; rc=$?
+check "capped stale row: the runner stops with exit 76" "$rc" "76"
+check "capped stale row: the results file is unchanged" "$(cksum < "$ABT_RESULTS")" "$held"
+check "capped stale row: no superseded file is made" "$(test -e "$SUP" && echo made || echo none)" "none"
+check "capped stale row: no claude is started" "$(test -e "$T/flog" && echo ran || echo none)" "none"
+fresh
+restamp "$E/A/uniform/1" harness_commit stale
 ABT_SUPERSEDED="$T/elsewhere.jsonl" bash "$RUN" --pilot --evals $E > /dev/null
 check "ABT_SUPERSEDED chooses the file for the stale rows" "$(ids "$T/elsewhere.jsonl")|$(test -e "$SUP" && echo made || echo none)" "$E/A/uniform/1|none"
 fresh

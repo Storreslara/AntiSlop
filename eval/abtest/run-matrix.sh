@@ -22,6 +22,7 @@
 # or above it. Each run also gets an outer wall-clock guard (timeout -k) around the arm script.
 # A run id classified usage-limit ABT_MAX_LIMIT_HITS times (default 3) stops the runner with exit 76
 # instead of repeating forever.
+# The cap is checked before a stale row is moved, so a capped run id keeps its row.
 # Env: ABTEST_CLAUDE, ABTEST_MODEL, MAX_TURNS, TIMEOUT_MIN, ABTEST_POLICY (see arms/common.sh),
 #      ABT_RESULTS (default eval/abtest/results.jsonl), ABT_RUNS (default eval/abtest/.runs),
 #      ABT_FIXTURES_DIR (default: eval/abtest/fixtures), ABT_WORK (default $TMPDIR/antislop-abtest-work), ABT_PLUGIN_ROOT (default: this checkout),
@@ -589,14 +590,14 @@ for ev in "${EV[@]}"; do
         if [ "$st" -eq 2 ]; then echo "plan: $run_id rerun (stale provenance)"; else echo "plan: $run_id run"; fi
         continue
       fi
-      if [ "$st" -eq 2 ]; then
-        supersede_run "$run_id" || exit 1
-        echo "run-matrix: $run_id had a row from another harness, plugin or prompt; moved to $SUPERSEDED"
-      fi
       hits="$(limit_hits "$run_id")" || exit 1
       if [ "$hits" -ge "$MAX_LIMIT_HITS" ]; then
         echo "run-matrix: $run_id was classified usage-limit $hits times; read $RUNS/${run_id//\//_}/stream.jsonl before retrying (raise ABT_MAX_LIMIT_HITS to try again)" >&2
         exit 76
+      fi
+      if [ "$st" -eq 2 ]; then
+        supersede_run "$run_id" || exit 1
+        echo "run-matrix: $run_id had a row from another harness, plugin or prompt; moved to $SUPERSEDED"
       fi
       [ -n "$req" ] || req="$(required_count "$ev")" || exit 1
       if ! run_one "$ev" "$arm" "$rep" "$req"; then
