@@ -1414,6 +1414,78 @@ else
 fi
 
 echo
+echo "== tests/abtest-arms.test.sh: arm scripts, shared flags and the fake claude (Bash, abt-u01) =="
+if bash tests/abtest-arms.test.sh > /dev/null; then
+  echo "OK   tests/abtest-arms.test.sh"
+else
+  echo "FAIL tests/abtest-arms.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-stream.test.sh: stream summariser and completion status (Bash, abt-u02) =="
+if bash tests/abtest-stream.test.sh > /dev/null; then
+  echo "OK   tests/abtest-stream.test.sh"
+else
+  echo "FAIL tests/abtest-stream.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-row.test.sh: result-row assembler (Bash, abt-u03) =="
+if bash tests/abtest-row.test.sh > /dev/null; then
+  echo "OK   tests/abtest-row.test.sh"
+else
+  echo "FAIL tests/abtest-row.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-checks.test.sh: check conventions and the non-vacuity verifier (Bash, abt-u04) =="
+if bash tests/abtest-checks.test.sh > /dev/null; then
+  echo "OK   tests/abtest-checks.test.sh"
+else
+  echo "FAIL tests/abtest-checks.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-runner.test.sh: sequential resumable runner (Bash, abt-u12) =="
+if bash tests/abtest-runner.test.sh > /dev/null; then
+  echo "OK   tests/abtest-runner.test.sh"
+else
+  echo "FAIL tests/abtest-runner.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-probe.test.sh: isolation and model probes (Bash, abt-u13) =="
+if bash tests/abtest-probe.test.sh > /dev/null; then
+  echo "OK   tests/abtest-probe.test.sh"
+else
+  echo "FAIL tests/abtest-probe.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-score.test.sh: scorer and verdict rules (Bash, abt-u14) =="
+if bash tests/abtest-score.test.sh > /dev/null; then
+  echo "OK   tests/abtest-score.test.sh"
+else
+  echo "FAIL tests/abtest-score.test.sh"
+  fail=1
+fi
+
+echo
+echo "== tests/abtest-blind.test.sh: blinded grading set (Bash, abt-u15) =="
+if bash tests/abtest-blind.test.sh > /dev/null; then
+  echo "OK   tests/abtest-blind.test.sh"
+else
+  echo "FAIL tests/abtest-blind.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else
