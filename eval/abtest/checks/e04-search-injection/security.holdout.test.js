@@ -6,10 +6,15 @@ const { createStore } = require('../src/store');
 
 // The payload grid. A route is only proven safe by a payload that runs without
 // throwing, because the handler answers 400 to a throw. So every delimiter is
-// crossed with a backslash prefix (none, one) and a copy count (1, 2, 3), and
-// each cell has a code-running and a keyword-free data-leaking form that
-// closes the filter. The "|| ... ||" forms cover an equality filter, where the
-// closing form would throw. Every payload is lowercase-stable.
+// crossed with a backslash prefix (none, one), a copy count (1, 2, 3) and a
+// paren depth (1, 2, 3 closing parens, so a filter wrapped in parentheses is
+// still closed), and each cell has a code-running and a keyword-free
+// data-leaking tail. The "|| ... ||" forms cover an equality filter, where the
+// closing form would throw. The comma form and the "+ 1" form break out inside
+// an argument list without any of the characters ; | or the word this. Every
+// payload is lowercase-stable. The grid is a bounded regression net, not a
+// proof of security: it catches the routes variants-proof.sh lists and nothing
+// more, so a new route family needs a new axis or a new proof line.
 const RUN = '(this.__pwned=1)';
 const PAYLOADS = [
   '"; this.__pwned=1; "',
@@ -24,7 +29,14 @@ for (const d of ['"', "'", '`']) {
   for (const p of ['', '\\']) {
     PAYLOADS.push(`${p}${d} || ${RUN} || ${d}`, `${p}${d} || true || ${d}`);
     for (const n of [1, 2, 3]) {
-      PAYLOADS.push(`${p}${d.repeat(n)})) || ${RUN}//`, `${p}${d.repeat(n)})) || true//`);
+      for (const k of [1, 2, 3]) {
+        const c = ')'.repeat(k);
+        PAYLOADS.push(`${p}${d.repeat(n)}${c} || ${RUN}//`, `${p}${d.repeat(n)}${c} || true//`);
+      }
+    }
+    PAYLOADS.push(`${p}${d}, this.__pwned=1, ${d}`);
+    for (const k of [1, 2, 3]) {
+      PAYLOADS.push(`${p}${d}${')'.repeat(k)} + 1//`);
     }
   }
 }
