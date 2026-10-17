@@ -1,7 +1,7 @@
 Unit: abt-u10
 
 ## Objective
-The E4 eval exists: fixture e04-search-injection (template T2 as is), the search prompt, required security, scope and functional checks plus an optional Arm-B process check, a reference solution, a vulnerable patch with a proof script, and the Arm B overrides file; bash eval/abtest/verify-checks.sh e04-search-injection prints verify-checks: ok and the proof script prints injection-payloads-inert on vulnerable: fail. One commit.
+The E4 eval exists: fixture e04-search-injection (template T2 as is), the search prompt, required security, scope and functional checks plus an optional Arm-B process check, a reference solution, a vulnerable patch with a proof script, and the Arm B overrides file; bash eval/abtest/verify-checks.sh e04-search-injection prints verify-checks: ok and the proof script prints two lines, injection-payloads-inert on vulnerable: fail and no-dynamic-evaluation-added on vulnerable: pass. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 578 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -362,9 +362,9 @@ test('[holdout] the other routes still work', async () => {
    exit: 0
    stdout: `check.sh functional.holdout.test.js security.holdout.test.js`
    mutation: skip edit 9 (check.sh); the listing lacks check.sh.
-5. run: `bash eval/abtest/fixtures/e04-search-injection/vulnerable-proof.sh`
+5. run: `bash eval/abtest/fixtures/e04-search-injection/vulnerable-proof.sh | paste -sd"|"`
    exit: 0
-   stdout: `injection-payloads-inert on vulnerable: fail`
+   stdout: `injection-payloads-inert on vulnerable: fail|no-dynamic-evaluation-added on vulnerable: pass`
    mutation: skip edit 6 (vulnerable.patch); git apply fails on the missing patch, the script exits non-zero and the fragment is absent.
 6. run: `python3 -I -c "import json;print(json.load(open('eval/abtest/fixtures/e04-search-injection/arm-b.overrides.json'))['protectedPaths'])"`
    exit: 0
