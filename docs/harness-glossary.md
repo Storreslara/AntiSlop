@@ -3430,3 +3430,6 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **bounded regression net**:
 (unit abt-u10, 2026-10-17) — the scope a check claims when it guards a known set of injection routes but makes no claim of completeness. The E4 search-injection check (`check.sh`, scored by `variants-proof.sh` over 48 route variants: 30 injectable must fail, 18 others must pass) is one. It is not a proof of security; new realistic routes need a separate audit before a full run.
+
+**reference series**:
+(unit abt-u11, 2026-10-17) — the ordered set of `reference.d/*.patch` files in an A/B fixture, applied in name order with `git apply`, one commit per patch, to build the reference solution history that the verifier replays. Distinct from `plant/`, which is the fixture's starting state and not the reference. Each patch must apply with plain `git apply` or `--recount`; a stale index line only breaks a `git apply -3` fallback.
