@@ -21,11 +21,13 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
    expect: 0
 5. command: `bash eval/abtest/run-matrix.sh --pilot`
    expect: 0
-6. command: `python3 eval/abtest/score.py eval/abtest/results.jsonl --out-md eval/abtest/.runs/pilot.md`
+6. command: `bash -c 'python3 -I -c "import json,shutil;[shutil.copy(r[\"artifacts\"][\"stream\"], \"tests/fixtures/abtest/streams/pinned-limit-\"+r[\"run_id\"].replace(\"/\",\"_\")+\".jsonl\") for r in map(json.loads, open(\"eval/abtest/results.jsonl\")) if r[\"completion_status\"]==\"usage-limit\"]" && git add tests/fixtures/abtest/streams && { git diff --cached --quiet || git commit -m "test(abt-u19): pinned real limit-hit streams (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"; }'`
    expect: 0
-7. command: `bash -c '{ echo; echo "## Pilot findings (2026-10)"; echo; grep -E "^probe(-detail)?:" eval/abtest/.runs/probe.txt | sed "s/^/- /"; } >> docs/experiments/abtest-2026-10.md'`
+7. command: `python3 eval/abtest/score.py eval/abtest/results.jsonl --out-md eval/abtest/.runs/pilot.md`
    expect: 0
-8. command: `git add docs/experiments/abtest-2026-10.md && git commit -m "docs(abt-u19): pilot findings (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+8. command: `bash -c '{ echo; echo "## Pilot findings (2026-10)"; echo; grep -E "^probe(-detail)?:" eval/abtest/.runs/probe.txt | sed "s/^/- /"; } >> docs/experiments/abtest-2026-10.md'`
+   expect: 0
+9. command: `git add docs/experiments/abtest-2026-10.md && git commit -m "docs(abt-u19): pilot findings (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -77,15 +79,20 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
 10. run: `grep -c '^## Pilot findings' docs/experiments/abtest-2026-10.md`
    exit: 0
    stdout: `1`
-   mutation: skip edit 7 (the findings append); stdout 0 and the exit is 1.
+   mutation: skip edit 8 (the findings append); stdout 0 and the exit is 1.
 11. run: `git log -1 --format=%s -- docs/experiments/abtest-2026-10.md`
    exit: 0
    stdout: `docs(abt-u19): pilot findings (#589)`
-   mutation: skip edit 8 (the commit); the newest commit on the file is abt-u16's.
-12. run: `git status --porcelain --untracked-files=no -- docs eval tests`
+   mutation: skip edit 9 (the commit); the newest commit on the file is abt-u16's.
+12. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["completion_status"]=="usage-limit" and not __import__("os").path.exists("tests/fixtures/abtest/streams/pinned-limit-"+x["run_id"].replace("/","_")+".jsonl")))'`
+   exit: 0
+   stdout: `0`
+   mutation: skip edit 6 (the pinning step); every usage-limit row seen by the pilot lacks its pinned capture and stdout is the number of such rows (0 when the pilot saw no limit, which is a pass).
+   proof: read-only check; with a usage-limit row and no pinned file it prints 1 and the gate fails.
+13. run: `git status --porcelain --untracked-files=no -- docs eval tests`
    exit: 0
    stdout: empty
-   mutation: skip edit 8; the findings stay uncommitted and are listed.
+   mutation: skip edit 9; the findings stay uncommitted and are listed.
 
 ## Pre-resolved context
 tdd: no operator-run unit: it runs scripts and records results; the acceptance criteria are the checks
@@ -93,7 +100,7 @@ blast-radius: none
 executor: OPERATOR (or the orchestrator on the operator's word). Never dispatch this unit to lead-programmer; it starts commands that use the operator's Max subscription.
 usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset and run the same command again; do not edit results.jsonl by hand.
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
-stop-rule: if criteria 2 to 6 fail, the isolation or flag assumption is wrong (a root_claude_md=loaded line means the CLAUDE.md of this repository reached Arm A, a mention-case failure means a reply that mentions rate limits was mistaken for a limit hit or never exercised): STOP and report the probe-detail lines. If criterion 7 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 12 passes only after edit 8.
+stop-rule: if criteria 2 to 6 fail, the isolation or flag assumption is wrong (a root_claude_md=loaded line means the CLAUDE.md of this repository reached Arm A, a mention-case failure means a reply that mentions rate limits was mistaken for a limit hit or never exercised): STOP and report the probe-detail lines. If criterion 7 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 13 passes only after edit 9 (edit 6 pins any real limit-hit stream under tests/fixtures/abtest/streams/ as pinned-limit-<run id>.jsonl and commits it; give such a capture its own row in tests/abtest-stream.test.sh through a new unit, because the wording list may need widening).
 cost: about 2 probe runs plus 10 pilot runs; the pilot rows are reused as rep 1 by abt-u20, so do not delete results.jsonl afterwards.
 proof-lines: criteria 7, 8 and 9 are read-only guards; their proof lines say what a failing pilot prints.
 commit-message: docs(abt-u19): pilot findings (#589)
@@ -116,6 +123,7 @@ criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
 criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
