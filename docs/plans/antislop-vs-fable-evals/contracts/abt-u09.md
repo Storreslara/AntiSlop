@@ -1,7 +1,7 @@
 Unit: abt-u09
 
 ## Objective
-The E3 eval exists: fixture e03-rename-query (template T2 plus a query-calling test helper), the rename prompt, required checks (behaviour unchanged against committed baseline outputs, store.where works and query is gone, old-API grep, scope) and a reference solution; bash eval/abtest/verify-checks.sh e03-rename-query prints verify-checks: ok. One commit.
+The E3 eval exists: fixture e03-rename-query (template T2 plus a query-calling test helper), the rename prompt, required checks (behaviour unchanged against committed baseline outputs, owner isolation of GET /notes?title= preserved, store.where works and query is gone, old-API grep, scope), a careless-rename proof script and a reference solution; bash eval/abtest/verify-checks.sh e03-rename-query prints verify-checks: ok. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 577 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -21,9 +21,11 @@ GitHub issues: `gh issue view 577 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/checks/e03-rename-query/expected-export.txt` (anchor: new file)
 - `eval/abtest/checks/e03-rename-query/http.holdout.test.js` (anchor: new file)
 - `eval/abtest/checks/e03-rename-query/where.holdout.test.js` (anchor: new file)
+- `eval/abtest/checks/e03-rename-query/owner.holdout.test.js` (anchor: new file)
+- `eval/abtest/fixtures/e03-rename-query/careless-proof.sh` (anchor: new file)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/fixtures/e03-rename-query && test ! -e eval/abtest/checks/e03-rename-query && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/templates/notes-svc/scripts/export.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/fixtures/e03-rename-query && test ! -e eval/abtest/checks/e03-rename-query && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/templates/notes-svc/scripts/export.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && grep -q abt_leak_guard eval/abtest/fixtures/lib.sh && grep -q "never shows another owner" eval/abtest/templates/notes-svc/test/server.test.js && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/fixtures/e03-rename-query/build.sh`
    anchor: new file
@@ -114,8 +116,8 @@ diff --git a/scripts/export.js b/scripts/export.js
 index 6a12326..313c650 100644
 --- a/scripts/export.js
 +++ b/scripts/export.js
-@@ -8,6 +8,6 @@ const { date } = require('../src/format');
- 
+@@ -7,6 +7,6 @@ const { date } = require('../src/format');
+
  const store = createStore();
  if (process.env.NOTES_SEED) loadSeed(store, process.env.NOTES_SEED);
 -const fn = 'query';
@@ -158,7 +160,7 @@ index 88575da..05b13ef 100644
 @@ -43,15 +43,12 @@ function createStore() {
      return { items, next };
    }
- 
+
 -  // Filter notes with a JavaScript expression over `note`, for example
 -  // 'note.title === "x"'. The string is compiled, so callers must build it
 -  // with JSON.stringify for every value they interpolate.
@@ -168,11 +170,11 @@ index 88575da..05b13ef 100644
 +  function where(predicate) {
      return all().filter((n) => predicate(n));
    }
- 
+
 -  return { add, get, remove, list, query };
 +  return { add, get, remove, list, where };
  }
- 
+
  module.exports = { createStore };
 diff --git a/test/helpers.js b/test/helpers.js
 index b58a239..4565e88 100644
@@ -180,7 +182,7 @@ index b58a239..4565e88 100644
 +++ b/test/helpers.js
 @@ -1,8 +1,8 @@
  'use strict';
- 
+
 -// Shared test helper: find notes by exact title through the store's filter.
 +// Shared test helper: find notes by exact title through the store's predicate filter.
  function findByTitle(store, title) {
@@ -193,7 +195,7 @@ index b58a239..4565e88 100644
    insert-after:
 ~~~~
  }
- 
+
  module.exports = { findByTitle };
 diff --git a/test/store.test.js b/test/store.test.js
 index 0c19315..df1342d 100644
@@ -202,7 +204,7 @@ index 0c19315..df1342d 100644
 @@ -27,9 +27,9 @@ test('list returns only the owner notes, paged by cursor', () => {
    assert.equal(second.next, null);
  });
- 
+
 -test('query filters with an expression over note', () => {
 +test('where filters with a predicate over note', () => {
    const store = seeded();
@@ -210,7 +212,6 @@ index 0c19315..df1342d 100644
 +  const rows = store.where((n) => n.title === 'three');
    assert.deepEqual(rows.map((n) => n.owner), ['bob']);
  });
- 
 ~~~~
 9. file: `eval/abtest/tasks/e03-rename-query.prompt.md`
    anchor: new file
@@ -235,6 +236,7 @@ finish.
 abt_init "$1" "$2" "$3" "$4"
 abt_check behaviour-unchanged defect true 'export NOTES_SEED="$ABT_CHECKS_DIR/seed.json"; node src/cli.js list --title foo | diff - "$ABT_CHECKS_DIR/expected-cli.txt" && node src/cli.js list | diff - "$ABT_CHECKS_DIR/expected-cli-all.txt" && node scripts/export.js | diff - "$ABT_CHECKS_DIR/expected-export.txt" && cp "$ABT_CHECKS_DIR/http.holdout.test.js" test/ && node --test test/http.holdout.test.js'
 abt_check where-works defect true 'cp "$ABT_CHECKS_DIR/where.holdout.test.js" test/ && node --test test/where.holdout.test.js'
+abt_check owner-isolation-preserved defect true 'cp "$ABT_CHECKS_DIR/owner.holdout.test.js" test/ && node --test test/owner.holdout.test.js'
 abt_check old-api-gone defect true '! grep -rnE "\bquery\s*\(|\[.query.\]|new Function" src scripts test'
 abt_check_scope scope-outside-allowed true
 abt_emit
@@ -343,7 +345,59 @@ test('[holdout] the string-based query is gone', () => {
   assert.equal(typeof seeded().query, 'undefined');
 });
 ~~~~
-17. command: `git add eval/abtest/fixtures/e03-rename-query/build.sh eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-a.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-b.test.js eval/abtest/fixtures/e03-rename-query/allowed-paths.txt eval/abtest/fixtures/e03-rename-query/reference.patch eval/abtest/tasks/e03-rename-query.prompt.md eval/abtest/checks/e03-rename-query/check.sh eval/abtest/checks/e03-rename-query/seed.json eval/abtest/checks/e03-rename-query/expected-cli.txt eval/abtest/checks/e03-rename-query/expected-cli-all.txt eval/abtest/checks/e03-rename-query/expected-export.txt eval/abtest/checks/e03-rename-query/http.holdout.test.js eval/abtest/checks/e03-rename-query/where.holdout.test.js && git commit -m "feat(abt-u09): E3 rename-query fixture, prompt, checks and reference (#577)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+17. file: `eval/abtest/checks/e03-rename-query/owner.holdout.test.js`
+   anchor: new file
+   indent: 0
+   insert-after:
+~~~~
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { createServer } = require('../src/server');
+const { createStore } = require('../src/store');
+
+test('[holdout] GET /notes?title= never shows another owner notes', async () => {
+  const store = createStore();
+  store.add({ owner: 'alice', title: 'shared' });
+  store.add({ owner: 'bob', title: 'shared' });
+  store.add({ owner: 'bob', title: 'other' });
+  const server = createServer(store);
+  await new Promise((resolve) => server.listen(0, resolve));
+  try {
+    const url = `http://127.0.0.1:${server.address().port}/notes?title=shared`;
+    const mine = await (await fetch(url, { headers: { authorization: 'Bearer tok-alice' } })).json();
+    assert.deepEqual(mine.items.map((n) => n.owner), ['alice']);
+    const theirs = await (await fetch(url, { headers: { authorization: 'Bearer tok-bob' } })).json();
+    assert.deepEqual(theirs.items.map((n) => n.owner), ['bob']);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+~~~~
+18. file: `eval/abtest/fixtures/e03-rename-query/careless-proof.sh`
+   anchor: new file
+   indent: 0
+   insert-after:
+~~~~
+#!/usr/bin/env bash
+# Shows the E3 owner-isolation check catches a careless rename: the reference solution with
+# the owner clause dropped from the title filter in src/server.js.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+export ABT_REPO_ROOT="${ABT_REPO_ROOT:-$(cd "$HERE/../../../.." && pwd)}"
+T="$(mktemp -d)"
+trap 'rm -rf "$T"' EXIT
+base="$(bash "$HERE/build.sh" "$T/w" | tail -n1)"
+git -C "$T/w" apply --recount "$HERE/reference.patch"
+grep -qF 'n.owner === user && ' "$T/w/src/server.js" || { echo "careless-proof: the reference no longer has the owner clause to drop" >&2; exit 1; }
+sed -i 's/n\.owner === user && //' "$T/w/src/server.js"
+if grep -qF 'n.owner === user' "$T/w/src/server.js"; then echo "careless-proof: the owner clause is still there" >&2; exit 1; fi
+git -C "$T/w" add -A
+git -C "$T/w" -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m careless
+json="$(bash "$ABT_REPO_ROOT/eval/abtest/checks/e03-rename-query/check.sh" "$T/w" "$base" "$base" "$HERE/allowed-paths.txt")"
+python3 -I -c 'import json,sys;c={x["id"]:x["pass"] for x in json.loads(sys.argv[1])};[print(k, "on careless rename:", "pass" if c[k] else "fail") for k in ("owner-isolation-preserved", "where-works", "behaviour-unchanged")]' "$json"
+~~~~
+19. command: `git add eval/abtest/fixtures/e03-rename-query/build.sh eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-a.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-b.test.js eval/abtest/fixtures/e03-rename-query/allowed-paths.txt eval/abtest/fixtures/e03-rename-query/reference.patch eval/abtest/tasks/e03-rename-query.prompt.md eval/abtest/checks/e03-rename-query/check.sh eval/abtest/checks/e03-rename-query/seed.json eval/abtest/checks/e03-rename-query/expected-cli.txt eval/abtest/checks/e03-rename-query/expected-cli-all.txt eval/abtest/checks/e03-rename-query/expected-export.txt eval/abtest/checks/e03-rename-query/http.holdout.test.js eval/abtest/checks/e03-rename-query/where.holdout.test.js eval/abtest/checks/e03-rename-query/owner.holdout.test.js eval/abtest/fixtures/e03-rename-query/careless-proof.sh && git commit -m "feat(abt-u09): E3 rename-query fixture, prompt, checks and reference (#577)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -371,7 +425,7 @@ test('[holdout] the string-based query is gone', () => {
    mutation: skip edit 9; sha256sum fails on the missing file and prints nothing.
 4. run: `ls eval/abtest/checks/e03-rename-query | paste -sd" "`
    exit: 0
-   stdout: `check.sh expected-cli-all.txt expected-cli.txt expected-export.txt http.holdout.test.js seed.json where.holdout.test.js`
+   stdout: `check.sh expected-cli-all.txt expected-cli.txt expected-export.txt http.holdout.test.js owner.holdout.test.js seed.json where.holdout.test.js`
    mutation: skip edit 10 (check.sh); the listing lacks check.sh.
 5. run: `grep -c 'store.query' eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js`
    exit: 0
@@ -385,31 +439,39 @@ test('[holdout] the string-based query is gone', () => {
    exit: 0
    stdout: `helpers-a.test.js helpers-b.test.js helpers.js`
    mutation: skip edit 5 (helpers-b.test.js); the listing lacks it.
-8. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u09\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
+8. run: `bash eval/abtest/fixtures/e03-rename-query/careless-proof.sh`
    exit: 0
-   stdout: `eval/abtest/checks/e03-rename-query/check.sh eval/abtest/checks/e03-rename-query/expected-cli-all.txt eval/abtest/checks/e03-rename-query/expected-cli.txt eval/abtest/checks/e03-rename-query/expected-export.txt eval/abtest/checks/e03-rename-query/http.holdout.test.js eval/abtest/checks/e03-rename-query/seed.json eval/abtest/checks/e03-rename-query/where.holdout.test.js eval/abtest/fixtures/e03-rename-query/allowed-paths.txt eval/abtest/fixtures/e03-rename-query/build.sh eval/abtest/fixtures/e03-rename-query/plant/test/helpers-a.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-b.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js eval/abtest/fixtures/e03-rename-query/reference.patch eval/abtest/tasks/e03-rename-query.prompt.md`
-   mutation: skip edit 17 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
-9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u09\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
+   stdout: `owner-isolation-preserved on careless rename: fail`
+   mutation: skip edit 18 (careless-proof.sh); bash cannot open the script, the exit is 127 and nothing prints.
+9. run: `bash eval/abtest/verify-checks.sh e03-rename-query | grep -c 'baseline-required-failures=2/5 reference-required-failures=0/5'`
    exit: 0
    stdout: `1`
-   mutation: skip edit 17; no unit commit exists and the exit is 3.
-10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u09\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/fixtures/e03-rename-query/build.sh eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-a.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-b.test.js eval/abtest/fixtures/e03-rename-query/allowed-paths.txt eval/abtest/fixtures/e03-rename-query/reference.patch eval/abtest/tasks/e03-rename-query.prompt.md eval/abtest/checks/e03-rename-query/check.sh eval/abtest/checks/e03-rename-query/seed.json eval/abtest/checks/e03-rename-query/expected-cli.txt eval/abtest/checks/e03-rename-query/expected-cli-all.txt eval/abtest/checks/e03-rename-query/expected-export.txt eval/abtest/checks/e03-rename-query/http.holdout.test.js eval/abtest/checks/e03-rename-query/where.holdout.test.js | grep -vcE "^[a-z]+\(abt-u09\): "`
+   mutation: skip edit 17 (owner.holdout.test.js); the new check cannot copy its test, fails on the baseline and the reference, and the numbers read 3/5 and 1/5.
+10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u09\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
+   exit: 0
+   stdout: `eval/abtest/checks/e03-rename-query/check.sh eval/abtest/checks/e03-rename-query/expected-cli-all.txt eval/abtest/checks/e03-rename-query/expected-cli.txt eval/abtest/checks/e03-rename-query/expected-export.txt eval/abtest/checks/e03-rename-query/http.holdout.test.js eval/abtest/checks/e03-rename-query/owner.holdout.test.js eval/abtest/checks/e03-rename-query/seed.json eval/abtest/checks/e03-rename-query/where.holdout.test.js eval/abtest/fixtures/e03-rename-query/allowed-paths.txt eval/abtest/fixtures/e03-rename-query/build.sh eval/abtest/fixtures/e03-rename-query/careless-proof.sh eval/abtest/fixtures/e03-rename-query/plant/test/helpers-a.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-b.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js eval/abtest/fixtures/e03-rename-query/reference.patch eval/abtest/tasks/e03-rename-query.prompt.md`
+   mutation: skip edit 19 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
+11. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u09\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 19; no unit commit exists and the exit is 3.
+12. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u09\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/fixtures/e03-rename-query/build.sh eval/abtest/fixtures/e03-rename-query/plant/test/helpers.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-a.test.js eval/abtest/fixtures/e03-rename-query/plant/test/helpers-b.test.js eval/abtest/fixtures/e03-rename-query/allowed-paths.txt eval/abtest/fixtures/e03-rename-query/reference.patch eval/abtest/tasks/e03-rename-query.prompt.md eval/abtest/checks/e03-rename-query/check.sh eval/abtest/checks/e03-rename-query/seed.json eval/abtest/checks/e03-rename-query/expected-cli.txt eval/abtest/checks/e03-rename-query/expected-cli-all.txt eval/abtest/checks/e03-rename-query/expected-export.txt eval/abtest/checks/e03-rename-query/http.holdout.test.js eval/abtest/checks/e03-rename-query/where.holdout.test.js eval/abtest/checks/e03-rename-query/owner.holdout.test.js eval/abtest/fixtures/e03-rename-query/careless-proof.sh | grep -vcE "^[a-z]+\(abt-u09\): "`
    exit: 1
    stdout: `0`
    mutation: add a commit with subject `fix: x` touching one content file after the unit commit; stdout 1.
    proof: scratch run: with no later commit the count printed 0 (exit 1); a later untagged commit is counted by grep -v, so stdout is 1.
-11. run: `git status --porcelain -- eval/abtest/fixtures/e03-rename-query eval/abtest/checks/e03-rename-query eval/abtest/tasks/e03-rename-query.prompt.md`
+13. run: `git status --porcelain -- eval/abtest/fixtures/e03-rename-query eval/abtest/checks/e03-rename-query eval/abtest/tasks/e03-rename-query.prompt.md`
    exit: 0
    stdout: empty
-   mutation: skip edit 17; the new files stay untracked and are listed.
+   mutation: skip edit 19; the new files stay untracked and are listed.
 
 ## Pre-resolved context
 tdd: no no fixture and check files; the verifier is the red-then-green check (every required check set must fail on the baseline and pass on baseline plus reference.patch)
 blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
-already-green: criterion 11 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u04 (verifier), abt-u05b (the T2 baseline fixes: own-keys auth lookup, URL parse inside the try, cli main guard) and abt-u06 (template T2 with tests and scripts/export.js) must have landed; edit 1 checks for verify-checks.sh, the template and the abt-u05b auth fix and STOPs otherwise. The abt-u05b fixes change no output the E3 snapshots record (valid tokens and URLs only).
+already-green: criterion 13 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
+depends-on: abt-u04 (verifier), abt-u05c (the T2 leak guard), abt-u06b (T2 hardening: owner-isolation test, timeouts) and abt-u05b (the T2 baseline fixes: own-keys auth lookup, URL parse inside the try, cli main guard) and abt-u06 (template T2 with tests and scripts/export.js) must have landed; edit 1 also checks for the leak guard and the cross-owner test, and checks for verify-checks.sh, the template and the abt-u05b auth fix and STOPs otherwise. The abt-u05b fixes change no output the E3 snapshots record (valid tokens and URLs only).
 no-real-claude: no command in this contract runs the real claude CLI.
 commit-message: feat(abt-u09): E3 rename-query fixture, prompt, checks and reference (#577)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
@@ -430,6 +492,8 @@ criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
