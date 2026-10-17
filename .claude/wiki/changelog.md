@@ -3,6 +3,10 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-17 (abt-u12b post-PASS - runner guard rows, #597)
+- Reviewer PASS abt-u12b at 809f495e. Only `tests/abtest-runner.test.sh` changed: 95 rows (+31 over 64). Guards now proven fail-closed: outside run directory, work root refusal, outer timeout, exit mapping via `abtest_normalize_rc` (`eval/abtest/lib/rc.sh`), required count, repeat cap. No API or convention change; suite adds about 20-40 s. No glossary term was missing.
+- Advisories (not fixed): row "a refused work root starts no claude" (line 96) cannot fail because `ABT_RESULTS` still holds two complete rows (fix: `rm -rf "$ABT_RESULTS"` before line 93); mutations R1/R8/R11 are caught only because make-row hard-fails, not by the new rows; `tests/validate.sh` does not run the abtest suite (abt-u17, #586).
+
 ## 2026-10-17 (abt-u12 post-PASS - sequential resumable A/B runner, #581)
 - Reviewer PASS abt-u12 at a84d7dfb (fix contract abt-u12-fix1). Runner `eval/abtest/run-matrix.sh`, `tests/abtest-runner.test.sh` (64 rows). Env added: `ABT_VERSION_TIMEOUT_S` (default 20, bounds the `--version` call); `ABT_MAX_LIMIT_HITS` must be a positive integer else exit 2. Exits: 1 internal error (no row), 75 usage-limit, 76 repeated limit hits, 129/130/143 on HUP/INT/TERM.
 - Glossary (harness): new **arm session**, **runner lock**, **fail-closed arm start**; **ABT_SNAPSHOT** no longer says the runner is unlanded.
