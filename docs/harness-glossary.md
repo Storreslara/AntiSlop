@@ -3500,3 +3500,9 @@ _Avoid_: harness (alone) for the checkout.
 
 **directional** (WIN_B):
 (unit abt-u16, OD-12, 2026-10-17) — a `WIN_B` reached by the N=5 rule (`k_B - k_A >= 2`) whose Fisher exact two-sided p is not below 0.10. The scorer verdict is still `superior`, but the markdown shows `superior (directional, p=0.xx)`. A win at 10 or more runs per arm needs p < 0.10 and is not directional.
+
+**run id**:
+(unit abt-u17, 2026-10-17) — the key of one run in `eval/abtest/run-matrix.sh` (one arm, policy, rep and eval). Resume works on it: a run id is done once `results.jsonl` holds a row for it whose `completion_status` is not `usage-limit` and which carries the current provenance; `--dry-run` prints `run` or `skip` per run id. A `usage-limit` row never completes a run id and is excluded from every count; the same run id classified `usage-limit` three times (`ABT_MAX_LIMIT_HITS`) stops the runner with exit 76. A row with stale provenance is moved to `results.superseded.jsonl` and the run id repeats. Related: `stale provenance`, `mixed provenance`.
+
+**non-vacuity proof**:
+(unit abt-u17, 2026-10-17) — evidence that a check can fail: `eval/abtest/verify-checks.sh` builds each fixture twice (the baseline sha must agree), requires at least one required check to fail on the baseline and every required check to pass once the reference solution is applied, so a check that passes on everything is caught before any scored run. The `mutation-proved` convention in `CONTEXT.md` applies the same idea to acceptance criteria. Related: `holdout check`.
