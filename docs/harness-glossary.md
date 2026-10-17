@@ -3485,3 +3485,18 @@ _Avoid_: harness (alone) for the checkout.
 
 **blinding** (also **blind set**):
 (unit abt-u15b, 2026-10-17) — the step that strips arm tells from a run's output before grading, in `eval/abtest/lib/blind.py`, tested by `tests/abtest-blind.test.sh`. Three operations: DROP removes whole diff chunks by path, REDACT replaces listed terms, and the label rule removes the whole line (prints `[line removed]`) for any line carrying a `Unit` or `STATUS` label in any shape (bold, code, quotes, brackets, underscores, any horizontal whitespace including NBSP, full-width colon), except a `Unit:` whose value is a price or "percent". The label rule is fail-closed: it matches the label, not the id that follows. The **blind set** is the lists the three operations use (`DROP`, the REDACT term list, `LABEL_TAIL`/`BENIGN_UNIT`). Removal rows in the test are paired with positive-control rows, and a committed corpus of 51 real agent lines must all redact to `[line removed]`. Shapes known to survive: no-colon labels (`Unit - x`, `STATUS — complete`), table cells (`| Unit | ... |`), `<strong>Unit</strong>:`, curly quotes, `{Unit}:`, `~~Unit~~:`, `Unit ID:`, look-alike colons, a label alone on a line with its id on the next, and unlabeled prose ids.
+
+**scorer verdict**:
+(unit abt-u16, 2026-10-17) — the per-eval conclusion `eval/abtest/score.py` derives from an eval's outcome (`WIN_B`, `WIN_A`, `TIE`, `INCONCLUSIVE`): `superior`, `not-superior`, `mixed` or `inconclusive`. It is not the `**Verdict**` line of an entry in `docs/experiments/abtest-2026-10.md`, which records whether a pre-registered prediction held (`CONFIRMED`, `REFUTED`, `INCONCLUSIVE`). The two are kept apart and neither is written in place of the other. Decided in this order: `WIN_A` or any `stalled-human` Arm B row gives `not-superior` (OD-13); an `INCONCLUSIVE` outcome gives `inconclusive`; `WIN_B` gives `superior`; a `TIE` is settled by `quality edge` and `R_tokens`. Related: `directional`, `ceiling TIE`, `measured-overhead`.
+
+**ceiling TIE**:
+(unit abt-u16, 2026-10-17) — a `TIE` outcome reached because both arms pass an eval's required checks in nearly every run (for E2, 5/5 in both arms), so the eval cannot separate them. It is logged as a tie, not as evidence for either arm; E2's pre-registered prediction reads "ties near 5/5" as at least 4 of 5 runs in each arm. A ceiling TIE can still be `superior` only through a `quality edge`.
+
+**quality edge**:
+(unit abt-u16, 2026-10-17) — the condition that lets a `TIE` score above `not-superior`: Arm B's median `defects_escaped` and median `out_of_scope_lines` are each strictly lower than Arm A's. A `TIE` with a quality edge and `R_tokens <= 2` gives `superior`; with `2 < R_tokens <= 3`, or `R_tokens` not computable, `mixed`; a `TIE` without a quality edge, or with `R_tokens > 3`, gives `not-superior`.
+
+**measured-overhead** (label):
+(unit abt-u16, 2026-10-17) — the label a `TIE` on E5 carries in the report. By the scorer rule that `TIE` is `not-superior`; the label records that this is the expected result and that `R_tokens` and `R_wall` are the numbers that matter. It is a label on the entry, not a fifth `scorer verdict`.
+
+**directional** (WIN_B):
+(unit abt-u16, OD-12, 2026-10-17) — a `WIN_B` reached by the N=5 rule (`k_B - k_A >= 2`) whose Fisher exact two-sided p is not below 0.10. The scorer verdict is still `superior`, but the markdown shows `superior (directional, p=0.xx)`. A win at 10 or more runs per arm needs p < 0.10 and is not directional.
