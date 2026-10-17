@@ -3506,3 +3506,6 @@ _Avoid_: harness (alone) for the checkout.
 
 **non-vacuity proof**:
 (unit abt-u17, 2026-10-17) — evidence that a check can fail: `eval/abtest/verify-checks.sh` builds each fixture twice (the baseline sha must agree), requires at least one required check to fail on the baseline and every required check to pass once the reference solution is applied, so a check that passes on everything is caught before any scored run. The `mutation-proved` convention in `CONTEXT.md` applies the same idea to acceptance criteria. Related: `holdout check`.
+
+**pinned file**:
+(unit abt-u17b, 2026-10-17) — the frozen expected stdout of one proof command, kept under `tests/fixtures/abtest/proofs/` (seven `.expected` files). `tests/abtest-fixtures.test.sh` runs the command, captures its stdout by command substitution and compares it with the pin; a mismatch is a defect to report, and a pin is never edited to make a run pass. `ABT_PROOFS_DIR` overrides the pin directory. `verify-all.expected` freezes the E1-E5 non-vacuity results. Related: `non-vacuity proof`.
