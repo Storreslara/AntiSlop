@@ -12,6 +12,8 @@
 # agent's tree and an agent cannot pass by editing the test runner. The
 # command sees ABT_WT (the copy), ABT_BASE, ABT_START and ABT_CHECKS_DIR (the
 # directory holding the holdout files). Exit 0 means the check passed.
+# The runner also exports ABT_SNAPSHOT, the number of commits its dirty-tree snapshot added ahead of
+# the arm's own work (0 when unset); the E5 commit-count check subtracts it from its commit count.
 
 abt_init() {
   ABT_WT="$(cd "$1" && pwd)"
