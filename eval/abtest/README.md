@@ -17,7 +17,7 @@ The tests under `tests/abtest-*.test.sh` use a fake `claude` and spend no usage;
 (or the orchestrator on the operator's word), never by a lead-programmer unit, and never in CI.
 There is no dollar cap (Max subscription); the caps are `MAX_TURNS` (100) and `TIMEOUT_MIN` (45).
 
-Each run is built as a standalone repository under `ABT_WORK` (default `/tmp/antislop-abtest-work`),
+Each run is built as a standalone repository under `ABT_WORK` (default `${TMPDIR:-/tmp}/antislop-abtest-work`),
 outside this checkout: Claude Code loads a parent directory's `CLAUDE.md`, so a run inside the
 checkout would give Arm A this repository's. The runner refuses a work root with a `CLAUDE.md` in it
 or above it. Run artifacts stay under `eval/abtest/.runs/`.
@@ -32,6 +32,9 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    mention this repository's code-review-graph section (`probe: A root_claude_md=not-loaded` is
    required) and makes both arms write the phrase "rate limit 429" (`probe: mention-case ok`), so a
    reply that merely mentions rate limits cannot be mistaken for a limit hit.
+1b. Canary probe: `bash eval/abtest/run-matrix.sh --probe-canary` must exit 0 before the pilot (OD-16(c) in
+   `docs/plans/antislop-vs-fable-evals/operator-decisions.md`). It plants a random token in the checks and fixtures
+   directories and fails if either arm prints it. The runner does not enforce this order: read the exit code.
 2. Check the fixtures: `bash eval/abtest/verify-checks.sh --all` must print `verify-checks: ok`.
 3. Pilot, one run per arm per eval: `bash eval/abtest/run-matrix.sh --pilot`. Look at
    `eval/abtest/results.jsonl` and at `eval/abtest/.runs/<run>/` before going on. Pilot rows are valid
@@ -39,7 +42,7 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    rows and moves them to `results.superseded.jsonl`, which the scorer never reads (OD-14).
 4. Full pass, five reps: `bash eval/abtest/run-matrix.sh`. Runs are sequential. Rep 1 is A then B,
    rep 2 is B then A, and so on.
-5. Score: `python3 eval/abtest/score.py eval/abtest/results.jsonl --out-json eval/reports/abtest-<date>.json --out-md eval/reports/abtest-<date>.md`.
+5. Score (the scorer does not create the report directory): `mkdir -p eval/reports && python3 eval/abtest/score.py eval/abtest/results.jsonl --out-json eval/reports/abtest-<date>.json --out-md eval/reports/abtest-<date>.md`.
 6. Grade the E1 judgment item: `bash eval/abtest/blind.sh eval/abtest/results.jsonl <dir>`, fill
    `<dir>/grades-template.csv` while looking only at `<dir>/blind/`, then `bash eval/abtest/blind.sh --unseal <dir> <graded csv>`.
 
@@ -48,7 +51,7 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
 A subscription usage or rate limit is recorded as `completion_status: usage-limit`. That row is kept,
 it is excluded from every count and verdict, and the runner stops with exit 75. Wait for the limit to
 reset and run the same command again: a run is done once a row exists for it whose status is not
-`usage-limit`, so only the unfinished runs repeat. `--dry-run` prints the plan (`run` or `skip` per run).
+`usage-limit`, so only the unfinished runs repeat. `--dry-run` prints the plan (`run`, `skip` or `rerun (stale provenance)` per run).
 If one run id is classified `usage-limit` three times, the runner stops with exit 76 instead of looping:
 read that run's `stream.jsonl` under `eval/abtest/.runs/` before retrying (`ABT_MAX_LIMIT_HITS` raises
 the cap). Each arm also runs under an outer `timeout -k`.
@@ -69,9 +72,9 @@ equals the count `verify-checks.sh` proved for that eval (`make-row.py --expecte
   holdout checks (copied into a throwaway copy of the final tree, never into the run).
 - `tasks/<eval>.prompt.md` the prompt, byte-identical for both arms.
 - `lib/` stream summariser, row assembler, blinding; `score.py` verdicts; `verify-checks.sh` the non-vacuity proof.
-- `results.jsonl` and `.runs/` are git-ignored.
+- `results.jsonl`, `results.superseded.jsonl` and `.runs/` are git-ignored.
 
-**Residual risk (OD-16).** The arms cannot read the hidden checks or the reference solutions by the ordinary
+**Residual risk (OD-16).** The arms cannot read the holdout checks or the reference solutions by the ordinary
 routes: Arm B loads a pruned copy of the plugin, both arms run with deny rules for Read, Edit and Bash commands
 that name the harness root, the runs or the results, and with a per-run HOME outside the repository. A deny
 rule cannot stop a shell command that never names the path, so a determined agent with shell access could

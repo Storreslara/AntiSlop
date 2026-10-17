@@ -6,6 +6,7 @@ eval/.runs/
 eval/results.jsonl
 eval/abtest/.runs/
 eval/abtest/results.jsonl
+eval/abtest/results.superseded.jsonl
 eval/abtest/**/__pycache__/
 scratch/
 # Added by code-review-graph
