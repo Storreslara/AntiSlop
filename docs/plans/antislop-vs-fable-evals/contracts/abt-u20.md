@@ -10,7 +10,7 @@ GitHub issues: `gh issue view 590 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/results.jsonl` (anchor: new file; git-ignored, appended by the runner)
 
 ## Ordered edits
-1. command: `grep -q '^## Pilot findings' docs/experiments/abtest-2026-10.md && test -s eval/abtest/results.jsonl && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `grep -q '^## Pilot findings' docs/experiments/abtest-2026-10.md && grep -q supersede_run eval/abtest/run-matrix.sh && grep -q PROVENANCE eval/abtest/score.py && test -s eval/abtest/results.jsonl && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. command: `bash eval/abtest/run-matrix.sh`
    expect: 0
@@ -37,7 +37,7 @@ GitHub issues: `gh issue view 590 --repo Storreslara/AntiSlop`. Siblings: `gh is
    stdout: `rows ok:`
    mutation: delete one required key from one row of results.jsonl; the last line reads rows invalid.
    proof: abt-u14 replayed this: a row missing tokens_total printed rows invalid and exited 1.
-4. run: `bash eval/abtest/run-matrix.sh --dry-run | grep -c ' run$'`
+4. run: `bash eval/abtest/run-matrix.sh --dry-run | grep '^plan: ' | grep -vc ' skip$'`
    exit: 1
    stdout: `0`
    mutation: skip edit 2; 40 runs are still planned and stdout is 40.
@@ -49,6 +49,7 @@ executor: OPERATOR (or the orchestrator on the operator's word). Never dispatch 
 usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset and run the same command again; do not edit results.jsonl by hand.
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
 repeat-rule: edit 2 exits 75 on a usage limit. Wait for the reset and run the same command again until it exits 0. An exit of 76 means one run id was classified usage-limit three times: read its stream.jsonl under eval/abtest/.runs/ before running again; do not just raise ABT_MAX_LIMIT_HITS.
+provenance: OD-14. Edit 2 repeats every pilot row whose harness commit, plugin commit or prompt hash differs from the current checkout and moves the old row to eval/abtest/results.superseded.jsonl; the dry run in criterion 4 plans such a row as rerun (stale provenance), which counts as still to run. Never edit either file by hand. If the scorer reports an eval as INCONCLUSIVE with mixed provenance, repeat the stale rows with the same command; a top-up does not cure it.
 top-up: an INCONCLUSIVE eval is topped up to N=10 later with run-matrix.sh --reps 10 --evals <ids>; that is outside this unit. Until both arms of an eval have 10 usable rows (the 6 to 9 rows in between, or unequal counts) the scorer keeps it INCONCLUSIVE with the reason in the report (OD-12).
 no-commit: nothing in this unit is committed (results.jsonl is git-ignored); commit-message below is the subject to use only if you choose to record the pass in a note.
 commit-message: docs(abt-u20): full pass complete (#590)
