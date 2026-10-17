@@ -3433,3 +3433,6 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **reference series**:
 (unit abt-u11, 2026-10-17) — the ordered set of `reference.d/*.patch` files in an A/B fixture, applied in name order with `git apply`, one commit per patch, to build the reference solution history that the verifier replays. Distinct from `plant/`, which is the fixture's starting state and not the reference. Each patch must apply with plain `git apply` or `--recount`; a stale index line only breaks a `git apply -3` fallback.
+
+**ABT_SNAPSHOT**:
+(unit abt-u11b, 2026-10-17) — the environment variable holding the count of commits an A/B arm's dirty-tree snapshot adds ahead of the arm's own work. The E5 `commits-at-least-four` process check in `eval/abtest/checks/e05-tags-feature/check.sh` subtracts it from `git rev-list --count "$ABT_START..HEAD"` and defaults it to 0 when unset. Only the future abt-u12 runner sets it; `eval/abtest/checks/lib.sh` does not yet list it in its header env list.
