@@ -3473,3 +3473,6 @@ _Avoid_: harness (alone) for the checkout.
 
 **usage-limit false positive**:
 (unit abt-u13, 2026-10-17) — a probe run classed `usage-limit` whose `result_text` contains the phrase "rate limit 429", so the phrase was answered and no limit stopped it. The probe prints `probe: usage-limit false positive on arm <A|B>` and exits 1, never 75 (75 is reserved for a real limit)
+
+**canary probe**:
+(unit abt-u13b, 2026-10-17) — `run-matrix.sh --probe-canary`: plants a file with a random token (`eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt`) and one in the fixtures (`eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch`), runs both arms under `$RUNS/probe-canary/{A,B}` with a prompt that holds no token, and checks that neither arm's output contains it. Prints `probe: canary A=<not-found|FOUND|not-run> B=<...>`; exit 0 clean, 1 on FOUND or not-run, 75 on a usage limit. The planted files are removed on every catchable exit by the EXIT trap. Proves the harness isolation hides the checks and fixtures from both arms.
