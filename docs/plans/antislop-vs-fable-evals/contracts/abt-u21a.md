@@ -12,7 +12,7 @@ GitHub issues: `gh issue view 588 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `tests/validate.sh` (anchor: line matching `echo "FAIL tests/abtest-blind.test.sh"`)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/report.py && test ! -e tests/abtest-report.test.sh && test -f eval/abtest/score.py && grep -qF "tests/abtest-blind.test.sh" tests/validate.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/report.py && test ! -e tests/abtest-report.test.sh && test -f eval/abtest/score.py && grep -q PROVENANCE eval/abtest/score.py && grep -qF "tests/abtest-blind.test.sh" tests/validate.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/report.py`
    anchor: new file
@@ -179,7 +179,7 @@ def row(ev, arm, rep, passed, status="complete", defects=0, tokens=100, checks=N
         "plugin_commit": None, "plugin_version": None, "cli_version": "c", "fixture_commit": "f",
         "fixture_profile": {}, "prompt_sha": "p", "persona_config_sha": None,
         "completion_status": status, "result_subtype": None, "wall_clock_ms": 1000,
-        "duration_api_ms": None, "total_cost_usd": None, "model_usage": {}, "tokens_in": 1,
+        "duration_api_ms": None, "total_cost_usd": None, "model_usage": {}, "tokens_in": tokens - 1,
         "tokens_out": 1, "tokens_cache_write": 0, "tokens_cache_read": 0, "tokens_total": tokens,
         "num_turns": 5, "subagent_spawns": 0, "tool_calls": 0, "human_interventions_required": 0,
         "checks": checks or [], "holdout_pass_rate": None, "defects_escaped": defects,
@@ -255,6 +255,25 @@ check "the ticket lists Arm B transcripts" "$(grep -c 'runs/e01-ambiguous-tax_B_
 check "the ticket carries the design's look-at entry" "$(grep -c 'spec-master grilling' "$T/tickets/e01-ambiguous-tax.md")" "1"
 check "a stall ticket exists for the winning eval that stalled" "$(head -n1 "$T/tickets/e04-search-injection.md")" "[eval-finding] e04-search-injection: not-superior"
 
+python3 -I - "$T" << 'PYEOF'
+import json, sys
+
+t = sys.argv[1]
+rows = [json.loads(l) for l in open(t + "/rows.jsonl")]
+mixed = [r for r in rows if r["eval_id"] == "e03-rename-query"]
+mixed[0]["harness_commit"] = "old"
+with open(t + "/rows-mixed.jsonl", "w") as f:
+    for r in mixed:
+        f.write(json.dumps(r) + "\n")
+with open(t + "/log-mixed.md", "w") as f:
+    f.write("### E3: rename (e03-rename-query)\n\n- **Result**: pending\n- **Verdict**: pending\n- **Decision**: pending\n")
+PYEOF
+python3 "$SCORE" "$T/rows-mixed.jsonl" --out-json "$T/score-mixed.json" > /dev/null
+python3 "$REPORT" fill-log "$T/score-mixed.json" "$T/log-mixed.md"
+check "mixed provenance asks for a rerun, not a top-up" "$(grep -c '^- \*\*Decision\*\*: RERUN: the rows mix provenance (mixed provenance: harness_commit)' "$T/log-mixed.md")" "1"
+check "mixed provenance never asks for more data" "$(grep -c 'NEEDS MORE DATA' "$T/log-mixed.md")" "0"
+check "the mixed result line still names the outcome" "$(grep -c '(INCONCLUSIVE)' "$T/log-mixed.md")" "1"
+
 python3 "$REPORT" bogus > /dev/null 2>&1
 check "a bad command exits 2" "$?" "2"
 
@@ -262,9 +281,25 @@ echo "abtest-report: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-report checks passed."
 exit "$fail"
 ~~~~
-6. command: `chmod +x eval/abtest/report.py tests/abtest-report.test.sh`
+6. file: `eval/abtest/report.py`
+   anchor: line matching `    if v["verdict"] == "inconclusive":`
+   indent: 0
+   before:
+~~~~
+    if v["verdict"] == "inconclusive":
+        return "NEEDS MORE DATA: top up this eval to N=10 with run-matrix.sh --reps 10 --evals <eval-id>"
+~~~~
+   after:
+~~~~
+    if v["verdict"] == "inconclusive":
+        reason = str(v.get("outcome_reason") or "")
+        if reason.startswith("mixed provenance"):
+            return f"RERUN: the rows mix provenance ({reason}); repeat the stale rows with run-matrix.sh (OD-14), a top-up does not cure it"
+        return "NEEDS MORE DATA: top up this eval to N=10 with run-matrix.sh --reps 10 --evals <eval-id>"
+~~~~
+7. command: `chmod +x eval/abtest/report.py tests/abtest-report.test.sh`
    expect: 0
-7. file: `tests/validate.sh`
+8. file: `tests/validate.sh`
    anchor: line matching `echo "FAIL tests/abtest-blind.test.sh"`
    indent: 0
    before:
@@ -288,7 +323,7 @@ else
   fail=1
 fi
 ~~~~
-8. command: `git add eval/abtest/report.py tests/abtest-report.test.sh tests/validate.sh && git commit -m "feat(abt-u21a): report and ticket tooling with a merge-gate test (#588)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+9. command: `git add eval/abtest/report.py tests/abtest-report.test.sh tests/validate.sh && git commit -m "feat(abt-u21a): report and ticket tooling with a merge-gate test (#588)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -314,19 +349,19 @@ fi
 4. run: `grep -c 'tests/abtest-report' tests/validate.sh`
    exit: 0
    stdout: `4`
-   mutation: skip edit 7 (the validate.sh insertion); stdout 0 and the exit is 1.
+   mutation: skip edit 8 (the validate.sh insertion); stdout 0 and the exit is 1.
 5. run: `test -x eval/abtest/report.py && test -x tests/abtest-report.test.sh && echo exec-ok`
    exit: 0
    stdout: `exec-ok`
-   mutation: skip edit 6; the files are not executable and nothing prints.
+   mutation: skip edit 7; the files are not executable and nothing prints.
 6. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u21a\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `eval/abtest/report.py tests/abtest-report.test.sh tests/validate.sh`
-   mutation: skip edit 8 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
+   mutation: skip edit 9 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
 7. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u21a\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
-   mutation: skip edit 8; no unit commit exists and the exit is 3.
+   mutation: skip edit 9; no unit commit exists and the exit is 3.
 8. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u21a\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/report.py tests/abtest-report.test.sh tests/validate.sh | grep -vcE "^[a-z]+\(abt-u21a\): "`
    exit: 1
    stdout: `0`
@@ -335,7 +370,11 @@ fi
 9. run: `git status --porcelain -- eval/abtest/report.py tests/abtest-report.test.sh tests/validate.sh`
    exit: 0
    stdout: empty
-   mutation: skip edit 8; the new files stay untracked and are listed.
+   mutation: skip edit 9; the new files stay untracked and are listed.
+10. run: `bash tests/abtest-report.test.sh | grep -c '^ok   mixed provenance asks for a rerun, not a top-up'`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 6 (the decision line change); the decision stays NEEDS MORE DATA, the row prints FAIL and the count is 0 (exit 1).
 
 ## Pre-resolved context
 tdd: yes tests/abtest-report.test.sh (criterion 1 is the red-then-green check; neither file exists at HEAD)
@@ -343,7 +382,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 9 (the scoped clean-tree check) passes at HEAD by design; it turns red only when the commit step is skipped.
-depends-on: abt-u14 (score.py) and abt-u17 (the abtest sections in validate.sh) must have landed; edit 1 checks for them and STOPs otherwise.
+depends-on: abt-u14b (score.py with the mixed provenance reason), abt-u14 (score.py) and abt-u17 (the abtest sections in validate.sh) must have landed; edit 1 checks for them (PROVENANCE in score.py, the abtest sections in validate.sh) and STOPs otherwise.
 no-real-claude: nothing here runs the claude CLI; the test builds synthetic rows in a temp directory.
 commit-message: feat(abt-u21a): report and ticket tooling with a merge-gate test (#588)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
@@ -362,6 +401,7 @@ criterion 6: <FILL: exit and stdout>
 criterion 7: <FILL: exit and stdout>
 criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
+criterion 10: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
