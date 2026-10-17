@@ -12,7 +12,7 @@ GitHub issues: `gh issue view 581 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `tests/abtest-runner.test.sh` (anchor: new file)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/run-matrix.sh && test ! -e eval/abtest/lib/rc.sh && test ! -e tests/abtest-runner.test.sh && test -f eval/abtest/arms/arm-a.sh && test -f eval/abtest/arms/arm-b.sh && test -f eval/abtest/lib/stream.py && test -f eval/abtest/lib/make-row.py && grep -q expected-required eval/abtest/lib/make-row.py && grep -q "def clean" eval/abtest/lib/stream.py && grep -q "out of extra usage" eval/abtest/lib/stream.py && test -f eval/abtest/checks/scope.sh && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/fixtures/e01-ambiguous-tax/build.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/run-matrix.sh && test ! -e eval/abtest/lib/rc.sh && test ! -e tests/abtest-runner.test.sh && test -f eval/abtest/arms/arm-a.sh && test -f eval/abtest/arms/arm-b.sh && test -f eval/abtest/lib/stream.py && test -f eval/abtest/lib/make-row.py && grep -q expected-required eval/abtest/lib/make-row.py && grep -q "def clean" eval/abtest/lib/stream.py && grep -qF 'out of (?:extra usage|usage credits)' eval/abtest/lib/stream.py && test -f eval/abtest/checks/scope.sh && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/fixtures/e01-ambiguous-tax/build.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/run-matrix.sh`
    anchor: new file
@@ -253,8 +253,8 @@ run_one() {
 ran=0
 skipped=0
 check_work_root "$WORK" || exit 2
-mkdir -p "$RUNS" "$WORK"
 if [ "$DRY" -eq 0 ]; then
+  mkdir -p "$RUNS" "$WORK"
   [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$RUNS/config"
   export ABTEST_CONFIG_DIR
   abtest_make_config_dir "$ABTEST_CONFIG_DIR"
@@ -354,6 +354,7 @@ check "dry run exits 0" "$rc" "0"
 has "dry run plans A then B for rep 1" "$out" "plan: $E/A/uniform/1 run"
 has "dry run plans arm B" "$out" "plan: $E/B/uniform/1 run"
 check "dry run starts nothing" "$(test -e "$T/flog" && echo ran || echo none)" "none"
+check "dry run creates no run or work directory" "$(test -e "$T/runs" || test -e "$T/work" && echo made || echo none)" "none"
 
 bash "$RUN" --pilot --evals $E > "$T/out1.txt"; rc=$?
 check "pilot exits 0" "$rc" "0"
@@ -477,7 +478,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 10 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u01, abt-u02, abt-u02b, abt-u02c, abt-u02d, abt-u03, abt-u03b, abt-u04, abt-u04b and abt-u07 must have landed; edit 1 checks for their files and for the new make-row option and stream pattern, and STOPs otherwise.
+depends-on: abt-u01, abt-u02, abt-u02b, abt-u02c, abt-u02d, abt-u02e (#604, which rewrote the usage-limit wording in stream.py as the regex out of (?:extra usage|usage credits)), abt-u03, abt-u03b, abt-u04, abt-u04b and abt-u07 must have landed; edit 1 checks for their files and for the new make-row option and stream pattern, and STOPs otherwise.
 no-real-claude: no command in this contract runs the real claude CLI. The test sets ABTEST_CLAUDE to the fake and HOME to a temp directory, so the real home and the subscription are never touched. Criterion 1 takes about 25 seconds.
 gate-names: run-matrix.sh builds the persona-config, audit and marker directory names from two parts on purpose; keep it that way and write the file with the Write or Edit tool.
 run-directories: each run is built by the fixture build.sh into ABT_WORK (default under TMPDIR, never inside this checkout) as a standalone repository; the runner refuses a work root with a CLAUDE.md in it or above it, so this checkout's CLAUDE.md is never loaded into Arm A.
