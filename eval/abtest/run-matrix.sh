@@ -20,7 +20,15 @@
 #      ABT_RESULTS (default eval/abtest/results.jsonl), ABT_RUNS (default eval/abtest/.runs),
 #      ABT_FIXTURES_DIR (default: eval/abtest/fixtures), ABT_WORK (default $TMPDIR/antislop-abtest-work), ABT_PLUGIN_ROOT (default: this checkout),
 #      ABT_OUTER_GRACE_S (default 120), ABT_KILL_AFTER_S (default 30), ABT_MAX_LIMIT_HITS (default 3).
-# Exit: 0 finished, 75 usage limit hit, 76 a run keeps hitting the limit, 2 usage error.
+#      ABT_VERSION_TIMEOUT_S (default 20): the limit in seconds on the claude --version call.
+# Each arm runs in a session of its own (setsid), and every process left in that session is killed once the arm
+# returns or the guard fires, so a claude that ignores SIGTERM never outlives its run. Ctrl-C, SIGTERM and SIGHUP
+# kill the arm's session and stop the runner (130, 143, 129); the run in progress has no row and is repeated.
+# One runner at a time: a lock directory .run-matrix.lock under ABT_WORK holds the owner's pid; a second runner exits 2.
+# A run's work tree under ABT_WORK is kept for inspection until the same run id is built again; the trust entry lives in
+# the config dir, which is rebuilt at every start, so neither accumulates.
+# Exit: 0 finished, 1 internal error (no row written) or a fixture whose checks cannot be proven, 2 usage error or lock held,
+#       75 usage limit hit, 76 a run keeps hitting the limit, 129/130/143 interrupted.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export ABT_REPO_ROOT="$(cd "$HERE/../.." && pwd)"
@@ -32,6 +40,12 @@ export ABT_REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 RESULTS="${ABT_RESULTS:-$HERE/results.jsonl}"
 RUNS="${ABT_RUNS:-$HERE/.runs}"
 WORK="${ABT_WORK:-${TMPDIR:-/tmp}/antislop-abtest-work}"
+# These paths reach the arm scripts, which cd into the work tree, so each must be absolute.
+abs_path() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PWD" "$1" ;; esac; }
+RESULTS="$(abs_path "$RESULTS")"
+RUNS="$(abs_path "$RUNS")"
+WORK="$(abs_path "$WORK")"
+ABT_PLUGIN_ROOT="$(abs_path "${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}")"
 PLUGIN_ROOT="${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}"
 MAX_LIMIT_HITS="${ABT_MAX_LIMIT_HITS:-3}"
 POLICY="${ABTEST_POLICY:-uniform}"
@@ -51,6 +65,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 case "$REPS" in '' | *[!0-9]* | 0) echo "run-matrix: --reps must be a positive number" >&2; exit 2 ;; esac
+case "$MAX_LIMIT_HITS" in '' | *[!0-9]* | 0) echo "run-matrix: ABT_MAX_LIMIT_HITS must be a positive number" >&2; exit 2 ;; esac
 case "$POLICY" in uniform | shipped) ;; *) echo "run-matrix: policy must be uniform or shipped" >&2; exit 2 ;; esac
 export ABTEST_POLICY="$POLICY"
 
@@ -132,6 +147,70 @@ internal() {
   exit 1
 }
 
+# One session per arm. ARM_SID is the session id (the pid of the setsid process) while an arm runs.
+ARM_SID=""
+LOCK_DIR=""
+
+# reap_arm: kill every process still in the arm's session (an orphaned inner timeout or claude, for example).
+reap_arm() {
+  if [ -n "$ARM_SID" ]; then pkill -KILL -s "$ARM_SID" 2> /dev/null; fi
+  ARM_SID=""
+  return 0
+}
+
+# run_guarded OUT ERR OUTER_S CMD...: run CMD in a session of its own under the outer timeout -k, stdout to OUT, stderr
+# appended to ERR; then kill what is left in the session. Returns the exit code of the timeout.
+run_guarded() {
+  local out="$1" err="$2" outer="$3" grc=0
+  shift 3
+  setsid -w timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer}s" "$@" > "$out" 2>> "$err" &
+  ARM_SID=$!
+  wait "$ARM_SID" || grc=$?
+  reap_arm
+  return "$grc"
+}
+
+# release_lock: remove the lock directory this runner took.
+release_lock() {
+  if [ -n "$LOCK_DIR" ]; then rm -rf "$LOCK_DIR"; fi
+  LOCK_DIR=""
+  return 0
+}
+
+# acquire_lock: refuse to start without setsid and pkill (they keep a claude from outliving its run), then take the
+# lock: one runner at a time (a second one would rebuild the config dir under a live claude). The lock is a directory
+# under ABT_WORK holding the owner's pid; a lock whose owner is gone is stale and is replaced.
+acquire_lock() {
+  local lock="$WORK/.run-matrix.lock" owner t
+  for t in setsid pkill; do
+    command -v "$t" > /dev/null 2>&1 || { echo "run-matrix: $t is required to keep a claude from outliving its run" >&2; exit 2; }
+  done
+  mkdir -p "$WORK"
+  if ! mkdir "$lock" 2> /dev/null; then
+    owner="$(cat "$lock/pid" 2> /dev/null || true)"
+    if [ -z "$owner" ] || kill -0 "$owner" 2> /dev/null; then
+      echo "run-matrix: another runner (pid ${owner:-unknown}) holds $lock; wait for it, or remove that directory if no runner is running" >&2
+      exit 2
+    fi
+    echo "run-matrix: removing the stale lock $lock (pid $owner is gone)" >&2
+    rm -rf "$lock"
+    mkdir "$lock" 2> /dev/null || { echo "run-matrix: could not take $lock" >&2; exit 2; }
+  fi
+  LOCK_DIR="$lock"
+  printf '%s\n' "$$" > "$lock/pid"
+}
+
+# on_signal NAME CODE: an interrupt stops the runner; the arm's session dies with it and the run has no row.
+on_signal() {
+  reap_arm
+  echo "run-matrix: interrupted by $1; the run in progress has no row and is repeated by the next invocation" >&2
+  exit "$2"
+}
+trap 'on_signal INT 130' INT
+trap 'on_signal TERM 143' TERM
+trap 'on_signal HUP 129' HUP
+trap release_lock EXIT
+
 # run_one EVAL ARM REP REQUIRED: one full run, one appended row. Prints the run summary line.
 run_one() {
   local ev="$1" arm="$2" rep="$3" req="$4"
@@ -150,18 +229,19 @@ run_one() {
   local cap_s outer_s
   cap_s="$(python3 -I -c 'import sys;print(int(float(sys.argv[1])*60))' "$TIMEOUT_MIN")" || internal "$run_id" "timeout cap"
   outer_s=$((cap_s + ${ABT_OUTER_GRACE_S:-120}))
-  t0="$(date +%s%N)"
+  local -a armcmd ov=()
   if [ "$arm" = A ]; then
-    timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer_s}s" bash "$HERE/arms/arm-a.sh" "$w" "$prompt" "$dir/stream.jsonl" "$dir/stderr.log" > "$dir/arm.out" 2>> "$dir/stderr.log" || rc=$?
+    armcmd=(bash "$HERE/arms/arm-a.sh" "$w" "$prompt" "$dir/stream.jsonl" "$dir/stderr.log")
   else
-    local ov=""
-    [ -f "$fx/arm-b.overrides.json" ] && ov="$fx/arm-b.overrides.json"
-    timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer_s}s" bash "$HERE/arms/arm-b.sh" "$w" "$prompt" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" $ov > "$dir/arm.out" 2>> "$dir/stderr.log" || rc=$?
+    [ -f "$fx/arm-b.overrides.json" ] && ov=("$fx/arm-b.overrides.json")
+    armcmd=(bash "$HERE/arms/arm-b.sh" "$w" "$prompt" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" "${ov[@]}")
   fi
+  t0="$(date +%s%N)"
+  run_guarded "$dir/arm.out" "$dir/stderr.log" "$outer_s" "${armcmd[@]}" || rc=$?
   t1="$(date +%s%N)"
   rc="$(abtest_normalize_rc "$rc" "$(((t1 - t0) / 1000000000))" "$cap_s")"
   start="$(sed -n 's/^scaffold-sha: //p' "$dir/arm.out" | head -n1)"
-  [ -n "$start" ] || start="$base"
+  [ -n "$start" ] || internal "$run_id" "arm start (no scaffold-sha line, so claude never started; read $dir/stderr.log)"
 
   # Count the markers an Arm B run leaves; the directory name is built from parts.
   local rv="$w/.claude/rev""iewed" esc=0 units=0 fails=0
@@ -198,7 +278,7 @@ run_one() {
     printf '{"units":%s,"review_fail_cycles":%s,"tiers_seen":[],"gate_blocks":%s,"stalled_reason":null,"persona_tokens":null}\n' \
       "$units" "$fails" "${gate_blocks:-0}" > "$dir/process.json"
   fi
-  cli_version="$(cd "$wdir" && "$ABTEST_CLAUDE" --version 2> /dev/null | head -n1 | cut -d' ' -f1)"
+  cli_version="$(cd "$wdir" && timeout -k 5s "${ABT_VERSION_TIMEOUT_S:-20}s" "$ABTEST_CLAUDE" --version 2> /dev/null | head -n1 | cut -d' ' -f1)"
   local -a extra=()
   [ "$arm" = B ] && extra=(--process "$dir/process.json")
   if [ "$arm" = B ] && [ ! -s "$dir/process.json" ]; then internal "$run_id" "process file"; fi
@@ -220,6 +300,7 @@ run_one() {
 ran=0
 skipped=0
 check_work_root "$WORK" || exit 2
+[ "$DRY" -eq 1 ] || acquire_lock
 if [ "$DRY" -eq 0 ]; then
   mkdir -p "$RUNS" "$WORK"
   [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$RUNS/config"

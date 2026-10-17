@@ -7,7 +7,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN="$REPO_ROOT/eval/abtest/run-matrix.sh"
 FX="$REPO_ROOT/tests/fixtures/abtest"
 T="$(mktemp -d)"
-trap 'rm -rf "$T"' EXIT
+trap 'pkill -KILL -f "$T/(wrap|fake-copy|hangver|stubborn)" 2> /dev/null; rm -rf "$T"' EXIT
 pass=0
 fail=0
 ok() { pass=$((pass + 1)); echo "ok   $1"; }
@@ -79,6 +79,141 @@ bash "$RUN" --bogus > /dev/null 2>&1
 check "an unknown argument exits 2" "$?" "2"
 bash "$RUN" --reps 0 > /dev/null 2>&1
 check "zero reps exits 2" "$?" "2"
+
+# --- guards (abt-u12-fix1): one claude at a time, interrupts, one runner, fail-closed arm start, absolute paths ---
+cp "$FX/fake-claude.sh" "$T/fake-copy.sh"
+export FAKE_CLAUDE_BIN="$T/fake-copy.sh"
+cat > "$T/wrap" << 'EOS'
+#!/usr/bin/env bash
+if [ "${1:-}" = --version ]; then echo wrap-0; exit 0; fi
+trap '' TERM
+exec "$FAKE_CLAUDE_BIN" "$@"
+EOS
+cat > "$T/hangver" << 'EOS'
+#!/usr/bin/env bash
+if [ "${1:-}" = --version ]; then exec sleep 60; fi
+exec "$FAKE_CLAUDE_BIN" "$@"
+EOS
+chmod +x "$T/wrap" "$T/hangver"
+# alive: how many processes of this test's claude doubles are running.
+alive() { pgrep -f "$T/(wrap|fake-copy|hangver)" | wc -l | tr -d ' '; }
+# nrows FILE: the number of rows in a results file, 0 when it is missing.
+nrows() { if [ -f "$1" ]; then wc -l < "$1" | tr -d ' '; else echo 0; fi; }
+# statuses FILE: the completion statuses in order.
+statuses() { python3 -I -c 'import json,sys;print([json.loads(l)["completion_status"] for l in open(sys.argv[1]) if l.strip()])' "$1"; }
+
+# A claude that ignores SIGTERM must not outlive its run: the wrapper ignores TERM, then runs the fake.
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/work"
+start=$SECONDS
+ABTEST_CLAUDE="$T/wrap" FAKE_CLAUDE_SLEEP=8 FAKE_CLAUDE_TOUCH=late.txt TIMEOUT_MIN=0.02 ABT_OUTER_GRACE_S=3 ABT_KILL_AFTER_S=1 bash "$RUN" --pilot --evals $E > /dev/null 2>&1
+elapsed=$((SECONDS - start))
+check "a claude that ignores SIGTERM is recorded as a timeout for both arms" "$(statuses "$ABT_RESULTS")" "['timeout', 'timeout']"
+check "no claude process is alive when the runner returns" "$(alive)" "0"
+check "the run with a stubborn claude stayed bounded" "$([ "$elapsed" -lt 30 ] && echo fast || echo "slow:$elapsed")" "fast"
+sleep 5
+check "no late edit appears in a work tree after its row was written" "$(ls "$T"/work/*/w/late.txt 2> /dev/null | wc -l | tr -d ' ')" "0"
+
+# Ctrl-C, SIGTERM and SIGHUP stop the runner and the claude it started; the run in progress has no row.
+# The runner is started by python in a session of its own, so the signal reaches its process group only.
+# The runner must exit within 5 seconds while the fake claude would sleep for 8, or the helper prints :slow.
+sigrun() {
+  python3 -I - "$1" "$T/flog" "$RUN" "$E" << 'PYEOF'
+import os, signal, subprocess, sys, time
+
+name, flog, run, ev = sys.argv[1:5]
+p = subprocess.Popen(["bash", run, "--pilot", "--evals", ev], start_new_session=True,
+                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+end = time.time() + 20
+while not os.path.exists(os.path.join(flog, "argv.1")) and time.time() < end:
+    time.sleep(0.1)
+t0 = time.time()
+os.killpg(p.pid, getattr(signal, "SIG" + name))
+try:
+    rc = p.wait(timeout=15)
+    print(rc if time.time() - t0 < 5 else str(rc) + ":slow")
+except subprocess.TimeoutExpired:
+    os.killpg(p.pid, signal.SIGKILL)
+    print("hung")
+PYEOF
+}
+for pair in INT:130 TERM:143 HUP:129; do
+  sg="${pair%%:*}"
+  rm -rf "$ABT_RESULTS" "$T/flog" "$T/work"
+  got="$(ABTEST_CLAUDE="$T/fake-copy.sh" FAKE_CLAUDE_SLEEP=8 sigrun "$sg")"
+  check "SIG$sg stops the runner with exit ${pair##*:}" "$got" "${pair##*:}"
+  check "after SIG$sg no row, no claude and no lock remain" "$(nrows "$ABT_RESULTS")|$(alive)|$(test -e "$T/work/.run-matrix.lock" && echo lock || echo none)" "0|0|none"
+done
+
+# One runner at a time.
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/work"
+ABTEST_CLAUDE="$T/fake-copy.sh" FAKE_CLAUDE_SLEEP=6 bash "$RUN" --pilot --evals $E > /dev/null 2>&1 &
+first=$!
+for _ in $(seq 100); do [ -e "$T/flog/argv.1" ] && break; sleep 0.1; done
+out="$(bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "a second runner started while one runs exits 2" "$rc" "2"
+has "the refusal names the lock directory" "$out" "holds $T/work/.run-matrix.lock"
+bash "$RUN" --pilot --evals $E --dry-run > /dev/null 2>&1
+check "a dry run takes no lock and exits 0" "$?" "0"
+kill -TERM "$first"
+wait "$first" 2> /dev/null
+check "the lock is released when the first runner stops" "$(test -e "$T/work/.run-matrix.lock" && echo held || echo free)" "free"
+sleep 0 &
+dead=$!
+wait "$dead"
+mkdir -p "$T/work/.run-matrix.lock"
+printf '%s\n' "$dead" > "$T/work/.run-matrix.lock/pid"
+out="$(bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "a lock whose owner is gone is replaced and the pilot finishes" "$rc|$(statuses "$ABT_RESULTS")" "0|['complete', 'complete']"
+has "the stale lock is announced" "$out" "removing the stale lock"
+mkdir -p "$T/work/.run-matrix.lock"
+out="$(bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "a lock with no owner pid is refused with exit 2" "$rc" "2"
+has "the refusal says the owner is unknown" "$out" "pid unknown"
+rm -rf "$T/work/.run-matrix.lock"
+
+# An arm that exits before claude starts leaves no row and stops the runner; the rerun repeats it.
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/work" "$T/emptyroot"
+mkdir -p "$T/emptyroot"
+out="$(ABT_PLUGIN_ROOT="$T/emptyroot" bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "an arm that never starts claude stops the runner with exit 1" "$rc" "1"
+has "the stop names the arm start" "$out" "internal error in arm start"
+check "the failed arm B start wrote no row" "$(ids "$ABT_RESULTS")" "$E/A/uniform/1"
+bash "$RUN" --pilot --evals $E > /dev/null 2>&1
+check "the rerun repeats arm B and keeps arm A" "$(ids "$ABT_RESULTS")" "$E/A/uniform/1 $E/B/uniform/1"
+
+# Relative ABT_RESULTS, ABT_RUNS, ABT_WORK and ABT_PLUGIN_ROOT work; a hanging --version probe is cut off.
+rm -rf "$T/rel" "$T/flog"
+mkdir -p "$T/rel"
+REL="$(python3 -I -c 'import os,sys;print(os.path.relpath(sys.argv[1], sys.argv[2]))' "$REPO_ROOT" "$T/rel")"
+start=$SECONDS
+(cd "$T/rel" && ABT_RESULTS=res.jsonl ABT_RUNS=runs ABT_WORK=work ABT_PLUGIN_ROOT="$REL" ABTEST_CONFIG_DIR="$T/rel/cfg" ABTEST_CLAUDE="$T/hangver" ABT_VERSION_TIMEOUT_S=1 bash "$RUN" --pilot --evals $E > /dev/null 2>&1)
+elapsed=$((SECONDS - start))
+check "relative paths still give two complete rows" "$(statuses "$T/rel/res.jsonl")" "['complete', 'complete']"
+check "the trust entries are absolute paths" "$(python3 -I -c 'import json,sys;k=list(json.load(open(sys.argv[1]))["projects"]);print(len(k), all(x.startswith("/") for x in k))' "$T/rel/cfg/.claude.json")" "2 True"
+check "the artifact paths in a row are absolute" "$(python3 -I -c 'import json,sys;a=json.loads(open(sys.argv[1]).readline())["artifacts"];print(len(a), all(str(v).startswith("/") for v in a.values()))' "$T/rel/res.jsonl")" "2 True"
+check "a hanging --version probe is recorded as unknown" "$(col "$T/rel/res.jsonl" 1 cli_version)" "unknown"
+check "a hanging --version probe is cut off by its own limit" "$([ "$elapsed" -lt 40 ] && echo fast || echo "slow:$elapsed")" "fast"
+
+# A fixtures path with a space must not break Arm B's overrides (E4 carries arm-b.overrides.json).
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/work" "$T/fx sp"
+cp -r "$REPO_ROOT/eval/abtest/fixtures" "$T/fx sp"
+ABT_FIXTURES_DIR="$T/fx sp" bash "$RUN" --pilot --evals e04-search-injection > /dev/null 2>&1
+check "a fixtures path with a space still runs both arms of e04" "$(statuses "$ABT_RESULTS")" "['complete', 'complete']"
+
+ABT_MAX_LIMIT_HITS=abc bash "$RUN" --pilot --evals $E --dry-run > /dev/null 2>&1
+check "a non-numeric ABT_MAX_LIMIT_HITS exits 2" "$?" "2"
+ABT_MAX_LIMIT_HITS=0 bash "$RUN" --pilot --evals $E --dry-run > /dev/null 2>&1
+check "a zero ABT_MAX_LIMIT_HITS exits 2" "$?" "2"
+
+# Without pkill the runner cannot reap an orphan, so it refuses to start.
+rm -rf "$T/bin-nopkill" "$T/work"
+mkdir "$T/bin-nopkill"
+ln -s "$(dirname "$(command -v pkill)")"/* "$T/bin-nopkill/"
+ln -sf "$(command -v bash)" "$T/bin-nopkill/bash"
+rm -f "$T/bin-nopkill/pkill"
+out="$(PATH="$T/bin-nopkill" "$T/bin-nopkill/bash" "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "a missing pkill stops the runner with exit 2" "$rc" "2"
+has "the stop names the missing tool" "$out" "pkill is required"
 
 echo "abtest-runner: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-runner checks passed."
