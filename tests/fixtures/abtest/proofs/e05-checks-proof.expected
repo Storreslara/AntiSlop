@@ -1,0 +1,8 @@
+the reference: migration pass
+the reference: readme-tags-route pass
+the reference: readme-data-format-v2 pass
+a no-op migrate script and an emptied v2 dump: migration fail
+a no-op migrate script and the original dump: migration fail
+a README that names the route only through a test file: readme-tags-route fail
+a README that shows the route in a curl example: readme-tags-route pass
+a README that says Node version 20: readme-data-format-v2 fail

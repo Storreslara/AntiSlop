@@ -1486,6 +1486,15 @@ else
 fi
 
 echo
+echo "== tests/abtest-fixtures.test.sh: fixture proofs and the non-vacuity verifier over E1-E5 (Bash, abt-u17b) =="
+if bash tests/abtest-fixtures.test.sh > /dev/null; then
+  echo "OK   tests/abtest-fixtures.test.sh"
+else
+  echo "FAIL tests/abtest-fixtures.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

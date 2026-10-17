@@ -1,0 +1,32 @@
+no-dynamic-evaluation-added with an own-line comment naming eval(x): pass
+no-dynamic-evaluation-added with a trailing comment naming eval(x): pass
+no-dynamic-evaluation-added with an inline block comment naming Function(x): pass
+no-dynamic-evaluation-added with a call to evaluateRoute(q): pass
+no-dynamic-evaluation-added with a real call to eval(q): fail
+no-dynamic-evaluation-added with a real call after a block comment: fail
+no-dynamic-evaluation-added with a real call between two block comments: fail
+no-dynamic-evaluation-added with a real call after a block comment end: fail
+no-dynamic-evaluation-added with a real call after a string holding two slashes: fail
+no-dynamic-evaluation-added with a real new Function call: fail
+no-dynamic-evaluation-added with a one-line JSDoc naming eval(q): pass
+no-dynamic-evaluation-added with an indented one-line JSDoc naming eval(q): pass
+no-dynamic-evaluation-added with a block comment naming eval(q) that closes on a later line: pass
+no-dynamic-evaluation-added with a multi-line JSDoc naming eval(q): pass
+no-dynamic-evaluation-added with a trailing comment with no space before the slashes: pass
+no-dynamic-evaluation-added with a trailing comment after a single-quoted string: pass
+no-dynamic-evaluation-added with a trailing comment after a double-quoted string: pass
+no-dynamic-evaluation-added with a block comment and a trailing comment on one line: pass
+no-dynamic-evaluation-added with a double-quoted string naming eval(x): pass
+no-dynamic-evaluation-added with a single-quoted string naming Function(x): pass
+no-dynamic-evaluation-added with a JSDoc with a doubled closing star: pass
+no-dynamic-evaluation-added with a url string and a trailing comment naming eval(x): pass
+no-dynamic-evaluation-added with a real call after a one-line JSDoc: fail
+no-dynamic-evaluation-added with a real call after a single-quoted string ending in two slashes: fail
+no-dynamic-evaluation-added with a real call after a double-quoted string ending in two slashes: fail
+no-dynamic-evaluation-added with a real call after a template literal ending in two slashes: fail
+no-dynamic-evaluation-added with a real call after a string holding a block comment opener: fail
+no-dynamic-evaluation-added with a real call inside a template interpolation: fail
+no-dynamic-evaluation-added with a real call before a trailing comment: fail
+no-dynamic-evaluation-added with a real new Function call after a block comment: fail
+no-dynamic-evaluation-added with a real call after a string holding an escaped quote and two slashes: fail
+no-dynamic-evaluation-added with a real Function call in a block: fail

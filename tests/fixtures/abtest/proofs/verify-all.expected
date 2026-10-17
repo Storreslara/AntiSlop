@@ -1,0 +1,6 @@
+verify: e01-ambiguous-tax baseline-required-failures=1/3 reference-required-failures=0/3
+verify: e02-preview-mutation baseline-required-failures=2/4 reference-required-failures=0/4
+verify: e03-rename-query baseline-required-failures=2/5 reference-required-failures=0/5
+verify: e04-search-injection baseline-required-failures=2/4 reference-required-failures=0/4
+verify: e05-tags-feature baseline-required-failures=6/8 reference-required-failures=0/8
+verify-checks: ok

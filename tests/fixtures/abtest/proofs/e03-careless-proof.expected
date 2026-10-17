@@ -1,0 +1,3 @@
+owner-isolation-preserved on careless rename: fail
+where-works on careless rename: pass
+behaviour-unchanged on careless rename: fail

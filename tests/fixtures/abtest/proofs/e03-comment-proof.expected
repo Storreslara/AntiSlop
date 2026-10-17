@@ -1,0 +1,10 @@
+old-api-gone with a line comment naming query(filterString): pass
+old-api-gone with a block comment naming query(x): pass
+old-api-gone with an unstarred block comment body naming query(x): pass
+old-api-gone with a trailing comment naming query(x): pass
+old-api-gone with a real call to store.query(x): fail
+old-api-gone with a real call after a block comment on one line: fail
+old-api-gone with a real call after a block comment end: fail
+old-api-gone with a generator method named query: fail
+old-api-gone with a real call after a string holding two slashes: fail
+variants stacked on another variant: 0
