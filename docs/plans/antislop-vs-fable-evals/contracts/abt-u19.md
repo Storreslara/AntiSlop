@@ -11,7 +11,7 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/results.jsonl` (anchor: new file; git-ignored, written by the runner)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/run-matrix.sh && test -f eval/abtest/score.py && test -f docs/experiments/abtest-2026-10.md && test ! -e eval/abtest/results.jsonl && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f eval/abtest/run-matrix.sh && grep -q supersede_run eval/abtest/run-matrix.sh && test -f eval/abtest/score.py && grep -q PROVENANCE eval/abtest/score.py && test -f docs/experiments/abtest-2026-10.md && test ! -e eval/abtest/results.jsonl && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. command: `bash eval/abtest/verify-checks.sh --all`
    expect: 0
@@ -101,7 +101,7 @@ executor: OPERATOR (or the orchestrator on the operator's word). Never dispatch 
 usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset and run the same command again; do not edit results.jsonl by hand.
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
 stop-rule: if criteria 2 to 6 fail, the isolation or flag assumption is wrong (a root_claude_md=loaded line means the CLAUDE.md of this repository reached Arm A, a mention-case failure means a reply that mentions rate limits was mistaken for a limit hit or never exercised): STOP and report the probe-detail lines. If criterion 7 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 13 passes only after edit 9 (edit 6 pins any real limit-hit stream under tests/fixtures/abtest/streams/ as pinned-limit-<run id>.jsonl and commits it; give such a capture its own row in tests/abtest-stream.test.sh through a new unit, because the wording list may need widening).
-cost: about 2 probe runs plus 10 pilot runs; the pilot rows are reused as rep 1 by abt-u20, so do not delete results.jsonl afterwards.
+cost: about 2 probe runs plus 10 pilot runs; the pilot rows are reused as rep 1 by abt-u20 while the harness commit, plugin commit and prompt hash stay the same, so do not delete results.jsonl afterwards. Any fix made after the pilot makes abt-u20 repeat the affected pilot rows and move the old ones to results.superseded.jsonl (OD-14); that costs runs, never a mixed verdict.
 pilot-report: edit 7 prints every eval as INCONCLUSIVE (short N: A=1 B=1) by design (OD-12: fewer than 5 usable rows per arm never gives a verdict, so a pilot cannot be mistaken for a result); the pilot gate reads rows and statuses, not verdicts. The command still exits 0.
 proof-lines: criteria 7, 8 and 9 are read-only guards; their proof lines say what a failing pilot prints.
 commit-message: docs(abt-u19): pilot findings (#589)
