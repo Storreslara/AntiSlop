@@ -32,18 +32,21 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    mention this repository's code-review-graph section (`probe: A root_claude_md=not-loaded` is
    required) and makes both arms write the phrase "rate limit 429" (`probe: mention-case ok`), so a
    reply that merely mentions rate limits cannot be mistaken for a limit hit.
-1b. Canary probe: `bash eval/abtest/run-matrix.sh --probe-canary` must exit 0 before the pilot (OD-16(c) in
+2. Canary probe: `bash eval/abtest/run-matrix.sh --probe-canary` must exit 0 before the pilot (OD-16(c) in
    `docs/plans/antislop-vs-fable-evals/operator-decisions.md`). It plants a random token in the checks and fixtures
    directories and fails if either arm prints it. The runner does not enforce this order: read the exit code.
-2. Check the fixtures: `bash eval/abtest/verify-checks.sh --all` must print `verify-checks: ok`.
-3. Pilot, one run per arm per eval: `bash eval/abtest/run-matrix.sh --pilot`. Look at
+   - Exit 1 with `A=not-run` or `B=not-run`: that arm did not finish. Read the summary under `eval/abtest/.runs/probe-canary/A` or `eval/abtest/.runs/probe-canary/B`, fix the cause and rerun the probe. Do not run the pilot.
+   - Exit 1 with `A=FOUND` or `B=FOUND`: isolation is broken. Do not run the pilot; report it.
+   - Exit 75: a usage limit was reached. Wait for the subscription window to reset and rerun the probe.
+3. Check the fixtures: `bash eval/abtest/verify-checks.sh --all` must print `verify-checks: ok`.
+4. Pilot, one run per arm per eval: `bash eval/abtest/run-matrix.sh --pilot`. Look at
    `eval/abtest/results.jsonl` and at `eval/abtest/.runs/<run>/` before going on. Pilot rows are valid
    rep-1 rows while the harness, plugin and prompt stay the same. After a fix, the next run repeats the stale
    rows and moves them to `results.superseded.jsonl`, which the scorer never reads (OD-14).
-4. Full pass, five reps: `bash eval/abtest/run-matrix.sh`. Runs are sequential. Rep 1 is A then B,
+5. Full pass, five reps: `bash eval/abtest/run-matrix.sh`. Runs are sequential. Rep 1 is A then B,
    rep 2 is B then A, and so on.
-5. Score (the scorer does not create the report directory): `mkdir -p eval/reports && python3 eval/abtest/score.py eval/abtest/results.jsonl --out-json eval/reports/abtest-<date>.json --out-md eval/reports/abtest-<date>.md`.
-6. Grade the E1 judgment item: `bash eval/abtest/blind.sh eval/abtest/results.jsonl <dir>`, fill
+6. Score (the scorer does not create the report directory): `mkdir -p eval/reports && python3 eval/abtest/score.py eval/abtest/results.jsonl --out-json eval/reports/abtest-<date>.json --out-md eval/reports/abtest-<date>.md`.
+7. Grade the E1 judgment item: `bash eval/abtest/blind.sh eval/abtest/results.jsonl <dir>`, fill
    `<dir>/grades-template.csv` while looking only at `<dir>/blind/`, then `bash eval/abtest/blind.sh --unseal <dir> <graded csv>`.
 
 ## Usage limits and resuming

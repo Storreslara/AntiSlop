@@ -6,7 +6,7 @@
 #   --pilot     one rep per arm per eval (the smoke gate); its rows are valid rep-1 rows
 #   --reps N    reps per arm per eval (default 5)
 #   --evals     comma list of eval ids (default: the five E1-E5 ids)
-#   --dry-run   print the plan (run / skip per run id) and exit; starts nothing
+#   --dry-run   print the plan (run, skip or rerun (stale provenance) per run id) and exit; starts nothing
 #   --probe-isolation   run both arms once on a tiny task and print the isolation lines
 #   --probe-model uniform   same two runs, print the model line (give both flags to run once)
 #   --probe-canary      plant a random token in the checks and fixtures directories, run both arms and fail
@@ -25,7 +25,7 @@
 # The cap is checked before a stale row is moved, so a capped run id keeps its row.
 # Env: ABTEST_CLAUDE, ABTEST_MODEL, MAX_TURNS, TIMEOUT_MIN, ABTEST_POLICY (see arms/common.sh),
 #      ABT_RESULTS (default eval/abtest/results.jsonl), ABT_RUNS (default eval/abtest/.runs),
-#      ABT_FIXTURES_DIR (default: eval/abtest/fixtures), ABT_WORK (default $TMPDIR/antislop-abtest-work), ABT_PLUGIN_ROOT (default: this checkout),
+#      ABT_FIXTURES_DIR (default: eval/abtest/fixtures), ABT_WORK (default ${TMPDIR:-/tmp}/antislop-abtest-work), ABT_PLUGIN_ROOT (default: this checkout),
 #      ABT_OUTER_GRACE_S (default 120), ABT_KILL_AFTER_S (default 30), ABT_MAX_LIMIT_HITS (default 3).
 #      ABT_SUPERSEDED (default results.superseded.jsonl beside ABT_RESULTS; stale rows are moved there).
 #      ABT_VERSION_TIMEOUT_S (default 20): the limit in seconds on the claude --version call.
