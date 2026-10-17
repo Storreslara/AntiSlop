@@ -306,6 +306,102 @@ sha="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/
 check "abt_fixture_baseline still commits a clean tree" "$rc|$(printf '%s' "$sha" | tail -n1 | grep -cE '^[0-9a-f]{40}$')" "0|1"
 sha="$(ABT_REPO_ROOT="$REPO_ROOT" bash "$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/build.sh" "$T/lg/e01" | tail -n1)"; rc=$?
 check "the E1 build, with its own guard, still builds under the lib guard" "$rc|$(printf '%s' "$sha" | grep -cE '^[0-9a-f]{40}$')" "0|1"
+# --- neutral baseline identity and git-history scan (abt-u05d) ---
+# A failing tool must fail the guard: each case puts a fake tool first on PATH that exits non-zero.
+FK="$T/fake"; mkdir -p "$FK"
+lgfake() {
+  local tool="$1" body="$2" dir="$3"
+  printf '#!/bin/sh\n%s\n' "$body" > "$FK/$tool"; chmod +x "$FK/$tool"
+  ( PATH="$FK:$PATH"; . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_leak_guard "$dir" ) 2>&1; echo "rc=$?"
+  rm -f "${FK:?}/${tool:?}"
+}
+rm -rf "$T/lg/gitfail"; mkdir -p "$T/lg/gitfail"; printf '{"description":"notes"}\n' > "$T/lg/gitfail/package.json"
+( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/gitfail" > /dev/null )
+printf '#!/bin/sh\ncase " $* " in *" $FAKE_GIT_FAIL "*) exit 128 ;; esac\nexec "$FAKE_GIT_REAL" "$@"\n' > "$FK/git"; chmod +x "$FK/git"
+REALGIT="$(command -v git)"
+lgfakegit() { ( PATH="$FK:$PATH"; FAKE_GIT_REAL="$REALGIT"; export FAKE_GIT_REAL; FAKE_GIT_FAIL="$1"; export FAKE_GIT_FAIL; . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_leak_guard "$2" ) 2>&1; echo "rc=$?"; }
+out="$(lgfakegit log "$T/lg/gitfail")"
+has "leak guard: a failing git log fails the guard" "$out" "git log failed in"
+out="$(lgfakegit for-each-ref "$T/lg/gitfail")"
+has "leak guard: a failing git for-each-ref fails the guard" "$out" "git for-each-ref failed in"
+out="$(lgfakegit nothing "$T/lg/gitfail")"
+has "leak guard: the same fake git that fails nothing lets a clean history pass (control)" "$out" "rc=0"
+rm -f "${FK:?}/git"
+rm -rf "$T/lg/gitnoscope"; mkdir -p "$T/lg/gitnoscope/src"; printf 'x\n' > "$T/lg/gitnoscope/src/x.js"
+( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/gitnoscope" > /dev/null )
+out="$(lgfake grep 'exit 2' "$T/lg/gitnoscope")"
+has "leak guard: a failing grep fails the guard on a history" "$out" "grep failed on the git history"
+# The git history is scanned too.
+lgrepo() {
+  local name="$1" msg="$2"
+  rm -rf "$T/lg/hist"; mkdir -p "$T/lg/hist"; printf '{"description":"notes"}\n' > "$T/lg/hist/package.json"
+  shift 2
+  ( cd "$T/lg/hist" && git init -q -b main && git add -A \
+    && env GIT_AUTHOR_NAME=dev GIT_AUTHOR_EMAIL=dev@example.invalid GIT_COMMITTER_NAME=dev GIT_COMMITTER_EMAIL=dev@example.invalid "$@" git commit -q -m "$msg" )
+}
+lgrepo neutral "initial import"
+lgcase "leak guard: a neutral history passes (control)" "$T/lg/hist" 0 ""
+lgrepo trapezoid "trapezoid and plantation notes"
+lgcase "leak guard: near words in a history are fine (control)" "$T/lg/hist" 0 ""
+lgrepo an "initial import" GIT_AUTHOR_NAME=abtest
+lgcase "leak guard: an author name abtest is refused" "$T/lg/hist" 1 "git history of $T/lg/hist names the eval or the tool ('abtest')"
+lgrepo ae "initial import" GIT_AUTHOR_EMAIL=abtest@example.invalid
+lgcase "leak guard: an author email abtest is refused" "$T/lg/hist" 1 "('abtest')"
+lgrepo cn "initial import" GIT_COMMITTER_NAME=eval
+lgcase "leak guard: a committer name eval is refused" "$T/lg/hist" 1 "('eval')"
+lgrepo ce "initial import" GIT_COMMITTER_EMAIL=claude@example.invalid
+lgcase "leak guard: a committer email claude is refused" "$T/lg/hist" 1 "('claude')"
+lgrepo m1 "fixture baseline"
+lgcase "leak guard: the word fixture in a commit message is refused" "$T/lg/hist" 1 "('fixture')"
+lgrepo m2 "add the trap"
+lgcase "leak guard: the word trap in a commit message is refused" "$T/lg/hist" 1 "('trap')"
+lgrepo m3 "AntiSlop import"
+lgcase "leak guard: AntiSlop in a commit message is refused" "$T/lg/hist" 1 "('AntiSlop')"
+lgrepo m4 "initial import"
+git -C "$T/lg/hist" commit -q --amend -m "initial import" -m "the plant is here"
+lgcase "leak guard: a word in the body of a commit message is refused" "$T/lg/hist" 1 "('plant')"
+for spec in "evals|evals" "pilots|pilots" "personas|personas" "holdouts|holdouts" "hidden checks|hidden checks" "Anti-Slop|Anti-Slop" "anti slop|anti slop" "traps|traps" "plants|plants" "fixtures|fixtures"; do
+  IFS='|' read -r hm hw <<< "$spec"
+  lgrepo hw "update $hm"
+  lgcase "leak guard: the history word $hm is refused" "$T/lg/hist" 1 "('$hw')"
+done
+lgrepo br "initial import"
+git -C "$T/lg/hist" branch eval-branch
+lgcase "leak guard: a branch name with eval is refused" "$T/lg/hist" 1 "('eval')"
+lgrepo tg "initial import"
+git -C "$T/lg/hist" tag pilot-1
+lgcase "leak guard: a tag name with pilot is refused" "$T/lg/hist" 1 "('pilot')"
+lgrepo ta "initial import"
+git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid tag -a v1 -m "persona release"
+lgcase "leak guard: an annotated tag message with persona is refused" "$T/lg/hist" 1 "('persona')"
+lgrepo tn "initial import"
+git -C "$T/lg/hist" -c user.name=abtest -c user.email=dev@example.invalid tag -a v2 -m "release"
+lgcase "leak guard: an annotated tag by a tagger abtest is refused" "$T/lg/hist" 1 "('abtest')"
+lgrepo ob "initial import"
+git -C "$T/lg/hist" checkout -q -b other && git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid commit -q --allow-empty -m "fixture notes" && git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid commit -q --allow-empty -m "tidy" && git -C "$T/lg/hist" checkout -q main && git -C "$T/lg/hist" branch -q -m other side
+lgcase "leak guard: a commit reachable only from another branch is scanned" "$T/lg/hist" 1 "('fixture')"
+lgrepo oc "fixture first"
+git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid commit -q --allow-empty -m "tidy"
+lgcase "leak guard: a leaking subject on an older commit is refused" "$T/lg/hist" 1 "('fixture')"
+lgrepo od "initial import"
+git -C "$T/lg/hist" commit -q --amend -m "initial import" -m "the plant is here"
+git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid commit -q --allow-empty -m "tidy"
+lgcase "leak guard: a leaking body on an older commit is refused" "$T/lg/hist" 1 "('plant')"
+lgrepo nw "subtrap and microeval notes"
+lgcase "leak guard: a word glued to other letters in a history is fine (control)" "$T/lg/hist" 0 ""
+# abt_fixture_baseline: neutral identity, neutral message, one branch, and a leaking history leaves no repository.
+rm -rf "$T/lg/id"; mkdir -p "$T/lg/id"; printf '{"description":"notes"}\n' > "$T/lg/id/package.json"
+( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/id" > /dev/null )
+check "the baseline commit has a neutral identity and message" "$(git -C "$T/lg/id" log --format='%an|%ae|%cn|%ce|%s')" "dev|dev@example.invalid|dev|dev@example.invalid|initial import"
+check "the baseline repository has one commit and one ref" "$(git -C "$T/lg/id" rev-list --all --count)|$(git -C "$T/lg/id" for-each-ref --format='%(refname)')" "1|refs/heads/main"
+check "the baseline commit date is fixed" "$(git -C "$T/lg/id" log -1 --format='%aI|%cI')" "2026-01-01T00:00:00+00:00|2026-01-01T00:00:00+00:00"
+check "a built E1 baseline passes the guard, history included" "$(lg "$T/lg/e01")" "rc=0"
+check "the built E1 baseline history is neutral" "$(git -C "$T/lg/e01" log --format='%an|%ae|%s')" "dev|dev@example.invalid|initial import"
+rm -rf "$T/lg/leakid"; mkdir -p "$T/lg/leakid"; printf '{"description":"notes"}\n' > "$T/lg/leakid/package.json"
+out="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_env() { export GIT_AUTHOR_NAME=abtest GIT_AUTHOR_EMAIL=a@example.invalid GIT_COMMITTER_NAME=dev GIT_COMMITTER_EMAIL=dev@example.invalid; }; abt_fixture_baseline "$T/lg/leakid" 2>&1 )"; rc=$?
+check "a baseline whose history leaks is refused" "$rc" "1"
+has "the history leak is named" "$out" "names the eval or the tool ('abtest')"
+check "the refused baseline left no repository" "$(test -e "$T/lg/leakid/.git" && echo made || echo none)" "none"
 
 # --- check timeout (abt-u06b): a hung check command is ended and recorded as failed ---
 cat > "$T/lib-timeout.sh" << 'EOS'

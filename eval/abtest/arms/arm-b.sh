@@ -64,7 +64,7 @@ with open(cfg_path, "w") as f:
     f.write("\n")
 PYEOF
 
-( cd "$wt" && git add -A && git -c user.name=abtest -c user.email=abtest@example.invalid commit -q -m "arm-b scaffold" )
+( cd "$wt" && git add -A && git -c user.name=dev -c user.email=dev@example.invalid commit -q -m "add project tooling" )
 sha="$(git -C "$wt" rev-parse HEAD)"
 
 abtest_trust_path "$ABTEST_CONFIG_DIR" "$wt"
