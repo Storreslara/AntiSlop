@@ -10,3 +10,9 @@
 - A bash heredoc or Bash command text is rewritten when it holds `\uXXXX`: build files from a placeholder (`@u2219`) in Python, or Write them, and grep for non-ASCII afterwards.
 - A contract over 30000 bytes is split into units (u05d/u05e, u12c); an amendment to a not-yet-dispatched contract that is near the cap becomes its own unit blocked by it.
 - Mutation matrix: sliced copies of the finished tree (`cp -r` of a worktree works) run in parallel; list equivalent edits as unclaimed instead of leaving a survivor.
+
+## Follow-up round mechanics (2026-10-17, abt u08b-u17b)
+- `tools/chain.py REPO BASE CONTRACT...` applies several contracts in order (commits included) in one worktree; `git branch -f <name> <sha>` on it gives a replay BASE that already holds earlier units. `tools/anchors.py` counts every literal anchor at its turn; `tools/applyall.py` leaves a finished worktree for hand-run proof mutations.
+- A grep false-fail check (comment filter) is fixed with a tokenizer script in the checks dir, not a longer grep pipe; pin proof-script output with a `.expected` file and a gate test.
+- A review's suggested anchor can create a false failure (table-row-only README route): test the regex on real forms (table row, curl example, prose, test file name) before accepting it.
+- Ordering trap: u12 put the config dir inside `.runs/`, which u01b's arms refuse; u12c must follow u01b with nothing between.
