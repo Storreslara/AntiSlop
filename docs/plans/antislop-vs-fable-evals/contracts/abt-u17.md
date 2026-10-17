@@ -98,7 +98,21 @@ for per-persona attribution.
   non-vacuity proof (every required check fails on the baseline and passes on the reference).
 - `results.jsonl` and `.runs/` are git-ignored.
 ~~~~
-3. file: `tests/validate.sh`
+3. file: `eval/abtest/README.md`
+   anchor: line matching `are git-ignored.`
+   indent: 0
+   insert-after:
+~~~~
+
+**Residual risk (OD-16).** The arms cannot read the hidden checks or the reference solutions by the ordinary
+routes: Arm B loads a pruned copy of the plugin, both arms run with deny rules for Read, Edit and Bash commands
+that name the harness root, the runs directory or the results, and both run with a per-run HOME outside the
+repository. A deny rule cannot stop a shell command that never names the path, so a determined agent with
+shell access could still search the filesystem and find the checkout. These measures are defence in depth, not a
+proof. `run-matrix.sh --probe-canary` plants a random token in the checks and fixtures directories and fails if
+either arm finds it; a pass is a probe of the common routes, not a proof.
+~~~~
+4. file: `tests/validate.sh`
    anchor: line matching `if [ "$fail" -eq 0 ]; then`
    indent: 0
    before:
@@ -185,7 +199,7 @@ echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 ~~~~
-4. command: `git add eval/abtest/README.md tests/validate.sh && git commit -m "test(abt-u17): register the abtest suites in the merge gate and add the operator README (#586)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+5. command: `git add eval/abtest/README.md tests/validate.sh && git commit -m "test(abt-u17): register the abtest suites in the merge gate and add the operator README (#586)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -199,15 +213,15 @@ if [ "$fail" -eq 0 ]; then
 1. run: `grep -c '^echo "== tests/abtest-' tests/validate.sh`
    exit: 0
    stdout: `8`
-   mutation: skip edit 3 (the validate.sh insertion); stdout 0 and the exit is 1.
+   mutation: skip edit 4 (the validate.sh insertion); stdout 0 and the exit is 1.
 2. run: `grep -c 'tests/abtest-' tests/validate.sh`
    exit: 0
    stdout: `32`
-   mutation: skip edit 3; stdout 0 and the exit is 1.
+   mutation: skip edit 4; stdout 0 and the exit is 1.
 3. run: `for t in tests/abtest-*.test.sh; do grep -qF "bash $t" tests/validate.sh || echo "missing $t"; done | wc -l`
    exit: 0
    stdout: `0`
-   mutation: skip edit 3; all eight suites are missing and stdout is 8.
+   mutation: skip edit 4; all eight suites are missing and stdout is 8.
 4. run: `grep -c '^## ' eval/abtest/README.md`
    exit: 0
    stdout: `5`
@@ -219,7 +233,7 @@ if [ "$fail" -eq 0 ]; then
 6. run: `out=$(bash tests/validate-lanes.sh --lanes 4); rc=$?; echo "$out" | grep -c "OK   tests/abtest-"; exit $rc`
    exit: 0
    stdout: `8`
-   mutation: skip edit 3; no abtest section runs, so stdout is 0.
+   mutation: skip edit 4; no abtest section runs, so stdout is 0.
 7. run: `grep -c 'exit 76' eval/abtest/README.md`
    exit: 0
    stdout: `1`
@@ -231,11 +245,11 @@ if [ "$fail" -eq 0 ]; then
 9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `eval/abtest/README.md tests/validate.sh`
-   mutation: skip edit 4 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
+   mutation: skip edit 5 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
 10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
-   mutation: skip edit 4; no unit commit exists and the exit is 3.
+   mutation: skip edit 5; no unit commit exists and the exit is 3.
 11. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u17\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/README.md tests/validate.sh | grep -vcE "^[a-z]+\(abt-u17\): "`
    exit: 1
    stdout: `0`
@@ -244,11 +258,15 @@ if [ "$fail" -eq 0 ]; then
 12. run: `git status --porcelain -- eval/abtest/README.md tests/validate.sh`
    exit: 0
    stdout: empty
-   mutation: skip edit 4; the new files stay untracked and are listed.
+   mutation: skip edit 5; the new files stay untracked and are listed.
 13. run: `grep -c 'results.superseded.jsonl' eval/abtest/README.md`
    exit: 0
    stdout: `1`
    mutation: skip edit 2; grep exits 2 on the missing file and prints nothing.
+14. run: `grep -c 'Residual risk' eval/abtest/README.md`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 3 (the residual-risk paragraph); stdout 0 and the exit is 1.
 
 ## Pre-resolved context
 tdd: no registration lines and a README; the registered tests already exist and are the checks (criteria 1-6 are red at HEAD)
@@ -256,7 +274,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 12 (the scoped clean-tree check) passes at HEAD by design; it turns red only when the commit step is skipped.
-depends-on: abt-u01, u02, u03, u04, u12, u12b, u13, u14 and u15 must have landed; edit 1 counts the eight tests and STOPs unless exactly eight exist.
+depends-on: abt-u01, u02, u03, u04, u12, u12b, u13, u14 and u15 must have landed; edit 1 counts the eight tests and STOPs unless exactly eight exist; abt-u12c, abt-u13b and abt-u01b (the isolation measures the README describes).
 gate-run: criterion 6 runs the lanes gate in the foreground (about 3 minutes; pass the 600000 ms timeout; never background it; it refuses a linked worktree, so use the normal checkout). If it fails only in tests/rollout-preflight.test.sh or tests/microworld/dashboard-decision-run.test.js (both timing-flaky), rerun that test alone and the lanes once more and report both runs.
 no-real-claude: the registered tests use a fake claude; nothing here spends subscription usage.
 commit-message: test(abt-u17): register the abtest suites in the merge gate and add the operator README (#586)
@@ -280,6 +298,7 @@ criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
 criterion 12: <FILL: exit and stdout>
 criterion 13: <FILL: exit and stdout>
+criterion 14: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
