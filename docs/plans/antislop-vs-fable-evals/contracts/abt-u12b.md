@@ -133,8 +133,8 @@ check "the repeated run is appended after the three limit rows" "$(python3 -I -c
    proof: mutation matrix, run in a scratch copy of the finished abt-u12 + abt-u12b change, each making bash tests/abtest-runner.test.sh exit non-zero: R1 delete the --expected-required argument; R2 build the run directory inside the artifacts directory; R3 delete the work-root ancestor check; R4 delete both outer timeout wrappers; R5 delete the exit-code normalisation; R6 drop -k from both wrappers; R7 delete the usage-limit repeat cap; R8 replace the verified required-check count by the constant 4; R9 delete the standalone .git test; R11 stop passing --process to make-row; R12 check only the work root itself for CLAUDE.md.
 2. run: `bash tests/abtest-runner.test.sh | grep -c '^ok'`
    exit: 0
-   stdout: `61`
-   mutation: skip edit 4; only the 31 base rows remain and stdout is 31.
+   stdout: `62`
+   mutation: skip edit 4 (the last part of the guard rows); four rows go missing and stdout is 58.
 3. run: `bash tests/abtest-runner.test.sh | grep -c '^FAIL'`
    exit: 1
    stdout: `0`
