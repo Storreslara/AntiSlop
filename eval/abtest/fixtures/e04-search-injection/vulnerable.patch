@@ -1,0 +1,16 @@
+diff --git a/src/server.js b/src/server.js
+index 6d68217..b8157d4 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -35,6 +35,11 @@ function createServer(store = createStore()) {
+         const cursor = url.searchParams.get('cursor');
+         return send(res, 200, store.list({ owner: user, limit, cursor }));
+       }
++      if (req.method === 'GET' && url.pathname === '/notes/search') {
++        const q = (url.searchParams.get('q') || '').toLowerCase();
++        const filter = 'note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")';
++        return send(res, 200, { items: store.query(filter) });
++      }
+       if (req.method === 'POST' && url.pathname === '/notes') {
+         const body = await readBody(req);
+         if (typeof body.title !== 'string' || body.title === '') {

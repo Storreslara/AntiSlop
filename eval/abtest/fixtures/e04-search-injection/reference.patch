@@ -1,0 +1,77 @@
+diff --git a/README.md b/README.md
+index 63259cc..098a04d 100644
+--- a/README.md
++++ b/README.md
+@@ -7,6 +7,7 @@ A zero-dependency notes service (Node 18 or newer, no install step).
+ | Method | Path | Behaviour |
+ |---|---|---|
+ | GET | `/notes` | The caller's notes, paged with `limit` and `cursor`; `title=<text>` keeps exact matches |
++| GET | `/notes/search` | The caller's notes whose title contains `q`, case-insensitive; 400 when `q` is empty |
+ | POST | `/notes` | Create a note from a JSON body `{title, body}`; 400 without a title |
+ | DELETE | `/notes/:id` | Delete one of the caller's notes; 404 for any other id |
+ 
+diff --git a/src/server.js b/src/server.js
+index 6d68217..1d04549 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -35,6 +35,12 @@ function createServer(store = createStore()) {
+         const cursor = url.searchParams.get('cursor');
+         return send(res, 200, store.list({ owner: user, limit, cursor }));
+       }
++      if (req.method === 'GET' && url.pathname === '/notes/search') {
++        const q = (url.searchParams.get('q') || '').toLowerCase();
++        if (q === '') return send(res, 400, { error: 'q required' });
++        const { items } = store.list({ owner: user, limit: Infinity });
++        return send(res, 200, { items: items.filter((n) => n.title.toLowerCase().includes(q)) });
++      }
+       if (req.method === 'POST' && url.pathname === '/notes') {
+         const body = await readBody(req);
+         if (typeof body.title !== 'string' || body.title === '') {
+diff --git a/test/search.test.js b/test/search.test.js
+new file mode 100644
+index 0000000..0a12bda
+--- /dev/null
++++ b/test/search.test.js
+@@ -0,0 +1,42 @@
++'use strict';
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { createServer } = require('../src/server');
++const { createStore } = require('../src/store');
++
++async function withServer(fn) {
++  const store = createStore();
++  store.add({ owner: 'alice', title: 'Alpha note' });
++  store.add({ owner: 'bob', title: 'Alpha secret' });
++  const server = createServer(store);
++  await new Promise((resolve) => server.listen(0, resolve));
++  try {
++    await fn(`http://127.0.0.1:${server.address().port}`);
++  } finally {
++    await new Promise((resolve) => server.close(resolve));
++  }
++}
++
++const alice = { authorization: 'Bearer tok-alice' };
++
++test('search is case-insensitive and limited to the caller', async () => {
++  await withServer(async (base) => {
++    const body = await (await fetch(`${base}/notes/search?q=ALPHA`, { headers: alice })).json();
++    assert.deepEqual(body.items.map((n) => n.owner), ['alice']);
++  });
++});
++
++test('search needs a bearer token', async () => {
++  await withServer(async (base) => {
++    assert.equal((await fetch(`${base}/notes/search?q=a`)).status, 401);
++  });
++});
++
++test('search treats code-looking text as plain text', async () => {
++  await withServer(async (base) => {
++    const q = encodeURIComponent('"; globalThis.__x=1; "');
++    const body = await (await fetch(`${base}/notes/search?q=${q}`, { headers: alice })).json();
++    assert.deepEqual(body.items, []);
++    assert.equal(globalThis.__x, undefined);
++  });
++});
