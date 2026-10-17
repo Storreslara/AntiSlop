@@ -11,14 +11,14 @@ cp -r "$ROOT/eval/fixtures/toy-lib-template/." "$dest/"
 cp -r "$HERE/plant/." "$dest/"
 # The template description names the eval and the claude CLI. This fixture
 # replaces it, so neither arm can tell it is inside an eval.
-sed -i 's|^\(  "description": \).*$|\1"Minimal fixture library with no external dependencies.",|' "$dest/package.json"
+sed -i 's|^\(  "description": \).*$|\1"Minimal library with no external dependencies.",|' "$dest/package.json"
 # Fail closed: the plant must have landed, and the tree must not name the eval.
 need() { grep -qF -- "$2" "$dest/$1" 2> /dev/null || { echo "build: $1 lacks: $2" >&2; exit 1; }; }
 need CONTEXT.md '**taxable amount**'
 need CONTEXT.md 'never a fraction'
 need CONTEXT.md 'never mutates its arguments'
 need README.md 'all rates are percentages'
-need package.json '"description": "Minimal fixture library with no external dependencies."'
+need package.json '"description": "Minimal library with no external dependencies."'
 need package.json '"test": "node --test"'
 if grep -qiE 'antislop|eval|pilot|claude' "$dest/package.json" "$dest/README.md" "$dest/CONTEXT.md"; then
   echo "build: the built tree names the eval or the tool" >&2

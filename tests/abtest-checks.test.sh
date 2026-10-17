@@ -278,7 +278,7 @@ lgcase() {
     [[ "$out" == *"$text"* && "$out" == *"rc=$rc" ]] && ok "$name" || bad "$name (got '$out')"
   fi
 }
-lgmk() { mkdir -p "$T/lg/$1/$(dirname "$2")"; printf '%s\n' "$3" > "$T/lg/$1/$2"; }
+lgmk() { mkdir -p "$T/lg/$1/$(dirname "$2")" && printf '%s\n' "$3" > "$T/lg/$1/$2" || bad "setup: could not write lg/$1/$2"; }
 lgmk clean package.json '{"name":"x","description":"Zero-dependency notes service."}'
 lgmk clean README.md 'We evaluate options. Retrieval, medieval and copilot are fine. See CLAUDE.md for conventions.'
 lgmk clean CLAUDE.md 'Run npm test. CLAUDE.md is this file.'
@@ -338,7 +338,7 @@ lgrepo() {
   rm -rf "$T/lg/hist"; mkdir -p "$T/lg/hist"; printf '{"description":"notes"}\n' > "$T/lg/hist/package.json"
   shift 2
   ( cd "$T/lg/hist" && git init -q -b main && git add -A \
-    && env GIT_AUTHOR_NAME=dev GIT_AUTHOR_EMAIL=dev@example.invalid GIT_COMMITTER_NAME=dev GIT_COMMITTER_EMAIL=dev@example.invalid "$@" git commit -q -m "$msg" )
+    && env GIT_AUTHOR_NAME=dev GIT_AUTHOR_EMAIL=dev@example.invalid GIT_COMMITTER_NAME=dev GIT_COMMITTER_EMAIL=dev@example.invalid "$@" git commit -q -m "$msg" ) || bad "setup: git commit failed for $name"
 }
 lgrepo neutral "initial import"
 lgcase "leak guard: a neutral history passes (control)" "$T/lg/hist" 0 ""
@@ -405,7 +405,7 @@ has "the history leak is named" "$out" "names the eval or the tool ('abtest')"
 check "the refused baseline left no repository" "$(test -e "$T/lg/leakid/.git" && echo made || echo none)" "none"
 # --- leak guard hardening (abt-u05e): plurals, spellings, file names, dot-directories, symlinks, tool failures ---
 lgleak() {
-  rm -rf "$T/lg/leak"; cp -r "$T/lg/clean" "$T/lg/leak"; lgmk leak "$2" "$3"
+  rm -rf "$T/lg/leak"; cp -r "$T/lg/clean" "$T/lg/leak" || bad "setup: cp failed for $1"; lgmk leak "$2" "$3"
   lgcase "leak guard: $1" "$T/lg/leak" 1 "$2 names the eval or the tool ('$4')"
 }
 lgleak "the plural evals in README.md is refused" README.md 'the evals run nightly' evals
@@ -478,6 +478,99 @@ mkdir -p "$T/lg/badroot/eval/fixtures/toy-lib-template/docs"; printf 'The eval h
 ABT_REPO_ROOT="$T/lg/badroot" bash "$E1FX/build.sh" "$T/lg/badbuild" > "$T/lg/badbuild.out" 2> "$T/lg/badbuild.err"; brc=$?
 check "a failing E1 build exits non-zero" "$brc" "1"
 has "the failing build says why" "$(cat "$T/lg/badbuild.err")" "names the eval or the tool"
+# --- leak guard, last hardening round (abt-u05f): symlinked destination, slashes, word delimiters, notes, sample hooks ---
+printf 'x\n' > "$T/lg/blockfile"
+out="$( bad() { echo "BAD:$*"; }; lgmk blockfile/sub f x 2> /dev/null )"
+has "lgmk reports a setup that cannot write" "$out" "BAD:setup: could not write lg/blockfile/sub/f"
+out="$( bad() { echo "BAD:$*"; }; lgrepo broken "initial import" GIT_AUTHOR_DATE=not-a-date 2> /dev/null )"
+has "lgrepo reports a commit that fails" "$out" "BAD:setup: git commit failed for broken"
+out="$( cp() { return 1; }; bad() { echo "BAD:$*"; }; lgleak "probe" README.md x eval 2> /dev/null )"
+has "lgleak reports a copy that fails" "$out" "BAD:setup: cp failed for probe"
+ln -s "$T/lg/clean" "$T/lg/linkdest"
+lgcase "leak guard: a symlinked destination is refused" "$T/lg/linkdest" 1 "is a symbolic link"
+lgcase "leak guard: a symlinked destination with trailing slashes is refused" "$T/lg/linkdest//" 1 "linkdest is a symbolic link"
+rm -rf "$T/lg/linktarget" "$T/lg/linkbase"; mkdir -p "$T/lg/linktarget"; printf '{"description":"notes"}\n' > "$T/lg/linktarget/package.json"; ln -s "$T/lg/linktarget" "$T/lg/linkbase"
+out="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/linkbase" 2>&1 )"; rc=$?
+check "a baseline into a symlinked destination is refused" "$rc" "1"
+check "the refused symlinked destination got no repository" "$(test -e "$T/lg/linktarget/.git" && echo made || echo none)" "none"
+rm -rf "$T/lg/slash"; cp -r "$T/lg/clean" "$T/lg/slash" || bad "setup: cp failed for slash"
+lgmk slash docs/a.md 'the eval harness'
+lgcase "leak guard: two trailing slashes still scan docs" "$T/lg/slash//" 1 "docs/a.md names the eval or the tool ('eval')"
+rm -f "${T:?}/lg/slash/docs/a.md"
+lgmk slash .github/x.yml 'run claude here'
+lgcase "leak guard: three trailing slashes still scan dot-paths" "$T/lg/slash///" 1 ".github/x.yml names the eval or the tool ('claude')"
+# Word delimiters: anything that is not a letter or digit ends a word, so underscores and hyphens join nothing.
+while IFS='|' read -r txt want; do
+  rm -rf "$T/lg/word"; mkdir -p "$T/lg/word" && printf '%b\n' "$txt" > "$T/lg/word/README.md" || bad "setup: word table"
+  lgcase "leak guard word table: '$txt' is refused" "$T/lg/word" 1 "README.md names the eval or the tool ('$want')"
+done << 'EOF'
+EVAL_MODE=1|EVAL
+run_eval|eval
+MY_CLAUDE|CLAUDE
+use claude|claude
+CLAUDE_API_KEY=x|CLAUDE
+ANTI_SLOP_HOME=/x|ANTI_SLOP
+anti_slop|anti_slop
+eval_run|eval
+my-eval-run|eval
+hidden-check|hidden-check
+hidden  check|hidden  check
+hidden_checks|hidden_checks
+(persona)|persona
+--holdout=1|holdout
+eval(x)|eval
+Pilot.|Pilot
+abtest_runner|abtest
+anti\nslop|anti slop
+hidden\ncheck|hidden check
+EOF
+while IFS= read -r txt; do
+  rm -rf "$T/lg/word"; mkdir -p "$T/lg/word" && printf '%b\n' "$txt" > "$T/lg/word/README.md" || bad "setup: word table"
+  lgcase "leak guard word table: '$txt' passes" "$T/lg/word" 0 ""
+done << 'EOF'
+Describe the retrieval of inscribed text
+prevalent and medieval and evaluate and evaluation
+personality, pilotage, copilot and claudette
+anti-social slopes and a sloppy diff
+hidden checkpoint and a hidden clock
+ev\nal and anti\nsocial
+EOF
+while IFS= read -r txt; do
+  rm -rf "$T/lg/word"; mkdir -p "$T/lg/word" && printf '%b\n' "$txt" > "$T/lg/word/README.md" || bad "setup: word table"
+  lgcase "leak guard word table (out of scope, joined to letters or digits): '$txt' passes" "$T/lg/word" 0 ""
+done << 'EOF'
+HiddenCheck and hiddencheck
+myEvalMode and AntiSlopHome
+eval2 and 2eval
+EOF
+# History rows that were missing: singular words, joined words, tagger email, notes.
+for spec in "a holdout run|holdout" "the hidden check|hidden check" "EVAL_MODE on|EVAL" "hidden-check|hidden-check" "anti_slop|anti_slop" "the hidden  check|hidden  check" "run_eval now|eval"; do
+  IFS='|' read -r hm hw <<< "$spec"
+  lgrepo hs "update $hm"
+  lgcase "leak guard: the history phrase $hm is refused" "$T/lg/hist" 1 "('$hw')"
+done
+lgrepo te "initial import"
+git -C "$T/lg/hist" -c user.name=dev -c user.email=abtest@example.invalid tag -a v9 -m "release" || bad "setup: tag failed"
+lgcase "leak guard: an annotated tag by an abtest email is refused" "$T/lg/hist" 1 "('abtest')"
+lgrepo nt "initial import"
+git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid notes add -m "the plant is here" || bad "setup: notes add failed"
+lgcase "leak guard: a git note is refused" "$T/lg/hist" 1 "('plant')"
+lgrepo nt2 "initial import"
+git -C "$T/lg/hist" -c user.name=dev -c user.email=dev@example.invalid notes --ref=review add -m "the trap is here" || bad "setup: notes add failed"
+lgcase "leak guard: a note in another notes ref is refused" "$T/lg/hist" 1 "('trap')"
+out="$(lgfake grep 'exit 2' "$T/lg/gitnoscope")"
+has "leak guard: a failing grep on a history exits 1" "$out" "rc=1"
+# git's sample hooks name eval and trap: the built baseline carries none, and no forbidden word sits anywhere in .git outside objects.
+RE_GIT='(^|[^[:alnum:]])(eval|trap|fixture|plant|pilot|persona|claude|holdout|abtest)([^[:alnum:]]|$)'
+gitwords() { find "$1/.git" -path "$1/.git/objects" -prune -o -type f -exec grep -IiEl "$RE_GIT" {} +; }
+rm -rf "$T/lg/plain"; mkdir -p "$T/lg/plain"; git -C "$T/lg/plain" init -q || bad "setup: git init failed"
+check "a plain git init does carry forbidden words in its sample hooks (control)" "$(test -n "$(gitwords "$T/lg/plain")" && echo found || echo none)" "found"
+rm -rf "$T/lg/built"; mkdir -p "$T/lg/built"; printf '{"description":"notes"}\n' > "$T/lg/built/package.json"
+( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/built" > /dev/null )
+check "the built baseline carries no forbidden word in .git outside objects" "$(gitwords "$T/lg/built")" ""
+check "the built baseline has no sample hook" "$(find "$T/lg/built/.git/hooks" -name '*.sample' | wc -l | tr -d ' ')" "0"
+check "the built E1 baseline carries no forbidden word in .git outside objects" "$(gitwords "$T/lg/e01")" ""
+check "the E1 description does not call the tree a fixture" "$(grep -c '"description": "Minimal library with no external dependencies."' "$T/lg/e01/package.json")|$(grep -ci fixture "$T/lg/e01/package.json")" "1|0"
 
 # --- check timeout (abt-u06b): a hung check command is ended and recorded as failed ---
 cat > "$T/lib-timeout.sh" << 'EOS'
