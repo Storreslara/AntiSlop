@@ -133,6 +133,76 @@ for m in January February March April May June July August September October Nov
 done
 mkok z-success 'Session limit reached \u2219 resets 3pm'
 check "a successful result that opens with a limit phrase stays complete" "$(field "$ZW/z-success.jsonl" completion_status)" "complete"
+# Every non-warning limit-hit template of claude CLI 2.1.302 (abt-u02e) must read as usage-limit; every warning, notice and prose near miss stays an error.
+i=0
+for nm in "5-hour limit" "session limit" "weekly limit" "Opus limit" "Sonnet limit" "Fable limit" "fast limit" "usage limit" "limit" "team\u0027s shared budget" "channel\u0027s monthly spend limit" "channel\u0027s monthly usage limit" "individual spend limit" "individual usage limit" "org\u0027s monthly spend limit" "org\u0027s monthly usage limit" "monthly spend limit"; do
+  i=$((i + 1))
+  lw "cli-name$i" "the CLI name $nm in a hit message" "You\\u0027ve hit your $nm \\u00b7 resets 3pm (Europe/Madrid)"
+done
+i=0
+for sfx in "contact your admin to increase it" "raise it at claude.ai/settings" "ask your admin to raise it at claude.ai/settings" "run /usage-credits to raise it, or visit claude.ai/settings" "visit claude.ai/settings to raise it" "run /usage-credits to ask your admin for a higher limit" "ask your admin for a higher limit" "an org owner or channel manager can raise it in the channel\u0027s Claude settings" "your session limit resets 3pm" "your Opus limit resets Jan 2, 2027, 3pm (UTC)"; do
+  i=$((i + 1))
+  lw "cli-admin$i" "the CLI clause $sfx after a hit message" "You\\u0027ve hit your org\\u0027s monthly spend limit \\u00b7 $sfx"
+done
+for z in UTC GMT PST PDT MST MDT CST CDT EST EDT CET CEST BST; do
+  lw "zone-$z" "the zone $z after a reset time" "Session limit reached \\u2219 resets 3pm $z"
+done
+lw cli-reached "You have reached your Fable limit with a full stop" 'You\u0027ve reached your Fable limit.'
+lw cli-reached-reset "reached your limit with a reset" 'You\u0027ve reached your weekly limit \u00b7 resets Monday'
+lw cli-year "a reset with a year" 'You\u0027ve hit your session limit \u00b7 resets Jan 2, 2027, 3pm (America/New_York)'
+lw cli-midnight "a reset at midnight" 'Session limit reached \u2219 resets midnight'
+lw cli-noon "a reset at noon" 'Session limit reached \u2219 resets tomorrow noon'
+lw cli-saved "the progress saved suffix" 'You\u0027ve hit your weekly limit \u00b7 resets 3pm (Europe/Madrid) \u00b7 progress saved'
+lw cli-saved2 "the progress saved suffix after a credits message" 'You\u0027re out of usage credits \u00b7 resets Oct 20, 3pm \u00b7 progress saved'
+lw cli-credits "out of usage credits on its own" 'You\u0027re out of usage credits'
+lw cli-credits-reset "out of usage credits with a reset" 'You\u0027re out of usage credits \u00b7 resets 3pm'
+lw cli-org-funds "the org is out of usage, add funds" 'Your org is out of usage \u00b7 add funds to continue'
+lw cli-org-admin "the org is out of usage, contact your admin" 'Your org is out of usage \u00b7 contact your admin'
+lw cli-seat1 "a seat type without usage credits" 'Your seat type doesn\u0027t include usage credits'
+lw cli-seat2 "a seat type without usage" 'Your seat type doesn\u0027t include usage'
+lw cli-seat3 "a seat type without extra usage" 'Your seat type doesn\u0027t include extra usage'
+lw cli-alloc "a usage allocation disabled by the admin" 'Your usage allocation has been disabled by your admin'
+lw cli-alloc2 "a usage allocation disabled with a clause" 'Your usage allocation has been disabled by your admin \u00b7 ask your admin for a higher limit'
+lw cli-group "a group limit of zero" 'Your group\u0027s usage limit is set to $0'
+lw cli-group2 "a group limit of zero with a clause" 'Your group\u0027s usage limit is set to $0 \u00b7 run /usage-credits to ask your admin for a higher limit'
+for mdl in Fable Haiku Mythos Opus Sonnet; do
+  lw "cli-model-$mdl" "the model $mdl requires usage credits" "$mdl 5 requires usage credits."
+done
+lw cli-three-parts "three clauses after a hit message" 'You\u0027ve hit your org\u0027s monthly spend limit \u00b7 visit claude.ai/settings to raise it \u00b7 your session limit resets 3pm \u00b7 progress saved'
+lw cli-fable-req "Fable 5 requires usage credits" 'Fable 5 requires usage credits.'
+lw cli-opus-req "Opus 4.6 requires usage credits" 'Opus 4.6 requires usage credits.'
+lw cli-sw-a "team budget with a switch sentence" 'You\u0027ve hit your team\u0027s shared budget. Switch to another model to continue.'
+lw cli-sw-b "out of credits with a switch sentence and a link" 'You\u0027re out of usage credits. Switch to another model, or manage usage credits at claude.ai/settings, to continue.'
+lw cli-sw-c "a monthly spend limit with a switch sentence" 'You\u0027ve hit your monthly spend limit. Switch to another model to continue.'
+lw cli-sw-d "Fable limit with a switch sentence" 'You\u0027ve reached your Fable limit. Switch to another model to continue.'
+lw cli-sw-e "team budget with a usage-credits sentence" 'You\u0027ve hit your team\u0027s shared budget. Run /usage-credits to raise it and keep using Fable 5 or switch models to continue this chat.'
+lw cli-sw-f "team budget with a model sentence" 'You\u0027ve hit your team\u0027s shared budget. /model to switch models.'
+lw cli-sw-g "out of credits with a usage-credits sentence" 'You\u0027re out of usage credits. Run /usage-credits to keep using Fable 5 or /model to switch models.'
+lw cli-sw-h "out of credits with a model sentence" 'You\u0027re out of usage credits. /model to switch models.'
+lw cli-sw-i "a channel spend limit with a manage sentence" 'You\u0027ve hit your channel\u0027s monthly spend limit. Run /usage-credits to manage your limit and keep using Opus 4.6 or switch models to continue this chat.'
+lw cli-sw-j "a requires-credits message with a continue sentence" 'Fable 5 requires usage credits. Run /usage-credits to continue or switch models with /model.'
+nm w-used "a warning that uses a percentage" 'You\u0027ve used 90% of your session limit \u00b7 resets 3pm'
+nm w-approach "an Approaching warning" 'Approaching weekly limit \u00b7 resets Monday'
+nm w-close "a close-to-your-limit warning" 'You\u0027re close to your usage limit'
+nm w-now "a now-using-usage-credits notice" 'You\u0027re now using usage credits \u00b7 Your session limit resets 3pm'
+nm w-now2 "a Now using usage credits for Fable notice" 'Now using usage credits for Fable \u00b7 Your Fable limit resets 3pm'
+nm w-fast "the fast limit notice" 'Fast limit reached and temporarily disabled \u00b7 resets in 8m'
+nm w-wrap "the wrapping up banner" 'Usage limit reached \u00b7 wrapping up'
+nm w-context "the context limit message" 'Context limit reached'
+nm w-disabled "a service disabled for the org (not a limit)" 'This service is disabled for your org'
+nm w-credit "a low credit balance (API billing)" 'Credit balance is too low'
+nm p-hit-prose "a CLI hit message followed by agent prose" 'You\u0027ve hit your session limit. I added a test for the retry path'
+nm p-credits-prose "out of usage credits followed by agent prose" 'You\u0027re out of usage credits, so I skipped the live test'
+nm p-requires-prose "requires usage credits followed by agent prose" 'Opus requires usage credits. I added a mock for it'
+nm p-org-prose "the org is out of usage followed by prose" 'Your org is out of usage. I added a fallback'
+nm p-clause-prose "a CLI clause followed by agent prose" 'You\u0027ve hit your limit \u00b7 contact your admin and then I added a test'
+nm p-switch-prose "a switch sentence followed by agent prose" 'You\u0027re out of usage credits. Switch to another model to continue. I added a test'
+nm p-name "an unknown name after hit your" 'You\u0027ve hit your rate of five requests per second'
+nm p-seat-prose "a seat message followed by prose" 'Your seat type doesn\u0027t include usage credits, so I mocked the call'
+nm r-key "a bare rate_limit_error token inside a 429 body" 'API Error: 429 {\"error\":{\"message\":\"rate_limit_error\"}}'
+nm r-brace "a 429 type key without the opening brace" 'API Error: 429 \"type\":\"rate_limit_error\"'
+nm r-newline "a 429 body whose type key is on a second line" 'API Error: 429 {\n\"type\":\"rate_limit_error\"}'
+nm p-switch-long "a model name longer than the sentence allows" 'You\u0027re out of usage credits. Run /usage-credits to keep using aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa or /model to switch models.'
 check "exit 124 is timeout" "$(field "$FX/complete.jsonl" completion_status --exit-code 124)" "timeout"
 check "no result object is error" "$(field "$FX/no-result.jsonl" completion_status --exit-code 1)" "error"
 check "empty capture is error" "$(field /dev/null completion_status --exit-code 1)" "error"

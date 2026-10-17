@@ -29,17 +29,32 @@ _SEP = r"[\u00b7\u2219\u2013\u2014|.,-]"
 _DAY = r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)"
 _MONTH = (r"(?:january|february|march|april|may|june|july|august|september|october|november|december"
           r"|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)")
-_WHEN = (r"(?:\d{1,2}(?::\d{2})?\s?(?:am|pm)?|" + _DAY + "|" + _MONTH +
-         r"|today|tomorrow|at|on|in|hours?|minutes?|days?|utc|\(\w+(?:/[\w+-]+)*\))")
+_ZONE = r"(?:utc|gmt|pst|pdt|mst|mdt|cst|cdt|est|edt|cet|cest|bst)"
+_WHEN = (r"(?:\d{1,2}(?::\d{2})?\s?(?:am|pm)?|\d{4}|" + _DAY + "|" + _MONTH + "|" + _ZONE +
+         r"|today|tomorrow|midnight|noon|at|on|in|hours?|minutes?|days?|\(\w+(?:/[\w+-]+)*\))")
 _RESET = r"(?:your (?:\w+ )?limit )?(?:will )?resets?(?:[\s,]+" + _WHEN + r"){1,8}"
-_TAIL = (r"(?:[.!]?$"
+_ADMIN = (r"(?:contact your admin(?: to increase it)?|add funds to continue|ask your admin for a higher limit"
+          r"|(?:ask your admin to )?raise it at \S+|run \S+ to (?:raise it, or visit \S+|ask your admin for a higher limit)"
+          r"|visit \S+ to raise it|an org owner or channel manager can raise it in the channel's claude settings)")
+_PART = r"(?:" + _RESET + r"|progress saved|" + _ADMIN + r")"
+_SWITCH = (r"(?:Switch to another model(?:, or manage usage credits at \S+,)? to continue\.|/model to switch models\."
+           r"|Run /usage-credits to (?:raise it and keep using|keep using|manage your limit and keep using) [^\n]{1,60} or (?:/model to switch models|switch models to continue this chat)\."
+           r"|Run /usage-credits to continue or switch models with /model\.)")
+_TAIL = (r"(?:[.!]?(?:\s+" + _SWITCH + r")?$"
          r"|\|\d{9,13}$"
-         r"|\s*(?:" + _SEP + r"\s*)?\(?" + _RESET + r"\)?[.!]?$)")
+         r"|\s*(?:" + _SEP + r"\s*)?\(?" + _PART + r"(?:\)?\s*\u00b7\s*" + _PART + r")*\)?[.!]?$)")
+_NAME = (r"(?:(?:usage |weekly |5-hour |session |opus |sonnet |fable |fast )?limit|team's shared budget"
+         r"|(?:channel's monthly|individual|org's monthly) (?:spend|usage) limit|monthly spend limit)")
 LIMIT_TEXT_RE = re.compile(
     r"(?:(?:api )?error:\s*)?(?:"
     r"(?:" + _WHO + _KIND + r"?|" + _KIND + r"|rate )limit reached"
-    r"|you(?:'ve|\u2019ve| have) hit your " + _KIND + r"?limit"
-    r"|(?:you(?:'re|\u2019re| are) )?out of extra usage"
+    r"|you(?:'ve|\u2019ve| have) (?:hit|reached) your " + _NAME +
+    r"|(?:you(?:'re|\u2019re| are) )?out of (?:extra usage|usage credits)"
+    r"|your org is out of usage"
+    r"|your seat type doesn't include (?:extra )?usage(?: credits)?"
+    r"|your usage allocation has been disabled by your admin"
+    r"|your group's usage limit is set to \$0"
+    r"|(?:fable|haiku|mythos|opus|sonnet)(?: [^\u00b7\n]{1,40})? requires usage credits\."
     r")" + _TAIL +
     r'|(?:api )?error:\s*429 \{[^\n]*"type":"rate_limit_error"',
     re.IGNORECASE,
