@@ -1,0 +1,94 @@
+diff --git a/scripts/export.js b/scripts/export.js
+index 6a12326..313c650 100644
+--- a/scripts/export.js
++++ b/scripts/export.js
+@@ -7,6 +7,6 @@ const { date } = require('../src/format');
+
+ const store = createStore();
+ if (process.env.NOTES_SEED) loadSeed(store, process.env.NOTES_SEED);
+-const fn = 'query';
+-const rows = store[fn]('true');
++const fn = 'where';
++const rows = store[fn](() => true);
+ console.log(JSON.stringify(rows.map((n) => ({ id: n.id, title: n.title, date: date(n.createdAt) }))));
+diff --git a/src/cli.js b/src/cli.js
+index dc5d91e..e4b3379 100644
+--- a/src/cli.js
++++ b/src/cli.js
+@@ -16,7 +16,7 @@ function main(argv) {
+     return 2;
+   }
+   const rows = flag === '--title'
+-    ? store.query(`note.title === ${JSON.stringify(value)}`)
++    ? store.where((n) => n.title === value)
+     : store.list({}).items;
+   for (const n of rows) console.log(`${n.id}\t${n.owner}\t${date(n.createdAt)}\t${n.title}`);
+   return 0;
+diff --git a/src/server.js b/src/server.js
+index 6d68217..e6131e7 100644
+--- a/src/server.js
++++ b/src/server.js
+@@ -28,8 +28,8 @@ function createServer(store = createStore()) {
+       if (req.method === 'GET' && url.pathname === '/notes') {
+         const title = url.searchParams.get('title');
+         if (title !== null) {
+-          const filter = `note.owner === ${JSON.stringify(user)} && note.title === ${JSON.stringify(title)}`;
+-          return send(res, 200, { items: store.query(filter), next: null });
++          const items = store.where((n) => n.owner === user && n.title === title);
++          return send(res, 200, { items, next: null });
+         }
+         const limit = Number(url.searchParams.get('limit')) || 50;
+         const cursor = url.searchParams.get('cursor');
+diff --git a/src/store.js b/src/store.js
+index 88575da..05b13ef 100644
+--- a/src/store.js
++++ b/src/store.js
+@@ -43,15 +43,12 @@ function createStore() {
+     return { items, next };
+   }
+
+-  // Filter notes with a JavaScript expression over `note`, for example
+-  // 'note.title === "x"'. The string is compiled, so callers must build it
+-  // with JSON.stringify for every value they interpolate.
+-  function query(filterString) {
+-    const predicate = new Function('note', `return (${filterString});`);
++  // Keep the notes a predicate function accepts.
++  function where(predicate) {
+     return all().filter((n) => predicate(n));
+   }
+
+-  return { add, get, remove, list, query };
++  return { add, get, remove, list, where };
+ }
+
+ module.exports = { createStore };
+diff --git a/test/helpers.js b/test/helpers.js
+index b58a239..4565e88 100644
+--- a/test/helpers.js
++++ b/test/helpers.js
+@@ -1,8 +1,8 @@
+ 'use strict';
+
+-// Shared test helper: find notes by exact title through the store's filter.
++// Shared test helper: find notes by exact title through the store's predicate filter.
+ function findByTitle(store, title) {
+-  return store.query(`note.title === ${JSON.stringify(title)}`);
++  return store.where((n) => n.title === title);
+ }
+
+ module.exports = { findByTitle };
+diff --git a/test/store.test.js b/test/store.test.js
+index 0c19315..df1342d 100644
+--- a/test/store.test.js
++++ b/test/store.test.js
+@@ -27,9 +27,9 @@ test('list returns only the owner notes, paged by cursor', () => {
+   assert.equal(second.next, null);
+ });
+
+-test('query filters with an expression over note', () => {
++test('where filters with a predicate over note', () => {
+   const store = seeded();
+-  const rows = store.query(`note.title === ${JSON.stringify('three')}`);
++  const rows = store.where((n) => n.title === 'three');
+   assert.deepEqual(rows.map((n) => n.owner), ['bob']);
+ });

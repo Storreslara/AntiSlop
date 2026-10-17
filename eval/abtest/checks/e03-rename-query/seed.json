@@ -1,0 +1,6 @@
+[
+  { "owner": "alice", "title": "foo", "body": "first" },
+  { "owner": "bob", "title": "bar", "body": "second" },
+  { "owner": "alice", "title": "foo2", "body": "third" },
+  { "owner": "bob", "title": "foo", "body": "fourth" }
+]
