@@ -1607,3 +1607,18 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   moved verbatim out of [[agent-memory index]] (for example `project_` lines),
   so the split deleted nothing. Its topic files are reachable from `MEMORY.md`
   only through this file.
+
+**Arm A / Arm B**:
+(unit abt-u18, 2026-10-16) — the two values of an [[arm]] in the AntiSlop-vs-Fable comparison suite in `eval/abtest/`. Arm A is a bare Fable agent (`claude -p`, no plugin, no personas, no hooks); Arm B is AntiSlop as shipped (orchestrator as the main agent, personas scaffolded, plugin loaded with `--plugin-dir`). Both get the same fixture, prompt, turn cap and time cap. _Avoid_: "armed" for this sense; that word is the harness's `harness_armed` state.
+
+**out-of-scope lines**:
+(unit abt-u18, 2026-10-16) — added plus deleted lines in files outside an eval's allowed paths; the persona scaffold (`.claude/`) and `docs/plans/` never count. The measured form of the `coding-discipline` surgical-diff rule. _Avoid_: "scope creep" as a metric name.
+
+**overhead ratio**:
+(unit abt-u18, 2026-10-16) — median Arm B divided by median Arm A over complete runs, for tokens (`R_tokens`, input plus output plus cache write), wall time (`R_wall`) or turns (`R_turns`). Dollar cost is not used because the runs are on a subscription.
+
+**completion status**:
+(unit abt-u18, 2026-10-16) — how one comparison run ended: `complete`, `stalled-human` (the pipeline stopped for a human in a headless run), `turn-cap`, `timeout`, `usage-limit` or `error`. `usage-limit` is a subscription limit hit, not a failure: its row is kept, excluded from every verdict, and the run is repeated.
+
+**model policy**:
+(unit abt-u18, 2026-10-16) — `uniform` (the bare agent and every persona on the same model, which isolates the process effect) or `shipped` (AntiSlop's own per-persona routing and escalation ladder, which answers the product cost question).
