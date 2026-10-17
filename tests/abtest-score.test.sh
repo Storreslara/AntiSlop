@@ -33,7 +33,7 @@ def row(ev, arm, rep, passed, status="complete", defects=0, oos=0, tokens=100, w
         "plugin_commit": None, "plugin_version": None, "cli_version": "c", "fixture_commit": "f",
         "fixture_profile": {}, "prompt_sha": "p", "persona_config_sha": None,
         "completion_status": status, "result_subtype": None, "wall_clock_ms": wall,
-        "duration_api_ms": None, "total_cost_usd": None, "model_usage": {}, "tokens_in": 1,
+        "duration_api_ms": None, "total_cost_usd": None, "model_usage": {}, "tokens_in": tokens - 1,
         "tokens_out": 1, "tokens_cache_write": 0, "tokens_cache_read": 0, "tokens_total": tokens,
         "num_turns": turns, "subagent_spawns": 0, "tool_calls": 0, "human_interventions_required": 0,
         "checks": [], "holdout_pass_rate": None, "defects_escaped": defects,
@@ -106,6 +106,37 @@ sadd(rows, "x-policy", "PPPPfu", "fffff", policy="shipped")
 rows2 = []
 sadd(rows2, "e02-preview-mutation", "PPPPf", "Pffff")
 sadd(rows2, "e04-search-injection", "PPfff", "PPfff")
+# Boundary rows that kill the surviving mutants of the first review. A14: A has defects 1 / out-of-scope 4, 100 tokens.
+A14 = dict(defects=1, oos=4, tokens=100)
+# Bad rows (turn-cap, timeout, error): exactly 2 in one arm is INCONCLUSIVE, 1 is not; each arm counts alone; stalled-human is not bad.
+sadd(rows, "x-bad2-B", "fffff", "PPPee")
+sadd(rows, "x-bad1-B", "fffff", "PPPPe")
+sadd(rows, "x-bad2-A", "fffee", "PPPPP")
+sadd(rows, "x-bad1-A", "ffffe", "PPPPP")
+sadd(rows, "x-bad-split", "ffffe", "PPPPt")
+sadd(rows, "x-bad-tc-to", "fffff", "PPPct")
+sadd(rows, "x-stall2-A", "fffss", "PPPPP")
+sadd(rows, "x-stall2-B", "fffff", "PPPss")
+# 3-vs-3 passes. B 0/0 against A 1/4 is a quality edge; R_tokens is B tokens / 100.
+for ev, tok in (("x-r2.0", 200), ("x-r2.01", 201), ("x-r3.0", 300), ("x-r3.01", 301)):
+    sadd(rows, ev, "PPPff", "PPPff", A14, dict(defects=0, oos=0, tokens=tok))
+# B wall 2500 vs A 1000 -> R_wall 2.5; B turns 10 vs A 5 -> R_turns 2.0; B tokens 200 -> R_tokens 2.0.
+sadd(rows, "x-ratios", "PPPff", "PPPff", A14, dict(defects=0, oos=0, tokens=200, wall=2500, turns=10))
+# R_tokens uses complete runs only: the stalled rows carry 1 token, the complete rows 100 (A) or 150 (B).
+sadd(rows, "x-r-complete", "PPsss", "PPfff", A14, dict(defects=0, oos=0, tokens=150), over={("A", "s"): dict(tokens=1)})
+sadd(rows, "x-r-complete-b", "PPfff", "PPsss", A14, dict(defects=0, oos=0, tokens=150), over={("B", "s"): dict(tokens=1)})
+# Ratios use the median: B tokens 100,100,100,1000,1000 (median 100, mean 460) against A 100 each.
+sadd(rows, "x-median", "PPPff", "PPPff", dict(tokens=100), dict(tokens=100), over={("B", "f"): dict(tokens=1000)})
+# Quality edge needs a strictly lower median on BOTH metrics.
+sadd(rows, "x-edge-defeq", "PPPff", "PPPff", A14, dict(defects=1, oos=0, tokens=150))
+sadd(rows, "x-edge-ooseq", "PPPff", "PPPff", A14, dict(defects=0, oos=4, tokens=150))
+sadd(rows, "x-edge-oosup", "PPPff", "PPPff", A14, dict(defects=0, oos=9, tokens=150))
+sadd(rows, "x-edge-defup", "PPPff", "PPPff", A14, dict(defects=2, oos=0, tokens=150))
+# A WIN_A with an edge and a cheap B is still not superior.
+sadd(rows, "x-wina-edge", "PPPPf", "Pffff", A14, dict(defects=0, oos=0, tokens=150))
+# Cost evals: a won or inconclusive cost eval carries no measured-overhead label.
+sadd(rows, "e08-stable-cursor", "fffff", "PPPPf")
+sadd(rows, "e09-typo", "P", "P")
 # end of the N-rule scenarios
 with open(sys.argv[1], "w") as f:
     for r in rows:
@@ -142,7 +173,7 @@ check "N=10 uses Fisher: 2/10 vs 7/10 is WIN_B" "$(rep 'd["evals"]["x-fisher-win
 check "N=10 uses Fisher: 4/10 vs 6/10 is a TIE" "$(rep 'd["evals"]["x-fisher-tie"]["outcome"]')" "TIE"
 check "a tied cost eval is labelled measured overhead" "$(rep 'd["evals"]["e05-tags-feature"]["label"], d["evals"]["e05-tags-feature"]["verdict"]')" "('measured-overhead', 'not-superior')"
 check "the aggregate is not evaluated without all ten evals" "$(rep 'd["aggregate"]["verdict"]')" "not-evaluated"
-check "the markdown has a row per eval" "$(grep -c '^| x-' "$T/r.md")" "25"
+check "the markdown has a row per eval" "$(grep -c '^| x-' "$T/r.md")" "46"
 check "the markdown states the cost basis" "$(grep -c 'dollar cost is not used' "$T/r.md")" "1"
 # Verdict checks, group 1. Each want is a hand-computed value; the arithmetic is in the comment above it.
 python3 -I - "$T" << 'PYEOF' > "$T/c.txt" 2>&1
@@ -284,17 +315,130 @@ say("a non-JSON line stops the scorer", r.returncode != 0 and "is not JSON" in r
 r = run([T + "/does-not-exist.jsonl"])
 say("a missing results file stops the scorer with a named error", r.returncode != 0 and "cannot read" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr))
 say("a stopped scorer wrote no report", not os.path.exists(T + "/never.json"))
+CASES = [
+    ("a string run_pass", "d['run_pass']='true'", "run_pass must be a JSON boolean"),
+    ("a numeric run_pass", "d['run_pass']=1", "run_pass must be a JSON boolean"),
+    ("run_pass true on an error row", "d['completion_status']='error'; d['run_pass']=True", "run_pass is true on a 'error' row"),
+    ("NaN tokens_in", "d['tokens_in']=float('nan')", "tokens_in must be a non-negative integer"),
+    ("negative tokens_out", "d['tokens_out']=-5", "tokens_out must be a non-negative integer"),
+    ("fractional tokens_cache_write", "d['tokens_cache_write']=1.5", "tokens_cache_write must be a non-negative integer"),
+    ("boolean tokens_total", "d['tokens_total']=True", "tokens_total must be a non-negative integer"),
+    ("string tokens_cache_read", "d['tokens_cache_read']='5'", "tokens_cache_read must be a non-negative integer"),
+    ("tokens_total off by one", "d['tokens_total']=d['tokens_total']+1", "is not tokens_in + tokens_out + tokens_cache_write"),
+    ("null defects_escaped", "d['defects_escaped']=None", "defects_escaped must be a non-negative integer"),
+    ("null out_of_scope_lines", "d['out_of_scope_lines']=None", "out_of_scope_lines must be a non-negative integer"),
+    ("negative wall_clock_ms", "d['wall_clock_ms']=-1", "wall_clock_ms must be null or a finite non-negative number"),
+    ("NaN num_turns", "d['num_turns']=float('nan')", "num_turns must be null or a finite non-negative number"),
+    ("infinite num_turns", "d['num_turns']=float('inf')", "num_turns must be null or a finite non-negative number"),
+    ("an unknown arm", "d['arm']='C'", "bad arm 'C'"),
+    ("numeric eval_id", "d['eval_id']=7", "eval_id must be a non-empty string"),
+    ("empty model_policy", "d['model_policy']=''", "model_policy must be a non-empty string"),
+]
+for name, stmt, frag in CASES:
+    f = write("v.jsonl", [mutated(stmt)])
+    r = run(["--validate-rows", f])
+    say(f"{name} is rejected and named", r.returncode == 1 and frag in r.stdout and "Traceback" not in r.stderr, (r.returncode, r.stdout, r.stderr[-200:]))
+    r = run([f])
+    say(f"{name} stops the scoring path with exit 1, no traceback", r.returncode == 1 and frag in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr[-200:]))
+r = run(["--validate-rows", write("dup.jsonl", [base, base])])
+say("a duplicate run_id is rejected", r.returncode == 1 and "duplicate run_id" in r.stdout, (r.returncode, r.stdout))
+lim = mutated("d['completion_status']='usage-limit'; d['run_pass']=False")
+r = run(["--validate-rows", write("lim.jsonl", [lim, lim])])
+say("repeated usage-limit rows with one run_id are accepted", r.returncode == 0 and "rows ok: 2" in r.stdout, (r.returncode, r.stdout))
+r = run(["--validate-rows", write("res.jsonl", [lim, base])])
+say("a usage-limit row followed by its resumed complete row is accepted", r.returncode == 0 and "rows ok: 2" in r.stdout, (r.returncode, r.stdout))
+r = run(["--validate-rows", write("arr.jsonl", ["[1, 2]"])])
+say("a non-object line is rejected", r.returncode == 1 and "not a JSON object" in r.stdout, (r.returncode, r.stdout))
 PYEOF
 tally "$T/val.txt" "$?" "the fail-closed checker"
 # end of the policy and fail-closed checks
+# Verdict checks, group 2: the boundary rows.
+python3 -I - "$T" << 'PYEOF' > "$T/c2.txt" 2>&1
+import json, sys
+d = json.load(open(sys.argv[1] + "/r.json"))
+V = d["evals"]
+
+def chk(name, ev, expr, want):
+    got = eval(expr, {"v": V[ev], "d": d})
+    print(("ok   " + name) if got == want else f"FAIL {name} (want {want!r}, got {got!r})")
+
+BADR = "two or more turn-cap, timeout or error rows"
+def inc(name, ev):
+    chk(name, ev, '(v["outcome"], v["verdict"], v["outcome_reason"])', ("INCONCLUSIVE", "inconclusive", BADR))
+
+def win(name, ev):
+    chk(name, ev, '(v["outcome"], v["verdict"])', ("WIN_B", "superior"))
+
+# Bad rows: gap 3 or more in every case, so only the bad-row rule can make it INCONCLUSIVE.
+inc("two error rows in B make the eval INCONCLUSIVE", "x-bad2-B")
+win("one error row in B does not", "x-bad1-B")
+inc("two error rows in A make the eval INCONCLUSIVE", "x-bad2-A")
+win("one error row in A does not", "x-bad1-A")
+win("one bad row in each arm does not (the count is per arm)", "x-bad-split")
+inc("a turn-cap plus a timeout row make the eval INCONCLUSIVE", "x-bad-tc-to")
+chk("two stalled-human rows in A are not bad rows", "x-stall2-A", '(v["outcome"], v["verdict"], v["stalled_human_B"])', ("WIN_B", "superior", 0))
+# 0/5 vs 3/5: p=1/6=0.1667, so a WIN_B that stalled would be directional if the stall override did not clear it.
+chk("two stalled-human rows in B are not bad rows but override the verdict", "x-stall2-B", '(v["outcome"], v["verdict"], v["stalled_human_B"], v["directional"])', ("WIN_B", "not-superior", 2, False))
+# R_tokens = median(B) / median(A) with A at 100: 200 -> 2.0, 201 -> 2.01, 300 -> 3.0, 301 -> 3.01.
+chk("R_tokens exactly 2.0 is superior (<= 2)", "x-r2.0", '(v["overhead"]["R_tokens"], v["verdict"])', (2.0, "superior"))
+chk("R_tokens 2.01 is mixed", "x-r2.01", 'v["verdict"]', "mixed")
+chk("R_tokens exactly 3.0 is mixed (> 3 is required for not-superior)", "x-r3.0", '(v["overhead"]["R_tokens"], v["verdict"])', (3.0, "mixed"))
+chk("R_tokens 3.01 is not superior", "x-r3.01", 'v["verdict"]', "not-superior")
+chk("R_wall 2.5, R_turns 2.0 and the min-max ranges", "x-ratios", '(v["overhead"]["R_wall"], v["overhead"]["R_turns"], v["overhead"]["R_tokens_range_A"], v["overhead"]["R_tokens_range_B"])', (2.5, 2.0, [100, 100], [200, 200]))
+# A: complete rows 100 (median 100), stalled rows 1 (median of all five rows would be 1); B 150 -> 1.5, not 150.
+chk("R_tokens counts complete runs only (arm A)", "x-r-complete", '(v["overhead"]["R_tokens"], v["verdict"])', (1.5, "superior"))
+chk("R_tokens counts complete runs only (arm B)", "x-r-complete-b", 'v["overhead"]["R_tokens"]', 1.5)
+chk("ratios use the median, not the mean", "x-median", '(v["overhead"]["R_tokens"], v["overhead"]["R_tokens_range_B"])', (1.0, [100, 1000]))
+# Quality edge: defects and out-of-scope medians must both be strictly lower in B.
+chk("an edge needs both medians strictly lower", "x-tie-edge", 'v["quality"]["edge"]', True)
+chk("equal defect medians are no edge", "x-edge-defeq", '(v["quality"]["edge"], v["verdict"])', (False, "not-superior"))
+chk("equal out-of-scope medians are no edge", "x-edge-ooseq", '(v["quality"]["edge"], v["verdict"])', (False, "not-superior"))
+chk("lower defects with higher out-of-scope is no edge", "x-edge-oosup", '(v["quality"]["edge"], v["verdict"])', (False, "not-superior"))
+chk("higher defects with lower out-of-scope is no edge", "x-edge-defup", '(v["quality"]["edge"], v["verdict"])', (False, "not-superior"))
+chk("a WIN_A is never superior, even with an edge and a cheap B", "x-wina-edge", '(v["outcome"], v["quality"]["edge"], v["overhead"]["R_tokens"], v["verdict"])', ("WIN_A", True, 1.5, "not-superior"))
+# Labels: only a tied cost eval is measured overhead.
+chk("a won cost eval carries no label", "e08-stable-cursor", '(v["outcome"], v["label"])', ("WIN_B", None))
+chk("an inconclusive cost eval carries no label", "e09-typo", '(v["outcome"], v["label"])', ("INCONCLUSIVE", None))
+PYEOF
+tally "$T/c2.txt" "$?" "the boundary checker"
+
+# Fisher: exact fractions on 20 tables. Each is (k_A, n_A, k_B, n_B, p). Arithmetic for two of them:
+# 5/5 vs 1/5: 6 successes in 10 runs, C(10,6)=210; table x (A successes) weighs C(5,x)C(5,6-x) = 0,5,50,100,50,5 for x=0..5;
+#   the observed x=5 weighs 5, and x=1 also 5, so p=(5+5)/210=1/21 (the design's 0.024 counts one tail only).
+# 5/10 vs 5/10: no table is likelier than the central one at 10 successes in 20 runs, so p=1.
+python3 -I - "$SCORE" << 'PYEOF' > "$T/f.txt" 2>&1
+import importlib.util, sys
+from fractions import Fraction as F
+spec = importlib.util.spec_from_file_location("score", sys.argv[1])
+m = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(m)
+TABLES = [
+    (1, 5, 5, 5, F(1, 21)), (5, 5, 1, 5, F(1, 21)), (0, 5, 4, 5, F(1, 21)), (4, 5, 0, 5, F(1, 21)),
+    (2, 5, 5, 5, F(1, 6)), (0, 5, 3, 5, F(1, 6)), (3, 5, 5, 5, F(4, 9)), (0, 5, 2, 5, F(4, 9)),
+    (1, 5, 4, 5, F(13, 63)), (2, 5, 4, 5, F(11, 21)), (1, 5, 3, 5, F(11, 21)), (0, 5, 5, 5, F(1, 126)),
+    (5, 10, 5, 10, F(1)), (2, 10, 7, 10, F(293, 4199)), (3, 10, 7, 10, F(8263, 46189)),
+    (4, 10, 6, 10, F(30313, 46189)), (0, 10, 3, 10, F(4, 19)), (2, 3, 4, 5, F(1)),
+    (5, 10, 6, 10, F(1)), (4, 10, 0, 10, F(28, 323)),
+]
+assert len(TABLES) == 20
+for ka, na, kb, nb, want in TABLES:
+    got = m.fisher_two_sided(ka, na, kb, nb)
+    good = abs(got - float(want)) < 1e-12
+    print(("ok   " if good else "FAIL ") + f"fisher {ka}/{na} vs {kb}/{nb} = {want}" + ("" if good else f" (got {got!r})"))
+for p, want in ((0.0999, True), (0.10, False), (0.1001, False), (0.0, True)):
+    print(("ok   " if m.p_decisive(p) is want else "FAIL ") + f"p_decisive({p}) is {want} (p < 0.10)")
+PYEOF
+tally "$T/f.txt" "$?" "the Fisher checker"
 
 head -n 1 "$T/rows.jsonl" | python3 -I -c 'import json,sys;d=json.loads(sys.stdin.read());del d["tokens_total"];print(json.dumps(d))' > "$T/bad.jsonl"
 python3 "$SCORE" --validate-rows "$T/bad.jsonl" > "$T/vbad.txt"; rc=$?
 check "a row missing a key is rejected" "$rc" "1"
 check "the missing key is named" "$(grep -c 'missing tokens_total' "$T/vbad.txt")" "1"
-head -n 1 "$T/rows.jsonl" | sed 's/"completion_status": "complete"/"completion_status": "budget"/; s/"completion_status":"complete"/"completion_status":"budget"/' > "$T/bad2.jsonl"
-python3 "$SCORE" --validate-rows "$T/bad2.jsonl" > /dev/null; rc=$?
+# The retired budget status: run_pass is set false so only the status can be the defect.
+head -n 1 "$T/rows.jsonl" | sed 's/"completion_status": "complete"/"completion_status": "budget"/; s/"run_pass": true/"run_pass": false/' > "$T/bad2.jsonl"
+python3 "$SCORE" --validate-rows "$T/bad2.jsonl" > "$T/vbad2.txt"; rc=$?
 check "the retired budget status is rejected" "$rc" "1"
+check "the retired budget status is named" "$(grep -c "bad completion_status 'budget'" "$T/vbad2.txt")" "1"
 
 echo "abtest-score: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && [ "$pass" -gt 0 ] && echo "All abtest-score checks passed."

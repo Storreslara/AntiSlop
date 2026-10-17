@@ -11,7 +11,7 @@ import argparse
 import json
 import statistics
 import sys
-from math import comb
+from math import comb, isfinite
 
 STATUSES = ("complete", "stalled-human", "turn-cap", "timeout", "usage-limit", "error")
 BAD = ("turn-cap", "timeout", "error")
@@ -27,6 +27,8 @@ REQUIRED = (
 MIN_N = 5      # usable rows per arm in the first pass; the gap rule applies only here
 FULL_N = 10    # usable rows per arm after the top-up; Fisher decides from here
 ALPHA = 0.10   # spec 4.4: Fisher exact p < 0.10 at N >= 10
+COUNT_FIELDS = ("tokens_in", "tokens_out", "tokens_cache_write", "tokens_cache_read", "tokens_total",
+                "defects_escaped", "out_of_scope_lines")
 TEN = tuple(f"e{n:02d}" for n in range(1, 11))
 COST_EVALS = ("e05-tags-feature", "e08-stable-cursor", "e09-typo")
 
@@ -47,16 +49,53 @@ def load_rows(path):
     return rows
 
 
+def is_count(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def is_measure(v):
+    """None, or a finite non-negative number (wall_clock_ms, num_turns)."""
+    return v is None or (isinstance(v, (int, float)) and not isinstance(v, bool) and isfinite(v) and v >= 0)
+
+
 def validate_rows(rows):
     errors = []
+    seen = {}
     for i, r in enumerate(rows, 1):
+        if not isinstance(r, dict):
+            errors.append(f"row {i}: not a JSON object")
+            continue
         missing = [k for k in REQUIRED if k not in r]
         if missing:
             errors.append(f"row {i}: missing {','.join(missing)}")
-        if r.get("completion_status") not in STATUSES:
-            errors.append(f"row {i}: bad completion_status {r.get('completion_status')!r}")
+        status = r.get("completion_status")
+        if status not in STATUSES:
+            errors.append(f"row {i}: bad completion_status {status!r}")
         if r.get("arm") not in ("A", "B"):
             errors.append(f"row {i}: bad arm {r.get('arm')!r}")
+        for k in ("run_id", "eval_id", "model_policy"):
+            if k in r and (not isinstance(r[k], str) or not r[k]):
+                errors.append(f"row {i}: {k} must be a non-empty string, got {r[k]!r}")
+        for k in COUNT_FIELDS:
+            if k in r and not is_count(r[k]):
+                errors.append(f"row {i}: {k} must be a non-negative integer, got {r[k]!r}")
+        for k in ("wall_clock_ms", "num_turns"):
+            if k in r and not is_measure(r[k]):
+                errors.append(f"row {i}: {k} must be null or a finite non-negative number, got {r[k]!r}")
+        if all(is_count(r.get(k)) for k in ("tokens_in", "tokens_out", "tokens_cache_write", "tokens_total")):
+            if r["tokens_total"] != r["tokens_in"] + r["tokens_out"] + r["tokens_cache_write"]:
+                errors.append(f"row {i}: tokens_total {r['tokens_total']} is not tokens_in + tokens_out + tokens_cache_write")
+        if "run_pass" in r:
+            if not isinstance(r["run_pass"], bool):
+                errors.append(f"row {i}: run_pass must be a JSON boolean, got {r['run_pass']!r}")
+            elif r["run_pass"] and status != "complete":
+                errors.append(f"row {i}: run_pass is true on a {status!r} row")
+        rid = r.get("run_id")
+        if status != "usage-limit" and isinstance(rid, str):
+            if rid in seen:
+                errors.append(f"row {i}: duplicate run_id {rid!r} (first at row {seen[rid]})")
+            else:
+                seen[rid] = i
     return errors
 
 
