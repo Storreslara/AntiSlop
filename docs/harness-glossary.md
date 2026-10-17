@@ -1306,6 +1306,14 @@ _Avoid_: state object, artifact type, marker type (be specific about what
   pass, masking regression, so the direction must be verified by reverting the criterion
   and observing it flip. See mutation discipline in the spec governance context.
 
+**proof script**:
+(unit abt-u09, 2026-10-17) — a manual shell script, run by hand and not by a gate, that
+  plants a known variant of a change (for example a careless edit or a comment-only edit)
+  and prints a check's verdict on it, so a reader can see that the check discriminates.
+  Examples: `careless-proof.sh` and `comment-proof.sh` under `eval/abtest/fixtures/e03-rename-query/`.
+  Unlike a **[[mutation proof]]**, it is not a Microworld bundle and nothing re-runs it
+  automatically. Its variants stack unless each one resets to a tagged reference commit.
+
 **flip unit**:
 (unit rollout-a24-remechanize-1, 2026-09-23) — the Phase 2 disablement-flip commit
   specified in `docs/plans/2026-08-25-ci-shaped-review-architecture-d.md`'s A24 criterion,
