@@ -17,7 +17,7 @@ GitHub issues: `gh issue view 576 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/checks/e02-preview-mutation/rounding.holdout.test.js` (anchor: new file)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/fixtures/e02-preview-mutation && test ! -e eval/abtest/checks/e02-preview-mutation && test -f eval/abtest/verify-checks.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/fixtures/e02-preview-mutation && test ! -e eval/abtest/checks/e02-preview-mutation && test -f eval/abtest/verify-checks.sh && grep -q _abt_leak_scan eval/abtest/fixtures/lib.sh && grep -q _abt_leak_hist eval/abtest/fixtures/lib.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/fixtures/e02-preview-mutation/build.sh`
    anchor: new file
@@ -300,7 +300,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 12 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u04 must have landed (verify-checks.sh and the check conventions exist); edit 1 checks for verify-checks.sh and STOPs otherwise. Template T1 already exists at eval/fixtures/toy-lib-template/. eval/tasks/feature-task.md and feature-task.holdout.test.js are the sources of two payloads here and are never edited.
+depends-on: abt-u04 must have landed (verify-checks.sh and the check conventions exist); edit 1 checks for verify-checks.sh and STOPs otherwise. Template T1 already exists at eval/fixtures/toy-lib-template/. eval/tasks/feature-task.md and feature-task.holdout.test.js are the sources of two payloads here and are never edited; abt-u05d (the neutral baseline and scaffold identity and the git-history scan) and abt-u05e (the hardened file scan) must also have landed; edit 1 checks for _abt_leak_scan and _abt_leak_hist in eval/abtest/fixtures/lib.sh and STOPs otherwise.
 no-real-claude: no command in this contract runs the real claude CLI.
 commit-message: feat(abt-u08): E2 preview-mutation fixture, prompt, checks and reference (#576)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
