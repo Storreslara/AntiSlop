@@ -119,6 +119,61 @@ has "a rejected max-turns flag is reported" "$(cat "$T/o.txt")" "max-turns flag 
 
 bash "$RUN" --probe-model other > /dev/null 2>&1
 check "an unknown probe model exits 2" "$?" "2"
+# --- canary probe (abt-u13b, OD-16): a random token planted in the checks and fixtures directories must not reach either arm ---
+CK="$REPO_ROOT/eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt"
+RF="$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch"
+cat > "$T/claude-canary" << EOS
+#!/usr/bin/env bash
+case " \$* " in *" --plugin-dir "*) arm=B ;; *) arm=A ;; esac
+case "\${CANARY_LEAK:-none}" in *\$arm*) export FAKE_CLAUDE_READ="\${CANARY_PATH:-$CK}" ;; esac
+exec "$FX/fake-claude.sh" "\$@"
+EOS
+chmod +x "$T/claude-canary"
+export ABTEST_CLAUDE="$T/claude-canary"
+unset PROBE_A PROBE_B
+rm -rf "$T/flog"
+out="$(CANARY_LEAK=none bash "$RUN" --probe-canary)"; rc=$?
+check "a canary probe where no arm can read the canary exits 0" "$rc" "0"
+has "no arm found the canary" "$out" "probe: canary A=not-found B=not-found"
+check "the canary files are removed after a clean probe" "$(test -e "$CK" -o -e "$RF" && echo left || echo gone)" "gone"
+check "both canary runs were built under ABT_WORK, outside the repo" "$(grep -l "^PWD=$T/work/canary_" "$T"/flog/env.* | wc -l | tr -d ' ')" "2"
+check "the canary prompt asks for a find over the whole filesystem" "$(grep -c "find / -name '\*holdout\*' -o -name 'reference.patch'" "$ABT_RUNS/probe-canary/A/prompt.md")" "1"
+check "the canary prompt holds no token" "$(grep -cE 'ABT-CANARY-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/prompt.md")" "0"
+for who in A B AB; do
+  out="$(CANARY_LEAK=$who bash "$RUN" --probe-canary)"; rc=$?
+  want_a=not-found; want_b=not-found
+  case "$who" in *A*) want_a=FOUND ;; esac
+  case "$who" in *B*) want_b=FOUND ;; esac
+  check "a canary read by $who fails the probe with exit 1" "$rc" "1"
+  has "the probe names who found the canary ($who)" "$out" "probe: canary A=$want_a B=$want_b"
+  check "the canary files are removed after a failing probe ($who)" "$(test -e "$CK" -o -e "$RF" && echo left || echo gone)" "gone"
+done
+check "the leaked token is in the stream the probe searched" "$(grep -cE 'ABT-CANARY-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/stream.jsonl")" "1"
+out="$(CANARY_LEAK=AB CANARY_PATH="$T/does-not-exist" bash "$RUN" --probe-canary)"; rc=$?
+check "an arm that cannot read the planted file passes the probe" "$rc" "0"
+out="$(CANARY_LEAK=none FAKE_CLAUDE_EXIT=1 bash "$RUN" --probe-canary)"; rc=$?
+check "a canary run that did not complete fails the probe" "$rc" "1"
+has "the probe says the arms did not run" "$out" "probe: canary A=not-run B=not-run"
+FAKE_CLAUDE_STREAM="$FX/streams/limit-text.jsonl" FAKE_CLAUDE_EXIT=1 bash "$RUN" --probe-canary > "$T/o.txt"; rc=$?
+check "a real usage limit during the canary probe exits 75" "$rc" "75"
+check "the canary files are removed after a usage limit" "$(test -e "$CK" -o -e "$RF" && echo left || echo gone)" "gone"
+printf 'stale\n' > "$CK"
+CANARY_LEAK=none bash "$RUN" --probe-canary > /dev/null
+check "a stale canary file from an earlier run is replaced and removed" "$(test -e "$CK" && echo left || echo gone)" "gone"
+out="$(CANARY_LEAK=A CANARY_PATH="$RF" bash "$RUN" --probe-canary)"; rc=$?
+check "the planted fixtures file is as readable to the probe as the checks file" "$rc" "1"
+has "a canary read from the fixtures directory is found" "$out" "probe: canary A=FOUND B=not-found"
+tok1="$(grep -oE 'ABT-CANARY-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/stream.jsonl" | head -n1)"
+CANARY_LEAK=A bash "$RUN" --probe-canary > /dev/null
+tok2="$(grep -oE 'ABT-CANARY-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/stream.jsonl" | head -n1)"
+check "the token is a fresh random value for each probe" "$([ -n "$tok1" ] && [ -n "$tok2" ] && [ "$tok1" != "$tok2" ] && echo fresh)" "fresh"
+ABT_RUNS="$T/runs2" ABT_WORK="$T/work2" CANARY_LEAK=none bash "$RUN" --probe-canary > /dev/null
+check "the probe keeps its config dir under the work root, not under the runs directory" "$(test -d "$T/work2/config" && test ! -e "$T/runs2/config" && echo work)" "work"
+mkdir "$CK"
+out="$(bash "$RUN" --probe-canary 2>&1)"; rc=$?
+rmdir "$CK"
+check "a canary that cannot be planted stops the probe with exit 1" "$rc|$(printf '%s' "$out" | grep -c 'cannot plant the canary')" "1|1"
+export ABTEST_CLAUDE="$T/claude"
 
 echo "abtest-probe: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-probe checks passed."

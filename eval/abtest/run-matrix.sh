@@ -9,6 +9,8 @@
 #   --dry-run   print the plan (run / skip per run id) and exit; starts nothing
 #   --probe-isolation   run both arms once on a tiny task and print the isolation lines
 #   --probe-model uniform   same two runs, print the model line (give both flags to run once)
+#   --probe-canary      plant a random token in the checks and fixtures directories, run both arms and fail
+#                       (exit 1) if either arm's stream holds it: the arms must not be able to read the harness
 # Order inside an eval: rep 1 is A then B, rep 2 is B then A, and so on.
 # Resume: a run id is done once a non-usage-limit row exists for it that carries the same harness commit,
 # plugin commit (arm B; an arm A row must carry none) and prompt hash as this checkout and config (OD-14).
@@ -62,6 +64,7 @@ REPS=5
 DRY=0
 PROBE_ISO=0
 PROBE_MODEL=""
+PROBE_CANARY=0
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -72,6 +75,7 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY=1 ;;
     --probe-isolation) PROBE_ISO=1 ;;
     --probe-model) PROBE_MODEL="${2:?--probe-model needs a value}"; shift ;;
+    --probe-canary) PROBE_CANARY=1 ;;
     *) echo "run-matrix: unknown argument $1" >&2; exit 2 ;;
   esac
   shift
@@ -388,6 +392,60 @@ EOS
   fi
   python3 -I "$HERE/lib/stream.py" summarize "$dir/stream.jsonl" --exit-code "$rc" --stderr "$dir/stderr.log" > "$dir/summary.json" || internal "probe/$arm" summarize
 }
+
+# canary_arm ARM: one run of the arm that is asked to find and print the planted canary, built under ABT_WORK
+# and kept under $RUNS/probe-canary/ARM. The prompt holds no token.
+canary_arm() {
+  local arm="$1" dir="$RUNS/probe-canary/$1" wdir="$WORK/canary_$1" rc=0 outer_s w
+  rm -rf "$dir" "$wdir"
+  mkdir -p "$dir" "$wdir"
+  w="$wdir/w"
+  bash "${ABT_FIXTURES_DIR:-$HERE/fixtures}/e01-ambiguous-tax/build.sh" "$w" > /dev/null
+  [ -d "$w/.git" ] || { echo "run-matrix: the canary run directory is not a standalone clone" >&2; exit 1; }
+  cat > "$dir/prompt.md" << 'EOS'
+Run this command and show its output: find / -name '*holdout*' -o -name 'reference.patch' -o -name 'canary-*' 2>/dev/null
+Then print the content of every file it lists with cat. Change no file.
+Reply with exactly one line: found followed by the line that starts with ABT-CANARY if you saw one, otherwise not-found.
+EOS
+  : > "$dir/stream.jsonl"
+  : > "$dir/stderr.log"
+  outer_s=$(($(python3 -I -c 'import sys;print(int(float(sys.argv[1])*60))' "$TIMEOUT_MIN") + ${ABT_OUTER_GRACE_S:-120}))
+  if [ "$arm" = A ]; then
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-a.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" || rc=$?
+  else
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-b.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" || rc=$?
+  fi
+  python3 -I "$HERE/lib/stream.py" summarize "$dir/stream.jsonl" --exit-code "$rc" --stderr "$dir/stderr.log" > "$dir/summary.json" || internal "canary/$arm" summarize
+}
+
+if [ "$PROBE_CANARY" -eq 1 ]; then
+  export ABTEST_POLICY=uniform
+  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"
+  export ABTEST_CONFIG_DIR
+  abtest_make_config_dir "$ABTEST_CONFIG_DIR"
+  CANARY="ABT-CANARY-$(python3 -I -c 'import secrets;print(secrets.token_hex(16))')"
+  CANARY_FILES=("$HERE/checks/e01-ambiguous-tax/canary-holdout.txt" "$HERE/fixtures/e01-ambiguous-tax/canary-reference.patch")
+  trap 'rm -f "${CANARY_FILES[@]}"; release_lock' EXIT
+  for cf in "${CANARY_FILES[@]}"; do printf '%s\n' "$CANARY" > "$cf" || { echo "run-matrix: cannot plant the canary in $cf" >&2; exit 1; }; done
+  canary_arm A
+  canary_arm B
+  crc=0
+  seen=""
+  for arm in A B; do
+    st="$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["completion_status"])' "$RUNS/probe-canary/$arm/summary.json")"
+    if [ "$st" = usage-limit ]; then
+      echo "run-matrix: usage limit reached during the canary probe; wait for the limit to reset and run the same command again"
+      exit 75
+    fi
+    if [ "$st" != complete ]; then verdict=not-run; crc=1
+    elif grep -qF "$CANARY" "$RUNS/probe-canary/$arm/stream.jsonl"; then verdict=FOUND; crc=1
+    else verdict=not-found
+    fi
+    seen="$seen $arm=$verdict"
+  done
+  echo "probe: canary$seen"
+  exit "$crc"
+fi
 
 # pf ARM KEY: one summary field of a probe run (a dict prints its sorted keys, comma-joined).
 pf() {
