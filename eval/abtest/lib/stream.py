@@ -25,12 +25,23 @@ LIMIT_RE = re.compile(
 SUBAGENT_TOOLS = ("Agent", "Task")
 _WHO = r"(?:claude(?: ai)? |opus |sonnet |haiku )"
 _KIND = r"(?:usage |weekly |5-hour |session )"
-_END = r"(?=\s*(?:[\u00b7\u2219.,|:;\u2014-]|$))"
+_SEP = r"[\u00b7\u2219\u2013\u2014|.,-]"
+_DAY = r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)"
+_MONTH = (r"(?:january|february|march|april|may|june|july|august|september|october|november|december"
+          r"|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)")
+_WHEN = (r"(?:\d{1,2}(?::\d{2})?\s?(?:am|pm)?|" + _DAY + "|" + _MONTH +
+         r"|today|tomorrow|at|on|in|hours?|minutes?|days?|utc|\(\w+(?:/[\w+-]+)*\))")
+_RESET = r"(?:your (?:\w+ )?limit )?(?:will )?resets?(?:[\s,]+" + _WHEN + r"){1,8}"
+_TAIL = (r"(?:[.!]?$"
+         r"|\|\d{9,13}$"
+         r"|\s*(?:" + _SEP + r"\s*)?\(?" + _RESET + r"\)?[.!]?$)")
 LIMIT_TEXT_RE = re.compile(
     r"(?:(?:api )?error:\s*)?(?:"
-    r"(?:" + _WHO + _KIND + r"?|" + _KIND + r")limit reached" + _END +
-    r"|you(?:'ve|\u2019ve| have) hit your " + _KIND + r"?limit" + _END +
-    r"|(?:api )?error:\s*429\b[^\n]*\brate_limit_error\b)",
+    r"(?:" + _WHO + _KIND + r"?|" + _KIND + r"|rate )limit reached"
+    r"|you(?:'ve|\u2019ve| have) hit your " + _KIND + r"?limit"
+    r"|(?:you(?:'re|\u2019re| are) )?out of extra usage"
+    r")" + _TAIL +
+    r'|(?:api )?error:\s*429 \{[^\n]*"type":"rate_limit_error"',
     re.IGNORECASE,
 )
 INVISIBLE = "\ufeff\u200b\u200c\u200d\u2060"

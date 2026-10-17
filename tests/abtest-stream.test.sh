@@ -64,6 +64,75 @@ check "near miss stays an error: a bare Limit reached sentence about a cart" "$(
 check "near miss stays an error: hitting a limit of 5 retries in a test" "$(field "$FX/men-hit-retries.jsonl" completion_status --exit-code 1)" "error"
 check "near miss stays an error: a limit phrase quoted at the end of a sentence" "$(field "$FX/men-quoted-end.jsonl" completion_status --exit-code 1)" "error"
 check "near miss stays an error: Session limit reached for a cart module" "$(field "$FX/men-session-cart.jsonl" completion_status --exit-code 1)" "error"
+# Stricter and wider limit wording (abt-u02d). Each capture below is written with JSON escapes only (no literal invisible
+# or non-ASCII character): mkerr NAME TEXT writes an error result and mkok NAME TEXT a success result in $ZW.
+mkerr() { printf '{"type":"result","subtype":"error_during_execution","is_error":true,"result":"%s"}\n' "$2" > "$ZW/$1.jsonl"; }
+mkok() { printf '{"type":"result","subtype":"success","is_error":false,"result":"%s"}\n' "$2" > "$ZW/$1.jsonl"; }
+lw() { mkerr "$1" "$3"; check "limit wording: $2" "$(field "$ZW/$1.jsonl" completion_status --exit-code 1)" "usage-limit"; }
+nm() { mkerr "$1" "$3"; check "near miss stays an error: $2" "$(field "$ZW/$1.jsonl" completion_status --exit-code 1)" "error"; }
+lw x-mid-dot "out of extra usage with a middle dot" 'You\u0027re out of extra usage \u00b7 resets 3pm'
+lw x-bullet "out of extra usage with a curly apostrophe and a bullet operator" 'You\u2019re out of extra usage \u2219 resets Monday'
+lw x-en-extra "out of extra usage with an en dash" 'You\u0027re out of extra usage \u2013 resets 3pm'
+lw x-hyphen-extra "out of extra usage with a hyphen and a dated reset" 'You\u0027re out of extra usage - resets Oct 20, 3pm'
+lw x-extra-alone "out of extra usage on its own" 'You\u0027re out of extra usage'
+lw x-extra-bare "out of extra usage without the you-are" 'Out of extra usage \u00b7 resets 3pm'
+lw x-you-are "you are out of extra usage" 'You are out of extra usage \u00b7 resets 3pm'
+lw x-rate-pipe "API Error: Rate limit reached with a pipe and an epoch" 'API Error: Rate limit reached|1760000000'
+lw x-bang-claude "a trailing exclamation mark after the Claude AI phrase" 'Claude AI usage limit reached!'
+lw x-bang-hit "a trailing exclamation mark after hit your limit" 'You\u0027ve hit your limit!'
+lw x-period-alone "a trailing full stop after the Claude AI phrase" 'Claude AI usage limit reached.'
+lw x-reset-period "a full stop after the reset" 'Session limit reached \u2219 resets 3pm.'
+lw x-reset-bang "an exclamation mark after the reset" 'Session limit reached \u2219 resets 3pm!'
+lw x-en-dash "an en dash before the reset" 'Session limit reached \u2013 resets 3pm'
+lw x-em-dash "an em dash before the reset" 'Session limit reached \u2014 resets 3pm'
+lw x-paren "a parenthesised reset" 'Session limit reached (resets 3pm)'
+lw x-tz "a reset with a time zone" 'Opus weekly limit reached \u2219 resets Oct 20, 3pm (America/New_York)'
+lw x-comma "a comma before the reset" 'Session limit reached, resets 3pm'
+lw x-pipe-reset "a pipe before the reset" 'Session limit reached | resets 3pm'
+lw x-relative "a relative reset in hours" 'Claude usage limit reached. Your weekly limit will reset in 2 hours'
+lw x-hour "a relative reset in one hour" 'Claude usage limit reached. Your limit will reset in 1 hour'
+lw x-minutes "a relative reset in minutes" 'Claude usage limit reached. Your limit will reset in 30 minutes'
+lw x-minute "a relative reset in one minute" 'Claude usage limit reached. Your limit will reset in 1 minute'
+lw x-days "a relative reset in days" 'Session limit reached \u2219 resets in 3 days'
+lw x-day "a relative reset in one day" 'Session limit reached \u2219 resets in 1 day'
+lw x-on "a reset on a weekday" 'Session limit reached \u2219 resets on Monday'
+lw x-tomorrow "a reset tomorrow" 'Session limit reached \u2219 resets tomorrow at 9am'
+lw x-today-utc "a reset today in UTC" 'Session limit reached \u2219 resets today 9am UTC'
+lw x-clock "a reset with minutes" 'Session limit reached \u2219 resets 10:30pm'
+lw x-am "a reset in the morning" 'Session limit reached \u2219 resets 9am'
+lw x-space-pm "a reset with a space before pm" 'Session limit reached \u2219 resets 3 pm'
+lw x-two-lines "the reset on the second line" 'Claude usage limit reached.\nYour limit will reset at 5pm'
+lw x-wordjoiner "a word joiner (U+2060) in front of the phrase" '\u2060Session limit reached \u2219 resets 3pm'
+lw x-zwnj "a zero-width non-joiner (U+200C) in front of the phrase" '\u200cSession limit reached \u2219 resets 3pm'
+lw x-zwj "a zero-width joiner (U+200D) in front of the phrase" '\u200dSession limit reached \u2219 resets 3pm'
+nm y-usage-added "Usage limit reached followed by agent prose" 'Usage limit reached. I added a test for the retry path'
+nm y-session-403 "Session limit reached, so the server returns 403" 'Session limit reached, so the server returns 403 for the next call'
+nm y-hit-copy "hit your limit followed by agent prose" 'You\u0027ve hit your limit. That\u0027s the copy the banner shows'
+nm y-error-429-py "error: 429 handling in rate_limit_error.py" 'error: 429 handling in rate_limit_error.py is untested'
+nm y-resets-are "Resets used as a noun after the phrase" 'Usage limit reached. Resets are handled in billing.py'
+nm y-resets-counter "a reset clause that is a sentence" 'Session limit reached - resets the counter after the fix'
+nm y-resets-bare "a reset clause with no time" 'Usage limit reached. Resets'
+nm y-reset-trailing "prose after a full reset clause" 'Session limit reached \u2219 resets 3pm and then I added a retry'
+nm y-pipe-docs "a pipe followed by prose" 'Session limit reached | see the retry docs'
+nm y-pipe-short "a pipe followed by a short number" 'Session limit reached|123'
+nm y-pipe-trailing "prose after a pipe and an epoch" 'Session limit reached|1760000000 and I added a test'
+nm y-extra-prose "out of extra usage followed by agent prose" 'You\u0027re out of extra usage, so I skipped the live test'
+nm y-extra-mid "out of extra usage quoted mid-text" 'The banner said You\u0027re out of extra usage \u00b7 resets 3pm'
+nm y-two-lines "the phrase then a prose line" 'Session limit reached\nI added a test for it'
+nm y-rate-cart "Rate limit reached for an API under test" 'Rate limit reached for the cart API, so I added a retry'
+nm y-credit "Credit balance is too low (API-key billing, out of scope)" 'Credit balance is too low'
+nm y-overloaded "Error: Overloaded" 'Error: Overloaded'
+nm y-529 "API Error 529" 'API Error: 529 {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\",\"message\":\"Overloaded\"}}'
+nm y-500 "API Error 500" 'API Error: 500 {\"type\":\"error\",\"error\":{\"type\":\"api_error\",\"message\":\"Internal server error\"}}'
+nm y-429-overloaded "API Error 429 with a different error type" 'API Error: 429 {\"type\":\"error\",\"error\":{\"type\":\"overloaded_error\"}}'
+for d in Monday Tuesday Wednesday Thursday Friday Saturday Sunday Mon Tue Wed Thu Fri Sat Sun; do
+  lw "d-$d" "the weekday $d in a reset" "Session limit reached \\u2219 resets $d"
+done
+for m in January February March April May June July August September October November December Jan Feb Mar Apr Jun Jul Aug Sep Oct Nov Dec; do
+  lw "m-$m" "the month $m in a reset" "Session limit reached \\u2219 resets $m 20"
+done
+mkok z-success 'Session limit reached \u2219 resets 3pm'
+check "a successful result that opens with a limit phrase stays complete" "$(field "$ZW/z-success.jsonl" completion_status)" "complete"
 check "exit 124 is timeout" "$(field "$FX/complete.jsonl" completion_status --exit-code 124)" "timeout"
 check "no result object is error" "$(field "$FX/no-result.jsonl" completion_status --exit-code 1)" "error"
 check "empty capture is error" "$(field /dev/null completion_status --exit-code 1)" "error"
