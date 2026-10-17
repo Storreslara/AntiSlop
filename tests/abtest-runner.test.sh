@@ -165,6 +165,93 @@ check "an unknown argument exits 2" "$?" "2"
 bash "$RUN" --reps 0 > /dev/null 2>&1
 check "zero reps exits 2" "$?" "2"
 
+# --- provenance (abt-u12c, OD-14): a row from another harness, plugin or prompt is repeated, never reused ---
+SUP="$T/results.superseded.jsonl"
+restamp() {
+  python3 -I - "$ABT_RESULTS" "$1" "$2" "$3" << 'PYEOF'
+import json, sys
+
+path, run_id, key, value = sys.argv[1:5]
+rows = [json.loads(l) for l in open(path) if l.strip()]
+for r in rows:
+    if r["run_id"] == run_id:
+        r[key] = None if value == "null" else value
+with open(path, "w") as f:
+    for r in rows:
+        f.write(json.dumps(r) + "\n")
+PYEOF
+}
+fresh() { rm -rf "$ABT_RESULTS" "$SUP" "$T/flog" "$T/work"; bash "$RUN" --pilot --evals $E > /dev/null; }
+fresh
+out="$(bash "$RUN" --pilot --evals $E)"
+has "rows with the current provenance are skipped, arm A included" "$out" "runs=0 skipped=2"
+check "a skipped pilot leaves no superseded file" "$(test -e "$SUP" && echo made || echo none)" "none"
+restamp "$E/A/uniform/1" harness_commit stale
+out="$(bash "$RUN" --pilot --evals $E --dry-run)"
+has "a stale harness commit is planned as a rerun" "$out" "plan: $E/A/uniform/1 rerun (stale provenance)"
+has "a matching row next to it is still skipped" "$out" "plan: $E/B/uniform/1 skip"
+check "a dry run moves nothing" "$(test -e "$SUP" && echo made || echo none)|$(col "$ABT_RESULTS" 1 harness_commit)" "none|stale"
+out="$(bash "$RUN" --pilot --evals $E)"
+has "the stale row is repeated and the matching one skipped" "$out" "runs=1 skipped=1"
+has "the move is announced" "$out" "had a row from another harness, plugin or prompt"
+check "the repeated row carries the current harness commit" "$(col "$ABT_RESULTS" 2 harness_commit)" "$(git -C "$REPO_ROOT" rev-parse HEAD)"
+check "the results file holds one row per run id" "$(ids "$ABT_RESULTS")" "$E/B/uniform/1 $E/A/uniform/1"
+check "the stale row is kept in the superseded file" "$(ids "$SUP")|$(col "$SUP" 1 harness_commit)" "$E/A/uniform/1|stale"
+check "the scorer's validator accepts the results file" "$(python3 -I "$REPO_ROOT/eval/abtest/score.py" --validate-rows "$ABT_RESULTS" | tail -n1)" "rows ok: 2"
+out="$(bash "$RUN" --pilot --evals $E)"
+has "a second resume skips both runs again" "$out" "runs=0 skipped=2"
+fresh
+restamp "$E/B/uniform/1" plugin_commit stale
+out="$(bash "$RUN" --pilot --evals $E)"
+has "a stale plugin commit repeats arm B only" "$out" "runs=1 skipped=1"
+check "arm B was repeated and its stale row superseded" "$(ids "$SUP")|$(col "$ABT_RESULTS" 2 plugin_commit | grep -cE '^[0-9a-f]{40}$')" "$E/B/uniform/1|1"
+fresh
+restamp "$E/A/uniform/1" prompt_sha stale
+out="$(bash "$RUN" --pilot --evals $E)"
+has "a stale prompt hash repeats the run" "$out" "runs=1 skipped=1"
+check "the stale prompt row is superseded" "$(ids "$SUP")" "$E/A/uniform/1"
+fresh
+restamp "$E/A/uniform/1" plugin_commit abc
+out="$(bash "$RUN" --pilot --evals $E)"
+has "a plugin commit on an arm A row is stale" "$out" "runs=1 skipped=1"
+check "arm A is repeated with no plugin commit" "$(col "$ABT_RESULTS" 2 plugin_commit)" "None"
+fresh
+restamp "$E/B/uniform/1" plugin_commit null
+out="$(bash "$RUN" --pilot --evals $E)"
+has "no plugin commit on an arm B row is stale" "$out" "runs=1 skipped=1"
+fresh
+restamp "$E/A/uniform/1" completion_status usage-limit
+restamp "$E/A/uniform/1" harness_commit stale
+out="$(bash "$RUN" --pilot --evals $E)"
+has "a usage-limit row is repeated without being superseded" "$out" "runs=1 skipped=1"
+check "the usage-limit row stays in the results file" "$(ids "$ABT_RESULTS")" "$E/A/uniform/1 $E/B/uniform/1 $E/A/uniform/1"
+check "a usage-limit row creates no superseded file" "$(test -e "$SUP" && echo made || echo none)" "none"
+fresh
+python3 -I - "$ABT_RESULTS" "$E/A/uniform/1" << 'PYEOF'
+import json, sys
+
+path, rid = sys.argv[1:3]
+rows = [json.loads(l) for l in open(path) if l.strip()]
+a = next(r for r in rows if r["run_id"] == rid)
+lim = dict(a, completion_status="usage-limit", run_pass=False)
+a["harness_commit"] = "stale"
+with open(path, "w") as f:
+    for r in [lim] + rows:
+        f.write(json.dumps(r) + "\n")
+PYEOF
+bash "$RUN" --pilot --evals $E > /dev/null
+check "a usage-limit row of the same run id stays when the stale row is superseded" "$(ids "$ABT_RESULTS")|$(ids "$SUP")|$(col "$SUP" 1 completion_status)" "$E/A/uniform/1 $E/B/uniform/1 $E/A/uniform/1|$E/A/uniform/1|complete"
+fresh
+restamp "$E/A/uniform/1" harness_commit stale
+ABT_SUPERSEDED="$T/elsewhere.jsonl" bash "$RUN" --pilot --evals $E > /dev/null
+check "ABT_SUPERSEDED chooses the file for the stale rows" "$(ids "$T/elsewhere.jsonl")|$(test -e "$SUP" && echo made || echo none)" "$E/A/uniform/1|none"
+fresh
+check "the config dir is made under the work root, not under the runs directory" "$(test -d "$ABT_WORK/config" && test ! -e "$ABT_RUNS/config" && echo work)" "work"
+tr '\0' '\n' < "$T/flog/argv.1" > "$T/argv-first"
+TP="$(cd "$T" && pwd -P)"
+check "the arms are denied Read of the runs directory" "$(grep -cxF "Read(/$TP/runs/**)" "$T/argv-first")" "1"
+check "the arms are denied Read of the results file" "$(grep -cxF "Read(/$TP/results.jsonl)" "$T/argv-first")" "1"
+
 # --- guards (abt-u12-fix1): one claude at a time, interrupts, one runner, fail-closed arm start, absolute paths ---
 cp "$FX/fake-claude.sh" "$T/fake-copy.sh"
 export FAKE_CLAUDE_BIN="$T/fake-copy.sh"

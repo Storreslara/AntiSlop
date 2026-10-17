@@ -8,9 +8,11 @@
 #   --evals     comma list of eval ids (default: the five E1-E5 ids)
 #   --dry-run   print the plan (run / skip per run id) and exit; starts nothing
 # Order inside an eval: rep 1 is A then B, rep 2 is B then A, and so on.
-# Resume: a run id is done once a row exists for it whose completion_status is
-# not usage-limit; a usage-limit row is kept, the runner stops with exit 75, and
-# the next invocation repeats that run.
+# Resume: a run id is done once a non-usage-limit row exists for it that carries the same harness commit,
+# plugin commit (arm B; an arm A row must carry none) and prompt hash as this checkout and config (OD-14).
+# A row of another provenance is stale: it is moved to ABT_SUPERSEDED (default results.superseded.jsonl beside
+# the results file, never read by the scorer) and the run is repeated. A usage-limit row is kept, the runner
+# stops with exit 75, and the next invocation repeats that run.
 # A run is built in a standalone repository under ABT_WORK, OUTSIDE this checkout, so this repo's
 # CLAUDE.md is never loaded into an arm; the runner refuses a work root that has a CLAUDE.md in it
 # or above it. Each run also gets an outer wall-clock guard (timeout -k) around the arm script.
@@ -20,6 +22,7 @@
 #      ABT_RESULTS (default eval/abtest/results.jsonl), ABT_RUNS (default eval/abtest/.runs),
 #      ABT_FIXTURES_DIR (default: eval/abtest/fixtures), ABT_WORK (default $TMPDIR/antislop-abtest-work), ABT_PLUGIN_ROOT (default: this checkout),
 #      ABT_OUTER_GRACE_S (default 120), ABT_KILL_AFTER_S (default 30), ABT_MAX_LIMIT_HITS (default 3).
+#      ABT_SUPERSEDED (default results.superseded.jsonl beside ABT_RESULTS; stale rows are moved there).
 #      ABT_VERSION_TIMEOUT_S (default 20): the limit in seconds on the claude --version call.
 # Each arm runs in a session of its own (setsid), and every process left in that session is killed once the arm
 # returns or the guard fires, so a claude that ignores SIGTERM never outlives its run. Ctrl-C, SIGTERM and SIGHUP
@@ -38,6 +41,7 @@ export ABT_REPO_ROOT="$(cd "$HERE/../.." && pwd)"
 . "$HERE/lib/rc.sh"
 
 RESULTS="${ABT_RESULTS:-$HERE/results.jsonl}"
+SUPERSEDED="${ABT_SUPERSEDED:-$(dirname "$RESULTS")/results.superseded.jsonl}"
 RUNS="${ABT_RUNS:-$HERE/.runs}"
 WORK="${ABT_WORK:-${TMPDIR:-/tmp}/antislop-abtest-work}"
 # These paths reach the arm scripts, which cd into the work tree, so each must be absolute.
@@ -47,6 +51,8 @@ RUNS="$(abs_path "$RUNS")"
 WORK="$(abs_path "$WORK")"
 ABT_PLUGIN_ROOT="$(abs_path "${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}")"
 PLUGIN_ROOT="${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}"
+# The arms may not read the results or the runs (OD-16): the arm scripts turn these paths into deny rules.
+export ABTEST_DENY_PATHS="$RESULTS:$RUNS${ABTEST_DENY_PATHS:+:$ABTEST_DENY_PATHS}"
 MAX_LIMIT_HITS="${ABT_MAX_LIMIT_HITS:-3}"
 POLICY="${ABTEST_POLICY:-uniform}"
 EVALS="e01-ambiguous-tax,e02-preview-mutation,e03-rename-query,e04-search-injection,e05-tags-feature"
@@ -69,13 +75,28 @@ case "$MAX_LIMIT_HITS" in '' | *[!0-9]* | 0) echo "run-matrix: ABT_MAX_LIMIT_HIT
 case "$POLICY" in uniform | shipped) ;; *) echo "run-matrix: policy must be uniform or shipped" >&2; exit 2 ;; esac
 export ABTEST_POLICY="$POLICY"
 
-# done_run RUN_ID: success when a non-usage-limit row exists for it.
+# current_prov ARM EV: three lines, the provenance a row written now would carry: the harness commit, the plugin
+# commit (null for arm A) and the prompt hash.
+current_prov() {
+  local arm="$1" ev="$2" pf="$HERE/tasks/$2.prompt.md"
+  git -C "$ABT_REPO_ROOT" rev-parse HEAD 2> /dev/null || echo unknown
+  if [ "$arm" = B ]; then git -C "$PLUGIN_ROOT" rev-parse HEAD 2> /dev/null || echo null; else echo null; fi
+  if [ -f "$pf" ]; then sha256sum "$pf" | cut -d' ' -f1; else echo missing; fi
+}
+
+# done_run RUN_ID ARM EV: 0 when a non-usage-limit row exists for the run id with the current provenance (skip it),
+# 2 when such a row exists with another provenance (stale: repeat the run), 1 when there is none.
 done_run() {
   [ -f "$RESULTS" ] || return 1
-  python3 -I - "$RESULTS" "$1" <<'PYEOF'
+  local cur
+  cur="$(current_prov "$2" "$3")"
+  python3 -I - "$RESULTS" "$1" "$cur" <<'PYEOF'
 import json, sys
 
-path, run_id = sys.argv[1:3]
+path, run_id, cur = sys.argv[1:4]
+harness, plugin, prompt = cur.split("\n")
+want = {"harness_commit": harness, "plugin_commit": None if plugin == "null" else plugin, "prompt_sha": prompt}
+state = 1
 with open(path) as f:
     for line in f:
         line = line.strip()
@@ -83,8 +104,39 @@ with open(path) as f:
             continue
         row = json.loads(line)
         if row.get("run_id") == run_id and row.get("completion_status") != "usage-limit":
-            sys.exit(0)
-sys.exit(1)
+            if all(row.get(k) == v for k, v in want.items()):
+                sys.exit(0)
+            state = 2
+sys.exit(state)
+PYEOF
+}
+
+# supersede_run RUN_ID: move the stale non-usage-limit row(s) of the run id from the results file to SUPERSEDED,
+# which the scorer never reads. Usage-limit rows stay where they are.
+supersede_run() {
+  python3 -I - "$RESULTS" "$SUPERSEDED" "$1" <<'PYEOF'
+import json, os, sys
+
+path, dest, run_id = sys.argv[1:4]
+keep, moved = [], []
+with open(path) as f:
+    for line in f:
+        s = line.strip()
+        if not s:
+            continue
+        row = json.loads(s)
+        stale = row.get("run_id") == run_id and row.get("completion_status") != "usage-limit"
+        (moved if stale else keep).append(s)
+if not moved:
+    sys.exit(1)
+with open(dest, "a") as f:
+    for s in moved:
+        f.write(s + "\n")
+tmp = path + ".tmp"
+with open(tmp, "w") as f:
+    for s in keep:
+        f.write(s + "\n")
+os.replace(tmp, path)
 PYEOF
 }
 
@@ -303,7 +355,7 @@ check_work_root "$WORK" || exit 2
 [ "$DRY" -eq 1 ] || acquire_lock
 if [ "$DRY" -eq 0 ]; then
   mkdir -p "$RUNS" "$WORK"
-  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$RUNS/config"
+  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"
   export ABTEST_CONFIG_DIR
   abtest_make_config_dir "$ABTEST_CONFIG_DIR"
 fi
@@ -314,12 +366,20 @@ for ev in "${EV[@]}"; do
     if [ $((rep % 2)) -eq 1 ]; then order="A B"; else order="B A"; fi
     for arm in $order; do
       run_id="$ev/$arm/$POLICY/$rep"
-      if done_run "$run_id"; then
+      done_run "$run_id" "$arm" "$ev"; st=$?
+      if [ "$st" -eq 0 ]; then
         skipped=$((skipped + 1))
         [ "$DRY" -eq 1 ] && echo "plan: $run_id skip"
         continue
       fi
-      if [ "$DRY" -eq 1 ]; then echo "plan: $run_id run"; continue; fi
+      if [ "$DRY" -eq 1 ]; then
+        if [ "$st" -eq 2 ]; then echo "plan: $run_id rerun (stale provenance)"; else echo "plan: $run_id run"; fi
+        continue
+      fi
+      if [ "$st" -eq 2 ]; then
+        supersede_run "$run_id" || exit 1
+        echo "run-matrix: $run_id had a row from another harness, plugin or prompt; moved to $SUPERSEDED"
+      fi
       hits="$(limit_hits "$run_id")" || exit 1
       if [ "$hits" -ge "$MAX_LIMIT_HITS" ]; then
         echo "run-matrix: $run_id was classified usage-limit $hits times; read $RUNS/${run_id//\//_}/stream.jsonl before retrying (raise ABT_MAX_LIMIT_HITS to try again)" >&2
