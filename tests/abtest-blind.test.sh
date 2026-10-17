@@ -66,6 +66,14 @@ TEXT = "\n".join([
     "The personas, the pending-review flag and a .pass marker came from pathfinder, roast-work and domain-modeling.",
     "A bypass marker and personal notes survive; so does Price per Unit: $5.",
     "- Unit: percent",
+    "Unit: abt-x (#1) done",
+    "**Unit:** abt-x",
+    "Unit: #596",
+    "Unit: e01-ambiguous-tax - dispatched to the lead",
+    "**STATUS:** complete",
+    "Unit:",
+    "abt-keep next line",
+    "Also .claude/x~y and .claude/agent-memory/a_b.md.",
     "See .claude/agents/x.md, then (see .claude/foo) and .claude.",
     "All finished.",
 ])
@@ -92,7 +100,7 @@ bash "$BLIND" "$T/rows.jsonl" "$OUT" > "$T/build.txt"; rc=$?
 check "build exits 0" "$rc" "0"
 check "one item per usable run of the eval" "$(ls "$OUT/blind" | wc -l | tr -d ' ')" "4"
 check "item ids are 8 hex characters" "$(ls "$OUT/blind" | grep -cE '^[0-9a-f]{8}$')" "4"
-LEAK='\b(reviewer|orchestrator|scribe|explorer|researcher|lead[- ]programmer|spec[- ]master|task[- ]master|milestone-auditor|agent-auditor)|\bUnit: *[A-Za-z]+[-._#0-9]|\bSTATUS: *(in)?complete|anti-?slop|Arm [AB]|arm-[ab]\b|\.claude|\bPASS [a-z]|\(e[0-9]{2}-|\(gh[0-9]+\)|\(#[0-9]+\)|\bpersonas?\b|pending-review|(^|[^A-Za-z])\.?pass markers?|pathfinder|roast-work|domain-modeling|^unit: abt-lower'
+LEAK='\b(reviewer|orchestrator|scribe|explorer|researcher|lead[- ]programmer|spec[- ]master|task[- ]master|milestone-auditor|agent-auditor)|\bUnit:\** *(#[0-9]|[A-Za-z]+[-._#0-9])|\bSTATUS:\** *(in)?complete|anti-?slop|Arm [AB]|arm-[ab]\b|\.claude|\bPASS [a-z]|\(e[0-9]{2}-|\(gh[0-9]+\)|\(#[0-9]+\)|\bpersonas?\b|pending-review|(^|[^A-Za-z])\.?pass markers?|pathfinder|roast-work|domain-modeling|^unit: abt-lower'
 check "the leak pattern sees the leaks in the unredacted summaries (positive control)" "$(grep -rliE "$LEAK" --include=summary.json "$T/runs" | wc -l | tr -d ' ')" "6"
 check "the grader holds four reports and four diffs" "$(find "$OUT/blind" -type f 2> /dev/null | wc -l | tr -d ' ')" "8"
 check "the grader directory holds the four items before the leak scan" "$(ls "$OUT/blind" | grep -cE '^[0-9a-f]{8}$')" "4"
@@ -109,6 +117,10 @@ check "a Unit: price inside a sentence survives" "$(cat "$OUT"/blind/*/report.md
 check "bypass marker and personal survive the new terms" "$(cat "$OUT"/blind/*/report.md | grep -c 'A bypass marker and personal notes survive')" "4"
 check "the new terms are redacted" "$(cat "$OUT"/blind/*/report.md | grep -c 'The \[term\], the \[term\] flag and a \[term\] came from \[term\], \[term\] and \[term\].')" "4"
 check "a redacted .claude path keeps its trailing punctuation" "$(cat "$OUT"/blind/*/report.md | grep -c 'See \[path\], then (see \[path\]) and \[path\].')" "4"
+check "a Unit: line with text after the id, a bolded one and a bare issue number are removed" "$(cat "$OUT"/blind/*/report.md | grep -cE 'abt-x|Unit: #596|dispatched to the lead')" "0"
+check "a bolded STATUS: line is removed" "$(cat "$OUT"/blind/*/report.md | grep -c 'STATUS')" "0"
+check "a bare Unit: line does not take the next line with it, both survive" "$(cat "$OUT"/blind/*/report.md | grep -cxE 'Unit:|abt-keep next line')" "8"
+check "paths with a tilde or an underscore are redacted whole and keep the trailing dot" "$(cat "$OUT"/blind/*/report.md | grep -c 'Also \[path\] and \[path\]\.')" "4"
 check "the report keeps neutral text" "$(cat "$OUT"/blind/*/report.md | grep -c 'All finished.')" "4"
 check "the sealed map sits outside blind/" "$(test -f "$OUT/sealed-map.json" && echo yes)" "yes"
 check "the map names two runs per arm" "$(python3 -I -c 'import json,sys;m=json.load(open(sys.argv[1])).values();print(sorted(v["arm"] for v in m))' "$OUT/sealed-map.json")" "['A', 'A', 'B', 'B']"
