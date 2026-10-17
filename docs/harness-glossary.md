@@ -3476,3 +3476,6 @@ _Avoid_: harness (alone) for the checkout.
 
 **canary probe**:
 (unit abt-u13b, 2026-10-17) — `run-matrix.sh --probe-canary`: plants a file with a random token (`eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt`) and one in the fixtures (`eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch`), runs both arms under `$RUNS/probe-canary/{A,B}` with a prompt that holds no token, and checks that neither arm's output contains it. Prints `probe: canary A=<not-found|FOUND|not-run> B=<...>`; exit 0 clean, 1 on FOUND or not-run, 75 on a usage limit. The planted files are removed on every catchable exit by the EXIT trap. Proves the harness isolation hides the checks and fixtures from both arms.
+
+**mixed provenance**:
+(unit abt-u14b, OD-14, 2026-10-17) — an eval whose result rows, within one arm, disagree on any `PROVENANCE` field (`harness_commit`, `plugin_commit`, `prompt_sha`, `fixture_sha`; a null counts as one value). `summarize_eval` in `eval/abtest/score.py` then reports the outcome INCONCLUSIVE with rule None and reason `mixed provenance: <fields>`, fields in `PROVENANCE` order. The comparison is per arm, so the two arms may differ from each other (arm A has no `plugin_commit`). Related: `stale provenance` is the run-time check that triggers a rerun; this one is the scoring-time check on rows already written.
