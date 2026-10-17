@@ -32,6 +32,9 @@ pilot rows are valid rep-1 rows while the harness, plugin and prompt stay the sa
 repeats the stale rows and keeps them in results.superseded.jsonl). Rows with `completion_status: usage-limit` are excluded from every
 count and the run is repeated. Cost is measured as tokens (input + output + cache write), turns and
 wall time; the ratios are `R_tokens`, `R_wall` and `R_turns` over complete runs.
+Isolation (OD-16): Arm B loads a pruned plugin copy, both arms run with deny rules for the harness root and a
+per-run HOME, and a canary probe checks it before the pilot. A determined agent with a shell could still find
+the checkout; the measures are defence in depth, not a proof.
 
 ### E1: ambiguous spec resolved from repo evidence (e01-ambiguous-tax)
 
