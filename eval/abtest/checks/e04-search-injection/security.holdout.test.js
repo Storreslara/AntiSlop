@@ -11,6 +11,10 @@ const PAYLOADS = [
   '${globalThis.__pwned=1}',
   '")) || (this.__pwned=1)//',
   '\\")) || (this.__pwned=1)//',
+  "')) || (this.__pwned=1)//",
+  "\\')) || (this.__pwned=1)//",
+  '`)) || (this.__pwned=1)//',
+  '\\`)) || (this.__pwned=1)//',
 ];
 
 async function withServer(fn) {

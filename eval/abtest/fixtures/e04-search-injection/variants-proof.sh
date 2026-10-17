@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shows how the E4 required checks judge twelve search routes: injectable and safe,
+# Shows how the E4 required checks judge sixteen search routes: injectable and safe,
 # prompt-literal and defective, and safe routes that merely mention eval. Each route is
 # inserted into the baseline server.js and scored by check.sh; one line per route.
 set -euo pipefail
@@ -22,6 +22,42 @@ EOS
 }
 route() {
   case "$1" in
+    single-quote-raw-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query("note.owner === '" + user + "' && note.title.toLowerCase().includes('" + q + "')") });
+      }
+EOS
+      ;;
+    single-quote-escape-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace(/'/g, "\\'");
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query("note.owner === '" + user + "' && note.title.toLowerCase().includes('" + q + "')") });
+      }
+EOS
+      ;;
+    backtick-raw-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query("note.owner === `" + user + "` && note.title.toLowerCase().includes(`" + q + "`)") });
+      }
+EOS
+      ;;
+    backtick-escape-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace(/[`$]/g, (c) => '\\' + c);
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query("note.owner === `" + user + "` && note.title.toLowerCase().includes(`" + q + "`)") });
+      }
+EOS
+      ;;
     escape-lowercase-injectable)
       printf '%s\n' "$OPEN"
       cat <<'EOS'
@@ -88,7 +124,7 @@ EOS
       ;;
   esac
 }
-for v in escape-lowercase-injectable json-stringify-safe safe-with-comment-naming-eval safe-with-retrieval-call safe-with-new-Function safe-with-bare-Function-call safe-with-eval-call empty-q-lists-own-notes empty-q-lists-all-owners default-page-limit case-sensitive-secure rejects-odd-characters; do
+for v in escape-lowercase-injectable single-quote-raw-injectable single-quote-escape-injectable backtick-raw-injectable backtick-escape-injectable json-stringify-safe safe-with-comment-naming-eval safe-with-retrieval-call safe-with-new-Function safe-with-bare-Function-call safe-with-eval-call empty-q-lists-own-notes empty-q-lists-all-owners default-page-limit case-sensitive-secure rejects-odd-characters; do
   git -C "$T/w" reset -q --hard "$base"
   route "$v" > "$T/snippet"
   python3 -I - "$T/w/src/server.js" "$T/snippet" <<'PYEOF'
