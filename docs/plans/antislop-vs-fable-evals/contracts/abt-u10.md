@@ -19,7 +19,7 @@ GitHub issues: `gh issue view 578 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/checks/e04-search-injection/functional.holdout.test.js` (anchor: new file)
 
 ## Ordered edits
-1. command: `test ! -e eval/abtest/fixtures/e04-search-injection && test ! -e eval/abtest/checks/e04-search-injection && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/templates/notes-svc/src/server.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test ! -e eval/abtest/fixtures/e04-search-injection && test ! -e eval/abtest/checks/e04-search-injection && test -f eval/abtest/verify-checks.sh && test -f eval/abtest/templates/notes-svc/src/server.js && test "$(grep -cF 'Object.hasOwn(USERS' eval/abtest/templates/notes-svc/src/auth.js)" = 1 && grep -q abt_leak_guard eval/abtest/fixtures/lib.sh && grep -q "never shows another owner" eval/abtest/templates/notes-svc/test/server.test.js && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/fixtures/e04-search-injection/build.sh`
    anchor: new file
@@ -398,7 +398,7 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 11 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
-depends-on: abt-u04 (verifier), abt-u05b (the T2 baseline fixes) and abt-u06 (template T2) must have landed; edit 1 checks for verify-checks.sh, the template and the abt-u05b auth fix and STOPs otherwise. Why abt-u05b matters here: without it the baseline src/auth.js authenticates the prototype keys, so an arm could fix it and fail auth-file-untouched for a reason unrelated to what E4 measures.
+depends-on: abt-u05c (the T2 leak guard) and abt-u06b (T2 hardening: the T2 suite is now 16 tests), abt-u04 (verifier), abt-u05b (the T2 baseline fixes) and abt-u06 (template T2) must have landed; edit 1 checks for verify-checks.sh, the template and the abt-u05b auth fix and STOPs otherwise. Why abt-u05b matters here: without it the baseline src/auth.js authenticates the prototype keys, so an arm could fix it and fail auth-file-untouched for a reason unrelated to what E4 measures.
 no-real-claude: no command in this contract runs the real claude CLI.
 commit-message: feat(abt-u10): E4 search-injection fixture, prompt, checks and reference (#578)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
