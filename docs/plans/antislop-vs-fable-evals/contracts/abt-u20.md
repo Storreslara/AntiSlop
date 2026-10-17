@@ -49,7 +49,7 @@ executor: OPERATOR (or the orchestrator on the operator's word). Never dispatch 
 usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset and run the same command again; do not edit results.jsonl by hand.
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
 repeat-rule: edit 2 exits 75 on a usage limit. Wait for the reset and run the same command again until it exits 0. An exit of 76 means one run id was classified usage-limit three times: read its stream.jsonl under eval/abtest/.runs/ before running again; do not just raise ABT_MAX_LIMIT_HITS.
-top-up: an INCONCLUSIVE eval is topped up to N=10 later with run-matrix.sh --reps 10 --evals <ids>; that is outside this unit.
+top-up: an INCONCLUSIVE eval is topped up to N=10 later with run-matrix.sh --reps 10 --evals <ids>; that is outside this unit. Until both arms of an eval have 10 usable rows (the 6 to 9 rows in between, or unequal counts) the scorer keeps it INCONCLUSIVE with the reason in the report (OD-12).
 no-commit: nothing in this unit is committed (results.jsonl is git-ignored); commit-message below is the subject to use only if you choose to record the pass in a note.
 commit-message: docs(abt-u20): full pass complete (#590)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>

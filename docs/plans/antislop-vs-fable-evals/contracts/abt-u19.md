@@ -102,6 +102,7 @@ usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset a
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
 stop-rule: if criteria 2 to 6 fail, the isolation or flag assumption is wrong (a root_claude_md=loaded line means the CLAUDE.md of this repository reached Arm A, a mention-case failure means a reply that mentions rate limits was mistaken for a limit hit or never exercised): STOP and report the probe-detail lines. If criterion 7 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 13 passes only after edit 9 (edit 6 pins any real limit-hit stream under tests/fixtures/abtest/streams/ as pinned-limit-<run id>.jsonl and commits it; give such a capture its own row in tests/abtest-stream.test.sh through a new unit, because the wording list may need widening).
 cost: about 2 probe runs plus 10 pilot runs; the pilot rows are reused as rep 1 by abt-u20, so do not delete results.jsonl afterwards.
+pilot-report: edit 7 prints every eval as INCONCLUSIVE (short N: A=1 B=1) by design (OD-12: fewer than 5 usable rows per arm never gives a verdict, so a pilot cannot be mistaken for a result); the pilot gate reads rows and statuses, not verdicts. The command still exits 0.
 proof-lines: criteria 7, 8 and 9 are read-only guards; their proof lines say what a failing pilot prints.
 commit-message: docs(abt-u19): pilot findings (#589)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>

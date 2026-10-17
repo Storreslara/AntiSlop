@@ -106,9 +106,13 @@ wall time; the ratios are `R_tokens`, `R_wall` and `R_turns` over complete runs.
 
 ## Verdict rules (copied from the design, with the operator's token amendment)
 
-- Per eval: `WIN_B` if `k_B - k_A >= 2` at N=5 (Fisher exact p < 0.10 at N=10), `WIN_A` symmetrically,
-  else `TIE`; `INCONCLUSIVE` for a 1-run gap or two or more `turn-cap`, `timeout` or `error` rows in
-  either arm.
+- Per eval: an outcome exists only at the pre-registered N (OD-12). With 5 usable (non-usage-limit) rows
+  in each arm, `WIN_B` if `k_B - k_A >= 2`, `WIN_A` symmetrically, else `TIE`; with 10 or more usable
+  rows in each arm (equal in both), `WIN_B` if the Fisher exact two-sided p < 0.10, `WIN_A` symmetrically,
+  else `TIE`. `INCONCLUSIVE` for a 1-run gap at N=5, two or more `turn-cap`, `timeout` or `error` rows in
+  either arm, fewer than 5 rows in an arm (the N=1 pilot never produces a verdict), unequal counts, or
+  6 to 9 rows (a top-up in progress). The Fisher p is reported for every eval; a 2-run-gap win at N=5
+  has p >= 0.10 and is reported as directional.
 - AntiSlop superior: `WIN_B`, or a `TIE` with a quality edge (strictly lower median `defects_escaped`
   and `out_of_scope_lines`) and `R_tokens <= 2`. AntiSlop not superior: `WIN_A`, a `TIE` with no
   quality edge, a `TIE` with `R_tokens > 3`, or any `stalled-human` row in Arm B on these evals.
