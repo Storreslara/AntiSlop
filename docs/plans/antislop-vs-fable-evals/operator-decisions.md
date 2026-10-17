@@ -69,3 +69,26 @@ from the operator's dispatch message; the doc's substance is not edited.
   names) stays required. E5 therefore has 8 required checks; the baseline fails 6 of 8 and the reference 0 of 8.
   The runner reads each eval's required count from `verify-checks.sh` and passes it to `make-row.py`
   (`--expected-required`), so no count is hard-coded.
+- OD-12 (2026-10-17, scorer N rule, directional label and Fisher errata; from the abt-u14 review FAIL of 2026-10-17T02:00:10Z)
+  (a) A per-eval outcome exists only at the pre-registered N. 5 usable rows in each arm (usable = not
+  `usage-limit`, and of the policy being reported) decide by the 2-run gap of the doc's section 4.4 (`k_B - k_A >= 2` is
+  WIN_B, `k_A - k_B >= 2` is WIN_A, a 1-run gap is INCONCLUSIVE). 10 or more usable rows in each arm, equal in both,
+  decide by the Fisher two-sided exact p < 0.10 (a 1-run gap is then a Fisher TIE: the top-up is what cures
+  INCONCLUSIVE, so it must not trap an eval at N=10). Fewer than 5 rows in either arm (the N=1 pilot, a run
+  stopped by a usage limit), unequal counts, or 6 to 9 rows per arm (a top-up in progress) are INCONCLUSIVE, with the
+  reason in the report ("short N: A=3 B=5", "unequal N: ...", "top-up in progress: ..."). Two or more
+  `turn-cap`, `timeout` or `error` rows in an arm stay INCONCLUSIVE at every N. A pilot never produces a verdict:
+  pilot rows are ordinary rep-1 rows of the full matrix and carry no marker, so N < 5 is what stops them.
+  (b) The doc's section 4.4 verdict semantics are unchanged: a 2-run gap at N=5 is WIN_B as pre-registered. The
+  scorer always computes and prints the Fisher two-sided exact p for every eval, even below N=10 (JSON `fisher_p`,
+  a markdown column), and the markdown marks a gap-rule WIN_B whose p is not below 0.10 as
+  `superior (directional, p=0.xx)`; the JSON verdict stays `superior` and gains `directional: true`. `not-superior` is
+  unchanged.
+  (c) Errata to the doc's section 2.5: 5/5 vs 1/5 is p = 1/21 = 0.048 two-sided (not 0.024); a 3-run gap at 10 vs 10
+  is p between 0.21 and 0.37 (not about 0.07); a 4-run gap is p between 0.087 and 0.179 (not below 0.05); 2/10 vs 7/10
+  is p = 0.0698. The scorer's Fisher matches exact fractions on 20 tables, listed in `tests/abtest-score.test.sh`.
+  (d) The scorer fails closed: an empty results file, a file with no usable row, a policy that matches no row, a
+  duplicate run_id, a non-boolean `run_pass`, a `run_pass` true on a non-complete row, a malformed token or count
+  field, or `tokens_total` different from input + output + cache write (OD-5) stops it with a named error and a
+  non-zero exit. The report prints the `core_no_win_a` condition (no WIN_A on E2 and E4, OD-7) and the count of
+  rows dropped for another `model_policy`.
