@@ -17,17 +17,22 @@ import secrets
 import sys
 
 PERSONAS = r"orchestrator|spec[- ]master|task[- ]master|lead[- ]programmer|reviewer|scribe|explorer|milestone[- ]auditor|researcher|agent[- ]auditor"
+# A Unit: line is dropped only when its value looks like a unit id (letters, then a separator or a digit),
+# a STATUS: line only when its value is complete or incomplete; "Unit: percent" and "Price per Unit: $5" stay.
+UNIT_ID = r"(?:[A-Za-z]+[-._#][A-Za-z0-9._#-]*|[A-Za-z]+[0-9][A-Za-z0-9._#-]*)"
+STATUS_VALUE = r"(?:complete|incomplete\b.*)"
 REDACT = [
-    (re.compile(r"\.claude(?:/\S*)?"), "[path]"),
-    (re.compile(r"^.*\b(?:Unit|STATUS):.*$", re.MULTILINE), "[line removed]"),
+    (re.compile(r"\.claude(?:/[\w./-]*[\w/-])?"), "[path]"),
+    (re.compile(rf"^.*\b(?:Unit:\s*{UNIT_ID}|STATUS:\s*{STATUS_VALUE})\W*$", re.MULTILINE | re.IGNORECASE), "[line removed]"),
     (re.compile(rf"\b(?:{PERSONAS})[A-Za-z]*", re.IGNORECASE), "[agent]"),
+    (re.compile(r"\b(?:personas?|pending-review|pathfinder|roast-work|domain-modeling)\b|(?<![A-Za-z])\.?pass markers?\b", re.IGNORECASE), "[term]"),
     (re.compile(r"anti-?slop", re.IGNORECASE), "[tool]"),
     (re.compile(r"\b(?:Arm [AB]|arm-[ab])\b"), "[arm]"),
     (re.compile(r"\b(?:PASS|FAIL) (?=\S*[A-Za-z])\S*\d\S*"), "[marker]"),
     (re.compile(r"\((?:#\d+|[A-Za-z]{1,6}\d+)\)"), "(scope)"),
     (re.compile(r"\([A-Za-z0-9]+(?:-[A-Za-z0-9._#]+)+\)"), "(scope)"),
 ]
-DROP = (re.compile(r"\.(pass|fail)$"), re.compile(r"^\.claude/"), re.compile(r"^docs/plans/"))
+DROP = (re.compile(r"\.(pass|fail)$"), re.compile(r"(^|/)\.claude/"), re.compile(r"^docs/plans/"), re.compile(r"(^|/)docs/(wiki|adr)/"))
 
 
 def redact(text):

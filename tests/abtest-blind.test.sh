@@ -38,6 +38,14 @@ diff --git a/docs/plans/p.md b/docs/plans/p.md
 +plan text
 diff --git a/{MARK} b/{MARK}
 +PASS e01
+diff --git a/sub/.claude/nested.md b/sub/.claude/nested.md
++nested secret
+diff --git a/docs/wiki/w.md b/docs/wiki/w.md
++wiki secret
+diff --git a/docs/adr/0001-x.md b/docs/adr/0001-x.md
++adr secret
+diff --git a/CONTEXT.md b/CONTEXT.md
++glossary line
 """
 TEXT = "\n".join([
     "The reviewer approved it.",
@@ -52,6 +60,13 @@ TEXT = "\n".join([
     "AntiSlop shipped antislop:pathfinder to Arm B and arm-a.",
     "Marker " + MARK + " reads PASS abt-u15 2026-10-16T00:00:00Z.",
     "Describe the inscribed text with a (post-discount) price.",
+    "unit: abt-lower",
+    "Status: Complete",
+    "STATUS: incomplete - ran out of turns",
+    "The personas, the pending-review flag and a .pass marker came from pathfinder, roast-work and domain-modeling.",
+    "A bypass marker and personal notes survive; so does Price per Unit: $5.",
+    "- Unit: percent",
+    "See .claude/agents/x.md, then (see .claude/foo) and .claude.",
     "All finished.",
 ])
 rows = []
@@ -77,13 +92,23 @@ bash "$BLIND" "$T/rows.jsonl" "$OUT" > "$T/build.txt"; rc=$?
 check "build exits 0" "$rc" "0"
 check "one item per usable run of the eval" "$(ls "$OUT/blind" | wc -l | tr -d ' ')" "4"
 check "item ids are 8 hex characters" "$(ls "$OUT/blind" | grep -cE '^[0-9a-f]{8}$')" "4"
-LEAK='\b(reviewer|orchestrator|scribe|explorer|researcher|lead[- ]programmer|spec[- ]master|task[- ]master|milestone-auditor|agent-auditor)|\b(Unit|STATUS):|anti-?slop|Arm [AB]|arm-[ab]\b|\.claude|\bPASS [a-z]|\(e[0-9]{2}-|\(gh[0-9]+\)|\(#[0-9]+\)'
+LEAK='\b(reviewer|orchestrator|scribe|explorer|researcher|lead[- ]programmer|spec[- ]master|task[- ]master|milestone-auditor|agent-auditor)|\bUnit: *[A-Za-z]+[-._#0-9]|\bSTATUS: *(in)?complete|anti-?slop|Arm [AB]|arm-[ab]\b|\.claude|\bPASS [a-z]|\(e[0-9]{2}-|\(gh[0-9]+\)|\(#[0-9]+\)|\bpersonas?\b|pending-review|(^|[^A-Za-z])\.?pass markers?|pathfinder|roast-work|domain-modeling|^unit: abt-lower'
 check "the leak pattern sees the leaks in the unredacted summaries (positive control)" "$(grep -rliE "$LEAK" --include=summary.json "$T/runs" | wc -l | tr -d ' ')" "6"
 check "the grader holds four reports and four diffs" "$(find "$OUT/blind" -type f 2> /dev/null | wc -l | tr -d ' ')" "8"
-check "no arm identifier leaks into the grader files" "$(grep -rliE "$LEAK" "$OUT/blind" 2> /dev/null | wc -l | tr -d ' ')" "0"
+check "the grader directory holds the four items before the leak scan" "$(ls "$OUT/blind" | grep -cE '^[0-9a-f]{8}$')" "4"
+leaks="$(grep -rliE "$LEAK" "$OUT/blind")"; lrc=$?
+check "no arm identifier leaks into the grader files (grep found nothing and did not error)" "$lrc|$leaks" "1|"
 check "words that merely contain a persona name survive" "$(cat "$OUT"/blind/*/report.md | grep -c 'Describe the inscribed text')" "4"
 check "the diff keeps the ASSUMPTIONS.md section" "$(cat "$OUT"/blind/*/diff.patch | grep -c '^+- Tax follows CONTEXT.md.')" "4"
-check "the diff drops persona files, plans and markers" "$(cat "$OUT"/blind/*/diff.patch | grep -cE 'claude|docs/plans|PASS e01|secret persona')" "0"
+check "the diff drops persona files, plans and markers" "$(cat "$OUT"/blind/*/diff.patch | grep -cE 'claude|docs/plans|docs/wiki|docs/adr|PASS e01|secret persona|nested secret|wiki secret|adr secret')" "0"
+check "the diff keeps a CONTEXT.md change (E1 never hides the glossary file)" "$(cat "$OUT"/blind/*/diff.patch | grep -c '^+glossary line')" "4"
+check "a lowercase unit line and a mixed-case status line are removed" "$(cat "$OUT"/blind/*/report.md | grep -ciE 'abt-lower|Status: Complete')" "0"
+check "an incomplete status line is removed" "$(cat "$OUT"/blind/*/report.md | grep -c 'ran out of turns')" "0"
+check "a Unit: line with a plain-word value survives" "$(cat "$OUT"/blind/*/report.md | grep -c -- '^- Unit: percent')" "4"
+check "a Unit: price inside a sentence survives" "$(cat "$OUT"/blind/*/report.md | grep -c 'Price per Unit: \$5')" "4"
+check "bypass marker and personal survive the new terms" "$(cat "$OUT"/blind/*/report.md | grep -c 'A bypass marker and personal notes survive')" "4"
+check "the new terms are redacted" "$(cat "$OUT"/blind/*/report.md | grep -c 'The \[term\], the \[term\] flag and a \[term\] came from \[term\], \[term\] and \[term\].')" "4"
+check "a redacted .claude path keeps its trailing punctuation" "$(cat "$OUT"/blind/*/report.md | grep -c 'See \[path\], then (see \[path\]) and \[path\].')" "4"
 check "the report keeps neutral text" "$(cat "$OUT"/blind/*/report.md | grep -c 'All finished.')" "4"
 check "the sealed map sits outside blind/" "$(test -f "$OUT/sealed-map.json" && echo yes)" "yes"
 check "the map names two runs per arm" "$(python3 -I -c 'import json,sys;m=json.load(open(sys.argv[1])).values();print(sorted(v["arm"] for v in m))' "$OUT/sealed-map.json")" "['A', 'A', 'B', 'B']"
@@ -100,6 +125,17 @@ after_map="$(md5sum "$OUT/sealed-map.json" 2> /dev/null | cut -d' ' -f1)"
 check "a build into a directory that already holds a blind set is refused" "$([ "$rc3" -ne 0 ] && grep -q 'refusing' "$T/stale.err" && echo refused)" "refused"
 check "the refused build left the sealed map alone" "$([ -n "$before_map" ] && [ "$after_map" = "$before_map" ] && echo same)" "same"
 check "the refused build left the four items alone" "$(ls "$OUT/blind" | grep -cE '^[0-9a-f]{8}$')" "4"
+
+# The sealed map alone, or a non-empty blind/ alone, is enough to refuse a build.
+mkdir -p "$T/out4/blind"
+printf '{}\n' > "$T/out4/sealed-map.json"
+bash "$BLIND" "$T/rows.jsonl" "$T/out4" > /dev/null 2> "$T/map.err"; rc5=$?
+check "a directory holding only a sealed map is refused" "$([ "$rc5" -ne 0 ] && grep -q 'refusing' "$T/map.err" && echo refused)" "refused"
+check "the map-only refusal left blind/ empty and the map unchanged" "$(ls "$T/out4/blind" | wc -l | tr -d ' ')|$(cat "$T/out4/sealed-map.json")" "0|{}"
+mkdir -p "$T/out5/blind/aaaaaaaa"
+bash "$BLIND" "$T/rows.jsonl" "$T/out5" > /dev/null 2> "$T/dir.err"; rc6=$?
+check "a directory holding only a non-empty blind/ is refused" "$([ "$rc6" -ne 0 ] && grep -q 'refusing' "$T/dir.err" && echo refused)" "refused"
+check "the blind/-only refusal wrote no sealed map" "$(test -e "$T/out5/sealed-map.json" && echo wrote || echo none)" "none"
 
 # A build with no usable runs is an error, not an empty set.
 bash "$BLIND" "$T/rows.jsonl" "$T/out3" --eval e99-none > /dev/null 2> "$T/none.err"; rc4=$?
