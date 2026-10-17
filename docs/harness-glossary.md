@@ -3435,10 +3435,19 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 (unit abt-u11, 2026-10-17) — the ordered set of `reference.d/*.patch` files in an A/B fixture, applied in name order with `git apply`, one commit per patch, to build the reference solution history that the verifier replays. Distinct from `plant/`, which is the fixture's starting state and not the reference. Each patch must apply with plain `git apply` or `--recount`; a stale index line only breaks a `git apply -3` fallback.
 
 **ABT_SNAPSHOT**:
-(unit abt-u11b, 2026-10-17) — the environment variable holding the count of commits an A/B arm's dirty-tree snapshot adds ahead of the arm's own work. The E5 `commits-at-least-four` process check in `eval/abtest/checks/e05-tags-feature/check.sh` subtracts it from `git rev-list --count "$ABT_START..HEAD"` and defaults it to 0 when unset. The abt-u12 runner, not yet landed, will set it; until then nothing in the tree exports it. `eval/abtest/checks/lib.sh` lists it in its header env list (unit abt-u04c).
+(unit abt-u11b, 2026-10-17) — the environment variable holding the count of commits an A/B arm's dirty-tree snapshot adds ahead of the arm's own work. The E5 `commits-at-least-four` process check in `eval/abtest/checks/e05-tags-feature/check.sh` subtracts it from `git rev-list --count "$ABT_START..HEAD"` and defaults it to 0 when unset. The abt-u12 runner (`eval/abtest/run-matrix.sh`) sets it to 1 when it commits a dirty final tree as `abtest snapshot`, else 0. `eval/abtest/checks/lib.sh` lists it in its header env list (unit abt-u04c).
 
 **holdout check**:
 (unit abt-u11c, 2026-10-17) — a check whose test file is named `*.holdout.test.js` (or whose script is a holdout probe) and lives under `eval/abtest/checks/<eNN>/`, so the agent under test never sees it. `lib.sh` runs each check command in a throwaway copy of the final tree and exposes the holdout files through `ABT_CHECKS_DIR`; `verify-checks.sh` proves the check is non-vacuous. Neither arm script references the checks directory, so the holdout files are not copied into an arm's worktree.
 
 **arm**:
 (unit abt-u11c, 2026-10-17) — one of the two sides of an A/B run that is graded against the same fixture: `arm-a.sh` (the bare model) or `arm-b.sh` (AntiSlop as shipped, scaffolded into the fixture). Both arms build their `claude -p` command from the shared flags in `eval/abtest/arms/common.sh`, so the arms differ only in Arm B's plugin and agent flags. Results are tallied per arm after blinding.
+
+**arm session**:
+(unit abt-u12, 2026-10-17) — one `claude` run of an [[arm]] as `run-matrix.sh` starts it: the arm script runs through `run_guarded` (`setsid -w timeout -k`, so the arm owns its own process session), and when it ends or times out `reap_arm` sends `pkill -KILL -s` to that session, so no stray child outlives the run. The **outer guard** is the `timeout -k` wrapper around the arm script; exit 137 after 90 percent of the cap maps to the wall-clock cap (`lib/rc.sh`). A runner without `setsid` or `pkill` refuses to start (exit 2).
+
+**runner lock**:
+(unit abt-u12, 2026-10-17) — the directory `$ABT_WORK/.run-matrix.lock` that holds the owner pid of the one running `run-matrix.sh`. A second runner exits 2; a lock whose owner is dead is replaced; a lock with no owner file is refused. The INT/TERM/HUP/EXIT traps release it (exit 130/143/129). Known gap: two runners can race to replace the same stale lock.
+
+**fail-closed arm start**:
+(unit abt-u12, 2026-10-17) — the rule that a run whose arm never really started writes no row. An arm whose scaffold sha is missing stops the runner with exit 1 (internal error) and appends nothing, so resume repeats that run instead of treating a non-run as data. Distinct from the usage-limit stop (exit 75), which does keep a row.

@@ -3,6 +3,12 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-17 (abt-u12 post-PASS - sequential resumable A/B runner, #581)
+- Reviewer PASS abt-u12 at a84d7dfb (fix contract abt-u12-fix1). Runner `eval/abtest/run-matrix.sh`, `tests/abtest-runner.test.sh` (64 rows). Env added: `ABT_VERSION_TIMEOUT_S` (default 20, bounds the `--version` call); `ABT_MAX_LIMIT_HITS` must be a positive integer else exit 2. Exits: 1 internal error (no row), 75 usage-limit, 76 repeated limit hits, 129/130/143 on HUP/INT/TERM.
+- Glossary (harness): new **arm session**, **runner lock**, **fail-closed arm start**; **ABT_SNAPSHOT** no longer says the runner is unlanded.
+- Known unfixed advisories: `ABT_VERSION_TIMEOUT_S` unvalidated; stale-lock takeover race; `abs_path` keeps `..`; no test for exit 76.
+- #581 left open: its follow-up sub-scope (abt-u12b #597 guard rows, abt-u12c #606 resume semantics, abt-u13 probe modes) lands after this unit.
+
 ## 2026-10-15 (ptr-u1 post-PASS — quiet validate.sh, #543 closed)
 - Reviewer PASS ptr-u1 at 720b542. Issue #543 closed (completed) with the marker's first line cited. Commits referencing it: 720b542, 69e3d1c, ad20305. The `CHANGELOG.md` entry shipped with the unit.
 - `docs/harness-glossary.md`: new harness terms **quiet mode** (default output of `tests/validate.sh`; `--verbose` restores the stream), **keep override** (`VALIDATE_QUIET_KEEP` tested before DROP), **Full log** (the mktemp file, no EXIT trap). No existing synonym was found.
