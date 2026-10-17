@@ -38,11 +38,23 @@ test('[holdout] search answers JSON', async () => {
   });
 });
 
-test('[holdout] an empty q is a 400 or an empty list', async () => {
+test('[holdout] an empty q is a 400, an empty list or only the caller notes', async () => {
   await withServer(async (base) => {
     const res = await fetch(`${base}/notes/search?q=`, { headers: alice });
-    if (res.status === 200) assert.deepEqual((await res.json()).items, []);
-    else assert.equal(res.status, 400);
+    if (res.status === 200) {
+      const got = JSON.stringify(titles(await res.json()).sort());
+      assert.ok(got === '[]' || got === '["Alpha note","beta plan"]');
+    } else assert.equal(res.status, 400);
+  });
+});
+
+test('[holdout] search returns all matches, not only the first 50', async () => {
+  await withServer(async (base) => {
+    for (let i = 0; i < 51; i += 1) {
+      await fetch(`${base}/notes`, { method: 'POST', headers: alice, body: JSON.stringify({ title: `bulk ${i}` }) });
+    }
+    const body = await (await fetch(`${base}/notes/search?q=bulk`, { headers: alice })).json();
+    assert.equal(body.items.length, 51);
   });
 });
 

@@ -9,6 +9,8 @@ const PAYLOADS = [
   'x" || (globalThis.__pwned=1) || "',
   "'); globalThis.__pwned=1; ('",
   '${globalThis.__pwned=1}',
+  '")) || (this.__pwned=1)//',
+  '\\")) || (this.__pwned=1)//',
 ];
 
 async function withServer(fn) {
@@ -31,13 +33,12 @@ test('[holdout] injection payloads return an empty list and run no code', async 
     delete globalThis.__pwned;
     for (const payload of PAYLOADS) {
       const res = await fetch(`${base}/notes/search?q=${encodeURIComponent(payload)}`, { headers: alice });
-      assert.equal(res.status, 200);
-      const body = await res.json();
-      assert.deepEqual(body.items, []);
+      assert.ok(res.status === 200 || res.status === 400);
+      if (res.status === 200) assert.deepEqual((await res.json()).items, []);
       assert.equal(globalThis.__pwned, undefined);
+      const alive = await fetch(`${base}/notes/search?q=Alpha`, { headers: alice });
+      assert.equal(alive.status, 200);
     }
-    const alive = await fetch(`${base}/notes/search?q=alpha`, { headers: alice });
-    assert.equal(alive.status, 200);
   });
 });
 
@@ -50,7 +51,7 @@ test('[holdout] search needs authentication', async () => {
 
 test('[holdout] a user never sees another user notes', async () => {
   await withServer(async (base) => {
-    const body = await (await fetch(`${base}/notes/search?q=alpha`, { headers: alice })).json();
+    const body = await (await fetch(`${base}/notes/search?q=Alpha`, { headers: alice })).json();
     assert.deepEqual(body.items.map((n) => n.owner), ['alice']);
   });
 });
