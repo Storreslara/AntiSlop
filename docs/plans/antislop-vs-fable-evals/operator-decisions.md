@@ -121,8 +121,7 @@ from the operator's dispatch message; the doc's substance is not edited.
 - OD-16 (2026-10-17, harness isolation; binding, from the abt-u08 review)
   The arms must not be able to read the hidden checks, the reference solutions, the fixtures or the results during a
   run. (a) Arm B loads a pruned copy of the plugin made from the checkout's HEAD with `git archive` of an allow
-  list (`.claude-plugin`, `agents`, `bin`, `commands`, `hooks`, `skills`, `templates`, `adapters`, `package.json`),
-  never the checkout; the copy scaffolds exactly what the full checkout scaffolds. (b) Both arms run with
+  list (`.claude-plugin`, `agents`, `bin`, `commands`, `hooks`, `skills`, `templates`), never the checkout; the copy scaffolds exactly what the full checkout scaffolds. (b) Both arms run with
   `--disallowedTools` rules that deny Read, Edit and Bash commands naming the harness root and the results and runs
   directories (Read rules also govern Glob and Grep), with a per-run HOME outside the harness holding only a neutral
   git identity, and the arm scripts refuse a worktree, config dir or HOME inside the harness root (the runner puts
