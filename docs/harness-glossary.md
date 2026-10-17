@@ -3461,3 +3461,9 @@ _Avoid_: harness (alone) for the checkout.
 
 **per-run HOME**:
 (unit abt-u01b, 2026-10-17) — the throwaway `HOME` that `abtest_make_home` builds for one arm run (`ABTEST_HOME`), holding only a neutral `.gitconfig`; `abtest_run_claude` runs `claude` with `HOME` and `GIT_CONFIG_GLOBAL` pointing at it, plus deny flags built from `ABTEST_DENY_PATHS`, so the arm cannot read the operator's real home or git config.
+
+**stale provenance**:
+(unit abt-u12c, 2026-10-17) — a result row in `results.jsonl` whose `harness_commit`, `plugin_commit` (arm B; arm A has none) or `prompt_sha` differs from what `current_prov` reports for the run now. `done_run` returns 2 for it, so a resume repeats the run and `supersede_run` moves the row aside. Usage-limit rows are never stale and never count as done. Not the stale lock of `acquire_lock`, which is an abandoned `.run-matrix.lock` whose owner pid is dead.
+
+**superseded file**:
+(unit abt-u12c, 2026-10-17) — `results.superseded.jsonl` beside `ABT_RESULTS` (override with `ABT_SUPERSEDED`): the append-only file `supersede_run` moves stale-provenance rows into, so they are kept but no longer count. The scorer never reads it.
