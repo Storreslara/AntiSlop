@@ -3424,3 +3424,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **word delimiter**:
 (unit abt-u05f, 2026-10-17) — any non-alphanumeric character, or the start or end of a string, that bounds a word in the leak guard's word lists `ABT_LEAK_WORDS` and `ABT_LEAK_GIT_WORDS`. A listed word matches only as a whole word, so `anti/slop` and `anti -- slop` both match the `anti` and `slop` words. The regex accepts any run of delimiters between two words, but no test row yet pins a run of two or more.
+
+**payload grid**:
+(unit abt-u10, 2026-10-17) — the enumerated set of search-injection payloads that the E4 fixture's `security.holdout.test.js` builds and feeds to the injection check: a cross-product of axes (delimiter, backslash, copies, paren depth, code-run and keyword-free tails, reopen-paren form, paren-free forms, `${}` forms), 297 payloads at landing. A missed route family is closed by adding a new axis and a new `variants-proof.sh` line, never by claiming completeness. Distinct from a point-fix payload list, which covers only the payload a reviewer named.
+
+**bounded regression net**:
+(unit abt-u10, 2026-10-17) — the scope a check claims when it guards a known set of injection routes but makes no claim of completeness. The E4 search-injection check (`check.sh`, scored by `variants-proof.sh` over 48 route variants: 30 injectable must fail, 18 others must pass) is one. It is not a proof of security; new realistic routes need a separate audit before a full run.
