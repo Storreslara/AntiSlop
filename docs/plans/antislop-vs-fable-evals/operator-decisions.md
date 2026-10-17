@@ -110,3 +110,24 @@ from the operator's dispatch message; the doc's substance is not edited.
   Otherwise the run is repeated and the stale row is kept in `results.superseded.jsonl` (override
   `ABT_SUPERSEDED`), which the scorer never reads, so run ids stay unique in `results.jsonl`. A `usage-limit` row is
   never superseded. A fix after the pilot therefore costs a repeat of the stale rows, not a mixed verdict.
+- OD-15 (2026-10-17, E2 plan-text error found in the abt-u08 review, explorer-confirmed)
+  The design's statement that the E2 "per-line round2 plant creates trap 2" is wrong and is withdrawn.
+  `applyDiscountPercent` already rounds each discounted unit price to whole cents, so with or without the plant a
+  preview that scales the total gives 0.54 and 53.06 where the per-item version gives 0.57 and 53.07. The
+  discriminating E2 check is `rounding-sensitive-cart`; mutant `w8` passes all four checks and is a known
+  surviving mutant of E2's checks until a unit adds a cart with non-whole-cent unit prices, where per-item and
+  total rounding differ regardless of the whole-cent rounding. That cart is not sliced; adding it is an operator
+  decision, and the pre-registration lists w8 as a limit of E2 until then.
+- OD-16 (2026-10-17, harness isolation; binding, from the abt-u08 review)
+  The arms must not be able to read the hidden checks, the reference solutions, the fixtures or the results during a
+  run. (a) Arm B loads a pruned copy of the plugin made from the checkout's HEAD with `git archive` of an allow
+  list (`.claude-plugin`, `agents`, `bin`, `commands`, `hooks`, `skills`, `templates`, `adapters`, `package.json`),
+  never the checkout; the copy scaffolds exactly what the full checkout scaffolds. (b) Both arms run with
+  `--disallowedTools` rules that deny Read, Edit and Bash commands naming the harness root and the results and runs
+  directories (Read rules also govern Glob and Grep), with a per-run HOME outside the harness holding only a neutral
+  git identity, and the arm scripts refuse a worktree, config dir or HOME inside the harness root (the runner puts
+  the config dir under the work root). (c) A canary probe plants a random token in the checks and fixtures
+  directories of the checkout and asks each arm to find and print it; the probe fails if the token appears in
+  either stream, and the pilot gate requires it to pass. (d) Residual risk, stated in the README and the
+  pre-registration: a deny rule cannot stop a shell command that never names the path, and a determined agent with
+  a shell could still search the filesystem; the measures are defence in depth and the canary is a probe, not a proof.
