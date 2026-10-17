@@ -7,6 +7,8 @@
 #   --reps N    reps per arm per eval (default 5)
 #   --evals     comma list of eval ids (default: the five E1-E5 ids)
 #   --dry-run   print the plan (run / skip per run id) and exit; starts nothing
+#   --probe-isolation   run both arms once on a tiny task and print the isolation lines
+#   --probe-model uniform   same two runs, print the model line (give both flags to run once)
 # Order inside an eval: rep 1 is A then B, rep 2 is B then A, and so on.
 # Resume: a run id is done once a non-usage-limit row exists for it that carries the same harness commit,
 # plugin commit (arm B; an arm A row must carry none) and prompt hash as this checkout and config (OD-14).
@@ -58,6 +60,8 @@ POLICY="${ABTEST_POLICY:-uniform}"
 EVALS="e01-ambiguous-tax,e02-preview-mutation,e03-rename-query,e04-search-injection,e05-tags-feature"
 REPS=5
 DRY=0
+PROBE_ISO=0
+PROBE_MODEL=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -66,6 +70,8 @@ while [ $# -gt 0 ]; do
     --evals) EVALS="${2:?--evals needs a list}"; shift ;;
     --policy) POLICY="${2:?--policy needs a value}"; shift ;;
     --dry-run) DRY=1 ;;
+    --probe-isolation) PROBE_ISO=1 ;;
+    --probe-model) PROBE_MODEL="${2:?--probe-model needs a value}"; shift ;;
     *) echo "run-matrix: unknown argument $1" >&2; exit 2 ;;
   esac
   shift
@@ -353,6 +359,155 @@ ran=0
 skipped=0
 check_work_root "$WORK" || exit 2
 [ "$DRY" -eq 1 ] || acquire_lock
+# probe_arm ARM: one tiny run of the arm on the E1 fixture, built under ABT_WORK (outside this
+# checkout) and summarised under $RUNS/probe/ARM.
+probe_arm() {
+  local arm="$1" dir="$RUNS/probe/$1" wdir="$WORK/probe_$1" rc=0 outer_s w
+  rm -rf "$dir" "$wdir"
+  mkdir -p "$dir" "$wdir"
+  w="$wdir/w"
+  bash "${ABT_FIXTURES_DIR:-$HERE/fixtures}/e01-ambiguous-tax/build.sh" "$w" > /dev/null
+  if [ ! -d "$w/.git" ]; then
+    echo "run-matrix: the probe run directory is not a standalone clone" >&2
+    exit 1
+  fi
+  cat > "$dir/prompt.md" << 'EOS'
+Find where the function round2 is defined in this repository. Use a subagent if one is available.
+Reply with exactly three lines and change no file:
+1. the file path only
+2. graph-yes if your instructions mention Code Review Graph, otherwise graph-no
+3. the words rate limit 429
+EOS
+  : > "$dir/stream.jsonl"
+  : > "$dir/stderr.log"
+  outer_s=$(($(python3 -I -c 'import sys;print(int(float(sys.argv[1])*60))' "$TIMEOUT_MIN") + ${ABT_OUTER_GRACE_S:-120}))
+  if [ "$arm" = A ]; then
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-a.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" || rc=$?
+  else
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-b.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" || rc=$?
+  fi
+  python3 -I "$HERE/lib/stream.py" summarize "$dir/stream.jsonl" --exit-code "$rc" --stderr "$dir/stderr.log" > "$dir/summary.json" || internal "probe/$arm" summarize
+}
+
+# pf ARM KEY: one summary field of a probe run (a dict prints its sorted keys, comma-joined).
+pf() {
+  python3 -I -c 'import json,sys;v=json.load(open(sys.argv[1]))[sys.argv[2]];print(",".join(sorted(v)) if isinstance(v,dict) else v)' "$RUNS/probe/$1/summary.json" "$2"
+}
+
+# types ARM: the distinct record types of a probe stream, for comparing with the real CLI.
+types() {
+  python3 -I -c 'import json,sys
+seen=set()
+for l in open(sys.argv[1]):
+    try:
+        d=json.loads(l)
+    except ValueError:
+        continue
+    seen.add(str(d.get("type"))+(":"+str(d["subtype"]) if d.get("subtype") else ""))
+print(",".join(sorted(seen)))' "$RUNS/probe/$1/stream.jsonl"
+}
+
+# init_cwd ARM: the cwd the CLI reports in its system init record, or nothing.
+init_cwd() {
+  python3 -I -c 'import json,sys
+for l in open(sys.argv[1]):
+    try:
+        d=json.loads(l)
+    except ValueError:
+        continue
+    if d.get("type")=="system" and d.get("subtype")=="init":
+        print(d.get("cwd") or "")
+        break' "$RUNS/probe/$1/stream.jsonl"
+}
+
+if [ "$PROBE_ISO" -eq 1 ] || [ -n "$PROBE_MODEL" ]; then
+  if [ -n "$PROBE_MODEL" ] && [ "$PROBE_MODEL" != uniform ]; then
+    echo "run-matrix: --probe-model takes uniform" >&2
+    exit 2
+  fi
+  export ABTEST_POLICY=uniform
+  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"
+  export ABTEST_CONFIG_DIR
+  abtest_make_config_dir "$ABTEST_CONFIG_DIR"
+  probe_arm A
+  probe_arm B
+  # A real limit stops the probe (exit 75). A run that answered with the phrase "rate limit 429" was
+  # not stopped by a limit: classifying it usage-limit is a false positive and fails the probe.
+  for arm in A B; do
+    if [ "$(pf "$arm" completion_status)" = usage-limit ]; then
+      case "$(pf "$arm" result_text | tr '[:upper:]' '[:lower:]')" in
+        *"rate limit 429"*)
+          echo "probe: usage-limit false positive on arm $arm (it answered with the phrase, so no limit stopped it)"
+          exit 1
+          ;;
+      esac
+      echo "run-matrix: usage limit reached during the probe; wait for the limit to reset and run the same command again"
+      exit 75
+    fi
+  done
+  prc=0
+  ahook="$(pf A hook_events)"
+  bhook="$(pf B hook_events)"
+  bspawn="$(pf B subagent_spawns)"
+  aref="$(grep -cE 'agent_type[^,}]*(orchestrator|spec-master|task-master|lead-programmer|reviewer|scribe|explorer)' "$RUNS/probe/A/stream.jsonl" || true)"
+  if [ "$PROBE_ISO" -eq 1 ]; then
+    echo "probe: A hook_events=$ahook persona_refs=$aref B hook_events=$bhook subagent_spawns=$bspawn"
+    if [ "$ahook" != 0 ] || [ "$aref" != 0 ] || [ "$bhook" -lt 1 ] || [ "$bspawn" -lt 1 ]; then prc=1; fi
+    # Arm A must not see this checkout's CLAUDE.md: it answers graph-no, and its cwd is under ABT_WORK.
+    graph_a=no-answer
+    case "$(pf A result_text)" in
+      *graph-yes*) graph_a=loaded ;;
+      *graph-no*) graph_a=not-loaded ;;
+    esac
+    echo "probe: A root_claude_md=$graph_a"
+    [ "$graph_a" = not-loaded ] || prc=1
+    cwd_a="$(init_cwd A)"
+    echo "probe-detail: A cwd=${cwd_a:-unreported}"
+    case "$cwd_a" in
+      "" | "$WORK"/*) ;;
+      *) echo "probe: A cwd is outside the work root"; prc=1 ;;
+    esac
+    # The mention case: both arms answered complete although their reply says "rate limit 429".
+    mention=ok
+    for arm in A B; do
+      case "$(pf "$arm" result_text | tr '[:upper:]' '[:lower:]')" in
+        *"rate limit 429"*) ;;
+        *) mention=missing ;;
+      esac
+      [ "$(pf "$arm" completion_status)" = complete ] || mention=failed
+    done
+    echo "probe: mention-case $mention A=$(pf A completion_status) B=$(pf B completion_status)"
+    [ "$mention" = ok ] || prc=1
+  fi
+  if [ -n "$PROBE_MODEL" ]; then
+    ma="$(pf A model_usage)"
+    mb="$(pf B model_usage)"
+    echo "probe: A model=$ma B model=$mb"
+    case "$ma" in *fable*) ;; *) prc=1 ;; esac
+    case "$mb" in *fable*) ;; *) prc=1 ;; esac
+  fi
+  echo "probe-detail: A status=$(pf A completion_status) B status=$(pf B completion_status)"
+  if grep -qiE "unknown option|max-turns" "$RUNS/probe/A/stderr.log" "$RUNS/probe/B/stderr.log"; then
+    echo "probe-detail: max-turns flag accepted=no (see stderr.log under $RUNS/probe)"
+  else
+    echo "probe-detail: max-turns flag accepted=yes"
+  fi
+  echo "probe-detail: B session_start_events=$(pf B session_start_events) (a hook counted twice here may mean the plugin and the scaffolded settings both registered it; see hook-names.txt)"
+  python3 -I -c 'import collections,json,sys
+c=collections.Counter()
+for l in open(sys.argv[1]):
+    try:
+        d=json.loads(l)
+    except ValueError:
+        continue
+    if str(d.get("type","")).startswith("hook") or str(d.get("subtype","")).startswith("hook"):
+        c[str(d.get("hook_name") or d.get("hookName") or d.get("hook_event") or "?")+" "+str(d.get("subtype") or d.get("type"))]+=1
+for k,v in sorted(c.items()):
+    print(v,k)' "$RUNS/probe/B/stream.jsonl" > "$RUNS/probe/B/hook-names.txt"
+  echo "probe-detail: A record types: $(types A)"
+  echo "probe-detail: B record types: $(types B)"
+  exit "$prc"
+fi
 if [ "$DRY" -eq 0 ]; then
   mkdir -p "$RUNS" "$WORK"
   [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"
