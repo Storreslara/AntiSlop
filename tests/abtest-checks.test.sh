@@ -267,6 +267,46 @@ check "presence: with the task prompt unreachable the check fails closed" "$(E1C
 mkdir -p "$T/e1/tasks" && cp "$REPO_ROOT/eval/abtest/tasks/e01-ambiguous-tax.prompt.md" "$T/e1/tasks/"
 check "presence: the same copy passes once the prompt is reachable (control)" "$(E1CKSH="$T/e1/ckroot/e01-ambiguous-tax/check.sh" e1_pass assumptions-file-present)" "True"
 
+# --- leak guard (abt-u05c): fixtures/lib.sh abt_leak_guard scans the built baseline tree ---
+lg() { ( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_leak_guard "$1" ) 2>&1; echo "rc=$?"; }
+lgcase() {
+  local name="$1" dir="$2" rc="$3" text="$4" out
+  out="$(lg "$dir")"
+  if [ -z "$text" ]; then
+    [ "$out" = "rc=$rc" ] && ok "$name" || bad "$name (got '$out')"
+  else
+    [[ "$out" == *"$text"* && "$out" == *"rc=$rc" ]] && ok "$name" || bad "$name (got '$out')"
+  fi
+}
+lgmk() { mkdir -p "$T/lg/$1/$(dirname "$2")"; printf '%s\n' "$3" > "$T/lg/$1/$2"; }
+lgmk clean package.json '{"name":"x","description":"Zero-dependency notes service."}'
+lgmk clean README.md 'We evaluate options. Retrieval, medieval and copilot are fine. See CLAUDE.md for conventions.'
+lgmk clean CLAUDE.md 'Run npm test. CLAUDE.md is this file.'
+lgmk clean docs/adr/0001-x.md 'An in-memory store.'
+lgcase "leak guard: a clean tree passes (positive control)" "$T/lg/clean" 0 ""
+for spec in "package.json|{\"description\":\"for the antislop comparison suite\"}|'antislop'" "README.md|the eval harness|'eval'" "CONTEXT.md|a pilot run|'pilot'" \
+            "docs/adr/0002-y.md|the persona files|'persona'" "CLAUDE.md|Ask Claude for help|'Claude'" "README.md|a holdout test|'holdout'" \
+            "CONTEXT.md|the hidden check passes|'hidden check'" "docs/wiki/a/b.md|AntiSlop notes|'AntiSlop'"; do
+  IFS='|' read -r f c w <<< "$spec"
+  rm -rf "$T/lg/leak"; cp -r "$T/lg/clean" "$T/lg/leak"; lgmk leak "$f" "$c"
+  lgcase "leak guard: $f naming $w is refused" "$T/lg/leak" 1 "$f names the eval or the tool ($w)"
+done
+lgcase "leak guard: a missing directory is refused" "$T/lg/absent" 1 "is not a directory"
+rm -rf "$T/lg/real"; mkdir -p "$T/lg/real"; cp -r "$REPO_ROOT/eval/abtest/templates/notes-svc/." "$T/lg/real/"
+lgcase "leak guard: the T2 template passes (every named file and docs/ scanned)" "$T/lg/real" 0 ""
+check "the T2 package.json description is neutral" "$(grep -c '"description": "Zero-dependency notes service."' "$T/lg/real/package.json")" "1"
+sed -i 's|^  "description": .*$|  "description": "Zero-dependency notes service for the antislop comparison evals. Network-free on purpose.",|' "$T/lg/real/package.json"
+lgcase "leak guard: the old T2 description is refused (the real leak)" "$T/lg/real" 1 "package.json names the eval or the tool ('antislop')"
+rm -rf "$T/lg/mk"; mkdir -p "$T/lg/mk"; printf '{"description":"an eval harness"}\n' > "$T/lg/mk/package.json"
+out="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/mk" 2>&1 )"; rc=$?
+check "abt_fixture_baseline refuses a leaking tree" "$rc" "1"
+check "the refused baseline made no repository" "$(test -d "$T/lg/mk/.git" && echo made || echo none)" "none"
+rm -rf "$T/lg/ok"; mkdir -p "$T/lg/ok"; printf '{"description":"notes"}\n' > "$T/lg/ok/package.json"
+sha="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/ok" )"; rc=$?
+check "abt_fixture_baseline still commits a clean tree" "$rc|$(printf '%s' "$sha" | tail -n1 | grep -cE '^[0-9a-f]{40}$')" "0|1"
+sha="$(ABT_REPO_ROOT="$REPO_ROOT" bash "$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/build.sh" "$T/lg/e01" | tail -n1)"; rc=$?
+check "the E1 build, with its own guard, still builds under the lib guard" "$rc|$(printf '%s' "$sha" | grep -cE '^[0-9a-f]{40}$')" "0|1"
+
 echo "abtest-checks: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-checks checks passed."
 exit "$fail"

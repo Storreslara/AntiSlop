@@ -2,7 +2,7 @@
   "name": "notes-svc",
   "version": "1.0.0",
   "private": true,
-  "description": "Zero-dependency notes service for the antislop comparison evals. Network-free on purpose.",
+  "description": "Zero-dependency notes service.",
   "scripts": {
     "test": "node --test"
   },
