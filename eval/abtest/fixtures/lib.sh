@@ -39,29 +39,50 @@ _abt_leak_hist() {
   esac
 }
 
-# abt_leak_guard DEST: fail closed when the built baseline names the eval or the tool in the files an agent
-# reads first: package.json, README.md, CONTEXT.md, CLAUDE.md and everything under docs/. The literal file
-# name CLAUDE.md is allowed; the whole words antislop, eval, pilot, persona, claude and holdout, and the
-# phrase hidden check, are not (case-insensitive; evaluate or copilot are fine). Source and test files are
-# not scanned. Prints the file and the word on stderr and returns 1.
-abt_leak_guard() {
-  local dest="$1" f content hit
-  local -a files=()
-  [ -d "$dest" ] || { echo "build: $dest is not a directory; the leak guard cannot scan it" >&2; return 1; }
-  for f in package.json README.md CONTEXT.md CLAUDE.md; do
-    [ -f "$dest/$f" ] && files+=("$dest/$f")
-  done
-  if [ -d "$dest/docs" ]; then
-    while IFS= read -r f; do files+=("$f"); done < <(find "$dest/docs" -type f | sort)
-  fi
-  for f in ${files[@]+"${files[@]}"}; do
-    content="$(sed 's/CLAUDE\.md//g' "$f")" || { echo "build: cannot read $f for the leak guard" >&2; return 1; }
-    hit="$(printf '%s\n' "$content" | grep -oiE '\b(antislop|eval|pilot|persona|claude|holdout)\b|hidden check' | head -n1)"
-    if [ -n "$hit" ]; then
-      echo "build: $f names the eval or the tool ('$hit')" >&2
+# The words that must not reach a candidate in the files it reads first: matched case-insensitively as whole
+# words, plurals included. evaluate, copilot, personality and the like are fine.
+ABT_LEAK_WORDS='\b(anti[- ]?slop|abtest|evals?|pilots?|personas?|claude|holdouts?)\b|hidden checks?'
+
+# _abt_leak_scan DEST LISTFILE: list every file and symlink under DEST except .git, then scan package.json,
+# everything under docs/ (any case), every path with a dot-directory or dot-file component, and any file named
+# README, CONTEXT, CLAUDE or AGENTS (any case, at any depth, with or without an extension md, markdown, mdx,
+# txt or rst). Source and test files are not scanned. A symlink in scope is refused (links are never followed).
+# Every failing find, sed or grep fails the scan.
+_abt_leak_scan() {
+  local dest="$1" list="$2" f rel low content hit rc
+  find "$dest" -path "$dest/.git" -prune -o \( -type f -o -type l \) -print0 > "$list" \
+    || { echo "build: find failed under $dest; the leak guard cannot scan it" >&2; return 1; }
+  while IFS= read -r -d '' f; do
+    rel="${f#"$dest"/}"; low="${rel,,}"
+    case "/$low" in
+      /package.json | /docs | /docs/* | */.*) ;;
+      *) [[ "${low##*/}" =~ ^(readme|context|claude|agents)(\.(md|markdown|mdx|txt|rst))?$ ]] || continue ;;
+    esac
+    if [ -L "$f" ]; then
+      echo "build: $f is a symbolic link; the leak guard does not follow links" >&2
       return 1
     fi
-  done
+    content="$(sed 's/CLAUDE\.md//g' "$f")" || { echo "build: cannot read $f for the leak guard" >&2; return 1; }
+    hit="$(_abt_leak_hit "$ABT_LEAK_WORDS" "$content")"; rc=$?
+    case "$rc" in
+      0) echo "build: $f names the eval or the tool ('$hit')" >&2; return 1 ;;
+      1) ;;
+      *) echo "build: grep failed on $f; the leak guard cannot scan it" >&2; return 1 ;;
+    esac
+  done < "$list"
+  return 0
+}
+
+# abt_leak_guard DEST: fail closed when the built baseline names the eval or the tool where a candidate agent
+# would read it: the files _abt_leak_scan scans and, when DEST holds a git repository, its history
+# (_abt_leak_hist). Prints the file and the word on stderr and returns 1.
+abt_leak_guard() {
+  local dest="${1%/}" list rc
+  [ -d "$dest" ] || { echo "build: $dest is not a directory; the leak guard cannot scan it" >&2; return 1; }
+  list="$(mktemp)" || { echo "build: cannot create a temp file for the leak guard" >&2; return 1; }
+  _abt_leak_scan "$dest" "$list"; rc=$?
+  rm -f "$list"
+  [ "$rc" -eq 0 ] || return "$rc"
   if [ -e "$dest/.git" ]; then _abt_leak_hist "$dest" || return 1; fi
   return 0
 }

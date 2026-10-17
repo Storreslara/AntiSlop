@@ -293,7 +293,7 @@ for spec in "package.json|{\"description\":\"for the antislop comparison suite\"
 done
 lgcase "leak guard: a missing directory is refused" "$T/lg/absent" 1 "is not a directory"
 rm -rf "$T/lg/real"; mkdir -p "$T/lg/real"; cp -r "$REPO_ROOT/eval/abtest/templates/notes-svc/." "$T/lg/real/"
-lgcase "leak guard: the T2 template passes (every named file and docs/ scanned)" "$T/lg/real" 0 ""
+lgcase "leak guard: the real T2 template tree passes" "$T/lg/real" 0 ""
 check "the T2 package.json description is neutral" "$(grep -c '"description": "Zero-dependency notes service."' "$T/lg/real/package.json")" "1"
 sed -i 's|^  "description": .*$|  "description": "Zero-dependency notes service for the antislop comparison evals. Network-free on purpose.",|' "$T/lg/real/package.json"
 lgcase "leak guard: the old T2 description is refused (the real leak)" "$T/lg/real" 1 "package.json names the eval or the tool ('antislop')"
@@ -304,7 +304,8 @@ check "the refused baseline made no repository" "$(test -d "$T/lg/mk/.git" && ec
 rm -rf "$T/lg/ok"; mkdir -p "$T/lg/ok"; printf '{"description":"notes"}\n' > "$T/lg/ok/package.json"
 sha="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_baseline "$T/lg/ok" )"; rc=$?
 check "abt_fixture_baseline still commits a clean tree" "$rc|$(printf '%s' "$sha" | tail -n1 | grep -cE '^[0-9a-f]{40}$')" "0|1"
-sha="$(ABT_REPO_ROOT="$REPO_ROOT" bash "$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/build.sh" "$T/lg/e01" | tail -n1)"; rc=$?
+ABT_REPO_ROOT="$REPO_ROOT" bash "$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/build.sh" "$T/lg/e01" > "$T/lg/e01.out" 2> "$T/lg/e01.err"; rc=$?
+sha="$(tail -n1 "$T/lg/e01.out")"
 check "the E1 build, with its own guard, still builds under the lib guard" "$rc|$(printf '%s' "$sha" | grep -cE '^[0-9a-f]{40}$')" "0|1"
 # --- neutral baseline identity and git-history scan (abt-u05d) ---
 # A failing tool must fail the guard: each case puts a fake tool first on PATH that exits non-zero.
@@ -402,6 +403,81 @@ out="$( . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_fixture_env() { export G
 check "a baseline whose history leaks is refused" "$rc" "1"
 has "the history leak is named" "$out" "names the eval or the tool ('abtest')"
 check "the refused baseline left no repository" "$(test -e "$T/lg/leakid/.git" && echo made || echo none)" "none"
+# --- leak guard hardening (abt-u05e): plurals, spellings, file names, dot-directories, symlinks, tool failures ---
+lgleak() {
+  rm -rf "$T/lg/leak"; cp -r "$T/lg/clean" "$T/lg/leak"; lgmk leak "$2" "$3"
+  lgcase "leak guard: $1" "$T/lg/leak" 1 "$2 names the eval or the tool ('$4')"
+}
+lgleak "the plural evals in README.md is refused" README.md 'the evals run nightly' evals
+lgleak "the plural personas in CONTEXT.md is refused" CONTEXT.md 'three personas review' personas
+lgleak "the plural holdouts in docs is refused" docs/a.md 'two holdouts remain' holdouts
+lgleak "the plural pilots in README.md is refused" README.md 'a pilots list' pilots
+lgleak "the plural hidden checks in README.md is refused" README.md 'the hidden checks run' 'hidden checks'
+lgleak "Anti-Slop with a hyphen is refused" README.md 'About Anti-Slop notes' Anti-Slop
+lgleak "anti slop with a space is refused" README.md 'about anti slop notes' 'anti slop'
+lgleak "abtest in README.md is refused" README.md 'run the abtest now' abtest
+lgleak "a lower-case readme.md is scanned" readme.md 'the eval harness' eval
+lgleak "a mixed-case Readme.MD is scanned" Readme.MD 'the eval harness' eval
+lgleak "a README with no extension is scanned" README 'the eval harness' eval
+lgleak "agents.md is scanned" agents.md 'the eval harness' eval
+lgleak "AGENTS.md is scanned" AGENTS.md 'the eval harness' eval
+lgleak "a lower-case context.md is scanned" context.md 'the eval harness' eval
+lgleak "a lower-case claude.md is scanned" claude.md 'the eval harness' eval
+lgleak "a nested README.md is scanned" sub/dir/README.md 'the eval harness' eval
+lgleak "README.txt is scanned" README.txt 'the eval harness' eval
+lgleak "README.markdown is scanned" README.markdown 'the eval harness' eval
+lgleak "CONTEXT.mdx is scanned" CONTEXT.mdx 'the eval harness' eval
+lgleak "agents.rst is scanned" agents.rst 'the eval harness' eval
+lgleak "a Docs directory in another case is scanned" Docs/a.md 'the eval harness' eval
+lgleak "a text file under docs is scanned" docs/notes.txt 'the eval harness' eval
+lgleak "a file in .github is scanned" .github/workflows/ci.yml 'run claude here' claude
+lgleak "a file in .claude is scanned" .claude/settings.json '{"note":"eval"}' eval
+lgleak "a top-level dot file is scanned" .npmrc 'eval=true' eval
+lgleak "a file in a nested dot-directory is scanned" src/.cache/x.txt 'the pilot run' pilot
+rm -rf "$T/lg/leak"; cp -r "$T/lg/clean" "$T/lg/leak"; lgmk leak docs/a.md 'the eval harness'
+lgcase "leak guard: a destination with a trailing slash is scanned in full" "$T/lg/leak/" 1 "docs/a.md names the eval or the tool ('eval')"
+rm -rf "$T/lg/ctl"; cp -r "$T/lg/clean" "$T/lg/ctl"
+lgmk ctl src/context.js 'function evalAll() { return eval("1"); }'
+lgmk ctl src/notes.js '// a persona and a pilot, in source'
+lgmk ctl test/readme-notes.test.js 'eval persona holdout'
+lgmk ctl notes.md 'eval persona holdout, in a file the guard does not name'
+lgmk ctl README.extra 'eval'
+lgmk ctl docs/ok.md 'We evaluate options; personality, copilot, pilotage, claudette and anti-social slopes are fine.'
+lgcase "leak guard: source, test and unnamed files are not scanned, near words are fine (control)" "$T/lg/ctl" 0 ""
+rm -rf "$T/lg/sym"; cp -r "$T/lg/clean" "$T/lg/sym"; lgmk sym src/x.js 'eval'; ln -s ../src/x.js "$T/lg/sym/docs/link.md"
+lgcase "leak guard: a symlink under docs is refused" "$T/lg/sym" 1 "docs/link.md is a symbolic link"
+rm -rf "$T/lg/sym"; cp -r "$T/lg/clean" "$T/lg/sym"; ln -s missing.md "$T/lg/sym/docs/dangling.md"
+lgcase "leak guard: a dangling symlink under docs is refused" "$T/lg/sym" 1 "docs/dangling.md is a symbolic link"
+rm -rf "$T/lg/sym"; cp -r "$T/lg/clean" "$T/lg/sym"; lgmk sym src/x.js 'eval'; ln -s src/x.js "$T/lg/sym/README.txt"
+lgcase "leak guard: a symlink named README.txt is refused" "$T/lg/sym" 1 "README.txt is a symbolic link"
+rm -rf "$T/lg/sym"; cp -r "$T/lg/clean" "$T/lg/sym"; mkdir -p "$T/lg/sym/real"; ln -s real "$T/lg/sym/.claude"
+lgcase "leak guard: a symlinked dot-directory is refused" "$T/lg/sym" 1 ".claude is a symbolic link"
+rm -rf "$T/lg/sym"; cp -r "$T/lg/clean" "$T/lg/sym"; mkdir -p "$T/lg/sym/real"; printf 'x\n' > "$T/lg/sym/real/a.md"; rm -rf "$T/lg/sym/docs"; ln -s real "$T/lg/sym/docs"
+lgcase "leak guard: a symlinked docs directory is refused" "$T/lg/sym" 1 "docs is a symbolic link"
+rm -rf "$T/lg/sym"; cp -r "$T/lg/clean" "$T/lg/sym"; lgmk sym src/x.js 'x'; ln -s x.js "$T/lg/sym/src/link.js"
+lgcase "leak guard: a symlink outside the scanned files is fine (control)" "$T/lg/sym" 0 ""
+out="$(lgfake find 'exit 2' "$T/lg/clean")"
+has "leak guard: a failing find fails the guard" "$out" "find failed under"
+out="$(lgfake find 'printf "x\0"; exit 2' "$T/lg/clean")"
+has "leak guard: a find that fails after printing fails the guard" "$out" "find failed under"
+out="$(lgfake grep 'echo eval; exit 2' "$T/lg/clean")"
+has "leak guard: a failing grep fails the guard" "$out" "grep failed on"
+has "leak guard: a failing grep exits 1" "$out" "rc=1"
+out="$(lgfake sed 'exit 4' "$T/lg/clean")"
+has "leak guard: a failing sed fails the guard" "$out" "cannot read"
+out="$(lgfake mktemp 'exit 1' "$T/lg/clean")"
+has "leak guard: a failing mktemp fails the guard" "$out" "cannot create a temp file"
+lgrepo gd "initial import"
+printf 'eval\n' > "$T/lg/hist/.git/hooks/note"
+lgcase "leak guard: files inside .git are not scanned (control)" "$T/lg/hist" 0 ""
+# A failing fixture build must be seen as failed (the exit code is read from the build itself, not from a pipe).
+rm -rf "$T/lg/badroot"; mkdir -p "$T/lg/badroot/eval/abtest/fixtures" "$T/lg/badroot/eval/fixtures"
+cp "$REPO_ROOT/eval/abtest/fixtures/lib.sh" "$T/lg/badroot/eval/abtest/fixtures/lib.sh"
+cp -r "$REPO_ROOT/eval/fixtures/toy-lib-template" "$T/lg/badroot/eval/fixtures/toy-lib-template"
+mkdir -p "$T/lg/badroot/eval/fixtures/toy-lib-template/docs"; printf 'The eval harness.\n' > "$T/lg/badroot/eval/fixtures/toy-lib-template/docs/notes.md"
+ABT_REPO_ROOT="$T/lg/badroot" bash "$E1FX/build.sh" "$T/lg/badbuild" > "$T/lg/badbuild.out" 2> "$T/lg/badbuild.err"; brc=$?
+check "a failing E1 build exits non-zero" "$brc" "1"
+has "the failing build says why" "$(cat "$T/lg/badbuild.err")" "names the eval or the tool"
 
 # --- check timeout (abt-u06b): a hung check command is ended and recorded as failed ---
 cat > "$T/lib-timeout.sh" << 'EOS'
