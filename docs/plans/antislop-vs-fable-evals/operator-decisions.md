@@ -92,3 +92,21 @@ from the operator's dispatch message; the doc's substance is not edited.
   field, or `tokens_total` different from input + output + cache write (OD-5) stops it with a named error and a
   non-zero exit. The report prints the `core_no_win_a` condition (no WIN_A on E2 and E4, OD-7) and the count of
   rows dropped for another `model_policy`.
+- OD-13 (2026-10-17, stall override on an undecided outcome; clarification of OD-12(a); from the abt-u14 re-review)
+  The stall override of the verdict rules (any `stalled-human` row in Arm B makes the eval `not-superior`) applies
+  whatever the outcome, including an undecided one. A pilot (short N) or a 1-run gap with a stalled Arm B row
+  therefore reports verdict `not-superior` while the outcome stays `INCONCLUSIVE` with its reason ("short N: A=1
+  B=1"); without a stalled row the verdict is `inconclusive`. The outcome is never rewritten by the override.
+- OD-14 (2026-10-17, provenance; binding operator decision from the abt-u14 re-review)
+  Pilot rows are rep 1 of the full matrix and a resume skips run ids already done, so a harness, plugin or prompt
+  fix after the pilot would mix pre-fix rep 1 with post-fix reps 2 to 5.
+  (a) Scorer: for each (eval, arm, policy) group of usable rows, if the rows do not share one value of each of
+  `harness_commit`, `plugin_commit`, `prompt_sha` and `fixture_commit`, the eval outcome is `INCONCLUSIVE` with the
+  reason `mixed provenance: <fields>` (JSON `outcome_reason`, shown in the markdown). `null` is one value, so an
+  Arm A group, which carries no plugin commit, is consistent when all its rows agree. `usage-limit` rows are exempt
+  (already excluded). The check is per arm.
+  (b) Runner: a run id counts as done only if an existing non-usage-limit row for it has the same `harness_commit`,
+  `plugin_commit` (Arm B; an Arm A row must carry none) and `prompt_sha` as the current checkout and config.
+  Otherwise the run is repeated and the stale row is kept in `results.superseded.jsonl` (override
+  `ABT_SUPERSEDED`), which the scorer never reads, so run ids stay unique in `results.jsonl`. A `usage-limit` row is
+  never superseded. A fix after the pilot therefore costs a repeat of the stale rows, not a mixed verdict.
