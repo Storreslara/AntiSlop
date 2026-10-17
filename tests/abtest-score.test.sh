@@ -23,7 +23,7 @@ tally() {
 
 # Build the synthetic rows. One eval per scenario; a row is
 # (arm, pass, status, defects, out_of_scope, tokens, wall, turns).
-python3 -I - "$T/rows.jsonl" << 'PYEOF'
+python3 -I - "$T/rows.jsonl" "$T/rows2.jsonl" << 'PYEOF'
 import json, sys
 
 def row(ev, arm, rep, passed, status="complete", defects=0, oos=0, tokens=100, wall=1000, turns=5):
@@ -99,9 +99,19 @@ sadd(rows, "x-gap2", "PPfff", "PPPPf")
 sadd(rows, "x-wina-gap2", "PPPPf", "PPfff")
 # Fisher at N=10: a 1-run gap (5/10 vs 6/10) is a TIE, p=1, not INCONCLUSIVE.
 sadd(rows, "x-fisher-gap1", "PPPPPfffff", "PPPPPPffff")
+# Policy filter: uniform decides WIN_B; the shipped rows (6 + 5 = 11, one usage-limit) would be WIN_A.
+sadd(rows, "x-policy", "fffff", "PPPPf")
+sadd(rows, "x-policy", "PPPPfu", "fffff", policy="shipped")
+# Second file: the core condition (no WIN_A on E2 and E4); E2 is WIN_A here.
+rows2 = []
+sadd(rows2, "e02-preview-mutation", "PPPPf", "Pffff")
+sadd(rows2, "e04-search-injection", "PPfff", "PPfff")
 # end of the N-rule scenarios
 with open(sys.argv[1], "w") as f:
     for r in rows:
+        f.write(json.dumps(r) + "\n")
+with open(sys.argv[2], "w") as f:
+    for r in rows2:
         f.write(json.dumps(r) + "\n")
 PYEOF
 
@@ -111,6 +121,10 @@ check "the synthetic rows validate" "$(tail -n1 "$T/v.txt" | cut -d: -f1)" "rows
 python3 "$SCORE" "$T/rows.jsonl" --out-json "$T/r.json" --out-md "$T/r.md" > /dev/null 2> "$T/score.err"
 check "the scorer exits 0 on valid rows" "$?" "0"
 check "the scorer wrote the JSON report" "$(test -s "$T/r.json" && echo yes || echo no)" "yes"
+python3 "$SCORE" "$T/rows.jsonl" --policy shipped --out-json "$T/s.json" > /dev/null 2>&1
+check "the scorer exits 0 for the shipped policy" "$?" "0"
+python3 "$SCORE" "$T/rows2.jsonl" --out-json "$T/c.json" --out-md "$T/c.md" > /dev/null 2>&1
+check "the scorer exits 0 on the core-condition rows" "$?" "0"
 rep() { python3 -I -c 'import json,sys;d=json.load(open(sys.argv[1]));print(eval(sys.argv[2]))' "$T/r.json" "$1"; }
 
 check "a 3-run gap for B is WIN_B and superior" "$(rep 'd["evals"]["x-winb"]["outcome"], d["evals"]["x-winb"]["verdict"]')" "('WIN_B', 'superior')"
@@ -128,7 +142,7 @@ check "N=10 uses Fisher: 2/10 vs 7/10 is WIN_B" "$(rep 'd["evals"]["x-fisher-win
 check "N=10 uses Fisher: 4/10 vs 6/10 is a TIE" "$(rep 'd["evals"]["x-fisher-tie"]["outcome"]')" "TIE"
 check "a tied cost eval is labelled measured overhead" "$(rep 'd["evals"]["e05-tags-feature"]["label"], d["evals"]["e05-tags-feature"]["verdict"]')" "('measured-overhead', 'not-superior')"
 check "the aggregate is not evaluated without all ten evals" "$(rep 'd["aggregate"]["verdict"]')" "not-evaluated"
-check "the markdown has a row per eval" "$(grep -c '^| x-' "$T/r.md")" "24"
+check "the markdown has a row per eval" "$(grep -c '^| x-' "$T/r.md")" "25"
 check "the markdown states the cost basis" "$(grep -c 'dollar cost is not used' "$T/r.md")" "1"
 # Verdict checks, group 1. Each want is a hand-computed value; the arithmetic is in the comment above it.
 python3 -I - "$T" << 'PYEOF' > "$T/c.txt" 2>&1
@@ -194,6 +208,85 @@ for name, frag in (
 PYEOF
 tally "$T/c.txt" "$?" "the verdict checker"
 # end of the N-rule and gap checks
+# Verdict checks, group 1b: the policy filter, the core condition and the dropped-row count.
+python3 -I - "$T" << 'PYEOF' > "$T/c1b.txt" 2>&1
+import json, sys
+T = sys.argv[1]
+d = json.load(open(T + "/r.json"))
+md = open(T + "/r.md").read().splitlines()
+V = d["evals"]
+
+def chk(name, ev, expr, want):
+    got = eval(expr, {"v": V[ev], "d": d})
+    print(("ok   " + name) if got == want else f"FAIL {name} (want {want!r}, got {got!r})")
+
+# Policy filter: uniform decides; the 11 shipped rows are dropped and counted; the usage-limit tally is the uniform one (1 in x-n-3v5 + 3 in x-limit).
+chk("the policy filter keeps uniform rows only", "x-policy", '(v["outcome"], v["n_A"], v["n_B"])', ("WIN_B", 5, 5))
+chk("rows of another policy are counted as dropped", "x-policy", 'd["rows_dropped_other_policy"]', 11)
+chk("the usage-limit tally follows the policy", "x-policy", 'd["usage_limit_rows_excluded"]', 4)
+chk("the aggregate is not evaluated without all ten evals", "x-policy", 'd["aggregate"]["verdict"]', "not-evaluated")
+chk("the core condition is not evaluated without E2 and E4", "x-policy", 'd["aggregate"]["core_no_win_a_e2_e4"]', None)
+text = "\n".join(md)
+for name, frag in (
+    ("the markdown prints the dropped-policy count", "Rows dropped for another model_policy: 11."),
+    ("the markdown prints the core condition as not evaluated", "core_no_win_a (no WIN_A on E2 and E4): not evaluated (E2 or E4 absent)."),
+):
+    print(("ok   " + name) if text.count(frag) == 1 else f"FAIL {name} (count {text.count(frag)})")
+# Shipped policy report: the shipped rows only, WIN_A (4/5 vs 0/5), and the one shipped usage-limit row counted.
+s = json.load(open(T + "/s.json"))
+got = (list(s["evals"]), s["evals"]["x-policy"]["outcome"], s["usage_limit_rows_excluded"])
+print("ok   --policy shipped sees the shipped rows only" if got == (["x-policy"], "WIN_A", 1) else f"FAIL --policy shipped sees the shipped rows only (got {got!r})")
+# Core condition: E2 is WIN_A (4/5 vs 1/5), E4 a tie -> false.
+c = json.load(open(T + "/c.json"))
+got = (c["aggregate"]["core_no_win_a_e2_e4"], c["evals"]["e02-preview-mutation"]["outcome"], c["evals"]["e04-search-injection"]["outcome"])
+print("ok   the core condition is false with a WIN_A on E2" if got == (False, "WIN_A", "TIE") else f"FAIL the core condition is false with a WIN_A on E2 (got {got!r})")
+print(("ok   " if "core_no_win_a (no WIN_A on E2 and E4): false." in open(T + "/c.md").read() else "FAIL ") + "the markdown prints the core condition false")
+PYEOF
+tally "$T/c1b.txt" "$?" "the policy checker"
+
+# Fail-closed paths: an empty or unusable input must stop the scorer with a named error, never read as a clean report.
+python3 -I - "$SCORE" "$T" << 'PYEOF' > "$T/val.txt" 2>&1
+import json, os, subprocess, sys
+score, T = sys.argv[1], sys.argv[2]
+base = json.loads(open(T + "/rows.jsonl").readline())
+
+def run(args):
+    return subprocess.run([sys.executable, "-I", score] + args, capture_output=True, text=True)
+
+def write(name, rows):
+    with open(f"{T}/{name}", "w") as f:
+        for r in rows:
+            f.write(r if isinstance(r, str) else json.dumps(r))
+            f.write("\n")
+    return f"{T}/{name}"
+
+def say(name, good, detail=""):
+    print(("ok   " + name) if good else f"FAIL {name} ({detail})")
+
+def mutated(stmt):
+    d = json.loads(json.dumps(base))
+    exec(stmt, {"d": d, "float": float})
+    return d
+
+r = run(["--validate-rows", write("empty.jsonl", [])])
+say("--validate-rows accepts an empty file", r.returncode == 0 and r.stdout.strip() == "rows ok: 0", (r.returncode, r.stdout))
+r = run([T + "/empty.jsonl", "--out-json", T + "/never.json"])
+say("an empty results file stops the scorer, exit 2, named", r.returncode == 2 and "has no rows" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr))
+r = run([write("blank.jsonl", ["", "  "])])
+say("a file of blank lines is empty too", r.returncode == 2 and "has no rows" in r.stderr, (r.returncode, r.stderr))
+lonely = mutated("d['completion_status']='usage-limit'; d['run_pass']=False")
+r = run([write("lonely.jsonl", [lonely])])
+say("a file with only usage-limit rows stops the scorer, named", r.returncode == 1 and "no usable" in r.stderr, (r.returncode, r.stderr))
+r = run([T + "/rows.jsonl", "--policy", "unifrom"])
+say("a policy that matches no row stops the scorer, named", r.returncode == 1 and "matches no row" in r.stderr and "uniform" in r.stderr, (r.returncode, r.stderr))
+r = run([write("junk.jsonl", ["{nope"])])
+say("a non-JSON line stops the scorer", r.returncode != 0 and "is not JSON" in r.stderr, (r.returncode, r.stderr))
+r = run([T + "/does-not-exist.jsonl"])
+say("a missing results file stops the scorer with a named error", r.returncode != 0 and "cannot read" in r.stderr and "Traceback" not in r.stderr, (r.returncode, r.stderr))
+say("a stopped scorer wrote no report", not os.path.exists(T + "/never.json"))
+PYEOF
+tally "$T/val.txt" "$?" "the fail-closed checker"
+# end of the policy and fail-closed checks
 
 head -n 1 "$T/rows.jsonl" | python3 -I -c 'import json,sys;d=json.loads(sys.stdin.read());del d["tokens_total"];print(json.dumps(d))' > "$T/bad.jsonl"
 python3 "$SCORE" --validate-rows "$T/bad.jsonl" > "$T/vbad.txt"; rc=$?

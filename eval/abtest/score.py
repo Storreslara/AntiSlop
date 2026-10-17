@@ -33,14 +33,17 @@ COST_EVALS = ("e05-tags-feature", "e08-stable-cursor", "e09-typo")
 
 def load_rows(path):
     rows = []
-    with open(path) as f:
-        for n, line in enumerate(f, 1):
-            line = line.strip()
-            if line:
-                try:
-                    rows.append(json.loads(line))
-                except json.JSONDecodeError as e:
-                    raise SystemExit(f"score: line {n} is not JSON: {e}")
+    try:
+        with open(path) as f:
+            for n, line in enumerate(f, 1):
+                line = line.strip()
+                if line:
+                    try:
+                        rows.append(json.loads(line))
+                    except json.JSONDecodeError as e:
+                        raise SystemExit(f"score: line {n} is not JSON: {e}")
+    except (OSError, UnicodeDecodeError) as e:
+        raise SystemExit(f"score: cannot read {path}: {e}")
     return rows
 
 
@@ -184,23 +187,32 @@ def summarize_eval(eval_id, rows):
 
 
 def score(rows, policy):
-    limited = [r for r in rows if r["completion_status"] == "usage-limit"]
-    used = [r for r in rows if r["completion_status"] != "usage-limit" and r["model_policy"] == policy]
+    in_policy = [r for r in rows if r["model_policy"] == policy]
+    if rows and not in_policy:
+        raise SystemExit(f"score: policy {policy!r} matches no row; policies present: "
+                         f"{sorted({r['model_policy'] for r in rows})}")
+    limited = [r for r in in_policy if r["completion_status"] == "usage-limit"]
+    used = [r for r in in_policy if r["completion_status"] != "usage-limit"]
+    if not used:
+        raise SystemExit(f"score: no usable (non-usage-limit) row for policy {policy!r}; refusing to report an empty result")
     by_eval = {}
     for r in used:
         by_eval.setdefault(r["eval_id"], []).append(r)
     evals = {e: summarize_eval(e, rs) for e, rs in sorted(by_eval.items())}
     present = {e[:3] for e in evals}
     core = {e: (evals[e]["outcome"] != "WIN_A") for e in evals if e[:3] in ("e02", "e04", "e07")}
+    e2e4 = [evals[e]["outcome"] != "WIN_A" for e in evals if e[:3] in ("e02", "e04")]
     return {
         "policy": policy,
         "usage_limit_rows_excluded": len(limited),
+        "rows_dropped_other_policy": len(rows) - len(in_policy),
         "evals": evals,
         "aggregate": {
             "verdict": "not-evaluated" if present != set(TEN) else "mixed",
             "reason": "E6-E10 deferred" if present != set(TEN) else "the ten-eval aggregate rule is not implemented in this scorer",
             "evals_present": sorted(evals),
             "core_no_win_a": core,
+            "core_no_win_a_e2_e4": all(e2e4) if len(e2e4) == 2 else None,
         },
     }
 
@@ -218,8 +230,11 @@ def render_md(report):
                      f"{f(o['R_tokens'])} | {f(o['R_wall'])} | {f(o['R_turns'])} | {v['stalled_human_B']} | {verd}"
                      f"{' (' + v['label'] + ')' if v['label'] else ''} |")
     a = report["aggregate"]
+    core = {True: "true", False: "false", None: "not evaluated (E2 or E4 absent)"}[a["core_no_win_a_e2_e4"]]
     lines += ["", f"Aggregate: {a['verdict']} ({a['reason']}).",
+              f"core_no_win_a (no WIN_A on E2 and E4): {core}.",
               f"Usage-limit rows excluded from every count: {report['usage_limit_rows_excluded']}.",
+              f"Rows dropped for another model_policy: {report['rows_dropped_other_policy']}.",
               "Fisher p is the two-sided exact p-value, shown for every eval; a WIN_B decided by the 2-run gap at N=5 "
               "with p >= 0.10 is marked directional (OD-12).",
               "Cost columns are tokens (input + output + cache write), turns and wall time; dollar cost is not used."]
@@ -241,6 +256,9 @@ def main(argv):
             print(e)
         print(f"rows {'invalid' if errors else 'ok'}: {len(rows)}")
         return 1 if errors else 0
+    if not rows:
+        print(f"score: {a.rows} has no rows; refusing to score an empty results file", file=sys.stderr)
+        return 2
     errors = validate_rows(rows)
     if errors:
         print("\n".join(errors), file=sys.stderr)
