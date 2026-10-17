@@ -1,7 +1,7 @@
 Unit: abt-u01b
 
 ## Objective
-The arms can no longer read the harness: Arm B loads a pruned copy of the plugin (git archive of HEAD limited to .claude-plugin, agents, bin, commands, hooks, skills and templates) instead of the checkout; both arms get --disallowedTools Read, Edit and Bash rules for the harness root and ABTEST_DENY_PATHS, run with a per-run HOME outside the harness holding only a neutral git identity, and refuse a worktree, config dir or HOME inside the harness; the fake claude records HOME, the gitconfig and the plugin file list and can mimic a read; tests/abtest-arms.test.sh goes from 36 to 67 rows. One commit.
+The arms can no longer read the harness: Arm B loads a pruned copy of the plugin (git archive of HEAD limited to .claude-plugin, agents, bin, commands, hooks, skills and templates) instead of the checkout; both arms get --disallowedTools Read, Edit and Bash rules for the harness root and ABTEST_DENY_PATHS, run with a per-run HOME outside the harness holding only a neutral git identity, and refuse a worktree, config dir or HOME inside the harness; the fake claude records HOME, the gitconfig and the plugin file list and can mimic a read; tests/abtest-arms.test.sh goes from 36 to 69 rows. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 608 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -72,7 +72,7 @@ abtest_deny_flags() {
         return 1
         ;;
     esac
-    printf '%s\n' "Read(/$p/**)" "Edit(/$p/**)" "Bash(*$p*)"
+    printf '%s\n' "Read(/$p)" "Read(/$p/**)" "Edit(/$p/**)" "Bash(*$p*)"
   done < <(
     printf '%s\n' "$ABTEST_HARNESS_ROOT"
     local IFS=:
@@ -266,6 +266,7 @@ abtest_plugin_copy "$T" "$T/pcopy2" 2> /dev/null; check "abtest_plugin_copy fail
 for a in A B; do
   check "arm $a passes --disallowedTools once" "$(grep -cx -e '--disallowedTools' "$T/argv$a")" "1"
   check "arm $a denies Read of the harness root" "$(grep -cxF "Read(/$REPO_PHYS/**)" "$T/argv$a")" "1"
+  check "arm $a denies Read of a single path (a results file)" "$(grep -cxF "Read(/$REPO_PHYS)" "$T/argv$a")" "1"
   check "arm $a denies Edit of the harness root" "$(grep -cxF "Edit(/$REPO_PHYS/**)" "$T/argv$a")" "1"
   check "arm $a denies Bash commands that name the harness root" "$(grep -cxF "Bash(*$REPO_PHYS*)" "$T/argv$a")" "1"
 done
@@ -322,11 +323,11 @@ check "a plugin copy without hooks.json is refused" "$rc|$(printf '%s' "$out" | 
    exit: 0
    stdout: `All abtest-arms checks passed.`
    mutation: skip edit 2 (the first change of common.sh); the new rows FAIL, the script exits non-zero and the fragment is absent.
-   proof: mutation matrix of 32 single edits, run in a scratch copy of the finished change, each making bash tests/abtest-arms.test.sh exit non-zero: C1 and C2 point the harness root at the wrong directory or disable the inside-harness check; C3 let realpath fail on a path that does not exist yet; C4 to C6 drop the Read, Edit or Bash deny rule; C7 drop the --disallowedTools flag; C8 ignore ABTEST_DENY_PATHS; C9 allow a space in a denied path; C10 drop the git identity; C11 to C16 leave templates, agents, hooks, skills or bin out of the plugin copy, or copy the whole checkout; C17 skips the check of the copy; C19 and C20 keep the operator HOME or drop GIT_CONFIG_GLOBAL; C21 and C22 do not pass the deny rules or ignore their failure; C23 and C24 stop checking the config dir or the worktree; C25 stop checking the HOME; C26 stop marking a HOME as owned; A1 and A2 drop arm A's setup or its HOME cleanup; B1 to B5 drop arm B's setup, load the checkout instead of the copy, leave the copy or the HOME behind, or ignore a failed copy. One edit is not claimed because it is equivalent: ignoring a failed archive in abtest_plugin_copy (the copy check right after it still refuses)
+   proof: mutation matrix of 33 single edits, run in a scratch copy of the finished change, each making bash tests/abtest-arms.test.sh exit non-zero: C1 and C2 point the harness root at the wrong directory or disable the inside-harness check; C3 let realpath fail on a path that does not exist yet; C4 to C6 drop the Read (directory or single path), Edit or Bash deny rule; C7 drop the --disallowedTools flag; C8 ignore ABTEST_DENY_PATHS; C9 allow a space in a denied path; C10 drop the git identity; C11 to C16 leave templates, agents, hooks, skills or bin out of the plugin copy, or copy the whole checkout; C17 skips the check of the copy; C19 and C20 keep the operator HOME or drop GIT_CONFIG_GLOBAL; C21 and C22 do not pass the deny rules or ignore their failure; C23 and C24 stop checking the config dir or the worktree; C25 stop checking the HOME; C26 stop marking a HOME as owned; A1 and A2 drop arm A's setup or its HOME cleanup; B1 to B5 drop arm B's setup, load the checkout instead of the copy, leave the copy or the HOME behind, or ignore a failed copy. One edit is not claimed because it is equivalent: ignoring a failed archive in abtest_plugin_copy (the copy check right after it still refuses)
 2. run: `bash tests/abtest-arms.test.sh | grep -c '^ok '`
    exit: 0
-   stdout: `67`
-   mutation: skip edit 2; the new rows FAIL and the count drops below 67.
+   stdout: `69`
+   mutation: skip edit 2; the new rows FAIL and the count drops below 69.
 3. run: `bash tests/abtest-arms.test.sh | grep -c '^ok   arm [AB] denies'`
    exit: 0
    stdout: `6`
