@@ -1,0 +1,1 @@
+{"type":"result","subtype":"error_during_execution","is_error":true,"result":"We should handle 429 and rate limit errors in the client."}
