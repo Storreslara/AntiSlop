@@ -114,6 +114,7 @@ gate-refusal: if any hook refuses a Bash command, STOP and report the refusal te
 payload-indent: every fenced payload in this contract states indent: 0; strip nothing; empty payload lines stay empty.
 already-green: the scoped clean-tree check (criterion 7) passes at HEAD by design.
 slow: criteria 1 and 2 each run the suite, about 140 seconds each; do not shorten it.
+foreground-only: run the suite in the foreground; a shell background job ignores SIGINT and the two `SIGINT` rows then FAIL (an artifact, not a defect of this unit).
 why-safe: `limit_hits` counts only usage-limit rows and `supersede_run` moves only non-usage-limit rows, so the count is the same before and after a move; running the cap check first changes nothing else.
 not-stamped: no agents/*.md or templates/ file is touched, so there is no version bump.
 commit-message: fix(abt-u12d): check the usage-limit cap before a stale row is moved (#617)
