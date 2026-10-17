@@ -8,6 +8,9 @@ ABTEST_CLAUDE="${ABTEST_CLAUDE:-claude}"
 ABTEST_MODEL="${ABTEST_MODEL:-fable}"
 MAX_TURNS="${MAX_TURNS:-100}"
 TIMEOUT_MIN="${TIMEOUT_MIN:-45}"
+# The harness root is this checkout. The hidden checks, the reference solutions, the results and the fixtures live
+# in it, so no arm may be able to read it (OD-16). ABTEST_DENY_PATHS adds more paths, colon-separated.
+ABTEST_HARNESS_ROOT="${ABTEST_HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)}"
 
 # One flag or value per line, so a test can compare the two arms.
 abtest_common_flags() {
@@ -17,6 +20,72 @@ abtest_common_flags() {
     --allowedTools 'Bash(npm test)' 'Bash(npm run *)' 'Bash(git *)' \
     --max-turns "$MAX_TURNS" --model "$ABTEST_MODEL" \
     --no-session-persistence
+}
+
+# abtest_outside PATH...: fail when a path is, or is inside, the harness root (the path need not exist yet).
+abtest_outside() {
+  local p real
+  for p in "$@"; do
+    real="$(realpath -m -- "$p")" || return 1
+    case "$real/" in
+      "$ABTEST_HARNESS_ROOT"/*)
+        echo "abtest: $p is inside the harness root $ABTEST_HARNESS_ROOT; an arm could read the hidden checks from it" >&2
+        return 1
+        ;;
+    esac
+  done
+}
+
+# abtest_deny_flags: --disallowedTools and one rule per line that keeps Read, Edit and Bash commands that name the
+# harness root, or a path of ABTEST_DENY_PATHS, away from the arm. Read rules also govern Glob and Grep. A deny rule
+# cannot stop a shell that never names the path, so the arms also run outside the harness (see abtest_outside).
+abtest_deny_flags() {
+  local p
+  printf '%s\n' --disallowedTools
+  while IFS= read -r p; do
+    case "$p" in
+      *[[:space:],\(\)]*)
+        echo "abtest: a denied path may not hold a space, comma or parenthesis: $p" >&2
+        return 1
+        ;;
+    esac
+    printf '%s\n' "Read(/$p)" "Read(/$p/**)" "Edit(/$p/**)" "Bash(*$p*)"
+  done < <(
+    printf '%s\n' "$ABTEST_HARNESS_ROOT"
+    local IFS=:
+    for q in ${ABTEST_DENY_PATHS:-}; do [ -z "$q" ] || realpath -m -- "$q"; done
+  )
+}
+
+# abtest_make_home DIR: a per-run HOME outside the harness with a neutral git identity and nothing else.
+abtest_make_home() {
+  local dir="$1"
+  abtest_outside "$dir" || return 1
+  rm -rf "${dir:?}"
+  mkdir -p "$dir"
+  printf '[user]\n\tname = dev\n\temail = dev@example.invalid\n' > "$dir/.gitconfig"
+}
+
+# abtest_plugin_copy ROOT DEST: only what the plugin needs, taken from ROOT's HEAD: the manifest, agents, bin,
+# commands, hooks, skills and templates. The scaffold script needs no adapters or package.json (checked: the
+# scaffold is byte-identical without them). eval/, tests/, docs/, .claude/ and every fixture, check and result stay out.
+abtest_plugin_copy() {
+  local root="$1" dest="$2"
+  rm -rf "${dest:?}"
+  mkdir -p "$dest"
+  git -C "$root" archive HEAD .claude-plugin agents bin commands hooks skills templates | tar -x -C "$dest" || return 1
+  [ -f "$dest/.claude-plugin/plugin.json" ] && [ -f "$dest/hooks/hooks.json" ] && [ -f "$dest/bin/cli.js" ] || return 1
+}
+
+# abtest_arm_setup WORKTREE: refuse a worktree or config dir inside the harness and make a per-run HOME.
+abtest_arm_setup() {
+  abtest_outside "$1" "${ABTEST_CONFIG_DIR:?}" || return 1
+  if [ -z "${ABTEST_HOME:-}" ]; then
+    ABTEST_HOME="$(mktemp -d "${TMPDIR:-/tmp}/abtest-home.XXXXXX")" || return 1
+    ABTEST_HOME_OWNED=1
+  fi
+  abtest_make_home "$ABTEST_HOME" || return 1
+  export ABTEST_HOME
 }
 
 # abtest_make_config_dir DIR: a clean CLAUDE_CONFIG_DIR holding the
@@ -66,9 +135,12 @@ PYEOF
 abtest_run_claude() {
   local wt="$1" pf="$2" out="$3" err="$4"
   shift 4
-  local -a flags
+  local -a flags deny
+  local denyout home="${ABTEST_HOME:?ABTEST_HOME must name the per-run HOME}"
   mapfile -t flags < <(abtest_common_flags)
+  denyout="$(abtest_deny_flags)" || return 2
+  mapfile -t deny <<< "$denyout"
   local rc=0
-  ( cd "$wt" && timeout "${TIMEOUT_MIN}m" "$ABTEST_CLAUDE" -p "$(cat "$pf")" "${flags[@]}" "$@" ) > "$out" 2> "$err" || rc=$?
+  ( cd "$wt" && env HOME="$home" GIT_CONFIG_GLOBAL="$home/.gitconfig" timeout "${TIMEOUT_MIN}m" "$ABTEST_CLAUDE" -p "$(cat "$pf")" "${flags[@]}" "${deny[@]}" "$@" ) > "$out" 2> "$err" || rc=$?
   return "$rc"
 }

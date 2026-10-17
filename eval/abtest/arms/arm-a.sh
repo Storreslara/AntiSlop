@@ -15,6 +15,8 @@ out="${3:?missing STREAM_FILE}"
 err="${4:?missing STDERR_FILE}"
 : "${ABTEST_CONFIG_DIR:?ABTEST_CONFIG_DIR must name a clean config dir}"
 
+abtest_arm_setup "$wt" || exit 2
+if [ "${ABTEST_HOME_OWNED:-0}" = 1 ]; then trap 'rm -rf "${ABTEST_HOME:?}"' EXIT; fi
 if [ -e "$wt/.claude" ]; then
   echo "arm-a.sh: $wt has a .claude directory; Arm A must run without one" >&2
   exit 3

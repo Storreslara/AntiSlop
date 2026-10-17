@@ -25,6 +25,15 @@ case "$policy" in
   *) echo "arm-b.sh: ABTEST_POLICY must be uniform or shipped" >&2; exit 2 ;;
 esac
 
+abtest_arm_setup "$wt" || exit 2
+# Arm B loads a pruned copy of the plugin, never the checkout: the checkout holds the hidden checks and the
+# reference solutions (OD-16). The copy is exactly the checkout's HEAD, so the plugin commit in the row still names it.
+copydir="$(mktemp -d "${TMPDIR:-/tmp}/abtest-plugin.XXXXXX")"
+trap 'rm -rf "${copydir:?}"; if [ "${ABTEST_HOME_OWNED:-0}" = 1 ]; then rm -rf "${ABTEST_HOME:?}"; fi' EXIT
+abtest_outside "$copydir" || exit 2
+abtest_plugin_copy "$plugin" "$copydir/plugin" || { echo "arm-b.sh: could not build the plugin copy from $plugin" >&2; exit 3; }
+plugin="$copydir/plugin"
+
 # The file names are built from parts so no shell text names the gated files.
 pcfg="$wt/.claude/persona""-config.json"
 pjson="$plugin/.claude""-plugin/plugin.json"
