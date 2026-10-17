@@ -57,7 +57,8 @@ or above it. Run artifacts (stream, summary, checks, diff) stay under `eval/abte
 2. Check the fixtures: `bash eval/abtest/verify-checks.sh --all` must print `verify-checks: ok`.
 3. Pilot, one run per arm per eval: `bash eval/abtest/run-matrix.sh --pilot`. Look at
    `eval/abtest/results.jsonl` and at `eval/abtest/.runs/<run>/` before going on. Pilot rows are valid
-   rep-1 rows; if you change the harness after the pilot, move `results.jsonl` aside first.
+   rep-1 rows while the harness, plugin and prompt stay the same. After a fix, the next run repeats the stale
+   rows and moves them to `results.superseded.jsonl`, which the scorer never reads (OD-14).
 4. Full pass, five reps: `bash eval/abtest/run-matrix.sh`. Runs are sequential. Rep 1 is A then B,
    rep 2 is B then A, and so on.
 5. Score: `python3 eval/abtest/score.py eval/abtest/results.jsonl --out-json eval/reports/abtest-<date>.json --out-md eval/reports/abtest-<date>.md`.
@@ -244,6 +245,10 @@ if [ "$fail" -eq 0 ]; then
    exit: 0
    stdout: empty
    mutation: skip edit 4; the new files stay untracked and are listed.
+13. run: `grep -c 'results.superseded.jsonl' eval/abtest/README.md`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2; grep exits 2 on the missing file and prints nothing.
 
 ## Pre-resolved context
 tdd: no registration lines and a README; the registered tests already exist and are the checks (criteria 1-6 are red at HEAD)
@@ -274,6 +279,7 @@ criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
 criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
