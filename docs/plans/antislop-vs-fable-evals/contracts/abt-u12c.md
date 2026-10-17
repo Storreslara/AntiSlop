@@ -11,7 +11,7 @@ GitHub issues: `gh issue view 606 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `tests/abtest-runner.test.sh` (anchor: line matching `check "zero reps exits 2" "$?" "2"`)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/run-matrix.sh && test -f tests/abtest-runner.test.sh && grep -q check_work_root eval/abtest/run-matrix.sh && ! grep -q current_prov eval/abtest/run-matrix.sh && grep -q "OD-14" docs/plans/antislop-vs-fable-evals/operator-decisions.md && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f eval/abtest/run-matrix.sh && test -f tests/abtest-runner.test.sh && grep -q check_work_root eval/abtest/run-matrix.sh && grep -q abtest_plugin_copy eval/abtest/arms/common.sh && ! grep -q current_prov eval/abtest/run-matrix.sh && grep -q "OD-14" docs/plans/antislop-vs-fable-evals/operator-decisions.md && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/run-matrix.sh`
    anchor: line matching `# Resume: a run id is done once a row exists for it whose completion_status is`
@@ -256,7 +256,31 @@ restamp "$E/A/uniform/1" harness_commit stale
 ABT_SUPERSEDED="$T/elsewhere.jsonl" bash "$RUN" --pilot --evals $E > /dev/null
 check "ABT_SUPERSEDED chooses the file for the stale rows" "$(ids "$T/elsewhere.jsonl")|$(test -e "$SUP" && echo made || echo none)" "$E/A/uniform/1|none"
 ~~~~
-9. command: `git add eval/abtest/run-matrix.sh tests/abtest-runner.test.sh && git commit -m "fix(abt-u12c): a resume repeats a run whose row has another harness, plugin or prompt and moves the stale row aside (#606)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+9. file: `eval/abtest/run-matrix.sh`
+   anchor: line matching `  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$RUNS/config"`
+   before: `  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$RUNS/config"`
+   after: `  [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"`
+10. file: `eval/abtest/run-matrix.sh`
+   anchor: line matching `PLUGIN_ROOT="${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}"`
+   indent: 0
+   insert-after:
+~~~~
+# The arms may not read the results or the runs (OD-16): the arm scripts turn these paths into deny rules.
+export ABTEST_DENY_PATHS="$RESULTS:$RUNS${ABTEST_DENY_PATHS:+:$ABTEST_DENY_PATHS}"
+~~~~
+11. file: `tests/abtest-runner.test.sh`
+   anchor: line matching `check "ABT_SUPERSEDED chooses the file for the stale rows"`
+   indent: 0
+   insert-after:
+~~~~
+fresh
+check "the config dir is made under the work root, not under the runs directory" "$(test -d "$ABT_WORK/config" && test ! -e "$ABT_RUNS/config" && echo work)" "work"
+tr '\0' '\n' < "$T/flog/argv.1" > "$T/argv-first"
+TP="$(cd "$T" && pwd -P)"
+check "the arms are denied Read of the runs directory" "$(grep -cxF "Read(/$TP/runs/**)" "$T/argv-first")" "1"
+check "the arms are denied Read of the results file" "$(grep -cxF "Read(/$TP/results.jsonl)" "$T/argv-first")" "1"
+~~~~
+12. command: `git add eval/abtest/run-matrix.sh tests/abtest-runner.test.sh && git commit -m "fix(abt-u12c): a resume repeats a run whose row has another harness, plugin or prompt and moves the stale row aside (#606)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -303,11 +327,11 @@ check "ABT_SUPERSEDED chooses the file for the stale rows" "$(ids "$T/elsewhere.
 9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12c\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `eval/abtest/run-matrix.sh tests/abtest-runner.test.sh`
-   mutation: skip edit 9 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
+   mutation: skip edit 12 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
 10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12c\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
-   mutation: skip edit 9; no unit commit exists and the exit is 3.
+   mutation: skip edit 12; no unit commit exists and the exit is 3.
 11. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12c\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/run-matrix.sh tests/abtest-runner.test.sh | grep -vcE "^[a-z]+\(abt-u12c\): "`
    exit: 1
    stdout: `0`
@@ -316,7 +340,15 @@ check "ABT_SUPERSEDED chooses the file for the stale rows" "$(ids "$T/elsewhere.
 12. run: `git status --porcelain -- eval/abtest/run-matrix.sh tests/abtest-runner.test.sh`
    exit: 0
    stdout: empty
-   mutation: skip edit 9; the new files stay untracked and are listed.
+   mutation: skip edit 12; the new files stay untracked and are listed.
+13. run: `bash tests/abtest-runner.test.sh | grep -c '^ok   the config dir is made under the work root'`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 9 (the config dir line); the runner still makes the config dir under the runs directory, the row prints FAIL and the count is 0 (exit 1).
+14. run: `bash tests/abtest-runner.test.sh | grep -c '^ok   the arms are denied Read of'`
+   exit: 0
+   stdout: `2`
+   mutation: skip edit 10 (the export of ABTEST_DENY_PATHS); the arms get no extra deny paths, the rows print FAIL and the count is 0 (exit 1).
 
 ## Pre-resolved context
 tdd: yes tests/abtest-runner.test.sh (criteria 2 to 8 are the red-then-green checks: the provenance rows and functions do not exist at HEAD)
@@ -349,6 +381,8 @@ criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
 criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
+criterion 14: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
