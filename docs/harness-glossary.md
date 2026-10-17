@@ -3436,3 +3436,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **ABT_SNAPSHOT**:
 (unit abt-u11b, 2026-10-17) — the environment variable holding the count of commits an A/B arm's dirty-tree snapshot adds ahead of the arm's own work. The E5 `commits-at-least-four` process check in `eval/abtest/checks/e05-tags-feature/check.sh` subtracts it from `git rev-list --count "$ABT_START..HEAD"` and defaults it to 0 when unset. Only the future abt-u12 runner sets it; `eval/abtest/checks/lib.sh` does not yet list it in its header env list.
+
+**holdout check**:
+(unit abt-u11c, 2026-10-17) — a check whose test file is named `*.holdout.test.js` (or whose script is a holdout probe) and lives under `eval/abtest/checks/<eNN>/`, so the agent under test never sees it. `lib.sh` runs each check command in a throwaway copy of the final tree and exposes the holdout files through `ABT_CHECKS_DIR`; `verify-checks.sh` proves the check is non-vacuous. Neither arm script references the checks directory, so the holdout files are not copied into an arm's worktree.
+
+**arm**:
+(unit abt-u11c, 2026-10-17) — one of the two sides of an A/B run that is graded against the same fixture: `arm-a.sh` (the bare model) or `arm-b.sh` (AntiSlop as shipped, scaffolded into the fixture). Both arms build their `claude -p` command from the shared flags in `eval/abtest/arms/common.sh`, so the arms differ only in Arm B's plugin and agent flags. Results are tallied per arm after blinding.
