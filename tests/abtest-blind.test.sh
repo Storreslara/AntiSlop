@@ -44,6 +44,16 @@ diff --git a/docs/wiki/w.md b/docs/wiki/w.md
 +wiki secret
 diff --git a/docs/adr/0001-x.md b/docs/adr/0001-x.md
 +adr secret
+diff --git a/CLAUDE.md b/CLAUDE.md
++claude md secret
+diff --git a/.claude-plugin/plugin.json b/.claude-plugin/plugin.json
++plugin secret
+diff --git a/microworlds/m.md b/microworlds/m.md
++microworld secret
+diff --git a/wiki/x.md b/wiki/x.md
++root wiki secret
+diff --git a/sub/docs/plans/q.md b/sub/docs/plans/q.md
++nested plan secret
 diff --git a/CONTEXT.md b/CONTEXT.md
 +glossary line
 """
@@ -73,6 +83,19 @@ TEXT = "\n".join([
     "**STATUS:** complete",
     "Unit:",
     "abt-keep next line",
+    "- Unit: `lgc-1`. The only file it changes is x",
+    "Unit: \"abt-x\"",
+    "Unit: [abt-x]",
+    "Unit: 596",
+    "STATUS: complete \u2014 design review delivered; no files created or modified.",
+    "**Unit**: abt-x",
+    "__Unit:__ abt-x",
+    "Unit : abt-x",
+    "Unit:\u00a0abt-x",
+    "Unit\u00a0: abt-x",
+    "Unit: not-an-id words",
+    "Status: some new value",
+    "It ended ready-for-review after ESCALATE-TO-HUMAN, with a wip-handoff file, an INSUFFICIENT-CONTEXT verdict and a SPEC-GAP.",
     "Also .claude/x~y and .claude/agent-memory/a_b.md.",
     "See .claude/agents/x.md, then (see .claude/foo) and .claude.",
     "All finished.",
@@ -108,7 +131,7 @@ leaks="$(grep -rliE "$LEAK" "$OUT/blind")"; lrc=$?
 check "no arm identifier leaks into the grader files (grep found nothing and did not error)" "$lrc|$leaks" "1|"
 check "words that merely contain a persona name survive" "$(cat "$OUT"/blind/*/report.md | grep -c 'Describe the inscribed text')" "4"
 check "the diff keeps the ASSUMPTIONS.md section" "$(cat "$OUT"/blind/*/diff.patch | grep -c '^+- Tax follows CONTEXT.md.')" "4"
-check "the diff drops persona files, plans and markers" "$(cat "$OUT"/blind/*/diff.patch | grep -cE 'claude|docs/plans|docs/wiki|docs/adr|PASS e01|secret persona|nested secret|wiki secret|adr secret')" "0"
+check "the diff drops persona files, plans and markers" "$(cat "$OUT"/blind/*/diff.patch | grep -cE 'claude|docs/plans|docs/wiki|docs/adr|PASS e01|secret persona|nested secret|wiki secret|adr secret|claude md secret|plugin secret|microworld secret|root wiki secret|nested plan secret')" "0"
 check "the diff keeps a CONTEXT.md change (E1 never hides the glossary file)" "$(cat "$OUT"/blind/*/diff.patch | grep -c '^+glossary line')" "4"
 check "a lowercase unit line and a mixed-case status line are removed" "$(cat "$OUT"/blind/*/report.md | grep -ciE 'abt-lower|Status: Complete')" "0"
 check "an incomplete status line is removed" "$(cat "$OUT"/blind/*/report.md | grep -c 'ran out of turns')" "0"
@@ -119,8 +142,70 @@ check "the new terms are redacted" "$(cat "$OUT"/blind/*/report.md | grep -c 'Th
 check "a redacted .claude path keeps its trailing punctuation" "$(cat "$OUT"/blind/*/report.md | grep -c 'See \[path\], then (see \[path\]) and \[path\].')" "4"
 check "a Unit: line with text after the id, a bolded one and a bare issue number are removed" "$(cat "$OUT"/blind/*/report.md | grep -cE 'abt-x|Unit: #596|dispatched to the lead')" "0"
 check "a bolded STATUS: line is removed" "$(cat "$OUT"/blind/*/report.md | grep -c 'STATUS')" "0"
-check "a bare Unit: line does not take the next line with it, both survive" "$(cat "$OUT"/blind/*/report.md | grep -cxE 'Unit:|abt-keep next line')" "8"
+check "a bare Unit: line is removed and does not take the next line with it" "$(cat "$OUT"/blind/*/report.md | grep -cx 'abt-keep next line')|$(cat "$OUT"/blind/*/report.md | grep -cx 'Unit:')" "4|0"
 check "paths with a tilde or an underscore are redacted whole and keep the trailing dot" "$(cat "$OUT"/blind/*/report.md | grep -c 'Also \[path\] and \[path\]\.')" "4"
+check "Unit: lines of any wrapping, spacing or value and a STATUS: line with text after complete are all removed" "$(cat "$OUT"/blind/*/report.md | grep -cE 'lgc-1|abt-x|Unit: 596|design review delivered|not-an-id|some new value')" "0"
+check "the new Arm B terms are redacted" "$(cat "$OUT"/blind/*/report.md | grep -c 'It ended \[term\] after \[term\], with a \[term\] file, an \[term\] verdict and a \[term\]\.')" "4"
+check "no Unit: or STATUS: label of any shape reaches the grader apart from the two benign lines" "$(cat "$OUT"/blind/*/report.md | grep -aiE '(^|[^A-Za-z])(unit|status)[^A-Za-z0-9]{0,6}:' | grep -vcE 'Unit: percent|Price per Unit: \$5')|$(cat "$OUT"/blind/*/report.md | grep -aicE '(^|[^A-Za-z])(unit|status)[^A-Za-z0-9]{0,6}:')" "0|8"
+check "the new Unit: and STATUS: shapes are in the unredacted summaries (positive control)" "$(for p in 'lgc-1' 'Unit: 596' 'design review delivered' 'not-an-id' 'some new value' '__Unit:__ abt-x' 'Unit : abt-x' 'Unit:\u00a0abt-x' 'Unit\u00a0: abt-x'; do grep -rlF --include=summary.json -- "$p" "$T/runs" | wc -l | tr -d ' '; done | paste -sd' ')" "6 6 6 6 6 6 6 6 6"
+check "the new diff paths are in the unredacted run diffs (positive control)" "$(for p in 'claude md secret' 'plugin secret' 'microworld secret' 'root wiki secret' 'nested plan secret'; do grep -rlF --include=diff.patch -- "$p" "$T/runs" | wc -l | tr -d ' '; done | paste -sd' ')" "6 6 6 6 6"
+# A committed sample of real agent lines from this repo's own session transcripts: none may survive redact().
+cat > "$T/corpus.txt" << 'CORPUS_EOF'
+   - Missing: fixture with `### Unit: <id>` in docs/plans/ file with measurable commit date
+  - **`Unit:` matching:** it stops dropping legitimate lines such as "Price per Unit: $5", and makes the `Unit:`/`STATUS:` match case-insensitive to agree with the test.
+  - Line 173: comment names the rule: `"Unit: <id>" first line + "Mode: advisory" second line`
+  - Line 175: payload fixture: `$'Unit: adv-1\nMode: advisory\n\n'`
+**STATUS: Analysis complete, graph-derived + grep fallback**
+**STATUS: complete**
+**STATUS: incomplete — spec gap: conflicting trailer specifications in dispatch instruction vs. contract**
+**STATUS:** complete
+**Unit**: blf-1 (#529)
+**Unit:** abt-u02e (#604, umbrella #567)
+**Unit:** hcb-step5-measure (issue #467)
+**Unit:** hdc-5
+**Unit:** item11-3-record-override-disposition
+**Unit:** ocig-1 (Step 1 of `docs/plans/2026-10-05-outcomeci-series-gate-trial.md`)
+**Unit:** ocigf-3 (scribe completion)
+- "36 specs embed inline `### Unit:` contracts" is **26**; no pattern I tested yields 36.
+- **Ambiguous "the line":** `agents/orchestrator.md:148-156` now reads as if "the line" means the `Implementer tier:` line, not the `Unit:` line.
+- **C:** read the reviewer's own `Unit:` line from its transcript.
+- **Rule broken:** it also made a whole-doc `trust-model.md` edit that touches a bijection-tested file, and it sent no `STATUS:` line.
+- **Unit token pattern:** the `Unit:` pattern can match across a line break, and `includes(id)` would also pass.
+- **`STATUS: complete` with trailing text:** for example `STATUS: complete — design review delivered; ...`.
+- **`Unit:` with a wrapped id:** an id in backticks, quotes or brackets, or a bare number, as in ``- Unit: `lgc-1`. ...``. Real lines like this appear in this repo's own session transcripts.
+- Unit: ptr-u2, issue #553, commit `7e619c5`, range `c9313b3..7e619c5` (includes the scribe commit `67c8bc1`).
+- `**Unit:** abt-u15b`
+- `Unit: #596`
+- `Unit: abt-u15b (#596)`
+- `Unit: abt-u15b done`
+- `Unit: e01-ambiguous-tax — dispatched to the lead`
+- `tests/dispatch-hygiene.test.sh` — Unit: <task-id> syntax validation (line 602)
+Confirmed independently — `05e14d9` exists, tree clean, checks out despite the missing `STATUS:` line.
+Final report was delivered via `SubagentHandback` with the full advisory review packet and `STATUS: complete`.
+Lov-3 passed review at `798a6a0`, and lov-4 is built at `caaff17`. The implementer ended with `STATUS: incomplete — spec gap`, but I don't read it as a real gap, so I sent the unit to the reviewer.
+STATUS: Partial — Q1 and Q4 complete; Q2, Q3, Q5 marked incomplete.
+STATUS: complete
+STATUS: complete (handoff delivered; the underlying unit itself remains incomplete per the report, correctly flagged with STATUS: incomplete inside that handoff).
+STATUS: complete — no changes made
+STATUS: complete</parameter>
+STATUS: complete`)
+STATUS: complete`})
+STATUS: incomplete — GitHub API continues to block `gh issue close 524`; preconditions valid; no action taken after second failure
+STATUS: incomplete — csg-2 (lead-programmer) must land first
+STATUS: incomplete — merge gate (four ranges plus the real nested leak guard) running in the background; scribe pass for lgc-1 follows once it passes
+STATUS: incomplete — stop-gate demands a verdict for hcb-posttool, a unit I was never dispatched to review; reported the coupling gap and waiting.
+STATUS: incomplete — waiting on lead-programmer a15d11c4b0b39f083 for ocigf-3
+That stall notice is another watchdog false alarm. The lead-programmer's ocigf-3 report was complete and ended with `STATUS: complete`, so I'm ignoring it. The reviewer is still working on `ocigf-3`.
+The commit `a3b79a03` exists. The report arrived inside the watchdog notice instead of as a separate message, but it is complete and ends with `STATUS: complete`, so I'm routing it to review.
+The narrowed `Unit:` rule in `blind.py:26` only removes a line when the unit id is the last thing on it. These lines now reach your grader, where the parent commit stripped them:
+The report was already fully delivered (ends with `STATUS: complete`) despite the turn-limit notification — treating as complete. Dispatching the reviewer for item17-4.
+U4 is only partly done. The edits are finished and its own test passes, but it couldn't commit, so it reported `STATUS: incomplete`.
+When it reports ready-for-review, I'll run the reviewer-tier check and dispatch the reviewer with `Unit: ocig-1`. `ocig-2` waits for the reviewer's PASS.
+| tests/dispatch-hygiene.test.sh (line 602) | Unit: <task-id> and Mode: advisory syntax validation (dispatch-hygiene.sh gate) |
+CORPUS_EOF
+python3 -I -c 'import importlib.util,sys;s=importlib.util.spec_from_file_location("b",sys.argv[1]);m=importlib.util.module_from_spec(s);s.loader.exec_module(m);print(m.redact(open(sys.argv[2],encoding="utf-8").read()),end="")' "$REPO_ROOT/eval/abtest/lib/blind.py" "$T/corpus.txt" > "$T/corpus.out"
+check "the committed sample holds 51 real agent lines that carry a Unit: or STATUS: label" "$(wc -l < "$T/corpus.txt" | tr -d ' ')" "51"
+check "every line of the real sample is removed whole" "$(grep -cx '\[line removed\]' "$T/corpus.out")|$(grep -cvx '\[line removed\]' "$T/corpus.out")" "51|0"
 check "the report keeps neutral text" "$(cat "$OUT"/blind/*/report.md | grep -c 'All finished.')" "4"
 check "the sealed map sits outside blind/" "$(test -f "$OUT/sealed-map.json" && echo yes)" "yes"
 check "the map names two runs per arm" "$(python3 -I -c 'import json,sys;m=json.load(open(sys.argv[1])).values();print(sorted(v["arm"] for v in m))' "$OUT/sealed-map.json")" "['A', 'A', 'B', 'B']"

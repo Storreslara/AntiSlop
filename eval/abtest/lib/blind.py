@@ -17,22 +17,24 @@ import secrets
 import sys
 
 PERSONAS = r"orchestrator|spec[- ]master|task[- ]master|lead[- ]programmer|reviewer|scribe|explorer|milestone[- ]auditor|researcher|agent[- ]auditor"
-# A Unit: line is dropped only when its value looks like a unit id (letters, then a separator or a digit),
-# a STATUS: line only when its value is complete or incomplete; "Unit: percent" and "Price per Unit: $5" stay.
-UNIT_ID = r"(?:[A-Za-z]+[-._#][A-Za-z0-9._#-]*|[A-Za-z]+[0-9][A-Za-z0-9._#-]*|#[0-9]+)"
-STATUS_VALUE = r"(?:complete|incomplete\b.*)"
+# A line with a Unit: or STATUS: label is removed whole: whatever wraps the label (bold, code, quotes, brackets,
+# underscores), whatever spaces (non-breaking ones too) surround it and whatever follows it. Fail closed: only a
+# Unit: label whose value is a price or the word percent survives ("Unit: percent", "Price per Unit: $5"). A Unit:
+# line only appears in Arm B output, so a surviving one is an arm tell.
+LABEL_TAIL = r'(?![A-Za-z])[^\S\n]*[*_`"\'\])]*[^\S\n]*[:：]'
+BENIGN_UNIT = r"[^\w$\n]*(?:\$\d[\d.,]*|percent(?:age)?)[^\w\n]*$"
 REDACT = [
     (re.compile(r"\.claude(?:/\S*[\w/~-])?"), "[path]"),
-    (re.compile(rf"^.*\b(?:Unit:\**[ \t]*{UNIT_ID}.*|STATUS:\**[ \t]*{STATUS_VALUE}\W*)$", re.MULTILINE | re.IGNORECASE), "[line removed]"),
+    (re.compile(rf"^.*(?<![A-Za-z])(?:Unit{LABEL_TAIL}(?!{BENIGN_UNIT})|STATUS{LABEL_TAIL}).*$", re.MULTILINE | re.IGNORECASE), "[line removed]"),
     (re.compile(rf"\b(?:{PERSONAS})[A-Za-z]*", re.IGNORECASE), "[agent]"),
-    (re.compile(r"\b(?:personas?|pending-review|pathfinder|roast-work|domain-modeling)\b|(?<![A-Za-z])\.?pass markers?\b", re.IGNORECASE), "[term]"),
+    (re.compile(r"\b(?:personas?|pending-review|pathfinder|roast-work|domain-modeling|ready-for-review|ready-for-agent|wip-handoff|ESCALATE-TO-HUMAN|INSUFFICIENT-CONTEXT|SPEC-GAP)\b|(?<![A-Za-z])\.?pass markers?\b", re.IGNORECASE), "[term]"),
     (re.compile(r"anti-?slop", re.IGNORECASE), "[tool]"),
     (re.compile(r"\b(?:Arm [AB]|arm-[ab])\b"), "[arm]"),
     (re.compile(r"\b(?:PASS|FAIL) (?=\S*[A-Za-z])\S*\d\S*"), "[marker]"),
     (re.compile(r"\((?:#\d+|[A-Za-z]{1,6}\d+)\)"), "(scope)"),
     (re.compile(r"\([A-Za-z0-9]+(?:-[A-Za-z0-9._#]+)+\)"), "(scope)"),
 ]
-DROP = (re.compile(r"\.(pass|fail)$"), re.compile(r"(^|/)\.claude/"), re.compile(r"^docs/plans/"), re.compile(r"(^|/)docs/(wiki|adr)/"))
+DROP = (re.compile(r"\.(pass|fail)$"), re.compile(r"(^|/)\.claude(-plugin)?/"), re.compile(r"(^|/)CLAUDE\.md$"), re.compile(r"(^|/)(docs/plans|microworlds)/"), re.compile(r"^wiki/"), re.compile(r"(^|/)docs/(wiki|adr)/"))
 
 
 def redact(text):
