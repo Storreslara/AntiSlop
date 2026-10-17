@@ -35,6 +35,10 @@ dest="${1:?usage: build.sh DEST}"
 mkdir -p "$dest"
 cp -r "$ROOT/eval/fixtures/toy-lib-template/." "$dest/"
 cp -r "$HERE/plant/." "$dest/"
+# The template description names the eval and the claude CLI. This fixture replaces it, so
+# neither arm can tell it is inside an eval; abt_fixture_baseline then scans the tree.
+sed -i 's|^\(  "description": \).*$|\1"Minimal fixture library with no external dependencies.",|' "$dest/package.json"
+grep -qF '"description": "Minimal fixture library with no external dependencies."' "$dest/package.json" || { echo "build: package.json description was not replaced" >&2; exit 1; }
 abt_fixture_baseline "$dest"
 ~~~~
 3. file: `eval/abtest/fixtures/e02-preview-mutation/plant/src/pricing.js`
@@ -79,7 +83,7 @@ index 3fec8da..ed1d44f 100644
 @@ -13,4 +13,15 @@ function cartTotal(items) {
    return round2(items.reduce((sum, item) => sum + round2(item.price * item.qty), 0));
  }
- 
+
 -module.exports = { round2, applyDiscountPercent, cartTotal };
 +// What the cart total would be after a pct% discount, without touching the items.
 +function previewDiscountedTotal(items, pct) {
@@ -268,20 +272,24 @@ test('[holdout] preview equals the per-item value on a second cart', () => {
    exit: 0
    stdout: `identical`
    mutation: skip edit 8 (preview.holdout.test.js); cmp fails on the missing file and prints nothing.
-8. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u08\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
+8. run: `d=$(mktemp -d); bash eval/abtest/fixtures/e02-preview-mutation/build.sh "$d/w" > /dev/null && grep -c '"description": "Minimal fixture library with no external dependencies."' "$d/w/package.json"`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 2 (build.sh); the build fails on the missing script, nothing prints and the exit is 1.
+9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u08\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `eval/abtest/checks/e02-preview-mutation/check.sh eval/abtest/checks/e02-preview-mutation/preview.holdout.test.js eval/abtest/checks/e02-preview-mutation/rounding.holdout.test.js eval/abtest/fixtures/e02-preview-mutation/allowed-paths.txt eval/abtest/fixtures/e02-preview-mutation/build.sh eval/abtest/fixtures/e02-preview-mutation/plant/src/pricing.js eval/abtest/fixtures/e02-preview-mutation/reference.patch eval/abtest/tasks/e02-preview-mutation.prompt.md`
    mutation: skip edit 10 (the commit); no unit commit exists and the run prints no-unit-commit with exit 3.
-9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u08\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
+10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u08\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
    mutation: skip edit 10; no unit commit exists and the exit is 3.
-10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u08\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/fixtures/e02-preview-mutation/build.sh eval/abtest/fixtures/e02-preview-mutation/plant/src/pricing.js eval/abtest/fixtures/e02-preview-mutation/allowed-paths.txt eval/abtest/fixtures/e02-preview-mutation/reference.patch eval/abtest/tasks/e02-preview-mutation.prompt.md eval/abtest/checks/e02-preview-mutation/check.sh eval/abtest/checks/e02-preview-mutation/preview.holdout.test.js eval/abtest/checks/e02-preview-mutation/rounding.holdout.test.js | grep -vcE "^[a-z]+\(abt-u08\): "`
+11. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u08\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- eval/abtest/fixtures/e02-preview-mutation/build.sh eval/abtest/fixtures/e02-preview-mutation/plant/src/pricing.js eval/abtest/fixtures/e02-preview-mutation/allowed-paths.txt eval/abtest/fixtures/e02-preview-mutation/reference.patch eval/abtest/tasks/e02-preview-mutation.prompt.md eval/abtest/checks/e02-preview-mutation/check.sh eval/abtest/checks/e02-preview-mutation/preview.holdout.test.js eval/abtest/checks/e02-preview-mutation/rounding.holdout.test.js | grep -vcE "^[a-z]+\(abt-u08\): "`
    exit: 1
    stdout: `0`
    mutation: add a commit with subject `fix: x` touching one content file after the unit commit; stdout 1.
    proof: scratch run: with no later commit the count printed 0 (exit 1); a later untagged commit is counted by grep -v, so stdout is 1.
-11. run: `git status --porcelain -- eval/abtest/fixtures/e02-preview-mutation eval/abtest/checks/e02-preview-mutation eval/abtest/tasks/e02-preview-mutation.prompt.md`
+12. run: `git status --porcelain -- eval/abtest/fixtures/e02-preview-mutation eval/abtest/checks/e02-preview-mutation eval/abtest/tasks/e02-preview-mutation.prompt.md`
    exit: 0
    stdout: empty
    mutation: skip edit 10; the new files stay untracked and are listed.
@@ -291,7 +299,7 @@ tdd: no no fixture and check files; the verifier is the red-then-green check (ev
 blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
-already-green: criterion 11 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
+already-green: criterion 12 (the scoped clean-tree check) passes at HEAD by design, because no file of the unit exists yet; it turns red only when the commit step is skipped.
 depends-on: abt-u04 must have landed (verify-checks.sh and the check conventions exist); edit 1 checks for verify-checks.sh and STOPs otherwise. Template T1 already exists at eval/fixtures/toy-lib-template/. eval/tasks/feature-task.md and feature-task.holdout.test.js are the sources of two payloads here and are never edited.
 no-real-claude: no command in this contract runs the real claude CLI.
 commit-message: feat(abt-u08): E2 preview-mutation fixture, prompt, checks and reference (#576)
@@ -313,6 +321,7 @@ criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
+criterion 12: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
