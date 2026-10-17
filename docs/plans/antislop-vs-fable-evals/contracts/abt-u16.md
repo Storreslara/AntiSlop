@@ -28,7 +28,8 @@ operator may edit them in a dated amendment before the first run, never after.
 Common setup: uniform model policy (every persona on Fable), N=5 reps per arm per eval (a topped-up
 N=10 only where the first pass is INCONCLUSIVE), Arm A is the baseline for every entry (bare Fable,
 same fixture, same prompt, same turn and time caps), rows in `eval/abtest/results.jsonl`. The N=1
-pilot rows are valid rep-1 rows. Rows with `completion_status: usage-limit` are excluded from every
+pilot rows are valid rep-1 rows while the harness, plugin and prompt stay the same (OD-14: after a fix the runner
+repeats the stale rows and keeps them in results.superseded.jsonl). Rows with `completion_status: usage-limit` are excluded from every
 count and the run is repeated. Cost is measured as tokens (input + output + cache write), turns and
 wall time; the ratios are `R_tokens`, `R_wall` and `R_turns` over complete runs.
 
@@ -111,7 +112,8 @@ wall time; the ratios are `R_tokens`, `R_wall` and `R_turns` over complete runs.
   rows in each arm (equal in both), `WIN_B` if the Fisher exact two-sided p < 0.10, `WIN_A` symmetrically,
   else `TIE`. `INCONCLUSIVE` for a 1-run gap at N=5, two or more `turn-cap`, `timeout` or `error` rows in
   either arm, fewer than 5 rows in an arm (the N=1 pilot never produces a verdict), unequal counts, or
-  6 to 9 rows (a top-up in progress). The Fisher p is reported for every eval; a 2-run-gap win at N=5
+  6 to 9 rows (a top-up in progress), or rows of one arm that mix harness, plugin, prompt or fixture provenance
+  (OD-14, reason `mixed provenance: <fields>`). The Fisher p is reported for every eval; a 2-run-gap win at N=5
   has p >= 0.10 and is reported as directional.
 - AntiSlop superior: `WIN_B`, or a `TIE` with a quality edge (strictly lower median `defects_escaped`
   and `out_of_scope_lines`) and `R_tokens <= 2`. AntiSlop not superior: `WIN_A`, a `TIE` with no
