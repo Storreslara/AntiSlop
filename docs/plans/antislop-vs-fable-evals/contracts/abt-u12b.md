@@ -1,7 +1,7 @@
 Unit: abt-u12b
 
 ## Objective
-tests/abtest-runner.test.sh gains the guard rows for the abt-u12 runner: run directories are built under ABT_WORK outside the repo as standalone repositories, a work root under a CLAUDE.md is refused, an unverifiable fixture stops the runner before any usage, the exit-code normalisation, an outer timeout -k that ends a claude ignoring SIGTERM (recorded as a timeout), a worktree-style run directory is refused, and a run id classified usage-limit three times stops the runner with exit 76. One commit.
+tests/abtest-runner.test.sh gains the guard rows for the abt-u12 runner: run directories are built under ABT_WORK outside the repo as standalone repositories, a work root under a CLAUDE.md is refused, an unverifiable fixture stops the runner before any usage, the exit-code normalisation, an outer timeout -k that ends a claude ignoring SIGTERM (recorded as a timeout, and no stub process left alive), a worktree-style run directory is refused, and a run id classified usage-limit three times stops the runner with exit 76. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 597 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -10,7 +10,7 @@ GitHub issues: `gh issue view 597 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `tests/abtest-runner.test.sh` (anchor: line matching `export ABT_RESULTS=`)
 
 ## Ordered edits
-1. command: `test -f tests/abtest-runner.test.sh && test -f eval/abtest/run-matrix.sh && test -f eval/abtest/lib/rc.sh && grep -q check_work_root eval/abtest/run-matrix.sh && ! grep -q hardening tests/abtest-runner.test.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f tests/abtest-runner.test.sh && test -f eval/abtest/run-matrix.sh && test -f eval/abtest/lib/rc.sh && grep -q check_work_root eval/abtest/run-matrix.sh && grep -q run_guarded eval/abtest/run-matrix.sh && ! grep -q hardening tests/abtest-runner.test.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `tests/abtest-runner.test.sh`
    anchor: line matching `export ABT_RESULTS=`
@@ -28,7 +28,7 @@ GitHub issues: `gh issue view 597 --repo Storreslara/AntiSlop`. Siblings: `gh is
 # --- hardening (abt-u12): run directories, required-check count, guards ---
 rm -rf "$ABT_RESULTS" "$T/flog" "$T/work"
 bash "$RUN" --pilot --evals $E > /dev/null
-check "both arms run in a directory under ABT_WORK, outside the repo" "$(grep -l "^PWD=$T/work/" "$T"/flog/env.* | wc -l | tr -d ' ')" "2"
+check "both arms and their version calls run in a directory under ABT_WORK, outside the repo" "$(grep -l "^PWD=$T/work/" "$T"/flog/env.* | wc -l | tr -d ' ')" "4"
 check "no arm ran under the repo" "$(grep -l "^PWD=$REPO_ROOT/" "$T"/flog/env.* 2> /dev/null | grep -vc '^$')" "0"
 check "a run directory is a standalone repository with its own .git directory" "$(test -d "$T/work/${E}_A_uniform_1/w/.git" && test -d "$T/work/${E}_B_uniform_1/w/.git" && echo yes)" "yes"
 check "the run artifacts stay under ABT_RUNS" "$(test -s "$ABT_RUNS/${E}_B_uniform_1/summary.json" && echo yes)" "yes"
@@ -73,6 +73,7 @@ BASH_ENV="$T/ignore-term.sh" ABTEST_CLAUDE="$T/stubborn" TIMEOUT_MIN=0.02 ABT_OU
 elapsed=$((SECONDS - start))
 check "a claude that ignores SIGTERM is ended by the outer guard well before it would exit" "$([ "$elapsed" -lt 22 ] && echo fast || echo "slow:$elapsed")" "fast"
 check "both KILLed runs are recorded as timeouts, not errors" "$(python3 -I -c 'import json,sys;print([json.loads(l)["completion_status"] for l in open(sys.argv[1]) if l.strip()])' "$ABT_RESULTS")" "['timeout', 'timeout']"
+check "no stub process survives the runner" "$(pgrep -f "$T/stubborn" | wc -l | tr -d ' ')" "0"
 pkill -f "$T/stubborn" 2> /dev/null || true
 
 # A run directory that is not a standalone repository (a .git file, as git worktree makes) is refused.
@@ -130,20 +131,20 @@ check "the repeated run is appended after the three limit rows" "$(python3 -I -c
    exit: 0
    stdout: `All abtest-runner checks passed.`
    mutation: delete a guard row or break the behaviour it guards in run-matrix.sh; the matching row FAILs and the script exits non-zero.
-   proof: mutation matrix, run in a scratch copy of the finished abt-u12 + abt-u12b change, each making bash tests/abtest-runner.test.sh exit non-zero: R1 delete the --expected-required argument; R2 build the run directory inside the artifacts directory; R3 delete the work-root ancestor check; R4 delete both outer timeout wrappers; R5 delete the exit-code normalisation; R6 drop -k from both wrappers; R7 delete the usage-limit repeat cap; R8 replace the verified required-check count by the constant 4; R9 delete the standalone .git test; R11 stop passing --process to make-row; R12 check only the work root itself for CLAUDE.md.
+   proof: mutation matrix, run in a scratch copy of the finished abt-u12 + abt-u12b change, each making bash tests/abtest-runner.test.sh exit non-zero: R1 delete the --expected-required argument; R2 build the run directory inside the artifacts directory; R3 delete the work-root ancestor check; R4 delete the outer timeout wrapper inside run_guarded; R5 delete the exit-code normalisation; R6 drop -k from the wrapper; R7 delete the usage-limit repeat cap; R8 replace the verified required-check count by the constant 4; R9 delete the standalone .git test; R11 stop passing --process to make-row; R12 check only the work root itself for CLAUDE.md.
 2. run: `bash tests/abtest-runner.test.sh | grep -c '^ok'`
    exit: 0
-   stdout: `62`
-   mutation: skip edit 4 (the last part of the guard rows); four rows go missing and stdout is 58.
+   stdout: `95`
+   mutation: skip edit 4 (the last part of the guard rows); four rows go missing and stdout is 91.
 3. run: `bash tests/abtest-runner.test.sh | grep -c '^FAIL'`
    exit: 1
    stdout: `0`
    mutation: skip edit 2 (the rc.sh source line); the normalisation rows cannot call the function and FAIL, so stdout is above 0.
-4. run: `bash tests/abtest-runner.test.sh | grep -c 'KILLed runs are recorded as timeouts, not errors\|stop the runner with exit 76\|names the standalone-clone rule\|outside the repo'`
+4. run: `bash tests/abtest-runner.test.sh | grep -c 'KILLed runs are recorded as timeouts, not errors\|stop the runner with exit 76\|names the standalone-clone rule\|outside the repo\|no stub process survives the runner'`
    exit: 0
-   stdout: `4`
-   mutation: delete the four named rows from the test; stdout is below 4.
-   proof: scratch run: with one named row deleted the count printed 3 with exit 0.
+   stdout: `5`
+   mutation: delete the five named rows from the test; stdout is below 5.
+   proof: scratch run: with one named row deleted the count printed 4 with exit 0.
 5. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12b\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `tests/abtest-runner.test.sh`
@@ -163,12 +164,12 @@ check "the repeated run is appended after the three limit rows" "$(python3 -I -c
    mutation: skip edit 5; the new files stay untracked and are listed.
 
 ## Pre-resolved context
-tdd: yes tests/abtest-runner.test.sh (criterion 2 is the red-then-green check: the 30 guard rows do not exist at HEAD)
+tdd: yes tests/abtest-runner.test.sh (criterion 2 is the red-then-green check: the 31 guard rows do not exist at HEAD)
 blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 1 (the base rows pass at HEAD), criterion 3 (no FAIL line yet) and criterion 8 (the scoped clean-tree check) pass at HEAD by design; criterion 2 and the named rows of criterion 4 are the red-then-green checks.
-depends-on: abt-u12 must have landed (run-matrix.sh, rc.sh and the base runner test exist); edit 1 checks for them and STOPs otherwise.
+depends-on: abt-u12 and its fix abt-u12-fix1 (run_guarded, acquire_lock and the 32 guard rows of the runner test) must have landed; edit 1 checks for them and STOPs otherwise.
 extends-landed-code: every edit is an insertion anchored on a line of the abt-u12 test; nothing is rewritten.
 fail-closed: each guard row compares an explicit expected value and a message, never only an exit code; the rows pkill their stubborn stub at the end and take about 20 seconds more than the base rows.
 no-real-claude: no command in this contract runs the real claude CLI; the test sets ABTEST_CLAUDE to a fake or a stub and HOME to a temp directory.

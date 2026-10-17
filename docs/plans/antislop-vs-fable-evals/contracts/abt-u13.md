@@ -11,7 +11,7 @@ GitHub issues: `gh issue view 582 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `tests/abtest-probe.test.sh` (anchor: new file)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/run-matrix.sh && test ! -e tests/abtest-probe.test.sh && ! grep -q probe eval/abtest/run-matrix.sh && grep -q check_work_root eval/abtest/run-matrix.sh && test -f eval/abtest/lib/stream.py && test -f eval/abtest/fixtures/e01-ambiguous-tax/build.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f eval/abtest/run-matrix.sh && test ! -e tests/abtest-probe.test.sh && ! grep -q probe eval/abtest/run-matrix.sh && grep -q check_work_root eval/abtest/run-matrix.sh && grep -q run_guarded eval/abtest/run-matrix.sh && test -f eval/abtest/lib/stream.py && test -f eval/abtest/fixtures/e01-ambiguous-tax/build.sh && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/run-matrix.sh`
    anchor: line matching `#   --dry-run   print the plan (run / skip per run id) and exit; starts nothing`
@@ -38,7 +38,7 @@ PROBE_MODEL=""
     --probe-model) PROBE_MODEL="${2:?--probe-model needs a value}"; shift ;;
 ~~~~
 5. file: `eval/abtest/run-matrix.sh`
-   anchor: line matching `check_work_root "$WORK" || exit 2`
+   anchor: line matching `[ "$DRY" -eq 1 ] || acquire_lock`
    indent: 0
    insert-after:
 ~~~~
@@ -65,9 +65,9 @@ EOS
   : > "$dir/stderr.log"
   outer_s=$(($(python3 -I -c 'import sys;print(int(float(sys.argv[1])*60))' "$TIMEOUT_MIN") + ${ABT_OUTER_GRACE_S:-120}))
   if [ "$arm" = A ]; then
-    timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer_s}s" bash "$HERE/arms/arm-a.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" > /dev/null 2>> "$dir/stderr.log" || rc=$?
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-a.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" || rc=$?
   else
-    timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer_s}s" bash "$HERE/arms/arm-b.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" > /dev/null 2>> "$dir/stderr.log" || rc=$?
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-b.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" || rc=$?
   fi
   python3 -I "$HERE/lib/stream.py" summarize "$dir/stream.jsonl" --exit-code "$rc" --stderr "$dir/stderr.log" > "$dir/summary.json" || internal "probe/$arm" summarize
 }
@@ -398,9 +398,9 @@ blast-radius: none
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criteria 2 and 5 (regression guards on the finished runner) and criterion 10 (the scoped clean-tree check) pass at HEAD by design; criterion 2 turns red only if the probe edits break the runner, criterion 5 only if a dollar flag is added, criterion 10 only when the commit step is skipped.
-depends-on: abt-u12 (its final contract, with the work directory and outer timeout) must have landed; edit 1 checks for run-matrix.sh and check_work_root and STOPs otherwise; abt-u12c (the config dir is made under the work root) and abt-u01b (the arms refuse a config dir inside the harness) must also have landed.
+depends-on: abt-u12 (its final contract, with the work directory and outer timeout) and its fix abt-u12-fix1 (run_guarded and acquire_lock) must have landed; edit 1 checks for run-matrix.sh, check_work_root and run_guarded and STOPs otherwise; abt-u12c (the config dir is made under the work root) and abt-u01b (the arms refuse a config dir inside the harness) must also have landed.
 no-real-claude: no command in this contract runs the real claude CLI; the test uses a fake claude wrapper, canned captures built inside the test, and a temp HOME.
-insertion-order: edits 5 onward insert the probe block after the line check_work_root "$WORK" || exit 2 (the work-directory creation now sits inside the non-dry-run block after it); it runs before the normal config-dir setup and creates its own config dir.
+insertion-order: edits 5 onward insert the probe block after the line [ "$DRY" -eq 1 ] || acquire_lock, which abt-u12-fix1 put right after check_work_root "$WORK" || exit 2 (the probes run under the same one-runner lock and signal guard as the matrix, and each arm runs through run_guarded); it runs before the normal config-dir setup and creates its own config dir.
 fail-closed: every row compares an explicit expected value; a probe whose Arm A answer is missing, whose cwd is outside the work root or whose mention case did not run exits 1, and a usage-limit verdict on a run that wrote the phrase "rate limit 429" is a false positive and exits 1.
 commit-message: feat(abt-u13): isolation and model probes that also check CLAUDE.md leakage and the mention case (#582)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>

@@ -1,7 +1,7 @@
 Unit: abt-u12c
 
 ## Objective
-run-matrix.sh treats a run id as done only when a non-usage-limit row for it has the current harness commit, the current plugin commit (arm B; arm A none) and the current prompt hash; otherwise it repeats the run, moves the stale row to results.superseded.jsonl (ABT_SUPERSEDED) so the scorer never sees it, and a dry run plans it as rerun; tests/abtest-runner.test.sh gains the proof rows (a stale row of each kind is repeated, a matching one is skipped, arm A with no plugin commit works, usage-limit rows are untouched); the suite goes from 62 to 89 rows. One commit.
+run-matrix.sh treats a run id as done only when a non-usage-limit row for it has the current harness commit, the current plugin commit (arm B; arm A none) and the current prompt hash; otherwise it repeats the run, moves the stale row to results.superseded.jsonl (ABT_SUPERSEDED) so the scorer never sees it, and a dry run plans it as rerun; tests/abtest-runner.test.sh gains the proof rows (a stale row of each kind is repeated, a matching one is skipped, arm A with no plugin commit works, usage-limit rows are untouched); the suite goes from 95 to 122 rows. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 606 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -11,7 +11,7 @@ GitHub issues: `gh issue view 606 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `tests/abtest-runner.test.sh` (anchor: line matching `check "zero reps exits 2" "$?" "2"`)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/run-matrix.sh && test -f tests/abtest-runner.test.sh && grep -q check_work_root eval/abtest/run-matrix.sh && grep -q abtest_plugin_copy eval/abtest/arms/common.sh && ! grep -q current_prov eval/abtest/run-matrix.sh && grep -q "OD-14" docs/plans/antislop-vs-fable-evals/operator-decisions.md && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f eval/abtest/run-matrix.sh && test -f tests/abtest-runner.test.sh && grep -q check_work_root eval/abtest/run-matrix.sh && grep -q run_guarded eval/abtest/run-matrix.sh && grep -q abtest_plugin_copy eval/abtest/arms/common.sh && ! grep -q current_prov eval/abtest/run-matrix.sh && grep -q "OD-14" docs/plans/antislop-vs-fable-evals/operator-decisions.md && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. file: `eval/abtest/run-matrix.sh`
    anchor: line matching `# Resume: a run id is done once a row exists for it whose completion_status is`
@@ -298,8 +298,8 @@ check "the arms are denied Read of the results file" "$(grep -cxF "Read(/$TP/res
    proof: mutation matrix of 19 single edits to the finished run-matrix.sh, run in a scratch copy, each making bash tests/abtest-runner.test.sh exit non-zero: R1 to R3 stop comparing the harness commit, the plugin commit or the prompt hash; R4 make arm A want a plugin commit; R5 stop mapping the null plugin to none; R6 treat a usage-limit row as done; R7 stop reporting a stale row; R8 accept any one matching field; R9 hide the rerun in a dry run; R10 skip the supersede call; R11 keep the stale row in the results file; R12 supersede usage-limit rows too; R13 write nothing to the superseded file; R14 drop the other rows; R15 ignore ABT_SUPERSEDED; R16 and R17 read not-found or stale as done; R18 drop the announcement; R21 read a missing results file as done. Two edits are not claimed because the tests cannot tell them apart when this unit lands: taking the prompt hash from another eval's prompt (only the E1 fixture exists) and taking the plugin commit from the harness checkout (the tests use one checkout for both)
 2. run: `bash tests/abtest-runner.test.sh | grep -c '^ok '`
    exit: 0
-   stdout: `89`
-   mutation: skip edit 5; the provenance rows FAIL and the count drops below 89.
+   stdout: `122`
+   mutation: skip edit 5; the provenance rows FAIL and the count drops below 122.
 3. run: `bash tests/abtest-runner.test.sh | grep -c '^ok   a stale harness commit is planned as a rerun'`
    exit: 0
    stdout: `1`
@@ -356,7 +356,7 @@ blast-radius: eval/abtest/run-matrix.sh:78, eval/abtest/run-matrix.sh:275, eval/
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: criterion 1 passes at HEAD only before the new rows exist, and criterion 12 (the scoped clean-tree check) passes at HEAD by design; criteria 2 to 8 fail at HEAD.
-extends-landed-code: abt-u12 and abt-u12b must have landed (edit 1 checks check_work_root, which abt-u12 adds, and STOPs otherwise); every anchor and replaced block is taken from the tree after both. done_run, the resume comment, the Env comment and the loop are replaced; one variable and the proof rows are inserted.
+extends-landed-code: abt-u12, its fix abt-u12-fix1 and abt-u12b must have landed (edit 1 checks check_work_root and run_guarded and STOPs otherwise); every anchor and replaced block is taken from the tree after both. done_run, the resume comment, the Env comment and the loop are replaced; one variable and the proof rows are inserted.
 od-14: PROVENANCE (operator decision). A pilot row counts as rep 1 and a resume skips run ids already done, so a harness, plugin or prompt fix after the pilot would mix pre-fix rep 1 with post-fix reps 2 to 5. A run id is now done only if a non-usage-limit row for it has the same harness_commit (git rev-parse HEAD of this checkout), plugin_commit (git rev-parse HEAD of ABT_PLUGIN_ROOT for arm B; arm A must carry none, null) and prompt_sha (sha256 of the eval prompt file) as now. Otherwise the run is repeated and the stale row is moved to results.superseded.jsonl (ABT_SUPERSEDED), so the scorer, which reads only results.jsonl, never sees it and run ids stay unique. A usage-limit row is never superseded and never counts as done. A dry run only reports plan: <run id> rerun (stale provenance).
 not-checked: fixture_commit is not compared here (the scorer compares it; a fixture change changes the baseline sha, which the fixture build already fixes), and a dirty working tree is not detected; the harness commit is the checkout HEAD.
 fail-closed: every row compares an explicit expected value; a crash or empty output reads as FAILURE. A move that cannot write exits 1 before any run starts.

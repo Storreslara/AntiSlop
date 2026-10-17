@@ -91,9 +91,9 @@ EOS
   : > "$dir/stderr.log"
   outer_s=$(($(python3 -I -c 'import sys;print(int(float(sys.argv[1])*60))' "$TIMEOUT_MIN") + ${ABT_OUTER_GRACE_S:-120}))
   if [ "$arm" = A ]; then
-    timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer_s}s" bash "$HERE/arms/arm-a.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" > /dev/null 2>> "$dir/stderr.log" || rc=$?
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-a.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" || rc=$?
   else
-    timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer_s}s" bash "$HERE/arms/arm-b.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" > /dev/null 2>> "$dir/stderr.log" || rc=$?
+    run_guarded /dev/null "$dir/stderr.log" "$outer_s" bash "$HERE/arms/arm-b.sh" "$w" "$dir/prompt.md" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" || rc=$?
   fi
   python3 -I "$HERE/lib/stream.py" summarize "$dir/stream.jsonl" --exit-code "$rc" --stderr "$dir/stderr.log" > "$dir/summary.json" || internal "canary/$arm" summarize
 }
@@ -105,7 +105,7 @@ if [ "$PROBE_CANARY" -eq 1 ]; then
   abtest_make_config_dir "$ABTEST_CONFIG_DIR"
   CANARY="ABT-CANARY-$(python3 -I -c 'import secrets;print(secrets.token_hex(16))')"
   CANARY_FILES=("$HERE/checks/e01-ambiguous-tax/canary-holdout.txt" "$HERE/fixtures/e01-ambiguous-tax/canary-reference.patch")
-  trap 'rm -f "${CANARY_FILES[@]}"' EXIT
+  trap 'rm -f "${CANARY_FILES[@]}"; release_lock' EXIT
   for cf in "${CANARY_FILES[@]}"; do printf '%s\n' "$CANARY" > "$cf" || { echo "run-matrix: cannot plant the canary in $cf" >&2; exit 1; }; done
   canary_arm A
   canary_arm B
