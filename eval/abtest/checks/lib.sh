@@ -59,7 +59,7 @@ abt_check() {
   for p in package.json "$@"; do
     git -C "$copy" checkout -q "$ABT_BASE" -- "$p" 2>/dev/null || true
   done
-  ( cd "$copy" && ABT_WT="$copy" bash -c "$cmd" ) > /dev/null 2>&1 || rc=$?
+  ( cd "$copy" && ABT_WT="$copy" timeout -k 5s "${ABT_CHECK_TIMEOUT_S:-120}s" bash -c "$cmd" ) > /dev/null 2>&1 || rc=$?
   rm -rf "$copy"
   abt_record "$id" "$kind" "$req" "$cmd" "$rc"
 }

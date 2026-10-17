@@ -1,7 +1,6 @@
 'use strict';
 
-// Print every note as JSON. The store method is looked up by name on purpose:
-// this script is the string-keyed caller of the store.
+// Print every note as JSON.
 const { createStore } = require('../src/store');
 const { loadSeed } = require('../src/seed');
 const { date } = require('../src/format');

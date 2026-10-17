@@ -307,6 +307,20 @@ check "abt_fixture_baseline still commits a clean tree" "$rc|$(printf '%s' "$sha
 sha="$(ABT_REPO_ROOT="$REPO_ROOT" bash "$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/build.sh" "$T/lg/e01" | tail -n1)"; rc=$?
 check "the E1 build, with its own guard, still builds under the lib guard" "$rc|$(printf '%s' "$sha" | grep -cE '^[0-9a-f]{40}$')" "0|1"
 
+# --- check timeout (abt-u06b): a hung check command is ended and recorded as failed ---
+cat > "$T/lib-timeout.sh" << 'EOS'
+. "$ABT_CHECKS_LIB"
+abt_init "$1" "$2" "$3" "$4"
+abt_check hangs defect false 'sleep 30'
+abt_check fast defect false 'true'
+abt_emit
+EOS
+tstart=$SECONDS
+tjson="$(ABT_CHECK_TIMEOUT_S=1 ABT_CHECKS_LIB="$REPO_ROOT/eval/abtest/checks/lib.sh" bash "$T/lib-timeout.sh" "$R" "$BASE" "$BASE" "$T/allowed")"
+telapsed=$((SECONDS - tstart))
+check "a check that hangs is ended well before it would finish" "$([ "$telapsed" -lt 20 ] && echo fast || echo "slow:$telapsed")" "fast"
+check "the hung check is recorded as failed with exit 124" "$(printf '%s' "$tjson" | python3 -I -c 'import json,sys;d=json.load(sys.stdin);print(d[0]["id"],d[0]["pass"],d[0]["exit"])')" "hangs False 124"
+check "a fast check next to it still passes" "$(printf '%s' "$tjson" | python3 -I -c 'import json,sys;d=json.load(sys.stdin);print(d[1]["id"],d[1]["pass"],d[1]["exit"])')" "fast True 0"
 echo "abtest-checks: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-checks checks passed."
 exit "$fail"

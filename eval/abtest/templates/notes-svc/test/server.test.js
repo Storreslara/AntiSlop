@@ -46,6 +46,18 @@ test('GET /notes?title= filters by exact title', async () => {
   });
 });
 
+test('GET /notes?title= never shows another owner\'s notes', async () => {
+  await withServer(async (base) => {
+    for (const headers of [alice, bob]) {
+      await fetch(`${base}/notes`, { method: 'POST', headers, body: JSON.stringify({ title: 'shared' }) });
+    }
+    const mine = await (await fetch(`${base}/notes?title=shared`, { headers: alice })).json();
+    assert.deepEqual(mine.items.map((n) => n.owner), ['alice']);
+    const theirs = await (await fetch(`${base}/notes?title=shared`, { headers: bob })).json();
+    assert.deepEqual(theirs.items.map((n) => n.owner), ['bob']);
+  });
+});
+
 test('POST without a title is a 400', async () => {
   await withServer(async (base) => {
     const bad = await fetch(`${base}/notes`, { method: 'POST', headers: alice, body: JSON.stringify({}) });
