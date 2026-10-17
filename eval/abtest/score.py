@@ -24,6 +24,9 @@ REQUIRED = (
     "holdout_pass_rate", "defects_escaped", "out_of_scope_lines", "out_of_scope_files", "commits", "run_pass",
     "process", "blind_grades", "artifacts",
 )
+MIN_N = 5      # usable rows per arm in the first pass; the gap rule applies only here
+FULL_N = 10    # usable rows per arm after the top-up; Fisher decides from here
+ALPHA = 0.10   # spec 4.4: Fisher exact p < 0.10 at N >= 10
 TEN = tuple(f"e{n:02d}" for n in range(1, 11))
 COST_EVALS = ("e05-tags-feature", "e08-stable-cursor", "e09-typo")
 
@@ -55,7 +58,15 @@ def validate_rows(rows):
 
 
 def fisher_two_sided(ka, na, kb, nb):
-    """Two-sided exact p-value for ka/na against kb/nb successes."""
+    """Two-sided exact p-value for ka/na against kb/nb successes.
+
+    Sums the probability of every table (same margins) no more likely than the
+    observed one. Checked against exact fractions on 20 tables (tests/abtest-score.test.sh).
+    Errata to design 2.5 (OD-12): 5/5 vs 1/5 is p=1/21=0.048 (not 0.024: with 6 successes in 10 runs the
+    tables x=1..5 weigh 5,50,100,50,5 of 210, and x=1 and x=5 are the two no likelier than 5/210);
+    a 3-run gap at 10 vs 10 is p between 0.2105 (0 vs 3) and 0.3698 (3 vs 6), not ~0.07; a 4-run gap
+    is p between 0.0867 (0 vs 4) and 0.1789 (3 vs 7), not below 0.05.
+    """
     total, k = na + nb, ka + kb
 
     def prob(x):
@@ -63,7 +74,11 @@ def fisher_two_sided(ka, na, kb, nb):
 
     lo, hi = max(0, k - nb), min(na, k)
     observed = prob(ka)
-    return min(1.0, sum(prob(x) for x in range(lo, hi + 1) if prob(x) <= observed * (1 + 1e-9)))
+    return sum(prob(x) for x in range(lo, hi + 1) if prob(x) <= observed * (1 + 1e-9))
+
+
+def p_decisive(p):
+    return p < ALPHA
 
 
 def med(values):
@@ -78,31 +93,49 @@ def ratio(b, a):
 
 
 def outcome(rows_a, rows_b):
+    """Returns (outcome, k_A, k_B, fisher_p, rule, reason).
+
+    Pre-registered N: 5 usable (non-usage-limit) rows per arm decide by the
+    2-run gap; 10 or more per arm, equal in both, decide by Fisher at p < 0.10
+    (a 1-run gap is only INCONCLUSIVE at N=5, because the top-up is its cure).
+    Fewer than 5 rows in either arm (a pilot, a run stopped by a usage limit), unequal
+    counts, or 6-9 rows (a top-up in progress) are INCONCLUSIVE, never a verdict.
+    The Fisher p is computed whenever both arms have a row, whatever the rule.
+    """
+    na, nb = len(rows_a), len(rows_b)
     ka = sum(1 for r in rows_a if r["run_pass"])
     kb = sum(1 for r in rows_b if r["run_pass"])
-    if not rows_a or not rows_b:
-        return "INCONCLUSIVE", ka, kb, None
+    p = fisher_two_sided(ka, na, kb, nb) if na and nb else None
+
+    def inconclusive(reason):
+        return "INCONCLUSIVE", ka, kb, p, None, reason
+
+    if min(na, nb) < MIN_N:
+        return inconclusive(f"short N: A={na} B={nb}")
+    if na != nb:
+        return inconclusive(f"unequal N: A={na} B={nb}")
+    if na < FULL_N and na != MIN_N:
+        return inconclusive(f"top-up in progress: A={na} B={nb}, needs {FULL_N} per arm")
     bad = lambda rows: sum(1 for r in rows if r["completion_status"] in BAD)
     if bad(rows_a) >= 2 or bad(rows_b) >= 2:
-        return "INCONCLUSIVE", ka, kb, None
+        return inconclusive("two or more turn-cap, timeout or error rows")
+    if na >= FULL_N:
+        if p_decisive(p):
+            return ("WIN_B" if kb > ka else "WIN_A"), ka, kb, p, "fisher", None
+        return "TIE", ka, kb, p, "fisher", None
     if abs(kb - ka) == 1:
-        return "INCONCLUSIVE", ka, kb, None
-    if len(rows_a) >= 10 and len(rows_b) >= 10:
-        p = fisher_two_sided(ka, len(rows_a), kb, len(rows_b))
-        if p < 0.10:
-            return ("WIN_B" if kb > ka else "WIN_A"), ka, kb, p
-        return "TIE", ka, kb, p
+        return inconclusive("1-run gap")
     if kb - ka >= 2:
-        return "WIN_B", ka, kb, None
+        return "WIN_B", ka, kb, p, "gap", None
     if ka - kb >= 2:
-        return "WIN_A", ka, kb, None
-    return "TIE", ka, kb, None
+        return "WIN_A", ka, kb, p, "gap", None
+    return "TIE", ka, kb, p, "gap", None
 
 
 def summarize_eval(eval_id, rows):
     ra = [r for r in rows if r["arm"] == "A"]
     rb = [r for r in rows if r["arm"] == "B"]
-    out, ka, kb, p = outcome(ra, rb)
+    out, ka, kb, p, rule, reason = outcome(ra, rb)
     q = {
         "defects_median_A": med([r["defects_escaped"] for r in ra]),
         "defects_median_B": med([r["defects_escaped"] for r in rb]),
@@ -137,9 +170,12 @@ def summarize_eval(eval_id, rows):
     else:
         verdict = "mixed"
     label = "measured-overhead" if (out == "TIE" and eval_id in COST_EVALS) else None
+    # OD-12: a WIN_B decided by the 2-run gap whose Fisher p is not below ALPHA is only directional.
+    directional = bool(verdict == "superior" and out == "WIN_B" and not p_decisive(p))
     tally = lambda rows: {s: sum(1 for r in rows if r["completion_status"] == s) for s in STATUSES if s != "usage-limit"}
     return {
         "n_A": len(ra), "n_B": len(rb), "k_A": ka, "k_B": kb, "fisher_p": p, "outcome": out,
+        "outcome_rule": rule, "outcome_reason": reason, "directional": directional,
         "quality": q, "overhead": over, "stalled_human_B": stalled_b,
         "status_tally_A": tally(ra), "status_tally_B": tally(rb),
         "verdict": verdict, "label": label,
@@ -171,17 +207,21 @@ def score(rows, policy):
 
 def render_md(report):
     lines = [f"# AntiSlop vs bare Fable ({report['policy']} policy)", "",
-             "| eval | A pass | B pass | outcome | R_tokens | R_wall | R_turns | B stalls | verdict |",
-             "|---|---|---|---|---|---|---|---|---|"]
+             "| eval | A pass | B pass | outcome | Fisher p | R_tokens | R_wall | R_turns | B stalls | verdict |",
+             "|---|---|---|---|---|---|---|---|---|---|"]
     f = lambda v: "n/a" if v is None else f"{v:.2f}"
     for e, v in report["evals"].items():
         o = v["overhead"]
-        lines.append(f"| {e} | {v['k_A']}/{v['n_A']} | {v['k_B']}/{v['n_B']} | {v['outcome']} | {f(o['R_tokens'])} | "
-                     f"{f(o['R_wall'])} | {f(o['R_turns'])} | {v['stalled_human_B']} | {v['verdict']}"
+        outc = v["outcome"] + (f" ({v['outcome_reason']})" if v["outcome_reason"] else "")
+        verd = v["verdict"] + (f" (directional, p={v['fisher_p']:.2f})" if v["directional"] else "")
+        lines.append(f"| {e} | {v['k_A']}/{v['n_A']} | {v['k_B']}/{v['n_B']} | {outc} | {f(v['fisher_p'])} | "
+                     f"{f(o['R_tokens'])} | {f(o['R_wall'])} | {f(o['R_turns'])} | {v['stalled_human_B']} | {verd}"
                      f"{' (' + v['label'] + ')' if v['label'] else ''} |")
     a = report["aggregate"]
     lines += ["", f"Aggregate: {a['verdict']} ({a['reason']}).",
               f"Usage-limit rows excluded from every count: {report['usage_limit_rows_excluded']}.",
+              "Fisher p is the two-sided exact p-value, shown for every eval; a WIN_B decided by the 2-run gap at N=5 "
+              "with p >= 0.10 is marked directional (OD-12).",
               "Cost columns are tokens (input + output + cache write), turns and wall time; dollar cost is not used."]
     return "\n".join(lines) + "\n"
 
