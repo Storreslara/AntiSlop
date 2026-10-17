@@ -11,7 +11,7 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/results.jsonl` (anchor: new file; git-ignored, written by the runner)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/run-matrix.sh && grep -q supersede_run eval/abtest/run-matrix.sh && test -f eval/abtest/score.py && grep -q PROVENANCE eval/abtest/score.py && test -f docs/experiments/abtest-2026-10.md && test ! -e eval/abtest/results.jsonl && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
+1. command: `test -f eval/abtest/run-matrix.sh && grep -q supersede_run eval/abtest/run-matrix.sh && grep -q probe-canary eval/abtest/run-matrix.sh && grep -q abtest_plugin_copy eval/abtest/arms/common.sh && test -f eval/abtest/score.py && grep -q PROVENANCE eval/abtest/score.py && test -f docs/experiments/abtest-2026-10.md && test ! -e eval/abtest/results.jsonl && test -z "$(git status --porcelain --untracked-files=no -- . ':!.claude/agent-memory')"`
    expect: 0
 2. command: `bash eval/abtest/verify-checks.sh --all`
    expect: 0
@@ -19,15 +19,17 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
    expect: 0
 4. command: `bash -c 'set -o pipefail; bash eval/abtest/run-matrix.sh --probe-isolation --probe-model uniform | tee eval/abtest/.runs/probe.txt'`
    expect: 0
-5. command: `bash eval/abtest/run-matrix.sh --pilot`
+5. command: `bash -c 'set -o pipefail; bash eval/abtest/run-matrix.sh --probe-canary | tee eval/abtest/.runs/canary.txt'`
    expect: 0
-6. command: `bash -c 'python3 -I -c "import json,shutil;[shutil.copy(r[\"artifacts\"][\"stream\"], \"tests/fixtures/abtest/streams/pinned-limit-\"+r[\"run_id\"].replace(\"/\",\"_\")+\".jsonl\") for r in map(json.loads, open(\"eval/abtest/results.jsonl\")) if r[\"completion_status\"]==\"usage-limit\"]" && git add tests/fixtures/abtest/streams && { git diff --cached --quiet || git commit -m "test(abt-u19): pinned real limit-hit streams (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"; }'`
+6. command: `bash eval/abtest/run-matrix.sh --pilot`
    expect: 0
-7. command: `python3 eval/abtest/score.py eval/abtest/results.jsonl --out-md eval/abtest/.runs/pilot.md`
+7. command: `bash -c 'python3 -I -c "import json,shutil;[shutil.copy(r[\"artifacts\"][\"stream\"], \"tests/fixtures/abtest/streams/pinned-limit-\"+r[\"run_id\"].replace(\"/\",\"_\")+\".jsonl\") for r in map(json.loads, open(\"eval/abtest/results.jsonl\")) if r[\"completion_status\"]==\"usage-limit\"]" && git add tests/fixtures/abtest/streams && { git diff --cached --quiet || git commit -m "test(abt-u19): pinned real limit-hit streams (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"; }'`
    expect: 0
-8. command: `bash -c '{ echo; echo "## Pilot findings (2026-10)"; echo; grep -E "^probe(-detail)?:" eval/abtest/.runs/probe.txt | sed "s/^/- /"; } >> docs/experiments/abtest-2026-10.md'`
+8. command: `python3 eval/abtest/score.py eval/abtest/results.jsonl --out-md eval/abtest/.runs/pilot.md`
    expect: 0
-9. command: `git add docs/experiments/abtest-2026-10.md && git commit -m "docs(abt-u19): pilot findings (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+9. command: `bash -c '{ echo; echo "## Pilot findings (2026-10)"; echo; cat eval/abtest/.runs/probe.txt eval/abtest/.runs/canary.txt | grep -E "^probe(-detail)?:" | sed "s/^/- /"; } >> docs/experiments/abtest-2026-10.md'`
+   expect: 0
+10. command: `git add docs/experiments/abtest-2026-10.md && git commit -m "docs(abt-u19): pilot findings (#589)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -40,7 +42,7 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
 1. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(len({x["run_id"] for x in r if x["completion_status"]!="usage-limit" and x["rep"]==1}))'`
    exit: 0
    stdout: `10`
-   mutation: skip edit 5 (the pilot); results.jsonl does not exist and the exit is 1.
+   mutation: skip edit 6 (the pilot); results.jsonl does not exist and the exit is 1.
 2. run: `grep -cE '^probe: A hook_events=0 persona_refs=0 B hook_events=[1-9][0-9]* subagent_spawns=[1-9][0-9]*$' eval/abtest/.runs/probe.txt`
    exit: 0
    stdout: `1`
@@ -64,12 +66,12 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
 7. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["arm"]=="B" and x["completion_status"]=="stalled-human"))'`
    exit: 0
    stdout: `0`
-   mutation: skip edit 5; results.jsonl does not exist and the exit is 1.
+   mutation: skip edit 6; results.jsonl does not exist and the exit is 1.
    proof: read-only check; a pilot in which an Arm B run stalls prints a number above 0 and the gate fails.
 8. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["completion_status"]=="error"))'`
    exit: 0
    stdout: `0`
-   mutation: skip edit 5; results.jsonl does not exist and the exit is 1.
+   mutation: skip edit 6; results.jsonl does not exist and the exit is 1.
    proof: read-only check; a pilot with a harness error row prints a number above 0 and the gate fails.
 9. run: `bash eval/abtest/verify-checks.sh --all | tail -n 1`
    exit: 0
@@ -79,20 +81,25 @@ GitHub issues: `gh issue view 589 --repo Storreslara/AntiSlop`. Siblings: `gh is
 10. run: `grep -c '^## Pilot findings' docs/experiments/abtest-2026-10.md`
    exit: 0
    stdout: `1`
-   mutation: skip edit 8 (the findings append); stdout 0 and the exit is 1.
+   mutation: skip edit 9 (the findings append); stdout 0 and the exit is 1.
 11. run: `git log -1 --format=%s -- docs/experiments/abtest-2026-10.md`
    exit: 0
    stdout: `docs(abt-u19): pilot findings (#589)`
-   mutation: skip edit 9 (the commit); the newest commit on the file is abt-u16's.
+   mutation: skip edit 10 (the commit); the newest commit on the file is abt-u16's.
 12. run: `python3 -I -c 'import json;r=[json.loads(l) for l in open("eval/abtest/results.jsonl")];print(sum(1 for x in r if x["completion_status"]=="usage-limit" and not __import__("os").path.exists("tests/fixtures/abtest/streams/pinned-limit-"+x["run_id"].replace("/","_")+".jsonl")))'`
    exit: 0
    stdout: `0`
-   mutation: skip edit 6 (the pinning step); every usage-limit row seen by the pilot lacks its pinned capture and stdout is the number of such rows (0 when the pilot saw no limit, which is a pass).
+   mutation: skip edit 7 (the pinning step); every usage-limit row seen by the pilot lacks its pinned capture and stdout is the number of such rows (0 when the pilot saw no limit, which is a pass).
    proof: read-only check; with a usage-limit row and no pinned file it prints 1 and the gate fails.
 13. run: `git status --porcelain --untracked-files=no -- docs eval tests`
    exit: 0
    stdout: empty
-   mutation: skip edit 9; the findings stay uncommitted and are listed.
+   mutation: skip edit 10; the findings stay uncommitted and are listed.
+14. run: `grep -c '^probe: canary A=not-found B=not-found$' eval/abtest/.runs/canary.txt`
+   exit: 0
+   stdout: `1`
+   mutation: skip edit 5 (the canary probe); canary.txt does not exist and the exit is 2.
+   proof: abt-u13b replayed this probe with a fake claude that reads the planted file: it printed probe: canary A=FOUND or B=FOUND and exited 1.
 
 ## Pre-resolved context
 tdd: no operator-run unit: it runs scripts and records results; the acceptance criteria are the checks
@@ -101,6 +108,7 @@ executor: OPERATOR (or the orchestrator on the operator's word). Never dispatch 
 usage-limit: a runner exit of 75 is not a failure. Wait for the limit to reset and run the same command again; do not edit results.jsonl by hand.
 no-bypass: if a hook or gate refuses a command, STOP and report the refusal text; never route around it.
 stop-rule: if criteria 2 to 6 fail, the isolation or flag assumption is wrong (a root_claude_md=loaded line means the CLAUDE.md of this repository reached Arm A, a mention-case failure means a reply that mentions rate limits was mistaken for a limit hit or never exercised): STOP and report the probe-detail lines. If criterion 7 fails, Arm B stalled headlessly: STOP; do not start abt-u20. Criterion 13 passes only after edit 9 (edit 6 pins any real limit-hit stream under tests/fixtures/abtest/streams/ as pinned-limit-<run id>.jsonl and commits it; give such a capture its own row in tests/abtest-stream.test.sh through a new unit, because the wording list may need widening).
+canary-rule: edit 5 is the integrity gate (OD-16). If it prints A=FOUND or B=FOUND, STOP: an arm can read the hidden checks or the reference solutions, so no result is valid; report the breach and do not start the pilot. A not-found line is a probe, not a proof (a determined agent with a shell could still search the filesystem; the README and the pre-registration say so).
 cost: about 2 probe runs plus 10 pilot runs; the pilot rows are reused as rep 1 by abt-u20 while the harness commit, plugin commit and prompt hash stay the same, so do not delete results.jsonl afterwards. Any fix made after the pilot makes abt-u20 repeat the affected pilot rows and move the old ones to results.superseded.jsonl (OD-14); that costs runs, never a mixed verdict.
 pilot-report: edit 7 prints every eval as INCONCLUSIVE (short N: A=1 B=1) by design (OD-12: fewer than 5 usable rows per arm never gives a verdict, so a pilot cannot be mistaken for a result); the pilot gate reads rows and statuses, not verdicts. The command still exits 0.
 proof-lines: criteria 7, 8 and 9 are read-only guards; their proof lines say what a failing pilot prints.
@@ -125,6 +133,7 @@ criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
 criterion 12: <FILL: exit and stdout>
 criterion 13: <FILL: exit and stdout>
+criterion 14: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
