@@ -20,6 +20,7 @@ mkdir -p "$HOME/.claude"
 printf '{}\n' > "$HOME/.claude/.credentials.json"
 export ABTEST_CLAUDE="$FX/fake-claude.sh" FAKE_CLAUDE_LOG="$T/flog"
 export ABT_RESULTS="$T/results.jsonl" ABT_RUNS="$T/runs" ABT_WORK="$T/work"
+. "$REPO_ROOT/eval/abtest/lib/rc.sh"
 E=e01-ambiguous-tax
 
 # ids FILE: the run ids in order.
@@ -74,6 +75,90 @@ FAKE_CLAUDE_TOUCH=stray.txt bash "$RUN" --pilot --evals $E > /dev/null
 check "a dirty tree is snapshotted" "$(test -f "$ABT_RUNS/${E}_A_uniform_1/snapshot" && echo yes)" "yes"
 check "a stray file counts as one out-of-scope file" "$(col "$ABT_RESULTS" 1 out_of_scope_files)" "1"
 check "the stray file shows in the diff" "$(grep -c '^+++ b/stray.txt' "$ABT_RUNS/${E}_A_uniform_1/diff.patch")" "1"
+
+# --- hardening (abt-u12): run directories, required-check count, guards ---
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/work"
+bash "$RUN" --pilot --evals $E > /dev/null
+check "both arms and their version calls run in a directory under ABT_WORK, outside the repo" "$(grep -l "^PWD=$T/work/" "$T"/flog/env.* | wc -l | tr -d ' ')" "4"
+check "no arm ran under the repo" "$(grep -l "^PWD=$REPO_ROOT/" "$T"/flog/env.* 2> /dev/null | grep -vc '^$')" "0"
+check "a run directory is a standalone repository with its own .git directory" "$(test -d "$T/work/${E}_A_uniform_1/w/.git" && test -d "$T/work/${E}_B_uniform_1/w/.git" && echo yes)" "yes"
+check "the run artifacts stay under ABT_RUNS" "$(test -s "$ABT_RUNS/${E}_B_uniform_1/summary.json" && echo yes)" "yes"
+REQ="$(bash "$REPO_ROOT/eval/abtest/verify-checks.sh" $E | sed -n 's#^verify: .* reference-required-failures=0/\([0-9][0-9]*\)$#\1#p' | head -n1)"
+check "verify-checks proves a positive required-check count for the eval" "$([ -n "$REQ" ] && [ "$REQ" -ge 1 ] && echo yes)" "yes"
+check "every row carries exactly the required-check count verify-checks proved" "$(python3 -I -c 'import json,sys;print([sum(1 for c in json.loads(l)["checks"] if c["required"]) for l in open(sys.argv[1]) if l.strip()])' "$ABT_RESULTS")" "[$REQ, $REQ]"
+check "an arm B row carries its process block" "$(col "$ABT_RESULTS" 2 process | grep -c "'units': [0-9]")" "1"
+
+rm -rf "$T/flog"
+rm -rf "$REPO_ROOT/eval/abtest/.runs/work-refused"
+out="$(ABT_WORK="$REPO_ROOT/eval/abtest/.runs/work-refused" bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "a work root under a CLAUDE.md-bearing directory is refused with exit 2" "$rc" "2"
+case "$out" in *"would be loaded into the arms"*) ok "the refusal names the CLAUDE.md problem" ;; *) bad "the refusal text was '$out'" ;; esac
+check "a refused work root starts no claude" "$(test -e "$T/flog" && echo ran || echo none)" "none"
+check "a refused work root creates no directory" "$(test -e "$REPO_ROOT/eval/abtest/.runs/work-refused" && echo made || echo none)" "none"
+
+# A fixture whose checks print nothing useful must stop the runner before any usage is spent.
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/ck"
+cp -r "$REPO_ROOT/eval/abtest/checks" "$T/ck"
+printf '#!/usr/bin/env bash\necho "[]"\n' > "$T/ck/$E/check.sh"
+out="$(ABT_CHECKS_ROOT="$T/ck" bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "an unverifiable fixture stops the runner with exit 1" "$rc" "1"
+case "$out" in *"verify-checks.sh failed for $E"*) ok "the stop names the failed verification" ;; *) bad "the stop text was '$out'" ;; esac
+check "an unverifiable fixture starts no claude" "$(test -e "$T/flog" && echo ran || echo none)" "none"
+check "an unverifiable fixture writes no row" "$(test -e "$ABT_RESULTS" && echo wrote || echo none)" "none"
+
+# exit-code normalisation
+check "137 after the cap counts as the wall-clock cap" "$(abtest_normalize_rc 137 100 100)" "124"
+check "137 well before the cap stays 137" "$(abtest_normalize_rc 137 5 100)" "137"
+check "124 stays 124" "$(abtest_normalize_rc 124 1 100)" "124"
+check "another code stays unchanged" "$(abtest_normalize_rc 1 100 100)" "1"
+check "an unparsable elapsed time leaves 137 unchanged" "$(abtest_normalize_rc 137 '' 100)" "137"
+
+# The outer guard ends a claude that ignores SIGTERM: every process here ignores TERM (BASH_ENV), so
+# only the KILL after -k ends it, the guard exits 137, and the runner must still record a timeout.
+printf '#!/usr/bin/env bash\nif [ "${1:-}" = --version ]; then echo stubborn-0; exit 0; fi\ntrap "" TERM\nfor i in $(seq 25); do sleep 1; done\n' > "$T/stubborn"
+chmod +x "$T/stubborn"
+rm -rf "$ABT_RESULTS"
+start=$SECONDS
+printf 'trap "" TERM\n' > "$T/ignore-term.sh"
+BASH_ENV="$T/ignore-term.sh" ABTEST_CLAUDE="$T/stubborn" TIMEOUT_MIN=0.02 ABT_OUTER_GRACE_S=2 ABT_KILL_AFTER_S=1 bash "$RUN" --pilot --evals $E > /dev/null 2>&1
+elapsed=$((SECONDS - start))
+check "a claude that ignores SIGTERM is ended by the outer guard well before it would exit" "$([ "$elapsed" -lt 22 ] && echo fast || echo "slow:$elapsed")" "fast"
+check "both KILLed runs are recorded as timeouts, not errors" "$(python3 -I -c 'import json,sys;print([json.loads(l)["completion_status"] for l in open(sys.argv[1]) if l.strip()])' "$ABT_RESULTS")" "['timeout', 'timeout']"
+check "no stub process survives the runner" "$(pgrep -f "$T/stubborn" | wc -l | tr -d ' ')" "0"
+pkill -f "$T/stubborn" 2> /dev/null || true
+
+# A run directory that is not a standalone repository (a .git file, as git worktree makes) is refused.
+# The altered build.sh converts only directories under /work/ (the runner's), so verify-checks still passes.
+rm -rf "$ABT_RESULTS" "$T/flog" "$T/fxr"
+cp -r "$REPO_ROOT/eval/abtest/fixtures" "$T/fxr"
+cat > "$T/fxr/$E/build.sh" << EOS
+#!/usr/bin/env bash
+bash "$REPO_ROOT/eval/abtest/fixtures/$E/build.sh" "\$1" | tail -n1
+case "\$1" in
+  */work/*) mv "\$1/.git" "\$1/.gitdir"; echo 'gitdir: .gitdir' > "\$1/.git" ;;
+esac
+EOS
+out="$(ABT_FIXTURES_DIR="$T/fxr" bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "a worktree-style run directory stops the runner with exit 1" "$rc" "1"
+case "$out" in *"standalone clone"*) ok "the stop names the standalone-clone rule" ;; *) bad "the stop text was '$out'" ;; esac
+check "a worktree-style run directory starts no claude" "$(test -e "$T/flog" && echo ran || echo none)" "none"
+
+# A run id that keeps coming back as a usage limit stops the runner instead of looping.
+rm -rf "$T/flog"
+python3 -I - "$ABT_RESULTS" "$E" << 'PYEOF'
+import json, sys
+
+with open(sys.argv[1], "w") as f:
+    for _ in range(3):
+        f.write(json.dumps({"run_id": f"{sys.argv[2]}/A/uniform/1", "completion_status": "usage-limit"}) + "\n")
+PYEOF
+out="$(bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
+check "three usage-limit rows for one run id stop the runner with exit 76" "$rc" "76"
+case "$out" in *"classified usage-limit 3 times"*) ok "the stop names the repeat count" ;; *) bad "the stop text was '$out'" ;; esac
+check "a capped run id starts no claude" "$(test -e "$T/flog" && echo ran || echo none)" "none"
+ABT_MAX_LIMIT_HITS=4 bash "$RUN" --pilot --evals $E > /dev/null; rc=$?
+check "raising the cap lets the run go ahead" "$rc" "0"
+check "the repeated run is appended after the three limit rows" "$(python3 -I -c 'import json,sys;print([json.loads(l)["completion_status"] for l in open(sys.argv[1]) if l.strip()])' "$ABT_RESULTS")" "['usage-limit', 'usage-limit', 'usage-limit', 'complete', 'complete']"
 
 bash "$RUN" --bogus > /dev/null 2>&1
 check "an unknown argument exits 2" "$?" "2"
