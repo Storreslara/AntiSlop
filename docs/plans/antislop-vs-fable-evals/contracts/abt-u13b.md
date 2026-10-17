@@ -212,7 +212,7 @@ export ABTEST_CLAUDE="$T/claude"
    exit: 0
    stdout: `70`
    mutation: skip edit 5; the canary rows FAIL and the count drops below 70.
-3. run: `bash tests/abtest-probe.test.sh | grep -c '^ok   a canary read by'`
+3. run: `bash tests/abtest-probe.test.sh | grep -c '^ok   the probe names who found the canary'`
    exit: 0
    stdout: `3`
    mutation: skip edit 5; the probe does not exist, the three rows print FAIL and the count is 0 (exit 1).
@@ -222,7 +222,7 @@ export ABTEST_CLAUDE="$T/claude"
    mutation: skip edit 5; --probe-canary is an unknown argument, the row prints FAIL and the count is 0 (exit 1).
 5. run: `bash tests/abtest-probe.test.sh | grep -c '^ok   the canary files are removed after'`
    exit: 0
-   stdout: `3`
+   stdout: `5`
    mutation: delete the trap line that removes the canary files from the finished run-matrix.sh; the files stay and the count is 0 (exit 1).
    proof: mutation K2 of the matrix in criterion 1, run in a scratch copy: with the trap deleted the rows printed FAIL.
 6. run: `grep -c -e 'probe-canary' -e 'canary_arm' eval/abtest/run-matrix.sh`

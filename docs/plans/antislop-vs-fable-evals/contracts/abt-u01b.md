@@ -330,7 +330,7 @@ check "a plugin copy without hooks.json is refused" "$rc|$(printf '%s' "$out" | 
    mutation: skip edit 2; the new rows FAIL and the count drops below 69.
 3. run: `bash tests/abtest-arms.test.sh | grep -c '^ok   arm [AB] denies'`
    exit: 0
-   stdout: `6`
+   stdout: `8`
    mutation: skip edit 2; the deny rules are absent, the rows print FAIL and the count is 0 (exit 1).
 4. run: `bash tests/abtest-arms.test.sh | grep -c '^ok   arm B loads a pruned copy of the plugin, not the checkout'`
    exit: 0

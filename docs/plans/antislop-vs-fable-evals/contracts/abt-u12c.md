@@ -298,8 +298,8 @@ check "the arms are denied Read of the results file" "$(grep -cxF "Read(/$TP/res
    proof: mutation matrix of 19 single edits to the finished run-matrix.sh, run in a scratch copy, each making bash tests/abtest-runner.test.sh exit non-zero: R1 to R3 stop comparing the harness commit, the plugin commit or the prompt hash; R4 make arm A want a plugin commit; R5 stop mapping the null plugin to none; R6 treat a usage-limit row as done; R7 stop reporting a stale row; R8 accept any one matching field; R9 hide the rerun in a dry run; R10 skip the supersede call; R11 keep the stale row in the results file; R12 supersede usage-limit rows too; R13 write nothing to the superseded file; R14 drop the other rows; R15 ignore ABT_SUPERSEDED; R16 and R17 read not-found or stale as done; R18 drop the announcement; R21 read a missing results file as done. Two edits are not claimed because the tests cannot tell them apart when this unit lands: taking the prompt hash from another eval's prompt (only the E1 fixture exists) and taking the plugin commit from the harness checkout (the tests use one checkout for both)
 2. run: `bash tests/abtest-runner.test.sh | grep -c '^ok '`
    exit: 0
-   stdout: `85`
-   mutation: skip edit 5; the provenance rows FAIL and the count drops below 85.
+   stdout: `88`
+   mutation: skip edit 5; the provenance rows FAIL and the count drops below 88.
 3. run: `bash tests/abtest-runner.test.sh | grep -c '^ok   a stale harness commit is planned as a rerun'`
    exit: 0
    stdout: `1`
