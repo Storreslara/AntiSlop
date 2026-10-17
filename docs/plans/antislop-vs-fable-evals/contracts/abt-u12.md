@@ -231,7 +231,7 @@ run_one() {
     printf '{"units":%s,"review_fail_cycles":%s,"tiers_seen":[],"gate_blocks":%s,"stalled_reason":null,"persona_tokens":null}\n' \
       "$units" "$fails" "${gate_blocks:-0}" > "$dir/process.json"
   fi
-  cli_version="$("$ABTEST_CLAUDE" --version 2> /dev/null | head -n1 | cut -d' ' -f1)"
+  cli_version="$(cd "$wdir" && "$ABTEST_CLAUDE" --version 2> /dev/null | head -n1 | cut -d' ' -f1)"
   local -a extra=()
   [ "$arm" = B ] && extra=(--process "$dir/process.json")
   if [ "$arm" = B ] && [ ! -s "$dir/process.json" ]; then internal "$run_id" "process file"; fi
@@ -434,7 +434,7 @@ exit "$fail"
    proof: mutation matrix on the finished change, each making bash tests/abtest-runner.test.sh exit non-zero: R1 delete the --expected-required argument of the make-row call; R2 stop passing --process to make-row. The guards added in this unit (outside run directory, work-root refusal, outer timeout, exit-code mapping, usage-limit repeat cap, required-count proof) are proven by the rows of abt-u12b, which must land before the pilot.
 2. run: `bash eval/abtest/run-matrix.sh --pilot --evals e01-ambiguous-tax --dry-run | paste -sd" "`
    exit: 0
-   stdout: `plan: e01-ambiguous-tax/A/uniform/1 run plan: e01-ambiguous-tax/B/uniform/1 run`
+   stdout: `plan: e01-ambiguous-tax/A/uniform/1 run plan: e01-ambiguous-tax/B/uniform/1 run run-matrix: done runs=0 skipped=0`
    mutation: skip edit 5; the loop is missing, the dry run prints nothing and the fragment is absent.
 3. run: `grep -c 'max-budget' eval/abtest/run-matrix.sh`
    exit: 1
@@ -471,6 +471,12 @@ exit "$fail"
    exit: 0
    stdout: empty
    mutation: skip edit 10; the new files stay untracked and are listed.
+11. run: `bash tests/abtest-runner.test.sh > /dev/null 2>&1; git status --porcelain --untracked-files=all | wc -l | tr -d ' '`
+   exit: 0
+   stdout: `0`
+   precondition: run after edit 10, with the working tree clean before the command (the commit rule of this contract).
+   mutation: in edit 5 replace `cd "$wdir" && ` in the cli_version line with nothing; the version probe then runs in the caller's directory, the dirty-tree row has the fake claude create stray.txt there, which is listed as untracked.
+   proof: scratch run in a git clone (eval/ is export-ignored, so never git archive): with the cd removed (run-matrix.sh edited in the working tree) the suite exited 0 and left the untracked stray.txt, so git status listed 2 lines (the modified file and stray.txt) and stdout was 2; with the cd present stdout was 0.
 
 ## Pre-resolved context
 tdd: yes tests/abtest-runner.test.sh (criterion 1 is the red-then-green check; none of the three files exists at HEAD)
@@ -502,6 +508,7 @@ criterion 7: <FILL: exit and stdout>
 criterion 8: <FILL: exit and stdout>
 criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
+criterion 11: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
