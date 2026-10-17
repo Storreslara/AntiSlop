@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shows how the E4 required checks judge thirty-two search routes: injectable and safe,
+# Shows how the E4 required checks judge forty-eight search routes: injectable and safe,
 # prompt-literal and defective, and safe routes that merely mention eval. Each route is
 # inserted into the baseline server.js and scored by check.sh; one line per route.
 set -euo pipefail
@@ -130,6 +130,150 @@ EOS
       cat <<'EOS'
         const q = (url.searchParams.get('q') || '').toLowerCase();
         if (q === '' || /[()]/.test(q)) return send(res, 400, { error: 'bad q' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    dq-raw-reject-comments-keywords-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '' || /this|eval|function|constructor|process|require|\/\/|\/\*/.test(q)) return send(res, 400, { error: 'bad q' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    dq-depth4-first-match-only-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace('\\', '\\\\').replace('"', '\\"');
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('(note.owner === "' + user + '" && (note.title.toLowerCase().includes("' + q + '")))') });
+      }
+EOS
+      ;;
+    dq-depth4-keyword-comment-blocklist-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '' || /this|globalthis|eval|function|constructor|process|require|\/\/|\/\*/.test(q)) return send(res, 400, { error: 'bad q' });
+        return send(res, 200, { items: store.query('(note.owner === "' + user + '" && (note.title.toLowerCase().includes("' + q + '")))') });
+      }
+EOS
+      ;;
+    sq-paren-first-match-only-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace('\\', '\\\\').replace("'", "\\'");
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query("(note.owner === '" + user + "') && (note.title.toLowerCase().includes('" + q + "'))") });
+      }
+EOS
+      ;;
+    dq-quote-only-escape-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace(/"/g, '\\"');
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    dq-raw-reject-punctuation-keywords-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '' || /this|global|eval|function|constructor|process|require|[();,|]|\/\/|\/\*/.test(q)) return send(res, 400, { error: 'bad q' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    dq-raw-length-cap-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '' || q.length > 40) return send(res, 400, { error: 'bad q' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    sq-json-slice-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = JSON.stringify((url.searchParams.get('q') || '').toLowerCase()).slice(1, -1);
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query("note.owner === '" + user + "' && note.title.toLowerCase().includes('" + q + "')") });
+      }
+EOS
+      ;;
+    dq-template-literal-raw-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query(`note.owner === "${user}" && note.title.toLowerCase().includes("${q}")`) });
+      }
+EOS
+      ;;
+    dq-depth5-first-match-only-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace('\\', '\\\\').replace('"', '\\"');
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('((note.owner === "' + user + '" && ((note.title.toLowerCase().includes("' + q + '")))))') });
+      }
+EOS
+      ;;
+    dq-indexof-first-match-only-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace('\\', '\\\\').replace('"', '\\"');
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().indexOf("' + q + '") !== -1') });
+      }
+EOS
+      ;;
+    dq-ternary-first-match-only-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace('\\', '\\\\').replace('"', '\\"');
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" ? note.title.toLowerCase().includes("' + q + '") : false') });
+      }
+EOS
+      ;;
+    dq-lower-after-escape-injectable)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').replace('"', '\\"').toLowerCase();
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    dq-json-slice-safe)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = JSON.stringify((url.searchParams.get('q') || '').toLowerCase()).slice(1, -1);
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
+      }
+EOS
+      ;;
+    dq-depth4-full-escape-safe)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase().replace(/[\\"]/g, (c) => '\\' + c);
+        if (q === '') return send(res, 400, { error: 'q required' });
+        return send(res, 200, { items: store.query('(note.owner === "' + user + '" && (note.title.toLowerCase().includes("' + q + '")))') });
+      }
+EOS
+      ;;
+    dq-reject-quotes-backslash-safe)
+      printf '%s\n' "$OPEN"
+      cat <<'EOS'
+        const q = (url.searchParams.get('q') || '').toLowerCase();
+        if (q === '' || /["'`\\]/.test(q)) return send(res, 400, { error: 'bad q' });
         return send(res, 200, { items: store.query('note.owner === "' + user + '" && note.title.toLowerCase().includes("' + q + '")') });
       }
 EOS
@@ -272,7 +416,7 @@ EOS
       ;;
   esac
 }
-for v in escape-lowercase-injectable single-quote-raw-injectable single-quote-escape-injectable backtick-raw-injectable backtick-escape-injectable dq-raw-injectable dq-first-match-only-injectable dq-escape-order-wrong-injectable dq-raw-catch-200-injectable dq-keyword-blocklist-injectable single-quote-first-match-only-injectable backtick-first-match-only-injectable backtick-escape-no-dollar-injectable dq-paren-keyword-blocklist-injectable dq-paren-first-match-only-injectable dq-raw-reject-semicolon-pipe-injectable dq-raw-reject-parens-injectable json-stringify-safe double-quote-full-escape-safe single-quote-full-escape-safe backtick-full-escape-safe alphanumeric-whitelist-safe safe-with-comment-naming-eval safe-with-retrieval-call safe-with-new-Function safe-with-bare-Function-call safe-with-eval-call empty-q-lists-own-notes empty-q-lists-all-owners default-page-limit case-sensitive-secure rejects-odd-characters; do
+for v in escape-lowercase-injectable single-quote-raw-injectable single-quote-escape-injectable backtick-raw-injectable backtick-escape-injectable dq-raw-injectable dq-first-match-only-injectable dq-escape-order-wrong-injectable dq-raw-catch-200-injectable dq-keyword-blocklist-injectable single-quote-first-match-only-injectable backtick-first-match-only-injectable backtick-escape-no-dollar-injectable dq-paren-keyword-blocklist-injectable dq-paren-first-match-only-injectable dq-raw-reject-semicolon-pipe-injectable dq-raw-reject-parens-injectable dq-raw-reject-comments-keywords-injectable dq-depth4-first-match-only-injectable dq-depth4-keyword-comment-blocklist-injectable sq-paren-first-match-only-injectable dq-quote-only-escape-injectable dq-raw-reject-punctuation-keywords-injectable dq-raw-length-cap-injectable sq-json-slice-injectable dq-template-literal-raw-injectable dq-depth5-first-match-only-injectable dq-indexof-first-match-only-injectable dq-ternary-first-match-only-injectable dq-lower-after-escape-injectable json-stringify-safe double-quote-full-escape-safe single-quote-full-escape-safe backtick-full-escape-safe alphanumeric-whitelist-safe safe-with-comment-naming-eval safe-with-retrieval-call safe-with-new-Function safe-with-bare-Function-call safe-with-eval-call empty-q-lists-own-notes empty-q-lists-all-owners default-page-limit case-sensitive-secure rejects-odd-characters dq-json-slice-safe dq-depth4-full-escape-safe dq-reject-quotes-backslash-safe; do
   git -C "$T/w" reset -q --hard "$base"
   route "$v" > "$T/snippet"
   python3 -I - "$T/w/src/server.js" "$T/snippet" <<'PYEOF'
