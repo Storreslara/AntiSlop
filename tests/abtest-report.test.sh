@@ -72,18 +72,28 @@ with open(t + "/log.md", "w") as f:
 - **Result**: pending
 - **Verdict**: pending
 - **Decision**: pending
+
+### E4: search (e04-search-injection)
+
+- **Result**: pending
+- **Verdict**: pending
+- **Decision**: pending
+
+### E5: tags (e05-tags-feature)
+
+- **Result**: pending
+- **Verdict**: pending
+- **Decision**: pending
 """)
 PYEOF
 python3 "$SCORE" "$T/rows.jsonl" --out-json "$T/score.json" > /dev/null
 
-python3 "$REPORT" fill-log "$T/score.json" "$T/log.md"; rc=$?
+python3 "$REPORT" fill-log "$T/score.json" "$T/log.md" "$T/rows.jsonl" > /dev/null; rc=$?
 check "fill-log exits 0" "$rc" "0"
 check "the E1 result line carries the pass counts" "$(grep -c '^- \*\*Result\*\*: run_pass A 4/5, B 1/5 (WIN_A)' "$T/log.md")" "1"
-check "the verdict lines stay pending for the operator" "$(grep -c '^- \*\*Verdict\*\*: pending' "$T/log.md")" "3"
-check "a not-superior eval points at a ticket" "$(grep -c 'ticket filed under the eval-finding label' "$T/log.md")" "1"
-check "a superior eval records no action" "$(grep -c '^- \*\*Decision\*\*: no action' "$T/log.md")" "1"
+check "the verdict lines stay pending for the operator" "$(grep -c '^- \*\*Verdict\*\*: pending' "$T/log.md")" "5"
+check "every not-superior, stalling or defect-escaping eval points at a ticket" "$(grep -c '^- \*\*Decision\*\*: ticket filed under the eval-finding label' "$T/log.md")" "4"
 check "an inconclusive eval asks for more data" "$(grep -c '^- \*\*Decision\*\*: NEEDS MORE DATA' "$T/log.md")" "1"
-check "entries outside the report are left alone" "$(grep -c 'e04\|e05' "$T/log.md")" "0"
 
 python3 "$REPORT" tickets "$T/score.json" "$T/rows.jsonl" "$T/tickets" > "$T/t.txt"; rc=$?
 check "tickets exits 0" "$rc" "0"
@@ -109,7 +119,7 @@ with open(t + "/log-mixed.md", "w") as f:
     f.write("### E3: rename (e03-rename-query)\n\n- **Result**: pending\n- **Verdict**: pending\n- **Decision**: pending\n")
 PYEOF
 python3 "$SCORE" "$T/rows-mixed.jsonl" --out-json "$T/score-mixed.json" > /dev/null
-python3 "$REPORT" fill-log "$T/score-mixed.json" "$T/log-mixed.md"
+python3 "$REPORT" fill-log "$T/score-mixed.json" "$T/log-mixed.md" "$T/rows-mixed.jsonl" > /dev/null
 check "mixed provenance asks for a rerun, not a top-up" "$(grep -c '^- \*\*Decision\*\*: RERUN: the rows mix provenance (mixed provenance: harness_commit)' "$T/log-mixed.md")" "1"
 check "mixed provenance never asks for more data" "$(grep -c 'NEEDS MORE DATA' "$T/log-mixed.md")" "0"
 check "the mixed result line still names the outcome" "$(grep -c '(INCONCLUSIVE)' "$T/log-mixed.md")" "1"
