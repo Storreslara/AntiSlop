@@ -1,0 +1,46 @@
+diff --git a/src/pricing.js b/src/pricing.js
+index 3fec8da..ed1d44f 100644
+--- a/src/pricing.js
++++ b/src/pricing.js
+@@ -13,4 +13,15 @@ function cartTotal(items) {
+   return round2(items.reduce((sum, item) => sum + round2(item.price * item.qty), 0));
+ }
+
+-module.exports = { round2, applyDiscountPercent, cartTotal };
++// What the cart total would be after a pct% discount, without touching the items.
++function previewDiscountedTotal(items, pct) {
++  return cartTotal(items.map((item) => ({ ...item, price: round2(item.price * (1 - pct / 100)) })));
++}
++
++// Apply the discount to the cart for real and return the final total.
++function checkout(items, pct) {
++  applyDiscountPercent(items, pct);
++  return cartTotal(items);
++}
++
++module.exports = { round2, applyDiscountPercent, cartTotal, previewDiscountedTotal, checkout };
+diff --git a/test/preview.test.js b/test/preview.test.js
+new file mode 100644
+index 0000000..c38a48d
+--- /dev/null
++++ b/test/preview.test.js
+@@ -0,0 +1,19 @@
++const test = require('node:test');
++const assert = require('node:assert/strict');
++const { previewDiscountedTotal, checkout } = require('../src/pricing');
++
++test('previewDiscountedTotal never mutates the cart', () => {
++  const items = [{ price: 100, qty: 1 }, { price: 50, qty: 2 }];
++  const before = JSON.parse(JSON.stringify(items));
++  previewDiscountedTotal(items, 10);
++  previewDiscountedTotal(items, 10);
++  previewDiscountedTotal(items, 10);
++  assert.deepEqual(items, before);
++});
++
++test('checkout returns the previewed total and applies the discount', () => {
++  const items = [{ price: 100, qty: 1 }, { price: 50, qty: 2 }];
++  const previewed = previewDiscountedTotal(items, 10);
++  assert.equal(checkout(items, 10), previewed);
++  assert.deepEqual(items.map((i) => i.price), [90, 45]);
++});
