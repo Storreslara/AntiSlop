@@ -3407,3 +3407,12 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 
 **human step H7b2**:
 (unit ptr-u7b-2, 2026-10-16) — the one step of unit ptr-u7b-2 only the user can run: execute `scripts/gate-fp-harvest.py` against the real transcript store and fill the doc's result span with `--fill-doc`. Until then the audit doc's result is PENDING and the real share of read-only families is unmeasured. Known limits: `default_root()` maps only `/` to `-` (pass `--root` if the project key differs); `--check-doc` catches only commands of 20 or more characters quoted in full, and tracebacks on a missing file; `--since` later than `--until` is unchecked.
+
+**leak guard**:
+(unit abt-u05f, 2026-10-17) — the `abt_leak_guard` check in `eval/abtest/fixtures/lib.sh` that refuses to build an A/B fixture when eval-only words would reach the fixture repo through its history, notes, tagger emails or ref names. It refuses a symlinked destination, strips trailing slashes, and matches words bounded by [[word delimiter]]s. The guard reads the fixture's own history, so a note on a blob or tree is outside its scan.
+
+**fixture baseline commit**:
+(unit abt-u05f, 2026-10-17) — the single commit `abt_fixture_baseline` makes in an A/B fixture repo before an arm runs. It deletes the `.git/hooks/*.sample` files first, so no sample hook runs inside the fixture. Distinct from the [[session baseline commit]], which is a per-session state file. No check keys the literal sha of this commit, so a fixture's sha may change without breaking any gate.
+
+**word delimiter**:
+(unit abt-u05f, 2026-10-17) — any non-alphanumeric character, or the start or end of a string, that bounds a word in the leak guard's word lists `ABT_LEAK_WORDS` and `ABT_LEAK_GIT_WORDS`. A listed word matches only as a whole word, so `anti/slop` and `anti -- slop` both match the `anti` and `slop` words. The regex accepts any run of delimiters between two words, but no test row yet pins a run of two or more.
