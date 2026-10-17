@@ -216,6 +216,7 @@ check "no late edit appears in a work tree after its row was written" "$(ls "$T"
 
 # Ctrl-C, SIGTERM and SIGHUP stop the runner and the claude it started; the run in progress has no row.
 # The runner is started by python in a session of its own, so the signal reaches its process group only.
+# The runner must exit within 5 seconds while the fake claude would sleep for 8, or the helper prints :slow.
 sigrun() {
   python3 -I - "$1" "$T/flog" "$RUN" "$E" << 'PYEOF'
 import os, signal, subprocess, sys, time
@@ -226,9 +227,11 @@ p = subprocess.Popen(["bash", run, "--pilot", "--evals", ev], start_new_session=
 end = time.time() + 20
 while not os.path.exists(os.path.join(flog, "argv.1")) and time.time() < end:
     time.sleep(0.1)
+t0 = time.time()
 os.killpg(p.pid, getattr(signal, "SIG" + name))
 try:
-    print(p.wait(timeout=15))
+    rc = p.wait(timeout=15)
+    print(rc if time.time() - t0 < 5 else str(rc) + ":slow")
 except subprocess.TimeoutExpired:
     os.killpg(p.pid, signal.SIGKILL)
     print("hung")
@@ -255,15 +258,15 @@ check "a dry run takes no lock and exits 0" "$?" "0"
 kill -TERM "$first"
 wait "$first" 2> /dev/null
 check "the lock is released when the first runner stops" "$(test -e "$T/work/.run-matrix.lock" && echo held || echo free)" "free"
-sleep 0 &
-dead=$!
-wait "$dead"
 ~~~~
 12. file: `tests/abtest-runner.test.sh`
-   anchor: line matching `wait "$dead"`
+   anchor: line matching `check "the lock is released when the first runner stops" "$(test -e "$T/work/.run-matrix.lock" && echo held || echo free)" "free"`
    indent: 0
    insert-after:
 ~~~~
+sleep 0 &
+dead=$!
+wait "$dead"
 mkdir -p "$T/work/.run-matrix.lock"
 printf '%s\n' "$dead" > "$T/work/.run-matrix.lock/pid"
 out="$(bash "$RUN" --pilot --evals $E 2>&1)"; rc=$?
@@ -380,10 +383,10 @@ has "the stop names the missing tool" "$out" "pkill is required"
    exit: 1
    stdout: `0`
    mutation: skip edit 6; the two plain timeout lines are back, stdout 2 and the exit is 0.
-13. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
+13. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" " | sed "s/^/files: /"`
    exit: 0
-   stdout: `eval/abtest/run-matrix.sh tests/abtest-runner.test.sh`
-   mutation: skip edit 13 (the commit); the newest abt-u12 commit is the original and the list also names eval/abtest/lib/rc.sh.
+   stdout: `files: eval/abtest/run-matrix.sh tests/abtest-runner.test.sh`
+   mutation: skip edit 13 (the commit); the newest abt-u12 commit is the original and the list reads files: eval/abtest/lib/rc.sh eval/abtest/run-matrix.sh tests/abtest-runner.test.sh.
 14. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u12\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -cE "^(fix\(abt-u12\): the runner kills a claude that ignores SIGTERM|Co-Authored-By: Claude .* <noreply@anthropic.com>$)"`
    exit: 0
    stdout: `2`
@@ -405,7 +408,7 @@ has "the stop names the missing tool" "$out" "pkill is required"
    proof: scratch run in a git clone (eval/ is export-ignored, so never git archive): with the cd removed the suite exited 0 and left stray.txt, so git status listed 2 lines (the modified run-matrix.sh and stray.txt); with the cd present the count was 0.
 
 ## Pre-resolved context
-tdd: yes tests/abtest-runner.test.sh (criteria 1 to 11 are red-then-green: the new rows FAIL at HEAD)
+tdd: yes tests/abtest-runner.test.sh (criteria 2 to 12 are the red-then-green checks: the new rows do not exist at HEAD)
 blast-radius: eval/abtest/run-matrix.sh:155 eval/abtest/run-matrix.sh:159 eval/abtest/run-matrix.sh:163 tests/abtest-runner.test.sh:7
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part. The before payloads are exact copies of the committed text: copy, do not retype.
@@ -416,7 +419,7 @@ config-dir: the default ABTEST_CONFIG_DIR (the runs directory) is not touched he
 kept-trees: work trees under ABT_WORK are kept for inspection (the abt-u12b rows read them) and the trust entry sits in the config dir, which every start rebuilds; the header documents this as a limitation instead of adding a cleanup.
 stdin: an arm now starts as a background job, so its stdin is /dev/null instead of the terminal; both arms are equal.
 not-claimed: the RESULTS line of the absolute-path block has no row (its effect shows only in the abt-u12c deny rules); a per-run HOME or plugin copy that abt-u01b makes is not removed when the guard KILLs an arm.
-already-green: criterion 15 (the untagged-tail count) and criterion 16 (the scoped clean-tree check) pass at HEAD by design and turn red only when a later commit is untagged or the commit step is skipped.
+already-green: criterion 1 (the old rows pass at HEAD), criterion 15 (the untagged-tail count), criterion 16 (the scoped clean-tree check) and criterion 17 (the suite leaves the tree clean) pass at HEAD by design; 15 turns red only when a later commit is untagged, 16 only when the commit step is skipped, 17 only when a row writes into the checkout.
 no-real-claude: nothing here runs the real claude CLI; the test sets ABTEST_CLAUDE to a fake or a wrapper and HOME to a temp directory. The suite takes about 80 seconds.
 gate-names: run-matrix.sh builds the persona-config, audit and marker directory names from two parts on purpose; keep it that way and apply every edit with the Write or Edit tool.
 commit-message: fix(abt-u12): the runner kills a claude that ignores SIGTERM, stops on Ctrl-C, takes a lock and writes no row for an arm that never started (#581)
