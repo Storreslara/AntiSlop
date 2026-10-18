@@ -3509,3 +3509,17 @@ _Avoid_: harness (alone) for the checkout.
 
 **pinned file**:
 (unit abt-u17b, 2026-10-17) — the frozen expected stdout of one proof command, kept under `tests/fixtures/abtest/proofs/` (seven `.expected` files). `tests/abtest-fixtures.test.sh` runs the command, captures its stdout by command substitution and compares it with the pin; a mismatch is a defect to report, and a pin is never edited to make a run pass. `ABT_PROOFS_DIR` overrides the pin directory. `verify-all.expected` freezes the E1-E5 non-vacuity results. Related: `non-vacuity proof`.
+
+**bad rows**:
+(unit abt-u21a, 2026-10-17) — rows of the A/B test rows file whose status is a turn-cap, a timeout or an error (OD-12). `eval/abtest/score.py` tallies them per arm (`status_tally_A`, `status_tally_B`), and `eval/abtest/report.py` treats them as deciding at every N: two or more bad rows in one eval gives the Decision `NO MORE RUNS HELP`, because topping up runs cannot repair them. Short-N and unequal-N advice is a single `next_n` step, not a run count.
+_Avoid_: failed rows, error rows
+
+**finding reasons**:
+(unit abt-u21a, 2026-10-17) — the reasons `finding_reasons` in `eval/abtest/report.py` returns for an eval that needs a ticket (a verdict that is not `superior`, bad rows, a stall or defect count). One predicate drives both the Decision line in the experiment log and the **eval-finding ticket**, so a Decision says `ticket filed` if and only if `report.py tickets` writes `OUT_DIR/<eval-id>.md`. An unknown reason, verdict or outcome stops with exit 1 and writes nothing. `gate_blocks > 0` is deliberately not a reason: the plan's "unexpected path" is undefined (open operator question).
+_Avoid_: ticket triggers, finding codes
+
+**eval-finding ticket**:
+(unit abt-u21a, 2026-10-17) — the markdown file `report.py tickets SCORE_JSON ROWS_JSONL OUT_DIR` writes per eval that has finding reasons, named `<eval-id>.md`. `OUT_DIR` must be empty or absent, and it can be left empty when no eval gets a ticket.
+
+**decision table**:
+(unit abt-u21a, 2026-10-17) — the single table (`decision-table-v2`, `docs/plans/contracts/abt-u21a-fix3.md`) from which every experiment-log Decision wording comes, keyed on the verdict, the finding reasons, N and the bad-row and stall counts. Tests check it with literal oracles: `tests/abtest-report-walk.test.sh` (21 decided cells through the real `score.py`), `tests/abtest-report-grid.test.sh` (396 undecided cells) and `tests/abtest-report-edges.test.sh` (17 boundary cells).
