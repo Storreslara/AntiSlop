@@ -1513,6 +1513,15 @@ else
 fi
 
 echo
+echo "== tests/abtest-report-edges.test.sh: the verdict-rule and Decision boundaries the walk and the grid leave open (Bash, abt-u21a) =="
+if bash tests/abtest-report-edges.test.sh > /dev/null; then
+  echo "OK   tests/abtest-report-edges.test.sh"
+else
+  echo "FAIL tests/abtest-report-edges.test.sh"
+  fail=1
+fi
+
+echo
 echo "== tests/abtest-fixtures.test.sh: fixture proofs and the non-vacuity verifier over E1-E5 (Bash, abt-u17b) =="
 if bash tests/abtest-fixtures.test.sh > /dev/null; then
   echo "OK   tests/abtest-fixtures.test.sh"
