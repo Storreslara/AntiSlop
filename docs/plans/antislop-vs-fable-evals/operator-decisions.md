@@ -138,16 +138,34 @@ from the operator's dispatch message; the doc's substance is not edited.
   the stream held a `permission_denied` record with reason `subcommandResults`, so Arm B answered correctly and was
   classified `stalled-human` (spec 4.1, OD-3, OD-13).
   (a) The set: `Bash(npm test)`, `Bash(npm run *)` and `Bash(git *)` as before, plus `Bash(<command> *)` for grep, ls,
-  find, cat, head, tail, wc, sort, uniq, cut, echo, pwd, diff, stat, basename and dirname. Claude Code matches a
+  find, cat, head, tail, wc, sort, cut, echo, pwd, diff, stat, basename and dirname (15 commands, 18 rules in all).
+  `uniq` is not in the set because the form uniq IN OUT writes OUT; `sort -u` replaces it. Claude Code matches a
   compound command (`|`, `;`, `&&`, `||`) one subcommand at a time and each needs its own allow rule, so every
   command of such a pipeline has a rule.
-  (b) Not added: rm, mv, cp, chmod, chown, ln, sed, awk, tee, touch, mkdir, curl, wget, ssh, any network command, any
-  interpreter or shell. A redirect or a tee target is checked by Claude Code against its Edit rules, so a redirect
-  into the worktree stays governed by `--permission-mode acceptEdits` exactly as before; this decision adds no write
-  permission.
-  (c) Deny rules are checked before allow rules, so `--disallowedTools` also carries `Bash(find *-exec*)`,
-  `Bash(find *-ok*)`, `Bash(find *-delete*)`, `Bash(find *-fprint*)`, `Bash(find *-fls*)` and `Bash(sort *-o*)`, and
-  the OD-16 rules for the harness root (Read, Edit and `Bash(*<root>*)`) still win over every allow. A command that
+  (b) What the set can and cannot write. Not added: rm, mv, cp, chmod, chown, ln, sed, awk, tee, touch, mkdir, uniq,
+  curl, wget, ssh, any network command, any interpreter or shell. By their documented options the 15 added commands
+  write no file, except `find` (-fprint, -fprintf, -fprint0, -fls and -delete write or delete; -exec, -execdir, -ok
+  and -okdir run another command) and `sort` (-o and --output write the named file; --compress-program runs a
+  program), and the deny rules in (c) name those forms. They name them by their usual spelling only: `sort` with
+  combined short flags ending in o (for example `sort -uo OUT IN`) or with a quoted flag (`sort "-o" OUT IN`) is
+  matched by no rule, so `sort` can still write a file named on its command line; this is residual risk of the kind
+  OD-16(d) states, and a deny rule is not a security boundary around a program. A redirect or a tee target is checked
+  by Claude Code against its Edit rules, so a redirect into the worktree stays governed by `--permission-mode
+  acceptEdits` as before. Two allows already in place write far more than this decision does and are unchanged:
+  `Bash(git *)` and `Bash(npm run *)` can write outside the worktree (for example `git -C DIR ...`,
+  `git clone URL DIR`, or an npm script).
+  (c) Deny rules are checked before allow rules, so `--disallowedTools` carries 16 find and sort rules. Claude Code
+  matches a rule against the command text with `*` standing for any text, spaces included, so `Bash(find *-ok*)` would
+  also deny `find . -name '*-ok*'` and `Bash(sort *-o*)` would deny `sort log-old.txt`. The rules are anchored to a
+  space or to the start of the arguments instead: `Bash(find * -exec*)`, `Bash(find * -ok*)`,
+  `Bash(find * -delete*)`, `Bash(find * -fprint*)`, `Bash(find * -fls*)`, the same five without the path word
+  (`Bash(find -exec*)` and so on, because the docs do not say that a `*` inside a pattern can match nothing),
+  `Bash(sort -o*)`, `Bash(sort * -o*)`, `Bash(sort --output*)`, `Bash(sort * --output*)`,
+  `Bash(sort --compress-program*)` and `Bash(sort * --compress-program*)`. The tests model a rule as a shell glob
+  and check that `sort log-old.txt` and `find . -name x-ok.txt` match none of them and that the write forms match at
+  least one. Verified: the wildcard and compound-command rules quoted from the permissions page (read 2026-10-18).
+  Not verified: that Claude Code's matcher agrees with a shell glob on every input; no test runs the real matcher.
+  The OD-16 rules for the harness root (Read, Edit and `Bash(*<root>*)`) still win over every allow. A command that
   the rules cannot name, such as a shell that never names the path, is the residual risk stated in OD-16(d).
   (d) Stall detection in lib/stream.py is unchanged: any permission denial or ask is still `stalled-human`, and a
   command outside the set is still a stall. `--probe-model uniform` stays report-only (abt-u13c).

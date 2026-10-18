@@ -124,15 +124,39 @@ allow_of() { awk '/^--allowedTools$/ {f = 1; next} /^--/ {f = 0} f' "$1"; }
 allow_of "$T/argvA" > "$T/allowA"
 allow_of "$T/argvB" > "$T/allowB"
 check "both arms pass the same --allowedTools values" "$(cmp -s "$T/allowA" "$T/allowB" && echo same || echo differ)" "same"
-check "the shared allowed tools number 19" "$(wc -l < "$T/allowA" | tr -d ' ')" "19"
+check "the shared allowed tools number 18" "$(wc -l < "$T/allowA" | tr -d ' ')" "18"
 check "the shared allowed tools keep the original three" "$(grep -cxE 'Bash\(npm test\)|Bash\(npm run \*\)|Bash\(git \*\)' "$T/allowA")" "3"
-for c in grep ls find cat head tail wc sort uniq cut echo pwd diff stat basename dirname; do
+for c in grep ls find cat head tail wc sort cut echo pwd diff stat basename dirname; do
   check "the shared allowed tools hold Bash($c *) in both arms" "$(grep -cxF "Bash($c *)" "$T/allowA")|$(grep -cxF "Bash($c *)" "$T/allowB")" "1|1"
 done
 check "no allowed tool names a command that writes, deletes, fetches or runs another" "$(grep -cE '^Bash\((rm|mv|cp|chmod|chown|ln|tee|sed|awk|dd|curl|wget|ssh|scp|nc|xargs|tar|touch|mkdir|sh|bash|env|eval|sudo|node|python3?) ' "$T/allowA")" "0"
 check "no deny rule rides the allow list" "$(grep -c "$REPO_PHYS" "$T/allowA")" "0"
-for a in A B; do
-  check "arm $a denies the write-capable forms of find and sort" "$(grep -cxF -e 'Bash(find *-exec*)' -e 'Bash(find *-ok*)' -e 'Bash(find *-delete*)' -e 'Bash(find *-fprint*)' -e 'Bash(find *-fls*)' -e 'Bash(sort *-o*)' "$T/argv$a")" "6"
+check "the shared allowed tools do not hold uniq (uniq IN OUT writes OUT)" "$(grep -c '^Bash(uniq ' "$T/allowA")" "0"
+deny_of() { awk '/^--disallowedTools$/ {f = 1; next} /^--/ {f = 0} f' "$1"; }
+deny_of "$T/argvA" > "$T/denyA"
+deny_of "$T/argvB" > "$T/denyB"
+check "both arms pass the same --disallowedTools values" "$(cmp -s "$T/denyA" "$T/denyB" && echo same || echo differ)" "same"
+check "the find and sort deny rules number 16" "$(grep -cE '^Bash\((find|sort) ' "$T/denyA")" "16"
+check "no find or sort deny rule starts with an unanchored star-dash" "$(grep -cE '^Bash\((find|sort) \*-' "$T/denyA")" "0"
+# A rule is modelled as a shell glob: * is any text, spaces and nothing included (OD-17(c); the matcher itself is not run).
+hits() {
+  local r n=0
+  while IFS= read -r r; do
+    case "$r" in
+      'Bash(find '* | 'Bash(sort '*)
+        r="${r#Bash(}"
+        r="${r%)}"
+        case "$1" in $r) n=$((n + 1)) ;; esac
+        ;;
+    esac
+  done < "$T/denyA"
+  echo "$n"
+}
+for cmd in "sort log-old.txt" "sort -u a.txt" "sort a.txt b.txt" "find . -name x-ok.txt" "find . -name '*-ok*'" "find . -name '*-exec*' -type f" "find src -type f" "find . -name x-delete.txt"; do
+  check "no find or sort deny rule matches the read $cmd" "$(hits "$cmd")" "0"
+done
+for cmd in "find . -exec rm {} ;" "find -exec rm {} ;" "find . -name x -execdir rm {} ;" "find . -ok rm {} ;" "find -okdir rm {} ;" "find . -delete" "find -delete" "find . -fprint out.txt" "find . -fprintf out.txt %p" "find . -fls out.txt" "sort -o out.txt in.txt" "sort in.txt -o out.txt" "sort -oout.txt in.txt" "sort --output=out.txt in.txt" "sort in.txt --output out.txt" "sort --compress-program=sh in.txt"; do
+  check "a find or sort deny rule matches the write form $cmd" "$([ "$(hits "$cmd")" -ge 1 ] && echo matched || echo missed)" "matched"
 done
 mkrepo "$T/wa4"
 ABTEST_DENY_PATHS="$T/results:$T/runs" bash "$ARMS/arm-a.sh" "$T/wa4" "$T/prompt.txt" "$T/w4.stream" "$T/w4.err" > /dev/null
