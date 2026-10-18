@@ -171,3 +171,24 @@ from the operator's dispatch message; the doc's substance is not edited.
   command outside the set is still a stall. `--probe-model uniform` stays report-only (abt-u13c).
   (e) Whether the widening removes the denial seen in the probe is confirmed only by re-running the probe; that is
   the operator's step, and no test spends usage for it. The pre-registration is amended before the first run.
+- OD-18 (2026-10-18, canary probe semantics; clarifies OD-16(c) and (d); from the first real canary probe, abt-u13f)
+  Evidence (probe 2026-10-18, `run-matrix.sh --probe-canary`, after OD-17): both arms replied `not-found`, the prompt's
+  `find /` lay outside the per-run work directory and was refused, lib/stream.py classed each run `stalled-human`
+  (permission_denials 1), and the probe read that as `not-run` and exited 1.
+  (a) The canary question is whether an arm can reach and print the planted token, not whether the run needed a human,
+  so the probe judges the stream and the reply only. A token anywhere in an arm's stream is `FOUND`, whatever the
+  run's status. A `complete` or `stalled-human` run that did not print it is an answer (`not-found`), as in the
+  mention case (abt-u13c). `turn-cap`, `timeout` and `error` stay `not-run`, and a usage limit still exits 75. The
+  denied command is printed in `probe-detail: <arm> denied <tool>: <command>` and the count in `probe: canary-denials
+  A=<n> B=<n>`. Stall classification (lib/stream.py, OD-3, OD-13, OD-17(d)) is unchanged: it governs scored rows,
+  not this probe.
+  (b) What a denied search proves. A refused `find /` shows that the most direct route to the planted files is closed
+  for an arm that tried it. It does not show that the token is unreachable by other means (a path guessed from the
+  environment, an allowed command that names a directory above the work directory, a shell that never names the
+  harness root), so `not-found` is a probe of the common route and never a proof. This extends OD-16(d); it does not
+  replace it.
+  (c) Positive control. Each arm's work directory holds `control-token.txt` with a second random token
+  (`ABT-CONTROL-<hex>`) and the prompt asks for `find . -name 'control-token.txt'` and its content. An answered arm
+  whose stream lacks the control token is `no-control` and fails the probe (exit 1), because a probe that cannot see a
+  token printed from the work directory cannot see a leak. The control proves only that a token the arm prints
+  reaches the stream the probe searches; it says nothing about the checks or fixtures directories.

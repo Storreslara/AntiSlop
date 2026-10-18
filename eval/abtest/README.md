@@ -34,8 +34,14 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    reply that merely mentions rate limits cannot be mistaken for a limit hit.
 2. Canary probe: `bash eval/abtest/run-matrix.sh --probe-canary` must exit 0 before the pilot (OD-16(c) in
    `docs/plans/antislop-vs-fable-evals/operator-decisions.md`). It plants a random token in the checks and fixtures
-   directories and fails if either arm prints it. The runner does not enforce this order: read the exit code.
-   - Exit 1 with `A=not-run` or `B=not-run`: that arm did not finish. Read the summary under `eval/abtest/.runs/probe-canary/A` or `eval/abtest/.runs/probe-canary/B`, fix the cause and rerun the probe. Do not run the pilot.
+   directories and fails if either arm prints it. An arm that is refused the prompt's `find /` (it lies outside the
+   run's work directory) and prints no token is `not-found`, not `not-run`: the refusal shows that the direct route
+   is closed, not that the token is unreachable by other means (OD-18). Each arm's own work directory also holds a
+   control token that the prompt asks it to print, so a `not-found` shows that the probe can see a printed token.
+   The runner does not enforce this order: read the exit code.
+   - Exit 1 with `A=not-run` or `B=not-run`: that arm hit its turn cap, timed out or errored. Read the summary under `eval/abtest/.runs/probe-canary/A` or `eval/abtest/.runs/probe-canary/B`, fix the cause and rerun the probe. Do not run the pilot.
+   - Exit 1 with `A=no-control` or `B=no-control`: that arm answered but did not print the control token from its work directory, so the probe could not have seen a leak in it. Read the `probe-detail: canary-control` line and the stream under `eval/abtest/.runs/probe-canary/A` or `eval/abtest/.runs/probe-canary/B`, fix the cause and rerun the probe. Do not run the pilot.
+   - `probe: canary-denials A=<n> B=<n>` and the `probe-detail: <arm> denied <tool>: <command>` lines name every command an arm was refused. A refused `find /` with `not-found` is the expected result and exits 0.
    - Exit 1 with `A=FOUND` or `B=FOUND`: isolation is broken. Do not run the pilot; report it.
    - Exit 75: a usage limit was reached. Wait for the subscription window to reset and rerun the probe.
 3. Check the fixtures: `bash eval/abtest/verify-checks.sh --all` must print `verify-checks: ok`.
@@ -83,4 +89,7 @@ that name the harness root, the runs or the results, and with a per-run HOME out
 rule cannot stop a shell command that never names the path, so a determined agent with shell access could
 still search the filesystem and find the checkout. These measures are defence in depth, not a proof;
 `run-matrix.sh --probe-canary` plants a random token in the checks and fixtures directories and fails if
-either arm finds it, and a pass is a probe of the common routes, not a proof.
+either arm finds it, and a pass is a probe of the common routes, not a proof. A refused search proves that the
+direct route (`find /` from the run's work directory) is closed, not that the token is unreachable by other means,
+and the control token planted in each arm's own work directory shows only that a token the arm prints reaches the
+stream the probe searches, not that the checks or fixtures directories are out of reach (OD-18).

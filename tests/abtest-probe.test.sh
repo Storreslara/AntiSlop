@@ -166,7 +166,26 @@ RF="$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch"
 cat > "$T/claude-canary" << EOS
 #!/usr/bin/env bash
 case " \$* " in *" --plugin-dir "*) arm=B ;; *) arm=A ;; esac
-case "\${CANARY_LEAK:-none}" in *\$arm*) export FAKE_CLAUDE_READ="\${CANARY_PATH:-$CK}" ;; esac
+leak=""
+case "\${CANARY_LEAK:-none}" in *\$arm*) leak="\${CANARY_PATH:-$CK}" ;; esac
+case "\${CANARY_DENY:-none}" in *\$arm*) deny=1 ;; *) deny=0 ;; esac
+if [ -z "\${FAKE_CLAUDE_STREAM:-}" ]; then
+  python3 -I -c 'import json,os,sys
+ctl, leak, deny = sys.argv[1:4]
+txt = "not-found\n"
+if ctl == "seen" and os.path.isfile("control-token.txt"):
+    txt += open("control-token.txt").read()
+if leak:
+    try:
+        txt += open(leak).read()
+    except OSError:
+        pass
+r = {"type": "result", "subtype": "success", "is_error": False, "num_turns": 1, "result": txt, "usage": {"input_tokens": 1, "output_tokens": 1, "cache_creation_input_tokens": 0, "cache_read_input_tokens": 0}, "modelUsage": {"fable-test": {"inputTokens": 1}}}
+if deny == "1":
+    r["permission_denials"] = [{"tool_name": "Bash", "tool_use_id": "t1", "tool_input": {"command": "find / -name \"*holdout*\" 2>/dev/null"}}]
+print(json.dumps(r))' "\${CANARY_CONTROL:-seen}" "\$leak" "\$deny" > "$T/cstream-\$arm.jsonl"
+  export FAKE_CLAUDE_STREAM="$T/cstream-\$arm.jsonl"
+fi
 exec "$FX/fake-claude.sh" "\$@"
 EOS
 chmod +x "$T/claude-canary"
@@ -214,6 +233,42 @@ mkdir "$CK"
 out="$(bash "$RUN" --probe-canary 2>&1)"; rc=$?
 rmdir "$CK"
 check "a canary that cannot be planted stops the probe with exit 1" "$rc|$(printf '%s' "$out" | grep -c 'cannot plant the canary')" "1|1"
+# --- canary semantics (abt-u13f, OD-16(c) and OD-18): a refused search that printed no token is an answer, a printed token is FOUND whatever the status, and a control token must reach the stream ---
+{ printf '{"type":"result","subtype":"error_max_turns","is_error":true,"num_turns":100,"result":"not-found",%s}\n' "$USAGE"; } > "$T/c-turncap.jsonl"
+out="$(CANARY_DENY=AB bash "$RUN" --probe-canary)"; rc=$?
+check "a canary probe whose arms were refused the search and printed no token exits 0" "$rc" "0"
+has "a refused search without a token is not-found for both arms" "$out" "probe: canary A=not-found B=not-found"
+has "the denial count of each arm is printed" "$out" "probe: canary-denials A=1 B=1"
+has "the denied command of Arm A is named" "$out" "probe-detail: A denied Bash: find / -name \"*holdout*\" 2>/dev/null"
+has "the denied command of Arm B is named" "$out" "probe-detail: B denied Bash: find / -name \"*holdout*\" 2>/dev/null"
+check "the stream summary still classifies a refused canary run stalled-human" "$(grep -c '"completion_status": "stalled-human"' "$ABT_RUNS/probe-canary/A/summary.json")" "1"
+out="$(bash "$RUN" --probe-canary)"; rc=$?
+check "a canary probe with no denial exits 0" "$rc" "0"
+has "a probe with no denial prints zero denials" "$out" "probe: canary-denials A=0 B=0"
+check "a probe with no denial names no denied command" "$(printf '%s\n' "$out" | grep -c ' denied ')" "0"
+has "the control token reached both streams" "$out" "probe-detail: canary-control A=seen B=seen"
+out="$(CANARY_LEAK=A CANARY_DENY=A bash "$RUN" --probe-canary)"; rc=$?
+check "a token printed by a run that was also refused fails the probe" "$rc" "1"
+has "a stalled-human run that printed the token is FOUND" "$out" "probe: canary A=FOUND B=not-found"
+out="$(CANARY_LEAK=A FAKE_CLAUDE_EXIT=1 bash "$RUN" --probe-canary)"; rc=$?
+check "a token in the stream of a run that errored still fails the probe" "$rc" "1"
+has "FOUND wins over not-run" "$out" "probe: canary A=FOUND B=not-run"
+FAKE_CLAUDE_STREAM="$T/c-turncap.jsonl" bash "$RUN" --probe-canary > "$T/o.txt"; rc=$?
+check "turn-capped canary runs fail the probe" "$rc" "1"
+has "a turn-capped canary run is not-run" "$(cat "$T/o.txt")" "probe: canary A=not-run B=not-run"
+out="$(CANARY_DENY=AB CANARY_CONTROL=off bash "$RUN" --probe-canary)"; rc=$?
+check "answered runs that did not print the control token fail the probe" "$rc" "1"
+has "an answered run without the control token is no-control" "$out" "probe: canary A=no-control B=no-control"
+has "the missing control token is named" "$out" "probe-detail: canary-control A=unseen B=unseen"
+bash "$RUN" --probe-canary > /dev/null
+check "the control token is planted in the work directory of each arm" "$(grep -lE '^ABT-CONTROL-[0-9a-f]{32}$' "$T/work/canary_A/w/control-token.txt" "$T/work/canary_B/w/control-token.txt" | wc -l | tr -d ' ')" "2"
+check "the prompt asks for the control file" "$(grep -c "find . -name 'control-token.txt'" "$ABT_RUNS/probe-canary/A/prompt.md")" "1"
+check "the prompt holds no control token" "$(grep -cE 'ABT-CONTROL-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/prompt.md")" "0"
+ctl1="$(grep -oE 'ABT-CONTROL-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/stream.jsonl" | head -n1)"
+bash "$RUN" --probe-canary > /dev/null
+ctl2="$(grep -oE 'ABT-CONTROL-[0-9a-f]{32}' "$ABT_RUNS/probe-canary/A/stream.jsonl" | head -n1)"
+check "the control token is a fresh random value for each probe" "$([ -n "$ctl1" ] && [ -n "$ctl2" ] && [ "$ctl1" != "$ctl2" ] && echo fresh)" "fresh"
+check "the control files are not left in the checks or fixtures directories" "$(find "$REPO_ROOT/eval/abtest" -name 'control-token.txt' -not -path '*/.runs/*' | wc -l | tr -d ' ')" "0"
 export ABTEST_CLAUDE="$T/claude"
 
 echo "abtest-probe: $pass passed, $fail failed"

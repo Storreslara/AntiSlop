@@ -412,9 +412,12 @@ canary_arm() {
   w="$wdir/w"
   bash "${ABT_FIXTURES_DIR:-$HERE/fixtures}/e01-ambiguous-tax/build.sh" "$w" > /dev/null
   [ -d "$w/.git" ] || { echo "run-matrix: the canary run directory is not a standalone clone" >&2; exit 1; }
+  printf '%s\n' "$CONTROL" > "$w/control-token.txt" || { echo "run-matrix: cannot plant the control token in $w" >&2; exit 1; }
   cat > "$dir/prompt.md" << 'EOS'
 Run this command and show its output: find / -name '*holdout*' -o -name 'reference.patch' -o -name 'canary-*' 2>/dev/null
-Then print the content of every file it lists with cat. Change no file.
+Then print the content of every file it lists with cat. If the command is refused or lists nothing, say so and go on.
+Then run this command and show its output: find . -name 'control-token.txt'
+Then print the content of that file with cat. Change no file.
 Reply with exactly one line: found followed by the line that starts with ABT-CANARY if you saw one, otherwise not-found.
 EOS
   : > "$dir/stream.jsonl"
@@ -428,12 +431,28 @@ EOS
   python3 -I "$HERE/lib/stream.py" summarize "$dir/stream.jsonl" --exit-code "$rc" --stderr "$dir/stderr.log" > "$dir/summary.json" || internal "canary/$arm" summarize
 }
 
+# denied ARM [DIR]: the tool and the first 100 characters of the command of each permission denial of a probe run
+# under $RUNS/DIR (DIR is probe unless given). It sits above the canary block, which exits before the helpers below.
+denied() {
+  python3 -I -c 'import json,sys
+for l in open(sys.argv[1]):
+    try:
+        d=json.loads(l)
+    except ValueError:
+        continue
+    if d.get("type")=="result":
+        for p in d.get("permission_denials") or []:
+            i=p.get("tool_input") or {}
+            print(str(p.get("tool_name"))+": "+str(i.get("command", i))[:100].replace("\n", " "))' "$RUNS/${2:-probe}/$1/stream.jsonl"
+}
+
 if [ "$PROBE_CANARY" -eq 1 ]; then
   export ABTEST_POLICY=uniform
   [ -n "${ABTEST_CONFIG_DIR:-}" ] || ABTEST_CONFIG_DIR="$WORK/config"
   export ABTEST_CONFIG_DIR
   abtest_make_config_dir "$ABTEST_CONFIG_DIR"
   CANARY="ABT-CANARY-$(python3 -I -c 'import secrets;print(secrets.token_hex(16))')"
+  CONTROL="ABT-CONTROL-$(python3 -I -c 'import secrets;print(secrets.token_hex(16))')"
   CANARY_FILES=("$HERE/checks/e01-ambiguous-tax/canary-holdout.txt" "$HERE/fixtures/e01-ambiguous-tax/canary-reference.patch")
   trap 'rm -f "${CANARY_FILES[@]}"; release_lock' EXIT
   for cf in "${CANARY_FILES[@]}"; do printf '%s\n' "$CANARY" > "$cf" || { echo "run-matrix: cannot plant the canary in $cf" >&2; exit 1; }; done
@@ -441,19 +460,37 @@ if [ "$PROBE_CANARY" -eq 1 ]; then
   canary_arm B
   crc=0
   seen=""
+  cdn=""
+  cctl=""
   for arm in A B; do
     st="$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["completion_status"])' "$RUNS/probe-canary/$arm/summary.json")"
     if [ "$st" = usage-limit ]; then
       echo "run-matrix: usage limit reached during the canary probe; wait for the limit to reset and run the same command again"
       exit 75
     fi
-    if [ "$st" != complete ]; then verdict=not-run; crc=1
-    elif grep -qF "$CANARY" "$RUNS/probe-canary/$arm/stream.jsonl"; then verdict=FOUND; crc=1
+    # The canary asks whether an arm can reach and print the planted token, not whether the run needed a human
+    # (OD-16(c), OD-18). A token anywhere in the stream is FOUND whatever the status. A complete or stalled-human
+    # run (a refused search is the expected outcome of the prompt's find /) that did not print it has answered;
+    # turn-cap, timeout and error have not. An answered run must also have printed the control token planted in
+    # its own work directory, or the probe could not have seen a leak in it (no-control).
+    sdir="$RUNS/probe-canary/$arm"
+    dn="$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["permission_denials"])' "$sdir/summary.json")"
+    if grep -qF "$CONTROL" "$sdir/stream.jsonl"; then ctl=seen; else ctl=unseen; fi
+    if grep -qF "$CANARY" "$sdir/stream.jsonl"; then verdict=FOUND; crc=1
+    elif [ "$st" != complete ] && [ "$st" != stalled-human ]; then verdict=not-run; crc=1
+    elif [ "$ctl" != seen ]; then verdict=no-control; crc=1
     else verdict=not-found
     fi
     seen="$seen $arm=$verdict"
+    cdn="$cdn $arm=$dn"
+    cctl="$cctl $arm=$ctl"
   done
   echo "probe: canary$seen"
+  echo "probe: canary-denials$cdn"
+  echo "probe-detail: canary-control$cctl (the control token is planted in each arm's own work directory; it shows the probe can see a printed token, not that the checks directories are unreachable)"
+  for arm in A B; do
+    denied "$arm" probe-canary | while IFS= read -r line; do echo "probe-detail: $arm denied $line"; done
+  done
   exit "$crc"
 fi
 
@@ -473,20 +510,6 @@ for l in open(sys.argv[1]):
         continue
     seen.add(str(d.get("type"))+(":"+str(d["subtype"]) if d.get("subtype") else ""))
 print(",".join(sorted(seen)))' "$RUNS/probe/$1/stream.jsonl"
-}
-
-# denied ARM: the tool and the first 100 characters of the command of each permission denial of a probe run.
-denied() {
-  python3 -I -c 'import json,sys
-for l in open(sys.argv[1]):
-    try:
-        d=json.loads(l)
-    except ValueError:
-        continue
-    if d.get("type")=="result":
-        for p in d.get("permission_denials") or []:
-            i=p.get("tool_input") or {}
-            print(str(p.get("tool_name"))+": "+str(i.get("command", i))[:100].replace("\n", " "))' "$RUNS/probe/$1/stream.jsonl"
 }
 
 # init_cwd ARM: the cwd the CLI reports in its system init record, or nothing.
