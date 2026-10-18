@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-18 (abt-u13d post-PASS - shared read-only allowed tools, OD-17, #621)
+- Reviewer PASS abt-u13d at 2840cff5 (PASS marker written by the reviewer; contract commit 12122bf0). Files: `eval/abtest/arms/common.sh` (16 read-only `Bash(<cmd> *)` allows and 6 write-form deny rules, shared by both arms), `tests/abtest-arms.test.sh` (69 to 92 rows), `docs/experiments/abtest-2026-10.md`, and `operator-decisions.md` (OD-17 and the 2026-10-18 pre-registration amendment, before the first run). Trigger: the first real probe stalled Arm B on a piped read-only grep (see the stall signal entry, abt-u13c). `lib/stream.py` unchanged.
+- Open follow-ups (abt-u13e being contracted for the first four): OD-17(b) is wrong (`uniq IN OUT` writes OUT, no deny rule covers it); substring deny patterns `*-o*`/`*-ok*`/`*-exec*` over-match harmless reads; allowed cat/grep/find/ls can reach the harness root via relative paths or globs (OD-16(d) residual; the canary probe is the check); contract criterion 3 says exit 1, the suite exits 2; deny-before-allow evaluation order is untested (only the operator probe re-run tests it).
+- Glossary: shared allowed tools (harness).
+
 ## 2026-10-18 (abt-u13c post-PASS - isolation probe stall signals, #620)
 - Reviewer PASS abt-u13c at 8c1f341b (PASS marker under `.claude/reviewed/`; contract commit 0c47869a). Files: `eval/abtest/run-matrix.sh` (mention case accepts `stalled-human`; `probe: stall-signals` line; `probe-detail` denial lines; `denied()` helper; uniform-model other-models report), `tests/abtest-probe.test.sh` (70 to 93 rows), `docs/harness-glossary.md` (mention case corrected; stall signal added).
 - The probe's mention case used to fail a correct answer that needed one permission approval. Now a stall is reported by `stall-signals` and still fails the probe (exit 1). The allowed-tools widening that removes the root-cause denial is abt-u13d / OD-17.

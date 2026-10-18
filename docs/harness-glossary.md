@@ -3477,6 +3477,9 @@ _Avoid_: harness (alone) for the checkout.
 **stall signal**:
 (unit abt-u13c, 2026-10-18) — the line `probe: stall-signals A=<n> B=<n>` that `run-matrix.sh --probe-isolation` prints. Each `<n>` counts, per arm, the run's `human_interventions_required`: a permission denial, an `AskUserQuestion` ask or an escalated marker. Each denial also prints a `probe-detail: <arm> denied <tool>: <command>` line. Any non-zero count makes the probe exit 1, even when the mention case reads `ok`, so a stall is reported as a stall and not as a mention-case failure. A permission denial or an ask is what makes a real run `stalled-human` (`stream.py`).
 
+**shared allowed tools**:
+(unit abt-u13d, OD-17, 2026-10-18) — the Bash allow set and deny rules that both arms receive from `eval/abtest/arms/common.sh`: `abtest_common_flags` supplies the identical read-only `Bash(<cmd> *)` allows (grep, ls, find, cat, head, tail, wc, sort, uniq, cut, echo, pwd, diff, stat, basename, dirname), and `abtest_deny_flags` supplies the write-form deny rules (`find` with `-exec`, `-ok`, `-delete`, `-fprint`, `-fls`; `sort -o`). Added so a benign piped read is not a permission denial, which would be a stall (see **stall signal**). Known gaps are listed in the changelog entry for abt-u13d, not here.
+
 **usage-limit false positive**:
 (unit abt-u13, 2026-10-17) — a probe run classed `usage-limit` whose `result_text` contains the phrase "rate limit 429", so the phrase was answered and no limit stopped it. The probe prints `probe: usage-limit false positive on arm <A|B>` and exits 1, never 75 (75 is reserved for a real limit)
 
