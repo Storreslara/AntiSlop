@@ -130,3 +130,26 @@ from the operator's dispatch message; the doc's substance is not edited.
   either stream, and the pilot gate requires it to pass. (d) Residual risk, stated in the README and the
   pre-registration: a deny rule cannot stop a shell command that never names the path, and a determined agent with
   a shell could still search the filesystem; the measures are defence in depth and the canary is a probe, not a proof.
+- OD-17 (2026-10-18, shared allowed tools; binding operator decision from the first real isolation probe; amends the
+  design's flag lines 36 and 322)
+  The shared `--allowedTools` set is widened identically in both arms with read-only commands, so a correct run is
+  not scored `stalled-human` for a benign piped read. Evidence (probe 2026-10-18, `run-matrix.sh --probe-isolation
+  --probe-model uniform`): the Arm B explorer subagent ran `grep ... | grep -v ':0$' | head -50; echo ---; ls ...`;
+  the stream held a `permission_denied` record with reason `subcommandResults`, so Arm B answered correctly and was
+  classified `stalled-human` (spec 4.1, OD-3, OD-13).
+  (a) The set: `Bash(npm test)`, `Bash(npm run *)` and `Bash(git *)` as before, plus `Bash(<command> *)` for grep, ls,
+  find, cat, head, tail, wc, sort, uniq, cut, echo, pwd, diff, stat, basename and dirname. Claude Code matches a
+  compound command (`|`, `;`, `&&`, `||`) one subcommand at a time and each needs its own allow rule, so every
+  command of such a pipeline has a rule.
+  (b) Not added: rm, mv, cp, chmod, chown, ln, sed, awk, tee, touch, mkdir, curl, wget, ssh, any network command, any
+  interpreter or shell. A redirect or a tee target is checked by Claude Code against its Edit rules, so a redirect
+  into the worktree stays governed by `--permission-mode acceptEdits` exactly as before; this decision adds no write
+  permission.
+  (c) Deny rules are checked before allow rules, so `--disallowedTools` also carries `Bash(find *-exec*)`,
+  `Bash(find *-ok*)`, `Bash(find *-delete*)`, `Bash(find *-fprint*)`, `Bash(find *-fls*)` and `Bash(sort *-o*)`, and
+  the OD-16 rules for the harness root (Read, Edit and `Bash(*<root>*)`) still win over every allow. A command that
+  the rules cannot name, such as a shell that never names the path, is the residual risk stated in OD-16(d).
+  (d) Stall detection in lib/stream.py is unchanged: any permission denial or ask is still `stalled-human`, and a
+  command outside the set is still a stall. `--probe-model uniform` stays report-only (abt-u13c).
+  (e) Whether the widening removes the denial seen in the probe is confirmed only by re-running the probe; that is
+  the operator's step, and no test spends usage for it. The pre-registration is amended before the first run.

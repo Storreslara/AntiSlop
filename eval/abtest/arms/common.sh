@@ -18,6 +18,9 @@ abtest_common_flags() {
     --output-format stream-json --verbose --include-hook-events \
     --permission-mode acceptEdits \
     --allowedTools 'Bash(npm test)' 'Bash(npm run *)' 'Bash(git *)' \
+    'Bash(grep *)' 'Bash(ls *)' 'Bash(find *)' 'Bash(cat *)' 'Bash(head *)' 'Bash(tail *)' 'Bash(wc *)' \
+    'Bash(sort *)' 'Bash(uniq *)' 'Bash(cut *)' 'Bash(echo *)' 'Bash(pwd *)' 'Bash(diff *)' 'Bash(stat *)' \
+    'Bash(basename *)' 'Bash(dirname *)' \
     --max-turns "$MAX_TURNS" --model "$ABTEST_MODEL" \
     --no-session-persistence
 }
@@ -42,6 +45,9 @@ abtest_outside() {
 abtest_deny_flags() {
   local p
   printf '%s\n' --disallowedTools
+  # The read-only allows (OD-17) must not reach a form that writes or runs another command. Deny rules are checked
+  # before allow rules, so these win, as do the harness-root rules below.
+  printf '%s\n' 'Bash(find *-exec*)' 'Bash(find *-ok*)' 'Bash(find *-delete*)' 'Bash(find *-fprint*)' 'Bash(find *-fls*)' 'Bash(sort *-o*)'
   while IFS= read -r p; do
     case "$p" in
       *[[:space:],\(\)]*)

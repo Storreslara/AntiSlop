@@ -119,6 +119,21 @@ for a in A B; do
   check "arm $a denies Edit of the harness root" "$(grep -cxF "Edit(/$REPO_PHYS/**)" "$T/argv$a")" "1"
   check "arm $a denies Bash commands that name the harness root" "$(grep -cxF "Bash(*$REPO_PHYS*)" "$T/argv$a")" "1"
 done
+# --- shared read-only allows (abt-u13d, OD-17): identical in both arms, nothing that writes, deny rules still win ---
+allow_of() { awk '/^--allowedTools$/ {f = 1; next} /^--/ {f = 0} f' "$1"; }
+allow_of "$T/argvA" > "$T/allowA"
+allow_of "$T/argvB" > "$T/allowB"
+check "both arms pass the same --allowedTools values" "$(cmp -s "$T/allowA" "$T/allowB" && echo same || echo differ)" "same"
+check "the shared allowed tools number 19" "$(wc -l < "$T/allowA" | tr -d ' ')" "19"
+check "the shared allowed tools keep the original three" "$(grep -cxE 'Bash\(npm test\)|Bash\(npm run \*\)|Bash\(git \*\)' "$T/allowA")" "3"
+for c in grep ls find cat head tail wc sort uniq cut echo pwd diff stat basename dirname; do
+  check "the shared allowed tools hold Bash($c *) in both arms" "$(grep -cxF "Bash($c *)" "$T/allowA")|$(grep -cxF "Bash($c *)" "$T/allowB")" "1|1"
+done
+check "no allowed tool names a command that writes, deletes, fetches or runs another" "$(grep -cE '^Bash\((rm|mv|cp|chmod|chown|ln|tee|sed|awk|dd|curl|wget|ssh|scp|nc|xargs|tar|touch|mkdir|sh|bash|env|eval|sudo|node|python3?) ' "$T/allowA")" "0"
+check "no deny rule rides the allow list" "$(grep -c "$REPO_PHYS" "$T/allowA")" "0"
+for a in A B; do
+  check "arm $a denies the write-capable forms of find and sort" "$(grep -cxF -e 'Bash(find *-exec*)' -e 'Bash(find *-ok*)' -e 'Bash(find *-delete*)' -e 'Bash(find *-fprint*)' -e 'Bash(find *-fls*)' -e 'Bash(sort *-o*)' "$T/argv$a")" "6"
+done
 mkrepo "$T/wa4"
 ABTEST_DENY_PATHS="$T/results:$T/runs" bash "$ARMS/arm-a.sh" "$T/wa4" "$T/prompt.txt" "$T/w4.stream" "$T/w4.err" > /dev/null
 N4="$(ls "$T/log" | grep -c '^argv\.')"
