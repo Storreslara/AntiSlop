@@ -3,6 +3,13 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-18 (abt-u05h post-PASS - fail-closed worktree guard, #619)
+- Reviewer PASS abt-u05h at ff2ecd29 (PASS marker written by the reviewer; contract 36e16386). Files: `eval/abtest/checks/lib.sh` (`_abt_refuse`, `_abt_guard_wt`, `_abt_drop_refuse`, `_abt_guard_copy`), `eval/abtest/fixtures/lib.sh` (`abt_dest_guard`), `eval/abtest/run-matrix.sh`, `eval/abtest/verify-checks.sh`, `eval/abtest/arms/common.sh`, eight `tests/abtest-*.test.sh` suites (`tests/abtest-checks.test.sh` 231 to 332 rows).
+- Motive: an empty worktree path once made a check copy `/` into a tmp dir (232 GB). The guard runs before any copy, so a bad path exits 3 instead of copying.
+- Follow-ups (not done in this unit): four `tests/abtest-report*.test.sh` suites keep an unguarded `mktemp`; `//` passes the root test at `checks/lib.sh:30` but later checks refuse it; `abt_init` leaks three empty `ABT_OUT` files on early-exit checks (pre-existing); `human-decision-gate.sh` false-positive on the criterion 8 command; contract criterion 9 needs `/usr/bin/grep` wording.
+- Glossary (harness): new **fail-closed worktree guard**. CONTEXT.md unchanged (no domain term).
+- Issue #619 closed on the PASS line.
+
 ## 2026-10-17 (abt-u15b post-PASS - blinding fails closed on Unit and STATUS labels, #596)
 - Reviewer PASS abt-u15b at 4d60a422 (after two FAILs; fix contracts abt-u15b-fix1, abt-u15b-fix2). Files: `eval/abtest/lib/blind.py`, `tests/abtest-blind.test.sh` (47 rows). `blind.py` drops `UNIT_ID` and `STATUS_VALUE`, adds `LABEL_TAIL` and `BENIGN_UNIT`: any line with a Unit or STATUS label (bold, code, quotes, brackets, underscores, any horizontal whitespace incl. NBSP, full-width colon) is removed, except a `Unit:` whose value is a price or "percent"; a bare `Unit:` line is removed and the next line survives. REDACT gains `ready-for-review`, `ready-for-agent`, `wip-handoff`, `ESCALATE-TO-HUMAN`, `INSUFFICIENT-CONTEXT`, `SPEC-GAP`; DROP gains `.claude-plugin/`, `CLAUDE.md`, `microworlds/`, root `wiki/`, nested `docs/plans/`.
 - Convention: a committed 51-line corpus of real agent lines must all redact to `[line removed]`; every removal row is paired with a positive-control row.

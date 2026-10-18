@@ -3452,6 +3452,9 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 **fail-closed arm start**:
 (unit abt-u12, 2026-10-17) — the rule that a run whose arm never really started writes no row. An arm whose scaffold sha is missing stops the runner with exit 1 (internal error) and appends nothing, so resume repeats that run instead of treating a non-run as data. Distinct from the usage-limit stop (exit 75), which does keep a row.
 
+**fail-closed worktree guard**:
+(unit abt-u05h, 2026-10-18) — the guard that runs before an A/B check copies its worktree: `_abt_guard_wt` in `eval/abtest/checks/lib.sh` sets `ABT_WT` to the worktree's physical path or exits 3, and `_abt_guard_copy` refuses a copy target inside or above that worktree. An empty or root path refuses instead of copying, so the copy never reads `/`. Distinct from the [[fail-closed arm start]], which concerns whether an arm wrote a row, not where a copy lands.
+
 **harness root (checkout sense)**:
 (unit abt-u01b, 2026-10-17) — in `eval/abtest/arms/common.sh` (`ABTEST_HARNESS_ROOT`) and the arm scripts, the root directory of this repository's checkout, which an [[arm]] must never load from, run in or read. Not the glossary's "Harness" (Claude Code, the product): here "harness" means the A/B test tooling's own checkout. `abtest_outside` refuses any path inside it (arm scripts exit 2).
 _Avoid_: harness (alone) for the checkout.
