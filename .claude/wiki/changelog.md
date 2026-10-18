@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-18 (abt-u13e post-PASS - shared allow set and anchored deny rules, OD-17, #622)
+- Reviewer PASS abt-u13e at f8f9997e (PASS marker written by the reviewer; contract commit e8cd4eb5). Files: `eval/abtest/arms/common.sh` (`uniq` dropped from the allow set, 19 to 18 values; deny rules 6 to 16, anchored), `tests/abtest-arms.test.sh` (92 to 117 rows, fake claude, no usage), `docs/experiments/abtest-2026-10.md` (dated correction), `operator-decisions.md` (OD-17(a)-(c) rewritten, residuals stated). Closes the first four open follow-ups of abt-u13d.
+- Open follow-ups (reviewer notes, not fixed): OD-17(b) names the quoted-flag residual for sort only (`find . '-exec'` also matches no rule); GNU sort abbreviated long options (`sort --out=FILE IN` writes, `sort --co=PROG` runs) match no rule; not material because `Bash(git *)` already lets an arm run programs. Nothing tests deny-before-allow evaluation order or the real matcher; the operator's probe re-run is the only check.
+- Glossary (harness): shared allowed tools updated; new **anchored deny rule**.
+
 ## 2026-10-18 (abt-u13d post-PASS - shared read-only allowed tools, OD-17, #621)
 - Reviewer PASS abt-u13d at 2840cff5 (PASS marker written by the reviewer; contract commit 12122bf0). Files: `eval/abtest/arms/common.sh` (16 read-only `Bash(<cmd> *)` allows and 6 write-form deny rules, shared by both arms), `tests/abtest-arms.test.sh` (69 to 92 rows), `docs/experiments/abtest-2026-10.md`, and `operator-decisions.md` (OD-17 and the 2026-10-18 pre-registration amendment, before the first run). Trigger: the first real probe stalled Arm B on a piped read-only grep (see the stall signal entry, abt-u13c). `lib/stream.py` unchanged.
 - Open follow-ups (abt-u13e being contracted for the first four): OD-17(b) is wrong (`uniq IN OUT` writes OUT, no deny rule covers it); substring deny patterns `*-o*`/`*-ok*`/`*-exec*` over-match harmless reads; allowed cat/grep/find/ls can reach the harness root via relative paths or globs (OD-16(d) residual; the canary probe is the check); contract criterion 3 says exit 1, the suite exits 2; deny-before-allow evaluation order is untested (only the operator probe re-run tests it).
