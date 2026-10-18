@@ -5,7 +5,7 @@
 set -u
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BLIND="$REPO_ROOT/eval/abtest/blind.sh"
-T="$(mktemp -d)"
+T="$(mktemp -d)" && [ -d "${T:-}" ] || { echo "mktemp -d failed" >&2; exit 2; }
 trap 'rm -rf "$T"' EXIT
 pass=0
 fail=0

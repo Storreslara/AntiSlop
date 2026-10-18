@@ -3,6 +3,22 @@
 # deterministic: fixed identity and dates, so two builds of one fixture
 # commit the same baseline sha.
 
+# abt_dest_guard DEST (abt-u05h): refuse a build destination that is empty, contains a newline, is /, or is the home
+# directory, the TMPDIR or a parent of either. A fixture is built into a directory of its own below them.
+abt_dest_guard() {
+  local d="${1-}" r p rp
+  [ -n "$d" ] || { echo "build: the destination is empty" >&2; return 1; }
+  case "$d" in *$'\n'*) echo "build: the destination contains a newline" >&2; return 1 ;; esac
+  r="$(realpath -m -- "$d")" || { echo "build: cannot resolve the destination $d" >&2; return 1; }
+  case "$r" in /?*) ;; *) echo "build: the destination $d is the filesystem root" >&2; return 1 ;; esac
+  for p in "${HOME-}" "${TMPDIR:-/tmp}"; do
+    [ -n "$p" ] || continue
+    rp="$(realpath -m -- "$p")" || continue
+    case "$rp/" in "$r"/*) echo "build: the destination $d is, or contains, $p" >&2; return 1 ;; esac
+  done
+  return 0
+}
+
 abt_fixture_env() {
   export GIT_AUTHOR_NAME=dev GIT_AUTHOR_EMAIL=dev@example.invalid
   export GIT_COMMITTER_NAME=dev GIT_COMMITTER_EMAIL=dev@example.invalid
@@ -103,6 +119,7 @@ abt_leak_guard() {
 abt_fixture_baseline() {
   local d="$1"
   while [ "${d%/}" != "$d" ] && [ "$d" != / ]; do d="${d%/}"; done
+  abt_dest_guard "$d" || return 1
   abt_leak_guard "$d" || return 1
   abt_fixture_env
   ( cd "$d" && git init -q -b main ) || return 1

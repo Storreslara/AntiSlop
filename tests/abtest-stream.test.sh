@@ -48,7 +48,7 @@ check "limit wording: leading blank lines and spaces in front of the phrase" "$(
 check "limit wording: you have hit your limit" "$(field "$FX/lim-have-hit.jsonl" completion_status --exit-code 1)" "usage-limit"
 check "limit wording: curly-apostrophe weekly hit-your-limit" "$(field "$FX/lim-curly-hit.jsonl" completion_status --exit-code 1)" "usage-limit"
 check "limit wording: API Error 429 that carries the rate_limit_error type" "$(field "$FX/lim-429-token.jsonl" completion_status --exit-code 1)" "usage-limit"
-ZW="$(mktemp -d)"
+ZW="$(mktemp -d)" && [ -d "${ZW:-}" ] || { echo "mktemp -d failed" >&2; exit 2; }
 trap 'rm -rf "$ZW"' EXIT
 printf '\xef\xbb\xbfClaude AI usage limit reached|1760000000\n' > "$ZW/bom-noise.jsonl"
 printf '\xe2\x80\x8bClaude AI usage limit reached|1760000000\n' > "$ZW/zw-noise.jsonl"

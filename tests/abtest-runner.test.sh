@@ -6,7 +6,7 @@ set -u
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUN="$REPO_ROOT/eval/abtest/run-matrix.sh"
 FX="$REPO_ROOT/tests/fixtures/abtest"
-T="$(mktemp -d)"
+T="$(mktemp -d)" && [ -d "${T:-}" ] || { echo "mktemp -d failed" >&2; exit 2; }
 trap 'pkill -KILL -f "$T/(wrap|fake-copy|hangver|stubborn)" 2> /dev/null; rm -rf "$T"' EXIT
 pass=0
 fail=0

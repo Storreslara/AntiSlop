@@ -92,7 +92,7 @@ abtest_arm_setup() {
 # operator's credentials and nothing else (no plugins, no user CLAUDE.md).
 abtest_make_config_dir() {
   local dir="$1"
-  rm -rf "$dir"
+  rm -rf "${dir:?}"
   mkdir -p "$dir"
   printf '{}\n' > "$dir/settings.json"
   if [ -f "$HOME/.claude/.credentials.json" ]; then

@@ -54,6 +54,15 @@ abs_path() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PWD" "$1" 
 RESULTS="$(abs_path "$RESULTS")"
 RUNS="$(abs_path "$RUNS")"
 WORK="$(abs_path "$WORK")"
+# Refuse a runs or work root that is /, the home directory or a parent of it: a run starts by removing its own
+# directories under these roots (abt-u05h).
+for _p in "$RUNS" "$WORK"; do
+  _r="$(realpath -m -- "$_p")"
+  _h="$(realpath -m -- "${HOME:-/}")"
+  case "$_r" in /?*) ;; *) echo "run-matrix: ABT_RUNS and ABT_WORK must not be / ($_p)" >&2; exit 2 ;; esac
+  case "$_h/" in "$_r"/*) echo "run-matrix: ABT_RUNS and ABT_WORK must not be the home directory or a parent of it ($_p)" >&2; exit 2 ;; esac
+done
+unset _p _r _h
 ABT_PLUGIN_ROOT="$(abs_path "${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}")"
 PLUGIN_ROOT="${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}"
 # The arms may not read the results or the runs (OD-16): the arm scripts turn these paths into deny rules.

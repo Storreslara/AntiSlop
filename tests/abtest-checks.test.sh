@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERIFY="$REPO_ROOT/eval/abtest/verify-checks.sh"
 SCOPE="$REPO_ROOT/eval/abtest/checks/scope.sh"
 SYN="$REPO_ROOT/tests/fixtures/abtest/verify"
-T="$(mktemp -d)"
+T="$(mktemp -d)" && [ -d "${T:-}" ] || { echo "mktemp -d failed" >&2; exit 2; }
 trap 'rm -rf "$T"' EXIT
 pass=0
 fail=0
@@ -586,6 +586,128 @@ telapsed=$((SECONDS - tstart))
 check "a check that hangs is ended well before it would finish" "$([ "$telapsed" -lt 20 ] && echo fast || echo "slow:$telapsed")" "fast"
 check "the hung check is recorded as failed with exit 124" "$(printf '%s' "$tjson" | python3 -I -c 'import json,sys;d=json.load(sys.stdin);print(d[0]["id"],d[0]["pass"],d[0]["exit"])')" "hangs False 124"
 check "a fast check next to it still passes" "$(printf '%s' "$tjson" | python3 -I -c 'import json,sys;d=json.load(sys.stdin);print(d[1]["id"],d[1]["pass"],d[1]["exit"])')" "fast True 0"
+
+# --- fail-closed worktree guard (abt-u05h): a bad worktree argument exits 3 and copies nothing ---
+# Safe by construction: every guard run puts a cp stub first on PATH that copies only inside this test's temp dir
+# and logs DANGER for any other path, so a lib.sh without the guard still cannot copy the filesystem.
+REAL_CP="$(command -v cp)"
+GROOT="$(realpath "$T")"
+mkdir -p "$T/gstub" "$T/gtmp" "$T/gcwd" "$T/ghome"
+cat > "$T/gstub/cp" << 'EOS'
+#!/usr/bin/env bash
+printf 'cp %s\n' "$*" >> "$GUARD_CP_LOG"
+for a in "$@"; do
+  case "$a" in -*) continue ;; esac
+  r="$(realpath -m -- "$a" 2> /dev/null)"
+  case "$r/" in "$GUARD_CP_ROOT"/*) ;; *) echo "DANGER $a" >> "$GUARD_CP_LOG"; echo "cp stub: refusing $a" >&2; exit 97 ;; esac
+done
+exec "$GUARD_REAL_CP" "$@"
+EOS
+chmod +x "$T/gstub/cp"
+cat > "$T/guard-check.sh" << 'EOS'
+. "$ABT_CHECKS_LIB"
+abt_init "$1" "$2" "$3" "$4"
+abt_check g defect true 'true'
+abt_emit
+EOS
+cat > "$T/guard-noinit.sh" << 'EOS'
+. "$ABT_CHECKS_LIB"
+unset ABT_WT
+ABT_BASE=x
+abt_check g defect true 'true'
+abt_emit
+EOS
+: > "$T/gcp.all"
+guard_run() {
+  : > "$T/gcp.log"
+  gout="$(cd "$T/gcwd" && (ulimit -f 20480; PATH="$T/gstub:$PATH" TMPDIR="$T/gtmp" HOME="$T/ghome" GUARD_CP_LOG="$T/gcp.log" GUARD_CP_ROOT="$GROOT" GUARD_REAL_CP="$REAL_CP" ABT_CHECKS_LIB="$REPO_ROOT/eval/abtest/checks/lib.sh" timeout -k 2s 30s bash "$1" "$2" "$BASE" "$BASE" "$T/allowed" 2> "$T/gerr.txt"))"; grc=$?
+  gerr="$(cat "$T/gerr.txt")"
+  cat "$T/gcp.log" >> "$T/gcp.all"
+}
+guard_refused() {
+  guard_run "$2" "$3"
+  check "guard: $1 exits 3" "$grc" "3"
+  has "guard: $1 says why" "$gerr" "$4"
+  check "guard: $1 prints no JSON" "$gout" ""
+  check "guard: $1 leaves TMPDIR empty" "$(ls -A "$T/gtmp" | wc -l | tr -d ' ')" "0"
+  check "guard: $1 calls cp zero times" "$(wc -l < "$T/gcp.log" | tr -d ' ')" "0"
+}
+mkdir -p "$T/space dir" "$T/gitless/.git" "$T/nl"$'\n'
+git -C "$T/nl"$'\n' init -q
+printf 'x\n' > "$T/afile"
+ln -s / "$T/rootlink"
+guard_refused "a nonexistent worktree" "$T/guard-check.sh" "$T/nope" "not an existing directory"
+guard_refused "an empty string argument" "$T/guard-check.sh" "" "empty or unset"
+guard_refused "the root directory" "$T/guard-check.sh" "/" "filesystem root"
+guard_refused "a symbolic link to the root directory" "$T/guard-check.sh" "$T/rootlink" "filesystem root"
+guard_refused "a file instead of a directory" "$T/guard-check.sh" "$T/afile" "not an existing directory"
+guard_refused "an unset ABT_WT" "$T/guard-noinit.sh" "$R" "empty or unset"
+guard_refused "a nonexistent directory with a space in its name" "$T/guard-check.sh" "$T/no such dir" "not an existing directory"
+guard_refused "an existing directory with a space that is no worktree" "$T/guard-check.sh" "$T/space dir" "has no .git"
+guard_refused "a directory whose name ends in a newline" "$T/guard-check.sh" "$T/nl"$'\n' "contains a newline"
+guard_refused "the home directory" "$T/guard-check.sh" "$T/ghome" "is, or contains"
+guard_refused "a parent of the home directory" "$T/guard-check.sh" "$T" "is, or contains"
+guard_refused "the TMPDIR itself" "$T/guard-check.sh" "$T/gtmp" "is, or contains"
+guard_refused "a .git that is not a repository" "$T/guard-check.sh" "$T/gitless" "not a git worktree"
+cp -r "$R" "$T/good repo"
+guard_run "$T/guard-check.sh" "$T/good repo"
+check "guard: a real worktree with a space in its name still runs" "$grc" "0"
+check "guard: that run reports the check as passed" "$(printf '%s' "$gout" | python3 -I -c 'import json,sys;print(json.load(sys.stdin)[0]["pass"])')" "True"
+check "guard: that run copied the tree exactly once" "$(wc -l < "$T/gcp.log" | tr -d ' ')" "1"
+check "guard: that run removed its copy and its output file" "$(ls -A "$T/gtmp" | wc -l | tr -d ' ')" "0"
+check "guard: no run offered cp a path outside the test temp dir" "$(grep -c '^DANGER' "$T/gcp.all")" "0"
+check "guard: the agent tree is untouched by the guard runs" "$(cat "$R/package.json")" "x"
+
+# verify-checks.sh: a failing mktemp stops it before any fixture is built (the build stub only records its argument).
+mkdir -p "$T/vg/fx/syn-x" "$T/vg/ck/syn-x" "$T/vg/bin"
+cat > "$T/vg/fx/syn-x/build.sh" << EOS
+#!/usr/bin/env bash
+printf '%s\n' "\$1" >> "$T/vg/built.log"
+exit 1
+EOS
+: > "$T/vg/fx/syn-x/reference.patch"
+: > "$T/vg/fx/syn-x/allowed-paths.txt"
+printf '#!/usr/bin/env bash\n' > "$T/vg/ck/syn-x/check.sh"
+printf '#!/bin/sh\nexit 1\n' > "$T/vg/bin/mktemp"
+chmod +x "$T/vg/bin/mktemp"
+vout="$(PATH="$T/vg/bin:$PATH" ABT_FIXTURES_DIR="$T/vg/fx" ABT_CHECKS_ROOT="$T/vg/ck" timeout 30s bash "$VERIFY" syn-x 2>&1)"; vrc=$?
+check "verify-checks: a failing mktemp exits 2" "$vrc" "2"
+has "verify-checks: a failing mktemp says so" "$vout" "cannot create a temp directory"
+check "verify-checks: a failing mktemp builds nothing" "$(test -e "$T/vg/built.log" && echo built || echo none)" "none"
+
+# run-matrix.sh: ABT_WORK and ABT_RUNS may not be /, the home directory or a parent of it (dry runs only; nothing is removed).
+mkdir -p "$T/rmhome/.claude"
+printf '{}\n' > "$T/rmhome/.claude/.credentials.json"
+rm_dry() { HOME="$T/rmhome" ABTEST_CLAUDE="$REPO_ROOT/tests/fixtures/abtest/fake-claude.sh" ABT_RESULTS="$T/rm-res.jsonl" ABT_RUNS="${ABT_RUNS:-$T/rm-runs}" ABT_WORK="$1" timeout 60s bash "$REPO_ROOT/eval/abtest/run-matrix.sh" --pilot --evals e01-ambiguous-tax --dry-run 2>&1; }
+for rmcase in "/" "$T/rmhome" "$T"; do
+  rmout="$(rm_dry "$rmcase")"; rmrc=$?
+  check "run-matrix: ABT_WORK=$rmcase exits 2" "$rmrc" "2"
+  has "run-matrix: ABT_WORK=$rmcase says why" "$rmout" "ABT_RUNS and ABT_WORK must not be"
+done
+rmout="$(ABT_RUNS=/ rm_dry "$T/rmhome/work")"; rmrc=$?
+check "run-matrix: ABT_RUNS=/ exits 2" "$rmrc" "2"
+has "run-matrix: ABT_RUNS=/ says why" "$rmout" "ABT_RUNS and ABT_WORK must not be"
+rmout="$(rm_dry "$T/rmhome/work")"; rmrc=$?
+check "run-matrix: a work root below the home directory still plans" "$rmrc" "0"
+has "run-matrix: that dry run lists the plan" "$rmout" "plan: e01-ambiguous-tax/A/uniform/1 run"
+
+# fixtures/lib.sh abt_dest_guard and the five build.sh scripts: a build destination may not be empty, /, the home directory or a parent of it.
+mkdir -p "$T/fakehome" "$T/ftmp"
+dg() { ( export HOME="$T/fakehome" TMPDIR="$T/ftmp"; . "$REPO_ROOT/eval/abtest/fixtures/lib.sh"; abt_dest_guard "$1" ) > /dev/null 2>&1; echo $?; }
+check "dest guard: an empty destination is refused" "$(dg "")" "1"
+check "dest guard: / is refused" "$(dg "/")" "1"
+check "dest guard: the home directory is refused" "$(dg "$T/fakehome")" "1"
+check "dest guard: a parent of the home directory is refused" "$(dg "$T")" "1"
+check "dest guard: the TMPDIR is refused" "$(dg "$T/ftmp")" "1"
+check "dest guard: a fresh directory below the TMPDIR is accepted" "$(dg "$T/ftmp/new dest")" "0"
+for fxid in e01-ambiguous-tax e02-preview-mutation e03-rename-query e04-search-injection e05-tags-feature; do
+  HOME="$T/fakehome" TMPDIR="$T/ftmp" timeout 60s bash "$REPO_ROOT/eval/abtest/fixtures/$fxid/build.sh" "$T/fakehome" > /dev/null 2>&1; fxrc=$?
+  check "build.sh $fxid refuses the home directory as its destination" "$fxrc" "2"
+  check "build.sh $fxid wrote nothing into the refused destination" "$(ls -A "$T/fakehome" | wc -l | tr -d ' ')" "0"
+done
+
+# arms/common.sh: the config directory is never removed through an empty variable.
+check "common.sh removes the config dir only through a guarded expansion" "$(grep -cF 'rm -rf "${dir:?}"' "$REPO_ROOT/eval/abtest/arms/common.sh")|$(grep -cF 'rm -rf "$dir"' "$REPO_ROOT/eval/abtest/arms/common.sh")" "2|0"
 echo "abtest-checks: $pass passed, $fail failed"
 [ "$fail" -eq 0 ] && echo "All abtest-checks checks passed."
 exit "$fail"

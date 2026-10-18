@@ -25,7 +25,7 @@ else
 fi
 [ "${#ids[@]}" -gt 0 ] || { echo "verify-checks: no fixtures found" >&2; exit 2; }
 
-T="$(mktemp -d)"
+T="$(mktemp -d)" && [ -n "$T" ] && [ -d "$T" ] || { echo "verify-checks: cannot create a temp directory" >&2; exit 2; }
 trap 'rm -rf "$T"' EXIT
 bad=0
 

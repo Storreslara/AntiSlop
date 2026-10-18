@@ -6,7 +6,7 @@ set -u
 export PYTHONDONTWRITEBYTECODE=1
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SCORE="$REPO_ROOT/eval/abtest/score.py"
-T="$(mktemp -d)"
+T="$(mktemp -d)" && [ -d "${T:-}" ] || { echo "mktemp -d failed" >&2; exit 2; }
 trap 'rm -rf "$T"' EXIT
 pass=0
 fail=0
