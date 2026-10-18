@@ -3472,7 +3472,10 @@ _Avoid_: harness (alone) for the checkout.
 (unit abt-u12c, 2026-10-17) — `results.superseded.jsonl` beside `ABT_RESULTS` (override with `ABT_SUPERSEDED`): the append-only file `supersede_run` moves stale-provenance rows into, so they are kept but no longer count. The scorer never reads it.
 
 **mention case**:
-(unit abt-u13, 2026-10-17) — the probe row of `run-matrix.sh --probe-isolation` that checks both arms answer a prompt which only mentions the phrase "rate limit 429": each reply must contain the phrase and each run must be classed `complete`. It proves the usage-limit detector does not fire on a reply that merely quotes limit wording. Printed as `probe: mention-case ok|missing|failed`; any value but `ok` fails the probe (exit 1)
+(unit abt-u13, 2026-10-17) — the probe row of `run-matrix.sh --probe-isolation` that checks both arms answer a prompt which only mentions the phrase "rate limit 429": each reply must contain the phrase and each run must be classed `complete` or `stalled-human` (a run that answered but then needed a permission approval still counts as answered; its stall is named by **stall signal**). It proves the usage-limit detector does not fire on a reply that merely quotes limit wording. Printed as `probe: mention-case ok|missing|failed`; any value but `ok` fails the probe (exit 1)
+
+**stall signal**:
+(unit abt-u13c, 2026-10-18) — the line `probe: stall-signals A=<n> B=<n>` that `run-matrix.sh --probe-isolation` prints. Each `<n>` counts, per arm, the run's `human_interventions_required`: a permission denial, an `AskUserQuestion` ask or an escalated marker. Each denial also prints a `probe-detail: <arm> denied <tool>: <command>` line. Any non-zero count makes the probe exit 1, even when the mention case reads `ok`, so a stall is reported as a stall and not as a mention-case failure. A permission denial or an ask is what makes a real run `stalled-human` (`stream.py`).
 
 **usage-limit false positive**:
 (unit abt-u13, 2026-10-17) — a probe run classed `usage-limit` whose `result_text` contains the phrase "rate limit 429", so the phrase was answered and no limit stopped it. The probe prints `probe: usage-limit false positive on arm <A|B>` and exits 1, never 75 (75 is reserved for a real limit)

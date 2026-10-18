@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-18 (abt-u13c post-PASS - isolation probe stall signals, #620)
+- Reviewer PASS abt-u13c at 8c1f341b (PASS marker under `.claude/reviewed/`; contract commit 0c47869a). Files: `eval/abtest/run-matrix.sh` (mention case accepts `stalled-human`; `probe: stall-signals` line; `probe-detail` denial lines; `denied()` helper; uniform-model other-models report), `tests/abtest-probe.test.sh` (70 to 93 rows), `docs/harness-glossary.md` (mention case corrected; stall signal added).
+- The probe's mention case used to fail a correct answer that needed one permission approval. Now a stall is reported by `stall-signals` and still fails the probe (exit 1). The allowed-tools widening that removes the root-cause denial is abt-u13d / OD-17.
+- Open follow-ups: `denied()` crashes on non-dict input (`run-matrix.sh:487`); untested multi-denial, newline-command and no-`command`-key paths; denial plus `is_error` reads mention-case `ok`; `tests/abtest-runner.test.sh` failed once, unreproduced.
+
 ## 2026-10-18 (abt-u05h post-PASS - fail-closed worktree guard, #619)
 - Reviewer PASS abt-u05h at ff2ecd29 (PASS marker written by the reviewer; contract 36e16386). Files: `eval/abtest/checks/lib.sh` (`_abt_refuse`, `_abt_guard_wt`, `_abt_drop_refuse`, `_abt_guard_copy`), `eval/abtest/fixtures/lib.sh` (`abt_dest_guard`), `eval/abtest/run-matrix.sh`, `eval/abtest/verify-checks.sh`, `eval/abtest/arms/common.sh`, eight `tests/abtest-*.test.sh` suites (`tests/abtest-checks.test.sh` 231 to 332 rows).
 - Motive: an empty worktree path once made a check copy `/` into a tmp dir (232 GB). The guard runs before any copy, so a bad path exits 3 instead of copying.
