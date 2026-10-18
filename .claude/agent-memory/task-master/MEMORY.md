@@ -19,3 +19,4 @@
 - [Simulate spec numeric bounds](feedback_simulate_spec_numeric_bounds.md) — run a spec's filter/keep rule on real data; unreachable bound = HELD SPEC-GAP, not a contract.
 - [Techniques](TECHNIQUES.md) — how-to notes (bash, gates, tests); grep it by keyword before solving a mechanics problem
 - [Archive](ARCHIVE.md) — closed-plan and project notes; grep it before concluding none exists
+- [Grid test for decision tables](feedback_grid_test_for_decision_tables.md) — enumerate the whole cube with a literal oracle; scorer order vs report wording (abt-u21a r3-5)
