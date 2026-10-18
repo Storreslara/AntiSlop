@@ -475,6 +475,20 @@ for l in open(sys.argv[1]):
 print(",".join(sorted(seen)))' "$RUNS/probe/$1/stream.jsonl"
 }
 
+# denied ARM: the tool and the first 100 characters of the command of each permission denial of a probe run.
+denied() {
+  python3 -I -c 'import json,sys
+for l in open(sys.argv[1]):
+    try:
+        d=json.loads(l)
+    except ValueError:
+        continue
+    if d.get("type")=="result":
+        for p in d.get("permission_denials") or []:
+            i=p.get("tool_input") or {}
+            print(str(p.get("tool_name"))+": "+str(i.get("command", i))[:100].replace("\n", " "))' "$RUNS/probe/$1/stream.jsonl"
+}
+
 # init_cwd ARM: the cwd the CLI reports in its system init record, or nothing.
 init_cwd() {
   python3 -I -c 'import json,sys
@@ -542,15 +556,31 @@ if [ "$PROBE_ISO" -eq 1 ] || [ -n "$PROBE_MODEL" ]; then
         *"rate limit 429"*) ;;
         *) mention=missing ;;
       esac
-      [ "$(pf "$arm" completion_status)" = complete ] || mention=failed
+      # This case asks only whether the phrase was misread as a usage limit, so a run that answered and then
+      # needed a human (stalled-human) still counts as answered; the stall itself is reported and fails the
+      # probe below. Any other status (turn-cap, timeout, error) fails here.
+      case "$(pf "$arm" completion_status)" in
+        complete | stalled-human) ;;
+        *) mention=failed ;;
+      esac
     done
     echo "probe: mention-case $mention A=$(pf A completion_status) B=$(pf B completion_status)"
     [ "$mention" = ok ] || prc=1
+    # A permission denial or an AskUserQuestion makes a real run stalled-human (spec 4.1, OD-3), so the probe
+    # still fails on either, but names the cause here instead of reading as a mention-case failure.
+    echo "probe: stall-signals A=$(pf A human_interventions_required) B=$(pf B human_interventions_required)"
+    for arm in A B; do
+      [ "$(pf "$arm" human_interventions_required)" = 0 ] || prc=1
+      denied "$arm" | while IFS= read -r line; do echo "probe-detail: $arm denied $line"; done
+    done
   fi
   if [ -n "$PROBE_MODEL" ]; then
     ma="$(pf A model_usage)"
     mb="$(pf B model_usage)"
     echo "probe: A model=$ma B model=$mb"
+    nfa="$(printf '%s\n' "$ma" | tr ',' '\n' | awk '!/fable/' | paste -sd, -)"
+    nfb="$(printf '%s\n' "$mb" | tr ',' '\n' | awk '!/fable/' | paste -sd, -)"
+    echo "probe-detail: A other-models=${nfa:-none} B other-models=${nfb:-none} (reported only; the pass rule is the spec C1.3 rule: fable in each arm)"
     case "$ma" in *fable*) ;; *) prc=1 ;; esac
     case "$mb" in *fable*) ;; *) prc=1 ;; esac
   fi

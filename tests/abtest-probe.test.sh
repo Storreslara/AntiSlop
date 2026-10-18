@@ -119,6 +119,47 @@ has "a rejected max-turns flag is reported" "$(cat "$T/o.txt")" "max-turns flag 
 
 bash "$RUN" --probe-model other > /dev/null 2>&1
 check "an unknown probe model exits 2" "$?" "2"
+# --- stall-signal and mixed-model rows (abt-u13c): a correct answer that needed a human proves the mention case but still fails the probe, with the cause named; the real classification stays stalled-human ---
+DEN='"permission_denials":[{"tool_name":"Bash","tool_use_id":"t1","tool_input":{"command":"grep -rn x . | grep -v :0 | head"}}]'
+resultd() { printf '{"type":"result","subtype":"success","is_error":false,"num_turns":2,"result":"%s",%s,%s}\n' "$1" "$DEN" "$USAGE"; }
+ASK='{"type":"assistant","message":{"content":[{"type":"tool_use","name":"AskUserQuestion","input":{}}]}}'
+{ printf '%s\n' "$HOOKS"; resultd 'src/pricing.js\ngraph-yes\nrate limit 429'; } > "$T/b-denied.jsonl"
+{ printf '%s\n' "$HOOKS"; resultd 'src/pricing.js\ngraph-yes'; } > "$T/b-denied-nomention.jsonl"
+{ printf '%s\n' "$HOOKS" "$ASK"; result 'src/pricing.js\ngraph-yes\nrate limit 429'; } > "$T/b-ask.jsonl"
+{ printf '%s\n' "$HOOKS"; printf '{"type":"result","subtype":"error_max_turns","is_error":true,"num_turns":100,"result":"src/pricing.js\\ngraph-yes\\nrate limit 429",%s}\n' "$USAGE"; } > "$T/b-turncap.jsonl"
+{ resultd 'src/pricing.js\ngraph-no\nrate limit 429'; } > "$T/a-denied.jsonl"
+sed 's/"modelUsage":{"fable-x":{"inputTokens":10}}/"modelUsage":{"fable-x":{"inputTokens":10},"haiku-y":{"inputTokens":5}}/' "$T/b-ok.jsonl" > "$T/b-mixed.jsonl"
+check "the canned denied Arm B capture carries one permission denial" "$(grep -c 'permission_denials' "$T/b-denied.jsonl")" "1"
+PROBE_B="$T/b-denied.jsonl" bash "$RUN" --probe-isolation > "$T/o.txt"; rc=$?
+check "an Arm B that answered correctly but had one permission denial still fails the probe" "$rc" "1"
+has "the mention case counts the denied run as answered" "$(cat "$T/o.txt")" "probe: mention-case ok A=complete B=stalled-human"
+has "the stall signals are printed for the operator" "$(cat "$T/o.txt")" "probe: stall-signals A=0 B=1"
+has "the denied tool and command are printed" "$(cat "$T/o.txt")" "probe-detail: B denied Bash: grep -rn x . | grep -v :0 | head"
+check "the stream summary still classifies the denied run stalled-human" "$(grep -c '"completion_status": "stalled-human"' "$ABT_RUNS/probe/B/summary.json")" "1"
+PROBE_B="$T/b-denied-nomention.jsonl" bash "$RUN" --probe-isolation > "$T/o.txt"; rc=$?
+check "a denied Arm B that never wrote the phrase fails the probe" "$rc" "1"
+has "the missing phrase is named for the denied run" "$(cat "$T/o.txt")" "probe: mention-case missing A=complete B=stalled-human"
+PROBE_B="$T/b-ask.jsonl" bash "$RUN" --probe-isolation > "$T/o.txt"; rc=$?
+check "an Arm B that tried AskUserQuestion but answered still fails the probe" "$rc" "1"
+has "the ask attempt is a stall signal" "$(cat "$T/o.txt")" "probe: stall-signals A=0 B=1"
+PROBE_B="$T/b-turncap.jsonl" bash "$RUN" --probe-isolation > "$T/o.txt"; rc=$?
+check "an Arm B that hit the turn cap fails the probe even with the phrase" "$rc" "1"
+has "the turn cap is named" "$(cat "$T/o.txt")" "probe: mention-case failed A=complete B=turn-cap"
+PROBE_A="$T/a-denied.jsonl" bash "$RUN" --probe-isolation > "$T/o.txt"; rc=$?
+check "an Arm A with one permission denial and a correct answer still fails the probe" "$rc" "1"
+has "the mention case is symmetric for Arm A" "$(cat "$T/o.txt")" "probe: mention-case ok A=stalled-human B=complete"
+has "the Arm A stall signal is printed" "$(cat "$T/o.txt")" "probe: stall-signals A=1 B=0"
+has "the Arm A denial is named" "$(cat "$T/o.txt")" "probe-detail: A denied Bash: grep -rn x ."
+bash "$RUN" --probe-isolation > "$T/o.txt"; rc=$?
+has "a clean probe prints zero stall signals" "$(cat "$T/o.txt")" "probe: stall-signals A=0 B=0"
+check "a clean probe names no denial" "$(grep -c ' denied ' "$T/o.txt")|$rc" "0|0"
+check "the canned mixed-model Arm B capture names a second model" "$(grep -c 'haiku-y' "$T/b-mixed.jsonl")" "1"
+PROBE_B="$T/b-mixed.jsonl" bash "$RUN" --probe-model uniform > "$T/o.txt"; rc=$?
+check "an Arm B that ran fable plus another model still passes the model probe" "$rc" "0"
+has "the model line lists every model" "$(cat "$T/o.txt")" "probe: A model=fable-x B model=fable-x,haiku-y"
+has "the other models of Arm B are reported" "$(cat "$T/o.txt")" "probe-detail: A other-models=none B other-models=haiku-y"
+bash "$RUN" --probe-model uniform > "$T/o.txt"
+has "a fable-only probe reports no other models" "$(cat "$T/o.txt")" "probe-detail: A other-models=none B other-models=none"
 # --- canary probe (abt-u13b, OD-16): a random token planted in the checks and fixtures directories must not reach either arm ---
 CK="$REPO_ROOT/eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt"
 RF="$REPO_ROOT/eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch"
