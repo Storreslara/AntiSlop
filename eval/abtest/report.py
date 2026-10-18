@@ -80,7 +80,7 @@ def usable_rows(report, rows):
         if isinstance(r, dict) and r.get("model_policy") == policy and r.get("completion_status") != "usage-limit":
             by_eval.setdefault(r.get("eval_id"), []).append(r)
     for eval_id, v in report["evals"].items():
-        if not EVAL_ID.match(eval_id):
+        if not EVAL_ID.fullmatch(eval_id):
             die(f"eval id {eval_id!r} does not match {EVAL_ID.pattern}")
         got = sorted(r.get("run_id") for r in by_eval.get(eval_id, []))
         if got != v["run_ids"]:
@@ -105,7 +105,7 @@ def check_tally(rows, arm):
     return ", ".join(parts) or "none"
 
 
-def result_line(e, v, rows):
+def result_line(e, v, rows, src):
     o = v["overhead"]
     tally_b = ", ".join(f"{k} {n}" for k, n in v["status_tally_B"].items() if n)
     tally_a = ", ".join(f"{k} {n}" for k, n in v["status_tally_A"].items() if n)
@@ -117,7 +117,7 @@ def result_line(e, v, rows):
             f"R_tokens {fmt(o['R_tokens'])}, R_wall {fmt(o['R_wall'])}, R_turns {fmt(o['R_turns'])}; "
             f"B stalled-human {v['stalled_human_B']}; statuses A [{tally_a}], B [{tally_b}]; "
             f"checks passed per arm (of the usable rows) A [{check_tally(rows, 'A')}], B [{check_tally(rows, 'B')}]{blind}; "
-            f"rows in eval/abtest/results.jsonl, verdict {v['verdict']}{directional}"
+            f"rows in {src}, verdict {v['verdict']}{directional}"
             f"{' (' + v['label'] + ')' if v['label'] else ''}")
 
 
@@ -147,25 +147,52 @@ def needs_ticket(v, rows):
     return bool(finding_reasons(v, rows))
 
 
+BAD = ("turn-cap", "timeout", "error")
+
+
+def bad_counts(v):
+    """Turn-cap, timeout and error rows of Arm A and Arm B: the rows no top-up cures (OD-12)."""
+    return tuple(sum(v["status_tally_" + arm].get(s, 0) for s in BAD) for arm in "AB")
+
+
+def next_n(v):
+    """The one run-matrix --reps target that cures a short, unequal or half-finished count."""
+    top = max(v["n_A"], v["n_B"])
+    return 5 if top <= 5 else (10 if top < 10 else top)
+
+
 def data_action(eval_id, v):
-    """What the operator does about an INCONCLUSIVE outcome. One wording per outcome_reason class (OD-12, OD-14)."""
+    """What the operator does about an INCONCLUSIVE outcome. One wording per outcome_reason class (OD-12, OD-14).
+    score.py checks N before the bad rows, so its reason can name N while two bad rows already decide (OD-12)."""
     reason = str(v.get("outcome_reason") or "")
     run = f"run-matrix.sh --reps {{}} --evals {eval_id}"
+    bad_a, bad_b = bad_counts(v)
+    stuck = bad_a >= 2 or bad_b >= 2 or reason.startswith("two or more turn-cap")
     if reason.startswith("mixed provenance"):
-        return f"RERUN: the rows mix provenance ({reason}); repeat the stale rows with run-matrix.sh (OD-14), a top-up does not cure it"
+        text = f"RERUN: the rows mix provenance ({reason}); repeat the stale rows with run-matrix.sh (OD-14), a top-up does not cure it"
+        if stuck:
+            text += (f"; two or more turn-cap, timeout or error rows in one arm (A {bad_a}, B {bad_b}) also keep it INCONCLUSIVE "
+                     "at every N (OD-12), unless the repeat replaces them")
+        return text
+    if stuck:
+        text = ("NO MORE RUNS HELP: two or more turn-cap, timeout or error rows stay INCONCLUSIVE at every N (OD-12); "
+                "a top-up keeps those rows (a resume skips run ids already done), so record the outcome as INCONCLUSIVE")
+        if not reason.startswith("two or more turn-cap"):
+            text += f"; the scorer names {reason} first, but the bad rows (A {bad_a}, B {bad_b}) decide"
+        return text
     if reason.startswith("short N"):
-        return f"NEEDS MORE DATA: a verdict exists only at N=5 per arm ({reason}); finish the first pass with {run.format(5)}"
+        target = next_n(v)
+        if target == 5:
+            return f"NEEDS MORE DATA: a verdict exists only at N=5 per arm ({reason}); finish the first pass with {run.format(5)}"
+        return (f"NEEDS MORE DATA: a verdict exists only at N=5 or at equal counts of 10 or more ({reason}); "
+                f"bring both arms to {target} with {run.format(target)}")
     if reason.startswith("unequal N"):
-        top = max(v["n_A"], v["n_B"])
-        target = top if (top <= 5 or top >= 10) else 10
+        target = next_n(v)
         return f"NEEDS MORE DATA: the arms hold unequal usable rows ({reason}); bring both arms to {target} with {run.format(target)}"
     if reason.startswith("top-up in progress"):
         return f"NEEDS MORE DATA: finish the top-up ({reason}) with {run.format(10)}"
     if reason.startswith("1-run gap"):
         return f"NEEDS MORE DATA: 1-run gap at N=5; top up to N=10 per arm with {run.format(10)} (the pre-registered cure, OD-12)"
-    if reason.startswith("two or more turn-cap"):
-        return ("NO MORE RUNS HELP: two or more turn-cap, timeout or error rows stay INCONCLUSIVE at every N (OD-12); "
-                "a top-up keeps those rows (a resume skips run ids already done), so record the outcome as INCONCLUSIVE")
     die(f"{eval_id}: no wording for the INCONCLUSIVE reason {reason!r}")
 
 
@@ -179,7 +206,7 @@ def decision_line(eval_id, v, rows):
     if v["verdict"] == "superior":
         note = "recorded as a measured advantage"
         if v.get("directional"):
-            note += f" (directional: a 2-run gap at N=5 with Fisher p={fmt(v['fisher_p'])}, not below 0.10, OD-12)"
+            note += f" (directional: a {v['k_B'] - v['k_A']}-run gap at N=5 with Fisher p={fmt(v['fisher_p'])}, not below 0.10, OD-12)"
         parts.append(("verdict superior: " if reasons else "no action: ") + note)
     if v["verdict"] == "mixed":
         note = (f"verdict mixed (a tie with a quality edge and R_tokens {fmt(v['overhead']['R_tokens'])}, above 2 and up to 3 or "
@@ -197,7 +224,9 @@ def decision_line(eval_id, v, rows):
 
 def fill_log(score_path, md_path, rows_path=None):
     report = load_json(score_path)
-    rows_path = rows_path or os.environ.get("ABT_RESULTS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "results.jsonl")
+    default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results.jsonl")
+    rows_path = rows_path or os.environ.get("ABT_RESULTS") or default
+    src = "eval/abtest/results.jsonl" if rows_path == default else rows_path
     by_eval = usable_rows(report, load_rows(rows_path))
     try:
         with open(md_path) as f:
@@ -220,7 +249,7 @@ def fill_log(score_path, md_path, rows_path=None):
             v = report["evals"][current]
             rows = by_eval.get(current, [])
             if line.startswith("- **Result**:"):
-                lines[i] = f"- **Result**: {result_line(current, v, rows)}"
+                lines[i] = f"- **Result**: {result_line(current, v, rows, src)}"
                 seen[(current, "Result")] = seen.get((current, "Result"), 0) + 1
             elif line.startswith("- **Decision**:"):
                 lines[i] = f"- **Decision**: {decision_line(current, v, rows)}"
@@ -256,7 +285,7 @@ def tickets(score_path, rows_path, out_dir):
         body = [f"[eval-finding] {eval_id}: {v['verdict']}", "",
                 f"Eval: {eval_id}. Hypothesis: {HYPOTHESIS.get(eval_id, 'see the design')}.",
                 "Why a ticket: " + "; ".join(reasons) + ".",
-                f"Result: {result_line(eval_id, v, rs)}",
+                f"Result: {result_line(eval_id, v, rs, rows_path)}",
                 f"Decision: {decision}", "",
                 "Rows: " + ", ".join(v["run_ids"]), "", "Failed checks (verbatim):"]
         body += failed or ["- none"]
