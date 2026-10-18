@@ -1,7 +1,7 @@
 Unit: abt-u21a
 
 ## Objective
-Fix of the FAIL of 2026-10-17T22:50:08Z, round 5 of 5. tests/abtest-report-grid.test.sh walks the whole undecided half of the Decision table: 8 N buckets (pilot, short, short with one arm past 5 rows, unequal, unequal large, top-up, N=5, N=10) x bad rows per arm (six combinations of 0, 1 and 2 per arm) x provenance (one value or mixed) x Arm B stall and escaped defect, with usage-limit rows on every other cell: 348 cells run through the real score.py, fill-log and tickets. Per cell it asserts the scorer outcome and verdict, the one Decision wording of decision-table-v2 (abt-u21a-fix3.md), written out in the test and not taken from report.py, and the ticket state. tests/validate.sh runs it. One commit.
+Fix of the FAIL of 2026-10-17T22:50:08Z, round 5 of 5 (amended after the round 3 review). tests/abtest-report-grid.test.sh walks the whole undecided half of the Decision table: 9 N buckets (pilot, short, short with one arm past 5 rows, unequal, unequal large, nine rows in one arm, top-up, N=5, N=10) x bad rows per arm (six combinations of 0, 1 and 2 per arm) x provenance (one value or mixed) x Arm B stall and escaped defect, with usage-limit rows on every other cell: 396 cells run through the real score.py, fill-log and tickets. Per cell it asserts the scorer outcome and verdict, the one Decision wording of decision-table-v2 (abt-u21a-fix3.md), written out in the test and not taken from report.py, and the ticket state. It also runs fill-log with two arguments and ABT_RESULTS unset, the way abt-u21 edit 7 and tools/uops.py call it, and asserts every Result line names eval/abtest/results.jsonl. tests/validate.sh runs it. One commit.
 
 ## Retrieval
 GitHub issues: `gh issue view 588 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-vs-fable-evals`. Spec: `docs/plans/antislop-vs-fable-evals.md`; operator overrides (win on conflict): `docs/plans/antislop-vs-fable-evals/operator-decisions.md`.
@@ -20,7 +20,7 @@ GitHub issues: `gh issue view 588 --repo Storreslara/AntiSlop`. Siblings: `gh is
 ~~~~
 #!/usr/bin/env bash
 # Walks the whole undecided half of the Decision table of eval/abtest/report.py: every N bucket (pilot, short,
-# short with one arm past 5 rows, unequal, unequal large, top-up, N=5, N=10) x bad rows per arm (turn-cap,
+# short with one arm past 5 rows, unequal, unequal large, nine rows in one arm, top-up, N=5, N=10) x bad rows per arm (turn-cap,
 # timeout, error: 0, 1 or 2) x provenance (one value or mixed) x Arm B stall / escaped defect, with usage-limit
 # rows on every other cell. It runs the REAL score.py and report.py and asserts, per cell, the scorer outcome,
 # the one Decision wording of the table (operator decisions OD-4, OD-12, OD-13, OD-14) and the ticket state.
@@ -31,7 +31,7 @@ T="$(mktemp -d)"
 trap 'rm -rf "$T"' EXIT
 
 python3 -I - "$T" "$REPO_ROOT/eval/abtest/score.py" "$REPO_ROOT/eval/abtest/report.py" << 'PYEOF' | tee "$T/out.txt"
-import json, os, subprocess, sys
+import json, os, shutil, subprocess, sys
 
 t, score_py, report_py = sys.argv[1:4]
 passed_n = 0
@@ -78,6 +78,7 @@ ADVICE = {
     "short-wide": (7, 3, "NEEDS MORE DATA: a verdict exists only at N=5 or at equal counts of 10 or more (short N: A=7 B=3); bring both arms to 10 with run-matrix.sh --reps 10 --evals {ev}"),
     "unequal": (5, 6, "NEEDS MORE DATA: the arms hold unequal usable rows (unequal N: A=5 B=6); bring both arms to 10 with run-matrix.sh --reps 10 --evals {ev}"),
     "unequal-large": (10, 12, "NEEDS MORE DATA: the arms hold unequal usable rows (unequal N: A=10 B=12); bring both arms to 12 with run-matrix.sh --reps 12 --evals {ev}"),
+    "nine": (9, 7, "NEEDS MORE DATA: the arms hold unequal usable rows (unequal N: A=9 B=7); bring both arms to 10 with run-matrix.sh --reps 10 --evals {ev}"),
     "topup": (7, 7, "NEEDS MORE DATA: finish the top-up (top-up in progress: A=7 B=7, needs 10 per arm) with run-matrix.sh --reps 10 --evals {ev}"),
     "n5": (5, 5, None),
     "n10": (10, 10, None),
@@ -125,6 +126,22 @@ p = run(report_py, "fill-log", t + "/score.json", t + "/log.md", t + "/rows.json
 check("fill-log exits 0 over the whole grid", p.returncode, 0)
 p = run(report_py, "tickets", t + "/score.json", t + "/rows.jsonl", t + "/tickets")
 check("tickets exits 0 over the whole grid", p.returncode, 0)
+~~~~
+4. file: `tests/abtest-report-grid.test.sh`
+   anchor: line matching `check("tickets exits 0 over the whole grid", p.returncode, 0)`
+   indent: 0
+   insert-after:
+~~~~
+os.makedirs(t + "/copy")
+shutil.copy(report_py, t + "/copy/report.py")
+shutil.copy(t + "/rows.jsonl", t + "/copy/results.jsonl")
+shutil.copy(t + "/log.md", t + "/log-default.md")
+env = {k: val for k, val in os.environ.items() if k != "ABT_RESULTS"}
+p = subprocess.run([sys.executable, "-I", t + "/copy/report.py", "fill-log", t + "/score.json", t + "/log-default.md"], capture_output=True, text=True, env=env)
+check("fill-log with two arguments and no ABT_RESULTS exits 0", p.returncode, 0)
+results = [x for x in open(t + "/log-default.md").read().split("\n") if x.startswith("- **Result**:")]
+check("fill-log with two arguments and no ABT_RESULTS names eval/abtest/results.jsonl in every Result line",
+      [len(results), sum("rows in eval/abtest/results.jsonl, verdict" in x for x in results)], [len(CELLS), len(CELLS)])
 entries = {}
 for block in open(t + "/log.md").read().split("### ")[1:]:
     entries[block.split("(")[1].split(")")[0]] = {line.split("**")[1]: line.split(": ", 1)[1] for line in block.split("\n") if line.startswith("- **")}
@@ -167,7 +184,7 @@ for c in CELLS:
     covered.add((v["outcome"], v["verdict"]))
     covered.add(("reason", (v["outcome_reason"] or "").split(":")[0].split(" rows")[0][:20]))
 
-check(f"the grid holds {len(CELLS)} cells", len(CELLS), 348)
+check(f"the grid holds {len(CELLS)} cells", len(CELLS), 396)
 check("every cell has the Decision wording and ticket state of the table", problems[:5], [])
 check("the grid covers every undecided outcome and verdict pair", sorted(c for c in covered if c[0] != "reason"),
       sorted([("INCONCLUSIVE", "inconclusive"), ("INCONCLUSIVE", "not-superior"), ("WIN_B", "not-superior"), ("WIN_B", "superior")]))
@@ -181,7 +198,7 @@ rc=${PIPESTATUS[0]}
 pass=$(grep -c '^ok   ' "$T/out.txt")
 fail=$(grep -c '^FAIL ' "$T/out.txt")
 ~~~~
-4. file: `tests/abtest-report-grid.test.sh`
+5. file: `tests/abtest-report-grid.test.sh`
    anchor: line matching `fail=$(grep -c '^FAIL ' "$T/out.txt")`
    indent: 0
    insert-after:
@@ -193,9 +210,9 @@ if [ "$rc" -eq 0 ] && [ "$fail" -eq 0 ] && [ "$pass" -gt 0 ]; then
 fi
 exit 1
 ~~~~
-5. command: `chmod +x tests/abtest-report-grid.test.sh`
+6. command: `chmod +x tests/abtest-report-grid.test.sh`
    expect: 0
-6. file: `tests/validate.sh`
+7. file: `tests/validate.sh`
    anchor: line matching `echo "FAIL tests/abtest-report-walk.test.sh"`
    indent: 0
    before:
@@ -219,7 +236,7 @@ else
   fail=1
 fi
 ~~~~
-7. command: `git add tests/abtest-report-grid.test.sh tests/validate.sh && git commit -m "fix(abt-u21a): grid the undecided Decision table over N, bad rows, provenance and stalls (#588)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
+8. command: `git add tests/abtest-report-grid.test.sh tests/validate.sh && git commit -m "fix(abt-u21a): grid the undecided Decision table over N, bad rows, provenance and stalls (#588)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"`
    expect: 0
 
 ## Do NOT touch
@@ -234,13 +251,13 @@ fi
 1. run: `bash tests/abtest-report-grid.test.sh`
    exit: 0
    stdout: `All abtest-report-grid checks passed.`
-   mutation: skip edit 4 (the last part of the grid test); the file ends before the heredoc terminator and the fragment is absent.
+   mutation: skip edit 5 (the last part of the grid test); the file ends before the heredoc terminator and the fragment is absent.
 2. run: `bash tests/abtest-report-grid.test.sh | grep -c '^ok   every cell has the Decision wording and ticket state of the table$'`
    exit: 0
    stdout: `1`
-   mutation: in a scratch copy of the finished change, let data_action ignore the bad rows of Arm B (replace "stuck = bad_a >= 2 or bad_b >= 2 or" with "stuck = bad_a >= 2 or"), or revert the short-N advice to a fixed --reps 5, or drop the bad-row clause of the mixed-provenance RERUN; the cells g-short-a0b2-one-none, g-short-wide-a0b0-one-none or g-short-a2b0-mix-none print a table violation, the row prints FAIL and the count is 0 (exit 1).
+   mutation: in a scratch copy of the finished change, make next_n return 10 only when top < 9 (replace "(10 if top < 10 else top)" with "(10 if top < 9 else top)"); the cells g-nine-* print a table violation and the count is 0 (exit 1). Likewise let data_action ignore the bad rows of Arm B (replace "stuck = bad_a >= 2 or bad_b >= 2 or" with "stuck = bad_a >= 2 or"), or revert the short-N advice to a fixed --reps 5, or drop the bad-row clause of the mixed-provenance RERUN; the cells g-short-a0b2-one-none, g-short-wide-a0b0-one-none or g-short-a2b0-mix-none print a table violation, the row prints FAIL and the count is 0 (exit 1).
    proof: scratch runs (str.replace on report.py, then the grid test): each of the three mutations failed this row; so did stuck taken from the scorer reason alone, a missing "the scorer names ... first" suffix and a fixed top-up target.
-3. run: `bash tests/abtest-report-grid.test.sh | grep -c '^ok   the grid holds 348 cells$'`
+3. run: `bash tests/abtest-report-grid.test.sh | grep -c '^ok   the grid holds 396 cells$'`
    exit: 0
    stdout: `1`
    mutation: in a scratch copy of the finished change, delete the "unequal-large" entry from ADVICE; the cell count changes, the row prints FAIL and the count is 0 (exit 1).
@@ -263,19 +280,19 @@ fi
 7. run: `grep -c 'tests/abtest-report-grid' tests/validate.sh`
    exit: 0
    stdout: `4`
-   mutation: skip edit 6 (the validate.sh section); stdout 0 and the exit is 1.
+   mutation: skip edit 7 (the validate.sh section); stdout 0 and the exit is 1.
 8. run: `test -x tests/abtest-report-grid.test.sh && echo exec-ok`
    exit: 0
    stdout: `exec-ok`
-   mutation: skip edit 5; the file is not executable and nothing prints.
+   mutation: skip edit 6; the file is not executable and nothing prints.
 9. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ fix\(abt-u21a\): grid the undecided' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; c=$(echo "$L" | sed -n 1p); git diff --name-only "$c~1..$c" | LC_ALL=C sort | paste -sd" "`
    exit: 0
    stdout: `tests/abtest-report-grid.test.sh tests/validate.sh`
-   mutation: skip edit 7 (the commit); no round commit exists and the run prints no-unit-commit with exit 3.
+   mutation: skip edit 8 (the commit); no round commit exists and the run prints no-unit-commit with exit 3.
 10. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ fix\(abt-u21a\): grid the undecided' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; git log -1 --format=%B "$(echo "$L" | sed -n 1p)" | grep -c "^Co-Authored-By: Claude .* <noreply@anthropic.com>$"`
    exit: 0
    stdout: `1`
-   mutation: skip edit 7; no round commit exists and the exit is 3.
+   mutation: skip edit 8; no round commit exists and the exit is 3.
 11. run: `L=$(git log --format='%H %s' | grep -E '^[0-9a-f]+ [a-z]+\(abt-u21a\): ' | cut -d' ' -f1); test -n "$L" || { echo no-unit-commit; exit 3; }; E=$(echo "$L" | head -1); git log --format=%s "$E..HEAD" -- tests/abtest-report-grid.test.sh tests/validate.sh | grep -vcE "^[a-z]+\(abt-u21a\): "`
    exit: 1
    stdout: `0`
@@ -284,16 +301,27 @@ fi
 12. run: `git status --porcelain -- tests/abtest-report-grid.test.sh tests/validate.sh`
    exit: 0
    stdout: empty
-   mutation: skip edit 7; the changed files stay modified (or new files untracked) and are listed.
+   mutation: skip edit 8; the changed files stay modified (or new files untracked) and are listed.
+
+13. run: `bash tests/abtest-report-grid.test.sh | grep -c '^ok   fill-log with two arguments and no ABT_RESULTS names eval/abtest/results.jsonl in every Result line$'`
+   exit: 0
+   stdout: `1`
+   mutation: in a scratch copy of the finished change, replace 'src = "eval/abtest/results.jsonl" if rows_path == default else rows_path' in eval/abtest/report.py with "src = rows_path"; every Result line then names the scratch results path, the row prints FAIL and the count is 0 (exit 1).
+   proof: scratch run (python str.replace on report.py, then the grid test): the row printed FAIL with got [396, 0].
+14. run: `bash tests/abtest-report-grid.test.sh | grep -c '^ok   fill-log with two arguments and no ABT_RESULTS exits 0$'`
+   exit: 0
+   stdout: `1`
+   mutation: in a scratch copy of the finished change, make fill_log read no default (replace 'rows_path = rows_path or os.environ.get("ABT_RESULTS") or default' with 'rows_path = rows_path or os.environ["ABT_RESULTS"]'); the run stops with a KeyError, the row prints FAIL and the count is 0 (exit 1).
+   proof: scratch run (python str.replace on report.py, then the grid test): the row printed FAIL.
 
 ## Pre-resolved context
-tdd: yes tests/abtest-report-grid.test.sh (criteria 1 to 9 are the red-then-green checks; the file does not exist at HEAD)
+tdd: yes tests/abtest-report-grid.test.sh (criteria 1 to 9, 13 and 14 are the red-then-green checks; the file does not exist at HEAD)
 blast-radius: eval/abtest/report.py:198 tests/validate.sh:1489
 gate-refusal: if any hook refuses a Bash command, STOP and report the refusal text; never route around it (no scratch-file, renamed-path or reworded-command workaround). Write every file with the Write or Edit tool, not a Bash heredoc.
 payload-indent: every fenced payload in this contract starts at column 0 and states indent: 0; strip nothing; empty payload lines stay empty. A multi-part file is one new file plus consecutive insert-after edits, each anchored on the last line of the previous part.
 already-green: the criteria that count commits or the tree (untagged tail, clean tree) pass at HEAD by design; the others are red at HEAD because tests/abtest-report-grid.test.sh and its commit do not exist.
-performance: 348 cells, about 4000 rows through one score.py run, two fill-log runs and one tickets run; about 0.4 s in a scratch clone.
-cell-table: ADVICE in the test lists the eight buckets with the literal advice wording of each; the oracle is the decision-table-v2 precedence (mixed provenance, then two or more bad rows, then the N advice). Decided cells (N=5 or 10, no bad pair, one provenance) must say neither NEEDS MORE DATA nor NO MORE RUNS HELP nor RERUN.
+performance: 396 cells, about 4000 rows through one score.py run, two fill-log runs and one tickets run; about 0.4 s in a scratch clone.
+cell-table: ADVICE in the test lists the nine buckets with the literal advice wording of each; the oracle is the decision-table-v2 precedence (mixed provenance, then two or more bad rows, then the N advice). Decided cells (N=5 or 10, no bad pair, one provenance) must say neither NEEDS MORE DATA nor NO MORE RUNS HELP nor RERUN.
 commit-message: fix(abt-u21a): grid the undecided Decision table over N, bad rows, provenance and stalls (#588)
 Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
 diagnosis: none
@@ -314,6 +342,8 @@ criterion 9: <FILL: exit and stdout>
 criterion 10: <FILL: exit and stdout>
 criterion 11: <FILL: exit and stdout>
 criterion 12: <FILL: exit and stdout>
+criterion 13: <FILL: exit and stdout>
+criterion 14: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
