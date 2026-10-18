@@ -3,6 +3,11 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-18 (abt-u13f post-PASS - canary control token and verdict fixes, OD-18, #623)
+- Reviewer PASS abt-u13f at f7981fa4 (PASS marker written by the reviewer; contract commit af7cf231). Files: `eval/abtest/run-matrix.sh` (canary token checked before status; refused search with no token is `not-found`; `denied()` moved above the canary block and takes an optional DIR; new `no-control` verdict; probe lines `canary-denials` and `canary-control`), `tests/abtest-probe.test.sh` (93 to 117 rows), `eval/abtest/README.md` (step 2 and residual-risk text), `docs/harness-glossary.md` (`canary probe` entry amended; `control token` added).
+- Open follow-ups (reviewer, not fixed): no test for the token in a turn-capped or timed-out run (only errored); usage-limit exit 75 runs before the token check, so `A=FOUND` with `B=usage-limit` shows only on rerun; whether a real arm runs the control step is checked only by the operator's canary re-run; about 895 `/tmp/abtest-home.*` dirs left by suites (`eval/abtest/arms/common.sh:95`).
+- Not this unit: node server pid 3639545 (running about 1d22h from a scratchpad) predates abt-u13f and is not an abtest process.
+
 ## 2026-10-18 (abt-u13e post-PASS - shared allow set and anchored deny rules, OD-17, #622)
 - Reviewer PASS abt-u13e at f8f9997e (PASS marker written by the reviewer; contract commit e8cd4eb5). Files: `eval/abtest/arms/common.sh` (`uniq` dropped from the allow set, 19 to 18 values; deny rules 6 to 16, anchored), `tests/abtest-arms.test.sh` (92 to 117 rows, fake claude, no usage), `docs/experiments/abtest-2026-10.md` (dated correction), `operator-decisions.md` (OD-17(a)-(c) rewritten, residuals stated). Closes the first four open follow-ups of abt-u13d.
 - Open follow-ups (reviewer notes, not fixed): OD-17(b) names the quoted-flag residual for sort only (`find . '-exec'` also matches no rule); GNU sort abbreviated long options (`sort --out=FILE IN` writes, `sort --co=PROG` runs) match no rule; not material because `Bash(git *)` already lets an arm run programs. Nothing tests deny-before-allow evaluation order or the real matcher; the operator's probe re-run is the only check.
