@@ -115,10 +115,8 @@ def limit_event(rec):
 
 def summarize(path, exit_code, stderr_text, escalated):
     records, noise = read_records(path)
-    result = None
-    for rec in records:
-        if rec.get("type") == "result":
-            result = rec
+    results = [rec for rec in records if rec.get("type") == "result"]
+    result = results[-1] if results else None
     hooks = [r for r in records if is_hook_record(r)]
     hook_names = [hook_name(r) for r in hooks]
     tools = [b for r in records for b in tool_uses(r)]
@@ -126,11 +124,18 @@ def summarize(path, exit_code, stderr_text, escalated):
     asks = sum(1 for b in tools if b.get("name") == "AskUserQuestion")
     denials = len((result or {}).get("permission_denials") or [])
 
-    usage = (result or {}).get("usage") or {}
-    tok_in = int(usage.get("input_tokens") or 0)
-    tok_out = int(usage.get("output_tokens") or 0)
-    tok_cw = int(usage.get("cache_creation_input_tokens") or 0)
-    tok_cr = int(usage.get("cache_read_input_tokens") or 0)
+    # OD-22: tokens come from the last record's cumulative modelUsage, turns are summed over records;
+    # duration_api_ms, total_cost_usd and model_usage are already cumulative on the last record.
+    mu = (result or {}).get("modelUsage") or {}
+    if isinstance(mu, dict) and mu:
+        parts = [v for v in mu.values() if isinstance(v, dict)]
+        keys = ("inputTokens", "outputTokens", "cacheCreationInputTokens", "cacheReadInputTokens")
+    else:
+        parts = [(r.get("usage") or {}) for r in results]
+        keys = ("input_tokens", "output_tokens", "cache_creation_input_tokens", "cache_read_input_tokens")
+    tok_in, tok_out, tok_cw, tok_cr = (sum(int(p.get(k) or 0) for p in parts) for k in keys)
+    turns = [r["num_turns"] for r in results if isinstance(r.get("num_turns"), (int, float))]
+    num_turns = sum(turns) if turns else None
 
     limited = any(limit_event(r) for r in records)
     if exit_code != 0 and LIMIT_RE.search(stderr_text):
@@ -160,7 +165,7 @@ def summarize(path, exit_code, stderr_text, escalated):
         "completion_status": status,
         "result_subtype": subtype,
         "result_text": (result or {}).get("result"),
-        "num_turns": (result or {}).get("num_turns"),
+        "num_turns": num_turns,
         "duration_api_ms": (result or {}).get("duration_api_ms"),
         "total_cost_usd": (result or {}).get("total_cost_usd"),
         "tokens_in": tok_in,

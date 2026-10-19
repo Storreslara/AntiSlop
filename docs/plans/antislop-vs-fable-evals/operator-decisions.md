@@ -299,3 +299,25 @@ from the operator's dispatch message; the doc's substance is not edited.
   (f) Not changed. hooks/, lib/stream.py, the scorer, Arm B's plugin copy and OD-19's allow list. The operator re-runs, in
   order, `run-matrix.sh --probe-isolation`, `run-matrix.sh --probe-canary` and `run-matrix.sh --pilot`; a canary `FOUND`
   after this change blocks everything.
+- OD-22 (2026-10-19, whole-run token and turn count; binding operator decision from pilot 4, 2026-10-19)
+  Evidence (eval/abtest/.runs/*_B_uniform_1/stream.jsonl, pilot 4): an Arm B stream holds 3 to 8 `result`
+  records, one per main-session segment, and lib/stream.py read the last one only. Each record's `usage`
+  counts the main thread of its own segment only (their sum equals the main model's `modelUsage` entry), so
+  B's `tokens_total` was 3205 to 4678, while the last record's `modelUsage` is cumulative over the whole run
+  and every model, subagents included (B: 285138, 227318, 197667, 154522 and 831801 for E1 to E5; its
+  `costUSD` sum equals `total_cost_usd`). Each record's `num_turns` is per segment too (E1 B: 12, 8, 5, 6, 3
+  and 2, so 36 main-session turns were reported as 2). `duration_api_ms` is the same on every record of a
+  stream, so it is already a whole-run value. Every Arm A stream holds one record, where all readings agree.
+  (a) The rule. `tokens_in`, `tokens_out`, `tokens_cache_write` and `tokens_cache_read` are the sums over all
+  models of the last result record's `modelUsage` (`inputTokens`, `outputTokens`,
+  `cacheCreationInputTokens`, `cacheReadInputTokens`); when `modelUsage` is absent or empty, they are the sums
+  of `usage` over every result record. `tokens_total` stays input + output + cache write (OD-5). `num_turns`
+  is the sum over every result record, which is the main-session turn count of OD-2 and OD-9.
+  `duration_api_ms`, `total_cost_usd` and `model_usage` stay read from the last record, which is already
+  cumulative.
+  (b) Unchanged. The definitions of `tokens_total` (OD-5) and of the turn count (OD-2, OD-9), the R_tokens,
+  R_wall and R_turns thresholds, the checks, the allowed paths, the prompts and every verdict rule. Arm A
+  values are unchanged (one record).
+  (c) Not covered. The model policy of Arm B rows is OD-23.
+  (d) Fingerprint. This change moves `harness_commit`, so under OD-14 every pilot-4 row is superseded and
+  repeated.
