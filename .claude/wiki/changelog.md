@@ -3,6 +3,10 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-19 (abt-u13h post-PASS - Arm B plugin copy drops two Bash gates, OD-20, #625)
+- Reviewer PASS abt-u13h at f9ff9cbb (contract commit 3772adf5). Files: `eval/abtest/arms/common.sh` (`abtest_relax_bash_gates DEST`, called from `abtest_plugin_copy`, removes the Bash registrations of `harness-integrity-gate.sh` and `reviewed-path-gate.sh` from the copy's `hooks.json`, fails unless exactly two drop), `tests/abtest-arms.test.sh`, `docs/plans/antislop-vs-fable-evals/operator-decisions.md` (OD-20), `docs/experiments/abtest-2026-10.md` (dated amendment), `eval/abtest/README.md`.
+- `hooks/` in the product tree is untouched; Arm A never uses the copy. Arm B is no longer exactly as shipped; the pre-registration discloses it. The third E3 B denial (`sed -n` on `.claude/agents`) is not fixed by OD-20. The Arm B probe hook census no longer lists the two Bash gates.
+
 ## 2026-10-18 (abt-u13g post-PASS - both arms allow all of Bash, OD-19, #624)
 - Reviewer PASS abt-u13g at eca2c4fa (PASS marker under `.claude/reviewed/`; contract commits a93cf070, 4d337a22, 5b1e3436; implementation 0ccd30a6). Files: `eval/abtest/arms/common.sh` (`--allowedTools Bash` for both arms; 16 OD-17 find/sort deny rules and the read-only allow list removed; deny flags passed ahead of the allow), `tests/abtest-arms.test.sh` (117 to 81 rows), `docs/plans/antislop-vs-fable-evals/operator-decisions.md` (OD-19, binding, plus a dated pre-registration amendment superseding the 10 pilot rows under OD-14), `docs/experiments/abtest-2026-10.md`, `eval/abtest/README.md`.
 - Trigger: the first real pilot (2026-10-18) stalled 4 of 10 rows (E3 B, E4 B, E5 A, E5 B) on permission denials of ordinary dev commands; 6 completed. The first review FAILed on a wrong "5 of 10" count copied into three docs; fix round eca2c4fa corrected it.

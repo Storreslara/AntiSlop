@@ -3460,7 +3460,10 @@ _Avoid_: microworld namespace (too vague; specify "bundle id namespace" or "sour
 _Avoid_: harness (alone) for the checkout.
 
 **pruned plugin copy**:
-(unit abt-u01b, 2026-10-17) — the plugin tree arm B loads: `abtest_plugin_copy` takes a `git archive` of HEAD limited to `.claude-plugin agents bin commands hooks skills templates`, extracted under `TMPDIR` and removed on exit, so the arm sees no tests, eval fixtures, docs or working-tree edits. arm-b exits 3 if it cannot be built. Because it is HEAD, a dirty checkout's uncommitted edits are not what arm B loads.
+(unit abt-u01b, 2026-10-17) — the plugin tree arm B loads: `abtest_plugin_copy` takes a `git archive` of HEAD limited to `.claude-plugin agents bin commands hooks skills templates`, extracted under `TMPDIR` and removed on exit, so the arm sees no tests, eval fixtures, docs or working-tree edits. arm-b exits 3 if it cannot be built. Because it is HEAD, a dirty checkout's uncommitted edits are not what arm B loads. Since abt-u13h (OD-20) the copy is not byte-for-byte the shipped plugin: see **gate relaxation (Arm B plugin copy)**.
+
+**gate relaxation (Arm B plugin copy)**:
+(unit abt-u13h, OD-20, 2026-10-19) — `abtest_relax_bash_gates DEST` in `eval/abtest/arms/common.sh`, called from `abtest_plugin_copy`. It removes the Bash registrations of `harness-integrity-gate.sh` and `reviewed-path-gate.sh` from the **pruned plugin copy**'s `hooks.json` and fails the copy unless exactly two registrations drop. Those two gates denied read-only commands in the pilot. It is Arm B-only: `hooks/` in the product tree is untouched and Arm A never uses the copy. The pre-registration discloses it. It does not cover the third E3 B denial (`sed -n` on `.claude/agents`). Effect on the probe: the Arm B hook census no longer lists the two Bash gates.
 
 **per-run HOME**:
 (unit abt-u01b, 2026-10-17) — the throwaway `HOME` that `abtest_make_home` builds for one arm run (`ABTEST_HOME`), holding only a neutral `.gitconfig`; `abtest_run_claude` runs `claude` with `HOME` and `GIT_CONFIG_GLOBAL` pointing at it, plus deny flags built from `ABTEST_DENY_PATHS`, so the arm cannot read the operator's real home or git config.

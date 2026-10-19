@@ -1609,7 +1609,7 @@ _Avoid_: prompt-gated in-session escalation decision write, main-session
   only through this file.
 
 **Arm A / Arm B**:
-(unit abt-u18, 2026-10-16) — the two values of an [[arm]] in the AntiSlop-vs-Fable comparison suite in `eval/abtest/`. Arm A is a bare Fable agent (`claude -p`, no plugin, no personas, no hooks); Arm B is AntiSlop as shipped (orchestrator as the main agent, personas scaffolded, plugin loaded with `--plugin-dir`). Both get the same fixture, prompt, turn cap and time cap. _Avoid_: "armed" for this sense; that word is the harness's `harness_armed` state.
+(unit abt-u18, 2026-10-16) — the two values of an [[arm]] in the AntiSlop-vs-Fable comparison suite in `eval/abtest/`. Arm A is a bare Fable agent (`claude -p`, no plugin, no personas, no hooks); Arm B is AntiSlop as shipped, except for one disclosed gate relaxation (orchestrator as the main agent, personas scaffolded, plugin loaded with `--plugin-dir` from a copy whose hook registrations for two Bash gates are dropped; see OD-20). Both get the same fixture, prompt, turn cap and time cap. _Avoid_: "armed" for this sense; that word is the harness's `harness_armed` state.
 
 **out-of-scope lines**:
 (unit abt-u18, 2026-10-16) — added plus deleted lines in files outside an eval's allowed paths; the persona scaffold (`.claude/`) and `docs/plans/` never count. The measured form of the `coding-discipline` surgical-diff rule. _Avoid_: "scope creep" as a metric name.

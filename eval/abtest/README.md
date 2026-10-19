@@ -32,6 +32,7 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    mention this repository's code-review-graph section (`probe: A root_claude_md=not-loaded` is
    required) and makes both arms write the phrase "rate limit 429" (`probe: mention-case ok`), so a
    reply that merely mentions rate limits cannot be mistaken for a limit hit.
+   The Arm B hook census no longer lists the `harness-integrity-gate.sh` and `reviewed-path-gate.sh` Bash entries; that is expected after OD-20.
 2. Canary probe: `bash eval/abtest/run-matrix.sh --probe-canary` must exit 0 before the pilot (OD-16(c) in
    `docs/plans/antislop-vs-fable-evals/operator-decisions.md`). It plants a random token in the checks and fixtures
    directories and fails if either arm prints it. An arm that is refused the prompt's `find /` (it lies outside the
