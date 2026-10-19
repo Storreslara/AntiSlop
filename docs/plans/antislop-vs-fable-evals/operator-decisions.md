@@ -194,8 +194,9 @@ from the operator's dispatch message; the doc's substance is not edited.
   reaches the stream the probe searches; it says nothing about the checks or fixtures directories.
 - OD-19 (2026-10-18, all of Bash for both arms; binding operator decision, option 1, from the 2026-10-18 pilot;
   supersedes OD-17(a)-(c) where they conflict)
-  Evidence (pilot 2026-10-18, eval/abtest/results.jsonl, runs under eval/abtest/.runs/): 5 of 10 rows were
-  `stalled-human` (E3 B, E4 B, E5 A and B; E1 and E2 completed), each with `permission_denied` system records on
+  Evidence (pilot 2026-10-18, eval/abtest/results.jsonl, runs under eval/abtest/.runs/): 4 of 10 rows were
+  `stalled-human` (E3 B, E4 B, E5 A and B) and the other 6 completed (E1 A and B, E2 A and B, E3 A, E4 A); each
+  stalled row has `permission_denied` system records on
   ordinary dev commands. Decision reasons seen: `subcommandResults` (`node -e`, a heredoc `python3 - <<'EOF'`,
   `node --test ...; head`), "Quoted text in this command can't be checked before it runs", "A variable in this command
   can't be checked before it runs", "Contains brace with quote character (expansion obfuscation)" and "Parser skipped

@@ -38,7 +38,7 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    run's work directory) and prints no token is `not-found`, not `not-run`: the refusal shows that the direct route
    is closed, not that the token is unreachable by other means (OD-18). Each arm's own work directory also holds a
    control token that the prompt asks it to print, so a `not-found` shows that the probe can see a printed token.
-   Since OD-19 both arms may run any shell command, so `find /` is no longer refused for lying outside the work
+   Since OD-19 both arms may run any shell command, so `find /` may no longer be refused for lying outside the work
    directory: a `not-found` now means the arm printed no token, and a `FOUND` is a real leak by an allowed route.
    The runner does not enforce this order: read the exit code.
    - Exit 1 with `A=not-run` or `B=not-run`: that arm hit its turn cap, timed out or errored. Read the summary under `eval/abtest/.runs/probe-canary/A` or `eval/abtest/.runs/probe-canary/B`, fix the cause and rerun the probe. Do not run the pilot.
@@ -52,7 +52,7 @@ or above it. Run artifacts stay under `eval/abtest/.runs/`.
    rep-1 rows while the harness, plugin and prompt stay the same. After a fix, the next run repeats the stale
    rows and moves them to `results.superseded.jsonl`, which the scorer never reads (OD-14).
    After the harness change OD-19 (all of Bash for both arms), run steps 1, 2 and 4 again, in that order: the first
-   pilot (2026-10-18) stalled 5 of 10 rows on permission rules, and its 10 rows are superseded by the harness change
+   pilot (2026-10-18) stalled 4 of 10 rows on permission rules, and its 10 rows are superseded by the harness change
    (OD-14), so the pilot repeats them. A canary `FOUND` blocks everything: do not run the pilot or the full pass; report it.
 5. Full pass, five reps: `bash eval/abtest/run-matrix.sh`. Runs are sequential. Rep 1 is A then B,
    rep 2 is B then A, and so on.
