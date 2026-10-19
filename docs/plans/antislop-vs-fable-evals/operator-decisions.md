@@ -261,3 +261,35 @@ from the operator's dispatch message; the doc's substance is not edited.
   `run-matrix.sh --probe-isolation`, `run-matrix.sh --probe-canary` and `run-matrix.sh --pilot`. The 10 rows of the
   second pilot were made by the previous harness; the change moves `harness_commit`, so the 10 rows of the second
   pilot are superseded under OD-14 by this harness change and the pilot repeats them.
+- OD-21 (2026-10-19, the answer key is made unreadable to the arm while it runs; binding operator decision, option 1, from the canary probe after OD-20)
+  Evidence (eval/abtest/.runs/probe-canary/A/stream.jsonl and B/stream.jsonl, run on 2026-10-19 after OD-19 and OD-20):
+  the probe returned FOUND for both arms. Each arm ran `find / -name '*holdout*' -o -name 'reference.patch' -o -name
+  'canary-*'`, which listed paths under the WSL alias /mnt/wslg/distro/home/sebas/AntiSlop/..., then printed the token with
+  `grep -H '^ABT-CANARY'` through xargs from eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt and
+  eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch. The deny rules of OD-16 match only the literal absolute
+  root, so an alias spelling, a glob, a relative path or an xargs route bypasses them; this is the residual risk OD-19 named.
+  (a) The rule. While an arm process runs, run-matrix.sh sets every file and directory under the harness secrets to mode
+  000: eval/abtest/checks and the fixtures directory (eval/abtest/fixtures, or ABT_FIXTURES_DIR). The reference solutions,
+  the hidden tests and the canary files all live under these two, and ABT_LOCK_PATHS (colon-separated) replaces the
+  list. The lock is on the inode, so a symlink, a glob, a relative path, an xargs route and the /mnt/wslg alias get
+  permission denied alike. It is taken inside run_guarded, which every arm start goes through (a run, the isolation probe
+  and the canary probe), after the work tree, the plugin copy inputs and the fixture build are done.
+  (b) Restore. The original modes are recorded in a manifest under ABT_WORK and put back after the arm exits and before
+  anything is scored, on every exit path: normal, wall-clock timeout, arm failure, usage-limit exit 75 and 76, and SIGINT,
+  SIGTERM and SIGHUP (the EXIT trap). SIGKILL of the runner cannot be trapped: the manifest then stays, and the next runner
+  restores it before it starts anything.
+  (c) Fail closed. If the lock cannot be taken, or a mode cannot be restored, the runner aborts with exit 1 and a message
+  naming the path; no arm is started on a failed lock. Root is refused, because mode 000 does not stop root.
+  (d) Deny rules, best effort. Both arms also get deny rules for chmod, chattr, setfacl, install, mv, cp and ln on the names
+  abtest/checks, abtest/fixtures, holdout, reference.patch and canary-. The same user can still change a mode through a
+  path built in a variable, so the lock is not proof; the canary probe stays the check. It now also prints
+  `probe: canary-lock covered=yes restored=yes`, fails if a canary file lies outside the lock, and fails if it is
+  unreadable after the restore. While the lock holds, a read of a canary file by an arm gets permission denied.
+  (e) Fingerprint. A row carries `harness_commit`, `plugin_commit` and `prompt_sha`, and the runner counts a run id done
+  only when all three match the current checkout (OD-14(b)). This change moves `harness_commit`, so none of the rows made
+  before this change counts toward the full run: the runner moves them to results.superseded.jsonl and repeats them. The
+  rows of the pilots before this change were made with the answer key readable; that no arm read it is evidence only by
+  keyword scan of the streams, not by prevention, and it does not carry over.
+  (f) Not changed. hooks/, lib/stream.py, the scorer, Arm B's plugin copy and OD-19's allow list. The operator re-runs, in
+  order, `run-matrix.sh --probe-isolation`, `run-matrix.sh --probe-canary` and `run-matrix.sh --pilot`; a canary `FOUND`
+  after this change blocks everything.

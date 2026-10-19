@@ -108,3 +108,14 @@ matcher, because both denied read-only commands and any denial scores a row `sta
 registrations, every other hook, the scripts and the product tree are as shipped. The rows of the second pilot are
 superseded under OD-14, so after this change run steps 1, 2 and 4 again. A third denial in the E3 B row (a permission
 rule on a `sed` of an agent file) is not covered; if the pilot still stalls on it, report it.
+Since OD-21 the harness secrets are locked while an arm runs: `run-matrix.sh` sets every file and directory under
+`eval/abtest/checks` and the fixtures directory to mode 000 just before each arm process starts (a run, the isolation
+probe and the canary probe) and restores the recorded modes when the arm has exited, before anything is scored, on every
+exit path including a timeout, an arm failure, exit 75 or 76 and SIGINT, SIGTERM or SIGHUP. The lock is on the inode, so a
+symlink, a glob, a relative path, an `xargs` route and the `/mnt/wslg/distro/...` alias are denied alike.
+`ABT_LOCK_PATHS` (colon-separated) replaces the default list. If the lock or the restore fails, the runner exits 1 and
+names the path; if a runner was killed with SIGKILL, the manifest `$ABT_WORK/.secrets-lock.manifest` stays and the next
+runner restores it first. The same user could still change a mode through a path built in a variable, which is why the
+canary probe stays the check: it prints `probe: canary-lock covered=yes restored=yes`, and a `FOUND` blocks everything.
+A row counts only with the current `harness_commit` (OD-14), so every row made before OD-21 is superseded and repeats:
+run steps 1, 2 and 4 again, in that order.
