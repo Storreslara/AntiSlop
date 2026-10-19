@@ -6,14 +6,17 @@ OD-22. Today `eval/abtest/lib/stream.py` reads `usage` from the last `result` re
 result record per main-session segment, and each record's `usage` covers that segment's main thread only, so
 B's `tokens_total` was understated by 40 to 260 times. The fix: take all four token fields from the last
 result record's cumulative `modelUsage`, summed over models, and fall back to summing `usage` over every result
-record when `modelUsage` is absent or empty. This is spec Step 5 (P5, alt 5B). It is a harness change; no
-product file is touched.
+record when `modelUsage` is absent or empty. `num_turns` is also per segment, so it is summed over every
+result record. `duration_api_ms` was verified to be already cumulative (the same value on every record), so
+it stays read from the last record and is not summed. This is spec Step 5 (P5, alt 5B, operator ruling
+OQ3 = a, with the premise correction recorded in the spec). It is a harness change; no product file is
+touched.
 
 ## Retrieval
 Fast path, no tracker issue. Spec: `docs/plans/antislop-overhead-fixes/spec.md`, "Step 5 (aof-u5)" and
 "Context, P5". The verbatim OD-22 text and experiment-doc amendment text are in the spec under Step 5. This
-file is the contract of record. If Open Question 3 is answered before dispatch, spec-master re-issues this
-contract; do not act on Open Question 3 yourself.
+file is the contract of record, re-issued on 2026-10-19 after the operator's ruling on Open Question 3. aof-u6
+depends on this unit: OD-23 appends after the OD-22 that this unit writes.
 
 ## Affected files
 - `eval/abtest/lib/stream.py`: `summarize()` (anchor: line matching `def summarize(path, exit_code, stderr_text, escalated):`; the token block is the 5 lines starting `usage = (result or {}).get("usage") or {}`)
@@ -35,49 +38,51 @@ contract; do not act on Open Question 3 yourself.
    else:
        sum the four `usage` fields over every record in `results` (same keys as today)
    ```
-   `tokens_total` stays `tok_in + tok_out + tok_cw`. Leave `num_turns`, `duration_api_ms`, `total_cost_usd`
-   and `model_usage` unchanged; Open Question 3 covers the first two.
+   `tokens_total` stays `tok_in + tok_out + tok_cw`. Set `num_turns` to the sum of `num_turns` over every
+   record in `results`, treating a missing or null value as 0. If no record has a numeric `num_turns`, keep
+   `None`, as today. Leave `duration_api_ms`, `total_cost_usd` and `model_usage` read from the last record:
+   they are already cumulative. Add a one-line comment saying so, citing OD-22.
 2. Add fixture `multi-result.jsonl`. It has 3 lines of
-   `{"type":"result","subtype":"success","is_error":false,"result":"ok","num_turns":1,"usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":0}}`.
-   The last line also carries
+   `{"type":"result","subtype":"success","is_error":false,"result":"ok","num_turns":<k>,"duration_api_ms":500,"usage":{"input_tokens":1,"output_tokens":2,"cache_creation_input_tokens":3,"cache_read_input_tokens":0}}`,
+   with `<k>` = 1, 2 and 3 on lines 1, 2 and 3. The last line also carries
    `"modelUsage":{"m1":{"inputTokens":10,"outputTokens":20,"cacheCreationInputTokens":30,"cacheReadInputTokens":400},"m2":{"inputTokens":1,"outputTokens":2,"cacheCreationInputTokens":3,"cacheReadInputTokens":40}}`.
 3. Add fixture `multi-result-no-mu.jsonl`: 2 result lines with usage (1,2,3,0) and (4,5,6,0) and no
    `modelUsage`.
 4. In `tests/abtest-stream.test.sh`, add these checks with the file's existing `check`/`field` helpers:
    - `multi-result.jsonl`: `tokens_total` 66, `tokens_in` 11, `tokens_out` 22, `tokens_cache_write` 33,
-     `tokens_cache_read` 440;
+     `tokens_cache_read` 440, `num_turns` 6, `duration_api_ms` 500;
    - `multi-result-no-mu.jsonl`: `tokens_total` 21.
 
    The existing `complete.jsonl` check (60) must still pass. If that fixture carries a `modelUsage` that
    disagrees with its `usage`, report it; do not edit the fixture.
-5. Append OD-22 to `operator-decisions.md`, using the verbatim text from the spec under "OD-22 text". Keep the
-   bracketed Open Question 3 clause as a plain sentence: "`num_turns` and `duration_api_ms` have the same
-   last-record reading and are not changed by this decision." The spec's bracket note is an instruction to
-   spec-master, not text to land.
-6. Insert the experiment-doc amendment paragraph verbatim from the spec under "Experiment-doc amendment".
-7. Commit with the subject `fix(aof-u5): whole-run token count from cumulative modelUsage (OD-22)`.
+5. Append OD-22 to `operator-decisions.md`, using the verbatim text from the spec under "OD-22 text" (the
+   finalized version, which covers tokens and `num_turns`).
+6. Insert the experiment-doc amendment paragraph verbatim from the spec under "Experiment-doc amendment"
+   (the OD-22 one) after the OD-21 paragraph.
+7. Commit with the subject `fix(aof-u5): whole-run token and turn count (OD-22)`.
 
 ## Do NOT touch
 - `eval/abtest/checks/`, `eval/abtest/fixtures/`, `eval/abtest/tasks/`, `checks/scope.sh`, any
   `allowed-paths.txt`, `score.py`'s verdict rules or thresholds, `make-row.py`, `report.py`, `run-matrix.sh`,
   the arm scripts. OD-22 changes measurement only.
-- `num_turns` and `duration_api_ms` handling (Open Question 3).
+- `duration_api_ms` handling: it is already cumulative, and summing it would multiply it by the record count.
+- OD-23 and anything about model policy (aof-u6).
 - `eval/abtest/results.jsonl` and `results.superseded.jsonl`: do not rewrite past rows. The runner supersedes
   them under OD-14.
 - Any product file (`agents/`, `hooks/`, `bin/`, `templates/`).
 
 ## Acceptance criteria
 - AC5.1 run: `bash tests/abtest-stream.test.sh` (exit 0). mutation: restoring last-record `usage` reading
-  makes `multi-result.jsonl` report 6 (expected 66) and `multi-result-no-mu.jsonl` report 15 (expected 21).
+  makes `multi-result.jsonl` report 6 (expected 66) and `multi-result-no-mu.jsonl` report 15 (expected 21);
+  restoring last-record `num_turns` gives 3 (expected 6); summing `duration_api_ms` gives 1500 (expected 500).
 - AC5.2 run: `bash tests/abtest-row.test.sh && bash tests/abtest-score.test.sh` (exit 0). The
   `tokens_total = in + out + cw` invariant at score.py:88-90 holds.
 - AC5.3 run: `grep -q '^- OD-22 (2026-10-19' docs/plans/antislop-vs-fable-evals/operator-decisions.md && grep -q '^Amendment 2026-10-19 (OD-22' docs/experiments/abtest-2026-10.md`.
   mutation: a missing entry fails it.
 - AC5.4 run: a regression over the real pilot-4 stream (the signature was verified as
   `summarize(path, exit_code, stderr_text, escalated)`, and the current code returns 3205):
-  `python3 -I -c "import sys; sys.path.insert(0,'eval/abtest/lib'); import stream; s=stream.summarize('eval/abtest/.runs/e05-tags-feature_B_uniform_1/stream.jsonl',0,'',0); assert s['tokens_total']==831801, s['tokens_total']"`
-  exits 0. If the summarize signature differs, adapt the call and keep the expected value. mutation: the old
-  code gives 3205.
+  `python3 -I -c "import sys; sys.path.insert(0,'eval/abtest/lib'); import stream; s=stream.summarize('eval/abtest/.runs/e05-tags-feature_B_uniform_1/stream.jsonl',0,'',0); assert (s['tokens_total'],s['num_turns'],s['duration_api_ms'])==(831801,53,1253697), (s['tokens_total'],s['num_turns'],s['duration_api_ms'])"`
+  exits 0. mutation: the old code gives (3205, 2, 1253697).
 - AC5.5 run: `bash tests/validate.sh` (exit 0).
 
 ## Pre-resolved context
