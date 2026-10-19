@@ -1468,6 +1468,15 @@ else
 fi
 
 echo
+echo "== tests/abtest-lock.test.sh: the secrets lock and its restore on every exit path (Bash, abt-u13i) =="
+if bash tests/abtest-lock.test.sh > /dev/null; then
+  echo "OK   tests/abtest-lock.test.sh"
+else
+  echo "FAIL tests/abtest-lock.test.sh"
+  fail=1
+fi
+
+echo
 echo "== tests/abtest-score.test.sh: scorer and verdict rules (Bash, abt-u14) =="
 if bash tests/abtest-score.test.sh > /dev/null; then
   echo "OK   tests/abtest-score.test.sh"

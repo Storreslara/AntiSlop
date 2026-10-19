@@ -68,6 +68,7 @@ PLUGIN_ROOT="${ABT_PLUGIN_ROOT:-$ABT_REPO_ROOT}"
 # The arms may not read the results or the runs (OD-16): the arm scripts turn these paths into deny rules.
 export ABTEST_DENY_PATHS="$RESULTS:$RUNS${ABTEST_DENY_PATHS:+:$ABTEST_DENY_PATHS}"
 MAX_LIMIT_HITS="${ABT_MAX_LIMIT_HITS:-3}"
+SECRETS_STATE="$WORK/.secrets-lock.manifest"
 POLICY="${ABTEST_POLICY:-uniform}"
 EVALS="e01-ambiguous-tax,e02-preview-mutation,e03-rename-query,e04-search-injection,e05-tags-feature"
 REPS=5
@@ -235,18 +236,27 @@ reap_arm() {
 run_guarded() {
   local out="$1" err="$2" outer="$3" grc=0
   shift 3
+  abtest_lock_secrets "$SECRETS_STATE" || { release_secrets; echo "run-matrix: the secrets lock failed (OD-21); no arm was started" >&2; exit 1; }
   setsid -w timeout -k "${ABT_KILL_AFTER_S:-30}s" "${outer}s" "$@" > "$out" 2>> "$err" &
   ARM_SID=$!
   wait "$ARM_SID" || grc=$?
   reap_arm
+  release_secrets || exit 1
   return "$grc"
 }
 
-# release_lock: remove the lock directory this runner took.
+# release_secrets: OD-21. Restore the modes the lock recorded; a no-op when no lock stands. Returns 1 on a failed restore.
+release_secrets() {
+  abtest_unlock_secrets "$SECRETS_STATE" || { echo "run-matrix: the secrets lock was not restored; fix the modes named above, then run again" >&2; return 1; }
+}
+
+# release_lock: restore the secrets, then remove the lock directory this runner took.
 release_lock() {
+  local src=0
+  release_secrets || src=1
   if [ -n "$LOCK_DIR" ]; then rm -rf "$LOCK_DIR"; fi
   LOCK_DIR=""
-  return 0
+  return "$src"
 }
 
 # acquire_lock: refuse to start without setsid and pkill (they keep a claude from outliving its run), then take the
@@ -270,6 +280,10 @@ acquire_lock() {
   fi
   LOCK_DIR="$lock"
   printf '%s\n' "$$" > "$lock/pid"
+  if [ -e "$SECRETS_STATE" ]; then
+    echo "run-matrix: restoring the modes recorded in the stale $SECRETS_STATE (a runner was killed mid-run)" >&2
+    release_secrets || exit 1
+  fi
 }
 
 # on_signal NAME CODE: an interrupt stops the runner; the arm's session dies with it and the run has no row.
@@ -281,7 +295,7 @@ on_signal() {
 trap 'on_signal INT 130' INT
 trap 'on_signal TERM 143' TERM
 trap 'on_signal HUP 129' HUP
-trap release_lock EXIT
+trap 'release_lock || exit 1' EXIT
 
 # run_one EVAL ARM REP REQUIRED: one full run, one appended row. Prints the run summary line.
 run_one() {
@@ -305,7 +319,10 @@ run_one() {
   if [ "$arm" = A ]; then
     armcmd=(bash "$HERE/arms/arm-a.sh" "$w" "$prompt" "$dir/stream.jsonl" "$dir/stderr.log")
   else
-    [ -f "$fx/arm-b.overrides.json" ] && ov=("$fx/arm-b.overrides.json")
+    if [ -f "$fx/arm-b.overrides.json" ]; then
+      cp "$fx/arm-b.overrides.json" "$wdir/arm-b.overrides.json" || internal "$run_id" "overrides copy"
+      ov=("$wdir/arm-b.overrides.json")
+    fi
     armcmd=(bash "$HERE/arms/arm-b.sh" "$w" "$prompt" "$dir/stream.jsonl" "$dir/stderr.log" "$PLUGIN_ROOT" "${ov[@]}")
   fi
   t0="$(date +%s%N)"
@@ -454,7 +471,7 @@ if [ "$PROBE_CANARY" -eq 1 ]; then
   CANARY="ABT-CANARY-$(python3 -I -c 'import secrets;print(secrets.token_hex(16))')"
   CONTROL="ABT-CONTROL-$(python3 -I -c 'import secrets;print(secrets.token_hex(16))')"
   CANARY_FILES=("$HERE/checks/e01-ambiguous-tax/canary-holdout.txt" "$HERE/fixtures/e01-ambiguous-tax/canary-reference.patch")
-  trap 'rm -f "${CANARY_FILES[@]}"; release_lock' EXIT
+  trap 'release_secrets; rm -f "${CANARY_FILES[@]}"; release_lock || exit 1' EXIT
   for cf in "${CANARY_FILES[@]}"; do printf '%s\n' "$CANARY" > "$cf" || { echo "run-matrix: cannot plant the canary in $cf" >&2; exit 1; }; done
   canary_arm A
   canary_arm B
@@ -462,6 +479,17 @@ if [ "$PROBE_CANARY" -eq 1 ]; then
   seen=""
   cdn=""
   cctl=""
+  mapfile -t SECRET_ROOTS < <(abtest_secret_paths)
+  clock=""
+  for cf in "${CANARY_FILES[@]}"; do
+    cov=no
+    for sp in "${SECRET_ROOTS[@]}"; do
+      case "$(realpath -m -- "$cf")/" in "$sp"/*) cov=yes ;; esac
+    done
+    [ "$cov" = yes ] || { clock="$clock uncovered:$cf"; crc=1; }
+    [ -r "$cf" ] || { clock="$clock unrestored:$cf"; crc=1; }
+  done
+  echo "probe: canary-lock${clock:- covered=yes restored=yes}"
   for arm in A B; do
     st="$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["completion_status"])' "$RUNS/probe-canary/$arm/summary.json")"
     if [ "$st" = usage-limit ]; then

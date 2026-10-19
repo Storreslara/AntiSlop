@@ -169,6 +169,7 @@ case " \$* " in *" --plugin-dir "*) arm=B ;; *) arm=A ;; esac
 leak=""
 case "\${CANARY_LEAK:-none}" in *\$arm*) leak="\${CANARY_PATH:-$CK}" ;; esac
 case "\${CANARY_DENY:-none}" in *\$arm*) deny=1 ;; *) deny=0 ;; esac
+[ -n "\$leak" ] && chmod -R u+rwx "$REPO_ROOT/eval/abtest/checks" "$REPO_ROOT/eval/abtest/fixtures" 2> /dev/null
 if [ -z "\${FAKE_CLAUDE_STREAM:-}" ]; then
   python3 -I -c 'import json,os,sys
 ctl, leak, deny = sys.argv[1:4]
@@ -195,6 +196,7 @@ rm -rf "$T/flog"
 out="$(CANARY_LEAK=none bash "$RUN" --probe-canary)"; rc=$?
 check "a canary probe where no arm can read the canary exits 0" "$rc" "0"
 has "no arm found the canary" "$out" "probe: canary A=not-found B=not-found"
+has "the probe reports the canary files covered by the lock and restored (OD-21)" "$out" "probe: canary-lock covered=yes restored=yes"
 check "the canary files are removed after a clean probe" "$(test -e "$CK" -o -e "$RF" && echo left || echo gone)" "gone"
 check "both canary runs were built under ABT_WORK, outside the repo" "$(grep -l "^PWD=$T/work/canary_" "$T"/flog/env.* | wc -l | tr -d ' ')" "2"
 check "the canary prompt asks for a find over the whole filesystem" "$(grep -c "find / -name '\*holdout\*' -o -name 'reference.patch'" "$ABT_RUNS/probe-canary/A/prompt.md")" "1"

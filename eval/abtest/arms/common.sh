@@ -62,6 +62,64 @@ abtest_deny_flags() {
     local IFS=:
     for q in ${ABTEST_DENY_PATHS:-}; do [ -z "$q" ] || realpath -m -- "$q"; done
   )
+  # OD-21, best effort: the arm may not undo the lock by name. A path built in a variable still gets through, which is why
+  # the canary probe stays the check.
+  local m n
+  for m in chmod chattr setfacl install mv cp ln; do
+    for n in abtest/checks abtest/fixtures holdout reference.patch canary-; do
+      printf '%s\n' "Bash($m *$n*)"
+    done
+  done
+}
+
+# abtest_secret_paths: OD-21. The paths the lock covers, one per line: ABT_LOCK_PATHS (colon-separated) or else the
+# checks directory and the fixtures directory (ABT_FIXTURES_DIR when set) of this checkout.
+abtest_secret_paths() {
+  local base q
+  base="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+  if [ -n "${ABT_LOCK_PATHS:-}" ]; then
+    local IFS=:
+    for q in $ABT_LOCK_PATHS; do [ -z "$q" ] || realpath -m -- "$q"; done
+  else
+    printf '%s\n' "$base/checks" "$(realpath -m -- "${ABT_FIXTURES_DIR:-$base/fixtures}")"
+  fi
+}
+
+# abtest_lock_secrets STATE: OD-21. Record every mode under the secret paths in the manifest STATE (path, tab, mode,
+# NUL), then set each to 000, children first. The lock is on the inode, so an alias path is denied too. Fails closed and
+# names the path (root, a stale manifest, a missing directory, a failed chmod, a root still listable); the caller then
+# runs abtest_unlock_secrets.
+abtest_lock_secrets() {
+  local state="$1" root p m
+  local -a roots
+  if [ "$(id -u)" = 0 ]; then echo "abtest: the secrets lock does not hold for root; run as a normal user" >&2; return 1; fi
+  if [ -e "$state" ]; then echo "abtest: $state holds an unrestored lock; restore it first" >&2; return 1; fi
+  mapfile -t roots < <(abtest_secret_paths)
+  for root in "${roots[@]}"; do
+    [ -d "$root" ] || { echo "abtest: cannot lock $root: it is not a directory" >&2; return 1; }
+  done
+  mkdir -p -- "$(dirname -- "$state")" || return 1
+  for root in "${roots[@]}"; do
+    find "$root" -not -type l -printf '%p\t%m\0' >> "$state" || { echo "abtest: cannot list $root" >&2; return 1; }
+  done
+  while IFS=$'\t' read -r -d '' p m; do
+    chmod 000 -- "$p" || { echo "abtest: cannot lock $p" >&2; return 1; }
+  done < <(LC_ALL=C sort -z -r "$state")
+  for root in "${roots[@]}"; do
+    if ls -- "$root" > /dev/null 2>&1; then echo "abtest: $root is still listable after the lock" >&2; return 1; fi
+  done
+}
+
+# abtest_unlock_secrets STATE: OD-21. Restore every mode the manifest STATE records, parents first, then remove it; a
+# no-op without STATE. A mode that cannot be restored is named, the rest are still restored, STATE is kept, return 1.
+abtest_unlock_secrets() {
+  local state="$1" p m rc=0
+  [ -e "$state" ] || return 0
+  while IFS=$'\t' read -r -d '' p m; do
+    chmod "$m" -- "$p" 2> /dev/null || { echo "abtest: cannot restore mode $m of $p; the manifest $state is kept" >&2; rc=1; }
+  done < <(LC_ALL=C sort -z "$state")
+  [ "$rc" -eq 0 ] && rm -f -- "$state"
+  return "$rc"
 }
 
 # abtest_make_home DIR: a per-run HOME outside the harness with a neutral git identity and nothing else.

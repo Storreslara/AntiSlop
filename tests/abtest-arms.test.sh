@@ -176,7 +176,7 @@ deny_of "$T/argvA" > "$T/denyA"
 deny_of "$T/argvB" > "$T/denyB"
 check "both arms pass the same --disallowedTools values" "$(cmp -s "$T/denyA" "$T/denyB" && echo same || echo differ)" "same"
 check "no find or sort deny rule remains (OD-19 removes the OD-17 write-form rules)" "$(grep -cE '^Bash\((find|sort) ' "$T/denyA")" "0"
-check "the deny rules are the four rules for the harness root and nothing else" "$(grep -vxF -e "Read(/$REPO_PHYS)" -e "Read(/$REPO_PHYS/**)" -e "Edit(/$REPO_PHYS/**)" -e "Bash(*$REPO_PHYS*)" "$T/denyA" | wc -l | tr -d ' ')|$(wc -l < "$T/denyA" | tr -d ' ')" "0|4"
+check "the deny rules are the four rules for the harness root and the 35 lock-guard rules of OD-21, nothing else" "$(grep -vxF -e "Read(/$REPO_PHYS)" -e "Read(/$REPO_PHYS/**)" -e "Edit(/$REPO_PHYS/**)" -e "Bash(*$REPO_PHYS*)" "$T/denyA" | grep -vcE '^Bash\((chmod|chattr|setfacl|install|mv|cp|ln) \*(abtest/checks|abtest/fixtures|holdout|reference\.patch|canary-)\*\)$')|$(wc -l < "$T/denyA" | tr -d ' ')" "0|39"
 check "the deny rules come before the allow rules on the command line" "$(awk '/^--disallowedTools$/ {d = NR} /^--allowedTools$/ {a = NR} END {print ((d > 0 && a > 0 && d < a) ? "deny-first" : "allow-first")}' "$T/argvA")" "deny-first"
 for a in A B; do
   check "arm $a keeps --permission-mode acceptEdits" "$(grep -A1 -e '--permission-mode' "$T/argv$a" | tail -1)" "acceptEdits"
