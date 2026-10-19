@@ -115,7 +115,7 @@ exit path including a timeout, an arm failure, exit 75 or 76 and SIGINT, SIGTERM
 symlink, a glob, a relative path, an `xargs` route and the `/mnt/wslg/distro/...` alias are denied alike.
 `ABT_LOCK_PATHS` (colon-separated) replaces the default list. If the lock or the restore fails, the runner exits 1 and
 names the path; if a runner was killed with SIGKILL, the manifest `$ABT_WORK/.secrets-lock.manifest` stays and the next
-runner restores it first. The same user could still change a mode through a path built in a variable, which is why the
+runner restores it first. The same user could still change a mode in ways the deny rules do not match, for example a path built in a variable, a `cd` into the alias followed by `chmod`, a glob, `python3 os.chmod` or `find -exec chmod`, which is why the
 canary probe stays the check: it prints `probe: canary-lock covered=yes restored=yes`, and a `FOUND` blocks everything.
 A row counts only with the current `harness_commit` (OD-14), so every row made before OD-21 is superseded and repeats:
 run steps 1, 2 and 4 again, in that order.

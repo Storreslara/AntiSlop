@@ -3,6 +3,10 @@
 Dated log of persona-driven work in this repo. Distinct from the project's
 own `CHANGELOG.md` (which tracks plugin version releases for consumers).
 
+## 2026-10-19 (abt-u13i/u13j post-PASS - answer key locked while an arm runs, OD-21, #626/#627)
+- Reviewer PASS abt-u13i at 2f6f1d4a and abt-u13j at 3b44c210. Files: `eval/abtest/arms/common.sh` (`abtest_secret_paths`, `abtest_lock_secrets`, `abtest_unlock_secrets`; mode 000 on checks and fixtures, manifest, restore before scoring, fail closed, stale repair), `eval/abtest/run-matrix.sh` (`run_guarded` locks runs and both probes), `tests/abtest-lock.test.sh` (32 rows), OD-21 in `operator-decisions.md`, dated amendment in `docs/experiments/abtest-2026-10.md`, README note.
+- Residuals recorded in OD-21: arm-writable manifest, same-ABT_WORK stale repair, orphaned arm after SIGKILL, `setsid` survives `reap_arm`, wider deny-rule bypass list. Convention: answer material must be listed in `abtest_secret_paths`. Glossary: new `secrets lock`; `canary probe` extended.
+
 ## 2026-10-19 (abt-u13h post-PASS - Arm B plugin copy drops two Bash gates, OD-20, #625)
 - Reviewer PASS abt-u13h at f9ff9cbb (contract commit 3772adf5). Files: `eval/abtest/arms/common.sh` (`abtest_relax_bash_gates DEST`, called from `abtest_plugin_copy`, removes the Bash registrations of `harness-integrity-gate.sh` and `reviewed-path-gate.sh` from the copy's `hooks.json`, fails unless exactly two drop), `tests/abtest-arms.test.sh`, `docs/plans/antislop-vs-fable-evals/operator-decisions.md` (OD-20), `docs/experiments/abtest-2026-10.md` (dated amendment), `eval/abtest/README.md`.
 - `hooks/` in the product tree is untouched; Arm A never uses the copy. Arm B is no longer exactly as shipped; the pre-registration discloses it. The third E3 B denial (`sed -n` on `.claude/agents`) is not fixed by OD-20. The Arm B probe hook census no longer lists the two Bash gates.

@@ -264,8 +264,8 @@ from the operator's dispatch message; the doc's substance is not edited.
 - OD-21 (2026-10-19, the answer key is made unreadable to the arm while it runs; binding operator decision, option 1, from the canary probe after OD-20)
   Evidence (eval/abtest/.runs/probe-canary/A/stream.jsonl and B/stream.jsonl, run on 2026-10-19 after OD-19 and OD-20):
   the probe returned FOUND for both arms. Each arm ran `find / -name '*holdout*' -o -name 'reference.patch' -o -name
-  'canary-*'`, which listed paths under the WSL alias /mnt/wslg/distro/home/sebas/AntiSlop/..., then printed the token with
-  `grep -H '^ABT-CANARY'` through xargs from eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt and
+  'canary-*'`, which listed paths under the WSL alias /mnt/wslg/distro/home/sebas/AntiSlop/..., then printed the token (arm B with
+  `xargs -d '\n' grep -H 'ABT-CANARY'` and a while-read `cat` loop, arm A also with `cat` on the /mnt/wslg path) from eval/abtest/checks/e01-ambiguous-tax/canary-holdout.txt and
   eval/abtest/fixtures/e01-ambiguous-tax/canary-reference.patch. The deny rules of OD-16 match only the literal absolute
   root, so an alias spelling, a glob, a relative path or an xargs route bypasses them; this is the residual risk OD-19 named.
   (a) The rule. While an arm process runs, run-matrix.sh sets every file and directory under the harness secrets to mode
@@ -278,11 +278,17 @@ from the operator's dispatch message; the doc's substance is not edited.
   anything is scored, on every exit path: normal, wall-clock timeout, arm failure, usage-limit exit 75 and 76, and SIGINT,
   SIGTERM and SIGHUP (the EXIT trap). SIGKILL of the runner cannot be trapped: the manifest then stays, and the next runner
   restores it before it starts anything.
+  Known residuals: the arm can write the manifest $ABT_WORK/.secrets-lock.manifest (ABT_WORK holds the arm's own work
+  tree and the manifest is not in ABTEST_DENY_PATHS), so "restored on every exit path" holds absent tampering; deleting
+  it makes the restore a no-op. Stale-manifest repair runs only when the next runner uses the same ABT_WORK, and a
+  SIGKILLed runner leaves its arm session alive (reap_arm never ran), so the next start can restore modes while that
+  orphan still runs. A process that calls setsid survives reap_arm and sees the restored modes.
   (c) Fail closed. If the lock cannot be taken, or a mode cannot be restored, the runner aborts with exit 1 and a message
   naming the path; no arm is started on a failed lock. Root is refused, because mode 000 does not stop root.
   (d) Deny rules, best effort. Both arms also get deny rules for chmod, chattr, setfacl, install, mv, cp and ln on the names
-  abtest/checks, abtest/fixtures, holdout, reference.patch and canary-. The same user can still change a mode through a
-  path built in a variable, so the lock is not proof; the canary probe stays the check. It now also prints
+  abtest/checks, abtest/fixtures, holdout, reference.patch and canary-. The same user can still change a mode in ways
+  the rules do not match, for example a path built in a variable, a cd into the alias followed by chmod, a glob, python3
+  os.chmod or find -exec chmod, so the lock is not proof; the canary probe stays the check. It now also prints
   `probe: canary-lock covered=yes restored=yes`, fails if a canary file lies outside the lock, and fails if it is
   unreadable after the restore. While the lock holds, a read of a canary file by an arm gets permission denied.
   (e) Fingerprint. A row carries `harness_commit`, `plugin_commit` and `prompt_sha`, and the runner counts a run id done
