@@ -14,7 +14,7 @@ GitHub issues: `gh issue view 624 --repo Storreslara/AntiSlop`. Siblings: `gh is
 - `eval/abtest/README.md` (anchor: line matching `   control token that the prompt asks it to print, so a `not-found` shows that the probe can see a printed token.`)
 
 ## Ordered edits
-1. command: `test -f eval/abtest/arms/common.sh && /usr/bin/grep -qF "--allowedTools 'Bash(npm test)'" eval/abtest/arms/common.sh && ! /usr/bin/grep -qF 'OD-19' eval/abtest/arms/common.sh && test -f tests/abtest-arms.test.sh && ! /usr/bin/grep -qF 'OD-19' docs/plans/antislop-vs-fable-evals/operator-decisions.md`
+1. command: `test -f eval/abtest/arms/common.sh && /usr/bin/grep -qF -e "--allowedTools 'Bash(npm test)'" eval/abtest/arms/common.sh && ! /usr/bin/grep -qF 'OD-19' eval/abtest/arms/common.sh && test -f tests/abtest-arms.test.sh && ! /usr/bin/grep -qF 'OD-19' docs/plans/antislop-vs-fable-evals/operator-decisions.md`
    expect: 0
 2. file: `eval/abtest/arms/common.sh`
    anchor: line matching `    --allowedTools 'Bash(npm test)' 'Bash(npm run *)' 'Bash(git *)' \`
@@ -225,8 +225,9 @@ Since OD-19 both arms may run any shell command, so a shell can now search the f
 what it finds; the deny rules refuse only a command that names the harness root. The canary probe with its control
 token is the check, it must be re-run after OD-19, and a `FOUND` blocks everything.
 ~~~~
-12. command: `git add docs/experiments/abtest-2026-10.md docs/plans/antislop-vs-fable-evals/operator-decisions.md eval/abtest/README.md eval/abtest/arms/common.sh tests/abtest-arms.test.sh && git commit -m "fix(abt-u13g): both arms allow all of Bash and keep the isolation deny rules, the find and sort deny rules go (OD-19) (#624)" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>" -m "Claude-Session: https://claude.ai/code/session_01YK99TBRAMRzztoenFf2Y9S"`
+12. command: `git commit -m "fix(abt-u13g): both arms allow all of Bash and keep the isolation deny rules, the find and sort deny rules go (OD-19) (#624)" -- docs/experiments/abtest-2026-10.md docs/plans/antislop-vs-fable-evals/operator-decisions.md eval/abtest/README.md eval/abtest/arms/common.sh tests/abtest-arms.test.sh`
    expect: 0
+   trailers: before running it, add one more `-m` argument for the Co-Authored-By trailer and one for the Claude-Session trailer, both taken from the session attribution; the paths after `--` stay explicit and no `git add` runs.
 
 ## Do NOT touch
 - `eval/abtest/lib/stream.py` (the stalled-human rule: any AskUserQuestion, permission denial or escalation marker; spec 4.1, OD-3, OD-13 bind it and OD-19(f) keeps it)
@@ -332,8 +333,7 @@ operator-checklist: after landing, the operator re-runs `run-matrix.sh --probe-i
 green-at-HEAD: criterion 15 to 17 already pass before the edits (regression guards, criterion 15 pins that lib/stream.py behaviour is untouched); criterion 2 is the red count (117 at HEAD); criteria 1, 3 to 14 and 18 to 20 fail at HEAD.
 not-stamped: no agents/*.md or templates/ file is touched, so there is no version bump and no CHANGELOG entry; a scribe close-out owns the CHANGELOG entry and the `shared allowed tools` and `anchored deny rule` glossary entries (both now describe the OD-17 rules).
 commit-message: fix(abt-u13g): both arms allow all of Bash and keep the isolation deny rules, the find and sort deny rules go (OD-19) (#624)
-Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01YK99TBRAMRzztoenFf2Y9S
+trailers: use the Co-Authored-By and Claude-Session trailers from the session attribution
 diagnosis: none
 review-packet:
 ~~~
