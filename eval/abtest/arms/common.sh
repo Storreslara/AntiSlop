@@ -13,14 +13,14 @@ TIMEOUT_MIN="${TIMEOUT_MIN:-45}"
 ABTEST_HARNESS_ROOT="${ABTEST_HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd -P)}"
 
 # One flag or value per line, so a test can compare the two arms.
+# OD-19: both arms allow all of Bash (the single value Bash), so a correct run is not scored stalled-human for an
+# ordinary dev command. The isolation lives in abtest_deny_flags, the pruned plugin copy, the per-run HOME and a work
+# directory outside the checkout, not in this list. A real ask or denial is still stalled-human (lib/stream.py).
 abtest_common_flags() {
   printf '%s\n' \
     --output-format stream-json --verbose --include-hook-events \
     --permission-mode acceptEdits \
-    --allowedTools 'Bash(npm test)' 'Bash(npm run *)' 'Bash(git *)' \
-    'Bash(grep *)' 'Bash(ls *)' 'Bash(find *)' 'Bash(cat *)' 'Bash(head *)' 'Bash(tail *)' 'Bash(wc *)' \
-    'Bash(sort *)' 'Bash(cut *)' 'Bash(echo *)' 'Bash(pwd *)' 'Bash(diff *)' 'Bash(stat *)' \
-    'Bash(basename *)' 'Bash(dirname *)' \
+    --allowedTools Bash \
     --max-turns "$MAX_TURNS" --model "$ABTEST_MODEL" \
     --no-session-persistence
 }
@@ -45,14 +45,10 @@ abtest_outside() {
 abtest_deny_flags() {
   local p
   printf '%s\n' --disallowedTools
-  # The read-only allows (OD-17) must not reach a form that writes or runs another command. Deny rules are checked
-  # before allow rules, so these win, as do the harness-root rules below. Each is anchored to a space or to the start
-  # of the arguments, because a rule matches the command text with * for any text: Bash(find *-ok*) would also deny
-  # find . -name '*-ok*', and Bash(sort *-o*) would deny sort log-old.txt. The no-path forms cover find -delete.
-  printf '%s\n' 'Bash(find * -exec*)' 'Bash(find * -ok*)' 'Bash(find * -delete*)' 'Bash(find * -fprint*)' 'Bash(find * -fls*)'
-  printf '%s\n' 'Bash(find -exec*)' 'Bash(find -ok*)' 'Bash(find -delete*)' 'Bash(find -fprint*)' 'Bash(find -fls*)'
-  printf '%s\n' 'Bash(sort -o*)' 'Bash(sort * -o*)' 'Bash(sort --output*)' 'Bash(sort * --output*)'
-  printf '%s\n' 'Bash(sort --compress-program*)' 'Bash(sort * --compress-program*)'
+  # OD-19: Bash is allowed whole, so the rules below are the only command-level protection. Deny rules are checked
+  # before allow rules whatever the flag order, and abtest_run_claude still puts them first. The find and sort rules of
+  # OD-17 are gone: with every command allowed they guard nothing a plain shell lacks, and each is a denial that would
+  # stall a correct run.
   while IFS= read -r p; do
     case "$p" in
       *[[:space:],\(\)]*)
@@ -152,6 +148,6 @@ abtest_run_claude() {
   denyout="$(abtest_deny_flags)" || return 2
   mapfile -t deny <<< "$denyout"
   local rc=0
-  ( cd "$wt" && env HOME="$home" GIT_CONFIG_GLOBAL="$home/.gitconfig" timeout "${TIMEOUT_MIN}m" "$ABTEST_CLAUDE" -p "$(cat "$pf")" "${flags[@]}" "${deny[@]}" "$@" ) > "$out" 2> "$err" || rc=$?
+  ( cd "$wt" && env HOME="$home" GIT_CONFIG_GLOBAL="$home/.gitconfig" timeout "${TIMEOUT_MIN}m" "$ABTEST_CLAUDE" -p "$(cat "$pf")" "${deny[@]}" "${flags[@]}" "$@" ) > "$out" 2> "$err" || rc=$?
   return "$rc"
 }

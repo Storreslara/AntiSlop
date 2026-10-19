@@ -192,3 +192,44 @@ from the operator's dispatch message; the doc's substance is not edited.
   whose stream lacks the control token is `no-control` and fails the probe (exit 1), because a probe that cannot see a
   token printed from the work directory cannot see a leak. The control proves only that a token the arm prints
   reaches the stream the probe searches; it says nothing about the checks or fixtures directories.
+- OD-19 (2026-10-18, all of Bash for both arms; binding operator decision, option 1, from the 2026-10-18 pilot;
+  supersedes OD-17(a)-(c) where they conflict)
+  Evidence (pilot 2026-10-18, eval/abtest/results.jsonl, runs under eval/abtest/.runs/): 5 of 10 rows were
+  `stalled-human` (E3 B, E4 B, E5 A and B; E1 and E2 completed), each with `permission_denied` system records on
+  ordinary dev commands. Decision reasons seen: `subcommandResults` (`node -e`, a heredoc `python3 - <<'EOF'`,
+  `node --test ...; head`), "Quoted text in this command can't be checked before it runs", "A variable in this command
+  can't be checked before it runs", "Contains brace with quote character (expansion obfuscation)" and "Parser skipped
+  input between top-level statements". Widening a list of read-only commands cannot fix this class, and left as it
+  was the stalls would measure the permission rules, not the arms.
+  (a) The rule. `--allowedTools` is the single value `Bash` (every Bash command) in both arms, in place of the 18 rules
+  of OD-17(a). Unchanged and still binding: `--permission-mode acceptEdits`, `--disallowedTools`, the per-run HOME, the
+  work directory and config directory outside the checkout, the pruned plugin copy (OD-16(a)-(b)). The arms stay equal:
+  one function builds the flags for both.
+  (b) Removed. The 16 find and sort deny rules of OD-17(c) are gone. They kept a read-only list read-only; with every
+  command allowed, `find -exec` and `sort -o` add nothing a plain shell lacks, and each is one more denial that would
+  stall a correct run. `uniq` is no longer a question for the same reason.
+  (c) Kept. `--disallowedTools` carries the four OD-16 rules for the harness root and for each path of
+  ABTEST_DENY_PATHS (`Read(/<p>)`, `Read(/<p>/**)`, `Edit(/<p>/**)`, `Bash(*<p>*)`). The deny flags are now put ahead of
+  the allow flags on the command line; the order is for the reader, not what makes them win.
+  (d) Verified (Claude Code docs read 2026-10-18 by a claude-code-guide lookup, quoted, not run): `Bash(*)` is
+  equivalent to the bare `Bash` and matches all Bash commands; rules are evaluated "deny, then ask, then allow" and "an
+  allow rule can't carve an exception out of a deny rule"; deny rules apply when any subcommand matches, including one
+  inside a command substitution, a subshell or a loop body; deny rules block in every permission mode; in
+  `stream-json` a denial appears as a `permission_denied` system message. Not verified: that flag position is
+  irrelevant (the docs order rules by type, not by flag position); that an allow of all Bash silences the parser safety
+  checks quoted in the evidence (the docs do not mention heredocs, `$VAR`, "expansion obfuscation" or "Parser skipped
+  input", so those checks may still force a denial in a headless run); that `Bash(*<root>*)` matches every spelling of
+  the root. No test runs the real matcher.
+  (e) Residual risk, enlarged (extends OD-16(d)). A deny rule matches the command text Claude writes, so a shell can
+  now search the filesystem and read what it finds: `find / -name '*.tok' -exec cat {} +` names no harness path and is
+  allowed. Through the shell an arm can also write outside the worktree and read the operator's real home (the per-run
+  HOME only changes what `~` means). The OD-16 measures stay as defence in depth, and the canary probe with its control
+  token (OD-18) is the check: it may now report `FOUND`, and that is the result it exists to give. A `FOUND` blocks
+  everything (no pilot, no full pass) and needs a new operator decision on isolation; nothing here chooses it.
+  (f) Stall detection in lib/stream.py is unchanged (OD-3, OD-13, OD-17(d)): a real ask or denial, for example a
+  command a deny rule matches or a safety check the allow does not silence, is still `stalled-human`.
+  (g) Whether the stalls stop is confirmed only by re-running. After this lands, the operator re-runs, in order,
+  `run-matrix.sh --probe-isolation`, `run-matrix.sh --probe-canary` and `run-matrix.sh --pilot`. The 10 pilot rows of
+  2026-10-18 were made by the previous harness; the change moves `harness_commit`, so they are superseded under OD-14
+  and the pilot repeats them. If the pilot still stalls on the safety checks of (d), that is a new operator decision
+  (for example a different permission mode); this decision does not make it.

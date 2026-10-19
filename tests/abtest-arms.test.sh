@@ -119,44 +119,24 @@ for a in A B; do
   check "arm $a denies Edit of the harness root" "$(grep -cxF "Edit(/$REPO_PHYS/**)" "$T/argv$a")" "1"
   check "arm $a denies Bash commands that name the harness root" "$(grep -cxF "Bash(*$REPO_PHYS*)" "$T/argv$a")" "1"
 done
-# --- shared read-only allows (abt-u13d, OD-17): identical in both arms, nothing that writes, deny rules still win ---
+# --- all of Bash for both arms (abt-u13g, OD-19, supersedes the read-only list of OD-17): the isolation rules stay ---
 allow_of() { awk '/^--allowedTools$/ {f = 1; next} /^--/ {f = 0} f' "$1"; }
 allow_of "$T/argvA" > "$T/allowA"
 allow_of "$T/argvB" > "$T/allowB"
 check "both arms pass the same --allowedTools values" "$(cmp -s "$T/allowA" "$T/allowB" && echo same || echo differ)" "same"
-check "the shared allowed tools number 18" "$(wc -l < "$T/allowA" | tr -d ' ')" "18"
-check "the shared allowed tools keep the original three" "$(grep -cxE 'Bash\(npm test\)|Bash\(npm run \*\)|Bash\(git \*\)' "$T/allowA")" "3"
-for c in grep ls find cat head tail wc sort cut echo pwd diff stat basename dirname; do
-  check "the shared allowed tools hold Bash($c *) in both arms" "$(grep -cxF "Bash($c *)" "$T/allowA")|$(grep -cxF "Bash($c *)" "$T/allowB")" "1|1"
-done
-check "no allowed tool names a command that writes, deletes, fetches or runs another" "$(grep -cE '^Bash\((rm|mv|cp|chmod|chown|ln|tee|sed|awk|dd|curl|wget|ssh|scp|nc|xargs|tar|touch|mkdir|sh|bash|env|eval|sudo|node|python3?) ' "$T/allowA")" "0"
+check "the allowed tools are the single value Bash in both arms" "$(cat "$T/allowA")|$(cat "$T/allowB")" "Bash|Bash"
+check "no allowed tool is limited by a command pattern" "$(grep -c '^Bash(' "$T/allowA")" "0"
 check "no deny rule rides the allow list" "$(grep -c "$REPO_PHYS" "$T/allowA")" "0"
-check "the shared allowed tools do not hold uniq (uniq IN OUT writes OUT)" "$(grep -c '^Bash(uniq ' "$T/allowA")" "0"
 deny_of() { awk '/^--disallowedTools$/ {f = 1; next} /^--/ {f = 0} f' "$1"; }
 deny_of "$T/argvA" > "$T/denyA"
 deny_of "$T/argvB" > "$T/denyB"
 check "both arms pass the same --disallowedTools values" "$(cmp -s "$T/denyA" "$T/denyB" && echo same || echo differ)" "same"
-check "the find and sort deny rules number 16" "$(grep -cE '^Bash\((find|sort) ' "$T/denyA")" "16"
-check "no find or sort deny rule starts with an unanchored star-dash" "$(grep -cE '^Bash\((find|sort) \*-' "$T/denyA")" "0"
-# A rule is modelled as a shell glob: * is any text, spaces and nothing included (OD-17(c); the matcher itself is not run).
-hits() {
-  local r n=0
-  while IFS= read -r r; do
-    case "$r" in
-      'Bash(find '* | 'Bash(sort '*)
-        r="${r#Bash(}"
-        r="${r%)}"
-        case "$1" in $r) n=$((n + 1)) ;; esac
-        ;;
-    esac
-  done < "$T/denyA"
-  echo "$n"
-}
-for cmd in "sort log-old.txt" "sort -u a.txt" "sort a.txt b.txt" "find . -name x-ok.txt" "find . -name '*-ok*'" "find . -name '*-exec*' -type f" "find src -type f" "find . -name x-delete.txt"; do
-  check "no find or sort deny rule matches the read $cmd" "$(hits "$cmd")" "0"
-done
-for cmd in "find . -exec rm {} ;" "find -exec rm {} ;" "find . -name x -execdir rm {} ;" "find . -ok rm {} ;" "find -okdir rm {} ;" "find . -delete" "find -delete" "find . -fprint out.txt" "find . -fprintf out.txt %p" "find . -fls out.txt" "sort -o out.txt in.txt" "sort in.txt -o out.txt" "sort -oout.txt in.txt" "sort --output=out.txt in.txt" "sort in.txt --output out.txt" "sort --compress-program=sh in.txt"; do
-  check "a find or sort deny rule matches the write form $cmd" "$([ "$(hits "$cmd")" -ge 1 ] && echo matched || echo missed)" "matched"
+check "no find or sort deny rule remains (OD-19 removes the OD-17 write-form rules)" "$(grep -cE '^Bash\((find|sort) ' "$T/denyA")" "0"
+check "the deny rules are the four rules for the harness root and nothing else" "$(grep -vxF -e "Read(/$REPO_PHYS)" -e "Read(/$REPO_PHYS/**)" -e "Edit(/$REPO_PHYS/**)" -e "Bash(*$REPO_PHYS*)" "$T/denyA" | wc -l | tr -d ' ')|$(wc -l < "$T/denyA" | tr -d ' ')" "0|4"
+check "the deny rules come before the allow rules on the command line" "$(awk '/^--disallowedTools$/ {d = NR} /^--allowedTools$/ {a = NR} END {print ((d > 0 && a > 0 && d < a) ? "deny-first" : "allow-first")}' "$T/argvA")" "deny-first"
+for a in A B; do
+  check "arm $a keeps --permission-mode acceptEdits" "$(grep -A1 -e '--permission-mode' "$T/argv$a" | tail -1)" "acceptEdits"
+  check "arm $a asks for no permission bypass" "$(grep -cE 'bypassPermissions|dangerously-skip-permissions' "$T/argv$a")" "0"
 done
 mkrepo "$T/wa4"
 ABTEST_DENY_PATHS="$T/results:$T/runs" bash "$ARMS/arm-a.sh" "$T/wa4" "$T/prompt.txt" "$T/w4.stream" "$T/w4.err" > /dev/null
