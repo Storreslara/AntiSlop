@@ -82,6 +82,34 @@ abtest_plugin_copy() {
   mkdir -p "$dest"
   git -C "$root" archive HEAD .claude-plugin agents bin commands hooks skills templates | tar -x -C "$dest" || return 1
   [ -f "$dest/.claude-plugin/plugin.json" ] && [ -f "$dest/hooks/hooks.json" ] && [ -f "$dest/bin/cli.js" ] || return 1
+  abtest_relax_bash_gates "$dest" || return 1
+}
+
+# abtest_relax_bash_gates DEST: OD-20. In the plugin copy only, hooks.json stops registering harness-integrity-gate.sh
+# and reviewed-path-gate.sh for the Bash matcher: both denied read-only commands (a cat of the persona config, a head of
+# a PASS marker) and any denial scores a row stalled-human. Their Write and Edit registrations, every other hook and
+# every script stay as shipped, and the product tree is never edited. Fails unless exactly those two entries go.
+abtest_relax_bash_gates() {
+  python3 -I - "$1/hooks/hooks.json" <<'PYEOF'
+import json, sys
+
+path = sys.argv[1]
+drop = ("harness-integrity-gate.sh", "reviewed-path-gate.sh")
+with open(path) as f:
+    cfg = json.load(f)
+removed = 0
+for entry in cfg["hooks"]["PreToolUse"]:
+    if entry.get("matcher") != "Bash":
+        continue
+    keep = [h for h in entry["hooks"] if not h["command"].endswith(drop)]
+    removed += len(entry["hooks"]) - len(keep)
+    entry["hooks"] = keep
+if removed != 2:
+    sys.exit("abtest: expected to drop 2 Bash hook entries, dropped %d" % removed)
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+    f.write("\n")
+PYEOF
 }
 
 # abtest_arm_setup WORKTREE: refuse a worktree or config dir inside the harness and make a per-run HOME.

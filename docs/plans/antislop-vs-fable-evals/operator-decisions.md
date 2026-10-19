@@ -234,3 +234,30 @@ from the operator's dispatch message; the doc's substance is not edited.
   2026-10-18 were made by the previous harness; the change moves `harness_commit`, so they are superseded under OD-14
   and the pilot repeats them. If the pilot still stalls on the safety checks of (d), that is a new operator decision
   (for example a different permission mode); this decision does not make it.
+- OD-20 (2026-10-19, two Bash gates relaxed in the Arm B plugin copy; binding operator decision from the second pilot)
+  Evidence (eval/abtest/results.superseded.jsonl and eval/abtest/results.jsonl, run
+  eval/abtest/.runs/e03-rename-query_B_uniform_1/): 4 of 10 rows stalled in pilot 1 and 1 of 10 in pilot 2. The pilot 2
+  row is E3 B (`human_interventions_required` 3, `permission_denials` 3). Two of its three denials are hook denials
+  (exit 2) of read-only Bash commands, and lib/stream.py counts any denial as `stalled-human` (OD-3, OD-13).
+  (1) hooks/scripts/harness-integrity-gate.sh blocked `git status --short | head -20 && ... && ls .claude/agents
+  2>/dev/null; cat .claude/persona-config.json 2>/dev/null | head -30` (the Bash text names the audit and config
+  surface of Set A). (2) hooks/scripts/reviewed-path-gate.sh blocked `head -1 .claude/reviewed/<id>.pass; ls
+  .claude/.pending-review.* 2>&1; git status --short` (the Bash text names the marker directory). Both commands only
+  read, so both denials are false positives, and left as they are the stalls would measure the two gates, not the arms.
+  (a) The rule. In the plugin copy that arm-b.sh loads (abtest_plugin_copy in eval/abtest/arms/common.sh, through
+  abtest_relax_bash_gates), hooks/hooks.json stops registering harness-integrity-gate.sh and reviewed-path-gate.sh for
+  the Bash matcher; the function fails the copy unless exactly those two entries go. The scaffold builds the worktree's
+  settings.json from that hooks.json, so the two gates are absent there for Bash too.
+  (b) Unchanged. hooks/scripts/ in the product tree and in the copy (byte-identical), the shipped plugin, the Write
+  and Edit registrations of both gates, the PostToolUse registration of harness-integrity-gate.sh, every other hook
+  (human-decision-gate.sh stays on the Bash matcher), Arm A (it loads no plugin) and lib/stream.py.
+  (c) Cost. In Arm B a Bash command that writes the audit and config surface or the review marker directory is no
+  longer stopped by these two gates (a Write or Edit still is). The relaxation is for the eval run only and the report
+  must say that Arm B ran with the two gates relaxed (pre-registration amendment 2026-10-19).
+  (d) Not covered. The same row holds a third denial, a `permission_denied` record (`subcommandResults`) for
+  `sed -n '1,/^---$/p' .claude/agents/lead-programmer.md`. It comes from the permission rules, not from a hook, and
+  this decision does not touch it. If the pilot still stalls on it, that is a new operator decision.
+  (e) Whether the stalls stop is confirmed only by re-running. After this lands, the operator re-runs, in order,
+  `run-matrix.sh --probe-isolation`, `run-matrix.sh --probe-canary` and `run-matrix.sh --pilot`. The 10 rows of the
+  second pilot were made by the previous harness; the change moves `harness_commit`, so the 10 rows of the second
+  pilot are superseded under OD-14 by this harness change and the pilot repeats them.

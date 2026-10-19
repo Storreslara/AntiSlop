@@ -110,8 +110,52 @@ check "every hook script hooks.json names is in the plugin copy" "$(for f in $(p
 abtest_plugin_copy "$REPO_ROOT" "$T/pcopy"; check "abtest_plugin_copy succeeds on the checkout" "$?" "0"
 check "no file of the plugin copy names a hidden check or a reference solution" "$(find "$T/pcopy" -type f -exec grep -IiEl 'holdout|reference\.patch|abtest' {} + | wc -l | tr -d ' ')" "0"
 rm -rf "$T/refscaf"; mkdir "$T/refscaf"; ( cd "$T/refscaf" && git init -q && node "$REPO_ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe > /dev/null )
-check "the scaffold from the pruned copy equals the scaffold from the full checkout" "$(diff -rq -x 'persona-config.json' "$T/refscaf/.claude" "$T/wb/.claude" > /dev/null && echo same || echo differ)" "same"
+check "the scaffold from the pruned copy equals the scaffold from the full checkout, settings.json aside" "$(diff -rq -x 'persona-config.json' -x 'settings.json' "$T/refscaf/.claude" "$T/wb/.claude" > /dev/null && echo same || echo differ)" "same"
+check "the scaffolded settings.json of the pruned copy only lacks the two Bash gate registrations (OD-20)" "$(diff "$T/refscaf/.claude/settings.json" "$T/wb/.claude/settings.json" | grep -c '^>')|$(diff "$T/refscaf/.claude/settings.json" "$T/wb/.claude/settings.json" | grep '^<' | grep -c -e reviewed-path-gate.sh -e harness-integrity-gate.sh)" "0|2"
 abtest_plugin_copy "$T" "$T/pcopy2" 2> /dev/null; check "abtest_plugin_copy fails on a directory that is not a git checkout" "$?" "1"
+# --- OD-20 (abt-u13h): the pruned copy no longer registers the two gates that denied read-only Bash commands ---
+OP="$T/od20proj"
+mkdir -p "$OP/.claude/reviewed"
+printf '{"gatedAgents":["lead-programmer"],"personaSelection":["reviewer"]}\n' > "$OP/.claude/persona-config.json"
+printf 'PASS x\n' > "$OP/.claude/reviewed/x.pass"
+hooks_of() {
+  python3 -I -c 'import json, sys
+for e in json.load(open(sys.argv[1] + "/hooks/hooks.json"))["hooks"]["PreToolUse"]:
+    if e.get("matcher") == sys.argv[2]:
+        for h in e["hooks"]:
+            print(h["command"].replace("${CLAUDE_PLUGIN_ROOT}", sys.argv[1]))' "$1" "$2"
+}
+names_of() { hooks_of "$1" "$2" | sed 's#.*/##' | sort | tr '\n' ' '; }
+verdict() {
+  local root="$1" matcher="$2" payload="$3" h rc=0
+  while IFS= read -r h; do
+    printf '%s' "$payload" | CLAUDE_PROJECT_DIR="$OP" CLAUDE_PLUGIN_ROOT="$root" bash "$h" > /dev/null 2>&1 || rc=1
+  done < <(hooks_of "$root" "$matcher")
+  [ "$rc" -eq 0 ] && echo allow || echo deny
+}
+bash_payload() { jq -n --arg c "$1" --arg d "$OP" '{tool_name: "Bash", tool_input: {command: $c}, cwd: $d, hook_event_name: "PreToolUse"}'; }
+CMD_CFG="cat .claude/persona-config.json"
+CMD_PASS="head -1 .claude/reviewed/x.pass"
+CMD_STALL1="git status --short | head -20 && git log --oneline | head -5 && find . -path ./node_modules -prune -o -type f -print | head -50 && ls .claude/agents 2>/dev/null; cat .claude/persona-config.json 2>/dev/null | head -30"
+CMD_STALL2="head -1 .claude/reviewed/x.pass; ls .claude/.pending-review.* 2>&1; git status --short"
+check "the shipped hooks.json registers three hooks for the Bash matcher" "$(names_of "$REPO_ROOT" Bash)" "harness-integrity-gate.sh human-decision-gate.sh reviewed-path-gate.sh "
+check "the pruned copy registers only human-decision-gate.sh for the Bash matcher" "$(names_of "$T/pcopy" Bash)" "human-decision-gate.sh "
+check "the pruned copy keeps both gates on the Write|Edit matcher" "$(names_of "$T/pcopy" 'Write|Edit' | grep -o -e harness-integrity-gate.sh -e reviewed-path-gate.sh | sort | tr '\n' ' ')" "harness-integrity-gate.sh reviewed-path-gate.sh "
+check "the pruned copy drops exactly two registrations and no other" "$(( $(grep -c 'CLAUDE_PLUGIN_ROOT' "$REPO_ROOT/hooks/hooks.json") - $(grep -c 'CLAUDE_PLUGIN_ROOT' "$T/pcopy/hooks/hooks.json") ))" "2"
+check "the pruned copy keeps the PostToolUse registration of harness-integrity-gate.sh" "$(grep -c 'harness-integrity-gate.sh' "$T/pcopy/hooks/hooks.json")" "2"
+check "every hook script of the pruned copy is byte-identical to the product tree" "$(diff -r "$T/pcopy/hooks/scripts" "$REPO_ROOT/hooks/scripts" > /dev/null && echo same || echo differ)" "same"
+check "the product tree hooks are unchanged since HEAD" "$(git -C "$REPO_ROOT" diff --quiet HEAD -- hooks && echo clean || echo changed)" "clean"
+check "arm B builds its plugin copy with abtest_plugin_copy, which applies the relaxation" "$(grep -cF 'abtest_plugin_copy "$plugin" "$copydir/plugin"' "$ARMS/arm-b.sh")" "1"
+check "the pruned copy lets cat of the persona config through" "$(verdict "$T/pcopy" Bash "$(bash_payload "$CMD_CFG")")" "allow"
+check "the pruned copy lets head of a PASS marker through" "$(verdict "$T/pcopy" Bash "$(bash_payload "$CMD_PASS")")" "allow"
+check "the shipped hooks let the same two reads through" "$(verdict "$REPO_ROOT" Bash "$(bash_payload "$CMD_CFG")")|$(verdict "$REPO_ROOT" Bash "$(bash_payload "$CMD_PASS")")" "allow|allow"
+check "the shipped hooks deny the pilot-2 persona-config command (the control)" "$(verdict "$REPO_ROOT" Bash "$(bash_payload "$CMD_STALL1")")" "deny"
+check "the pruned copy lets the pilot-2 persona-config command through" "$(verdict "$T/pcopy" Bash "$(bash_payload "$CMD_STALL1")")" "allow"
+check "the shipped hooks deny the pilot-2 pass-marker command (the control)" "$(verdict "$REPO_ROOT" Bash "$(bash_payload "$CMD_STALL2")")" "deny"
+check "the pruned copy lets the pilot-2 pass-marker command through" "$(verdict "$T/pcopy" Bash "$(bash_payload "$CMD_STALL2")")" "allow"
+WPAY="$(jq -n --arg f "$OP/.claude/reviewed/y.pass" --arg d "$OP" '{tool_name: "Write", tool_input: {file_path: $f, content: "PASS y"}, cwd: $d, hook_event_name: "PreToolUse"}')"
+check "the pruned copy still denies a Write into the marker directory" "$(verdict "$T/pcopy" 'Write|Edit' "$WPAY")" "deny"
+abtest_relax_bash_gates "$T/pcopy" 2> /dev/null; check "a second relaxation of the same copy fails (nothing left to drop)" "$?" "1"
 for a in A B; do
   check "arm $a passes --disallowedTools once" "$(grep -cx -e '--disallowedTools' "$T/argv$a")" "1"
   check "arm $a denies Read of the harness root" "$(grep -cxF "Read(/$REPO_PHYS/**)" "$T/argv$a")" "1"
