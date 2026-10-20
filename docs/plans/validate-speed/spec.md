@@ -63,7 +63,7 @@ their figures come from (R) only.
 | 15 | abtest-stream 6.7, agent-audit 6.4, rollout preflight 6.1, dispatch-hygiene 4.6, version-stamp-check 4.0, contract-files 4.0, testAndLint skip 4.0, ladder-tier 3.9 | 39.7 | S |
 | - | the other 117 sections (99 of them under 1 s each, 19.9 s together) | ~60 | S |
 
-141 sections. Without rank 1, the serial work is about **845 s** (sections
+141 sections (at 00b55a75; 142 since 68235153). Without rank 1, the serial work is about **845 s** (sections
 before the guard 210 s in S / 212 s in R; after it 635 s in R). With rank 1 it
 is twice that, because the guard re-runs all of it.
 
@@ -192,6 +192,7 @@ with another full run in parallel), with no section removed from any run.
 - 2026-10-19 Terminology consistency: Q The glossary's **leak guard** (docs/harness-glossary.md:3419) is the eval's `abt_leak_guard`, not the validate.sh guard; what do we call ours? → A (self-resolved): always "reviewed-dir leak guard", the section header's own name. This plan never says "leak guard" alone.
 - 2026-10-19 Terminology consistency: Q "merge gate" is used in the glossary entries **lane runner** and **quiet mode** ("serial tests/validate.sh remains the merge gate"); is it still true? → A (self-resolved): after vsp-1 the merge gate is `bash tests/validate.sh` in its default (parallel) mode; those two entries go to scribe (Scribe update hint).
 - 2026-10-19 Completion / acceptance signals: Q How can criteria prove a 4-minute run without a 28-minute baseline? → A (self-resolved): stub-suite throwaway trees for semantics (seconds), plus `real-run.sh` (one real default run, at most 360 s, every section ran, exit 0); the serial run is not run for real by any criterion, because it takes about 845 s even after vsp-2.
+- 2026-10-19 Edge cases / failure handling: Q (mid-flight, vsp-1) A suite that splices the real wrapper into a stub tree (`tests/validate-quiet.test.sh`) runs the lane runner by default and fails, since the stub has no `tests/validate-lanes.sh`; how is it handled? → A (self-resolved): the stub sets `ANTISLOP_VALIDATE_SERIAL=1` (one line in `run_stub`), landed as a second vsp-1 commit with criterion AC1.7; a sweep found no other suite that runs the wrapper from a stub.
 
 ## Risks / dependencies
 
@@ -244,7 +245,9 @@ with another full run in parallel), with no section removed from any run.
 
 Affected files: `tests/validate.sh` (wrapper block, lines 10-48 only),
 `tests/validate-lanes.sh`, `tests/validate-lanes.test.sh`, `CONTRIBUTING.md`,
-`README.md`.
+`README.md`, and (amendment 2026-10-19) one line of `run_stub()` in
+`tests/validate-quiet.test.sh`, landed as a second commit; see the vsp-1
+contract, edit 7.
 
 Acceptance criteria (all from the repository root):
 - AC1.1 run: `bash docs/plans/validate-speed/criteria/vsp1-ac1.sh` (exit 0,
@@ -266,6 +269,10 @@ Acceptance criteria (all from the repository root):
   (exit 0). The two sentences are fixed verbatim in the vsp-1 contract, edit
   5. mutation: at HEAD the chain exits 1, because neither sentence exists
   (observed).
+- AC1.7 run (amendment 2026-10-19): `bash tests/validate-quiet.test.sh`
+  (exit 0). mutation: at e4e452c0 its stub wrapper cases FAIL, because the
+  stub tree has no lane runner (observed). All Step 1 criteria, AC1.4 and
+  AC1.5 included, are evaluated at vsp-1's final commit.
 
 ### Step 2 (vsp-2): the reviewed-dir leak guard without a nested run
 

@@ -86,6 +86,6 @@ All from the repository root.
   them; report one you believe is wrong. A scratch prototype passed AC2.2 with a 9-line helper.
 
 ## Escalation
-If AC2.4 is red on a section that is also red at the vsp-1 commit, report it and stop. If removing the env
+If AC2.4 is red on a section that is also red at vsp-1's final commit (the `test(vsp-1): ...` commit on top of e4e452c0), report it and stop. If removing the env
 variable from the lane runner changes any lane-runner test outcome, report the case. If a gate blocks a write,
 report it and wait. Changes outside "Affected files" go to the report as proposals.

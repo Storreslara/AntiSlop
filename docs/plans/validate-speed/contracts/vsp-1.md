@@ -22,6 +22,10 @@ This file is the contract of record.
 - `tests/validate-lanes.test.sh`: one new case for a linked worktree.
 - `CONTRIBUTING.md`: the two `validate.sh` bullets (lines 30-39).
 - `README.md`: the paragraph at line 116.
+- `tests/validate-quiet.test.sh` (amendment 2026-10-19): one line in `run_stub()` (line 60), the `env` call only.
+  It becomes:
+  `(cd "$stub" && env -u ANTISLOP_VALIDATE_INNER -u ANTISLOP_VALIDATE_VERBOSE ANTISLOP_VALIDATE_SERIAL=1 STUB_RC="$rc" "$@"); echo "rc=$?"`
+  No other line of the file changes; no assertion is added, removed or reworded.
 
 ## Ordered edits
 1. In the wrapper block of `tests/validate.sh`, parse `--serial` next to `--verbose` (and read
@@ -45,6 +49,11 @@ This file is the contract of record.
    README.md's paragraph at line 116: "By default it runs the sections in parallel lanes; `--serial` runs them one
    after another."
 6. Commit with the subject `perf(vsp-1): tests/validate.sh runs its sections in parallel lanes by default`.
+   (Landed as e4e452c0.)
+7. (Amendment 2026-10-19.) Make the one-line `run_stub()` edit in `tests/validate-quiet.test.sh` shown under
+   Affected files, and land it as a SECOND commit on top of e4e452c0 (do not amend or squash e4e452c0), subject
+   `test(vsp-1): validate-quiet stub runs the serial wrapper (ANTISLOP_VALIDATE_SERIAL=1)`. That commit is
+   vsp-1's final commit.
 
 ## Do NOT touch
 - Any section of `tests/validate.sh` below the wrapper block, and any section header text.
@@ -57,7 +66,9 @@ This file is the contract of record.
 - Earlier plans' criteria scripts under `docs/plans/*-criteria/`.
 
 ## Acceptance criteria
-All from the repository root.
+All from the repository root. Every criterion is evaluated at vsp-1's final HEAD, the edit-7 commit, not at
+e4e452c0: AC1.4 and AC1.5's two further runs are run after the edit-7 commit lands (e4e452c0 alone is red on
+section 142, `tests/validate-quiet.test.sh`).
 - AC1.1 run: `bash docs/plans/validate-speed/criteria/vsp1-ac1.sh` (exit 0, last line `all cases passed`).
   mutation: at the baseline A1, A2, A5, A6 and A11 FAIL; making `--serial` a no-op FAILs A3.
 - AC1.2 run: `bash docs/plans/validate-speed/criteria/vsp1-ac2.sh` (exit 0). mutation: at the baseline the runner
@@ -71,10 +82,15 @@ All from the repository root.
 - AC1.6 run: `bash tests/validate-lanes.test.sh` (exit 0) and
   `grep -qF 'By default it runs the sections in parallel lanes;' README.md && grep -qF 'runs the sections in parallel lanes by default' CONTRIBUTING.md && grep -qF -- '--serial' CONTRIBUTING.md && grep -qF -- 'runs them one after another' README.md && ! grep -qF 'is an opt-in parallel run' CONTRIBUTING.md`
   (exit 0). mutation: at the baseline the grep chain exits 1, because neither sentence exists.
+- AC1.7 run: `bash tests/validate-quiet.test.sh` (exit 0). mutation: at e4e452c0 (lanes default, no
+  `ANTISLOP_VALIDATE_SERIAL=1` in `run_stub`) it exits 1: the stub tree has no `tests/validate-lanes.sh`, so the
+  wrapper cases 'quiet mode returns the inner exit code (1)', 'quiet mode prints the FAIL line' and
+  '--verbose prints every line' FAIL (observed at e4e452c0, spec-master, 2026-10-19: exit 1, 8 `^FAIL` lines).
 
 ## Pre-resolved context
 - Timings and the reasons for this design are in the spec's Context. The existing runner at 6 lanes took 230.5 s
-  on the real suite at 00b55a75 (exit 0, 141 sections), against 1729 s serial. Serial work is about 845 s without the nested
+  on the real suite at 00b55a75 (exit 0, 141 sections; the suite has 142 sections since 68235153 added
+  `bin-helpers-scaffold`, and `real-run.sh` counts headers live, so no criterion pins either number), against 1729 s serial. Serial work is about 845 s without the nested
   guard. The longest section is abtest-runner at 148 s, and it is the floor for any lane count.
 - The lane runner already exists and is tested: private tar copy per lane, per-section fingerprint of the lane's
   `.claude/reviewed/`, heaviest-first claims, process-group cleanup (vlg-1..3, vln-1..4, all PASS). It sets
@@ -87,6 +103,13 @@ All from the repository root.
   them. If you believe one is wrong, report it.
 - Hooks run `testAndLintCommand` with a 600 s default timeout and cancel it silently past that. A default run that
   is too slow therefore stops gating, which is why AC1.4 bounds the run at 360 s.
+- Convention (amendment 2026-10-19): any suite that splices the real wrapper block of `tests/validate.sh` into a
+  stub tree and runs it must set `ANTISLOP_VALIDATE_SERIAL=1` for the stub, because a stub tree has no lane
+  runner. Swept at e4e452c0: `tests/validate-quiet.test.sh` is the only suite that does this. The other
+  wrapper-splicer is `docs/plans/validate-speed/criteria/lib.sh`, which copies `tests/validate-lanes.sh` into its
+  tree on purpose. `tests/reviewed-dir-leak-guard.test.sh` runs the real tree with `ANTISLOP_VALIDATE_INNER=1`,
+  which skips the wrapper. Every other `tests/` hit on `bash tests/validate.sh` is a marker string or a
+  configured-command fixture, not a run.
 - Linked worktrees exist under `.claude/worktrees/agent-*`. The runner refuses them today with exit 2
   (`tests/validate-lanes.sh:38-42`).
 
