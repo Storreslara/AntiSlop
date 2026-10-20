@@ -140,6 +140,14 @@ t=$(tree busy "$(sec 1; sec 2)") || exit 99; echo 0 > "$t/creates"
 check L11 'a copy whose tar create exits 1 (file changed as read) is copied again' 0 \
   'NOTE lane 1: a file changed during copy attempt 1; copying again' 'All checks passed.' '!FAIL'
 
+t=$(tree wtmain "$(sec 1 'echo "OK   s1 head=$(git rev-parse HEAD)"')") || exit 99
+wt="$root/wtlinked"
+(cd "$t" && git worktree add -q --detach "$wt" HEAD && cd "$wt" \
+  && git -c user.name=t -c user.email=t@t commit -qm wt --allow-empty) >/dev/null 2>&1 || exit 99
+mkdir -p "$wt/tmp"; wt_head=$(git -C "$wt" rev-parse HEAD)
+run "$wt" --lanes 1
+check L12 'a linked worktree is accepted and a section sees the worktree HEAD' 0 "s1 head=$wt_head" 'All checks passed.'
+
 [ -z "$(find "$root"/*/tmp -mindepth 1 -print -quit)" ] \
   || { echo "FAIL (L9) the runner left files in TMPDIR"; failures=$((failures + 1)); }
 

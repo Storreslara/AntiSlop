@@ -16,23 +16,39 @@ if [ -z "${ANTISLOP_VALIDATE_INNER:-}" ]; then
   # full stream. Either way the exit code is the inner script's.
   verbose=""
   [ "${ANTISLOP_VALIDATE_VERBOSE:-}" = "1" ] && verbose=1
+  serial=""
+  [ "${ANTISLOP_VALIDATE_SERIAL:-}" = "1" ] && serial=1
   pass_args=()
   for a in "$@"; do
     case "$a" in
       --verbose) verbose=1 ;;
+      --serial) serial=1 ;;
       *) pass_args+=("$a") ;;
     esac
   done
+  # Default: the lane runner (vsp-1); --serial or ANTISLOP_VALIDATE_SERIAL=1 runs this script serially.
+  lanes="${ANTISLOP_VALIDATE_LANES:-}"
+  if [ -z "$lanes" ]; then
+    lanes="$(nproc 2>/dev/null || echo 1)"
+    case "$lanes" in ''|*[!0-9]*) lanes=1 ;; esac
+    [ "$lanes" -gt 6 ] && lanes=6
+    [ "$lanes" -lt 1 ] && lanes=1
+  fi
+  if [ -n "$serial" ]; then
+    run_cmd=(bash "tests/$(basename "$0")" ${pass_args[@]+"${pass_args[@]}"})
+  else
+    run_cmd=(bash tests/validate-lanes.sh --lanes "$lanes")
+  fi
   skip_log="$(mktemp)" || { echo "FAIL could not create the SKIP-summary temp file"; exit 1; }
   # Quiet mode keeps the full log and prints its path; verbose mode removes it.
   if [ -n "$verbose" ]; then trap 'rm -f "$skip_log"' EXIT; fi
   trap 'exit 143' TERM
   trap 'exit 130' INT
   if [ -n "$verbose" ]; then
-    ANTISLOP_VALIDATE_INNER=1 bash "tests/$(basename "$0")" ${pass_args[@]+"${pass_args[@]}"} 2>&1 | tee "$skip_log"
+    ANTISLOP_VALIDATE_INNER=1 "${run_cmd[@]}" 2>&1 | tee "$skip_log"
   else
     . tests/lib/validate-quiet.sh
-    ANTISLOP_VALIDATE_INNER=1 bash "tests/$(basename "$0")" ${pass_args[@]+"${pass_args[@]}"} 2>&1 | tee "$skip_log" | validate_quiet_filter
+    ANTISLOP_VALIDATE_INNER=1 "${run_cmd[@]}" 2>&1 | tee "$skip_log" | validate_quiet_filter
   fi
   inner_rc=${PIPESTATUS[0]}
   echo

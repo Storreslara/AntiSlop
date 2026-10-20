@@ -116,6 +116,7 @@ permission prompt (ADR-0004, ADR-0013, ADR-0039).
 `bash tests/validate.sh`, the usual `testAndLintCommand`, prints only failures,
 warnings, skips and unclassified output, then a `Full log:` path; pass
 `--verbose` or set `ANTISLOP_VALIDATE_VERBOSE=1` for every line (CI does).
+By default it runs the sections in parallel lanes; `--serial` runs them one after another.
 
 ## Docs
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Opt-in parallel runner for tests/validate.sh (vlg-2). The default merge gate
-# is still `bash tests/validate.sh`, run serially; this file never changes it.
+# Parallel runner for tests/validate.sh (vlg-2). `bash tests/validate.sh` runs
+# through this file by default (vsp-1); `--serial` there keeps the serial run.
 #
 # Usage: bash tests/validate-lanes.sh [--lanes N]     (N: 1-8, default 3)
+# Works from a main checkout or a linked git worktree.
 #
 # Each lane gets its own full copy of this checkout (working tree and .git,
-# minus .claude/worktrees), so every lane has a private .claude/ state tree
+# minus .claude/worktrees; a worktree's .git is rebuilt standalone), so every lane has a private .claude/ state tree
 # and a private git index. CLAUDE_PROJECT_DIR is pointed at the lane copy,
 # never at this checkout. Sections are cut out of tests/validate.sh at its
 # `echo "== ` headers and claimed by whichever lane is free (heaviest first).
@@ -35,10 +36,17 @@ case "$lanes" in
   *) echo "FAIL --lanes must be an integer from 1 to 8 (got: $lanes)"; exit 2 ;;
 esac
 
+# A linked worktree (.git is a file): each lane's .git is rebuilt as a private
+# standalone directory from the common git dir plus this worktree's HEAD/index.
+wt_gitdir=""; common=""
 if [ ! -d "$root/.git" ]; then
-  echo "FAIL $root/.git is not a directory (a linked worktree or no repository);"
-  echo "     a lane copy would share its git index. Run from a main checkout."
-  exit 2
+  wt_gitdir="$(git rev-parse --absolute-git-dir 2>/dev/null)" \
+    && common="$(cd "$(git rev-parse --git-common-dir)" 2>/dev/null && pwd)" \
+    && [ -d "$common" ] || {
+      echo "FAIL $root/.git is not a directory and is not a usable linked worktree;"
+      echo "     a lane copy would share its git index. Run from a git checkout."
+      exit 2
+    }
 fi
 
 suite="$root/tests/validate.sh"
@@ -69,7 +77,7 @@ awk -v dir="$work/sec" -v endl="$end_line" '
 
 # Claim order: known-heavy sections first (matched on header text, so a
 # renumbering only costs balance, never correctness), then the rest in order.
-heavy='probe-hook-identity|unit-outcomes|human-decision gate|configless write-deny|reviewed-path gate'
+heavy='abtest-runner|abtest-fixtures|probe-hook-identity|unit-outcomes|human-decision gate|abtest-probe|configless write-deny|reviewed-path gate'
 order="$(awk -v re="$heavy" '/^echo "== /{n++; if ($0 ~ re) print n}' "$suite")
 $(seq 1 "$count")"
 
@@ -86,9 +94,16 @@ lane() { # <k>
   local k="$1" l="$work/lane$1" i before after rc try st
   for try in 1 2 3; do
     rm -rf "$l"; mkdir -p "$l"
-    tar -C "$root" --exclude=./.claude/worktrees ${work_rel:+"--exclude=./$work_rel"} -cf - . \
+    tar -C "$root" --exclude=./.claude/worktrees ${wt_gitdir:+--exclude=./.git} ${work_rel:+"--exclude=./$work_rel"} -cf - . \
       | tar -C "$l" -xf -
     st="${PIPESTATUS[0]} ${PIPESTATUS[1]}"
+    if [ "$st" = "0 0" ] && [ -n "$wt_gitdir" ]; then
+      mkdir -p "$l/.git"
+      tar -C "$common" --exclude=./worktrees --exclude=./HEAD --exclude=./index -cf - . | tar -C "$l/.git" -xf -
+      st="${PIPESTATUS[0]} ${PIPESTATUS[1]}"
+      cp "$wt_gitdir/HEAD" "$l/.git/HEAD" || st="$st 1"
+      [ ! -f "$wt_gitdir/index" ] || cp "$wt_gitdir/index" "$l/.git/index" || st="$st 1"
+    fi
     [ "$st" = "0 0" ] && break
     # GNU tar's create side exits 1 when a file changed while it was read (a
     # busy checkout). Copy again rather than run sections on a torn copy.
