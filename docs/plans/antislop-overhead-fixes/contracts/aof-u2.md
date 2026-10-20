@@ -103,10 +103,16 @@ Fast path, no tracker issue. Spec: `docs/plans/antislop-overhead-fixes/spec.md`,
 - AC2.1 run: `bash tests/stop-gate-review-inflight.test.sh` (exit 0). mutation: deleting the in-flight
   `allow` fails (a); deleting the age comparison fails (c); calling `review_join_state` in place of the
   read-only reader fails (g) and (i).
-- AC2.2 run: `bash tests/adapter-stop-gate-parity.test.sh` (exit 0). mutation: skipping ordered edit 6 fails
-  it.
-- AC2.3 run: `! grep -qF 'background task, write' agents/orchestrator.md && grep -qF 'stop-allowed=review-in-flight' agents/orchestrator.md`.
-  mutation: restoring the old paragraph fails it.
+- AC2.2 run: `bash -c 'for m in adapters/codex adapters/cursor .claude; do cmp -s hooks/scripts/lib/stop-gate-core.sh "$m/hooks/scripts/lib/stop-gate-core.sh" || { echo "differs: $m"; exit 1; }; done'`
+  (exit 0, no stdout). mutation: appending one line to any of the three mirrors, or skipping ordered edit 6,
+  makes it print `differs: <mirror>` and exit 1. (Amended 2026-10-20: the earlier criterion,
+  `bash tests/adapter-stop-gate-parity.test.sh`, tests behaviour and exits 0 with a reverted or appended
+  mirror, so it could not prove edit 6.)
+- AC2.3 run: `bash -c "! tr -s ' \n' ' ' < agents/orchestrator.md | grep -qF 'write \`defer: reviewer dispatched' && grep -qF 'stop-allowed=review-in-flight' agents/orchestrator.md"`
+  (exit 0). mutation: restoring the old paragraph (`git show bce2ded2^:agents/orchestrator.md`) makes it
+  exit 1. (Amended 2026-10-20: the earlier needle `background task, write` also matches the new paragraph's
+  opening, so the criterion could never pass. Whitespace is flattened because the old text wraps between
+  `write` and `` `defer: ``.)
 - AC2.4 run: `bash tests/stop-gate-blocked.test.sh && bash tests/stop-gate-escalated.test.sh && bash tests/stop-gate-config-drift.test.sh` (exit 0, existing behaviour preserved).
 - AC2.5 run: `bash tests/validate.sh` (exit 0). mutation: `exit 1` as line 2 of the new test makes
   validate.sh exit non-zero.

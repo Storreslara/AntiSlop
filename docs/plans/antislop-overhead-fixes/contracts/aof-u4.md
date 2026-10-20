@@ -92,6 +92,11 @@ which must have reached PASS first.
      `Skip the scribe dispatch entirely when` in `agents/orchestrator.md` and its mirror;
    - (f) `! grep -qF 'dispatches the scribe once per unit' agents/orchestrator.md`.
 
+   Every grep in (e) and (f) runs on the file with its whitespace flattened (`tr -s ' \n' ' ' < "$file"`, as
+   `tests/persona-prose-pins.test.sh` does): the new sentences wrap across lines (`dispatches the` /
+   `scribe once`), so a plain line grep would fail on correct text in (e) and could miss a wrapped old
+   phrase in (f). Amended 2026-10-20.
+
    Register it in `tests/validate.sh` so that a FAIL makes validate.sh exit non-zero.
 9. Commit with the subject `feat(aof-u4): knowledge writes follow unit scope; scribe once per plan`.
 

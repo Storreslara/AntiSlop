@@ -55,7 +55,9 @@ Fast path, no tracker issue. Spec: `docs/plans/antislop-overhead-fixes/spec.md`,
 5. Bump `.claude-plugin/plugin.json` (patch) and add a `CHANGELOG.md` entry naming aof-u3, which says that
    reviewers now FAIL out-of-scope files.
 6. Run `node bin/cli.js --update` to regenerate the `.claude/agents/` mirrors and `fileHashes`.
-7. Write `tests/unit-scope-prose.test.sh`. For each (file, fixed string) pair, it asserts `grep -qF`:
+7. Write `tests/unit-scope-prose.test.sh`. For each (file, fixed string) pair, it flattens the file's
+   whitespace first (`tr -s ' \n' ' ' < "$file"`, as `tests/persona-prose-pins.test.sh` does, because the
+   inserted sentences wrap across lines; amended 2026-10-20) and then asserts `grep -qF`:
    - `Every lead-programmer dispatch carries \`## Affected files\`` in `agents/orchestrator.md` and
      `.claude/agents/orchestrator.md`;
    - `edit only the files listed under your dispatch's \`## Affected files\`` in `agents/lead-programmer.md`,

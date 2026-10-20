@@ -332,10 +332,13 @@ Acceptance criteria:
 
   mutation: removing the in-flight branch fails (a); removing the age comparison fails (c); calling the
   existing `review_join_state` instead of a read-only reader fails (g) and (i).
-- AC2.2 run: `bash tests/adapter-stop-gate-parity.test.sh` exits 0. mutation: an un-regenerated adapter copy
-  fails it.
-- AC2.3 run: `! grep -qF 'background task, write' agents/orchestrator.md && grep -qF 'stop-allowed=review-in-flight' agents/orchestrator.md`.
-  mutation: restoring the old paragraph fails it.
+- AC2.2 run: `bash -c 'for m in adapters/codex adapters/cursor .claude; do cmp -s hooks/scripts/lib/stop-gate-core.sh "$m/hooks/scripts/lib/stop-gate-core.sh" || { echo "differs: $m"; exit 1; }; done'`
+  exits 0 with no stdout. mutation: an un-regenerated or appended mirror prints `differs: <mirror>` and
+  exits 1. (Amended 2026-10-20: `tests/adapter-stop-gate-parity.test.sh` tests behaviour only and passes
+  with a reverted or appended mirror.)
+- AC2.3 run: `bash -c "! tr -s ' \n' ' ' < agents/orchestrator.md | grep -qF 'write \`defer: reviewer dispatched' && grep -qF 'stop-allowed=review-in-flight' agents/orchestrator.md"`.
+  mutation: restoring the old paragraph fails it. (Amended 2026-10-20: the earlier needle
+  `background task, write` matched the new paragraph too.)
 - AC2.5 run: the existing `tests/stop-gate-blocked.test.sh`, `stop-gate-escalated.test.sh` and
   `stop-gate-config-drift.test.sh` still exit 0. A case with an empty-reason `defer: ` flag plus a fresh stamp
   still exits 2.
