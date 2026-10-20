@@ -522,6 +522,15 @@ else
 fi
 
 echo
+echo "== stop-gate review-in-flight Stop allow (Bash) =="
+if bash tests/stop-gate-review-inflight.test.sh; then
+  echo "OK   tests/stop-gate-review-inflight.test.sh"
+else
+  echo "FAIL tests/stop-gate-review-inflight.test.sh"
+  fail=1
+fi
+
+echo
 echo "== reviewGating.mode off: stop-gate + reviewer-route-gate review enforcement inert (Bash) =="
 if bash tests/review-gating-off.test.sh; then
   echo "OK   tests/review-gating-off.test.sh"

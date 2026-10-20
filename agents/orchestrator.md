@@ -178,15 +178,10 @@ line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line
 to third. `reviewer-route-gate.sh` recognizes
 that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
 the review audit log instead.
-When you dispatch the reviewer as a background task, write
-`defer: reviewer dispatched (agent <id>), awaiting verdict` into the pending-
-review flag in that same turn, but only into a flag that currently exists
-(check with `ls .claude/.pending-review.*` first; never recreate a deleted
-one, because the hook drops a re-created flag and logs it). The pending-review flag's `defer:` is sticky
-(persists across every subsequent turn-end until the reviewer's own
-`SubagentStop` clears it), so this is a **one-time** write per unit, not
-something to repeat next turn — that repetition is exactly the churn this
-convention exists to eliminate.
+When you dispatch the reviewer as a background task, write nothing: the stop gate sees the reviewer's
+review-join stamp and allows turn-end while that review is in flight (`stop-allowed=review-in-flight` in
+the review audit log), for up to 1800 s from dispatch. After that, or with no reviewer dispatched, Stop
+blocks as before and the `defer:`/`skip:` flag escapes apply.
 
 **Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix. `start-feature-team.md` enforces this discipline at team-creation time. Do not dispatch a reviewer under a custom name such as `rev-302` — the dispatch itself is refused. The actual, unobserved residual is different: `reviewer-route-gate.sh` only inspects the *requested* `tool_input.name` at dispatch time, never the harness's post-spawn `agent_type` — so a correctly-named `reviewer` dispatch can still end up running under a harness name-collision auto-suffix if a same-named agent is already active, a collision the gate cannot see. A session running under that suffixed identity loses marker-write and flag-clear privileges at the CONSERVATIVE grant sites (`reviewed-path-gate.sh`, `stop-gate.sh`); per `agents/reviewer.md`'s documented recovery, it reports the block, its completed verdict, and the marker body it would have written, so the failure surfaces rather than vanishing.
 

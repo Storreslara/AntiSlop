@@ -212,6 +212,10 @@ microworld_skip_ok() {
 # SubagentStop payload carries no unit id and no prompt - the join cannot be
 # established here, only consumed.
 
+# A stamp older than this no longer counts as "review in flight" for the Stop
+# branch, so a reviewer that died without a verdict cannot hold Stop open.
+REVIEW_INFLIGHT_MAX_AGE_S=1800
+
 # marker_format_valid <path> <unit-id> <verb> - mirrors task-gate.sh's
 # marker_valid(), so both mechanisms share one definition of "a marker was
 # written": the file must exist, be non-empty, and its first line must begin
@@ -327,6 +331,65 @@ review_join_state() {
       JOIN_UNSATISFIED_UNITS+=( "$unit" )
     fi
   done
+}
+
+# review_inflight_units <dot-dir> - READ-ONLY: prints, one per line, the units
+# whose non-advisory .review-join stamp is fresh and not yet satisfied, blocked
+# or escalated. Unlike review_join_state it never deletes or writes anything,
+# so it is safe on the main-session Stop path; anything unparseable is skipped
+# (fails closed: Stop stays blocked).
+review_inflight_units() {
+  local dot="$1" stamp line unit prior_mtime ts epoch now pair ext verb mpath mtime
+  local satisfied
+  now="$(date +%s)"
+  shopt -s nullglob
+  for stamp in "$dot"/.review-join.*; do
+    case "$stamp" in *.advisory) continue ;; esac
+    line=""
+    [ -r "$stamp" ] && line="$(head -n 1 "$stamp" 2>/dev/null || true)"
+    [[ $line =~ (^|[[:space:]])mode=advisory([[:space:]]|$) ]] && continue
+    unit=""
+    if [[ $line =~ (^|[[:space:]])unit=([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})([[:space:]]|$) ]]; then
+      unit="${BASH_REMATCH[2]}"
+    fi
+    case "$unit" in ''|*/*|*..*) continue ;; esac
+
+    ts="${line%%[[:space:]]*}"
+    epoch="$(date -u -d "$ts" +%s 2>/dev/null || date -j -u -f %Y-%m-%dT%H:%M:%SZ "$ts" +%s 2>/dev/null || true)"
+    case "$epoch" in ''|*[!0-9]*) continue ;; esac
+    [ $(( now - epoch )) -le "$REVIEW_INFLIGHT_MAX_AGE_S" ] || continue
+
+    [ -e "${dot}/reviewed/${unit}.blocked" ] && continue
+    [ -e "${dot}/reviewed/${unit}.escalated" ] && continue
+
+    prior_mtime=""
+    if [[ $line =~ (^|[[:space:]])prior_mtime=([^[:space:]]+) ]]; then
+      prior_mtime="${BASH_REMATCH[2]}"
+    fi
+    satisfied=false
+    for pair in pass:PASS fail:FAIL; do
+      ext="${pair%%:*}"; verb="${pair##*:}"
+      mpath="${dot}/reviewed/${unit}.${ext}"
+      marker_format_valid "$mpath" "$unit" "$verb" || continue
+      case "$prior_mtime" in
+        ''|*[!0-9]*) satisfied=true ;;
+        *)
+          mtime="$(stat -L -c %Y "$mpath" 2>/dev/null \
+            || stat -L -f %m "$mpath" 2>/dev/null || true)"
+          case "$mtime" in
+            ''|*[!0-9]*) ;;
+            *) [ "$mtime" -gt "$prior_mtime" ] && satisfied=true ;;
+          esac
+          ;;
+      esac
+      [ "$satisfied" = true ] && break
+    done
+    if [ "$satisfied" != true ]; then
+      printf '%s\n' "$unit"
+    fi
+  done
+  shopt -u nullglob
+  return 0
 }
 
 identity_drift_log "$agent_type" "$hook_event" "$review_audit"
@@ -510,6 +573,8 @@ if [ "$hook_event" = "Stop" ]; then
   shopt -u nullglob
   if [ "${#pending_flags[@]}" -gt 0 ] && ! [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
     blocked=false
+    undeferred=0
+    empty_reason=false
     for flag in "${pending_flags[@]}"; do
       [ -f "$flag" ] || continue
       flag_content="$(cat "$flag" 2>/dev/null || true)"
@@ -524,6 +589,7 @@ if [ "$hook_event" = "Stop" ]; then
           # always said so, and the WIP sentinel below enforces the same rule.
           # Must precede the two arms below, whose trailing * matches empty.
           blocked=true
+          empty_reason=true
           ;;
         "defer: "*)
           # A defer: is sticky, so an unchanged reason would otherwise log one
@@ -542,11 +608,28 @@ if [ "$hook_event" = "Stop" ]; then
           ;;
         *)
           blocked=true
+          undeferred=$(( undeferred + 1 ))
           ;;
       esac
     done
+    if [ "$blocked" = true ] && [ "$empty_reason" != true ] && [ "$undeferred" -ge 1 ]; then
+      # A dispatched reviewer's fresh stamp excuses one undeferred flag each
+      # (the reviewer clears at most one flag per satisfied stamp), so no
+      # agent-written defer: is needed while the review is in flight.
+      inflight="$(review_inflight_units "$dot")"
+      inflight_n=0
+      [ -z "$inflight" ] || inflight_n="$(printf '%s\n' "$inflight" | wc -l)"
+      if [ "$inflight_n" -ge "$undeferred" ]; then
+        inflight_line="stop-allowed=review-in-flight units=$(printf '%s' "$inflight" | paste -sd, -)"
+        last_logged="$(tail -n 1 "$review_audit" 2>/dev/null | cut -d' ' -f2- || true)"
+        if [ "$last_logged" != "$inflight_line" ]; then
+          state_append_audit_log "review-audit.log" "$(printf '%s %s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$inflight_line")"
+        fi
+        allow
+      fi
+    fi
     if [ "$blocked" = true ]; then
-      block "Unit awaiting review. Dispatch reviewer, or: printf \"defer|skip: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected. Flags are not bound to units (a reviewer clears one flag per satisfied stamp); write defer:/skip: only into a flag that currently exists."
+      block "Unit awaiting review. Dispatch reviewer, or: printf \"defer|skip: <reason>\\n\" > ${dot_label}/.pending-review.<agent-id> (defer: sticky/owed, skip: delete/abandon). Empty reason rejected. Flags are not bound to units (a reviewer clears one flag per satisfied stamp); write defer:/skip: only into a flag that currently exists. A reviewer dispatched with a \`Unit:\` line lets Stop through for 1800 s on its own; no flag write is needed."
     fi
     allow
   fi
