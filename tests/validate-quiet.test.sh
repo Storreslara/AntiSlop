@@ -57,7 +57,7 @@ awk '{ print } seen && /^fi$/ { exit } index($0, "if [ -z \"${ANTISLOP_VALIDATE_
 printf '%s\n' 'echo "== stub section =="' 'echo "FAIL stub failing line"' 'echo "OK   stub ok line"' 'exit "${STUB_RC:-1}"' >> "$stub/tests/validate.sh"
 run_stub() { # <STUB_RC> [env assignments and args after --]; prints the wrapper's output, then rc=<exit code>
   local rc="$1"; shift
-  (cd "$stub" && env -u ANTISLOP_VALIDATE_INNER -u ANTISLOP_VALIDATE_VERBOSE STUB_RC="$rc" "$@"); echo "rc=$?"
+  (cd "$stub" && env -u ANTISLOP_VALIDATE_INNER -u ANTISLOP_VALIDATE_VERBOSE ANTISLOP_VALIDATE_SERIAL=1 STUB_RC="$rc" "$@"); echo "rc=$?"
 }
 
 o="$(run_stub 1 bash tests/validate.sh)"
