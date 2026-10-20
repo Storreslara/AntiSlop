@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Unit scope is binding (aof-u3, #632, 0.31.185).** `agents/orchestrator.md`: every lead-programmer dispatch carries `## Affected files`; for a contract-less dispatch the orchestrator derives it from the named paths, their tests and the explorer's blast radius. `agents/lead-programmer.md`: new Unit scope bullet, edits stay inside the list plus `docs/plans/` and `.claude/`, anything else goes under `Proposed out-of-scope changes:`. `agents/reviewer.md`: reviewers now FAIL a diff that touches a file outside the unit's scope unless an acceptance criterion requires it. Hand-synced into the codex and cursor lead-programmer and reviewer ports. New `tests/unit-scope-prose.test.sh`, registered in `tests/validate.sh`.
+
 **Stop allowed while a dispatched review is in flight (aof-u2, #631, 0.31.184).** `hooks/scripts/lib/stop-gate-core.sh`: new read-only `review_inflight_units` and `REVIEW_INFLIGHT_MAX_AGE_S=1800`; the main-session Stop branch allows turn-end, logging `stop-allowed=review-in-flight units=<ids>`, when fresh unsatisfied non-advisory `.review-join` stamps number at least the undeferred pending-review flags (an empty-reason `defer:`/`skip:` flag is never excused); otherwise it blocks as before with one added sentence. `agents/orchestrator.md`: the background-dispatch `defer:` write instruction is replaced by "write nothing". New `tests/stop-gate-review-inflight.test.sh`, registered in `tests/validate.sh`.
 
 **aof-u1 fix round 1 (#630, 0.31.183).** Re-pins the AC-P4 needle in tests/writer-tier-consistency.test.js to node .claude/bin/contract-guard.js. agents/task-master.md runs node .claude/bin/contract-score.js. agents/orchestrator.md limits the opus helper-missing fallback to ladder-tier.sh and reviewer-tier.sh.

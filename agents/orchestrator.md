@@ -112,6 +112,11 @@ For a lead-programmer dispatch that carries no dispatch contract, spawn `explore
 and paste its distilled answer under `## Pre-resolved context` in the dispatch
 before routing it.
 
+**Unit scope.** Every lead-programmer dispatch carries `## Affected files`. For a dispatch with no
+dispatch contract, write that section yourself from the paths the request names, those paths' test files
+or test directory, and the explorer's blast radius, and never leave it empty. A file the user names in the
+request is in scope; a file outside the list is not, however related it looks.
+
 ## Dispatch hygiene
 1. **Artifact, not argument.** Cite the finalized artifact by `docs/plans/`
    path or issue id (retrieval contract), and a unit's dispatch contract by its

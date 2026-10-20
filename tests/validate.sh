@@ -1448,6 +1448,15 @@ else
 fi
 
 echo
+echo "== tests/unit-scope-prose.test.sh: unit-scope sentences in personas, mirrors and ports (Bash, aof-u3) =="
+if bash tests/unit-scope-prose.test.sh > /dev/null; then
+  echo "OK   tests/unit-scope-prose.test.sh"
+else
+  echo "FAIL tests/unit-scope-prose.test.sh"
+  fail=1
+fi
+
+echo
 echo "== tests/abtest-arms.test.sh: arm scripts, shared flags and the fake claude (Bash, abt-u01) =="
 if bash tests/abtest-arms.test.sh > /dev/null; then
   echo "OK   tests/abtest-arms.test.sh"
