@@ -69,7 +69,7 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   own commits are listed by its unit-id scope. The tracker issue body ends with
   the line `Contract file: <path>` and holds no copy; a copy anywhere else is a
   spec gap. The dispatch's retrieval line cites the path, never the body. Score
-  it with `node bin/contract-guard.js
+  it with `node .claude/bin/contract-guard.js
   docs/plans/<plan-slug>/contracts/<unit-id>.md --unit=<task-id>`. A unit
   sliced before contract files keeps its fenced block in the issue body (the
   legacy layout below) and is scored with the `gh issue view` form. On the fast
@@ -125,7 +125,7 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   such tag would be a prediction standing in for "mechanical and low-risk"
   rather than a measurement of it. Instead, state in each dispatch prompt
   that **the reviewer tier is decided at dispatch time** by the orchestrator
-  running `hooks/scripts/reviewer-tier.sh` over the unit's actual diff (see
+  running `.claude/hooks/scripts/reviewer-tier.sh` over the unit's actual diff (see
   orchestrator.md's "Reviewer gate model selection" subsection). Your
   `Suggested model:` tag above is for the *implementer* and is unaffected —
   it stays, and it no longer implies anything about the reviewer's tier.

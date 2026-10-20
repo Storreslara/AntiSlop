@@ -650,6 +650,19 @@ function buildHookScriptSpecs() {
   }));
 }
 
+// Ladder helpers the orchestrator runs from an installed project. Explicit list:
+// harness-integrity.sh must not be installed (re-arming its drift check is separate).
+const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'escalation-card.sh'];
+
+function buildBinHelperSpecs() {
+  return BIN_HELPER_FILES.map((f) => ({
+    projectRelPath: `.claude/bin/${f}`,
+    sourceAbsPath: path.join(PKG_ROOT, 'bin', f),
+    sourceRelPath: `bin/${f}`,
+    kind: 'raw',
+  }));
+}
+
 // The declared shared-vs-Claude-only split for hooks/scripts/lib/ (gh410).
 // Explicit lists, not a directory glob, so a file added to hooks/scripts/lib/
 // without updating one of these two arrays fails assertHookLibDeclarationComplete()
@@ -1297,7 +1310,7 @@ async function runUpdate(args) {
     console.log(`  .gitignore: ${gitignoreAdds} managed entry(ies) would be appended to it.`);
   }
 
-  const specs = buildFileSpecs(personaSelection).concat(buildHookScriptSpecs(), buildAdapterLibSpecs());
+  const specs = buildFileSpecs(personaSelection).concat(buildHookScriptSpecs(), buildBinHelperSpecs(), buildAdapterLibSpecs());
 
   // Legacy backfill: derive whatever substitutions/fileHashes entries are
   // missing from what's already on disk — deterministic, zero LLM cost. Runs
@@ -2523,6 +2536,14 @@ async function main() {
   copyDirRecursive(path.join(PKG_ROOT, 'hooks', 'scripts'), hooksScriptsDir);
   console.log('  hooks/scripts/*.sh -> .claude/hooks/scripts/');
 
+  const binDir = path.join(claudeDir, 'bin');
+  mkdirp(binDir);
+  for (const spec of buildBinHelperSpecs()) {
+    copyPlain(spec.sourceAbsPath, path.join(claudeDir, 'bin', path.basename(spec.projectRelPath)));
+    fs.chmodSync(path.join(binDir, path.basename(spec.projectRelPath)), fs.statSync(spec.sourceAbsPath).mode);
+  }
+  console.log('  bin/<helpers> -> .claude/bin/');
+
   copyDirRecursive(path.join(PKG_ROOT, 'skills', 'install-antislop'), path.join(skillsDir, 'install-antislop'));
   copyDirRecursive(path.join(PKG_ROOT, 'skills', 'coding-discipline'), path.join(skillsDir, 'coding-discipline'));
   console.log('  skills/install-antislop, skills/coding-discipline -> .claude/skills/ (invoke /install-antislop next)');
@@ -2765,6 +2786,7 @@ module.exports = {
   applyArxivFallback,
   buildFileSpecs,
   buildHookScriptSpecs,
+  buildBinHelperSpecs,
   renderCleanBody,
   protocolTierFor,
   selectProtocolSections,

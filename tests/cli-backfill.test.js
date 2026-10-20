@@ -669,7 +669,7 @@ check('migrateLegacyPersonaTokens chains the even-older planner token through hi
     // buildHookScriptSpecs). Without them the fixture looks like a project
     // whose entire .claude/hooks/scripts/ was deleted, and every --update
     // below would be busy recreating it.
-    for (const spec of cli.buildHookScriptSpecs()) {
+    for (const spec of cli.buildHookScriptSpecs().concat(cli.buildBinHelperSpecs())) {
       const body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
       const destAbsPath = path.join(tmp, spec.projectRelPath);
       fs.mkdirSync(path.dirname(destAbsPath), { recursive: true });

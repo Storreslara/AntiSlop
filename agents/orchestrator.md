@@ -391,7 +391,7 @@ the 2-FAIL cap (which counts `.fail` records only) — a rejection-with-reason
 does, a human-directed correction does not.
 
 **At the 2-FAIL cap**: a tier's second FAIL below the top of the **Escalation ladder** is not a stop: dispatch the ladder's next entry automatically, with the full defect history, and do not ask the human. At **ladder exhaustion** (the unit's FAIL-block count reaching or exceeding the ladder's length: normally the second FAIL on the ladder's top tier, or any later FAIL after a human-directed re-dispatch), stop re-dispatching lead-programmer on this unit. Surface the full
-defect history to the user (`bash bin/escalation-card.sh <task-id>` prints each FAIL block's header, tier line and first defect line, then every fix-attempt commit subject), then ask the human how to proceed via `AskUserQuestion`. The orchestrator waits for the user's choice before proceeding:
+defect history to the user (`bash .claude/bin/escalation-card.sh <task-id>` prints each FAIL block's header, tier line and first defect line, then every fix-attempt commit subject), then ask the human how to proceed via `AskUserQuestion`. The orchestrator waits for the user's choice before proceeding:
 
 - **(a) Debug spec** — dispatch `spec-master` to produce a focused diagnostic artifact (a root-cause
 diagnosis read from the latest `.fail` record and the fix-attempt commits, plus revised acceptance
@@ -464,21 +464,22 @@ spawn, naming the step range in the prompt. Waves are the plan's "Parallelism
 and waves" list if it has one; otherwise consecutive steps.
 
 ## Per-unit model routing
-Before every per-unit `lead-programmer` dispatch, run `bash bin/ladder-tier.sh
+Before every per-unit `lead-programmer` dispatch, run `bash .claude/bin/ladder-tier.sh
 <task-id> --contract <contract file>` (the contract of record, never a fix
 contract: a fix contract can score back onto `haiku`) and pass its tier as the
 dispatch's `model` parameter. A `Suggested model: haiku|sonnet|opus` tag can
 raise that tier, never
 lower it. On `EXHAUSTED`, dispatch nothing, except a human-chosen (a)/(b)
-re-dispatch from **At the 2-FAIL cap**: run `bash bin/escalation-card.sh
-<task-id>` and go to **At the 2-FAIL cap**. A set `CLAUDE_CODE_SUBAGENT_MODEL`
-silently wins over this routing.
+re-dispatch from **At the 2-FAIL cap**: run `bash .claude/bin/escalation-card.sh
+<task-id>` and go to **At the 2-FAIL cap**. An explicit dispatch `model` and a
+persona's frontmatter `model:` take precedence over `CLAUDE_CODE_SUBAGENT_MODEL`
+(measured on CLI 2.1.302, A/B pilot 4).
 
 **`defaultImplementerModel` precedence.** The `Suggested model` tag > `defaultImplementerModel` config field > frontmatter default (CONTEXT.md's **Writer tier** entry). Only an **absent** key resolves to that frontmatter default; a value present but
 outside the recognised set (`templates/persona-config.schema.json`'s `defaultImplementerModel` enum) resolves to the **more** capable tier, `opus`.
 
 **Escalation ladder.** Each implementer tier gets two attempts at a unit, from
-the default tier upward. `bin/ladder-tier.sh` holds the arithmetic (its header
+the default tier upward. `.claude/bin/ladder-tier.sh` holds the arithmetic (its header
 comment) and prints `ladder-tier: <tier> n=<n> ladder=<...> reason=<word>`: n is
 the FAIL-block count, a newer PASS marker expires the record, and a read error is
 `opus`. Every re-dispatch carries the prior defect history or the fix contract
@@ -489,7 +490,7 @@ unit with an earlier FAIL block starts at the more capable of `sonnet` and the
 default.
 
 **Contract-score guard.** When the ladder starts at `haiku`, the script runs
-`node bin/contract-guard.js <contract> --unit=<task-id>`; unless its first line
+`node .claude/bin/contract-guard.js <contract> --unit=<task-id>`; unless its first line
 starts `contract-guard: haiku `, it is a **guard demotion** to `sonnet`. For a unit
 sliced before contract files, save its issue body to a file and pass that. On
 `reason=guard-demotion`, rerun the guard for its line, tell the user in one line
@@ -529,7 +530,7 @@ exists. You decide the tier at reviewer-dispatch time by running, **from
 the repo root**:
 
 ```
-bash hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD
+bash .claude/hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD
 ```
 
 It prints exactly `sonnet` or `opus` (exit 0 either way); if missing,
@@ -556,7 +557,7 @@ never substitute it.
 to have missed a defect (human catch, milestone-auditor finding, or
 downstream FAIL on that unit), re-dispatch that unit's review on `opus`,
 never sonnet. The opus re-review, on confirming the miss, returns FAIL and
-writes the standard `.fail` record, which via `hooks/scripts/reviewer-tier.sh`
+writes the standard `.fail` record, which via `.claude/hooks/scripts/reviewer-tier.sh`
 (the reviewer-gate ratchet) permanently forces opus for that unit id
 thereafter.
 
@@ -583,6 +584,8 @@ low tier (e.g. `explorer`'s `effort: low`): it must never silently rise
 under a hot, high-effort ambient session either. Personas that declare no
 `effort:` key at all (e.g. `milestone-auditor`) are left undeclared by
 design, not an oversight to fix.
+
+Never search the filesystem for a harness script (`find /`, `locate`, a glob over `~` or `/`): the installed copies are at `.claude/bin/` and `.claude/hooks/scripts/`. If one is missing, take that script's own fail-closed result (`opus`), append `RULING <UTC ISO-8601 timestamp> unit=<task-id> decision=helper missing: <path>: opus` to the rulings ledger, and tell the user to run `node <plugin>/bin/cli.js --update`.
 
 ## Relaying spec-master open questions
 If spec-master returns "Open Questions" instead of a finished plan (this

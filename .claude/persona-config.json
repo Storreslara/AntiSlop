@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.181",
+  "pluginVersion": "0.31.182",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,11 +42,11 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "3927856a6a725d1e601751d31840f85bf2862f79cba6bf3e83eaac951da305b4",
+    ".claude/agents/orchestrator.md": "fac93442b0c6aa9f0b965e37ac8acb271e7f6549ffb25e91cbcf9c39f6b1bf0d",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "7ad5a350ae89230767dc2c108047df15fded3442875714630ad0041ae81d3876",
     ".claude/agents/spec-master.md": "92295d43a5edd9b5a1d4e8a9ed3a7c2a7c1213b863fdf4e0d67be4742d0dd4cc",
-    ".claude/agents/task-master.md": "94638618152db529e65fb112b09a622dbc32d21bb9c2137dc7542d30435f17b9",
+    ".claude/agents/task-master.md": "dbd41d4eddba104516fce61118222ff22cb63aa1585faddf69d54526ec97f2da",
     ".claude/agents/scribe.md": "846e5445d93551ec16cb98e49591bf06f6f7bcaf44d15f812c9f3a606823a16a",
     ".claude/agents/reviewer.md": "66278fe07bf0d5e9e4d7b2766b1b8c50cb3ea48ed0e99ed9324584f240375d08",
     ".claude/agents/milestone-auditor.md": "e2e90942ef4f1ed2944975e5f52fd9fcdb1c9f2af51b731773c4999d77260b2b",
@@ -107,7 +107,12 @@
     "adapters/codex/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
     "adapters/cursor/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
     ".claude/hooks/scripts/version-stamp-check.sh": "f5ceb6c4e470c3d7dfb3bf368dc1f02ae7b31261d16726ff9aba08181bf933f3",
-    ".claude/hooks/scripts/agent-audit.sh": "1b6e1ea5a8173c198371b1867b15c2dfc70454af9bb79efce8596e3fa25e375a"
+    ".claude/hooks/scripts/agent-audit.sh": "1b6e1ea5a8173c198371b1867b15c2dfc70454af9bb79efce8596e3fa25e375a",
+    ".claude/bin/ladder-tier.sh": "6ccbad8462545aa892e2dae001f358993ecc4d32ec552b9e0293c3f97c7df1e3",
+    ".claude/bin/contract-guard.js": "3fec76a495eea193a397c505a7d390d8856f06d3137c77ea43d0f6004da95061",
+    ".claude/bin/contract-score.js": "a828a8c29cf555bcb9a29d13da3f0819c7e98b61542690e5541bfd1a464428d5",
+    ".claude/bin/fail-count.sh": "1642e53eafa7bfb6757040fea78d57767350e9a7fbb8bcd5009561b4e39d88d4",
+    ".claude/bin/escalation-card.sh": "d55ddbac3b0b7e01c5110116afe9366356eb9611b619744eac34d4aa152bf7fe"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku"

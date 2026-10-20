@@ -713,6 +713,15 @@ else
 fi
 
 echo
+echo "== bin-helpers-scaffold: ladder helpers installed to .claude/bin (Bash, aof-u1) =="
+if bash tests/bin-helpers-scaffold.test.sh; then
+  echo "OK   tests/bin-helpers-scaffold.test.sh"
+else
+  echo "FAIL tests/bin-helpers-scaffold.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"
