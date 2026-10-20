@@ -110,8 +110,8 @@ check "every hook script hooks.json names is in the plugin copy" "$(for f in $(p
 abtest_plugin_copy "$REPO_ROOT" "$T/pcopy"; check "abtest_plugin_copy succeeds on the checkout" "$?" "0"
 check "no file of the plugin copy names a hidden check or a reference solution" "$(find "$T/pcopy" -type f -exec grep -IiEl 'holdout|reference\.patch|abtest' {} + | wc -l | tr -d ' ')" "0"
 rm -rf "$T/refscaf"; mkdir "$T/refscaf"; ( cd "$T/refscaf" && git init -q && node "$REPO_ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe > /dev/null )
-check "the scaffold from the pruned copy equals the scaffold from the full checkout, settings.json aside" "$(diff -rq -x 'persona-config.json' -x 'settings.json' "$T/refscaf/.claude" "$T/wb/.claude" > /dev/null && echo same || echo differ)" "same"
-check "the scaffolded settings.json of the pruned copy only lacks the two Bash gate registrations (OD-20)" "$(diff "$T/refscaf/.claude/settings.json" "$T/wb/.claude/settings.json" | grep -c '^>')|$(diff "$T/refscaf/.claude/settings.json" "$T/wb/.claude/settings.json" | grep '^<' | grep -c -e reviewed-path-gate.sh -e harness-integrity-gate.sh)" "0|2"
+check "the scaffold from the pruned copy equals the scaffold from the full checkout, settings.json aside" "$(diff -rq -x 'persona-config.json' -x 'settings.json' "$T/refscaf/.claude" "$T/wb2/.claude" > /dev/null && echo same || echo differ)" "same"
+check "the scaffolded settings.json of the pruned copy only lacks the two Bash gate registrations (OD-20)" "$(diff "$T/refscaf/.claude/settings.json" "$T/wb2/.claude/settings.json" | grep -c '^>')|$(diff "$T/refscaf/.claude/settings.json" "$T/wb2/.claude/settings.json" | grep '^<' | grep -c -e reviewed-path-gate.sh -e harness-integrity-gate.sh)" "0|2"
 abtest_plugin_copy "$T" "$T/pcopy2" 2> /dev/null; check "abtest_plugin_copy fails on a directory that is not a git checkout" "$?" "1"
 # --- OD-20 (abt-u13h): the pruned copy no longer registers the two gates that denied read-only Bash commands ---
 OP="$T/od20proj"
@@ -156,6 +156,18 @@ check "the pruned copy lets the pilot-2 pass-marker command through" "$(verdict 
 WPAY="$(jq -n --arg f "$OP/.claude/reviewed/y.pass" --arg d "$OP" '{tool_name: "Write", tool_input: {file_path: $f, content: "PASS y"}, cwd: $d, hook_event_name: "PreToolUse"}')"
 check "the pruned copy still denies a Write into the marker directory" "$(verdict "$T/pcopy" 'Write|Edit' "$WPAY")" "deny"
 abtest_relax_bash_gates "$T/pcopy" 2> /dev/null; check "a second relaxation of the same copy fails (nothing left to drop)" "$?" "1"
+abtest_plugin_copy "$REPO_ROOT" "$T/ucopy"
+abtest_uniform_models "$T/ucopy" fable; check "abtest_uniform_models succeeds on a fresh copy" "$?" "0"
+check "no persona frontmatter in the uniform copy has a model line" "$(for f in "$T"/ucopy/agents/*.md; do awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f&&/^model:/' "$f"; done | wc -l | tr -d ' ')" "0"
+UHOOK="$T/ucopy/hooks/scripts/abtest-uniform-model.sh"
+check "the uniform hook sets the dispatch model and keeps the rest" "$(printf '%s' '{"hook_event_name":"PreToolUse","tool_name":"Agent","tool_input":{"subagent_type":"reviewer","model":"opus","prompt":"p"}}' | bash "$UHOOK" | jq -c .hookSpecificOutput.updatedInput)" '{"subagent_type":"reviewer","model":"fable","prompt":"p"}'
+UOUT="$(printf '%s' '{"tool_name":"Bash","tool_input":{"command":"ls"}}' | bash "$UHOOK")"; check "the uniform hook prints nothing for a Bash payload and exits 0" "$?|$UOUT" "0|"
+check "the uniform copy's hooks.json names the hook once" "$(grep -c 'abtest-uniform-model.sh' "$T/ucopy/hooks/hooks.json")" "1"
+abtest_uniform_models "$T/ucopy" fable 2> /dev/null; check "a second uniform application to the same copy fails" "$?" "1"
+check "arm-b.sh calls the function only under the uniform policy" "$(grep -cF 'if [ "$policy" = uniform ]; then abtest_uniform_models "$plugin" "$ABTEST_MODEL" || { echo "arm-b.sh: could not enforce the uniform model policy in the plugin copy" >&2; exit 3; }; fi' "$ARMS/arm-b.sh")" "1"
+check "the product reviewer.md keeps its model line" "$(grep -c '^model:' "$REPO_ROOT/agents/reviewer.md")" "1"
+abtest_plugin_copy "$REPO_ROOT" "$T/ucopy2"
+abtest_uniform_models "$T/ucopy2" 'a b' 2> /dev/null; check "a model name with a space is refused" "$?" "1"
 for a in A B; do
   check "arm $a passes --disallowedTools once" "$(grep -cx -e '--disallowedTools' "$T/argv$a")" "1"
   check "arm $a denies Read of the harness root" "$(grep -cxF "Read(/$REPO_PHYS/**)" "$T/argv$a")" "1"

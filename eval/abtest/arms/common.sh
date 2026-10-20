@@ -170,6 +170,61 @@ with open(path, "w") as f:
 PYEOF
 }
 
+# abtest_uniform_models DEST MODEL: OD-23. In the plugin copy only: drop the model: line from every persona's
+# frontmatter and register a hook that sets every Agent/Task dispatch's model to MODEL, so the pilot-4 mixed tiers
+# (CLAUDE_CODE_SUBAGENT_MODEL lost to explicit dispatch and frontmatter models) cannot recur. Fails unless something
+# was stripped, nothing remains, MODEL is a plain name, and the hook was not already registered.
+abtest_uniform_models() {
+  python3 -I - "$1" "$2" <<'PYEOF'
+import glob, json, os, re, sys
+
+dest, model = sys.argv[1], sys.argv[2]
+if not re.fullmatch(r"[A-Za-z0-9._-]+", model):
+    sys.exit("abtest: bad model name %r" % model)
+
+def frontmatter(lines):
+    if lines[0] != "---":
+        return 0, 0
+    for i in range(1, len(lines)):
+        if lines[i] == "---":
+            return 1, i
+    return 0, 0
+
+removed = 0
+for path in sorted(glob.glob(os.path.join(dest, "agents", "*.md"))):
+    with open(path) as f:
+        lines = f.read().split("\n")
+    lo, hi = frontmatter(lines)
+    keep = [l for k, l in enumerate(lines) if not (lo <= k < hi and l.startswith("model:"))]
+    removed += len(lines) - len(keep)
+    lo, hi = frontmatter(keep)
+    if any(l.startswith("model:") for l in keep[lo:hi]):
+        sys.exit("abtest: model line left in %s" % path)
+    with open(path, "w") as f:
+        f.write("\n".join(keep))
+if removed == 0:
+    sys.exit("abtest: no model line stripped")
+
+script = os.path.join(dest, "hooks", "scripts", "abtest-uniform-model.sh")
+with open(script, "w") as f:
+    f.write('''#!/usr/bin/env bash
+jq -c 'if .tool_name == "Agent" or .tool_name == "Task" then {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","updatedInput":(.tool_input + {"model":"%s"})}} else empty end' 2> /dev/null
+exit 0
+''' % model)
+os.chmod(script, 0o755)
+
+path = os.path.join(dest, "hooks", "hooks.json")
+with open(path) as f:
+    cfg = json.load(f)
+if "abtest-uniform-model.sh" in json.dumps(cfg["hooks"]["PreToolUse"]):
+    sys.exit("abtest: uniform model hook already registered")
+cfg["hooks"]["PreToolUse"].append({"matcher": "Agent|Task", "hooks": [{"type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/abtest-uniform-model.sh"}]})
+with open(path, "w") as f:
+    json.dump(cfg, f, indent=2)
+    f.write("\n")
+PYEOF
+}
+
 # abtest_arm_setup WORKTREE: refuse a worktree or config dir inside the harness and make a per-run HOME.
 abtest_arm_setup() {
   abtest_outside "$1" "${ABTEST_CONFIG_DIR:?}" || return 1

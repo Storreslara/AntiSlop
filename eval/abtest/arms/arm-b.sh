@@ -33,6 +33,7 @@ trap 'rm -rf "${copydir:?}"; if [ "${ABTEST_HOME_OWNED:-0}" = 1 ]; then rm -rf "
 abtest_outside "$copydir" || exit 2
 abtest_plugin_copy "$plugin" "$copydir/plugin" || { echo "arm-b.sh: could not build the plugin copy from $plugin" >&2; exit 3; }
 plugin="$copydir/plugin"
+if [ "$policy" = uniform ]; then abtest_uniform_models "$plugin" "$ABTEST_MODEL" || { echo "arm-b.sh: could not enforce the uniform model policy in the plugin copy" >&2; exit 3; }; fi
 
 # The file names are built from parts so no shell text names the gated files.
 pcfg="$wt/.claude/persona""-config.json"
