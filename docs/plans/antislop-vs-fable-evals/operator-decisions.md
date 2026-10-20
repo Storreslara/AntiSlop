@@ -321,3 +321,25 @@ from the operator's dispatch message; the doc's substance is not edited.
   (c) Not covered. The model policy of Arm B rows is OD-23.
   (d) Fingerprint. This change moves `harness_commit`, so under OD-14 every pilot-4 row is superseded and
   repeated.
+- OD-23 (2026-10-19, uniform model policy enforced in Arm B; binding operator decision, option (b), from pilot 4)
+  Evidence (eval/abtest/results.jsonl and .runs/*_B_uniform_1/summary.json, pilot 4): every Arm B row labelled
+  `model_policy: uniform` has `model_usage` entries for haiku, sonnet and opus besides Fable. arm-b.sh exports
+  `CLAUDE_CODE_SUBAGENT_MODEL` under `uniform`, but on CLI 2.1.302 an explicit `model` on a dispatch (the
+  orchestrator's per-unit routing: sonnet for lead-programmer, opus for reviewer and spec-master) and a
+  persona's frontmatter `model:` (haiku for the explorer) both take precedence over it. The rows therefore did
+  not meet the pre-registration's "every persona on Fable".
+  (a) The rule. Under `ABTEST_POLICY=uniform`, the plugin copy that arm-b.sh loads (and scaffolds from) has
+  the `model:` line removed from every persona's frontmatter, and registers one extra PreToolUse hook for
+  `Agent` and `Task` that only exists in the copy. It sets the dispatch's `model` to `ABTEST_MODEL` and changes
+  nothing else. The copy fails to build unless the strip and the registration both happen exactly as stated.
+  (b) Unchanged. The product tree, hooks/scripts, every gate, the `shipped` policy (no strip, no hook), Arm A,
+  lib/stream.py, the scorer, the checks, the allowed paths and the prompts.
+  (c) Cost. Under `uniform`, Arm B runs AntiSlop with its model routing switched off: the per-unit ladder, the
+  measured reviewer tier and the product rule that Fable is never valid on the review gate do not apply, and
+  every persona runs on `ABTEST_MODEL`. This is the process-effect comparison the pre-registration names; the
+  product cost question stays with the deferred `shipped` replicates (OD-7). The report must say that Arm B's
+  uniform rows ran with routing overridden (pre-registration amendment 2026-10-19).
+  (d) Pilot-4 rows. The 5 B rows of pilot 4 are mixed-tier, not uniform. They are superseded (OD-14, OD-22)
+  and none of them counts.
+  (e) Fingerprint. This change moves `harness_commit`; under OD-14 the rows made before it are superseded and
+  repeated.
