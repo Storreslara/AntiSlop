@@ -585,7 +585,7 @@ under a hot, high-effort ambient session either. Personas that declare no
 `effort:` key at all (e.g. `milestone-auditor`) are left undeclared by
 design, not an oversight to fix.
 
-Never search the filesystem for a harness script (`find /`, `locate`, a glob over `~` or `/`): the installed copies are at `.claude/bin/` and `.claude/hooks/scripts/`. If one is missing, take that script's own fail-closed result (`opus`), append `RULING <UTC ISO-8601 timestamp> unit=<task-id> decision=helper missing: <path>: opus` to the rulings ledger, and tell the user to run `node <plugin>/bin/cli.js --update`.
+Never search the filesystem for a harness script (`find /`, `locate`, a glob over `~` or `/`): the installed copies are at `.claude/bin/` and `.claude/hooks/scripts/`. If one is missing, the `opus` fallback applies only to `ladder-tier.sh` and `reviewer-tier.sh`, the scripts that choose a tier; for any other helper, substitute no result. In every case append `RULING <UTC ISO-8601 timestamp> unit=<task-id> decision=helper missing: <path>` (add `: opus` only for a script that chooses a tier) to the rulings ledger, and tell the user to run `node <plugin>/bin/cli.js --update`.
 
 ## Relaying spec-master open questions
 If spec-master returns "Open Questions" instead of a finished plan (this

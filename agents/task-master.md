@@ -139,7 +139,7 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
   institutional-knowledge update) as a checkable **dispatch contract** of nine
   literal, greppable elements — a haiku-tier implementer can only follow an
   order mechanically if the order leaves nothing to infer. Each element is
-  content-typed, and `node bin/contract-score.js` scores a contract against
+  content-typed, and `node .claude/bin/contract-score.js` scores a contract against
   rows R1-R7:
   1. `Unit: <task-id>` as the literal first line — the id the reviewer writes
      markers under.
@@ -193,7 +193,7 @@ Units are sized by `pathfinder` and the contract budget, not by context window.
      written, STOP and report a spec gap; do not improvise."
 
   **Contract self-check.** Before handing off, run
-  `node bin/contract-score.js --rubric=v2 <contract>` on each contract and
+  `node .claude/bin/contract-score.js --rubric=v2 <contract>` on each contract and
   require `"score":7` and `"sizeOver":false`. Run every `run:` once at the
   current HEAD: each is expected to fail before the edit, or the contract
   says why it already passes. Confirm each anchor with `/usr/bin/grep -cF
@@ -371,7 +371,7 @@ the lead contract) and `## Escalation`. A contract that edits
 of its own `Unit:` id, like the lead contract; in the legacy issue-body form it
 sits under the heading `## Dispatch contract (scribe)`, exactly, fenced the same
 way as the lead contract. Score it with
-`node bin/contract-score.js --rubric=v2 --shape=scribe <contract>` and
+`node .claude/bin/contract-score.js --rubric=v2 --shape=scribe <contract>` and
 require `"score":7`.
 
 <!-- scribe-contract-example:begin -->

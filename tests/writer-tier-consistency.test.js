@@ -206,7 +206,7 @@ check('AC-P3: scribe and lead-programmer keep their contract bullets', () => {
 });
 
 check('AC-P4: orchestrator.md keeps the Contract-score guard paragraph and its unchanged-contract caveat', () => {
-  hasAll('agents/orchestrator.md', ['**Contract-score guard.**', 'node bin/contract-guard.js', 'contract-guard: haiku',
+  hasAll('agents/orchestrator.md', ['**Contract-score guard.**', 'node .claude/bin/contract-guard.js', 'contract-guard: haiku',
     '**guard demotion**', 'decision=contract-guard sonnet:', '--shape=scribe', 'provided it is unchanged']);
 });
 
