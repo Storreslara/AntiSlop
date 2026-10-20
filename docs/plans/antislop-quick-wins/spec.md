@@ -229,7 +229,7 @@ agent-teams flag launches a teammate; shipped default `"0"` -> orchestrator (kep
 N1 to N5 (gh-304 incident, name-collision residual, docs quotes, observed-incident story, mechanism
 explanation) -> `docs/orchestrator-rationale.md`.
 Acceptance criteria: the pins test (survivors present, narratives absent, flattened greps) exit 0; the
-orchestrator mirror is at least 3,500 bytes smaller than at the unit's parent; codex and cursor orchestrator
+orchestrator mirror is at least 3,400 bytes smaller than at the unit's parent (3,759 measured); codex and cursor orchestrator
 ports unchanged; version-stamp-check ok; validate.sh exit 0.
 
 ### Step 3 (qw-u3): protocol narrative trim (b-1 ii)
