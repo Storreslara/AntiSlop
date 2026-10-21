@@ -127,8 +127,9 @@ jq -n --arg a antislop:reviewer --arg c "$cmd" '{tool_name:"Bash",agent_type:$a,
   | CLAUDE_PROJECT_DIR="$proj" bash hooks/scripts/human-decision-gate.sh >/dev/null 2>&1 || rc=$?
 [ "$rc" = 0 ] && pass "T9 decision gate allows the viewer write" || bad "T9 gate rc=$rc"
 
-# T10 - orchestrator steps 2 and 3 both strip the Read tool's line-number prefixes
-for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
+# T10 - the orchestrator's escalation steps 2 and 3 (in the protocol's Fourth verdict section since qw-u4)
+# both strip the Read tool's line-number prefixes
+for f in templates/persona-protocol.md .claude/persona-protocol.md; do
   n="$(tr -s ' \n' ' ' < "$f" | grep -o "without the Read tool's line-number prefixes" | wc -l)"
   [ "$n" = 2 ] && pass "T10 $f: prefix clause in both steps" || bad "T10 $f: clause count $n, expected 2"
 done

@@ -64,7 +64,33 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agent
   hasnot "$f" 'defeats the whole point of it being cheap'
 done
 
-# qw-u4 appends its rows below this line.
+# qw-u4: the ESCALATE-TO-HUMAN procedure moves verbatim into the protocol's Fourth verdict section; the
+# orchestrator keeps a stub that names the subsection and carries the five invariants.
+for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
+  has "$f" 'subsection of the `## Fourth verdict: escalate-to-human` section in `.claude/persona-protocol.md`'
+  has "$f" 'Your job is **surfacing, not deciding**.'
+  has "$f" 'print the marker'"'"'s card verbatim, never a summary'
+  has "$f" 'never run `run.sh` or `view.sh` yourself'
+  has "$f" 'relay the human'"'"'s answer verbatim'
+  has "$f" '**prompt-confirmed decision write**, from this session'"'"'s answer and never on your own initiative'
+  has "$f" 'afresh with `subagent_type: reviewer` set explicitly'
+  has "$f" 'do not relay the decision in the prompt'
+  hasnot "$f" 'Make **one** `AskUserQuestion` call'
+  hasnot "$f" 'Twice a `general-purpose` agent dispatched this way'
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md; do
+  has "$f" '### Orchestrator steps on an ESCALATE-TO-HUMAN verdict'
+  has "$f" 'Print the marker'"'"'s lines 1 through the `---` fold line in chat **verbatim**'
+  has "$f" 'Read `CHANGES.md` in that packet directory **(if present)**'
+  has "$f" 'Read `EXAMPLES.md` in that packet directory **(if present)**'
+  has "$f" '**Never run `run.sh` or `view.sh` yourself and never pre-digest a result**'
+  has "$f" 'Make **one** `AskUserQuestion` call'
+  has "$f" 'Make the **prompt-confirmed decision write**'
+  has "$f" '**with `subagent_type: reviewer` set explicitly**'
+  has "$f" '**never dispatch review-adjacent work to an untyped or generic agent.**'
+done
+
+# Later units append their rows below this line.
 
 if [ "$fail" -eq 0 ]; then echo "All prompt-diet-pins checks passed."; else echo "prompt-diet-pins: FAILED"; fi
 exit "$fail"

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Escalation procedure read on demand (qw-u4, 0.31.192).** The orchestrator's ESCALATE-TO-HUMAN steps 1 to 7 move verbatim from agents/orchestrator.md to a new subsection "Orchestrator steps on an ESCALATE-TO-HUMAN verdict" at the end of the protocol's Fourth verdict section, which no persona inlines. The orchestrator keeps a 12-line stub with the five invariants and reads the subsection when a verdict arrives, as the reviewer already does. The orchestrator prompt is about 7.6k bytes smaller. The fold-line, decide-line and line-prefix pins in tests/adapter-protocol-parity.test.js and tests/packet-view-script.test.sh now check the protocol copies.
+
 **Protocol narrative trim (qw-u3, 0.31.191).** templates/persona-protocol.md: "Review markers and gate mechanics (owner-facing)" drops its provenance note and the ADR-0028 cause story and keeps both axis terms; "Terminal status line" drops three asides and keeps every rule. Every full-tier persona prompt is smaller (about 1361 bytes for the five that inline "Review markers", 687 for lead-programmer). New rows in tests/prompt-diet-pins.test.sh pin each kept rule.
 
 **Orchestrator narrative trim (qw-u2, 0.31.190).** agents/orchestrator.md loses five incident narratives and rationale paragraphs (moved verbatim to docs/orchestrator-rationale.md) and the teams-only "missing roster row" subsection (moved to commands/start-feature-team.md). No rule removed: each survivor is pinned by the new tests/prompt-diet-pins.test.sh. The installed orchestrator prompt is about 3759 bytes smaller.

@@ -280,7 +280,7 @@ check('orchestrator escalation steps handle a marker with no fold line or no dec
   const flat = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').replace(/\s+/g, ' ');
   const foldRule = 'A marker with no `---` fold line was written before the card format: print the whole marker verbatim instead, with no pointer line.';
   const decideRule = "When the marker has no `decide: ` line, Q1's description is exactly `How should this escalation be resolved?`.";
-  for (const rel of ['agents/orchestrator.md', '.claude/agents/orchestrator.md']) {
+  for (const rel of ['templates/persona-protocol.md', '.claude/persona-protocol.md']) {
     const t = flat(rel);
     assert.ok(t.includes(foldRule), `${rel}: missing the no-fold-line rule`);
     assert.ok(t.includes(decideRule), `${rel}: missing the no-decide-line rule`);
