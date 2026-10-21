@@ -195,11 +195,11 @@ async function runUpdate(args) {
    exit: 0
    stdout: `loads`
    mutation: drop the closing brace of `parseKnowledgeWritesFlag`; node reports a SyntaxError and exits 1.
-4. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u4)" | tail -1); l=$(git log --format=%H --grep="(rp-u4)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | sort | tr "\n" " "'`
+4. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u4): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u4): " | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md bin/cli.js package.json tests/knowledge-writes.test.sh `
    mutation: also edit `README.md` in an rp-u4 commit; it joins the list.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u4)" | tail -1); l=$(git log --format=%H --grep="(rp-u4)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u4): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u4): " | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: no`
    mutation: also edit `templates/persona-config.schema.json` in an rp-u4 commit with no bump; stdout reads `version-stamp-check: violation touched: yes`.

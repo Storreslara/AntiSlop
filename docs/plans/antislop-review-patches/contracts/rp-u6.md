@@ -380,7 +380,7 @@ fi
    exit: 0
    stdout: `0`
    mutation: delete the `if (at.length === 0 && n > 0)` line in `locate`; rows (a), (c) and (d) fail and stdout is `1`.
-2. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u6)" | tail -1); d=$(mktemp -d); git archive "$b^" -- tests/validate.sh CHANGELOG.md | tar -x -C "$d" && node bin/contract-anchors.js docs/plans/antislop-review-patches/contracts/rp-u6.md --repo="$d" | tail -n1'`
+2. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u6): " | tail -1); d=$(mktemp -d); git archive "$b^" -- tests/validate.sh CHANGELOG.md | tar -x -C "$d" && node bin/contract-anchors.js docs/plans/antislop-review-patches/contracts/rp-u6.md --repo="$d" | tail -n1'`
    exit: 0
    stdout: `contract-anchors: ok checks=11 bad=0 unchecked=0`
    mutation: pass `--repo=.` (the tree after the unit) instead of the archive; both new files print `new exists`, the summary reads `fail` and the command exits 0 with that line (the `tail` sets the status).
@@ -388,15 +388,15 @@ fi
    exit: 0
    stdout: `2 2`
    mutation: change `process.exit(2)` in `usage` to `process.exit(1)`; stdout is `1 1`.
-4. run: `bash -c 'l=$(git log --format=%H --grep="(rp-u6)" | head -1); git ls-tree "$l" -- bin/contract-anchors.js tests/contract-anchors.test.sh | grep -c "^100755 "; test -e .claude/bin/contract-anchors.js && echo installed || echo not-installed'`
+4. run: `bash -c 'l=$(git log --format=%H --grep="^[a-z]*(rp-u6): " | head -1); git ls-tree "$l" -- bin/contract-anchors.js tests/contract-anchors.test.sh | grep -c "^100755 "; test -e .claude/bin/contract-anchors.js && echo installed || echo not-installed'`
    exit: 0
    stdout: `2` then `not-installed`
    mutation: skip edit 7 on a clone with `core.fileMode=true` and commit the files as written by a 644 umask; the count is `0`.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u6)" | tail -1); l=$(git log --format=%H --grep="(rp-u6)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u6): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u6): " | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md bin/contract-anchors.js package.json tests/contract-anchors.test.sh tests/validate.sh `
    mutation: also edit `bin/contract-score.js` in an rp-u6 commit; it joins the list.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u6)" | tail -1); l=$(git log --format=%H --grep="(rp-u6)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u6): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u6): " | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: no`
    mutation: also edit `agents/task-master.md` in an rp-u6 commit; stdout reads `version-stamp-check: ok touched: yes`.

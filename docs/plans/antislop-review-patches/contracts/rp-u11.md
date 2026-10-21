@@ -219,15 +219,15 @@ us_safe_path() {
    exit: 0
    stdout: `1 1 1 1 1 `
    mutation: skip the comment lines of edit 4 (keep its code lines); the second, third and fourth counts are `0`.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u11)" | tail -1); l=$(git log --format=%H --grep="(rp-u11)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u11): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u11): " | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md hooks/scripts/lib/unit-scope.sh package.json tests/scope-libs.test.sh `
    mutation: also edit `bin/review-precheck.sh` in an rp-u11 commit; it joins the list.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u11)" | tail -1); l=$(git log --format=%H --grep="(rp-u11)" | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:package.json" | grep "\"version\"")" = "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(rp-u11, ")" = 1 && echo moved'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u11): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u11): " | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:package.json" | grep "\"version\"")" = "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(rp-u11, ")" = 1 && echo moved'`
    exit: 0
    stdout: `moved`
    mutation: skip edit 6; the versions are equal, stdout is empty and the exit is 1.
-7. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u11)" | tail -1); l=$(git log --format=%H --grep="(rp-u11)" | head -1); git diff --name-only "$b^..$l" -- bin hooks/scripts/reviewer-tier.sh tests/reviewer-tier.test.sh docs/plans adapters agents templates | wc -l'`
+7. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u11): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u11): " | head -1); git diff --name-only "$b^..$l" -- bin hooks/scripts/reviewer-tier.sh tests/reviewer-tier.test.sh docs/plans adapters agents templates | wc -l'`
    exit: 0
    stdout: `0`
    mutation: edit `docs/plans/antislop-structural/contracts/st-u3.md` in an rp-u11 commit; stdout is `1`.

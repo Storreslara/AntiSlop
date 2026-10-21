@@ -264,15 +264,15 @@ exit "$fail"
    exit: 0
    stdout: `same`
    mutation: skip edit 12 (`--update`); the first `cmp` reports a difference and the command exits 1.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u10)" | tail -1); l=$(git log --format=%H --grep="(rp-u10)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u10): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u10): " | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md bin/cli.js bin/unit-bookkeeping.sh hooks/scripts/stop-gate.sh package.json tests/orchestrator-model.test.js tests/review-join.test.sh tests/unit-bookkeeping.test.sh `
    mutation: also edit `hooks/scripts/lib/stop-gate-core.sh` in an rp-u10 commit; it joins the list.
-7. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u10)" | tail -1); l=$(git log --format=%H --grep="(rp-u10)" | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:package.json" | grep "\"version\"")" = "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(rp-u10, ")" = 1 && echo moved'`
+7. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u10): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u10): " | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:package.json" | grep "\"version\"")" = "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(rp-u10, ")" = 1 && echo moved'`
    exit: 0
    stdout: `moved`
    mutation: skip edit 10; the versions are equal, stdout is empty and the exit is 1.
-8. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u10)" | tail -1); l=$(git log --format=%H --grep="(rp-u10)" | head -1); git diff --name-only "$b^..$l" -- hooks/scripts/lib adapters bin/ladder-tier.sh bin/contract-guard.js agents templates | wc -l'`
+8. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u10): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u10): " | head -1); git diff --name-only "$b^..$l" -- hooks/scripts/lib adapters bin/ladder-tier.sh bin/contract-guard.js agents templates | wc -l'`
    exit: 0
    stdout: `0`
    mutation: edit `adapters/cursor/hooks/scripts/stop-gate.sh` in an rp-u10 commit; stdout is `1`.

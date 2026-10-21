@@ -97,11 +97,11 @@ Relay every `Knowledge proposals:` and
    exit: 0
    stdout: `0`
    mutation: reword "Skip the scribe dispatch entirely when" in edit 3's text; its row fails and stdout is `1`.
-4. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u5)" | tail -1); l=$(git log --format=%H --grep="(rp-u5)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | sort | tr "\n" " "'`
+4. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u5): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u5): " | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md agents/orchestrator.md package.json tests/prompt-diet-pins.test.sh `
    mutation: also edit `agents/scribe.md` in an rp-u5 commit; it joins the list.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u5)" | tail -1); l=$(git log --format=%H --grep="(rp-u5)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u5): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u5): " | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: yes`
    mutation: skip edit 4; stdout reads `version-stamp-check: violation touched: yes`.

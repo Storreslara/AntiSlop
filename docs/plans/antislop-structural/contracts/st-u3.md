@@ -434,7 +434,7 @@ fi
    exit: 0
    stdout: `0`
    mutation: skip edit 5; trust-model-bijection C8.2 prints `writer-scope-gate.sh is not mentioned anywhere in docs/trust-model.md` and stdout is `1` (spec-master observed this on a clone).
-4. run: `bash -c 'b=$(git log --format=%H --grep="(st-u3)" | tail -1); l=$(git log --format=%H --grep="(st-u3)" | head -1); git diff --name-only "$b^..$l" -- adapters agents templates hooks/scripts/stop-gate.sh hooks/scripts/lib | wc -l'`
+4. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u3): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u3): " | head -1); git diff --name-only "$b^..$l" -- adapters agents templates hooks/scripts/stop-gate.sh hooks/scripts/lib | wc -l'`
    exit: 0
    stdout: `0`
    mutation: also register the gate in `adapters/cursor/hooks/hooks.json`; stdout is at least `1`.
@@ -442,7 +442,7 @@ fi
    exit: 0
    stdout: `stop-gate.sh,writer-scope-gate.sh`
    mutation: skip edit 4; stdout is `stop-gate.sh`.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(st-u3)" | tail -1); l=$(git log --format=%H --grep="(st-u3)" | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(st-u3, ")" = 1 && echo moved'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u3): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u3): " | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(st-u3, ")" = 1 && echo moved'`
    exit: 0
    stdout: `moved`
    mutation: skip edit 8; the versions are equal, stdout is empty and the exit is 1.

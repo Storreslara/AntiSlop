@@ -321,7 +321,7 @@ fi
    exit: 0
    stdout: `1`
    mutation: delete the sensitive-path loop from the script; it prints `lane: medium files=10 reason=contract` (spec-master ran this mutation), stdout is `0` and the exit is 1.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(st-u4)" | tail -1); l=$(git log --format=%H --grep="(st-u4)" | head -1); git diff --name-only "$b^..$l" -- adapters hooks templates agents/lead-programmer.md agents/reviewer.md agents/spec-master.md | wc -l'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u4): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u4): " | head -1); git diff --name-only "$b^..$l" -- adapters hooks templates agents/lead-programmer.md agents/reviewer.md agents/spec-master.md | wc -l'`
    exit: 0
    stdout: `0`
    mutation: edit `adapters/cursor/agents/orchestrator.md` in an st-u4 commit; stdout is at least `1`.
@@ -329,7 +329,7 @@ fi
    exit: 0
    stdout: `0`
    mutation: in edit 8, also reword the pinned phrase `the contract of record, never a fix contract` elsewhere in orchestrator.md; writer-tier-consistency fails and stdout is `1`.
-7. run: `bash -c 'b=$(git log --format=%H --grep="(st-u4)" | tail -1); l=$(git log --format=%H --grep="(st-u4)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
+7. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u4): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u4): " | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: yes`
    mutation: skip edit 10; stdout reads `version-stamp-check: violation touched: yes`.

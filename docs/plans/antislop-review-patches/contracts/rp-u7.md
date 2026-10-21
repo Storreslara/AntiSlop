@@ -213,7 +213,7 @@ re-derives it with a script: it runs `bash .claude/bin/blast-radius.sh <baseline
    exit: 0
    stdout: `0`
    mutation: `git update-index --chmod=-x .claude/bin/blast-radius.sh`; row (g) fails and stdout is `1`.
-3. run: `bash -c 'cmp bin/blast-radius.sh .claude/bin/blast-radius.sh && l=$(git log --format=%H --grep="(rp-u7)" | head -1) && git ls-tree "$l" -- .claude/bin/ | grep -v "^100755 " | wc -l'`
+3. run: `bash -c 'cmp bin/blast-radius.sh .claude/bin/blast-radius.sh && l=$(git log --format=%H --grep="^[a-z]*(rp-u7): " | head -1) && git ls-tree "$l" -- .claude/bin/ | grep -v "^100755 " | wc -l'`
    exit: 0
    stdout: `0`
    mutation: skip edit 14 (`--update`); `cmp` reports a difference and the command exits 1. Skip edit 15 on a clone with `core.fileMode=false`; the count is `1`.
@@ -225,11 +225,11 @@ re-derives it with a script: it runs `bash .claude/bin/blast-radius.sh <baseline
    exit: 0
    stdout: `truncated: 100 more lines`
    mutation: delete the last `if [ "$n" -gt "$MAXLINES" ]` line of edit 10; stdout is `changed: f369.txt` (the 300th line; git lists `f1.txt` to `f400.txt` in byte order).
-6. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u7)" | tail -1); l=$(git log --format=%H --grep="(rp-u7)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u7): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u7): " | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | LC_ALL=C sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md bin/blast-radius.sh package.json templates/persona-protocol.md tests/bin-helpers-scaffold.test.sh tests/blast-radius.test.sh `
    mutation: also edit `bin/cli.js` in an rp-u7 commit; it joins the list.
-7. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u7)" | tail -1); l=$(git log --format=%H --grep="(rp-u7)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
+7. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(rp-u7): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(rp-u7): " | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: yes`
    mutation: skip edit 12; stdout reads `version-stamp-check: violation touched: yes`.

@@ -238,7 +238,29 @@ st-u2 landed meanwhile (952a8796, 0.31.201, in review). Each was re-run on a scr
   docs commit c02b286a ("Step 8 (rp-u7) from the qw-u5 review") matches, so `tail -1` picks a commit far
   older than the unit (on the clone, criterion 6 listed every file changed since). No other queued unit id
   matches an existing commit message. Commit messages written by spec-master must not contain a
-  parenthesised unit id.
+  parenthesised unit id. Fixed 2026-10-21 (operator ruling on Open Question 8): every queued contract's
+  range grep is now `--grep="^[a-z]*(<unit>): "`, which matches only a conventional-commit subject of the
+  unit itself; a docs commit that mentions `(<unit>)` mid-line, or ends its subject with it, no longer
+  moves the range.
+
+### st-u2 review FAIL (recorded 2026-10-21, tier haiku)
+
+st-u2 (952a8796, 0.31.201) FAILed review; the record is `.claude/reviewed/st-u2.fail` (read with the Read
+tool). Two defects:
+- `bin/review-precheck.sh:42-46` (and the installed copy) reads the contract at the baseline only when
+  `--contract` is spelled as a top-relative git path. An absolute or `..` spelling fails `git cat-file -e`,
+  falls back to the working-tree copy and prints `contract: not-at-baseline`, which is counted in neither
+  `fails=` nor `judge=` and is not named in `agents/reviewer.md`: a false PASS on a unit that weakened its
+  own criterion and leaked a file. Absolute paths are the normal agent spelling.
+- `tests/review-precheck.test.sh` case (e) "baseline criteria used" is vacuous: the weakened and the
+  baseline criterion both print `1` on its fixture.
+The fix contract is the structural plan's: `docs/plans/antislop-structural/contracts/st-u2-fix1.md`,
+written by task-master. It may touch `bin/review-precheck.sh`, `tests/review-precheck.test.sh`,
+`agents/reviewer.md`, the reviewer bullet of `templates/persona-protocol.md`, and bumps the version. It
+lands first, before rp-u11. For this spec that means: every expected version below moves up one; no rp
+unit may depend on the precheck's current text (none does: rp-u7 keeps the precheck sentence and
+`tests/review-precheck.test.sh` in its Do NOT touch, rp-u11 and rp-u12 list `bin/review-precheck.sh` there);
+and the chained anchor check must include st-u2-fix1 (Dispatch section).
 - The findings' line numbers (~169, ~197) match no layout of the 163-line library; the defects are where
   the contracts anchor.
 
@@ -395,6 +417,28 @@ sensitive hook path).
 - 2026-10-21 Technical constraints & tradeoffs: Q Where do rp-u11 and rp-u12 go? → A: per operator,
   st-u2 (landed), rp-u11, st-u3, st-u4, rp-u10, then rp-u12 (self-resolved placement), rp-u7, rp-u4, rp-u5,
   rp-u6, rp-s1.
+- 2026-10-21 Technical constraints & tradeoffs: Q (Open Question 7) Harden the landed
+  `bin/review-precheck.sh` library source line the same way as rp-u12 (`>/dev/null 2>&1`)? → A: no, not in
+  rp-u12, per operator. st-u2 is FAILed in review and its fix contract st-u2-fix1 is being written by
+  task-master; the stdout-leak guard for `review-precheck.sh` can ride on a later unit that already edits
+  that script, if cheap, not here. rp-u12 lists `bin/review-precheck.sh` in its Do NOT touch.
+- 2026-10-21 Completion / acceptance signals: Q (Open Question 8) Amend rp-u7's range criteria, which match
+  docs commit c02b286a? → A: yes, per operator: criteria 6 and 7 grep `^[a-z]*(rp-u7): `; check every other
+  queued unit for the same collision and fix any. Done: criterion 3 of rp-u7 had the same grep (its
+  `head -1` would pick a later docs commit that names `(rp-u7)`) and was changed too.
+- 2026-10-21 Completion / acceptance signals: Q No other queued unit id matches an older commit today; are
+  their `(<unit>)` greps left alone? → A (self-resolved): no, all anchored the same way (rp-u11, st-u3,
+  st-u4, rp-u10, rp-u4, rp-u5, rp-u6; rp-u12 written that way). Other agents' docs commits do put a
+  parenthesised unit id in a subject (task-master's st-u2-fix1 commit ends with `(st-u2)`), and the
+  oldest match is the range base, so an unanchored grep can still go wrong before dispatch. Every queued
+  contract's own commit message has the form `<type>(<unit>): `, so the anchored grep finds it; all eight
+  stayed 7/7 and their criteria held on the chained clone.
+- 2026-10-21 Technical constraints & tradeoffs: Q rp-u12 changes the group line that `tests/scope-libs.test.sh`
+  case (b) pins with `grep -qxF`; add that test to rp-u12's files or keep the old line? → A (self-resolved):
+  add it; the pin then holds the new line (Step 10 listed only the script and its test).
+- 2026-10-21 Technical constraints & tradeoffs: Q Where does st-u2-fix1 go, and how do the versions move? →
+  A: per operator, first: st-u2-fix1 0.31.202, rp-u11 0.31.203, st-u3 0.31.204, st-u4 0.31.205, rp-u10
+  0.31.206, rp-u12 0.31.207, rp-u7 0.31.208, rp-u4 0.31.209, rp-u5 0.31.210, rp-u6 0.31.211, rp-s1 last.
 
 ## Risks / dependencies
 
@@ -430,8 +474,14 @@ sensitive hook path).
 - st-u4 and st-u2 source their libraries with stderr hidden only; a library that prints on stdout when
   sourced puts a stray line in their output. Not fixed: the orchestrator treats any output other than one
   `lane:` line as `full`, and the precheck's stray line is visible to the reviewer, never read as a verdict.
-- rp-u7's range criteria match an older docs commit (Context, rp-u9 review findings); to be amended before
-  rp-u7 is dispatched (next spawn).
+  Per the operator (Open Question 7), the precheck's guard may ride on a later unit that already edits
+  `bin/review-precheck.sh`, if cheap; it is not rp-u12's.
+- rp-u7's range criteria matched an older docs commit; amended 2026-10-21 with every queued range grep
+  (Clarifications).
+- st-u2-fix1 is written by another persona while these contracts are frozen. Until its committed text is
+  in the chained anchor check, a collision in `agents/reviewer.md`, `templates/persona-protocol.md`,
+  `bin/review-precheck.sh`, `tests/review-precheck.test.sh` or `tests/validate.sh` (st-u3 anchors on the
+  `review-precheck` echo line) is possible; Dispatch section, TODO.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied (every finding re-verified against cfb7ddac; H's premise rejected on evidence)
@@ -572,16 +622,17 @@ Source: rp-u9's and rp-u8's PASS notes, verified in Context, "rp-u9 review findi
   ` -- `, `—` and `–`; the header documents that `,` and `;` are not separators; `us_section` drops a
   trailing CR. Case (j) in `tests/scope-libs.test.sh` (bullet fixtures). Affected: the library, its test,
   bump files, generated copy. Contract: `docs/plans/antislop-review-patches/contracts/rp-u11.md`.
-- rp-u12 (F6, contract next spawn): `hooks/scripts/reviewer-tier.sh` sends both streams of the guarded
-  source group to `/dev/null` (`>/dev/null 2>&1`); `tests/reviewer-tier.test.sh` gains, for the source and
-  the installed copy, a library that prints `sonnet` when sourced (hooks/ diff must print exactly `opus`, one
-  line) and an empty and a cut-short `state-access.sh` (must print `opus`, exit 0; narrowing `declare -F` to
-  one function must fail it). Affected: the script, its test, bump files, generated copy. Criteria: test
-  exit 0 with each mutation named, `cmp` of the installed copy, changed-file list, version moved,
-  validate.sh exit 0.
+- rp-u12 (F6): `hooks/scripts/reviewer-tier.sh` sends both streams of the guarded source group to
+  `/dev/null` (`>/dev/null 2>&1`); `tests/reviewer-tier.test.sh` gains, for the source and the installed
+  copy, a library that prints `sonnet` when sourced (a hooks/ diff must print exactly `opus`, a small diff
+  exactly `sonnet`) and an empty and a cut-short `state-access.sh` (must print `opus`, exit 0; narrowing
+  `declare -F` to one function fails both), plus a `cmp` of the installed `state-access.sh`;
+  `tests/scope-libs.test.sh` case (b) pins the new line. Affected: the script, both tests, bump files,
+  generated copy. Contract: `docs/plans/antislop-review-patches/contracts/rp-u12.md`.
 - Amended in place: st-u3 (allowance before exclusions, `norm_abs` lexical normalisation, C-quoted
   committed names block; cases (o), (p), (q)); st-u4 (`us_safe_path` entry check, three (f) rows).
-- Pending (next spawn): rp-u7 criteria 6 and 7 grep `^[a-z]*(rp-u7): ` instead of `(rp-u7)`.
+- Amended in place (2026-10-21, Open Question 8): rp-u7 criteria 3, 6 and 7 grep `^[a-z]*(rp-u7): `; the
+  range greps of rp-u11, st-u3, st-u4, rp-u10, rp-u4, rp-u5 and rp-u6 are anchored the same way.
 Acceptance criteria: rp-u11, rp-u12 and the amended st-u3 and st-u4, each 7/7 on
 `node .claude/bin/contract-score.js --rubric=v2`, each ending in a validate.sh exit-code criterion.
 
@@ -641,10 +692,40 @@ their clone commits. The rp-u6 prototype `contract-anchors.js` (assembled from r
 `ok`, `bad=0`, for each of the eight contracts against the real tree at 952a8796 with its predecessors as
 `--chain`. rp-u12's check runs when its contract is written.
 
+Step 10, second spawn (2026-10-21, after st-u2's FAIL; supersedes the order above):
+- rp-u12: `docs/plans/antislop-review-patches/contracts/rp-u12.md` (7/7, proven on the chained clone)
+- rp-u7 criteria 3, 6, 7 and the range greps of rp-u11, st-u3, st-u4, rp-u10, rp-u4, rp-u5, rp-u6 anchored
+  (all still 7/7)
+- st-u2-fix1: `docs/plans/antislop-structural/contracts/st-u2-fix1.md` (task-master's; not this spec's)
+Fast path: 12 lead units (rp-u1 to rp-u12) plus rp-s1; landed rp-u1 to rp-u3, rp-u8, rp-u9. Remaining
+order and expected versions (no fix rounds; each unit bumps relative to the version it starts at): st-u2-fix1
+0.31.202, rp-u11 0.31.203, st-u3 0.31.204, st-u4 0.31.205, rp-u10 0.31.206, rp-u12 0.31.207, rp-u7 0.31.208,
+rp-u4 0.31.209, rp-u5 0.31.210, rp-u6 0.31.211, then rp-s1 (no bump; closes #634). Contracts stating an older
+expected version bump relatively, so the shift is harmless. st-u2-fix1 goes first because st-u2 is FAILed
+and one unit is in review at a time; nothing queued depends on the precheck's text.
+Anchor check, both ways, without st-u2-fix1: spec-master applied rp-u11, the amended st-u3 and st-u4, rp-u10,
+rp-u12, rp-u7, rp-u4, rp-u5 and rp-u6 in this order to a fresh clone of 00b2a860 with the scratch applier
+(every `before:` payload once, every command exit as stated) and ran each contract's criteria 1 to n-1
+right after its commit (validate.sh not run): all held (rp-u4 criterion 2 prints `3` then `1`, as stated),
+rp-u7's criteria 6 and 7 now included; the final version read 0.31.210. rp-u12's red step printed `4` then
+`1`; its three mutations flipped criteria 1, 2 and 3. The rp-u6 prototype `contract-anchors.js` reported
+`ok`, `bad=0`, for rp-u12 against the real tree at 00b2a860 with rp-u11, st-u3, st-u4 and rp-u10 as
+`--chain`.
+TODO (before st-u2-fix1 is dispatched): st-u2-fix1 was not committed when this spawn finished. Once
+task-master commits it, re-run the chain on a fresh clone with st-u2-fix1 first, then rp-u11, st-u3, st-u4,
+rp-u10, rp-u12, rp-u7, rp-u4, rp-u5, rp-u6 (expected final version 0.31.211), and run `contract-anchors.js`
+for each with its predecessors, st-u2-fix1 included, as `--chain`. Check in particular: st-u3's
+`tests/validate.sh` anchor (the `review-precheck` echo line, if st-u2-fix1 renames it); rp-u7's
+`templates/persona-protocol.md` anchor `re-derives it with a script: it runs` (line 41, if st-u2-fix1's
+reviewer-bullet edit reaches it); rp-u7's Do NOT touch of `tests/review-precheck.test.sh` (no conflict:
+st-u2-fix1 lands earlier); and st-u2-fix1's own range greps (its fix commit and task-master's docs commit
+both carry `(st-u2)`). No queued rp or st contract edits `agents/reviewer.md`, `bin/review-precheck.sh` or
+`tests/review-precheck.test.sh`.
+
 ## Open Questions
 
-Open: 7 and 8 (2026-10-21, each with a recommended default). 1 to 6 were ruled on 2026-10-20
-(Clarifications); kept below for the record.
+Open: none. 1 to 6 were ruled on 2026-10-20 and 7 and 8 on 2026-10-21 (Clarifications); 1 to 6 are kept
+below for the record.
 
 6. Add "a changed hook or prompt file with no caller lines" as an explorer trigger for the reviewer?
    Ruled no, per operator: the triggers stay `provenance=none`, script missing, and an open question that
@@ -666,15 +747,6 @@ Open: 7 and 8 (2026-10-21, each with a recommended default). 1 to 6 were ruled o
    checking `human-decision-gate.sh` lets the edit and its pins through.
 4. `--knowledge-writes` forms (Step 4). Recommended: space form exits 2 with a usage line; fresh install
    honours the flag; exit code stays the render's. Alternative: accept the space form as a synonym.
-
-7. (2026-10-21) Harden the landed `bin/review-precheck.sh` library source line the same way as rp-u12
-   (`>/dev/null 2>&1`)? Recommended: no; a stray line is visible noise in the precheck output, never read
-   as a criterion result or verdict, and the change would reopen a landed unit. Alternative: add it to
-   rp-u12's scope (one line, one test case).
-
-8. (2026-10-21) rp-u7's range criteria 6 and 7 match docs commit c02b286a. Recommended: amend both to
-   `git log --format=%H --grep="^[a-z]*(rp-u7): "` before rp-u7 is dispatched (next spawn, with rp-u12).
-   Alternative: reword nothing and accept a wrong range (criterion 6 then fails on a correct unit).
 
 ## Self-check
 - CHK1: Is every finding A to I either mapped to a step with a contract or recorded with evidence as wrong,
@@ -724,6 +796,7 @@ Open: 7 and 8 (2026-10-21, each with a recommended default). 1 to 6 were ruled o
   PASS
 - CHK26: Does any amended or new range criterion grep a unit id that an existing commit message already
   contains? — FAIL (conflicting: rp-u7's `(rp-u7)` matches c02b286a) — converted to Open Question 8
+  (ruled 2026-10-21; resolved by CHK31)
 - CHK27: Is the dispatch position and expected version of rp-u11 and rp-u12 stated? — PASS (Dispatch
   section, Step 10)
 - CHK28: Do rp-u11's Do-NOT-touch bullets parse as whole-subject exclusions under the new grammar, and
@@ -731,6 +804,24 @@ Open: 7 and 8 (2026-10-21, each with a recommended default). 1 to 6 were ruled o
 - CHK29 (replay): Do the criteria whose `run:` names `hooks/scripts/reviewer-tier.sh` or `bin/cli.js`
   still fail under their own `mutation:` line? — PASS for st-u4 c4 and c6 (unchanged); rp-u12's criteria
   are not yet written
+- CHK30 (2026-10-21): Does rp-u12 have a criterion that fails under each F6 mutation (stdout leak, narrowed
+  `declare -F`)? — PASS (c1 and c3 under the leak, c2 under the narrowed check; all three run on the clone)
+- CHK31: Does any queued range criterion still use an unanchored `(<unit>)` grep, or one that misses the
+  unit's own commit-message form? — PASS (none left in the eight queued contracts; each contract's commit
+  message is `<type>(<unit>): `; checked with `grep -c -- '--grep="('`)
+- CHK32: Do Step 10, the rp-u12 contract and Clarifications agree on rp-u12's files, including
+  `tests/scope-libs.test.sh`? — FAIL (conflicting: Step 10 listed the script and its test only) — revised
+  in place
+- CHK33: Do the Dispatch order, Clarifications and Context agree that st-u2-fix1 lands first and on every
+  expected version? — PASS (0.31.202 to 0.31.211)
+- CHK34: Do rp-u12's Do-NOT-touch bullets parse as whole-subject exclusions, and does none name a file its
+  own Affected list names? — PASS (landed `us_exclusions`: nine paths; the `by hand` bullet yields none)
+- CHK35 (replay): Do the criteria whose `run:` names `hooks/scripts/reviewer-tier.sh` or
+  `tests/reviewer-tier.test.sh` still fail under their own `mutation:` line? — PASS (rp-u12 c1, c2 and c4,
+  mutations run on the clone)
+- CHK36: Is the chained anchor check run against st-u2-fix1's committed text? — FAIL (missing: not
+  committed when this spawn finished) — revised in place (recorded as a TODO with its exact steps in the
+  Dispatch section; it needs no operator input)
 
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
