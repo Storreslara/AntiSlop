@@ -206,9 +206,11 @@ done < "$W/shas"
 
 us_section "$W/prompt" "Affected files" > "$W/sec"
 us_entries "$W/prompt" > "$W/listed"
+us_entries "$W/prompt" "Do NOT touch" > "$W/excl"
 if [ ! -s "$W/listed" ]; then
   c="$(grep -oE 'docs/plans/[A-Za-z0-9._/-]*contracts/[A-Za-z0-9._#-]+\.md' "$W/prompt" | head -n1)"
   [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" > "$W/listed"
+  [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" "Do NOT touch" > "$W/excl"
 fi
 grep -oE 'file: `[^` ]+`' "$W/prompt" | sed 's/^file: `//; s/`$//' >> "$W/listed" || true
 us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/crit" || true
@@ -219,6 +221,7 @@ kw="$(jq -r '.knowledgeWrites // "scoped"' "$config" 2>/dev/null)"; [ "$kw" = ap
 knowledge() { case "$1" in CONTEXT.md|README.md|docs/harness-glossary.md|docs/adr/*) return 0 ;; esac; return 1; }
 in_scope() { # <path> -> exit 0 when this persona may leave it changed
   local p="$1"
+  us_excluded "$p" "$W/excl" && return 1
   case "$p" in .claude/*|docs/plans/*) return 0 ;; esac
   us_listed "$p" "$W/listed" && return 0
   us_named_in "$p" "$W/prompt" && [ "$persona" != lead-programmer ] && return 0

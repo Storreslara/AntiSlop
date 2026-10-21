@@ -241,8 +241,9 @@ if [ -n "$only" ]; then
 fi
 
 # Unit scope: the contract's `## Affected files`, plus --affected, else the lane record.
-: > "$W/listed"; : > "$W/fix"; : > "$W/crit"; : > "$W/failrec"
+: > "$W/listed"; : > "$W/fix"; : > "$W/crit"; : > "$W/failrec"; : > "$W/excl"
 [ -z "$cfile" ] || us_entries "$cfile" >> "$W/listed"
+[ -z "$cfile" ] || us_entries "$cfile" "Do NOT touch" > "$W/excl"
 for a in "${affected[@]+"${affected[@]}"}"; do printf '%s\n' "$a" >> "$W/listed"; done
 dot="${CLAUDE_PROJECT_DIR:-$top}/.claude"
 if [ ! -s "$W/listed" ] && [ -f "$dot/bookkeeping/$unit.scope" ]; then cp "$dot/bookkeeping/$unit.scope" "$W/listed"; fi
@@ -259,9 +260,10 @@ while IFS= read -r p; do
   say "changed: $p"
   case "$p" in '"'*) failon "scope: out $p unquotable"; continue ;; esac
   [ -s "$W/listed" ] || continue
-  c="$(us_classify "$p" "$base" "$W/listed" "$W/fix" "$W/crit" "$W/failrec")"
+  c="$(us_classify "$p" "$base" "$W/listed" "$W/fix" "$W/crit" "$W/failrec" "$W/excl")"
   case "$c" in
     out) failon "scope: out $p" ;;
+    excluded) failon "scope: excluded $p" ;;
     judge) say "scope: judge $p version-stamp-name"; judge=$((judge + 1)) ;;
     *) say "scope: ok $p $c" ;;
   esac

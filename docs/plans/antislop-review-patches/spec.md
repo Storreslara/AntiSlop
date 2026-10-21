@@ -197,6 +197,18 @@ sensitive hook path).
 - 2026-10-20 Technical constraints & tradeoffs: Q Where do rp-u1 to rp-u3 go in the dispatch order? → A
   (self-resolved): anywhere after the unit currently in flight (no shared anchors); rp-u1 before st-u1.
   See "Dispatch section".
+- 2026-10-20 External dependencies & integrations: Q (Open Question 1) amend st-u1 to st-u3? → A: yes,
+  per operator via coordinator; done in this spawn (st-u1 `excluded` class and executed-path carve-out,
+  st-u2/st-u3 wiring, structural spec amendment paragraph), all three still 7/7.
+- 2026-10-20 Functional scope & success criteria: Q (Open Question 2) scribe for passed units before an
+  early stop? → A: yes, per operator (rp-u5).
+- 2026-10-20 Functional scope & success criteria: Q (Open Question 3) build `bin/contract-anchors.js`? → A:
+  yes, not installed to `.claude/bin` (rp-u6).
+- 2026-10-20 User interaction flow: Q (Open Question 4) `--knowledge-writes` forms? → A: as recommended:
+  the space form exits 2 with a usage line, fresh install honours the flag, the exit code stays the
+  render's (rp-u4).
+- 2026-10-20 Edge cases / failure handling: Q (Open Question 5) inline the terminal DECISION template in the
+  orchestrator stub? → A: no, accepted as is.
 - 2026-10-20 Terminology consistency: Q "version-stamp files" in the scope rules vs `CONTEXT.md`
   **Version-stamped file**? → A (self-resolved): rename to "bump files" (existing usage) in rp-u1.
 
@@ -300,6 +312,8 @@ qw-u5, qw-u6, st-u1 (amended per Open Question 1), st-u2, st-u3, st-u4. Then rp-
 order, then rp-s1 last. Every unit bumps the version relative to the version it starts at.
 
 ## Open Questions
+
+All five were ruled on 2026-10-20 (Clarifications); kept below for the record.
 
 1. st-u1 to st-u3 encode the old criteria exception (`us_classify` class `criteria` for any path token in a
    `run:` line). Recommended default: before st-u1 is dispatched, a spec-master pass on

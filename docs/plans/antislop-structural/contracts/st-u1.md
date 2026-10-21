@@ -6,9 +6,12 @@ Two shared hook libraries for the structural stage's mechanised pre-review (spec
   `touches_sensitive_path`, moved byte for byte. reviewer-tier.sh sources it, so the class has one
   definition that `review-precheck.sh` (st-u2) and `unit-size.sh` (st-u4) reuse without drift.
 - `hooks/scripts/lib/unit-scope.sh`: unit-scope classification (`us_section`, `us_entries`, `us_listed`,
-  `us_named_in`, `us_plugin_version`, `us_version_name`, `us_classify`). It renders aof-u3b's standing
-  exceptions as seven classes: `listed`, `criteria`, `fail-record`, `fix-contract`, `plugin-version`,
-  `judge` and `out`. st-u2 and st-u3 use it, so the precheck and the scope gate cannot disagree.
+  `us_named_in`, `us_executed_in`, `us_excluded`, `us_plugin_version`, `us_version_name`, `us_classify`).
+  It renders the standing exceptions as eight classes: `excluded` (checked first: an exact entry of the
+  contract's `## Do NOT touch`), `listed`, `criteria` (a path a criterion reads, never one it runs),
+  `fail-record`, `fix-contract`, `plugin-version`, `judge` and `out`. st-u2 and st-u3 use it, so the
+  precheck and the scope gate cannot disagree. Amended 2026-10-20 to match rp-u1's rule
+  (`docs/plans/antislop-review-patches/spec.md`, Open Question 1, ruled yes).
 
 reviewer-tier.sh's behaviour does not change: the same 11 patterns, the same 63 checks. Its mutation control
 mc13 now mutates the library copy. Both libraries are Claude-only (the adapters have no reviewer-tier.sh).
@@ -109,6 +112,12 @@ us_named_in bin/x.sh "$T/r.txt" && ok "(e) named before a space" || bad "(e) nam
 us_named_in named.js "$T/r.txt" && bad "(e) suffix of a path matched" || ok "(e) suffix not matched"
 us_named_in src/named.j "$T/r.txt" && bad "(e) prefix of a path matched" || ok "(e) prefix not matched"
 
+# (e2) us_executed_in: a path a command runs (interpreter script or command position), not one it reads.
+printf 'bash -c "bash tests/v.sh >/dev/null; echo $?"; node tests/n.test.js && grep -c x src/named.js\n' > "$T/x2.txt"
+us_executed_in tests/v.sh "$T/x2.txt" && ok "(e2) bash script executed" || bad "(e2) bash script"
+us_executed_in tests/n.test.js "$T/x2.txt" && ok "(e2) node script executed" || bad "(e2) node script"
+us_executed_in src/named.js "$T/x2.txt" && bad "(e2) read operand taken as executed" || ok "(e2) read operand not executed"
+
 # (f) us_classify order and the two version classes.
 cd "$T" || exit 1
 g() { git -c user.email=t@t -c user.name=t "$@"; }
@@ -123,6 +132,17 @@ printf 'src/fix.js\n' > "$T/x.txt"
 [ "$(us_classify package.json "$R1" /dev/null /dev/null /dev/null /dev/null)" = plugin-version ] && ok "(f) plugin-version in the plugin layout" || bad "(f) plugin-version"
 [ "$(us_classify package.json "$R0" /dev/null /dev/null /dev/null /dev/null)" = judge ] && ok "(f) judge outside the plugin layout" || bad "(f) judge"
 [ "$(us_classify CONTEXT.md "$R1" "$T/l.txt" /dev/null "$T/r.txt" "$T/f.txt")" = out ] && ok "(f) out" || bad "(f) out"
+printf 'run: `bash tests/v.sh` and `grep -c x src/named.js`\n' > "$T/r2.txt"
+[ "$(us_classify tests/v.sh "$R1" /dev/null /dev/null "$T/r2.txt" /dev/null)" = out ] && ok "(f) a criterion-executed path is not criteria" || bad "(f) executed path classed criteria"
+[ "$(us_classify src/named.js "$R1" /dev/null /dev/null "$T/r2.txt" /dev/null)" = criteria ] && ok "(f) a criterion-read path is criteria" || bad "(f) read path"
+printf 'src/store.js\npackage\n' > "$T/n.txt"
+[ "$(us_classify src/store.js "$R1" "$T/l.txt" /dev/null "$T/r.txt" "$T/f.txt" "$T/n.txt")" = excluded ] && ok "(f) Do NOT touch wins over listed" || bad "(f) excluded"
+[ "$(us_classify package.json "$R1" /dev/null /dev/null /dev/null /dev/null "$T/n.txt")" = plugin-version ] && ok "(f) exclusion is exact only" || bad "(f) exclusion not exact"
+
+# (g) us_entries reads a named section.
+printf '## Affected files\n- `a/b.js`\n\n## Do NOT touch\n- `c/d.js` (reason `e.f`)\n' > "$T/g.md"
+[ "$(us_entries "$T/g.md" "Do NOT touch" | tr '\n' ' ')" = 'c/d.js e.f ' ] && ok "(g) Do NOT touch entries" || bad "(g) section entries"
+[ "$(us_entries "$T/g.md" | tr '\n' ' ')" = 'a/b.js ' ] && ok "(g) default section" || bad "(g) default section"
 
 exit "$fail"
 ~~~
@@ -189,10 +209,11 @@ us_section() {
   ' "$1"
 }
 
-# us_entries <file>: every backtick-quoted token with no space that contains a
-# `/` or a `.` in the file's `## Affected files` section, one per line.
+# us_entries <file> [<heading>]: every backtick-quoted token with no space that
+# contains a `/` or a `.` in the file's `## <heading>` section (default
+# `Affected files`), one per line.
 us_entries() {
-  us_section "$1" "Affected files" | grep -oE '`[^` ]+`' | tr -d '`' | grep -E '[/.]' || true
+  us_section "$1" "${2:-Affected files}" | grep -oE '`[^` ]+`' | tr -d '`' | grep -E '[/.]' || true
 }
 
 # us_listed <path> <entries-file>: exit 0 when an entry equals the path, is a
@@ -219,6 +240,26 @@ us_named_in() {
   grep -qE "(^|[^A-Za-z0-9._/-])${q}(\$|[^A-Za-z0-9._/-])" "$2"
 }
 
+# us_executed_in <path> <text-file>: exit 0 when the text runs the path: as the
+# script handed to bash, sh, node or python3 (flags between are allowed), or in
+# command position (line start, after a backtick, ;, &, | or (). A path a
+# command only reads is not executed (the rp-u1 unit-scope rule).
+us_executed_in() {
+  [ -s "$2" ] || return 1
+  local q e='($|[^A-Za-z0-9._/-])'
+  q="$(printf '%s' "$1" | sed 's/[][\.*^$+?(){}|/]/\\&/g')"
+  grep -qE "(^|[^A-Za-z0-9._/-])(bash|sh|node|python3)[[:space:]]+(-[A-Za-z]+[[:space:]]+)*${q}${e}" "$2" \
+    || grep -qE "(^|[\`;&|(])[[:space:]]*${q}${e}" "$2"
+}
+
+# us_excluded <path> <entries-file>: exit 0 when an entry of the contract's
+# `## Do NOT touch` equals the path exactly. Exact only: a glob or directory
+# there states a reason, and must never override a listed file.
+us_excluded() {
+  [ -s "$2" ] || return 1
+  grep -qxF -- "$1" "$2"
+}
+
 # us_plugin_version <path> <rev>: exit 0 when <rev> is this plugin's own repo
 # layout (it tracks .claude-plugin/plugin.json) and the path is one of the three
 # version-stamp files that constitution P3 and validate.sh require every
@@ -236,13 +277,16 @@ us_version_name() {
   return 1
 }
 
-# us_classify <path> <rev> <listed> <fix-listed> <criteria-text> <fail-text>:
-# prints exactly one class word: listed | criteria | fail-record | fix-contract |
-# plugin-version | judge | out. Every file argument may be /dev/null.
+# us_classify <path> <rev> <listed> <fix-listed> <criteria-text> <fail-text> [<excluded>]:
+# prints exactly one class word: excluded | listed | criteria | fail-record |
+# fix-contract | plugin-version | judge | out. Every file argument may be
+# /dev/null; <excluded> (the `## Do NOT touch` entries) defaults to it. A
+# criteria path counts only when the criteria read it, never when they run it.
 us_classify() {
   local p="$1"
-  if us_listed "$p" "$3"; then echo listed
-  elif us_named_in "$p" "$5"; then echo criteria
+  if us_excluded "$p" "${7:-/dev/null}"; then echo excluded
+  elif us_listed "$p" "$3"; then echo listed
+  elif us_named_in "$p" "$5" && ! us_executed_in "$p" "$5"; then echo criteria
   elif us_named_in "$p" "$6"; then echo fail-record
   elif us_listed "$p" "$4"; then echo fix-contract
   elif us_plugin_version "$p" "$2"; then echo plugin-version
@@ -376,7 +420,7 @@ fi
    insert-after:
 ~~~
 
-**Shared scope libraries (st-u1, VERSION).** reviewer-tier.sh's sensitive-path class moves unchanged into `hooks/scripts/lib/sensitive-paths.sh`, which reviewer-tier.sh now sources, and the new `hooks/scripts/lib/unit-scope.sh` classifies a changed path against a unit's scope (listed, criteria, fail-record, fix-contract, plugin-version, judge, out) for the coming precheck and scope gate. No behaviour change; reviewer-tier.test.sh's mc13 control now mutates the library copy. New test tests/scope-libs.test.sh.
+**Shared scope libraries (st-u1, VERSION).** reviewer-tier.sh's sensitive-path class moves unchanged into `hooks/scripts/lib/sensitive-paths.sh`, which reviewer-tier.sh now sources, and the new `hooks/scripts/lib/unit-scope.sh` classifies a changed path against a unit's scope (excluded, listed, criteria, fail-record, fix-contract, plugin-version, judge, out; a criteria path is one a criterion reads, never one it runs, and an exact `## Do NOT touch` entry is checked first) for the coming precheck and scope gate. No behaviour change; reviewer-tier.test.sh's mc13 control now mutates the library copy. New test tests/scope-libs.test.sh.
 ~~~
    Replace `VERSION` with the version that edit 11 wrote.
 13. command: `node bin/cli.js --update`
@@ -426,11 +470,11 @@ fi
    mutation: put `exit 1` as line 2 of tests/scope-libs.test.sh; validate.sh exits 1 and stdout is `1`.
 
 ## Pre-resolved context
-tdd: yes the test (edit 1) fails first (edit 2). spec-master applied edits 1 to 9 to a clone at eb59e217: scope-libs 46 checks pass, reviewer-tier 63 checks pass, the array diff is empty, `--update` installs both libraries (cmp clean), and cli-hook-propagation, protected-paths-coverage, trust-model-bijection, cli-backfill, state-access-constraints and bin-helpers-scaffold stay green. validate.sh was not run by spec-master.
+tdd: yes the test (edit 1) fails first (edit 2). spec-master applied edits 1 to 9 to a clone at eb59e217: scope-libs 46 checks pass (amended 2026-10-20: spec-master re-ran the amended test against the amended libraries alone, 54 of 55 checks pass and only (b) fails, which needs edit 5; removing `&& ! us_executed_in` fails the new (f) executed-path case), reviewer-tier 63 checks pass, the array diff is empty, `--update` installs both libraries (cmp clean), and cli-hook-propagation, protected-paths-coverage, trust-model-bijection, cli-backfill, state-access-constraints and bin-helpers-scaffold stay green. validate.sh was not run by spec-master.
 blast-radius: hooks/scripts/reviewer-tier.sh:17 (source lines), hooks/scripts/reviewer-tier.sh:22-51 (class and function), tests/reviewer-tier.test.sh:337-340 (mc13), bin/cli.js:685 (CLAUDE_ONLY_HOOK_LIB_FILES; checked at load by assertHookLibDeclarationComplete), bin/cli.js:644 (buildHookScriptSpecs installs lib/ recursively). Line numbers are at eb59e217; work from the anchors.
 moved-verbatim: edit 3's library body after its 4-line header is the exact text edit 5 removes, minus the `opus()` line, which stays in reviewer-tier.sh. Criterion 3 checks the array against the parent commit.
 mutation-controls: mc1 (`if touches_sensitive_path` inverted) still mutates the call site, which stays in reviewer-tier.sh. Only mc13 named a pattern line, so only mc13 moves. The new mc13 copies reviewer-tier.sh beside the mutated library copy in `$tmproot`, because a mutant sources `$(dirname)/lib/`.
-classes: `us_classify <path> <rev> <listed> <fix-listed> <criteria-text> <fail-text>` checks in this order: listed (exact, directory prefix or glob), criteria (a whole path token in a criteria `run:` line), fail-record, fix-contract, plugin-version (only when `<rev>` tracks `.claude-plugin/plugin.json`: plugin.json, package.json, CHANGELOG.md), judge (a common version-file name), out.
+classes: `us_classify <path> <rev> <listed> <fix-listed> <criteria-text> <fail-text> [<excluded>]` checks in this order: excluded (an exact `## Do NOT touch` entry; amended 2026-10-20), listed (exact, directory prefix or glob), criteria (a whole path token in a criteria `run:` line that `us_executed_in` does not report as run; amended 2026-10-20), fail-record, fix-contract, plugin-version (only when `<rev>` tracks `.claude-plugin/plugin.json`: plugin.json, package.json, CHANGELOG.md), judge (a common version-file name), out.
 version: .claude-plugin/plugin.json and package.json read 0.31.194 after qw-u6 if no fix round bumped; edit 11 adds one (expected 0.31.195).
 mirrors: `.claude/` copies and `fileHashes` change only through `node bin/cli.js --update` (constitution P2).
 prior-fail: the reviewer-tier `.fail` records concern rename, quoting and unit-id defects at the call site; none is in the moved span. mw-step1 (vacuous registration): the validate.sh block is its own `if` section (criterion 8's mutation).

@@ -518,3 +518,13 @@ limit, but every contract is written by spec-master and scores 7/7 on `contract-
 task-master would only re-derive them. Recommendation: dispatch from the contract files directly, as for
 the quick-win and overhead-fix plans. If the operator wants the protocol followed to the letter,
 task-master can adopt the contract files unchanged.
+
+## Amendment 2026-10-20 (antislop-review-patches, Open Question 1, ruled yes)
+rp-u1 (`docs/plans/antislop-review-patches/contracts/rp-u1.md`) narrows the criteria standing exception to
+paths a criterion reads, never one it runs, and makes a contract's `## Do NOT touch` win over every standing
+exception. st-u1's `us_classify` is amended to match: a new first class `excluded` (an exact `## Do NOT
+touch` entry, optional seventh argument) and `criteria` now excludes a path `us_executed_in` reports as run
+(the script handed to `bash`, `sh`, `node` or `python3`, or a path in command position). `us_entries` takes
+an optional section heading. st-u2's precheck passes the contract's `## Do NOT touch` entries and fails on
+`scope: excluded <path>`; st-u3's gate refuses an excluded path first. The classes row above
+("Standing exceptions to `## Affected files`") is superseded by this paragraph. rp-u1 must land before st-u1.
