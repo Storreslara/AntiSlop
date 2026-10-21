@@ -23,7 +23,8 @@ for p in src/store.js tests/store.test.js bin/cli.jsx docs/hooks.md README.md; d
 done
 # (b) reviewer-tier.sh no longer defines the class itself and sources the lib.
 grep -q '^SENSITIVE_PATHS=(' "$ROOT/hooks/scripts/reviewer-tier.sh" && bad "(b) reviewer-tier.sh still defines SENSITIVE_PATHS" || ok "(b) class defined once"
-grep -qxF '. "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"' "$ROOT/hooks/scripts/reviewer-tier.sh" && ok "(b) reviewer-tier.sh sources the lib" || bad "(b) source line missing"
+grep -qxF '  && . "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"; } 2>/dev/null || { echo opus; exit 0; }' "$ROOT/hooks/scripts/reviewer-tier.sh" && ok "(b) reviewer-tier.sh sources the lib, opus when it cannot" || bad "(b) source line missing"
+grep -qxF 'declare -F touches_sensitive_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }' "$ROOT/hooks/scripts/reviewer-tier.sh" && ok "(b) reviewer-tier.sh checks the functions are defined" || bad "(b) declare -F guard missing"
 
 # (c) us_section / us_entries read only the named section, outside fences.
 cat > "$T/c.md" << 'MD'

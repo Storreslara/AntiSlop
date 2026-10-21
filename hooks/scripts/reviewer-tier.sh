@@ -14,8 +14,13 @@
 # prints `opus`. The result is a NECESSARY condition for sonnet review, never a
 # sufficient one - the orchestrator may downgrade sonnet->opus, never upgrade.
 set -euo pipefail
-. "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
-. "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"
+# A library that is missing, unreadable, empty or truncated leaves the FAIL-record
+# check or the sensitive-path class unmeasurable, so it fails closed like every
+# other unmeasurable input: opus, exit 0. Inside `if`, an undefined function is
+# only "false" under `set -e`, so a sourced-but-empty lib would print sonnet.
+{ . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh" \
+  && . "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"; } 2>/dev/null || { echo opus; exit 0; }
+declare -F touches_sensitive_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }
 
 MAX_CHANGED_LINES=40
 MAX_CHANGED_FILES=3

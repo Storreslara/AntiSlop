@@ -348,4 +348,36 @@ else
 fi
 cp "$tmproot/sp.orig" "$SP"
 
+# rp-u8: a library that is missing, unreadable, empty or truncated prints opus, exit 0, for both the
+# source script and its installed copy. Before rp-u8 an empty or truncated lib printed sonnet for a
+# hooks/ diff (an undefined function is only false inside `if`) and a missing one exited 1.
+for rt_dir in hooks/scripts .claude/hooks/scripts; do
+  LF="$tmproot/libfail"; rm -rf "$LF"; mkdir -p "$LF/lib"
+  cp "$rt_dir/reviewer-tier.sh" "$LF/rt.sh" && cp "$rt_dir"/lib/*.sh "$LF/lib/"
+  LIB="$LF/lib/sensitive-paths.sh"; cp "$LIB" "$tmproot/libfail.orig"
+  run_case "(rp8a) $rt_dir: intact lib, small diff" sonnet unit-1 "$r_small" "$LF/rt.sh"
+  rm -f "$LIB"
+  run_case "(rp8b) $rt_dir: lib missing, hooks/ diff" opus unit-1 "$r_hooks" "$LF/rt.sh"
+  run_case "(rp8b) $rt_dir: lib missing, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+  : > "$LIB"
+  run_case "(rp8c) $rt_dir: lib empty, hooks/ diff" opus unit-1 "$r_hooks" "$LF/rt.sh"
+  run_case "(rp8c) $rt_dir: lib empty, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+  sed '/^touches_sensitive_path() {$/,$d' "$tmproot/libfail.orig" > "$LIB"
+  run_case "(rp8d) $rt_dir: lib cut before the function, hooks/ diff" opus unit-1 "$r_hooks" "$LF/rt.sh"
+  head -n 12 "$tmproot/libfail.orig" > "$LIB"
+  run_case "(rp8d) $rt_dir: lib cut inside the array, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+  cp "$tmproot/libfail.orig" "$LIB" && chmod 000 "$LIB"
+  if [ -r "$LIB" ]; then
+    echo "OK   (rp8e) $rt_dir: skipped, chmod 000 does not hide a file from this user (root)"
+  else
+    run_case "(rp8e) $rt_dir: lib unreadable, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+  fi
+  chmod 644 "$LIB" && rm -f "$LF/lib/state-access.sh"
+  run_case "(rp8f) $rt_dir: state-access.sh missing, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+done
+cmp -s hooks/scripts/reviewer-tier.sh .claude/hooks/scripts/reviewer-tier.sh \
+  && cmp -s hooks/scripts/lib/sensitive-paths.sh .claude/hooks/scripts/lib/sensitive-paths.sh \
+  && echo "OK   (rp8g) installed reviewer-tier.sh and sensitive-paths.sh equal the source" \
+  || { echo "FAIL (rp8g) an installed copy differs from its source (run node bin/cli.js --update)"; fail=1; }
+
 exit "$fail"
