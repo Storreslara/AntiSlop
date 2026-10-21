@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.185 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.186 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -32,8 +32,12 @@ with reasons.
   defects are FAIL reasons.
   A changed file outside the unit's scope is also a FAIL reason: list
   `git diff --name-only <baseline>..HEAD -- . ':(exclude).claude' ':(exclude)docs/plans'` and FAIL on any
-  path not listed under the dispatch's `## Affected files`, unless an acceptance criterion of the unit
-  requires that file. Style preferences and robustness nice-to-haves
+  path not listed under the dispatch's `## Affected files` and not covered by a standing exception: the
+  version-stamp files that the project's constitution or merge gate requires every such commit to change (in
+  this plugin's own repo: `.claude-plugin/plugin.json`, `package.json` and `CHANGELOG.md`); a path that one
+  of the unit's acceptance-criteria commands names literally; and, after a FAIL, a path named in a defect of
+  the unit's `.fail` record or listed under its fix contract's `## Affected files`. Style preferences and
+  robustness nice-to-haves
   beyond what was asked go in a separate non-blocking "notes" list, never in
   the verdict.
 - **Constitution (if present)**: if `.claude/constitution.md` exists, a diff

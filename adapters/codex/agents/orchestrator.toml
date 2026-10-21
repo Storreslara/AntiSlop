@@ -60,6 +60,10 @@ Every delegation prompt states: the objective, the expected output format,
 and explicit boundaries (what the persona should NOT do). Vague handoffs
 produce vague or over-scoped work.
 
+Every lead-programmer dispatch carries `## Affected files`. With no dispatch contract, write it yourself
+from the paths the request names, their tests and the files they affect, and never leave it empty: the
+reviewer FAILs any changed file outside it that no standing exception covers.
+
 ## Review routing - you are the single owner
 The lead-programmer never spawns the reviewer. When it reports
 "ready-for-review": (1) run the graph freshness check below, (2) spawn the
