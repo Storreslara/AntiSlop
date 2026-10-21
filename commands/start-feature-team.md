@@ -87,3 +87,23 @@ to finish, then synthesize.
 **Cleanup**: on Claude Code v2.1.248+ (the version this plugin targets), team
 cleanup is automatic — do not call `TeamCreate`/`TeamDelete` (removed in
 v2.1.178).
+
+**A missing roster row is not proof a teammate is dead.** This caveat is about named teammates in this team:
+it describes when the roster's visual signal can't be trusted, not a new liveness state. Anthropic's docs
+(https://code.claude.com/docs/en/agent-teams, troubleshooting section
+"Teammates not appearing") confirm: "A teammate row that disappeared after
+sitting idle has been hidden, not stopped." Idle rows hide roughly 30
+seconds after the whole panel goes idle and reappear on the teammate's next
+turn; more than three idle teammates collapse into a single `N idle agents`
+summary row. An absent roster row is therefore ambiguous, never by itself
+evidence that the teammate terminated.
+
+Diagnostic procedure: before concluding a named teammate is dead or
+orphaned just because its row is absent from the roster, `SendMessage` it
+by name first — a hidden-but-alive teammate resumes and its row reappears
+on its next turn. Only escalate to filing a bug against
+`anthropics/claude-code` if that `SendMessage` also fails (e.g. "no such
+agent") *while* `~/.claude/teams/session-*/config.json` still lists that
+member as active — attach that `config.json` snapshot to the filed issue as
+evidence of the contradiction between the roster/`SendMessage` failure and
+the team's own recorded membership.

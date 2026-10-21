@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Orchestrator narrative trim (qw-u2, 0.31.190).** agents/orchestrator.md loses five incident narratives and rationale paragraphs (moved verbatim to docs/orchestrator-rationale.md) and the teams-only "missing roster row" subsection (moved to commands/start-feature-team.md). No rule removed: each survivor is pinned by the new tests/prompt-diet-pins.test.sh. The installed orchestrator prompt is about 3759 bytes smaller.
+
 
 **Bookkeeping wrapper takes the dispatched tier from the caller (qw-u1, 0.31.189).** `bin/unit-bookkeeping.sh`: `review` accepts a trailing `--implementer-tier <haiku|sonnet|opus>` and the reviewer dispatch header's `Implementer tier:` line comes from it alone (omitted when absent or invalid); `dispatch` no longer stores a tier file, so a stale tier cannot reach a header after a helper-missing or EXHAUSTED dispatch. A reviewer-tier helper that exits non-zero now forces `opus` even when it printed `sonnet`. A failed contract-guard prints `guard unavailable` instead of an empty line, and a ladder line whose first field is not `ladder-tier:` becomes `opus`. `agents/orchestrator.md` (Per-unit model routing, Reviewer gate model selection) tells the orchestrator to pass the model it actually dispatched with. Test tests/unit-bookkeeping.test.sh gains checks (j) to (n).
 

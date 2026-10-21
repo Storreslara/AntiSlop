@@ -1457,6 +1457,15 @@ else
 fi
 
 echo
+echo "== tests/prompt-diet-pins.test.sh: rules moved or shortened by the prompt diet survive (Bash, qw-u2) =="
+if bash tests/prompt-diet-pins.test.sh > /dev/null; then
+  echo "OK   tests/prompt-diet-pins.test.sh"
+else
+  echo "FAIL tests/prompt-diet-pins.test.sh"
+  fail=1
+fi
+
+echo
 echo "== tests/unit-scope-prose.test.sh: unit-scope sentences in personas, mirrors and ports (Bash, aof-u3) =="
 if bash tests/unit-scope-prose.test.sh > /dev/null; then
   echo "OK   tests/unit-scope-prose.test.sh"

@@ -197,11 +197,9 @@ review-join stamp and allows turn-end while that review is in flight (`stop-allo
 the review audit log), for up to 1800 s from dispatch. After that, or with no reviewer dispatched, Stop
 blocks as before and the `defer:`/`skip:` flag escapes apply.
 
-**Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix. `start-feature-team.md` enforces this discipline at team-creation time. Do not dispatch a reviewer under a custom name such as `rev-302` — the dispatch itself is refused. The actual, unobserved residual is different: `reviewer-route-gate.sh` only inspects the *requested* `tool_input.name` at dispatch time, never the harness's post-spawn `agent_type` — so a correctly-named `reviewer` dispatch can still end up running under a harness name-collision auto-suffix if a same-named agent is already active, a collision the gate cannot see. A session running under that suffixed identity loses marker-write and flag-clear privileges at the CONSERVATIVE grant sites (`reviewed-path-gate.sh`, `stop-gate.sh`); per `agents/reviewer.md`'s documented recovery, it reports the block, its completed verdict, and the marker body it would have written, so the failure surfaces rather than vanishing.
+**Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix.
 
-**`Agent` naming vs `SendMessage` addressing — two different mechanisms.** The unnamed-dispatch default above (omit `name:`) applies to `Agent` dispatch only, where a name is a parameter you can choose to pass or not. `SendMessage` has no such option: it addresses an existing agent *by name*, by construction — there is no "unnamed" `SendMessage`, so the default that fixes the `Agent` path cannot apply here even in principle. That is exactly why the roster check below is the control on the `SendMessage` path.
-
-**Reviewer re-tasking discipline: never re-task by message for a different unit.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp — a `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match. This discipline prevents the practical incident that produced gh-304, where a bare-name `SendMessage` reached an idle session from an unrelated plan, which then performed a genuine review and wrote a conflicting verdict.
+**Reviewer re-tasking discipline: never re-task by message for a different unit.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp — a `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match.
 
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
@@ -698,29 +696,6 @@ unless noted:
 When it's unclear whether a job finished or was killed, resume anyway and
 let the subagent decide from its own transcript.
 
-### A missing roster row is not proof a teammate is dead
-This extends the four-state list above with a caveat specific to named
-teammates under an active feature team (see "If a feature team is active"
-below) — it describes when the roster's visual signal can't be trusted, not
-a fifth liveness state. Anthropic's docs
-(https://code.claude.com/docs/en/agent-teams, troubleshooting section
-"Teammates not appearing") confirm: "A teammate row that disappeared after
-sitting idle has been hidden, not stopped." Idle rows hide roughly 30
-seconds after the whole panel goes idle and reappear on the teammate's next
-turn; more than three idle teammates collapse into a single `N idle agents`
-summary row. An absent roster row is therefore ambiguous, never by itself
-evidence that the teammate terminated.
-
-Diagnostic procedure: before concluding a named teammate is dead or
-orphaned just because its row is absent from the roster, `SendMessage` it
-by name first — a hidden-but-alive teammate resumes and its row reappears
-on its next turn. Only escalate to filing a bug against
-`anthropics/claude-code` if that `SendMessage` also fails (e.g. "no such
-agent") *while* `~/.claude/teams/session-*/config.json` still lists that
-member as active — attach that `config.json` snapshot to the filed issue as
-evidence of the contradiction between the roster/`SendMessage` failure and
-the team's own recorded membership.
-
 ### Nested dispatches (a persona spawning its own subagent)
 A dispatched persona can itself spawn a background `Agent` call (e.g. `spec-master`
 dispatching `task-master` directly during a 2-FAIL-cap debug-spec handoff, or any
@@ -769,7 +744,7 @@ direct addressing possible instead of a multi-hop relay.
 
 By default, dispatch the `Agent` tool with no `name:` parameter. An unnamed dispatch from the main session returns its full result to you automatically on completion. A **named** dispatch does not — completion surfaces only as a content-free idle notification, and the report exists only if the subagent itself called `SendMessage`. This is a key asymmetry: one dispatch style auto-returns, the other requires explicit collection.
 
-The auto-notification is **not** a property to rely on when a persona dispatches its own subagent. This project has observed: three unnamed subagents dispatched by a teammate all completed without notifying their dispatcher, each returning "had no active task" when later resumed. A persona that spawns its own subagent must therefore collect the result explicitly rather than waiting to be told, which is the same conclusion the shared protocol's "there is no self-wake" section already reaches for background `Bash`.
+The auto-notification is **not** a property to rely on when a persona dispatches its own subagent: a persona that spawns its own subagent must collect the result explicitly rather than waiting to be told, which is the same conclusion the shared protocol's "there is no self-wake" section already reaches for background `Bash`.
 
 **Therefore, name a dispatch only when genuine mid-flight addressability is needed** — a long-running teammate you must query or re-task mid-way through — and leave it unnamed otherwise. When you do name one, say so explicitly in the dispatch prompt and require the `SendMessage` report explicitly, rather than relying on the persona remembering on its own.
 
@@ -777,7 +752,7 @@ A named dispatch that ends with no report is recovered the same way as any named
 
 **Standing exception:** the 2-FAIL-cap / debug-spec nested-dispatch scenario described in "Nested dispatches (a persona spawning its own subagent)" above, which requires explicit naming for mid-flight addressability. That is the only case where naming is mandatory rather than discretionary.
 
-**Why unnamed is the default (confirmed mechanism):** Anthropic's docs (https://code.claude.com/docs/en/agent-teams, "Claude spawns teammates instead of subagents") confirm that while `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled, any named subagent dispatch launches as a teammate, and a teammate's completion surfaces only as a content-free idle notification — not the auto-returned result an unnamed dispatch gets — unless it explicitly `SendMessage`s back. Quoting the docs directly: "An orchestration flow that waits on subagent results can stall." This is the confirmed root cause behind the auto-notification asymmetry described above, not just an observed quirk. For the same reason, this project's shipped `.claude/settings.json` now defaults `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"0"` — agent-teams mode is a deliberate per-task opt-in via `/antislop:start-feature-team`, not an always-on background setting a stray named dispatch could silently trip.
+**Why unnamed is the default:** while `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` is enabled, any named subagent dispatch launches as a teammate, whose completion surfaces only as a content-free idle notification unless it explicitly `SendMessage`s back. This project's shipped `.claude/settings.json` therefore defaults `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"0"` — agent-teams mode is a deliberate per-task opt-in via `/antislop:start-feature-team`.
 
 ## If a feature team is active
 If the `start-feature-team` command is running, its rules govern instead of
