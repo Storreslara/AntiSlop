@@ -12,6 +12,7 @@
 - [PASS-note warnings don't propagate](feedback_pass_note_warnings_do_not_propagate.md) — harvest sibling `.pass` notes AND `tmp/*handoff*.md` before calling anything a first occurrence; gh402 and gh425 both had the fix written down already.
 - [Reproduce advisory figures at defect scope](feedback_reproduce_advisory_figures_at_defect_scope.md) — a reviewer's "47 of 300" was whole-file, was 19 at the real scope, and the unmeasured sibling defect was 79.
 - [Grep for the deliverable before speccing it](feedback_grep_for_the_deliverable_before_speccing_it.md) — a shipped detector can meet 6/7 criteria while the goal fails because NOTHING invokes it; also: enumerate the shipped set, don't trust the glob.
+- [Hook payloads meet repo-wide pins](project_hook_payload_repo_wide_pins.md) — a new hooks/scripts/ file broke state-access M5; run the whole suite on the clone, source state-access.sh with `|| true`.
 - [Gate runtime vs hook timeout](project_gate_runtime_vs_hook_timeout.md) — a testAndLintCommand over 600 s is cancelled silently; validate.sh hit 1729 s (nested guard re-run).
 - [Techniques](TECHNIQUES.md) — how-to notes (bash, gates, tests); grep it by keyword before solving a mechanics problem
 - [Archive](ARCHIVE.md) — closed-plan and project notes; grep it before concluding none exists
