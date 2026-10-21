@@ -1,7 +1,7 @@
 Unit: st-u3
 
 ## Objective
-A SubagentStop gate for the writers the reviewer never sees, written for OQ3 = (a) (spec Step 3, variation f).
+A SubagentStop gate for the writers the reviewer never sees, per operator ruling OQ3 = (a), 2026-10-20: it blocks all three writers (spec Step 3, variation f).
 New `hooks/scripts/writer-scope-gate.sh` is registered as the second SubagentStop hook, after stop-gate.sh. For
 `lead-programmer`, `scribe` and `spec-master` (namespaced forms included) it:
 - attributes changed paths from the subagent's **own** transcript (`agent_transcript_path`): the paths of its
@@ -26,13 +26,10 @@ missing config or a missing transcript are allowed (the last is logged as `unatt
 the adapters have no transcript path. `docs/trust-model.md` gains row 26, which C8.2 of
 tests/trust-model-bijection.test.js requires.
 
-Under OQ3 = (b), change the persona `case` line to `scribe|spec-master` and drop test cases (a) to (d) and
-(k); under (c) this unit is replaced.
-
 ## Retrieval
 Fast path, no tracker issue. Spec: `docs/plans/antislop-structural/spec.md`, "Step 3 (st-u3)" and "Context, f".
-This file is the contract of record. Dispatch it only after st-u2 has reached PASS and the operator has ruled
-OQ3; it needs st-u1's library and qw-u1's gitignored `.claude/bookkeeping/`.
+This file is the contract of record. Dispatch it only after st-u2 has reached PASS; it needs st-u1's library and qw-u1's gitignored
+`.claude/bookkeeping/`.
 
 ## Affected files
 - `tests/writer-scope-gate.test.sh` (anchor: new file, mode 755)
@@ -317,7 +314,7 @@ fi
    expect: 0
 8. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.195 to 0.31.196). The bump is required: `--update`
+   This adds one to the patch version in both files (expected 0.31.196 to 0.31.197). The bump is required: `--update`
    installs a new hook script only when `pluginVersion` moves.
 9. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
@@ -379,7 +376,7 @@ attribution: transcript records are JSON lines; the first `type: user` record is
 start-point: the parent of the first attributed commit, else HEAD; a path counts only if `git diff --quiet <start> -- <path>` fails, or it is a new file that exists. The block text tells the writer to restore with `git checkout <start> -- <path>` and commit; never a reset (R4).
 loop-bound: the gate blocks on every stop while the violation stands; Claude Code ends a stop-hook loop after 8 continuations. It does not honour the WIP sentinel, which stop-gate.sh consumes concurrently.
 residual: a Bash heredoc write that is neither committed nor made through Write/Edit is not attributed (trust-model row 26 says so).
-version: .claude-plugin/plugin.json and package.json read 0.31.195 after st-u2 if no fix round bumped; edit 8 adds one (expected 0.31.196).
+version: .claude-plugin/plugin.json and package.json read 0.31.196 after st-u2 if no fix round bumped; edit 8 adds one (expected 0.31.197).
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(st-u3): writer scope gate at SubagentStop for lead-programmer, scribe and spec-master
 diagnosis: none
@@ -398,7 +395,7 @@ criterion 7: <FILL: exit and stdout>
 ~~~
 
 ## Escalation
-If OQ3 has not been ruled, do not start: report and wait. If a `before:` payload is not found verbatim, stop and
+If a `before:` payload is not found verbatim, stop and
 report the current text. If a hook suite other than the ones in criterion 3 fails because of the new registration,
 quote it and stop. If a gate blocks a command, report it and wait. Anything outside "Affected files" goes to your
 report as a proposal.

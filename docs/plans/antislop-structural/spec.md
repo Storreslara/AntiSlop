@@ -1,9 +1,11 @@
 # AntiSlop structural stage after the quick wins (spec)
 
-Date: 2026-10-20. Author: spec-master. Status: **partially finalized**. Variations (a) and (f) are specified,
-and contracts st-u1 to st-u3 are written. st-u4 (the lane script) waits on OQ2. The architecture choice
-(c3, g3 or neither) is the operator's call (OQ1); its units are listed as placeholders only and get no
-contract before the ruling.
+Date: 2026-10-20. Author: spec-master. Status: **finalized**. The operator ruled OQ1 to OQ3 on 2026-10-20 (Clarifications):
+- no architecture change for now (neither c3 nor g3; decided later on S13);
+- no spec-master in the medium lane;
+- the scope gate blocks all three writers.
+
+Variations (a) and (f) are specified, and contracts st-u1 to st-u4 are written.
 Source: `docs/plans/antislop-speed-architecture/findings.md` ("Solution variations" rows a, f, c3, g3;
 "Recommendation" stage 3; "Floor and break-even"). Builds on `docs/plans/antislop-quick-wins/spec.md`
 (qw-u1 to qw-u6) and `docs/plans/antislop-overhead-fixes/spec.md` (aof-u1 to aof-u6, re-pilot S1 to S8).
@@ -22,10 +24,10 @@ After the quick-win chain lands, cut the remaining per-unit cost without weakeni
   pilot-4 scope leaks mechanically. Step 3 (st-u3).
 - G3 (a, size and risk routed lanes). A script picks a lane from the unit's planned `## Affected files`
   before any work is dispatched. The rule is downgrade-only, reuses reviewer-tier.sh's sensitive-path class,
-  and fails closed to the full pipeline. Step 4 (st-u4, waits on OQ2).
-- G4 (one architecture, OQ1). c3 (unit runner), g3 (writer-as-main with a gate-forced templated reviewer
-  dispatch) or neither. This decision belongs to the operator; it is not picked here. Steps 5+ are
-  placeholders until the ruling.
+  and fails closed to the full pipeline. Step 4 (st-u4; medium lane without spec-master per the OQ2 ruling).
+- G4 (architecture). Operator ruling OQ1 = neither, 2026-10-20: no c3 or g3 units and no probes now.
+  After the re-pilot, the operator decides between c3, g3 and staying put, with S13 (orchestrator calls
+  per unit) as the decision metric. The analysis is kept in Context for that decision.
 - G5 (measurement). A re-pilot plan after the stage (S9 to S16, extending S1 to S8), plus the measurement
   requirements of the larger-task eval that tests the break-even. This is a design only; this spec runs
   no eval.
@@ -134,7 +136,7 @@ and `out`.
   is class `judge`, which the reviewer decides. That is the only judgment left, and it is named explicitly
   (Clarifications).
 
-### a: size and risk routed lanes (Step 4, waits on OQ2)
+### a: size and risk routed lanes (Step 4; operator ruling OQ2 = ii)
 
 The input is the unit's planned scope: the contract's `## Affected files`, or, with no contract, the paths
 the orchestrator writes for the dispatch (aof-u3's rule), passed as arguments. reviewer-tier.sh still
@@ -155,7 +157,9 @@ as reviewer-tier.sh's. Lane effects:
 - small: no spec-master, no pre-explorer. lead-programmer gets `## Affected files`, the objective, and
   `Pre-resolved context: none (small lane: read the listed files yourself)`. One reviewer follows, fed by
   the precheck. Scribe runs only for an issue to close (aof-u4).
-- medium: OQ2.
+- medium: no spec-master (operator ruling OQ2 = ii). The orchestrator writes `## Affected files` and at
+  most 5 steps itself, one lead-programmer per step, each followed by its reviewer. The explorer still runs
+  first for a dispatch with no contract. A request needing more than 5 steps is full.
 - full: spec-master always, task-master when the spec has 6 or more units, pre-explorer for dispatches
   that have no contract.
 
@@ -179,7 +183,7 @@ already removed part of the same orchestrator calls that c3 and g3 count again.
 | Risk | medium-high: undocumented nested SubagentStop; depth limit | high: changes every gate's identity assumption; undocumented main-session identity | low-medium |
 | How the A/B measures it | S13 (orchestrator calls per unit at most 4), S14 wall, S15 cache read; S5 (safety) must hold; plus `subagent_type == "unit-runner"` spawn count equal to the number of units | the B' arm against A directly: S14 and S15 against A (target 3x A wall or less, 3.5x cache read or less), S5, S16; the main thread's calls are about A's | S9 to S12, S14 to S16 |
 
-Recommendation: **neither for now** (OQ1 option c). Land a + f, re-pilot, then decide between c3 and g3
+Recommendation: **neither for now** (OQ1 option c; the operator ruled it on 2026-10-20). Land a + f, re-pilot, then decide between c3 and g3
 on measured numbers. Reasons:
 - After the quick wins plus a + f, my estimate leaves c3 a net -130 to -280 s on a 1050 to 1400 s run.
   That is real but small next to its undocumented failure mode (a nested SubagentStop that does not fire
@@ -239,8 +243,8 @@ whether `stop-gate.sh` sees a SubagentStop for it (the audit log line).
 8. Terminology consistency: Partial
 9. Completion / acceptance signals: Partial
 
-- 2026-10-20 Functional scope & success criteria: Q Which architecture, c3, g3 or neither? → A: pending, OQ1 (operator ruling). No c3 or g3 contract is written before it.
-- 2026-10-20 Functional scope & success criteria: Q Does "medium = today's chain" keep spec-master on a multi-file feature such as E5? → A: pending, OQ2. The findings' E5 saving (-300 s) exists only if it does not.
+- 2026-10-20 Functional scope & success criteria: Q Which architecture, c3, g3 or neither? → A: pending, OQ1 (operator ruling). (Ruled below, 2026-10-20: neither for now.)
+- 2026-10-20 Functional scope & success criteria: Q Does "medium = today's chain" keep spec-master on a multi-file feature such as E5? → A: pending, OQ2. The findings' E5 saving (-300 s) exists only if it does not. (Ruled below, 2026-10-20: (ii).)
 - 2026-10-20 User interaction flow: Q Who runs the precheck: a SubagentStop hook, the bookkeeping script, or the reviewer? → A (self-resolved): the reviewer, itself (f-B). This is the same pattern as the operator's c1 ruling for blast-radius.sh; it keeps independence, and the hook route would cover the wrong range anyway.
 - 2026-10-20 Non-functional attributes (perf, security, scale): Q May the reviewer FAIL on a packet line without reading code? → A (self-resolved): yes, for the mechanical lines only (`scope: out`, `scope: no-affected-list`, `criterion <n>: fail`, `version-stamp: ... violation`, `contract: changed-since-baseline`). The brief's variation (f) asks for this, and each line is a check the reviewer already runs by hand today.
 - 2026-10-20 Non-functional attributes (perf, security, scale): Q Can a unit weaken its own criteria by editing its contract (docs/plans is exempt from scope)? → A (self-resolved): no. The precheck reads the contract from the baseline commit and fails on `contract: changed-since-baseline`.
@@ -250,9 +254,13 @@ whether `stop-gate.sh` sees a SubagentStop for it (the audit log line).
 - 2026-10-20 Edge cases / failure handling: Q What is a long criterion? → A (self-resolved): one whose `run:` line carries `(Bash tool timeout`. The precheck defers it, and the reviewer runs it with `--criterion <n>`, so no single Bash call exceeds 600 s.
 - 2026-10-20 Technical constraints & tradeoffs: Q How is the sensitive-path class reused without drift? → A (self-resolved): it moves verbatim into `hooks/scripts/lib/sensitive-paths.sh`, sourced by reviewer-tier.sh, the precheck and unit-size.sh. mc13 moves to mutate the library copy (st-u1).
 - 2026-10-20 Technical constraints & tradeoffs: Q How are version-stamp files recognised mechanically? → A (self-resolved): in this plugin's own layout (`.claude-plugin/plugin.json` tracked at the baseline), the three P3 files are class `plugin-version`; elsewhere a version-file name is class `judge`, which the reviewer decides. A `scopeStandingPaths` config key was considered and deferred: it needs a new `--update` flag, and every contract here lists the files anyway.
-- 2026-10-20 Technical constraints & tradeoffs: Q Is the scope gate a blocking gate or a log? → A: pending, OQ3; contract st-u3 is written for the recommended blocking option.
+- 2026-10-20 Technical constraints & tradeoffs: Q Is the scope gate a blocking gate or a log? → A: pending, OQ3; contract st-u3 is written for the recommended blocking option. (Ruled below, 2026-10-20: (a).)
 - 2026-10-20 Terminology consistency: Q The brief's "packet" collides with the glossary's **review-packet** (contract key) and **advisory review packet**. What is the precheck output called? → A (self-resolved): the **precheck packet** (`.claude/bookkeeping/<unit>.precheck`). Proposed glossary entry in the Scribe update hint.
 - 2026-10-20 Completion / acceptance signals: Q What shows the stage worked? → A (self-resolved): S9 to S16 under "Re-pilot plan", each with its measurement.
+- 2026-10-20 Functional scope & success criteria: Q (OQ1) Which structural architecture follows a + f? → A: (c) neither c3 nor g3 for now, per operator: land a + f, re-pilot, and decide later with S13 (orchestrator calls per unit) as the decision metric. No architecture contracts and no probes P1/P2 now.
+- 2026-10-20 Functional scope & success criteria: Q (OQ2) In the medium lane, does spec-master still run? → A: (ii) no, per operator: the orchestrator writes `## Affected files` and at most 5 steps itself; a request needing more than 5 steps is full. Implemented in st-u4.
+- 2026-10-20 Technical constraints & tradeoffs: Q (OQ3) Does the writer scope gate block or only log? → A: (a) block, per operator, for lead-programmer, scribe and spec-master; st-u3 as written, its hold removed.
+- 2026-10-20 Technical constraints & tradeoffs: Q Does the small lane need a lead-programmer.md change? → A (self-resolved): no. The protocol already says lead-programmer takes structure from `## Pre-resolved context` and names what is missing; the small-lane dispatch says `none (small lane: read the listed files yourself)`, and lead-programmer has Read and Grep. Fewer files, and no four-copy port sync.
 
 ## Risks / dependencies
 
@@ -325,7 +333,7 @@ orchestrator untouched; protocol suites exit 0; version-stamp-check ok; validate
 Measurable target: reviewer tool calls per review, median at most 6 (pilot 4: 8 to 13); reviewer span
 median at least 15 s shorter than in the quick-win re-pilot (S10).
 
-### Step 3 (st-u3): writer scope gate at SubagentStop (f, part 3; OQ3 recommended option)
+### Step 3 (st-u3): writer scope gate at SubagentStop (f, part 3; operator ruling OQ3 = a)
 Contract: `docs/plans/antislop-structural/contracts/st-u3.md`. Depends on st-u1 (library) and qw-u1
 (`.claude/bookkeeping/` gitignored).
 Affected files: `hooks/scripts/writer-scope-gate.sh` (new, 755), `hooks/hooks.json` (second SubagentStop
@@ -337,29 +345,31 @@ version moved; validate.sh exit 0.
 Measurable target: `scope-outside-allowed` passes in 5 of 5 B rows, and `out_of_scope_files` is 0 in every
 B row whose fixture A also keeps clean (S11).
 
-### Step 4 (st-u4): lane script and orchestrator lane routing (a; contract after OQ2)
-No contract yet. Planned affected files: `bin/unit-size.sh` (new), `bin/cli.js` (`BIN_HELPER_FILES`),
-`tests/bin-helpers-scaffold.test.sh`, `agents/orchestrator.md` ("Scale effort to the task", "Delegation
-contract" pre-explorer sentence, "Default feature pipeline"), `agents/lead-programmer.md` (one sentence:
-with `Pre-resolved context: none (small lane ...)`, read the listed files yourself),
-`tests/unit-size.test.sh` (new), `tests/validate.sh`, bump files, generated mirrors.
-Planned criteria: the lane test (small, medium and full by count; sensitive forces full; a `.fail` record
-forces full; a directory entry forces full; a missing input gives full; downgrade-only prose in both
-orchestrator copies); `cmp`; scaffold; version-stamp-check; validate.sh.
-Measurable target: spec-master spawns 0 and explorer spawns before the first lead-programmer dispatch 0 on
-E1 to E4. On E5, spec-master spawns are 0 if OQ2 = (ii). Orientation time before the first dispatch is
-at most 25 s on E1 to E4 (pilot 4: 16 to 75 s) (S9).
+### Step 4 (st-u4): lane script and orchestrator lane routing (a; operator ruling OQ2 = ii)
+Contract: `docs/plans/antislop-structural/contracts/st-u4.md`. Depends on st-u3 (validate.sh anchor) and st-u2
+(`BIN_HELPER_FILES` and scaffold payloads).
+Affected files: `bin/unit-size.sh` (new), `bin/cli.js` (`BIN_HELPER_FILES`), `tests/bin-helpers-scaffold.test.sh`,
+`agents/orchestrator.md` (new "Lane routing" section above "Delegation contract"; the routing-table planning
+line; the pre-explorer sentence), `tests/unit-size.test.sh` (new), `tests/validate.sh`, bump files, generated
+mirrors.
+Rules:
+- full: a sensitive path, a `.fail` record, more than 10 entries, a glob, a directory or trailing-slash
+  entry, a missing contract, no input, or the libraries missing;
+- small: 4 entries or fewer;
+- medium: everything else, with no spec-master; the orchestrator writes the scope and at most 5 steps;
+- `.claude/` and `docs/plans/` entries never count;
+- downgrade-only, and a missing script, a non-zero exit or other output means full.
+Acceptance criteria: the lane test (19 script checks plus the prose rows) exit 0; `cmp` source and installed
+script; scaffold exit 0; the installed script classifies its own contract `full ... reason=sensitive`;
+adapters, hooks, templates and the other personas untouched; prose suites exit 0; version-stamp-check ok;
+validate.sh exit 0.
+Measurable target: on E1 to E4, 0 spec-master spawns and 0 explorer spawns before the first lead-programmer
+dispatch; on E5, 0 spec-master spawns; orientation before the first dispatch at most 25 s on E1 to E4
+(pilot 4: 16 to 75 s) (S9).
 
-### Steps 5+ (architecture; placeholders until OQ1)
-- If OQ1 = (a) c3: st-c3-u1, the `unit-runner` persona (agents/unit-runner.md, protocol matrix row,
-  scaffold); st-c3-u2, reviewer-route-gate caller allowlist plus a templated-header check; st-c3-u3, an
-  orchestrator Stop check that every unit a runner returned has a marker (replacing the nested pending
-  flag); st-c3-u4, orchestrator prose; then probe P2 as a precondition criterion.
-- If OQ1 = (b) g3: probe P1 first. Then st-g3-u1, a byte-equal templated reviewer dispatch check;
-  st-g3-u2, the main-session Stop rule (HEAD past the last PASS commit); st-g3-u3, reviewer-route-gate
-  allowing a main-session lead-programmer; st-g3-u4, the reviewed-path-gate main-session branch; st-g3-u5,
-  settings fragment and install; st-g3-u6, a protocol rewrite of review ownership plus the ladder story.
-- If OQ1 = (c) neither: no units. Re-decide after the re-pilot, on S13.
+### Architecture (operator ruling OQ1 = neither, 2026-10-20)
+No units. After the re-pilot, S13 (orchestrator calls per unit) decides whether c3 or g3 is worth its gate
+changes. Context "c3 vs g3" keeps the analysis, and probes P1/P2 the de-risking steps for that decision.
 
 ## Re-pilot plan (after st-u1 to st-u4, and again after any architecture units)
 
@@ -447,37 +457,7 @@ answer it:
 
 ## Open Questions
 
-1. **(OQ1, architecture) Which structural architecture follows a + f?** Recommended default: (c).
-   - (c) **neither for now** (recommended): land a + f, re-pilot, and decide on S13. Effort M (already in
-     st-u1 to st-u4); risk low-medium; predicted B 1050 to 1400 s (2.9 to 3.9x A).
-   - (a) **c3, unit runner**: net about -130 to -280 s and -1.3M cache read after the quick wins (the
-     findings say -400 s, -4 to -6M, which double counts the quick wins). The split is kept, review routing
-     moves to a thin runner, and two gate edits plus a new Stop check are needed. Its undocumented nested
-     SubagentStop needs probe P2 first. Effort L, risk medium-high.
-   - (b) **g3, writer-as-main**: B about 800 to 1000 s (2.2 to 2.8x A), 3 to 4.5M cache read, about $8 to 10.
-     It weakens "the writer never spawns its reviewer" (mitigated by a gate-forced template), drops the
-     implementer ladder and the spec-master route by default, and changes five gates' identity
-     assumptions. It needs probe P1 first. Effort L+, risk high.
-   Measured by S13 to S15 (c3) or by the B' versus A comparison (g3); S12 must hold in every case. Full
-   table in Context, "c3 vs g3".
-2. **(OQ2, lanes) In the medium lane (5 to 10 planned files, none sensitive), does spec-master still
-   run?** Recommended default: (ii).
-   - (ii) **no spec-master** (recommended): the orchestrator writes `## Affected files` and up to 5 steps
-     itself, and dispatches one lead-programmer per step. This realises the findings' E5 saving (about
-     -300 s, -0.77M); the cost is planning depth on medium features, with the reviewer and precheck
-     unchanged.
-   - (i) **today's chain**: spec-master on the orchestrator's "non-trivial" judgment. E5 keeps
-     spec-master; the lane saving is only E1 to E4's orientation (about -140 s).
-   - (iii) **spec-master only when the request has 3 or more deliverables**: a middle ground, judged by
-     the orchestrator (not mechanical).
-3. **(OQ3, scope gate) Does the writer scope gate block, or only log?** Recommended default: (a).
-   - (a) **block** at SubagentStop for lead-programmer, scribe and spec-master (recommended; st-u3 as
-     written): leaks are fixed before review, and S11 can reach 5 of 5.
-   - (b) **block scribe and spec-master only**: lead-programmer leaks are left to the precheck's FAIL,
-     which costs one review cycle each (about 155 s in pilot 4's E1). In st-u3 this changes the `case`
-     line to `scribe|spec-master` and drops test cases (a) to (d) and (k).
-   - (c) **log only**: it writes `scope-gate.log` and never blocks. Scope leaks then stay as they are in
-     the eval; S11 is not reachable.
+None. OQ1 to OQ3 were ruled by the operator on 2026-10-20 and are recorded in Clarifications.
 
 ## Self-check
 - CHK1: Is every Goal clause (G1 to G5) mapped to a step criterion, a placeholder or an Open Question? — PASS (G1 Steps 1-2; G2 Step 3; G3 Step 4 and OQ2; G4 OQ1 and Steps 5+; G5 Re-pilot plan and Larger-task eval)
@@ -488,15 +468,18 @@ answer it:
 - CHK6: Do st-u2 and st-u3 classify the same path the same way? — PASS (both call `us_classify` from the st-u1 library)
 - CHK7: Is the version-stamp standing exception mechanical, or a judgment? — PASS (mechanical in the plugin layout; `judge` elsewhere, named in Clarifications)
 - CHK8: Does each unit that adds an installed file move the version, given `--update`'s early return? — PASS (st-u1 and st-u3 criterion "version moved"; st-u2 version-stamp-check)
-- CHK9: Is the architecture decided? — FAIL (missing) — converted to Open Question 1
-- CHK10: Is the medium lane's spec-master rule decided? — FAIL (missing) — converted to Open Question 2
-- CHK11: Is the scope gate's blocking behaviour decided? — FAIL (missing) — converted to Open Question 3 (st-u3 is written for option (a), with the edit for (b) named)
+- CHK9: Is the architecture decided? — FAIL (missing) — converted to Open Question 1; resolved by operator ruling (neither for now; S13 decides later)
+- CHK10: Is the medium lane's spec-master rule decided? — FAIL (missing) — converted to Open Question 2; resolved (ii), implemented in st-u4
+- CHK11: Is the scope gate's blocking behaviour decided? — FAIL (missing) — converted to Open Question 3; resolved (a), st-u3 as written
 - CHK12: Does criterion st-u1 AC "validate.sh exit 0" still fail under its own `mutation:` line, given mw-step1's recorded class vacuous (tests/validate.sh registration)? — PASS (the mutation is `exit 1` as line 2 of the new test; the registration is its own `if` block)
 - CHK13: Does st-u2's prose criterion fail on the pre-unit reviewer.md, given gh348-14's class vacuous on persona prose? — PASS (the (j) rows failed on a clone before the prose edit, and passed after it)
 - CHK14: Do st-u1's reviewer-tier criteria still fail under their mutation, given the reviewer-tier defect history? — PASS (reverting the mc13 move makes the suite print "the sed matched nothing", which spec-master observed on the clone)
 - CHK15: Do st-u3's gate criteria fail under their mutation, given spec2-unitB's recorded class vacuous on stop-gate-core.sh? — PASS (removing `set +e` fails cases e to h, which spec-master observed before adding it)
 - CHK16: Is every number in S9 to S16 measurable from fields the harness already records? — PASS (stream `subagent_type`, `agent_id`, `message.id`, `timestamp`; results.jsonl fields named in each S)
 - CHK17: Does the spec state each quick-win interface it depends on, and how each was verified? — PASS (Context, interface table)
+- CHK18: Do Step 4, st-u4 and the orchestrator routing table agree that spec-master runs only in the full lane? — PASS (st-u4 edit 6 rewrites the table line; prose row (k) asserts the old line is gone)
+- CHK19: Does st-u4 criterion 4 still fail under its own mutation? — PASS (spec-master ran it: without the sensitive loop the script prints `lane: medium files=10 reason=contract`)
+- CHK20: Do the four contracts' expected versions agree with the qw-u1 fix at 0.31.189? — PASS (st-u1 0.31.195 to st-u4 0.31.198; each bump is relative)
 
 Terminology check (prose mode, advisory): lens 1, "packet" would collide with **review-packet** and
 **advisory review packet**, so it is called the **precheck packet**. Lens 2: "unit scope", "standing
@@ -518,18 +501,20 @@ synonym. Lens 3: new load-bearing terms **precheck packet**, **lane** (small, me
 ## Dispatch section
 
 Order, one unit at a time, each after the previous unit's reviewer PASS:
-0. The quick-win chain to the end: qw-u2, qw-u3, qw-u4, qw-u5, qw-u6 (qw-u1 landed eb59e217).
-1. st-u1, after qw-u6 (its validate.sh anchor is qw-u6's block). [contracts/st-u1.md](contracts/st-u1.md)
-2. st-u2, after st-u1 and qw-u5 (library; chained `BIN_HELPER_FILES`, scaffold test, reviewer bullet and protocol sentence). [contracts/st-u2.md](contracts/st-u2.md)
-3. st-u3, after st-u2 (validate.sh anchor; library). Written for OQ3 = (a). [contracts/st-u3.md](contracts/st-u3.md)
-4. st-u4, after st-u3 and the OQ2 ruling: contract in the next spawn.
-5. Architecture units: only after the OQ1 ruling (and probes P1/P2 where named).
+0. qw-u1-fix1 (in review now; landed at 0.31.189 as 4f8a545a), then qw-u2 (0.31.190), qw-u3 (0.31.191),
+   qw-u4 (0.31.192), qw-u5 (0.31.193), qw-u6 (0.31.194). The quick-win contracts carry their own,
+   older expectations. Each bumps relative to the version it starts from, so their payloads are unaffected.
+1. st-u1 (0.31.195), after qw-u6 (its validate.sh anchor is qw-u6's block). [contracts/st-u1.md](contracts/st-u1.md)
+2. st-u2 (0.31.196), after st-u1 and qw-u5 (library; chained `BIN_HELPER_FILES`, scaffold test, reviewer bullet and protocol sentence). [contracts/st-u2.md](contracts/st-u2.md)
+3. st-u3 (0.31.197), after st-u2 (validate.sh anchor; library). Operator ruling OQ3 = (a). [contracts/st-u3.md](contracts/st-u3.md)
+4. st-u4 (0.31.198), after st-u3 (validate.sh anchor; st-u2's `BIN_HELPER_FILES` and scaffold payloads). Operator ruling OQ2 = (ii). [contracts/st-u4.md](contracts/st-u4.md)
+5. Re-pilot (S1 to S16) after st-u4 reaches PASS and is committed. Then the operator decides the architecture on S13.
 
-Expected versions if no fix round bumps in between: qw-u6 0.31.193, st-u1 0.31.194, st-u2 0.31.195, st-u3
-0.31.196, st-u4 0.31.197. Each contract adds one to whatever the version is at its start.
+The versions are expected only if no fix round bumps in between.
 
-Unit count: 4 for a + f (3 contracted), plus 0, about 4 (c3) or about 6 (g3) after OQ1. With c3 or g3 the
-plan has 8 or more units, over the fast-path limit. Every contract is written by spec-master and scores
-7/7 on `contract-score.js --rubric=v2`, so task-master would only re-derive them. Recommendation:
-dispatch from the contract files directly, as for the quick-win and overhead-fix plans. If the operator
-wants the protocol followed to the letter, task-master can adopt the contract files unchanged.
+Unit count: 4 (st-u1 to st-u4), all contracted; no architecture units (OQ1 ruling). Together with the six
+quick wins still ahead (including the qw-u1 fix), 10 units remain in the chain. That is over the fast-path
+limit, but every contract is written by spec-master and scores 7/7 on `contract-score.js --rubric=v2`, so
+task-master would only re-derive them. Recommendation: dispatch from the contract files directly, as for
+the quick-win and overhead-fix plans. If the operator wants the protocol followed to the letter,
+task-master can adopt the contract files unchanged.

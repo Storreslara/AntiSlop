@@ -368,7 +368,7 @@ fi
    It prints `0`. If reviewer-tier.test.sh fails, the move changed behaviour: stop and report.
 11. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.193 to 0.31.194). The bump is required even though no
+   This adds one to the patch version in both files (expected 0.31.194 to 0.31.195). The bump is required even though no
    `agents/` or `templates/` file changes: `--update` installs new files only when `pluginVersion` moves.
 12. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
@@ -431,7 +431,7 @@ blast-radius: hooks/scripts/reviewer-tier.sh:17 (source lines), hooks/scripts/re
 moved-verbatim: edit 3's library body after its 4-line header is the exact text edit 5 removes, minus the `opus()` line, which stays in reviewer-tier.sh. Criterion 3 checks the array against the parent commit.
 mutation-controls: mc1 (`if touches_sensitive_path` inverted) still mutates the call site, which stays in reviewer-tier.sh. Only mc13 named a pattern line, so only mc13 moves. The new mc13 copies reviewer-tier.sh beside the mutated library copy in `$tmproot`, because a mutant sources `$(dirname)/lib/`.
 classes: `us_classify <path> <rev> <listed> <fix-listed> <criteria-text> <fail-text>` checks in this order: listed (exact, directory prefix or glob), criteria (a whole path token in a criteria `run:` line), fail-record, fix-contract, plugin-version (only when `<rev>` tracks `.claude-plugin/plugin.json`: plugin.json, package.json, CHANGELOG.md), judge (a common version-file name), out.
-version: .claude-plugin/plugin.json and package.json read 0.31.193 after qw-u6 if no fix round bumped; edit 11 adds one (expected 0.31.194).
+version: .claude-plugin/plugin.json and package.json read 0.31.194 after qw-u6 if no fix round bumped; edit 11 adds one (expected 0.31.195).
 mirrors: `.claude/` copies and `fileHashes` change only through `node bin/cli.js --update` (constitution P2).
 prior-fail: the reviewer-tier `.fail` records concern rename, quoting and unit-id defects at the call site; none is in the moved span. mw-step1 (vacuous registration): the validate.sh block is its own `if` section (criterion 8's mutation).
 commit-message: refactor(st-u1): shared sensitive-path and unit-scope hook libraries

@@ -380,7 +380,7 @@ fi
 ~~~
 9. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.194 to 0.31.195).
+   This adds one to the patch version in both files (expected 0.31.195 to 0.31.196).
 10. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -447,7 +447,7 @@ independence: the reviewer runs the script itself (the operator's c1 ruling patt
 baseline-contract: criteria come from `git show <baseline>:<contract>` when the contract is tracked at the baseline (contracts are committed before dispatch); a contract that differs at HEAD is a failure line, so a unit cannot weaken its own criteria inside `docs/plans/` (which unit scope exempts).
 long-criteria: a `run:` line carrying `(Bash tool timeout` is deferred, so one precheck call stays under the 600 s Bash ceiling; the reviewer runs each with `--criterion <n>` (one line, nothing written). Each criterion runs under `timeout 590`.
 no-test-lint: the precheck does not run `testAndLintCommand`; stop-gate.sh already runs it at the gated SubagentStop. With no contract it prints `criteria: none (...)`, and the reviewer runs the test command itself.
-version: .claude-plugin/plugin.json and package.json read 0.31.194 after st-u1 if no fix round bumped; edit 9 adds one (expected 0.31.195).
+version: .claude-plugin/plugin.json and package.json read 0.31.195 after st-u1 if no fix round bumped; edit 9 adds one (expected 0.31.196).
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 terminology: the output is the **precheck packet**; never call it the review packet (docs/harness-glossary.md uses **review-packet** for the contract key and **advisory review packet** for lead-programmer's report).
 commit-message: feat(st-u2): the reviewer runs a mechanical pre-review script itself; its failure lines are FAIL grounds
