@@ -17,3 +17,4 @@
 - [Interrupt criterion + subshell-exit trap](technique_process_tree_interrupt_criterion.md) — set -m launch, pid file, zombie-aware alive(), reap on EXIT; exit in $(...) is not a hard exit.
 - [Generated 7/7 contracts; flattened prose greps](technique_generated_contracts_exact_payloads.md) — slice before: payloads by script (Write tool, not heredoc naming Set A); flatten greps; cmp mirrors; simulate pins both ways.
 - [Pin-search window gaps; clone dry runs](technique_pin_search_window_and_clone_dry_runs.md) — a 45-char window misses shorter pins (missed T10); dry-run on a scratch clone, bump before --update, commit before HEAD-copying tests.
+- [Prove contracts on a clone](technique_prove_contracts_on_a_clone.md) — scratch-implement in a local clone, generate payloads from it; traps: sourced set -e, gate-scanned heredocs, chained anchors.
