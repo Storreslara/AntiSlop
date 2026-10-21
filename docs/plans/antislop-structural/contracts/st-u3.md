@@ -210,9 +210,15 @@ exit "$fail"
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
 # agent-identity.sh sources audit-log.sh, which turns on `set -e`; this gate decides by
-# explicit checks, so errexit is switched back off.
+# explicit checks, so errexit is switched back off, before the two libraries below are
+# sourced (a missing one must reach the `declare -F` check, not exit 1 under errexit).
 set +e
-. "$(dirname "${BASH_SOURCE[0]}")/lib/unit-scope.sh" 2>/dev/null
+# state-access.sh owns the unit-id grammar (UNIT_ID_CHARCLASS, unit_id_valid, unit_id_sanitize;
+# tests/state-access-constraints.test.sh M5 allows no second spelling under hooks/scripts/).
+{ . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh" && . "$(dirname "${BASH_SOURCE[0]}")/lib/unit-scope.sh"; } >/dev/null 2>&1 || true
+# state-access.sh turns errexit on again when sourced (hence `|| true` above: a missing
+# unit-scope.sh must not end the gate with exit 1, which Claude Code reads as allow).
+set +e
 
 allow() { exit 0; }
 input="$(cat)"
@@ -224,17 +230,16 @@ config="${dot}/persona-config.json"
 [ "$(printf '%s' "$input" | jq -r '.hook_event_name // empty' 2>/dev/null)" = SubagentStop ] || allow
 persona="$(identity_persona_name "$(printf '%s' "$input" | jq -r '.agent_type // empty' 2>/dev/null)")"
 case "$persona" in lead-programmer|scribe|spec-master) ;; *) allow ;; esac
-agent_id="$(printf '%s' "$input" | jq -r '.agent_id // "unknown"' 2>/dev/null)"
-agent_id="${agent_id//[^a-zA-Z0-9._-]/_}"
+agent_id="$(unit_id_sanitize "$(printf '%s' "$input" | jq -r '.agent_id // "unknown"' 2>/dev/null)" 2>/dev/null)"
 tr_path="$(printf '%s' "$input" | jq -r '.agent_transcript_path // empty' 2>/dev/null)"
 cd "$project_dir" 2>/dev/null || allow
 git rev-parse --verify -q HEAD >/dev/null || allow
 log() { mkdir -p "$dot/bookkeeping" && printf '%s agent=%s persona=%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$persona" "$1" >> "$dot/bookkeeping/scope-gate.log"; }
 # A missing, empty or cut-short library would make every path look in scope (an undefined function
 # only reads as "false"), so the writer's stop fails closed until the library is restored.
-if ! declare -F us_section us_entries us_exclusions us_excluded us_listed us_named_in us_classify >/dev/null; then
+if ! declare -F us_section us_entries us_exclusions us_excluded us_listed us_named_in us_classify unit_id_valid unit_id_sanitize >/dev/null; then
   log "blocked: unit-scope library unavailable"
-  echo "BLOCKED (writer-scope-gate): hooks/scripts/lib/unit-scope.sh is missing or incomplete, so your changes cannot be checked against your unit scope. Report this block to your dispatcher and wait; do not edit the library." >&2
+  echo "BLOCKED (writer-scope-gate): hooks/scripts/lib/unit-scope.sh is missing or incomplete (or state-access.sh is), so your changes cannot be checked against your unit scope. Report this block to your dispatcher and wait; do not edit the library." >&2
   exit 2
 fi
 if [ -z "$tr_path" ] || [ ! -r "$tr_path" ]; then log "unattributable: no transcript"; allow; fi
@@ -281,13 +286,13 @@ us_section "$W/prompt" "Affected files" > "$W/sec"
 us_entries "$W/prompt" > "$W/listed"
 us_exclusions "$W/prompt" > "$W/excl"
 if [ ! -s "$W/listed" ]; then
-  c="$(grep -oE 'docs/plans/[A-Za-z0-9._/-]*contracts/[A-Za-z0-9._#-]+\.md' "$W/prompt" | head -n1)"
+  c="$(grep -oE "docs/plans/[A-Za-z0-9._/-]*contracts/[${UNIT_ID_CHARCLASS}]+\.md" "$W/prompt" | head -n1)"
   [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" > "$W/listed"
   [ -n "$c" ] && [ -f "$c" ] && us_exclusions "$c" > "$W/excl"
 fi
 grep -oE 'file: `[^` ]+`' "$W/prompt" | sed 's/^file: `//; s/`$//' >> "$W/listed" || true
 us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/crit" || true
-unit="$(sed -n 's/^Unit: \([A-Za-z0-9][A-Za-z0-9._#-]*\)$/\1/p' "$W/prompt" | head -n1)"
+unit="$(sed -n 's/^Unit: //p' "$W/prompt" | head -n1)"; unit_id_valid "$unit" || unit=""
 : > "$W/failrec"; [ -z "$unit" ] || [ ! -f "$dot/reviewed/$unit.fail" ] || cp "$dot/reviewed/$unit.fail" "$W/failrec"
 kw="$(jq -r '.knowledgeWrites // "scoped"' "$config" 2>/dev/null)"; [ "$kw" = apply ] || kw=scoped
 
@@ -425,7 +430,7 @@ fi
 1. run: `bash -c 'bash tests/writer-scope-gate.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: delete the gate's `set +e` line; agent-identity.sh's sourced audit-log.sh leaves errexit on, cases (e) to (h) exit 1 instead of 0 or 2, and stdout is `1` (spec-master observed this on a clone). Deleting the `declare -F` block fails both (n) writer cases; calling `us_entries "$W/prompt"` instead of `us_exclusions "$W/prompt"` fails the (m) partial case. Moving the `.claude/*|docs/plans/*` allowance below the `us_excluded` line fails (o); deleting the `a="$(norm_abs "$a")"` line fails both (p) rows; deleting the C-quoted `case` line fails (q) (spec-master ran all three).
+   mutation: delete the gate's second `set +e` line (after the library group); state-access.sh leaves errexit on, cases (e) to (h) exit 1 instead of 0 or 2, and stdout is `1` (spec-master observed this on a clone). Deleting the `declare -F` block fails both (n) writer cases; calling `us_entries "$W/prompt"` instead of `us_exclusions "$W/prompt"` fails the (m) partial case. Moving the `.claude/*|docs/plans/*` allowance below the `us_excluded` line fails (o); deleting the `a="$(norm_abs "$a")"` line fails both (p) rows; deleting the C-quoted `case` line fails (q) (spec-master ran all three).
 2. run: `cmp hooks/scripts/writer-scope-gate.sh .claude/hooks/scripts/writer-scope-gate.sh`
    exit: 0
    stdout: empty
@@ -460,6 +465,8 @@ start-point: the parent of the first attributed commit, else HEAD; a path counts
 loop-bound: the gate blocks on every stop while the violation stands; Claude Code ends a stop-hook loop after 8 continuations. It does not honour the WIP sentinel, which stop-gate.sh consumes concurrently.
 residual: a Bash heredoc write that is neither committed nor made through Write/Edit is not attributed (trust-model row 26 says so).
 version: .claude-plugin/plugin.json and package.json read 0.31.202 after rp-u11 if no fix round bumped; edit 8 adds one (expected 0.31.203).
+amended-3: 2026-10-21, st-u3 implementer's spec gap (coordinator relay): the gate text spelled the unit-id grammar twice (`[A-Za-z0-9._#-]` in the contract-path grep and the `Unit:` sed) and added a fourth `[^a-zA-Z0-9._-]` sanitiser (agent_id), which tests/state-access-constraints.test.sh M5 (2a, 2b) forbids under hooks/scripts/ (pristine 2bccfd94 passes it; the gate made it fail). The gate now sources lib/state-access.sh, the owner, and uses `UNIT_ID_CHARCLASS` in the contract-path grep, `unit_id_valid` for the `Unit:` line and `unit_id_sanitize` for agent_id (the log field now keeps `#`); both functions join the `declare -F` guard. state-access.sh runs `set -euo pipefail` when sourced, so the two libraries are sourced in one group after `set +e`, with `|| true` (a missing unit-scope.sh made the group fail under the re-enabled errexit and the gate exit 1, an allow; (n) caught it on the clone) and errexit is switched off again after. Re-proven on a fresh clone of 2bccfd94: every payload once, the test 0 FAIL after `--update`, criteria 1 to 6 hold, state-access-constraints 2a and 2b pass; every tests/*.test.sh and *.test.js run one by one (not validate.sh) fails exactly the same six files as on a pristine clone of 2bccfd94 (abtest-fixtures, abtest-lock, abtest-checks, abtest-runner, reviewed-dir-leak-guard, cli-backfill: clone-environment failures, identical exit codes on both); deleting the second `set +e` fails (e) to (g). st-u4 checked: its `[A-Za-z0-9._#-]` lives in `bin/unit-size.sh`, outside the M5 scope (hooks/scripts/ only), so it is unaffected.
+registration: edit 4 (hooks/hooks.json) is refused by harness-integrity-gate.sh for every agent identity (a Set B gate-registration surface); pending the operator's ruling it is applied by the operator by hand, at edit 4's position, with exactly edit 4's `after:` text (the `stop-gate.sh` entry gains a trailing `,` and the line `          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/writer-scope-gate.sh" }` follows it inside the same `hooks` array). After it, test case (l) prints `OK   (l) registered after stop-gate` (the jq read of `.hooks.SubagentStop[0].hooks` gives `stop-gate.sh,writer-scope-gate.sh`) and criterion 5 holds. Before it, on a clone with every other edit committed, only the (l) registration row and criterion 5 fail; criteria 2, 3, 4 and 6, state-access-constraints, abtest-arms, trust-model-bijection, cli-hook-propagation and protected-paths-coverage pass, and `--update` still installs the gate copy (it is just never run).
 amended-2: 2026-10-21, after rp-u9's review (review-patches spec Step 10, findings F1 and F2): `in_scope` checks the `.claude/` and `docs/plans/` allowance before `## Do NOT touch` (aof-u1-fix1's bullet excluded the two `.claude/agents/` copies its own mandated `--update` regenerated, so the old order would have blocked a correct unit; st-u2's precheck already leaves both trees out); a Write/Edit path is normalised lexically by `norm_abs` before it is judged (a doubled slash used to classify `out` and block a legitimate edit, and `.claude/../CONTEXT.md` fell under the `.claude/` allowance); a C-quoted committed name blocks (it used to be skipped as a missing file). Cases (o), (p) and (q) pin the three. A deliberate exclusion of a `.claude/` path is reviewer-enforced prose ("only through `--update`"), not a gate input; a contract that must stop a writer from regenerating a mirror says so in its Objective. Re-proven on a clone at 952a8796 with rp-u11 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, criteria 1 to 6 held, and (o), (p) and (q) failed under their mutations.
 amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): the gate sources unit-scope.sh after `set +e` and blocks a writer's stop when a function it needs is undefined (`declare -F`; a missing library used to exit 1 under the inherited `set -e`, which Claude Code treats as allow, and an empty one made every path in scope); `## Do NOT touch` is read with rp-u9's `us_exclusions` (a bullet carrying `partial:` never excludes); cases (m) and (n) pin both; criteria 4 and 6 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8, rp-u9 and the amended st-u2 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, and (m) and (n) failed with the `us_exclusions` call or the guard reverted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
