@@ -9,7 +9,7 @@ ledger="$state/orchestrator-rulings.log"
 bk="$state/bookkeeping"
 unit_re='^[A-Za-z0-9][A-Za-z0-9._#-]{0,63}$'
 
-usage() { echo "usage: unit-bookkeeping.sh dispatch <unit> [--contract <path>] | review <unit> <baseline>" >&2; exit 2; }
+usage() { echo "usage: unit-bookkeeping.sh dispatch <unit> [--contract <path>] | review <unit> <baseline> [--implementer-tier <t>]" >&2; exit 2; }
 ts() { date -u +%Y-%m-%dT%H:%M:%SZ; }
 ruling() { mkdir -p "$state"; echo "RULING $(ts) unit=$1 decision=$2" >> "$ledger"; }
 
@@ -30,7 +30,7 @@ guard_demote() {
 }
 
 dispatch_cmd() {
-  local unit="$2" contract="" ladder="${UB_LADDER:-$dir/ladder-tier.sh}" line tier
+  local unit="$2" contract="" ladder="${UB_LADDER:-$dir/ladder-tier.sh}" line tier rc
   local -a args f
   if [ "$#" -eq 4 ] && [ "$3" = --contract ]; then contract="$4"; elif [ "$#" -ne 2 ]; then usage; fi
   check_unit "$unit"
@@ -41,11 +41,14 @@ dispatch_cmd() {
   fi
   args=("$unit")
   if [ -n "$contract" ]; then args+=(--contract "$contract"); fi
-  line="$(bash "$ladder" "${args[@]}" | head -n1)"
+  line="$(bash "$ladder" "${args[@]}")"; rc=$?
+  line="$(printf '%s\n' "$line" | head -n1)"
   read -r -a f <<< "$line"
   tier="${f[1]:-}"
   if [ "${f[0]:-}" != ladder-tier: ]; then tier=opus; fi
   case "$tier" in haiku|sonnet|opus|EXHAUSTED) ;; *) tier=opus ;; esac
+  # A failed helper forces opus, except that exhaustion stays EXHAUSTED: that stop goes to the human.
+  if [ "$rc" -ne 0 ] && [ "$tier" != EXHAUSTED ]; then tier=opus; fi
   if [ -n "$line" ]; then echo "$line"; fi
   echo "model: $tier"
   case " $line " in
@@ -58,7 +61,7 @@ review_header() {
   local unit="$1" base="$2" word="$3" tier="$4"
   echo "Unit: $unit"
   case "$tier" in haiku|sonnet|opus) echo "Implementer tier: $tier" ;; esac
-  echo "Range: $base..$(git rev-parse HEAD)"
+  echo "Range: $(git rev-parse "$base^{commit}")..$(git rev-parse HEAD)"
   echo "Reviewer model: $word"
   echo "Changed files:"
   git diff --name-only "$base..HEAD" | sed 's/^/- /'

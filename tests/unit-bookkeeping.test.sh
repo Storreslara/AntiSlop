@@ -96,4 +96,15 @@ tail -n1 "$LOG" | grep -qF 'unit=u10 decision=contract-guard sonnet: guard unava
 stub ladder 'other-tag: haiku n=0 ladder=haiku,sonnet,opus reason=default'
 UB_LADDER="$T/stub/ladder" bash "$UB" dispatch u11 | grep -qx 'model: opus' && ok "(n) wrong first field -> opus" || bad "(n) wrong first field -> opus"
 
+# rp-u3: a ladder that prints a tier and exits non-zero yields opus, EXHAUSTED stays EXHAUSTED, the usage
+# names --implementer-tier, and Range: is two full SHAs for a symbolic baseline.
+printf '#!/usr/bin/env bash\necho "ladder-tier: haiku n=0 ladder=haiku,sonnet,opus reason=default"\nexit 3\n' > "$T/stub/ladderbad"
+UB_LADDER="$T/stub/ladderbad" bash "$UB" dispatch u12 | grep -qx 'model: opus' && ok "(o) non-zero ladder exit -> opus" || bad "(o) non-zero ladder exit -> opus"
+printf '#!/usr/bin/env bash\necho "ladder-tier: EXHAUSTED n=6 ladder=haiku,sonnet,opus reason=default"\nexit 3\n' > "$T/stub/ladderex"
+UB_LADDER="$T/stub/ladderex" bash "$UB" dispatch u13 | grep -qx 'model: EXHAUSTED' && ok "(o) non-zero exit keeps EXHAUSTED" || bad "(o) non-zero exit keeps EXHAUSTED"
+u="$(bash "$UB" 2>&1)"; printf '%s\n' "$u" | grep -qF 'review <unit> <baseline> [--implementer-tier <t>]' && ok "(p) usage names --implementer-tier" || bad "(p) usage omits --implementer-tier"
+stub rtier 'sonnet'
+UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u14 HEAD~1 >/dev/null
+grep -qx "Range: $BASE..$(git rev-parse HEAD)" "$HDR/u14.header" && ok "(q) symbolic baseline resolved to a full SHA" || bad "(q) $(grep '^Range:' "$HDR/u14.header")"
+
 exit "$fail"

@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.195",
+  "pluginVersion": "0.31.196",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -48,7 +48,7 @@
     ".claude/agents/spec-master.md": "9c4c5a6f67efd83cb1cce20c472e3623df48458031aeebfbc1f998343450a247",
     ".claude/agents/task-master.md": "313ec821932e359687da3750a7bfb71357b5c91f093552f4c5bddf4c0676280d",
     ".claude/agents/scribe.md": "739dd034916033684974bc28acfabc261d924f3f37063fc7c0b3126301f6b960",
-    ".claude/agents/reviewer.md": "156f0152400ca3d4572465a0c9a77e32043c1cb3a4f9f541c4e411487a244abc",
+    ".claude/agents/reviewer.md": "64cb1bce85147f56c11ac81618a5ce762a69e6a9447c4afceb1ebaa9015a2ddb",
     ".claude/agents/milestone-auditor.md": "7016986ba20b2cdb26e8a5d5ee89f7a27ae372665943bc7b23d165bab5a864c2",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
@@ -113,7 +113,7 @@
     ".claude/bin/contract-score.js": "a828a8c29cf555bcb9a29d13da3f0819c7e98b61542690e5541bfd1a464428d5",
     ".claude/bin/fail-count.sh": "1642e53eafa7bfb6757040fea78d57767350e9a7fbb8bcd5009561b4e39d88d4",
     ".claude/bin/escalation-card.sh": "d55ddbac3b0b7e01c5110116afe9366356eb9611b619744eac34d4aa152bf7fe",
-    ".claude/bin/unit-bookkeeping.sh": "42da89fc8cfb0fd15392f655d4647bc63d960a54e52d51d156266837acb0e172",
+    ".claude/bin/unit-bookkeeping.sh": "5369083cd28116609bd80c706a98e252f1425cbb2d90e0d46cb545bc207975ba",
     ".claude/bin/blast-radius.sh": "9c4639bc4b8320d88bf718f1b59381387faa0ae0fba49fc4be05e161fea69ee8"
   },
   "humanReviewMode": "off",

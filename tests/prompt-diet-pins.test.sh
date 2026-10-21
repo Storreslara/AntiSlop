@@ -92,5 +92,35 @@ done
 
 # Later units append their rows below this line.
 
+# rp-u3: the reviewer's pointer to the moved residual, the orchestrator's teams-command pointer, qw-u4's
+# safety phrases, the ported scribe sentence, and three more narratives qw-u3 removed. Current files only.
+for f in agents/reviewer.md .claude/agents/reviewer.md; do
+  has "$f" '(see `docs/orchestrator-rationale.md`, "N1: reviewer dispatch naming, the unobserved residual")'
+  hasnot "$f" '`agents/orchestrator.md`'"'"'s "Dispatch naming" section'
+done
+has docs/orchestrator-rationale.md '## N1: reviewer dispatch naming, the unobserved residual'
+for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
+  has "$f" 'If the `start-feature-team` command is running, its rules govern instead of the routing/review-ownership rules above'
+  has "$f" 'ask through one `AskUserQuestion` call'
+  has "$f" 'If that section cannot be read, print the whole marker verbatim, write nothing, and tell the human to resolve the escalation from their terminal or the Microworld dashboard.'
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md; do
+  has "$f" 'never retry or rephrase the write'
+  has "$f" 'Write only from this session'"'"'s answer'
+  has "$f" 'never pick one for them'
+  has "$f" 'Do not relay the decision in the prompt'
+done
+for f in agents/orchestrator.md adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md; do
+  has "$f" 'When you dispatch scribe, quote each unit'"'"'s reviewer PASS verdict line verbatim in that dispatch; scribe closes an issue only on its own quoted line.'
+  hasnot "$f" 'When you dispatch scribe for a unit'
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/orchestrator.md \
+         .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md \
+         .claude/agents/milestone-auditor.md .claude/agents/lead-programmer.md; do
+  hasnot "$f" 'not an exemption'
+  hasnot "$f" 'Not an alternative to the WIP sentinel'
+  hasnot "$f" 'a complementary safety layer'
+done
+
 if [ "$fail" -eq 0 ]; then echo "All prompt-diet-pins checks passed."; else echo "prompt-diet-pins: FAILED"; fi
 exit "$fail"
