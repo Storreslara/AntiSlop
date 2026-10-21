@@ -636,4 +636,63 @@ else
   fail=1
 fi
 
+# rp-u2: the reviewer stop that follows a marker=MISSING block carries stop_hook_active; it still
+# consumes the stamp and clears the flag, never blocks, and no other identity clears anything.
+lg_stop() { # $1 = project dir, $2 = agent_type, $3 = stop_hook_active (true|false) -> rc
+  jq -n --arg a "$2" --argjson s "$3" \
+    '{hook_event_name:"SubagentStop",agent_type:$a,agent_id:"rev-lg",session_id:"s-lg",stop_hook_active:$s}' \
+    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1
+}
+lg_flag() { printf '%s agent=lp1\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$1/.claude/.pending-review.lp1"; }
+lg_pass() { printf 'PASS %s %s commit: none criteria: true\n' "$2" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$1/.claude/reviewed/$2.pass"; }
+
+dir="$(make_project loop-guard-consumes)"
+run_route_gate "$dir" "$(reviewer_payload $'Unit: lg-a\n\nReview.')" || true
+lg_flag "$dir"
+rc1=0; lg_stop "$dir" reviewer false || rc1=$?
+lg_pass "$dir" lg-a
+rc2=0; lg_stop "$dir" reviewer true || rc2=$?
+if [ "$rc1" = 2 ] && [ "$rc2" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp1" ] \
+   && [ ! -e "$dir/.claude/.review-join.lg-a" ] && grep -q 'join-consumed=lg-a' "$dir/.claude/review-audit.log"; then
+  echo "OK   (loop-guard-consumes) the verdict written after a MISSING block is consumed on the stop_hook_active stop"
+else
+  echo "FAIL (loop-guard-consumes) expected rc1=2, rc2=0, flag and stamp gone (rc1=$rc1 rc2=$rc2)"
+  fail=1
+fi
+
+dir="$(make_project loop-guard-never-blocks)"
+run_route_gate "$dir" "$(reviewer_payload $'Unit: lg-b\n\nReview.')" || true
+lg_flag "$dir"
+rc=0; lg_stop "$dir" reviewer true || rc=$?
+if [ "$rc" = 0 ] && [ -e "$dir/.claude/.pending-review.lp1" ] && [ -e "$dir/.claude/.review-join.lg-b" ] \
+   && grep -q 'loop-guard=allow marker=MISSING unit=lg-b' "$dir/.claude/review-audit.log"; then
+  echo "OK   (loop-guard-never-blocks) a stop_hook_active reviewer stop with no verdict allows, keeps flag and stamp, logs"
+else
+  echo "FAIL (loop-guard-never-blocks) expected rc=0, flag and stamp kept, loop-guard line (rc=$rc)"
+  fail=1
+fi
+
+dir="$(make_project explorer-never-clears)"
+run_route_gate "$dir" "$(reviewer_payload $'Unit: lg-c\n\nReview.')" || true
+lg_flag "$dir"; lg_pass "$dir" lg-c
+rc1=0; lg_stop "$dir" explorer false || rc1=$?
+rc2=0; lg_stop "$dir" explorer true || rc2=$?
+if [ "$rc1" = 0 ] && [ "$rc2" = 0 ] && [ -e "$dir/.claude/.pending-review.lp1" ] \
+   && [ -e "$dir/.claude/.review-join.lg-c" ] && grep -q 'grant-denied hook=stop-gate identity=explorer' "$dir/.claude/review-audit.log"; then
+  echo "OK   (explorer-never-clears) an explorer stop, with or without stop_hook_active, leaves flag and stamp"
+else
+  echo "FAIL (explorer-never-clears) expected rc 0/0 and flag and stamp kept (rc1=$rc1 rc2=$rc2)"
+  fail=1
+fi
+
+dir="$(make_project loop-guard-gated-agent)"
+printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"false"}\n' > "$dir/.claude/persona-config.json"
+rc=0; lg_stop "$dir" lead-programmer true || rc=$?
+if [ "$rc" = 0 ]; then
+  echo "OK   (loop-guard-gated-agent) a gated agent's stop_hook_active stop still allows at once"
+else
+  echo "FAIL (loop-guard-gated-agent) expected rc=0 (rc=$rc)"
+  fail=1
+fi
+
 exit "$fail"

@@ -355,8 +355,12 @@ review_inflight_units() {
     case "$unit" in ''|*/*|*..*) continue ;; esac
 
     ts="${line%%[[:space:]]*}"
+    # Only the stamp writer's own format counts, never a future time: GNU date -d also accepts
+    # words such as "now", and a future stamp would otherwise stay in flight forever.
+    [[ $ts =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || continue
     epoch="$(date -u -d "$ts" +%s 2>/dev/null || date -j -u -f %Y-%m-%dT%H:%M:%SZ "$ts" +%s 2>/dev/null || true)"
     case "$epoch" in ''|*[!0-9]*) continue ;; esac
+    [ "$epoch" -le "$now" ] || continue
     [ $(( now - epoch )) -le "$REVIEW_INFLIGHT_MAX_AGE_S" ] || continue
 
     [ -e "${dot}/reviewed/${unit}.blocked" ] && continue
@@ -483,7 +487,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$mcc_state" "$unit")"
           if [ "$mcc_state" = mismatch ]; then
             echo "marker-commit-check: unit ${unit}'s PASS marker cites a commit that does not appear to belong to it - ${mcc_out}" >&2
-            if [ "$mcc_mode" = block ]; then
+            if [ "$mcc_mode" = block ] && [ "${loop_guard_active:-false}" != true ]; then
               echo "Remediation: correct the commit: field in ${dot_label}/reviewed/${unit}.pass to name the unit's own final commit, then re-run." >&2
               exit 2
             fi
@@ -521,6 +525,15 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       state_append_audit_log "review-audit.log" "$(printf '%s cleared-by=reviewer cleared=%s remaining=%s' \
         "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$join_cleared" "$join_clear_remaining")"
     else
+      if [ "${loop_guard_active:-false}" = true ]; then
+        # The stop that follows a block (loop_guard_active, set by the Claude entry script on
+        # stop_hook_active): never block a second time; log each unit still missing a verdict, allow.
+        for unit in "${JOIN_UNSATISFIED_UNITS[@]}"; do
+          state_append_audit_log "review-audit.log" "$(printf '%s loop-guard=allow marker=MISSING unit=%s' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit")"
+        done
+        allow
+      fi
       missing=""
       idx=0
       while [ "$idx" -lt "${#JOIN_UNSATISFIED_UNITS[@]}" ]; do

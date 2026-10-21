@@ -109,4 +109,59 @@ rc="$(run_stop "$dir")"
 if [ "$rc" = 2 ]; then check "(k) empty-reason flag never excused, even with spare stamps" pass
 else check "(k) empty-reason flag never excused (rc=$rc)" fail; fi
 
+# rp-u2: strict ISO-8601 stamps not in the future, the .blocked/.escalated skips, the date -j fallback,
+# the block message's last sentence and the duplicate-audit-line check.
+run_stop_err() {
+  printf '%s' '{"hook_event_name":"Stop","stop_hook_active":false,"session_id":"s1"}' \
+    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/stop-gate.sh 2>&1 >/dev/null || true
+}
+# (l) future-dated stamp -> blocked
+dir="$(make_project l)"; flag "$dir"
+printf '2099-01-01T00:00:00Z unit=u1 prior=none prior_mtime=-\n' > "$dir/.claude/.review-join.u1"
+rc="$(run_stop "$dir")"
+if [ "$rc" = 2 ]; then check "(l) future-dated stamp blocks" pass; else check "(l) future-dated stamp blocks (rc=$rc)" fail; fi
+
+# (m) non-ISO timestamp that GNU date accepts -> blocked
+dir="$(make_project m)"; flag "$dir"
+printf 'now unit=u1 prior=none prior_mtime=-\n' > "$dir/.claude/.review-join.u1"
+rc="$(run_stop "$dir")"
+if [ "$rc" = 2 ]; then check "(m) non-ISO stamp blocks" pass; else check "(m) non-ISO stamp blocks (rc=$rc)" fail; fi
+
+# (n) fresh stamp whose unit has a .blocked marker -> blocked
+dir="$(make_project n)"; flag "$dir"; fresh "$dir"; printf 'BLOCKED u1\n' > "$dir/.claude/reviewed/u1.blocked"
+rc="$(run_stop "$dir")"
+if [ "$rc" = 2 ]; then check "(n) .blocked unit is not in flight" pass; else check "(n) .blocked unit is not in flight (rc=$rc)" fail; fi
+
+# (o) fresh stamp whose unit has an .escalated marker -> blocked
+dir="$(make_project o)"; flag "$dir"; fresh "$dir"; printf 'ESCALATED u1\n' > "$dir/.claude/reviewed/u1.escalated"
+rc="$(run_stop "$dir")"
+if [ "$rc" = 2 ]; then check "(o) .escalated unit is not in flight" pass; else check "(o) .escalated unit is not in flight (rc=$rc)" fail; fi
+
+# (p) a date with no -d (BSD) -> the date -j fallback parses the stamp, Stop allowed
+real_date="$(command -v date)"
+mkdir -p "$tmproot/bsd"
+printf '#!/usr/bin/env bash\nfor a in "$@"; do [ "$a" = -d ] && exit 1; done\nif [ "${1:-}" = -j ]; then exec %s -u -d "$5" "$6"; fi\nexec %s "$@"\n' "$real_date" "$real_date" > "$tmproot/bsd/date"
+chmod +x "$tmproot/bsd/date"
+dir="$(make_project p)"; flag "$dir"; fresh "$dir"
+rc=0
+printf '%s' '{"hook_event_name":"Stop","stop_hook_active":false,"session_id":"s1"}' \
+  | PATH="$tmproot/bsd:$PATH" CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/stop-gate.sh >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && grep -q 'stop-allowed=review-in-flight units=u1' "$dir/.claude/review-audit.log" 2>/dev/null; then
+  check "(p) date -j fallback parses the stamp" pass
+else check "(p) date -j fallback parses the stamp (rc=$rc)" fail; fi
+
+# (q) the block message ends with the review-in-flight sentence
+dir="$(make_project q)"; flag "$dir"
+err="$(run_stop_err "$dir")"
+if printf '%s' "$err" | grep -qF 'A reviewer dispatched with a `Unit:` line lets Stop through for 1800 s on its own; no flag write is needed.'; then
+  check "(q) block message names the review-in-flight allow" pass
+else check "(q) block message names the review-in-flight allow" fail; fi
+
+# (r) two allowed Stops in a row log the review-in-flight line once
+dir="$(make_project r)"; flag "$dir"; fresh "$dir"
+rc1="$(run_stop "$dir")"; rc2="$(run_stop "$dir")"
+n="$(grep -c 'stop-allowed=review-in-flight units=u1' "$dir/.claude/review-audit.log" 2>/dev/null || true)"
+if [ "$rc1" = 0 ] && [ "$rc2" = 0 ] && [ "$n" = 1 ]; then check "(r) repeated allow logs one audit line" pass
+else check "(r) repeated allow logs one audit line (rc1=$rc1 rc2=$rc2 lines=$n)" fail; fi
+
 exit "$fail"

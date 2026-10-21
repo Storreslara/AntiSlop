@@ -139,10 +139,22 @@ block() { echo "$1" >&2; exit 2; }
 allow() { exit 0; }
 
 stop_active="$(echo "$input" | jq -r '.stop_hook_active // false' 2>/dev/null || echo false)"
-[ "$stop_active" = "true" ] && allow
-
 hook_event="$(echo "$input" | jq -r '.hook_event_name // empty' 2>/dev/null || true)"
 agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
+
+# Loop guard (rp-u2). The stop that follows a block carries stop_hook_active. For this project's
+# reviewer it still runs the review-join consume and the bounded flag clear, so a verdict written
+# after a marker=MISSING block is not lost; the core never blocks such a stop (loop_guard_active).
+# Every other stop with stop_hook_active allows at once, as before.
+loop_guard_active=false
+if [ "$stop_active" = "true" ]; then
+  if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ] \
+     && persona_matches_grant "$agent_type" reviewer; then
+    loop_guard_active=true
+  else
+    allow
+  fi
+fi
 raw_session_id="$(echo "$input" | jq -r '.session_id // "unknown"' 2>/dev/null || echo unknown)"
 raw_agent_id="$(echo "$input" | jq -r '.agent_id // .session_id // "main"' 2>/dev/null || echo main)"
 
