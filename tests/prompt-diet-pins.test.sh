@@ -37,7 +37,34 @@ for n in 'The actual, unobserved residual is different' 'two different mechanism
   has docs/orchestrator-rationale.md "$n"
 done
 
-# qw-u3 appends its rows below this line.
+# qw-u3: protocol narrative trim. Rules P1-P7 stay in the protocol and in every mirror that inlines
+# their section; the provenance note, the ADR-0028 cause story and three status-line asides are removed.
+for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/orchestrator.md \
+         .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md \
+         .claude/agents/milestone-auditor.md; do
+  has "$f" 'Only one unit is ever mid-review'
+  has "$f" 'scoped to the stopping reviewer'"'"'s own stamped units'
+  has "$f" '**unit-exclusivity axis**'
+  has "$f" '**advisory-reviewer axis**'
+  has "$f" 'ADR-0016'
+  has "$f" 'ADR-0028'
+  hasnot "$f" 'Moved here from Review ownership'
+  hasnot "$f" 'a test-hygiene defect, not a violation of unit-exclusivity'
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/orchestrator.md \
+         .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md \
+         .claude/agents/milestone-auditor.md .claude/agents/lead-programmer.md; do
+  has "$f" '`^STATUS: (complete|incomplete [—-] .+)$`'
+  has "$f" 'The main session answering its user directly has no caller, so there is nothing to sign.'
+  has "$f" '**zero content blocks**'
+  has "$f" 'Do not replace it with a hook.'
+  has "$f" '<the same reason you wrote into the sentinel>'
+  has "$f" 'reply with a brief one-or-two-sentence confirmation and the status line'
+  hasnot "$f" 'stated as fact, so nobody later'
+  hasnot "$f" 'defeats the whole point of it being cheap'
+done
+
+# qw-u4 appends its rows below this line.
 
 if [ "$fail" -eq 0 ]; then echo "All prompt-diet-pins checks passed."; else echo "prompt-diet-pins: FAILED"; fi
 exit "$fail"

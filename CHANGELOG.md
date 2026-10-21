@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Protocol narrative trim (qw-u3, 0.31.191).** templates/persona-protocol.md: "Review markers and gate mechanics (owner-facing)" drops its provenance note and the ADR-0028 cause story and keeps both axis terms; "Terminal status line" drops three asides and keeps every rule. Every full-tier persona prompt is smaller (about 1361 bytes for the five that inline "Review markers", 687 for lead-programmer). New rows in tests/prompt-diet-pins.test.sh pin each kept rule.
+
 **Orchestrator narrative trim (qw-u2, 0.31.190).** agents/orchestrator.md loses five incident narratives and rationale paragraphs (moved verbatim to docs/orchestrator-rationale.md) and the teams-only "missing roster row" subsection (moved to commands/start-feature-team.md). No rule removed: each survivor is pinned by the new tests/prompt-diet-pins.test.sh. The installed orchestrator prompt is about 3759 bytes smaller.
 
 
