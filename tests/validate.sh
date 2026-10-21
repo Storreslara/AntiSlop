@@ -783,6 +783,15 @@ else
 fi
 
 echo
+echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
+if bash tests/review-precheck.test.sh > /dev/null; then
+  echo "OK   tests/review-precheck.test.sh"
+else
+  echo "FAIL tests/review-precheck.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"

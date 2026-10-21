@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.200",
+  "pluginVersion": "0.31.201",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,17 +42,17 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "1bedd26b41f7b69398577fe0fcae050bef5f65a55284b604a0057305867077f2",
+    ".claude/agents/orchestrator.md": "416f5ce2e5366b7520f6c8ce3f86cbff231c161c2030cc24daede3514622a845",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
-    ".claude/agents/lead-programmer.md": "fce6e9c1a62e6e1618c7b672f4217a903be02ff67b3aa52a410cd1c024fb5ab8",
-    ".claude/agents/spec-master.md": "9c4c5a6f67efd83cb1cce20c472e3623df48458031aeebfbc1f998343450a247",
-    ".claude/agents/task-master.md": "313ec821932e359687da3750a7bfb71357b5c91f093552f4c5bddf4c0676280d",
+    ".claude/agents/lead-programmer.md": "34748c1135e51715ee1c5fee09025cf1dd15094e2477723817f24b45027d59da",
+    ".claude/agents/spec-master.md": "7ff441298cd64ef8353d18fb5e7020f8fc76a0ae8e92fe166d22e6d888957cd5",
+    ".claude/agents/task-master.md": "a274fb8cfaa2bcd580e608e019b0ad597b16f848bb7785148cb0d6dd1e133e8f",
     ".claude/agents/scribe.md": "739dd034916033684974bc28acfabc261d924f3f37063fc7c0b3126301f6b960",
-    ".claude/agents/reviewer.md": "64cb1bce85147f56c11ac81618a5ce762a69e6a9447c4afceb1ebaa9015a2ddb",
-    ".claude/agents/milestone-auditor.md": "7016986ba20b2cdb26e8a5d5ee89f7a27ae372665943bc7b23d165bab5a864c2",
+    ".claude/agents/reviewer.md": "f3e4fdc1b98d207117594cfd9e931cd43a9e278b4b4962494d85436ad90406f0",
+    ".claude/agents/milestone-auditor.md": "d0756881884d06817b14d7fcb92205935aae2c3f6a4a4754bcb4bcd9442d1922",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
-    ".claude/persona-protocol.md": "be3a9076c1e393a8f8151ba67a2eb51b6bf1f49789cd26b086889ca81417920a",
+    ".claude/persona-protocol.md": "319402ff89ed7487be074152065527b9cf7d367da4135fed23bb0ce898b06a72",
     ".claude/persona-protocol-slim.md": "6d03c9d18b85160c988f14caecb41e0c0740c661d1eb41bdd4d6c86bca823db9",
     ".claude/protocol-digest.md": "aa0a0b315f07fa440c59056d82b56483826e2b754a22cb10eccdad2a00554638",
     ".claude/hooks/scripts/dispatch-hygiene.sh": "c3131b4398fdf8c8c1c36ece8dabbf7d27469368af3a9403f9d56b6dbc96e0f9",
@@ -116,7 +116,8 @@
     ".claude/bin/unit-bookkeeping.sh": "5369083cd28116609bd80c706a98e252f1425cbb2d90e0d46cb545bc207975ba",
     ".claude/bin/blast-radius.sh": "9c4639bc4b8320d88bf718f1b59381387faa0ae0fba49fc4be05e161fea69ee8",
     ".claude/hooks/scripts/lib/sensitive-paths.sh": "8732d707b6f91745ecf474c1fd5c07b256aba21128cc164694f70386cdd478c6",
-    ".claude/hooks/scripts/lib/unit-scope.sh": "aea72976864aa58ecd93d25bea2cde1f5de8b52c765ff208796c09b2a19c1d1e"
+    ".claude/hooks/scripts/lib/unit-scope.sh": "aea72976864aa58ecd93d25bea2cde1f5de8b52c765ff208796c09b2a19c1d1e",
+    ".claude/bin/review-precheck.sh": "5cf28db4b457b3cffce7a95c57a0c8f41286303cd16ca53fb4fb45f0e0577315"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku",

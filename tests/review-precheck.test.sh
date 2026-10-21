@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+# review-precheck.sh (st-u2): the reviewer's mechanical pre-review. Cases (a) to (i) run in a temp repo
+# with a committed contract; (j) reads the reviewer and protocol prose.
+set -uo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+PC="$ROOT/bin/review-precheck.sh"
+fail=0
+ok()  { echo "OK   $*"; }
+bad() { echo "FAIL $*"; fail=1; }
+T="$(mktemp -d)"; trap 'rm -rf "$T"' EXIT
+cd "$T" || exit 1
+g() { git -c user.email=t@t -c user.name=t "$@"; }
+git init -q . && mkdir -p src test docs/plans/p/contracts hooks
+printf 'a\n' > src/a.js && printf 'ok\n' > test/a.test.sh
+cat > docs/plans/p/contracts/u1.md << 'MD'
+Unit: u1
+
+## Affected files
+- `src/a.js`
+- `test/a.test.sh`
+
+## Acceptance criteria
+1. run: `bash -c 'grep -c b src/a.js'`
+   exit: 0
+   stdout: `1`
+   mutation: none
+2. run: `bash -c 'test -f src/a.js'`
+   exit: 0
+   stdout: empty
+   mutation: none
+3. run: `bash -c 'echo slow'` (Bash tool timeout 600000 ms)
+   exit: 0
+   stdout: `slow`
+   mutation: none
+4. run: `bash -c 'echo hi'`
+   exit: 0
+   stdout: prints a greeting
+   mutation: none
+MD
+cat > docs/plans/p/contracts/u2.md << 'MD'
+Unit: u2
+
+## Affected files
+- `src/a.js`
+
+## Do NOT touch
+- `src/a.js` partial: past its first line
+- `CONTEXT.md` (whole file; `src/a.js` is named here only as a reason)
+MD
+g add -A && g commit -q -m base && BASE="$(git rev-parse HEAD)"
+C=docs/plans/p/contracts/u1.md
+C2=docs/plans/p/contracts/u2.md
+export CLAUDE_PROJECT_DIR="$T"
+first() { printf '%s\n' "$1" | head -n1; }
+
+printf 'a\nb\n' > src/a.js && g commit -qam 'u1: b'
+out="$(bash "$PC" u1 "$BASE" --contract "$C")"; rc=$?
+[ "$rc" = 0 ] && ok "(a) exit 0" || bad "(a) exit $rc"
+[ "$(first "$out")" = "precheck: result=pass unit=u1 range=$BASE..$(git rev-parse HEAD) fails=0 deferred=1 judge=1" ] && ok "(a) header" || bad "(a) header: $(first "$out")"
+for l in 'changed: src/a.js' 'scope: ok src/a.js listed' 'size: files=1 lines=1 binary=0' 'criterion 1: pass exit=0' 'criterion 2: pass exit=0' 'criterion 3: deferred long' 'criterion 4: judge stdout exit=0'; do
+  printf '%s\n' "$out" | grep -qxF -- "$l" && ok "(a) $l" || bad "(a) missing: $l"
+done
+cmp -s <(printf '%s\n' "$out") "$T/.claude/bookkeeping/u1.precheck" && ok "(a) packet file equals stdout" || bad "(a) packet file differs"
+bash "$PC" u2 "$BASE" --contract "$C2" | grep -qxF 'scope: ok src/a.js listed' && ok "(a) a partial: or reason-only Do NOT touch mention keeps a listed file" || bad "(a) listed file excluded by a partial bullet"
+
+[ "$(bash "$PC" u1 "$BASE" --contract "$C" --criterion 3)" = 'criterion 3: pass exit=0' ] && ok "(b) --criterion runs a deferred one" || bad "(b) --criterion 3"
+
+printf 'x\n' > CONTEXT.md && printf 'h\n' > hooks/g.sh && g add -A && g commit -q -m 'leak'
+out="$(bash "$PC" u1 "$BASE" --contract "$C")"
+printf '%s\n' "$out" | grep -qxF 'scope: out CONTEXT.md' && ok "(c) out-of-scope file" || bad "(c) out-of-scope file"
+printf '%s\n' "$out" | grep -qxF 'sensitive: hooks/g.sh' && ok "(c) sensitive path" || bad "(c) sensitive path"
+bash "$PC" u2 "$BASE" --contract "$C2" | grep -qxF 'scope: excluded CONTEXT.md' && ok "(c) a whole-file Do NOT touch bullet" || bad "(c) excluded class"
+first "$out" | grep -q '^precheck: result=fail .* fails=2 ' && ok "(c) result=fail fails=2" || bad "(c) header: $(first "$out")"
+mkdir -p "$T/.claude/reviewed" && printf 'FAIL u1 2026-10-20T00:00:00Z\ntier: sonnet\n- CONTEXT.md:1 needs the term\n' > "$T/.claude/reviewed/u1.fail"
+bash "$PC" u1 "$BASE" --contract "$C" | grep -qxF 'scope: ok CONTEXT.md fail-record' && ok "(c) path named by the .fail record" || bad "(c) fail-record class"
+rm -rf "$T/.claude/reviewed"
+
+g reset -q --hard HEAD~1
+printf 'z\n' > src/a.js && g commit -qam 'u1: no b'
+out="$(bash "$PC" u1 "$BASE" --contract "$C")"
+printf '%s\n' "$out" | grep -qxF 'criterion 1: fail exit=1 want=0' && ok "(d) exit mismatch is a fail line" || bad "(d) exit mismatch"
+printf 'b\nb\n' > src/a.js && g commit -qam 'u1: two b'
+bash "$PC" u1 "$BASE" --contract "$C" | grep -q '^criterion 1: fail stdout want=1 got=2$' && ok "(d) stdout mismatch is a fail line" || bad "(d) stdout mismatch"
+
+printf 'a\nb\n' > src/a.js && sed -i 's/grep -c b/grep -c a/' "$C" && g commit -qam 'u1: weaken criterion'
+out="$(bash "$PC" u1 "$BASE" --contract "$C")"
+printf '%s\n' "$out" | grep -qxF "contract: changed-since-baseline $C" && ok "(e) contract edited after the baseline" || bad "(e) contract edit not flagged"
+printf '%s\n' "$out" | grep -qxF 'criterion 1: pass exit=0' && ok "(e) baseline criteria used" || bad "(e) criteria not from baseline"
+g reset -q --hard HEAD~1
+
+out="$(bash "$PC" u1 "$BASE" --affected src/a.js)"
+printf '%s\n' "$out" | grep -qxF 'scope: ok src/a.js listed' && ok "(f) --affected" || bad "(f) --affected"
+printf '%s\n' "$out" | grep -qF 'criteria: none' && ok "(f) no contract, no criteria" || bad "(f) criteria line"
+out="$(bash "$PC" u1 "$BASE")"
+printf '%s\n' "$out" | grep -qxF 'scope: no-affected-list' && first "$out" | grep -q 'result=fail' && ok "(f) no list is a fail" || bad "(f) no list"
+mkdir -p "$T/.claude/bookkeeping" && printf 'src/a.js\n' > "$T/.claude/bookkeeping/u1.scope"
+bash "$PC" u1 "$BASE" | grep -qxF 'scope: ok src/a.js listed' && ok "(f) lane scope record used" || bad "(f) lane scope record"
+
+printf '{"name":"x"}\n' > package.json && g add -A && g commit -q -m 'u1: pkg'
+bash "$PC" u1 "$BASE" --contract "$C" | grep -qxF 'scope: judge package.json version-stamp-name' && ok "(g) version-stamp name left to the reviewer" || bad "(g) judge class"
+mkdir -p .claude-plugin && printf '{}\n' > .claude-plugin/plugin.json && git add -A && g commit -q -m plugin-layout && B2="$(git rev-parse HEAD)"
+printf '{"name":"y"}\n' > package.json && g commit -qam 'u1: bump'
+bash "$PC" u1 "$B2" --contract "$C" | grep -qxF 'scope: ok package.json plugin-version' && ok "(g) plugin layout version file" || bad "(g) plugin-version class"
+
+bash "$PC" '../x' "$BASE" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) bad unit id exit 2" || bad "(h) bad unit id"
+bash "$PC" u1 not-a-ref >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) bad baseline exit 2" || bad "(h) bad baseline"
+bash "$PC" u1 "$BASE" --criterion 1 >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) --criterion without a contract exit 2" || bad "(h) --criterion without contract"
+bash "$PC" u1 "$BASE" --bogus >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) unknown option exit 2" || bad "(h) unknown option"
+[ "$(cd src && bash "$PC" u1 "$BASE" --contract "$C" | sed -n 2,99p)" = "$(bash "$PC" u1 "$BASE" --contract "$C" | sed -n 2,99p)" ] && ok "(i) same output from a subdirectory" || bad "(i) subdirectory differs"
+
+# (k) a scope library that is missing or defines nothing: exit 2 and no packet (the reviewer runs the checks itself).
+L="$(mktemp -d)"; mkdir -p "$L/bin" "$L/hooks/scripts/lib" && cp "$PC" "$L/bin/" && cp "$ROOT/hooks/scripts/lib/sensitive-paths.sh" "$L/hooks/scripts/lib/"
+bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(k) unit-scope.sh missing: exit 2" || bad "(k) missing library"
+: > "$L/hooks/scripts/lib/unit-scope.sh"
+bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(k) unit-scope.sh empty: exit 2" || bad "(k) empty library"
+rm -rf "$L"
+
+# (j) prose: the reviewer and the protocol name the pre-review script and its FAIL rule.
+flat() { tr -s ' \n' ' ' < "$1"; }
+for f in agents/reviewer.md .claude/agents/reviewer.md; do
+  for n in 'run `bash .claude/bin/review-precheck.sh <task-id> <baseline> --contract <contract path>` yourself' \
+           'is a FAIL ground on its own: return FAIL quoting those lines, without reading the code' \
+           'Do not re-run a criterion it reports `pass`; run each `deferred` one yourself with `--criterion <n>`' \
+           'Read code only for judgment'; do
+    flat "$ROOT/$f" | grep -qF -- "$n" && ok "(j) $f: $n" || bad "(j) $f missing: $n"
+  done
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/reviewer.md .claude/agents/orchestrator.md; do
+  n='It re-runs the checks with a script too: it runs `.claude/bin/review-precheck.sh` itself, treats each failure line as a FAIL ground, and re-runs by hand only what the script defers or cannot decide.'
+  flat "$ROOT/$f" | grep -qF -- "$n" && ok "(j) $f: protocol rule" || bad "(j) $f missing the protocol rule"
+done
+exit "$fail"
