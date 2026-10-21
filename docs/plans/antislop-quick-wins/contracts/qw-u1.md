@@ -18,7 +18,7 @@ c2". This file is the contract of record. Dispatch it only after aof-u4 has reac
 ## Affected files
 - `tests/unit-bookkeeping.test.sh` (anchor: new file)
 - `bin/unit-bookkeeping.sh` (anchor: new file, mode 755)
-- `bin/cli.js` (anchors: line matching `const BIN_HELPER_FILES = [`; line matching `'{DOTDIR}/microworld-audit.log',`)
+- `bin/cli.js` (anchors: line matching `const BIN_HELPER_FILES = [`; line matching `'{{DOTDIR}}/microworld-audit.log',`; double braces, which `renderIgnorePatterns` replaces)
 - `tests/bin-helpers-scaffold.test.sh` (anchor: line matching `FILES="ladder-tier.sh`)
 - `agents/orchestrator.md` ("Per-unit model routing", "Contract-score guard", "Reviewer gate model selection", "Rulings ledger")
 - `tests/validate.sh` (anchor: line matching `echo "== bin-helpers-scaffold: ladder helpers installed to .claude/bin (Bash, aof-u1) =="`)
@@ -124,11 +124,11 @@ exit "$fail"
    before: `const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'escalation-card.sh'];`
    after: `const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'escalation-card.sh', 'unit-bookkeeping.sh'];`
 6. file: `bin/cli.js`
-   anchor: line matching `'{DOTDIR}/microworld-audit.log',`
+   anchor: line matching `'{{DOTDIR}}/microworld-audit.log',` (double braces: `renderIgnorePatterns` replaces only `{{DOTDIR}}`; corrected 2026-10-20)
    indent: 0
    insert-after:
 ~~~
-  '{DOTDIR}/bookkeeping/',
+  '{{DOTDIR}}/bookkeeping/',
 ~~~
 7. file: `tests/bin-helpers-scaffold.test.sh`
    anchor: line matching `FILES="ladder-tier.sh`
