@@ -296,6 +296,26 @@ the protocol's short form with a pointer. Under this repo's `knowledgeWrites: ap
 needs a tracker issue for rubric row S3; the next spawn files one (`gh issue create`, label
 `plan/antislop-review-patches`).
 
+### Step 8 (rp-u7): blast-radius script follow-ups from the qw-u5 review (contract next spawn)
+Source: coordinator addendum, qw-u5 (82844f70, 0.31.193) PASS notes. Verified 2026-10-20: (1)
+`templates/persona-protocol.md:41` says "runs `.claude/bin/blast-radius.sh <baseline>`" without `bash`,
+while `agents/reviewer.md` says `bash .claude/bin/...`; add `bash`. (2) `.claude/bin/blast-radius.sh` is
+committed as 100644 (`bin/blast-radius.sh` is 100755): `git update-index --chmod=+x`, plus a test that a
+fresh scaffold's copy and this repo's copy are executable; `--update` restoring the mode of a
+content-current helper is in scope only if the test shows it is a one-line change in the helper copy loop
+(otherwise a Proposed out-of-scope change). (3) `bin/blast-radius.sh:13` `TESTRE` counts `specs?/` folders
+and `_spec.<ext>` names as tests (so `docs/specs/` and `.claude/agent-memory/**/*_spec.md` match): restrict
+the folder match to `tests/` and `__tests__/` and the name match to `.test.` / `.spec.` before a code
+extension. (4) `bin/blast-radius.sh:26` puts `$p` into a `sed` replacement (breaks on `|` or `&`): use
+`awk -v`; run git with `-c core.quotePath=false` so non-ASCII paths are not quoted. (5) Add a total output
+cap with a `truncated: <n> more lines` marker (the qw-u5 range printed 1111 lines). (6) Open Question 6. (7)
+glossary terms **blast-radius script** and the two senses of **provenance** go to rp-s1.
+Affected files: `bin/blast-radius.sh`, `tests/blast-radius.test.sh`, `templates/persona-protocol.md`,
+`.claude/bin/blast-radius.sh` (mode only, plus `--update`), `bin/cli.js` only if (2)'s `--update` part is
+taken, bump files, generated mirrors. Order: after rp-u3 and after st-u2 (st-u2 edits
+`templates/persona-protocol.md` near the same reuse paragraph; the anchor check must run against st-u2's
+payloads) - so after st-u4 in practice, before rp-u4. Expected version then shifts rp-u4 and later by one.
+
 ## Dispatch section
 
 Fast path (5 lead units plus one scribe contract; Step 6 optional). Contract files, committed before
@@ -305,12 +325,14 @@ dispatch:
 - rp-u3: `docs/plans/antislop-review-patches/contracts/rp-u3.md`
 - rp-u4: `docs/plans/antislop-review-patches/contracts/rp-u4.md` (7/7, proven on the clone)
 - rp-u5: `docs/plans/antislop-review-patches/contracts/rp-u5.md` (7/7, proven on the clone)
-- rp-u6, rp-s1: next spawn (rp-s1 needs a tracker issue, label `plan/antislop-review-patches`).
+- rp-u6, rp-u7, rp-s1: next spawn (rp-s1 needs a tracker issue, label `plan/antislop-review-patches`).
 - st-u1 to st-u3 amended in place for Open Question 1 (commit 2246cb45; all still 7/7).
 
 Final order and expected versions (no fix rounds; each unit bumps relative to the version it starts at):
 rp-u1 0.31.194, rp-u2 0.31.195, rp-u3 0.31.196, qw-u6 0.31.197, st-u1 0.31.198, st-u2 0.31.199,
-st-u3 0.31.200, st-u4 0.31.201, rp-u4 0.31.202, rp-u5 0.31.203, rp-u6 0.31.204, then rp-s1 (no bump).
+st-u3 0.31.200, st-u4 0.31.201, rp-u7 0.31.202, rp-u4 0.31.203, rp-u5 0.31.204, rp-u6 0.31.205, then
+rp-s1 (no bump). (rp-u4 and rp-u5 contracts state "expected" versions without rp-u7; they bump relatively,
+so the shift is harmless.)
 
 Dispatch order against the queued units (qw-u5 landed as 82844f70 while this spec was written; all three
 contracts were re-proven in sequence on a clone of 8b931f0f): rp-u1, rp-u2, rp-u3 right after the unit currently in flight
@@ -321,6 +343,12 @@ order, then rp-s1 last. Every unit bumps the version relative to the version it 
 ## Open Questions
 
 All five were ruled on 2026-10-20 (Clarifications); kept below for the record.
+
+6. (open, from the qw-u5 addendum item 6) Add "a changed hook or prompt file with no caller lines" as an
+   explorer trigger for the reviewer? Recommended: no. The operator ruling's triggers are
+   `provenance=none`, script missing, and an open question that decides a finding; the third already covers
+   a no-caller hook or prompt change whenever it matters, and a fourth trigger would widen a ruled list.
+   Alternative: add it, as a new ruling.
 
 1. st-u1 to st-u3 encode the old criteria exception (`us_classify` class `criteria` for any path token in a
    `run:` line). Recommended default: before st-u1 is dispatched, a spec-master pass on
