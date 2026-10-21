@@ -13,7 +13,12 @@ New `hooks/scripts/writer-scope-gate.sh` is registered as the second SubagentSto
   `.claude/bookkeeping/scope-gate.log`.
 
 Scope per persona:
-- every persona may change `.claude/` and `docs/plans/`;
+- every persona may change `.claude/` and `docs/plans/`, checked before `## Do NOT touch` (rp-u9 review,
+  F1): a `.claude/` copy changes only through `node bin/cli.js --update` and `docs/plans/` is the plan, so a
+  bullet naming such a path (aof-u1-fix1's "`.claude/agents/orchestrator.md` and
+  `.claude/agents/task-master.md`: no hand edits, only through `--update`") states how the file may change,
+  which the reviewer's `cmp` mirror criteria enforce, never whether; the gate cannot tell a hand edit from a
+  regeneration, and review-precheck (st-u2) leaves both trees out of its scope lines the same way;
 - lead-programmer: st-u1's `us_classify` against the dispatch's `## Affected files` (or the contract file
   the dispatch names), its criteria and the unit's `.fail` record;
 - spec-master: nothing else, except knowledge files under `knowledgeWrites: "apply"`;
@@ -22,7 +27,10 @@ Scope per persona:
   request names").
 
 Knowledge files are CONTEXT.md, README.md, `docs/harness-glossary.md` and `docs/adr/*`. Other personas, a
-missing config or a missing transcript are allowed (the last is logged as `unattributable`). `## Do NOT touch`
+missing config or a missing transcript are allowed (the last is logged as `unattributable`). A Write or Edit
+path is normalised lexically first (`//`, `.` and `..` segments, a trailing `/`; rp-u9 review, F2), so
+`src//a.js` is judged as `src/a.js` and `.claude/../CONTEXT.md` as `CONTEXT.md`; a committed name git prints
+C-quoted cannot be judged and blocks. `## Do NOT touch`
 is read with rp-u9's `us_exclusions` (whole-subject bullets only; a bullet carrying `partial:` never excludes). If
 `hooks/scripts/lib/unit-scope.sh` is missing or leaves a function the gate needs undefined (`declare -F`),
 the three writers' stops are blocked with a report-and-wait message (fail closed, as rp-u8 does for the
@@ -32,8 +40,8 @@ tests/trust-model-bijection.test.js requires.
 
 ## Retrieval
 Fast path, no tracker issue. Spec: `docs/plans/antislop-structural/spec.md`, "Step 3 (st-u3)" and "Context, f".
-This file is the contract of record. Dispatch it only after st-u2 has reached PASS; it needs st-u1's library and qw-u1's gitignored
-`.claude/bookkeeping/`.
+This file is the contract of record. Dispatch it only after rp-u11 has reached PASS (st-u2 landed at 952a8796); it needs
+st-u1's library as corrected by rp-u9 and rp-u11, and qw-u1's gitignored `.claude/bookkeeping/`.
 
 ## Affected files
 - `tests/writer-scope-gate.test.sh` (anchor: new file, mode 755)
@@ -155,6 +163,28 @@ run reviewer "$T/t13"; [ "$rc" = 0 ] && ok "(n) empty library: reviewer not gate
 rm -f "$LG/lib/unit-scope.sh"; run scribe "$T/t13"
 [ "$rc" = 2 ] && ok "(n) missing library: writer blocked" || bad "(n) missing library rc=$rc $err"
 GATE="$GATE0"
+# (o) a Do NOT touch bullet naming a .claude/ copy (aof-u1-fix1's shape) says how it changes, not whether:
+# the mirror its own --update regenerates is allowed (the .claude/ allowance comes before exclusions).
+mkdir -p .claude/agents && printf 'o\n' > .claude/agents/orchestrator.md
+mk "$T/t14" "$LP
+## Do NOT touch
+- \`.claude/agents/orchestrator.md\` and \`.claude/agents/task-master.md\`: no hand edits, only through \`node bin/cli.js --update\`." "$R/.claude/agents/orchestrator.md"
+run lead-programmer "$T/t14"
+[ "$rc" = 0 ] && ok "(o) excluded .claude/ copy regenerated: allowed" || bad "(o) rc=$rc $err"
+rm -rf .claude/agents
+# (p) a tool-call path is normalised before it is judged: src//a.js is the listed src/a.js, and
+# .claude/../CONTEXT.md is CONTEXT.md, never the .claude/ allowance.
+printf 'a4\n' > src/a.js; mk "$T/t15" "$LP" "$R/src//a.js"; run lead-programmer "$T/t15"
+[ "$rc" = 0 ] && ok "(p) doubled slash judged as the listed file" || bad "(p) doubled slash rc=$rc $err"
+git checkout -q -- src/a.js
+printf 'c6\n' > CONTEXT.md; mk "$T/t16" 'Write the spec.' "$R/.claude/../CONTEXT.md"; run spec-master "$T/t16"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF 'scope: CONTEXT.md.' && ok "(p) .. resolved before the .claude/ allowance" || bad "(p) dot-dot rc=$rc $err"
+git checkout -q -- CONTEXT.md
+# (q) a committed name git prints C-quoted cannot be judged: it blocks.
+printf 'q\n' > 'src/q"x.js' && g add -A && g commit -qm q && S2="$(git rev-parse HEAD)"
+mk "$T/t17" "$LP"; commit_result "$T/t17" "$S2"; run lead-programmer "$T/t17"
+[ "$rc" = 2 ] && ok "(q) C-quoted committed path blocked" || bad "(q) rc=$rc $err"
+g reset -q --hard HEAD~1
 # (l) registration: SubagentStop runs stop-gate.sh and writer-scope-gate.sh, in that order.
 [ "$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")" = 'stop-gate.sh,writer-scope-gate.sh' ] && ok "(l) registered after stop-gate" || bad "(l) registration"
 [ -x "$GATE" ] && ok "(l) executable" || bad "(l) not executable"
@@ -221,11 +251,23 @@ jq -r 'select(.type == "user") | .message.content[]?
        | if type == "string" then . else (map(select(.type? == "text") | .text) | join("\n")) end' "$tr_path" 2>/dev/null \
   | grep -oE '^\[[^]]* [0-9a-f]{7,40}\]' | grep -oE '[0-9a-f]{7,40}\]$' | tr -d ']' > "$W/shas" || true
 
+# norm_abs <absolute path>: `//`, `.` and `..` segments resolved lexically and no trailing `/`, so a
+# tool-call path such as `src//a.js` or `.claude/../CONTEXT.md` is judged as the file it names (rp-u11).
+norm_abs() {
+  local rest="$1/" seg out=""
+  while [ -n "$rest" ]; do
+    seg="${rest%%/*}"; rest="${rest#*/}"
+    case "$seg" in ''|.) ;; ..) out="${out%/*}" ;; *) out="$out/$seg" ;; esac
+  done
+  printf '%s\n' "${out:-/}"
+}
 top="$(pwd -P)"
+pd="$(norm_abs "$project_dir")"
 : > "$W/cand"
 while IFS= read -r a; do
   [ -n "$a" ] || continue
-  case "$a" in "$top"/*) printf '%s\n' "${a#"$top"/}" >> "$W/cand" ;; "$project_dir"/*) printf '%s\n' "${a#"$project_dir"/}" >> "$W/cand" ;; esac
+  a="$(norm_abs "$a")"
+  case "$a" in "$top"/*) printf '%s\n' "${a#"$top"/}" >> "$W/cand" ;; "$pd"/*) printf '%s\n' "${a#"$pd"/}" >> "$W/cand" ;; esac
 done < "$W/abs"
 start=""
 while IFS= read -r s; do
@@ -252,8 +294,12 @@ kw="$(jq -r '.knowledgeWrites // "scoped"' "$config" 2>/dev/null)"; [ "$kw" = ap
 knowledge() { case "$1" in CONTEXT.md|README.md|docs/harness-glossary.md|docs/adr/*) return 0 ;; esac; return 1; }
 in_scope() { # <path> -> exit 0 when this persona may leave it changed
   local p="$1"
-  us_excluded "$p" "$W/excl" && return 1
+  # This standing exception comes before `## Do NOT touch`: a `.claude/` copy changes only through
+  # `--update` and `docs/plans/` is the plan itself, so a bullet naming such a path says how it may
+  # change (the reviewer's mirror checks enforce that), never whether; this gate cannot tell a hand edit
+  # from a regeneration. review-precheck leaves both trees out of its scope lines the same way.
   case "$p" in .claude/*|docs/plans/*) return 0 ;; esac
+  us_excluded "$p" "$W/excl" && return 1
   us_listed "$p" "$W/listed" && return 0
   us_named_in "$p" "$W/prompt" && [ "$persona" != lead-programmer ] && return 0
   case "$persona" in
@@ -270,6 +316,9 @@ in_scope() { # <path> -> exit 0 when this persona may leave it changed
 viol=()
 while IFS= read -r p; do
   [ -n "$p" ] || continue
+  # git C-quotes a committed name holding a quote, a backslash or a control character; such a path
+  # cannot be judged (review-precheck fails it as `unquotable`), so it is out of scope.
+  case "$p" in '"'*) viol+=("$p"); continue ;; esac
   if git ls-files --error-unmatch -- "$p" >/dev/null 2>&1 || git cat-file -e "$start:$p" 2>/dev/null; then
     git diff --quiet "$start" -- "$p" 2>/dev/null && continue
   else
@@ -310,7 +359,7 @@ exit 2
    indent: 0
    insert-after:
 ~~~
-| 26 | A writing persona (lead-programmer, scribe, spec-master) ends its turn with no net change outside its dispatch's unit scope | lead-programmer, scribe, spec-master | `hooks/scripts/writer-scope-gate.sh` | SubagentStop gate (unit st-u3). Attributes paths from the subagent's own transcript (Write/Edit file paths, plus the files of each commit whose `[<branch> <sha>]` line it saw), so a concurrent writer is never blamed; a Bash write that never went through Write/Edit and was never committed is not attributed (residual). A missing transcript is allowed and logged to `.claude/bookkeeping/scope-gate.log`. |
+| 26 | A writing persona (lead-programmer, scribe, spec-master) ends its turn with no net change outside its dispatch's unit scope | lead-programmer, scribe, spec-master | `hooks/scripts/writer-scope-gate.sh` | SubagentStop gate (unit st-u3). Attributes paths from the subagent's own transcript (Write/Edit file paths, plus the files of each commit whose `[<branch> <sha>]` line it saw), so a concurrent writer is never blamed; Write/Edit paths are normalised lexically before they are judged; a Bash write that never went through Write/Edit and was never committed is not attributed (residual). A missing transcript is allowed and logged to `.claude/bookkeeping/scope-gate.log`. |
 ~~~
 6. file: `tests/validate.sh`
    anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`
@@ -348,7 +397,7 @@ fi
    expect: 0
 8. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.196 to 0.31.197). The bump is required: `--update`
+   This adds one to the patch version in both files (expected 0.31.202 to 0.31.203). The bump is required: `--update`
    installs a new hook script only when `pluginVersion` moves.
 9. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
@@ -356,7 +405,7 @@ fi
    insert-after:
 ~~~
 
-**Writer scope gate (st-u3, VERSION).** New SubagentStop hook `hooks/scripts/writer-scope-gate.sh`, registered after stop-gate.sh: lead-programmer, scribe and spec-master cannot end a turn while a change they made (Write/Edit paths and their own commits, read from their own transcript) is outside the dispatch's unit scope; knowledge files need `knowledgeWrites: "apply"` or a dispatch that lists or names them. A reverted change passes. Blocks are logged to `.claude/bookkeeping/scope-gate.log`. docs/trust-model.md row 26. New test tests/writer-scope-gate.test.sh.
+**Writer scope gate (st-u3, VERSION).** New SubagentStop hook `hooks/scripts/writer-scope-gate.sh`, registered after stop-gate.sh: lead-programmer, scribe and spec-master cannot end a turn while a change they made (Write/Edit paths and their own commits, read from their own transcript) is outside the dispatch's unit scope; knowledge files need `knowledgeWrites: "apply"` or a dispatch that lists or names them. `.claude/` and `docs/plans/` are allowed before `## Do NOT touch` is read (a bullet naming a `.claude/` copy says it changes only through `--update`); Write/Edit paths are normalised lexically, and a C-quoted committed name blocks. A reverted change passes. Blocks are logged to `.claude/bookkeeping/scope-gate.log`. docs/trust-model.md row 26. New test tests/writer-scope-gate.test.sh.
 ~~~
    Replace `VERSION` with the version that edit 8 wrote.
 10. command: `node bin/cli.js --update`
@@ -367,7 +416,7 @@ fi
 
 ## Do NOT touch
 - `hooks/scripts/stop-gate.sh` and `hooks/scripts/lib/stop-gate-core.sh` (the new gate is a separate script; criterion 4)
-- `hooks/scripts/lib/unit-scope.sh` (st-u1's library as corrected by rp-u9; this unit only sources it)
+- `hooks/scripts/lib/unit-scope.sh` (st-u1's library as corrected by rp-u9 and rp-u11; this unit only sources it)
 - `adapters/` (Claude-only: the codex and cursor hook inputs carry no `agent_transcript_path`; criterion 4)
 - `agents/` and `templates/` (the gate's block message is the instruction; no persona prose changes; criterion 4)
 - `.claude/hooks/` by hand (only `node bin/cli.js --update` writes it)
@@ -376,7 +425,7 @@ fi
 1. run: `bash -c 'bash tests/writer-scope-gate.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: delete the gate's `set +e` line; agent-identity.sh's sourced audit-log.sh leaves errexit on, cases (e) to (h) exit 1 instead of 0 or 2, and stdout is `1` (spec-master observed this on a clone). Deleting the `declare -F` block fails both (n) writer cases; calling `us_entries "$W/prompt"` instead of `us_exclusions "$W/prompt"` fails the (m) partial case.
+   mutation: delete the gate's `set +e` line; agent-identity.sh's sourced audit-log.sh leaves errexit on, cases (e) to (h) exit 1 instead of 0 or 2, and stdout is `1` (spec-master observed this on a clone). Deleting the `declare -F` block fails both (n) writer cases; calling `us_entries "$W/prompt"` instead of `us_exclusions "$W/prompt"` fails the (m) partial case. Moving the `.claude/*|docs/plans/*` allowance below the `us_excluded` line fails (o); deleting the `a="$(norm_abs "$a")"` line fails both (p) rows; deleting the C-quoted `case` line fails (q) (spec-master ran all three).
 2. run: `cmp hooks/scripts/writer-scope-gate.sh .claude/hooks/scripts/writer-scope-gate.sh`
    exit: 0
    stdout: empty
@@ -410,7 +459,8 @@ attribution: transcript records are JSON lines; the first `type: user` record is
 start-point: the parent of the first attributed commit, else HEAD; a path counts only if `git diff --quiet <start> -- <path>` fails, or it is a new file that exists. The block text tells the writer to restore with `git checkout <start> -- <path>` and commit; never a reset (R4).
 loop-bound: the gate blocks on every stop while the violation stands; Claude Code ends a stop-hook loop after 8 continuations. It does not honour the WIP sentinel, which stop-gate.sh consumes concurrently.
 residual: a Bash heredoc write that is neither committed nor made through Write/Edit is not attributed (trust-model row 26 says so).
-version: .claude-plugin/plugin.json and package.json read 0.31.201 after st-u2 if no fix round bumped; edit 8 adds one (expected 0.31.202).
+version: .claude-plugin/plugin.json and package.json read 0.31.202 after rp-u11 if no fix round bumped; edit 8 adds one (expected 0.31.203).
+amended-2: 2026-10-21, after rp-u9's review (review-patches spec Step 10, findings F1 and F2): `in_scope` checks the `.claude/` and `docs/plans/` allowance before `## Do NOT touch` (aof-u1-fix1's bullet excluded the two `.claude/agents/` copies its own mandated `--update` regenerated, so the old order would have blocked a correct unit; st-u2's precheck already leaves both trees out); a Write/Edit path is normalised lexically by `norm_abs` before it is judged (a doubled slash used to classify `out` and block a legitimate edit, and `.claude/../CONTEXT.md` fell under the `.claude/` allowance); a C-quoted committed name blocks (it used to be skipped as a missing file). Cases (o), (p) and (q) pin the three. A deliberate exclusion of a `.claude/` path is reviewer-enforced prose ("only through `--update`"), not a gate input; a contract that must stop a writer from regenerating a mirror says so in its Objective. Re-proven on a clone at 952a8796 with rp-u11 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, criteria 1 to 6 held, and (o), (p) and (q) failed under their mutations.
 amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): the gate sources unit-scope.sh after `set +e` and blocks a writer's stop when a function it needs is undefined (`declare -F`; a missing library used to exit 1 under the inherited `set -e`, which Claude Code treats as allow, and an empty one made every path in scope); `## Do NOT touch` is read with rp-u9's `us_exclusions` (a bullet carrying `partial:` never excludes); cases (m) and (n) pin both; criteria 4 and 6 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8, rp-u9 and the amended st-u2 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, and (m) and (n) failed with the `us_exclusions` call or the guard reverted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(st-u3): writer scope gate at SubagentStop for lead-programmer, scribe and spec-master

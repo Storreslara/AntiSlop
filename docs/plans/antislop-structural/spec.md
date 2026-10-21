@@ -540,3 +540,16 @@ the unit's last commit. New dispatch order and versions: rp-u8 0.31.199, rp-u9 0
 st-u3 0.31.202, st-u4 0.31.203 (then rp-u10, rp-u7, rp-u4 to rp-u6, rp-s1; see
 `docs/plans/antislop-review-patches/spec.md`, Dispatch section). The Dispatch section versions above are
 superseded.
+
+## Amendment 2026-10-21 (antislop-review-patches Step 10, rp-u9 review)
+rp-u9 passed with findings F1 to F6, verified against 952a8796 (st-u2 landed, 0.31.201). st-u3 is amended
+in place: its scope gate checks the `.claude/` and `docs/plans/` allowance before `## Do NOT touch` (F1:
+aof-u1-fix1's bullet excluded the two `.claude/agents/` copies its own mandated `--update` regenerated; a
+deliberate exclusion of a `.claude/` copy is reviewer-enforced prose, "only through `--update`", and
+st-u2's precheck already leaves both trees out), normalises Write/Edit paths lexically before judging them
+(F2), and blocks a C-quoted committed name; cases (o), (p), (q). st-u4 is amended in place: an entry
+`us_safe_path` rejects is `full` (`./hooks/x.sh` and `/hooks/x.sh` printed `small`). The library side of F2
+and F3 to F5 is a new unit, rp-u11, dispatched before st-u3. New order and versions: st-u2 0.31.201 (landed,
+in review), rp-u11 0.31.202, st-u3 0.31.203, st-u4 0.31.204 (then rp-u10, rp-u12, rp-u7, rp-u4 to rp-u6,
+rp-s1; see `docs/plans/antislop-review-patches/spec.md`, Dispatch section). The 2026-10-21 Step 9 versions
+above are superseded.

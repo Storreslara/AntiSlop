@@ -207,6 +207,41 @@ st-u1 passed review; the reviewer recorded real defects, fixed here before st-u2
   lane). st-u3 sourced `unit-scope.sh` after `agent-identity.sh` had turned `set -e` on, so a missing library
   exited 1 (Claude Code treats that as allow). All three are amended (Step 9).
 
+### rp-u9 review findings (verified 2026-10-21 against 952a8796, 0.31.201)
+
+rp-u9 (11719f24, 0.31.200) and rp-u8 (294ded81) passed; their `.pass` notes carry six findings, F1 to F6.
+st-u2 landed meanwhile (952a8796, 0.31.201, in review). Each was re-run on a scratch copy.
+- **F1: confirmed.** `us_exclusions` of `docs/plans/antislop-overhead-fixes/contracts/aof-u1-fix1.md` prints
+  `.claude/agents/orchestrator.md` and `.claude/agents/task-master.md` (bullet "... : no hand edits, only
+  through `node bin/cli.js --update`."), plus `docs/plans/antislop-overhead-fixes/contracts/aof-u1.md`. That
+  unit's own commit regenerated both mirrors through the mandated `--update`. st-u3's `in_scope` ran
+  `us_excluded` before its `.claude/*|docs/plans/*` allowance, so it would have blocked a correct unit.
+  st-u2's precheck is not affected: it drops `.claude` and `docs/plans` from its changed list by pathspec
+  before classifying. Decision (Clarifications): st-u3 checks the allowance first; no lint.
+- **F2: confirmed.** With `src` listed and `src/secret.js` excluded, `us_classify` prints `listed` for
+  `src/secret.js/` and `src//secret.js` (`out` for `/src/secret.js`, which no entry matches). st-u3 takes
+  paths from Write/Edit inputs. While checking, two more st-u3 holes of the same family turned up: a path
+  `.claude/../CONTEXT.md` fell under the `.claude/` allowance (and `docs/../src/x` under scribe's `docs/`
+  rule), and a committed name git prints C-quoted was skipped as a missing file. st-u4: `./hooks/x.sh` and
+  `/hooks/x.sh` escape the `^hooks/` sensitive anchor and printed `lane: small`.
+- **F3: confirmed.** `` `a/b.sh` (Partial: lines 1-10) `` excludes `a/b.sh`.
+- **F4: confirmed.** An en dash, ` -- `, an unspaced em dash, `,` or `;` before the reason drops the
+  exclusion. The note's "falls back to `out` (safe)" holds for every real contract today, but is not
+  always true: a dropped file that a criterion reads classifies `criteria`.
+- **F5: confirmed.** A `## Do NOT touch\r` heading hides the section (no exclusions at all).
+- **F6: confirmed.** A copy of reviewer-tier.sh whose `sensitive-paths.sh` ends with `echo sonnet` printed
+  `sonnet` then `opus` for a hooks/ diff; `bin/unit-bookkeeping.sh review` keeps `head -n1`, so it would
+  read `sonnet`. With the `declare -F` line narrowed to `touches_sensitive_path` and `state-access.sh`
+  emptied, the script exits 127 with no output, and no reviewer-tier case covers it (only the scope-libs
+  (b) grep pin would).
+- **Found while proving the chain:** rp-u7's range criteria 6 and 7 use `git log --grep="(rp-u7)"`, and
+  docs commit c02b286a ("Step 8 (rp-u7) from the qw-u5 review") matches, so `tail -1` picks a commit far
+  older than the unit (on the clone, criterion 6 listed every file changed since). No other queued unit id
+  matches an existing commit message. Commit messages written by spec-master must not contain a
+  parenthesised unit id.
+- The findings' line numbers (~169, ~197) match no layout of the 163-line library; the defects are where
+  the contracts anchor.
+
 ### Prior FAIL history (`.claude/reviewed/`, best-effort, gitignored)
 
 aof-u2 (stop-gate in-flight) FAILed on hand-typed AC anchors, not on code; aof-u3 PASSed with a design
@@ -334,6 +369,32 @@ sensitive hook path).
 - 2026-10-21 Completion / acceptance signals: Q Do the amended and new contracts name the unit's own last
   commit in range criteria? → A (self-resolved): yes; st-u2 criteria 5 and 7, st-u3 criteria 4 and 6 and
   st-u4 criteria 5 and 7 were changed from `HEAD` to the unit's last commit.
+- 2026-10-21 Functional scope & success criteria: Q (F1) Does st-u3 apply its `.claude/` and `docs/plans/`
+  allowance before `## Do NOT touch`, and what does a deliberate exclusion of a `.claude/` file mean? → A
+  (self-resolved): allowance first. A `.claude/` copy changes only through `--update` and the gate cannot
+  tell a hand edit from a regeneration, so such a bullet states how the file changes (enforced by the
+  reviewer's `cmp` mirror criteria), never whether; st-u2 already leaves both trees out. No contract-score
+  or lint warning: the bullet is correct prose for the reviewer.
+- 2026-10-21 Edge cases / failure handling: Q (F2) Reject `src//x`, `src/x/` and `/x` in the library, or
+  normalise in st-u3? → A (self-resolved): both. The library is the one shared classifier and cannot know
+  whether a caller normalised, so it rejects them (`out`); st-u3 normalises a tool-call path lexically, so
+  a legitimate edit through `src//a.js` is judged as `src/a.js` instead of blocking a writer who has
+  nothing to restore. st-u4 maps an unsafe entry to `full`.
+- 2026-10-21 Terminology consistency: Q (F4) Widen the subject separators, document them, or add a
+  contract-score warning for a bullet that yields no exclusion? → A (self-resolved): widen the dashes only
+  (` -- `, em and en dash spaced or not, which read like the existing ` - `); keep `,` and `;` as
+  non-separators and say so in the library header, because `` `x`, except its header `` is a partial
+  restriction; no warning, since every `by hand` bullet yields no exclusion by design. Run over all 128
+  contract files, the new grammar changed no output.
+- 2026-10-21 Edge cases / failure handling: Q (F5) Fix the CRLF heading or record it? → A (self-resolved):
+  fix; one awk rule in `us_section`.
+- 2026-10-21 Technical constraints & tradeoffs: Q (F6) Fold into rp-u10 or a new unit? → A (self-resolved):
+  new unit rp-u12. Its files (`hooks/scripts/reviewer-tier.sh`, `tests/reviewer-tier.test.sh`, the mirror)
+  share nothing with rp-u10 (`bin/cli.js`, `bin/unit-bookkeeping.sh`, `hooks/scripts/stop-gate.sh`, three
+  tests), and rp-u10 is already proven and scored. rp-u12 goes right after rp-u10.
+- 2026-10-21 Technical constraints & tradeoffs: Q Where do rp-u11 and rp-u12 go? → A: per operator,
+  st-u2 (landed), rp-u11, st-u3, st-u4, rp-u10, then rp-u12 (self-resolved placement), rp-u7, rp-u4, rp-u5,
+  rp-u6, rp-s1.
 
 ## Risks / dependencies
 
@@ -361,6 +422,16 @@ sensitive hook path).
   the blast-radius script still quotes a path holding `"`, a tab or a newline (git quotes those whatever
   `core.quotePath` says); st-u2's protocol sentence names `.claude/bin/review-precheck.sh` without `bash`
   (its pins live in st-u2's test, outside rp-u7's scope).
+- rp-u11 tightens `us_safe_path`, which st-u2's landed precheck also calls; git never prints the three
+  shapes, and tests/review-precheck.test.sh passed on the clone with rp-u11 applied.
+- st-u3's allowance-first order means a lead-programmer that hand-edits a `.claude/` copy, or edits a
+  `docs/plans/` contract its dispatch excluded, is not blocked by the gate; the reviewer's mirror `cmp`
+  criteria and diff reading catch it, as they do today.
+- st-u4 and st-u2 source their libraries with stderr hidden only; a library that prints on stdout when
+  sourced puts a stray line in their output. Not fixed: the orchestrator treats any output other than one
+  `lane:` line as `full`, and the precheck's stray line is visible to the reviewer, never read as a verdict.
+- rp-u7's range criteria match an older docs commit (Context, rp-u9 review findings); to be amended before
+  rp-u7 is dispatched (next spawn).
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied (every finding re-verified against cfb7ddac; H's premise rejected on evidence)
@@ -494,6 +565,26 @@ Source: st-u1's PASS notes (0b45bd46, 0.31.198) and the coordinator's findings S
 Acceptance criteria: the three contracts and the amended st-u2 to st-u4, each 7/7 on
 `node .claude/bin/contract-score.js --rubric=v2`, each ending in a validate.sh exit-code criterion.
 
+### Step 10 (rp-u11, rp-u12): rp-u9 review findings, and st-u3 and st-u4 amended
+Source: rp-u9's and rp-u8's PASS notes, verified in Context, "rp-u9 review findings".
+- rp-u11 (F2 library part, F3, F4, F5): `hooks/scripts/lib/unit-scope.sh`: `us_safe_path` also rejects
+  `*//*`, `*/` and `/*`; the `partial:` marker matches in any case (`tolower`); a subject also ends at
+  ` -- `, `—` and `–`; the header documents that `,` and `;` are not separators; `us_section` drops a
+  trailing CR. Case (j) in `tests/scope-libs.test.sh` (bullet fixtures). Affected: the library, its test,
+  bump files, generated copy. Contract: `docs/plans/antislop-review-patches/contracts/rp-u11.md`.
+- rp-u12 (F6, contract next spawn): `hooks/scripts/reviewer-tier.sh` sends both streams of the guarded
+  source group to `/dev/null` (`>/dev/null 2>&1`); `tests/reviewer-tier.test.sh` gains, for the source and
+  the installed copy, a library that prints `sonnet` when sourced (hooks/ diff must print exactly `opus`, one
+  line) and an empty and a cut-short `state-access.sh` (must print `opus`, exit 0; narrowing `declare -F` to
+  one function must fail it). Affected: the script, its test, bump files, generated copy. Criteria: test
+  exit 0 with each mutation named, `cmp` of the installed copy, changed-file list, version moved,
+  validate.sh exit 0.
+- Amended in place: st-u3 (allowance before exclusions, `norm_abs` lexical normalisation, C-quoted
+  committed names block; cases (o), (p), (q)); st-u4 (`us_safe_path` entry check, three (f) rows).
+- Pending (next spawn): rp-u7 criteria 6 and 7 grep `^[a-z]*(rp-u7): ` instead of `(rp-u7)`.
+Acceptance criteria: rp-u11, rp-u12 and the amended st-u3 and st-u4, each 7/7 on
+`node .claude/bin/contract-score.js --rubric=v2`, each ending in a validate.sh exit-code criterion.
+
 ## Dispatch section
 
 Fast path: 10 lead units (rp-u1 to rp-u10) plus one scribe contract (rp-s1). Contract files, committed before
@@ -530,9 +621,30 @@ reported `ok`, `bad=0`, for each of the ten contracts against the real tree at 0
 predecessors as `--chain`. Only st-u2 and st-u4's "change both occurrences of `(a) ... helpers present`"
 instructions are prose, applied by hand on the clone.
 
+Step 10 (2026-10-21, after rp-u9's review): st-u2 landed at 952a8796 (0.31.201) and is in review.
+- rp-u11: `docs/plans/antislop-review-patches/contracts/rp-u11.md` (7/7, proven on the chained clone)
+- st-u3 and st-u4 amended again in place (both 7/7, re-proven on the chained clone)
+- rp-u12: contract next spawn (checkpoint rule: three contract files per spawn)
+Remaining order and expected versions (no fix rounds; each unit bumps relative to the version it starts at),
+superseding the Step 9 order: st-u2 0.31.201 (landed), rp-u11 0.31.202, st-u3 0.31.203, st-u4 0.31.204,
+rp-u10 0.31.205, rp-u12 0.31.206, rp-u7 0.31.207, rp-u4 0.31.208, rp-u5 0.31.209, rp-u6 0.31.210, then
+rp-s1 (no bump; closes #634). rp-u10 and later contracts state older expected versions; they bump
+relatively. Why: rp-u11 before st-u3 (operator; st-u3's case (p) and st-u4's new rows rely on the stricter
+`us_safe_path`); rp-u12 after rp-u10 (no shared file either way; both are review follow-ups on sensitive
+hook paths). Anchor check, both ways: spec-master applied rp-u11, the amended st-u3 and st-u4, rp-u10,
+rp-u7, rp-u4, rp-u5 and rp-u6 in this order to a fresh clone of 952a8796 with the scratch applier (every
+`before:` payload once, every command exit as stated; st-u4's "eight to nine helpers" prose edit by hand):
+all matched, the final version read 0.31.209 (0.31.210 once rp-u12 joins). Criteria 1 to n-1 of rp-u11,
+st-u3, st-u4, rp-u10, rp-u4, rp-u5 and rp-u6 held on the clone; rp-u7's criterion 6 did not (Context, the
+`(rp-u7)` grep). The landed `bin/review-precheck.sh` returned `result=pass` for rp-u11, st-u3 and st-u4 at
+their clone commits. The rp-u6 prototype `contract-anchors.js` (assembled from rp-u6's payloads) reported
+`ok`, `bad=0`, for each of the eight contracts against the real tree at 952a8796 with its predecessors as
+`--chain`. rp-u12's check runs when its contract is written.
+
 ## Open Questions
 
-None open. All six were ruled on 2026-10-20 (Clarifications); kept below for the record.
+Open: 7 and 8 (2026-10-21, each with a recommended default). 1 to 6 were ruled on 2026-10-20
+(Clarifications); kept below for the record.
 
 6. Add "a changed hook or prompt file with no caller lines" as an explorer trigger for the reviewer?
    Ruled no, per operator: the triggers stay `provenance=none`, script missing, and an open question that
@@ -554,6 +666,15 @@ None open. All six were ruled on 2026-10-20 (Clarifications); kept below for the
    checking `human-decision-gate.sh` lets the edit and its pins through.
 4. `--knowledge-writes` forms (Step 4). Recommended: space form exits 2 with a usage line; fresh install
    honours the flag; exit code stays the render's. Alternative: accept the space form as a synonym.
+
+7. (2026-10-21) Harden the landed `bin/review-precheck.sh` library source line the same way as rp-u12
+   (`>/dev/null 2>&1`)? Recommended: no; a stray line is visible noise in the precheck output, never read
+   as a criterion result or verdict, and the change would reopen a landed unit. Alternative: add it to
+   rp-u12's scope (one line, one test case).
+
+8. (2026-10-21) rp-u7's range criteria 6 and 7 match docs commit c02b286a. Recommended: amend both to
+   `git log --format=%H --grep="^[a-z]*(rp-u7): "` before rp-u7 is dispatched (next spawn, with rp-u12).
+   Alternative: reword nothing and accept a wrong range (criterion 6 then fails on a correct unit).
 
 ## Self-check
 - CHK1: Is every finding A to I either mapped to a step with a contract or recorded with evidence as wrong,
@@ -596,6 +717,20 @@ None open. All six were ruled on 2026-10-20 (Clarifications); kept below for the
   `mutation:` line? — PASS (rp-u8 c1, rp-u10 c1 and c3 mutations were run on the clone and flip the result)
 - CHK23: Is the dispatch order checked both ways for anchor collisions? — PASS (Dispatch section, clone
   chain plus prototype `contract-anchors.js`, bad=0 for all ten)
+- CHK24 (2026-10-21): Is every finding F1 to F6 mapped to a contract criterion that fails under its own
+  mutation? — PASS (F1 st-u3 c1 (o); F2 st-u3 c1 (p), st-u4 c1 (f), rp-u11 c1 and c3; F3, F4, F5 rp-u11 c1;
+  F6 rp-u12, contract next spawn, mutations named in Step 10)
+- CHK25: Do st-u3's Objective, its in_scope payload and Clarifications agree on the allowance order? —
+  PASS
+- CHK26: Does any amended or new range criterion grep a unit id that an existing commit message already
+  contains? — FAIL (conflicting: rp-u7's `(rp-u7)` matches c02b286a) — converted to Open Question 8
+- CHK27: Is the dispatch position and expected version of rp-u11 and rp-u12 stated? — PASS (Dispatch
+  section, Step 10)
+- CHK28: Do rp-u11's Do-NOT-touch bullets parse as whole-subject exclusions under the new grammar, and
+  does none name a file its own Affected list names? — PASS (checked with the landed library)
+- CHK29 (replay): Do the criteria whose `run:` names `hooks/scripts/reviewer-tier.sh` or `bin/cli.js`
+  still fail under their own `mutation:` line? — PASS for st-u4 c4 and c6 (unchanged); rp-u12's criteria
+  are not yet written
 
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
@@ -610,3 +745,8 @@ Step 9 knowledge proposals for rp-s1 (or a later scribe run): **whole-subject ex
 touch` bullet whose subject is only backticked paths) and the **`partial:` marker**, under the unit-scope
 family in `CONTEXT.md`; **fail closed** for a missing or incomplete hook library (reviewer tier opus,
 precheck exit 2, scope gate blocks writers, lane full) in `docs/harness-glossary.md`.
+Step 10 knowledge proposals for rp-s1: under **whole-subject exclusion**, the separators (` (`, `: `,
+` - `, ` -- `, em and en dash) and that `,` or `;` before a reason makes the bullet a restriction; the
+**`partial:` marker** matches in any case; under the unit-scope family, **standing exception** (`.claude/`
+and `docs/plans/`) is checked before `## Do NOT touch` by the scope gate, so a Do-NOT-touch bullet naming a
+`.claude/` copy means "only through `--update`".

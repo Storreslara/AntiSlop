@@ -5,9 +5,10 @@ Size and risk routed lanes (spec Step 4, variation a; operator ruling OQ2 = (ii)
 `bin/unit-size.sh <unit> (--contract <path> | -- <path>...)`, installed to `.claude/bin/`, picks a lane from the
 unit's PLANNED scope before anything is dispatched:
 - **full**: a sensitive path (st-u1's library, the reviewer-tier class); a `.fail` record for the unit; more
-  than 10 entries; a directory, glob or trailing-slash entry (unmeasurable); a missing contract or no
-  input; or a library missing, or leaving `touches_sensitive_path` or `us_entries` undefined (`declare -F`,
-  rp-u8's fail-closed rule).
+  than 10 entries; a directory, glob or trailing-slash entry, or one `us_safe_path` rejects (`./hooks/x.sh`,
+  `src//a.js`, `/x`, a `.` or `..` segment: the sensitive-path anchors cannot judge it; rp-u9 review, F2)
+  (unmeasurable); a missing contract or no input; or a library missing, or leaving `touches_sensitive_path`,
+  `us_entries` or `us_safe_path` undefined (`declare -F`, rp-u8's fail-closed rule).
 - **small**: 4 entries or fewer.
 - **medium**: otherwise.
 
@@ -82,6 +83,9 @@ is "(e) a FAIL record" 'lane: full files=1 reason=fail-record' u9 -- src/a.js
 is "(f) a directory entry" 'lane: full files=1 reason=unmeasurable' u1 -- src
 is "(f) a trailing slash" 'lane: full files=1 reason=unmeasurable' u1 -- lib/
 is "(f) a glob" 'lane: full files=1 reason=unmeasurable' u1 -- 'src/*.js'
+is "(f) a ./ entry the anchors cannot see" 'lane: full files=1 reason=unmeasurable' u1 -- ./hooks/x.sh
+is "(f) a doubled slash" 'lane: full files=1 reason=unmeasurable' u1 -- src//a.js
+is "(f) a leading slash" 'lane: full files=1 reason=unmeasurable' u1 -- /hooks/x.sh
 cat > docs/plans/p/contracts/u2.md << 'MD'
 Unit: u2
 
@@ -151,7 +155,7 @@ emit() { # <lane> <n> <reason>
 lib="$dir/../hooks/scripts/lib"
 { . "$lib/sensitive-paths.sh" && . "$lib/unit-scope.sh"; } 2>/dev/null || emit full 0 unmeasurable
 # An empty or cut-short library defines nothing; an undefined function only reads as "false" (rp-u8).
-declare -F touches_sensitive_path us_entries >/dev/null || emit full 0 unmeasurable
+declare -F touches_sensitive_path us_entries us_safe_path >/dev/null || emit full 0 unmeasurable
 src=none
 if [ "${1:-}" = --contract ]; then
   [ -n "${2:-}" ] && [ -f "$2" ] || emit full 0 no-input
@@ -166,6 +170,8 @@ grep -vE '^(\.claude/|docs/plans/)' "$W/raw" | grep -v '^$' | sort -u > "$W/entr
 n="$(wc -l < "$W/entries" | tr -d ' ')"
 [ "$n" -gt 0 ] || emit full 0 empty
 while IFS= read -r p; do
+  # An entry the sensitive-path anchors cannot judge (`./hooks/x.sh`, `src//a.js`, `/x`) is unmeasurable.
+  us_safe_path "$p" || emit full "$n" unmeasurable
   case "$p" in *[*?[]*|*/) emit full "$n" unmeasurable ;; esac
   [ -d "$p" ] && emit full "$n" unmeasurable
 done < "$W/entries"
@@ -273,14 +279,14 @@ fi
 ~~~
 10. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.197 to 0.31.198).
+   This adds one to the patch version in both files (expected 0.31.203 to 0.31.204).
 11. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
    insert-after:
 ~~~
 
-**Lane routing (st-u4, VERSION).** New `bin/unit-size.sh`, installed to `.claude/bin/`, picks small, medium or full from a unit's planned `## Affected files` before dispatch: a sensitive path, a FAIL record, more than 10 files or anything unmeasurable is full; 4 files or fewer is small. agents/orchestrator.md "Lane routing": small skips spec-master and the explorer, medium skips spec-master (the orchestrator writes the scope and at most 5 steps; operator ruling OQ2), full is the default pipeline; downgrade-only, and a missing script means full. Every unit still gets its reviewer. New test tests/unit-size.test.sh.
+**Lane routing (st-u4, VERSION).** New `bin/unit-size.sh`, installed to `.claude/bin/`, picks small, medium or full from a unit's planned `## Affected files` before dispatch: a sensitive path, a FAIL record, more than 10 files or anything unmeasurable is full; 4 files or fewer is small; an entry the library's `us_safe_path` rejects (`./hooks/x.sh`, `src//a.js`) is unmeasurable. agents/orchestrator.md "Lane routing": small skips spec-master and the explorer, medium skips spec-master (the orchestrator writes the scope and at most 5 steps; operator ruling OQ2), full is the default pipeline; downgrade-only, and a missing script means full. Every unit still gets its reviewer. New test tests/unit-size.test.sh.
 ~~~
    Replace `VERSION` with the version that edit 10 wrote.
 12. command: `node bin/cli.js --update`
@@ -302,7 +308,7 @@ fi
 1. run: `bash -c 'bash tests/unit-size.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: change `-gt 10` to `-gt 11` in the script; case (c) prints `FAIL (c) eleven is full` and stdout is `1`. Deleting the `declare -F` line fails the (j) library-empty case.
+   mutation: change `-gt 10` to `-gt 11` in the script; case (c) prints `FAIL (c) eleven is full` and stdout is `1`. Deleting the `declare -F` line fails the (j) library-empty case; deleting the `us_safe_path` line fails the three new (f) rows (`./hooks/x.sh` reads `lane: small files=1 reason=paths`; spec-master ran it).
 2. run: `cmp bin/unit-size.sh .claude/bin/unit-size.sh`
    exit: 0
    stdout: empty
@@ -338,7 +344,8 @@ blast-radius: agents/orchestrator.md:14 (routing-table planning line), agents/or
 lane-rules: entries are the contract's `## Affected files` tokens (st-u1 `us_entries`) or the `--` arguments; `.claude/` and `docs/plans/` entries are dropped. Check order: no input, empty, unmeasurable (glob, trailing slash, existing directory), sensitive, fail-record, size over 10, small at 4 or fewer, medium. The small and medium reason word is the input kind (`contract` or `paths`).
 downgrade-only: the script never weakens anything that runs after the code exists; reviewer-tier.sh still measures the actual diff and the precheck still checks scope. The lane only decides spec-master, task-master and the pre-explorer.
 operator-ruling: OQ2 = (ii), 2026-10-20: no spec-master in the medium lane; the orchestrator writes the scope and at most 5 steps itself.
-version: .claude-plugin/plugin.json and package.json read 0.31.202 after st-u3 if no fix round bumped; edit 10 adds one (expected 0.31.203).
+version: .claude-plugin/plugin.json and package.json read 0.31.203 after st-u3 if no fix round bumped; edit 10 adds one (expected 0.31.204).
+amended-2: 2026-10-21, after rp-u9's review (review-patches spec Step 10, F2): an entry `us_safe_path` rejects is `full` (unmeasurable): `./hooks/x.sh` and `/hooks/x.sh` escaped the `^hooks/` sensitive anchor and printed `small`; `src//a.js` cannot be matched either. `us_safe_path` joins the `declare -F` list. rp-u11 (dispatched before st-u3) makes `us_safe_path` reject a doubled, leading or trailing slash; `./` was already rejected. Three (f) rows pin it. Not changed: the library source line hides only stderr, so a library that printed on stdout when sourced would put a line before `lane:`; the orchestrator already treats any other output as `full` (Lane routing), so the failure is safe. Re-proven on a clone at 952a8796 with rp-u11 and the amended st-u3 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, and the new rows failed with the `us_safe_path` line deleted.
 amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): a `declare -F` guard after the library sources (an empty `unit-scope.sh` used to give `-- <path>` input a small lane), pinned by the (j) library-empty case; the `## Do NOT touch` hooks bullet is whole-subject (rp-u9 grammar); criteria 5 and 7 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8, rp-u9 and the amended st-u2 and st-u3 applied: every payload and anchor matched once, the test printed 0 FAIL lines after `--update`, and (j) library-empty failed with the guard deleted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2). The orchestrator mirror grows about 1.9k bytes (offsetting part of qw-u2 and qw-u4's diet); the lane section is what saves spec-master and explorer dispatches.
 commit-message: feat(st-u4): lane routing from the planned scope, downgrade-only and fail-closed to full
