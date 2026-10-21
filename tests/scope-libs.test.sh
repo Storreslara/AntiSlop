@@ -100,9 +100,73 @@ printf 'src/store.js\npackage\n' > "$T/n.txt"
 [ "$(us_classify src/store.js "$R1" "$T/l.txt" /dev/null "$T/r.txt" "$T/f.txt" "$T/n.txt")" = excluded ] && ok "(f) Do NOT touch wins over listed" || bad "(f) excluded"
 [ "$(us_classify package.json "$R1" /dev/null /dev/null /dev/null /dev/null "$T/n.txt")" = plugin-version ] && ok "(f) exclusion is exact only" || bad "(f) exclusion not exact"
 
-# (g) us_entries reads a named section.
+# (g) us_entries reads a named section; a token in a Do NOT touch reason is not an entry (rp-u9).
 printf '## Affected files\n- `a/b.js`\n\n## Do NOT touch\n- `c/d.js` (reason `e.f`)\n' > "$T/g.md"
-[ "$(us_entries "$T/g.md" "Do NOT touch" | tr '\n' ' ')" = 'c/d.js e.f ' ] && ok "(g) Do NOT touch entries" || bad "(g) section entries"
+[ "$(us_entries "$T/g.md" "Do NOT touch" | tr '\n' ' ')" = 'c/d.js ' ] && ok "(g) Do NOT touch entries" || bad "(g) section entries"
 [ "$(us_entries "$T/g.md" | tr '\n' ' ')" = 'a/b.js ' ] && ok "(g) default section" || bad "(g) default section"
+
+# (h) rp-u9: `## Do NOT touch` excludes a bullet's whole subject only. The bullets are copied verbatim
+# from the contracts of aof-u1 to aof-u4, aof-u3b, qw-u1 to qw-u6, rp-u1 to rp-u3 and st-u1 (fixtures, not
+# the live files); the last five bullets are grammar cases.
+cat > "$T/h.md" << 'MD'
+## Do NOT touch
+- `bin/ladder-tier.sh`, `bin/contract-guard.js`, `bin/contract-score.js`, `bin/fail-count.sh`,
+  `bin/escalation-card.sh`: no script edits. The layout already resolves under `.claude/`.
+- `bin/harness-integrity.sh` and `hooks/scripts/session-start.sh` (spec R2; re-arming the drift check is a
+  separate operator decision).
+- `hooks/hooks.json`, `templates/settings-fragment.json`, `harness-integrity-gate.sh`'s Set A lists.
+- Anything under `eval/`.
+- `hooks/scripts/lib/reviewer-route-gate-core.sh` and the stamp format it writes.
+- `hooks/scripts/stop-gate.sh`, the entry point, unless the new function needs a lib that is already sourced
+  there. It should not.
+- `agents/scribe.md`, `agents/spec-master.md`, and the Scribe dispatch convention in orchestrator.md: those
+  are aof-u4.
+- `.claude/` copies by hand: `node bin/cli.js --update` rewrites them, including the version stamp in
+  `.claude/protocol-digest.md` and `.claude/persona-protocol*.md`; that stamp change is expected, not a scope breach
+- `CONTEXT.md` and `docs/adr/`: the draft ADR in the spec is landed later by scribe, not by this unit.
+- `.claude/agents/orchestrator.md` by hand (only `node bin/cli.js --update` writes it)
+- `agents/orchestrator.md` ESCALATE-TO-HUMAN steps (qw-u4 moves them; leave them as they are)
+- `bin/cli.js` (no matrix change; section headings are unchanged, so `tests/protocol-doc-drift.test.js` counts stay valid)
+- `agents/orchestrator.md` from the paragraph starting `If no` (the no-reviewer paragraph) to the end of the file
+- `adapters/codex/agents/reviewer.toml`, `adapters/cursor/agents/reviewer.md` and the two adapter protocol ports (their scaffolds install no `.claude/bin/`; criterion 5)
+- `agents/reviewer.md`, `agents/lead-programmer.md` and every other `agents/*.md` frontmatter (subagent tiers are unchanged)
+- `hooks/hooks.json` and every other `hooks/scripts/*.sh` except reviewer-tier.sh (no gate or registration change; criterion 5)
+- `agents/` and `templates/` (no prose in this unit)
+- `hooks/scripts/lib/unit-scope.sh`, `hooks/scripts/writer-scope-gate.sh`, `bin/review-precheck.sh` (st-u1 to st-u3 own them; spec Open Question 1)
+- `docs/guide.md` partial: lines 10 to 20 only
+- `docs/guide2.md` (partial: its first section)
+- `docs/x.md` — an em-dash reason naming `docs/r1.md`
+- `docs/y.md` - a dash reason naming `docs/r2.md`
+- `docs/z.md`, `docs/w.md`, or `docs/v.md`.
+MD
+us_exclusions "$T/h.md" > "$T/hx.txt"
+want='bin/ladder-tier.sh bin/contract-guard.js bin/contract-score.js bin/fail-count.sh bin/escalation-card.sh bin/harness-integrity.sh hooks/scripts/session-start.sh CONTEXT.md docs/adr/ bin/cli.js agents/ templates/ hooks/scripts/lib/unit-scope.sh hooks/scripts/writer-scope-gate.sh bin/review-precheck.sh docs/x.md docs/y.md docs/z.md docs/w.md docs/v.md '
+[ "$(tr '\n' ' ' < "$T/hx.txt")" = "$want" ] && ok "(h) whole-subject bullets only" || bad "(h) exclusions: $(tr '\n' ' ' < "$T/hx.txt")"
+cmp -s "$T/hx.txt" <(us_entries "$T/h.md" "Do NOT touch") && ok "(h) us_entries reads Do NOT touch through us_exclusions" || bad "(h) us_entries Do NOT touch differs"
+for p in agents/orchestrator.md tests/protocol-doc-drift.test.js hooks/hooks.json hooks/scripts/lib/reviewer-route-gate-core.sh .claude/protocol-digest.md \
+         hooks/scripts/stop-gate.sh agents/scribe.md .claude/agents/orchestrator.md adapters/codex/agents/reviewer.toml \
+         agents/reviewer.md docs/guide.md docs/guide2.md docs/r1.md docs/r2.md; do
+  us_excluded "$p" "$T/hx.txt" && bad "(h) wrongly excluded: $p" || ok "(h) not excluded: $p"
+done
+printf 'agents/orchestrator.md\n' > "$T/ho.txt"
+[ "$(us_classify agents/orchestrator.md "$R1" "$T/ho.txt" /dev/null /dev/null /dev/null "$T/hx.txt")" = listed ] && ok "(h) qw-u2/qw-u4: the main edited file stays listed" || bad "(h) main edited file excluded"
+[ "$(us_classify bin/cli.js "$R1" "$T/ho.txt" /dev/null /dev/null /dev/null "$T/hx.txt")" = excluded ] && ok "(h) a whole-file bullet still excludes" || bad "(h) whole-file bullet lost"
+
+# (i) rp-u9: a glob's `*` and `?` stay inside one path segment; an unsafe path (empty, a newline, a `.` or
+# `..` segment) is never listed and classifies `out`.
+printf 'docs/*.md\nsrc\ntests/?.sh\nlib/a.b*\n' > "$T/i.txt"
+us_listed docs/guide.md "$T/i.txt" && ok "(i) glob within a segment" || bad "(i) glob within a segment"
+us_listed docs/adr/0042-x.md "$T/i.txt" && bad "(i) * crossed a /" || ok "(i) * stops at /"
+us_listed tests/a.sh "$T/i.txt" && ok "(i) ? is one character" || bad "(i) ? one character"
+us_listed tests/x/a.sh "$T/i.txt" && bad "(i) ? crossed a /" || ok "(i) ? stops at /"
+us_listed lib/axb1 "$T/i.txt" && bad "(i) a glob's . matched any character" || ok "(i) a glob's . is literal"
+us_listed lib/a.b1 "$T/i.txt" && ok "(i) literal . then *" || bad "(i) literal . then *"
+us_listed src/../CONTEXT.md "$T/i.txt" && bad "(i) .. counted under src" || ok "(i) .. segment not listed"
+us_listed src/./a.js "$T/i.txt" && bad "(i) . segment listed" || ok "(i) . segment not listed"
+us_listed "$(printf 'src/a.js\nCONTEXT.md')" "$T/i.txt" && bad "(i) newline path listed" || ok "(i) newline path not listed"
+printf 'CONTEXT.md\n' > "$T/ix.txt"
+[ "$(us_classify "$(printf 'src/a.js\nCONTEXT.md')" "$R1" "$T/i.txt" /dev/null /dev/null /dev/null "$T/ix.txt")" = out ] && ok "(i) newline path classifies out" || bad "(i) newline path class"
+[ "$(us_classify src/../CONTEXT.md "$R1" "$T/i.txt" /dev/null /dev/null /dev/null)" = out ] && ok "(i) .. path classifies out" || bad "(i) .. path class"
+[ "$(us_classify src/a.js "$R1" "$T/i.txt" /dev/null /dev/null /dev/null)" = listed ] && ok "(i) a plain path under a listed directory" || bad "(i) plain path"
 
 exit "$fail"
