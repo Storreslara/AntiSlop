@@ -1457,6 +1457,15 @@ else
 fi
 
 echo
+echo "== tests/knowledge-writes.test.sh: knowledgeWrites setting, flag and scribe-once prose (Bash, aof-u4) =="
+if bash tests/knowledge-writes.test.sh > /dev/null; then
+  echo "OK   tests/knowledge-writes.test.sh"
+else
+  echo "FAIL tests/knowledge-writes.test.sh"
+  fail=1
+fi
+
+echo
 echo "== tests/abtest-arms.test.sh: arm scripts, shared flags and the fake claude (Bash, abt-u01) =="
 if bash tests/abtest-arms.test.sh > /dev/null; then
   echo "OK   tests/abtest-arms.test.sh"

@@ -96,7 +96,9 @@ clarify intent is fine.
   ```
 
   `grilling` with `domain-modeling` also sharpens the domain model as it interrogates:
-  when a term is resolved, write the domain glossary entry (`CONTEXT.md`) inline;
+  when a term is resolved, write the domain glossary entry (`CONTEXT.md`)
+  inline only when `knowledgeWrites` is `apply` or the request names `CONTEXT.md`; otherwise record it in
+  the plan's Scribe update hint as a knowledge proposal;
   when a decision meets `domain-modeling`'s three ADR tests, draft the ADR
   into this plan's Context section and leave numbering and landing to
   `scribe`, whose custody of `docs/adr/` is unchanged.

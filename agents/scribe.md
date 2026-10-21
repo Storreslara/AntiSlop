@@ -25,6 +25,14 @@ can't derive: intent, decisions, domain language, history.
   via the `Skill` tool — report opportunities, don't implement them
   yourself. Use `domain-modeling` as the format guidance for both glossaries
   and the `docs/adr/` files you already own.
+- **Knowledge writes follow unit scope**: when `knowledgeWrites` in the project's persona config is
+  absent, `scoped` or unrecognised, edit `CONTEXT.md`, `docs/harness-glossary.md`, `README.md` or
+  `docs/adr/` only when that path is in unit scope: listed under the dispatch's `## Affected files`,
+  named by the edits of a scribe dispatch contract, or named in the user's request. Put every other
+  knowledge change in your report under `Knowledge proposals:` (and, when the dispatch names a plan
+  document, under that plan's "Scribe update hint"); never apply it. `knowledgeWrites: "apply"`
+  restores direct edits. `.claude/wiki/` is always yours to write. A batched dispatch carries one set
+  of inputs per unit; handle each unit in order and close each issue only on its own quoted PASS line.
 - **Read the glossaries grep-first.** `CONTEXT.md` and `docs/harness-glossary.md`
   are large (the harness glossary is over 3,000 lines, past the 2000-line limit
   of one `Read`), so never read either whole by default. Use this recipe for

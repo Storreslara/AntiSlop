@@ -1173,6 +1173,12 @@ async function runUpdate(args) {
   // Flag surface first, before any output or write, so the deprecation warning
   // for the `--check` alias is genuinely the first thing the run prints.
   const dryRun = args.includes('--dry-run');
+  const kwFlag = args.find((a) => a.startsWith('--knowledge-writes='));
+  const knowledgeWrites = kwFlag ? kwFlag.slice('--knowledge-writes='.length) : null;
+  if (kwFlag && !['scoped', 'apply'].includes(knowledgeWrites)) {
+    console.error(`--knowledge-writes must be one of: scoped, apply (got "${knowledgeWrites}").`);
+    process.exit(1);
+  }
   // Set by every site that would change the tree. Under --dry-run this is the
   // whole exit code: 0 iff a live run would leave every path under the project
   // root byte- and mode-identical and create nothing, 3 otherwise. Stated over
@@ -1197,6 +1203,10 @@ async function runUpdate(args) {
     process.exit(1);
   }
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  if (knowledgeWrites && config.knowledgeWrites !== knowledgeWrites) {
+    config.knowledgeWrites = knowledgeWrites;
+    console.log(`Note: knowledgeWrites ${dryRun ? 'would be set' : 'set'} to "${knowledgeWrites}".`);
+  }
 
   // Resolve how antislop is installed BEFORE the downgrade guard so the
   // refusal's recovery text can be tailored to it (issue #109 1b). Reused
