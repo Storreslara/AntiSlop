@@ -1,8 +1,7 @@
 # AntiSlop review patches (spec)
 
-Date: 2026-10-20. Author: spec-master. Status: finalized for rp-u1 to rp-u3 (contracted); rp-u4, rp-u5,
-rp-u6 and the scribe contract rp-s1 are specified here and contracted in the next spawn (checkpoint rule:
-at most 3 contract files per spawn). Source: the non-blocking notes and blockers reviewers raised during
+Date: 2026-10-20. Author: spec-master. Status: finalized; every unit is contracted (rp-u1 to rp-u7 and the
+scribe contract rp-s1, tracker issue #634) and no Open Question remains. Source: the non-blocking notes and blockers reviewers raised during
 the antislop-overhead-fixes (aof-*), validate-speed and quick-win (qw-*) units, relayed by the operator on
 2026-10-20 as findings A to I. Operator goal: "finish the spec and implement any blockers or patches found
 during review". Contracts: `docs/plans/antislop-review-patches/contracts/rp-uN.md`.
@@ -24,9 +23,12 @@ fixed, or accepted, with the evidence. Ranked by risk, safety and correctness fi
 - G5 (finding F): passed units' issues are closed even when a later unit of the plan stops at ladder
   exhaustion, and the scribe skip rule accounts for `knowledgeWrites: apply`. Step 5 (rp-u5).
 - G6 (finding I): a contract's file anchors and `before:` payloads are checked mechanically before
-  dispatch. Step 6 (rp-u6), pending Open Question 3.
+  dispatch. Step 6 (rp-u6).
 - G7 (finding G): the new terms get glossary entries and three stale wiki/glossary passages are fixed, in
   one scribe run after the last unit. Step 7 (rp-s1).
+- G8 (qw-u5 review notes): the blast-radius script counts only `tests/`-style paths as tests, survives odd
+  paths, caps its output, and its installed copy is committed executable; the protocol names `bash`. Step 8
+  (rp-u7).
 
 ## Context
 
@@ -134,7 +136,11 @@ fixed, or accepted, with the evidence. Ranked by risk, safety and correctness fi
   is committed. A mutation that relies on `node bin/cli.js --update` re-rendering is valid only in a unit
   that bumps the version (otherwise `--update` reports "already current"). A range criterion names the
   unit's own last commit (`l=$(git log --format=%H --grep="(<unit>)" | head -1)`), never `HEAD`, so it
-  still holds after later units land (aof-u2 AC2.6 is the counter-example).
+  still holds after later units land (aof-u2 AC2.6 is the counter-example). Once rp-u6 lands, the check
+  is `node bin/contract-anchors.js <contract> --chain=<queued contract>...` (queued contracts in dispatch
+  order, landed ones left out), run before the contract is committed; until then the scratch applier does
+  the same job. The prototype of that script reported `ok` for rp-u4 to rp-u7 against HEAD 4732f6c3 (rp-u1
+  landed) with the chain rp-u2, rp-u3, qw-u6, st-u1 to st-u4 and the earlier rp units.
 
 ### Queued units and anchor collisions (checked 2026-10-20)
 
@@ -211,6 +217,49 @@ sensitive hook path).
   orchestrator stub? → A: no, accepted as is.
 - 2026-10-20 Terminology consistency: Q "version-stamp files" in the scope rules vs `CONTEXT.md`
   **Version-stamped file**? → A (self-resolved): rename to "bump files" (existing usage) in rp-u1.
+- 2026-10-20 Functional scope & success criteria: Q (Open Question 6) add "a changed hook or prompt file
+  with no caller lines" as an explorer trigger for the reviewer? → A: no, per operator: no new explorer
+  trigger; the ruled triggers (`provenance=none`, script missing, an open question that decides a
+  finding) stay as they are (rp-u7 changes no trigger).
+- 2026-10-20 Technical constraints & tradeoffs: Q rp-u7 item 4 says `awk -v` for the output lines; is that
+  the fix? → A (self-resolved): no, `awk -v` rewrites backslash escapes in the value, so a path holding `\`
+  would still change; a `while read` loop with `printf '%s'` copies every byte. `core.quotePath=false` as
+  suggested.
+- 2026-10-20 Technical constraints & tradeoffs: Q does rp-u7 make `--update` restore the mode of a
+  content-current helper? → A (self-resolved): no; the update loop skips a content-current file, so this
+  needs a new branch there, more than one line. Residual. rp-u7's own content change makes `--update`
+  rewrite the helper with the packaged mode, and `git update-index --chmod=+x` fixes the index.
+- 2026-10-20 Edge cases / failure handling: Q what is rp-u7's total output cap? → A (self-resolved): 300
+  lines after the header, then `truncated: <n> more lines`; the header and the per-file cap of 40 stay.
+- 2026-10-20 User interaction flow: Q does task-master.md or spec-master.md name `bin/contract-anchors.js`
+  (operator: only if cheap and safe)? → A (self-resolved): no; an installed project has no
+  `bin/contract-anchors.js`, so a prompt line naming it costs every install tokens and invites a failed
+  command. Its usage text and Context I of this spec are its documentation, and rp-u6 touches no
+  `agents/*.md`.
+- 2026-10-20 Technical constraints & tradeoffs: Q the anchor script's chain flag: Step 6's `--against`
+  (collision report) or the operator's "created by an earlier contract in a given chain"? → A
+  (self-resolved): `--chain=<contract>`, repeatable, applied in order in memory before the contract's own
+  edits; a line a queued unit rewrites then reads `missing`, which subsumes the collision report. Only the
+  `=` flag forms are read; a space form exits 2, the lesson of finding E.
+- 2026-10-20 Terminology consistency: Q which glossary gets each rp-s1 term? → A (self-resolved): by the
+  routing rule in `CONTEXT.md` **domain glossary**: the unit-scope family, **bump files**,
+  **knowledgeWrites**, **knowledge proposal** and **lane** describe what a plugin user meets and go to
+  `CONTEXT.md`; the scripts, the header, **review in flight** and **provenance** need the harness
+  internals and go to `docs/harness-glossary.md`. Each term lives in one glossary (rp-s1 criterion 3).
+- 2026-10-20 Terminology consistency: Q "lane" now names two things (st-u4's routing lanes and the
+  validate lane runner); and "provenance" two (the blast-radius header field and the reviewer's
+  escalation-packet stamp)? → A (self-resolved): **lane** (`CONTEXT.md`) carries a "Not the lanes of the
+  **lane runner**" line and the lane runner entry a reverse line; **provenance** is one entry with two
+  numbered senses and a pointer to the unrelated eval senses.
+- 2026-10-20 Functional scope & success criteria: Q does rp-s1 delete the status-line reasoning from
+  `.claude/wiki/persona-handoff-mechanisms.md` (Step 7 said "reduced to the protocol's short form")? → A
+  (self-resolved): no; the wiki is where that reasoning lives now that qw-u3 cut it from the protocol (as
+  qw-u2 moved the orchestrator narratives to docs). rp-s1 adds a pointer to the protocol's rule at line 93
+  and rewords line 99's "Not a substitute for the WIP sentinel" label to the protocol's "co-occurs" form.
+- 2026-10-20 External dependencies & integrations: Q rp-s1's tracker issue? → A: #634, created with
+  labels `plan/antislop-review-patches` (created for it) and `ready-for-agent`; its body holds the scribe
+  contract in a five-tilde fence (the payloads use four-tilde fences, which would close a three-tilde one);
+  contract-guard scores the issue body 7/7.
 
 ## Risks / dependencies
 
@@ -225,6 +274,10 @@ sensitive hook path).
 - Cursor's `loop_count >= 5` early allow has the same shape as H; not fixed (no observed incident, no
   port test fixture for loop counts).
 - `.claude/reviewed/` is untracked per-clone state; the prior-FAIL screen above is best-effort.
+- Residuals recorded, not fixed: `--update` does not restore the mode of a content-current helper (rp-u7);
+  the blast-radius script still quotes a path holding `"`, a tab or a newline (git quotes those whatever
+  `core.quotePath` says); st-u2's protocol sentence names `.claude/bin/review-precheck.sh` without `bash`
+  (its pins live in st-u2's test, outside rp-u7's scope).
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied (every finding re-verified against cfb7ddac; H's premise rejected on evidence)
@@ -275,28 +328,39 @@ the first condition (no tracker issue to close) can skip the dispatch." Pin rows
 `tests/prompt-diet-pins.test.sh` below the rp-u3 rows. Order: after st-u4 (both edit `agents/orchestrator.md`;
 the overlap check must be re-run against st-u4's payloads) and after rp-u3 (same pins file).
 
-### Step 6 (rp-u6): contract anchor check script (contract next spawn, Open Question 3)
-`bin/contract-anchors.js <contract> [--against <dir>]...`: for each ordered edit with `file:`, prints one
-line `anchor ok|missing|ambiguous <n> <file>` (exactly one occurrence of the `before:` payload, or of the
-`anchor: line matching` literal, in the current file), and with `--against`, `collides <n> <contract>`
-when a queued contract's `before:` payload shares a non-blank line with it. Exit 0 when every line is `ok`.
-Not installed to `.claude/bin/` (no `bin/cli.js` change), so it joins no queued anchor chain. Test
-`tests/contract-anchors.test.sh` plus a `tests/validate.sh` section anchored after st-u4's section.
-task-master and spec-master prose gains one sentence naming it. Order: after st-u4.
+### Step 6 (rp-u6): contract anchor check script
+`bin/contract-anchors.js <contract> [--repo=<dir>] [--chain=<contract>]...` applies the `--chain` contracts
+(queued, in dispatch order) and then the contract's own edits in memory, and prints one `<kind> <status>
+<item> <file>` line per check and `contract-anchors: <ok|fail> checks=<n> bad=<n> unchecked=<n>`: a `line
+matching|ending|starting` anchor holds on exactly one line (or sits inside a payload that matched once); a
+`before:`/`delete:` payload occurs exactly once as whole lines (verbatim, or after stripping `indent: N`);
+`anchor: new file` needs the file absent; Affected-files anchors hold once before or after the edits.
+Exit 0 / 1 / 2 (usage or read error). Not installed to `.claude/bin/`, no persona prose names it
+(Clarifications). Test `tests/contract-anchors.test.sh` plus a `tests/validate.sh` section after st-u4's.
+Acceptance criteria: `docs/plans/antislop-review-patches/contracts/rp-u6.md` (test exit 0, the script
+passes its own contract against the pre-unit tree, usage exits 2, both new files 100755 and not installed,
+changed-file list exact, version-stamp-check ok, validate.sh registration and exit 0). Order: last lead unit.
 
-### Step 7 (rp-s1): glossary and wiki run (scribe contract next spawn, after the last rp unit)
-`docs/harness-glossary.md` entries: **reviewer dispatch header**, **unit scope**, **standing exception**,
-**bump files** (with a "Not the **Version-stamped file**" line), **Proposed out-of-scope changes:**,
-**knowledge proposal**, **knowledgeWrites** (`scoped` / `apply`), **review in flight**. Corrections: the
-**lane runner** entry (`docs/harness-glossary.md:3360`) drops "opt-in" and names the lane run as the merge
-gate if the validate-speed plan made it so (the scribe verifies against `tests/validate-lanes.sh` and the
-constitution P5 text before editing); `.claude/wiki/modules/hooks.md:71` describes the review-in-flight
-allow instead of `defer: reviewer dispatched`; `.claude/wiki/persona-handoff-mechanisms.md:93,99` reduced to
-the protocol's short form with a pointer. Under this repo's `knowledgeWrites: apply`. The scribe contract
-needs a tracker issue for rubric row S3; the next spawn files one (`gh issue create`, label
-`plan/antislop-review-patches`).
+### Step 7 (rp-s1): glossary and wiki run (scribe, after the last rp unit; issue #634)
+`CONTEXT.md` entries: **unit scope**, **standing exception**, **bump files** (with a "Not the
+**Version-stamped file**" line), **Proposed out-of-scope changes**, **knowledge proposal**,
+**knowledgeWrites** (`scoped` / `apply`), **lane** (st-u4's routing lanes, with a "Not the lanes of the
+**lane runner**" line). `docs/harness-glossary.md` entries: **reviewer dispatch header**, **review in
+flight** (audit token `stop-allowed=review-in-flight`, loop-guard `loop-guard=allow`), **blast-radius
+script**, **provenance** (two senses: the script header's search source; the reviewer's escalation-packet
+stamp, **verifiedBy**), **unit-size script**. Corrections, verified against `tests/validate.sh` (vsp-1:
+lane run by default, `--serial` / `ANTISLOP_VALIDATE_SERIAL=1`) and constitution P5: the **lane runner**
+entry drops "opt-in" and "Serial ... remains the merge gate"; `.claude/wiki/modules/hooks.md:70-73` retires
+the `defer: reviewer dispatched` convention and describes the review-in-flight allow (1800 s);
+`.claude/wiki/persona-handoff-mechanisms.md:93,99` gain a pointer to the protocol's rule and its
+"co-occurs" wording (Clarifications). Under this repo's `knowledgeWrites: apply`. Contract:
+`docs/plans/antislop-review-patches/contracts/rp-s1.md`, copied into issue #634's body (7/7, scribe shape).
 
-### Step 8 (rp-u7): blast-radius script follow-ups from the qw-u5 review (contract next spawn)
+### Step 8 (rp-u7): blast-radius script follow-ups from the qw-u5 review
+Contracted: `docs/plans/antislop-review-patches/contracts/rp-u7.md`. Item (4) uses a `printf` loop, not
+`awk -v`; item (2)'s `--update` part is not taken (no `bin/cli.js` change); the executable check lives in
+`tests/bin-helpers-scaffold.test.sh` (fresh scaffold, `--update` restore, this repo's index); OQ6 ruled no
+(Clarifications). Original scope, verified 2026-10-20:
 Source: coordinator addendum, qw-u5 (82844f70, 0.31.193) PASS notes. Verified 2026-10-20: (1)
 `templates/persona-protocol.md:41` says "runs `.claude/bin/blast-radius.sh <baseline>`" without `bash`,
 while `agents/reviewer.md` says `bash .claude/bin/...`; add `bash`. (2) `.claude/bin/blast-radius.sh` is
@@ -318,37 +382,33 @@ payloads) - so after st-u4 in practice, before rp-u4. Expected version then shif
 
 ## Dispatch section
 
-Fast path (5 lead units plus one scribe contract; Step 6 optional). Contract files, committed before
-dispatch:
-- rp-u1: `docs/plans/antislop-review-patches/contracts/rp-u1.md`
-- rp-u2: `docs/plans/antislop-review-patches/contracts/rp-u2.md`
-- rp-u3: `docs/plans/antislop-review-patches/contracts/rp-u3.md`
-- rp-u4: `docs/plans/antislop-review-patches/contracts/rp-u4.md` (7/7, proven on the clone)
-- rp-u5: `docs/plans/antislop-review-patches/contracts/rp-u5.md` (7/7, proven on the clone)
-- rp-u6, rp-u7, rp-s1: next spawn (rp-s1 needs a tracker issue, label `plan/antislop-review-patches`).
+Fast path: 7 lead units (rp-u1 to rp-u7) plus one scribe contract (rp-s1). Contract files, committed before
+dispatch (all scored with `node .claude/bin/contract-score.js --rubric=v2`):
+- rp-u1: `docs/plans/antislop-review-patches/contracts/rp-u1.md` (landed, 4732f6c3, 0.31.194)
+- rp-u2: `docs/plans/antislop-review-patches/contracts/rp-u2.md` (7/7)
+- rp-u3: `docs/plans/antislop-review-patches/contracts/rp-u3.md` (7/7)
+- rp-u7: `docs/plans/antislop-review-patches/contracts/rp-u7.md` (7/7, proven on the chained clone)
+- rp-u4: `docs/plans/antislop-review-patches/contracts/rp-u4.md` (7/7, re-proven after rp-u7)
+- rp-u5: `docs/plans/antislop-review-patches/contracts/rp-u5.md` (7/7, re-proven after rp-u4)
+- rp-u6: `docs/plans/antislop-review-patches/contracts/rp-u6.md` (7/7, proven on the chained clone)
+- rp-s1: `docs/plans/antislop-review-patches/contracts/rp-s1.md` (scribe shape 7/7), copy in issue #634
 - st-u1 to st-u3 amended in place for Open Question 1 (commit 2246cb45; all still 7/7).
 
 Final order and expected versions (no fix rounds; each unit bumps relative to the version it starts at):
-rp-u1 0.31.194, rp-u2 0.31.195, rp-u3 0.31.196, qw-u6 0.31.197, st-u1 0.31.198, st-u2 0.31.199,
+rp-u1 0.31.194 (landed), rp-u2 0.31.195, rp-u3 0.31.196, qw-u6 0.31.197, st-u1 0.31.198, st-u2 0.31.199,
 st-u3 0.31.200, st-u4 0.31.201, rp-u7 0.31.202, rp-u4 0.31.203, rp-u5 0.31.204, rp-u6 0.31.205, then
-rp-s1 (no bump). (rp-u4 and rp-u5 contracts state "expected" versions without rp-u7; they bump relatively,
-so the shift is harmless.)
-
-Dispatch order against the queued units (qw-u5 landed as 82844f70 while this spec was written; all three
-contracts were re-proven in sequence on a clone of 8b931f0f): rp-u1, rp-u2, rp-u3 right after the unit currently in flight
-(they share no anchor with qw-u5, qw-u6 or st-u1 to st-u4), rp-u1 strictly before st-u1. Then the queued
-qw-u5, qw-u6, st-u1 (amended per Open Question 1), st-u2, st-u3, st-u4. Then rp-u4, rp-u5, rp-u6 in that
-order, then rp-s1 last. Every unit bumps the version relative to the version it starts at.
+rp-s1 (no bump; closes #634). The rp-u4 and rp-u5 contracts state versions one lower (written before rp-u7
+was ordered); they bump relatively, so the shift is harmless. One unit at a time; rp-u7 needs st-u2
+landed (same protocol paragraph), rp-u5 needs st-u4 (same orchestrator file), rp-u6 needs st-u4's
+validate.sh section.
 
 ## Open Questions
 
-All five were ruled on 2026-10-20 (Clarifications); kept below for the record.
+None open. All six were ruled on 2026-10-20 (Clarifications); kept below for the record.
 
-6. (open, from the qw-u5 addendum item 6) Add "a changed hook or prompt file with no caller lines" as an
-   explorer trigger for the reviewer? Recommended: no. The operator ruling's triggers are
-   `provenance=none`, script missing, and an open question that decides a finding; the third already covers
-   a no-caller hook or prompt change whenever it matters, and a fourth trigger would widen a ruled list.
-   Alternative: add it, as a new ruling.
+6. Add "a changed hook or prompt file with no caller lines" as an explorer trigger for the reviewer?
+   Ruled no, per operator: the triggers stay `provenance=none`, script missing, and an open question that
+   decides a finding.
 
 1. st-u1 to st-u3 encode the old criteria exception (`us_classify` class `criteria` for any path token in a
    `run:` line). Recommended default: before st-u1 is dispatched, a spec-master pass on
@@ -385,6 +445,13 @@ All five were ruled on 2026-10-20 (Clarifications); kept below for the record.
   Question 5; 3 and 4 Context)
 - CHK11: Do the range criteria of rp-u1 to rp-u3 survive later commits? — FAIL (conflicting, they read
   HEAD) — revised in place (they name the unit's last commit)
+- CHK12: Does every Open Question have a dated ruling in Clarifications? — PASS (1 to 6)
+- CHK13: Do rp-u7's anchors agree with st-u2's chained edit of the same protocol paragraph? — PASS
+  (applied after st-u2 on the clone; the prototype anchor check reports ok against HEAD plus the chain)
+- CHK14: Is each rp-s1 term assigned to exactly one glossary? — PASS (Clarifications; rp-s1 criterion 3)
+- CHK15: Do Step 6 and the rp-u6 contract agree on the flag name? — FAIL (conflicting: `--against` vs
+  `--chain`) — revised in place (Step 6 now says `--chain`)
+- CHK16: Is the dispatch position and expected version of every unit stated? — PASS (Dispatch section)
 
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
@@ -392,6 +459,6 @@ diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, 
 finding G, queued for rp-s1.
 
 ## Scribe update hint
-rp-s1 (Step 7) carries the glossary and wiki work. Knowledge proposals from this spec: the entries listed
+rp-s1 (Step 7, issue #634) carries the glossary and wiki work. Knowledge proposals from this spec: the entries listed
 in Step 7; **review in flight** should note the audit token `stop-allowed=review-in-flight` and that
 loop-guarded reviewer stops log `loop-guard=allow`.
