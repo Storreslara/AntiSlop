@@ -1,7 +1,8 @@
 # AntiSlop review patches (spec)
 
-Date: 2026-10-20, Step 9 added 2026-10-21. Author: spec-master. Status: finalized; every unit is contracted
-(rp-u1 to rp-u10 and the scribe contract rp-s1, tracker issue #634) and no Open Question remains. Source: the non-blocking notes and blockers reviewers raised during
+Date: 2026-10-20, Steps 9 to 11 added 2026-10-21. Author: spec-master. Status: finalized; every unit is contracted
+(rp-u1 to rp-u14 and the scribe contract rp-s1, tracker issue #634); Open Questions 9 and 10 (gate false
+positives, no unit) await the operator. Source: the non-blocking notes and blockers reviewers raised during
 the antislop-overhead-fixes (aof-*), validate-speed and quick-win (qw-*) units, relayed by the operator on
 2026-10-20 as findings A to I. Operator goal: "finish the spec and implement any blockers or patches found
 during review". Contracts: `docs/plans/antislop-review-patches/contracts/rp-uN.md`.
@@ -35,6 +36,12 @@ fixed, or accepted, with the evidence. Ranked by risk, safety and correctness fi
   segment and classifies unsafe paths `out` (rp-u9); st-u2 to st-u4 fail closed the same way and use the
   corrected classifier (amended contracts); three review notes on qw-u6, rp-u3 and rp-u2 are fixed and
   pinned (rp-u10). Step 9.
+- G10 (rp-u11 and st-u2 review notes, 2026-10-21): a dash inside a backticked path never cuts a
+  `## Do NOT touch` subject and `partial:` counts only right after the paths (rp-u13, safety-adjacent);
+  the precheck pins the fix contract at its commit and runs its criteria, flags an empty range and hides
+  library output, and the reviewer bullet says how to handle a contract committed after the baseline
+  (rp-u14); the two gate false positives are explained and left to the operator (Open Questions 9, 10).
+  Step 11.
 
 ## Context
 
@@ -270,6 +277,65 @@ rp-u12 edits; not taken here.
 - The findings' line numbers (~169, ~197) match no layout of the 163-line library; the defects are where
   the contracts anchor.
 
+### rp-u11 and st-u2 review notes (verified 2026-10-21 against 2bccfd94, 0.31.203)
+
+Sources: `.claude/reviewed/rp-u11.pass` and `.claude/reviewed/st-u2.pass` (read with the Read tool). Each
+was re-run on a scratch clone; nothing was dropped as wrong, one premise (P3a) was narrowed.
+- **P1a (rp-u11 NOTE[spec] 1): confirmed.** `us_exclusions` finds the unspaced `—` and `–` with `index()`
+  over the whole bullet, so `` `x–y.md` `` and `` `a/x—y.md` (frozen) `` print nothing (whole-file
+  exclusions before rp-u11). Under-exclusion: a forbidden file passes the precheck and st-u3's gate. No
+  tracked path holds an em or en dash. rp-u13.
+- **P1b (NOTE[spec] 2): confirmed.** `index(tolower(s), "partial:")` anywhere drops `` `a/p5.sh` (frozen;
+  see the Partial: section) `` and `` `a/Partial:x.sh` ``. Decision (Clarifications): the marker counts only
+  right after the path list, optionally opened by `(`. rp-u13.
+- **P1c (NOTE[code] 3): confirmed.** `sub(/\r$/, "")` drops one CR; `## Do NOT touch\r\r` hides the section.
+  rp-u13.
+- With rp-u13's library, all 131 contract files print the same 1353 exclusion lines as with rp-u11's.
+- **st-u3 and st-u4 do not depend on P1.** st-u4 calls only `us_entries` (Affected files) and
+  `us_safe_path`; st-u3 calls `us_exclusions`, but its fixtures (cases (m), (o)) and every real contract
+  give the same output under both libraries. So P1 need not land before st-u4, and rp-u13 goes in the
+  operator's order, after rp-u6.
+- **P2a (st-u2 NOTE[spec] 1): confirmed.** `agents/reviewer.md:18-30` names `contract: not-at-baseline` as a
+  FAIL ground and gives no remedy for a contract committed after a mis-chosen baseline. The baseline comes
+  from the writer's advisory packet (`agents/lead-programmer.md` "Don't grade your own work");
+  `bin/unit-bookkeeping.sh review` takes it as given and reads no contract, and no sentence in
+  `agents/orchestrator.md` chooses it. No orchestrator sentence is needed (Clarifications); the reviewer
+  bullet gains the re-run rule. rp-u14.
+- **P2b (NOTE[code] 6): confirmed.** `crit_items` runs on `$cfile` only; a fix contract's criteria never run.
+  rp-u14 runs them, read at the fix contract's own commit.
+- **P2c (NOTE[code] 5): confirmed.** `bash bin/review-precheck.sh u HEAD --affected x` prints
+  `result=pass ... judge=0` and `size: files=0`. rp-u14 adds `scope: judge no-changed-files`.
+- **P2d (NOTE[code] 4): confirmed.** `:114` reads `--fix-contract` from the working tree; its Affected files
+  widen scope. rp-u14 reads it at the first commit after the baseline that touches it.
+- **P2e: confirmed (note).** The bullet says "reads the contract only"; CONTEXT.md **contract of record**
+  lists bare "contract" under `_Avoid_`. rp-u14 says "contract of record" there.
+- **P2f: applies.** The script sources `sensitive-paths.sh` and `unit-scope.sh` with stderr hidden only; a
+  library with `echo leaked` appended put `leaked` before the packet's first line. rp-u14 (Open Question 7's
+  "later unit that already edits the script").
+- **P3a (human-decision-gate.sh): confirmed, premise narrowed.** Probed on a clone (PreToolUse Bash input,
+  identity lead-programmer): `rm -rf "$d"`, `rm -rf "$S"/clone`, `rm -rf "${S}/clone"`, `mv "$a" "$b"` and
+  `sed -i ... "$f"` are allowed. Blocked: `rm -rf $S/clone/*/*`, `for f in ${S}/*/*; do sed -i ...; done` and
+  `bash -c 'rm -rf "$d"/*/*'`. The trigger is the F-1 glob scan (`glob_names_tokens`, gate lines ~419-600):
+  an unquoted pattern word (`*`, `?`, `[`, extglob, braces; a `${...}` counts as `*`), or any word inside a
+  `sh|bash|dash -c` payload with its quotes removed, whose last path component can match `DECISION` and an
+  earlier one `human-review` (nocasematch, extglob assumed) sets both token flags; `rm`, `sed`, `mv` are not
+  on the benign allowlist, so the gate denies with the DECISION message. The gate is textual by design
+  (ADR-0025; ADR-0036 keeps it as is); a symlink can make `clone/*/*` reach the packet directory, so a
+  structural narrowing would accept paths the gate cannot rule out. No unit: Open Question 9.
+- **P3b (harness-integrity-gate.sh): confirmed for git only.** `jq .version <config>` and `cat <config>` are
+  allowed (benign allowlist and `is_benign_jq_read`); `git diff HEAD~1 -- <config>` and `git show
+  HEAD:<config>` are refused (`set_a_mentioned` is a substring match on the path, and git is kept off the
+  allowlist on purpose: `lib/benign-command.sh:12-27`, git reads out-of-band config and can run a pager,
+  an external diff or a textconv driver, and `--output=` writes a file). A jq call is refused only with a
+  pipe, separator, redirection or substitution. A git carve-out re-adds what the library says never to
+  re-add; no unit: Open Question 10.
+- **st-u3 spec gap (coordinator relay, 2026-10-21): confirmed and fixed in st-u3.** The gate text spelled
+  the unit-id grammar twice and added a fourth `[^a-zA-Z0-9._-]` sanitiser, which
+  `tests/state-access-constraints.test.sh` M5 (2a, 2b) forbids under `hooks/scripts/`. st-u3 now sources
+  `lib/state-access.sh` and uses its helpers (contract `amended-3`, faa9b967). st-u4's spelling is in
+  `bin/unit-size.sh`, outside M5's scope. Registration (`hooks/hooks.json`, a Set B surface no agent may
+  write) is with the operator; st-u3's `registration:` line gives the exact text.
+
 ### Prior FAIL history (`.claude/reviewed/`, best-effort, gitignored)
 
 aof-u2 (stop-gate in-flight) FAILed on hand-typed AC anchors, not on code; aof-u3 PASSed with a design
@@ -446,6 +512,37 @@ sensitive hook path).
   A: per operator, first: st-u2-fix1 0.31.202, rp-u11 0.31.203, st-u3 0.31.204, st-u4 0.31.205, rp-u10
   0.31.206, rp-u12 0.31.207, rp-u7 0.31.208, rp-u4 0.31.209, rp-u5 0.31.210, rp-u6 0.31.211, rp-s1 last.
 
+- 2026-10-21 Domain entities / data model: Q Where does the `partial:` marker count (rp-u11 NOTE[spec] 2)?
+  → A (self-resolved): only right after the path list, outside backticks, optionally opened by `(`
+  (`` `x` partial: <part> ``, `` `x` (Partial: <part>) ``); elsewhere it is plain text. This supersedes the
+  2026-10-21 "anywhere in the bullet" ruling above. Recognising the marker narrowly is the safe direction:
+  a misread partial bullet becomes a whole-file exclusion (a flag the reviewer judges), never a dropped one.
+- 2026-10-21 Edge cases / failure handling: Q Is a dash inside a backticked path a separator? → A
+  (self-resolved): no; the bullet is read from its start and the subject ends only outside backticks
+  (rp-u13). Spaced dashes keep ending the subject.
+- 2026-10-21 Technical constraints & tradeoffs: Q Must rp-u13 land before st-u4 (operator's check)? → A
+  (self-resolved): no; st-u4 never reads `## Do NOT touch`, and st-u3's cases and every real contract give
+  the same exclusions under both libraries. Order kept as the operator gave it.
+- 2026-10-21 User interaction flow: Q Does the orchestrator's baseline choice need a sentence (P2a)? → A
+  (self-resolved): no; the baseline is the writer's packet's, a fast-path contract is committed before
+  dispatch, and the reviewer re-runs with the contract's adding commit only when no unit commit precedes
+  it (rp-u14). Nothing in `agents/orchestrator.md` or `bin/unit-bookkeeping.sh` changes.
+- 2026-10-21 Functional scope & success criteria: Q Run the fix contract's criteria in the script, or tell
+  the reviewer to run them (P2b)? → A (self-resolved, operator's preference): run them, read at the fix
+  contract's own commit, as `fix criterion <n>` lines.
+- 2026-10-21 Edge cases / failure handling: Q What does a fix contract that is not committed, or edited
+  after its commit, produce (P2d)? → A (self-resolved): `fix-contract: not-committed` or
+  `fix-contract: changed-since-added`, both failure lines, like the contract of record's two lines.
+- 2026-10-21 Terminology consistency: Q "the contract" in the reviewer bullet (P2e)? → A (self-resolved):
+  "contract of record" where the contract of record is meant; `--contract <contract path>` and "with no
+  contract" stay.
+- 2026-10-21 Non-functional attributes (perf, security, scale): Q Is there a minimal safe tightening of
+  human-decision-gate.sh or harness-integrity-gate.sh (P3)? → A: open, Open Questions 9 and 10; no unit
+  until the operator rules (recommended: none for either).
+- 2026-10-21 External dependencies & integrations: Q st-u3 breaks state-access-constraints M5 (coordinator
+  relay)? → A (self-resolved): amended st-u3 to use `lib/state-access.sh`; registration in
+  `hooks/hooks.json` left to the operator, text in st-u3's `registration:` line.
+
 ## Risks / dependencies
 
 - rp-u1 changes a rule the reviewer applies to every later unit. A queued contract whose criteria execute
@@ -487,6 +584,16 @@ sensitive hook path).
 - st-u2-fix1 (bc96b47a, 0.31.202) is in review. Checked against its landed text: no queued anchor collides
   (Dispatch section). A further fix round on the precheck files would need the same check only if it
   reaches `templates/persona-protocol.md` or `tests/validate.sh`.
+
+- rp-u13 changes what st-u3's gate and the precheck exclude: more whole-file exclusions, never fewer, for a
+  bullet with a dash inside a path or `partial:` outside its place. Every real contract is unchanged (131
+  files, same output). A writer who writes `` `x` — partial: <part> `` gets a whole-file exclusion; the
+  header documents the place.
+- rp-u14 makes a fix contract that was never committed a FAIL ground (it was read from the working tree).
+  task-master commits fix contracts before dispatch, so a correct fix round is unaffected. Residual: a
+  writer that commits a brand-new fix contract itself, before task-master's, has it read at its own commit.
+- The gate false positives (Open Questions 9, 10) stay until the operator rules; agents meeting them must
+  report and wait, never reword the command (protocol, "Blocked by a gate you do not own").
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied (every finding re-verified against cfb7ddac; H's premise rejected on evidence)
@@ -641,6 +748,24 @@ Source: rp-u9's and rp-u8's PASS notes, verified in Context, "rp-u9 review findi
 Acceptance criteria: rp-u11, rp-u12 and the amended st-u3 and st-u4, each 7/7 on
 `node .claude/bin/contract-score.js --rubric=v2`, each ending in a validate.sh exit-code criterion.
 
+### Step 11 (rp-u13, rp-u14): rp-u11 and st-u2 review notes
+Source: Context, "rp-u11 and st-u2 review notes".
+- rp-u13 (P1a to P1c): `hooks/scripts/lib/unit-scope.sh` `us_exclusions` reads a bullet from its start (the
+  subject ends only at a separator outside backticks), recognises `partial:` only right after the path
+  list (optionally after `(`); `us_section` drops every trailing CR; header comment says all three; case
+  (k) in `tests/scope-libs.test.sh`. Affected: the library, its test, bump files, generated copy. Contract:
+  `docs/plans/antislop-review-patches/contracts/rp-u13.md`.
+- rp-u14 (P2a to P2f): `bin/review-precheck.sh` reads `--fix-contract` at the first commit after the baseline
+  that touches it (`fix-contract: changed-since-added` / `not-committed`), runs its criteria as
+  `fix criterion <n>` lines, prints `scope: judge no-changed-files` for an empty range, sources both
+  libraries with `>/dev/null 2>&1`; `agents/reviewer.md` bullet names the new lines, says "contract of
+  record", and gives the not-at-baseline re-run rule; case (l) and new (j) pins in
+  `tests/review-precheck.test.sh`. No `templates/persona-protocol.md`, `agents/orchestrator.md` or
+  `bin/unit-bookkeeping.sh` change. Contract: `docs/plans/antislop-review-patches/contracts/rp-u14.md`.
+- P3: no unit (Open Questions 9 and 10).
+Acceptance criteria: rp-u13 and rp-u14, each 7/7 on `node .claude/bin/contract-score.js --rubric=v2`, each
+ending in a validate.sh exit-code criterion.
+
 ## Dispatch section
 
 Fast path: 10 lead units (rp-u1 to rp-u10) plus one scribe contract (rp-s1). Contract files, committed before
@@ -733,10 +858,53 @@ grep `^[0-9a-f]+ [a-z]+\(st-u2\): ` on the subject, so task-master's docs commit
 does not match. If st-u2-fix1 FAILs again, its fix round adds one version and the later expected versions
 shift by one (relative bumps).
 
+Step 11 (2026-10-21, after rp-u11 landed at 2bccfd94, 0.31.203; st-u3 in implementation):
+- st-u3: amended again in place (faa9b967, `amended-3`, 7/7): state-access.sh helpers instead of new
+  unit-id spellings; operator registration note.
+- rp-u13: `docs/plans/antislop-review-patches/contracts/rp-u13.md` (7/7, proven on the chained clone)
+- rp-u14: `docs/plans/antislop-review-patches/contracts/rp-u14.md` (7/7, proven on the chained clone)
+Remaining order and expected versions (no fix rounds; each unit bumps relative to the version it starts at),
+superseding the order above: st-u3 0.31.204 (in implementation; registration by the operator), st-u4
+0.31.205, rp-u10 0.31.206, rp-u12 0.31.207, rp-u7 0.31.208, rp-u4 0.31.209, rp-u5 0.31.210, rp-u6 0.31.211,
+rp-u13 0.31.212, rp-u14 0.31.213, then rp-s1 (no bump; closes #634). Why: the operator's order; rp-u13 need
+not precede st-u4 (Clarifications) and could move earlier at no anchor cost (it shares only
+`tests/scope-libs.test.sh`'s last line with rp-u12's case (b) edit); rp-u14 after rp-u13 (both change what the
+precheck reports; one unit in review at a time).
+Anchor check, both ways: spec-master applied st-u3 (as amended at faa9b967, every edit including the
+hooks.json registration), st-u4 (its "eight to nine helpers" prose edit by hand), rp-u10, rp-u12, rp-u7,
+rp-u4, rp-u5, rp-u6, rp-u13 and rp-u14 in this order to a fresh clone of faa9b967 with its own applier
+(every `before:` payload exactly once, every command's exit as stated) and ran each contract's criteria 1
+to n-1 right after its commit (validate.sh not run): all held (rp-u4 criterion 2 prints `3` then `1`, as
+stated); the final version read 0.31.213; at the end `tests/scope-libs.test.sh`,
+`tests/review-precheck.test.sh`, `tests/writer-scope-gate.test.sh`, `tests/unit-size.test.sh`,
+`tests/reviewer-tier.test.sh` and `tests/state-access-constraints.test.sh` printed no FAIL line. rp-u13's red
+step printed `2`, rp-u14's `15`; the rp-u13 criterion 1 and 3 mutations and the four rp-u14 criterion 1
+mutations flipped their results.
+
 ## Open Questions
 
-Open: none. 1 to 6 were ruled on 2026-10-20 and 7 and 8 on 2026-10-21 (Clarifications); 1 to 6 are kept
-below for the record.
+Open: 9 and 10 (no unit until ruled). 1 to 6 were ruled on 2026-10-20 and 7 and 8 on 2026-10-21
+(Clarifications); 1 to 6 are kept below for the record.
+
+9. human-decision-gate.sh denies a Bash command holding an unquoted glob or `${...}` path word (or a
+   quoted one inside `bash -c`) whose last component can match `DECISION` and an earlier one
+   `human-review` (Context P3a), e.g. `rm -rf $S/clone/*/*`. Recommended default: (a) no gate change;
+   record the trigger in the **decision-gate denial** glossary entry (rp-s1 or a later scribe run) so
+   agents quote the word or name the files, and keep "report and wait" for real blocks. Options: (b)
+   require the matched components to be adjacent and in the packet shape (`human-review/<one>/DECISION`) -
+   weakens the gate (a symlink, or a variable holding several components, reaches the packet through
+   other shapes; ADR-0025 keeps it textual); (c) exempt `$TMPDIR`-rooted and scratchpad paths - weakens it
+   the same way (a path variable can be re-pointed). (b) and (c) each need an ADR superseding part of
+   ADR-0025.
+10. harness-integrity-gate.sh refuses `git diff ... -- <persona config>` and `git show <rev>:<persona config>`
+   (Context P3b); `cat` and a single `jq` are allowed. Recommended default: (a) no gate change; document
+   that the reviewer reads the config with the Read tool or `cat`/`jq` and reads its history through
+   `validate.sh`'s drift checks. Options: (b) a narrow carve-out for exactly `git --no-pager show
+   --no-textconv <rev>:<path>` and `git --no-pager diff --no-ext-diff --no-textconv <a> <b> -- <path>`
+   with no `-c`, `--output`, redirection, pipe or substitution - re-adds git, which
+   `lib/benign-command.sh:12-27` says never to re-add (aliases and repository config still apply); (c) a
+   read-only helper script outside the gate's surface that prints the config at a revision - a new
+   mechanism, its own unit and review.
 
 6. Add "a changed hook or prompt file with no caller lines" as an explorer trigger for the reviewer?
    Ruled no, per operator: the triggers stay `provenance=none`, script missing, and an open question that
@@ -833,11 +1001,31 @@ below for the record.
 - CHK36: Is the chained anchor check run against st-u2-fix1's committed text? — PASS (contract 7c3db405 and
   landed commit bc96b47a; Dispatch section, "st-u2-fix1 check")
 
+- CHK37 (2026-10-21): Is every rp-u11 and st-u2 review note (P1a to P1c, P2a to P2f, P3a, P3b) mapped to a
+  contract criterion that fails under its own mutation, or to an Open Question? — PASS (P1a rp-u13 c1, c3;
+  P1b c1, c3; P1c c1; P2b, P2d, P2f rp-u14 c1; P2c c1, c3; P2a, P2e c4; P3a OQ 9; P3b OQ 10)
+- CHK38: Do Clarifications, rp-u13's header comment, its Objective and the Scribe update hint agree on where
+  `partial:` counts? — FAIL (conflicting: the Step 10 hint and the 2026-10-21 ruling said "anywhere") —
+  revised in place (Clarifications supersede line; Scribe hint rewritten)
+- CHK39: Is the dispatch position and expected version of rp-u13 and rp-u14 stated, with the operator's
+  "before st-u4?" check answered? — PASS (Dispatch section, Step 11; Clarifications)
+- CHK40: Does any P3 tightening that would weaken a gate appear as a unit? — PASS (none; Open Questions 9
+  and 10 carry the options)
+- CHK41: Do rp-u13's and rp-u14's Do-NOT-touch bullets parse as whole-subject exclusions, and does none name
+  a file its own Affected list names? — PASS (landed `us_exclusions`: ten and six paths)
+- CHK42 (replay): Do the criteria whose `run:` names `bin/review-precheck.sh`, `tests/review-precheck.test.sh`
+  or `tests/scope-libs.test.sh` still fail under their own `mutation:` line? — PASS (rp-u13 c1 and c3, rp-u14
+  c1 and c3, run on the clone)
+- CHK43: Is the chained anchor check run against the amended st-u3 and both new contracts? — PASS
+  (Dispatch section, Step 11)
+
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
 "review-in-flight" (audit token) name the same thing, the entry should name both; lens 3, the seven terms of
 finding G, queued for rp-s1.
-2026-10-21 pass: lens 1 and lens 2 found nothing new in the Step 10 additions; lens 3, "range grep" (the
+2026-10-21 Step 11 pass: lens 1, "the contract" for the contract of record (P2e) is fixed in rp-u14; lens
+2, nothing new; lens 3, "fix criterion" (a precheck line) and "no-changed-files" are script output, not
+glossary terms. 2026-10-21 pass: lens 1 and lens 2 found nothing new in the Step 10 additions; lens 3, "range grep" (the
 `git log --grep` that finds a unit's own commits for a range criterion) is used only in this spec and its
 contracts, so it is not proposed for a glossary.
 
@@ -851,6 +1039,10 @@ family in `CONTEXT.md`; **fail closed** for a missing or incomplete hook library
 precheck exit 2, scope gate blocks writers, lane full) in `docs/harness-glossary.md`.
 Step 10 knowledge proposals for rp-s1: under **whole-subject exclusion**, the separators (` (`, `: `,
 ` - `, ` -- `, em and en dash) and that `,` or `;` before a reason makes the bullet a restriction; the
-**`partial:` marker** matches in any case; under the unit-scope family, **standing exception** (`.claude/`
+**`partial:` marker** matches in any case but only right after the path list, optionally opened by `(`,
+never in a reason or inside a path (rp-u13; a dash inside a backticked path is part of it); under the unit-scope family, **standing exception** (`.claude/`
 and `docs/plans/`) is checked before `## Do NOT touch` by the scope gate, so a Do-NOT-touch bullet naming a
 `.claude/` copy means "only through `--update`".
+Step 11 knowledge proposals for rp-s1 (or a later scribe run): the **decision-gate denial** entry in
+`docs/harness-glossary.md` should name the glob trigger of Open Question 9 if it is ruled (a); **fix
+contract** (`docs/harness-glossary.md`) is read by the precheck at the commit that added it, never from the working tree.
