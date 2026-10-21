@@ -1,7 +1,7 @@
 ---
 name: orchestrator
 description: "Thin router for the persona system. Set as the main agent via settings.json (\"agent\": \"orchestrator\") at ADAPT time — its body replaces the default Claude Code system prompt entirely when running as the main session, so it must be self-sufficient."
-model: inherit
+model: sonnet
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
 

@@ -63,6 +63,12 @@
       "default": "scoped",
       "description": "Whether scribe and spec-master may edit CONTEXT.md, docs/harness-glossary.md, README.md and docs/adr/ outside a unit's scope. \"scoped\" (the default; also an ABSENT key and any unrecognised value) turns such edits into knowledge proposals in the persona's report; \"apply\" lets them edit directly. --update never backfills this key; set it with --update --knowledge-writes=<scoped|apply>."
     },
+    "orchestratorModel": {
+      "type": "string",
+      "enum": ["sonnet", "opus", "haiku", "inherit"],
+      "default": "sonnet",
+      "description": "The model of the main session, which runs as the orchestrator. Rendered into .claude/agents/orchestrator.md's frontmatter `model:` line by install and by `--update --force-render`. Absent: the shipped `model: sonnet`. `inherit` keeps your own session model (the behaviour before qw-u6). An unrecognised value keeps the shipped model and prints a note."
+    },
     "pluginVersion": {
       "type": "string",
       "description": "The antislop plugin version this project was last ADAPTed/updated at, stamped by install-antislop. Compared against the installed plugin's current version by the SessionStart drift-check hook."

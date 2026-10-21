@@ -765,6 +765,15 @@ else
 fi
 
 echo
+echo "== orchestrator-model: sonnet by default, orchestratorModel opt-out (Node, qw-u6) =="
+if node tests/orchestrator-model.test.js > /dev/null 2>&1; then
+  echo "OK   tests/orchestrator-model.test.js"
+else
+  echo "FAIL tests/orchestrator-model.test.js"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"

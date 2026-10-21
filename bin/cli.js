@@ -1101,6 +1101,25 @@ function inlineProtocolBlock(body, tier, name, gatedAgents) {
   return `${body.replace(/\s+$/, '')}\n\n${block}\n`;
 }
 
+// qw-u6: the orchestrator runs as the main session (settings `"agent": "orchestrator"`), so its
+// frontmatter `model:` sets the session model; agents/orchestrator.md ships `model: sonnet`.
+// persona-config.json `orchestratorModel` overrides that one line in the rendered mirror; `inherit`
+// keeps the user's own session model. An absent key, an unrecognised value, another persona, or a
+// source with no `model:` line (the A/B harness strips it under `uniform`) leaves the body unchanged.
+const ORCHESTRATOR_MODELS = ['sonnet', 'opus', 'haiku', 'inherit'];
+
+function applyOrchestratorModel(body, name, config) {
+  if (name !== 'orchestrator' || config == null || config.orchestratorModel == null) return body;
+  const value = config.orchestratorModel;
+  if (!ORCHESTRATOR_MODELS.includes(value)) {
+    console.warn(`Note: persona-config.json orchestratorModel "${value}" is not one of ${ORCHESTRATOR_MODELS.join(', ')}; keeping the shipped orchestrator model.`);
+    return body;
+  }
+  const fm = body.match(/^---\n[\s\S]*?\n---\n/);
+  if (!fm || !/^model: .*$/m.test(fm[0])) return body;
+  return fm[0].replace(/^model: .*$/m, `model: ${value}`) + body.slice(fm[0].length);
+}
+
 function renderCleanBody(spec, config) {
   let body = fs.readFileSync(spec.sourceAbsPath, 'utf8');
   if (spec.kind === 'raw') return body;
@@ -1119,7 +1138,8 @@ function renderCleanBody(spec, config) {
       body = applyMcpPlaceholder(body, '<REAL_LAUNCH_COMMAND_FROM_INSTALL_ANTISLOP_STEP_5>', launch, spec.projectRelPath);
     }
   }
-  return inlineProtocolBlock(body, spec.protocolTier, path.basename(spec.projectRelPath, '.md'), config.gatedAgents);
+  const personaName = path.basename(spec.projectRelPath, '.md');
+  return inlineProtocolBlock(applyOrchestratorModel(body, personaName, config), spec.protocolTier, personaName, config.gatedAgents);
 }
 
 function printUnifiedDiff(oldStr, newStr, label) {
@@ -2513,7 +2533,7 @@ async function main() {
   for (const name of allAgentNames) {
     const src = path.join(PKG_ROOT, 'agents', `${name}.md`);
     const dest = path.join(agentsDir, `${name}.md`);
-    const body = inlineProtocolBlock(fs.readFileSync(src, 'utf8'), protocolTierFor(name), name, gatedAgents);
+    const body = inlineProtocolBlock(applyOrchestratorModel(fs.readFileSync(src, 'utf8'), name, existingPersonaConfig), protocolTierFor(name), name, gatedAgents);
     copyStampedBody(dest, body, version, `agents/${name}.md`);
     console.log(`  agents/${name}.md -> .claude/agents/${name}.md`);
   }
@@ -2788,6 +2808,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  applyOrchestratorModel,
   PLACEHOLDER_RE,
   compareSemver,
   sha256Hex,

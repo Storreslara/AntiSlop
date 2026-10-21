@@ -67,7 +67,7 @@ the right persona and reports back; you never address personas by name.
 
 | Persona | Model | Role |
 |---|---|---|
-| `orchestrator` | inherit | Always on. Main agent; routes, never implements. |
+| `orchestrator` | sonnet | Always on. Main agent; routes, never implements. Set `orchestratorModel` to `inherit` to keep your own session model. |
 | `explorer` | haiku | Always on. Structural lookups via the Code Review Graph. |
 | `lead-programmer` | haiku | Always on. Implements a dispatched unit TDD-first. |
 | `reviewer` | opus | Independent PASS/FAIL verdict; cannot edit code. The core safety property. |
@@ -102,6 +102,7 @@ personas as concurrent teammates instead; off by default.
 | `protectedPaths` | — | Globs that need human approval before Write/Edit. |
 | `gatedAgents` | `["lead-programmer"]` | Personas the stop-gate's test+lint check applies to. |
 | `defaultImplementerModel` | `haiku` | Tier the escalation ladder starts from. |
+| `orchestratorModel` | `sonnet` | Model of the main session (the orchestrator): `sonnet`, `opus`, `haiku` or `inherit` (your own session model). Apply a change with `node <plugin>/bin/cli.js --update --force-render`. |
 | `humanReviewMode` | `critical` | `critical`: heavy units are escalated to you before PASS; `all`: every PASS; `off`: never. |
 | `reviewGating.mode` | `enforce` | `off` makes reviewer verdicts advisory and the review gates inert. Flip with `/antislop:gate off` or `on`. |
 
