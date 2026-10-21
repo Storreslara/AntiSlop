@@ -303,7 +303,14 @@ dispatch:
 - rp-u1: `docs/plans/antislop-review-patches/contracts/rp-u1.md`
 - rp-u2: `docs/plans/antislop-review-patches/contracts/rp-u2.md`
 - rp-u3: `docs/plans/antislop-review-patches/contracts/rp-u3.md`
-- rp-u4, rp-u5, rp-u6, rp-s1: next spawn.
+- rp-u4: `docs/plans/antislop-review-patches/contracts/rp-u4.md` (7/7, proven on the clone)
+- rp-u5: `docs/plans/antislop-review-patches/contracts/rp-u5.md` (7/7, proven on the clone)
+- rp-u6, rp-s1: next spawn (rp-s1 needs a tracker issue, label `plan/antislop-review-patches`).
+- st-u1 to st-u3 amended in place for Open Question 1 (commit 2246cb45; all still 7/7).
+
+Final order and expected versions (no fix rounds; each unit bumps relative to the version it starts at):
+rp-u1 0.31.194, rp-u2 0.31.195, rp-u3 0.31.196, qw-u6 0.31.197, st-u1 0.31.198, st-u2 0.31.199,
+st-u3 0.31.200, st-u4 0.31.201, rp-u4 0.31.202, rp-u5 0.31.203, rp-u6 0.31.204, then rp-s1 (no bump).
 
 Dispatch order against the queued units (qw-u5 landed as 82844f70 while this spec was written; all three
 contracts were re-proven in sequence on a clone of 8b931f0f): rp-u1, rp-u2, rp-u3 right after the unit currently in flight
