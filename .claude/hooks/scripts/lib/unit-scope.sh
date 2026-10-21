@@ -4,9 +4,11 @@
 # nothing here writes a file.
 
 # us_section <file> <heading>: the lines of `## <heading>` up to the next `## `
-# heading, outside ``` and ~~~ fences.
+# heading, outside ``` and ~~~ fences. A line's trailing CR is dropped first, so a
+# file saved with CRLF endings still has its headings found (rp-u11).
 us_section() {
   awk -v h="## $2" '
+    { sub(/\r$/, "") }
     /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
     fence { next }
     /^## / { on = ($0 == h || index($0, h " ") == 1); next }
@@ -26,21 +28,23 @@ us_entries() {
 # us_exclusions <file>: the whole-file exclusions of the file's `## Do NOT touch`
 # section, one per line (rp-u9). A bullet is a line starting `- ` plus its
 # indented continuation lines, joined by one space. Its subject is the text
-# before the first ` (`, `: `, ` - ` or ` — `, with trailing spaces and `.,;:`
-# dropped. The subject excludes only when it is nothing but backticked path
-# tokens (each holding a `/` or a `.`, no space) joined by `, `, ` and `,
-# `, and `, ` or ` or `, or `; then every token is printed. Any other word in
-# the subject (`by hand`, `except ...`, `ESCALATE-TO-HUMAN steps`) makes the
-# bullet a partial restriction, never an exclusion. A bullet holding the
-# marker `partial:` anywhere (written after the path: `x` partial: <part>)
-# is a partial-file restriction whatever else it says.
+# before the first ` (`, `: `, ` - `, ` -- `, em dash or en dash (spaced or
+# not), with trailing spaces and `.,;:` dropped. The subject excludes only when
+# it is nothing but backticked path tokens (each holding a `/` or a `.`, no
+# space) joined by `, `, ` and `, `, and `, ` or ` or `, or `; then every token
+# is printed. Any other word in the subject (`by hand`, `except ...`,
+# `ESCALATE-TO-HUMAN steps`) makes the bullet a partial restriction, never an
+# exclusion; so does a reason after `,` or `;` (`x`, except ... is a partial
+# restriction too). A bullet holding the marker `partial:` in any letter case
+# anywhere (written after the path: `x` partial: <part>) is a partial-file
+# restriction whatever else it says.
 us_exclusions() {
   us_section "$1" "Do NOT touch" | awk '
     function flush(   s, c, i, k, n, tok, seps) {
       s = b; b = ""; on = 0
-      if (s == "" || index(s, "partial:") > 0) return
-      c = 0; split(" (|: | - | — ", seps, "|")
-      for (k = 1; k <= 4; k++) { i = index(s, seps[k]); if (i > 0 && (c == 0 || i < c)) c = i }
+      if (s == "" || index(tolower(s), "partial:") > 0) return
+      c = 0; n = split(" (|: | - | -- |—|–", seps, "|")
+      for (k = 1; k <= n; k++) { i = index(s, seps[k]); if (i > 0 && (c == 0 || i < c)) c = i }
       if (c > 0) s = substr(s, 1, c - 1)
       sub(/[[:space:].,;:]+$/, "", s)
       n = 0
@@ -63,12 +67,14 @@ us_exclusions() {
 }
 
 # us_safe_path <path>: exit 0 for a path the classes can judge: not empty, no
-# newline (it would split into two grep patterns) and no `.` or `..` segment
-# (`src/../x` must not count as under `src`). git never prints such a path
-# unquoted; callers classify anything else `out`.
+# newline (it would split into two grep patterns), no `.` or `..` segment
+# (`src/../x` must not count as under `src`), no empty segment and no leading
+# or trailing `/` (`src//x` and `src/x/` must not miss the exact-match
+# exclusion of `src/x` while counting as under `src`; rp-u11). git never prints
+# such a path; callers classify anything else `out`.
 us_safe_path() {
   case "$1" in
-    ''|*$'\n'*|.|..|./*|../*|*/.|*/..|*/./*|*/../*) return 1 ;;
+    ''|*$'\n'*|.|..|./*|../*|*/.|*/..|*/./*|*/../*|/*|*/|*//*) return 1 ;;
   esac
   return 0
 }

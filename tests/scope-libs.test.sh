@@ -169,4 +169,32 @@ printf 'CONTEXT.md\n' > "$T/ix.txt"
 [ "$(us_classify src/../CONTEXT.md "$R1" "$T/i.txt" /dev/null /dev/null /dev/null)" = out ] && ok "(i) .. path classifies out" || bad "(i) .. path class"
 [ "$(us_classify src/a.js "$R1" "$T/i.txt" /dev/null /dev/null /dev/null)" = listed ] && ok "(i) a plain path under a listed directory" || bad "(i) plain path"
 
+# (j) rp-u11: `partial:` in any letter case never excludes; a spaced `--` and an em or en dash (spaced or
+# not) end the subject; a reason after `,` or `;` is not a separator (no exclusion, as documented).
+cat > "$T/j.md" << 'MD'
+## Do NOT touch
+- `j/p1.sh` (Partial: lines 1-10)
+- `j/p2.sh` PARTIAL: its header
+- `j/d1.sh` – an en-dash reason
+- `j/d2.sh` -- a double-dash reason
+- `j/d3.sh`—an unspaced em dash reason
+- `j/d4.sh`–an unspaced en dash reason
+- `j/c1.sh`, a reason after a comma
+- `j/c2.sh`; a reason after a semicolon
+- `j/w1.sh` and `j/w2.sh`
+MD
+[ "$(us_exclusions "$T/j.md" | tr '\n' ' ')" = 'j/d1.sh j/d2.sh j/d3.sh j/d4.sh j/w1.sh j/w2.sh ' ] && ok "(j) partial: any case, dash separators" || bad "(j) exclusions: $(us_exclusions "$T/j.md" | tr '\n' ' ')"
+# (j) a file saved with CRLF endings: headings are still found and no CR reaches an entry.
+printf '## Affected files\r\n- `src/a.js`\r\n\r\n## Do NOT touch\r\n- `src/b.js` (a reason)\r\n' > "$T/jc.md"
+[ "$(us_entries "$T/jc.md")" = src/a.js ] && ok "(j) CRLF: Affected files entry" || bad "(j) CRLF entries: $(us_entries "$T/jc.md" | od -c | head -n1)"
+[ "$(us_exclusions "$T/jc.md")" = src/b.js ] && ok "(j) CRLF: Do NOT touch exclusion" || bad "(j) CRLF exclusions: $(us_exclusions "$T/jc.md" | od -c | head -n1)"
+# (j) a doubled, leading or trailing slash is never listed and classifies out, so it cannot slip past the
+# exact-match exclusion of the file it names.
+printf 'src\n' > "$T/jl.txt"; printf 'src/secret.js\n' > "$T/jx.txt"
+for p in src//secret.js src/secret.js/ /src/secret.js; do
+  us_listed "$p" "$T/jl.txt" && bad "(j) listed: $p" || ok "(j) not listed: $p"
+  [ "$(us_classify "$p" "$R1" "$T/jl.txt" /dev/null /dev/null /dev/null "$T/jx.txt")" = out ] && ok "(j) out: $p" || bad "(j) class of $p"
+done
+[ "$(us_classify src/secret.js "$R1" "$T/jl.txt" /dev/null /dev/null /dev/null "$T/jx.txt")" = excluded ] && ok "(j) the plain path is still excluded" || bad "(j) plain path class"
+
 exit "$fail"
