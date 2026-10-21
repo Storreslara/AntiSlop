@@ -69,7 +69,9 @@ printf 'x\n' > CONTEXT.md && printf 'h\n' > hooks/g.sh && g add -A && g commit -
 out="$(bash "$PC" u1 "$BASE" --contract "$C")"
 printf '%s\n' "$out" | grep -qxF 'scope: out CONTEXT.md' && ok "(c) out-of-scope file" || bad "(c) out-of-scope file"
 printf '%s\n' "$out" | grep -qxF 'sensitive: hooks/g.sh' && ok "(c) sensitive path" || bad "(c) sensitive path"
-bash "$PC" u2 "$BASE" --contract "$C2" | grep -qxF 'scope: excluded CONTEXT.md' && ok "(c) a whole-file Do NOT touch bullet" || bad "(c) excluded class"
+o2="$(bash "$PC" u2 "$BASE" --contract "$C2")"
+printf '%s\n' "$o2" | grep -qxF 'scope: excluded CONTEXT.md' && ok "(c) a whole-file Do NOT touch bullet" || bad "(c) excluded class"
+first "$o2" | grep -q '^precheck: result=fail .* fails=2 ' && ok "(c) an excluded file counts as a failure" || bad "(c) excluded not counted: $(first "$o2")"
 first "$out" | grep -q '^precheck: result=fail .* fails=2 ' && ok "(c) result=fail fails=2" || bad "(c) header: $(first "$out")"
 mkdir -p "$T/.claude/reviewed" && printf 'FAIL u1 2026-10-20T00:00:00Z\ntier: sonnet\n- CONTEXT.md:1 needs the term\n' > "$T/.claude/reviewed/u1.fail"
 bash "$PC" u1 "$BASE" --contract "$C" | grep -qxF 'scope: ok CONTEXT.md fail-record' && ok "(c) path named by the .fail record" || bad "(c) fail-record class"
@@ -82,11 +84,50 @@ printf '%s\n' "$out" | grep -qxF 'criterion 1: fail exit=1 want=0' && ok "(d) ex
 printf 'b\nb\n' > src/a.js && g commit -qam 'u1: two b'
 bash "$PC" u1 "$BASE" --contract "$C" | grep -q '^criterion 1: fail stdout want=1 got=2$' && ok "(d) stdout mismatch is a fail line" || bad "(d) stdout mismatch"
 
-printf 'a\nb\n' > src/a.js && sed -i 's/grep -c b/grep -c a/' "$C" && g commit -qam 'u1: weaken criterion'
+printf 'a\n' > src/a.js && sed -i 's/grep -c b/grep -c a/' "$C" && g commit -qam 'u1: weaken criterion'
 out="$(bash "$PC" u1 "$BASE" --contract "$C")"
 printf '%s\n' "$out" | grep -qxF "contract: changed-since-baseline $C" && ok "(e) contract edited after the baseline" || bad "(e) contract edit not flagged"
-printf '%s\n' "$out" | grep -qxF 'criterion 1: pass exit=0' && ok "(e) baseline criteria used" || bad "(e) criteria not from baseline"
+# The weakened criterion (grep -c a) passes on this tree and the baseline one (grep -c b) fails: only the baseline one may be graded.
+printf '%s\n' "$out" | grep -qxF 'criterion 1: fail exit=1 want=0' && ok "(e) baseline criteria used" || bad "(e) criteria not from baseline"
+TOP="$(git rev-parse --show-toplevel)"
+out_abs="$(bash "$PC" u1 "$BASE" --contract "$TOP/$C")"; out_dots="$(bash "$PC" u1 "$BASE" --contract "docs/plans/p/../p/./contracts/u1.md")"
+[ "$out_abs" = "$out" ] && ok "(e) an absolute --contract gives the same packet" || bad "(e) absolute spelling differs: $(first "$out_abs")"
+[ "$out_dots" = "$out" ] && ok "(e) a .. and . --contract gives the same packet" || bad "(e) dots spelling differs: $(first "$out_dots")"
+for bad_c in /etc/hostname ../x docs/../../x "$TOP/../x"; do
+  bash "$PC" u1 "$BASE" --contract "$bad_c" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(e) --contract outside the repository exit 2: $bad_c" || bad "(e) outside path accepted: $bad_c"
+done
 g reset -q --hard HEAD~1
+
+# (e2) A contract the baseline does not have is a failure line and is never read from the working tree or HEAD.
+C3=docs/plans/p/contracts/u3.md
+cat > "$C3" << 'MD'
+Unit: u3
+
+## Affected files
+- `src/a.js`
+
+## Acceptance criteria
+1. run: `bash -c 'echo 1'`
+   exit: 0
+   stdout: `1`
+   mutation: none
+MD
+for stage in untracked committed-later; do
+  [ "$stage" = committed-later ] && g add "$C3" && g commit -q -m 'contract after the baseline'
+  out="$(bash "$PC" u3 "$BASE" --contract "$C3")"
+  printf '%s\n' "$out" | grep -qxF "contract: not-at-baseline $C3" && ok "(e2) $stage: not-at-baseline line" || bad "(e2) $stage: no not-at-baseline line"
+  first "$out" | grep -q '^precheck: result=fail .* fails=2 ' && ok "(e2) $stage: result=fail fails=2" || bad "(e2) $stage: $(first "$out")"
+  printf '%s\n' "$out" | grep -q '^criterion [0-9]*: ' && bad "(e2) $stage: a criterion ran from an unpinned contract" || ok "(e2) $stage: no criterion ran"
+  bash "$PC" u3 "$BASE" --contract "$C3" --criterion 1 >/dev/null 2>&1; [ "$?" = 2 ] && ok "(e2) $stage: --criterion exit 2" || bad "(e2) $stage: --criterion ran"
+done
+g reset -q --hard HEAD~1
+
+# (e3) An uncommitted edit of the contract is not the unit's change: HEAD is compared, and criteria still come from the baseline.
+sed -i 's/grep -c b/grep -c a/' "$C"
+out="$(bash "$PC" u1 "$BASE" --contract "$C")"
+printf '%s\n' "$out" | grep -q '^contract: ' && bad "(e3) an uncommitted contract edit was flagged" || ok "(e3) an uncommitted contract edit is not flagged"
+printf '%s\n' "$out" | grep -q '^criterion 1: fail stdout want=1 got=2$' && ok "(e3) criteria still from the baseline" || bad "(e3) criteria from the working tree"
+g checkout -q -- "$C"
 
 out="$(bash "$PC" u1 "$BASE" --affected src/a.js)"
 printf '%s\n' "$out" | grep -qxF 'scope: ok src/a.js listed' && ok "(f) --affected" || bad "(f) --affected"
@@ -121,6 +162,9 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
   for n in 'run `bash .claude/bin/review-precheck.sh <task-id> <baseline> --contract <contract path>` yourself' \
            'is a FAIL ground on its own: return FAIL quoting those lines, without reading the code' \
            'Do not re-run a criterion it reports `pass`; run each `deferred` one yourself with `--criterion <n>`' \
+           '`scope: excluded`, `scope: no-affected-list`' \
+           'or `contract: not-at-baseline` line is a FAIL ground on its own' \
+           'The script reads the contract only from the baseline commit.' \
            'Read code only for judgment'; do
     flat "$ROOT/$f" | grep -qF -- "$n" && ok "(j) $f: $n" || bad "(j) $f missing: $n"
   done

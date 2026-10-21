@@ -2,6 +2,10 @@
 # review-precheck.sh (st-u2): the reviewer's mechanical pre-review of <baseline>..HEAD.
 # The reviewer runs it itself; its failure lines are FAIL grounds on their own.
 # Writes only .claude/bookkeeping/<unit>.precheck (a copy of stdout).
+# --contract is read ONLY from the baseline commit, never from the working tree: criteria run here through
+# `bash -c`, so no PreToolUse hook sees them, and a copy a writer can edit must not be able to run commands.
+# A contract that is not at the baseline is a failure line (`contract: not-at-baseline`), not a fallback.
+# --fix-contract is the exception: it is written after the baseline, so it is read from the working tree.
 set -uo pipefail
 usage() { echo "usage: review-precheck.sh <unit> <baseline> [--contract <path>] [--fix-contract <path>] [--affected <path>]... [--criterion <n>]" >&2; exit 2; }
 [ "$#" -ge 2 ] || usage
@@ -36,21 +40,42 @@ out="$W/out"; : > "$out"; fails=0; deferred=0; judge=0
 say() { printf '%s\n' "$*" >> "$out"; }
 failon() { say "$*"; fails=$((fails + 1)); }
 
-# The contract is read as it was at the baseline, so the unit cannot rewrite its own criteria.
+# --contract as a repository-relative path with "." and ".." folded; an absolute path under the top is
+# stripped to it. Prints nothing and returns 1 for a path outside the repository.
+top_rel() {
+  local p="$1" seg out=() n IFS=/
+  case "$p" in "$top"/*) p="${p#"$top"/}" ;; /*) return 1 ;; esac
+  read -ra segs <<< "$p"
+  for seg in ${segs[@]+"${segs[@]}"}; do
+    case "$seg" in
+      ''|.) ;;
+      ..) n=${#out[@]}; [ "$n" -gt 0 ] || return 1; out=("${out[@]:0:n-1}") ;;
+      *) out+=("$seg") ;;
+    esac
+  done
+  [ "${#out[@]}" -gt 0 ] || return 1
+  printf '%s' "${out[*]}"
+}
+if [ -n "$contract" ]; then
+  c0="$contract"; contract="$(top_rel "$c0")" || { echo "review-precheck: contract is not a path inside the repository: $c0" >&2; exit 2; }
+fi
+
+# The contract is read as it was at the baseline, so the unit cannot rewrite its own criteria. It is
+# compared with HEAD, not the working tree, so an uncommitted doc edit is not the unit's change.
 cfile=""
 if [ -n "$contract" ]; then
   if git cat-file -e "$base:$contract" 2>/dev/null; then
     git show "$base:$contract" > "$W/contract"; cfile="$W/contract"
-    if [ -e "$contract" ] && ! cmp -s "$W/contract" "$contract"; then failon "contract: changed-since-baseline $contract"; fi
-  elif [ -f "$contract" ]; then
-    cp "$contract" "$W/contract"; cfile="$W/contract"; say "contract: not-at-baseline $contract"
+    if ! git show "$head:$contract" 2>/dev/null | cmp -s "$W/contract" -; then failon "contract: changed-since-baseline $contract"; fi
+  elif [ -e "$contract" ] || git cat-file -e "$head:$contract" 2>/dev/null; then
+    failon "contract: not-at-baseline $contract"
   else
     echo "review-precheck: contract not found: $contract" >&2; exit 2
   fi
 fi
 
 # --criterion <n>: run that one criterion only, print its line, write nothing.
-crit_items() { # prints "n<TAB>cmd<TAB>exit<TAB>stdout-spec<TAB>long" per criterion
+crit_items() { # prints one tab-separated line per criterion: n, cmd, exit, stdout-spec, long
   us_section "$1" "Acceptance criteria" | awk '
     function flush() { if (n != "") printf "%s\t%s\t%s\t%s\t%s\n", n, cmd, ex, so, lg; n=""; cmd=""; ex=""; so=""; lg=0 }
     /^[0-9]+\. run: `/ { flush(); n=$1; sub(/\.$/, "", n); s=$0; sub(/^[0-9]+\. run: `/, "", s)
@@ -130,6 +155,8 @@ if [ -n "$cfile" ]; then
     [ "$rc" = 1 ] && fails=$((fails + 1))
     [ "$rc" = 3 ] && judge=$((judge + 1))
   done < <(crit_items "$cfile")
+elif [ -n "$contract" ]; then
+  say "criteria: none (the contract is not at the baseline; no criteria are read from anywhere else)"
 else
   say "criteria: none (no contract; run the project's test and lint command yourself)"
 fi

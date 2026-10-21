@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.201",
+  "pluginVersion": "0.31.202",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -48,7 +48,7 @@
     ".claude/agents/spec-master.md": "7ff441298cd64ef8353d18fb5e7020f8fc76a0ae8e92fe166d22e6d888957cd5",
     ".claude/agents/task-master.md": "a274fb8cfaa2bcd580e608e019b0ad597b16f848bb7785148cb0d6dd1e133e8f",
     ".claude/agents/scribe.md": "739dd034916033684974bc28acfabc261d924f3f37063fc7c0b3126301f6b960",
-    ".claude/agents/reviewer.md": "f3e4fdc1b98d207117594cfd9e931cd43a9e278b4b4962494d85436ad90406f0",
+    ".claude/agents/reviewer.md": "c21f3e5a1a353eeb27071137c55cbdf3553bb39eac353323f25cf6a9ad4f38ef",
     ".claude/agents/milestone-auditor.md": "d0756881884d06817b14d7fcb92205935aae2c3f6a4a4754bcb4bcd9442d1922",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
@@ -117,7 +117,7 @@
     ".claude/bin/blast-radius.sh": "9c4639bc4b8320d88bf718f1b59381387faa0ae0fba49fc4be05e161fea69ee8",
     ".claude/hooks/scripts/lib/sensitive-paths.sh": "8732d707b6f91745ecf474c1fd5c07b256aba21128cc164694f70386cdd478c6",
     ".claude/hooks/scripts/lib/unit-scope.sh": "aea72976864aa58ecd93d25bea2cde1f5de8b52c765ff208796c09b2a19c1d1e",
-    ".claude/bin/review-precheck.sh": "5cf28db4b457b3cffce7a95c57a0c8f41286303cd16ca53fb4fb45f0e0577315"
+    ".claude/bin/review-precheck.sh": "b0fbb4a1dc8d22cbbd20d23ecfd13ddf4942f057cf0b7a7aa2b2402f202ee8c1"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku",
