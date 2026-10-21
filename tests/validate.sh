@@ -774,6 +774,15 @@ else
 fi
 
 echo
+echo "== scope-libs: sensitive-path class and unit-scope classes shared by precheck and scope gate (Bash, st-u1) =="
+if bash tests/scope-libs.test.sh > /dev/null; then
+  echo "OK   tests/scope-libs.test.sh"
+else
+  echo "FAIL tests/scope-libs.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"

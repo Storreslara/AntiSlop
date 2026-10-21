@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.197",
+  "pluginVersion": "0.31.198",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -62,7 +62,7 @@
     ".claude/hooks/scripts/protected-paths.sh": "3efc9097a0d915f725deb3a28ea482220dddafa7d83a56c93e8c42644fa51728",
     ".claude/hooks/scripts/reviewed-path-gate.sh": "a269ddf5691f0be04412743ce6fb3fc629b811015e58df1e83e94dd86d0856c3",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
-    ".claude/hooks/scripts/reviewer-tier.sh": "44b1eace3d4022a4a3fbf27308e01d41cc0ed8d3443ba14845279695302d4e51",
+    ".claude/hooks/scripts/reviewer-tier.sh": "1a906ee20111e7410f6d93c78b9d33685536c6cf6d01d4c69be57e42312bc3ab",
     ".claude/hooks/scripts/session-start.sh": "17629506a81e36fddad73075e8fa51506fd45bda082484b0f46f21109c43bfa5",
     ".claude/hooks/scripts/stop-gate.sh": "d29569605ab1ab60e219bae36e3485966837d97c796d64653add42dd07fa2c93",
     ".claude/hooks/scripts/task-gate.sh": "31ea0399f37eef3c1be9e2a22711a879c8800fa201125720d1029652d5fabeab",
@@ -114,7 +114,9 @@
     ".claude/bin/fail-count.sh": "1642e53eafa7bfb6757040fea78d57767350e9a7fbb8bcd5009561b4e39d88d4",
     ".claude/bin/escalation-card.sh": "d55ddbac3b0b7e01c5110116afe9366356eb9611b619744eac34d4aa152bf7fe",
     ".claude/bin/unit-bookkeeping.sh": "5369083cd28116609bd80c706a98e252f1425cbb2d90e0d46cb545bc207975ba",
-    ".claude/bin/blast-radius.sh": "9c4639bc4b8320d88bf718f1b59381387faa0ae0fba49fc4be05e161fea69ee8"
+    ".claude/bin/blast-radius.sh": "9c4639bc4b8320d88bf718f1b59381387faa0ae0fba49fc4be05e161fea69ee8",
+    ".claude/hooks/scripts/lib/sensitive-paths.sh": "8732d707b6f91745ecf474c1fd5c07b256aba21128cc164694f70386cdd478c6",
+    ".claude/hooks/scripts/lib/unit-scope.sh": "15c4f2a0a307e36996c8b5e197c5dd1e701140a4d72aaf8279f34653b2ad1bdc"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku",

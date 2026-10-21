@@ -334,9 +334,18 @@ if mutate projectdir-dot 's|^  project_dir="\$(git rev-parse --show-toplevel.*| 
       sonnet unit-fail "$r_one" "$repo/sub" - "$MUTANT"
   fi
 fi
-if mutate no-agents-anchor "/^  '\^agents\/'\$/d"; then
+# st-u1: the path class lives in lib/sensitive-paths.sh, so this control
+# mutates the lib copy beside an unmutated copy of the script, then restores it.
+SP="$tmproot/lib/sensitive-paths.sh"
+cp "$SP" "$tmproot/sp.orig" && cp "$SCRIPT" "$tmproot/rt-copy.sh"
+sed "/^  '\^agents\/'\$/d" "$tmproot/sp.orig" > "$SP"
+if cmp -s "$SP" "$tmproot/sp.orig"; then
+  echo "FAIL mutation control 'no-agents-anchor': the sed matched nothing"
+  fail=1
+else
   run_at "(mc13) ^agents/ anchor removed: case (aq) flips to" \
-    sonnet unit-1 "$r_agents" "$repo" "$repo" "$MUTANT"
+    sonnet unit-1 "$r_agents" "$repo" "$repo" "$tmproot/rt-copy.sh"
 fi
+cp "$tmproot/sp.orig" "$SP"
 
 exit "$fail"
