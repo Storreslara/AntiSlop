@@ -1,8 +1,10 @@
 # AntiSlop quick wins after pilot 4 (spec)
 
-Date: 2026-10-20. Author: spec-master. Status: finalized for qw-u1 to qw-u4; qw-u5 is **pending ruling** (OQ1).
-Source: `docs/plans/antislop-speed-architecture/findings.md` ("Solution variations", "Recommendation" stage 2).
-5 units, fast path (no task-master). Contracts: `docs/plans/antislop-quick-wins/contracts/qw-uN.md`.
+Date: 2026-10-20. Author: spec-master. Status: finalized; operator rulings on OQ1 to OQ4 recorded 2026-10-20
+(Clarifications). Source: `docs/plans/antislop-speed-architecture/findings.md` ("Solution variations",
+"Recommendation" stage 2). 6 units (qw-u1 to qw-u6), all contracted. Contracts:
+`docs/plans/antislop-quick-wins/contracts/qw-uN.md`. With aof-u4 still ahead of them, 7 dispatchable units
+remain; see "Dispatch section" for why the fast path is kept.
 
 ## Goal
 
@@ -14,10 +16,12 @@ Writer/Reviewer split, the downgrade-only reviewer-tier rule or the sensitive-pa
 - G2 (b): the orchestrator prompt and the inlined protocol block lose duplicates, incident narratives and a
   rarely used procedure that is moved to an on-demand file, with every live rule mapped to where it survives.
   Steps 2, 3 and 4.
-- G3 (c1, pending ruling): the reviewer re-derives blast radius with a script it runs itself and spawns the
-  explorer only when the script has no answer. Step 5.
-- G4 (e3): dropped, with evidence (Context, "e3"). No unit.
-- G5 (e1, e2): not decided here; Open Questions 2 and 3. No unit.
+- G3 (c1, operator ruling "script first"): the reviewer re-derives blast radius with a script it runs
+  itself and spawns the explorer only when the script has no answer. Step 5.
+- G4 (e3): dropped, with evidence (Context, "e3"); operator ruling "leave as is". No unit.
+- G5 (e1): operator ruling "no change to reviewer-tier.sh". No unit.
+- G6 (e2, operator ruling "set sonnet in the product"): the main session, which runs as the orchestrator,
+  uses sonnet by default, with a per-project opt-out that keeps the user's own session model. Step 6.
 
 ## Context
 
@@ -47,8 +51,10 @@ All re-measured on 2026-10-20 from the repo and the pilot-4 streams (`eval/abtes
   inlines and the reviewer already reads on demand (`agents/reviewer.md`, "Escalation packet and resolution
   (read on demand)").
 - Prose pins that a move must carry: `tests/adapter-protocol-parity.test.js` pins the fold-line and
-  `decide:` rules of the escalation steps in `agents/orchestrator.md` (the only test pin on that 130-line
-  block, by a 45-char sliding search over all of `tests/`); `tests/persona-prose-pins.test.sh` and
+  `decide:` rules of the escalation steps in `agents/orchestrator.md`, and `tests/packet-view-script.test.sh`
+  T10 counts `without the Read tool's line-number prefixes` (44 characters) twice in it. The earlier claim
+  that the parity test was the only pin came from a 45-character window, which cannot see a 44-character
+  literal; corrected 2026-10-20 and carried into qw-u4. `tests/persona-prose-pins.test.sh` and
   `tests/writer-tier-consistency.test.js` pin phrases in "Per-unit model routing" and the contract-score
   guard, which Step 1 keeps verbatim.
 - Glossary: `docs/harness-glossary.md` already defines **review-packet** (the contract key) and **advisory
@@ -84,16 +90,48 @@ every inlined block. The four-copy hand-sync: the template and `.claude/` copies
 these units shorten (checked by grep for each phrase), so they need no edit, and each contract says so and
 pins it.
 
-### c1: reviewer packet with scripted callers (Step 5, qw-u5, pending ruling)
+### c1: reviewer packet with scripted callers (Step 5, qw-u5; ruled 2026-10-20: c1-B)
 
 | Option | Mechanism | Saving | Independence |
 |---|---|---|---|
 | c1-A | Keep "always via the explorer" | 0 | unchanged |
-| **c1-B (recommended)** | The reviewer itself runs `.claude/bin/blast-radius.sh <baseline>` (graph CLI when the repo has `.code-review-graph/`, else `git grep` on file stems) and spawns the explorer only when the script prints `provenance=none`, is missing, or leaves a deciding question open | about 8 nested spawns x 10-25 s per pilot, about -200 s, -0.5M tokens | kept: the reviewer still derives blast radius itself, from a deterministic script it runs, not from the writer's or orchestrator's claim |
+| **c1-B (ruled)** | The reviewer itself runs `.claude/bin/blast-radius.sh <baseline>` (`git grep` on each changed file's basename and stem) and spawns the explorer only when the script prints `provenance=none`, is missing, or leaves a deciding question open | about 8 nested spawns x 10-25 s per pilot, about -200 s, -0.5M tokens | kept: the reviewer still derives blast radius itself, from a deterministic script it runs, not from the writer's or orchestrator's claim |
 | c1-C | The orchestrator puts the script output in the reviewer dispatch; the reviewer trusts it and spawns the explorer only when it is empty | slightly more (one reviewer Bash call) | weakened: the reviewer consumes a third party's structural claim, contrary to the protocol rule |
 
-The protocol rule is not changed silently: OQ1 holds the ruling and qw-u5's contract is written for c1-B and
-marked pending.
+The operator ruled c1-B on 2026-10-20. The protocol's reviewer sentence ("always re-derives blast radius and
+re-runs the checks itself regardless of what the packet claims") is kept word for word and extended with the
+script-first rule; the exact wording is qw-u5's `amended-rule` line. The graph mode the earlier draft named
+is dropped: measured on this repo, `code-review-graph impact --depth 1` found 0 cross-file edges for a shell
+script, and the default depth returned 1422 impacted nodes for two files, mostly unrelated. Line 1 of the
+script is `blast-radius: provenance=<grep|none> files=<n>`; `none` means an empty range or a failed search.
+The script and the prose ship as one unit: either half alone changes nothing or sends every review to the
+fallback.
+
+### e2: orchestrator on sonnet (Step 6, qw-u6; ruled 2026-10-20: "set sonnet in the product")
+
+What sets the orchestrator's model today: `agents/orchestrator.md` frontmatter `model: inherit`, and
+`templates/settings-fragment.json` `"agent": "orchestrator"`, which makes the main session run as that agent.
+Nothing else (no settings `model` key, no cli.js rendering). Claude Code documents that an `agent`-driven main
+thread takes the agent's model; it does not document where that frontmatter ranks against `/model` or
+`--model` (claude-code-guide, 2026-10-20).
+
+| Alt | Mechanism | Scope | Opt-out | Verdict |
+|---|---|---|---|---|
+| e2-A | frontmatter `model: sonnet` only | the main thread only, when it runs as the orchestrator | hand-edit the managed mirror; `--update` then reports it diverged | too weak an opt-out |
+| e2-B | `"model": "sonnet"` in the settings fragment | the session model from project settings | delete the key | rejected: ranks below `/model`, `--model` and `ANTHROPIC_MODEL`, still applies when a user drops `"agent"`, leaves the frontmatter saying `inherit` |
+| **e2-C (chosen)** | e2-A plus a persona-config key `orchestratorModel` (`sonnet`, `opus`, `haiku`, `inherit`; default `sonnet`) that `bin/cli.js` renders into the installed orchestrator's frontmatter | same as e2-A | `"orchestratorModel": "inherit"`, then `--update --force-render` | narrowest with a documented, update-safe opt-out |
+
+Guardrails: the renderer touches only the `orchestrator` persona, only an existing frontmatter `model:` line,
+and only for a recognised value; subagent frontmatter is unchanged (qw-u6 criterion 3); no settings key is
+added (criterion 5).
+
+Eval interaction: aof-u6 (OD-23) strips every frontmatter `model:` line from Arm B's plugin copy under
+`uniform`, before the scaffold, and the scaffold runs before any persona-config exists, so the renderer sees a
+stripped source and adds nothing: the `uniform` arm stays uniform, and `tests/abtest-arms.test.sh` (108 checks,
+run on a clone with qw-u6 applied) proves it. No eval amendment and no OD number are needed, so there is no
+qw-u7. Under `shipped`, the worktree orchestrator reads `model: sonnet` while the harness passes
+`--model "$ABTEST_MODEL"`; which wins is undocumented, so the next shipped-policy run should read the
+orchestrator's model from the result's `modelUsage` before its cost is compared (R9).
 
 ### e3: cache hygiene (dropped, no unit)
 
@@ -113,8 +151,8 @@ which the dispatch text cannot move. Conclusions:
   re-created 9-12k per dispatch is never reused; at pilot cadence 5m already keeps the prefix warm.
 - Per-segment re-creation in the main session is CLI behaviour.
 The one plugin-side lever is the size of what Claude Code injects (skill and agent descriptions); it is
-recorded for the structural stage's b-2 work, not measured here. OQ4 asks whether to leave the two 1h
-personas as they are.
+recorded for the structural stage's b-2 work, not measured here. OQ4 asked whether to leave the two 1h
+personas as they are; the operator ruled "leave as is" (2026-10-20).
 
 A prior FAIL is relevant: `cache-ttl-gapped-personas` FAILed (2026-09-24) because `cacheTtl` was placed at the
 frontmatter top level, where Claude Code silently ignores it. Any later TTL unit must nest it under
@@ -160,14 +198,22 @@ Screened all `.claude/reviewed/*.fail` records naming `orchestrator.md`, `person
 
 - 2026-10-20 Functional scope & success criteria: Q Must c2 be a SubagentStop hook, or is an equivalent mechanical step acceptable? → A (self-resolved): an equivalent step (c2-B). The brief allows it, and SubagentStop output cannot reach the orchestrator, so a hook saves no extra call and would touch gate files.
 - 2026-10-20 Functional scope & success criteria: Q Which parts of e3 are both controllable and beneficial? → A (self-resolved): none in this stage (Context, e3). The TTL question for the two 1h personas goes to OQ4.
-- 2026-10-20 Non-functional attributes (perf, security, scale): Q May c1 relax "the reviewer always re-derives blast radius"? → A: pending, OQ1 (operator ruling). The contract is written for c1-B, under which the reviewer still re-derives blast radius itself.
-- 2026-10-20 Non-functional attributes (perf, security, scale): Q May e1 or e2 change tier rules in this plan? → A: pending, OQ2 and OQ3. No unit until ruled.
+- 2026-10-20 Non-functional attributes (perf, security, scale): Q May c1 relax "the reviewer always re-derives blast radius"? → A: pending, OQ1 (operator ruling). The contract is written for c1-B, under which the reviewer still re-derives blast radius itself. (Ruled below, 2026-10-20: c1-B.)
+- 2026-10-20 Non-functional attributes (perf, security, scale): Q May e1 or e2 change tier rules in this plan? → A: pending, OQ2 and OQ3. No unit until ruled. (Ruled below, 2026-10-20: e1 no change; e2 sonnet in the product, qw-u6.)
 - 2026-10-20 External dependencies & integrations: Q Does the c1 script depend on the code-review-graph MCP? → A (self-resolved): no. It uses the `code-review-graph impact` CLI when `.code-review-graph/` exists, else `git grep`, and prints which one it used.
 - 2026-10-20 Edge cases / failure handling: Q What happens when a helper is missing or prints something unexpected? → A (self-resolved): the tier falls to `opus` (both scripts choose tiers), a `helper missing` RULING is appended, and the wrapper exits 0. If the wrapper itself is missing, the orchestrator runs the two tier scripts directly, as today.
 - 2026-10-20 Edge cases / failure handling: Q What if the on-demand escalation file cannot be read when an ESCALATE-TO-HUMAN verdict arrives? → A (self-resolved): the orchestrator stub keeps the five invariants inline (verbatim card, never run run.sh or view.sh, one AskUserQuestion with the answer relayed verbatim, DECISION only through the prompt-confirmed write, reviewer re-dispatched with `subagent_type: reviewer` and no relayed decision).
 - 2026-10-20 Technical constraints & tradeoffs: Q How are four-copy hand-sync and version-stamp discipline kept? → A (self-resolved): template and `.claude/` change together via `node bin/cli.js --update`; codex and cursor ports already carry condensed text and are pinned unchanged; every unit bumps the patch version and adds a CHANGELOG line in the same commit (constitution P3), checked by `version-stamp-check.sh` over the unit's own commits.
 - 2026-10-20 Terminology consistency: Q The brief's "per-unit review-packet file" collides with the glossary's **review-packet** (contract key) and **advisory review packet** (lead-programmer report). What is the c2 file called? → A (self-resolved): **reviewer dispatch header** (`.claude/bookkeeping/<unit>.header`). Proposed glossary entry in the Scribe update hint.
-- 2026-10-20 Completion / acceptance signals: Q What shows the quick wins worked in the next pilot? → A (self-resolved): orchestrator calls per unit (stream count) fall by at least 1 on E5; the orchestrator's first-call cache creation falls by at least 3k tokens; nested explorer spawns under the reviewer fall to 0-2 of 10 if OQ1 = c1-B; defect and security checks unchanged.
+- 2026-10-20 Completion / acceptance signals: Q What shows the quick wins worked in the next pilot? → A (self-resolved): orchestrator calls per unit (stream count) fall by at least 1 on E5; the orchestrator's first-call cache creation falls by at least 3k tokens; nested explorer spawns under the reviewer fall to 0-2 of 10 (OQ1 = c1-B, ruled); defect and security checks unchanged.
+- 2026-10-20 Non-functional attributes (perf, security, scale): Q (OQ1) May the reviewer stop spawning the explorer by default? → A: (a) script first, per operator. The reviewer runs `.claude/bin/blast-radius.sh` itself and spawns the explorer only on `provenance=none`, a missing script, or an open question that decides a finding; the protocol rule is amended accordingly (qw-u5 `amended-rule`), and the independence property stays: the reviewer never takes a blast radius from the orchestrator or the writer.
+- 2026-10-20 Non-functional attributes (perf, security, scale): Q (OQ2) Stop counting test-file lines in `reviewer-tier.sh`? → A: no change, per operator. e1 is dropped; no unit.
+- 2026-10-20 Technical constraints & tradeoffs: Q (OQ3) Run the main orchestrator session on sonnet? → A: (c) set sonnet in the product, per operator. Implemented as e2-C (Context, e2): frontmatter `model: sonnet` plus the `orchestratorModel` opt-out; qw-u6.
+- 2026-10-20 Technical constraints & tradeoffs: Q (OQ4) The 1h TTL on reviewer and task-master? → A: leave as is, per operator. No unit.
+- 2026-10-20 External dependencies & integrations: Q Does the blast-radius script use the code-review-graph CLI? → A (self-resolved): no. Measured on this repo, `impact` gives no cross-file edges for shell scripts and hundreds of unrelated nodes at default depth; the script is `git grep` only and the explorer (graph-backed) is the fallback. This supersedes the earlier line that named a graph mode.
+- 2026-10-20 Functional scope & success criteria: Q Is the c1 script its own unit or part of qw-u5? → A (self-resolved): part of qw-u5. The prose names the script, so either half alone is inert or sends every review to the fallback.
+- 2026-10-20 Edge cases / failure handling: Q Does the sonnet default leak into the A/B `uniform` arm? → A (self-resolved): no. aof-u6's strip removes the orchestrator's `model:` line before the scaffold, and the renderer never adds a line (qw-u6 test (f); abtest-arms 108/108 on a clone). No qw-u7.
+- 2026-10-20 Edge cases / failure handling: Q Can a user keep their own session model? → A (self-resolved): yes, `"orchestratorModel": "inherit"` in the project's persona-config, then `node <plugin>/bin/cli.js --update --force-render`; documented in README. `/model` and `--model` are not offered as the opt-out because their rank against agent frontmatter is undocumented.
 
 ## Risks / dependencies
 
@@ -180,13 +226,29 @@ Screened all `.claude/reviewed/*.fail` records naming `orchestrator.md`, `person
   call; no new allow rule is needed.
 - R4 (qw-u4): moving the escalation procedure behind a Read is a behaviour change on a rare, human-facing
   path. Mitigations: the stub's inline invariants, the reviewer's identical precedent, and the moved text kept
-  verbatim (zero rule loss by construction). Re-pilot cannot exercise it (no escalation in pilot 4).
-- R5 (qw-u5): blocked on OQ1. If OQ1 = c1-A, qw-u5 is withdrawn and the plan has 4 units.
+  verbatim (zero rule loss by construction, checked byte for byte by qw-u4 criterion 3). Re-pilot cannot
+  exercise it (no escalation in pilot 4). The stub names the packet directory and the DECISION file, so it is
+  authored with the Write tool; `human-decision-gate.sh` refuses Bash text that spells both.
+- R5 (qw-u5): every full-tier mirror inlines "Structural questions", so each grows about 400 bytes (reviewer
+  +936 with its body). This offsets part of qw-u3's saving; the reviewer's explorer spawns it removes are worth
+  far more (findings, c1).
+- R8 (qw-u6): this plugin's own persona-config has no `orchestratorModel`, so after qw-u6 lands and
+  `--update` runs, this repo's main session also runs on sonnet. Opting the repo out is an operator decision
+  outside the unit.
+- R9 (qw-u6, eval): under the A/B `shipped` policy the harness passes `--model` while the orchestrator
+  frontmatter reads `sonnet`, and Claude Code does not document which wins. Read the orchestrator's model from
+  the next shipped run's `modelUsage` before comparing its cost. `uniform` is unaffected (Context, e2).
 - R6: the byte targets are relative to each unit's own parent commit, never absolute (absolute pins expire
   when an earlier unit lands).
-- R7: aof-u3 adds a paragraph after "... before routing it." and aof-u4 rewrites "Scribe dispatch convention"
-  and one sentence in the review-gating-off paragraph. No quick-win edit overlaps those spans; each contract
-  anchors on text, not line numbers, and stops if an anchor is missing.
+- R7: aof-u3 (landed 1d4abf5a) added a paragraph after "... before routing it." and a bullet to the
+  reviewer's Materiality filter; aof-u4 rewrites "Scribe dispatch convention", one sentence in the
+  review-gating-off paragraph, `--update` argument handling and the schema (`knowledgeWrites`). No quick-win
+  edit overlaps those spans; each contract anchors on text, not line numbers, and stops if an anchor is
+  missing.
+- R10 (shared regions): qw-u4 and qw-u5 both edit `templates/persona-protocol.md` (Fourth verdict vs
+  Structural questions); qw-u1, qw-u5 and qw-u6 all edit `bin/cli.js` and `tests/validate.sh`; qw-u5 extends
+  qw-u1's `BIN_HELPER_FILES` line and scaffold test; qw-u6 anchors on qw-u5's validate.sh block. The order
+  qw-u4 -> qw-u5 -> qw-u6 is therefore required, and each contract's `before:` payloads assume it.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied. Every number in Context was re-measured; each criterion below was run
@@ -251,82 +313,82 @@ Acceptance criteria: pins test exit 0; each of the five mirrors that inline "Rev
 version-stamp-check ok; validate.sh exit 0.
 
 ### Step 4 (qw-u4): escalation procedure loaded on demand (b-1 iii)
-Contract: written at the next checkpoint (`contracts/qw-u4.md`).
-Affected files: `agents/orchestrator.md` (the block from "**On an `ESCALATE-TO-HUMAN` verdict**" up to the
-line before "If no `reviewer` persona exists in this project", 130 lines, replaced by a stub of at most 12
-lines), `templates/persona-protocol.md` (new `### Orchestrator steps on an ESCALATE-TO-HUMAN verdict` at the
-end of "Fourth verdict", holding the moved block verbatim), `tests/adapter-protocol-parity.test.js` (the
-fold-line and `decide:` pins move to the template and `.claude/persona-protocol.md`),
-`tests/prompt-diet-pins.test.sh`, generated copies, bump files.
-Rule map: steps 1 to 7 and the untyped-agent rule -> template subsection, verbatim; the five invariants ->
-also in the stub.
-Acceptance criteria: parity test exit 0; pins test (stub names the subsection; each of steps 1 to 7 has a
-survivor phrase in both protocol copies; `Make **one** \`AskUserQuestion\` call` absent from the orchestrator
-mirror); orchestrator mirror at least 7,000 bytes smaller than at the parent; version-stamp-check ok;
-validate.sh exit 0.
+Contract: `docs/plans/antislop-quick-wins/contracts/qw-u4.md`.
+Affected files: `agents/orchestrator.md` (the 129-line block from "**On an `ESCALATE-TO-HUMAN` verdict**" up to
+the blank line before "If no `reviewer` persona exists in this project", replaced by a 12-line stub),
+`templates/persona-protocol.md` (new `### Orchestrator steps on an ESCALATE-TO-HUMAN verdict` at the end of
+"Fourth verdict", holding the moved block byte for byte), `tests/adapter-protocol-parity.test.js` (fold-line
+and `decide:` pins move to the template and `.claude/persona-protocol.md`), `tests/packet-view-script.test.sh`
+(T10 moves the same way), `tests/prompt-diet-pins.test.sh`, generated copies, bump files.
+Rule map: steps 1 to 7 and the untyped-agent rule -> template subsection, verbatim; invariants I1 to I5 (card
+verbatim; never run run.sh or view.sh; one AskUserQuestion, answer relayed verbatim; DECISION only through the
+prompt-confirmed decision write; fresh reviewer dispatch with `subagent_type: reviewer`, no relayed decision)
+-> also in the stub, plus a fallback when the section cannot be read.
+Acceptance criteria: pins test exit 0; orchestrator mirror at least 7,000 bytes smaller than at the parent
+(7,647 measured); the moved block found exactly once in both protocol copies; no other mirror changes beyond
+its stamp; adapters, bin, hooks and reviewer.md untouched; parity, packet-view, doc-drift, cross-reference,
+prose-pin and writer-tier suites exit 0; version-stamp-check ok; validate.sh exit 0.
 
-### Step 5 (qw-u5, pending ruling OQ1 = c1-B): reviewer blast-radius script
-Contract: written at the next checkpoint, marked pending.
-Affected files: `bin/blast-radius.sh` (new), `bin/cli.js` (`BIN_HELPER_FILES`), `agents/reviewer.md` ("Scope
-the review via the explorer" bullet; "still derive blast radius via the explorer"),
-`templates/persona-protocol.md` ("Reuse over re-derivation": one clause naming the script),
-`tests/blast-radius.test.sh` (new), `tests/validate.sh`, generated copies, bump files. Codex and cursor
-reviewer ports keep the explorer (they ship no `.claude/bin`), pinned as unchanged.
-Output contract of the script: line 1 `blast-radius: provenance=<graph|grep|none> files=<n>`, then
-`changed: <path>`, `caller: <path> -> <changed path>`, `test: <path> -> <changed path>`; exit 0; exit 2 on a
-bad baseline; `provenance=none` exactly when the range has no changed file.
-Acceptance criteria: the script test (temp repo: a caller, a test, a self-reference excluded, an empty range,
-a bad baseline) exit 0; reviewer source and mirror name the script and the `provenance=none` trigger;
+### Step 5 (qw-u5): reviewer blast-radius script (operator ruling c1, "script first")
+Contract: `docs/plans/antislop-quick-wins/contracts/qw-u5.md`. The script is part of this unit, not its own
+unit (Clarifications).
+Affected files: `bin/blast-radius.sh` (new), `bin/cli.js` (`BIN_HELPER_FILES`), `tests/bin-helpers-scaffold.test.sh`
+(seven helpers), `agents/reviewer.md` ("Scope the review with the blast-radius script" bullet; the advisory
+packet bullet), `templates/persona-protocol.md` ("Structural questions go to the explorer": a pointer in the
+first paragraph and the amended reuse rule), `tests/blast-radius.test.sh` (new), `tests/validate.sh`,
+generated copies, bump files. Codex and cursor reviewer ports keep the explorer (no `.claude/bin` there).
+Output contract of the script: line 1 `blast-radius: provenance=<grep|none> files=<n>`, then one `changed:
+<path>` per file, then per changed file at most 40 `test: <path> -> <changed>` and `caller: <path> ->
+<changed>` lines (tests first) and `truncated: <changed> shown=40 total=<n>` when cut; exit 0; exit 2 on a bad
+or missing baseline; `provenance=none` when the range is empty or a search failed. Read-only.
+Amended protocol rule (operator ruling): the reviewer "always re-derives blast radius and re-runs the checks
+itself regardless of what the packet claims", and now "re-derives it with a script: it runs
+`.claude/bin/blast-radius.sh <baseline>` itself and spawns the `explorer` only when the script prints
+`provenance=none`, the script is missing, or a question that decides a finding stays open; it never takes a
+blast radius from the dispatch, the orchestrator or the writer."
+Acceptance criteria: the script test (29 checks: caller by stem, test class, self excluded, whole-word only,
+empty range, bad baseline, no argument, cap and truncation, short stem skipped, deleted file, subdirectory, and
+the prose rows) exit 0; `cmp` source and installed script; scaffold test exit 0; the installed script reports
+`provenance=grep` on HEAD~1; adapters, hooks, orchestrator and explorer untouched; protocol suites and
+cli-backfill exit 0; version-stamp-check ok; validate.sh exit 0.
+
+### Step 6 (qw-u6): orchestrator on sonnet by default (operator ruling e2)
+Contract: `docs/plans/antislop-quick-wins/contracts/qw-u6.md`.
+Affected files: `agents/orchestrator.md` (frontmatter `model: sonnet`), `bin/cli.js` (`applyOrchestratorModel`,
+called from `renderCleanBody` and the scaffold loop, exported), `templates/persona-config.schema.json`
+(`orchestratorModel`), `README.md` (persona row, config row), `tests/orchestrator-model.test.js` (new),
+`tests/validate.sh`, generated copies, bump files.
+Acceptance criteria: the model test (9 checks, including a scaffold plus `inherit` opt-out round trip and the
+uniform-strip case) exit 0; `model: sonnet` in the source and mirror frontmatter; no other persona's `model:`
+line changed; the schema property's default and enum; settings fragment, eval, adapters and hooks untouched;
+abtest-arms, cli-backfill, default-implementer-model, writer-tier and effort-tier suites exit 0;
 version-stamp-check ok; validate.sh exit 0.
 
 ## Dispatch order
 
 One unit at a time; each starts only after the previous unit's reviewer PASS.
 
-1. aof-u2 (implemented, 0.31.184; criteria amended e24b17b1) -> review
-2. aof-u3 (depends on aof-u2: shared `agents/orchestrator.md` and bump files)
-3. aof-u4 (depends on aof-u3: unit scope)
-4. qw-u1 (depends on aof-u4: shared orchestrator.md, bump files; uses aof-u1's `BIN_HELPER_FILES`)
-5. qw-u2 (depends on qw-u1: shared orchestrator.md)
-6. qw-u3 (depends on qw-u2: shared bump files; template)
-7. qw-u4 (depends on qw-u3: shared template and orchestrator.md)
-8. qw-u5 (depends on qw-u4 and on OQ1 = c1-B; withdrawn if OQ1 = c1-A)
+Already landed: aof-u2 (0.31.184), aof-u3 (1d4abf5a, 0.31.185).
 
-Expected versions if no fix round bumps in between: aof-u4 0.31.186, qw-u1 0.31.187, ..., qw-u5 0.31.191.
-Each contract bumps from whatever the version is at its start.
+1. aof-u4 (depends on aof-u3: unit scope)
+2. qw-u1 (depends on aof-u4: shared orchestrator.md, bump files; uses aof-u1's `BIN_HELPER_FILES`)
+3. qw-u2 (depends on qw-u1: shared orchestrator.md)
+4. qw-u3 (depends on qw-u2: shared bump files; template; extends qw-u2's pins test)
+5. qw-u4 (depends on qw-u3: shared template and orchestrator.md; extends the pins test)
+6. qw-u5 (depends on qw-u4: shared template; extends qw-u1's `BIN_HELPER_FILES`, scaffold test and validate.sh block)
+7. qw-u6 (depends on qw-u5: shared `bin/cli.js` and validate.sh anchor; needs aof-u4's schema property in place)
+
+Expected versions if no fix round bumps in between: aof-u4 0.31.186, qw-u1 0.31.187, qw-u2 0.31.188, qw-u3
+0.31.189, qw-u4 0.31.190, qw-u5 0.31.191, qw-u6 0.31.192. Each contract adds one to whatever the version is at
+its start.
 
 ## Open Questions
 
-1. **c1: may the reviewer stop spawning the explorer by default?** (from CHK7)
-   - (a) **c1-B, recommended**: the reviewer runs `.claude/bin/blast-radius.sh` itself and spawns the explorer
-     only on `provenance=none`, a missing script, or an open deciding question. It still re-derives blast radius
-     itself. About -200 s and -0.5M tokens per pilot.
-   - (b) c1-A: keep always-explorer; qw-u5 is withdrawn.
-   - (c) c1-C: the orchestrator's dispatch carries the script output and the reviewer trusts it. This weakens
-     the protocol rule; not recommended.
-2. **e1: stop counting test-file lines in `reviewer-tier.sh`?** (from CHK8)
-   - (a) **No change, recommended until a riskier-task eval exists**: pilot 4 had zero defect catches on
-     either tier, so it is not evidence for relaxing. E4 (the security eval) would move to sonnet, because
-     consumer `src/` paths are not on the sensitive list.
-   - (b) Exclude test-file lines from the 40-line cap; sensitive paths, the FAIL ratchet and downgrade-only
-     unchanged. About -$1 and -60 s per pilot. A contract would follow at the next checkpoint.
-   - (c) Count test-file lines at half weight; same guards.
-3. **e2: run the main orchestrator session on sonnet?** (from CHK9)
-   - (a) No product change. The orchestrator is `model: inherit`, so the session model is the user's choice.
-   - (b) **Recommended: eval-only.** Add a declared model-policy label to the A/B harness (orchestrator on
-     sonnet, every other persona as under `uniform`), so aof-u6's `uniform` rows stay pure, and measure cost,
-     wall time and routing errors first. The work belongs to the antislop-vs-fable-evals plan, not this one.
-   - (c) Ship `"model": "sonnet"` in the settings fragment. This overrides every user's session model; not
-     recommended.
-4. **e3: the 1h TTL on reviewer and task-master?** (from CHK10)
-   - (a) **Leave as is, recommended**: they were set for human-review gaps longer than 5 minutes, and the cost
-     difference at pilot cadence is about 9k token-equivalents per review.
-   - (b) Extend 1h to every persona: raises cost (Context, e3).
-   - (c) Remove 1h from both: saves a little at pilot cadence and loses the gap case.
+None. OQ1 to OQ4 were ruled by the operator on 2026-10-20 and are recorded in Clarifications.
 
 ## Self-check
-- CHK1: Is every Goal clause (G1 to G5) mapped to a step criterion or an Open Question? — PASS (G1 Step 1;
-  G2 Steps 2 to 4; G3 Step 5 and OQ1; G4 Context e3 and OQ4; G5 OQ2 and OQ3)
+- CHK1: Is every Goal clause (G1 to G6) mapped to a step criterion or a recorded ruling? — PASS (G1 Step 1;
+  G2 Steps 2 to 4; G3 Step 5; G4 Context e3 and the OQ4 ruling; G5 the OQ2 ruling; G6 Step 6)
 - CHK2: Do Step 1 and Risk R2 agree that no gate, hook or marker changes? — PASS (AC1.5 checks `hooks/` is
   untouched)
 - CHK3: Is the downgrade-only rule defined for the wrapper's unexpected-output case? — PASS (anything other
@@ -335,39 +397,63 @@ Each contract bumps from whatever the version is at its start.
   maps; the pins test asserts each survivor)
 - CHK5: Are byte targets relative to the unit's own parent rather than absolute? — PASS (R6; each criterion
   reads the parent with `git show <first-unit-commit>^:<path>`)
-- CHK6: Do the steps agree on the four-copy hand-sync for codex and cursor? — PASS (Steps 2 to 5 each pin the
+- CHK6: Do the steps agree on the four-copy hand-sync for codex and cursor? — PASS (Steps 2 to 6 each pin the
   ports unchanged, with a reason)
-- CHK7: Is the c1 protocol conflict decided anywhere in the plan? — FAIL (missing): operator decision —
-  converted to Open Question 1
-- CHK8: Is e1's tier relaxation decided? — FAIL (missing): operator decision — converted to Open Question 2
-- CHK9: Is e2's orchestrator model decided? — FAIL (missing): operator decision — converted to Open Question 3
-- CHK10: Is the TTL of the two 1h personas decided? — FAIL (missing) — converted to Open Question 4
+- CHK7: Is the c1 protocol conflict decided, with the amended wording stated? — PASS (operator ruling
+  2026-10-20; Step 5 and qw-u5 `amended-rule` give the exact text)
+- CHK8: Is e1's tier relaxation decided? — PASS (ruling: no change; no unit)
+- CHK9: Is e2's orchestrator model decided, with an opt-out and the eval interaction? — PASS (ruling (c);
+  Context e2; qw-u6 test (f) and criterion 6 cover the uniform arm; R9 the shipped arm)
+- CHK10: Is the TTL of the two 1h personas decided? — PASS (ruling: leave as is)
 - CHK11: Does criterion AC1.7 (validate.sh) still fail under its own `mutation:` line, given mw-step1's
   recorded class vacuous (tests/validate.sh registration)? — PASS (the mutation is `exit 1` as line 2 of the
-  new test; the registration block is a standalone `if` section)
+  new test; the registration block is a standalone `if` section). The same holds for qw-u4 to qw-u6's
+  validate.sh criteria.
 - CHK12: Does each prose criterion fail on the pre-unit file, given gh348-14's and aof-u2's weak criteria? —
-  PASS (each contract's criteria were run on the current tree; the survivor greps that must be new are absent
-  today, and the absence greps match today)
+  PASS (each contract's criteria were run on the current tree or a clone; the qw-u4 pin rows fail on the
+  pre-move tree, the qw-u5 rows (j) fail on the current reviewer.md)
 - CHK13: Does the plan say where the c2 file lives and what it is called, without colliding with glossary
   terms? — PASS (`.claude/bookkeeping/<unit>.header`, **reviewer dispatch header**)
+- CHK14: Do Step 4 and qw-u4 agree on every test that pins the moved block? — FAIL (missing): the spec named
+  only the parity test; T10 in tests/packet-view-script.test.sh was missed by the 45-character window — revised
+  in place (Context, Step 4, qw-u4 edit 7)
+- CHK15: Do Steps 5 and 6 and R10 agree on the order of the shared `bin/cli.js` and validate.sh edits? — PASS
+  (qw-u5 anchors on qw-u1's block; qw-u6 anchors on qw-u5's)
+- CHK16: Is the uniform-arm claim for qw-u6 backed by a runnable check rather than prose? — PASS (qw-u6
+  test (f) and criterion 6; abtest-arms run on a clone with qw-u6 applied: 108 passed)
+- CHK17: Does each new criterion fail under its own mutation line? — PASS (spec-master ran the mutations for
+  qw-u4 criteria 3 and 6, qw-u5 criterion 1 and qw-u6 criterion 1 on clones; the rest follow the qw-u1 to
+  qw-u3 patterns already proven)
 
 Terminology check (prose mode, advisory): lens 1, "review packet" in the brief has a different meaning from
 the glossary's **review-packet**, so it is renamed (Clarifications 8). Lens 2: "blast radius" and "rulings
 ledger" are used in their glossary sense; no new synonyms. Lens 3: new load-bearing terms **reviewer
-dispatch header**, **bookkeeping wrapper** and **provenance** (blast-radius output) are proposed below.
+dispatch header**, **bookkeeping wrapper**, **blast-radius provenance** and **orchestratorModel** are proposed
+below.
 
 ## Scribe update hint
 - Propose harness-glossary entries (docs/harness-glossary.md, not CONTEXT.md): **reviewer dispatch header**
   (the `.claude/bookkeeping/<unit>.header` file and the lines it opens a reviewer dispatch with);
   **bookkeeping wrapper** (`unit-bookkeeping.sh`, which runs the tier helpers and writes the mechanical RULING
-  lines); **blast-radius provenance** (`graph|grep|none`, if OQ1 = c1-B).
+  lines); **blast-radius provenance** (`grep|none`; `none` sends the reviewer to the explorer).
 - After qw-u4: note in the glossary's **prompt-confirmed decision write** entry that the orchestrator's
   procedure now lives in the protocol's Fourth verdict section.
+- After qw-u5: the glossary's **F11 convention** entry stays true; add one sentence that the reviewer's
+  independent re-derivation now runs `.claude/bin/blast-radius.sh` first.
+- After qw-u6: a glossary entry for **orchestratorModel** (the persona-config key rendered into the installed
+  orchestrator's frontmatter; `inherit` keeps the user's session model).
 - Carried from the aof spec: CONTEXT.md:1220 cites a stale `stop-gate.sh:188-198` line (not taken up).
 
 ## Dispatch section (fast path)
 - qw-u1: [contracts/qw-u1.md](contracts/qw-u1.md)
 - qw-u2: [contracts/qw-u2.md](contracts/qw-u2.md)
 - qw-u3: [contracts/qw-u3.md](contracts/qw-u3.md)
-- qw-u4: pending, next checkpoint
-- qw-u5: pending ruling (OQ1), next checkpoint
+- qw-u4: [contracts/qw-u4.md](contracts/qw-u4.md)
+- qw-u5: [contracts/qw-u5.md](contracts/qw-u5.md)
+- qw-u6: [contracts/qw-u6.md](contracts/qw-u6.md)
+- qw-u7: none (no eval amendment is needed; Context, e2)
+
+Unit count: 6 quick-win units plus aof-u4 = 7 dispatchable units, above the fast-path limit of 5. Every unit
+already has a committed contract of record that scores 7/7 on `contract-score.js --rubric=v2`, so nothing is
+left for task-master to slice; the orchestrator can dispatch from the contract files in the order above. If
+the operator prefers a task-master pass anyway, it should take these contracts as input, not the spec.
