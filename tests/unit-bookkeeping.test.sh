@@ -29,7 +29,7 @@ out="$(UB_LADDER="$T/stub/ladder" UB_GUARD="$T/stub/guard" bash "$UB" dispatch u
 printf '%s\n' "$out" | grep -qx 'model: sonnet' && ok "(a) model line" || bad "(a) model line"
 printf '%s\n' "$out" | grep -qx 'guard: contract-guard: sonnet score=5/7' && ok "(a) guard line" || bad "(a) guard line"
 grep -qE "^RULING $TS unit=u1 decision=contract-guard sonnet: contract-guard: sonnet score=5/7\$" "$LOG" && ok "(a) ruling" || bad "(a) ruling"
-[ "$(cat "$HDR/u1.tier" 2>/dev/null)" = sonnet ] && ok "(a) tier recorded" || bad "(a) tier recorded"
+[ -z "$(ls "$HDR" 2>/dev/null | grep '\.tier$')" ] && ok "(a) no tier file written" || bad "(a) tier file written"
 
 stub ladder 'ladder-tier: sonnet n=0 ladder=haiku,sonnet,opus reason=no-contract'
 UB_LADDER="$T/stub/ladder" bash "$UB" dispatch u2 >/dev/null
@@ -47,10 +47,10 @@ tail -n1 "$LOG" | grep -qF "unit=u5 decision=helper missing: $T/stub/absent: opu
 
 stub ladder 'ladder-tier: EXHAUSTED n=6 ladder=haiku,sonnet,opus reason=default'
 UB_LADDER="$T/stub/ladder" bash "$UB" dispatch u6 | grep -qx 'model: EXHAUSTED' && ok "(f) exhausted" || bad "(f) exhausted"
-[ ! -e "$HDR/u6.tier" ] && ok "(f) no tier recorded" || bad "(f) tier recorded on EXHAUSTED"
+[ -z "$(ls "$HDR" 2>/dev/null | grep '\.tier$')" ] && ok "(f) no tier file after EXHAUSTED or helper-missing" || bad "(f) tier file written"
 
 stub rtier 'sonnet'
-UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u1 "$BASE" > "$T/out.txt"
+UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u1 "$BASE" --implementer-tier sonnet > "$T/out.txt"
 H="$HDR/u1.header"
 [ "$(sed -n 1p "$H")" = 'Unit: u1' ] && [ "$(sed -n 2p "$H")" = 'Implementer tier: sonnet' ] && ok "(g) Unit and Implementer tier lines" || bad "(g) first two lines"
 grep -qx "Range: $BASE..$(git rev-parse HEAD)" "$H" && ok "(g) range" || bad "(g) range"
@@ -66,5 +66,34 @@ bash "$UB" dispatch '../x' >/dev/null 2>&1; rc=$?
 [ "$rc" = 2 ] && [ ! -e "$T/repo/.claude/x.tier" ] && ok "(i) bad unit id rejected" || bad "(i) bad unit id: rc=$rc"
 bash "$UB" review u1 'not-a-ref' >/dev/null 2>&1; rc=$?
 [ "$rc" = 2 ] && ok "(i) bad baseline rejected" || bad "(i) bad baseline: rc=$rc"
+
+printf '#!/usr/bin/env bash\necho sonnet\nexit 1\n' > "$T/stub/rtierbad"
+UB_REVIEWER_TIER="$T/stub/rtierbad" bash "$UB" review u1 "$BASE" | grep -qx 'Reviewer model: opus' && ok "(j) helper prints sonnet then exits 1 -> opus" || bad "(j) helper prints sonnet then exits 1 -> opus"
+UB_REVIEWER_TIER="$T/stub/absent" bash "$UB" review u1 "$BASE" | grep -qx 'Reviewer model: opus' && ok "(j) missing helper -> opus" || bad "(j) missing helper -> opus"
+
+stub ladder 'ladder-tier: haiku n=0 ladder=haiku,sonnet,opus reason=default'
+UB_LADDER="$T/stub/ladder" bash "$UB" dispatch u8 >/dev/null
+o="$(UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u8 "$BASE" --implementer-tier sonnet)"
+[ "$(printf '%s\n' "$o" | sed -n 2p)" = 'Implementer tier: sonnet' ] && ok "(k) ladder haiku raised to sonnet: header says sonnet" || bad "(k) raised tier: $o"
+
+UB_LADDER="$T/stub/ladder" bash "$UB" dispatch u9 >/dev/null
+UB_LADDER="$T/stub/absent" bash "$UB" dispatch u9 >/dev/null
+o="$(UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u9 "$BASE")"
+printf '%s\n' "$o" | grep -qx 'Unit: u9' && ! printf '%s\n' "$o" | grep -q '^Implementer tier:' && ok "(l) no stale tier after ladder then helper-missing" || bad "(l) stale tier: $o"
+o="$(UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u9 "$BASE" --implementer-tier fable)"
+printf '%s\n' "$o" | grep -qx 'Unit: u9' && ! printf '%s\n' "$o" | grep -q '^Implementer tier:' && ok "(l) invalid tier omitted" || bad "(l) invalid tier: $o"
+bash "$UB" review u9 "$BASE" --implementer-tier >/dev/null 2>&1; rc=$?
+[ "$rc" = 2 ] && ok "(l) flag without value rejected" || bad "(l) flag without value: rc=$rc"
+bash "$UB" review u9 "$BASE" --bogus x >/dev/null 2>&1; rc=$?
+[ "$rc" = 2 ] && ok "(l) unknown flag rejected" || bad "(l) unknown flag: rc=$rc"
+
+printf '#!/usr/bin/env bash\nexit 1\n' > "$T/stub/guardbad"
+stub ladder 'ladder-tier: sonnet n=0 ladder=haiku,sonnet,opus reason=guard-demotion'
+out="$(UB_LADDER="$T/stub/ladder" UB_GUARD="$T/stub/guardbad" bash "$UB" dispatch u10 --contract c.md)"
+printf '%s\n' "$out" | grep -qx 'guard: guard unavailable' && ok "(m) failed guard prints a placeholder" || bad "(m) failed guard: $out"
+tail -n1 "$LOG" | grep -qF 'unit=u10 decision=contract-guard sonnet: guard unavailable' && ok "(m) failed guard ruling has a placeholder" || bad "(m) failed guard ruling"
+
+stub ladder 'other-tag: haiku n=0 ladder=haiku,sonnet,opus reason=default'
+UB_LADDER="$T/stub/ladder" bash "$UB" dispatch u11 | grep -qx 'model: opus' && ok "(n) wrong first field -> opus" || bad "(n) wrong first field -> opus"
 
 exit "$fail"

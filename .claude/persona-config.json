@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.188",
+  "pluginVersion": "0.31.189",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,7 +42,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "05aab85f1ed1bd8b6337fd01673b774c142e6a405865b536637b3878440bac99",
+    ".claude/agents/orchestrator.md": "435b046a9a8329392a9c4cba0baf73cafe4704180a37e8a4da321e238294ecad",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "2acee5dca0cecae8834a59bae89e160880a509bac7efe3e3effff33d01f0ec9a",
     ".claude/agents/spec-master.md": "55dcd8d62d302133d42ed79e97a8b33190bc2b50ed50babdac7640d3b74ec05d",
@@ -113,7 +113,7 @@
     ".claude/bin/contract-score.js": "a828a8c29cf555bcb9a29d13da3f0819c7e98b61542690e5541bfd1a464428d5",
     ".claude/bin/fail-count.sh": "1642e53eafa7bfb6757040fea78d57767350e9a7fbb8bcd5009561b4e39d88d4",
     ".claude/bin/escalation-card.sh": "d55ddbac3b0b7e01c5110116afe9366356eb9611b619744eac34d4aa152bf7fe",
-    ".claude/bin/unit-bookkeeping.sh": "c7dab1d0bb446abdcfa71e3151c1b30e1ed5d1cc358142d944b288d64da0756a"
+    ".claude/bin/unit-bookkeeping.sh": "42da89fc8cfb0fd15392f655d4647bc63d960a54e52d51d156266837acb0e172"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku",

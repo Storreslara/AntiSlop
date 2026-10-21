@@ -477,8 +477,9 @@ Before every per-unit `lead-programmer` dispatch, run `bash .claude/bin/unit-boo
 <task-id> --contract <contract file>` (the contract of record, never a fix
 contract: a fix contract can score back onto `haiku`) and pass the tier on its `model:` line as the
 dispatch's `model` parameter. That one call runs `.claude/bin/ladder-tier.sh`, prints its line first,
-records the tier for the reviewer dispatch header, and appends the guard-demotion, no-contract and
-helper-missing RULING lines itself. If `.claude/bin/unit-bookkeeping.sh` is missing, run
+and appends the guard-demotion, no-contract and helper-missing RULING lines itself; it records no tier,
+so keep the `model` you finally dispatch with for the review call's `--implementer-tier`. If
+`.claude/bin/unit-bookkeeping.sh` is missing, run
 `.claude/bin/ladder-tier.sh` with the same arguments and append those RULING lines yourself. A `Suggested model: haiku|sonnet|opus` tag can
 raise that tier, never
 lower it. On `EXHAUSTED`, dispatch nothing, except a human-chosen (a)/(b)
@@ -542,14 +543,19 @@ exists. You decide the tier at reviewer-dispatch time with one Bash call, **from
 the repo root**:
 
 ```
-bash .claude/bin/unit-bookkeeping.sh review <task-id> <baseline>
+bash .claude/bin/unit-bookkeeping.sh review <task-id> <baseline> [--implementer-tier <t>]
 ```
 
 It runs `.claude/hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD`, which prints exactly `sonnet`
 or `opus` (exit 0 either way); a missing script, a non-zero exit or any other word becomes `opus`. It then
 writes the reviewer dispatch header, `.claude/bookkeeping/<task-id>.header`, and prints it: `Unit: <task-id>`,
-`Implementer tier: <t>` (omitted when unknown), `Range:`, `Reviewer model: <sonnet|opus>` and the changed
-files. Open the reviewer dispatch with its `Unit:` and `Implementer tier:` lines verbatim and pass the
+`Implementer tier: <t>` (omitted when you pass no flag or an invalid tier), `Range:`,
+`Reviewer model: <sonnet|opus>` and the changed files. Pass `--implementer-tier <t>`, where `<t>` is the
+tier (`haiku`, `sonnet` or `opus`) of the `model` the unit's latest implementer dispatch actually ran on,
+after any `Suggested model:` raise; omit the flag when that dispatch passed no `model`. The tier line comes
+from that flag alone, never from a stored value, so it cannot be stale. Open the reviewer dispatch with the
+header's `Unit:` line and, unless the dispatch is advisory, its `Implementer tier:` line verbatim (an
+advisory dispatch puts `Mode: advisory` second and the tier line third, per **Review routing**), and pass the
 `Reviewer model:` word as the reviewer dispatch's `model` parameter. If the wrapper is missing, run
 `bash .claude/hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD` yourself and treat anything but
 `sonnet` as `opus`. Use the same unit id

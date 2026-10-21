@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # unit-bookkeeping.sh (qw-u1): the orchestrator's per-unit bookkeeping in one call per phase.
 # dispatch <unit> [--contract <path>]: ladder-tier.sh plus the mechanical RULING lines.
-# review <unit> <baseline>: reviewer-tier.sh plus the reviewer dispatch header. Never deletes anything.
+# review <unit> <baseline> [--implementer-tier <t>]: reviewer-tier.sh plus the reviewer dispatch header.
+# The header names the implementer tier only from that flag; no tier is stored. Never deletes anything.
 dir="$(cd "$(dirname "$0")" && pwd)"
 state="${CLAUDE_PROJECT_DIR:-$PWD}/.claude"
 ledger="$state/orchestrator-rulings.log"
@@ -16,17 +17,14 @@ check_unit() {
   if [[ ! "$1" =~ $unit_re ]]; then echo "unit-bookkeeping: bad unit id: $1" >&2; exit 2; fi
 }
 
-record_tier() {
-  if [ "$2" != EXHAUSTED ]; then mkdir -p "$bk"; printf '%s\n' "$2" > "$bk/$1.tier"; fi
-}
-
 guard_demote() {
   local g
   if [ -n "${UB_GUARD:-}" ]; then
-    g="$(bash "$UB_GUARD" "$1" --unit="$2" | head -n1)"
+    g="$(bash "$UB_GUARD" "$1" --unit="$2" 2>/dev/null | head -n1)"
   else
-    g="$(node "$dir/contract-guard.js" "$1" --unit="$2" | head -n1)"
+    g="$(node "$dir/contract-guard.js" "$1" --unit="$2" 2>/dev/null | head -n1)"
   fi
+  if [ -z "$g" ]; then g="guard unavailable"; fi
   echo "guard: $g"
   ruling "$2" "contract-guard sonnet: $g"
 }
@@ -46,10 +44,10 @@ dispatch_cmd() {
   line="$(bash "$ladder" "${args[@]}" | head -n1)"
   read -r -a f <<< "$line"
   tier="${f[1]:-}"
+  if [ "${f[0]:-}" != ladder-tier: ]; then tier=opus; fi
   case "$tier" in haiku|sonnet|opus|EXHAUSTED) ;; *) tier=opus ;; esac
   if [ -n "$line" ]; then echo "$line"; fi
   echo "model: $tier"
-  record_tier "$unit" "$tier"
   case " $line " in
     *" reason=guard-demotion "*) guard_demote "$contract" "$unit" ;;
     *" reason=no-contract "*) ruling "$unit" "contract-guard sonnet: no-contract" ;;
@@ -57,8 +55,7 @@ dispatch_cmd() {
 }
 
 review_header() {
-  local unit="$1" base="$2" word="$3" tier=""
-  if [ -f "$bk/$unit.tier" ]; then tier="$(cat "$bk/$unit.tier")"; fi
+  local unit="$1" base="$2" word="$3" tier="$4"
   echo "Unit: $unit"
   case "$tier" in haiku|sonnet|opus) echo "Implementer tier: $tier" ;; esac
   echo "Range: $base..$(git rev-parse HEAD)"
@@ -68,16 +65,22 @@ review_header() {
 }
 
 review_cmd() {
-  local unit="$2" base="$3" word rt="${UB_REVIEWER_TIER:-$dir/../hooks/scripts/reviewer-tier.sh}"
-  [ "$#" -eq 3 ] || usage
+  local unit="$2" base="$3" word rc itier="" rt="${UB_REVIEWER_TIER:-$dir/../hooks/scripts/reviewer-tier.sh}"
+  case "$#" in
+    3) ;;
+    5) if [ "$4" = --implementer-tier ]; then itier="$5"; else usage; fi ;;
+    *) usage ;;
+  esac
   check_unit "$unit"
   if ! git rev-parse --verify -q "$base^{commit}" >/dev/null; then
     echo "unit-bookkeeping: bad baseline: $base" >&2; exit 2
   fi
-  word="$(bash "$rt" "$unit" "$base..HEAD" 2>/dev/null | head -n1)"
+  word="$(bash "$rt" "$unit" "$base..HEAD" 2>/dev/null)"; rc=$?
+  word="$(printf '%s\n' "$word" | head -n1)"
+  if [ "$rc" -ne 0 ]; then word=opus; fi
   case "$word" in sonnet|opus) ;; *) word=opus ;; esac
   mkdir -p "$bk"
-  review_header "$unit" "$base" "$word" > "$bk/$unit.header"
+  review_header "$unit" "$base" "$word" "$itier" > "$bk/$unit.header"
   cat "$bk/$unit.header"
 }
 
