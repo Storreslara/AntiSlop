@@ -260,7 +260,13 @@ written by task-master. It may touch `bin/review-precheck.sh`, `tests/review-pre
 lands first, before rp-u11. For this spec that means: every expected version below moves up one; no rp
 unit may depend on the precheck's current text (none does: rp-u7 keeps the precheck sentence and
 `tests/review-precheck.test.sh` in its Do NOT touch, rp-u11 and rp-u12 list `bin/review-precheck.sh` there);
-and the chained anchor check must include st-u2-fix1 (Dispatch section).
+and the chained anchor check must include st-u2-fix1 (Dispatch section). Landed at bc96b47a (0.31.202), in
+review.
+Note sweep (`bin/marker-audit.sh --notes`) over rp-u12's files: no `NOTE[spec]`; two `NOTE[code]` from
+rp-u8's review (the stdout leak, and no empty or truncated `state-access.sh` case), both F6 and both closed
+by rp-u12; the untagged notes name units 192, 199, gh348-13 and gh413 (vacuous diff.relative rows, a stale
+test header, an unset `CLAUDE_PROJECT_DIR`, id sanitizing, now pinned by case (ax)), none on the lines
+rp-u12 edits; not taken here.
 - The findings' line numbers (~169, ~197) match no layout of the 163-line library; the defects are where
   the contracts anchor.
 
@@ -478,10 +484,9 @@ sensitive hook path).
   `bin/review-precheck.sh`, if cheap; it is not rp-u12's.
 - rp-u7's range criteria matched an older docs commit; amended 2026-10-21 with every queued range grep
   (Clarifications).
-- st-u2-fix1 is written by another persona while these contracts are frozen. Until its committed text is
-  in the chained anchor check, a collision in `agents/reviewer.md`, `templates/persona-protocol.md`,
-  `bin/review-precheck.sh`, `tests/review-precheck.test.sh` or `tests/validate.sh` (st-u3 anchors on the
-  `review-precheck` echo line) is possible; Dispatch section, TODO.
+- st-u2-fix1 (bc96b47a, 0.31.202) is in review. Checked against its landed text: no queued anchor collides
+  (Dispatch section). A further fix round on the precheck files would need the same check only if it
+  reaches `templates/persona-protocol.md` or `tests/validate.sh`.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied (every finding re-verified against cfb7ddac; H's premise rejected on evidence)
@@ -711,16 +716,22 @@ rp-u7's criteria 6 and 7 now included; the final version read 0.31.210. rp-u12's
 `1`; its three mutations flipped criteria 1, 2 and 3. The rp-u6 prototype `contract-anchors.js` reported
 `ok`, `bad=0`, for rp-u12 against the real tree at 00b2a860 with rp-u11, st-u3, st-u4 and rp-u10 as
 `--chain`.
-TODO (before st-u2-fix1 is dispatched): st-u2-fix1 was not committed when this spawn finished. Once
-task-master commits it, re-run the chain on a fresh clone with st-u2-fix1 first, then rp-u11, st-u3, st-u4,
-rp-u10, rp-u12, rp-u7, rp-u4, rp-u5, rp-u6 (expected final version 0.31.211), and run `contract-anchors.js`
-for each with its predecessors, st-u2-fix1 included, as `--chain`. Check in particular: st-u3's
-`tests/validate.sh` anchor (the `review-precheck` echo line, if st-u2-fix1 renames it); rp-u7's
-`templates/persona-protocol.md` anchor `re-derives it with a script: it runs` (line 41, if st-u2-fix1's
-reviewer-bullet edit reaches it); rp-u7's Do NOT touch of `tests/review-precheck.test.sh` (no conflict:
-st-u2-fix1 lands earlier); and st-u2-fix1's own range greps (its fix commit and task-master's docs commit
-both carry `(st-u2)`). No queued rp or st contract edits `agents/reviewer.md`, `bin/review-precheck.sh` or
-`tests/review-precheck.test.sh`.
+st-u2-fix1 check, done the same spawn: task-master committed the contract at 7c3db405 and the lead landed
+it at bc96b47a (0.31.202, in review) while this spawn ran. spec-master applied st-u2-fix1 (from its contract),
+rp-u11, st-u3, st-u4, rp-u10, rp-u12, rp-u7, rp-u4, rp-u5 and rp-u6 in this order to a fresh clone of
+a65fa361 with its own applier and ran each contract's criteria 1 to n-1 after its commit: all held (rp-u4
+criterion 2 as above), the final version read 0.31.211, and `tests/review-precheck.test.sh`,
+`tests/reviewer-tier.test.sh` and `tests/scope-libs.test.sh` printed no FAIL at the end of the chain. The
+clone's `bin/review-precheck.sh`, `tests/review-precheck.test.sh` and `agents/reviewer.md` equal the landed
+bc96b47a files byte for byte. The rp-u6 prototype `contract-anchors.js` against a clean clone of bc96b47a,
+each contract with its queued predecessors as `--chain`, reported `ok`, `bad=0`, for rp-u11, st-u3, st-u4,
+rp-u10, rp-u12, rp-u7, rp-u4, rp-u5 and rp-u6. st-u2-fix1 edits none of `templates/persona-protocol.md`
+(it lists it in its Do NOT touch, citing rp-u7) and `tests/validate.sh`, so rp-u7's line-41 anchor and
+st-u3's `review-precheck` echo-line anchor are untouched; no queued rp or st contract edits
+`agents/reviewer.md`, `bin/review-precheck.sh` or `tests/review-precheck.test.sh`. Its own range criteria
+grep `^[0-9a-f]+ [a-z]+\(st-u2\): ` on the subject, so task-master's docs commit (`... (st-u2)` at the end)
+does not match. If st-u2-fix1 FAILs again, its fix round adds one version and the later expected versions
+shift by one (relative bumps).
 
 ## Open Questions
 
@@ -819,14 +830,16 @@ below for the record.
 - CHK35 (replay): Do the criteria whose `run:` names `hooks/scripts/reviewer-tier.sh` or
   `tests/reviewer-tier.test.sh` still fail under their own `mutation:` line? — PASS (rp-u12 c1, c2 and c4,
   mutations run on the clone)
-- CHK36: Is the chained anchor check run against st-u2-fix1's committed text? — FAIL (missing: not
-  committed when this spawn finished) — revised in place (recorded as a TODO with its exact steps in the
-  Dispatch section; it needs no operator input)
+- CHK36: Is the chained anchor check run against st-u2-fix1's committed text? — PASS (contract 7c3db405 and
+  landed commit bc96b47a; Dispatch section, "st-u2-fix1 check")
 
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
 "review-in-flight" (audit token) name the same thing, the entry should name both; lens 3, the seven terms of
 finding G, queued for rp-s1.
+2026-10-21 pass: lens 1 and lens 2 found nothing new in the Step 10 additions; lens 3, "range grep" (the
+`git log --grep` that finds a unit's own commits for a range criterion) is used only in this spec and its
+contracts, so it is not proposed for a glossary.
 
 ## Scribe update hint
 rp-s1 (Step 7, issue #634) carries the glossary and wiki work. Knowledge proposals from this spec: the entries listed
