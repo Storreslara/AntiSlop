@@ -6,7 +6,8 @@ Size and risk routed lanes (spec Step 4, variation a; operator ruling OQ2 = (ii)
 unit's PLANNED scope before anything is dispatched:
 - **full**: a sensitive path (st-u1's library, the reviewer-tier class); a `.fail` record for the unit; more
   than 10 entries; a directory, glob or trailing-slash entry (unmeasurable); a missing contract or no
-  input; or the libraries missing.
+  input; or a library missing, or leaving `touches_sensitive_path` or `us_entries` undefined (`declare -F`,
+  rp-u8's fail-closed rule).
 - **small**: 4 entries or fewer.
 - **medium**: otherwise.
 
@@ -28,7 +29,8 @@ its reviewer. reviewer-tier.sh is unchanged and still measures the actual diff.
 ## Retrieval
 Fast path, no tracker issue. Spec: `docs/plans/antislop-structural/spec.md`, "Step 4 (st-u4)" and "Context, a".
 This file is the contract of record. Dispatch it only after st-u3 has reached PASS (its validate.sh block and
-st-u2's `BIN_HELPER_FILES` entry are this unit's anchors).
+st-u2's `BIN_HELPER_FILES` entry are this unit's anchors). Amended 2026-10-21
+(`docs/plans/antislop-review-patches/spec.md`, Step 9).
 
 ## Affected files
 - `tests/unit-size.test.sh` (anchor: new file, mode 755)
@@ -96,6 +98,8 @@ is "(h) only bookkeeping entries" 'lane: full files=0 reason=empty' u2 -- .claud
 bash "$US" '../x' -- a >/dev/null 2>&1; [ "$?" = 2 ] && [ ! -e "$T/.claude/x.lane" ] && ok "(i) bad unit id exit 2" || bad "(i) bad unit id"
 mkdir -p "$T/lonely/bin" && cp "$US" "$T/lonely/bin/unit-size.sh"
 [ "$(bash "$T/lonely/bin/unit-size.sh" u1 -- src/a.js)" = 'lane: full files=0 reason=unmeasurable' ] && ok "(j) library missing -> full" || bad "(j) library missing"
+mkdir -p "$T/lonely/hooks/scripts/lib" && cp "$ROOT/hooks/scripts/lib/sensitive-paths.sh" "$T/lonely/hooks/scripts/lib/" && : > "$T/lonely/hooks/scripts/lib/unit-scope.sh"
+[ "$(bash "$T/lonely/bin/unit-size.sh" u1 -- src/a.js)" = 'lane: full files=0 reason=unmeasurable' ] && ok "(j) library empty -> full" || bad "(j) library empty"
 
 # (k) prose: the orchestrator routes on the lane, downgrade-only, medium lane without spec-master.
 flat() { tr -s ' \n' ' ' < "$1"; }
@@ -146,6 +150,8 @@ emit() { # <lane> <n> <reason>
 }
 lib="$dir/../hooks/scripts/lib"
 { . "$lib/sensitive-paths.sh" && . "$lib/unit-scope.sh"; } 2>/dev/null || emit full 0 unmeasurable
+# An empty or cut-short library defines nothing; an undefined function only reads as "false" (rp-u8).
+declare -F touches_sensitive_path us_entries >/dev/null || emit full 0 unmeasurable
 src=none
 if [ "${1:-}" = --contract ]; then
   [ -n "${2:-}" ] && [ -f "$2" ] || emit full 0 no-input
@@ -286,7 +292,7 @@ fi
    Run `git status --short` first: if a tracked file outside "Affected files" is modified, stop and report it.
 
 ## Do NOT touch
-- `hooks/` and `.claude/hooks/`, including `hooks/scripts/reviewer-tier.sh` (it still measures the actual diff; criterion 5)
+- `hooks/` and `.claude/hooks/` (reviewer-tier.sh among them: it still measures the actual diff; criterion 5)
 - `hooks/scripts/lib/sensitive-paths.sh` and `hooks/scripts/lib/unit-scope.sh` (st-u1's; this unit only sources them)
 - `adapters/` (the codex and cursor orchestrator ports install no `.claude/bin/` and keep today's pipeline; criterion 5)
 - `agents/lead-programmer.md`, `agents/reviewer.md`, `agents/spec-master.md` and `templates/` (the small-lane `Pre-resolved context` line is dispatch text; criterion 5)
@@ -296,7 +302,7 @@ fi
 1. run: `bash -c 'bash tests/unit-size.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: change `-gt 10` to `-gt 11` in the script; case (c) prints `FAIL (c) eleven is full` and stdout is `1`.
+   mutation: change `-gt 10` to `-gt 11` in the script; case (c) prints `FAIL (c) eleven is full` and stdout is `1`. Deleting the `declare -F` line fails the (j) library-empty case.
 2. run: `cmp bin/unit-size.sh .claude/bin/unit-size.sh`
    exit: 0
    stdout: empty
@@ -309,7 +315,7 @@ fi
    exit: 0
    stdout: `1`
    mutation: delete the sensitive-path loop from the script; it prints `lane: medium files=10 reason=contract` (spec-master ran this mutation), stdout is `0` and the exit is 1.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(st-u4)" | tail -1); git diff --name-only "$b^..HEAD" -- adapters hooks templates agents/lead-programmer.md agents/reviewer.md agents/spec-master.md | wc -l'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="(st-u4)" | tail -1); l=$(git log --format=%H --grep="(st-u4)" | head -1); git diff --name-only "$b^..$l" -- adapters hooks templates agents/lead-programmer.md agents/reviewer.md agents/spec-master.md | wc -l'`
    exit: 0
    stdout: `0`
    mutation: edit `adapters/cursor/agents/orchestrator.md` in an st-u4 commit; stdout is at least `1`.
@@ -317,7 +323,7 @@ fi
    exit: 0
    stdout: `0`
    mutation: in edit 8, also reword the pinned phrase `the contract of record, never a fix contract` elsewhere in orchestrator.md; writer-tier-consistency fails and stdout is `1`.
-7. run: `bash -c 'b=$(git log --format=%H --grep="(st-u4)" | tail -1); bash hooks/scripts/version-stamp-check.sh "$b^..HEAD" | cut -d" " -f1-4'`
+7. run: `bash -c 'b=$(git log --format=%H --grep="(st-u4)" | tail -1); l=$(git log --format=%H --grep="(st-u4)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: yes`
    mutation: skip edit 10; stdout reads `version-stamp-check: violation touched: yes`.
@@ -332,7 +338,8 @@ blast-radius: agents/orchestrator.md:14 (routing-table planning line), agents/or
 lane-rules: entries are the contract's `## Affected files` tokens (st-u1 `us_entries`) or the `--` arguments; `.claude/` and `docs/plans/` entries are dropped. Check order: no input, empty, unmeasurable (glob, trailing slash, existing directory), sensitive, fail-record, size over 10, small at 4 or fewer, medium. The small and medium reason word is the input kind (`contract` or `paths`).
 downgrade-only: the script never weakens anything that runs after the code exists; reviewer-tier.sh still measures the actual diff and the precheck still checks scope. The lane only decides spec-master, task-master and the pre-explorer.
 operator-ruling: OQ2 = (ii), 2026-10-20: no spec-master in the medium lane; the orchestrator writes the scope and at most 5 steps itself.
-version: .claude-plugin/plugin.json and package.json read 0.31.197 after st-u3 if no fix round bumped; edit 10 adds one (expected 0.31.198).
+version: .claude-plugin/plugin.json and package.json read 0.31.202 after st-u3 if no fix round bumped; edit 10 adds one (expected 0.31.203).
+amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): a `declare -F` guard after the library sources (an empty `unit-scope.sh` used to give `-- <path>` input a small lane), pinned by the (j) library-empty case; the `## Do NOT touch` hooks bullet is whole-subject (rp-u9 grammar); criteria 5 and 7 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8, rp-u9 and the amended st-u2 and st-u3 applied: every payload and anchor matched once, the test printed 0 FAIL lines after `--update`, and (j) library-empty failed with the guard deleted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2). The orchestrator mirror grows about 1.9k bytes (offsetting part of qw-u2 and qw-u4's diet); the lane section is what saves spec-master and explorer dispatches.
 commit-message: feat(st-u4): lane routing from the planned scope, downgrade-only and fail-closed to full
 diagnosis: none

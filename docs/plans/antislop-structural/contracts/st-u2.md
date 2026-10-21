@@ -8,11 +8,15 @@ the **precheck packet** and copies it to `.claude/bookkeeping/<unit>.precheck`:
 - line 1 `precheck: result=<pass|fail> unit=<u> range=<b>..<sha> fails=<n> deferred=<n> judge=<n>`;
 - `contract:` lines, the contract being read from the baseline commit (a contract edited since the baseline
   is a failure);
-- `changed:` and `scope: ok <class>|out|judge` lines from st-u1's `us_classify`; `scope: no-affected-list`
-  when there is no list;
+- `changed:` and `scope: ok <class>|out|excluded|judge` lines from st-u1's `us_classify` (as corrected by
+  rp-u9: exclusions come from `us_exclusions`, whole-subject `## Do NOT touch` bullets only);
+  `scope: no-affected-list` when there is no list;
 - `size:`, `sensitive:` and `version-stamp:` lines;
 - `criterion <n>: pass|fail|deferred long|judge` lines for the contract's criteria. A criterion whose `run:`
   line carries `(Bash tool timeout` is deferred and run on its own with `--criterion <n>`.
+
+The script exits 2, printing no packet, when a scope library is missing or leaves a function it needs
+undefined (`declare -F`; rp-u8's fail-closed rule), so the reviewer falls back to running the checks itself.
 
 `agents/reviewer.md` gains the bullet "Run the mechanical pre-review first": each failure line is a FAIL ground
 on its own, returned without reading the code; criteria the script passed are not re-run; code is read only
@@ -22,8 +26,9 @@ reviewer runs the script itself, as it runs `blast-radius.sh`. The codex and cur
 
 ## Retrieval
 Fast path, no tracker issue. Spec: `docs/plans/antislop-structural/spec.md`, "Step 2 (st-u2)" and "Context, f".
-This file is the contract of record. Dispatch it only after st-u1 has reached PASS; qw-u5 must have landed
-(edits 4 to 7 anchor on its text).
+This file is the contract of record. Dispatch it only after st-u1, rp-u8 and rp-u9 have reached PASS
+(rp-u9 adds `us_exclusions`, which edit 3 calls); qw-u5 must have landed (edits 4 to 7 anchor on its text).
+Amended 2026-10-21 (`docs/plans/antislop-review-patches/spec.md`, Step 9).
 
 ## Affected files
 - `tests/review-precheck.test.sh` (anchor: new file, mode 755)
@@ -81,8 +86,19 @@ Unit: u1
    stdout: prints a greeting
    mutation: none
 MD
+cat > docs/plans/p/contracts/u2.md << 'MD'
+Unit: u2
+
+## Affected files
+- `src/a.js`
+
+## Do NOT touch
+- `src/a.js` partial: past its first line
+- `CONTEXT.md` (whole file; `src/a.js` is named here only as a reason)
+MD
 g add -A && g commit -q -m base && BASE="$(git rev-parse HEAD)"
 C=docs/plans/p/contracts/u1.md
+C2=docs/plans/p/contracts/u2.md
 export CLAUDE_PROJECT_DIR="$T"
 first() { printf '%s\n' "$1" | head -n1; }
 
@@ -94,6 +110,7 @@ for l in 'changed: src/a.js' 'scope: ok src/a.js listed' 'size: files=1 lines=1 
   printf '%s\n' "$out" | grep -qxF -- "$l" && ok "(a) $l" || bad "(a) missing: $l"
 done
 cmp -s <(printf '%s\n' "$out") "$T/.claude/bookkeeping/u1.precheck" && ok "(a) packet file equals stdout" || bad "(a) packet file differs"
+bash "$PC" u2 "$BASE" --contract "$C2" | grep -qxF 'scope: ok src/a.js listed' && ok "(a) a partial: or reason-only Do NOT touch mention keeps a listed file" || bad "(a) listed file excluded by a partial bullet"
 
 [ "$(bash "$PC" u1 "$BASE" --contract "$C" --criterion 3)" = 'criterion 3: pass exit=0' ] && ok "(b) --criterion runs a deferred one" || bad "(b) --criterion 3"
 
@@ -101,6 +118,7 @@ printf 'x\n' > CONTEXT.md && printf 'h\n' > hooks/g.sh && g add -A && g commit -
 out="$(bash "$PC" u1 "$BASE" --contract "$C")"
 printf '%s\n' "$out" | grep -qxF 'scope: out CONTEXT.md' && ok "(c) out-of-scope file" || bad "(c) out-of-scope file"
 printf '%s\n' "$out" | grep -qxF 'sensitive: hooks/g.sh' && ok "(c) sensitive path" || bad "(c) sensitive path"
+bash "$PC" u2 "$BASE" --contract "$C2" | grep -qxF 'scope: excluded CONTEXT.md' && ok "(c) a whole-file Do NOT touch bullet" || bad "(c) excluded class"
 first "$out" | grep -q '^precheck: result=fail .* fails=2 ' && ok "(c) result=fail fails=2" || bad "(c) header: $(first "$out")"
 mkdir -p "$T/.claude/reviewed" && printf 'FAIL u1 2026-10-20T00:00:00Z\ntier: sonnet\n- CONTEXT.md:1 needs the term\n' > "$T/.claude/reviewed/u1.fail"
 bash "$PC" u1 "$BASE" --contract "$C" | grep -qxF 'scope: ok CONTEXT.md fail-record' && ok "(c) path named by the .fail record" || bad "(c) fail-record class"
@@ -138,6 +156,13 @@ bash "$PC" u1 not-a-ref >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) bad baseline ex
 bash "$PC" u1 "$BASE" --criterion 1 >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) --criterion without a contract exit 2" || bad "(h) --criterion without contract"
 bash "$PC" u1 "$BASE" --bogus >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) unknown option exit 2" || bad "(h) unknown option"
 [ "$(cd src && bash "$PC" u1 "$BASE" --contract "$C" | sed -n 2,99p)" = "$(bash "$PC" u1 "$BASE" --contract "$C" | sed -n 2,99p)" ] && ok "(i) same output from a subdirectory" || bad "(i) subdirectory differs"
+
+# (k) a scope library that is missing or defines nothing: exit 2 and no packet (the reviewer runs the checks itself).
+L="$(mktemp -d)"; mkdir -p "$L/bin" "$L/hooks/scripts/lib" && cp "$PC" "$L/bin/" && cp "$ROOT/hooks/scripts/lib/sensitive-paths.sh" "$L/hooks/scripts/lib/"
+bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(k) unit-scope.sh missing: exit 2" || bad "(k) missing library"
+: > "$L/hooks/scripts/lib/unit-scope.sh"
+bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(k) unit-scope.sh empty: exit 2" || bad "(k) empty library"
+rm -rf "$L"
 
 # (j) prose: the reviewer and the protocol name the pre-review script and its FAIL rule.
 flat() { tr -s ' \n' ' ' < "$1"; }
@@ -186,8 +211,12 @@ done
 [ -z "$only" ] || [ -n "$contract" ] || usage
 dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 lib="$dir/../hooks/scripts/lib"
-. "$lib/sensitive-paths.sh" || exit 2
-. "$lib/unit-scope.sh" || exit 2
+. "$lib/sensitive-paths.sh" 2>/dev/null || exit 2
+. "$lib/unit-scope.sh" 2>/dev/null || exit 2
+# An empty or cut-short library defines nothing, and an undefined function only reads as "false":
+# never run on a partial class (rp-u8's fail-closed rule).
+declare -F touches_sensitive_path us_section us_entries us_exclusions us_classify >/dev/null \
+  || { echo "review-precheck: scope libraries incomplete under $lib" >&2; exit 2; }
 top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "review-precheck: not a git repository" >&2; exit 2; }
 cd "$top" || exit 2
 git rev-parse --verify -q "$base^{commit}" >/dev/null || { echo "review-precheck: baseline does not resolve: $base" >&2; exit 2; }
@@ -243,7 +272,7 @@ fi
 # Unit scope: the contract's `## Affected files`, plus --affected, else the lane record.
 : > "$W/listed"; : > "$W/fix"; : > "$W/crit"; : > "$W/failrec"; : > "$W/excl"
 [ -z "$cfile" ] || us_entries "$cfile" >> "$W/listed"
-[ -z "$cfile" ] || us_entries "$cfile" "Do NOT touch" > "$W/excl"
+[ -z "$cfile" ] || us_exclusions "$cfile" > "$W/excl"
 for a in "${affected[@]+"${affected[@]}"}"; do printf '%s\n' "$a" >> "$W/listed"; done
 dot="${CLAUDE_PROJECT_DIR:-$top}/.claude"
 if [ ! -s "$W/listed" ] && [ -f "$dot/bookkeeping/$unit.scope" ]; then cp "$dot/bookkeeping/$unit.scope" "$W/listed"; fi
@@ -382,7 +411,7 @@ fi
 ~~~
 9. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.195 to 0.31.196).
+   This adds one to the patch version in both files (expected 0.31.200 to 0.31.201).
 10. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -401,7 +430,7 @@ fi
    Run `git status --short` first: if a tracked file outside "Affected files" is modified, stop and report it.
 
 ## Do NOT touch
-- `adapters/codex/agents/reviewer.toml`, `adapters/cursor/agents/reviewer.md` and the adapter protocol ports (no `.claude/bin/` there; criterion 5)
+- `adapters/` (the codex and cursor reviewers and the adapter protocol ports install no `.claude/bin/`; criterion 5)
 - `hooks/` and `.claude/hooks/` (the script is the reviewer's own tool, not a gate; criterion 5)
 - `agents/orchestrator.md` (the orchestrator neither runs nor forwards the packet; criterion 5)
 - `hooks/scripts/lib/unit-scope.sh` and `hooks/scripts/lib/sensitive-paths.sh` (st-u1's; this unit only sources them)
@@ -411,7 +440,7 @@ fi
 1. run: `bash -c 'bash tests/review-precheck.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: in the script, read the contract from the working tree instead of `git show "$base:$contract"`; case (e) prints `FAIL (e) criteria not from baseline` and stdout is `1`.
+   mutation: in the script, read the contract from the working tree instead of `git show "$base:$contract"`; case (e) prints `FAIL (e) criteria not from baseline` and stdout is `1`. Deleting the `declare -F` guard (two lines) fails the (k) empty-library case; calling `us_entries "$cfile"` (the Affected list) instead of `us_exclusions "$cfile"` fails the (a) partial-bullet case.
 2. run: `cmp bin/review-precheck.sh .claude/bin/review-precheck.sh`
    exit: 0
    stdout: empty
@@ -424,7 +453,7 @@ fi
    exit: 0
    stdout: `1`
    mutation: change the library path in the script to `$dir/../hooks/lib`; the installed copy exits 2 before line 1, stdout is `0` and the exit is 1.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(st-u2)" | tail -1); git diff --name-only "$b^..HEAD" -- adapters hooks .claude/hooks agents/orchestrator.md | wc -l'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="(st-u2)" | tail -1); l=$(git log --format=%H --grep="(st-u2)" | head -1); git diff --name-only "$b^..$l" -- adapters hooks .claude/hooks agents/orchestrator.md | wc -l'`
    exit: 0
    stdout: `0`
    mutation: edit `adapters/cursor/agents/reviewer.md` in an st-u2 commit; stdout is at least `1`.
@@ -432,7 +461,7 @@ fi
    exit: 0
    stdout: `0`
    mutation: add a line starting `## ` inside edit 7's payload; protocol-doc-drift's section count no longer matches and stdout is `1`.
-7. run: `bash -c 'b=$(git log --format=%H --grep="(st-u2)" | tail -1); bash hooks/scripts/version-stamp-check.sh "$b^..HEAD" | cut -d" " -f1-4'`
+7. run: `bash -c 'b=$(git log --format=%H --grep="(st-u2)" | tail -1); l=$(git log --format=%H --grep="(st-u2)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: yes`
    mutation: skip edit 9; stdout reads `version-stamp-check: violation touched: yes`.
@@ -449,7 +478,8 @@ independence: the reviewer runs the script itself (the operator's c1 ruling patt
 baseline-contract: criteria come from `git show <baseline>:<contract>` when the contract is tracked at the baseline (contracts are committed before dispatch); a contract that differs at HEAD is a failure line, so a unit cannot weaken its own criteria inside `docs/plans/` (which unit scope exempts).
 long-criteria: a `run:` line carrying `(Bash tool timeout` is deferred, so one precheck call stays under the 600 s Bash ceiling; the reviewer runs each with `--criterion <n>` (one line, nothing written). Each criterion runs under `timeout 590`.
 no-test-lint: the precheck does not run `testAndLintCommand`; stop-gate.sh already runs it at the gated SubagentStop. With no contract it prints `criteria: none (...)`, and the reviewer runs the test command itself.
-version: .claude-plugin/plugin.json and package.json read 0.31.195 after st-u1 if no fix round bumped; edit 9 adds one (expected 0.31.196).
+version: .claude-plugin/plugin.json and package.json read 0.31.200 after rp-u9 if no fix round bumped; edit 9 adds one (expected 0.31.201).
+amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): the script fails closed (`declare -F` guard, exit 2) on a library that is missing or defines nothing; `## Do NOT touch` is read with rp-u9's `us_exclusions` (whole-subject bullets; a bullet carrying `partial:` never excludes); test fixture u2.md and cases (a), (c) and (k) pin both; criteria 5 and 7 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8 and rp-u9 applied: every `before:` matched once, the test printed 0 FAIL lines after `--update`, and its (a), (c) and (k) additions failed with the guard or the `us_exclusions` call reverted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 terminology: the output is the **precheck packet**; never call it the review packet (docs/harness-glossary.md uses **review-packet** for the contract key and **advisory review packet** for lead-programmer's report).
 commit-message: feat(st-u2): the reviewer runs a mechanical pre-review script itself; its failure lines are FAIL grounds

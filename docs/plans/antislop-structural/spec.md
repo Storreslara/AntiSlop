@@ -528,3 +528,15 @@ touch` entry, optional seventh argument) and `criteria` now excludes a path `us_
 an optional section heading. st-u2's precheck passes the contract's `## Do NOT touch` entries and fails on
 `scope: excluded <path>`; st-u3's gate refuses an excluded path first. The classes row above
 ("Standing exceptions to `## Affected files`") is superseded by this paragraph. rp-u1 must land before st-u1.
+
+## Amendment 2026-10-21 (antislop-review-patches Step 9, st-u1 review)
+st-u1 passed with three NOTE[spec] findings, fixed before st-u2 by rp-u8 (reviewer-tier.sh prints `opus`,
+exit 0, when a library is missing or defines nothing) and rp-u9 (`us_exclusions`: a `## Do NOT touch`
+bullet excludes only its whole subject, the `partial:` marker never excludes; globs stay in one segment;
+empty, newline, `.` and `..` paths are `out`). st-u2, st-u3 and st-u4 are amended in place to match: each
+checks its library functions with `declare -F` and fails closed (precheck exit 2; scope gate blocks the
+three writers; lane `full`), st-u2 and st-u3 read exclusions with `us_exclusions`, and range criteria name
+the unit's last commit. New dispatch order and versions: rp-u8 0.31.199, rp-u9 0.31.200, st-u2 0.31.201,
+st-u3 0.31.202, st-u4 0.31.203 (then rp-u10, rp-u7, rp-u4 to rp-u6, rp-s1; see
+`docs/plans/antislop-review-patches/spec.md`, Dispatch section). The Dispatch section versions above are
+superseded.

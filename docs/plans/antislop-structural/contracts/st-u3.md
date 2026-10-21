@@ -22,7 +22,11 @@ Scope per persona:
   request names").
 
 Knowledge files are CONTEXT.md, README.md, `docs/harness-glossary.md` and `docs/adr/*`. Other personas, a
-missing config or a missing transcript are allowed (the last is logged as `unattributable`). Claude-only:
+missing config or a missing transcript are allowed (the last is logged as `unattributable`). `## Do NOT touch`
+is read with rp-u9's `us_exclusions` (whole-subject bullets only; a bullet carrying `partial:` never excludes). If
+`hooks/scripts/lib/unit-scope.sh` is missing or leaves a function the gate needs undefined (`declare -F`),
+the three writers' stops are blocked with a report-and-wait message (fail closed, as rp-u8 does for the
+reviewer tier); other personas are still allowed. Claude-only:
 the adapters have no transcript path. `docs/trust-model.md` gains row 26, which C8.2 of
 tests/trust-model-bijection.test.js requires.
 
@@ -131,6 +135,26 @@ mk "$T/t9" "$LP" "$T/scratch.txt"; run lead-programmer "$T/t9"
 printf 'c5\n' > CONTEXT.md; run antislop:lead-programmer "$T/t2"
 [ "$rc" = 2 ] && ok "(k) namespaced agent_type gated" || bad "(k) rc=$rc"
 git checkout -q -- CONTEXT.md
+# (m) Do NOT touch: a `partial:` bullet leaves a listed file in scope; a whole-file bullet removes it.
+printf 'a3\n' > src/a.js
+mk "$T/t11" "$LP
+## Do NOT touch
+- \`src/a.js\` partial: past its first line" "$R/src/a.js"; run lead-programmer "$T/t11"
+[ "$rc" = 0 ] && ok "(m) partial bullet: listed edit allowed" || bad "(m) partial rc=$rc $err"
+mk "$T/t12" "$LP
+## Do NOT touch
+- \`src/a.js\` (whole file)" "$R/src/a.js"; run lead-programmer "$T/t12"
+[ "$rc" = 2 ] && ok "(m) whole-file bullet: listed edit blocked" || bad "(m) whole-file rc=$rc $err"
+git checkout -q -- src/a.js
+# (n) a unit-scope library that is missing or defines nothing blocks the writers, never other personas.
+LG="$T/lg"; mkdir -p "$LG/lib" && cp "$GATE" "$LG/" && cp "$ROOT/hooks/scripts/lib/"*.sh "$LG/lib/" && : > "$LG/lib/unit-scope.sh"
+GATE0="$GATE"; GATE="$LG/writer-scope-gate.sh"
+mk "$T/t13" "$LP" "$R/src/a.js"; run lead-programmer "$T/t13"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF 'unit-scope.sh is missing or incomplete' && ok "(n) empty library: writer blocked" || bad "(n) empty library rc=$rc $err"
+run reviewer "$T/t13"; [ "$rc" = 0 ] && ok "(n) empty library: reviewer not gated" || bad "(n) reviewer rc=$rc"
+rm -f "$LG/lib/unit-scope.sh"; run scribe "$T/t13"
+[ "$rc" = 2 ] && ok "(n) missing library: writer blocked" || bad "(n) missing library rc=$rc $err"
+GATE="$GATE0"
 # (l) registration: SubagentStop runs stop-gate.sh and writer-scope-gate.sh, in that order.
 [ "$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")" = 'stop-gate.sh,writer-scope-gate.sh' ] && ok "(l) registered after stop-gate" || bad "(l) registration"
 [ -x "$GATE" ] && ok "(l) executable" || bad "(l) not executable"
@@ -155,10 +179,10 @@ exit "$fail"
 # line in .claude/bookkeeping/scope-gate.log (gitignored since qw-u1).
 set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/lib/agent-identity.sh"
-. "$(dirname "${BASH_SOURCE[0]}")/lib/unit-scope.sh"
 # agent-identity.sh sources audit-log.sh, which turns on `set -e`; this gate decides by
 # explicit checks, so errexit is switched back off.
 set +e
+. "$(dirname "${BASH_SOURCE[0]}")/lib/unit-scope.sh" 2>/dev/null
 
 allow() { exit 0; }
 input="$(cat)"
@@ -176,6 +200,13 @@ tr_path="$(printf '%s' "$input" | jq -r '.agent_transcript_path // empty' 2>/dev
 cd "$project_dir" 2>/dev/null || allow
 git rev-parse --verify -q HEAD >/dev/null || allow
 log() { mkdir -p "$dot/bookkeeping" && printf '%s agent=%s persona=%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$persona" "$1" >> "$dot/bookkeeping/scope-gate.log"; }
+# A missing, empty or cut-short library would make every path look in scope (an undefined function
+# only reads as "false"), so the writer's stop fails closed until the library is restored.
+if ! declare -F us_section us_entries us_exclusions us_excluded us_listed us_named_in us_classify >/dev/null; then
+  log "blocked: unit-scope library unavailable"
+  echo "BLOCKED (writer-scope-gate): hooks/scripts/lib/unit-scope.sh is missing or incomplete, so your changes cannot be checked against your unit scope. Report this block to your dispatcher and wait; do not edit the library." >&2
+  exit 2
+fi
 if [ -z "$tr_path" ] || [ ! -r "$tr_path" ]; then log "unattributable: no transcript"; allow; fi
 
 W="$(mktemp -d)"; trap 'rm -rf "$W"' EXIT
@@ -206,11 +237,11 @@ done < "$W/shas"
 
 us_section "$W/prompt" "Affected files" > "$W/sec"
 us_entries "$W/prompt" > "$W/listed"
-us_entries "$W/prompt" "Do NOT touch" > "$W/excl"
+us_exclusions "$W/prompt" > "$W/excl"
 if [ ! -s "$W/listed" ]; then
   c="$(grep -oE 'docs/plans/[A-Za-z0-9._/-]*contracts/[A-Za-z0-9._#-]+\.md' "$W/prompt" | head -n1)"
   [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" > "$W/listed"
-  [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" "Do NOT touch" > "$W/excl"
+  [ -n "$c" ] && [ -f "$c" ] && us_exclusions "$c" > "$W/excl"
 fi
 grep -oE 'file: `[^` ]+`' "$W/prompt" | sed 's/^file: `//; s/`$//' >> "$W/listed" || true
 us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/crit" || true
@@ -336,7 +367,7 @@ fi
 
 ## Do NOT touch
 - `hooks/scripts/stop-gate.sh` and `hooks/scripts/lib/stop-gate-core.sh` (the new gate is a separate script; criterion 4)
-- `hooks/scripts/lib/unit-scope.sh` (st-u1's library; this unit only sources it)
+- `hooks/scripts/lib/unit-scope.sh` (st-u1's library as corrected by rp-u9; this unit only sources it)
 - `adapters/` (Claude-only: the codex and cursor hook inputs carry no `agent_transcript_path`; criterion 4)
 - `agents/` and `templates/` (the gate's block message is the instruction; no persona prose changes; criterion 4)
 - `.claude/hooks/` by hand (only `node bin/cli.js --update` writes it)
@@ -345,7 +376,7 @@ fi
 1. run: `bash -c 'bash tests/writer-scope-gate.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: delete the gate's `set +e` line; agent-identity.sh's sourced audit-log.sh leaves errexit on, cases (e) to (h) exit 1 instead of 0 or 2, and stdout is `1` (spec-master observed this on a clone).
+   mutation: delete the gate's `set +e` line; agent-identity.sh's sourced audit-log.sh leaves errexit on, cases (e) to (h) exit 1 instead of 0 or 2, and stdout is `1` (spec-master observed this on a clone). Deleting the `declare -F` block fails both (n) writer cases; calling `us_entries "$W/prompt"` instead of `us_exclusions "$W/prompt"` fails the (m) partial case.
 2. run: `cmp hooks/scripts/writer-scope-gate.sh .claude/hooks/scripts/writer-scope-gate.sh`
    exit: 0
    stdout: empty
@@ -354,7 +385,7 @@ fi
    exit: 0
    stdout: `0`
    mutation: skip edit 5; trust-model-bijection C8.2 prints `writer-scope-gate.sh is not mentioned anywhere in docs/trust-model.md` and stdout is `1` (spec-master observed this on a clone).
-4. run: `bash -c 'b=$(git log --format=%H --grep="(st-u3)" | tail -1); git diff --name-only "$b^..HEAD" -- adapters agents templates hooks/scripts/stop-gate.sh hooks/scripts/lib | wc -l'`
+4. run: `bash -c 'b=$(git log --format=%H --grep="(st-u3)" | tail -1); l=$(git log --format=%H --grep="(st-u3)" | head -1); git diff --name-only "$b^..$l" -- adapters agents templates hooks/scripts/stop-gate.sh hooks/scripts/lib | wc -l'`
    exit: 0
    stdout: `0`
    mutation: also register the gate in `adapters/cursor/hooks/hooks.json`; stdout is at least `1`.
@@ -362,7 +393,7 @@ fi
    exit: 0
    stdout: `stop-gate.sh,writer-scope-gate.sh`
    mutation: skip edit 4; stdout is `stop-gate.sh`.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(st-u3)" | tail -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(grep "\"version\"" .claude-plugin/plugin.json)" && test "$(grep -c "(st-u3, " CHANGELOG.md)" = 1 && echo moved'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="(st-u3)" | tail -1); l=$(git log --format=%H --grep="(st-u3)" | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(st-u3, ")" = 1 && echo moved'`
    exit: 0
    stdout: `moved`
    mutation: skip edit 8; the versions are equal, stdout is empty and the exit is 1.
@@ -379,7 +410,8 @@ attribution: transcript records are JSON lines; the first `type: user` record is
 start-point: the parent of the first attributed commit, else HEAD; a path counts only if `git diff --quiet <start> -- <path>` fails, or it is a new file that exists. The block text tells the writer to restore with `git checkout <start> -- <path>` and commit; never a reset (R4).
 loop-bound: the gate blocks on every stop while the violation stands; Claude Code ends a stop-hook loop after 8 continuations. It does not honour the WIP sentinel, which stop-gate.sh consumes concurrently.
 residual: a Bash heredoc write that is neither committed nor made through Write/Edit is not attributed (trust-model row 26 says so).
-version: .claude-plugin/plugin.json and package.json read 0.31.196 after st-u2 if no fix round bumped; edit 8 adds one (expected 0.31.197).
+version: .claude-plugin/plugin.json and package.json read 0.31.201 after st-u2 if no fix round bumped; edit 8 adds one (expected 0.31.202).
+amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): the gate sources unit-scope.sh after `set +e` and blocks a writer's stop when a function it needs is undefined (`declare -F`; a missing library used to exit 1 under the inherited `set -e`, which Claude Code treats as allow, and an empty one made every path in scope); `## Do NOT touch` is read with rp-u9's `us_exclusions` (a bullet carrying `partial:` never excludes); cases (m) and (n) pin both; criteria 4 and 6 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8, rp-u9 and the amended st-u2 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, and (m) and (n) failed with the `us_exclusions` call or the guard reverted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(st-u3): writer scope gate at SubagentStop for lead-programmer, scribe and spec-master
 diagnosis: none
