@@ -756,6 +756,15 @@ else
 fi
 
 echo
+echo "== blast-radius: the reviewer's own file-level blast radius, explorer only as fallback (Bash, qw-u5) =="
+if bash tests/blast-radius.test.sh > /dev/null; then
+  echo "OK   tests/blast-radius.test.sh"
+else
+  echo "FAIL tests/blast-radius.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"

@@ -1,4 +1,4 @@
-<!-- antislop v0.31.192 | source: templates/persona-protocol.md | ADAPT-substituted -->
+<!-- antislop v0.31.193 | source: templates/persona-protocol.md | ADAPT-substituted -->
 <!-- Physically inlined into each full-tier persona's .claude/agents/*.md body
      by bin/cli.js (inlineProtocolBlock) at scaffold/update time — @import
      does not resolve inside a subagent body, so this is delivered per
@@ -21,7 +21,8 @@ making its isolation mechanical; everyone else's is this rule. If the
 explorer reports the graph index is missing or stale, treat its answer as
 grep-derived, not authoritative. `lead-programmer` is the exception: it has no
 `Agent` tool, never spawns the explorer, takes structure from its dispatch's
-`## Pre-resolved context`, and names what is missing in its report.
+`## Pre-resolved context`, and names what is missing in its report. The
+reviewer's blast-radius rule is under **Reuse over re-derivation** below.
 
 **Name-collision warning:** Claude Code's built-in `Explore` subagent shadows
 this project's `explorer` under description-based auto-delegation, and it has
@@ -37,7 +38,12 @@ doubt, spawning the `explorer` only to check that claim (`lead-programmer`,
 which cannot spawn, names the doubted claim in its report instead). This reuse rule
 applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
 never applies to the reviewer, which always re-derives blast radius and
-re-runs the checks itself regardless of what the packet claims.
+re-runs the checks itself regardless of what the packet claims. The reviewer
+re-derives it with a script: it runs `.claude/bin/blast-radius.sh <baseline>`
+itself and spawns the `explorer` only when the script prints
+`provenance=none`, the script is missing, or a question that decides a finding
+stays open; it never takes a blast radius from the dispatch, the orchestrator
+or the writer.
 
 ## Answer shape
 When you return findings (to the orchestrator, another persona, or the user):
