@@ -149,6 +149,11 @@ first if it doesn't exist yet), in this format:
 
 `RULING <UTC ISO-8601 timestamp> unit=<task-id|n/a> decision=<short summary>`
 
+
+The mechanical lines (contract-guard demotion, no-contract, helper missing) are appended by
+`.claude/bin/unit-bookkeeping.sh`; append by hand only the judgment calls it cannot make, such as a
+downgrade-only reviewer-tier override.
+
 This is a lightweight, append-only log for the human audit trail — it is
 **NOT** a gate, **NOT** checked by any hook, and **NOT** a substitute for the
 FAIL record or the `.claude/reviewed/` markers, which remain the
@@ -468,10 +473,13 @@ spawn, naming the step range in the prompt. Waves are the plan's "Parallelism
 and waves" list if it has one; otherwise consecutive steps.
 
 ## Per-unit model routing
-Before every per-unit `lead-programmer` dispatch, run `bash .claude/bin/ladder-tier.sh
+Before every per-unit `lead-programmer` dispatch, run `bash .claude/bin/unit-bookkeeping.sh dispatch
 <task-id> --contract <contract file>` (the contract of record, never a fix
-contract: a fix contract can score back onto `haiku`) and pass its tier as the
-dispatch's `model` parameter. A `Suggested model: haiku|sonnet|opus` tag can
+contract: a fix contract can score back onto `haiku`) and pass the tier on its `model:` line as the
+dispatch's `model` parameter. That one call runs `.claude/bin/ladder-tier.sh`, prints its line first,
+records the tier for the reviewer dispatch header, and appends the guard-demotion, no-contract and
+helper-missing RULING lines itself. If `.claude/bin/unit-bookkeeping.sh` is missing, run
+`.claude/bin/ladder-tier.sh` with the same arguments and append those RULING lines yourself. A `Suggested model: haiku|sonnet|opus` tag can
 raise that tier, never
 lower it. On `EXHAUSTED`, dispatch nothing, except a human-chosen (a)/(b)
 re-dispatch from **At the 2-FAIL cap**: run `bash .claude/bin/escalation-card.sh
@@ -497,12 +505,12 @@ default.
 `node .claude/bin/contract-guard.js <contract> --unit=<task-id>`; unless its first line
 starts `contract-guard: haiku `, it is a **guard demotion** to `sonnet`. For a unit
 sliced before contract files, save its issue body to a file and pass that. On
-`reason=guard-demotion`, rerun the guard for its line, tell the user in one line
-quoting it, and append `RULING <UTC ISO-8601 timestamp> unit=<task-id>
+`reason=guard-demotion`, `unit-bookkeeping.sh` prints the guard's first line as `guard: <guard line>` and
+appends `RULING <UTC ISO-8601 timestamp> unit=<task-id>
 decision=contract-guard sonnet: <guard line>` to `.claude/orchestrator-rulings.log`
-(**Rulings ledger**); the script never writes. `reason=no-contract` is a guard
-demotion too (CONTEXT.md **guard demotion**): tell the user in one line that the
-unit had no contract, and append `RULING <UTC ISO-8601 timestamp>
+(**Rulings ledger**); tell the user in one line quoting it. `ladder-tier.sh` itself never writes.
+`reason=no-contract` is a guard demotion too (CONTEXT.md **guard demotion**): tell the user in one line
+that the unit had no contract; the wrapper appends `RULING <UTC ISO-8601 timestamp>
 unit=<task-id> decision=contract-guard sonnet: no-contract`. Scoring is pure, so a fresh session
 computes the same ladder, provided it is unchanged (the contract of record). A
 scribe dispatch with a scribe contract that would go on `haiku` runs the guard with
@@ -530,16 +538,21 @@ do not re-dispatch, surface it to the user.
 
 ### Reviewer gate model selection (measured at dispatch time)
 `task-master` doesn't tag a reviewer tier — it slices before the diff
-exists. You decide the tier at reviewer-dispatch time by running, **from
+exists. You decide the tier at reviewer-dispatch time with one Bash call, **from
 the repo root**:
 
 ```
-bash .claude/hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD
+bash .claude/bin/unit-bookkeeping.sh review <task-id> <baseline>
 ```
 
-It prints exactly `sonnet` or `opus` (exit 0 either way); if missing,
-non-zero exit, or anything else printed, treat the result as `opus`. Pass
-that word as the reviewer dispatch's `model` parameter. Use the same unit id
+It runs `.claude/hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD`, which prints exactly `sonnet`
+or `opus` (exit 0 either way); a missing script, a non-zero exit or any other word becomes `opus`. It then
+writes the reviewer dispatch header, `.claude/bookkeeping/<task-id>.header`, and prints it: `Unit: <task-id>`,
+`Implementer tier: <t>` (omitted when unknown), `Range:`, `Reviewer model: <sonnet|opus>` and the changed
+files. Open the reviewer dispatch with its `Unit:` and `Implementer tier:` lines verbatim and pass the
+`Reviewer model:` word as the reviewer dispatch's `model` parameter. If the wrapper is missing, run
+`bash .claude/hooks/scripts/reviewer-tier.sh <task-id> <baseline>..HEAD` yourself and treat anything but
+`sonnet` as `opus`. Use the same unit id
 and `baseline..HEAD` range already carried in the advisory review packet
 (see "Review routing" above). Running from the repo root matters: the
 script's sensitive-path patterns are anchored there, and it resolves the

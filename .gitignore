@@ -37,3 +37,4 @@ scratch/
 microworlds/
 .claude/human-review/
 .claude/.config-drift-override.*
+.claude/bookkeeping/

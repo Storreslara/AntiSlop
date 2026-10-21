@@ -747,6 +747,15 @@ else
 fi
 
 echo
+echo "== unit-bookkeeping: one call per phase for tier, RULING lines and dispatch header (Bash, qw-u1) =="
+if bash tests/unit-bookkeeping.test.sh > /dev/null; then
+  echo "OK   tests/unit-bookkeeping.test.sh"
+else
+  echo "FAIL tests/unit-bookkeeping.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"
