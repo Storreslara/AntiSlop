@@ -1203,7 +1203,8 @@ async function runUpdate(args) {
     process.exit(1);
   }
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-  if (knowledgeWrites && config.knowledgeWrites !== knowledgeWrites) {
+  const knowledgeWritesChanged = Boolean(knowledgeWrites) && config.knowledgeWrites !== knowledgeWrites;
+  if (knowledgeWritesChanged) {
     config.knowledgeWrites = knowledgeWrites;
     console.log(`Note: knowledgeWrites ${dryRun ? 'would be set' : 'set'} to "${knowledgeWrites}".`);
   }
@@ -1529,7 +1530,7 @@ async function runUpdate(args) {
     }
   }
 
-  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !needsImplementerModelBackfill && !forceRender && !migratedClaudeMd && !needsRender) {
+  if (config.pluginVersion === version && !hadLegacyToken && !backfilled && !needsImplementerModelBackfill && !forceRender && !migratedClaudeMd && !needsRender && !knowledgeWritesChanged) {
     console.log(`antislop v${version} — already current in ${CWD}. Nothing to update.`);
     return;
   }
