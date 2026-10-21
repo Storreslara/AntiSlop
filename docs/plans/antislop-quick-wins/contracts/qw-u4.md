@@ -136,7 +136,7 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md; do
 ~~~
 8. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.189 to 0.31.190).
+   This adds one to the patch version in both files (expected 0.31.190 to 0.31.191).
 9. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -202,7 +202,7 @@ pins-searched: a 45-character sliding window over `tests/` found the fold and de
 rule-map: steps 1 to 7 and the untyped-agent paragraph -> the new protocol subsection, byte for byte (criterion 3). Invariants kept in the stub (edit 3): I1 card verbatim, never a summary (step 1); I2 never run run.sh or view.sh (step 4); I3 one AskUserQuestion call, the answer relayed verbatim (step 5); I4 the DECISION file only through the prompt-confirmed decision write, never on own initiative (step 6); I5 a fresh reviewer dispatch with `subagent_type: reviewer`, no relayed decision (step 7). Fallback when the section cannot be read: whole marker verbatim, no write, terminal or dashboard route.
 cross-references: the moved text refers only to steps inside itself ("the `run.sh` rule below", "as in step 5"); the stub writes no `"Fourth verdict" below`, so tests/protocol-cross-references.test.js C2.2 stays green. No README, CONTEXT.md, glossary or ADR text cites the orchestrator's step numbers (searched).
 gate-note: the stub and this contract name the packet directory and the DECISION file together. Author them with the Write tool as edits 3 and 4 say. If Write is not available in your dispatch, do not rephrase or split the text to get a Bash heredoc past `human-decision-gate.sh`; report and wait.
-version: .claude-plugin/plugin.json and package.json read 0.31.189 after qw-u3 if no fix round bumped; edit 8 adds one (expected 0.31.190).
+version: .claude-plugin/plugin.json and package.json read 0.31.190 after qw-u3 if no fix round bumped; edit 8 adds one (expected 0.31.191).
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(qw-u4): the orchestrator reads its escalation procedure on demand; moved verbatim, invariants kept
 diagnosis: none

@@ -276,7 +276,7 @@ fi
 ~~~
 12. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.191 to 0.31.192).
+   This adds one to the patch version in both files (expected 0.31.192 to 0.31.193).
 13. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -343,7 +343,7 @@ eval: Arm B runs `claude --agent orchestrator --model "$ABTEST_MODEL"`. Under `u
 pins-searched: no test pins the orchestrator's `model: inherit` (grep over tests/). writer-tier-consistency AC-D9 bans the prose "`model: sonnet` frontmatter is the" in agents/orchestrator.md; this unit adds no orchestrator prose. README.md:70 was the only doc stating `inherit` for the orchestrator.
 this-repo: the plugin's own `.claude/persona-config.json` has no `orchestratorModel`, so after `--update` this repo's main session also runs on sonnet. Opting this repo out is an operator decision, not part of this unit.
 blast-radius: agents/orchestrator.md:4, bin/cli.js:1103 (renderCleanBody, used by runUpdate), bin/cli.js:2504 (initial scaffold loop), bin/cli.js:2778 (module.exports), templates/persona-config.schema.json:60, README.md:70 and :104, eval/abtest/arms/arm-b.sh:35 and :88 (read only). Line numbers are at 1d4abf5a; work from the anchors.
-version: .claude-plugin/plugin.json and package.json read 0.31.191 after qw-u5 if no fix round bumped; edit 12 adds one (expected 0.31.192).
+version: .claude-plugin/plugin.json and package.json read 0.31.192 after qw-u5 if no fix round bumped; edit 12 adds one (expected 0.31.193).
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(qw-u6): the orchestrator runs on sonnet by default; orchestratorModel opts out
 diagnosis: none

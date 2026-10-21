@@ -259,7 +259,7 @@ fi
 ~~~
 13. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.186 to 0.31.187).
+   This adds one to the patch version in both files (expected 0.31.187 to 0.31.188).
 14. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -329,7 +329,7 @@ script-spec-7: dispatch, tier record. Unless the tier is `EXHAUSTED`, write the 
 script-spec-8: review. The baseline must resolve with `git rev-parse --verify -q "<baseline>^{commit}"`, else exit 2. The reviewer word is reviewer-tier's first stdout line when that is exactly `sonnet` or `opus`; anything else, including a missing script, is `opus`. This is the downgrade-only rule: the wrapper never produces `sonnet` unless reviewer-tier.sh printed it.
 script-spec-9: review, header file `bookkeeping/<unit>.header`, lines in this order: `Unit: <unit>`; `Implementer tier: <t>`, only when `bookkeeping/<unit>.tier` holds `haiku`, `sonnet` or `opus`; `Range: <baseline>..<full sha of HEAD>`; `Reviewer model: <word>`; `Changed files:`; then one `- <path>` line per `git diff --name-only <baseline>..HEAD` entry. Print the file's content to stdout and exit 0.
 script-spec-10: the script never deletes a file and never writes outside those two state paths.
-version: .claude-plugin/plugin.json and package.json read 0.31.186 after aof-u4 if no fix round bumped; edit 13 adds one to whatever is there (expected 0.31.187).
+version: .claude-plugin/plugin.json and package.json read 0.31.187 after aof-u4 if no fix round bumped; edit 13 adds one to whatever is there (expected 0.31.188).
 mirrors: `.claude/` copies and `fileHashes` change only through `node bin/cli.js --update` (constitution P2). aof-u1 showed that `--update` installs a new `BIN_HELPER_FILES` entry and appends a new gitignore pattern.
 prior-fail: aof-u1 FAILed once because a moved phrase was pinned by tests/writer-tier-consistency.test.js. Edits 8 to 11 keep every pinned phrase: `**Contract-score guard.**`, `node .claude/bin/contract-guard.js`, `contract-guard: haiku`, `**guard demotion**`, `decision=contract-guard sonnet:`, `--shape=scribe`, `provided it is unchanged`, `the contract of record, never a fix contract`, `decision=contract-guard sonnet: no-contract`, `except a human-chosen (a)/(b) re-dispatch`.
 terminology: the header file is the **reviewer dispatch header**. Do not call it a review packet: docs/harness-glossary.md already uses **review-packet** for the contract key and **advisory review packet** for lead-programmer's report.

@@ -245,7 +245,7 @@ fi
 ~~~
 12. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.187 to 0.31.188).
+   This adds one to the patch version in both files (expected 0.31.188 to 0.31.189).
 13. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -302,7 +302,7 @@ blast-radius: agents/orchestrator.md:186, agents/orchestrator.md:188, agents/orc
 rule-map: O1 unnamed reviewer dispatch, exact name `reviewer`, gate refusal -> orchestrator (edit 4 keeps it). O2 roster check before resuming a reviewer by name -> orchestrator (edit 6 keeps it). O3 only a fresh `Agent` dispatch writes the review-join stamp; `SendMessage` only continues the same unit -> orchestrator (edit 6 keeps it). O4 a missing roster row is not proof of death; `SendMessage` first; file a bug only on a contradiction -> commands/start-feature-team.md (edit 8). O5 a persona that spawns a subagent collects its result explicitly -> orchestrator (edit 9). O6 a named dispatch under the agent-teams flag launches a teammate; the shipped default is `"0"` -> orchestrator (edit 10).
 pins-searched: spec-master searched every phrase of the moved text in tests/ (45-character sliding window) and found no pin on it; criterion 4 re-runs the three prose-pin suites that touch agents/orchestrator.md.
 four-copy: the codex and cursor orchestrator ports already omit all five narratives and the roster subsection, so they are not edited (criterion 3).
-version: .claude-plugin/plugin.json and package.json read 0.31.187 after qw-u1 if no fix round bumped; edit 12 adds one (expected 0.31.188).
+version: .claude-plugin/plugin.json and package.json read 0.31.188 after qw-u1 if no fix round bumped; edit 12 adds one (expected 0.31.189).
 mirrors: `.claude/agents/orchestrator.md` changes only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(qw-u2): move orchestrator narratives to docs; every rule kept and pinned
 diagnosis: none

@@ -275,7 +275,7 @@ fi
 ~~~
 11. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.190 to 0.31.191).
+   This adds one to the patch version in both files (expected 0.31.191 to 0.31.192).
 12. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -341,7 +341,7 @@ script-design: grep only, no graph mode. spec-master measured `code-review-graph
 blast-radius: agents/reviewer.md:18-22 and :85-89, templates/persona-protocol.md:11-38 (Structural questions; in UNIVERSAL_PROTOCOL_CORE, so every full-tier mirror re-renders, about +400 bytes each, reviewer +936 with its body), bin/cli.js:655 (BIN_HELPER_FILES; only the Claude scaffold at :2541 and runUpdate at :1313 install it), tests/bin-helpers-scaffold.test.sh:15. Line numbers are at 1d4abf5a; work from the anchors.
 pins-searched: no test pins "Scope the review via the explorer", "via the explorer" or "always re-derives blast radius" (searched tests/, bin/, README.md, CONTEXT.md, docs/). docs/harness-glossary.md's F11 entry ("the reviewer ... always re-derives blast radius independently") stays true; ADR-0013 is history and is not edited.
 four-copy: the codex and cursor reviewer ports and protocol ports keep the explorer text; their scaffolds never install `.claude/bin/` (bin/cli.js scaffoldCursor and scaffoldCodex do not call buildBinHelperSpecs).
-version: .claude-plugin/plugin.json and package.json read 0.31.190 after qw-u4 if no fix round bumped; edit 11 adds one (expected 0.31.191).
+version: .claude-plugin/plugin.json and package.json read 0.31.191 after qw-u4 if no fix round bumped; edit 11 adds one (expected 0.31.192).
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(qw-u5): the reviewer derives blast radius with a script it runs itself; explorer only as fallback
 diagnosis: none

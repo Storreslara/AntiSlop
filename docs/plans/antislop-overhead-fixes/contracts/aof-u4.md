@@ -76,7 +76,8 @@ which must have reached PASS first.
    `apply`, print an error naming the allowed values and exit non-zero **before** writing anything. Otherwise
    set `config.knowledgeWrites = v` in the same config write `runUpdate` already performs, and log one `Note:`
    line. Under `--dry-run`, report "would set" and write nothing. Add no backfill of the key.
-6. Bump `.claude-plugin/plugin.json` (patch) and add a `CHANGELOG.md` entry naming aof-u4. The entry must say
+6. Bump `.claude-plugin/plugin.json` and `package.json` (patch; validate.sh keeps them equal; expected 0.31.186
+   to 0.31.187 after aof-u3b, amended 2026-10-20) and add a `CHANGELOG.md` entry naming aof-u4. The entry must say
    that installed projects now default to knowledge proposals, and must give the opt-in command.
 7. Run `node bin/cli.js --update --knowledge-writes=apply` in this repo. That regenerates the mirrors and
    `fileHashes` and sets this repo's opt-in.

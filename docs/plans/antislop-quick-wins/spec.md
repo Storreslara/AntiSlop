@@ -3,8 +3,8 @@
 Date: 2026-10-20. Author: spec-master. Status: finalized; operator rulings on OQ1 to OQ4 recorded 2026-10-20
 (Clarifications). Source: `docs/plans/antislop-speed-architecture/findings.md` ("Solution variations",
 "Recommendation" stage 2). 6 units (qw-u1 to qw-u6), all contracted. Contracts:
-`docs/plans/antislop-quick-wins/contracts/qw-uN.md`. With aof-u4 still ahead of them, 7 dispatchable units
-remain; see "Dispatch section" for why the fast path is kept.
+`docs/plans/antislop-quick-wins/contracts/qw-uN.md`. With aof-u3b (a fix-forward on aof-u3, added 2026-10-20) and aof-u4 still
+ahead of them, 8 dispatchable units remain; see "Dispatch section" for why the fast path is kept.
 
 ## Goal
 
@@ -213,6 +213,7 @@ Screened all `.claude/reviewed/*.fail` records naming `orchestrator.md`, `person
 - 2026-10-20 External dependencies & integrations: Q Does the blast-radius script use the code-review-graph CLI? → A (self-resolved): no. Measured on this repo, `impact` gives no cross-file edges for shell scripts and hundreds of unrelated nodes at default depth; the script is `git grep` only and the explorer (graph-backed) is the fallback. This supersedes the earlier line that named a graph mode.
 - 2026-10-20 Functional scope & success criteria: Q Is the c1 script its own unit or part of qw-u5? → A (self-resolved): part of qw-u5. The prose names the script, so either half alone is inert or sends every review to the fallback.
 - 2026-10-20 Edge cases / failure handling: Q Does the sonnet default leak into the A/B `uniform` arm? → A (self-resolved): no. aof-u6's strip removes the orchestrator's `model:` line before the scaffold, and the renderer never adds a line (qw-u6 test (f); abtest-arms 108/108 on a clone). No qw-u7.
+- 2026-10-20 Edge cases / failure handling: Q aof-u3 passed review, but its scope rule forbids the version-stamp files the constitution requires and a fix round's FAIL-named files, and leaves the reviewer a judgement clause; what happens to it? → A: fix forward with aof-u3b, per the coordinator (relaying the reviewer finding): standing exceptions in both rules (version-stamp files, paths an acceptance-criteria command names literally, paths a `.fail` defect or fix contract names), the judgement clause replaced by those couplings, and the codex and cursor orchestrator ports given the sending half of the rule because their reviewer ports already enforce it. Contract `docs/plans/antislop-overhead-fixes/contracts/aof-u3b.md`, dispatched first.
 - 2026-10-20 Edge cases / failure handling: Q Can a user keep their own session model? → A (self-resolved): yes, `"orchestratorModel": "inherit"` in the project's persona-config, then `node <plugin>/bin/cli.js --update --force-render`; documented in README. `/model` and `--model` are not offered as the opt-out because their rank against agent frontmatter is undocumented.
 
 ## Risks / dependencies
@@ -238,6 +239,9 @@ Screened all `.claude/reviewed/*.fail` records naming `orchestrator.md`, `person
 - R9 (qw-u6, eval): under the A/B `shipped` policy the harness passes `--model` while the orchestrator
   frontmatter reads `sonnet`, and Claude Code does not document which wins. Read the orchestrator's model from
   the next shipped run's `modelUsage` before comparing its cost. `uniform` is unaffected (Context, e2).
+- R11 (aof-u3b): it edits the reviewer's Materiality bullet and lead-programmer's Unit scope bullet, and adds a
+  paragraph to the codex and cursor orchestrator ports. No quick-win `before:` payload includes those spans
+  (checked by grep over qw-u1 to qw-u6), so it only shifts every expected version by one.
 - R6: the byte targets are relative to each unit's own parent commit, never absolute (absolute pins expire
   when an earlier unit lands).
 - R7: aof-u3 (landed 1d4abf5a) added a paragraph after "... before routing it." and a bullet to the
@@ -370,7 +374,8 @@ One unit at a time; each starts only after the previous unit's reviewer PASS.
 
 Already landed: aof-u2 (0.31.184), aof-u3 (1d4abf5a, 0.31.185).
 
-1. aof-u4 (depends on aof-u3: unit scope)
+0. aof-u3b (fix-forward on aof-u3; contract `docs/plans/antislop-overhead-fixes/contracts/aof-u3b.md`)
+1. aof-u4 (depends on aof-u3b: unit-scope wording and bump files)
 2. qw-u1 (depends on aof-u4: shared orchestrator.md, bump files; uses aof-u1's `BIN_HELPER_FILES`)
 3. qw-u2 (depends on qw-u1: shared orchestrator.md)
 4. qw-u3 (depends on qw-u2: shared bump files; template; extends qw-u2's pins test)
@@ -378,8 +383,8 @@ Already landed: aof-u2 (0.31.184), aof-u3 (1d4abf5a, 0.31.185).
 6. qw-u5 (depends on qw-u4: shared template; extends qw-u1's `BIN_HELPER_FILES`, scaffold test and validate.sh block)
 7. qw-u6 (depends on qw-u5: shared `bin/cli.js` and validate.sh anchor; needs aof-u4's schema property in place)
 
-Expected versions if no fix round bumps in between: aof-u4 0.31.186, qw-u1 0.31.187, qw-u2 0.31.188, qw-u3
-0.31.189, qw-u4 0.31.190, qw-u5 0.31.191, qw-u6 0.31.192. Each contract adds one to whatever the version is at
+Expected versions if no fix round bumps in between: aof-u3b 0.31.186, aof-u4 0.31.187, qw-u1 0.31.188, qw-u2
+0.31.189, qw-u3 0.31.190, qw-u4 0.31.191, qw-u5 0.31.192, qw-u6 0.31.193. Each contract adds one to whatever the version is at
 its start.
 
 ## Open Questions
@@ -424,6 +429,9 @@ None. OQ1 to OQ4 were ruled by the operator on 2026-10-20 and are recorded in Cl
 - CHK17: Does each new criterion fail under its own mutation line? — PASS (spec-master ran the mutations for
   qw-u4 criteria 3 and 6, qw-u5 criterion 1 and qw-u6 criterion 1 on clones; the rest follow the qw-u1 to
   qw-u3 patterns already proven)
+- CHK18: Do aof-u3b and the quick-win contracts agree on versions and on the reviewer.md and
+  lead-programmer.md spans they touch? — PASS (expected versions shifted by one in qw-u1 to qw-u6 and the
+  aof-u4 bump edit; no quick-win payload includes the Materiality or Unit scope bullets, R11)
 
 Terminology check (prose mode, advisory): lens 1, "review packet" in the brief has a different meaning from
 the glossary's **review-packet**, so it is renamed (Clarifications 8). Lens 2: "blast radius" and "rulings
@@ -445,6 +453,7 @@ below.
 - Carried from the aof spec: CONTEXT.md:1220 cites a stale `stop-gate.sh:188-198` line (not taken up).
 
 ## Dispatch section (fast path)
+- aof-u3b (first): [../antislop-overhead-fixes/contracts/aof-u3b.md](../antislop-overhead-fixes/contracts/aof-u3b.md)
 - qw-u1: [contracts/qw-u1.md](contracts/qw-u1.md)
 - qw-u2: [contracts/qw-u2.md](contracts/qw-u2.md)
 - qw-u3: [contracts/qw-u3.md](contracts/qw-u3.md)
@@ -453,7 +462,7 @@ below.
 - qw-u6: [contracts/qw-u6.md](contracts/qw-u6.md)
 - qw-u7: none (no eval amendment is needed; Context, e2)
 
-Unit count: 6 quick-win units plus aof-u4 = 7 dispatchable units, above the fast-path limit of 5. Every unit
+Unit count: 6 quick-win units plus aof-u3b and aof-u4 = 8 dispatchable units, above the fast-path limit of 5. Every unit
 already has a committed contract of record that scores 7/7 on `contract-score.js --rubric=v2`, so nothing is
 left for task-master to slice; the orchestrator can dispatch from the contract files in the order above. If
 the operator prefers a task-master pass anyway, it should take these contracts as input, not the spec.

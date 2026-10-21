@@ -632,12 +632,15 @@ record:
 - [aof-u1](contracts/aof-u1.md)
 - [aof-u2](contracts/aof-u2.md)
 - [aof-u3](contracts/aof-u3.md)
+- [aof-u3b](contracts/aof-u3b.md) (fix-forward on aof-u3 after its PASS, added 2026-10-20: standing unit-scope
+  exceptions, the reviewer's judgement clause replaced by explicit couplings, orchestrator ports synced;
+  runs before aof-u4)
 - [aof-u4](contracts/aof-u4.md)
 - [aof-u5](contracts/aof-u5.md)
 - [aof-u6](contracts/aof-u6.md)
 
 Order and dependencies:
-- **Product chain, strictly serial:** aof-u1, then aof-u2, then aof-u3, then aof-u4. Each touches
+- **Product chain, strictly serial:** aof-u1, then aof-u2, then aof-u3, then aof-u3b, then aof-u4. Each touches
   `agents/orchestrator.md` and bumps the version in its own commit (R5). Each depends on the previous unit's
   PASS. aof-u4 also depends on aof-u3, because the scribe rule refers to the unit scope that aof-u3 defines.
 - **Eval chain, strictly serial:** aof-u5, then aof-u6. Both append to `operator-decisions.md` and
@@ -656,7 +659,8 @@ the contracts of record.
 
 ## Scribe update hint
 - New glossary terms to consider for `CONTEXT.md`: **unit scope** (a unit's `## Affected files` plus the
-  `.claude/` and `docs/plans/` bookkeeping), **knowledge proposal**, **review in flight** (a fresh review-join
+  `.claude/` and `docs/plans/` bookkeeping) and, after aof-u3b, its **standing exceptions** (version-stamp files, paths an
+  acceptance-criteria command names, paths a `.fail` record or fix contract names), **knowledge proposal**, **review in flight** (a fresh review-join
   stamp with no verdict yet).
 - Amend **model policy**: under `uniform`, Arm B's model routing is overridden in the plugin copy (OD-23).
 - The draft ADR above ("Knowledge files change only inside unit scope") is for scribe to number once aof-u4 lands.

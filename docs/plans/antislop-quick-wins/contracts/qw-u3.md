@@ -183,7 +183,7 @@ whole point of it being cheap.
    after: `accurate.`
 9. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.188 to 0.31.189).
+   This adds one to the patch version in both files (expected 0.31.189 to 0.31.190).
 10. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -241,7 +241,7 @@ rule-map: P1 one unit mid-review; `.blocked` keeps the flag -> kept (edit 3). P2
 measured: Review markers -674 bytes, Terminal status line -687 bytes (template, measured by spec-master on the current text). The targets (1200 and 500) leave about 150 bytes of slack for rewrapping.
 four-copy: `grep -F` for each removed phrase in `adapters/codex/agents-md-fragment.md` and `adapters/cursor/rules/persona-protocol.mdc` finds none of them; those ports already use one-sentence versions.
 prior-fail: item10-1-name-the-two-axes added paragraph 2; its terms are glossary entries in CONTEXT.md, so edit 4 keeps both bold terms and the pins check them.
-version: .claude-plugin/plugin.json and package.json read 0.31.188 after qw-u2 if no fix round bumped; edit 9 adds one (expected 0.31.189).
+version: .claude-plugin/plugin.json and package.json read 0.31.189 after qw-u2 if no fix round bumped; edit 9 adds one (expected 0.31.190).
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).
 commit-message: feat(qw-u3): trim protocol narratives; every rule kept and pinned
 diagnosis: none
