@@ -254,7 +254,7 @@ fi
 ~~~
 8. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.193 to 0.31.194 if rp-u1 ran just before).
+   This adds one to the patch version in both files (expected 0.31.194 to 0.31.195 if rp-u1 ran just before).
 9. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -294,11 +294,11 @@ fi
    exit: 0
    stdout: `0`
    mutation: set `loop_guard_active=true` unconditionally at the top of the core copy in `adapters/cursor/hooks/scripts/lib/stop-gate-core.sh`; the copies differ and stdout is `1`.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u2)" | tail -1); git diff --name-only "$b^..HEAD" -- . ":(exclude).claude" | sort | tr "\n" " "'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u2)" | tail -1); l=$(git log --format=%H --grep="(rp-u2)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md adapters/codex/hooks/scripts/lib/stop-gate-core.sh adapters/cursor/hooks/scripts/lib/stop-gate-core.sh hooks/scripts/lib/stop-gate-core.sh hooks/scripts/stop-gate.sh package.json tests/review-join.test.sh tests/stop-gate-review-inflight.test.sh `
    mutation: also edit `adapters/cursor/hooks/scripts/stop-gate.sh` in an rp-u2 commit; it joins the list.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u2)" | tail -1); bash hooks/scripts/version-stamp-check.sh "$b^..HEAD" | cut -d" " -f1-4'`
+6. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u2)" | tail -1); l=$(git log --format=%H --grep="(rp-u2)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: no`
    mutation: also edit `templates/persona-protocol.md` in an rp-u2 commit with no bump; stdout reads `version-stamp-check: violation touched: yes`.
@@ -312,11 +312,11 @@ tdd: yes edits 1-2 add the cases; edit 3 runs them red (`1 1`) before the code e
 cause: Claude Code sets `stop_hook_active: true` on the stop that follows a Stop-hook block, and `hooks/scripts/stop-gate.sh:141-142` exited 0 on it before any review-join work. Flags are cleared only in the reviewer branch (`stop-gate-core.sh:397`, identity `reviewer` plus `persona_matches_grant`) and by a `skip:` flag; the `cleared-by=reviewer marker=MISSING` audit line clears nothing, it precedes a block.
 loop-safety: the only exits on a loop-guarded reviewer stop are `allow` (config absent, review gating off, `.blocked`/`.escalated`, consume path, the new MISSING path) and the marker-commit-check `exit 2`, which edit 5 disables under the guard. The microworld surfacing block above the reviewer branch is one-shot (watermark), so it cannot loop.
 ports: the codex and cursor entry scripts never set `loop_guard_active`; `${loop_guard_active:-false}` keeps their path unchanged. Cursor's `loop_count >= 5` early allow has the same shape; recorded in the spec Risks, not fixed here.
-proof: spec-master applied edits 1 to 12 to a scratch clone of cfb7ddac with rp-u1 applied, using a script that requires each `before:` payload to occur exactly once: every payload matched once, edit 3 printed `1 1`, edit 11 exited 0, and criteria 1 to 6 printed the stated stdout after `VERSION` was replaced. Mutations proven on the clone: deleting the future check fails (l), deleting the `.blocked` skip fails (n), deleting the `date -j` fallback fails (p), dropping the dedupe guard fails (r), restoring the early allow fails loop-guard-consumes and loop-guard-never-blocks. stop-gate-blocked, -escalated, -config-drift, -microworld-skip and -deferred-microworld stay green; no test sends `stop_hook_active: true` today. validate.sh was not run by spec-master.
+proof: spec-master applied edits 1 to 12 to a scratch clone of cfb7ddac with rp-u1 applied, and again on 8b931f0f (qw-u5 landed) between rp-u1 and rp-u3, using a script that requires each `before:` payload to occur exactly once: every payload matched once, edit 3 printed `1 1`, edit 11 exited 0, and criteria 1 to 6 printed the stated stdout after `VERSION` was replaced. Mutations proven on the clone: deleting the future check fails (l), deleting the `.blocked` skip fails (n), deleting the `date -j` fallback fails (p), dropping the dedupe guard fails (r), restoring the early allow fails loop-guard-consumes and loop-guard-never-blocks. stop-gate-blocked, -escalated, -config-drift, -microworld-skip and -deferred-microworld stay green; no test sends `stop_hook_active: true` today. validate.sh was not run by spec-master.
 chained: no queued contract (qw-u5, qw-u6, st-u1 to st-u4) edits any file in this unit's list; st-u3 adds a separate SubagentStop hook (`writer-scope-gate.sh`) and registers it in `hooks/hooks.json`, which this unit does not touch.
 prior-fail: aof-u2 (the in-flight allow) FAILed on contract anchors AC2.2/AC2.3, not on code; its AC2.6 reads HEAD and fails on any later commit (note only).
 blast-radius: hooks/scripts/lib/stop-gate-core.sh:356-359 (review_inflight_units), :486 (mcc block), :524-532 (MISSING branch), hooks/scripts/stop-gate.sh:141-146; callers: hooks/scripts/stop-gate.sh sources the core; adapters/codex|cursor/hooks/scripts/stop-gate.sh source their generated copies. Line numbers are at cfb7ddac; work from the anchors.
-version: .claude-plugin/plugin.json and package.json read 0.31.193 after rp-u1 if no fix round bumped; edit 8 adds one to whatever they read when the unit starts (expected 0.31.194). The bump is what makes `--update` regenerate the copies; without it `--update` reports the project already current.
+version: .claude-plugin/plugin.json and package.json read 0.31.194 after rp-u1 if no fix round bumped; edit 8 adds one to whatever they read when the unit starts (expected 0.31.195). The bump is what makes `--update` regenerate the copies; without it `--update` reports the project already current.
 mirrors: generated copies change only through `node bin/cli.js --update` (constitution P2); never hand-edit them.
 commit-message: fix(rp-u2): strict review-in-flight stamps; a loop-guarded reviewer stop still consumes its verdict
 diagnosis: none

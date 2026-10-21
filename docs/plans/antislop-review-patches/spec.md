@@ -112,13 +112,29 @@ fixed, or accepted, with the evidence. Ranked by risk, safety and correctness fi
   qw-u3 cut from the protocol. None of the seven terms has an entry in either glossary. They are harness
   terms, so they go to `docs/harness-glossary.md` (the ubiquitous-language skill: harness mechanics live
   there, not in `CONTEXT.md`).
+- **qw-u4 review addendum (coordinator, 2026-10-20): confirmed, folded into rp-u3.** (1) Unpinned safety
+  phrases, verified present once each: orchestrator stub "ask through one `AskUserQuestion` call" and "If
+  that section cannot be read, print the whole marker verbatim, write nothing, and tell the human to resolve
+  the escalation from their terminal or the Microworld dashboard."; protocol subsection "never retry or
+  rephrase the write", "Write only from this session's answer", "never pick one for them", "Do not relay the
+  decision in the prompt" (the orchestrator's lowercase form is already pinned). rp-u3 adds `has` rows that
+  read the current files, so the verbatim-move guarantee no longer depends on git history. (2) The stub's
+  fallback names the terminal route whose template lives only in the section it assumes unreadable:
+  recorded as accepted (inlining a DECISION template into the orchestrator body puts the packet path and
+  `DECISION` in persona prose that trips `human-decision-gate.sh` whenever quoted in Bash); Open Question 5.
+  (3) qw-u4 criterion 4's mutation is inert unless the version changed (`--update` reports "already
+  current"): contract-hygiene note, added to the finding-I rule below. (4) The protocol template grew 9,086
+  bytes in a section no persona inlines: note only.
 - **I: confirmed, recorded.** Hand-typed anchors failed twice (aof-u2 AC2.2/AC2.3, amended in e24b17b1; qw-u1
   step 6). No mechanical check exists: `contract-guard.js` and `contract-score.js` score shape, not whether
   an anchor exists in the target file. spec-master used a scratch applier for rp-u1 to rp-u3 (Pre-resolved
   context of each contract). Rule for task-master and spec-master, effective now: every `before:` and
   `anchor: line matching` literal in a contract is checked against the current file (exactly one match)
   and against every queued contract's `before:` payloads (no queued unit rewrites it) before the contract
-  is committed.
+  is committed. A mutation that relies on `node bin/cli.js --update` re-rendering is valid only in a unit
+  that bumps the version (otherwise `--update` reports "already current"). A range criterion names the
+  unit's own last commit (`l=$(git log --format=%H --grep="(<unit>)" | head -1)`), never `HEAD`, so it
+  still holds after later units land (aof-u2 AC2.6 is the counter-example).
 
 ### Queued units and anchor collisions (checked 2026-10-20)
 
@@ -223,7 +239,7 @@ Acceptance criteria: `docs/plans/antislop-review-patches/contracts/rp-u2.md`.
 ### Step 3 (rp-u3): bookkeeping fail-safe and stale prose
 Affected files: `bin/unit-bookkeeping.sh`, `tests/unit-bookkeeping.test.sh`, `agents/reviewer.md`,
 `adapters/codex/agents/orchestrator.toml`, `adapters/cursor/agents/orchestrator.md`,
-`tests/prompt-diet-pins.test.sh`, bump files, generated mirrors.
+`tests/prompt-diet-pins.test.sh`, bump files, generated mirrors. Includes the qw-u4 addendum pins.
 Acceptance criteria: `docs/plans/antislop-review-patches/contracts/rp-u3.md`.
 
 ### Step 4 (rp-u4): `--knowledge-writes` is never silently ignored (contract next spawn)
@@ -277,7 +293,8 @@ dispatch:
 - rp-u3: `docs/plans/antislop-review-patches/contracts/rp-u3.md`
 - rp-u4, rp-u5, rp-u6, rp-s1: next spawn.
 
-Dispatch order against the queued units: rp-u1, rp-u2, rp-u3 right after the unit currently in flight
+Dispatch order against the queued units (qw-u5 landed as 82844f70 while this spec was written; all three
+contracts were re-proven in sequence on a clone of 8b931f0f): rp-u1, rp-u2, rp-u3 right after the unit currently in flight
 (they share no anchor with qw-u5, qw-u6 or st-u1 to st-u4), rp-u1 strictly before st-u1. Then the queued
 qw-u5, qw-u6, st-u1 (amended per Open Question 1), st-u2, st-u3, st-u4. Then rp-u4, rp-u5, rp-u6 in that
 order, then rp-s1 last. Every unit bumps the version relative to the version it starts at.
@@ -295,6 +312,9 @@ order, then rp-s1 last. Every unit bumps the version relative to the version it 
    PASS again (reverts aof's once-per-plan batching).
 3. Build `bin/contract-anchors.js` (Step 6)? Recommended: yes; two contracts failed on hand-typed anchors in
    this one plan family and the check is about 80 lines. Alternative: record the rule only (Context, I).
+5. qw-u4 addendum item 2: inline the one-line terminal DECISION template in the orchestrator stub?
+   Recommended: no, accepted as is (Context, addendum). Alternative: a rp-u5 edit that inlines it, after
+   checking `human-decision-gate.sh` lets the edit and its pins through.
 4. `--knowledge-writes` forms (Step 4). Recommended: space form exits 2 with a usage line; fresh install
    honours the flag; exit code stays the render's. Alternative: accept the space form as a synonym.
 
@@ -312,6 +332,10 @@ order, then rp-s1 last. Every unit bumps the version relative to the version it 
   criterion? — PASS (rp-u1 to rp-u3)
 - CHK8: Is the scribe-on-early-stop rule decided? — FAIL (missing) — converted to Open Question 2
 - CHK9: Is building the anchor script decided? — FAIL (missing) — converted to Open Question 3
+- CHK10: Is each qw-u4 addendum item either pinned by rp-u3 or recorded? — PASS (items 1 rp-u3; 2 Open
+  Question 5; 3 and 4 Context)
+- CHK11: Do the range criteria of rp-u1 to rp-u3 survive later commits? — FAIL (conflicting, they read
+  HEAD) — revised in place (they name the unit's last commit)
 
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and

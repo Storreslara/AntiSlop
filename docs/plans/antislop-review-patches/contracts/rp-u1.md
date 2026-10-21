@@ -225,7 +225,7 @@ for f in adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestr
 ~~~
 10. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.192 to 0.31.193 if rp-u1 runs first).
+   This adds one to the patch version in both files (expected 0.31.193 to 0.31.194 if rp-u1 runs right after qw-u5).
 11. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
@@ -261,11 +261,11 @@ for f in adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestr
    exit: 0
    stdout: `12` then `9` (two lines)
    mutation: rewrap one line of edit 8's text in `adapters/codex/agents/reviewer.toml`; `cmp` reports a difference and the command exits 1.
-4. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u1)" | tail -1); git diff --name-only "$b^..HEAD" -- . ":(exclude).claude" | sort | tr "\n" " "'`
+4. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u1)" | tail -1); l=$(git log --format=%H --grep="(rp-u1)" | head -1); git diff --name-only "$b^..$l" -- . ":(exclude).claude" | sort | tr "\n" " "'`
    exit: 0
    stdout: `.claude-plugin/plugin.json CHANGELOG.md adapters/codex/agents/lead-programmer.toml adapters/codex/agents/reviewer.toml adapters/cursor/agents/lead-programmer.md adapters/cursor/agents/reviewer.md agents/lead-programmer.md agents/reviewer.md package.json tests/unit-scope-prose.test.sh `
    mutation: also edit `agents/orchestrator.md` in an rp-u1 commit; it joins the list.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u1)" | tail -1); bash hooks/scripts/version-stamp-check.sh "$b^..HEAD" | cut -d" " -f1-4'`
+5. run: `bash -c 'b=$(git log --format=%H --grep="(rp-u1)" | tail -1); l=$(git log --format=%H --grep="(rp-u1)" | head -1); bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
    exit: 0
    stdout: `version-stamp-check: ok touched: yes`
    mutation: skip edit 10; stdout reads `version-stamp-check: violation touched: yes`.
@@ -276,12 +276,12 @@ for f in adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestr
 
 ## Pre-resolved context
 tdd: yes edits 1-2 add the rows; edit 3 runs the test red (exit 1) before the persona edits 4-9.
-proof: spec-master applied edits 1 to 13 to a scratch clone of cfb7ddac with a script that requires each `before:` payload to occur exactly once in its file: every payload matched once, edit 3 exited 1, edit 13 exited 0, after committing (with `VERSION` replaced) criteria 1 to 5 printed the stated stdout; adapter-protocol-parity, adapter-fail-tier-pin, adapter-skill-parity, cli-backfill, persona-prose-pins, prompt-diet-pins and writer-tier-consistency stayed green and both codex `.toml` files still parse. validate.sh was not run by spec-master.
+proof: spec-master applied edits 1 to 14 to a scratch clone of cfb7ddac, and again to a clone of 8b931f0f (qw-u5 landed) followed by rp-u2 and rp-u3, with a script that requires each `before:` payload to occur exactly once in its file: every payload matched once, edit 3 exited 1, edit 13 exited 0, after committing (with `VERSION` replaced) criteria 1 to 5 printed the stated stdout; adapter-protocol-parity, adapter-fail-tier-pin, adapter-skill-parity, cli-backfill, persona-prose-pins, prompt-diet-pins and writer-tier-consistency stayed green and both codex `.toml` files still parse. validate.sh was not run by spec-master.
 chained: no queued contract (qw-u5, qw-u6, st-u1 to st-u4) edits `agents/lead-programmer.md`, any `adapters/` file or `tests/unit-scope-prose.test.sh`; qw-u5 edits 6-7 and st-u2 edit 6 change `agents/reviewer.md` lines 18-27 and 91, outside this unit's lines 34-38, and no line of this unit's `before:` payloads occurs in any queued `before:` payload.
 prior-fail: aof-u3 PASSed with the design finding that became aof-u3b; aof-u3b's commit 4a3e8068 wrote today's text, which edits 4 to 9 replace whole. Wrapping is identical in the source and both ports (criterion 3 holds today over the old text).
 queued-rule: st-u1's `us_classify` still classes any `run:` path token as `criteria`; amending it is spec Open Question 1, not this unit.
 blast-radius: agents/lead-programmer.md:68, agents/reviewer.md:34, adapters/codex/agents/lead-programmer.toml:66, adapters/cursor/agents/lead-programmer.md:65, adapters/codex/agents/reviewer.toml:52, adapters/cursor/agents/reviewer.md:49, tests/unit-scope-prose.test.sh:26 and :32. Line numbers are at cfb7ddac; work from the anchors.
-version: .claude-plugin/plugin.json and package.json read 0.31.192 at cfb7ddac; edit 10 adds one to whatever they read when the unit starts.
+version: .claude-plugin/plugin.json and package.json read 0.31.193 at 82844f70 (qw-u5); edit 10 adds one to whatever they read when the unit starts.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2); the bump is what makes `--update` re-render.
 commit-message: fix(rp-u1): unit scope never exempts a criterion-executed path; Do NOT touch wins
 diagnosis: none
