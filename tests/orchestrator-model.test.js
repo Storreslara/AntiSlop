@@ -100,6 +100,24 @@ check('(i) scaffold renders sonnet; the opt-out renders inherit after --update -
   }
 });
 
+check('(j) a non-string value warns without throwing and keeps the shipped model (rp-u10)', () => {
+  const warn = console.warn;
+  const seen = [];
+  console.warn = (m) => seen.push(String(m));
+  try {
+    assert.strictEqual(cli.applyOrchestratorModel(SRC, 'orchestrator', { orchestratorModel: { toString: 'x' } }), SRC);
+    assert.strictEqual(cli.applyOrchestratorModel(SRC, 'orchestrator', { orchestratorModel: 7 }), SRC);
+    assert.strictEqual(cli.applyOrchestratorModel(SRC, 'orchestrator', { orchestratorModel: 'gpt-x' }), SRC);
+  } finally {
+    console.warn = warn;
+  }
+  assert.deepStrictEqual(seen.map((m) => m.split(' is not one of')[0]), [
+    'Note: persona-config.json orchestratorModel {"toString":"x"}',
+    'Note: persona-config.json orchestratorModel 7',
+    'Note: persona-config.json orchestratorModel "gpt-x"',
+  ]);
+});
+
 if (failures > 0) {
   console.log(`${failures} orchestrator-model check(s) FAILED.`);
   process.exit(1);

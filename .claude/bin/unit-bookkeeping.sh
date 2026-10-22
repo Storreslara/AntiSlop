@@ -51,6 +51,12 @@ dispatch_cmd() {
   if [ "$rc" -ne 0 ] && [ "$tier" != EXHAUSTED ]; then tier=opus; fi
   if [ -n "$line" ]; then echo "$line"; fi
   echo "model: $tier"
+  # A failed helper's reason word describes a run that did not complete: record the failure, never a
+  # guard demotion or a no-contract ruling for a tier that is not used.
+  if [ "$rc" -ne 0 ]; then
+    ruling "$unit" "helper failed rc=$rc: $tier"
+    return 0
+  fi
   case " $line " in
     *" reason=guard-demotion "*) guard_demote "$contract" "$unit" ;;
     *" reason=no-contract "*) ruling "$unit" "contract-guard sonnet: no-contract" ;;

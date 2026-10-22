@@ -1112,7 +1112,7 @@ function applyOrchestratorModel(body, name, config) {
   if (name !== 'orchestrator' || config == null || config.orchestratorModel == null) return body;
   const value = config.orchestratorModel;
   if (!ORCHESTRATOR_MODELS.includes(value)) {
-    console.warn(`Note: persona-config.json orchestratorModel "${value}" is not one of ${ORCHESTRATOR_MODELS.join(', ')}; keeping the shipped orchestrator model.`);
+    console.warn(`Note: persona-config.json orchestratorModel ${JSON.stringify(value)} is not one of ${ORCHESTRATOR_MODELS.join(', ')}; keeping the shipped orchestrator model.`);
     return body;
   }
   const fm = body.match(/^---\n[\s\S]*?\n---\n/);

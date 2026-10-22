@@ -31,7 +31,9 @@
 # .claude/review-audit.log as identity-drift lines.
 #
 # Logic, in order:
-#  0) stop_hook_active guard - never re-trigger ourselves in a loop.
+#  0) stop_hook_active guard (rp-u2) - the stop after a block allows at once, except
+#     this project's reviewer: its stop still consumes review-join stamps (see
+#     "Loop guard (rp-u2)" below).
 #  0.5) reviewer's own SubagentStop -> first, consult the PER-UNIT
 #     review-join stamps that reviewer-route-gate.sh wrote at dispatch time
 #     (one .claude/.review-join.<unit-id> per unit this reviewer was dispatched
@@ -144,8 +146,10 @@ agent_type="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
 
 # Loop guard (rp-u2). The stop that follows a block carries stop_hook_active. For this project's
 # reviewer it still runs the review-join consume and the bounded flag clear, so a verdict written
-# after a marker=MISSING block is not lost; the core never blocks such a stop (loop_guard_active).
-# Every other stop with stop_hook_active allows at once, as before.
+# after a marker=MISSING block is not lost. The core never blocks such a stop on the review-join or
+# the marker-commit-check (loop_guard_active), so `markerCommitCheck.mode: block` blocks once; the
+# microworld surfacing block runs before the reviewer branch and can still block it once, until its
+# watermark advances. Every other stop with stop_hook_active allows at once, as before.
 loop_guard_active=false
 if [ "$stop_active" = "true" ]; then
   if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type")" = "reviewer" ] \

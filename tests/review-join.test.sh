@@ -695,4 +695,38 @@ else
   fail=1
 fi
 
+# rp-u10: under the loop guard `markerCommitCheck.mode: block` is one-shot: the unguarded reviewer stop
+# blocks on the mismatch, the guarded stop that follows logs it again, consumes the stamp and clears the flag.
+dir="$(mcc_repo loop-guard)"
+mcc_seed_mismatch "$dir" loop-guard block
+rc1=0; lg_stop "$dir" reviewer false || rc1=$?
+rc2=0; lg_stop "$dir" reviewer true || rc2=$?
+if [ "$rc1" = 2 ] && [ "$rc2" = 0 ] && [ ! -e "$dir/.claude/.pending-review.lp-mcc" ] \
+   && [ ! -e "$dir/.claude/.review-join.own-loop-guard" ] \
+   && [ "$(grep -c 'marker-commit-check=mismatch unit=own-loop-guard' "$dir/.claude/review-audit.log")" = 2 ]; then
+  echo "OK   (loop-guard-mcc-block-once) mode block blocks the first reviewer stop only; the guarded stop consumes"
+else
+  echo "FAIL (loop-guard-mcc-block-once) expected rc1=2, rc2=0, flag and stamp gone, two mismatch lines (rc1=$rc1 rc2=$rc2)"
+  fail=1
+fi
+
+# rp-u10: the guard is the reviewer's only. A gated agent's stop_hook_active stop on a dirty tree whose
+# testAndLintCommand fails allows at once; the same stop without the guard blocks (the control).
+dir="$tmproot/loop-guard-gated-dirty"
+mkdir -p "$dir/.claude/reviewed"
+git -C "$dir" init -q
+printf 'a\n' > "$dir/a.txt"
+git -C "$dir" add a.txt
+git -C "$dir" -c user.email=t@t -c user.name=t commit -q -m base
+printf 'b\n' > "$dir/a.txt"
+printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"false"}\n' > "$dir/.claude/persona-config.json"
+rc1=0; lg_stop "$dir" lead-programmer false || rc1=$?
+rc2=0; lg_stop "$dir" lead-programmer true || rc2=$?
+if [ "$rc1" = 2 ] && [ "$rc2" = 0 ]; then
+  echo "OK   (loop-guard-gated-dirty) a gated agent's guarded stop allows at once; unguarded, the same stop blocks"
+else
+  echo "FAIL (loop-guard-gated-dirty) expected rc1=2 (control) and rc2=0 (rc1=$rc1 rc2=$rc2)"
+  fail=1
+fi
+
 exit "$fail"

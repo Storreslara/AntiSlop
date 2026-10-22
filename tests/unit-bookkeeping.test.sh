@@ -107,4 +107,17 @@ stub rtier 'sonnet'
 UB_REVIEWER_TIER="$T/stub/rtier" bash "$UB" review u14 HEAD~1 >/dev/null
 grep -qx "Range: $BASE..$(git rev-parse HEAD)" "$HDR/u14.header" && ok "(q) symbolic baseline resolved to a full SHA" || bad "(q) $(grep '^Range:' "$HDR/u14.header")"
 
+# rp-u10: a non-zero ladder exit records `helper failed rc=<n>: <tier>` and runs neither the guard
+# demotion nor the no-contract ruling.
+printf '#!/usr/bin/env bash\necho "ladder-tier: sonnet n=0 ladder=haiku,sonnet,opus reason=guard-demotion"\nexit 4\n' > "$T/stub/ladderdem"
+stub guard 'contract-guard: sonnet score=5/7'
+out="$(UB_LADDER="$T/stub/ladderdem" UB_GUARD="$T/stub/guard" bash "$UB" dispatch u15 --contract c.md)"
+printf '%s\n' "$out" | grep -qx 'model: opus' && ok "(r) failed helper -> opus" || bad "(r) failed helper -> opus: $out"
+printf '%s\n' "$out" | grep -q '^guard:' && bad "(r) guard ran for a failed helper" || ok "(r) no guard line"
+grep -qF 'unit=u15 decision=contract-guard' "$LOG" && bad "(r) demotion ruling for a failed helper" || ok "(r) no demotion ruling"
+tail -n1 "$LOG" | grep -qE "^RULING $TS unit=u15 decision=helper failed rc=4: opus\$" && ok "(r) helper-failed ruling" || bad "(r) helper-failed ruling: $(tail -n1 "$LOG")"
+printf '#!/usr/bin/env bash\necho "ladder-tier: sonnet n=0 ladder=haiku,sonnet,opus reason=no-contract"\nexit 5\n' > "$T/stub/laddernc"
+UB_LADDER="$T/stub/laddernc" bash "$UB" dispatch u16 >/dev/null
+tail -n1 "$LOG" | grep -qE "^RULING $TS unit=u16 decision=helper failed rc=5: opus\$" && ok "(r) no-contract ruling skipped for a failed helper" || bad "(r) no-contract: $(tail -n1 "$LOG")"
+
 exit "$fail"
