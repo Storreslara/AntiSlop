@@ -2,7 +2,9 @@ Unit: st-u3
 
 ## Objective
 A SubagentStop gate for the writers the reviewer never sees, per operator ruling OQ3 = (a), 2026-10-20: it blocks all three writers (spec Step 3, variation f).
-New `hooks/scripts/writer-scope-gate.sh` is registered as the second SubagentStop hook, after stop-gate.sh. For
+New `hooks/scripts/writer-scope-gate.sh` becomes the second SubagentStop hook, after stop-gate.sh; the operator
+registers it in `hooks/hooks.json` by hand (operator step O1, Pre-resolved context `operator-step-O1:`), since
+no agent identity may write that file. Until O1 the gate is installed but inert. For
 `lead-programmer`, `scribe` and `spec-master` (namespaced forms included) it:
 - attributes changed paths from the subagent's **own** transcript (`agent_transcript_path`): the paths of its
   Write, Edit and NotebookEdit calls, plus the files of every commit whose `[<branch> <sha>]` line appears in
@@ -46,7 +48,6 @@ st-u1's library as corrected by rp-u9 and rp-u11, and qw-u1's gitignored `.claud
 ## Affected files
 - `tests/writer-scope-gate.test.sh` (anchor: new file, mode 755)
 - `hooks/scripts/writer-scope-gate.sh` (anchor: new file, mode 755)
-- `hooks/hooks.json` (anchor: line matching `    "SubagentStop": [`)
 - `docs/trust-model.md` (anchor: line matching `| 25 | A unit touching`)
 - `tests/validate.sh` (anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`)
 - `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`
@@ -185,14 +186,16 @@ printf 'q\n' > 'src/q"x.js' && g add -A && g commit -qm q && S2="$(git rev-parse
 mk "$T/t17" "$LP"; commit_result "$T/t17" "$S2"; run lead-programmer "$T/t17"
 [ "$rc" = 2 ] && ok "(q) C-quoted committed path blocked" || bad "(q) rc=$rc $err"
 g reset -q --hard HEAD~1
-# (l) registration: SubagentStop runs stop-gate.sh and writer-scope-gate.sh, in that order.
-[ "$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")" = 'stop-gate.sh,writer-scope-gate.sh' ] && ok "(l) registered after stop-gate" || bad "(l) registration"
+# (l) registration (operator step O1): SubagentStop runs stop-gate.sh first, and writer-scope-gate.sh right
+# after it once the operator has registered it; before O1 the gate is inert and nothing else changes.
+r="$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")"
+case "$r" in stop-gate.sh|stop-gate.sh,writer-scope-gate.sh) ok "(l) stop-gate.sh first; the gate after it or not yet registered: $r" ;; *) bad "(l) registration: $r" ;; esac
 [ -x "$GATE" ] && ok "(l) executable" || bad "(l) not executable"
 exit "$fail"
 ~~~
 2. command: `bash tests/writer-scope-gate.test.sh`
    expect: 1
-   The red step: the gate does not exist and is not registered.
+   The red step: the gate does not exist.
 3. file: `hooks/scripts/writer-scope-gate.sh`
    anchor: new file (mode 755; hooks.json runs it directly, so a missing +x disables it)
    indent: 0
@@ -339,34 +342,14 @@ log "blocked: ${viol[*]}"
 } >&2
 exit 2
 ~~~
-4. file: `hooks/hooks.json`
-   anchor: line matching `    "SubagentStop": [`
-   indent: 0
-   before:
-~~~
-    "SubagentStop": [
-      {
-        "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh" }
-        ]
-~~~
-   after:
-~~~
-    "SubagentStop": [
-      {
-        "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh" },
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/writer-scope-gate.sh" }
-        ]
-~~~
-5. file: `docs/trust-model.md`
+4. file: `docs/trust-model.md`
    anchor: line matching `| 25 | A unit touching` (the last numbered row of the table)
    indent: 0
    insert-after:
 ~~~
 | 26 | A writing persona (lead-programmer, scribe, spec-master) ends its turn with no net change outside its dispatch's unit scope | lead-programmer, scribe, spec-master | `hooks/scripts/writer-scope-gate.sh` | SubagentStop gate (unit st-u3). Attributes paths from the subagent's own transcript (Write/Edit file paths, plus the files of each commit whose `[<branch> <sha>]` line it saw), so a concurrent writer is never blamed; Write/Edit paths are normalised lexically before they are judged; a Bash write that never went through Write/Edit and was never committed is not attributed (residual). A missing transcript is allowed and logged to `.claude/bookkeeping/scope-gate.log`. |
 ~~~
-6. file: `tests/validate.sh`
+5. file: `tests/validate.sh`
    anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`
    indent: 0
    before:
@@ -398,28 +381,29 @@ else
   fail=1
 fi
 ~~~
-7. command: `bash tests/writer-scope-gate.test.sh`
+6. command: `bash tests/writer-scope-gate.test.sh`
    expect: 0
-8. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
+7. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files (expected 0.31.202 to 0.31.203). The bump is required: `--update`
+   This adds one to the patch version in both files (expected 0.31.203 to 0.31.204). The bump is required: `--update`
    installs a new hook script only when `pluginVersion` moves.
-9. file: `CHANGELOG.md`
+8. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
    insert-after:
 ~~~
 
-**Writer scope gate (st-u3, VERSION).** New SubagentStop hook `hooks/scripts/writer-scope-gate.sh`, registered after stop-gate.sh: lead-programmer, scribe and spec-master cannot end a turn while a change they made (Write/Edit paths and their own commits, read from their own transcript) is outside the dispatch's unit scope; knowledge files need `knowledgeWrites: "apply"` or a dispatch that lists or names them. `.claude/` and `docs/plans/` are allowed before `## Do NOT touch` is read (a bullet naming a `.claude/` copy says it changes only through `--update`); Write/Edit paths are normalised lexically, and a C-quoted committed name blocks. A reverted change passes. Blocks are logged to `.claude/bookkeeping/scope-gate.log`. docs/trust-model.md row 26. New test tests/writer-scope-gate.test.sh.
+**Writer scope gate (st-u3, VERSION).** New SubagentStop hook `hooks/scripts/writer-scope-gate.sh`, registered after stop-gate.sh by the operator (step O1; inert until then): lead-programmer, scribe and spec-master cannot end a turn while a change they made (Write/Edit paths and their own commits, read from their own transcript) is outside the dispatch's unit scope; knowledge files need `knowledgeWrites: "apply"` or a dispatch that lists or names them. `.claude/` and `docs/plans/` are allowed before `## Do NOT touch` is read (a bullet naming a `.claude/` copy says it changes only through `--update`); Write/Edit paths are normalised lexically, and a C-quoted committed name blocks. A reverted change passes. Blocks are logged to `.claude/bookkeeping/scope-gate.log`. docs/trust-model.md row 26. New test tests/writer-scope-gate.test.sh.
 ~~~
-   Replace `VERSION` with the version that edit 8 wrote.
-10. command: `node bin/cli.js --update`
+   Replace `VERSION` with the version that edit 7 wrote.
+9. command: `node bin/cli.js --update`
    expect: 0
-11. command: `git add tests/writer-scope-gate.test.sh hooks/scripts/writer-scope-gate.sh .claude/hooks/scripts/writer-scope-gate.sh && git add -u && git commit -m "feat(st-u3): writer scope gate at SubagentStop for lead-programmer, scribe and spec-master"`
+10. command: `git add tests/writer-scope-gate.test.sh hooks/scripts/writer-scope-gate.sh .claude/hooks/scripts/writer-scope-gate.sh && git add -u && git commit -m "feat(st-u3): writer scope gate at SubagentStop for lead-programmer, scribe and spec-master"`
    expect: 0
    Run `git status --short` first: if a tracked file outside "Affected files" is modified, stop and report it.
 
 ## Do NOT touch
+- `hooks/hooks.json` (the registration is operator step O1: no agent identity may write it; criterion 4)
 - `hooks/scripts/stop-gate.sh` and `hooks/scripts/lib/stop-gate-core.sh` (the new gate is a separate script; criterion 4)
 - `hooks/scripts/lib/unit-scope.sh` (st-u1's library as corrected by rp-u9 and rp-u11; this unit only sources it)
 - `adapters/` (Claude-only: the codex and cursor hook inputs carry no `agent_transcript_path`; criterion 4)
@@ -438,19 +422,19 @@ fi
 3. run: `bash -c 'node tests/trust-model-bijection.test.js >/dev/null 2>&1 && node tests/cli-hook-propagation.test.js >/dev/null 2>&1 && bash tests/harness-integrity-gate.test.sh >/dev/null 2>&1 && bash tests/abtest-arms.test.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms)
    exit: 0
    stdout: `0`
-   mutation: skip edit 5; trust-model-bijection C8.2 prints `writer-scope-gate.sh is not mentioned anywhere in docs/trust-model.md` and stdout is `1` (spec-master observed this on a clone).
-4. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u3): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u3): " | head -1); git diff --name-only "$b^..$l" -- adapters agents templates hooks/scripts/stop-gate.sh hooks/scripts/lib | wc -l'`
+   mutation: skip edit 4; trust-model-bijection C8.2 prints `writer-scope-gate.sh is not mentioned anywhere in docs/trust-model.md` and stdout is `1` (spec-master observed this on a clone).
+4. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u3): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u3): " | head -1); git diff --name-only "$b^..$l" -- adapters agents templates hooks/hooks.json hooks/scripts/stop-gate.sh hooks/scripts/lib | wc -l'`
    exit: 0
    stdout: `0`
    mutation: also register the gate in `adapters/cursor/hooks/hooks.json`; stdout is at least `1`.
-5. run: `bash -c 'jq -r ".hooks.SubagentStop[0].hooks | map(.command | split(\"/\") | last) | join(\",\")" hooks/hooks.json'`
+5. run: `bash -c 'r=$(jq -r ".hooks.SubagentStop[0].hooks | map(.command | split(\"/\") | last) | join(\",\")" hooks/hooks.json); case "$r" in stop-gate.sh|stop-gate.sh,writer-scope-gate.sh) echo ok ;; esac'`
    exit: 0
-   stdout: `stop-gate.sh,writer-scope-gate.sh`
-   mutation: skip edit 4; stdout is `stop-gate.sh`.
+   stdout: `ok`
+   mutation: register the gate before stop-gate.sh in `hooks/hooks.json`; stdout is empty. This holds before and after operator step O1; after O1 the reviewer (or the operator) also runs the `O1-check:` of the Pre-resolved context, which must print `stop-gate.sh,writer-scope-gate.sh`.
 6. run: `bash -c 'b=$(git log --format=%H --grep="^[a-z]*(st-u3): " | tail -1); l=$(git log --format=%H --grep="^[a-z]*(st-u3): " | head -1); test "$(git show "$b^:.claude-plugin/plugin.json" | grep "\"version\"")" != "$(git show "$l:.claude-plugin/plugin.json" | grep "\"version\"")" && test "$(git show "$l:CHANGELOG.md" | grep -c "(st-u3, ")" = 1 && echo moved'`
    exit: 0
    stdout: `moved`
-   mutation: skip edit 8; the versions are equal, stdout is empty and the exit is 1.
+   mutation: skip edit 7; the versions are equal, stdout is empty and the exit is 1.
 7. run: `bash -c 'bash tests/validate.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms)
    exit: 0
    stdout: `0`
@@ -464,9 +448,11 @@ attribution: transcript records are JSON lines; the first `type: user` record is
 start-point: the parent of the first attributed commit, else HEAD; a path counts only if `git diff --quiet <start> -- <path>` fails, or it is a new file that exists. The block text tells the writer to restore with `git checkout <start> -- <path>` and commit; never a reset (R4).
 loop-bound: the gate blocks on every stop while the violation stands; Claude Code ends a stop-hook loop after 8 continuations. It does not honour the WIP sentinel, which stop-gate.sh consumes concurrently.
 residual: a Bash heredoc write that is neither committed nor made through Write/Edit is not attributed (trust-model row 26 says so).
-version: .claude-plugin/plugin.json and package.json read 0.31.202 after rp-u11 if no fix round bumped; edit 8 adds one (expected 0.31.203).
+version: .claude-plugin/plugin.json and package.json read 0.31.203 after rp-u11 if no fix round bumped; edit 7 adds one (expected 0.31.204).
 amended-3: 2026-10-21, st-u3 implementer's spec gap (coordinator relay): the gate text spelled the unit-id grammar twice (`[A-Za-z0-9._#-]` in the contract-path grep and the `Unit:` sed) and added a fourth `[^a-zA-Z0-9._-]` sanitiser (agent_id), which tests/state-access-constraints.test.sh M5 (2a, 2b) forbids under hooks/scripts/ (pristine 2bccfd94 passes it; the gate made it fail). The gate now sources lib/state-access.sh, the owner, and uses `UNIT_ID_CHARCLASS` in the contract-path grep, `unit_id_valid` for the `Unit:` line and `unit_id_sanitize` for agent_id (the log field now keeps `#`); both functions join the `declare -F` guard. state-access.sh runs `set -euo pipefail` when sourced, so the two libraries are sourced in one group after `set +e`, with `|| true` (a missing unit-scope.sh made the group fail under the re-enabled errexit and the gate exit 1, an allow; (n) caught it on the clone) and errexit is switched off again after. Re-proven on a fresh clone of 2bccfd94: every payload once, the test 0 FAIL after `--update`, criteria 1 to 6 hold, state-access-constraints 2a and 2b pass; every tests/*.test.sh and *.test.js run one by one (not validate.sh) fails exactly the same six files as on a pristine clone of 2bccfd94 (abtest-fixtures, abtest-lock, abtest-checks, abtest-runner, reviewed-dir-leak-guard, cli-backfill: clone-environment failures, identical exit codes on both); deleting the second `set +e` fails (e) to (g). st-u4 checked: its `[A-Za-z0-9._#-]` lives in `bin/unit-size.sh`, outside the M5 scope (hooks/scripts/ only), so it is unaffected.
-registration: edit 4 (hooks/hooks.json) is refused by harness-integrity-gate.sh for every agent identity (a Set B gate-registration surface); pending the operator's ruling it is applied by the operator by hand, at edit 4's position, with exactly edit 4's `after:` text (the `stop-gate.sh` entry gains a trailing `,` and the line `          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/writer-scope-gate.sh" }` follows it inside the same `hooks` array). After it, test case (l) prints `OK   (l) registered after stop-gate` (the jq read of `.hooks.SubagentStop[0].hooks` gives `stop-gate.sh,writer-scope-gate.sh`) and criterion 5 holds. Before it, on a clone with every other edit committed, only the (l) registration row and criterion 5 fail; criteria 2, 3, 4 and 6, state-access-constraints, abtest-arms, trust-model-bijection, cli-hook-propagation and protected-paths-coverage pass, and `--update` still installs the gate copy (it is just never run).
+operator-step-O1: (ruled 2026-10-22: the operator applies the registration) the lead never edits `hooks/hooks.json` (harness-integrity-gate.sh refuses it for every agent identity, a Set B gate-registration surface). After the lead's st-u3 commit, the operator, in their own terminal, edits `hooks/hooks.json`: in the `"SubagentStop"` entry, the line `          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/stop-gate.sh" }` gains a trailing `,` and is followed by `          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/hooks/scripts/writer-scope-gate.sh" }` (the `PreToolUse`/`PostToolUse` `stop-gate.sh` line at :43 is not this one; the SubagentStop one is at :50). Then `bash tests/writer-scope-gate.test.sh` (exit 0) and `git add -- hooks/hooks.json && git commit -m "chore(st-u3-o1): register writer-scope-gate.sh at SubagentStop after stop-gate.sh"`. No version bump, CHANGELOG line or `node bin/cli.js --update` is needed: `hooks/hooks.json` is not version-stamped (constitution P3 covers `agents/*.md` and `templates/`), it has no `fileHashes` entry, and this repo runs its hooks from the enabled plugin; the st-u3 CHANGELOG entry already says the operator registers the gate. Installs adapted standalone pick the registration up at their next `--update` through the registration backfill (bin/cli.js). The subject `chore(st-u3-o1): ` does not match the range grep `^[a-z]*(st-u3): `, so criteria 4 and 6 still read only the lead's commits.
+O1-check: `bash -c 'jq -r ".hooks.SubagentStop[0].hooks | map(.command | split(\"/\") | last) | join(\",\")" hooks/hooks.json'` prints `stop-gate.sh,writer-scope-gate.sh` after O1 (`stop-gate.sh` before it).
+without-O1: if O1 is never applied, the gate script and its installed copy exist but nothing runs them: writers are not scope-gated at stop, every other hook behaves as before, every test (case (l) included) and validate.sh pass. The reviewer judges the lead's unit without O1 and must not FAIL it for the missing registration; whether the gate is live is the operator's O1, tracked in the structural spec.
 amended-2: 2026-10-21, after rp-u9's review (review-patches spec Step 10, findings F1 and F2): `in_scope` checks the `.claude/` and `docs/plans/` allowance before `## Do NOT touch` (aof-u1-fix1's bullet excluded the two `.claude/agents/` copies its own mandated `--update` regenerated, so the old order would have blocked a correct unit; st-u2's precheck already leaves both trees out); a Write/Edit path is normalised lexically by `norm_abs` before it is judged (a doubled slash used to classify `out` and block a legitimate edit, and `.claude/../CONTEXT.md` fell under the `.claude/` allowance); a C-quoted committed name blocks (it used to be skipped as a missing file). Cases (o), (p) and (q) pin the three. A deliberate exclusion of a `.claude/` path is reviewer-enforced prose ("only through `--update`"), not a gate input; a contract that must stop a writer from regenerating a mirror says so in its Objective. Re-proven on a clone at 952a8796 with rp-u11 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, criteria 1 to 6 held, and (o), (p) and (q) failed under their mutations.
 amended: 2026-10-21, after st-u1's review (review-patches spec Step 9): the gate sources unit-scope.sh after `set +e` and blocks a writer's stop when a function it needs is undefined (`declare -F`; a missing library used to exit 1 under the inherited `set -e`, which Claude Code treats as allow, and an empty one made every path in scope); `## Do NOT touch` is read with rp-u9's `us_exclusions` (a bullet carrying `partial:` never excludes); cases (m) and (n) pin both; criteria 4 and 6 name the unit's last commit. Re-proven on a clone at 0b45bd46 with rp-u8, rp-u9 and the amended st-u2 applied: every payload matched once, the test printed 0 FAIL lines after `--update`, and (m) and (n) failed with the `us_exclusions` call or the guard reverted.
 mirrors: `.claude/` copies change only through `node bin/cli.js --update` (constitution P2).

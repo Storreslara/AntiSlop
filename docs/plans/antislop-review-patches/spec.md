@@ -1,8 +1,8 @@
 # AntiSlop review patches (spec)
 
 Date: 2026-10-20, Steps 9 to 11 added 2026-10-21. Author: spec-master. Status: finalized; every unit is contracted
-(rp-u1 to rp-u14 and the scribe contract rp-s1, tracker issue #634); Open Questions 9 and 10 (gate false
-positives, no unit) await the operator. Source: the non-blocking notes and blockers reviewers raised during
+(rp-u1 to rp-u14 and the scribe contract rp-s1, tracker issue #634); no Open Question remains (9 and 10
+ruled 2026-10-22). st-u3's hooks.json registration is the operator's step O1. Source: the non-blocking notes and blockers reviewers raised during
 the antislop-overhead-fixes (aof-*), validate-speed and quick-win (qw-*) units, relayed by the operator on
 2026-10-20 as findings A to I. Operator goal: "finish the spec and implement any blockers or patches found
 during review". Contracts: `docs/plans/antislop-review-patches/contracts/rp-uN.md`.
@@ -40,8 +40,8 @@ fixed, or accepted, with the evidence. Ranked by risk, safety and correctness fi
   `## Do NOT touch` subject and `partial:` counts only right after the paths (rp-u13, safety-adjacent);
   the precheck pins the fix contract at its commit and runs its criteria, flags an empty range and hides
   library output, and the reviewer bullet says how to handle a contract committed after the baseline
-  (rp-u14); the two gate false positives are explained and left to the operator (Open Questions 9, 10).
-  Step 11.
+  (rp-u14); the two gate false positives are explained, ruled "no gate change" and documented by rp-s1
+  (Open Questions 9, 10). Step 11.
 
 ## Context
 
@@ -334,7 +334,18 @@ was re-run on a scratch clone; nothing was dropped as wrong, one premise (P3a) w
   `tests/state-access-constraints.test.sh` M5 (2a, 2b) forbids under `hooks/scripts/`. st-u3 now sources
   `lib/state-access.sh` and uses its helpers (contract `amended-3`, faa9b967). st-u4's spelling is in
   `bin/unit-size.sh`, outside M5's scope. Registration (`hooks/hooks.json`, a Set B surface no agent may
-  write) is with the operator; st-u3's `registration:` line gives the exact text.
+  write) is with the operator.
+- **st-u3 operator step O1 (ruled 2026-10-22).** The lead's st-u3 no longer edits `hooks/hooks.json`; the
+  operator registers the gate afterwards (st-u3 Pre-resolved context `operator-step-O1:`, `O1-check:`,
+  `without-O1:`). Test case (l) and criterion 5 accept both states (`stop-gate.sh` alone, or
+  `stop-gate.sh,writer-scope-gate.sh`); criterion 4 forbids the lead's commits from touching
+  `hooks/hooks.json`. Proven on a fresh clone of the current master: without O1, st-u3's criteria 1 to 6
+  hold and `bash tests/validate.sh` exits 0 (`OK=3411 FAIL=0 WARN=2`, 216 s); with O1 applied and committed
+  on top, the test, criteria 1 to 6, the `O1-check:` (`stop-gate.sh,writer-scope-gate.sh`) and validate.sh
+  (`OK=3411 FAIL=0`) hold too. O1 needs no version bump, CHANGELOG line or `--update`: `hooks/hooks.json` is
+  not version-stamped and has no `fileHashes` entry, and this repo runs its hooks from the enabled plugin.
+  If O1 is never applied, the gate is installed but inert (nothing runs it): writers are not scope-gated at
+  stop and nothing else changes. The reviewer must not FAIL st-u3 for a missing registration.
 
 ### Prior FAIL history (`.claude/reviewed/`, best-effort, gitignored)
 
@@ -543,6 +554,17 @@ sensitive hook path).
   relay)? → A (self-resolved): amended st-u3 to use `lib/state-access.sh`; registration in
   `hooks/hooks.json` left to the operator, text in st-u3's `registration:` line.
 
+- 2026-10-22 External dependencies & integrations: Q Who writes st-u3's `hooks/hooks.json` registration? →
+  A: the operator ("I will apply it myself"), as operator step O1 after the lead's commit; the lead's edit 4
+  is dropped, test case (l) and criterion 5 accept both states, and the lead's commit is green without O1
+  (validate.sh exit 0 on the clone). Without O1 the gate is inert, never a FAIL of the lead's unit.
+- 2026-10-22 Non-functional attributes (perf, security, scale): Q (Open Question 9) tighten
+  human-decision-gate.sh's glob scan? → A: (a), per operator: no gate change; rp-s1 adds the trigger to the
+  **decision-gate denial** entry of `docs/harness-glossary.md` (glossary edit 14).
+- 2026-10-22 Non-functional attributes (perf, security, scale): Q (Open Question 10) allow git reads of the
+  persona config in harness-integrity-gate.sh? → A: (a), per operator: no gate change; read the config with
+  the Read tool, `cat` or one `jq`; rp-s1 adds a **persona-config read refusal** entry (glossary edit 15).
+
 ## Risks / dependencies
 
 - rp-u1 changes a rule the reviewer applies to every later unit. A queued contract whose criteria execute
@@ -571,6 +593,9 @@ sensitive hook path).
   (its pins live in st-u2's test, outside rp-u7's scope).
 - rp-u11 tightens `us_safe_path`, which st-u2's landed precheck also calls; git never prints the three
   shapes, and tests/review-precheck.test.sh passed on the clone with rp-u11 applied.
+- st-u3 without operator step O1 ships an inert gate; nothing fails, and the structural spec tracks O1. A
+  writer meeting the decision-gate glob trigger must quote the word, name the files or author the script
+  with the Write tool; rewording to pass stays a bypass (rp-s1 glossary edit 14).
 - st-u3's allowance-first order means a lead-programmer that hand-edits a `.claude/` copy, or edits a
   `docs/plans/` contract its dispatch excluded, is not blocked by the gate; the reviewer's mirror `cmp`
   criteria and diff reading catch it, as they do today.
@@ -858,6 +883,19 @@ grep `^[0-9a-f]+ [a-z]+\(st-u2\): ` on the subject, so task-master's docs commit
 does not match. If st-u2-fix1 FAILs again, its fix round adds one version and the later expected versions
 shift by one (relative bumps).
 
+Step 11, operator rulings (2026-10-22): st-u3 amended in place for operator step O1 (`hooks/hooks.json` by
+the operator after the lead's commit; edit 4 dropped, edits renumbered 1 to 10; still 7/7); rp-s1 amended
+(glossary edits 14 and 15, criterion 12; scribe shape still 7/7). Order and expected versions unchanged:
+st-u3 0.31.204 (then O1, no bump), st-u4 0.31.205, rp-u10 0.31.206, rp-u12 0.31.207, rp-u7 0.31.208, rp-u4
+0.31.209, rp-u5 0.31.210, rp-u6 0.31.211, rp-u13 0.31.212, rp-u14 0.31.213, rp-s1. Anchor check re-run the
+same way on a fresh clone of the current master (st-u3 now without the hooks.json edit, every queued
+contract after it): every payload once, every command exit as stated, criteria 1 to n-1 held (rp-u4
+criterion 2 as stated), final version 0.31.213, the six end-of-chain suites printed no FAIL line. rp-s1's
+criterion 12 printed `0 0 0 0 ` on the current glossary and `1 1 1 1 ` with glossary edits 14 and 15
+applied to a copy; context-glossary-links, ubiquitous-language and glossary-index stayed 0 on that copy.
+Issue #634's body still holds the pre-amendment rp-s1 copy: dispatch from the contract file, or refresh
+the issue body first.
+
 Step 11 (2026-10-21, after rp-u11 landed at 2bccfd94, 0.31.203; st-u3 in implementation):
 - st-u3: amended again in place (faa9b967, `amended-3`, 7/7): state-access.sh helpers instead of new
   unit-id spellings; operator registration note.
@@ -883,8 +921,8 @@ mutations flipped their results.
 
 ## Open Questions
 
-Open: 9 and 10 (no unit until ruled). 1 to 6 were ruled on 2026-10-20 and 7 and 8 on 2026-10-21
-(Clarifications); 1 to 6 are kept below for the record.
+Open: none. 1 to 6 were ruled on 2026-10-20, 7 and 8 on 2026-10-21, 9 and 10 on 2026-10-22, each (a)
+(Clarifications); 1 to 6, 9 and 10 are kept below for the record.
 
 9. human-decision-gate.sh denies a Bash command holding an unquoted glob or `${...}` path word (or a
    quoted one inside `bash -c`) whose last component can match `DECISION` and an earlier one
@@ -1019,6 +1057,18 @@ Open: 9 and 10 (no unit until ruled). 1 to 6 were ruled on 2026-10-20 and 7 and 
 - CHK43: Is the chained anchor check run against the amended st-u3 and both new contracts? — PASS
   (Dispatch section, Step 11)
 
+- CHK44 (2026-10-22): Do st-u3's Objective, edits, test case (l), criteria 4 and 5 and its `without-O1:`
+  line agree that the lead never edits `hooks/hooks.json` and is green without O1? — FAIL (conflicting:
+  criterion 5 and case (l) required the registration) — revised in place (both accept both states; validate.sh
+  exit 0 on the clone without O1)
+- CHK45: Does every edit-number reference in st-u3 follow the renumbering (edit 4 dropped)? — PASS (trust
+  model now edit 4, bump edit 7, CHANGELOG `VERSION` from edit 7; criteria 3 and 6 mutations updated)
+- CHK46: Are Open Questions 9 and 10 recorded as ruled in Clarifications and carried into rp-s1 as glossary
+  edits with a criterion? — PASS (Clarifications 2026-10-22; rp-s1 edits 14, 15, criterion 12)
+- CHK47: Does rp-s1's placement for edit 14 name exactly one line? — FAIL (ambiguous: two entries open
+  with the same `(unit ptr-u7a, 2026-10-16) — the three-line stderr` text) — revised in place (the line
+  directly below the **decision-gate denial** heading)
+
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
 "review-in-flight" (audit token) name the same thing, the entry should name both; lens 3, the seven terms of
@@ -1044,5 +1094,6 @@ never in a reason or inside a path (rp-u13; a dash inside a backticked path is p
 and `docs/plans/`) is checked before `## Do NOT touch` by the scope gate, so a Do-NOT-touch bullet naming a
 `.claude/` copy means "only through `--update`".
 Step 11 knowledge proposals for rp-s1 (or a later scribe run): the **decision-gate denial** entry in
-`docs/harness-glossary.md` should name the glob trigger of Open Question 9 if it is ruled (a); **fix
+`docs/harness-glossary.md` names the glob trigger of Open Question 9 (ruled (a); rp-s1 glossary edit 14),
+and a new **persona-config read refusal** entry records Open Question 10's ruling (edit 15); **fix
 contract** (`docs/harness-glossary.md`) is read by the precheck at the commit that added it, never from the working tree.

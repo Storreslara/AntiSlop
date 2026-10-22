@@ -553,3 +553,14 @@ and F3 to F5 is a new unit, rp-u11, dispatched before st-u3. New order and versi
 in review), rp-u11 0.31.202, st-u3 0.31.203, st-u4 0.31.204 (then rp-u10, rp-u12, rp-u7, rp-u4 to rp-u6,
 rp-s1; see `docs/plans/antislop-review-patches/spec.md`, Dispatch section). The 2026-10-21 Step 9 versions
 above are superseded.
+
+## Amendment 2026-10-21/22 (antislop-review-patches Step 11: st-u3 spec gap and operator step O1)
+st-u3 amended twice in place. (1) 2026-10-21, `amended-3`: the gate sources `lib/state-access.sh` and uses its
+unit-id helpers, because tests/state-access-constraints.test.sh M5 forbids a second spelling of the unit-id
+class under `hooks/scripts/`. (2) 2026-10-22, operator ruling: the `hooks/hooks.json` registration is no
+agent's edit (harness-integrity-gate.sh, Set B) and becomes operator step O1, applied by hand after the
+lead's st-u3 commit with the snippet and commit command in st-u3's `operator-step-O1:` line (no version bump,
+no CHANGELOG line, no `--update`). The lead's commit is green without O1 (validate.sh exit 0 on a clone);
+until O1 the gate is installed but inert, and the reviewer does not FAIL st-u3 for it. Open item: O1, then
+the `O1-check:` (`stop-gate.sh,writer-scope-gate.sh`). Order and versions: st-u3 0.31.204, st-u4 0.31.205
+(see `docs/plans/antislop-review-patches/spec.md`, Dispatch section, Step 11).

@@ -1,7 +1,7 @@
 Unit: rp-s1-scribe
 
 ## Objective
-Finding G (spec Step 7), one scribe run after the plan's last lead unit, rp-u6, reaches PASS: seven `CONTEXT.md` entries (**unit scope**, **standing exception**, **bump files**, **Proposed out-of-scope changes**, **knowledge proposal**, **knowledgeWrites**, **lane**) and five `docs/harness-glossary.md` entries (**reviewer dispatch header**, **review in flight**, **blast-radius script**, **provenance**, **unit-size script**); the **lane runner** entry corrected now that the lane run is the default merge gate and `--serial` exists; `.claude/wiki/modules/hooks.md` no longer prescribes the retired `defer: reviewer dispatched` write; `.claude/wiki/persona-handoff-mechanisms.md` points at the protocol's short form. Then close issue #634. This repo's `knowledgeWrites` is `apply`, and this contract names every knowledge file it edits.
+Finding G (spec Step 7), plus two harness-glossary lines for the gate rulings of spec Open Questions 9 and 10 (glossary edits 14 and 15), one scribe run after the plan's last lead unit, rp-u6, reaches PASS: seven `CONTEXT.md` entries (**unit scope**, **standing exception**, **bump files**, **Proposed out-of-scope changes**, **knowledge proposal**, **knowledgeWrites**, **lane**) and five `docs/harness-glossary.md` entries (**reviewer dispatch header**, **review in flight**, **blast-radius script**, **provenance**, **unit-size script**); the **lane runner** entry corrected now that the lane run is the default merge gate and `--serial` exists; `.claude/wiki/modules/hooks.md` no longer prescribes the retired `defer: reviewer dispatched` write; `.claude/wiki/persona-handoff-mechanisms.md` points at the protocol's short form. Then close issue #634. This repo's `knowledgeWrites` is `apply`, and this contract names every knowledge file it edits.
 
 ## Retrieval
 GitHub issues: `gh issue view 634 --repo Storreslara/AntiSlop`. Siblings: `gh issue list --repo Storreslara/AntiSlop --label plan/antislop-review-patches`. Spec: `docs/plans/antislop-review-patches/spec.md`, "Step 7 (rp-s1)" and Clarifications. Contract file: `docs/plans/antislop-review-patches/contracts/rp-s1.md`.
@@ -127,6 +127,23 @@ GitHub issues: `gh issue view 634 --repo Storreslara/AntiSlop`. Siblings: `gh is
    ~~~~
    (units vlg-1..3, 2026-10-14; the default run since vsp-1) — `tests/validate-lanes.sh [--lanes N]` (default 3, max 8), the parallel runner for `tests/validate.sh`. It splits the suite's sections across N **lane copies** and merges the results (3 lanes, 116 sections: about 162 s against about 476 s serial, measured at vlg-3). Since vsp-1, `bash tests/validate.sh` runs through the lane runner by default, with `--lanes` set to `nproc` capped at 6 (or `ANTISLOP_VALIDATE_LANES`), so the lane run is the merge gate of constitution P5; `bash tests/validate.sh --serial` or `ANTISLOP_VALIDATE_SERIAL=1` runs the suite serially in one process, and the exit code is the inner run's either way. Regression-tested by `tests/validate-lanes.test.sh`. On EXIT, TERM or INT the runner sends TERM to each lane's whole process group, waits, then removes its work dir (vln-1); a process that leaves its group or ignores TERM is not reached, and the wait has no KILL escalation. See **lane copy**. Not the **lane** of `CONTEXT.md` (the pipeline a unit is routed through).
    ~~~~
+14. file: `docs/harness-glossary.md`
+   heading: `**decision-gate denial**:`
+   placement: insert as a new line right after the entry's paragraph line (the line directly below this heading, the one that names `deny()`; the **reviewed-path denial** entry opens the same way), no blank line between (operator ruling on spec Open Question 9, 2026-10-22: no gate change, document the trigger)
+   indent: 3
+   text:
+   ~~~~
+   Glob trigger (spec antislop-review-patches, Open Question 9, 2026-10-22): the same denial fires for a Bash command that names no packet path when an unquoted pattern word (`*`, `?`, `[`, an extglob or a brace; a `${...}` counts as `*`), or any word of a `sh`/`bash`/`dash -c` payload with its quotes removed, has a last path component that can match `DECISION` and an earlier one that can match `human-review` (case-blind): `rm -rf $S/clone/*/*` and `for f in ${S}/*/*; do ...` are denied, `rm -rf "$d"`, `mv "$a" "$b"` and `sed -i ... "$f"` are not. The scan is textual by design (ADR-0025, ADR-0036): a symlink or a variable can make such a pattern reach a packet. Quote the word or name the files, or author the script with the Write tool; when a real command is still blocked, report and wait (never reword it to pass).
+   ~~~~
+15. file: `docs/harness-glossary.md`
+   heading: `**decision-gate denial**:`
+   placement: insert after the paragraph of the entry from item 14 (the **decision-gate denial** entry, glob line included), separated by one blank line
+   indent: 3
+   text:
+   ~~~~
+   **persona-config read refusal**:
+   (spec antislop-review-patches, Open Question 10, 2026-10-22) — `hooks/scripts/harness-integrity-gate.sh` refuses any Bash command whose text names `.claude/persona-config.json` unless it is provably benign: `cat`, `grep`, `head` and the other allowlisted readers with no pipe, redirection or substitution pass, and so does a single `jq` call with no pipe, separator, redirection or substitution; `git diff ... -- <config>` and `git show <rev>:<config>` are refused, because git stays off the allowlist on purpose (`hooks/scripts/lib/benign-command.sh`: it reads out-of-band config, can run a pager, an external diff or a textconv driver, and `--output=` writes a file). Read the config with the Read tool, `cat` or one `jq`; its history is checked by `tests/validate.sh`'s config-drift sections. Ruled no gate change.
+   ~~~~
 
 ## Doc edits
 1. file: `.claude/wiki/modules/hooks.md`
@@ -236,6 +253,10 @@ none
    exit: 0
    stdout: `0`
    mutation: leave a glossary edit unstaged; stdout is non-zero.
+12. run: `bash -c 'f=docs/harness-glossary.md; t=$(tr -s " \n" " " < "$f" | tr -d "\140"); for n in "Glob trigger (spec antislop-review-patches, Open Question 9, 2026-10-22)" "are denied, rm -rf \"\$d\", mv" "**persona-config read refusal**:" "Read the config with the Read tool, cat or one jq"; do printf "%s" "$t" | grep -cF -- "$n"; done | tr "\n" " "'`
+   exit: 0
+   stdout: `1 1 1 1 `
+   mutation: skip glossary edits 14 and 15; stdout `0 0 0 0 ` and the exit is 0 (the last `grep -c` status is hidden by `tr`).
 
 ## Escalation
 If a `heading:` or `before:` text is not found exactly once (another scribe run may have edited the entry), STOP and report the current text. If any item cannot be applied exactly, STOP and report a spec gap.
