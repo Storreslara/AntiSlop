@@ -92,6 +92,14 @@ done
 
 # Later units append their rows below this line.
 
+# rp-u5: the scribe still runs for the passed units when a plan stops early, and knowledgeWrites apply
+# leaves only the no-issue condition to skip it.
+for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
+  has "$f" 'If the plan stops before its last unit passes (ladder exhaustion, a human stop, an abandoned unit), dispatch the scribe once for the units that already reached PASS before you surface the stop'
+  has "$f" 'under `knowledgeWrites: apply` the knowledge files are always in scope, so only the first condition can skip it.'
+  has "$f" 'Skip the scribe dispatch entirely when no unit has a tracker issue to close'
+done
+
 # rp-u3: the reviewer's pointer to the moved residual, the orchestrator's teams-command pointer, qw-u4's
 # safety phrases, the ported scribe sentence, and three more narratives qw-u3 removed. Current files only.
 for f in agents/reviewer.md .claude/agents/reviewer.md; do

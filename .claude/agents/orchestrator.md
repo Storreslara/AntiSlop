@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: sonnet
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.214 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.215 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -56,8 +56,12 @@ Dispatch contract (scribe)` heading), sent together with the three
 post-PASS inputs (digest, issue number, task-id); under review gating off, it
 first replaces
 `<PASS-VERDICT-LINE>` with the reviewer's verbatim PASS verdict line.
-Skip the scribe dispatch entirely when no unit has a tracker issue to close and no unit's digest reports a
-changed API or new convention whose knowledge file is in unit scope. Relay every `Knowledge proposals:` and
+If the plan stops before its last unit passes (ladder exhaustion, a human stop, an abandoned unit), dispatch
+the scribe once for the units that already reached PASS before you surface the stop, with the same three
+inputs for each. Skip the scribe dispatch entirely when no unit has a tracker issue to close and no unit's
+digest reports a changed API or new convention whose knowledge file is in unit scope; under
+`knowledgeWrites: apply` the knowledge files are always in scope, so only the first condition can skip it.
+Relay every `Knowledge proposals:` and
 `Proposed out-of-scope changes:` entry from lead-programmer, spec-master or scribe reports in your final
 message to the user.
 

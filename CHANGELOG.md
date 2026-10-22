@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+**Scribe on an early stop (rp-u5, 0.31.215).** agents/orchestrator.md "Scribe dispatch convention": when a plan stops before its last unit passes (ladder exhaustion, a human stop, an abandoned unit), the orchestrator dispatches the scribe once for the units that already passed before surfacing the stop, so their issues still close; under `knowledgeWrites: apply` only "no tracker issue to close" can skip the scribe. Pinned in tests/prompt-diet-pins.test.sh.
+
 **`--knowledge-writes` is never silently ignored (rp-u4, 0.31.214).** bin/cli.js: the space form `--knowledge-writes <v>` now exits 2 with a usage line instead of being dropped; a fresh install honours `--knowledge-writes=<scoped|apply>` (and `--overwrite` sets it too); `--target=cursor|codex` prints a note that it is ignored there. `--update` is unchanged and now pinned: the value is saved and the Note line printed even when an unrelated render fails, and the exit code is the render's. New cases in tests/knowledge-writes.test.sh.
 
 **Blast-radius script follow-ups (rp-u7, 0.31.213).** bin/blast-radius.sh: a test is a path under tests/ or __tests__/, or a .test/.spec (or _test/_spec) name with a code extension, so docs/specs/ and *_spec.md are callers; output lines are built with printf instead of a sed replacement, so `|`, `&` and `\` in a path survive; git runs with core.quotePath=false, so non-ASCII paths are unquoted; at most 300 lines follow the header, then `truncated: <n> more lines`. templates/persona-protocol.md names `bash .claude/bin/blast-radius.sh <baseline>`, as agents/reviewer.md does. This repo's .claude/bin/blast-radius.sh is committed executable; tests/bin-helpers-scaffold.test.sh checks every helper's mode. New cases in tests/blast-radius.test.sh.
