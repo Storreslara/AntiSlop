@@ -41,29 +41,30 @@ fi
 # Bookkeeping entries never count: .claude/ copies are generated, docs/plans/ is the plan itself.
 grep -vE '^(\.claude/|docs/plans/)' "$W/raw" | grep -v '^$' | sort -u > "$W/entries" || true
 n="$(wc -l < "$W/entries" | tr -d ' ')"
-# Bookkeeping entries are still judged: a `..` segment or glob can leave .claude/ or docs/plans/, and a
-# hand-edited .claude/hooks or .claude settings entry is sensitive. Only .claude/agents/ copies stay free.
+# ONE judge for every raw entry, bookkeeping ones included, so the loops cannot disagree (st-u4 fix 2).
+# judge_entry <path>: 0 = measurable and clean, 1 = unmeasurable, 2 = sensitive. An entry is a directory
+# prefix (us_listed), so the sensitive class is tried on the entry and on the entry plus a slash, and an
+# existing directory outside the free zones is unmeasurable. Free zones: generated .claude/agents/ and
+# .claude/bin/ copies and the docs/plans/ plan itself.
+judge_entry() {
+  local p="$1"
+  us_safe_path "$p" || return 1
+  case "$p" in *[*?[]*|*/) return 1 ;; esac
+  case "$p" in .claude/agents/*|.claude/bin/*|docs/plans/*) return 0 ;; esac
+  touches_sensitive_path "$p" && return 2
+  touches_sensitive_path "$p/" && return 2
+  [ -d "$p" ] && return 1
+  return 0
+}
 grep -v '^$' "$W/raw" | sort -u > "$W/all" || true
+sens=0
 while IFS= read -r p; do
-  us_safe_path "$p" || emit full "$n" unmeasurable
-  case "$p" in *[*?[]*|*/) emit full "$n" unmeasurable ;; esac
+  judge_entry "$p"; rc=$?
+  [ "$rc" = 1 ] && emit full "$n" unmeasurable
+  [ "$rc" = 2 ] && sens=1
 done < "$W/all"
-while IFS= read -r p; do
-  case "$p" in
-    .claude/agents/*) ;;
-    .claude/*) touches_sensitive_path "$p" && emit full "$n" sensitive ;;
-  esac
-done < "$W/all"
+[ "$sens" = 1 ] && emit full "$n" sensitive
 [ "$n" -gt 0 ] || emit full 0 empty
-while IFS= read -r p; do
-  # An entry the sensitive-path anchors cannot judge (`./hooks/x.sh`, `src//a.js`, `/x`) is unmeasurable.
-  us_safe_path "$p" || emit full "$n" unmeasurable
-  case "$p" in *[*?[]*|*/) emit full "$n" unmeasurable ;; esac
-  [ -d "$p" ] && emit full "$n" unmeasurable
-done < "$W/entries"
-while IFS= read -r p; do
-  touches_sensitive_path "$p" && emit full "$n" sensitive
-done < "$W/entries"
 [ -f "$dot/reviewed/$unit.fail" ] && emit full "$n" fail-record
 [ "$n" -gt 10 ] && emit full "$n" size
 [ "$n" -le 4 ] && emit small "$n" "$src"

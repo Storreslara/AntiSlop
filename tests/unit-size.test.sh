@@ -56,6 +56,49 @@ is "(l) a docs/plans entry stays free" 'lane: small files=1 reason=paths' u1 -- 
 is "(m) a dash argument" 'lane: full files=0 reason=unmeasurable' u1 -- -rf
 is "(m) a dash argument among paths" 'lane: full files=0 reason=unmeasurable' u1 -- src/a.js -rf
 is "(m) a newline in an argument" 'lane: full files=0 reason=unmeasurable' u1 -- $'src/a.js\nsrc/b.js'
+# (n) st-u4 fix 2: one judge for every entry. A directory prefix is sensitive when the entry or the entry plus a
+# slash is in the class (us_listed treats an entry as a directory prefix), and an existing directory outside the
+# free zones is unmeasurable.
+is "(n) a bare .claude/hooks dir" 'lane: full files=1 reason=sensitive' u1 -- .claude/hooks src/a.js
+is "(n) a bare .claude/agents dir is not the free zone" 'lane: full files=1 reason=sensitive' u1 -- .claude/agents src/a.js
+is "(n) a bare hooks dir" 'lane: full files=2 reason=sensitive' u1 -- hooks src/a.js
+is "(n) a bare .claude dir" 'lane: full files=2 reason=unmeasurable' u1 -- .claude src/a.js
+is "(n) a bare docs/plans dir" 'lane: full files=2 reason=unmeasurable' u1 -- docs/plans src/a.js
+is "(n) a docs/plans subdirectory stays free" 'lane: small files=1 reason=paths' u1 -- docs/plans/p src/a.js
+is "(n) a nested .claude/agents file stays free" 'lane: small files=1 reason=paths' u1 -- .claude/agents/x/y.md src/a.js
+is "(n) a nested docs/plans file stays free" 'lane: small files=1 reason=paths' u1 -- docs/plans/a/b/c.md src/a.js
+is "(n) an unmeasurable entry beats a sensitive one" 'lane: full files=2 reason=unmeasurable' u1 -- hooks/x.sh 'src/*.js'
+. "$ROOT/hooks/scripts/lib/sensitive-paths.sh"
+# One row per SENSITIVE_PATHS entry, in library order: the bare directory (or - when the pattern names a file)
+# and a file form. Index 10 (.claude/agents/) is the free zone, asserted small below. A new pattern fails the
+# count check until a row is added.
+MX_DIR=(hooks .claude/hooks adapters/cursor/hooks - - - - - .claude-plugin agents -)
+MX_FILE=(hooks/x.sh .claude/hooks/x.sh adapters/cursor/hooks/x.json bin/cli.js tests/validate.sh templates/persona-protocol.md templates/settings-fragment.json .claude/settings.json .claude-plugin/plugin.json agents/x.md .claude/agents/x.md)
+[ "${#SENSITIVE_PATHS[@]}" = 11 ] && [ "${#MX_DIR[@]}" = 11 ] && [ "${#MX_FILE[@]}" = 11 ] && ok "(n) one matrix row per sensitive pattern" || bad "(n) the matrix has ${#MX_FILE[@]} rows for ${#SENSITIVE_PATHS[@]} patterns: add a row"
+mx_full() { # <label> <form>: full in script mode, and in contract mode when us_entries keeps the token (it needs a / or a .)
+  local got
+  got="$(bash "$US" u1 -- "$2" src/a.js)"
+  case "$got" in 'lane: full '*) ok "$1 script: $2 -> $got" ;; *) bad "$1 script: $2 -> '$got'" ;; esac
+  case "$2" in *[/.]*)
+    printf 'Unit: u4\n\n## Affected files\n- `%s`\n- `src/a.js`\n' "$2" > docs/plans/p/contracts/u4.md
+    got="$(bash "$US" u4 --contract docs/plans/p/contracts/u4.md)"
+    case "$got" in 'lane: full '*) ok "$1 contract: $2 -> $got" ;; *) bad "$1 contract: $2 -> '$got'" ;; esac ;;
+  esac
+}
+for i in "${!SENSITIVE_PATHS[@]}"; do
+  [ "$i" = 10 ] && continue
+  [[ "${MX_FILE[$i]}" =~ ${SENSITIVE_PATHS[$i]} ]] && ok "(n) row $i file form is in the class" || bad "(n) row $i: ${MX_FILE[$i]} is not in ${SENSITIVE_PATHS[$i]}"
+  mx_full "(n) row $i file" "${MX_FILE[$i]}"
+  if [ "${MX_DIR[$i]}" != - ]; then
+    [[ "${MX_DIR[$i]}/" =~ ${SENSITIVE_PATHS[$i]} ]] && ok "(n) row $i dir form is in the class" || bad "(n) row $i: ${MX_DIR[$i]}/ is not in ${SENSITIVE_PATHS[$i]}"
+    mx_full "(n) row $i bare dir" "${MX_DIR[$i]}"
+    mx_full "(n) row $i dir with slash" "${MX_DIR[$i]}/"
+  fi
+done
+[[ "${MX_FILE[10]}" =~ ${SENSITIVE_PATHS[10]} ]] && ok "(n) row 10 is the exempt .claude/agents/ class" || bad "(n) row 10 is not .claude/agents/"
+for f in "${MX_FILE[10]}" .claude/agents/sub/y.md .claude/bin/x.sh docs/plans/p/spec.md; do
+  is "(n) free zone $f" 'lane: small files=1 reason=paths' u1 -- "$f" src/a.js
+done
 cat > docs/plans/p/contracts/u2.md << 'MD'
 Unit: u2
 
