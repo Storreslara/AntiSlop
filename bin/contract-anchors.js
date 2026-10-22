@@ -10,10 +10,14 @@
 // each --chain contract (dispatch order) first. Command items are not run. Outcomes, asserted by the matrix in
 // tests/contract-anchors.test.sh (h = lines the anchor holds on; P = the before:/delete: payload, whole lines):
 //   anchor line matching|ending|starting: h=0 missing; h=1 ok; h>=2 ambiguous, ok only when P is located once
-//   and exactly one hit lies in P. New file: absent ok, else exists. P: 0 times missing, once ok, more ambiguous.
-//   unchecked (counted, not bad): no backticked `file:`, an anchor that is no such phrase, a payload that is
-//   neither backticked nor fenced; a key given twice in one edit is `duplicate` (bad). A literal may hold a
-//   backslash-backtick or end in a backslash. File paths are confined to --repo by real path (outside: exit 2).
+//   and exactly one hit lies in P. New file: absent ok; a file, directory, fifo or a path under a file: exists.
+//   P: 0 times missing, once ok, more ambiguous. An empty --repo= is a usage error.
+//   unchecked (counted, not bad): no backticked `file:`; an anchor that is no such phrase or a second phrase; an
+//   Affected-files `(anchor...)` with no phrase; a payload neither backticked nor fenced; a key spelled Before: or
+//   - before:. A key given twice in one edit is `duplicate` (bad). One real path per file keys all state (canon).
+// One literal grammar (phrases), after `line matching|ending|starting `: `abc` is abc. A backtick directly after a
+// backslash never closes (`a\`b` is a`b). The literal ends at the first backtick not directly after a backslash, else
+// at the last backtick (`abc\` is abc\). ``a`b`` takes no escapes. An empty or unterminated literal is unchecked.
 // stdout: `<kind> <status> <item> <file>` per check, then `contract-anchors: <ok|fail|unchecked> checks=<n>
 // bad=<n> unchecked=<n>` (unchecked warns on stderr).
 // Exit 0 when nothing is bad, 1 otherwise, 2 on a usage or read error (only the `=` flag forms are read).
@@ -22,8 +26,26 @@ const fs = require('fs');
 const path = require('path');
 
 const OPEN = /^\s*(`{3,}|~{3,})/;
-const PHRASE = /line (matching|ending|starting) (?:``\s?(.+?)\s?``|`((?:[^`\\]|\\.)+)`|`([^`]+)`)/g;
-const litOf = (m) => m[2] ?? (m[3] === undefined ? m[4] : m[3].replace(/\\`/g, '`'));
+
+// Every `line matching|ending|starting <literal>` phrase of s; lit is null when no literal follows.
+function phrases(s) {
+  const out = []; const re = /line (matching|ending|starting) /g; let m;
+  while ((m = re.exec(s))) {
+    const at = re.lastIndex; let lit = null; let end = at;
+    if (s.startsWith('``', at)) {
+      const d = /^``\s?(.+?)\s?``/.exec(s.slice(at));
+      if (d) { lit = d[1]; end = at + d[0].length; }
+    } else if (s[at] === '`') {
+      let k = at + 1;
+      while (k < s.length && !(s[k] === '`' && s[k - 1] !== '\\')) k++;
+      if (k >= s.length) k = s.lastIndexOf('`');
+      if (k > at + 1) { lit = s.slice(at + 1, k).replace(/\\`/g, '`'); end = k + 1; }
+    }
+    out.push({ kind: m[1], lit });
+    re.lastIndex = end;
+  }
+  return out;
+}
 const KEYS = new Set(['file', 'anchor', 'indent', 'before', 'after', 'insert-after', 'delete', 'command']);
 
 function usage(msg) {
@@ -51,6 +73,8 @@ function items(sec) {
     if (head) { cur = { n: head[1] }; out.push(cur); l = `   ${head[2]}`; }
     const m = cur && /^\s+([a-z][a-z-]*): ?(.*)$/.exec(l);
     if (m && KEYS.has(m[1]) && m[1] in cur) cur.dupes = [...(cur.dupes || []), m[1]];
+    const o = cur && !(m && KEYS.has(m[1])) && /^\s*(?:[-*] +)?([A-Za-z][A-Za-z-]*): ?/.exec(l);
+    if (o && KEYS.has(o[1].toLowerCase())) cur.odd = [...(cur.odd || []), o[1].toLowerCase()];
     if (!m || !KEYS.has(m[1]) || m[1] in cur) {
       const f = OPEN.exec(l);
       if (f) { i++; while (i < sec.length && sec[i].trim() !== f[1]) i++; }
@@ -98,30 +122,47 @@ function inSpan(content, at, p, hits) {
   return hits.filter((k) => k >= first && k < first + len).length;
 }
 
-// root = real path of --repo; a path whose real path is outside it exits 2.
+// canon is the one path function: f against the real --repo, symlinks followed (a dangling one by its target),
+// exit 2 outside it. A state value is the text, null (absent) or false (a non-file, or a path under a file).
 function makeState(root) {
   const files = new Map();
   const inside = (p) => p === root || p.startsWith(root + path.sep);
-  const confine = (f) => {
-    const abs = path.resolve(root, f);
-    for (let p = abs; inside(abs); p = path.dirname(p)) {
-      try { if (inside(fs.realpathSync(p))) return abs; break; } catch (e) { if (path.dirname(p) === p) break; }
+  const canon = (f, depth = 0) => {
+    if (depth > 32) return usage(`too many symbolic links: ${f}`);
+    let p = path.resolve(root, f); const rest = []; let blocked = false;
+    for (;;) {
+      let st = null;
+      try { st = fs.lstatSync(p); } catch (e) { blocked = blocked || e.code === 'ENOTDIR'; }
+      if (st) {
+        let real;
+        try { real = fs.realpathSync(p); } catch (e) {
+          if (!st.isSymbolicLink()) throw e;
+          real = canon(path.resolve(fs.realpathSync(path.dirname(p)), fs.readlinkSync(p)), depth + 1).abs;
+        }
+        const abs = path.join(real, ...rest);
+        return inside(abs) ? { abs, blocked } : usage(`path is outside --repo: ${f}`);
+      }
+      if (path.dirname(p) === p) return usage(`path is outside --repo: ${f}`);
+      rest.unshift(path.basename(p)); p = path.dirname(p);
     }
-    return usage(`path is outside --repo: ${f}`);
+  };
+  const load = ({ abs, blocked }) => {
+    if (blocked) return false;
+    try {
+      if (!fs.lstatSync(abs).isFile()) return false;
+      const c = fs.readFileSync(abs, 'utf8');
+      return c.endsWith('\n') ? c : `${c}\n`;
+    } catch (e) { return e.code === 'ENOENT' ? null : false; }
   };
   return {
     get(f) {
-      if (!files.has(f)) {
-        const abs = confine(f);
-        let c = null;
-        try { c = fs.statSync(abs).isFile() ? fs.readFileSync(abs, 'utf8') : null; } catch (e) { c = null; }
-        if (c !== null && !c.endsWith('\n')) c += '\n';
-        files.set(f, c);
-      }
-      return files.get(f);
+      const k = canon(f);
+      if (!files.has(k.abs)) files.set(k.abs, load(k));
+      return files.get(k.abs);
     },
-    set(f, c) { files.set(f, c); },
-    snapshot() { const s = makeState(root); for (const [k, v] of files) s.set(k, v); return s; },
+    set(f, c) { files.set(canon(f).abs, c); },
+    snapshot() { const s = makeState(root); for (const [k, v] of files) s.files.set(k, v); return s; },
+    files,
   };
 }
 
@@ -135,18 +176,20 @@ function run(text, state, report) {
     const file = it.file;
     if (!file) { if (!('command' in it)) report('edit', 'unchecked', it.n, '-'); continue; }
     for (const d of it.dupes || []) report(d, 'duplicate', it.n, file);
+    for (const o of it.odd || []) report(o, 'unchecked', it.n, file);
     let c = state.get(file);
     const a = it.anchor || '';
     if (/^new file/.test(a)) { report('new', c === null ? 'ok' : 'exists', it.n, file); state.set(file, it['insert-after'] || it.after || ''); continue; }
-    if (c === null) { report('file', 'missing', it.n, file); continue; }
+    if (typeof c !== 'string') { report('file', 'missing', it.n, file); continue; }
     const n = Number((/\d+/.exec(it.indent || '') || [0])[0]);
     for (const k of ['before', 'after', 'insert-after', 'delete']) if (k in it && it[k] === null) report(k, 'unchecked', it.n, file);
     const key = it.before ? 'before' : it.delete ? 'delete' : null;
     const loc = key ? locate(c, it[key], n) : null;
-    const m = new RegExp(PHRASE.source).exec(a);
+    const ph = phrases(a); const m = ph.find((x) => x.lit !== null);
     let hits = [];
+    for (let i = ph.length - (m ? 1 : 0); i > 0; i--) report('anchor', 'unchecked', it.n, file);
     if (m) {
-      hits = lineIndex(c, m[1], litOf(m));
+      hits = lineIndex(c, m.kind, m.lit);
       const covered = hits.length >= 2 && loc && loc.at.length === 1 && inSpan(c, loc.at[0], loc.p, hits) === 1;
       report('anchor', covered ? 'ok' : statusOf(hits.length), it.n, file);
     } else report('anchor', 'unchecked', it.n, file);
@@ -176,7 +219,9 @@ function affected(text) {
     const paths = [...l.slice(0, cut).matchAll(/`([^`]+)`/g)].map((x) => x[1]);
     const tail = l.slice(cut);
     if (/^ \(anchor: new file/.test(tail)) { paths.forEach((p) => out.push({ p, kind: 'new' })); continue; }
-    for (const x of tail.matchAll(PHRASE)) paths.forEach((p) => out.push({ p, kind: x[1], lit: litOf(x) }));
+    const ph = phrases(tail);
+    if (/^ \(anchors?:/.test(tail) && !ph.some((x) => x.lit !== null)) { paths.forEach((p) => out.push({ p, kind: 'bad' })); continue; }
+    for (const x of ph) paths.forEach((p) => out.push({ p, kind: x.lit === null ? 'bad' : x.kind, lit: x.lit }));
   }
   return out;
 }
@@ -184,7 +229,7 @@ function affected(text) {
 function main() {
   let contract = null; let repo = '.'; const chain = [];
   for (const a of process.argv.slice(2)) {
-    if (a.startsWith('--repo=')) repo = a.slice('--repo='.length);
+    if (a.startsWith('--repo=')) { repo = a.slice('--repo='.length); if (repo === '') usage('--repo= needs a value'); }
     else if (a.startsWith('--chain=')) chain.push(a.slice('--chain='.length));
     else if (a.startsWith('-')) usage(`unknown argument: ${a}`);
     else if (contract === null) contract = a;
@@ -211,9 +256,10 @@ function main() {
   run(text, state, say);
   for (const x of affected(text)) {
     if (x.kind === 'new') { say('new', pre.get(x.p) === null ? 'ok' : 'exists', 'af', x.p); continue; }
+    if (x.kind === 'bad') { say('anchor', 'unchecked', 'af', x.p); continue; }
     const before = pre.get(x.p); const after = state.get(x.p);
-    const k = before === null ? 0 : lineIndex(before, x.kind, x.lit).length;
-    const k2 = after === null ? 0 : lineIndex(after, x.kind, x.lit).length;
+    const k = typeof before === 'string' ? lineIndex(before, x.kind, x.lit).length : 0;
+    const k2 = typeof after === 'string' ? lineIndex(after, x.kind, x.lit).length : 0;
     say('anchor', k === 1 || k2 === 1 ? 'ok' : statusOf(k), 'af', x.p);
   }
   console.log(`contract-anchors: ${bad ? 'fail' : unchecked ? 'unchecked' : 'ok'} checks=${checks} bad=${bad} unchecked=${unchecked}`);
@@ -221,4 +267,5 @@ function main() {
   process.exit(bad ? 1 : 0);
 }
 
-main();
+if (require.main === module) main();
+module.exports = { phrases };

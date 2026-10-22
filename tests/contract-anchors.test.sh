@@ -148,4 +148,107 @@ one '- `a.txt`' ../outside.txt 'line starting `root:`' '   insert-after: `x`\n';
 one '- `a.txt`' a.txt 'line matching `tail line`' '   insert-after: `x`\n'
 rc_is "(r) a --chain contract's path outside the repo, exit 2" 2 --chain="$T/chain.md"
 node "$CA" "$T/c.md" --repo="$T/none" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(r) a --repo that does not exist exits 2" || bad "(r) missing repo"
+# rp-u6 fix 2: grammar table, seeded differential against an awk oracle, the reviewer's cases.
+gram() { node -e 'const {phrases}=require(process.argv[1]);for(const l of require("fs").readFileSync(0,"utf8").split("\n").slice(0,-1)){const p=phrases(l);console.log(p.length===1&&p[0].lit!==null?p[0].lit:"NONE")}' "$CA"; }
+cat > "$T/gen.awk" <<'AWK'
+function rnd(n) { s = (s * 16807) % 2147483647; return s % n }
+function esc(x,  i, c, r) { for (i = 1; i <= length(x); i++) { c = substr(x, i, 1); r = r (c == "`" ? "\\`" : c) } return r }
+function hit(i, kind, lit) {
+  if (kind == "matching") return index(L[i], lit) > 0
+  if (kind == "ending") return length(L[i]) >= length(lit) && substr(L[i], length(L[i]) - length(lit) + 1) == lit
+  return substr(L[i], 1, length(lit)) == lit
+}
+BEGIN {
+  if (mode == "gram") { # literals (lits) and the phrase lines that must parse back to them (raws)
+    print "abc\na`b\nabc\\\n`\\\n\\\\\na`b" > (dir "/lits") # hand rows first
+    print "line matching `abc`\nline matching `a\\`b`\nline matching `abc\\`\nline matching `\\`\\`\nline matching `\\\\`\nline matching ``a`b``" > (dir "/raws")
+    split("a|b| |\t|`|\\|`|\\", A, "|")
+    for (c = 1; c <= n; c++) {
+      x = ""; r = ""; for (i = 1 + rnd(6); i > 0; i--) { ch = A[1 + rnd(8)]; x = x ch; r = r (ch == "`" ? "\\`" : ch) }
+      print x > (dir "/lits"); print "line matching `" r "`" > (dir "/raws")
+    }
+    exit
+  }
+  nt = split("foo|bar|foo bar|a`b|`z|w`|c\\d|x\ty|end\\|  ind|foo", T, "|")
+  sp[0] = "a.txt"; sp[1] = "./a.txt"; sp[2] = "adir/../a.txt"; sp[3] = root "/a.txt"; sp[4] = "alias.txt"
+  for (c = 1; c <= n; c++) { # a file of repeated, prefixed, tabbed lines; 2 to 4 edits on it, spelled differently
+    nl = 2 + rnd(5)
+    for (i = 1; i <= nl; i++) {
+      if (i > 1 && rnd(3) == 0) L[i] = L[i - 1]
+      else { L[i] = T[1 + rnd(nt)]; if (rnd(2)) L[i] = L[i] (rnd(2) ? " " : "") T[1 + rnd(nt)] }
+      print L[i] > (dir "/" c ".txt")
+    }
+    cf = dir "/" c ".md"; print "Unit: x\n\n## Ordered edits" > cf
+    out = ""; bads = 0; tot = 0; ne = 2 + rnd(3)
+    for (e = 1; e <= ne; e++) {
+      k = rnd(3); kind = k == 0 ? "matching" : k == 1 ? "ending" : "starting"; f = sp[rnd(5)]
+      src = (nl == 0 || rnd(6) == 0) ? "zz" : L[1 + rnd(nl)]; m = length(src); len = 1 + rnd(m)
+      lit = kind == "matching" ? substr(src, 1 + rnd(m - len + 1), len) : kind == "ending" ? substr(src, m - len + 1) : substr(src, 1, len)
+      h = 0; for (i = 1; i <= nl; i++) { H[i] = hit(i, kind, lit); h += H[i] }
+      print e ". file: `" f "`\n   anchor: line " kind " `" esc(lit) "`" > cf
+      st = h == 0 ? "missing" : h == 1 ? "ok" : "ambiguous"
+      if (rnd(2)) { # insert after the hit line
+        print "   insert-after: `new" c "_" e "`" > cf
+        if (h == 1) { for (i = 1; i <= nl; i++) if (H[i]) j = i; for (i = nl; i > j; i--) L[i + 1] = L[i]; L[j + 1] = "new" c "_" e; nl++ }
+        out = out "anchor " st " " e " " f "\n"; tot++; bads += st != "ok"
+      } else { # delete or replace a whole line
+        key = rnd(2) ? "delete" : "before"; x = (nl > 0 && rnd(6) > 0) ? L[1 + rnd(nl)] : "nope"; pc = 0; j = 0
+        for (i = 1; i <= nl; i++) if (L[i] == x) { pc++; j = i }
+        print "   " key ":\n~~~\n" x "\n~~~" > cf
+        if (key == "before") print "   after: `R" c "_" e "`" > cf
+        if (h >= 2 && pc == 1 && H[j]) st = "ok"
+        ps = pc == 0 ? "missing" : pc == 1 ? "ok" : "ambiguous"
+        out = out "anchor " st " " e " " f "\n" key " " ps " " e " " f "\n"; tot += 2; bads += (st != "ok") + (ps != "ok")
+        if (pc == 1 && key == "before") L[j] = "R" c "_" e
+        else if (pc == 1) { for (i = j; i < nl; i++) L[i] = L[i + 1]; nl-- }
+      }
+    }
+    printf "%scontract-anchors: %s checks=%d bad=%d unchecked=0\n", out, bads ? "fail" : "ok", tot, bads > (dir "/" c ".exp")
+    print bads ? 1 : 0 > (dir "/" c ".rc")
+  }
+}
+AWK
+mkdir -p "$T/rg"; awk -v s=4242 -v n=150 -v mode=gram -v dir="$T/rg" -f "$T/gen.awk"
+gram < "$T/rg/raws" | cmp -s - "$T/rg/lits" && ok "(s) the grammar table and 150 random literals parse back to themselves" || bad "(s) grammar: $(gram < "$T/rg/raws" | diff - "$T/rg/lits" | head -n3 | tr '\n' '|')"
+mkdir -p "$T/rd/repo" "$T/rd/cases"; ln -sf a.txt "$T/rd/repo/alias.txt"; RD="$(cd "$T/rd/repo" && pwd -P)"
+awk -v s=7331 -v n=160 -v dir="$T/rd/cases" -v root="$RD" -f "$T/gen.awk"; nbad=0
+for ((k = 1; k <= 160; k++)); do
+  cp "$T/rd/cases/$k.txt" "$RD/a.txt"; out="$(node "$CA" "$T/rd/cases/$k.md" --repo="$RD" 2>/dev/null)"; r=$?
+  [ "$r" = "$(cat "$T/rd/cases/$k.rc")" ] && [ "$out" = "$(cat "$T/rd/cases/$k.exp")" ] && continue
+  nbad=$((nbad + 1)); [ "$nbad" -le 2 ] && bad "(t) case $k rc=$r got [$(printf %s "$out" | tr '\n' '|')] want [$(tr '\n' '|' < "$T/rd/cases/$k.exp")]"
+done
+[ "$nbad" = 0 ] && ok "(t) 160 seeded random cases match the awk oracle" || bad "(t) $nbad random cases differ"
+printf 'foo\nbar\n' > "$T/m/u.txt"; ln -sf u.txt "$T/m/ualias.txt"
+for sp in ./u.txt adir/../u.txt "$(cd "$T/m" && pwd -P)/u.txt" ualias.txt; do
+  { head_ ''; edit 1 u.txt 'line matching `bar`' 0; printf '   delete: `bar`\n'; edit 2 "$sp" 'line matching `bar`' 0; printf '   insert-after: `x`\n'; } > "$T/c.md"
+  expect "(u) state is one per file: $sp" 1 "anchor ok 1 u.txt
+delete ok 1 u.txt
+anchor missing 2 $sp
+$(sum fail 3 1)"
+done
+printf 'x\\y\nfoo\n' > "$T/m/e.txt"; one '- `e.txt`' e.txt 'line matching `\`\`' '   insert-after: `x`\n'
+expect "(v) a backtick-backslash literal is missing" 1 "anchor missing 1 e.txt
+$(sum fail 1 1)"
+mkdir -p "$T/m/adir"; mkfifo "$T/m/ff"; ln -sfn ../nowhere "$T/m/dang"; ln -sfn gone.txt "$T/m/dang2"
+for f in adir ff u.txt/x; do
+  one '- `u.txt`' "$f" 'new file' '   insert-after: `x`\n'
+  expect "(w) new file at $f exists" 1 "new exists 1 $f
+$(sum fail 1 1)"
+done
+one '- `u.txt`' dang 'new file' '   insert-after: `x`\n'; rc_is "(w) a dangling link out of the repo, exit 2" 2
+{ head_ ''; edit 1 dang2 'new file' 0; printf '   insert-after: `x`\n'; edit 2 gone.txt 'new file' 0; printf '   insert-after: `y`\n'; } > "$T/c.md"
+expect "(w) a dangling link and its target are one file" 1 "new ok 1 dang2
+new exists 2 gone.txt
+$(sum fail 2 1)"
+one '- `u.txt` (anchor: not a phrase)' u.txt 'line matching `foo` or line ending `bar`' '   insert-after: `x`\n'
+expect "(x) a second phrase, an unrecognised anchor: unchecked" 0 "anchor unchecked 1 u.txt
+anchor ok 1 u.txt
+anchor unchecked af u.txt
+$(sum unchecked 3 0 2)"
+one '- `u.txt`' u.txt 'line matching `foo`' 'Before: `foo`\n   - after: `x`\n   insert-after: `y`\n'
+expect "(x) a capitalised or bulleted key: unchecked" 0 "before unchecked 1 u.txt
+after unchecked 1 u.txt
+anchor ok 1 u.txt
+$(sum unchecked 3 0 2)"
+rc_is "(x) --repo= with no value, exit 2" 2 --repo=
 exit "$fail"
