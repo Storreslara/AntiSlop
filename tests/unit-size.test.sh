@@ -35,6 +35,27 @@ is "(f) a glob" 'lane: full files=1 reason=unmeasurable' u1 -- 'src/*.js'
 is "(f) a ./ entry the anchors cannot see" 'lane: full files=1 reason=unmeasurable' u1 -- ./hooks/x.sh
 is "(f) a doubled slash" 'lane: full files=1 reason=unmeasurable' u1 -- src//a.js
 is "(f) a leading slash" 'lane: full files=1 reason=unmeasurable' u1 -- /hooks/x.sh
+is "(f) a .. out of docs/plans" 'lane: full files=1 reason=unmeasurable' u1 -- docs/plans/../../hooks/x.sh src/a.js
+is "(f) a .. out of .claude" 'lane: full files=1 reason=unmeasurable' u1 -- .claude/../hooks/x.sh src/a.js
+is "(f) a deep .. out of docs/plans" 'lane: full files=1 reason=unmeasurable' u1 -- docs/plans/x/../../../hooks/x.sh src/a.js
+is "(f) a .. entry alone" 'lane: full files=0 reason=unmeasurable' u1 -- docs/plans/../../hooks/x.sh
+is "(f) a glob under .claude" 'lane: full files=1 reason=unmeasurable' u1 -- '.claude/*.json' src/a.js
+cat > docs/plans/p/contracts/u3.md << 'MD'
+Unit: u3
+
+## Affected files
+- `docs/plans/../../hooks/stop-gate.sh`
+- `src/a.js`
+MD
+is "(f) contract, a .. out of docs/plans" 'lane: full files=1 reason=unmeasurable' u3 --contract docs/plans/p/contracts/u3.md
+is "(l) a hand-edited .claude settings file" 'lane: full files=1 reason=sensitive' u1 -- .claude/settings.json src/a.js
+is "(l) a .claude/hooks entry" 'lane: full files=1 reason=sensitive' u1 -- .claude/hooks/x.sh src/a.js
+is "(l) a generated .claude/agents copy stays free" 'lane: small files=1 reason=paths' u1 -- .claude/agents/x.md src/a.js
+is "(l) a generated .claude/bin copy stays free" 'lane: small files=1 reason=paths' u1 -- .claude/bin/x.sh src/a.js
+is "(l) a docs/plans entry stays free" 'lane: small files=1 reason=paths' u1 -- docs/plans/p/spec.md src/a.js
+is "(m) a dash argument" 'lane: full files=0 reason=unmeasurable' u1 -- -rf
+is "(m) a dash argument among paths" 'lane: full files=0 reason=unmeasurable' u1 -- src/a.js -rf
+is "(m) a newline in an argument" 'lane: full files=0 reason=unmeasurable' u1 -- $'src/a.js\nsrc/b.js'
 cat > docs/plans/p/contracts/u2.md << 'MD'
 Unit: u2
 

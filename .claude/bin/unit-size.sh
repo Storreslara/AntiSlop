@@ -29,13 +29,31 @@ if [ "${1:-}" = --contract ]; then
   [ -n "${2:-}" ] && [ -f "$2" ] || emit full 0 no-input
   us_entries "$2" > "$W/raw"; src=contract
 elif [ "${1:-}" = -- ]; then
-  shift; printf '%s\n' "$@" > "$W/raw"; src=paths
+  shift
+  # An argument that is an option or holds a newline cannot be one path: unmeasurable.
+  for a in "$@"; do
+    case "$a" in -*|*$'\n'*) emit full 0 unmeasurable ;; esac
+  done
+  printf '%s\n' "$@" > "$W/raw"; src=paths
 else
   emit full 0 no-input
 fi
 # Bookkeeping entries never count: .claude/ copies are generated, docs/plans/ is the plan itself.
 grep -vE '^(\.claude/|docs/plans/)' "$W/raw" | grep -v '^$' | sort -u > "$W/entries" || true
 n="$(wc -l < "$W/entries" | tr -d ' ')"
+# Bookkeeping entries are still judged: a `..` segment or glob can leave .claude/ or docs/plans/, and a
+# hand-edited .claude/hooks or .claude settings entry is sensitive. Only .claude/agents/ copies stay free.
+grep -v '^$' "$W/raw" | sort -u > "$W/all" || true
+while IFS= read -r p; do
+  us_safe_path "$p" || emit full "$n" unmeasurable
+  case "$p" in *[*?[]*|*/) emit full "$n" unmeasurable ;; esac
+done < "$W/all"
+while IFS= read -r p; do
+  case "$p" in
+    .claude/agents/*) ;;
+    .claude/*) touches_sensitive_path "$p" && emit full "$n" sensitive ;;
+  esac
+done < "$W/all"
 [ "$n" -gt 0 ] || emit full 0 empty
 while IFS= read -r p; do
   # An entry the sensitive-path anchors cannot judge (`./hooks/x.sh`, `src//a.js`, `/x`) is unmeasurable.

@@ -4,7 +4,7 @@ description: "Thin router for the persona system. Set as the main agent via sett
 model: sonnet
 tools: Read, Grep, Glob, Bash, Agent, AskUserQuestion, ExitPlanMode, TaskStop, TaskOutput, SendMessage
 ---
-<!-- antislop v0.31.205 | source: agents/orchestrator.md | ADAPT-substituted -->
+<!-- antislop v0.31.206 | source: agents/orchestrator.md | ADAPT-substituted -->
 
 You are the thin router for this project's persona system. You never
 implement, never load persona skills, and synthesize results briefly.
@@ -86,6 +86,9 @@ put under `## Affected files`. It prints `lane: <small|medium|full> files=<n> re
 lane and the scope list under `.claude/bookkeeping/`. A sensitive path, a `.fail` record for the unit, more
 than 10 files, or anything it cannot measure prints `full`. A missing script, a non-zero exit or any other
 output is `full` too. You may move a unit to a heavier lane than it prints, never to a lighter one.
+When the scope grows after planning (a lead-programmer proposes a file outside `## Affected files`), run
+`unit-size.sh` again with the grown list and take the heavier lane; the reviewer tier still comes from
+`reviewer-tier.sh` over the real diff.
 - **small** (4 files or fewer): no spec-master and no explorer first. Write `## Affected files` from the
   paths the request names and their tests (one Glob or Grep call), and dispatch lead-programmer with the
   objective, that list and `## Pre-resolved context` reading `none (small lane: read the listed files
@@ -140,7 +143,8 @@ before routing it.
 
 **Unit scope.** Every lead-programmer dispatch carries `## Affected files`. For a dispatch with no
 dispatch contract, write that section yourself from the paths the request names, those paths' test files
-or test directory, and the explorer's blast radius, and never leave it empty. A file the user names in the
+or test directory, and, outside the small lane (see "Lane routing"), the explorer's blast radius, and
+never leave it empty. A file the user names in the
 request is in scope; a file outside the list is not, however related it looks.
 
 ## Dispatch hygiene
