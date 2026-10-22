@@ -138,6 +138,15 @@ elif [ -z "$start" ]; then
   start="HEAD"; log "baseline: HEAD (no timestamp and no commit line)"
 fi
 
+# ptok: the prompt as one token per line, so us_named_in reads a path the way a person does. Split at
+# whitespace and at quotes, backticks, brackets, braces, angle brackets, `|`, `,`, `;` and `=`; then cut
+# trailing sentence punctuation (`.,;:!?`) from each token, repeating until nothing more comes off, and
+# a leading `./`. A `:12` or `#L12` line suffix needs no cutting: `:` and `#` already end a path token.
+# Inner dots stay, so `xREADME.md`, `other/README.md` and `README.md.bak` are still different tokens.
+# us_named_in alone counts a sentence-final `.` as part of the path, so a path that ends a sentence
+# was never named (rp-u15 fix 1).
+tr '[:space:]`()[]{}<>|,;=\047\042' '\n' < "$W/prompt" \
+  | sed -E ':a; s/[.,;:!?]+$//; ta; s#^(\./)+##' > "$W/ptok"
 us_section "$W/prompt" "Affected files" > "$W/sec"
 us_entries "$W/prompt" > "$W/listed"
 us_exclusions "$W/prompt" > "$W/excl"
@@ -162,7 +171,7 @@ in_scope() { # <path> -> exit 0 when this persona may leave it changed
   case "$p" in .claude/*|docs/plans/*) return 0 ;; esac
   us_excluded "$p" "$W/excl" && return 1
   us_listed "$p" "$W/listed" && return 0
-  us_named_in "$p" "$W/prompt" && [ "$persona" != lead-programmer ] && return 0
+  us_named_in "$p" "$W/ptok" && [ "$persona" != lead-programmer ] && return 0
   case "$persona" in
     lead-programmer)
       # Only the classes us_classify names as in scope count; `out`, `excluded`, empty or any other
@@ -177,6 +186,17 @@ in_scope() { # <path> -> exit 0 when this persona may leave it changed
       case "$p" in docs/*) return 0 ;; esac; return 1 ;;
   esac
   return 1
+}
+# foreign <path>: the short shas of the commits after the baseline that changed the path and that no
+# commit line of the transcript shows. The restore command would revert them too (rp-u15 fix 1).
+foreign() {
+  local c s seen out=""
+  while IFS= read -r c; do
+    seen=0
+    while IFS= read -r s; do [ -n "$s" ] || continue; case "$c" in "$s"*) seen=1; break ;; esac; done < "$W/shas"
+    [ "$seen" = 1 ] || out="$out ${c:0:10}"
+  done < <(git rev-list "$start..HEAD" -- "$1" 2>/dev/null)
+  printf '%s' "${out# }"
 }
 viol=()
 while IFS= read -r -d '' p; do
@@ -205,6 +225,8 @@ log "blocked: ${shown[*]}"
     elif git ls-files --error-unmatch -- "$p" >/dev/null 2>&1; then echo "  git rm -qf -- $q   (a file you added)"
     else echo "  rm -- $q   (a new file you never added)"
     fi
+    f="$(foreign "$p")"
+    [ -z "$f" ] || echo "    note: commit(s) $f changed it after the baseline and are not in your transcript (another session's, or a commit made before you started and re-dated); restore only your own change, not theirs."
   done
   echo "Then report the change under \`Proposed out-of-scope changes:\` (or \`Knowledge proposals:\`) instead of applying it. In scope: the dispatch's \`## Affected files\` and your persona's standing exceptions; knowledge files (CONTEXT.md, README.md, docs/harness-glossary.md, docs/adr/) need knowledgeWrites \"apply\" or a dispatch that lists or names them."
 } >&2

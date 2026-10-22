@@ -188,6 +188,68 @@ mkt "$T/t28" "$LP" "$R/CONTEXT.md" "$R/src/new.js" "$R/src/staged.js"; run lead-
 printf '%s' "$err" | grep -qF "git checkout $(git rev-parse HEAD) -- CONTEXT.md" && printf '%s' "$err" | grep -qF 'rm -- src/new.js' \
   && printf '%s' "$err" | grep -qF 'git rm -qf -- src/staged.js' && ! printf '%s' "$err" | grep -qF 'git rm a file' && ok "(z) restore command per path" || bad "(z) message: $err"
 g rm -qf -- src/staged.js; rm -f src/new.js; git checkout -q -- CONTEXT.md
+# rp-u15 fix 1: a path the dispatch names counts for scribe and spec-master whatever prose punctuation
+# follows it. Every row is replayed through the gate for both personas in a scratch repo, the way
+# abt-u13h's close-out scribe ran: one Edit tool call, the change committed with `git commit -q` (no
+# commit line in the transcript), the commit dated after the transcript's first timestamp.
+R2="$T/repo2"; mkdir -p "$R2/eval/abtest" "$R2/eval/other" "$R2/.claude" && cd "$R2" && git init -q . \
+  && printf 'x\n' > eval/abtest/README.md && printf 'y\n' > eval/other/README.md && printf 'c\n' > CONTEXT.md \
+  && printf '{"pluginVersion":"0"}\n' > .claude/persona-config.json && export CLAUDE_PROJECT_DIR="$R2" && g add -A \
+  && GIT_COMMITTER_DATE=2000-01-01T00:00:00Z g commit -q --date=2000-01-01T00:00:00Z -m base2
+B2="$(git rev-parse HEAD)"; NP=eval/abtest/README.md
+named_row() { # <n> <named|unnamed> <prompt; @P@ is the path, \n a newline>
+  local n="$1" want="$2" pr who; pr="$(printf '%b' "${3//@P@/$NP}")"
+  for who in scribe spec-master; do
+    g reset -q --hard "$B2"; printf 'row %s\n' "$n" >> "$NP"; dc -a -m "row $n"
+    mkt "$T/n$n.$who" "$pr" "$R2/$NP"; run "$who" "$T/n$n.$who"
+    if [ "$want" = named ]; then
+      [ "$rc" = 0 ] && ok "(aa) $who row $n: path named" || bad "(aa) $who row $n should be named: rc=$rc $err"
+    else
+      [ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "scope: $NP." && ok "(aa) $who row $n: path not named" || bad "(aa) $who row $n should not be named: rc=$rc $err"
+    fi
+  done
+}
+named_row 1 named 'Scribe digest: affected files @P@. Changed API stays.'
+named_row 2 named 'Edit `@P@` and nothing else.'
+named_row 3 named 'Edit the readme (@P@.) today.'
+named_row 4 named 'Edit @P@, then stop.'
+named_row 5 named 'Edit @P@; then stop.'
+named_row 6 named 'Files: @P@: add one line.'
+named_row 7 named 'Edit @P@... then stop.'
+named_row 8 named 'Edit @P@… then stop.'
+named_row 9 named 'See [the readme](@P@) for it.'
+named_row 10 named 'See @P@:12 for the line.'
+named_row 11 named 'Is it @P@? Yes.'
+named_row 12 named 'Do it in @P@!'
+named_row 13 named 'Look at @P@:12.'
+named_row 14 named 'Run:\n```\n@P@\n```\nthen stop.'
+named_row 15 named 'Edit eval/other/README.md and @P@.'
+named_row 16 named 'Edit @P@, eval/other/README.md.'
+named_row 17 named 'Edit ./@P@ now.'
+named_row 18 named 'Edit **@P@**. Done.'
+named_row 26 named 'He said "edit @P@." and left.'
+named_row 27 named "Edit '@P@.' now."
+named_row 28 named 'Edit `@P@.` now.'
+named_row 19 unnamed 'Edit x@P@ now.'
+named_row 20 unnamed 'Edit @P@x now.'
+named_row 21 unnamed 'Edit eval/other/README.md and README.md.'
+named_row 22 unnamed 'Edit other/@P@.'
+named_row 23 unnamed 'Edit @P@.bak now.'
+named_row 24 unnamed 'Edit @P@/more now.'
+named_row 25 unnamed 'Nothing is named here.'
+# (ab) a block says when commits other than the writer's own changed the path after the baseline: the
+# restore command would revert them too (another session's commit, or a commit made before the start
+# and re-dated by an amend).
+g reset -q --hard "$B2"; printf 'other\n' > CONTEXT.md; dc -a -m 'another session'; O="$(git rev-parse --short=10 HEAD)"
+mkt "$T/w1" "$LP" "$R2/CONTEXT.md"; run lead-programmer "$T/w1"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "commit(s) $O" && printf '%s' "$err" | grep -qF 'not in your transcript' && ok "(ab) foreign commit named in the block" || bad "(ab) foreign rc=$rc $err"
+cp "$T/w1" "$T/w2"; commit_result "$T/w2" "$(git rev-parse HEAD)"; run lead-programmer "$T/w2"
+[ "$rc" = 2 ] && ! printf '%s' "$err" | grep -qF 'not in your transcript' && ok "(ab) the writer's own visible commit is not a foreign one" || bad "(ab) own rc=$rc $err"
+g reset -q --hard "$B2"; printf 'early\n' > CONTEXT.md; GIT_COMMITTER_DATE=2000-06-01T00:00:00Z g commit -q -a --date=2000-06-01T00:00:00Z -m 'earlier unit'
+GIT_COMMITTER_DATE=2099-01-03T00:00:00Z g commit -q --amend --no-edit --date=2099-01-03T00:00:00Z; O="$(git rev-parse --short=10 HEAD)"
+run lead-programmer "$T/w1"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "commit(s) $O" && ok "(ab) re-dated earlier commit named in the block" || bad "(ab) amended rc=$rc $err"
+g reset -q --hard "$B2"; cd "$R" && export CLAUDE_PROJECT_DIR="$R"
 # (l) registration (operator step O1): SubagentStop runs stop-gate.sh first, and writer-scope-gate.sh right
 # after it once the operator has registered it; before O1 the gate is inert and nothing else changes.
 r="$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")"
