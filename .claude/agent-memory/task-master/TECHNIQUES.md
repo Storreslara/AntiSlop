@@ -16,3 +16,4 @@
 - A grep false-fail check (comment filter) is fixed with a tokenizer script in the checks dir, not a longer grep pipe; pin proof-script output with a `.expected` file and a gate test.
 - A review's suggested anchor can create a false failure (table-row-only README route): test the regex on real forms (table row, curl example, prose, test file name) before accepting it.
 - Ordering trap: u12 put the config dir inside `.runs/`, which u01b's arms refuse; u12c must follow u01b with nothing between.
+- [Diff hunks to edits, test compaction](technique_diff_hunks_to_edits_and_test_compaction.md) — difflib hunks give unique-anchor edits; helper-function tests keep a script+matrix fix under the 30 KB cap
