@@ -6,25 +6,24 @@
 //
 // usage: node bin/contract-anchors.js <contract> [--repo=<dir>] [--chain=<contract>]...
 //
-// It reads the contract's `## Affected files` and `## Ordered edits`. An `anchor: line matching|ending|
-// starting `<literal>`` must hold on exactly one line; an edit's `before:` or `delete:` payload (inline or
-// fenced) must occur exactly once as whole lines, verbatim or after stripping the item's `indent: N` spaces
-// from each line. An anchor that holds on several lines is still ok when the edit's payload matched once and
-// contains it. `anchor: new file` needs the file to be absent. Edits are applied in memory in order, so a
-// later edit sees the earlier ones. Each --chain contract, given in dispatch order, is applied first, so a
-// line a queued unit creates counts and a line it rewrites is missing. Command items are not run.
-// An Affected-files anchor passes when it holds once before the contract's edits or after them.
-//
-// stdout: one `<kind> <status> <item> <file>` line per check (kind anchor|before|delete|new|file|chain;
-// status ok|missing|ambiguous|exists|unchecked; item the edit number, or `af` for Affected files), then
-// `contract-anchors: <ok|fail> checks=<n> bad=<n> unchecked=<n>`.
+// It reads the contract's `## Affected files` and `## Ordered edits`; edits are applied in memory in order,
+// each --chain contract (dispatch order) first. Command items are not run. Outcomes, asserted by the matrix in
+// tests/contract-anchors.test.sh (h = lines the anchor holds on; P = the before:/delete: payload, whole lines):
+//   anchor line matching|ending|starting: h=0 missing; h=1 ok; h>=2 ambiguous, ok only when P is located once
+//   and exactly one hit lies in P. New file: absent ok, else exists. P: 0 times missing, once ok, more ambiguous.
+//   unchecked (counted, not bad): no backticked `file:`, an anchor that is no such phrase, a payload that is
+//   neither backticked nor fenced; a key given twice in one edit is `duplicate` (bad). A literal may hold a
+//   backslash-backtick or end in a backslash. File paths are confined to --repo by real path (outside: exit 2).
+// stdout: `<kind> <status> <item> <file>` per check, then `contract-anchors: <ok|fail|unchecked> checks=<n>
+// bad=<n> unchecked=<n>` (unchecked warns on stderr).
 // Exit 0 when nothing is bad, 1 otherwise, 2 on a usage or read error (only the `=` flag forms are read).
 
 const fs = require('fs');
 const path = require('path');
 
 const OPEN = /^\s*(`{3,}|~{3,})/;
-const PHRASE = /line (matching|ending|starting) (?:``\s?(.+?)\s?``|`([^`]+)`)/g;
+const PHRASE = /line (matching|ending|starting) (?:``\s?(.+?)\s?``|`((?:[^`\\]|\\.)+)`|`([^`]+)`)/g;
+const litOf = (m) => m[2] ?? (m[3] === undefined ? m[4] : m[3].replace(/\\`/g, '`'));
 const KEYS = new Set(['file', 'anchor', 'indent', 'before', 'after', 'insert-after', 'delete', 'command']);
 
 function usage(msg) {
@@ -51,6 +50,7 @@ function items(sec) {
     const head = /^(\d+)\. (.*)$/.exec(l);
     if (head) { cur = { n: head[1] }; out.push(cur); l = `   ${head[2]}`; }
     const m = cur && /^\s+([a-z][a-z-]*): ?(.*)$/.exec(l);
+    if (m && KEYS.has(m[1]) && m[1] in cur) cur.dupes = [...(cur.dupes || []), m[1]];
     if (!m || !KEYS.has(m[1]) || m[1] in cur) {
       const f = OPEN.exec(l);
       if (f) { i++; while (i < sec.length && sec[i].trim() !== f[1]) i++; }
@@ -91,12 +91,28 @@ function locate(content, p, n) {
 }
 const statusOf = (k) => (k === 1 ? 'ok' : k === 0 ? 'missing' : 'ambiguous');
 
-function makeState(repo) {
+// How many of the hit lines (0-based) lie inside the payload p located at offset at.
+function inSpan(content, at, p, hits) {
+  const first = content.slice(0, at).split('\n').length - 1;
+  const len = p.replace(/\n$/, '').split('\n').length;
+  return hits.filter((k) => k >= first && k < first + len).length;
+}
+
+// root = real path of --repo; a path whose real path is outside it exits 2.
+function makeState(root) {
   const files = new Map();
+  const inside = (p) => p === root || p.startsWith(root + path.sep);
+  const confine = (f) => {
+    const abs = path.resolve(root, f);
+    for (let p = abs; inside(abs); p = path.dirname(p)) {
+      try { if (inside(fs.realpathSync(p))) return abs; break; } catch (e) { if (path.dirname(p) === p) break; }
+    }
+    return usage(`path is outside --repo: ${f}`);
+  };
   return {
     get(f) {
       if (!files.has(f)) {
-        const abs = path.join(repo, f);
+        const abs = confine(f);
         let c = null;
         try { c = fs.statSync(abs).isFile() ? fs.readFileSync(abs, 'utf8') : null; } catch (e) { c = null; }
         if (c !== null && !c.endsWith('\n')) c += '\n';
@@ -105,28 +121,33 @@ function makeState(repo) {
       return files.get(f);
     },
     set(f, c) { files.set(f, c); },
-    snapshot() { const s = makeState(repo); for (const [k, v] of files) s.set(k, v); return s; },
+    snapshot() { const s = makeState(root); for (const [k, v] of files) s.set(k, v); return s; },
   };
 }
 
 // Applies one contract's edits to state; report(kind, status, item, file) gets every check.
 function run(text, state, report) {
-  for (const it of items(section(text, 'Ordered edits') || [])) {
+  const sec = section(text, 'Ordered edits');
+  if (!sec) return;
+  const list = items(sec);
+  if (list.length === 0) report('edit', 'unchecked', '-', '-');
+  for (const it of list) {
     const file = it.file;
-    if (!file) continue;
+    if (!file) { if (!('command' in it)) report('edit', 'unchecked', it.n, '-'); continue; }
+    for (const d of it.dupes || []) report(d, 'duplicate', it.n, file);
     let c = state.get(file);
     const a = it.anchor || '';
     if (/^new file/.test(a)) { report('new', c === null ? 'ok' : 'exists', it.n, file); state.set(file, it['insert-after'] || it.after || ''); continue; }
     if (c === null) { report('file', 'missing', it.n, file); continue; }
     const n = Number((/\d+/.exec(it.indent || '') || [0])[0]);
+    for (const k of ['before', 'after', 'insert-after', 'delete']) if (k in it && it[k] === null) report(k, 'unchecked', it.n, file);
     const key = it.before ? 'before' : it.delete ? 'delete' : null;
     const loc = key ? locate(c, it[key], n) : null;
     const m = new RegExp(PHRASE.source).exec(a);
     let hits = [];
     if (m) {
-      const lit = m[2] ?? m[3];
-      hits = lineIndex(c, m[1], lit);
-      const covered = loc && loc.at.length === 1 && loc.p.includes(lit);
+      hits = lineIndex(c, m[1], litOf(m));
+      const covered = hits.length >= 2 && loc && loc.at.length === 1 && inSpan(c, loc.at[0], loc.p, hits) === 1;
       report('anchor', covered ? 'ok' : statusOf(hits.length), it.n, file);
     } else report('anchor', 'unchecked', it.n, file);
     if (key) {
@@ -155,7 +176,7 @@ function affected(text) {
     const paths = [...l.slice(0, cut).matchAll(/`([^`]+)`/g)].map((x) => x[1]);
     const tail = l.slice(cut);
     if (/^ \(anchor: new file/.test(tail)) { paths.forEach((p) => out.push({ p, kind: 'new' })); continue; }
-    for (const x of tail.matchAll(PHRASE)) paths.forEach((p) => out.push({ p, kind: x[1], lit: x[2] ?? x[3] }));
+    for (const x of tail.matchAll(PHRASE)) paths.forEach((p) => out.push({ p, kind: x[1], lit: litOf(x) }));
   }
   return out;
 }
@@ -178,10 +199,12 @@ function main() {
     checks++; if (status === 'unchecked') unchecked++; else if (status !== 'ok') bad++;
     console.log(`${kind} ${status} ${item} ${file}`);
   };
-  const state = makeState(repo);
+  let root;
+  try { root = fs.realpathSync(path.resolve(repo)); } catch (e) { usage(`cannot read --repo ${repo}`); }
+  const state = makeState(root);
   for (const [c, t] of chainTexts) {
     let failed = 0;
-    run(t, state, (kind, status, item) => { if (status !== 'ok' && status !== 'unchecked') { failed++; say('chain', status, item, c); } });
+    run(t, state, (kind, status, item) => { if (status !== 'ok') { failed++; say('chain', status, item, c); } });
     if (!failed) say('chain', 'ok', '-', c);
   }
   const pre = state.snapshot();
@@ -193,7 +216,8 @@ function main() {
     const k2 = after === null ? 0 : lineIndex(after, x.kind, x.lit).length;
     say('anchor', k === 1 || k2 === 1 ? 'ok' : statusOf(k), 'af', x.p);
   }
-  console.log(`contract-anchors: ${bad ? 'fail' : 'ok'} checks=${checks} bad=${bad} unchecked=${unchecked}`);
+  console.log(`contract-anchors: ${bad ? 'fail' : unchecked ? 'unchecked' : 'ok'} checks=${checks} bad=${bad} unchecked=${unchecked}`);
+  if (unchecked) process.stderr.write(`contract-anchors: WARNING ${unchecked} item(s) were not verified (see the unchecked lines)\n`);
   process.exit(bad ? 1 : 0);
 }
 
