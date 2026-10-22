@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.208",
+  "pluginVersion": "0.31.209",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -118,7 +118,7 @@
     ".claude/hooks/scripts/lib/sensitive-paths.sh": "8732d707b6f91745ecf474c1fd5c07b256aba21128cc164694f70386cdd478c6",
     ".claude/hooks/scripts/lib/unit-scope.sh": "81bfb27721af36e02a2a36cc824da1d55496573a3f1ae329cf106adaa96d1d30",
     ".claude/bin/review-precheck.sh": "b0fbb4a1dc8d22cbbd20d23ecfd13ddf4942f057cf0b7a7aa2b2402f202ee8c1",
-    ".claude/hooks/scripts/writer-scope-gate.sh": "c2ddc1d9a559f02cd1f88de4012b75eb1efaa28ff36ac5ad5055037aeae80e49",
+    ".claude/hooks/scripts/writer-scope-gate.sh": "708bac6a8ed6cde5e0b354f1c4f167aa578c71b5fb1620983c3ce428944a77f5",
     ".claude/bin/unit-size.sh": "9baf7eff7e630ba89b38792846e38b7ea7d1a5000a10bdf1e2708a122578a60e"
   },
   "humanReviewMode": "off",
