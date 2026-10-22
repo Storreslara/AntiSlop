@@ -347,6 +347,27 @@ was re-run on a scratch clone; nothing was dropped as wrong, one premise (P3a) w
   If O1 is never applied, the gate is installed but inert (nothing runs it): writers are not scope-gated at
   stop and nothing else changes. The reviewer must not FAIL st-u3 for a missing registration.
 
+### st-u3 review notes (verified 2026-10-22 against abc6d195, 0.31.204; st-u4 landed at 7231a42e, 0.31.205)
+Source: st-u3's PASS notes (read with the Read tool). Each was replayed on a scratch clone with an
+out-of-scope change standing; all reproduced, none dropped. Fix: rp-u15 (Step 12).
+- **G1 (fail-open).** With no `[<branch> <sha>]` line in the transcript the gate compared against HEAD at
+  stop time: an Edit of CONTEXT.md then `git commit -q` exited 0, the same with the line visible exited 2.
+  386 of 405 real lead-programmer transcripts ran `git commit`; 144 of them show no commit line (reproduced).
+  The SubagentStop input carries no start commit; every one of 690 writer transcripts has a `timestamp` on
+  its first record, so the baseline becomes the last first-parent commit before it.
+- **G2 (fail-open).** One malformed line (a cut-off last line) emptied every Write/Edit path: exit 0.
+- **G3 (fail-open).** Exit 0 with a leak for: jq missing; a directory as transcript path; an Edit through a
+  symlink to the project; `agent_type` `lead-programmer-2`. By the code: any `us_classify` output but `out`
+  counted as in scope, and a library `exit 0` while sourced ended the gate with allow. `'lead-programmer '`
+  and `Lead-Programmer` also allow, but the harness never emits them (lowercase-hyphen names); a named
+  dispatch reports its dispatch name, and the transcript's sibling `.meta.json` records `agentType` (1584 of
+  1584 subagent transcripts here have one).
+- **G4 (false block).** A gitignored `microworlds/<slug>/run.sh` Write exited 2; a C-quoted committed name
+  removed by a later commit still exited 2; the block text says `git rm` for a file never added, which fails.
+- **G5 (note).** abt-u21a and its fix4 to fix6 contracts restrict `tests/validate.sh` inside a Do NOT touch
+  bullet without `partial:`, so the gate (and the precheck) read the whole file as excluded and would block
+  a correct re-dispatch. Document only: those units landed before rp-u9, and a re-dispatch adds `partial:`.
+
 ### Prior FAIL history (`.claude/reviewed/`, best-effort, gitignored)
 
 aof-u2 (stop-gate in-flight) FAILed on hand-typed AC anchors, not on code; aof-u3 PASSed with a design
@@ -565,6 +586,25 @@ sensitive hook path).
   persona config in harness-integrity-gate.sh? → A: (a), per operator: no gate change; read the config with
   the Read tool, `cat` or one `jq`; rp-s1 adds a **persona-config read refusal** entry (glossary edit 15).
 
+- 2026-10-22 Edge cases / failure handling: Q (rp-u15, G1) What baseline judges a committed Write/Edit path when
+  no commit line shows? → A (self-resolved, as asked): the last first-parent commit before the transcript's
+  first `timestamp`, no later than the first commit line's parent (`git merge-base`); reflog and the session
+  baseline commit rejected (rp-u15 `baseline-decision:`).
+- 2026-10-22 Edge cases / failure handling: Q (G2) total transcript parse failure: block or loud allow? → A
+  (self-resolved, as asked): block the writer (report and wait); a bad line is skipped and logged; a missing
+  path stays a logged allow (st-u3 ruling).
+- 2026-10-22 External dependencies & integrations: Q (G3) jq missing: block? → A (self-resolved): loud allow
+  (stderr warning and log line); README makes jq a hard requirement of every hook and without it the gate
+  cannot tell which persona stopped, so a block would stop every subagent up to 8 times.
+- 2026-10-22 Terminology consistency: Q (G3) which `agent_type` forms are writers? → A (self-resolved): bare,
+  namespaced, `-<n>` suffix, and any name whose transcript `.meta.json` `agentType` is a writer; case and
+  whitespace variants are not harness values and stay ungated.
+- 2026-10-22 Functional scope & success criteria: Q (G5) pre-rp-u9 contracts with a restriction inside a Do
+  NOT touch bullet: change the gate or the glossary? → A (self-resolved): document only (Context, "st-u3
+  review notes"); no gate change, no glossary line.
+- 2026-10-22 Technical constraints & tradeoffs: Q Where does rp-u15 go? → A (self-resolved, user's
+  recommendation): right after st-u4 (landed 7231a42e), before rp-u10; operator step O1 waits for rp-u15's PASS.
+
 ## Risks / dependencies
 
 - rp-u1 changes a rule the reviewer applies to every later unit. A queued contract whose criteria execute
@@ -619,6 +659,17 @@ sensitive hook path).
   writer that commits a brand-new fix contract itself, before task-master's, has it read at its own commit.
 - The gate false positives (Open Questions 9, 10) stay until the operator rules; agents meeting them must
   report and wait, never reword the command (protocol, "Blocked by a gate you do not own").
+- rp-u15 residual (trust-model row 26): a file written only by Bash and either left uncommitted or committed
+  with no commit line in the transcript is not attributed (Open Question 11). A concurrent session's commit
+  after the writer's start is blamed only for a path the writer also wrote.
+- rp-u15 assumes a named dispatch's transcript has the `.meta.json` sibling with the persona's `agentType`
+  (true for all 1584 subagent transcripts here, none of them named); if a named teammate's transcript has
+  none, that dispatch stays ungated unless its name is a writer name or its `-<n>` form.
+- rp-u15 blocks a writer on an unreadable transcript or a library that ends the gate while sourced; a
+  harness transcript-format change would block every writer for up to 8 continuations (Claude Code's
+  stop-hook loop bound). Recovery: `.claude/bookkeeping/scope-gate.log`, then fix the cause or revert O1.
+- The rp-u15 contract is 45 KB (`sizeOver`), so contract-guard routes it to sonnet or above; it edits a hook
+  that will gate every writer, which merits that tier anyway.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
 - P1 "Verify, don't assume": satisfied (every finding re-verified against cfb7ddac; H's premise rejected on evidence)
@@ -791,6 +842,20 @@ Source: Context, "rp-u11 and st-u2 review notes".
 Acceptance criteria: rp-u13 and rp-u14, each 7/7 on `node .claude/bin/contract-score.js --rubric=v2`, each
 ending in a validate.sh exit-code criterion.
 
+### Step 12 (rp-u15): st-u3 review notes, before operator step O1
+Source: Context, "st-u3 review notes" (G1 to G5).
+- rp-u15 (G1 to G4): `hooks/scripts/writer-scope-gate.sh` judges Write/Edit paths against the last commit
+  before the transcript's first timestamp, parses the transcript line by line (no readable record blocks),
+  allows loudly without jq, resolves symlinked directories, gates `-<n>` and `.meta.json`-named writers,
+  enumerates the in-scope `us_classify` classes, traps a library exit while sourcing, skips untracked
+  gitignored files, reads commit names with `-z` and names one restore command per path; cases (r) to (z) in
+  `tests/writer-scope-gate.test.sh` from fixture transcripts; `docs/trust-model.md` row 26 states the
+  residual. Affected: the gate, its test, row 26, bump files, generated copy. Contract:
+  `docs/plans/antislop-review-patches/contracts/rp-u15.md`.
+- G5: no unit (Context; Clarifications).
+Acceptance criteria: rp-u15 7/7 on `node .claude/bin/contract-score.js --rubric=v2`, ending in a validate.sh
+exit-code criterion.
+
 ## Dispatch section
 
 Fast path: 10 lead units (rp-u1 to rp-u10) plus one scribe contract (rp-s1). Contract files, committed before
@@ -919,10 +984,37 @@ stated); the final version read 0.31.213; at the end `tests/scope-libs.test.sh`,
 step printed `2`, rp-u14's `15`; the rp-u13 criterion 1 and 3 mutations and the four rp-u14 criterion 1
 mutations flipped their results.
 
+Step 12 (2026-10-22, after st-u3 landed at abc6d195 and st-u4 at 7231a42e, 0.31.205):
+- rp-u15: `docs/plans/antislop-review-patches/contracts/rp-u15.md` (7/7, `sizeOver`, proven on the chained clone)
+Remaining order and expected versions (no fix rounds; each unit bumps relative to the version it starts at),
+superseding the Step 11 order: rp-u15 0.31.206, then operator step O1 (no bump), rp-u10 0.31.207, rp-u12
+0.31.208, rp-u7 0.31.209, rp-u4 0.31.210, rp-u5 0.31.211, rp-u6 0.31.212, rp-u13 0.31.213, rp-u14 0.31.214,
+then rp-s1 (no bump; closes #634). Why: the gate must be hardened before O1 makes it live; no queued
+contract edits the gate, its test or row 26, so rp-u15 can go first.
+Anchor check, both ways: spec-master applied rp-u15, rp-u10, rp-u12, rp-u7, rp-u4, rp-u5, rp-u6, rp-u13 and
+rp-u14 in this order to a fresh clone of 7231a42e with its own applier (every `before:` payload exactly once,
+every command's exit as stated) and ran each contract's criteria 1 to n-1 right after its commit (validate.sh
+not run): all held (rp-u4 criterion 2 prints `3` then `1`, as stated); the final version read 0.31.214; at
+the end `tests/scope-libs.test.sh`, `tests/review-precheck.test.sh`, `tests/writer-scope-gate.test.sh`,
+`tests/unit-size.test.sh`, `tests/reviewer-tier.test.sh` and `tests/state-access-constraints.test.sh` printed
+no FAIL line. The rp-u6 prototype `contract-anchors.js` reported `ok`, `bad=0`, for rp-u15 alone and for each
+of rp-u10 to rp-u14 with rp-u15 and its queued predecessors as `--chain`. rp-u15's red step printed `13`; its
+twelve criterion 1 mutations each failed their case, before and after rp-u13's library change. The landed
+`bin/review-precheck.sh` returned `result=pass fails=0` for rp-u15 at its clone commit.
+
 ## Open Questions
 
-Open: none. 1 to 6 were ruled on 2026-10-20, 7 and 8 on 2026-10-21, 9 and 10 on 2026-10-22, each (a)
-(Clarifications); 1 to 6, 9 and 10 are kept below for the record.
+Open: 11 (does not block rp-u15). 1 to 6 were ruled on 2026-10-20, 7 and 8 on 2026-10-21, 9 and 10 on
+2026-10-22, each (a) (Clarifications); 1 to 6, 9 and 10 are kept below for the record.
+
+11. (from CHK49) A writer that writes a file only through Bash and commits it with no visible commit line
+   (`git commit -q`, output redirected) is still not attributed (rp-u15 residual, trust-model row 26).
+   Recommended default: (a) accept the residual as stated. Options: (b) when a Bash call ran `git commit`
+   and no commit line came back, attribute every commit after the baseline with a committer date after the
+   transcript's first timestamp - this blames a concurrent session's commits (a lead commits on master while
+   others work), a false block the gate was designed never to make; (c) make the lead persona's commit
+   step print the commit line (`git log -1 --oneline` after committing) - prose, not mechanical, and a
+   persona edit outside this spec.
 
 9. human-decision-gate.sh denies a Bash command holding an unquoted glob or `${...}` path word (or a
    quoted one inside `bash -c`) whose last component can match `DECISION` and an earlier one
@@ -1069,6 +1161,19 @@ Open: none. 1 to 6 were ruled on 2026-10-20, 7 and 8 on 2026-10-21, 9 and 10 on 
   with the same `(unit ptr-u7a, 2026-10-16) — the three-line stderr` text) — revised in place (the line
   directly below the **decision-gate denial** heading)
 
+- CHK48 (2026-10-22): Does each of G1 to G4 map to a rp-u15 test case and a criterion 1 mutation? — PASS (G1
+  (r), G2 (s), G3 (t) to (x), G4 (y) and (z); twelve mutations named in criterion 1, each run)
+- CHK49: Is every decision the request delegated (baseline, parse failure, jq, identity forms, G5) stated
+  with its recovery path, and is the residual it leaves accepted? — FAIL (missing: whether to accept the
+  Bash-only quiet-commit residual is the user's call) — converted to Open Question 11
+- CHK50: Do rp-u15's edit numbers agree with every reference (CHANGELOG `VERSION`, criteria 2, 4 and 7
+  mutations, `version:`, `tdd:`)? — PASS (edits 9, 10, 12 and 13 cited; checked after renumbering)
+- CHK51: Does rp-u15's Do NOT touch hold `hooks/hooks.json`, and does a criterion enforce it? — PASS (bullet
+  1; criterion 6 greps the range)
+- CHK52: Does any queued contract's chained run change under rp-u15? — PASS (Dispatch section, Step 12)
+- CHK53: Is row 26's new text pinned by a whitespace-flattened prose grep that fails when the edit is
+  skipped? — PASS (criterion 4, `7`, and `0` with edit 9 skipped)
+
 Ubiquitous-language check (prose mode, advisory): lens 1, "version-stamp files" in the current rules
 diverges from `CONTEXT.md` **Version-stamped file**, resolved in rp-u1; lens 2, "review in flight" and
 "review-in-flight" (audit token) name the same thing, the entry should name both; lens 3, the seven terms of
@@ -1078,6 +1183,10 @@ finding G, queued for rp-s1.
 glossary terms. 2026-10-21 pass: lens 1 and lens 2 found nothing new in the Step 10 additions; lens 3, "range grep" (the
 `git log --grep` that finds a unit's own commits for a range criterion) is used only in this spec and its
 contracts, so it is not proposed for a glossary.
+2026-10-22 Step 12 pass: lens 1, "baseline" in rp-u15 is the gate's own start commit, distinct from the
+**session baseline commit** (`docs/harness-glossary.md`) and the reviewer's review baseline; the contract
+says "baseline" only inside the gate's context and names the rejected session baseline commit explicitly.
+Lens 2, nothing. Lens 3, "scope-gate baseline" and "commit line" (`[<branch> <sha>]`), proposed below.
 
 ## Scribe update hint
 rp-s1 (Step 7, issue #634) carries the glossary and wiki work. Knowledge proposals from this spec: the entries listed
@@ -1097,3 +1206,7 @@ Step 11 knowledge proposals for rp-s1 (or a later scribe run): the **decision-ga
 `docs/harness-glossary.md` names the glob trigger of Open Question 9 (ruled (a); rp-s1 glossary edit 14),
 and a new **persona-config read refusal** entry records Open Question 10's ruling (edit 15); **fix
 contract** (`docs/harness-glossary.md`) is read by the precheck at the commit that added it, never from the working tree.
+Step 12 knowledge proposals (rp-s1 or a later scribe run; `docs/harness-glossary.md`): **scope-gate
+baseline** (the last first-parent commit before a writer transcript's first timestamp, no later than its
+first commit line's parent; distinct from the **session baseline commit**) and **commit line** (git's
+`[<branch> <sha>] <subject>` output, the only attribution of a Bash-only write).

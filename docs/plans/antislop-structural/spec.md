@@ -564,3 +564,9 @@ no CHANGELOG line, no `--update`). The lead's commit is green without O1 (valida
 until O1 the gate is installed but inert, and the reviewer does not FAIL st-u3 for it. Open item: O1, then
 the `O1-check:` (`stop-gate.sh,writer-scope-gate.sh`). Order and versions: st-u3 0.31.204, st-u4 0.31.205
 (see `docs/plans/antislop-review-patches/spec.md`, Dispatch section, Step 11).
+
+## Amendment 2026-10-22 (antislop-review-patches Step 12: O1 held for rp-u15)
+st-u3 landed at abc6d195 (0.31.204, PASS) and st-u4 at 7231a42e (0.31.205). The st-u3 review listed fail-open
+and false-block cases in the gate; operator step O1 is held until rp-u15
+(`docs/plans/antislop-review-patches/contracts/rp-u15.md`, expected 0.31.206) reaches PASS, then applied as
+written in st-u3's `operator-step-O1:` line. rp-u15 leaves the registration (`hooks/hooks.json`) to O1.
