@@ -21,6 +21,16 @@ check_files() {
 
 if check_files; then ok "(a) nine helpers present"; else bad "(a) nine helpers present"; fi
 if [ ! -e .claude/bin/harness-integrity.sh ]; then ok "(b) harness-integrity.sh absent"; else bad "(b) harness-integrity.sh absent"; fi
+# rp-u7: every helper is executable in a fresh scaffold, after --update restores it, and in this repo's own index.
+check_exec() {
+  local f miss=0
+  for f in $FILES; do [ -x ".claude/bin/$f" ] || miss=1; done
+  [ "$miss" = 0 ]
+}
+if check_exec; then ok "(f) scaffolded helpers executable"; else bad "(f) scaffolded helpers executable"; fi
+idx="$(git -C "$ROOT" ls-files -s -- .claude/bin 2>/dev/null)"
+nonexec="$(printf '%s\n' "$idx" | awk 'NF && $1 != "100755" {print $4}')"
+if [ -n "$idx" ] && [ -z "$nonexec" ]; then ok "(g) this repo's .claude/bin helpers are committed executable"; else bad "(g) committed without +x: ${nonexec:-no index entries}"; fi
 
 out="$(bash .claude/bin/ladder-tier.sh u1 2>&1)"
 if printf '%s\n' "$out" | grep -qE '^ladder-tier: (haiku|sonnet) n=0 ladder=[a-z,]+ reason=no-contract$'; then
@@ -37,5 +47,6 @@ esac
 rm -rf .claude/bin
 node "$ROOT/bin/cli.js" --update >/dev/null 2>&1
 if check_files; then ok "(e) --update restores helpers"; else bad "(e) --update restores helpers"; fi
+if check_exec; then ok "(h) restored helpers executable"; else bad "(h) restored helpers executable"; fi
 
 exit "$fail"

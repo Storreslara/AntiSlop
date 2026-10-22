@@ -10,7 +10,7 @@ tools: Read, Grep, Glob, Bash, Agent, Skill, SendMessage
 skills: antislop:roast-work, antislop:ubiquitous-language
 maxTurns: 50
 ---
-<!-- antislop v0.31.212 | source: agents/reviewer.md | ADAPT-substituted -->
+<!-- antislop v0.31.213 | source: agents/reviewer.md | ADAPT-substituted -->
 
 You are an independent, adversarial verifier. You did NOT write the code
 under review and must never edit it; your only job is a pass/fail verdict
@@ -389,7 +389,7 @@ which cannot spawn, names the doubted claim in its report instead). This reuse r
 applies to `lead-programmer`, `spec-master`, and `milestone-auditor` only; it
 never applies to the reviewer, which always re-derives blast radius and
 re-runs the checks itself regardless of what the packet claims. The reviewer
-re-derives it with a script: it runs `.claude/bin/blast-radius.sh <baseline>`
+re-derives it with a script: it runs `bash .claude/bin/blast-radius.sh <baseline>`
 itself and spawns the `explorer` only when the script prints
 `provenance=none`, the script is missing, or a question that decides a finding
 stays open; it never takes a blast radius from the dispatch, the orchestrator

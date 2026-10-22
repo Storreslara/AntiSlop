@@ -55,6 +55,35 @@ printf '%s\n' "$out" | grep -qx 'changed: src/old.sh' && printf '%s\n' "$out" | 
 
 [ "$(cd src && bash "$BR" "$BASE")" = "$(bash "$BR" "$BASE")" ] && ok "(i) same output from a subdirectory" || bad "(i) subdirectory output differs"
 
+# rp-u7 (k) to (n): test paths, paths sed would break, non-ASCII paths, the total output cap.
+mkdir -p docs/specs .claude/agent-memory/a __tests__ users
+for f in widget.js 'a|b&c.sh' 'café.sh'; do printf 'w\n' > "src/$f"; done
+printf 'see src/widget.js\n' > docs/specs/widget.md
+printf 'see widget.js\n' > .claude/agent-memory/a/widget_spec.md
+printf "require('../src/widget.js');\n" > __tests__/w.js
+printf "require('./widget.js');\n" > src/widget.spec.ts
+printf 'bash src/a|b&c.sh\nbash src/café.sh\n' > run2.sh
+for i in 1 2 3 4 5 6 7 8; do printf 'z\n' > "lib/m$i.sh"; done
+for i in $(seq 1 45); do printf 'source lib/m1.sh lib/m2.sh lib/m3.sh lib/m4.sh lib/m5.sh lib/m6.sh lib/m7.sh lib/m8.sh\n' > "users/u$i.sh"; done
+git add -A && g commit -q -m 'rp-u7 fixtures'
+B3="$(git rev-parse HEAD)"
+for f in widget.js 'a|b&c.sh' 'café.sh'; do printf 'w2\n' > "src/$f"; done
+g commit -qam 'change three'
+out="$(bash "$BR" "$B3")"
+printf '%s\n' "$out" | grep -qxF 'caller: docs/specs/widget.md -> src/widget.js' && ok "(k) docs/specs/ is not a test" || bad "(k) docs/specs/ is not a test"
+printf '%s\n' "$out" | grep -qxF 'caller: .claude/agent-memory/a/widget_spec.md -> src/widget.js' && ok "(k) *_spec.md is not a test" || bad "(k) *_spec.md is not a test"
+printf '%s\n' "$out" | grep -qxF 'test: __tests__/w.js -> src/widget.js' && ok "(k) __tests__/ is a test" || bad "(k) __tests__/ is a test"
+printf '%s\n' "$out" | grep -qxF 'test: src/widget.spec.ts -> src/widget.js' && ok "(k) .spec.ts is a test" || bad "(k) .spec.ts is a test"
+printf '%s\n' "$out" | grep -qxF 'caller: run2.sh -> src/a|b&c.sh' && ok "(l) | and & kept in the path" || bad "(l) | and & kept in the path"
+printf '%s\n' "$out" | grep -qxF 'changed: src/café.sh' && printf '%s\n' "$out" | grep -qxF 'caller: run2.sh -> src/café.sh' && ok "(m) non-ASCII path unquoted" || bad "(m) non-ASCII path unquoted"
+B4="$(git rev-parse HEAD)"
+for i in 1 2 3 4 5 6 7 8; do printf 'm\n' > "lib/m$i.sh"; done
+g commit -qam 'change eight'
+out="$(bash "$BR" "$B4")"
+[ "$(printf '%s\n' "$out" | head -n1)" = 'blast-radius: provenance=grep files=8' ] && ok "(n) header kept under the cap" || bad "(n) header: $(printf '%s\n' "$out" | head -n1)"
+[ "$(printf '%s\n' "$out" | wc -l | tr -d ' ')" = 302 ] && ok "(n) 300 lines after the header plus the marker" || bad "(n) line count: $(printf '%s\n' "$out" | wc -l)"
+[ "$(printf '%s\n' "$out" | tail -n1)" = 'truncated: 36 more lines' ] && ok "(n) total truncated line" || bad "(n) last line: $(printf '%s\n' "$out" | tail -n1)"
+
 # (j) prose: the reviewer and the protocol name the script and the explorer triggers (operator ruling c1).
 flat() { tr -s ' \n' ' ' < "$1"; }
 for f in agents/reviewer.md .claude/agents/reviewer.md; do
@@ -67,8 +96,9 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
   flat "$ROOT/$f" | grep -qF 'still derive blast radius via the explorer' && bad "(j) $f keeps the old rule" || ok "(j) $f: old rule gone"
 done
 for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/reviewer.md .claude/agents/orchestrator.md; do
-  n='it runs `.claude/bin/blast-radius.sh <baseline>` itself and spawns the `explorer` only when the script prints `provenance=none`, the script is missing, or a question that decides a finding stays open'
+  n='it runs `bash .claude/bin/blast-radius.sh <baseline>` itself and spawns the `explorer` only when the script prints `provenance=none`, the script is missing, or a question that decides a finding stays open'
   flat "$ROOT/$f" | grep -qF -- "$n" && ok "(j) $f: protocol rule" || bad "(j) $f missing the protocol rule"
+  flat "$ROOT/$f" | grep -qF -- 'it runs `.claude/bin/blast-radius.sh' && bad "(j) $f keeps the form without bash" || ok "(j) $f: protocol names bash"
 done
 
 exit "$fail"
