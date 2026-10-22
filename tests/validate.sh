@@ -810,6 +810,15 @@ else
 fi
 
 echo
+echo "== contract-anchors: a contract's anchors and before payloads exist in the files and the queued chain (Node, rp-u6) =="
+if bash tests/contract-anchors.test.sh > /dev/null; then
+  echo "OK   tests/contract-anchors.test.sh"
+else
+  echo "FAIL tests/contract-anchors.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"
