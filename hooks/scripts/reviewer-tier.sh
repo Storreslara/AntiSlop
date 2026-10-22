@@ -18,8 +18,10 @@ set -euo pipefail
 # check or the sensitive-path class unmeasurable, so it fails closed like every
 # other unmeasurable input: opus, exit 0. Inside `if`, an undefined function is
 # only "false" under `set -e`, so a sourced-but-empty lib would print sonnet.
+# Both streams of the group are hidden: a library that prints when sourced would
+# otherwise put a line in front of the result, and callers read the first line.
 { . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh" \
-  && . "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"; } 2>/dev/null || { echo opus; exit 0; }
+  && . "$(dirname "${BASH_SOURCE[0]}")/lib/sensitive-paths.sh"; } >/dev/null 2>&1 || { echo opus; exit 0; }
 declare -F touches_sensitive_path unit_id_sanitize state_unit_marker_exists >/dev/null || { echo opus; exit 0; }
 
 MAX_CHANGED_LINES=40

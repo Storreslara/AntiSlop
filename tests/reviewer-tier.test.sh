@@ -380,4 +380,25 @@ cmp -s hooks/scripts/reviewer-tier.sh .claude/hooks/scripts/reviewer-tier.sh \
   && echo "OK   (rp8g) installed reviewer-tier.sh and sensitive-paths.sh equal the source" \
   || { echo "FAIL (rp8g) an installed copy differs from its source (run node bin/cli.js --update)"; fail=1; }
 
+# rp-u12: the guarded source group hides a library's stdout as well as its stderr, so a library that
+# prints when sourced cannot put a line in front of the result (unit-bookkeeping.sh keeps the first
+# line). An empty or cut-short state-access.sh prints opus through the declare -F check; narrowing that
+# check to touches_sensitive_path makes the empty case exit 127 and the cut-short case print sonnet.
+for rt_dir in hooks/scripts .claude/hooks/scripts; do
+  LF="$tmproot/libout"; rm -rf "$LF"; mkdir -p "$LF/lib"
+  cp "$rt_dir/reviewer-tier.sh" "$LF/rt.sh" && cp "$rt_dir"/lib/*.sh "$LF/lib/"
+  SA="$LF/lib/state-access.sh"; cp "$SA" "$tmproot/libout.sa"
+  echo 'echo sonnet' >> "$LF/lib/sensitive-paths.sh"
+  run_case "(rp12a) $rt_dir: lib prints sonnet when sourced, hooks/ diff" opus unit-1 "$r_hooks" "$LF/rt.sh"
+  run_case "(rp12a) $rt_dir: lib prints sonnet when sourced, small diff" sonnet unit-1 "$r_small" "$LF/rt.sh"
+  cp "$rt_dir/lib/sensitive-paths.sh" "$LF/lib/sensitive-paths.sh"
+  : > "$SA"
+  run_case "(rp12b) $rt_dir: state-access.sh empty, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+  sed '/^state_unit_marker_exists() {$/,$d' "$tmproot/libout.sa" > "$SA"
+  run_case "(rp12c) $rt_dir: state-access.sh cut before state_unit_marker_exists, small diff" opus unit-1 "$r_small" "$LF/rt.sh"
+done
+cmp -s hooks/scripts/lib/state-access.sh .claude/hooks/scripts/lib/state-access.sh \
+  && echo "OK   (rp12d) installed state-access.sh equals the source" \
+  || { echo "FAIL (rp12d) installed state-access.sh differs from its source (run node bin/cli.js --update)"; fail=1; }
+
 exit "$fail"

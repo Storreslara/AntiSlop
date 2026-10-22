@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.211",
+  "pluginVersion": "0.31.212",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -62,7 +62,7 @@
     ".claude/hooks/scripts/protected-paths.sh": "3efc9097a0d915f725deb3a28ea482220dddafa7d83a56c93e8c42644fa51728",
     ".claude/hooks/scripts/reviewed-path-gate.sh": "a269ddf5691f0be04412743ce6fb3fc629b811015e58df1e83e94dd86d0856c3",
     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
-    ".claude/hooks/scripts/reviewer-tier.sh": "f9515a13df3dae647d0c0e55f747c4c7164d39ca0afcb61520d54b87fdfc2532",
+    ".claude/hooks/scripts/reviewer-tier.sh": "2d0b8460812435fc5dd76ba129d1a0808647d27e3ac6dc23d73713543a84e011",
     ".claude/hooks/scripts/session-start.sh": "17629506a81e36fddad73075e8fa51506fd45bda082484b0f46f21109c43bfa5",
     ".claude/hooks/scripts/stop-gate.sh": "945af26fb072b6439f59f92c73c2de7b647528b4d062919ba31ed003e0ca4a5d",
     ".claude/hooks/scripts/task-gate.sh": "31ea0399f37eef3c1be9e2a22711a879c8800fa201125720d1029652d5fabeab",
