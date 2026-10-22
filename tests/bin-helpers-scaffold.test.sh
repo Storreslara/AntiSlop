@@ -12,14 +12,14 @@ cd "$TMP" || exit 1
 git init -q . && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m init
 node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1
 
-FILES="ladder-tier.sh contract-guard.js contract-score.js fail-count.sh escalation-card.sh unit-bookkeeping.sh blast-radius.sh review-precheck.sh"
+FILES="ladder-tier.sh contract-guard.js contract-score.js fail-count.sh escalation-card.sh unit-bookkeeping.sh blast-radius.sh review-precheck.sh unit-size.sh"
 check_files() {
   local f miss=0
   for f in $FILES; do [ -f ".claude/bin/$f" ] || miss=1; done
   [ "$miss" = 0 ]
 }
 
-if check_files; then ok "(a) eight helpers present"; else bad "(a) eight helpers present"; fi
+if check_files; then ok "(a) nine helpers present"; else bad "(a) nine helpers present"; fi
 if [ ! -e .claude/bin/harness-integrity.sh ]; then ok "(b) harness-integrity.sh absent"; else bad "(b) harness-integrity.sh absent"; fi
 
 out="$(bash .claude/bin/ladder-tier.sh u1 2>&1)"

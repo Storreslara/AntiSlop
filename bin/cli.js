@@ -653,7 +653,7 @@ function buildHookScriptSpecs() {
 
 // Ladder helpers the orchestrator runs from an installed project. Explicit list:
 // harness-integrity.sh must not be installed (re-arming its drift check is separate).
-const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'escalation-card.sh', 'unit-bookkeeping.sh', 'blast-radius.sh', 'review-precheck.sh'];
+const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'escalation-card.sh', 'unit-bookkeeping.sh', 'blast-radius.sh', 'review-precheck.sh', 'unit-size.sh'];
 
 function buildBinHelperSpecs() {
   return BIN_HELPER_FILES.map((f) => ({

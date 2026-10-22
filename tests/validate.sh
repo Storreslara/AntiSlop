@@ -801,6 +801,15 @@ else
 fi
 
 echo
+echo "== unit-size: lane from the planned scope, downgrade-only, fails closed to full (Bash, st-u4) =="
+if bash tests/unit-size.test.sh > /dev/null; then
+  echo "OK   tests/unit-size.test.sh"
+else
+  echo "FAIL tests/unit-size.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"

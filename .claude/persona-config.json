@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.204",
+  "pluginVersion": "0.31.205",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -42,7 +42,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "416f5ce2e5366b7520f6c8ce3f86cbff231c161c2030cc24daede3514622a845",
+    ".claude/agents/orchestrator.md": "86cb2b1707ceda1e129387160094af429ab77c1d3d4fe446b5bd59e60dcff2c5",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
     ".claude/agents/lead-programmer.md": "34748c1135e51715ee1c5fee09025cf1dd15094e2477723817f24b45027d59da",
     ".claude/agents/spec-master.md": "7ff441298cd64ef8353d18fb5e7020f8fc76a0ae8e92fe166d22e6d888957cd5",
@@ -118,7 +118,8 @@
     ".claude/hooks/scripts/lib/sensitive-paths.sh": "8732d707b6f91745ecf474c1fd5c07b256aba21128cc164694f70386cdd478c6",
     ".claude/hooks/scripts/lib/unit-scope.sh": "81bfb27721af36e02a2a36cc824da1d55496573a3f1ae329cf106adaa96d1d30",
     ".claude/bin/review-precheck.sh": "b0fbb4a1dc8d22cbbd20d23ecfd13ddf4942f057cf0b7a7aa2b2402f202ee8c1",
-    ".claude/hooks/scripts/writer-scope-gate.sh": "c2ddc1d9a559f02cd1f88de4012b75eb1efaa28ff36ac5ad5055037aeae80e49"
+    ".claude/hooks/scripts/writer-scope-gate.sh": "c2ddc1d9a559f02cd1f88de4012b75eb1efaa28ff36ac5ad5055037aeae80e49",
+    ".claude/bin/unit-size.sh": "2d5588865da63d0a10467f499c669b91ed8247d034fed352955ca287dd143c7f"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku",
