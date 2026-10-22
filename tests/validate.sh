@@ -792,6 +792,15 @@ else
 fi
 
 echo
+echo "== writer-scope-gate: lead-programmer, scribe and spec-master cannot stop with an out-of-scope change (Bash, st-u3) =="
+if bash tests/writer-scope-gate.test.sh > /dev/null; then
+  echo "OK   tests/writer-scope-gate.test.sh"
+else
+  echo "FAIL tests/writer-scope-gate.test.sh"
+  fail=1
+fi
+
+echo
 echo "== fail-marker-format-parity: heredoc vs marker-write.sh (Bash, item12-4) =="
 if bash tests/fail-marker-format-parity.test.sh; then
   echo "OK   tests/fail-marker-format-parity.test.sh"
