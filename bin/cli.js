@@ -1190,16 +1190,28 @@ function writeConfigOrReport(configPath, config, dryRun) {
   return true;
 }
 
+// rp-u4: --knowledge-writes is read only in its `=` form, by --update and by a fresh install alike. A bare
+// `--knowledge-writes` (the space form, whose value would otherwise be silently dropped) exits 2 before
+// anything is written; an invalid `=` value exits 1. Returns the value or null.
+function parseKnowledgeWritesFlag(args) {
+  if (args.includes('--knowledge-writes')) {
+    console.error('--knowledge-writes takes the form --knowledge-writes=<scoped|apply>.');
+    process.exit(2);
+  }
+  const kwFlag = args.find((a) => a.startsWith('--knowledge-writes='));
+  const value = kwFlag ? kwFlag.slice('--knowledge-writes='.length) : null;
+  if (kwFlag && !['scoped', 'apply'].includes(value)) {
+    console.error(`--knowledge-writes must be one of: scoped, apply (got "${value}").`);
+    process.exit(1);
+  }
+  return value;
+}
+
 async function runUpdate(args) {
   // Flag surface first, before any output or write, so the deprecation warning
   // for the `--check` alias is genuinely the first thing the run prints.
   const dryRun = args.includes('--dry-run');
-  const kwFlag = args.find((a) => a.startsWith('--knowledge-writes='));
-  const knowledgeWrites = kwFlag ? kwFlag.slice('--knowledge-writes='.length) : null;
-  if (kwFlag && !['scoped', 'apply'].includes(knowledgeWrites)) {
-    console.error(`--knowledge-writes must be one of: scoped, apply (got "${knowledgeWrites}").`);
-    process.exit(1);
-  }
+  const knowledgeWrites = parseKnowledgeWritesFlag(args);
   // Set by every site that would change the tree. Under --dry-run this is the
   // whole exit code: 0 iff a live run would leave every path under the project
   // root byte- and mode-identical and create nothing, 3 otherwise. Stated over
@@ -2388,8 +2400,12 @@ async function main() {
     return runWireMcp('arxiv', args);
   }
 
+  const knowledgeWrites = parseKnowledgeWritesFlag(args);
   const targetFlag = args.find((a) => a.startsWith('--target='));
   const target = targetFlag ? targetFlag.slice('--target='.length).trim() : 'claude';
+  if (knowledgeWrites && target !== 'claude') {
+    console.error(`Note: --knowledge-writes applies only to --target=claude; ignored for --target=${target}.`);
+  }
   if (target === 'cursor') {
     return scaffoldCursor(args);
   }
@@ -2640,6 +2656,7 @@ async function main() {
     existingPersonaConfig.personaSelection = personaSelection;
     warnIfDowngradeStamp(existingPersonaConfig.pluginVersion, version, '.claude/persona-config.json');
     existingPersonaConfig.pluginVersion = version;
+    if (knowledgeWrites) existingPersonaConfig.knowledgeWrites = knowledgeWrites;
     fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(existingPersonaConfig, null, 2) + '\n');
     console.log('  .claude/persona-config.json: personaSelection + pluginVersion refreshed, other fields preserved');
   } else {
@@ -2667,6 +2684,7 @@ async function main() {
       pluginVersion: version,
       personaSelection,
       issueTracker: '',
+      ...(knowledgeWrites ? { knowledgeWrites } : {}),
     };
     fs.writeFileSync(path.join(claudeDir, 'persona-config.json'), JSON.stringify(personaConfig, null, 2) + '\n');
     console.log('  .claude/persona-config.json written (skeleton — fields blank until /install-antislop fills them in from a real repo scan)');

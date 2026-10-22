@@ -42,6 +42,26 @@ case "$dry" in *'would be set to "apply"'*) ok "dry-run says would be set" ;; *)
 [ "$(sha256sum "$C" | cut -d' ' -f1)" = "$before" ] && ok "dry-run writes nothing" || bad "dry-run writes nothing"
 (cd "$T" && node "$ROOT/bin/cli.js" --update --dry-run --knowledge-writes=scoped >/dev/null 2>&1) && ok "dry-run of an unchanged flag exits 0" || bad "dry-run of an unchanged flag exits 0"
 
+# rp-u4: the space form is refused, a fresh install honours the flag, and --update's save and exit code are pinned.
+before=$(sha256sum "$C" | cut -d' ' -f1)
+err=$(cd "$T" && node "$ROOT/bin/cli.js" --update --knowledge-writes apply 2>&1 >/dev/null); rc=$?
+[ "$rc" = 2 ] && ok "space form on --update exits 2" || bad "space form on --update exits 2 (got $rc)"
+case "$err" in *'takes the form --knowledge-writes=<scoped|apply>'*) ok "space form names the = form" ;; *) bad "space form names the = form" ;; esac
+[ "$(sha256sum "$C" | cut -d' ' -f1)" = "$before" ] && ok "space form leaves config unchanged" || bad "space form leaves config unchanged"
+F1=$(mktemp -d); F2=$(mktemp -d); F3=$(mktemp -d); F4=$(mktemp -d); trap 'rm -rf "$T" "$F1" "$F2" "$F3" "$F4"' EXIT
+for d in "$F1" "$F2" "$F3" "$F4"; do git -C "$d" init -q; done
+(cd "$F1" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe --knowledge-writes=apply >/dev/null 2>&1)
+[ "$(jq -r .knowledgeWrites "$F1/.claude/persona-config.json" 2>/dev/null)" = apply ] && ok "fresh install honours --knowledge-writes=apply" || bad "fresh install honours --knowledge-writes=apply"
+(cd "$F2" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe --knowledge-writes apply >/dev/null 2>&1); rc=$?
+[ "$rc" = 2 ] && [ ! -e "$F2/.claude" ] && ok "fresh-install space form exits 2 and writes nothing" || bad "fresh-install space form (rc=$rc)"
+(cd "$F3" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1)
+(cd "$F4" && node "$ROOT/bin/cli.js" --personas=spec-master,task-master,reviewer,scribe >/dev/null 2>&1)
+(cd "$F3" && node "$ROOT/bin/cli.js" --update >/dev/null 2>&1); rc_plain=$?
+out=$(cd "$F4" && node "$ROOT/bin/cli.js" --update --knowledge-writes=scoped 2>&1); rc_flag=$?
+[ "$rc_flag" = "$rc_plain" ] && ok "pristine --update exit code is the render's with or without the flag ($rc_flag)" || bad "exit code differs: plain $rc_plain flag $rc_flag"
+[ "$(jq -r .knowledgeWrites "$F4/.claude/persona-config.json")" = scoped ] && ok "=scoped on a project with no key writes the key" || bad "=scoped on a project with no key writes the key"
+case "$out" in *'Note: knowledgeWrites set to "scoped".'*) ok "pristine --update prints the Note line" ;; *) bad "pristine --update prints the Note line" ;; esac
+
 for f in agents/scribe.md .claude/agents/scribe.md; do has "$f" 'Knowledge writes follow unit scope'; done
 for f in agents/spec-master.md .claude/agents/spec-master.md; do has "$f" "otherwise record it in the plan's Scribe update hint as a knowledge proposal"; done
 for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
