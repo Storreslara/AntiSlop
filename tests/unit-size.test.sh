@@ -21,10 +21,10 @@ is() { # <label> <want-line> <args...>
 is "(a) two paths" 'lane: small files=2 reason=paths' u1 -- src/a.js test/a.test.js
 [ "$(cat "$BK/u1.lane")" = 'lane: small files=2 reason=paths' ] && ok "(a) lane recorded" || bad "(a) lane record"
 [ "$(cat "$BK/u1.scope")" = "$(printf 'src/a.js\ntest/a.test.js')" ] && ok "(a) scope recorded" || bad "(a) scope record"
-is "(a) four is still small" 'lane: small files=4 reason=paths' u1 -- a b c d
-is "(b) five is medium" 'lane: medium files=5 reason=paths' u1 -- a b c d e
-is "(b) ten is medium" 'lane: medium files=10 reason=paths' u1 -- a b c d e f g h i j
-is "(c) eleven is full" 'lane: full files=11 reason=size' u1 -- a b c d e f g h i j k
+is "(a) four is still small" 'lane: small files=4 reason=paths' u1 -- a.js b.js c.js d.js
+is "(b) five is medium" 'lane: medium files=5 reason=paths' u1 -- a.js b.js c.js d.js e.js
+is "(b) ten is medium" 'lane: medium files=10 reason=paths' u1 -- a.js b.js c.js d.js e.js f.js g.js h.js i.js j.js
+is "(c) eleven is full" 'lane: full files=11 reason=size' u1 -- a.js b.js c.js d.js e.js f.js g.js h.js i.js j.js k.js
 is "(d) a sensitive path" 'lane: full files=2 reason=sensitive' u1 -- src/a.js hooks/x.sh
 is "(d) agents/ is sensitive" 'lane: full files=1 reason=sensitive' u1 -- agents/reviewer.md
 mkdir -p "$T/.claude/reviewed" && printf 'FAIL u9 2026-10-20T00:00:00Z\ntier: sonnet\n- x\n' > "$T/.claude/reviewed/u9.fail"
@@ -62,7 +62,7 @@ is "(m) a newline in an argument" 'lane: full files=0 reason=unmeasurable' u1 --
 is "(n) a bare .claude/hooks dir" 'lane: full files=1 reason=sensitive' u1 -- .claude/hooks src/a.js
 is "(n) a bare .claude/agents dir is not the free zone" 'lane: full files=1 reason=sensitive' u1 -- .claude/agents src/a.js
 is "(n) a bare hooks dir" 'lane: full files=2 reason=sensitive' u1 -- hooks src/a.js
-is "(n) a bare .claude dir" 'lane: full files=2 reason=unmeasurable' u1 -- .claude src/a.js
+is "(n) a bare .claude dir" 'lane: full files=2 reason=sensitive' u1 -- .claude src/a.js
 is "(n) a bare docs/plans dir" 'lane: full files=2 reason=unmeasurable' u1 -- docs/plans src/a.js
 is "(n) a docs/plans subdirectory stays free" 'lane: small files=1 reason=paths' u1 -- docs/plans/p src/a.js
 is "(n) a nested .claude/agents file stays free" 'lane: small files=1 reason=paths' u1 -- .claude/agents/x/y.md src/a.js
@@ -99,6 +99,48 @@ done
 for f in "${MX_FILE[10]}" .claude/agents/sub/y.md .claude/bin/x.sh docs/plans/p/spec.md; do
   is "(n) free zone $f" 'lane: small files=1 reason=paths' u1 -- "$f" src/a.js
 done
+# (o) st-u4 fix 3: an entry is a directory prefix, so a directory that does not exist yet is judged by what could
+# sit beneath it, never by the entry text alone. The first rows are the reproductions; the ancestor test closes the
+# class for every pattern in the library.
+ic() { # <label> <want-line> <entry>: the entry plus src/a.js, read from a contract
+  printf 'Unit: u4\n\n## Affected files\n- `%s`\n- `src/a.js`\n' "$3" > docs/plans/p/contracts/u4.md
+  is "$1" "$2" u4 --contract docs/plans/p/contracts/u4.md
+}
+is "(o) a new adapter dir" 'lane: full files=2 reason=sensitive' u1 -- adapters/windsurf src/a.js
+is "(o) a new persona-protocol dir" 'lane: full files=2 reason=sensitive' u1 -- templates/persona-protocol-v2 src/a.js
+is "(o) a new settings dir" 'lane: full files=1 reason=sensitive' u1 -- .claude/settings.d src/a.js
+is "(o) a bare adapters dir" 'lane: full files=2 reason=sensitive' u1 -- adapters src/a.js
+is "(o) a bare bin dir" 'lane: full files=2 reason=sensitive' u1 -- bin src/a.js
+is "(o) a new module dir is a bigger task" 'lane: full files=2 reason=unmeasurable' u1 -- src/newmodule src/a.js
+is "(o) a new file with an extension is one file" 'lane: small files=2 reason=paths' u1 -- src/new.js src/a.js
+is "(o) a name that only starts like a file pattern is not sensitive" 'lane: small files=2 reason=paths' u1 -- bin/cli.jsx src/a.js
+is "(o) a sibling of a file pattern is not sensitive" 'lane: small files=2 reason=paths' u1 -- tests/validate.sh.bak src/a.js
+ic "(o) contract: a new adapter dir" 'lane: full files=2 reason=sensitive' adapters/windsurf
+ic "(o) contract: a new persona-protocol dir" 'lane: full files=2 reason=sensitive' templates/persona-protocol-v2
+ic "(o) contract: a new settings dir" 'lane: full files=1 reason=sensitive' .claude/settings.d
+ic "(o) contract: a new module dir" 'lane: full files=2 reason=unmeasurable' src/newmodule
+ic "(o) contract: an option-like entry" 'lane: full files=2 reason=unmeasurable' -hooks/x.sh
+# One witness path per SENSITIVE_PATHS entry, in library order, each deeper than its pattern's head. Every proper
+# ancestor of a witness, bare and with a slash, none of them on disk, must be full in script and contract mode.
+# Index 10 (.claude/agents/) is the free zone: its ancestors .claude/agents/sub stay free, so only the two above it
+# are asserted. A new pattern fails the count check until a witness is added.
+WIT=(hooks/scripts/lib/x.sh .claude/hooks/scripts/x.sh adapters/windsurf/hooks/hooks.json bin/cli.js tests/validate.sh templates/persona-protocol-v2/x.md templates/settings-fragment.json .claude/settings.d/x.json .claude-plugin/sub/plugin.json agents/sub/x.md .claude/agents/sub/x.md)
+[ "${#SENSITIVE_PATHS[@]}" = 11 ] && [ "${#WIT[@]}" = 11 ] && ok "(o) one witness per sensitive pattern" || bad "(o) ${#WIT[@]} witnesses for ${#SENSITIVE_PATHS[@]} patterns: add a witness"
+for i in "${!SENSITIVE_PATHS[@]}"; do
+  [[ "${WIT[$i]}" =~ ${SENSITIVE_PATHS[$i]} ]] && ok "(o) witness $i is in the class" || bad "(o) witness $i: ${WIT[$i]} is not in ${SENSITIVE_PATHS[$i]}"
+  if [ "$i" = 10 ]; then
+    for a in .claude/agents .claude; do mx_full "(o) witness 10 ancestor" "$a"; mx_full "(o) witness 10 ancestor" "$a/"; done
+    continue
+  fi
+  a="${WIT[$i]}"
+  while [[ "$a" == */* ]]; do
+    a="${a%/*}"
+    mx_full "(o) witness $i ancestor" "$a"
+    mx_full "(o) witness $i ancestor" "$a/"
+  done
+done
+mkdir -p adapters/keep && : > adapters/keep/README.md
+is "(o) an existing file under an open-tail head stays small" 'lane: small files=2 reason=paths' u1 -- adapters/keep/README.md src/a.js
 cat > docs/plans/p/contracts/u2.md << 'MD'
 Unit: u2
 
@@ -111,7 +153,7 @@ MD
 is "(g) contract, bookkeeping entries ignored" 'lane: small files=2 reason=contract' u2 --contract docs/plans/p/contracts/u2.md
 is "(g) missing contract" 'lane: full files=0 reason=no-input' u2 --contract docs/plans/p/contracts/none.md
 is "(g) no input" 'lane: full files=0 reason=no-input' u2
-is "(h) only bookkeeping entries" 'lane: full files=0 reason=empty' u2 -- .claude/x docs/plans/y
+is "(h) only bookkeeping entries" 'lane: full files=0 reason=empty' u2 -- .claude/bin/x docs/plans/y
 bash "$US" '../x' -- a >/dev/null 2>&1; [ "$?" = 2 ] && [ ! -e "$T/.claude/x.lane" ] && ok "(i) bad unit id exit 2" || bad "(i) bad unit id"
 mkdir -p "$T/lonely/bin" && cp "$US" "$T/lonely/bin/unit-size.sh"
 [ "$(bash "$T/lonely/bin/unit-size.sh" u1 -- src/a.js)" = 'lane: full files=0 reason=unmeasurable' ] && ok "(j) library missing -> full" || bad "(j) library missing"

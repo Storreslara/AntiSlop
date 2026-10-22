@@ -42,18 +42,57 @@ fi
 grep -vE '^(\.claude/|docs/plans/)' "$W/raw" | grep -v '^$' | sort -u > "$W/entries" || true
 n="$(wc -l < "$W/entries" | tr -d ' ')"
 # ONE judge for every raw entry, bookkeeping ones included, so the loops cannot disagree (st-u4 fix 2).
+# sp_head <pattern>: reads one SENSITIVE_PATHS regex. Sets SP_HEAD to its literal head (the text between the
+# leading ^ and the first regex metacharacter; a backslash-escaped character counts as literal; a character
+# followed by * + ? or { is not literal) and SP_OPEN to 0 only when the rest of the pattern is exactly `$`
+# (the pattern names one path), else 1 (a path beneath the head may match). Returns 1 for a pattern it cannot
+# read (no leading ^, or any |): the caller then treats every directory-like entry as sensitive.
+sp_head() {
+  local re="$1" c n
+  SP_HEAD=""; SP_OPEN=1
+  case "$re" in '^'*) re="${re#^}" ;; *) return 1 ;; esac
+  case "$re" in *'|'*) return 1 ;; esac
+  while [ -n "$re" ]; do
+    c="${re:0:1}"
+    case "$c" in
+      '\') SP_HEAD+="${re:1:1}"; re="${re:2}" ;;
+      '.'|'*'|'+'|'?'|'['|']'|'('|')'|'{'|'}'|'$'|'^') break ;;
+      *) n="${re:1:1}"
+         case "$n" in '*'|'+'|'?'|'{') break ;; esac
+         SP_HEAD+="$c"; re="${re:1}" ;;
+    esac
+  done
+  [ "$re" = '$' ] && SP_OPEN=0
+  return 0
+}
+# under_sensitive <entry>: exit 0 when some path beneath <entry>/ could be in the sensitive class: the entry is
+# an ancestor of a pattern's head (`.claude` of `.claude/hooks/`, `bin` of `bin/cli.js`), or a pattern with an
+# open tail has a head that is a prefix of <entry>/ (`adapters/.*hooks` and `adapters/windsurf`).
+under_sensitive() {
+  local e="$1/" re
+  for re in "${SENSITIVE_PATHS[@]}"; do
+    sp_head "$re" || return 0
+    case "$SP_HEAD" in "$e"*) return 0 ;; esac
+    if [ "$SP_OPEN" = 1 ]; then case "$e" in "$SP_HEAD"*) return 0 ;; esac; fi
+  done
+  return 1
+}
 # judge_entry <path>: 0 = measurable and clean, 1 = unmeasurable, 2 = sensitive. An entry is a directory
-# prefix (us_listed), so the sensitive class is tried on the entry and on the entry plus a slash, and an
-# existing directory outside the free zones is unmeasurable. Free zones: generated .claude/agents/ and
-# .claude/bin/ copies and the docs/plans/ plan itself.
+# prefix (us_listed: the entry, or anything beneath entry/), so every entry that is not an existing regular
+# file is judged by what could sit beneath it, never as a file (st-u4 fix 3). Sensitive: the class matches the
+# entry or entry/, or under_sensitive. Unmeasurable: an unsafe path, glob, option-like or trailing-slash entry,
+# an existing directory, and a not-yet-existing plain name with no dot (a new directory is a bigger task than
+# small). Free zones: generated .claude/agents/ and .claude/bin/ copies and the docs/plans/ plan itself.
 judge_entry() {
   local p="$1"
   us_safe_path "$p" || return 1
-  case "$p" in *[*?[]*|*/) return 1 ;; esac
+  case "$p" in *[*?[]*|*/|-*) return 1 ;; esac
   case "$p" in .claude/agents/*|.claude/bin/*|docs/plans/*) return 0 ;; esac
   touches_sensitive_path "$p" && return 2
   touches_sensitive_path "$p/" && return 2
+  [ -f "$p" ] || { under_sensitive "$p" && return 2; }
   [ -d "$p" ] && return 1
+  [ -e "$p" ] || case "${p##*/}" in *[!A-Za-z0-9_-]*) ;; *) return 1 ;; esac
   return 0
 }
 grep -v '^$' "$W/raw" | sort -u > "$W/all" || true
