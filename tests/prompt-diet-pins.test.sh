@@ -92,12 +92,22 @@ done
 
 # Later units append their rows below this line.
 
-# rp-u5: the scribe still runs for the passed units when a plan stops early, and knowledgeWrites apply
-# leaves only the no-issue condition to skip it.
+# rp-u5 (fix 1): one decision table decides the scribe dispatch, early-stop and end-of-plan alike: it runs
+# when a covered unit has a tracker issue to close, or when none has but a covered digest reports a changed
+# API or new convention in scope (under knowledgeWrites apply every knowledge file is in scope); otherwise it
+# is skipped. The early-stop dispatch comes before the human is asked at ladder exhaustion or the plan ends
+# early, a parked unit is not passed, and the end-of-plan dispatch skips units already sent.
 for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
-  has "$f" 'If the plan stops before its last unit passes (ladder exhaustion, a human stop, an abandoned unit), dispatch the scribe once for the units that already reached PASS before you surface the stop'
-  has "$f" 'under `knowledgeWrites: apply` the knowledge files are always in scope, so only the first condition can skip it.'
-  has "$f" 'Skip the scribe dispatch entirely when no unit has a tracker issue to close'
+  has "$f" 'dispatch the scribe once for the units that already reached PASS, before you ask the human at ladder exhaustion or before you end the plan early'
+  has "$f" 'A parked unit is not passed, and under review gating off ladder exhaustion is not a stop.'
+  has "$f" 'dispatch after the last unit covers only the units not already sent to the scribe by an early-stop dispatch'
+  has "$f" 'Skip the scribe dispatch entirely when no unit has a tracker issue to close and no unit'"'"'s digest reports a changed API or new convention whose knowledge file is in unit scope'
+  has "$f" 'under `knowledgeWrites: apply` every knowledge file is in scope, so the dispatch is skipped only when no unit has a tracker issue to close and no digest reports a changed API or new convention'
+  has "$f" 'it runs when a covered unit has a tracker issue to close, in either mode'
+  has "$f" 'it runs when no covered unit has one but a covered digest reports a changed API or new convention whose knowledge file is in unit scope'
+  has "$f" 'it is skipped when neither holds'
+  hasnot "$f" 'so only the first condition can skip it'
+  hasnot "$f" 'an abandoned unit'
 done
 
 # rp-u3: the reviewer's pointer to the moved residual, the orchestrator's teams-command pointer, qw-u4's
