@@ -18,6 +18,8 @@ PROJECT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # shellcheck source=lib/agent-identity.sh
 source "$SCRIPT_DIR/lib/agent-identity.sh"
+# shellcheck source=lib/portable-tools.sh
+source "$SCRIPT_DIR/lib/portable-tools.sh"
 
 SESSIONS_N=1
 ALL=0
@@ -248,7 +250,7 @@ if [ -d "$ROOT" ]; then
   tmp_list="$(mktemp)"
   for f in "$ROOT"/*.jsonl; do
     [ -e "$f" ] || continue
-    mt="$(stat -c '%Y' "$f" 2>/dev/null || echo 0)"
+    mt="$(_portable_stat_mtime "$f")"
     printf '%s\t%s\n' "$mt" "$(basename "$f" .jsonl)" >> "$tmp_list"
   done
   if [ -s "$tmp_list" ]; then
@@ -348,26 +350,35 @@ while IFS=$'\t' read -r sid aid persona raw_at depth model teammate desc jf; do
   if [ "$teammate" = 1 ]; then
     declared="${declared}SendMessage,"
   fi
-  mapfile -t servers < <(persona_mcp_servers "$pf")
+  servers=()
+  while IFS= read -r srv; do
+    [ -n "$srv" ] && servers+=("$srv")
+  done < <(persona_mcp_servers "$pf")
 
   # id -> is_error, built from this dispatch's own tool_result records
   # (joined by tool_use.id == tool_result.tool_use_id, per the Step 12
   # spec - never by array position, since a tool_result for an unrelated
   # id can otherwise sit at the same position).
-  declare -A A1_ERR_MAP=()
+  # Bash 3.2 compatible: use newline-separated "id=value" entries in a single variable
+  A1_ERR_MAP=""
   while IFS=$'\t' read -r rid is_err; do
     [ -n "$rid" ] || continue
-    if [ "$is_err" = "true" ]; then
-      A1_ERR_MAP["$rid"]="true"
-    elif [ -z "${A1_ERR_MAP[$rid]:-}" ]; then
-      A1_ERR_MAP["$rid"]="false"
+    # Check if this rid already exists in the map
+    if ! grep -q "^${rid}=" <<< "$A1_ERR_MAP" 2>/dev/null; then
+      if [ "$is_err" = "true" ]; then
+        A1_ERR_MAP="${A1_ERR_MAP}${rid}=true"$'\n'
+      else
+        A1_ERR_MAP="${A1_ERR_MAP}${rid}=false"$'\n'
+      fi
     fi
   done < <(jq -r '.message.content[]? | select(.type=="tool_result") | [(.tool_use_id // ""), (.is_error // false)] | @tsv' "$jf" 2>/dev/null)
 
   while IFS=$'\t' read -r tid tname fpath; do
     [ -n "$tname" ] || continue
     status="executed"
-    if [ "${A1_ERR_MAP[$tid]:-false}" = "true" ]; then
+    # Bash 3.2 compatible: look up tid in A1_ERR_MAP (format: "id=value\n")
+    tid_err="$(grep "^${tid}=" <<< "$A1_ERR_MAP" 2>/dev/null | cut -d'=' -f2 || echo "false")"
+    if [ "$tid_err" = "true" ]; then
       status="refused"
     fi
     case "$tname" in

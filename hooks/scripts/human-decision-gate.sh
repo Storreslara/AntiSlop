@@ -152,7 +152,11 @@ is_prompt_eligible_decision_write() {
   [[ $first =~ $re ]] || return 1
   [ "${BASH_REMATCH[1]}" = "$project_dir" ] || return 1
   pg_id="${BASH_REMATCH[3]}"
-  mapfile -t lines <<< "${cmd#*$'\n'}"
+  # Bash 3.2 compatible: replace mapfile -t with while read loop
+  lines=()
+  while IFS= read -r line; do
+    lines+=("$line")
+  done <<< "${cmd#*$'\n'}"
   n=${#lines[@]}
   [ "${lines[n-1]}" = EOF ] || return 1
   for ((i = 0; i < n - 1; i++)); do
@@ -602,7 +606,11 @@ glob_strip_quoted_heredoc_bodies() {
   glob_hd=()
   glob_text="$cmd"
   case "$cmd" in *'<<'*) ;; *) return 0 ;; esac
-  mapfile -t lines <<< "$cmd"
+  # Bash 3.2 compatible: replace mapfile -t with while read loop
+  lines=()
+  while IFS= read -r line; do
+    lines+=("$line")
+  done <<< "$cmd"
   for line in "${lines[@]}"; do
     if [ "${#glob_hd[@]}" -gt 0 ]; then
       cmp="$line"
@@ -710,8 +718,8 @@ fi
 # pattern expanded by a program that is not a second shell re-parsing a string,
 # and (R-QP-b) a second-shell invocation the rule does not recognise from the
 # text.
-joined="${command//$'\047'/}"
-joined="${joined//$'\042'/}"
+# Bash 3.2 compatible: replace ${...//...} with tr to remove quotes
+joined="$(printf '%s' "$command" | tr -d \"\')"
 glob_names_tokens "$command"
 case "$joined" in
   *human-review*) ;;

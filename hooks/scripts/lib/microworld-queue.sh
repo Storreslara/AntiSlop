@@ -23,6 +23,9 @@
 # scripts actually executes once.
 set -euo pipefail
 
+# shellcheck source=lib/portable-tools.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portable-tools.sh" 2>/dev/null || true
+
 # queue_dir <audit> - queue state lives alongside the port's OWN audit log
 # (sibling "microworld-queue" dir under the same dot-dir: .claude/, .cursor/,
 # or .codex/), never hardcoded to one port, since all three ports share this
@@ -120,7 +123,7 @@ _bundle_authority() {
   read -r kind msg_slug ts label hash <<< "$line"
   if [ "$kind" = "COUNTERSIGN" ] && [ "$msg_slug" = "$slug" ] && [ "$label" = "runsh:" ] \
      && [[ "$hash" =~ ^[0-9a-f]{64}$ ]]; then
-    current="$(sha256sum "$run_sh" 2>/dev/null | cut -d' ' -f1)"
+    current="$(_portable_sha256 "$run_sh" 2>/dev/null | cut -d' ' -f1)"
     [ "$hash" = "$current" ] && { echo reviewer; return 0; }
   fi
   echo self
@@ -137,7 +140,7 @@ _run_bundle() {
   case "$secs" in ''|*[!0-9]*) secs=60 ;; esac
   authority="$(_bundle_authority "$project_dir" "$slug" "$audit")"
   rc=0
-  ( cd "$project_dir" && timeout "$secs" \
+  ( cd "$project_dir" && _portable_timeout "$secs" \
       bash "./microworlds/${slug}/run.sh" "$rel_path" ) >/dev/null 2>&1 || rc=$?
   case "$rc" in
     0)   _log_result "$audit" "$slug" pass "$rel_path" "$authority" ;;
@@ -160,7 +163,7 @@ _run_watchmap() {
   rc=0
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
-    ( cd "$project_dir" && timeout "$secs" bash -c "$cmd" ) >/dev/null 2>&1 || rc=$?
+    ( cd "$project_dir" && _portable_timeout "$secs" bash -c "$cmd" ) >/dev/null 2>&1 || rc=$?
     [ "$rc" = 0 ] || break
   done <<< "$run_commands"
   case "$rc" in
