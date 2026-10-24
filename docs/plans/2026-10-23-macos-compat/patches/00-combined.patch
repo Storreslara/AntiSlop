@@ -1,0 +1,782 @@
+diff --git a/.claude/hooks/scripts/human-decision-gate.sh b/.claude/hooks/scripts/human-decision-gate.sh
+index a83d67a..035a893 100755
+--- a/.claude/hooks/scripts/human-decision-gate.sh
++++ b/.claude/hooks/scripts/human-decision-gate.sh
+@@ -582,16 +582,31 @@ glob_word() {
+ 
+ # $1 one expanded pattern word: the last component that can match DECISION
+ # names the file, any earlier one that can match human-review the directory.
++# _glob_names <literal> <pattern> - true if the pattern can match the literal,
++# case-insensitively. bash 3.2 (macOS) mis-matches POSIX classes such as
++# [[:upper:]] under nocasematch, which would fail OPEN, so the literal is also
++# tried in both cases with nocasematch off; this can only add matches (over-block).
++_glob_names() {
++  local lit="$1" pat="$2" up low r=1
++  [[ $lit == $pat ]] && return 0
++  up="$(printf '%s' "$lit" | tr '[:lower:]' '[:upper:]')"
++  low="$(printf '%s' "$lit" | tr '[:upper:]' '[:lower:]')"
++  shopt -u nocasematch
++  if [[ $up == $pat || $low == $pat ]]; then r=0; fi
++  shopt -s nocasematch
++  return $r
++}
++
+ glob_match_path() {
+   local rest="$1" comp
+   rest="${rest//$'\001'/\{}" rest="${rest//$'\002'/\}}" rest="${rest//$'\003'/,}"
+   while :; do
+     comp="${rest%%/*}"
+     if [ "$comp" = "$rest" ]; then
+-      [[ DECISION == $comp ]] && glob_d=1
++      _glob_names DECISION "$comp" && glob_d=1
+       return 0
+     fi
+-    [[ human-review == $comp ]] && glob_h=1
++    _glob_names human-review "$comp" && glob_h=1
+     rest="${rest#*/}"
+   done
+ }
+diff --git a/.claude/hooks/scripts/lib/portable-tools.sh b/.claude/hooks/scripts/lib/portable-tools.sh
+index bb3a3f4..e13fa9f 100644
+--- a/.claude/hooks/scripts/lib/portable-tools.sh
++++ b/.claude/hooks/scripts/lib/portable-tools.sh
+@@ -32,9 +32,13 @@ _portable_sha256() {
+ 
+ # _portable_timeout <seconds> <command> [args...] - Run a command with a timeout.
+ # GNU timeout exits with 124 on timeout. macOS does not ship timeout by default
+-# (Homebrew coreutils installs as gtimeout unless aliased). If neither exists,
+-# emit a clear error.
+-# Returns the command's exit code, or 124 if timed out, or 125 if timeout mechanism unavailable.
++# (Homebrew coreutils installs as gtimeout unless aliased). When neither exists
++# a pure-bash watchdog takes over: the command runs in the background, a
++# sleeper sends it SIGTERM after <seconds>, and the result is 124 only when
++# that SIGTERM actually landed on a still-running command. Without this
++# fallback every microworld bundle on a stock macOS came back 125 and was
++# logged result=fail regardless of what run.sh did.
++# Returns the command's exit code, or 124 if timed out.
+ _portable_timeout() {
+   local secs="$1"
+   shift
+@@ -45,10 +49,24 @@ _portable_timeout() {
+   elif command -v gtimeout >/dev/null 2>&1; then
+     gtimeout "$secs" "$@"
+     return $?
+-  else
+-    echo "portable-tools.sh: timeout command not found (install gnu-coreutils or coreutils for macOS)" >&2
+-    return 125
+   fi
++
++  local cmd_pid watchdog_pid rc=0
++  "$@" <&0 &
++  cmd_pid=$!
++  # The watchdog's exit status is kill's: 0 only if the command was still
++  # alive when the timer fired, which is the one case that is a timeout. Its
++  # TERM trap reaps the sleeper so a finished command leaves no stray sleep.
++  ( trap 'kill "$sleep_pid" 2>/dev/null; exit 143' TERM
++    sleep "$secs" & sleep_pid=$!
++    wait "$sleep_pid" && kill -TERM "$cmd_pid" 2>/dev/null ) &
++  watchdog_pid=$!
++  wait "$cmd_pid" 2>/dev/null || rc=$?
++  kill "$watchdog_pid" 2>/dev/null || true
++  if wait "$watchdog_pid" 2>/dev/null; then
++    rc=124
++  fi
++  return "$rc"
+ }
+ 
+ # _mapfile_compat [-t] <arrayname> <<< "input"
+diff --git a/.claude/persona-config.json b/.claude/persona-config.json
+index 3d6a49a..521cb9d 100644
+--- a/.claude/persona-config.json
++++ b/.claude/persona-config.json
+@@ -60,17 +60,17 @@
+     ".claude/hooks/scripts/lib/agent-identity.sh": "0de4d93b4a1cefb79c534328d242b884f0869198ceacdda02ccb3e579d857975",
+     ".claude/hooks/scripts/lint-on-edit.sh": "b1db05986d2c553e32234934a524936b741f6fc3dab90eb0588e9c6d24f722d0",
+     ".claude/hooks/scripts/protected-paths.sh": "3efc9097a0d915f725deb3a28ea482220dddafa7d83a56c93e8c42644fa51728",
+-    ".claude/hooks/scripts/reviewed-path-gate.sh": "a269ddf5691f0be04412743ce6fb3fc629b811015e58df1e83e94dd86d0856c3",
++    ".claude/hooks/scripts/reviewed-path-gate.sh": "07d621ea4ab453a2073fe116f18ee78d56bd006d49f4dff83d408a3a864bc8b8",
+     ".claude/hooks/scripts/reviewer-route-gate.sh": "84e924d9a8cb677a04ef9020f54269474de1d9ffd9937f7b94686cf282d809e4",
+-    ".claude/hooks/scripts/reviewer-tier.sh": "44b1eace3d4022a4a3fbf27308e01d41cc0ed8d3443ba14845279695302d4e51",
++    ".claude/hooks/scripts/reviewer-tier.sh": "54420bef1b3ceb9a8d46676c03ee9f2539458d4fdfa54b1286cf2fc2bbcdb7ec",
+     ".claude/hooks/scripts/session-start.sh": "17629506a81e36fddad73075e8fa51506fd45bda082484b0f46f21109c43bfa5",
+     ".claude/hooks/scripts/stop-gate.sh": "0b09f9c5cc7e580120757f0a9371b536fb54738779f419e7df622cacfd87619a",
+     ".claude/hooks/scripts/task-gate.sh": "31ea0399f37eef3c1be9e2a22711a879c8800fa201125720d1029652d5fabeab",
+-    ".claude/hooks/scripts/human-decision-gate.sh": "c0e30e251b5d2e1e76777e62f2b4dca863fbc7a02e635156777273aaf356e042",
++    ".claude/hooks/scripts/human-decision-gate.sh": "708b415395ffcf82b2829b7e623e632bf6c87d829cbcd1ffe5164d924bc897b5",
+     ".claude/hooks/scripts/lib/benign-command.sh": "de8e2c8e20d45beeee0d0615a98e792d2463e5439a2dacb162596d1e24aa36ae",
+     ".claude/hooks/scripts/microworld-rerun.sh": "6b0d33d1ef767b195e4d06d65a8aa497f9479bcf739d68f04e8d25d55fb1af6d",
+     ".claude/hooks/scripts/heavy-trigger.sh": "b71a55d9cd6ebc5f379dc8b32006e1cf549d33f2d10d6a4d961bb5bac996fc3c",
+-    ".claude/hooks/scripts/marker-commit-check.sh": "e40364aa89243aac91fd36f7766258e7e227ed1f36f37af823c1946239c49687",
++    ".claude/hooks/scripts/marker-commit-check.sh": "0c915ffe56499c3437b04715263074830cd3d2e87e86009a3a24102d9660469b",
+     ".claude/hooks/scripts/lib/graph-update-core.sh": "a3626ebfcd6d965e3ccdb4f580f716fa9e578bc2fca72dfbba70d1aaad36f89f",
+     ".claude/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
+     ".claude/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
+@@ -85,29 +85,32 @@
+     "adapters/cursor/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
+     "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
+     "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
+-    ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "2a0acc2a22bce46f382391226f9d7dbb729b6af3be0587d780c2878a58245882",
+-    ".claude/hooks/scripts/lib/stop-gate-core.sh": "6563421a7ac29a7d91185fa02d79348775518a650f3909930a5318349fc335c5",
+-    "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "2a0acc2a22bce46f382391226f9d7dbb729b6af3be0587d780c2878a58245882",
+-    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "6563421a7ac29a7d91185fa02d79348775518a650f3909930a5318349fc335c5",
+-    "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "2a0acc2a22bce46f382391226f9d7dbb729b6af3be0587d780c2878a58245882",
+-    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "6563421a7ac29a7d91185fa02d79348775518a650f3909930a5318349fc335c5",
+-    ".claude/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
+-    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
+-    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "d8c3ad05dfc40a90339806c51b6fee401b52c4bef451fe488d1856e052106fdb",
+-    "adapters/codex/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
+-    "adapters/cursor/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
+-    ".claude/hooks/scripts/lib/audit-log.sh": "ef1b5e47d16e3c9e2c1c1e8a2b5a1a383cb7821421acf99730d727dacaa662a3",
++    ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "5b4b3da0b594f34476c48e7eb72264822b8333f30719c4883796b1328546f49e",
++    ".claude/hooks/scripts/lib/stop-gate-core.sh": "4a97a4a684c883e12323e4e40d7f6800217e24e472ac39c2fbd0f5977dff63ef",
++    "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "5b4b3da0b594f34476c48e7eb72264822b8333f30719c4883796b1328546f49e",
++    "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "4a97a4a684c883e12323e4e40d7f6800217e24e472ac39c2fbd0f5977dff63ef",
++    "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "5b4b3da0b594f34476c48e7eb72264822b8333f30719c4883796b1328546f49e",
++    "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "4a97a4a684c883e12323e4e40d7f6800217e24e472ac39c2fbd0f5977dff63ef",
++    ".claude/hooks/scripts/lib/microworld-queue.sh": "36aa32cde2785ab155932aac636fc695ab1f611190958edabaf6cdb9a5836b8d",
++    "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "36aa32cde2785ab155932aac636fc695ab1f611190958edabaf6cdb9a5836b8d",
++    "adapters/cursor/hooks/scripts/lib/microworld-queue.sh": "36aa32cde2785ab155932aac636fc695ab1f611190958edabaf6cdb9a5836b8d",
++    "adapters/codex/hooks/scripts/lib/audit-log.sh": "f35560f81f6f4c441d7aa5f4dcf5d7ee8ac6967c42efd6d21f51ba77e204bb5d",
++    "adapters/cursor/hooks/scripts/lib/audit-log.sh": "f35560f81f6f4c441d7aa5f4dcf5d7ee8ac6967c42efd6d21f51ba77e204bb5d",
++    ".claude/hooks/scripts/lib/audit-log.sh": "f35560f81f6f4c441d7aa5f4dcf5d7ee8ac6967c42efd6d21f51ba77e204bb5d",
+     ".claude/hooks/scripts/lib/harness-arm.sh": "51c8224b478b5025c3c28f6ff8733debbcb73e331de8daa943d8569118e545f1",
+     "adapters/codex/hooks/scripts/lib/harness-arm.sh": "51c8224b478b5025c3c28f6ff8733debbcb73e331de8daa943d8569118e545f1",
+     "adapters/cursor/hooks/scripts/lib/harness-arm.sh": "51c8224b478b5025c3c28f6ff8733debbcb73e331de8daa943d8569118e545f1",
+-    ".claude/hooks/scripts/harness-integrity-gate.sh": "1de70d08653717e0f0d374625f36be61d3fa1845dcb1adf99dafbc7911f8db55",
+-    ".claude/hooks/scripts/marker-verify.sh": "e628d6cb82891aa07270a5e0f61262fa77bad848d19442cd9af7da4d7c7cfd9a",
++    ".claude/hooks/scripts/harness-integrity-gate.sh": "a3f08012ea2cf7c7fde3e0fcf04663cd93745d52befdd928d0128bb40dbf3e07",
++    ".claude/hooks/scripts/marker-verify.sh": "b8519d21abd2388dd34e29a5b20bc34c96c17f6ccb8c5e32baf663ba5540804d",
+     ".claude/hooks/scripts/marker-write.sh": "e9550cf9c7ea5797a35be134d1ef49596843f517b0251d36d183c8e2e10c1a76",
+     ".claude/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
+     "adapters/codex/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
+     "adapters/cursor/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
+-    ".claude/hooks/scripts/version-stamp-check.sh": "f5ceb6c4e470c3d7dfb3bf368dc1f02ae7b31261d16726ff9aba08181bf933f3",
+-    ".claude/hooks/scripts/agent-audit.sh": "1b6e1ea5a8173c198371b1867b15c2dfc70454af9bb79efce8596e3fa25e375a"
++    ".claude/hooks/scripts/version-stamp-check.sh": "c9f37404b733aa20d90cfd423d1624936bb8ed62e7164a264cdf3951dcee4d59",
++    ".claude/hooks/scripts/agent-audit.sh": "f6f8211b31a4c347a5955d22ccfea5bc837689116633e334ad87c6df1c816017",
++    ".claude/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd",
++    "adapters/codex/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd",
++    "adapters/cursor/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd"
+   },
+   "humanReviewMode": "off",
+   "defaultImplementerModel": "haiku"
+diff --git a/adapters/codex/hooks/scripts/lib/portable-tools.sh b/adapters/codex/hooks/scripts/lib/portable-tools.sh
+index bb3a3f4..e13fa9f 100644
+--- a/adapters/codex/hooks/scripts/lib/portable-tools.sh
++++ b/adapters/codex/hooks/scripts/lib/portable-tools.sh
+@@ -32,9 +32,13 @@ _portable_sha256() {
+ 
+ # _portable_timeout <seconds> <command> [args...] - Run a command with a timeout.
+ # GNU timeout exits with 124 on timeout. macOS does not ship timeout by default
+-# (Homebrew coreutils installs as gtimeout unless aliased). If neither exists,
+-# emit a clear error.
+-# Returns the command's exit code, or 124 if timed out, or 125 if timeout mechanism unavailable.
++# (Homebrew coreutils installs as gtimeout unless aliased). When neither exists
++# a pure-bash watchdog takes over: the command runs in the background, a
++# sleeper sends it SIGTERM after <seconds>, and the result is 124 only when
++# that SIGTERM actually landed on a still-running command. Without this
++# fallback every microworld bundle on a stock macOS came back 125 and was
++# logged result=fail regardless of what run.sh did.
++# Returns the command's exit code, or 124 if timed out.
+ _portable_timeout() {
+   local secs="$1"
+   shift
+@@ -45,10 +49,24 @@ _portable_timeout() {
+   elif command -v gtimeout >/dev/null 2>&1; then
+     gtimeout "$secs" "$@"
+     return $?
+-  else
+-    echo "portable-tools.sh: timeout command not found (install gnu-coreutils or coreutils for macOS)" >&2
+-    return 125
+   fi
++
++  local cmd_pid watchdog_pid rc=0
++  "$@" <&0 &
++  cmd_pid=$!
++  # The watchdog's exit status is kill's: 0 only if the command was still
++  # alive when the timer fired, which is the one case that is a timeout. Its
++  # TERM trap reaps the sleeper so a finished command leaves no stray sleep.
++  ( trap 'kill "$sleep_pid" 2>/dev/null; exit 143' TERM
++    sleep "$secs" & sleep_pid=$!
++    wait "$sleep_pid" && kill -TERM "$cmd_pid" 2>/dev/null ) &
++  watchdog_pid=$!
++  wait "$cmd_pid" 2>/dev/null || rc=$?
++  kill "$watchdog_pid" 2>/dev/null || true
++  if wait "$watchdog_pid" 2>/dev/null; then
++    rc=124
++  fi
++  return "$rc"
+ }
+ 
+ # _mapfile_compat [-t] <arrayname> <<< "input"
+diff --git a/adapters/cursor/hooks/scripts/lib/portable-tools.sh b/adapters/cursor/hooks/scripts/lib/portable-tools.sh
+index bb3a3f4..e13fa9f 100644
+--- a/adapters/cursor/hooks/scripts/lib/portable-tools.sh
++++ b/adapters/cursor/hooks/scripts/lib/portable-tools.sh
+@@ -32,9 +32,13 @@ _portable_sha256() {
+ 
+ # _portable_timeout <seconds> <command> [args...] - Run a command with a timeout.
+ # GNU timeout exits with 124 on timeout. macOS does not ship timeout by default
+-# (Homebrew coreutils installs as gtimeout unless aliased). If neither exists,
+-# emit a clear error.
+-# Returns the command's exit code, or 124 if timed out, or 125 if timeout mechanism unavailable.
++# (Homebrew coreutils installs as gtimeout unless aliased). When neither exists
++# a pure-bash watchdog takes over: the command runs in the background, a
++# sleeper sends it SIGTERM after <seconds>, and the result is 124 only when
++# that SIGTERM actually landed on a still-running command. Without this
++# fallback every microworld bundle on a stock macOS came back 125 and was
++# logged result=fail regardless of what run.sh did.
++# Returns the command's exit code, or 124 if timed out.
+ _portable_timeout() {
+   local secs="$1"
+   shift
+@@ -45,10 +49,24 @@ _portable_timeout() {
+   elif command -v gtimeout >/dev/null 2>&1; then
+     gtimeout "$secs" "$@"
+     return $?
+-  else
+-    echo "portable-tools.sh: timeout command not found (install gnu-coreutils or coreutils for macOS)" >&2
+-    return 125
+   fi
++
++  local cmd_pid watchdog_pid rc=0
++  "$@" <&0 &
++  cmd_pid=$!
++  # The watchdog's exit status is kill's: 0 only if the command was still
++  # alive when the timer fired, which is the one case that is a timeout. Its
++  # TERM trap reaps the sleeper so a finished command leaves no stray sleep.
++  ( trap 'kill "$sleep_pid" 2>/dev/null; exit 143' TERM
++    sleep "$secs" & sleep_pid=$!
++    wait "$sleep_pid" && kill -TERM "$cmd_pid" 2>/dev/null ) &
++  watchdog_pid=$!
++  wait "$cmd_pid" 2>/dev/null || rc=$?
++  kill "$watchdog_pid" 2>/dev/null || true
++  if wait "$watchdog_pid" 2>/dev/null; then
++    rc=124
++  fi
++  return "$rc"
+ }
+ 
+ # _mapfile_compat [-t] <arrayname> <<< "input"
+diff --git a/hooks/scripts/lib/portable-tools.sh b/hooks/scripts/lib/portable-tools.sh
+index bb3a3f4..e13fa9f 100644
+--- a/hooks/scripts/lib/portable-tools.sh
++++ b/hooks/scripts/lib/portable-tools.sh
+@@ -32,9 +32,13 @@ _portable_sha256() {
+ 
+ # _portable_timeout <seconds> <command> [args...] - Run a command with a timeout.
+ # GNU timeout exits with 124 on timeout. macOS does not ship timeout by default
+-# (Homebrew coreutils installs as gtimeout unless aliased). If neither exists,
+-# emit a clear error.
+-# Returns the command's exit code, or 124 if timed out, or 125 if timeout mechanism unavailable.
++# (Homebrew coreutils installs as gtimeout unless aliased). When neither exists
++# a pure-bash watchdog takes over: the command runs in the background, a
++# sleeper sends it SIGTERM after <seconds>, and the result is 124 only when
++# that SIGTERM actually landed on a still-running command. Without this
++# fallback every microworld bundle on a stock macOS came back 125 and was
++# logged result=fail regardless of what run.sh did.
++# Returns the command's exit code, or 124 if timed out.
+ _portable_timeout() {
+   local secs="$1"
+   shift
+@@ -45,10 +49,24 @@ _portable_timeout() {
+   elif command -v gtimeout >/dev/null 2>&1; then
+     gtimeout "$secs" "$@"
+     return $?
+-  else
+-    echo "portable-tools.sh: timeout command not found (install gnu-coreutils or coreutils for macOS)" >&2
+-    return 125
+   fi
++
++  local cmd_pid watchdog_pid rc=0
++  "$@" <&0 &
++  cmd_pid=$!
++  # The watchdog's exit status is kill's: 0 only if the command was still
++  # alive when the timer fired, which is the one case that is a timeout. Its
++  # TERM trap reaps the sleeper so a finished command leaves no stray sleep.
++  ( trap 'kill "$sleep_pid" 2>/dev/null; exit 143' TERM
++    sleep "$secs" & sleep_pid=$!
++    wait "$sleep_pid" && kill -TERM "$cmd_pid" 2>/dev/null ) &
++  watchdog_pid=$!
++  wait "$cmd_pid" 2>/dev/null || rc=$?
++  kill "$watchdog_pid" 2>/dev/null || true
++  if wait "$watchdog_pid" 2>/dev/null; then
++    rc=124
++  fi
++  return "$rc"
+ }
+ 
+ # _mapfile_compat [-t] <arrayname> <<< "input"
+diff --git a/tests/cli-backfill.test.js b/tests/cli-backfill.test.js
+index ba8f99a..793a499 100644
+--- a/tests/cli-backfill.test.js
++++ b/tests/cli-backfill.test.js
+@@ -391,16 +391,38 @@ check('applyMcpPlaceholder renders the comment form and the legacy bare form ide
+   }
+ });
+ 
+-check('rendered explorer frontmatter parses as YAML with the launch command', () => {
+-  const src = fs.readFileSync(MCP_SOURCES.explorer, 'utf8');
+-  const rendered = cli.applyMcpPlaceholder(src, MCP_TOKENS.explorer, { command: 'node', args: ['/s.js'] }, 'explorer.md');
+-  const py =
+-    "import re,sys,yaml,json;c=sys.stdin.read();m=re.match(r'^---\\n(.*?)\\n---\\n',c,re.S);" +
+-    "print(json.dumps(yaml.safe_load(m.group(1))['mcpServers'][0]['code-review-graph']['command']))";
+-  const r = spawnSync('python3', ['-c', py], { input: rendered, encoding: 'utf8' });
+-  assert.strictEqual(r.status, 0, r.stderr);
+-  assert.strictEqual(JSON.parse(r.stdout), 'node');
+-});
++// YAML parser for the rendered-frontmatter check: PyYAML when importable,
++// else Ruby's Psych (stock on macOS; also libyaml-based), else null (the check
++// is then reported as SKIP by name, not as a pass). Mirrors tests/validate.sh's
++// "agent frontmatter parses as valid YAML" fallback.
++function yamlFrontmatterCommand() {
++  if (spawnSync('python3', ['-c', 'import yaml'], { encoding: 'utf8' }).status === 0) {
++    return ['python3', ['-c',
++      "import re,sys,yaml,json;c=sys.stdin.read();m=re.match(r'^---\\n(.*?)\\n---\\n',c,re.S);" +
++      "print(json.dumps(yaml.safe_load(m.group(1))['mcpServers'][0]['code-review-graph']['command']))"]];
++  }
++  if (spawnSync('ruby', ['-ryaml', '-rdate', '-e', ''], { encoding: 'utf8' }).status === 0) {
++    return ['ruby', ['-ryaml', '-rdate', '-rjson', '-e',
++      'c=STDIN.read;m=c.match(/\\A---\\n(.*?)\\n---\\n/m);' +
++      'puts JSON.generate(YAML.safe_load(m[1], permitted_classes: [Date, Time, Symbol], aliases: true)["mcpServers"][0]["code-review-graph"]["command"])']];
++  }
++  return null;
++}
++
++{
++  const yamlCmd = yamlFrontmatterCommand();
++  if (yamlCmd === null) {
++    console.log('SKIP rendered explorer frontmatter parses as YAML with the launch command (no YAML parser: python3 lacks the yaml module and ruby -ryaml is unavailable)');
++  } else {
++    check('rendered explorer frontmatter parses as YAML with the launch command', () => {
++      const src = fs.readFileSync(MCP_SOURCES.explorer, 'utf8');
++      const rendered = cli.applyMcpPlaceholder(src, MCP_TOKENS.explorer, { command: 'node', args: ['/s.js'] }, 'explorer.md');
++      const r = spawnSync(yamlCmd[0], yamlCmd[1], { input: rendered, encoding: 'utf8' });
++      assert.strictEqual(r.status, 0, r.stderr);
++      assert.strictEqual(JSON.parse(r.stdout), 'node');
++    });
++  }
++}
+ 
+ check('PLACEHOLDER_RE still matches the comment-form placeholder line', () => {
+   assert.ok(cli.PLACEHOLDER_RE.test(`      # ${MCP_TOKENS.explorer}`));
+diff --git a/tests/lib/validate-quiet.sh b/tests/lib/validate-quiet.sh
+index 4b6e023..1f42aac 100644
+--- a/tests/lib/validate-quiet.sh
++++ b/tests/lib/validate-quiet.sh
+@@ -6,7 +6,13 @@ VALIDATE_QUIET_KEEP='^(FAIL|WARN|SKIP)|⚠|✗|not ok|FAILED|Error|ERROR'
+ VALIDATE_QUIET_DROP='^(OK |ok |Test |hint:|All .*(passed|pass)|\[master|\[detached| create mode| delete mode| [0-9]+ files? changed|editing .*budget|Switched to|Preparing worktree|HEAD is now|Initialized empty Git)|^[[:space:]]*✓|^[[:space:]]*$|^--( .* --)?$'
+ 
+ validate_quiet_filter() {
+-  VQ_KEEP="$VALIDATE_QUIET_KEEP" VQ_DROP="$VALIDATE_QUIET_DROP" awk '
++  # LC_ALL=C: the stream carries raw probe bytes from the gate suites (C1
++  # controls, lone 0x80-0xFF) that are not valid UTF-8. BSD awk aborts on them
++  # under a UTF-8 locale ("awk: towc: multibyte conversion failure"), which
++  # SIGPIPEs tee and the inner validate.sh (exit 141). In the C locale awk is
++  # byte-oriented; the multibyte literals in the two regexes still match as
++  # byte sequences, so GNU and BSD awk filter identically.
++  VQ_KEEP="$VALIDATE_QUIET_KEEP" VQ_DROP="$VALIDATE_QUIET_DROP" LC_ALL=C awk '
+     BEGIN { keep = ENVIRON["VQ_KEEP"]; drop = ENVIRON["VQ_DROP"]; hdr = ""; ctx = "" }
+     /^== / { hdr = $0; ctx = ""; next }
+     {
+diff --git a/tests/reviewed-dir-leak-guard.test.sh b/tests/reviewed-dir-leak-guard.test.sh
+index 1987b95..9589eca 100644
+--- a/tests/reviewed-dir-leak-guard.test.sh
++++ b/tests/reviewed-dir-leak-guard.test.sh
+@@ -65,7 +65,12 @@ case "$nested_rc:$nested_last" in
+ esac
+ 
+ if [ -d "$sandbox/.claude/reviewed" ]; then
+-  leaked="$(find "$sandbox/.claude/reviewed" -mindepth 1 -printf '%P\n' | sort)"
++  # Relative paths without `find -printf '%P'` (GNU-only): BSD find rejects
++  # the primary with "-printf: unknown primary or operator", which left
++  # $leaked empty and made this check pass vacuously on macOS.
++  leaked="$(find "$sandbox/.claude/reviewed" -mindepth 1 | while IFS= read -r e; do
++    printf '%s\n' "${e#"$sandbox/.claude/reviewed"/}"
++  done | sort)"
+ else
+   leaked="(the .claude/reviewed/ directory itself was removed)"
+ fi
+diff --git a/tests/reviewer-route-gate-caller.test.sh b/tests/reviewer-route-gate-caller.test.sh
+index f891e91..ec44de7 100644
+--- a/tests/reviewer-route-gate-caller.test.sh
++++ b/tests/reviewer-route-gate-caller.test.sh
+@@ -163,7 +163,19 @@ derive_grant_literals() {
+ derive_caller_allowlist_literals() {
+   # $1 = source file to scan (a real path or a mutant copy of it)
+   local joined
+-  joined="$(sed -E ':a;N;$!ba;s/\\\n[[:space:]]*/ /g' "$1")"
++  # Join backslash-continued lines (a `\`-newline plus the next line's leading
++  # whitespace becomes one space). Done in awk: the GNU sed one-liner
++  # `:a;N;$!ba;s/...//` is not portable - BSD sed reads `a;N;$!ba;...` as one
++  # label name, warns "unused label", and leaves the file unjoined.
++  joined="$(awk '{
++    while (sub(/\\$/, "")) {
++      if ((getline nxt) <= 0) break
++      while (nxt ~ /^[[:space:]]*$/ && (getline nxt) > 0) {}
++      sub(/^[[:space:]]*/, "", nxt)
++      $0 = $0 " " nxt
++    }
++    print
++  }' "$1")"
+   printf '%s\n' "$joined" \
+     | grep -oE '(![[:space:]]*)?persona_matches_gate[[:space:]]+"\$agent_type"[[:space:]]+"[A-Za-z0-9_-]+"' \
+     | grep '^!' \
+diff --git a/tests/rollout-preflight.test.sh b/tests/rollout-preflight.test.sh
+index 581d697..09d4030 100755
+--- a/tests/rollout-preflight.test.sh
++++ b/tests/rollout-preflight.test.sh
+@@ -27,6 +27,23 @@ cd "$(dirname "$0")/.."
+ SCRIPT="$PWD/scripts/rollout-preflight.sh"
+ fail=0
+ 
++# scripts/rollout-preflight.sh uses associative arrays and refuses to run under
++# bash < 4 ("needs bash >= 4 (macOS: brew install bash)"). macOS ships 3.2 at
++# /bin/bash, so pick the first bash >= 4 on PATH or in the usual Homebrew /
++# MacPorts prefixes; with none, this is a precondition SKIP (advisory in
++# validate.sh's summary), not a verdict on the script.
++BASH4=""
++for b in bash /opt/homebrew/bin/bash /usr/local/bin/bash /opt/local/bin/bash; do
++  v="$(command -v "$b" 2>/dev/null)" || continue
++  if [ "$("$v" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null)" -ge 4 ] 2>/dev/null; then
++    BASH4="$v"; break
++  fi
++done
++if [ -z "$BASH4" ]; then
++  echo "SKIP tests/rollout-preflight.test.sh (scripts/rollout-preflight.sh needs bash >= 4; only bash $BASH_VERSION found)"
++  exit 0
++fi
++
+ # Test helpers
+ pass_test() {
+   echo "OK   $1"
+@@ -48,7 +65,7 @@ fi
+ # asserting a fixed value -- CI's actual conclusion moves over time (it was
+ # `failure` when this spec was written, and may be `success` later).
+ live_conclusion=$(gh run list --branch master --workflow validate --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || echo "unknown")
+-w0_output=$(bash "$SCRIPT" W0 2>&1 || true)
++w0_output=$("$BASH4" "$SCRIPT" W0 2>&1 || true)
+ if echo "$w0_output" | grep -q "$live_conclusion"; then
+   pass_test "W0: reports live CI conclusion ($live_conclusion)"
+ else
+@@ -56,7 +73,7 @@ else
+ fi
+ 
+ # AC3: W9 lists W3, W7, W8 as unmet predecessors
+-w9_output=$(bash "$SCRIPT" W9 2>&1 || true)
++w9_output=$("$BASH4" "$SCRIPT" W9 2>&1 || true)
+ if echo "$w9_output" | grep -q "W3" && echo "$w9_output" | grep -q "W7" && echo "$w9_output" | grep -q "W8"; then
+   pass_test "W9: lists W3, W7, W8 as predecessors"
+ else
+@@ -64,7 +81,7 @@ else
+ fi
+ 
+ # AC4: W7 mentions escape hatch
+-w7_output=$(bash "$SCRIPT" W7 2>&1 || true)
++w7_output=$("$BASH4" "$SCRIPT" W7 2>&1 || true)
+ if echo "$w7_output" | grep -q "escape" || echo "$w7_output" | grep -q "baseline"; then
+   pass_test "W7: mentions escape hatch"
+ else
+@@ -72,7 +89,7 @@ else
+ fi
+ 
+ # W1: lists spec 3 (no predecessors; owner is data-driven)
+-w1_output=$(bash "$SCRIPT" W1 2>&1 || true)
++w1_output=$("$BASH4" "$SCRIPT" W1 2>&1 || true)
+ if echo "$w1_output" | grep -q "spec 3"; then
+   pass_test "W1: names spec 3 as owner"
+ else
+@@ -89,7 +106,7 @@ else
+ fi
+ 
+ # W2: lists W1 as unmet predecessor
+-w2_output=$(bash "$SCRIPT" W2 2>&1 || true)
++w2_output=$("$BASH4" "$SCRIPT" W2 2>&1 || true)
+ if echo "$w2_output" | grep -q "W1"; then
+   pass_test "W2: lists W1 as predecessor"
+ else
+@@ -97,7 +114,7 @@ else
+ fi
+ 
+ # W3: lists W1 and W2 as unmet predecessors
+-w3_output=$(bash "$SCRIPT" W3 2>&1 || true)
++w3_output=$("$BASH4" "$SCRIPT" W3 2>&1 || true)
+ if echo "$w3_output" | grep -q "W1" && echo "$w3_output" | grep -q "W2"; then
+   pass_test "W3: lists W1, W2 as predecessors"
+ else
+@@ -105,7 +122,7 @@ else
+ fi
+ 
+ # W4: lists W1 as unmet predecessor
+-w4_output=$(bash "$SCRIPT" W4 2>&1 || true)
++w4_output=$("$BASH4" "$SCRIPT" W4 2>&1 || true)
+ if echo "$w4_output" | grep -q "W1"; then
+   pass_test "W4: lists W1 as predecessor"
+ else
+@@ -113,7 +130,7 @@ else
+ fi
+ 
+ # W5: lists W3 and W4 as unmet predecessors
+-w5_output=$(bash "$SCRIPT" W5 2>&1 || true)
++w5_output=$("$BASH4" "$SCRIPT" W5 2>&1 || true)
+ if echo "$w5_output" | grep -q "W3" && echo "$w5_output" | grep -q "W4"; then
+   pass_test "W5: lists W3, W4 as predecessors"
+ else
+@@ -121,7 +138,7 @@ else
+ fi
+ 
+ # W6: lists W5 as unmet predecessor
+-w6_output=$(bash "$SCRIPT" W6 2>&1 || true)
++w6_output=$("$BASH4" "$SCRIPT" W6 2>&1 || true)
+ if echo "$w6_output" | grep -q "W5"; then
+   pass_test "W6: lists W5 as predecessor"
+ else
+@@ -129,7 +146,7 @@ else
+ fi
+ 
+ # W8: lists W0 and W2 as unmet predecessors
+-w8_output=$(bash "$SCRIPT" W8 2>&1 || true)
++w8_output=$("$BASH4" "$SCRIPT" W8 2>&1 || true)
+ if echo "$w8_output" | grep -q "W0" && echo "$w8_output" | grep -q "W2"; then
+   pass_test "W8: lists W0, W2 as predecessors"
+ else
+@@ -137,7 +154,7 @@ else
+ fi
+ 
+ # AC5: W10 reports blocked by design with A23 and OQ2
+-w10_output=$(bash "$SCRIPT" W10 2>&1 || true)
++w10_output=$("$BASH4" "$SCRIPT" W10 2>&1 || true)
+ if echo "$w10_output" | grep -q "blocked" && echo "$w10_output" | grep -q "A23" && echo "$w10_output" | grep -q "OQ2"; then
+   pass_test "W10: reports blocked by design with A23 and OQ2"
+ else
+@@ -145,7 +162,7 @@ else
+ fi
+ 
+ # AC6: --owner for microworld-rerun.sh lists 4 specs
+-owner_output=$(bash "$SCRIPT" --owner hooks/scripts/microworld-rerun.sh 2>&1 || true)
++owner_output=$("$BASH4" "$SCRIPT" --owner hooks/scripts/microworld-rerun.sh 2>&1 || true)
+ spec_count=$(echo "$owner_output" | grep -oE "spec [0-9]" | wc -l)
+ if [ "$spec_count" -eq 4 ]; then
+   pass_test "--owner microworld-rerun.sh: lists 4 specs"
+@@ -154,7 +171,7 @@ else
+ fi
+ 
+ # AC6b: --owner for reviewed-path-gate.sh lists specs 1,2,3 and mentions H7
+-owner2_output=$(bash "$SCRIPT" --owner hooks/scripts/reviewed-path-gate.sh 2>&1 || true)
++owner2_output=$("$BASH4" "$SCRIPT" --owner hooks/scripts/reviewed-path-gate.sh 2>&1 || true)
+ if echo "$owner2_output" | grep -q "spec 1" && echo "$owner2_output" | grep -q "spec 2" && echo "$owner2_output" | grep -q "spec 3" && echo "$owner2_output" | grep -q "H7"; then
+   pass_test "--owner reviewed-path-gate.sh: lists specs 1,2,3 with H7 note"
+ else
+@@ -162,7 +179,7 @@ else
+ fi
+ 
+ # AC6c: --owner for .github/workflows lists only spec 6
+-owner3_output=$(bash "$SCRIPT" --owner .github/workflows/ 2>&1 || true)
++owner3_output=$("$BASH4" "$SCRIPT" --owner .github/workflows/ 2>&1 || true)
+ if echo "$owner3_output" | grep -q "spec 6" && ! echo "$owner3_output" | grep -q "spec 1" && ! echo "$owner3_output" | grep -q "spec 2" && ! echo "$owner3_output" | grep -q "spec 3" && ! echo "$owner3_output" | grep -q "spec 4"; then
+   pass_test "--owner .github/workflows/: lists only spec 6"
+ else
+@@ -170,7 +187,7 @@ else
+ fi
+ 
+ # --owner defect-5 regression: previously-false-negative/mislabeled paths
+-owner4_output=$(bash "$SCRIPT" --owner bin/cli.js 2>&1)
++owner4_output=$("$BASH4" "$SCRIPT" --owner bin/cli.js 2>&1)
+ owner4_exit=$?
+ if [ "$owner4_exit" -eq 0 ] && echo "$owner4_output" | grep -q "spec 3"; then
+   pass_test "--owner bin/cli.js: lists spec 3, exit 0"
+@@ -178,7 +195,7 @@ else
+   fail_test "--owner bin/cli.js: false negative or non-zero exit"
+ fi
+ 
+-owner5_output=$(bash "$SCRIPT" --owner .claude/persona-config.json 2>&1)
++owner5_output=$("$BASH4" "$SCRIPT" --owner .claude/persona-config.json 2>&1)
+ owner5_exit=$?
+ if [ "$owner5_exit" -eq 0 ] && echo "$owner5_output" | grep -q "spec 1" && echo "$owner5_output" | grep -q "spec 2" && echo "$owner5_output" | grep -q "spec 3" && echo "$owner5_output" | grep -q "spec 6"; then
+   pass_test "--owner .claude/persona-config.json: lists specs 1,2,3,6, exit 0"
+@@ -186,7 +203,7 @@ else
+   fail_test "--owner .claude/persona-config.json: missing claimants or non-zero exit"
+ fi
+ 
+-owner6_output=$(bash "$SCRIPT" --owner hooks/scripts/protected-paths.sh 2>&1)
++owner6_output=$("$BASH4" "$SCRIPT" --owner hooks/scripts/protected-paths.sh 2>&1)
+ owner6_exit=$?
+ if [ "$owner6_exit" -eq 0 ] && echo "$owner6_output" | grep -q "spec 1" && echo "$owner6_output" | grep -q "spec 2" && echo "$owner6_output" | grep -q "spec 3"; then
+   pass_test "--owner hooks/scripts/protected-paths.sh: lists specs 1,2,3, exit 0"
+@@ -195,7 +212,7 @@ else
+ fi
+ 
+ # AC7: --resource protected-paths points to spec 2 Unit E
+-resource_output=$(bash "$SCRIPT" --resource protected-paths 2>&1 || true)
++resource_output=$("$BASH4" "$SCRIPT" --resource protected-paths 2>&1 || true)
+ if echo "$resource_output" | grep -q "spec 2" && echo "$resource_output" | grep -q "Unit E"; then
+   pass_test "--resource protected-paths: spec 2 Unit E"
+ else
+@@ -203,7 +220,7 @@ else
+ fi
+ 
+ # AC7b: --resource adr lists 0026/0027/0028 with do-not-backfill rule
+-adr_output=$(bash "$SCRIPT" --resource adr 2>&1 || true)
++adr_output=$("$BASH4" "$SCRIPT" --resource adr 2>&1 || true)
+ if echo "$adr_output" | grep -q "0026" && echo "$adr_output" | grep -q "0027" && echo "$adr_output" | grep -q "0028" && echo "$adr_output" | grep -q "not backfill"; then
+   pass_test "--resource adr: lists 0026/0027/0028 with do-not-backfill rule"
+ else
+@@ -211,7 +228,7 @@ else
+ fi
+ 
+ # AC8: unknown wave exits non-zero with reason
+-unknown_output=$(bash "$SCRIPT" UNKNOWN 2>&1 || true)
++unknown_output=$("$BASH4" "$SCRIPT" UNKNOWN 2>&1 || true)
+ if echo "$unknown_output" | grep -q "unknown"; then
+   pass_test "unknown wave: exits with reason"
+ else
+@@ -235,7 +252,7 @@ fi
+ 
+ # AC11: sunset criterion in header and help text
+ header_check=$(head -20 "$SCRIPT" | grep -i "delete this file" || true)
+-help_check=$(bash "$SCRIPT" 2>&1 | grep -i "delete this file" || true)
++help_check=$("$BASH4" "$SCRIPT" 2>&1 | grep -i "delete this file" || true)
+ if [ -n "$header_check" ] && [ -n "$help_check" ]; then
+   pass_test "sunset: stated in both header and help"
+ else
+@@ -247,7 +264,7 @@ fi
+ # diff-filter=D criterion is scoped to doesn't exist yet), not a live script
+ # count -- see rollout-a24-remechanize-1's investigation note in
+ # reverify_spec6().
+-reverify_output=$(bash "$SCRIPT" --reverify 6 2>&1 || true)
++reverify_output=$("$BASH4" "$SCRIPT" --reverify 6 2>&1 || true)
+ if echo "$reverify_output" | grep -q "skipped: A24" && echo "$reverify_output" | grep -q "flip unit"; then
+   pass_test "--reverify: A24 reports skipped with flip-unit reason"
+ else
+@@ -289,10 +306,10 @@ fi
+ # just run above, so spec 6's reverify stamp is fresh and W9 starts "green"
+ # (no staleness line) before the touch flips it to unmet-on-staleness.
+ sibling_in_tmp="$tmp_repo/docs/plans/2026-08-25-ci-shaped-review-architecture-d.md"
+-w9_before_touch=$(cd "$tmp_repo" && bash "$SCRIPT" W9 2>&1 || true)
++w9_before_touch=$(cd "$tmp_repo" && "$BASH4" "$SCRIPT" W9 2>&1 || true)
+ sleep 1
+ touch "$sibling_in_tmp"
+-w9_after_touch=$(cd "$tmp_repo" && bash "$SCRIPT" W9 2>&1 || true)
++w9_after_touch=$(cd "$tmp_repo" && "$BASH4" "$SCRIPT" W9 2>&1 || true)
+ if [ "$w9_before_touch" != "$w9_after_touch" ] && echo "$w9_after_touch" | grep -q "unmet-on-staleness"; then
+   pass_test "AC14: W9 report flips to unmet-on-staleness after sibling spec amendment"
+ else
+diff --git a/tests/validate-lanes.sh b/tests/validate-lanes.sh
+index e79fe26..6078018 100644
+--- a/tests/validate-lanes.sh
++++ b/tests/validate-lanes.sh
+@@ -108,7 +108,10 @@ lane() { # <k>
+     before="$(fingerprint "$l")"
+     # The section records its own $fail only if it reaches its end; a section
+     # that exits early (any exit code, 1 included) leaves no rc file.
+-    { printf 'set -uo pipefail\ncd %q || exit 2\nfail=0\n' "$l"
++    # Same preamble as validate.sh:7-11; its Darwin PATH line sits above the
++    # first `== ` header, so a cut section body does not carry it and the
++    # lane would run the BSD tools unshimmed.
++    { printf 'set -uo pipefail\ncd %q || exit 2\n[ "$(uname)" = Darwin ] && export PATH="$PWD/tests/lib/bsd-shims:$PATH"\nfail=0\n' "$l"
+       cat "$work/sec/$i.body"
+       printf '\necho "$fail" > %q\nexit "$fail"\n' "$work/rc/$i"; } > "$work/sec/$i.sh"
+     (cd "$l" && CLAUDE_PROJECT_DIR="$l" REVIEWED_DIR_LEAK_GUARD_NESTED=1 ANTISLOP_VALIDATE_INNER=1 \
+diff --git a/tests/validate.sh b/tests/validate.sh
+index c1cb69f..9a2c965 100755
+--- a/tests/validate.sh
++++ b/tests/validate.sh
+@@ -127,7 +127,11 @@ echo "== npm pack: dev-scratch dirs excluded, shipped dirs included =="
+ npm_pack_err=$(mktemp)
+ if npm pack --dry-run --json 2>/dev/null | python3 -c "
+ import json, sys
+-files = [f['path'] for f in json.load(sys.stdin)[0]['files']]
++data = json.load(sys.stdin)
++# npm <= 11 prints a one-element list; npm >= 12 prints an object keyed by
++# package name. Both carry the same per-package record.
++pkg = data[0] if isinstance(data, list) else next(iter(data.values()))
++files = [f['path'] for f in pkg['files']]
+ excluded = ['docs/', 'eval/', 'prototype/', 'specs/', '.claude/']
+ included = ['agents/', 'hooks/', 'templates/', 'skills/']
+ present = [d for d in excluded if any(f.startswith(d) for f in files)]
+@@ -205,15 +209,46 @@ frontmatter_yaml_err=$(mktemp)
+ # Catches an unquoted plain scalar containing a ": " (colon-space) sequence,
+ # which YAML's grammar treats as a nested mapping key and fails to parse -
+ # e.g. an unescaped 'description: ... ("agent": "orchestrator") ...' (#276).
++# Parser: PyYAML when importable (CI's Ubuntu image ships python3-yaml);
++# otherwise Ruby's Psych (stock on macOS, also libyaml-based, and it rejects the
++# same #276 shape with "mapping values are not allowed in this context"). With
++# neither available the check is SKIPped by name rather than reported as a
++# frontmatter failure: a missing parser says nothing about the files.
++if python3 -c 'import yaml' >/dev/null 2>&1; then
++  frontmatter_yaml_parser=python3
++elif ruby -ryaml -rdate -e '' >/dev/null 2>&1; then
++  frontmatter_yaml_parser=ruby
++else
++  frontmatter_yaml_parser=""
++fi
+ for f in agents/*.md templates/*.md.tmpl; do
+   head -1 "$f" | grep -q '^---$' || continue
+-  if python3 -c "
++  if [ -z "$frontmatter_yaml_parser" ]; then
++    echo "SKIP $f (no YAML parser: python3 lacks the yaml module and ruby -ryaml is unavailable)"
++    continue
++  fi
++  if [ "$frontmatter_yaml_parser" = python3 ]; then
++    python3 -c "
+ import re, sys, yaml
+ c = open('$f').read()
+ m = re.match(r'^---\n(.*?)\n---\n', c, re.S)
+ assert m, 'no frontmatter block found'
+ yaml.safe_load(m.group(1))
+-" 2>"$frontmatter_yaml_err"; then
++" 2>"$frontmatter_yaml_err"
++    frontmatter_yaml_rc=$?
++  else
++    FRONTMATTER_FILE="$f" ruby -ryaml -rdate -e '
++c = File.read(ENV["FRONTMATTER_FILE"])
++m = c.match(/\A---\n(.*?)\n---\n/m) or abort "no frontmatter block found"
++begin
++  YAML.safe_load(m[1], permitted_classes: [Date, Time, Symbol], aliases: true)
++rescue Psych::Exception => e
++  abort e.message
++end
++' 2>"$frontmatter_yaml_err"
++    frontmatter_yaml_rc=$?
++  fi
++  if [ "$frontmatter_yaml_rc" -eq 0 ]; then
+     echo "OK   $f"
+   else
+     echo "FAIL $f ($(cat "$frontmatter_yaml_err" | tail -1))"
+@@ -1123,7 +1158,21 @@ fi
+ echo
+ echo "== rollout wave-graph preflight checker (Bash, scaffolding) =="
+ rollout_test="tests/rollout-preflight.test.sh"
+-if bash "$rollout_test"; then
++# scripts/rollout-preflight.sh needs bash >= 4 (associative arrays) and re-execs
++# itself into a Homebrew bash when the running one is older; this probe mirrors
++# that guard so a bash-3.2 host without one SKIPs by name instead of failing
++# all 12 wave assertions on the script's own "needs bash >= 4" exit.
++rollout_bash4=""
++if [ "${BASH_VERSINFO[0]}" -ge 4 ]; then
++  rollout_bash4=1
++else
++  for b in /opt/homebrew/bin/bash /usr/local/bin/bash; do
++    [ -x "$b" ] && rollout_bash4=1
++  done
++fi
++if [ -z "$rollout_bash4" ]; then
++  echo "SKIP $rollout_test (scripts/rollout-preflight.sh needs bash >= 4; none found at /opt/homebrew/bin/bash or /usr/local/bin/bash)"
++elif bash "$rollout_test"; then
+   echo "OK   $rollout_test"
+ else
+   echo "FAIL $rollout_test"
+@@ -1186,7 +1235,12 @@ fi
+ 
+ echo
+ echo "== eval/harness/validate-cases.py: 13-reason case.yaml validator (Bash, gh-eval-step1) =="
+-if bash tests/eval-cases.test.sh; then
++# The validator under test itself does `import yaml` (PyYAML, no stdlib
++# substitute), so without it every one of its 13 reasons fails for the wrong
++# reason. Skip by name instead; CI's Ubuntu image has python3-yaml.
++if ! python3 -c 'import yaml' >/dev/null 2>&1; then
++  echo "SKIP tests/eval-cases.test.sh (python3 lacks the yaml module that eval/harness/validate-cases.py imports)"
++elif bash tests/eval-cases.test.sh; then
+   echo "OK   tests/eval-cases.test.sh"
+ else
+   echo "FAIL tests/eval-cases.test.sh"
