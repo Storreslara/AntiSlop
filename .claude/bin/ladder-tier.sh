@@ -71,7 +71,7 @@ resolve_default() {
     v=""
   fi
   if [ -z "$v" ]; then
-    v="$(sed -n '1,/^---$/{s/^model: *//p}' "$repo_root/agents/lead-programmer.md" | head -1)"
+    v="$(sed -n '1,/^---$/{s/^model: *//p;}' "$repo_root/agents/lead-programmer.md" | head -1)"
     [ -n "$v" ] || return 1
   fi
   case "$v" in
