@@ -3545,3 +3545,14 @@ _Avoid_: ticket triggers, finding codes
 
 **decision table**:
 (unit abt-u21a, 2026-10-17) — the single table (`decision-table-v2`, `docs/plans/contracts/abt-u21a-fix3.md`) from which every experiment-log Decision wording comes, keyed on the verdict, the finding reasons, N and the bad-row and stall counts. Tests check it with literal oracles: `tests/abtest-report-walk.test.sh` (21 decided cells through the real `score.py`), `tests/abtest-report-grid.test.sh` (396 undecided cells) and `tests/abtest-report-edges.test.sh` (17 boundary cells).
+
+**BSD shim**:
+(unit macos-merge, 2026-10-27) — a stand-in command in `tests/lib/bsd-shims/` (`date`, `sed`, `touch`, `wc`) that `tests/validate.sh` puts first on `PATH` when `uname` is `Darwin`, so tests written for GNU behaviour run against macOS's BSD userland. Not the adapter "shim" retired above: this one is a test-only PATH substitute, and hooks must work without it. No `timeout` shim exists, by rule. A hand run on macOS sets the same `PATH` prefix before `/bin/bash tests/<name>.test.sh`.
+_Avoid_: BSD stub, fake coreutil
+
+**portability contract**:
+(unit macos-merge, 2026-10-27) — the bash 3.2 plus BSD-safe baseline that hook scripts, repo scripts and tests must satisfy, written as ground rules in §0 of `docs/plans/2026-10-23-macos-compat.md`. It bans shapes such as `mapfile`, `declare -A`, `${v,,}`, GNU-only `stat -c`, `date -d`, `find -printf` and `grep -P`, and needs `${a[@]+"${a[@]}"}` for arrays that may be empty under `set -u`. It is enforced by `scripts/portable-convert.py --check` (must print `0 fix(es) pending`) and `tests/portable-convert.test.sh`, so new code in a banned shape fails the suite. Shared helpers live in `hooks/scripts/lib/portable-tools.sh`, mirrored into `.claude/` and both adapters. The contract moves to `CONTRIBUTING.md` under plan unit U6; until that lands, §0 is its only copy.
+_Avoid_: portability rules, bash 3.2 rules
+
+**mutant never built**:
+(unit macos-merge, 2026-10-27) — a mutation whose target file was never produced, so the suite runs against a missing file and every check fails. The `mutrun` helper in `tests/probe-hook-identity.test.sh` now checks that its target string occurs exactly once and returns with a "target string not found" error before the suite starts, so a stale target names the string instead of a missing file. Not a [[surviving mutant]], where the suite passes with the mutant in place, and not a vacuous test: a failure here says the mutant did not exist, not that the suite is weak. Run mechanics overlap [[Mutation-proved]].

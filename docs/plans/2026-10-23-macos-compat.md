@@ -1,6 +1,6 @@
 # macOS compatibility: finish `validate.sh` and harden for the future
 
-Status: SPEC, not yet implemented. Nothing in this plan is committed.
+Status: PARTLY IMPLEMENTED (as of 2026-10-27). U0 (patch set) is on master (commits `46162924`, `228f6012`, fixes through `be6f6907`, unit `macos-merge`), along with `scripts/portable-convert.py` and `tests/lib/bsd-shims/`. Verified NOT landed: U2 (no macOS job in `.github/workflows/validate.yml`), U3's validate.sh section (no `portable-convert` in `tests/validate.sh`), U6 (no "Shell portability contract" in `CONTRIBUTING.md`). Other units are not verified and not claimed here.
 Audience: Sonnet implementation agents. Every unit is self-contained: goal, files, exact steps, acceptance commands.
 Evidence: `diagnosis-userland-locale.md`, `diagnosis-drift-yaml-pack.md` (both in this directory, written by Fable diagnosis agents; read the relevant finding before touching its unit).
 Patches: `patches/` in this directory (all verified with `git apply --check`; see "Patch set").
