@@ -346,6 +346,7 @@ s=open(sys.argv[1]).read()
 assert s.count(sys.argv[3])==1
 open(sys.argv[2],'w').write(s.replace(sys.argv[3],sys.argv[4]))
 PYM
+  [ -s "$T/mut$1/scripts/p.sh" ] || { echo "mutrun $1: target string not found exactly once" >&2; return 1; }
   PROBE_MUTANT=1 PROBE_UNDER_TEST="$T/mut$1/scripts/p.sh" bash "$PWD/tests/probe-hook-identity.test.sh" 2>&1
 }
 if [ -z "${PROBE_MUTANT:-}" ]; then
@@ -379,11 +380,11 @@ for w in "the teammate line's own transcript" 'a false A' "$P2MARK"; do
   case $mt in *"$w"*) ok "(I49) method_text names $w" ;; *) bad "(I49) method_text names $w" ;; esac
 done
 if [ -z "${PROBE_MUTANT:-}" ]; then
-  MOUT="$(mutrun 48a 'transcript_holds_prompt "$5"' 'false')"
+  MOUT="$(mutrun 48a 'transcript_holds_prompt "$3"' 'false')"
   case $MOUT in *'FAIL (I44)'*) ok "(I48) mutant ignoring the candidate transcript fails (I44)" ;; *) bad "(I48) false mutant survives" ;; esac
   MOUT="$(mutrun 48b "main-teams \"\$(jq -r '.transcript_path // empty' <<<\"\$TLINE\")\"" 'main-teams')"
   case $MOUT in *'FAIL (I44)'*) ok "(I48) mutant not passing the candidate transcript fails (I44)" ;; *) bad "(I48) unpassed-transcript mutant survives" ;; esac
-  MOUT="$(mutrun 48c 'transcript_holds_prompt "$5"' 'true')"
+  MOUT="$(mutrun 48c 'transcript_holds_prompt "$3"' 'true')"
   case $MOUT in *'FAIL (I46)'*) ok "(I48) mutant adding every candidate transcript fails (I46)" ;; *) bad "(I48) true mutant survives" ;; esac
 fi
 
