@@ -3,6 +3,10 @@
 # hand-edit only here; adapters/*/hooks/scripts/lib/audit-log.sh are generated
 # copies (node bin/cli.js --update --force-render).
 #
+# Requires: lib/portable-tools.sh for _portable_sha256
+# shellcheck source=lib/portable-tools.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/portable-tools.sh" 2>/dev/null || true
+#
 # What the seal does and does not prove.
 # It detects: accidental truncation, a crashed or partial write, a `git
 # clean` that removed the log, an out-of-band edit by a tool that does not
@@ -27,7 +31,7 @@ _audit_reseal() {
   # bare `cmd < file 2>/dev/null` does NOT suppress a failed `<` open, because
   # bash reports that error before the later 2>/dev/null redirection applies.
   n="$({ wc -l < "$log"; } 2>/dev/null)" || n=0
-  hash="$(sha256sum "$log" 2>/dev/null | cut -d' ' -f1)"
+  hash="$(_portable_sha256 "$log" 2>/dev/null | cut -d' ' -f1)"
   { printf 'lines=%s sha256=%s\n' "$n" "$hash" > "${log}.seal"; } 2>/dev/null || true
 }
 
@@ -62,7 +66,7 @@ audit_seal_verify() {
     echo truncated
     return 0
   fi
-  actual_hash="$(head -n "$sealed_n" "$log" | sha256sum | cut -d' ' -f1)"
+  actual_hash="$(head -n "$sealed_n" "$log" | _portable_sha256 - 2>/dev/null | cut -d' ' -f1)"
   if [ "$actual_hash" = "$sealed_hash" ]; then
     echo ok
   else
@@ -95,7 +99,7 @@ audit_rotate() {
   hash=""
   if [ -f "$log" ]; then
     n="$(wc -l < "$log" 2>/dev/null || echo 0)"
-    hash="$(sha256sum "$log" 2>/dev/null | cut -d' ' -f1)"
+    hash="$(_portable_sha256 "$log" 2>/dev/null | cut -d' ' -f1)"
     mv "$log" "$archived" 2>/dev/null || return 1
   fi
   rm -f "${log}.seal" 2>/dev/null || true

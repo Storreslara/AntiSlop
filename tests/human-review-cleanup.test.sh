@@ -161,7 +161,7 @@ dir="$(mk_project fifo)"
 mkdir -p "$dir/.claude/human-review/fifo-decision-task"
 mkfifo "$dir/.claude/human-review/fifo-decision-task/DECISION"
 rc=0
-out="$(timeout 5 "$script" --project-dir "$dir" --apply)" || rc=$?
+out="$(perl -e "alarm 5; exec @ARGV" "$script" --project-dir "$dir" --apply)" || rc=$?
 if [ "$rc" = 0 ]; then
   pass "sweep completes (does not hang) when DECISION is a FIFO"
 else
@@ -394,7 +394,7 @@ if [ "$1" = "-u" ] && [ "$2" = "+%Y%m%dT%H%M%SZ" ]; then
   echo "20260101T000000Z"
   exit 0
 fi
-exec /usr/bin/date "$@"
+for d in /usr/bin/date /bin/date; do [ -x "$d" ] && exec "$d" "$@"; done
 EOF
 chmod +x "$stubdir/date"
 

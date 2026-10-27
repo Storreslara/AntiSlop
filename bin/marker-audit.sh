@@ -41,7 +41,7 @@ reviewed_dir="$project_dir/.claude/reviewed"
 matches_surfaces() {
   local text="$1" s
   [ "${#surfaces[@]}" -eq 0 ] && return 0
-  for s in "${surfaces[@]}"; do
+  for s in ${surfaces[@]+"${surfaces[@]}"}; do
     [[ $text == *"$s"* ]] && return 0
   done
   return 1

@@ -44,13 +44,13 @@ for chunk in "$work"/chunk.*; do
 done
 wait
 
-declare -A rank=([deny]=2 [ask]=1)
+rank_of() { case "$1" in deny) echo 2 ;; ask) echo 1 ;; *) echo 0 ;; esac; }
 total=0 denials=0 allowances=0
 for chunk in "$work"/chunk.*[0-9]; do
   while read -r o n rest; do
     printf '%s %s %s\n' "$o" "$n" "$rest"
     total=$((total + 1))
-    ro="${rank[$o]:-0}" rn="${rank[$n]:-0}"
+    ro="$(rank_of "$o")" rn="$(rank_of "$n")"
     [ "$rn" -le "$ro" ] || denials=$((denials + 1))
     [ "$rn" -ge "$ro" ] || allowances=$((allowances + 1))
   done < "$chunk.out"

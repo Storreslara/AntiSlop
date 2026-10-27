@@ -233,7 +233,7 @@ dir="$(make_project claude f3-stale)"
 run_gated_stop claude "$dir" 2>/dev/null || true
 printf 'FAIL unit-f3 2026-08-07T12:00:00Z defects: 1) criterion 3 not met\n' \
   > "$dir/.claude/reviewed/unit-f3.fail"
-f3_mtime="$(stat -L --format=%Y "$dir/.claude/reviewed/unit-f3.fail")"
+f3_mtime="$(stat -L -c %Y "$dir/.claude/reviewed/unit-f3.fail" 2>/dev/null || stat -L -f %m "$dir/.claude/reviewed/unit-f3.fail")"
 seed_join_stamp "$dir" claude unit-f3 fail "$f3_mtime"
 rc=0; run_reviewer_stop claude "$dir" 2>/dev/null || rc=$?
 has="$(records "$dir" claude 'marker=MISSING unit=unit-f3')"
@@ -301,7 +301,7 @@ dir="$(make_project codex mutant-f3-stale)"
 run_gated_stop codex "$dir" "$watermark_mutant/stop-gate.sh" 2>/dev/null || true
 printf 'FAIL unit-f3 2026-08-07T12:00:00Z defects: 1) criterion 3 not met\n' \
   > "$dir/.codex/reviewed/unit-f3.fail"
-seed_join_stamp "$dir" codex unit-f3 fail "$(stat -L --format=%Y "$dir/.codex/reviewed/unit-f3.fail")"
+seed_join_stamp "$dir" codex unit-f3 fail "$(stat -L -c %Y "$dir/.codex/reviewed/unit-f3.fail" 2>/dev/null || stat -L -f %m "$dir/.codex/reviewed/unit-f3.fail")"
 rc=0; run_reviewer_stop codex "$dir" "$watermark_mutant/stop-gate.sh" 2>/dev/null || rc=$?
 has="$(records "$dir" codex 'marker=MISSING')"
 { [ "$rc" = 2 ] || [ "$has" != 0 ]; } && mutant_binding=false
@@ -330,7 +330,7 @@ for a in "$@"; do
   esac
 done
 [ "$fmt" = "%m" ] && [ -n "$file" ] || exit 1
-/usr/bin/stat -c %Y "$file" 2>/dev/null || exit 1
+/usr/bin/stat -c %Y "$file" 2>/dev/null || /usr/bin/stat -f %m "$file" 2>/dev/null || exit 1
 STATEOF
 chmod +x "$bsd_stat_bin/stat"
 fixed_call='mtime="$(stat -L -c %Y "$mpath" 2>/dev/null || stat -L -f %m "$mpath" 2>/dev/null || true)"'

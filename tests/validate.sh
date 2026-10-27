@@ -6,6 +6,8 @@
 # README.md.
 set -uo pipefail
 cd "$(dirname "$0")/.."
+# macOS: GNU-compat shims (sed -i, date -d, touch -d, wc padding) for the test suites
+[ "$(uname)" = Darwin ] && export PATH="$PWD/tests/lib/bsd-shims:$PATH"
 fail=0
 # >>> skip-summary wrapper (hyg-1): re-run this script with its output teed to
 # a temp file, then count the lines that start with SKIP. Advisory only: the
@@ -141,7 +143,11 @@ echo "== npm pack: dev-scratch dirs excluded, shipped dirs included =="
 npm_pack_err=$(mktemp)
 if npm pack --dry-run --json 2>/dev/null | python3 -c "
 import json, sys
-files = [f['path'] for f in json.load(sys.stdin)[0]['files']]
+data = json.load(sys.stdin)
+# npm <= 11 prints a one-element list; npm >= 12 prints an object keyed by
+# package name. Both carry the same per-package record.
+pkg = data[0] if isinstance(data, list) else next(iter(data.values()))
+files = [f['path'] for f in pkg['files']]
 excluded = ['docs/', 'eval/', 'prototype/', 'specs/', '.claude/']
 included = ['agents/', 'hooks/', 'templates/', 'skills/']
 present = [d for d in excluded if any(f.startswith(d) for f in files)]
@@ -219,15 +225,46 @@ frontmatter_yaml_err=$(mktemp)
 # Catches an unquoted plain scalar containing a ": " (colon-space) sequence,
 # which YAML's grammar treats as a nested mapping key and fails to parse -
 # e.g. an unescaped 'description: ... ("agent": "orchestrator") ...' (#276).
+# Parser: PyYAML when importable (CI's Ubuntu image ships python3-yaml);
+# otherwise Ruby's Psych (stock on macOS, also libyaml-based, and it rejects the
+# same #276 shape with "mapping values are not allowed in this context"). With
+# neither available the check is SKIPped by name rather than reported as a
+# frontmatter failure: a missing parser says nothing about the files.
+if python3 -c 'import yaml' >/dev/null 2>&1; then
+  frontmatter_yaml_parser=python3
+elif ruby -ryaml -rdate -e '' >/dev/null 2>&1; then
+  frontmatter_yaml_parser=ruby
+else
+  frontmatter_yaml_parser=""
+fi
 for f in agents/*.md templates/*.md.tmpl; do
   head -1 "$f" | grep -q '^---$' || continue
-  if python3 -c "
+  if [ -z "$frontmatter_yaml_parser" ]; then
+    echo "SKIP $f (no YAML parser: python3 lacks the yaml module and ruby -ryaml is unavailable)"
+    continue
+  fi
+  if [ "$frontmatter_yaml_parser" = python3 ]; then
+    python3 -c "
 import re, sys, yaml
 c = open('$f').read()
 m = re.match(r'^---\n(.*?)\n---\n', c, re.S)
 assert m, 'no frontmatter block found'
 yaml.safe_load(m.group(1))
-" 2>"$frontmatter_yaml_err"; then
+" 2>"$frontmatter_yaml_err"
+    frontmatter_yaml_rc=$?
+  else
+    FRONTMATTER_FILE="$f" ruby -ryaml -rdate -e '
+c = File.read(ENV["FRONTMATTER_FILE"])
+m = c.match(/\A---\n(.*?)\n---\n/m) or abort "no frontmatter block found"
+begin
+  YAML.safe_load(m[1], permitted_classes: [Date, Time, Symbol], aliases: true)
+rescue Psych::Exception => e
+  abort e.message
+end
+' 2>"$frontmatter_yaml_err"
+    frontmatter_yaml_rc=$?
+  fi
+  if [ "$frontmatter_yaml_rc" -eq 0 ]; then
     echo "OK   $f"
   else
     echo "FAIL $f ($(cat "$frontmatter_yaml_err" | tail -1))"
@@ -1227,7 +1264,21 @@ fi
 echo
 echo "== rollout wave-graph preflight checker (Bash, scaffolding) =="
 rollout_test="tests/rollout-preflight.test.sh"
-if bash "$rollout_test"; then
+# scripts/rollout-preflight.sh needs bash >= 4 (associative arrays) and re-execs
+# itself into a Homebrew bash when the running one is older; this probe mirrors
+# that guard so a bash-3.2 host without one SKIPs by name instead of failing
+# all 12 wave assertions on the script's own "needs bash >= 4" exit.
+rollout_bash4=""
+if [ "${BASH_VERSINFO[0]}" -ge 4 ]; then
+  rollout_bash4=1
+else
+  for b in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    [ -x "$b" ] && rollout_bash4=1
+  done
+fi
+if [ -z "$rollout_bash4" ]; then
+  echo "SKIP $rollout_test (scripts/rollout-preflight.sh needs bash >= 4; none found at /opt/homebrew/bin/bash or /usr/local/bin/bash)"
+elif bash "$rollout_test"; then
   echo "OK   $rollout_test"
 else
   echo "FAIL $rollout_test"
@@ -1290,7 +1341,12 @@ fi
 
 echo
 echo "== eval/harness/validate-cases.py: 13-reason case.yaml validator (Bash, gh-eval-step1) =="
-if bash tests/eval-cases.test.sh; then
+# The validator under test itself does `import yaml` (PyYAML, no stdlib
+# substitute), so without it every one of its 13 reasons fails for the wrong
+# reason. Skip by name instead; CI's Ubuntu image has python3-yaml.
+if ! python3 -c 'import yaml' >/dev/null 2>&1; then
+  echo "SKIP tests/eval-cases.test.sh (python3 lacks the yaml module that eval/harness/validate-cases.py imports)"
+elif bash tests/eval-cases.test.sh; then
   echo "OK   tests/eval-cases.test.sh"
 else
   echo "FAIL tests/eval-cases.test.sh"

@@ -712,7 +712,7 @@ echo "-- U-set: an id holding whitespace AND a character outside the path-safe s
 # between it and the real file.
 u_puncts=(':' '!' ',' ';' '(' ')' '[' ']' '=' '@' '+' '%' '~' '^' '&' '*' '?' '<' '>' '{' '}')
 u_n=0
-for u_p in "${u_puncts[@]}"; do
+for u_p in ${u_puncts[@]+"${u_puncts[@]}"}; do
   # mid-id, leading, trailing, and a nested segment - each still inside the
   # protected set, i.e. each matched by the Write/Edit branch's own `*` glob.
   for u_shape in "u${u_p} 1" "${u_p}u 1" "u 1${u_p}" "x${u_p}/u 1"; do
@@ -721,7 +721,7 @@ for u_p in "${u_puncts[@]}"; do
       "printf x > '.claude/human-review/${u_shape}/DECISION'"
   done
 done
-for u_p in "${u_puncts[@]}"; do
+for u_p in ${u_puncts[@]+"${u_puncts[@]}"}; do
   u_n=$((u_n + 1))
   bash_case "U$u_n id [u${u_p}<tab>1]" blocked antislop:reviewer \
     "printf x > '.claude/human-review/u${u_p}"$'\t'"1/DECISION'"
@@ -740,7 +740,7 @@ echo "-- after-hr family: OUTSIDE the protected set, correctly ALLOWED --"
 # which is exactly what the rejected wider-charclass candidate did. They are
 # also what keeps the branch-agreement assertion below non-vacuous, by putting
 # both verdicts in its corpus rather than only `blocked`.
-for u_p in "${u_puncts[@]}"; do
+for u_p in ${u_puncts[@]+"${u_puncts[@]}"}; do
   u_n=$((u_n + 1))
   bash_case "U$u_n after-hr [human-review${u_p}] is a different dir (correct ALLOW)" \
     allowed antislop:reviewer \
@@ -779,7 +779,7 @@ verdict_of() { # $1 = bash|write, $2 = payload; echoes allowed|blocked
 ba_total=0
 ba_bad=0
 ba_allowed=0
-for u_p in "${u_puncts[@]}"; do
+for u_p in ${u_puncts[@]+"${u_puncts[@]}"}; do
   for ba_id in "u${u_p} 1" "${u_p}u 1" "u 1${u_p}" "x${u_p}/u 1" "u${u_p}1" \
                "u${u_p}"$'\t'"1"; do
     for ba_pfx in ".claude/human-review" "./.claude/human-review" \
@@ -922,7 +922,7 @@ fg_overwrites() {
   (cd "$d" && bash -c "$1") >/dev/null 2>&1 || true
   [ "$(cat "$d/$hr/DECISION" 2>/dev/null)" != 'ORIG-SENTINEL' ]
 }
-for fg_row in "${fg_rows[@]}"; do
+for fg_row in ${fg_rows[@]+"${fg_rows[@]}"}; do
   fg_id="${fg_row%%|*}"
   fg_cmd="${fg_row#*|}"
   if fg_overwrites "$fg_cmd"; then
@@ -1028,7 +1028,7 @@ qp_reach() {
   [ "$(cat "$d/$hr/DECISION" 2>/dev/null)" != 'ORIG-SENTINEL' ] || qp_got=no
   if [ -e "$d/$hr/D*" ]; then qp_lit=yes; fi
 }
-for qp_row in "${qp_rows[@]}"; do
+for qp_row in ${qp_rows[@]+"${qp_rows[@]}"}; do
   qp_id="${qp_row%%|*}"
   qp_want="${qp_row#*|}"; qp_want="${qp_want%%|*}"
   qp_cmd="${qp_row#*|*|}"
@@ -1064,7 +1064,7 @@ qpf_rows=(
   "7|bash"$'\t'"-e"$'\t'"-c"$'\t'"'printf x > $hr/D*'"
   "8|bash +e -c 'printf x > $hr/D*'"
 )
-for qpf_row in "${qpf_rows[@]}"; do
+for qpf_row in ${qpf_rows[@]+"${qpf_rows[@]}"}; do
   qpf_id="${qpf_row%%|*}"
   qpf_cmd="${qpf_row#*|}"
   if fg_overwrites "$qpf_cmd"; then
@@ -1103,7 +1103,8 @@ ob_reasons=(
   "a sh -c / bash -c payload is scanned live; its scratch path a/h*/D* can name both tokens"
   "OB-10's shape with cut replaced by tee: unquoted adapters/*/rules/* can name both tokens; the tee segment is not provably benign"
 )
-mapfile -t ob_cmds <<'OBEOF'
+ob_cmds=()
+while IFS= read -r ob_l; do ob_cmds+=("$ob_l"); done <<'OBEOF'
 "SC=/tmp/claude-1000/-home-sebas-AntiSlop/7ea80ba2-0d01-42db-863e-631de8a2e87d/scratchpad && rm -rf $SC/mw && mkdir -p $SC/mw && cp -a hooks/scripts $SC/mw/ && G=$SC/mw/scripts/harness-integrity-gate.sh && cp \"$G\" $SC/mw/scripts/mut_a.sh && cp \"$G\" $SC/mw/scripts/mut_b.sh\npython3 - \"$SC/mw/scripts/mut_a.sh\" \"$SC/mw/scripts/mut_b.sh\" <<'PY'\nimport sys\na,b=sys.argv[1],sys.argv[2]\ns=open(a).read()\nold='''  case \"$permission_mode\" in\n    default|plan|auto) ;;\n    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).\n    *) return 1 ;;\n  esac'''\nassert s.count(old)==1\nopen(a,'w').write(s.replace(old,'''  case \"$permission_mode\" in\n    *) ;;\n  esac'''))\nt=open(b).read()\nold2='''    acceptEdits) [ \"$1\" = A ] || return 1 ;;  # Set B stays deny (U2b).'''\nassert t.count(old2)==1\nopen(b,'w').write(t.replace(old2,'''    acceptEdits) ;;'''))\nprint(\"mutants written\")\nPY\necho \"--- sanity: mutants run at all ---\"\nd=\".clau\"\"de\"; FP=$SC/fp\nprintf '{\"tool_name\":\"Write\",\"tool_input\":{\"file_path\":\"hooks/hooks.json\"},\"permission_mode\":\"dontAsk\"}' | CLAUDE_PROJECT_DIR=$FP bash $SC/mw/scripts/mut_a.sh >/dev/null 2>&1; echo \"mut_a dontAsk exit=$?\""
 "cd /home/sebas/AntiSlop; head -12 adapters/cursor/agents/lead-programmer.md; wc -l adapters/*/agents/*; head -8 adapters/codex/agents/reviewer.toml; git grep -n -i 'skill\\|tdd\\|roast\\|coding-discipline' adapters/*/agents | head; ls adapters/cursor adapters/codex; wc -l skills/tdd/SKILL.md skills/coding-discipline/SKILL.md skills/roast-work/SKILL.md; ls skills/tdd"
 "d=/tmp/bap2; rm -rf $d; mkdir -p $d/.claude; cd $d\nprintf '#!/usr/bin/env bash\\ncat >/dev/null\\nprintf %s\\n' \"'{\\\"hookSpecificOutput\\\":{\\\"hookEventName\\\":\\\"PreToolUse\\\",\\\"permissionDecision\\\":\\\"ask\\\",\\\"permissionDecisionReason\\\":\\\"probe\\\"}}'\" > .claude/ask.sh; chmod +x .claude/ask.sh\nprintf '{\"hooks\":{\"PreToolUse\":[{\"matcher\":\"Bash\",\"hooks\":[{\"type\":\"command\",\"command\":\"%s/.claude/ask.sh\"}]}]}}\\n' \"$PWD\" > .claude/settings.json\nprintf '%s\\n' 'Call the Bash tool right now with exactly this command. Do not write a plan, do not call ExitPlanMode:' \"cat > out.txt <<'EOF'\" line-1 line-2 line-3 line-4 line-5 line-6-END EOF > req.txt\ntmux new-session -d -s pp -x 200 -y 60 -c $d \"claude --permission-mode plan\"; sleep 8\ntmux load-buffer -b r req.txt; tmux paste-buffer -p -b r -t pp; sleep 1; tmux send-keys -t pp Enter; sleep 25; tmux capture-pane -p -t pp | cat -s | grep -v '^[╌─]' | tail -25; ls; tmux kill-session -t pp"
@@ -1330,7 +1331,7 @@ done
 pg_reason() { printf '%s\nby: Sebastian Torres\nvia: prompt\n%s' "$(pg_head reject)" "$1"; }
 pg13_r=($'reason: no\e[2K\rreason: forged' $'reason: not ready\n\rvia: dashboard' \
         $'reason: not\tready' $'reason: not ready\n\e[1Asecond' $'reason: x\x7f')
-for r in "${pg13_r[@]}"; do
+for r in ${pg13_r[@]+"${pg13_r[@]}"}; do
   pg_case "PG13 control character in a reason line $(printf '%q' "$r")" blocked default "" \
     "$(pg_cmd "$(pg_reason "$r")")" "$p"
 done

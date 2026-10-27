@@ -615,7 +615,7 @@ bash_case "case 37.26 own-line comment still fails closed (ratified #183 residua
 # REAL bash in a sandbox seeded with a sentinel, exactly as case 26 does, so an
 # allowance that turns out to touch the marker directory fails the suite rather
 # than being argued about.
-for c in "${allowed_37[@]}"; do
+for c in ${allowed_37[@]+"${allowed_37[@]}"}; do
   bash_run "$c"
   if [ "$rc" = 0 ]; then
     sweep_differential "37 differential" "$c" "$c"

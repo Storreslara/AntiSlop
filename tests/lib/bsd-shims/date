@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# macOS-only test shim (see tests/lib/bsd-shims/README). Resolves the next tool of this name on
+# PATH after this directory; on GNU systems it just execs that tool unchanged.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+name="$(basename "$0")"
+real=""
+IFS=: read -ra _dirs <<<"$PATH"
+for d in "${_dirs[@]}"; do
+  [ "$d" = "$here" ] && continue
+  [ -x "$d/$name" ] && { real="$d/$name"; break; }
+done
+[ -n "$real" ] || { echo "$name: no real $name on PATH" >&2; exit 127; }
+# GNU `date -d @EPOCH|STRING [+fmt]` (with optional -u) -> BSD `date -r EPOCH` / `date -j -f`.
+if [ "$(uname)" = Darwin ]; then
+  utc=(); fmt=(); spec=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -u) utc=(-u) ;;
+      -d) shift; spec="$1" ;;
+      -d*) spec="${1#-d}" ;;
+      *) fmt+=("$1") ;;
+    esac
+    shift
+  done
+  if [ -n "$spec" ]; then
+    case "$spec" in
+      @*) exec "$real" ${utc[@]+"${utc[@]}"} -r "${spec#@}" ${fmt[@]+"${fmt[@]}"} ;;
+      *) epoch="$(parse_date=1 /usr/bin/perl -MTime::Local -e '
+            my $s=shift; my @m=$s=~/^(\d+)-(\d+)-(\d+)[T ](\d+):(\d+):(\d+)/ or exit 1;
+            print timegm($m[5],$m[4],$m[3],$m[2],$m[1]-1,$m[0]);' "$spec")" || exit 1
+         exec "$real" ${utc[@]+"${utc[@]}"} -r "$epoch" ${fmt[@]+"${fmt[@]}"} ;;
+    esac
+  fi
+  exec "$real" ${utc[@]+"${utc[@]}"} ${fmt[@]+"${fmt[@]}"}
+fi
+exec "$real" "$@"

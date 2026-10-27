@@ -104,6 +104,7 @@ cp hooks/scripts/stop-gate.sh "$tmproot/entry.sh"
 mkdir -p "$tmproot/lib"
 cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
 cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
+cp hooks/scripts/lib/portable-tools.sh "$tmproot/lib/portable-tools.sh"
 cp hooks/scripts/lib/harness-arm.sh "$tmproot/lib/harness-arm.sh"
 cp hooks/scripts/lib/state-access.sh "$tmproot/lib/state-access.sh"
 python3 - "$tmproot/entry.sh" "$mutant_lib" <<'PYEOF'
@@ -225,7 +226,7 @@ mkdir -p "$mutant_dup_lib"
 # Strip the real file's trailing "allow" so the reintroduced block lands
 # BEFORE it (matching the FAIL record's D1 placement, live and reachable),
 # then restore "allow" as the new last line.
-head -n -1 hooks/scripts/lib/stop-gate-core.sh > "$mutant_dup_lib/stop-gate-core.sh"
+sed '$d' hooks/scripts/lib/stop-gate-core.sh > "$mutant_dup_lib/stop-gate-core.sh"
 cat >> "$mutant_dup_lib/stop-gate-core.sh" <<'DUPEOF'
 # --- reintroduced leftover duplicate (mutation control only) ---------------
 if [ "$hook_event" = "Stop" ] || [ "$hook_event" = "SubagentStop" ]; then
@@ -249,6 +250,7 @@ cp hooks/scripts/stop-gate.sh "$mutant_entry"
   mkdir -p "$tmproot/lib"
   cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
   cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
+  cp hooks/scripts/lib/portable-tools.sh "$tmproot/lib/portable-tools.sh"
   cp hooks/scripts/lib/harness-arm.sh "$tmproot/lib/harness-arm.sh"
   cp hooks/scripts/lib/state-access.sh "$tmproot/lib/state-access.sh"
 }

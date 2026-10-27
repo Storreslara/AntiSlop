@@ -88,7 +88,7 @@ check_one_file() {
         !closed && $0=="---" { print; print header; closed=1; next }
         { print }
       ' "$upstream_file" >"$expected"
-      [ "$type" = "fm-noflag" ] && sed -i '/^disable-model-invocation: true$/d' "$expected"
+      [ "$type" = "fm-noflag" ] && sed '/^disable-model-invocation: true$/d' "$expected" >"$expected.tmp" && mv "$expected.tmp" "$expected"
       ;;
     doc)
       { printf '%s\n\n' "$header"; cat "$upstream_file"; } >"$expected"
@@ -100,8 +100,13 @@ check_one_file() {
   diff -q "$expected" "$local_path" >/dev/null 2>&1
 }
 
-declare -A skill_status
-declare -A skill_detail
+# Per-skill state lives in files, not `declare -A` (macOS ships bash 3.2).
+STATE_DIR="$TMPDIR/skill-state"
+mkdir -p "$STATE_DIR"
+get_status() { cat "$STATE_DIR/$1.status" 2>/dev/null || true; }
+set_status() { printf '%s' "$2" >"$STATE_DIR/$1.status"; }
+get_detail() { cat "$STATE_DIR/$1.detail" 2>/dev/null || true; }
+add_detail() { printf '%s' "$2" >>"$STATE_DIR/$1.detail"; }
 fetch_error=0
 
 echo "Pinned upstream SHA: $SHA"
@@ -111,19 +116,19 @@ while IFS=: read -r skill type local_path upstream_path; do
   [ -z "$skill" ] && continue
   upstream_file="$TMPDIR/up_$(echo "$upstream_path" | tr '/' '_')"
   if ! curl -sS -f -m 20 "$RAW_BASE/$upstream_path" -o "$upstream_file" 2>"$TMPDIR/curl.err"; then
-    skill_status[$skill]="ERROR"
-    skill_detail[$skill]="${skill_detail[$skill]:-}  fetch failed: $upstream_path ($(cat "$TMPDIR/curl.err"))\n"
+    set_status "$skill" ERROR
+    add_detail "$skill" "  fetch failed: $upstream_path ($(cat "$TMPDIR/curl.err"))\n"
     fetch_error=1
     continue
   fi
   if [ ! -f "$local_path" ]; then
-    [ "${skill_status[$skill]:-}" = "ERROR" ] || skill_status[$skill]="MISSING"
-    skill_detail[$skill]="${skill_detail[$skill]:-}  missing: $local_path\n"
+    [ "$(get_status "$skill")" = "ERROR" ] || set_status "$skill" MISSING
+    add_detail "$skill" "  missing: $local_path\n"
   elif ! check_one_file "$type" "$local_path" "$upstream_path" "$upstream_file"; then
-    [ "${skill_status[$skill]:-}" = "ERROR" ] || skill_status[$skill]="DRIFTED"
-    skill_detail[$skill]="${skill_detail[$skill]:-}  drift: $local_path\n"
+    [ "$(get_status "$skill")" = "ERROR" ] || set_status "$skill" DRIFTED
+    add_detail "$skill" "  drift: $local_path\n"
   fi
-  : "${skill_status[$skill]:=OK}"
+  [ -n "$(get_status "$skill")" ] || set_status "$skill" OK
 done <<EOF
 $FILES
 EOF
@@ -131,7 +136,9 @@ EOF
 # Safety net for the FILES/SKILL_ORDER parallel-list desync risk: a skill
 # added to FILES but not SKILL_ORDER would otherwise have its drift computed
 # above but never reported or gated below.
-for skill in "${!skill_status[@]}"; do
+for status_file in "$STATE_DIR"/*.status; do
+  [ -e "$status_file" ] || continue
+  skill="$(basename "$status_file" .status)"
   case " $SKILL_ORDER " in
     *" $skill "*) ;;
     *)
@@ -143,10 +150,10 @@ done
 
 drifted=0
 for skill in $SKILL_ORDER; do
-  status="${skill_status[$skill]:-OK}"
+  status="$(get_status "$skill")"; status="${status:-OK}"
   echo "[$status] $skill"
   if [ "$status" != "OK" ]; then
-    printf '%b' "${skill_detail[$skill]:-}"
+    printf '%b' "$(get_detail "$skill")"
     [ "$status" = "ERROR" ] || drifted=1
   fi
 done

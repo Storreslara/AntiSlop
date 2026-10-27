@@ -84,7 +84,11 @@ $(seq 1 "$count")"
 fingerprint() { # <lane-root>: name, type, size and mtime of every entry
   local d="$1/.claude/reviewed"
   if [ -d "$d" ]; then
-    find "$d" -mindepth 1 -printf '%P %y %s %T@\n' | sort
+    # (no `find -printf`: BSD find lacks it) relative path, type, size, mtime via GNU or BSD stat
+    find "$d" -mindepth 1 | while IFS= read -r e; do
+      printf '%s %s\n' "${e#"$d"/}" \
+        "$(stat -c '%F %s %Y' "$e" 2>/dev/null || stat -f '%HT %z %m' "$e")"
+    done | sort
   else
     echo "(the .claude/reviewed/ directory itself is missing)"
   fi
@@ -119,7 +123,10 @@ lane() { # <k>
     before="$(fingerprint "$l")"
     # The section records its own $fail only if it reaches its end; a section
     # that exits early (any exit code, 1 included) leaves no rc file.
-    { printf 'set -uo pipefail\ncd %q || exit 2\nfail=0\n' "$l"
+    # Same preamble as validate.sh:7-11; its Darwin PATH line sits above the
+    # first `== ` header, so a cut section body does not carry it and the
+    # lane would run the BSD tools unshimmed.
+    { printf 'set -uo pipefail\ncd %q || exit 2\n[ "$(uname)" = Darwin ] && export PATH="$PWD/tests/lib/bsd-shims:$PATH"\nfail=0\n' "$l"
       cat "$work/sec/$i.body"
       printf '\necho "$fail" > %q\nexit "$fail"\n' "$work/rc/$i"; } > "$work/sec/$i.sh"
     (cd "$l" && CLAUDE_PROJECT_DIR="$l" REVIEWED_DIR_LEAK_GUARD_NESTED=1 ANTISLOP_VALIDATE_INNER=1 \

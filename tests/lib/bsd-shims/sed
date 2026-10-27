@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# macOS-only test shim (see tests/lib/bsd-shims/README). Resolves the next tool of this name on
+# PATH after this directory; on GNU systems it just execs that tool unchanged.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+name="$(basename "$0")"
+real=""
+IFS=: read -ra _dirs <<<"$PATH"
+for d in "${_dirs[@]}"; do
+  [ "$d" = "$here" ] && continue
+  [ -x "$d/$name" ] && { real="$d/$name"; break; }
+done
+[ -n "$real" ] || { echo "$name: no real $name on PATH" >&2; exit 127; }
+# GNU `sed -i EXPR file...` -> BSD `sed -i '' EXPR file...`
+if [ "$(uname)" = Darwin ]; then
+  args=()
+  for a in "$@"; do
+    case "$a" in -i) args+=(-i ''); continue ;; esac
+    args+=("$a")
+  done
+  exec "$real" "${args[@]}"
+fi
+exec "$real" "$@"

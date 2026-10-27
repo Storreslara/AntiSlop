@@ -149,7 +149,7 @@ write_record() {
     printf '\n## Version\n\n`claude --version` reports `%s` at setup. Each mode'"'"'s own reading, taken at that mode'"'"'s start, is on its appendix block headers.\n' "$VERSION"
     vs="$(for m in $MODES headless; do printf '%s=%s\n' "$m" "$(ver_of "$m")"; done)"
     if [ "$( { echo "$VERSION"; sed 's/^[^=]*=//' <<<"$vs"; } | sort -u | wc -l)" -gt 1 ]; then
-      printf 'Version note: the per-mode readings differ from each other or from the setup reading above (%s); each was taken at its mode'"'"'s start.\n' "$(paste -sd '|' <<<"$vs" | sed 's/|/, /g')"
+      printf 'Version note: the per-mode readings differ from each other or from the setup reading above (%s); each was taken at its mode'"'"'s start.\n' "$(paste -sd '|' - <<<"$vs" | sed 's/|/, /g')"
     fi
     printf '\n## Status\n\n**self-reported**: this record was produced by the script run by the operator in their own session; `observed` means the script classified the row during this run, from the evidence named under Method. Run result: %s.\n' "$status"
     printf '\n## Rows\n\n```\n%s```\n' "$ROWS"
@@ -175,7 +175,7 @@ write_appendix() { # dialog blocks first (length-prefixed, read by gate()), then
 }
 
 side_effect() { # Side effect: lines from the plans-dir listings taken before and after each mode run
-  local m f new out="" p="${PLANS/#$HOME/\~}"
+  local m f new out="" tilde="~" p; p="${PLANS/#$HOME/$tilde}"  # variable, not \~: bash 3.2 keeps the backslash
   for m in $MODES; do
     if [ ! -f "$RAW/plans.$m.before" ] || [ ! -f "$RAW/plans.$m.after" ]; then out="${out}Side effect: $m run: not detectable ($p could not be listed before and after it)"$'\n'; continue; fi
     new="$(comm -13 <(sort "$RAW/plans.$m.before") <(sort "$RAW/plans.$m.after"))"

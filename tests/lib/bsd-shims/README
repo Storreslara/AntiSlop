@@ -1,0 +1,5 @@
+GNU-compatibility shims for running the test suite on macOS (BSD userland): sed -i, wc padding,
+date -d, touch -d. tests/validate.sh prepends this directory to PATH on Darwin; for a single
+test run `PATH="$PWD/tests/lib/bsd-shims:$PATH" bash tests/<name>.test.sh`. On GNU systems each
+shim just execs the real tool. No `timeout` shim on purpose: the hooks must keep working
+without one (see hooks/scripts/lib/portable-tools.sh).

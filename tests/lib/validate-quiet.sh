@@ -6,7 +6,13 @@ VALIDATE_QUIET_KEEP='^(FAIL|WARN|SKIP)|⚠|✗|not ok|FAILED|Error|ERROR'
 VALIDATE_QUIET_DROP='^(OK |ok |Test |hint:|All .*(passed|pass)|\[master|\[detached| create mode| delete mode| [0-9]+ files? changed|editing .*budget|Switched to|Preparing worktree|HEAD is now|Initialized empty Git)|^[[:space:]]*✓|^[[:space:]]*$|^--( .* --)?$'
 
 validate_quiet_filter() {
-  VQ_KEEP="$VALIDATE_QUIET_KEEP" VQ_DROP="$VALIDATE_QUIET_DROP" awk '
+  # LC_ALL=C: the stream carries raw probe bytes from the gate suites (C1
+  # controls, lone 0x80-0xFF) that are not valid UTF-8. BSD awk aborts on them
+  # under a UTF-8 locale ("awk: towc: multibyte conversion failure"), which
+  # SIGPIPEs tee and the inner validate.sh (exit 141). In the C locale awk is
+  # byte-oriented; the multibyte literals in the two regexes still match as
+  # byte sequences, so GNU and BSD awk filter identically.
+  VQ_KEEP="$VALIDATE_QUIET_KEEP" VQ_DROP="$VALIDATE_QUIET_DROP" LC_ALL=C awk '
     BEGIN { keep = ENVIRON["VQ_KEEP"]; drop = ENVIRON["VQ_DROP"]; hdr = ""; ctx = "" }
     /^== / { hdr = $0; ctx = ""; next }
     {

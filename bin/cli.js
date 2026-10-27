@@ -677,6 +677,7 @@ const SHARED_HOOK_LIB_FILES = [
   'lint-on-edit-core.sh',
   'microworld-queue.sh',
   'microworld-rerun-core.sh',
+  'portable-tools.sh',
   'protected-paths-core.sh',
   'reviewer-route-gate-core.sh',
   'state-access.sh',

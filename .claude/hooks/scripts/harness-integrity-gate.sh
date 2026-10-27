@@ -200,7 +200,9 @@ set_a_mentioned() {
     *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
       return 0 ;;
   esac
-  rest="${cmd//$'\047'/}"; rest="${rest//$'\042'/}"; rest="${rest//\\/}"
+  # bash 3.2 does not expand $'..' inside ${var//pat/} - hold the quotes in variables
+  local sq=$'\047' dq=$'\042'
+  rest="${cmd//$sq/}"; rest="${rest//$dq/}"; rest="${rest//\\/}"
   case "$rest" in
     *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
       return 0 ;;

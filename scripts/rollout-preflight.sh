@@ -13,6 +13,15 @@
 # W10 is adjudicated; it is rollout scaffolding, not a harness feature.
 set -euo pipefail
 
+# Uses associative arrays (bash >= 4); macOS ships bash 3.2 at /bin/bash.
+if [ "${BASH_VERSINFO[0]}" -lt 4 ]; then
+  for _b in /opt/homebrew/bin/bash /usr/local/bin/bash; do
+    [ -x "$_b" ] && exec "$_b" "$0" "$@"
+  done
+  echo "rollout-preflight.sh: needs bash >= 4 (macOS: brew install bash)" >&2
+  exit 2
+fi
+
 # ============================================================================
 # EMBEDDED DATA: which spec(s) own each wave (numbers, per the Wave graph table)
 # ============================================================================
@@ -144,7 +153,8 @@ p_live_status() {
   fi
 
   if [ -d "$plugin_root" ]; then
-    local plugin_version=$(grep -oP '"version":\s*"\K[^"]+' "$plugin_root/package.json" 2>/dev/null || echo "unknown")
+    local plugin_version=$(sed -nE 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "$plugin_root/package.json" 2>/dev/null | head -n1)
+    plugin_version="${plugin_version:-unknown}"
     echo "P-live: plugin at v$plugin_version (session snapshot may differ if started before 2026-08-25T15:09:01Z)"
   else
     echo "P-live: plugin root not found (pre-started session may execute older snapshot)"
@@ -191,13 +201,13 @@ wave_staleness_check() {
       echo "$wave: no-reverify-support -- spec $spec_num has no --reverify implementation; staleness cannot be measured"
       continue
     fi
-    mtime=$(stat -c %Y "$spec_file" 2>/dev/null || echo 0)
+    mtime=$(stat -c %Y "$spec_file" 2>/dev/null || stat -f %m "$spec_file" 2>/dev/null || echo 0)
     last_run=0
     if [ -f "$REVERIFY_STATE_DIR/spec-$spec_num.stamp" ]; then
       last_run=$(cat "$REVERIFY_STATE_DIR/spec-$spec_num.stamp" 2>/dev/null || echo 0)
     fi
     if [ "$mtime" -gt "$last_run" ]; then
-      mtime_iso=$(date -u -d "@$mtime" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "unknown")
+      mtime_iso=$(date -u -d "@$mtime" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date -u -r "$mtime" +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || echo "unknown")
       echo "$wave: unmet-on-staleness -- spec $spec_num ($spec_file) amended $mtime_iso; no --reverify since"
       stale=1
     fi
@@ -292,7 +302,7 @@ check_wave() {
 print_file_owners() {
   local key="$1" data="${FILE_OWNERS[$1]}" tok specnum label
   IFS='|' read -ra toks <<< "$data"
-  for tok in "${toks[@]}"; do
+  for tok in ${toks[@]+"${toks[@]}"}; do
     specnum="${tok%%:*}"
     label="${tok#*:}"
     echo "spec $specnum ($label)"

@@ -88,7 +88,7 @@ p="$(mkproj FALSEVAL)"
 check "false default n=0 resolves to opus" "ladder-tier: opus n=0 ladder=$LADDER_O reason=default" "$p" u1
 
 echo "-- absent default resolves to the lead-programmer frontmatter model --------------"
-fm="$(sed -n '1,/^---$/{s/^model: *//p}' "$repo/agents/lead-programmer.md" | head -1)"
+fm="$(sed -n '1,/^---$/{s/^model: *//p;}' "$repo/agents/lead-programmer.md" | head -1)"
 if [ "$fm" = "haiku" ]; then pass "lead-programmer frontmatter model is haiku"; else bad "lead-programmer frontmatter model is [$fm], this table assumes haiku"; fi
 p="$(mkproj ABSENT)"
 check "absent config file, guard pass" "ladder-tier: haiku n=0 ladder=$LADDER_H reason=guard-pass" "$p" demo-2 --contract "$PASSC"

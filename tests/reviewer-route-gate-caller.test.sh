@@ -163,7 +163,19 @@ derive_grant_literals() {
 derive_caller_allowlist_literals() {
   # $1 = source file to scan (a real path or a mutant copy of it)
   local joined
-  joined="$(sed -E ':a;N;$!ba;s/\\\n[[:space:]]*/ /g' "$1")"
+  # Join backslash-continued lines (a `\`-newline plus the next line's leading
+  # whitespace becomes one space). Done in awk: the GNU sed one-liner
+  # `:a;N;$!ba;s/...//` is not portable - BSD sed reads `a;N;$!ba;...` as one
+  # label name, warns "unused label", and leaves the file unjoined.
+  joined="$(awk '{
+    while (sub(/\\$/, "")) {
+      if ((getline nxt) <= 0) break
+      while (nxt ~ /^[[:space:]]*$/ && (getline nxt) > 0) {}
+      sub(/^[[:space:]]*/, "", nxt)
+      $0 = $0 " " nxt
+    }
+    print
+  }' "$1")"
   printf '%s\n' "$joined" \
     | grep -oE '(![[:space:]]*)?persona_matches_gate[[:space:]]+"\$agent_type"[[:space:]]+"[A-Za-z0-9_-]+"' \
     | grep '^!' \

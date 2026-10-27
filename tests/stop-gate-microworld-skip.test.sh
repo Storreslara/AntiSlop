@@ -101,6 +101,7 @@ cp hooks/scripts/stop-gate.sh "$mutant_entry"
 mkdir -p "$tmproot/lib"
 cp hooks/scripts/lib/agent-identity.sh "$tmproot/lib/agent-identity.sh"
 cp hooks/scripts/lib/audit-log.sh "$tmproot/lib/audit-log.sh"
+cp hooks/scripts/lib/portable-tools.sh "$tmproot/lib/portable-tools.sh"
 cp hooks/scripts/lib/harness-arm.sh "$tmproot/lib/harness-arm.sh"
 cp hooks/scripts/lib/state-access.sh "$tmproot/lib/state-access.sh"
 python3 - "$mutant_entry" "$mutant_lib" <<'PYEOF'

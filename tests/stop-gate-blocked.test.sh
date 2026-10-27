@@ -393,7 +393,7 @@ fi
 dir="$(make_project join-restale)"
 printf 'FAIL unit-t 2026-08-07T12:00:00Z defects: 1) criterion 3 not met\n' \
   > "$dir/.claude/reviewed/unit-t.fail"
-prior_mtime="$(stat -L --format=%Y "$dir/.claude/reviewed/unit-t.fail")"
+prior_mtime="$(stat -L -c %Y "$dir/.claude/reviewed/unit-t.fail" 2>/dev/null || stat -L -f %m "$dir/.claude/reviewed/unit-t.fail")"
 seed_stamp "$dir" unit-t fail "$prior_mtime"
 printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.lp-1"
 rc=0
@@ -588,7 +588,7 @@ mkdir -p "$mutant_scope"
 cp hooks/scripts/stop-gate.sh "$mutant_scope/stop-gate.sh"
 cp -R hooks/scripts/lib "$mutant_scope/lib"
 mutant_scope_core="$mutant_scope/lib/stop-gate-core.sh"
-scope_line='    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" "${JOIN_ADVISORY_UNITS[@]}" )'
+scope_line='    scoped_units=( ${JOIN_SATISFIED_UNITS[@]+"${JOIN_SATISFIED_UNITS[@]}"} ${JOIN_UNSATISFIED_UNITS[@]+"${JOIN_UNSATISFIED_UNITS[@]}"} ${JOIN_ADVISORY_UNITS[@]+"${JOIN_ADVISORY_UNITS[@]}"} )'
 scope_before="$(grep -cxF "$scope_line" "$mutant_scope_core" || true)"
 sed -i 's/^    scoped_units=(.*$/    scoped_units=()/' "$mutant_scope_core"
 scope_after="$(grep -cxF '    scoped_units=()' "$mutant_scope_core" || true)"

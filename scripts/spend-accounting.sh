@@ -29,13 +29,17 @@ fi
 
 # Published rates, $/MTok, as (input:output). Cache reads price at 0.1x
 # input; cache writes (cache_creation_input_tokens) price at 1.25x input.
-declare -A PRICING=(
-  [claude-haiku-4-5]="1:5"
-  [claude-sonnet-5]="3:15"
-  [claude-opus-5]="5:25"
-  [claude-opus-4-8]="5:25"
-  [claude-fable-5]="10:50"
-)
+# (case lookup, not `declare -A`: macOS ships bash 3.2)
+pricing_for() {
+  case "$1" in
+    claude-haiku-4-5) echo "1:5" ;;
+    claude-sonnet-5) echo "3:15" ;;
+    claude-opus-5) echo "5:25" ;;
+    claude-opus-4-8) echo "5:25" ;;
+    claude-fable-5) echo "10:50" ;;
+    *) echo "0:0" ;;
+  esac
+}
 
 # Collapses a dispatched model string (which may carry a dated suffix, e.g.
 # claude-haiku-4-5-20251001) to the family bucket used for pricing/reporting.
@@ -121,7 +125,7 @@ SPEND_JSON="[]"
 TOTAL_SPEND="0"
 while IFS=$'\t' read -r model msgs in_tok cache_w cache_r out_tok; do
   [ -n "$model" ] || continue
-  rates="${PRICING[$model]:-0:0}"
+  rates="$(pricing_for "$model")"
   in_rate="${rates%:*}"
   out_rate="${rates#*:}"
   cost="$(awk -v in_t="$in_tok" -v cw="$cache_w" -v cr="$cache_r" -v out_t="$out_tok" \
@@ -149,8 +153,8 @@ trap 'rm -f "$RAW" "$TOTALS" "$FAIL_RAW"' EXIT
 if [ -d "$MARKER_DIR" ]; then
   for marker in "$MARKER_DIR"/*.pass "$MARKER_DIR"/*.fail; do
     [ -e "$marker" ] || continue
-    mtime_sec="$(stat -c '%Y' "$marker" 2>/dev/null || echo 0)"
-    mtime_iso="$(date -u -d @"$mtime_sec" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "")"
+    mtime_sec="$(stat -c '%Y' "$marker" 2>/dev/null || stat -f '%m' "$marker" 2>/dev/null || echo 0)"
+    mtime_iso="$(date -u -d @"$mtime_sec" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$mtime_sec" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo "")"
     [ -n "$mtime_iso" ] || continue
     [ "$mtime_iso" \> "$CUTOFF_ISO8601" ] && continue
     base="$(basename "$marker")"

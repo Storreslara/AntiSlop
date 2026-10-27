@@ -69,14 +69,18 @@ transcript_holds_prompt() { # transcript -> 0 iff it is non-empty and a line hol
   [ -s "$1" ] && jq -e --arg m "$LEAD_PROMPT_MARK" 'select(any(..|strings; contains($m)))' "$1" >/dev/null 2>&1
 }
 
+# bash 3.2 cannot parse a `case ... esac` inside <( ), so the candidate list is built here.
+_attributable_candidates() { # capture reference [prompt-transcript]
+  { case $2 in main) pick "$1" 'echo probe-main' 1 ;; *) pick "$1" 'echo probe-main' 2 ;; esac | jq -r '.transcript_path'
+    [ -n "${3:-}" ] && transcript_holds_prompt "$3" && printf '%s\n' "$3"; } | sort -u
+}
 attributable() { # capture actor cmd reference-actor [candidate transcript: a reference too when it holds the run-2 prompt]
   local ref="$4" tp rc n=0
   case $2 in main|main-teams) return 0 ;; esac
   while read -r tp; do
     n=$((n + 1)); transcript_has "$tp" "$3"; rc=$?
     [ "$rc" = 1 ] || return 1
-  done < <({ case $ref in main) pick "$1" 'echo probe-main' 1 ;; *) pick "$1" 'echo probe-main' 2 ;; esac | jq -r '.transcript_path'
-    [ -n "${5:-}" ] && transcript_holds_prompt "$5" && printf '%s\n' "$5"; } | sort -u)
+  done < <(_attributable_candidates "$1" "$ref" "${5:-}")
   [ "$n" -gt 0 ] # BR-tx-noref
 }
 
@@ -90,7 +94,7 @@ emit_row() { # capture actor line
   te="$(field 'if (.teams_env // "")=="" then "unset" else .teams_env end' "$3")"
   se="$(jq -r --argjson l "$3" 'select((.event=="Stop" or .event=="SubagentStop") and .session_id==$l.session_id and .agent_id==$l.agent_id) | .event' "$1" | head -1 | clean | tr -d '\n')"
   printf 'Identity row: %s agent_id=%s agent_type=%s teams_env=%s stop_event=%s %s observed\n' "$2" "$id" "$ty" "$te" "${se:-none}" "$DATE"
-  printf 'Keys row: %s %s\n' "$2" "$(jq -r '.keys | sort[]' <<<"$3" | clean | paste -sd' ')"
+  printf 'Keys row: %s %s\n' "$2" "$(jq -r '.keys | sort[]' <<<"$3" | clean | paste -sd' ' -)"
 }
 
 # a "teammate" that is a plain subagent: lead's session, an agent_id, a SubagentStop in that session, and only subagent-control keys

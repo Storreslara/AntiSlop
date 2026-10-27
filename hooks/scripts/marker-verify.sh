@@ -157,7 +157,7 @@ fi
 
 criteria=()
 IFS=';' read -ra raw_criteria <<< "$criteria_text"
-for raw in "${raw_criteria[@]}"; do
+for raw in ${raw_criteria[@]+"${raw_criteria[@]}"}; do
   trimmed="$(printf '%s' "$raw" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
   [ -n "$trimmed" ] && criteria+=("$trimmed")
 done

@@ -63,7 +63,7 @@ PRIVILEGED_PERSONAS=(reviewer orchestrator)
 if [ -n "$dispatch_name" ]; then
   dispatch_persona="$(identity_persona_name "$dispatch_name")"
   is_privileged=false
-  for p in "${PRIVILEGED_PERSONAS[@]}"; do
+  for p in ${PRIVILEGED_PERSONAS[@]+"${PRIVILEGED_PERSONAS[@]}"}; do
     if [ "$dispatch_persona" = "$p" ]; then
       is_privileged=true
       break

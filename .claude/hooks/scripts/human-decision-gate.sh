@@ -152,7 +152,11 @@ is_prompt_eligible_decision_write() {
   [[ $first =~ $re ]] || return 1
   [ "${BASH_REMATCH[1]}" = "$project_dir" ] || return 1
   pg_id="${BASH_REMATCH[3]}"
-  mapfile -t lines <<< "${cmd#*$'\n'}"
+  # Bash 3.2 compatible: replace mapfile -t with while read loop
+  lines=()
+  while IFS= read -r line; do
+    lines+=("$line")
+  done <<< "${cmd#*$'\n'}"
   n=${#lines[@]}
   [ "${lines[n-1]}" = EOF ] || return 1
   for ((i = 0; i < n - 1; i++)); do
@@ -320,9 +324,9 @@ has_path_shaped_occurrence() {
 # never consulted to permit anything - so it can only ever add denials.
 has_whitespace_id_packet_path() {
   # \047 and \042 are ' and ", spelled as escapes for the same reason as above.
-  local rest="$1" head
-  rest="${rest//$'\047'/}"
-  rest="${rest//$'\042'/}"
+  local rest="$1" head sq=$'\047' dq=$'\042'
+  rest="${rest//$sq/}"
+  rest="${rest//$dq/}"
   while :; do
     case "$rest" in
       *human-review*) rest="${rest#*human-review}" ;;
@@ -578,16 +582,31 @@ glob_word() {
 
 # $1 one expanded pattern word: the last component that can match DECISION
 # names the file, any earlier one that can match human-review the directory.
+# _glob_names <literal> <pattern> - true if the pattern can match the literal,
+# case-insensitively. bash 3.2 (macOS) mis-matches POSIX classes such as
+# [[:upper:]] under nocasematch, which would fail OPEN, so the literal is also
+# tried in both cases with nocasematch off; this can only add matches (over-block).
+_glob_names() {
+  local lit="$1" pat="$2" up low r=1
+  [[ $lit == $pat ]] && return 0
+  up="$(printf '%s' "$lit" | tr '[:lower:]' '[:upper:]')"
+  low="$(printf '%s' "$lit" | tr '[:upper:]' '[:lower:]')"
+  shopt -u nocasematch
+  if [[ $up == $pat || $low == $pat ]]; then r=0; fi
+  shopt -s nocasematch
+  return $r
+}
+
 glob_match_path() {
   local rest="$1" comp
   rest="${rest//$'\001'/\{}" rest="${rest//$'\002'/\}}" rest="${rest//$'\003'/,}"
   while :; do
     comp="${rest%%/*}"
     if [ "$comp" = "$rest" ]; then
-      [[ DECISION == $comp ]] && glob_d=1
+      _glob_names DECISION "$comp" && glob_d=1
       return 0
     fi
-    [[ human-review == $comp ]] && glob_h=1
+    _glob_names human-review "$comp" && glob_h=1
     rest="${rest#*/}"
   done
 }
@@ -602,8 +621,12 @@ glob_strip_quoted_heredoc_bodies() {
   glob_hd=()
   glob_text="$cmd"
   case "$cmd" in *'<<'*) ;; *) return 0 ;; esac
-  mapfile -t lines <<< "$cmd"
-  for line in "${lines[@]}"; do
+  # Bash 3.2 compatible: replace mapfile -t with while read loop
+  lines=()
+  while IFS= read -r line; do
+    lines+=("$line")
+  done <<< "$cmd"
+  for line in ${lines[@]+"${lines[@]}"}; do
     if [ "${#glob_hd[@]}" -gt 0 ]; then
       cmp="$line"
       if [ "${glob_hd[0]:0:1}" = - ]; then
@@ -710,8 +733,8 @@ fi
 # pattern expanded by a program that is not a second shell re-parsing a string,
 # and (R-QP-b) a second-shell invocation the rule does not recognise from the
 # text.
-joined="${command//$'\047'/}"
-joined="${joined//$'\042'/}"
+# Bash 3.2 compatible: replace ${...//...} with tr to remove quotes
+joined="$(printf '%s' "$command" | tr -d \"\')"
 glob_names_tokens "$command"
 case "$joined" in
   *human-review*) ;;

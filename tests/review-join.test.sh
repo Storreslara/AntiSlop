@@ -78,7 +78,7 @@ fi
 # --- route-gate-existing-pass-still-stamps (M1): a format-valid PASS marker already exists -> stamp IS written, recording prior=pass ---
 dir="$(make_project existing-pass)"
 printf 'PASS 301 2026-08-07T00:00:00Z commit: abc1234 criteria: true\n' > "$dir/.claude/reviewed/301.pass"
-pass_mtime="$(stat -L --format=%Y "$dir/.claude/reviewed/301.pass" 2>/dev/null || date +%s)"
+pass_mtime="$(stat -L -c %Y "$dir/.claude/reviewed/301.pass" 2>/dev/null || stat -L -f %m "$dir/.claude/reviewed/301.pass" 2>/dev/null || date +%s)"
 payload3="$(reviewer_payload $'Unit: 301\n\nSecond look.')"
 rc=0
 run_route_gate "$dir" "$payload3" || rc=$?
@@ -94,7 +94,7 @@ fi
 # --- route-gate-existing-fail-stamps: a FAIL marker exists (does NOT exempt) -> stamp written with prior=fail ---
 dir="$(make_project existing-fail)"
 printf 'FAIL 302 2026-08-07T00:00:00Z\n- some defect\n' > "$dir/.claude/reviewed/302.fail"
-fail_mtime="$(stat -L --format=%Y "$dir/.claude/reviewed/302.fail" 2>/dev/null || date +%s)"
+fail_mtime="$(stat -L -c %Y "$dir/.claude/reviewed/302.fail" 2>/dev/null || stat -L -f %m "$dir/.claude/reviewed/302.fail" 2>/dev/null || date +%s)"
 payload4="$(reviewer_payload $'Unit: 302\n\nRe-review after fix.')"
 rc=0
 run_route_gate "$dir" "$payload4" || rc=$?

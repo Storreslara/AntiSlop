@@ -65,7 +65,7 @@ run() {
   return "$rc"
 }
 win=(--since "$since" --until "$stop")
-common=("${win[@]}" --lib "$fx/lib-new.sh" --baseline-lib "$fx/lib-base.sh")
+common=(${win[@]+"${win[@]}"} --lib "$fx/lib-new.sh" --baseline-lib "$fx/lib-base.sh")
 
 run --root "$store" "${common[@]}" > "$w/t1.txt"
 if diff "$w/t1.txt" "$w/expected.md" > /dev/null; then pass "table equals the literal expected table"; else bad "table differs from the expected table"; fi

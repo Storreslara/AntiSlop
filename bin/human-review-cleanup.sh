@@ -41,7 +41,7 @@ is_older_than_window() {
     return 1
   fi
   local file_epoch
-  file_epoch=$(stat -c %Y "$file_path" 2>/dev/null || date +%s)
+  file_epoch=$(stat -c %Y "$file_path" 2>/dev/null || stat -f %m "$file_path" 2>/dev/null || date +%s)
   [ "$file_epoch" -lt "$cutoff_epoch" ]
 }
 

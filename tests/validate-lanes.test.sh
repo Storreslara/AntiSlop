@@ -64,7 +64,7 @@ check() {
 }
 
 # mono: monotonic seconds; past <start> <secs>: <secs> have passed since <start>.
-mono() { cut -d' ' -f1 /proc/uptime; }
+mono() { if [ -r /proc/uptime ]; then cut -d" " -f1 /proc/uptime; else perl -MTime::HiRes=time -e "printf \"%.2f\\n\", time"; fi; }
 past() { awk -v a="$1" -v b="$(mono)" -v s="$2" 'BEGIN { exit !(b - a >= s) }'; }
 # alive <pid>: the pid exists and is not a zombie.
 alive() { case "$(ps -o stat= -p "$1" 2>/dev/null)" in Z*|'') return 1 ;; *) return 0 ;; esac; }

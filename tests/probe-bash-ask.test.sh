@@ -249,7 +249,7 @@ chk "T15 denied from the filtered permission_denials" "Probe row: headless-p den
 chk "T15 saved JSON holds only result and permission_denials" "$(printf '%s\n' rc=0 '{"result":"need approval","permission_denials":[{"tool_name":"Bash","tool_input":{"command":"printf x > out.txt"}}]}')" "$(cat "$RAW/headless.txt")"
 hl '{"session_id":"s-123","total_cost_usd":0.07,"result":"Permission to run that was denied."}'
 chk "T15 no permission_denials field: regex fallback still classifies" "Probe row: headless-p denied $DATE observed" "${ROWS%$'\n'}"
-chk "T15 fallback names the regex classifier" y "$(case "$HL_CLASSIFIER" in *'no `permission_denials` field'*) echo y;; *) echo n;; esac)"
+chk "T15 fallback names the regex classifier" y "$([[ $HL_CLASSIFIER == *'no `permission_denials` field'* ]] && echo y || echo n)"
 chk "T15 absent field stays absent after filtering" "$(printf '%s\n' rc=0 '{"result":"Permission to run that was denied."}')" "$(cat "$RAW/headless.txt")"
 hl '{"session_id":"s-123","result":"done","permission_denials":[]}'
 chk "T15 no denial evidence: no row" "" "$ROWS"

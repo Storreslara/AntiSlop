@@ -488,7 +488,7 @@ EOF
 chmod +x "$b/run.sh"
 for i in $(seq 1 5); do
   printf '{"tool_input":{"file_path":"%s/src/app.js"}}' "$dir" \
-    | CLAUDE_PROJECT_DIR="$dir" timeout 5 bash "$hook" >/dev/null 2>&1 || true
+    | CLAUDE_PROJECT_DIR="$dir" perl -e "alarm 5; exec @ARGV" bash "$hook" >/dev/null 2>&1 || true
 done
 wait_for_drain "$dir"
 runs="$(wc -l < "$counter" 2>/dev/null || echo 0)"

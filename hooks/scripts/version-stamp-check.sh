@@ -128,7 +128,7 @@ while IFS= read -r c; do
     violation=yes
     short="${c:0:7}"
     IFS=',' read -ra cpath_arr <<< "$cpaths"
-    for p in "${cpath_arr[@]}"; do
+    for p in ${cpath_arr[@]+"${cpath_arr[@]}"}; do
       [ -n "$p" ] || continue
       offenders="${offenders:+$offenders,}$short:$p"
     done

@@ -283,7 +283,7 @@ DISPATCHES="$(mktemp)"
 WORK_FILES=()
 trap 'rm -f "$DISPATCHES" "${WORK_FILES[@]:-}"' EXIT
 
-for sid in "${session_ids[@]}"; do
+for sid in ${session_ids[@]+"${session_ids[@]}"}; do
   subdir="$ROOT/$sid/subagents"
   [ -d "$subdir" ] || continue
   for m in "$subdir"/*.meta.json; do
@@ -461,7 +461,7 @@ first_ts() {
   jq -rs 'if length==0 then empty else (.[0].timestamp // empty) end' "$1" 2>/dev/null || true
 }
 
-for sid in "${session_ids[@]}"; do
+for sid in ${session_ids[@]+"${session_ids[@]}"}; do
   reviewer_ts_file="$(mktemp)"; WORK_FILES+=("$reviewer_ts_file")
   while IFS=$'\t' read -r rsid raid rpersona rraw rdepth rmodel rteam rdesc rjf; do
     [ "$rsid" = "$sid" ] || continue

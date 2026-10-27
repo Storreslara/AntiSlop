@@ -76,9 +76,9 @@ test_counts_output() {
 
   # Extract counts
   local ok_count mismatch_count unverifiable_count
-  ok_count=$(echo "$summary_line" | grep -oP 'ok=\K[0-9]+')
-  mismatch_count=$(echo "$summary_line" | grep -oP 'mismatch=\K[0-9]+')
-  unverifiable_count=$(echo "$summary_line" | grep -oP 'unverifiable=\K[0-9]+')
+  ok_count=$(echo "$summary_line" | sed -nE 's/.*ok=([0-9]+).*/\1/p')
+  mismatch_count=$(echo "$summary_line" | sed -nE 's/.*mismatch=([0-9]+).*/\1/p')
+  unverifiable_count=$(echo "$summary_line" | sed -nE 's/.*unverifiable=([0-9]+).*/\1/p')
 
   # Verify counts match expectations
   test "$ok_count" = "2" || {

@@ -167,7 +167,7 @@ mk_git_tracked() {
 # genuinely unreachable (not just made to fail) - dirname etc. still work.
 NO_GIT_PATH=""
 IFS=: read -ra _pd <<< "$PATH"
-for _d in "${_pd[@]}"; do
+for _d in ${_pd[@]+"${_pd[@]}"}; do
   [ -x "$_d/git" ] && continue
   NO_GIT_PATH="${NO_GIT_PATH}:${_d}"
 done

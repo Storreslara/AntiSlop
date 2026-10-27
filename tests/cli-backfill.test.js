@@ -391,16 +391,38 @@ check('applyMcpPlaceholder renders the comment form and the legacy bare form ide
   }
 });
 
-check('rendered explorer frontmatter parses as YAML with the launch command', () => {
-  const src = fs.readFileSync(MCP_SOURCES.explorer, 'utf8');
-  const rendered = cli.applyMcpPlaceholder(src, MCP_TOKENS.explorer, { command: 'node', args: ['/s.js'] }, 'explorer.md');
-  const py =
-    "import re,sys,yaml,json;c=sys.stdin.read();m=re.match(r'^---\\n(.*?)\\n---\\n',c,re.S);" +
-    "print(json.dumps(yaml.safe_load(m.group(1))['mcpServers'][0]['code-review-graph']['command']))";
-  const r = spawnSync('python3', ['-c', py], { input: rendered, encoding: 'utf8' });
-  assert.strictEqual(r.status, 0, r.stderr);
-  assert.strictEqual(JSON.parse(r.stdout), 'node');
-});
+// YAML parser for the rendered-frontmatter check: PyYAML when importable,
+// else Ruby's Psych (stock on macOS; also libyaml-based), else null (the check
+// is then reported as SKIP by name, not as a pass). Mirrors tests/validate.sh's
+// "agent frontmatter parses as valid YAML" fallback.
+function yamlFrontmatterCommand() {
+  if (spawnSync('python3', ['-c', 'import yaml'], { encoding: 'utf8' }).status === 0) {
+    return ['python3', ['-c',
+      "import re,sys,yaml,json;c=sys.stdin.read();m=re.match(r'^---\\n(.*?)\\n---\\n',c,re.S);" +
+      "print(json.dumps(yaml.safe_load(m.group(1))['mcpServers'][0]['code-review-graph']['command']))"]];
+  }
+  if (spawnSync('ruby', ['-ryaml', '-rdate', '-e', ''], { encoding: 'utf8' }).status === 0) {
+    return ['ruby', ['-ryaml', '-rdate', '-rjson', '-e',
+      'c=STDIN.read;m=c.match(/\\A---\\n(.*?)\\n---\\n/m);' +
+      'puts JSON.generate(YAML.safe_load(m[1], permitted_classes: [Date, Time, Symbol], aliases: true)["mcpServers"][0]["code-review-graph"]["command"])']];
+  }
+  return null;
+}
+
+{
+  const yamlCmd = yamlFrontmatterCommand();
+  if (yamlCmd === null) {
+    console.log('SKIP rendered explorer frontmatter parses as YAML with the launch command (no YAML parser: python3 lacks the yaml module and ruby -ryaml is unavailable)');
+  } else {
+    check('rendered explorer frontmatter parses as YAML with the launch command', () => {
+      const src = fs.readFileSync(MCP_SOURCES.explorer, 'utf8');
+      const rendered = cli.applyMcpPlaceholder(src, MCP_TOKENS.explorer, { command: 'node', args: ['/s.js'] }, 'explorer.md');
+      const r = spawnSync(yamlCmd[0], yamlCmd[1], { input: rendered, encoding: 'utf8' });
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert.strictEqual(JSON.parse(r.stdout), 'node');
+    });
+  }
+}
 
 check('PLACEHOLDER_RE still matches the comment-form placeholder line', () => {
   assert.ok(cli.PLACEHOLDER_RE.test(`      # ${MCP_TOKENS.explorer}`));

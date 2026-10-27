@@ -52,7 +52,8 @@ references() {
   # A purely-numeric id skips the raw-substring arm entirely: that arm would
   # otherwise degenerate into exactly the forbidden bare-digit match (id "31"
   # inside "0.31.53"). Only the id-bearing-context arm counts for it.
-  local text_lower="${1,,}"
+  local text_lower
+  text_lower="$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"
   if [ "$purely_numeric" -eq 0 ] && [[ $text_lower == *"$lower_id"* ]]; then
     return 0
   fi

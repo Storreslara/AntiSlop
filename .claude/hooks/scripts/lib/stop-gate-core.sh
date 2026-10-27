@@ -255,7 +255,7 @@ review_join_state() {
   JOIN_STAMP_COUNT="${#stamps[@]}"
   [ "$JOIN_STAMP_COUNT" -gt 0 ] || return 0
 
-  for stamp in "${stamps[@]}"; do
+  for stamp in ${stamps[@]+"${stamps[@]}"}; do
     line=""
     if [ -r "$stamp" ]; then
       line="$(head -n 1 "$stamp" 2>/dev/null || true)"
@@ -411,7 +411,8 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
     # was actually dispatched for (gh425): a stray marker belonging to no
     # stamped unit must not disable flag-clearing project-wide.
     review_join_state "$dot"
-    scoped_units=( "${JOIN_SATISFIED_UNITS[@]}" "${JOIN_UNSATISFIED_UNITS[@]}" "${JOIN_ADVISORY_UNITS[@]}" )
+    # ${a[@]+"${a[@]}"}: bash 3.2 (macOS) treats an empty array as unbound under set -u
+    scoped_units=( ${JOIN_SATISFIED_UNITS[@]+"${JOIN_SATISFIED_UNITS[@]}"} ${JOIN_UNSATISFIED_UNITS[@]+"${JOIN_UNSATISFIED_UNITS[@]}"} ${JOIN_ADVISORY_UNITS[@]+"${JOIN_ADVISORY_UNITS[@]}"} )
 
     shopt -s nullglob
     if [ "${#scoped_units[@]}" -eq 0 ]; then
@@ -515,7 +516,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
           rm -f "$join_flag" 2>/dev/null || true
           join_cleared=$(( join_cleared + 1 ))
         done < <(
-          for join_flag in "${join_clear_candidates[@]}"; do
+          for join_flag in ${join_clear_candidates[@]+"${join_clear_candidates[@]}"}; do
             join_flag_mtime="$(stat -L -c %Y "$join_flag" 2>/dev/null || stat -L -f %m "$join_flag" 2>/dev/null || echo 0)"
             printf '%s %s\n' "$join_flag_mtime" "$join_flag"
           done | sort -n | head -n "$join_clear_bound" | cut -d' ' -f2-
@@ -588,7 +589,7 @@ if [ "$hook_event" = "Stop" ]; then
     blocked=false
     undeferred=0
     empty_reason=false
-    for flag in "${pending_flags[@]}"; do
+    for flag in ${pending_flags[@]+"${pending_flags[@]}"}; do
       [ -f "$flag" ] || continue
       flag_content="$(cat "$flag" 2>/dev/null || true)"
       # The audit log is one record per line, so a multi-line reason could

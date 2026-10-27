@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# macOS-only test shim (see tests/lib/bsd-shims/README). Resolves the next tool of this name on
+# PATH after this directory; on GNU systems it just execs that tool unchanged.
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+name="$(basename "$0")"
+real=""
+IFS=: read -ra _dirs <<<"$PATH"
+for d in "${_dirs[@]}"; do
+  [ "$d" = "$here" ] && continue
+  [ -x "$d/$name" ] && { real="$d/$name"; break; }
+done
+[ -n "$real" ] || { echo "$name: no real $name on PATH" >&2; exit 127; }
+# GNU `touch -d '@EPOCH'|'YYYY-MM-DD[T ]HH:MM:SS' files` -> BSD `touch -t CCYYMMDDhhmm.SS files`
+if [ "$(uname)" = Darwin ]; then
+  args=(); spec=""
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -d) shift; spec="$1" ;;
+      *) args+=("$1") ;;
+    esac
+    shift
+  done
+  if [ -n "$spec" ]; then
+    case "$spec" in
+      @*) t="$(/bin/date -r "${spec#@}" +%Y%m%d%H%M.%S)" ;;
+      *) t="$(/usr/bin/perl -e 'my @m=$ARGV[0]=~/^(\d+)-(\d+)-(\d+)[T ](\d+):(\d+):(\d+)/ or exit 1;
+              printf "%04d%02d%02d%02d%02d.%02d",@m;' "$spec")" || { echo "touch shim: unparsed date: $spec" >&2; exit 1; } ;;
+    esac
+    case "$spec" in
+      *Z) TZ=UTC exec "$real" -t "$t" "${args[@]}" ;;   # GNU reads a trailing Z as UTC
+    esac
+    exec "$real" -t "$t" "${args[@]}"
+  fi
+  exec "$real" "${args[@]}"
+fi
+exec "$real" "$@"

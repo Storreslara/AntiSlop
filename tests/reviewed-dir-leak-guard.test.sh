@@ -65,7 +65,12 @@ case "$nested_rc:$nested_last" in
 esac
 
 if [ -d "$sandbox/.claude/reviewed" ]; then
-  leaked="$(find "$sandbox/.claude/reviewed" -mindepth 1 -printf '%P\n' | sort)"
+  # Relative paths without `find -printf '%P'` (GNU-only): BSD find rejects
+  # the primary with "-printf: unknown primary or operator", which left
+  # $leaked empty and made this check pass vacuously on macOS.
+  leaked="$(find "$sandbox/.claude/reviewed" -mindepth 1 | while IFS= read -r e; do
+    printf '%s\n' "${e#"$sandbox/.claude/reviewed"/}"
+  done | sort)"
 else
   leaked="(the .claude/reviewed/ directory itself was removed)"
 fi

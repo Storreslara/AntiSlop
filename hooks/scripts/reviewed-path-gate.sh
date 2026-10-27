@@ -93,7 +93,9 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib/harness-arm.sh"
 mentions_marker_dir() {
   local cmd="$1" rest chunk ws=$' \t\n'
   case "$cmd" in *".claude/reviewed"*) return 0 ;; esac
-  rest="${cmd//$'\047'/}"; rest="${rest//$'\042'/}"
+  # bash 3.2 does not expand $'..' inside ${var//pat/} - hold the quotes in variables
+  local sq=$'\047' dq=$'\042'
+  rest="${cmd//$sq/}"; rest="${rest//$dq/}"
   case "$rest" in
     *".claude/reviewed"*) return 0 ;;
     *.claude*reviewed*) ;;

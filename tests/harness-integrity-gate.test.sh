@@ -257,7 +257,7 @@ set_a_lits=(".claude/persona-config.json" \
 # expansion rather than asserted in a comment.
 reachdir="$tmproot/reach"
 mkdir -p "$reachdir/.claude"
-for _l in "${set_a_lits[@]}"; do : > "$reachdir/$_l"; done
+for _l in ${set_a_lits[@]+"${set_a_lits[@]}"}; do : > "$reachdir/$_l"; done
 git init -q "$reachdir" >/dev/null 2>&1 || true
 
 seen_slugs=""
@@ -273,7 +273,7 @@ reach_proves() {
   [ -n "$out" ] || return 1
   while IFS= read -r line; do
     line="${line#add \'}"; line="${line%\'}"
-    for l in "${set_a_lits[@]}"; do
+    for l in ${set_a_lits[@]+"${set_a_lits[@]}"}; do
       if [ "$line" = "$l" ] || [ "$line" != "${line%"/$l"}" ]; then return 0; fi
     done
   done <<< "$out"
@@ -400,7 +400,7 @@ else
   while [ "$_i" -lt 200 ]; do deep="$deep}"; _i=$((_i + 1)); done
   deep="$deep.json"
   deep_rc=0
-  deep_out="$(timeout 5 bash -c 'g="$1"; pre=""; post=""; '"$collapse_src"'; printf "%s" "$g"' _ "$deep")" || deep_rc=$?
+  deep_out="$(perl -e "alarm 5; exec @ARGV" bash -c 'g="$1"; pre=""; post=""; '"$collapse_src"'; printf "%s" "$g"' _ "$deep")" || deep_rc=$?
   if [ "$deep_rc" = 0 ]; then
     case "$deep_out" in
       *[{}]*) bad "[brace-nested] 200-deep nesting terminated but left a brace: $deep_out" ;;
@@ -1311,50 +1311,53 @@ echo "-- C4.1: sweep closure - every hit-bearing file of the authoring sweep is 
 # grant" / "branch, no identity exemption") only surface this way, and a
 # wider/neighbouring grep pulls in false hits (R13 trap (ii)).
 c41_pattern='no grant branch\|no identity exemption\|no exemption\|any agent identity, ever'
-mapfile -t c41_sweep_files < <(git grep -l "$c41_pattern" | sort)
+c41_sweep_files=()
+while IFS= read -r c41_l; do [ -n "$c41_l" ] && c41_sweep_files+=("$c41_l"); done < <(git grep -l "$c41_pattern" | sort)
 
 # LITERAL, REVIEWED file -> category table (never line, never count - the
 # Cat 2 notes and Step 4's own prose edits shift both by construction).
 # Cat 1 = not about this gate; Cat 2 = about this gate, made false; Cat 3 =
 # about this gate, still literally true; Cat 4 = excluded whole-file.
-declare -A c41_cat=(
-  ["docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md"]=1
-  ["docs/plans/2026-08-11-human-decision-channel.md"]=1
-  ["CONTEXT.md"]=1
-  ["docs/harness-glossary.md"]=1
-  ["tests/human-decision-gate.test.sh"]=1
-  ["hooks/scripts/harness-integrity-gate.sh"]=2
-  [".claude/hooks/scripts/harness-integrity-gate.sh"]=2
-  [".claude/agent-memory/lead-programmer/project_harness_integrity_gate_persona_config_commit.md"]=2
-  ["docs/plans/2026-08-25-harness-trust-gaps.md"]=2
-  ["docs/plans/2026-08-25-harness-ceremony-consolidation.md"]=2
-  ["docs/plans/2026-09-09-fable-gate-audit-remediation.md"]=2
-  ["docs/plans/2026-08-11-microworld-silo.md"]=2
-  ["docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md"]=2
-  [".claude/agent-memory/spec-master/project_cli_update_never_reaches_settings_fragment.md"]=2
-  ["docs/plans/2026-09-02-blocked-marker-scoping-gh425.md"]=3
-  ["docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md"]=3
-  ["docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md"]=3
-  ["tests/harness-integrity-gate.test.sh"]=3
-  ["CHANGELOG.md"]=4
-)
+# path|category rows (a `declare -A` table in the original; bash 3.2 has no associative arrays)
+c41_cat_rows='docs/adr/0030-decision-surface-composes-milestone-findings-write-duty.md|1
+docs/plans/2026-08-11-human-decision-channel.md|1
+CONTEXT.md|1
+docs/harness-glossary.md|1
+tests/human-decision-gate.test.sh|1
+hooks/scripts/harness-integrity-gate.sh|2
+.claude/hooks/scripts/harness-integrity-gate.sh|2
+.claude/agent-memory/lead-programmer/project_harness_integrity_gate_persona_config_commit.md|2
+docs/plans/2026-08-25-harness-trust-gaps.md|2
+docs/plans/2026-08-25-harness-ceremony-consolidation.md|2
+docs/plans/2026-09-09-fable-gate-audit-remediation.md|2
+docs/plans/2026-08-11-microworld-silo.md|2
+docs/plans/2026-09-23-cost-governance-output-cap-and-effort-tiers.md|2
+.claude/agent-memory/spec-master/project_cli_update_never_reaches_settings_fragment.md|2
+docs/plans/2026-09-02-blocked-marker-scoping-gh425.md|3
+docs/plans/2026-09-23-harness-integrity-gate-human-confirmation.md|3
+docs/adr/0034-human-confirmation-branch-per-call-consent-not-escalation.md|3
+tests/harness-integrity-gate.test.sh|3
+CHANGELOG.md|4'
+c41_keys() { printf '%s\n' "$c41_cat_rows" | cut -d'|' -f1; }
+c41_cat_of() { printf '%s\n' "$c41_cat_rows" | awk -F'|' -v k="$1" '$1==k{print $2; exit}'; }
+c41_cat_count=$(printf '%s\n' "$c41_cat_rows" | wc -l | tr -d ' ')
 
 # (a) CLOSURE, BOTH DIRECTIONS, over FILES.
 c41_a_ok=1
-for c41_f in "${c41_sweep_files[@]}"; do
-  if [ -z "${c41_cat[$c41_f]+x}" ]; then
+for c41_f in ${c41_sweep_files[@]+"${c41_sweep_files[@]}"}; do
+  if [ -z "$(c41_cat_of "$c41_f")" ]; then
     bad "[C4.1a] unlisted hit-bearing file (spec gap, not a silent omission): $c41_f"
     c41_a_ok=0
   fi
 done
-for c41_f in "${!c41_cat[@]}"; do
+for c41_f in $(c41_keys); do
   if ! printf '%s\n' "${c41_sweep_files[@]}" | grep -qxF "$c41_f"; then
     bad "[C4.1a] table lists $c41_f but the live sweep has zero hits there"
     c41_a_ok=0
   fi
 done
 if [ "$c41_a_ok" = 1 ]; then
-  pass "[C4.1a] live sweep file set (${#c41_sweep_files[@]} files) equals the table's key set (${#c41_cat[@]}), both directions"
+  pass "[C4.1a] live sweep file set (${#c41_sweep_files[@]} files) equals the table's key set ($c41_cat_count), both directions"
 fi
 
 # (b) Cat 2 files ONLY: every hit carries a dated amendment note within 5
@@ -1370,8 +1373,8 @@ c41_date_re='20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
 c41_true_gate='no identity exemption
 with no grant branch'
 c41_true_leadmem='no exemption on this route'
-for c41_f in "${!c41_cat[@]}"; do
-  [ "${c41_cat[$c41_f]}" = 2 ] || continue
+for c41_f in $(c41_keys); do
+  [ "$(c41_cat_of "$c41_f")" = 2 ] || continue
   case "$c41_f" in
     hooks/scripts/harness-integrity-gate.sh|.claude/hooks/scripts/harness-integrity-gate.sh)
       c41_truesubs="$c41_true_gate" ;;
@@ -1434,8 +1437,8 @@ else
   bad "[C4.1c] tests/harness-integrity-gate.test.sh:24 was altered by this unit"
 fi
 c41_cat3_count=0
-for c41_f in "${!c41_cat[@]}"; do
-  [ "${c41_cat[$c41_f]}" = 3 ] && c41_cat3_count=$((c41_cat3_count + 1))
+for c41_f in $(c41_keys); do
+  [ "$(c41_cat_of "$c41_f")" = 3 ] && c41_cat3_count=$((c41_cat3_count + 1))
 done
 if [ "$c41_cat3_count" -ge 1 ]; then
   pass "[C4.1c] Cat 3 is non-vacuous ($c41_cat3_count files)"
@@ -1446,8 +1449,8 @@ fi
 # (d) Cat 4 is EXACTLY ONE FILE and it is CHANGELOG.md.
 c41_cat4_count=0
 c41_cat4_name=""
-for c41_f in "${!c41_cat[@]}"; do
-  if [ "${c41_cat[$c41_f]}" = 4 ]; then
+for c41_f in $(c41_keys); do
+  if [ "$(c41_cat_of "$c41_f")" = 4 ]; then
     c41_cat4_count=$((c41_cat4_count + 1))
     c41_cat4_name="$c41_f"
   fi
