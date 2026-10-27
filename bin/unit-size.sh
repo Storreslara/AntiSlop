@@ -70,7 +70,7 @@ sp_head() {
 # open tail has a head that is a prefix of <entry>/ (`adapters/.*hooks` and `adapters/windsurf`).
 under_sensitive() {
   local e="$1/" re
-  for re in "${SENSITIVE_PATHS[@]}"; do
+  for re in ${SENSITIVE_PATHS[@]+"${SENSITIVE_PATHS[@]}"}; do
     sp_head "$re" || return 0
     case "$SP_HEAD" in "$e"*) return 0 ;; esac
     if [ "$SP_OPEN" = 1 ]; then case "$e" in "$SP_HEAD"*) return 0 ;; esac; fi

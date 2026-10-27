@@ -86,7 +86,7 @@ rejects "a missing checks file is rejected" "No such file" row summary-complete.
 # The retired budget status, with a FULL summary so only the status can be the cause.
 sed 's/"completion_status":"complete"/"completion_status":"budget"/' "$FX/summary-complete.json" > "$T/summary-budget.json"
 check "the budget summary differs from the complete one only in the status" "$(diff "$FX/summary-complete.json" "$T/summary-budget.json" | grep -c '^[<>]')" "2"
-check "the budget summary still carries every token key" "$(grep -o 'tokens_[a-z_]*' "$T/summary-budget.json" | sort -u | paste -sd' ')" "tokens_cache_read tokens_cache_write tokens_in tokens_out tokens_total"
+check "the budget summary still carries every token key" "$(grep -o 'tokens_[a-z_]*' "$T/summary-budget.json" | sort -u | paste -sd' ' -)" "tokens_cache_read tokens_cache_write tokens_in tokens_out tokens_total"
 out="$(python3 "$PY" --summary "$T/summary-budget.json" --checks "$FX/checks-pass.json" --arm A --eval-id x --rep 1 --started-at t \
   --harness-commit h --cli-version c --fixture-commit f --prompt-file "$FX/prompt.txt" --wall-clock-ms 1 --expected-required 2 2> "$T/err")"; rc=$?
 check "the retired budget status exits 1" "$rc" "1"

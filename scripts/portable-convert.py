@@ -37,7 +37,8 @@ import subprocess
 import sys
 
 GENERATED = (".claude/hooks/", "adapters/")
-SKIP_DIRS = ("docs/", "eval/", "tmp/")
+# The converter's own test holds its bad-shape fixture in a heredoc body, which the scan would flag.
+SKIP_DIRS = ("docs/", "eval/", "tmp/", "tests/portable-convert.test.sh")
 OK_MARK = "# portable-ok"
 
 

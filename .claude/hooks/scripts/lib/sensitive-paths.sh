@@ -22,7 +22,7 @@ SENSITIVE_PATHS=(
 
 touches_sensitive_path() {
   local re
-  for re in "${SENSITIVE_PATHS[@]}"; do
+  for re in ${SENSITIVE_PATHS[@]+"${SENSITIVE_PATHS[@]}"}; do
     # `&& return 0` here would make a non-matching pattern the loop body's
     # exit status, which `set -e` treats as a script failure.
     if [[ "$1" =~ $re ]]; then

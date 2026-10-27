@@ -529,7 +529,7 @@ if [ "$hook_event" = "SubagentStop" ] && [ "$(identity_persona_name "$agent_type
       if [ "${loop_guard_active:-false}" = true ]; then
         # The stop that follows a block (loop_guard_active, set by the Claude entry script on
         # stop_hook_active): never block a second time; log each unit still missing a verdict, allow.
-        for unit in "${JOIN_UNSATISFIED_UNITS[@]}"; do
+        for unit in ${JOIN_UNSATISFIED_UNITS[@]+"${JOIN_UNSATISFIED_UNITS[@]}"}; do
           state_append_audit_log "review-audit.log" "$(printf '%s loop-guard=allow marker=MISSING unit=%s' \
             "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$unit")"
         done

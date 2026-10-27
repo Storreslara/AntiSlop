@@ -38,8 +38,8 @@ fresh() { rm -rf "$ABT_RESULTS" "$ABT_RUNS" "$ABT_WORK" "$T/flog"; }
 . "$REPO_ROOT/eval/abtest/arms/common.sh"
 
 # --- the lock functions ---
-check "the default lock covers the checks and fixtures directories of this checkout" "$( unset ABT_FIXTURES_DIR ABT_LOCK_PATHS; abtest_secret_paths | paste -sd' ' )" "$REPO_ROOT/eval/abtest/checks $REPO_ROOT/eval/abtest/fixtures"
-check "ABT_LOCK_PATHS replaces the default" "$(ABT_LOCK_PATHS="$SEC:$T/x" abtest_secret_paths | paste -sd' ')" "$SEC $T/x"
+check "the default lock covers the checks and fixtures directories of this checkout" "$( unset ABT_FIXTURES_DIR ABT_LOCK_PATHS; abtest_secret_paths | paste -sd' ' - )" "$REPO_ROOT/eval/abtest/checks $REPO_ROOT/eval/abtest/fixtures"
+check "ABT_LOCK_PATHS replaces the default" "$(ABT_LOCK_PATHS="$SEC:$T/x" abtest_secret_paths | paste -sd' ' -)" "$SEC $T/x"
 abtest_lock_secrets "$MAN"; rc=$?
 check "the lock applies" "$rc|$(stat -c %a "$SEC")|$(test -s "$MAN" && echo manifest)" "0|0|manifest"
 check "a read of a locked file is permission denied" "$(cat "$SEC/sub/a.txt" 2>&1 | grep -c 'Permission denied')" "1"

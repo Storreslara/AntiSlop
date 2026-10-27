@@ -7,7 +7,7 @@ set -uo pipefail
 top="$(git rev-parse --show-toplevel 2>/dev/null)" || { echo "blast-radius: not a git repository" >&2; exit 2; }
 cd "$top" || exit 2
 git rev-parse --verify -q "$1^{commit}" >/dev/null || { echo "blast-radius: baseline does not resolve: $1" >&2; exit 2; }
-mapfile -t changed < <(git -c core.quotePath=false diff --name-only "$1..HEAD")
+changed=(); while IFS= read -r _mf_line || [ -n "$_mf_line" ]; do changed+=("$_mf_line"); done < <(git -c core.quotePath=false diff --name-only "$1..HEAD")
 if [ "${#changed[@]}" -eq 0 ]; then echo "blast-radius: provenance=none files=0"; exit 0; fi
 CAP=40
 # rp-u7: at most MAXLINES lines after the header, then one `truncated: <n> more lines` line.
@@ -18,8 +18,8 @@ TESTRE='(^|/)(tests|__tests__)/|[._-](test|spec)\.(sh|bash|js|cjs|mjs|jsx|ts|tsx
 # rp-u7: prints "<kind>: <path> -> <changed file>" per input line; no sed, so `|`, `&` and `\` in a path are kept.
 emit() { local h; while IFS= read -r h; do if [ -n "$h" ]; then printf '%s: %s -> %s\n' "$1" "$h" "$2"; fi; done; }
 body=""; failed=0
-for p in "${changed[@]}"; do body+="changed: $p"$'\n'; done
-for p in "${changed[@]}"; do
+for p in ${changed[@]+"${changed[@]}"}; do body+="changed: $p"$'\n'; done
+for p in ${changed[@]+"${changed[@]}"}; do
   b="${p##*/}"; s="${b%.*}"
   args=(-e "$b")
   if [ "$s" != "$b" ] && [ "${#s}" -ge 4 ]; then args+=(-e "$s"); fi

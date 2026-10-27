@@ -214,12 +214,12 @@ while IFS= read -r -d '' p; do
   in_scope "$p" || viol+=("$p")
 done < <(sort -zu "$W/cand")
 [ "${#viol[@]}" -eq 0 ] && allow
-shown=(); for p in "${viol[@]}"; do shown+=("$(printf '%q' "$p")"); done
+shown=(); for p in ${viol[@]+"${viol[@]}"}; do shown+=("$(printf '%q' "$p")"); done
 log "blocked: ${shown[*]}"
 {
   echo "BLOCKED (writer-scope-gate): you left changes outside your dispatch's unit scope: ${shown[*]}."
   echo "Restore each one, and commit if you had committed it:"
-  for p in "${viol[@]}"; do
+  for p in ${viol[@]+"${viol[@]}"}; do
     q="$(printf '%q' "$p")"
     if git cat-file -e "$start:$p" 2>/dev/null; then echo "  git checkout $start -- $q"
     elif git ls-files --error-unmatch -- "$p" >/dev/null 2>&1; then echo "  git rm -qf -- $q   (a file you added)"

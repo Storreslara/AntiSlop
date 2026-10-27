@@ -111,7 +111,7 @@ check "a header after the last entry resets the entry scope" "$(grep -c '^- \*\*
 cp "$T/log.md" "$T/log-filled.md"
 python3 "$REPORT" fill-log "$T/score.json" "$T/log.md" "$T/rows.jsonl" > /dev/null
 check "fill-log is idempotent" "$(cmp -s "$T/log.md" "$T/log-filled.md" && echo same || echo different)" "same"
-grep -v 'e05-tags-feature' "$T/log-pending.md" | sed '/^### E5/,/^## Verdict/{/^## Verdict/!d}' > "$T/log-short.md"
+grep -v 'e05-tags-feature' "$T/log-pending.md" | sed '/^### E5/,/^## Verdict/{/^## Verdict/!d;}' > "$T/log-short.md"
 cp "$T/log-short.md" "$T/log-short.before"
 python3 "$REPORT" fill-log "$T/score.json" "$T/log-short.md" "$T/rows.jsonl" > /dev/null 2>&1; rc=$?
 check "a log missing an eval of the report exits non-zero" "$rc" "1"
@@ -128,7 +128,7 @@ python3 "$REPORT" tickets "$T/score.json" "$T/rows.jsonl" "$T/tickets" > "$T/t.t
 check "tickets exits 0" "$rc" "0"
 python3 "$REPORT" tickets "$T/score.json" "$T/rows.jsonl" "$T/tickets" > /dev/null 2>&1; rc=$?
 check "tickets refuses an output directory that already holds files" "$rc" "1"
-check "tickets for the losing, defect-escaping, stalling and tied-without-edge evals" "$(ls "$T/tickets" | paste -sd' ')" "e01-ambiguous-tax.md e02-preview-mutation.md e04-search-injection.md e05-tags-feature.md"
+check "tickets for the losing, defect-escaping, stalling and tied-without-edge evals" "$(ls "$T/tickets" | paste -sd' ' -)" "e01-ambiguous-tax.md e02-preview-mutation.md e04-search-injection.md e05-tags-feature.md"
 check "an inconclusive eval gets no ticket" "$(test -e "$T/tickets/e03-rename-query.md" && echo yes || echo no)" "no"
 check "the ticket title line names the eval and verdict" "$(head -n1 "$T/tickets/e01-ambiguous-tax.md")" "[eval-finding] e01-ambiguous-tax: not-superior"
 check "the ticket quotes the failed check verbatim" "$(grep -c 'e01-ambiguous-tax/B/uniform/1: hold-a (defect) cmd: node --test x' "$T/tickets/e01-ambiguous-tax.md")" "1"
