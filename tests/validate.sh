@@ -1264,7 +1264,7 @@ fi
 echo
 echo "== rollout wave-graph preflight checker (Bash, scaffolding) =="
 rollout_test="tests/rollout-preflight.test.sh"
-# scripts/rollout-preflight.sh needs bash >= 4 (associative arrays) and re-execs
+# The preflight script needs bash >= 4 (associative arrays) and re-execs
 # itself into a Homebrew bash when the running one is older; this probe mirrors
 # that guard so a bash-3.2 host without one SKIPs by name instead of failing
 # all 12 wave assertions on the script's own "needs bash >= 4" exit.
@@ -1277,7 +1277,7 @@ else
   done
 fi
 if [ -z "$rollout_bash4" ]; then
-  echo "SKIP $rollout_test (scripts/rollout-preflight.sh needs bash >= 4; none found at /opt/homebrew/bin/bash or /usr/local/bin/bash)"
+  echo "SKIP $rollout_test (the preflight script needs bash >= 4; none found at /opt/homebrew/bin/bash or /usr/local/bin/bash)"
 elif bash "$rollout_test"; then
   echo "OK   $rollout_test"
 else
