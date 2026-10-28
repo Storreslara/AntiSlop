@@ -74,7 +74,7 @@ else
   echo "SKIP - node not found: JSON/export checks skipped"
 fi
 
-chk "fixture: exactly one raw </script> closer pair (data + code), none from claim" "[ \"\$(grep -o '</script>' '$T/fx.html' | wc -l)\" -le 3 ] && ! grep -q '</script><b>' '$T/fx.html'"
+chk "fixture: exactly 2 </script> closers (data + code), none from claim" "[ \"\$(grep -o '</script>' '$T/fx.html' | wc -l)\" -eq 2 ] && ! grep -q '</script><b>' '$T/fx.html'"
 chk "fixture: no raw <b>x</b> from claim in output" "! grep -q '<b>x</b>' '$T/fx.html'"
 chk "page is self-contained (no http(s) resource refs)" "! grep -Eq '(src|href)=[\"'\\'']https?:' '$T/real.html'"
 chk "page declares hint-not-label wording" "grep -q 'not labels' '$T/real.html'"
