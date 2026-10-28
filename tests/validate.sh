@@ -847,6 +847,16 @@ else
 fi
 
 echo
+echo "== refutation-label: the Gate G1 labeling server, its write checks and a real-browser probe (Bash, rfp-u2c) =="
+if out="$(bash tests/refutation-label.test.sh 2>&1)"; then
+  echo "OK   tests/refutation-label.test.sh"
+else
+  echo "FAIL tests/refutation-label.test.sh"
+  fail=1
+fi
+printf '%s\n' "$out" | grep '^SKIP' || true
+
+echo
 echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
 if bash tests/review-precheck.test.sh > /dev/null; then
   echo "OK   tests/review-precheck.test.sh"

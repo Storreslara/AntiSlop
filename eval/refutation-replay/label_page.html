@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gate G labeling</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1b1f24;--mute:#59636e;--line:#d0d7de;--real:#1a7f37;--realbg:#dafbe1;--bogus:#cf222e;--bogusbg:#ffebe9;--unk:#6e7781;--unkbg:#eaeef2;--amber:#9a6700;--amberbg:#fff8c5;--blue:#0969da}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,sans-serif}
+header.top{position:sticky;top:0;z-index:5;background:#fff;border-bottom:2px solid var(--line);padding:10px 16px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.count{font-weight:700;font-size:18px;padding:2px 10px;border-radius:6px}
+.c-real{background:var(--realbg);color:var(--real)}.c-bogus{background:var(--bogusbg);color:var(--bogus)}.c-unknown{background:var(--unkbg);color:var(--unk)}
+.count.met{outline:2px solid var(--real)}
+.status{font-weight:700;padding:3px 10px;border-radius:6px;color:#fff;background:var(--unk)}.status.ok{background:var(--real)}.status.no{background:var(--bogus)}
+.rules{color:var(--mute);font-size:13px;margin-top:4px}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--unkbg);margin-top:6px}
+.bar i{display:block;height:100%}.bar i.r{background:var(--real)}.bar i.b{background:var(--bogus)}
+main{max-width:980px;margin:0 auto;padding:12px 16px 80px}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+button{font:inherit;border:1px solid var(--line);background:#fff;border-radius:6px;padding:6px 12px;cursor:pointer}
+button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+button:disabled{opacity:.5;cursor:wait}
+input[type=search]{font:inherit;padding:6px 10px;border:1px solid var(--line);border-radius:6px;min-width:200px;flex:1}
+.note{background:var(--amberbg);border:1px solid #d4a72c;border-radius:6px;padding:8px 12px;font-size:13px;margin:8px 0}
+.msg{font-size:13px;font-weight:700;color:var(--bogus)}
+code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+section.grp{margin:14px 0}
+section.grp>button.gt{display:block;width:100%;text-align:left;font-weight:700;padding:8px 12px}
+section.grp.collapsed>.gbody{display:none}
+.card{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--unk);border-radius:8px;padding:12px 14px;margin:10px 0}
+.card.real{border-left-color:var(--real);background:#f6fff8}.card.bogus{border-left-color:var(--bogus);background:#fff8f7}
+.card.cur{outline:3px solid var(--blue)}
+.claim{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15px;margin:6px 0}
+.meta{color:var(--mute);font-size:12.5px;overflow-wrap:anywhere}
+.hint{display:inline-block;font-size:12px;font-weight:700;padding:1px 8px;border-radius:10px;border:1px solid var(--amber);color:var(--amber);background:var(--amberbg);margin-top:6px}
+.files{margin:6px 0 0;padding:0;list-style:none;font-size:12.5px}
+.files li{font-family:ui-monospace,Menlo,monospace;overflow-wrap:anywhere}.files li.cite{background:var(--amberbg)}
+.lab{display:flex;gap:8px;margin-top:10px}
+.lab button{flex:1;font-size:17px;font-weight:700;padding:10px}
+.lab button.s-real.on{background:var(--real);border-color:var(--real);color:#fff}.lab button.s-bogus.on{background:var(--bogus);border-color:var(--bogus);color:#fff}.lab button.s-unknown.on{background:var(--unk);border-color:var(--unk);color:#fff}
+pre.diff{max-height:320px;overflow:auto;background:#f6f8fa;border:1px solid var(--line);padding:8px;white-space:pre;margin:6px 0}
+.hide{display:none}
+@media(max-width:600px){.lab button{font-size:15px;padding:8px 4px}}
+</style></head>
+<body data-pending="0">
+<header class="top" id="top">
+ <div class="row">
+  <span class="count c-real" id="n-real"></span><span class="count c-bogus" id="n-bogus"></span><span class="count c-unknown" id="n-unknown"></span>
+  <span class="status" id="status"></span>
+ </div>
+ <div class="rules" id="rules"></div>
+ <div class="bar" id="bar"><i class="r"></i><i class="b"></i></div>
+</header>
+<main data-rows="__ROWS__">
+ <div class="note"><b>The hint is not a label.</b> It only says whether the fix commit's diff touches the file the claim cites. You decide each label. Labeling is mouse-only: click real, bogus or unknown on a card (unknown undoes). Keys j and k move the outlined card and never write. Each click writes that one line of labels.tsv at once.</div>
+ <div class="tools">
+  <span id="filters"></span>
+  <input type="search" id="q" placeholder="Search id, claim, fix subject">
+ </div>
+ <div class="msg" id="msg"></div>
+ <div id="groups"></div>
+</main>
+<script id="data" type="application/json">__DATA__</script>
+<script nonce="__NONCE__">
+var D = JSON.parse(document.getElementById('data').textContent);
+var rows = D.rows, labels = D.labels, version = D.version, token = D.token;
+var target = null, filter = 'all', query = '', collapsed = {};
+var byId = {}, cardEl = {}, groupEl = {};
+var header = document.getElementById('top');
+
+function $(s) { return document.querySelector(s); }
+function el(tag, cls, text) {
+  var e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined && text !== null) e.textContent = text;
+  return e;
+}
+function labelOf(id) { return labels[id] || 'unknown'; }
+function say(t) { $('#msg').textContent = t; }
+
+function passes(id) {
+  var r = byId[id];
+  if (!r || collapsed[r.group]) return false;
+  if (filter !== 'all' && labelOf(id) !== filter) return false;
+  if (query && (r.id + ' ' + r.dline + ' ' + r.fix_subject).toLowerCase().indexOf(query.toLowerCase()) < 0) return false;
+  return true;
+}
+function visibleIds() {
+  return rows.map(function (r) { return r.id; }).filter(passes);
+}
+function onScreen(id) {
+  var a = cardEl[id];
+  if (!a || a.getClientRects().length === 0) return false;
+  var t = a.getBoundingClientRect().top;
+  return t >= header.getBoundingClientRect().bottom - 1 && t < window.innerHeight;
+}
+function neighbour(id) {
+  var ids = rows.map(function (r) { return r.id; }), i = ids.indexOf(id), j;
+  for (j = i + 1; j < ids.length; j++) if (passes(ids[j])) return ids[j];
+  for (j = i - 1; j >= 0; j--) if (passes(ids[j])) return ids[j];
+  return null;
+}
+function setTarget(id) {
+  target = id;
+  rows.forEach(function (r) { cardEl[r.id].classList.toggle('cur', r.id === target); });
+}
+function scrollToTarget() {
+  if (target === null || onScreen(target)) return;
+  var a = cardEl[target];
+  a.style.scrollMarginTop = header.getBoundingClientRect().bottom + 'px';
+  a.scrollIntoView({ block: 'nearest' });
+  var d = a.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
+  if (d < 0) window.scrollBy(0, d);
+}
+
+function refresh() {
+  var n = { real: 0, bogus: 0, unknown: 0 };
+  rows.forEach(function (r) {
+    var a = cardEl[r.id], v = labelOf(r.id);
+    n[v]++;
+    a.classList.toggle('hide', !passes(r.id));
+    a.classList.toggle('real', v === 'real');
+    a.classList.toggle('bogus', v === 'bogus');
+    Array.prototype.forEach.call(a.querySelectorAll('.lbl'), function (b) { b.classList.toggle('on', b.dataset.value === v); });
+  });
+  if (target !== null && !passes(target)) target = null;
+  setTarget(target);
+  $('#n-real').textContent = 'real ' + n.real;
+  $('#n-bogus').textContent = 'bogus ' + n.bogus;
+  $('#n-unknown').textContent = 'unknown ' + n.unknown;
+  var known = D.min_real !== null;
+  $('#n-real').classList.toggle('met', known && n.real >= D.min_real);
+  var good = known && n.real >= D.min_real && n.bogus <= D.max_bogus;
+  $('#status').textContent = n.unknown ? 'unlabeled ' + n.unknown : (good ? 'targets met' : 'targets not met');
+  $('#status').className = 'status' + (n.unknown ? '' : (good ? ' ok' : ' no'));
+  var bar = $('#bar').children, total = rows.length || 1;
+  bar[0].style.width = (100 * n.real / total) + '%';
+  bar[1].style.width = (100 * n.bogus / total) + '%';
+  Array.prototype.forEach.call(document.querySelectorAll('.flt'), function (b) { b.classList.toggle('on', b.dataset.f === filter); });
+}
+
+function afterLabel(id) {
+  if (!passes(id)) setTarget(neighbour(id));
+  refresh(); // mut:refresh-first
+  scrollToTarget(); // mut:scroll
+}
+
+function setPending(on) {
+  document.body.dataset.pending = on ? '1' : '0';
+  Array.prototype.forEach.call(document.querySelectorAll('.lbl'), function (b) { b.disabled = on; });
+}
+
+function postLabel(id, value) {
+  setPending(true);
+  fetch('/label', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Label-Token': token },
+    body: JSON.stringify({ id: id, value: value, version: version }) })
+    .then(function (r) { return r.json().then(function (j) { return { status: r.status, body: j }; }); })
+    .then(function (res) {
+      if (res.status === 200) {
+        version = res.body.version;
+        labels[id] = value;
+        afterLabel(id);
+        say('');
+      } else if (res.status === 409) {
+        say('labels.tsv changed on disk; reloading');
+        setTimeout(function () { location.reload(); }, 1000);
+      } else {
+        say('write refused: ' + res.status + ' ' + (res.body.error || ''));
+      }
+    })
+    .catch(function (e) { say('write failed: ' + e); })
+    .then(function () { setPending(false); });
+}
+
+function hintText(r) {
+  var h = r.hint === 'touches' ? 'the fix commit touches the cited file' :
+    (r.hint === 'untouched' ? 'the fix commit does not touch the cited file' : 'fix commit unreachable');
+  return 'hint, not a label: ' + h;
+}
+
+function buildCard(r) {
+  var a = el('article', 'card');
+  a.dataset.id = r.id;
+  a.appendChild(el('div', 'meta', r.id + '  |  ' + r.fail_ts));
+  a.appendChild(el('div', 'claim', r.dline));
+  a.appendChild(el('div', 'fix meta', 'fix commit ' + r.fix_sha + ' ' + r.fix_subject));
+  var ul = el('ul', 'files');
+  r.files.forEach(function (f) { ul.appendChild(el('li', f.cite ? 'cite' : '', (f.cite ? 'cited  ' : '') + '+' + f.add + ' -' + f.del + '  ' + f.path)); });
+  a.appendChild(ul);
+  a.appendChild(el('div', 'hint', hintText(r)));
+  var xd = el('button', 'xd', 'Show diff');
+  var pre = el('pre', 'diff hide', r.diff ? r.diff + (r.diff_truncated ? '\n... diff cut at 200 lines' : '') : '(no diff for the cited file)');
+  xd.addEventListener('click', function () {
+    var h = pre.classList.toggle('hide');
+    xd.textContent = h ? 'Show diff' : 'Hide diff';
+  });
+  var box = el('div', 'diffbox');
+  box.appendChild(xd);
+  box.appendChild(pre);
+  a.appendChild(box);
+  var lab = el('div', 'lab');
+  ['real', 'bogus', 'unknown'].forEach(function (v) {
+    var b = el('button', 'lbl s-' + v, v);
+    b.dataset.value = v;
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    b.addEventListener('click', function (e) {
+      if (!e.isTrusted) return;
+      if (e.detail === 0) return; // mut:detail
+      if (!passes(r.id) || document.body.dataset.pending === '1') return;
+      e.currentTarget.blur();
+      setTarget(r.id);
+      postLabel(r.id, v);
+    });
+    lab.appendChild(b);
+  });
+  a.appendChild(lab);
+  a.addEventListener('click', function (e) {
+    if (e.target.closest && e.target.closest('button')) return;
+    setTarget(r.id);
+  });
+  return a;
+}
+
+function build() {
+  var groups = $('#groups');
+  rows.forEach(function (r) {
+    byId[r.id] = r;
+    if (!groupEl[r.group]) {
+      var s = el('section', 'grp');
+      var t = el('button', 'gt');
+      t.addEventListener('click', function () {
+        collapsed[r.group] = !collapsed[r.group];
+        s.classList.toggle('collapsed', !!collapsed[r.group]);
+        refresh();
+      });
+      s.appendChild(t);
+      s.appendChild(el('div', 'gbody'));
+      groupEl[r.group] = s;
+      groups.appendChild(s);
+    }
+    cardEl[r.id] = buildCard(r);
+    groupEl[r.group].lastChild.appendChild(cardEl[r.id]);
+  });
+  Object.keys(groupEl).forEach(function (g) {
+    var n = rows.filter(function (r) { return r.group === g; }).length;
+    groupEl[g].firstChild.textContent = g + ' (' + n + ')';
+  });
+  ['all', 'unknown', 'real', 'bogus'].forEach(function (f) {
+    var b = el('button', 'flt', f);
+    b.dataset.f = f;
+    b.addEventListener('click', function () { filter = f; refresh(); });
+    $('#filters').appendChild(b);
+  });
+  $('#q').addEventListener('input', function () { query = this.value; refresh(); });
+  $('#rules').textContent = (D.min_real === null ? 'Gate G targets unavailable: score.py not found' :
+    'Gate G targets: at least ' + D.min_real + ' real, at most ' + D.max_bogus + ' bogus, out of ' + rows.length) + '. A card is labelled only by a mouse click on its button.';
+}
+
+function move(d) {
+  var vis = visibleIds();
+  if (!vis.length) return;
+  if (target === null || !passes(target) || !onScreen(target)) {
+    var first = vis.filter(onScreen)[0];
+    setTarget(first === undefined ? null : first);
+    return;
+  }
+  setTarget(vis[Math.max(0, Math.min(vis.length - 1, vis.indexOf(target) + d))]);
+  scrollToTarget();
+}
+
+document.addEventListener('keydown', function (e) {
+  var k = e.key; // mut:keys
+  var t = e.target;
+  if (e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT')) return;
+  if (k === 'j' || k === 'k') move(k === 'j' ? 1 : -1);
+});
+
+build();
+refresh();
+</script>
+</body></html>

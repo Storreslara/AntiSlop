@@ -201,7 +201,7 @@ async function b01() {
   const want = VALUES.map(c);
   const got = r.counts.map((s) => parseInt(s.replace(/\D/g, ''), 10));
   if (JSON.stringify(want) !== JSON.stringify(got)) throw new Error('counts ' + JSON.stringify(got) + ' vs file ' + JSON.stringify(want));
-  if (!r.rules.includes('at least ' + r.min + ' real') || !r.rules.includes('at most ' + r.max + ' bogus')) throw new Error('targets missing');
+  if (r.min !== null && (!r.rules.includes('at least ' + r.min + ' real') || !r.rules.includes('at most ' + r.max + ' bogus'))) throw new Error('targets missing');
   r.cards.forEach((k, i) => {
     const d = r.rowsData[i];
     if (!k.claim.includes(d.dline)) throw new Error('claim missing on ' + d.id);

@@ -66,17 +66,18 @@ else
   echo "SKIP !!! no playwright plus Chromium found: ALL real-browser checks were skipped, so this run proves nothing about them !!!"
 fi
 
-# D01: the README's label.py serve options exist, and it never mentions label-ui
+# D01: the README's label.py serve options exist, and it never mentions the retired page generator
 step1="$(awk '/^## Gate G/{g=1} g&&/^1\. /{p=1} g&&/^2\. /{exit} p' "$RR/README.md")"
 help="$(python3 "$RR/label.py" serve --help 2>&1)"
+OLD="label""-ui"
 miss=0
 for f in $(printf '%s\n' "$step1" | grep -oE 'label\.py serve[^`]*' | grep -oE -- '--[a-z][a-z-]*' | sort -u); do
   printf '%s' "$help" | grep -qF -- "$f" || miss=$((miss + 1))
 done
-if printf '%s' "$step1" | grep -qF '`python3 eval/refutation-replay/label.py serve`' && [ "$miss" -eq 0 ] && ! grep -qF 'label-ui' "$RR/README.md"; then
-  ok "D01 README step 1 options exist in serve --help, no label-ui mention"
+if printf '%s' "$step1" | grep -qF '`python3 eval/refutation-replay/label.py serve`' && [ "$miss" -eq 0 ] && ! grep -qF "$OLD" "$RR/README.md"; then
+  ok "D01 README step 1 options exist in serve --help, no retired generator mention"
 else
-  bad "D01 README step 1 empty=$([ -z "$step1" ] && echo yes || echo no) missing-options=$miss label-ui=$(grep -cF 'label-ui' "$RR/README.md")"
+  bad "D01 README step 1 empty=$([ -z "$step1" ] && echo yes || echo no) missing-options=$miss retired-name-hits=$(grep -cF "$OLD" "$RR/README.md")"
 fi
 
 for p in $PIDS; do kill -TERM "$p" 2>/dev/null; done

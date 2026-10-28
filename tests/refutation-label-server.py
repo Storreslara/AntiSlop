@@ -562,11 +562,14 @@ def s15():
         check(page.count('</script>') == tpl.count('</script>'), '%d closers, template has %d' % (page.count('</script>'), tpl.count('</script>')))
         check('</script><b>' not in page and '\\u003c/script\\u003e\\u003cb\\u003ex\\u003c/b\\u003e' in page, 'claim not escaped')
         check('not a label' in page, 'hint wording missing')
-        score = importlib.util.spec_from_file_location('score_ref', os.path.join(RR, 'score.py'))
-        sm = importlib.util.module_from_spec(score)
-        score.loader.exec_module(sm)
         d = fx.page_data()
-        check(d['min_real'] == sm.MIN_REAL and d['max_bogus'] == len(fx.rows) - sm.MIN_REAL, 'thresholds %r %r' % (d['min_real'], d['max_bogus']))
+        if os.path.exists(os.path.join(RR, 'score.py')):  # a stripped copy has no score.py: the targets are then null
+            score = importlib.util.spec_from_file_location('score_ref', os.path.join(RR, 'score.py'))
+            sm = importlib.util.module_from_spec(score)
+            score.loader.exec_module(sm)
+            check(d['min_real'] == sm.MIN_REAL and d['max_bogus'] == len(fx.rows) - sm.MIN_REAL, 'thresholds %r %r' % (d['min_real'], d['max_bogus']))
+        else:
+            check(d['min_real'] is None and d['max_bogus'] is None, 'targets without score.py: %r' % ((d['min_real'], d['max_bogus']),))
     finally:
         fx.stop()
 

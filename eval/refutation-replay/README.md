@@ -11,8 +11,10 @@ ship until this check passes.
 | file | written by | what it holds |
 |---|---|---|
 | `build-corpus.py` | rfp-u2 | builds, checks and prints the label checklist for the corpus |
+| `label.py` | rfp-u2c | the Gate G1 labeling server: a click on a card writes that one line of `labels.tsv` |
+| `label_page.html` | rfp-u2c | the labeling page template, filled in memory by `label.py` |
 | `corpus.jsonl` | `build-corpus.py`, committed | one row per past judgment defect: unit, FAIL timestamp, reviewed and baseline commits, the `D<n>:` line, the fix commit |
-| `labels.tsv` | the builder writes `unknown`; **a human** sets `real` or `bogus` | ground truth |
+| `labels.tsv` | the builder writes `unknown`; **a human** sets `real` or `bogus` with `label.py serve` (or by hand) | ground truth |
 | `run.sh` | rfp-u2, rfp-u2b | one headless `claude -p` per corpus group, in a fresh clone holding the history up to the reviewed commit only |
 | `guard.py` | rfp-u2b | the PreToolUse hook of every run: Read, Grep and Glob inside the clone, Bash only as `git show`, `git diff` and `git log` |
 | `report.jsonl` | `run.sh`, committed by the human | one row per defect: the answer, the artifact, the turns, the cost |
@@ -20,10 +22,18 @@ ship until this check passes.
 
 ## Gate G (manual: the human operator runs it)
 
-1. `python3 eval/refutation-replay/build-corpus.py --labels` prints one checklist entry per row: the claim,
-   then the fix commit's subject. For each row, set `real` or `bogus` in `labels.tsv`, then commit it.
-   `--check` must then print `unlabeled=0`. An agent must not set the labels: they are the ground truth
-   the agent's own kind is graded against.
+1. `python3 eval/refutation-replay/label.py serve` starts the labeling server (add `--no-open` on a headless
+   machine, `--port <n>` for a fixed port: `label.py serve --no-open --port <n>`).
+   - It prints `label: http://127.0.0.1:<port>/?t=<token>` and opens that URL in a browser when it can.
+   - Read each card's evidence and click real or bogus (unknown undoes). The keyboard only navigates (j and k);
+     no key labels.
+   - Each click writes that one line of `eval/refutation-replay/labels.tsv` in your working tree at once.
+     There is no export step.
+   - Ctrl-C stops the server.
+   - Review `git diff eval/refutation-replay/labels.tsv`. `build-corpus.py --check` must print `unlabeled=0`.
+     Then commit `labels.tsv` yourself.
+   - `build-corpus.py --labels` remains the plain-text checklist.
+   - An agent must not set the labels: they are the ground truth the agent's own kind is graded against.
 2. `bash eval/refutation-replay/run.sh` makes one sonnet run per group, each capped by
    `--max-budget-usd 1` and `--max-turns 10`. Check the plan first with `--dry-run`. A group whose clone
    or brief fails gets one `NONE` row per defect, which counts as unanswered. Exit 3 means a run used
@@ -33,6 +43,16 @@ ship until this check passes.
    means:
    - `pass` (exit 0): dispatch rfp-u3.
    - `fail` (exit 1) or `insufficient` (exit 2): do not dispatch rfp-u3. Return the report to spec-master.
+
+## Labeling server: what it does and does not protect
+
+- It binds to 127.0.0.1 only.
+- A foreign `Host` or `Origin` is refused, which stops DNS rebinding.
+- A per-launch token sits in the URL and is sent on every write.
+- Each click is one validated, atomic, version-checked line: the file is never re-serialized.
+- A local write log at `.git/refutation-label-writes.log` records every POST. It is never committed.
+- It does **not** stop a local process that can read the URL or the token, or that edits the file directly,
+  an agent included. That control is process-level, and the human's own commit of `labels.tsv` is the record.
 
 ## Thresholds and what they mean
 
