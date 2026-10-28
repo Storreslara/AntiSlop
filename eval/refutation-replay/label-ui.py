@@ -7,9 +7,10 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-DEFAULT_OUT = '/tmp/claude-1000/-home-sebas-AntiSlop/05a6765a-da13-4deb-9a15-1128b5ee3d15/scratchpad/label-ui/label-ui.html'
+DEFAULT_OUT = os.path.join(tempfile.gettempdir(), 'gateg-label-ui.html')
 DEFAULT_HEADER = '# id<TAB>real|bogus|unknown (Gate G1: a human sets each label)'
 DIFF_CAP = 200
 
@@ -20,10 +21,10 @@ def git(repo, *args):
 
 
 def read_labels(path):
-    header, labels = DEFAULT_HEADER, {}
+    header, labels, seen = DEFAULT_HEADER, {}, False
     for l in open(path):
         if l.startswith('#'):
-            header = l.rstrip('\n') if header == DEFAULT_HEADER else header
+            header, seen = (header if seen else l.rstrip('\n')), True
         elif l.strip():
             k, _, v = l.rstrip('\n').partition('\t')
             labels[k] = v
@@ -227,7 +228,7 @@ function buildTsv(header, ids, labels) {
     var order = [], by = {};
     D.rows.forEach(function (r) { if (!by[r.group]) { by[r.group] = []; order.push(r.group); } by[r.group].push(r); });
     order.forEach(function (g) {
-      var d = el('details', 'grp'); d.open = true; d.dataset.g = g;
+      var d = el('details', 'grp'); d.open = true; d.dataset.g = g; d.ontoggle = refresh;
       var s = el('summary'); s.appendChild(el('span', '', by[g][0].unit + '  '));
       s.appendChild(el('span', 'meta', by[g][0].fail_ts + '  '));
       s.appendChild(el('span', 'meta gp', '')); d.appendChild(s);
@@ -236,12 +237,18 @@ function buildTsv(header, ids, labels) {
     });
     refresh();
   }
+  function vis(i) { return matches(D.rows[i]) && cards[i].parentNode.open; }
+  function step(from, dir) {
+    for (var i = from + dir; i >= 0 && i < cards.length; i += dir) if (vis(i)) return i;
+    return -1;
+  }
   function matches(r) {
     var l = labels[r.id], q = document.getElementById('q').value.toLowerCase();
     if (filter === 'amber' ? r.hint === 'touches' : (filter !== 'all' && l !== filter)) return false;
     return !q || (r.id + ' ' + r.dline + ' ' + r.fix_subject).toLowerCase().indexOf(q) >= 0;
   }
   function refresh() {
+    if (cur < 0 || !vis(cur)) cur = vis(0) ? 0 : step(0, 1);
     D.rows.forEach(function (r, i) {
       var c = cards[i], l = labels[r.id];
       c.className = 'card ' + (l === 'unknown' ? '' : l) + (i === cur ? ' cur' : '') + (matches(r) ? '' : ' hide');
@@ -265,20 +272,21 @@ function buildTsv(header, ids, labels) {
     [['real', re, '#1a7f37'], ['bogus', bo, '#cf222e']].forEach(function (x) { var i = el('i'); i.style.width = (100 * x[1] / n) + '%'; i.style.background = x[2]; bar.appendChild(i); });
   }
   function set(id, v, advance) {
-    labels[id] = v; save(); refresh();
-    if (advance) move(1);
+    var nx = advance ? step(cur, 1) : -1;
+    labels[id] = v; save();
+    if (nx >= 0) { cur = nx; cards[nx].scrollIntoView({block: 'center'}); }
+    refresh();
   }
   function setCur(i) { cur = i; refresh(); }
   function move(dir) {
-    var i = cur;
-    for (var k = 0; k < cards.length; k++) {
-      i += dir; if (i < 0 || i >= cards.length) return;
-      if (matches(D.rows[i])) { cur = i; refresh(); cards[i].scrollIntoView({block: 'center'}); return; }
-    }
+    var i = step(cur, dir);
+    if (i >= 0) { cur = i; refresh(); cards[i].scrollIntoView({block: 'center'}); }
   }
   document.addEventListener('keydown', function (e) {
     if (e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey || e.altKey) return;
     var k = e.key.toLowerCase();
+    if (cur < 0 || !vis(cur)) { refresh(); if (k === 'r' || k === 'b' || k === 'u') return; }
+    if (cur < 0) return;
     if (k === 'j') move(1); else if (k === 'k') move(-1);
     else if (k === 'r') set(ids[cur], 'real', true);
     else if (k === 'b') set(ids[cur], 'bogus', true);
@@ -310,13 +318,13 @@ function buildTsv(header, ids, labels) {
     var f = e.target.files[0]; if (!f) return;
     var rd = new FileReader();
     rd.onload = function () {
-      var n = 0;
-      String(rd.result).split('\n').forEach(function (l) {
-        if (!l || l.charAt(0) === '#') return;
+      var n = 0, skipped = 0;
+      String(rd.result).split(/\r?\n/).forEach(function (l) {
+        if (!l.trim() || l.charAt(0) === '#') return;
         var p = l.split('\t');
-        if (labels.hasOwnProperty(p[0]) && VALID.indexOf(p[1]) >= 0) { labels[p[0]] = p[1]; n++; }
+        if (labels.hasOwnProperty(p[0]) && VALID.indexOf(p[1]) >= 0) { labels[p[0]] = p[1]; n++; } else skipped++;
       });
-      save(); refresh(); say('imported ' + n + ' labels');
+      save(); refresh(); say('imported ' + n + ' labels, skipped ' + skipped + ' lines');
     };
     rd.readAsText(f);
   };
