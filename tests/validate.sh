@@ -838,6 +838,15 @@ else
 fi
 
 echo
+echo "== refutation-replay-isolation: per-id gate scoring, history-limited replay clone and guard hook (Bash, rfp-u2b) =="
+if bash tests/refutation-replay-isolation.test.sh > /dev/null; then
+  echo "OK   tests/refutation-replay-isolation.test.sh"
+else
+  echo "FAIL tests/refutation-replay-isolation.test.sh"
+  fail=1
+fi
+
+echo
 echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
 if bash tests/review-precheck.test.sh > /dev/null; then
   echo "OK   tests/review-precheck.test.sh"

@@ -13,7 +13,8 @@ ship until this check passes.
 | `build-corpus.py` | rfp-u2 | builds, checks and prints the label checklist for the corpus |
 | `corpus.jsonl` | `build-corpus.py`, committed | one row per past judgment defect: unit, FAIL timestamp, reviewed and baseline commits, the `D<n>:` line, the fix commit |
 | `labels.tsv` | the builder writes `unknown`; **a human** sets `real` or `bogus` | ground truth |
-| `run.sh` | rfp-u2 | one headless `claude -p` per corpus group, at the reviewed commit |
+| `run.sh` | rfp-u2, rfp-u2b | one headless `claude -p` per corpus group, in a fresh clone holding the history up to the reviewed commit only |
+| `guard.py` | rfp-u2b | the PreToolUse hook of every run: Read, Grep and Glob inside the clone, Bash only as `git show`, `git diff` and `git log` |
 | `report.jsonl` | `run.sh`, committed by the human | one row per defect: the answer, the artifact, the turns, the cost |
 | `score.py` | rfp-u2 | prints `replay-gate: <pass\|fail\|insufficient> …`; `--gate` turns the result into the exit code |
 
@@ -24,8 +25,10 @@ ship until this check passes.
    `--check` must then print `unlabeled=0`. An agent must not set the labels: they are the ground truth
    the agent's own kind is graded against.
 2. `bash eval/refutation-replay/run.sh` makes one sonnet run per group, each capped by
-   `--max-budget-usd 1` and `--max-turns 10`. Check the plan first with `--dry-run`. Commit
-   `report.jsonl`.
+   `--max-budget-usd 1` and `--max-turns 10`. Check the plan first with `--dry-run`. A group whose clone
+   or brief fails gets one `NONE` row per defect, which counts as unanswered. Exit 3 means a run used
+   tools but the guard logged no call: the guard hook is not wired, so fix that and re-run from the
+   start. Commit `report.jsonl`.
 3. Run `python3 eval/refutation-replay/score.py eval/refutation-replay/report.jsonl --gate`. The result
    means:
    - `pass` (exit 0): dispatch rfp-u3.
@@ -45,8 +48,14 @@ ship until this check passes.
 
 ## Known fidelity limits
 
-- The replay is not the `explorer` persona. It sends the same brief, but runs headless with read-only tools
-  (`Read`, `Grep`, `Glob`, `git`, `grep`), without the persona body or its graph MCP.
+- The replay is not the `explorer` persona. It sends the same brief, but runs headless without the persona
+  body or its graph MCP, and loads no user, project or plugin settings (`--setting-sources local`). Its
+  tools are Read, Grep and Glob inside the clone and Bash only as `git show`, `git diff` and `git log`.
+  `guard.py` refuses everything else, including `git -c`, shell operators and paths outside the clone.
+- Each run happens in a fresh repository fetched up to the reviewed commit. The later fix commit, other
+  refs, `labels.tsv` and the FAIL records are not in it, and the guard refuses paths outside it.
+- A claim is whitespace-collapsed and cut at 300 characters when the corpus is built; its cited
+  `<path>:<line>` is kept whole. The live reviewer writes its own defect lines, with no cut.
 - The corpus is per defect. A judgment defect from a FAIL block that also had a mechanical ground still
   counts. The corpus measures how real defects are treated, not how often the pass would run.
 - "Real" starts as a proxy: a `(<unit>)` commit after the FAIL touched the cited file, and the unit later

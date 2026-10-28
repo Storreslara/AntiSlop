@@ -5,9 +5,10 @@ Build (default): read every FAIL block under the markers dir, keep judgment-shap
 mechanical keyword on the line) that cite a <path>:<line> present at the reviewed commit, and label a defect proxy-real when a `(<unit>)` commit after
 the FAIL touched the cited path and the unit holds a PASS marker. Group them per FAIL block (at most 3,
 the pass's cap), sample groups with a fixed seed until --size rows, and write corpus.jsonl plus labels.tsv
-(every label `unknown`; a human sets real|bogus, Gate G1).
+(every label `unknown`; a human sets real|bogus, Gate G1). A claim is whitespace-collapsed and cut at
+300 characters; its cited <path>:<line> is kept whole.
 --check: validate the committed corpus and labels against git; print one summary line; exit 1 if invalid.
---labels: print the human labelling checklist (claim, then the fix commit's subject and diffstat).
+--labels: print the human labelling checklist (the claim, then the fix commit's short hash and subject).
 Reads markers and git only; writes only --out and its labels.tsv sibling. Deterministic for a given tree.
 """
 import argparse, json, os, random, re, subprocess, sys

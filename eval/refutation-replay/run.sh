@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# Refutation replay runner (rfp-u2, Gate G2). For each corpus group (at most 3 defects from one past FAIL
-# block), check out the reviewed commit in a scratch worktree, build the brief with this checkout's
-# bin/refutation-brief.sh, and run one headless `claude -p` on sonnet with read-only tools and a 10-turn
-# cap. Each answer line `D<n>: VERDICT — ... — artifact: ...` becomes one report row.
+# Refutation replay runner (rfp-u2, Gate G2; isolation rfp-u2b). For each corpus group (at most 3 defects
+# from one past FAIL block), fetch the reviewed commit into a fresh repository that holds only the history
+# up to that commit (no other refs, no remote, no FETCH_HEAD, no alternates), build the brief there with
+# this checkout's bin/refutation-brief.sh, and run one headless `claude -p` on sonnet with a 10-turn cap.
+# The run loads no user, project or plugin settings (--setting-sources local; the clone has no
+# .claude/settings.local.json) and only guard.py as a PreToolUse hook: Read, Grep and Glob inside the
+# clone, Bash only as `git show`, `git diff` or `git log`. Each answer line
+# `D<n>: VERDICT — ... — artifact: ...` becomes one report row. A group whose clone or brief fails gets
+# one NONE row per defect, so the scorer counts it as unanswered.
 # Usage: eval/refutation-replay/run.sh [--dry-run] [--corpus <file>] [--out <file>] [--repo <dir>]
-# --dry-run prints one `group=<id> cmd: ...` line per group and runs nothing: no claude, no worktree.
+# --dry-run prints one `group=<id> cmd: ...` line per group and runs nothing: no claude, no clone.
+# Exit 3: a run used tools but the guard logged no call, so the guard is not wired; the replay stops.
 # A real run spends API budget (each run capped by --max-budget-usd 1). The human runs it (Gate G2).
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -27,7 +33,9 @@ brief="$here/../../bin/refutation-brief.sh"
 brief="$(cd "$(dirname "$brief")" && pwd)/refutation-brief.sh"
 
 CLAUDE_FLAGS=(--model sonnet --max-turns 10 --output-format json --no-session-persistence
-  --max-budget-usd 1 --allowedTools Read Grep Glob "Bash(git *)" "Bash(grep *)")
+  --max-budget-usd 1 --setting-sources local --strict-mcp-config --permission-mode dontAsk
+  --tools Read,Grep,Glob,Bash
+  --allowedTools Read Grep Glob "Bash(git show *)" "Bash(git diff *)" "Bash(git log *)")
 
 groups="$(python3 - "$corpus" <<'PY'
 import json, sys, collections
@@ -41,22 +49,49 @@ for gid, rows in g.items():
 PY
 )" || { echo "run.sh: unreadable corpus" >&2; exit 2; }
 
+# A fresh repository holding the reviewed commit's history only, with the baseline in it.
+clone() { # <dir> <reviewed> <baseline>
+  git init -q "$1" && git -C "$1" fetch -q --no-tags "file://$repo" "$2" \
+    && git -C "$1" -c advice.detachedHead=false checkout -q --detach FETCH_HEAD \
+    && rm -f "$1/.git/FETCH_HEAD" && git -C "$1" cat-file -e "$3^{commit}"
+}
+none_rows() { # <ids-json> <setup-step>: one unanswered row per defect of a group that could not run
+  python3 -c 'import json, sys
+for i in json.loads(sys.argv[1]):
+    print(json.dumps({"id": i, "answer": "NONE", "artifact": "", "num_turns": 0, "cost_usd": 0, "setup": sys.argv[2]}, sort_keys=True))' "$1" "$2" >> "$out"
+}
+
 work="$(mktemp -d)"
-trap 'git -C "$repo" worktree prune >/dev/null 2>&1; rm -rf "$work"' EXIT
+trap 'rm -rf "$work"' EXIT
 [ "$dry" = 1 ] || : > "$out"
 n=0
 while IFS=$'\t' read -r gid reviewed baseline dlines ids; do
   [ -n "$gid" ] || continue
   n=$((n + 1))
   if [ "$dry" = 1 ]; then
-    echo "group=$gid cmd: claude -p <brief> ${CLAUDE_FLAGS[*]}"
+    echo "group=$gid cmd: claude -p <brief> ${CLAUDE_FLAGS[*]} --settings <guard.py hook for the group's clone>"
     continue
   fi
   wt="$work/$n"
-  git -C "$repo" worktree add -q --detach "$wt" "$reviewed" || { echo "run.sh: worktree failed for $gid" >&2; continue; }
+  clone "$wt" "$reviewed" "$baseline" >/dev/null 2>&1 \
+    || { echo "run.sh: clone failed for $gid" >&2; none_rows "$ids" clone; rm -rf "$wt"; continue; }
   prompt="$(cd "$wt" && python3 -c 'import json,sys; print("\n".join(json.loads(sys.argv[1])))' "$dlines" | bash "$brief" "$baseline")" \
-    || { echo "run.sh: brief refused for $gid" >&2; git -C "$repo" worktree remove --force "$wt"; continue; }
-  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" ) > "$work/$n.json" 2> "$work/$n.err"
+    || { echo "run.sh: brief refused for $gid" >&2; none_rows "$ids" brief; rm -rf "$wt"; continue; }
+  log="$work/$n.guard.log"; : > "$log"
+  python3 -c 'import json, shlex, sys
+cmd = " ".join(shlex.quote(x) for x in ["python3"] + sys.argv[1:])
+print(json.dumps({"hooks": {"PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": cmd}]}]}}))' \
+    "$here/guard.py" "$wt" "$log" > "$work/$n.settings.json"
+  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" --settings "$work/$n.settings.json" ) > "$work/$n.json" 2> "$work/$n.err"
+  turns="$(python3 -c 'import json, sys
+try:
+    print(int(json.load(open(sys.argv[1])).get("num_turns") or 0))
+except Exception:
+    print(0)' "$work/$n.json")"
+  if [ "$turns" -ge 2 ] && [ ! -s "$log" ]; then
+    echo "run.sh: guard not invoked for $gid (num_turns=$turns): the guard hook is not wired; stopping" >&2
+    exit 3
+  fi
   python3 - "$work/$n.json" "$ids" >> "$out" <<'PY'
 import json, re, sys
 try:
@@ -76,6 +111,6 @@ for i, rid in enumerate(ids, 1):
     print(json.dumps({'id': rid, 'answer': v, 'artifact': art, 'num_turns': res.get('num_turns', 0),
                       'cost_usd': res.get('total_cost_usd', 0)}, sort_keys=True))
 PY
-  git -C "$repo" worktree remove --force "$wt" >/dev/null 2>&1
+  rm -rf "$wt"
 done <<< "$groups"
 echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo "$out")"
