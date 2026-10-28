@@ -1,10 +1,13 @@
 # Refutation pass: challenge the reviewer's judgment defects before a FAIL verdict
 
-Status: **revision 2, 2026-10-27** (spec-master), plus follow-up unit rfp-u2b (2026-10-27). Revision 2 applies
-the four user decisions and the critic's review (verdict "SOUND WITH CHANGES"). Fast path: 6 dispatchable
-units plus one human gate, and all six contracts are written. rfp-u1 and rfp-u2 have reviewer PASS markers.
-rfp-u2b (Gate G hardening, from rfp-u2's PASS notes) is next and not yet dispatched. Gate G and rfp-u3 to
-rfp-u5 wait on it. Open Questions 1 and 2 await the user (their recommended defaults are applied).
+Status: **revision 2, 2026-10-27** (spec-master), plus follow-up units rfp-u2b (2026-10-27) and rfp-u2c
+(2026-10-28). Revision 2 applies the four user decisions and the critic's review (verdict "SOUND WITH
+CHANGES"). Fast path: 7 dispatchable units plus one human gate, and all seven contracts are written. rfp-u1,
+rfp-u2 and rfp-u2b have reviewer PASS markers. rfp-u2c (the permanent Gate G1 labeling server, replacing the
+superseded `label-ui` unit) is next and not yet dispatched. Gate G and rfp-u3 to rfp-u5 wait on it. No label
+is set yet: `labels.tsv` holds 41 `unknown`. An all-`real` file the human exported with the old page is not in
+the repository and waits on the user's confirmation. Open Questions 1 and 2 await the user (their recommended
+defaults are applied). Open Question 3 is new.
 
 ## Units and order
 
@@ -16,7 +19,8 @@ G3 printed `replay-gate: pass`). One unit is mid-review at a time.
 | rfp-u1 | lead-programmer | (none) | [rfp-u1](2026-10-27-refutation-pass/contracts/rfp-u1.md): the brief script |
 | rfp-u2 | lead-programmer | rfp-u1 (its `run.sh` dry-run calls the brief script) | [rfp-u2](2026-10-27-refutation-pass/contracts/rfp-u2.md): the replay corpus and gate tooling |
 | rfp-u2b | lead-programmer | rfp-u2 (it hardens rfp-u2's files) | [rfp-u2b](2026-10-27-refutation-pass/contracts/rfp-u2b.md): per-id gate scoring, the history-limited replay clone and the guard hook |
-| Gate G | the human operator (G1, G2), anyone (G3) | rfp-u2b | none: not a dispatchable unit (see "Gate G") |
+| rfp-u2c | lead-programmer | rfp-u2b (same directory; G1 needs the tool) | [rfp-u2c](2026-10-27-refutation-pass/contracts/rfp-u2c.md): the Gate G1 labeling server; retires `label-ui` |
+| Gate G | the human operator (G1, G2), anyone (G3) | rfp-u2c | none: not a dispatchable unit (see "Gate G") |
 | rfp-u3 | lead-programmer | rfp-u1, rfp-u2, Gate G | [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format |
 | rfp-u4 | lead-programmer | rfp-u3 (its edit 0 checks the protocol text) | [rfp-u4](2026-10-27-refutation-pass/contracts/rfp-u4.md): the task-master fix-contract bullet and the milestone-auditor sample |
 | rfp-u5 | scribe | rfp-u3 and rfp-u4 (its criteria read both; `no-source` otherwise) | [rfp-u5](2026-10-27-refutation-pass/contracts/rfp-u5.md): glossary entries and ADR 0043 |
@@ -289,6 +293,24 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
     runner) and vtmp-1 (the 600 s cap); criterion 9 handles both with `ANTISLOP_VALIDATE_LANES=4` and the
     600000 ms timeout.
   - The sweep is best-effort: `.claude/reviewed/` is per-clone.
+- rfp-u2c (2026-10-28):
+  - **`label-ui` is superseded by rfp-u2c.** label-ui was an unplanned labeling-page unit (commits a541f157,
+    476297ad, ae614188). Its `.fail` record holds 3 blocks (tiers sonnet, sonnet, opus). All three are one
+    defect class: a write path other than a mouse click on a visible button. It is a keyboard shortcut on a
+    hidden card, a re-snap to an off-screen card, or a focused button re-fired by Space or Enter, plus
+    scroll-before-refresh. A 4th attempt was cancelled with uncommitted edits to both files. Its ladder is
+    spent and it is not re-dispatched. Its commits stay in history, and rfp-u2c deletes the files (contract
+    edit 6) after porting the WIP's `D\d+` and rename-aware numstat fixes (edit 0).
+  - Because of that history, rfp-u2c is tagged for **opus** and the full lane. Its design removes every
+    non-click write path instead of guarding it, and its real-browser probe checks the invariant after every
+    step.
+  - `rfp-u2b.pass` notes: the `guard.py` `-O` bundling `NOTE[spec]` is not rfp-u2c's scope; it becomes Open
+    Question 3, before G2. The "`unknown` ids count in the unanswered denominator" `NOTE[spec]` is moot once G1
+    holds, because G1 requires `unlabeled=0`. A line under Gate G now says so. The two `NOTE[code]` items stay
+    advisory.
+  - `marker-audit.sh --notes` on `eval/refutation-replay`, `tests/validate.sh` and
+    `tests/refutation-label-ui.test.sh` adds nothing beyond the notes above (see the Self-check). The sweep is
+    best-effort.
 
 ## Clarifications
 1. Functional scope & success criteria: Partial
@@ -375,6 +397,49 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   The 300-character cut is stated in the docstring and the README.
 - 2026-10-27 Completion / acceptance signals: Q How do rfp-u2b's criteria avoid the precheck's two-line
   literal quirk? → A (self-resolved): every expected stdout is one line (harness note under Step 2b).
+- 2026-10-28 Functional scope & success criteria: Q Is the Gate G1 labeling tool a throwaway page or a
+  permanent tool in the repository? → A: permanent. It is a localhost server shipped in the repository that
+  serves the page from memory and writes each label click straight into `labels.tsv`, with no export step.
+  Only a human click may write, and it binds to 127.0.0.1 only (per user, 2026-10-28). It becomes unit
+  rfp-u2c, and `label-ui` is superseded.
+- 2026-10-28 User interaction flow: Q Do keyboard shortcuts set labels? → A: no. Labeling is mouse-only, and
+  r/b/u are removed. j/k, filters, search, groups, the progress panel and the evidence stay. A
+  keyboard-synthesised click (`e.detail === 0`, Enter/Space on a focused button) never writes, and buttons
+  never keep focus (per user, 2026-10-28).
+- 2026-10-28 Domain entities / data model: Q What is one label write? → A (self-resolved): one POST carrying
+  `id`, `value` and `version`. `id` must be in the corpus, `value` in `real|bogus|unknown`, and `version` must
+  be the sha256 of the file's current bytes (otherwise 409, and the page reloads). Exactly that id's line is
+  replaced under a lock, by temp file, fsync and rename, so the header, the order and every other byte are
+  kept.
+- 2026-10-28 Non-functional attributes (perf, security, scale): Q Which localhost protections, and what do
+  they not cover? → A (self-resolved):
+  - bind 127.0.0.1; refuse a foreign Host (DNS rebinding) and a foreign or missing Origin;
+  - a per-launch token, required in the URL for the page and in a header for every write;
+  - POST only, JSON only, a 1024-byte cap, exact paths, no CORS, no file serving, no shell, and a strict CSP.
+  These do not stop a local process that reads the URL, the token or the file itself, an agent included. The
+  human's commit is the record.
+- 2026-10-28 Edge cases / failure handling: Q Is extra evidence of a human session warranted, and is a
+  committed marker? → A (self-resolved): a local append-only write log (`.git/refutation-label-writes.log`: one
+  JSON line per POST with Origin and User-Agent, never the token, never tracked) is warranted, because it is
+  cheap. A committed marker is out of scope (Out of scope 8): any process that can run the tool could forge
+  it.
+- 2026-10-28 Technical constraints & tradeoffs: Q Keep a read-only export, or the old generator, next to the
+  server? → A (self-resolved): neither. The user chose the server only. The labels are already a plain file in
+  the working tree that `git diff` shows, and `build-corpus.py --labels` stays the text checklist.
+- 2026-10-28 External dependencies & integrations: Q How is the real-browser probe run without a network
+  install? → A (self-resolved): Node playwright, found through `PLAYWRIGHT_PATH`, then `node_modules`, then
+  the drivers in local Python environments (this machine: two miniforge envs). It uses playwright's cached
+  Chromium. With none found it prints a loud `SKIP !!!` line, which validate.sh's skip summary counts, and it
+  fails when `LABEL_UI_REQUIRE_BROWSER` is set.
+- 2026-10-28 Completion / acceptance signals: Q How do rfp-u2c's criteria avoid passing vacuously when the
+  writer authors both the code and the tests? → A (self-resolved): the contract fixes anchor comments on the
+  exact lines of the eight checks. Criterion 3 deletes or moves each line in a scratch copy and requires the
+  named case to go red. It prints `noanchor` if the anchor is missing, `green` if the suite misses the
+  mutation, and `base=fail` if the unmutated suite is not all-pass.
+- 2026-10-28 Terminology consistency: Q What do "on screen" and "target" mean, given that label-ui's FAILs
+  hinged on them? → A (self-resolved): "target" is the j/k navigation card (`target`, an id or null). A card is
+  "on screen" when it is displayed and its top edge lies between the sticky header's bottom edge and the
+  viewport's bottom edge. The page and the probe share this one definition (contract edit 2).
 
 ## Risks / dependencies
 
@@ -391,8 +456,19 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   gate stricter, because a bogus defect counted as real and then refuted counts as a miss.
 - **R4: audit noise.** One `grant-denied` line per pass. Out of scope.
 - **R5: ordering.** As in "Units and order": rfp-u1, then rfp-u2 (its `run.sh` needs the brief script), then
-  rfp-u2b (it hardens rfp-u2's files), then Gate G (human), then rfp-u3, then rfp-u4, then rfp-u5 (after both rfp-u3 and rfp-u4). The branch has other
-  units in flight, so each bump is +1 on the version current at dispatch.
+  rfp-u2b (it hardens rfp-u2's files), then rfp-u2c (the G1 labeling tool), then Gate G (human: G1 labels, G2
+  the paid replay, G3 the score), then rfp-u3, then rfp-u4, then rfp-u5 (after both rfp-u3 and rfp-u4). The
+  branch has other units in flight, so each bump is +1 on the version current at dispatch.
+- **R10: the labeling tool writes ground truth.** The server must never be a label source of its own. It has
+  no default, bulk or startup write, and every write is one validated, version-checked line from a trusted
+  mouse click. Server cases S01 to S16 check this, and so does the browser probe, whose invariant is checked
+  after every step of a seeded random sequence (rfp-u2c B09). What the server cannot stop: a local process
+  with the token, or with write access to the file, can change labels. The human's review of `git diff` and
+  their own commit remain the control (README, rfp-u2c edit 8).
+- **R11: rfp-u2c's criteria were not run green by spec-master.** No payload exists to run them on (the
+  contract specifies behaviour, not code). Each was checked with `bash -n`, the runnable ones fail on today's
+  tree as stated, and the mutation commands were run on dummy anchor lines. The reviewer's run of criterion 3
+  is the first full proof.
 - **R8: gate-safe commands.** The milestone auditor's sample commands and the range criteria must pass
   `reviewed-path-gate.sh` and `harness-integrity-gate.sh` as written. spec-master probed them: plain `grep -r`
   piped to `sort` or `wc -l` passes; a `$(…)` substitution around the reviewed-markers path is refused, and so
@@ -414,8 +490,9 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - P3 "Version-stamp discipline": satisfied. rfp-u3 and rfp-u4 touch `agents/` and `templates/` and bump in
   each commit. rfp-u1 bumps too: it touches no stamped path, but `--update` installs a new helper.
 - P5 "`tests/validate.sh` is the merge gate": satisfied. Every lead unit has a validate.sh criterion, and
-  rfp-u1, rfp-u2 and rfp-u2b register their new suites. rfp-u2b touches no stamped path and needs no
-  bump.
+  rfp-u1, rfp-u2, rfp-u2b and rfp-u2c register their new suites. rfp-u2b and rfp-u2c touch no stamped path
+  and need no bump. rfp-u2c's browser probe skips loudly without a browser, and validate.sh's skip summary
+  counts that line.
 - P4 "Optional personas degrade gracefully" (SHOULD): satisfied. `explorer` is a core persona, and a spawn
   failure degrades to `skipped=no-subagent`.
 
@@ -486,11 +563,67 @@ backtick literal. A two-line expected stdout written as `` `A` then `B` `` can n
 hit this, and its reviewer overrode the false fail by hand. Until the precheck learns two-line literals,
 contract criteria should print one line, or the reviewer must override.
 
-## Gate G (human, between Step 2b and Step 3; not a dispatchable unit)
+## Step 2c (rfp-u2c, lead-programmer, after rfp-u2b): the Gate G1 labeling server
+
+The human needs a usable way to set 41 labels. The unplanned `label-ui` page generator failed review 3 times
+on one defect class and is superseded (Context, "Prior FAIL history", rfp-u2c). The user chose a permanent,
+mouse-only localhost server in the repository that writes clicks straight into `labels.tsv` (Clarifications,
+2026-10-28).
+
+- **What ships.** `eval/refutation-replay/label.py serve` and its page template `label_page.html`. The server
+  binds 127.0.0.1 on a random or given port, serves one in-memory page behind a per-launch token, and accepts
+  one write shape: `POST /label`. Each write is token-, Host- and Origin-checked, validated against the corpus,
+  version-checked (409, and the page reloads), and written as one atomic line under a lock. Every POST is
+  logged to `.git/refutation-label-writes.log`. It runs headless with `--no-open`, and otherwise tries
+  `wslview`, `explorer.exe` or `xdg-open` and never fails if none works.
+- **The page.** Labeling is mouse-only: no key writes, buttons never take focus, and untrusted or
+  `detail === 0` clicks are dropped. It keeps j/k, filters, search, groups, the progress panel (at least 30 real,
+  at most 11 bogus, read from `score.py`) and the evidence (claim, fix commit, numstat, a hint that is never a
+  label, and a capped diff). `refresh()` runs before any scroll, and a hidden target becomes `null`.
+- **Retired.** `label-ui.py` and `tests/refutation-label-ui.test.sh` are deleted. Their WIP `D\d+` and rename
+  fixes are ported first. There is no export and no import.
+- **Tests.**
+  - The server suite (S01 to S16) uses stdlib only, runs in-process on fixtures, and never opens the real
+    files.
+  - A headless-Chromium probe (B01 to B11) uses trusted input and a seeded random sequence, and checks after
+    every step that the file changed only through a mouse click on an on-screen label button.
+  - A docs case (D01).
+  - Criterion 3 applies eight anchored mutations: token, Host, Origin, version, non-atomic write, a
+    re-enabled key label, `detail === 0` allowed, and scroll-before-refresh. Each must turn its named case
+    red.
+
+Affected files:
+- `eval/refutation-replay/{label.py (new), label_page.html (new), README.md}`
+- `eval/refutation-replay/label-ui.py` (deleted)
+- `tests/{refutation-label.test.sh, refutation-label-server.py, refutation-label-browser.js}` (new)
+- `tests/refutation-label-ui.test.sh` (deleted)
+- `tests/validate.sh` (registration)
+
+No stamped path, so no version bump. `labels.tsv`, `corpus.jsonl`, `score.py` and its thresholds are
+untouched, and no model runs. Expected tier: opus, full lane. Criteria (12, each with a single-line stdout):
+- the suite with a browser required, and its exact case inventory;
+- the mutation matrix;
+- a real-corpus smoke on copies (41 rows, nothing written, clean SIGTERM);
+- retirement and no model text;
+- README step 1 claims against `--help`;
+- per-commit scope;
+- labels and corpus untouched;
+- the loud-skip path;
+- file modes;
+- `validate.sh` at 4 lanes;
+- a clean `eval` and `tests` tree.
+
+## Gate G (human, between Step 2c and Step 3; not a dispatchable unit)
+
+Ordering: Gate G starts only after rfp-u2c's PASS. No label exists yet. The all-`real` file the human exported
+with the superseded page is outside the repository (`C:\Users\sebas\Downloads\labels.tsv`) and waits on the
+user's confirmation. If the user confirms it, the human copies it in and commits it; nothing here assumes it.
+G1 requires `unlabeled=0`, so no `unknown` id reaches G3's unanswered denominator (`rfp-u2b.pass`
+`NOTE[spec]` 2).
 
 | step | what | who | how to check it |
 |---|---|---|---|
-| G1 | confirm or reject each of the 41 proxy labels in `eval/refutation-replay/labels.tsv`, reading the `--labels` checklist; commit | the human operator (an agent labelling would grade its own kind) | `python3 eval/refutation-replay/build-corpus.py --check` prints `unlabeled=0` |
+| G1 | confirm or reject each of the 41 proxy labels: run `python3 eval/refutation-replay/label.py serve`, click real or bogus on each card (the clicks land in `eval/refutation-replay/labels.tsv` in the working tree), review `git diff`, and commit `labels.tsv`. `build-corpus.py --labels` stays the text checklist | the human operator (an agent labelling would grade its own kind) | `python3 eval/refutation-replay/build-corpus.py --check` prints `unlabeled=0` |
 | G2 | `bash eval/refutation-replay/run.sh`: 24 headless sonnet runs at 958f557e (one per group), each capped by `--max-budget-usd 1`; commit `report.jsonl` | the human operator, or the orchestrator on the human's explicit instruction | the report exists, one row per corpus defect |
 | G3 | `python3 eval/refutation-replay/score.py --gate eval/refutation-replay/report.jsonl` | anyone | first line `replay-gate: pass …`, exit 0. On `fail` or `insufficient`, do not dispatch rfp-u3; return the report to spec-master |
 
@@ -553,6 +686,10 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
 5. Any change to the orchestrator body, the route or stop gates, `ladder-tier.sh`, `fail-count.sh` or
    `escalation-card.sh`.
 6. A config switch for the pass. Gate G gates the shipping of the instructions instead.
+7. Adding `eval/refutation-replay/labels.tsv` to `protectedPaths`, so that agent Write/Edit on it is refused
+   mechanically. It is a persona-config change on the harness surface, not rfp-u2c's.
+8. A committed attestation that labels came from a human session. Any process that can run `label.py` could
+   forge it. The local write log and the human's commit are the evidence (rfp-u2c).
 
 ## Open Questions
 
@@ -568,6 +705,12 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
    - *(Recommended)* (a) Stop and return the report to spec-master for a brief revision (rfp-u1 debug spec),
      then re-run the replay.
    - (b) Ship anyway with a sample of every refutation by the milestone auditor instead of 3. *(from CHK19)*
+3. **The `guard.py` `-O` bundling note (`rfp-u2b.pass` `NOTE[spec]` 1), before G2.** `git diff -RO/abs/path`
+   passes the guard, which gives a file-existence oracle and reorders output, but leaks no content. It is not
+   rfp-u2c's scope. *(from CHK40)*
+   - *(Recommended)* (a) A one-line follow-up unit before G2: refuse any single-dash token containing `O`, plus
+     one isolation-suite case.
+   - (b) Accept it for G2 and record it as a fidelity limit in the README.
 
 ## Self-check
 - CHK1: Is the verdict defined for every combination of standing, CONFIRMED and UNCERTAIN defects, and for
@@ -653,6 +796,43 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
   hunks per item, so the checker reported 8 bad and 8 unchecked — revised in place (one hunk per item,
   generated from the scratch diff). The checker now reports `ok checks=40 bad=0 unchecked=0`, and a
   separate applier reproduces all seven files.
+- CHK36: Does each user decision of 2026-10-28 map to a contract case and a criterion? — PASS:
+  - server-only, no export: rfp-u2c criteria 4 and 5;
+  - clicks written straight into `labels.tsv`: S09 and B02;
+  - 127.0.0.1 only: S04 and S14;
+  - only a human click writes: S01, B03 to B05 and B09;
+  - mouse-only, r/b/u removed: B05 and the `keys` mutation;
+  - no focus kept, `detail === 0` dropped: B02, B04 and the `detail` mutation.
+- CHK37: Does every mutation the task names map to a named case that criterion 3 checks? — PASS. Token S03,
+  Host S04, version S08, non-atomic S09, key label B05, `detail === 0` B04, scroll-before-refresh B06, plus
+  Origin S05.
+- CHK38: Can a criterion-3 mutation pass vacuously when its anchor is missing or the suite is red for
+  another reason? — PASS. It prints `noanchor` when the file is unchanged, `other` when the named case did not
+  fail, and `base=fail` unless the unmutated suite is all-pass with no SKIP. spec-master ran it on today's
+  tree (`base=fail`, no `red`).
+- CHK39: Can any rfp-u2c range criterion pass with no `(rfp-u2c)` commit? — PASS. Criteria 7 and 8 print
+  `no-commits` and exit 1 (run on today's tree). This plan's own docs commit names the unit without the
+  parenthesised tag.
+- CHK40: Does every `NOTE[spec]` in the swept surfaces have a disposition? — FAIL (missing) at drafting: the
+  `rfp-u2b.pass` `-O` bundling note had none — converted to Open Question 3. The "unknown in the denominator"
+  note is resolved in place (Gate G preamble), and the `tests/validate.sh` sweep lines are historical (units
+  124 to 149).
+- CHK41: Does any rfp-u2c criterion depend on label values, which the human may commit before review? —
+  FAIL (conflicting) at drafting: criterion 8 reused rfp-u2b's `unlabeled=41` pin — revised in place. It now
+  checks only that no `(rfp-u2c)` commit touches the labels and that the tree is clean; criterion 4 uses
+  copies and checks the row count.
+- CHK42: Do the units table, R5, the Step 2c heading, the Gate G heading and the rfp-u2c contract's Retrieval
+  agree that rfp-u2c sits after rfp-u2b and before Gate G? — PASS.
+- CHK43: Is "on screen" defined once and used by both the page and the probe? — PASS (contract edit 2, which
+  edit 5 refers to; Clarifications 2026-10-28).
+- CHK44: Does criterion rfp-u2c/`validate.sh` still fail under its own `mutation:` line, given the units
+  recorded class vacuous or host in CHK17? — PASS. The mutation breaks the newly registered suite, and the
+  block sets `fail=1`.
+- CHK45: Is the honest limit stated, that a local process with the token or file access can still change
+  labels? — PASS (R10, Clarifications, contract edit 8 and the README section).
+- CHK46: Are rfp-u2c's criteria proven green against an implementation? — FAIL (missing): no payload exists
+  — revised in place. R11 and the contract's "Criteria provenance" state this, and each criterion has
+  `bash -n` and today's-tree evidence. Criterion 3 is the reviewer's full proof.
 
 Prose-mode `ubiquitous-language` (advisory):
 - Lens 1: "refutation" means the change at `agents/reviewer.md:46,137-138` and the reviewer's own findings
@@ -666,8 +846,14 @@ Prose-mode `ubiquitous-language` (advisory):
   - "Replay clone" is distinct from "per-clone review state".
   - The scorer fields `foreign`, `dup-conflict` and `missing` are output fields, not domain terms; no
     glossary entry is proposed.
+- rfp-u2c (advisory):
+  - "Operator" and "human" are used as synonyms, per the `CONTEXT.md` **operator** entry.
+  - "Target", "on screen", "label button" and "write log" are page- and tool-local and defined in the
+    contract; no glossary entry is proposed.
+  - "label-ui" names a superseded unit, not a term.
 
 ## Scribe update hint
 
-rfp-u5 is the scribe's unit ([contract](2026-10-27-refutation-pass/contracts/rfp-u5.md)), after rfp-u3 and
+rfp-u2c needs no scribe step: its README edit is in its own contract, and it adds no glossary term. rfp-u5 is
+the scribe's unit ([contract](2026-10-27-refutation-pass/contracts/rfp-u5.md)), after rfp-u3 and
 rfp-u4 PASS. Quote rfp-u3's and rfp-u4's PASS lines in its dispatch.
