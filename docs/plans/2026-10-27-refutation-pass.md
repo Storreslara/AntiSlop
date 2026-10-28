@@ -477,6 +477,10 @@ Criteria:
 
 Every criterion has a single-line expected stdout (see the harness note below).
 
+The contract is about 48 KB. `contract-score.js` gives it score 3 with `sizeOver`, the same as rfp-u2's 32 KB
+contract, which reached PASS. Its bulk is the tested payload: two new files, and ten hunks generated
+from the scratch diff.
+
 **Harness note (not a unit).** `review-precheck.sh` `run_one` compares a criterion's whole stdout with one
 backtick literal. A two-line expected stdout written as `` `A` then `B` `` can never match: rfp-u2 criterion 3
 hit this, and its reviewer overrode the false fail by hand. Until the precheck learns two-line literals,
@@ -644,6 +648,11 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
   (spec-master parsed the contract with the precheck's own awk)
 - CHK34: Does rfp-u3 criterion 8 (`cut -d" " -f1-2` of the scorer line) still read the verdict after
   rfp-u2b appends fields? — PASS (rfp-u2b criterion 5)
+- CHK35: Do rfp-u2b's ordered edits pass `contract-anchors.js`, and do they reproduce the tested payload?
+  — FAIL (conflicting) at drafting: the first draft replaced `score.py` and `run.sh` whole and gave two
+  hunks per item, so the checker reported 8 bad and 8 unchecked — revised in place (one hunk per item,
+  generated from the scratch diff). The checker now reports `ok checks=40 bad=0 unchecked=0`, and a
+  separate applier reproduces all seven files.
 
 Prose-mode `ubiquitous-language` (advisory):
 - Lens 1: "refutation" means the change at `agents/reviewer.md:46,137-138` and the reviewer's own findings

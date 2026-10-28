@@ -36,15 +36,20 @@ only after this unit's PASS.
 ## Affected files
 - `tests/refutation-replay-isolation.test.sh` (anchor: new file, mode 755)
 - `eval/refutation-replay/guard.py` (anchor: new file, mode 755)
-- `eval/refutation-replay/score.py` (anchor: whole file, replaced; mode stays 755)
-- `eval/refutation-replay/run.sh` (anchor: whole file, replaced; mode stays 755)
-- `eval/refutation-replay/build-corpus.py` (anchor: the module docstring, two edits)
-- `eval/refutation-replay/README.md` (anchor: three `before:` blocks in edit 6)
+- `eval/refutation-replay/score.py` (anchor: line matching `MIN_REAL, MAX_MISSES, MAX_TURNS, MAX_UNANSWERED = 30, 1, 10, 0.20`; hunks in edits 3 to 6, mode stays 755)
+- `eval/refutation-replay/run.sh` (anchor: line matching `CLAUDE_FLAGS=(--model sonnet --max-turns 10 --output-format json --no-session-persistence`; hunks in edits 7 to 12, mode stays 755)
+- `eval/refutation-replay/build-corpus.py` (anchor: line matching `--labels: print the human labelling checklist`; docstring edits 13 and 14)
+- `eval/refutation-replay/README.md` (anchor: line matching `## Known fidelity limits`; edits 15 to 17)
 - `tests/validate.sh` (anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`)
 
 ## Ordered edits
-1. file: `tests/refutation-replay-isolation.test.sh` (new, mode 755). Create it with the **Write** tool (a
-   heredoc is refused by the hooks), then `chmod 755`. Content:
+Edits 1 and 2 create new files. Edits 3 to 6 are `score.py` hunks and edits 7 to 12 are `run.sh` hunks,
+applied in order; together they turn each file into exactly the tested version. Edits 13 to 17 are docs,
+edit 18 registers the suite, and edit 19 commits.
+1. file: `tests/refutation-replay-isolation.test.sh`
+   anchor: new file
+   Create it with the **Write** tool (a heredoc is refused by the hooks), then `chmod 755`.
+   after:
 ~~~
 #!/usr/bin/env bash
 # Fixture suite for the Gate G hardening of eval/refutation-replay/ (rfp-u2b): per-id scoring, the
@@ -226,9 +231,12 @@ doc="$(python3 -c 'import ast, sys; print(" ".join(ast.get_docstring(ast.parse(o
 if [ "$fail" -eq 0 ]; then echo "All refutation-replay-isolation checks passed."; else echo "refutation-replay-isolation: FAILED"; fi
 exit "$fail"
 ~~~
-   Run it: it must exit 1, because `guard.py` does not exist yet. This is the red step. Criterion 3 checks
-   later which cases are red against rfp-u2's files.
-2. file: `eval/refutation-replay/guard.py` (new, mode 755; Write tool, then `chmod 755`). Content:
+   Run it: it must exit 1, because `guard.py` does not exist yet. This is the red step; criterion 3 later
+   checks which cases are red against rfp-u2's files.
+2. file: `eval/refutation-replay/guard.py`
+   anchor: new file
+   Create it with the **Write** tool, then `chmod 755`.
+   after:
 ~~~
 #!/usr/bin/env python3
 """PreToolUse guard for the refutation replay (rfp-u2b, docs/plans/2026-10-27-refutation-pass.md).
@@ -317,7 +325,17 @@ def main(argv):
 if __name__ == '__main__':
     sys.exit(main(sys.argv[1:]))
 ~~~
-3. file: `eval/refutation-replay/score.py`: replace the whole file with the following. Keep mode 755.
+3. file: `eval/refutation-replay/score.py`
+   anchor: line matching `#!/usr/bin/env python3`
+   before:
+~~~
+#!/usr/bin/env python3
+"""Score a refutation replay (rfp-u2). Usage: score.py <report.jsonl> [--gate] [--labels <labels.tsv>]
+
+A report row is {"id", "answer": REFUTED|CONFIRMED|UNCERTAIN|NONE, "artifact", "num_turns", "cost_usd"}.
+A real defect answered REFUTED with a non-empty artifact is a miss: the pass would have dropped a real
+~~~
+   after:
 ~~~
 #!/usr/bin/env python3
 """Score a refutation replay (rfp-u2; per-id scoring rfp-u2b). Usage: score.py <report.jsonl> [--gate] [--labels <labels.tsv>]
@@ -328,7 +346,21 @@ Scoring is per distinct id, never per row:
 - repeated rows for one id count once; if they differ in answer or artifact, the id is a `dup-conflict`;
 - every id labelled real or bogus must have a row, or it is `missing`.
 A real defect answered REFUTED with a non-empty artifact is a miss: the pass would have dropped a real
-defect. Prints one line:
+~~~
+   The `score.py` hunks keep the four threshold constants byte-identical and the mode at 755.
+4. file: `eval/refutation-replay/score.py`
+   anchor: line matching `  replay-gate: <pass|fail|insufficient> real=<n> refuted-real=<m> confirmed-real=<c> uncertain-real=<u>`
+   before:
+~~~
+  replay-gate: <pass|fail|insufficient> real=<n> refuted-real=<m> confirmed-real=<c> uncertain-real=<u>
+  unanswered=<x> bogus=<b> refuted-bogus=<rb> max-turns=<t> mean-cost-usd=<c>
+With --gate: exit 0 on pass, 1 on fail, 2 on insufficient (fewer than MIN_REAL real defects replayed).
+pass = real >= MIN_REAL, refuted-real <= MAX_MISSES, unanswered <= 20% of rows, max-turns <= MAX_TURNS.
+Without --gate it always exits 0.
+"""
+~~~
+   after:
+~~~
   replay-gate: <pass|fail|insufficient> real=<n> refuted-real=<m> confirmed-real=<c> uncertain-real=<u>
   unanswered=<x> bogus=<b> refuted-bogus=<rb> max-turns=<t> mean-cost-usd=<c> missing=<k>
   dup-conflict=<d> foreign=<f>
@@ -337,27 +369,27 @@ insufficient = fewer than MIN_REAL distinct real ids, or missing > 0.
 pass = not insufficient, refuted-real <= MAX_MISSES, unanswered <= 20% of the scored ids,
 max-turns <= MAX_TURNS and dup-conflict = 0. Anything else is fail. Without --gate it always exits 0.
 """
-import json, os, sys
-
-MIN_REAL, MAX_MISSES, MAX_TURNS, MAX_UNANSWERED = 30, 1, 10, 0.20
-
-
-def main(argv):
-    gate = '--gate' in argv
-    args = [x for x in argv if x != '--gate']
-    labels_file = None
-    if '--labels' in args:
-        i = args.index('--labels')
-        labels_file = args[i + 1]
-        del args[i:i + 2]
-    report = args[0] if args else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'report.jsonl')
-    labels_file = labels_file or os.path.join(os.path.dirname(os.path.abspath(report)), 'labels.tsv')
-    labels = {}
-    if os.path.exists(labels_file):
-        for l in open(labels_file):
-            if l.strip() and not l.startswith('#'):
-                k, _, v = l.rstrip('\n').partition('\t')
-                labels[k] = v
+~~~
+5. file: `eval/refutation-replay/score.py`
+   anchor: line matching `    rows = [json.loads(l) for l in open(report) if l.strip()] if os.path.exists(report) else []`
+   before:
+~~~
+    rows = [json.loads(l) for l in open(report) if l.strip()] if os.path.exists(report) else []
+    real = [r for r in rows if labels.get(r.get('id')) == 'real']
+    bogus = [r for r in rows if labels.get(r.get('id')) == 'bogus']
+    refuted = lambda r: r.get('answer') == 'REFUTED' and str(r.get('artifact') or '').strip() != ''
+    misses = sum(1 for r in real if refuted(r))
+    unanswered = sum(1 for r in rows if r.get('answer') not in ('REFUTED', 'CONFIRMED', 'UNCERTAIN'))
+    turns = [int(r.get('num_turns') or 0) for r in rows]
+    costs = [float(r.get('cost_usd') or 0) for r in rows]
+    max_turns = max(turns) if turns else 0
+    if len(real) < MIN_REAL:
+        verdict, code = 'insufficient', 2
+    elif misses <= MAX_MISSES and unanswered <= MAX_UNANSWERED * len(rows) and max_turns <= MAX_TURNS:
+        verdict, code = 'pass', 0
+~~~
+   after:
+~~~
     rows = [json.loads(l) for l in open(report) if l.strip()] if os.path.exists(report) else []
     first, conflict, foreign, turns = {}, set(), set(), []
     for r in rows:
@@ -384,8 +416,20 @@ def main(argv):
     elif (misses <= MAX_MISSES and unanswered <= MAX_UNANSWERED * len(scored) and max_turns <= MAX_TURNS
           and not conflict):
         verdict, code = 'pass', 0
-    else:
-        verdict, code = 'fail', 1
+~~~
+6. file: `eval/refutation-replay/score.py`
+   anchor: line matching `    print('replay-gate: %s real=%d refuted-real=%d confirmed-real=%d uncertain-real=%d unanswered=%d bogus=%d '`
+   before:
+~~~
+    print('replay-gate: %s real=%d refuted-real=%d confirmed-real=%d uncertain-real=%d unanswered=%d bogus=%d '
+          'refuted-bogus=%d max-turns=%d mean-cost-usd=%.3f' % (
+              verdict, len(real), misses, sum(1 for r in real if r.get('answer') == 'CONFIRMED'),
+              sum(1 for r in real if r.get('answer') == 'UNCERTAIN'), unanswered, len(bogus),
+              sum(1 for r in bogus if refuted(r)), max_turns, (sum(costs) / len(costs)) if costs else 0.0))
+    return code if gate else 0
+~~~
+   after:
+~~~
     print('replay-gate: %s real=%d refuted-real=%d confirmed-real=%d uncertain-real=%d unanswered=%d bogus=%d '
           'refuted-bogus=%d max-turns=%d mean-cost-usd=%.3f missing=%d dup-conflict=%d foreign=%d' % (
               verdict, len(real), misses, sum(1 for r in real if r.get('answer') == 'CONFIRMED'),
@@ -393,12 +437,21 @@ def main(argv):
               sum(1 for r in bogus if refuted(r)), max_turns, (sum(costs) / len(costs)) if costs else 0.0,
               missing, len(conflict), len(foreign)))
     return code if gate else 0
-
-
-if __name__ == '__main__':
-    sys.exit(main(sys.argv[1:]))
 ~~~
-4. file: `eval/refutation-replay/run.sh`: replace the whole file with the following. Keep mode 755.
+7. file: `eval/refutation-replay/run.sh`
+   anchor: line matching `#!/usr/bin/env bash`
+   before:
+~~~
+#!/usr/bin/env bash
+# Refutation replay runner (rfp-u2, Gate G2). For each corpus group (at most 3 defects from one past FAIL
+# block), check out the reviewed commit in a scratch worktree, build the brief with this checkout's
+# bin/refutation-brief.sh, and run one headless `claude -p` on sonnet with read-only tools and a 10-turn
+# cap. Each answer line `D<n>: VERDICT — ... — artifact: ...` becomes one report row.
+# Usage: eval/refutation-replay/run.sh [--dry-run] [--corpus <file>] [--out <file>] [--repo <dir>]
+# --dry-run prints one `group=<id> cmd: ...` line per group and runs nothing: no claude, no worktree.
+# A real run spends API budget (each run capped by --max-budget-usd 1). The human runs it (Gate G2).
+~~~
+   after:
 ~~~
 #!/usr/bin/env bash
 # Refutation replay runner (rfp-u2, Gate G2; isolation rfp-u2b). For each corpus group (at most 3 defects
@@ -414,42 +467,35 @@ if __name__ == '__main__':
 # --dry-run prints one `group=<id> cmd: ...` line per group and runs nothing: no claude, no clone.
 # Exit 3: a run used tools but the guard logged no call, so the guard is not wired; the replay stops.
 # A real run spends API budget (each run capped by --max-budget-usd 1). The human runs it (Gate G2).
-set -uo pipefail
-here="$(cd "$(dirname "$0")" && pwd)"
-repo="$(cd "$here/../.." && pwd)"
-corpus="$here/corpus.jsonl"
-out="$here/report.jsonl"
-dry=0
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --dry-run) dry=1; shift ;;
-    --corpus) corpus="$2"; shift 2 ;;
-    --out) out="$2"; shift 2 ;;
-    --repo) repo="$(cd "$2" && pwd)"; shift 2 ;;
-    *) echo "run.sh: unknown argument $1" >&2; exit 2 ;;
-  esac
-done
-[ -f "$corpus" ] || { echo "run.sh: no corpus at $corpus" >&2; exit 2; }
-brief="$here/../../bin/refutation-brief.sh"
-[ -f "$brief" ] || { echo "run.sh: missing bin/refutation-brief.sh (rfp-u1)" >&2; exit 2; }
-brief="$(cd "$(dirname "$brief")" && pwd)/refutation-brief.sh"
+~~~
+   The `run.sh` hunks keep the mode at 755.
+8. file: `eval/refutation-replay/run.sh`
+   anchor: line matching `CLAUDE_FLAGS=(--model sonnet --max-turns 10 --output-format json --no-session-persistence`
+   before:
+~~~
+CLAUDE_FLAGS=(--model sonnet --max-turns 10 --output-format json --no-session-persistence
+  --max-budget-usd 1 --allowedTools Read Grep Glob "Bash(git *)" "Bash(grep *)")
 
+~~~
+   after:
+~~~
 CLAUDE_FLAGS=(--model sonnet --max-turns 10 --output-format json --no-session-persistence
   --max-budget-usd 1 --setting-sources local --strict-mcp-config --permission-mode dontAsk
   --tools Read,Grep,Glob,Bash
   --allowedTools Read Grep Glob "Bash(git show *)" "Bash(git diff *)" "Bash(git log *)")
 
-groups="$(python3 - "$corpus" <<'PY'
-import json, sys, collections
-g = collections.OrderedDict()
-for l in open(sys.argv[1]):
-    if l.strip():
-        r = json.loads(l)
-        g.setdefault(r['group'], []).append(r)
-for gid, rows in g.items():
-    print('\t'.join([gid, rows[0]['reviewed'], rows[0]['baseline'], json.dumps([r['dline'] for r in rows]), json.dumps([r['id'] for r in rows])]))
-PY
-)" || { echo "run.sh: unreadable corpus" >&2; exit 2; }
+~~~
+9. file: `eval/refutation-replay/run.sh`
+   anchor: line matching `work="$(mktemp -d)"`
+   before:
+~~~
+
+work="$(mktemp -d)"
+trap 'git -C "$repo" worktree prune >/dev/null 2>&1; rm -rf "$work"' EXIT
+[ "$dry" = 1 ] || : > "$out"
+~~~
+   after:
+~~~
 
 # A fresh repository holding the reviewed commit's history only, with the baseline in it.
 clone() { # <dir> <reviewed> <baseline>
@@ -466,14 +512,34 @@ for i in json.loads(sys.argv[1]):
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 [ "$dry" = 1 ] || : > "$out"
-n=0
-while IFS=$'\t' read -r gid reviewed baseline dlines ids; do
-  [ -n "$gid" ] || continue
-  n=$((n + 1))
+~~~
+10. file: `eval/refutation-replay/run.sh`
+   anchor: line matching `  if [ "$dry" = 1 ]; then`
+   before:
+~~~
+  if [ "$dry" = 1 ]; then
+    echo "group=$gid cmd: claude -p <brief> ${CLAUDE_FLAGS[*]}"
+    continue
+~~~
+   after:
+~~~
   if [ "$dry" = 1 ]; then
     echo "group=$gid cmd: claude -p <brief> ${CLAUDE_FLAGS[*]} --settings <guard.py hook for the group's clone>"
     continue
-  fi
+~~~
+11. file: `eval/refutation-replay/run.sh`
+   anchor: line matching `  wt="$work/$n"`
+   before:
+~~~
+  wt="$work/$n"
+  git -C "$repo" worktree add -q --detach "$wt" "$reviewed" || { echo "run.sh: worktree failed for $gid" >&2; continue; }
+  prompt="$(cd "$wt" && python3 -c 'import json,sys; print("\n".join(json.loads(sys.argv[1])))' "$dlines" | bash "$brief" "$baseline")" \
+    || { echo "run.sh: brief refused for $gid" >&2; git -C "$repo" worktree remove --force "$wt"; continue; }
+  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" ) > "$work/$n.json" 2> "$work/$n.err"
+  python3 - "$work/$n.json" "$ids" >> "$out" <<'PY'
+~~~
+   after:
+~~~
   wt="$work/$n"
   clone "$wt" "$reviewed" "$baseline" >/dev/null 2>&1 \
     || { echo "run.sh: clone failed for $gid" >&2; none_rows "$ids" clone; rm -rf "$wt"; continue; }
@@ -495,29 +561,23 @@ except Exception:
     exit 3
   fi
   python3 - "$work/$n.json" "$ids" >> "$out" <<'PY'
-import json, re, sys
-try:
-    res = json.load(open(sys.argv[1]))
-except Exception:
-    res = {}
-text = str(res.get('result') or '')
-ids = json.loads(sys.argv[2])
-ans = {}
-for line in text.splitlines():
-    m = re.match(r'^\s*D([1-3]):\s*(REFUTED|CONFIRMED|UNCERTAIN)\b(.*)$', line)
-    if m and m.group(1) not in ans:
-        art = re.search(r'artifact:\s*(.*)$', m.group(3))
-        ans[m.group(1)] = (m.group(2), art.group(1).strip() if art else '')
-for i, rid in enumerate(ids, 1):
-    v, art = ans.get(str(i), ('NONE', ''))
-    print(json.dumps({'id': rid, 'answer': v, 'artifact': art, 'num_turns': res.get('num_turns', 0),
-                      'cost_usd': res.get('total_cost_usd', 0)}, sort_keys=True))
+~~~
+12. file: `eval/refutation-replay/run.sh`
+   anchor: line matching `PY`
+   before:
+~~~
+PY
+  git -C "$repo" worktree remove --force "$wt" >/dev/null 2>&1
+done <<< "$groups"
+~~~
+   after:
+~~~
 PY
   rm -rf "$wt"
 done <<< "$groups"
-echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo "$out")"
 ~~~
-5. file: `eval/refutation-replay/build-corpus.py`, two edits in the module docstring:
+13. file: `eval/refutation-replay/build-corpus.py`
+   anchor: line matching `--labels: print the human labelling checklist (claim, then the fix commit's subject and diffstat).`
    before:
 ~~~
 --labels: print the human labelling checklist (claim, then the fix commit's subject and diffstat).
@@ -526,18 +586,23 @@ echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo 
 ~~~
 --labels: print the human labelling checklist (the claim, then the fix commit's short hash and subject).
 ~~~
+   The docstring side is fixed, not the code: `checklist()` keeps printing the first line of `git show --stat`
+   only. That is the cheaper side, and the labelling output does not change.
+14. file: `eval/refutation-replay/build-corpus.py`
+   anchor: line matching `the pass's cap), sample groups with a fixed seed until --size rows, and write corpus.jsonl plus labels.tsv`
    before:
 ~~~
+the pass's cap), sample groups with a fixed seed until --size rows, and write corpus.jsonl plus labels.tsv
 (every label `unknown`; a human sets real|bogus, Gate G1).
 ~~~
    after:
 ~~~
+the pass's cap), sample groups with a fixed seed until --size rows, and write corpus.jsonl plus labels.tsv
 (every label `unknown`; a human sets real|bogus, Gate G1). A claim is whitespace-collapsed and cut at
 300 characters; its cited <path>:<line> is kept whole.
 ~~~
-   The docstring side is fixed, not the code: `checklist()` keeps printing the first line of `git show
-   --stat` only. This is the cheaper side, and it needs no change to the labelling output.
-6. file: `eval/refutation-replay/README.md`, three edits:
+15. file: `eval/refutation-replay/README.md`
+   anchor: line matching ``| `run.sh` | rfp-u2 | one headless `claude -p` per corpus group, at the reviewed commit |``
    before:
 ~~~
 | `run.sh` | rfp-u2 | one headless `claude -p` per corpus group, at the reviewed commit |
@@ -547,6 +612,9 @@ echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo 
 | `run.sh` | rfp-u2, rfp-u2b | one headless `claude -p` per corpus group, in a fresh clone holding the history up to the reviewed commit only |
 | `guard.py` | rfp-u2b | the PreToolUse hook of every run: Read, Grep and Glob inside the clone, Bash only as `git show`, `git diff` and `git log` |
 ~~~
+   The Files table gains a `guard.py` row. Case (o) checks that this sentence names exactly `run.sh`'s Bash rules.
+16. file: `eval/refutation-replay/README.md`
+   anchor: line matching ``   `--max-budget-usd 1` and `--max-turns 10`. Check the plan first with `--dry-run`. Commit``
    before:
 ~~~
    `--max-budget-usd 1` and `--max-turns 10`. Check the plan first with `--dry-run`. Commit
@@ -559,6 +627,8 @@ echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo 
    tools but the guard logged no call: the guard hook is not wired, so fix that and re-run from the
    start. Commit `report.jsonl`.
 ~~~
+17. file: `eval/refutation-replay/README.md`
+   anchor: line matching ``- The replay is not the `explorer` persona. It sends the same brief, but runs headless with read-only tools``
    before:
 ~~~
 - The replay is not the `explorer` persona. It sends the same brief, but runs headless with read-only tools
@@ -575,10 +645,8 @@ echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo 
 - A claim is whitespace-collapsed and cut at 300 characters when the corpus is built; its cited
   `<path>:<line>` is kept whole. The live reviewer writes its own defect lines, with no cut.
 ~~~
-   The first `after:` adds a table row, so the Files table gains `guard.py`. Case (o)
-   checks that the README sentence names exactly `run.sh`'s Bash rules, and case (p) checks the cut figure
-   against the code.
-7. file: `tests/validate.sh`
+   Case (p) checks the cut figure against `claim[:300]` in the code.
+18. file: `tests/validate.sh`
    anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`
    indent: 0
    insert-before:
@@ -594,7 +662,7 @@ fi
 echo
 ~~~
    It lands right after rfp-u2's `refutation-replay` block, which ends at the same anchor.
-8. command: `git add tests/refutation-replay-isolation.test.sh eval/refutation-replay/guard.py eval/refutation-replay/score.py eval/refutation-replay/run.sh eval/refutation-replay/build-corpus.py eval/refutation-replay/README.md tests/validate.sh && git commit -m "fix(rfp-u2b): per-id replay gate scoring, history-limited replay clone and guard hook"`
+19. command: `git add tests/refutation-replay-isolation.test.sh eval/refutation-replay/guard.py eval/refutation-replay/score.py eval/refutation-replay/run.sh eval/refutation-replay/build-corpus.py eval/refutation-replay/README.md tests/validate.sh && git commit -m "fix(rfp-u2b): per-id replay gate scoring, history-limited replay clone and guard hook"`
    expect: 0
    Run `git status --short` first. If a tracked file outside "Affected files" is modified, stop and report
    it. No version bump: nothing here is version-stamped (`agents/*.md`, `templates/*`) or shipped to
@@ -606,7 +674,7 @@ echo
   (a human sets them in Gate G1), and the corpus is not regenerated (criteria 4 and 7).
 - `eval/refutation-replay/report.jsonl`: it must not exist after this unit (criterion 4). Never run
   `run.sh` without `--dry-run` against the real corpus, and never run a real `claude -p`.
-- `MIN_REAL`, `MAX_MISSES`, `MAX_TURNS`, `MAX_UNANSWERED` in `score.py` (edit 3 keeps them byte-identical).
+- `MIN_REAL`, `MAX_MISSES`, `MAX_TURNS`, `MAX_UNANSWERED` in `score.py` (edits 3 to 6 keep them byte-identical).
 - `bin/refutation-brief.sh` (rfp-u1's), `tests/refutation-replay.test.sh` (rfp-u2's suite still passes
   unchanged: criterion 2), and `agents/`, `templates/`, `hooks/`, `adapters/`, `bin/` (criterion 7).
 - the reviewed-markers directory under `.claude/`: nothing reads it here. Every fixture lives under
@@ -650,7 +718,7 @@ backtick literal (see "Pre-resolved context").
 9. run: `bash -c 'ANTISLOP_VALIDATE_LANES=4 bash tests/validate.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms)
    exit: 0
    stdout: `0`
-   mutation: put `exit 1` as line 2 of `tests/refutation-replay-isolation.test.sh`; validate.sh reports it (edit 7) and stdout is `1`.
+   mutation: put `exit 1` as line 2 of `tests/refutation-replay-isolation.test.sh`; validate.sh reports it (edit 18) and stdout is `1`.
 
 ## Pre-resolved context
 - **spec-master ran every payload** in a scratch clone at 6c8b4b1a:
@@ -659,6 +727,9 @@ backtick literal (see "Pre-resolved context").
   - Criteria 1 to 8 print their expected lines on a commit subject-tagged `(rfp-u2b)`.
   - Criteria 3, 4 and 7 print `no-commits` and exit 1 on the real tree, which has no such commit.
   - Every `mutation:` line above was run and changes the output as stated.
+  - `node bin/contract-anchors.js` on this contract prints `contract-anchors: ok checks=40 bad=0 unchecked=0`.
+    Applying edits 1 to 18 in order to 6dcf464e reproduces the tested files byte for byte; spec-master
+    checked this with a separate applier.
 - **The clone.** `git init` + `git fetch --no-tags file://<repo> <reviewed-sha>` works with git 2.43: a
   local `file://` fetch goes through upload-pack, so objects are copied (no alternates), and a bare commit
   id can be fetched. On this repository it took 0.5 s for the first corpus row. The fix commit was
