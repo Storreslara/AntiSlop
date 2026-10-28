@@ -65,7 +65,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 [ "$dry" = 1 ] || : > "$out"
 n=0
-while IFS=$'\t' read -r gid reviewed baseline dlines ids; do
+while IFS=$'\t' read -r -u 3 gid reviewed baseline dlines ids; do
   [ -n "$gid" ] || continue
   n=$((n + 1))
   if [ "$dry" = 1 ]; then
@@ -82,7 +82,7 @@ while IFS=$'\t' read -r gid reviewed baseline dlines ids; do
 cmd = " ".join(shlex.quote(x) for x in ["python3"] + sys.argv[1:])
 print(json.dumps({"hooks": {"PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": cmd}]}]}}))' \
     "$here/guard.py" "$wt" "$log" > "$work/$n.settings.json"
-  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" --settings "$work/$n.settings.json" ) > "$work/$n.json" 2> "$work/$n.err"
+  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" --settings "$work/$n.settings.json" < /dev/null ) > "$work/$n.json" 2> "$work/$n.err"
   turns="$(python3 -c 'import json, sys
 try:
     print(int(json.load(open(sys.argv[1])).get("num_turns") or 0))
@@ -112,5 +112,5 @@ for i, rid in enumerate(ids, 1):
                       'cost_usd': res.get('total_cost_usd', 0)}, sort_keys=True))
 PY
   rm -rf "$wt"
-done <<< "$groups"
+done 3<<< "$groups"
 echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo "$out")"

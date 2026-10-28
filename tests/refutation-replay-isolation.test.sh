@@ -140,6 +140,7 @@ cat > "$fb/claude" <<'EOF'
 #!/usr/bin/env bash
 # Fake claude: records what the replay environment can reach, calls the guard hook named in --settings
 # like Claude Code would (unless FAKE_MODE=noguard), and prints a print-mode JSON result.
+[ -n "${FAKE_DRAIN:-}" ] && cat > /dev/null
 settings=""; prev=""
 for a in "$@"; do [ "$prev" = --settings ] && settings="$a"; prev="$a"; done
 p="$PROBE/$(ls "$PROBE" | wc -l)"; mkdir -p "$p"
@@ -189,6 +190,22 @@ pr3="$tmp/probe3"; mkdir -p "$pr3"
 dr="$(PATH="$fb:$PATH" PROBE="$pr3" bash "$d/run.sh" --dry-run --corpus "$corp" --repo "$repo")"; rc=$?
 [ "$rc" = 0 ] && [ "$(ls "$pr3" | wc -l)" = 0 ] && [ "$(printf '%s\n' "$dr" | grep -cF -- "$want")" = 3 ] \
   && ok "(n) --dry-run prints the guarded flags for each group and runs nothing" || bad "(n) rc=$rc"
+
+# rfp-u2e: a claude that reads standard input (the real one does) must not eat the remaining groups.
+corp3="$tmp/corpus3.jsonl"
+python3 - "$corp3" "$R" "$B" <<'PY'
+import json, sys
+out, R, B = sys.argv[1:4]
+with open(out, 'w') as f:
+    for n in (1, 2, 3):
+        f.write(json.dumps({'id': 'h%d#%d' % (n, n), 'group': 'h%d' % n, 'reviewed': R, 'baseline': B, 'dline': 'D1: src/a.sh:2 x is unquoted'}) + '\n')
+PY
+pr4="$tmp/probe4"; mkdir -p "$pr4"
+PATH="$fb:$PATH" PROBE="$pr4" LABELS="$d/labels.tsv" FAKE_DRAIN=1 bash "$d/run.sh" --corpus "$corp3" --repo "$repo" --out "$tmp/r4.jsonl" >"$tmp/r4.out" 2>"$tmp/r4.err"; rc=$?
+ids4="$(python3 -c 'import json, sys
+print(",".join(json.loads(l)["id"] for l in open(sys.argv[1])))' "$tmp/r4.jsonl" 2>/dev/null)"
+[ "$rc" = 0 ] && grep -q ' groups=3 ' "$tmp/r4.out" && [ "$ids4" = "h1#1,h2#2,h3#3" ] && [ "$(ls "$pr4" | wc -l)" = 3 ] \
+  && ok "(q) a claude that drains standard input still sees all three groups" || bad "(q) rc=$rc ids=$ids4 $(tail -1 "$tmp/r4.out")"
 
 # ---- docs match the code (findings 3 and 5) ----
 rules="$(grep -oE '"Bash\(git [a-z]+ \*\)"' "$d/run.sh" | sed -E 's/"Bash\(git ([a-z]+) \*\)"/`git \1`/' | paste -sd, - | sed 's/,\([^,]*\)$/ and \1/; s/,/, /g')"
