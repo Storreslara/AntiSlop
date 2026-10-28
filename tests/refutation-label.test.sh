@@ -59,7 +59,7 @@ if [ -n "$BR" ]; then
       *) bad "B00 unexpected probe output: $line" ;;
     esac
   done < "$T/br.out"
-  [ "$n" -eq 11 ] || { bad "B00 probe reported $n of 11 cases"; head -3 "$T/br.err"; }
+  [ "$n" -eq 13 ] || { bad "B00 probe reported $n of 13 cases"; head -3 "$T/br.err"; }
 elif [ -n "${LABEL_UI_REQUIRE_BROWSER:-}" ]; then
   bad "B00 LABEL_UI_REQUIRE_BROWSER is set but no playwright plus Chromium launched (set PLAYWRIGHT_PATH or CHROMIUM_PATH)"
 else

@@ -54,7 +54,12 @@ const PAGE_HELPERS = () => {
   };
   const state = () => ({ target: typeof target === 'undefined' ? undefined : target, pending: document.body.dataset.pending,
     active: document.activeElement ? document.activeElement.className + '|' + document.activeElement.tagName : '' });
-  window.__p = { card, hb, onScreen, shown, btn, validButtons, hitLbl, bring, state };
+  const ev = [];
+  const rec = (e) => { ev.push([e.type, e.clientX, e.clientY]); };
+  document.addEventListener('mousemove', rec, true);
+  document.addEventListener('mousedown', rec, true);
+  document.addEventListener('wheel', rec, { capture: true, passive: true });
+  window.__p = { card, hb, onScreen, shown, btn, validButtons, hitLbl, bring, state, ev };
 };
 
 function rng(seed) {
@@ -91,10 +96,10 @@ const errs = [];
 let allow409 = false;
 let browser, ctx;
 
-async function newPage(u, viewport) {
+async function newPage(u, viewport, extraInit) {
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
-  const st = { page, posts: 0, inflight: 0, model: null, step: 'init' };
+  const st = { page, posts: 0, inflight: 0, model: null, step: 'init', lw: null };
   page.on('request', (r) => { st.inflight++; if (r.method() === 'POST') st.posts++; });
   page.on('requestfinished', () => { st.inflight--; });
   page.on('requestfailed', () => { st.inflight--; });
@@ -105,6 +110,7 @@ async function newPage(u, viewport) {
     errs.push('console: ' + m.text());
   });
   await page.addInitScript(PAGE_HELPERS);
+  for (const f of extraInit || []) await page.addInitScript(f);
   if (viewport) await page.setViewportSize(viewport);
   await page.goto(u);
   await settle(st);
@@ -137,6 +143,20 @@ async function step(st, action, fn) {
   verify(st, action);
 }
 
+// The probe's own oracle for the pointer rule: after a write to card A, a label click on another card B is refused
+// unless the pointer went to another point or the wheel turned since that write. The probe derives "moved" from the
+// pointer events it observed itself (window.__p.ev), never from the page's state.
+async function noteWrite(st, id, x, y) {
+  st.lw = { id, x, y, n: await st.page.evaluate(() => window.__p.ev.length) };
+}
+
+async function accepted(st, id, x, y) {
+  if (!st.lw || st.lw.id === id) return true;
+  if (x !== st.lw.x || y !== st.lw.y) return true;
+  const ev = await st.page.evaluate((n) => window.__p.ev.slice(n), st.lw.n);
+  return ev.some((e) => e[0] === 'wheel' || e[1] !== st.lw.x || e[2] !== st.lw.y);
+}
+
 async function clickLabel(st, id, value) {
   const ev = () => st.page.evaluate(([i, v]) => window.__p.btn(i, v), [id, value]);
   let b = await ev();
@@ -146,8 +166,10 @@ async function clickLabel(st, id, value) {
     b = await ev();
   }
   if (!b || !b.valid) throw new Error('could not place a click on ' + id + ' ' + value);
+  await st.page.mouse.move(2, 2); // a deliberate click starts from a pointer that has moved
   await st.page.mouse.click(b.x, b.y);
   st.model.set(id, value);
+  await noteWrite(st, id, b.x, b.y);
 }
 
 async function clickCardBody(st, id) {
@@ -201,7 +223,7 @@ async function b01() {
   const want = VALUES.map(c);
   const got = r.counts.map((s) => parseInt(s.replace(/\D/g, ''), 10));
   if (JSON.stringify(want) !== JSON.stringify(got)) throw new Error('counts ' + JSON.stringify(got) + ' vs file ' + JSON.stringify(want));
-  if (r.min !== null && (!r.rules.includes('at least ' + r.min + ' real') || !r.rules.includes('at most ' + r.max + ' bogus'))) throw new Error('targets missing');
+  if (!Number.isInteger(r.min) || !Number.isInteger(r.max) || !r.rules.includes('at least ' + r.min + ' real') || !r.rules.includes('at most ' + r.max + ' bogus')) throw new Error('targets missing or not integers: ' + r.min + ' ' + r.max);
   r.cards.forEach((k, i) => {
     const d = r.rowsData[i];
     if (!k.claim.includes(d.dline)) throw new Error('claim missing on ' + d.id);
@@ -302,9 +324,19 @@ async function b07() {
     const t0 = (await stateOf(st)).target;
     if (t0 && (await onScreen(st, t0))) throw new Error('could not scroll the target off screen for ' + key);
     st.step = key;
+    let first = null;
+    for (const i of await shown(st)) if (await onScreen(st, i)) { first = i; break; }
+    const y0 = await st.page.evaluate(() => window.scrollY);
     await step(st, 'key ' + key, () => st.page.keyboard.press(key));
     const t1 = (await stateOf(st)).target;
     if (!t1 || !(await onScreen(st, t1))) throw new Error(key + ' selected ' + t1 + ', which is not on screen');
+    if (t1 !== first) throw new Error(key + ' with an off-screen target chose ' + t1 + ', not the first on-screen card ' + first);
+    if (Math.abs((await st.page.evaluate(() => window.scrollY)) - y0) > 1) throw new Error(key + ' with an off-screen target scrolled the page');
+    const vis = await shown(st);
+    const want2 = vis[Math.max(0, Math.min(vis.length - 1, vis.indexOf(t1) + (key === 'j' ? 1 : -1)))];
+    await step(st, 'second key ' + key, () => st.page.keyboard.press(key));
+    const t2 = (await stateOf(st)).target;
+    if (t2 !== want2 || !(await onScreen(st, t2))) throw new Error('second ' + key + ' chose ' + t2 + ', expected on-screen ' + want2);
     await st.page.mouse.move(400, 500);
     for (let i = 0; i < 6; i++) { await st.page.mouse.wheel(0, key === 'j' ? 1500 : -1500); await settle(st); }
   }
@@ -352,17 +384,44 @@ async function b09() {
       const v = await st.page.evaluate(() => window.__p.validButtons());
       if (!v.length) return;
       const b = pick(v);
+      const ok = await accepted(st, b.id, b.x, b.y);
       await st.page.mouse.click(b.x, b.y);
-      st.model.set(b.id, b.value);
+      if (ok) { st.model.set(b.id, b.value); await noteWrite(st, b.id, b.x, b.y); }
     }],
     ['click-point', 2, async () => {
       const vp = st.page.viewportSize();
       const x = Math.floor(r() * vp.width), y = Math.floor(r() * vp.height);
       const hit = await st.page.evaluate(([a, b]) => window.__p.hitLbl(a, b), [x, y]);
+      const ok = hit ? await accepted(st, hit.id, x, y) : false;
       await st.page.mouse.click(x, y);
-      if (hit) st.model.set(hit.id, hit.value);
+      if (hit && ok) { st.model.set(hit.id, hit.value); await noteWrite(st, hit.id, x, y); }
     }],
     ['key', 3, async () => { await st.page.keyboard.press(pick(NAV_KEYS.concat(['r', 'b', 'u']))); }],
+    ['click-same-point', 2, async () => {
+      if (!st.lw) return;
+      const { x, y } = st.lw;
+      const hit = await st.page.evaluate(([a, b]) => window.__p.hitLbl(a, b), [x, y]);
+      const ok = hit ? await accepted(st, hit.id, x, y) : false;
+      await st.page.mouse.click(x, y);
+      if (hit && ok) { st.model.set(hit.id, hit.value); await noteWrite(st, hit.id, x, y); }
+    }],
+    ['double-click', 2, async () => {
+      // Playwright sends click 1 (detail 1) and then click 2 (detail 2): only the first can write
+      const v = await st.page.evaluate(() => window.__p.validButtons());
+      if (!v.length) return;
+      const b = pick(v);
+      const ok = await accepted(st, b.id, b.x, b.y);
+      await st.page.mouse.click(b.x, b.y, { clickCount: 2 });
+      if (ok) { st.model.set(b.id, b.value); await noteWrite(st, b.id, b.x, b.y); }
+    }],
+    ['lone-detail-2', 2, async () => {
+      const v = await st.page.evaluate(() => window.__p.validButtons());
+      if (!v.length) return;
+      const b = pick(v);
+      await st.page.mouse.move(b.x, b.y);
+      await st.page.mouse.down({ clickCount: 2 });
+      await st.page.mouse.up({ clickCount: 2 });
+    }],
     ['focus-key', 2, async () => {
       const n = await st.page.evaluate(() => document.querySelectorAll('.lbl').length);
       await st.page.evaluate((i) => document.querySelectorAll('.lbl')[i].focus(), Math.floor(r() * n));
@@ -390,6 +449,97 @@ async function b09() {
   await st.page.close();
 }
 
+const NO_DISABLE = () => {
+  Object.defineProperty(HTMLButtonElement.prototype, 'disabled', { configurable: true, get() { return false; }, set() {} });
+};
+const NO_MOUSEDOWN_PREVENT = () => {
+  const p = Event.prototype.preventDefault;
+  Event.prototype.preventDefault = function () { if (this.type === 'mousedown') return undefined; return p.call(this); };
+};
+
+// B12: the double-click defect. Filter unknown hides each labelled card and the next one slides under the pointer.
+async function b12() {
+  extWrite(new Map(Array.from(readLabels().keys(), (i) => [i, 'unknown'])));
+  const st = await newPage(url, { width: 1280, height: 800 });
+  await st.page.locator('.flt[data-f="unknown"]').click();
+  await settle(st);
+  const ids = await shown(st);
+  await st.page.evaluate((i) => window.__p.bring(i, 0.5), ids[0]);
+  await settle(st);
+  const p = await st.page.evaluate((i) => window.__p.btn(i, 'real'), ids[0]);
+  if (!p || !p.valid) throw new Error('no click point on ' + ids[0]);
+  const under = async (want) => {
+    const h = await st.page.evaluate(([a, b]) => window.__p.hitLbl(a, b), [p.x, p.y]);
+    if (!h || h.id !== want) throw new Error('fixture: ' + want + ' is not under the pointer, ' + JSON.stringify(h));
+  };
+  const unknownNow = (id, what) => { if (readLabels().get(id) !== 'unknown') throw new Error(what + ' wrote ' + id); };
+  await st.page.mouse.move(2, 2);
+  await step(st, 'first click of a double-click', async () => {
+    await st.page.mouse.click(p.x, p.y);
+    st.model.set(ids[0], 'real');
+    await noteWrite(st, ids[0], p.x, p.y);
+  });
+  await under(ids[1]);
+  await st.page.waitForTimeout(300);
+  await step(st, 'second click, detail 2, 300 ms later, on the card that slid under the pointer', async () => {
+    await st.page.mouse.down({ clickCount: 2 });
+    await st.page.mouse.up({ clickCount: 2 });
+  });
+  unknownNow(ids[1], 'a detail-2 click at the same point');
+  await step(st, 'plain second click, detail 1, same point, 300 ms later', async () => { await st.page.mouse.click(p.x, p.y); });
+  unknownNow(ids[1], 'a plain click at the same point with no pointer movement');
+  await step(st, 'deliberate click after the pointer moved', async () => {
+    await st.page.mouse.move(2, 2);
+    await st.page.mouse.click(p.x, p.y);
+    st.model.set(ids[1], 'real');
+    await noteWrite(st, ids[1], p.x, p.y);
+  });
+  await under(ids[2]);
+  await step(st, 'detail-2 click after the pointer moved', async () => {
+    await st.page.mouse.move(2, 2);
+    await st.page.mouse.move(p.x, p.y);
+    await st.page.mouse.down({ clickCount: 2 });
+    await st.page.mouse.up({ clickCount: 2 });
+  });
+  unknownNow(ids[2], 'a detail-2 click after the pointer moved');
+  await step(st, 'plain click after the pointer moved is accepted', async () => {
+    await st.page.mouse.move(2, 2);
+    await st.page.mouse.click(p.x, p.y);
+    st.model.set(ids[2], 'real');
+    await noteWrite(st, ids[2], p.x, p.y);
+  });
+  await st.page.close();
+}
+
+// B13: focus. The page disables every label button while a POST is in flight, which drops focus in Chromium by itself,
+// so each variant switches that off, and the second one also neutralises the mousedown preventDefault.
+async function b13() {
+  const variants = [['mousedown default prevented, buttons never disabled', [NO_DISABLE], 'down'],
+    ['mousedown default not prevented, buttons never disabled', [NO_DISABLE, NO_MOUSEDOWN_PREVENT], 'up']];
+  for (const [name, scripts, when] of variants) {
+    const st = await newPage(url, { width: 1280, height: 800 }, scripts);
+    const id = (await shown(st))[3];
+    await st.page.evaluate((i) => window.__p.bring(i, 0.6), id);
+    await settle(st);
+    const b = await st.page.evaluate((i) => window.__p.btn(i, 'real'), id);
+    if (!b || !b.valid) throw new Error(name + ': no click point on ' + id);
+    const held = () => st.page.evaluate(() => /\blbl\b/.test(document.activeElement ? document.activeElement.className : ''));
+    await st.page.mouse.move(b.x, b.y);
+    await st.page.mouse.down();
+    if (when === 'down' && (await held())) throw new Error(name + ': the label button took focus on mousedown');
+    if (when === 'up' && !(await held())) throw new Error(name + ': the variant is vacuous, mousedown did not focus the button');
+    await st.page.mouse.up();
+    st.model.set(id, 'real');
+    await settle(st);
+    verify(st, name);
+    if (await held()) throw new Error(name + ': the label button kept focus after the click');
+    const before = st.posts;
+    for (const k of ['Enter', 'Space']) await step(st, name + ' ' + k, () => st.page.keyboard.press(k));
+    if (st.posts !== before) throw new Error(name + ': a key on the clicked button sent a POST');
+    await st.page.close();
+  }
+}
+
 async function b10() {
   const st = await newPage(emptyUrl, { width: 1280, height: 800 });
   const before = errs.length;
@@ -412,6 +562,8 @@ const CASES = [['B01 cards render with evidence', b01], ['B02 mouse clicks write
   ['B05 r b u keys write nothing', b05], ['B06 filter hides the labelled card, next target stays on screen', b06],
   ['B07 j and k pick an on-screen card', b07], ['B08 a file changed on disk gets 409 and a reload', b08],
   ['B09 seeded random input seed ' + SEED + ' steps ' + STEPS, b09], ['B10 empty corpus page is safe', b10],
+  ['B12 a double-click or a re-click under a stationary pointer writes only the aimed card', b12],
+  ['B13 a label button never holds focus, with or without the page disabling it', b13],
   ['B11 no page or console errors', b11]];
 
 (async () => {

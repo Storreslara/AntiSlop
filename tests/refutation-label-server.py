@@ -434,6 +434,11 @@ def s12():
         check(r['version_before'] != r['version_after'] and r['version_after'] == fx.version(), 'versions %r' % r)
         check(r['remote'] == '127.0.0.1' and r['origin'] == 'http://127.0.0.1:%d' % fx.port, 'remote/origin %r' % r)
         check(fx.token not in text, 'token in the log')
+        fx.post(fx.valid(), Origin='http://evil.example/' + 'a' * 5000)
+        with open(fx.log) as f:
+            last = json.loads(f.read().splitlines()[-1])
+        check(last['status'] == 403 and isinstance(last['origin'], str), 'long Origin line %r' % (last,))
+        check(0 < len(last['origin']) <= 200 and last['origin'].startswith('http://evil.example/'), 'logged origin is %d chars' % len(last['origin']))
     finally:
         fx.stop()
 
@@ -475,6 +480,28 @@ def s13():
         unchanged(fx, before, 'a bound port')
     finally:
         s.close()
+    for bad in ('70000', '-1'):
+        fx = Fx()
+        before = fx.snap()
+        p = cli(fx, '--port', bad)
+        out = p.stdout + p.stderr
+        check(p.returncode == 2 and 'Traceback' not in out, 'port %s: exit %d, %r' % (bad, p.returncode, out[:120]))
+        unchanged(fx, before, 'port ' + bad)
+    fx = Fx()
+    d = mktmp()
+    shutil.copy(LABEL_PY, d)
+    shutil.copy(os.path.join(RR, 'label_page.html'), d)
+    before = fx.snap()
+    cmd = [sys.executable, os.path.join(d, 'label.py'), 'serve', '--no-open', '--port', '0', '--corpus', fx.corpus,
+           '--labels', fx.labels, '--repo', fx.repo, '--log', fx.log]
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired:
+        raise AssertionError('with no score.py beside it the server started instead of refusing')
+    out = (p.stdout + p.stderr).strip()
+    check(p.returncode == 2 and len(out.splitlines()) == 1 and 'score.py' in out, 'no score.py: exit %d, %r' % (p.returncode, out[:160]))
+    unchanged(fx, before, 'a missing score.py')
+    check(not os.path.exists(fx.log), 'no score.py: log created')
 
 
 def listening(port):
@@ -563,13 +590,10 @@ def s15():
         check('</script><b>' not in page and '\\u003c/script\\u003e\\u003cb\\u003ex\\u003c/b\\u003e' in page, 'claim not escaped')
         check('not a label' in page, 'hint wording missing')
         d = fx.page_data()
-        if os.path.exists(os.path.join(RR, 'score.py')):  # a stripped copy has no score.py: the targets are then null
-            score = importlib.util.spec_from_file_location('score_ref', os.path.join(RR, 'score.py'))
-            sm = importlib.util.module_from_spec(score)
-            score.loader.exec_module(sm)
-            check(d['min_real'] == sm.MIN_REAL and d['max_bogus'] == len(fx.rows) - sm.MIN_REAL, 'thresholds %r %r' % (d['min_real'], d['max_bogus']))
-        else:
-            check(d['min_real'] is None and d['max_bogus'] is None, 'targets without score.py: %r' % ((d['min_real'], d['max_bogus']),))
+        score = importlib.util.spec_from_file_location('score_ref', os.path.join(RR, 'score.py'))
+        sm = importlib.util.module_from_spec(score)
+        score.loader.exec_module(sm)
+        check(isinstance(d['min_real'], int) and d['min_real'] == sm.MIN_REAL and d['max_bogus'] == len(fx.rows) - sm.MIN_REAL, 'thresholds %r %r' % (d['min_real'], d['max_bogus']))
     finally:
         fx.stop()
 
