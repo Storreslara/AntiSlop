@@ -1,205 +1,268 @@
 Unit: rfp-u1
 
 ## Objective
-Before it returns FAIL, the reviewer challenges its own **judgment defects**: the defects it found by
-reading code, as opposed to mechanical FAIL grounds such as a `review-precheck.sh` failure line, an
-uncommitted tree, an out-of-scope path, or a command whose output shows the failure. It spawns one
-foreground, unnamed `explorer` that tries to disprove each one against the whole file, its callers and the
-baseline. Every REFUTED or CONFIRMED answer must carry an artifact, and the reviewer re-checks each artifact
-itself. If every defect is refuted, the verdict is PASS, so no FAIL block is written and no ladder attempt is
-used up. If nothing stands and some answers are UNCERTAIN, the verdict is INSUFFICIENT-CONTEXT. The pass
-writes no marker.
+Ship `bin/refutation-brief.sh`, installed to `.claude/bin/`. It is the one deterministic source of the
+prompt that the reviewer's refutation pass gives the `explorer` it spawns (plan D8). The eval replay
+(rfp-u2) uses the same script, so the replay measures exactly the brief that ships.
 
-The unit adds one bullet to `agents/reviewer.md` and one clause to its advisory-section order. It adds prose
-pins for the new text and a route-gate test case proving that a reviewer may spawn `explorer` without a
-review-join stamp being written. It ends with the P3 bump, the CHANGELOG entry and the regenerated `.claude/`
-mirrors, all in the same commit. No hook, protocol, orchestrator or adapter file changes.
+The script reads 1 to 3 `D<n>: <file:line> <claim>` lines on stdin and takes the baseline as its argument.
+It prints a fixed brief: the baseline and reviewed shas, the changed files, the three questions, the answer
+grammar, the UNCERTAIN and artifact rules and the 10-turn note. It exits 2 with nothing on stdout for 0
+lines, for more than 3 lines or a D-number above 3 (`over-cap`), for a malformed or repeated line, and for
+a bad baseline. It writes nothing.
+
+This unit changes no persona text. Nothing calls the script until rfp-u3, so shipping it is inert.
 
 ## Retrieval
-Fast path, no tracker issue. Spec: `docs/plans/2026-10-27-refutation-pass.md` ("Step 1", "Context" and its
-decision tables, "Cost model"). This file is the contract of record.
+Fast path, no tracker issue. Spec: `docs/plans/2026-10-27-refutation-pass.md` ("Step 1", "Per-defect
+protocol", D4, D8). This file is the contract of record. It has no dependency and can be dispatched in
+parallel with rfp-u2 only if rfp-u2's run.sh dry-run is not exercised before this unit lands (rfp-u2
+criterion 4 needs the script). The safe order is rfp-u1 then rfp-u2.
 
 ## Affected files
-- `tests/persona-prose-pins.test.sh` (anchor: line matching `if [ "$fail" -eq 0 ]; then echo "All persona-prose-pins checks passed."; else echo "persona-prose-pins: FAILED"; fi`)
-- `tests/reviewer-route-gate-caller.test.sh` (anchor: line matching `check_exit caller-empty                      ""                         reviewer 0`)
-- `agents/reviewer.md` (anchors: line matching `first (if fired), then \`ubiquitous-language\` (if fired) — never precede or`; line matching `- **On FAIL (both orchestration modes)**: also write a durable`)
+- `bin/refutation-brief.sh` (anchor: new file, mode 755)
+- `tests/refutation-brief.test.sh` (anchor: new file, mode 755)
+- `bin/cli.js` (anchor: line matching `const BIN_HELPER_FILES = [`)
+- `tests/bin-helpers-scaffold.test.sh` (anchors: line matching `FILES="ladder-tier.sh`; line matching `if check_files; then ok "(a) nine helpers present"`)
+- `tests/validate.sh` (anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`)
 - `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`
-- generated only, by `node bin/cli.js --update`: `.claude/agents/*.md` (stamp lines; reviewer also its body), `.claude/persona-protocol.md`, `.claude/persona-protocol-slim.md`, `.claude/protocol-digest.md`, the config's `fileHashes` and `pluginVersion`
+- generated only, by `node bin/cli.js --update`: `.claude/bin/refutation-brief.sh`, `.claude/agents/*.md` stamp lines, `.claude/persona-protocol*.md`, `.claude/protocol-digest.md`, the config's `fileHashes` and `pluginVersion`
 
 ## Ordered edits
-1. file: `tests/persona-prose-pins.test.sh`
-   anchor: line matching `if [ "$fail" -eq 0 ]; then echo "All persona-prose-pins checks passed."; else echo "persona-prose-pins: FAILED"; fi`
-   indent: 0
-   insert-before:
+1. file: `tests/refutation-brief.test.sh` (new, mode 755), content:
 ~~~
-for f in agents/reviewer.md .claude/agents/reviewer.md; do
-  has "$f" 'Refutation pass (before any FAIL verdict)'
-  has "$f" 'Skip the refutation pass, and keep every defect as found, when any FAIL ground is mechanical'
-  has "$f" 'when more than 5 judgment defects remain'
-  has "$f" 'spawn `explorer` once, in the foreground and with no `name:`'
-  has "$f" 're-read the whole file and its callers, not only the hunk'
-  has "$f" 'when unsure, answer UNCERTAIN, never CONFIRMED'
-  has "$f" 'a verdict with no artifact is UNCERTAIN'
-  has "$f" 'If none stands and one or more is UNCERTAIN, return INSUFFICIENT-CONTEXT'
-  has "$f" 'without a second refutation pass'
-  has "$f" '`NOTE[code]: refuted: D<n>'
-  has "$f" 'review gating off, in the `refutation` section instead'
-  has "$f" 'a FAIL it prevents writes no `.fail` block'
-  has "$f" 'then `refutation` (if run)'
-  hasnot "$f" 'refuter'
-done
-~~~
-   Run `bash tests/persona-prose-pins.test.sh`: it must now exit 1, with 26 `FAIL` lines for the two reviewer
-   files (the `hasnot` pins already pass). This is the red step.
-2. file: `tests/reviewer-route-gate-caller.test.sh`
-   anchor: line matching `check_exit caller-empty                      ""                         reviewer 0`
-   indent: 0
-   insert-after:
-~~~
+#!/usr/bin/env bash
+# Fixture suite for bin/refutation-brief.sh (rfp-u1). Every case runs in a scratch git repo, never this tree.
+set -uo pipefail
+cd "$(dirname "$0")/.."
+script="$(pwd)/${BRIEF_UNDER_TEST:-bin/refutation-brief.sh}"
+fail=0
+ok()  { echo "OK   $*"; }
+bad() { echo "FAIL $*"; fail=1; }
 
-# The refutation pass (agents/reviewer.md): a reviewer may spawn the explorer,
-# and that nested dispatch writes no review-join stamp (rfp-u1).
-check_exit caller-reviewer-target-explorer   reviewer                   explorer 0
-if ls "$tmproot/caller-reviewer-target-explorer/.claude"/.review-join.* >/dev/null 2>&1; then
-  echo "FAIL (caller-reviewer-target-explorer-no-stamp) a review-join stamp was written"
-  fail=1
+tmp="$(mktemp -d)"
+trap 'rm -rf "$tmp"' EXIT
+repo="$tmp/repo"
+mkdir -p "$repo/src"
+( cd "$repo" && git init -q . && printf 'a\n' > src/a.sh && git add -A \
+  && git -c user.email=t@t -c user.name=t commit -q -m base \
+  && printf 'a\nb\n' > src/a.sh && git -c user.email=t@t -c user.name=t commit -q -am change )
+base="$(cd "$repo" && git rev-parse HEAD~1)"
+
+run() { # <stdin text> <args...> -> sets out, err, rc
+  local input="$1"; shift
+  out="$(cd "$repo" && printf '%s' "$input" | bash "$script" "$@" 2>"$tmp/err")"; rc=$?
+  err="$(cat "$tmp/err")"
+}
+
+# (a) two valid defects: exit 0, both D-lines, the baseline sha, the changed file, the rules and the grammar
+run $'D1: src/a.sh:2 b is unquoted\n\nD2: src/a.sh:1-2 no guard on empty input\n' "$base"
+if [ "$rc" = 0 ] \
+   && printf '%s\n' "$out" | grep -qx 'D1: src/a.sh:2 b is unquoted' \
+   && printf '%s\n' "$out" | grep -qx 'D2: src/a.sh:1-2 no guard on empty input' \
+   && printf '%s\n' "$out" | grep -qx "Baseline: $base" \
+   && printf '%s\n' "$out" | grep -qx -- '- src/a.sh' \
+   && printf '%s\n' "$out" | grep -qF 'When unsure, answer UNCERTAIN, never CONFIRMED. A verdict with no artifact is UNCERTAIN.' \
+   && printf '%s\n' "$out" | grep -qF 'D<n>: REFUTED|CONFIRMED|UNCERTAIN — q1=<yes|no> q2=<change|baseline> q3=<real|mitigated|n/a> — artifact:' \
+   && printf '%s\n' "$out" | grep -qF "on why it stops this defect on" ; then
+  ok "(a) valid brief"
 else
-  echo "OK   (caller-reviewer-target-explorer-no-stamp) no review-join stamp"
+  bad "(a) valid brief rc=$rc err=$err"
 fi
+
+# (b) four defects: over-cap, exit 2, nothing on stdout
+run $'D1: src/a.sh:1 x\nD2: src/a.sh:1 y\nD3: src/a.sh:1 z\nD4: src/a.sh:1 w\n' "$base"
+if [ "$rc" = 2 ] && [ -z "$out" ] && printf '%s' "$err" | grep -q 'over-cap'; then ok "(b) over-cap"; else bad "(b) over-cap rc=$rc"; fi
+
+# (c) no defect lines
+run $'\n\n' "$base"
+if [ "$rc" = 2 ] && [ -z "$out" ]; then ok "(c) empty stdin"; else bad "(c) empty stdin rc=$rc"; fi
+
+# (d) malformed line (no file:line)
+run $'D1: the code is wrong\n' "$base"
+if [ "$rc" = 2 ] && printf '%s' "$err" | grep -q 'malformed'; then ok "(d) malformed"; else bad "(d) malformed rc=$rc"; fi
+
+# (e) baseline that is not a commit
+run $'D1: src/a.sh:1 x\n' deadbeefdeadbeef
+if [ "$rc" = 2 ] && printf '%s' "$err" | grep -q 'not a commit'; then ok "(e) bad baseline"; else bad "(e) bad baseline rc=$rc"; fi
+
+# (f) repeated D-number
+run $'D1: src/a.sh:1 x\nD1: src/a.sh:2 y\n' "$base"
+if [ "$rc" = 2 ] && printf '%s' "$err" | grep -q 'repeated D1'; then ok "(f) repeated id"; else bad "(f) repeated id rc=$rc"; fi
+
+# (g) D-number above 3, even with fewer than 4 lines
+run $'D7: src/a.sh:1 x\n' "$base"
+if [ "$rc" = 2 ] && printf '%s' "$err" | grep -q 'over-cap'; then ok "(g) D-number cap"; else bad "(g) D-number cap rc=$rc"; fi
+
+# (h) deterministic and writes nothing
+run $'D1: src/a.sh:2 b\n' "$base"; first="$out"
+run $'D1: src/a.sh:2 b\n' "$base"
+st="$(cd "$repo" && git status --porcelain)"
+if [ "$first" = "$out" ] && [ -z "$st" ]; then ok "(h) deterministic, no writes"; else bad "(h) deterministic, no writes"; fi
+
+# (i) no baseline argument
+run $'D1: src/a.sh:1 x\n'
+if [ "$rc" = 2 ] && printf '%s' "$err" | grep -q 'usage'; then ok "(i) no baseline"; else bad "(i) no baseline rc=$rc"; fi
+
+if [ "$fail" -eq 0 ]; then echo "All refutation-brief checks passed."; else echo "refutation-brief: FAILED"; fi
+exit "$fail"
 ~~~
-   This case is green today. It pins a premise the pass depends on (see criterion 3's mutation).
-3. file: `agents/reviewer.md`
-   before: `first (if fired), then \`ubiquitous-language\` (if fired) — never precede or`
-   after: `first (if fired), then \`ubiquitous-language\` (if fired), then \`refutation\` (if run) — never precede or`
-   (one line, :141 at 1073743d; the `before:` text occurs exactly once)
-4. file: `agents/reviewer.md`
-   anchor: line matching `- **On FAIL (both orchestration modes)**: also write a durable`
+   Run `bash tests/refutation-brief.test.sh`: it must exit 1 (the script does not exist yet). This is the red step.
+2. file: `bin/refutation-brief.sh` (new, mode 755), content:
+~~~
+#!/usr/bin/env bash
+# Refutation brief (rfp-u1): prints the prompt the reviewer gives the `explorer` it spawns for the
+# refutation pass (agents/reviewer.md, "Refutation pass"). The eval replay
+# (eval/refutation-replay/run.sh) uses the same script, so the replay tests exactly the brief that ships.
+# Usage: printf 'D1: <file:line> <claim>\n' | bin/refutation-brief.sh <baseline>
+# Reads 1 to 3 defect lines on stdin (blank lines ignored), each `D<1-3>: <path>:<line>[-<line>] <claim>`.
+# Prints the brief on stdout and exits 0. Writes nothing. Run from the repo root of the reviewed tree.
+# Exits 2, with one `refutation-brief: <reason>` line on stderr and nothing on stdout, on: no baseline,
+# a baseline that is not a commit, no defect line, more than 3 (`over-cap`), a malformed line, or a
+# repeated D-number.
+set -uo pipefail
+
+die() { echo "refutation-brief: $*" >&2; exit 2; }
+
+base="${1:-}"
+[ -n "$base" ] || die "usage: refutation-brief.sh <baseline> (defect lines on stdin)"
+git rev-parse --verify --quiet "${base}^{commit}" >/dev/null || die "baseline is not a commit: $base"
+
+defects=()
+seen=" "
+while IFS= read -r line || [ -n "$line" ]; do
+  [ -n "${line//[[:space:]]/}" ] || continue
+  [[ $line =~ ^D([1-9]):\ [^[:space:]:]+:[0-9]+(-[0-9]+)?\ .+$ ]] || die "malformed defect line: $line"
+  n="${BASH_REMATCH[1]}"
+  case "$seen" in *" $n "*) die "repeated D$n" ;; esac
+  seen="$seen$n "
+  defects+=( "$line" )
+done
+
+[ "${#defects[@]}" -gt 0 ] || die "no defect lines on stdin"
+[ "${#defects[@]}" -le 3 ] || die "over-cap: ${#defects[@]} defects, at most 3"
+for d in "${defects[@]}"; do
+  [[ $d =~ ^D([1-3]): ]] || die "over-cap: D-numbers run 1 to 3"
+done
+
+changed="$(git diff --name-only "$base..HEAD" 2>/dev/null)" || die "cannot diff $base..HEAD"
+
+cat <<EOF
+Refutation brief. You are read-only: you own no verdict and write no file.
+Baseline: $(git rev-parse "${base}^{commit}")
+Reviewed: $(git rev-parse HEAD)
+Changed files:
+EOF
+if [ -n "$changed" ]; then
+  printf '%s\n' "$changed" | sed 's/^/- /'
+else
+  echo "- (none)"
+fi
+cat <<'EOF'
+
+Try to DISPROVE each defect below. For each one, read the whole cited file and the callers of the cited
+code (grep, or the graph), not only the cited line, and compare with the baseline
+(git show <baseline>:<file>). Answer three questions:
+(1) does the issue exist at the cited line?
+(2) is it in the change, or already at the baseline?
+(3) is the impact real, or already mitigated by a guard, an earlier validation or config elsewhere?
+When unsure, answer UNCERTAIN, never CONFIRMED. A verdict with no artifact is UNCERTAIN. An artifact is a
+command you ran plus its decisive output line, or a quoted file:line. For REFUTED by mitigation, the
+artifact is the guard itself, quoted with its file:line, plus one clause on why it stops this defect on
+this defect's own path.
+Batch independent reads in parallel: you have at most 10 turns.
+Reply with exactly one line per defect, in this form, then your STATUS line:
+D<n>: REFUTED|CONFIRMED|UNCERTAIN — q1=<yes|no> q2=<change|baseline> q3=<real|mitigated|n/a> — artifact: <command and output line, or file:line quote>
+
+Defects:
+EOF
+printf '%s\n' "${defects[@]}"
+exit 0
+~~~
+3. file: `bin/cli.js`
+   before: `'review-precheck.sh', 'unit-size.sh'];`
+   after: `'review-precheck.sh', 'unit-size.sh', 'refutation-brief.sh'];`
+4. file: `tests/bin-helpers-scaffold.test.sh`
+   before: `review-precheck.sh unit-size.sh"`
+   after: `review-precheck.sh unit-size.sh refutation-brief.sh"`
+5. file: `tests/bin-helpers-scaffold.test.sh`
+   before: `if check_files; then ok "(a) nine helpers present"; else bad "(a) nine helpers present"; fi`
+   after: `if check_files; then ok "(a) ten helpers present"; else bad "(a) ten helpers present"; fi`
+6. file: `tests/validate.sh`
+   anchor: line matching `echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="`
    indent: 0
    insert-before:
 ~~~
-- **Refutation pass (before any FAIL verdict)**: a judgment defect (one you
-  found by reading, not a `review-precheck.sh` failure line, an uncommitted
-  tree, an out-of-scope path, or a command you ran whose output shows the
-  failure; those are mechanical and are never sent) does not reach a FAIL
-  verdict unchallenged. Merge duplicates (same `file:line` or same cause)
-  first. Skip the refutation pass, and keep every defect as found, when any
-  FAIL ground is mechanical, when more than 5 judgment defects remain, on a
-  resume after an INSUFFICIENT-CONTEXT the pass caused, or when no subagent
-  can be spawned. Otherwise spawn `explorer` once, in the foreground and
-  with no `name:`, giving it the baseline, the changed files and one
-  `D<n>: <file:line> <claim>` line per judgment defect, and ask it to
-  disprove each: re-read the whole file and its callers, not only the hunk,
-  and answer (1) does the issue exist at the cited line, (2) is it in the
-  change or already at the baseline (`git show <baseline>:<file>`), (3) is
-  the impact real or already mitigated by a guard, an earlier validation or
-  config elsewhere, one line each:
-  `D<n>: REFUTED|CONFIRMED|UNCERTAIN — artifact: <command and output line, or file:line quote>`.
-  Tell it: when unsure, answer UNCERTAIN, never CONFIRMED, and a verdict
-  with no artifact is UNCERTAIN. Re-check each artifact yourself (read the
-  line, re-run the command); a defect whose artifact does not reproduce, or
-  that got no answer line, stands as found. A defect already at the
-  baseline is REFUTED unless it is an unmet acceptance criterion. If any
-  defect stands or is CONFIRMED, return FAIL with only those, and list the
-  REFUTED and UNCERTAIN ones in the `refutation` advisory section. If none
-  stands and one or more is UNCERTAIN, return INSUFFICIENT-CONTEXT, its
-  `missing:` naming the evidence that would settle each (a judgment you
-  cannot authoritatively determine); on the resume, decide FAIL or PASS
-  without a second refutation pass, and a defect still without an artifact
-  becomes a `NOTE[code]: unconfirmed:` line, not a FAIL ground. If all are
-  REFUTED, apply the PASS rules (escalation included) and add one
-  `NOTE[code]: refuted: D<n> <claim> — <artifact>` line per defect (under
-  review gating off, in the `refutation` section instead). The pass writes
-  no marker; a FAIL it prevents writes no `.fail` block, so the FAIL-block
-  count and the Escalation ladder only count FAILs that survived it.
+echo "== refutation-brief: the explorer prompt for the reviewer's refutation pass, caps and grammar (Bash, rfp-u1) =="
+if bash tests/refutation-brief.test.sh > /dev/null; then
+  echo "OK   tests/refutation-brief.test.sh"
+else
+  echo "FAIL tests/refutation-brief.test.sh"
+  fail=1
+fi
+
+echo
 ~~~
-   This is 34 lines. Do not reflow it: criterion 4 budgets the reviewer.md diff at 36 added lines and 1
-   removed line.
-5. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
+7. command: `perl -0pi -e 's/("version": "\d+\.\d+\.)(\d+)"/$1.($2+1)."\""/e' .claude-plugin/plugin.json package.json`
    expect: 0
-   This adds one to the patch version in both files: 0.31.219 to 0.31.220 at 1073743d, or +1 on whatever is
-   current at dispatch.
-6. file: `CHANGELOG.md`
+   Adds one to the patch version in both files (+1 on whatever is current at dispatch). This is not P3-required
+   (no stamped path is touched), but `--update` must see a new version to install the new helper.
+8. file: `CHANGELOG.md`
    anchor: line matching `## [Unreleased]`
    indent: 0
    insert-after:
 ~~~
 
-**Reviewer refutation pass (rfp-u1, VERSION).** `agents/reviewer.md` gains "Refutation pass (before any FAIL verdict)": before a FAIL whose grounds are all judgment defects (1 to 5 after deduplication), the reviewer spawns one foreground, unnamed `explorer` to disprove each against the whole file, its callers and the baseline; REFUTED and CONFIRMED answers need an artifact the reviewer re-checks; all refuted means PASS with `NOTE[code]: refuted:` lines and no FAIL block, nothing standing with UNCERTAIN left means INSUFFICIENT-CONTEXT. Mechanical FAIL grounds are never sent. The pass writes no marker; the FAIL-block count, the Escalation ladder, the hooks, the orchestrator and the adapter ports are unchanged. `tests/persona-prose-pins.test.sh` pins the bullet and `tests/reviewer-route-gate-caller.test.sh` pins that a reviewer may spawn `explorer` with no review-join stamp. Spec: `docs/plans/2026-10-27-refutation-pass.md`.
+**Refutation brief helper (rfp-u1, VERSION).** New `bin/refutation-brief.sh`, installed to `.claude/bin/`: it reads 1 to 3 `D<n>: <file:line> <claim>` lines on stdin and prints the fixed prompt for the reviewer's refutation pass (baseline, changed files, the three questions, the answer grammar, "when unsure, answer UNCERTAIN, never CONFIRMED"); it exits 2 on 0 lines, more than 3 (`over-cap`), malformed or repeated lines, or a bad baseline, and writes nothing. Nothing calls it yet (rfp-u3 does). `tests/refutation-brief.test.sh` covers it; spec `docs/plans/2026-10-27-refutation-pass.md`.
 ~~~
-   Replace `VERSION` with the version that edit 5 wrote.
-7. command: `node bin/cli.js --update`
+   Replace `VERSION` with the version edit 7 wrote.
+9. command: `node bin/cli.js --update`
    expect: 0
-8. command: `bash -c 'bash tests/persona-prose-pins.test.sh >/dev/null && bash tests/reviewer-route-gate-caller.test.sh >/dev/null; echo $?'`
-   expect: stdout `0`
-9. command: `git add tests/persona-prose-pins.test.sh tests/reviewer-route-gate-caller.test.sh agents/reviewer.md .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude ':(exclude).claude/agent-memory' && git commit -m "feat(rfp-u1): the reviewer runs a refutation pass on its judgment defects before any FAIL verdict"`
+10. command: `git add bin/refutation-brief.sh tests/refutation-brief.test.sh .claude/bin/refutation-brief.sh bin/cli.js tests/bin-helpers-scaffold.test.sh tests/validate.sh .claude-plugin/plugin.json package.json CHANGELOG.md && git add -u -- .claude ':(exclude).claude/agent-memory' && git commit -m "feat(rfp-u1): refutation brief helper, the explorer prompt for the reviewer's refutation pass"`
    expect: 0
    Run `git status --short` first. If a tracked file outside "Affected files" is modified, stop and report it.
-   Every later commit of this unit that touches `agents/` (a fix round) repeats edits 5 to 7 in that same
-   commit and keeps `(rfp-u1)` in its subject. Constitution P3 is checked per commit (criterion 6).
+   Keep `(rfp-u1)` in every fix-round commit subject.
 
 ## Do NOT touch
-- `agents/orchestrator.md`, `agents/explorer.md`, `agents/task-master.md` (the routing does not change; criterion 5)
-- `templates/` (the FAIL-record format and the INSUFFICIENT-CONTEXT section do not change; criterion 5)
-- `hooks/` and `.claude/hooks/` (the route and stop gates already admit the nested spawn; criterion 5)
-- `adapters/` (the codex and cursor reviewer ports have no verified spawn primitive and keep today's FAIL path; criterion 5)
-- `bin/` (no change to `ladder-tier.sh`, `fail-count.sh` or `review-precheck.sh`; criterion 5)
-- `CONTEXT.md` and `docs/adr/` (rfp-u2, the scribe's unit; criterion 5)
-- `.claude/agents/` and `.claude/` mirrors by hand (only `node bin/cli.js --update` writes them)
+- `agents/` and `templates/` (no persona text changes in this unit; criterion 4)
+- `hooks/` and `adapters/` (criterion 4)
+- `eval/` (rfp-u2's; criterion 4)
+- `.claude/bin/` and `.claude/agents/` by hand (only `node bin/cli.js --update` writes them)
 
 ## Acceptance criteria
-1. run: `bash -c 'bash tests/persona-prose-pins.test.sh | grep -ciE "^ok +(\.claude/)?agents/reviewer\.md .*(refut|uncertain|judgment defects remain|explorer|whole file|it prevents writes)"; true'`
-   exit: 0
-   stdout: `28`
-   mutation: delete edit 4's bullet and re-run `--update`; only the two `(absent) refuter` lines still match, so stdout is `2`.
-2. run: `bash -c 'bash tests/persona-prose-pins.test.sh >/dev/null; echo $?'`
+1. run: `bash -c 'bash tests/refutation-brief.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: skip edit 7 (`--update`); the 13 `.claude/agents/reviewer.md` `has` pins fail and stdout is `1`.
-3. run: `bash -c 'out=$(bash tests/reviewer-route-gate-caller.test.sh 2>&1); rc=$?; printf "%s\n" "$out" | grep -c "^OK   (caller-reviewer-target-explorer"; echo "rc=$rc"'`
+   mutation: delete the `for d in "${defects[@]}"` D-number loop in `bin/refutation-brief.sh`; case (g) prints `FAIL (g) D-number cap` and stdout is `1`. Replacing `When unsure, answer UNCERTAIN, never CONFIRMED.` with `When unsure, answer UNCERTAIN.` fails case (a). spec-master ran both mutations on a scratch copy.
+2. run: `cmp bin/refutation-brief.sh .claude/bin/refutation-brief.sh`
    exit: 0
-   stdout: `2` then `rc=0`
-   mutation: copy `hooks/scripts/reviewer-route-gate.sh` and `hooks/scripts/lib/` to a scratch directory, replace `if [ -f "$config" ] && persona_matches_gate "$target_type" reviewer; then` with `if [ -f "$config" ]; then` in the copied core, and run the suite with `GATE_UNDER_TEST=<scratch>/reviewer-route-gate.sh`. The no-stamp case prints `FAIL`, so stdout is `1` then `rc=1`. spec-master ran this mutation on a scratch copy.
-4. run: `bash -c 'b=$(git log --format=%H --grep="(rfp-u1)" | tail -1); l=$(git log --format=%H --grep="(rfp-u1)" | head -1); [ -n "$b" ] || { echo no-commits; exit 1; }; git diff --numstat "$b^..$l" -- agents/reviewer.md | awk "{print (\$1<=36 && \$2<=1) ? \"ok\" : \"over \" \$1 \" \" \$2}"'`
-   exit: 0
-   stdout: `ok`
-   mutation: paste edit 4's payload twice; stdout is `over 69 1`.
-5. run: `bash -c 'b=$(git log --format=%H --grep="(rfp-u1)" | tail -1); l=$(git log --format=%H --grep="(rfp-u1)" | head -1); [ -n "$b" ] || { echo no-commits; exit 1; }; git diff --name-only "$b^..$l" -- agents/orchestrator.md agents/explorer.md agents/task-master.md templates hooks adapters bin CONTEXT.md docs/adr | wc -l'`
+   stdout: empty
+   mutation: skip edit 3; `--update` installs nothing, so cmp reports the missing file and exits 2.
+3. run: `bash -c 'bash tests/bin-helpers-scaffold.test.sh >/dev/null; echo $?'`
    exit: 0
    stdout: `0`
-   mutation: edit `adapters/cursor/agents/reviewer.md` in an rfp-u1 commit; stdout is at least `1`.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(rfp-u1)" | tail -1); l=$(git log --format=%H --grep="(rfp-u1)" | head -1); [ -n "$b" ] || { echo no-commits; exit 1; }; bash hooks/scripts/version-stamp-check.sh "$b^..$l" | cut -d" " -f1-4'`
-   exit: 0
-   stdout: `version-stamp-check: ok touched: yes`
-   mutation: skip edit 5; stdout reads `version-stamp-check: violation touched: yes`.
-7. run: `bash -c 'bash tests/validate.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms)
+   mutation: skip edit 3; the fresh scaffold has no `.claude/bin/refutation-brief.sh`, case (a) fails and stdout is `1`.
+4. run: `bash -c 'b=$(git log --format=%H --grep="(rfp-u1)" | tail -1); l=$(git log --format=%H --grep="(rfp-u1)" | head -1); [ -n "$b" ] || { echo no-commits; exit 1; }; git diff --name-only "$b^..$l" -- agents templates hooks adapters eval | wc -l'`
    exit: 0
    stdout: `0`
-   mutation: put `exit 1` as line 2 of `tests/persona-prose-pins.test.sh`; validate.sh (:1571) reports it and stdout is `1`.
+   mutation: edit `agents/reviewer.md` in an rfp-u1 commit; stdout is at least `1`.
+5. run: `bash -c 'bash tests/validate.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms)
+   exit: 0
+   stdout: `0`
+   mutation: put `exit 1` as line 2 of `tests/refutation-brief.test.sh`; validate.sh reports it (edit 6) and stdout is `1`.
 
 ## Pre-resolved context
-- Route gate: `hooks/scripts/lib/reviewer-route-gate-core.sh:78` scopes the name check and the review-join
-  stamp to `reviewer` targets. :37-52 block only `gatedAgents` targets. A reviewer-to-explorer spawn exits 0
-  and writes no stamp; spec-master ran the edit 2 case on a scratch copy and it printed `OK` twice.
-  Reviewer-to-reviewer is refused (`tests/reviewer-route-gate-caller.test.sh:66`).
-- Markers: `hooks/scripts/reviewed-path-gate.sh:249` grants `.claude/reviewed/` writes to the reviewer only.
-  `explorer` is denied at :292-299 and has no Write/Edit tool.
-- Explorer: `agents/explorer.md` frontmatter is `model: haiku`, `effort: low`, `maxTurns: 10`, with no
-  `Agent` tool. Spawn it by the explicit name `explorer`, never `Explore`. Leave `name:` unset: a named
-  dispatch launches as a teammate while agent teams are enabled.
-- Every pin phrase in edit 1 was checked against a scratch copy of `agents/reviewer.md` with edits 3 and 4
-  applied: each matches once after `tr -s ' \n' ' '`, none matches at 1073743d, and the flattened file
-  contains no `refuter`.
-- No test pins the text around "On FAIL (both orchestration modes)" or "INSUFFICIENT-CONTEXT" in
-  `agents/reviewer.md`. The edit 4 payload contains no blank line and no `## ` heading, so
-  `tests/fail-marker-format-parity.test.sh` and `tests/protocol-doc-drift.test.js` are unaffected.
-- The reviewer's scope check excludes `.claude`, so the regenerated mirrors are never out-of-scope paths.
-- blast-radius: `agents/reviewer.md:141` (edit 3) and `:241` (edit 4's anchor). The installed copy
-  `.claude/agents/reviewer.md` is one line lower (stamp at :13). `tests/persona-prose-pins.test.sh` sits
-  before its final `if` line. `tests/reviewer-route-gate-caller.test.sh:71`.
+- Precedent for a new `.claude/bin/` helper: st-u2 (`docs/plans/antislop-structural/contracts/st-u2.md`,
+  edits 4 and 11): `BIN_HELPER_FILES` in `bin/cli.js:656` plus `tests/bin-helpers-scaffold.test.sh:15,22`.
+- spec-master ran both payloads in a scratch git repo: all 9 cases pass (`bash -n` is clean), and the two
+  mutations in criterion 1 each turn one case red.
+- The em dashes in the answer grammar are U+2014, as in the reviewer prose. Keep the file UTF-8.
+- `tests/validate.sh` runs as lanes split on its `== ` headers (vsp-1). The new block is a self-contained
+  section with its own header.
+- The `D<n>` grammar is `^D([1-9]): <path>:<line>[-<line>] <claim>$`, then a separate 1-to-3 check. A
+  D-number above 3 is reported as `over-cap`, not as malformed.
 
 ## Escalation
 If a `before:` or anchor text is not found exactly once, stop and report the current text. If
-`node bin/cli.js --update` refuses (for example on its cross-reference assertion), quote its message and
-stop. If a gate blocks a command, report it and wait. If the unit needs a change in any `## Do NOT touch`
-path, that is a spec gap: report it, do not make the edit. Anything else outside "Affected files" goes in
-your report as a proposal.
+`node bin/cli.js --update` refuses, quote its message and stop. If a gate blocks a command, report it and
+wait. Anything outside "Affected files" goes in your report as a proposal.

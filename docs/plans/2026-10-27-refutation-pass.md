@@ -1,353 +1,500 @@
 # Refutation pass: challenge the reviewer's judgment defects before a FAIL verdict
 
-Status: spec finalized 2026-10-27 (spec-master), fast path, 2 units. Contracts:
-[rfp-u1](2026-10-27-refutation-pass/contracts/rfp-u1.md) (lead-programmer),
-[rfp-u2](2026-10-27-refutation-pass/contracts/rfp-u2.md) (scribe, after rfp-u1 PASS).
-Open Questions 1 to 4 carry recommended defaults that the contracts already apply. A different answer
-changes rfp-u1's payload before dispatch.
+Status: **revision 2, 2026-10-27** (spec-master). It applies the four user decisions and the critic's review
+(verdict "SOUND WITH CHANGES"). Fast path: 5 dispatchable units plus one human gate.
+
+Contracts:
+- [rfp-u1](2026-10-27-refutation-pass/contracts/rfp-u1.md): the brief script. Written.
+- [rfp-u2](2026-10-27-refutation-pass/contracts/rfp-u2.md): the replay corpus and gate tooling. Written.
+- [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format. Written.
+- rfp-u4: task-master fix contract and the milestone-auditor sample. Pending, next spawn (checkpoint).
+- rfp-u5: scribe glossary and ADR. Pending, next spawn (checkpoint).
+
+Revision 1's `rfp-u2` (scribe) is withdrawn and renumbered rfp-u5. Nothing from revision 1 was dispatched.
 
 ## Goal
 
-A FAIL defect the reviewer found by reading code (a **judgment defect**) reaches the lead-programmer only after
-a fresh-context subagent has tried to disprove it against the real code: the whole file, its callers and the
-baseline, not only the flagged hunk. If every defect is refuted, the unit passes and **no FAIL block is
-written**, so no Escalation-ladder attempt is used up. Mechanical FAIL grounds are never re-checked. The pass
-writes no marker. It leaves the one-unit-one-review invariant, the route gate, the stop gate and the ladder
-arithmetic unchanged, and it costs nothing on PASS paths beyond the reviewer prompt's own size.
+A FAIL defect the reviewer found by reading code (a **judgment defect**) reaches the lead-programmer only
+after a fresh-context `explorer` subagent on `sonnet` has tried to disprove it against the real code: the
+whole file, its callers and the baseline. The reviewer then re-checks each artifact itself and says, in its
+own words, why the artifact proves or defeats the claim.
+
+- If every defect is refuted, the unit passes and no FAIL block is written, so no Escalation-ladder attempt
+  is used up.
+- A defect left UNCERTAIN in a FAIL that happens anyway stays in the defect list, tagged `[unconfirmed]`.
+- Every FAIL block ends with a `refutation:` telemetry line.
+- The pass is enabled only after an offline replay of past real defects shows that it almost never refutes
+  a real one (Gate G). After that, the milestone auditor samples live refutations.
+- Mechanical FAIL grounds are never re-checked. The pass writes no marker. The one-unit-one-review
+  invariant, the route gate, the stop gate and the ladder arithmetic are unchanged.
+
+## Resolved decisions (revision 2)
+
+| # | Decision | Source |
+|---|---|---|
+| D1 | Mixed FAIL: UNCERTAIN defects stay in the FAIL defect list, prefixed `[unconfirmed]`. A fix reproduces an `[unconfirmed]` defect before changing code, and reports one that does not reproduce instead of fixing it. | user, option (c) |
+| D2 | The explorer spawn carries `model: sonnet` | user |
+| D3 | FAIL-side telemetry now. The last line of every FAIL block is `refutation: confirmed=<a> refuted=<b> uncertain=<c>`, or `refutation: skipped=<mechanical\|over-cap\|resume\|no-subagent>` | user. The skipped grammar is spec-master's |
+| D4 | Defect cap is 3, not 5 | critic. The turn budget cannot be passed per spawn (see Cost model) |
+| D5 | Replay-corpus gate before enabling (Gate G), plus a milestone-auditor sample of `refuted:` notes | critic BLOCKER. The design is spec-master's |
+| D6 | The reviewer states why each artifact defeats or proves the claim. It may keep a defect standing with a reason. For a mitigation, the re-check confirms that the guard stops the defect on the defect's own path. Revision 1's sentence that the reviewer "may not argue away a refutation" is deleted. | critic MAJOR |
+| D7 | On the INSUFFICIENT-CONTEXT resume: FAIL a defect the reviewer now reproduces itself. A defect it cannot reproduce becomes a `NOTE[code]: unconfirmed:` line. | critic MAJOR |
+| D8 | The explorer brief is a shipped script (`bin/refutation-brief.sh`). Both the reviewer and the replay use it, so the replay tests exactly the brief that ships. This also shrinks the reviewer bullet. | spec-master, from D5 |
 
 ## Context
 
-### Where the review path lives (verified, file:line at HEAD 1073743d)
+### Where things live (verified at 1073743d)
 
-- The reviewer's verdict rules are persona-specific prose in `agents/reviewer.md`: "Verdict" :127-143,
-  "On FAIL" :241-256, "On INSUFFICIENT-CONTEXT" :257-269, precedence `FAIL > INSUFFICIENT-CONTEXT >
-  ESCALATE-TO-HUMAN > PASS` :272. `.claude/agents/reviewer.md` is generated from it by
-  `node bin/cli.js --update` (inlineProtocolBlock, bin/cli.js:1089). Hand-editing it is a P2 violation.
-- The codex and cursor reviewer ports (`adapters/codex/agents/reviewer.toml`,
-  `adapters/cursor/agents/reviewer.md`) are hand-authored. Neither has a verified subagent-spawn primitive
-  (codex :136-139 "not empirically confirmed"; cursor :136 "UNVERIFIED"). Precedent: st-u2 changed the
-  reviewer's FAIL-ground rules in `agents/reviewer.md` alone and left both ports untouched (commit 952a8796).
-- The shared protocol (`templates/persona-protocol.md`, "FAIL record" :343, "Third verdict" :358) does
-  **not** need to change. The FAIL record stays "the defect list from the verdict, verbatim". The pass only
-  changes which defects reach that list.
-- The FAIL-block count is the ladder's `n`: `bin/ladder-tier.sh` header, `bin/fail-count.sh`. A FAIL that
-  never happens writes no block, so the ladder needs no new state and no new marker type.
+- **Reviewer rules.**
+  - `agents/reviewer.md`: "Verdict" :127-143 ("PASS only when … found no refutation" :137-138; the
+    advisory-section order :140-143), "On FAIL" :241-256, "On INSUFFICIENT-CONTEXT" :257-269.
+  - `.claude/agents/reviewer.md` is generated by `node bin/cli.js --update`.
+- **FAIL-record format.** The canonical text is `templates/persona-protocol.md` "FAIL record" :343-356. It
+  is inlined by cli.js into the orchestrator, lead-programmer, reviewer, spec-master and task-master
+  mirrors (`bin/cli.js:803-894`), so task-master and the lead-programmer learn the `[unconfirmed]` rule
+  from the same section.
+- **Hand-synced ports that carry the format.** These are exactly the four files
+  `tests/adapter-fail-tier-pin.test.js:12-17` pins:
+  - `adapters/codex/agents/reviewer.toml:93`
+  - `adapters/codex/agents-md-fragment.md:126`
+  - `adapters/cursor/agents/reviewer.md:90`
+  - `adapters/cursor/rules/persona-protocol.mdc:132`
 
-### Gate interaction (verified by reading the gates and running their tests)
+  The ports have no verified way to spawn a subagent, so they write `refutation: skipped=no-subagent`.
+- **Other writers.** `hooks/scripts/marker-write.sh` writes `<detail>` verbatim after the header, so the
+  telemetry line passes through it unchanged. Its fixtures in `tests/fail-marker-format-parity.test.sh` are
+  hard-coded and stay valid.
+- **Glossary.** `CONTEXT.md` "FAIL block" :1077 spells the block format (rfp-u5 updates it).
+  `docs/harness-glossary.md` lists neither the format nor the advisory order. rfp-u5 adds a
+  "refutation line" entry there, because that file holds harness-mechanics terms.
 
-- **Route gate.** `hooks/scripts/lib/reviewer-route-gate-core.sh` acts only on a target that matches
-  `reviewer`: the name check at :78-85, the review-join stamp at :94-153. The pending-review block at :37-52
-  stops only `gatedAgents` targets (`lead-programmer`). So a reviewer that spawns `explorer` writes no stamp
-  and is never blocked. A reviewer cannot spawn a `reviewer` (caller allowlist, fails closed:
-  `tests/reviewer-route-gate-caller.test.sh:66`, `caller-reviewer ... reviewer 2`). That rules out a nested
-  `Mode: advisory` reviewer. spec-master ran the new test case in a scratch copy: it prints `OK` twice, and
-  with the core's `persona_matches_gate "$target_type" reviewer` condition removed, its no-stamp check prints
-  `FAIL`.
-- **Markers.** `hooks/scripts/reviewed-path-gate.sh` grants writes under `.claude/reviewed/` to the reviewer
-  identity only (:249). An `explorer` falls through to the denial path (:292-299; pinned by
-  `tests/reviewed-path-gate.test.sh:798-807`), and `explorer` has no Write/Edit tool. "The pass writes no
-  marker" is therefore mechanically enforced, not only instructed.
-- **Stop gate.** The explorer's `SubagentStop` takes the non-reviewer branch
-  (`hooks/scripts/lib/stop-gate-core.sh:573-581`). While the reviewer's pending-review flag stands, that
-  branch logs one `grant-denied hook=stop-gate identity=explorer` line to `review-audit.log`. Every
-  reviewer-to-explorer spawn already does this today. It is noise, not a block (Risk R4).
-- **INSUFFICIENT-CONTEXT path.** The reviewer writes `.blocked`, which uses no 2-FAIL-cap slot and keeps the
-  pending-review flag standing. The orchestrator fetches the named constraint through the explorer or the
-  scribe and resumes the same reviewer (`agents/orchestrator.md:276-292`). An UNCERTAIN-only refutation
-  reuses this path unchanged, so the orchestrator needs no edit.
+### FAIL-record readers: why the new line is safe (verified)
 
-### Design decision (ADR draft; scribe numbers and lands it in rfp-u2)
+| reader | what it reads | effect of a last-line `refutation:` and `[unconfirmed]` prefix |
+|---|---|---|
+| `bin/fail-count.sh`, `bin/ladder-tier.sh` (n), `bin/ladder-tier.sh --census` | `^FAIL <id> ` header count | none |
+| `bin/escalation-card.sh:25-29` | header, `tier:`, then the **first** non-empty line | none while `refutation:` is the **last** line (rfp-u3 fixture test case b; the mutation moves it first and the test fails) |
+| `hooks/scripts/reviewer-tier.sh`, `bin/unit-size.sh:107` | whether the record exists | none |
+| `scripts/unit-outcomes.js:11-19,136-139` | substring classes over the block text | none if the line's words avoid every class substring. `refutation`, `confirmed`, `refuted`, `uncertain`, `skipped`, `mechanical`, `over-cap`, `resume`, `no-subagent` and `[unconfirmed]` match none (rfp-u3 fixture test case c reads the live `CLASSES` table) |
+| task-master fix contract (`agents/task-master.md:98-107`) | the latest block, verbatim | it must not treat `refutation:` as a defect, and must reproduce `[unconfirmed]` defects first: the protocol section (rfp-u3) plus a task-master bullet (rfp-u4) |
+| the reviewer fix-round scope rule (`agents/reviewer.md:62-63`) | paths named in a defect | `[unconfirmed]` defects keep their paths, and the telemetry line has none |
 
-> **ADR-draft: the refutation pass runs inside the reviewer's turn, not as an orchestrator dispatch.**
+### Gate interaction (verified by running the gates' tests)
+
+- **Route gate.** A reviewer may spawn `explorer` and no review-join stamp is written
+  (`hooks/scripts/lib/reviewer-route-gate-core.sh:78`, scoped to `reviewer` targets). spec-master ran the
+  new case in a scratch copy, and its mutation made it fail. A reviewer may not spawn a `reviewer`
+  (`tests/reviewer-route-gate-caller.test.sh:66`).
+- **Markers.** `hooks/scripts/reviewed-path-gate.sh:249` grants reviewer identities only, and `explorer`
+  has no Write/Edit tool.
+- **Stop gate.** The explorer's `SubagentStop` adds one `grant-denied … identity=explorer` audit line while
+  the reviewer's flag stands, as every reviewer-to-explorer spawn already does (R4).
+- **State after a refutation.** A PASS reached through a refutation writes exactly the state of any other
+  PASS: the same v3 `.pass` first line, the same review-join stamp consumption and the same bounded flag
+  clearing. Only its notes differ. A prevented FAIL writes no `.fail` block. An UNCERTAIN-only outcome
+  writes `.blocked`, as any INSUFFICIENT-CONTEXT does. No new state file exists.
+- **Reviewer-run commands.** When the reviewer reproduces a defect itself with a command, that defect
+  becomes mechanical and the pass is skipped for it. This is intended: the defect already has its artifact.
+
+### ADR draft (rfp-u5 numbers and lands it)
+
+> **ADR-draft: the refutation pass runs inside the reviewer's turn, and is enabled only behind a replay
+> gate.**
+>
 > *Context.* A hallucinated or already-mitigated FAIL defect uses up an Escalation-ladder attempt, because
-> `n` is the FAIL-block count. *Decision.* Before returning FAIL, the reviewer spawns one foreground,
-> unnamed `explorer` subagent to disprove its own judgment defects. Only defects that survive reach the FAIL
-> record. *Alternatives rejected.* (C) The orchestrator dispatches a refuter after the reviewer's FAIL. By
-> then the FAIL block has been written and `n` has already gone up. Undoing that would need a new marker
-> written by the refuter, or a change to `ladder-tier.sh`, plus filtering in task-master's fix-contract
-> dispatch. It would also need a second dispatch shape for the route gate. (A nested `Mode: advisory`
-> reviewer) The caller allowlist refuses it, and it would still need the orchestrator. (New `refuter`
-> persona) It costs a persona file, two adapter ports, personaSelection, cli.js lists and frontmatter
-> checks, and it buys nothing that `explorer` (read-only, graph access, cheapest tier) does not already
-> have. *Consequences.* No hook, marker, ladder or orchestrator change. The ports keep today's behaviour.
-> The reviewer still owns the verdict, but it may not argue away a refutation whose artifact reproduces.
-> The pass's verdict is evidence only. The three ADR tests: hard to reverse (moving to (C) later needs new
-> state machinery), surprising (a reader expects a "second gate" to be a second dispatch), and a real
-> trade-off (all three alternatives were viable).
+> `n` is the FAIL-block count.
+>
+> *Decision.* Before returning FAIL, the reviewer spawns one foreground, unnamed `explorer` on `sonnet`. Its
+> prompt comes from `bin/refutation-brief.sh` and asks it to disprove each of at most 3 judgment defects.
+> The reviewer re-checks each artifact, states its own reason, and may keep a defect standing. Only defects
+> that survive reach the FAIL record, which now ends with a `refutation:` telemetry line. The reviewer
+> instructions ship only after a replay of past real defects passes a recall threshold.
+>
+> *Alternatives rejected.*
+> - (C) An orchestrator-dispatched refuter after the FAIL. `n` has already gone up, so undoing it needs a
+>   new marker or a `ladder-tier.sh` change, plus fix-contract filtering and a second route-gate shape.
+> - A nested `Mode: advisory` reviewer. The caller allowlist refuses it.
+> - A new `refuter` persona. It costs a persona file, ports, personaSelection and cli.js lists, and buys
+>   nothing over `explorer`.
+>
+> *Consequences.* No hook, marker, ladder or orchestrator change. The FAIL-record format gains a last line.
+> The pass's verdict is evidence; the verdict stays the reviewer's.
+>
+> The three ADR tests: hard to reverse (moving to (C) needs state machinery, and the telemetry format would
+> be in consumer records), surprising (a "second gate" is not a second dispatch), and a real trade-off.
 
-### Per-defect protocol (wording is ours; the research gave none)
+### Per-defect protocol
 
-The reviewer sends the explorer one `D<n>: <file:line> <claim>` line per deduplicated judgment defect, plus
-the baseline and the changed-file list. It sends no diff and no defect prose beyond the claim, which keeps
-the prompt far below `dispatchHygiene.maxPromptBytes` (30000). The explorer answers three questions per
-defect: (1) does the issue exist at the cited line, (2) is it in the change or already at the baseline,
-(3) is the impact real or already mitigated by a guard, earlier validation or config elsewhere. It answers
-with one line: `D<n>: REFUTED|CONFIRMED|UNCERTAIN — artifact: <command and output line, or file:line quote>`.
+The reviewer pipes one `D<n>: <file:line> <claim>` line per deduplicated judgment defect (1 to 3) into
+`bash .claude/bin/refutation-brief.sh <baseline>`. The script refuses 0, more than 3, malformed or
+duplicated lines, and a bad baseline. It prints a fixed brief: the baseline, the changed files, the three
+questions, the answer grammar `D<n>: REFUTED|CONFIRMED|UNCERTAIN — q1=… q2=… q3=… — artifact: …`, and the
+rules: when unsure, answer UNCERTAIN, never CONFIRMED; a verdict with no artifact is UNCERTAIN; a
+mitigation's artifact is the guard itself plus why it stops this defect on this path.
 
-| explorer answer | reviewer re-check of the artifact | result |
+The reviewer spawns `explorer` once with that brief as the prompt.
+
+| explorer answer, after the reviewer's own re-check | result |
+|---|---|
+| REFUTED, and the reviewer confirms the artifact defeats the claim (for a guard: it stops the defect on the defect's path) and states why | dropped. PASS: `NOTE[code]: refuted: D<n> <claim> — <artifact> — <why>`. FAIL: the `refutation` advisory section |
+| REFUTED, but the reviewer finds a reason the artifact does not defeat it | **stands**. The reason goes in the `refutation` section |
+| REFUTED as already at the baseline (`git show <baseline>:<file>`), not an unmet criterion | dropped as REFUTED |
+| CONFIRMED with an artifact that reproduces | stays a defect |
+| UNCERTAIN, or an answer with no artifact | `[unconfirmed]` in a FAIL that happens anyway; see the table below |
+| artifact does not reproduce, no answer line, or the explorer was truncated | **stands as found** (today's behaviour) |
+
+| standing or CONFIRMED | UNCERTAIN | verdict | FAIL block's last line |
+|---|---|---|---|
+| ≥1 | any | FAIL: the standing and CONFIRMED defects, plus each UNCERTAIN one prefixed `[unconfirmed]` | `refutation: confirmed=<a> refuted=<b> uncertain=<c>` (`a` counts standing and CONFIRMED) |
+| 0 | ≥1 | INSUFFICIENT-CONTEXT, `missing:` naming the evidence. On the resume there is no second pass: a defect the reviewer now reproduces is a FAIL (`refutation: confirmed=…`), and one it cannot reproduce is `NOTE[code]: unconfirmed:` | none, unless the resume FAILs |
+| 0 | 0 | the PASS rules, escalation included | none (no FAIL) |
+| pass skipped | – | as today | `refutation: skipped=<mechanical\|over-cap\|resume\|no-subagent>` |
+
+**Why UNCERTAIN-only maps to INSUFFICIENT-CONTEXT and not ESCALATE-TO-HUMAN.** ESCALATE-TO-HUMAN gates a
+would-be PASS only (`agents/reviewer.md:272`), and it spends a human. INSUFFICIENT-CONTEXT uses no cap slot,
+keeps the review blocking, and already has the fetch-and-resume path (`agents/orchestrator.md:276-292`).
+
+**The "PASS is one line" rule** (`agents/reviewer.md:127-131`) governs the verdict line. The `refuted:`
+notes go into the marker's non-blocking notes, written by Bash, as every note does. The `refutation`
+section is a third advisory section after the verdict, in the order roast-work, ubiquitous-language,
+refutation, so the verdict stays the first thing read.
+
+**The word collision** at :137-138 ("found no refutation", meaning a refutation of the *change*) is removed
+by rewording it to "found no defect that survived the refutation pass". The glossary (rfp-u5) records that
+"Refute, don't rubber-stamp" (:46) still means attacking the change.
+
+### Safety: what can go wrong in each direction, and how each is caught
+
+- **Wrongly confirmed** (the risk the research names): a needless fix, recovered cheaply. This is unchanged
+  from today.
+- **Wrongly refuted, and the unit passes.** The reviewer's PASS is the terminal gate, so this is the costly
+  direction. The critic is right that the `refuted:` count only counts wins. Three layers catch it:
+  1. **Before enabling: Gate G (replay).** rfp-u2 builds a seeded corpus of 41 past judgment defects in 24
+     groups, drawn from 57 candidates whose unit was later fixed and passed. The proxy label "real" means a `(<unit>)` commit after the FAIL touched the
+     cited file and the unit later holds a `.pass`. A human confirms each label (`labels.tsv`) and runs the
+     replay: `bin/refutation-brief.sh` at the reviewed commit, headless `claude -p --model sonnet
+     --max-turns 10` with read-only tools. `score.py --gate` passes only if:
+     - at least 30 confirmed-real defects were replayed;
+     - at most 1 of them was answered REFUTED with an artifact;
+     - at most 20% of defects got no answer line;
+     - no run exceeded 10 turns.
+
+     rfp-u3 carries `score.py --gate` on the committed report as an acceptance criterion, so the reviewer
+     instructions cannot reach PASS without a passing replay.
+
+     *Statistical honesty:* 1 miss in 30 bounds the true raw miss rate at about 17% (95% upper, exact
+     binomial). 0 in 30 bounds it at about 10%. The replay measures the explorer stage alone. The
+     reviewer's own re-check (D6) is a second filter that is not measured, so the live miss rate is at most
+     the measured one. Open Question 1 offers a larger corpus.
+  2. **After enabling: milestone-auditor sample (rfp-u4).** At each milestone boundary, the auditor
+     re-verifies up to 3 `NOTE[code]: refuted:` lines from that milestone's `.pass` markers. A refutation
+     that does not hold is a finding, which goes to the human decision the auditor already ends in.
+  3. **Downstream:** a later review, unit or audit that hits the defect again. This is unchanged.
+- **What is not testable mechanically.** The live reviewer's judgment, and whether a given live refutation
+  was right, can only be sampled (layer 2). The prose pins in rfp-u3 prove the instruction text shipped,
+  not that it is followed. The behaviour-bearing checks are:
+  - the route-gate case (the nested spawn is admitted, with no stamp);
+  - the brief script's fixture test (caps, grammar, determinism);
+  - the FAIL-record fixture test (the readers are unaffected);
+  - the replay gate (the explorer stage on real past defects);
+  - the scorer and builder fixture tests.
+
+### Cost model (with base rates from this repo's own records)
+
+**Base rate.** spec-master classified all 193 FAIL blocks in the 174 `.fail` records (a keyword classifier
+over each block's defect lines; the script and its output are reproducible by `eval/refutation-replay/`'s
+builder):
+
+| class | blocks | share |
 |---|---|---|
-| REFUTED, artifact reproduces | read the line / re-run the command | dropped; `NOTE[code]: refuted:` (PASS) or the `refutation` advisory section (FAIL) |
-| REFUTED, defect already at baseline | `git show <baseline>:<file>` | dropped as REFUTED, unless it is an unmet acceptance criterion |
-| CONFIRMED, artifact reproduces | same | stays a FAIL defect |
-| UNCERTAIN (or a verdict with no artifact) | none | see the decision table below |
-| any answer whose artifact does not reproduce, a missing line, or a truncated explorer | none | **stands as found** (today's behaviour) |
+| any mechanical ground (precheck lines, version-stamp, uncommitted, scope, a criterion's exit or stdout) | 143 | 74% |
+| judgment only, 1-3 defects (**eligible at cap 3**) | 37 | 19% |
+| judgment only, 4-5 defects | 7 | 4% |
+| judgment only, more than 5 | 6 | 3% |
 
-Verdict once the pass is done:
+The classifier over-counts "mechanical": defect prose that merely mentions an exit code matches it. So 19%
+of FAILs is a floor. With 708 PASS markers, reviews number about 901, so **eligible runs are about 4% of all
+reviews** (37 over the project's history to date). The 4-5 band adds only 7 blocks, which is part of why the
+cap moves to 3 (D4).
 
-| defects standing or CONFIRMED | UNCERTAIN | verdict |
-|---|---|---|
-| ≥1 | any | FAIL with only the standing and CONFIRMED defects; REFUTED and UNCERTAIN ones go in the `refutation` advisory section (Open Question 1) |
-| 0 | ≥1 | INSUFFICIENT-CONTEXT, `missing:` naming the evidence that would settle each; on the resume there is no second pass, and a defect still without an artifact becomes `NOTE[code]: unconfirmed:` |
-| 0 | 0 | the PASS rules, escalation included; one `NOTE[code]: refuted:` line per defect |
+**Turn budget.** The `Agent` tool has no per-spawn turn parameter (its schema is description, prompt,
+subagent_type, model, isolation, effort and run_in_background). The explorer's frontmatter `maxTurns: 10`
+therefore binds, and `sonnet` does not raise it. Each defect needs about 2 to 3 tool rounds (the whole file
+and its callers in parallel, then the baseline), so 3 defects take about 7 to 9 rounds including the
+answer. 5 did not fit. The replay records `num_turns` and fails the gate on any run that exceeds 10, so this
+estimate is checked before enabling.
 
-**Why UNCERTAIN maps to INSUFFICIENT-CONTEXT, not ESCALATE-TO-HUMAN.** ESCALATE-TO-HUMAN gates a would-be PASS
-only (precedence :272), and it spends a human. INSUFFICIENT-CONTEXT already means "I could not
-authoritatively determine this". It uses no cap slot, keeps the review blocking, and has a working
-orchestrator path that fetches the missing evidence and resumes the reviewer. The bias toward refutation
-applies here: an unproven defect never uses up a ladder attempt.
+**Per run (eligible FAIL only).** One sonnet `explorer` with up to 10 turns and a brief under 2 KB. Plus
+reviewer overhead: one script call, one spawn turn, and one re-check per defect, run in parallel; about 3 to
+6 reviewer turns out of 50. Latency is one subagent round-trip on the FAIL path. The replay reports the
+measured mean `total_cost_usd` and turns, which replace these estimates.
 
-### Cost model (an explicit design input)
+**UNCERTAIN-only round trip.** One orchestrator turn, one explorer or scribe fetch dispatch, and the resumed
+reviewer's turns. It is bounded to once per review, because the resume runs no second pass. It is still
+cheaper than a fix round, which contains a full review.
 
-- **When it runs:** only on a would-be FAIL whose every ground is a judgment defect, with 1 to 5 such defects
-  after deduplication. A defect that already carries an artifact the reviewer produced (a command and its
-  failing output) counts as mechanical and is not sent.
-- **When it is skipped, with the reason:**
-  - Any mechanical FAIL ground is present (a precheck failure line, an uncommitted tree, an out-of-scope
-    path). The FAIL happens anyway, so the ladder attempt is spent regardless (Open Question 2).
-  - More than 5 judgment defects. A full refutation is unlikely, and one explorer has `maxTurns: 10`.
-  - The resume after an INSUFFICIENT-CONTEXT the pass caused, so the pass cannot loop.
-  - No subagent can be spawned: the codex and cursor ports, or a spawn failure. The defects stand.
-  - It never runs on PASS, INSUFFICIENT-CONTEXT or ESCALATE-TO-HUMAN paths of its own.
-- **Deliberately NOT skipped:**
-  - *A single defect.* This is the case where one refutation turns FAIL into PASS, the highest-value case.
-    A "trivial" defect is not a FAIL ground under the materiality filter in the first place.
-  - *An opus-tier unit.* An opus attempt is the most expensive fix round and the closest to ladder
-    exhaustion, which stops for a human, so refuting there saves the most.
-  - *`reviewGating.mode: off`.* Advisory FAILs still drive the in-session ladder count and a fix round.
-- **Per-run cost:**
-  - One foreground `explorer` on its frontmatter tier (`haiku`, `effort: low`, `maxTurns: 10`;
-    Open Question 3), with a prompt under 2 KB.
-  - Reviewer overhead of one spawn turn plus one artifact re-check per defect, which can run in parallel:
-    about 2 to 6 reviewer turns out of its 50.
-  - Latency of one subagent round-trip on the FAIL path only.
-- **Standing cost:** the 34-line bullet in `agents/reviewer.md`, paid on every reviewer dispatch
-  (`cacheTtl: 1h` caches it). It is budgeted by rfp-u1 criterion 4 (at most 36 added lines). Two on-demand
-  placements were rejected:
-  - A new skill. Its description would be paid in every session's skill listing, for every persona.
-  - A new protocol section. That would touch cli.js's section matrix, the protocol-doc-drift section
-    counts and the adapter parity map.
-- **Saved per refuted FAIL:**
-  - One task-master fix-contract dispatch.
-  - One lead-programmer attempt at the ladder's tier.
-  - One full reviewer re-review (sonnet or opus, effort high).
-  - One ladder attempt. At the top tier, that is a human stop avoided.
-  - Possibly the next review's tier: `hooks/scripts/reviewer-tier.sh` reads the FAIL record.
+**Standing cost.** The bullet in `agents/reviewer.md` is about 35 lines, roughly 450 tokens per reviewer
+dispatch, cached by `cacheTtl: 1h`. The brief text lives in the script, not the persona.
 
-  The fix round includes a full review, so the break-even refutation rate is low (estimated, unmeasured).
-- **Measurement:** turned-around FAILs are durable (`grep -l 'NOTE\[code\]: refuted:' .claude/reviewed/*.pass`).
-  Eligible runs that ended in FAIL anyway are not recorded durably (Open Question 4). Re-scoping the pass on
-  that evidence is a follow-up.
+**Break-even** (estimates; the replay measures `Cp`):
+- `Cp` = per-run cost, about 50k sonnet tokens.
+- `Cf` = cost of the fix round a refutation saves: task-master, an implementer attempt and a full sonnet or
+  opus review, about 400k tokens.
+- `E` = eligible fraction of reviews, about 4%.
+- `r` = fraction of eligible FAILs the pass prevents.
+- `Cs` = standing cost per review, about 450 tokens.
+
+The pass pays off when `E·r·Cf > Cs + E·Cp`. With these figures that is `r > ~15%`. The **standing cost
+alone is not worth carrying if `E < Cs / (r·Cf − Cp)`**. At `r = 20%` that threshold is about 1.5% of
+reviews, against an observed floor of about 4%.
+
+**Kill or re-scope criterion** (made computable by D3): after 20 eligible runs, `r` = prevented FAILs over
+eligible runs. Prevented FAILs are `.pass` markers carrying `NOTE[code]: refuted:`. Eligible runs are those
+plus FAIL blocks whose last line starts `refutation: confirmed=`. If `r < 10%`, open a follow-up to retire or
+re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part of its sample.
+
+**Deliberately not skipped:**
+- A single defect: one refutation turns FAIL into PASS, the highest-value case.
+- Opus-tier units: the most expensive fix rounds, closest to ladder exhaustion.
+- `reviewGating.mode: off`: in-session advisory FAILs still drive the ladder count and fix rounds. With no
+  record, the `refutation:` line goes in the verdict text.
 
 ### Prior FAIL history and audit sweep (dispositions)
 
-- `.claude/reviewed/` holds 174 `.fail` records. 21 name `agents/reviewer.md`, and 27 cite a version-stamp /
-  P3 defect, including `reviewer-changes-examples-lean-2`, `item17-1-clarify-p3-granularity` and
-  `item17-3-wire-p3-check`. The disposition: rfp-u1's ordered edits bump the version and add the CHANGELOG
-  entry in the **same commit** as the reviewer.md edit. Criterion 6 runs `version-stamp-check.sh` over every
-  commit of the unit. The contract says that each fix-round commit touching `agents/` bumps again.
-- `bin/marker-audit.sh --notes` over the touched surfaces:
-  - `NOTE[spec]` blf-6: the prose says "FAIL count" where "FAIL-block count" is meant. *Disposition:* the
-    new payload says "FAIL-block count", and the glossary's `_Avoid_` is honoured.
-  - Untagged 124: "final message is ONLY the verdict" against the trailing STATUS line. *Disposition:*
-    unaffected. The new `refutation` section is a third advisory section, placed after the verdict like the
-    two existing ones.
-  - Every other note is historical and touches no line this plan edits.
-- No unit being re-scoped here has a prior `.fail`. Both units are new.
+- 21 of the 174 `.fail` records name `agents/reviewer.md`, and 27 cite version-stamp/P3 defects. Every unit
+  that touches `agents/` or `templates/` bumps the version and adds its CHANGELOG entry **in each commit**
+  (criterion `version-stamp-check.sh` over the unit's range). This includes fix rounds.
+- `bin/marker-audit.sh --notes`: blf-6 `NOTE[spec]` says to write "FAIL-block count", never "FAIL count"
+  (honoured). Untagged 124 is unaffected. The others are historical.
+- No re-scoped unit has a prior `.fail`.
 
 ## Clarifications
 1. Functional scope & success criteria: Partial
 2. Domain entities / data model: Partial
 3. User interaction flow: Partial
 4. Non-functional attributes (perf, security, scale): Partial
-5. External dependencies & integrations: Clear
+5. External dependencies & integrations: Partial
 6. Edge cases / failure handling: Partial
 7. Technical constraints & tradeoffs: Partial
 8. Terminology consistency: Partial
 9. Completion / acceptance signals: Partial
 
-- 2026-10-27 Functional scope & success criteria: Q Are the orphan check (defect→fix, change→defect) and the
-  Integrity rubric item in scope? → A (self-resolved): both are out of scope as named follow-ups. The
-  "every change maps to a defect" half already exists at file granularity: on a fix round, the reviewer's
-  scope rule admits only paths named in the `.fail` record or the fix contract (`agents/reviewer.md:62-63`).
-  The rest needs `review-precheck.sh` work.
+- 2026-10-27 Functional scope & success criteria: Q Are the orphan check and the Integrity rubric in
+  scope? → A (self-resolved): no, both are named follow-ups.
 - 2026-10-27 Domain entities / data model: Q Which defects are refutable, and what are the per-defect
-  states? → A (self-resolved): only judgment defects. The states are REFUTED, CONFIRMED and UNCERTAIN, each
-  REFUTED or CONFIRMED needing an artifact. A missing, malformed or non-reproducing answer means the defect
-  "stands as found".
-- 2026-10-27 User interaction flow: Q Who dispatches the refuter, the orchestrator after the FAIL or the
-  reviewer before it? → A (self-resolved): the reviewer, as a nested foreground unnamed `explorer` spawn
-  (see the ADR draft). The orchestrator flow does not change.
-- 2026-10-27 Non-functional attributes (perf, security, scale): Q When must the pass be skipped for cost,
-  and on what model does it run? → A (self-resolved): the skip list and the not-skipped list are in the Cost
-  model. The model is the explorer's frontmatter `haiku` (Open Question 3 for sonnet).
-- 2026-10-27 Edge cases / failure handling: Q What happens to UNCERTAIN defects, to a truncated explorer,
-  under review gating off and in the adapters? → A (self-resolved): UNCERTAIN-only becomes
-  INSUFFICIENT-CONTEXT; mixed is Open Question 1. Truncated or malformed answers mean the defect stands.
-  Under off the notes go in the advisory section. The ports keep today's behaviour.
-- 2026-10-27 Technical constraints & tradeoffs: Q Does the pass change the 2-FAIL cap, the ladder count,
-  the route gate or the markers? → A (self-resolved): no mechanism changes. A prevented FAIL writes no block,
-  and a mixed FAIL writes one block as today.
-- 2026-10-27 Terminology consistency: Q Is "refuter" a safe name? → A (self-resolved): no. It is not a
-  persona, and `agents/reviewer.md:46` already uses "Refute" for attacking the *change*. The canonical term is
-  **refutation pass**, with `refuter` on its `_Avoid_` line and pinned absent from the reviewer prose. Other
-  new terms: **judgment defect**, **refutation outcome** (rfp-u2).
-- 2026-10-27 Completion / acceptance signals: Q What machine-checkable signal shows the pass was built, and
-  does it pay off? → A (self-resolved): "built" is shown by rfp-u1 criteria 1 to 7 and rfp-u2 criteria 1 to
-  5. "Pays off" is measurable only on the PASS side today (Open Question 4).
+  states? → A (self-resolved): only judgment defects. The states are REFUTED, CONFIRMED and UNCERTAIN,
+  with an artifact required for the first two. A missing, malformed or non-reproducing answer means the
+  defect "stands as found".
+- 2026-10-27 User interaction flow: Q Who dispatches the refuter? → A (self-resolved): the reviewer, as a
+  nested foreground unnamed `explorer`. The orchestrator flow is unchanged.
+- 2026-10-27 Edge cases / failure handling: Q Where do UNCERTAIN defects go in a mixed FAIL? → A: they stay
+  in the FAIL list, prefixed `[unconfirmed]` (option c, per user, 2026-10-27).
+- 2026-10-27 Non-functional attributes (perf, security, scale): Q On what model does the explorer run? →
+  A: `sonnet` (per user, 2026-10-27).
+- 2026-10-27 Completion / acceptance signals: Q Is FAIL-side telemetry added now? → A: yes. Every FAIL
+  block ends with a `refutation:` line (per user, 2026-10-27).
+- 2026-10-27 Completion / acceptance signals: Q How is the safety of a refutation measured? → A
+  (self-resolved, from the critic's BLOCKER): Gate G replay with a recall threshold, plus the
+  milestone-auditor sample.
+- 2026-10-27 External dependencies & integrations: Q Can the replay run without an LLM? → A
+  (self-resolved): no. It is headless `claude -p` at the human's cost. The builder, scorer and dry-run are
+  deterministic and tested.
+- 2026-10-27 Technical constraints & tradeoffs: Q Is 5 defects within the explorer's 10 turns, and can a
+  per-spawn budget be passed? → A (self-resolved): no per-spawn parameter exists. The cap is 3, and the
+  replay enforces the turn limit.
+- 2026-10-27 Edge cases / failure handling: Q What happens on the INSUFFICIENT-CONTEXT resume? → A
+  (self-resolved, critic): FAIL a defect the reviewer reproduces itself; a non-reproduced one becomes a
+  `NOTE[code]: unconfirmed:` line.
+- 2026-10-27 Terminology consistency: Q Does "refutation" collide with existing reviewer prose? → A
+  (self-resolved): yes, at :46 and :137-138. :138 is reworded, :46 is kept and acknowledged in the
+  glossary, and `refuter` stays avoided.
 
 ## Risks / dependencies
 
-- **R1: an over-eager refutation drops a real defect.** Mitigations: a REFUTED answer needs an artifact,
-  which the reviewer re-checks itself, and the reviewer may not override a reproducing refutation by
-  argument. A wrongly dropped defect is cheap to recover, because the next review, the milestone auditor or
-  a downstream unit finds it again. That bias is intended.
-- **R2: a haiku explorer refutes the findings of an opus or sonnet reviewer.** It is asked for evidence, not
-  for a decision, and the decision stays with the reviewer through the artifact re-check. Open Question 3
-  offers sonnet.
-- **R3: the reviewer's turn budget (`maxTurns: 50`).** The pass costs about 2 to 6 turns and is capped at 5
-  defects. A reviewer already near its cap could truncate. The terminal STATUS line makes that visible, and
-  resuming it is the existing recovery.
-- **R4: audit noise.** Each pass adds one `grant-denied hook=stop-gate identity=explorer` line while the
-  flag stands. This already happens for every reviewer-to-explorer spawn. Out of scope; a follow-up could
-  exempt read-only identities.
-- **R5: dispatch order.** rfp-u2 (glossary and ADR) is dispatched only after rfp-u1 reaches PASS, so the
-  glossary documents shipped behaviour. The branch `macos-compat-merge` has other units in flight, so
-  rfp-u1's version bump is +1 on whatever version is current at dispatch.
-- **R6: a parity seam.** rfp-u1 edits `agents/reviewer.md`, and its prose pins also read
-  `.claude/agents/reviewer.md`. The mirror is regenerated by `node bin/cli.js --update` inside the same unit,
-  so the source edit and its shipped copy are one gate (spec-master memory: never slice across a parity
-  test).
+- **R1: wrong refutations.** See Safety: Gate G before enabling, the milestone sample after, and recovery
+  downstream.
+- **R2: replay fidelity.** The replay runs headless `claude -p` with read-only tools, not the `explorer`
+  persona body, and without its graph MCP. It reproduces the brief exactly (D8) but not the persona prose.
+  This is stated in the replay README. The persona adds instructions; it removes none of the brief's rules.
+- **R3: proxy labels.** "Fixed and later passed" can label a bogus defect "real" if the implementer complied
+  with a non-defect. The human confirmation in `labels.tsv` exists for this. That bias would only make the
+  gate stricter, because a bogus defect counted as real and then refuted counts as a miss.
+- **R4: audit noise.** One `grant-denied` line per pass. Out of scope.
+- **R5: ordering.** rfp-u1, then rfp-u2 (its `run.sh` needs the brief script), then Gate G (human), then
+  rfp-u3, rfp-u4 and rfp-u5. The branch has other units in flight, so each bump is +1 on the version current at dispatch.
+- **R6: parity seams.** rfp-u3 merges the protocol edit, its four ports, the reviewer source and its
+  regenerated mirrors into one gate (spec-master memory: never slice across a parity test).
+- **R7: rfp-u3 is large** (about 14 files). It stays one unit by necessity (R6). If the contract-score guard
+  demotes it, the ladder handles that.
 
 ## Constitution check (.claude/constitution.md v1.1.0)
-- P1 "Verify, don't assume": satisfied. A refutation needs a reproducing artifact. spec-master ran the
-  route-gate case, its mutation, every prose-pin phrase against a scratch copy of the edited file, and the
-  range-criterion shapes.
-- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied. `.claude/agents/*` is regenerated
-  only by `node bin/cli.js --update`.
-- P3 "Version-stamp discipline": satisfied. The bump and the CHANGELOG entry are in the same commit as the
-  `agents/reviewer.md` change, per commit including fix rounds (criterion 6).
-- P5 "`tests/validate.sh` is the merge gate": satisfied (rfp-u1 criterion 7, rfp-u2 criterion 5).
-- P4 "Optional personas degrade gracefully" (SHOULD): satisfied. The pass names `explorer`, a core persona
-  that is not in the optional list. It degrades to today's behaviour when no subagent can be spawned.
+- P1 "Verify, don't assume": satisfied. Artifacts are required and re-checked. The replay gate measures
+  before enabling. spec-master ran the base-rate classifier, the route-gate mutation and the pin phrases on
+  scratch copies.
+- P2 "Prefer deterministic scripts over LLM re-derivation": satisfied. The brief is a script (D8), the
+  builder and scorer are deterministic, and the mirrors come from `--update` only.
+- P3 "Version-stamp discipline": satisfied. rfp-u3 and rfp-u4 touch `agents/` and `templates/` and bump in
+  each commit. rfp-u1 bumps too: it touches no stamped path, but `--update` installs a new helper.
+- P5 "`tests/validate.sh` is the merge gate": satisfied. Every lead unit has a validate.sh criterion, and
+  rfp-u1 and rfp-u2 register their new suites.
+- P4 "Optional personas degrade gracefully" (SHOULD): satisfied. `explorer` is a core persona, and a spawn
+  failure degrades to `skipped=no-subagent`.
 
-## Step 1 (rfp-u1, lead-programmer): the reviewer runs a refutation pass before any FAIL verdict
+## Step 1 (rfp-u1, lead-programmer): `bin/refutation-brief.sh`
+
+Affected files:
+- `bin/refutation-brief.sh`
+- `tests/refutation-brief.test.sh`
+- `bin/cli.js` (`BIN_HELPER_FILES`)
+- `tests/bin-helpers-scaffold.test.sh`
+- `tests/validate.sh`
+- the version bump files
+- generated `.claude/bin/refutation-brief.sh`
+
+Criteria: see the contract (fixture suite, scaffold, cmp, scope, validate).
+
+## Step 2 (rfp-u2, lead-programmer): the replay corpus, runner and scorer
+
+Affected files:
+- `eval/refutation-replay/{README.md,build-corpus.py,run.sh,score.py,corpus.jsonl,labels.tsv}`
+- `tests/refutation-replay.test.sh`
+- `tests/validate.sh`
+
+No stamped path. Criteria: the fixture suite, `--check` on the committed corpus, the vacuity guard on an
+empty report, `--dry-run` flags, scope, validate.
+
+## Gate G (human, between Step 2 and Step 3; not a dispatchable unit)
+
+| step | what | who | how to check it |
+|---|---|---|---|
+| G1 | confirm or reject each of the 41 proxy labels in `eval/refutation-replay/labels.tsv`, reading the `--labels` checklist; commit | the human operator (an agent labelling would grade its own kind) | `python3 eval/refutation-replay/build-corpus.py --check` prints `unlabeled=0` |
+| G2 | `bash eval/refutation-replay/run.sh`: 24 headless sonnet runs at 958f557e (one per group), each capped by `--max-budget-usd 1`; commit `report.jsonl` | the human operator, or the orchestrator on the human's explicit instruction | the report exists, one row per corpus defect |
+| G3 | `python3 eval/refutation-replay/score.py --gate eval/refutation-replay/report.jsonl` | anyone | first line `replay-gate: pass …`, exit 0. On `fail` or `insufficient`, do not dispatch rfp-u3; return the report to spec-master |
+
+## Step 3 (rfp-u3, lead-programmer, after Gate G): the refutation pass and the FAIL-record format
 
 Affected files:
 - `agents/reviewer.md`
+- `templates/persona-protocol.md`
+- the four adapter ports above
 - `tests/persona-prose-pins.test.sh`
 - `tests/reviewer-route-gate-caller.test.sh`
-- `.claude-plugin/plugin.json`
-- `package.json`
-- `CHANGELOG.md`
-- generated by `node bin/cli.js --update`: `.claude/` mirrors
+- `tests/adapter-fail-tier-pin.test.js`
+- `tests/fail-record-refutation.test.sh` (new)
+- `tests/validate.sh`
+- the version bump files
+- the regenerated `.claude/` mirrors
 
-Acceptance criteria: rfp-u1 contract criteria 1 to 7 (prose pins counted, prose-pin and route-gate suites,
-a line budget on the reviewer.md diff, a scope fence, `version-stamp-check.sh` per commit, `validate.sh`).
-Each has a `mutation:` line.
+Criteria include `score.py --gate`.
 
-## Step 2 (rfp-u2, scribe, after rfp-u1 PASS): glossary entries and ADR
+## Step 4 (rfp-u4, lead-programmer, after rfp-u3): downstream readers
 
 Affected files:
-- `CONTEXT.md` (three entries: **refutation pass**, **judgment defect**, **refutation outcome**)
-- `docs/adr/<next>-refutation-pass-inside-reviewer-turn.md` (the ADR draft above)
+- `agents/task-master.md`: the fix-contract bullet. A defect prefixed `[unconfirmed]` gets a reproduce-first
+  criterion, and is reported as `not-reproduced: D<n>` instead of edited if it does not reproduce. The
+  `refutation:` line is never a defect.
+- `agents/milestone-auditor.md`: a refutation sample of up to 3 `refuted:` notes per milestone, plus the `r`
+  ratio from the Cost model.
+- `tests/persona-prose-pins.test.sh`
+- the version bump files
+- the mirrors
 
-Neither file is version-stamped, so no bump. Acceptance criteria: rfp-u2 contract criteria 1 to 5.
+Contract pending (checkpoint).
+
+## Step 5 (rfp-u5, scribe, after rfp-u4): glossary and ADR
+
+Affected files:
+- `CONTEXT.md`: new entries **refutation pass** (it acknowledges the :46 "Refute" sense), **judgment
+  defect** and **refutation outcome**; the **FAIL block** entry updated for the last-line `refutation:` and
+  the `[unconfirmed]` prefix.
+- `docs/harness-glossary.md`: a **refutation line** entry with its grammar.
+- `docs/adr/<next>-refutation-pass-inside-reviewer-turn.md`
+
+Contract pending (checkpoint).
 
 ## Out of scope (named follow-ups)
 
-1. **Orphan check** (every CONFIRMED defect maps to a fix commit, every changed hunk maps to a defect).
-   This would be a `review-precheck.sh` fix-round extension. The file-granularity half already exists.
-2. **Integrity rubric item** (hardcoded expected values, disabled or skipped tests, bypassed validation) for
-   the reviewer or `roast-work`.
-3. **Durable refutation telemetry on the FAIL side** (Open Question 4) and a kill or re-scope criterion
-   based on it.
-4. **Codex and cursor reviewer ports.** They have no verified spawn primitive and keep today's FAIL path.
-5. **Exempting read-only identities from the stop gate's `grant-denied` audit line** (R4).
-6. Any change to the orchestrator, the route or stop gates, `ladder-tier.sh`, `fail-count.sh`, task-master
-   or the shared protocol's FAIL-record format.
+1. The orphan check, as a `review-precheck.sh` fix-round extension.
+2. An Integrity rubric item (hardcoded expected values, disabled tests, bypassed validation).
+3. Exempting read-only identities from the stop gate's `grant-denied` line (R4).
+4. The refutation pass in the codex and cursor ports, which write `skipped=no-subagent` only.
+5. Any change to the orchestrator body, the route or stop gates, `ladder-tier.sh`, `fail-count.sh` or
+   `escalation-card.sh`.
+6. A config switch for the pass. Gate G gates the shipping of the instructions instead.
 
 ## Open Questions
 
-1. **The mixed case:** where do UNCERTAIN defects go when at least one defect is CONFIRMED or stands?
-   *(Recommended, applied)* (a) They leave the fix list and go in the verdict's `refutation` advisory section,
-   which the orchestrator sees. The next review re-checks the whole unit. (b) They stay in the FAIL defect
-   list, as today. This is safer, but the lead-programmer may fix non-defects. (c) They stay in the list
-   with an `[unconfirmed]` tag. Task-master and the lead-programmer would then need a rule for the tag.
-   *(from CHK7)*
-2. **Mechanical grounds present:** skip the pass entirely? *(Recommended, applied)* (a) Skip. The ladder
-   attempt is spent anyway, and the next review re-checks everything. (b) Still refute the judgment
-   defects. This spares the lead-programmer needless fixes, at one explorer run per such FAIL. *(from CHK8)*
-3. **Explorer tier:** *(Recommended, applied)* (a) the frontmatter `haiku`, because the reviewer re-checks
-   every artifact itself. (b) `model: sonnet` on the spawn, which roughly multiplies the pass's cost for
-   better recall on subtle mitigations. (c) Match the reviewer's own tier. *(from CHK9)*
-4. **FAIL-side telemetry:** *(Recommended, applied)* (a) Defer it. The value metric (turned-around FAILs)
-   is durable in `.pass` notes. (b) Add a `refutation: confirmed=<a> refuted=<b> uncertain=<c>` line to each
-   FAIL block now. That is a FAIL-record format change touching `templates/persona-protocol.md`, the cursor
-   `.mdc` port, `tests/adapter-fail-tier-pin.test.js` and task-master's fix-contract copy rule, roughly 3
-   more files and a third unit. *(from CHK10)*
+1. **Replay corpus size.** The measured pool at 958f557e is 57 proxy-real candidates (judgment defect, cited
+   file present at the reviewed commit, later fixed, unit later passed). It is smaller than spec-master's
+   first estimate of 118, which ignored the reviewed-commit and PASS checks.
+   - *(Recommended, applied)* (a) `--size 40`: 41 rows in 24 groups, so 24 sonnet runs, and at least 30
+     must be confirmed real. At most 1 miss gives a raw-miss upper bound of about 17%.
+   - (b) all 57 candidates (`--size 57`): about 33 runs. Raise `MIN_REAL` to 45; at most 1 miss then
+     bounds the raw miss rate at about 11%.
+   - (c) (a) now, then re-run (b) once 20 more FAIL records exist. *(from CHK18)*
+2. **If Gate G fails.**
+   - *(Recommended)* (a) Stop and return the report to spec-master for a brief revision (rfp-u1 debug spec),
+     then re-run the replay.
+   - (b) Ship anyway with a sample of every refutation by the milestone auditor instead of 3. *(from CHK19)*
 
 ## Self-check
-- CHK1: Is the verdict defined for every combination of standing, CONFIRMED and UNCERTAIN defects? — PASS
-  (decision table in Context; rfp-u1 edit 4 payload)
-- CHK2: Is the outcome defined when the explorer is truncated, gives no line, or cites an artifact that does
-  not reproduce? — PASS ("stands as found")
-- CHK3: Do the payload and the Goal agree that a mixed FAIL still writes exactly one FAIL block and a
-  prevented FAIL writes none? — PASS
-- CHK4: Is the behaviour under `reviewGating.mode: off` defined, including where the `refuted:` notes go? —
-  FAIL (missing) — revised in place (the payload now ends its PASS sentence with "under review gating off,
-  in the `refutation` section instead", pinned as phrase 11)
-- CHK5: Does every rfp-u1 and rfp-u2 criterion have a runnable `run:`, an expected stdout and a `mutation:`
-  line? — PASS
-- CHK6: Is the P3 bump required in every commit that touches `agents/`, fix rounds included, not once per
-  unit? — FAIL (missing) — revised in place (rfp-u1 Escalation and edit 9 note; criterion 6 runs per commit)
-- CHK7: Is the mixed-case handling of UNCERTAIN defects settled? — FAIL (missing) — converted to Open
-  Question 1
-- CHK8: Is it settled whether the pass runs when a mechanical ground is also present? — FAIL (ambiguous) —
-  converted to Open Question 2
-- CHK9: Is the subagent's model tier settled against its cost? — FAIL (missing) — converted to Open
-  Question 3
-- CHK10: Is there a machine-checkable measure of whether the pass pays for itself? — FAIL (missing) —
-  converted to Open Question 4
-- CHK11: Do Step 2's glossary terms match the terms Step 1's payload uses? — PASS ("refutation pass" and
-  "judgment defect" appear verbatim in the payload; "refutation outcome" names its REFUTED, CONFIRMED and
-  UNCERTAIN answers)
-- CHK12: Could a range criterion pass vacuously when no `(rfp-u1)` commit exists? — FAIL (ambiguous) —
-  revised in place (criteria 4 to 6 print `no-commits` and exit 1 on an empty range)
-- CHK13: Does each Goal clause map to a criterion? — PASS. Disprove before the lead-programmer: crit 1.
-  Whole file and callers: crit 1, pin 5. No marker and no stamp: crit 3. Ladder unchanged: crit 1, pin 12.
-  Mechanical never re-checked: crit 1, pin 2. Cost bounded: crit 1, pin 3, and crit 4.
-- CHK14: Does criterion rfp-u1/7 (`tests/validate.sh`) still fail under its own `mutation:` line, given that
-  gh317, gh320, gh346-2, gh409, gh413, human-review-cleanup-1, mw-step1-3, rollout-map-1 and
-  spec2-unitA/B recorded class vacuous or host? — PASS (the mutation puts `exit 1` on line 2 of
-  `tests/persona-prose-pins.test.sh`, which validate.sh:1571 runs)
-- CHK15: Does criterion rfp-u1/4 (reviewer.md numstat) still fail under its own `mutation:` line, given that
-  gh307, gh348-3, gh385-2, memdirt-1 and mw-step1-3 recorded class vacuous or host? — PASS (pasting the
-  payload twice prints `over`)
-- CHK16: Does criterion rfp-u1/6 (`version-stamp-check.sh`) still fail under its own `mutation:` line, given
-  that ci-fetch-depth-cleanup and item17-4-name-p3-offenders recorded class host? — PASS (skipping edit 5
-  prints `violation`)
-- CHK17: Do criteria rfp-u2/1-3 (`CONTEXT.md`) still fail under their own `mutation:` lines, given that
-  gh-303, gh339, gh409, human-review-cleanup-1 and spec2-unitA/B recorded class vacuous or host? — PASS
-  (they are claim-anchored phrase greps, each with a deletion mutation)
+- CHK1: Is the verdict defined for every combination of standing, CONFIRMED and UNCERTAIN defects, and for
+  a skipped pass? — PASS (both Context tables)
+- CHK2: Is behaviour defined for a truncated explorer, a missing answer line, and a non-reproducing
+  artifact? — PASS ("stands as found")
+- CHK3: Does the plan define what the FAIL block's last line says in each case, including skipped? — PASS
+  (verdict table, last column)
+- CHK4: Do Step 3 and the readers table agree that `refutation:` is the last line and `[unconfirmed]` a
+  prefix? — PASS
+- CHK5: Is the `refutation:` vocabulary checked against unit-outcomes.js's class substrings by a runnable
+  check, not only by reading? — FAIL (missing) — revised in place (rfp-u3 fixture test case c reads the live
+  `CLASSES` table)
+- CHK6: Is the replay gate non-vacuous on an empty or small report? — FAIL (missing) — revised in place
+  (`score.py` exits 2 with `insufficient` below 30 confirmed-real; rfp-u2 criterion 3)
+- CHK7: Is it stated what is manual in Gate G, and who does it? — PASS
+- CHK8: Is the PASS-after-refutation state stated (marker, stamps, flags)? — PASS
+- CHK9: Does the payload delete the "may not argue away" sentence, and is that checked? — PASS (rfp-u3 pin
+  `hasnot`)
+- CHK10: Is the turn budget justified, with an enforced check? — PASS (cap 3; the replay fails on more than
+  10 turns)
+- CHK11: Does the reviewer.md "PASS is one line" rule conflict with the `refuted:` notes? — PASS (notes go
+  in the marker; the section is advisory)
+- CHK12: Is the :137-138 word collision resolved in a step? — PASS (rfp-u3 edit 3)
+- CHK13: Are all four hand-synced ports in rfp-u3's Affected files, with a check? — PASS
+  (adapter-fail-tier-pin extended)
+- CHK14: Is P3 per-commit discipline stated for every unit touching stamped paths, fix rounds included? —
+  PASS (contracts' commit notes, plus version-stamp criteria)
+- CHK15: Could any range criterion pass on an empty range? — PASS (each prints `no-commits` and exits 1)
+- CHK16: Does each Goal clause map to a criterion?
+  - Sonnet: rfp-u3 pin 3.
+  - Cap 3: rfp-u1 test case b.
+  - Telemetry line: rfp-u3 fixture test.
+  - `[unconfirmed]`: rfp-u3 pins and fixture test.
+  - Gate: rfp-u3 `score.py`.
+  - Milestone sample: rfp-u4 (pending).
+  - No marker or stamp: the route-gate case.
 
-Prose-mode `ubiquitous-language` on this draft (advisory): lens 1 found "Refute" at `agents/reviewer.md:46`,
-which means attacking the change, against the new "refutation pass", which means attacking the reviewer's
-own defects. This is handled by a separate canonical term and its `_Avoid_` line. Lens 2 found "refuter" and
-"verifier" as synonyms for the pass, so both are avoided and "refuter" is pinned absent. Lens 3 found three
-new terms (Step 2). "FAIL-block count" is used per its glossary entry.
+  — FAIL (missing): rfp-u4's criteria are not yet written — converted to the checkpoint (the rfp-u4
+  contract is next). This is not a user question.
+- CHK17: Does criterion rfp-u3/`validate.sh` still fail under its own `mutation:` line, given that gh317,
+  gh320, gh346-2, gh409, gh413, human-review-cleanup-1, mw-step1-3, rollout-map-1 and spec2-unitA/B
+  recorded class vacuous or host? — PASS (the mutation breaks a registered suite)
+- CHK18: Is the corpus size settled against cost and confidence? — FAIL (ambiguous) — converted to Open
+  Question 1
+- CHK19: Is the course of action defined when Gate G fails? — FAIL (missing) — converted to Open Question 2
+- CHK20: Does criterion rfp-u3/reviewer.md-numstat still fail under its mutation, given that gh307,
+  gh348-3, gh385-2, memdirt-1 and mw-step1-3 recorded class vacuous or host? — PASS
+- CHK21: Does criterion rfp-u3/version-stamp still fail under its mutation, given that
+  ci-fetch-depth-cleanup and item17-4-name-p3-offenders recorded class host? — PASS
+
+Prose-mode `ubiquitous-language` (advisory):
+- Lens 1: "refutation" means the change at `agents/reviewer.md:46,137-138` and the reviewer's own findings
+  here. Resolved by rewording :138 and by a glossary acknowledgement.
+- Lens 2: "refuter" and "verifier" are avoided. "FAIL-block count" is used per its entry.
+- Lens 3: new terms are judgment defect, refutation pass, refutation outcome, refutation line and Gate G
+  (Gate G is plan-local, not a glossary term).
 
 ## Scribe update hint
 
-rfp-u2 is the scribe's unit: three `CONTEXT.md` entries (text pre-drafted in its contract) and the ADR
-above, numbered as the next free `docs/adr/` number. After rfp-u1 PASS, quote its PASS verdict line in the
-scribe dispatch.
+rfp-u5 is the scribe's unit (contract pending), after rfp-u4 PASS. Quote rfp-u3's and rfp-u4's PASS lines in
+its dispatch.
