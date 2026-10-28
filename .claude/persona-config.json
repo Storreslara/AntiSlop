@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.219",
+  "pluginVersion": "0.31.220",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -122,7 +122,8 @@
     ".claude/bin/unit-size.sh": "6d69eb0e9235029403db0d31a512cf7b07b0d4ac25ad2970433c229c1a78c43e",
     ".claude/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd",
     "adapters/codex/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd",
-    "adapters/cursor/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd"
+    "adapters/cursor/hooks/scripts/lib/portable-tools.sh": "67282dde82093f6a2f13bc15dab621a372c2d2554db45f01b54ad8d07924fdcd",
+    ".claude/bin/refutation-brief.sh": "3c07f212bfbbf8cc53cdc6133e0b489c3ebc42f0e710535ff612628c33647ee5"
   },
   "humanReviewMode": "off",
   "defaultImplementerModel": "haiku",

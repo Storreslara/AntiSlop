@@ -820,6 +820,15 @@ else
 fi
 
 echo
+echo "== refutation-brief: the explorer prompt for the reviewer's refutation pass, caps and grammar (Bash, rfp-u1) =="
+if bash tests/refutation-brief.test.sh > /dev/null; then
+  echo "OK   tests/refutation-brief.test.sh"
+else
+  echo "FAIL tests/refutation-brief.test.sh"
+  fail=1
+fi
+
+echo
 echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
 if bash tests/review-precheck.test.sh > /dev/null; then
   echo "OK   tests/review-precheck.test.sh"
