@@ -144,7 +144,7 @@ pre.diff{max-height:320px;overflow:auto;background:#f6f8fa;border:1px solid var(
   <span class="count c-real" id="n-real"></span><span class="count c-bogus" id="n-bogus"></span><span class="count c-unknown" id="n-unknown"></span>
   <span class="status" id="status"></span>
  </div>
- <div class="rules">Gate G: need at least <b>30 real</b> of <span id="total"></span>; at most <b>11 bogus</b> can be tolerated. Keys: j/k move, r real, b bogus, u unknown.</div>
+ <div class="rules">Gate G: need at least <b>30 real</b> of <span id="total"></span>; at most <b>11 bogus</b> can be tolerated. Keys: j/k move, r real, b bogus, u unknown; keys act only on the outlined card (after a filter, search or collapse, press j/k or click a card first).</div>
  <div class="bar" id="bar"></div>
 </header>
 <main>
@@ -173,7 +173,12 @@ function buildTsv(header, ids, labels) {
   var KEY = 'gateg-labels:' + D.fingerprint;
   var VALID = ['real', 'bogus', 'unknown'];
   var ids = D.rows.map(function (r) { return r.id; });
-  var labels = {}, filter = 'all', cur = 0, cards = [];
+  // Invariant: r/b/u write only onto rows[cur], the card outlined as .cur, and only while it is visible (filter,
+  // search, group open) and deliberately targeted since the visible set last changed: by a click on that card,
+  // by j/k, or by the scrolled-into-view auto-advance after the human's own r/b. Anything else that changes the
+  // visible set (filter, search, group toggle) or hides the targeted card sets cur = -1: nothing is targeted and
+  // r/b/u do nothing until a click or j/k. cards[i] and rows[i] are always the same row (cards are in group order).
+  var labels = {}, filter = 'all', cur = -1, cards = [], rows = [];
   ids.forEach(function (i) { labels[i] = D.labels[i]; });
   try {
     var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
@@ -224,20 +229,21 @@ function buildTsv(header, ids, labels) {
     return c;
   }
   function render() {
-    var root = document.getElementById('groups'); root.textContent = ''; cards = [];
+    var root = document.getElementById('groups'); root.textContent = ''; cards = []; rows = [];
     var order = [], by = {};
     D.rows.forEach(function (r) { if (!by[r.group]) { by[r.group] = []; order.push(r.group); } by[r.group].push(r); });
     order.forEach(function (g) {
-      var d = el('details', 'grp'); d.open = true; d.dataset.g = g; d.ontoggle = refresh;
+      var d = el('details', 'grp'), was = true; d.open = true; d.dataset.g = g;
+      d.ontoggle = function () { if (d.open !== was) { was = d.open; untarget(); } };
       var s = el('summary'); s.appendChild(el('span', '', by[g][0].unit + '  '));
       s.appendChild(el('span', 'meta', by[g][0].fail_ts + '  '));
       s.appendChild(el('span', 'meta gp', '')); d.appendChild(s);
-      by[g].forEach(function (r) { var c = card(r, cards.length); cards.push(c); d.appendChild(c); });
+      by[g].forEach(function (r) { var c = card(r, cards.length); cards.push(c); rows.push(r); d.appendChild(c); });
       root.appendChild(d);
     });
     refresh();
   }
-  function vis(i) { return matches(D.rows[i]) && cards[i].parentNode.open; }
+  function vis(i) { return matches(rows[i]) && cards[i].parentNode.open; }
   function step(from, dir) {
     for (var i = from + dir; i >= 0 && i < cards.length; i += dir) if (vis(i)) return i;
     return -1;
@@ -248,8 +254,8 @@ function buildTsv(header, ids, labels) {
     return !q || (r.id + ' ' + r.dline + ' ' + r.fix_subject).toLowerCase().indexOf(q) >= 0;
   }
   function refresh() {
-    if (cur < 0 || !vis(cur)) cur = vis(0) ? 0 : step(0, 1);
-    D.rows.forEach(function (r, i) {
+    if (cur >= 0 && !vis(cur)) cur = -1;
+    rows.forEach(function (r, i) {
       var c = cards[i], l = labels[r.id];
       c.className = 'card ' + (l === 'unknown' ? '' : l) + (i === cur ? ' cur' : '') + (matches(r) ? '' : ' hide');
       Array.prototype.forEach.call(c.querySelectorAll('.lab button'), function (b) { b.classList.toggle('on', b.dataset.v === l); });
@@ -278,19 +284,18 @@ function buildTsv(header, ids, labels) {
     refresh();
   }
   function setCur(i) { cur = i; refresh(); }
+  function untarget() { cur = -1; refresh(); }
   function move(dir) {
-    var i = step(cur, dir);
+    var i = cur < 0 ? step(dir > 0 ? -1 : cards.length, dir) : step(cur, dir);
     if (i >= 0) { cur = i; refresh(); cards[i].scrollIntoView({block: 'center'}); }
   }
   document.addEventListener('keydown', function (e) {
     if (e.target.tagName === 'INPUT' || e.ctrlKey || e.metaKey || e.altKey) return;
-    var k = e.key.toLowerCase();
-    if (cur < 0 || !vis(cur)) { refresh(); if (k === 'r' || k === 'b' || k === 'u') return; }
-    if (cur < 0) return;
-    if (k === 'j') move(1); else if (k === 'k') move(-1);
-    else if (k === 'r') set(ids[cur], 'real', true);
-    else if (k === 'b') set(ids[cur], 'bogus', true);
-    else if (k === 'u') set(ids[cur], 'unknown', false);
+    var k = e.key.toLowerCase(), v = {r: 'real', b: 'bogus', u: 'unknown'}[k];
+    if (k === 'j' || k === 'k') return move(k === 'j' ? 1 : -1);
+    if (!v || e.repeat) return;
+    refresh(); // a collapse whose toggle event is still queued may have hidden the target
+    if (cur >= 0) set(rows[cur].id, v, k !== 'u');
   });
   var fb = document.getElementById('filters');
   [['all', 'all'], ['unknown', 'unknown'], ['real', 'real'], ['bogus', 'bogus'], ['amber', 'hinted-amber: fix does not touch cited file']].forEach(function (f) {
@@ -298,11 +303,11 @@ function buildTsv(header, ids, labels) {
     b.onclick = function () {
       filter = f[0] === 'amber' ? 'amber' : f[0];
       Array.prototype.forEach.call(fb.children, function (x) { x.classList.toggle('on', x === b); });
-      refresh();
+      untarget();
     };
     fb.appendChild(b);
   });
-  document.getElementById('q').oninput = refresh;
+  document.getElementById('q').oninput = untarget;
   function tsv() { return buildTsv(D.header, ids, labels); }
   function say(t) { document.getElementById('msg').textContent = t; }
   document.getElementById('dl').onclick = function () {
