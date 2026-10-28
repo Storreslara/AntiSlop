@@ -9,6 +9,7 @@
 - [Branch-agreement criterion](technique_branch_agreement_criterion.md) — assert a textual guard AGREES with its structural sibling; character enumerations kept missing one more dimension (630/670 → 0/670).
 - [Zero usage is not evidence](technique_zero_usage_is_not_evidence.md) — check the gate's MODE first; in `warn` mode a zero-usage audit is a tautology. Plus: glossary `_Avoid_` is entry-scoped, and it is not alphabetical.
 - [Flatten wrapped prose for phrase greps](technique_flatten_wrapped_prose_for_phrase_greps.md) — per-line grep misses a phrase split by the hard wrap, so an "absent" check passes vacuously; use tr -s first.
+- [Anchored mutation lines](technique_anchored_mutation_lines.md) — no payload? fix `# mut:<name>` on each guard line; one criterion deletes/moves each and needs its named case red (noanchor/green/other otherwise).
 - [Contract-guard row shapes](technique_contract_guard_r6_bullet_shape.md) — R1/R2/R5/R6/R7 literal shapes a 7/7 contract needs; run the guard per unit; never splice by inline heading text.
 - [Parallel contracts + escape drift](technique_parallel_contracts_and_escape_drift.md) — parallel units: never git add, `git commit -- <paths>`; `\u2014` typed becomes a literal em dash.
 - [Read-only /tmp namespace probe](technique_readonly_tmp_namespace_probe.md) — fixed /tmp names flip exit only when unwritable, not under concurrency; `unshare -rm` ro-/tmp probe.
