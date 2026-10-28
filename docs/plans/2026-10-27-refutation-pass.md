@@ -1,9 +1,10 @@
 # Refutation pass: challenge the reviewer's judgment defects before a FAIL verdict
 
-Status: **revision 2, 2026-10-27** (spec-master). It applies the four user decisions and the critic's review
-(verdict "SOUND WITH CHANGES"). Fast path: 5 dispatchable units plus one human gate. All five contracts are
-written; nothing is dispatched yet. Open Questions 1 and 2 await the user (their recommended defaults are
-applied).
+Status: **revision 2, 2026-10-27** (spec-master), plus follow-up unit rfp-u2b (2026-10-27). Revision 2 applies
+the four user decisions and the critic's review (verdict "SOUND WITH CHANGES"). Fast path: 6 dispatchable
+units plus one human gate, and all six contracts are written. rfp-u1 and rfp-u2 have reviewer PASS markers.
+rfp-u2b (Gate G hardening, from rfp-u2's PASS notes) is next and not yet dispatched. Gate G and rfp-u3 to
+rfp-u5 wait on it. Open Questions 1 and 2 await the user (their recommended defaults are applied).
 
 ## Units and order
 
@@ -14,7 +15,8 @@ G3 printed `replay-gate: pass`). One unit is mid-review at a time.
 |---|---|---|---|
 | rfp-u1 | lead-programmer | (none) | [rfp-u1](2026-10-27-refutation-pass/contracts/rfp-u1.md): the brief script |
 | rfp-u2 | lead-programmer | rfp-u1 (its `run.sh` dry-run calls the brief script) | [rfp-u2](2026-10-27-refutation-pass/contracts/rfp-u2.md): the replay corpus and gate tooling |
-| Gate G | the human operator (G1, G2), anyone (G3) | rfp-u2 | none: not a dispatchable unit (see "Gate G") |
+| rfp-u2b | lead-programmer | rfp-u2 (it hardens rfp-u2's files) | [rfp-u2b](2026-10-27-refutation-pass/contracts/rfp-u2b.md): per-id gate scoring, the history-limited replay clone and the guard hook |
+| Gate G | the human operator (G1, G2), anyone (G3) | rfp-u2b | none: not a dispatchable unit (see "Gate G") |
 | rfp-u3 | lead-programmer | rfp-u1, rfp-u2, Gate G | [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format |
 | rfp-u4 | lead-programmer | rfp-u3 (its edit 0 checks the protocol text) | [rfp-u4](2026-10-27-refutation-pass/contracts/rfp-u4.md): the task-master fix-contract bullet and the milestone-auditor sample |
 | rfp-u5 | scribe | rfp-u3 and rfp-u4 (its criteria read both; `no-source` otherwise) | [rfp-u5](2026-10-27-refutation-pass/contracts/rfp-u5.md): glossary entries and ADR 0043 |
@@ -278,6 +280,15 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - `bin/marker-audit.sh --notes`: blf-6 `NOTE[spec]` says to write "FAIL-block count", never "FAIL count"
   (honoured). Untagged 124 is unaffected. The others are historical.
 - No re-scoped unit has a prior `.fail`.
+- rfp-u2b (2026-10-27):
+  - rfp-u1 and rfp-u2 hold PASS markers and no `.fail`.
+  - Every non-blocking note in `rfp-u2.pass` has a disposition in the Step 2b table, including the
+    dry-run `worktree prune`.
+  - `marker-audit.sh --notes` finds no note on `eval/refutation-replay`.
+  - On `tests/validate.sh` the sweep finds only historical notes. The relevant two are vsp-1 (the lane
+    runner) and vtmp-1 (the 600 s cap); criterion 9 handles both with `ANTISLOP_VALIDATE_LANES=4` and the
+    600000 ms timeout.
+  - The sweep is best-effort: `.claude/reviewed/` is per-clone.
 
 ## Clarifications
 1. Functional scope & success criteria: Partial
@@ -332,6 +343,38 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - 2026-10-27 Completion / acceptance signals: Q How do rfp-u5's criteria avoid passing on word presence? → A
   (self-resolved, contract spawn): each reads its claim's value from the live source (reviewer, protocol,
   auditor, unit commits) and fails, printing `missing:` or `no-source`, when the two disagree.
+- 2026-10-27 Functional scope & success criteria: Q Are rfp-u2's PASS-note findings on the Gate G measurement
+  fixed before the paid replay, and what stays fixed? → A: yes, as unit rfp-u2b before Gate G. Thresholds,
+  labels and the corpus stay unchanged, and no paid `claude -p` run happens (per user, 2026-10-27).
+- 2026-10-27 Domain entities / data model: Q What does `score.py` count, and how are repeated, unknown and
+  absent ids treated? → A (self-resolved): it scores distinct ids. Ids not in `labels.tsv` are `foreign`
+  and ignored. An identical repeat counts once, and a repeat that differs in answer or artifact is a
+  `dup-conflict`, which fails the gate. Any id labelled real or bogus with no row is `missing`, which makes
+  the result `insufficient`. The user asked for real ids; bogus ids are added so that dropping their
+  `NONE` rows cannot shrink the unanswered denominator.
+- 2026-10-27 Edge cases / failure handling: Q What does `run.sh` write for a group whose setup fails? → A:
+  one `NONE` row per defect, tagged `setup: clone|brief` (per user, 2026-10-27).
+- 2026-10-27 External dependencies & integrations: Q How is answer leakage prevented, and how is that tested
+  without a paid run? → A (self-resolved, rfp-u2b contract spawn):
+  - a fresh repository per group, fetched by commit id up to the reviewed commit (spec-master tested this
+    on git 2.43 at 0.5 s per group);
+  - `--setting-sources local` and `--strict-mcp-config`;
+  - `guard.py` as a PreToolUse hook;
+  - a fake `claude` on `PATH` in the fixture suite.
+
+  The one claim no offline test reaches, that a `--settings` hook fires in `-p` mode, gets the `run.sh`
+  exit-3 tripwire.
+- 2026-10-27 Non-functional attributes (perf, security, scale): Q Do `--allowedTools` rules alone restrict
+  the replay to `git show`, `git diff` and `git log`? → A (self-resolved, Claude Code docs via
+  `claude-code-guide`): no. Read-only commands such as `cat` run without a prompt in every mode, a bare
+  `Read` rule reaches any absolute path, and allow rules merge across setting scopes. The user's
+  `settings.local.json` allows `Bash(python3 -c ' *)`. A blocking PreToolUse hook overrides allow rules, so
+  the guard is the enforcement.
+- 2026-10-27 Technical constraints & tradeoffs: Q Fix the `--labels` diffstat in the code or in the
+  docstring? → A (self-resolved): the docstring, which is cheaper and leaves the labelling output alone.
+  The 300-character cut is stated in the docstring and the README.
+- 2026-10-27 Completion / acceptance signals: Q How do rfp-u2b's criteria avoid the precheck's two-line
+  literal quirk? → A (self-resolved): every expected stdout is one line (harness note under Step 2b).
 
 ## Risks / dependencies
 
@@ -340,12 +383,15 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - **R2: replay fidelity.** The replay runs headless `claude -p` with read-only tools, not the `explorer`
   persona body, and without its graph MCP. It reproduces the brief exactly (D8) but not the persona prose.
   This is stated in the replay README. The persona adds instructions; it removes none of the brief's rules.
+  Since rfp-u2b, each run also sees only a clone holding the history up to the reviewed commit. It loads
+  no user, project or plugin settings, and its Bash is limited to `git show`, `git diff` and `git log`.
+  The live explorer has the whole repository, so the replay is stricter than live use in this respect.
 - **R3: proxy labels.** "Fixed and later passed" can label a bogus defect "real" if the implementer complied
   with a non-defect. The human confirmation in `labels.tsv` exists for this. That bias would only make the
   gate stricter, because a bogus defect counted as real and then refuted counts as a miss.
 - **R4: audit noise.** One `grant-denied` line per pass. Out of scope.
 - **R5: ordering.** As in "Units and order": rfp-u1, then rfp-u2 (its `run.sh` needs the brief script), then
-  Gate G (human), then rfp-u3, then rfp-u4, then rfp-u5 (after both rfp-u3 and rfp-u4). The branch has other
+  rfp-u2b (it hardens rfp-u2's files), then Gate G (human), then rfp-u3, then rfp-u4, then rfp-u5 (after both rfp-u3 and rfp-u4). The branch has other
   units in flight, so each bump is +1 on the version current at dispatch.
 - **R8: gate-safe commands.** The milestone auditor's sample commands and the range criteria must pass
   `reviewed-path-gate.sh` and `harness-integrity-gate.sh` as written. spec-master probed them: plain `grep -r`
@@ -368,7 +414,8 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - P3 "Version-stamp discipline": satisfied. rfp-u3 and rfp-u4 touch `agents/` and `templates/` and bump in
   each commit. rfp-u1 bumps too: it touches no stamped path, but `--update` installs a new helper.
 - P5 "`tests/validate.sh` is the merge gate": satisfied. Every lead unit has a validate.sh criterion, and
-  rfp-u1 and rfp-u2 register their new suites.
+  rfp-u1, rfp-u2 and rfp-u2b register their new suites. rfp-u2b touches no stamped path and needs no
+  bump.
 - P4 "Optional personas degrade gracefully" (SHOULD): satisfied. `explorer` is a core persona, and a spawn
   failure degrades to `skipped=no-subagent`.
 
@@ -395,7 +442,47 @@ Affected files:
 No stamped path. Criteria: the fixture suite, `--check` on the committed corpus, the vacuity guard on an
 empty report, `--dry-run` flags, scope, validate.
 
-## Gate G (human, between Step 2 and Step 3; not a dispatchable unit)
+## Step 2b (rfp-u2b, lead-programmer, after rfp-u2): Gate G hardening
+
+rfp-u2 reached PASS at 6c8b4b1a. Its reviewer's non-blocking notes show that the Gate G measurement could be
+weak or gamed. The user chose to fix that before the paid replay (G2).
+
+| finding (rfp-u2 PASS note) | fix | case in the new suite |
+|---|---|---|
+| `score.py:35` counts rows, so one real id repeated 30 times passes | score distinct ids; ignore `foreign` ids; a conflicting repeat fails the gate; every id labelled real or bogus must have a row (otherwise `insufficient`) | a, b, c, e, f |
+| the worktree shares refs, and Read or grep reach the main checkout's FAIL records and `labels.tsv` | a fresh repository fetched up to the reviewed commit only; `--setting-sources local`, `--strict-mcp-config`, `--permission-mode dontAsk`, `--tools Read,Grep,Glob,Bash`; `guard.py` as a PreToolUse hook refuses paths outside the clone; exit 3 if the hook is not wired | g, h, i, l, m |
+| `run.sh:30` `Bash(git *)` is not read-only | pre-approve only `git show`, `git diff` and `git log`, and the guard refuses every other Bash command (`git -c`, aliases, `--output`, `--no-index`, shell operators) | g, j, n, o |
+| `run.sh:56,58` drop a group whose worktree or brief fails | one `NONE` row per defect, tagged `setup` | k |
+| `build-corpus.py:10` promises a diffstat; the 300-character cut at `:87` is undocumented | fix the docstring (cheaper than changing the labelling output); state the cut in the docstring and the README | p |
+| `run.sh:45` prunes worktrees on `--dry-run` too | gone with the worktree: the EXIT trap only removes the scratch directory | n |
+
+Affected files:
+- `eval/refutation-replay/{guard.py (new),score.py,run.sh,build-corpus.py,README.md}`
+- `tests/refutation-replay-isolation.test.sh` (new)
+- `tests/validate.sh` (registration)
+
+No stamped path, so no version bump. `corpus.jsonl` and `labels.tsv` are untouched: no builder logic changes,
+and the labels stay `unknown` for G1. The thresholds are unchanged, and no paid run happens (the suite fakes
+`claude`).
+
+Criteria:
+- both suites pass;
+- the new suite fails exactly 14 named cases against rfp-u2's files (red at baseline);
+- the corpus and labels are unchanged and there is no report;
+- the scorer line on the absent report;
+- the dry-run flags on the committed corpus;
+- a per-commit scope check;
+- file modes;
+- `validate.sh` with `ANTISLOP_VALIDATE_LANES=4`.
+
+Every criterion has a single-line expected stdout (see the harness note below).
+
+**Harness note (not a unit).** `review-precheck.sh` `run_one` compares a criterion's whole stdout with one
+backtick literal. A two-line expected stdout written as `` `A` then `B` `` can never match: rfp-u2 criterion 3
+hit this, and its reviewer overrode the false fail by hand. Until the precheck learns two-line literals,
+contract criteria should print one line, or the reviewer must override.
+
+## Gate G (human, between Step 2b and Step 3; not a dispatchable unit)
 
 | step | what | who | how to check it |
 |---|---|---|---|
@@ -541,6 +628,22 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
   word is absent? — PASS (spec-master mutated both sides on a scratch copy: entry and source)
 - CHK27: Does criterion rfp-u4/validate.sh still fail under its own `mutation:` line, given the units
   recorded class vacuous or host in CHK17? — PASS (the mutation breaks a newly registered suite)
+- CHK28: Does each non-blocking note in `rfp-u2.pass` map to an rfp-u2b fix, a suite case and a criterion?
+  — PASS (Step 2b table; contract criteria 1, 3 to 7)
+- CHK29: Do the units table, R5, the Step 2b heading, the Gate G heading and the rfp-u2b contract's
+  Retrieval agree that rfp-u2b sits after rfp-u2 and before Gate G? — PASS
+- CHK30: Can any rfp-u2b range criterion pass with no `(rfp-u2b)` commit? — PASS (criteria 3, 4 and 7 print
+  `no-commits` and exit 1; spec-master ran them on the real tree)
+- CHK31: Is the one assumption the offline suite cannot test (a `--settings` hook fires in `-p` mode)
+  backed by a mechanical check? — FAIL (missing) at drafting — revised in place (the `run.sh` exit-3
+  tripwire, suite case m, mutation (vii) of criterion 1)
+- CHK32: Does criterion rfp-u2b/validate.sh still fail under its own `mutation:` line, given the units
+  recorded class vacuous or host in CHK17? — PASS (the mutation breaks the newly registered suite; the
+  4-lane run exited 0 in scratch in about 250 s)
+- CHK33: Is every rfp-u2b expected stdout one line, given the precheck's two-line literal quirk? — PASS
+  (spec-master parsed the contract with the precheck's own awk)
+- CHK34: Does rfp-u3 criterion 8 (`cut -d" " -f1-2` of the scorer line) still read the verdict after
+  rfp-u2b appends fields? — PASS (rfp-u2b criterion 5)
 
 Prose-mode `ubiquitous-language` (advisory):
 - Lens 1: "refutation" means the change at `agents/reviewer.md:46,137-138` and the reviewer's own findings
@@ -548,6 +651,12 @@ Prose-mode `ubiquitous-language` (advisory):
 - Lens 2: "refuter" and "verifier" are avoided. "FAIL-block count" is used per its entry.
 - Lens 3: new terms are judgment defect, refutation pass, refutation outcome, refutation line and Gate G
   (Gate G is plan-local, not a glossary term).
+- rfp-u2b (advisory):
+  - `CONTEXT.md` "Contract-score guard" and "guard demotion" use "guard" for another mechanism, so the
+    plan and contract always say `guard.py` or "the guard hook", never a bare "guard".
+  - "Replay clone" is distinct from "per-clone review state".
+  - The scorer fields `foreign`, `dup-conflict` and `missing` are output fields, not domain terms; no
+    glossary entry is proposed.
 
 ## Scribe update hint
 
