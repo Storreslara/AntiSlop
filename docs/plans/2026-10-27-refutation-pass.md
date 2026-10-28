@@ -2,15 +2,16 @@
 
 Status: **revision 3, 2026-10-28** (spec-master): Gate G run 1 failed, and the brief is revised (see
 "Revision 3"). Revision 2 (2026-10-27) applied the four user decisions and the critic's review. Follow-up
-units rfp-u2b, rfp-u2c, rfp-u2d and rfp-u2e came after it.
-- **Done:** rfp-u1, rfp-u2, rfp-u2b, rfp-u2c and rfp-u2d have reviewer PASS markers. Gate G1 is done: all 41
-  labels are `real` (user, option A, 5f0c28de).
-- **Not reviewed yet:** rfp-u2e (2bf3ac51).
-- **Gate G run 1:** G2 ran, and G3 printed `fail`. Only the turn rule failed.
-- **Next:** rfp-u1b, the brief's tool-call budget. Its contract is written. Then the conditional rfp-u2f,
-  then Gate G run 2.
+units rfp-u2b, rfp-u2c, rfp-u2d and rfp-u2e came after it. Amended 2026-10-28 with unit rfp-u2f, after the
+user answered Open Questions 4 to 7.
+- **Done:** rfp-u1, rfp-u2, rfp-u2b, rfp-u2c, rfp-u2d, rfp-u2e (2bf3ac51) and rfp-u1b (4ec89dae) have reviewer
+  PASS markers. Gate G1 is done: all 41 labels are `real` (user, option A, 5f0c28de).
+- **Gate G run 1:** G2 ran, and G3 printed `fail`. Only the turn rule failed. Its report is evidence only: an
+  uncommitted, in-place mutant of `run.sh` produced it (rfp-u2e PASS note).
+- **Next:** rfp-u2f, the replay tooling fixes for run 2 (Step 2f). Its contract is written. Then Gate G run 2.
 - **Blocked:** rfp-u3 to rfp-u5 stay blocked until run 2's G3 prints `pass`.
-- **Open Questions:** 4 to 7 are new and await the user. 1 keeps its applied default. 2 and 3 are resolved.
+- **Open Questions:** 4 to 7 are resolved, each to its recommended option (a). 1 keeps its applied default. 2
+  and 3 are resolved.
 
 ## Units and order
 
@@ -24,11 +25,11 @@ G3 printed `replay-gate: pass`). One unit is mid-review at a time.
 | rfp-u2b | lead-programmer | rfp-u2 (it hardens rfp-u2's files) | [rfp-u2b](2026-10-27-refutation-pass/contracts/rfp-u2b.md): per-id gate scoring, the history-limited replay clone and the guard hook |
 | rfp-u2c | lead-programmer | rfp-u2b (same directory; G1 needs the tool) | [rfp-u2c](2026-10-27-refutation-pass/contracts/rfp-u2c.md): the Gate G1 labeling server; retires `label-ui` |
 | rfp-u2d | lead-programmer | rfp-u2c | no contract file (Open Question 3 (a)): `guard.py` refuses `-O` inside a bundle of short options. PASS at a6ecb429 |
-| rfp-u2e | lead-programmer | rfp-u2d | no contract file: `run.sh` reads its groups on fd 3 and `claude` gets no stdin (2bf3ac51). **Not reviewed yet** (Revision 3, carried item a) |
-| Gate G run 1 | the human operator | rfp-u2e (committed) | none. G1 done (41 real). G3 printed `fail` on the turn rule only (Revision 3) |
-| rfp-u1b | lead-programmer | rfp-u2e's review has returned (one unit mid-review at a time); Open Questions 4 and 5 answered or their defaults accepted | [rfp-u1b](2026-10-27-refutation-pass/contracts/rfp-u1b.md): the brief's tool-call budget |
-| rfp-u2f | lead-programmer | rfp-u1b | **conditional**: only if Open Question 4 is (a), (c) or (d), or Open Question 6 is (a). Its contract is written after the answers (Step 1b) |
-| Gate G run 2 | the human operator (G2), anyone (G3) | rfp-u1b, and rfp-u2f if it exists | none: G1's labels stand; G2 re-runs all 24 groups; G3 must print `pass` |
+| rfp-u2e | lead-programmer | rfp-u2d | no contract file: `run.sh` reads its groups on fd 3 and `claude` gets no stdin (2bf3ac51). PASS 2026-10-28 |
+| Gate G run 1 | the human operator | rfp-u2e (committed) | none. G1 done (41 real). G3 printed `fail` on the turn rule only (Revision 3). Its report came from an in-place mutant of `run.sh`, so it is evidence only |
+| rfp-u1b | lead-programmer | rfp-u2e's review has returned (one unit mid-review at a time); Open Questions 4 and 5 answered or their defaults accepted | [rfp-u1b](2026-10-27-refutation-pass/contracts/rfp-u1b.md): the brief's tool-call budget. PASS at 4ec89dae |
+| rfp-u2f | lead-programmer | Open Questions 4 to 7 answered (done: all (a)). No file in common with rfp-u1b, so the two may go in either order; one unit mid-review at a time | [rfp-u2f](2026-10-27-refutation-pass/contracts/rfp-u2f.md): `run.sh` records the CLI `subtype`, `score.py` fails a capped run (`capped=`), the corpus keeps whole claims (`--refresh-claims`), and `run.sh` parses whole before running (Step 2f) |
+| Gate G run 2 | the human operator (G2), anyone (G3) | rfp-u1b **and** rfp-u2f, both with PASS markers | none: G1's labels stand; G2 re-runs all 24 groups on the committed tooling, unchanged otherwise; G3 must print `pass` with `capped=0` |
 | rfp-u3 | lead-programmer | rfp-u1b, rfp-u2, Gate G run 2 | [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format |
 | rfp-u4 | lead-programmer | rfp-u3 (its edit 0 checks the protocol text) | [rfp-u4](2026-10-27-refutation-pass/contracts/rfp-u4.md): the task-master fix-contract bullet and the milestone-auditor sample |
 | rfp-u5 | scribe | rfp-u3 and rfp-u4 (its criteria read both; `no-source` otherwise) | [rfp-u5](2026-10-27-refutation-pass/contracts/rfp-u5.md): glossary entries and ADR 0043 |
@@ -81,6 +82,13 @@ What this means for the plan:
 - A capped run would show only as `NONE` rows, which only the 20% unanswered rule sees.
 
 That is Open Question 4.
+
+*Correction (2026-10-28, rfp-u2f contract spawn).* The bullet above is wrong as written. A capped run's result
+carries `num_turns` equal to the loop's turn count, 11 under `--max-turns 10`, and `run.sh` writes that value on
+every one of its `NONE` rows. So the turn rule as written fails a capped run too (`max-turns=11`). What no rule
+could do was tell a cap hit from a finished run of 10 tool calls: both read 11. rfp-u2f records `subtype`, so
+`capped=` names the cause. It also keeps the check if the cap or `MAX_TURNS` ever changes. The user's answer
+(Open Question 4 (a)) stands either way.
 
 | defects per group | runs | tool calls per run (min to max, mean) | tool calls per defect (mean) |
 |---|---|---|---|
@@ -171,6 +179,11 @@ So 12 of the 14 have their cause in the replay or the answer format, not in the 
   groups ran. In the committed file, `done 3<<< "$groups"` is line 115 and the summary `echo` is line 116, so
   the reviewer should find which line raised it. The dispatcher hands this to rfp-u2e's reviewer. rfp-u1b
   waits for that review.
+  - *Closed 2026-10-28:* rfp-u2e PASS. Its reviewer found the cause. The human's run started before 2bf3ac51
+    was committed, while a lead's in-place mutant of `run.sh` (` < /dev/null` removed) was on disk. The lead
+    restored the file in place during the run, and after the loop bash read the next command at the old
+    offset (`< "$groups"`). So run 1's report came from that mutant, not from 2bf3ac51: it is evidence, not a
+    gate record. rfp-u2f wraps `run.sh` in `main` so this cannot recur, and gives case (q) the test it lacked.
 - **(b) rfp-u2c's PASS notes stay advisory.**
   - B12 covers the stationary re-click only for the first write on a page: two `label_page.html` mutants stay
     green from the second write on.
@@ -448,7 +461,7 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - Run 1's `u` is an upper estimate: all 7 UNCERTAIN-only runs had a replay or answer-format cause (Revision 3,
   diagnosis 3).
 - The kill rule above counts only `r`, and it does not see round trips. Whether to add a `u` trigger is Open
-  Question 7. Until it is answered, the kill rule stands as written.
+  Question 7. The user chose (a): it is decided after run 2, and until then the kill rule stands as written.
 
 **Deliberately not skipped:**
 - A single defect: one refutation turns FAIL into PASS, the highest-value case.
@@ -502,6 +515,27 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   - The same sweep on `eval/refutation-replay` returns one rfp-u2c `NOTE[code]` (`__pycache__`). rfp-u1b
     never imports `label.py`, so it does not apply.
   - The rfp-u2c and rfp-u2d notes the task names are dispositioned under Revision 3, "Carried open items".
+  - The sweep is best-effort: the markers directory is per-clone.
+- rfp-u2f (2026-10-28):
+  - The plan's review records are PASS markers for rfp-u1, rfp-u1b, rfp-u2, rfp-u2b, rfp-u2c, rfp-u2d and
+    rfp-u2e, plus `rfp-u2c.fail` (dispositioned above). No `.fail` names rfp-u2, rfp-u2b or rfp-u2e, the
+    units whose files rfp-u2f edits, so nothing forces a higher tier.
+  - `marker-audit.sh --notes` on `eval/refutation-replay` returns three `NOTE[code]` lines:
+    - rfp-u2c's `__pycache__` note. The contract says not to import an `eval/` module in place, and criterion
+      12 fails on a stray cache.
+    - rfp-u2e's label-suite snapshot note: a report written during that suite turns it red. It is recorded
+      in the contract's context, and no change is needed.
+    - rfp-u2e's process note, with the optional `main` wrapper. The wrapper is folded in (edits 30 and 37,
+      case t), and the process half is now a hard rule in the contract's Escalation.
+  - On the two replay suites the sweep returns nothing.
+  - `rfp-u2e.pass` has two notes the sweep did not tag to these paths:
+    - The `< /dev/null` half has no failing test. Folded in: case (q) gets a sentinel stdin.
+    - Children inherit fd 3. Folded in as `3<&-` and case (u): one token plus one assertion in files this
+      unit already edits.
+  - `rfp-u1b.pass` notes 2 and 3 (a 2-defect share of 4, and a 3-call floor per defect against a share of 3)
+    are for reading run 2's results. They need no rfp-u2f change (Gate G, "Run 2").
+  - The rfp-u2c advisory notes (Revision 3, carried item b) are not folded in: they touch only the label
+    server, which G1 no longer needs. Out of scope 10.
   - The sweep is best-effort: the markers directory is per-clone.
 
 ## Clarifications
@@ -660,6 +694,52 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - 2026-10-28 Technical constraints & tradeoffs: Q Does a changed `bin/refutation-brief.sh` need a version bump
   to install? → A (self-resolved): no. `--update` re-renders a raw helper on content drift
   (`bin/cli.js:1546-1550`). rfp-u1b bumps anyway, so its CHANGELOG entry carries a version, as rfp-u1's did.
+- 2026-10-28 Completion / acceptance signals: Q Does the Gate G turn rule change, and is a cut-off run checked?
+  → A: the rule stays exactly as written (no run over 10 by `score.py`'s `num_turns`), and one check is added:
+  no run may end `error_max_turns`. `run.sh` records the CLI result's `subtype` and `is_error`. `score.py
+  --gate` fails on a capped run and appends `capped=<p>` after `foreign=`. Every threshold is unchanged (Open
+  Question 4 (a), per user, 2026-10-28). It becomes unit rfp-u2f.
+- 2026-10-28 Technical constraints & tradeoffs: Q Does a long file's per-defect share beat the Goal's "whole
+  file"? → A: yes, the share wins, as rfp-u1b already ships (Open Question 5 (a), per user, 2026-10-28).
+- 2026-10-28 Domain entities / data model: Q Are the corpus claims re-extracted before run 2, and does that
+  change the ids or labels? → A: yes. The builder keeps whole claims, and the corpus is regenerated with the
+  same 41 ids. `labels.tsv` stays byte-identical, which a criterion checks against its committed hash (Open
+  Question 6 (a), per user, 2026-10-28).
+- 2026-10-28 Completion / acceptance signals: Q Does the kill rule gain a `u` trigger now? → A: no. Decide
+  after run 2, before rfp-u3 is dispatched. rfp-u2f does nothing for it beyond not blocking it (Open Question 7
+  (a), per user, 2026-10-28).
+- 2026-10-28 Domain entities / data model: Q What exactly is a "whole claim"? → A (self-resolved, rfp-u2f
+  contract spawn): the whole defect item, meaning the bullet line plus every indented line after it, across
+  blank lines, up to the next bullet or unindented line. It is whitespace-collapsed into one line and cut at 8000
+  characters. Selection still reads the bullet line alone, so the kept defects do not change. Why: the live
+  reviewer pipes its whole defect, uncut, as one `D<n>:` line. Of the 41 rows, only gh-303 D1 depends on
+  crossing blank lines (315 against 1,483 characters), and its later paragraphs hold the Reproduce text that
+  its UNCERTAIN answer missed.
+- 2026-10-28 Non-functional attributes (perf, security, scale): Q Why a cut at 8000 and not none, and does the
+  brief's input limit bind? → A (self-resolved): `run.sh` passes the brief as one `claude -p` argument, which
+  Linux caps at 128 KiB. 8000 keeps a 3-defect brief near 27 KB at worst, and no current claim reaches it (the
+  longest `dline` is 1,915). The brief reads lines with `read -r` and has no length or stdin limit. All 24 run-2
+  briefs built with rfp-u1b's script exit 0, and the largest is 4,710 bytes.
+- 2026-10-28 Technical constraints & tradeoffs: Q Rebuild the corpus, or refresh its claims? → A
+  (self-resolved): refresh. A rebuild on today's FAIL records selects from 58 candidates and changes the ids,
+  and the build mode rewrites `labels.tsv` to all `unknown`. `--refresh-claims` rewrites only `dline`, matched by
+  block, cite and claim prefix. It is idempotent and never writes labels.
+- 2026-10-28 Edge cases / failure handling: Q Does the turn rule as written already fail a capped run? → A
+  (self-resolved, the CLI's bundled source): yes. `num_turns` is 11 on a capped run, and `run.sh` writes it on
+  each row. Diagnosis 1's bullet saying "only the unanswered rule sees it" is corrected in place. `capped=`
+  names the cause and survives a future change of the cap.
+- 2026-10-28 External dependencies & integrations: Q Which result subtypes exist, and which count as capped?
+  → A (self-resolved): `success`, `error_max_turns`, `error_max_budget_usd` and `error_during_execution`; the
+  three errors set `is_error: true`. Only `error_max_turns` counts in `capped`, because the user named the turn
+  cap. The other two are recorded but not gated (Out of scope 9).
+- 2026-10-28 Functional scope & success criteria: Q Which carried review items fold into rfp-u2f? → A
+  (self-resolved): the case (q) sentinel stdin, the `main` wrapper and `3<&-`. All three sit in `run.sh` and the
+  isolation suite, which rfp-u2f already edits, and each has its own case. The rfp-u2c label-server notes stay
+  out (Out of scope 10).
+- 2026-10-28 User interaction flow: Q What does Gate G run 2 reuse, and what becomes of run 1's report? → A
+  (self-resolved): run 2 uses the committed tooling as it stands after rfp-u1b and rfp-u2f, with no other
+  change. Run 1's report is evidence only, because an in-place mutant of `run.sh` produced it. Whether to
+  commit its copy, and where, stays the user's call (Gate G).
 
 ## Risks / dependencies
 
@@ -700,8 +780,17 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   - Clipped claims, Bash limited to three git verbs, and the missing untracked data all push the replay
     toward UNCERTAIN (Revision 3, diagnosis 3).
   - The live explorer has full claims and the whole working tree, so the replay's `u` (29%) is an upper
-    estimate, and Open Question 6 narrows it.
+    estimate. rfp-u2f removes the clipped-claim cause (Open Question 6 (a)), so run 2's `u` is closer to the
+    live rate.
   - Nothing measures the live `u` before the milestone auditor's sample.
+- **R14: the corpus refresh reads per-clone state.** `--refresh-claims` and rfp-u2f's criterion 4 read the
+  FAIL records, which are untracked and exist only in the main checkout. In a linked worktree or a fresh clone
+  they cannot run, and the regenerated `corpus.jsonl` is then the record, as it was for rfp-u2. FAIL blocks are
+  only ever appended, so the refresh stays reproducible in the main checkout. If a block is ever edited, the
+  refresh fails closed (exit 1, nothing written).
+- **R15: a capped run is now visible twice.** On a capped run, the turn rule and `capped=` both fail. That is
+  deliberate: `capped` names the cause. A report written before rfp-u2f has no `subtype`, so `capped=0`
+  proves nothing for it. Gate G's G3 step therefore checks that every row of run 2's report has a `subtype`.
 - **R8: gate-safe commands.** The milestone auditor's sample commands and the range criteria must pass
   `reviewed-path-gate.sh` and `harness-integrity-gate.sh` as written. spec-master probed them: plain `grep -r`
   piped to `sort` or `wc -l` passes; a `$(…)` substitution around the reviewed-markers path is refused, and so
@@ -732,6 +821,14 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   - P2: satisfied. The budget is computed by the script, not written per run.
   - P3: not required, because no stamped path is touched. The bump keeps the CHANGELOG entry versioned.
   - P5: satisfied (rfp-u1b criterion 8).
+- rfp-u2f:
+  - P1: satisfied. The CLI result shape was read from the installed 2.1.312 bundle. spec-master ran the claim
+    rule, the refresh, every criterion and every mutation on a scratch clone, and built all 24 run-2 briefs.
+  - P2: satisfied. The claims come from a deterministic, idempotent `--refresh-claims`, never by hand, and
+    `capped` comes from the CLI's own field.
+  - P3: not required, because no stamped path is touched. No bump and no CHANGELOG entry, as for rfp-u2b
+    to rfp-u2e (criterion 9 refuses `plugin.json`, `package.json` and `CHANGELOG.md`).
+  - P5: satisfied (rfp-u2f criterion 11; both suites are already registered).
 - P4 "Optional personas degrade gracefully" (SHOULD): satisfied. `explorer` is a core persona, and a spawn
   failure degrades to `skipped=no-subagent`.
 
@@ -787,13 +884,9 @@ Two answers would change rfp-u3 or rfp-u4 before dispatch:
 - Open Question 4 (c) or (d) changes what Gate G checks, and rfp-u3 criterion 8 reads its verdict. Its
   `cut -d" " -f1-2` stays valid if the scorer only appends fields, as rfp-u2b did (CHK34).
 
-**rfp-u2f (conditional; its contract is written after the answers).** It is in scope only for these answers:
-- Open Question 4 (a) or (c): `run.sh` records each run's `subtype`, and `score.py` fails the gate on any
-  `error_max_turns` run, printing a new last field `capped=<n>`.
-- Open Question 4 (d): `run.sh` counts assistant turns from `--output-format stream-json --verbose`.
-- Open Question 6 (a): `build-corpus.py` keeps a wrapped bullet's continuation lines and cuts at 1,000
-  characters. It keeps the defect selection, so the 41 ids and `labels.tsv` stay byte-identical, and the
-  regenerated `corpus.jsonl` is committed with it.
+**rfp-u2f.** The user answered Open Questions 4 (a) and 6 (a), so rfp-u2f exists. See Step 2f. Revision 3's
+draft of this paragraph said "cut at 1,000 characters". The contract cuts at 8000 instead, a bound no claim
+reaches (Clarifications, 2026-10-28).
 
 ## Step 2 (rfp-u2, lead-programmer): the replay corpus, runner and scorer
 
@@ -899,6 +992,49 @@ untouched, and no model runs. Expected tier: opus, full lane. Criteria (12, each
 - `validate.sh` at 4 lanes;
 - a clean `eval` and `tests` tree.
 
+## Step 2f (rfp-u2f, lead-programmer, after Open Questions 4 to 7): the replay tooling for run 2
+
+[Contract](2026-10-27-refutation-pass/contracts/rfp-u2f.md). The user answered Open Questions 4 (a) and
+6 (a), so run 2 needs two tooling changes. Two cheap hardening items from rfp-u2e's review come with them.
+
+| item | change | case |
+|---|---|---|
+| capped runs (Open Question 4 (a)) | `run.sh` writes the CLI result's `subtype` and `is_error` on every row (`none`/`true` without a result). `score.py --gate` fails when a scored id's run is `error_max_turns` and appends `capped=<p>` after `foreign=`. The thresholds are byte-identical | isolation r, s, e |
+| whole claims (Open Question 6 (a)) | the claim is the whole defect item (bullet line plus indented lines, across blank lines), cut at 8000. Selection still reads the bullet line. `--refresh-claims` rewrites only `dline` in the committed corpus, which is regenerated (41 ids; `labels.tsv` byte-identical) | replay k, l, m; isolation p |
+| case (q) has no failing test for ` < /dev/null` (rfp-u2e note) | `run.sh` gets a sentinel stdin in case (q); the draining fake records it; `timeout 60` | isolation q |
+| `run.sh` re-read mid-run (rfp-u2e note; run 1's stray line) | the body becomes `main() { … }`, and the last line is `main "$@"; exit` | isolation t |
+| fd 3 inherited (rfp-u2e note) | `3<&-` on the `claude` call | isolation u |
+| docs | the builder and scorer docstrings and the README state the claim rule, the refresh and the capped rule | isolation p, v |
+
+Affected files:
+- `eval/refutation-replay/{run.sh,score.py,build-corpus.py,README.md}`
+- `eval/refutation-replay/corpus.jsonl` (regenerated by `--refresh-claims` only)
+- `tests/refutation-replay.test.sh`
+- `tests/refutation-replay-isolation.test.sh`
+
+No `tests/validate.sh` edit: both suites are registered. No stamped path, so no bump and no CHANGELOG entry.
+`labels.tsv`, `report.jsonl`, `bin/refutation-brief.sh`, `guard.py` and the label server are in "Do NOT
+touch".
+
+Criteria (12, each with one stdout line):
+- both suites;
+- the new cases red on the pre-unit files (`replay=k,l,m isolation=e,r,s,t,u,v`);
+- corpus ids and fields kept, claims only extended (`longer=40`);
+- the committed corpus equals a fresh `--refresh-claims`;
+- the `labels.tsv` committed hash and `--check`;
+- the scorer's field order with `capped` last;
+- the thresholds and flags byte-identical;
+- the dry-run identical to the pre-unit `run.sh`;
+- per-commit scope;
+- file modes;
+- `validate.sh` at 4 lanes;
+- a clean tree.
+
+spec-master ran every criterion and mutation on a scratch clone at 4ec89dae. The 42 hunks reproduce the
+tested payload byte for byte, and `contract-anchors.js` prints `contract-anchors: ok checks=89 bad=0
+unchecked=0`. `contract-score.js` scores it 3 with `sizeOver` (53 KB), as it scores rfp-u2b's 48 KB contract,
+which reached PASS. Six range criteria print `no-commits` on the real tree.
+
 ## Gate G (human, between Step 2c and Step 3; not a dispatchable unit)
 
 Ordering: Gate G started after rfp-u2c's PASS. *(Revision 3: the user confirmed all 41 labels `real`, option
@@ -911,18 +1047,30 @@ G3's unanswered denominator (`rfp-u2b.pass` `NOTE[spec]` 2).
 | G2 | `bash eval/refutation-replay/run.sh`: 24 headless sonnet runs at 958f557e (one per group), each capped by `--max-budget-usd 1`; commit `report.jsonl` | the human operator, or the orchestrator on the human's explicit instruction | the report exists, one row per corpus defect |
 | G3 | `python3 eval/refutation-replay/score.py --gate eval/refutation-replay/report.jsonl` | anyone | first line `replay-gate: pass …`, exit 0. On `fail` or `insufficient`, do not dispatch rfp-u3; return the report to spec-master |
 
-**Run 1 (2026-10-28): `fail`, on the turn rule only** (Revision 3). G2's report was not committed.
+**Run 1 (2026-10-28): `fail`, on the turn rule only** (Revision 3). G2's report was not committed. It is
+evidence only, not a gate record: the human's run started before 2bf3ac51 was committed, while a lead's
+uncommitted in-place mutant of `run.sh` (` < /dev/null` removed) was on disk, and the lead restored the file
+in place during the run (rfp-u2e PASS note). The copy is at
+`/tmp/claude-1000/-home-sebas-AntiSlop/05a6765a-da13-4deb-9a15-1128b5ee3d15/scratchpad/report-run1-gatefail.jsonl`.
+Scored by rfp-u2f's `score.py`, it prints `… foreign=0 capped=0` and exits 1. It has no `subtype`, so
+`capped=0` proves nothing for it (R15).
 
-**Run 2** comes after rfp-u1b, and after rfp-u2f if it exists.
-- G1 needs no new labels. If rfp-u2f rewrites the claims (Open Question 6 (a)), `--check` must still print
-  `unlabeled=0` with the same 41 ids. The human may re-read the full claims in `label.py`, which writes only
-  on a click.
-- G2 re-runs all 24 groups, about $1.6.
-- G3 must print `pass`, with every threshold as written, or as the user changes it under Open Question 4.
+**Run 2** comes after both rfp-u1b (PASS, 4ec89dae) and rfp-u2f have reviewer PASS markers, in either order.
+It uses the committed tooling as those two units leave it, with no other change: no edit to `run.sh`,
+`score.py`, `corpus.jsonl`, `labels.tsv` or the brief between rfp-u2f's PASS and G3, and no edit to any of
+them while G2 runs.
 
-Before G2, the human keeps run 1's report: `run.sh:66` empties `report.jsonl` when a real run starts, and
-the copy outside the repository is run 1's only record. Whether to commit that copy, and where, is the user's
-call. The plan cites its numbers in Revision 3.
+| step | what | who | how to check it |
+|---|---|---|---|
+| G1 (rerun) | nothing to label. rfp-u2f kept the 41 ids and `labels.tsv` byte-identical. The human may re-read the full claims in `label.py serve`, which writes only on a click | — | `python3 eval/refutation-replay/build-corpus.py --check` prints `corpus: rows=41 groups=24 units=24 unlabeled=0 real=41 bogus=0 errors=0` |
+| G2 (rerun) | first keep run 1's copy (above): `run.sh` empties `report.jsonl` when a real run starts. Then `bash eval/refutation-replay/run.sh --dry-run` (24 `group=` lines), then `bash eval/refutation-replay/run.sh`: 24 headless sonnet runs, about $1.6, each capped by `--max-budget-usd 1` and `--max-turns 10`. Commit `report.jsonl` | the human operator, or the orchestrator on the human's explicit instruction | the report has 41 rows, one per corpus id, and every row has a `subtype`: `python3 -c 'import json; r=[json.loads(l) for l in open("eval/refutation-replay/report.jsonl")]; print(len(r), sum("subtype" in x for x in r))'` prints `41 41` |
+| G3 (rerun) | `python3 eval/refutation-replay/score.py eval/refutation-replay/report.jsonl --gate` | anyone | first line `replay-gate: pass …`, ending `capped=0`, exit 0. Every threshold is unchanged: at least 30 real, at most 1 refuted-real, at most 20% unanswered, no run over 10 by `num_turns`, and now no capped run. On `fail` or `insufficient`, do not dispatch rfp-u3; return the report to spec-master. Open Question 7 (the kill rule) is decided after this step, before rfp-u3 |
+
+Reading run 2 (`rfp-u1b.pass` notes 2 and 3): a 2-defect group has a share of 4, so its 9th call is unusable
+by design. A 3-defect group's share of 3 equals the brief's floor of whole file, callers and baseline, so one
+refused call forces UNCERTAIN. Count per-group calls with that in mind.
+
+Whether to commit run 1's copy, and where, is the user's call. The plan cites its numbers in Revision 3.
 
 ## Step 3 (rfp-u3, lead-programmer, after Gate G): the refutation pass and the FAIL-record format
 
@@ -987,6 +1135,13 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
    mechanically. It is a persona-config change on the harness surface, not rfp-u2c's.
 8. A committed attestation that labels came from a human session. Any process that can run `label.py` could
    forge it. The local write log and the human's commit are the evidence (rfp-u2c).
+9. Gating on the other cut-off subtypes, `error_max_budget_usd` (the $1 cap) and `error_during_execution`.
+   rfp-u2f records them on each row but does not count them in `capped`, because Open Question 4 (a) named
+   only the turn cap. Such a run writes `NONE` rows, so the 20% unanswered rule still sees it. Adding them is
+   the user's call.
+10. The rfp-u2c advisory notes (Revision 3, carried item b): the B12 second-write re-click, the wheel re-arm,
+    a pointer move during an in-flight POST, and `label.py`'s traceback on a broken `score.py`. They touch only
+    the label server, which run 2 does not need.
 
 ## Open Questions
 
@@ -1014,7 +1169,8 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
    reads score.py's `max-turns`, which is the CLI's `num_turns`. On a finished run that is 1 plus the run's
    tool calls. A run cut off at the cap also reports 11, but it writes `NONE` rows, so today only the 20%
    unanswered rule sees it. **The threshold is the user's.** This plan changes nothing until the user answers.
-   *(from CHK47)*
+   *(from CHK47)* *Resolved: (a), per user (2026-10-28), as unit rfp-u2f. The sentence above about the
+   unanswered rule is corrected under diagnosis 1: the turn rule fails a capped run too.*
    - *(Recommended)* (a) Keep the rule as written, which holds each run to at most 9 tool calls (rfp-u1b). Also
      add one check: no run may end `error_max_turns` (rfp-u2f: `run.sh` records `subtype`, `score.py` fails
      the gate on it). No threshold is relaxed. One criterion is added, and a cut-off run can no longer hide
@@ -1029,20 +1185,24 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
      change.
 5. **Long files against the per-defect share** (rfp-u1b edit 13). The Goal says the explorer reads "the whole
    file". A file longer than one Read page costs several calls: `docs/harness-glossary.md` was 2,892 lines at
-   esc-left-4's reviewed commit. *(from CHK50)*
+   esc-left-4's reviewed commit. *(from CHK50)* *Resolved: (a), per user (2026-10-28). rfp-u1b already ships
+   it.*
    - *(Recommended, applied in rfp-u1b)* (a) The share wins. The explorer reads the cited region plus the places
      grep finds for the cited code, and names what it read in the artifact.
    - (b) The whole file always: drop that sentence. Defects in long files then run out of share more often and
      end UNCERTAIN.
 6. **Corpus claims are clipped** (Revision 3, diagnosis 3). 37 of the 41 claims end mid-sentence, and 7
    UNCERTAIN artifacts name it. The gate is unaffected, but run 2's `u` (the Cost model) is not. *(from CHK52)*
+   *Resolved: (a), per user (2026-10-28), as unit rfp-u2f. The claim is the whole defect item, cut at 8000
+   rather than 1,000, and `--refresh-claims` keeps the ids (Clarifications).*
    - *(Recommended)* (a) Before run 2, rfp-u2f also makes `build-corpus.py` keep a wrapped bullet's continuation
      lines and cut at 1,000 characters instead of 300, without changing which defects it selects. The criteria
      check that the 41 ids and `labels.tsv` are byte-identical and that `--check` prints `unlabeled=0`.
    - (b) Run 2 on the corpus as it is, and record `u` as an upper estimate.
 7. **The kill rule and the UNCERTAIN-only round trip** (Cost model, "Measured in Gate G run 1"). At run 1's
    `u` of 29%, break-even rises from `r > ~15%` to `r > ~25%`. The kill rule (`r` < 10% after 20 eligible
-   runs) does not see round trips. *(from CHK55)*
+   runs) does not see round trips. *(from CHK55)* *Resolved: (a), per user (2026-10-28). It is decided after
+   run 2's G3 and before rfp-u3 is dispatched.*
    - *(Recommended)* (a) Decide after run 2 and before rfp-u3 is dispatched, once `u` is measured on full
      claims. rfp-u3 and rfp-u4 stay as written until then.
    - (b) Now: open the follow-up also when more than 25% of eligible runs end UNCERTAIN-only. rfp-u3's reviewer
@@ -1213,6 +1373,59 @@ Revision 3 (2026-10-28):
   an out-of-repo copy holds run 1 — revised in place (the Gate G note before G2; where the copy lives is the
   user's call, and Revision 3 cites its numbers)
 
+rfp-u2f (2026-10-28):
+- CHK63: Does each of the user's answers to Open Questions 4 to 7 map to a contract edit and a criterion? —
+  PASS. 4 (a): edits 22 to 37, cases r and s, and criteria 1, 6 and 7. 5 (a): nothing for rfp-u2f (rfp-u1b
+  ships it). 6 (a): edits 13 to 21 and 43, cases k, l and m, and criteria 3 to 5. 7 (a): nothing, and no
+  rfp-u2f text blocks it.
+- CHK64: Is the "whole claim" rule defined for every shape in the FAIL records (wrapped lines, blank lines
+  inside an item, indented sub-bullets, an unindented line after an item)? — FAIL (ambiguous) at drafting:
+  "continuation lines" left blank-line paragraphs open, and gh-303 D1 differs by 1,168 characters between the
+  two readings — revised in place. The item crosses blank lines and stops at a column-0 bullet or an unindented
+  line. Case (k) covers the blank line and the unindented line.
+- CHK65: Can the regenerated corpus change an id, a group or `labels.tsv`? — FAIL (conflicting) at drafting:
+  the task said "regenerated corpus.jsonl with the same 41 ids", but a rebuild on today's records selects
+  different ids and rewrites `labels.tsv` — revised in place (`--refresh-claims`; criteria 3 to 5).
+- CHK66: Do the README, the builder docstring and the scorer docstring agree with the code on the cut, the
+  refresh and the capped rule? — PASS. Case (p) reads the cut from the code, and case (v) reads the counted
+  subtype from `score.py`.
+- CHK67: Is the new gate field appended after every existing field, and does every existing parser still
+  read the line? — PASS. Criterion 6 prints the field order. Of the existing parsers, only isolation case
+  (e) anchored on the last field, and edit 4 updates it. rfp-u3 criterion 8 reads fields 1 and 2.
+- CHK68: Are the thresholds unchanged, as the user required? — PASS (criterion 7 pins the constants line and
+  the `--max-turns 10` and `--max-budget-usd 1` flags; criterion 8 pins the whole dry-run).
+- CHK69: Does the plan say what "capped" means for a report with no `subtype`? — FAIL (missing) at drafting
+  — revised in place. Such a row is not counted (score.py docstring, README, R15), and G2's check requires a
+  `subtype` on all 41 rows of run 2.
+- CHK70: Can any rfp-u2f range criterion pass with no `(rfp-u2f)` commit? — PASS. Criteria 2, 3, 4, 5, 8 and 9
+  print `no-commits` and exit 1 (spec-master ran them on the real tree). This plan's docs commit names the
+  unit without the parenthesised tag.
+- CHK71: Does criterion rfp-u2f/`validate.sh` still fail under its own `mutation:` line, given that gh317,
+  gh320, gh346-2, gh409, gh413, human-review-cleanup-1, mw-step1, mw-step2, mw-step3, rollout-map-1,
+  spec2-unitA and spec2-unitB recorded class vacuous or host and touched `tests/validate.sh`? — PASS. The
+  mutation breaks a suite that `tests/validate.sh:833-838` runs, and that block sets `fail=1`.
+- CHK72: Does each folded hardening item have a case that fails without it? — PASS. Mutations (ii), (iii) and
+  (iv) of criterion 1 turn cases q, u and t red. (ii) was run with an open pipe as the suite's stdin: it
+  fails, with no hang.
+- CHK73: Do the units table, Step 1b, Step 2f, the Gate G section and both contracts agree on the order
+  (rfp-u1b and rfp-u2f in either order, both PASS before run 2, run 2 on unchanged tooling)? — PASS
+- CHK74: Is every carried review note either folded in or named as out of scope? — PASS (Context, "Prior FAIL
+  history", rfp-u2f; Out of scope 9 and 10)
+- CHK75: Does the contract give the lead every hard rule the task named (scratch-only mutations, no kill of a
+  foreign process, no real `run.sh`, hands off `report.jsonl`, the writer-scope-gate false positive,
+  Write/Edit for tests, 4 lanes)? — PASS (contract "Escalation")
+- CHK76: Do the 42 hunks reproduce the tested payload? — PASS. A separate applier gives byte-identical files
+  from 4ec89dae, and `contract-anchors.js` prints `ok checks=89 bad=0 unchecked=0`.
+
+Prose-mode `ubiquitous-language`, rfp-u2f (advisory):
+- Lens 1: no `CONTEXT.md` term is used with another meaning. "Capped" is the CLI's turn-cap stop, not the
+  plan's defect "cap of 3" (D4); the plan writes "capped run" or `capped=` for the first, and "the cap of 3"
+  for the second.
+- Lens 2: no new synonym. "Claim" keeps rfp-u2's meaning (the defect text after the cite); "whole claim" is
+  defined once (Clarifications).
+- Lens 3: `--refresh-claims`, `capped` and "defect item" are tool-local and defined in the contract. No
+  glossary entry is proposed.
+
 Prose-mode `ubiquitous-language`, revision 3 (advisory):
 - Lens 1: "turn" was used for both the loop iteration and the `num_turns` field. Resolved by the
   2026-10-28 terminology clarification. No `CONTEXT.md` term is used with another meaning.
@@ -1247,3 +1460,6 @@ rfp-u4 PASS. Quote rfp-u3's and rfp-u4's PASS lines in its dispatch.
 Revision 3: rfp-u1b needs no scribe step. Its CHANGELOG entry is in its contract, and it adds no glossary
 term. For rfp-u5's ADR: the Consequences paragraph may cite the measured per-run cost ($0.065) and say that the
 explorer brief states a 9-call budget. That is a knowledge proposal for the scribe, not an edit made here.
+
+rfp-u2f needs no scribe step. Its README edit is in its own contract, it adds no glossary term, and it touches
+no stamped path, so it has no CHANGELOG entry.
