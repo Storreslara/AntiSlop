@@ -1,14 +1,25 @@
 # Refutation pass: challenge the reviewer's judgment defects before a FAIL verdict
 
 Status: **revision 2, 2026-10-27** (spec-master). It applies the four user decisions and the critic's review
-(verdict "SOUND WITH CHANGES"). Fast path: 5 dispatchable units plus one human gate.
+(verdict "SOUND WITH CHANGES"). Fast path: 5 dispatchable units plus one human gate. All five contracts are
+written; nothing is dispatched yet. Open Questions 1 and 2 await the user (their recommended defaults are
+applied).
 
-Contracts:
-- [rfp-u1](2026-10-27-refutation-pass/contracts/rfp-u1.md): the brief script. Written.
-- [rfp-u2](2026-10-27-refutation-pass/contracts/rfp-u2.md): the replay corpus and gate tooling. Written.
-- [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format. Written.
-- rfp-u4: task-master fix contract and the milestone-auditor sample. Pending, next spawn (checkpoint).
-- rfp-u5: scribe glossary and ADR. Pending, next spawn (checkpoint).
+## Units and order
+
+Each unit is dispatched only after every unit in its "after" column has a reviewer PASS marker (Gate G: after
+G3 printed `replay-gate: pass`). One unit is mid-review at a time.
+
+| unit | owner | after | contract |
+|---|---|---|---|
+| rfp-u1 | lead-programmer | (none) | [rfp-u1](2026-10-27-refutation-pass/contracts/rfp-u1.md): the brief script |
+| rfp-u2 | lead-programmer | rfp-u1 (its `run.sh` dry-run calls the brief script) | [rfp-u2](2026-10-27-refutation-pass/contracts/rfp-u2.md): the replay corpus and gate tooling |
+| Gate G | the human operator (G1, G2), anyone (G3) | rfp-u2 | none: not a dispatchable unit (see "Gate G") |
+| rfp-u3 | lead-programmer | rfp-u1, rfp-u2, Gate G | [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format |
+| rfp-u4 | lead-programmer | rfp-u3 (its edit 0 checks the protocol text) | [rfp-u4](2026-10-27-refutation-pass/contracts/rfp-u4.md): the task-master fix-contract bullet and the milestone-auditor sample |
+| rfp-u5 | scribe | rfp-u3 and rfp-u4 (its criteria read both; `no-source` otherwise) | [rfp-u5](2026-10-27-refutation-pass/contracts/rfp-u5.md): glossary entries and ADR 0043 |
+
+If Gate G3 prints `fail` or `insufficient`, rfp-u3 to rfp-u5 are not dispatched (Open Question 2).
 
 Revision 1's `rfp-u2` (scribe) is withdrawn and renumbered rfp-u5. Nothing from revision 1 was dispatched.
 
@@ -308,6 +319,19 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
 - 2026-10-27 Terminology consistency: Q Does "refutation" collide with existing reviewer prose? → A
   (self-resolved): yes, at :46 and :137-138. :138 is reworded, :46 is kept and acknowledged in the
   glossary, and `refuter` stays avoided.
+- 2026-10-27 Terminology consistency: Q How does a fix round name an `[unconfirmed]` defect that does not
+  reproduce, when the FAIL block numbers no defect? → A (self-resolved, contract spawn):
+  `not-reproduced: <the defect line, without the prefix>`; `D<n>` exists only in the brief.
+- 2026-10-27 Technical constraints & tradeoffs: Q Can the milestone auditor's counts be one command? → A
+  (self-resolved, contract spawn): no. `reviewed-path-gate.sh` refuses a `$(…)` substitution around the
+  reviewed-markers path, so the auditor runs two plain counts and adds them; the fixture test runs exactly
+  those commands.
+- 2026-10-27 Domain entities / data model: Q Who numbers the ADR, given that the scribe-contract shape needs
+  a number? → A (self-resolved, contract spawn): the contract names 0043; the scribe takes the next free
+  number if it is gone, and criterion 7 checks "highest before the unit + 1" instead of a literal.
+- 2026-10-27 Completion / acceptance signals: Q How do rfp-u5's criteria avoid passing on word presence? → A
+  (self-resolved, contract spawn): each reads its claim's value from the live source (reviewer, protocol,
+  auditor, unit commits) and fails, printing `missing:` or `no-source`, when the two disagree.
 
 ## Risks / dependencies
 
@@ -320,8 +344,16 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   with a non-defect. The human confirmation in `labels.tsv` exists for this. That bias would only make the
   gate stricter, because a bogus defect counted as real and then refuted counts as a miss.
 - **R4: audit noise.** One `grant-denied` line per pass. Out of scope.
-- **R5: ordering.** rfp-u1, then rfp-u2 (its `run.sh` needs the brief script), then Gate G (human), then
-  rfp-u3, rfp-u4 and rfp-u5. The branch has other units in flight, so each bump is +1 on the version current at dispatch.
+- **R5: ordering.** As in "Units and order": rfp-u1, then rfp-u2 (its `run.sh` needs the brief script), then
+  Gate G (human), then rfp-u3, then rfp-u4, then rfp-u5 (after both rfp-u3 and rfp-u4). The branch has other
+  units in flight, so each bump is +1 on the version current at dispatch.
+- **R8: gate-safe commands.** The milestone auditor's sample commands and the range criteria must pass
+  `reviewed-path-gate.sh` and `harness-integrity-gate.sh` as written. spec-master probed them: plain `grep -r`
+  piped to `sort` or `wc -l` passes; a `$(…)` substitution around the reviewed-markers path is refused, and so
+  is any Bash text naming the persona config file. rfp-u4 keeps two plain counts and matches `^\.claude/`.
+- **R9: the `not-reproduced:` report has no consumer yet.** The reviewer of the fix round re-judges each
+  defect as it does today; a defect it still reproduces FAILs normally. No orchestrator change is planned
+  (Out of scope 5).
 - **R6: parity seams.** rfp-u3 merges the protocol edit, its four ports, the reviewer source and its
   regenerated mirrors into one gate (spec-master memory: never slice across a parity test).
 - **R7: rfp-u3 is large** (about 14 files). It stays one unit by necessity (R6). If the contract-score guard
@@ -391,26 +423,35 @@ Criteria include `score.py --gate`.
 
 Affected files:
 - `agents/task-master.md`: the fix-contract bullet. A defect prefixed `[unconfirmed]` gets a reproduce-first
-  criterion, and is reported as `not-reproduced: D<n>` instead of edited if it does not reproduce. The
-  `refutation:` line is never a defect.
-- `agents/milestone-auditor.md`: a refutation sample of up to 3 `refuted:` notes per milestone, plus the `r`
-  ratio from the Cost model.
-- `tests/persona-prose-pins.test.sh`
-- the version bump files
-- the mirrors
+  `command:` edit and a criterion that holds whether it was fixed or never reproduced; if it does not
+  reproduce, the lead-programmer makes no edit for it and reports
+  `not-reproduced: <the defect line, without the prefix>`. (Revision 2 said `D<n>`; FAIL defect lines carry
+  no D-number, which exists only in the brief.) The `refutation:` line is never a defect.
+- `agents/milestone-auditor.md`: a refutation sample of up to 3 `refuted:` notes per milestone, plus the
+  counts behind the `r` ratio from the Cost model, printed as
+  `refutation-sample: sampled=<s> held=<h> prevented=<p> eligible=<p+f>`, and the kill-criterion finding.
+- `tests/refutation-sample.test.sh` (new): the auditor's three grep commands on a fixture with decoys, and a
+  check that the persona and its mirror ship them verbatim.
+- `tests/persona-prose-pins.test.sh`, `tests/validate.sh`
+- the version bump files and the mirrors
 
-Contract pending (checkpoint).
+No hand-synced port carries task-master or milestone-auditor. Criteria: prose pins, the fixture test,
+per-file diff budgets, a per-commit scope check, a per-commit version-stamp check, a clean tree, validate.
 
-## Step 5 (rfp-u5, scribe, after rfp-u4): glossary and ADR
+## Step 5 (rfp-u5, scribe, after rfp-u3 and rfp-u4): glossary and ADR
 
 Affected files:
 - `CONTEXT.md`: new entries **refutation pass** (it acknowledges the :46 "Refute" sense), **judgment
   defect** and **refutation outcome**; the **FAIL block** entry updated for the last-line `refutation:` and
   the `[unconfirmed]` prefix.
 - `docs/harness-glossary.md`: a **refutation line** entry with its grammar.
-- `docs/adr/<next>-refutation-pass-inside-reviewer-turn.md`
+- `docs/adr/0043-refutation-pass-inside-reviewer-turn.md`. The scribe-contract shape needs a number, so the
+  contract names 0043 (next free at 3bd60f56); the scribe takes the next free number if 0043 is gone by
+  dispatch, and criterion 7 computes the expected number from the tree before the unit's first commit.
 
-Contract pending (checkpoint).
+Criteria check each claim against its live source: the cap and the model from `agents/reviewer.md`, the
+grammar from `templates/persona-protocol.md`, the sample size from `agents/milestone-auditor.md`, and the
+ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u1 to rfp-u4.
 
 ## Out of scope (named follow-ups)
 
@@ -471,11 +512,11 @@ Contract pending (checkpoint).
   - Telemetry line: rfp-u3 fixture test.
   - `[unconfirmed]`: rfp-u3 pins and fixture test.
   - Gate: rfp-u3 `score.py`.
-  - Milestone sample: rfp-u4 (pending).
+  - Milestone sample: rfp-u4 criteria 1 and 2 (pins, and the fixture test of the shipped commands).
   - No marker or stamp: the route-gate case.
 
-  — FAIL (missing): rfp-u4's criteria are not yet written — converted to the checkpoint (the rfp-u4
-  contract is next). This is not a user question.
+  — FAIL (missing) at the revision-2 checkpoint, when rfp-u4's criteria were not yet written — revised in
+  place (the rfp-u4 contract now carries them). PASS on re-check.
 - CHK17: Does criterion rfp-u3/`validate.sh` still fail under its own `mutation:` line, given that gh317,
   gh320, gh346-2, gh409, gh413, human-review-cleanup-1, mw-step1-3, rollout-map-1 and spec2-unitA/B
   recorded class vacuous or host? — PASS (the mutation breaks a registered suite)
@@ -486,6 +527,20 @@ Contract pending (checkpoint).
   gh348-3, gh385-2, memdirt-1 and mw-step1-3 recorded class vacuous or host? — PASS
 - CHK21: Does criterion rfp-u3/version-stamp still fail under its mutation, given that
   ci-fetch-depth-cleanup and item17-4-name-p3-offenders recorded class host? — PASS
+- CHK22: Do the units table, R5, the Step headings and each contract's Retrieval agree on every dependency
+  (u1, u2, Gate G, u3, u4, u5)? — FAIL (conflicting): Step 5 said "after rfp-u4" while R5 listed u3, u4, u5
+  without edges — revised in place ("Units and order"; Step 5 now reads "after rfp-u3 and rfp-u4")
+- CHK23: Is P3 checked per commit, fix rounds included, for rfp-u4, and only over this unit's commits? —
+  PASS (rfp-u4 criterion 5 runs `version-stamp-check.sh` on each `(rfp-u4): ` commit; its mutation, an
+  unbumped fix commit, prints `bad=1`)
+- CHK24: Can any rfp-u4 or rfp-u5 range criterion pass with no unit commit? — PASS (each prints
+  `no-commits` and exits 1; rfp-u5 criterion 9 needs commits from all four earlier units)
+- CHK25: Are the auditor's commands defined so they run under the gates? — FAIL (missing) at drafting: a
+  single substituted command was refused — revised in place (two plain counts; R8)
+- CHK26: Does each rfp-u5 claim criterion fail when the glossary disagrees with its source, not only when a
+  word is absent? — PASS (spec-master mutated both sides on a scratch copy: entry and source)
+- CHK27: Does criterion rfp-u4/validate.sh still fail under its own `mutation:` line, given the units
+  recorded class vacuous or host in CHK17? — PASS (the mutation breaks a newly registered suite)
 
 Prose-mode `ubiquitous-language` (advisory):
 - Lens 1: "refutation" means the change at `agents/reviewer.md:46,137-138` and the reviewer's own findings
@@ -496,5 +551,5 @@ Prose-mode `ubiquitous-language` (advisory):
 
 ## Scribe update hint
 
-rfp-u5 is the scribe's unit (contract pending), after rfp-u4 PASS. Quote rfp-u3's and rfp-u4's PASS lines in
-its dispatch.
+rfp-u5 is the scribe's unit ([contract](2026-10-27-refutation-pass/contracts/rfp-u5.md)), after rfp-u3 and
+rfp-u4 PASS. Quote rfp-u3's and rfp-u4's PASS lines in its dispatch.
