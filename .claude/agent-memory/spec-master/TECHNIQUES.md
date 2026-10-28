@@ -23,3 +23,4 @@
 - [Whole-file rewrite hunks; trap under redirect](technique_whole_file_rewrite_and_trap_redirect.md) — `new file` on an existing file fails contract-anchors; an EXIT trap inside a redirected group prints to /dev/null
 - [Gate-safe criterion commands](technique_gate_safe_criterion_commands.md) — criteria naming the persona config or wrapping the reviewed dir in $(…) are refused for every runner; probe in the real repo.
 - [Headless replay isolation; generated hunks](technique_headless_replay_isolation_and_hunk_generation.md) — allow rules are no sandbox: PreToolUse guard + tripwire + fetch-by-sha clone; difflib hunks until contract-anchors bad=0.
+- [claude -p num_turns counts tool results](technique_claude_cli_num_turns_counts_tool_results.md) — success num_turns = 1 + tool calls (not turns); a cap hit reports cap+1 with no result; record `subtype`.
