@@ -15,7 +15,7 @@ import json, os, re, shlex, sys
 
 SUBCOMMANDS = ('show', 'diff', 'log')
 META = re.compile(r'[;|&$`<>(){}\\\n\r]')
-BAD_OPT = re.compile(r'^(--ou|--no-ind|--ext|--textc|-O)')
+BAD_OPT = re.compile(r'^(--ou|--no-ind|--ext|--textc|-[^-]*O)')
 UP = re.compile(r'(^|/)\.\.(/|$)')
 HINT = ('Allowed: Read, Grep and Glob inside the replay clone; Bash only as git show, git diff or git log '
         'with repo-relative arguments and no shell operators.')
@@ -63,7 +63,7 @@ def reason(root, payload):
     return 'tool not allowed in the replay: %s' % tool
 
 
-def main(argv):
+def run(argv):
     if len(argv) != 2:
         print('guard.py: usage: guard.py <clone-root> <log-file>', file=sys.stderr)
         return 2
@@ -80,6 +80,19 @@ def main(argv):
         print('replay guard: %s. %s' % (why, HINT), file=sys.stderr)
         return 2
     return 0
+
+
+def main(argv):
+    try:
+        return run(argv)
+    except Exception as e:  # exit 1 is a non-blocking hook error, so any surprise must exit 2
+        print('replay guard: internal error (%s), call blocked. %s' % (type(e).__name__, HINT), file=sys.stderr)
+        try:
+            with open(argv[1], 'a') as f:
+                f.write(json.dumps({'tool': None, 'allowed': False}, sort_keys=True) + '\n')
+        except Exception:
+            pass
+        return 2
 
 
 if __name__ == '__main__':

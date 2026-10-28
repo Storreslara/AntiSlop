@@ -89,6 +89,31 @@ gp 2 WebFetch url 'https://example.com'
 [ "$gbad" = 0 ] && [ "$(grep -c . "$glog" 2>/dev/null)" = "$calls" ] \
   && ok "(g) guard allows clone-local reads and git show|diff|log only, and logs every call" || bad "(g) guard"
 
+# rfp-u2d: -O inside a bundle of short options is refused, plain bundles stay allowed, and an unexpected
+# exception fails closed (exit 2; exit 1 would let the tool call go ahead).
+g2bad=0; g2log="$tmp/guard2.log"
+gr() { # <want-rc> <label> <raw-stdin-json> [log-path]
+  printf '%s' "$3" | python3 "$d/guard.py" "$croot" "${4:-$g2log}" 2>/dev/null; local r=$?
+  [ "$r" = "$1" ] || { echo "  guard: $2 rc=$r want=$1"; g2bad=1; }
+}
+gb() { gr "$1" "$2" "$(python3 -c 'import json, sys; print(json.dumps({"tool_name": "Bash", "tool_input": {"command": sys.argv[1]}}))' "$2")"; }
+gb 2 'git diff -RO/abs/file'
+gb 2 'git diff -aO/abs/file'
+gb 2 'git log -pO/abs/x'
+gb 2 'git diff -aOorder -R src/a.sh'
+gb 2 'git diff -pRO'
+gb 0 'git log -p -n 5'
+gb 0 'git diff -U3'
+gb 0 'git show --stat'
+gb 0 'git log -pn5'
+gb 0 'git diff -R -a src/a.sh'
+gr 2 'tool_input string' '{"tool_name": "Read", "tool_input": "x"}'
+gr 2 'tool_input list' '{"tool_name": "Bash", "tool_input": ["git", "log"]}'
+gr 2 'tool_input null' '{"tool_name": "Read", "tool_input": null}'
+gr 2 'NUL in Read path' '{"tool_name": "Read", "tool_input": {"file_path": "src/a\u0000.sh"}}'
+gr 2 'unwritable log' '{"tool_name": "Read", "tool_input": {"file_path": "src/a.sh"}}' "$tmp/no-such-dir/g.log"
+[ "$g2bad" = 0 ] && ok "(g2) guard refuses -O in option bundles, keeps plain bundles, and fails closed on unexpected errors" || bad "(g2) guard"
+
 # ---- run.sh against a fixture repository, with a fake claude (findings 2, 3 and 4) ----
 repo="$tmp/repo"; mkdir -p "$repo/src"
 gc() { ( cd "$repo" && git -c user.email=t@t -c user.name=t "$@" ); }
