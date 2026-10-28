@@ -20,3 +20,4 @@
 - [Prove contracts on a clone](technique_prove_contracts_on_a_clone.md) — scratch-implement in a local clone, generate payloads from it; traps: sourced set -e, gate-scanned heredocs, chained anchors.
 - [Range grep unit-id collision](technique_range_grep_unit_id_collision.md) — `--grep="(<unit>)"` matches docs commits naming the unit; check it prints nothing pre-landing; no parenthesised ids in docs commits.
 - [Whole-file rewrite hunks; trap under redirect](technique_whole_file_rewrite_and_trap_redirect.md) — `new file` on an existing file fails contract-anchors; an EXIT trap inside a redirected group prints to /dev/null
+- [Gate-safe criterion commands](technique_gate_safe_criterion_commands.md) — criteria naming the persona config or wrapping the reviewed dir in $(…) are refused for every runner; probe in the real repo.
