@@ -65,6 +65,7 @@ pre.diff{max-height:320px;overflow:auto;background:#f6f8fa;border:1px solid var(
 var D = JSON.parse(document.getElementById('data').textContent);
 var rows = D.rows, labels = D.labels, version = D.version, token = D.token;
 var target = null, filter = 'all', query = '', collapsed = {};
+var lw = null, clickPt = null; // lw: the last written card and the pointer point of that click; moved turns true once the pointer or wheel has acted since
 var byId = {}, cardEl = {}, groupEl = {};
 var header = document.getElementById('top');
 
@@ -128,9 +129,8 @@ function refresh() {
   $('#n-real').textContent = 'real ' + n.real;
   $('#n-bogus').textContent = 'bogus ' + n.bogus;
   $('#n-unknown').textContent = 'unknown ' + n.unknown;
-  var known = D.min_real !== null;
-  $('#n-real').classList.toggle('met', known && n.real >= D.min_real);
-  var good = known && n.real >= D.min_real && n.bogus <= D.max_bogus;
+  $('#n-real').classList.toggle('met', n.real >= D.min_real);
+  var good = n.real >= D.min_real && n.bogus <= D.max_bogus;
   $('#status').textContent = n.unknown ? 'unlabeled ' + n.unknown : (good ? 'targets met' : 'targets not met');
   $('#status').className = 'status' + (n.unknown ? '' : (good ? ' ok' : ' no'));
   var bar = $('#bar').children, total = rows.length || 1;
@@ -159,6 +159,7 @@ function postLabel(id, value) {
       if (res.status === 200) {
         version = res.body.version;
         labels[id] = value;
+        lw = clickPt === null ? null : { id: id, x: clickPt.x, y: clickPt.y, moved: false };
         afterLabel(id);
         say('');
       } else if (res.status === 409) {
@@ -202,12 +203,15 @@ function buildCard(r) {
   ['real', 'bogus', 'unknown'].forEach(function (v) {
     var b = el('button', 'lbl s-' + v, v);
     b.dataset.value = v;
-    b.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    b.addEventListener('mousedown', function (e) { e.preventDefault(); }); // mut:mousedown
     b.addEventListener('click', function (e) {
       if (!e.isTrusted) return;
       if (e.detail === 0) return; // mut:detail
+      if (e.detail > 1) return; // mut:multiclick
       if (!passes(r.id) || document.body.dataset.pending === '1') return;
-      e.currentTarget.blur();
+      if (lw !== null && lw.id !== r.id && !lw.moved) return; // mut:pointer
+      e.currentTarget.blur(); // mut:blur
+      clickPt = { x: e.clientX, y: e.clientY };
       setTarget(r.id);
       postLabel(r.id, v);
     });
@@ -252,8 +256,7 @@ function build() {
     $('#filters').appendChild(b);
   });
   $('#q').addEventListener('input', function () { query = this.value; refresh(); });
-  $('#rules').textContent = (D.min_real === null ? 'Gate G targets unavailable: score.py not found' :
-    'Gate G targets: at least ' + D.min_real + ' real, at most ' + D.max_bogus + ' bogus, out of ' + rows.length) + '. A card is labelled only by a mouse click on its button.';
+  $('#rules').textContent = 'Gate G targets: at least ' + D.min_real + ' real, at most ' + D.max_bogus + ' bogus, out of ' + rows.length + '. A card is labelled only by a mouse click on its button.';
 }
 
 function move(d) {
@@ -267,6 +270,12 @@ function move(d) {
   setTarget(vis[Math.max(0, Math.min(vis.length - 1, vis.indexOf(target) + d))]);
   scrollToTarget();
 }
+
+function pointerActed(e) {
+  if (lw !== null && (e.type === 'wheel' || e.clientX !== lw.x || e.clientY !== lw.y)) lw.moved = true;
+}
+document.addEventListener('mousemove', pointerActed, true);
+document.addEventListener('wheel', pointerActed, { capture: true, passive: true });
 
 document.addEventListener('keydown', function (e) {
   var k = e.key; // mut:keys

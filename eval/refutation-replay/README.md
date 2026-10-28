@@ -50,7 +50,7 @@ ship until this check passes.
 - A foreign `Host` or `Origin` is refused, which stops DNS rebinding.
 - A per-launch token sits in the URL and is sent on every write.
 - Each click is one validated, atomic, version-checked line: the file is never re-serialized.
-- A local write log at `.git/refutation-label-writes.log` records every POST. It is never committed.
+- A local write log, `<git dir>/refutation-label-writes.log`, records every POST (`.git/` in a normal checkout, `.git/worktrees/<name>/` in a linked worktree). It is never committed.
 - It does **not** stop a local process that can read the URL or the token, or that edits the file directly,
   an agent included. That control is process-level, and the human's own commit of `labels.tsv` is the record.
 

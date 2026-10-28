@@ -78,12 +78,12 @@ def embed(data):
 
 
 def read_min_real():
-    # None when score.py is not beside this file (a stripped copy): the page then shows no targets
-    if not os.path.exists(os.path.join(HERE, 'score.py')):
-        return None
+    # score.py is the one source of the Gate G threshold; with no threshold there are no targets to show, so refuse to start
+    if not os.path.exists(os.path.join(HERE, 'score.py')): raise LabelError('score.py not found beside label.py: the Gate G targets cannot be read')  # mut:scorecheck
     spec = importlib.util.spec_from_file_location('score_consts', os.path.join(HERE, 'score.py'))
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    if not isinstance(mod.MIN_REAL, int): raise LabelError('score.py MIN_REAL is not an integer')
     return mod.MIN_REAL
 
 
@@ -156,6 +156,9 @@ def same(a, b):
     return hmac.compare_digest(str(a).encode('utf-8', 'replace'), str(b).encode('utf-8', 'replace'))
 
 
+def trunc(v): return None if v is None else v[:200]  # mut:logtrunc
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     server_version = 'label'
     sys_version = ''
@@ -197,8 +200,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if self._rec is None:
             return
         rec = dict(self._rec, ts=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'), status=status,
-                   remote=self.client_address[0], origin=self.headers.get('Origin'),
-                   user_agent=(self.headers.get('User-Agent') or '')[:200])
+                   remote=self.client_address[0], origin=trunc(self.headers.get('Origin')),
+                   user_agent=trunc(self.headers.get('User-Agent') or ''))
         try:
             with self.server.log_lock, open(self.server.log, 'a', encoding='utf-8') as f:
                 f.write(json.dumps(rec) + '\n')
@@ -212,7 +215,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         labels = dict(label_lines(data))
         nonce = secrets.token_urlsafe(16)
         page = {'rows': S.rows, 'labels': labels, 'version': sha(data), 'token': S.token,
-                'min_real': S.min_real, 'max_bogus': None if S.min_real is None else len(S.rows) - S.min_real}
+                'min_real': S.min_real, 'max_bogus': len(S.rows) - S.min_real}
         html = (S.template.replace('__NONCE__', nonce).replace('__ROWS__', str(len(S.rows)))
                 .replace('__DATA__', embed(page))).encode()
         csp = ("default-src 'none'; script-src 'nonce-%s'; style-src 'unsafe-inline'; connect-src 'self'; "
@@ -315,6 +318,7 @@ def make_server(corpus, labels, repo, log, port=0):
     out_rows = []
     for r in rows:
         out_rows.append(dict({k: r[k] for k in ('id', 'unit', 'group', 'fail_ts', 'dline')}, **evidence(repo, r)))
+    min_real = read_min_real()  # before any socket is bound, so a refusal leaves nothing listening
     with open(os.path.join(HERE, 'label_page.html'), encoding='utf-8') as f:
         template = f.read()
 
@@ -330,7 +334,7 @@ def make_server(corpus, labels, repo, log, port=0):
     srv.token = secrets.token_urlsafe(32)
     srv.url = 'http://127.0.0.1:%d/?t=%s' % (p, srv.token)
     srv.rows, srv.ids, srv.template = out_rows, set(ids), template
-    srv.labels, srv.log, srv.min_real = os.path.abspath(labels), log, read_min_real()
+    srv.labels, srv.log, srv.min_real = os.path.abspath(labels), log, min_real
     srv.lock, srv.log_lock = threading.Lock(), threading.Lock()
     return srv
 
@@ -360,13 +364,19 @@ def default_log(repo):
     return os.path.join(g.strip(), 'refutation-label-writes.log')
 
 
+def port_arg(v):
+    n = int(v)
+    if not 0 <= n <= 65535: raise argparse.ArgumentTypeError('%s is not a port in 0..65535' % v)
+    return n
+
+
 def parser():
     p = argparse.ArgumentParser(prog='label.py')
     s = p.add_subparsers(dest='cmd', required=True).add_parser('serve', help='serve the labeling page on 127.0.0.1')
     s.add_argument('--corpus', default=os.path.join(HERE, 'corpus.jsonl'))
     s.add_argument('--labels', default=os.path.join(HERE, 'labels.tsv'))
     s.add_argument('--repo', default=os.path.normpath(os.path.join(HERE, '..', '..')))
-    s.add_argument('--port', type=int, default=0, help='0 picks a free port')
+    s.add_argument('--port', type=port_arg, default=0, help='0 picks a free port')  # mut:port
     s.add_argument('--log', default=None, help='write log, default <git dir>/refutation-label-writes.log')
     s.add_argument('--no-open', action='store_true', help='do not try to open a browser')
     return p
