@@ -17,7 +17,7 @@ ship until this check passes.
 | `labels.tsv` | the builder writes `unknown`; **a human** sets `real` or `bogus` with `label.py serve` (or by hand) | ground truth |
 | `run.sh` | rfp-u2, rfp-u2b | one headless `claude -p` per corpus group, in a fresh clone holding the history up to the reviewed commit only |
 | `guard.py` | rfp-u2b | the PreToolUse hook of every run: Read, Grep and Glob inside the clone, Bash only as `git show`, `git diff` and `git log` |
-| `report.jsonl` | `run.sh`, committed by the human | one row per defect: the answer, the artifact, the turns, the cost |
+| `report.jsonl` | `run.sh`, committed by the human | one row per defect: the answer, the artifact, the turns, the cost, and the CLI result's `subtype` and `is_error` |
 | `score.py` | rfp-u2 | prints `replay-gate: <pass\|fail\|insufficient> …`; `--gate` turns the result into the exit code |
 
 ## Gate G (manual: the human operator runs it)
@@ -38,7 +38,8 @@ ship until this check passes.
    `--max-budget-usd 1` and `--max-turns 10`. Check the plan first with `--dry-run`. A group whose clone
    or brief fails gets one `NONE` row per defect, which counts as unanswered. Exit 3 means a run used
    tools but the guard logged no call: the guard hook is not wired, so fix that and re-run from the
-   start. Commit `report.jsonl`.
+   start. `run.sh` parses its whole body before it runs, so an edit to the file during a replay does not
+   change that replay; still, do not edit it while one runs. Commit `report.jsonl`.
 3. Run `python3 eval/refutation-replay/score.py eval/refutation-replay/report.jsonl --gate`. The result
    means:
    - `pass` (exit 0): dispatch rfp-u3.
@@ -56,11 +57,14 @@ ship until this check passes.
 
 ## Thresholds and what they mean
 
-- **pass** needs all four of the following:
+- **pass** needs all five of the following:
   - at least 30 defects labelled `real` were replayed;
   - at most 1 of them was answered REFUTED with an artifact (a **miss**);
   - at most 20% of all rows got no answer line;
-  - no run exceeded 10 turns.
+  - no run exceeded 10 turns (`max-turns`, the CLI's `num_turns`: on a finished run, 1 plus its tool calls);
+  - no run was cut off at the turn cap (`capped=0`: no row's `subtype` is `error_max_turns`).
+- A run cut off at the cap also reports `num_turns` 11, so the turn rule fails it too; `capped` names the
+  cause. A report written before rfp-u2f has no `subtype`, so it always shows `capped=0`.
 - One miss in 30 bounds the brief's true raw miss rate at about 17% (95% upper bound, exact binomial).
   Zero in 30 bounds it at about 10%.
 - The live pass adds the reviewer's own re-check of every artifact, which this replay does not model. The
@@ -74,8 +78,13 @@ ship until this check passes.
   `guard.py` refuses everything else, including `git -c`, shell operators and paths outside the clone.
 - Each run happens in a fresh repository fetched up to the reviewed commit. The later fix commit, other
   refs, `labels.tsv` and the FAIL records are not in it, and the guard refuses paths outside it.
-- A claim is whitespace-collapsed and cut at 300 characters when the corpus is built; its cited
-  `<path>:<line>` is kept whole. The live reviewer writes its own defect lines, with no cut.
+- A claim is the whole defect item: its bullet line plus every indented line after it, across blank lines,
+  up to the next bullet or unindented line, whitespace-collapsed and cut at 8000 characters. No committed
+  claim reaches the cut. Its cited `<path>:<line>` is kept whole. The live reviewer writes its own defect
+  lines, with no cut. Which defects are kept still depends on the bullet line alone.
+- `build-corpus.py --refresh-claims` rewrites the claims of the committed corpus from the FAIL records
+  without selecting again, so the ids, the rows' other fields and `labels.tsv` stay as they are. A rebuild
+  would select again from today's FAIL records and change the ids.
 - The corpus is per defect. A judgment defect from a FAIL block that also had a mechanical ground still
   counts. The corpus measures how real defects are treated, not how often the pass would run.
 - "Real" starts as a proxy: a `(<unit>)` commit after the FAIL touched the cited file, and the unit later

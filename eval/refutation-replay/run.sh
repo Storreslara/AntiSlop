@@ -7,12 +7,17 @@
 # .claude/settings.local.json) and only guard.py as a PreToolUse hook: Read, Grep and Glob inside the
 # clone, Bash only as `git show`, `git diff` or `git log`. Each answer line
 # `D<n>: VERDICT — ... — artifact: ...` becomes one report row. A group whose clone or brief fails gets
-# one NONE row per defect, so the scorer counts it as unanswered.
+# one NONE row per defect, so the scorer counts it as unanswered. Every row also carries the CLI result's
+# `subtype` and `is_error` (rfp-u2f): a run cut off at the turn cap is `error_max_turns`; a row with no
+# CLI result says `none`.
 # Usage: eval/refutation-replay/run.sh [--dry-run] [--corpus <file>] [--out <file>] [--repo <dir>]
 # --dry-run prints one `group=<id> cmd: ...` line per group and runs nothing: no claude, no clone.
 # Exit 3: a run used tools but the guard logged no call, so the guard is not wired; the replay stops.
 # A real run spends API budget (each run capped by --max-budget-usd 1). The human runs it (Gate G2).
+# The body is one function, called on the last line (rfp-u2f): bash parses all of it before running any
+# of it, so an edit to this file while a replay runs cannot change that replay.
 set -uo pipefail
+main() {
 here="$(cd "$(dirname "$0")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 corpus="$here/corpus.jsonl"
@@ -58,7 +63,8 @@ clone() { # <dir> <reviewed> <baseline>
 none_rows() { # <ids-json> <setup-step>: one unanswered row per defect of a group that could not run
   python3 -c 'import json, sys
 for i in json.loads(sys.argv[1]):
-    print(json.dumps({"id": i, "answer": "NONE", "artifact": "", "num_turns": 0, "cost_usd": 0, "setup": sys.argv[2]}, sort_keys=True))' "$1" "$2" >> "$out"
+    print(json.dumps({"id": i, "answer": "NONE", "artifact": "", "num_turns": 0, "cost_usd": 0, "setup": sys.argv[2],
+                  "subtype": "none", "is_error": True}, sort_keys=True))' "$1" "$2" >> "$out"
 }
 
 work="$(mktemp -d)"
@@ -82,7 +88,7 @@ while IFS=$'\t' read -r -u 3 gid reviewed baseline dlines ids; do
 cmd = " ".join(shlex.quote(x) for x in ["python3"] + sys.argv[1:])
 print(json.dumps({"hooks": {"PreToolUse": [{"matcher": "*", "hooks": [{"type": "command", "command": cmd}]}]}}))' \
     "$here/guard.py" "$wt" "$log" > "$work/$n.settings.json"
-  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" --settings "$work/$n.settings.json" < /dev/null ) > "$work/$n.json" 2> "$work/$n.err"
+  ( cd "$wt" && claude -p "$prompt" "${CLAUDE_FLAGS[@]}" --settings "$work/$n.settings.json" < /dev/null 3<&- ) > "$work/$n.json" 2> "$work/$n.err"
   turns="$(python3 -c 'import json, sys
 try:
     print(int(json.load(open(sys.argv[1])).get("num_turns") or 0))
@@ -106,11 +112,15 @@ for line in text.splitlines():
     if m and m.group(1) not in ans:
         art = re.search(r'artifact:\s*(.*)$', m.group(3))
         ans[m.group(1)] = (m.group(2), art.group(1).strip() if art else '')
+sub = res.get('subtype') if isinstance(res.get('subtype'), str) and res.get('subtype') else 'none'
+err = bool(res.get('is_error')) if res else True
 for i, rid in enumerate(ids, 1):
     v, art = ans.get(str(i), ('NONE', ''))
     print(json.dumps({'id': rid, 'answer': v, 'artifact': art, 'num_turns': res.get('num_turns', 0),
-                      'cost_usd': res.get('total_cost_usd', 0)}, sort_keys=True))
+                      'cost_usd': res.get('total_cost_usd', 0), 'subtype': sub, 'is_error': err}, sort_keys=True))
 PY
   rm -rf "$wt"
 done 3<<< "$groups"
 echo "run.sh: groups=$n dry-run=$dry out=$( [ "$dry" = 1 ] && echo none || echo "$out")"
+}
+main "$@"; exit

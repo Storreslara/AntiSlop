@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Fixture suite for eval/refutation-replay/ (rfp-u2): corpus builder, --check, scorer gate and run.sh
-# --dry-run. Every fixture lives under mktemp -d. It never runs claude and never reads this repo's markers.
+# --dry-run; whole claims and --refresh-claims (rfp-u2f). Every fixture lives under mktemp -d. It never runs
+# claude and never reads this repo's markers.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 root="$(pwd)"
@@ -51,6 +52,51 @@ sed 's/"baseline": "[0-9a-f]*"/"baseline": "000000000000000000000000000000000000
 cp "$tmp/out/labels.tsv" "$tmp/out/labels.keep"
 python3 "$d/build-corpus.py" --repo "$repo" --out "$tmp/out/bad.jsonl" --check >/dev/null; rc=$?
 if [ "$rc" = 1 ]; then ok "(c) --check rejects a bad baseline"; else bad "(c) --check rc=$rc"; fi
+
+# rfp-u2f: the same u9 block, with its defects wrapped. The claim is the whole item, across a blank line;
+# a word on a continuation line (`mutation`) does not change which defects are kept; the cut is 8000.
+mk2="$tmp/markers2"; mkdir -p "$mk2"; cp "$mk/u9.pass" "$mk2/"
+long="$(printf 'w %.0s' $(seq 1 4500))"
+{ printf 'FAIL u9 2026-01-03T00:00:00Z\ntier: haiku\n'
+  printf -- '- src/a.sh:2 x is unquoted, so a space splits it\n  when the caller passes "a b"; a mutation test\n    would not see it.\n\n  Repro: run a.sh with "a b".\n'
+  printf -- '- src/a.sh:1 no guard on empty input %s\n' "$long"
+  printf -- '- src/a.sh:1 review-precheck printed `criterion 2: fail`\nsummary, not indented\n  indented after an unindented line\n\n'; } > "$mk2/u9.fail"
+w1='D1: src/a.sh:2 x is unquoted, so a space splits it when the caller passes "a b"; a mutation test would not see it. Repro: run a.sh with "a b".'
+c2="$tmp/out2/corpus.jsonl"; mkdir -p "$tmp/out2"
+python3 "$d/build-corpus.py" --repo "$repo" --markers "$mk2" --size 40 --out "$c2" >/dev/null
+dl="$(python3 -c 'import json, sys
+print("|".join("%s:%d" % (json.loads(l)["dline"][:2], len(json.loads(l)["dline"])) for l in open(sys.argv[1])))' "$c2" 2>/dev/null)"
+d1="$(python3 -c 'import json, sys; print(json.loads(open(sys.argv[1]).readline())["dline"])' "$c2" 2>/dev/null)"
+if [ "$d1" = "$w1" ] && [ "$dl" = "D1:${#w1}|D2:8015" ] && ! grep -q 'criterion 2\|summary\|indented after' "$c2"; then
+  ok "(k) builder keeps the whole defect item, selects on the bullet line, cuts at 8000"
+else
+  bad "(k) dlines=$dl d1=$d1"
+fi
+# (l) --refresh-claims extends the committed claims in place: same ids and other fields, labels untouched,
+# idempotent
+r3="$tmp/out3"; mkdir -p "$r3"; cp "$c" "$r3/corpus.jsonl"; printf 'KEEP\n' > "$r3/labels.tsv"
+o3="$(python3 "$d/build-corpus.py" --repo "$repo" --markers "$mk2" --out "$r3/corpus.jsonl" --refresh-claims)"; rc3=$?
+h3="$(md5sum < "$r3/corpus.jsonl")"
+o4="$(python3 "$d/build-corpus.py" --repo "$repo" --markers "$mk2" --out "$r3/corpus.jsonl" --refresh-claims)"; rc4=$?
+same="$(python3 -c 'import json, sys
+a, b, w = ([json.loads(l) for l in open(p)] for p in sys.argv[1:4])
+rest = lambda r: {k: v for k, v in r.items() if k != "dline"}
+print(len(a) == len(b) == 2 and all(rest(x) == rest(y) for x, y in zip(a, b)) and [r["dline"] for r in b] == [r["dline"] for r in w])' "$c" "$r3/corpus.jsonl" "$c2" 2>/dev/null)"
+if [ "$rc3" = 0 ] && [ "$o3" = "corpus: refreshed rows=2 longer=2 errors=0" ] && [ "$rc4" = 0 ] \
+   && [ "$o4" = "corpus: refreshed rows=2 longer=0 errors=0" ] && [ "$(md5sum < "$r3/corpus.jsonl")" = "$h3" ] \
+   && [ "$same" = True ] && [ "$(cat "$r3/labels.tsv")" = KEEP ]; then
+  ok "(l) --refresh-claims rewrites only the claims, keeps labels.tsv, and is idempotent"
+else
+  bad "(l) rc3=$rc3 $o3 rc4=$rc4 $o4 same=$same"
+fi
+# (m) a row whose claim matches no defect of its block fails closed: exit 1, nothing written
+sed 's/no guard on empty input/no such claim/' "$c" > "$r3/bad.jsonl"; h4="$(md5sum < "$r3/bad.jsonl")"
+o5="$(python3 "$d/build-corpus.py" --repo "$repo" --markers "$mk2" --out "$r3/bad.jsonl" --refresh-claims)"; rc5=$?
+if [ "$rc5" = 1 ] && printf '%s' "$o5" | grep -q '^corpus: refreshed rows=2 longer=0 errors=1$' && [ "$(md5sum < "$r3/bad.jsonl")" = "$h4" ]; then
+  ok "(m) --refresh-claims refuses a row it cannot match and writes nothing"
+else
+  bad "(m) rc5=$rc5 $o5"
+fi
 
 # scorer fixtures: N real rows, M of them REFUTED with an artifact
 mkrep() { # <dir> <real> <misses> <turns> <unanswered>

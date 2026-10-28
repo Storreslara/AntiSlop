@@ -5,10 +5,16 @@ Build (default): read every FAIL block under the markers dir, keep judgment-shap
 mechanical keyword on the line) that cite a <path>:<line> present at the reviewed commit, and label a defect proxy-real when a `(<unit>)` commit after
 the FAIL touched the cited path and the unit holds a PASS marker. Group them per FAIL block (at most 3,
 the pass's cap), sample groups with a fixed seed until --size rows, and write corpus.jsonl plus labels.tsv
-(every label `unknown`; a human sets real|bogus, Gate G1). A claim is whitespace-collapsed and cut at
-300 characters; its cited <path>:<line> is kept whole.
+(every label `unknown`; a human sets real|bogus, Gate G1). A claim is the whole defect item (rfp-u2f): the
+bullet line plus every indented line after it, across blank lines, up to the next bullet or unindented line,
+whitespace-collapsed and cut at 8000 characters; its cited <path>:<line> is kept whole. No committed claim
+reaches that cut, which keeps a 3-defect brief far below Linux's 128 KiB limit on one argv string. Which
+defects are kept still depends on the bullet line alone.
 --check: validate the committed corpus and labels against git; print one summary line; exit 1 if invalid.
 --labels: print the human labelling checklist (the claim, then the fix commit's short hash and subject).
+--refresh-claims: rewrite the `dline` of each row of --out with its whole claim from the FAIL block it came
+from, keeping every other field, the row order and labels.tsv; a row whose defect is not found exactly once
+is an error, and then nothing is written (exit 1).
 Reads markers and git only; writes only --out and its labels.tsv sibling. Deterministic for a given tree.
 """
 import argparse, json, os, random, re, subprocess, sys
@@ -22,6 +28,34 @@ MECH = re.compile(
 CITE = re.compile(r'([A-Za-z0-9_][A-Za-z0-9_./-]*\.[A-Za-z0-9]{1,6}):(\d+(?:-\d+)?)')
 BULLET = re.compile(r'^(?:[-*] |\d+[.)] )')
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def items(lines):
+    """Yield (bullet line, whole item text) for each column-0 bullet: the bullet line plus every indented
+    line after it, across blank lines, up to the next bullet or unindented line."""
+    i = 0
+    while i < len(lines):
+        if not BULLET.match(lines[i]):
+            i += 1
+            continue
+        parts, j = [lines[i]], i + 1
+        while j < len(lines) and not BULLET.match(lines[j]):
+            k = j
+            while k < len(lines) and not lines[k].strip():
+                k += 1
+            if k == len(lines) or not lines[k][:1].isspace():
+                break
+            parts.extend(lines[j:k + 1])
+            j = k + 1
+        yield lines[i], ' '.join(parts)
+        i = j
+
+
+def claim_text(item, cite):
+    claim = re.sub(r'\s+', ' ', BULLET.sub('', item)).strip()
+    if claim.startswith(cite):
+        claim = claim[len(cite):].lstrip(' :')
+    return claim[:8000] or '(no claim text)'
 
 
 def git(repo, *args):
@@ -60,7 +94,7 @@ def build(a):
     for b in blocks(a.markers):
         # Per defect, not per block: the corpus measures how the brief treats a real judgment defect,
         # so a judgment defect from a block that also had a mechanical ground still counts.
-        defects = [l for l in b['lines'] if BULLET.match(l) and not MECH.search(l)]
+        defects = [(l, item) for l, item in items(b['lines']) if not MECH.search(l)]
         if not defects:
             continue
         unit, ts = b['unit'], b['ts']
@@ -74,7 +108,7 @@ def build(a):
         if not baseline:
             continue
         group = []
-        for d in defects:
+        for d, item in defects:
             m = CITE.search(d)
             if not m or git(a.repo, 'cat-file', '-e', '%s:%s' % (reviewed, m.group(1))) is None:
                 continue
@@ -82,10 +116,7 @@ def build(a):
             if not fix:
                 continue
             cite = '%s:%s' % (m.group(1), m.group(2))
-            claim = re.sub(r'\s+', ' ', BULLET.sub('', d)).strip()
-            if claim.startswith(cite):
-                claim = claim[len(cite):].lstrip(' :')
-            group.append({'cite': cite, 'claim': claim[:300] or '(no claim text)', 'fix_commit': fix.split('\n')[-1]})
+            group.append({'cite': cite, 'claim': claim_text(item, cite), 'fix_commit': fix.split('\n')[-1]})
             if len(group) == 3:
                 break
         if group:
@@ -157,6 +188,43 @@ def check(a):
     return 1 if errs else 0
 
 
+def refresh(a):
+    rows = [json.loads(l) for l in open(a.out) if l.strip()]
+    found = {}
+    for b in blocks(a.markers):
+        found.setdefault((b['unit'], b['ts']), b['lines'])
+    errs, longer = [], 0
+    for r in rows:
+        m = re.match(r'^(D[1-3]): (\S+) (.*)$', r.get('dline', ''))
+        if not m:
+            errs.append('%s: bad dline' % r.get('id'))
+            continue
+        cite, old = m.group(2), m.group(3)
+        old = '' if old == '(no claim text)' else old
+        hits = []
+        for line, item in items(found.get((r.get('unit'), r.get('fail_ts')), [])):
+            c = CITE.search(line)
+            if c and not MECH.search(line) and '%s:%s' % (c.group(1), c.group(2)) == cite:
+                whole = claim_text(item, cite)
+                if whole.startswith(old):
+                    hits.append(whole)
+        if len(hits) != 1:
+            errs.append('%s: %d matching defects in its FAIL block' % (r.get('id'), len(hits)))
+            continue
+        dline = '%s: %s %s' % (m.group(1), cite, hits[0])
+        longer += dline != r['dline']
+        r['dline'] = dline
+    print('corpus: refreshed rows=%d longer=%d errors=%d' % (len(rows), 0 if errs else longer, len(errs)))
+    for e in errs[:20]:
+        print('  error: ' + e)
+    if errs:
+        return 1
+    with open(a.out, 'w') as f:
+        for r in rows:
+            f.write(json.dumps(r, sort_keys=True) + '\n')
+    return 0
+
+
 def checklist(a):
     rows, labels = load(a)
     for r in rows:
@@ -174,12 +242,15 @@ def main():
     p.add_argument('--out', default=os.path.join(HERE, 'corpus.jsonl'))
     p.add_argument('--check', action='store_true')
     p.add_argument('--labels', action='store_true')
+    p.add_argument('--refresh-claims', action='store_true')
     a = p.parse_args()
     a.markers = a.markers or os.path.join(a.repo, '.claude', 'reviewed')
     if a.check:
         sys.exit(check(a))
     if a.labels:
         sys.exit(checklist(a))
+    if a.refresh_claims:
+        sys.exit(refresh(a))
     build(a)
 
 
