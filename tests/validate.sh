@@ -829,6 +829,15 @@ else
 fi
 
 echo
+echo "== refutation-replay: corpus builder, replay gate scorer and dry-run for the refutation pass (Bash, rfp-u2) =="
+if bash tests/refutation-replay.test.sh > /dev/null; then
+  echo "OK   tests/refutation-replay.test.sh"
+else
+  echo "FAIL tests/refutation-replay.test.sh"
+  fail=1
+fi
+
+echo
 echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
 if bash tests/review-precheck.test.sh > /dev/null; then
   echo "OK   tests/review-precheck.test.sh"
