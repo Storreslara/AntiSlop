@@ -11,7 +11,10 @@ user answered Open Questions 4 to 7.
 - **Next:** rfp-u2f, the replay tooling fixes for run 2 (Step 2f). Its contract is written. Then Gate G run 2.
 - **Blocked:** rfp-u3 to rfp-u5 stay blocked until run 2's G3 prints `pass`.
 - **Open Questions:** 4 to 7 are resolved, each to its recommended option (a). 1 keeps its applied default. 2
-  and 3 are resolved.
+  and 3 are resolved. 8 is open, with a default (Step 6).
+- **Step 6 (2026-10-29):** rfp-u1 to rfp-u5 have PASS markers and Gate G run 2 passed. Hardening units
+  rfp-u6a, rfp-u6b (lead-programmer) and rfp-u6c (scribe) clear the open review notes; their contracts are
+  written.
 
 ## Units and order
 
@@ -32,7 +35,10 @@ G3 printed `replay-gate: pass`). One unit is mid-review at a time.
 | Gate G run 2 | the human operator (G2), anyone (G3) | rfp-u1b **and** rfp-u2f, both with PASS markers | none: G1's labels stand; G2 re-runs all 24 groups on the committed tooling, unchanged otherwise; G3 must print `pass` with `capped=0` |
 | rfp-u3 | lead-programmer | rfp-u1b, rfp-u2, Gate G run 2 | [rfp-u3](2026-10-27-refutation-pass/contracts/rfp-u3.md): the reviewer pass and the FAIL-record format |
 | rfp-u4 | lead-programmer | rfp-u3 (its edit 0 checks the protocol text) | [rfp-u4](2026-10-27-refutation-pass/contracts/rfp-u4.md): the task-master fix-contract bullet and the milestone-auditor sample |
-| rfp-u5 | scribe | rfp-u3 and rfp-u4 (its criteria read both; `no-source` otherwise) | [rfp-u5](2026-10-27-refutation-pass/contracts/rfp-u5.md): glossary entries and ADR 0043 |
+| rfp-u5 | scribe | rfp-u3 and rfp-u4 (its criteria read both; `no-source` otherwise) | [rfp-u5](2026-10-27-refutation-pass/contracts/rfp-u5.md): glossary entries and ADR 0043. PASS at 57ec2d70 |
+| rfp-u6a | lead-programmer | rfp-u5 (done). No file in common with rfp-u6b or rfp-u6c: any order, one unit mid-review at a time | [rfp-u6a](2026-10-27-refutation-pass/contracts/rfp-u6a.md): the reviewer's Verdict bullet names the `refutation:` line; the refutation sample's greps anchored at line start; `held` defined (Step 6) |
+| rfp-u6b | lead-programmer | as rfp-u6a | [rfp-u6b](2026-10-27-refutation-pass/contracts/rfp-u6b.md): the label page's pointer rule counts from the click; `score.py` bad input exits 2; `guard.py` `-S`/`-G`/`-L` values; the multi-match refresh test (Step 6) |
+| rfp-u6c | scribe | as rfp-u6a | [rfp-u6c](2026-10-27-refutation-pass/contracts/rfp-u6c.md): **mechanical ground** entry; **refutation outcome** mixed-FAIL clause; "refutation verifier" on the avoid list (Step 6) |
 
 If Gate G3 prints `fail` or `insufficient`, rfp-u3 to rfp-u5 are not dispatched (Open Question 2). Run 1 did
 exactly that.
@@ -740,6 +746,24 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   (self-resolved): run 2 uses the committed tooling as it stands after rfp-u1b and rfp-u2f, with no other
   change. Run 1's report is evidence only, because an in-place mutant of `run.sh` produced it. Whether to
   commit its copy, and where, stays the user's call (Gate G).
+- 2026-10-29 Functional scope & success criteria: Q The coordinator said "decide: fix or document" for the
+  in-flight click; which? → A (self-resolved): fix. The written rule ("the pointer has not left the click point
+  of that write") already allows the click; the code lagged it. Documenting would have changed the rule.
+- 2026-10-29 Technical constraints & tradeoffs: Q How far may `guard.py`'s bundle scan relax? → A
+  (self-resolved): stop only at `-S`, `-G` and `-L`, whose value is the rest of the token on git 2.43; every
+  other letter stays scanned, so the remaining over-blocks are in the safe direction.
+- 2026-10-29 Technical constraints & tradeoffs: Q `score.py` bad input exits 2, the same code as `--gate`'s
+  `insufficient`; acceptable? → A (self-resolved): yes, the coordinator named exit 2; both mean "not a pass",
+  and stdout tells them apart (no `replay-gate:` line on bad input).
+- 2026-10-29 Edge cases / failure handling: Q Does an undecidable sampled refutation count toward `held`? → A
+  (self-resolved): no; it counts toward `sampled` only, and it is already an informational finding.
+- 2026-10-29 Terminology consistency: Q Which glossary words change? → A: "refutation verifier" replaces bare
+  "verifier" on the refutation pass avoid list, and **mechanical ground** gets its own entry, per the
+  coordinator's rfp-u5 items (verified against `CONTEXT.md` at 57ec2d70).
+- 2026-10-29 Functional scope & success criteria: Q Does the route-gate test gain a `model: sonnet` check? → A
+  (self-resolved): no, dropped; no hook reads `model`, so the check would be vacuous (Step 6 item 7).
+- 2026-10-29 Functional scope & success criteria: Q Is `label.py`'s traceback on a broken `score.py` in Step
+  6? → A: open, Open Question 8 (default: no).
 
 ## Risks / dependencies
 
@@ -1122,6 +1146,31 @@ Criteria check each claim against its live source: the cap and the model from `a
 grammar from `templates/persona-protocol.md`, the sample size from `agents/milestone-auditor.md`, and the
 ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u1 to rfp-u4.
 
+## Step 6 (rfp-u6a, rfp-u6b, rfp-u6c, after rfp-u5): hardening from the review notes (2026-10-29)
+
+The open advisory notes of the rfp-u2b, rfp-u2c, rfp-u2d, rfp-u2f, rfp-u3, rfp-u4 and rfp-u5 PASS markers,
+each verified against the tree at 57ec2d70 before a criterion was written. Fifteen hand-edited files in all,
+over the 10-file line, so the step is three units with no file in common (the coordinator's split rule). Each
+unit's payload was built and tested in a scratch clone of 57ec2d70 by spec-master; `tests/validate.sh` with
+all three applied exited 0 (4 lanes).
+
+| item | source note | unit | disposition |
+|---|---|---|---|
+| 1 | rfp-u3 PASS: the Verdict bullet's "and nothing more" vs the `refutation:` line | rfp-u6a | fixed in `agents/reviewer.md` and its mirror. The codex and cursor ports are **dropped**: they run no pass, and their FAIL record adds `refutation: skipped=no-subagent` after "the same defect list you return in your verdict", so their two bullets agree. No `templates/` file carries the sentence |
+| 2 | rfp-u4 PASS: unanchored `-F` list and prevented greps; `held` undefined | rfp-u6a | both greps anchored (`'^NOTE\[code]: refuted: '`), mid-line decoy in the fixture; one sentence: an undecidable refutation counts toward `sampled`, never `held` |
+| 3 | rfp-u2c PASS: B12 second write; in-flight click dropped; no wheel re-arm test | rfp-u6b | **fixed**, not documented: the rule as written ("the pointer has not left the click point of that write") already covers a move during the POST, so the code is brought to the rule (`label_page.html`; `label.py` is unchanged). B12 extended, new B14 |
+| 4 | rfp-u2f PASS: `score.py` capped over scored ids untested; bad input traceback | rfp-u6b | bad input exits 2 with `score.py: bad input: <reason>` and no stdout; cases (o) and (p) |
+| 5 | rfp-u2d PASS: `-SObject` over-blocked; no long-option case; docstring | rfp-u6b | bundle scan stops at `-S`, `-G`, `-L` (`-[^-SGL]*O`); cases incl. `--grep=FOO`; docstring states the bundle rule and the fail-closed wrapper |
+| 6 | rfp-u2f PASS: `build-corpus.py:211` multi-match untested | rfp-u6b | case (n); no code change |
+| 7 | rfp-u3 PASS: the route-gate explorer case does not check `model: sonnet` | none | **dropped**: no hook reads a dispatch's `model` field (`reviewer-route-gate.sh` and `dispatch-hygiene.sh` grep empty for it), so a gate test fed `model: sonnet` exits 0 for any model: vacuous. A real check needs a hook edit (excluded). The instruction itself is pinned at `tests/persona-prose-pins.test.sh:60` |
+| 8 | rfp-u5 PASS: **refutation outcome** says REFUTED is recorded on the PASS | rfp-u6c | mixed-FAIL clause added. ADR 0043 is **dropped**: it never says where a REFUTED defect is recorded |
+| 9 | rfp-u5 PASS: "verifier" on the avoid list vs `CONTEXT.md:57` | rfp-u6c | narrowed to "refutation verifier" |
+| 10 | rfp-u5 PASS: "mechanical ground" has no entry | rfp-u6c | new entry after **judgment defect**; both related entries link it |
+
+rfp-u6a touches `agents/`, so it bumps the plugin version and adds a CHANGELOG entry (P3); rfp-u6b touches only
+`eval/` and `tests/` and rfp-u6c only `CONTEXT.md`, so neither does. The rfp-u5 wording that rfp-u5's criteria
+4 and 5 pin is kept verbatim; rfp-u6c's criteria re-check those phrases.
+
 ## Out of scope (named follow-ups)
 
 1. The orphan check, as a `review-precheck.sh` fix-round extension.
@@ -1141,7 +1190,8 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
    the user's call.
 10. The rfp-u2c advisory notes (Revision 3, carried item b): the B12 second-write re-click, the wheel re-arm,
     a pointer move during an in-flight POST, and `label.py`'s traceback on a broken `score.py`. They touch only
-    the label server, which run 2 does not need.
+    the label server, which run 2 does not need. *Step 6 (rfp-u6b) takes the first three; the fourth is Open
+    Question 8.*
 
 ## Open Questions
 
@@ -1209,6 +1259,16 @@ ADR's "no hook, marker, ladder or orchestrator change" from the commits of rfp-u
      bullet then tags that INSUFFICIENT-CONTEXT's `missing:` line (`missing: refutation:` …), and rfp-u4's
      auditor counts it. Both contracts change before dispatch.
    - (c) Keep the kill rule as written.
+8. **`label.py` on a broken `score.py`** (Step 6; Out of scope 10's fourth item; rfp-u2c PASS note). The
+   original note is about `label.py`, not `score.py`: `read_min_real` (`label.py:81-87`) exits 1 with a
+   traceback when `score.py` has a syntax error or no `MIN_REAL`, and it accepts `MIN_REAL = True` (the page
+   then reads "at least true real"). rfp-u6b fixes `score.py`'s own bad-input exit, which the coordinator
+   named, but not this. Nothing is written and no socket is bound on that path. *(from CHK80)*
+   - *(Recommended)* (a) Leave it as a named follow-up: it needs a broken `score.py` beside `label.py`, and
+     Gate G1's labels are done.
+   - (b) Fold it into rfp-u6b before dispatch: catch any exception in `read_min_real` as a `LabelError` (exit 2,
+     one line) and refuse a `bool`, with a server-suite case. It adds `label.py` and
+     `tests/refutation-label-server.py` (9 files in rfp-u6b, still under 10).
 
 ## Self-check
 - CHK1: Is the verdict defined for every combination of standing, CONFIRMED and UNCERTAIN defects, and for
@@ -1416,6 +1476,29 @@ rfp-u2f (2026-10-28):
   Write/Edit for tests, 4 lanes)? — PASS (contract "Escalation")
 - CHK76: Do the 42 hunks reproduce the tested payload? — PASS. A separate applier gives byte-identical files
   from 4ec89dae, and `contract-anchors.js` prints `ok checks=89 bad=0 unchecked=0`.
+- CHK77 (Step 6): Does every one of the ten Step 6 items name a unit or a stated reason it was dropped? —
+  PASS (Step 6 table; items 7 and the port and ADR halves of 1 and 8 are dropped with their evidence)
+- CHK78: Does each code change in rfp-u6b have a case that fails without it? — PASS. rfp-u6b criteria 1 and 2
+  list sixteen mutants; spec-master ran each in the scratch clone and each turned one case red. A first B14
+  draft passed on the old page (Playwright's `mouse.click` sends a mousemove that re-arms labelling); it was
+  revised in place to bare down/up clicks.
+- CHK79: Do the three units share any file, so that order or one-unit-mid-review could matter? — PASS (the
+  scope criteria list disjoint sets: rfp-u6a criterion 4, rfp-u6b criterion 5, rfp-u6c criterion 6)
+- CHK80: Is the rfp-u2c note "a broken `score.py` exits 1 with a traceback" covered as the note meant it? —
+  FAIL (conflicting): the dispatch read it as `score.py`'s own input handling, the note is about `label.py`
+  reading `score.py` — converted to Open Question 8
+- CHK81: Can any Step 6 criterion pass with no unit commit, or read the real labels or corpus? — PASS. Every
+  range criterion prints `no-commits`, exit 1; rfp-u6b criterion 3 points `score.py` at the directory, whose
+  labels lookup is `eval/labels.tsv` (absent); the label suite builds fixtures under `mktemp -d`; rfp-u6b
+  criterion 6 checks `labels.tsv`, `corpus.jsonl` and `report.jsonl` against 57ec2d70.
+- CHK82: Does rfp-u6c keep the phrases rfp-u5's criteria 4 and 5 pin? — PASS (rfp-u5 criteria 3 to 6 print
+  `checked` on the scratch CONTEXT.md built from the rfp-u6c contract text)
+- CHK83: Is every stdout spec in the Step 6 contracts one line, so that `review-precheck.sh` can read it? —
+  PASS (multi-value results are printed as `k=v` fields on one line)
+- CHK84: Does criterion rfp-u6a/7 (`validate.sh`) still fail under its own `mutation:` line, given the units
+  recorded class vacuous or host that touched `tests/validate.sh` (CHK71's list)? — PASS. The mutation breaks
+  `tests/refutation-sample.test.sh`, which `tests/validate.sh:869-874` runs with `fail=1` on failure, and
+  rfp-u6a does not touch `tests/validate.sh`.
 
 Prose-mode `ubiquitous-language`, rfp-u2f (advisory):
 - Lens 1: no `CONTEXT.md` term is used with another meaning. "Capped" is the CLI's turn-cap stop, not the
@@ -1463,3 +1546,10 @@ explorer brief states a 9-call budget. That is a knowledge proposal for the scri
 
 rfp-u2f needs no scribe step. Its README edit is in its own contract, it adds no glossary term, and it touches
 no stamped path, so it has no CHANGELOG entry.
+
+Step 6: rfp-u6c is the scribe's unit ([contract](2026-10-27-refutation-pass/contracts/rfp-u6c.md)); it edits
+only `CONTEXT.md`. rfp-u6a and rfp-u6b need no scribe step: rfp-u6a's CHANGELOG entry is in its contract, and
+neither adds a glossary term. Prose-mode `ubiquitous-language` on Step 6 (advisory): lens 1, "verifier" was
+used for both the reviewer (`CONTEXT.md:57`) and a refutation-pass synonym, resolved by rfp-u6c; lens 2, no
+new synonym ("bad input" and "pointer rule" are tool-local); lens 3, **mechanical ground** is the one new
+load-bearing term, and rfp-u6c adds it.
