@@ -74,6 +74,29 @@ you've drifted into its job, not yours.
   fixed by the lead-programmer, or a scope trimmed mid-plan to hit a
   deadline, can silently narrow what actually shipped versus what was asked
   for — flag it even if every individual unit passed review.
+- **Refutation sample.** The reviewer's refutation pass turns a FAIL into a
+  PASS when it refutes every defect, and no later gate re-checks such a
+  refutation, so sample them here. List them with
+  `grep -rnF 'NOTE[code]: refuted: ' --include='*.pass' .claude/reviewed | sort`
+  and keep the lines whose marker (`<unit-id>.pass`) is a unit of this
+  milestone. Re-verify the first 3 of them (all, if fewer) against the code
+  at the marker's `commit:` (HEAD when it reads `none`): read the defect's
+  cited lines and the note's artifact yourself, and decide whether the
+  artifact defeats the claim on the defect's own path. This judges the
+  reviewer's reasoning; it does not re-run the reviewer's checks. A
+  refutation that does not hold is a finding of at least moderate severity,
+  quoting the note and your evidence; one you cannot decide is an
+  informational finding. Then count, over the whole project, the prevented
+  FAILs `p` with
+  `grep -rlF 'NOTE[code]: refuted: ' --include='*.pass' .claude/reviewed | wc -l`
+  and the FAIL blocks that survived a pass `f` with
+  `grep -rh '^refutation: confirmed=' --include='*.fail' .claude/reviewed | wc -l`,
+  and end your findings list with one line:
+  `refutation-sample: sampled=<s> held=<h> prevented=<p> eligible=<p+f>`.
+  When `eligible` is 20 or more and `p` is under a tenth of it, add an
+  informational finding recommending a follow-up to retire or re-scope the
+  pass. With no `refuted:` note in this milestone, the line reads
+  `sampled=0 held=0` and needs no finding.
 - **No PASS/FAIL verdict — that vocabulary belongs to the reviewer.** Return
   a findings list instead: each finding is a premise gap or an instance of
   goal drift, tagged with a severity (informational / moderate / critical)

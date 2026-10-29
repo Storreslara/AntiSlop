@@ -70,5 +70,15 @@ done
 for f in templates/persona-protocol.md .claude/persona-protocol.md; do
   has "$f" 'reproduce it before fixing it, and report one that does not reproduce'
 done
+for f in agents/task-master.md .claude/agents/task-master.md; do
+  has "$f" 'it gets no criterion and no edit'
+  has "$f" 'with the failing output as its `expect:`'
+  has "$f" '`not-reproduced: <the defect line, without the prefix>`'
+done
+for f in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
+  has "$f" 'Re-verify the first 3 of them (all, if fewer)'
+  has "$f" 'decide whether the artifact defeats the claim on the defect'
+  has "$f" 'When `eligible` is 20 or more and `p` is under a tenth of it'
+done
 if [ "$fail" -eq 0 ]; then echo "All persona-prose-pins checks passed."; else echo "persona-prose-pins: FAILED"; fi
 exit "$fail"

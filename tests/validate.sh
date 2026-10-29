@@ -866,6 +866,15 @@ else
 fi
 
 echo
+echo "== refutation-sample: the milestone auditor's refutation-sample commands on a fixture (Bash, rfp-u4) =="
+if bash tests/refutation-sample.test.sh > /dev/null; then
+  echo "OK   tests/refutation-sample.test.sh"
+else
+  echo "FAIL tests/refutation-sample.test.sh"
+  fail=1
+fi
+
+echo
 echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
 if bash tests/review-precheck.test.sh > /dev/null; then
   echo "OK   tests/review-precheck.test.sh"
