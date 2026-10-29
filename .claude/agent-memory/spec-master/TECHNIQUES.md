@@ -1,4 +1,5 @@
 # spec-master memory techniques — index lines moved from MEMORY.md on 2026-10-15; topic files unchanged
+- [Replay writer-scope-gate offline](technique_replay_writer_scope_gate_offline.md) — scope comes from the dispatch message; clone + sed transcript paths; Bash text naming the persona config is denied even for reads.
 - [Survey .claude/reviewed without pipes](technique_reviewed_dir_survey_without_pipes.md) — one plain `grep -rl '^FAIL '` per Bash call; any pipe/wc/ls/`;` on the same line is BLOCKED by reviewed-path-gate.
 - [Finish interrupted plan docs by ref-sweep](technique_plan_doc_reference_sweep.md) — a cut-off session leaves dangling "see R13"/"see CHK25"; diff refs vs defs mechanically before calling a doc FINAL.
 - [ClaudeVoice design tokens](reference_claudevoice_design_tokens.md) — sibling repo's Gruvbox Material palette/scale/font stack and exactly which files hold them.
