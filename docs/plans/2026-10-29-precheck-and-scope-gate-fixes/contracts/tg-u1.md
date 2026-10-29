@@ -11,8 +11,11 @@ spec shape keeps its current verdict: `empty`, a single literal (also one that c
 anything else, which is `judge`, including the `` `A` then `B` (two lines) `` form.
 
 `bin/` is not a version-stamped path, so there is no version bump and no CHANGELOG entry (constitution P3).
-This unit does **not** regenerate `.claude/bin/review-precheck.sh`: tg-u2 runs the one `node bin/cli.js
---update` for both units. `tests/validate.sh` checks `.claude/bin` for presence only, so it stays green.
+**Amended after FAIL 1 (2026-10-29):** the first draft deferred the `.claude/bin/review-precheck.sh` resync to
+tg-u2 and said `tests/validate.sh` checks `.claude/bin` for presence only. That was false:
+`tests/cli-backfill.test.js` fails when the source differs from its mirror or the config record. The fix round
+`contracts/tg-u1-fix1.md` runs `node bin/cli.js --update` and commits the bin mirror and the config; where it and
+this file differ, it wins (it also adds a seventh `(m)` case, so criterion 1 reads `m=7`).
 
 ## Retrieval
 Fast path, no tracker issue. Spec: `docs/plans/2026-10-29-precheck-and-scope-gate-fixes.md` ("Bug 1", "Fix
@@ -111,7 +114,7 @@ g reset -q --hard HEAD~1
    their `.claude/` copies): leave those unstaged. A fix round is a new commit whose subject keeps `(tg-u1): `.
 
 ## Do NOT touch
-- `.claude/bin/review-precheck.sh` and every other `.claude/` file (only tg-u2's `node bin/cli.js --update` writes them; criterion 5)
+- every `.claude/` file except the two the fix round regenerates (the bin mirror and the persona-selection config) with `node bin/cli.js --update` (see `contracts/tg-u1-fix1.md`)
 - `hooks/` (every hook, gate and library, including `hooks/scripts/lib/unit-scope.sh`), `hooks/hooks.json`, `bin/cli.js` (criterion 5)
 - `tests/validate.sh` (the suite is already registered at its line 879)
 - `docs/plans/2026-10-27-refutation-pass/` (criterion 3 only reads those contracts)
@@ -121,8 +124,8 @@ g reset -q --hard HEAD~1
 ## Acceptance criteria
 1. run: `bash -c 'out=$(bash tests/review-precheck.test.sh 2>&1); rc=$?; echo "fails=$(printf "%s\n" "$out" | grep -c "^FAIL") m=$(printf "%s\n" "$out" | grep -c "^OK   (m) ") rc=$rc"'`
    exit: 0
-   stdout: `fails=0 m=6 rc=0`
-   mutation: in a scratch clone, each alone (spec-master ran all four). With no edit 1 (`review-precheck.sh` at 080b49da) it prints `fails=4 m=2 rc=1`. Detecting and splitting on ` then ` without the backticks makes cases 1, 3 and 4 red: `fails=3 m=3 rc=1`. Letting text follow the last part (`)+.*$`) makes case 5 red: `fails=1 m=5 rc=1`. Joining the parts with a space instead of a newline makes cases 1 and 3 red: `fails=2 m=4 rc=1`.
+   stdout: `fails=0 m=7 rc=0`
+   mutation: amended in fix round 1 (case 7 added; the numbers below are the original six-case ones). In a scratch clone, each alone (spec-master ran all four). With no edit 1 (`review-precheck.sh` at 080b49da) it prints `fails=4 m=2 rc=1`. Detecting and splitting on ` then ` without the backticks makes cases 1, 3 and 4 red: `fails=3 m=3 rc=1`. Letting text follow the last part (`)+.*$`) makes case 5 red: `fails=1 m=5 rc=1`. Joining the parts with a space instead of a newline makes cases 1 and 3 red: `fails=2 m=4 rc=1`.
 2. run: `bash -c 'bash -n bin/review-precheck.sh && stat -c %a bin/review-precheck.sh tests/review-precheck.test.sh | paste -sd " " -'`
    exit: 0
    stdout: `755 755`
@@ -135,10 +138,10 @@ g reset -q --hard HEAD~1
    exit: 0
    stdout: `5 pass`
    mutation: with no edit 1 it prints `5 fail` (spec-master ran it). These five are the false fails reviewers overrode by hand, and none of them depends on `report.jsonl`. The `mktemp -d` dir is left in place (no deletion step).
-5. run: `bash -c 'cs=$(git log --format="%H %s" | grep -F "(tg-u1): " | cut -d" " -f1); [ -n "$cs" ] || { echo no-commits; exit 1; }; for c in $cs; do git show --name-only --format= "$c"; done | sort -u | grep -vxE "bin/review-precheck\.sh|tests/review-precheck\.test\.sh" | wc -l | tr -d " "'`
+5. run: `bash -c 'cs=$(git log --format="%H %s" | grep -F "(tg-u1): " | cut -d" " -f1); [ -n "$cs" ] || { echo no-commits; exit 1; }; o=$(for c in $cs; do git show --name-only --format= "$c"; done | sort -u | grep -vE "^\.claude/" | grep -vxE "bin/review-precheck\.sh|tests/review-precheck\.test\.sh" | wc -l | tr -d " "); d=$(for c in $cs; do git show --name-only --format= "$c"; done | sort -u | grep -E "^\.claude/" | wc -l | tr -d " "); echo "out=$o dot-claude=$d"'`
    exit: 0
-   stdout: `0`
-   mutation: commit an edit to `.claude/bin/review-precheck.sh` under a `(tg-u1): ` subject, and stdout is `1`. With no `(tg-u1): ` commit, stdout is `no-commits`, exit 1.
+   stdout: `out=0 dot-claude=2`
+   mutation: amended in fix round 1 (the original form printed `0` and forbade every `.claude/` path). The two `.claude/` paths are the bin mirror and the persona-selection config. A `(tg-u1): ` commit that edits `hooks/scripts/lib/unit-scope.sh` prints `out=1`; with no `(tg-u1): ` commit it prints `no-commits`, exit 1.
 
 ## Pre-resolved context
 - Verified behaviour at 080b49da: the pure form is a false FAIL, not a judge (`criterion 1: fail stdout
