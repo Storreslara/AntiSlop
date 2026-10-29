@@ -180,6 +180,10 @@ Unit: u5
    exit: 0
    stdout: `0` then `rc=0`
    mutation: none
+7. run: `printf '0\nrc=0\nrc=1\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
 MD
 g add "$C5" && g commit -q -m 'u5 contract' && B5="$(git rev-parse HEAD)"
 m5() { bash "$PC" u5 "$B5" --contract "$C5" --criterion "$1"; }
@@ -189,6 +193,7 @@ m5() { bash "$PC" u5 "$B5" --contract "$C5" --criterion "$1"; }
 [ "$(m5 4)" = 'criterion 4: pass exit=0' ] && ok "(m) a literal holding the word then is not split" || bad "(m) then-literal: $(m5 4)"
 [ "$(m5 5)" = 'criterion 5: judge stdout exit=0' ] && ok "(m) text after the last part stays judge" || bad "(m) annotated: $(m5 5)"
 [ "$(m5 6)" = 'criterion 6: fail stdout want=`0` then `rc=0` got=`0`' ] && ok "(m) a missing line fails" || bad "(m) short output: $(m5 6)"
+[ "$(m5 7)" = 'criterion 7: fail stdout want=`0` then `rc=0` got=`0` then `rc=0` then `rc=1`' ] && ok "(m) an extra trailing line fails" || bad "(m) long output: $(m5 7)"
 g reset -q --hard HEAD~1
 
 # (k) a scope library that is missing or defines nothing: exit 2 and no packet (the reviewer runs the checks itself).

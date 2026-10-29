@@ -89,6 +89,15 @@ run_one() { # n cmd exit spec -> one criterion line, sets rc 1 on fail, 3 on jud
   got="$(cd "$top" && timeout 590 bash -c "$cmd" < /dev/null 2>/dev/null)"; rc=$?
   if [ "$rc" = 124 ]; then echo "criterion $n: fail exit=124 timeout"; return 1; fi
   if ! [[ "$want" =~ ^[0-9]+$ ]] || [ "$rc" != "$want" ]; then echo "criterion $n: fail exit=$rc want=${want:-none}"; return 1; fi
+  # "`A` then `B`" (tg-u1): two or more backticked parts are one expected stdout of several lines. The parts
+  # lose their backticks, are joined by newlines and compared exactly. A part holds no backtick, so a literal
+  # that only contains the word then, or text after the last part, keeps its old reading.
+  local multi='^`[^`]*`( then `[^`]*`)+$'
+  if [[ "$spec" =~ $multi ]]; then
+    local parts="${spec#\`}"; parts="${parts%\`}"; parts="${parts//\` then \`/$'\n'}"
+    [ "$got" = "$parts" ] && { echo "criterion $n: pass exit=$rc"; return 0; }
+    echo "criterion $n: fail stdout want=$spec got=$(printf '%s\n' "$got" | awk 'BEGIN { ORS = "" } { printf "%s`%s`", (NR > 1 ? " then " : ""), $0 }')"; return 1
+  fi
   case "$spec" in
     empty) [ -z "$got" ] && { echo "criterion $n: pass exit=$rc"; return 0; }; echo "criterion $n: fail stdout not empty"; return 1 ;;
     \`*\`) local lit="${spec#\`}"; lit="${lit%\`}"
