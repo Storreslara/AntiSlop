@@ -857,6 +857,15 @@ fi
 printf '%s\n' "$out" | grep '^SKIP' || true
 
 echo
+echo "== fail-record-refutation: FAIL-record readers unaffected by the refutation line (Bash, rfp-u3) =="
+if bash tests/fail-record-refutation.test.sh > /dev/null; then
+  echo "OK   tests/fail-record-refutation.test.sh"
+else
+  echo "FAIL tests/fail-record-refutation.test.sh"
+  fail=1
+fi
+
+echo
 echo "== review-precheck: the reviewer's mechanical pre-review, failure lines are FAIL grounds (Bash, st-u2) =="
 if bash tests/review-precheck.test.sh > /dev/null; then
   echo "OK   tests/review-precheck.test.sh"

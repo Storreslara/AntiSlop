@@ -135,10 +135,12 @@ with reasons.
   line naming the trigger that fired and the packet path, and nothing else.
   All of your investigation happens in tool calls, not in the final message.
   PASS only when every machine-checkable criterion passes and you found no
-  refutation — and, on a unit that meets the escalation trigger below, only
+  defect that survived the refutation pass — and, on a unit that meets the
+  escalation trigger below, only
   after that escalation resolves. Advisory
   sections (plural) may follow the verdict line in a fixed order: `roast-work`
-  first (if fired), then `ubiquitous-language` (if fired) — never precede or
+  first (if fired), then `ubiquitous-language` (if fired), then `refutation`
+  (if run) — never precede or
   interleave with the verdict — so the verdict is always the first thing read
   and is never obscured.
 - **`roast-work` is advisory, never gating**: the acceptance-criteria
@@ -238,6 +240,43 @@ with reasons.
   `dispatch-hygiene.sh`'s H3 check reads that same first line, so a marker
   written under a different id leaves the unit re-dispatchable; same precedence
   covers the `.fail`/`.blocked` writes below (one `<task-id>`).
+- **Refutation pass (before any FAIL verdict)**: a judgment defect (found
+  by reading; a `review-precheck.sh` failure line, an uncommitted tree, an
+  out-of-scope path, or a command you ran that shows the failure is
+  mechanical, and a defect you reproduced that way is deliberately not
+  sent) does not reach a FAIL verdict unchallenged. Merge duplicates (same
+  `file:line` or same cause) first. Skip the pass, keeping every defect as
+  found, and record why on the FAIL block's `refutation:` line: any
+  mechanical ground (`skipped=mechanical`), more than 3 judgment defects
+  (`skipped=over-cap`), the resume after an INSUFFICIENT-CONTEXT the pass
+  caused (`skipped=resume`), or no subagent can be spawned
+  (`skipped=no-subagent`). Otherwise pipe one `D<n>: <file:line> <claim>`
+  line per defect into `bash .claude/bin/refutation-brief.sh <baseline>`
+  and spawn `explorer` once with its output as the prompt, with
+  `model: sonnet`, in the foreground and with no `name:`. For each answer
+  line, re-check the artifact yourself: re-run the command or read the
+  cited lines, and for a mitigation confirm that the guard stops this
+  defect on this defect's own path, not only that the quoted line exists.
+  Then state in your own words why the artifact proves or defeats the
+  claim. You may keep a defect standing with a stated reason; a defect
+  whose artifact does not reproduce, or that got no answer line, stands as
+  found. A defect already at the baseline is REFUTED unless it is an unmet
+  acceptance criterion. If any defect stands or is CONFIRMED, return FAIL
+  with those and with each UNCERTAIN one prefixed `[unconfirmed]`, ending
+  the FAIL block with `refutation: confirmed=<a> refuted=<b> uncertain=<c>`;
+  the REFUTED ones and your reasons go in the `refutation` advisory
+  section. If none stands and one or more is UNCERTAIN, return
+  INSUFFICIENT-CONTEXT, its `missing:` naming the evidence that would
+  settle each; on the resume, without a second pass, FAIL a defect you now
+  reproduce yourself, and make one you cannot reproduce a
+  `NOTE[code]: unconfirmed:` line. If all are REFUTED, apply the PASS rules
+  (escalation included) and add one
+  `NOTE[code]: refuted: D<n> <claim> — <artifact> — <why it defeats the claim>`
+  line per defect to the marker's notes (under review gating off, to the
+  `refutation` section instead). That PASS writes the same marker, stamp and
+  flag state as any other PASS. The pass itself writes no marker; a FAIL it
+  prevents writes no `.fail` block, so the FAIL-block count and the
+  Escalation ladder only count FAILs that survived it.
 - **On FAIL (both orchestration modes)**: also write a durable `.claude/reviewed/<task-id>.fail`
   record via Bash — the same named bookkeeping exception as the PASS marker,
   not a change to the code under review. Use the sanctioned marker-write
@@ -248,7 +287,8 @@ with reasons.
   where `<t>` is the dispatch's `Implementer tier:` value (`haiku`, `sonnet` or
   `opus`), or `unknown` when the dispatch has no such line, followed by the
   same defect list
-  you return in your verdict, verbatim, and ending with one blank line so
+  you return in your verdict, verbatim, then the `refutation:` line, and
+  ending with one blank line so
   this block is separated on disk from any earlier one.
   Append **exactly once per verdict** — a retry after an append already known
   to have succeeded must not repeat it, or the FAIL-block count inflates. If a

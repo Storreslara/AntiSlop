@@ -70,6 +70,16 @@ check_exit caller-orchestrator               orchestrator               reviewer
 check_exit caller-namespaced-orchestrator    antislop:orchestrator      reviewer 0
 check_exit caller-empty                      ""                         reviewer 0
 
+# The refutation pass (agents/reviewer.md): a reviewer may spawn the explorer,
+# and that nested dispatch writes no review-join stamp (rfp-u3).
+check_exit caller-reviewer-target-explorer   reviewer                   explorer 0
+if ls "$tmproot/caller-reviewer-target-explorer/.claude"/.review-join.* >/dev/null 2>&1; then
+  echo "FAIL (caller-reviewer-target-explorer-no-stamp) a review-join stamp was written"
+  fail=1
+else
+  echo "OK   (caller-reviewer-target-explorer-no-stamp) no review-join stamp"
+fi
+
 # --- caller-absent-agent-type: the shipped main-session shape - no agent_type
 #     key at all - must be allowed too, or the review path deadlocks (R1) ---
 dir="$(make_project caller-absent-agent-type)"

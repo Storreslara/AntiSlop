@@ -19,6 +19,7 @@ const PORTS = [
 const PHRASES = [
   'then a second line `tier: <haiku|sonnet|opus|unknown>`',
   '(`unknown` when the dispatch names no implementer tier)',
+  'then a last line `refutation: skipped=no-subagent`',
 ];
 
 let failures = 0;

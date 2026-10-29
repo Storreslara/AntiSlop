@@ -54,5 +54,21 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agent
   hasnot "$f" 'print their complete remediation'
   has "$f" 'the glossary entry its `More:` line names'
 done
+for f in agents/reviewer.md .claude/agents/reviewer.md; do
+  has "$f" 'Refutation pass (before any FAIL verdict)'
+  has "$f" 'bash .claude/bin/refutation-brief.sh <baseline>'
+  has "$f" '`model: sonnet`, in the foreground and with no `name:`'
+  has "$f" 'confirm that the guard stops this defect on this defect'
+  has "$f" 'You may keep a defect standing with a stated reason'
+  has "$f" 'each UNCERTAIN one prefixed `[unconfirmed]`'
+  has "$f" 'FAIL a defect you now reproduce yourself'
+  has "$f" 'That PASS writes the same marker, stamp and flag state as any other PASS'
+  has "$f" 'found no defect that survived the refutation pass'
+  hasnot "$f" 'may not argue away'
+  hasnot "$f" 'refuter'
+done
+for f in templates/persona-protocol.md .claude/persona-protocol.md; do
+  has "$f" 'reproduce it before fixing it, and report one that does not reproduce'
+done
 if [ "$fail" -eq 0 ]; then echo "All persona-prose-pins checks passed."; else echo "persona-prose-pins: FAILED"; fi
 exit "$fail"

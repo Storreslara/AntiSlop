@@ -127,7 +127,9 @@ On every FAIL verdict the reviewer also writes `.codex/reviewed/<task-id>.fail`
 - first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`, then a second
 line `tier: <haiku|sonnet|opus|unknown>` (`unknown` when the dispatch names no
 implementer tier), followed by the
-defect list from the verdict, verbatim. No hook gate depends on it; it exists
+defect list from the verdict, verbatim, then a last line
+`refutation: skipped=no-subagent` (this port runs no refutation pass; the line
+is telemetry, never a defect). No hook gate depends on it; it exists
 so a completely fresh spawn - one with no memory of this session - still sees
 that a unit already failed once.
 

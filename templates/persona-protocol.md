@@ -345,7 +345,13 @@ On every FAIL verdict, the reviewer also writes `.claude/reviewed/<task-id>.fail
 (both orchestration modes) — first line exactly `FAIL <task-id> <UTC ISO-8601 timestamp>`,
 second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt ran on,
 copied from the reviewer dispatch's `Implementer tier:` line (the Escalation
-ladder never reads it), followed by the defect list from the verdict, verbatim. The record
+ladder never reads it), followed by the defect list from the verdict, verbatim,
+then a last line `refutation: confirmed=<a> refuted=<b> uncertain=<c>`, or
+`refutation: skipped=<mechanical|over-cap|resume|no-subagent>` when the
+reviewer's refutation pass did not run; that line is telemetry, never a defect.
+A defect prefixed `[unconfirmed]` is one the refutation pass could neither prove
+nor disprove: reproduce it before fixing it, and report one that does not
+reproduce instead of changing code for it. The record
 appends a block per FAIL verdict rather than overwriting the previous
 one, so the FAIL-block count is readable across sessions. This is a
 bookkeeping exception, same as the PASS marker — not a change to the code
