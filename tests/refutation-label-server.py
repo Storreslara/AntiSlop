@@ -502,6 +502,28 @@ def s13():
     check(p.returncode == 2 and len(out.splitlines()) == 1 and 'score.py' in out, 'no score.py: exit %d, %r' % (p.returncode, out[:160]))
     unchanged(fx, before, 'a missing score.py')
     check(not os.path.exists(fx.log), 'no score.py: log created')
+    # rfp-u7d: a score.py that cannot be loaded, or whose MIN_REAL is not a plain int (a bool is an int subclass),
+    # is the same one-line refusal, never a traceback
+    for name, text in (('a syntax error', 'MIN_REAL = (\n'), ('no MIN_REAL', 'MAX_MISSES = 1\n'),
+                       ('MIN_REAL = True', 'MIN_REAL = True\n'), ("MIN_REAL = '30'", "MIN_REAL = '30'\n"),
+                       ('an import-time error', 'MIN_REAL = 30\nraise RuntimeError(\'boom\')\n')):
+        fx = Fx()
+        d = mktmp()
+        shutil.copy(LABEL_PY, d)
+        shutil.copy(os.path.join(RR, 'label_page.html'), d)
+        write(os.path.join(d, 'score.py'), text)
+        before = fx.snap()
+        cmd = [sys.executable, os.path.join(d, 'label.py'), 'serve', '--no-open', '--port', '0', '--corpus', fx.corpus,
+               '--labels', fx.labels, '--repo', fx.repo, '--log', fx.log]
+        try:
+            p = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+        except subprocess.TimeoutExpired:
+            raise AssertionError('score.py with %s: the server started instead of refusing' % name)
+        out = (p.stdout + p.stderr).strip()
+        check(p.returncode == 2 and len(out.splitlines()) == 1 and out.startswith('label: score.py ') and 'Traceback' not in out,
+              'score.py with %s: exit %d, %r' % (name, p.returncode, out[:160]))
+        unchanged(fx, before, 'score.py with ' + name)
+        check(not os.path.exists(fx.log), 'score.py with %s: log created' % name)
 
 
 def listening(port):

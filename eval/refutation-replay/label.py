@@ -82,9 +82,13 @@ def read_min_real():
     if not os.path.exists(os.path.join(HERE, 'score.py')): raise LabelError('score.py not found beside label.py: the Gate G targets cannot be read')  # mut:scorecheck
     spec = importlib.util.spec_from_file_location('score_consts', os.path.join(HERE, 'score.py'))
     mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    if not isinstance(mod.MIN_REAL, int): raise LabelError('score.py MIN_REAL is not an integer')
-    return mod.MIN_REAL
+    try:
+        spec.loader.exec_module(mod)
+    except Exception as e:  # a broken score.py is a refusal to start, never a traceback
+        raise LabelError('score.py could not be loaded (%s): the Gate G targets cannot be read' % type(e).__name__)
+    v = getattr(mod, 'MIN_REAL', None)
+    if type(v) is not int: raise LabelError('score.py MIN_REAL is not an integer')  # bool is an int subclass, so not isinstance
+    return v
 
 
 def sha(data):
