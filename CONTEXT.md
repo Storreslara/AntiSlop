@@ -1089,16 +1089,34 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   `bin/fail-count.sh` counts blocks by grepping the task-id-qualified anchor
   line (`^FAIL <task-id> `), which is what makes the 2-FAIL cap countable
   across sessions instead of relying on one agent's in-session memory.
+  In `agents/reviewer.md`'s Verdict and Refutation pass bullets, "the FAIL
+  block" also names the FAIL [[verdict block]] of the reviewer's returned
+  message: the defect list and the [[refutation line]] that this on-disk block
+  copies verbatim below its two header lines. Both senses hold the same
+  defects; only the on-disk block has the `FAIL` and `tier:` header lines and
+  the blank separator line.
 
 **FAIL ground**:
 (plan 2026-10-27-refutation-pass, unit rfp-u7a) — one reason a reviewer FAIL
   verdict rests on, listed in the verdict as a reproducible defect. It is
   either a [[mechanical ground]], such as a `review-precheck.sh` failure line,
   which is a FAIL ground on its own, or a [[judgment defect]]. Only the
-  acceptance-criteria commands and the materiality filter make one: the
+  acceptance-criteria commands, the materiality filter, an uncommitted tracked
+  change when the reviewer is about to write its marker, and a constitution
+  MUST violation with no recorded deviation in the plan make one: the
   `roast-work` and `ubiquitous-language` passes never add a FAIL ground, and
   their findings stay in the advisory sections after the verdict.
 _Avoid_: FAIL reason, FAIL cause
+
+**verdict block**:
+(plan 2026-10-29-cosmetic-closeout, unit cos-u5) — the part of the reviewer's
+  final message that its Verdict bullet bounds with "nothing else" or "nothing
+  more": the verdict line, and on a FAIL the bare defect list and the
+  [[refutation line]] after it, which is also called the FAIL block of the
+  message (see [[FAIL block]]). It always comes first. Only the advisory
+  sections (`roast-work`, `ubiquitous-language`, then `refutation`, each only
+  if it fired or ran) and the terminal STATUS line may follow it.
+_Avoid_: verdict section
 
 **judgment defect**:
 (plan 2026-10-27-refutation-pass, unit rfp-u5) — a FAIL defect the reviewer
