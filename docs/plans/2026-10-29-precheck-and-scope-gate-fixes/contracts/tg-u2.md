@@ -25,6 +25,11 @@ leaves it alone here. `hooks/scripts/` is not a version-stamped path, so there i
 version bump (constitution P3; plan Open Question 2).
 
 ## Retrieval
+Amended after FAIL 1: the own-contract branch of edit 3's `after` block read the contract from the working tree and
+let a writer widen its own scope. `contracts/tg-u2-fix1.md` replaces that branch (a contract is read as the
+baseline commit holds it, and only a clean `docs/plans/<slug>/contracts/<id>.md` path counts); where the two files
+differ, the fix contract wins.
+
 Fast path, no tracker issue. Spec: `docs/plans/2026-10-29-precheck-and-scope-gate-fixes.md` ("Bug 2", "Fix
 design", "Gates and the operator authorisation", R-1 to R-3). This file is the contract of record. Dispatch it
 after tg-u1 has PASSed. With the plan's Open Question 1 answered (b), dispatch it in its own worktree, and

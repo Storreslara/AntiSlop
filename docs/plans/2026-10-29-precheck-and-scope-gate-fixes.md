@@ -85,9 +85,18 @@ ordering are all ruled out.
      contract for context never widens the scope.
 
   This matches the gate to review-precheck, which takes a unit's scope from its contract file's `## Affected
-  files`. It is no weaker for unlisted files: a file in neither list is still `out`. The contract's
-  `## Do NOT touch` now also applies when the message lists the file, which makes the gate stricter, not
-  looser.
+  files`. A file in neither list is still `out`. The contract's `## Do NOT touch` now also applies when the
+  message lists the file, which makes the gate stricter there.
+
+  **Corrected after tg-u2 FAIL 1 (2026-10-29).** The first draft read the cited contract from the working tree
+  and claimed "no weaker for unlisted files". That was false: the gate exempts `docs/plans/*`, so a writer could
+  edit or create its own contract, add a file to its `## Affected files` (or drop a `## Do NOT touch` entry),
+  and the gate, which for a dispatch that lists its files never read the contract before, now accepted the
+  edit. Fix (`contracts/tg-u2-fix1.md`): every cited contract is read as the baseline commit holds it
+  (`git show "$start:<path>"`; a contract committed before the dispatch is at `$start`, and one the baseline
+  lacks is ignored), and a cited path counts only as a clean `docs/plans/<slug>/contracts/<id>.md` with no
+  `.`, `..` or empty segment. The gate is then looser than before only in the way the dispatch itself asks
+  for, by naming its own contract; a writer's own edit of that contract never widens its scope.
 
 ### Gates and the operator authorisation (checked, not assumed)
 - `protectedPaths` in the persona config is `[]`, so `protected-paths.sh` asks about none of these files.
@@ -152,9 +161,12 @@ ordering are all ruled out.
 9. Completion / acceptance signals: Clear
 
 - 2026-10-29 Non-functional attributes (perf, security, scale): Q Does widening the gate's listed set weaken
-  it against real out-of-scope edits? → A (self-resolved): no. Only the unit's own contract file is added, and
-  only a bullet's first word. Tests (ac) 2, 4, 5 and 6 pin that unlisted, prose-named, excluded and
-  other-contract files are still blocked, each with a mutation.
+  it against real out-of-scope edits? → A (self-resolved, corrected after tg-u2 FAIL 1): it would have, as first
+  written (the contract was read from the working tree, which the writer can edit; the first answer "no" was
+  wrong). Now only the unit's own contract file as the baseline commit holds it is added, and only a bullet's
+  first word. Tests (ac) 2, 4, 5 and 6 pin that unlisted, prose-named, excluded and other-contract files are
+  still blocked, and tests (ac) 7 to 11 pin that a contract the writer edits (uncommitted or committed),
+  creates, or cites through `..` never widens the scope, each with a mutation.
 - 2026-10-29 External dependencies & integrations: Q How do the `.claude/` copies get regenerated, and by
   whom? → A (self-resolved, amended after tg-u1 FAIL 1): `node bin/cli.js --update`, once in each unit's own
   commit (tg-u1 fix round for `.claude/bin/review-precheck.sh`, tg-u2 for the gate mirror), never in a commit
