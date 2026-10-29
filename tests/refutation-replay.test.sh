@@ -141,6 +141,7 @@ printf '[1, 2]\n' > "$bi/list.jsonl"
 printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": "abc"}\n' > "$bi/turns.jsonl"
 printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": 5}\n' > "$bi/ok.jsonl"
 printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": [5]}\n' > "$bi/tlist.jsonl"
+printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": 5, "cost_usd": "abc"}\n' > "$bi/cost.jsonl"
 obad=""
 sb() { # <label> <score.py args>...
   local lab="$1" out err rc; shift
@@ -154,6 +155,7 @@ sb truncated "$bi/trunc.jsonl" --gate
 sb not-object "$bi/list.jsonl"
 sb turns "$bi/turns.jsonl" --gate
 sb turns-list "$bi/tlist.jsonl"
+sb cost "$bi/cost.jsonl" --gate
 sb labels-dir "$bi/ok.jsonl" --labels "$bi/dir" --gate
 sb labels-no-file "$bi/ok.jsonl" --gate --labels
 [ -z "$obad" ] && ok "(o) unreadable or malformed input exits 2 with one stderr line" || bad "(o)$obad"
@@ -163,6 +165,26 @@ printf '{"id": "x1", "answer": "NONE", "artifact": "", "num_turns": 9, "cost_usd
 o="$(sc "$tmp/s7")"; rc=$?
 [ "$rc" = 0 ] && printf '%s' "$o" | grep -q '^replay-gate: pass real=30 .* foreign=1 capped=0$' \
   && ok "(p) a capped row with an unlabelled id is foreign, not capped" || bad "(p) rc=$rc $o"
+# (o2) rfp-u7c: only reading and parsing map to bad input. A ValueError raised after them, here by the scoring
+# step, propagates instead of exiting 2
+o2="$(python3 -B -c 'import sys; sys.path.insert(0, sys.argv[1]); import score
+def boom(*a): raise ValueError("a code bug")
+score.score = boom
+try:
+    print("swallowed rc=%s" % score.main([sys.argv[2]]))
+except ValueError:
+    print("propagates")' "$d" "$tmp/s1/report.jsonl" 2>&1)"
+[ "$o2" = propagates ] && ok "(o2) an error after parsing is not bad input" || bad "(o2) $o2"
+# (o3) rfp-u7c: a failed write to stdout is not bad input either: unbuffered stdout on /dev/full ends in a
+# traceback, exit 1
+if [ -w /dev/full ]; then
+  python3 -B -u "$d/score.py" "$tmp/s1/report.jsonl" > /dev/full 2>"$tmp/full.err"; rc=$?
+  if [ "$rc" = 1 ] && grep -q '^Traceback' "$tmp/full.err" && ! grep -q 'bad input' "$tmp/full.err"; then
+    ok "(o3) a stdout write error ends in a traceback"
+  else bad "(o3) rc=$rc $(tail -1 "$tmp/full.err")"; fi
+else
+  ok "(o3) skipped: no /dev/full"
+fi
 
 # (j) run.sh --dry-run: one line per group, sonnet, 10 turns, read-only tools, no claude run
 dr="$(bash "$d/run.sh" --dry-run --corpus "$c" --repo "$repo")"; rc=$?

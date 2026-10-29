@@ -17,10 +17,11 @@ capped counts the scored ids whose run ended `error_max_turns` (the CLI's --max-
 With --gate: exit 0 on pass, 1 on fail, 2 on insufficient.
 A report or labels file that cannot be read or parsed (a directory, a line that is not a JSON object, a
 non-numeric num_turns or cost_usd, --labels with no file) exits 2, with or without --gate, printing nothing
-on stdout and one line on stderr: `score.py: bad input: <reason>`.
+on stdout and one line on stderr: `score.py: bad input: <reason>`. Only reading the arguments and the two
+files maps an error to bad input; an error after that (a code bug, a closed stdout) ends in a traceback.
 insufficient = fewer than MIN_REAL distinct real ids, or missing > 0.
 pass = not insufficient, refuted-real <= MAX_MISSES, unanswered <= 20% of the scored ids,
-max-turns <= MAX_TURNS, dup-conflict = 0 and capped = 0. Anything else is fail. Without --gate it always exits 0.
+max-turns <= MAX_TURNS, dup-conflict = 0 and capped = 0. Anything else is fail. Without --gate it exits 0 unless the input is bad.
 """
 import json, os, sys
 
@@ -29,10 +30,11 @@ MIN_REAL, MAX_MISSES, MAX_TURNS, MAX_UNANSWERED = 30, 1, 10, 0.20
 
 def main(argv):
     try:
-        return score(argv)
+        gate, labels, rows = load(argv)
     except (OSError, ValueError, TypeError) as e:
         print('score.py: bad input: %s' % (' '.join(str(e).split()) or type(e).__name__), file=sys.stderr)
         return 2
+    return score(gate, labels, rows)
 
 
 def read_rows(report):
@@ -53,7 +55,8 @@ def read_rows(report):
     return rows
 
 
-def score(argv):
+def load(argv):
+    # every parsing step: the arguments, both files, and the numeric fields of each labelled row
     gate = '--gate' in argv
     args = [x for x in argv if x != '--gate']
     labels_file = None
@@ -72,13 +75,21 @@ def score(argv):
                 k, _, v = l.rstrip('\n').partition('\t')
                 labels[k] = v
     rows = read_rows(report)
+    for r in rows:
+        if str(r.get('id')) in labels:
+            r['num_turns'] = int(r.get('num_turns') or 0)
+            r['cost_usd'] = float(r.get('cost_usd') or 0)
+    return gate, labels, rows
+
+
+def score(gate, labels, rows):
     first, conflict, foreign, turns = {}, set(), set(), []
     for r in rows:
         rid = str(r.get('id'))
         if rid not in labels:
             foreign.add(rid)
             continue
-        turns.append(int(r.get('num_turns') or 0))
+        turns.append(r['num_turns'])
         if rid not in first:
             first[rid] = r
         elif (first[rid].get('answer'), first[rid].get('artifact')) != (r.get('answer'), r.get('artifact')):
@@ -90,7 +101,7 @@ def score(argv):
     refuted = lambda r: r.get('answer') == 'REFUTED' and str(r.get('artifact') or '').strip() != ''
     misses = sum(1 for r in real if refuted(r))
     unanswered = sum(1 for r in scored if r.get('answer') not in ('REFUTED', 'CONFIRMED', 'UNCERTAIN'))
-    costs = [float(r.get('cost_usd') or 0) for r in scored]
+    costs = [r['cost_usd'] for r in scored]
     max_turns = max(turns) if turns else 0
     capped = sum(1 for r in scored if r.get('subtype') == 'error_max_turns')
     if len(real) < MIN_REAL or missing:
