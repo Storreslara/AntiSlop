@@ -47,8 +47,8 @@ G3 printed `replay-gate: pass`). One unit is mid-review at a time.
 | rfp-u7b | lead-programmer | rfp-u6c (done). The only Step 7 unit with a version bump, a CHANGELOG entry or `--update`; may be built at the same time as rfp-u7c to rfp-u7e (no file in common) | [rfp-u7b](2026-10-27-refutation-pass/contracts/rfp-u7b.md): the Verdict bullet bounds the verdict block; an INSUFFICIENT-CONTEXT keeps its REFUTED defects in the `refutation` section; refutation-sample case (d) checks whole lines (Step 7 items 4 to 6) |
 | rfp-u7c | lead-programmer | as rfp-u7b (concurrent) | [rfp-u7c](2026-10-27-refutation-pass/contracts/rfp-u7c.md): `score.py`'s docstring, and only parsing maps to bad input (Step 7 item 7) |
 | rfp-u7d | lead-programmer | as rfp-u7b (concurrent) | [rfp-u7d](2026-10-27-refutation-pass/contracts/rfp-u7d.md): `label.py` refuses a broken `score.py` or a non-int `MIN_REAL` in one line (Step 7 item 8; Open Question 8) |
-| rfp-u7e | lead-programmer | as rfp-u7b (concurrent) | contract pending (next spec-master spawn): `guard.py` refuses a `..` path segment after a `:` (Step 7 item 9) |
-| rfp-u7a | scribe | rfp-u7b's PASS (its criteria read rfp-u7b's new reviewer sentence) | contract pending (next spec-master spawn): **FAIL ground** and **refutation sample** entries; the **refutation outcome** qualifier moved and its INSUFFICIENT-CONTEXT clause (Step 7 items 1 to 3) |
+| rfp-u7e | lead-programmer | as rfp-u7b (concurrent) | [rfp-u7e](2026-10-27-refutation-pass/contracts/rfp-u7e.md): `guard.py` refuses a `..` path segment after a `:` (Step 7 item 9) |
+| rfp-u7a | scribe | rfp-u7b's PASS (its criteria read rfp-u7b's new reviewer sentence) | [rfp-u7a](2026-10-27-refutation-pass/contracts/rfp-u7a.md): **FAIL ground** and **refutation sample** entries; the **refutation outcome** qualifier moved and its INSUFFICIENT-CONTEXT clause (Step 7 items 1 to 3) |
 
 If Gate G3 prints `fail` or `insufficient`, rfp-u3 to rfp-u5 are not dispatched (Open Question 2). Run 1 did
 exactly that.
@@ -801,6 +801,13 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   (self-resolved): both in `CONTEXT.md`, by rfp-u5's split: reviewer and auditor concepts go in `CONTEXT.md`
   (**judgment defect**, **mechanical ground**), the grammar of a line in `docs/harness-glossary.md`
   (**refutation line**). The sample's four counts are defined inside its one entry.
+- 2026-10-29 Edge cases / failure handling: Q Open Question 9: on a resume after an UNCERTAIN-only
+  INSUFFICIENT-CONTEXT that ends in PASS, write `NOTE[code]: refuted:` lines for the earlier REFUTED defects?
+  → A: (a), no; the resume text is unchanged, per the operator.
+- 2026-10-29 Functional scope & success criteria: Q Open Question 10: give the codex and cursor ports the
+  "bounds the verdict block itself" sentence? → A: (a), no; the ports are left unchanged, per the operator.
+- 2026-10-29 Functional scope & success criteria: Q Is Open Question 8 still open? → A: no, it is closed by
+  rfp-u7d, per the operator.
 
 ## Risks / dependencies
 
@@ -1261,10 +1268,18 @@ Dispatch order: rfp-u7b, rfp-u7c, rfp-u7d and rfp-u7e in any order (rfp-u7b firs
 rfp-u7a is to follow soon), then rfp-u7a.
 
 **Model tier.** `node .claude/bin/contract-guard.js` prints `contract-guard: sonnet … score=3/7` for rfp-u7b,
-rfp-u7c and rfp-u7d. rfp-u7a and rfp-u7e are scored when their contracts are written.
+rfp-u7c, rfp-u7d and rfp-u7e (rfp-u7e: `failed=R1,R5,R6,R7`), and `contract-guard: haiku unit=rfp-u7a
+shape=scribe score=7/7` for rfp-u7a (`--shape=scribe`). `bash .claude/bin/unit-size.sh` prints `lane: small
+files=2 reason=contract` for rfp-u7e, and `lane: full files=0 reason=empty` for rfp-u7a, as for rfp-u6c: the
+scribe shape has no `## Affected files` section for it to count.
 
-**Payload for the two contracts still to write** (verified on the scratch clone; the next spawn copies it into
-the contract shapes of rfp-u6c and rfp-u6b).
+**Payload of the last two contracts** (verified on the scratch clone; copied into
+[rfp-u7a](2026-10-27-refutation-pass/contracts/rfp-u7a.md) and
+[rfp-u7e](2026-10-27-refutation-pass/contracts/rfp-u7e.md) on 2026-10-29, which are now the contracts of record).
+The rfp-u7a contract states edit 3 as a replacement of whole lines, so `CONFIRMED: it stays a defect.` and the
+unchanged `UNCERTAIN: it stays in a FAIL that happens anyway,` share one line; the entry text is otherwise as
+below. Its criteria are the commands for the checks described below, each re-run on a fresh scratch clone of
+cb1f9373 with rfp-u7b's edit 4 applied (its stated output and stated mutation output both reproduced).
 
 rfp-u7a, scribe, `CONTEXT.md` only (`knowledgeWrites` is `apply`), commit subject
 `docs(rfp-u7a): FAIL ground and refutation sample entries; refutation outcome qualifier moved (#0)`:
@@ -1486,6 +1501,8 @@ No Step 7 item needs an ADR: none is hard to reverse, and each follows a rule al
    - (b) On a resume that ends in PASS, also write one `NOTE[code]: refuted:` line per earlier REFUTED defect,
      so the sample covers them. That is one more sentence in rfp-u7b (before its dispatch) or a later
      version-stamped unit.
+   *Resolved 2026-10-29: (a), per the operator. No `NOTE[code]: refuted:` lines on the resume PASS; rfp-u7b's
+   resume text is unchanged.*
 10. **The codex and cursor ports' Verdict bullets** (Step 7 item 5). They also say "and nothing more" and
     "nothing else", while their inlined roast-work section is "appended AFTER the verdict line" and their
     protocol files require the STATUS line. *(from CHK87)*
@@ -1493,6 +1510,7 @@ No Step 7 item needs an ADR: none is hard to reverse, and each follows a rule al
       hand-synced copies whose parity tests spec-master did not run for this change.
     - (b) Add the same "bounds the verdict block itself" sentence to both ports in rfp-u7b (two more files in
       the one serial unit; its scope criterion and Do NOT touch list change).
+    *Resolved 2026-10-29: (a), per the operator. The codex and cursor ports are left unchanged.*
 
 ## Self-check
 - CHK1: Is the verdict defined for every combination of standing, CONFIRMED and UNCERTAIN defects, and for
@@ -1760,6 +1778,13 @@ rfp-u2f (2026-10-28):
 - CHK98: Does criterion rfp-u7b/1 (prose pins on the reviewer mirror) still fail under its mutation, given
   gh307's recorded class vacuous on `.claude/agents/reviewer.md`? — PASS (skipping `--update` printed
   `fails=3 rc=1`)
+- CHK99: Do the rfp-u7a and rfp-u7e contracts carry Step 7's payload and criteria, each run as written? — PASS
+  (each contract's `run:` lines, extracted from the file, printed their `stdout:` on a scratch clone of cb1f9373
+  with rfp-u7b edit 4 and both payloads applied; each stated mutation reproduced; `contract-anchors.js` on
+  rfp-u7e prints `ok checks=8 bad=0`)
+- CHK100: Are Open Questions 9 and 10 (from CHK86 and CHK87) answered, and does any contract depend on the
+  answer? — PASS (both resolved (a) on 2026-10-29, Clarifications; (a) changes no contract: rfp-u7b's resume text
+  and the ports stay as they are)
 
 Prose-mode `ubiquitous-language`, Step 7 (advisory):
 - Lens 1: "FAIL ground" was used in `CONTEXT.md:1103` and `agents/reviewer.md` for one meaning, a reason a FAIL
