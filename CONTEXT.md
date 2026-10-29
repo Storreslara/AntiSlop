@@ -1090,6 +1090,16 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   line (`^FAIL <task-id> `), which is what makes the 2-FAIL cap countable
   across sessions instead of relying on one agent's in-session memory.
 
+**FAIL ground**:
+(plan 2026-10-27-refutation-pass, unit rfp-u7a) — one reason a reviewer FAIL
+  verdict rests on, listed in the verdict as a reproducible defect. It is
+  either a [[mechanical ground]], such as a `review-precheck.sh` failure line,
+  which is a FAIL ground on its own, or a [[judgment defect]]. Only the
+  acceptance-criteria commands and the materiality filter make one: the
+  `roast-work` and `ubiquitous-language` passes never add a FAIL ground, and
+  their findings stay in the advisory sections after the verdict.
+_Avoid_: FAIL reason, FAIL cause
+
 **judgment defect**:
 (plan 2026-10-27-refutation-pass, unit rfp-u5) — a FAIL defect the reviewer
   found by reading code, not by a check it ran. Its opposite is a
@@ -1100,8 +1110,8 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
 _Avoid_: soft defect, opinion defect
 
 **mechanical ground**:
-(plan 2026-10-27-refutation-pass, unit rfp-u6c) — a FAIL ground the reviewer
-  established with a check rather than by reading: a `review-precheck.sh`
+(plan 2026-10-27-refutation-pass, unit rfp-u6c) — a [[FAIL ground]] the
+  reviewer established with a check rather than by reading: a `review-precheck.sh`
   failure line, an uncommitted tree, an out-of-scope path, or a command the
   reviewer ran that shows the failure, which is how a reproduced defect
   becomes one. It is the opposite of a [[judgment defect]], and it is never
@@ -1131,18 +1141,37 @@ _Avoid_: refuter, second review, refutation verifier
 **refutation outcome**:
 (plan 2026-10-27-refutation-pass, unit rfp-u5) — the answer the
   [[refutation pass]] settles for one defect, after the reviewer's own
-  re-check. REFUTED: the defect is dropped and recorded as a
-  `NOTE[code]: refuted:` note on the PASS when every defect is REFUTED, or in
-  the verdict's `refutation` advisory section when another defect keeps the
-  FAIL (under review gating off, always in that section), unless the
-  re-check finds a reason the artifact does not defeat it. CONFIRMED: it
-  stays a defect. UNCERTAIN: it stays in a FAIL that happens anyway,
+  re-check, which keeps a defect standing when it finds a reason the
+  artifact does not defeat the claim. REFUTED: the defect is dropped and
+  recorded as a `NOTE[code]: refuted:` note on the PASS when every defect is
+  REFUTED, or in the verdict's `refutation` advisory section when another
+  defect keeps the FAIL or when the rest are UNCERTAIN and the verdict is
+  INSUFFICIENT-CONTEXT (under review gating off, always in that section).
+  CONFIRMED: it stays a defect. UNCERTAIN: it stays in a FAIL that happens anyway,
   prefixed `[unconfirmed]`. A defect whose artifact does not reproduce, or
   that got no answer, stands as found. REFUTED and CONFIRMED need an
   artifact. When only UNCERTAIN defects remain, the verdict is
   INSUFFICIENT-CONTEXT, not ESCALATE-TO-HUMAN. The verdict itself stays the
   reviewer's.
 _Avoid_: refutation verdict
+
+**refutation sample**:
+(plan 2026-10-27-refutation-pass, unit rfp-u7a) — the milestone auditor's
+  check on the [[refutation pass]]. No later gate re-checks a refutation that
+  turned a FAIL into a PASS, so at each milestone the auditor re-verifies the
+  first 3 `NOTE[code]: refuted:` notes of that milestone's PASS markers (all,
+  if fewer) against the code at the marker's commit. Its findings list ends
+  with one line, `refutation-sample: sampled=<s> held=<h> prevented=<p>
+  eligible=<p+f>`. `sampled` counts the notes it re-verified. `held` counts
+  the ones it decided hold; one it cannot decide counts toward `sampled`,
+  never toward `held`. `prevented` counts the PASS markers in the whole
+  project that carry a `refuted:` note, each a FAIL the pass prevented.
+  `eligible` adds to that the [[FAIL block]]s whose [[refutation line]] shows
+  the pass ran and the FAIL survived (`refutation: confirmed=`). A refutation
+  that does not hold is a finding of at least moderate severity. When
+  `eligible` is 20 or more and `prevented` is under a tenth of it, the
+  auditor recommends a follow-up to retire or re-scope the pass.
+_Avoid_: refutation audit, refutation spot-check
 
 **`.escalated` marker**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
