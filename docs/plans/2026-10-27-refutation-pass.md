@@ -15,6 +15,11 @@ user answered Open Questions 4 to 7.
 - **Step 6 (2026-10-29):** rfp-u1 to rfp-u5 have PASS markers and Gate G run 2 passed. Hardening units
   rfp-u6a, rfp-u6b (lead-programmer) and rfp-u6c (scribe) clear the open review notes; their contracts are
   written.
+- **Step 7 (2026-10-29, spec-master at b9bcdf92):** rfp-u6a to rfp-u6c have PASS markers. Five file-disjoint
+  units clear the review notes those PASSes left: rfp-u7b (the only version-stamped one), rfp-u7c, rfp-u7d and
+  rfp-u7e may be built at the same time, and rfp-u7a (scribe) comes after rfp-u7b's PASS. Contracts rfp-u7b, rfp-u7c
+  and rfp-u7d are written; rfp-u7a and rfp-u7e are specified in Step 7 and are written by the next spec-master
+  spawn (checkpoint). Open Question 8 is resolved (rfp-u7d); 9 and 10 are open, each with a default.
 
 ## Units and order
 
@@ -39,6 +44,11 @@ G3 printed `replay-gate: pass`). One unit is mid-review at a time.
 | rfp-u6a | lead-programmer | rfp-u5 (done). No file in common with rfp-u6b or rfp-u6c: any order, one unit mid-review at a time | [rfp-u6a](2026-10-27-refutation-pass/contracts/rfp-u6a.md): the reviewer's Verdict bullet names the `refutation:` line; the refutation sample's greps anchored at line start; `held` defined (Step 6) |
 | rfp-u6b | lead-programmer | as rfp-u6a | [rfp-u6b](2026-10-27-refutation-pass/contracts/rfp-u6b.md): the label page's pointer rule counts from the click; `score.py` bad input exits 2; `guard.py` `-S`/`-G`/`-L` values; the multi-match refresh test (Step 6) |
 | rfp-u6c | scribe | as rfp-u6a | [rfp-u6c](2026-10-27-refutation-pass/contracts/rfp-u6c.md): **mechanical ground** entry; **refutation outcome** mixed-FAIL clause; "refutation verifier" on the avoid list (Step 6) |
+| rfp-u7b | lead-programmer | rfp-u6c (done). The only Step 7 unit with a version bump, a CHANGELOG entry or `--update`; may be built at the same time as rfp-u7c to rfp-u7e (no file in common) | [rfp-u7b](2026-10-27-refutation-pass/contracts/rfp-u7b.md): the Verdict bullet bounds the verdict block; an INSUFFICIENT-CONTEXT keeps its REFUTED defects in the `refutation` section; refutation-sample case (d) checks whole lines (Step 7 items 4 to 6) |
+| rfp-u7c | lead-programmer | as rfp-u7b (concurrent) | [rfp-u7c](2026-10-27-refutation-pass/contracts/rfp-u7c.md): `score.py`'s docstring, and only parsing maps to bad input (Step 7 item 7) |
+| rfp-u7d | lead-programmer | as rfp-u7b (concurrent) | [rfp-u7d](2026-10-27-refutation-pass/contracts/rfp-u7d.md): `label.py` refuses a broken `score.py` or a non-int `MIN_REAL` in one line (Step 7 item 8; Open Question 8) |
+| rfp-u7e | lead-programmer | as rfp-u7b (concurrent) | contract pending (next spec-master spawn): `guard.py` refuses a `..` path segment after a `:` (Step 7 item 9) |
+| rfp-u7a | scribe | rfp-u7b's PASS (its criteria read rfp-u7b's new reviewer sentence) | contract pending (next spec-master spawn): **FAIL ground** and **refutation sample** entries; the **refutation outcome** qualifier moved and its INSUFFICIENT-CONTEXT clause (Step 7 items 1 to 3) |
 
 If Gate G3 prints `fail` or `insufficient`, rfp-u3 to rfp-u5 are not dispatched (Open Question 2). Run 1 did
 exactly that.
@@ -764,6 +774,33 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   (self-resolved): no, dropped; no hook reads `model`, so the check would be vacuous (Step 6 item 7).
 - 2026-10-29 Functional scope & success criteria: Q Is `label.py`'s traceback on a broken `score.py` in Step
   6? → A: open, Open Question 8 (default: no).
+- 2026-10-29 Functional scope & success criteria: Q Is Open Question 8 now in scope? → A: yes. The coordinator's
+  Step 7 dispatch names it as item 8, so it is rfp-u7d (Step 7 scorecard: functional scope, data model,
+  non-functional and completion Clear; user flow, integrations, edge cases, tradeoffs and terminology Partial,
+  resolved below).
+- 2026-10-29 User interaction flow: Q Which Step 7 units may be built at the same time, and what is serial? → A
+  (self-resolved): no file appears in two units. rfp-u7b, rfp-u7c, rfp-u7d and rfp-u7e may be built concurrently.
+  rfp-u7b alone bumps the version, edits `CHANGELOG.md` and runs `--update`. rfp-u7a follows rfp-u7b's PASS. Each
+  dirty-tree criterion names only its own unit's files.
+- 2026-10-29 External dependencies & integrations: Q Does git take `--orderfile=<file>`? → A (self-resolved, git
+  2.43 run in a scratch repo): no. `--orderfile`, `--orderf` and `--ord` are usage errors in `diff`, `log` and
+  `show`; only `-O<file>` exists. Item 9's first half is dropped.
+- 2026-10-29 Edge cases / failure handling: Q Where do REFUTED defects go when the verdict is
+  INSUFFICIENT-CONTEXT? → A (self-resolved): in the `refutation` advisory section, as in a mixed FAIL; the
+  least-change reading of the existing bullets. What becomes of them on the resume is a design choice: Open
+  Question 9.
+- 2026-10-29 Technical constraints & tradeoffs: Q Move the **refutation outcome** qualifier to right after
+  "REFUTED:" as worded, or keep the pinned phrases? → A (self-resolved): keep the pins. The qualifier goes in
+  the sentence just before "REFUTED:", which removes the ambiguity without breaking the phrases that rfp-u5
+  criterion 4 and rfp-u6c criterion 3 pin ("REFUTED: the defect is dropped and recorded as …").
+- 2026-10-29 Technical constraints & tradeoffs: Q Narrow `score.py`'s `try` how? → A (self-resolved): split
+  `load()` (arguments, both files, and the numeric conversions of labelled rows) from `score()`, and put only
+  `load()` in the `try`. A broken pipe or a code bug after parsing now ends in a traceback; tested with
+  `/dev/full` and with `score.score` replaced by a function that raises.
+- 2026-10-29 Terminology consistency: Q Where do **FAIL ground** and **refutation sample** go? → A
+  (self-resolved): both in `CONTEXT.md`, by rfp-u5's split: reviewer and auditor concepts go in `CONTEXT.md`
+  (**judgment defect**, **mechanical ground**), the grammar of a line in `docs/harness-glossary.md`
+  (**refutation line**). The sample's four counts are defined inside its one entry.
 
 ## Risks / dependencies
 
@@ -853,6 +890,15 @@ re-scope the pass. rfp-u4's milestone-auditor bullet prints this ratio as part o
   - P3: not required, because no stamped path is touched. No bump and no CHANGELOG entry, as for rfp-u2b
     to rfp-u2e (criterion 9 refuses `plugin.json`, `package.json` and `CHANGELOG.md`).
   - P5: satisfied (rfp-u2f criterion 11; both suites are already registered).
+- Step 7 (rfp-u7a to rfp-u7e):
+  - P1: satisfied. Every item was checked against b9bcdf92 first; the `--orderfile` premise was tested on
+    git 2.43 and dropped; spec-master ran every criterion and the mutations it names on a scratch clone.
+  - P2: satisfied. Mirrors come from `--update` only (rfp-u7b), and the hunks were generated from the
+    scratch commits and replayed byte for byte.
+  - P3: satisfied. rfp-u7b is the only unit touching a stamped path, and it bumps in each commit (its
+    criterion 5); rfp-u7a, rfp-u7c, rfp-u7d and rfp-u7e touch none.
+  - P5: satisfied. rfp-u7b criterion 7 runs `validate.sh`, which passed on the scratch clone with all five
+    units committed; the edited suites are already registered.
 - P4 "Optional personas degrade gracefully" (SHOULD): satisfied. `explorer` is a core persona, and a spawn
   failure degrades to `skipped=no-subagent`.
 
@@ -1171,6 +1217,164 @@ rfp-u6a touches `agents/`, so it bumps the plugin version and adds a CHANGELOG e
 `eval/` and `tests/` and rfp-u6c only `CONTEXT.md`, so neither does. The rfp-u5 wording that rfp-u5's criteria
 4 and 5 pin is kept verbatim; rfp-u6c's criteria re-check those phrases.
 
+## Step 7 (rfp-u7a to rfp-u7e, after rfp-u6c): the rfp-u6 review notes (2026-10-29)
+
+The coordinator's nine follow-up items, each taken from an rfp-u6a, rfp-u6b or rfp-u6c PASS note and checked
+against the tree at b9bcdf92 before a criterion was written. The rule that shapes the slicing: **no file
+appears in two units**, mirrors and version-stamped files included, so that the units can be built in parallel.
+spec-master built and tested every payload in a scratch clone of b9bcdf92, with one commit per unit. With all
+five committed, `ANTISLOP_VALIDATE_LANES=4 bash tests/validate.sh` exited 0 (OK=3442 FAIL=0 WARN=2, about 6
+minutes).
+
+| item | source note | unit | disposition |
+|---|---|---|---|
+| 1 | rfp-u6c PASS: the **refutation outcome** "unless the re-check finds a reason…" reads as qualifying the gating-off clause | rfp-u7a | fixed: the qualifier moves into the sentence before `REFUTED:` ("after the reviewer's own re-check, which keeps a defect standing when it finds a reason the artifact does not defeat the claim. REFUTED: …"), not to just after `REFUTED:`, so that the phrases pinned by rfp-u5 criterion 4 and rfp-u6c criterion 3 stay intact. Clarifications record why |
+| 2 | rfp-u6c PASS: "FAIL ground" has no entry | rfp-u7a | new **FAIL ground** entry in `CONTEXT.md`, before **judgment defect**; **mechanical ground** links it. The placement follows rfp-u5: reviewer concepts go in `CONTEXT.md`, line grammars in `docs/harness-glossary.md` |
+| 3 | rfp-u6a and rfp-u6c PASS: "refutation sample" and its counts have no entry | rfp-u7a | one new **refutation sample** entry, after **refutation outcome**, which defines `sampled`, `held`, `prevented` and `eligible` inline (one entry, not five) from `agents/milestone-auditor.md` as it stands |
+| 4 | rfp-u6c PASS: where do REFUTED defects go when the rest are UNCERTAIN and the verdict is INSUFFICIENT-CONTEXT? | rfp-u7b | the least-change rule, not an operator decision: they go, with their reasons, in the `refutation` advisory section, as in a mixed FAIL, which the Verdict bullet already allows after any verdict line. Only `agents/reviewer.md` carries the Refutation pass bullet (no template or port does). What happens to them on the resume is a real design choice: Open Question 9 |
+| 5 | rfp-u6a PASS (and unit 124's untagged note): "and nothing more" vs the advisory sections and the STATUS line | rfp-u7b | FAIL ends "and nothing more in the FAIL block", and one sentence says that each "nothing else" or "nothing more" bounds the verdict block itself. The codex and cursor ports have the same tension (an inlined roast-work section and the protocol STATUS line follow their verdict): Open Question 10 |
+| 6 | rfp-u6a PASS: refutation-sample case (d) flattens before `grep -F` | rfp-u7b | case (d) greps the file itself. Mutation: a command split onto two lines in `agents/milestone-auditor.md` passes the old case (d) and fails the new one (spec-master ran both). It goes in rfp-u7b because the test reads the mirror that rfp-u7b's `--update` regenerates, and so that Step 7 stays at five units |
+| 7 | rfp-u6b PASS: `score.py` docstring; the `try` covers all of `score()` | rfp-u7c | docstring fixed; parsing moves into `load()`, and only `load()` is inside the `try`. Cases (o) cost, (o2) and (o3), each red on b9bcdf92 or under a widening mutant |
+| 8 | rfp-u2c PASS via Open Question 8: `read_min_real` traceback, `MIN_REAL = True` accepted | rfp-u7d | fixed: any load error is a `LabelError` (exit 2, one line), and `type(v) is int`. S13 gains five variants. Open Question 8 is resolved: the coordinator put it in scope |
+| 9a | rfp-u6b PASS: `--orderfile` is not in `BAD_OPT` | none | **dropped**: git 2.43 has no `--orderfile` option. `git diff --orderfile=of` exits 129 (usage), `git log -1 --orderfile=of -p` and `--ord=of` exit 128, and `git show --orderfile=of` exits 128, while `-Oof` exits 0. Only `-O<file>` and the `diff.orderFile` config exist, and `-O` is already refused, in a bundle too. Adding a dead option would test nothing |
+| 9b | rfp-u6b PASS: `..` right after `:` in `-L1,2:../x` | rfp-u7e | fixed. It is not an exploitable leak: git refuses it ("'../x' is outside repository"), and META keeps the cwd at the clone root. But the guard's docstring promises to refuse any argument with a `..` path segment, so code and doc disagree. `UP` becomes `(^|[/:])\.\.(/|$)`. Still allowed: `-L1,2:src/IO.c`, `-SObject`, `-G[O]`, `--grep=FOO`, `HEAD~1..HEAD`, `..HEAD`, `HEAD:src/a.sh` |
+| - | rfp-u6b PASS note 7 (the B12 mutation was checked by verdict line only) | none | not one of the coordinator's items; it is about how a mutation was checked, not a defect in the tree |
+
+**Concurrency and order.** File sets (each unit's scope criterion pins its own):
+- rfp-u7b: `agents/reviewer.md`, `tests/persona-prose-pins.test.sh`, `tests/refutation-sample.test.sh`,
+  `.claude-plugin/plugin.json`, `package.json`, `CHANGELOG.md`, and the `--update`-generated `.claude/` files.
+- rfp-u7c: `eval/refutation-replay/score.py`, `tests/refutation-replay.test.sh`.
+- rfp-u7d: `eval/refutation-replay/label.py`, `tests/refutation-label-server.py`.
+- rfp-u7e: `eval/refutation-replay/guard.py`, `tests/refutation-replay-isolation.test.sh`.
+- rfp-u7a: `CONTEXT.md`.
+
+rfp-u7b, rfp-u7c, rfp-u7d and rfp-u7e may be built at the same time. rfp-u7b is the only unit that may bump the
+version, edit `CHANGELOG.md` or run `--update`, so it is never run twice at once. rfp-u7a is file-disjoint, but
+it is dispatched after rfp-u7b's PASS, because its **refutation outcome** text and its criterion 2 source check
+use rfp-u7b's new INSUFFICIENT-CONTEXT sentence (before that, the criterion prints `no-source: …`). Reviews stay
+one unit at a time. The cross-reads are all read-only and stable: `label.py` and S15 read `score.py`'s
+`MIN_REAL` line, which rfp-u7c keeps byte-identical; the isolation suite runs `score.py`; case (d) reads the
+milestone-auditor mirror, whose body `--update` does not change. Each unit's dirty-tree criterion names only
+its own files, so a sibling's work in progress in the same tree does not fail it. rfp-u7b's `validate.sh`
+criterion runs every suite, so it needs a tree where no sibling has uncommitted edits, or its own worktree.
+Dispatch order: rfp-u7b, rfp-u7c, rfp-u7d and rfp-u7e in any order (rfp-u7b first if review must be serial and
+rfp-u7a is to follow soon), then rfp-u7a.
+
+**Model tier.** `node .claude/bin/contract-guard.js` prints `contract-guard: sonnet … score=3/7` for rfp-u7b,
+rfp-u7c and rfp-u7d. rfp-u7a and rfp-u7e are scored when their contracts are written.
+
+**Payload for the two contracts still to write** (verified on the scratch clone; the next spawn copies it into
+the contract shapes of rfp-u6c and rfp-u6b).
+
+rfp-u7a, scribe, `CONTEXT.md` only (`knowledgeWrites` is `apply`), commit subject
+`docs(rfp-u7a): FAIL ground and refutation sample entries; refutation outcome qualifier moved (#0)`:
+1. New entry before `**judgment defect**:`, separated by one blank line:
+   ~~~~
+   **FAIL ground**:
+   (plan 2026-10-27-refutation-pass, unit rfp-u7a) — one reason a reviewer FAIL
+     verdict rests on, listed in the verdict as a reproducible defect. It is
+     either a [[mechanical ground]], such as a `review-precheck.sh` failure line,
+     which is a FAIL ground on its own, or a [[judgment defect]]. Only the
+     acceptance-criteria commands and the materiality filter make one: the
+     `roast-work` and `ubiquitous-language` passes never add a FAIL ground, and
+     their findings stay in the advisory sections after the verdict.
+   _Avoid_: FAIL reason, FAIL cause
+   ~~~~
+2. In **mechanical ground**, the first two lines become
+   `(plan 2026-10-27-refutation-pass, unit rfp-u6c) — a [[FAIL ground]] the` and
+   `  reviewer established with a check rather than by reading:` (the rest of the entry is unchanged).
+3. In **refutation outcome**, the lines from `  re-check. REFUTED: the defect is dropped and recorded as a` to
+   `  stays a defect.` become:
+   ~~~~
+     re-check, which keeps a defect standing when it finds a reason the
+     artifact does not defeat the claim. REFUTED: the defect is dropped and
+     recorded as a `NOTE[code]: refuted:` note on the PASS when every defect is
+     REFUTED, or in the verdict's `refutation` advisory section when another
+     defect keeps the FAIL or when the rest are UNCERTAIN and the verdict is
+     INSUFFICIENT-CONTEXT (under review gating off, always in that section).
+     CONFIRMED: it stays a defect.
+   ~~~~
+4. New entry after **refutation outcome**'s `_Avoid_: refutation verdict` line, separated by one blank line:
+   ~~~~
+   **refutation sample**:
+   (plan 2026-10-27-refutation-pass, unit rfp-u7a) — the milestone auditor's
+     check on the [[refutation pass]]. No later gate re-checks a refutation that
+     turned a FAIL into a PASS, so at each milestone the auditor re-verifies the
+     first 3 `NOTE[code]: refuted:` notes of that milestone's PASS markers (all,
+     if fewer) against the code at the marker's commit. Its findings list ends
+     with one line, `refutation-sample: sampled=<s> held=<h> prevented=<p>
+     eligible=<p+f>`. `sampled` counts the notes it re-verified. `held` counts
+     the ones it decided hold; one it cannot decide counts toward `sampled`,
+     never toward `held`. `prevented` counts the PASS markers in the whole
+     project that carry a `refuted:` note, each a FAIL the pass prevented.
+     `eligible` adds to that the [[FAIL block]]s whose [[refutation line]] shows
+     the pass ran and the FAIL survived (`refutation: confirmed=`). A refutation
+     that does not hold is a finding of at least moderate severity. When
+     `eligible` is 20 or more and `prevented` is under a tenth of it, the
+     auditor recommends a follow-up to retire or re-scope the pass.
+   _Avoid_: refutation audit, refutation spot-check
+   ~~~~
+
+rfp-u7a criteria (each printed the stated line on the scratch clone, and the stated mutation output on the
+CONTEXT.md of b9bcdf92):
+- `bash -c 'for t in "FAIL ground" "refutation sample" "refutation outcome" "mechanical ground"; do printf "%s=%s/%s " "$t" "$(grep -cxF "**$t**:" CONTEXT.md)" "$(grep -cxF "**$t**:" docs/harness-glossary.md)"; done | sed "s/ $//"; echo'`
+  prints `FAIL ground=1/0 refutation sample=1/0 refutation outcome=1/0 mechanical ground=1/0` (b9bcdf92: `FAIL ground=0/0 refutation sample=0/0 …`).
+- A source-and-entry check of **refutation outcome**, in rfp-u6c criterion 3's shape. Source phrases, from the
+  flattened `agents/reviewer.md` with backticks removed: "You may keep a defect standing with a stated reason",
+  "and the REFUTED ones and your reasons go in the refutation advisory section, as in a FAIL", and "(under review
+  gating off, to the refutation section instead)". Entry phrases: "re-check, which keeps a defect standing when
+  it finds a reason the artifact does not defeat the claim. REFUTED: the defect is dropped", "REFUTED: the defect
+  is dropped and recorded as a NOTE[code]: refuted: note on the PASS when every defect is REFUTED", "refutation
+  advisory section when another defect keeps the FAIL or when the rest are UNCERTAIN and the verdict is
+  INSUFFICIENT-CONTEXT (under review gating off, always in that section). CONFIRMED: it stays a defect",
+  "UNCERTAIN: it stays in a FAIL that happens anyway, prefixed [unconfirmed]", "REFUTED and CONFIRMED need an
+  artifact", and "the verdict is INSUFFICIENT-CONTEXT, not ESCALATE-TO-HUMAN". The last line is
+  `checked late-unless=<grep -cF "always in that section), unless">`, so stdout is `checked late-unless=0`.
+  On b9bcdf92's entry it prints two `missing:` lines and `checked late-unless=1`. On b9bcdf92's
+  `agents/reviewer.md` it prints `no-source: and the REFUTED ones … as in a FAIL`, exit 1 (the reason it waits for
+  rfp-u7b).
+- A source-and-entry check of **FAIL ground**. Source: "is a FAIL ground on its own" and "never adds a new FAIL
+  ground" in `agents/reviewer.md`. Entry: "one reason a reviewer FAIL verdict rests on", "either a [[mechanical
+  ground]], such as a review-precheck.sh failure line, which is a FAIL ground on its own, or a [[judgment
+  defect]]", "the roast-work and ubiquitous-language passes never add a FAIL ground", and "_Avoid_: FAIL reason,
+  FAIL cause". The **mechanical ground** entry must contain "a [[FAIL ground]] the reviewer established with a
+  check rather than by reading". Stdout `checked`; b9bcdf92 prints `no-entry`.
+- A source-and-entry check of **refutation sample**. Source: "Re-verify the first 3 of them (all, if fewer)",
+  "refutation-sample: sampled=<s> held=<h> prevented=<p> eligible=<p+f>", "one you cannot decide counts toward
+  sampled, never toward held", "When eligible is 20 or more and p is under a tenth of it", and "a finding of at
+  least moderate severity", all in `agents/milestone-auditor.md`. Entry: each counted field's defining sentence
+  as written above, and the `_Avoid_:` line. Stdout `checked`; b9bcdf92 prints `no-entry`.
+- `node tests/context-glossary-links.test.js | tail -1` prints `All context-glossary-links checks passed.`
+- Scope: the `(rfp-u7a): ` commits touch only `CONTEXT.md` (`0`, or `no-commits`, exit 1). Dirty:
+  `git status --porcelain --untracked-files=no -- CONTEXT.md` counts `0`.
+- On the scratch clone, rfp-u5 criterion 4 printed `checked` and rfp-u6c criteria 1 to 5 printed their stated
+  lines, so the earlier pins hold.
+
+rfp-u7e, lead-programmer, commit subject `fix(rfp-u7e): guard.py refuses a .. path segment after a colon`:
+1. `guard.py` docstring: `  that starts with `/` or `~` or has a `..` path segment, and none of the options that read or write`
+   becomes two lines: `  that starts with `/` or `~` or has a `..` path segment (a `..` right after a `:` counts, as in`
+   and `  `-L1,2:../x` or `HEAD:../x`), and none of the options that read or write`.
+2. `UP = re.compile(r'(^|/)\.\.(/|$)')` becomes `UP = re.compile(r'(^|[/:])\.\.(/|$)')`.
+3. In `tests/refutation-replay-isolation.test.sh`, after `gb 2 'git log -pRO/abs/x -SObject'`, add:
+   `# rfp-u7e: a .. path segment right after a colon leaves the clone too; a range's .. and a colon value stay allowed`,
+   `gb 2 'git log -L1,2:../x'`, `gb 2 'git log -L:main:../x'`, `gb 2 'git show HEAD:../x'`,
+   `gb 0 'git diff HEAD~1..HEAD'`, `gb 0 'git log ..HEAD'`, `gb 0 'git log -L:main:src/a.sh'` and
+   `gb 0 'git show HEAD:src/a.sh'`, one per line.
+
+rfp-u7e criteria (run on the scratch clone):
+- `bash -c 'out=$(bash tests/refutation-replay-isolation.test.sh 2>&1); rc=$?; echo "fails=$(printf "%s\n" "$out" | grep -c "^FAIL") g2=$(printf "%s\n" "$out" | grep -c "^OK   (g2) ") rc=$rc"'`
+  prints `fails=0 g2=1 rc=0`. Mutations: the old `UP` makes (g2) red on the three `gb 2` lines; `UP = \.\.` makes
+  (g) and (g2) red (`HEAD~1..HEAD` refused); `(^|[/:])\.\.` without the trailing group makes (g2) red
+  (`git log ..HEAD rc=2`).
+- `bash -c 'r=; for c in "git log -L1,2:../x" "git show HEAD:../x" "git log -L1,2:src/IO.c" "git log -SObject" "git log -G[O]" "git log --grep=FOO" "git diff HEAD~1..HEAD"; do python3 -c "import json,sys;print(json.dumps({\"tool_name\":\"Bash\",\"tool_input\":{\"command\":sys.argv[1]}}))" "$c" | python3 -B eval/refutation-replay/guard.py . /dev/null 2>/dev/null; r="$r$?"; done; echo "guard=$r"'`
+  prints `guard=2200000` (b9bcdf92: `guard=0000000`).
+- `bash -c 'grep -cF -- "-L1,2:../x" eval/refutation-replay/guard.py'` prints `1` (b9bcdf92: `0`).
+- Scope: the `(rfp-u7e): ` commits touch only `guard.py` and the isolation suite. Truth and dirty: as rfp-u7c
+  criterion 6, with the pathspec `eval/refutation-replay/guard.py tests/refutation-replay-isolation.test.sh`
+  plus the three ground-truth files, printing `truth-diff=0 dirty=0`.
+
+No Step 7 item needs an ADR: none is hard to reverse, and each follows a rule already written down.
+
 ## Out of scope (named follow-ups)
 
 1. The orphan check, as a `review-precheck.sh` fix-round extension.
@@ -1269,6 +1473,26 @@ rfp-u6a touches `agents/`, so it bumps the plugin version and adds a CHANGELOG e
    - (b) Fold it into rfp-u6b before dispatch: catch any exception in `read_min_real` as a `LabelError` (exit 2,
      one line) and refuse a `bool`, with a server-suite case. It adds `label.py` and
      `tests/refutation-label-server.py` (9 files in rfp-u6b, still under 10).
+   *Resolved 2026-10-29: in scope, per the coordinator's Step 7 dispatch (item 8), as unit rfp-u7d. Not folded
+   into rfp-u6b, which has passed.*
+9. **REFUTED defects on the resume after an UNCERTAIN-only INSUFFICIENT-CONTEXT** (Step 7 item 4). rfp-u7b
+   puts them in the INSUFFICIENT-CONTEXT verdict's `refutation` advisory section. On the resume the reviewer
+   FAILs what it now reproduces and makes the rest `NOTE[code]: unconfirmed:` lines. If that resume ends in a
+   PASS, the earlier REFUTED defects appear nowhere on the marker, so the milestone auditor's refutation sample
+   never sees them and `prevented` does not count that PASS. *(from CHK86)*
+   - *(Recommended)* (a) Leave the resume text as it is. That matches the mixed FAIL, whose REFUTED defects are
+     also only in the unpersisted advisory section, and a PASS reached on the resume is decided by the reviewer's
+     own reproduction, not by the refutation.
+   - (b) On a resume that ends in PASS, also write one `NOTE[code]: refuted:` line per earlier REFUTED defect,
+     so the sample covers them. That is one more sentence in rfp-u7b (before its dispatch) or a later
+     version-stamped unit.
+10. **The codex and cursor ports' Verdict bullets** (Step 7 item 5). They also say "and nothing more" and
+    "nothing else", while their inlined roast-work section is "appended AFTER the verdict line" and their
+    protocol files require the STATUS line. *(from CHK87)*
+    - *(Recommended)* (a) Leave them, as Step 6 did: the item names `agents/reviewer.md` only, and the ports are
+      hand-synced copies whose parity tests spec-master did not run for this change.
+    - (b) Add the same "bounds the verdict block itself" sentence to both ports in rfp-u7b (two more files in
+      the one serial unit; its scope criterion and Do NOT touch list change).
 
 ## Self-check
 - CHK1: Is the verdict defined for every combination of standing, CONFIRMED and UNCERTAIN defects, and for
@@ -1499,6 +1723,50 @@ rfp-u2f (2026-10-28):
   recorded class vacuous or host that touched `tests/validate.sh` (CHK71's list)? — PASS. The mutation breaks
   `tests/refutation-sample.test.sh`, which `tests/validate.sh:869-874` runs with `fail=1` on failure, and
   rfp-u6a does not touch `tests/validate.sh`.
+- CHK85 (Step 7): Does each of the nine Step 7 items name a unit, or a stated reason it was dropped? — PASS
+  (Step 7 table: 9a dropped with git 2.43 evidence; the rfp-u6b B12 note recorded as not an item)
+- CHK86: Is it defined where REFUTED defects go on the resume after an UNCERTAIN-only INSUFFICIENT-CONTEXT? —
+  FAIL (missing) — converted to Open Question 9
+- CHK87: Do the ports' Verdict bullets agree with rfp-u7b's "bounds the verdict block itself" sentence? — FAIL
+  (conflicting) — converted to Open Question 10
+- CHK88: Does any file, mirror or stamped file included, appear in two Step 7 units? — PASS (Step 7 "Concurrency
+  and order" lists five disjoint sets; each scope criterion pins one; only rfp-u7b names `plugin.json`,
+  `package.json`, `CHANGELOG.md` or `.claude/`)
+- CHK89: Do rfp-u7a's **refutation outcome** text and rfp-u7b's Refutation pass sentence agree about
+  INSUFFICIENT-CONTEXT, and is their order stated? — PASS (rfp-u7a's source check reads rfp-u7b's phrase; the
+  units table puts rfp-u7a after rfp-u7b's PASS)
+- CHK90: Does rfp-u7a keep the phrases that rfp-u5 criterion 4 and rfp-u6c criteria 1 to 5 pin? — PASS (all
+  printed their stated lines on the scratch clone; Clarifications record the choice not to move the qualifier
+  to right after "REFUTED:")
+- CHK91: Can any Step 7 criterion pass with no unit commit, run `run.sh` without `--dry-run`, run `label.py
+  serve` on the real labels or corpus, or need `rm -rf`? — PASS (scope criteria print `no-commits`, exit 1;
+  rfp-u7c criterion 3 only reads `report.jsonl`; rfp-u7d's variants run under `mktemp` and the suite's own cleanup)
+- CHK92: Is every Step 7 stdout spec one line? — PASS (rfp-u7c criterion 3 joins its two lines with
+  `paste -sd " " -`; no "A then B" spec)
+- CHK93: Can a unit's dirty-tree criterion fail because of a sibling unit's work in progress in the same tree? —
+  FAIL (conflicting): the first draft of the rfp-u7c to rfp-u7e criteria used the whole `eval/refutation-replay`
+  directory as the pathspec — revised in place (each names its own files plus the ground truth)
+- CHK94: Is rfp-u7b's `validate.sh` precondition stated for parallel building? — PASS (rfp-u7b criterion 7)
+- CHK95: Does criterion rfp-u7b/7 (`validate.sh`) still fail under its own `mutation:` line, given the units with
+  recorded class vacuous or host that touched `agents/reviewer.md` or `.claude-plugin/plugin.json` (gh307,
+  gh-303, gh313, gh339, gh348-4)? — PASS (the mutation breaks `tests/refutation-sample.test.sh`, which
+  `tests/validate.sh:869-874` runs with `fail=1`)
+- CHK96: Does criterion rfp-u7b/5 (`version-stamp-check.sh`) still fail under its own `mutation:` line, given
+  ci-fetch-depth-cleanup and item17-4-name-p3-offenders (class host) touched that script? — PASS (spec-master's
+  scratch fix-round commit with no bump printed `bad=1 touched=yes`)
+- CHK97: Does rfp-u7a's `context-glossary-links` criterion still fail under its mutation, given
+  item03-2-link-integrity-guard's recorded class vacuous? — PASS (removing the **FAIL ground** entry leaves
+  `[[FAIL ground]]` dangling: `2 context-glossary-links check(s) FAILED.`)
+- CHK98: Does criterion rfp-u7b/1 (prose pins on the reviewer mirror) still fail under its mutation, given
+  gh307's recorded class vacuous on `.claude/agents/reviewer.md`? — PASS (skipping `--update` printed
+  `fails=3 rc=1`)
+
+Prose-mode `ubiquitous-language`, Step 7 (advisory):
+- Lens 1: "FAIL ground" was used in `CONTEXT.md:1103` and `agents/reviewer.md` for one meaning, a reason a FAIL
+  rests on; rfp-u7a defines it so. "Sample" stays distinct from the plan's "replay corpus".
+- Lens 2: no new synonym. "Bad input" and "parsing step" are local to `score.py`; "verdict block" names the
+  verdict line plus its FAIL list and is used only inside the reviewer's Verdict bullet.
+- Lens 3: **FAIL ground** and **refutation sample** are the load-bearing new entries, and rfp-u7a adds both.
 
 Prose-mode `ubiquitous-language`, rfp-u2f (advisory):
 - Lens 1: no `CONTEXT.md` term is used with another meaning. "Capped" is the CLI's turn-cap stop, not the
@@ -1553,3 +1821,7 @@ neither adds a glossary term. Prose-mode `ubiquitous-language` on Step 6 (adviso
 used for both the reviewer (`CONTEXT.md:57`) and a refutation-pass synonym, resolved by rfp-u6c; lens 2, no
 new synonym ("bad input" and "pointer rule" are tool-local); lens 3, **mechanical ground** is the one new
 load-bearing term, and rfp-u6c adds it.
+
+Step 7: rfp-u7a is the scribe's unit (its contract comes with the next spec-master spawn); it edits only
+`CONTEXT.md`. rfp-u7b's CHANGELOG entry is in its contract. rfp-u7c, rfp-u7d and rfp-u7e touch no stamped
+path, so they have no CHANGELOG entry, and none adds a glossary term.
