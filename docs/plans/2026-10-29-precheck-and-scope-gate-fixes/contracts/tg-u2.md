@@ -178,7 +178,8 @@ us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/c
 ## Acceptance criteria
 1. run: `bash -c 'out=$(bash tests/writer-scope-gate.test.sh 2>&1); rc=$?; echo "fails=$(printf "%s\n" "$out" | grep -c "^FAIL") ac=$(printf "%s\n" "$out" | grep -c "^OK   (ac) ") rc=$rc"'`
    exit: 0
-   stdout: `fails=0 ac=6 rc=0`
+   stdout: `fails=0 ac=11 rc=0`
+   amended 2026-10-29 (cos-u1): the expected count was `ac=6` when this contract was written; `contracts/tg-u2-fix1.md` added five (ac) cases, so the suite now prints `ac=11`, the same value as tg-u2-fix1.md criterion 1. The counts in the mutation line below are the original ones, against the six cases of this contract.
    mutation: in a scratch clone, each alone (spec-master ran all five). With no edit 3 (the gate at 080b49da) it prints `fails=5 ac=1 rc=1`. Deleting the bare-bullet `awk` line pair makes cases 1 and 2 red: `fails=2 ac=4 rc=1`. Dropping `; us_exclusions "$c" >> "$W/excl"` from the own-contract branch makes case 5 red: `fails=1 ac=5 rc=1`. Replacing the `awk -F/ -v u="$unit.md" '$NF == u'` filter with nothing, so the first cited contract is always read, makes case 6 red. Listing every path-like word of a bullet instead of the first makes case 2 red. Each of the last two prints `fails=1 ac=5 rc=1`.
 2. run: `bash -c 'bash tests/writer-scope-gate.test.sh 2>&1 | grep -cE "^OK   \(ac\) (bare bullets: an unlisted|prose: a file the contract does not list|the contract.s Do NOT touch|another unit.s cited contract)"'`
    exit: 0
@@ -196,10 +197,11 @@ us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/c
    exit: 0
    stdout: `out=0 dot-claude=2`
    mutation: committing an edit to `hooks/scripts/lib/unit-scope.sh` under a `(tg-u2): ` subject prints `out=1`. Skipping edit 6 prints `dot-claude=0`. The two `.claude/` paths are the gate mirror and the persona-selection config (amended: the bin mirror is tg-u1's). The command does not name the config.
-6. run: `bash -c 'b=$(git log --format=%H --grep="(tg-u2): " | tail -1); [ -n "$b" ] || { echo no-commits; exit 1; }; bash hooks/scripts/version-stamp-check.sh "$b^..HEAD" | cut -d" " -f1-4'`
+6. run: `bash -c 'cs=$(git log --format="%H %s" | grep -E "^[0-9a-f]+ [a-z]+\(tg-u2\): " | cut -d" " -f1); [ -n "$cs" ] || { echo no-commits; exit 1; }; for c in $cs; do bash hooks/scripts/version-stamp-check.sh "$c^..$c" | cut -d" " -f1-4; done | sort -u'`
    exit: 0
    stdout: `version-stamp-check: ok touched: no`
-   mutation: editing `agents/reviewer.md` in a `(tg-u2): ` commit prints `touched: yes` (with `violation`).
+   amended 2026-10-29 (cos-u1): the original command checked `<first tg-u2 commit>^..HEAD`, so any later commit that touches `agents/*.md` (a different unit's) turned it red; it now checks each `(tg-u2): ` commit against its own parent, as tg-u2-fix1.md criterion 7 does.
+   mutation: editing `agents/reviewer.md` in a `(tg-u2): ` commit adds a `version-stamp-check: violation touched: yes` line (or `ok touched: yes` with a bump), so the output is no longer the one line above.
 7. run: `bash -c 'bash tests/validate.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms)
    exit: 0
    stdout: `0`
