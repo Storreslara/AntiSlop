@@ -495,6 +495,8 @@ async function b12() {
     await noteWrite(st, ids[1], p.x, p.y);
   });
   await under(ids[2]);
+  await step(st, 'plain click, same point, after the second write', async () => { await st.page.mouse.click(p.x, p.y); });
+  unknownNow(ids[2], 'a stationary re-click after the second write');
   await step(st, 'detail-2 click after the pointer moved', async () => {
     await st.page.mouse.move(2, 2);
     await st.page.mouse.move(p.x, p.y);
@@ -507,6 +509,60 @@ async function b12() {
     await st.page.mouse.click(p.x, p.y);
     st.model.set(ids[2], 'real');
     await noteWrite(st, ids[2], p.x, p.y);
+  });
+  await under(ids[3]);
+  await step(st, 'plain click, same point, after the third write', async () => { await st.page.mouse.click(p.x, p.y); });
+  unknownNow(ids[3], 'a stationary re-click after the third write');
+  await st.page.close();
+}
+
+// B14 (rfp-u6b): the pointer rule counts from the click. A vertical-only move made while the write is in flight
+// re-arms labelling (B sits above A, so a change in A's card cannot shift B), and after a write a wheel turn
+// alone, with no mousemove off the click point, re-arms it. Each click here is a bare down and up: mouse.click()
+// would first send a mousemove, which re-arms labelling by itself.
+async function b14() {
+  extWrite(new Map(Array.from(readLabels().keys(), (i) => [i, 'unknown'])));
+  const st = await newPage(url, { width: 1280, height: 800 });
+  await st.page.route('**/label', async (route) => { await new Promise((res) => setTimeout(res, 400)); await route.continue(); });
+  const ids = await shown(st);
+  const A = ids[1], B = ids[0];
+  await st.page.evaluate((i) => window.__p.bring(i, 0.7), A);
+  await settle(st);
+  const a = await st.page.evaluate((i) => window.__p.btn(i, 'real'), A);
+  const b = await st.page.evaluate((i) => window.__p.btn(i, 'real'), B);
+  if (!a || !a.valid || !b || !b.valid || a.x !== b.x || !(b.y < a.y)) throw new Error('fixture: no vertical pair ' + JSON.stringify([a, b]));
+  await st.page.mouse.move(2, 2);
+  await step(st, 'write A, then move straight up to B while the write is in flight', async () => {
+    await st.page.mouse.click(a.x, a.y);
+    st.model.set(A, 'real');
+    await noteWrite(st, A, a.x, a.y);
+    if ((await stateOf(st)).pending !== '1') throw new Error('fixture: the write was not in flight during the move');
+    await st.page.mouse.move(b.x, b.y);
+  });
+  const hb = await st.page.evaluate(([x, y]) => window.__p.hitLbl(x, y), [b.x, b.y]);
+  if (!hb || hb.id !== B) throw new Error('fixture: B is not under the pointer after the write, ' + JSON.stringify(hb));
+  await step(st, 'click B without moving again', async () => {
+    await st.page.mouse.down();
+    await st.page.mouse.up();
+    st.model.set(B, 'real');
+  });
+  const pt = await st.page.evaluate(() => {
+    const d = window.__p.ev.filter((e) => e[0] === 'mousedown').pop();
+    return { x: d[1], y: d[2], n: window.__p.ev.length };
+  });
+  let h = null;
+  for (let i = 0; i < 80 && (!h || h.id === A || h.id === B); i++) {
+    await st.page.mouse.wheel(0, 40);
+    await settle(st);
+    h = await st.page.evaluate(([x, y]) => window.__p.hitLbl(x, y), [b.x, b.y]);
+  }
+  if (!h || h.id === A || h.id === B) throw new Error('fixture: the wheel brought no unlabelled card under the pointer');
+  const off = await st.page.evaluate(([n, x, y]) => window.__p.ev.slice(n).filter((e) => e[0] === 'mousemove' && (e[1] !== x || e[2] !== y)).length, [pt.n, pt.x, pt.y]);
+  if (off !== 0) throw new Error('fixture: the pointer moved off the click point, so the wheel is not what re-armed labelling');
+  await step(st, 'click the card the wheel brought under the still pointer', async () => {
+    await st.page.mouse.down();
+    await st.page.mouse.up();
+    st.model.set(h.id, h.value);
   });
   await st.page.close();
 }
@@ -564,6 +620,7 @@ const CASES = [['B01 cards render with evidence', b01], ['B02 mouse clicks write
   ['B09 seeded random input seed ' + SEED + ' steps ' + STEPS, b09], ['B10 empty corpus page is safe', b10],
   ['B12 a double-click or a re-click under a stationary pointer writes only the aimed card', b12],
   ['B13 a label button never holds focus, with or without the page disabling it', b13],
+  ['B14 a move during an in-flight write, or a wheel turn alone, re-arms labelling', b14],
   ['B11 no page or console errors', b11]];
 
 (async () => {

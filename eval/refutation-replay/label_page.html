@@ -65,7 +65,7 @@ pre.diff{max-height:320px;overflow:auto;background:#f6f8fa;border:1px solid var(
 var D = JSON.parse(document.getElementById('data').textContent);
 var rows = D.rows, labels = D.labels, version = D.version, token = D.token;
 var target = null, filter = 'all', query = '', collapsed = {};
-var lw = null, clickPt = null; // lw: the last written card and the pointer point of that click; moved turns true once the pointer or wheel has acted since
+var lw = null, clickPt = null; // clickPt: the point of the label click in flight; lw: the last written card and that click's point; moved turns true once the pointer leaves the point or the wheel turns, counted from the click, so a move made while the write is in flight counts
 var byId = {}, cardEl = {}, groupEl = {};
 var header = document.getElementById('top');
 
@@ -159,7 +159,7 @@ function postLabel(id, value) {
       if (res.status === 200) {
         version = res.body.version;
         labels[id] = value;
-        lw = clickPt === null ? null : { id: id, x: clickPt.x, y: clickPt.y, moved: false };
+        lw = clickPt === null ? null : { id: id, x: clickPt.x, y: clickPt.y, moved: clickPt.moved }; // mut:inflight
         afterLabel(id);
         say('');
       } else if (res.status === 409) {
@@ -211,7 +211,7 @@ function buildCard(r) {
       if (!passes(r.id) || document.body.dataset.pending === '1') return;
       if (lw !== null && lw.id !== r.id && !lw.moved) return; // mut:pointer
       e.currentTarget.blur(); // mut:blur
-      clickPt = { x: e.clientX, y: e.clientY };
+      clickPt = { x: e.clientX, y: e.clientY, moved: false };
       setTarget(r.id);
       postLabel(r.id, v);
     });
@@ -272,7 +272,9 @@ function move(d) {
 }
 
 function pointerActed(e) {
-  if (lw !== null && (e.type === 'wheel' || e.clientX !== lw.x || e.clientY !== lw.y)) lw.moved = true;
+  [lw, clickPt].forEach(function (p) {
+    if (p !== null && (e.type === 'wheel' || e.clientX !== p.x || e.clientY !== p.y)) p.moved = true;
+  });
 }
 document.addEventListener('mousemove', pointerActed, true);
 document.addEventListener('wheel', pointerActed, { capture: true, passive: true });

@@ -98,6 +98,18 @@ else
   bad "(m) rc5=$rc5 $o5"
 fi
 
+# (n) rfp-u6b: a row whose claim matches two defects of its block fails closed too: exit 1, nothing written
+mk3="$tmp/markers3"; mkdir -p "$mk3"; cp "$mk/u9.pass" "$mk3/"
+printf 'FAIL u9 2026-01-03T00:00:00Z\ntier: haiku\n- src/a.sh:2 x is unquoted, so a space splits it\n- src/a.sh:1 no guard on empty input\n- src/a.sh:1 no guard on empty input, and none on a blank one\n\n' > "$mk3/u9.fail"
+cp "$c" "$r3/two.jsonl"; h5="$(md5sum < "$r3/two.jsonl")"
+o6="$(python3 "$d/build-corpus.py" --repo "$repo" --markers "$mk3" --out "$r3/two.jsonl" --refresh-claims)"; rc6=$?
+if [ "$rc6" = 1 ] && printf '%s' "$o6" | grep -q '^corpus: refreshed rows=2 longer=0 errors=1$' \
+   && printf '%s' "$o6" | grep -q ': 2 matching defects in its FAIL block$' && [ "$(md5sum < "$r3/two.jsonl")" = "$h5" ]; then
+  ok "(n) --refresh-claims refuses a row that matches two defects and writes nothing"
+else
+  bad "(n) rc6=$rc6 $o6"
+fi
+
 # scorer fixtures: N real rows, M of them REFUTED with an artifact
 mkrep() { # <dir> <real> <misses> <turns> <unanswered>
   local dir="$1" i; mkdir -p "$dir"; : > "$dir/report.jsonl"; printf '# id\tlabel\n' > "$dir/labels.tsv"
@@ -120,6 +132,37 @@ mkrep "$tmp/s5" 30 0 9 7; o="$(sc "$tmp/s5")"; rc=$?
 [ "$rc" = 1 ] && printf '%s' "$o" | grep -q 'unanswered=7' && ok "(h) gate fail above 20% unanswered" || bad "(h) rc=$rc $o"
 mkdir -p "$tmp/s6"; o="$(python3 "$d/score.py" "$tmp/s6/report.jsonl" --gate)"; rc=$?
 [ "$rc" = 2 ] && printf '%s' "$o" | grep -q '^replay-gate: insufficient real=0 ' && ok "(i) empty report is insufficient" || bad "(i) rc=$rc $o"
+
+# (o) rfp-u6b: a report or labels file that cannot be read or parsed exits 2 with one stderr line and no stdout,
+# with or without --gate, never a traceback
+bi="$tmp/bi"; mkdir -p "$bi/dir"; printf '# id\tlabel\nr1\treal\n' > "$bi/labels.tsv"
+printf '{"id": "r1", "answer": "CONFIRMED"\n' > "$bi/trunc.jsonl"
+printf '[1, 2]\n' > "$bi/list.jsonl"
+printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": "abc"}\n' > "$bi/turns.jsonl"
+printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": 5}\n' > "$bi/ok.jsonl"
+printf '{"id": "r1", "answer": "CONFIRMED", "num_turns": [5]}\n' > "$bi/tlist.jsonl"
+obad=""
+sb() { # <label> <score.py args>...
+  local lab="$1" out err rc; shift
+  out="$(python3 "$d/score.py" "$@" 2>"$bi/err")"; rc=$?; err="$(cat "$bi/err")"
+  if [ "$rc" != 2 ] || [ -n "$out" ] || [ "$(printf '%s\n' "$err" | grep -c .)" != 1 ] \
+     || ! printf '%s' "$err" | grep -q '^score.py: bad input: '; then obad="$obad [$lab rc=$rc out=${out:0:60} err=${err:0:80}]"; fi
+}
+sb dir "$bi/dir"
+sb dir-gate "$bi/dir" --gate
+sb truncated "$bi/trunc.jsonl" --gate
+sb not-object "$bi/list.jsonl"
+sb turns "$bi/turns.jsonl" --gate
+sb turns-list "$bi/tlist.jsonl"
+sb labels-dir "$bi/ok.jsonl" --labels "$bi/dir" --gate
+sb labels-no-file "$bi/ok.jsonl" --gate --labels
+[ -z "$obad" ] && ok "(o) unreadable or malformed input exits 2 with one stderr line" || bad "(o)$obad"
+# (p) rfp-u6b: capped counts the scored ids, not every row: a foreign capped row neither counts nor fails the gate
+mkrep "$tmp/s7" 30 0 9 0
+printf '{"id": "x1", "answer": "NONE", "artifact": "", "num_turns": 9, "cost_usd": 0.1, "subtype": "error_max_turns", "is_error": true}\n' >> "$tmp/s7/report.jsonl"
+o="$(sc "$tmp/s7")"; rc=$?
+[ "$rc" = 0 ] && printf '%s' "$o" | grep -q '^replay-gate: pass real=30 .* foreign=1 capped=0$' \
+  && ok "(p) a capped row with an unlabelled id is foreign, not capped" || bad "(p) rc=$rc $o"
 
 # (j) run.sh --dry-run: one line per group, sonnet, 10 turns, read-only tools, no claude run
 dr="$(bash "$d/run.sh" --dry-run --corpus "$c" --repo "$repo")"; rc=$?

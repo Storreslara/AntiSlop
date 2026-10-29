@@ -15,6 +15,9 @@ defect. Prints one line:
 capped counts the scored ids whose run ended `error_max_turns` (the CLI's --max-turns cap). A row with no
 `subtype` (a report written before rfp-u2f) is not counted.
 With --gate: exit 0 on pass, 1 on fail, 2 on insufficient.
+A report or labels file that cannot be read or parsed (a directory, a line that is not a JSON object, a
+non-numeric num_turns or cost_usd, --labels with no file) exits 2, with or without --gate, printing nothing
+on stdout and one line on stderr: `score.py: bad input: <reason>`.
 insufficient = fewer than MIN_REAL distinct real ids, or missing > 0.
 pass = not insufficient, refuted-real <= MAX_MISSES, unanswered <= 20% of the scored ids,
 max-turns <= MAX_TURNS, dup-conflict = 0 and capped = 0. Anything else is fail. Without --gate it always exits 0.
@@ -25,22 +28,50 @@ MIN_REAL, MAX_MISSES, MAX_TURNS, MAX_UNANSWERED = 30, 1, 10, 0.20
 
 
 def main(argv):
+    try:
+        return score(argv)
+    except (OSError, ValueError, TypeError) as e:
+        print('score.py: bad input: %s' % (' '.join(str(e).split()) or type(e).__name__), file=sys.stderr)
+        return 2
+
+
+def read_rows(report):
+    rows = []
+    if not os.path.exists(report):
+        return rows
+    with open(report, encoding='utf-8') as f:
+        for n, l in enumerate(f, 1):
+            if not l.strip():
+                continue
+            try:
+                r = json.loads(l)
+            except ValueError as e:
+                raise ValueError('%s line %d: %s' % (report, n, e))
+            if not isinstance(r, dict):
+                raise ValueError('%s line %d: not a JSON object' % (report, n))
+            rows.append(r)
+    return rows
+
+
+def score(argv):
     gate = '--gate' in argv
     args = [x for x in argv if x != '--gate']
     labels_file = None
     if '--labels' in args:
         i = args.index('--labels')
+        if i + 1 >= len(args):
+            raise ValueError('--labels needs a file')
         labels_file = args[i + 1]
         del args[i:i + 2]
     report = args[0] if args else os.path.join(os.path.dirname(os.path.abspath(__file__)), 'report.jsonl')
     labels_file = labels_file or os.path.join(os.path.dirname(os.path.abspath(report)), 'labels.tsv')
     labels = {}
     if os.path.exists(labels_file):
-        for l in open(labels_file):
+        for l in open(labels_file, encoding='utf-8'):
             if l.strip() and not l.startswith('#'):
                 k, _, v = l.rstrip('\n').partition('\t')
                 labels[k] = v
-    rows = [json.loads(l) for l in open(report) if l.strip()] if os.path.exists(report) else []
+    rows = read_rows(report)
     first, conflict, foreign, turns = {}, set(), set(), []
     for r in rows:
         rid = str(r.get('id'))

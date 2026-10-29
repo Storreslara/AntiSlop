@@ -6,16 +6,19 @@ Reads one Claude Code hook payload on stdin and allows only:
 - Read, Grep and Glob on paths inside <clone-root>, after resolving symlinks;
 - Bash as `git show`, `git diff` or `git log`, with no shell operator, no argument (or `--opt=` value)
   that starts with `/` or `~` or has a `..` path segment, and none of the options that read or write
-  other files (`--output`, `-O`, `--no-index`, `--ext-diff`, `--textconv`, abbreviations included).
+  other files (`--output`, `--no-index`, `--ext-diff`, `--textconv`, abbreviations included, and `-O`,
+  also inside a bundle of short options such as `-RO<file>`). In a bundle, the value-taking `-S`, `-G`
+  and `-L` take the rest of the token as their value, so a capital O after them (`-SObject`) is allowed.
 Anything else exits 2 with the reason on stderr, which blocks the call. `git -c` and git aliases cannot
 pass: the second word must be the subcommand itself, and git never lets an alias shadow a builtin.
-Every call appends one line to <log-file>, so run.sh can tell that the hook is wired.
+Every call appends one line to <log-file>, so run.sh can tell that the hook is wired. Any unexpected
+exception also exits 2 (fail closed): exit 1 is a non-blocking hook error that would let the call go ahead.
 """
 import json, os, re, shlex, sys
 
 SUBCOMMANDS = ('show', 'diff', 'log')
 META = re.compile(r'[;|&$`<>(){}\\\n\r]')
-BAD_OPT = re.compile(r'^(--ou|--no-ind|--ext|--textc|-[^-]*O)')
+BAD_OPT = re.compile(r'^(--ou|--no-ind|--ext|--textc|-[^-SGL]*O)')
 UP = re.compile(r'(^|/)\.\.(/|$)')
 HINT = ('Allowed: Read, Grep and Glob inside the replay clone; Bash only as git show, git diff or git log '
         'with repo-relative arguments and no shell operators.')
