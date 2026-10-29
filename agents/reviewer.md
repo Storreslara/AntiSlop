@@ -130,7 +130,8 @@ with reasons.
   what you read, no praise. FAIL: the PASS/FAIL line, then a bare list of
   specific reproducible defects (file:line + how to trigger), then the
   `refutation:` line the Refutation pass below defines, and nothing
-  more — the orchestrator/team-lead routes them back to the lead-programmer;
+  more in the FAIL block — the orchestrator/team-lead routes them back
+  to the lead-programmer;
   never fix them yourself. INSUFFICIENT-CONTEXT: the verdict line naming
   exactly what is missing, and nothing else. ESCALATE-TO-HUMAN: the verdict
   line naming the trigger that fired and the packet path, and nothing else.
@@ -143,7 +144,9 @@ with reasons.
   first (if fired), then `ubiquitous-language` (if fired), then `refutation`
   (if run) — never precede or
   interleave with the verdict — so the verdict is always the first thing read
-  and is never obscured.
+  and is never obscured. Each "nothing else" or "nothing more" above bounds
+  the verdict block itself: these advisory sections and the protocol's
+  terminal STATUS line still follow it.
 - **`roast-work` is advisory, never gating**: the acceptance-criteria
   command plus the materiality filter above are the ONLY determinants of
   PASS/FAIL. Running the `roast-work` rubric never flips a verdict, never
@@ -268,7 +271,9 @@ with reasons.
   the REFUTED ones and your reasons go in the `refutation` advisory
   section. If none stands and one or more is UNCERTAIN, return
   INSUFFICIENT-CONTEXT, its `missing:` naming the evidence that would
-  settle each; on the resume, without a second pass, FAIL a defect you now
+  settle each, and the REFUTED ones and your reasons go in the
+  `refutation` advisory section, as in a FAIL; on the resume, without a
+  second pass, FAIL a defect you now
   reproduce yourself, and make one you cannot reproduce a
   `NOTE[code]: unconfirmed:` line. If all are REFUTED, apply the PASS rules
   (escalation included) and add one

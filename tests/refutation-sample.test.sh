@@ -77,12 +77,12 @@ p="$(run "$PREVENTED" | tr -d ' ')"
 f="$(run "$SURVIVED" | tr -d ' ')"
 [ "$f" = 2 ] && ok "(c) survived=2" || bad "(c) survived=[$f]"
 
-# (d) the persona source and its mirror ship exactly these three commands and the summary line
+# (d) the persona source and its mirror ship exactly these three commands and the summary line, each whole on
+# one line (rfp-u7b: the file is not flattened, so a command split across two lines is missing)
 for file in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
-  flat="$(tr -s ' \n' ' ' < "$root/$file")"
   miss=""
   for c in "$LIST" "$PREVENTED" "$SURVIVED" 'refutation-sample: sampled=<s> held=<h> prevented=<p> eligible=<p+f>'; do
-    printf '%s' "$flat" | grep -qF -- "$c" || miss="$miss [$c]"
+    grep -qF -- "$c" "$root/$file" || miss="$miss [$c]"
   done
   [ -z "$miss" ] && ok "(d) $file ships the commands" || bad "(d) $file lacks:$miss"
 done
