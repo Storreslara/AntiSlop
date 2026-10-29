@@ -10,6 +10,10 @@ Reads one Claude Code hook payload on stdin and allows only:
   other files (`--output`, `--no-index`, `--ext-diff`, `--textconv`, abbreviations included, and `-O`,
   also inside a bundle of short options such as `-RO<file>`). In a bundle, the value-taking `-S`, `-G`
   and `-L` take the rest of the token as their value, so a capital O after them (`-SObject`) is allowed.
+A `..` after a `:` is refused wherever it ends the token or comes before a `/`, so a value-only argument such as
+`git log --grep=a:..` or `--format=%h:..` is refused too: an over-refusal kept on purpose, never a leak.
+The same leaves() check runs on the Glob `pattern` and `glob` values and the Grep `glob` value, so a glob that
+starts with `/` or `~`, or holds a `..` segment (at the start, or after a `/` or a `:`), is refused as well.
 Anything else exits 2 with the reason on stderr, which blocks the call. `git -c` and git aliases cannot
 pass: the second word must be the subcommand itself, and git never lets an alias shadow a builtin.
 Every call appends one line to <log-file>, so run.sh can tell that the hook is wired. Any unexpected

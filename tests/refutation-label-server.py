@@ -506,7 +506,8 @@ def s13():
     # is the same one-line refusal, never a traceback
     for name, text in (('a syntax error', 'MIN_REAL = (\n'), ('no MIN_REAL', 'MAX_MISSES = 1\n'),
                        ('MIN_REAL = True', 'MIN_REAL = True\n'), ("MIN_REAL = '30'", "MIN_REAL = '30'\n"),
-                       ('an import-time error', 'MIN_REAL = 30\nraise RuntimeError(\'boom\')\n')):
+                       ('an import-time error', 'MIN_REAL = 30\nraise RuntimeError(\'boom\')\n'),
+                       ('MIN_REAL = 0', 'MIN_REAL = 0\n'), ('MIN_REAL = -5', 'MIN_REAL = -5\n')):
         fx = Fx()
         d = mktmp()
         shutil.copy(LABEL_PY, d)
@@ -524,6 +525,10 @@ def s13():
               'score.py with %s: exit %d, %r' % (name, p.returncode, out[:160]))
         unchanged(fx, before, 'score.py with ' + name)
         check(not os.path.exists(fx.log), 'score.py with %s: log created' % name)
+        if name == 'a syntax error':
+            check('line 1' in out, 'score.py with a syntax error: the refusal does not name the line: %r' % out[:160])
+        if name == 'an import-time error':
+            check('RuntimeError: boom' in out, 'score.py with an import-time error: no message: %r' % out[:160])
 
 
 def listening(port):

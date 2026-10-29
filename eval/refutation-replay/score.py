@@ -18,10 +18,11 @@ With --gate: exit 0 on pass, 1 on fail, 2 on insufficient.
 A report or labels file that cannot be read or parsed (a directory, a line that is not a JSON object, a
 non-numeric num_turns or cost_usd, --labels with no file) exits 2, with or without --gate, printing nothing
 on stdout and one line on stderr: `score.py: bad input: <reason>`. Only reading the arguments and the two
-files maps an error to bad input; an error after that (a code bug, a closed stdout) ends in a traceback.
+files maps an error to bad input. After that, a code bug ends in a traceback with exit 1, and a stdout that
+cannot be written (a closed pipe, a full disk) exits 120, Python's own exit code for a failed final flush.
 insufficient = fewer than MIN_REAL distinct real ids, or missing > 0.
 pass = not insufficient, refuted-real <= MAX_MISSES, unanswered <= 20% of the scored ids,
-max-turns <= MAX_TURNS, dup-conflict = 0 and capped = 0. Anything else is fail. Without --gate it exits 0 unless the input is bad.
+max-turns <= MAX_TURNS, dup-conflict = 0 and capped = 0. Anything else is fail. Without --gate every verdict exits 0.
 """
 import json, os, sys
 
@@ -83,6 +84,11 @@ def load(argv):
 
 
 def score(gate, labels, rows):
+    """Print the replay-gate line; return its --gate exit code, or 0 without --gate.
+
+    rows must come from load(), which converts num_turns and cost_usd of every labelled row in place:
+    score() is not callable on raw report rows.
+    """
     first, conflict, foreign, turns = {}, set(), set(), []
     for r in rows:
         rid = str(r.get('id'))

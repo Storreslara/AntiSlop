@@ -85,9 +85,14 @@ def read_min_real():
     try:
         spec.loader.exec_module(mod)
     except Exception as e:  # a broken score.py is a refusal to start, never a traceback
-        raise LabelError('score.py could not be loaded (%s): the Gate G targets cannot be read' % type(e).__name__)
+        # SystemExit and KeyboardInterrupt are not Exception: a score.py that calls sys.exit() at import ends
+        # label.py with that exit code and prints nothing.
+        first = (str(e).strip().splitlines() or [''])[0]
+        raise LabelError('score.py could not be loaded (%s%s): the Gate G targets cannot be read'
+                         % (type(e).__name__, ': ' + first if first else ''))
     v = getattr(mod, 'MIN_REAL', None)
     if type(v) is not int: raise LabelError('score.py MIN_REAL is not an integer')  # bool is an int subclass, so not isinstance
+    if v < 1: raise LabelError('score.py MIN_REAL is %d, not a positive integer' % v)
     return v
 
 
