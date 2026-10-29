@@ -148,16 +148,28 @@ fi
 tr '[:space:]`()[]{}<>|,;=\047\042' '\n' < "$W/prompt" \
   | sed -E ':a; s/[.,;:!?]+$//; ta; s#^(\./)+##' > "$W/ptok"
 us_section "$W/prompt" "Affected files" > "$W/sec"
+unit="$(sed -n 's/^Unit: //p' "$W/prompt" | head -n1)"; unit_id_valid "$unit" || unit=""
 us_entries "$W/prompt" > "$W/listed"
+# A bullet of the dispatch message's own list may name its path bare (tg-u2): the bullet's first word counts
+# when, without backticks and a trailing `,:;`, it holds a `/` or a `.` and only path characters. A path later
+# in the bullet's prose is never listed. Contract files keep the backtick rule (review-precheck reads them).
+awk '/^[-*][[:space:]]/ { t = $0; sub(/^[-*][[:space:]]+/, "", t); split(t, w, /[[:space:]]+/); p = w[1]; gsub(/`/, "", p); sub(/[,:;]+$/, "", p)
+       if (p ~ /[\/.]/ && p ~ /^[A-Za-z0-9._\/*?-]+$/) print p }' "$W/sec" >> "$W/listed"
 us_exclusions "$W/prompt" > "$W/excl"
-if [ ! -s "$W/listed" ]; then
-  c="$(grep -oE "docs/plans/[A-Za-z0-9._/-]*contracts/[${UNIT_ID_CHARCLASS}]+\.md" "$W/prompt" | head -n1)"
+# The unit's own contract file, when the message cites it, always adds its list and its exclusions (tg-u2): a
+# backticked token in a prose section (`.claude/`) no longer hides it. Another cited contract is read only
+# when nothing is listed, as before, so a contract cited for context never widens the scope.
+cs="$(grep -oE "docs/plans/[A-Za-z0-9._/-]*contracts/[${UNIT_ID_CHARCLASS}]+\.md" "$W/prompt")"
+c=""; [ -z "$unit" ] || c="$(printf '%s\n' "$cs" | awk -F/ -v u="$unit.md" '$NF == u' | head -n1)"
+if [ -n "$c" ] && [ -f "$c" ]; then
+  us_entries "$c" >> "$W/listed"; us_exclusions "$c" >> "$W/excl"
+elif [ ! -s "$W/listed" ]; then
+  c="$(printf '%s\n' "$cs" | head -n1)"
   [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" > "$W/listed"
   [ -n "$c" ] && [ -f "$c" ] && us_exclusions "$c" > "$W/excl"
 fi
 grep -oE 'file: `[^` ]+`' "$W/prompt" | sed 's/^file: `//; s/`$//' >> "$W/listed" || true
 us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/crit" || true
-unit="$(sed -n 's/^Unit: //p' "$W/prompt" | head -n1)"; unit_id_valid "$unit" || unit=""
 : > "$W/failrec"; [ -z "$unit" ] || [ ! -f "$dot/reviewed/$unit.fail" ] || cp "$dot/reviewed/$unit.fail" "$W/failrec"
 kw="$(jq -r '.knowledgeWrites // "scoped"' "$config" 2>/dev/null)"; [ "$kw" = apply ] || kw=scoped
 

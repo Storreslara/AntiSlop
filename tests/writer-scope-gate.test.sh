@@ -250,6 +250,50 @@ GIT_COMMITTER_DATE=2099-01-03T00:00:00Z g commit -q --amend --no-edit --date=209
 run lead-programmer "$T/w1"
 [ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "commit(s) $O" && ok "(ab) re-dated earlier commit named in the block" || bad "(ab) amended rc=$rc $err"
 g reset -q --hard "$B2"; cd "$R" && export CLAUDE_PROJECT_DIR="$R"
+# (ac) tg-u2: a dispatch's `## Affected files` names its files as bare bullets (no backticks), or is prose
+# that points at the unit's own contract and backticks some other token. Both shapes blocked listed files
+# on the refutation-pass units. A file neither list names is still blocked.
+mkdir -p tests docs/plans/p/contracts
+printf 'Unit: u9\n\n## Affected files\n- `src/a.js`\n- `tests/u9.test.sh` (new, mode 755)\n\n## Do NOT touch\n- `README.md`\n' > docs/plans/p/contracts/u9.md
+printf 'Unit: u8\n\n## Affected files\n- `CONTEXT.md`\n' > docs/plans/p/contracts/u8.md
+BARE='Unit: u9
+
+## Affected files
+- src/a.js
+- tests/u9.test.sh (new, mode 755): its test
+- Do not edit CONTEXT.md here
+Nothing else.'
+PROSE='Unit: u9
+
+Objective: implement /home/u/repo/docs/plans/p/contracts/u9.md exactly as written.
+
+## Affected files
+Exactly the files under the contract `## Affected files` heading (nothing outside that list is in scope, including the generated `.claude/` mirrors only as the contract says to regenerate them).'
+OTHER='Unit: u9
+
+Objective: see docs/plans/p/contracts/u8.md for context.
+
+## Affected files
+Exactly the files your contract lists, and the generated `.claude/` mirrors only as it says.'
+printf 'a9\n' > src/a.js; printf 't\n' > tests/u9.test.sh
+mk "$T/x1" "$BARE" "$R/src/a.js" "$R/tests/u9.test.sh"; run lead-programmer "$T/x1"
+[ "$rc" = 0 ] && ok "(ac) bare-bullet Affected files: listed edits allowed" || bad "(ac) bare rc=$rc $err"
+printf 'c9\n' > CONTEXT.md; mk "$T/x2" "$BARE" "$R/src/a.js" "$R/tests/u9.test.sh" "$R/CONTEXT.md"; run lead-programmer "$T/x2"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) bare bullets: an unlisted file, even one a bullet's prose names, is blocked" || bad "(ac) bare unlisted rc=$rc $err"
+git checkout -q -- CONTEXT.md
+mk "$T/x3" "$PROSE" "$R/src/a.js" "$R/tests/u9.test.sh"; run lead-programmer "$T/x3"
+[ "$rc" = 0 ] && ok "(ac) prose Affected files: the unit's own contract is read" || bad "(ac) prose rc=$rc $err"
+printf 'c9\n' > CONTEXT.md; mk "$T/x4" "$PROSE" "$R/src/a.js" "$R/CONTEXT.md"; run lead-programmer "$T/x4"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) prose: a file the contract does not list is blocked" || bad "(ac) prose unlisted rc=$rc $err"
+git checkout -q -- CONTEXT.md
+printf 'r9\n' > README.md; mk "$T/x5" "$PROSE
+- README.md" "$R/src/a.js" "$R/README.md"; run lead-programmer "$T/x5"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: README.md." && ok "(ac) the contract's Do NOT touch still excludes a prompt-listed file" || bad "(ac) exclusion rc=$rc $err"
+git checkout -q -- README.md
+printf 'c9\n' > CONTEXT.md; mk "$T/x6" "$OTHER" "$R/CONTEXT.md"; run lead-programmer "$T/x6"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) another unit's cited contract does not widen the scope" || bad "(ac) other contract rc=$rc $err"
+git checkout -q -- CONTEXT.md src/a.js; rm -rf tests docs/plans/p
+
 # (l) registration (operator step O1): SubagentStop runs stop-gate.sh first, and writer-scope-gate.sh right
 # after it once the operator has registered it; before O1 the gate is inert and nothing else changes.
 r="$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")"
