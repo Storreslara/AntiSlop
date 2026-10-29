@@ -84,6 +84,9 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
   has "$f" '(file:line + how to trigger), then the `refutation:` line the Refutation pass below defines, and nothing more in the FAIL block'
   hasnot "$f" '(file:line + how to trigger) and nothing more'
   has "$f" 'Each "nothing else" or "nothing more" above bounds the verdict block itself: these advisory sections and the'
+  has "$f" 'your final message is ONLY the verdict block, followed by nothing but the advisory sections and the terminal STATUS line this bullet allows after it.'
+  hasnot "$f" 'message is ONLY the verdict. PASS'
+  has "$f" 'The marker carries no REFUTED defect: when the refutation pass led to this verdict, its REFUTED defects and your reasons live only in the returned message'"'"'s `refutation` advisory section.'
   has "$f" 'If none stands and one or more is UNCERTAIN, return INSUFFICIENT-CONTEXT, its `missing:` naming the evidence that would settle each, and the REFUTED ones and your reasons go in the `refutation` advisory section, as in a FAIL;'
 done
 for f in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
