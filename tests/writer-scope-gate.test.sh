@@ -256,6 +256,8 @@ g reset -q --hard "$B2"; cd "$R" && export CLAUDE_PROJECT_DIR="$R"
 mkdir -p tests docs/plans/p/contracts
 printf 'Unit: u9\n\n## Affected files\n- `src/a.js`\n- `tests/u9.test.sh` (new, mode 755)\n\n## Do NOT touch\n- `README.md`\n' > docs/plans/p/contracts/u9.md
 printf 'Unit: u8\n\n## Affected files\n- `CONTEXT.md`\n' > docs/plans/p/contracts/u8.md
+# A contract is read as the baseline commit holds it (tg-u2 fix round 1): commit both before the cases run.
+g add docs/plans/p && g commit -q -m 'tg-u2 contracts'; C0="$(git rev-parse HEAD)"
 BARE='Unit: u9
 
 ## Affected files
@@ -292,7 +294,33 @@ printf 'r9\n' > README.md; mk "$T/x5" "$PROSE
 git checkout -q -- README.md
 printf 'c9\n' > CONTEXT.md; mk "$T/x6" "$OTHER" "$R/CONTEXT.md"; run lead-programmer "$T/x6"
 [ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) another unit's cited contract does not widen the scope" || bad "(ac) other contract rc=$rc $err"
-git checkout -q -- CONTEXT.md src/a.js; rm -rf tests docs/plans/p
+git checkout -q -- CONTEXT.md
+# The writer's own contract edit must not widen its scope: the gate reads the contract at the baseline.
+printf 'a9\n' > src/a.js; printf 'c9\n' > CONTEXT.md; printf 'Unit: u9\n\n## Affected files\n- `src/a.js`\n- `CONTEXT.md`\n\n## Do NOT touch\n- `README.md`\n' > docs/plans/p/contracts/u9.md
+mk "$T/x7" "$PROSE" "$R/src/a.js" "$R/CONTEXT.md" "$R/docs/plans/p/contracts/u9.md"; run lead-programmer "$T/x7"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) a working-tree edit of the cited contract does not widen the scope" || bad "(ac) edited contract rc=$rc $err"
+git checkout -q -- docs/plans/p/contracts/u9.md
+printf 'Unit: u9\n\n## Affected files\n- `src/a.js`\n- `CONTEXT.md`\n\n## Do NOT touch\n- `README.md`\n' > docs/plans/p/contracts/u9.md
+g add -A docs/plans/p src CONTEXT.md && g commit -q -m 'writer: widen the contract and edit CONTEXT.md'; S9="$(git rev-parse HEAD)"
+mk "$T/x8" "$PROSE" "$R/src/a.js" "$R/CONTEXT.md"; commit_result "$T/x8" "$S9"; run lead-programmer "$T/x8"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) a contract edit committed after the baseline does not widen the scope" || bad "(ac) committed contract rc=$rc $err"
+g reset -q --hard "$C0"
+printf 'r9\n' > README.md; printf 'Unit: u9\n\n## Affected files\n- `src/a.js`\n- `README.md`\n' > docs/plans/p/contracts/u9.md
+mk "$T/x9" "$PROSE
+- README.md" "$R/README.md" "$R/docs/plans/p/contracts/u9.md"; run lead-programmer "$T/x9"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: README.md." && ok "(ac) a writer cannot drop the contract's own Do NOT touch entry" || bad "(ac) dropped exclusion rc=$rc $err"
+git checkout -q -- README.md docs/plans/p/contracts/u9.md
+printf 'Unit: u7\n\n## Affected files\n- `CONTEXT.md`\n' > docs/plans/p/contracts/u7.md; printf 'c9\n' > CONTEXT.md
+mk "$T/x10" "$(printf '%s' "$PROSE" | sed 's#contracts/u9\.md#contracts/u7.md#; s#^Unit: u9#Unit: u7#')" "$R/CONTEXT.md" "$R/docs/plans/p/contracts/u7.md"; run lead-programmer "$T/x10"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) a contract the writer created after the baseline is not read" || bad "(ac) created contract rc=$rc $err"
+git checkout -q -- CONTEXT.md
+mkdir -p src/contracts; printf 'Unit: u9\n\n## Affected files\n- `CONTEXT.md`\n' > src/contracts/u9.md; g add src/contracts && g commit -q -m 'a look-alike contract'
+printf 'c9\n' > CONTEXT.md
+DOTS="$(printf '%s' "$PROSE" | sed 's#docs/plans/p/contracts/u9\.md#docs/plans/p/contracts/../../../../src/contracts/u9.md#')"
+mk "$T/x11" "$DOTS" "$R/CONTEXT.md"; run lead-programmer "$T/x11"
+[ "$rc" = 2 ] && printf '%s' "$err" | grep -qF "unit scope: CONTEXT.md." && ok "(ac) a cited path with .. segments is not read as a contract" || bad "(ac) dotdot citation rc=$rc $err"
+g reset -q --hard "$C0"; rm -rf tests docs/plans/p src/contracts
+g reset -q --hard "$C0~1"
 
 # (l) registration (operator step O1): SubagentStop runs stop-gate.sh first, and writer-scope-gate.sh right
 # after it once the operator has registered it; before O1 the gate is inert and nothing else changes.

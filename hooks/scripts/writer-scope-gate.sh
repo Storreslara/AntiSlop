@@ -157,16 +157,29 @@ awk '/^[-*][[:space:]]/ { t = $0; sub(/^[-*][[:space:]]+/, "", t); split(t, w, /
        if (p ~ /[\/.]/ && p ~ /^[A-Za-z0-9._\/*?-]+$/) print p }' "$W/sec" >> "$W/listed"
 us_exclusions "$W/prompt" > "$W/excl"
 # The unit's own contract file, when the message cites it, always adds its list and its exclusions (tg-u2): a
-# backticked token in a prose section (`.claude/`) no longer hides it. Another cited contract is read only
-# when nothing is listed, as before, so a contract cited for context never widens the scope.
+# backticked token in a prose section (`.claude/`) no longer hides it. A contract is read as the baseline commit
+# holds it, never from the working tree: this gate exempts `docs/plans/`, so a contract the writer edits or
+# creates itself must not widen its own scope (a contract is committed before its dispatch). A cited path counts
+# only as a clean `docs/plans/<slug>/contracts/<id>.md`, with no `.`, `..` or empty segment. Another unit's cited
+# contract is read only when nothing is listed, as before, so a contract cited for context never widens the scope.
 cs="$(grep -oE "docs/plans/[A-Za-z0-9._/-]*contracts/[${UNIT_ID_CHARCLASS}]+\.md" "$W/prompt")"
-c=""; [ -z "$unit" ] || c="$(printf '%s\n' "$cs" | awk -F/ -v u="$unit.md" '$NF == u' | head -n1)"
-if [ -n "$c" ] && [ -f "$c" ]; then
-  us_entries "$c" >> "$W/listed"; us_exclusions "$c" >> "$W/excl"
-elif [ ! -s "$W/listed" ]; then
-  c="$(printf '%s\n' "$cs" | head -n1)"
-  [ -n "$c" ] && [ -f "$c" ] && us_entries "$c" > "$W/listed"
-  [ -n "$c" ] && [ -f "$c" ] && us_exclusions "$c" > "$W/excl"
+cfile() { # <cited path> <out file>: the contract at the baseline; false for an unclean path or one the baseline lacks
+  case "/$1" in */../*|*/./*|*//*) return 1 ;; esac
+  case "$1" in docs/plans/*/contracts/*.md) ;; *) return 1 ;; esac
+  git show "$start:$1" > "$2" 2>/dev/null
+}
+own=0
+if [ -n "$unit" ]; then
+  while IFS= read -r c; do
+    cfile "$c" "$W/own" || continue
+    us_entries "$W/own" >> "$W/listed"; us_exclusions "$W/own" >> "$W/excl"; own=1; break
+  done < <(printf '%s\n' "$cs" | awk -F/ -v u="$unit.md" '$NF == u')
+fi
+if [ "$own" = 0 ] && [ ! -s "$W/listed" ]; then
+  while IFS= read -r c; do
+    cfile "$c" "$W/own" || continue
+    us_entries "$W/own" > "$W/listed"; us_exclusions "$W/own" > "$W/excl"; break
+  done < <(printf '%s\n' "$cs")
 fi
 grep -oE 'file: `[^` ]+`' "$W/prompt" | sed 's/^file: `//; s/`$//' >> "$W/listed" || true
 us_section "$W/prompt" "Acceptance criteria" | grep -E '^[0-9]+\. run: ' > "$W/crit" || true
