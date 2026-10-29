@@ -5,7 +5,8 @@ Hook command, written by run.sh into each run's --settings file:  guard.py <clon
 Reads one Claude Code hook payload on stdin and allows only:
 - Read, Grep and Glob on paths inside <clone-root>, after resolving symlinks;
 - Bash as `git show`, `git diff` or `git log`, with no shell operator, no argument (or `--opt=` value)
-  that starts with `/` or `~` or has a `..` path segment, and none of the options that read or write
+  that starts with `/` or `~` or has a `..` path segment (a `..` right after a `:` counts, as in
+  `-L1,2:../x` or `HEAD:../x`), and none of the options that read or write
   other files (`--output`, `--no-index`, `--ext-diff`, `--textconv`, abbreviations included, and `-O`,
   also inside a bundle of short options such as `-RO<file>`). In a bundle, the value-taking `-S`, `-G`
   and `-L` take the rest of the token as their value, so a capital O after them (`-SObject`) is allowed.
@@ -19,7 +20,7 @@ import json, os, re, shlex, sys
 SUBCOMMANDS = ('show', 'diff', 'log')
 META = re.compile(r'[;|&$`<>(){}\\\n\r]')
 BAD_OPT = re.compile(r'^(--ou|--no-ind|--ext|--textc|-[^-SGL]*O)')
-UP = re.compile(r'(^|/)\.\.(/|$)')
+UP = re.compile(r'(^|[/:])\.\.(/|$)')
 HINT = ('Allowed: Read, Grep and Glob inside the replay clone; Bash only as git show, git diff or git log '
         'with repo-relative arguments and no shell operators.')
 
