@@ -1080,10 +1080,55 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
   second line `tier: <haiku|sonnet|opus|unknown>`, the tier the failed attempt
   ran on (copied from the reviewer dispatch's `Implementer tier:` line; the
   [[Escalation ladder]] never reads it), followed by the defect list verbatim,
-  then a blank separator line.
+  in which a defect prefixed `[unconfirmed]` is one the [[refutation pass]]
+  could neither prove nor disprove (a fix reproduces it before changing
+  code), then the [[refutation line]] as the block's last line, then a blank
+  separator line. The refutation line is telemetry, never a defect, and it
+  stays last because `bin/escalation-card.sh` takes the first non-empty line
+  after `tier:` as the block's first defect.
   `bin/fail-count.sh` counts blocks by grepping the task-id-qualified anchor
   line (`^FAIL <task-id> `), which is what makes the 2-FAIL cap countable
   across sessions instead of relying on one agent's in-session memory.
+
+**judgment defect**:
+(plan 2026-10-27-refutation-pass, unit rfp-u5) — a FAIL defect the reviewer
+  found by reading code, not by a check it ran. Its opposite is a mechanical
+  ground: a `review-precheck.sh` failure line, an uncommitted tree, an
+  out-of-scope path, or a command the reviewer ran that shows the failure. A
+  defect the reviewer reproduced with a command counts as mechanical. Only
+  judgment defects go through the [[refutation pass]].
+_Avoid_: soft defect, opinion defect
+
+**refutation pass**:
+(plan 2026-10-27-refutation-pass, unit rfp-u5) — the reviewer's step before a
+  FAIL verdict whose grounds are all [[judgment defect]]s, 1 to 3 of them after
+  merging duplicates. The reviewer pipes them into
+  `.claude/bin/refutation-brief.sh` and spawns one foreground, unnamed
+  `explorer` on `sonnet` to disprove each against the whole file, its callers
+  and the baseline. It then re-checks each artifact itself, states why it
+  proves or defeats the claim, and may keep a defect standing. The pass writes
+  no marker, and a FAIL it prevents writes no [[FAIL block]], so the
+  [[FAIL-block count]] counts only FAILs that survived it. It is skipped, with
+  the reason on the [[refutation line]], on any mechanical ground, on more
+  than 3 judgment defects, on the resume after an INSUFFICIENT-CONTEXT it
+  caused, and when no subagent can be spawned. The reviewer instructions
+  shipped only after the replay gate in `eval/refutation-replay/` passed.
+  "Refute, don't rubber-stamp" in `agents/reviewer.md` keeps its own meaning:
+  attacking the change under review, not this pass.
+_Avoid_: refuter, second review, verifier
+
+**refutation outcome**:
+(plan 2026-10-27-refutation-pass, unit rfp-u5) — the answer the
+  [[refutation pass]] settles for one defect, after the reviewer's own
+  re-check. REFUTED: the defect is dropped and recorded as a
+  `NOTE[code]: refuted:` note on the PASS, unless the re-check finds a reason
+  the artifact does not defeat it. CONFIRMED: it stays a defect. UNCERTAIN: it
+  stays in a FAIL that happens anyway, prefixed `[unconfirmed]`. A defect whose
+  artifact does not reproduce, or that got no answer, stands as found. REFUTED
+  and CONFIRMED need an artifact. When only UNCERTAIN defects remain, the
+  verdict is INSUFFICIENT-CONTEXT, not ESCALATE-TO-HUMAN. The verdict itself
+  stays the reviewer's.
+_Avoid_: refutation verdict
 
 **`.escalated` marker**:
 (unit #133, 2026-08-10; refreshed unit #138, 2026-08-11) — file written by the
