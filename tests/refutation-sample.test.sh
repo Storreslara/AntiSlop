@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # rfp-u4: the milestone-auditor's refutation-sample commands count what the plan's Cost model defines
 # (prevented FAILs: .pass markers carrying a `NOTE[code]: refuted:` note; FAILs that survived a pass:
-# FAIL-block lines starting `refutation: confirmed=`), on a fixture with decoys, and
+# FAIL-block lines starting `refutation: confirmed=`), on a fixture with decoys (rfp-u6a: a refuted note
+# counts only at line start, never quoted mid-line), and
 # agents/milestone-auditor.md and its mirror ship exactly these commands. Fixtures live under mktemp -d only.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -10,8 +11,8 @@ fail=0
 ok()  { echo "OK   $*"; }
 bad() { echo "FAIL $*"; fail=1; }
 
-LIST="grep -rnF 'NOTE[code]: refuted: ' --include='*.pass' .claude/reviewed | sort"
-PREVENTED="grep -rlF 'NOTE[code]: refuted: ' --include='*.pass' .claude/reviewed | wc -l"
+LIST="grep -rn '^NOTE\\[code]: refuted: ' --include='*.pass' .claude/reviewed | sort"
+PREVENTED="grep -rl '^NOTE\\[code]: refuted: ' --include='*.pass' .claude/reviewed | wc -l"
 SURVIVED="grep -rh '^refutation: confirmed=' --include='*.fail' .claude/reviewed | wc -l"
 
 tmp="$(mktemp -d)"
@@ -28,6 +29,7 @@ cat > "$d/m2.pass" <<'EOF'
 PASS m2 2026-11-01T00:00:00Z commit: none criteria: x
 NOTE[code]: unconfirmed: D1 src/b.sh:3 maybe racy
 NOTE[code]: the wrap width is ragged
+NOTE[spec]: a mid-line decoy quoting the format NOTE[code]: refuted: D<n> <claim>
 EOF
 cat > "$d/m3.pass" <<'EOF'
 PASS m3 2026-11-01T00:00:00Z commit: none criteria: x
@@ -67,7 +69,7 @@ want='.claude/reviewed/m1.pass:2:NOTE[code]: refuted: D1 src/a.sh:2 b is unquote
 .claude/reviewed/m3.pass:2:NOTE[code]: refuted: D1 src/c.sh:7 off by one — tests/c.test.sh:12 covers the bound — it fails on the claimed input'
 [ "$list" = "$want" ] && ok "(a) sample list" || bad "(a) sample list: [$list]"
 
-# (b) prevented FAILs: two .pass markers carry a refuted note (m1 counts once)
+# (b) prevented FAILs: two .pass markers carry a refuted note (m1 counts once; m2 only quotes one mid-line)
 p="$(run "$PREVENTED" | tr -d ' ')"
 [ "$p" = 2 ] && ok "(b) prevented=2" || bad "(b) prevented=[$p]"
 

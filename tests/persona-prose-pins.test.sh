@@ -80,5 +80,12 @@ for f in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
   has "$f" 'decide whether the artifact defeats the claim on the defect'
   has "$f" 'When `eligible` is 20 or more and `p` is under a tenth of it'
 done
+for f in agents/reviewer.md .claude/agents/reviewer.md; do
+  has "$f" '(file:line + how to trigger), then the `refutation:` line the Refutation pass below defines, and nothing more'
+  hasnot "$f" '(file:line + how to trigger) and nothing more'
+done
+for f in agents/milestone-auditor.md .claude/agents/milestone-auditor.md; do
+  has "$f" 'one you cannot decide counts toward `sampled`, never toward `held`'
+done
 if [ "$fail" -eq 0 ]; then echo "All persona-prose-pins checks passed."; else echo "persona-prose-pins: FAILED"; fi
 exit "$fail"
