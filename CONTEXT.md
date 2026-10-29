@@ -1092,12 +1092,23 @@ the file the reviewer writes at `.claude/reviewed/<task-id>.pass`
 
 **judgment defect**:
 (plan 2026-10-27-refutation-pass, unit rfp-u5) — a FAIL defect the reviewer
-  found by reading code, not by a check it ran. Its opposite is a mechanical
-  ground: a `review-precheck.sh` failure line, an uncommitted tree, an
-  out-of-scope path, or a command the reviewer ran that shows the failure. A
-  defect the reviewer reproduced with a command counts as mechanical. Only
-  judgment defects go through the [[refutation pass]].
+  found by reading code, not by a check it ran. Its opposite is a
+  [[mechanical ground]]: a `review-precheck.sh` failure line, an uncommitted
+  tree, an out-of-scope path, or a command the reviewer ran that shows the
+  failure. A defect the reviewer reproduced with a command counts as
+  mechanical. Only judgment defects go through the [[refutation pass]].
 _Avoid_: soft defect, opinion defect
+
+**mechanical ground**:
+(plan 2026-10-27-refutation-pass, unit rfp-u6c) — a FAIL ground the reviewer
+  established with a check rather than by reading: a `review-precheck.sh`
+  failure line, an uncommitted tree, an out-of-scope path, or a command the
+  reviewer ran that shows the failure, which is how a reproduced defect
+  becomes one. It is the opposite of a [[judgment defect]], and it is never
+  sent to the [[refutation pass]]: one mechanical ground in a FAIL skips the
+  whole pass, every defect stays as found, and the [[refutation line]] reads
+  `refutation: skipped=mechanical`.
+_Avoid_: hard defect, objective defect
 
 **refutation pass**:
 (plan 2026-10-27-refutation-pass, unit rfp-u5) — the reviewer's step before a
@@ -1109,25 +1120,28 @@ _Avoid_: soft defect, opinion defect
   proves or defeats the claim, and may keep a defect standing. The pass writes
   no marker, and a FAIL it prevents writes no [[FAIL block]], so the
   [[FAIL-block count]] counts only FAILs that survived it. It is skipped, with
-  the reason on the [[refutation line]], on any mechanical ground, on more
+  the reason on the [[refutation line]], on any [[mechanical ground]], on more
   than 3 judgment defects, on the resume after an INSUFFICIENT-CONTEXT it
   caused, and when no subagent can be spawned. The reviewer instructions
   shipped only after the replay gate in `eval/refutation-replay/` passed.
   "Refute, don't rubber-stamp" in `agents/reviewer.md` keeps its own meaning:
   attacking the change under review, not this pass.
-_Avoid_: refuter, second review, verifier
+_Avoid_: refuter, second review, refutation verifier
 
 **refutation outcome**:
 (plan 2026-10-27-refutation-pass, unit rfp-u5) — the answer the
   [[refutation pass]] settles for one defect, after the reviewer's own
   re-check. REFUTED: the defect is dropped and recorded as a
-  `NOTE[code]: refuted:` note on the PASS, unless the re-check finds a reason
-  the artifact does not defeat it. CONFIRMED: it stays a defect. UNCERTAIN: it
-  stays in a FAIL that happens anyway, prefixed `[unconfirmed]`. A defect whose
-  artifact does not reproduce, or that got no answer, stands as found. REFUTED
-  and CONFIRMED need an artifact. When only UNCERTAIN defects remain, the
-  verdict is INSUFFICIENT-CONTEXT, not ESCALATE-TO-HUMAN. The verdict itself
-  stays the reviewer's.
+  `NOTE[code]: refuted:` note on the PASS when every defect is REFUTED, or in
+  the verdict's `refutation` advisory section when another defect keeps the
+  FAIL (under review gating off, always in that section), unless the
+  re-check finds a reason the artifact does not defeat it. CONFIRMED: it
+  stays a defect. UNCERTAIN: it stays in a FAIL that happens anyway,
+  prefixed `[unconfirmed]`. A defect whose artifact does not reproduce, or
+  that got no answer, stands as found. REFUTED and CONFIRMED need an
+  artifact. When only UNCERTAIN defects remain, the verdict is
+  INSUFFICIENT-CONTEXT, not ESCALATE-TO-HUMAN. The verdict itself stays the
+  reviewer's.
 _Avoid_: refutation verdict
 
 **`.escalated` marker**:
