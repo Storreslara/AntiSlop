@@ -149,6 +149,48 @@ bash "$PC" u1 "$BASE" --criterion 1 >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) --c
 bash "$PC" u1 "$BASE" --bogus >/dev/null 2>&1; [ "$?" = 2 ] && ok "(h) unknown option exit 2" || bad "(h) unknown option"
 [ "$(cd src && bash "$PC" u1 "$BASE" --contract "$C" | sed -n 2,99p)" = "$(bash "$PC" u1 "$BASE" --contract "$C" | sed -n 2,99p)" ] && ok "(i) same output from a subdirectory" || bad "(i) subdirectory differs"
 
+# (m) a "`A` then `B`" stdout spec (tg-u1) is one expected stdout of several lines: the parts lose their
+# backticks, are joined by newlines and compared exactly. Any other shape keeps its old reading.
+C5=docs/plans/p/contracts/u5.md
+cat > "$C5" << 'MD'
+Unit: u5
+
+## Acceptance criteria
+1. run: `printf '0\nrc=0\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
+2. run: `printf '0\nrc=1\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
+3. run: `printf '1\n2\n3\n'`
+   exit: 0
+   stdout: `1` then `2` then `3`
+   mutation: none
+4. run: `echo 'a then b'`
+   exit: 0
+   stdout: `a then b`
+   mutation: none
+5. run: `printf '0\n1\n'`
+   exit: 0
+   stdout: `0` then `1` (two lines)
+   mutation: none
+6. run: `printf '0\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
+MD
+g add "$C5" && g commit -q -m 'u5 contract' && B5="$(git rev-parse HEAD)"
+m5() { bash "$PC" u5 "$B5" --contract "$C5" --criterion "$1"; }
+[ "$(m5 1)" = 'criterion 1: pass exit=0' ] && ok "(m) two-part spec passes" || bad "(m) two-part: $(m5 1)"
+[ "$(m5 2)" = 'criterion 2: fail stdout want=`0` then `rc=0` got=`0` then `rc=1`' ] && ok "(m) two-part mismatch fails, both sides shown" || bad "(m) mismatch: $(m5 2)"
+[ "$(m5 3)" = 'criterion 3: pass exit=0' ] && ok "(m) three-part spec passes" || bad "(m) three-part: $(m5 3)"
+[ "$(m5 4)" = 'criterion 4: pass exit=0' ] && ok "(m) a literal holding the word then is not split" || bad "(m) then-literal: $(m5 4)"
+[ "$(m5 5)" = 'criterion 5: judge stdout exit=0' ] && ok "(m) text after the last part stays judge" || bad "(m) annotated: $(m5 5)"
+[ "$(m5 6)" = 'criterion 6: fail stdout want=`0` then `rc=0` got=`0`' ] && ok "(m) a missing line fails" || bad "(m) short output: $(m5 6)"
+g reset -q --hard HEAD~1
+
 # (k) a scope library that is missing or defines nothing: exit 2 and no packet (the reviewer runs the checks itself).
 L="$(mktemp -d)"; mkdir -p "$L/bin" "$L/hooks/scripts/lib" && cp "$PC" "$L/bin/" && cp "$ROOT/hooks/scripts/lib/sensitive-paths.sh" "$L/hooks/scripts/lib/"
 bash "$L/bin/review-precheck.sh" u1 "$BASE" --contract "$C" >/dev/null 2>&1; [ "$?" = 2 ] && ok "(k) unit-scope.sh missing: exit 2" || bad "(k) missing library"
