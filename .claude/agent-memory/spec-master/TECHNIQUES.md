@@ -26,3 +26,4 @@
 - [claude -p num_turns counts tool results](technique_claude_cli_num_turns_counts_tool_results.md) — success num_turns = 1 + tool calls (not turns); a cap hit reports cap+1 with no result; record `subtype`.
 - [Refresh, not rebuild, a derived corpus](technique_refresh_not_rebuild_derived_corpus.md) — growing per-clone inputs re-select ids on rebuild; refresh in place by key + prefix; trace runner-written values before "only rule X sees it".
 - [Playwright click sends mousemove](technique_playwright_click_sends_mousemove.md) — stationary-click browser tests need bare down/up; mouse.click re-arms "pointer moved" rules
+- [Parallel units: scope dirty checks](technique_parallel_units_scope_dirty_checks.md) — file-disjoint parallel slices need per-unit dirty pathspecs, one serial stamped unit, validate precondition
