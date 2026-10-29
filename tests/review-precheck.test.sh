@@ -184,6 +184,26 @@ Unit: u5
    exit: 0
    stdout: `0` then `rc=0`
    mutation: none
+8. run: `printf '0\nrc=0\n\n\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
+9. run: `printf '0\nrc=0\n'`
+   exit: 0
+   stdout: `0`  then  `rc=0`
+   mutation: none
+10. run: `printf 'a\x60b\nrc=0\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
+11. run: `printf '0\r\nrc=0\n'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
+12. run: `printf '0\nrc=0'`
+   exit: 0
+   stdout: `0` then `rc=0`
+   mutation: none
 MD
 g add "$C5" && g commit -q -m 'u5 contract' && B5="$(git rev-parse HEAD)"
 m5() { bash "$PC" u5 "$B5" --contract "$C5" --criterion "$1"; }
@@ -194,6 +214,11 @@ m5() { bash "$PC" u5 "$B5" --contract "$C5" --criterion "$1"; }
 [ "$(m5 5)" = 'criterion 5: judge stdout exit=0' ] && ok "(m) text after the last part stays judge" || bad "(m) annotated: $(m5 5)"
 [ "$(m5 6)" = 'criterion 6: fail stdout want=`0` then `rc=0` got=`0`' ] && ok "(m) a missing line fails" || bad "(m) short output: $(m5 6)"
 [ "$(m5 7)" = 'criterion 7: fail stdout want=`0` then `rc=0` got=`0` then `rc=0` then `rc=1`' ] && ok "(m) an extra trailing line fails" || bad "(m) long output: $(m5 7)"
+[ "$(m5 8)" = 'criterion 8: fail stdout want=`0` then `rc=0` got=`0` then `rc=0` then `` then ``' ] && ok "(m) extra trailing blank lines fail" || bad "(m) trailing blanks: $(m5 8)"
+[ "$(m5 9)" = 'criterion 9: pass exit=0' ] && ok "(m) two spaces around then" || bad "(m) wide then: $(m5 9)"
+[ "$(m5 10)" = 'criterion 10: fail stdout want=`0` then `rc=0` got=`a\`b` then `rc=0`' ] && ok "(m) a backtick in the output is escaped" || bad "(m) backtick: $(m5 10)"
+[ "$(m5 11)" = 'criterion 11: fail stdout want=`0` then `rc=0` got=`0\r` then `rc=0`' ] && ok "(m) a CR in the output is shown as \\r" || bad "(m) CR: $(m5 11)"
+[ "$(m5 12)" = 'criterion 12: pass exit=0' ] && ok "(m) no final newline still passes" || bad "(m) no final newline: $(m5 12)"
 g reset -q --hard HEAD~1
 
 # (k) a scope library that is missing or defines nothing: exit 2 and no packet (the reviewer runs the checks itself).

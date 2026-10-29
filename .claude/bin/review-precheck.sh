@@ -84,19 +84,36 @@ crit_items() { # prints one tab-separated line per criterion: n, cmd, exit, stdo
     /^[[:space:]]+stdout: / { so=$0; sub(/^[[:space:]]+stdout: /, "", so); next }
     END { flush() }'
 }
+# One line per output line, each in backticks, joined by " then ". A backslash, backtick, CR or tab inside a
+# line is shown as \\, \`, \r or \t, so the message reads one way whatever the output holds (cos-u2).
+show_lines() {
+  local l first=1
+  while IFS= read -r l; do
+    l="${l//\\/\\\\}"; l="${l//\`/\\\`}"; l="${l//$'\r'/\\r}"; l="${l//$'\t'/\\t}"
+    [ "$first" = 1 ] || printf ' then '; first=0; printf '`%s`' "$l"
+  done <<< "$1"
+}
 run_one() { # n cmd exit spec -> one criterion line, sets rc 1 on fail, 3 on judge
-  local n="$1" cmd="$2" want="$3" spec="$4" got rc
-  got="$(cd "$top" && timeout 590 bash -c "$cmd" < /dev/null 2>/dev/null)"; rc=$?
+  local n="$1" cmd="$2" want="$3" spec="$4" raw got rc
+  # The '.' sentinel keeps every trailing newline of the output in $raw (cos-u2); $got is the old reading,
+  # with all of them stripped, as $(...) alone strips them.
+  raw="$(cd "$top" && timeout 590 bash -c "$cmd" < /dev/null 2>/dev/null; r=$?; printf .; exit "$r")"; rc=$?
+  raw="${raw%.}"; got="$raw"; while [ "${got%$'\n'}" != "$got" ]; do got="${got%$'\n'}"; done
   if [ "$rc" = 124 ]; then echo "criterion $n: fail exit=124 timeout"; return 1; fi
   if ! [[ "$want" =~ ^[0-9]+$ ]] || [ "$rc" != "$want" ]; then echo "criterion $n: fail exit=$rc want=${want:-none}"; return 1; fi
   # "`A` then `B`" (tg-u1): two or more backticked parts are one expected stdout of several lines. The parts
-  # lose their backticks, are joined by newlines and compared exactly. A part holds no backtick, so a literal
-  # that only contains the word then, or text after the last part, keeps its old reading.
-  local multi='^`[^`]*`( then `[^`]*`)+$'
+  # lose their backticks, are joined by newlines and compared exactly with the output less ONE trailing
+  # newline, so an extra blank line fails (cos-u2). Any run of spaces may surround then; a tab cannot reach
+  # here, because crit_items hands the spec over as a tab-separated field. A part holds no backtick, so a
+  # literal that only contains the word then, or text after the last part, keeps its old reading.
+  local multi='^`[^`]*`( +then +`[^`]*`)+$' part='^ *(then +)?`([^`]*)`(.*)$'
   if [[ "$spec" =~ $multi ]]; then
-    local parts="${spec#\`}"; parts="${parts%\`}"; parts="${parts//\` then \`/$'\n'}"
-    [ "$got" = "$parts" ] && { echo "criterion $n: pass exit=$rc"; return 0; }
-    echo "criterion $n: fail stdout want=$spec got=$(printf '%s\n' "$got" | awk 'BEGIN { ORS = "" } { printf "%s`%s`", (NR > 1 ? " then " : ""), $0 }')"; return 1
+    local rest="$spec" parts="" sep="" one="${raw%$'\n'}"
+    while [[ "$rest" =~ $part ]]; do
+      parts+="$sep${BASH_REMATCH[2]}"; sep=$'\n'; rest="${BASH_REMATCH[3]}"
+    done
+    [ "$one" = "$parts" ] && { echo "criterion $n: pass exit=$rc"; return 0; }
+    echo "criterion $n: fail stdout want=$(show_lines "$parts") got=$(show_lines "$one")"; return 1
   fi
   case "$spec" in
     empty) [ -z "$got" ] && { echo "criterion $n: pass exit=$rc"; return 0; }; echo "criterion $n: fail stdout not empty"; return 1 ;;
