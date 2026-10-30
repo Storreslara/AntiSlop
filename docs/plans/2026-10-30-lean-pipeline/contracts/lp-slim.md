@@ -13,9 +13,10 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 
 ## Affected files
 - `agents/lead-programmer.md` (the "Don't grade your own work" bullet; the `review-packet:` sentence near :37), `agents/reviewer.md` (the "Run the checks yourself" and "Verdict" bullets; the roast-work and ubiquitous-language bullets where they place output), `agents/orchestrator.md` (the scribe-dispatch sentence near :42-45 that reads the "scribe digest")
-- `skills/roast-work/SKILL.md:36`, `skills/ubiquitous-language/SKILL.md` (Diff mode output paragraph)
+- `skills/roast-work/SKILL.md` (line 36), `skills/ubiquitous-language/SKILL.md` (Diff mode output paragraph)
 - Hand-synced copies: `adapters/codex/agents/lead-programmer.toml`, `adapters/cursor/agents/lead-programmer.md` (:41 and the "Advisory review packet" bullet), `adapters/codex/agents/reviewer.toml`, `adapters/cursor/agents/reviewer.md` (the "Verdict" bullet and the `Advisory critique:` placement line)
-- Prose pins on removed wording only (R6), plus mirrors and one `[Unreleased]` CHANGELOG bullet
+- Prose pins on removed wording only (R6), in the criterion 4 tests: `tests/persona-prose-pins.test.sh`, `tests/prompt-diet-pins.test.sh`, `tests/fail-marker-format-parity.test.sh`, `tests/adapter-protocol-parity.test.js`, `tests/adapter-skill-parity.test.js`, `tests/writer-tier-consistency.test.js`
+- `.claude/` mirrors (edit 5) and `CHANGELOG.md` (one `[Unreleased]` bullet)
 
 ## Ordered edits
 1. lead-programmer.md: replace the packet description with this fenced block. Each line starts at column 0, with no indent:

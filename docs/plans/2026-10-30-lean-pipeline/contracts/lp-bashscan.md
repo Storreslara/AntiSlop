@@ -7,10 +7,10 @@ Drop Bash command-text scanning from `reviewed-path-gate.sh` and `harness-integr
 Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, step "U9 lp-bashscan", D5, D6, R1, R4, Context (marker-sweep note hcb-branch). This file is the contract of record and supersedes the plan's U9 file list where they differ. Dispatch after lp-joinstamp has PASSed and the user has answered G2 below. Implementer tier: opus.
 
 ## Affected files
-- `hooks/scripts/harness-integrity-gate.sh` (Set B: see G2), `hooks/scripts/reviewed-path-gate.sh`, new `hooks/scripts/lib/normalize-path.sh` (mode 644, `normalize_path` moved verbatim with its comment); `git rm hooks/scripts/lib/benign-command.sh tests/benign-command-families.test.sh`
-- `bin/cli.js:686` (`CLAUDE_ONLY_HOOK_LIB_FILES`: `benign-command.sh` → `normalize-path.sh`); `tests/cli-hook-propagation.test.js:93,122,126` (use another lib file as the sample)
-- `tests/reviewed-path-gate.test.sh`, `tests/harness-integrity-gate.test.sh`: delete or convert only the cases and sections about the Bash scan (allowlist, obfuscation, family table, brace-collapse property, memory-note parity, hot-path line pins, the Bash-side mutation controls, gh418, U7c). Name each removed section in the CHANGELOG bullet. `tests/validate.sh` (delete the benign-command block :1607-1612), `tests/watch-map.json:23`
-- Prose that turns false once Bash is never refused: `templates/persona-protocol.md` (the rephrasing-doctrine bullet near :94 and any surviving `only lets a non-reviewer caller` text), `agents/reviewer.md:169`, `agents/orchestrator.md:340`, `agents/spec-master.md:211`, `skills/install-antislop/SKILL.md` (:41, :58, :100, :154, :213, :315), `skills/install-antislop/hook-verification.md:14`, `skills/pathfinder/SKILL.md:48` (if the file still exists), `adapters/codex/agents-md-fragment.md`, `adapters/cursor/rules/persona-protocol.mdc`. Keep the advice to use `Read`, but drop the claim that Bash is refused.
+- `hooks/scripts/harness-integrity-gate.sh` (Set B: see G2), `hooks/scripts/reviewed-path-gate.sh`, new `hooks/scripts/lib/normalize-path.sh` (mode 644, `normalize_path` moved verbatim with its comment); `git rm` these: `hooks/scripts/lib/benign-command.sh` and `tests/benign-command-families.test.sh`
+- `bin/cli.js` (line 686, `CLAUDE_ONLY_HOOK_LIB_FILES`: `benign-command.sh` → `normalize-path.sh`); `tests/cli-hook-propagation.test.js` (lines 93, 122 and 126; use another lib file as the sample)
+- `tests/reviewed-path-gate.test.sh`, `tests/harness-integrity-gate.test.sh`: delete or convert only the cases and sections about the Bash scan (allowlist, obfuscation, family table, brace-collapse property, memory-note parity, hot-path line pins, the Bash-side mutation controls, gh418, U7c). Name each removed section in the CHANGELOG bullet. `tests/validate.sh` (delete the benign-command block :1607-1612), `tests/watch-map.json` (line 23)
+- Prose that turns false once Bash is never refused: `templates/persona-protocol.md` (the rephrasing-doctrine bullet near :94 and any surviving `only lets a non-reviewer caller` text), `agents/reviewer.md` (line 169), `agents/orchestrator.md` (line 340), `agents/spec-master.md` (line 211), `skills/install-antislop/SKILL.md` (:41, :58, :100, :154, :213, :315), `skills/install-antislop/hook-verification.md` (line 14), `skills/pathfinder/SKILL.md` (line 48, if the file still exists), `adapters/codex/agents-md-fragment.md`, `adapters/cursor/rules/persona-protocol.mdc`. Keep the advice to use `Read`, but drop the claim that Bash is refused.
 - `CHANGELOG.md`: one `[Unreleased]` bullet, which states the R1 loss in one sentence
 
 ## Ordered edits
@@ -21,7 +21,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 
 ## Do NOT touch
 - `hooks/hooks.json`, `.claude/settings.json`, `tests/abtest-arms.test.sh`, `eval/`
-- `hooks/scripts/human-decision-gate.sh` (lp-hdg's stub), `protected-paths.sh`, stop-gate files, `reviewer-route-gate*`
+- `hooks/scripts/human-decision-gate.sh` (lp-hdg's stub), `hooks/scripts/protected-paths.sh`, stop-gate files, `hooks/scripts/reviewer-route-gate.sh`, `hooks/scripts/lib/reviewer-route-gate-core.sh`
 - `docs/` (U12; the glossary's `reviewed-path denial` entry is a scribe item), `.claude/agent-memory/`
 - Never run a mutation by editing `hooks/scripts/harness-integrity-gate.sh` in place: use a copy and `GATE_UNDER_TEST`
 

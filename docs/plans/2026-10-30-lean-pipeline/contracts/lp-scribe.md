@@ -250,6 +250,10 @@ Two protections cost more than they caught. The ESCALATE-TO-HUMAN verdict, with 
 - Commit once, staging only `CONTEXT.md`, `docs/harness-glossary.md`, `docs/trust-model.md` and `docs/adr/0044-retire-escalation-and-bash-scans.md`, with the subject `docs(lp-scribe): lean-pipeline glossary entries and ADR-0044 (#0)` and the trailer line `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` (a fix round on another tier names that tier's model). A fix round is a new commit whose subject keeps `(lp-scribe): `. Commit your own memory notes separately.
 - precondition: `test ! -e docs/adr/0044-retire-escalation-and-bash-scans.md && ls docs/adr | grep -c '^0044-'` prints `0`; each `before` text and each heading line appears in its file exactly once; the tree is clean. Anything else: STOP.
 
+## Affected files
+- `CONTEXT.md`, `docs/harness-glossary.md`, `docs/trust-model.md` (doc edit 1)
+- `docs/adr/0044-retire-escalation-and-bash-scans.md` (new)
+
 ## Do NOT touch
 - `agents/`, `templates/`, `adapters/`, `skills/`, `tests/`, `hooks/`, `bin/` (criterion 6)
 - `.claude/`, `docs/plans/`, every other `docs/adr/` file, every other glossary entry (criterion 6)

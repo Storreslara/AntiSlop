@@ -9,10 +9,10 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 ## Affected files
 - `hooks/scripts/lib/reviewer-route-gate-core.sh`: delete the `state_drop_resurrected_flags` call (:33) and the whole `Unit:`-line block (:86-155: first-line parse, advisory stamp, prior-marker probe, stamp write, both `audit_append` lines). Update the header comment.
 - `hooks/scripts/lib/state-access.sh`: delete `state_read/write/delete_review_join`, `state_tombstone_pending_review` and `state_drop_resurrected_flags`, plus their `export -f` lines. `state_write_pending_review` becomes create-only-if-absent. `state_clear_all_pending_review` becomes a plain delete loop. Drop `.review-join` from the :11 marker list.
-- Adapter lib copies under `adapters/*/hooks/scripts/lib/` (regenerated, never hand-edited)
-- `tests/reviewer-route-gate-caller.test.sh` (three new cases), `tests/state-species-enumeration.test.sh` (drop the `state_write_review_join` call and lower the count to the files it now creates), `tests/review-gating-off.test.sh` (cases d' and f/d' now assert no stamp in both modes), `tests/prompt-diet-pins.test.sh:22`, `tests/adapter-protocol-parity.test.js:97` (pins on removed prose), `tests/state-distinctions-manifest.test.sh` (only if it fails: the `D2_review_join` row)
-- `git rm tests/pending-review-resurrection.test.sh tests/state-access-concurrency.test.sh` (both only drive stamps and tombstones) and delete their `tests/validate.sh` blocks
-- Prose that turns false: `templates/persona-protocol.md` (:288, :301, :310-320 and the review-join stamp paragraph), `agents/orchestrator.md` (:216, :228-237), `agents/reviewer.md:387`, `commands/gate.md:15`, `adapters/codex/agents-md-fragment.md` (:95, :109-114), `adapters/cursor/rules/persona-protocol.mdc` (:101, :115-120)
+- Adapter lib copies (regenerated, never hand-edited): `adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh`, `adapters/codex/hooks/scripts/lib/state-access.sh`, `adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh`, `adapters/cursor/hooks/scripts/lib/state-access.sh`
+- `tests/reviewer-route-gate-caller.test.sh` (three new cases), `tests/state-species-enumeration.test.sh` (drop the `state_write_review_join` call and lower the count to the files it now creates), `tests/review-gating-off.test.sh` (cases d' and f/d' now assert no stamp in both modes), `tests/prompt-diet-pins.test.sh` (line 22) and `tests/adapter-protocol-parity.test.js` (line 97), both pins on removed prose, `tests/state-distinctions-manifest.test.sh` (only if it fails: the `D2_review_join` row)
+- `git rm` these: `tests/pending-review-resurrection.test.sh` and `tests/state-access-concurrency.test.sh` (both only drive stamps and tombstones) and delete their `tests/validate.sh` blocks
+- Prose that turns false: `templates/persona-protocol.md` (:288, :301, :310-320 and the review-join stamp paragraph), `agents/orchestrator.md` (:216, :228-237), `agents/reviewer.md` (line 387), `commands/gate.md` (line 15), `adapters/codex/agents-md-fragment.md` (:95, :109-114), `adapters/cursor/rules/persona-protocol.mdc` (:101, :115-120)
 - `CHANGELOG.md`: one `[Unreleased]` bullet that names each deleted and edited test
 
 ## Ordered edits
@@ -23,7 +23,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 
 ## Do NOT touch
 - `bin/cli.js`: keep the `.review-join.*` and `.pending-review-cleared.*` ignore patterns, so leftover files in upgraded repos stay ignored. `tests/cli-backfill.test.js` pins them.
-- `hooks/scripts/stop-gate.sh`, `lib/stop-gate-core.sh`, `dispatch-hygiene.sh` (lp-stopgate's); `hooks/hooks.json`, `.claude/settings.json`, `harness-integrity-gate.sh`, `reviewed-path-gate.sh`, `lib/benign-command.sh` (U9)
+- `hooks/scripts/stop-gate.sh`, `hooks/scripts/lib/stop-gate-core.sh`, `hooks/scripts/dispatch-hygiene.sh` (lp-stopgate's); `hooks/hooks.json`, `.claude/settings.json`, `hooks/scripts/harness-integrity-gate.sh`, `hooks/scripts/reviewed-path-gate.sh`, `hooks/scripts/lib/benign-command.sh` (U9)
 - `docs/` (U12 marks review-join retired in the glossary), `tests/abtest-arms.test.sh`, `eval/`
 - No escalation prose anywhere
 

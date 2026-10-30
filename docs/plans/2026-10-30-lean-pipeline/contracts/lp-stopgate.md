@@ -13,12 +13,12 @@ No version bump.
 Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, step "U8a lp-stopgate", D6, D7, Risks R2 and R4, Self-check CHK9. This file is the contract of record and supersedes the plan's U8a file list where they differ. Dispatch after lp-escbin has PASSed and the user has answered plan gap G1 (below). Implementer tier: opus.
 
 ## Affected files
-- `hooks/scripts/stop-gate.sh`, `hooks/scripts/lib/stop-gate-core.sh` (shared; the adapter copies regenerate), `adapters/codex/hooks/scripts/stop-gate.sh`, `adapters/cursor/hooks/scripts/stop-gate.sh` (hand-kept entries)
-- `hooks/scripts/dispatch-hygiene.sh` (item 0a block, near :133-155)
-- `tests/stop-gate.test.sh` (new, mode 755). `git rm` these: `tests/stop-gate-blocked.test.sh`, `stop-gate-config-drift.test.sh`, `stop-gate-microworld-skip.test.sh`, `stop-gate-deferred-microworld.test.sh`, `stop-gate-escalated.test.sh`, `stop-gate-review-inflight.test.sh` and `tests/review-join.test.sh` (it drives the stamp consumption this unit removes; the plan had it in U8b)
+- `hooks/scripts/stop-gate.sh`, `hooks/scripts/lib/stop-gate-core.sh` (shared; the adapter copies `adapters/codex/hooks/scripts/lib/stop-gate-core.sh` and `adapters/cursor/hooks/scripts/lib/stop-gate-core.sh` regenerate), `adapters/codex/hooks/scripts/stop-gate.sh`, `adapters/cursor/hooks/scripts/stop-gate.sh` (hand-kept entries)
+- `hooks/scripts/dispatch-hygiene.sh` (item 0a block, near lines 133-155)
+- `tests/stop-gate.test.sh` (new, mode 755). `git rm` these: `tests/stop-gate-blocked.test.sh`, `tests/stop-gate-config-drift.test.sh`, `tests/stop-gate-microworld-skip.test.sh`, `tests/stop-gate-deferred-microworld.test.sh`, `tests/stop-gate-escalated.test.sh`, `tests/stop-gate-review-inflight.test.sh` and `tests/review-join.test.sh` (it drives the stamp consumption this unit removes; the plan had it in U8b)
 - `tests/adapter-stop-gate-parity.test.sh` (rewrite cases f1-f4, g, h and i for the new behaviour on all three ports, keeping one core-mutation control on codex), `tests/dispatch-hygiene.test.sh` (stamp case), `tests/validate.sh`
-- Tests that drive removed branches. Edit only those cases: `tests/pending-review-resurrection.test.sh`, `tests/state-access-capability-regression.test.sh` (check 1), `tests/state-access-constraints.test.sh` (C5 and any other stop-gate case), `tests/state-distinctions-manifest.test.sh` (rows on `stop-gate-core.sh` and the codex loop guard), `tests/review-gating-off.test.sh`, `tests/state-access-concurrency.test.sh`, `tests/writer-scope-gate.test.sh`
-- Prose that would turn false: `templates/persona-protocol.md` (the `.blocked` flag-keeping sentence; the off-mode lists naming config-drift detection and the test+lint check), `agents/orchestrator.md` (the `stop-allowed=review-in-flight` paragraph; "stop-gate.sh keeps it"), `adapters/codex/agents-md-fragment.md:97`, `adapters/cursor/rules/persona-protocol.mdc:103`, `templates/persona-config.schema.json` (`gatedAgents` :46, `reviewGating` :150, `markerCommitCheck` :138: "no longer run by stop-gate")
+- Tests that drive removed branches. Edit only those cases: `tests/pending-review-resurrection.test.sh`, `tests/state-access-capability-regression.test.sh` (check 1), `tests/state-access-constraints.test.sh` (C5 and any other stop-gate case), `tests/state-distinctions-manifest.test.sh` (rows on `hooks/scripts/lib/stop-gate-core.sh` and the codex loop guard), `tests/review-gating-off.test.sh`, `tests/state-access-concurrency.test.sh`, `tests/writer-scope-gate.test.sh`
+- Prose that would turn false: `templates/persona-protocol.md` (the `.blocked` flag-keeping sentence; the off-mode lists naming config-drift detection and the test+lint check), `agents/orchestrator.md` (the `stop-allowed=review-in-flight` paragraph; "stop-gate.sh keeps it"), `adapters/codex/agents-md-fragment.md` (line 97), `adapters/cursor/rules/persona-protocol.mdc` (line 103), `templates/persona-config.schema.json` (`gatedAgents` :46, `reviewGating` :150, `markerCommitCheck` :138: "no longer run by stop-gate")
 - `CHANGELOG.md` (one `[Unreleased]` bullet naming each test edited or deleted)
 
 ## Ordered edits
@@ -30,8 +30,8 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 
 ## Do NOT touch
 - `hooks/hooks.json`, `.claude/settings.json`, `hooks/scripts/harness-integrity-gate.sh` (Set B)
-- `hooks/scripts/lib/state-access.sh` and `lib/reviewer-route-gate-core.sh` (U8b removes the helpers and stamp writes), `hooks/scripts/marker-commit-check.sh` (stays callable by hand)
-- `hooks/scripts/reviewed-path-gate.sh`, `lib/benign-command.sh` (U9); `tests/abtest-arms.test.sh`, `eval/`
+- `hooks/scripts/lib/state-access.sh` and `hooks/scripts/lib/reviewer-route-gate-core.sh` (U8b removes the helpers and stamp writes), `hooks/scripts/marker-commit-check.sh` (stays callable by hand)
+- `hooks/scripts/reviewed-path-gate.sh`, `hooks/scripts/lib/benign-command.sh` (U9); `tests/abtest-arms.test.sh`, `eval/`
 - No escalation prose anywhere: `tests/escalation-retired.test.sh prose` must stay green
 
 ## Acceptance criteria
