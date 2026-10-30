@@ -90,7 +90,7 @@ contract's instructions.
   in progress — `handoff` changes no gate.
 - **No researcher**: you cannot spawn `researcher` and have no WebSearch tool.
   When a technique is unclear, say so in your report; the orchestrator can
-  dispatch `researcher`.
+  dispatch `researcher`, if present.
 - **Don't grade your own work**: when a unit of work meets its
   machine-checkable criteria, end your turn reporting "ready-for-review" with
   a structured **advisory review packet** — changed files, the commit/diff
