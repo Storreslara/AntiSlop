@@ -21,12 +21,22 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - `templates/persona-config.schema.json`: in the `reviewGating` `description` string [~150], replace "(stop-gate.sh's pending-review flags and marker check, reviewer-route-gate.sh's unit-exclusivity block and .review-join.* stamps)" with "(stop-gate.sh's pending-review flag rules and writer-dispatch marker check, reviewer-route-gate.sh's unit-exclusivity block)". Nothing else in the file. It has no generated copy: `--update --force-render` does not render it (checked in a throwaway clone).
 - Generated copies that step 4 refreshes (never hand-edit): `.claude/persona-protocol.md`, `.claude/agents/lead-programmer.md`, `.claude/agents/milestone-auditor.md`, `.claude/agents/orchestrator.md`, `.claude/agents/reviewer.md`, `.claude/agents/spec-master.md`, `.claude/hooks/scripts/lib/reviewer-route-gate-core.sh`, `.claude/hooks/scripts/lib/state-access.sh`, plus the render record in `.claude/persona-config.json`. The `.review-join.*` text in `.claude/agents/milestone-auditor.md` and `.claude/agents/spec-master.md` comes from the inlined `templates/persona-protocol.md` block, not from `agents/`. In a throwaway clone, rewriting only the template and re-rendering left 0 hits in both files (and in lead-programmer.md). The remaining hits in `.claude/agents/orchestrator.md` (2) and `.claude/agents/reviewer.md` (1) come from their `agents/` sources above. So regeneration fixes them; no hand edit.
 - `CHANGELOG.md`: one `[Unreleased]` bullet that names each deleted and edited test
+- Fix round after f29b1229 (ordered edit 5):
+  - `agents/orchestrator.md`: re-add one sentence to **Review routing** (pinned by `tests/reviewer-dispatch-line-order.test.js`)
+  - `hooks/scripts/lib/reviewer-route-gate-core.sh`: header comment only
+  - Generated copies (regenerate, never hand-edit): `.claude/agents/orchestrator.md`, `.claude/hooks/scripts/lib/reviewer-route-gate-core.sh`, `adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh`, `adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh`, and the render record in `.claude/persona-config.json`
 
 ## Ordered edits
 1. Write the three new caller-test cases first (red). Use the file's own `OK   (<slug>)` / `FAIL (<slug>)` style. (a) `(route-no-join-stamp)`: a reviewer dispatch whose prompt starts `Unit: u1` exits 0, writes no `.claude/.review-join.*`, and writes no `review-join=` line to `review-audit.log`. (b) `(route-exclusivity-block)`: a standing `.pending-review.x` plus a `lead-programmer` dispatch exits 2. (c) `(route-flag-not-dropped)`: the same setup plus `.claude/.pending-review-cleared.x` also exits 2, and the flag still exists afterwards.
 2. Make the code edits above. Then make the prose say that the reviewer's SubagentStop clears the flags and that no per-unit stamp exists. Keep the ADR-0016 file name where it is cited.
 3. Edit or delete the tests as listed. Change only the cases about stamps or tombstones.
 4. `node bin/cli.js --update --force-render`, then `git add -- .claude adapters`.
+5. Fix round (f29b1229 stays; add one fix commit on top).
+   (a) `agents/orchestrator.md`, **Review routing**: directly after the sentence ending "(the reviewer then writes `tier: unknown`)." insert exactly:
+   "For a report-only dispatch that owns no verdict, add `Mode: advisory` as the **literal second non-blank line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line to third."
+   Line breaks may differ (the test flattens whitespace); the words may not. No stamp, route-gate or audit-log wording. The later pointer "per **Review routing**" (~411) then resolves to this sentence; leave it as it is.
+   (b) `hooks/scripts/lib/reviewer-route-gate-core.sh` header, caller contract: replace "dispatch_name (the dispatch's raw `name` field value, empty if none), prompt (the dispatch's raw prompt/instructions text, already extracted from the port's own field chain)." with "dispatch_name (the dispatch's raw `name` field value, empty if none)." The core no longer reads `prompt`.
+   (c) Repeat step 4, then commit.
 
 ## Do NOT touch
 - `bin/cli.js`: keep the `.review-join.*` and `.pending-review-cleared.*` ignore patterns, so leftover files in upgraded repos stay ignored. `tests/cli-backfill.test.js` pins them.
@@ -34,6 +44,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - `docs/` (U12 marks review-join retired in the glossary), `CONTEXT.md` (U12), `.claude/wiki/` (scribe), `tests/abtest-arms.test.sh`, `eval/`, `prototype/`, `tmp/`
 - `.gitignore` and `tests/cli-backfill.test.js`: keep the `.claude/.review-join.*` ignore line and its pin, for the same reason as `bin/cli.js`
 - No escalation prose anywhere
+- Fix round: no other file. The `prompt` extraction and comments in `adapters/codex/hooks/scripts/reviewer-route-gate.sh` and `adapters/cursor/hooks/scripts/reviewer-route-gate.sh`, and the `Mode: advisory` comment in `hooks/scripts/dispatch-hygiene.sh`, stay as they are
 
 ## Acceptance criteria
 1. run: `git grep -nE 'review-join|review_join|pending-review-cleared|tombstone|resurrect' -- hooks bin adapters agents templates commands .claude/agents .claude/hooks .claude/persona-protocol.md ':!bin/cli.js' | grep -v 'adr/0016-per-unit-review-join' | wc -l`
@@ -63,8 +74,21 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 8. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
    exit: 0
    stdout: empty
+9. run: `node tests/reviewer-dispatch-line-order.test.js >/dev/null && echo ok`
+   exit: 0
+   stdout: `ok`
+   mutation: agents/orchestrator.md as at f29b1229 → no `ok`, exit 1.
+10. run: `awk '/^## Review routing/{f=1;next} /^## /{f=0} f' agents/orchestrator.md | tr -s ' \n' '  ' | grep -c 'Mode: advisory. as the ..literal second non-blank line'`
+   exit: 0
+   stdout: `1`
+   mutation: agents/orchestrator.md as at f29b1229 → `0`, exit 1.
+11. run: `! grep -q 'prompt (the dispatch' hooks/scripts/lib/reviewer-route-gate-core.sh .claude/hooks/scripts/lib/reviewer-route-gate-core.sh adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh && grep -q 'dispatch_name (the dispatch' hooks/scripts/lib/reviewer-route-gate-core.sh && echo ok`
+   exit: 0
+   stdout: `ok`
+   mutation: the header as at f29b1229 → no `ok`, exit 1.
 
 ## Pre-resolved context
+- Fix round (orchestrator decision, 2026-10-30): keep the `Mode: advisory` line-order convention; the reviewer still reads it. Only the stamp and route-gate half of the removed block stays removed. At f29b1229, `tests/validate.sh` (throwaway worktree) gave FAIL=2, both from `tests/reviewer-dispatch-line-order.test.js`; no other test fails. With edits 5a-5c applied, criteria 9-11 and 6 pass and validate.sh gives FAIL=0 once the edits are committed. Before the commit, `tests/abtest-arms.test.sh` fails 3 checks ("product tree hooks are unchanged since HEAD"); that is expected for an uncommitted hook edit, so run criterion 8 after the commit.
 - At 4fc80b6a (after lp-stopgate): criterion 1 counts 185 with the `.claude` paths added; criterion 7 prints `false`; `--update --force-render` leaves the tree clean. Earlier (7717b64a): criterion 1 counted 186 (most of them in stop-gate files, which lp-stopgate removes first); criterion 2's grep gives 0; criterion 3 fails (both files exist).
 - Plan gaps resolved here. The plan's criterion 2 names `tests/reviewer-route-gate.test.sh`, which does not exist; the mid-review block has no route-side test outside the deleted `review-join.test.sh` and `review-gating-off` case d, so case (b) adds one. lp-stopgate already deletes `tests/review-join.test.sh`; do not delete it again. The plan listed no prose; it is added because the flag-clearing sentences would be false.
 - `reviewer-route-gate-caller.test.sh` already covers the named-reviewer and forgery blocks (`name-*` cases), so they keep a test after `review-join.test.sh` goes.
