@@ -285,13 +285,9 @@ only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
 verdict is advisory and nothing blocks on it.
 
 ## Review markers and gate mechanics (owner-facing)
-Only one unit is ever mid-review. The `.blocked` marker's flag-keeping heuristic depends on that (an
-INSUFFICIENT-CONTEXT verdict leaves the pending-review flag standing rather than clearing it): the
-route-gate already blocks the next gated dispatch while any pending-review flag stands, so there is never a
-second unit's flag to confuse with the blocked one. The marker check is scoped to the stopping reviewer's
-own stamped units (falling back to a directory-wide check when scoping information is unavailable), so a
-stray or orphaned `.blocked` marker from an unrelated unit cannot jam unrelated reviewers' operations
-(ADR-0028, `docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md`).
+Only one unit is ever mid-review: the route-gate blocks the next gated dispatch while any pending-review
+flag stands. A reviewer's stop clears every flag whatever the verdict, so an INSUFFICIENT-CONTEXT verdict
+(`.blocked`) no longer keeps its unit pending; the orchestrator must resolve it before the next unit.
 
 Two orthogonal axes: the **unit-exclusivity axis** is the invariant just stated (at most one unit is
 ever mid-review); the **advisory-reviewer axis** lets that same unit also carry a second, advisory reviewer
@@ -338,9 +334,9 @@ exhaustion on advisory FAILs and the orchestrator listed the remaining findings 
 on. Inert under `off`: the pending-review flags and review-join verdict
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh` and `dispatch-hygiene.sh`'s H3 check. Still armed: `protected-paths.sh`,
-`harness-integrity-gate.sh` and config-drift detection,
-`reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name
-guards in `reviewer-route-gate.sh`, and `stop-gate.sh`'s test+lint check.
+`harness-integrity-gate.sh`, `reviewed-path-gate.sh`, and the
+reviewer-dispatch identity and privileged-name guards in
+`reviewer-route-gate.sh`.
 Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts

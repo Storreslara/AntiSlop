@@ -32,34 +32,12 @@
 #    is a workaround for an unconfirmed primitive, not a confirmed platform
 #    behavior - revisit if Codex turns out to expose its own re-trigger
 #    signal (docs/codex-port-notes.md).
-#  - session/baseline id: `.session_id` (Codex has this natively, unlike
+#  - session id (the loop-guard key): `.session_id` (Codex has this natively, unlike
 #    Cursor's reused `.conversation_id`).
 #
-# Ordered logic (identical to the Claude/Cursor versions - see
-# hooks/scripts/lib/stop-gate-core.sh):
-#  0) loop guard (self-tracked fallback, see above).
-#  0.5) reviewer's SubagentStop -> if any .codex/reviewed/*.blocked marker
-#     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
-#     ALLOW); a .codex/reviewed/*.escalated marker (ESCALATE-TO-HUMAN) does the
-#     same under its own token `verdict=escalated flags-kept`, and both globs
-#     log so neither masks the other. `.directed` is DELIBERATELY not globbed:
-#     the flags must clear for the human-directed fix to be dispatched at all.
-#     Otherwise consume the PER-UNIT review-join stamps
-#     (.codex/.review-join.<unit-id>) that reviewer-route-gate.sh wrote at
-#     dispatch time: no stamps at all -> fail OPEN (`marker-check=bootstrap`);
-#     at least one stamp satisfied by a format-valid PASS/FAIL marker for its
-#     unit -> delete those stamps, log `join-consumed=<id>` per deletion,
-#     CLEAR every pending-review flag, log, ALLOW; stamps present but none
-#     satisfied -> keep the flags, log `marker=MISSING unit=<id>` per stamp,
-#     BLOCK. Keying per UNIT is what lets concurrent reviewers each make
-#     progress, which the global watermark this replaced could not.
-#  0.75) main Stop with any pending-review flag -> BLOCK (defer:/skip: escape).
-#  1) non-gated stop/SubagentStop -> ALLOW immediately.
-#  2) per-agent WIP sentinel with a non-empty reason -> log, delete, ALLOW.
-#  2.5) a gated SubagentStop reaching here -> CREATE the pending-review flag
-#     if absent (idempotent: does not clobber an existing defer:/skip:).
-#  3) tree clean AND no commits since baseline -> ALLOW.
-#  4) otherwise run the configured test+lint command; non-zero -> BLOCK.
+# The rules live in hooks/scripts/lib/stop-gate-core.sh. The loop guard is
+# the self-tracked fallback above. No dispatch-hygiene port exists here, so
+# the writer-dispatch stamp is never touched and the marker check is inert.
 #
 # Agent identities may arrive namespaced ("<plugin>:<persona>"), so every
 # comparison below goes through lib/agent-identity.sh - liberal at the GATE
@@ -118,7 +96,6 @@ if [ "$hook_event" != "SubagentStop" ]; then
   main_agent_name="$(jq -r '.mainAgent // "orchestrator"' "$config" 2>/dev/null || echo orchestrator)"
 fi
 
-mcc_script="$(dirname "${BASH_SOURCE[0]}")/marker-commit-check.sh"
 . "$(dirname "${BASH_SOURCE[0]}")/lib/state-access.sh"
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"

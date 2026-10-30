@@ -20,38 +20,15 @@
 #  - there is no per-subagent id on subagentStop, so the pending-review flag is
 #    keyed by `subagent_type` (LIMITATION: two concurrent same-type subagents
 #    would share one flag - acceptable for the sequential MVP flow).
-#  - session/baseline id is `.conversation_id` (Claude's `.session_id`).
 #
-# Ordered logic (identical to the Claude version - see
-# hooks/scripts/lib/stop-gate-core.sh):
-#  0) loop guard - never re-trigger ourselves into an infinite loop.
-#  0.5) reviewer's subagentStop -> if any .cursor/reviewed/*.blocked marker
-#     stands, KEEP the pending-review flags (log `verdict=blocked flags-kept`,
-#     ALLOW); a .cursor/reviewed/*.escalated marker (ESCALATE-TO-HUMAN) does
-#     the same under its own token `verdict=escalated flags-kept`, and both
-#     globs log so neither masks the other. `.directed` is DELIBERATELY not
-#     globbed: the flags must clear for the human-directed fix to be
-#     dispatched at all. Otherwise consume the PER-UNIT review-join stamps
-#     (.cursor/.review-join.<unit-id>) that reviewer-route-gate.sh wrote at
-#     dispatch time: no stamps at all -> fail OPEN (`marker-check=bootstrap`);
-#     at least one stamp satisfied by a format-valid PASS/FAIL marker for its
-#     unit -> delete those stamps, log `join-consumed=<id>` per deletion,
-#     CLEAR every pending-review flag, log, ALLOW; stamps present but none
-#     satisfied -> keep the flags, log `marker=MISSING unit=<id>` per stamp,
-#     BLOCK. Keying per UNIT is what lets concurrent reviewers each make
-#     progress, which the global watermark this replaced could not.
-#  0.75) main stop with any pending-review flag -> BLOCK (defer:/skip: escape).
-#  1) non-gated stop/subagentStop -> ALLOW immediately.
-#  2) per-agent WIP sentinel with a non-empty reason -> log, delete, ALLOW.
-#  2.5) a gated subagentStop reaching here -> CREATE the pending-review flag
-#     if absent (idempotent: does not clobber an existing defer:/skip:).
-#  3) tree clean AND no commits since baseline -> ALLOW.
-#  4) otherwise run the configured test+lint command; non-zero -> BLOCK.
+# The rules live in hooks/scripts/lib/stop-gate-core.sh. No dispatch-hygiene
+# port exists here, so the writer-dispatch stamp is never touched and the
+# marker check is inert.
 #
 # Agent identities may arrive namespaced ("<plugin>:<persona>"), so every
 # comparison below goes through lib/agent-identity.sh - liberal at the GATE
-# site (0.5's gated-agent check), conservative at the GRANT site (0.5's
-# reviewer-clears-flags). The EXTRACTION is unchanged, so a namespaced
+# site (the gated-agent check), conservative at the GRANT site (the
+# reviewer-clears-flags check). The EXTRACTION is unchanged, so a namespaced
 # subagent's flag is keyed by the namespaced form; every consumer globs
 # `.pending-review.*`, so that only affects the filename, not the lifecycle.
 set -euo pipefail
@@ -84,15 +61,12 @@ case "$raw_hook_event" in
   *) hook_event="$raw_hook_event" ;;
 esac
 agent_type="$(echo "$input" | jq -r '.subagent_type // empty' 2>/dev/null || true)"
-raw_session_id="$(echo "$input" | jq -r '.conversation_id // "unknown"' 2>/dev/null || echo unknown)"
 raw_agent_id="$(echo "$input" | jq -r '.subagent_type // .conversation_id // "main"' 2>/dev/null || echo main)"
 
 main_agent_name=""
 if [ "$hook_event" != "SubagentStop" ]; then
   main_agent_name="$(jq -r '.mainAgent // "orchestrator"' "$config" 2>/dev/null || echo orchestrator)"
 fi
-
-mcc_script="$(dirname "${BASH_SOURCE[0]}")/marker-commit-check.sh"
 
 lib_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
 source "${lib_dir}/stop-gate-core.sh"

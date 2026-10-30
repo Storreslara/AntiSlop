@@ -93,7 +93,7 @@ orchestrator lists the remaining defects under `Unresolved advisory
 findings` and moves on instead of stopping for the human. Inert under `off`:
 the pending-review flags and review-join verdict check in `stop-gate.sh` and
 the unit-exclusivity block in `reviewer-route-gate.sh`. Still armed on
-Codex: `protected-paths.sh`, `stop-gate.sh`'s test+lint check, and the
+Codex: `protected-paths.sh` and the
 reviewer-dispatch privileged-name guard in `reviewer-route-gate.sh`. No `.fail`
 records are written under `off`, so later readers of FAIL history see
 nothing for those units. Flags, stamps and markers left over from `enforce`

@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Capability-regression fixture test (A22).
-# With humanReviewMode: "all" in a fixture, verify the escalation path still
-# works end to end by driving the REAL hooks (not writing+grepping the
-# test's own fixture text, which would notice nothing if the capability
-# rotted away entirely).
+# Capability-regression fixture test (A22), driving the REAL hooks (not
+# writing+grepping the test's own fixture text). The escalation path is
+# retired: a leftover .escalated marker must no longer keep flags standing.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -36,17 +34,16 @@ printf 'ESCALATE-TO-HUMAN %s %s trigger: capability-regression-test microworld: 
 printf 'lead-programmer flag\n' > "$fixture_dot/.pending-review.lp-1"
 
 test_escalation_path() {
-  # (1) real stop-gate.sh reviewer SubagentStop: an .escalated marker must
-  # log verdict=escalated AND keep pending-review flags standing (unlike a
-  # clean SubagentStop, which would clear them).
+  # (1) real stop-gate.sh reviewer SubagentStop clears pending-review flags
+  # whatever marker stands, a leftover .escalated one included.
   local reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
   local rc=0
   printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$fixture_dir" bash hooks/scripts/stop-gate.sh || rc=$?
-  if [ "$rc" = 0 ] && [ -f "$fixture_dot/.pending-review.lp-1" ] \
-     && grep -q 'verdict=escalated flags-kept' "$fixture_dot/review-audit.log"; then
-    pass "capability: real stop-gate.sh logs the escalation and keeps flags standing"
+  if [ "$rc" = 0 ] && [ ! -e "$fixture_dot/.pending-review.lp-1" ] \
+     && grep -q 'cleared-by=reviewer' "$fixture_dot/review-audit.log"; then
+    pass "capability: real stop-gate.sh clears flags despite a leftover .escalated marker"
   else
-    bad "capability: stop-gate.sh did not produce the escalated verdict/flags-kept artifacts (rc=$rc)"
+    bad "capability: stop-gate.sh kept the flag or logged no clear (rc=$rc)"
   fi
 }
 

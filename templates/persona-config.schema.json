@@ -6,7 +6,7 @@
   "properties": {
     "testAndLintCommand": {
       "type": "string",
-      "description": "Single shell command the stop-gate runs; non-zero exit = BLOCK. e.g. 'npm test && npm run lint'"
+      "description": "Single test+lint shell command (no longer run by stop-gate). e.g. 'npm test && npm run lint'"
     },
     "lintCommand": {
       "type": "string",
@@ -43,7 +43,7 @@
       "type": "array",
       "items": { "type": "string" },
       "default": ["lead-programmer"],
-      "description": "Agent-type names the stop-gate's test+lint check applies to on SubagentStop. Defaults to just lead-programmer so cheap/high-frequency personas (explorer, scribe) never pay the check's cost. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit. Matching is namespace-insensitive: both this config's entries and the incoming agent-identity payload are canonicalized to their bare persona name before comparing, so an entry written as 'lead-programmer' also matches a namespaced payload like 'antislop:lead-programmer', and an entry written as 'antislop:lead-programmer' also matches a bare 'lead-programmer' payload. You never need to list both forms."
+      "description": "Agent-type names whose SubagentStop raises a pending-review flag (and whose dispatch touches the writer-dispatch stamp for stop-gate.sh's marker check). Defaults to just lead-programmer. Add a persona name here if you add a new code-writing persona - this is a config edit, not a plugin file edit. Matching is namespace-insensitive: both this config's entries and the incoming agent-identity payload are canonicalized to their bare persona name before comparing, so an entry written as 'lead-programmer' also matches a namespaced payload like 'antislop:lead-programmer', and an entry written as 'antislop:lead-programmer' also matches a bare 'lead-programmer' payload. You never need to list both forms."
     },
     "humanReviewMode": {
       "type": "string",
@@ -135,7 +135,7 @@
     },
     "markerCommitCheck": {
       "type": "object",
-      "description": "Configuration for the marker-commit-check.sh classifier invoked at reviewer turn-end (stop-gate.sh's per-unit review-join loop), which flags a PASS marker's commit: field as possibly citing a commit that does not belong to its unit. Absent object ⇒ mode: \"warn\" - deliberately differs from dispatchHygiene's \"block\" default, since ~1-2% of mismatch classifications are hard false positives and a false block on a gate the reviewer does not own is worse than a missed warning.",
+      "description": "Configuration for the marker-commit-check.sh classifier run by hand (no longer run by stop-gate), which flags a PASS marker's commit: field as possibly citing a commit that does not belong to its unit. Absent object ⇒ mode: \"warn\" - deliberately differs from dispatchHygiene's \"block\" default, since ~1-2% of mismatch classifications are hard false positives and a false block on a gate the reviewer does not own is worse than a missed warning.",
       "properties": {
         "mode": {
           "type": "string",
@@ -147,7 +147,7 @@
     },
     "reviewGating": {
       "type": "object",
-      "description": "Review gating switch (user-facing name: gateless mode). \"off\" makes reviewer verdicts advisory and the review-enforcement gates inert (stop-gate.sh's pending-review flags and review-join verdict check, reviewer-route-gate.sh's unit-exclusivity block and .review-join.* stamps); protection gates and config-drift detection stay armed.",
+      "description": "Review gating switch (user-facing name: gateless mode). \"off\" makes reviewer verdicts advisory and the review-enforcement gates inert (stop-gate.sh's pending-review flags and marker check, reviewer-route-gate.sh's unit-exclusivity block and .review-join.* stamps); protection gates stay armed.",
       "properties": {
         "mode": {
           "type": "string",

@@ -222,10 +222,8 @@ line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line
 to third. `reviewer-route-gate.sh` recognizes
 that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
 the review audit log instead.
-When you dispatch the reviewer as a background task, write nothing: the stop gate sees the reviewer's
-review-join stamp and allows turn-end while that review is in flight (`stop-allowed=review-in-flight` in
-the review audit log), for up to 1800 s from dispatch. After that, or with no reviewer dispatched, Stop
-blocks as before and the `defer:`/`skip:` flag escapes apply.
+When you dispatch the reviewer as a background task, Stop still blocks while the flag stands: write
+`defer: <reason>` into it to end your turn; the reviewer's own stop clears it.
 
 **Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix.
 
@@ -275,9 +273,9 @@ resume the same reviewer session by name via `SendMessage` (see
 constraint. This path does not count against the 2-FAIL cap (which counts
 `.fail` records only) and does **NOT** re-dispatch lead-programmer — the
 code isn't known-wrong; the reviewer merely couldn't confirm it, so re-
-running the writer would be wrong. The pending-review flag stays standing
-while the `.blocked` marker exists (stop-gate.sh keeps it), so turn-end and
-the next gated dispatch remain blocked until the reviewer resolves the unit
+running the writer would be wrong. The reviewer's stop clears the
+pending-review flag whatever the verdict, so nothing blocks turn-end or the
+next gated dispatch: do not dispatch the next unit until this one is resolved
 to PASS/FAIL.
 
 **On a `needs-human:` line in a verdict** — the reviewer added a one-line note that a person
@@ -881,13 +879,9 @@ only one unit is ever mid-review. Under `reviewGating.mode: off` the reviewer's
 verdict is advisory and nothing blocks on it.
 
 ## Review markers and gate mechanics (owner-facing)
-Only one unit is ever mid-review. The `.blocked` marker's flag-keeping heuristic depends on that (an
-INSUFFICIENT-CONTEXT verdict leaves the pending-review flag standing rather than clearing it): the
-route-gate already blocks the next gated dispatch while any pending-review flag stands, so there is never a
-second unit's flag to confuse with the blocked one. The marker check is scoped to the stopping reviewer's
-own stamped units (falling back to a directory-wide check when scoping information is unavailable), so a
-stray or orphaned `.blocked` marker from an unrelated unit cannot jam unrelated reviewers' operations
-(ADR-0028, `docs/adr/0028-scoped-marker-relevance-leaked-stamp-asymmetry.md`).
+Only one unit is ever mid-review: the route-gate blocks the next gated dispatch while any pending-review
+flag stands. A reviewer's stop clears every flag whatever the verdict, so an INSUFFICIENT-CONTEXT verdict
+(`.blocked`) no longer keeps its unit pending; the orchestrator must resolve it before the next unit.
 
 Two orthogonal axes: the **unit-exclusivity axis** is the invariant just stated (at most one unit is
 ever mid-review); the **advisory-reviewer axis** lets that same unit also carry a second, advisory reviewer
@@ -934,9 +928,9 @@ exhaustion on advisory FAILs and the orchestrator listed the remaining findings 
 on. Inert under `off`: the pending-review flags and review-join verdict
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh` and `dispatch-hygiene.sh`'s H3 check. Still armed: `protected-paths.sh`,
-`harness-integrity-gate.sh` and config-drift detection,
-`reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name
-guards in `reviewer-route-gate.sh`, and `stop-gate.sh`'s test+lint check.
+`harness-integrity-gate.sh`, `reviewed-path-gate.sh`, and the
+reviewer-dispatch identity and privileged-name guards in
+`reviewer-route-gate.sh`.
 Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts

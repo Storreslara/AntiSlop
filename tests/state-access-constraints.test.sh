@@ -70,51 +70,25 @@ test_consumed_before_rm() {
   fi
 }
 
-# == CONSTRAINT 2: review-join → clear .pending-review ==
-# A reviewer's SubagentStop must clear .pending-review flags ONLY after the
-# review-join stamp for its unit is satisfied by a fresh verdict marker - not
-# unconditionally. Exercised through the REAL hooks/scripts/stop-gate.sh (via
+# == CONSTRAINT 2: reviewer stop -> clear .pending-review ==
+# A reviewer's SubagentStop clears every .pending-review flag, whatever the
+# verdict. Exercised through the REAL hooks/scripts/stop-gate.sh (via
 # lib/stop-gate-core.sh), not by writing files and re-reading them back.
-test_review_join_ordering() {
-  local unit_id="test-unit-1"
+test_reviewer_stop_clears() {
   local agent_id="lead-programmer"
   local reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
-
-  # (a) satisfied stamp: a fresh PASS marker for the joined unit -> the join
-  # stamp is consumed AND pending-review flags are cleared.
-  local dir1="${tmpdir}/c2-satisfied"
+  local dir1="${tmpdir}/c2-clear"
   mkdir -p "$dir1/.claude/reviewed"
   printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir1/.claude/persona-config.json"
   printf 'lead-programmer flag\n' > "$dir1/.claude/.pending-review.${agent_id}"
-  printf '2026-08-27T00:00:00Z unit=%s prior=none prior_mtime=-\n' "$unit_id" > "$dir1/.claude/.review-join.${unit_id}"
-  printf 'PASS %s 2026-08-27T10:00:00Z commit: abc1234 criteria: true\n' "$unit_id" > "$dir1/.claude/reviewed/${unit_id}.pass"
 
   local rc=0
   printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir1" bash hooks/scripts/stop-gate.sh || rc=$?
-  if [ "$rc" = 0 ] && [ ! -f "$dir1/.claude/.review-join.${unit_id}" ] \
-     && [ ! -f "$dir1/.claude/.pending-review.${agent_id}" ] \
-     && grep -q "join-consumed=${unit_id}" "$dir1/.claude/review-audit.log" \
+  if [ "$rc" = 0 ] && [ ! -f "$dir1/.claude/.pending-review.${agent_id}" ] \
      && grep -q 'cleared-by=reviewer' "$dir1/.claude/review-audit.log"; then
-    pass "C2: real stop-gate.sh consumes a satisfied review-join stamp then clears pending-review"
+    pass "C2: real stop-gate.sh clears pending-review on a reviewer stop"
   else
-    bad "C2: satisfied-stamp flow did not consume+clear as expected (rc=$rc)"
-  fi
-
-  # (b) unsatisfied stamp: no PASS/FAIL marker for the joined unit -> BLOCK,
-  # and pending-review is left standing (never cleared before a verdict
-  # exists). Proves the clear only happens AFTER the join check, not before.
-  local dir2="${tmpdir}/c2-unsatisfied"
-  mkdir -p "$dir2/.claude/reviewed"
-  printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir2/.claude/persona-config.json"
-  printf 'lead-programmer flag\n' > "$dir2/.claude/.pending-review.${agent_id}"
-  printf '2026-08-27T00:00:00Z unit=%s prior=none prior_mtime=-\n' "$unit_id" > "$dir2/.claude/.review-join.${unit_id}"
-
-  rc=0
-  printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir2" bash hooks/scripts/stop-gate.sh || rc=$?
-  if [ "$rc" = 2 ] && [ -f "$dir2/.claude/.pending-review.${agent_id}" ]; then
-    pass "C2: an unsatisfied review-join stamp blocks and leaves pending-review standing"
-  else
-    bad "C2: expected block (rc=2) with pending-review left standing (got rc=$rc)"
+    bad "C2: reviewer stop did not clear pending-review (rc=$rc)"
   fi
 }
 
@@ -155,18 +129,14 @@ test_session_baseline_idempotent() {
   [ "$original" = "$after" ] && pass "C4: session-baseline not overwritten" || bad "C4: session-baseline was clobbered"
 }
 
-# == CONSTRAINT 5: .directed exclusion from stop-gate globs ==
-# .directed MUST NOT be checked by stop-gate's glob patterns. Including it
-# would deadlock the dispatch it's meant to authorize. Exercised through the
-# REAL hooks/scripts/stop-gate.sh, so a regression that starts globbing
-# .directed in is actually caught.
+# == CONSTRAINT 5: no marker keeps flags at a reviewer stop ==
+# A .directed marker keeping the flag would deadlock the dispatch it is meant
+# to authorize. Exercised through the REAL hooks/scripts/stop-gate.sh.
 test_directed_excluded_from_globs() {
   local unit_id="test-unit-2"
   local reviewer_stop='{"hook_event_name":"SubagentStop","agent_type":"reviewer","agent_id":"rev-1","session_id":"s1"}'
 
-  # (a) a .directed marker alone must NOT keep a pending-review flag standing
-  # the way .blocked/.escalated do - if stop-gate's glob ever started
-  # matching .directed too, this case would flip to "flag kept".
+  # (a) a .directed marker must NOT keep a pending-review flag standing.
   local dir1="${tmpdir}/c5-directed-only"
   mkdir -p "$dir1/.claude/reviewed"
   printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir1/.claude/persona-config.json"
@@ -182,9 +152,8 @@ test_directed_excluded_from_globs() {
     bad "C5: .directed changed stop-gate.sh's clearing behavior - check it hasn't entered the glob"
   fi
 
-  # (b) control: a sibling .blocked marker (same fixture shape, different
-  # unit) DOES keep the flag standing - proves the glob mechanism genuinely
-  # fires here, so (a)'s green result isn't just "nothing matched anything".
+  # (b) a sibling .blocked marker no longer keeps the flag standing either:
+  # the reviewer stop clears whatever the verdict.
   local dir2="${tmpdir}/c5-directed-and-blocked"
   mkdir -p "$dir2/.claude/reviewed"
   printf '{"gatedAgents":["lead-programmer"],"testAndLintCommand":"true"}\n' > "$dir2/.claude/persona-config.json"
@@ -194,11 +163,10 @@ test_directed_excluded_from_globs() {
 
   rc=0
   printf '%s' "$reviewer_stop" | CLAUDE_PROJECT_DIR="$dir2" bash hooks/scripts/stop-gate.sh || rc=$?
-  if [ "$rc" = 0 ] && [ -f "$dir2/.claude/.pending-review.lp-1" ] \
-     && grep -q 'verdict=blocked flags-kept' "$dir2/.claude/review-audit.log"; then
-    pass "C5: a sibling .blocked marker still keeps flags standing (control: glob matching proven active)"
+  if [ "$rc" = 0 ] && [ ! -f "$dir2/.claude/.pending-review.lp-1" ]; then
+    pass "C5: a sibling .blocked marker does not keep the flag standing"
   else
-    bad "C5: control case failed - .blocked no longer triggers the keep-standing path"
+    bad "C5: a .blocked marker kept the flag standing (rc=$rc)"
   fi
 }
 
@@ -220,7 +188,7 @@ test_decision_zero_identity_write() {
 # An empty wip-handoff file must be deleted, NOT preserved.
 # Empty does not mean "pause honored"; it means "misconfigured — delete it."
 # Path has no leading dot, matching the real sentinel path
-# ".claude/wip-handoff.<agent-id>" at stop-gate-core.sh:501 (defect 1 fix).
+# ".claude/wip-handoff.<agent-id>" in stop-gate-core.sh (defect 1 fix).
 test_wip_handoff_empty_not_absent() {
   local agent_id="test-agent-2"
 
@@ -318,17 +286,16 @@ test_unit_id_grammar() {
   # 2b - spelling B ([^a-zA-Z0-9._-]) survives only outside the unit-id
   # domain: the agent_id/session_id sanitizers, asserted by file AND by the
   # assigned-variable name on each line (not just a count) so that reaching
-  # "three remaining" by editing the wrong (non-unit-id) line still fails.
+  # "two remaining" by editing the wrong (non-unit-id) line still fails.
   out="$(git grep -n -F '[^a-zA-Z0-9._-]' -- hooks/scripts/ || true)"
   local b_lines
   b_lines="$(echo "$out" | wc -l)"
-  if [ "$b_lines" = 3 ] \
+  if [ "$b_lines" = 2 ] \
      && echo "$out" | grep -q '^hooks/scripts/lib/stop-gate-core.sh:.*agent_id=' \
-     && echo "$out" | grep -q '^hooks/scripts/lib/stop-gate-core.sh:.*session_id=' \
      && echo "$out" | grep -q '^hooks/scripts/session-start.sh:.*session_id='; then
     pass "2b: spelling B survives only at the agent_id/session_id sanitizers"
   else
-    bad "2b: expected exactly the three agent_id/session_id lines, got: $out"
+    bad "2b: expected exactly the two agent_id/session_id lines, got: $out"
   fi
   if echo "$out" | grep -q 'state-access.sh'; then
     bad "2b: state-access.sh must not appear (unit_id_sanitize spells its complement as [^\${UNIT_ID_CHARCLASS}])"
@@ -367,7 +334,7 @@ test_unit_id_grammar() {
 
 # == Run all tests ==
 test_consumed_before_rm
-test_review_join_ordering
+test_reviewer_stop_clears
 test_pending_review_idempotent
 test_session_baseline_idempotent
 test_directed_excluded_from_globs

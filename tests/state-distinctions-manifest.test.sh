@@ -44,14 +44,14 @@ declare -a patterns=(
   'DISTINCTION: content-embedded epoch'
   'commit: <sha|none>'
   'durable FAIL record'
-  'blocked_markers='
+  'reviewed/*.blocked'
   ''
   'tail -n 1 "$review_audit"'
   'stop-loop-guard'
 )
 declare -a files=(
   hooks/scripts/lib/state-access.sh
-  hooks/scripts/stop-gate.sh
+  hooks/scripts/lib/reviewer-route-gate-core.sh
   hooks/scripts/lib/state-access.sh
   hooks/scripts/lib/state-access.sh
   hooks/scripts/lib/state-access.sh

@@ -523,11 +523,11 @@ else
 fi
 
 echo
-echo "== stop-gate.sh: gated SubagentStop blocks on disarm-surface config drift (Step 4, RD3) (Bash) =="
-if bash tests/stop-gate-config-drift.test.sh; then
-  echo "OK   tests/stop-gate-config-drift.test.sh"
+echo "== stop-gate.sh: pending-review flag and writer-dispatch marker check (Bash) =="
+if bash tests/stop-gate.test.sh; then
+  echo "OK   tests/stop-gate.test.sh"
 else
-  echo "FAIL tests/stop-gate-config-drift.test.sh"
+  echo "FAIL tests/stop-gate.test.sh"
   fail=1
 fi
 
@@ -537,33 +537,6 @@ if bash tests/refusal-disclosure.test.sh; then
   echo "OK   tests/refusal-disclosure.test.sh"
 else
   echo "FAIL tests/refusal-disclosure.test.sh"
-  fail=1
-fi
-
-echo
-echo "== stop-gate .blocked-marker behaviour (Bash) =="
-if bash tests/stop-gate-blocked.test.sh; then
-  echo "OK   tests/stop-gate-blocked.test.sh"
-else
-  echo "FAIL tests/stop-gate-blocked.test.sh"
-  fail=1
-fi
-
-echo
-echo "== stop-gate .escalated-marker behaviour (Bash) =="
-if bash tests/stop-gate-escalated.test.sh; then
-  echo "OK   tests/stop-gate-escalated.test.sh"
-else
-  echo "FAIL tests/stop-gate-escalated.test.sh"
-  fail=1
-fi
-
-echo
-echo "== stop-gate review-in-flight Stop allow (Bash) =="
-if bash tests/stop-gate-review-inflight.test.sh; then
-  echo "OK   tests/stop-gate-review-inflight.test.sh"
-else
-  echo "FAIL tests/stop-gate-review-inflight.test.sh"
   fail=1
 fi
 
@@ -582,24 +555,6 @@ if bash tests/session-start-microworld-status.test.sh; then
   echo "OK   tests/session-start-microworld-status.test.sh"
 else
   echo "FAIL tests/session-start-microworld-status.test.sh"
-  fail=1
-fi
-
-echo
-echo "== stop-gate deferred microworld result surfacing (Bash, Unit A) =="
-if bash tests/stop-gate-deferred-microworld.test.sh; then
-  echo "OK   tests/stop-gate-deferred-microworld.test.sh"
-else
-  echo "FAIL tests/stop-gate-deferred-microworld.test.sh"
-  fail=1
-fi
-
-echo
-echo "== stop-gate testAndLintCommand skip precondition (Bash, Unit B) =="
-if bash tests/stop-gate-microworld-skip.test.sh; then
-  echo "OK   tests/stop-gate-microworld-skip.test.sh"
-else
-  echo "FAIL tests/stop-gate-microworld-skip.test.sh"
   fail=1
 fi
 
@@ -645,15 +600,6 @@ if node tests/microworld/microworld-audit-contract.test.js; then
   echo "OK   tests/microworld/microworld-audit-contract.test.js"
 else
   echo "FAIL tests/microworld/microworld-audit-contract.test.js"
-  fail=1
-fi
-
-echo
-echo "== reviewer-route-gate review-join stamps (Bash) =="
-if bash tests/review-join.test.sh; then
-  echo "OK   tests/review-join.test.sh"
-else
-  echo "FAIL tests/review-join.test.sh"
   fail=1
 fi
 

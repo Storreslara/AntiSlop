@@ -221,10 +221,8 @@ line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line
 to third. `reviewer-route-gate.sh` recognizes
 that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
 the review audit log instead.
-When you dispatch the reviewer as a background task, write nothing: the stop gate sees the reviewer's
-review-join stamp and allows turn-end while that review is in flight (`stop-allowed=review-in-flight` in
-the review audit log), for up to 1800 s from dispatch. After that, or with no reviewer dispatched, Stop
-blocks as before and the `defer:`/`skip:` flag escapes apply.
+When you dispatch the reviewer as a background task, Stop still blocks while the flag stands: write
+`defer: <reason>` into it to end your turn; the reviewer's own stop clears it.
 
 **Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix.
 
@@ -274,9 +272,9 @@ resume the same reviewer session by name via `SendMessage` (see
 constraint. This path does not count against the 2-FAIL cap (which counts
 `.fail` records only) and does **NOT** re-dispatch lead-programmer — the
 code isn't known-wrong; the reviewer merely couldn't confirm it, so re-
-running the writer would be wrong. The pending-review flag stays standing
-while the `.blocked` marker exists (stop-gate.sh keeps it), so turn-end and
-the next gated dispatch remain blocked until the reviewer resolves the unit
+running the writer would be wrong. The reviewer's stop clears the
+pending-review flag whatever the verdict, so nothing blocks turn-end or the
+next gated dispatch: do not dispatch the next unit until this one is resolved
 to PASS/FAIL.
 
 **On a `needs-human:` line in a verdict** — the reviewer added a one-line note that a person

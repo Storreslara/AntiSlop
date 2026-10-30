@@ -29,7 +29,9 @@
 #     appends "<utc time> tool_use_id=<id> head=<HEAD sha|none> prompt=<sha256>
 #     target=<writer>" to .claude/reviewed/dispatch-baseline.log. It runs after
 #     the persona-config.json check but before mode "off", the override and
-#     every check, and never changes a verdict.
+#     every check, and never changes a verdict. A dispatch of a gatedAgents
+#     target (default lead-programmer) also touches
+#     .claude/reviewed/.writer-dispatch-stamp for stop-gate.sh's marker check.
 #  1).claude/.dispatch-override sentinel -> honored only when its content
 #     starts with "override: " (logged, deleted, exit 0). An empty or
 #     reason-less sentinel is deleted but NOT honored, falling through to the
@@ -154,6 +156,17 @@ if [ -n "$bl_target" ] && [[ $bl_tu =~ ^[A-Za-z0-9_]{1,128}$ ]] \
         "$bl_tu" "$bl_head" "$bl_ph" "$bl_target" >> "${project_dir}/.claude/reviewed/dispatch-baseline.log"; } 2>/dev/null || true
   fi
 fi
+# Writer-dispatch stamp: stop-gate.sh blocks a gated writer's stop when a verdict marker is newer.
+sg_target="$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)"
+sg_gated="$(jq -r '.gatedAgents[]? // empty' "$config" 2>/dev/null || true)"
+[ -n "$sg_gated" ] || sg_gated="lead-programmer"
+while IFS= read -r sg_name; do
+  if [ -n "$sg_name" ] && [ -n "$sg_target" ] && persona_matches_gate "$sg_name" "$sg_target"; then
+    { mkdir -p "${project_dir}/.claude/reviewed" \
+      && touch "${project_dir}/.claude/reviewed/.writer-dispatch-stamp"; } 2>/dev/null || true
+    break
+  fi
+done <<< "$sg_gated"
 mode="$(jq -r '.dispatchHygiene.mode // "block"' "$config" 2>/dev/null || echo block)"
 max_bytes="$(jq -r '.dispatchHygiene.maxPromptBytes // 30000' "$config" 2>/dev/null || echo 30000)"
 max_lines="$(jq -r '.dispatchHygiene.maxInlineBlockLines // 80' "$config" 2>/dev/null || echo 80)"

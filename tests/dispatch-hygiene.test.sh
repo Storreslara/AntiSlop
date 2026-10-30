@@ -1099,4 +1099,15 @@ else
   bad "T49d expected exit 0 and no H4 (rc=$rc err=$err)"
 fi
 
+# T50 - a gated writer dispatch touches the writer-dispatch stamp; a non-gated one does not.
+dir="$(make_project t50 '{"mode":"warn"}')"
+run "$dir" "$(payload explorer "$(contract 504)")"
+rc_ex="$rc"; stamp_ex=no; [ -e "$dir/.claude/reviewed/.writer-dispatch-stamp" ] && stamp_ex=yes
+run "$dir" "$(payload antislop:lead-programmer "$(contract 504)")"
+if [ "$rc_ex" = 0 ] && [ "$stamp_ex" = no ] && [ "$rc" = 0 ] && [ -f "$dir/.claude/reviewed/.writer-dispatch-stamp" ]; then
+  ok "T50 gated writer dispatch touches the writer-dispatch stamp, explorer does not"
+else
+  bad "T50 expected stamp only after the lead-programmer dispatch (rc_ex=$rc_ex stamp_ex=$stamp_ex rc=$rc)"
+fi
+
 exit "$fail"

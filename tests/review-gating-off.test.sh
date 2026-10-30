@@ -49,7 +49,7 @@ run_case() {
     a) stop_hook "$dir" "$lp_stop" || rc=$? ;;
     b) printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.x"
        stop_hook "$dir" "$main_stop" || rc=$? ;;
-    c) printf '2026-09-29T00:00:00Z unit=u1 prior=none prior_mtime=-\n' > "$dir/.claude/.review-join.u1"
+    c) printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.x"
        stop_hook "$dir" "$rev_stop" || rc=$? ;;
     d) printf 'lead-programmer flag\n' > "$dir/.claude/.pending-review.x"
        route_hook "$dir" "$lp_dispatch" || rc=$? ;;
@@ -71,7 +71,7 @@ check "(b) off: main Stop with a standing flag exits 0 (rc=$rc)" "$r"
 
 run_case c '"off"' off
 r=fail; [ "$rc" = 0 ] && r=pass
-check "(c) off: reviewer SubagentStop with a stamp and no marker exits 0 (rc=$rc)" "$r"
+check "(c) off: reviewer SubagentStop exits 0 (rc=$rc)" "$r"
 
 run_case d '"off"' off
 r=fail; [ "$rc" = 0 ] && ! stamp_written "$dir" && r=pass
@@ -101,8 +101,8 @@ for pair in 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
   check "(f/b) $label: main Stop with a standing flag exits 2 (rc=$rc)" "$r"
 
   run_case c "$mode" "$label"
-  r=fail; [ "$rc" = 2 ] && r=pass
-  check "(f/c) $label: reviewer SubagentStop with a stamp and no marker exits 2 (rc=$rc)" "$r"
+  r=fail; [ "$rc" = 0 ] && ! flag_written "$dir" && r=pass
+  check "(f/c) $label: reviewer SubagentStop clears the standing flag (rc=$rc)" "$r"
 
   run_case d "$mode" "$label"
   r=fail; [ "$rc" = 2 ] && r=pass
@@ -112,15 +112,6 @@ for pair in 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
   r=fail; [ "$rc" = 0 ] && [ -f "$dir/.claude/.review-join.u1" ] && r=pass
   check "(f/d') $label: reviewer dispatch with a Unit: line writes .review-join.u1 (rc=$rc)" "$r"
 done
-
-# (g) test+lint kept under "off": a dirty git fixture with a failing command.
-dir="$(make_project g-off '"off"' false)"
-git -C "$dir" init -q
-printf 'dirt\n' > "$dir/untracked.txt"
-rc=0
-stop_hook "$dir" "$lp_stop" || rc=$?
-r=fail; [ "$rc" = 2 ] && r=pass
-check "(g) off: gated SubagentStop with a failing testAndLintCommand still exits 2 (rc=$rc)" "$r"
 
 # (h)-(j): task-gate, dispatch-hygiene H3.
 task_hook() {
