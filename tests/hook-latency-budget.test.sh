@@ -34,7 +34,6 @@ check() {
   fi
 }
 
-check "editing tests/human-decision-gate.test.sh" "tests/human-decision-gate.test.sh"
 check "editing hooks/scripts/human-decision-gate.sh" "hooks/scripts/human-decision-gate.sh"
 check "editing hooks/scripts/reviewed-path-gate.sh" "hooks/scripts/reviewed-path-gate.sh"
 

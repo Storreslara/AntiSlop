@@ -49,21 +49,6 @@ test_escalation_path() {
     bad "capability: stop-gate.sh did not produce the escalated verdict/flags-kept artifacts (rc=$rc)"
   fi
 
-  # (2) real human-decision-gate.sh: no agent identity, reviewer included, may
-  # write DECISION for this escalated unit - the only route to resolution is
-  # a human.
-  local decision_path=".claude/human-review/${unit_id}/DECISION"
-  local hdg_err="${fixture_dir}/c9-hdg-err"
-  rc=0
-  printf '%s' "$(jq -n --arg a antislop:reviewer --arg p "$decision_path" \
-    '{tool_name:"Write",agent_type:$a,tool_input:{file_path:$p}}')" \
-    | CLAUDE_PROJECT_DIR="$fixture_dir" bash hooks/scripts/human-decision-gate.sh >/dev/null 2>"$hdg_err" || rc=$?
-  if [ "$rc" = 2 ] && [ -s "$hdg_err" ]; then
-    pass "capability: real human-decision-gate.sh still blocks every identity from writing DECISION"
-  else
-    bad "capability: human-decision-gate.sh did not block the DECISION write (rc=$rc)"
-  fi
-
   # (3) real dashboard decision/arm route: a human's resolution channel for
   # this escalated unit still functions end to end (matching timestamp arms
   # successfully).

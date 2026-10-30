@@ -20,38 +20,38 @@
     },
     {
       "id": "hdg-lexer-1",
-      "watch": ["hooks/scripts/lib/benign-command.sh", "tests/reviewed-path-gate.test.sh", "tests/human-decision-gate.test.sh"],
-      "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
+      "watch": ["hooks/scripts/lib/benign-command.sh", "tests/reviewed-path-gate.test.sh"],
+      "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 120
     },
     {
       "id": "hdg-prose-2",
-      "watch": ["hooks/scripts/human-decision-gate.sh", "tests/human-decision-gate.test.sh"],
-      "run": ["bash tests/human-decision-gate.test.sh", "bash tests/reviewed-path-gate.test.sh"],
+      "watch": [],
+      "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 120
     },
     {
       "id": "hdg-prose-2-fix2",
-      "watch": ["hooks/scripts/human-decision-gate.sh", "tests/human-decision-gate.test.sh"],
-      "run": ["bash tests/human-decision-gate.test.sh", "bash tests/reviewed-path-gate.test.sh"],
+      "watch": [],
+      "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 120
     },
     {
       "id": "rpg-comment-3",
       "watch": ["hooks/scripts/reviewed-path-gate.sh", "tests/reviewed-path-gate.test.sh"],
-      "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
+      "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 180
     },
     {
       "id": "hdg-anchor-1",
-      "watch": ["hooks/scripts/human-decision-gate.sh", "tests/human-decision-gate.test.sh"],
-      "run": ["bash tests/human-decision-gate.test.sh", "bash tests/reviewed-path-gate.test.sh"],
+      "watch": [],
+      "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 180
     },
     {
       "id": "rpg-canon-2",
       "watch": ["hooks/scripts/reviewed-path-gate.sh", "tests/reviewed-path-gate.test.sh"],
-      "run": ["bash tests/reviewed-path-gate.test.sh", "bash tests/human-decision-gate.test.sh"],
+      "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 180
     }
   ],

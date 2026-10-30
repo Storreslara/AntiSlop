@@ -33,8 +33,6 @@ declare -a ids=(
   D9_blocked_existence_glob_only
   D10_escalated_decision_timestamp_bind
   D11_directed_excluded_from_globs
-  D12_human_review_packet_location
-  D13_decision_zero_identity_write_ban
   D14_four_logs_review_audit_control_input
   D15_codex_stop_loop_guard_counter
 )
@@ -50,8 +48,6 @@ declare -a patterns=(
   'blocked_markers='
   'escalationTimestamp'
   ''
-  'human-review'
-  'may not write'
   'tail -n 1 "$review_audit"'
   'stop-loop-guard'
 )
@@ -67,8 +63,6 @@ declare -a files=(
   hooks/scripts/lib/stop-gate-core.sh
   bin/microworld-dashboard/server.js
   hooks/scripts/lib/stop-gate-core.sh
-  hooks/scripts/human-decision-gate.sh
-  hooks/scripts/human-decision-gate.sh
   hooks/scripts/lib/stop-gate-core.sh
   adapters/codex/hooks/scripts/stop-gate.sh
 )

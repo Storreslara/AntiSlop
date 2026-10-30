@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # gh419/C5.1-C5.6: refusal-message disclosure hygiene for
-# reviewed-path-gate.sh and human-decision-gate.sh. Asserts the eleven
-# banned/required phrases from docs/plans/2026-08-25-harness-trust-gaps.md
-# Step 5 against the gates' REAL runtime denial stderr only - never a
+# reviewed-path-gate.sh. Asserts the banned/required phrases from
+# docs/plans/2026-08-25-harness-trust-gaps.md
+# Step 5 against the gate's REAL runtime denial stderr only - never a
 # tree-wide grep (D8: this plan doc and this file both name the banned
 # phrases, so a tree-wide grep could never be satisfied by construction).
 #
@@ -27,7 +27,6 @@ printf '%s\n' '{"gatedAgents":["lead-programmer"],"personaSelection":["reviewer"
 
 marker=".claude/reviewed"
 rpg_out="$tmproot/rpg.out"; rpg_err="$tmproot/rpg.err"
-hdg_out="$tmproot/hdg.out"; hdg_err="$tmproot/hdg.err"
 before="$tmproot/before.tree"; after="$tmproot/after.tree"
 
 run_rpg() {
@@ -35,13 +34,6 @@ run_rpg() {
   : > "$rpg_out"; : > "$rpg_err"
   printf '%s' "$1" | CLAUDE_PROJECT_DIR="$proj" bash hooks/scripts/reviewed-path-gate.sh \
       >"$rpg_out" 2>"$rpg_err" || rc=$?
-}
-
-run_hdg() {
-  rc=0
-  : > "$hdg_out"; : > "$hdg_err"
-  printf '%s' "$1" | CLAUDE_PROJECT_DIR="$proj" bash hooks/scripts/human-decision-gate.sh \
-      >"$hdg_out" 2>"$hdg_err" || rc=$?
 }
 
 assert_absent() { # file label phrase
@@ -66,7 +58,7 @@ assert_new_files_clean() { # label before after
     [ -n "$f" ] && [ -f "$f" ] || continue
     for phrase in 'OUT of the command text entirely' \
                   'quote-split, dot-segment, doubled-slash' \
-                  'human-decision-gate.sh' 'never spells the path' \
+                  'never spells the path' \
                   'Splitting the path across shell variables' \
                   'reviewed-path-gate.sh' 'never spells DECISION'; do
       if grep -qF -- "$phrase" "$f"; then
@@ -90,29 +82,10 @@ assert_new_files_clean "rpg" "$before" "$after"
 
 assert_absent "$rpg_err" "rpg BANNED generalization"    'OUT of the command text entirely'
 assert_absent "$rpg_err" "rpg BANNED enumeration"        'quote-split, dot-segment, doubled-slash'
-assert_absent "$rpg_err" "rpg BANNED cross-reference"    'human-decision-gate.sh'
 assert_absent "$rpg_err" "rpg BANNED rationale clause"   'never spells the path'
 assert_present "$rpg_err" "rpg REQUIRED git commit -F route" 'git commit -F'
 assert_present "$rpg_err" "rpg REQUIRED grep -r route"       'grep -r'
 assert_present "$rpg_err" "rpg REQUIRED new prohibition sentence" \
-  'self-authorized bypass whether or not this gate blocks it'
-
-# -- human-decision-gate.sh: Write of DECISION, as reviewer (no grant exists) --
-find "$proj" -type f | sort > "$before"
-run_hdg "$(jq -n --arg a "antislop:reviewer" --arg p ".claude/human-review/u1/DECISION" \
-    '{tool_name:"Write",agent_type:$a,tool_input:{file_path:$p}}')"
-find "$proj" -type f | sort > "$after"
-
-[ "$rc" = 2 ] && pass "hdg denial exit code 2" || bad "hdg denial exit code -> $rc, expected 2"
-[ ! -s "$hdg_out" ] && pass "hdg stdout empty on denial (C5.4)" || bad "hdg stdout non-empty on denial (C5.4)"
-assert_new_files_clean "hdg" "$before" "$after"
-
-assert_absent "$hdg_err" "hdg BANNED named technique"    'Splitting the path across shell variables'
-assert_absent "$hdg_err" "hdg BANNED cross-reference"    'reviewed-path-gate.sh'
-assert_absent "$hdg_err" "hdg BANNED rationale clause"   'never spells DECISION'
-assert_present "$hdg_err" "hdg REQUIRED marker template name" 'sanctioned marker-write template'
-assert_present "$hdg_err" "hdg REQUIRED rm -rf discard route"           'rm -rf .claude/human-review/'
-assert_present "$hdg_err" "hdg REQUIRED new prohibition sentence" \
   'self-authorized bypass whether or not this gate blocks it'
 
 echo

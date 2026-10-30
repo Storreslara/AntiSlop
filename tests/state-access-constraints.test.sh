@@ -417,20 +417,12 @@ test_unit_id_grammar() {
     pass "2b: state-access.sh does not appear (complement is spelled via the variable)"
   fi
 
-  # 2c - spelling C (A-Za-z0-9_#.-) is eliminated, but the allowance itself
-  # (human-decision-gate.sh's leading class and unbounded quantifier) stays -
-  # paired so this isn't satisfied by deleting the allowance outright.
+  # 2c - spelling C (A-Za-z0-9_#.-) is eliminated.
   out="$(git grep -l -F 'A-Za-z0-9_#.-' -- hooks/scripts/ || true)"
   if [ -z "$out" ]; then
     pass "2c: spelling C is eliminated"
   else
     bad "2c: spelling C still present in: $out"
-  fi
-  if grep -q '\[A-Za-z0-9_\]' hooks/scripts/human-decision-gate.sh \
-     && grep -q 'UNIT_ID_CHARCLASS' hooks/scripts/human-decision-gate.sh; then
-    pass "2c: human-decision-gate.sh's leading class and shared-charclass interpolation both still present"
-  else
-    bad "2c: human-decision-gate.sh no longer interpolates the shared charclass (allowance may have been deleted outright)"
   fi
 
   # 3 - traversal still rejected, and the per-site */*|*..* redundancy stays.

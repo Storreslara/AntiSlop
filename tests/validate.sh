@@ -532,7 +532,7 @@ else
 fi
 
 echo
-echo "== refusal-disclosure hygiene: reviewed-path-gate.sh / human-decision-gate.sh denial stderr (Bash) =="
+echo "== refusal-disclosure hygiene: reviewed-path-gate.sh denial stderr (Bash) =="
 if bash tests/refusal-disclosure.test.sh; then
   echo "OK   tests/refusal-disclosure.test.sh"
 else
@@ -703,11 +703,11 @@ else
 fi
 
 echo
-echo "== human-decision gate: DECISION unwritable + sanctioned marker-write template (Bash) =="
-if bash tests/human-decision-gate.test.sh; then
-  echo "OK   tests/human-decision-gate.test.sh"
+echo "== human-decision gate retired to a stub (Bash, lp-hdg) =="
+if bash tests/escalation-retired.test.sh code-hdg; then
+  echo "OK   tests/escalation-retired.test.sh code-hdg"
 else
-  echo "FAIL tests/human-decision-gate.test.sh"
+  echo "FAIL tests/escalation-retired.test.sh code-hdg"
   fail=1
 fi
 
@@ -1453,48 +1453,6 @@ for f in agents/reviewer.md .claude/agents/reviewer.md; do
     fail=1
   fi
 done
-
-echo
-echo "== docs/harness-glossary.md: frozen family table residual pins exist (Python, hyg-1) =="
-if python3 -c "
-import re, sys
-g = open('docs/harness-glossary.md', encoding='utf-8').read().split('\n')
-suite = open('tests/human-decision-gate.test.sh', encoding='utf-8').read()
-i = next((k for k, l in enumerate(g) if l.startswith('**frozen family table**:')), None)
-if i is None:
-    print('FAIL frozen family table entry not found'); sys.exit(1)
-j = i
-while j < len(g) and g[j].strip():
-    j += 1
-t = re.sub(r'\s+', ' ', ' '.join(g[i:j]))
-def verdict(rid):
-    m = re.search(r'^(?:bash|write)_case \"' + re.escape(rid) + r' [^\"\n]*\" (allowed|blocked)\b', suite, re.M)
-    return m.group(1) if m else None
-bad = 0
-pins = re.findall(r'\bpin ([A-Z][A-Za-z0-9-]*)', t)
-for need in ('N21', 'R5'):
-    if need not in pins:
-        print('FAIL entry no longer names pin ' + need); bad = 1
-for rid in pins:
-    v = verdict(rid)
-    if v == 'allowed':
-        print('OK   residual pin ' + rid + ' is an allowed suite row')
-    else:
-        print('FAIL residual pin ' + rid + ': suite verdict ' + str(v) + ', want allowed'); bad = 1
-m = re.search(r'\b([A-Z][A-Za-z0-9-]*) \([^)]*the only \x60TRACKED-OPEN\x60 pin\)', t)
-if m:
-    rows = re.findall(r'^(?:bash|write)_case \"(\S+) [^\"\n]*tracked-open', suite, re.M | re.I)
-    if rows == [m.group(1)] and verdict(m.group(1)) == 'allowed':
-        print('OK   ' + m.group(1) + ' is the only tracked-open suite row')
-    else:
-        print('FAIL only-TRACKED-OPEN claim for ' + m.group(1) + ': tracked-open rows ' + str(rows)); bad = 1
-sys.exit(bad)
-"; then
-  echo "OK   frozen family table residual pins"
-else
-  echo "FAIL frozen family table residual pins"
-  fail=1
-fi
 
 echo
 echo "== scripts/probe-bash-ask.sh: offline gate/extraction tests (Bash, esf-probe-tests) =="

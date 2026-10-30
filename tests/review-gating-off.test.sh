@@ -122,7 +122,7 @@ stop_hook "$dir" "$lp_stop" || rc=$?
 r=fail; [ "$rc" = 2 ] && r=pass
 check "(g) off: gated SubagentStop with a failing testAndLintCommand still exits 2 (rc=$rc)" "$r"
 
-# (h)-(k): task-gate, dispatch-hygiene H3, human-decision-gate.
+# (h)-(j): task-gate, dispatch-hygiene H3.
 task_hook() {
   printf '%s' "$(jq -n '{task:{subject:"impl:x",id:"x"}}')" \
     | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/task-gate.sh 2>/dev/null
@@ -146,18 +146,6 @@ hygiene_project() {
   echo "$d"
 }
 
-decision_hook() {
-  jq -n --arg c 'printf approve > .claude/human-review/u1/DECISION' \
-    '{tool_name:"Bash",agent_type:"lead-programmer",tool_input:{command:$c}}' \
-    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/human-decision-gate.sh 2>/dev/null
-}
-
-decision_write_hook() {
-  jq -n --arg p '.claude/human-review/u1/DECISION' \
-    '{tool_name:"Write",agent_type:"lead-programmer",tool_input:{file_path:$p,content:"approve"}}' \
-    | CLAUDE_PROJECT_DIR="$1" bash hooks/scripts/human-decision-gate.sh 2>/dev/null
-}
-
 audit_has() { grep -q "$2" "$1/.claude/dispatch-audit.log" 2>/dev/null; }
 
 for pair in 'off|"off"' 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
@@ -178,15 +166,6 @@ for pair in 'off|"off"' 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
     [ "$rc" = 2 ] && audit_has "$dir" 'blocked=H3' && r=pass
   fi
   check "(i) $label: re-dispatch of passed unit u1 under dispatchHygiene block exits $want (rc=$rc)" "$r"
-
-  dir="$(make_project "k-$label" "$mode")"
-  rc=0; decision_hook "$dir" || rc=$?
-  r=fail; [ "$rc" = "$want" ] && r=pass
-  check "(k) $label: Bash write to a human-review DECISION file exits $want (rc=$rc)" "$r"
-
-  rc=0; decision_write_hook "$dir" || rc=$?
-  r=fail; [ "$rc" = "$want" ] && r=pass
-  check "(k) $label: Write-tool write to a human-review DECISION file exits $want (rc=$rc)" "$r"
 done
 
 # (j) under "off" the audit line still lands: H4 (kept) fires on the same
