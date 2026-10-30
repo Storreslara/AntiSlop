@@ -11,7 +11,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `bin/cli.js`
 - `docs/contract-examples.md` (new)
 - `.claude/constitution.md` (P4 list only; no version change)
-- `tests/validate.sh`, `tests/contract-examples.test.js`, `tests/protocol-cross-references.test.js`, `tests/rubric-doc-parity.test.js`, `tests/writer-tier-consistency.test.js`, `tests/persona-prose-pins.test.sh`, `tests/cli-backfill.test.js`, `tests/knowledge-writes.test.sh`, `tests/prompt-diet-pins.test.sh`, `tests/bin-helpers-scaffold.test.sh`, `tests/orchestrator-model.test.js`, `tests/effort-tier-consistency.test.js`
+- `tests/validate.sh`, `tests/contract-examples.test.js`, `tests/protocol-cross-references.test.js`, `tests/rubric-doc-parity.test.js`, `tests/writer-tier-consistency.test.js`, `tests/persona-prose-pins.test.sh`, `tests/cli-backfill.test.js`, `tests/knowledge-writes.test.sh`, `tests/prompt-diet-pins.test.sh`, `tests/bin-helpers-scaffold.test.sh`, `tests/orchestrator-model.test.js`, `tests/effort-tier-consistency.test.js`, `tests/adapter-protocol-parity.test.js` (deferred reason strings, ~:116 and ~:140)
 - `CHANGELOG.md` (one bullet under `## [Unreleased]`, no version)
 - `.claude/persona-config.json` and other `.claude/` mirrors, written only by `node bin/cli.js --update --force-render`
 
@@ -47,9 +47,10 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
    exit: 0
    stdout: `ok`
    mutation: delete the `<!-- lead-contract-example:end -->` line from `docs/contract-examples.md` → no `ok`, exit 1 (markers not found).
-5. run: `git grep -n 'task-master' -- hooks bin tests ':!bin/cli.js' ':!tests/fixtures' ':!tests/abtest-arms.test.sh' ':!tests/reviewed-path-gate.test.sh' ':!tests/unit-outcomes.test.js' ':!tests/writer-scope-gate.test.sh' | wc -l; grep -c 'task-master' .claude/constitution.md || true`
+5. run: `git grep -n 'task-master' -- hooks bin tests ':!bin/cli.js' ':!tests/fixtures' ':!tests/abtest-arms.test.sh' ':!tests/reviewed-path-gate.test.sh' ':!tests/unit-outcomes.test.js' ':!tests/writer-scope-gate.test.sh' ':!tests/cli-backfill.test.js' | wc -l; n=$(grep -c 'task-master' tests/cli-backfill.test.js); test "$n" -ge 1 && test "$n" -le 8 && echo cb-ok; grep 'task-master' tests/cli-backfill.test.js | grep -vcE "![A-Za-z.]+\.includes\('task-master'\)|migrateLegacyPersonaTokens\(\['task-master'\]|includes\('.task-master.'\)|check\('migrateLegacyPersonaTokens migrates a lone task-master" || true; grep -c 'task-master' .claude/constitution.md || true`
    exit: 0
-   stdout: `0` then `0`
+   stdout: `0`, `cb-ok`, `0`, `0` (cli-backfill may name the token only in the lone-task-master migration case and `!...includes('task-master')` assertions, at most 8 lines)
+   mutation: append `// task-master` to `tests/validate.sh` → first line `1`; append `const x = 'task-master';` to `tests/cli-backfill.test.js` → third line `1`; 3 more `!a.includes('task-master')` lines there → no `cb-ok`.
 6. run: `bash tests/abtest-arms.test.sh >/dev/null && git diff --quiet a511e8e7 -- tests/abtest-arms.test.sh eval`
    exit: 0
    stdout: empty
