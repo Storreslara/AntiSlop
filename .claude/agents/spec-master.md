@@ -219,8 +219,7 @@ clarify intent is fine.
   Decisions; anything explicitly deferred in Risks/Open Questions → Out of
   Scope; the Clarifications log and Self-check itemization → Further Notes.
   Publish the mapped artifact to the issue tracker named by the `issueTracker`
-  field of `.claude/persona-config.json` (read the key with the `Read` tool; a
-  Bash command naming that file can be refused by `harness-integrity-gate.sh`),
+  field of `.claude/persona-config.json` (read the key with the `Read` tool),
   with the `ready-for-agent` label. Below 6 units there is no publish step. The saved `docs/plans/`
   document (below) remains the canonical artifact — publishing is
   additive, not a substitute for it.
@@ -456,7 +455,7 @@ saved.
   first (`stat -c %a`), restore it after (`chmod`), or `chmod --reference` an
   untouched sibling — hook scripts are invoked directly, so a lost `+x`
   disables that gate outright.
-- If `reviewed-path-gate.sh` refuses a heredoc, read its refusal text and the
+- If `reviewed-path-gate.sh` refuses a Write or Edit, read its refusal text and the
   glossary entry its `More:` line names before doing anything else: the
   refusal names the sanctioned route, and the entry (`reviewed-path denial` in
   `docs/harness-glossary.md`) holds the full remediation, including when

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# PreToolUse (Write|Edit, Bash). Configless, hardcoded write-deny for the
+# PreToolUse (Write|Edit; the Bash registration is kept for A/B harness
+# parity and allows every command, lean-pipeline D5). Configless, hardcoded write-deny for the
 # harness's own control surface (docs/plans/2026-08-25-harness-trust-gaps.md
 # Step 2). Reads NOTHING from the harness's own persona-selection config
 # file (see $persona_cfg below) - not its existence, not its content, not
@@ -18,8 +19,10 @@
 # (3 modes) - Set B excludes acceptEdits, unlike Set A. Both tiers never
 # emit ask from a subagent.
 #
-# SET A - denied on BOTH the Write/Edit and the Bash branch (exact path,
-# project-root-relative). Each audit log's `.seal` sidecar (gh415) is
+# Both sets are Write/Edit-only: a Bash command is never scanned or refused
+# (lean-pipeline D5, Risk R1).
+#
+# SET A - denied on Write/Edit (exact path, project-root-relative). Each audit log's `.seal` sidecar (gh415) is
 # included, since a denial the gate itself logs sits in Set A too:
 #   the harness's persona-selection config file ($persona_cfg below)
 #   .claude/review-audit.log[.seal]
@@ -27,29 +30,19 @@
 #   .claude/microworld-audit.log[.seal]
 #   .claude/wip-audit.log[.seal]
 #
-# SET B - denied on Write/Edit, except the human-confirmation branch (see
-# above). This is the gate's own registration surface: deregistering it
-# (hooks/hooks.json), redefining it (harness-integrity-gate.sh itself or its
-# regenerated mirror), or reaching it via the standalone scaffold's
-# registration file (.claude/settings.json).
+# SET B - 4 literals, denied on Write/Edit, except the human-confirmation
+# branch (see above). This is the gate's own registration surface:
+# deregistering it (hooks/hooks.json), redefining it (harness-integrity-gate.sh
+# itself or its regenerated mirror), or reaching it via the standalone
+# scaffold's registration file (.claude/settings.json).
 #   hooks/hooks.json
 #   .claude/settings.json
 #   hooks/scripts/harness-integrity-gate.sh
 #   .claude/hooks/scripts/harness-integrity-gate.sh
-#
-# Set B is DELIBERATELY absent from the Bash branch - a ratified ADR-0025
-# decision, not an oversight. The Bash branch is a text scan, and ADR-0025's
-# standing ruling is that a gate triggered by mere word-presence in text
-# necessarily fires on prose, not just write attempts: 144 tracked files
-# mention `hooks/`, 1,183 occurrences, 186 of them in tests/ alone (measured
-# 09cc304). Nearly every command this repo's own suites run would carry the
-# token. Do NOT "fix" this by adding Set B to the Bash branch - the asymmetry
-# mutation control in tests/harness-integrity-gate.test.sh exists specifically
-# to catch that regression.
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/lib/audit-log.sh"
-source "$(dirname "${BASH_SOURCE[0]}")/lib/benign-command.sh"
+source "$(dirname "${BASH_SOURCE[0]}")/lib/normalize-path.sh"
 
 input="$(cat)"
 project_dir="${CLAUDE_PROJECT_DIR:-.}"
@@ -184,115 +177,5 @@ if [ -z "$command" ]; then
   exit 0
 fi
 
-# Bash branch: SET A ONLY (see header). Mirrors reviewed-path-gate.sh's
-# mentions_marker_dir() structure, generalized to Set A's several literals:
-# a raw literal `case` FIRST - the hot-path requirement pinned by line
-# number in tests/harness-integrity-gate.test.sh (C2.3), because this fires
-# on every Bash call in the session and a careless per-word fork is what
-# costs 9ms -> 6.0s on a crafted 3000-word command
-# (reviewed-path-gate.sh:63-71) - then a quote- and backslash-stripped
-# test, then (only if neither hits) the per-chunk normalize_path fallback
-# for obfuscated spellings (doubled slashes, `.`/`..` segments, globs,
-# brace groups).
-set_a_mentioned() {
-  local cmd="$1" rest chunk norm g lit pre post sep=$' \t\n;|&<>()`'
-  case "$cmd" in
-    *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
-      return 0 ;;
-  esac
-  # bash 3.2 does not expand $'..' inside ${var//pat/} - hold the quotes in variables
-  local sq=$'\047' dq=$'\042'
-  rest="${cmd//$sq/}"; rest="${rest//$dq/}"; rest="${rest//\\/}"
-  case "$rest" in
-    *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
-      return 0 ;;
-    *.claude*) ;;
-    *) return 1 ;;
-  esac
-  while :; do
-    chunk="${rest%%[$sep]*}"
-    case "$chunk" in
-      *.claude*)
-        norm="$(normalize_path "$chunk")"
-        case "$norm" in
-          *"$persona_cfg"*|*"$review_log"*|*"$dispatch_log"*|*"$microworld_log"*|*"$wip_log"*)
-            return 0 ;;
-        esac
-        # A glob-metachar chunk (*, ?, [...]) that CONTAINS no Set A literal
-        # as a substring can still MATCH one as a whole path (e.g. a
-        # `persona*.json` glob under .claude/ matches the real persona-config
-        # file without containing its name as a contiguous substring) -
-        # bash's own `[[ lit == pattern ]]` glob match against each literal,
-        # no fork/subshell needed. `==` anchors to the whole candidate where
-        # the substring cases above match a literal anywhere in the chunk, so
-        # two normalizations run first:
-        #   - the chunking above splits on shell metacharacters, not just
-        #     whitespace, so a flush `;`/`|`/`>`/`)` cannot ride along on the
-        #     right and defeat the match;
-        #   - every Set A literal starts with `.claude/`, so re-anchoring the
-        #     candidate at its first `.claude` discards left-side junk (an
-        #     absolute or `$VAR/`-prefixed path, a `F=` assignment).
-        # It stays narrower than the substring cases on the RIGHT-hand side:
-        # junk inside the anchored span still defeats it, so `git add
-        # .claude/persona*.json.bak` is allowed while the substring cases do
-        # catch the same path spelled out in full with a `.bak` tail. Which
-        # bypass families this fallback closes, and which it deliberately
-        # leaves open, are enumerated as a table - never as a universal - in
-        # the family table of tests/harness-integrity-gate.test.sh and in the
-        # matching table of the lead-programmer memory note.
-        # Brace groups are not glob syntax, so each `{...}` collapses to `*`
-        # first - a deliberate over-approximation (it covers every path the
-        # group could expand to, plus some it could not), matching this
-        # gate's fail-closed stance everywhere else. Collapse INNERMOST-FIRST
-        # to a fixpoint: consuming an outer `{` together with the inner `}`
-        # leaves a stray `}` behind on a nested group and breaks the match.
-        # Each pass removes exactly one `}`, so the loop terminates; the
-        # substitution after it is a fail-closed backstop for unpaired
-        # braces. The sentinels below are extracted verbatim by that suite's
-        # fixpoint property test - keep them.
-        g=".claude${norm#*.claude}"
-        # >>> brace-collapse
-        while [[ "$g" == *'{'*'}'* ]]; do
-          pre="${g%%\}*}"; post="${g#*\}}"; pre="${pre%\{*}"; g="$pre*$post"
-        done
-        g="${g//\{/*}"; g="${g//\}/*}"
-        # <<< brace-collapse
-        for lit in "$persona_cfg" "$review_log" "$review_log.seal" \
-                   "$dispatch_log" "$dispatch_log.seal" \
-                   "$microworld_log" "$microworld_log.seal" \
-                   "$wip_log" "$wip_log.seal"; do
-          [[ "$lit" == $g ]] && return 0
-        done
-        ;;
-    esac
-    [ "$chunk" != "$rest" ] || return 1
-    rest="${rest:${#chunk}+1}"
-  done
-}
-
-# jq is not in the shared benign-command.sh allowlist (widening it there
-# would loosen reviewed-path-gate.sh and human-decision-gate.sh too, out of
-# this unit's scope), but a read-only `jq` query is exactly the kind of
-# introspection a GUARD must keep working (e.g. `jq -r .gatedAgents` over
-# $persona_cfg). Narrow, local carve-out: the WHOLE command must be a
-# single `jq` invocation with no redirection, pipe, separator, or
-# substitution.
-is_benign_jq_read() {
-  local cmd="$1" skel first bad=$';&|\n<>'
-  case "$cmd" in *'`'*|*'$('*|*'<('*) return 1 ;; esac
-  skel="$(command_skeleton "$cmd")" || return 1
-  skel="$(mask_inert_redirections "$skel")"
-  case "$skel" in *[$bad]*) return 1 ;; esac
-  read -r first _ <<< "$cmd"
-  [ "$first" = jq ]
-}
-
-set_a_mentioned "$command" || exit 0
-command_is_provably_benign "$command" && exit 0
-is_benign_jq_read "$command" && exit 0
-# $command is raw, fully agent-controlled text and deny() logs it verbatim
-# via audit_append - an embedded newline would forge a second line into
-# .claude/review-audit.log (Set A member #2) otherwise. Flatten first, same
-# idiom as stop-gate-core.sh:439-441 ("do not widen the log record to
-# multiple lines instead").
-deny A "$(printf '%s' "$command" | tr '\n\r' '  ')" "audit/config surface (Set A)"
+# Bash branch: allow every command (lean-pipeline D5, Risk R1).
+exit 0
