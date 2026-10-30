@@ -189,10 +189,12 @@ check "(m) string reviewGating: session-start banner absent" "$r"
 # (l2) the off banner names every still-armed gate.
 dir="$(make_project "l2" '"off"')"
 out="$(printf '{"session_id":"s1","source":"startup"}' | CLAUDE_PROJECT_DIR="$dir" bash hooks/scripts/session-start.sh 2>/dev/null || true)"
-for name in 'protected-paths.sh' 'harness-integrity-gate.sh and config-drift detection' 'reviewed-path-gate.sh' 'the reviewer-dispatch identity and privileged-name guards' 'the stop-gate test+lint check'; do
+for name in 'protected-paths.sh' 'harness-integrity-gate.sh and config-drift detection' 'reviewed-path-gate.sh' 'the reviewer-dispatch identity and privileged-name guards'; do
   r=fail; printf '%s' "$out" | grep -qF "$name" && r=pass
   check "(l2) off banner names still-armed '$name'" "$r"
 done
+r=pass; printf '%s' "$out" | grep -qF 'test+lint' && r=fail
+check "(l2) off banner does not name test+lint" "$r"
 
 # (n) /antislop:gate edits only via the Edit tool: no CLI or Bash-redirect route.
 r=pass; grep -qE 'bin/cli\.js|>>? *[^ ]*persona-config' commands/gate.md && r=fail

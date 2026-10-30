@@ -5,9 +5,9 @@
 #
 # AC-C4: one invocation writes a format-valid marker, is not denied by
 # reviewed-path-gate.sh or human-decision-gate.sh (as the reviewer identity),
-# and the marker satisfies stop-gate-core.sh's marker_format_valid() - the
-# same function task-gate.sh's marker_valid() mirrors, so testing against it
-# covers "one definition of a valid marker, not a third".
+# and the marker's first line starts "<VERB> <unit> ", task-gate.sh's rule
+# for a valid marker (stop-gate-core.sh's marker_format_valid() was retired
+# by lp-stopgate, so the suite checks that rule locally).
 # AC-C5: malformed unit id / missing commit are rejected, and the helper's
 # own CLI invocation is BLOCKED for a non-reviewer identity exactly as the
 # raw printf write is today (reviewed-path-gate.test.sh cases 6/13) - proving
@@ -34,12 +34,11 @@ bad()  { echo "FAIL $*"; fail=1; }
 tmproot="$(mktemp -d)"
 trap 'rm -rf "$tmproot"' EXIT
 
-# --- extract the real marker_format_valid() definition, rather than
-# reimplementing it, so this suite drifts if and only if the real one does.
-fmt_valid_src="$tmproot/marker_format_valid.sh"
-sed -n '/^marker_format_valid() {/,/^}/p' hooks/scripts/lib/stop-gate-core.sh > "$fmt_valid_src"
-[ -s "$fmt_valid_src" ] || { echo "FAIL could not extract marker_format_valid() from stop-gate-core.sh"; exit 1; }
-source "$fmt_valid_src"
+# marker_format_valid <path> <unit> <VERB>: non-empty, first line starts "<VERB> <unit> ".
+marker_format_valid() {
+  [ -s "$1" ] || return 1
+  case "$(head -n 1 "$1")" in "${3} ${2} "*) return 0 ;; *) return 1 ;; esac
+}
 source hooks/scripts/lib/state-access.sh
 
 echo "-- AC-C4: single-call PASS/FAIL/BLOCKED writes ------------------------"

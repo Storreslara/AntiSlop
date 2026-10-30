@@ -147,7 +147,7 @@ done
 #     payload shape (dot-dir, event casing, identity field) into the core.
 #     f0: a writer stop writes a flag, a reviewer stop clears it.
 #     f1: a reviewer stop clears the flag even when a .blocked marker stands.
-#     f2: a marker newer than the stamp blocks the writer stop, names it, no flag.
+#     f2: a marker newer than the stamp blocks the writer stop, names it, and the flag is written.
 #     f3: a marker older than the stamp does not block; the flag is written.
 #     f4: a foreign-namespace reviewer does not clear the flag.
 has_flag() { ls "$1/$(dotdir_for "$2")"/.pending-review.* >/dev/null 2>&1 && echo true || echo false; }
@@ -176,8 +176,8 @@ for port in $PORTS; do
   dir="$(make_project "$port" f2)"
   seed_marker "$dir" "$port" '2026-01-01 00:00:00' '2026-01-02 00:00:00'
   rc=0; err="$(run_gated_stop "$port" "$dir" 2>&1 >/dev/null)" || rc=$?
-  check "(f2) $port: a marker newer than the stamp blocks the writer stop and names it" \
-    "$([ "$rc" = 2 ] && grep -qF 'unit-x.pass' <<< "$err" && [ "$(has_flag "$dir" "$port")" = false ] && echo true || echo false)" \
+  check "(f2) $port: a marker newer than the stamp blocks the writer stop, names it, writes the flag" \
+    "$([ "$rc" = 2 ] && grep -qF 'unit-x.pass' <<< "$err" && [ "$(has_flag "$dir" "$port")" = true ] && echo true || echo false)" \
     "rc=$rc err=$err"
   dir="$(make_project "$port" f3)"
   seed_marker "$dir" "$port" '2026-01-02 00:00:00' '2026-01-01 00:00:00'

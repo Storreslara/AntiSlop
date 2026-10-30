@@ -112,17 +112,6 @@ else
   fail=1
 fi
 
-# --- review-join-regression: every payload in that suite calls as `orchestrator`,
-#     which the allowlist permits - so it must still pass unchanged ---
-rc=0
-bash tests/review-join.test.sh >/dev/null 2>&1 || rc=$?
-if [ "$rc" = 0 ]; then
-  echo "OK   (review-join-regression) tests/review-join.test.sh still exits 0"
-else
-  echo "FAIL (review-join-regression) tests/review-join.test.sh exits $rc"
-  fail=1
-fi
-
 check_name_exit() {
   # $1 = case slug, $2 = target subagent_type, $3 = tool_input.name ("" = omit),
   # $4 = expected exit

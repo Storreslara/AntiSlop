@@ -23,6 +23,5 @@ a permission mode where `harness-integrity-gate.sh` denies rather than asks.
    fault.
 5. State what stays armed under `off`: `protected-paths.sh`,
    `harness-integrity-gate.sh` and config-drift detection,
-   `reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name
-   guards, and the stop-gate test+lint check. Reviewer verdicts become
-   advisory.
+   `reviewed-path-gate.sh`, and the reviewer-dispatch identity and
+   privileged-name guards. Reviewer verdicts become advisory.

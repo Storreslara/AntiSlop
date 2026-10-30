@@ -147,11 +147,11 @@ for form in bare antislop; do
   printf 'lead-programmer flag\n' > "$d/.claude/.pending-review.lp-1"
   printf 'BLOCKED t 2026-07-28T00:00:00Z missing: x\n' > "$d/.claude/reviewed/t.blocked"
   run hooks/scripts/stop-gate.sh "$(substop "$(id "$form" reviewer)" rev-1)" "$d"
-  if [ "$rc" = 0 ] && [ -f "$d/.claude/.pending-review.lp-1" ] \
-     && grep -q 'verdict=blocked flags-kept' "$d/.claude/review-audit.log"; then
-    pass "S3 $form reviewer + .blocked marker keeps the flag (INSUFFICIENT-CONTEXT invariant)"
+  if [ "$rc" = 0 ] && [ ! -e "$d/.claude/.pending-review.lp-1" ] \
+     && grep -q 'cleared-by=reviewer' "$d/.claude/review-audit.log"; then
+    pass "S3 $form reviewer + .blocked marker still clears the flag (G1: whatever the verdict)"
   else
-    bad "S3 $form reviewer + .blocked marker rc=$rc, flag cleared or flags-kept not logged"
+    bad "S3 $form reviewer + .blocked marker rc=$rc, flag still present or cleared-by=reviewer not logged"
   fi
 done
 
@@ -193,14 +193,18 @@ mk_s5() {
 }
 for form in bare antislop otherplugin; do
   d="$(mk_s5 "$form" "$(id "$form" lead-programmer)")"
+  printf 'paused\n' > "$d/.claude/wip-handoff.s5"
   run hooks/scripts/stop-gate.sh '{"hook_event_name":"Stop","session_id":"s5"}' "$d"
-  [ "$rc" = 2 ] && pass "S5 settings.json .agent=$(id "$form" lead-programmer) reaches the gated check (rc=2)" \
-                || bad "S5 .agent=$(id "$form" lead-programmer) rc=$rc (expected 2 - it early-exited ungated)"
+  [ "$rc" = 0 ] && [ ! -e "$d/.claude/wip-handoff.s5" ] \
+    && pass "S5 settings.json .agent=$(id "$form" lead-programmer) reaches the gated check (WIP sentinel consumed)" \
+    || bad "S5 .agent=$(id "$form" lead-programmer) rc=$rc or sentinel not consumed (it early-exited ungated)"
 done
 d="$(mk_s5 neg orchestrator)"
+printf 'paused\n' > "$d/.claude/wip-handoff.s5"
 run hooks/scripts/stop-gate.sh '{"hook_event_name":"Stop","session_id":"s5"}' "$d"
-[ "$rc" = 0 ] && pass "S5 non-gated main agent still early-exits (rc=0)" \
-              || bad "S5 non-gated main agent rc=$rc (expected 0)"
+[ "$rc" = 0 ] && [ -f "$d/.claude/wip-handoff.s5" ] \
+  && pass "S5 non-gated main agent still early-exits (rc=0, sentinel untouched)" \
+  || bad "S5 non-gated main agent rc=$rc or sentinel consumed (expected 0, sentinel present)"
 
 echo
 echo "-- S6 reviewer-route-gate.sh: lead-programmer may not spawn the reviewer (GATE) --"

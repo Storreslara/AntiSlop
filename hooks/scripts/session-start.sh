@@ -56,7 +56,7 @@ if [ -n "$adapted_version" ] && [ -n "$current_version" ] && [ "$adapted_version
 fi
 
 if [ "$(jq -r '.reviewGating.mode // "enforce"' "$config" 2>/dev/null || echo enforce)" = "off" ]; then
-  context_parts+=("review gating: off - reviewer verdicts are advisory; review-enforcement hooks are inert. Still armed: protected-paths.sh, harness-integrity-gate.sh and config-drift detection, reviewed-path-gate.sh, the reviewer-dispatch identity and privileged-name guards, and the stop-gate test+lint check.")
+  context_parts+=("review gating: off - reviewer verdicts are advisory; review-enforcement hooks are inert. Still armed: protected-paths.sh, harness-integrity-gate.sh and config-drift detection, reviewed-path-gate.sh, and the reviewer-dispatch identity and privileged-name guards.")
 fi
 
 source_type="$(echo "$input" | jq -r '.source // empty' 2>/dev/null || true)"
@@ -164,8 +164,7 @@ if [[ $self_report_line =~ wip-sentinels=([0-9]+)\ defers=([0-9]+)\ skips=([0-9]
 fi
 
 # Job 7: disarm-surface config-drift report (Step 4, RD3) - report only,
-# NEVER blocks (stop-gate.sh's SubagentStop is where a gated agent's drift
-# actually blocks). Reuses the same harness-integrity.sh binary and baseline
+# NEVER blocks (no hook blocks on drift since lp-stopgate). Reuses the same harness-integrity.sh binary and baseline
 # sha Job 6 already resolved.
 config_drift_line=""
 if [ -f "$harness_integrity_bin" ]; then

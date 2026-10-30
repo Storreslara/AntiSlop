@@ -77,8 +77,8 @@ d="$(project f enforce)"
 touch -d '2026-01-01 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
 printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-02 00:00:00' "$d/.claude/$r/u1.pass"
 run "$d" "$lp"
-if [ "$rc" = 2 ] && grep -q 'u1\.pass' <<< "$err" && [ ! -e "$d/.claude/.pending-review.lp-1" ]; then
-  ok "(f) newer .pass blocks the writer stop and names it"
+if [ "$rc" = 2 ] && grep -q 'u1\.pass' <<< "$err" && [ -f "$d/.claude/.pending-review.lp-1" ]; then
+  ok "(f) newer .pass blocks the writer stop, names it and still writes the flag"
 else bad "(f) newer .pass: rc=$rc err=$err"; fi
 
 # (g) an older .pass does not block
@@ -124,5 +124,16 @@ printf 'BLOCKED u1 x\n' > "$d/.claude/$r/u1.blocked"
 run "$d" "$rv"
 if [ "$rc" = 0 ] && [ ! -e "$d/.claude/.pending-review.lp-1" ]; then ok "(l) reviewer stop clears the flag despite .blocked"
 else bad "(l) .blocked reviewer stop: rc=$rc"; fi
+
+# (m) a blocked writer stop leaves a flag; the loop-guarded retry is allowed and the main Stop blocks
+d="$(project m enforce)"
+touch -d '2026-01-01 00:00:00' "$d/.claude/$r/.writer-dispatch-stamp"
+printf 'PASS u1 x\n' > "$d/.claude/$r/u1.pass"; touch -d '2026-01-02 00:00:00' "$d/.claude/$r/u1.pass"
+run "$d" "$lp"; rc_lp="$rc"
+run "$d" "${lp%\}},\"stop_hook_active\":true}"; rc_retry="$rc"
+run "$d" "$main"; rc_main="$rc"
+if [ "$rc_lp" = 2 ] && [ "$rc_retry" = 0 ] && [ "$rc_main" = 2 ] && [ -f "$d/.claude/.pending-review.lp-1" ]; then
+  ok "(m) blocked writer stop leaves a flag the main Stop blocks on"
+else bad "(m) blocked writer stop: lp=$rc_lp retry=$rc_retry main=$rc_main"; fi
 
 exit "$fail"

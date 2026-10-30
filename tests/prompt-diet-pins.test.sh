@@ -43,11 +43,10 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agent
          .claude/agents/reviewer.md .claude/agents/spec-master.md \
          .claude/agents/milestone-auditor.md; do
   has "$f" 'Only one unit is ever mid-review'
-  has "$f" 'scoped to the stopping reviewer'"'"'s own stamped units'
+  has "$f" 'A reviewer'"'"'s stop clears every flag whatever the verdict'
   has "$f" '**unit-exclusivity axis**'
   has "$f" '**advisory-reviewer axis**'
   has "$f" 'ADR-0016'
-  has "$f" 'ADR-0028'
   hasnot "$f" 'Moved here from Review ownership'
   hasnot "$f" 'a test-hygiene defect, not a violation of unit-exclusivity'
 done
