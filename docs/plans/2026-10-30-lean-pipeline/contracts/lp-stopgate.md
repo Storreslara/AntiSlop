@@ -35,12 +35,30 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - No escalation prose anywhere: `tests/escalation-retired.test.sh prose` must stay green
 
 ## Acceptance criteria
-1. run: `bash tests/stop-gate.test.sh` → exit 0, with cases (a)-(k) present. mutation: delete the D6 branch → case (f) fails, exit 1.
-2. run: `test $(cat hooks/scripts/stop-gate.sh hooks/scripts/lib/stop-gate-core.sh | wc -l) -le 250 && echo ok` → `ok`.
-3. run: `bash tests/adapter-stop-gate-parity.test.sh && bash tests/dispatch-hygiene.test.sh` → exit 0. mutation: drop the stamp `touch` from `dispatch-hygiene.sh` → its new stamp case fails.
-4. run: `git grep -nE 'review-in-flight|flag standing|stop-gate.sh keeps it|config-drift detection|test\+lint check' -- agents templates adapters ':!adapters/*/hooks' | wc -l` → `0`. mutation: restore `agents/orchestrator.md` :231 → ≥ 1.
-5. run: `bash tests/escalation-retired.test.sh prose && bash tests/escalation-retired.test.sh code-hdg && bash tests/escalation-retired.test.sh code-bin` → exit 0.
-6. C-mirror: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0. C-full: `bash tests/validate.sh` → exit 0, run once by the reviewer after the final commit.
+1. run: `bash tests/stop-gate.test.sh`
+   exit: 0
+   stdout: judge: the output shows cases (a)-(k) present.
+   mutation: delete the D6 branch → case (f) fails, exit 1.
+2. run: `test $(cat hooks/scripts/stop-gate.sh hooks/scripts/lib/stop-gate-core.sh | wc -l) -le 250 && echo ok`
+   exit: 0
+   stdout: `ok`
+3. run: `{ bash tests/adapter-stop-gate-parity.test.sh && bash tests/dispatch-hygiene.test.sh; } >/dev/null`
+   exit: 0
+   stdout: empty
+   mutation: drop the stamp `touch` from `dispatch-hygiene.sh` → its new stamp case fails.
+4. run: `git grep -nE 'review-in-flight|flag standing|stop-gate.sh keeps it|config-drift detection|test\+lint check' -- agents templates adapters ':!adapters/*/hooks' | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: restore `agents/orchestrator.md` :231 → ≥ 1.
+5. run: `{ bash tests/escalation-retired.test.sh prose && bash tests/escalation-retired.test.sh code-hdg && bash tests/escalation-retired.test.sh code-bin; } >/dev/null`
+   exit: 0
+   stdout: empty
+6. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+7. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, 94b55ee3): criterion 1 exits 127; criterion 2 counts 947 lines; criterion 4 finds 9 hits. The parity and dispatch-hygiene tests pass (baseline).

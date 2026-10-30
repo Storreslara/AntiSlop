@@ -52,7 +52,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
    mutation: skip edit 5; stdout is `1`, and criterion 7 fails on the validate.sh version-sync check (today's tree: `0`, exit 1).
 2. run: `bash -c 'grep -nE "^## \[" CHANGELOG.md | head -2 | sed -E "s/ - [0-9]{4}-[0-9]{2}-[0-9]{2}$/ - DATE/"; sed -n 7p CHANGELOG.md | cut -c1-16'`
    exit: 0
-   stdout: `3:## [Unreleased]`, `5:## [0.32.0] - DATE`, `**Release 0.32.0`
+   stdout: `3:## [Unreleased]` then `5:## [0.32.0] - DATE` then `**Release 0.32.0`
    mutation: skip edit 3; the second line is `787:## [0.31.65] - DATE` or similar (today's tree prints `3:## [Unreleased]`, `787:## [0.31.65] - DATE`, and line 7 of the current file).
 3. run: `bash -c 'c=$(git log --format=%H -F --grep="(lp-release)" | head -1); [ -n "$c" ] || { echo no-commit; exit 1; }; bash hooks/scripts/version-stamp-check.sh "$c^..$c" | cut -d" " -f1,2'`
    exit: 0
@@ -70,7 +70,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
    exit: 0
    stdout: `clean`
    mutation: in edit 7, drop `git add -u -- .claude`; the mirrors stay modified and nothing is printed, exit 1.
-7. run: `bash -c 'bash tests/validate.sh >/dev/null 2>&1; echo $?'`
+7. run: `bash -c 'bash tests/validate.sh >/dev/null 2>&1; echo $?'` (Bash tool timeout 600000 ms; C-full)
    exit: 0
    stdout: `0`
    mutation: skip edit 5; the package.json/plugin.json version-sync check fails and stdout is `1`. Run once, by the reviewer, after the final commit.

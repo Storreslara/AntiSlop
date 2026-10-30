@@ -28,11 +28,25 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - `CONTEXT.md`, `docs/`, `.claude-plugin/plugin.json`
 
 ## Acceptance criteria
-1. run: `bash tests/escalation-retired.test.sh code-hdg` → exit 0. mutation: `git show 94b55ee3:hooks/scripts/human-decision-gate.sh > hooks/scripts/human-decision-gate.sh` (the old gate) → exit 1.
-2. run: `grep -c 'human-decision-gate' tests/refusal-disclosure.test.sh` → `0`; and `bash tests/refusal-disclosure.test.sh && bash tests/review-gating-off.test.sh && bash tests/state-access-capability-regression.test.sh && bash tests/state-access-constraints.test.sh && bash tests/state-distinctions-manifest.test.sh && bash tests/watch-map-registration.test.sh` → exit 0. mutation: restore `tests/review-gating-off.test.sh` from 94b55ee3 → exit 1 (case k expects 2 from the stub).
-3. run (after the final commit): `bash tests/abtest-arms.test.sh` → exit 0. mutation: in a scratch `git worktree` of HEAD, delete the Bash-matcher `human-decision-gate.sh` line of `hooks/hooks.json`, commit there, run that worktree's copy → exit 1.
-4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-5. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `bash tests/escalation-retired.test.sh code-hdg >/dev/null`
+   exit: 0
+   stdout: empty
+   mutation: `git show 94b55ee3:hooks/scripts/human-decision-gate.sh > hooks/scripts/human-decision-gate.sh` (the old gate) → exit 1.
+2. run: `grep -c 'human-decision-gate' tests/refusal-disclosure.test.sh || true; { bash tests/refusal-disclosure.test.sh && bash tests/review-gating-off.test.sh && bash tests/state-access-capability-regression.test.sh && bash tests/state-access-constraints.test.sh && bash tests/state-distinctions-manifest.test.sh && bash tests/watch-map-registration.test.sh; } >/dev/null`
+   exit: 0
+   stdout: `0`
+   mutation: restore `tests/review-gating-off.test.sh` from 94b55ee3 → exit 1 (case k expects 2 from the stub).
+3. run: `bash tests/abtest-arms.test.sh >/dev/null`
+   exit: 0
+   stdout: empty
+   when: after the final commit.
+   mutation: in a scratch `git worktree` of HEAD, delete the Bash-matcher `human-decision-gate.sh` line of `hooks/hooks.json`, commit there, run that worktree's copy → exit 1.
+4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+5. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, 94b55ee3): criterion 1 exits 127 (no test file); criterion 2's grep gives 5; the gate is 758 lines; the tests in criteria 2 and 3 pass (baseline measured).

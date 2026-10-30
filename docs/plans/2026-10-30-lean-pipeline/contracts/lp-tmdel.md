@@ -31,14 +31,34 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `CONTEXT.md`, `docs/harness-glossary.md`, `docs/adr/` (U12)
 
 ## Acceptance criteria
-1. run: `test ! -e agents/task-master.md && test ! -e .claude/agents/task-master.md && echo gone` → `gone`. mutation: `git checkout HEAD~1 -- agents/task-master.md` → no output.
-2. run: `d=$(mktemp -d) && cd $d && git init -q && node /home/sebas/AntiSlop/bin/cli.js --personas=spec-master,task-master,reviewer >out.txt 2>&1; echo $?; test ! -e .claude/agents/task-master.md && grep -c 'Deprecation note' out.txt` → `0`, then a count ≥ 1. mutation: drop the `'task-master'` legacy-map entry → no note (or a nonzero exit).
-3. run: `node -e "const c=require('/home/sebas/AntiSlop/bin/cli.js'); console.log(JSON.stringify(c.migrateLegacyPersonaTokens(['hivemind','task-master'])), 'task-master' in c.PROTOCOL_SECTIONS_BY_PERSONA)"` → `["spec-master"] false`. mutation: restore `hivemind: ['spec-master', 'task-master']` → `["spec-master","task-master"] false`.
-4. run: `node tests/contract-examples.test.js` → exit 0; and `grep -c 'contract-examples.md' tests/contract-examples.test.js` → ≥ 1. mutation: delete the `<!-- lead-contract-example:end -->` line from `docs/contract-examples.md` → exit 1 (markers not found).
-5. run: `git grep -n 'task-master' -- hooks bin tests ':!bin/cli.js' ':!tests/fixtures' ':!tests/abtest-arms.test.sh' ':!tests/reviewed-path-gate.test.sh' ':!tests/unit-outcomes.test.js' ':!tests/writer-scope-gate.test.sh' | wc -l` → `0`; and `grep -c 'task-master' .claude/constitution.md` → `0`.
-6. run: `bash tests/abtest-arms.test.sh` → exit 0; and `git diff --quiet a511e8e7 -- tests/abtest-arms.test.sh eval` → exit 0.
-7. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-8. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `test ! -e agents/task-master.md && test ! -e .claude/agents/task-master.md && echo gone`
+   exit: 0
+   stdout: `gone`
+   mutation: `git checkout HEAD~1 -- agents/task-master.md` → no output, exit 1.
+2. run: `d=$(mktemp -d) && cd $d && git init -q && node /home/sebas/AntiSlop/bin/cli.js --personas=spec-master,task-master,reviewer >out.txt 2>&1; echo $?; test ! -e .claude/agents/task-master.md && test "$(grep -c 'Deprecation note' out.txt)" -ge 1 && echo noted`
+   exit: 0
+   stdout: `0` then `noted`
+   mutation: drop the `'task-master'` legacy-map entry → no `noted` line (or a nonzero first line), exit 1.
+3. run: `node -e "const c=require('/home/sebas/AntiSlop/bin/cli.js'); console.log(JSON.stringify(c.migrateLegacyPersonaTokens(['hivemind','task-master'])), 'task-master' in c.PROTOCOL_SECTIONS_BY_PERSONA)"`
+   exit: 0
+   stdout: `["spec-master"] false`
+   mutation: restore `hivemind: ['spec-master', 'task-master']` → `["spec-master","task-master"] false`.
+4. run: `node tests/contract-examples.test.js >/dev/null && test "$(grep -c 'contract-examples.md' tests/contract-examples.test.js)" -ge 1 && echo ok`
+   exit: 0
+   stdout: `ok`
+   mutation: delete the `<!-- lead-contract-example:end -->` line from `docs/contract-examples.md` → no `ok`, exit 1 (markers not found).
+5. run: `git grep -n 'task-master' -- hooks bin tests ':!bin/cli.js' ':!tests/fixtures' ':!tests/abtest-arms.test.sh' ':!tests/reviewed-path-gate.test.sh' ':!tests/unit-outcomes.test.js' ':!tests/writer-scope-gate.test.sh' | wc -l; grep -c 'task-master' .claude/constitution.md || true`
+   exit: 0
+   stdout: `0` then `0`
+6. run: `bash tests/abtest-arms.test.sh >/dev/null && git diff --quiet a511e8e7 -- tests/abtest-arms.test.sh eval`
+   exit: 0
+   stdout: empty
+7. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+8. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30): criteria 1, 2 (task-master.md created, 0 notes), 3 (`["spec-master","task-master"] true`), 5 (58 lines; constitution 1) fail; 6 passes and is a regression guard.

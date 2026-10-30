@@ -37,13 +37,37 @@ next: <the next dispatch, or the question for the user>
 - Do not re-add text that earlier units removed: escalation steps (lp-escprose), task-master routing (lp-tmroute), or the "scribe digest" (lp-slim).
 
 ## Acceptance criteria
-1. run: `bash -c 'echo "src=$(wc -c < agents/orchestrator.md) dep=$(wc -c < .claude/agents/orchestrator.md)"; test $(wc -c < agents/orchestrator.md) -le 16384 && test $(wc -c < .claude/agents/orchestrator.md) -le 40960 && echo ok'` → last line `ok`, exit 0. mutation: `git show $(git log --format=%H -1 --grep='(lp-slim)'):agents/orchestrator.md > agents/orchestrator.md` → no `ok`, exit 1.
-2. run: `bash -c 'for s in "On FAIL, the orchestrator writes the fix contract" "needs-human:" "## Lane routing" "unit-bookkeeping.sh" "ladder-tier.sh" "contract-guard.js" "**Escalation ladder.**" "At the 2-FAIL cap"; do grep -cF -- "$s" agents/orchestrator.md; done | grep -c "^0$"'` → `0`. mutation: delete the fix-contract sentence → `1`.
-3. run: `bash -c 'for f in agents/orchestrator.md adapters/cursor/agents/orchestrator.md adapters/codex/agents/orchestrator.toml; do for l in "<unit-id>: PASS|FAIL <sha> <one-line result>" "open: <open items, or none>" "next: <the next dispatch, or the question for the user>"; do grep -cxF -- "$l" "$f"; done; done | grep -vc "^1$"; grep -cF "Rulings and tier choices go to \`.claude/orchestrator-rulings.log\` only, never into the final message" agents/orchestrator.md'` → `0`, `1`. mutation: drop the `open:` line from the cursor copy → first count `1`.
-4. run: `bash -c 'f=docs/orchestrator-rationale.md; echo "old=$(grep -cE "^## N[1-5]: " $f) new=$(grep -cE "^## N([6-9]|[1-9][0-9]): .*\(from \"" $f)"'` → `old=5 new=<n>` with n ≥ 1. mutation: `git checkout HEAD~1 -- docs/orchestrator-rationale.md` on the unit's commit → `new=0`.
-5. run: `bash -c 'bash tests/escalation-retired.test.sh prose >/dev/null 2>&1 || echo esc-fail; grep -ciE "scribe digest|task-master" agents/orchestrator.md'` → `0` only. mutation: paste back an escalation step from before lp-escprose → `esc-fail` precedes the count.
-6. run: `bash tests/persona-prose-pins.test.sh && bash tests/prompt-diet-pins.test.sh && node tests/writer-tier-consistency.test.js && node tests/default-implementer-model.test.js && node tests/orchestrator-model.test.js && node tests/reviewer-dispatch-line-order.test.js && node tests/cli-backfill.test.js && node tests/adapter-protocol-parity.test.js && bash tests/unit-scope-prose.test.sh && bash tests/knowledge-writes.test.sh` → exit 0. This is a preservation check: it passes today by design.
-7. C-mirror: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0. C-full: `bash tests/validate.sh` → exit 0, run once by the reviewer after the final commit.
+1. run: `bash -c 'echo "src=$(wc -c < agents/orchestrator.md) dep=$(wc -c < .claude/agents/orchestrator.md)" >&2; test $(wc -c < agents/orchestrator.md) -le 16384 && test $(wc -c < .claude/agents/orchestrator.md) -le 40960 && echo ok'`
+   exit: 0
+   stdout: `ok`
+   note: the `src=`/`dep=` sizes go to stderr, for a reader running it by hand.
+   mutation: `git show $(git log --format=%H -1 --grep='(lp-slim)'):agents/orchestrator.md > agents/orchestrator.md` → no `ok`, exit 1.
+2. run: `bash -c 'for s in "On FAIL, the orchestrator writes the fix contract" "needs-human:" "## Lane routing" "unit-bookkeeping.sh" "ladder-tier.sh" "contract-guard.js" "**Escalation ladder.**" "At the 2-FAIL cap"; do grep -cF -- "$s" agents/orchestrator.md; done | grep -c "^0$" || true'`
+   exit: 0
+   stdout: `0`
+   mutation: delete the fix-contract sentence → `1`.
+3. run: `bash -c 'for f in agents/orchestrator.md adapters/cursor/agents/orchestrator.md adapters/codex/agents/orchestrator.toml; do for l in "<unit-id>: PASS|FAIL <sha> <one-line result>" "open: <open items, or none>" "next: <the next dispatch, or the question for the user>"; do grep -cxF -- "$l" "$f"; done; done | grep -vc "^1$"; grep -cF "Rulings and tier choices go to \`.claude/orchestrator-rulings.log\` only, never into the final message" agents/orchestrator.md'`
+   exit: 0
+   stdout: `0` then `1`
+   mutation: drop the `open:` line from the cursor copy → first line `1`.
+4. run: `bash -c 'f=docs/orchestrator-rationale.md; n=$(grep -cE "^## N([6-9]|[1-9][0-9]): .*\(from \"" $f); echo "old=$(grep -cE "^## N[1-5]: " $f) new-at-least-1=$([ "$n" -ge 1 ] && echo yes || echo no)"'`
+   exit: 0
+   stdout: `old=5 new-at-least-1=yes`
+   mutation: `git checkout HEAD~1 -- docs/orchestrator-rationale.md` on the unit's commit → `old=5 new-at-least-1=no`.
+5. run: `bash -c 'bash tests/escalation-retired.test.sh prose >/dev/null 2>&1 || echo esc-fail; grep -ciE "scribe digest|task-master" agents/orchestrator.md || true'`
+   exit: 0
+   stdout: `0`
+   mutation: paste back an escalation step from before lp-escprose → `esc-fail` precedes the count.
+6. run: `{ bash tests/persona-prose-pins.test.sh && bash tests/prompt-diet-pins.test.sh && node tests/writer-tier-consistency.test.js && node tests/default-implementer-model.test.js && node tests/orchestrator-model.test.js && node tests/reviewer-dispatch-line-order.test.js && node tests/cli-backfill.test.js && node tests/adapter-protocol-parity.test.js && bash tests/unit-scope-prose.test.sh && bash tests/knowledge-writes.test.sh; } >/dev/null`
+   exit: 0
+   stdout: empty
+   note: a preservation check; it passes today by design.
+7. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+8. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, f56eba3d): criterion 1 prints `src=49729 dep=73765` and exits 1. Criterion 2 gives `2`, from the two anchors that earlier units add. Criterion 3 gives `9`, `0`. Criterion 4 gives `old=5 new=0`. Criterion 5 prints `esc-fail` and `29`. Criterion 6 passes.

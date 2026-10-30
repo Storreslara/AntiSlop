@@ -34,12 +34,27 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `.claude-plugin/plugin.json`, `package.json` (no bump)
 
 ## Acceptance criteria
-1. run: `bash tests/dispatch-hygiene.test.sh` → exit 0, with these cases present: (a) a five-field contract to a gated target gives no H4 (exit 0, no `blocked=H4`); (b) the same contract without `## Acceptance criteria` gives exit 2 with `blocked=H4` and stderr naming `## Acceptance criteria`; (c) a 3073-byte five-field prompt gives exit 0, stderr naming H4 and `3073`, log `warned=H4-size`; (d) a nine-element contract gives no H4. mutation: re-add `## Ordered edits` to the required list → case (a) fails.
-2. run: `grep -l '^## Dispatch contract (five fields)' .claude/agents/lead-programmer.md .claude/agents/reviewer.md .claude/agents/spec-master.md | wc -l` → `3`.
-3. run: `node tests/adapter-protocol-parity.test.js` → exit 0.
-4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-5. run: `node tests/protocol-doc-drift.test.js` → exit 0; and `grep -c 'Machine-checkable criteria, Dispatch contract (five fields), Review ownership' .claude/wiki/protocol-delivery-tiers.md` → `1`. Fails after edit 1 alone (template has 21, docs say 20). mutation: restore `20` in `CONTEXT.md` → exit 1.
-6. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `bash tests/dispatch-hygiene.test.sh`
+   exit: 0
+   stdout: judge: the output shows these cases present: (a) a five-field contract to a gated target gives no H4 (exit 0, no `blocked=H4`); (b) the same contract without `## Acceptance criteria` gives exit 2 with `blocked=H4` and stderr naming `## Acceptance criteria`; (c) a 3073-byte five-field prompt gives exit 0, stderr naming H4 and `3073`, log `warned=H4-size`; (d) a nine-element contract gives no H4.
+   mutation: re-add `## Ordered edits` to the required list → case (a) fails.
+2. run: `grep -l '^## Dispatch contract (five fields)' .claude/agents/lead-programmer.md .claude/agents/reviewer.md .claude/agents/spec-master.md | wc -l`
+   exit: 0
+   stdout: `3`
+3. run: `node tests/adapter-protocol-parity.test.js >/dev/null`
+   exit: 0
+   stdout: empty
+4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+5. run: `node tests/protocol-doc-drift.test.js >/dev/null && grep -c 'Machine-checkable criteria, Dispatch contract (five fields), Review ownership' .claude/wiki/protocol-delivery-tiers.md`
+   exit: 0
+   stdout: `1`
+   note: fails after edit 1 alone (template has 21, docs say 20).
+   mutation: restore `20` in `CONTEXT.md` → exit 1, no stdout.
+6. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - H4 today (`dispatch-hygiene.sh` ~398-418) loops over eight headings; `fire()` (~281) appends to `fired`, and the tail exits 2 under mode `block`, so the size warning must bypass `fired` (or be its own warn-only path) to stay non-blocking. The log helper is `log_line`.

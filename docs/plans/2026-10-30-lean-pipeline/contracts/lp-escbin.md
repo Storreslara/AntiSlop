@@ -29,11 +29,23 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - `agents/`, `templates/`, `commands/`, `skills/`, `adapters/*/agents*`, `adapters/*/rules/` (prose went in lp-escprose; never re-add any)
 
 ## Acceptance criteria
-1. run: `bash tests/escalation-retired.test.sh code-bin` → exit 0. mutation: re-add `const { enumerateDecisions } = require('./decisions');` to `server.js` → exit 1.
-2. run: `for t in tests/microworld/dashboard-*.test.js; do node "$t" >/dev/null 2>&1 || echo FAIL; done | grep -c FAIL` → `0`. mutation: in `discover.js`, call the deleted `discoverPackets` again → ≥ 1.
-3. run: `bash tests/ladder-tier.test.sh && bash tests/fail-record-refutation.test.sh && bash tests/bin-helpers-scaffold.test.sh && bash tests/state-access-constraints.test.sh && bash tests/state-distinctions-manifest.test.sh && bash tests/watch-map-registration.test.sh` → exit 0.
-4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-5. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `bash tests/escalation-retired.test.sh code-bin >/dev/null`
+   exit: 0
+   stdout: empty
+   mutation: re-add `const { enumerateDecisions } = require('./decisions');` to `server.js` → exit 1.
+2. run: `for t in tests/microworld/dashboard-*.test.js; do node "$t" >/dev/null 2>&1 || echo FAIL; done | grep -c FAIL || true`
+   exit: 0
+   stdout: `0`
+   mutation: in `discover.js`, call the deleted `discoverPackets` again → ≥ 1.
+3. run: `{ bash tests/ladder-tier.test.sh && bash tests/fail-record-refutation.test.sh && bash tests/bin-helpers-scaffold.test.sh && bash tests/state-access-constraints.test.sh && bash tests/state-distinctions-manifest.test.sh && bash tests/watch-map-registration.test.sh; } >/dev/null`
+   exit: 0
+   stdout: empty
+4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+5. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, 94b55ee3): criterion 1 exits 127 (no test file); all 5 helper files exist; 2 `require('./decision…')` lines in `bin`. The tests in criteria 2 and 3 pass (baseline).

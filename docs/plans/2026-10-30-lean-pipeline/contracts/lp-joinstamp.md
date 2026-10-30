@@ -28,12 +28,29 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - No escalation prose anywhere
 
 ## Acceptance criteria
-1. run: `git grep -nE 'review-join|review_join|pending-review-cleared|tombstone|resurrect' -- hooks bin adapters agents templates commands ':!bin/cli.js' | grep -v 'adr/0016-per-unit-review-join' | wc -l` → `0`. mutation: restore the stamp `printf ... > "$stamp"` line in `reviewer-route-gate-core.sh` → ≥ 1.
-2. run: `bash tests/reviewer-route-gate-caller.test.sh` → exit 0, and `grep -cE '\((route-no-join-stamp|route-exclusivity-block|route-flag-not-dropped)\)' tests/reviewer-route-gate-caller.test.sh` → ≥ 3. mutation: restore the `state_drop_resurrected_flags` call and helper → `(route-flag-not-dropped)` fails, exit 1. Second mutation: restore the stamp write → `(route-no-join-stamp)` fails.
-3. run: `test ! -e tests/pending-review-resurrection.test.sh && test ! -e tests/state-access-concurrency.test.sh && ! grep -qE 'pending-review-resurrection|state-access-concurrency' tests/validate.sh tests/watch-map.json && echo ok` → `ok`.
-4. run: `bash tests/review-gating-off.test.sh && bash tests/state-species-enumeration.test.sh && bash tests/state-access-constraints.test.sh && bash tests/state-distinctions-manifest.test.sh && bash tests/prompt-diet-pins.test.sh && node tests/adapter-protocol-parity.test.js && bash tests/agent-identity-namespace.test.sh` → exit 0.
-5. run: `bash tests/escalation-retired.test.sh prose && bash tests/escalation-retired.test.sh code-hdg && bash tests/escalation-retired.test.sh code-bin` → exit 0.
-6. C-mirror: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0. C-full: `bash tests/validate.sh` → exit 0, run once by the reviewer after the final commit.
+1. run: `git grep -nE 'review-join|review_join|pending-review-cleared|tombstone|resurrect' -- hooks bin adapters agents templates commands ':!bin/cli.js' | grep -v 'adr/0016-per-unit-review-join' | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: restore the stamp `printf ... > "$stamp"` line in `reviewer-route-gate-core.sh` → ≥ 1.
+2. run: `bash tests/reviewer-route-gate-caller.test.sh >/dev/null && test "$(grep -cE '\((route-no-join-stamp|route-exclusivity-block|route-flag-not-dropped)\)' tests/reviewer-route-gate-caller.test.sh)" -ge 3 && echo ok`
+   exit: 0
+   stdout: `ok`
+   mutation: restore the `state_drop_resurrected_flags` call and helper → `(route-flag-not-dropped)` fails, no `ok`, exit 1. Second mutation: restore the stamp write → `(route-no-join-stamp)` fails.
+3. run: `test ! -e tests/pending-review-resurrection.test.sh && test ! -e tests/state-access-concurrency.test.sh && ! grep -qE 'pending-review-resurrection|state-access-concurrency' tests/validate.sh tests/watch-map.json && echo ok`
+   exit: 0
+   stdout: `ok`
+4. run: `{ bash tests/review-gating-off.test.sh && bash tests/state-species-enumeration.test.sh && bash tests/state-access-constraints.test.sh && bash tests/state-distinctions-manifest.test.sh && bash tests/prompt-diet-pins.test.sh && node tests/adapter-protocol-parity.test.js && bash tests/agent-identity-namespace.test.sh; } >/dev/null`
+   exit: 0
+   stdout: empty
+5. run: `{ bash tests/escalation-retired.test.sh prose && bash tests/escalation-retired.test.sh code-hdg && bash tests/escalation-retired.test.sh code-bin; } >/dev/null`
+   exit: 0
+   stdout: empty
+6. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+7. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, 7717b64a): criterion 1 counts 186 (most of them in stop-gate files, which lp-stopgate removes first); criterion 2's grep gives 0; criterion 3 fails (both files exist).

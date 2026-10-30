@@ -26,12 +26,30 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 - Never run a mutation by editing `hooks/scripts/harness-integrity-gate.sh` in place: use a copy and `GATE_UNDER_TEST`
 
 ## Acceptance criteria
-1. run: `bash tests/reviewed-path-gate.test.sh && bash tests/harness-integrity-gate.test.sh` → exit 0, and `grep -c 'lean-pipeline R1' tests/reviewed-path-gate.test.sh tests/harness-integrity-gate.test.sh` → `:2` on both lines. mutation: copy a gate and `lib/` into `d=$(mktemp -d)`, then make the copy's Write/Edit branch `exit 0` before its case statement. `GATE_UNDER_TEST=$d/<gate> bash tests/<gate test>` → exit 1, and the `write ... blocked|denied` label fails.
-2. run: `git grep -nE 'mentions_marker_dir|set_a_mentioned|is_benign_jq_read|command_is_provably_benign|benign-command' -- hooks bin adapters | wc -l` → `0`; `test ! -e hooks/scripts/lib/benign-command.sh && test -f hooks/scripts/lib/normalize-path.sh && echo ok` → `ok`.
-3. run: `git grep -nE 'can be refused by .harness-integrity-gate|is refused by .harness-integrity-gate|harness-integrity-gate.sh. refuses|only lets a non-reviewer caller|refuses a heredoc|lone read-only .jq|a lone .jq. read is allowed' -- agents templates commands skills adapters README.md | wc -l` → `0`. mutation: restore `agents/spec-master.md` → ≥ 1.
-4. run (after the final commit): `bash tests/abtest-arms.test.sh && node tests/cli-hook-propagation.test.js` → exit 0; `git diff --quiet 7717b64a -- hooks/hooks.json tests/abtest-arms.test.sh` → exit 0.
-5. run: `bash tests/escalation-retired.test.sh prose && bash tests/escalation-retired.test.sh code-hdg && bash tests/escalation-retired.test.sh code-bin` → exit 0.
-6. C-mirror: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0. C-full: `bash tests/validate.sh` → exit 0, run once by the reviewer after the final commit.
+1. run: `{ bash tests/reviewed-path-gate.test.sh && bash tests/harness-integrity-gate.test.sh; } >/dev/null && grep -c 'lean-pipeline R1' tests/reviewed-path-gate.test.sh tests/harness-integrity-gate.test.sh`
+   exit: 0
+   stdout: `tests/reviewed-path-gate.test.sh:2` then `tests/harness-integrity-gate.test.sh:2`
+   mutation: copy a gate and `lib/` into `d=$(mktemp -d)`, then make the copy's Write/Edit branch `exit 0` before its case statement. `GATE_UNDER_TEST=$d/<gate> bash tests/<gate test>` → exit 1, and the `write ... blocked|denied` label fails.
+2. run: `git grep -nE 'mentions_marker_dir|set_a_mentioned|is_benign_jq_read|command_is_provably_benign|benign-command' -- hooks bin adapters | wc -l; test ! -e hooks/scripts/lib/benign-command.sh && test -f hooks/scripts/lib/normalize-path.sh && echo ok`
+   exit: 0
+   stdout: `0` then `ok`
+3. run: `git grep -nE 'can be refused by .harness-integrity-gate|is refused by .harness-integrity-gate|harness-integrity-gate.sh. refuses|only lets a non-reviewer caller|refuses a heredoc|lone read-only .jq|a lone .jq. read is allowed' -- agents templates commands skills adapters README.md | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: restore `agents/spec-master.md` → ≥ 1.
+4. run: `{ bash tests/abtest-arms.test.sh && node tests/cli-hook-propagation.test.js; } >/dev/null && git diff --quiet 7717b64a -- hooks/hooks.json tests/abtest-arms.test.sh`
+   exit: 0
+   stdout: empty
+   when: after the final commit.
+5. run: `{ bash tests/escalation-retired.test.sh prose && bash tests/escalation-retired.test.sh code-hdg && bash tests/escalation-retired.test.sh code-bin; } >/dev/null`
+   exit: 0
+   stdout: empty
+6. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+7. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, 7717b64a): the label grep gives 0 in both files; criterion 2 counts 28; criterion 3 counts 15 in 9 files; both gate suites, `abtest-arms` and `cli-hook-propagation` pass.

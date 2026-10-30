@@ -32,12 +32,28 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `CONTEXT.md`, `docs/harness-glossary.md`, `docs/adr/` (U12); `.claude-plugin/plugin.json` `version`, `package.json`
 
 ## Acceptance criteria
-1. run: `bash tests/escalation-retired.test.sh prose` → exit 0. mutation: re-insert a `## Fourth verdict: escalate-to-human` heading line into `templates/persona-protocol.md` → exit 1.
-2. run: `test $(wc -l < templates/persona-protocol.md) -le 560 && echo ok` → `ok`.
-3. run: `git grep -n 'Fourth verdict' -- bin tests ':!tests/protocol-cross-references.test.js' | wc -l` → `0`; and `test ! -e tests/packet-view-script.test.sh && grep -c 'escalation-retired.test.sh prose' tests/validate.sh` → ≥ 1. mutation: restore one `bin/cli.js` list entry → ≥ 1 (and the CLI throws at load).
-4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-5. run: `node tests/protocol-doc-drift.test.js` → exit 0; and `grep -c 'Fourth verdict: escalate-to-human' .claude/wiki/protocol-delivery-tiers.md` → `0` (the historical gh348 note at ~:72 says `Fourth verdict,` and stays). Fails after edit 1 alone (template has 20, docs say 21). mutation: restore `21` in `CONTEXT.md` → exit 1.
-6. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `bash tests/escalation-retired.test.sh prose >/dev/null`
+   exit: 0
+   stdout: empty
+   mutation: re-insert a `## Fourth verdict: escalate-to-human` heading line into `templates/persona-protocol.md` → exit 1.
+2. run: `test $(wc -l < templates/persona-protocol.md) -le 560 && echo ok`
+   exit: 0
+   stdout: `ok`
+3. run: `git grep -n 'Fourth verdict' -- bin tests ':!tests/protocol-cross-references.test.js' | wc -l; test ! -e tests/packet-view-script.test.sh && test "$(grep -c 'escalation-retired.test.sh prose' tests/validate.sh)" -ge 1 && echo ok`
+   exit: 0
+   stdout: `0` then `ok`
+   mutation: restore one `bin/cli.js` list entry → first line ≥ 1 (and the CLI throws at load).
+4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+5. run: `node tests/protocol-doc-drift.test.js >/dev/null && { grep -c 'Fourth verdict: escalate-to-human' .claude/wiki/protocol-delivery-tiers.md || true; }`
+   exit: 0
+   stdout: `0`
+   note: the historical gh348 note at ~:72 says `Fourth verdict,` and stays. Fails after edit 1 alone (template has 20, docs say 21).
+   mutation: restore `21` in `CONTEXT.md` → exit 1, no stdout.
+6. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30): criterion 1 fails (no file; a dry run of the pattern set finds 150 hits in 13 files, led by the protocol, the two adapter protocol files, reviewer.md 15, orchestrator.md 9, one each in scribe.md, gate.md, protocol-digest.md, the schema and four adapter persona copies); criterion 2 gives 1026 lines; criterion 3 gives 14 hits.

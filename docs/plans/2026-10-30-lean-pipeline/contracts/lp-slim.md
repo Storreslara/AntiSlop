@@ -50,11 +50,27 @@ STATUS: complete
 - `hooks/`, `docs/`, `tests/abtest-*`, `eval/`
 
 ## Acceptance criteria
-1. run: `grep -c '^READY <unit-id> <base>\.\.<head>$' agents/lead-programmer.md; grep -c "Run only the unit's own test files" agents/lead-programmer.md; grep -c 'Run the full suite (`testAndLintCommand`) once' agents/reviewer.md` → `1`, `1`, `1`. mutation: delete the READY line → first count `0`.
-2. run: `grep -c '^PASS <unit-id> <sha> checks: ' agents/reviewer.md; grep -c '^notes: <n> (see marker)$' agents/reviewer.md; grep -c '^more: \.claude/reviewed/<unit-id>\.fail$' agents/reviewer.md; grep -ci 'scribe digest' agents/lead-programmer.md; grep -c 'digest (affected files, changed APIs' agents/orchestrator.md` → `1`, `1`, `1`, `0`, `0`. mutation: restore the orchestrator sentence → last count `1`.
-3. run: `git grep -n -i 'appended AFTER the verdict line\|may follow the verdict line\|advisory section appended' -- skills agents adapters templates | wc -l` → `0`. mutation: restore `skills/roast-work/SKILL.md` → `1`.
-4. run: `bash tests/persona-prose-pins.test.sh && bash tests/prompt-diet-pins.test.sh && bash tests/fail-marker-format-parity.test.sh && node tests/adapter-protocol-parity.test.js && node tests/adapter-skill-parity.test.js && node tests/writer-tier-consistency.test.js` → exit 0.
-5. C-mirror: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0. C-full: `bash tests/validate.sh` → exit 0, run once by the reviewer after the final commit.
+1. run: `grep -c '^READY <unit-id> <base>\.\.<head>$' agents/lead-programmer.md; grep -c "Run only the unit's own test files" agents/lead-programmer.md; grep -c 'Run the full suite (`testAndLintCommand`) once' agents/reviewer.md`
+   exit: 0
+   stdout: `1` then `1` then `1`
+   mutation: delete the READY line → first line `0`.
+2. run: `grep -c '^PASS <unit-id> <sha> checks: ' agents/reviewer.md; grep -c '^notes: <n> (see marker)$' agents/reviewer.md; grep -c '^more: \.claude/reviewed/<unit-id>\.fail$' agents/reviewer.md; grep -ci 'scribe digest' agents/lead-programmer.md; grep -c 'digest (affected files, changed APIs' agents/orchestrator.md || true`
+   exit: 0
+   stdout: `1` then `1` then `1` then `0` then `0`
+   mutation: restore the orchestrator sentence → last line `1`.
+3. run: `git grep -n -i 'appended AFTER the verdict line\|may follow the verdict line\|advisory section appended' -- skills agents adapters templates | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: restore `skills/roast-work/SKILL.md` → `1`.
+4. run: `{ bash tests/persona-prose-pins.test.sh && bash tests/prompt-diet-pins.test.sh && bash tests/fail-marker-format-parity.test.sh && node tests/adapter-protocol-parity.test.js && node tests/adapter-skill-parity.test.js && node tests/writer-tier-consistency.test.js; } >/dev/null`
+   exit: 0
+   stdout: empty
+5. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+6. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30, 7717b64a): criterion 1 gives `0`, `0`, `0`; criterion 2 gives `0`, `0`, `0`, `1`, `1`; criterion 3 counts 6; the criterion 4 tests pass.

@@ -27,12 +27,28 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `.claude-plugin/plugin.json` `version`, `package.json`
 
 ## Acceptance criteria
-1. run: `bash tests/plan-size-cap.test.sh` → exit 0, and its output reports the five self-test cases (a)-(e). mutation: make the size comparison always pass (for example `-gt` → `-gt 999999999 -a 0 -eq 1`) → self-test case (a) fails, exit 1.
-2. run: `for s in '25,600' '400 lines' '3,072' 'below 6 units' 'appendix.md' '50KB'; do grep -ciF -- "$s" agents/spec-master.md; done | grep -c '^0$'` → `0`. mutation: delete the 50KB sentence → `1`.
-3. run: `grep -c 'bash tests/plan-size-cap.test.sh' tests/validate.sh` → ≥ 1. mutation: remove the block → `0`.
-4. run: `grep -ciE 'is mandatory on every|never disappears entirely' agents/spec-master.md` → `0` (the first phrase wraps at line 59 today). mutation: restore either sentence → ≥ `1`.
-5. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-6. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `bash tests/plan-size-cap.test.sh`
+   exit: 0
+   stdout: judge: the output reports the five self-test cases (a)-(e).
+   mutation: make the size comparison always pass (for example `-gt` → `-gt 999999999 -a 0 -eq 1`) → self-test case (a) fails, exit 1.
+2. run: `for s in '25,600' '400 lines' '3,072' 'below 6 units' 'appendix.md' '50KB'; do grep -ciF -- "$s" agents/spec-master.md; done | grep -c '^0$' || true`
+   exit: 0
+   stdout: `0`
+   mutation: delete the 50KB sentence → `1`.
+3. run: `test "$(grep -c 'bash tests/plan-size-cap.test.sh' tests/validate.sh)" -ge 1 && echo ok`
+   exit: 0
+   stdout: `ok`
+   mutation: remove the block → no `ok`, exit 1.
+4. run: `grep -ciE 'is mandatory on every|never disappears entirely' agents/spec-master.md || true` (the first phrase wraps at line 59 today)
+   exit: 0
+   stdout: `0`
+   mutation: restore either sentence → ≥ `1`.
+5. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+6. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Today (2026-10-30): criterion 1 fails (no file), 2 gives `6`, 3 gives `0`, 4 gives `2`. No plan dated 2026-10-31 or later exists yet, so the live scan passes on an empty set; only the self-test proves the check.

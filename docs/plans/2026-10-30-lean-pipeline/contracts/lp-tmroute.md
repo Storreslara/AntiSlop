@@ -45,11 +45,22 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `.claude-plugin/plugin.json` `version`, `package.json`
 
 ## Acceptance criteria
-1. run: `git grep -n 'task-master' -- agents templates commands skills adapters README.md .claude-plugin ':!agents/task-master.md' | wc -l` → `0`. mutation: restore one routing-table row in `agents/orchestrator.md` → `1`.
-2. run: `grep -c 'On FAIL, the orchestrator writes the fix contract' agents/orchestrator.md` → `1`; and `grep -c 'emits one five-field contract per unit' agents/spec-master.md` → `1`.
-3. run: `grep -c '"version": "0.31.227"' .claude-plugin/plugin.json` → `1` (description edit made no bump).
-4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` → exit 0 (C-mirror).
-5. run: `bash tests/validate.sh` → exit 0 (C-full, run once by the reviewer after the final commit).
+1. run: `git grep -n 'task-master' -- agents templates commands skills adapters README.md .claude-plugin ':!agents/task-master.md' | wc -l`
+   exit: 0
+   stdout: `0`
+   mutation: restore one routing-table row in `agents/orchestrator.md` → `1`.
+2. run: `grep -c 'On FAIL, the orchestrator writes the fix contract' agents/orchestrator.md; grep -c 'emits one five-field contract per unit' agents/spec-master.md`
+   exit: 0
+   stdout: `1` then `1`
+3. run: `grep -c '"version": "0.31.227"' .claude-plugin/plugin.json` (description edit made no bump)
+   exit: 0
+   stdout: `1`
+4. run: `node bin/cli.js --update --force-render >/dev/null && git diff --quiet -- .claude adapters` (C-mirror)
+   exit: 0
+   stdout: empty
+5. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
+   exit: 0
+   stdout: empty
 
 ## Pre-resolved context
 - Mention counts on 2026-10-30 (`git grep -c`): orchestrator.md 29, spec-master.md 10, lead-programmer.md 4, start-feature-team.md 3, pathfinder 3, install-antislop 3, schema 3, codex/cursor orchestrator 4 each, codex/cursor lead-programmer 2 each, README 2, persona-protocol.md 2 (lines 211, 964), one each in reviewer.md (106), scribe.md (115), agent-auditor.md (92), ubiquitous-language (66), slim (6), plugin.json (4). U1 and U2 do not edit orchestrator.md, so its line numbers hold; anchor by text anyway.
