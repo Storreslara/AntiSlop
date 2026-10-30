@@ -685,7 +685,7 @@ const SHARED_HOOK_LIB_FILES = [
   'state-access.sh',
   'stop-gate-core.sh',
 ];
-const CLAUDE_ONLY_HOOK_LIB_FILES = ['benign-command.sh', 'sensitive-paths.sh', 'unit-scope.sh'];
+const CLAUDE_ONLY_HOOK_LIB_FILES = ['normalize-path.sh', 'sensitive-paths.sh', 'unit-scope.sh'];
 
 function assertHookLibDeclarationComplete() {
   const libDir = path.join(PKG_ROOT, 'hooks', 'scripts', 'lib');

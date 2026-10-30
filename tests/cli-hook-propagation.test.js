@@ -90,7 +90,7 @@ check('AC1.2: --update restores hook scripts deleted from an adapted project', (
   const project = makeProject();
   try {
     resolveSubstitutions(project);
-    const deleted = ['human-decision-gate.sh', 'lib/benign-command.sh'];
+    const deleted = ['human-decision-gate.sh', 'lib/normalize-path.sh'];
     for (const rel of deleted) fs.unlinkSync(mirrorPath(project, rel));
 
     const result = update(project);
@@ -119,11 +119,11 @@ check('AC1.3: after --update every packaged hook script (including lib/) is pres
   try {
     resolveSubstitutions(project);
     const rels = packagedHookRelPaths();
-    assert.ok(rels.includes('lib/benign-command.sh'), 'fixture sanity: lib/ must be enumerated');
+    assert.ok(rels.includes('lib/normalize-path.sh'), 'fixture sanity: lib/ must be enumerated');
     // Mutate a representative spread: a deleted gate, a deleted lib file, and
     // an outright stale one, so "already identical" can't carry the assertion.
     fs.unlinkSync(mirrorPath(project, 'human-decision-gate.sh'));
-    fs.unlinkSync(mirrorPath(project, 'lib/benign-command.sh'));
+    fs.unlinkSync(mirrorPath(project, 'lib/normalize-path.sh'));
     fs.writeFileSync(mirrorPath(project, 'stop-gate.sh'), 'STALE\n');
 
     const result = update(project);

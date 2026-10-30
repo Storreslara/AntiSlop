@@ -14,7 +14,7 @@
     },
     {
       "id": "hdg-lexer-1",
-      "watch": ["hooks/scripts/lib/benign-command.sh", "tests/reviewed-path-gate.test.sh"],
+      "watch": ["hooks/scripts/lib/normalize-path.sh", "tests/reviewed-path-gate.test.sh"],
       "run": ["bash tests/reviewed-path-gate.test.sh"],
       "timeoutSeconds": 120
     },

@@ -1438,14 +1438,6 @@ else
   fail=1
 fi
 
-echo
-echo "== tests/benign-command-families.test.sh: frozen corpora for the read-only families F1 and F3 (Bash, ptr-u7b-1) =="
-if bash tests/benign-command-families.test.sh > /dev/null; then
-  echo "OK   tests/benign-command-families.test.sh"
-else
-  echo "FAIL tests/benign-command-families.test.sh"
-  fail=1
-fi
 
 echo
 echo "== tests/gate-fp-harvest.test.sh: synthetic-store test for scripts/gate-fp-harvest.py (Bash, ptr-u7b-2) =="
