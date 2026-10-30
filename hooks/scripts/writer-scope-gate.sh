@@ -3,8 +3,8 @@
 # personas (lead-programmer, scribe, spec-master). It attributes changed paths from the
 # subagent's OWN transcript (Write/Edit file paths, plus the files of every commit
 # whose `[<branch> <sha>]` line appears in a Bash result), keeps the ones whose net
-# content still differs from where the subagent started (the last commit before its
-# transcript's first timestamp), and blocks the stop
+# content still differs from where the subagent started (its dispatch baseline: the HEAD
+# dispatch-hygiene.sh recorded for its dispatch, sgb-u2), and blocks the stop
 # (exit 2, reason on stderr) when one of them is outside the dispatch's unit scope.
 # Claude-only: it needs agent_transcript_path. Reads only; its one write is a log
 # line in .claude/bookkeeping/scope-gate.log (gitignored since qw-u1).
@@ -59,7 +59,7 @@ git rev-parse --verify -q HEAD >/dev/null || allow
 log() { mkdir -p "$dot/bookkeeping" && printf '%s agent=%s persona=%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id" "$persona" "$1" >> "$dot/bookkeeping/scope-gate.log"; }
 # A missing, empty or cut-short library would make every path look in scope (an undefined function
 # only reads as "false"), so the writer's stop fails closed until the library is restored.
-if ! declare -F identity_persona_name us_section us_entries us_exclusions us_excluded us_listed us_named_in us_classify unit_id_valid unit_id_sanitize >/dev/null; then
+if ! declare -F identity_persona_name _portable_sha256 us_section us_entries us_exclusions us_excluded us_listed us_named_in us_classify unit_id_valid unit_id_sanitize >/dev/null; then
   log "blocked: unit-scope library unavailable"
   echo "BLOCKED (writer-scope-gate): hooks/scripts/lib/unit-scope.sh is missing or incomplete (or state-access.sh or agent-identity.sh is), so your changes cannot be checked against your unit scope. Report this block to your dispatcher and wait; do not edit the library." >&2
   exit 2
@@ -87,7 +87,6 @@ jq -r 'try (select(.type == "user") | .message.content[]?
        | select(type == "object" and .type == "tool_result") | .content
        | if type == "string" then . else (map(select(.type? == "text") | .text) | join("\n")) end) catch empty' "$W/tr" 2>/dev/null \
   | grep -oE '^\[[^]]* [0-9a-f]{7,40}\]' | grep -oE '[0-9a-f]{7,40}\]$' | tr -d ']' > "$W/shas" || true
-t0="$(jq -r 'try (.timestamp | strings) catch empty' "$W/tr" 2>/dev/null | head -n1)"
 
 # norm_abs <absolute path>: `//`, `.` and `..` segments resolved lexically and no trailing `/`, so a
 # tool-call path such as `src//a.js` or `.claude/../CONTEXT.md` is judged as the file it names (rp-u11).
@@ -115,27 +114,40 @@ while IFS= read -r -d '' a; do
   a="$(canon "$a")"
   case "$a" in "$top"/*) printf '%s\0' "${a#"$top"/}" >> "$W/cand" ;; "$pd"/*) printf '%s\0' "${a#"$pd"/}" >> "$W/cand" ;; esac
 done < "$W/abs"
-# The baseline is the last commit on HEAD's first-parent line before the transcript's first
-# timestamp, so a Write/Edit path the writer committed is judged even when no commit line shows
-# (rp-u15). A commit line still proves the commit is the writer's: the baseline is then also no
-# later than that commit's parent. No timestamp and no commit line: HEAD (logged).
-first=""
+# The baseline is the dispatch baseline (sgb-u2): the HEAD that dispatch-hygiene.sh recorded when this
+# writer was dispatched, read from the first line of .claude/reviewed/dispatch-baseline.log whose
+# tool_use_id is the transcript's own (toolUseId in its .meta.json) and whose prompt hash is that of the
+# transcript's dispatch message. The writer controls its timestamps, its commit lines and its commit
+# dates, so none of them moves the baseline, and replace objects and grafts are off for every git call
+# below. A commit line still adds its commit's files to the candidates. head=none (no commit at dispatch)
+# is the empty tree. No usable record, or a recorded commit that is not an ancestor of HEAD: allowed when
+# there is no candidate, else blocked (logged), never a fallback the writer could steer.
+export GIT_NO_REPLACE_OBJECTS=1 GIT_GRAFT_FILE="$W/no-grafts"
 while IFS= read -r s; do
   git cat-file -e "$s^{commit}" 2>/dev/null || continue
-  [ -n "$first" ] || first="$(git rev-parse -q --verify "$s^" 2>/dev/null || git hash-object -t tree /dev/null)"
   git show --no-renames --name-only -z --format= "$s" >> "$W/cand"
 done < "$W/shas"
-start=""
-if [ -n "$t0" ]; then
-  start="$(git rev-list -1 --first-parent --before="$t0" HEAD 2>/dev/null)"
-  [ -n "$start" ] || start="$(git hash-object -t tree /dev/null)"
+tu="$(jq -r '.toolUseId // empty' "${tr_path%.jsonl}.meta.json" 2>/dev/null)"
+ph="$(printf '%s' "$(cat "$W/prompt")" | _portable_sha256 - | cut -d' ' -f1)"
+start=""; why="no record"
+if [[ $tu =~ ^[A-Za-z0-9_]{1,128}$ ]]; then
+  rec="$(awk -v t="tool_use_id=$tu" '$2 == t { print; exit }' "$dot/reviewed/dispatch-baseline.log" 2>/dev/null)"
+  if [ -n "$rec" ]; then
+    read -r _ _ rh rp _ <<< "$rec"
+    if [ "$rp" != "prompt=$ph" ]; then why="record for another dispatch message"
+    elif [ "$rh" = head=none ]; then start="$(git hash-object -t tree /dev/null)"
+    elif [[ $rh =~ ^head=[0-9a-f]{40}$ ]] && git cat-file -e "${rh#head=}^{commit}" 2>/dev/null; then
+      start="${rh#head=}"
+      git merge-base --is-ancestor "$start" HEAD 2>/dev/null || { why="baseline ${start:0:10} is not an ancestor of HEAD"; start=""; }
+    else why="record malformed or its commit is missing"
+    fi
+  fi
 fi
-if [ -n "$first" ] && [ -n "$start" ]; then
-  start="$(git merge-base "$start" "$first" 2>/dev/null || printf '%s' "$first")"
-elif [ -n "$first" ]; then
-  start="$first"
-elif [ -z "$start" ]; then
-  start="HEAD"; log "baseline: HEAD (no timestamp and no commit line)"
+if [ -z "$start" ]; then
+  if [ ! -s "$W/cand" ]; then log "baseline: none ($why), nothing to judge"; allow; fi
+  log "blocked: no dispatch baseline ($why)"
+  echo "BLOCKED (writer-scope-gate): no dispatch baseline for this writer ($why), so your changes cannot be checked against your unit scope. Report this block to your dispatcher and wait; do not edit .claude/reviewed/." >&2
+  exit 2
 fi
 
 # ptok: the prompt as one token per line, so us_named_in reads a path the way a person does. Split at
