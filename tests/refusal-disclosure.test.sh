@@ -70,10 +70,10 @@ assert_new_files_clean() { # label before after
   [ "$leak" = 0 ] && pass "$label new files carry no removed disclosure text (C5.4)"
 }
 
-# -- reviewed-path-gate.sh: Bash write into the marker dir, as lead-programmer --
+# -- reviewed-path-gate.sh: Write into the marker dir, as lead-programmer --
 find "$proj" -type f | sort > "$before"
-run_rpg "$(jq -n --arg a "lead-programmer" --arg c "printf x > $marker/9.pass" \
-    '{tool_name:"Bash",agent_type:$a,tool_input:{command:$c}}')"
+run_rpg "$(jq -n --arg a "lead-programmer" --arg p "$marker/9.pass" \
+    '{tool_name:"Write",agent_type:$a,tool_input:{file_path:$p}}')"
 find "$proj" -type f | sort > "$after"
 
 [ "$rc" = 2 ] && pass "rpg denial exit code 2" || bad "rpg denial exit code -> $rc, expected 2"

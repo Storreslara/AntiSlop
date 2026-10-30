@@ -76,7 +76,7 @@ mk_adapter() {
   printf '%s' "$d"
 }
 
-marker_payload() { printf '{"agent_type":"%s","tool_input":{"command":"printf x > .claude/reviewed/9.pass"}}' "$1"; }
+marker_payload() { printf '{"tool_name":"Write","agent_type":"%s","tool_input":{"file_path":".claude/reviewed/9.pass"}}' "$1"; }
 substop()        { printf '{"hook_event_name":"SubagentStop","agent_type":"%s","agent_id":"%s","session_id":"s1"}' "$1" "$2"; }
 route()          { printf '{"agent_type":"%s","tool_input":{"subagent_type":"%s"}}' "$1" "$2"; }
 

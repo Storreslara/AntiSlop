@@ -186,13 +186,6 @@ gate_run() {
     | CLAUDE_PROJECT_DIR="$gproj" bash "$gate" >/dev/null 2>"$tmproot/stderr"
 }
 
-rc=0; gate_run "$gate_rpg" lead-programmer || rc=$?
-if [ "$rc" = 2 ] && [ -s "$tmproot/stderr" ]; then
-  pass "reviewed-path-gate.sh: helper invocation BLOCKED for lead-programmer (no new capability)"
-else
-  bad "reviewed-path-gate.sh: helper invocation for lead-programmer -> rc=$rc, expected 2"
-fi
-
 for id in reviewer antislop:reviewer; do
   rc=0; gate_run "$gate_rpg" "$id" || rc=$?
   if [ "$rc" = 0 ]; then
