@@ -1,26 +1,19 @@
 #!/usr/bin/env bash
-# Flags a version-stamp-discipline violation (constitution P3): if a diff
-# touches agents/*.md or anything under templates/, .claude-plugin/plugin.json's
-# version must differ between the touching commit(s) and their own immediate
-# parent(s) (see "per-commit semantics" below). Prints exactly
-# `version-stamp-check: <ok|violation|unknown> touched: <yes|no|-> old: <ver|-> new: <ver|->`,
-# exit 0 always. Usage: version-stamp-check.sh <commit-range>, e.g. baseline..HEAD,
-# run from the repo root.
-#
-# Per-commit semantics: comparing plugin.json only at the range's two
-# endpoints lets a later, unrelated version bump mask an earlier real
-# violation when the caller reviews a range wider than the offending
-# commit. To prevent that, every commit IN the range that itself touches
-# agents/*.md or templates/* is checked against its own immediate parent;
-# a violation in any one of them reports `violation` for the whole range,
-# regardless of what the range's endpoints show. `old`/`new` in the output
-# remain the range endpoints' versions (informational), not one commit's.
-#
-# CHANGELOG half: every touching commit that bumps the version must also add,
-# in that same commit, a CHANGELOG.md line (a `+` line, not the `+++` header)
-# naming, as a whole version (see changelog_adds_version), the version read from that commit's own
-# .claude-plugin/plugin.json; a miss reports `violation` with the offender
-# <short-sha>:CHANGELOG.md. The output format is unchanged.
+# Flags a version-stamp-discipline violation (constitution P3), per release:
+# a release is a commit that changes the `version` in .claude-plugin/plugin.json.
+# Every commit in the range that is a release is checked for two things:
+# (1) the same commit adds a CHANGELOG.md line (a `+` line, not the `+++`
+# header) naming, as a whole version (see changelog_adds_version), its new
+# version; a miss reports offender <short-sha>:CHANGELOG.md. (2) the new
+# version is not lower than its parent's (numeric compare of dotted
+# integers); a miss reports offender <short-sha>:.claude-plugin/plugin.json.
+# A commit that touches agents/*.md or templates/* without a bump is ok.
+# Prints exactly
+# `version-stamp-check: <ok|violation|unknown> touched: <yes|no|-> old: <ver|-> new: <ver|-> offenders: <list|->`,
+# exit 0 always. `touched` is informational: does any commit in the range touch
+# agents/*.md or templates/*. `old`/`new` are the range endpoints' versions.
+# Usage: version-stamp-check.sh <commit-range>, e.g. baseline..HEAD, run from
+# the repo root.
 #
 # NOT A HOOK. This is a REVIEWER-INVOKED helper and is DELIBERATELY NOT
 # registered in hooks/hooks.json, matching heavy-trigger.sh/reviewer-tier.sh:
@@ -88,63 +81,55 @@ while IFS= read -r f; do
   esac
 done <<< "$files"
 
-if [ "$touched" = no ]; then
-  echo "version-stamp-check: ok touched: no old: - new: - offenders: -"
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "version-stamp-check: unknown touched: $touched old: - new: - offenders: -"
   exit 0
 fi
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "version-stamp-check: unknown touched: yes old: - new: - offenders: -"
-  exit 0
-fi
+# version_lower <old> <new>: succeeds iff <new> is numerically lower than <old>
+version_lower() {
+  python3 -c '
+import sys
+def key(v):
+    return [int(x) for x in v.split(".")]
+try:
+    sys.exit(0 if key(sys.argv[2]) < key(sys.argv[1]) else 1)
+except ValueError:
+    sys.exit(1)
+' "$1" "$2"
+}
 
 old_ver="$(version_at "$old")"
 new_ver="$(version_at "$new")"
 
-# Check every commit in the range that itself touches a version-stamped
-# path against its own immediate parent (see "per-commit semantics" above).
 violation=no
 unmeasurable=no
 offenders=""
 commits="$(git rev-list "$range" 2>/dev/null)" || commits=""
 while IFS= read -r c; do
   [ -n "$c" ] || continue
-  cfiles="$(git diff --no-renames --name-only "$c^" "$c" -- 2>/dev/null)" || continue
-  c_touched=no
-  cpaths=""
-  while IFS= read -r f; do
-    [ -n "$f" ] || continue
-    case "$f" in
-      agents/*.md|templates/*) c_touched=yes; cpaths="${cpaths:+$cpaths,}$f" ;;
-    esac
-  done <<< "$cfiles"
-  [ "$c_touched" = yes ] || continue
-
   cold="$(version_at "$c^")"
   cnew="$(version_at "$c")"
+  [ "$cold" != "$cnew" ] || continue
+  short="${c:0:7}"
   if [ -z "$cold" ] || [ -z "$cnew" ]; then
     unmeasurable=yes
-  elif [ "$cold" = "$cnew" ]; then
+    continue
+  fi
+  if ! changelog_adds_version "$c" "$cnew"; then
     violation=yes
-    short="${c:0:7}"
-    IFS=',' read -ra cpath_arr <<< "$cpaths"
-    for p in ${cpath_arr[@]+"${cpath_arr[@]}"}; do
-      [ -n "$p" ] || continue
-      offenders="${offenders:+$offenders,}$short:$p"
-    done
-  elif [ "$cold" != "$cnew" ] && ! changelog_adds_version "$c" "$cnew"; then
-    violation=yes
-    short="${c:0:7}"
     offenders="${offenders:+$offenders,}$short:CHANGELOG.md"
+  fi
+  if version_lower "$cold" "$cnew"; then
+    violation=yes
+    offenders="${offenders:+$offenders,}$short:.claude-plugin/plugin.json"
   fi
 done <<< "$commits"
 
 if [ "$violation" = yes ]; then
-  echo "version-stamp-check: violation touched: yes old: ${old_ver:--} new: ${new_ver:--} offenders: ${offenders:--}"
+  echo "version-stamp-check: violation touched: $touched old: ${old_ver:--} new: ${new_ver:--} offenders: ${offenders:--}"
 elif [ -z "$old_ver" ] || [ -z "$new_ver" ] || [ "$unmeasurable" = yes ]; then
-  echo "version-stamp-check: unknown touched: yes old: ${old_ver:--} new: ${new_ver:--} offenders: -"
-elif [ "$old_ver" = "$new_ver" ]; then
-  echo "version-stamp-check: violation touched: yes old: $old_ver new: $new_ver offenders: ${offenders:--}"
+  echo "version-stamp-check: unknown touched: $touched old: ${old_ver:--} new: ${new_ver:--} offenders: -"
 else
-  echo "version-stamp-check: ok touched: yes old: $old_ver new: $new_ver offenders: -"
+  echo "version-stamp-check: ok touched: $touched old: $old_ver new: $new_ver offenders: -"
 fi

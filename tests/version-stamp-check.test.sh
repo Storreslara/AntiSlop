@@ -56,10 +56,10 @@ echo "hello" > "$repo/README.md"
 r_unrelated=$(snap unrelated)
 run_case "unrelated-file" "ok" "$r_unrelated"
 
-echo "-- agents/*.md touched, no version bump: VIOLATION --"
+echo "-- agents/*.md touched, no version bump: OK (per release, lp-vsr case i) --"
 echo "content" > "$repo/agents/lead-programmer.md"
 r_agents_no_bump=$(snap agents-no-bump)
-run_case "agents-touched-no-bump" "violation" "$r_agents_no_bump"
+run_case "(i) agents-touched-no-bump" "ok" "$r_agents_no_bump"
 
 echo "-- agents/*.md touched, WITH a version bump: OK --"
 echo "content v2" > "$repo/agents/lead-programmer.md"
@@ -68,10 +68,10 @@ changelog_line 0.2.0
 r_agents_with_bump=$(snap agents-with-bump)
 run_case "agents-touched-with-bump" "ok" "$r_agents_with_bump"
 
-echo "-- templates/* touched, no version bump: VIOLATION --"
+echo "-- templates/* touched, no version bump: OK (per release) --"
 echo "tmpl" > "$repo/templates/persona-protocol.md"
 r_templates_no_bump=$(snap templates-no-bump)
-run_case "templates-touched-no-bump" "violation" "$r_templates_no_bump"
+run_case "templates-touched-no-bump" "ok" "$r_templates_no_bump"
 
 echo "-- templates/* touched, WITH a version bump: OK --"
 echo "tmpl v2" > "$repo/templates/persona-protocol.md"
@@ -236,16 +236,32 @@ EOF
 nopython_wrapper="$(make_no_python3_wrapper "$SCRIPT")"
 run_case "python3-missing-reports-unknown" "unknown" "$r_agents_no_bump" "$nopython_wrapper"
 
-echo "-- widened range masks a per-commit violation without the fix (item 4) --"
+echo "-- bump checks (lp-vsr cases ii-iv) --"
 echo "content v3, no bump" > "$repo/agents/lead-programmer.md"
-r_violation_only=$(snap violation-commit-no-bump)
-run_case "violation-commit-alone" "violation" "$r_violation_only"
+r_content_only=$(snap content-commit-no-bump)
+run_case "(i) stamped-file commit without bump" "ok" "$r_content_only"
 
-echo "unrelated change, unrelated version bump" > "$repo/README.md"
+echo "ii" > "$repo/agents/lead-programmer.md"
+plugin_version 0.3.20
+r_vsr_ii=$(snap vsr-ii-bump-no-changelog)
+run_case "(ii) bump commit with no CHANGELOG line" "violation" "$r_vsr_ii"
+
+plugin_version 0.3.19
+changelog_line 0.3.19
+r_vsr_iii=$(snap vsr-iii-decrease)
+run_case "(iii) version decrease with a CHANGELOG line" "violation" "$r_vsr_iii"
+expect_offender "(iii) offenders name plugin.json" "$r_vsr_iii" ":.claude-plugin/plugin.json"
+
 plugin_version 0.4.0
-snap unrelated-bump-after-violation > /dev/null
-widened_range="${r_violation_only%%..*}..$(git -C "$repo" rev-parse HEAD)"
-run_case "widened-range-still-catches-violation" "violation" "$widened_range"
+r_vsr_iv=$(snap vsr-iv-bump-only)
+run_case "(iv) bump-only commit, no CHANGELOG line" "violation" "$r_vsr_iv"
+widened_range="${r_content_only%%..*}..$(git -C "$repo" rev-parse HEAD)"
+run_case "widened-range-still-catches-bump-violation" "violation" "$widened_range"
+
+changelog_line 0.4.1
+plugin_version 0.4.1
+r_vsr_ok=$(snap vsr-bump-only-ok)
+run_case "bump-only commit with its CHANGELOG line" "ok" "$r_vsr_ok"
 
 echo "-- plugin.json missing at one end of the range: unknown, not a crash (item 3) --"
 rm "$repo/.claude-plugin/plugin.json"
@@ -274,14 +290,8 @@ mutate() {
   return 0
 }
 
-if mutate agents-pattern-removed 's#agents/\*\.md|templates/\*#templates/\*#'; then
-  run_case "(mc1) agents/*.md pattern removed: agents-touched-no-bump should flip to" \
-    "ok" "$r_agents_no_bump" "$MUTANT"
-fi
-
-if mutate compare-inverted 's/\[ "\$old_ver" = "\$new_ver" \]/[ "$old_ver" != "$new_ver" ]/'; then
-  run_case "(mc2) version-equality check inverted: agents-with-bump should flip to" \
-    "violation" "$r_agents_with_bump" "$MUTANT"
+if mutate decrease-check-disabled 's/if version_lower /if false \&\& version_lower /'; then
+  run_case "(mc2) decrease check disabled: (iii) should flip to" "ok" "$r_vsr_iii" "$MUTANT"
 fi
 
 if mutate python3-guard-disabled 's/if ! command -v python3 >\/dev\/null 2>&1; then/if false; then/'; then
@@ -296,9 +306,8 @@ if mutate python3-guard-disabled 's/if ! command -v python3 >\/dev\/null 2>&1; t
   fi
 fi
 
-if mutate percommit-check-disabled 's/elif \[ "\$cold" = "\$cnew" \]; then/elif false; then/'; then
-  run_case "(mc4) per-commit violation check disabled: widened-range should flip to" \
-    "ok" "$widened_range" "$MUTANT"
+if mutate unchanged-skip-removed 's/\[ "\$cold" != "\$cnew" \] || continue/true/'; then
+  run_case "(mc4) unchanged-version skip removed: (i) should flip to" "violation" "$r_agents_no_bump" "$MUTANT"
 fi
 
 if mutate unmeasurable-check-disabled 's/\[ -z "\$old_ver" \] || \[ -z "\$new_ver" \] || \[ "\$unmeasurable" = yes \]/false/'; then
@@ -311,7 +320,7 @@ if mutate unmeasurable-check-disabled 's/\[ -z "\$old_ver" \] || \[ -z "\$new_ve
   fi
 fi
 
-if mutate changelog-check-disabled 's/&& ! changelog_adds_version/\&\& false \&\& ! changelog_adds_version/'; then
+if mutate changelog-check-disabled 's/if ! changelog_adds_version/if false \&\& ! changelog_adds_version/'; then
   run_case "(mc7) CHANGELOG check disabled: (b) should flip to" "ok" "$r_chg_missing" "$MUTANT"
   run_case "(mc7) CHANGELOG check disabled: (c) should flip to" "ok" "$r_chg_wrong" "$MUTANT"
   run_case "(mc7) CHANGELOG check disabled: (d) should flip to" "ok" "$r_chg_d" "$MUTANT"
@@ -363,13 +372,13 @@ fi
 # line and that mutant counts it, so the mutant is not equivalent. A fixture
 # would pin that old false violation, so none is added (unit lov-2).
 
-echo "-- offender collection is computed, not hardcoded (item 5) --"
-if mutate offender-collection-disabled 's|offenders="\${offenders:+\$offenders,}\$short:\$p"|true|'; then
-  got="$(bash "$MUTANT" "61ff35a~1..e9f07c2" 2>/dev/null)"
-  if ! printf '%s\n' "$got" | grep -q '61ff35a'; then
-    echo "OK   (mc6) offender-collection step disabled: real-history violation no longer names 61ff35a -> $got"
+echo "-- offender collection is computed, not hardcoded --"
+if mutate offender-collection-disabled 's|offenders="\${offenders:+\$offenders,}\$short:CHANGELOG.md"|true|'; then
+  got="$(cd "$repo" && bash "$MUTANT" "$r_chg_missing" 2>/dev/null)"
+  if ! printf '%s\n' "$got" | grep -q ':CHANGELOG.md'; then
+    echo "OK   (mc6) offender-collection step disabled: (b) no longer names CHANGELOG.md -> $got"
   else
-    echo "FAIL (mc6) offender-collection step disabled: still names 61ff35a, got '$got'"
+    echo "FAIL (mc6) offender-collection step disabled: still names CHANGELOG.md, got '$got'"
     fail=1
   fi
 fi

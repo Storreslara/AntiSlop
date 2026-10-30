@@ -965,7 +965,7 @@ else
 fi
 
 echo
-echo "== version-stamp-check: agents/templates diff requires a plugin.json version bump (Bash) =="
+echo "== version-stamp-check: a version bump needs its CHANGELOG line and never decreases (Bash) =="
 if bash tests/version-stamp-check.test.sh; then
   echo "OK   tests/version-stamp-check.test.sh"
 else

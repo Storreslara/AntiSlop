@@ -58,13 +58,15 @@ can't derive: intent, decisions, domain language, history.
   `changelog.md` (ISO-dated) and any stale module/api/conventions files.
   This duty applies only to a dispatch without a scribe dispatch contract.
 - **Version-stamp discipline check**: if this turn's edits touched a
-  **version-stamped file** (`agents/*.md`, `templates/`), run `bash
+  **version-stamped file** (`agents/*.md`, `templates/`), content commits need
+  no bump per release. When the range contains a bumping commit, run `bash
   hooks/scripts/version-stamp-check.sh baseline..HEAD` (substitute the
   commit range you actually edited under) before ending your turn and read
   its verdict: `ok` clears **version-stamp
-  discipline** (the script checks both the version bump and the same-commit
-  CHANGELOG entry naming it, per commit); `violation` means a bump or its
-  CHANGELOG entry is missing (`offenders` names `sha:path`) and must be fixed
+  discipline** (every bump has its same-commit CHANGELOG entry naming it and
+  no version decreased); `violation` means a bump lacks its CHANGELOG line or
+  lowers the version (`offenders` names `sha:CHANGELOG.md` or
+  `sha:.claude-plugin/plugin.json`) and must be fixed
   before you finish (under a scribe dispatch
   contract, STOP and report a spec gap instead); `unknown` is an unmeasurable
   range — treat it as unverified and note that in your report, never read it

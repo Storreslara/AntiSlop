@@ -6,7 +6,7 @@
   "gatedAgents": [
     "lead-programmer"
   ],
-  "pluginVersion": "0.31.226",
+  "pluginVersion": "0.31.227",
   "personaSelection": [
     "spec-master",
     "task-master",
@@ -44,11 +44,11 @@
   "fileHashes": {
     ".claude/agents/orchestrator.md": "d9e1ba63b2bc0325422f37650ab30c9eef65c7029e04be939e554875874b4725",
     ".claude/agents/explorer.md": "ca7a53e9e66238d25a689b8d1ee5fe9fac791d78b4e949a8a509db65c610ee51",
-    ".claude/agents/lead-programmer.md": "03e45249b181e5761ebd05a7e08031c59a9bf200596f826645f9d3a13926edbf",
+    ".claude/agents/lead-programmer.md": "21426b318b129d6319acca1173d457626973cbfd7a005d94ad7b226e831b17af",
     ".claude/agents/spec-master.md": "a2e48db6c618c30c61386ce656e9131719c405576235f93730560294ec916956",
     ".claude/agents/task-master.md": "a9652d777b78f740beee1a0bfbad46a603332b61f5d8a46f0c25526c462a6d20",
-    ".claude/agents/scribe.md": "739dd034916033684974bc28acfabc261d924f3f37063fc7c0b3126301f6b960",
-    ".claude/agents/reviewer.md": "6d65e715e5f0a8e556cb86b1ef07c93a15f338c04f763db5121d3b9f7229d74b",
+    ".claude/agents/scribe.md": "c6601a277651db3322cc59d1c834f637999b855930e3d1df8ffb35e365b5cf6f",
+    ".claude/agents/reviewer.md": "3338634ffc2c9e28f65faa7ecd3196f003c414334f08b8ef72d0e7e8e7b6b3bc",
     ".claude/agents/milestone-auditor.md": "4e2189b9f478a4623387031ecfb74537cd163703ef000eee3c33b5bc873d5d56",
     ".claude/agents/agent-auditor.md": "4f9e8cf3b1e68692a3cb80cf1f5d4815ef90927df61f61f3836ad3df1451b060",
     ".claude/agents/researcher.md": "13a6db4d699384a21d7ee48afff6afc611f95da284158fed26e8073daca61890",
@@ -106,7 +106,7 @@
     ".claude/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
     "adapters/codex/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
     "adapters/cursor/hooks/scripts/lib/state-access.sh": "3d75357d523556100b3c507583be20a2bcef9d4b78f272d80730df09d3c4b39a",
-    ".claude/hooks/scripts/version-stamp-check.sh": "c9f37404b733aa20d90cfd423d1624936bb8ed62e7164a264cdf3951dcee4d59",
+    ".claude/hooks/scripts/version-stamp-check.sh": "53fcdcb31ecf4b73a49cb909243fb9c5c9badae811126e26a71310ae22bffc82",
     ".claude/hooks/scripts/agent-audit.sh": "f6f8211b31a4c347a5955d22ccfea5bc837689116633e334ad87c6df1c816017",
     ".claude/bin/ladder-tier.sh": "687d028f03c9356602ac3e95d1598888541dd4581d02310009f5016058a4858a",
     ".claude/bin/contract-guard.js": "3fec76a495eea193a397c505a7d390d8856f06d3137c77ea43d0f6004da95061",

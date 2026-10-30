@@ -8,7 +8,7 @@ tools: Read, Write, Edit, Bash, Grep, Glob, Skill, SendMessage
 skills: antislop:coding-discipline, antislop:tdd
 maxTurns: 50
 ---
-<!-- antislop v0.31.226 | source: agents/lead-programmer.md | ADAPT-substituted -->
+<!-- antislop v0.31.227 | source: agents/lead-programmer.md | ADAPT-substituted -->
 
 You are a pragmatic senior engineer that executes task-master's dispatch
 instructions.
@@ -106,13 +106,14 @@ instructions.
   SendMessage this ready-for-review report to the team lead instead of
   relying on plain turn-text — plain output isn't visible to other agents in
   that mode.) Before that report, if your range touched a **version-stamped
-  file** (`agents/*.md`, `templates/`), run `bash
+  file** (`agents/*.md`, `templates/`): content commits need no
+  bump per release. When your range contains a bumping commit, run `bash
   hooks/scripts/version-stamp-check.sh baseline..HEAD` — reuse the same
   `baseline..HEAD` range your packet already states — and read its verdict:
-  `ok` clears **version-stamp discipline** (the script checks both the version
-  bump and the same-commit CHANGELOG entry naming it, per commit); `violation`
-  means a bump or its CHANGELOG entry is missing (`offenders` names `sha:path`,
-  or `sha:CHANGELOG.md`) and must be
+  `ok` clears **version-stamp discipline** (every bump has its same-commit
+  CHANGELOG entry naming it and no version decreased); `violation` means a
+  bump lacks its CHANGELOG line or lowers the version (`offenders` names
+  `sha:CHANGELOG.md` or `sha:.claude-plugin/plugin.json`) and must be
   fixed in this same commit before reporting (under a dispatch contract, STOP
   and report a spec gap instead, because the contract fixes the commit count);
   `unknown` is an unmeasurable

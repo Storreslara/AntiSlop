@@ -1,5 +1,5 @@
 # Project constitution
-Version: 1.1.0 | Ratified: 2026-07-14 | Last amended: 2026-09-26
+Version: 1.2.0 | Ratified: 2026-07-14 | Last amended: 2026-10-30
 
 ## Principles
 ### 1. Verify, don't assume (MUST)
@@ -16,18 +16,14 @@ script-driven path (`--wire-graph-mcp`, `--wire-arxiv-mcp`, `fileHashes`) —
 hand-editing risks the exact traps those scripts exist to avoid.
 
 ### 3. Version-stamp discipline (MUST)
-Any change to a version-stamped file (`agents/*.md`, templates) must bump
-`.claude-plugin/plugin.json`'s version and add a CHANGELOG entry, since the
-`--update` mechanism depends on the version actually changing when content
-does. The bump and CHANGELOG entry must land in the **same commit** as the
-content change — checked **per commit, not once per unit or once per
-spec**: `hooks/scripts/version-stamp-check.sh` verifies every commit that
-touches a version-stamped path against its own immediate parent, so a later
-commit's bump does not excuse an earlier commit in the same unit that lacks
-one. A consumer project's `--update` can run against any commit, not only a
-unit's or a spec's final one, so any intermediate commit shipping changed
-content under an unchanged version leaves `--update` staleness-blind for
-that commit.
+Version stamping is **per release**, not per commit. A release is one
+commit that bumps `.claude-plugin/plugin.json`'s version and adds the
+CHANGELOG entry naming that version in the same commit. Content commits
+(including changes to `agents/*.md` and templates) need no bump of their own,
+and the version never decreases. A consumer project's `--update` sees the
+content at releases, so the version must change at each release.
+`hooks/scripts/version-stamp-check.sh` checks every release commit in a range
+for its same-commit CHANGELOG line and for a non-decreasing version.
 
 ### 4. Optional personas degrade gracefully (SHOULD)
 References to `spec-master`/`task-master`/`scribe`/`reviewer`/`researcher`/
@@ -47,3 +43,4 @@ very ADAPT run hit firsthand on `explorer.md`.
   CHANGELOG entry in the same commit as the content change (per-commit
   semantics, matching `hooks/scripts/version-stamp-check.sh`), not batched
   once per unit or once per spec (item17-1).
+- 1.2.0 (2026-10-30): P3 changed to per-release semantics (lp-vsr).
