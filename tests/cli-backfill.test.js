@@ -78,7 +78,7 @@ function canonicalProtocolHeaders() {
 }
 
 // The A3 ruling ("orchestrator is deliberately untrimmed") was reversed for
-// three sections by gh348 Step 4 (Third verdict, Fourth verdict, Microworld
+// three sections by gh348 Step 4 (Third verdict, Microworld
 // bundles — operator-approved 2026-08-13, see docs/plans/2026-08-13-persona-
 // efficiency-audit-gh348.md finding 1.1). This now asserts the row's actual
 // include list rather than the full canonical set.

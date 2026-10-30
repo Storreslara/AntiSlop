@@ -787,7 +787,7 @@ const UNIVERSAL_PROTOCOL_CORE = [
 // deriving either one from the other would remove that forcing function.
 //
 // `orchestrator` was originally deliberately untrimmed; gh348 Steps 4 and 11
-// reversed that for the sections it never executes on (Third/Fourth verdict,
+// reversed that for the sections it never executes on (Third verdict,
 // Microworld bundles, the teammate Write/Edit fallback, and the memory note —
 // it has no `memory:` frontmatter). The memory note is otherwise carried
 // exactly by the personas whose agents/*.md declares `memory:` frontmatter.
@@ -808,7 +808,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
     ],
     drop: [
       'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
       'Teammate Write/Edit fallback and gate rephrasing doctrine',
       'A note on `memory`',
@@ -836,7 +835,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Pending-review flag (default-mode review backstop)',
       'FAIL record (durable warning for future spawns)',
       'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
     ],
   },
   reviewer: {
@@ -855,7 +853,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Continuing after a FAIL verdict',
       'A note on `memory`',
-      'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
       // Reviewer never fetches sliced issues itself — constraints arrive
       // pre-packaged (item04-2).
@@ -885,7 +882,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'WIP sentinel (mid-task handoff, not a bypass)',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
       'Microworld bundles (format and the check contract)',
     ],
   },
@@ -903,7 +899,6 @@ const PROTOCOL_SECTIONS_BY_PERSONA = {
       'Retrieval contract',
       'Pending-review flag (default-mode review backstop)',
       'Third verdict: insufficient-context',
-      'Fourth verdict: escalate-to-human',
       'A note on `memory`',
       'Microworld bundles (format and the check contract)',
       // No Write/Edit/memory grant ever, and milestone-auditor.md

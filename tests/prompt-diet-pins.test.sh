@@ -64,32 +64,6 @@ for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agent
   hasnot "$f" 'defeats the whole point of it being cheap'
 done
 
-# qw-u4: the ESCALATE-TO-HUMAN procedure moves verbatim into the protocol's Fourth verdict section; the
-# orchestrator keeps a stub that names the subsection and carries the five invariants.
-for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
-  has "$f" 'subsection of the `## Fourth verdict: escalate-to-human` section in `.claude/persona-protocol.md`'
-  has "$f" 'Your job is **surfacing, not deciding**.'
-  has "$f" 'print the marker'"'"'s card verbatim, never a summary'
-  has "$f" 'never run `run.sh` or `view.sh` yourself'
-  has "$f" 'relay the human'"'"'s answer verbatim'
-  has "$f" '**prompt-confirmed decision write**, from this session'"'"'s answer and never on your own initiative'
-  has "$f" 'afresh with `subagent_type: reviewer` set explicitly'
-  has "$f" 'do not relay the decision in the prompt'
-  hasnot "$f" 'Make **one** `AskUserQuestion` call'
-  hasnot "$f" 'Twice a `general-purpose` agent dispatched this way'
-done
-for f in templates/persona-protocol.md .claude/persona-protocol.md; do
-  has "$f" '### Orchestrator steps on an ESCALATE-TO-HUMAN verdict'
-  has "$f" 'Print the marker'"'"'s lines 1 through the `---` fold line in chat **verbatim**'
-  has "$f" 'Read `CHANGES.md` in that packet directory **(if present)**'
-  has "$f" 'Read `EXAMPLES.md` in that packet directory **(if present)**'
-  has "$f" '**Never run `run.sh` or `view.sh` yourself and never pre-digest a result**'
-  has "$f" 'Make **one** `AskUserQuestion` call'
-  has "$f" 'Make the **prompt-confirmed decision write**'
-  has "$f" '**with `subagent_type: reviewer` set explicitly**'
-  has "$f" '**never dispatch review-adjacent work to an untyped or generic agent.**'
-done
-
 # Later units append their rows below this line.
 
 # rp-u5 (fix 1): one decision table decides the scribe dispatch, early-stop and end-of-plan alike: it runs
@@ -119,14 +93,6 @@ done
 has docs/orchestrator-rationale.md '## N1: reviewer dispatch naming, the unobserved residual'
 for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
   has "$f" 'If the `start-feature-team` command is running, its rules govern instead of the routing/review-ownership rules above'
-  has "$f" 'ask through one `AskUserQuestion` call'
-  has "$f" 'If that section cannot be read, print the whole marker verbatim, write nothing, and tell the human to resolve the escalation from their terminal or the Microworld dashboard.'
-done
-for f in templates/persona-protocol.md .claude/persona-protocol.md; do
-  has "$f" 'never retry or rephrase the write'
-  has "$f" 'Write only from this session'"'"'s answer'
-  has "$f" 'never pick one for them'
-  has "$f" 'Do not relay the decision in the prompt'
 done
 for f in agents/orchestrator.md adapters/codex/agents/orchestrator.toml adapters/cursor/agents/orchestrator.md; do
   has "$f" 'When you dispatch scribe, quote each unit'"'"'s reviewer PASS verdict line verbatim in that dispatch; scribe closes an issue only on its own quoted line.'

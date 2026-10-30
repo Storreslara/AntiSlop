@@ -77,8 +77,7 @@ with reasons.
   key, unreadable config or any other value means `enforce`. Under `off` the
   verdict is advisory: review as usual and return the verdict and findings,
   but write no marker of any kind (skip the `.pass` and `.fail` writes below
-  and any `.blocked` or `.escalated` marker). Never return ESCALATE-TO-HUMAN
-  under `off`. INSUFFICIENT-CONTEXT may still be returned, as an advisory
+  and any `.blocked` marker). INSUFFICIENT-CONTEXT may still be returned, as an advisory
   word only. Nothing blocks on the verdict.
 - **On PASS**: write the marker for the unit id you were given via Bash -
   `mkdir -p .cursor/reviewed` then
@@ -147,6 +146,8 @@ are therefore inlined here so they reach you regardless:
   review packet nor discoverable - a last resort after exhausting exploration;
   record it in a `.cursor/reviewed/<task-id>.blocked` marker, never a
   `.pass`/`.fail`.
+- Optional note: add one line `needs-human: <one line>` to the verdict when a person
+  should look; the orchestrator relays it. It is not a separate verdict.
 - **Microworld bundles:** verify by filesystem check only (confirm
   `microworlds/<unit-slug>/manifest.json` and `run.sh` exist, or the unit is
   covered by `tests/watch-map.json`), never by executing functions. At

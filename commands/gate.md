@@ -10,12 +10,9 @@ a permission mode where `harness-integrity-gate.sh` denies rather than asks.
 
 1. Read `reviewGating.mode` in `.claude/persona-config.json` and state the
    current value. An absent key, or any value other than `off`, means `enforce`.
-2. List standing `.claude/.pending-review.*` flags and undecided escalation
-   packets (directories under `.claude/human-review/` with no human decision
-   file). Off mode never clears them. Stale flags and `.review-join.*` stamps
+2. List standing `.claude/.pending-review.*` flags. Off mode never clears them. Stale flags and `.review-join.*` stamps
    left on disk apply again when you flip back to `enforce`, so tell the human
-   to delete or resolve them first. Warn about an undecided packet before
-   switching to `off`; do not refuse.
+   to delete or resolve them first.
 3. Apply the change with the `Edit` tool only, never Bash and no CLI write
    route. For `off`, set `reviewGating.mode` to `"off"`. For `on`, delete the
    key or set it to `"enforce"`. Tell the human a confirmation prompt will

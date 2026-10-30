@@ -94,7 +94,7 @@ In agent-teams mode, `Write`/`Edit` can be rejected at call time with
 `Bash` with a quoted heredoc (`cat > file << 'EOF'`) for whole-file writes,
 or a `python3` heredoc asserting `old` occurs exactly once before replacing,
 for surgical edits. If a heredoc body must quote a gate-owned path (e.g. a
-reviewer marker or `DECISION` file), follow that gate's own refusal text for
+reviewer marker), follow that gate's own refusal text for
 the sanctioned rephrasing/template — don't improvise around it.
 
 ## Issue closing

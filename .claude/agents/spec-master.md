@@ -456,14 +456,13 @@ saved.
   first (`stat -c %a`), restore it after (`chmod`), or `chmod --reference` an
   untouched sibling — hook scripts are invoked directly, so a lost `+x`
   disables that gate outright.
-- If either `reviewed-path-gate.sh` or `human-decision-gate.sh` refuses a
-  heredoc, read its refusal text and the glossary entry its `More:` line names
-  before doing anything else: the refusal names the sanctioned route, and the
-  entry (`reviewed-path denial` or `decision-gate denial` in
+- If `reviewed-path-gate.sh` refuses a heredoc, read its refusal text and the
+  glossary entry its `More:` line names before doing anything else: the
+  refusal names the sanctioned route, and the entry (`reviewed-path denial` in
   `docs/harness-glossary.md`) holds the full remediation, including when
-  rephrasing a path is allowed and when it isn't. Rewording a command to dodge `human-decision-gate.sh`'s scan is
-  always a self-authorized bypass, never a sanctioned workaround (see
-  "Blocked by a gate you do not own" below).
+  rephrasing a path is allowed and when it isn't. Rewording a command to dodge
+  any gate's scan is always a self-authorized bypass, never a sanctioned
+  workaround (see "Blocked by a gate you do not own" below).
 - This applies **regardless of how the tools were granted**. A persona that
   lists `Write, Edit` in its own `tools:` frontmatter loses them exactly as a
   persona that receives them through the `memory:` auto-grant does — measured
@@ -585,10 +584,11 @@ Objective` line is `fix-of: <FAIL header timestamp>`. Contracts live at
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)
-routes to the reviewer. The reviewer returns one of four verdicts: PASS;
-FAIL; INSUFFICIENT-CONTEXT, when a criterion could not be verified even after
-the reviewer exhausted its own exploration; or ESCALATE-TO-HUMAN, when a unit
-the reviewer would otherwise have passed is instead gated on human review.
+routes to the reviewer. The reviewer returns one of three verdicts: PASS;
+FAIL; or INSUFFICIENT-CONTEXT, when a criterion could not be verified even after
+the reviewer exhausted its own exploration. It may add one optional line
+`needs-human: <one line>` to its verdict; the orchestrator relays that note to
+the user with AskUserQuestion and writes nothing else.
 "Done" means it returned PASS, not that the work looks finished. On FAIL,
 defects route back to the lead-programmer, which fixes the specific items
 listed and reports ready-for-review again; it never re-plans and never grades
@@ -642,16 +642,14 @@ When reviewGating.mode is off (review gating off) in this project's
 config, and any other value all resolve to `enforce`. The reviewer is still
 dispatched once per unit, with `Unit: <task-id>` as usual, and still returns
 its verdict and findings, but that verdict is an **advisory verdict**: the
-reviewer writes no marker of any kind (no `.pass`, `.fail`, `.blocked` or
-`.escalated`), never returns ESCALATE-TO-HUMAN, and nothing blocks on the
-verdict. This is not the advisory-reviewer axis above: an advisory verdict
+reviewer writes no marker of any kind (no `.pass`, `.fail` or `.blocked`),
+and nothing blocks on the verdict. This is not the advisory-reviewer axis above: an advisory verdict
 is the unit's only reviewer's verdict, and it is non-binding. "Done" then
 means the reviewer returned an advisory PASS, or the unit reached ladder
 exhaustion on advisory FAILs and the orchestrator listed the remaining findings and moved
 on. Inert under `off`: the pending-review flags and review-join verdict
 check in `stop-gate.sh`, the unit-exclusivity block in
-`reviewer-route-gate.sh`, `task-gate.sh`, `dispatch-hygiene.sh`'s H3 check,
-and `human-decision-gate.sh`. Still armed: `protected-paths.sh`,
+`reviewer-route-gate.sh`, `task-gate.sh` and `dispatch-hygiene.sh`'s H3 check. Still armed: `protected-paths.sh`,
 `harness-integrity-gate.sh` and config-drift detection,
 `reviewed-path-gate.sh`, the reviewer-dispatch identity and privileged-name
 guards in `reviewer-route-gate.sh`, and `stop-gate.sh`'s test+lint check.

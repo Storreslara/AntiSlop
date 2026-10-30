@@ -53,40 +53,6 @@ function canonicalHeaders() {
 // deferred entries are the pre-existing broader drift spec-master surfaced —
 // recorded here visibly, not silently fixed and not silently ignored.
 //
-// The escalate-to-human row probes the packet's human-facing artifacts by
-// name, not just the header: gh299 (CHANGES.md) and examples-1 (EXAMPLES.md)
-// both landed in these hand-adapted ports, and a header-only probe would pass
-// on a port that had silently dropped either one.
-const ESCALATION_PROBES = [
-  'Fourth verdict: escalate-to-human',
-  'Comprehension material only',   // CHANGES.md's byte-exact authority line (gh299)
-  'EXAMPLES.md',                   // worked examples, examples-1
-  'examples: reviewed',
-  'examples: skipped',             // the non-gate token — omitting it builds a gate
-  'examples: none-offered',
-  'never graded by the reviewer',  // the R6 authority constraint, gh300
-  'Microworld dashboard',          // second DECISION-authoring path, gh377-6a
-  'via: terminal',                 // via: transcription duty, gh377-6a
-  'via: dashboard',                // via: transcription duty, gh377-6a
-  'via: prompt',                   // third DECISION-authoring path, esc-chat-3
-  'prompt-confirmed decision write', // its name, esc-chat-3
-  '| Where | What to check |',        // epa-2
-  '**Before:**',                      // epa-2
-  'no wrapped paragraph longer than two lines', // epa-2
-  'view.sh',  // epa-3
-  'why: <one line',  // epa-4
-  'would-be verdict: <PASS|FAIL>',  // epa-4
-  'look first: <file:line>',  // epa-4
-  'decide: <the one question',  // epa-4
-  'run: <command to run',  // epa-4
-  'packet: .claude/human-review/<task-id>/',  // epa-4
-  '\n---\ncommit: <sha at escalation>',  // epa-4: the fold, directly followed by commit:
-  '**After:**',  // epf-2
-  '### <n>. <one-phrase title>',  // epf-2
-  'one `>` blockquote line',  // epf-2
-  '`run.sh` and `view.sh` commands',  // epf-2: the prose probe; the view.sh block's own comments cannot satisfy it
-];
-
 // The pending-review flag fix (esf-flag-prose): the reviewer clears one flag
 // per satisfied stamp, not every flag, and a re-created flag is dropped on the
 // next Stop OR subagent dispatch. `absent` is the negative half: the old
@@ -118,7 +84,6 @@ const codexMap = {
   'Pending-review flag (default-mode review backstop)': PENDING_REVIEW_RULE,
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
-  'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Codex has no per-agent memory primitive (file convention only) — see platform notes' },
   'Microworld bundles (format and the check contract)': { probe: ['Microworld bundles', 'authority=reviewer'] },
@@ -142,7 +107,6 @@ const cursorMap = {
   'Pending-review flag (default-mode review backstop)': PENDING_REVIEW_RULE,
   'FAIL record (durable warning for future spawns)': { probe: 'FAIL record' },
   'Third verdict: insufficient-context': { deferred: 'pre-existing broader drift, out of scope for U15 — candidate future port sweep' },
-  'Fourth verdict: escalate-to-human': { probe: ESCALATION_PROBES },
   'Continuing after a FAIL verdict': { probe: 'Continuing after a FAIL verdict' },
   'A note on `memory`': { deferred: 'Cursor has no per-agent memory primitive (file convention only) — see platform notes' },
   'Microworld bundles (format and the check contract)': { probe: ['Microworld bundles', 'authority=reviewer'] },
@@ -255,44 +219,6 @@ check('negative case: an absent-phrase present in the port is REJECTED', () => {
     'a forbidden phrase in the port must throw');
 });
 
-// epa-4: the canonical escalation card-and-record block must be byte-identical
-// in every source and generated mirror; it is the reviewer-prose drift check.
-function cardBlock(rel) {
-  const lines = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').split('\n');
-  const b = lines.indexOf('<!-- escalated-card:begin -->');
-  const e = lines.indexOf('<!-- escalated-card:end -->');
-  assert.ok(b >= 0 && e > b, `${rel}: escalated-card markers missing or out of order`);
-  return lines.slice(b + 1, e).filter((l) => !l.startsWith('```')).join('\n');
-}
-
-check('escalated card block is byte-identical across reviewer.md, the template, both ports and both mirrors', () => {
-  const files = ['agents/reviewer.md', 'templates/persona-protocol.md',
-    'adapters/codex/agents-md-fragment.md', 'adapters/cursor/rules/persona-protocol.mdc',
-    '.claude/agents/reviewer.md', '.claude/persona-protocol.md'];
-  const blocks = files.map(cardBlock);
-  blocks.forEach((b, i) => assert.ok(b.length > 0, `${files[i]}: card block is empty`));
-  blocks.forEach((b, i) => assert.strictEqual(b, blocks[0], `${files[i]}: card block differs from ${files[0]}`));
-  const lines = blocks[0].split('\n');
-  assert.ok(lines[0].startsWith('why: '), 'card block line 1 must start "why: "');
-  assert.strictEqual(lines[6], '---', 'card block line 7 must be exactly the --- fold');
-});
-
-// epf-1: the orchestrator escalation steps also handle a marker written before the card format.
-check('orchestrator escalation steps handle a marker with no fold line or no decide: line', () => {
-  const flat = (rel) => fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').replace(/\s+/g, ' ');
-  const foldRule = 'A marker with no `---` fold line was written before the card format: print the whole marker verbatim instead, with no pointer line.';
-  const decideRule = "When the marker has no `decide: ` line, Q1's description is exactly `How should this escalation be resolved?`.";
-  for (const rel of ['templates/persona-protocol.md', '.claude/persona-protocol.md']) {
-    const t = flat(rel);
-    assert.ok(t.includes(foldRule), `${rel}: missing the no-fold-line rule`);
-    assert.ok(t.includes(decideRule), `${rel}: missing the no-decide-line rule`);
-  }
-  assert.ok(flat('templates/persona-protocol.md').includes('prints marker lines 1 through the `---` fold line verbatim in chat (the whole marker when it has no fold line)'),
-    'templates/persona-protocol.md: missing the whole-marker clause');
-});
-
-// epfb-2: the skip token keeps its ASCII hyphen in every prose copy, and the
-// reviewer's escalation card is followed by a list item, never a column-0 paragraph.
 // epfc-4: split markdown into prose lines and fenced-block interior lines
 // (CommonMark backtick or tilde fences; the fence delimiter lines are in neither).
 function splitFences(text) {
@@ -312,37 +238,6 @@ function splitFences(text) {
   }
   return { prose, fenced };
 }
-
-check('EB1 skip token is `examples: none - <one-line reason>` with an ASCII hyphen in every prose copy, in prose and in the card fence', () => {
-  const files = ['agents/reviewer.md', 'templates/persona-protocol.md', '.claude/agents/reviewer.md',
-    '.claude/persona-protocol.md', 'CONTEXT.md', 'adapters/codex/agents-md-fragment.md',
-    'adapters/cursor/rules/persona-protocol.mdc'];
-  const NO_CARD = ['CONTEXT.md'];
-  const NO_PROSE = ['agents/reviewer.md', '.claude/agents/reviewer.md']; // ptr-u6: the prose lives in the protocol section now; the card fence stays pinned
-  const token = 'examples: none - <one-line reason>';
-  for (const rel of files) {
-    const t = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8');
-    assert.ok(!t.includes('examples: none \u2014'), `${rel}: em-dash skip token`);
-    const { prose, fenced } = splitFences(t);
-    if (!NO_PROSE.includes(rel)) {
-      assert.ok(prose.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in prose`);
-    }
-    if (!NO_CARD.includes(rel)) {
-      assert.ok(fenced.some((l) => l.includes(token)), `${rel}: no ASCII-hyphen skip token in the card fence`);
-    }
-  }
-});
-
-check('EB2 the line after the reviewer escalation card is the Escalation packet pointer list item', () => {
-  for (const rel of ['agents/reviewer.md', '.claude/agents/reviewer.md']) {
-    const lines = fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8').split('\n');
-    const end = lines.indexOf('<!-- escalated-card:end -->');
-    assert.ok(end >= 0, `${rel}: no escalated-card:end line`);
-    const next = lines.slice(end + 1).find((l) => l.trim() !== '');
-    assert.ok(next !== undefined && next.startsWith('- **Escalation packet and resolution (read on demand):** '),
-      `${rel}: line after the card is not the list item: ${next}`);
-  }
-});
 
 // epfd-3: splitFences is a local copy of parseProtocolSections' fence rules, so
 // test it directly: backtick and tilde fences, an info string, an unclosed

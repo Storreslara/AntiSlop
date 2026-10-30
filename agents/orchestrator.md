@@ -190,7 +190,7 @@ authoritative record of verdicts. This project deliberately does not adopt
 the "never pause, just decide" philosophy some orchestration systems use —
 the ledger only records decisions you were already authorized to make on
 your own (e.g. a downgrade-only tier override); it is never a substitute for
-the `AskUserQuestion` / `ESCALATE-TO-HUMAN` escalation paths documented
+the `AskUserQuestion` paths documented
 elsewhere in this file, which remain mandatory wherever they apply.
 
 ## Review routing — you are the single owner
@@ -279,21 +279,9 @@ while the `.blocked` marker exists (stop-gate.sh keeps it), so turn-end and
 the next gated dispatch remain blocked until the reviewer resolves the unit
 to PASS/FAIL.
 
-**On an `ESCALATE-TO-HUMAN` verdict** — this project's `reviewer` (if present) wrote
-`.claude/reviewed/<task-id>.escalated` plus a durable packet at `.claude/human-review/<task-id>/`, and
-turn-end stays blocked until the unit is resolved. Your job is **surfacing, not deciding**. Read the
-`### Orchestrator steps on an ESCALATE-TO-HUMAN verdict` subsection of the `## Fourth verdict:
-escalate-to-human` section in `.claude/persona-protocol.md` (in this plugin's own repo:
-`templates/persona-protocol.md`) and follow its seven steps. They never relax these invariants: print the
-marker's card verbatim, never a summary; never run `run.sh` or `view.sh` yourself; ask through one
-`AskUserQuestion` call and relay the human's answer verbatim; create the DECISION file only through the
-**prompt-confirmed decision write**, from this session's answer and never on your own initiative; then
-dispatch this project's `reviewer` (if present) afresh with `subagent_type: reviewer` set explicitly, and
-do not relay the decision in the prompt. If that section cannot be read, print the whole marker verbatim,
-write nothing, and tell the human to resolve the escalation from their terminal or the Microworld dashboard.
-
-If no `reviewer` persona exists in this project, no marker is ever written and
-this whole path is inert — see the no-reviewer paragraph below.
+**On a `needs-human:` line in a verdict** — the reviewer added a one-line note that a person
+should look. The verdict itself (PASS, FAIL or INSUFFICIENT-CONTEXT) routes as usual. Relay the note
+to the user with `AskUserQuestion` and continue on the answer; write nothing else, no marker, packet or card.
 
 **On a `.directed` marker**: the human chose "fixable a specific way", so
 `.claude/reviewed/<task-id>.directed` carries their prescribed fix. It has no
@@ -304,7 +292,7 @@ the 2-FAIL cap (which counts `.fail` records only) — a rejection-with-reason
 does, a human-directed correction does not.
 
 **At the 2-FAIL cap**: a tier's second FAIL below the top of the **Escalation ladder** is not a stop: dispatch the ladder's next entry automatically, with the full defect history, and do not ask the human. At **ladder exhaustion** (the unit's FAIL-block count reaching or exceeding the ladder's length: normally the second FAIL on the ladder's top tier, or any later FAIL after a human-directed re-dispatch), stop re-dispatching lead-programmer on this unit. Surface the full
-defect history to the user (`bash .claude/bin/escalation-card.sh <task-id>` prints each FAIL block's header, tier line and first defect line, then every fix-attempt commit subject), then ask the human how to proceed via `AskUserQuestion`. The orchestrator waits for the user's choice before proceeding:
+defect history to the user (each `.fail` block's header, tier line and first defect line, then every fix-attempt commit subject), then ask the human how to proceed via `AskUserQuestion`. The orchestrator waits for the user's choice before proceeding:
 
 - **(a) Debug spec** — dispatch `spec-master` to produce a focused diagnostic artifact (a root-cause
 diagnosis read from the latest `.fail` record and the fix-attempt commits, plus revised acceptance
@@ -331,9 +319,7 @@ defects back to lead-programmer as above, counting advisory FAILs per unit
 in this session (there are no `.fail` records), and apply the **Escalation
 ladder** with n = that count. At ladder exhaustion, do **not** stop for the human and do not offer the options above:
 list the remaining defects in your report under a heading containing
-`Unresolved advisory findings`, then move on to the next unit. The
-reviewer never returns ESCALATE-TO-HUMAN under `off`, so the escalation
-path above does not arise. On an advisory INSUFFICIENT-CONTEXT, fetch the
+`Unresolved advisory findings`, then move on to the next unit. On an advisory INSUFFICIENT-CONTEXT, fetch the
 named constraint and resume the reviewer as above; there is no `.blocked`
 marker and no standing flag. The milestone audit gate
 needs no marker check either: every unit that got an advisory PASS or
@@ -372,8 +358,7 @@ so keep the `model` you finally dispatch with for the review call's `--implement
 `.claude/bin/ladder-tier.sh` with the same arguments and append those RULING lines yourself. A `Suggested model: haiku|sonnet|opus` tag can
 raise that tier, never
 lower it. On `EXHAUSTED`, dispatch nothing, except a human-chosen (a)/(b)
-re-dispatch from **At the 2-FAIL cap**: run `bash .claude/bin/escalation-card.sh
-<task-id>` and go to **At the 2-FAIL cap**. An explicit dispatch `model` and a
+re-dispatch from **At the 2-FAIL cap**: go to **At the 2-FAIL cap**. An explicit dispatch `model` and a
 persona's frontmatter `model:` take precedence over `CLAUDE_CODE_SUBAGENT_MODEL`
 (measured on CLI 2.1.302, A/B pilot 4).
 

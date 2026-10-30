@@ -712,11 +712,11 @@ else
 fi
 
 echo
-echo "== packet viewer: view.sh six-copy identity + soft-fallback behaviour (Bash, epa-3) =="
-if bash tests/packet-view-script.test.sh; then
-  echo "OK   tests/packet-view-script.test.sh"
+echo "== escalation prose retired; needs-human note present (Bash, lp-escprose) =="
+if bash tests/escalation-retired.test.sh prose; then
+  echo "OK   tests/escalation-retired.test.sh prose"
 else
-  echo "FAIL tests/packet-view-script.test.sh"
+  echo "FAIL tests/escalation-retired.test.sh prose"
   fail=1
 fi
 

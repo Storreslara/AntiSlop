@@ -90,8 +90,7 @@ advisory FAIL, route the defects back to lead-programmer as above, counting
 advisory FAILs per unit in this session (there are no `.fail` records). At
 the second advisory FAIL of a unit, do not stop for the human: list the
 remaining defects in your report under a heading containing `Unresolved
-advisory findings`, then move on to the next unit. The reviewer never
-returns ESCALATE-TO-HUMAN under `off`, and no marker check precedes the
+advisory findings`, then move on to the next unit. No marker check precedes the
 milestone audit gate. When you dispatch scribe, quote each unit's reviewer
 PASS verdict line verbatim in that dispatch; scribe closes an issue only on
 its own quoted line.
@@ -140,4 +139,6 @@ they reach you regardless:
 - Third verdict: on INSUFFICIENT-CONTEXT the reviewer couldn't verify a
   criterion - its pending-review flag stays standing; forward the missing
   constraint and re-dispatch, and never count it as a FAIL-cap slot.
+- A `needs-human:` line in a reviewer verdict: relay it to the user with
+  AskUserQuestion and continue on the answer; write nothing else.
 '''

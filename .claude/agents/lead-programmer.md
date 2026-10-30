@@ -222,14 +222,13 @@ saved.
   first (`stat -c %a`), restore it after (`chmod`), or `chmod --reference` an
   untouched sibling — hook scripts are invoked directly, so a lost `+x`
   disables that gate outright.
-- If either `reviewed-path-gate.sh` or `human-decision-gate.sh` refuses a
-  heredoc, read its refusal text and the glossary entry its `More:` line names
-  before doing anything else: the refusal names the sanctioned route, and the
-  entry (`reviewed-path denial` or `decision-gate denial` in
+- If `reviewed-path-gate.sh` refuses a heredoc, read its refusal text and the
+  glossary entry its `More:` line names before doing anything else: the
+  refusal names the sanctioned route, and the entry (`reviewed-path denial` in
   `docs/harness-glossary.md`) holds the full remediation, including when
-  rephrasing a path is allowed and when it isn't. Rewording a command to dodge `human-decision-gate.sh`'s scan is
-  always a self-authorized bypass, never a sanctioned workaround (see
-  "Blocked by a gate you do not own" below).
+  rephrasing a path is allowed and when it isn't. Rewording a command to dodge
+  any gate's scan is always a self-authorized bypass, never a sanctioned
+  workaround (see "Blocked by a gate you do not own" below).
 - This applies **regardless of how the tools were granted**. A persona that
   lists `Write, Edit` in its own `tools:` frontmatter loses them exactly as a
   persona that receives them through the `memory:` auto-grant does — measured
@@ -366,10 +365,11 @@ Objective` line is `fix-of: <FAIL header timestamp>`. Contracts live at
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)
-routes to the reviewer. The reviewer returns one of four verdicts: PASS;
-FAIL; INSUFFICIENT-CONTEXT, when a criterion could not be verified even after
-the reviewer exhausted its own exploration; or ESCALATE-TO-HUMAN, when a unit
-the reviewer would otherwise have passed is instead gated on human review.
+routes to the reviewer. The reviewer returns one of three verdicts: PASS;
+FAIL; or INSUFFICIENT-CONTEXT, when a criterion could not be verified even after
+the reviewer exhausted its own exploration. It may add one optional line
+`needs-human: <one line>` to its verdict; the orchestrator relays that note to
+the user with AskUserQuestion and writes nothing else.
 "Done" means it returned PASS, not that the work looks finished. On FAIL,
 defects route back to the lead-programmer, which fixes the specific items
 listed and reports ready-for-review again; it never re-plans and never grades

@@ -9,8 +9,8 @@
 - Structural questions (definitions, callers, blast radius, coverage): spawn
   `explorer`; never invoke the code-review-graph skill directly.
 - Only the orchestrator/team lead routes between lead-programmer and reviewer.
-  "Done" = reviewer PASS (a critical unit may first route through
-  ESCALATE-TO-HUMAN).
+  "Done" = reviewer PASS. The reviewer may add one `needs-human: <line>` note;
+  the orchestrator relays it to the user.
 - 2 FAILs per implementer tier climb the Escalation ladder; ladder exhaustion
   (FAIL-block count >= its length, or any later FAIL after a human-directed
   re-dispatch) alone stops re-delegation and shows the user the defect history.

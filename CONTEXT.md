@@ -311,7 +311,7 @@ _Avoid_: marker-directory gate
   deletions of still-true claims.
 
 **Protocol excerpt**:
-the subset of `templates/persona-protocol.md`'s 21
+the subset of `templates/persona-protocol.md`'s 20
   `## `-delimited canonical sections that a given full-tier persona's
   `.claude/agents/*.md` mirror actually inlines, per `bin/cli.js`'s
   `PROTOCOL_SECTIONS_BY_PERSONA` matrix (issue #190, 2026-08-01 efficiency
