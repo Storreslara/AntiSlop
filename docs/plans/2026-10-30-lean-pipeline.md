@@ -202,7 +202,7 @@ Contract files, written in this order, three per spec-master spawn (checkpoint r
 - [contracts/lp-tmdel.md](2026-10-30-lean-pipeline/contracts/lp-tmdel.md), [contracts/lp-speccap.md](2026-10-30-lean-pipeline/contracts/lp-speccap.md), [contracts/lp-escprose.md](2026-10-30-lean-pipeline/contracts/lp-escprose.md)
 - [contracts/lp-hdg.md](2026-10-30-lean-pipeline/contracts/lp-hdg.md), [contracts/lp-escbin.md](2026-10-30-lean-pipeline/contracts/lp-escbin.md), [contracts/lp-stopgate.md](2026-10-30-lean-pipeline/contracts/lp-stopgate.md)
 - [contracts/lp-joinstamp.md](2026-10-30-lean-pipeline/contracts/lp-joinstamp.md), [contracts/lp-bashscan.md](2026-10-30-lean-pipeline/contracts/lp-bashscan.md), [contracts/lp-slim.md](2026-10-30-lean-pipeline/contracts/lp-slim.md)
-- (pending) lp-orch.md, lp-scribe.md, lp-release.md
+- [contracts/lp-orch.md](2026-10-30-lean-pipeline/contracts/lp-orch.md), [contracts/lp-scribe.md](2026-10-30-lean-pipeline/contracts/lp-scribe.md), [contracts/lp-release.md](2026-10-30-lean-pipeline/contracts/lp-release.md)
 
 ## Open Questions
 None block dispatch. Assumptions, each with the default taken:
