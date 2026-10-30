@@ -29,3 +29,4 @@
 - [Playwright click sends mousemove](technique_playwright_click_sends_mousemove.md) — stationary-click browser tests need bare down/up; mouse.click re-arms "pointer moved" rules
 - [Parallel units: scope dirty checks](technique_parallel_units_scope_dirty_checks.md) — file-disjoint parallel slices need per-unit dirty pathspecs, one serial stamped unit, validate precondition
 - [python -I writes bytecode](technique_python_isolated_mode_writes_bytecode.md) — -I ignores PYTHONDONTWRITEBYTECODE; use -B or eval/ gets an untracked __pycache__
+- [Dispatch link; git forgery env](technique_dispatch_link_and_git_forgery_env.md) — meta.json toolUseId = PreToolUse tool_use_id; NO_REPLACE misses grafts, use a non-existent GIT_GRAFT_FILE
