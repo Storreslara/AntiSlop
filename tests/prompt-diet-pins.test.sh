@@ -19,7 +19,6 @@ for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
   has "$f" 'dispatch the `reviewer` with no `name:` parameter'
   has "$f" 'it must be exactly `reviewer`'
   has "$f" '**Check the roster before resuming one by name**'
-  has "$f" 'Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp'
   has "$f" 'a persona that spawns its own subagent must collect the result explicitly'
   has "$f" 'defaults `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` to `"0"`'
   hasnot "$f" 'The actual, unobserved residual is different'

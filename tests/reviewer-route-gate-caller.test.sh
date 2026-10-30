@@ -80,6 +80,43 @@ else
   echo "OK   (caller-reviewer-target-explorer-no-stamp) no review-join stamp"
 fi
 
+# --- a `Unit:` reviewer dispatch writes neither a stamp nor an audit line ---
+dir="$(make_project route-no-join-stamp)"
+rc=0
+payload "" reviewer | CLAUDE_PROJECT_DIR="$dir" bash "$gate" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 0 ] && ! ls "$dir/.claude"/.review-join.* >/dev/null 2>&1 \
+   && ! grep -qs 'review-join=' "$dir/.claude/review-audit.log"; then
+  echo "OK   (route-no-join-stamp) Unit: dispatch -> exit 0, no stamp, no audit line"
+else
+  echo "FAIL (route-no-join-stamp) rc=$rc or a stamp / review-join= audit line was written"
+  fail=1
+fi
+
+# --- one unit mid-review: a standing flag blocks a gated dispatch, and the
+#     route gate never drops it, even beside a leftover .pending-review-cleared.* ---
+dir="$(make_project route-exclusivity-block)"
+echo "pending" > "$dir/.claude/.pending-review.x"
+rc=0
+payload "" lead-programmer | CLAUDE_PROJECT_DIR="$dir" bash "$gate" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 2 ]; then
+  echo "OK   (route-exclusivity-block) standing flag + lead-programmer dispatch -> exit 2"
+else
+  echo "FAIL (route-exclusivity-block) exit $rc (expected 2)"
+  fail=1
+fi
+
+dir="$(make_project route-flag-not-dropped)"
+echo "pending" > "$dir/.claude/.pending-review.x"
+echo "2026-01-01T00:00:00Z" > "$dir/.claude/.pending-review-cleared.x"
+rc=0
+payload "" lead-programmer | CLAUDE_PROJECT_DIR="$dir" bash "$gate" >/dev/null 2>&1 || rc=$?
+if [ "$rc" = 2 ] && [ -f "$dir/.claude/.pending-review.x" ]; then
+  echo "OK   (route-flag-not-dropped) leftover cleared file -> exit 2, flag kept"
+else
+  echo "FAIL (route-flag-not-dropped) exit $rc or the flag was dropped"
+  fail=1
+fi
+
 # --- caller-absent-agent-type: the shipped main-session shape - no agent_type
 #     key at all - must be allowed too, or the review path deadlocks (R1) ---
 dir="$(make_project caller-absent-agent-type)"

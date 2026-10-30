@@ -109,8 +109,8 @@ for pair in 'enforce|"enforce"' 'absent|' 'junk|"OFF "'; do
   check "(f/d) $label: lead-programmer dispatch with a standing flag exits 2 (rc=$rc)" "$r"
 
   run_case s "$mode" "$label"
-  r=fail; [ "$rc" = 0 ] && [ -f "$dir/.claude/.review-join.u1" ] && r=pass
-  check "(f/d') $label: reviewer dispatch with a Unit: line writes .review-join.u1 (rc=$rc)" "$r"
+  r=fail; [ "$rc" = 0 ] && ! stamp_written "$dir" && r=pass
+  check "(f/d') $label: reviewer dispatch with a Unit: line writes no .review-join.* (rc=$rc)" "$r"
 done
 
 # (h)-(j): task-gate, dispatch-hygiene H3.

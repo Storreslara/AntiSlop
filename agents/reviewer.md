@@ -319,8 +319,7 @@ with reasons.
   Write no marker, packet or card for it.
 - **If a stop-gate block demands a marker you believe you already wrote, or a
   verdict for a unit you do not own**: do not satisfy it by touching,
-  re-`touch`ing, mtime-bumping, renaming or overwriting any marker, and do not
-  delete or edit a review-join stamp. Those are metadata-only bypasses, and the
+  re-`touch`ing, mtime-bumping, renaming or overwriting any marker. Those are metadata-only bypasses, and the
   shared protocol's
   "Blocked by a gate you do not own (never self-authorize a bypass)"
   section forbids them outright — including when you are confident the

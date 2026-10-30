@@ -21,7 +21,6 @@ test_species_enumeration() {
   state_write_unit_marker "unit-1" "pass" "PASS unit-1 2026-08-27T10:00:00Z commit: abc123"
   state_write_unit_marker "unit-1" "fail" "FAIL unit-1 2026-08-27T10:00:00Z"
   state_write_unit_marker "unit-2" "escalated" "ESCALATED unit-2 2026-08-27T10:00:00Z"
-  state_write_review_join "unit-1" "unit=unit-1"
   state_write_pending_review "lead-programmer" ""
   state_write_wip_handoff "scribe" "working"
   state_write_session_baseline "session-001" "abc123"
@@ -29,14 +28,14 @@ test_species_enumeration() {
   state_write_dispatch_consumed "$(date +%s)" "hash123"
   audit_append "${dot}/review-audit.log" "test"
 
-  # Count files created - should be markers + review-join + pending + handoff + session + dispatch + consumed + audit
+  # Count files created - should be markers + pending + handoff + session + dispatch + consumed + audit
   local file_count=$(find "$dot" -type f | wc -l)
   
-  # Should have at least 9 files created
-  if [ "$file_count" -ge 9 ]; then
+  # Should have at least 8 files created
+  if [ "$file_count" -ge 8 ]; then
     pass "enumeration: $file_count artifacts created"
   else
-    bad "enumeration: only $file_count artifacts (expected >= 9)"
+    bad "enumeration: only $file_count artifacts (expected >= 8)"
   fi
 }
 

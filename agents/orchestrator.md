@@ -206,27 +206,12 @@ advisory (below), its second non-blank line is `Implementer tier: <t>`, where
 `<t>` is the tier (`haiku`, `sonnet` or `opus`) of the `model` the unit's latest
 implementer dispatch ran on; omit the line when that dispatch passed no `model`
 (the reviewer then writes `tier: unknown`).
-`reviewer-route-gate.sh` reads exactly the `Unit:` line to write the per-unit
-review-join stamp (`.claude/.review-join.<task-id>`) that `stop-gate.sh`
-later consumes as proof a verdict was actually produced, so a dispatch that
-omits the `Unit:` line leaves the marker-coupling check inert for that unit — the
-stop fails open rather than erroring, and nothing announces that the
-coupling was lost. One deliberate exception, not an omission to fix: a
-second, advisory reviewer dispatch on a unit that already holds a
-format-valid PASS marker is not stamped at all, because that dispatch owns
-no verdict; it is expected to end its turn without writing any marker.
-The same exception applies when you deliberately want a report-only
-dispatch up front: add `Mode: advisory` as the **literal second non-blank
-line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line
-to third. `reviewer-route-gate.sh` recognizes
-that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
-the review audit log instead.
 When you dispatch the reviewer as a background task, Stop still blocks while the flag stands: write
 `defer: <reason>` into it to end your turn; the reviewer's own stop clears it.
 
 **Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix.
 
-**Reviewer re-tasking discipline: never re-task by message for a different unit.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp — a `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match.
+**Reviewer re-tasking discipline: never re-task by message for a different unit.** Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match.
 
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the

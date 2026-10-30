@@ -147,7 +147,7 @@
     },
     "reviewGating": {
       "type": "object",
-      "description": "Review gating switch (user-facing name: gateless mode). \"off\" makes reviewer verdicts advisory and the review-enforcement gates inert (stop-gate.sh's pending-review flags and marker check, reviewer-route-gate.sh's unit-exclusivity block and .review-join.* stamps); protection gates stay armed.",
+      "description": "Review gating switch (user-facing name: gateless mode). \"off\" makes reviewer verdicts advisory and the review-enforcement gates inert (stop-gate.sh's pending-review flag rules and writer-dispatch marker check, reviewer-route-gate.sh's unit-exclusivity block); protection gates stay armed.",
       "properties": {
         "mode": {
           "type": "string",

@@ -207,27 +207,12 @@ advisory (below), its second non-blank line is `Implementer tier: <t>`, where
 `<t>` is the tier (`haiku`, `sonnet` or `opus`) of the `model` the unit's latest
 implementer dispatch ran on; omit the line when that dispatch passed no `model`
 (the reviewer then writes `tier: unknown`).
-`reviewer-route-gate.sh` reads exactly the `Unit:` line to write the per-unit
-review-join stamp (`.claude/.review-join.<task-id>`) that `stop-gate.sh`
-later consumes as proof a verdict was actually produced, so a dispatch that
-omits the `Unit:` line leaves the marker-coupling check inert for that unit — the
-stop fails open rather than erroring, and nothing announces that the
-coupling was lost. One deliberate exception, not an omission to fix: a
-second, advisory reviewer dispatch on a unit that already holds a
-format-valid PASS marker is not stamped at all, because that dispatch owns
-no verdict; it is expected to end its turn without writing any marker.
-The same exception applies when you deliberately want a report-only
-dispatch up front: add `Mode: advisory` as the **literal second non-blank
-line**, immediately after `Unit: <id>`, and move the `Implementer tier:` line
-to third. `reviewer-route-gate.sh` recognizes
-that exact position, skips the stamp, and logs `advisory-dispatch=<id>` to
-the review audit log instead.
 When you dispatch the reviewer as a background task, Stop still blocks while the flag stands: write
 `defer: <reason>` into it to end your turn; the reviewer's own stop clears it.
 
 **Dispatch naming for this project's reviewer (if present).** In subagent-orchestrator mode, dispatch the `reviewer` with no `name:` parameter — an unnamed dispatch reports the bare persona name to the grant matcher and preserves all privileges. Where a name is unavoidable (agent-teams mode), it must be exactly `reviewer`; any other explicit name is refused outright by `reviewer-route-gate.sh` at dispatch time, before the `Agent` call even proceeds — not a silent failure, the block names the fix.
 
-**Reviewer re-tasking discipline: never re-task by message for a different unit.** Only a fresh `Agent` dispatch whose first non-blank line is `Unit: <id>` writes the per-unit review-join stamp — a `SendMessage` carries no unit id and cannot write one. Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match.
+**Reviewer re-tasking discipline: never re-task by message for a different unit.** Resuming a reviewer by message is correct for exactly one purpose: continuing the unit it was already dispatched for (see the `INSUFFICIENT-CONTEXT` path below for this documented exception); every other purpose requires a fresh `Agent` dispatch. **Check the roster before resuming one by name**: if an addressable agent already holds the reviewer's name in this session, a bare-name `SendMessage` resolves to its most recent holder — possibly a stale session from an unrelated plan — so confirm which unit the addressee was actually dispatched for (ask it by name) before reusing the name, and dispatch a fresh `Agent` call instead if it doesn't match.
 
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
@@ -925,7 +910,7 @@ and nothing blocks on the verdict. This is not the advisory-reviewer axis above:
 is the unit's only reviewer's verdict, and it is non-binding. "Done" then
 means the reviewer returned an advisory PASS, or the unit reached ladder
 exhaustion on advisory FAILs and the orchestrator listed the remaining findings and moved
-on. Inert under `off`: the pending-review flags and review-join verdict
+on. Inert under `off`: the pending-review flag rules and writer-dispatch marker
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh` and `dispatch-hygiene.sh`'s H3 check. Still armed: `protected-paths.sh`,
 `harness-integrity-gate.sh`, `reviewed-path-gate.sh`, and the
@@ -934,10 +919,9 @@ reviewer-dispatch identity and privileged-name guards in
 Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
-advisory FAILs in-session instead. Flags, stamps and markers left over from
-`enforce` are ignored, not deleted (one exception: the drop of a flag re-created
-after a hook deleted it still runs at `Stop` and at every subagent dispatch under `off`); clear stale `.pending-review.*` flags
-and `.review-join.*` stamps before flipping back (README, "Review gating
+advisory FAILs in-session instead. Flags and markers left over from
+`enforce` are ignored, not deleted; clear stale `.pending-review.*` flags
+before flipping back (README, "Review gating
 off").
 
 ## Pending-review flag (default-mode review backstop)
@@ -945,29 +929,13 @@ In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
 `stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
 (default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
 sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
-no reviewer run yet. The reviewer's own `SubagentStop` clears
-one flag per satisfied review-join stamp, oldest first (PASS or FAIL — a
-reviewer having run is what the flag tracks, not the verdict), and logs `cleared-by=reviewer`
-to `.claude/review-audit.log`, but only once the unit it was dispatched for
-actually holds a verdict; it clears all flags only on the zero-stamp bootstrap
-path. Flags are not bound to units, so which flag goes is by age, not by unit.
-Every hook-initiated delete leaves a tombstone, and a flag re-created after the
-hook deleted it is dropped on the next `Stop` or subagent dispatch (any `Agent` call) and logged as
-`flag-resurrected-dropped=<id>`; this drop also runs under review gating off.
-Tombstones are never garbage-collected (a known gap). That coupling is
-the **review-join stamp**: `reviewer-route-gate.sh` writes
-`.claude/.review-join.<unit-id>` when it sees a reviewer dispatch whose first
-non-blank line is `Unit: <id>`, and the stop consumes that stamp only when a
-format-valid `<id>.pass` or `<id>.fail` exists and is newer than any prior
-verdict the stamp recorded. No stamp at all fails OPEN (`marker-check=bootstrap`);
-a stamp with no verdict blocks the stop with `marker=MISSING unit=<id>` and
-leaves the flags standing. Keying the join per UNIT is what lets two reviewers
-running concurrently each clear only their own, and lets a second stop by the
-same reviewer — with nothing left owed — be allowed instead of stranded.
+no reviewer run yet. The reviewer's own `SubagentStop` deletes every
+pending-review flag (PASS or FAIL — a reviewer having run is what the flag
+tracks, not the verdict) and logs `cleared-by=reviewer` to `.claude/review-audit.log`.
+No per-unit stamp exists: a `Unit:` line on a reviewer dispatch is read by no hook.
 While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 "a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
-dispatching the next gated-agent unit (a re-created flag never blocks it: that
-same dispatch drops it first) — the orchestrator's correct next move
+dispatching the next gated-agent unit (one unit mid-review at a time) — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
 blocked. Escape hatch, mirroring the WIP sentinel: overwrite a flag that
 currently exists with `defer: <reason>` (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not

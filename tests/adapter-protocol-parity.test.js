@@ -60,9 +60,7 @@ function canonicalHeaders() {
 const PENDING_REVIEW_RULE = {
   probe: [
     'Pending-review flag',
-    'one flag per satisfied review-join',
-    'leaves a tombstone',
-    'or subagent dispatch',
+    'cleared-by=reviewer',
   ],
   absent: ['clears every such flag'],
 };

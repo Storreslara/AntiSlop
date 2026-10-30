@@ -23,7 +23,6 @@ bad()  { echo "FAIL $*"; fail=1; }
 # Parallel arrays, one entry per spec bullet, in the spec's own order.
 declare -a ids=(
   D1_pending_review_agent_keyed
-  D2_review_join_staleness_anchor
   D3_session_baseline_create_if_absent
   D4_wip_handoff_empty_not_absent
   D5_dispatch_override_one_shot
@@ -37,7 +36,6 @@ declare -a ids=(
 )
 declare -a patterns=(
   'pending-review.${agent_id}'
-  'prior_mtime'
   'CONSTRAINT 4: create-only-if-absent'
   'DISTINCTION: empty'
   'Reason-less override is not honored'
@@ -51,7 +49,6 @@ declare -a patterns=(
 )
 declare -a files=(
   hooks/scripts/lib/state-access.sh
-  hooks/scripts/lib/reviewer-route-gate-core.sh
   hooks/scripts/lib/state-access.sh
   hooks/scripts/lib/state-access.sh
   hooks/scripts/lib/state-access.sh

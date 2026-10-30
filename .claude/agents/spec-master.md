@@ -643,7 +643,7 @@ and nothing blocks on the verdict. This is not the advisory-reviewer axis above:
 is the unit's only reviewer's verdict, and it is non-binding. "Done" then
 means the reviewer returned an advisory PASS, or the unit reached ladder
 exhaustion on advisory FAILs and the orchestrator listed the remaining findings and moved
-on. Inert under `off`: the pending-review flags and review-join verdict
+on. Inert under `off`: the pending-review flag rules and writer-dispatch marker
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh` and `dispatch-hygiene.sh`'s H3 check. Still armed: `protected-paths.sh`,
 `harness-integrity-gate.sh`, `reviewed-path-gate.sh`, and the
@@ -652,10 +652,9 @@ reviewer-dispatch identity and privileged-name guards in
 Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
-advisory FAILs in-session instead. Flags, stamps and markers left over from
-`enforce` are ignored, not deleted (one exception: the drop of a flag re-created
-after a hook deleted it still runs at `Stop` and at every subagent dispatch under `off`); clear stale `.pending-review.*` flags
-and `.review-join.*` stamps before flipping back (README, "Review gating
+advisory FAILs in-session instead. Flags and markers left over from
+`enforce` are ignored, not deleted; clear stale `.pending-review.*` flags
+before flipping back (README, "Review gating
 off").
 
 ## FAIL record (durable warning for future spawns)

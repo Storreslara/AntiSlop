@@ -320,8 +320,7 @@ with reasons.
   Write no marker, packet or card for it.
 - **If a stop-gate block demands a marker you believe you already wrote, or a
   verdict for a unit you do not own**: do not satisfy it by touching,
-  re-`touch`ing, mtime-bumping, renaming or overwriting any marker, and do not
-  delete or edit a review-join stamp. Those are metadata-only bypasses, and the
+  re-`touch`ing, mtime-bumping, renaming or overwriting any marker. Those are metadata-only bypasses, and the
   shared protocol's
   "Blocked by a gate you do not own (never self-authorize a bypass)"
   section forbids them outright — including when you are confident the
@@ -609,7 +608,7 @@ and nothing blocks on the verdict. This is not the advisory-reviewer axis above:
 is the unit's only reviewer's verdict, and it is non-binding. "Done" then
 means the reviewer returned an advisory PASS, or the unit reached ladder
 exhaustion on advisory FAILs and the orchestrator listed the remaining findings and moved
-on. Inert under `off`: the pending-review flags and review-join verdict
+on. Inert under `off`: the pending-review flag rules and writer-dispatch marker
 check in `stop-gate.sh`, the unit-exclusivity block in
 `reviewer-route-gate.sh`, `task-gate.sh` and `dispatch-hygiene.sh`'s H3 check. Still armed: `protected-paths.sh`,
 `harness-integrity-gate.sh`, `reviewed-path-gate.sh`, and the
@@ -618,10 +617,9 @@ reviewer-dispatch identity and privileged-name guards in
 Because no `.fail` record is written, every later reader of FAIL history
 (the 2-FAIL cap count, the Implementer-tier ratchet, spec-master's prior-FAIL
 screen) sees nothing for units reviewed under `off`; the orchestrator counts
-advisory FAILs in-session instead. Flags, stamps and markers left over from
-`enforce` are ignored, not deleted (one exception: the drop of a flag re-created
-after a hook deleted it still runs at `Stop` and at every subagent dispatch under `off`); clear stale `.pending-review.*` flags
-and `.review-join.*` stamps before flipping back (README, "Review gating
+advisory FAILs in-session instead. Flags and markers left over from
+`enforce` are ignored, not deleted; clear stale `.pending-review.*` flags
+before flipping back (README, "Review gating
 off").
 
 ## Pending-review flag (default-mode review backstop)
@@ -629,29 +627,13 @@ In default (subagent-orchestrator) mode there is no `TaskCompleted` event, so
 `stop-gate.sh` carries its own mechanical backstop: whenever a gated agent
 (default `lead-programmer`) has a `SubagentStop` that is NOT honored by a WIP
 sentinel, it writes `.claude/.pending-review.<agent-id>` — a completed unit,
-no reviewer run yet. The reviewer's own `SubagentStop` clears
-one flag per satisfied review-join stamp, oldest first (PASS or FAIL — a
-reviewer having run is what the flag tracks, not the verdict), and logs `cleared-by=reviewer`
-to `.claude/review-audit.log`, but only once the unit it was dispatched for
-actually holds a verdict; it clears all flags only on the zero-stamp bootstrap
-path. Flags are not bound to units, so which flag goes is by age, not by unit.
-Every hook-initiated delete leaves a tombstone, and a flag re-created after the
-hook deleted it is dropped on the next `Stop` or subagent dispatch (any `Agent` call) and logged as
-`flag-resurrected-dropped=<id>`; this drop also runs under review gating off.
-Tombstones are never garbage-collected (a known gap). That coupling is
-the **review-join stamp**: `reviewer-route-gate.sh` writes
-`.claude/.review-join.<unit-id>` when it sees a reviewer dispatch whose first
-non-blank line is `Unit: <id>`, and the stop consumes that stamp only when a
-format-valid `<id>.pass` or `<id>.fail` exists and is newer than any prior
-verdict the stamp recorded. No stamp at all fails OPEN (`marker-check=bootstrap`);
-a stamp with no verdict blocks the stop with `marker=MISSING unit=<id>` and
-leaves the flags standing. Keying the join per UNIT is what lets two reviewers
-running concurrently each clear only their own, and lets a second stop by the
-same reviewer — with nothing left owed — be allowed instead of stranded.
+no reviewer run yet. The reviewer's own `SubagentStop` deletes every
+pending-review flag (PASS or FAIL — a reviewer having run is what the flag
+tracks, not the verdict) and logs `cleared-by=reviewer` to `.claude/review-audit.log`.
+No per-unit stamp exists: a `Unit:` line on a reviewer dispatch is read by no hook.
 While any flag exists: the main-session `Stop` hook blocks turn-end (exit 2,
 "a completed unit is awaiting review"), and `reviewer-route-gate.sh` blocks
-dispatching the next gated-agent unit (a re-created flag never blocks it: that
-same dispatch drops it first) — the orchestrator's correct next move
+dispatching the next gated-agent unit (one unit mid-review at a time) — the orchestrator's correct next move
 (spawn the reviewer, or spawn anything non-gated like `explorer`) is never
 blocked. Escape hatch, mirroring the WIP sentinel: overwrite a flag that
 currently exists with `defer: <reason>` (never recreate a deleted one; logged, flag KEPT — this is **sticky**, not

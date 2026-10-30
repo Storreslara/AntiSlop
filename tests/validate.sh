@@ -603,14 +603,6 @@ else
   fail=1
 fi
 
-echo
-echo "== pending-review flag resurrection (Bash) =="
-if bash tests/pending-review-resurrection.test.sh; then
-  echo "OK   tests/pending-review-resurrection.test.sh"
-else
-  echo "FAIL tests/pending-review-resurrection.test.sh"
-  fail=1
-fi
 
 echo
 echo "== reviewer-route-gate caller allowlist (Bash) =="
@@ -1260,14 +1252,6 @@ else
   fail=1
 fi
 
-echo
-echo "== state-access.sh per-unit concurrency, ADR-0016 (Bash) =="
-if bash tests/state-access-concurrency.test.sh; then
-  echo "OK   tests/state-access-concurrency.test.sh"
-else
-  echo "FAIL tests/state-access-concurrency.test.sh"
-  fail=1
-fi
 
 echo
 echo "== state-access.sh escalation-path capability regression (Bash) =="

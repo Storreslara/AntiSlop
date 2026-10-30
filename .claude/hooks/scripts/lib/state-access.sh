@@ -8,7 +8,7 @@ set -euo pipefail
 : "${dot:=${CLAUDE_PROJECT_DIR:-.}/.claude}"
 
 # Domain: Unit (keyed by unit id)
-# Markers: .pass, .fail, .blocked, .escalated, .directed, .review-join, human-review packet, DECISION
+# Markers: .pass, .fail, .blocked, .escalated, .directed, human-review packet, DECISION
 
 # M5: the single unit-id grammar, shared by every hooks/scripts/ site that
 # validates, sanitizes or derives a marker path from a unit id. `#` is
@@ -77,32 +77,6 @@ state_unit_marker_exists() {
   [ -f "$(unit_id_marker_path "$unit_id" "$marker_type")" ]
 }
 
-state_read_review_join() {
-  local unit_id="$1"
-  local stamp_file="${dot}/.review-join.${unit_id}"
-
-  if [ -f "$stamp_file" ]; then
-    cat "$stamp_file"
-    return 0
-  fi
-  return 1
-}
-
-state_write_review_join() {
-  local unit_id="$1"
-  local content="$2"
-  local stamp_file="${dot}/.review-join.${unit_id}"
-
-  printf '%s\n' "$content" > "$stamp_file"
-}
-
-state_delete_review_join() {
-  local unit_id="$1"
-  local stamp_file="${dot}/.review-join.${unit_id}"
-
-  rm -f "$stamp_file"
-}
-
 # Domain: Agent (keyed by agent id)
 # Artifacts: .pending-review, wip-handoff
 
@@ -127,34 +101,10 @@ state_write_pending_review() {
   local content="$2"
   local flag_file="${dot}/.pending-review.${agent_id}"
 
-  # A tombstone means the hook itself deleted this id's flag, so whatever
-  # stands at the path now was re-created by a non-gate writer: re-arm with
-  # gate content. Otherwise, CONSTRAINT 3: create-only-if-absent.
-  if [ -f "${dot}/.pending-review-cleared.${agent_id}" ]; then
-    printf '%s\n' "$content" > "$flag_file"
-    rm -f "${dot}/.pending-review-cleared.${agent_id}"
-  elif [ ! -f "$flag_file" ]; then
+  # CONSTRAINT 3: create-only-if-absent
+  if [ ! -f "$flag_file" ]; then
     printf '%s\n' "$content" > "$flag_file"
   fi
-}
-
-# Flag tombstone: records that the hook deleted this id's flag, so a later
-# re-creation by anything but state_write_pending_review is a resurrection.
-state_tombstone_pending_review() {
-  local agent_id="$1"
-  date -u +%Y-%m-%dT%H:%M:%SZ > "${dot}/.pending-review-cleared.${agent_id}"
-}
-
-state_drop_resurrected_flags() {
-  local flag agent_id
-  for flag in "${dot}"/.pending-review.*; do
-    [ -f "$flag" ] || continue
-    agent_id="${flag##*/.pending-review.}"
-    [ -f "${dot}/.pending-review-cleared.${agent_id}" ] || continue
-    rm -f "$flag"
-    state_append_audit_log "review-audit.log" "$(printf '%s flag-resurrected-dropped=%s' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$agent_id")"
-  done
-  return 0
 }
 
 state_delete_pending_review() {
@@ -165,13 +115,9 @@ state_delete_pending_review() {
 }
 
 state_clear_all_pending_review() {
-  # CONSTRAINT 2: reviewer's SubagentStop clears ALL pending-review flags
-  # only on the zero-stamp bootstrap path (its sole caller); a stamped stop
-  # clears one flag per satisfied review-join stamp, oldest first, instead
   local flag
   for flag in "${dot}"/.pending-review.*; do
     [ -f "$flag" ] || continue
-    state_tombstone_pending_review "${flag##*/.pending-review.}"
     rm -f "$flag"
   done
 }
@@ -372,16 +318,11 @@ export -f state_read_unit_marker
 export -f state_write_unit_marker
 export -f state_append_unit_marker
 export -f state_unit_marker_exists
-export -f state_read_review_join
-export -f state_write_review_join
-export -f state_delete_review_join
 export -f state_read_pending_review
 export -f state_pending_review_exists
 export -f state_write_pending_review
 export -f state_delete_pending_review
 export -f state_clear_all_pending_review
-export -f state_tombstone_pending_review
-export -f state_drop_resurrected_flags
 export -f state_read_wip_handoff
 export -f state_wip_handoff_exists
 export -f state_write_wip_handoff
