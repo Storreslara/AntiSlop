@@ -218,8 +218,7 @@ clarify intent is fine.
   Decisions; anything explicitly deferred in Risks/Open Questions → Out of
   Scope; the Clarifications log and Self-check itemization → Further Notes.
   Publish the mapped artifact to the issue tracker named by the `issueTracker`
-  field of `.claude/persona-config.json` (read the key with the `Read` tool; a
-  Bash command naming that file can be refused by `harness-integrity-gate.sh`),
+  field of `.claude/persona-config.json` (read the key with the `Read` tool),
   with the `ready-for-agent` label. Below 6 units there is no publish step. The saved `docs/plans/`
   document (below) remains the canonical artifact — publishing is
   additive, not a substitute for it.

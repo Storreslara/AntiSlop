@@ -164,8 +164,7 @@ with reasons.
   for its runnable P3 check (`ok` clears the per-release rule: each bump has its CHANGELOG line and the version never decreases). It changes no verdict rules beyond the
   existing constitutional P3 check.
 - **When reviewGating.mode is off (review gating off)**: read both keys with
-  this one Bash command, run alone (a lone `jq` read is allowed; a `cd` prefix,
-  pipe or redirect makes it compound, and `harness-integrity-gate.sh` refuses it):
+  this one Bash command:
   `jq -r '.reviewGating.mode // "enforce"' .claude/persona-config.json`
   Only the exact string `off` counts; an absent key, a non-zero exit or any
   other value means `enforce`. Under

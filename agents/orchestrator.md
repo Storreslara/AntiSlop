@@ -295,8 +295,7 @@ marker is written and none is deleted.
 After ladder exhaustion, a re-dispatch under (a) or (b) runs on `opus` unless the human names a tier, and any FAIL after it comes back to this section.
 
 **When reviewGating.mode is off (review gating off)** — read the key from
-`.claude/persona-config.json` with the `Read` tool (a Bash command naming
-that file is refused by `harness-integrity-gate.sh`); only the exact string `off` counts, and an
+`.claude/persona-config.json` with the `Read` tool; only the exact string `off` counts, and an
 absent key, unreadable config or any other value means `enforce` and
 everything above applies unchanged. Under `off`, still dispatch the
 reviewer (if present) once per unit, `Unit: <task-id>` line first, but treat

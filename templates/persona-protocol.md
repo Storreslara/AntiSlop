@@ -91,7 +91,7 @@ saved.
   first (`stat -c %a`), restore it after (`chmod`), or `chmod --reference` an
   untouched sibling — hook scripts are invoked directly, so a lost `+x`
   disables that gate outright.
-- If `reviewed-path-gate.sh` refuses a heredoc, read its refusal text and the
+- If `reviewed-path-gate.sh` refuses a Write or Edit, read its refusal text and the
   glossary entry its `More:` line names before doing anything else: the
   refusal names the sanctioned route, and the entry (`reviewed-path denial` in
   `docs/harness-glossary.md`) holds the full remediation, including when
