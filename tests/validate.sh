@@ -1784,6 +1784,15 @@ else
 fi
 
 echo
+echo "== tests/plan-size-cap.test.sh: size caps on spec-master plans and contracts =="
+if bash tests/plan-size-cap.test.sh; then
+  echo "OK   tests/plan-size-cap.test.sh"
+else
+  echo "FAIL tests/plan-size-cap.test.sh"
+  fail=1
+fi
+
+echo
 if [ "$fail" -eq 0 ]; then
   echo "All checks passed."
 else

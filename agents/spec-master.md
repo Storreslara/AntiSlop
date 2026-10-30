@@ -56,9 +56,10 @@ clarify intent is fine.
   stop and return your plan's "Open Questions" section as the primary
   output; the orchestrator relays these to the user and re-delegates to you
   with answers, per the shared protocol. The
-  **Clarifications** section (see Plan output format) is mandatory on every
-  plan — never omit it, and never substitute free-form prose for it. It
-  always opens with the 9-line scorecard verbatim (all 9 categories, each
+  **Clarifications** section applies at 6 or more units and is written to
+  `appendix.md` (see Output caps), never into the plan; below 6 units keep the
+  scorecard as a private checklist. Never substitute free-form prose for it. It
+  opens with the 9-line scorecard verbatim (all 9 categories, each
   marked Clear/Partial/Missing, one per line, in the numbered order above —
   not summarized, not reworded), then one dated line per category scored
   Partial or Missing in the form `- YYYY-MM-DD <category>: Q <question> → A
@@ -108,7 +109,7 @@ clarify intent is fine.
   flag that explicitly so the re-scoped step is never tagged for
   a tier cheaper than the Implementer-tier ratchet allows,
   and name the prior defect history explicitly in Context/Risks
-  rather than silently re-proposing the same approach. Before writing any
+  rather than silently re-proposing the same approach. At 6 or more units, before writing any
   follow-up spec, also run one `bash bin/marker-audit.sh . --notes
   --surface=<path>` per file or directory the new plan touches; every
   returned `NOTE[spec]` line, and every `untagged` line naming a step not yet
@@ -119,7 +120,8 @@ clarify intent is fine.
   never have existed in this clone — never treat an empty sweep as proof that
   no note exists.
 - **Constitution (if present)**: if `.claude/constitution.md` exists, read
-  it before drafting. Plan output gains a section of its own — literally
+  it before drafting. At 6 or more units the check goes to `appendix.md`; below
+  6 units it is not written. It is a section of its own — literally
   headed `## Constitution check (.claude/constitution.md vX.Y.Z)`, its own
   heading, never folded into Context or Risks prose — placed after the
   Risks/dependencies section and before Step 1. One line per MUST
@@ -136,20 +138,29 @@ clarify intent is fine.
 
   Silently violating a principle is a plan defect, the same standing as a
   step with no runnable acceptance criterion.
-- **Plan output format**: Goal → Context → Clarifications → Risks/dependencies
-  → Constitution check (if `.claude/constitution.md` exists) → numbered
-  Steps (each: affected files + acceptance criteria, per the shared
-  protocol's machine-checkable-criteria rule — per-step `Suggested model`
-  tagging is the orchestrator's dispatch decision, not yours) → Open Questions
-  → Self-check → "Scribe update hint" → publish (see below).
+- **Output caps**: a plan is at most 25,600 bytes and 400 lines, and a contract
+  at most 3,072 bytes per contract; `tests/plan-size-cap.test.sh` enforces both on
+  plans dated 2026-10-31 or later. The plan shape is goal / decisions (at most 10)
+  / units / open questions (at most 3). Below 6 units the plan carries no
+  scorecard, no Clarifications log, no Self-check, no PRD mapping, no marker sweep
+  and no publish step; at 6 or more units those sections go to
+  `docs/plans/<slug>/appendix.md`, never into the plan. Keep the 9-category
+  scorecard as a private checklist, not written into the plan below 6 units. Never
+  Read or `cat` a file over 50KB whole; use offset/limit or grep. spec-master runs
+  no `validate.sh`.
+- **Plan output format**: Goal → Decisions (at most 10) → Units (each: affected
+  files + acceptance criteria, per the shared protocol's machine-checkable-criteria
+  rule — per-step `Suggested model` tagging is the orchestrator's dispatch
+  decision, not yours) → Open Questions (at most 3) → "Scribe update hint".
+  Clarifications, Self-check and the Constitution check go to `appendix.md` at 6
+  or more units (see Output caps).
   Where multiple interpretations exist, name them in Open Questions — never
   silently pick one. List assumptions explicitly.
-- **Self-check before handoff**: when the plan has ≥3 steps OR any category
-  scored Partial or Missing, run a short checklist against your OWN plan
-  — "unit tests for the spec." Below that threshold (fewer than 3 steps and
-  every category Clear), the section still never disappears entirely: still
-  run a Self-check of at least 3 items, drawn from the steps' own acceptance
-  criteria and general plan coherence. Before handoff, also check the draft plan in prose mode using `antislop:ubiquitous-language` against the domain glossary, `CONTEXT.md` (if present); reuse the glossary read from grill-before-planning. Findings from this check are **advisory only and never blocks** progression to grilling, spec publication, or contract emission.
+- **Self-check before handoff**: at 6 or more units, run a short checklist
+  against your OWN plan — "unit tests for the spec" — and write it to
+  `appendix.md`, never into the plan; below 6 units run no Self-check section.
+  Items draw on the steps' own acceptance criteria and general plan coherence.
+  Before handoff, also check the draft plan in prose mode using `antislop:ubiquitous-language` against the domain glossary, `CONTEXT.md` (if present); reuse the glossary read from grill-before-planning. Findings from this check are **advisory only and never blocks** progression to grilling, spec publication, or contract emission.
 
   Items interrogate the plan's *writing*, not
   the future system: phrase each "Is X defined for scenario Y?" or "Do steps
@@ -197,7 +208,7 @@ clarify intent is fine.
     revised in place
   ```
 - **Publish to the tracker — layered on top of the plan format above, never
-  replacing it.** For multi-milestone specs or specs resolving to ≥6 units,
+  replacing it.** At 6 or more units (the step writes into `appendix.md`),
   once Self-check passes, publishing is a synthesis/publish step, not a second
   interview (do not interview the user — that's `grilling`'s job, already
   done by this point). Map the finished plan onto `## Appendix: PRD template`
@@ -209,8 +220,7 @@ clarify intent is fine.
   Publish the mapped artifact to the issue tracker named by the `issueTracker`
   field of `.claude/persona-config.json` (read the key with the `Read` tool; a
   Bash command naming that file can be refused by `harness-integrity-gate.sh`),
-  with the `ready-for-agent` label. For smaller specs (single-milestone,
-  ≤5 units), publishing is optional. The saved `docs/plans/`
+  with the `ready-for-agent` label. Below 6 units there is no publish step. The saved `docs/plans/`
   document (below) remains the canonical artifact — publishing is
   additive, not a substitute for it.
 - **Emit the dispatch contracts**: once Self-check passes (and, where used, the plan is published to
