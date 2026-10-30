@@ -13,6 +13,10 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 - `.claude/constitution.md` (P4 list only; no version change)
 - `tests/validate.sh`, `tests/contract-examples.test.js`, `tests/protocol-cross-references.test.js`, `tests/rubric-doc-parity.test.js`, `tests/writer-tier-consistency.test.js`, `tests/persona-prose-pins.test.sh`, `tests/cli-backfill.test.js`, `tests/knowledge-writes.test.sh`, `tests/prompt-diet-pins.test.sh`, `tests/bin-helpers-scaffold.test.sh`, `tests/orchestrator-model.test.js`, `tests/effort-tier-consistency.test.js`, `tests/adapter-protocol-parity.test.js` (deferred reason strings, ~:116 and ~:140)
 - `CHANGELOG.md` (one bullet under `## [Unreleased]`, no version)
+- Follow-up edits (reviewer request, criteria 9-11):
+  - `tests/adapter-protocol-parity.test.js` :116 and :140: in both deferred strings replace "until the contract-writing role lands in spec-master (lean-pipeline U3)" with "; spec-master writes the contracts" (result: "five-field contract: adapters carry no contract-writing role; spec-master writes the contracts"). Do not write the bare token there (criterion 5 counts it).
+  - `bin/cli.js` comment :45: "`--personas=hivemind` / `--personas=repo-historian` / legacy" becomes "`--personas=hivemind` / `--personas=task-master` / `--personas=repo-historian` / legacy".
+  - `docs/contract-examples.md` line 3: replace "Worked examples of a lead contract" with "Contract examples (sample lead contracts)" (avoids the CONTEXT.md term "worked example").
 - `.claude/persona-config.json` and other `.claude/` mirrors, written only by `node bin/cli.js --update --force-render`
 
 ## Ordered edits
@@ -47,10 +51,11 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
    exit: 0
    stdout: `ok`
    mutation: delete the `<!-- lead-contract-example:end -->` line from `docs/contract-examples.md` → no `ok`, exit 1 (markers not found).
-5. run: `git grep -n 'task-master' -- hooks bin tests ':!bin/cli.js' ':!tests/fixtures' ':!tests/abtest-arms.test.sh' ':!tests/reviewed-path-gate.test.sh' ':!tests/unit-outcomes.test.js' ':!tests/writer-scope-gate.test.sh' ':!tests/cli-backfill.test.js' | wc -l; n=$(grep -c 'task-master' tests/cli-backfill.test.js); test "$n" -ge 1 && test "$n" -le 8 && echo cb-ok; grep 'task-master' tests/cli-backfill.test.js | grep -vcE "![A-Za-z.]+\.includes\('task-master'\)|migrateLegacyPersonaTokens\(\['task-master'\]|includes\('.task-master.'\)|check\('migrateLegacyPersonaTokens migrates a lone task-master" || true; grep -c 'task-master' .claude/constitution.md || true`
+5. run: `git grep -n 'task-master' -- hooks bin tests ':!bin/cli.js' ':!tests/fixtures' ':!tests/abtest-arms.test.sh' ':!tests/reviewed-path-gate.test.sh' ':!tests/unit-outcomes.test.js' ':!tests/writer-scope-gate.test.sh' ':!tests/cli-backfill.test.js' | wc -l; n=$(grep -c 'task-master' tests/cli-backfill.test.js); test "$n" -ge 1 && test "$n" -le 8 && echo cb-ok; grep 'task-master' tests/cli-backfill.test.js | grep -vcE '^ +assert\.ok\(!migrated\.includes\(.task-master.\), ..task-master. is retired, got \$\{JSON\.stringify\(migrated\)\}.\);$|^check\(.migrateLegacyPersonaTokens migrates a lone task-master to spec-master with the deprecation note., \(\) => \{$|^ +try \{ migrated = cli\.migrateLegacyPersonaTokens\(\[.task-master.\], \{ logNote: true \}\); \} finally \{ console\.log = orig; \}$|^ +assert\.ok\(lines\.some\(\(l\) => l\.includes\(.Deprecation note.\) && l\.includes\(..task-master..\)\), .no note in \$\{JSON\.stringify\(lines\)\}.\);$|^ +config\.personaSelection\.includes\(.spec-master.\) && !config\.personaSelection\.includes\(.task-master.\),$' || true; grep -c 'task-master' .claude/constitution.md || true`
    exit: 0
-   stdout: `0`, `cb-ok`, `0`, `0` (cli-backfill may name the token only in the lone-task-master migration case and `!...includes('task-master')` assertions, at most 8 lines)
-   mutation: append `// task-master` to `tests/validate.sh` → first line `1`; append `const x = 'task-master';` to `tests/cli-backfill.test.js` → third line `1`; 3 more `!a.includes('task-master')` lines there → no `cb-ok`.
+   stdout: `0` then `cb-ok` then `0` then `0`
+   note: cli-backfill may name the token only on its six known lines (two `!migrated.includes` asserts, the lone-task-master case title, its migrate call, its note assert, the `!config.personaSelection.includes` line), each matched as a whole line; at most 8 lines.
+   mutation: append `// task-master` to `tests/validate.sh` → first line `1`; append `const x = 'task-master';` to `tests/cli-backfill.test.js` → third line `1`; append `x.includes('"task-master"') || cli.OPTIONAL_PERSONAS.includes('task-master')` there → third line `1`; 3 more `!a.includes('task-master')` lines there → no `cb-ok`.
 6. run: `bash tests/abtest-arms.test.sh >/dev/null && git diff --quiet a511e8e7 -- tests/abtest-arms.test.sh eval`
    exit: 0
    stdout: empty
@@ -60,6 +65,18 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, sec
 8. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
    exit: 0
    stdout: empty
+9. run: `test "$(grep -c 'lean-pipeline U3' tests/adapter-protocol-parity.test.js)" = 0 && test "$(grep -c 'adapters carry no contract-writing role; spec-master writes the contracts' tests/adapter-protocol-parity.test.js)" = 2 && node tests/adapter-protocol-parity.test.js >/dev/null && echo ok`
+   exit: 0
+   stdout: `ok`
+   mutation: restore one "(lean-pipeline U3)" reason → no output, exit 1.
+10. run: `grep -cE -- '--personas=hivemind. / .--personas=task-master. / .--personas=repo-historian' bin/cli.js`
+   exit: 0
+   stdout: `1`
+   mutation: drop "`--personas=task-master` / " from the comment → `0`, exit 1.
+11. run: `test "$(grep -ci 'worked example' docs/contract-examples.md)" = 0 && grep -c '^Contract examples (sample lead contracts), a legacy issue-body layout and a scribe contract\.' docs/contract-examples.md`
+   exit: 0
+   stdout: `1`
+   mutation: restore "Worked examples of a lead contract" → no output, exit 1.
 
 ## Pre-resolved context
 - Today (2026-10-30): criteria 1, 2 (task-master.md created, 0 notes), 3 (`["spec-master","task-master"] true`), 5 (58 lines; constitution 1) fail; 6 passes and is a regression guard.
