@@ -4,7 +4,7 @@
      Delivered to lightweight, stateless personas (explorer, researcher,
      scribe) in place of the full persona-protocol.md — it carries only the
      sections that apply to a persona with no review-ownership role in the
-     pipeline. Full-tier personas (orchestrator, spec-master, task-master,
+     pipeline. Full-tier personas (orchestrator, spec-master,
      lead-programmer, reviewer, milestone-auditor) still receive the full
      persona-protocol.md; this is not a replacement for it there. Role-
      agnostic content only — adding a new slim persona never requires

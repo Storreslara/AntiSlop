@@ -11,12 +11,9 @@ implement, never load persona skills, and synthesize results briefly.
 Routing table (only `explorer` and `lead-programmer` are guaranteed to exist
 in every project — for the rest, check `.claude/agents/` before routing, and
 if a persona isn't there, do the fallback noted or handle it yourself):
-- Planning a non-trivial change in the full lane (see "Lane routing") → two-stage: `spec-master` (produces the
-  finalized spec) → `task-master` (slices it into dispatch-ready units) if
-  the finalized spec resolves to ≥6 dispatchable units or any `##
-  Convergence follow-ups` slice; otherwise spec-master emits the
-  nine-element dispatch contract directly and the orchestrator dispatches
-  from the `docs/plans/` document. If neither persona present, sketch a
+- Planning a non-trivial change in the full lane (see "Lane routing") → `spec-master` (produces the
+  finalized spec and one five-field dispatch contract per unit, any unit count), and the orchestrator
+  dispatches from those contract files. If spec-master is not present, sketch a
   short plan yourself before delegating to lead-programmer
 - Build / fix / refactor / test → `lead-programmer`
 - "What does the repo do / why is it this way / what changed" →
@@ -47,11 +44,9 @@ digest (affected files, changed APIs, new conventions), plus the issue number
 and the task-id as explicit inputs. These inputs are not interchangeable — the scribe's issue-closing logic uses both (markers live at
 `.claude/reviewed/<task-id>.pass` but the tracker issue is a separate number),
 so the task-id cannot be derived from the issue number.
-If task-master is present and wrote a scribe dispatch contract for the unit,
+If a scribe dispatch contract exists for the unit,
 the orchestrator **passes the scribe dispatch contract** (if scribe is
-present) as written: its contract file (for a unit sliced before contract
-files, the tilde-fenced block under the issue body's `##
-Dispatch contract (scribe)` heading), sent together with the three
+present) as written: its contract file, sent together with the three
 post-PASS inputs (digest, issue number, task-id); under review gating off, it
 first replaces
 `<PASS-VERDICT-LINE>` with the reviewer's verbatim PASS verdict line.
@@ -105,8 +100,7 @@ When the scope grows after planning (a lead-programmer proposes a file outside `
 - **medium** (5 to 10 files): no spec-master. Write `## Affected files` and at most 5 numbered steps
   yourself, and dispatch one lead-programmer per step, each followed by its reviewer; the explorer still
   runs first for a dispatch with no contract. A request that needs more than 5 steps is `full`.
-- **full**: the "Default feature pipeline" below (spec-master, task-master when the spec has 6 or more
-  units, the explorer before a dispatch with no contract).
+- **full**: the "Default feature pipeline" below (spec-master, the explorer before a dispatch with no contract).
 
 Every unit in every lane gets its reviewer.
 
@@ -118,7 +112,7 @@ vague or over-scoped work.
 **Receiving side.** Before treating any dispatched persona's result as done,
 read its last non-empty line:
 - `STATUS: complete` → proceed normally.
-- `STATUS: incomplete — checkpoint: <path>` from `task-master` or `spec-master`
+- `STATUS: incomplete — checkpoint: <path>` from `spec-master`
   → not a failure: re-dispatch the same persona fresh, citing the path (see
   **Dispatch checkpoints** under "Dispatch-model routing" below).
 - Any other `STATUS: incomplete — <reason>` → do not proceed; resume the
@@ -238,8 +232,7 @@ blocks as before and the `defer:`/`skip:` flag escapes apply.
 
 The dispatch also carries, as explicitly **non-authoritative** inputs the
 reviewer verifies independently (never a substitute for its own checks): the
-sliced issue's constraints / affected-files / rationale (the spec-step text
-task-master carries per its own file), the lead-programmer's advisory
+dispatch contract's constraints / affected-files / rationale, the lead-programmer's advisory
 review packet from its ready-for-review report, and, when the unit ran under
 an external workflow runner, an external run journal block pasted verbatim:
 evidence only, which the reviewer, if present, may check against the journal
@@ -251,27 +244,22 @@ path below, never a silent PASS,
 already made incremental commits during execution, so "done on PASS" means
 shippable-once-reviewed, not a commit action here, (4) on a normal FAIL,
 route the defect list back to the lead-programmer per the shared protocol's
-"continuing after a FAIL verdict" section — unchanged when task-master is
-absent; with task-master present, see **Fix-contract re-dispatch** below. One
-unit, one review.
+"continuing after a FAIL verdict" section, carrying the fix contract
+(**Fix-contract re-dispatch** below). One unit, one review.
 This is mechanically backstopped, not just prose: if you try to dispatch
 another gated-agent unit while an earlier one still has no reviewer verdict,
 `reviewer-route-gate.sh` blocks the dispatch.
 
-**Fix-contract re-dispatch.** After a FAIL verdict, if task-master is present,
-dispatch task-master (default tier; never `fable`) with a fixed-shape prompt:
-first line `Unit: <task-id>`, then the latest FAIL block copied verbatim from
-the `.fail` record, the original contract's issue number, and the line "write
-a fix contract or report a spec gap"; then dispatch the
-lead-programmer with that fix contract on the tier the **Escalation ladder** gives. If task-master's
-report starts with `SPEC-GAP:` instead of a fix contract starting with
-`Unit:`, do not re-dispatch
-lead-programmer: surface the FAIL block and the gap to the user with the
-options of **At the 2-FAIL cap**, even though the cap has not been reached;
-the cap count is unchanged. A report that starts with neither `Unit:` nor
-`SPEC-GAP:` is treated as a spec gap. Without
-task-master, the defect-list re-dispatch in (4) above is unchanged. The 2-FAIL
-cap, the ratchet and reviewer routing are unchanged.
+**Fix-contract re-dispatch.** On FAIL, the orchestrator writes the fix contract itself, per the
+shared protocol's `## Dispatch contract (five fields)` section, for a unit that has a contract: the same
+`Unit:` id, the first `## Objective` line `fix-of: <FAIL header timestamp>` (from the latest `.fail`
+record), the line `diagnosis: none`, the original criteria plus one criterion per defect, saved as
+`docs/plans/<slug>/contracts/<unit>-fix<n>.md` and committed before the dispatch (the writer-scope gate
+reads the contract from the baseline commit). Then dispatch lead-programmer with that fix contract on the
+tier the **Escalation ladder** gives. If you cannot determine the cause from the defect list, write no fix
+contract: surface the FAIL block and the gap to the user with the options of **At the 2-FAIL cap**, even
+though the cap has not been reached; the cap count is unchanged. A unit with no contract keeps the
+defect-list re-dispatch in (4) above. The 2-FAIL cap, the ratchet and reviewer routing are unchanged.
 
 **On an `INSUFFICIENT-CONTEXT` verdict** — the reviewer's third verdict,
 meaning it could not confirm an acceptance criterion because a required
@@ -321,11 +309,8 @@ defect history to the user (`bash .claude/bin/escalation-card.sh <task-id>` prin
 - **(a) Debug spec** — dispatch `spec-master` to produce a focused diagnostic artifact (a root-cause
 diagnosis read from the latest `.fail` record and the fix-attempt commits, plus revised acceptance
 criteria for the failed step(s); never a from-scratch replan). Once spec-master returns the debug
-spec, route it through the same ≤5-unit fast path as any other spec: a debug spec resolving to ≥6
-units still goes to `task-master` to re-derive dispatch instructions from the revised step(s) — a
-fresh slice of the corrected spec, never a re-plan of its own; a debug spec resolving to ≤5
-units skips `task-master` and spec-master emits the dispatch contract directly. Either way,
-re-dispatch to lead-programmer.
+spec, spec-master emits the five-field dispatch contract for each revised step, never a re-plan of
+its own. Then re-dispatch to lead-programmer.
 
 - **(b) Re-dispatch with a human directive** — re-dispatch `lead-programmer` on the same unit
 carrying an operator-supplied correction. This does **not** count against the 2-FAIL cap.
@@ -358,13 +343,9 @@ dispatch; scribe closes an issue only on its own quoted line. The shared protoco
 "Review markers and gate mechanics (owner-facing)" section lists which hooks go
 inert and which stay armed.
 
-A mid-flight **"spec gap"** signal from `task-master` (per task-master's own
-file, it never fills a gap itself) routes the same way — straight to
+A mid-flight **"spec gap"** signal from a dispatched persona routes the same way — straight to
 `spec-master` (except a spec gap on a fix contract, which goes to the user per
-**Fix-contract re-dispatch**), never to task-master patching it locally.
-`task-master` is
-never a re-plan or re-dispatch-instructions owner beyond translating what
-spec-master hands it.
+**Fix-contract re-dispatch**).
 
 **If no reviewer persona exists** (an explicit project choice made at ADAPT
 time): you do a lightweight sanity check yourself instead of a real
@@ -375,18 +356,10 @@ silently degrading it without saying so would be worse than not having it.
 
 ## Default feature pipeline
 Explore → Plan → Implement → Verify → Commit: (researcher first if the
-approach is novel) → spec-master → task-master (if the spec resolves to ≥6
-dispatchable units or any `## Convergence follow-ups` slice; otherwise
-omitted and dispatch occurs directly from
-`docs/plans/`) → lead-programmer → reviewer via the routing above → unit done only
-on PASS. Fetch sliced issues using task-master's retrieval-contract line (see
-shared protocol) when task-master runs; otherwise use the spec's `docs/plans/`
-path as the retrieval contract. **Fast path for ≤5 units**: when a spec has
-five or fewer dispatchable units, spec-master emits the dispatch contract
-directly into the unit's contract file and the orchestrator dispatches from it.
-**Batching.** Dispatch task-master for at most one wave of 5 or fewer units per
-spawn, naming the step range in the prompt. Waves are the plan's "Parallelism
-and waves" list if it has one; otherwise consecutive steps.
+approach is novel) → spec-master → lead-programmer → reviewer via the routing above → unit done only
+on PASS. spec-master emits one five-field dispatch contract per unit into
+`docs/plans/<slug>/contracts/<unit>.md` for any unit count, and the orchestrator dispatches from
+it; the contract's own Retrieval line, or else the plan path, is the retrieval contract (see shared protocol).
 
 ## Per-unit model routing
 Before every per-unit `lead-programmer` dispatch, run `bash .claude/bin/unit-bookkeeping.sh dispatch
@@ -433,19 +406,15 @@ computes the same ladder, provided it is unchanged (the contract of record). A
 scribe dispatch with a scribe contract that would go on `haiku` runs the guard with
 `--shape=scribe` and goes on `sonnet` when it fails.
 
-### Dispatch-model routing for spec-master, milestone-auditor, and task-master
+### Dispatch-model routing for spec-master and milestone-auditor
 Same mechanism as per-unit routing above — YOU choose the model at dispatch
 time (a persona can't tag its own invocation). `spec-master` and
 `milestone-auditor` always dispatch on their `opus` frontmatter default; no
-cheaper tier exists for either. `task-master` dispatches on its `sonnet`
-default, with `opus` at your discretion for large or judgment-heavy work.
+cheaper tier exists for either.
 
-**`fable` is excluded for `task-master`**, hard exclusion, never dispatched.
-
-**Dispatch checkpoints.** `task-master` and `spec-master` end a turn with
-`STATUS: incomplete — checkpoint: <path>` when they stop at a natural
-checkpoint with work remaining: the path is the handoff note
-(`docs/plans/<plan-slug>/handoff-task-master.md`) or the plan. Re-dispatch the
+**Dispatch checkpoints.** `spec-master` ends a turn with
+`STATUS: incomplete — checkpoint: <path>` when it stops at a natural
+checkpoint with work remaining: the path is the plan or its handoff note. Re-dispatch the
 same persona fresh (a new `Agent` dispatch, not `SendMessage`), citing that
 path. This is not a failure and is not counted toward anything: no FAIL
 record, no 2-FAIL cap, no ladder step. A checkpoint is progress only if the
@@ -454,8 +423,8 @@ same persona's previous checkpoint on this plan; otherwise it is not progress:
 do not re-dispatch, surface it to the user.
 
 ### Reviewer gate model selection (measured at dispatch time)
-`task-master` doesn't tag a reviewer tier — it slices before the diff
-exists. You decide the tier at reviewer-dispatch time with one Bash call, **from
+No planning persona tags a reviewer tier — the plan exists before the diff
+does. You decide the tier at reviewer-dispatch time with one Bash call, **from
 the repo root**:
 
 ```
@@ -607,7 +576,7 @@ unless noted:
 - **Killed** (output absent/partial, no process) — nothing to finish; resume
   to retry with a longer `timeout` or narrower scope.
 - **Cut off** (no `STATUS:` line, or `STATUS: incomplete` other than a
-  task-master or spec-master checkpoint) — resume; for a
+  spec-master checkpoint) — resume; for a
   *missing* line resume at most once, then accept the result and say so; an
   explicit `STATUS: incomplete` has no such bound.
 
@@ -616,7 +585,7 @@ let the subagent decide from its own transcript.
 
 ### Nested dispatches (a persona spawning its own subagent)
 A dispatched persona can itself spawn a background `Agent` call (e.g. `spec-master`
-dispatching `task-master` directly during a 2-FAIL-cap debug-spec handoff, or any
+dispatching another persona directly during a 2-FAIL-cap debug-spec handoff, or any
 persona delegating a structural/blast-radius lookup to `explorer`). Its
 `task-notification` can still surface directly to you, unsolicited, carrying a
 task-id you never dispatched yourself — don't assume zero visibility by default.
@@ -694,7 +663,7 @@ whole turn.
 If you notice Plan Mode is active when you're about to route a request: call
 `ExitPlanMode` immediately (an empty/no-op plan is fine if nothing was
 drafted yet), then handle the request through the normal routing table above
-— `spec-master` then `task-master` (if present) for the design/dispatch work
+— `spec-master` for the design/dispatch work
 Plan Mode would have done itself, `explorer` for its research phase. If
 `ExitPlanMode` isn't available
 for some reason,

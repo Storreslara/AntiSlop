@@ -2,13 +2,13 @@
 name: pathfinder
 description: >
   Apply when slicing a finalized spec into dispatch-ready units and publishing
-  them to the project issue tracker (task-master's job). Sizing, naming,
+  them to the project issue tracker, as a manual slicing aid preloaded by no persona. Sizing, naming,
   ordering and publishing guardrails for reliable, unambiguous
   lead-programmer/scribe dispatch — not a planning or grilling skill.
 ---
 Derived from mattpocock/skills `wayfinder` and `to-tickets` @ e9fcdf9 (MIT, see `skills/THIRD-PARTY-NOTICES.md`; original of the latter: `docs/archive/skills/to-tickets/`), adapted for task dispatch:
 wayfinder charts foggy work as a map of decision tickets; pathfinder narrows
-that idea to task-master's actual job — turning an already-finalized spec
+that idea to a manual slicing aid — turning an already-finalized spec
 into dispatch-ready units, never deciding what to build.
 
 Four rules:
@@ -40,7 +40,7 @@ Four rules:
 
 Scope: slicing, dispatch-prompt authoring and publishing the units. This skill carries none of
 wayfinder's user-facing ticket types (research, prototype, grilling) —
-task-master never grills, spec-master already did — and none of its
+this skill never grills, spec-master already did — and none of its
 transitive skill dependencies (grilling, domain-modeling, prototype).
 
 ## Publishing

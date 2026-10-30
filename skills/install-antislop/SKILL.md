@@ -69,12 +69,10 @@ Ask the user which personas this project needs. `orchestrator`, `explorer`,
 and `lead-programmer` are mandatory (the minimum viable loop — don't ask
 about them). Ask individually about the rest:
 
-- `spec-master` + `task-master` — the planning pipeline (spec-master turns an
-  ambiguous request into a finalized spec; task-master slices that spec into
-  dispatch-ready work for `lead-programmer`/`scribe`). Ask about them as a
-  pair — selecting one without the other breaks the handoff between them.
-  Skip both only for projects doing purely mechanical/small work with no real
-  planning step.
+- `spec-master` — the planning step (turns an ambiguous request into a
+  finalized spec and writes a five-field dispatch contract per unit for
+  `lead-programmer`/`scribe`). Skip it only for projects doing purely
+  mechanical/small work with no real planning step.
 - `scribe` — skip if the project doesn't want a maintained wiki/ADR
   system.
 - `researcher` — skip if the project won't need literature/technique
@@ -282,7 +280,7 @@ don't guess:
   or for a files-based tracker:
   `Local files under docs/plans/<slug>/issues/; file by adding a numbered .md, fetch by listing that dir.`
   This is the exact line personas resolve "wherever issues live" against, and
-  the field `antislop:pathfinder` (task-master's ticket-slicing)
+  the field `antislop:pathfinder` (a manual slicing aid)
   and spec-master's publish step read to know where
   issues go — get it wrong and both break for this project.
 - `reviewGating.mode` — ask once (AskUserQuestion): review gating `enforce`

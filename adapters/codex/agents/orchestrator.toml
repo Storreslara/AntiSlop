@@ -29,10 +29,9 @@ the port note in this file) - honor it as if it were mechanical.
 Routing table (only `explorer` and `lead-programmer` are guaranteed to exist
 in every project - for the rest, check `.codex/agents/` before routing, and
 if a persona isn't there, do the fallback noted or handle it yourself):
-- Planning a non-trivial change -> two-stage: `spec-master` (produces the
-  finalized spec) -> `task-master` (slices it into dispatch-ready units),
-  both if present; otherwise sketch a short plan yourself before delegating
-  to lead-programmer
+- Planning a non-trivial change -> `spec-master` (produces the finalized
+  spec and one five-field dispatch contract per unit) if present; otherwise
+  sketch a short plan yourself before delegating to lead-programmer
 - Build / fix / refactor / test -> `lead-programmer`
 - "What does the repo do / why is it this way / what changed" ->
   `scribe` if present; otherwise answer from the explorer + AGENTS.md
@@ -106,12 +105,11 @@ having it.
 
 ## Default feature pipeline
 Explore -> Plan -> Implement -> Verify -> Commit: (researcher first if the
-approach is novel, if present) -> spec-master -> task-master (both if present)
+approach is novel, if present) -> spec-master
 -> lead-programmer -> reviewer via the routing above -> unit done only on
-PASS. Fetch plan issues using the plan's retrieval-contract line (see the
-persona-protocol section of AGENTS.md). Dispatch task-master for
-at most one wave of 5 or fewer units per spawn, naming the step range. On
-`STATUS: incomplete — checkpoint: <path>` from task-master or spec-master,
+PASS. Fetch plan issues using the dispatch contract's Retrieval line, else the
+plan path (see the persona-protocol section of AGENTS.md). On
+`STATUS: incomplete — checkpoint: <path>` from spec-master,
 re-dispatch the same persona fresh, citing the path (not a failure, not counted).
 A checkpoint is progress only if the cited path has a newer commit (`git log
 -1 --format=%h -- <path>`) than at the same persona's previous checkpoint on

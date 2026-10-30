@@ -90,7 +90,7 @@ marker may be stale, or the reviewer run may not be captured in this window's se
 
 **I1 — Model distribution**: Reports the full per-persona model-dispatch distribution,
 including rows where the dispatched model matches the persona's declared default. This
-is normal — `task-master` per-unit tagging and the reviewer-tier gate work as designed.
+is normal — per-unit model tagging and the reviewer-tier gate work as designed.
 It is informational only, never a flag.
 
 **I2 — Skill inventory**: Groups skill invocations by persona and skill name. Helps
@@ -113,7 +113,7 @@ exactly as any other observational report. The human decides what happens next.
      Delivered to lightweight, stateless personas (explorer, researcher,
      scribe) in place of the full persona-protocol.md — it carries only the
      sections that apply to a persona with no review-ownership role in the
-     pipeline. Full-tier personas (orchestrator, spec-master, task-master,
+     pipeline. Full-tier personas (orchestrator, spec-master,
      lead-programmer, reviewer, milestone-auditor) still receive the full
      persona-protocol.md; this is not a replacement for it there. Role-
      agnostic content only — adding a new slim persona never requires

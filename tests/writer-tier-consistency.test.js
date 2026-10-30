@@ -192,7 +192,7 @@ function hasAll(rel, needles) {
 
 check('AC-P1: orchestrator.md keeps its guarded text and the fc-2 rules', () => {
   hasAll('agents/orchestrator.md', ['At the 2-FAIL cap', '**Escalation ladder.**',
-    '**`fable` is excluded for `task-master`**', '## Milestone audit gate', 'starts with neither', 'Gate for item 3']);
+    '## Milestone audit gate', 'Gate for item 3']);
 });
 
 check('AC-P2: task-master.md names the nine dispatch-contract markers H4 checks', () => {

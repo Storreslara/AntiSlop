@@ -18,7 +18,7 @@ for f in agents/orchestrator.md .claude/agents/orchestrator.md; do
   has "$f" 'except a human-chosen (a)/(b) re-dispatch'
   has "$f" 'the contract of record, never a fix contract'
   has "$f" 'decision=contract-guard sonnet: no-contract'
-  has "$f" 'other than a task-master or spec-master checkpoint'
+  has "$f" 'other than a spec-master checkpoint'
   has "$f" 'is not progress'
   has "$f" '"Review markers and gate mechanics (owner-facing)" section lists'
   hasnot "$f" '"Review ownership" section lists'

@@ -72,7 +72,6 @@ the right persona and reports back; you never address personas by name.
 | `lead-programmer` | haiku | Always on. Implements a dispatched unit TDD-first. |
 | `reviewer` | opus | Independent PASS/FAIL verdict; cannot edit code. The core safety property. |
 | `spec-master` | opus | Ambiguous goal to spec with machine-checkable criteria. |
-| `task-master` | sonnet | Spec to dispatch-ready units, each with a content-typed contract. |
 | `scribe` | haiku | Wiki, `CONTEXT.md`, ADRs; never touches source. |
 | `milestone-auditor` | opus | Audits the plan, not the code; findings only, no verdict. |
 | `agent-auditor` | haiku | Read-only observability over agent activity (`/antislop:audit-agents`). |
@@ -82,8 +81,8 @@ The first three are mandatory; the rest are chosen at install. Skipping
 `reviewer` removes the only independent check on implementer output and needs
 explicit confirmation.
 
-A unit's path: spec-master writes the spec; task-master slices it into units,
-each with a dispatch contract scored by `node bin/contract-score.js
+A unit's path: spec-master writes the spec and, for each unit,
+a five-field dispatch contract scored by `node bin/contract-score.js
 --rubric=v2` before handoff; the orchestrator dispatches lead-programmer;
 reviewer returns PASS or FAIL. Implementation starts on `haiku` and climbs an
 escalation ladder (`haiku`, `sonnet`, `opus`, two attempts per tier): a tier's

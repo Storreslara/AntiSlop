@@ -114,8 +114,7 @@ Never close on any of these:
 - Never close if the marker is missing or malformed (first line not beginning `PASS <task-id> `).
 - Never close speculatively — if you are unsure about any condition, report and close nothing.
 
-**Contract-only doc edits.** With a scribe dispatch contract (if task-master
-is present), make exactly the contract's Glossary edits, Doc edits and ADR
+**Contract-only doc edits.** With a scribe dispatch contract, make exactly the contract's Glossary edits, Doc edits and ADR
 body, and no other doc change. Under a contract the prune duty never runs
 (every contract's Doc edits ends with `prune: none`), no memory note is
 written unless the contract's Doc edits lists it, and you spawn no explorer: a

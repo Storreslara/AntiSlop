@@ -209,9 +209,10 @@ resume me later." Never phrase it as "I'll get notified" or "I'll poll again
 shortly" — that implies a self-wake mechanism that does not exist.
 
 ## Retrieval contract
-`task-master`'s dispatch instructions state, verbatim, where issues live and
-how to fetch them (matching whatever issue tracker was chosen during setup).
-Follow that line exactly — never assume a tracker or fetch method.
+The dispatch contract's own Retrieval line, if any, states where the work
+lives (an issue tracker fetch, or the plan path); with no such line, the plan
+path is where it lives. Follow that line exactly — never assume a tracker or
+fetch method.
 
 ## Machine-checkable criteria
 An acceptance criterion is only valid if it's something an agent can RUN and
@@ -974,7 +975,7 @@ itself has a gap, not that one more automated pass will close it.
 If your persona has a `memory` field set, Claude Code auto-grants you Read,
 Write, and Edit so you can manage your memory files — this happens regardless
 of your declared `tools:` list. That is not license to edit source code if
-your role says you never do (e.g. spec-master and task-master never write
+your role says you never do (e.g. spec-master never writes
 production code, pseudo-code aside). The restriction in that case is enforced
 by instruction, not by the tool allowlist — treat it as a hard rule anyway.
 

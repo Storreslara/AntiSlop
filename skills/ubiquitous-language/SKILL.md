@@ -63,7 +63,7 @@ type/module names, comments, and docs the diff introduces or renames.
 `spec-master`, or `milestone-auditor` (if present).
 
 **Output:** advisory only; informs the category-8 score but never blocks
-progression to grilling, spec publication, or `task-master` handoff. No
+progression to grilling, spec publication, or contract emission. No
 new gate, no new hook.
 
 **Anchor:** a quoted span from the input, or the plan's own step/heading

@@ -89,7 +89,7 @@ marker may be stale, or the reviewer run may not be captured in this window's se
 
 **I1 — Model distribution**: Reports the full per-persona model-dispatch distribution,
 including rows where the dispatched model matches the persona's declared default. This
-is normal — `task-master` per-unit tagging and the reviewer-tier gate work as designed.
+is normal — per-unit model tagging and the reviewer-tier gate work as designed.
 It is informational only, never a flag.
 
 **I2 — Skill inventory**: Groups skill invocations by persona and skill name. Helps

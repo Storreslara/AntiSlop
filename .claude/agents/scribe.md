@@ -115,8 +115,7 @@ Never close on any of these:
 - Never close if the marker is missing or malformed (first line not beginning `PASS <task-id> `).
 - Never close speculatively — if you are unsure about any condition, report and close nothing.
 
-**Contract-only doc edits.** With a scribe dispatch contract (if task-master
-is present), make exactly the contract's Glossary edits, Doc edits and ADR
+**Contract-only doc edits.** With a scribe dispatch contract, make exactly the contract's Glossary edits, Doc edits and ADR
 body, and no other doc change. Under a contract the prune duty never runs
 (every contract's Doc edits ends with `prune: none`), no memory note is
 written unless the contract's Doc edits lists it, and you spawn no explorer: a
@@ -155,7 +154,7 @@ left to a human or the `milestone-auditor`, not automatic.
      Delivered to lightweight, stateless personas (explorer, researcher,
      scribe) in place of the full persona-protocol.md — it carries only the
      sections that apply to a persona with no review-ownership role in the
-     pipeline. Full-tier personas (orchestrator, spec-master, task-master,
+     pipeline. Full-tier personas (orchestrator, spec-master,
      lead-programmer, reviewer, milestone-auditor) still receive the full
      persona-protocol.md; this is not a replacement for it there. Role-
      agnostic content only — adding a new slim persona never requires

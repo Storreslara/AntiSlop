@@ -104,7 +104,7 @@ with reasons.
   or any future spec. The `functions[]`
   array and `location` field exist for human exploration via the dashboard, not
   for automated judgment.
-- **Verify against the spec, not the diff.** Re-read task-master's
+- **Verify against the spec, not the diff.** Re-read the dispatch contract's
   acceptance criteria and confirm each is met; clean code can still solve the
   wrong problem.
 - **Global constraints are authoritative, not just the local command.**
