@@ -22,6 +22,13 @@ The system must keep working after every unit.
 - No commit-time check detects a non-reviewer Bash write to `.claude/reviewed/` (`marker-commit-check.sh` is advisory). The replacement check (D6) lands in U8a before U9 relaxes the scans.
 - Gate friction, observed while writing this plan: three read-only commands of mine were blocked (`human-decision-gate` twice on a grep pattern, `reviewed-path-gate` once on `git check-ignore`). The explorers hit four more.
 - Prior history (marker sweep and `docs/audits/unit-outcomes/2026-10-06.jsonl`). `agents/task-master.md` notes (units 126 and 247) are version-stamp misses, which U1 retires. `vacuous`/`host` FAILs touched this plan's surfaces: `tests/validate.sh` (12 units), `agents/reviewer.md` (7), `bin/cli.js` (6), `stop-gate-core.sh` (4), `persona-protocol.md` (4). Hence every targeted criterion below carries a `mutation:` line. Agent-memory lessons applied: a source edit and its `.claude`/adapter copy ship in the same unit; docs units get claim-anchored greps, not existence greps.
+- Marker-sweep `NOTE[spec]` dispositions:
+  - `human-decision-gate.sh` (esc-left-3, esf-gate-bytes, esf-flag-prose) and `agents/task-master.md` (abt-u08b): moot, because U7a and U4 delete those files.
+  - `harness-integrity-gate.sh` (hcb-branch, the header lists Set B with 3 literals but the code has 4): U9 rewrites that header, so U9 fixes it.
+  - `version-stamp-check.sh`:
+    - rgh-u2-1 and rgh-u3-1 (the script reads only `.claude-plugin/plugin.json`, never `package.json`): U1 keeps reading plugin.json, and its mutation lines name plugin.json.
+    - version-stamp-check-roast-1 ("unmeasurable range" semantics): U1 keeps the existing unmeasurable-range handling unchanged.
+    - aof-u3b (criterion commands that a writer may edit): no action.
 - Strings in gate-scanned vocabulary (the escalation and marker-dir terms) appear in criteria only inside test files or split literals until U7a/U9 land, so criteria do not self-block.
 
 ### Decisions
