@@ -322,6 +322,47 @@ mk "$T/x11" "$DOTS" "$R/CONTEXT.md"; run lead-programmer "$T/x11"
 g reset -q --hard "$C0"; rm -rf tests docs/plans/p src/contracts
 g reset -q --hard "$C0~1"
 
+# (ad) dispatch baseline (sgb-u1): dispatch-hygiene.sh records the main session's HEAD for each writer dispatch.
+HYG="$ROOT/hooks/scripts/dispatch-hygiene.sh"
+R3="$T/repo3"; mkdir -p "$R3/.claude" && cd "$R3" || exit 1
+git init -q . && printf 'x\n' > x && g add -A && g commit -q -m base
+printf '{"pluginVersion":"0"}\n' > .claude/persona-config.json
+P="$R3"; BL="$R3/.claude/reviewed/dispatch-baseline.log"
+DP='dispatch for the baseline record
+'
+PH="$(printf '%s' "$(printf '%s' "$DP")" | sha256sum | cut -d' ' -f1)"
+pre() { # <tool_use_id> <subagent_type> <caller agent_type or -> [<name>]: echoes the hook's exit code
+  jq -nc --arg u "$1" --arg s "$2" --arg c "$3" --arg n "${4-}" --arg p "$DP" \
+    '{hook_event_name:"PreToolUse",tool_name:"Agent",tool_use_id:$u,tool_input:({subagent_type:$s,prompt:$p} + (if $n == "" then {} else {name:$n} end))} + (if $c == "-" then {} else {agent_type:$c} end)' \
+    | CLAUDE_PROJECT_DIR="$P" bash "$HYG" >/dev/null 2>&1; echo $?
+}
+cnt() { { cat "$BL" 2>/dev/null || true; } | grep -cF -- "$1" || true; }
+# The no-record cases below also require the log to exist already, so they cannot pass while nothing records.
+TS='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z'
+rc="$(pre toolu_r1 lead-programmer -)"
+grep -qxE "$TS tool_use_id=toolu_r1 head=$(git rev-parse HEAD) prompt=$PH target=lead-programmer" "$BL" 2>/dev/null && [ "$(cnt 'tool_use_id=toolu_r1 ')" = 1 ] \
+  && ok "(ad) a main-session writer dispatch records HEAD and the dispatch message hash (trailing newlines stripped)" || bad "(ad) main-session writer rc=$rc"
+pre toolu_r2 antislop:scribe orchestrator >/dev/null; pre toolu_r3 general-purpose - spec-master >/dev/null
+[ "$(grep -cxE "$TS tool_use_id=toolu_r2 .* target=scribe" "$BL" 2>/dev/null)" = 1 ] && [ "$(grep -cxE "$TS tool_use_id=toolu_r3 .* target=spec-master" "$BL" 2>/dev/null)" = 1 ] \
+  && ok "(ad) a namespaced writer, the orchestrator caller and a writer dispatch name are recorded" || bad "(ad) namespaced/orchestrator/name"
+pre toolu_r4 explorer - >/dev/null; pre toolu_r5 reviewer - >/dev/null
+[ -s "$BL" ] && [ "$(cnt 'tool_use_id=toolu_r4 ')$(cnt 'tool_use_id=toolu_r5 ')" = 00 ] && ok "(ad) a dispatch of a non-writer is not recorded" || bad "(ad) non-writer recorded"
+pre toolu_r6 lead-programmer spec-master >/dev/null; pre toolu_r7 lead-programmer antislop:scribe >/dev/null
+[ -s "$BL" ] && [ "$(cnt 'tool_use_id=toolu_r6 ')$(cnt 'tool_use_id=toolu_r7 ')" = 00 ] && ok "(ad) a writer dispatched by a subagent is not recorded" || bad "(ad) subagent dispatch recorded"
+n0="$(cnt 'tool_use_id=')"; pre '../x' lead-programmer - >/dev/null; pre '' lead-programmer - >/dev/null
+[ -s "$BL" ] && [ "$(cnt 'tool_use_id=')" = "$n0" ] && ok "(ad) an empty or malformed tool_use_id is not recorded" || bad "(ad) bad tool_use_id recorded"
+printf '{"pluginVersion":"0","dispatchHygiene":{"mode":"off"}}\n' > .claude/persona-config.json
+pre toolu_r8 lead-programmer - >/dev/null
+[ "$(cnt 'tool_use_id=toolu_r8 ')" = 1 ] && ok "(ad) dispatchHygiene mode off still records" || bad "(ad) mode off not recorded"
+printf '{"pluginVersion":"0","dispatchHygiene":{"mode":"warn"}}\n' > .claude/persona-config.json
+rc="$(pre toolu_r9 lead-programmer -)"
+[ "$rc" = 0 ] && [ "$(cnt 'tool_use_id=toolu_r9 ')" = 1 ] && ok "(ad) recording leaves the dispatch's own verdict unchanged (warn mode: exit 0)" || bad "(ad) warn mode rc=$rc"
+R4="$T/repo4"; mkdir -p "$R4/.claude" && cd "$R4" && git init -q . || exit 1
+printf '{"pluginVersion":"0"}\n' > .claude/persona-config.json
+P="$R4"; BL="$R4/.claude/reviewed/dispatch-baseline.log"; rc="$(pre toolu_r10 lead-programmer -)"
+[ "$(cnt ' tool_use_id=toolu_r10 head=none ')" = 1 ] && ok "(ad) a repository with no commit records head=none" || bad "(ad) no-commit repo rc=$rc"
+cd "$R" && export CLAUDE_PROJECT_DIR="$R"
+
 # (l) registration (operator step O1): SubagentStop runs stop-gate.sh first, and writer-scope-gate.sh right
 # after it once the operator has registered it; before O1 the gate is inert and nothing else changes.
 r="$(jq -r '.hooks.SubagentStop[0].hooks | map(.command | split("/") | last) | join(",")' "$ROOT/hooks/hooks.json")"

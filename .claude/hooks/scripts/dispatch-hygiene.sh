@@ -8,9 +8,11 @@
 # and defaults to block/30000/80/true.
 #
 # Payload fields used: `.tool_name`, `.tool_input.subagent_type` (spawn target
-# identity), `.tool_input.prompt`. The caller's own `.agent_type` is
-# deliberately NOT consulted - no check here depends on who is dispatching,
-# only on what is being dispatched, so reading it would be dead weight.
+# identity), `.tool_input.prompt`, plus `.tool_input.name`, `.tool_use_id` and
+# the caller's own `.agent_type` for the dispatch-baseline record (0a) only.
+# `.agent_type` is read solely to restrict that record to the main session
+# (no `agent_type`) or the orchestrator; no check here depends on who is
+# dispatching, only on what is being dispatched.
 # `subagent_type` carries an AGENT IDENTITY - a possibly-namespaced wire value
 # like `antislop:lead-programmer` - so it is compared via lib/agent-identity.sh,
 # never as a bare string. This is a GATE site, where a missed match must fail
@@ -21,7 +23,14 @@
 #  0) fail-open preconditions -> exit 0 silently: jq parse failure, tool_name
 #     other than Agent, absent/empty prompt, unadapted project (no
 #     persona-config.json), mode "off".
-#  1) .claude/.dispatch-override sentinel -> honored only when its content
+#  0a) dispatch baseline, for writer-scope-gate.sh: a dispatch of a writer
+#     (lead-programmer, scribe or spec-master, by subagent_type or else name)
+#     by the main session or the orchestrator, with a well-formed tool_use_id,
+#     appends "<utc time> tool_use_id=<id> head=<HEAD sha|none> prompt=<sha256>
+#     target=<writer>" to .claude/reviewed/dispatch-baseline.log. It runs after
+#     the persona-config.json check but before mode "off", the override and
+#     every check, and never changes a verdict.
+#  1).claude/.dispatch-override sentinel -> honored only when its content
 #     starts with "override: " (logged, deleted, exit 0). An empty or
 #     reason-less sentinel is deleted but NOT honored, falling through to the
 #     checks - same shape as the WIP sentinel at stop-gate.sh:186-189. When a
@@ -121,6 +130,29 @@ prompt="$(echo "$input" | jq -r '.tool_input.prompt // empty' 2>/dev/null || tru
 
 harness_arm_or_deny "$project_dir" ".claude" "$audit"
 [ -f "$config" ] || exit 0
+# Dispatch baseline (item 0a): placed before the mode read, so mode off, an
+# override and every check below still record. Every step is guarded; a
+# failure only means no record, never an aborted or changed verdict.
+bl_caller="$(echo "$input" | jq -r '.agent_type // empty' 2>/dev/null || true)"
+bl_tu="$(echo "$input" | jq -r '.tool_use_id // empty' 2>/dev/null || true)"
+bl_target=""
+for bl_cand in "$(echo "$input" | jq -r '.tool_input.subagent_type // empty' 2>/dev/null || true)" \
+  "$(echo "$input" | jq -r '.tool_input.name // empty' 2>/dev/null || true)"; do
+  case "$(identity_persona_name "$bl_cand")" in
+    lead-programmer|scribe|spec-master) bl_target="$(identity_persona_name "$bl_cand")"; break ;;
+  esac
+done
+if [ -n "$bl_target" ] && [[ $bl_tu =~ ^[A-Za-z0-9_]{1,128}$ ]] \
+  && { [ -z "$bl_caller" ] || persona_matches_gate "$bl_caller" orchestrator; }; then
+  bl_head="$(cd "$project_dir" 2>/dev/null && GIT_NO_REPLACE_OBJECTS=1 git rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null || true)"
+  [[ $bl_head =~ ^[0-9a-f]{40}$ ]] || bl_head=none
+  bl_ph="$(printf '%s' "$prompt" | _portable_sha256 - 2>/dev/null | cut -d' ' -f1 || true)"
+  if [[ $bl_ph =~ ^[0-9a-f]{64}$ ]]; then
+    { mkdir -p "${project_dir}/.claude/reviewed" \
+      && printf '%s tool_use_id=%s head=%s prompt=%s target=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+        "$bl_tu" "$bl_head" "$bl_ph" "$bl_target" >> "${project_dir}/.claude/reviewed/dispatch-baseline.log"; } 2>/dev/null || true
+  fi
+fi
 mode="$(jq -r '.dispatchHygiene.mode // "block"' "$config" 2>/dev/null || echo block)"
 max_bytes="$(jq -r '.dispatchHygiene.maxPromptBytes // 30000' "$config" 2>/dev/null || echo 30000)"
 max_lines="$(jq -r '.dispatchHygiene.maxInlineBlockLines // 80' "$config" 2>/dev/null || echo 80)"
