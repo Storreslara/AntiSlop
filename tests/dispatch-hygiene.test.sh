@@ -342,7 +342,8 @@ dir="$(make_project t20 '')"
 t20_base="$(contract 900)"
 run "$dir" "$(payload lead-programmer "${t20_base}$(xbytes $((29000 - ${#t20_base})))")"
 rc_under="$rc"
-log_absent=0; [ -f "$dir/.claude/dispatch-audit.log" ] || log_absent=1
+# the advisory H4 size warning may log here; only a block counts
+log_absent=1; ! grep -q 'blocked=' "$dir/.claude/dispatch-audit.log" 2>/dev/null || log_absent=0
 run "$dir" "$(payload lead-programmer "${t20_base}$(xbytes $((31000 - ${#t20_base})))")"
 if [ "$rc_under" = 0 ] && [ "$log_absent" = 1 ] && [ "$rc" = 2 ] \
    && grep -q 'blocked=H1 target=lead-programmer' "$dir/.claude/dispatch-audit.log"; then
@@ -366,13 +367,13 @@ h4_cfg='{"mode":"block","maxPromptBytes":30000,"maxInlineBlockLines":200,"requir
 # T22 - H4 blocks a gated dispatch missing ONE marker, and names it. The
 # excluded checks matter: H4 must be the sole reason this exits 2.
 dir="$(make_project t22 "$h4_cfg")"
-run "$dir" "$(payload lead-programmer "$(contract 300 | grep -v '^## Escalation$')")"
+run "$dir" "$(payload lead-programmer "$(contract 300 | grep -v '^## Acceptance criteria$')")"
 log="$dir/.claude/dispatch-audit.log"
 if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
-   && ! grep -qE 'blocked=H[123]' "$log" && grep -q '## Escalation' <<< "$err"; then
-  ok "T22 gated dispatch missing '## Escalation' -> exit 2, blocked=H4, stderr names it"
+   && ! grep -qE 'blocked=H[123]' "$log" && grep -q '## Acceptance criteria' <<< "$err"; then
+  ok "T22 gated dispatch missing '## Acceptance criteria' -> exit 2, blocked=H4, stderr names it"
 else
-  bad "T22 expected exit 2 + blocked=H4 alone + '## Escalation' on stderr (rc=$rc)"
+  bad "T22 expected exit 2 + blocked=H4 alone + '## Acceptance criteria' on stderr (rc=$rc)"
 fi
 
 # T23 - the positive half of the pair: all nine markers present -> silence. Same
@@ -440,7 +441,7 @@ cp -r hooks/scripts/lib "$mutant_dir/lib"
 mutant="$mutant_dir/dispatch-hygiene.sh"
 sed -i 's/^\([[:space:]]*\)fire H4 /\1: /' "$mutant"
 dir="$(make_project t27 "$h4_cfg")"
-t27_prompt="$(contract 300 | grep -v '^## Escalation$')"
+t27_prompt="$(contract 300 | grep -v '^## Acceptance criteria$')"
 hook_real="$hook"; hook="$mutant"
 run "$dir" "$(payload lead-programmer "$t27_prompt")"
 rc_mutant="$rc"
@@ -900,18 +901,18 @@ else
   bad "T44 expected exit 2 + blocked=H4 for an all-empty-body contract (rc=$rc err=$err)"
 fi
 
-# T45 - one-of-nine-empty: every heading filled except '## Escalation', whose
+# T45 - one-of-nine-empty: every heading filled except '## Acceptance criteria', whose
 # body line is blanked out in place (heading stays, body becomes empty). H4
 # must fire and name that one heading specifically.
 dir="$(make_project t45 "$h4_cfg")"
-t45_prompt="$(contract 401 | sed '/^## Escalation$/{n;s/.*//;}')"
+t45_prompt="$(contract 401 | sed '/^## Acceptance criteria$/{n;s/.*//;}')"
 run "$dir" "$(payload lead-programmer "$t45_prompt")"
 log="$dir/.claude/dispatch-audit.log"
 if [ "$rc" = 2 ] && grep -q 'blocked=H4 target=lead-programmer' "$log" \
-   && grep -q '## Escalation' <<< "$err"; then
-  ok "T45 one heading with an empty body (Escalation) -> exit 2, blocked=H4, names it"
+   && grep -q '## Acceptance criteria' <<< "$err"; then
+  ok "T45 one heading with an empty body (Acceptance criteria) -> exit 2, blocked=H4, names it"
 else
-  bad "T45 expected exit 2 + blocked=H4 naming '## Escalation' (rc=$rc err=$err)"
+  bad "T45 expected exit 2 + blocked=H4 naming '## Acceptance criteria' (rc=$rc err=$err)"
 fi
 
 # T46 - a body consisting ONLY of a nested '### ' heading must still fire:
@@ -956,7 +957,7 @@ run "$dir" "$(payload lead-programmer "$(contract_empty_bodies 404)")"
 rc_mutant_empty="$rc"
 run "$dir" "$(payload lead-programmer "$t46_prompt")"
 rc_mutant_nested="$rc"
-run "$dir" "$(payload lead-programmer "$(contract 300 | grep -v '^## Escalation$')")"
+run "$dir" "$(payload lead-programmer "$(contract 300 | grep -v '^## Acceptance criteria$')")"
 rc_mutant_missing="$rc"
 hook="$hook_real"
 if grep -q '^  return 0$' "$mutant" && [ "$rc_mutant_empty" = 0 ] && [ "$rc_mutant_nested" = 0 ] \
@@ -1050,6 +1051,52 @@ if [ "$rc" = 0 ] && ! grep -q 'H3' <<< "$err" \
   ok "h3-commit-unreachable: marker's commit is not an ancestor of HEAD -> exit 0, no H3, stale-marker logged"
 else
   bad "h3-commit-unreachable expected exit 0, no H3 in stderr, h3-stale-marker= logged (rc=$rc err=$err)"
+fi
+
+five_field() {
+  # $1 = unit id, $2 = optional heading line to drop -> a five-field contract
+  printf 'Unit: %s\n\n## Objective\nLand the thing.\n\n## Affected files\n- `lib/foo.sh`\n\n## Do NOT touch\n- every other path.\n\n## Acceptance criteria\n1. run: `bash -n lib/foo.sh`\n   exit: 0\n' "$1" | { if [ -n "${2:-}" ]; then grep -vx -- "$2"; else cat; fi; }
+}
+
+# T49a - a five-field contract to a gated target gives no H4.
+dir="$(make_project t49a "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(five_field 500)")"
+if [ "$rc" = 0 ] && ! grep -q 'blocked=H4' "$dir/.claude/dispatch-audit.log" 2>/dev/null; then
+  ok "T49a five-field contract -> exit 0, no blocked=H4"
+else
+  bad "T49a expected exit 0 and no blocked=H4 (rc=$rc err=$err)"
+fi
+
+# T49b - the same contract without '## Acceptance criteria' -> H4 names it.
+dir="$(make_project t49b "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(five_field 501 '## Acceptance criteria')")"
+if [ "$rc" = 2 ] && grep -q 'blocked=H4' "$dir/.claude/dispatch-audit.log" \
+   && grep -q '## Acceptance criteria' <<< "$err"; then
+  ok "T49b five-field contract minus Acceptance criteria -> exit 2, blocked=H4, names it"
+else
+  bad "T49b expected exit 2 + blocked=H4 naming '## Acceptance criteria' (rc=$rc err=$err)"
+fi
+
+# T49c - a 3073-byte five-field prompt warns on size and never blocks.
+dir="$(make_project t49c "$h4_cfg")"
+t49c_base="$(five_field 502)"
+t49c_prompt="${t49c_base}$(xbytes $((3073 - ${#t49c_base})))"
+run "$dir" "$(payload lead-programmer "$t49c_prompt")"
+if [ "${#t49c_prompt}" = 3073 ] && [ "$rc" = 0 ] && grep -q 'H4' <<< "$err" && grep -q '3073' <<< "$err" \
+   && grep -q 'warned=H4-size' "$dir/.claude/dispatch-audit.log" \
+   && ! grep -q 'blocked=' "$dir/.claude/dispatch-audit.log"; then
+  ok "T49c 3073-byte five-field prompt -> exit 0, stderr names H4 and 3073, warned=H4-size"
+else
+  bad "T49c expected exit 0 + H4/3073 on stderr + warned=H4-size (rc=$rc err=$err)"
+fi
+
+# T49d - a nine-element contract (superset) gives no H4.
+dir="$(make_project t49d "$h4_cfg")"
+run "$dir" "$(payload lead-programmer "$(contract 503)")"
+if [ "$rc" = 0 ] && ! grep -q 'H4' "$dir/.claude/dispatch-audit.log" 2>/dev/null; then
+  ok "T49d nine-element contract -> exit 0, no H4"
+else
+  bad "T49d expected exit 0 and no H4 (rc=$rc err=$err)"
 fi
 
 exit "$fail"

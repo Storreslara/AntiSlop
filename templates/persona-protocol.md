@@ -219,6 +219,18 @@ assertion. "Works correctly" is not a criterion. If a step in a plan has no
 runnable check, that's a defect in the plan — say so rather than inventing a
 prose substitute.
 
+## Dispatch contract (five fields)
+A dispatch contract has five fields: a first line `Unit: <id>`, then these
+headings, each with a body: `## Objective` (what to do), `## Affected files`
+(backticked paths, one per bullet), `## Do NOT touch`, and `## Acceptance
+criteria` (numbered `N. run:` lines, each with an expected result and, for
+targeted checks, a `mutation:` line). Other headings are allowed and ignored.
+A contract is at most 3072 bytes. `## Ordered edits` is optional, used only
+for a haiku writer; a contract without it is dispatched at sonnet or above.
+A fix contract is a contract for the same `Unit:` id whose first `##
+Objective` line is `fix-of: <FAIL header timestamp>`. Contracts live at
+`docs/plans/<slug>/contracts/<unit>.md`.
+
 ## Review ownership — one unit, one review, single owner
 The lead-programmer never spawns or messages the reviewer directly; only the
 orchestrator (subagent-orchestrator mode) or the team lead (agent-teams mode)

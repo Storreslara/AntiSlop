@@ -21,7 +21,7 @@ Rather than having two separate protocols maintained in parallel (which defeats 
 
 **Full tier** (`templates/persona-protocol.md`): about 895 lines
 - Target personas: `orchestrator`, `lead-programmer`, `spec-master`, `task-master`, `reviewer`, `milestone-auditor`
-- 20 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Review ownership, Review markers and gate mechanics, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
+- 21 sections: Structural questions → explorer, Answer shape, Scope Bash output, Agent-teams mode, Teammate Write/Edit fallback and gate rephrasing doctrine, WIP sentinel, Blocked by a gate you do not own, Terminal status line, Running acceptance-criteria commands, Retrieval contract, Machine-checkable criteria, Dispatch contract (five fields), Review ownership, Review markers and gate mechanics, Pending-review flag, FAIL record, Third verdict (insufficient-context), Fourth verdict: escalate-to-human, Continuing after a FAIL verdict, A note on `memory`, Microworld bundles
 
   For what the WIP sentinel, pending-review flag, and terminal status line
   sections actually say and enforce (this page only tracks which persona

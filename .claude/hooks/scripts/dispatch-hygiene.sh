@@ -56,9 +56,10 @@
 #     positively prove is unreachable from HEAD declines to fire; every other
 #     case - no field, `commit: none`, a malformed token, no git repo, or a
 #     reachable SHA - still fires.
-#  5) H4 a gated dispatch missing any of the nine dispatch-contract markers
-#     agents/task-master.md defines. Gated targets only, and disarmed by
-#     `requireContract: false`.
+#  5) H4 a gated dispatch missing any of the five dispatch-contract fields the
+#     persona protocol's "Dispatch contract (five fields)" section defines
+#     (extra headings are fine). Gated targets only, and disarmed by
+#     `requireContract: false`. A prompt over 3072 bytes only warns.
 #  6) every check that fired is reported; mode "block" logs blocked= and exits
 #     2, mode "warn" logs warned= and exits 0.
 #
@@ -395,17 +396,17 @@ if [ "$is_gated" = true ]; then
     esac
   fi
 
-  # H4 - dispatch contract. The nine markers agents/task-master.md enumerates;
-  # the eight heading strings are byte-for-byte copies of that list, because a
-  # paraphrase here would enforce something task-master never emits.
+  # H4 - dispatch contract. The five fields the persona protocol's "Dispatch
+  # contract (five fields)" section enumerates; the four heading strings are
+  # byte-for-byte copies of that list, because a paraphrase here would enforce
+  # something the protocol never defines.
   if [ "$require_contract" = true ]; then
     missing=""
     if [[ ! $first_line =~ ^Unit:[[:space:]]+([A-Za-z0-9][${UNIT_ID_CHARCLASS}]{0,63})[[:space:]]*$ ]]; then
       missing="a 'Unit: <id>' first line"
     fi
-    for heading in '## Objective' '## Retrieval' '## Affected files' \
-                   '## Ordered edits' '## Do NOT touch' '## Acceptance criteria' \
-                   '## Pre-resolved context' '## Escalation'; do
+    for heading in '## Objective' '## Affected files' '## Do NOT touch' \
+                   '## Acceptance criteria'; do
       case "$prompt" in
         *"$heading"*)
           heading_has_body "$heading" || missing="${missing}${missing:+, }${heading} (empty body)"
@@ -414,7 +415,13 @@ if [ "$is_gated" = true ]; then
       esac
     done
     if [ -n "$missing" ]; then
-      fire H4 "H4: dispatch to a gated target is missing or has an empty body under ${missing}. A gated dispatch must carry all nine contract elements, each with real content (see agents/task-master.md); set dispatchHygiene.requireContract to false to disarm this check."
+      fire H4 "H4: dispatch to a gated target is missing or has an empty body under ${missing}. A gated dispatch must carry all five contract fields, each with real content (see the Dispatch contract (five fields) section of the persona protocol); set dispatchHygiene.requireContract to false to disarm this check."
+    fi
+    # Size is advisory only: it never enters $fired, so it cannot block.
+    prompt_bytes="$(printf %s "$prompt" | wc -c)"
+    if [ "$prompt_bytes" -gt 3072 ]; then
+      printf 'WARNING: H4: dispatch prompt is %s bytes, over the 3072-byte contract size (not blocking) - target %s\n' "$prompt_bytes" "${target:-unknown}" >&2
+      log_line "warned=H4-size target=${target}"
     fi
   fi
 fi
