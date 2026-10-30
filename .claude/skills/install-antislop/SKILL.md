@@ -38,7 +38,7 @@ description: >
 Skip this section entirely if invoked with `--update` (that path is already
 handled — go to section 11). Otherwise, before starting section 1:
 
-- Check whether `.claude/persona-config.json` already exists (use `Glob` or the `Read` tool; a Bash command naming that file can be refused by `harness-integrity-gate.sh`).
+- Check whether `.claude/persona-config.json` already exists (use `Glob` or the `Read` tool).
 - If it does NOT exist: this is a genuine fresh install — proceed to
   section 1, nothing to do here.
 - If it DOES exist: read its `pluginVersion` and compare to this plugin's
@@ -55,7 +55,7 @@ handled — go to section 11). Otherwise, before starting section 1:
     1. **Resume** — inspect which outputs already exist
        (`.claude/agents/*.md`, `.claude/persona-protocol.md`,
        `.claude/protocol-digest.md`, `.claude/settings.json`,
-       `.claude/persona-config.json`; check it with `Glob` or `Read`, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`) to infer how far the prior run got,
+       `.claude/persona-config.json`; check it with `Glob` or `Read`) to infer how far the prior run got,
        and continue from the first incomplete section.
     2. **Patch gaps only** — run the step 12 placeholder sweep now, then
        re-run only the sections whose output is missing or still contains
@@ -95,7 +95,7 @@ about them). Ask individually about the rest:
 
 Record the selection as `personaSelection` in `.claude/persona-config.json`
 (step 6) — `--update` mode (section 11) reads this to know which files to
-re-derive. To read it yourself, use the `Read` tool (a Bash command naming that file can be refused by `harness-integrity-gate.sh`).
+re-derive. To read it yourself, use the `Read` tool.
 
 ## 2. Copy selected personas into the project
 
@@ -149,7 +149,7 @@ accurate forever):
   inlines its launch command into the project's copy of `explorer.md`'s
   `mcpServers:` frontmatter, removes the project-wide `.mcp.json` entry so
   only the explorer connects to it, and records `substitutions.graphMcpLaunch`
-  in `.claude/persona-config.json` (inspect it with the `Read` tool, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`; the file is created with just that field if
+  in `.claude/persona-config.json` (inspect it with the `Read` tool; the file is created with just that field if
   step 6 hasn't run yet — step 6 must MERGE into it, not overwrite it, so
   this survives). Skipping this and doing it by hand risks the exact trap the
   script exists to avoid: `mcpServers` must be a LIST of single-key dicts,
@@ -208,7 +208,7 @@ plugin agent at all — it only lives as a template.
   mechanics as step 4's `--wire-graph-mcp`: inlines the launch command into
   `researcher.md`'s `mcpServers:` frontmatter, removes the project-wide
   `.mcp.json` entry, and records `substitutions.arxivMcpLaunch` in
-  `persona-config.json` (inspect it with the `Read` tool, because a Bash command naming that file can be refused by `harness-integrity-gate.sh`; the file is created with just that field if step 6 hasn't
+  `persona-config.json` (inspect it with the `Read` tool; the file is created with just that field if step 6 hasn't
   run yet — step 6 must merge into it, not overwrite it). Hand-editing risks
   the same flattening trap step 4 warns about.
 - Verify with the same provenance-self-report requirement as step 4 (fallback
@@ -310,9 +310,7 @@ don't guess:
 
 Validate the file against `templates/persona-config.schema.json` (read it
 with the `Read` tool and check that every required key is present and typed
-correctly; `harness-integrity-gate.sh` allows a lone read-only `jq` query of
-that file but can refuse any other Bash command naming it, such as a `jq` in
-a pipe or with a redirection) before moving
+correctly) before moving
 on — don't write it freehand and hope. This validation checks shape, not
 behavior — it does NOT replace the "run testAndLintCommand once" check
 above; a schema-valid config can still contain a command that red-gates on
