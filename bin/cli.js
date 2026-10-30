@@ -42,7 +42,7 @@ function protocolTierFor(name) {
 // was later retired into `spec-master`; the persona
 // formerly named `repo-historian` was renamed `scribe` (repo-wide rename,
 // plugin v0.10.0) — these are deprecated, legacy `--personas=planner` /
-// `--personas=hivemind` / `--personas=repo-historian` / legacy
+// `--personas=hivemind` / `--personas=task-master` / `--personas=repo-historian` / legacy
 // `personaSelection` entries only. Each value is an array of current
 // token(s) a legacy token maps forward to (a plain string map can't
 // represent a one-to-many split); entries chain (`planner` ->

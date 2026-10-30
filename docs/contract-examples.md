@@ -1,6 +1,6 @@
 # Dispatch contract examples
 
-Worked examples of a lead contract, a legacy issue-body layout and a scribe contract. `tests/contract-examples.test.js` scores them under `--rubric=v2` and runs `bin/contract-guard.js` over the issue-body layout; the marked blocks are read by those markers, so keep them intact.
+Contract examples (sample lead contracts), a legacy issue-body layout and a scribe contract. `tests/contract-examples.test.js` scores them under `--rubric=v2` and runs `bin/contract-guard.js` over the issue-body layout; the marked blocks are read by those markers, so keep them intact.
 
 <!-- lead-contract-example:begin -->
 ```
