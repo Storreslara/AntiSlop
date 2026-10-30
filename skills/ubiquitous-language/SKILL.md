@@ -48,8 +48,8 @@ reader can tell it ran.
 
 **Input:** a diff. **Consumer:** `reviewer`.
 
-**Output:** ONE clearly-demarcated advisory section appended AFTER the
-verdict line; never flips PASS/FAIL, never adds a FAIL ground, never
+**Output:** ONE clearly-demarcated advisory section written into the
+marker body (PASS) or the fail record (FAIL), never the message; never flips PASS/FAIL, never adds a FAIL ground, never
 substitutes for the acceptance-criteria command. Findings go to the
 `.pass` marker's non-blocking notes.
 

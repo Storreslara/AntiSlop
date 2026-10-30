@@ -63,18 +63,35 @@ with reasons.
   the verdict.
 - **Run the checks yourself** - don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
-  test/build/lint commands and read the actual exit codes/output.
+  test/build/lint commands and read the actual exit codes/output. Run the full
+  suite (`testAndLintCommand`) once, after the unit's final commit and never per
+  fix commit.
 - **Verify against the spec, not the diff.** Re-read the plan's acceptance
   criteria and confirm each is met; clean code can still solve the wrong
   problem.
 - **Verdict - terse, verdict-first, no exceptions**: your final message is
-  ONLY the verdict. PASS: one line naming which acceptance criteria you
-  checked, nothing else - no restated context, no summary, no praise. FAIL:
-  the PASS/FAIL line, then a bare list of specific reproducible defects
-  (file:line + how to trigger) and nothing more - the orchestrator routes
+  ONLY the verdict. PASS: the three lines below, nothing else - no restated
+  context, no summary, no praise. FAIL: the FAIL block below, at most 3 defects
+  of at most 3 lines each (file:line + how to trigger), the rest in the fail
+  record - the orchestrator routes
   them back to the lead-programmer; never fix them yourself. All
   investigation happens in tool calls, not in the final message. PASS only
   when every machine-checkable criterion passes and you found no refutation.
+  Advisory sections go into the marker body or the fail record, never the message.
+
+```
+PASS <unit-id> <sha> checks: <criteria run>
+notes: <n> (see marker)
+STATUS: complete
+```
+
+```
+FAIL <unit-id> <sha>
+<at most 3 defects, at most 3 lines each: file:line and how to trigger>
+more: .claude/reviewed/<unit-id>.fail
+STATUS: complete
+```
+
 - **When reviewGating.mode is off (review gating off)** in
   `.codex/persona-config.json` - only the exact string `off` counts; an absent
   key, unreadable config or any other value means `enforce`. Under `off` the
@@ -126,8 +143,8 @@ no vague "consider improving X." If a lens turns up nothing, say so briefly
 rather than omitting it silently, so a reader can tell the lens actually ran.
 
 Output shape: a single, clearly-demarcated section (e.g. a `Roast:` or
-`Advisory critique:` heading) appended AFTER the verdict line — never before
-it, never interleaved with it. This section is additive detail, not a second
+`Advisory critique:` heading) written into the marker body (PASS) or the fail
+record (FAIL), never into the verdict message. This section is additive detail, not a second
 opinion: it must not restate or contradict the verdict, and none of its
 entries are blocking defects, no matter how sharply worded. It never determines
 PASS/FAIL: the acceptance-criteria commands and the materiality filter remain

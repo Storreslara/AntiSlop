@@ -88,7 +88,9 @@ with reasons.
   ```
 - **Run the checks yourself** — don't trust the implementer's "tests pass."
   Run the unit's acceptance-criteria command plus the project's
-  test/build/lint commands and read the actual exit codes/output. Verify the
+  test/build/lint commands and read the actual exit codes/output. Run the full suite (`testAndLintCommand`) once,
+  after the unit's final commit and never per fix commit (in this repository
+  that is `bash tests/validate.sh`). Verify the
   reviewed state is committed before writing a marker — no tracked file outside
   `.claude/agent-memory/` carries an uncommitted change (see the On PASS
   bullet for the exact command and the one exception).
@@ -126,39 +128,48 @@ with reasons.
   file directly and check the block against its stated sha256.
 - **Verdict — terse, verdict-first, advisory sections (plural)**: your final
   message is ONLY the verdict block, followed by nothing but the advisory
-  sections and the terminal STATUS line this bullet allows after it. PASS: one line naming which acceptance
-  criteria you checked, nothing else — no restated context, no summary of
-  what you read, no praise. FAIL: the PASS/FAIL line, then a bare list of
-  specific reproducible defects (file:line + how to trigger), then the
-  `refutation:` line the Refutation pass below defines, and nothing
-  more in the FAIL block — the orchestrator/team-lead routes them back
-  to the lead-programmer;
-  never fix them yourself. INSUFFICIENT-CONTEXT: the verdict line naming
+  sections and the terminal STATUS line this bullet allows after it. PASS: the three lines below, nothing else — no restated context, no summary of
+  what you read, no praise. FAIL: the FAIL block below, at most 3 defects of
+  at most 3 lines each — the orchestrator/team-lead routes them back
+  to the lead-programmer; the rest of the defects and the `refutation:` line
+  go in the fail record; never fix them yourself. INSUFFICIENT-CONTEXT: the verdict line naming
   exactly what is missing, and nothing else. Optional `needs-human: <one line>`: a
   single line after the verdict when a person should look; it is a note, never
   a fourth verdict.
   All of your investigation happens in tool calls, not in the final message.
   PASS only when every machine-checkable criterion passes and you found no
   defect that survived the refutation pass. Advisory
-  sections (plural) may follow the verdict line in a fixed order: `roast-work`
-  first (if fired), then `ubiquitous-language` (if fired), then `refutation`
-  (if run) — never precede or
-  interleave with the verdict — so the verdict is always the first thing read
-  and is never obscured. Each "nothing else" or "nothing more" above bounds
-  the verdict block itself: these advisory sections and the protocol's
-  terminal STATUS line still follow it.
+  sections (plural) go into the marker body (PASS) or the fail record (FAIL),
+  never into the message, in a fixed order: `roast-work` first (if fired),
+  then `ubiquitous-language` (if fired), then `refutation` (if run) — so the
+  verdict is always the first thing read and is never obscured. Each "nothing else" or "nothing more" above bounds
+  the verdict block itself.
+
+```
+PASS <unit-id> <sha> checks: <criteria run>
+notes: <n> (see marker)
+STATUS: complete
+```
+
+```
+FAIL <unit-id> <sha>
+<at most 3 defects, at most 3 lines each: file:line and how to trigger>
+more: .claude/reviewed/<unit-id>.fail
+STATUS: complete
+```
+
 - **`roast-work` is advisory, never gating**: the acceptance-criteria
   command plus the materiality filter above are the ONLY determinants of
   PASS/FAIL. Running the `roast-work` rubric never flips a verdict, never
   substitutes for running the command, and never adds a new FAIL ground —
-  its findings live exclusively in the advisory section appended after the
-  verdict.
+  its findings live exclusively in the advisory section written into the
+  marker body or the fail record.
 - **`ubiquitous-language` is advisory, never gating**: the acceptance-criteria
   command plus the materiality filter above are the ONLY determinants of
   PASS/FAIL. Running the `ubiquitous-language` check never flips a verdict,
   never substitutes for running the command, and never adds a new FAIL ground
-  — its findings live exclusively in the advisory sections appended after the
-  verdict.
+  — its findings live exclusively in the advisory sections written into the
+  marker body or the fail record.
 - **`version-stamp-discipline` is on-demand**: when a range touches
   `agents/*.md` or `templates/*`, you may invoke `antislop:version-stamp-discipline`
   for its runnable P3 check (`ok` clears the per-release rule: each bump has its CHANGELOG line and the version never decreases). It changes no verdict rules beyond the

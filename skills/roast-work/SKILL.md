@@ -33,8 +33,8 @@ no vague "consider improving X." If a lens turns up nothing, say so briefly
 rather than omitting it silently, so a reader can tell the lens actually ran.
 
 Output shape: a single, clearly-demarcated section (e.g. a `Roast:` or
-`Advisory critique:` heading) appended AFTER the verdict line — never before
-it, never interleaved with it. This section is additive detail, not a second
+`Advisory critique:` heading) written into the marker body (PASS) or the fail
+record (FAIL), never into the verdict message. This section is additive detail, not a second
 opinion: it must not restate or contradict the verdict, and none of its
 entries are blocking defects, no matter how sharply worded. It never determines
 PASS/FAIL: the acceptance-criteria commands and the materiality filter remain

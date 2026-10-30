@@ -41,12 +41,12 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "6c84545edb4c3143265968c36db92f1d9537c948004016aec8709b0c4fc1268f",
+    ".claude/agents/orchestrator.md": "9d442ff0e53c92a2832398dc480af6d3b392b045c2ca7d4c6a3b443b2673b70d",
     ".claude/agents/explorer.md": "65de27256eb4b834249e25e01829ca307e51761821931b7e1f82e20b68ea4ad9",
-    ".claude/agents/lead-programmer.md": "ff06489e266534e63da8a70ee6cad99ecf2a26b3c3bdff3ef4db1a0f8d6d534a",
+    ".claude/agents/lead-programmer.md": "c02bac676c9cbbb2cad0fe9fe76ecb468025c2618f5cb988eba888e212606e9d",
     ".claude/agents/spec-master.md": "ba85be3b7060f9c56d5d145eadd65f9bd2605890f5d656eef897be483322ce20",
     ".claude/agents/scribe.md": "cb78925a32407134cbe3784af1472d9cd608f950b1187eb8d165633f8247ec86",
-    ".claude/agents/reviewer.md": "a58f949f0c16ce1cd0f1f2c6d3c62871746dab4775a29e59261348fdf7975c44",
+    ".claude/agents/reviewer.md": "97b1079c6b931f031190c77bbc96a614dc20f1c59ff5d5bc6737bbcf1afa82ff",
     ".claude/agents/milestone-auditor.md": "147e0b52aea7974c11ca76b9e9d35ff3d32717e55add110197579086db68789c",
     ".claude/agents/agent-auditor.md": "51b3082917c1a8129674913333460ddf009fffdf1cea42743bdd2bfc2358b022",
     ".claude/agents/researcher.md": "6833a01e22a647fe307ea06dbc33be2fd051895741ac49d0866b875bd8ac296b",

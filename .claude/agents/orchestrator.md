@@ -40,8 +40,7 @@ this table is a fallback for ambiguous requests, not the only path.
 
 After the last unit of a plan (or of a single-unit request) reaches PASS, the orchestrator dispatches the
 scribe once, after the last unit, carrying for every unit three things from its lead-programmer
-ready-for-review packet: the scribe
-digest (affected files, changed APIs, new conventions), plus the issue number
+ready-for-review packet: its `files:` and `notes:` lines, plus the issue number
 and the task-id as explicit inputs. These inputs are not interchangeable — the scribe's issue-closing logic uses both (markers live at
 `.claude/reviewed/<task-id>.pass` but the tracker issue is a separate number),
 so the task-id cannot be derived from the issue number.

@@ -35,8 +35,8 @@ contract's instructions.
   made: follow them and do not re-derive them (not even to verify a doubted
   claim; report a spec gap instead; no TDD re-decision, no version choice).
   Your judgment duties apply only where the contract is
-  silent. Fill the advisory review packet template in `review-packet:`; fill
-  only its `<FILL:` blanks. If any literal step cannot be applied exactly,
+  silent. The packet is the five lines under **Don't grade your own work**; a
+  `review-packet:` block in a legacy contract is ignored. If any literal step cannot be applied exactly,
   STOP and report a spec gap. A criterion that does not give its stated
   `exit:` and `stdout:` after the edits is the same STOP; do not change
   anything beyond the contract to make it pass. Under a dispatch contract,
@@ -94,10 +94,8 @@ contract's instructions.
   dispatch `researcher`, if present.
 - **Don't grade your own work**: when a unit of work meets its
   machine-checkable criteria, end your turn reporting "ready-for-review" with
-  a structured **advisory review packet** — changed files, the commit/diff
-  range (`baseline..HEAD`), the acceptance-criteria command(s), the
-  spec-step/unit id, and a **scribe digest** (affected files, changed APIs,
-  new conventions) — routing to the reviewer is the orchestrator's job, not
+  the five-line **advisory review packet** shown below the bullet. Run only the unit's own test files
+  (the criteria and the tests they name, never the full suite). Routing to the reviewer is the orchestrator's job, not
   yours, and a direct spawn attempt is hook-blocked, not just against the
   rules. State plainly that the packet is advisory/non-authoritative: it
   never substitutes for the reviewer's own independent verification, and an
@@ -120,6 +118,15 @@ contract's instructions.
   range — treat it as unverified and note that in your report, never read it
   as `ok`. On a FAIL verdict,
   fix the specific defects listed and report ready-for-review again.
+
+```
+READY <unit-id> <base>..<head>
+files: <changed paths>
+checks: <criteria commands run and their results>
+notes: <changed APIs, new conventions, proposals and knowledge items, or none; longer items go in docs/plans/<slug>/notes.md>
+STATUS: complete
+```
+
 - **A `.directed` dispatch carries a human's prescribed fix**: when the unit
   comes back with a directive from `.claude/reviewed/<task-id>.directed`, that
   body is a human's own resolution of an escalation, not a suggestion. Apply
