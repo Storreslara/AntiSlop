@@ -199,7 +199,8 @@ Criteria:
 ## Dispatch
 Contract files, written in this order, three per spec-master spawn (checkpoint rule). Links appear as each file is committed:
 - [contracts/lp-vsr.md](2026-10-30-lean-pipeline/contracts/lp-vsr.md), [contracts/lp-cfx.md](2026-10-30-lean-pipeline/contracts/lp-cfx.md), [contracts/lp-tmroute.md](2026-10-30-lean-pipeline/contracts/lp-tmroute.md)
-- (pending) lp-tmdel.md, lp-speccap.md, lp-escprose.md, lp-hdg.md, lp-escbin.md, lp-stopgate.md, lp-joinstamp.md, lp-bashscan.md, lp-slim.md, lp-orch.md, lp-scribe.md, lp-release.md
+- [contracts/lp-tmdel.md](2026-10-30-lean-pipeline/contracts/lp-tmdel.md), [contracts/lp-speccap.md](2026-10-30-lean-pipeline/contracts/lp-speccap.md), [contracts/lp-escprose.md](2026-10-30-lean-pipeline/contracts/lp-escprose.md)
+- (pending) lp-hdg.md, lp-escbin.md, lp-stopgate.md, lp-joinstamp.md, lp-bashscan.md, lp-slim.md, lp-orch.md, lp-scribe.md, lp-release.md
 
 ## Open Questions
 None block dispatch. Assumptions, each with the default taken:
