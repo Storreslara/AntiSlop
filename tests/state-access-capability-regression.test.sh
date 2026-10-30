@@ -48,56 +48,6 @@ test_escalation_path() {
   else
     bad "capability: stop-gate.sh did not produce the escalated verdict/flags-kept artifacts (rc=$rc)"
   fi
-
-  # (3) real dashboard decision/arm route: a human's resolution channel for
-  # this escalated unit still functions end to end (matching timestamp arms
-  # successfully).
-  local script="${fixture_dir}/c9-check.js"
-  cat > "$script" <<'NODEEOF'
-'use strict';
-const http = require('http');
-const { startServer } = require(process.env.C9_SERVER_PATH);
-
-function httpPost(url, token, body) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const req = http.request({
-      hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Antislop-Token': token },
-    }, (res) => {
-      let data = '';
-      res.on('data', (c) => (data += c));
-      res.on('end', () => resolve({ status: res.statusCode, body: data }));
-    });
-    req.on('error', reject);
-    req.write(JSON.stringify(body));
-    req.end();
-  });
-}
-
-async function main() {
-  const { server, token } = startServer(process.env.C9_PROJECT_DIR, 0, { ttyWrite: { write: () => {} } });
-  await new Promise((r) => setTimeout(r, 100));
-  const url = `http://127.0.0.1:${server.address().port}/api/decision/arm`;
-  const result = await httpPost(url, token, {
-    taskId: process.env.C9_TASK_ID, route: 'approve',
-    escalationTimestamp: process.env.C9_TS, by: 'c9', reason: 'test', examples: 'skipped',
-  });
-  server.close();
-  if (result.status === 200) { console.log('C9-ARM-OK'); process.exit(0); }
-  console.log(`C9-ARM-FAIL status=${result.status} body=${result.body}`);
-  process.exit(1);
-}
-main().catch((err) => { console.log(`C9-ARM-FAIL error=${err.message}`); process.exit(1); });
-NODEEOF
-  local server_path
-  server_path="$(pwd)/bin/microworld-dashboard/server.js"
-  if C9_SERVER_PATH="$server_path" C9_PROJECT_DIR="$fixture_dir" C9_TASK_ID="$unit_id" C9_TS="$escalated_ts" \
-       node "$script" 2>&1 | grep -q '^C9-ARM-OK$'; then
-    pass "capability: real dashboard decision/arm route still resolves this escalation"
-  else
-    bad "capability: dashboard decision/arm route did not produce armed:true"
-  fi
 }
 
 test_escalation_path

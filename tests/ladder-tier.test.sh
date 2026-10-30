@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
-# Suite for bin/ladder-tier.sh and bin/escalation-card.sh (ptr-u9a). The branch table is
+# Suite for bin/ladder-tier.sh (ptr-u9a). The branch table is
 # frozen (every expected line is literal); fixture projects are built in a temp dir.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 repo="$(pwd)"
 tier="$repo/bin/ladder-tier.sh"
-card="$repo/bin/escalation-card.sh"
 fail=0
 
 pass() { echo "OK   $*"; }
@@ -145,24 +144,6 @@ while read -r id _ _ nfield _; do
 done < "$real"
 if [ "$mismatch" = 0 ]; then pass "every census n= equals bin/fail-count.sh"; else bad "a census n= differs from bin/fail-count.sh"; fi
 if /usr/bin/grep -q 'reason=fail-closed' "$real"; then bad "a census line has reason=fail-closed"; else pass "no census line has reason=fail-closed"; fi
-
-echo "-- escalation-card.sh ----------------------------------------------------------"
-p="$(mkproj haiku)"
-printf 'FAIL ec1 2026-10-20T00:00:00Z\ntier: haiku\n- first defect one\n- second defect one\n\nFAIL ec1 2026-10-20T01:00:00Z\ntier: sonnet\n- first defect two\n\n' > "$p/.claude/reviewed/ec1.fail"
-got="$(bash "$card" ec1 "$p")"
-if printf '%s\n' "$got" | /usr/bin/grep -qx 'FAIL ec1 2026-10-20T01:00:00Z' \
-   && printf '%s\n' "$got" | /usr/bin/grep -qx 'tier: sonnet' \
-   && printf '%s\n' "$got" | /usr/bin/grep -qF -- '- first defect two' \
-   && ! printf '%s\n' "$got" | /usr/bin/grep -qF -- 'second defect one'; then
-  pass "card prints each block's header, tier line and first defect line only"
-else
-  bad "card block lines wrong: [$got]"
-fi
-if printf '%s\n' "$got" | /usr/bin/grep -qiE 'debug spec|park the unit|re-dispatch with'; then bad "card prints the options"; else pass "card never prints the options"; fi
-got="$(bash "$card" ptr-u8 "$p")"
-if printf '%s\n' "$got" | /usr/bin/grep -qF '(no FAIL record)'; then pass "card reports a unit with no FAIL record"; else bad "card no-record line missing: [$got]"; fi
-got="$(bash "$card" ptr-u8 .)"
-if printf '%s\n' "$got" | /usr/bin/grep -qE '^[0-9a-f]+ .*\(ptr-u8\)'; then pass "card lists a commit subject carrying (ptr-u8)"; else bad "card lists no (ptr-u8) commit: [$got]"; fi
 
 if [ "$fail" -eq 0 ]; then
   echo

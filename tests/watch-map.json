@@ -13,12 +13,6 @@
       "timeoutSeconds": 60
     },
     {
-      "id": "gh351",
-      "watch": ["bin/microworld-dashboard/decision-block.js", "tests/microworld/dashboard-decision-block.test.js"],
-      "run": ["node tests/microworld/dashboard-decision-block.test.js"],
-      "timeoutSeconds": 60
-    },
-    {
       "id": "hdg-lexer-1",
       "watch": ["hooks/scripts/lib/benign-command.sh", "tests/reviewed-path-gate.test.sh"],
       "run": ["bash tests/reviewed-path-gate.test.sh"],
@@ -56,6 +50,10 @@
     }
   ],
   "retired": [
+    {
+      "id": "gh351",
+      "reason": "decision-block.js and its suite deleted in lp-escbin"
+    },
     {
       "id": "rev-gh377-5-probe",
       "reason": "one-shot probe (item19); run.sh set to mode 644 (item19-3) to prevent dashboard invocation"

@@ -712,6 +712,15 @@ else
 fi
 
 echo
+echo "== escalation helpers and dashboard decision code retired (Bash, lp-escbin) =="
+if bash tests/escalation-retired.test.sh code-bin; then
+  echo "OK   tests/escalation-retired.test.sh code-bin"
+else
+  echo "FAIL tests/escalation-retired.test.sh code-bin"
+  fail=1
+fi
+
+echo
 echo "== escalation prose retired; needs-human note present (Bash, lp-escprose) =="
 if bash tests/escalation-retired.test.sh prose; then
   echo "OK   tests/escalation-retired.test.sh prose"
@@ -920,15 +929,6 @@ else
 fi
 
 echo
-echo "== human-review-cleanup: resolved-packet sweep (Bash) =="
-if bash tests/human-review-cleanup.test.sh; then
-  echo "OK   tests/human-review-cleanup.test.sh"
-else
-  echo "FAIL tests/human-review-cleanup.test.sh"
-  fail=1
-fi
-
-echo
 echo "== agent-identity namespacing across gate sites S1-S13 (Bash) =="
 if bash tests/agent-identity-namespace.test.sh; then
   echo "OK   tests/agent-identity-namespace.test.sh"
@@ -952,15 +952,6 @@ if bash tests/task-gate.test.sh; then
   echo "OK   tests/task-gate.test.sh"
 else
   echo "FAIL tests/task-gate.test.sh"
-  fail=1
-fi
-
-echo
-echo "== heavy-trigger: deterministic measured heavy-unit surface script (Bash) =="
-if bash tests/heavy-trigger.test.sh; then
-  echo "OK   tests/heavy-trigger.test.sh"
-else
-  echo "FAIL tests/heavy-trigger.test.sh"
   fail=1
 fi
 
@@ -1237,55 +1228,11 @@ else
 fi
 
 echo
-echo "== microworld dashboard packets (Node) =="
-if node tests/microworld/dashboard-packets.test.js; then
-  echo "OK   tests/microworld/dashboard-packets.test.js"
-else
-  echo "FAIL tests/microworld/dashboard-packets.test.js"
-  fail=1
-fi
-
-echo
-echo "== microworld dashboard decisions (Node) =="
-if node tests/microworld/dashboard-decisions.test.js; then
-  echo "OK   tests/microworld/dashboard-decisions.test.js"
-else
-  echo "FAIL tests/microworld/dashboard-decisions.test.js"
-  fail=1
-fi
-
-echo
-echo "== microworld dashboard decision-block (Node) =="
-if node tests/microworld/dashboard-decision-block.test.js; then
-  echo "OK   tests/microworld/dashboard-decision-block.test.js"
-else
-  echo "FAIL tests/microworld/dashboard-decision-block.test.js"
-  fail=1
-fi
-
-echo
 echo "== microworld dashboard markdown-lite (Node) =="
 if node tests/microworld/dashboard-markdown-lite.test.js; then
   echo "OK   tests/microworld/dashboard-markdown-lite.test.js"
 else
   echo "FAIL tests/microworld/dashboard-markdown-lite.test.js"
-  fail=1
-fi
-
-echo
-echo "== microworld dashboard decisions client (Node) =="
-if node tests/microworld/dashboard-decisions-client.test.js; then
-  echo "OK   tests/microworld/dashboard-decisions-client.test.js"
-else
-  echo "FAIL tests/microworld/dashboard-decisions-client.test.js"
-  fail=1
-fi
-
-echo "== microworld dashboard decision-run (Node) =="
-if node tests/microworld/dashboard-decision-run.test.js; then
-  echo "OK   tests/microworld/dashboard-decision-run.test.js"
-else
-  echo "FAIL tests/microworld/dashboard-decision-run.test.js"
   fail=1
 fi
 

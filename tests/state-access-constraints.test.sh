@@ -3,8 +3,8 @@
 # Written BEFORE consolidation to verify current behavior.
 # Each constraint test is mutation-proved: reverting the fix must make the test red.
 # Constraints the LIB itself owns (C3, C4, C6, C8, C9) exercise state-access.sh
-# functions directly. Constraints owned by a CALLER instead (C1, C2, C5, C7)
-# invoke the real hooks/scripts/*.sh or bin/microworld-dashboard/server.js that
+# functions directly. Constraints owned by a CALLER instead (C1, C2, C5)
+# invoke the real hooks/scripts/*.sh that
 # actually implements the ordering/binding, since the lib alone cannot prove it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -216,87 +216,6 @@ test_decision_zero_identity_write() {
   fi
 }
 
-# == CONSTRAINT 7: DECISION↔.escalated timestamp binding ==
-# Neither stop-gate.sh nor human-decision-gate.sh cross-reference this
-# timestamp - the only REAL mechanical binding in the codebase is the
-# dashboard's POST /api/decision/arm route (bin/microworld-dashboard/server.js:
-# ~319-342), which refuses to arm a decision whose escalationTimestamp does
-# not match the first line of .claude/reviewed/<id>.escalated verbatim.
-# Invoking the real route (not writing-then-reading a timestamp back) is the
-# only way to prove the binding is enforced, not merely documented.
-test_escalated_timestamp_binding() {
-  local unit_id="test-unit-4"
-  local real_ts="2026-08-27T10:00:00Z"
-  local fixture_dir="${tmpdir}/c7-fixture"
-  mkdir -p "$fixture_dir/.claude/human-review/${unit_id}" "$fixture_dir/.claude/reviewed"
-  printf 'ESCALATE-TO-HUMAN %s %s trigger: c7-test microworld: none\n' "$unit_id" "$real_ts" \
-    > "$fixture_dir/.claude/reviewed/${unit_id}.escalated"
-  : > "$fixture_dir/.claude/review-audit.log"
-
-  local script="${tmpdir}/c7-check.js"
-  cat > "$script" <<'NODEEOF'
-'use strict';
-const fs = require('fs');
-const http = require('http');
-const { startServer } = require(process.env.C7_SERVER_PATH);
-
-function httpPost(url, token, body) {
-  return new Promise((resolve, reject) => {
-    const u = new URL(url);
-    const req = http.request({
-      hostname: u.hostname, port: u.port, path: u.pathname, method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Antislop-Token': token },
-    }, (res) => {
-      let data = '';
-      res.on('data', (c) => (data += c));
-      res.on('end', () => resolve({ status: res.statusCode, body: data }));
-    });
-    req.on('error', reject);
-    req.write(JSON.stringify(body));
-    req.end();
-  });
-}
-
-async function main() {
-  const projectDir = process.env.C7_PROJECT_DIR;
-  const taskId = process.env.C7_TASK_ID;
-  const realTs = process.env.C7_REAL_TS;
-
-  const { server, token } = startServer(projectDir, 0, { ttyWrite: { write: () => {} } });
-  await new Promise((r) => setTimeout(r, 100));
-  const url = `http://127.0.0.1:${server.address().port}/api/decision/arm`;
-
-  const mismatched = await httpPost(url, token, {
-    taskId, route: 'approve', escalationTimestamp: '2026-08-27T11:00:00Z',
-    by: 'c7', reason: 'test', examples: 'skipped',
-  });
-  const matched = await httpPost(url, token, {
-    taskId, route: 'approve', escalationTimestamp: realTs,
-    by: 'c7', reason: 'test', examples: 'skipped',
-  });
-  server.close();
-
-  if (mismatched.status === 409 && matched.status === 200) {
-    console.log('C7-BIND-OK');
-    process.exit(0);
-  }
-  console.log(`C7-BIND-FAIL mismatched=${mismatched.status} matched=${matched.status}`);
-  process.exit(1);
-}
-
-main().catch((err) => { console.log(`C7-BIND-FAIL error=${err.message}`); process.exit(1); });
-NODEEOF
-
-  local server_path
-  server_path="$(pwd)/bin/microworld-dashboard/server.js"
-  if C7_SERVER_PATH="$server_path" C7_PROJECT_DIR="$fixture_dir" C7_TASK_ID="$unit_id" C7_REAL_TS="$real_ts" \
-       node "$script" 2>&1 | grep -q '^C7-BIND-OK$'; then
-    pass "C7: escalated<->DECISION timestamp binding enforced by the real dashboard decision/arm route"
-  else
-    bad "C7: escalated<->DECISION timestamp binding not enforced"
-  fi
-}
-
 # == CONSTRAINT 8: wip-handoff empty ≠ absent ==
 # An empty wip-handoff file must be deleted, NOT preserved.
 # Empty does not mean "pause honored"; it means "misconfigured — delete it."
@@ -453,7 +372,6 @@ test_pending_review_idempotent
 test_session_baseline_idempotent
 test_directed_excluded_from_globs
 test_decision_zero_identity_write
-test_escalated_timestamp_binding
 test_wip_handoff_empty_not_absent
 test_dispatch_consumed_epoch_embedded
 test_fail_overwrites_cap

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # rfp-u3: the FAIL record's refutation telemetry line and the `[unconfirmed]` prefix leave every reader of
-# the record unaffected (fail-count, ladder-tier, escalation-card, unit-outcomes' FAIL classes), and the
+# the record unaffected (fail-count, ladder-tier, unit-outcomes' FAIL classes), and the
 # canonical protocol spells the grammar the fixture uses. Fixtures live under mktemp -d only.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -35,16 +35,6 @@ n="$(bash bin/fail-count.sh u7 "$proj")"
 # (b) ladder-tier reads n=2
 lt="$(bash bin/ladder-tier.sh u7 --project "$proj")"
 printf '%s' "$lt" | grep -q ' n=2 ' && ok "(b) ladder-tier n=2" || bad "(b) ladder-tier: $lt"
-
-# (c) escalation-card prints each block's first defect line, never the telemetry line
-card="$(bash bin/escalation-card.sh u7 "$proj")"
-if printf '%s\n' "$card" | grep -qx '  - src/a.sh:2 first defect' \
-   && printf '%s\n' "$card" | grep -qx '  - review-precheck printed a criterion failure line' \
-   && ! printf '%s\n' "$card" | grep -q 'refutation:'; then
-  ok "(c) escalation-card unaffected"
-else
-  bad "(c) escalation-card: $card"
-fi
 
 # (d) no telemetry token matches a unit-outcomes FAIL class substring (read from the live table)
 d="$(node -e '

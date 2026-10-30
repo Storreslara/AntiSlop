@@ -3,7 +3,7 @@
 set -u
 cd "$(dirname "$0")/.."
 mode="${1:-}"
-case "$mode" in prose|code-hdg) ;; *) echo "usage: escalation-retired.test.sh prose|code-hdg" >&2; exit 2 ;; esac
+case "$mode" in prose|code-hdg|code-bin) ;; *) echo "usage: escalation-retired.test.sh prose|code-hdg|code-bin" >&2; exit 2 ;; esac
 fail=0
 bad() { echo "FAIL $*"; fail=1; }
 if [ "$mode" = code-hdg ]; then
@@ -27,6 +27,27 @@ if [ "$mode" = code-hdg ]; then
   done
   n=$(grep -c 'human-decision-gate.sh' hooks/hooks.json || true)
   [ "$n" = 2 ] || bad "hooks/hooks.json names the gate $n times, want 2"
+  exit "$fail"
+fi
+if [ "$mode" = code-bin ]; then
+  # names and patterns are assembled from pieces so this file never spells one whole
+  card="escalation""-card.sh"; cleanup="human-review""-cleanup.sh"; heavy="heavy""-trigger.sh"
+  for f in hooks/scripts/$heavy .claude/hooks/scripts/$heavy bin/$card .claude/bin/$card bin/$cleanup \
+    bin/microworld-dashboard/decision""-block.js bin/microworld-dashboard/decisions.js; do
+    [ ! -e "$f" ] || bad "$f still exists"
+  done
+  if hits=$(git grep -nE -e "require\\('\\./decision(s|-block)'\\)" -- bin hooks adapters); then
+    printf '%s\n' "$hits"; fail=1
+  fi
+  if hits=$(git grep -nE -e "($card|$cleanup|$heavy)" -- bin hooks adapters | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#'); then
+    printf '%s\n' "$hits"; fail=1
+  fi
+  if grep -q '/api/decis''ion' bin/microworld-dashboard/server.js; then
+    grep -n '/api/decis''ion' bin/microworld-dashboard/server.js; fail=1
+  fi
+  if grep -n "^const BIN_HELPER_FILES" bin/cli.js | grep -q "$card"; then
+    bad "BIN_HELPER_FILES lists $card"
+  fi
   exit "$fail"
 fi
 # each pattern is assembled from pieces so this file never spells one whole

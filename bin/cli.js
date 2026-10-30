@@ -655,7 +655,7 @@ function buildHookScriptSpecs() {
 
 // Ladder helpers the orchestrator runs from an installed project. Explicit list:
 // harness-integrity.sh must not be installed (re-arming its drift check is separate).
-const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'escalation-card.sh', 'unit-bookkeeping.sh', 'blast-radius.sh', 'review-precheck.sh', 'unit-size.sh', 'refutation-brief.sh'];
+const BIN_HELPER_FILES = ['ladder-tier.sh', 'contract-guard.js', 'contract-score.js', 'fail-count.sh', 'unit-bookkeeping.sh', 'blast-radius.sh', 'review-precheck.sh', 'unit-size.sh', 'refutation-brief.sh'];
 
 function buildBinHelperSpecs() {
   return BIN_HELPER_FILES.map((f) => ({
@@ -2746,7 +2746,7 @@ async function runDashboard(args, options = {}) {
       return;
     }
 
-    const { server, token } = startServer(process.cwd(), port, { ttyWrite, readOnly: false });
+    const { server, token } = startServer(process.cwd(), port, { readOnly: false });
 
     server.on('listening', () => {
       const addr = server.address();
@@ -2772,7 +2772,7 @@ async function runDashboard(args, options = {}) {
     });
   } else if (noTtyFlag) {
     // No terminal, --dashboard-no-tty: start with readOnly: true
-    const { server, token } = startServer(process.cwd(), port, { ttyWrite: null, readOnly: true });
+    const { server, token } = startServer(process.cwd(), port, { readOnly: true });
 
     server.on('listening', () => {
       const addr = server.address();

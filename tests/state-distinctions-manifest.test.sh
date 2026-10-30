@@ -31,7 +31,6 @@ declare -a ids=(
   D7_pass_commit_attestation
   D8_fail_2cap_not_filesystem_derivable
   D9_blocked_existence_glob_only
-  D10_escalated_decision_timestamp_bind
   D11_directed_excluded_from_globs
   D14_four_logs_review_audit_control_input
   D15_codex_stop_loop_guard_counter
@@ -46,7 +45,6 @@ declare -a patterns=(
   'commit: <sha|none>'
   'durable FAIL record'
   'blocked_markers='
-  'escalationTimestamp'
   ''
   'tail -n 1 "$review_audit"'
   'stop-loop-guard'
@@ -61,7 +59,6 @@ declare -a files=(
   hooks/scripts/task-gate.sh
   hooks/scripts/reviewer-tier.sh
   hooks/scripts/lib/stop-gate-core.sh
-  bin/microworld-dashboard/server.js
   hooks/scripts/lib/stop-gate-core.sh
   hooks/scripts/lib/stop-gate-core.sh
   adapters/codex/hooks/scripts/stop-gate.sh

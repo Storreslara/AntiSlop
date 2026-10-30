@@ -499,23 +499,23 @@ async function runTests() {
     failures.push(`Test (j) ERROR: ${err.message}`);
   }
 
-  // Test (k): the "unverified" label is bound to exactly the three
-  // status-indicator render sites, and its verdict is derived from
+  // Test (k): the "unverified" label is bound to exactly one render site
+  // (the bundle rail), and its verdict is derived from
   // authority alone -- proven by stubbing getStatusClass and confirming
   // the label logic is unaffected.
-  console.log('Test (k): unverified label at exactly three render sites, stub-proof...');
+  console.log('Test (k): unverified label at exactly one render site, stub-proof...');
   try {
     const indexPath = path.join(__dirname, '..', '..', 'bin', 'microworld-dashboard', 'index.html');
     const html = fs.readFileSync(indexPath, 'utf8');
 
     const siteCount = (html.match(/getStatusClass\(b\.status\)/g) || []).length;
-    if (siteCount !== 3) {
-      failures.push(`Test (k) FAILED: expected exactly 3 getStatusClass(b.status) call sites, found ${siteCount}`);
+    if (siteCount !== 1) {
+      failures.push(`Test (k) FAILED: expected exactly 1 getStatusClass(b.status) call sites, found ${siteCount}`);
     }
 
     const labelCallCount = (html.match(/isUnverifiedStatus\(b\.status\)/g) || []).length;
-    if (labelCallCount !== 3) {
-      failures.push(`Test (k) FAILED: expected exactly 3 isUnverifiedStatus(b.status) call sites, found ${labelCallCount}`);
+    if (labelCallCount !== 1) {
+      failures.push(`Test (k) FAILED: expected exactly 1 isUnverifiedStatus(b.status) call sites, found ${labelCallCount}`);
     }
 
     if (!html.includes('unverified — implementer-authored check')) {

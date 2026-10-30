@@ -8,13 +8,13 @@ listed below. This file does not repeat either.
 
 ## Locations
 
-- `bin/microworld-dashboard/` — the dashboard implementation. Ten modules
+- `bin/microworld-dashboard/` — the dashboard implementation. Eight modules
   (verified live) covering the dashboard server, bundle discovery, function
   invocation, the audit-log parser, the feedback-block formatter, the source
-  reader, the markdown-lite renderer, the decision surface, and the D5
+  reader, the markdown-lite renderer, and the D5
   browser client.
 
-- `tests/microworld/` — all fourteen tests for the dashboard and its
+- `tests/microworld/` — all nine tests for the dashboard and its
   supporting modules (verified live). One of them,
   `tests/microworld/microworld-audit-contract.test.js`, is the cross-language
   contract test binding the bash reporter hook to the Node audit-log parser.
@@ -52,4 +52,3 @@ never as static paths in the repo:
 - `microworlds/<unit-slug>/` — per-unit bundle working directories.
 - `.claude/microworld-audit.log` — the audit log the Reporter hook writes to
   (plus its per-adapter equivalents).
-- `.claude/human-review/<task-id>/` — escalation packets.
