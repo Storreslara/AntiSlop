@@ -7,6 +7,7 @@ Record the lean-pipeline vocabulary (plan step "U12 lp-scribe", Clarifications l
 - Two stale definitions are corrected: **fix contract** (task-master no longer writes it) and **version-stamp discipline** (now per release, stated first in the entry). The **Persona** entry drops task-master from its optional list.
 - lp-vsr (0.31.227) left two more per-commit statements: the harness glossary's **per-commit semantics** entry gets a `Retired (0.31.227)` line (glossary edit 15), and row 25 of `docs/trust-model.md` is rewritten to the per-release rule (doc edit 1).
 - The **release** entry names **bumping commit** as a synonym, the word `agents/lead-programmer.md`, `agents/scribe.md` and `skills/version-stamp-discipline/SKILL.md` use. That one glossary line is smaller than editing three sources plus their mirrors, so those files are not edited.
+- lp-stopgate (0.32.0) left eight glossary entries and the hooks wiki page partly false (stamp consumption, test+lint at Stop, marker-commit-check, `.blocked` keeping a flag). Glossary edits 17-24 add one `Retired (0.32.0)` or `Amended (0.32.0)` line below each heading; doc edits 2-5 replace two wiki table rows and add a retire line under two wiki sections.
 - One ADR, 0044, records the decision drafted in the plan (Decisions, "ADR candidate").
 
 ## Retrieval
@@ -197,6 +198,71 @@ Every payload is written with this contract's 3-space indent: strip exactly 3 le
    Retired (0.32.0): its rows lived in the gate's test suite, deleted with the gate (unit lp-hdg), and `tests/validate.sh` no longer checks its pins (ADR-0044).
    ~~~~
 
+17. file: `docs/harness-glossary.md`
+   heading: `**grant-denied**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Amended (0.32.0): `stop-gate.sh` no longer writes this record (unit lp-stopgate); `reviewed-path-gate.sh` still does.
+   ~~~~
+18. file: `docs/harness-glossary.md`
+   heading: `**Microworld audit log**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Amended (0.32.0): `stop-gate.sh` no longer surfaces failures (unit lp-stopgate); `session-start.sh` is the only reader.
+   ~~~~
+19. file: `docs/harness-glossary.md`
+   heading: `**Marker audit-log states**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Retired (0.32.0): no hook calls `marker-commit-check.sh` any more, so no hook writes these states (unit lp-stopgate); the script stays callable by hand.
+   ~~~~
+20. file: `docs/harness-glossary.md`
+   heading: `**markerCommitCheck.mode**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Retired (0.32.0): no hook reads this key since `stop-gate.sh` stopped calling `marker-commit-check.sh` (unit lp-stopgate).
+   ~~~~
+21. file: `docs/harness-glossary.md`
+   heading: `**Dispatch hygiene**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Amended (0.32.0): the review-join stamps named below are gone and a reviewer stop clears every flag whatever the verdict (unit lp-stopgate); `dispatch-hygiene.sh` now touches the writer-dispatch stamp at each gated writer dispatch.
+   ~~~~
+22. file: `CONTEXT.md`
+   heading: the line starting `**review gating off**`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Amended (0.32.0): `stop-gate.sh` exits at once under `off` and runs no test+lint check, so that check is not among the armed gates listed below (unit lp-stopgate).
+   ~~~~
+23. file: `CONTEXT.md`
+   heading: `**Reporter**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Amended (0.32.0): `stop-gate.sh` no longer surfaces deferred results (unit lp-stopgate); `session-start.sh` is the only reader.
+   ~~~~
+24. file: `CONTEXT.md`
+   heading: `` **`.directed` marker**: ``
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Amended (0.32.0): a reviewer stop clears every pending-review flag whatever the verdict, so `.blocked` no longer keeps a flag standing (unit lp-stopgate).
+   ~~~~
+
 ## Doc edits
 1. file: `docs/trust-model.md`
    heading: the line starting `| 25 |`
@@ -209,6 +275,46 @@ Every payload is written with this contract's 3-space indent: strip exactly 3 le
    text:
    ~~~~
    | 25 | A release (a commit that bumps `.claude-plugin/plugin.json`'s version) added a CHANGELOG line naming the new version in that same commit, and no commit lowered the version; content commits need no bump (constitution P3 v1.2.0 / version-stamp discipline, per release since 0.31.227) | `hooks/scripts/version-stamp-check.sh` | self-reported | Deliberately **not** hook-registered — a reviewer-invoked helper, matching `heavy-trigger.sh`/`reviewer-tier.sh` (units version-stamp-guard-1, version-stamp-check-roast-1, lp-vsr). Checks every bumping commit in the range against its own immediate parent; a range with no bump is `ok`. The per-commit check of version-stamp-check-roast-1 was retired in 0.31.227. Takes an explicit range because a unit's range is a per-unit input only the reviewer knows. Deterministic given an explicit `<commit-range>` argument; nothing independently re-derives whether the reviewer actually ran it against the right range. |
+   ~~~~
+2. file: `.claude/wiki/modules/hooks.md`
+   heading: the line starting `` | `marker-commit-check.sh` | Called from stop-gate.sh | ``
+   placement: replace the text before with the text below, inside that line only
+   indent: 3
+   before:
+   ~~~~
+   | `marker-commit-check.sh` | Called from stop-gate.sh | Advisory classifier for PASS marker `commit:` field attribution — invoked at reviewer turn-end to verify the marker names the unit's own commit, not a sibling's.
+   ~~~~
+   text:
+   ~~~~
+   | `marker-commit-check.sh` | Run by hand (no hook calls it since 0.32.0, unit lp-stopgate) | Advisory classifier for PASS marker `commit:` field attribution — verifies the marker names the unit's own commit, not a sibling's.
+   ~~~~
+3. file: `.claude/wiki/modules/hooks.md`
+   heading: the line starting `` | `stop-gate.sh` | Stop + SubagentStop | ``
+   placement: replace that one line with the text below
+   indent: 3
+   before:
+   ~~~~
+   | `stop-gate.sh` | Stop + SubagentStop | Core "done = reviewer PASS" enforcement — checks commits/PASS markers before allowing a gated agent (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) to stop. Invokes `marker-commit-check.sh` during the review-join loop. |
+   ~~~~
+   text:
+   ~~~~
+   | `stop-gate.sh` | Stop + SubagentStop | Pending-review flag check: a gated agent's stop (`persona-config.json`'s `gatedAgents`, default `["lead-programmer"]`) writes a flag, and is blocked when a verdict marker is newer than the writer-dispatch stamp; a reviewer stop clears every flag; the main Stop blocks while a flag stands without `skip:` or `defer:`. |
+   ~~~~
+4. file: `.claude/wiki/modules/hooks.md`
+   heading: the line starting `## stop-gate.sh: marker coupling via review-join stamp`
+   placement: insert one blank line, then the text, directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Retired (0.32.0): review-join stamps are gone and a reviewer stop clears every flag whatever the verdict (unit lp-stopgate). The section below is history.
+   ~~~~
+5. file: `.claude/wiki/modules/hooks.md`
+   heading: the line ``## Config: `markerCommitCheck.mode` ``
+   placement: insert one blank line, then the text, directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Retired (0.32.0): no hook reads this key since unit lp-stopgate; `marker-commit-check.sh` stays callable by hand.
    ~~~~
 Make no other doc changes.
 prune: none
@@ -247,16 +353,17 @@ Two protections cost more than they caught. The ESCALATE-TO-HUMAN verdict, with 
 - issue #0: the fast path has no tracker issue, so close nothing and run no `gh issue` command
 - task-id: lp-scribe
 - marker first line: "PASS lp-scribe "
-- Commit once, staging only `CONTEXT.md`, `docs/harness-glossary.md`, `docs/trust-model.md` and `docs/adr/0044-retire-escalation-and-bash-scans.md`, with the subject `docs(lp-scribe): lean-pipeline glossary entries and ADR-0044 (#0)` and the trailer line `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` (a fix round on another tier names that tier's model). A fix round is a new commit whose subject keeps `(lp-scribe): `. Commit your own memory notes separately.
+- Commit once, staging only `CONTEXT.md`, `docs/harness-glossary.md`, `docs/trust-model.md`, `.claude/wiki/modules/hooks.md` and `docs/adr/0044-retire-escalation-and-bash-scans.md`, with the subject `docs(lp-scribe): lean-pipeline glossary entries and ADR-0044 (#0)` and the trailer line `Co-Authored-By: Claude Haiku 4.5 <noreply@anthropic.com>` (a fix round on another tier names that tier's model). A fix round is a new commit whose subject keeps `(lp-scribe): `. Commit your own memory notes separately.
 - precondition: `test ! -e docs/adr/0044-retire-escalation-and-bash-scans.md && ls docs/adr | grep -c '^0044-'` prints `0`; each `before` text and each heading line appears in its file exactly once; the tree is clean. Anything else: STOP.
 
 ## Affected files
 - `CONTEXT.md`, `docs/harness-glossary.md`, `docs/trust-model.md` (doc edit 1)
+- `.claude/wiki/modules/hooks.md` (doc edits 2-5)
 - `docs/adr/0044-retire-escalation-and-bash-scans.md` (new)
 
 ## Do NOT touch
 - `agents/`, `templates/`, `adapters/`, `skills/`, `tests/`, `hooks/`, `bin/` (criterion 6)
-- `.claude/`, `docs/plans/`, every other `docs/adr/` file, every other glossary entry (criterion 6)
+- `.claude/` apart from `.claude/wiki/modules/hooks.md`, `docs/plans/`, every other `docs/adr/` file, every other glossary entry (criterion 6)
 
 ## Acceptance criteria
 1. run: `bash -c 'for t in "five-field contract" "release" "needs-human note" "task-master"; do printf "%s=%s " "$t" "$(grep -cxF "**$t**:" CONTEXT.md)"; done | sed "s/ $//"; echo'`
@@ -279,7 +386,7 @@ Two protections cost more than they caught. The ESCALATE-TO-HUMAN verdict, with 
    exit: 0
    stdout: `All context-glossary-links checks passed.` then `index-ok`
    mutation: write `[[needs-human notes]]` in glossary edit 6; the link resolves to no entry and the first line changes.
-6. run: `bash -c 'cs=$(git log --format="%H %s" | grep -F "(lp-scribe): " | cut -d" " -f1); [ -n "$cs" ] || { echo no-commits; exit 1; }; for c in $cs; do git show --name-only --format= "$c"; done | sort -u | grep -vxE "CONTEXT.md|docs/harness-glossary.md|docs/trust-model.md|docs/adr/0044-retire-escalation-and-bash-scans.md" | wc -l | tr -d " "'`
+6. run: `bash -c 'cs=$(git log --format="%H %s" | grep -F "(lp-scribe): " | cut -d" " -f1); [ -n "$cs" ] || { echo no-commits; exit 1; }; for c in $cs; do git show --name-only --format= "$c"; done | sort -u | grep -vxE "CONTEXT.md|docs/harness-glossary.md|docs/trust-model.md|.claude/wiki/modules/hooks.md|docs/adr/0044-retire-escalation-and-bash-scans.md" | wc -l | tr -d " "'`
    exit: 0
    stdout: `0`
    mutation: also stage `docs/adr/0043-refutation-pass-inside-reviewer-turn.md` in a `(lp-scribe): ` commit; stdout is `1` (today's tree: `no-commits`).
@@ -291,6 +398,11 @@ Two protections cost more than they caught. The ESCALATE-TO-HUMAN verdict, with 
    exit: 0
    stdout: `checked`
    mutation: skip doc edit 1; stdout gains `stale: trust row 25` and `per-commit: trust row 25` before `checked` (spec-master ran it on today's tree: five lines, `stale: version-stamp discipline`, `missing: release synonym`, `stale: per-commit semantics`, `stale: trust row 25`, `per-commit: trust row 25`, then `checked`; on a scratch worktree with glossary edits 3, 4, 15 and doc edit 1 applied: `checked` alone).
+
+9. run: `bash -c 'e(){ awk -v h="$2" "index(\$0,h)==1{f=1;next} f&&/^\\*\\*/{exit} f" "$1" | head -1; }; for h in "**grant-denied**:" "**Microworld audit log**:" "**Marker audit-log states**:" "**markerCommitCheck.mode**:" "**Dispatch hygiene**:"; do e docs/harness-glossary.md "$h" | grep -qE "^(Retired|Amended) \(0\.32\.0\).*lp-stopgate" || echo "stale: $h"; done; for h in "**review gating off**" "**Reporter**:" "**\`.directed\` marker**:"; do e CONTEXT.md "$h" | grep -qE "^(Retired|Amended) \(0\.32\.0\).*lp-stopgate" || echo "stale: $h"; done; w=.claude/wiki/modules/hooks.md; grep -qF "Called from stop-gate.sh" $w && echo "stale: wiki marker-commit-check row"; grep -qF "during the review-join loop" $w && echo "stale: wiki stop-gate row"; for s in "## stop-gate.sh: marker coupling" "## Config: \`markerCommitCheck.mode\`"; do awk -v h="$s" "index(\$0,h)==1{getline; getline; print; exit}" $w | grep -qF "Retired (0.32.0)" || echo "stale: $s"; done; echo checked'`
+   exit: 0
+   stdout: `checked`
+   mutation: skip glossary edit 20; stdout gains `stale: **markerCommitCheck.mode**:` before `checked` (spec-master ran it on 7c92f937: twelve `stale:` lines, then `checked`; on a scratch worktree with glossary edits 17-24 and doc edits 2-5 applied: `checked` alone, and criterion 5 still passed).
 
 ## Escalation
 If any `before` text or heading line is not found exactly once, STOP and report the current text as a spec gap. If criterion 3 prints `no-source: …`, an earlier unit changed its wording: stop and report it. If a gate blocks a command, report it and wait.
