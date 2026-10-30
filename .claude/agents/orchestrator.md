@@ -207,6 +207,9 @@ advisory (below), its second non-blank line is `Implementer tier: <t>`, where
 `<t>` is the tier (`haiku`, `sonnet` or `opus`) of the `model` the unit's latest
 implementer dispatch ran on; omit the line when that dispatch passed no `model`
 (the reviewer then writes `tier: unknown`).
+For a report-only dispatch that owns no verdict, add `Mode: advisory` as the
+**literal second non-blank line**, immediately after `Unit: <id>`, and move the
+`Implementer tier:` line to third.
 When you dispatch the reviewer as a background task, Stop still blocks while the flag stands: write
 `defer: <reason>` into it to end your turn; the reviewer's own stop clears it.
 

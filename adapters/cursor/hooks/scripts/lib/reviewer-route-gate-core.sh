@@ -23,8 +23,7 @@
 # identity_drift_log's event-name argument — each port's own label for this
 # hook site), target_type (the spawn target's raw identity from the port's
 # own payload field), dispatch_name (the dispatch's raw `name` field value,
-# empty if none), prompt (the dispatch's raw prompt/instructions text,
-# already extracted from the port's own field chain).
+# empty if none).
 set -euo pipefail
 
 if [ -f "$config" ] && [ -n "$target_type" ]; then

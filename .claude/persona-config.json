@@ -41,7 +41,7 @@
     }
   },
   "fileHashes": {
-    ".claude/agents/orchestrator.md": "9afb9813575017dc026a9a4f99412cb8100f47985775b0165f985f5b6b688c0d",
+    ".claude/agents/orchestrator.md": "7ac287827e3b2c82e728d5da45a620494ba558cead620ed180dd7dfad6d39d33",
     ".claude/agents/explorer.md": "65de27256eb4b834249e25e01829ca307e51761821931b7e1f82e20b68ea4ad9",
     ".claude/agents/lead-programmer.md": "8a3aee9586210affe765fcbd3bd66bd7eff97b624d3a05ed8a52a214769c80cc",
     ".claude/agents/spec-master.md": "b85dfa383110655e5ec1834d6bb6a540e0992b14f5ff5a2a49d274392ff1f745",
@@ -82,11 +82,11 @@
     "adapters/cursor/hooks/scripts/lib/lint-on-edit-core.sh": "ba0120d3c7443d1d610ca04839dd6e1c5c85d1f074c0ec2f5791465223363652",
     "adapters/cursor/hooks/scripts/lib/microworld-rerun-core.sh": "a0cede60c9b9026766a78a96a88d95bd41e2945996af04ea0bb4cf885ecef2eb",
     "adapters/cursor/hooks/scripts/lib/protected-paths-core.sh": "ece14a6db8fccd707bdfe5f9508ddee24ab983d47195a0eef3fd123be0f29656",
-    ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "11e731df49204cd7c13843f83596a62a38d8dbfe3da4371c4aa2b3fd4d64671a",
+    ".claude/hooks/scripts/lib/reviewer-route-gate-core.sh": "a1e73926ca1083b99a240686112c735bf64ab1c4e5805b46ffc6b91ea87a84ea",
     ".claude/hooks/scripts/lib/stop-gate-core.sh": "e833c70c3dfdd7a8d2c95ab199b8685d56424cd7cd3d42175fd22beca9e7a3bb",
-    "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "11e731df49204cd7c13843f83596a62a38d8dbfe3da4371c4aa2b3fd4d64671a",
+    "adapters/codex/hooks/scripts/lib/reviewer-route-gate-core.sh": "a1e73926ca1083b99a240686112c735bf64ab1c4e5805b46ffc6b91ea87a84ea",
     "adapters/codex/hooks/scripts/lib/stop-gate-core.sh": "e833c70c3dfdd7a8d2c95ab199b8685d56424cd7cd3d42175fd22beca9e7a3bb",
-    "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "11e731df49204cd7c13843f83596a62a38d8dbfe3da4371c4aa2b3fd4d64671a",
+    "adapters/cursor/hooks/scripts/lib/reviewer-route-gate-core.sh": "a1e73926ca1083b99a240686112c735bf64ab1c4e5805b46ffc6b91ea87a84ea",
     "adapters/cursor/hooks/scripts/lib/stop-gate-core.sh": "e833c70c3dfdd7a8d2c95ab199b8685d56424cd7cd3d42175fd22beca9e7a3bb",
     ".claude/hooks/scripts/lib/microworld-queue.sh": "36aa32cde2785ab155932aac636fc695ab1f611190958edabaf6cdb9a5836b8d",
     "adapters/codex/hooks/scripts/lib/microworld-queue.sh": "36aa32cde2785ab155932aac636fc695ab1f611190958edabaf6cdb9a5836b8d",
