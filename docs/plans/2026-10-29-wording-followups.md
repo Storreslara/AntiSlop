@@ -40,6 +40,7 @@ Ubiquitous-language check (prose mode, request and draft): lens 1 (a term used w
 - R3. Version stamps: no unit touches `agents/*.md` or `templates/*` (checked against `hooks/scripts/version-stamp-check.sh:87`), so no plugin bump or CHANGELOG entry is needed.
 - R4. `python3 -I` ignores `PYTHONDONTWRITEBYTECODE`; a run without `-B` leaves `eval/refutation-replay/__pycache__/` behind (spec-master hit it once while measuring and removed its own file). Every Python command in wrd-u2 and wrd-u3 uses `-B`, and wrd-u2 criterion 6 fails on a stray untracked file under `eval/`.
 - R5. Lane C4.1a of `tests/validate.sh` is known to flake (it passes alone and on re-run); each validate criterion says to re-run once and report both runs if it is the only failure.
+- R7. The hardening plan (`docs/plans/2026-10-29-scope-gate-baseline-hardening.md`, uncommitted when this plan was written) also appends a `docs/harness-glossary.md` entry (`dispatch baseline`). wrd-u3 edit 4 appends after whatever the last entry is, and none of wrd-u3's criteria depend on the position. But wrd-u3 must never run at the same time as that plan's glossary unit: both write the same file.
 - R6. wrd-u3 criterion 3 runs wrd-u1's test, so wrd-u3 is dispatched only after wrd-u1 has PASSed.
 - No criterion uses `rm`, `rmdir`, `find -delete` or a deleting trap; scratch repositories are unique `mktemp -d` directories left in place.
 

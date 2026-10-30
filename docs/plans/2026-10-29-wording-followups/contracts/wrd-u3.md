@@ -32,7 +32,7 @@ Edits 1 to 6 use the Edit tool, never a Bash heredoc. Each `before` text occurs 
 ~~~
 
 4. file: `docs/harness-glossary.md`
-   anchor: the last line of the file (the `**judge**:` entry's text line, which ends in a newline)
+   anchor: the last line of the file, which ends in a newline. At f566aeef it is the `**judge**:` entry's text line; the parallel plan `docs/plans/2026-10-29-scope-gate-baseline-hardening.md` also appends an entry (`dispatch baseline`), so if it has landed first, the last line is that entry's, and the new entry goes after it all the same
    append, after that line's newline (so one blank line separates the entries, as everywhere above):
 ~~~
 
