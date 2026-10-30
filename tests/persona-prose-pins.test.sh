@@ -47,7 +47,7 @@ for f in agents/lead-programmer.md .claude/agents/lead-programmer.md adapters/co
 done
 has .claude/agents/lead-programmer.md 'is the exception: it has no'
 has .claude/agents/lead-programmer.md 'If your persona has the'
-for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/lead-programmer.md .claude/agents/reviewer.md .claude/agents/spec-master.md .claude/agents/task-master.md; do
+for f in templates/persona-protocol.md .claude/persona-protocol.md .claude/agents/lead-programmer.md .claude/agents/reviewer.md .claude/agents/spec-master.md; do
   hasnot "$f" 'print their complete remediation'
   has "$f" 'the glossary entry its `More:` line names'
 done
