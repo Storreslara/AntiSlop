@@ -3,7 +3,7 @@ Unit: lp-scribe
 ## Objective
 Record the lean-pipeline vocabulary (plan step "U12 lp-scribe", Clarifications line "Terminology"). One scribe run. This repo's `knowledgeWrites` is `apply`, and this contract names the only knowledge files it edits.
 - New entries in `CONTEXT.md`: **five-field contract**, **release**, **needs-human note**, and **task-master** (no entry exists today, so it is added already marked retired).
-- A `Retired (0.32.0): ...` line goes directly below the heading of seven entries: four in `CONTEXT.md` (**Escalation packet**, **ESCALATE-TO-HUMAN**, **`.escalated` marker**, **escalation card**) and three in `docs/harness-glossary.md` (**review-join stamp**, **decision-gate denial**, **The human-decision gate**). Nothing is deleted.
+- A `Retired (0.32.0): ...` line goes directly below the heading of eight entries: four in `CONTEXT.md` (**Escalation packet**, **ESCALATE-TO-HUMAN**, **`.escalated` marker**, **escalation card**) and four in `docs/harness-glossary.md` (**review-join stamp**, **decision-gate denial**, **The human-decision gate**, **frozen family table**). Nothing is deleted.
 - Two stale definitions are corrected: **fix contract** (task-master no longer writes it) and **version-stamp discipline** (now per release, stated first in the entry). The **Persona** entry drops task-master from its optional list.
 - lp-vsr (0.31.227) left two more per-commit statements: the harness glossary's **per-commit semantics** entry gets a `Retired (0.31.227)` line (glossary edit 15), and row 25 of `docs/trust-model.md` is rewritten to the per-release rule (doc edit 1).
 - The **release** entry names **bumping commit** as a synonym, the word `agents/lead-programmer.md`, `agents/scribe.md` and `skills/version-stamp-discipline/SKILL.md` use. That one glossary line is smaller than editing three sources plus their mirrors, so those files are not edited.
@@ -188,6 +188,14 @@ Every payload is written with this contract's 3-space indent: strip exactly 3 le
    ~~~~
    Retired (0.31.227): `version-stamp-check.sh` no longer checks each commit against its parent; the version-stamp discipline is per release (constitution P3 v1.2.0, plan 2026-10-30-lean-pipeline).
    ~~~~
+16. file: `docs/harness-glossary.md`
+   heading: `**frozen family table**:`
+   placement: insert the text as a new line directly below the heading line
+   indent: 3
+   text:
+   ~~~~
+   Retired (0.32.0): its rows lived in the gate's test suite, deleted with the gate (unit lp-hdg), and `tests/validate.sh` no longer checks its pins (ADR-0044).
+   ~~~~
 
 ## Doc edits
 1. file: `docs/trust-model.md`
@@ -251,10 +259,10 @@ Two protections cost more than they caught. The ESCALATE-TO-HUMAN verdict, with 
    exit: 0
    stdout: `five-field contract=1 release=1 needs-human note=1 task-master=1`
    mutation: skip glossary edit 4; the second field reads `release=0`, and criterion 5 fails on the dangling `[[release]]` link (spec-master ran both on today's tree: all four read `=0`).
-2. run: `bash -c 'chk(){ awk -v h="$2" "index(\$0,h)==1{f=1;next} f&&/^\\*\\*/{exit} f" "$1" | grep -qF "Retired (0.32.0)" || echo "missing: $2"; }; chk CONTEXT.md "**task-master**:"; chk CONTEXT.md "**Escalation packet**:"; chk CONTEXT.md "**ESCALATE-TO-HUMAN**:"; chk CONTEXT.md "**\`.escalated\` marker**:"; chk CONTEXT.md "**escalation card**:"; chk docs/harness-glossary.md "**review-join stamp**:"; chk docs/harness-glossary.md "**decision-gate denial**:"; chk docs/harness-glossary.md "**The human-decision gate**"; echo checked'`
+2. run: `bash -c 'chk(){ awk -v h="$2" "index(\$0,h)==1{f=1;next} f&&/^\\*\\*/{exit} f" "$1" | grep -qF "Retired (0.32.0)" || echo "missing: $2"; }; chk CONTEXT.md "**task-master**:"; chk CONTEXT.md "**Escalation packet**:"; chk CONTEXT.md "**ESCALATE-TO-HUMAN**:"; chk CONTEXT.md "**\`.escalated\` marker**:"; chk CONTEXT.md "**escalation card**:"; chk docs/harness-glossary.md "**review-join stamp**:"; chk docs/harness-glossary.md "**decision-gate denial**:"; chk docs/harness-glossary.md "**The human-decision gate**"; chk docs/harness-glossary.md "**frozen family table**:"; echo checked'`
    exit: 0
    stdout: `checked`
-   mutation: skip glossary edit 13; stdout gains `missing: **decision-gate denial**:` before `checked` (spec-master ran it on today's tree: eight `missing:` lines, then `checked`).
+   mutation: skip glossary edit 13; stdout gains `missing: **decision-gate denial**:` before `checked` (spec-master ran it on today's tree: nine `missing:` lines, then `checked`).
 3. run: `bash -c 'grep -qF "On FAIL, the orchestrator writes the fix contract" agents/orchestrator.md || echo "no-source: fix contract"; grep -qF "needs-human:" agents/reviewer.md || echo "no-source: needs-human"; grep -qi "per release" skills/version-stamp-discipline/SKILL.md || echo "no-source: release"; e(){ awk -v h="$2" "index(\$0,h)==1{f=1;next} f&&/^\\*\\*/{exit} f" "$1" | tr -s " \n" " "; }; f=$(e CONTEXT.md "**five-field contract**:"); for x in "## Acceptance criteria" "at most 3,072 bytes" "[[fix contract]]"; do printf "%s" "$f" | grep -qF -- "$x" || echo "missing: five-field $x"; done; n=$(e CONTEXT.md "**needs-human note**:"); for x in "needs-human: <one line>" "It does not change the verdict" "AskUserQuestion"; do printf "%s" "$n" | grep -qF -- "$x" || echo "missing: needs-human $x"; done; r=$(e CONTEXT.md "**release**:"); printf "%s" "$r" | grep -qF "The version never decreases" || echo "missing: release"; x=$(e docs/harness-glossary.md "**fix contract**:"); printf "%s" "$x" | grep -qF "that the orchestrator writes after a FAIL" || echo "missing: fix orchestrator"; printf "%s" "$x" | grep -qF "task-master, if present" && echo "stale: fix contract"; echo checked'`
    exit: 0
    stdout: `checked`

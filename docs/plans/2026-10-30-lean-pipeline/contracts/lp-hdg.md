@@ -9,7 +9,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 ## Affected files
 - `hooks/scripts/human-decision-gate.sh` (rewrite as stub, mode 755 kept); `.claude/hooks/scripts/human-decision-gate.sh` (regenerated, never hand-edited)
 - `tests/human-decision-gate.test.sh`, `tests/hdg-differential-sweep.sh` (`git rm` both)
-- `tests/validate.sh` (delete the `human-decision-gate.test.sh` block near :706; reword the :535 header to name `reviewed-path-gate.sh` only)
+- `tests/validate.sh` (delete the `human-decision-gate.test.sh` block near :706; delete the frozen-family-table pin block, edit 5; reword the :535 header to name `reviewed-path-gate.sh` only)
 - `tests/watch-map.json` (drop `bash tests/human-decision-gate.test.sh` from every `run[]`, drop it and the gate path from every `watch[]`; drop an entry left with an empty `run[]`)
 - Tests that assert the gate's deny behaviour or its source text: `tests/refusal-disclosure.test.sh` (hdg half), `tests/review-gating-off.test.sh` (case k), `tests/state-access-capability-regression.test.sh` (check 2), `tests/state-access-constraints.test.sh` (check 2c near :429), `tests/state-distinctions-manifest.test.sh` (the two rows whose file is the gate), `tests/harness-integrity-gate.test.sh` (the `tests/human-decision-gate.test.sh|1` row of the C4.1 table), `tests/hook-latency-budget.test.sh:37` (path to a deleted file)
 - `scripts/rollout-preflight.sh` (:81 and :98 entries)
@@ -20,6 +20,7 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 2. Delete the two test files and their validate.sh and watch-map.json references. Edit each listed test only to remove the cases about the deny behaviour or the source text of the gate. Name each one in the CHANGELOG bullet.
 3. `tests/escalation-retired.test.sh code-hdg` fails and prints each failing check unless all of these hold: (a) the gate is at most 15 lines and exits 0 with empty stdout, both for a Bash payload from `lead-programmer` that writes the human-review decision file and for a Write payload to that path (assemble the path from split literals); (b) its `.claude` mirror is byte-identical; (c) both deleted test files are absent; (d) neither `tests/validate.sh` nor `tests/watch-map.json` names the deleted suite; (e) `hooks/hooks.json` names the gate exactly twice (D5 parity). Register `bash tests/escalation-retired.test.sh code-hdg` in `tests/validate.sh`.
 4. `node bin/cli.js --update --force-render`. Stage the mirrors as `git add -- .claude adapters`, never by naming the persona config file, which `harness-integrity-gate` scans for. Add one `[Unreleased]` CHANGELOG bullet.
+5. (Do with edit 2.) `tests/validate.sh`: delete from the bare `echo` line directly above `echo "== docs/harness-glossary.md: frozen family table residual pins exist (Python, hyg-1) =="` through the `fi` after `  echo "FAIL frozen family table residual pins"` / `  fail=1`, plus the one blank line after that `fi` (HEAD 1457-1498, 42 lines; the result reads `done`, blank, `echo`, `echo "== scripts/probe-bash-ask.sh: ...`). Its python opens the deleted suite to check that the pins named in the `**frozen family table**:` entry of `docs/harness-glossary.md` are allowed suite rows. It retires only that pin on glossary text describing the deleted suite; no other check goes. The glossary keeps its text here (`docs/` is Do NOT touch); lp-scribe glossary edit 16 marks the entry retired.
 
 ## Do NOT touch
 - `hooks/hooks.json`, `.claude/settings.json`, `hooks/scripts/harness-integrity-gate.sh` (Set B), `tests/abtest-arms.test.sh`, `eval/`
@@ -47,10 +48,15 @@ Fast path, no tracker issue. Spec: `docs/plans/2026-10-30-lean-pipeline.md`, ste
 5. run: `bash tests/validate.sh >/dev/null 2>&1` (Bash tool timeout 600000 ms; C-full, run once by the reviewer after the final commit)
    exit: 0
    stdout: empty
+6. run: `bash -c 'grep -c "frozen family table residual pins" tests/validate.sh; git grep -nE "human-decision-gate[.]test[.]sh|hdg-differential-sweep" -- tests scripts bin hooks | grep -cvE "^[^:]+:[0-9]+:[[:space:]]*#"; exit 0'`
+   exit: 0
+   stdout: `0` then `0`
+   mutation: skip edit 5 → first line `3`. (spec-master ran it in a HEAD worktree: `3` then `16`.) The second count is non-comment lines in tests/, scripts/, bin/, hooks/ naming either deleted file.
 
 ## Pre-resolved context
 - Today (2026-10-30, 94b55ee3): criterion 1 exits 127 (no test file); criterion 2's grep gives 5; the gate is 758 lines; the tests in criteria 2 and 3 pass (baseline measured).
 - Plan gap resolved here: the plan's U7a removed the hooks.json lines and asserted their absence, yet kept `abtest-arms.test.sh` passing and untouched. Both cannot hold. The stub honours the plan's explicit constraints (D5, U4 criterion 3). Dropping the registrations is the D5 follow-up. Also missing from the plan list: watch-map.json and five behaviour tests. `bin/cli.js` needs no edit, because hook copies are globbed.
+- Repo scan at HEAD for `human-decision-gate.test.sh` / `hdg-differential-sweep` (eval/ excluded), disposition: `tests/validate.sh` :707-710 and :1462, `tests/watch-map.json` (10 lines), `tests/harness-integrity-gate.test.sh:1326`, `tests/hook-latency-budget.test.sh:37`, the gate's own :79 comment (both copies): removed by this unit. Comments `tests/harness-integrity-gate.test.sh:5` and `tests/human-review-cleanup.test.sh:4` ("Same idiom as ..."): kept, they open nothing. `docs/harness-glossary.md` (**frozen family table** :2615: lp-scribe edit 16; **The human-decision gate** :2270: lp-scribe edit 14; **accepted over-block** :2660 and **differential sweep** :2700: kept as history), `docs/adr/0036`, `docs/plans/**`, `CHANGELOG.md`, `.claude/wiki/changelog.md`, `.claude/agent-memory/**`: history, kept. bin/, scripts/, agents/, templates/, skills/, adapters/: none.
 - `abtest-arms.test.sh` asserts `git diff --quiet HEAD -- hooks`, so run it only after committing.
 - A subagent's Write/Edit to a Set B path is denied outright, with no ask. Nothing in this unit writes one.
 
